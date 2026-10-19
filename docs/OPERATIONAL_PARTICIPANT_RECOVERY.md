@@ -145,9 +145,10 @@ After transfer, the caller closes revisions, suggestions and versions before the
 session and upload owner, using their ordinary close contracts.
 
 The original `SharedParticipantRecovery` remains an exact-cut coordinator and
-must not be reused against edited operational storage. Likewise, the parent
-room catalog still owns its staged participants privately and has no operational
-handoff or activation method. This per-participant API does not bypass it.
+must not be reused against edited operational storage. A parent room catalog
+keeps its participants private until [operational room recovery](OPERATIONAL_ROOM_RECOVERY.md)
+consumes genuine catalog custody through its durable attempt. This per-participant
+API does not bypass that parent ownership or grant activation.
 
 ## Release boundaries
 
@@ -168,7 +169,7 @@ process/power-loss durability, quota/eviction and operating-envelope performance
 remain qualification work. Reopen uses bounded whole files and native journals;
 it is not streaming compaction. Original archives remain required indefinitely.
 
-Parent catalog transfer, reconciliation of every retained historical copy,
+Reconciliation of every retained historical copy,
 protected original credentials, current authenticated server/account/writer
 fences and complete provider reference closure remain necessary for activation.
 Cross-generation Undo/Redo and outstanding offline-edit preservation remain

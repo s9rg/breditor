@@ -1,6 +1,9 @@
 export {SharedRichEditor,SharedEditorError,createSharedDocumentEditor} from "./core.js";
 export {initializeSharedReadOnly} from "./initialize_read_only.js";
 export {SharedRoomRecoveryCatalog} from "./room_recovery_catalog/catalog.js";
+export {SharedRoomOperationalRecovery} from "./room_operation/recovery.js";
+export {SharedRoomOperationError} from "./room_operation/errors.js";
+export type {SharedRoomOperationTarget,SharedRoomOperationBeginOptions,SharedRoomOperationParticipant,SharedRoomOperationResumeOptions,SharedRoomOperationProgress,SharedRoomOperationParts} from "./room_operation/types.js";
 export {SharedRoomRecoveryCatalogArchive,captureSharedRoomRecoveryCatalog,readSharedRoomRecoveryCatalogArchive} from "./room_recovery_catalog/archive.js";
 export {SharedRoomRecoveryCatalogError,MAX_SHARED_ROOM_RECOVERY_CATALOG_FILES,MAX_SHARED_ROOM_RECOVERY_CATALOG_BYTES,MAX_SHARED_ROOM_RECOVERY_CATALOG_METADATA_BYTES,MAX_SHARED_ROOM_RECOVERY_SERVER_BYTES} from "./room_recovery_catalog/policy.js";
 export type * from "./room_recovery_catalog/types.js";

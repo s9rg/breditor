@@ -90,8 +90,10 @@ covers catalog staging combined with participant operational admission and reope
 The catalog checks exact document, review, declared retained-store and upload
 bytes through the existing participant coordinator. It then compares actual
 native writer prefixes against the selected inventory. All staged native owners
-and original origin leases remain private until close. This API has no owner
-handoff, connect or activation method and starts no synchronization or delivery.
+and original origin leases remain private until close or genuine custody transfer
+to [operational room recovery](OPERATIONAL_ROOM_RECOVERY.md). The exact catalog
+itself exposes no native owners, connect or activation method and starts no
+synchronization or delivery.
 
 `checkAuthority` must return synchronously with no value or throw on revocation.
 The host must obtain current authority and fences separately; callbacks that
@@ -133,8 +135,9 @@ explicit discard closes private runtime owners but deletes no committed data.
 
 The selected original cut stops being current after importing updates, changing
 selection/policy or beginning ordinary editing. Never reuse this original-file
-coordinator against modified operational storage. A durable post-reconciliation
-handoff and authenticated activation workflow are still required.
+coordinator against modified operational storage. Use the separate operational
+room attempt for durable custody and current-journal reopening. Authenticated
+activation and reconciliation remain separate requirements.
 
 ## Budgets and release scope
 
@@ -153,6 +156,6 @@ Node storage/lock/raster fixtures and real Rust/Wasm owners verify the functiona
 protocol, not those platform guarantees.
 
 Current provider asset closure, protected credential custody, cross-device
-fencing, authenticated activation/handoff and the approved cross-generation
+fencing, authenticated activation and the approved cross-generation
 Undo/Redo/offline-edit bridge remain unfinished. Source coverage alone cannot
 close those V1 gates.

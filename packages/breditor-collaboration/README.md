@@ -595,6 +595,18 @@ native histories, packet stores and whole upload queues with explicit fresh
 `currentPolicy`. `intoParts` returns ordinary owners while preserving their
 native author leases. The original exact-cut recovery coordinator stays strict.
 See [the operational contract](../../docs/OPERATIONAL_PARTICIPANT_RECOVERY.md)
-for source retention, interrupted commits and retryable cleanup. Parent catalog
-handoff, current authentication/provider closure and cross-generation history
-preservation remain separate work; an operational marker is not activation.
+for source retention, interrupted commits and retryable cleanup. Current
+authentication/provider closure and cross-generation history preservation remain
+separate work; an operational marker is not activation.
+
+## Operational room recovery
+
+`SharedRoomOperationalRecovery.begin` consumes genuinely staged catalog custody
+after atomically retaining all original files and a selected child-operation
+plan. The returned attempt keeps native owners private; `finish` resolves ordered
+partial/lost-acknowledgement child commits before aggregate `intoParts` handoff.
+`resume` requires the original explicit factories/targets and separate fresh
+`currentPolicy` per participant, and can reopen later native journals without
+restoring the old catalog cut over them. Historic copies remain retained and
+unreconciled, not automatically obsolete. See [the room contract](../../docs/OPERATIONAL_ROOM_RECOVERY.md)
+for cancellation, lease ownership, retryable cleanup and activation boundaries.

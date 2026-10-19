@@ -20,7 +20,15 @@ import type {SharedParticipantOperationBeginOptions,SharedParticipantOperationRe
 
 const key=Object.freeze({});
 interface Life{changed:boolean}
-interface State<P extends SharedSelectionPolicy>{p:PreparedRecovery<P>;origin:ParticipantOrigin;owners:RecoveryOwners<P>;db:IDBDatabase;recoveryDb:IDBDatabase;leases:RecoveryLease[];record:OperationRecord;life:Life}
+export interface OperationalParticipantCustody<P extends SharedSelectionPolicy>{p:PreparedRecovery<P>;origin:ParticipantOrigin;owners:RecoveryOwners<P>;db:IDBDatabase;recoveryDb:IDBDatabase;leases:RecoveryLease[];record:OperationRecord;life:Life}
+type State<P extends SharedSelectionPolicy>=OperationalParticipantCustody<P>;
+let takeOperational:<P extends SharedSelectionPolicy,T>(owner:OperationalSharedParticipant<P>,take:(state:State<P>)=>Promise<T>)=>Promise<T>;
+let exactOperational:<P extends SharedSelectionPolicy>(owner:OperationalSharedParticipant<P>)=>Promise<void>;
+let resumeHeld:<P extends SharedSelectionPolicy>(options:SharedParticipantOperationBeginOptions<P>)=>Promise<OperationalSharedParticipant<P>>;
+/** Internal parent custody helpers. None is a detached native ownership or readiness DTO. */
+export function transferOperationalParticipant<P extends SharedSelectionPolicy,T>(owner:OperationalSharedParticipant<P>,take:(state:State<P>)=>Promise<T>):Promise<T>{return takeOperational(owner,take);}
+export function verifyOperationalParticipantAtOrigin<P extends SharedSelectionPolicy>(owner:OperationalSharedParticipant<P>):Promise<void>{return exactOperational(owner);}
+export function resumeOperationalFromRecovered<P extends SharedSelectionPolicy>(options:SharedParticipantOperationBeginOptions<P>):Promise<OperationalSharedParticipant<P>>{return resumeHeld(options);}
 function fence(db:IDBDatabase,life:Life):void{db.onversionchange=()=>{life.changed=true;db.close();};}
 function guarded<P extends SharedSelectionPolicy>(p:PreparedRecovery<P>,life:Life):PreparedRecovery<P>{const before=p.guard;return{...p,guard(){if(life.changed)throw operationFailure("operation_versionchange");before();if(life.changed)throw operationFailure("operation_versionchange");}};}
 function failure(error:unknown):Error{return error instanceof SharedParticipantOperationError?error:operationFailure("operation_admission");}
@@ -42,8 +50,14 @@ function snapshot<P extends SharedSelectionPolicy>(input:SharedParticipantOperat
 export class OperationalSharedParticipant<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
  readonly #state:State<P>;#closed=false;#busy=false;
  private constructor(token:object,state:State<P>){if(token!==key)throw operationFailure("operation_closed");this.#state=state;fence(state.db,state.life);fence(state.recoveryDb,state.life);Object.freeze(this);}
+ static{
+  resumeHeld=options=>this.#fromRecovered(options,true);
+  exactOperational=async owner=>{if(owner.#busy)throw operationFailure("operation_in_use");owner.#busy=true;try{await owner.#verify();await exact(owner.#state.p,owner.#state.owners);owner.#guard();}finally{owner.#busy=false;}};
+  takeOperational=async(owner,take)=>{if(owner.#busy)throw operationFailure("operation_in_use");owner.#busy=true;try{await owner.#verify();const result=await take(owner.#state);owner.#state.origin.dispose();owner.#state.p.backup.dispose();owner.#closed=true;return result;}finally{owner.#busy=false;}};
+ }
  /** Publish retained origin and operational intent before transferring genuine completed custody. */
- static async begin<Q extends SharedSelectionPolicy>(supplied:SharedParticipantOperationBeginOptions<Q>):Promise<OperationalSharedParticipant<Q>>{
+ static begin<Q extends SharedSelectionPolicy>(supplied:SharedParticipantOperationBeginOptions<Q>):Promise<OperationalSharedParticipant<Q>>{return this.#fromRecovered(supplied,false);}
+ static async #fromRecovered<Q extends SharedSelectionPolicy>(supplied:SharedParticipantOperationBeginOptions<Q>,resume:boolean):Promise<OperationalSharedParticipant<Q>>{
   const input={...supplied,expected:participantSelection(supplied.expected)},life={changed:false};operationName(input.database);const authority=participantAuthority(input.checkAuthority),guard=()=>{operationSignal(input.signal);if(life.changed)throw operationFailure("operation_versionchange");authority();operationSignal(input.signal);};guard();
   let backup:SharedParticipantBackup|undefined,origin:ParticipantOrigin|undefined,db:IDBDatabase|undefined,lease:RecoveryLease|undefined;
   try{
@@ -51,8 +65,8 @@ export class OperationalSharedParticipant<P extends SharedSelectionPolicy=Shared
     guard();operationDestination(input.database,old.prepared);if(JSON.stringify(input.expected)!==JSON.stringify(old.prepared.expected))throw operationFailure("operation_diverged");lease=await RecoveryLease.acquire(JSON.stringify(input.database));guard();
     backup=await SharedParticipantBackup.read(old.prepared.backup.file(),input.expected,{limits:old.prepared.limits,...(input.signal?{signal:input.signal}:{})});guard();
     const p=guarded(await prepareTransferredOrigin(old.prepared,backup,input.checkAuthority,input.signal),life);if(p.record.plan!==old.prepared.record.plan)throw operationFailure("operation_diverged");origin=await ParticipantOrigin.read(p as unknown as PreparedRecovery<SharedSelectionPolicy>);p.guard();
-    let record=operationRecord(p.database,p.record.plan);db=await createOperationDatabase(input.database,record,backup.file(),p.guard,p.signal);fence(db,life);p.guard();
-    const held={p,origin,owners:old.owners,db,recoveryDb:old.db,leases:[...old.leases,lease!],record,life};await retained(held);await verifyOperationalOwners(p,old.owners,origin);record=await publishParticipantOperation(db,record,p.guard,p.signal);held.record=record;p.guard();await retained(held);await verifyOperationalOwners(p,old.owners,origin);return held;
+    let record=operationRecord(p.database,p.record.plan);if(resume){db=await existingOperationDatabase(input.database,current=>fence(current,life));record=(await readOperationDatabase(db,record)).record;}else db=await createOperationDatabase(input.database,record,backup.file(),p.guard,p.signal);fence(db,life);p.guard();
+    const held={p,origin,owners:old.owners,db,recoveryDb:old.db,leases:[...old.leases,lease!],record,life};await retained(held);await verifyOperationalOwners(p,old.owners,origin);if(record.phase==="prepared")record=await publishParticipantOperation(db,record,p.guard,p.signal);held.record=record;p.guard();await retained(held);await verifyOperationalOwners(p,old.owners,origin);return held;
    });
    return new OperationalSharedParticipant(key,state);
   }catch(error){origin?.dispose();backup?.dispose();db?.close();await lease?.close();throw failure(error);}

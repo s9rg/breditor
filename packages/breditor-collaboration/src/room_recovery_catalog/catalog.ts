@@ -7,13 +7,27 @@ import {authority,databaseName,selected,signalCheck,failure,known} from "./polic
 import {frozen} from "../room_participant_inventory/policy.js";
 import type {SharedRoomRecoveryCatalogBeginOptions,SharedRoomRecoveryCatalogOpenOptions,SharedRoomRecoveryCatalogSelection,SharedRoomRecoveryCatalogMetadata,SharedRoomRecoveryCatalogProgress,SharedRoomRecoveryCatalogParticipant,SharedRoomRecoveryCatalogCheck} from "./types.js";
 const key=Object.freeze({});
+export interface CatalogCustody{readonly database:string;readonly db:IDBDatabase;readonly lease:RecoveryLease;readonly archive:SharedRoomRecoveryCatalogArchive;readonly state:CatalogArchiveState;readonly record:CatalogRecord;readonly owners:readonly StagedParticipant[]}
+let takeCatalog:<T>(catalog:SharedRoomRecoveryCatalog,take:(held:CatalogCustody)=>Promise<{value:T;prepareCommit:()=>void;commit:()=>void}>)=>Promise<T>;
+/** Internal genuine custody transfer. No public snapshot can manufacture private native owners. */
+export function transferRoomCatalog<T>(catalog:SharedRoomRecoveryCatalog,take:(held:CatalogCustody)=>Promise<{value:T;prepareCommit:()=>void;commit:()=>void}>):Promise<T>{return takeCatalog(catalog,take);}
 /** Durable selected files plus private inactive native owners. This class never activates or connects. */
 export class SharedRoomRecoveryCatalog {
  readonly #db:IDBDatabase;readonly #lease:RecoveryLease;readonly #archive:SharedRoomRecoveryCatalogArchive;readonly #state:CatalogArchiveState;readonly #database:string;readonly #authority:()=>void;readonly #signal:AbortSignal|undefined;
- #record:CatalogRecord;#pending:CatalogRecord|undefined;#closed=false;#closing=false;#busy=false;#staging:Promise<SharedRoomRecoveryCatalogCheck>|undefined;#cleanup:Promise<void>|undefined;#cleanupMode:"graceful"|"discard"|undefined;readonly #owners:StagedParticipant[]=[];
+ #record:CatalogRecord;#pending:CatalogRecord|undefined;#closed=false;#closing=false;#busy=false;#staging:Promise<SharedRoomRecoveryCatalogCheck>|undefined;#transferring:Promise<void>|undefined;#cleanup:Promise<void>|undefined;#cleanupMode:"graceful"|"discard"|undefined;readonly #owners:StagedParticipant[]=[];
  private constructor(token:object,database:string,db:IDBDatabase,lease:RecoveryLease,archive:SharedRoomRecoveryCatalogArchive,record:CatalogRecord,check:()=>void,signal?:AbortSignal){
   if(token!==key)throw failure("catalog_closed");this.#database=database;this.#db=db;this.#lease=lease;this.#archive=archive;this.#state=catalogArchiveState(archive);this.#record=record;this.#authority=check;this.#signal=signal;db.onversionchange=()=>{this.#closing=true;db.close();};Object.freeze(this);
  }
+ static{takeCatalog=async<T>(catalog:SharedRoomRecoveryCatalog,take:(held:CatalogCustody)=>Promise<{value:T;prepareCommit:()=>void;commit:()=>void}>)=>{
+  if(catalog.#busy)throw failure("catalog_in_use");catalog.#guard();catalog.#busy=true;let done!:()=>void;catalog.#transferring=new Promise<void>(resolve=>{done=resolve;});
+  try{const record=await catalog.#retained(true);if(record.phase!=="checked"||record.participants.length!==catalog.#owners.length)throw failure("catalog_diverged");for(const owner of catalog.#owners)await verifyStagedParticipant(owner,catalog.#guard);
+   catalog.#state.inventory.checkSources(catalog.#owners.map(owner=>({backup:owner.policy.options.backup,source:owner.source})));catalog.#guard();
+   const result=await take({database:catalog.#database,db:catalog.#db,lease:catalog.#lease,archive:catalog.#archive,state:catalog.#state,record,owners:catalog.#owners});
+   await catalog.#retained(true);for(const owner of catalog.#owners)await verifyStagedParticipant(owner,catalog.#guard);catalog.#guard();result.prepareCommit();
+   // No await or caller callback remains after checking both source and successor.
+   if(catalog.#closed||catalog.#closing)throw failure("catalog_closed");signalCheck(catalog.#signal);result.commit();catalog.#owners.length=0;catalog.#closed=true;return result.value;
+  }finally{catalog.#busy=false;done();catalog.#transferring=undefined;}
+ };}
  static begin(options:SharedRoomRecoveryCatalogBeginOptions):Promise<SharedRoomRecoveryCatalog>{return this.#open(options,options.archive);}
  static resume(options:SharedRoomRecoveryCatalogOpenOptions):Promise<SharedRoomRecoveryCatalog>{return this.#open(options);}
  static async #open(supplied:SharedRoomRecoveryCatalogOpenOptions,input?:SharedRoomRecoveryCatalogArchive):Promise<SharedRoomRecoveryCatalog>{
@@ -79,6 +93,7 @@ export class SharedRoomRecoveryCatalog {
  }
  async #finishClose(mode:"graceful"|"discard"):Promise<void>{
   try{await this.#staging;}catch{/* Stage retains its original failure and committed work. */}
+  try{await this.#transferring;}catch{/* The transfer caller retains its original failure. */}if(this.#closed)return;
   if(mode==="discard"){await discardStagedParticipants(this.#owners);this.#owners.length=0;}
   else for(let i=this.#owners.length-1;i>=0;i--){const owner=this.#owners[i]!;await owner.recovered.close();owner.source.dispose();this.#owners.splice(i,1);}
   this.#archive.dispose();this.#db.close();await this.#lease.close();this.#closed=true;

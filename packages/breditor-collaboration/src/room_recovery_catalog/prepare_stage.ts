@@ -8,7 +8,7 @@ import type {CatalogArchiveState} from "./archive.js";
 import type {SharedRoomRecoveryCatalogParticipant} from "./types.js";
 export interface StagedPolicy {readonly id:string;readonly options:SharedParticipantRecoveryOptions<SharedSelectionPolicy>;readonly prepared:PreparedRecovery<SharedSelectionPolicy>}
 /** Snapshot all nonsecret policy values before awaiting; ports/functions remain explicit trusted host code. */
-function snapshot(input:SharedRoomRecoveryCatalogParticipant):SharedRoomRecoveryCatalogParticipant {
+export function snapshotCatalogParticipant(input:SharedRoomRecoveryCatalogParticipant):SharedRoomRecoveryCatalogParticipant {
  const r=object(input,"id,recovery"),raw=r["recovery"] as SharedRoomRecoveryCatalogParticipant["recovery"];
  if(!raw||typeof raw!=="object"||!raw.session||!raw.destinations)throw failure("catalog_policy");
  const o=raw.session.options as unknown as Record<string,unknown>,copy={...o};
@@ -17,7 +17,7 @@ function snapshot(input:SharedRoomRecoveryCatalogParticipant):SharedRoomRecovery
 }
 /** No executable factory, authority callback or credential is read from the durable plan. */
 export async function prepareStage(input:readonly SharedRoomRecoveryCatalogParticipant[],archive:CatalogArchiveState,database:string,guard:()=>void,signal?:AbortSignal):Promise<{plan:string;policies:StagedPolicy[]}>{
- if(!Array.isArray(input)||input.length>1024)throw failure("catalog_policy");const rows=input.map(snapshot).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0),names=new Set([database]),writers=new Set<string>(),policies:StagedPolicy[]=[];
+ if(!Array.isArray(input)||input.length>1024)throw failure("catalog_policy");const rows=input.map(snapshotCatalogParticipant).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0),names=new Set([database]),writers=new Set<string>(),policies:StagedPolicy[]=[];
  for(let index=0;index<rows.length;index++){
   const row=rows[index]!;if(index&&row.id===rows[index-1]!.id)throw failure("catalog_policy");const backup=archive.participants.get(row.id);if(!backup)throw failure("catalog_policy");
   const identity=backup.selection().identity,native=archive.inventory.metadata(),registration=native.writers.find(w=>w.clock.writer===identity.source.writer);

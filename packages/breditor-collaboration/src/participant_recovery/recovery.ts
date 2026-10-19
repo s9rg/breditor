@@ -18,6 +18,9 @@ async function verify<P extends SharedSelectionPolicy>(p:PreparedRecovery<P>,own
 async function release(db:IDBDatabase,leases:RecoveryLease[]):Promise<void>{const results=await Promise.allSettled([...leases].reverse().map(lease=>lease.close()));if(results.some(r=>r.status==="rejected"))throw recoveryFailure("recovery_storage");db.close();}
 let readyFactory:<P extends SharedSelectionPolicy>(state:ReadyState<P>)=>RecoveredSharedParticipant<P>;
 let transferReady:<P extends SharedSelectionPolicy,T>(owner:RecoveredSharedParticipant<P>,take:(state:ReadyState<P>)=>Promise<T>)=>Promise<T>;
+let retargetReady:(values:readonly {owner:RecoveredSharedParticipant<SharedSelectionPolicy>;prepared:PreparedRecovery<SharedSelectionPolicy>}[])=>void;
+/** Internal atomic guard handoff for genuine parent-owned, exact ready participants. */
+export function retargetRecoveredPreparations(values:readonly {owner:RecoveredSharedParticipant<SharedSelectionPolicy>;prepared:PreparedRecovery<SharedSelectionPolicy>}[]):void{retargetReady(values);}
 /** Internal custody transfer keeps native and coordinator leases held; no detached ready DTO. */
 export function transferRecoveredParticipant<P extends SharedSelectionPolicy,T>(owner:RecoveredSharedParticipant<P>,take:(state:ReadyState<P>)=>Promise<T>):Promise<T>{return transferReady(owner,take);}
 /** Held native owners and an exact completion record, not an authenticated connection/activation grant. */
@@ -25,6 +28,11 @@ export class RecoveredSharedParticipant<P extends SharedSelectionPolicy=SharedSe
  readonly sources;readonly session;readonly uploads;readonly #state:ReadyState<P>;#closed=false;#busy=false;
  private constructor(token:object,state:ReadyState<P>){if(token!==recoveryKey)throw recoveryFailure("recovery_closed");this.#state=state;this.sources=Object.freeze(ownerSources(state.prepared,state.owners));this.session=state.owners.session!;this.uploads=state.owners.uploads!;Object.freeze(this);}
  static{
+  retargetReady=values=>{
+   if(new Set(values.map(value=>value.owner)).size!==values.length)throw recoveryFailure("recovery_policy");
+   for(const {owner,prepared:p}of values){const before=owner.#state.prepared;if(owner.#closed||owner.#busy||p.backup!==before.backup||p.database!==before.database||p.record.plan!==before.record.plan)throw recoveryFailure("recovery_diverged");}
+   for(const {owner,prepared}of values)owner.#state.prepared=prepared;
+  };
   readyFactory=<Q extends SharedSelectionPolicy>(state:ReadyState<Q>)=>new RecoveredSharedParticipant(recoveryKey,state);
   transferReady=async<Q extends SharedSelectionPolicy,T>(owner:RecoveredSharedParticipant<Q>,take:(state:ReadyState<Q>)=>Promise<T>)=>{
    if(owner.#closed)throw recoveryFailure("recovery_closed");if(owner.#busy)throw recoveryFailure("recovery_in_use");owner.#busy=true;

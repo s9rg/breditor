@@ -4,7 +4,8 @@ Breditor can check whether a live shared editor retains a selected original
 native document and comment history. This is a pure continuity check: it neither
 imports history nor grants editing, writer, account or room activation authority.
 It supplies native admission for [operational participant recovery](OPERATIONAL_PARTICIPANT_RECOVERY.md).
-Parent room catalog transfer and authenticated activation remain unfinished.
+It also supplies native admission for [operational room recovery](OPERATIONAL_ROOM_RECOVERY.md).
+Authenticated room activation remains separate.
 
 ## Compare actual native owners
 
@@ -95,8 +96,7 @@ durability remains separate. History comparisons scan bounded native journals;
 this is not compaction, streaming replay, a performance improvement or an
 increase in existing limits. Original files and policies still need retention.
 
-Parent catalog ownership transfer, current
-authenticated writer/account fences, reconciliation of all retained offline
+Current authenticated writer/account fences, reconciliation of all retained offline
 copies and complete provider reference closure remain required before room
 activation. The approved cross-generation Undo/Redo and outstanding offline-edit
 bridge also remains required. Original protocols, checkpoint formats, defaults,
