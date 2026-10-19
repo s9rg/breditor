@@ -42,6 +42,18 @@ Dispose controls before retiring the writer. No new save, operation or history
 family is selected. The [writing-tools contract](../../docs/RICH_WRITING_TOOLS.md)
 defines bounds, labels and refusal behavior for older runtimes or stale reads.
 
+## Native fullscreen
+
+`createSharedFullscreen(dom, {target?})` and
+`mountSharedFullscreenControls(host, controller)` borrow the existing shared DOM
+coordinator without transferring its writer or holding remote updates. Managed
+owners expose the same port through `editor.fullscreen()`. Entry requires native
+browser support, a user gesture and the exact idle publication outside composition.
+It does not alter document/history protocols or reparent the surface. Controls
+may be replaced without exiting; await the separately owned controller's
+`dispose()` before replacing its target/editor. Failed native cleanup retains a
+retryable retirement handle and never exits a foreign session. See [the contract](../../docs/RICH_WRITING_TOOLS.md#native-fullscreen).
+
 ## Document placeholder
 
 `placeholder: 'Start writing…'` on DOM/managed startup selects a literal prompt

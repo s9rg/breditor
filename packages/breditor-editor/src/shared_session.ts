@@ -66,6 +66,7 @@ export interface SharedEditorSession extends SharedEditorRecovery {
  closeTypingGroup(revision?:string):boolean;
  search():RichSearchHost<SharedSearchResults>;
  writing():import("@breditor/experimental-rich-content").RichWritingToolsHost;
+ fullscreen():import("@breditor/experimental-rich-content").RichFullscreenHost;
  setPlaceholderLabel(label:string|null):void;
  rangePolicy():SharedRangePolicy;
  view():ReturnType<SharedRichEditor["view"]>;checkpointJson():string;state():SharedSaveState;
@@ -95,6 +96,7 @@ class SharedEditorSessionOwner implements SharedEditorSession {
  closeTypingGroup(revision?:string):boolean{this.#active();return this.#dom.closeTypingGroup(revision);}
  search():RichSearchHost<SharedSearchResults>{this.#active();return this.#dom;}
  writing():import("@breditor/experimental-rich-content").RichWritingToolsHost{this.#active();return this.#dom;}
+ fullscreen():import("@breditor/experimental-rich-content").RichFullscreenHost{this.#active();return this.#dom;}
  setPlaceholderLabel(label:string|null):void{this.#active();this.#dom.setPlaceholderLabel(label);}
  historyPolicy():"explicit"|"typing-v1"{return this.core.view().historyGrouping==="typing-v1"?"typing-v1":"explicit";}
  rangePolicy():SharedRangePolicy{return this.core.view().rangeEditing??"original";}

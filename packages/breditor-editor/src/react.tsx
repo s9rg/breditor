@@ -5,6 +5,7 @@ import type {RichClipboardInterchangeReport} from "@breditor/experimental-rich-c
 export {BreditorDocumentEditor,type BreditorDocumentEditorProps,type BreditorDocumentEditorHandle} from "./document_react.js";
 export {BreditorSearchPanel,type BreditorSearchPanelProps,type BreditorSearchPanelHandle} from "./search_react.js";
 export {BreditorWritingTools,type BreditorWritingToolsProps,type BreditorWritingToolsHandle} from "./writing_tools_react.js";
+export {BreditorFullscreenControls,type BreditorFullscreenControlsProps,type BreditorFullscreenControlsHandle} from "./fullscreen_react.js";
 /** Initial configuration is applied once per sessionKey, like an uncontrolled input's defaultValue. */
 export interface BreditorEditorProps {
  initialOptions?:Omit<LocalEditorOptions,"host"|"signal"|"onChange"|"onError">;

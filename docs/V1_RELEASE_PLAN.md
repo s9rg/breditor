@@ -43,6 +43,29 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [native fullscreen checkpoint](qualification/2026-10-18-fullscreen-browser-installed.json)
+passes one frozen 25-check run. A browser controller now borrows the existing
+local/shared/document coordinator without a Rust action, protocol change,
+surface remount or remote-update hold. Native entry requires a direct user gesture
+and the exact idle publication outside composition. Target/document ownership,
+source-bound focus and retryable asynchronous retirement prevent adopting or
+exiting another session. Vanilla and React controls are independently replaceable;
+the application retains and retires the controller explicitly.
+
+All 30 grammar/scope/history configurations pass 264 unchanged-history transitions,
+102 logical-selection cases, 30 exact reopens and 120 exact future checkpoints.
+Eight actual React StrictMode cases preserve immutable options, rekeys and borrowed
+ownership. Fresh official Wasm and isolated installed packages pass public types,
+complete workflows and production bundle isolation. One headless Chromium
+production artifact passes 36 native entries, 24 controller exits, 12 external
+exits, mixed-content typing/history, readonly state and 12 browser-storage reopens.
+All 509 script and 381 editor tests pass; three existing script checks remain
+skipped. Both native binaries and 2,572 native/research/lock inputs match the
+preceding checkpoint; this browser-only follow-up makes no new native-suite claim.
+Physical Escape, platform/performance and the remaining selected feature/release
+work stay open. All 13 V1 gates remain open; no historical WebKit repair, full
+profile/hosted CI run, version promotion or publication is claimed.
+
 The [startup rollback repair](qualification/2026-10-18-startup-host-rollback.json)
 fixes a reproduced focus loss after failed startup. Native admission already
 rejected malformed documents correctly; host cleanup then detached and reattached

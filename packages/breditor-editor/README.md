@@ -36,6 +36,33 @@ capability reject the explicit panel request, not ordinary editor startup.
 See [the writing-tools contract](../../docs/RICH_WRITING_TOOLS.md) for bounds,
 label truncation and lifecycle. Fullscreen remains unfinished.
 
+## Native fullscreen
+
+Import `createFullscreen` and `mountFullscreenControls` from `@breditor/editor`
+or `@breditor/editor/collaboration`. Both local/document and shared/document
+owners expose `editor.fullscreen()`. Create a stable controller, then mount its
+borrowed UI in a separate host inside its target and outside editable content:
+
+```ts
+const fullscreen = createFullscreen(editor.fullscreen());
+const actionHost = document.createElement('div');
+fullscreen.target.append(actionHost);
+const actions = mountFullscreenControls(actionHost, fullscreen);
+// Teardown: preserve the editor until native fullscreen retirement completes.
+actions.dispose();
+await fullscreen.dispose();
+```
+
+An explicit ancestor `target` can contain the editor and adjacent controls. React's
+`BreditorFullscreenControls` takes this stable `controller`; UI rerenders/rekeys
+and unmounts never dispose it. Await its asynchronous `dispose()` yourself before
+replacing the target/editor, retaining and retrying it after cleanup failure.
+Call `enter(revision?)` directly in a user-gesture handler, with no intervening
+await. Entry rejects stale/busy/composing or unsupported native requests; it never
+remounts the editor, holds remote edits, adopts/exits another fullscreen session,
+or stores fullscreen in document history. See [the fullscreen contract](../../docs/RICH_WRITING_TOOLS.md#native-fullscreen)
+for source-bound focus, ownership, native permission and platform limitations.
+
 ## Document placeholder
 
 Use `placeholder: 'Start writing…'` in a managed local/shared opening or React

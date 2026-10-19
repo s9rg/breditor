@@ -6,6 +6,8 @@ import {parseRichSearchMetadata} from "./dist/browser/search_metadata.js";
 import {parseRichWritingTools} from "./dist/browser/writing_tools_metadata.js";
 export {mountRichSearchPanel} from "./dist/browser/search_panel.js";
 export {mountRichWritingTools} from "./dist/browser/writing_tools_panel.js";
+export {createRichFullscreen} from "./dist/browser/fullscreen_controller.js";
+export {mountRichFullscreenControls} from "./dist/browser/fullscreen_controls.js";
 
 const searchResults=new WeakMap();
 class OwnedRichSearchResults {

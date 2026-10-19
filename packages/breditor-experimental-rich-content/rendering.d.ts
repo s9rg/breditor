@@ -17,6 +17,7 @@ export * from "./dist/browser/clipboard_interchange.js";
 export {parseRichSearchMetadata} from "./dist/browser/search_metadata.js";
 export {parseRichWritingTools} from "./dist/browser/writing_tools_metadata.js";
 export {RichWritingEvents,RichWritingReadRegistry,type RichWritingToolsHost,type RichWritingToolsHostState} from "./dist/browser/writing_tools_host.js";
+export type {RichFullscreenHost,RichFullscreenHostState} from "./dist/browser/fullscreen_types.js";
 export {RichSearchEvents,type RichSearchHost,type RichSearchHostState,type RichSearchCompletion} from "./dist/browser/search_host.js";
 export {prepareRichPlaceholder,validatePlaceholderOption,RichPlaceholderPresentation,richPlaceholderStyles} from "./dist/browser/placeholder.js";
 export * from "./dist/browser/input_rule_intent.js";

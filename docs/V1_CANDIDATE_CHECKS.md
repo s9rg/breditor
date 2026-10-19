@@ -95,6 +95,19 @@ retains the actual pre-repair failure and passing 18-stage follow-up. The bounde
 guarantee leaves unchanged children connected; restoring a genuinely changed
 host does not promise general focus restoration.
 
+Fullscreen adds an actual-Wasm/root/React probe and fresh isolated installed
+acceptance to both profiles. The native API is an explicit fixture in that
+portable probe; current grammar/history/recovery and borrowed-control assertions
+remain unchanged when repeated inside installed packages. The full profile also
+requires `installed-fullscreen-browser`, using a fresh production bundle, actual
+Chromium activation/fullscreen/change events, viewport, typing/history and browser
+storage. Physical Escape, other platforms and the complete V1 gates remain
+separate qualification work. Fullscreen does not widen native document protocols.
+The [fullscreen checkpoint](qualification/2026-10-18-fullscreen-browser-installed.json)
+retains the passing frozen 25-stage selection, portable and native-browser results,
+exact installed archives and distinct development preflights. It is not a complete
+candidate profile or hosted CI approval.
+
 The local/shared runtime builders also stage a dependency inventory, available
 upstream notice texts and the pinned Rust library notices before copying a
 candidate runtime. Installed consumers verify their inventory/text hashes and

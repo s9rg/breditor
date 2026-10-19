@@ -38,6 +38,18 @@ explicit read/panel request without changing default editor startup.
 See [the writing-tools contract](../../docs/RICH_WRITING_TOOLS.md) for traversal,
 resource, stale-source and composition rules.
 
+## Native fullscreen
+
+`createRichFullscreen(dom, {target?})` borrows the DOM coordinator's fullscreen
+port. The default target is its owning container; a custom connected ancestor
+can include adjacent controls. `mountRichFullscreenControls(host, controller)`
+requires a separate host inside that target and outside editable content. UI
+disposal never closes the controller/editor; await `controller.dispose()` before
+replacing them and retain/retry the controller if native cleanup fails. Entry
+calls the browser directly from a user gesture, checks the exact idle publication
+and excludes composition. No document action, Wasm protocol change, remote hold,
+DOM reparenting or CSS fallback is introduced. See [the contract](../../docs/RICH_WRITING_TOOLS.md#native-fullscreen).
+
 ## Document placeholder
 
 `placeholder: 'Start writing…'` on a DOM mount admits a literal document-level prompt

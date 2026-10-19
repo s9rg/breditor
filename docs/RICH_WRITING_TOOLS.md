@@ -10,8 +10,9 @@ Optional Wasm/SDK reads and borrowed vanilla/React controls expose these native
 results without adding fields to old view, command, document, journal or operation
 protocols. Reads do not publish, change selection or pending formats, consume
 writer identities, upgrade history or clear Redo. An independent optional native
-placeholder policy controls a prompt outside editable content. Fullscreen remains
-unfinished.
+placeholder policy controls a prompt outside editable content. A separate borrowed
+browser controller provides native fullscreen without a document operation or
+editor remount.
 
 The [native qualification checkpoint](qualification/2026-10-18-native-writing-tools.json)
 passes all 15 selected checks: 2,607 workspace and 596 shared Rust tests/doctests,
@@ -179,7 +180,70 @@ passes all 38 selected checks, including the complete workspace/shared native
 suites and exact pinned-reader recovery. A fresh installed production page also
 checks real prose/heading geometry, automated typing/history and live labels in
 one headless Chromium engine. This is not physical input, cross-browser or V1
-release qualification; fullscreen remains unfinished.
+release qualification. Native fullscreen has a separate controller and lifetime.
+
+## Native fullscreen
+
+`createFullscreen(editor.fullscreen(), options)` from `@breditor/editor` or its
+collaboration entry creates a native browser controller. Low-level local/shared
+DOM coordinators implement the same `RichFullscreenHost` port directly. There is
+no Rust fullscreen action, persisted flag, recovery family, schema revision or
+new Wasm dependency. Ordinary editor startup remains unchanged.
+
+The default target is the owning editor container. An explicit `target` must be
+a connected ancestor containing that container and its editable surface in the
+same document. Entry never wraps, reparents or recreates them. Borrowed controls
+must have a separate host inside the fullscreen target and outside editable
+content. This keeps controls reachable while preserving native editor ownership.
+
+`controller.enter(revision?)` requires the exact idle publication outside
+composition and calls `requestFullscreen()` synchronously before callbacks or
+microtasks. Call it directly in a user-gesture handler; do not await unrelated
+work first. The native API requires transient activation and may be unavailable
+or denied by permissions, platform or user policy. There is no CSS-only fallback,
+prefixed API substitute or keyboard lock. See the
+[Fullscreen API standard](https://fullscreen.spec.whatwg.org/#api).
+
+One controller claims each target, and one pending/active controller holds each
+document lease. It never adopts external fullscreen, even on the same element,
+and never exits a foreign session. `fullscreenchange` reconciles browser-initiated
+exits. If a foreign fullscreen target is above this controller's target, cleanup
+retains its lease and reports a retryable error instead of exiting that session.
+Native ownership checks account for shadow-root retargeting; physical platform
+qualification remains separate.
+
+Entry/exit does not hold remote updates or authoring. Focus restoration uses the
+same live owner and exact unchanged publication, not an old document selection.
+It is skipped after source changes, composition, interaction, detached nodes or
+focus moving elsewhere. Host input values/carets are never rewound. Exit remains
+available during composition without cancelling the input method.
+
+`mountFullscreenControls(host, controller, options)` and React's
+`BreditorFullscreenControls` borrow the controller. UI disposal, StrictMode cleanup,
+option-preserving rerenders and explicit `sessionKey` rekeys never close the
+controller or editor. Keep a stable controller yourself and await
+`controller.dispose()` before replacing its target/editor. Disposal waits for a
+pending entry, exits only an owned target and releases listeners/style/claims.
+A failed native exit leaves the retiring controller readable; retain it, surface
+`onError` and retry `dispose()`. Closing the borrowed editor also initiates cleanup,
+but does not make an asynchronous browser exit part of document durability.
+
+The portable actual-Wasm probe covers all grammar/scope/history combinations,
+logical selections, exact recovery, peer updates and React ownership with explicit
+fullscreen/DOM/input/storage fixtures. Fresh installed acceptance repeats that
+unchanged probe and public type/bundle checks. The full candidate profile also
+requires a production-page test with the actual browser API. In the isolated
+headless Chromium preflight, an automated Escape key did not exit fullscreen;
+native external-exit events are tested separately, not called physical Escape
+qualification.
+
+The [fullscreen checkpoint](qualification/2026-10-18-fullscreen-browser-installed.json)
+passes 25 selected checks, 19 focused controller contracts, 509 script tests and
+381 editor regressions, with three existing script checks skipped. Its complete
+30-case actual-Wasm probe and fresh installed acceptance retain exact logical
+selections and recovery. A separate native Chromium production page qualifies
+activation/viewport/events, typing/history and browser storage in 12 configurations,
+not physical Escape or the final V1 platform/release requirements.
 
 ## Resource policy and qualification
 
@@ -202,9 +266,8 @@ both current-runtime probes without workspace links. Both candidate profiles
 require the current-runtime and fresh installed checks.
 
 DOM events, IDB, locks and composition in these probes are test fixtures, not
-physical browser/IME or screen-reader qualification. Fullscreen must preserve
-source-bound focus and selection when implemented.
+physical browser/IME or screen-reader qualification.
 Zero words or text domains does not prove that an atom-only document is empty.
-Fullscreen, performance and native-platform qualification stay
+Performance and native-platform qualification stay
 separate V1 requirements; the historical intermittent WebKit fault is not repaired
 by writing reads.

@@ -5,3 +5,4 @@ export {openSharedEditor,SharedEditorOpenError,type SharedEditorRecovery,type Sh
 export {openSharedDocumentEditor,SharedDocumentEditorOpenError,type SharedDocumentEditorRecovery,type SharedDocumentEditorSession,type SharedDocumentEditorSessionOptions,type SharedDocumentInitial} from "./shared_document_session.js";
 export {openSharedSearchEditor,type SharedSearchInitial,type SharedSearchEditorSessionOptions} from "./shared_session.js";
 export {openSharedDocumentSearchEditor,type SharedDocumentSearchEditorSessionOptions} from "./shared_document_session.js";
+export {createRichFullscreen as createFullscreen,mountRichFullscreenControls as mountFullscreenControls,type RichFullscreenHost,type RichFullscreenHostState,type RichFullscreenOptions,type RichFullscreenState,type RichFullscreenController,type RichFullscreenControls,type RichFullscreenControlsOptions} from "@breditor/experimental-rich-content";

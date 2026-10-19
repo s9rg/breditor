@@ -3,6 +3,7 @@ export {openLocalEditor,createLocalProfile,createStructuralLocalProfileV2,create
 export {initializeLocalRuntime,type RuntimeInput} from "./runtime.js";
 export {openLocalDocumentEditor,type LocalDocumentEditor,type LocalDocumentEditorOptions,type LocalDocumentInitial} from "./local_document.js";
 export {emptyDocumentJson} from "./empty_document.js";
+export {createRichFullscreen as createFullscreen,mountRichFullscreenControls as mountFullscreenControls,type RichFullscreenHost,type RichFullscreenHostState,type RichFullscreenOptions,type RichFullscreenState,type RichFullscreenController,type RichFullscreenControls,type RichFullscreenControlsOptions} from "@breditor/experimental-rich-content";
 export {mountRichSearchPanel as mountSearchPanel,type RichSearchHost,type RichSearchHostState,type RichSearchPanel,type RichSearchPanelOptions,type RichSearchPanelState,type RichSearchResults,type RichSearchQuery,type RichSearchReplacement,type RichSearchMetadata} from "@breditor/experimental-rich-content";
 export type {ClipboardInterchangeFactory} from "./clipboard_interchange.js";
 export {mountRichWritingTools as mountWritingTools,type RichWritingToolsRead,type RichWritingCounts,type RichWritingHeading,type RichWritingToolsHost,type RichWritingToolsHostState,type RichWritingToolsPanel,type RichWritingToolsPanelOptions,type RichWritingToolsPanelState} from "@breditor/experimental-rich-content";

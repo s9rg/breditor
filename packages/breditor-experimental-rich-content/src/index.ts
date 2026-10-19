@@ -19,3 +19,6 @@ export type {RichSearchHost,RichSearchHostState} from "./search_host.js";
 export {mountRichSearchPanel,type RichSearchPanel,type RichSearchPanelOptions,type RichSearchPanelState} from "./search_panel.js";
 export type {RichWritingToolsHost,RichWritingToolsHostState} from "./writing_tools_host.js";
 export {mountRichWritingTools,type RichWritingToolsPanel,type RichWritingToolsPanelOptions,type RichWritingToolsPanelState} from "./writing_tools_panel.js";
+export type {RichFullscreenHost,RichFullscreenHostState,RichFullscreenOptions,RichFullscreenState,RichFullscreenController} from "./fullscreen_types.js";
+export {createRichFullscreen} from "./fullscreen_controller.js";
+export {mountRichFullscreenControls,type RichFullscreenControls,type RichFullscreenControlsOptions} from "./fullscreen_controls.js";

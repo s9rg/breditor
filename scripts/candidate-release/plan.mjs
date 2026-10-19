@@ -60,6 +60,7 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   script("writing-tools-native-sdk-and-controls","probe-writing-tools.mjs",["target/rich-browser-web","target/promoted-shared-web"]),
   script("writing-tools-managed-startup","probe-writing-tools-root-sdk.mjs",["target/rich-browser-web","target/promoted-shared-web"]),
   script("placeholder-native-sdk-and-controls","probe-placeholder.mjs",["target/rich-browser-web","target/promoted-shared-web"]),
+  script("fullscreen-sdk-and-controls","probe-fullscreen.mjs",["target/rich-browser-web","target/promoted-shared-web"]),
   stage("workspace-types",npm,["run","typecheck"]),
   stage("rich-browser-types",node,["node_modules/typescript/bin/tsc","-p","packages/breditor-experimental-rich-content/tsconfig.json","--noEmit"]),
   stage("collaboration-types",npm,["run","typecheck:candidate","--workspace","@breditor/collaboration"]),
@@ -69,6 +70,7 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   script("installed-input-rule-workflows","check-input-rules-installed.mjs",["--current-runtime-only"],[{path:"target/input-rules-current-installed-consumer.json",fresh:true}]),
   script("installed-writing-tools-workflows","check-writing-tools-installed.mjs",[],[{path:"target/writing-tools-installed-consumer.json",fresh:true}]),
   script("installed-placeholder-workflows","check-placeholder-installed.mjs",[],[{path:"target/placeholder-installed-consumer.json",fresh:true}]),
+  script("installed-fullscreen-workflows","check-fullscreen-installed.mjs",[],[{path:"target/fullscreen-installed-consumer.json",fresh:true}]),
   script("installed-rich-interchange","check-interchange-package.mjs",[],[{path:"target/interchange-installed-consumer.json",fresh:true}]),
   relayCargo("functional-native-fixtures",["build","--features","server","--locked","--offline","--release","--example","transport_v2_functional","--example","suggestions_functional","--example","suggestion_revisions_functional","--example","review_assets_functional"],["transport_v2_functional","suggestions_functional","suggestion_revisions_functional","review_assets_functional"].map(executablePath)),
   script("installed-everyday-mixed-workflows","check-editor-mixed-workflows.mjs",["--reuse-installed",executable("transport_v2_functional")],[{path:"target/editor-mixed-workflows.json",fresh:true}]),
@@ -80,6 +82,7 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
  if(profile==="full")checks.push(
   script("installed-search-browser","check-search-browser.mjs",[],[{path:"target/search-installed-browser.json",fresh:true}]),
   script("installed-placeholder-browser","check-placeholder-browser.mjs",[],[{path:"target/placeholder-installed-browser.json",fresh:true}]),
+  script("installed-fullscreen-browser","check-fullscreen-browser.mjs",[],[{path:"target/fullscreen-installed-browser.json",fresh:true}]),
   script("default-package-release-matrix","verify-release.mjs",[],[],7200000),
   script("installed-editor-browser-matrix","check-editor-browser.mjs",[],[],7200000),
   script("reviewed-v1-readiness","check-v1-readiness.mjs",["--require-ready"]),
