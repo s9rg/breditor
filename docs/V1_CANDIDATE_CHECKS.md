@@ -18,10 +18,22 @@ npm run verify:candidate
 ```
 
 The functional profile runs strict native formatting/lint/tests, an independent
-copied-source native consumer, workspace documentation, paired local/shared Wasm
-builds, TypeScript builds/tests/types,
+copied-source native consumer, strict workspace/shared documentation, paired
+local/shared Wasm builds, TypeScript builds/tests/types,
 installed-package checks and installed mixed editing, review and asset workflows.
 It ends with the readiness inventory, not a release-readiness assertion.
+
+Both profiles require `shared-docs` with `RUSTDOCFLAGS=-D warnings`, alongside
+the strict workspace documentation check. The independent native consumer also
+names the public retained-image reference type, observes a Redo-only binding and
+restores exact future history without a direct core dependency. Source copies
+exclude only each crate-root Cargo `target` cache; vendor/source entries with that
+name remain. The [native reference checkpoint](qualification/2026-10-19-native-retained-asset-references.json)
+records 29 passing selected checks at identical source across an initial 26-stage
+success prefix and a three-stage continuation after locked npm cache recovery.
+It additionally executes the six canonical integration contracts through the
+research compatibility manifest. This is not one complete official-profile run
+or browser access to the new Rust-only read.
 
 The rich-browser TypeScript build is an explicit prerequisite of the shared and
 editor SDK builds. The default workspace build does not generate that opt-in

@@ -43,6 +43,41 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [native retained-reference checkpoint](qualification/2026-10-19-native-retained-asset-references.json)
+adds Rust-only reads for current image bindings, exact local Undo/Redo states and
+conservatively retained shared causal history. It includes invisible losing
+replacements, undone image births and deleted images, not just the visible AST.
+Two retained failing regressions expose incomplete-success bugs in the initial
+scanner: alternate metadata fields could hide a binding, and aliased metadata
+could later reveal an omitted image. The corrected read examines all contribution
+fields and base properties, or refuses completeness for unsupported partial,
+aliased or inline metadata. Existing admission and exact recovery remain intact.
+
+All 29 selected checks have passing evidence at identical frozen source: 26 stages
+passed before an installed-consumer npm cache miss; the remaining three passed
+after restoring the exact locked artifacts. The cache failures remain recorded,
+not relabeled as one uninterrupted passing run. The full workspace/shared suites
+pass 3,230 Rust tests/doctests, including 20 new native cases. Six integration
+contracts also pass through the independent research manifest. All 536 script and
+382 editor tests pass, with three existing script checks skipped. The independent
+native consumer names the public shared reference type and preserves exact future
+history without a direct core dependency or downstream engine override.
+
+Both fresh Wasm builds, SDK builds/types and installed archive/reload regressions
+pass. The local binary matches the raster checkpoint; the rebuilt shared binary
+differs, with its hash recorded. No Wasm/SDK inventory API or protocol/export
+definition is added. Strict shared documentation is now required in both candidate
+profiles. Native source copies exclude only crate-root Cargo caches; a filesystem
+regression preserves vendor/source entries named `target`. Removing one verified
+byte-identical duplicate cache reclaimed another 1.6 GiB without removing its
+original, source, archives, logs or pinned readers.
+
+This is an owner-only retention foundation, not deletion authority, complete-room
+backup, generation migration or a complete candidate-profile run. Separate
+versions, review outboxes, extension assets, server state and writer authority
+still need coordination. The approved cross-generation Undo/offline bridge and
+all 13 V1 gates remain open; no version or release promotion is made.
+
 The [retained raster archive checkpoint](qualification/2026-10-18-raster-asset-backups.json)
 passes one frozen 23-check run. `RichAssetStore` now captures every locally retained
 raster and its exact upload state, attempts and cancellation epoch in one read

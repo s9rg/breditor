@@ -75,8 +75,12 @@ implemented extension of the current bounded lifetime above.
 
 V1 still needs the native history/identity bridge, tested rotation and coordinated
 room backup/restore. Shared session and raster archives offer separate insert-only
-recovery components, not asset-reference completeness, outbox/server recovery or
-generation rollover. Rotation must preserve pending updates, writer ownership,
+recovery components, not complete-room asset closure, outbox/server recovery or
+generation rollover. The [native reference reads](RETAINED_ASSET_REFERENCES.md)
+add a conservative owner-only image-history inventory; unsupported metadata or
+incomplete histories refuse that read. Separate versions, review outboxes and
+extension-owned assets still need their own inventory and coordination.
+Rotation must preserve pending updates, writer ownership,
 authenticated receipts and final review decisions, existing reader contracts,
 and retained version/asset references. Raising old counters, copying a live writer
 or exporting only the visible AST does not solve those requirements.

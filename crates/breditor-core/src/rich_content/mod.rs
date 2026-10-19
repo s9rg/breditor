@@ -6,6 +6,7 @@
 //! semantic `EntityId`, snapshot-local paths, DOM keys or authentication claims.
 
 pub mod actions;
+mod asset_references;
 pub(crate) mod ast_properties;
 mod atom_edit;
 pub(crate) mod block_layout;
@@ -46,6 +47,10 @@ mod table_geometry;
 mod table_paste_draft;
 mod writing_tools;
 
+pub use asset_references::{
+    RICH_ASSET_REFERENCE_MAX_BINDINGS, RichAssetReference, RichAssetReferenceError,
+    inspect_rich_asset_references,
+};
 pub use ast_properties::{RichColumn, RichTableView};
 pub use atom_edit::{AtomDeletionPlan, plan_atom_deletion, selected_flow_atom};
 pub use block_layout::{

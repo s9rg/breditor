@@ -126,6 +126,27 @@ impl<Entries> Journal<Entries> {
     }
 }
 
+impl Journal {
+    /// Exact retained causal inputs, including blobs whose dependencies have not arrived.
+    pub(super) fn retained_updates(&self) -> impl Iterator<Item = &[u8]> {
+        let origin = match &self.origin {
+            Origin::Seed { .. } => None,
+            Origin::Join { updates } => Some(updates.as_slice()),
+        };
+        origin.into_iter().chain(self.entries.iter().filter_map(|entry| match entry {
+            Entry::Remote { bytes } => Some(bytes.as_slice()),
+            // A new journal kind must explicitly account for retained causal inputs.
+            Entry::SearchV1 { .. }
+            | Entry::ReviewedHistoryV1 { .. }
+            | Entry::AdoptSuggestionV1 { .. }
+            | Entry::GeneralRangeV1 { .. }
+            | Entry::Local { .. }
+            | Entry::Undo { .. }
+            | Entry::Redo { .. } => None,
+        }))
+    }
+}
+
 pub(super) fn writer_id(value: &str) -> Result<u64, Error> {
     let id = value.parse::<u64>().map_err(|_| Error::Contract("shared writer"))?;
     if id == 0 || id == u64::MAX || id.to_string() != value {

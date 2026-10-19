@@ -105,6 +105,13 @@ completion. Close returned stores to stop owned work and revoke their object URL
 
 ## Remaining room recovery work
 
+The [native retained-reference reads](RETAINED_ASSET_REFERENCES.md) now inventory
+current and retained local/shared image bindings, including invisible Redo and
+losing causal contributions. They are Rust-only, can conservatively over-retain
+and refuse completeness for unsupported histories or metadata forms. They neither
+resolve missing bytes nor inventory separate versions/outboxes or extension-owned
+assets, and never authorize deletion of an unlisted file.
+
 Asset archives do not coordinate the document, comment/version history,
 suggestion/revision/version outboxes, relay/server state or credentials. Those
 must be captured under a host-level consistency and authority contract before a

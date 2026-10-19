@@ -47,6 +47,7 @@ mod replace_search_one;
 mod replace_search_plan;
 mod replace_selection_plain_text;
 mod replace_selection_text;
+mod retained_asset_references;
 mod select_document;
 mod set_pending_formats;
 mod set_read_only;

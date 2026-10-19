@@ -1,0 +1,1033 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-19",
+  "baseCommit": "6575420fd979461aec79a06098aca4339136d3b2",
+  "scope": "Native Rust retained-asset reference foundation, exact local history and conservative complete shared causal closure. No Wasm/SDK export, complete-room backup or V1 approval.",
+  "source": {
+    "commit": "6575420fd979461aec79a06098aca4339136d3b2",
+    "dirty": true,
+    "sha256": "117504f8edabf383354e03a156ad8e685b2bf69632046e851ade86306d235550",
+    "files": 4345,
+    "bytes": 38502398
+  },
+  "sourceBinding": {
+    "documentationOnlyFollowUp": "This evidence and final repository links follow the frozen run. All source outside docs/ remains byte-identical.",
+    "codeAndBuildInputsUnchangedAfterVerification": true,
+    "nonDocumentationTree": {
+      "pathRule": "All tracked and nonignored untracked files outside docs/",
+      "sha256": "f8a6192efff389f0fe646e4ff3d607ee7f51e33d1a2c3a29c6dae15bd66d0963",
+      "count": 3902,
+      "bytes": 31931925
+    },
+    "changedNonDocumentationInputs": [
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/mod.rs",
+        "bytes": 5297,
+        "sha256": "3b4e561026be9928c1f46facb3063365dbdff4bb0e9561367f89eec6a1439e4c",
+        "modifiedAtMs": 1792381669001.4973
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/retained_asset_reference_tests.rs",
+        "bytes": 16569,
+        "sha256": "a8e59a6a802e3b3239f4f5998b3ccd370ba72d4bbf955b8995e425c0491ed41f",
+        "modifiedAtMs": 1792381472797.378
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/retained_asset_references.rs",
+        "bytes": 9411,
+        "sha256": "a11add6ef6d72942abdf03a4e44be11c1edf167d24ca1c6014f00e812698da45",
+        "modifiedAtMs": 1792381446920.098
+      },
+      {
+        "path": "crates/breditor-collaboration/src/rich_replica/session.rs",
+        "bytes": 53058,
+        "sha256": "87078726ad72647f039c8b561a724be276bb7cbf0d42e5c90b1b934a4f9c2974",
+        "modifiedAtMs": 1792381529243.2668
+      },
+      {
+        "path": "crates/breditor-collaboration/tests/retained_asset_reference_contracts.rs",
+        "bytes": 9041,
+        "sha256": "e5bd5694626d7d9de2c2bb50f702b578ebe5d621a67337fd551c7ad9870ce22b",
+        "modifiedAtMs": 1792380170304.8108
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/asset_references.rs",
+        "bytes": 3438,
+        "sha256": "fb9a90e5886bb2cf5903d8d2664787d2913d880ebf4699cd88d8b693241aa0d6",
+        "modifiedAtMs": 1792379944940.5645
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/local_session/mod.rs",
+        "bytes": 7863,
+        "sha256": "9771eedc4b8c6c913a33fd4e989ae87802013ce768f8e0790e00509c9a06a462",
+        "modifiedAtMs": 1792379945055.7058
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/local_session/retained_asset_references.rs",
+        "bytes": 1414,
+        "sha256": "9a173d0537acfa4d4e344045954946aa18ce17bdfb53903afb0fa55f0426c314",
+        "modifiedAtMs": 1792379944977.9067
+      },
+      {
+        "path": "crates/breditor-core/src/rich_content/mod.rs",
+        "bytes": 5875,
+        "sha256": "65c196ad59a8da6f784437b953525f7a09457fe280a8bd5421317260d2d1c22b",
+        "modifiedAtMs": 1792380069957.4338
+      },
+      {
+        "path": "crates/breditor-core/tests/rich_retained_asset_references.rs",
+        "bytes": 5938,
+        "sha256": "a86512ca28930b8889c461fdeb42cc366f5ceaadd949e42aabda33fbb1c6557e",
+        "modifiedAtMs": 1792380069959.9207
+      },
+      {
+        "path": "experiments/collaboration/tests/retained_asset_reference_contracts.rs",
+        "bytes": 266,
+        "sha256": "7cd50484053b870b5a71dd4a7cb1c0c7042859892d6ccd112b7fe36147a55482",
+        "modifiedAtMs": 1792382434485.9111
+      },
+      {
+        "path": "scripts/candidate-release/plan.mjs",
+        "bytes": 13015,
+        "sha256": "205c99fdc66ce9e16140d880216b0cb1959e9ad7b7ac869efaec8ac0bb4ac099",
+        "modifiedAtMs": 1792381638177.871
+      },
+      {
+        "path": "scripts/check-collaboration-native-consumer.mjs",
+        "bytes": 2228,
+        "sha256": "6ef7995341984e95cc581ffcf188af7d69a65989b5ea6134916e2706c49b3f7f",
+        "modifiedAtMs": 1792382455606.6272
+      },
+      {
+        "path": "scripts/collaboration-native-source-copy.mjs",
+        "bytes": 409,
+        "sha256": "77ebbb7873630c5373cbb805bfe04d4659ea19d080107d198ef0d9767b57679a",
+        "modifiedAtMs": 1792382455541.5684
+      },
+      {
+        "path": "scripts/collaboration-native-source-copy.test.mjs",
+        "bytes": 1359,
+        "sha256": "eab5b56a3724010ee95c3b95ae6782fbb094abfadfa6b74e561deca5c6f89a2e",
+        "modifiedAtMs": 1792382455573.5928
+      },
+      {
+        "path": "scripts/fixtures/collaboration-native-consumer/src/main.rs",
+        "bytes": 3887,
+        "sha256": "cf668bd55d88ae787fb40f7c6af79952db591b7128fd71cd932aa172a140201e",
+        "modifiedAtMs": 1792381671728.0884
+      },
+      {
+        "path": "scripts/verify-candidate.test.mjs",
+        "bytes": 25899,
+        "sha256": "324d2a5d4c491ade296dd98ac16f6b657ff6fb47e305633bdac8bdd12cc18b82",
+        "modifiedAtMs": 1792381638210.1914
+      }
+    ],
+    "immutableDependencyAndVersionInputs": [
+      {
+        "path": "Cargo.toml",
+        "bytes": 1892,
+        "sha256": "2dd0e23ab0a4a8d642a1b11607a501c7a57b0bc9e92013538a258a0fa9f0110c",
+        "modifiedAtMs": 1792093639056.6235
+      },
+      {
+        "path": "Cargo.lock",
+        "bytes": 17432,
+        "sha256": "70458f69675aba0bfd61f89d8a2136a179a96f8c450c98255d108984171d484c",
+        "modifiedAtMs": 1792350124024.3672
+      },
+      {
+        "path": "package.json",
+        "bytes": 4684,
+        "sha256": "e969211d47d4270569c11ca11bf42b2bc1a8b84922d39fffcc69c4ff126fbd52",
+        "modifiedAtMs": 1792341117294.9895
+      },
+      {
+        "path": "package-lock.json",
+        "bytes": 82558,
+        "sha256": "46d0044dd824964ae6234b6be3d1b70ddf1db68265b779c509bcdcf28e3262f4",
+        "modifiedAtMs": 1792192061899.6638
+      },
+      {
+        "path": "crates/breditor-collaboration/Cargo.toml",
+        "bytes": 1634,
+        "sha256": "34c9bbafb8ac65659367874fe6bfcc98d6c44a839f9cc88b16952a6d3f8f2959",
+        "modifiedAtMs": 1792362024879.8743
+      },
+      {
+        "path": "crates/breditor-collaboration/Cargo.lock",
+        "bytes": 39247,
+        "sha256": "d76d57f59a66c1b6fb52b41ca199d65fd1da19af7e85079c4630f307af011cdb",
+        "modifiedAtMs": 1792350663415.8357
+      },
+      {
+        "path": "rust-toolchain.toml",
+        "bytes": 123,
+        "sha256": "81e722cea65ca61d2a17462fc3dc015f3d4c804024d15b6afa395ec454519a9f",
+        "modifiedAtMs": 1788226262447.9456
+      }
+    ],
+    "wasm": {
+      "local": {
+        "path": "packages/breditor-experimental-rich-content/dist/breditor_wasm_bg.wasm",
+        "bytes": 5895160,
+        "sha256": "e99eee92eaf7b6b8f6100c01abe0d3d87509d3523d44e8489b252afd4604d5a2",
+        "modifiedAtMs": 1792383028516.0718
+      },
+      "shared": {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+        "bytes": 12937311,
+        "sha256": "3ae25809dc6299de62ba452738a93642f4ed4479213c386c6609586bac82b5c7",
+        "modifiedAtMs": 1792382760470.3542
+      }
+    },
+    "wasmBytesMatchPreviousCheckpoint": {
+      "local": true,
+      "shared": false
+    },
+    "protocol": "No changed schema/model/journal fields, versions, ABI/export definitions, action meanings, default policies, Cargo/dependency graph or package version."
+  },
+  "contract": {
+    "api": [
+      "inspect_rich_asset_references(&RichDocument)",
+      "RichLocalSession::retained_asset_references(&RichLocalSnapshot)",
+      "RichReplica::retained_asset_references_guarded(&SharedObservation)"
+    ],
+    "identity": "Unique sorted atomic opaque asset/generation pairs; not a provider hash requirement, receipt or credential. The shared facade re-exports the named type and result-count limit.",
+    "local": "Current admitted document and every retained before/after state, including Redo. Dropped local history is outside this owner inventory.",
+    "shared": "Conservative union of admitted current content and retained paired image bindings in complete native causal history under the required parent-bound map topology: all metadata effect fields plus identity/default base properties, including inactive/losing slots, deleted nodes and undone births. Does not claim minimal reachability or authorize deletion.",
+    "completeness": "Reject shallow/detached/uncommitted history, retained updates with missing dependencies, unknown operations, discontinuous exported spans, malformed metadata or complete-result/work overflow. Partial binding writes/removals and aliased/inline/noncanonical structural metadata maps explicitly refuse completeness. Existing document/update admission and exact recovery bytes remain untouched.",
+    "purity": "Exact observed owner publication required; read-only supported; no document/UI/history/typing/causal action, storage, fetch, upload, receipt or GC effects.",
+    "limits": {
+      "uniqueBindings": 100000,
+      "sharedCausalAtoms": 16777216,
+      "causalChunkAtoms": 1024,
+      "metadataStringBytes": 65536
+    },
+    "future": "Separate saved versions, suggestion/revision/version outboxes, extension-owned assets, remote providers, server state and writer authority still require a coordinated recovery contract. Cross-generation Undo/offline preservation remains unimplemented."
+  },
+  "qualification": {
+    "manifests": [
+      {
+        "path": "target/v1-candidate-runs/run-N7qigr/result.json",
+        "bytes": 43201,
+        "sha256": "d43de51b48c71cc7e489c39b24fc39d15911c707478cf051fc275707631bdf4b",
+        "modifiedAtMs": 1792382933829.6921
+      },
+      {
+        "path": "target/v1-candidate-runs/run-SuQDjb/result.json",
+        "bytes": 5612,
+        "sha256": "9a54274453b0dfad3112d68eec427b84ad12e080533a8b3df59ae0d8d01c4640",
+        "modifiedAtMs": 1792383034909.3872
+      }
+    ],
+    "status": "all-selected-checks-passed-across-identical-source-runs",
+    "execution": "26 earlier successful stages plus three successful continuation stages, bound to identical source. The initial run failed at an offline cache miss; this is not a single 29-stage passing run.",
+    "selectedChecks": 29,
+    "passedChecks": 29,
+    "startedAt": "2026-10-19T04:01:06.992Z",
+    "finishedAt": "2026-10-19T04:10:34.909Z",
+    "environment": {
+      "node": "v22.14.0",
+      "platform": "darwin",
+      "arch": "arm64"
+    },
+    "stages": [
+      {
+        "id": "workspace-format",
+        "status": "passed",
+        "log": {
+          "path": "target/v1-candidate-runs/run-N7qigr/01-workspace-format.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "modifiedAtMs": 1792382468279.527
+        },
+        "artifacts": []
+      },
+      {
+        "id": "workspace-lint",
+        "status": "passed",
+        "log": {
+          "path": "target/v1-candidate-runs/run-N7qigr/02-workspace-lint.log",
+          "bytes": 62,
+          "sha256": "9a37812c135c5e82e96a6c59a266592728a1efd091d11994a459bbcc3d1dfd5f",
+          "modifiedAtMs": 1792382472031.5889
+        },
+        "artifacts": []
+      },
+      {
+        "id": "workspace-native",
+        "status": "passed",
+        "log": {
+          "path": "target/v1-candidate-runs/run-N7qigr/03-workspace-native.log",
+          "bytes": 313342,
+          "sha256": "f36570c4c3dd9251bfd0be1c9f3ad908ac97f721fc185e468b123af9a3e8e265",
+          "modifiedAtMs": 1792382488525.8232
+        },
+        "artifacts": []
+      },
+      {
+        "id": "workspace-docs",
+        "status": "passed",
+        "log": {
+          "path": "target/v1-candidate-runs/run-N7qigr/04-workspace-docs.log",
+          "bytes": 176,
+          "sha256": "60b41186e884009670c60275495b842cde2d4fdd3984bce17ed96a275e18eb98",
+          "modifiedAtMs": 1792382489558.9282
+        },
+        "artifacts": []
+      },
+      {
+        "id": "shared-format",
+        "status": "passed",
+        "log": {
+          "path": "target/v1-candidate-runs/run-N7qigr/05-shared-format.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "modifiedAtMs": 1792382490164.2258
+        },
+        "artifacts": []
+      },
+      {
+        "id": "shared-lint",
+        "status": "passed",
+        "log": {
+          "path": "target/v1-candidate-runs/run-N7qigr/06-shared-lint.log",
+          "bytes": 507,
+          "sha256": "82d6372489efa96f307777d7e9686fc837eb685fbcb39a2d123b2c10454705d2",
+          "modifiedAtMs": 1792382491792.1343
+        },
+        "artifacts": []
+      },
+      {
+        "id": "shared-native",
+        "status": "passed",
+        "log": {
+          "path": "target/v1-candidate-runs/run-N7qigr/07-shared-native.log",
+          "bytes": 71605,
+          "sha256": "32e54dddf1d08dd771f92cb22d868dfb8fbf45dbd36c057e8e02a0bf3f009529",
+          "modifiedAtMs": 1792382696011.1138
+        },
+        "artifacts": []
+      },
+      {
+        "id": "research-retained-asset-contracts",
+        "status": "passed",
+        "log": {
+          "path": "target/v1-candidate-runs/run-N7qigr/08-research-retained-asset-contracts.log",
+          "bytes": 1485,
+          "sha256": "a36422d1dbd4b31558dea68443912f99874657e293d349193db9322931efb9f1",
+          "modifiedAtMs": 1792382723241.6252
+        },
+        "artifacts": []
+      },
+      {
+        "id": "shared-docs",
+        "status": "passed",
+        "log": {
+          "path": "target/v1-candidate-runs/run-N7qigr/09-shared-docs.log",
+          "bytes": 589,
+          "sha256": "8af10b8a30778d52078f56005a85bd1c8589213033ce8a17a3491e9cc9a91344",
+          "modifiedAtMs": 1792382724085.8706
+        },
+        "artifacts": []
+      },
+      {
+        "id": "independent-native-consumer",
+        "status": "passed",
+        "log": {
+          "path": "target/v1-candidate-runs/run-N7qigr/10-independent-native-consumer.log",
+          "bytes": 794,
+          "sha256": "ad3cf8929345db85607144f72330b6e5db86dd11876547f3a5226041a62abf9d",
+          "modifiedAtMs": 1792382751270.1882
+        },
+        "artifacts": [
+          {
+            "path": "target/collaboration-native-consumer.json",
+            "bytes": 298,
+            "sha256": "60630f12a11024154f87e05f2b05486137783c7c86326f0b6cbbb211f2c540e9",
+            "modifiedAtMs": 1792382751269.939
+          }
+        ]
+      },
+      {
+        "id": "default-typescript-build",
+        "status": "passed",
+        "log": {
+          "path": "target/v1-candidate-runs/run-N7qigr/11-default-typescript-build.log",
+          "bytes": 2421,
+          "sha256": "fda14c12ff97b39b9185a29731e95d3d9d1baffc3397fd50d4745d799fc12b34",
+          "modifiedAtMs": 1792382755967.0435
+        },
+        "artifacts": []
+      },
+      {
+        "id": "paired-local-runtime",
+        "status": "passed",
+        "log": {
+          "path": "target/v1-candidate-runs/run-N7qigr/12-paired-local-runtime.log",
+          "bytes": 422,
+          "sha256": "ce303f726d0c96e3bf7d6d867205e4c615141dcd6d0b8b3c1516f258403965ca",
+          "modifiedAtMs": 1792382757572.0308
+        },
+        "artifacts": [
+          {
+            "path": "packages/breditor-experimental-rich-content/dist/breditor_wasm.js",
+            "bytes": 175589,
+            "sha256": "eca21bb20fcb2b565680eec313a855f9a01aaed2e3f0582b4785cb1fe4095097",
+            "modifiedAtMs": 1792382757577.9287
+          },
+          {
+            "path": "packages/breditor-experimental-rich-content/dist/breditor_wasm_bg.wasm",
+            "bytes": 5895160,
+            "sha256": "e99eee92eaf7b6b8f6100c01abe0d3d87509d3523d44e8489b252afd4604d5a2",
+            "modifiedAtMs": 1792382757597.1296
+          },
+          {
+            "path": "packages/breditor-experimental-rich-content/dist/breditor_wasm.d.ts",
+            "bytes": 96166,
+            "sha256": "2f2600569aed3200047459b89816294bbdf04427d3301b0d34784225d88f8fd0",
+            "modifiedAtMs": 1792382757579.1943
+          },
+          {
+            "path": "packages/breditor-experimental-rich-content/dist/breditor_dependency_inventory.json",
+            "bytes": 29157,
+            "sha256": "4633989248c1c1581317234373f1eb6b44c192dd1698ad7ded242991c4058d36",
+            "modifiedAtMs": 1792382757600.5205
+          },
+          {
+            "path": "packages/breditor-experimental-rich-content/dist/THIRD_PARTY_NOTICES.txt",
+            "bytes": 353584,
+            "sha256": "b453b4e00e6ab941cce24809a27ce4ed6801585a81592c2bebe501a1f5a15a9b",
+            "modifiedAtMs": 1792382757601.3777
+          },
+          {
+            "path": "packages/breditor-experimental-rich-content/dist/RUST_COPYRIGHT-library.html",
+            "bytes": 1512520,
+            "sha256": "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6",
+            "modifiedAtMs": 1792382757606.3425
+          }
+        ]
+      },
+      {
+        "id": "paired-shared-runtime",
+        "status": "passed",
+        "log": {
+          "path": "target/v1-candidate-runs/run-N7qigr/13-paired-shared-runtime.log",
+          "bytes": 1185,
+          "sha256": "ee69649301a403964b8c7585c409b8d49c5e374de882ab874c3480e56b6fb9a2",
+          "modifiedAtMs": 1792382760401.2603
+        },
+        "artifacts": [
+          {
+            "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.js",
+            "bytes": 167302,
+            "sha256": "31d21168bd7d8e6545b53bbc77817beb112a76b8cb604d1a1007110a3424560f",
+            "modifiedAtMs": 1792382760406.5813
+          },
+          {
+            "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+            "bytes": 12937311,
+            "sha256": "3ae25809dc6299de62ba452738a93642f4ed4479213c386c6609586bac82b5c7",
+            "modifiedAtMs": 1792382760470.3542
+          },
+          {
+            "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.d.ts",
+            "bytes": 63461,
+            "sha256": "4776eeed3de53945794692c348fe90719a60105f913cf617d499c53bf19e4ec1",
+            "modifiedAtMs": 1792382760407.0437
+          },
+          {
+            "path": "packages/breditor-collaboration/dist/runtime/breditor_dependency_inventory.json",
+            "bytes": 124122,
+            "sha256": "18bf7a861e4a3841696227735d251f48bdc9b9e9036de7560485144468b5df87",
+            "modifiedAtMs": 1792382760473.0095
+          },
+          {
+            "path": "packages/breditor-collaboration/dist/runtime/THIRD_PARTY_NOTICES.txt",
+            "bytes": 1380448,
+            "sha256": "4bdd58691c23f4733fd973aff84ebb1a38a670c97c64ce8e4c79c624f594f204",
+            "modifiedAtMs": 1792382760481.097
+          },
+          {
+            "path": "packages/breditor-collaboration/dist/runtime/RUST_COPYRIGHT-library.html",
+            "bytes": 1512520,
+            "sha256": "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6",
+            "modifiedAtMs": 1792382760485.2834
+          }
+        ]
+      },
+      {
+        "id": "shared-wasm-lint",
+        "status": "passed",
+        "log": {
+          "path": "target/v1-candidate-runs/run-N7qigr/14-shared-wasm-lint.log",
+          "bytes": 507,
+          "sha256": "5ba4335fa1c99f4c33eb5a7d549ad4206153285cf5a5cfe94922837bb85c1eda",
+          "modifiedAtMs": 1792382761486.1301
+        },
+        "artifacts": []
+      },
+      {
+        "id": "rich-browser-build",
+        "status": "passed",
+        "log": {
+          "path": "target/v1-candidate-runs/run-N7qigr/15-rich-browser-build.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "modifiedAtMs": 1792382762166.3845
+        },
+        "artifacts": []
+      },
+      {
+        "id": "collaboration-build",
+        "status": "passed",
+        "log": {
+          "path": "target/v1-candidate-runs/run-N7qigr/16-collaboration-build.log",
+          "bytes": 82,
+          "sha256": "3ecf4743dfb35b8d860a882c5c54506a891051132b77e773bb2bd8fe690bca12",
+          "modifiedAtMs": 1792382763287.8674
+        },
+        "artifacts": []
+      },
+      {
+        "id": "editor-build",
+        "status": "passed",
+        "log": {
+          "path": "target/v1-candidate-runs/run-N7qigr/17-editor-build.log",
+          "bytes": 75,
+          "sha256": "1310c2fdb084ee048dc83520d840d200e7f41bfad549bd6f349c38aef1c38b44",
+          "modifiedAtMs": 1792382764410.4165
+        },
+        "artifacts": []
+      },
+      {
+        "id": "typescript-tests-and-script-contracts",
+        "status": "passed",
+        "log": {
+          "path": "target/v1-candidate-runs/run-N7qigr/18-typescript-tests-and-script-contracts.log",
+          "bytes": 107520,
+          "sha256": "b1277c55c308e57dd1c77a14edbfa1e0044b303581fb5ee91f7157b4cc02e1de",
+          "modifiedAtMs": 1792382788796.8835
+        },
+        "artifacts": []
+      },
+      {
+        "id": "editor-sdk-tests",
+        "status": "passed",
+        "log": {
+          "path": "target/v1-candidate-runs/run-N7qigr/19-editor-sdk-tests.log",
+          "bytes": 619,
+          "sha256": "dca6b6d827ae7fe4abef708aa55808284011297e85458ad8bb6d0adf181f8082",
+          "modifiedAtMs": 1792382797840.921
+        },
+        "artifacts": []
+      },
+      {
+        "id": "workspace-types",
+        "status": "passed",
+        "log": {
+          "path": "target/v1-candidate-runs/run-N7qigr/20-workspace-types.log",
+          "bytes": 485,
+          "sha256": "ff2b7d73a790f5c53c02c54cf8b67d6ed1036e66eae4f636f307f8f2d960c48c",
+          "modifiedAtMs": 1792382800706.9617
+        },
+        "artifacts": []
+      },
+      {
+        "id": "rich-browser-types",
+        "status": "passed",
+        "log": {
+          "path": "target/v1-candidate-runs/run-N7qigr/21-rich-browser-types.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "modifiedAtMs": 1792382801859.132
+        },
+        "artifacts": []
+      },
+      {
+        "id": "collaboration-types",
+        "status": "passed",
+        "log": {
+          "path": "target/v1-candidate-runs/run-N7qigr/22-collaboration-types.log",
+          "bytes": 95,
+          "sha256": "420af9e6b28474243a0fd35510d2c8039b52f408426ec54c2b14dc6177522b1a",
+          "modifiedAtMs": 1792382802932.7727
+        },
+        "artifacts": []
+      },
+      {
+        "id": "editor-types",
+        "status": "passed",
+        "log": {
+          "path": "target/v1-candidate-runs/run-N7qigr/23-editor-types.log",
+          "bytes": 88,
+          "sha256": "4ed1577b26f7965af6b47dde9307902ced45570b6d37297049bd7086fd0d55a2",
+          "modifiedAtMs": 1792382803971.7283
+        },
+        "artifacts": []
+      },
+      {
+        "id": "shared-asset-archive-history",
+        "status": "passed",
+        "log": {
+          "path": "target/v1-candidate-runs/run-N7qigr/24-shared-asset-archive-history.log",
+          "bytes": 778,
+          "sha256": "e466deb43d23e9d2725da44a9587f0a4989c8ef4f450e9187da2bfade2d29ce5",
+          "modifiedAtMs": 1792382805770.8215
+        },
+        "artifacts": []
+      },
+      {
+        "id": "shared-session-backups",
+        "status": "passed",
+        "log": {
+          "path": "target/v1-candidate-runs/run-N7qigr/25-shared-session-backups.log",
+          "bytes": 1067,
+          "sha256": "60cb1c553adfe0efac4c7324fd138cebb468498449a54151c375a4c6f3be8477",
+          "modifiedAtMs": 1792382836224.3032
+        },
+        "artifacts": []
+      },
+      {
+        "id": "paired-session-backups",
+        "status": "passed",
+        "log": {
+          "path": "target/v1-candidate-runs/run-N7qigr/26-paired-session-backups.log",
+          "bytes": 1045,
+          "sha256": "9fc02646c06b0850e5f15864a3db2aa77af372bfa974f75b11306d71167b1af6",
+          "modifiedAtMs": 1792382929183.5254
+        },
+        "artifacts": []
+      },
+      {
+        "id": "installed-asset-backups",
+        "status": "passed",
+        "log": {
+          "path": "target/v1-candidate-runs/run-SuQDjb/01-installed-asset-backups.log",
+          "bytes": 2554,
+          "sha256": "8c5161316ad73d6c5020a543d705b4ec6ef8d11edb54fe9780d7b4edf6d753e2",
+          "modifiedAtMs": 1792383031190.3972
+        },
+        "artifacts": [
+          {
+            "path": "target/asset-backups-installed-consumer.json",
+            "bytes": 2105,
+            "sha256": "87ee0773e594e24ffaff807764d4844a2c55ff644dcef68d5abc2b1cfd2125f8",
+            "modifiedAtMs": 1792383031189.9126
+          }
+        ]
+      },
+      {
+        "id": "installed-asset-backups-browser",
+        "status": "passed",
+        "log": {
+          "path": "target/v1-candidate-runs/run-SuQDjb/02-installed-asset-backups-browser.log",
+          "bytes": 1873,
+          "sha256": "f75ec057ee7167ed7854ad8138b4da8d018dc6c1850eb3beac24cebae92d3904",
+          "modifiedAtMs": 1792383033649.486
+        },
+        "artifacts": [
+          {
+            "path": "target/asset-backups-installed-browser.json",
+            "bytes": 1873,
+            "sha256": "f75ec057ee7167ed7854ad8138b4da8d018dc6c1850eb3beac24cebae92d3904",
+            "modifiedAtMs": 1792383033649.1917
+          }
+        ]
+      },
+      {
+        "id": "readiness-inventory",
+        "status": "passed",
+        "log": {
+          "path": "target/v1-candidate-runs/run-SuQDjb/03-readiness-inventory.log",
+          "bytes": 15641,
+          "sha256": "beb28888889c3aae11928bf754605a40c6fd7c641afa2588a90ba51d9094c01c",
+          "modifiedAtMs": 1792383034334.5508
+        },
+        "artifacts": []
+      }
+    ],
+    "resourceAttempts": [
+      {
+        "manifest": {
+          "path": "target/v1-candidate-runs/run-N7qigr/result.json",
+          "bytes": 43201,
+          "sha256": "d43de51b48c71cc7e489c39b24fc39d15911c707478cf051fc275707631bdf4b",
+          "modifiedAtMs": 1792382933829.6921
+        },
+        "log": {
+          "path": "target/v1-candidate-runs/run-N7qigr/27-installed-asset-backups.log",
+          "bytes": 1616,
+          "sha256": "707720d310b57af76c40c1ac836cb132d3966f0e900ff3adfb2e1c95a500e681",
+          "modifiedAtMs": 1792382933485.839
+        },
+        "reason": "Exact producer-locked registry tarball absent from the offline npm cache; not a product assertion failure."
+      },
+      {
+        "manifest": {
+          "path": "target/v1-candidate-runs/run-368uob/result.json",
+          "bytes": 2291,
+          "sha256": "95d5a4a4431c914639ff4d37551e12ab2a06709f79ab129e9bc0369ec3dc1240",
+          "modifiedAtMs": 1792382977924.7773
+        },
+        "log": {
+          "path": "target/v1-candidate-runs/run-368uob/01-installed-asset-backups.log",
+          "bytes": 1620,
+          "sha256": "a28b4f50c606a42aed03571d5c9d782fc9a005ae4966130a1faeff3fb3d70630",
+          "modifiedAtMs": 1792382977603.5664
+        },
+        "reason": "Exact producer-locked registry tarball absent from the offline npm cache; not a product assertion failure."
+      }
+    ],
+    "cacheRecovery": "Restore missing registry artifacts in an isolated failed consumer with package scripts disabled, then verify every resolved registry version/URL/integrity against the producer lock. The successful continuation creates new archives and a fresh offline consumer; the qualification command was not relaxed."
+  },
+  "tests": {
+    "workspaceRust": {
+      "passed": 2617,
+      "failed": 0,
+      "ignored": 0,
+      "resultGroups": 171
+    },
+    "sharedRust": {
+      "passed": 613,
+      "failed": 0,
+      "ignored": 0,
+      "resultGroups": 53
+    },
+    "researchCompatibility": {
+      "passed": 6,
+      "failed": 0,
+      "ignored": 0,
+      "resultGroups": 1
+    },
+    "newFocusedNativeCases": {
+      "core": 5,
+      "sharedIntegration": 6,
+      "sharedUnit": 9,
+      "includedInNativeSuiteTotals": true,
+      "matrixConfigurations": 18,
+      "exactPairedFutureHistoryComparisons": 72
+    },
+    "scripts": {
+      "passed": 536,
+      "failed": 0,
+      "skipped": 3
+    },
+    "editor": {
+      "files": 39,
+      "passed": 382
+    },
+    "focusedNativeCaseNames": {
+      "core": [
+        "replacement_and_deleted_image_retain_exact_before_after_and_redo_bindings",
+        "discarded_redo_branch_is_not_confused_with_current_native_retention",
+        "local_capacity_drops_only_unretained_states_and_keeps_the_remaining_before_state",
+        "same_asset_different_generations_are_not_collapsed_or_cross_paired",
+        "stale_foreign_and_read_only_reads_preserve_the_exact_owner"
+      ],
+      "shared": [
+        "invisible_redo_and_deleted_image_bindings_survive_pure_reads_and_exact_recovery",
+        "losing_remote_replacement_is_retained_before_it_can_become_visible_after_undo",
+        "causal_chunks_do_not_scan_text_literals_as_bindings_and_retain_exact_generations",
+        "stale_foreign_and_read_only_observations_do_not_publish_or_erase_redo",
+        "undone_authored_births_keep_their_immutable_definition_assets",
+        "all_three_grammars_and_selection_scopes_preserve_both_history_policies",
+        "pending_image_operations_refuse_until_dependencies_arrive_and_survive_recovery",
+        "shallow_history_never_masquerades_as_a_complete_retention_inventory",
+        "malformed_retained_patches_are_rejected_without_echoing_private_fields",
+        "result_budget_counts_unique_pairs_and_never_silently_truncates",
+        "alternate_metadata_field_retains_a_losing_binding_before_a_native_receive_reveals_it",
+        "admitted_identity_properties_are_inventoried_before_effect_retractions_reveal_them",
+        "admitted_partial_asset_patch_refuses_completeness_without_changing_recoverable_history",
+        "admitted_aliased_metadata_refuses_completeness_without_losing_exact_recovery",
+        "metadata_topology_rejects_inline_alias_and_wrong_slot_markers"
+      ]
+    }
+  },
+  "regressionProbes": {
+    "sharedAssets": {
+      "format": "breditor/shared-asset-archive-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "sharedWasmSha256": "3ae25809dc6299de62ba452738a93642f4ed4479213c386c6609586bac82b5c7",
+      "cases": 6,
+      "exactPairs": 12,
+      "futureCheckpoints": 30,
+      "exactAssetArchives": 12,
+      "historicalRasterDecodes": 12,
+      "retainedVersions": 6,
+      "heldWriterLeases": 0,
+      "scope": "Actual native layout shared original/general/document scopes and both histories, exact paired comment/version recovery, image deletion/Undo/Redo/reopen and retained raster/queue archives. IDB/locks/two exact PNG decoding are fixtures. Independent captures occur under explicit host quiescence; this does not provide an atomic complete-room/server/outbox backup, real browser decoder evidence or V1 approval."
+    },
+    "documentArchives": {
+      "format": "breditor/session-backup-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "sharedWasmSha256": "3ae25809dc6299de62ba452738a93642f4ed4479213c386c6609586bac82b5c7",
+      "cases": 36,
+      "searchCases": 18,
+      "pureExports": 36,
+      "pointInTimeExports": 36,
+      "exactRestores": 36,
+      "exactReopens": 36,
+      "futureCheckpoints": 144,
+      "liveCloneRefusals": 36,
+      "existingRefusals": 36,
+      "nativeRefusals": 6,
+      "canonicalRefusals": 6,
+      "raceRefusals": 6,
+      "atomicAborts": 6,
+      "heldWriterLeases": 0,
+      "scope": "Actual shared Wasm and all grammar/scope/history/search session families, exact accepted snapshot export, host-recovery acknowledgement, same-origin live-writer refusal before factory/storage, insert-only import, exact native admission/canonical replay/reopen/future history, occupied-key/race preservation, aborted insertion and retry. IndexedDB/locks are fixtures. This is document-session history, not paired review, assets, suggestion outboxes, server credentials/receipts, cross-device fencing, rotation, browser/platform or V1 qualification."
+    },
+    "pairedArchives": {
+      "format": "breditor/paired-backup-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "sharedWasmSha256": "3ae25809dc6299de62ba452738a93642f4ed4479213c386c6609586bac82b5c7",
+      "cases": 108,
+      "pureExports": 108,
+      "pointInTimeExports": 108,
+      "exactRestores": 108,
+      "exactReopens": 108,
+      "futureCheckpoints": 432,
+      "retainedVersions": 108,
+      "relayProgress": 72,
+      "liveCloneRefusals": 108,
+      "existingRefusals": 108,
+      "identityRefusals": 108,
+      "nativeRefusals": 12,
+      "raceRefusals": 6,
+      "atomicAborts": 6,
+      "failedCloseExports": 6,
+      "heldWriterLeases": 0,
+      "scope": "Actual native paired document/comment/version/progress archives across three grammars, three selection/range scopes, two history policies and six local/relay/observer/reviewed/search families. Point-in-time export, exact import/reopen/future histories, no-overwrite and atomic failure retention. IDB/locks are fixtures; this is not native browser, authenticated relay, complete-room asset/outbox backup, cross-device fencing, generation rotation or V1 approval."
+    }
+  },
+  "installedRegression": {
+    "report": {
+      "path": "target/asset-backups-installed-consumer.json",
+      "bytes": 2105,
+      "sha256": "87ee0773e594e24ffaff807764d4844a2c55ff644dcef68d5abc2b1cfd2125f8",
+      "modifiedAtMs": 1792383031189.9126
+    },
+    "format": "breditor/asset-backups-installed-consumer",
+    "formatVersion": 1,
+    "passed": true,
+    "source": {
+      "commit": "6575420fd979461aec79a06098aca4339136d3b2",
+      "dirty": true,
+      "sha256": "117504f8edabf383354e03a156ad8e685b2bf69632046e851ade86306d235550",
+      "files": 4345,
+      "bytes": 38502398
+    },
+    "sourceUnchanged": true,
+    "consumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-asset-backups-nlPoDa/consumer",
+    "workspaceLinks": false,
+    "reusedRuntime": false,
+    "producerRebuildQualified": true,
+    "strictConsumerTypes": true,
+    "registryArtifactsPinnedToProducer": 3,
+    "consumerLockSha256": "e6198908382a8a4faed0e4eab5f3cb5150ea157ea464ba274b8003be6478d226",
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-asset-backups-nlPoDa/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-asset-backups-nlPoDa/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "3c02bd8ef67a5902a9693a795bcd0cd2c5abcbc5f41c0d01a908408dc3a68fcd"
+      },
+      {
+        "name": "@breditor/editor",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-asset-backups-nlPoDa/archives/breditor-editor-0.3.0-alpha.22.tgz",
+        "sha256": "a756069e8a2b0ca3d98a27bf76078db010f69f5692c06796b658ebb73682dba9"
+      }
+    ],
+    "localWasmSha256": "e99eee92eaf7b6b8f6100c01abe0d3d87509d3523d44e8489b252afd4604d5a2",
+    "productionBundleModules": 62,
+    "functionalTestsExecuted": false,
+    "scope": "Fresh offline three-package archives with exact producer-pinned registry dependencies, public asset archive types and a production mixed-editor fixture. No workspace/shared/React modules. Browser image/storage/native-history behavior is checked by the separate browser stage. Runtime reuse explicitly excludes an official native builder run; no V1 approval."
+  },
+  "browserRegression": {
+    "report": {
+      "path": "target/asset-backups-installed-browser.json",
+      "bytes": 1873,
+      "sha256": "f75ec057ee7167ed7854ad8138b4da8d018dc6c1850eb3beac24cebae92d3904",
+      "modifiedAtMs": 1792383033649.1917
+    },
+    "format": "breditor/asset-backups-installed-browser",
+    "formatVersion": 1,
+    "passed": true,
+    "source": {
+      "commit": "6575420fd979461aec79a06098aca4339136d3b2",
+      "dirty": true,
+      "sha256": "117504f8edabf383354e03a156ad8e685b2bf69632046e851ade86306d235550",
+      "files": 4345,
+      "bytes": 38502398
+    },
+    "sourceUnchanged": true,
+    "consumer": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-asset-backups-nlPoDa/consumer",
+    "browser": "151.0.7922.34",
+    "productionBundle": true,
+    "producerRebuildQualified": true,
+    "actualWasmSha256": "e99eee92eaf7b6b8f6100c01abe0d3d87509d3523d44e8489b252afd4604d5a2",
+    "acceptance": {
+      "passed": true,
+      "assets": 4,
+      "mimes": [
+        "image/jpeg",
+        "image/png",
+        "image/webp"
+      ],
+      "states": [
+        "cancelled",
+        "failed",
+        "pending",
+        "uploaded"
+      ],
+      "exactRasterDecodes": 4,
+      "binaryBytes": 2606,
+      "uploadCalls": 4,
+      "queuedAdds": 4,
+      "concurrentRestoreWinners": 1,
+      "occupiedRefusals": 1,
+      "corruptRefusals": 1,
+      "atomicAbortRetries": 1,
+      "nativeUndoRedoWithRetainedAssets": true
+    },
+    "reloaded": {
+      "passed": true,
+      "retainedAssets": 4,
+      "exactArchiveAfterReload": true,
+      "exactFutureCheckpoint": true
+    },
+    "pageErrors": [],
+    "scope": "One fresh installed production artifact in headless Chromium. Actual PNG/JPEG/WebP encoding/decoding, image object URLs, IDB, SHA-256, exact binary/status/epoch/receipt archives, one-winner/no-overwrite restores and rollback after four queued adds. Historical image references survive native Undo, archive restore, Redo and real reload with exact future checkpoints. No synthetic decoder/storage, automatic uploads, complete-room/server/outbox backup, performance/eviction/process crash, physical input/accessibility/mobile/cross-browser, WebKit repair or V1 approval."
+  },
+  "independentNativeConsumer": {
+    "report": {
+      "path": "target/collaboration-native-consumer.json",
+      "bytes": 298,
+      "sha256": "60630f12a11024154f87e05f2b05486137783c7c86326f0b6cbbb211f2c540e9",
+      "modifiedAtMs": 1792382751269.939
+    },
+    "temporary": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-native-consumer-Xh9w5s",
+    "consumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-native-consumer-Xh9w5s/consumer",
+    "source": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-native-consumer-Xh9w5s/source",
+    "copiedRootCargoCachesAbsent": true,
+    "scope": "Copied-source native consumer with no downstream engine override or direct core dependency. Names the shared public reference type, reads a Redo-only image without mutating the owner, restores exact history and then redoes that image replacement."
+  },
+  "pipeline": "Both official candidate profiles now require shared-docs with RUSTDOCFLAGS=-D warnings. The independent native fixture also exercises the new public read. Neither change promotes V1 readiness.",
+  "reproducedRepair": {
+    "manifest": {
+      "path": "target/v1-candidate-runs/run-YrK2op/result.json",
+      "bytes": 2385,
+      "sha256": "8ca3b847a31454dee6d52f68a778be1283b46fc896fc35d06411696cbe289a52",
+      "modifiedAtMs": 1792380766564.9863
+    },
+    "log": {
+      "path": "target/v1-candidate-runs/run-YrK2op/01-alternate-asset-field-pre-repair.log",
+      "bytes": 1707,
+      "sha256": "7409118b6107bd419f54acfcf0ff78fb8ea094ceb625545ce00e079a22d88305",
+      "modifiedAtMs": 1792380766232.4705
+    },
+    "source": {
+      "commit": "6575420fd979461aec79a06098aca4339136d3b2",
+      "dirty": true,
+      "sha256": "41b7dc4b902e787b64164009af658d96595cb56130dded7e43200c11608693bf",
+      "files": 4342,
+      "bytes": 38487042
+    },
+    "negativeStatus": "expected pre-repair regression failure",
+    "cause": "The initial inventory assumed image properties only used the usual image-asset field. Existing native materialization also admits alternate metadata fields. A valid native receive retained a hidden pair, the inventory omitted it, and a later native receive made that pair visible.",
+    "repair": "Scan every metadata contribution field plus all admitted identity/default base properties. Preserve exact paired fields and native admission semantics. Refuse unsupported partial/removal patterns explicitly without changing their recoverable history.",
+    "currentProof": "The full shared suite passes the retained failing regression, latent identity/base-property reveal and admitted partial-write refusal with exact recovery."
+  },
+  "topologyRepair": {
+    "manifest": {
+      "path": "target/v1-candidate-runs/run-daWS7z/result.json",
+      "bytes": 2398,
+      "sha256": "6d35c0d1d396961c1ce8131f250f19bbc46fdeaffa84fbc360b347e8c698e6b7",
+      "modifiedAtMs": 1792381380571.3977
+    },
+    "log": {
+      "path": "target/v1-candidate-runs/run-daWS7z/01-aliased-asset-metadata-pre-repair.log",
+      "bytes": 1687,
+      "sha256": "a4d0b03c11ccc9412dc7eebad83ce612f7ae0e9f0ca671de29f4816da3ab2d3c",
+      "modifiedAtMs": 1792381379525.2913
+    },
+    "source": {
+      "commit": "6575420fd979461aec79a06098aca4339136d3b2",
+      "dirty": true,
+      "sha256": "95ab53200647eb34faa1ce6e0552c051196176e84b76d9cc6870576ddbc5cd45",
+      "files": 4342,
+      "bytes": 38494670
+    },
+    "negativeStatus": "expected pre-repair regression failure",
+    "cause": "Native receive and exact recovery admit aliased metadata maps; the initial scanner ignored that graph and reported a complete list before a later native receive revealed a latent image binding.",
+    "repair": "Require exact parent/key-bound native map markers at metadata owner/effects/field boundaries. Unsupported aliased/direct containers and inline literal maps now refuse this optional read instead of producing an incomplete-success result.",
+    "currentProof": "The full shared suite proves alias refusal with unchanged exact recovery and subsequent native visibility, plus map-kind/parent-slot and inline-map guards. Existing update/document admission remains unchanged."
+  },
+  "developmentObservations": [
+    "The initial frozen run-F5aEgM was deliberately interrupted at workspace-docs after three passed stages to cover the newly identified alternate-field gap; run-heqtIs was deliberately interrupted at shared-native after six passed stages to cover aliased/inline topology. Neither interrupted run is counted as a complete qualification or a product assertion failure.",
+    "The malformed-patch fixture initially allocated a causal stamp before committing its map setup and failed with missing frontier change. Committing fixture setup corrected that test; no native admission rule was weakened.",
+    "The shallow negative test injects a private engine snapshot only to exercise the fail-closed completeness guard; it is not public admission or a successful shallow-history restore.",
+    "The existing pinned dependency emits an unused HasIdSpan import warning. Vendor sources were not changed; strict project lint passes."
+  ],
+  "developmentQualificationRepair": {
+    "manifest": {
+      "path": "target/v1-candidate-runs/run-0EXV82/result.json",
+      "bytes": 29442,
+      "sha256": "adbb375e323f36ab64dcf69f772bb15f46f3e93cf1966e667776d2063b887db4",
+      "modifiedAtMs": 1792382299237.9185
+    },
+    "log": {
+      "path": "target/v1-candidate-runs/run-0EXV82/17-typescript-tests-and-script-contracts.log",
+      "bytes": 108165,
+      "sha256": "2385d36083bf7e42148356bad1b7d56e4df793121663f2d320315fe160eccd2c",
+      "modifiedAtMs": 1792382298838.8389
+    },
+    "cause": "The new canonical shared integration file lacked its mandatory research-manifest compatibility wrapper. The promotion contract rejected it before installed regression checks.",
+    "repair": "Add the matching research wrapper without weakening the promotion guard, then execute all six contracts through that independent manifest in the final frozen run."
+  },
+  "diskCleanup": {
+    "deleted": true,
+    "target": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-native-consumer-sdKa7c/source/crates/breditor-collaboration/target/debug/deps",
+    "originalPreserved": "/Users/s/code/breditor/crates/breditor-collaboration/target/debug/deps",
+    "files": 703,
+    "MiB": 1605,
+    "byteIdenticalToPreservedOriginal": true,
+    "inventorySha256": "b552eb9b1013a9a84d4103a48a5c7e24a58036f6924aa73e8d2477b5f95a1160",
+    "freeMiBBefore": 4439,
+    "freeMiBAfter": 6070,
+    "scope": "Only duplicate generated Cargo binaries were deleted, after comparison with the retained original; source, archives, logs and pinned readers remain.",
+    "prevention": "Native source copies now exclude only each crate-root target directory. An actual filesystem regression preserves vendor/source entries named target, and the final copied native consumer runs without the discarded cache."
+  },
+  "notQualified": [
+    "Native inventory only: there is no new Wasm/SDK/React capability, serialized read family, coordinator or GC action in this checkpoint.",
+    "The installed/browser image workflows are regression evidence for the existing archive surface, not browser access to the new native inventory.",
+    "The shared inventory may over-retain. It is not a minimal live-reference set, provider authority, deletion proof or inventory of separate versions/proposal/outbox/extension-owned asset stores.",
+    "Pending dependencies, admitted partial-binding/removal patterns and aliased/inline metadata topology refuse completeness while preserving exact raw recovery data. This does not implement their general reconciliation or generation migration.",
+    "No complete official candidate profile, hosted CI, immutable RC, cold bootstrap, hostile-input decoder/process isolation, crash/eviction/performance or physical platform qualification.",
+    "All 13 V1 gates, remaining catalog/API/deployment/license/pilot work and historical intermittent WebKit resolution remain open."
+  ],
+  "readiness": {
+    "featureGroups": {
+      "implemented": 10,
+      "partial": 27,
+      "missing": 9
+    },
+    "openV1Gates": 13,
+    "v1Ready": false,
+    "publicationApproved": false,
+    "pushed": false,
+    "published": false,
+    "tagged": false,
+    "deployed": false
+  }
+}

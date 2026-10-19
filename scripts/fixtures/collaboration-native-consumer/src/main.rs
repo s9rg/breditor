@@ -2,7 +2,8 @@
 use breditor_collaboration::{
     anchor::Affinity,
     rich_replica::{
-        SharedRichProfile,
+        Command, RichAssetReference, SharedRichProfile,
+        actions::ReplaceImage,
         selection::{Selection, TextPoint},
     },
 };
@@ -18,7 +19,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "root":{"kind":"element","type":"breditor/document","entityId":null,
         "properties":{"breditor/document-id":"native-room"},"children":[{
         "kind":"element","type":"breditor/paragraph","entityId":null,
-        "properties":{"breditor/block-id":"p"},"children":[]}]}})
+        "properties":{"breditor/block-id":"p"},"children":[]},
+        {"kind":"element","type":"breditor/image","entityId":null,
+        "properties":{"breditor/block-id":"image-block","breditor/image-id":"image",
+        "breditor/asset-id":"native-asset","breditor/asset-generation":"native-generation",
+        "breditor/decorative":true,"breditor/alt-text":""},"children":[]}]}})
     .to_string();
     let mut a = profile.create(&document, "101".into())?;
     let mut b = profile.join_frame("native-room".into(), "202".into(), &a.update_frame()?)?;
@@ -44,8 +49,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     restored.undo_guarded(&restored.observe()?)?;
     restored.redo_guarded(&restored.observe()?)?;
     assert_eq!(restored.document_json(), after);
+    restored.apply(vec![Command::ReplaceImage(ReplaceImage {
+        block: "image-block".into(),
+        asset: "replacement-asset".into(),
+        generation: "replacement-generation".into(),
+    })])?;
+    restored.undo()?;
+    assert!(!restored.document_json().contains("replacement-generation"));
+    let observed = restored.observe()?;
+    let before = (restored.checkpoint()?, restored.update_frame()?);
+    let references: Vec<RichAssetReference> =
+        restored.retained_asset_references_guarded(&observed)?;
+    assert_eq!(references.len(), 2);
+    assert!(references.iter().any(|r| r.asset().as_str() == "replacement-asset"
+        && r.generation().as_str() == "replacement-generation"));
+    restored.check(&observed)?;
+    assert_eq!((restored.checkpoint()?, restored.update_frame()?), before);
+    drop(restored);
+    let mut recovered = profile.restore("native-room", &before.0)?;
+    assert_eq!(recovered.retained_asset_references_guarded(&recovered.observe()?)?, references);
+    recovered.redo()?;
+    assert!(recovered.document_json().contains("replacement-generation"));
     println!(
-        "Independent native configured profile, offline merge and recovered future history passed"
+        "Independent native configured profile, offline merge, retained image references and recovered future history passed"
     );
     Ok(())
 }

@@ -92,6 +92,7 @@ mod replace_general_selection_text;
 mod replace_general_typing_text;
 mod replace_plain_text_range;
 mod replay_projections;
+mod retained_asset_references;
 mod retained_history;
 mod review_anchor;
 mod review_comments;
@@ -121,6 +122,7 @@ mod writing_tools;
 mod writing_tools_json;
 
 pub use actions::Command;
+pub use breditor_core::rich_content::{RICH_ASSET_REFERENCE_MAX_BINDINGS, RichAssetReference};
 /// Private shared projection revision; incompatible causal interpretations must reject old frames.
 pub const MODEL_VERSION: u32 = 11;
 pub use affine_text_range::{
@@ -138,6 +140,7 @@ pub use observation::SharedObservation;
 pub use presence::PresenceResolution;
 pub use presence::{DocumentPresenceResolution, DocumentPresenceSelection};
 pub use profile::SharedRichProfile;
+pub use retained_asset_references::SHARED_ASSET_REFERENCE_MAX_CAUSAL_ATOMS;
 pub use review_anchor::{
     ReviewAnchorLoss, ReviewAnchorQuote, ReviewAnchorResolution, ReviewAnchorTarget,
     ReviewQuoteLoss,
