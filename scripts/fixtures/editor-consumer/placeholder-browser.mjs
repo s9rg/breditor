@@ -1,6 +1,6 @@
 /** Public installed SDK only. This fixture owns and closes every opened writer. */
-import {openLocalEditor,createLayoutLocalProfileV3} from "@breditor/editor";
-import {openSharedEditor,createLayoutSharedProfileV3} from "@breditor/editor/collaboration";
+import {openLocalEditor,openLocalDocumentEditor,createLayoutLocalProfileV3} from "@breditor/editor";
+import {openSharedEditor,openSharedDocumentEditor,openSharedSearchEditor,openSharedDocumentSearchEditor,createLayoutSharedProfileV3} from "@breditor/editor/collaboration";
 const root=document.querySelector("#editor"),errors=[];let editor,kind,sequence=0;
 const label='<img src=x onerror="bad()"> Start writing 日本';
 function proseProperties(heading){const values={"breditor/block-id":"body","breditor/block-direction":2,"breditor/block-indent":2,"breditor/block-align":2,"breditor/line-height-percent":160,...(heading?{"breditor/level":2}:{})};return Object.fromEntries(Object.keys(values).sort().map(key=>[key,values[key]]));}
@@ -13,4 +13,14 @@ async function open(nextKind,heading,placeholder=true,prompt=label){
  }finally{if(kind==="local")profile.dispose();else profile.free();}
 }
 function history(method){if(kind==="local")editor.execute({kind:method});else editor.core[method]();}
-globalThis.placeholderExample={open,close,history,label,errors,get editor(){return editor;}};
+/** Malformed native input must reject before mount without detaching an unchanged host. */
+async function refusedOpening(family){
+ await close();const input=document.createElement("input");input.value="retained input";root.replaceChildren(input);input.focus();input.setSelectionRange(1,8,"backward");let childMutations=0;const observer=new MutationObserver(records=>{childMutations+=records.length;});observer.observe(root,{childList:true});let failure,unexpected;
+ try{const openers={local:openLocalEditor,localDocument:openLocalDocumentEditor,shared:openSharedEditor,sharedDocument:openSharedDocumentEditor,sharedSearch:openSharedSearchEditor,sharedDocumentSearch:openSharedDocumentSearchEditor},shared=family.startsWith("shared"),documentScope=family.includes("Document");
+  const options={host:root,richLanguage:3,history:"explicit",rangeEditing:documentScope?"general-v1":"original",toolbar:()=>[],initial:{kind:"document",documentJson:"{}"},...(documentScope?{selectionEditing:"document-v1"}:{}),...(shared?{database:`startup-refusal-${sequence++}`,room:"room",writer:"101"}:{})};
+  try{unexpected=await openers[family](options);}catch(error){failure=error;}
+  const result={family,failure:failure?String(failure):null,code:failure?.code??null,sameNode:root.firstChild===input&&root.childNodes.length===1,focused:document.activeElement===input,value:input.value,start:input.selectionStart,end:input.selectionEnd,direction:input.selectionDirection,childMutations:childMutations+observer.takeRecords().length,editorMarker:root.hasAttribute("data-breditor-rich")||root.hasAttribute("data-breditor-shared"),retrySucceeded:false};observer.disconnect();
+  if(!unexpected){unexpected=await openers[family]({...options,initial:{kind:"empty",blockId:"body"}});result.retrySucceeded=true;}return result;
+ }finally{observer.disconnect();if(unexpected){if(family.startsWith("shared"))await unexpected.close();else unexpected.dispose();}root.replaceChildren();}
+}
+globalThis.placeholderExample={open,close,history,refusedOpening,label,errors,get editor(){return editor;}};

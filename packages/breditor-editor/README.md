@@ -597,6 +597,10 @@ the save or rewind an accepted edit; `onChange` also handles returned promises.
 Abort signals cancel only that opening. An abort during Wasm initialization can
 release the untouched host promptly; a later storage opening must finish safe
 cleanup before returning. Failed openings restore the original host nodes.
+If startup has not changed the child list, rollback leaves those nodes connected
+so an existing input keeps its focus, value and text selection. It does not steal
+focus back if the user moved elsewhere. Restoring a genuinely changed child list
+preserves node identity/order, not a general focus-restoration guarantee.
 If that cleanup itself cannot save, `SharedEditorOpenError.recovery` hands back
 a checkpoint/close/discard recovery handle. React forwards this through the
 required `onCloseError` callback too. Autosave

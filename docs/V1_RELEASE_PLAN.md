@@ -43,6 +43,25 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [startup rollback repair](qualification/2026-10-18-startup-host-rollback.json)
+fixes a reproduced focus loss after failed startup. Native admission already
+rejected malformed documents correctly; host cleanup then detached and reattached
+unchanged children, blurring an existing input. Rollback now skips that replacement
+when node count, identity and order match, while still restoring genuinely changed
+hosts and releasing ownership. It does not refocus an element after the user moves
+elsewhere or promise focus restoration after a partial mount changed the tree.
+
+The retained failing installed-browser run and frozen 18-check follow-up establish
+the repair. All six public local/shared/document/search startup families preserve
+the input's focus, value and backward selection, then reopen on the same host and
+writer. All 381 editor and 489 script tests pass, with three existing script checks
+skipped; SDK builds/types, pinned-reader placeholder history, fresh installed
+workflows and writing/input/search regressions also pass. Only five UI/test/readme
+files changed outside documentation; both rebuilt Wasm binaries and the three
+non-editor archives match the preceding checkpoint. This is not the historical
+WebKit repair, a complete candidate profile or V1 approval. Fullscreen and all 13
+release gates remain open.
+
 The [placeholder and installed-browser checkpoint](qualification/2026-10-18-placeholder-browser-installed.json)
 passes one frozen 38-check run. Optional native prompt eligibility now reaches
 managed local/shared/document startup, vanilla and React owners. Only one empty

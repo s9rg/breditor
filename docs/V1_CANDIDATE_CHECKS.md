@@ -87,6 +87,14 @@ retains the passing frozen 38-stage selection, exact current/pinned-reader proof
 fresh installed archive hashes and production-page results. It does not promote
 the whole profile or any V1 gate.
 
+The installed placeholder browser stage also covers rejected startup with a
+focused preexisting input in all six local/shared/document/search factories,
+followed by a successful same-host/writer retry. The
+[rollback repair checkpoint](qualification/2026-10-18-startup-host-rollback.json)
+retains the actual pre-repair failure and passing 18-stage follow-up. The bounded
+guarantee leaves unchanged children connected; restoring a genuinely changed
+host does not promise general focus restoration.
+
 The local/shared runtime builders also stage a dependency inventory, available
 upstream notice texts and the pinned Rust library notices before copying a
 candidate runtime. Installed consumers verify their inventory/text hashes and

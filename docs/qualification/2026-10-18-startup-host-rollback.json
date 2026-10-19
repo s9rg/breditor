@@ -1,0 +1,1327 @@
+{
+  "format": "breditor/functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-18",
+  "baseCommit": "5046376a122132b9b5866088685f4df69255208f",
+  "scope": "Repair reproduced unchanged-host failed-startup focus loss. Retain a failing installed-browser run and native rejection, verify all six public startup families and same-host/writer retries, and rerun focused SDK/installed/functionality regressions. Not a WebKit engine repair or V1 approval.",
+  "source": {
+    "commit": "5046376a122132b9b5866088685f4df69255208f",
+    "dirty": true,
+    "sha256": "ac9bdb27d2462e3e8d0498f8c919562b23a01d78a728d4c03f4c1b6710311d20",
+    "files": 4279,
+    "bytes": 37959934
+  },
+  "sourceBinding": {
+    "documentationOnlyFollowUp": "This record and final docs links follow the passing frozen run. The package README was a frozen packaged input. Every code/build input and the complete non-docs tree remain byte-identical after qualification.",
+    "nonDocumentationTree": {
+      "sha256": "74cdee4d224864eab02604e463e5d82e1824d1391182a081a4065b614caf2bdf",
+      "count": 3843,
+      "bytes": 31631660
+    },
+    "changedNonDocumentationFiles": [
+      {
+        "path": "packages/breditor-editor/README.md",
+        "bytes": 37267,
+        "sha256": "3bd907d3cc3996248100835df96d6f27b61d51f603dcc4796f79479e8796823c"
+      },
+      {
+        "path": "packages/breditor-editor/src/host.ts",
+        "bytes": 1801,
+        "sha256": "b6a5ae020c1ef5a34c96a121151d9bd52dc2434e3c44c059de929f70c8a991da"
+      },
+      {
+        "path": "packages/breditor-editor/tests/host.test.ts",
+        "bytes": 3055,
+        "sha256": "5cf13d1edd8c524752ee4d2f28b1ae3664e185b78ee1a4e40a4e5d56eb7fac0b"
+      },
+      {
+        "path": "scripts/check-placeholder-browser.mjs",
+        "bytes": 10617,
+        "sha256": "7293e0ec1506ea181065635c1e29f95a4c82b22dd925da09f0da8b7e32771ab9"
+      },
+      {
+        "path": "scripts/fixtures/editor-consumer/placeholder-browser.mjs",
+        "bytes": 4423,
+        "sha256": "a683f0b77b6a613794079722640ee685a7f4e71f51e0d8fca3caa669046fb813"
+      }
+    ],
+    "removedNonDocumentationFiles": [],
+    "precedingCheckpoint": {
+      "commit": "5046376a122132b9b5866088685f4df69255208f",
+      "record": {
+        "path": "docs/qualification/2026-10-18-placeholder-browser-installed.json",
+        "bytes": 95347,
+        "sha256": "a7bc74737e98b1eae5c0ac0e7dd4b95e27eda705fda0ee49ea57893123f86a4f",
+        "modifiedAtMs": 1792373083942.2017
+      },
+      "nativeSourcesAndDependencyLocksUnchanged": true,
+      "wasmByteIdentical": true,
+      "archives": [
+        {
+          "name": "@breditor/browser",
+          "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+          "byteIdenticalToPrevious": true
+        },
+        {
+          "name": "@breditor/experimental-rich-content",
+          "sha256": "159f194fc07f27edd867d2565f1bfb428ae0dd1579fa1983f547c887a7c7ea70",
+          "byteIdenticalToPrevious": true
+        },
+        {
+          "name": "@breditor/collaboration",
+          "sha256": "762c2329331ace307969672b3f31538d2a57294e2df48723764f34c5e544d876",
+          "byteIdenticalToPrevious": true
+        },
+        {
+          "name": "@breditor/editor",
+          "sha256": "08254c391f9dfa6320e05e14bf3486c7267f8b88da7e3c0614ec3036e4e6e68e",
+          "byteIdenticalToPrevious": false
+        }
+      ]
+    }
+  },
+  "defect": {
+    "location": "packages/breditor-editor/src/host.ts claimHost().rollback()",
+    "cause": "Rollback always replaced the captured children, even when no editor had mounted and the exact node list/order was unchanged. Detaching and reattaching an input preserved node identity/value/selection but cleared browser focus.",
+    "reproduction": "Focus and select text in an existing host input, then call the actual installed public opening factory with malformed native document JSON {}. The native admission error is expected; before repair the same input survives but document.activeElement is no longer that input.",
+    "before": {
+      "family": "local",
+      "failure": "RichCommandError: the rich editor request was rejected",
+      "code": "breditor_rich.document_rejected",
+      "sameNode": true,
+      "focused": false,
+      "value": "retained input",
+      "start": 1,
+      "end": 8,
+      "direction": "backward",
+      "childMutations": 0,
+      "editorMarker": false,
+      "retrySucceeded": true
+    },
+    "repair": "Compare child count, identity and order under the existing ownership token. Skip child replacement only when unchanged, still remove owned editor markers and release the claim. Real replacements/reorders still restore original nodes/order. No focus() call can steal focus after a user moves elsewhere.",
+    "boundedGuarantee": "An unchanged host keeps connected children and current focus. This is not a promise to restore focus after a real partial mount changed the child tree.",
+    "notAHistoricalWebKitRepair": true
+  },
+  "preRepair": {
+    "manifest": {
+      "path": "target/v1-candidate-runs/run-pMtODq/result.json",
+      "bytes": 3934,
+      "sha256": "062f7ef980ff86cd7779b2c7885b0c6801cd3a681dbe6a0b33285d5847fe8d95",
+      "modifiedAtMs": 1792373228990.5803
+    },
+    "source": {
+      "commit": "5046376a122132b9b5866088685f4df69255208f",
+      "dirty": true,
+      "sha256": "c8f4dd873b523107de25c0a0c8a9d39964a4e2881cff6c0d60ef3aaaa0a1ce45",
+      "files": 4279,
+      "bytes": 37958394
+    },
+    "status": "failed",
+    "startedAt": "2026-10-19T01:26:55.704Z",
+    "finishedAt": "2026-10-19T01:27:08.990Z",
+    "stages": [
+      {
+        "id": "installed-placeholder-workflows",
+        "status": "passed",
+        "log": {
+          "path": "target/v1-candidate-runs/run-pMtODq/01-installed-placeholder-workflows.log",
+          "bytes": 6000,
+          "sha256": "76e2fa4b1005218d7bddb932e3f0b55a5a72de68f6da1185ec5e749483561b75",
+          "modifiedAtMs": 1792373226507.5344
+        }
+      },
+      {
+        "id": "installed-placeholder-browser",
+        "status": "failed",
+        "log": {
+          "path": "target/v1-candidate-runs/run-pMtODq/02-installed-placeholder-browser.log",
+          "bytes": 766,
+          "sha256": "931a57545cfbedb2344d04d864c1b9ba1b7940404cf7af91c09b1ba5c673309c",
+          "modifiedAtMs": 1792373228678.8525
+        }
+      }
+    ]
+  },
+  "qualification": {
+    "manifest": {
+      "path": "target/v1-candidate-runs/run-eOA1lk/result.json",
+      "bytes": 30731,
+      "sha256": "c7cc4480948dda2a5f765a3ec7ad19faede61439a940ee09cbc98d34070afe64",
+      "modifiedAtMs": 1792373410592.3496
+    },
+    "selectedChecks": 18,
+    "passedChecks": 18,
+    "status": "passed",
+    "startedAt": "2026-10-19T01:29:01.751Z",
+    "finishedAt": "2026-10-19T01:30:10.592Z",
+    "environment": {
+      "node": "v22.14.0",
+      "platform": "darwin",
+      "arch": "arm64"
+    },
+    "stages": [
+      {
+        "id": "rich-browser-build",
+        "status": "passed",
+        "startedAt": "2026-10-19T01:29:02.409Z",
+        "finishedAt": "2026-10-19T01:29:02.685Z",
+        "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+        "args": [
+          "node_modules/typescript/bin/tsc",
+          "-p",
+          "packages/breditor-experimental-rich-content/tsconfig.json"
+        ],
+        "env": {
+          "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+          "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+          "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+          "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+          "RUSTC": "/Users/s/.cargo/bin/rustc",
+          "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+          "NPM_BIN": "npm",
+          "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+        },
+        "log": {
+          "path": "target/v1-candidate-runs/run-eOA1lk/01-rich-browser-build.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "modifiedAtMs": 1792373342409.0642
+        },
+        "artifacts": []
+      },
+      {
+        "id": "collaboration-build",
+        "status": "passed",
+        "startedAt": "2026-10-19T01:29:03.449Z",
+        "finishedAt": "2026-10-19T01:29:03.941Z",
+        "command": "npm",
+        "args": [
+          "run",
+          "build:candidate",
+          "--workspace",
+          "@breditor/collaboration"
+        ],
+        "env": {
+          "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+          "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+          "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+          "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+          "RUSTC": "/Users/s/.cargo/bin/rustc",
+          "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+          "NPM_BIN": "npm",
+          "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+        },
+        "log": {
+          "path": "target/v1-candidate-runs/run-eOA1lk/02-collaboration-build.log",
+          "bytes": 82,
+          "sha256": "3ecf4743dfb35b8d860a882c5c54506a891051132b77e773bb2bd8fe690bca12",
+          "modifiedAtMs": 1792373343597.8364
+        },
+        "artifacts": []
+      },
+      {
+        "id": "editor-build",
+        "status": "passed",
+        "startedAt": "2026-10-19T01:29:04.648Z",
+        "finishedAt": "2026-10-19T01:29:05.032Z",
+        "command": "npm",
+        "args": [
+          "run",
+          "build:candidate",
+          "--workspace",
+          "@breditor/editor"
+        ],
+        "env": {
+          "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+          "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+          "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+          "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+          "RUSTC": "/Users/s/.cargo/bin/rustc",
+          "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+          "NPM_BIN": "npm",
+          "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+        },
+        "log": {
+          "path": "target/v1-candidate-runs/run-eOA1lk/03-editor-build.log",
+          "bytes": 75,
+          "sha256": "1310c2fdb084ee048dc83520d840d200e7f41bfad549bd6f349c38aef1c38b44",
+          "modifiedAtMs": 1792373344773.8342
+        },
+        "artifacts": []
+      },
+      {
+        "id": "clean-candidate-sdk-build",
+        "status": "passed",
+        "startedAt": "2026-10-19T01:29:05.633Z",
+        "finishedAt": "2026-10-19T01:29:09.376Z",
+        "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+        "args": [
+          "scripts/check-candidate-sdk-build.mjs"
+        ],
+        "env": {
+          "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+          "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+          "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+          "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+          "RUSTC": "/Users/s/.cargo/bin/rustc",
+          "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+          "NPM_BIN": "npm",
+          "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+        },
+        "log": {
+          "path": "target/v1-candidate-runs/run-eOA1lk/04-clean-candidate-sdk-build.log",
+          "bytes": 4751,
+          "sha256": "2513ba5e89f28c12654dc023c7f414aac12892abc2a0d1a8ce2764b9c9badca0",
+          "modifiedAtMs": 1792373349373.6182
+        },
+        "artifacts": [
+          {
+            "path": "target/candidate-sdk-build.json",
+            "bytes": 118058,
+            "sha256": "1dfb8049905935cd9e83a37f4e7f01fca42d45663f334351c53d88dfb622f471",
+            "modifiedAtMs": 1792373349373.044
+          }
+        ]
+      },
+      {
+        "id": "placeholder-native-sdk-and-controls",
+        "status": "passed",
+        "startedAt": "2026-10-19T01:29:10.036Z",
+        "finishedAt": "2026-10-19T01:29:15.135Z",
+        "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+        "args": [
+          "scripts/probe-placeholder.mjs",
+          "target/rich-browser-web",
+          "target/promoted-shared-web",
+          "target/placeholder-earlier-TyB54o/local",
+          "target/placeholder-earlier-TyB54o/shared"
+        ],
+        "env": {
+          "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+          "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+          "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+          "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+          "RUSTC": "/Users/s/.cargo/bin/rustc",
+          "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+          "NPM_BIN": "npm",
+          "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+        },
+        "log": {
+          "path": "target/v1-candidate-runs/run-eOA1lk/05-placeholder-native-sdk-and-controls.log",
+          "bytes": 1561,
+          "sha256": "e20c878212ec335f448db6ca16969c911edb033bbbfcaee677589cae39c1e24f",
+          "modifiedAtMs": 1792373355123.9026
+        },
+        "artifacts": []
+      },
+      {
+        "id": "installed-placeholder-workflows",
+        "status": "passed",
+        "startedAt": "2026-10-19T01:29:15.793Z",
+        "finishedAt": "2026-10-19T01:29:26.681Z",
+        "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+        "args": [
+          "scripts/check-placeholder-installed.mjs"
+        ],
+        "env": {
+          "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+          "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+          "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+          "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+          "RUSTC": "/Users/s/.cargo/bin/rustc",
+          "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+          "NPM_BIN": "npm",
+          "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+        },
+        "log": {
+          "path": "target/v1-candidate-runs/run-eOA1lk/06-installed-placeholder-workflows.log",
+          "bytes": 6000,
+          "sha256": "85c0d926b380d5846b13b1cf92dffae2698057d0db9a628a4463cfc363c8c027",
+          "modifiedAtMs": 1792373366670.0493
+        },
+        "artifacts": [
+          {
+            "path": "target/placeholder-installed-consumer.json",
+            "bytes": 4365,
+            "sha256": "5ca30773cdbd751a8dcb91e6eecda530f1e65f2c640a0dc8e17838374ee25327",
+            "modifiedAtMs": 1792373366669.594
+          }
+        ]
+      },
+      {
+        "id": "installed-placeholder-browser",
+        "status": "passed",
+        "startedAt": "2026-10-19T01:29:27.317Z",
+        "finishedAt": "2026-10-19T01:29:29.362Z",
+        "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+        "args": [
+          "scripts/check-placeholder-browser.mjs"
+        ],
+        "env": {
+          "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+          "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+          "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+          "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+          "RUSTC": "/Users/s/.cargo/bin/rustc",
+          "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+          "NPM_BIN": "npm",
+          "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+        },
+        "log": {
+          "path": "target/v1-candidate-runs/run-eOA1lk/07-installed-placeholder-browser.log",
+          "bytes": 8978,
+          "sha256": "8cbdc80db270a7edd97cf6d3c06f18f6c96d924fd75e25a80a2662564f1d8168",
+          "modifiedAtMs": 1792373369296.3916
+        },
+        "artifacts": [
+          {
+            "path": "target/placeholder-installed-browser.json",
+            "bytes": 7250,
+            "sha256": "a9daeefae88229d0bb7ed20b532e6050c9f57010941a6c918c9e33bc94da05b6",
+            "modifiedAtMs": 1792373369296.1353
+          }
+        ]
+      },
+      {
+        "id": "writing-tools-managed-startup",
+        "status": "passed",
+        "startedAt": "2026-10-19T01:29:29.958Z",
+        "finishedAt": "2026-10-19T01:29:42.279Z",
+        "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+        "args": [
+          "scripts/probe-writing-tools-root-sdk.mjs",
+          "target/rich-browser-web",
+          "target/promoted-shared-web"
+        ],
+        "env": {
+          "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+          "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+          "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+          "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+          "RUSTC": "/Users/s/.cargo/bin/rustc",
+          "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+          "NPM_BIN": "npm",
+          "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+        },
+        "log": {
+          "path": "target/v1-candidate-runs/run-eOA1lk/08-writing-tools-managed-startup.log",
+          "bytes": 1083,
+          "sha256": "ee40f2d03d7d7cb801f2bf5884625b31867d1b7357fe54fc76b9a591ba5e0d8a",
+          "modifiedAtMs": 1792373382266.3208
+        },
+        "artifacts": []
+      },
+      {
+        "id": "input-rules-managed-startup",
+        "status": "passed",
+        "startedAt": "2026-10-19T01:29:42.878Z",
+        "finishedAt": "2026-10-19T01:29:45.794Z",
+        "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+        "args": [
+          "scripts/probe-input-rules-root-sdk.mjs",
+          "target/rich-browser-web",
+          "target/promoted-shared-web"
+        ],
+        "env": {
+          "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+          "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+          "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+          "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+          "RUSTC": "/Users/s/.cargo/bin/rustc",
+          "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+          "NPM_BIN": "npm",
+          "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+        },
+        "log": {
+          "path": "target/v1-candidate-runs/run-eOA1lk/09-input-rules-managed-startup.log",
+          "bytes": 1024,
+          "sha256": "f562d3c50452c03602091c298670b45a2f8cba089e388c9e86324bf8dcfdcdd1",
+          "modifiedAtMs": 1792373385784.6462
+        },
+        "artifacts": []
+      },
+      {
+        "id": "search-managed-startup",
+        "status": "passed",
+        "startedAt": "2026-10-19T01:29:46.377Z",
+        "finishedAt": "2026-10-19T01:29:49.266Z",
+        "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+        "args": [
+          "scripts/probe-search-root-sdk.mjs",
+          "target/rich-browser-web",
+          "target/promoted-shared-web"
+        ],
+        "env": {
+          "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+          "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+          "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+          "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+          "RUSTC": "/Users/s/.cargo/bin/rustc",
+          "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+          "NPM_BIN": "npm",
+          "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+        },
+        "log": {
+          "path": "target/v1-candidate-runs/run-eOA1lk/10-search-managed-startup.log",
+          "bytes": 1213,
+          "sha256": "ba318dc22b10469e41df05c3f8eb3abe63a2f884ce1fdf77177b977059146c21",
+          "modifiedAtMs": 1792373389251.8135
+        },
+        "artifacts": []
+      },
+      {
+        "id": "rich-browser-types",
+        "status": "passed",
+        "startedAt": "2026-10-19T01:29:49.887Z",
+        "finishedAt": "2026-10-19T01:29:50.131Z",
+        "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+        "args": [
+          "node_modules/typescript/bin/tsc",
+          "-p",
+          "packages/breditor-experimental-rich-content/tsconfig.json",
+          "--noEmit"
+        ],
+        "env": {
+          "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+          "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+          "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+          "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+          "RUSTC": "/Users/s/.cargo/bin/rustc",
+          "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+          "NPM_BIN": "npm",
+          "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+        },
+        "log": {
+          "path": "target/v1-candidate-runs/run-eOA1lk/11-rich-browser-types.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "modifiedAtMs": 1792373389887.8408
+        },
+        "artifacts": []
+      },
+      {
+        "id": "workspace-types",
+        "status": "passed",
+        "startedAt": "2026-10-19T01:29:50.700Z",
+        "finishedAt": "2026-10-19T01:29:53.099Z",
+        "command": "npm",
+        "args": [
+          "run",
+          "typecheck"
+        ],
+        "env": {
+          "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+          "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+          "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+          "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+          "RUSTC": "/Users/s/.cargo/bin/rustc",
+          "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+          "NPM_BIN": "npm",
+          "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+        },
+        "log": {
+          "path": "target/v1-candidate-runs/run-eOA1lk/12-workspace-types.log",
+          "bytes": 485,
+          "sha256": "ff2b7d73a790f5c53c02c54cf8b67d6ed1036e66eae4f636f307f8f2d960c48c",
+          "modifiedAtMs": 1792373392628.7983
+        },
+        "artifacts": []
+      },
+      {
+        "id": "collaboration-types",
+        "status": "passed",
+        "startedAt": "2026-10-19T01:29:53.680Z",
+        "finishedAt": "2026-10-19T01:29:54.084Z",
+        "command": "npm",
+        "args": [
+          "run",
+          "typecheck:candidate",
+          "--workspace",
+          "@breditor/collaboration"
+        ],
+        "env": {
+          "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+          "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+          "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+          "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+          "RUSTC": "/Users/s/.cargo/bin/rustc",
+          "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+          "NPM_BIN": "npm",
+          "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+        },
+        "log": {
+          "path": "target/v1-candidate-runs/run-eOA1lk/13-collaboration-types.log",
+          "bytes": 95,
+          "sha256": "420af9e6b28474243a0fd35510d2c8039b52f408426ec54c2b14dc6177522b1a",
+          "modifiedAtMs": 1792373393804.0596
+        },
+        "artifacts": []
+      },
+      {
+        "id": "editor-types",
+        "status": "passed",
+        "startedAt": "2026-10-19T01:29:54.662Z",
+        "finishedAt": "2026-10-19T01:29:55.054Z",
+        "command": "npm",
+        "args": [
+          "run",
+          "typecheck:candidate",
+          "--workspace",
+          "@breditor/editor"
+        ],
+        "env": {
+          "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+          "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+          "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+          "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+          "RUSTC": "/Users/s/.cargo/bin/rustc",
+          "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+          "NPM_BIN": "npm",
+          "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+        },
+        "log": {
+          "path": "target/v1-candidate-runs/run-eOA1lk/14-editor-types.log",
+          "bytes": 88,
+          "sha256": "4ed1577b26f7965af6b47dde9307902ced45570b6d37297049bd7086fd0d55a2",
+          "modifiedAtMs": 1792373394786.4255
+        },
+        "artifacts": []
+      },
+      {
+        "id": "all-script-contracts",
+        "status": "passed",
+        "startedAt": "2026-10-19T01:29:55.625Z",
+        "finishedAt": "2026-10-19T01:30:01.902Z",
+        "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+        "args": [
+          "--test",
+          "scripts/build-collaboration-runtime.test.mjs",
+          "scripts/build-experimental-nested-list.test.mjs",
+          "scripts/build-opt-in-flat-list-package.test.mjs",
+          "scripts/build-opt-in-nested-list-package.test.mjs",
+          "scripts/build-rich-runtime.test.mjs",
+          "scripts/build-runtime-notices.test.mjs",
+          "scripts/build-shared-runtime.test.mjs",
+          "scripts/candidate-ci.test.mjs",
+          "scripts/candidate-dependencies.test.mjs",
+          "scripts/candidate-runtime-paths.test.mjs",
+          "scripts/check-collaboration-runtime-surface.test.mjs",
+          "scripts/check-editor-browser.test.mjs",
+          "scripts/check-flat-list-declarations.test.mjs",
+          "scripts/check-heading-declarations.test.mjs",
+          "scripts/check-nested-list-declarations.test.mjs",
+          "scripts/check-v1-readiness.test.mjs",
+          "scripts/checkpoint-predicate-exits.test.mjs",
+          "scripts/child-count-return-diagnostics.test.mjs",
+          "scripts/collaboration-browser-runs.test.mjs",
+          "scripts/collaboration-native-graph.test.mjs",
+          "scripts/collaboration-promotion.test.mjs",
+          "scripts/composition-failure-diagnostics.test.mjs",
+          "scripts/direct-getter-bridge.test.mjs",
+          "scripts/document-export-diagnostics.test.mjs",
+          "scripts/editor-package-contract.test.mjs",
+          "scripts/element-type-return-diagnostics.test.mjs",
+          "scripts/exception-constructor-probe.test.mjs",
+          "scripts/fixture-completion.test.mjs",
+          "scripts/format-property-diagnostics.test.mjs",
+          "scripts/gecko-profile-summary.test.mjs",
+          "scripts/getter-u32-comparison-mode.test.mjs",
+          "scripts/heading-comparison-trial.test.mjs",
+          "scripts/input-rule-intent.test.mjs",
+          "scripts/input-rule-probe-policy.test.mjs",
+          "scripts/integer-word-diagnostics.test.mjs",
+          "scripts/measure-opt-in-flat-list-size.test.mjs",
+          "scripts/measure-opt-in-nested-list-size.test.mjs",
+          "scripts/nested-list-build-transport.test.mjs",
+          "scripts/nested-list-stress-mode.test.mjs",
+          "scripts/nested-performance-replay-query.test.mjs",
+          "scripts/opt-in-demo-runtime.test.mjs",
+          "scripts/owner-immediate-exits.test.mjs",
+          "scripts/placeholder-presentation.test.mjs",
+          "scripts/prepare-retained-bootstrap-failure-trace.test.mjs",
+          "scripts/prepare-retained-nested-layout-trace.test.mjs",
+          "scripts/private-word-projection-adapter.test.mjs",
+          "scripts/probe-nested-checkpoint-validator.test.mjs",
+          "scripts/probe-shared-history-clock.test.mjs",
+          "scripts/probe-shared-input-cost.test.mjs",
+          "scripts/projection-word-bindings.test.mjs",
+          "scripts/queue-failure-diagnostics.test.mjs",
+          "scripts/rendering-trace-summary.test.mjs",
+          "scripts/replay-browser.test.mjs",
+          "scripts/retain-nested-list-failure.test.mjs",
+          "scripts/retained-bootstrap-failure-trace.test.mjs",
+          "scripts/retained-nested-layout-trace.test.mjs",
+          "scripts/retained-nested-pair.test.mjs",
+          "scripts/review-assets-workflow.test.mjs",
+          "scripts/rich-structural-module-contract.test.mjs",
+          "scripts/runtime-notice-consumer.test.mjs",
+          "scripts/search-consumer-lock.test.mjs",
+          "scripts/search-metadata.test.mjs",
+          "scripts/shared-browser-runs.test.mjs",
+          "scripts/verify-candidate.test.mjs",
+          "scripts/verify-release.test.mjs",
+          "scripts/wasm-function-names.test.mjs",
+          "scripts/webkit-replay-tier.test.mjs",
+          "scripts/word-capability-admission-diagnostics.test.mjs",
+          "scripts/word-child-count.test.mjs",
+          "scripts/word-editor-stress-mode.test.mjs",
+          "scripts/writing-tools-host.test.mjs",
+          "scripts/writing-tools-metadata.test.mjs"
+        ],
+        "env": {
+          "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+          "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+          "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+          "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+          "RUSTC": "/Users/s/.cargo/bin/rustc",
+          "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+          "NPM_BIN": "npm",
+          "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+          "CARGO_TARGET_DIR": "/Users/s/code/breditor/target/historical-source-native"
+        },
+        "log": {
+          "path": "target/v1-candidate-runs/run-eOA1lk/15-all-script-contracts.log",
+          "bytes": 93975,
+          "sha256": "699a7d524e9367aa5939464e3fd543796bdc1d4d4208363fb9e91147c4053610",
+          "modifiedAtMs": 1792373401898.8674
+        },
+        "artifacts": []
+      },
+      {
+        "id": "editor-sdk-tests",
+        "status": "passed",
+        "startedAt": "2026-10-19T01:30:02.517Z",
+        "finishedAt": "2026-10-19T01:30:07.852Z",
+        "command": "npm",
+        "args": [
+          "run",
+          "test:candidate",
+          "--workspace",
+          "@breditor/editor"
+        ],
+        "env": {
+          "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+          "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+          "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+          "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+          "RUSTC": "/Users/s/.cargo/bin/rustc",
+          "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+          "NPM_BIN": "npm",
+          "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+        },
+        "log": {
+          "path": "target/v1-candidate-runs/run-eOA1lk/16-editor-sdk-tests.log",
+          "bytes": 619,
+          "sha256": "77e320c899821a7cbd6d0c7bc19813094b1b006e01113de66b6b20d86af6741d",
+          "modifiedAtMs": 1792373407801.7239
+        },
+        "artifacts": []
+      },
+      {
+        "id": "default-dependency-guard",
+        "status": "passed",
+        "startedAt": "2026-10-19T01:30:08.456Z",
+        "finishedAt": "2026-10-19T01:30:09.419Z",
+        "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+        "args": [
+          "scripts/check-wasm-third-party-notices.mjs"
+        ],
+        "env": {
+          "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+          "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+          "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+          "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+          "RUSTC": "/Users/s/.cargo/bin/rustc",
+          "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+          "NPM_BIN": "npm",
+          "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+          "CARGO_TARGET_DIR": "/Users/s/code/breditor/target/historical-source-native"
+        },
+        "log": {
+          "path": "target/v1-candidate-runs/run-eOA1lk/17-default-dependency-guard.log",
+          "bytes": 111,
+          "sha256": "886591c8a0956dfdb6837c7c9e6f65af1f9f409051641d44bd1e0cec537de06a",
+          "modifiedAtMs": 1792373409416.6248
+        },
+        "artifacts": []
+      },
+      {
+        "id": "readiness-inventory",
+        "status": "passed",
+        "startedAt": "2026-10-19T01:30:09.986Z",
+        "finishedAt": "2026-10-19T01:30:10.028Z",
+        "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+        "args": [
+          "scripts/check-v1-readiness.mjs",
+          "--json"
+        ],
+        "env": {
+          "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+          "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+          "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+          "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+          "RUSTC": "/Users/s/.cargo/bin/rustc",
+          "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+          "NPM_BIN": "npm",
+          "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+        },
+        "log": {
+          "path": "target/v1-candidate-runs/run-eOA1lk/18-readiness-inventory.log",
+          "bytes": 15485,
+          "sha256": "99abb86b229c4f9a39e0e8706330aa36de35a6d46585d2d5b19af8cc9526b6ef",
+          "modifiedAtMs": 1792373410026.5242
+        },
+        "artifacts": []
+      }
+    ]
+  },
+  "tests": {
+    "scripts": {
+      "passed": 489,
+      "failed": 0,
+      "skipped": 3
+    },
+    "editor": {
+      "files": 39,
+      "passed": 381
+    },
+    "focusedHost": {
+      "passed": 6,
+      "includes": "Connected focused input/value/backward selection, no unnecessary child mutation, marker/claim cleanup, actual reordered/replaced-node restoration, external user focus, ownership token and abort isolation."
+    }
+  },
+  "placeholderProbe": {
+    "format": "breditor/placeholder-probe",
+    "formatVersion": 1,
+    "passed": true,
+    "localWasmSha256": "e99eee92eaf7b6b8f6100c01abe0d3d87509d3523d44e8489b252afd4604d5a2",
+    "sharedWasmSha256": "6145f03643bb9f25c0b794195433dbcce0a6f6ef68a74cf853ea95ca95155d82",
+    "localCases": 12,
+    "sharedCases": 18,
+    "readonlyCases": 30,
+    "exactCopies": 30,
+    "exactReopens": 30,
+    "exactFutureCheckpoints": 120,
+    "immutableLabels": 30,
+    "liveLabelCases": 30,
+    "compositionHolds": 2,
+    "reactCases": 8,
+    "reactImmutable": 8,
+    "reactRekeys": 8,
+    "pureNativeReads": 6,
+    "staleReadRefusals": 2,
+    "peerUpdates": 1,
+    "invalidOpenings": 2,
+    "earlierRefusals": 2,
+    "earlierExactRestores": 30,
+    "earlierFutureCheckpoints": 120,
+    "earlierWasmSha256": {
+      "local": "b82949cceccf9ba9ad5d8384dbdebcfc22a0fbcd27b4d1e64847839a434a92ff",
+      "shared": "b470e93ce5afab56f47877a84f8f2f84706d5ad523d781bece6ae92457ffe632"
+    },
+    "heldWriterLeases": 0,
+    "scope": "Actual paired native/Wasm/SDK and managed local/shared/document/general DOM owners across all grammars and both histories. Literal out-of-content prompts, immutable admission/live labels, whitespace/history/readonly/copy, exact reopen/future history, source reads, composition holds, peer updates, rejected startup and React StrictMode/rekeys. Explicit pinned earlier readers additionally prove original-family restore/history and unsupported-option refusal without changing default DOM. Storage, locks, composition and events are fixtures; no physical input/browser/layout/a11y/performance or V1 approval."
+  },
+  "installed": {
+    "report": {
+      "path": "target/placeholder-installed-consumer.json",
+      "bytes": 4365,
+      "sha256": "5ca30773cdbd751a8dcb91e6eecda530f1e65f2c640a0dc8e17838374ee25327",
+      "modifiedAtMs": 1792373366669.594
+    },
+    "format": "breditor/placeholder-installed-consumer",
+    "formatVersion": 1,
+    "passed": true,
+    "source": {
+      "commit": "5046376a122132b9b5866088685f4df69255208f",
+      "dirty": true,
+      "sha256": "ac9bdb27d2462e3e8d0498f8c919562b23a01d78a728d4c03f4c1b6710311d20",
+      "files": 4279,
+      "bytes": 37959934
+    },
+    "sourceUnchanged": true,
+    "reusedRuntimes": false,
+    "producerRebuildQualified": true,
+    "consumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-placeholder-consumer-0l2yFb/consumer",
+    "workspaceLinks": false,
+    "strictConsumerTypes": true,
+    "registryArtifactsPinnedToProducer": 45,
+    "consumerLockSha256": "d9a35e22987a9e64654bd3aecada1984c8e2a5f82ba1f58ddd91ae5979efb6a3",
+    "producerLockSha256": "46d0044dd824964ae6234b6be3d1b70ddf1db68265b779c509bcdcf28e3262f4",
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-placeholder-consumer-0l2yFb/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-placeholder-consumer-0l2yFb/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "159f194fc07f27edd867d2565f1bfb428ae0dd1579fa1983f547c887a7c7ea70"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-placeholder-consumer-0l2yFb/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "762c2329331ace307969672b3f31538d2a57294e2df48723764f34c5e544d876"
+      },
+      {
+        "name": "@breditor/editor",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-placeholder-consumer-0l2yFb/archives/breditor-editor-0.3.0-alpha.22.tgz",
+        "sha256": "08254c391f9dfa6320e05e14bf3486c7267f8b88da7e3c0614ec3036e4e6e68e"
+      }
+    ],
+    "probes": {
+      "probe-placeholder": {
+        "format": "breditor/placeholder-probe",
+        "formatVersion": 1,
+        "passed": true,
+        "localWasmSha256": "e99eee92eaf7b6b8f6100c01abe0d3d87509d3523d44e8489b252afd4604d5a2",
+        "sharedWasmSha256": "6145f03643bb9f25c0b794195433dbcce0a6f6ef68a74cf853ea95ca95155d82",
+        "localCases": 12,
+        "sharedCases": 18,
+        "readonlyCases": 30,
+        "exactCopies": 30,
+        "exactReopens": 30,
+        "exactFutureCheckpoints": 120,
+        "immutableLabels": 30,
+        "liveLabelCases": 30,
+        "compositionHolds": 2,
+        "reactCases": 8,
+        "reactImmutable": 8,
+        "reactRekeys": 8,
+        "pureNativeReads": 6,
+        "staleReadRefusals": 2,
+        "peerUpdates": 1,
+        "invalidOpenings": 2,
+        "earlierRefusals": 0,
+        "earlierExactRestores": 0,
+        "earlierFutureCheckpoints": 0,
+        "earlierWasmSha256": null,
+        "heldWriterLeases": 0,
+        "scope": "Actual paired native/Wasm/SDK and managed local/shared/document/general DOM owners across all grammars and both histories. Literal out-of-content prompts, immutable admission/live labels, whitespace/history/readonly/copy, exact reopen/future history, source reads, composition holds, peer updates, rejected startup and React StrictMode/rekeys. Explicit pinned earlier readers additionally prove original-family restore/history and unsupported-option refusal without changing default DOM. Storage, locks, composition and events are fixtures; no physical input/browser/layout/a11y/performance or V1 approval."
+      }
+    },
+    "productionBundles": {
+      "localModules": 46,
+      "sharedReactModules": 66,
+      "localImportsSharedOrReact": false,
+      "workspaceModules": false
+    },
+    "scope": "Fresh offline installed public types/imports, actual paired Wasm and the unchanged complete current-runtime placeholder workflow probe. All grammar/scope/history variants exercise literal out-of-content prompts, clipboard, readonly, exact persistence/future history, React options/rekeys, composition, peers and rejected startup. Registry artifacts match the producer lock; production bundles import no workspace source and local-only imports no shared/React. Earlier-reader proof remains separate. DOM/events/IDB/locks are fixtures, not native browser/input, layout/a11y/performance/license or V1 approval. Reuse explicitly excludes a fresh producer rebuild."
+  },
+  "browser": {
+    "report": {
+      "path": "target/placeholder-installed-browser.json",
+      "bytes": 7250,
+      "sha256": "a9daeefae88229d0bb7ed20b532e6050c9f57010941a6c918c9e33bc94da05b6",
+      "modifiedAtMs": 1792373369296.1353
+    },
+    "format": "breditor/placeholder-installed-browser",
+    "formatVersion": 1,
+    "passed": true,
+    "source": {
+      "commit": "5046376a122132b9b5866088685f4df69255208f",
+      "dirty": true,
+      "sha256": "ac9bdb27d2462e3e8d0498f8c919562b23a01d78a728d4c03f4c1b6710311d20",
+      "files": 4279,
+      "bytes": 37959934
+    },
+    "sourceUnchanged": true,
+    "consumer": "/private/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-placeholder-consumer-0l2yFb/consumer",
+    "browser": "151.0.7922.34",
+    "productionBundle": true,
+    "actualWasmSha256": [
+      "e99eee92eaf7b6b8f6100c01abe0d3d87509d3523d44e8489b252afd4604d5a2",
+      "6145f03643bb9f25c0b794195433dbcce0a6f6ef68a74cf853ea95ca95155d82"
+    ],
+    "inputCases": 4,
+    "historyChecks": 12,
+    "readonlyCases": 4,
+    "defaultDomCases": 2,
+    "liveLabelCases": 4,
+    "longHintClipped": true,
+    "positions": [
+      {
+        "kind": "local",
+        "heading": false,
+        "viewport": 1200,
+        "tag": "P",
+        "left": 71,
+        "top": 71,
+        "width": 994,
+        "anchorLeft": 71,
+        "anchorTop": 71,
+        "anchorWidth": 994,
+        "font": "16px",
+        "anchorFont": "16px",
+        "direction": "rtl",
+        "anchorDirection": "rtl",
+        "outsideEditable": true,
+        "literal": true,
+        "noInjectedImage": true
+      },
+      {
+        "kind": "local",
+        "heading": false,
+        "viewport": 720,
+        "tag": "P",
+        "left": 29,
+        "top": 71,
+        "width": 598,
+        "anchorLeft": 29,
+        "anchorTop": 71,
+        "anchorWidth": 598,
+        "font": "16px",
+        "anchorFont": "16px",
+        "direction": "rtl",
+        "anchorDirection": "rtl",
+        "outsideEditable": true,
+        "literal": true,
+        "noInjectedImage": true
+      },
+      {
+        "kind": "local",
+        "heading": true,
+        "viewport": 1200,
+        "tag": "H2",
+        "left": 71,
+        "top": 74.90625,
+        "width": 962,
+        "anchorLeft": 71,
+        "anchorTop": 74.90625,
+        "anchorWidth": 962,
+        "font": "24px",
+        "anchorFont": "24px",
+        "direction": "rtl",
+        "anchorDirection": "rtl",
+        "outsideEditable": true,
+        "literal": true,
+        "noInjectedImage": true
+      },
+      {
+        "kind": "local",
+        "heading": true,
+        "viewport": 720,
+        "tag": "H2",
+        "left": 29,
+        "top": 74.90625,
+        "width": 566,
+        "anchorLeft": 29,
+        "anchorTop": 74.90625,
+        "anchorWidth": 566,
+        "font": "24px",
+        "anchorFont": "24px",
+        "direction": "rtl",
+        "anchorDirection": "rtl",
+        "outsideEditable": true,
+        "literal": true,
+        "noInjectedImage": true
+      },
+      {
+        "kind": "shared",
+        "heading": false,
+        "viewport": 1200,
+        "tag": "P",
+        "left": 27,
+        "top": 64,
+        "width": 1086,
+        "anchorLeft": 27,
+        "anchorTop": 64,
+        "anchorWidth": 1086,
+        "font": "15px",
+        "anchorFont": "15px",
+        "direction": "rtl",
+        "anchorDirection": "rtl",
+        "outsideEditable": true,
+        "literal": true,
+        "noInjectedImage": true
+      },
+      {
+        "kind": "shared",
+        "heading": false,
+        "viewport": 720,
+        "tag": "P",
+        "left": 27,
+        "top": 64,
+        "width": 606,
+        "anchorLeft": 27,
+        "anchorTop": 64,
+        "anchorWidth": 606,
+        "font": "15px",
+        "anchorFont": "15px",
+        "direction": "rtl",
+        "anchorDirection": "rtl",
+        "outsideEditable": true,
+        "literal": true,
+        "noInjectedImage": true
+      },
+      {
+        "kind": "shared",
+        "heading": true,
+        "viewport": 1200,
+        "tag": "H2",
+        "left": 27,
+        "top": 67.671875,
+        "width": 1056,
+        "anchorLeft": 27,
+        "anchorTop": 67.671875,
+        "anchorWidth": 1056,
+        "font": "22.5px",
+        "anchorFont": "22.5px",
+        "direction": "rtl",
+        "anchorDirection": "rtl",
+        "outsideEditable": true,
+        "literal": true,
+        "noInjectedImage": true
+      },
+      {
+        "kind": "shared",
+        "heading": true,
+        "viewport": 720,
+        "tag": "H2",
+        "left": 27,
+        "top": 67.671875,
+        "width": 576,
+        "anchorLeft": 27,
+        "anchorTop": 67.671875,
+        "anchorWidth": 576,
+        "font": "22.5px",
+        "anchorFont": "22.5px",
+        "direction": "rtl",
+        "anchorDirection": "rtl",
+        "outsideEditable": true,
+        "literal": true,
+        "noInjectedImage": true
+      }
+    ],
+    "startupRefusals": [
+      {
+        "family": "local",
+        "failure": "RichCommandError: the rich editor request was rejected",
+        "code": "breditor_rich.document_rejected",
+        "sameNode": true,
+        "focused": true,
+        "value": "retained input",
+        "start": 1,
+        "end": 8,
+        "direction": "backward",
+        "childMutations": 0,
+        "editorMarker": false,
+        "retrySucceeded": true
+      },
+      {
+        "family": "localDocument",
+        "failure": "RichCommandError: the rich editor request was rejected",
+        "code": "breditor_rich.document_rejected",
+        "sameNode": true,
+        "focused": true,
+        "value": "retained input",
+        "start": 1,
+        "end": 8,
+        "direction": "backward",
+        "childMutations": 0,
+        "editorMarker": false,
+        "retrySucceeded": true
+      },
+      {
+        "family": "shared",
+        "failure": "contract violation: rich replica schema admission",
+        "code": null,
+        "sameNode": true,
+        "focused": true,
+        "value": "retained input",
+        "start": 1,
+        "end": 8,
+        "direction": "backward",
+        "childMutations": 0,
+        "editorMarker": false,
+        "retrySucceeded": true
+      },
+      {
+        "family": "sharedDocument",
+        "failure": "contract violation: rich replica schema admission",
+        "code": null,
+        "sameNode": true,
+        "focused": true,
+        "value": "retained input",
+        "start": 1,
+        "end": 8,
+        "direction": "backward",
+        "childMutations": 0,
+        "editorMarker": false,
+        "retrySucceeded": true
+      },
+      {
+        "family": "sharedSearch",
+        "failure": "contract violation: rich replica schema admission",
+        "code": null,
+        "sameNode": true,
+        "focused": true,
+        "value": "retained input",
+        "start": 1,
+        "end": 8,
+        "direction": "backward",
+        "childMutations": 0,
+        "editorMarker": false,
+        "retrySucceeded": true
+      },
+      {
+        "family": "sharedDocumentSearch",
+        "failure": "contract violation: rich replica schema admission",
+        "code": null,
+        "sameNode": true,
+        "focused": true,
+        "value": "retained input",
+        "start": 1,
+        "end": 8,
+        "direction": "backward",
+        "childMutations": 0,
+        "editorMarker": false,
+        "retrySucceeded": true
+      }
+    ],
+    "pageErrors": [],
+    "scope": "One headless Chromium production bundle from fresh independently installed packages, actual browser DOM/IDB/Web Locks and exact paired Wasm. Local/shared prose/heading placement/fonts/RTL/indent/line-height, responsive resize/long-hint clipping, literal outside-content hints, automated browser typing/history, readonly state, live labels/hiding with exact checkpoint/focus, disposal, unchanged default DOM and six rejected startup families retaining focused host inputs plus successful same-writer retries. Not physical keyboard/clipboard/IME, VoiceOver, cross-browser reliability, latency, historical WebKit repair or V1 release approval."
+  },
+  "developmentObservations": [
+    {
+      "record": {
+        "manifest": {
+          "path": "target/v1-candidate-runs/run-TwMrz7/result.json",
+          "bytes": 3933,
+          "sha256": "97ba6bb2baa272eee50b09e222d94f1fc86f50ef71905864d90f6df8b56fa412",
+          "modifiedAtMs": 1792373186963.09
+        },
+        "source": {
+          "commit": "5046376a122132b9b5866088685f4df69255208f",
+          "dirty": true,
+          "sha256": "d870f05bd917d85cc7a555a1a1574ef55bdd0742eb41044cb08d6b091135c663",
+          "files": 4279,
+          "bytes": 37957997
+        },
+        "status": "failed",
+        "startedAt": "2026-10-19T01:26:13.699Z",
+        "finishedAt": "2026-10-19T01:26:26.962Z",
+        "stages": [
+          {
+            "id": "installed-placeholder-workflows",
+            "status": "passed",
+            "log": {
+              "path": "target/v1-candidate-runs/run-TwMrz7/01-installed-placeholder-workflows.log",
+              "bytes": 6000,
+              "sha256": "62cf7bd663664b879d43fce1c051ef90172413d5b86409eba926ab3f49f9ccb4",
+              "modifiedAtMs": 1792373184511.565
+            }
+          },
+          {
+            "id": "installed-placeholder-browser",
+            "status": "failed",
+            "log": {
+              "path": "target/v1-candidate-runs/run-TwMrz7/02-installed-placeholder-browser.log",
+              "bytes": 573,
+              "sha256": "8f95e28a1666c66809dc5a31c76db997a3ec116bfa99324b41d2ebe61a327771",
+              "modifiedAtMs": 1792373186656.1575
+            }
+          }
+        ]
+      },
+      "observation": "The first browser checker mistakenly looked for the native code in Error.toString(). The local SDK exposes it separately as error.code. That assertion was corrected before the retained actual focus-loss reproduction."
+    },
+    {
+      "record": {
+        "manifest": {
+          "path": "target/v1-candidate-runs/run-TrpF0D/result.json",
+          "bytes": 3935,
+          "sha256": "c6bf1dbee48ea3cbd677e8dd76e36345ffff5bbfce9894fa0a8906fa53d3b277",
+          "modifiedAtMs": 1792373286946.1125
+        },
+        "source": {
+          "commit": "5046376a122132b9b5866088685f4df69255208f",
+          "dirty": true,
+          "sha256": "93c1544e7aa76023184e3c54366759e90dc0655ceb6bd2172df8e5f82d033b5b",
+          "files": 4279,
+          "bytes": 37959680
+        },
+        "status": "failed",
+        "startedAt": "2026-10-19T01:27:53.428Z",
+        "finishedAt": "2026-10-19T01:28:06.945Z",
+        "stages": [
+          {
+            "id": "installed-placeholder-workflows",
+            "status": "passed",
+            "log": {
+              "path": "target/v1-candidate-runs/run-TrpF0D/01-installed-placeholder-workflows.log",
+              "bytes": 6000,
+              "sha256": "c1e67392c5089585d85a2b372d7346a225509e5e1ba3200dec40cff4ca44f85e",
+              "modifiedAtMs": 1792373284442.7568
+            }
+          },
+          {
+            "id": "installed-placeholder-browser",
+            "status": "failed",
+            "log": {
+              "path": "target/v1-candidate-runs/run-TrpF0D/02-installed-placeholder-browser.log",
+              "bytes": 1352,
+              "sha256": "ce9c54eca4e19407ce78c6f3e41b65eb5b6df1e318768cd7da732834b88d8608",
+              "modifiedAtMs": 1792373286636.778
+            }
+          }
+        ]
+      },
+      "observation": "The repaired local and document-local cases retained focus. The expanded shared case then exposed the checker's incorrect assumption that the shared boundary uses local structured error codes. It throws the native schema-admission string. Final checks require the exact local code or exact shared string; no arbitrary failure qualifies. The observer now retains asynchronously delivered child-mutation records instead of discarding them."
+    },
+    {
+      "observation": "One follow-up launcher expected an all-script-contracts stage in the stock full plan; it exists only in this explicit selected matrix. Validation stopped before creating a run. The corrected launcher copies the recorded declared script/notice commands and includes all 18 intended checks; no source guard or required stage was removed."
+    }
+  ],
+  "notQualified": [
+    "This is one frozen 18-stage follow-up, not the complete official full profile or hosted CI. The preceding 38-stage native qualification remains separately source-bound; no new full native-suite claim is made for this five-file UI/test/readme follow-up.",
+    "The browser evidence is one production bundle in headless Chromium 151.0.7922.34. Physical input/clipboard, IME, screen readers, mobile and cross-browser qualification remain open.",
+    "The historical intermittent WebKit fault is not confirmed fixed. Fullscreen, remaining feature parity, performance/size, storage lifecycle, public deployment/isolation, complete license review, real pilot and final RC approval remain open."
+  ],
+  "readiness": {
+    "openV1Gates": 13,
+    "v1Ready": false,
+    "publicationApproved": false,
+    "pushed": false,
+    "published": false,
+    "tagged": false,
+    "deployed": false
+  }
+}

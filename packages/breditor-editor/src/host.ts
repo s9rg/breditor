@@ -5,7 +5,12 @@ export function claimHost(host:HTMLElement,signal?:AbortSignal):{assert():void;r
  if(claims.has(host)||host.hasAttribute("data-breditor-rich")||host.hasAttribute("data-breditor-shared"))throw Error("This host already has an editor or pending opening");
  const token=Symbol(),children=[...host.childNodes];claims.set(host,token);
  const release=()=>{if(claims.get(host)===token)claims.delete(host);};
- return {assert(){signal?.throwIfAborted();if(claims.get(host)!==token)throw Error("Editor opening no longer owns this host");},rollback(){if(claims.get(host)===token){host.replaceChildren(...children);delete host.dataset["breditorRich"];delete host.dataset["breditorShared"];release();}},release};
+ return {assert(){signal?.throwIfAborted();if(claims.get(host)!==token)throw Error("Editor opening no longer owns this host");},rollback(){if(claims.get(host)===token){
+  // Reattaching identical children blurs focused inputs. A pre-mount failure must
+  // leave them connected, not attempt to refocus an element the user may have left.
+  const unchanged=host.childNodes.length===children.length&&children.every((child,index)=>host.childNodes[index]===child);
+  if(!unchanged)host.replaceChildren(...children);delete host.dataset["breditorRich"];delete host.dataset["breditorShared"];release();
+ }},release};
 }
 /** Cancel one consumer's wait without cancelling initialization shared by other consumers. */
 export function awaitInitialization<T>(promise:Promise<T>,signal?:AbortSignal):Promise<T>{
