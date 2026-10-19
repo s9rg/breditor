@@ -60,6 +60,8 @@ export {insertSharedImageFiles,type SharedAssetStore} from "./insert_image_files
 export {SharedPersistentSession,type SharedSessionOptions,type SharedDocumentSessionOptions,type SharedSearchSessionOptions,type SharedSaveState} from "./persistence/shared_session.js";
 export {encodeSharedSessionBackup,decodeSharedSessionBackup,MAX_SHARED_SESSION_BACKUP_BYTES} from "./backups/session.js";
 export type {SharedBackupIdentity,SharedSessionBackup,SharedBackupRecovery} from "./backups/types.js";
+export {MAX_SHARED_RETAINED_STORE_BACKUP_BYTES} from "./backups/retained_store.js";
+export type {SharedRetainedStoreKind,SharedRetainedStoreBackup,SharedRetainedStoreBackupOptions,SharedRetainedStoreRecovery,SharedSuggestionQueueBackupOptions,SharedSuggestionRevisionsBackupOptions,SharedDocumentVersionsBackupOptions} from "./backups/retained_store_types.js";
 export type {SharedSessionBackupOptions,SharedDocumentBackupOptions,SharedSearchBackupOptions} from "./backups/session_options.js";
 export {encodeSharedPairedSessionBackup,decodeSharedPairedSessionBackup,MAX_SHARED_PAIRED_BACKUP_BYTES,type SharedPairedSessionBackup} from "./backups/paired.js";
 export type {SharedReviewBackupOptions,SharedReviewedReviewBackupOptions,SharedSearchReviewBackupOptions} from "./backups/review_options.js";

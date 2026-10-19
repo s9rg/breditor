@@ -44,6 +44,16 @@ or cross-device authority. Fresh installed writing-tools acceptance repeats thei
 unchanged assertions from the packaged public API, with fixture-only cache controls
 resolved inside the installed archive. Pinned earlier readers are separate evidence.
 
+Both profiles require `retained-store-backups`, which adds 90 actual native-backed
+proposal/revision/catalog restores and reopens across 30 policy configurations,
+exact point-in-time exports and future document/comment histories. It checks
+occupied/unknown destinations, a noncooperative winner, transaction abort/retry,
+failed-close export, missing source, cancellation and source replacement. The
+fresh installed session-backup consumer repeats the complete unchanged public
+probe in addition to its prior 20 document/paired cases and startup upgrade fences.
+Storage, lock scheduling and server metadata are explicit fixtures; room-wide
+transactions, asset-byte closure and cross-device/server authority remain separate.
+
 The installed asset-browser stage now also verifies managed owner inventory of
 two invisible Redo images, exclusion of unrelated store files, immutable returned
 data, copied/foreign refusal and fresh native reads after a real reload. Persisted

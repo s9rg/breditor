@@ -117,6 +117,12 @@ Session archives neither back them up nor acknowledge their pending work. A
 complete-room backup needs a coordinated host-level contract covering those
 stores, authority and asset references.
 
+[Dependent-store archives](RETAINED_STORE_BACKUPS.md) now add explicit non-overwriting
+restore for proposal queues, revision outboxes and version catalogs after their
+matching native source is restored. They retain original pending/stopped intent,
+cached/final metadata and native proof checks without starting synchronization.
+The individual database insertions are not one atomic room-wide transaction.
+
 The separate [raster asset archive](RICH_ASSET_BACKUPS.md) now preserves a whole
 asset store's bytes and upload state with verified empty-destination recovery.
 It does not automatically make document/asset/outbox captures atomic or room-scoped.

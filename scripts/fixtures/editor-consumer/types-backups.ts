@@ -22,3 +22,16 @@ async function contracts(){
  decodeSharedSessionBackup(backupJson,{...identity,writer:101});
 }
 void contracts;
+import {SharedSuggestionQueue,SharedSuggestionRevisions,SharedDocumentVersions,type SharedSuggestionQueueBackupOptions,type SharedSuggestionRevisionsBackupOptions,type SharedDocumentVersionsBackupOptions,type SharedRetainedStoreBackup} from "@breditor/collaboration";
+declare const queueRecovery:SharedSuggestionQueueBackupOptions<"document-v1">,revisionRecovery:SharedSuggestionRevisionsBackupOptions<"document-v1">,versionRecovery:SharedDocumentVersionsBackupOptions<"document-v1">;
+async function retainedContracts(){const q=await SharedSuggestionQueue.restoreBackup(queueRecovery),r=await SharedSuggestionRevisions.restoreBackup(revisionRecovery),v=await SharedDocumentVersions.restoreBackup(versionRecovery);const file:string=await q.exportBackup({signal:new AbortController().signal});await r.exportBackup();await v.exportBackup();q.core.selectDocument();void file;
+ // @ts-expect-error Retained intent recovery does not infer cross-device writer authority.
+ SharedSuggestionQueue.restoreBackup({...queueRecovery,writerRecovery:undefined});
+ // @ts-expect-error Restoring offline decisions cannot automatically send them to the server.
+ SharedSuggestionRevisions.restoreBackup({...revisionRecovery,autoStart:true});
+ // @ts-expect-error Restoring cached state does not reconnect with archived grants.
+ SharedDocumentVersions.restoreBackup({...versionRecovery,autoConnect:true});
+}
+declare const retainedMetadata:SharedRetainedStoreBackup;
+// @ts-expect-error Dependent-state archives are a distinct closed family, not document history.
+const documentArchive:"breditor/shared-session-backup"=retainedMetadata.format;void documentArchive;void retainedContracts;

@@ -5,6 +5,7 @@ import type {SharedSelectionPolicy} from "../types.js";
 import type {SharedRichEditor} from "../core.js";
 import type {SharedDocumentVersionInfo} from "../version_types.js";
 import type {SharedDocumentVersionsOptions,SharedDocumentVersionsState,SharedDocumentVersionStatus,SharedVersionCatalogRecord} from "./types.js";
+import type {SharedDocumentVersionsBackupOptions,SharedRetainedStoreBackupOptions} from "../backups/retained_store_types.js";
 const attached=new WeakSet<object>();
 /** Opt-in shared immutable versions: independent cache/intent durability, one borrowed native owner. */
 export class SharedDocumentVersions<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
@@ -13,6 +14,11 @@ export class SharedDocumentVersions<P extends SharedSelectionPolicy=SharedSelect
  static async open<Q extends SharedSelectionPolicy>(options:SharedDocumentVersionsOptions<Q>):Promise<SharedDocumentVersions<Q>>{
   const core=options.storage.core;if(attached.has(core))throw new SharedRelayError("version_catalog_already_attached");attached.add(core);let store:VersionCatalogStore<Q>|undefined;
   try{store=await VersionCatalogStore.open(options);return new SharedDocumentVersions(store);}catch(error){if(store)await store.discardAndClose();attached.delete(core);throw error;}
+ }
+ /** Empty-key recovery only. The host supplies current authority; no connection starts here. */
+ static async restoreBackup<Q extends SharedSelectionPolicy>(options:SharedDocumentVersionsBackupOptions<Q>):Promise<SharedDocumentVersions<Q>>{
+  const core=options.storage.core;if(attached.has(core))throw new SharedRelayError("version_catalog_already_attached");attached.add(core);let store:VersionCatalogStore<Q>|undefined;
+  try{store=await VersionCatalogStore.restoreBackup(options);return new SharedDocumentVersions(store);}catch(error){if(store)await store.discardAndClose();attached.delete(core);throw error;}
  }
  #writable():void{if(this.#closed)throw new SharedRelayError("version_cache_closed");if(this.#retiring)throw new SharedRelayError("version_cache_closing");}
  state():SharedDocumentVersionsState{return this.#sync.state();}
@@ -33,6 +39,7 @@ export class SharedDocumentVersions<P extends SharedSelectionPolicy=SharedSelect
  flushShared():Promise<void>{this.#writable();return this.#sync.flushShared();}
  async retry():Promise<void>{await this.#store.retry();if(!this.#retiring)this.#sync.recoverLocal();}
  exportRecovery():SharedVersionCatalogRecord{return this.#store.exportRecovery();}
+ exportBackup(options:SharedRetainedStoreBackupOptions={}):Promise<string>{return this.#store.exportBackup(options);}
  /** Read-only recovery captures must use this catalog's exact still-live borrowed source. */
  checkSource(core:SharedRichEditor<P>):void{this.#writable();this.#store.checkSource(core);}
  async stopRetryingVersion(id:string):Promise<void>{this.#writable();this.#store.stopRetrying(id);await this.#store.flush();}

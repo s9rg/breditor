@@ -179,6 +179,12 @@ record families plus the 16 MiB native journal without truncation. It is not a
 performance promise. Missing bytes/provider authority, omitted stores, SDK remote
 queues, extension assets and server state remain outside this capture.
 
+The selected proposal/revision/catalog records now have separate
+[dependent-store backup and restore APIs](RETAINED_STORE_BACKUPS.md). Restore the
+matching native source first, then add each exact record only to an absent key.
+This makes the explicitly selected records restorable; it does not coordinate
+all stores, resolve their asset bytes or authenticate restored server metadata.
+
 Version catalog startup now pins its original owner and immutable configuration,
 checking continuity around awaited lease/database/source-save steps. A replaced
 borrowed `storage.core` refuses with `version_source_replaced`; it cannot silently

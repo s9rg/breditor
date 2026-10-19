@@ -43,6 +43,29 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [retained-store backup checkpoint](qualification/2026-10-19-retained-store-backups.json)
+passes one corrected frozen 26-check selection. Proposal queues, revision outboxes
+and version catalogs now export exact independent archives and restore them only
+into absent destination keys after native admission checks and source-journal saves.
+Queued/stopped intent, cached receipts/conflicts and remote Pending records stay
+intact. Restore never automatically connects or finalizes a decision. Existing
+formats, ordinary startup defaults and package versions remain unchanged.
+
+Actual Wasm and fresh installed public packages cover 90 restores and 90 reopens across
+30 configurations, 120 exact future document/comment histories, failed-save
+export/retry and adversarial insertion/cancellation/source changes. All 558 script
+tests and 382 editor tests pass; three existing script checks remain skipped.
+A receiver-dependence regression introduced during refactoring has a retained
+valid native failure witness and a passing same-input check after repair. The
+permanent probes deliberately call the affected factories unbound. The previous
+native/build inputs and officially rebuilt Wasm hashes are unchanged; the earlier
+3,243 Rust tests/doctests are prior evidence, not newly run here. Individual store
+commits are not a whole-room restore transaction. Asset/provider/server
+coordination, the approved cross-generation Undo/offline bridge and all 13 V1
+gates remain open. No publication or V1 promotion is claimed.
+
+### Previous selected source capture checkpoint
+
 The [selected-source recovery checkpoint](qualification/2026-10-19-selected-asset-source-capture.json)
 passes one frozen 37-check selection. Native saved-version, proposal and revision
 reads inventory exact snapshot or conservative source-and-intent image bindings,

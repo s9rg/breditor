@@ -45,6 +45,20 @@ they do not implement rotation. See [the shared backup contract](../../docs/SHAR
 for exact families, limits and failed-close recovery. The default package has a
 different backup format; managed editor startup is not silently redirected.
 
+## Dependent offline backups
+
+The proposal queue, revision outbox and public version catalog now also expose
+`exportBackup({signal?})` and static `restoreBackup(options)`. Restore first requires
+the matching native source and explicit `writerRecovery: 'host-reacquired'`, then
+inserts the exact dependent record only if its destination key is absent. It
+preserves queued/stopped intent and retained receipts/conflicts without connecting
+or finalizing a decision. Version/revision restore rejects automatic connection/
+start; the host reconciles authority and server state before explicitly connecting.
+Capture/close revisions before their borrowed queue/session. See the
+[dependent-store backup contract](../../docs/RETAINED_STORE_BACKUPS.md) for exact
+policies, failure recovery and bounds. Individual store commits do not constitute
+a room-wide restore transaction.
+
 ## Retained image references
 
 `core.supportsRetainedAssetReferences()` requires the complete optional native
