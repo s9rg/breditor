@@ -102,6 +102,9 @@ activation barrier or grant access to a browser participant. Keep the private
 handle unserved while coordinating an inactive restore. Actual deployment
 fencing, client and historic-copy reconciliation, complete current-provider
 reference closure and a final atomic activation transition remain required.
+The separate [server image dependency check](SERVER_ASSET_RECOVERY.md) can join
+this genuine proof with complete retained server references and actual current
+raster bytes; it does not establish the other clients' or providers' completeness.
 The approved cross-generation Undo/Redo and outstanding offline-edit bridge also
 remains work.
 

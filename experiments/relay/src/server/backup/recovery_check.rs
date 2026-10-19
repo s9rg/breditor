@@ -45,7 +45,7 @@ pub enum ServerRecoveryCoverage {
 }
 
 /// Native admission replays/reads actual owners. Expected digests alone never create a proof.
-fn check_selected(
+pub(super) fn check_selected(
     room: &mut Room,
     assets: &mut AssetStore,
     owner: &str,

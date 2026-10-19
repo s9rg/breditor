@@ -9,6 +9,7 @@ mod publish;
 mod read;
 mod recovery_inventory;
 mod replay;
+mod retained_asset_references;
 mod revisions;
 #[cfg(test)]
 mod tests;

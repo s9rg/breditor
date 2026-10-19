@@ -18,8 +18,12 @@ use axum::{
     routing::get,
 };
 pub use backup::{
-    ServerBackupHandle, ServerRecoveryContinuationCoverage, ServerRecoveryContinuationIdentity,
-    ServerRecoveryCoverage, ServerRecoveryState, ServerRecoveryStateIdentity,
+    ContentAddressedServerAssets, MAX_SERVER_ASSET_AVAILABILITY_BYTES,
+    ServerAssetAvailabilityCoverage, ServerAssetAvailabilityMissing, ServerAssetAvailabilityRead,
+    ServerAssetRecoveryState, ServerAssetResolution, ServerBackupHandle,
+    ServerRecoveryAssetCoverage, ServerRecoveryAssetProvider, ServerRecoveryContinuationCoverage,
+    ServerRecoveryContinuationIdentity, ServerRecoveryCoverage, ServerRecoveryState,
+    ServerRecoveryStateIdentity, VerifiedServerAssetAvailability, VerifiedServerRecoveryAssets,
     VerifiedServerRecoveryContinuation, VerifiedServerRecoveryState, router_with_server_backups,
 };
 use std::sync::{Arc, Mutex};

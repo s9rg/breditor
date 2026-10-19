@@ -7,12 +7,13 @@ use breditor_collab_relay::{
     ServerRoomBackup, ServerRoomBackupIdentity, ServerRoomRecovery,
     assets::AssetStore,
     server::{
-        Authentication, ServerRecoveryContinuationCoverage, ServerRecoveryContinuationIdentity,
-        ServerRecoveryCoverage, router_with_server_backups,
+        Authentication, ContentAddressedServerAssets, ServerRecoveryAssetCoverage,
+        ServerRecoveryAssetProvider, ServerRecoveryContinuationCoverage,
+        ServerRecoveryContinuationIdentity, ServerRecoveryCoverage, router_with_server_backups,
     },
 };
 use serde_json::{Value, json};
-use std::path::Path;
+use std::{path::Path, sync::Arc};
 
 struct NativeCapture {
     inventory_json: String,
@@ -120,6 +121,17 @@ async fn reopen_operation(
         return Err("continued native identity changed".into());
     }
     proof.check_live(&handle, "owner", &token).await?;
+    let provider: Arc<dyn ServerRecoveryAssetProvider> = Arc::new(ContentAddressedServerAssets);
+    let ServerRecoveryAssetCoverage::Verified(assets) = handle
+        .verify_recovery_asset_availability("owner", &token, Arc::new(proof), provider.clone())
+        .await?
+    else {
+        return Err("current server dependency bytes not verified".into());
+    };
+    if assets.identity() != selected || assets.metadata().state.current != selected.current {
+        return Err("current server asset identity changed".into());
+    }
+    assets.check_live(&handle, "owner", &token, provider).await?;
     Ok(token)
 }
 async fn capture_and_verify(
@@ -229,6 +241,6 @@ pub async fn generate(parent: &Path, spec: source::Spec) -> Result<Value> {
     storage::write_new(&root.join("server.backup"), &server_bytes)?;
     storage::write_new(&root.join("fixture.json"), file.as_bytes())?;
     Ok(
-        json!({"path":root.join("fixture.json"),"nativeOwnerAuthenticated":true,"nativeRestoredRegistrationsVerified":true,"nativeSelectedServerStateVerified":true,"nativeOperationalReopensVerified":true,"nativeContinuedServerStateVerified":true,"rawCredentialsExported":false}),
+        json!({"path":root.join("fixture.json"),"nativeOwnerAuthenticated":true,"nativeRestoredRegistrationsVerified":true,"nativeSelectedServerStateVerified":true,"nativeOperationalReopensVerified":true,"nativeContinuedServerStateVerified":true,"nativeServerRecoveryAssetsVerified":true,"rawCredentialsExported":false}),
     )
 }

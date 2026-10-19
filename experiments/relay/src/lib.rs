@@ -49,6 +49,11 @@ pub use room::{
     RoomParticipantInventoryMetadata, VerifiedRecoveryRegistrations,
 };
 pub use room::{
+    MAX_SERVER_ASSET_REFERENCE_BYTES, MAX_SERVER_ASSET_REFERENCE_PAIRS,
+    ServerAssetReferenceOutcome, ServerAssetReferencePending, ServerAssetReferenceSource,
+    ServerRetainedAssetReferences,
+};
+pub use room::{
     MAX_SERVER_ROOM_BACKUP_BYTES, OperationalServerRoom, RecoveredServerRoom, ServerRoomBackup,
     ServerRoomBackupIdentity, ServerRoomBackupInfo, ServerRoomRecovery, ServerRoomRecoveryProgress,
 };

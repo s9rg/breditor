@@ -2,8 +2,15 @@
 use super::{Authentication, Host, create_host, routes};
 use crate::{Error, Result, Room, ServerRoomBackup, assets::AssetStore};
 use axum::Router;
+mod asset_availability;
 mod recovery_check;
 mod recovery_inventory;
+pub use asset_availability::{
+    ContentAddressedServerAssets, MAX_SERVER_ASSET_AVAILABILITY_BYTES,
+    ServerAssetAvailabilityCoverage, ServerAssetAvailabilityMissing, ServerAssetAvailabilityRead,
+    ServerAssetRecoveryState, ServerAssetResolution, ServerRecoveryAssetCoverage,
+    ServerRecoveryAssetProvider, VerifiedServerAssetAvailability, VerifiedServerRecoveryAssets,
+};
 pub use recovery_check::{
     ServerRecoveryContinuationCoverage, ServerRecoveryContinuationIdentity, ServerRecoveryCoverage,
     VerifiedServerRecoveryContinuation, VerifiedServerRecoveryState,

@@ -66,21 +66,53 @@ pub fn raster(format: ImageFormat) -> Result<Vec<u8>> {
     Ok(bytes.into_inner())
 }
 pub fn source(directory: &Directory) -> Result<(SharedRichProfile, Room, AssetStore)> {
-    let configuration=json!({"format":"breditor/shared-rich-profile","formatVersion":3,"schema":{"name":"example/public-server-recovery","version":1},"extensions":[]}).to_string();
-    let profile = SharedRichProfile::from_standard_configuration_json_v3(&configuration)?;
+    source_for_profile(directory, 3, true, true)
+}
+pub fn source_for_profile(
+    directory: &Directory,
+    language: u32,
+    standard: bool,
+    atomic: bool,
+) -> Result<(SharedRichProfile, Room, AssetStore)> {
+    let configuration=json!({"format":"breditor/shared-rich-profile","formatVersion":language,"schema":{"name":"example/public-server-recovery","version":1},"extensions":[]}).to_string();
+    let profile = match (language, standard) {
+        (1, false) => SharedRichProfile::from_configuration_json(&configuration)?,
+        (2, false) => SharedRichProfile::from_configuration_json_v2(&configuration)?,
+        (2, true) => SharedRichProfile::from_standard_configuration_json_v2(&configuration)?,
+        (3, false) => SharedRichProfile::from_configuration_json_v3(&configuration)?,
+        (3, true) => SharedRichProfile::from_standard_configuration_json_v3(&configuration)?,
+        _ => return Err("explicit fixture native profile".into()),
+    };
     let mut tree: Value = serde_json::from_str(include_str!(
         "../../../../crates/breditor-core/tests/fixtures/rich-local-root.json"
     ))?;
     tree["children"][0]["children"][0]["children"][0]["children"][1]["properties"]["breditor/asset-id"] =
         asset_id(&raster(ImageFormat::Png)?).into();
     let document=json!({"format":"breditor/document","formatVersion":2,"schema":{"name":"example/public-server-recovery","version":1},"schemaFingerprint":profile.schema().fingerprint().to_string(),"root":tree}).to_string();
-    let mut room = Room::create_atomic_transport_v2(
-        &directory.0.join("source.log"),
-        &configuration,
-        &document,
-        "owner",
-        AtomicTransportProfile::LayoutV3 { standard_inline_v1: true },
-    )?;
+    let path = directory.0.join("source.log");
+    let mut room = if atomic {
+        Room::create_atomic_transport_v2(
+            &path,
+            &configuration,
+            &document,
+            "owner",
+            match language {
+                1 => AtomicTransportProfile::Original,
+                2 => AtomicTransportProfile::StructuralV2 { standard_inline_v1: standard },
+                _ => AtomicTransportProfile::LayoutV3 { standard_inline_v1: standard },
+            },
+        )?
+    } else {
+        match (language, standard) {
+            (1, false) => Room::create(&path, &configuration, &document, "owner")?,
+            (2, false) => Room::create_structural_v2(&path, &configuration, &document, "owner")?,
+            (2, true) => {
+                Room::create_standard_structural_v2(&path, &configuration, &document, "owner")?
+            }
+            (3, false) => Room::create_layout_v3(&path, &configuration, &document, "owner")?,
+            _ => Room::create_standard_layout_v3(&path, &configuration, &document, "owner")?,
+        }
+    };
     room.grant("owner", "reader", Some(Role::Reader))?;
     let assets = AssetStore::open(&directory.0.join("source-assets"), room.asset_binding())?;
     Ok((profile, room, assets))

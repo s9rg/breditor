@@ -1,5 +1,8 @@
 //! Public joined server recovery and real private-host capture, not a substitute merge model.
 #[cfg(feature = "server")]
+#[path = "support/server_asset_availability.rs"]
+mod asset_availability;
+#[cfg(feature = "server")]
 #[path = "support/server_recovery_check.rs"]
 mod checked;
 #[cfg(feature = "server")]

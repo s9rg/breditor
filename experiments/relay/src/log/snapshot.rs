@@ -10,6 +10,18 @@ pub(crate) struct LogSnapshot {
 }
 
 impl LogSnapshot {
+    /// Decode the exact retained, complete typed records; never scan arbitrary document strings.
+    pub fn records(&self) -> Result<Vec<super::Record>> {
+        let decoded = decoder::read_records(&mut self.bytes.as_slice(), self.bytes.len() as u64)?;
+        if decoded.recovery.truncated_bytes != 0
+            || decoded.records.len() as u64 != self.records
+            || decoded.previous != self.previous
+        {
+            return Err(Error::Contract("retained log record cut differs"));
+        }
+        Ok(decoded.records)
+    }
+
     pub fn cut(&self) -> (u64, [u8; 32]) {
         (self.records, self.previous)
     }

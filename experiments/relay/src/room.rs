@@ -10,6 +10,7 @@ use breditor_collab_feasibility::rich_replica::{
     RichReplica, SharedRichProfile, WriterGroupPreparation,
 };
 use std::{collections::BTreeMap, path::Path};
+mod asset_references;
 mod atomic_transport_v2;
 mod backup;
 mod document_presence;
@@ -21,6 +22,11 @@ mod review;
 mod source_boundaries;
 mod suggestions;
 mod versions;
+pub use asset_references::{
+    MAX_SERVER_ASSET_REFERENCE_BYTES, MAX_SERVER_ASSET_REFERENCE_PAIRS,
+    ServerAssetReferenceOutcome, ServerAssetReferencePending, ServerAssetReferenceSource,
+    ServerRetainedAssetReferences,
+};
 pub use atomic_transport_v2::AtomicTransportProfile;
 pub use backup::{
     MAX_ROOM_BACKUP_BYTES, RoomBackup, RoomBackupIdentity, RoomBackupInfo, RoomRecoveryPolicy,

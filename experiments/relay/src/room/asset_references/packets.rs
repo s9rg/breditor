@@ -1,0 +1,141 @@
+//! Walk typed complete log events, retaining inert Prepare dependencies without publishing them.
+use super::{
+    MAX_SERVER_ASSET_REFERENCE_PAIRS, ServerAssetReferencePending, ServerAssetReferenceSource,
+};
+use crate::{
+    Error, Result, Room,
+    log::{Event, Record},
+};
+use breditor_collab_feasibility::rich_replica::{
+    PacketAssetIdentity, PacketAssetOutcome, PacketAssetReferences, VersionAssetReference,
+};
+use std::collections::{BTreeMap, BTreeSet};
+
+#[derive(Default)]
+pub(super) struct References {
+    pub pairs: BTreeSet<VersionAssetReference>,
+    pub sources: Vec<ServerAssetReferenceSource>,
+    pub pending: Vec<ServerAssetReferencePending>,
+    pending_ends: usize,
+}
+impl References {
+    pub fn add(&mut self, pairs: impl IntoIterator<Item = VersionAssetReference>) -> Result<()> {
+        for pair in pairs {
+            self.pairs.insert(pair);
+            if self.pairs.len() > MAX_SERVER_ASSET_REFERENCE_PAIRS {
+                return Err(Error::Contract("server asset reference complete pair budget"));
+            }
+        }
+        Ok(())
+    }
+    fn packet(
+        &mut self,
+        sequence: u64,
+        read: PacketAssetReferences,
+    ) -> Result<PacketAssetIdentity> {
+        let source =
+            ServerAssetReferenceSource { sequence: sequence.to_string(), packet: read.packet };
+        match read.outcome {
+            PacketAssetOutcome::Ready { references } => self.add(references)?,
+            PacketAssetOutcome::Pending { missing } => {
+                self.pending_ends = self
+                    .pending_ends
+                    .checked_add(missing.len())
+                    .ok_or(Error::Contract("server asset pending source budget"))?;
+                if self.pending_ends > MAX_SERVER_ASSET_REFERENCE_PAIRS {
+                    return Err(Error::Contract("server asset pending source budget"));
+                }
+                self.pending.push(ServerAssetReferencePending { source: source.clone(), missing });
+            }
+        }
+        let identity = source.packet.clone();
+        self.sources.push(source);
+        Ok(identity)
+    }
+}
+pub(super) fn collect(room: &Room, records: Vec<Record>, output: &mut References) -> Result<()> {
+    let observed = room.replica.observe()?;
+    let mut proposals = BTreeMap::new();
+    let mut prepared: Option<(u64, String, String, String)> = None;
+    for record in records {
+        let previous = prepared.take();
+        match record.event {
+            Event::PublishDocumentVersionV1 { packet, .. } => {
+                output.packet(
+                    record.sequence,
+                    room.replica.document_version_asset_references_guarded(&observed, &packet)?,
+                )?;
+            }
+            Event::PublishDocumentSuggestionV1 { packet, .. } => {
+                let PacketAssetIdentity::Suggestion { id } = output.packet(
+                    record.sequence,
+                    room.replica
+                        .document_suggestion_asset_references_guarded(&observed, &packet)?,
+                )?
+                else {
+                    return Err(Error::Contract("server asset proposal identity differs"));
+                };
+                if proposals.insert(id, packet).is_some() {
+                    return Err(Error::Contract("server asset duplicate proposal record"));
+                }
+            }
+            Event::PrepareDocumentSuggestionRevisionV1 { request, .. } => {
+                let parent = proposals
+                    .get(&request.previous_suggestion_id)
+                    .ok_or(Error::Contract("server asset revision predecessor absent"))?;
+                let PacketAssetIdentity::SuggestionRevision { id, suggestion_id, .. } = output
+                    .packet(
+                        record.sequence,
+                        room.replica.document_suggestion_revision_asset_references_guarded(
+                            &observed,
+                            parent,
+                            &request.revision_packet,
+                        )?,
+                    )?
+                else {
+                    return Err(Error::Contract("server asset revision identity differs"));
+                };
+                let child = room
+                    .replica
+                    .document_suggestion_revision_packet(parent, &request.revision_packet)?;
+                prepared = Some((record.sequence, id, suggestion_id, child));
+            }
+            Event::CommitDocumentSuggestionRevisionV1 { prepared_at, revision_id } => {
+                let (at, id, child_id, child) = previous
+                    .ok_or(Error::Contract("server asset revision commit has no preparation"))?;
+                if prepared_at != at.to_string()
+                    || at.checked_add(1) != Some(record.sequence)
+                    || revision_id != id
+                    || proposals.insert(child_id, child).is_some()
+                {
+                    return Err(Error::Contract("server asset revision commit differs"));
+                }
+            }
+            _ => {}
+        }
+    }
+    room.replica.check(&observed)?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use breditor_collab_feasibility::rich_replica::WriterDependency;
+    #[test]
+    fn complete_pending_source_budget_rejects_without_truncating_missing_ends() {
+        let mut output = References::default();
+        let read = || PacketAssetReferences {
+            packet: PacketAssetIdentity::Suggestion { id: format!("sha256:{}", "a".repeat(64)) },
+            outcome: PacketAssetOutcome::Pending {
+                missing: vec![WriterDependency { writer: "2".into(), counter: "1".into() }; 1001],
+            },
+        };
+        for at in 0..99 {
+            output.packet(at, read()).expect("within complete pending budget");
+        }
+        assert!(output.packet(99, read()).is_err());
+        assert_eq!(output.pending.len(), 99);
+        assert_eq!(output.sources.len(), 99);
+    }
+}
