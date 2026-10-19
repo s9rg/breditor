@@ -9,6 +9,7 @@ mod admission;
 mod capture;
 mod files;
 mod format;
+mod operation;
 mod restore_begin;
 mod restore_finish;
 mod restore_log;
@@ -18,6 +19,7 @@ mod restore_scan;
 mod tests;
 mod types;
 pub use format::MAX_SERVER_ROOM_BACKUP_BYTES;
+pub use operation::OperationalServerRoom;
 pub use types::{ServerRoomBackupIdentity, ServerRoomBackupInfo, ServerRoomRecoveryProgress};
 
 /// Complete original server log/raster archive. Private payloads cannot be edited after admission.

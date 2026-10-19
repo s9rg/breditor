@@ -43,6 +43,26 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [operational server recovery](OPERATIONAL_SERVER_RECOVERY.md) path now
+persists storage handoff before returning native components for service mutation.
+Operational reopen admits later native log appends and complete rasters while
+retaining the exact selected log prefix and every original raster. The original
+exact recovery path still refuses changed state. Native workflows preserve
+offline work, a saved Redo branch and peer edits across two operational reopens;
+a real HTTP upload survives stop/restart with fresh authentication.
+
+The [operational qualification](qualification/2026-10-19-operational-server-recovery.json)
+passes 13 selected stages: 181 relay tests/doctests, 627 script tests, ten fresh
+native fixture families and fresh offline installed consumers with both official
+Wasm producers rebuilt. Three existing opt-in script checks remain skipped.
+The Wasm hashes are unchanged; root/shared native suites are not fresh runs here.
+
+This is server storage provenance, not authenticated whole-room activation.
+Browser owner transfer, complete provider/client closure and the approved
+cross-generation history bridge remain work; all 13 release gates remain open.
+
+### Previous selected server verification checkpoint
+
 The private native host now has a
 [combined selected server check](SELECTED_SERVER_RECOVERY_STATE.md): current owner
 authentication, protected original registrations and the exact native server

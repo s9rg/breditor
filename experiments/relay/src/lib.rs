@@ -49,8 +49,8 @@ pub use room::{
     RoomParticipantInventoryMetadata, VerifiedRecoveryRegistrations,
 };
 pub use room::{
-    MAX_SERVER_ROOM_BACKUP_BYTES, RecoveredServerRoom, ServerRoomBackup, ServerRoomBackupIdentity,
-    ServerRoomBackupInfo, ServerRoomRecovery, ServerRoomRecoveryProgress,
+    MAX_SERVER_ROOM_BACKUP_BYTES, OperationalServerRoom, RecoveredServerRoom, ServerRoomBackup,
+    ServerRoomBackupIdentity, ServerRoomBackupInfo, ServerRoomRecovery, ServerRoomRecoveryProgress,
 };
 
 /// Explicit service rejection. An I/O failure may have reached storage without an acknowledgement;

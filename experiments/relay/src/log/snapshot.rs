@@ -32,6 +32,25 @@ impl LogSnapshot {
 }
 
 impl Log {
+    /// A byte-identical replacement inode is not this owner's exclusive native log.
+    pub(crate) fn guard_path(&self, path: &std::path::Path) -> Result<()> {
+        let actual = std::fs::symlink_metadata(path)?;
+        if !actual.is_file() {
+            return Err(Error::Contract("native log path type"));
+        }
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::MetadataExt;
+            let held = self.file.metadata()?;
+            if actual.dev() != held.dev() || actual.ino() != held.ino() {
+                return Err(Error::Contract("native log owner path differs"));
+            }
+        }
+        #[cfg(not(unix))]
+        let _ = self.file.metadata()?;
+        Ok(())
+    }
+
     pub fn snapshot_cut(&self) -> Result<(u64, [u8; 32])> {
         self.ready()?;
         Ok((self.next, self.previous))

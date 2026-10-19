@@ -45,6 +45,11 @@ combines a later operation into the same transaction. An activation controller
 must establish its own atomic native barrier and deployment fencing rather than
 persisting a successful Boolean and treating it as current authority.
 
+The [operational storage handoff](OPERATIONAL_SERVER_RECOVERY.md) now provides
+durable native storage provenance for later server edits and reopen. It does not
+extend an earlier exact-cut authentication check over those edits or provide the
+remaining global activation barrier.
+
 ## Remaining activation requirements
 
 The checked raster store contains exactly the selected original server files.

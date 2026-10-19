@@ -11,6 +11,8 @@ use std::{collections::BTreeMap, fs, io::Cursor, path::PathBuf};
 mod admission;
 mod filesystem;
 mod interruptions;
+mod operational;
+mod operational_faults;
 mod roundtrip;
 type TestResult<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 const POLICY: RoomRecoveryPolicy = RoomRecoveryPolicy::HostReacquired;

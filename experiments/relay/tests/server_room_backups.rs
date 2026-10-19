@@ -5,6 +5,11 @@ mod checked;
 #[cfg(feature = "server")]
 #[path = "support/server_recovery_live.rs"]
 mod live;
+#[path = "support/server_operation.rs"]
+mod operational;
+#[cfg(feature = "server")]
+#[path = "support/server_operation_live.rs"]
+mod operational_live;
 #[path = "support/server_recovery.rs"]
 mod support;
 use breditor_collab_relay::{

@@ -1,9 +1,10 @@
 //! Actual private Host capture, original native restore and protected registration verification.
 use super::{Result, clients, source, storage};
 use breditor_collab_relay::{
-    RecoveryDocumentCredential, RecoveryRegistrationCoverage, RecoveryRegistrationCredentials,
-    RecoveryReviewCredential, Room, RoomParticipantInventory, RoomParticipantInventoryIdentity,
-    RoomRecoveryPolicy, ServerRoomBackup, ServerRoomRecovery,
+    OperationalServerRoom, RecoveryDocumentCredential, RecoveryRegistrationCoverage,
+    RecoveryRegistrationCredentials, RecoveryReviewCredential, Role, Room,
+    RoomParticipantInventory, RoomParticipantInventoryIdentity, RoomRecoveryPolicy,
+    ServerRoomBackup, ServerRoomBackupIdentity, ServerRoomRecovery,
     assets::AssetStore,
     server::{Authentication, ServerRecoveryCoverage, router_with_server_backups},
 };
@@ -43,6 +44,39 @@ fn protected_copy(input: &RecoveryRegistrationCredentials) -> RecoveryRegistrati
             .collect(),
     }
 }
+fn reopen_operation(
+    directory: &Path,
+    backup: &ServerRoomBackup,
+    expected: &ServerRoomBackupIdentity,
+) -> Result {
+    let destination = directory.join("restored");
+    let operation = OperationalServerRoom::resume(
+        &destination,
+        backup,
+        expected,
+        RoomRecoveryPolicy::HostReacquired,
+    )?;
+    let (mut authority, mut assets) = operation.into_parts();
+    authority.grant("owner", "after.operation", Some(Role::Reader))?;
+    let before = ServerRoomBackup::capture(&mut authority, &mut assets)?.to_bytes()?;
+    drop(authority);
+    drop(assets);
+    let operation = OperationalServerRoom::resume(
+        &destination,
+        backup,
+        expected,
+        RoomRecoveryPolicy::HostReacquired,
+    )?;
+    if operation.origin() != *expected {
+        return Err("operational origin changed".into());
+    }
+    let (mut authority, mut assets) = operation.into_parts();
+    authority.catchup("after.operation")?;
+    if ServerRoomBackup::capture(&mut authority, &mut assets)?.to_bytes()? != before {
+        return Err("operational current cut changed across reopen".into());
+    }
+    Ok(())
+}
 async fn capture_and_verify(
     directory: &Path,
     room: Room,
@@ -66,9 +100,10 @@ async fn capture_and_verify(
         RoomRecoveryPolicy::HostReacquired,
     )?
     .finish(&admitted)?
+    .begin_operation(&admitted, &selected.server, RoomRecoveryPolicy::HostReacquired)?
     .into_parts();
     let (authentication, token) = fresh_authentication()?;
-    let (_router, handle) = router_with_server_backups(room, authentication, assets)?;
+    let (restored_router, handle) = router_with_server_backups(room, authentication, assets)?;
     if handle.capture_recovery_state("owner", &old_token).await.is_ok() {
         return Err("old account authentication survived".into());
     }
@@ -116,6 +151,9 @@ async fn capture_and_verify(
     if proof.identity() != selected.participants {
         return Err("native proof cut changed".into());
     }
+    drop(handle);
+    drop(restored_router);
+    reopen_operation(directory, &admitted, &selected.server)?;
     Ok(NativeCapture {
         inventory_json,
         selected: selected.participants,
@@ -144,6 +182,6 @@ pub async fn generate(parent: &Path, spec: source::Spec) -> Result<Value> {
     storage::write_new(&root.join("server.backup"), &server_bytes)?;
     storage::write_new(&root.join("fixture.json"), file.as_bytes())?;
     Ok(
-        json!({"path":root.join("fixture.json"),"nativeOwnerAuthenticated":true,"nativeRestoredRegistrationsVerified":true,"nativeSelectedServerStateVerified":true,"rawCredentialsExported":false}),
+        json!({"path":root.join("fixture.json"),"nativeOwnerAuthenticated":true,"nativeRestoredRegistrationsVerified":true,"nativeSelectedServerStateVerified":true,"nativeOperationalReopensVerified":true,"rawCredentialsExported":false}),
     )
 }

@@ -80,6 +80,15 @@ impl AssetStore {
     /// # Errors
     /// Rejects wrong room binding, concurrent owners, corrupt/unknown files, budgets and I/O errors.
     pub fn open(root: &Path, binding: &str) -> Result<Self> {
+        Self::open_with_policy(root, binding, true)
+    }
+
+    /// Reopen existing complete operational files without initialization or pending-file cleanup.
+    pub(crate) fn open_retained(root: &Path, binding: &str) -> Result<Self> {
+        Self::open_with_policy(root, binding, false)
+    }
+
+    fn open_with_policy(root: &Path, binding: &str, ordinary: bool) -> Result<Self> {
         key(binding)?;
         // The retained owner must not follow later process-CWD or parent-alias changes.
         let root = if root.is_absolute() {
@@ -93,21 +102,28 @@ impl AssetStore {
             use std::os::unix::fs::DirBuilderExt;
             builder.mode(0o700);
         }
-        match builder.create(&root) {
-            Ok(()) => {}
-            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
-            Err(e) => return Err(e.into()),
+        if ordinary {
+            match builder.create(&root) {
+                Ok(()) => {}
+                Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
+                Err(e) => return Err(e.into()),
+            }
         }
         if !fs::symlink_metadata(&root)?.is_dir() {
             return Err(Error::Contract("private asset directory required"));
         }
         let root = root.canonicalize()?;
-        let lock = private_options().create(true).truncate(false).open(root.join(".lock"))?;
+        let lock_path = root.join(".lock");
+        if !ordinary && !fs::symlink_metadata(&lock_path)?.is_file() {
+            return Err(Error::Contract("operational asset lock file"));
+        }
+        let lock = private_options().create(ordinary).truncate(false).open(lock_path)?;
         lock.try_lock().map_err(|e| match e {
             TryLockError::WouldBlock => Error::Locked,
             TryLockError::Error(e) => Error::Io(e),
         })?;
-        let manifest_path = initialize_manifest(&root, binding)?;
+        let manifest_path =
+            if ordinary { initialize_manifest(&root, binding)? } else { root.join("store.json") };
         if !fs::symlink_metadata(&manifest_path)?.is_file() {
             return Err(Error::Contract("asset manifest file"));
         }
@@ -142,6 +158,9 @@ impl AssetStore {
                 return Err(Error::Contract("asset directory entry type"));
             }
             if pending(&name) {
+                if !ordinary {
+                    return Err(Error::Contract("operational asset has pending work"));
+                }
                 garbage.push(entry.path());
                 continue;
             }

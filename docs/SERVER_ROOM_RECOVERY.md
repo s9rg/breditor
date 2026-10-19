@@ -135,6 +135,12 @@ divergent prefixes and false completion records refuse without cleanup. Concurre
 attempts cannot bypass the held lock. If a service has subsequently edited a
 recovered log, the old selected cut refuses rather than overwriting that new work.
 
+Use the explicit [operational storage handoff](OPERATIONAL_SERVER_RECOVERY.md)
+before ordinary service mutation when this destination must later reopen as a
+continuation of its original source. That separate path pins the original log
+prefix and all original rasters while admitting later native operations and
+complete assets. It does not change this exact recovery API or grant activation.
+
 ## Framing limits and operating scope
 
 The independent `breditor/server-room-backup` version-one file starts with the

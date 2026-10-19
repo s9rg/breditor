@@ -34,8 +34,8 @@ pub use participant_inventory::{
     RoomParticipantInventoryMetadata, VerifiedRecoveryRegistrations,
 };
 pub use recovery::{
-    MAX_SERVER_ROOM_BACKUP_BYTES, RecoveredServerRoom, ServerRoomBackup, ServerRoomBackupIdentity,
-    ServerRoomBackupInfo, ServerRoomRecovery, ServerRoomRecoveryProgress,
+    MAX_SERVER_ROOM_BACKUP_BYTES, OperationalServerRoom, RecoveredServerRoom, ServerRoomBackup,
+    ServerRoomBackupIdentity, ServerRoomBackupInfo, ServerRoomRecovery, ServerRoomRecoveryProgress,
 };
 pub use review::{
     DurableReviewReceipt, ReviewAdmission, ReviewCatchup, ReviewCursor, ReviewCursorProof,
@@ -244,7 +244,19 @@ impl Room {
     /// # Errors
     /// Rejects competing ownership, incompatible/corrupt state, invalid replay and I/O failure.
     pub fn open(path: &Path) -> Result<(Self, Recovery)> {
+        Self::open_with_tail_policy(path, true)
+    }
+
+    /// Operational provenance admission must never trim an uncertain tail on a rejected reopen.
+    pub(crate) fn open_complete(path: &Path) -> Result<Self> {
+        Self::open_with_tail_policy(path, false).map(|(room, _)| room)
+    }
+
+    fn open_with_tail_policy(path: &Path, truncate_tail: bool) -> Result<(Self, Recovery)> {
         let (log, mut records, recovery) = Log::open(path)?;
+        if !truncate_tail && recovery.truncated_bytes != 0 {
+            return Err(Error::Contract("operational log has an incomplete tail"));
+        }
         let seed = records.remove(0);
         let (configuration, room, owner, journal, profile_seed, atomic_transport_v2) = match seed
             .event

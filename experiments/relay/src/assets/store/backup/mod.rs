@@ -8,6 +8,7 @@ mod format;
 mod restore;
 mod restore_files;
 mod restore_scan;
+mod retained;
 #[cfg(test)]
 mod tests;
 mod types;
