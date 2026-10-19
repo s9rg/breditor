@@ -46,6 +46,16 @@ preparation, poisoned sources and insert-only filesystem races. The
 [server-log contract](SERVER_ROOM_BACKUPS.md) remains one recovery component, not
 whole-room activation, asset closure or cross-generation qualification.
 
+Both profiles require `relay-asset-backups`, `relay-asset-owner-paths` and
+`relay-assets-no-server`. These exercise the public server raster restore,
+retained offline Undo/Redo with actual image bytes, the isolated working-directory
+and parent-alias ownership regressions, and the host API without networking.
+The full native suite also checks complete original files, actual PNG/JPEG/WebP
+admission, partial-copy resumption, ambiguous completion, occupied paths,
+exclusive attempts and refusal without deleting divergent work. The
+[server raster contract](SERVER_ASSET_BACKUPS.md) requires explicit host activation
+after completion; these component checks do not provide a whole-room transaction.
+
 Both profiles also require `packet-asset-references` and `version-source-ownership`.
 The former checks all 18 shared grammar/scope/history configurations through actual
 Wasm, including source-and-intent bindings, explicit Pending, pure selected-source

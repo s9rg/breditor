@@ -8,8 +8,8 @@ use std::{
     path::Path,
 };
 const MAGIC: &[u8; 8] = b"BRASSET1";
-const HEADER: u64 = 44;
-const MAX_METADATA: usize = 4096;
+pub(super) const HEADER: u64 = 44;
+pub(super) const MAX_METADATA: usize = 4096;
 fn options() -> OpenOptions {
     let mut options = OpenOptions::new();
     options.write(true).create_new(true);
@@ -39,12 +39,38 @@ pub(super) fn write(path: &Path, prepared: &PreparedAsset) -> Result<()> {
     Ok(())
 }
 pub(super) fn read(path: &Path, expected: &str) -> Result<StoredAsset> {
+    check_file(path)?;
+    decode_reader(&mut File::open(path)?, expected)
+}
+fn check_file(path: &Path) -> Result<()> {
     let metadata = std::fs::symlink_metadata(path)?;
     if !metadata.is_file() || metadata.len() > HEADER + MAX_METADATA as u64 + super::MAX_ASSET_BYTES
     {
         return Err(Error::Contract("asset file type/bytes"));
     }
-    let mut file = File::open(path)?;
+    Ok(())
+}
+/// Bounded exact file bytes for archive admission; never canonicalize the original metadata.
+pub(super) fn read_encoded(path: &Path) -> Result<Vec<u8>> {
+    check_file(path)?;
+    let mut encoded = Vec::new();
+    File::open(path)?
+        .take(HEADER + MAX_METADATA as u64 + super::MAX_ASSET_BYTES + 1)
+        .read_to_end(&mut encoded)?;
+    if encoded.len() as u64 > HEADER + MAX_METADATA as u64 + super::MAX_ASSET_BYTES {
+        return Err(Error::Contract("asset file type/bytes"));
+    }
+    Ok(encoded)
+}
+/// Same original record checks for bytes held by an independently framed archive.
+pub(super) fn decode(encoded: &[u8], expected: &str) -> Result<StoredAsset> {
+    if encoded.len() as u64 > HEADER + MAX_METADATA as u64 + super::MAX_ASSET_BYTES {
+        return Err(Error::Contract("asset file type/bytes"));
+    }
+    let mut reader = encoded;
+    decode_reader(&mut reader, expected)
+}
+fn decode_reader(file: &mut impl Read, expected: &str) -> Result<StoredAsset> {
     let mut header = [0_u8; 44];
     file.read_exact(&mut header)?;
     if &header[..8] != MAGIC {

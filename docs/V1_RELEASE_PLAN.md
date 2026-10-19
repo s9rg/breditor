@@ -43,6 +43,37 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [server raster backup checkpoint](qualification/2026-10-19-server-asset-backups.json)
+passes one frozen 23-check selection. The Rust host captures every original
+immutable raster file, admits actual PNG/JPEG/WebP bytes and restores an
+independently selected archive through explicit preparation, resumption and
+completion. Partial copies remain retained, divergent or occupied storage is
+never overwritten, and no service activates automatically. Original manifests,
+record metadata, unreferenced assets and storage budgets stay intact.
+
+A reproduced owner-path bug redirected later writes after a process
+working-directory change or parent-symlink retarget. Retaining the original
+canonical absolute directory repairs both cases. The original two failing
+regressions now pass with the same command and cache selection.
+
+All 3,362 primary workspace/shared/relay Rust tests and doctests, 574 script tests
+and 382 editor tests pass; three existing script checks remain skipped. Twenty
+new private archive tests cover strict admission, exact original bytes,
+interrupted copies, completion ambiguity, collisions and exclusive ownership.
+A public integration restores matching room and raster components, reconnects
+retained offline work and exercises six future Undo/Redo transitions with the
+original image bytes. Separate public and networking-disabled repeats are not
+added to the primary native total.
+
+Client/core/runtime-build inputs and paired Wasm hashes remain unchanged. The
+SDK regression uses those existing runtimes; fresh producer and installed/browser
+qualification are earlier evidence. Complete participant capture, client
+upload-state coordination, trusted host recovery selection, current authority,
+resumable room-wide activation and the approved cross-generation history bridge
+remain work. All 13 V1 gates remain open; no release or publication is promoted.
+
+### Previous server log backup checkpoint
+
 The [server-log backup checkpoint](qualification/2026-10-19-server-room-backups.json)
 passes one final frozen 20-check selection. The Rust host can capture exact durable
 room history and restore it only after original native replay, host-selected
@@ -64,9 +95,9 @@ Accept order without executing Accept twice.
 
 Client/core/runtime-build inputs and existing paired Wasm hashes match the prior
 checkpoint. The SDK byte regression reuses those runtimes; fresh installed/browser
-and Wasm-producer results are earlier evidence, not newly executed here. Server
-raster recovery, complete participant capture, current auth/provider/writer
-authority and resumable coordinated activation remain work, as does the approved
+and Wasm-producer results were earlier evidence, not newly executed there. At that
+checkpoint, server raster recovery, complete participant capture, current auth/provider/writer
+authority and resumable coordinated activation remained work, as did the approved
 cross-generation Undo/offline bridge. All 13 V1 gates remain open. No publication,
 deployment, package-version or V1 promotion is claimed.
 

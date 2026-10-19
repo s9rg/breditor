@@ -9,6 +9,11 @@ use std::{
     io::{Read, Write},
     path::{Path, PathBuf},
 };
+mod backup;
+pub use backup::{
+    AssetBackupIdentity, AssetBackupInfo, AssetRecoveryPolicy, AssetRestore, AssetRestoreProgress,
+    AssetStoreBackup, MAX_SERVER_ASSET_BACKUP_BYTES,
+};
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -22,7 +27,7 @@ struct Manifest {
 pub struct AssetStore {
     root: PathBuf,
     binding: String,
-    _lock: File,
+    lock: File,
     entries: BTreeMap<String, AssetInfo>,
     bytes: u64,
     poisoned: bool,
@@ -76,26 +81,33 @@ impl AssetStore {
     /// Rejects wrong room binding, concurrent owners, corrupt/unknown files, budgets and I/O errors.
     pub fn open(root: &Path, binding: &str) -> Result<Self> {
         key(binding)?;
+        // The retained owner must not follow later process-CWD or parent-alias changes.
+        let root = if root.is_absolute() {
+            root.to_path_buf()
+        } else {
+            std::env::current_dir()?.join(root)
+        };
         let mut builder = DirBuilder::new();
         #[cfg(unix)]
         {
             use std::os::unix::fs::DirBuilderExt;
             builder.mode(0o700);
         }
-        match builder.create(root) {
+        match builder.create(&root) {
             Ok(()) => {}
             Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
             Err(e) => return Err(e.into()),
         }
-        if !fs::symlink_metadata(root)?.is_dir() {
+        if !fs::symlink_metadata(&root)?.is_dir() {
             return Err(Error::Contract("private asset directory required"));
         }
+        let root = root.canonicalize()?;
         let lock = private_options().create(true).truncate(false).open(root.join(".lock"))?;
         lock.try_lock().map_err(|e| match e {
             TryLockError::WouldBlock => Error::Locked,
             TryLockError::Error(e) => Error::Io(e),
         })?;
-        let manifest_path = initialize_manifest(root, binding)?;
+        let manifest_path = initialize_manifest(&root, binding)?;
         if !fs::symlink_metadata(&manifest_path)?.is_file() {
             return Err(Error::Contract("asset manifest file"));
         }
@@ -115,7 +127,7 @@ impl AssetStore {
         let mut bytes = 0_u64;
         let mut garbage = Vec::new();
         let mut count = 0;
-        for entry in fs::read_dir(root)? {
+        for entry in fs::read_dir(&root)? {
             count += 1;
             if count > super::MAX_ASSETS * 2 + 2 {
                 return Err(Error::Contract("asset directory entry budget"));
@@ -148,16 +160,9 @@ impl AssetStore {
             fs::remove_file(path)?;
         }
         if !garbage.is_empty() {
-            sync_directory(root)?;
+            sync_directory(&root)?;
         }
-        Ok(Self {
-            root: root.into(),
-            binding: binding.into(),
-            _lock: lock,
-            entries,
-            bytes,
-            poisoned: false,
-        })
+        Ok(Self { root, binding: binding.into(), lock, entries, bytes, poisoned: false })
     }
     /// Immutable room binding, not a substitute for account/role authentication.
     #[must_use]

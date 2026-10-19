@@ -35,6 +35,19 @@ resume explicitly. No backup/restore network route is installed. The
 bounds, ambiguous post-publication failure and the separate raster/client/auth
 components still required for complete-room recovery.
 
+## Server raster archives
+
+`assets::AssetStore::export_backup` captures all original immutable raster files,
+including unreferenced retained assets. `AssetStoreBackup::from_bytes` admits the
+complete native-decoded inventory, and `AssetRestore::begin`, `resume` and `finish`
+perform an explicitly selected, resumable restore without overwriting existing
+storage. Interrupted attempts remain retained; only an exact completed store
+returns ready. No service or recovery endpoint is automatically activated. The
+[server raster backup contract](../../docs/SERVER_ASSET_BACKUPS.md) defines the
+trusted archive identity, manifest-last completion, uncertain results and the
+host's separate room-wide activation barrier. Client upload-state, current
+authentication and cross-generation history remain separate responsibilities.
+
 ## Loopback WebSocket host
 
 Build with the optional `server` feature. `scripts/check-relay.mjs` places its

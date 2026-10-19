@@ -142,7 +142,11 @@ consistency contract. Preserve the separately authenticated account configuratio
 and current provider authority through host-managed recovery. Independent
 component restores are not a room-wide transaction.
 
-Complete participant/server-asset capture, resumable multi-store activation and
+The separate [server raster archive](SERVER_ASSET_BACKUPS.md) now captures original
+immutable files with native admission and explicit resumable restoration. It is
+not part of this log file or an automatically activated room transaction.
+
+Complete participant capture, resumable multi-store activation and
 the approved cross-generation Undo/offline history bridge remain required for V1.
 No crash, quota, eviction, cross-platform filesystem or performance qualification
 is implied by the functional tests of this server-log component.

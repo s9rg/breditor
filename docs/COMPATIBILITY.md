@@ -78,7 +78,9 @@ room backup/restore. Shared session and raster archives offer separate insert-on
 recovery components. The separate [server-log archive](SERVER_ROOM_BACKUPS.md)
 adds exact insert-only server recovery after native replay and host-selected
 identity checks; it excludes the server asset directory and account-authentication
-configuration. These components do not yet provide complete-room asset closure,
+configuration. The independent [server raster archive](SERVER_ASSET_BACKUPS.md)
+adds complete original raster files and explicit resumable restoration without
+overwriting existing storage. These components do not yet provide complete-room asset closure,
 coordinated activation or generation rollover. The [native reference reads](RETAINED_ASSET_REFERENCES.md)
 add a conservative owner-only image-history inventory; unsupported metadata or
 incomplete histories refuse that read. Separate versions, review outboxes and

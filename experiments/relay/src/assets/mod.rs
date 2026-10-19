@@ -6,6 +6,10 @@ mod store;
 mod types;
 pub use prepare::{PreparedAsset, asset_id, prepare_asset};
 pub use store::AssetStore;
+pub use store::{
+    AssetBackupIdentity, AssetBackupInfo, AssetRecoveryPolicy, AssetRestore, AssetRestoreProgress,
+    AssetStoreBackup, MAX_SERVER_ASSET_BACKUP_BYTES,
+};
 pub use types::{AssetInfo, AssetReceipt, RasterMime, StoredAsset};
 
 /// Encoded raster ceiling, matching the browser asset store.
