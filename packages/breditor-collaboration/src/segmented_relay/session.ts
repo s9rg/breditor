@@ -69,6 +69,7 @@ export class SharedSegmentedRelaySession<P extends SharedSelectionPolicy=SharedS
  async flush():Promise<void>{await this.#flushSource();}
  async retry():Promise<void>{await this.#session.retry();if(this.#queue&&!this.#queue.state().closed)await this.#queue.retry();if(this.#revisions&&this.#revisions.state().status!=="closed")await this.#revisions.retry();if(this.#versions&&this.#versions.state().status!=="closed")await this.#versions.retry();}
  async sealGeneration(next:string):Promise<void>{this.#check();await this.#session.sealGeneration(next);}
+ async sealObserverGeneration(next:string):Promise<void>{this.#check();await this.#session.sealObserverGeneration(next);}
  exportRecovery():SharedSegmentedRelayRecovery{if(this.#companion instanceof SegmentedRetainedCompanion)throw new SharedRelayError("segmented_retained_recovery_required");return {format:"breditor/shared-relay-generation-recovery",formatVersion:1,source:this.#session.exportRecovery(),relay:this.#companion.current()};}
  #retained():SegmentedRetainedCompanion{if(!(this.#companion instanceof SegmentedRetainedCompanion))throw new SharedRelayError("segmented_retained_session_required");return this.#companion;}
  exportRetainedRecovery():SharedSegmentedRetainedRecovery{const c=this.#retained();return {format:"breditor/shared-relay-generation-retained-recovery",formatVersion:1,source:this.#session.exportRecovery(),relay:c.current(),retainedBinding:structuredClone(c.retainedBinding),retained:c.records()};}

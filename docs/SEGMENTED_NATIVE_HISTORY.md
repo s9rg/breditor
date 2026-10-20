@@ -8,9 +8,10 @@ smaller checkpoint.
 
 The optional Wasm/SDK exposes explicit selection, seals and recovery, with
 [dedicated local storage](SEGMENTED_SESSION_RECOVERY.md) for document generations
-and paired comments. Independent comment-history rollover, relay/cache and
-participant bindings, and room-wide activation still need integration. This is
-not the completed whole-room cross-generation bridge.
+and paired comments. Generation-aware relay delivery and retained review stores
+have their [own integration](SEGMENTED_RETAINED_RECOVERY.md). Independent comment
+history rollover, assets and operational participant bindings, and room-wide
+activation remain work. This is not the completed whole-room cross-generation bridge.
 
 ## Select the separate recovery family
 
@@ -47,7 +48,9 @@ typing continuation while retaining previously grouped Undo items.
 Generation IDs are opaque, valid and lifetime-distinct within the retained
 chain. They are not sortable clocks, writer credentials or provider receipts.
 Repeated enable, empty seals, reused IDs, stale observations and read-only
-mutations refuse without changing the original checkpoint.
+calls to these writable APIs refuse without changing the original checkpoint.
+[Observer-only sealing](SEGMENTED_OBSERVER_RECOVERY.md) is a separate capability:
+it requires read-only policy and a zero authored prefix, and never unlocks editing.
 
 ## Retain the original replay inputs
 

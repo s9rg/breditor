@@ -43,6 +43,28 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [generation-aware permanent observer](SEGMENTED_OBSERVER_RECOVERY.md) now
+retains pending proposals and immutable revisions across native generation seals
+and cold recovery without enabling accepted-document editing. A separately
+versioned Rust operation requires read-only policy and a zero authored prefix;
+the original writable seal still refuses read-only owners. Connection readiness
+waits for actual source and zero-clock persistence. An Editor regrant does not
+promote the observer to Accept or document-author transport.
+
+Its [functional qualification](qualification/2026-10-19-segmented-observer-recovery.json)
+passes 54 selected checks, 653 fresh shared Rust tests, 216 relay Rust tests,
+385 editor tests and 824 script tests, with three existing opt-in skips. Source
+and fresh installed archives each pass six selection/history configurations,
+12 Reader instances, 24 cold reopens, 12 observer seals and six native-server
+restarts. Eighteen observer storage contracts also verify refusal of writable,
+previously authored and detached sources, retirement and separate capability
+selection. All 144 native policy combinations preserve received history and
+future cold replay. Original retained-store, relay, reader/revision and backup
+workflows still pass. This is a functional checkpoint, not browser qualification
+or V1 approval. Asset/upload and operational participant generation bindings,
+independent comment/server generations and complete room activation remain work;
+all 13 release gates remain open. Nothing is pushed, tagged, published or deployed.
+
 The [atomic retained-session profile](SEGMENTED_RETAINED_RECOVERY.md) now keeps
 suggestion queues, immutable revisions and shared version-publication state with
 native generations and document/comment relay receipts. Pending proposals remain

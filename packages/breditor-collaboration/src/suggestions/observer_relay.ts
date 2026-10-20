@@ -16,12 +16,14 @@ import type {SharedSuggestionObserverOptions,SharedSuggestionObserverIdentity} f
 import type {SharedSuggestionTransport} from "./transport_port.js";
 import {revisionsBinding,revisionsDescriptor,revisionRequest} from "../suggestion_revisions/transport.js";
 import type {SharedSuggestionRevisionRequest} from "../suggestion_revisions/types.js";
+import {segmentedObserverPort,type SegmentedRelayPort} from "../segmented_relay/admission.js";
 const attached=new WeakSet<object>(),transient=new Set(["connection_lost","connection_timeout","request_timeout","storage_unavailable","entropy_unavailable"]);
 interface Run {epoch:number;promise:Promise<void>}
 export class SharedSuggestionObserverRelay<P extends SharedSelectionPolicy=SharedSelectionPolicy> implements SharedSuggestionTransport<P> {
  readonly suggestionDecisionMode="observer" as const;
  readonly #core:SharedRichEditor<P>;readonly #identity:SharedSuggestionObserverIdentity;readonly #queueIdentity:SharedSuggestionQueueIdentity;readonly #options:SharedSuggestionObserverOptions<P>;
  readonly #milliseconds:number;readonly #minimum:number;readonly #maximum:number;readonly #off:()=>void;
+ readonly #segmented:SegmentedRelayPort|undefined;#hydrating=false;
  #channel:RelayChannel|undefined;#abort:AbortController|undefined;#epoch=0;#closed=false;#wanted=false;#ready=false;
  #status:SharedRelayStatus="offline";#error:string|null=null;#permissions:SharedSuggestionPermissions|null=null;#clock:SharedWriterClock|null=null;
  #revision=0;#documentRevision=0;#requests=0;#attempts=0;#retry:ReturnType<typeof setTimeout>|undefined;
@@ -29,18 +31,20 @@ export class SharedSuggestionObserverRelay<P extends SharedSelectionPolicy=Share
  #notifyQueued=false;#listeners=new Set<()=>void>();#reported:string|null=null;
  constructor(options:SharedSuggestionObserverOptions<P>){
   this.#identity=observerIdentity(options.identity);this.#queueIdentity=sharedSuggestionObserverQueueIdentity(this.#identity);this.#options={...options};this.#core=options.storage.core;
+  this.#segmented=segmentedObserverPort(options);
   if(attached.has(this.#core))throw new SharedRelayError("suggestion_observer_already_attached");
   if(!this.#core.supportsReadOnly()||!this.#core.supportsWriterTransportV2()||!this.#core.supportsDocumentSuggestions()||typeof options.storage.save!=="function"||typeof options.storage.flush!=="function")throw new SharedRelayError("suggestion_observer_unavailable");
   if(options.suggestionRevisions){if(!this.#core.supportsSuggestionRevisions())throw new SharedRelayError("suggestion_revisions_unavailable");this.#options={...this.#options,suggestionRevisions:revisionsBinding(options.suggestionRevisions)};}
-  checkSourceCheckpoint(this.#core,this.#identity.room,this.#identity.documentWriter);this.#zeroPrefix();
+  if(this.#segmented){const p=this.#segmented,d=p.binding.document,i=this.#identity;p.check();if(p.core as object!==this.#core as object||d.endpoint!==i.endpoint||d.principal!==i.principal||d.room!==i.room||d.writer!==i.documentWriter||d.writerTransport!=="atomic-v2")throw new SharedRelayError("segmented_observer_source");if(this.#core.view().readOnly!==true)throw new SharedRelayError("suggestion_observer_writable");const saved=p.durable().document;if(saved.receipt||saved.accepted&&saved.accepted.through!=="0")throw new SharedRelayError("suggestion_observer_authored");}
+  else checkSourceCheckpoint(this.#core,this.#identity.room,this.#identity.documentWriter);this.#zeroPrefix();
   const reviewed=this.#core.reviewedHistoryIdentity();if(reviewed&&(reviewed.principal!==this.#identity.principal||reviewed.binding!==this.#identity.binding||reviewed.effectWriter!==this.#identity.effectWriter))throw new SharedRelayError("suggestion_transport_identity");
   this.#milliseconds=timeout(options.requestTimeoutMs);this.#minimum=options.reconnectMinimumMs??500;this.#maximum=options.reconnectMaximumMs??30000;
   if(!Number.isInteger(this.#minimum)||!Number.isInteger(this.#maximum)||this.#minimum<50||this.#minimum>this.#maximum||this.#maximum>30000)throw new SharedRelayError("reconnect_limits");
-  this.#core.setReadOnly(true);this.#off=this.#core.subscribe(()=>{try{this.#guard();}catch(error){this.#fail(this.#failure(error),this.#epoch);}});attached.add(this.#core);
+  if(!this.#segmented)this.#core.setReadOnly(true);this.#off=this.#core.subscribe(()=>{try{this.#guard();}catch(error){this.#fail(this.#failure(error),this.#epoch);}});attached.add(this.#core);
   this.#wanted=options.autoConnect!==false;if(this.#wanted)queueMicrotask(()=>{if(this.#wanted&&!this.#closed)void this.connect().catch(()=>{});});
  }
  #zeroPrefix():void{if(this.#core.writerClockV2(this.#identity.documentWriter).through!=="0")throw new SharedRelayError("suggestion_observer_authored");}
- #guard():void{if(this.#closed)throw new SharedRelayError("closed");if(this.#options.storage.core!==this.#core)throw new SharedRelayError("suggestion_source_replaced");if(this.#core.view().readOnly!==true)throw new SharedRelayError("suggestion_observer_writable");this.#zeroPrefix();}
+ #guard():void{if(this.#closed)throw new SharedRelayError("closed");this.#segmented?.check();if(this.#options.storage.core!==this.#core)throw new SharedRelayError("suggestion_source_replaced");if(this.#core.view().readOnly!==true)throw new SharedRelayError("suggestion_observer_writable");this.#zeroPrefix();}
  state():SharedRelayState{return {status:this.#status,writer:this.#identity.documentWriter,localThrough:"0",locallyDurableThrough:this.#clock?"0":null,serverThrough:this.#clock?.through??null,serverPrefixDigest:this.#clock?.prefixDigest??null,serverReceiptSequence:null,waitingFor:[],pending:false,error:this.#error};}
  suggestionState():SharedSuggestionRelayState{return {ready:this.#ready,revision:this.#revision,documentRevision:this.#documentRevision,permissions:this.#permissions?{...this.#permissions,canAccept:false}:null};}
  suggestionRevisionsReady():boolean{return this.#ready&&!!this.#options.suggestionRevisions;}
@@ -51,7 +55,7 @@ export class SharedSuggestionObserverRelay<P extends SharedSelectionPolicy=Share
  #check(epoch:number):void{if(!this.#active(epoch))throw new SharedRelayError("disconnected");this.#guard();}
  #notify():void{if(this.#notifyQueued)return;this.#notifyQueued=true;queueMicrotask(()=>{this.#notifyQueued=false;try{this.#options.onState?.(this.state());}catch{/* Reporting is not admission. */}for(const listener of [...this.#listeners])try{listener();}catch{/* Observers cannot acknowledge native storage. */}});}
  #failure(error:unknown):SharedRelayError{return error instanceof SharedRelayError?error:new SharedRelayError("suggestion_observer_failed");}
- #stop():void{this.#epoch++;this.#ready=false;this.#permissions=null;this.#latest=undefined;this.#refresh=undefined;this.#drain=undefined;this.#connecting=undefined;this.#abort?.abort();this.#abort=undefined;const channel=this.#channel;this.#channel=undefined;channel?.close();}
+ #stop():void{this.#epoch++;this.#ready=false;this.#hydrating=false;this.#permissions=null;this.#latest=undefined;this.#refresh=undefined;this.#drain=undefined;this.#connecting=undefined;this.#abort?.abort();this.#abort=undefined;const channel=this.#channel;this.#channel=undefined;channel?.close();}
  #fail(error:SharedRelayError,epoch:number):void{
   if(!this.#active(epoch))return;this.#stop();this.#error=error.code;const retry=this.#wanted&&transient.has(error.code);
   this.#status=retry?"offline":error.code==="local_save_failed"?"local-save-failed":error.code==="lease_rejected"?"fenced":error.code==="permission_denied"||error.code==="token_unavailable"?"denied":"failed";
@@ -62,10 +66,11 @@ export class SharedSuggestionObserverRelay<P extends SharedSelectionPolicy=Share
   if(!this.#active(epoch))return;
   try{this.#guard();if(event["kind"]==="error"){this.#fail(new SharedRelayError(String(event["code"])),epoch);return;}
    if(event["kind"]==="documentSuggestionsChanged"){if(Object.keys(event).sort().join(",")!=="kind,permissions")throw new SharedRelayError("protocol_error");this.#permissions={...suggestionPermissions(event["permissions"]),canAccept:false};this.#revision++;this.#notify();return;}
-   if(event["kind"]!=="catchup")throw new SharedRelayError("protocol_error");this.#latest=frame(event["frame"]);this.#documentRevision++;this.#notify();if(this.#ready)void this.#drainFrames(epoch).catch(()=>{});
+   if(event["kind"]!=="catchup")throw new SharedRelayError("protocol_error");this.#latest=frame(event["frame"]);this.#documentRevision++;this.#notify();if(this.#ready||this.#hydrating)void this.#drainFrames(epoch).catch(()=>{});
   }catch(error){this.#fail(this.#failure(error),epoch);}
  }
- async #save(epoch:number):Promise<void>{this.#check(epoch);try{this.#options.storage.save();await this.#options.storage.flush();}catch{throw new SharedRelayError("local_save_failed");}this.#check(epoch);}
+ async #save(epoch:number):Promise<void>{this.#check(epoch);try{if(this.#segmented)await this.#segmented.flush();else{this.#options.storage.save();await this.#options.storage.flush();}}catch{throw new SharedRelayError("local_save_failed");}this.#check(epoch);}
+ async #saveClock(current:SharedWriterClock,epoch:number):Promise<void>{this.#check(epoch);try{await this.#segmented!.persistDocument({accepted:current,receipt:null});}catch{throw new SharedRelayError("local_save_failed");}this.#check(epoch);}
  async #readClock(channel:RelayChannel,epoch:number):Promise<SharedWriterClock>{const response=await channel.request({kind:"clock",writer:this.#identity.documentWriter});this.#check(epoch);if(response["kind"]!=="clock")throw new SharedRelayError("protocol_error");const current=clock(response["clock"],this.#identity.documentWriter);if(current.through!=="0")throw new SharedRelayError("suggestion_observer_authored");checkClock(this.#core,current,2);return current;}
  async connect():Promise<void>{
   if(this.#closed)throw new SharedRelayError("closed");this.#guard();this.#wanted=true;clearTimeout(this.#retry);this.#retry=undefined;if(this.#connecting)return this.#connecting;if(this.#ready){await this.flush();return;}
@@ -78,12 +83,12 @@ export class SharedSuggestionObserverRelay<P extends SharedSelectionPolicy=Share
    if(this.#options.suggestionRevisions)revisionsDescriptor(auth["documentSuggestionRevisionsDescriptor"],this.#options.suggestionRevisions.binding,this.#identity);
    this.#permissions={...suggestionPermissions(auth["documentSuggestionsPermissions"]),canAccept:false};this.#revision++;await this.#readClock(channel,epoch);
    const resumed=await channel.request({kind:"resumeObserver",writer:this.#identity.documentWriter,credential:this.#identity.observerCredential});this.#check(epoch);if(resumed["kind"]!=="observerResumed"||object(resumed["lease"])["writer"]!==this.#identity.documentWriter)throw new SharedRelayError("writer_mismatch");
-   const current=await this.#readClock(channel,epoch);this.#latest??=frame(auth["frame"]);this.#ready=true;await this.#drainFrames(epoch);this.#check(epoch);this.#clock=current;this.#status="ready";this.#error=null;this.#reported=null;this.#attempts=0;this.#notify();
+   const current=await this.#readClock(channel,epoch);this.#latest??=frame(auth["frame"]);if(this.#segmented)this.#hydrating=true;else this.#ready=true;await this.#drainFrames(epoch);this.#check(epoch);if(this.#segmented)await this.#saveClock(current,epoch);this.#clock=current;this.#hydrating=false;this.#ready=true;this.#status="ready";this.#error=null;this.#reported=null;this.#attempts=0;this.#notify();
   })().catch(error=>{const failure=this.#failure(error);this.#fail(failure,epoch);throw failure;});this.#connecting=work;try{await work;}finally{if(this.#connecting===work)this.#connecting=undefined;}
  }
  #drainFrames(epoch:number):Promise<void>{
   if(this.#drain?.epoch===epoch)return this.#drain.promise;const run:Run={epoch,promise:Promise.resolve()};this.#drain=run;
-  run.promise=(async()=>{try{while(this.#active(epoch)&&this.#ready&&this.#latest!==undefined){this.#check(epoch);const next=this.#latest;this.#latest=undefined;await this.#core.receiveFrame(next,{signal:this.#abort!.signal});await this.#save(epoch);}}
+  run.promise=(async()=>{try{while(this.#active(epoch)&&(this.#ready||this.#hydrating)&&this.#latest!==undefined){this.#check(epoch);const next=this.#latest;this.#latest=undefined;await this.#core.receiveFrame(next,{signal:this.#abort!.signal});await this.#save(epoch);}}
    catch(error){this.#fail(this.#failure(error),epoch);throw error;}finally{if(this.#drain===run){this.#drain=undefined;this.#notify();}}})();return run.promise;
  }
  async refreshDocument():Promise<void>{

@@ -2,5 +2,6 @@
 mod checkpoint_segmented_history;
 mod enable_segmented_history;
 mod seal_history_segment;
+mod seal_observer_history_segment;
 mod segmented_history_information;
 mod verify_segmented_recovery_origin;

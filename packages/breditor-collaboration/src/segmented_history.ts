@@ -9,6 +9,8 @@ export interface SharedSegmentedRustCapability {
  segmented_history_info_json?():string;segmented_checkpoint?():string;
  enable_segmented_history?(observation:unknown,root:string,active:string):void;
  seal_history_segment?(observation:unknown,next:string):void;
+ observer_history_sealing_version?():string;
+ seal_observer_history_segment?(observation:unknown,next:string):void;
  verify_segmented_recovery_origin?(observation:unknown,origin:SharedSegmentedRustCapability,originObservation:unknown):void;
 }
 /** A detached bounded native read, not a serialized admission proof or lease. */

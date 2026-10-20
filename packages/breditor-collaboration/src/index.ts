@@ -108,6 +108,7 @@ export {registerSharedRelayWriter} from "./relay/registration.js";
 export {SharedRelayError} from "./relay/validation.js";
 export type {SharedSegmentedRetainedBinding,SharedSegmentedRetainedSessionOptions,SharedSegmentedRetainedRecovery,SharedSegmentedRetainedRecoveryOptions,SegmentedRetainedRecords} from "./segmented_relay/retained_contract.js";
 export type {SharedSegmentedVersionsOpenOptions,SharedSegmentedRevisionsOpenOptions} from "./segmented_relay/session.js";
+export {createSharedSegmentedSuggestionObserverRelay,type SharedSegmentedSuggestionObserverOptions} from "./segmented_relay/observer_factory.js";
 export type {SharedRelayIdentity,SharedRelayAuthentication,SharedRelayRegistrationOptions,SharedRelayRegistration,SharedRelayOptions,SharedDocumentRelayOptions,SharedRelayState,SharedRelayStatus} from "./relay/types.js";
 export {SharedParticipantRecovery,RecoveredSharedParticipant,type RecoveredSharedParticipantParts} from "./participant_recovery/recovery.js";
 export {SharedParticipantReplay} from "./participant_replay/read.js";

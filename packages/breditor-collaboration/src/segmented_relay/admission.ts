@@ -13,10 +13,12 @@ export interface SegmentedRelayPort {
  persistReview(progress:SharedReviewRelayProgress,receipt?:SharedSegmentedReviewReceipt):Promise<void>;
  track(adapter:{dispose():void}):void;
 }
-const sessions=new WeakMap<object,SegmentedRelayPort>(),documents=new WeakMap<object,SegmentedRelayPort>(),reviews=new WeakMap<object,SegmentedRelayPort>();
+const sessions=new WeakMap<object,SegmentedRelayPort>(),documents=new WeakMap<object,SegmentedRelayPort>(),reviews=new WeakMap<object,SegmentedRelayPort>(),observers=new WeakMap<object,SegmentedRelayPort>();
 export function registerSegmentedRelaySession(session:object,port:SegmentedRelayPort):void{if(sessions.has(session))throw new SharedRelayError("segmented_relay_session_reused");sessions.set(session,port);}
 export function segmentedRelaySessionPort(session:object):SegmentedRelayPort{const port=sessions.get(session);if(!port)throw new SharedRelayError("segmented_relay_session_required");port.check();return port;}
 export function withSegmentedDocumentPort<T extends object>(input:T,port:SegmentedRelayPort):T{const copy={...input};documents.set(copy,port);return copy;}
 export function withSegmentedReviewPort<T extends object>(input:T,port:SegmentedRelayPort):T{const copy={...input};reviews.set(copy,port);return copy;}
+export function withSegmentedObserverPort<T extends object>(input:T,port:SegmentedRelayPort):T{const copy={...input};observers.set(copy,port);return copy;}
 export const segmentedDocumentPort=(input:object):SegmentedRelayPort|undefined=>documents.get(input);
 export const segmentedReviewPort=(input:object):SegmentedRelayPort|undefined=>reviews.get(input);
+export const segmentedObserverPort=(input:object):SegmentedRelayPort|undefined=>observers.get(input);

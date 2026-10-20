@@ -11,6 +11,7 @@ export const packetAssetOwnerMethods=Object.freeze(["packet_asset_references_ver
 export const recoveryOriginOwnerMethods=Object.freeze(["recovery_origin_version","verify_recovery_origin"]);
 export const segmentedHistoryOwnerMethods=Object.freeze(["segmented_history_version","segmented_history_enabled","segmented_history_info_json","enable_segmented_history","seal_history_segment","segmented_checkpoint","verify_segmented_recovery_origin"]);
 export const segmentedHistoryProfileMethods=Object.freeze(["segmented_history_version","restore_segmented"]);
+export const observerHistorySealingOwnerMethods=Object.freeze(["observer_history_sealing_version","seal_observer_history_segment"]);
 export const placeholderOwnerMethods=Object.freeze(["placeholder_version","placeholder_empty"]);
 export const placeholderProfileMethods=Object.freeze(["placeholder_version"]);
 export const documentOwnerMethods=Object.freeze(["document_selection_version","document_typing_version","document_selection_enabled","enable_document_selection","observe_document","document_view_json","select_document","copy_document_clipboard","replace_document_plain_text","replace_document_typing_text","document_checkpoint","document_typing_checkpoint"]);
@@ -41,6 +42,7 @@ export function admitApplicationSurface(module,binary,declarations){
  for(const name of recoveryOriginOwnerMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native recovery origin capability ${name}`);
  for(const name of segmentedHistoryOwnerMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native segmented history capability ${name}`);
  for(const name of segmentedHistoryProfileMethods)assert.equal(typeof module.SharedRichProfile.prototype[name],"function",`Missing native segmented recovery ${name}`);
+ for(const name of observerHistorySealingOwnerMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native observer history sealing capability ${name}`);
  for(const name of placeholderOwnerMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native placeholder capability ${name}`);
  for(const name of placeholderProfileMethods)assert.equal(typeof module.SharedRichProfile.prototype[name],"function",`Missing native placeholder profile capability ${name}`);
  for(const name of ["search_history_version","restore_search"])assert.equal(typeof module.SharedRichProfile.prototype[name],"function",`Missing native search recovery ${name}`);

@@ -111,6 +111,9 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  }
  /** Native publication only; the explicit generation session must durably commit the new cut. */
  sealHistoryGeneration(next:string,revision?:string):void{if(!this.#segmented)throw new SharedEditorError("segmented_history_required","Select segmented history first");this.#run("local",(raw,o)=>raw.seal_history_segment!(o,next),revision);}
+ /** Separate native gate: read-only AND zero authored atoms, never a temporary unlock. */
+ supportsObserverHistorySealing():boolean{const r=this.#live();return this.supportsSegmentedHistory()&&r.observer_history_sealing_version?.()==="1"&&typeof r.seal_observer_history_segment==="function";}
+ sealObserverHistoryGeneration(next:string,revision?:string):void{if(!this.#segmented)throw new SharedEditorError("segmented_history_required","Select segmented history first");if(!this.supportsObserverHistorySealing())throw new SharedEditorError("observer_history_sealing_unavailable","Use the explicit native observer sealing capability");this.#run("local",(raw,o)=>raw.seal_observer_history_segment!(o,next),revision,false);}
  /** Pure actual native document-generation and paired-review continuity; not activation. */
  verifySegmentedRecoveryOrigin<Q extends SharedSelectionPolicy>(origin:SharedRichEditor<Q>):void{
   this.#check();origin.#check();if(!this.#segmented||!this.supportsSegmentedHistory()||!origin.supportsSegmentedHistory())throw new SharedEditorError("segmented_history_unavailable","Use matching native generation continuity");

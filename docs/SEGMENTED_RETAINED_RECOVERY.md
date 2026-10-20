@@ -133,12 +133,12 @@ author-side delivery configurations, 12 cold reopens, six native server restarts
 and 18 future selective-history steps. The storage suite adds 28 contracts,
 including version-only sources on both wire families and exact large writer IDs.
 
-The new profile currently connects document authors. Permanent observation-only
-readers need a separate generation-aware transport; their original constructors
-still refuse segmented sources. Passing the original reader workflows preserves
-compatibility but does not provide that new connection path.
+Permanent readers now have a separate [generation-aware observer transport](SEGMENTED_OBSERVER_RECOVERY.md).
+Select it explicitly with the actual read-only source and registered observer
+identity. Its dedicated native sealing API requires zero authored operations;
+the original writable seal and original observer constructors remain unchanged.
 
-Generation-aware observer, upload/source and operational participant/room bindings,
+Generation-aware upload/source and operational participant/room bindings,
 independent comment and server-log generations, full provider/client closure,
 protected credential handoff and authenticated whole-room activation remain
 separate V1 work. All 13 release gates remain open.

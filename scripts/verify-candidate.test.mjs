@@ -14,6 +14,16 @@ const plan=checks=>({profile:"functional",deferred:["not-a-v1-certification"],ch
 const stable=()=>({commit:"1".repeat(40),dirty:true,sha256:"2".repeat(64),files:1,bytes:1});
 function quiet(options={}){return {snapshot:stable,report:()=>{},...options};}
 
+test("both profiles require permanent observer generation custody and fresh public archives",()=>{
+ for(const profile of ["functional","full"]){const p=candidateReleasePlan({profile}),find=id=>{const c=p.checks.find(c=>c.id===id);assert.ok(c,id);return c;};
+  assert.deepEqual(find("segmented-observer-storage-contracts").args,["--test","scripts/segmented-observer-storage.test.mjs"]);
+  assert.ok(find("segmented-observer-type-fence").args.includes("scripts/fixtures/editor-consumer/types-segmented-observer.ts"));
+  assert.ok(p.checks.indexOf(find("segmented-observer-live"))>p.checks.indexOf(find("segmented-retained-native-host")));
+  assert.deepEqual(find("installed-segmented-observer").artifacts,[{path:"target/segmented-observer-installed-consumer.json",fresh:true}]);
+ }
+ const installed=readFileSync(join(repository,"scripts/check-segmented-observer-installed.mjs"),"utf8");for(const text of ["probe-segmented-observer.mjs","types-segmented-observer.ts","coldReopens:24","observerSeals:12","readerDocumentSubmissions:0","observer_factory.js"])assert.ok(installed.includes(text),text);
+});
+
 test("both profiles require atomic generation retained stores, original delivery regressions and fresh public archive proof",()=>{
  for(const profile of ["functional","full"]){const p=candidateReleasePlan({profile}),find=id=>{const c=p.checks.find(c=>c.id===id);assert.ok(c,id);return c;};
   assert.deepEqual(find("segmented-retained-storage-contracts").args,["--test","scripts/segmented-retained-storage.test.mjs"]);

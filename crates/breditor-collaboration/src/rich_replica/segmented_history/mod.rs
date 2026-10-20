@@ -8,8 +8,11 @@ mod encoding;
 #[cfg(test)]
 mod fork_contract_tests;
 mod info;
+#[cfg(test)]
+mod observer_sealing_tests;
 mod restore_segmented_history;
 mod seal_history_segment;
+mod seal_observer_history_segment;
 mod segment;
 mod state;
 #[cfg(test)]
