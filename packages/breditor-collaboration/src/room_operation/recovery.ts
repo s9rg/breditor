@@ -16,15 +16,15 @@ import {initialRoomOperation,type RoomOperationRecord} from "./record.js";
 import {createRoomOperationDatabase} from "./create_database.js";
 import {existingRoomOperationDatabase,readRoomOperationDatabase} from "./read_database.js";
 import {updateRoomOperation} from "./update_record.js";
-import {releaseRoomCustody,transferRoomParticipants} from "./custody.js";
+import {releaseRoomCustody,prepareRoomParticipants} from "./custody.js";
 import type {SharedRoomOperationBeginOptions,SharedRoomOperationResumeOptions,SharedRoomOperationProgress,SharedRoomOperationParts} from "./types.js";
 
 const key=Object.freeze({});
-interface Life{changed:boolean;closing:boolean;closed:boolean}
+interface Life{changed:boolean;closing:boolean;closed:boolean;released:boolean}
 interface Child{readonly policy:StagedPolicy;readonly currentPolicy:SharedParticipantOperationCurrentPolicy;ready:RecoveredSharedParticipant<SharedSelectionPolicy>|undefined;source:SharedAssetReferenceCapture|undefined;operation:OperationalSharedParticipant<SharedSelectionPolicy>|undefined}
 interface State{readonly database:string;readonly db:IDBDatabase;readonly catalogDb:IDBDatabase;readonly leases:RecoveryLease[];readonly archive:SharedRoomRecoveryCatalogArchive;readonly source:CatalogArchiveState;readonly children:Child[];readonly life:Life;readonly guard:()=>void;readonly signal:AbortSignal|undefined;record:RoomOperationRecord;pending:RoomOperationRecord|undefined}
 function fence(db:IDBDatabase,life:Life):void{db.onversionchange=()=>{life.changed=true;db.close();};}
-function lifetime(checkAuthority:()=>void,signal?:AbortSignal){const life:Life={changed:false,closing:false,closed:false},authority=roomAuthority(checkAuthority),guard=()=>{if(life.closed||life.closing||life.changed)throw roomFailure("room_operation_closed");roomSignal(signal);authority();roomSignal(signal);if(life.closed||life.closing||life.changed)throw roomFailure("room_operation_closed");};return{life,guard};}
+function lifetime(checkAuthority:()=>void,signal?:AbortSignal){const life:Life={changed:false,closing:false,closed:false,released:false},authority=roomAuthority(checkAuthority),guard=()=>{if(life.closed||life.closing||life.changed)throw roomFailure("room_operation_closed");roomSignal(signal);authority();roomSignal(signal);if(life.closed||life.closing||life.changed)throw roomFailure("room_operation_closed");};return{life,guard};}
 async function exists(name:string):Promise<boolean>{const db=await existingDatabase(name);if(!db)return false;db.close();return true;}
 /** A durable held attempt. No child, token, synchronization or activation is exposed before handoff. */
 export class SharedRoomOperationalRecovery{
@@ -67,7 +67,7 @@ export class SharedRoomOperationalRecovery{
  #progress():SharedRoomOperationProgress{const s=this.#state,chosen=new Set(s.record.participants.map(row=>row.id));return Object.freeze({phase:s.record.phase,participants:Object.freeze(s.record.participants.map(row=>Object.freeze({...row}))),unreconciledParticipants:Object.freeze(s.source.metadata.participants.filter(row=>!chosen.has(row.id)).map(row=>row.id))});}
  #failure(error:unknown):Error{const s=this.#state;return s.signal?.aborted?roomFailure("room_operation_aborted"):s.life.changed||s.life.closing||s.life.closed?roomFailure("room_operation_closed"):roomKnown(error);}
  async #retained():Promise<void>{
-  const s=this.#state;s.guard();const current=await readRoomOperationDatabase(s.db,s.record);s.guard();const actual=JSON.stringify(current.record);if(actual===JSON.stringify(s.record))s.pending=undefined;else if(s.pending&&actual===JSON.stringify(s.pending)){s.record=current.record;s.pending=undefined;}else throw roomFailure("room_operation_diverged");
+  const s=this.#state;if(s.life.released)throw roomFailure("room_operation_closed");s.guard();const current=await readRoomOperationDatabase(s.db,s.record);s.guard();const actual=JSON.stringify(current.record);if(actual===JSON.stringify(s.record))s.pending=undefined;else if(s.pending&&actual===JSON.stringify(s.pending)){s.record=current.record;s.pending=undefined;}else throw roomFailure("room_operation_diverged");
   const original=await readCatalogDatabase(s.catalogDb,s.source.manifest);s.guard();if(JSON.stringify(original.record)!==JSON.stringify(s.record.catalog))throw roomFailure("room_operation_diverged");
   for(const files of [current.files,original.files]){const admitted=await SharedRoomRecoveryCatalogArchive.read(s.source.manifest,files,s.source.selection,{checkAuthority:s.guard,...(s.signal?{signal:s.signal}:{})});admitted.dispose();s.guard();}
  }
@@ -96,7 +96,7 @@ export class SharedRoomOperationalRecovery{
  async #verify():Promise<void>{const s=this.#state;await this.#retained();if(s.record.phase!=="operational"||s.children.some(child=>!child.operation))throw roomFailure("room_operation_diverged");for(const child of s.children){await child.operation!.check();s.guard();}}
  async check():Promise<void>{if(this.#busy)throw roomFailure("room_operation_in_use");this.#busy=true;try{await this.#verify();}catch(error){throw roomKnown(error);}finally{this.#busy=false;}}
  /** One aggregate release: no child handle is consumed if another cooperative release fails. */
- async intoParts():Promise<SharedRoomOperationParts>{if(this.#busy)throw roomFailure("room_operation_in_use");this.#busy=true;try{await this.#verify();const s=this.#state,parts=await transferRoomParticipants(s.children.map(child=>({id:child.policy.id,operation:child.operation!})),[s.db,s.catalogDb],s.leases,()=>this.#retained());s.archive.dispose();s.life.closed=true;return parts;}catch(error){throw roomKnown(error);}finally{this.#busy=false;}}
+ async intoParts():Promise<SharedRoomOperationParts>{if(this.#busy)throw roomFailure("room_operation_in_use");this.#busy=true;try{await this.#verify();const s=this.#state,handoff=await prepareRoomParticipants(s.children.map(child=>({id:child.policy.id,operation:child.operation!})),[s.db,s.catalogDb],s.leases,()=>this.#retained(),s.guard,()=>{s.life.released=true;});try{const parts=handoff.commit();s.archive.dispose();s.life.closed=true;return parts;}finally{handoff.abandon();}}catch(error){throw roomKnown(error);}finally{this.#busy=false;}}
  close():Promise<void>{return this.#close("graceful");}
  discardAndClose():Promise<void>{return this.#close("discard");}
  #close(mode:"graceful"|"discard"):Promise<void>{if(this.#state.life.closed)return Promise.resolve();if(this.#cleanup)return this.#cleanupMode===mode?this.#cleanup:Promise.reject(roomFailure("room_operation_in_use"));if(this.#busy&&!this.#running)return Promise.reject(roomFailure("room_operation_in_use"));this.#state.life.closing=true;this.#cleanupMode=mode;this.#cleanup=this.#finishClose(mode).catch(error=>{throw roomKnown(error);}).finally(()=>{this.#cleanup=undefined;this.#cleanupMode=undefined;});return this.#cleanup;}

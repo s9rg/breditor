@@ -152,6 +152,13 @@ Failed coordinator release remains retryable and does not mark a handoff
 complete before the ordinary owners have actually been returned. Explicit
 discard also excludes concurrent cleanup and retains failed cleanup for retry.
 
+The final host authority, cancellation and captured-source checks run after
+awaited coordination release as well. If they fail after release, the completed
+handle cannot hand off or transfer into an operation again, even after permission
+returns. Explicit close/discard remains available. Close those native owners and
+resume the exact recovery with fresh current authority; the acknowledged stores
+and original backup are not deleted or overwritten.
+
 `RecoveredSharedParticipant.close()` uses ordinary graceful owner saves and
 preserves save failures for retry. `discardAndClose()` explicitly abandons private
 unsaved state without deleting committed data. `attempt.close()` waits for an
@@ -165,6 +172,16 @@ retained original file and native continuity checks do not relax this coordinato
 exact-source contract.
 
 ## Whole room and release boundaries
+
+The [handoff boundary qualification](qualification/2026-10-20-original-handoff-boundaries.json)
+repeats ready and operational authority/cancellation regressions across 66 actual
+native families in source and fresh installed archives. Late refusals retain
+exact native, pending-work and upload data for explicit cleanup and cold resume.
+The selected run passes 68 checks, 1,156 script tests and 385 editor tests, with
+three existing opt-in skips. A separate native database-version change during
+release still reproduces a retired-source handoff; managed-source liveness
+admission remains open. The authority repair does not revoke preexisting host
+references or replace current server authorization.
 
 This coordinator covers one declared participant and separate component
 transactions, not an atomic transaction across all databases. The host must

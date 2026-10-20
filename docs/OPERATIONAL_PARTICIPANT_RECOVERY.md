@@ -144,6 +144,15 @@ committed record or file. Concurrent transfer, inspection and cleanup refuse.
 After transfer, the caller closes revisions, suggestions and versions before the
 session and upload owner, using their ordinary close contracts.
 
+Authority and cancellation are checked again after awaited release, before
+ordinary owners are returned. A captured source check also spans that interval.
+If this final admission fails after coordination was released, the handle permits
+cleanup only: regaining authority does not make another handoff on it valid.
+Use `close()` or `discardAndClose()`, then resume the retained operation with
+fresh authority and policy. The committed original and current stores remain;
+this failure does not restore over or delete them. Cancellation raised inside a
+synchronous authority callback is checked before that callback can admit work.
+
 The original `SharedParticipantRecovery` remains an exact-cut coordinator and
 must not be reused against edited operational storage. A parent room catalog
 keeps its participants private until [operational room recovery](OPERATIONAL_ROOM_RECOVERY.md)
@@ -154,6 +163,22 @@ API does not bypass that parent ownership or grant activation.
 
 The [checkpoint qualification](qualification/2026-10-19-operational-participant-recovery.json)
 records the selected functional checks and their exact source and runtime hashes.
+
+The later [handoff boundary qualification](qualification/2026-10-20-original-handoff-boundaries.json)
+passes 68 selected checks, 1,156 script tests and 385 editor tests, with three
+existing opt-in skips. Across all 66 native families, ready and operational
+handoffs refuse authority loss and cancellation after actual coordination
+release. Four additional cases cancel inside the authority callback. These
+regressions cold-resume 268 retained participants and compare 536 future document
+and 244 future review checkpoints against independent native references. Fresh
+installed archives repeat the same assertions.
+
+This repairs authority and cancellation admission, not every managed-custody
+boundary. A separate reproduced fault remains open: changing the native source
+database version during release can still return a readable but retired owner
+that refuses editing. Its saved reproduction is included in the qualification.
+Existing host references and server or cross-device authorization are not fenced
+by this local handoff repair.
 
 Functional probes cover all 66 original native configurations, 198 current-state
 reopens, fresh read-only policy, peer edits, saved Redo, new pending proposals and

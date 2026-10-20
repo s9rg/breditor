@@ -16,17 +16,19 @@ import {publishParticipantOperation} from "./publish.js";
 import {openOperationalComponents,operationPolicy} from "./components.js";
 import {verifyOperationalOwners} from "./verify.js";
 import type {SharedSelectionPolicy} from "../types.js";
+import type {SharedRichEditor} from "../core.js";
 import type {SharedParticipantOperationBeginOptions,SharedParticipantOperationResumeOptions,SharedParticipantOperationProgress,OperationalSharedParticipantParts} from "./types.js";
 
 const key=Object.freeze({});
 interface Life{changed:boolean}
 export interface OperationalParticipantCustody<P extends SharedSelectionPolicy>{p:PreparedRecovery<P>;origin:ParticipantOrigin;owners:RecoveryOwners<P>;db:IDBDatabase;recoveryDb:IDBDatabase;leases:RecoveryLease[];record:OperationRecord;life:Life}
 type State<P extends SharedSelectionPolicy>=OperationalParticipantCustody<P>;
-let takeOperational:<P extends SharedSelectionPolicy,T>(owner:OperationalSharedParticipant<P>,take:(state:State<P>)=>Promise<T>)=>Promise<T>;
+export interface OperationalParticipantHandoff<T>{commit():T;abandon():void}
+let prepareOperationalGroup:<T>(owners:readonly OperationalSharedParticipant<SharedSelectionPolicy>[],take:(states:readonly State<SharedSelectionPolicy>[],released:()=>void)=>Promise<T>,verify:(states:readonly State<SharedSelectionPolicy>[])=>void)=>Promise<OperationalParticipantHandoff<T>>;
 let exactOperational:<P extends SharedSelectionPolicy>(owner:OperationalSharedParticipant<P>)=>Promise<void>;
 let resumeHeld:<P extends SharedSelectionPolicy>(options:SharedParticipantOperationBeginOptions<P>)=>Promise<OperationalSharedParticipant<P>>;
-/** Internal parent custody helpers. None is a detached native ownership or readiness DTO. */
-export function transferOperationalParticipant<P extends SharedSelectionPolicy,T>(owner:OperationalSharedParticipant<P>,take:(state:State<P>)=>Promise<T>):Promise<T>{return takeOperational(owner,take);}
+/** Internal aggregate custody: keep every genuine child busy, then verify and consume all together. */
+export function prepareOperationalParticipantHandoff<T>(owners:readonly OperationalSharedParticipant<SharedSelectionPolicy>[],take:(states:readonly State<SharedSelectionPolicy>[],released:()=>void)=>Promise<T>,verify:(states:readonly State<SharedSelectionPolicy>[])=>void):Promise<OperationalParticipantHandoff<T>>{return prepareOperationalGroup(owners,take,verify);}
 export function verifyOperationalParticipantAtOrigin<P extends SharedSelectionPolicy>(owner:OperationalSharedParticipant<P>):Promise<void>{return exactOperational(owner);}
 export function resumeOperationalFromRecovered<P extends SharedSelectionPolicy>(options:SharedParticipantOperationBeginOptions<P>):Promise<OperationalSharedParticipant<P>>{return resumeHeld(options);}
 function fence(db:IDBDatabase,life:Life):void{db.onversionchange=()=>{life.changed=true;db.close();};}
@@ -48,12 +50,16 @@ function snapshot<P extends SharedSelectionPolicy>(input:SharedParticipantOperat
 }
 /** Durable storage custody, not account authentication, provider closure or room activation. */
 export class OperationalSharedParticipant<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
- readonly #state:State<P>;#closed=false;#busy=false;
+ readonly #state:State<P>;#closed=false;#busy=false;#released=false;
  private constructor(token:object,state:State<P>){if(token!==key)throw operationFailure("operation_closed");this.#state=state;fence(state.db,state.life);fence(state.recoveryDb,state.life);Object.freeze(this);}
  static{
   resumeHeld=options=>this.#fromRecovered(options,true);
   exactOperational=async owner=>{if(owner.#busy)throw operationFailure("operation_in_use");owner.#busy=true;try{await owner.#verify();await exact(owner.#state.p,owner.#state.owners);owner.#guard();}finally{owner.#busy=false;}};
-  takeOperational=async(owner,take)=>{if(owner.#busy)throw operationFailure("operation_in_use");owner.#busy=true;try{await owner.#verify();const result=await take(owner.#state);owner.#state.origin.dispose();owner.#state.p.backup.dispose();owner.#closed=true;return result;}finally{owner.#busy=false;}};
+  prepareOperationalGroup=async(owners,take,verify)=>{
+   if(new Set(owners).size!==owners.length)throw operationFailure("operation_policy");for(const owner of owners){if(owner.#closed||owner.#released)throw operationFailure("operation_closed");if(owner.#busy)throw operationFailure("operation_in_use");}for(const owner of owners)owner.#busy=true;
+   let offered=false,finished=false;const abandon=()=>{if(finished)return;finished=true;for(const owner of owners)owner.#busy=false;};
+   try{for(const owner of owners)await owner.#verify();const states=owners.map(owner=>owner.#state),result=await take(states,()=>{for(const owner of owners)owner.#released=true;});const handoff=Object.freeze({commit(){if(finished)throw operationFailure("operation_closed");try{verify(states);for(const owner of owners){owner.#state.origin.dispose();owner.#state.p.backup.dispose();owner.#closed=true;}return result;}finally{abandon();}},abandon});offered=true;return handoff;}finally{if(!offered)abandon();}
+  };
  }
  /** Publish retained origin and operational intent before transferring genuine completed custody. */
  static begin<Q extends SharedSelectionPolicy>(supplied:SharedParticipantOperationBeginOptions<Q>):Promise<OperationalSharedParticipant<Q>>{return this.#fromRecovered(supplied,false);}
@@ -86,7 +92,7 @@ export class OperationalSharedParticipant<P extends SharedSelectionPolicy=Shared
    return new OperationalSharedParticipant(key,state);
   }catch(error){try{await discardRecoveryOwners(owners);}finally{origin?.dispose();backup?.dispose();if(db&&recoveryDb)await release(db,recoveryDb,leases);else{db?.close();recoveryDb?.close();for(const lease of leases.reverse())await lease.close();}}throw failure(error);}
  }
- #guard():void{if(this.#closed)throw operationFailure("operation_closed");this.#state.p.guard();}
+ #guard():void{if(this.#closed||this.#released)throw operationFailure("operation_closed");this.#state.p.guard();}
  /** Original immutable selection, never current role or activation authority. */
  origin(){if(this.#closed)throw operationFailure("operation_closed");return participantSelection(this.#state.p.expected);}
  /** Durable phase only. Actual checks still read native owners and current component data. */
@@ -95,8 +101,8 @@ export class OperationalSharedParticipant<P extends SharedSelectionPolicy=Shared
  async check():Promise<void>{if(this.#busy)throw operationFailure("operation_in_use");this.#busy=true;try{await this.#verify();}finally{this.#busy=false;}}
  /** Release coordination only after actual continuity checks; native author leases stay with parts. */
  async intoParts():Promise<Readonly<OperationalSharedParticipantParts<P>>>{
-  if(this.#closed)throw operationFailure("operation_closed");if(this.#busy)throw operationFailure("operation_in_use");this.#busy=true;
-  try{await this.#verify();const s=this.#state,parts=Object.freeze({sources:Object.freeze(ownerSources(s.p,s.owners)),session:s.owners.session!,uploads:s.owners.uploads!});await release(s.db,s.recoveryDb,s.leases);s.origin.dispose();s.p.backup.dispose();this.#closed=true;return parts;}finally{this.#busy=false;}
+  if(this.#closed||this.#released)throw operationFailure("operation_closed");if(this.#busy)throw operationFailure("operation_in_use");this.#busy=true;
+  try{await this.#verify();const s=this.#state,parts=Object.freeze({sources:Object.freeze(ownerSources(s.p,s.owners)),session:s.owners.session!,uploads:s.owners.uploads!}),source=captureSharedAssetReferences(parts.sources);try{await release(s.db,s.recoveryDb,s.leases);this.#released=true;s.p.guard();s.origin.verify(parts.session.core as unknown as SharedRichEditor<SharedSelectionPolicy>);source.check();s.origin.dispose();s.p.backup.dispose();this.#closed=true;return parts;}finally{source.dispose();}}finally{this.#busy=false;}
  }
  /** Save ordinary owners before releasing custody. Failed saves/releases remain retryable. */
  async close():Promise<void>{if(this.#closed)return;if(this.#busy)throw operationFailure("operation_in_use");this.#busy=true;try{const s=this.#state,o=s.owners;await o.revisions?.close();await o.suggestions?.close();await o.versions?.close();await o.session?.close();o.uploads?.close();await release(s.db,s.recoveryDb,s.leases);s.origin.dispose();s.p.backup.dispose();this.#closed=true;}finally{this.#busy=false;}}

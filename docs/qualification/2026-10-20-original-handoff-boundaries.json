@@ -1,0 +1,123 @@
+{
+  "format": "breditor/original-handoff-boundary-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-20",
+  "classification": "PROGRESS",
+  "v1Ready": false,
+  "publicationApproved": false,
+  "openV1Gates": 13,
+  "scope": "Original ready, operational and aggregate-room authority/cancellation admission after asynchronous coordination release. Not general managed-source liveness, whole-room activation, platform qualification or V1 approval.",
+  "source": {
+    "baseCommit": "8738c1fe33d2066affb9c72cf64f3cd56f5bd6ef",
+    "testedWorkingTreeSha256": "71084c218c8e5f3ebcd57d1c1d506765cd57c4b868f3d9064d1c5ed37341b8e0",
+    "files": 4821,
+    "bytes": 41549609,
+    "nonDocumentationSha256": "cc56fa46bfd140869615a5553f48e28289afa61bc4de22d409a302d5fdb645af",
+    "postQualificationChanges": "Only the three recovery guides, V1 checkpoint note and this scoped record."
+  },
+  "evidence": {
+    "candidate": "target/v1-candidate-runs/run-2vMmZ5/result.json",
+    "audit": "target/original-handoff-qualification-oXqFfg/checkpoint-audit.json",
+    "artifactSnapshots": "target/original-handoff-qualification-oXqFfg/snapshots",
+    "archives": "target/original-handoff-qualification-oXqFfg/archives",
+    "sourceBaselineReproductions": "target/original-handoff-before-fix.json",
+    "installedBaselineReproductions": "target/original-handoff-installed-before-fix.json",
+    "remainingRetirementReproduction": "target/original-handoff-qualification-oXqFfg/remaining-retired-source-fault.json",
+    "installedParticipants": "target/original-handoff-qualification-oXqFfg/snapshots/target/participant-operation-installed-consumer.json",
+    "installedRooms": "target/original-handoff-qualification-oXqFfg/snapshots/target/room-operational-recovery-installed-consumer.json"
+  },
+  "implementation": {
+    "reproducedRepairs": [
+      "RecoveredSharedParticipant.intoParts returned owners after authority was revoked during actual coordination-lease release.",
+      "OperationalSharedParticipant.intoParts returned owners after authority was revoked during actual coordination-lease release.",
+      "SharedRoomOperationalRecovery.intoParts returned aggregate children after parent authority was revoked during actual coordination-lease release."
+    ],
+    "baselineArchiveSha256": "c3f7593732c7a20d025d866b24e0960b5ee8c2f58e646e862908c8c6fc58921d",
+    "custody": "A final authority/signal and captured-source check follows awaited release. Post-release refusal is cleanup-only; another handoff or transfer to an operation cannot reuse released coordination custody.",
+    "aggregate": "A private prepare/commit/abandon capsule keeps all genuine child handles busy across asynchronous preparation. The outer parent synchronously validates all children and consumes them together after its last await.",
+    "retention": "Late refusal leaves original files and current native, pending-work and upload stores intact. Explicit close/discard and fresh cold resume remain available.",
+    "authorityBoundary": "Local coordinator admission does not revoke existing host-held references, restore current server permission or fence other devices.",
+    "originalProtocolMeaningsDefaultsAndBoundsUnchanged": true,
+    "productionRustSourceChanged": false,
+    "vendorSourceChanged": false,
+    "dependencyVersionUpgrades": false,
+    "automaticRollover": false,
+    "compactionOrGarbageCollection": false,
+    "unlimitedLifetime": false
+  },
+  "tests": {
+    "selectedChecksPassed": 68,
+    "scriptTestsPassed": 1156,
+    "existingOptInScriptChecksSkipped": 3,
+    "editorTestsPassed": 385,
+    "generationSourceTestsPassed": 329,
+    "generationInstalledTestsPassed": 329,
+    "originalNativeParticipantFamilies": 66,
+    "readyAuthorityRefusals": 66,
+    "readyAbortRefusals": 66,
+    "operationalAuthorityRefusals": 66,
+    "operationalAbortRefusals": 66,
+    "inCallbackAbortRefusals": 4,
+    "participantColdResumes": 268,
+    "additionalFutureDocumentCheckpoints": 536,
+    "additionalFutureReviewCheckpoints": 244,
+    "nativeRoomFamilies": 10,
+    "parentAuthorityRefusals": 10,
+    "parentAbortRefusals": 10,
+    "parentColdResumes": 20,
+    "originalParticipantFileComparisons": 60,
+    "lateTwoChildCommitRefusals": 10,
+    "lateCohortColdParticipants": 20,
+    "reproducedBaselineDefects": 3,
+    "sharedRustCarriedPassed": 653,
+    "relayRustCarriedPassed": 216,
+    "freshRustSuiteThisRun": false,
+    "nativeSourceAndBuildInputsUnchanged": 2747,
+    "freshWasmProducerRebuild": false,
+    "nativeInventoryFixtureBuildsInvokedNormally": true,
+    "nativeQualificationCarriedFrom": "2928ff7cc8bef611b08668b2ca66214ff1846bbd",
+    "allPriorParticipantAndRoomAssertionsRetained": true,
+    "sourceAndInstalledParticipantAndRoomResultsEqual": true,
+    "storageLocksAndRaster": "Actual canonical Wasm with synthetic IndexedDB, locks and raster decoding. Controlled faults, not physical durability or browser qualification."
+  },
+  "artifacts": {
+    "sharedWasmSha256": "5accbfe1c8d850ffac7b9689c639ae526d9db1997991aaec05b6e665afa86ead",
+    "localWasmSha256": "d2f0e56fa6e3ec0b42ba1784d6f17ba344247450fc5358ab0ca796fbf09dbb81",
+    "nativeRevisionHostSha256": "e5bc62cc731c8f98b6dd3ea14433044440b8778606b420c7adb48a8f30dda0b7",
+    "browserArchiveSha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+    "richArchiveSha256": "0acb66257da3df8bd91349ca65914a63fabff2979d6404f6634bf7f25eb458df",
+    "collaborationArchiveSha256": "6e293a003c6ddb7a5b946f2a16a6f187a2d552a448dc305e23b287002a460d8f"
+  },
+  "verification": {
+    "checkedFiles": 184,
+    "immutableArtifactSnapshots": 16,
+    "frozenSourceUnchangedDuringAllChecks": true,
+    "runtimePairHashVerified": true,
+    "publicArchivesStrictTypes": true,
+    "workspaceLinks": false,
+    "noWorkspaceReactOrSyntheticStorageInProduction": true,
+    "explicitOverrides": [
+      {
+        "id": "installed-session-backups",
+        "args": ["scripts/check-session-backups-installed.mjs", "--reuse-runtimes"],
+        "reason": "Reuse only the hash-verified paired Wasm producers after checking2747 unchanged native inputs. All consumer assertions and ordinary native inventory fixture builds remain; permanent functional/full plans are unchanged."
+      }
+    ],
+    "producerReuseScope": "Only the paired Wasm producers are reused. Inventory fixture builds and native assertions run normally; no fresh full Rust-suite qualification is claimed."
+  },
+  "knownReproducedRemainingIssue": {
+    "fixed": false,
+    "cases": 2,
+    "description": "An actual IndexedDB version change during coordination release retires the original native source while its backup remains readable. Ready and operational handoffs still return the retired owner; editing then refuses with code retired and leaves the checkpoint unchanged.",
+    "next": "Add genuine managed-source liveness admission distinct from readable capture, including the aggregate final-commit boundary. Preserve retired-source exports and read-only policy."
+  },
+  "remaining": [
+    "Original-family managed-source retirement admission and equivalent aggregate-room qualification",
+    "Participant and room catalog integration with generation-aware operational custody",
+    "Independent comment and server-log generations",
+    "Complete provider/client closure and protected credential handoff",
+    "Authenticated whole-room generation activation and cross-device writer fencing",
+    "Performance, browser reliability, licenses, hosted verification and all remaining V1 release gates"
+  ],
+  "pushTagPublishDeploy": false
+}

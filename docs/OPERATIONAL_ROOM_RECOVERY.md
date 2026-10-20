@@ -125,6 +125,15 @@ already released. Once all releases succeed, ordinary native session, queue,
 version and upload owners transfer together. The caller closes revisions,
 suggestions and versions before each session and upload owner.
 
+After awaited release, the parent rechecks current authority and cancellation,
+every child's native origin, and all source captures before consuming any child
+handle. Child consumption is one aggregate commit, not nested independent
+handoffs. A late refusal leaves every child owned for explicit cleanup; it cannot
+return a partial participant list. Once release completed, that parent and its
+children cannot hand off again. Close/discard them and cold-resume the retained
+parent intent with fresh policy. Original catalog, server, inventory, historic
+copies and current participant stores remain intact.
+
 `close()` waits for an in-flight finish, gracefully closes private owners and
 supports retry after a save or release failure. `discardAndClose()` explicitly
 abandons private unsaved state but deletes no committed journal, upload, file or
@@ -163,6 +172,21 @@ The [operational room qualification](qualification/2026-10-19-operational-room-r
 records the 33 selected checks, frozen source, native regressions and fresh
 installed-package evidence. It is a functional recovery checkpoint, not V1
 release approval.
+
+The later [handoff boundary qualification](qualification/2026-10-20-original-handoff-boundaries.json)
+adds authority and cancellation faults after aggregate release in all ten native
+room families. Twenty cold parent resumes compare 60 original participant files.
+Ten separate two-child cases revoke authority after asynchronous preparation but
+before synchronous commit; no child transfers, and all twenty retained children
+cold-resume. Source and fresh installed archives repeat the same assertions.
+The combined run passes 68 selected checks, 1,156 script tests and 385 editor
+tests, with three existing opt-in skips.
+
+These regressions qualify aggregate authority/cancellation admission. A separate
+database-version-change fault still reproduces retired native owners in the
+original participant handoffs. Its room-level equivalent and managed-source
+liveness admission remain work. Neither this local transfer barrier nor its
+tests establish server authorization or cross-device writer fencing.
 
 The functional suite exercises ten original native compilers/transports, twenty
 participants, thirty cold room reopens, saved Redo, pending suggestions/versions

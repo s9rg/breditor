@@ -17,7 +17,7 @@ export async function prepareRecovery<P extends SharedSelectionPolicy>(supplied:
   const input={...supplied},expected=participantSelection(input.expected),actual=SharedParticipantBackup.prototype.selection.call(input.backup);
   SharedParticipantBackup.prototype.file.call(input.backup);if(JSON.stringify(actual)!==JSON.stringify(expected)||!name(input.database))throw recoveryFailure("recovery_policy");
   let authority:()=>void;try{authority=participantAuthority(input.checkAuthority);}catch{throw recoveryFailure("recovery_authority");}
-  const guard=()=>{if(input.signal?.aborted)throw recoveryFailure("recovery_aborted");try{authority();}catch{throw recoveryFailure("recovery_authority");}SharedParticipantBackup.prototype.file.call(input.backup);};guard();
+  const guard=()=>{if(input.signal?.aborted)throw recoveryFailure("recovery_aborted");try{authority();}catch{throw recoveryFailure("recovery_authority");}if(input.signal?.aborted)throw recoveryFailure("recovery_aborted");SharedParticipantBackup.prototype.file.call(input.backup);};guard();
   const destinations=Object.fromEntries(Object.entries(input.destinations).sort(([a],[b])=>a<b?-1:a>b?1:0)) as SharedParticipantRecoveryOptions<P>["destinations"],sources=expected.identity.stores,paired=sources.includes("paired-session"),kind=input.session.kind;
   const options={...input.session.options},raw=options as unknown as Record<string,unknown>;
   if(!["document","document-selection","search-document","paired","reviewed-paired","search-paired"].includes(kind)||paired!==kind.includes("paired"))throw recoveryFailure("recovery_policy");

@@ -43,6 +43,24 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+Original ready, operational and aggregate-room handoffs now recheck current
+authority and cancellation after coordination release. Room children remain
+owned together until one synchronous final commit, so a late refusal consumes
+none of them. The [handoff qualification](qualification/2026-10-20-original-handoff-boundaries.json)
+passes 68 selected checks, 1,156 script tests and 385 editor tests, with three
+existing opt-in skips. Source and fresh installed archives each exercise all 66
+participant and ten room families, including 268 participant cold resumes,
+20 parent cold resumes and ten late two-child commit refusals. The Wasm pair is
+hash-verified and reused; unchanged native inputs carry the prior Rust-suite
+qualification, not a fresh full native run. Inventory fixture builds run normally.
+
+This is a scoped authority/cancellation repair. A separate native source
+database upgrade during release still reproduces a readable but retired owner
+in ready and operational participant handoffs. Managed-custody admission is the
+next repair. Generation catalog integration, independent comment/server
+generations, whole-room activation and the other V1 gates remain open. No version,
+tag, publication or deployment is promoted; all 13 release gates remain open.
+
 The [operational generation participant](GENERATION_PARTICIPANT_OPERATION.md)
 now continues genuine recovery custody, edits and seals further native history,
 retains pending work and uploads, and cold-reopens actual current stores before

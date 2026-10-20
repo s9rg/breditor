@@ -32,6 +32,12 @@ test("both profiles require genuine operational generation custody and full inst
  const installed=readFileSync(join(repository,"scripts/check-generation-operation-installed.mjs"),"utf8");for(const text of ["probe-generation-operation.mjs","types-generation-operation.ts","operationalColdReopens:18","operationHandoffs:24","generation_operation/origin.js","sourceUnchanged:true"])assert.ok(installed.includes(text),text);
 });
 
+test("both profiles retain original workflows and require real native late-handoff refusals in public archives",()=>{
+ for(const profile of ["functional","full"]){const p=candidateReleasePlan({profile}),find=id=>{const c=p.checks.find(c=>c.id===id);assert.ok(c,id);return c;};assert.ok(find("participant-operation").args.includes("scripts/probe-participant-operation.mjs"));assert.ok(find("room-operational-recovery").args.includes("scripts/check-room-operational-recovery-sdk.mjs"));assert.ok(find("installed-session-backups").artifacts.some(a=>a.path==="target/room-operational-recovery-installed-consumer.json"&&a.fresh));}
+ const installed=readFileSync(join(repository,"scripts/check-session-backups-installed.mjs"),"utf8");for(const text of ["fixtures/participant-recovery/handoff-boundaries.mjs","fixtures/room-operation/handoff-boundaries.mjs","participantOperation.handoffBoundaries","roomOperationalRecovery.handoffBoundaries","readyAuthority:66","operationalAbort:66","readyCallbackAbort:2","coldReopens:268","nativeRooms:10","retainedFiles:60"])assert.ok(installed.includes(text),text);
+ for(const name of ["participant-recovery","room-operation"]){const fixture=readFileSync(join(repository,"scripts/fixtures",name,"handoff-boundaries.mjs"),"utf8");assert.ok(fixture.includes("await close.apply(this,args)"));assert.ok(fixture.includes("controller.abort()"));assert.ok(fixture.includes("await assert.rejects(owner.intoParts()"));}
+});
+
 test("both profiles require permanent observer generation custody and fresh public archives",()=>{
  for(const profile of ["functional","full"]){const p=candidateReleasePlan({profile}),find=id=>{const c=p.checks.find(c=>c.id===id);assert.ok(c,id);return c;};
   assert.deepEqual(find("segmented-observer-storage-contracts").args,["--test","scripts/segmented-observer-storage.test.mjs"]);
