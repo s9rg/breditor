@@ -2,6 +2,7 @@
  * Genuine owners are reserved before any host callback. Both storage families
  * release together, then share one synchronous validation/consumption barrier.
  * Original protocols remain original; generations are never flattened or reset. */
+import {managedSourceCore} from "../managed_custody.js";
 import {reserveOperationalParticipantGroup,type OperationalSharedParticipant} from "../participant_operation/operation.js";
 import {reserveOperationalGenerationGroup,type OperationalSharedGenerationParticipant} from "../generation_operation/operation.js";
 import {prepareOperationalCohort,type OperationalCohortReservation,type OperationalCohortHandoff} from "../operation_cohort/cohort.js";
@@ -46,7 +47,7 @@ export async function prepareMixedRoomParticipants(input:readonly MixedRoomParti
    await releaseRoomCustody([...databases,...states.flatMap(s=>[s.db,s.recoveryDb])],[...leases,...states.flatMap(s=>s.leases)]);markReleased();released();return parts;
   },()=>{
    afterRelease();
-   for(const s of original.states){s.p.guard();s.origin.verify(s.owners.session!.core as unknown as SharedRichEditor<SharedSelectionPolicy>);}
+   for(const s of original.states){s.p.guard();s.origin.verify(managedSourceCore(s.owners.session!) as SharedRichEditor<SharedSelectionPolicy>);}
    for(const s of generation.states){s.p.guard();s.origin.verifySource(generationOwnerSource(s.p,s.owners));}
    afterRelease();
   },()=>{for(const capture of captures)capture.check();},()=>roomFailure("room_operation_closed"));

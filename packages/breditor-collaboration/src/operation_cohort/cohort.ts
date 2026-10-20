@@ -5,6 +5,7 @@ export interface OperationalCohortReservation<S> {
  readonly states:readonly S[];
  verify():Promise<void>;
  markReleased():void;
+ checkBindings():void;
  checkCurrent():void;
  disposeAuxiliaries():void;
  checkManaged():void;
@@ -30,10 +31,15 @@ export async function prepareOperationalCohort<T>(
   const handoff=Object.freeze({commit(){
    if(finished)throw closed();
    try{
+    // Reject replaced SDK bindings before origin verification can read them.
+    for(const group of groups)group.checkBindings();
     verify();
     for(const group of groups)group.checkCurrent();
     for(const group of groups)group.disposeAuxiliaries();
     for(const group of groups)group.checkCurrent();
+    // Guards and native destructors may have replaced a readonly field. Refuse
+    // before captured public record readers can enter an application accessor.
+    for(const group of groups)group.checkBindings();
     checkSources();
     for(const group of groups)group.checkManaged();
     // Nothing above may consume a child. Nothing below may call application code.

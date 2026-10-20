@@ -11,16 +11,20 @@ import {cacheKey} from "../versions/database.js";
 import {participantDigest} from "../participant_backup/format.js";
 import {inspectRecord,inspectUploads} from "./inspect.js";
 import {recoveryFailure} from "./errors.js";
-import {checkManagedSource} from "../managed_custody.js";
+import {checkManagedSource,checkManagedSourceBindings,managedSourceCore} from "../managed_custody.js";
+import type {SharedRichEditor} from "../core.js";
 import type {PreparedRecovery} from "./prepare.js";
 import type {SharedSelectionPolicy} from "../types.js";
 import type {SharedAssetReferenceCaptureOptions} from "../asset_references_capture.js";
 import type {SharedParticipantRecoveryStep} from "./types.js";
 export type RecoverySession<P extends SharedSelectionPolicy>=SharedPersistentSession<P>|SharedReviewPersistentSession<P>;
 export interface RecoveryOwners<P extends SharedSelectionPolicy> {session?:RecoverySession<P>;suggestions?:SharedSuggestionQueue<P>;revisions?:SharedSuggestionRevisions<P>;versions?:SharedDocumentVersions<P>;uploads?:RichAssetStore}
+/** Inspect readonly field bindings without advancing callbacks or checking
+ * storage liveness ahead of the existing final handoff barrier. */
+export function checkRecoveryOwnerBindings<P extends SharedSelectionPolicy>(owners:RecoveryOwners<P>):void{if(!owners.session)throw recoveryFailure("recovery_missing");for(const owner of [owners.session,owners.suggestions,owners.revisions,owners.versions])if(owner)checkManagedSourceBindings(owner);}
 /** Readable records do not prove live custody of every selected owner. Recoverable
  * save errors remain retryable; changed storage custody never does. */
-export function checkManagedRecoveryOwners<P extends SharedSelectionPolicy>(owners:RecoveryOwners<P>):void{if(!owners.session||!owners.uploads)throw recoveryFailure("recovery_missing");const core=owners.session.core;checkManagedSource(owners.session,core);for(const owner of [owners.suggestions,owners.revisions,owners.versions])if(owner)checkManagedSource(owner,core);RichAssetStore.prototype.checkOpen.call(owners.uploads);}
+export function checkManagedRecoveryOwners<P extends SharedSelectionPolicy>(owners:RecoveryOwners<P>):void{if(!owners.session||!owners.uploads)throw recoveryFailure("recovery_missing");const core=managedSourceCore(owners.session);checkManagedSource(owners.session,core);for(const owner of [owners.suggestions,owners.revisions,owners.versions])if(owner)checkManagedSource(owner,core);RichAssetStore.prototype.checkOpen.call(owners.uploads);}
 /** No empty-document fallback, implicit history upgrade or file-selected factory. */
 async function session<P extends SharedSelectionPolicy>(p:PreparedRecovery<P>,adopt:boolean):Promise<RecoverySession<P>>{
  const selected=p.session,common={database:p.destinations.document},backup={...common,backupJson:p.backups.document,writerRecovery:"host-reacquired" as const},open={...common,create:()=>{throw recoveryFailure("recovery_missing");}};
@@ -35,11 +39,11 @@ async function session<P extends SharedSelectionPolicy>(p:PreparedRecovery<P>,ad
  }
 }
 export function ownerSources<P extends SharedSelectionPolicy>(p:PreparedRecovery<P>,owners:RecoveryOwners<P>):SharedAssetReferenceCaptureOptions<P>{
- const source=owners.session;if(!source)throw recoveryFailure("recovery_missing");return {core:source.core,...(p.expected.identity.stores.includes("paired-session")?{session:source as SharedReviewPersistentSession<P>}:{}),...(owners.suggestions?{suggestions:owners.suggestions}:{}),...(owners.revisions?{revisions:owners.revisions}:{}),...(owners.versions?{versions:owners.versions}:{})};
+ const source=owners.session;if(!source)throw recoveryFailure("recovery_missing");return {core:managedSourceCore(source) as SharedRichEditor<P>,...(p.expected.identity.stores.includes("paired-session")?{session:source as SharedReviewPersistentSession<P>}:{}),...(owners.suggestions?{suggestions:owners.suggestions}:{}),...(owners.revisions?{revisions:owners.revisions}:{}),...(owners.versions?{versions:owners.versions}:{})};
 }
 export function checkComponent<P extends SharedSelectionPolicy>(p:PreparedRecovery<P>,owners:RecoveryOwners<P>,step:SharedParticipantRecoveryStep):void{
  p.guard();let expected:string|undefined,actual:string|undefined;
- if(step==="document"){actual=owners.session?.core.checkpointJson();expected=p.records.get("document");if(actual===expected&&p.expected.identity.stores.includes("paired-session")){actual=JSON.stringify((owners.session as SharedReviewPersistentSession<P>).exportRecovery());expected=p.records.get("paired-session");}}
+ if(step==="document"){actual=owners.session?(managedSourceCore(owners.session) as SharedRichEditor<P>).checkpointJson():undefined;expected=p.records.get("document");if(actual===expected&&p.expected.identity.stores.includes("paired-session")){actual=JSON.stringify((owners.session as SharedReviewPersistentSession<P>).exportRecovery());expected=p.records.get("paired-session");}}
  else if(step!=="uploads"){const kind=step==="revisions"?"suggestion-revisions":step==="versions"?"version-catalog":"suggestions";expected=p.records.get(kind);actual=JSON.stringify(owners[step]?.exportRecovery());}
  if(step!=="uploads"&&(expected===undefined||actual!==expected))throw recoveryFailure("recovery_diverged");
 }

@@ -28,6 +28,16 @@ destructor can throw, revoke authority or retire another participant. It must
 therefore run before the final authority, source-cut and managed-liveness
 checks, never during child consumption.
 
+Binding-only preflights run before native/source verification and again after
+cleanup and current guards, before captured record readers. Genuine registrations
+pin the semantic `core` and `options` bindings and source prototype, including
+registered underlying version-store bindings. These preflights do not run host
+or liveness callbacks ahead of the existing final managed-owner sweep. A replaced
+accessor refuses without evaluation; canonical registered core reads do not use
+the public property. Freezing or sealing an unchanged owner is allowed. Private
+checks remain distinct from readable retired history. These guards do not form
+a sandbox against replacing JavaScript intrinsics or arbitrary SDK/native methods.
+
 After all temporary cleanup, commit checks current policy again, rechecks all
 source captures and sweeps every actual managed native, dependent-store and
 upload owner. Consumption then writes only private closed flags. There is no
@@ -43,7 +53,11 @@ Fresh resume still requires explicit native factories and current policy.
 
 ## Required functional checks
 
-`operation-cohort-contracts` checks phase ordering and single-use capabilities.
+`operation-cohort-contracts` checks phase ordering and single-use capabilities;
+`managed-source-binding-contracts` checks semantic descriptor identity and
+zero-accessor refusal. The native binding probe covers replacement before
+commit, in the final authority callback and in native-reader destruction, with
+exact committed records and cold history checks in original and mixed cohorts.
 `mixed-room-custody` uses genuine original and generation participants across
 ten native profile/transport fixtures and local, relay and retained families.
 It checks late refusals in either family, release retry, changed source cuts,

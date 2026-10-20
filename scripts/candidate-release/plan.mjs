@@ -101,6 +101,7 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   stage("recovery-cleanup-scope-contracts",node,["--test","scripts/recovery-cleanup-scope.test.mjs"]),
   stage("recovery-opening-custody-contracts",node,["--test","scripts/recovery-opening-custody.test.mjs"]),
   stage("operation-cohort-contracts",node,["--test","scripts/operation-cohort.test.mjs"]),
+  stage("managed-source-binding-contracts",node,["--test","scripts/managed-source-bindings.test.mjs"]),
   stage("participant-recovery-type-fence",node,["node_modules/typescript/bin/tsc","--noEmit","--strict","--exactOptionalPropertyTypes","--target","ES2022","--module","NodeNext","--lib","ES2022,DOM","scripts/fixtures/editor-consumer/types-participant-recovery.ts"]),
   script("participant-recovery","probe-participant-recovery.mjs",["target/promoted-shared-web"]),
   script("document-participant-recovery","probe-document-participant-recovery.mjs",["target/promoted-shared-web"]),

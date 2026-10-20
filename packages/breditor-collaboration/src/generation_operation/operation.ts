@@ -47,6 +47,9 @@ export class OperationalSharedGenerationParticipant<P extends SharedSelectionPol
    return Object.freeze({states:Object.freeze(owners.map(owner=>owner.#state)),
     async verify(){for(const owner of owners){owner.#guard();await retained(owner.#state);await verifyOperationalGenerationOwners(owner.#state.p,owner.#state.owners,owner.#state.origin);owner.#guard();}},
     markReleased(){for(const owner of owners)owner.#released=true;},
+    // Generation origin/capture admission already inspects canonical native
+    // source bindings without reading a shadowed public core property.
+    checkBindings(){},
     checkCurrent(){for(const owner of owners){if(owner.#closed||!owner.#released||!owner.#busy)throw fail("generation_operation_closed");owner.#state.currentGuard();}},
     disposeAuxiliaries(){for(const owner of owners){owner.#state.origin.dispose();owner.#state.p.backup.dispose();}},
     checkManaged(){for(const owner of owners){const s=owner.#state;generationSource(generationOwnerSource(s.p,s.owners).session).checkManaged();RichAssetStore.prototype.checkOpen.call(s.owners.uploads!);}},

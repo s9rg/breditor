@@ -43,6 +43,12 @@ test("both profiles require the common mixed barrier and unchanged native cleanu
  const sdk=readFileSync(join(repository,'scripts/check-mixed-room-custody-sdk.mjs'),'utf8');for(const text of ['assert.deepEqual(native.source,source','fileEvidence(root,file.path)','assert.deepEqual(sourceEvidence(root),source)','probeOperationCohortCleanup','probeMixedRoomCustody'])assert.ok(sdk.includes(text),text);
 });
 
+test('binding refusals remain mandatory before captured readers in source and installed native cohorts',()=>{
+ for(const profile of ['functional','full']){const p=candidateReleasePlan({profile}),row=p.checks.find(c=>c.id==='managed-source-binding-contracts');assert.ok(row);assert.deepEqual(row.args,['--test','scripts/managed-source-bindings.test.mjs']);}
+ const installed=readFileSync(join(repository,'scripts/check-generation-room-installed.mjs'),'utf8');for(const text of ['probe-managed-source-bindings.mjs','cohorts:120','coldParticipants:240','accessorInvocations:0','managed_source_bindings.js'])assert.ok(installed.includes(text),text);
+ const sdk=readFileSync(join(repository,'scripts/check-mixed-room-custody-sdk.mjs'),'utf8');assert.ok(sdk.includes('probeManagedSourceBindings'));assert.ok(sdk.includes('assert.equal(bindings.passed,true)'));
+});
+
 test("both profiles require complete generation assets, restartable participants, strict types and fresh public archives",()=>{
  for(const profile of ["functional","full"]){const p=candidateReleasePlan({profile}),find=id=>{const c=p.checks.find(c=>c.id===id);assert.ok(c,id);return c;};
   assert.deepEqual(find("generation-assets-source-contracts").args,["--test","scripts/generation-asset-source.test.mjs"]);

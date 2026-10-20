@@ -43,6 +43,51 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+Managed-source transfers now pin semantic read-only bindings and registered
+native cores. Replaced fields or prototype accessors are rejected without
+invoking the replacement. Semantically unchanged freezing/sealing remains
+supported. Binding-only preflights precede captured readers; the final liveness
+sweep remains after cleanup and host callbacks. The repair refuses altered
+bindings; it does not repair application objects or sandbox arbitrary native
+method/intrinsic overrides.
+
+The [managed-binding qualification](qualification/2026-10-20-managed-source-bindings.json)
+passes all 51 selected architecture checks, 1,271 script tests, 385 editor tests,
+twenty binding laws and fourteen cohort phase laws, with three existing opt-in
+skips. The preserved preceding archive fails the same 120 binding assertions.
+Source and fresh offline installed consumers reject all 120 substitutions with
+zero replacement-getter calls, then cold-reopen 240 participants after restoring
+the unsupported descriptor for cleanup. They preserve 216 future document and
+216 review history comparisons. The existing mixed matrix freshly verifies
+480 cohorts, 960 cold reopens and 864 future history comparisons per domain;
+all 362 generation assertions run in source and installed consumers.
+
+An initial attempt moved full liveness too early and failed the unchanged legacy
+two-guard fixture at check 37. The binding-only repair restores that ordering.
+A second attempt passed 46 checks before an unexpected installed original-room
+admission refusal during initial finish, before fault injection. Its actual
+consumer, archives and logs are preserved. One unchanged replay and thirteen
+traced replays pass; they establish neither cause nor repair. The final fresh
+51-check run carries no partial pass from either failed attempt.
+
+A separate deterministic original-catalog bug is now reproduced against that
+preserved package in both transport fixtures: transfer invokes its source guard
+before reserving the catalog, allowing reentrant staging to start. That
+reservation-order fix belongs to the next durable V2 recovery checkpoint; it is
+not fixed here and is not a reproduction of the unexplained initial-finish
+refusal. The four earlier intermittent observations also remain unexplained.
+
+Both normal Wasm producers execute freshly in installed original recovery with
+identical output bytes. The 653 shared and 216 relay Rust tests carry prior
+qualification across 2,747 unchanged native/build inputs, not fresh suite runs.
+Public root exports, native history and wire formats remain unchanged. Durable
+V2 operational parent intent and atomic guard retargeting, historic-copy
+dispositions, independent comment/server-log generations, complete provider/client
+closure and current authenticated activation remain required. All thirteen V1
+gates remain open. No version, push, tag, publication or deployment is promoted.
+
+### Previous mixed cohort checkpoint
+
 Original, generation and mixed-family operational participants now share one
 [custody barrier](OPERATIONAL_COHORT_CUSTODY.md). Both families are reserved
 before the first host callback. Temporary native-reader destruction precedes
@@ -70,9 +115,9 @@ formats remain unchanged.
 
 A separate diagnostic deliberately replaced an original owner's read-only
 binding with a getter. It returned an already retired peer during the final
-managed sweep. That unsupported override remains a narrowly scoped hardening
-gap, not a normal authority-callback or browser fault; rejecting it before
-invocation is the next repair. The four earlier intermittent observations remain
+managed sweep. That unsupported override was the narrowly scoped hardening
+gap repaired in the current checkpoint above, not a normal authority-callback
+or browser fault. The four earlier intermittent observations remain
 unexplained. Durable V2 operational parent intent and atomic guard retargeting,
 historic-copy dispositions, independent comment/server-log generations, complete
 client/provider closure and current authenticated activation remain required.
