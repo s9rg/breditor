@@ -157,12 +157,14 @@ foreign state, altered original bytes and changed coordinator markers are not
 overwritten or repaired. A failed attempt keeps its original file readable until
 explicit close.
 
-Ready is still an exact recovery cut, not operational activation. Once
-`intoParts()` transfers the owners and the host permits edits or upload changes,
-this coordinator must not be used as a general reopen API for that evolved
-participant. Operational generation continuation, participant and room catalogs,
-complete provider closure, independent comment/server generations and whole-room
-activation remain release work. All 13 V1 gates remain open.
+Ready is still an exact recovery cut, not operational activation. Use
+[operational generation custody](GENERATION_PARTICIPANT_OPERATION.md) before
+handing the recovered owners out if the participant must continue editing and
+later reopen its current stores. Once ordinary `intoParts()` transfers owners
+and the host permits changes, the exact-cut recovery coordinator must not be
+used as the general reopen API. Participant and room catalogs, complete provider
+closure, independent comment/server generations and whole-room activation remain
+release work. All 13 V1 gates remain open.
 
 ## Functional verification
 

@@ -43,7 +43,27 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
-The [generation asset and participant recovery path](GENERATION_ASSET_RECOVERY.md)
+The [operational generation participant](GENERATION_PARTICIPANT_OPERATION.md)
+now continues genuine recovery custody, edits and seals further native history,
+retains pending work and uploads, and cold-reopens actual current stores before
+explicit authenticated reconnect. It verifies native document and paired review
+ancestry before autosave; equal visible text is not an origin proof. Two
+generation handoff defects reproduce against the old public archive and pass
+after repair: retired-source handoff and authority loss during lease release.
+
+Its [qualification](qualification/2026-10-20-generation-participant-operation.json)
+passes 62 selected checks, 1,155 script tests and 385 editor tests, with three
+existing opt-in skips. Source and fresh public archives each pass 329 recovery
+assertions and six author-side native-server workflows, including 18 operational
+cold reopens, 24 handoffs, six server restarts and future selective Undo/Redo.
+The Wasm pair is hash-verified and reused; 2,747 unchanged native inputs carry
+the earlier 653 shared and 216 relay Rust tests, not a fresh full native suite.
+The installed native inventory fixture builds and runs normally. Participant/room
+catalog integration, independent comment/server generations, whole-room
+activation and qualification of older handoff boundaries remain work. All 13 V1
+release gates remain open; no version, tag, publication or deployment is promoted.
+
+The earlier [generation asset and participant recovery checkpoint](GENERATION_ASSET_RECOVERY.md)
 now captures complete native sources, image bytes and every upload state. It uses
 separate bounded file families rather than putting generation history into an
 old journal. Restartable recovery retains the original file, replays actual
@@ -55,7 +75,7 @@ original version-only wire profile. Its
 59 selected checks, 911 script tests and 385 editor tests, with three existing
 opt-in skips. The runtime pair rebuilds with matching hashes; 2,747 unchanged
 native source/build inputs carry the prior 653 shared and 216 relay Rust tests,
-not a fresh native suite run. Operational generation continuation and
+not a fresh native suite run. Participant/room catalog integration and
 whole-room activation remain open; all 13 V1 release gates remain open.
 
 The [generation-aware permanent observer](SEGMENTED_OBSERVER_RECOVERY.md) now

@@ -6,6 +6,7 @@ import {readSegmentedCut} from "../persistence/segmented_database.js";
 import {existingDatabase} from "../participant_recovery/journal.js";
 import {inspectUploads} from "../participant_recovery/inspect.js";
 import {captureSharedGenerationSource} from "../generation_source/capture.js";
+import {generationSource} from "../generation_source/admission.js";
 import {sameGenerationRecords} from "../generation_source/records.js";
 import type {SharedGenerationSourceSelection} from "../generation_source/contract.js";
 import type {SharedSelectionPolicy} from "../types.js";
@@ -27,7 +28,7 @@ export async function inspectGenerationDestination<P extends SharedSelectionPoli
 }
 export function generationOwnerSource<P extends SharedSelectionPolicy>(p:PreparedGenerationRecovery<P>,owners:GenerationRecoveryOwners<P>):SharedGenerationSourceSelection<P>{if(!owners.session)throw fail("generation_participant_missing");return {kind:p.session.kind,session:owners.session} as SharedGenerationSourceSelection<P>;}
 export function checkGenerationOwner<P extends SharedSelectionPolicy>(p:PreparedGenerationRecovery<P>,owners:GenerationRecoveryOwners<P>):void{
- p.guard();const capture=captureSharedGenerationSource(generationOwnerSource(p,owners));try{if(!sameGenerationRecords(capture.records(),SharedGenerationParticipantBackup.prototype.records.call(p.backup)))throw fail("generation_participant_diverged");SharedGenerationParticipantBackup.prototype.verifySource.call(p.backup,capture);}finally{capture.dispose();}p.guard();
+ p.guard();const source=generationOwnerSource(p,owners);generationSource(source.session).checkManaged();const capture=captureSharedGenerationSource(source);try{if(!sameGenerationRecords(capture.records(),SharedGenerationParticipantBackup.prototype.records.call(p.backup)))throw fail("generation_participant_diverged");SharedGenerationParticipantBackup.prototype.verifySource.call(p.backup,capture);}finally{capture.dispose();}p.guard();generationSource(source.session).checkManaged();
 }
 export async function restoreGenerationSource<P extends SharedSelectionPolicy>(p:PreparedGenerationRecovery<P>,owners:GenerationRecoveryOwners<P>,complete:boolean):Promise<void>{
  p.guard();const status=await inspectGenerationDestination(p);p.guard();if(complete&&status!=="exact")throw fail("generation_participant_missing");const data=SharedGenerationParticipantBackup.prototype.sourceRecovery.call(p.backup),database=p.options.destinations.source,authority={writerRecovery:"host-reacquired" as const};

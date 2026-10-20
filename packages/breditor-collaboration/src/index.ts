@@ -135,3 +135,6 @@ export type {SharedGenerationRecoveryFactory,SharedGenerationRecoverySession,Sha
 export {MAX_GENERATION_SOURCE_BYTES,MAX_GENERATION_SOURCE_IDENTITY_BYTES,MAX_GENERATION_SOURCE_RECORDS} from "./generation_source/contract.js";
 export {MAX_GENERATION_ASSET_BACKUP_BYTES,MAX_GENERATION_ASSET_HEADER_BYTES} from "./generation_assets/codec.js";
 export {MAX_GENERATION_PARTICIPANT_BYTES,MAX_GENERATION_PARTICIPANT_HEADER_BYTES} from "./generation_participant/codec.js";
+export {OperationalSharedGenerationParticipant} from "./generation_operation/operation.js";
+export {SharedGenerationOperationError} from "./generation_operation/policy.js";
+export type {SharedGenerationOperationBeginOptions,SharedGenerationOperationResumeOptions,SharedGenerationOperationProgress,OperationalSharedGenerationParticipantParts} from "./generation_operation/contract.js";

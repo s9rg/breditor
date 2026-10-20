@@ -19,6 +19,7 @@ import type {SharedSuggestionRevisionsOptions} from "../suggestion_revisions/typ
 import type {SharedDocumentVersionsOptions} from "../versions/types.js";
 import {generationNative,registerGenerationSource} from "../generation_source/admission.js";
 import {generationRecords} from "../generation_source/records.js";
+import {inheritGenerationOperationOrigin} from "../generation_operation/admission.js";
 
 export type SharedSegmentedVersionsOpenOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy>=Omit<SharedDocumentVersionsOptions<P>,"identity"|"database"|"storage"|"autoConnect">&{autoConnect?:false};
 export type SharedSegmentedRevisionsOpenOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy>=Omit<SharedSuggestionRevisionsOptions<P>,"binding"|"database"|"storage"|"queue"|"autoStart">&{autoStart?:false};
@@ -31,13 +32,13 @@ export class SharedSegmentedRelaySession<P extends SharedSelectionPolicy=SharedS
  private constructor(session:SharedSegmentedPersistentSession<P>,companion:SegmentedRelayCompanion){
   this.#session=session;this.#companion=companion;this.#core=session.core;companion.confirm(session.savedCompanion());
   const native=generationNative(session),retained=companion instanceof SegmentedRetainedCompanion?companion:null,check=()=>{native.check();if(this.core!==this.#core)throw new SharedRelayError("segmented_relay_source_retired");};
-  registerGenerationSource(this,{core:native.core,identity:{kind:retained?"retained":"relay",native:structuredClone(native.identity),review:structuredClone(native.review),relay:structuredClone(companion.binding),retained:retained?structuredClone(retained.retainedBinding):null},check,stamp:()=>{check();return[native.stamp(),companion.sourceStamp()];},read:()=>{check();return generationRecords(native.read(),companion.current(),retained?.records());}});
+  registerGenerationSource(this,{core:native.core,identity:{kind:retained?"retained":"relay",native:structuredClone(native.identity),review:structuredClone(native.review),relay:structuredClone(companion.binding),retained:retained?structuredClone(retained.retainedBinding):null},check,checkManaged:()=>{check();native.checkManaged();},stamp:()=>{check();return[native.stamp(),companion.sourceStamp()];},read:()=>{check();return generationRecords(native.read(),companion.current(),retained?.records());}});
   companion.setRetireHook(()=>this.#stop());
   registerSegmentedRelaySession(this,{core:this.#core as unknown as SharedRichEditor<SharedSelectionPolicy>,binding:structuredClone(companion.binding),check:()=>this.#check(),flush:()=>this.#flushSource(),durable:()=>companion.durable(),persistDocument:p=>this.#persistDocument(p),persistReview:(p,r)=>this.#persistReview(p,r),track:a=>{this.#check();for(const ref of this.#adapters)if(!ref.deref())this.#adapters.delete(ref);this.#adapters.add(new WeakRef(a));}});
  }
  static async open<Q extends SharedSelectionPolicy>(input:SharedSegmentedRelaySessionOptions<Q>):Promise<SharedSegmentedRelaySession<Q>>{
   if(this!==SharedSegmentedRelaySession)throw new SharedRelayError("segmented_relay_factory_receiver");
-  const {binding,...options}=input,companion=new SegmentedRelayCompanion(input as SharedSegmentedRelaySessionOptions),session=await SharedSegmentedPersistentSession.open(withSegmentedCompanion(options,companion));
+  const {binding,...options}=input,companion=new SegmentedRelayCompanion(input as SharedSegmentedRelaySessionOptions),session=await SharedSegmentedPersistentSession.open(inheritGenerationOperationOrigin(input,withSegmentedCompanion(options,companion)));
   try{return new SharedSegmentedRelaySession(session,companion);}catch(error){await session.discardAndClose();throw error;}
  }
  static async restoreRecovery<Q extends SharedSelectionPolicy>(input:SharedSegmentedRelayRecoveryOptions<Q>):Promise<SharedSegmentedRelaySession<Q>>{
@@ -49,7 +50,7 @@ export class SharedSegmentedRelaySession<P extends SharedSelectionPolicy=SharedS
  /** Explicit new atomic family. Old relay/local opens never infer it from stored fields. */
  static async openRetained<Q extends SharedSelectionPolicy>(input:SharedSegmentedRetainedSessionOptions<Q>):Promise<SharedSegmentedRelaySession<Q>>{
   if(this!==SharedSegmentedRelaySession)throw new SharedRelayError("segmented_relay_factory_receiver");
-  const {binding,retained,...options}=input,companion=new SegmentedRetainedCompanion(input as SharedSegmentedRetainedSessionOptions),session=await SharedSegmentedPersistentSession.open(withSegmentedCompanion(options,companion));
+  const {binding,retained,...options}=input,companion=new SegmentedRetainedCompanion(input as SharedSegmentedRetainedSessionOptions),session=await SharedSegmentedPersistentSession.open(inheritGenerationOperationOrigin(input,withSegmentedCompanion(options,companion)));
   try{return new SharedSegmentedRelaySession(session,companion);}catch(error){await session.discardAndClose();throw error;}
  }
  static async restoreRetainedRecovery<Q extends SharedSelectionPolicy>(input:SharedSegmentedRetainedRecoveryOptions<Q>):Promise<SharedSegmentedRelaySession<Q>>{

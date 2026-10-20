@@ -8,7 +8,7 @@ const sources=new WeakMap<object,GenerationSourcePort>(),natives=new WeakMap<obj
 export interface GenerationNativePort {
  readonly core:SharedRichEditor<SharedSelectionPolicy>;readonly identity:Readonly<SegmentedSessionIdentity>;
  readonly review:Readonly<{actor:string;principal:string}>|null;readonly companion:boolean;
- check():void;stamp():object;read():SharedSegmentedRecovery;
+ check():void;checkManaged():void;stamp():object;read():SharedSegmentedRecovery;
 }
 export function registerGenerationNative(session:object,port:GenerationNativePort):void{if(natives.has(session))throw Error("Generation source reused");natives.set(session,port);}
 export function generationNative(session:object):GenerationNativePort{const p=natives.get(session);if(!p)throw Error("An actual native generation session is required");p.check();return p;}

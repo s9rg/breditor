@@ -20,7 +20,16 @@ test("both profiles require complete generation assets, restartable participants
   assert.ok(find("generation-assets-type-fence").args.includes("scripts/fixtures/editor-consumer/types-generation-assets.ts"));
   assert.deepEqual(find("installed-generation-assets").artifacts,[{path:"target/generation-assets-installed-consumer.json",fresh:true},{path:"target/generation-assets-installed-consumer.tap",fresh:true}]);
  }
- const installed=readFileSync(join(repository,"scripts/check-generation-assets-installed.mjs"),"utf8");for(const text of ["generation-asset-source.test.mjs","types-generation-assets.ts","tests:86","documentOnlyProfileCases:18","generation_participant/recovery.js","sourceUnchanged:true"])assert.ok(installed.includes(text),text);
+ const installed=readFileSync(join(repository,"scripts/check-generation-assets-installed.mjs"),"utf8");for(const text of ["generation-asset-source.test.mjs","types-generation-assets.ts","tests:329","documentOnlyProfileCases:18","generation_participant/recovery.js","generation_operation/origin.js","operationalPolicyMatrixCases:216","sourceUnchanged:true"])assert.ok(installed.includes(text),text);
+});
+
+test("both profiles require genuine operational generation custody and full installed authenticated reconnect",()=>{
+ for(const profile of ["functional","full"]){const p=candidateReleasePlan({profile}),find=id=>{const c=p.checks.find(c=>c.id===id);assert.ok(c,id);return c;};
+  assert.ok(find("generation-operation-type-fence").args.includes("scripts/fixtures/editor-consumer/types-generation-operation.ts"));
+  assert.ok(p.checks.indexOf(find("generation-operation-live"))>p.checks.indexOf(find("segmented-retained-native-host")));
+  assert.deepEqual(find("installed-generation-operation").artifacts,[{path:"target/generation-operation-installed-consumer.json",fresh:true}]);
+ }
+ const installed=readFileSync(join(repository,"scripts/check-generation-operation-installed.mjs"),"utf8");for(const text of ["probe-generation-operation.mjs","types-generation-operation.ts","operationalColdReopens:18","operationHandoffs:24","generation_operation/origin.js","sourceUnchanged:true"])assert.ok(installed.includes(text),text);
 });
 
 test("both profiles require permanent observer generation custody and fresh public archives",()=>{

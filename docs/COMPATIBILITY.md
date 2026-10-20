@@ -76,8 +76,12 @@ original and sealed inputs, Undo/Redo and pending causal work within its own
 64 MiB archive bound. It does not widen the original journal, select itself
 automatically or promise an unlimited operational lifetime.
 
-V1 still needs operational participant integration, coordinated room rotation and
-activation around that native bridge. Shared session and raster archives offer separate insert-only
+V1 still needs participant/room catalog integration, coordinated room rotation and
+activation around that native bridge. The explicit
+[operational generation participant](GENERATION_PARTICIPANT_OPERATION.md) now
+continues a recovered source and cold-reopens its native descendants, pending
+work and uploads with fresh host policy. It does not activate a room or compact
+history. Shared session and raster archives offer separate insert-only
 recovery components. The separate [server-log archive](SERVER_ROOM_BACKUPS.md)
 adds exact insert-only server recovery after native replay and host-selected
 identity checks; it excludes the server asset directory and account-authentication
@@ -92,7 +96,7 @@ incomplete histories refuse that read. The explicit
 [generation source and asset backup](GENERATION_ASSET_RECOVERY.md) adds selected
 local versions, retained review/version packets and the complete upload store,
 with restartable exact recovery. Uncached dependencies stay pending. Extension
-assets outside the closed raster contract and operational participant/room
+assets outside the closed raster contract and remaining participant/room
 coordination still require explicit closure.
 Rotation must preserve pending updates, writer ownership,
 authenticated receipts and final review decisions, existing reader contracts,

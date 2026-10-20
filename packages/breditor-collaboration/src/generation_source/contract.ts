@@ -21,4 +21,4 @@ export interface SharedGenerationSourceRecord {readonly kind:SharedGenerationSou
 export const MAX_GENERATION_SOURCE_BYTES=304*1024*1024+128*1024;
 export const MAX_GENERATION_SOURCE_IDENTITY_BYTES=64*1024;
 export const MAX_GENERATION_SOURCE_RECORDS=39;
-export interface GenerationSourcePort {readonly identity:SharedGenerationSourceIdentity;readonly core:SharedRichEditor<SharedSelectionPolicy>;check():void;stamp():readonly object[];read():readonly SharedGenerationSourceRecord[]}
+export interface GenerationSourcePort {readonly identity:SharedGenerationSourceIdentity;readonly core:SharedRichEditor<SharedSelectionPolicy>;check():void;checkManaged():void;stamp():readonly object[];read():readonly SharedGenerationSourceRecord[]}
