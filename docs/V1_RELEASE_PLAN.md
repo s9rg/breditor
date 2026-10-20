@@ -43,6 +43,33 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+Generation histories now reconcile against actual native server document/review
+prefixes through `SharedRoomParticipantInventory.checkGenerationSources()`.
+Original packet and version readers retain their existing meanings. Missing,
+behind and unbound histories remain pending; forks and duplicate sources refuse.
+An internal multi-owner coordinator verifies exact native cuts and all upload
+owners before a synchronous final handoff. Release failures consume no child.
+
+The [generation room custody qualification](qualification/2026-10-20-generation-room-custody.json)
+passes 78 selected checks across three source-identical stage runs, 1,195 script
+tests and 385 editor tests, with three existing opt-in skips. Source and fresh
+installed archives each pass 362 generation assertions, including fifteen
+retired-core handoff cases and six callback-guard cases. All 21 new assertions
+fail against the preserved prior archive with the same Wasm binary. The room
+matrix checks 60 native inventory participants and 240 two-child cohorts,
+including 480 cold reopens and future document/review Undo/Redo. The prior
+312 upgrade refusals, 180 retryable saves and 80 room handoff cases also pass.
+
+This qualification reuses hash-verified Wasm and carries prior native-suite
+results across 2,747 unchanged inputs; native room fixtures build normally.
+One original-room setup intermittently refused with `room_operation_admission`
+before intentional fault injection. Its inner cause and failed database were
+not captured. Later unchanged-source and diagnostic runs pass, not a repair;
+the earlier unexplained `catalog_integrity` observation also remains open.
+A durable generation room catalog, mixed operational parent, independent
+comment/server generations, provider/client closure and authenticated activation
+remain required. All 13 V1 gates remain open; no version or release is promoted.
+
 Original participant and aggregate-room handoffs now check live custody of every
 selected native session, suggestion queue, revision outbox, version catalog and
 upload store before returning owners. Independent database upgrades refuse even

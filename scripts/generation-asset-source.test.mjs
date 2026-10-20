@@ -33,6 +33,16 @@ async function pending(h,readOnly){
 test('original asset capture refuses a generation source rather than emitting the original bounded family',async t=>{
  const h=await setup(t);assert.throws(()=>sdk.captureSharedAssetReferences({core:h.session.core}),e=>e.code==='generation_source_policy');
 });
+for(const kind of ['local','relay','retained'])test(`generation source rejects a substituted core getter without invoking it, ${kind}`,async t=>{
+ const h=await setup(t,{kind}),session=h.session,core=session.core,descriptor=Object.getOwnPropertyDescriptor(session,'core');let reads=0;
+ try{Object.defineProperty(session,'core',{configurable:true,get(){reads++;return core;}});assert.throws(()=>sdk.captureSharedGenerationSource({kind,session}),e=>['segmented_source_unavailable','segmented_relay_source_retired'].includes(e.code));assert.equal(reads,0);}
+ finally{if(descriptor)Object.defineProperty(session,'core',descriptor);else delete session.core;}
+});
+for(const kind of ['local','relay','retained'])test(`generation source reads the actual native policy without instance hooks, ${kind}`,async t=>{
+ const h=await setup(t,{kind}),core=h.session.core,descriptor=Object.getOwnPropertyDescriptor(core,'segmentedHistoryPolicy');let calls=0,source;
+ try{core.segmentedHistoryPolicy=()=>{calls++;return 'segmented-v1';};source=sdk.captureSharedGenerationSource({kind,session:h.session});source.check();assert.equal(calls,0);}
+ finally{source?.dispose();if(descriptor)Object.defineProperty(core,'segmentedHistoryPolicy',descriptor);else delete core.segmentedHistoryPolicy;}
+});
 test('closed generation selections require the actual named own fields, not comma-joined aliases',async t=>{
  const h=await setup(t),disguised=Object.assign(Object.create({kind:'local',session:h.session}),{'kind,session':null});assert.throws(()=>sdk.captureSharedGenerationSource(disguised),e=>e.code==='generation_source_policy');await h.session.close();
  const {backup,options}=await recoverable(t);const selection=Object.assign(Object.create(backup.selection()),{'identity,sha256':null});await assert.rejects(sdk.readSharedGenerationParticipant(backup.file(),selection),e=>e.code==='generation_participant_policy');
@@ -132,6 +142,22 @@ for(const kind of ['local','relay','retained'])for(const version of [1,2,3])for(
 async function heldGenerationOperation(t,configuration={}){
  const fixture=await recoverable(t,configuration),attempt=await sdk.SharedGenerationParticipantRecovery.begin({...fixture.options,backup:fixture.backup});t.after(()=>attempt.close());const ready=await attempt.finish();t.after(()=>ready.discardAndClose());const database='generation-operational-fault-'+serial++,begin={database,recovered:ready,expected:fixture.backup.selection(),checkAuthority(){}},resume={...fixture.options,database,recoveryDatabase:fixture.options.database};return {...fixture,ready,begin,resume};
 }
+async function heldGenerationCore(t,kind){
+ const capture=sdk.SharedGenerationSourceCapture.capture;let actual;
+ try{sdk.SharedGenerationSourceCapture.capture=function(input){const result=capture.call(this,input);actual={...input};return result;};const f=await heldGenerationOperation(t,{kind});assert.equal(actual.kind,kind);assert.notEqual(actual.session,f.h.session);return {...f,actual};}
+ finally{sdk.SharedGenerationSourceCapture.capture=capture;}
+}
+for(const kind of ['local','relay','retained'])for(const mode of ['ready','operational'])for(const phase of ['before','during'])test(`generation core retirement refuses ${kind} ${mode} handoff ${phase} release`,async t=>{
+ const f=await heldGenerationCore(t,kind),owner=mode==='ready'?f.ready:await sdk.OperationalSharedGenerationParticipant.begin(f.begin);t.after(()=>owner.discardAndClose());
+ const core=f.actual.session.core,before=core.checkpointJson(),review=core.reviewCheckpoint(),file=new Uint8Array(await owner.file().arrayBuffer()),{RecoveryLease}=await import(new URL('./participant_recovery/lease.js',import.meta.resolve('@breditor/collaboration')).href),close=RecoveryLease.prototype.close;let retired=false;
+ if(phase==='before'){core.retire();retired=true;}else RecoveryLease.prototype.close=async function(...args){await close.apply(this,args);if(!retired){retired=true;core.retire();}};
+ try{await assert.rejects(owner.intoParts().then(parts=>{f.h.session=parts.source.session;t.after(()=>parts.uploads.close());}),e=>e.code==='retired');assert.equal(retired,true);assert.throws(()=>core.type('Retired core must not edit'),e=>e.code==='retired');assert.equal(core.checkpointJson(),before);assert.equal(core.reviewCheckpoint(),review);assert.deepEqual(new Uint8Array(await owner.file().arrayBuffer()),file);const readable=sdk.captureSharedGenerationSource(f.actual);try{f.backup.verifySource(readable);}finally{readable.dispose();}if(phase==='during')await assert.rejects(owner.intoParts(),e=>['generation_participant_closed','generation_operation_closed'].includes(e.code));}
+ finally{RecoveryLease.prototype.close=close;}
+ await owner.discardAndClose();const fresh={...f.options,database:'retired-core-fresh-'+serial++,destinations:{source:'retired-core-fresh-source-'+serial++,uploads:'retired-core-fresh-uploads-'+serial++}},attempt=await sdk.SharedGenerationParticipantRecovery.begin({...fresh,backup:f.backup});t.after(()=>attempt.close());const recovered=await attempt.finish();t.after(()=>recovered.discardAndClose());const parts=await recovered.intoParts();f.h.session=parts.source.session;t.after(()=>parts.uploads.close());assert.equal(f.h.session.core.redo(),true);assert.match(f.h.session.core.documentJson(),/saved-redo/);assert.equal(f.h.session.core.redoReview().kind,'committed');
+});
+for(const kind of ['local','relay','retained'])test(`generation core retirement refuses ${kind} ready-to-operation admission`,async t=>{
+ const f=await heldGenerationCore(t,kind),core=f.actual.session.core,before=core.checkpointJson(),file=new Uint8Array(await f.ready.file().arrayBuffer());core.retire();await assert.rejects(sdk.OperationalSharedGenerationParticipant.begin(f.begin).then(value=>{t.after(()=>value.discardAndClose());}),e=>e.code==='retired');assert.equal(core.checkpointJson(),before);assert.deepEqual(new Uint8Array(await f.ready.file().arrayBuffer()),file);const source=sdk.captureSharedGenerationSource(f.actual);try{f.backup.verifySource(source);}finally{source.dispose();}
+});
 for(const kind of ['abort','lost','revoke'])for(const retry of ['held','cold'])test(`operational publication ${kind} retains custody/origin and retries ${retry}`,async t=>{
  const f=await heldGenerationOperation(t);let authority=true;const checkAuthority=()=>{if(!authority)throw Error('revoked');};operationFault={database:f.begin.database,kind,revoke(){authority=false;}};
  try{await assert.rejects(sdk.OperationalSharedGenerationParticipant.begin({...f.begin,checkAuthority}));assert.equal(operationFault,undefined);}finally{operationFault=undefined;}assert.equal(f.ready.file().size,f.backup.file().size);authority=true;

@@ -6,6 +6,14 @@ does not change package versions, publish, push, tag or deploy anything.
 
 ## Run the checks
 
+Both profiles require `generation-room-inventory`, `generation-room-custody`
+and `installed-generation-room`. These add genuine native generation prefix
+coverage and the internal all-or-nothing two-participant custody prerequisite,
+including late retirement/authority/upload/cut refusals and cold future history.
+The identical native probes run again in fresh offline public archives. See
+[generation room recovery](GENERATION_ROOM_RECOVERY.md) for the contract and the
+still-required durable catalog, provider closure and activation work.
+
 Both profiles require `participant-recovery-storage-contracts`,
 `participant-recovery-type-fence`,
 `participant-recovery` and `document-participant-recovery`. These check durable

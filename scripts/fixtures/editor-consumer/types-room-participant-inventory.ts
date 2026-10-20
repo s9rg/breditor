@@ -1,8 +1,14 @@
 /** Public immutable metadata and diagnostic coverage; no inferred factory, credential or grant. */
-import {SharedRoomParticipantInventory,readSharedRoomParticipantInventory,type SharedRoomParticipantInventoryIdentity,type SharedRoomParticipantSource,type SharedRoomParticipantCoverage} from "@breditor/collaboration";
+import {SharedRoomParticipantInventory,readSharedRoomParticipantInventory,type SharedRoomParticipantInventoryIdentity,type SharedRoomParticipantSource,type SharedRoomGenerationParticipantSource,type SharedRoomParticipantCoverage} from "@breditor/collaboration";
 declare const file:Blob,expected:SharedRoomParticipantInventoryIdentity,sources:readonly SharedRoomParticipantSource[];
+declare const generationSources:readonly SharedRoomGenerationParticipantSource[];
 async function contract(){
  const inventory=await readSharedRoomParticipantInventory(file,expected),result:SharedRoomParticipantCoverage=inventory.checkSources(sources);
+ const generationResult:SharedRoomParticipantCoverage=inventory.checkGenerationSources(generationSources);void generationResult;
+ // @ts-expect-error Original bounded journals are not implicitly converted into generation sources.
+ inventory.checkGenerationSources(sources);
+ // @ts-expect-error Generation histories cannot be flattened into original source contracts.
+ inventory.checkSources(generationSources);
  inventory.identity().room.profile.kind;inventory.metadata().richLanguage;
  // @ts-expect-error No expected cut is inferred from incoming metadata.
  readSharedRoomParticipantInventory(file);

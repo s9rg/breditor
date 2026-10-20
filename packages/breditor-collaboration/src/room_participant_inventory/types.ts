@@ -2,6 +2,8 @@ import type {SharedAssetReferenceCapture} from "../asset_references_capture.js";
 import type {SharedParticipantBackup} from "../participant_backup/archive.js";
 import type {SharedWriterClock} from "../types.js";
 import type {SharedReviewWriterClock} from "../review_types.js";
+import type {SharedGenerationParticipantBackup} from "../generation_participant/backup.js";
+import type {SharedGenerationSourceCapture} from "../generation_source/capture.js";
 /** Original native server cut. This detached value neither authenticates nor fences a host. */
 export interface SharedRoomBackupCut {
  readonly document:string;readonly owner:string;readonly assetBinding:string;
@@ -23,6 +25,9 @@ export interface SharedRoomParticipantInventoryMetadata {
 }
 /** Both handles must be live and name the exact captured document and retained packet records. */
 export interface SharedRoomParticipantSource {readonly backup:SharedParticipantBackup;readonly source:SharedAssetReferenceCapture}
+/** Explicit separate source family. Native generation histories and retained packet
+ * bytes remain intact; neither handle can be replaced by a detached JSON summary. */
+export interface SharedRoomGenerationParticipantSource {readonly backup:SharedGenerationParticipantBackup;readonly source:SharedGenerationSourceCapture}
 export type SharedRoomParticipantMissing=
  |Readonly<{kind:"document";principal:string;writer:string;reason:"missing"|"server_ahead"}>
  |Readonly<{kind:"review";principal:string;actor:string;reason:"missing"|"server_ahead"}>

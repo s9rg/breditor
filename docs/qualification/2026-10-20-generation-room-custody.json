@@ -1,0 +1,179 @@
+{
+  "format": "breditor/generation-room-custody-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-20",
+  "v1Ready": false,
+  "openV1Gates": 13,
+  "source": {
+    "baseCommit": "bdaab58cff1d3f369ff8a651e5e2ff52204ee1dd",
+    "testedWorkingTreeSha256": "41ab1fdd62c621df97c275655fa701c7ad34c6af4f6ddfd07cdfa4bfaac551d3",
+    "nonDocumentationSha256": "b36d8cec0893f7d5a47c3ede3075cbe52ad807fb737598778ad762ddd42257c0",
+    "files": 4843,
+    "bytes": 41716580
+  },
+  "scope": "Native generation prefix inventory, repaired retired-core managed admission and internal all-or-nothing cohort handoff. Not a durable generation room catalog, mixed operational parent, provider/client closure, independent comment/server generations or authenticated activation.",
+  "tests": {
+    "selectedChecksPassed": 78,
+    "scriptTestsPassed": 1195,
+    "existingOptInScriptChecksSkipped": 3,
+    "editorTestsPassed": 385,
+    "generationSourceTestsPassed": 362,
+    "generationInstalledTestsPassed": 362,
+    "coreRetirementCases": 15,
+    "sourceCallbackGuardCases": 6,
+    "preservedArchiveFailures": 21,
+    "sharedRustCarriedPassed": 653,
+    "relayRustCarriedPassed": 216,
+    "nativeSourceAndBuildInputsUnchanged": 2747,
+    "freshRustSuiteThisRun": false,
+    "freshWasmProducerRebuild": false,
+    "generationInventory": {
+      "nativeRooms": 10,
+      "sourceFamilies": 30,
+      "participants": 60,
+      "coldParticipants": 60,
+      "coveredStreams": 80,
+      "localUnboundReviews": 20,
+      "canonicalClockReads": 30,
+      "pureChecks": 60,
+      "duplicateRefusals": 30,
+      "spoofRefusals": 60,
+      "disposedSourceRefusals": 30,
+      "staleSourceRefusals": 27,
+      "observerZeroPrefixes": 60,
+      "revokedContributors": 3,
+      "futureDocumentCheckpoints": 54,
+      "futureReviewCheckpoints": 54,
+      "behindDocumentPending": 10,
+      "documentForkRefusals": 10,
+      "observerAuthorRefusals": 10,
+      "foreignPrincipalRefusals": 10,
+      "reviewForkRefusals": 10,
+      "behindReviewPending": 10,
+      "reviewBindingRefusals": 10,
+      "transportBindingRefusals": 10,
+      "reviewObserverRefusals": 10,
+      "versionBindingRefusals": 10,
+      "suggestionBindingRefusals": 5,
+      "revisionBindingRefusals": 5,
+      "effectWriterRefusals": 5,
+      "retiredReadableSources": 10,
+      "inventoryDisposalsDuringRead": 10,
+      "refusalRetentionComparisons": 405,
+      "networkCalls": 0
+    },
+    "generationCohort": {
+      "nativeRooms": 10,
+      "sourceFamilies": 30,
+      "cohorts": 240,
+      "participants": 480,
+      "coldParticipants": 480,
+      "successfulCohorts": 60,
+      "releaseRetries": 30,
+      "uploadCloseRefusals": 30,
+      "lastGuardRetirementRefusals": 30,
+      "lastGuardAuthorityRefusals": 30,
+      "changedCutRefusals": 30,
+      "abandonedCohorts": 30,
+      "earlyRetirementRefusals": 30,
+      "duplicateOwnerRefusals": 30,
+      "duplicateIdRefusals": 30,
+      "busyOwnerRefusals": 420,
+      "retainedFileComparisons": 360,
+      "storedRecordComparisons": 2160,
+      "coldHistoryComparisons": 480,
+      "futureDocumentCheckpoints": 432,
+      "futureReviewCheckpoints": 432,
+      "networkCalls": 0
+    }
+  },
+  "verification": {
+    "sourceIdenticalRunStageCounts": [
+      53,
+      9,
+      16
+    ],
+    "explicitOverrides": [
+      {
+        "id": "installed-session-backups",
+        "args": [
+          "scripts/check-session-backups-installed.mjs",
+          "--reuse-runtimes"
+        ],
+        "reason": "Reuse only hash-verified paired Wasm producers after checking 2,747 unchanged native inputs. All old consumer assertions, new native probes and normal native inventory builds still run; permanent plans retain their producer-build requirements."
+      }
+    ],
+    "checkpointAudit": "target/generation-room-qualification-CWWoXu/checkpoint-audit.json",
+    "stageChain": "/Users/s/code/breditor/target/generation-room-qualification-CWWoXu/stage-chain.json",
+    "preservedArtifactSnapshots": 22,
+    "checkedArtifactFiles": 241,
+    "sourceAndInstalledProbeAssertionsIdentical": true,
+    "nativeRoomFixtureBuildsInvokedNormally": true,
+    "preservedArchiveBaseline": "target/generation-room-qualification-CWWoXu/preserved-archive-baseline.json",
+    "failedRunsPreserved": true
+  },
+  "knownObservations": {
+    "earlierCatalogIntegrity": {
+      "fixed": false,
+      "reliablyReproduced": false,
+      "innerCauseCaptured": false,
+      "failedDatabaseSnapshotAvailable": false,
+      "code": "catalog_integrity",
+      "evidence": "target/retained-owner-qualification-bqhZE0/room-refusal-observation.json"
+    },
+    "currentRoomAdmission": {
+      "fixed": false,
+      "innerCauseCaptured": false,
+      "failedDatabaseSnapshotAvailable": false,
+      "code": "room_operation_admission",
+      "phase": "Original missing-complete initial finish before intentional deletion",
+      "notKnownToMatchEarlierCatalogRefusal": true,
+      "failedStage": {
+        "id": "retained-room-owner-handoffs",
+        "status": "failed",
+        "startedAt": "2026-10-20T16:14:24.242Z",
+        "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+        "args": [
+          "scripts/probe-retained-room-handoffs.mjs",
+          "target/promoted-shared-web",
+          "target/room-operational-recovery-sdk.json"
+        ],
+        "env": {
+          "CARGO_BIN": "/Users/s/.cargo/bin/cargo",
+          "BREDITOR_CARGO": "/Users/s/.cargo/bin/cargo",
+          "RUSTC_BIN": "/Users/s/.cargo/bin/rustc",
+          "BREDITOR_RUSTC": "/Users/s/.cargo/bin/rustc",
+          "RUSTC": "/Users/s/.cargo/bin/rustc",
+          "WASM_BINDGEN_BIN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "BREDITOR_WASM_BINDGEN": "/Users/s/.cargo/bin/wasm-bindgen",
+          "WASM_BINDGEN_TEST_RUNNER_BIN": "/Users/s/.cargo/bin/wasm-bindgen-test-runner",
+          "NPM_BIN": "npm",
+          "NODE_BIN": "/Users/s/.nvm/versions/node/v22.14.0/bin/node"
+        },
+        "logPath": "/Users/s/code/breditor/target/v1-candidate-runs/run-ZSD34o/10-retained-room-owner-handoffs.log",
+        "finishedAt": "2026-10-20T16:14:28.390Z",
+        "exitCode": 1,
+        "signal": null,
+        "logBytes": 1504,
+        "log": {
+          "path": "target/v1-candidate-runs/run-ZSD34o/10-retained-room-owner-handoffs.log",
+          "bytes": 1504,
+          "sha256": "f9864e5ba8fb729d35782b5b20afb6bd0c367a97f8f99b6c394b9e3b7b955b03",
+          "modifiedAtMs": 1792512868383.6863
+        }
+      },
+      "diagnosticRerunsAreNotRepairs": true
+    }
+  },
+  "artifacts": {
+    "sharedWasmSha256": "5accbfe1c8d850ffac7b9689c639ae526d9db1997991aaec05b6e665afa86ead",
+    "localWasmSha256": "d2f0e56fa6e3ec0b42ba1784d6f17ba344247450fc5358ab0ca796fbf09dbb81",
+    "nativeRevisionHostSha256": "e5bc62cc731c8f98b6dd3ea14433044440b8778606b420c7adb48a8f30dda0b7",
+    "browserArchiveSha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+    "richArchiveSha256": "466eed1a8d9090cfb6ff7d091e4148b8f0f8c362e65abb6106ade8970a2588db",
+    "collaborationArchiveSha256": "5bd43283fa4dbad6a647dec37bf04bfd35151d9c268ee020f05305c439447949"
+  },
+  "publicApiFreeze": false,
+  "versionPromoted": false,
+  "pushTagPublishDeploy": false
+}

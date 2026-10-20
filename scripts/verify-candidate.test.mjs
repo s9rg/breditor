@@ -14,13 +14,22 @@ const plan=checks=>({profile:"functional",deferred:["not-a-v1-certification"],ch
 const stable=()=>({commit:"1".repeat(40),dirty:true,sha256:"2".repeat(64),files:1,bytes:1});
 function quiet(options={}){return {snapshot:stable,report:()=>{},...options};}
 
+test("generation room inventory and internal custody remain native, source-bound and repeated in public archives",()=>{
+ for(const profile of ["functional","full"]){const p=candidateReleasePlan({profile}),find=id=>{const c=p.checks.find(c=>c.id===id);assert.ok(c,id);return c;};
+  for(const [id,script,path]of [["generation-room-inventory","check-generation-room-inventory-sdk.mjs","target/generation-room-inventory-sdk.json"],["generation-room-custody","check-generation-room-custody-sdk.mjs","target/generation-room-custody-sdk.json"],["installed-generation-room","check-generation-room-installed.mjs","target/generation-room-installed-consumer.json"]]){const row=find(id);assert.deepEqual(row.args,[`scripts/${script}`]);assert.deepEqual(row.artifacts,[{path,fresh:true}]);assert.ok(p.checks.indexOf(find("native-room-participant-inventory"))<p.checks.indexOf(row));}
+ }
+ const installed=readFileSync(join(repository,"scripts/check-generation-room-installed.mjs"),"utf8");for(const text of ["buildRoomParticipantInventoryFixtures({saveReport:false})","sourceUnchanged:true","types-room-participant-inventory.ts","cohorts:240","participants:480","coldParticipants:480","releaseRetries:30","lastGuardRetirementRefusals:30","generation_source/native_read.js","room_participant_inventory/generation_coverage.js"])assert.ok(installed.includes(text),text);
+ const managed=readFileSync(join(repository,"scripts/check-generation-assets-installed.mjs"),"utf8");for(const text of ["tests:362","coreRetirementCases:15","sourceCallbackGuardCases:6","uploadHandoffCases:12"])assert.ok(managed.includes(text),text);
+ for(const name of ["inventory","custody"]){const sdk=readFileSync(join(repository,`scripts/check-generation-room-${name}-sdk.mjs`),"utf8");assert.ok(sdk.includes("assert.deepEqual(native.source,source"));assert.ok(sdk.includes("fileEvidence(root,file.path)"));assert.ok(sdk.includes("assert.deepEqual(sourceEvidence(root),source)"));}
+});
+
 test("both profiles require complete generation assets, restartable participants, strict types and fresh public archives",()=>{
  for(const profile of ["functional","full"]){const p=candidateReleasePlan({profile}),find=id=>{const c=p.checks.find(c=>c.id===id);assert.ok(c,id);return c;};
   assert.deepEqual(find("generation-assets-source-contracts").args,["--test","scripts/generation-asset-source.test.mjs"]);
   assert.ok(find("generation-assets-type-fence").args.includes("scripts/fixtures/editor-consumer/types-generation-assets.ts"));
   assert.deepEqual(find("installed-generation-assets").artifacts,[{path:"target/generation-assets-installed-consumer.json",fresh:true},{path:"target/generation-assets-installed-consumer.tap",fresh:true}]);
  }
- const installed=readFileSync(join(repository,"scripts/check-generation-assets-installed.mjs"),"utf8");for(const text of ["generation-asset-source.test.mjs","types-generation-assets.ts","tests:341","documentOnlyProfileCases:18","generation_participant/recovery.js","generation_operation/origin.js","operationalPolicyMatrixCases:216","uploadHandoffCases:12","sourceUnchanged:true"])assert.ok(installed.includes(text),text);
+ const installed=readFileSync(join(repository,"scripts/check-generation-assets-installed.mjs"),"utf8");for(const text of ["generation-asset-source.test.mjs","types-generation-assets.ts","tests:362","documentOnlyProfileCases:18","generation_participant/recovery.js","generation_operation/origin.js","operationalPolicyMatrixCases:216","uploadHandoffCases:12","sourceUnchanged:true"])assert.ok(installed.includes(text),text);
 });
 
 test("both profiles require genuine operational generation custody and full installed authenticated reconnect",()=>{
@@ -46,7 +55,7 @@ test("native managed-source retirement regressions remain mandatory in source an
 test("both profiles require genuine dependent-owner handoff, retry controls and installed room custody",()=>{
  for(const profile of ["functional","full"]){const p=candidateReleasePlan({profile}),find=id=>{const c=p.checks.find(c=>c.id===id);assert.ok(c,id);return c;};assert.ok(find("retained-owner-upgrade-handoffs").args.includes("upgrade"));assert.ok(find("retained-owner-save-retries").args.includes("retry"));assert.ok(p.checks.indexOf(find("retained-room-owner-handoffs"))>p.checks.indexOf(find("room-operational-recovery")));assert.ok(find("installed-session-backups").artifacts.some(a=>a.path==="target/retained-owner-handoffs-installed-consumer.json"&&a.fresh));}
  const installed=readFileSync(join(repository,"scripts/check-session-backups-installed.mjs"),"utf8");for(const text of ["fixtures/participant-recovery/retained-handoffs.mjs","fixtures/room-operation/retained-handoffs.mjs","cases:312","retryableSaveHandoffs:180","parentUpgradeRefusals:40","lastCallbackUploadCloseRefusals:10","sourceUnchanged:true"])assert.ok(installed.includes(text),text);
- const generation=readFileSync(join(repository,"scripts/check-generation-assets-installed.mjs"),"utf8");assert.ok(generation.includes("tests:341"));assert.ok(generation.includes("uploadHandoffCases:12"));
+ const generation=readFileSync(join(repository,"scripts/check-generation-assets-installed.mjs"),"utf8");assert.ok(generation.includes("tests:362"));assert.ok(generation.includes("uploadHandoffCases:12"));
 });
 
 test("both profiles require permanent observer generation custody and fresh public archives",()=>{

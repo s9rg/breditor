@@ -7,6 +7,8 @@ import type {SharedSegmentedRetainedRecovery} from "../segmented_relay/retained_
 import {generationSource} from "./admission.js";
 import {generationIdentity,generationFields,freezeGeneration,SharedGenerationSourceError,sourceFailure} from "./identity.js";
 import {checkGenerationRecords} from "./validate_records.js";
+import {generationNativeRead} from "./native_read.js";
+import type {SharedCapturedRecoveryRead} from "../asset_references_capture.js";
 import type {SharedGenerationSourceIdentity,SharedGenerationSourceRecord,SharedGenerationSourceSelection,GenerationSourcePort} from "./contract.js";
 export interface SharedGenerationSourceMetadata {
  readonly format:"breditor/shared-generation-asset-reference-capture";readonly formatVersion:1;
@@ -14,11 +16,11 @@ export interface SharedGenerationSourceMetadata {
  readonly packets:readonly SharedPacketAssetIdentity[];
  readonly outcome:Readonly<{kind:"ready";references:readonly RichRetainedAssetReference[]}>|Readonly<{kind:"pending";pending:readonly SharedAssetCapturePending[]}>;
 }
-const key=Object.freeze({}),states=new WeakMap<SharedGenerationSourceCapture,{port:GenerationSourcePort;records:readonly SharedGenerationSourceRecord[];check:()=>void}>();
+const key=Object.freeze({}),states=new WeakMap<SharedGenerationSourceCapture,{port:GenerationSourcePort;records:readonly SharedGenerationSourceRecord[];check:()=>void;native:SharedCapturedRecoveryRead}>();
 const closed=()=>new SharedGenerationSourceError("generation_source_closed","The source capture is closed or was not created by this SDK");
 export class SharedGenerationSourceCapture {
  readonly #metadata:SharedGenerationSourceMetadata;
- private constructor(token:object,metadata:SharedGenerationSourceMetadata,state:{port:GenerationSourcePort;records:readonly SharedGenerationSourceRecord[];check:()=>void}){if(token!==key)throw closed();this.#metadata=metadata;states.set(this,state);Object.freeze(this);}
+ private constructor(token:object,metadata:SharedGenerationSourceMetadata,state:{port:GenerationSourcePort;records:readonly SharedGenerationSourceRecord[];check:()=>void;native:SharedCapturedRecoveryRead}){if(token!==key)throw closed();this.#metadata=metadata;states.set(this,state);Object.freeze(this);}
  metadata():SharedGenerationSourceMetadata{return this.#metadata;}
  records():readonly SharedGenerationSourceRecord[]{const s=states.get(this);if(!s)throw closed();return s.records;}
  check():void{const s=states.get(this);if(!s)throw closed();s.check();if(states.get(this)!==s)throw closed();}
@@ -39,9 +41,12 @@ export class SharedGenerationSourceCapture {
   core.checkRetainedAssetReferences(base,revision);const check=()=>{port.check();const now=port.stamp();if(now.length!==stamp.length||now.some((v,i)=>v!==stamp[i]))throw new SharedGenerationSourceError("generation_source_changed","The complete generation source changed");};check();
   const sorted=[...references.values()].sort((a,b)=>a.asset<b.asset?-1:a.asset>b.asset?1:a.generation<b.generation?-1:a.generation>b.generation?1:0);
   const metadata=freezeGeneration({format:"breditor/shared-generation-asset-reference-capture" as const,formatVersion:1 as const,identity,document:base.document,revision,packets,outcome:pending.length?{kind:"pending" as const,pending}:{kind:"ready" as const,references:sorted}});
-  return new SharedGenerationSourceCapture(key,metadata,{port,records,check});
+  return new SharedGenerationSourceCapture(key,metadata,{port,records,check,native:generationNativeRead(core)});
  }
 }
 export const captureSharedGenerationSource=<P extends SharedSelectionPolicy>(input:SharedGenerationSourceSelection<P>):SharedGenerationSourceCapture=>SharedGenerationSourceCapture.capture(input);
 /** Canonical methods and private state, never a user-supplied metadata/check lookalike. */
 export function generationSourceSnapshot(source:SharedGenerationSourceCapture){const check=()=>SharedGenerationSourceCapture.prototype.check.call(source);check();return{metadata:SharedGenerationSourceCapture.prototype.metadata.call(source),records:SharedGenerationSourceCapture.prototype.records.call(source),check};}
+/** Internal genuine-capture read port. Old bounded-journal capture remains unavailable
+ * for generation owners; no flattening or conversion into its old file family occurs. */
+export function capturedGenerationRecoveryRead(source:SharedGenerationSourceCapture):SharedCapturedRecoveryRead{const s=states.get(source);if(!s)throw closed();s.check();if(states.get(source)!==s)throw closed();return s.native;}

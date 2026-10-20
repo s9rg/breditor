@@ -15,8 +15,15 @@ import {createGenerationOperationDatabase,existingGenerationOperationDatabase,re
 import {openOperationalGenerationOwners,verifyOperationalGenerationOwners} from "./components.js";
 import {generationOperationFailure as fail} from "./policy.js";
 import {RichAssetStore} from "@breditor/experimental-rich-content";
+import {generationSource} from "../generation_source/admission.js";
 import type {SharedGenerationOperationBeginOptions,SharedGenerationOperationResumeOptions,SharedGenerationOperationProgress,OperationalSharedGenerationParticipantParts} from "./contract.js";
-interface State<P extends SharedSelectionPolicy>{p:PreparedGenerationRecovery<P>;owners:GenerationRecoveryOwners<P>;origin:NativeGenerationOperationOrigin;db:IDBDatabase;recoveryDb:IDBDatabase;record:GenerationOperationRecord;leases:RecoveryLease[];life:GenerationOperationLife}
+export interface OperationalGenerationCustody<P extends SharedSelectionPolicy>{p:PreparedGenerationRecovery<P>;owners:GenerationRecoveryOwners<P>;origin:NativeGenerationOperationOrigin;db:IDBDatabase;recoveryDb:IDBDatabase;record:GenerationOperationRecord;leases:RecoveryLease[];life:GenerationOperationLife}
+type State<P extends SharedSelectionPolicy>=OperationalGenerationCustody<P>;
+export interface OperationalGenerationHandoff<T>{commit():T;abandon():void}
+let prepareGenerationGroup:<T>(owners:readonly OperationalSharedGenerationParticipant<SharedSelectionPolicy>[],take:(states:readonly State<SharedSelectionPolicy>[],released:()=>void)=>Promise<T>,verify:(states:readonly State<SharedSelectionPolicy>[])=>void)=>Promise<OperationalGenerationHandoff<T>>;
+/** Internal all-or-nothing custody capsule for the generation-aware room adapter.
+ * Only genuine held operation owners participate; this is not a public adoption API. */
+export function prepareOperationalGenerationHandoff<T>(owners:readonly OperationalSharedGenerationParticipant<SharedSelectionPolicy>[],take:(states:readonly State<SharedSelectionPolicy>[],released:()=>void)=>Promise<T>,verify:(states:readonly State<SharedSelectionPolicy>[])=>void):Promise<OperationalGenerationHandoff<T>>{return prepareGenerationGroup(owners,take,verify);}
 const key=Object.freeze({});
 async function release(db:IDBDatabase,recoveryDb:IDBDatabase,leases:RecoveryLease[]):Promise<void>{const result=await Promise.allSettled([...leases].reverse().map(l=>l.close()));if(result.some(r=>r.status==="rejected"))throw fail();db.close();recoveryDb.close();}
 /** Read the actual two retained originals and markers, not a cached phase/readiness field. */
@@ -27,6 +34,34 @@ async function retained<P extends SharedSelectionPolicy>(s:Pick<State<P>,"p"|"db
 export class OperationalSharedGenerationParticipant<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
  readonly #state:State<P>;#closed=false;#busy=false;#released=false;
  private constructor(token:object,state:State<P>){if(token!==key)throw fail("generation_operation_closed");this.#state=state;generationOperationFence(state.db,state.life);generationOperationFence(state.recoveryDb,state.life);Object.freeze(this);}
+ static{
+  prepareGenerationGroup=async(input,take,verify)=>{
+   if(!Array.isArray(input)||input.length>1024)throw fail("generation_operation_policy");const owners=[...input];
+   if(new Set(owners).size!==owners.length)throw fail("generation_operation_policy");
+   for(const owner of owners){if(!owner||typeof owner!=="object"||!(#state in owner))throw fail("generation_operation_policy");if(owner.#closed||owner.#released)throw fail("generation_operation_closed");if(owner.#busy)throw fail("generation_operation_busy");}
+   for(const owner of owners)owner.#busy=true;
+   let offered=false,finished=false;const abandon=()=>{if(finished)return;finished=true;for(const owner of owners)owner.#busy=false;};
+   try{
+    for(const owner of owners){owner.#guard();await retained(owner.#state);await verifyOperationalGenerationOwners(owner.#state.p,owner.#state.owners,owner.#state.origin);owner.#guard();}
+    const states=owners.map(owner=>owner.#state),result=await take(states,()=>{for(const owner of owners)owner.#released=true;});
+    const handoff=Object.freeze({commit(){
+     if(finished)throw fail("generation_operation_closed");
+     try{
+      verify(states);
+      // All current host guards precede the pure private-custody sweep. No await
+      // or host callback remains between that sweep and consuming the cohort.
+      // The cohort now holds cleanup-only children: releasing their external
+      // leases intentionally closed the individual handoff paths. Validate the
+      // capsule's private custody and current authority, not those public paths.
+      for(const owner of owners){if(owner.#closed||!owner.#released||!owner.#busy)throw fail("generation_operation_closed");owner.#state.p.guard();}
+      for(const owner of owners){const s=owner.#state;generationSource(generationOwnerSource(s.p,s.owners).session).checkManaged();RichAssetStore.prototype.checkOpen.call(s.owners.uploads!);}
+      for(const owner of owners){owner.#state.origin.dispose();owner.#state.p.backup.dispose();owner.#closed=true;}
+      return result;
+     }finally{abandon();}
+    },abandon});offered=true;return handoff;
+   }finally{if(!offered)abandon();}
+  };
+ }
  /** Insert operational intent, verify, publish, then transfer the still-held native/source leases. */
  static begin<Q extends SharedSelectionPolicy>(options:SharedGenerationOperationBeginOptions<Q>):Promise<OperationalSharedGenerationParticipant<Q>>{return this.#fromRecovered(options,false);}
  /** Retry an interrupted publication while the original genuine completed owner is still held. */
