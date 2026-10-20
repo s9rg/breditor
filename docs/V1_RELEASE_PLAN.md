@@ -43,6 +43,23 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [explicit generation-aware relay source](SEGMENTED_RELAY_RECOVERY.md) now
+saves native document history, paired comments, named versions and exact relay
+receipts in one atomic local cut. Cold adapters verify current server prefixes
+before resuming delivery; saved counters are not live readiness or permission.
+Server acceptance followed by a failed local save retains the exact pending
+receipt for retry without resubmitting an already accepted edit.
+
+Its [functional qualification](qualification/2026-10-19-segmented-relay-recovery.json)
+passes 39 selected checks, 216 fresh relay Rust tests, 385 editor tests and 774
+script tests, with three existing opt-in script checks skipped. Source and fresh
+public archives each pass ten relay configurations, 30 cold reopens, offline
+rejoin, saved Redo and future selective history. Failed saves and server rollback
+are checked on both original and atomic-V2 transports. The unchanged shared
+native inputs carry the previous 650-test qualification, not a fresh shared
+suite run. The existing 216-configuration local generation matrix and original
+relay workflows also pass.
+
 The [native history generation component](SEGMENTED_NATIVE_HISTORY.md) now has
 [explicit Wasm and SDK recovery with dedicated local storage](SEGMENTED_SESSION_RECOVERY.md).
 It retains exact original and sealed inputs, native Undo and Redo, pending causal
@@ -57,10 +74,12 @@ through source and fresh public archives. A clean native rebuild also exposed
 and repaired mismatched research dependency wiring at the unchanged pinned
 Loro version. Original-family runtime compatibility passes 144 configurations.
 
-This is local generation recovery, not the completed approved cross-generation
-room bridge. New relay/cache and participant bindings, independent comment
-rollover, complete provider/client closure, protected credentials and the final
-activation barrier remain work. All 13 release gates remain open.
+Document and comment delivery now use the explicit generation-aware source, but
+the approved whole-room bridge remains incomplete. Suggestion/revision outboxes,
+version publication caches and operational participant bindings, independent
+comment and server-log rollover, complete provider/client closure, protected
+credentials and the final activation barrier remain work. All 13 release gates
+remain open.
 
 The [current server continuity check](CONTINUED_SERVER_RECOVERY_STATE.md) verifies
 a freshly selected native cut and every current protected registration while

@@ -7,10 +7,12 @@ complete comment journal and named-version catalog. Sealing a document
 generation preserves current Undo, Redo and pending causal inputs; it does not
 replace the document with its visible AST.
 
-This is local document and paired-comment storage. Existing relay caches,
-operational participant recovery and room-wide activation do not yet admit this
-new family. Do not pass it to an old adapter or fall back to an old checkpoint
-getter. Those integrations, independent comment-journal rollover and the full
+This is local document and paired-comment storage. For document/comment sockets
+with atomic delivery progress, select the separately named
+[relay generation session](SEGMENTED_RELAY_RECOVERY.md). Existing adapters,
+operational participant recovery and room-wide activation do not infer or admit
+the local family. Do not fall back to an old checkpoint getter. The remaining
+outbox/catalog integrations, independent comment-journal rollover and full
 approved cross-generation room handoff remain V1 work.
 
 ## Open the dedicated family
@@ -173,6 +175,6 @@ collection or unlimited lifetime is provided.
 Synthetic IndexedDB and Web Locks tests qualify functional transitions, not
 browser eviction/quota, process or power-loss durability, physical clipboard,
 IME, screen-reader behavior or the long-session performance envelope. Whole-room
-activation, new relay/cache and participant bindings, independent comment
-rollover, provider closure, protected credentials and deployment fencing remain
-separate requirements. All 13 V1 gates remain open.
+activation, generation-aware outbox/catalog and participant bindings, independent
+comment rollover, provider closure, protected credentials and deployment fencing
+remain separate requirements. All 13 V1 gates remain open.

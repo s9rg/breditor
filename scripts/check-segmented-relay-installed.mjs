@@ -1,0 +1,32 @@
+/** Fresh offline public archives, exact same ten-case live workflow and a separately built native host. */
+import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
+import {mkdtempSync,mkdirSync,cpSync,readFileSync,writeFileSync,realpathSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {resolve,join,dirname} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {createHash} from 'node:crypto';
+import {build} from 'vite';
+import {sourceEvidence} from './candidate-release/evidence.mjs';
+import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
+const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),source=sourceEvidence(root),args=process.argv.slice(2);
+if(args.length!==1)throw Error('Expected the freshly built isolated review host executable');
+const executable=realpathSync(resolve(args[0])),temporary=mkdtempSync(join(tmpdir(),'breditor-segmented-relay-installed-')),archives=join(temporary,'archives'),consumer=join(temporary,'consumer'),node=process.execPath,npm=process.env.BREDITOR_NPM??process.env.NPM_BIN??'npm',sha=b=>createHash('sha256').update(b).digest('hex');
+mkdirSync(archives);mkdirSync(consumer);mkdirSync(join(consumer,'fixtures'));
+const names=['@breditor/browser','@breditor/experimental-rich-content','@breditor/collaboration'],packs=JSON.parse(execFileSync(npm,['pack','--ignore-scripts','--json','--pack-destination',archives,...names.flatMap(n=>['--workspace',n])],{cwd:root,encoding:'utf8'})),paths=packs.map(p=>join(archives,p.filename));
+const producer=JSON.parse(readFileSync(join(root,'package-lock.json'),'utf8')),locked=searchConsumerLock(producer,packs.map((p,i)=>({name:p.name,path:paths[i]})));
+writeFileSync(join(consumer,'package.json'),JSON.stringify(locked.manifest));writeFileSync(join(consumer,'package-lock.json'),JSON.stringify(locked.lock));
+execFileSync(npm,['install','--offline','--ignore-scripts','--no-audit','--no-fund'],{cwd:consumer,stdio:'inherit'});const registryArtifacts=verifySearchConsumerRegistry(producer,JSON.parse(readFileSync(join(consumer,'package-lock.json'),'utf8')));
+for(const name of names)assert.ok(realpathSync(join(consumer,'node_modules',name)).startsWith(realpathSync(consumer)+'/node_modules/'));
+cpSync(join(root,'scripts/fixtures/editor-consumer/types-segmented-relay.ts'),join(consumer,'types-segmented-relay.ts'));cpSync(join(root,'scripts/fixtures/relay-host.mjs'),join(consumer,'fixtures/relay-host.mjs'));cpSync(join(root,'crates/breditor-core/tests/fixtures/rich-local-root.json'),join(consumer,'retained-asset-root.json'));
+execFileSync(node,[join(root,'node_modules/typescript/bin/tsc'),'--noEmit','--strict','--exactOptionalPropertyTypes','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM','types-segmented-relay.ts'],{cwd:consumer,stdio:'inherit'});
+let probe=readFileSync(join(root,'scripts/probe-segmented-relay.mjs'),'utf8');
+for(const [from,to]of [["'../packages/breditor-collaboration/dist/index.js'","'@breditor/collaboration'"],["new URL('../crates/breditor-core/tests/fixtures/rich-local-root.json',import.meta.url)","new URL('./retained-asset-root.json',import.meta.url)"]]){assert.equal(probe.split(from).length,2);probe=probe.replace(from,to);}
+assert.ok(!probe.includes('../packages/')&&!probe.includes('../crates/'));writeFileSync(join(consumer,'generations-relay.mjs'),probe);
+const runtime=join(consumer,'node_modules/@breditor/collaboration/dist/runtime'),acceptance=JSON.parse(execFileSync(node,['generations-relay.mjs',runtime,executable],{cwd:consumer,encoding:'utf8',maxBuffer:2*1024*1024,timeout:600000}));
+assert.equal(acceptance.passed,true);assert.equal(acceptance.smoke,false);assert.equal(acceptance.cases,10);assert.equal(acceptance.coldReopens,30);assert.equal(acceptance.acknowledgementSaveRefusals,2);assert.equal(acceptance.serverRollbackRefusals,2);assert.equal(acceptance.futureHistorySteps,20);
+writeFileSync(join(consumer,'entry.mjs'),'export {SharedSegmentedRelaySession,createSharedSegmentedRelaySync,createSharedSegmentedReviewRelaySync} from "@breditor/collaboration";');
+const output=await build({configFile:false,root:consumer,logLevel:'error',build:{target:'es2022',write:false,minify:false,lib:{entry:join(consumer,'entry.mjs'),formats:['es'],fileName:'generation-relay-proof'}}}),modules=(Array.isArray(output)?output:[output]).flatMap(r=>r.output).filter(o=>o.type==='chunk').flatMap(o=>Object.keys(o.modules));
+assert.ok(modules.some(p=>p.includes('/node_modules/@breditor/collaboration/dist/segmented_relay/session.js')));assert.ok(!modules.some(p=>p.includes(join(root,'packages'))||p.includes('/node_modules/react/')||p.includes('fake-indexeddb')));assert.deepEqual(sourceEvidence(root),source);
+const report={format:'breditor/segmented-relay-installed-consumer',passed:true,source,sourceUnchanged:true,consumer,workspaceLinks:false,strictPublicTypes:true,registryArtifacts,archives:packs.map((p,i)=>({name:p.name,path:paths[i],sha256:sha(readFileSync(paths[i]))})),acceptance,productionModuleCount:modules.length,noWorkspaceReactOrSyntheticStorageInProduction:true,nativeHostSha256:sha(readFileSync(executable)),sharedWasmSha256:sha(readFileSync(join(runtime,'breditor_shared_bg.wasm'))),scope:'Current built SDK/runtime in fresh offline public archives, unchanged full live relay assertions. Not browser durability, independent comment/server-log generations or whole-room activation.'};
+writeFileSync(join(root,'target/segmented-relay-installed-consumer.json'),JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report,null,2));

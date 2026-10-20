@@ -67,6 +67,11 @@ name = "participant_inventory_fixture"
 path = "examples/participant_inventory_fixture.rs"
 required-features = ["server"]
 
+[[example]]
+name = "segmented_relay_functional"
+path = "examples/segmented_relay_functional.rs"
+required-features = ["server"]
+
 [lints.rust]
 unsafe_code = "forbid"
 missing_docs = "deny"

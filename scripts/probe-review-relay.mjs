@@ -3,8 +3,8 @@
 import assert from "node:assert/strict";
 import {createHash,randomBytes} from "node:crypto";
 import {readFileSync,writeFileSync,mkdtempSync,realpathSync} from "node:fs";
-import {spawn} from "node:child_process";
-import {createInterface} from "node:readline";
+import {startReviewHost} from "./fixtures/relay-host.mjs";
+export {startReviewHost} from "./fixtures/relay-host.mjs";
 import {tmpdir} from "node:os";
 import {resolve,join} from "node:path";
 import {fileURLToPath,pathToFileURL} from "node:url";
@@ -17,13 +17,6 @@ const canonical=value=>Array.isArray(value)?value.map(canonical):value&&typeof v
 const create=(anchorJson,body)=>({kind:"create_thread",data:{anchorJson,body}});
 const reply=(thread,body)=>({kind:"reply",data:{thread,body}});
 const nodeTarget={kind:"selection",selection:{kind:"node",block:"image-block"}};
-export async function startReviewHost(executable,args){
- const child=spawn(executable,args,{stdio:["ignore","pipe","pipe"]});let errors="";child.stderr.on("data",value=>{errors=(errors+value).slice(-8192);});
- const closed=new Promise(resolve=>child.once("exit",(code,signal)=>resolve({code,signal}))),lines=createInterface({input:child.stdout});
- const address=await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error(`Host start timed out: ${errors}`)),15000);child.once("error",reject);child.once("exit",()=>{clearTimeout(timer);reject(Error(`Host exited: ${errors}`));});lines.on("line",line=>{try{const value=JSON.parse(line);if(value.kind==="listening"){clearTimeout(timer);resolve(value.address);}}catch{/* No payload logging. */}});});
- let crashed=false;
- return {address,async crash(){crashed=true;if(child.exitCode===null&&child.signalCode===null)child.kill("SIGTERM");await closed;lines.close();},async stop(){if(child.exitCode===null&&child.signalCode===null)child.kill("SIGINT");const result=await Promise.race([closed,new Promise((_,reject)=>{const timer=setTimeout(()=>reject(Error("Host did not stop")),15000);timer.unref();})]);lines.close();if(!crashed)assert.equal(result.code,0,errors);}};
-}
 export class ReviewWireFixture {
  constructor(endpoint){this.socket=new WebSocket(endpoint,{headers:{Origin:origin}});this.pending=new Map();this.events=[];this.serial=0;this.opened=new Promise((resolve,reject)=>{this.socket.addEventListener("open",resolve,{once:true});this.socket.addEventListener("error",()=>reject(Error("Socket failed")),{once:true});});this.socket.addEventListener("message",event=>{const envelope=JSON.parse(event.data);assert.equal(envelope.format,"breditor/relay");assert.equal(envelope.formatVersion,1);if(envelope.id===null){this.events.push(envelope.result);assert.ok(this.events.length<512);return;}const pending=this.pending.get(envelope.id);assert.ok(pending,"Only requested responses are accepted");this.pending.delete(envelope.id);clearTimeout(pending.timer);pending.resolve(envelope.result);});this.socket.addEventListener("close",()=>{for(const pending of this.pending.values()){clearTimeout(pending.timer);pending.reject(Error("Socket closed"));}this.pending.clear();});}
  async request(request){await this.opened;const id=String(++this.serial);return new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error("Request timed out")),15000);this.pending.set(id,{resolve,reject,timer});this.socket.send(JSON.stringify({format:"breditor/relay",formatVersion:1,id,request}));});}

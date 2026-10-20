@@ -28,6 +28,10 @@ export async function makeSegmentedCut(checkpoint:string,identity:SegmentedSessi
 }
 /** Exact encoded-head budget before a local catalog mutation; hash placeholders have equal byte width. */
 export function checkSegmentedCapture(checkpoint:string,identity:SegmentedSessionIdentity,review:SegmentedReview|null,versions:readonly string[]):void{
+ readSegmentedHead(previewSegmentedHead(checkpoint,identity,review,versions));
+}
+/** Native strings remain opaque; only bounded metadata and equal-width hash placeholders are built. */
+export function previewSegmentedHead(checkpoint:string,identity:SegmentedSessionIdentity,review:SegmentedReview|null,versions:readonly string[]):string{
  const a=checkSegmentedCheckpoint(checkpoint,identity),sha256="0".repeat(64),root={generation:a.rootGeneration,sha256},sealed=a.sealed.map(json=>({generation:(JSON.parse(json) as {generation:string}).generation,sha256}));
- readSegmentedHead(JSON.stringify({format:"breditor/shared-generation-head",formatVersion:1,identity:canonicalSegmentedIdentity(identity),family:a.family,root,sealed,active:a.active,review,versions}));
+ return JSON.stringify({format:"breditor/shared-generation-head",formatVersion:1,identity:canonicalSegmentedIdentity(identity),family:a.family,root,sealed,active:a.active,review,versions});
 }

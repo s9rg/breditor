@@ -14,6 +14,17 @@ const plan=checks=>({profile:"functional",deferred:["not-a-v1-certification"],ch
 const stable=()=>({commit:"1".repeat(40),dirty:true,sha256:"2".repeat(64),files:1,bytes:1});
 function quiet(options={}){return {snapshot:stable,report:()=>{},...options};}
 
+test("both profiles qualify explicit relay-generation storage, exact native host and fresh installed live workflows",()=>{
+ for(const profile of ["functional","full"]){const p=candidateReleasePlan({profile}),find=id=>{const c=p.checks.find(c=>c.id===id);assert.ok(c,id);return c;};
+  assert.deepEqual(find("segmented-relay-storage-contracts").args,["--test","scripts/segmented-relay-storage.test.mjs"]);
+  assert.ok(find("segmented-relay-type-fence").args.includes("scripts/fixtures/editor-consumer/types-segmented-relay.ts"));
+  assert.ok(find("segmented-relay-native-host").args.includes("segmented_relay_functional"));assert.equal(find("segmented-relay-native-host").artifacts.length,2);
+  assert.ok(find("legacy-review-relay-live").args.includes("scripts/probe-review-relay-sdk.mjs"));
+  assert.ok(p.checks.indexOf(find("segmented-relay-live"))>p.checks.indexOf(find("segmented-relay-native-host")));
+  assert.deepEqual(find("installed-segmented-relay").artifacts,[{path:"target/segmented-relay-installed-consumer.json",fresh:true}]);
+ }
+});
+
 test("both profiles require explicit generation storage, public types, the full native-owner matrix and fresh installed archives",()=>{
  for(const profile of ["functional","full"]){
   const p=candidateReleasePlan({profile}),find=id=>{const c=p.checks.find(c=>c.id===id);assert.ok(c,id);return c;};

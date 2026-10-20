@@ -2,6 +2,9 @@ export {SharedRichEditor,SharedEditorError,createSharedDocumentEditor} from "./c
 export {supportsSharedSegmentedHistory,restoreSharedSegmentedEditor} from "./segmented_profile.js";
 export type {SharedSegmentedHistoryInfo} from "./segmented_history.js";
 export {SharedSegmentedPersistentSession,type SharedSegmentedSessionOptions,type SharedSegmentedSaveState,type SharedSegmentedRecovery,type SharedSegmentedRecoveryOptions} from "./persistence/segmented_session.js";
+export {SharedSegmentedRelaySession} from "./segmented_relay/session.js";
+export {createSharedSegmentedRelaySync,createSharedSegmentedReviewRelaySync,type SharedSegmentedReviewRelaySyncOptions} from "./segmented_relay/factories.js";
+export type {SharedSegmentedRelayBinding,SharedSegmentedRelayProgress,SharedSegmentedRelaySessionOptions,SharedSegmentedRelayRecovery,SharedSegmentedRelayRecoveryOptions,SharedSegmentedRelaySyncOptions,SharedSegmentedDocumentProgress,SharedSegmentedDocumentReceipt,SharedSegmentedReviewReceipt} from "./segmented_relay/contract.js";
 export {initializeSharedReadOnly} from "./initialize_read_only.js";
 export {SharedRoomRecoveryCatalog} from "./room_recovery_catalog/catalog.js";
 export {SharedRoomOperationalRecovery} from "./room_operation/recovery.js";

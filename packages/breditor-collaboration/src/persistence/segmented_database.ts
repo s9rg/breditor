@@ -17,14 +17,14 @@ export function openSegmentedDatabase(name:string):Promise<IDBDatabase>{
  });
 }
 /** Read exact referenced files in the same transaction as their head; no missing-file repair. */
-export async function readSegmentedCut(db:IDBDatabase,key:readonly[string,string]):Promise<SegmentedStoredCut|null>{
+export async function readSegmentedCut(db:IDBDatabase,key:readonly[string,string],readHead:typeof readSegmentedHead=readSegmentedHead):Promise<SegmentedStoredCut|null>{
  const stored=await new Promise<{head:string;files:SegmentedFile[]}|null>((resolve,reject)=>{
   const tx=db.transaction(["generation_files","generation_heads"],"readonly"),r=tx.objectStore("generation_heads").get([...key]);let result:{head:string;files:SegmentedFile[]}|null=null,failure:unknown;
   const abort=(error:unknown)=>{failure=error;tx.abort();};
-  r.onsuccess=()=>{try{if(r.result===undefined)return;if(typeof r.result!=="string")throw fail("Unknown generation head");const h=readSegmentedHead(r.result);if(h.identity.room!==key[0]||h.identity.writer!==key[1])throw fail("Generation head belongs to a different writer");const files:SegmentedFile[]=[];result={head:r.result,files};for(const ref of [h.root,...h.sealed]){const q=tx.objectStore("generation_files").get([...key,ref.generation]);q.onsuccess=()=>{try{if(typeof q.result!=="string")throw fail("Referenced generation file is absent");const f=JSON.parse(q.result) as SegmentedFile;if(JSON.stringify(f)!==q.result||Object.keys(f).sort().join(",")!=="generation,json,kind,sha256"||f.generation!==ref.generation||f.sha256!==ref.sha256||typeof f.json!=="string")throw fail("Referenced generation file differs");files.push(f);}catch(error){abort(error);}};}}catch(error){abort(error);}};
+  r.onsuccess=()=>{try{if(r.result===undefined)return;if(typeof r.result!=="string")throw fail("Unknown generation head");const h=readHead(r.result);if(h.identity.room!==key[0]||h.identity.writer!==key[1])throw fail("Generation head belongs to a different writer");const files:SegmentedFile[]=[];result={head:r.result,files};for(const ref of [h.root,...h.sealed]){const q=tx.objectStore("generation_files").get([...key,ref.generation]);q.onsuccess=()=>{try{if(typeof q.result!=="string")throw fail("Referenced generation file is absent");const f=JSON.parse(q.result) as SegmentedFile;if(JSON.stringify(f)!==q.result||Object.keys(f).sort().join(",")!=="generation,json,kind,sha256"||f.generation!==ref.generation||f.sha256!==ref.sha256||typeof f.json!=="string")throw fail("Referenced generation file differs");files.push(f);}catch(error){abort(error);}};}}catch(error){abort(error);}};
   tx.oncomplete=()=>resolve(result);tx.onabort=()=>reject(failure??tx.error??fail("Generation read aborted"));
  });
- if(!stored)return null;const h=readSegmentedHead(stored.head),byId=new Map(stored.files.map(f=>[f.generation,f]));
+ if(!stored)return null;const h=readHead(stored.head),byId=new Map(stored.files.map(f=>[f.generation,f]));
  const root=byId.get(h.root.generation)!;if(root.kind!=="root")throw fail("Original generation file role differs");
  const sealed=h.sealed.map(r=>{const f=byId.get(r.generation)!;if(f.kind!=="sealed")throw fail("Sealed generation file role differs");return f.json;});
  const checkpoint=JSON.stringify({format:"breditor/shared-segmented-history-session",formatVersion:1,family:h.family,rootGeneration:root.generation,rootCheckpoint:root.json,sealed,active:h.active});
@@ -32,8 +32,8 @@ export async function readSegmentedCut(db:IDBDatabase,key:readonly[string,string
  return {...stored,checkpoint,record:h};
 }
 /** Exact CAS and idempotent acknowledgement retry. Never replace an immutable file or a foreign cut. */
-export function writeSegmentedCut(db:IDBDatabase,key:readonly[string,string],expected:string|null,cut:SegmentedCut):Promise<void>{
- try{const h=readSegmentedHead(cut.head),refs=[h.root,...h.sealed];if(h.identity.room!==key[0]||h.identity.writer!==key[1]||cut.files.length!==refs.length||cut.files.some((f,index)=>f.generation!==refs[index]!.generation||f.sha256!==refs[index]!.sha256||f.kind!==(index===0?"root":"sealed")||typeof f.json!=="string"))throw fail("Wrong generation writer or files");}catch(error){return Promise.reject(error);}
+export function writeSegmentedCut(db:IDBDatabase,key:readonly[string,string],expected:string|null,cut:SegmentedCut,readHead:typeof readSegmentedHead=readSegmentedHead):Promise<void>{
+ try{const h=readHead(cut.head),refs=[h.root,...h.sealed];if(h.identity.room!==key[0]||h.identity.writer!==key[1]||cut.files.length!==refs.length||cut.files.some((f,index)=>f.generation!==refs[index]!.generation||f.sha256!==refs[index]!.sha256||f.kind!==(index===0?"root":"sealed")||typeof f.json!=="string"))throw fail("Wrong generation writer or files");}catch(error){return Promise.reject(error);}
  return new Promise((resolve,reject)=>{
   const tx=db.transaction(["generation_files","generation_heads"],"readwrite"),heads=tx.objectStore("generation_heads"),files=tx.objectStore("generation_files"),r=heads.get([...key]);let failure:unknown;
   const abort=(error:unknown)=>{failure=error;tx.abort();};

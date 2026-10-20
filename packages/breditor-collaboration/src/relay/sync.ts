@@ -14,6 +14,8 @@ import {suggestionBinding,suggestionDescriptor,suggestionPermissions,suggestionC
 import {packetText} from "../suggestions/validation.js";
 import {revisionsBinding,revisionsDescriptor,revisionRequest} from "../suggestion_revisions/transport.js";
 import type {SharedSuggestionRevisionRequest} from "../suggestion_revisions/types.js";
+import {segmentedDocumentPort,type SegmentedRelayPort} from "../segmented_relay/admission.js";
+import type {SharedSegmentedDocumentReceipt} from "../segmented_relay/contract.js";
 
 interface Waiter {target:string;resolve:()=>void;reject:(error:SharedRelayError)=>void;timer:ReturnType<typeof setTimeout>}
 interface Run {epoch:number;promise:Promise<void>}
@@ -40,12 +42,14 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
  #suggestionDocumentRevision=0;
  #revisionsNegotiated=false;
  #listeners=new Set<()=>void>();#suggestionRequests=0;
+ readonly #segmented:SegmentedRelayPort|undefined;#durableFloor:SharedWriterClock|null=null;
 
  constructor(core:SharedRichEditor<P>,options:SharedRelayOptions<P>&(P extends "document-v1"?SharedDocumentRelayOptions:unknown)){
   const policy=options.selectionEditing??"original";
   if(policy!=="original"&&policy!=="document-v1"||policy!==(core.selectionPolicy?.()??"original"))throw new SharedRelayError("relay_selection_policy");
   if(attached.has(core))throw new SharedRelayError("relay_already_attached");
   this.#core=core;this.#identity=identity(options.identity);this.#options={...options,identity:this.#identity};
+  this.#segmented=segmentedDocumentPort(options);
   this.#transport=transportVersion(this.#identity.writerTransport);
   const reviewed=core.reviewedHistoryIdentity?.()??null;
   if(reviewed&&(reviewed.principal!==this.#identity.principal||this.#transport!==2||typeof options.persistLocal!=="function"))throw new SharedRelayError("reviewed_transport_required");
@@ -61,7 +65,8 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
   if(!Number.isInteger(this.#minimum)||!Number.isInteger(this.#maximum)||this.#minimum<50||this.#minimum>this.#maximum||this.#maximum>30_000)throw new SharedRelayError("reconnect_limits");
   if(this.#transport===2?!core.supportsWriterTransportV2():!core.supportsWriterTransport())throw new SharedRelayError("writer_transport_unavailable");
   // The owner declares its local recovery family; transport/model bindings stay unchanged.
-  checkSourceCheckpoint(core,this.#identity.room,this.#identity.writer);
+  if(this.#segmented){this.#segmented.check();const {credential:_credential,...binding}=this.#identity;if(core as object!==this.#segmented.core as object||JSON.stringify(binding)!==JSON.stringify(this.#segmented.binding.document))throw new SharedRelayError("segmented_relay_source");this.#durableFloor=this.#segmented.durable().document.accepted;}
+  else checkSourceCheckpoint(core,this.#identity.room,this.#identity.writer);
   this.#local=this.#clock().through;
   if(options.presence)this.#presence=new RelayPresence(core,options.presence,this.#identity.writer,e=>this.#report(e));
   this.#unsubscribe=core.subscribe(()=>{try{const previous=this.#local;this.#refresh();if(previous!==this.#local)this.#schedulePump();}catch{this.#fail(new SharedRelayError("owner_unavailable"),this.#epoch);}});
@@ -103,7 +108,7 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
  #fail(error:SharedRelayError,epoch:number):void{
   if(!this.#active(epoch))return;this.#stop();this.#error=error.code;
   const retry=transient.has(error.code)&&this.#wanted;
-  this.#status=retry?"offline":error.code==="lease_rejected"?"fenced":error.code==="permission_denied"||error.code==="token_unavailable"?"denied":"failed";
+  this.#status=retry?"offline":error.code==="local_save_failed"?"local-save-failed":error.code==="lease_rejected"?"fenced":error.code==="permission_denied"||error.code==="token_unavailable"?"denied":"failed";
   this.#rejectWaiters(error);this.#report(error);this.#notify();
   if(retry){const delay=Math.min(this.#maximum,this.#minimum*2**Math.min(this.#attempts++,10));this.#retry=setTimeout(()=>{this.#retry=undefined;if(this.#wanted&&!this.#closed)void this.connect().catch(()=>{});},delay);}else this.#wanted=false;
  }
@@ -143,6 +148,7 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
   this.#connecting=work;try{await work;}finally{if(this.#connecting===work)this.#connecting=undefined;}
  }
  async #establish(epoch:number,abort:AbortController):Promise<void>{
+  if(this.#segmented){this.#segmented.check();try{await this.#segmented.flush();}catch{throw new SharedRelayError("local_save_failed");}if(!this.#active(epoch))throw new SharedRelayError("disconnected");this.#durableFloor=this.#segmented.durable().document.accepted;}
   const token=await accountToken(this.#options.getToken,abort.signal,this.#milliseconds);if(!this.#active(epoch))throw new SharedRelayError("disconnected");
   const open=this.#core.selectionPolicy()==="document-v1"?RelayChannel.openDocument:RelayChannel.open;
   const channel=await(this.#options.suggestions?RelayChannel.openSuggestions(this.#identity.endpoint,this.#milliseconds,e=>this.#event(e,epoch),e=>this.#fail(e,epoch),this.#core.selectionPolicy(),abort.signal):open(this.#identity.endpoint,this.#milliseconds,e=>this.#event(e,epoch),e=>this.#fail(e,epoch),abort.signal));
@@ -174,10 +180,14 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
   if(resumed["kind"]!=="resumed"||object(resumed["lease"])["writer"]!==this.#identity.writer)throw new SharedRelayError("writer_mismatch");
   const current=await this.#readClock(channel);if(!this.#active(epoch))throw new SharedRelayError("disconnected");
   if(this.#acked&&BigInt(current.through)<BigInt(this.#acked.through))throw new SharedRelayError("server_rollback");
-  if(current.through!==this.#acked?.through)this.#sequence=null;this.#acked=current;this.#ready=true;this.#localFailure=false;this.#error=null;this.#reported=null;this.#attempts=0;this.#status="syncing";this.#notify();
+  if(current.through!==this.#acked?.through)this.#sequence=null;
+  if(this.#segmented){await this.#saveSegmentedProgress(current);if(!this.#active(epoch))throw new SharedRelayError("disconnected");}
+  if(this.#segmented){const receipt=this.#segmented.durable().document.receipt;this.#sequence=receipt?.receipt.through===current.through?receipt.sequence:null;}
+  this.#acked=current;this.#ready=true;this.#localFailure=false;this.#error=null;this.#reported=null;this.#attempts=0;this.#status="syncing";this.#notify();
   await this.#drainFrames(epoch);if(this.#active(epoch)){this.#refresh();this.#schedulePump();if(this.#assetHints)this.#assetsChanged(epoch);if(this.#presenceEnabled){this.#presence!.start(channel);this.#presenceStarted=true;if(this.#earlyPresence)this.#presence!.receive(this.#earlyPresence);this.#earlyPresence=undefined;}}
  }
- async #readClock(channel:RelayChannel):Promise<SharedWriterClock>{const result=await channel.request({kind:"clock",writer:this.#identity.writer});if(result["kind"]!=="clock")throw new SharedRelayError("protocol_error");const current=clock(result["clock"],this.#identity.writer);checkClock(this.#core,current,this.#transport);return current;}
+ async #readClock(channel:RelayChannel):Promise<SharedWriterClock>{const result=await channel.request({kind:"clock",writer:this.#identity.writer});if(result["kind"]!=="clock")throw new SharedRelayError("protocol_error");const current=clock(result["clock"],this.#identity.writer);checkClock(this.#core,current,this.#transport);if(this.#segmented){this.#segmented.check();if(this.#durableFloor&&BigInt(current.through)<BigInt(this.#durableFloor.through)||this.#acked&&BigInt(current.through)<BigInt(this.#acked.through))throw new SharedRelayError("server_rollback");}return current;}
+ async #saveSegmentedProgress(accepted:SharedWriterClock,receipt?:SharedSegmentedDocumentReceipt):Promise<void>{if(!this.#segmented)return;this.#segmented.check();try{await this.#segmented.persistDocument({accepted,receipt:receipt??this.#segmented.durable().document.receipt});this.#durableFloor=this.#segmented.durable().document.accepted;}catch{throw new SharedRelayError("local_save_failed");}}
  /** Bounded suggestion requests use this existing authenticated author connection. Binding and
   * principal/writer authority cannot be supplied by a caller payload. A metadata permission error
   * does not shut down ordinary document sync; an invalid author lease still fences it. */
@@ -254,7 +264,9 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
     }if(result["kind"]!=="durable")throw new SharedRelayError("protocol_error");
     const receipt=object(result["receipt"]),through=counter(receipt["through"]),prefix=digest(receipt["prefixDigest"]);
     if(receipt["writer"]!==g.writer||receipt["from"]!==g.from||through!==g.through||receipt["groupDigest"]!==g.groupDigest||prefix!==prefixAt(this.#core,g.writer,through,this.#transport)||typeof result["duplicate"]!=="boolean")throw new SharedRelayError("receipt_mismatch");
-    this.#sequence=decimal(result["sequence"]);this.#acked={writer:g.writer,through,prefixDigest:prefix};this.#settle();
+    const sequence=decimal(result["sequence"]),accepted={writer:g.writer,through,prefixDigest:prefix};
+    if(this.#segmented){await this.#saveSegmentedProgress(accepted,{sequence,receipt:{writer:g.writer,from:g.from,through,groupDigest:g.groupDigest,prefixDigest:prefix}});if(!this.#active(epoch))return;}
+    this.#sequence=sequence;this.#acked=accepted;this.#settle();
    }
   }
  }
