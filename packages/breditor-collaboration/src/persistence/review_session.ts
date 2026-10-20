@@ -93,6 +93,7 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
  }
  static async #open<Q extends SharedSelectionPolicy>(input:Omit<SharedReviewSessionOptions<Q>,"restore">,restoreSaved:SharedReviewSessionOptions<Q>["restore"],reviewed?:SharedReviewedHistoryIdentity,search=false,backup?:SharedPairedSessionBackup):Promise<SharedReviewPersistentSession<Q>>{
   const recoveryOrigin=recoveryOriginFor(input);
+  if(input.editor&&"segmentedHistory" in input.editor&&input.editor.segmentedHistory!==undefined)throw new SharedEditorError("segmented_session_factory","Use the explicitly generation-aware paired family");
   if("searchHistory" in input&&input.searchHistory!==undefined)throw new SharedEditorError("search_session_factory","Select search history through the explicit paired search factory");
   if(input.editor&&"searchHistory" in input.editor&&input.editor.searchHistory!==undefined)throw new SharedEditorError("search_session_factory","Select search history through the explicit paired search factory");
   if(input.editor&&"reviewedHistory" in input.editor&&input.editor.reviewedHistory!==undefined)throw new SharedEditorError("reviewed_session_factory","Select reviewed history through the paired factory, not nested editor options");

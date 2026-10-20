@@ -21,6 +21,18 @@ impl RichReplicaProbe {
         self.inner
             .verify_recovery_origin_guarded(&observed.inner, &origin.inner, &origin_observed.inner)
             .map_err(error)?;
+        self.verify_review_origin(observed, origin, origin_observed)
+    }
+}
+
+impl RichReplicaProbe {
+    // Both explicitly selected document families must preserve the same independent review lane.
+    pub(super) fn verify_review_origin(
+        &self,
+        observed: &RichSharedObservation,
+        origin: &RichReplicaProbe,
+        origin_observed: &RichSharedObservation,
+    ) -> Result<(), JsValue> {
         match (&self.review, &origin.review) {
             (None, None) => Ok(()),
             (Some(current), Some(before)) => current

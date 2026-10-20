@@ -1,4 +1,7 @@
 export {SharedRichEditor,SharedEditorError,createSharedDocumentEditor} from "./core.js";
+export {supportsSharedSegmentedHistory,restoreSharedSegmentedEditor} from "./segmented_profile.js";
+export type {SharedSegmentedHistoryInfo} from "./segmented_history.js";
+export {SharedSegmentedPersistentSession,type SharedSegmentedSessionOptions,type SharedSegmentedSaveState,type SharedSegmentedRecovery,type SharedSegmentedRecoveryOptions} from "./persistence/segmented_session.js";
 export {initializeSharedReadOnly} from "./initialize_read_only.js";
 export {SharedRoomRecoveryCatalog} from "./room_recovery_catalog/catalog.js";
 export {SharedRoomOperationalRecovery} from "./room_operation/recovery.js";

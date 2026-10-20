@@ -14,6 +14,19 @@ const plan=checks=>({profile:"functional",deferred:["not-a-v1-certification"],ch
 const stable=()=>({commit:"1".repeat(40),dirty:true,sha256:"2".repeat(64),files:1,bytes:1});
 function quiet(options={}){return {snapshot:stable,report:()=>{},...options};}
 
+test("both profiles require explicit generation storage, public types, the full native-owner matrix and fresh installed archives",()=>{
+ for(const profile of ["functional","full"]){
+  const p=candidateReleasePlan({profile}),find=id=>{const c=p.checks.find(c=>c.id===id);assert.ok(c,id);return c;};
+  assert.deepEqual(find("segmented-storage-contracts").args,["--test","scripts/segmented-history-storage.test.mjs"]);
+  assert.deepEqual(find("native-history-consumer-contracts").args,["--test","scripts/canonical-native-history-dependencies.test.mjs"]);
+  assert.ok(find("segmented-history-type-fence").args.includes("scripts/fixtures/editor-consumer/types-segmented-history.ts"));
+  assert.deepEqual(find("segmented-history-sdk").args,["scripts/probe-segmented-history-sdk.mjs","target/promoted-shared-web"]);
+  assert.ok(p.checks.indexOf(find("segmented-history-sdk"))>p.checks.indexOf(find("collaboration-build")));
+  assert.deepEqual(find("installed-segmented-history").args,["scripts/check-segmented-history-installed.mjs"]);
+  assert.deepEqual(find("installed-segmented-history").artifacts,[{path:"target/segmented-history-installed-consumer.json",fresh:true}]);
+ }
+});
+
 test("both profiles require explicit whole-upload recovery, real native checks and fresh installed consumers",()=>{
  for(const profile of["functional","full"]){const p=candidateReleasePlan({profile}),find=id=>{const c=p.checks.find(c=>c.id===id);assert.ok(c,id);return c;};assert.deepEqual(find("upload-reconciliation-contracts").args,["--test","scripts/asset-reconciliation.test.mjs"]);assert.ok(find("upload-reconciliation-type-fence").args.includes("scripts/fixtures/editor-consumer/types-upload-reconciliation.ts"));assert.deepEqual(find("upload-reconciliation").args,["scripts/check-upload-reconciliation-sdk.mjs"]);assert.deepEqual(find("upload-reconciliation").artifacts,[{path:"target/upload-reconciliation-sdk.json",fresh:true}]);assert.ok(p.checks.indexOf(find("upload-reconciliation"))>p.checks.indexOf(find("collaboration-build")));assert.ok(find("installed-session-backups").artifacts.some(r=>r.path==="target/upload-reconciliation-installed-consumer.json"&&r.fresh));}
  const installed=readFileSync(join(repository,"scripts/check-session-backups-installed.mjs"),"utf8");for(const text of["upload-reconciliation-probe.mjs","types-upload-reconciliation.ts","coldAttemptReopens:132","futureReviewCheckpoints:90","wrongOriginalRefusals:1","recoveryNotifications:0","uploadReconciliation.originalPaired,participantRecovery","/assets/reconciliation/","uploadReport"])assert.ok(installed.includes(text),text);

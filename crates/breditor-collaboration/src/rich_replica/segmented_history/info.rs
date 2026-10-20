@@ -22,6 +22,12 @@ pub struct SegmentedHistoryInfo {
     pub redo_items: usize,
 }
 impl RichReplica {
+    /// Whether the separate segmented native recovery contract has been explicitly selected.
+    #[must_use]
+    pub const fn segmented_history_enabled(&self) -> bool {
+        self.segmented.is_some()
+    }
+
     /// Read detached native segment diagnostics. A result grants no lease or persistence proof.
     #[must_use]
     pub fn segmented_history_info(&self) -> Option<SegmentedHistoryInfo> {

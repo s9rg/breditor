@@ -897,8 +897,6 @@ dependencies = [
 [[package]]
 name = "loro"
 version = "1.16.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e86dea63b66576db244cbc3a40bdb17517263c93f318e2fbe08aca3be1192cb"
 dependencies = [
  "enum-as-inner 0.6.1",
  "generic-btree",

@@ -27,6 +27,7 @@ export type SharedProfileDescriptor=SharedProtocolBinding&Pick<SharedOwnerDescri
 };
 /** Independent compiled factory. Caller frees it after all create/restore callbacks finish. */
 export interface SharedRustProfile {
+ segmented_history_version?():string;restore_segmented?(room:string,journal:string):SharedRustOwner;
  placeholder_version?():string;
  search_history_version?():string;restore_search?(room:string,journal:string):SharedRustOwner;
  reviewed_history_version?():string;restore_reviewed?(room:string,journal:string):SharedRustOwner;

@@ -27,9 +27,11 @@ loro-internal = { path = "../../crates/breditor-collaboration/vendor/loro-intern
 
 [dependencies]
 breditor-core = { path = "../../crates/breditor-core", features = ["experimental-rich-content"] }
-loro = { version = "=1.16.2", default-features = false }
+# This crate compiles the canonical shared source, including exact native history staging.
+# Use the same pinned path edges: Cargo ignores a dependency crate's [patch] section.
+loro = { version = "=1.16.2", path = "../../crates/breditor-collaboration/vendor/loro-1.16.2", default-features = false }
 # Isolate the already-transitive engine's read-only delta composition/transform API for cursor history.
-loro-internal = { version = "=1.16.2", default-features = false }
+loro-internal = { version = "=1.16.2", path = "../../crates/breditor-collaboration/vendor/loro-internal-1.16.2", default-features = false }
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = "=1.0.151"
 thiserror = "=2.0.20"

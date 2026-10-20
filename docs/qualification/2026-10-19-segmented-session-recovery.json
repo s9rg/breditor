@@ -1,0 +1,135 @@
+{
+  "format": "breditor/segmented-session-recovery-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-19",
+  "classification": "PROGRESS",
+  "v1Ready": false,
+  "publicationApproved": false,
+  "openV1Gates": 13,
+  "scope": "Explicit native/Wasm/SDK generation recovery, dedicated local document/comment/version storage, original-family regressions and repaired native research/relay dependency wiring. Not whole-room generation activation or release approval.",
+  "source": {
+    "baseCommit": "3585d02bebd9c9426c3ee9da0bd0e2f08236b268",
+    "testedWorkingTreeSha256": "808574e59c05fa60f50ff4c4f82d84b2f3e42ad95500b73250fe57993da096e6",
+    "files": 4742,
+    "bytes": 41010288,
+    "nonDocumentationSha256": "5710d44acaccca7044fef4d9651a8eb5f57710bfd88006c01d11609a36b01f1a",
+    "postQualificationChanges": "Only this record, the session guide qualification link and the V1 plan's scoped checkpoint note."
+  },
+  "evidence": {
+    "candidate": "target/v1-candidate-runs/run-dgQACx/result.json",
+    "result": "target/segmented-sdk-qualification-wLoSWY/result.json",
+    "audit": "target/segmented-sdk-qualification-wLoSWY/checkpoint-audit.json",
+    "installed": "target/segmented-history-installed-consumer.json",
+    "legacyInterop": "target/segmented-sdk-qualification-wLoSWY/legacy-interop.json",
+    "ownerLeakBefore": "target/segmented-sdk-qualification-BuG0o3/open-owner-leak-before.json",
+    "ownerLeakAfter": "target/segmented-sdk-qualification-wLoSWY/open-owner-leak-after.json",
+    "interruptedRun": "target/v1-candidate-runs/run-WYeK49/result.json",
+    "failedCleanBuild": "target/v1-candidate-runs/run-8fpC4P/result.json",
+    "cacheCleanup": "target/segmented-sdk-qualification-wLoSWY/cache-cleanup.json"
+  },
+  "implementation": {
+    "apis": [
+      "SharedRichEditor.enableSegmentedHistory",
+      "SharedRichEditor.sealHistoryGeneration",
+      "SharedRichEditor.verifySegmentedRecoveryOrigin",
+      "restoreSharedSegmentedEditor",
+      "SharedSegmentedPersistentSession.open",
+      "SharedSegmentedPersistentSession.sealGeneration",
+      "SharedSegmentedPersistentSession.restoreRecovery"
+    ],
+    "newStorageFormats": [
+      "breditor/shared-generation-head version 1",
+      "breditor/shared-generation-recovery version 1"
+    ],
+    "storage": "Separate closed schema; immutable root/sealed files; atomic head plus exact comment journal and named versions; exact previous-head CAS; no overwrite, missing-file repair, old-database upgrade or AST fallback.",
+    "numbers": "Native segment bodies remain exact strings. JavaScript does not decode and re-encode native effect or property numbers; a writer beyond JavaScript's safe integer range is covered.",
+    "lifecycle": "Document and optional comment leases precede reads and native factories. Current host policies precede exposure. Failed save/close or version change retains readable recovery inputs; explicit discard waits for in-flight storage before releasing leases and large captured buffers.",
+    "retry": "The exact uncertain attempt is retained ahead of newer pending captures. An already-applied head is acknowledged only with every unchanged referenced file present.",
+    "authority": "Native continuity and hash metadata grant no account permission, provider acknowledgement, server activation or cross-device writer fencing. Recovery import requires an absent dedicated head and explicit host reacquisition; no roles, assets, outboxes or credentials are exported.",
+    "bounds": {
+      "newArchiveBytes": 67108864,
+      "newCombinedHeadBytes": 134217728,
+      "newGenerationsIncludingRootAndActive": 64,
+      "originalPerRootOrSegmentEntries": 1000,
+      "originalPerRootOrSegmentBytes": 16777216,
+      "originalUndoCapacity": 1000,
+      "originalReviewBytes": 16777216,
+      "originalVersionPackets": 32,
+      "originalVersionPacketBytes": 4194304,
+      "automaticRollover": false,
+      "compactionOrGarbageCollection": false,
+      "unlimitedLifetime": false
+    },
+    "originalProtocolMeaningsDefaultsAndBoundsUnchanged": true,
+    "dependencyVersionUpgrades": false,
+    "researchAndRelayUseExistingPinnedVendorSource": true
+  },
+  "tests": {
+    "selectedChecksPassed": 45,
+    "sharedRustPassed": 650,
+    "relayRustPassed": 216,
+    "nativeFailedOrIgnored": 0,
+    "editorTestsPassed": 385,
+    "scriptTestsPassed": 760,
+    "existingOptInScriptChecksSkipped": 3,
+    "storageTestsPassed": 12,
+    "storageTestsAlreadyIncludedInScriptCount": true,
+    "ownerCleanupFailurePaths": 8,
+    "nativeDependencyResolutionContracts": 4,
+    "sourceMatrixCases": 216,
+    "installedMatrixCases": 216,
+    "pairedCasesPerMatrix": 144,
+    "exactColdRestoresPerMatrix": 1296,
+    "exactFuturePairsPerMatrix": 864,
+    "oldFamilyRefusalsPerMatrix": 432,
+    "currentReadOnlyReopensPerMatrix": 216,
+    "retainedVersionsPerMatrix": 144,
+    "realMoreThan1000DurableJournalEntries": true,
+    "strictSourceAndInstalledPublicTypes": true,
+    "bothOfficialWasmProducersRebuilt": true,
+    "nativeAndWasmWarningsAsErrors": true,
+    "freshInstalledParticipantAndRoomRecovery": true,
+    "installedMixedAssetsCommentsVersionsAndControls": true,
+    "legacyRuntimeConfigurations": 144,
+    "legacyExactCheckpointComparisons": 3168,
+    "legacyCrossRestores": 288,
+    "legacyFutureOwnerSteps": 2880,
+    "sourceAndInstalledAcceptanceIdentical": true,
+    "artifactChecks": 80,
+    "freshRootRustSuite": false,
+    "physicalBrowserClipboardIMEOrVoiceOver": false,
+    "historicalWebKitFaultConfirmedFixed": false
+  },
+  "repairs": [
+    {
+      "before": "An actual restored native owner missing initial-policy capability caused open to reject without freeing the unpublished owner. The independent probe observed zero free calls.",
+      "fix": "Release the owner on initial-policy refusal before facade ownership transfer. Eight normal-open/import policy/adoption failure paths now free exactly once, release both leases and preserve the durable head.",
+      "previousRun": "Interrupted intentionally after reproducing the leak; never counted as a passing qualification."
+    },
+    {
+      "before": "After old compiled caches were removed, the relay's research compatibility owner failed to compile: upstream Loro lacked fork_with_undo_for_staging required by the canonical shared source.",
+      "fix": "Select the same existing vendored Loro and internal implementation through direct path edges and align both research/relay lockfiles at version 1.16.2. The exact failed native fixture build, locked resolution contracts, relay tests and installed recovery now pass.",
+      "previousRun": "Preserved failed installed-session-backups stage after 34 passing checks; no silent retry or stale binary substitution."
+    }
+  ],
+  "artifacts": {
+    "sharedWasmSha256": "9614f6bd8d8ed1eb1aa992b3dd78d9736e51ada156a572dcbba50855473cf39a",
+    "browserArchiveSha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+    "richArchiveSha256": "0acb66257da3df8bd91349ca65914a63fabff2979d6404f6634bf7f25eb458df",
+    "collaborationArchiveSha256": "1c96c2bbe2f74bff3e50566c443baff1f065e5f089c67f5801aff9d826a90adb"
+  },
+  "cleanup": {
+    "removedRegenerableBytes": 6398395486,
+    "removedFiles": 14161,
+    "sourceReportsArchivesAndTopLevelFixtureExecutablesPreserved": true,
+    "regeneration": "Cargo can rebuild the removed old dependency caches from retained source and lockfiles. Current qualification artifacts are retained separately."
+  },
+  "remaining": [
+    "Generation-aware relay/cache and operational participant/whole-room bindings",
+    "Independent comment-journal generations and the approved cross-generation activation bridge",
+    "Complete client/provider/outbox/asset closure, protected credentials and deployment fencing",
+    "Long-session performance and size, platform reliability, license/source-availability review, hosted and final RC qualification",
+    "Other original feature-parity commitments and all 13 reviewed V1 gates"
+  ],
+  "pushTagPublishDeploy": false
+}

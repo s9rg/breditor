@@ -6,9 +6,11 @@ operation identities, pending causal inputs, selection and pending formats. It
 does not replace the document with its visible AST or clear history to make a
 smaller checkpoint.
 
-The contract is a native component under development. Wasm and SDK selection,
-durable generation publication, paired comment-history rollover and room-wide
-activation still need integration before an application can use it end to end.
+The optional Wasm/SDK exposes explicit selection, seals and recovery, with
+[dedicated local storage](SEGMENTED_SESSION_RECOVERY.md) for document generations
+and paired comments. Independent comment-history rollover, relay/cache and
+participant bindings, and room-wide activation still need integration. This is
+not the completed whole-room cross-generation bridge.
 
 ## Select the separate recovery family
 
@@ -126,4 +128,6 @@ passes 650 shared Rust checks, strict lint and documentation checks, and nine
 existing application-runtime regression stages. The fresh official shared Wasm
 matches the prior runtime across 144 original-family configurations, 288
 cross-version restores and 2,880 future Undo and Redo steps. These comparisons
-qualify existing formats; segmented recovery is not yet a Wasm or SDK feature.
+qualify existing formats at that native-only checkpoint. The separate application
+and local-storage contract is described in
+[segmented session recovery](SEGMENTED_SESSION_RECOVERY.md).

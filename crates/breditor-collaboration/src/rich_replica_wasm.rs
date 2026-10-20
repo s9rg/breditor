@@ -22,6 +22,7 @@ mod retained_asset_references;
 mod review;
 mod reviewed_history;
 mod search;
+mod segmented_history;
 mod selection_formatting;
 mod suggestions;
 mod typing;

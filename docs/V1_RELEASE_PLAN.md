@@ -43,16 +43,24 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
-The [native history generation component](SEGMENTED_NATIVE_HISTORY.md) retains
-the exact original root, native Undo and Redo, pending causal inputs and linked
-segments under a separate explicit Rust recovery format. Its
-[qualification](qualification/2026-10-19-segmented-native-history.json) passes
-650 shared Rust checks and nine existing runtime regression stages. A fresh
-shared Wasm build preserves exact original-family checkpoints and future history
-across 144 old/new configurations. Segmented Wasm/SDK selection, durable and
-paired-review storage, participant handoff and activation still need integration;
-this is not the completed approved cross-generation bridge or V1 readiness.
-All 13 release gates remain open.
+The [native history generation component](SEGMENTED_NATIVE_HISTORY.md) now has
+[explicit Wasm and SDK recovery with dedicated local storage](SEGMENTED_SESSION_RECOVERY.md).
+It retains exact original and sealed inputs, native Undo and Redo, pending causal
+inputs, and optional complete comments and named versions. Immutable files and
+the active head commit together; uncertain saves retry the exact pending cut
+before newer captures, without replacing an existing file or foreign head.
+
+Its [qualification](qualification/2026-10-19-segmented-session-recovery.json)
+passes 45 selected checks, including 650 shared-core and 216 relay Rust tests,
+385 editor tests, 12 storage tests and the same 216-configuration native matrix
+through source and fresh public archives. A clean native rebuild also exposed
+and repaired mismatched research dependency wiring at the unchanged pinned
+Loro version. Original-family runtime compatibility passes 144 configurations.
+
+This is local generation recovery, not the completed approved cross-generation
+room bridge. New relay/cache and participant bindings, independent comment
+rollover, complete provider/client closure, protected credentials and the final
+activation barrier remain work. All 13 release gates remain open.
 
 The [current server continuity check](CONTINUED_SERVER_RECOVERY_STATE.md) verifies
 a freshly selected native cut and every current protected registration while

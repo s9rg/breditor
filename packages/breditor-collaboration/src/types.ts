@@ -5,6 +5,7 @@ import type {SharedVersionsRustCapability} from "./version_types.js";
 import type {SharedSuggestionsRustCapability} from "./suggestion_types.js";
 import type {SharedReviewedHistoryRustCapability,SharedReviewedHistoryIdentity} from "./reviewed_history_types.js";
 import type {SharedNativeSearchResults} from "./search_results.js";
+import type {SharedSegmentedRustCapability} from "./segmented_history.js";
 export type {RichSelection,RichPoint,RichCell,FormatLiteral,ElementNode,RichModel,RenderOptions,AssetBinding} from "@breditor/experimental-rich-content/rendering";
 export type {RichInlineFormatState,RichInlineFormatStateRead} from "@breditor/experimental-rich-content/rendering";
 export type SharedView=Omit<RichView,"format">&{format:"breditor/shared-rich-view";causalVersion:string;selectionOutcome:{kind:string;reason?:string};historyPolicy?:"reviewed-v1"};
@@ -92,7 +93,7 @@ export interface SharedWriterGroups {format:"breditor/shared-writer-groups";form
 /** Explicit atom-lineage transport; never accepted as an original group batch. */
 export interface SharedWriterGroupsV2 extends Omit<SharedWriterGroups,"formatVersion"> {formatVersion:2}
 /** Exclusive generated Rust owner. Ownership transfers to SharedRichEditor; never reuse it elsewhere. */
-export interface SharedRustOwner extends SharedReviewRustCapability,SharedVersionsRustCapability,SharedSuggestionsRustCapability,SharedReviewedHistoryRustCapability {
+export interface SharedRustOwner extends SharedReviewRustCapability,SharedVersionsRustCapability,SharedSuggestionsRustCapability,SharedReviewedHistoryRustCapability,SharedSegmentedRustCapability {
  /** Additive opaque search reads; mutations require explicitly selected search history. */
  writing_tools_version?():string;writing_tools_json?(observation:unknown):string;
  retained_asset_references_version?():string;retained_asset_references_json?(observation:unknown):string;
@@ -195,6 +196,8 @@ export interface SharedRustOwner extends SharedReviewRustCapability,SharedVersio
 }
 export interface SharedPublication<P extends SharedSelectionPolicy="original"> {source:"local"|"remote";view:SharedEditorView<P>}
 export interface SharedEditorOptions<P extends SharedSelectionPolicy="original"> {selectionEditing?:P;maxPendingFrames?:number;maxPendingBytes?:number;onError?:(error:unknown)=>void;
+ /** Explicit adoption of an already segmented native owner; never enables or infers a migration. */
+ segmentedHistory?:"segmented-v1";
  /** Explicit new recovery family. Old durable factories refuse it; use search-aware storage. */
  searchHistory?:"search-v1";
  /** Explicit new recovery family. Durable callers must use reviewed-aware paired storage. */
