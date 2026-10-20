@@ -43,6 +43,23 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [atomic retained-session profile](SEGMENTED_RETAINED_RECOVERY.md) now keeps
+suggestion queues, immutable revisions and shared version-publication state with
+native generations and document/comment relay receipts. Pending proposals remain
+outside accepted content. Exact packet bytes, retry choices, server decisions,
+accepted versions and native Redo survive cold recovery and server restart.
+
+Its [functional qualification](qualification/2026-10-19-segmented-retained-recovery.json)
+passes 46 selected checks, 216 fresh relay Rust tests, 385 editor tests and 804
+script tests, with three existing opt-in script checks skipped. Source and fresh
+public archives each pass six author-side delivery configurations, 12 cold
+reopens, six server restarts and 18 future selective-history steps. Twenty-eight
+retained-store contracts cover failed and uncertain saves, concurrent drafts,
+retirement and version-only sources on both wire families. The original
+revision/reader workflows, 216-configuration local generation matrix and both
+relay transports remain passing. The unchanged shared native inputs carry the
+previous 650-test qualification, not a fresh shared suite run.
+
 The [explicit generation-aware relay source](SEGMENTED_RELAY_RECOVERY.md) now
 saves native document history, paired comments, named versions and exact relay
 receipts in one atomic local cut. Cold adapters verify current server prefixes
@@ -75,11 +92,12 @@ and repaired mismatched research dependency wiring at the unchanged pinned
 Loro version. Original-family runtime compatibility passes 144 configurations.
 
 Document and comment delivery now use the explicit generation-aware source, but
-the approved whole-room bridge remains incomplete. Suggestion/revision outboxes,
-version publication caches and operational participant bindings, independent
-comment and server-log rollover, complete provider/client closure, protected
-credentials and the final activation barrier remain work. All 13 release gates
-remain open.
+the approved whole-room bridge remains incomplete. The retained profile adds
+author-side suggestion/revision outboxes and version publication; permanent
+observers, upload/source and operational participant bindings still need their
+generation-aware paths. Independent comment and server-log rollover, complete
+provider/client closure, protected credentials and the final activation barrier
+remain work. All 13 release gates remain open.
 
 The [current server continuity check](CONTINUED_SERVER_RECOVERY_STATE.md) verifies
 a freshly selected native cut and every current protected registration while

@@ -8,7 +8,8 @@ export {startReviewHost} from "./fixtures/relay-host.mjs";
 import {tmpdir} from "node:os";
 import {resolve,join} from "node:path";
 import {fileURLToPath,pathToFileURL} from "node:url";
-import {WebSocket} from "undici";
+import {ReviewWireFixture} from "./fixtures/relay-wire.mjs";
+export {ReviewWireFixture} from "./fixtures/relay-wire.mjs";
 
 const root=resolve(fileURLToPath(new URL("..",import.meta.url))),origin="http://127.0.0.1:49785";
 const hash=bytes=>createHash("sha256").update(bytes).digest("hex");
@@ -17,11 +18,6 @@ const canonical=value=>Array.isArray(value)?value.map(canonical):value&&typeof v
 const create=(anchorJson,body)=>({kind:"create_thread",data:{anchorJson,body}});
 const reply=(thread,body)=>({kind:"reply",data:{thread,body}});
 const nodeTarget={kind:"selection",selection:{kind:"node",block:"image-block"}};
-export class ReviewWireFixture {
- constructor(endpoint){this.socket=new WebSocket(endpoint,{headers:{Origin:origin}});this.pending=new Map();this.events=[];this.serial=0;this.opened=new Promise((resolve,reject)=>{this.socket.addEventListener("open",resolve,{once:true});this.socket.addEventListener("error",()=>reject(Error("Socket failed")),{once:true});});this.socket.addEventListener("message",event=>{const envelope=JSON.parse(event.data);assert.equal(envelope.format,"breditor/relay");assert.equal(envelope.formatVersion,1);if(envelope.id===null){this.events.push(envelope.result);assert.ok(this.events.length<512);return;}const pending=this.pending.get(envelope.id);assert.ok(pending,"Only requested responses are accepted");this.pending.delete(envelope.id);clearTimeout(pending.timer);pending.resolve(envelope.result);});this.socket.addEventListener("close",()=>{for(const pending of this.pending.values()){clearTimeout(pending.timer);pending.reject(Error("Socket closed"));}this.pending.clear();});}
- async request(request){await this.opened;const id=String(++this.serial);return new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error("Request timed out")),15000);this.pending.set(id,{resolve,reject,timer});this.socket.send(JSON.stringify({format:"breditor/relay",formatVersion:1,id,request}));});}
- close(){this.socket.close();}
-}
 export async function probeReviewRelay(directory,executable){
  const {SharedRichEditor,createSharedDocumentEditor}=await import("../packages/breditor-collaboration/dist/core.js");
  const bytes=readFileSync(resolve(directory,"breditor_shared_bg.wasm")),wasm=await import(pathToFileURL(resolve(directory,"breditor_shared.js")));await wasm.default({module_or_path:bytes});

@@ -1,6 +1,7 @@
 /** Durable immutable catalog/packet cache. Borrowed source journals are saved first, never replaced. */
 import {SharedRelayError} from "../relay/validation.js";
 import {checkSourceCheckpoint} from "../persistence/source_checkpoint.js";
+import {segmentedRetainedPort,type SegmentedRetainedPort} from "../segmented_relay/retained_port.js";
 import {SharedEditorError} from "../core.js";
 import {isOperationalComponent} from "../participant_operation/component_admission.js";
 import {existingOperationalComponent} from "../participant_operation/existing_component.js";
@@ -21,15 +22,17 @@ import type {SharedParticipantReplay} from "../participant_replay/read.js";
 import {reconcileRetainedVersionRecord} from "./reconcile_retained.js";
 import type {SharedRetainedVersionRecoveryResult} from "./reconcile_types.js";
 export class VersionCatalogStore<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
- readonly options:SharedDocumentVersionsOptions<P>;readonly #db:IDBDatabase;readonly #lease:VersionCatalogLease;
+ readonly options:SharedDocumentVersionsOptions<P>;readonly #db:IDBDatabase|undefined;readonly #lease:VersionCatalogLease;
+ readonly #segmented:SegmentedRetainedPort<"versions">|undefined;
  readonly #assertSource:()=>void;
  #record:SharedVersionCatalogRecord;#retained=new Map<string,Retained>();#durable=new Map<string,RetainedVersionPacket>();#saved="";
  #pending:SharedVersionCatalogRecord|undefined;#running:Promise<void>|undefined;#failure:unknown;#retiring=false;#closed=false;#closing:Promise<void>|undefined;#released:Promise<void>|undefined;
  #listeners=new Set<()=>void>();#notifying=false;
  #restoreInsert=false;#restoreSignal:AbortSignal|undefined;
- private constructor(options:SharedDocumentVersionsOptions<P>,db:IDBDatabase,lease:VersionCatalogLease,record:SharedVersionCatalogRecord,assertSource:()=>void){
+ private constructor(options:SharedDocumentVersionsOptions<P>,db:IDBDatabase|undefined,lease:VersionCatalogLease,record:SharedVersionCatalogRecord,assertSource:()=>void,segmented?:SegmentedRetainedPort<"versions">){
+  this.#segmented=segmented;
   this.options=options;this.#db=db;this.#lease=lease;this.#assertSource=()=>{assertSource();if(this.options!==options)throw new SharedRelayError("version_source_replaced");};this.#record=record;this.#retained=this.#admit(record);
-  db.onversionchange=()=>{db.close();this.#failure=new SharedRelayError("version_cache_versionchange");this.#notify();};
+  if(db)db.onversionchange=()=>{db.close();this.#failure=new SharedRelayError("version_cache_versionchange");this.#notify();};
  }
  static async open<Q extends SharedSelectionPolicy>(input:SharedDocumentVersionsOptions<Q>):Promise<VersionCatalogStore<Q>>{
   return VersionCatalogStore.#open(input);
@@ -40,35 +43,35 @@ export class VersionCatalogStore<P extends SharedSelectionPolicy=SharedSelection
   if(source.core!==core)throw new SharedRelayError("version_source_replaced");return VersionCatalogStore.#open({...options,identity,autoConnect:false},recovered,signal);
  }
  static async #open<Q extends SharedSelectionPolicy>(input:SharedDocumentVersionsOptions<Q>,recovered?:SharedVersionCatalogRecord,signal?:AbortSignal):Promise<VersionCatalogStore<Q>>{
-  const source=input.storage,core=source.core;
+  const source=input.storage,core=source.core,segmented=segmentedRetainedPort(input,"versions");
   const storage=Object.freeze({core,save():void{assertSource();source.save();assertSource();},async flush():Promise<void>{assertSource();await source.flush();assertSource();}});
   const options=Object.freeze({...input,identity:Object.freeze(versionIdentity(input.identity)),storage}),identity=options.identity;
-  const assertSource=():void=>{if(source.core!==core||options.storage!==storage||storage.core!==core)throw new SharedRelayError("version_source_replaced");};
+  const assertSource=():void=>{if(source.core!==core||options.storage!==storage||storage.core!==core)throw new SharedRelayError("version_source_replaced");segmented?.check();};
   assertSource();
   if(!core.supportsVersionSourceProofs())throw new SharedRelayError("version_source_unavailable");
-  checkSourceCheckpoint(core,identity.room,identity.documentWriter);
+  if(segmented)segmented.check();else checkSourceCheckpoint(core,identity.room,identity.documentWriter);
   checkRetainedStoreSignal(signal);const lease=await VersionCatalogLease.acquire(identity);let db:IDBDatabase|undefined,store:VersionCatalogStore<Q>|undefined;
-  try{assertSource();checkRetainedStoreSignal(signal);const retained=isOperationalComponent(input)?await existingOperationalComponent(options.database,"catalogs",cacheKey(identity)):undefined;db=retained?.db??await openCatalogDatabase(options.database);assertSource();let saved:SharedVersionCatalogRecord|null;
-   if(recovered){if(await retainedStoreDestinationExists(db,"catalogs",cacheKey(identity),signal))throw new SharedEditorError("backup_destination_exists","Retained restore destination already contains a record");saved=recovered;}else saved=await readCatalogRecord(db,identity);
+  try{assertSource();checkRetainedStoreSignal(signal);const retained=isOperationalComponent(input)?await existingOperationalComponent(options.database,"catalogs",cacheKey(identity)):undefined;if(!segmented)db=retained?.db??await openCatalogDatabase(options.database);assertSource();let saved:SharedVersionCatalogRecord|null;
+   if(recovered){if(await retainedStoreDestinationExists(db!,"catalogs",cacheKey(identity),signal))throw new SharedEditorError("backup_destination_exists","Retained restore destination already contains a record");saved=recovered;}else saved=segmented?checkCatalogRecord(segmented.read(),identity):await readCatalogRecord(db!,identity);
    if(retained&&(!saved||JSON.stringify(saved)!==JSON.stringify(retained.record)))throw operationFailure("operation_diverged");
-   assertSource();const record=saved??{format:"breditor/shared-version-catalog-cache" as const,formatVersion:1 as const,identity,catalog:null,packets:[]},create=()=>new VersionCatalogStore(options,db!,lease,record,assertSource);store=recovered?retainedStoreNativeAdmission(create):create();retained?.assertCurrent();store.#restoreInsert=recovered!==undefined;store.#restoreSignal=signal;store.#pending=record;store.#start();await store.flush();assertSource();checkRetainedStoreSignal(signal);return store;}
+   assertSource();const record=saved??{format:"breditor/shared-version-catalog-cache" as const,formatVersion:1 as const,identity,catalog:null,packets:[]},create=()=>new VersionCatalogStore(options,db,lease,record,assertSource,segmented);store=recovered?retainedStoreNativeAdmission(create):create();retained?.assertCurrent();store.#restoreInsert=recovered!==undefined;store.#restoreSignal=signal;store.#pending=record;store.#start();await store.flush();assertSource();checkRetainedStoreSignal(signal);return store;}
   catch(error){if(store)await store.discardAndClose();else{db?.close();await lease.close();}throw error;}
  }
  #live(checkSource=true):void{if(this.#closed)throw new SharedRelayError("version_cache_closed");this.#lease.assertLive();if(checkSource)this.#assertSource();}
- #writable():void{this.#live();if(this.#retiring)throw new SharedRelayError("version_cache_closing");}
+ #writable():void{this.#live();this.#segmented?.writable();if(this.#retiring)throw new SharedRelayError("version_cache_closing");}
  #admit(record:SharedVersionCatalogRecord):Map<string,Retained>{
   return admitVersionRecord(this.options.storage.core,record);
  }
  #mark(record:SharedVersionCatalogRecord):void{
   const checked=checkCatalogRecord(record,this.options.identity),encoded=JSON.stringify(checked);
-  if(encoded!==JSON.stringify(this.#record)){const retained=this.#admit(checked);this.#record=checked;this.#retained=retained;}
+  if(encoded!==JSON.stringify(this.#record)){const retained=this.#admit(checked);this.#segmented?.stage(checked);this.#record=checked;this.#retained=retained;}
   if(encoded===this.#saved&&!this.#pending&&!this.#running&&!this.#failure)return;
   this.#pending=structuredClone(checked);this.#notify();this.#start();
  }
  #start():void{if(this.#running||this.#closed||!this.#pending||this.#failure)return;this.#running=this.#drain().catch(error=>{this.#failure=error??new SharedRelayError("local_save_failed");this.#notify();}).finally(()=>{this.#running=undefined;this.#notify();if(!this.#failure)this.#start();});}
  async #drain():Promise<void>{while(this.#pending&&!this.#closed){this.#lease.assertLive();const next=this.#pending;this.#pending=undefined;
-  try{this.#assertSource();checkRetainedStoreSignal(this.#restoreSignal);this.options.storage.save();await this.options.storage.flush();this.#assertSource();
-   if(this.#restoreInsert){await insertRetainedStoreRecord(this.#db,"catalogs",cacheKey(this.options.identity),next,this.#restoreSignal);this.#restoreInsert=false;checkRetainedStoreSignal(this.#restoreSignal);this.#restoreSignal=undefined;}else await writeCatalogRecord(this.#db,this.options.identity,next);
+  try{this.#assertSource();checkRetainedStoreSignal(this.#restoreSignal);if(this.#segmented)await this.#segmented.write(next);else{this.options.storage.save();await this.options.storage.flush();this.#assertSource();
+   if(this.#restoreInsert){await insertRetainedStoreRecord(this.#db!,"catalogs",cacheKey(this.options.identity),next,this.#restoreSignal);this.#restoreInsert=false;checkRetainedStoreSignal(this.#restoreSignal);this.#restoreSignal=undefined;}else await writeCatalogRecord(this.#db!,this.options.identity,next);}
    this.#assertSource();}catch(error){this.#pending??=next;throw error;}
   this.#saved=JSON.stringify(next);this.#durable=new Map(next.packets.map(value=>[this.options.storage.core.readVersion(value.packet).id,structuredClone(value)]));this.#notify();
  }}
@@ -123,5 +126,5 @@ export class VersionCatalogStore<P extends SharedSelectionPolicy=SharedSelection
  async flush():Promise<void>{this.#live();while(this.#running){await this.#running;if(this.#failure)throw this.#failure;}if(this.#failure)throw this.#failure;}
  async retry():Promise<void>{this.#live();if(this.#running)await this.#running;this.#failure=undefined;this.#pending=structuredClone(this.#record);this.#start();await this.flush();}
  close():Promise<void>{if(this.#closed)return this.#released??Promise.resolve();if(this.#closing)return this.#closing;this.#retiring=true;this.#closing=Promise.resolve().then(async()=>{await this.flush();await this.discardAndClose();}).finally(()=>{this.#closing=undefined;});return this.#closing;}
- discardAndClose():Promise<void>{if(this.#closed)return this.#released??Promise.resolve();this.#closed=true;this.#retiring=true;this.#pending=undefined;this.#db.close();this.#released=(this.#running??Promise.resolve()).then(async()=>{this.#listeners.clear();await this.#lease.close();});return this.#released;}
+ discardAndClose():Promise<void>{if(this.#closed)return this.#released??Promise.resolve();this.#closed=true;this.#retiring=true;this.#pending=undefined;this.#db?.close();this.#released=(this.#running??Promise.resolve()).then(async()=>{this.#listeners.clear();await this.#lease.close();});return this.#released;}
 }

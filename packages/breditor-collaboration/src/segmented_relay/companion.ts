@@ -25,7 +25,8 @@ export class SegmentedRelayCompanion implements SegmentedSessionCompanion {
   if(h["format"]!=="breditor/shared-relay-generation-head"||h["formatVersion"]!==1||JSON.stringify(h)!==input)throw new SharedRelayError("segmented_relay_head");
   return {source:readSegmentedHead(JSON.stringify(h["source"])),relay:relayProgress(h["relay"],this.binding)};
  }
- readonly readHead=(input:string):SegmentedHead=>this.#read(input).source;
+ protected decodeRelaySource(input:string):SegmentedHead{return this.#read(input).source;}
+ readonly readHead=(input:string):SegmentedHead=>this.decodeRelaySource(input);
  load(input:string):void{const h=this.#read(input);this.#current=h.relay;this.#durable=structuredClone(h.relay);}
  capture():string{return JSON.stringify(this.#current);}
  admit(core:SharedRichEditor<SharedSelectionPolicy>):void{if(this.#core)throw new SharedRelayError("segmented_relay_source_reused");admitRelayProgress(core,this.#current);this.#core=core;}

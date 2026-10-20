@@ -107,3 +107,6 @@ test('successful final close reports the last acknowledged relay cut even when s
  const saving=h.session.persistReviewRelayProgress(next),closing=h.session.close();assert.equal(h.session.close(),closing);await Promise.all([saving,closing]);assert.equal(h.session.state().status,'closed');assert.deepEqual(h.session.relayProgress().review,next);
  h.session=await SharedSegmentedRelaySession.open(h.options);assert.deepEqual(h.session.relayProgress().review,next);
 });
+test('overridden public save methods cannot acknowledge a relay cut without actual local persistence',async t=>{
+ const h=await setup(t);discussion(h.session.core);await h.session.flush();const next={cursor:null,accepted:h.session.core.localReviewClock(),sequence:null};h.session.save=()=>{};h.session.flush=async()=>{};await h.session.persistReviewRelayProgress(next);assert.deepEqual(h.session.relayProgress().review,next);await h.session.close();h.session=await SharedSegmentedRelaySession.open(h.options);assert.deepEqual(h.session.relayProgress().review,next);
+});

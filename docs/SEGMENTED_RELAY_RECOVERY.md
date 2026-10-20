@@ -151,9 +151,11 @@ also verifies failed acknowledgement saves and server rollback in both forms.
 The existing 216-configuration local generation matrix and original relay
 workflows remain passing.
 
-Suggestion and immutable-revision outboxes, shared version publication caches,
-upload/provider state and operational participant/room catalogs still require
-their explicit generation-aware bindings. Server-log rotation, independent
-comment generations, full provider/client closure, protected credential handoff
-and the final room activation barrier remain V1 work. This component does not
-complete the approved whole-room generation bridge. All 13 V1 gates remain open.
+Suggestion/revision outboxes and shared version publication use the separately
+selected [atomic retained-session profile](SEGMENTED_RETAINED_RECOVERY.md); this
+relay-only envelope does not contain those stores. Upload/provider state and
+operational participant/room catalogs still require their generation-aware
+bindings. Server-log rotation, independent comment generations, full
+provider/client closure, protected credential handoff and the final room
+activation barrier remain V1 work. This component does not complete the approved
+whole-room generation bridge. All 13 V1 gates remain open.

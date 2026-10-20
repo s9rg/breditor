@@ -9,12 +9,12 @@ import type {SharedDocumentSuggestionInfo} from "../suggestion_types.js";
 import type {SharedSuggestionQueueIdentity,SharedSuggestionQueueRecord,SharedRetainedSuggestion,SharedSuggestionDecision} from "./types.js";
 import {same} from "./validation.js";
 
-export function checkSuggestionRecordSource<P extends SharedSelectionPolicy>(core:SharedRichEditor<P>,identity:SharedSuggestionQueueIdentity,history?:"reviewed-v1"):void{
+export function checkSuggestionSourcePolicy<P extends SharedSelectionPolicy>(core:SharedRichEditor<P>,identity:SharedSuggestionQueueIdentity,history?:"reviewed-v1"):void{
  if(!core.supportsDocumentSuggestions())throw new SharedRelayError("suggestions_unavailable");
  const owned=core.reviewedHistoryIdentity?.()??null;
  if(history==="reviewed-v1"?(!core.supportsReviewedHistory()||!owned||!sameReviewedHistory(owned,{binding:identity.binding,principal:identity.principal,effectWriter:identity.effectWriter})):owned!==null)throw new SharedRelayError("suggestion_history_source");
- checkSourceCheckpoint(core,identity.room,identity.documentWriter);
 }
+export function checkSuggestionRecordSource<P extends SharedSelectionPolicy>(core:SharedRichEditor<P>,identity:SharedSuggestionQueueIdentity,history?:"reviewed-v1"):void{checkSuggestionSourcePolicy(core,identity,history);checkSourceCheckpoint(core,identity.room,identity.documentWriter);}
 export function ownedSuggestionAcceptance(identity:SharedSuggestionQueueIdentity,history:"reviewed-v1"|undefined,received:SharedSuggestionDecision|null):SharedOwnedSuggestionAcceptance|null{
  if(history!=="reviewed-v1"||received?.decision!=="accept"||!received.effect||received.principal!==identity.principal||received.acceptingWriter!==identity.documentWriter)return null;
  return {binding:identity.binding,sequence:received.sequence,principal:received.principal,acceptingWriter:received.acceptingWriter,effect:{suggestionId:received.suggestionId,writerGroup:received.effect.writerGroup,semanticFrom:received.effect.semanticFrom}};
