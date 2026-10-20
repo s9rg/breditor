@@ -10,6 +10,7 @@ import {RichAssetStore} from "@breditor/experimental-rich-content";
 import {failure} from "../room_recovery_catalog/policy.js";
 import type {V2StagedPolicy} from "./prepare_stage.js";
 import type {RecoveryCleanupScope} from "../participant_recovery/cleanup_scope.js";
+import {drainFailedRecoveryOpenings,recoveryOpeningContext} from "../participant_recovery/opening_custody.js";
 export type V2StagedParticipant=Readonly<{family:"original";id:string;value:StagedParticipant}>|Readonly<{family:"generation";id:string;policy:Extract<V2StagedPolicy,{family:"generation"}>;recovered:RecoveredSharedGenerationParticipant<SharedSelectionPolicy>;source:SharedGenerationSourceCapture}>;
 function checkOriginal(value:StagedParticipant):void{const{sources,session,uploads}=value.recovered,core=session.core;for(const owner of [session,sources.suggestions,sources.revisions,sources.versions])if(owner)checkManagedSource(owner,core);RichAssetStore.prototype.checkOpen.call(uploads);}
 export async function stageCatalogV2Participant(policy:V2StagedPolicy,complete:boolean,guard:()=>void,scope:RecoveryCleanupScope):Promise<V2StagedParticipant>{
@@ -18,7 +19,8 @@ export async function stageCatalogV2Participant(policy:V2StagedPolicy,complete:b
   try{value=await stageParticipant(policy.value,complete,guard,scope);checkOriginal(value);cleanup.complete();return{family:"original",id:policy.id,value};}catch(error){await cleanup.rollback();throw error;}
  }
  let attempt:SharedGenerationParticipantRecovery|undefined,recovered:RecoveredSharedGenerationParticipant|undefined,source:SharedGenerationSourceCapture|undefined;
- const cleanup=scope.retain(async()=>{source?.dispose();try{await recovered?.discardAndClose();}finally{await attempt?.close();}});
+ const context=recoveryOpeningContext(),names=[policy.options.database,...Object.values(policy.options.destinations)];
+ const cleanup=scope.retain(async()=>{source?.dispose();try{await recovered?.discardAndClose();}finally{try{await attempt?.close();}finally{await drainFailedRecoveryOpenings(context,names);}}});
  try{
   guard();const prior=await existingDatabase(policy.options.database),exists=!!prior;prior?.close();guard();if(complete&&!exists)throw failure("catalog_missing");const{backup:_backup,...resume}=policy.options;attempt=await(exists?SharedGenerationParticipantRecovery.resume(resume):SharedGenerationParticipantRecovery.begin(policy.options));guard();recovered=await attempt.finish();guard();source=await captureReadOnlyRecoveredGenerationSource(recovered);guard();SharedGenerationParticipantBackup.prototype.verifySource.call(policy.options.backup,source);await attempt.close();cleanup.complete();return{family:"generation",id:policy.id,policy,recovered,source};
  }catch(error){await cleanup.rollback();throw error;}

@@ -42,6 +42,28 @@ While cleanup remains pending, the catalog refuses new staging or transfer;
 close remains retryable. This is not permission to overwrite a changed plan,
 reuse a retired source, or reconnect with a saved authority decision.
 
+## Retain failed initial openings
+
+Participant static `begin()` and `resume()` reserve runtime custody before acquiring their
+first coordinator lease. If opening fails before returning an attempt and a
+lease release fails too, custody retains the actual database, backup reader and
+lease cleanup closure. An explicit retry of an overlapping namespace first
+drains that failed opening. Catalog staging retains the same cleanup obligation
+even when the static call never returned an attempt.
+
+The private ledger is keyed by the actual storage context and selected recovery
+and destination namespaces. It never closes an active opening or a successfully
+returned attempt. Successful transfer removes its entry without invoking
+cleanup; concurrent retries share the underlying cleanup. A failed drain refuses
+new admission rather than reconstructing ownership from saved records.
+
+At most 4,096 opening reservations may be pending per runtime/storage context.
+The bound includes active and failed initial opens, is checked before acquiring
+resources and does not limit document size, history length or returned owners.
+A matching failed entry can drain before the capacity check. Completed opens
+release their reservation immediately. This runtime bookkeeping is neither
+durable recovery authority nor a substitute for cross-device authentication.
+
 ## Reproduced failures and native checks
 
 The participant-internal regression aborts the final ready-marker transaction,
@@ -60,9 +82,24 @@ the preserved previous archive establishes the before-fix behavior with the
 same Wasm runtime. Eight small scope laws separately check retry, concurrency
 and transfer behavior.
 
+Initial-opening regressions additionally abort coordinator creation or the
+existing-attempt read, then refuse one real lease release. Five routes cover
+original and generation direct recovery, both catalog versions and original
+participants in V2; both begin/resume and native transports give twenty paths.
+All twenty fail against the preserved unfixed public archive. Repaired source
+and fresh installed consumers retain 42 committed-record snapshots and 60
+original files, verify 42 absent destinations and cold-reopen twenty participants.
+Eight direct cases also refuse a competing live owner and reopen the returned
+owner after close. Sixteen small opening-custody laws check context isolation,
+namespace overlap, bounded admission, concurrency and transfer.
+
 These checks use controlled IndexedDB, lock and raster fixtures around actual
-native histories. They do not qualify browser crash durability. Initial static
-open failures before an attempt object is returned remain a separate rollback
-audit boundary. Mixed-family operational transfer, historical-copy disposition,
+native histories. They do not qualify browser crash durability or identify the
+older unexplained intermittent room refusals. Catalog factories' own static
+opening is a separate reproduced boundary: eight original/V2 begin/resume paths
+can strand their catalog lease if initial reading/creation and release both
+fail. The participant startup guarantee does not repair that catalog boundary.
+Mixed-family operational
+transfer, historical-copy disposition,
 provider/client closure, independent comment/server generations and current
 authenticated activation remain required work.

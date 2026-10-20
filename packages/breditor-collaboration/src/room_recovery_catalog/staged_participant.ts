@@ -5,12 +5,14 @@ import type {SharedSelectionPolicy} from "../types.js";
 import {failure,known} from "./policy.js";
 import type {StagedPolicy} from "./prepare_stage.js";
 import type {RecoveryCleanupScope} from "../participant_recovery/cleanup_scope.js";
+import {drainFailedRecoveryOpenings,recoveryOpeningContext} from "../participant_recovery/opening_custody.js";
 export interface StagedParticipant {readonly policy:StagedPolicy;readonly recovered:RecoveredSharedParticipant<SharedSelectionPolicy>;readonly source:SharedAssetReferenceCapture}
 export async function requireMissing(name:string):Promise<void>{const db=await existingDatabase(name);if(db){db.close();throw failure("catalog_exists");}}
 /** Resolve started-before-create and committed-before-ACK without overwriting any existing work. */
 export async function stageParticipant(policy:StagedPolicy,complete:boolean,guard:()=>void,scope:RecoveryCleanupScope):Promise<StagedParticipant>{
  let attempt:SharedParticipantRecovery<SharedSelectionPolicy>|undefined,recovered:RecoveredSharedParticipant<SharedSelectionPolicy>|undefined,source:SharedAssetReferenceCapture|undefined;
- const cleanup=scope.retain(async()=>{source?.dispose();try{await recovered?.discardAndClose();}finally{await attempt?.close();}});
+ const context=recoveryOpeningContext(),names=[policy.options.database,...Object.values(policy.options.destinations)];
+ const cleanup=scope.retain(async()=>{source?.dispose();try{await recovered?.discardAndClose();}finally{try{await attempt?.close();}finally{await drainFailedRecoveryOpenings(context,names);}}});
  try{
   guard();const prior=await existingDatabase(policy.options.database),exists=!!prior;prior?.close();guard();if(complete&&!exists)throw failure("catalog_missing");
   attempt=await(exists?SharedParticipantRecovery.resume(policy.options):SharedParticipantRecovery.begin(policy.options));guard();recovered=await attempt.finish();attempt=undefined;guard();

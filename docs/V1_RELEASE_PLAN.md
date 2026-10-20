@@ -43,6 +43,49 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+Participant static recovery now retains actual startup custody before acquiring
+its first coordinator lease. If begin/resume fails before returning an attempt
+and release fails too, a later valid-policy retry or catalog cleanup drains the
+actual failed opening. The private [custody contract](RECOVERY_ROLLBACK_CUSTODY.md)
+isolates storage contexts and namespaces, protects active/returned owners and
+bounds pending openings at 4,096 per runtime/storage context. It grants no
+authority and changes no journal, native history or public wire format.
+
+The [opening custody qualification](qualification/2026-10-20-recovery-opening-custody.json)
+passes one fresh 42-check architecture selection, 1,235 script tests, 385 editor
+tests, 16 opening laws, eight earlier cleanup laws and 15 V2 storage laws, with
+three existing opt-in skips. Twenty direct/catalog begin/resume paths fail
+against the preserved unfixed archive and pass in source and fresh installed
+packages with identical Wasm. They retain 42 committed-record snapshots and
+60 original files, verify 42 absent destinations, cold-reopen twenty participants
+and protect/reopen eight returned owners. Earlier six parent-cleanup and twelve
+post-admission paths, all 362 generation assertions, native inventory/cohort
+checks and 54 future document plus 54 review checkpoints remain passing.
+
+The first qualifier stopped after 38 of 42 stages when installed generation
+tests failed. Its inspected child output truncated the actual failing test.
+Two unchanged exact-consumer replays each pass 362 tests; neither establishes a
+cause or repair. The harness now streams bounded child output before checking
+status, retains the unique consumer log and hashes its report on failure and
+success. The fresh 42-check run carries no earlier partial pass forward. Its
+installed generation log retains all 89,721 bytes.
+
+Catalog factories' own static startup is the next confirmed repair: eight
+original/V2 begin/resume paths strand a catalog lease when initial creation/read
+and release both fail. They are separate from the repaired participant paths.
+The two older intermittent room refusals and the installed generation failure
+remain unexplained. Native fixtures build normally; prior suite/Wasm
+qualification carries across 2,747 unchanged native inputs, not a fresh native
+suite or producer rebuild.
+
+After catalog startup, required architecture work is the common mixed-family
+operational barrier, historic-copy dispositions, independent comment/server-log
+generations, complete client/provider closure and authenticated activation.
+All 13 V1 gates remain open. No public API freeze, version, push, tag,
+publication or deployment is promoted.
+
+### Previous participant rollback checkpoint
+
 Participant recovery and both room catalogs now keep actual rollback custody
 before native component restoration and staging-helper awaits. The private
 [cleanup scope](RECOVERY_ROLLBACK_CUSTODY.md) retains failed cleanup functions,
@@ -61,20 +104,10 @@ cold-reopen all twelve participants. The previous six parent-cleanup cases,
 all 362 generation assertions, native inventory/cohort checks and future
 document/review Undo/Redo remain passing in the installed consumers.
 
-A separate initial-open leak is now reproduced on six catalog/family/transport
-paths: setup aborts before returning a participant attempt, then coordinator
-release fails. No destination placeholder or native owner is created, but a
-lease remains held after parent close. That boundary is the next repair, not
-part of the passing post-admission rollback claim. The two older intermittent
-room refusals remain unexplained and are not identified as this fault.
+That checkpoint did not repair initial participant opens; the current twenty-path
+qualification above closes that separately reproduced boundary.
 
-Native room fixtures build normally. Prior native-suite and Wasm qualification
-carry across 2,747 unchanged native inputs; no fresh native-suite or producer
-rebuild is claimed. Initial-open custody, mixed operational transfer,
-historic-copy dispositions, independent comment/server generations,
-client/provider closure and authenticated activation remain work. All 13 V1
-gates remain open; no public API freeze, version, push, tag, publication or
-deployment is promoted.
+### Earlier mixed family catalog checkpoint
 
 The additive [mixed-family V2 catalog](GENERATION_ROOM_CATALOG.md) now retains
 the selected server file, native inventory and every supplied original or

@@ -8,6 +8,7 @@ import {requireAbsent} from "./inspect.js";
 import {restoreComponent,checkComponent,checkManagedRecoveryOwners,ownerSources,discardRecoveryOwners,type RecoveryOwners,type RecoverySession} from "./components.js";
 import {recoveryFailure} from "./errors.js";
 import {RecoveryCleanupScope} from "./cleanup_scope.js";
+import {RecoveryOpeningCustody,recoveryOpeningContext} from "./opening_custody.js";
 import type {SharedParticipantRecoveryOptions,SharedParticipantRecoveryProgress} from "./types.js";
 import type {SharedSelectionPolicy} from "../types.js";
 const recoveryKey=Object.freeze({});
@@ -60,11 +61,14 @@ export class SharedParticipantRecovery<P extends SharedSelectionPolicy=SharedSel
  static begin<Q extends SharedSelectionPolicy>(options:SharedParticipantRecoveryOptions<Q>):Promise<SharedParticipantRecovery<Q>>{return this.#open(options,false);}
  static resume<Q extends SharedSelectionPolicy>(options:SharedParticipantRecoveryOptions<Q>):Promise<SharedParticipantRecovery<Q>>{return this.#open(options,true);}
  static async #open<Q extends SharedSelectionPolicy>(options:SharedParticipantRecoveryOptions<Q>,resume:boolean):Promise<SharedParticipantRecovery<Q>>{
-  const p=await prepareRecovery(options),leases:RecoveryLease[]=[];let db:IDBDatabase|undefined;
-  try{for(const name of [p.database,...Object.values(p.destinations)].sort()){p.guard();leases.push(await RecoveryLease.acquire(JSON.stringify(name)));p.guard();}
-   if(resume){db=await existingDatabase(p.database);if(!db)throw recoveryFailure("recovery_missing");const record=await readRecoveryJournal(db,p.record);p.guard();return new SharedParticipantRecovery(recoveryKey,p,db,leases,record);}
-   for(const name of Object.values(p.destinations)){p.guard();await requireAbsent(name);}p.guard();db=await createRecoveryJournal(p.database,p.record);p.guard();return new SharedParticipantRecovery(recoveryKey,p,db,leases,p.record);
-  }catch(error){db?.close();for(const lease of leases.reverse())await lease.close();throw error;}
+  const p=await prepareRecovery(options),leases:RecoveryLease[]=[],names=[p.database,...Object.values(p.destinations)].sort();let db:IDBDatabase|undefined,transferred=false;p.guard();const context=recoveryOpeningContext();
+  const opening=await RecoveryOpeningCustody.reserve(context,names,async()=>{
+   const results=await Promise.allSettled([Promise.resolve().then(()=>db?.close()),...[...leases].reverse().map(lease=>Promise.resolve().then(()=>lease.close()))]);if(results.some(r=>r.status==="rejected"))throw recoveryFailure("recovery_storage");
+  },{policy:()=>recoveryFailure("recovery_policy"),busy:()=>recoveryFailure("recovery_in_use"),storage:()=>recoveryFailure("recovery_storage")});
+  try{for(const name of names){p.guard();leases.push(await RecoveryLease.acquire(JSON.stringify(name)));p.guard();}
+   if(resume){db=await existingDatabase(p.database);if(!db)throw recoveryFailure("recovery_missing");const record=await readRecoveryJournal(db,p.record);p.guard();const result=new SharedParticipantRecovery(recoveryKey,p,db,leases,record);opening.complete();transferred=true;return result;}
+   for(const name of Object.values(p.destinations)){p.guard();await requireAbsent(name);}p.guard();db=await createRecoveryJournal(p.database,p.record);p.guard();const result=new SharedParticipantRecovery(recoveryKey,p,db,leases,p.record);opening.complete();transferred=true;return result;
+  }finally{if(!transferred)await opening.rollback();}
  }
  #guard():void{if(this.#closed||this.#closing)throw recoveryFailure("recovery_closed");this.#prepared.guard();}
  /** Durable markers only. Finish always inspects and natively reopens every actual component. */

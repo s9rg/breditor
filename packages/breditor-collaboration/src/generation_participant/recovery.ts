@@ -1,6 +1,8 @@
 /** Restartable, non-overwriting generation source + whole-upload recovery. Never activates a room. */
 import {RecoveryLease} from "../participant_recovery/lease.js";
 import {RecoveryCleanupScope} from "../participant_recovery/cleanup_scope.js";
+import {RecoveryOpeningCustody,recoveryOpeningContext} from "../participant_recovery/opening_custody.js";
+import {recoveryFailure} from "../participant_recovery/errors.js";
 import {existingDatabase} from "../participant_recovery/journal.js";
 import {requireAbsent} from "../participant_recovery/inspect.js";
 import type {SharedSelectionPolicy} from "../types.js";
@@ -58,11 +60,14 @@ export class SharedGenerationParticipantRecovery<P extends SharedSelectionPolicy
  static begin<Q extends SharedSelectionPolicy>(options:SharedGenerationParticipantRecoveryOptions<Q>):Promise<SharedGenerationParticipantRecovery<Q>>{return this.#open(options,false);}
  static resume<Q extends SharedSelectionPolicy>(options:SharedGenerationParticipantResumeOptions<Q>):Promise<SharedGenerationParticipantRecovery<Q>>{return this.#open(options,true);}
  static async #open<Q extends SharedSelectionPolicy>(input:SharedGenerationParticipantRecoveryOptions<Q>|SharedGenerationParticipantResumeOptions<Q>,resume:boolean):Promise<SharedGenerationParticipantRecovery<Q>>{
-  const base=snapshotGenerationRecovery(input,!resume),leases:RecoveryLease[]=[];let db:IDBDatabase|undefined,p:PreparedGenerationRecovery<Q>|undefined,transferred=false;
-  try{for(const name of [base.options.database,...Object.values(base.options.destinations)].sort()){base.guard();leases.push(await RecoveryLease.acquire(JSON.stringify(name)));base.guard();}
-   if(resume){db=await existingDatabase(base.options.database);base.guard();if(!db)throw fail("generation_participant_missing");const stored=await readGenerationRecoveryDatabase(db,base.record);base.guard();p=await prepareGenerationRecovery(base,stored.file);base.guard();transferred=true;return new SharedGenerationParticipantRecovery(key,p,db,leases,stored.record);}
-   const file=SharedGenerationParticipantBackup.prototype.file.call((input as SharedGenerationParticipantRecoveryOptions<Q>).backup);p=await prepareGenerationRecovery(base,file);base.guard();for(const name of Object.values(base.options.destinations)){await requireAbsent(name);base.guard();}db=await createGenerationRecoveryDatabase(base.options.database,base.record,file);base.guard();await retained(p,db,[base.record]);transferred=true;return new SharedGenerationParticipantRecovery(key,p,db,leases,base.record);
-  }finally{if(!transferred){db?.close();p?.backup.dispose();for(const l of leases.reverse())await l.close();}}
+  const base=snapshotGenerationRecovery(input,!resume),leases:RecoveryLease[]=[],names=[base.options.database,...Object.values(base.options.destinations)].sort();let db:IDBDatabase|undefined,p:PreparedGenerationRecovery<Q>|undefined,transferred=false;base.guard();const context=recoveryOpeningContext();
+  const opening=await RecoveryOpeningCustody.reserve(context,names,async()=>{
+   const results=await Promise.allSettled([Promise.resolve().then(()=>db?.close()),Promise.resolve().then(()=>p?.backup.dispose()),...[...leases].reverse().map(lease=>Promise.resolve().then(()=>lease.close()))]);if(results.some(r=>r.status==="rejected"))throw fail();
+  },{policy:()=>fail("generation_participant_policy"),busy:()=>recoveryFailure("recovery_in_use"),storage:()=>fail()});
+  try{for(const name of names){base.guard();leases.push(await RecoveryLease.acquire(JSON.stringify(name)));base.guard();}
+   if(resume){db=await existingDatabase(base.options.database);base.guard();if(!db)throw fail("generation_participant_missing");const stored=await readGenerationRecoveryDatabase(db,base.record);base.guard();p=await prepareGenerationRecovery(base,stored.file);base.guard();const result=new SharedGenerationParticipantRecovery(key,p,db,leases,stored.record);opening.complete();transferred=true;return result;}
+   const file=SharedGenerationParticipantBackup.prototype.file.call((input as SharedGenerationParticipantRecoveryOptions<Q>).backup);p=await prepareGenerationRecovery(base,file);base.guard();for(const name of Object.values(base.options.destinations)){await requireAbsent(name);base.guard();}db=await createGenerationRecoveryDatabase(base.options.database,base.record,file);base.guard();await retained(p,db,[base.record]);const result=new SharedGenerationParticipantRecovery(key,p,db,leases,base.record);opening.complete();transferred=true;return result;
+  }finally{if(!transferred)await opening.rollback();}
  }
  #guard():void{if(this.#closed||this.#closing)throw fail("generation_participant_closed");this.#p.guard();}
  /** Readable original file survives cancellation/version-change failure until explicit close. */

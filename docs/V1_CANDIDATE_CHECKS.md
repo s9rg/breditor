@@ -16,6 +16,16 @@ Both profiles additionally require `recovery-cleanup-scope-contracts`. Twelve
 participant-internal native rollback paths abort a ready marker and refuse
 attempt release or native cleanup; source and installed consumers retain exact
 records/files and cold-reopen the participants without losing private owners.
+Both profiles require `recovery-opening-custody-contracts` as well. Twenty
+initial-opening paths fail before an attempt returns, then fail one lease
+release. Source and installed consumers must recover without placeholders,
+record/file changes or closing a competing returned owner. The private ledger
+retains actual failed cleanup in its original context, with 4,096 pending opens
+per context; successful transfer frees that runtime reservation immediately.
+The installed generation-asset stage streams bounded child output into its
+unique consumer directory before inspecting exit status. It retains a hashed
+child report on both failure and success; a later install cannot replace that
+failed consumer's log. A child pass is not a full installed-stage pass.
 
 The candidate verifier checks the current opt-in rich editor, collaboration,
 interchange and review packages alongside the original default workspace. It
