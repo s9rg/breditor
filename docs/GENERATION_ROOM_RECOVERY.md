@@ -57,11 +57,13 @@ retained originals, native ancestry and every actual upload owner.
 
 Coordination leases are released together. A release failure consumes no child
 and permits retry. Once release succeeds, individual handoffs are cleanup-only;
-only the room capsule can commit. Commit first checks current authority and
-native cuts, then performs a final private managed-source and upload-liveness
-sweep. No await or explicit host authority callback occurs between that sweep
-and consuming the cohort. A late refusal returns no participant. The original
-recovery and operational files remain available for a fresh cold resume.
+only the room capsule can commit. The [common barrier](OPERATIONAL_COHORT_CUSTODY.md)
+checks native cuts and current policy, disposes temporary native readers, then
+rechecks current policy, source cuts and managed-source/upload liveness before
+consuming any child. No native destructor, await or application callback occurs
+during consumption. A late refusal returns no participant and retains committed
+files for fresh cold resume. Original, generation and mixed-family adapters,
+and individual operational transfers, share these phases.
 
 The native matrix covers ten profile/transport fixtures, local/relay/retained
 families, two participants and eight success/failure paths per cohort. It checks
@@ -73,8 +75,9 @@ decoding are controlled fixtures; this does not qualify browser crash durability
 
 The V2 catalog retains the selected native server bundle, inventory and every
 supplied participant file using a separate closed manifest and durable inactive
-staging records. Explicit dispositions for other copies and mixed-family
-operational intent still need integration; neither may reinterpret an original
+staging records. A common mixed-family handoff now exists internally; explicit
+dispositions for other copies and durable mixed-family operational intent still
+need integration. Neither may reinterpret an original
 journal or silently reset Undo.
 
 Independent comment/server-log generations, complete client/provider reference
@@ -84,7 +87,8 @@ steps. Successful prefix checks and a cohort handoff do not satisfy them.
 ## Required checks
 
 Both candidate profiles include `generation-room-inventory`,
-`generation-room-custody` and `installed-generation-room`. Their native fixtures
+`generation-room-custody`, `operation-cohort-contracts`, `mixed-room-custody`
+and `installed-generation-room`. Their native fixtures
 are built normally from the current source. Fresh offline archives repeat the
 same native probe assertions with bare public package imports; internal
 installed-file hooks are identified as fixture hooks. The existing generation

@@ -43,6 +43,44 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+Original, generation and mixed-family operational participants now share one
+[custody barrier](OPERATIONAL_COHORT_CUSTODY.md). Both families are reserved
+before the first host callback. Temporary native-reader destruction precedes
+the final policy, source-cut and managed-owner checks; consumption writes only
+private flags. Individual transfers and existing room adapters use the same
+phases. A generation operation retains its original immutable Blob for inspection
+after a late refusal, until explicit close.
+
+The [mixed-cohort qualification](qualification/2026-10-20-mixed-cohort-custody.json)
+passes all 50 selected architecture checks, 1,248 script tests, 385 editor tests
+and twelve phase laws, with three existing opt-in skips. Four unchanged native
+destructor assertions fail against the previous public archive and pass against
+the repair. The mixed matrix covers 480 cohorts and 960 cold reopens in source
+and fresh offline archives, preserving 4,605 committed-record comparisons,
+960 upload-store comparisons and 864 future document plus 864 review history
+comparisons. All 362 generation assertions run freshly in standalone source and
+installed consumers. Original participant/room workflows, both catalogs and
+their previous rollback/opening regressions remain passing.
+
+The installed original-recovery check also runs both normal Wasm producers
+without runtime reuse; their bytes remain identical. The native Rust suites
+carry their prior qualification across 2,747 unchanged Rust/build inputs rather
+than being counted as fresh suites. Public root exports, native history and wire
+formats remain unchanged.
+
+A separate diagnostic deliberately replaced an original owner's read-only
+binding with a getter. It returned an already retired peer during the final
+managed sweep. That unsupported override remains a narrowly scoped hardening
+gap, not a normal authority-callback or browser fault; rejecting it before
+invocation is the next repair. The four earlier intermittent observations remain
+unexplained. Durable V2 operational parent intent and atomic guard retargeting,
+historic-copy dispositions, independent comment/server-log generations, complete
+client/provider closure and current authenticated activation remain required.
+All thirteen V1 gates remain open. No version, push, tag, publication or
+deployment is promoted.
+
+### Previous catalog opening checkpoint
+
 Both catalog factories now retain actual startup cleanup before acquiring their
 first lease. If original/V2 begin or resume fails before returning an owner and
 release fails too, a valid-policy retry drains that actual failed opening.
@@ -74,8 +112,8 @@ factory limitation: a retry checks current admission policy before draining the
 private ledger; there is no public cleanup-only capability for a rejected
 direct call. Parent close can drain failed participant openings it owns.
 
-The next architectural step is one common mixed-family operational barrier,
-not independently committing original and generation children. Historic-copy
+At that checkpoint the next architectural step was the common mixed-family
+operational barrier, now implemented above. Historic-copy
 dispositions, independent comment/server-log generations, complete client/provider
 closure and current authenticated activation remain required. The three earlier
 intermittent native observations remain unexplained. All 13 V1 gates remain

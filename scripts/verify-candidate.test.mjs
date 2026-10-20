@@ -37,6 +37,12 @@ test("generation room inventory and internal custody remain native, source-bound
  for(const name of ["inventory","custody"]){const sdk=readFileSync(join(repository,`scripts/check-generation-room-${name}-sdk.mjs`),"utf8");assert.ok(sdk.includes("assert.deepEqual(native.source,source"));assert.ok(sdk.includes("fileEvidence(root,file.path)"));assert.ok(sdk.includes("assert.deepEqual(sourceEvidence(root),source)"));}
 });
 
+test("both profiles require the common mixed barrier and unchanged native cleanup assertions in fresh archives",()=>{
+ for(const profile of ['functional','full']){const p=candidateReleasePlan({profile}),find=id=>{const c=p.checks.find(c=>c.id===id);assert.ok(c,id);return c;};assert.deepEqual(find('operation-cohort-contracts').args,['--test','scripts/operation-cohort.test.mjs']);const row=find('mixed-room-custody');assert.deepEqual(row.args,['scripts/check-mixed-room-custody-sdk.mjs']);assert.deepEqual(row.artifacts,[{path:'target/mixed-room-custody-sdk.json',fresh:true}]);assert.ok(p.checks.indexOf(find('native-room-participant-inventory'))<p.checks.indexOf(row));}
+ const installed=readFileSync(join(repository,'scripts/check-generation-room-installed.mjs'),'utf8');for(const text of ['probe-mixed-room-custody.mjs','probe-operation-cohort-cleanup.mjs','operation-cohort/original-participant.mjs','cohorts:480','coldParticipants:960','destructorRefusals:120','operation_cohort/cohort.js','mixed_room_operation/custody.js','executeCandidateStage','saveEvidence(childReport','if(child.status!==\'passed\')'])assert.ok(installed.includes(text),text);
+ const sdk=readFileSync(join(repository,'scripts/check-mixed-room-custody-sdk.mjs'),'utf8');for(const text of ['assert.deepEqual(native.source,source','fileEvidence(root,file.path)','assert.deepEqual(sourceEvidence(root),source)','probeOperationCohortCleanup','probeMixedRoomCustody'])assert.ok(sdk.includes(text),text);
+});
+
 test("both profiles require complete generation assets, restartable participants, strict types and fresh public archives",()=>{
  for(const profile of ["functional","full"]){const p=candidateReleasePlan({profile}),find=id=>{const c=p.checks.find(c=>c.id===id);assert.ok(c,id);return c;};
   assert.deepEqual(find("generation-assets-source-contracts").args,["--test","scripts/generation-asset-source.test.mjs"]);

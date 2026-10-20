@@ -20,7 +20,7 @@ export async function prepareGenerationRoomParticipants(input:readonly {id:strin
    await beforeRelease();for(const s of states)captures.push(captureSharedGenerationSource(generationOwnerSource(s.p,s.owners)));
    const parts=Object.freeze({participants:Object.freeze(states.map((s,index)=>Object.freeze({id:values[index]!.id,parts:Object.freeze({source:generationOwnerSource(s.p,s.owners),uploads:s.owners.uploads!})})))});
    await releaseGenerationRoomCustody([...databases,...states.flatMap(s=>[s.db,s.recoveryDb])],[...leases,...states.flatMap(s=>s.leases)]);markReleased();released();return parts;
-  },states=>{afterRelease();for(const s of states){s.p.guard();s.origin.verifySource(generationOwnerSource(s.p,s.owners));}afterRelease();for(const capture of captures)capture.check();});
+  },states=>{afterRelease();for(const s of states){s.p.guard();s.origin.verifySource(generationOwnerSource(s.p,s.owners));}afterRelease();},()=>{for(const capture of captures)capture.check();});
   const result=Object.freeze({commit(){try{return handoff.commit();}finally{dispose();}},abandon(){try{handoff.abandon();}finally{dispose();}}});offered=true;return result;
  }finally{if(!offered)dispose();}
 }

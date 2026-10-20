@@ -132,7 +132,10 @@ revision, version and upload owners must still have live custody. Readable
 exports alone do not establish that their databases remain usable. Temporary
 save failures remain retryable; database-version retirement does not.
 Child consumption is one aggregate commit, not nested independent
-handoffs. A late refusal leaves every child owned for explicit cleanup; it cannot
+handoffs. The [shared barrier](OPERATIONAL_COHORT_CUSTODY.md) also places native
+origin-reader destruction before the final current-policy, source and liveness
+checks. No application destructor runs while consuming children. A late refusal
+leaves every child owned for explicit cleanup; it cannot
 return a partial participant list. Once release completed, that parent and its
 children cannot hand off again. Close/discard them and cold-resume the retained
 parent intent with fresh policy. Original catalog, server, inventory, historic

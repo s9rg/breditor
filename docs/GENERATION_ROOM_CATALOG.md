@@ -91,9 +91,10 @@ that fail before returning a staged child, and native owners whose initial
 discard fails. The same private runtime scope retains those actual owners until
 cleanup succeeds; no saved progress value can reconstruct that custody.
 
-The next operational parent must transfer original and generation children in
-one common final cut and liveness sweep. Committing the two families separately
-would permit partial escape and is not supported. Explicit historic-copy
+The internal [common custody barrier](OPERATIONAL_COHORT_CUSTODY.md) reserves
+original and generation children together and consumes them only after one
+final cut and liveness sweep. The durable V2 operational parent still needs to
+use it; committing the two families separately remains unsupported. Explicit historic-copy
 dispositions, complete client/provider reference closure, independent
 comment/server-log generations and authenticated activation remain work.
 
