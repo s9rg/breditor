@@ -5,10 +5,12 @@ original document-journal format. Room recovery must compare those histories wit
 an independently selected native server inventory and transfer all selected
 participants together. Equal visible documents do not establish either property.
 
-The current public addition is diagnostic prefix reconciliation. The internal
-cohort transfer is a prerequisite for durable generation room recovery; it is not
-a catalog, an activation API or a recovered authority grant. The original room
-catalog and participant APIs retain their original formats and meanings.
+The prefix API is diagnostic reconciliation. The internal cohort transfer is a
+prerequisite for operational generation room recovery; it is not an activation
+API or a recovered authority grant. The additive
+[V2 catalog](GENERATION_ROOM_CATALOG.md) retains mixed-family files and stages
+private inactive owners. Original room catalog and participant APIs retain their
+original formats and meanings.
 
 ## Reconcile native generation histories
 
@@ -69,10 +71,11 @@ decoding are controlled fixtures; this does not qualify browser crash durability
 
 ## Remaining room recovery work
 
-A durable generation catalog must retain the selected native server bundle,
-inventory, every supplied participant file and explicit dispositions for other
-copies. Staging and operational intent need their own versioned records; they
-must not reinterpret the original journal format or silently reset Undo.
+The V2 catalog retains the selected native server bundle, inventory and every
+supplied participant file using a separate closed manifest and durable inactive
+staging records. Explicit dispositions for other copies and mixed-family
+operational intent still need integration; neither may reinterpret an original
+journal or silently reset Undo.
 
 Independent comment/server-log generations, complete client/provider reference
 closure and current authenticated whole-room activation remain separate required

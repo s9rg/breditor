@@ -14,6 +14,16 @@ const plan=checks=>({profile:"functional",deferred:["not-a-v1-certification"],ch
 const stable=()=>({commit:"1".repeat(40),dirty:true,sha256:"2".repeat(64),files:1,bytes:1});
 function quiet(options={}){return {snapshot:stable,report:()=>{},...options};}
 
+test("both profiles require the separate V2 catalog family, actual native staging and identical installed assertions",()=>{
+ for(const profile of ["functional","full"]){const p=candidateReleasePlan({profile}),find=id=>{const row=p.checks.find(c=>c.id===id);assert.ok(row,id);return row;};
+  assert.deepEqual(find("room-recovery-catalog-v2-contracts").args,["--test","scripts/room-recovery-catalog-v2-storage.test.mjs"]);
+  assert.ok(find("room-recovery-catalog-v2-type-fence").args.includes("scripts/fixtures/editor-consumer/types-room-recovery-catalog-v2.ts"));
+  for(const[id,file,path]of [["room-recovery-catalog-v2","check-room-recovery-catalog-v2-sdk.mjs","target/room-recovery-catalog-v2-sdk.json"],["installed-room-recovery-catalog-v2","check-room-recovery-catalog-v2-installed.mjs","target/room-recovery-catalog-v2-installed-consumer.json"]]){const row=find(id);assert.deepEqual(row.args,[`scripts/${file}`]);assert.deepEqual(row.artifacts,[{path,fresh:true}]);assert.ok(p.checks.indexOf(find("native-room-participant-inventory"))<p.checks.indexOf(row));}
+ }
+ const installed=readFileSync(join(repository,"scripts/check-room-recovery-catalog-v2-installed.mjs"),"utf8");for(const text of ["buildRoomParticipantInventoryFixtures({saveReport:false})","sourceUnchanged:true","types-room-recovery-catalog-v2.ts","probe-room-recovery-catalog-v2.mjs","stagedGeneration:60","stagedMixed:60","coldGeneration:60","coldMixed:60","lostAcknowledgementResumes:6","mixedPolicySnapshots:2","cleanup-failures.mjs","failedCleanupRetries:6","originalCatalogCleanupRetries:2","room_recovery_catalog_v2/coverage.js"])assert.ok(installed.includes(text),text);
+ const sdk=readFileSync(join(repository,"scripts/check-room-recovery-catalog-v2-sdk.mjs"),"utf8");for(const text of ["assert.deepEqual(native.source,source","fileEvidence(root,file.path)","assert.deepEqual(sourceEvidence(root),source)"])assert.ok(sdk.includes(text),text);
+});
+
 test("generation room inventory and internal custody remain native, source-bound and repeated in public archives",()=>{
  for(const profile of ["functional","full"]){const p=candidateReleasePlan({profile}),find=id=>{const c=p.checks.find(c=>c.id===id);assert.ok(c,id);return c;};
   for(const [id,script,path]of [["generation-room-inventory","check-generation-room-inventory-sdk.mjs","target/generation-room-inventory-sdk.json"],["generation-room-custody","check-generation-room-custody-sdk.mjs","target/generation-room-custody-sdk.json"],["installed-generation-room","check-generation-room-installed.mjs","target/generation-room-installed-consumer.json"]]){const row=find(id);assert.deepEqual(row.args,[`scripts/${script}`]);assert.deepEqual(row.artifacts,[{path,fresh:true}]);assert.ok(p.checks.indexOf(find("native-room-participant-inventory"))<p.checks.indexOf(row));}

@@ -7,6 +7,9 @@ export {createSharedSegmentedRelaySync,createSharedSegmentedReviewRelaySync,type
 export type {SharedSegmentedRelayBinding,SharedSegmentedRelayProgress,SharedSegmentedRelaySessionOptions,SharedSegmentedRelayRecovery,SharedSegmentedRelayRecoveryOptions,SharedSegmentedRelaySyncOptions,SharedSegmentedDocumentProgress,SharedSegmentedDocumentReceipt,SharedSegmentedReviewReceipt} from "./segmented_relay/contract.js";
 export {initializeSharedReadOnly} from "./initialize_read_only.js";
 export {SharedRoomRecoveryCatalog} from "./room_recovery_catalog/catalog.js";
+export {SharedRoomRecoveryCatalogV2} from "./room_recovery_catalog_v2/catalog.js";
+export {SharedRoomRecoveryCatalogArchiveV2} from "./room_recovery_catalog_v2/archive.js";
+export type * from "./room_recovery_catalog_v2/contract.js";
 export {SharedRoomOperationalRecovery} from "./room_operation/recovery.js";
 export {SharedRoomOperationError} from "./room_operation/errors.js";
 export type {SharedRoomOperationTarget,SharedRoomOperationBeginOptions,SharedRoomOperationParticipant,SharedRoomOperationResumeOptions,SharedRoomOperationProgress,SharedRoomOperationParts} from "./room_operation/types.js";

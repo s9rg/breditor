@@ -43,6 +43,41 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The additive [mixed-family V2 catalog](GENERATION_ROOM_CATALOG.md) now retains
+the selected server file, native inventory and every supplied original or
+generation participant backup. It cold-restores selected participants into
+genuine private read-only owners and combines actual native prefix checks.
+Historic duplicate files remain retained and explicitly pending; no old journal
+is reinterpreted and no room is activated.
+
+Its [functional qualification](qualification/2026-10-20-mixed-generation-room-catalog.json)
+passes 40 selected architecture checks, 1,211 script tests, 385 editor tests and
+15 V2 storage laws, with three existing opt-in skips. Source and fresh offline
+archives each cover 30 native families, 60 generation and 60 mixed participant
+stages, their cold reopens, interrupted commits, changed plans and future native
+document/review Undo/Redo. All 362 generation regressions and the native
+inventory/cohort probes also pass in fresh installed archives. Native fixtures
+build normally; unchanged native inputs carry the prior Rust-suite and
+hash-verified Wasm qualification, not a fresh producer rebuild.
+
+This work also repairs a deterministic lifecycle fault in both catalog versions:
+if a parent step failed and cleanup release failed too, the catalog lost its
+local child handle while leaving that child's journal lease held. Failed cleanup
+now remains private cleanup-only custody until close retries it. The same six
+paths fail against the preserved unfixed public archive with identical Wasm and
+pass after repair. They retain 32 stored-record snapshots and 26 original files,
+then cold-recover all six participants. The stopped pre-repair qualifier is
+preserved; none of its passes are carried into the 40-check result.
+
+Factory-internal partial-acquisition rollback remains a separate audit risk.
+Mixed-family operational transfer still needs one common final native cut and
+liveness commit. Historic-copy dispositions, independent comment/server-log
+generations, complete client/provider closure and authenticated room activation
+remain substantive work. The two earlier intermittent room refusals remain
+unexplained, not identified as this deterministic cleanup fault. All 13 V1 gates
+remain open. No version, API freeze, push, tag, publication or deployment is
+promoted by this checkpoint.
+
 Generation histories now reconcile against actual native server document/review
 prefixes through `SharedRoomParticipantInventory.checkGenerationSources()`.
 Original packet and version readers retain their existing meanings. Missing,

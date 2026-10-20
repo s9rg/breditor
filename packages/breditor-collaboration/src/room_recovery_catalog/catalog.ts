@@ -15,11 +15,14 @@ export function transferRoomCatalog<T>(catalog:SharedRoomRecoveryCatalog,take:(h
 export class SharedRoomRecoveryCatalog {
  readonly #db:IDBDatabase;readonly #lease:RecoveryLease;readonly #archive:SharedRoomRecoveryCatalogArchive;readonly #state:CatalogArchiveState;readonly #database:string;readonly #authority:()=>void;readonly #signal:AbortSignal|undefined;
  #record:CatalogRecord;#pending:CatalogRecord|undefined;#closed=false;#closing=false;#busy=false;#staging:Promise<SharedRoomRecoveryCatalogCheck>|undefined;#transferring:Promise<void>|undefined;#cleanup:Promise<void>|undefined;#cleanupMode:"graceful"|"discard"|undefined;readonly #owners:StagedParticipant[]=[];
+ // Failed stage cleanup is still custody. Keep every acquired handle until its
+ // idempotent discard/release succeeds; never let a local finally lose it.
+ readonly #stranded:StagedParticipant[]=[];
  private constructor(token:object,database:string,db:IDBDatabase,lease:RecoveryLease,archive:SharedRoomRecoveryCatalogArchive,record:CatalogRecord,check:()=>void,signal?:AbortSignal){
   if(token!==key)throw failure("catalog_closed");this.#database=database;this.#db=db;this.#lease=lease;this.#archive=archive;this.#state=catalogArchiveState(archive);this.#record=record;this.#authority=check;this.#signal=signal;db.onversionchange=()=>{this.#closing=true;db.close();};Object.freeze(this);
  }
  static{takeCatalog=async<T>(catalog:SharedRoomRecoveryCatalog,take:(held:CatalogCustody)=>Promise<{value:T;prepareCommit:()=>void;commit:()=>void}>)=>{
-  if(catalog.#busy)throw failure("catalog_in_use");catalog.#guard();catalog.#busy=true;let done!:()=>void;catalog.#transferring=new Promise<void>(resolve=>{done=resolve;});
+  if(catalog.#busy||catalog.#stranded.length)throw failure("catalog_in_use");catalog.#guard();catalog.#busy=true;let done!:()=>void;catalog.#transferring=new Promise<void>(resolve=>{done=resolve;});
   try{const record=await catalog.#retained(true);if(record.phase!=="checked"||record.participants.length!==catalog.#owners.length)throw failure("catalog_diverged");for(const owner of catalog.#owners)await verifyStagedParticipant(owner,catalog.#guard);
    catalog.#state.inventory.checkSources(catalog.#owners.map(owner=>({backup:owner.policy.options.backup,source:owner.source})));catalog.#guard();
    const result=await take({database:catalog.#database,db:catalog.#db,lease:catalog.#lease,archive:catalog.#archive,state:catalog.#state,record,owners:catalog.#owners});
@@ -60,7 +63,7 @@ export class SharedRoomRecoveryCatalog {
  async #update(next:CatalogRecord):Promise<void>{this.#guard();if(this.#pending)throw failure("catalog_in_use");this.#pending=next;try{await updateCatalogRecord(this.#db,this.#record,next,this.#guard,this.#signal);this.#guard();this.#record=next;}finally{this.#pending=undefined;}}
  /** Every request pins original native factories/targets. Unselected files remain unresolved and retained. */
  stage(participants:readonly SharedRoomRecoveryCatalogParticipant[]):Promise<SharedRoomRecoveryCatalogCheck>{
-  if(this.#busy)throw failure("catalog_in_use");this.#busy=true;
+  if(this.#busy||this.#stranded.length)throw failure("catalog_in_use");this.#busy=true;
   try{this.#guard();this.#staging=this.#stage(participants).finally(()=>{this.#staging=undefined;this.#busy=false;});return this.#staging;}catch(error){this.#busy=false;throw error;}
  }
  async #stage(input:readonly SharedRoomRecoveryCatalogParticipant[]):Promise<SharedRoomRecoveryCatalogCheck>{
@@ -81,7 +84,7 @@ export class SharedRoomRecoveryCatalog {
    let coverage;try{coverage=this.#state.inventory.checkSources(owners.map(owner=>({backup:owner.policy.options.backup,source:owner.source})));}catch{throw failure("catalog_source");}
    const stagedParticipants=owners.map(owner=>owner.policy.id),unreconciledParticipants=this.#state.metadata.participants.filter(row=>!stagedParticipants.includes(row.id)).map(row=>row.id),kind=coverage.kind==="covered"&&!unreconciledParticipants.length?"checked":"pending";
    this.#owners.push(...acquired);kept=true;return frozen({kind,coverage,stagedParticipants,unreconciledParticipants});
-  }catch(error){throw known(error,"catalog_restore");}finally{if(!kept)await discardStagedParticipants(acquired);}
+  }catch(error){throw known(error,"catalog_restore");}finally{if(!kept){this.#stranded.push(...acquired);await discardStagedParticipants(this.#stranded);this.#stranded.length=0;}}
  }
  /** Gracefully close private owners and release origin locks; retain every file and destination. */
  close():Promise<void>{return this.#close("graceful");}
@@ -94,6 +97,9 @@ export class SharedRoomRecoveryCatalog {
  async #finishClose(mode:"graceful"|"discard"):Promise<void>{
   try{await this.#staging;}catch{/* Stage retains its original failure and committed work. */}
   try{await this.#transferring;}catch{/* The transfer caller retains its original failure. */}if(this.#closed)return;
+  // Failed staging is cleanup-only, even when the host asks for graceful close.
+  // On another release error this array remains owned for the next close retry.
+  await discardStagedParticipants(this.#stranded);this.#stranded.length=0;
   if(mode==="discard"){await discardStagedParticipants(this.#owners);this.#owners.length=0;}
   else for(let i=this.#owners.length-1;i>=0;i--){const owner=this.#owners[i]!;await owner.recovered.close();owner.source.dispose();this.#owners.splice(i,1);}
   this.#archive.dispose();this.#db.close();await this.#lease.close();this.#closed=true;

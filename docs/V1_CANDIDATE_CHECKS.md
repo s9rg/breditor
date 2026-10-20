@@ -1,5 +1,18 @@
 # V1 candidate checks
 
+Both profiles require `room-recovery-catalog-v2-contracts`,
+`room-recovery-catalog-v2-type-fence`, `room-recovery-catalog-v2` and
+`installed-room-recovery-catalog-v2`. The separate V2 family retains original
+and generation files without adopting an old journal, stages genuine inactive
+native owners, and repeats the same assertions in fresh offline archives.
+Native room fixtures build normally. Exact file retention, interrupted recovery,
+duplicate-writer refusal and future native histories are mandatory; passing
+inactive staging is not authenticated activation or historic-copy disposition.
+The native V2 probe also injects a failed cleanup release in generation,
+mixed-original and original-catalog staging on both transports. Failed cleanup
+must retain private custody for close retry, exact file/record retention and
+fresh native recovery. The fresh public consumer repeats those same six paths.
+
 The candidate verifier checks the current opt-in rich editor, collaboration,
 interchange and review packages alongside the original default workspace. It
 does not change package versions, publish, push, tag or deploy anything.
