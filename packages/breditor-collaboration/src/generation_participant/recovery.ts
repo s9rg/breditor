@@ -3,7 +3,7 @@ import {RecoveryLease} from "../participant_recovery/lease.js";
 import {existingDatabase} from "../participant_recovery/journal.js";
 import {requireAbsent} from "../participant_recovery/inspect.js";
 import type {SharedSelectionPolicy} from "../types.js";
-import type {RichAssetStore} from "@breditor/experimental-rich-content";
+import {RichAssetStore} from "@breditor/experimental-rich-content";
 import type {SharedGenerationSourceSelection} from "../generation_source/contract.js";
 import {generationSource} from "../generation_source/admission.js";
 import {SharedGenerationParticipantBackup} from "./backup.js";
@@ -29,12 +29,12 @@ export class RecoveredSharedGenerationParticipant<P extends SharedSelectionPolic
  readonly #state:ReadyState<P>;#closed=false;#busy=false;#released=false;
  private constructor(token:object,state:ReadyState<P>){if(token!==key)throw fail("generation_participant_closed");this.#state=state;Object.freeze(this);}
  static{recoveredGeneration=<Q extends SharedSelectionPolicy>(state:ReadyState<Q>)=>new RecoveredSharedGenerationParticipant(key,state);
-  transferGeneration=async(owner,take,verify)=>{if(owner.#closed||owner.#released)throw fail("generation_participant_closed");if(owner.#busy)throw fail("generation_participant_busy");owner.#busy=true;try{const s=owner.#state;await retained(s.p,s.db,[s.record]);await verifyGenerationOwners(s.p,s.owners);await retained(s.p,s.db,[s.record]);s.p.guard();const value=await take(s);s.p.guard();verify(value);owner.#closed=true;s.p.backup.dispose();return value;}finally{owner.#busy=false;}};
+  transferGeneration=async(owner,take,verify)=>{if(owner.#closed||owner.#released)throw fail("generation_participant_closed");if(owner.#busy)throw fail("generation_participant_busy");owner.#busy=true;try{const s=owner.#state;await retained(s.p,s.db,[s.record]);await verifyGenerationOwners(s.p,s.owners);await retained(s.p,s.db,[s.record]);s.p.guard();const value=await take(s);s.p.guard();verify(value);generationSource(generationOwnerSource(s.p,s.owners).session).checkManaged();RichAssetStore.prototype.checkOpen.call(s.owners.uploads!);owner.#closed=true;s.p.backup.dispose();return value;}finally{owner.#busy=false;}};
  }
  file():Blob{if(this.#closed)throw fail("generation_participant_closed");return SharedGenerationParticipantBackup.prototype.file.call(this.#state.p.backup);}
  /** Verify actual retained data/native owners, then transfer still-held source leases to the caller. */
  async intoParts():Promise<Readonly<RecoveredSharedGenerationParticipantParts<P>>>{
-  if(this.#closed||this.#released)throw fail("generation_participant_closed");if(this.#busy)throw fail("generation_participant_busy");this.#busy=true;try{const {p,owners,db,leases,record}=this.#state;await retained(p,db,[record]);await verifyGenerationOwners(p,owners);await retained(p,db,[record]);p.guard();const parts=Object.freeze({source:generationOwnerSource(p,owners),uploads:owners.uploads!});await release(db,leases);this.#released=true;p.guard();generationSource(parts.source.session).checkManaged();this.#closed=true;p.backup.dispose();return parts;}finally{this.#busy=false;}
+  if(this.#closed||this.#released)throw fail("generation_participant_closed");if(this.#busy)throw fail("generation_participant_busy");this.#busy=true;try{const {p,owners,db,leases,record}=this.#state;await retained(p,db,[record]);await verifyGenerationOwners(p,owners);await retained(p,db,[record]);p.guard();const parts=Object.freeze({source:generationOwnerSource(p,owners),uploads:owners.uploads!});await release(db,leases);this.#released=true;p.guard();generationSource(parts.source.session).checkManaged();RichAssetStore.prototype.checkOpen.call(parts.uploads);this.#closed=true;p.backup.dispose();return parts;}finally{this.#busy=false;}
  }
  async close():Promise<void>{if(this.#closed)return;if(this.#busy)throw fail("generation_participant_busy");this.#busy=true;try{const {p,owners,db,leases}=this.#state;await owners.session?.close();owners.uploads?.close();await release(db,leases);this.#closed=true;p.backup.dispose();}finally{this.#busy=false;}}
  async discardAndClose():Promise<void>{if(this.#closed)return;if(this.#busy)throw fail("generation_participant_busy");this.#busy=true;try{const {p,owners,db,leases}=this.#state;await discardGenerationOwners(owners);await release(db,leases);this.#closed=true;p.backup.dispose();}finally{this.#busy=false;}}

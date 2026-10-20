@@ -1,6 +1,7 @@
 import {VersionCatalogStore} from "./store.js";
 import {VersionCatalogSync} from "./sync.js";
 import {SharedRelayError} from "../relay/validation.js";
+import {registerManagedSource,checkManagedSource} from "../managed_custody.js";
 import type {SharedSelectionPolicy} from "../types.js";
 import type {SharedRichEditor} from "../core.js";
 import type {SharedDocumentVersionInfo} from "../version_types.js";
@@ -13,7 +14,7 @@ const attached=new WeakSet<object>();
 export class SharedDocumentVersions<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
  readonly #store:VersionCatalogStore<P>;readonly #sync:VersionCatalogSync<P>;#retiring=false;#closed=false;#closing:Promise<void>|undefined;#released:Promise<void>|undefined;
  #recovering=false;
- private constructor(store:VersionCatalogStore<P>){this.#store=store;this.#sync=new VersionCatalogSync(store);}
+ private constructor(store:VersionCatalogStore<P>){this.#store=store;this.#sync=new VersionCatalogSync(store);const core=store.options.storage.core;registerManagedSource(this,core,()=>{this.#writable();checkManagedSource(store,core);});}
  static async open<Q extends SharedSelectionPolicy>(options:SharedDocumentVersionsOptions<Q>):Promise<SharedDocumentVersions<Q>>{
   const core=options.storage.core;if(attached.has(core))throw new SharedRelayError("version_catalog_already_attached");attached.add(core);let store:VersionCatalogStore<Q>|undefined;
   try{store=await VersionCatalogStore.open(options);return new SharedDocumentVersions(store);}catch(error){if(store)await store.discardAndClose();attached.delete(core);throw error;}

@@ -153,7 +153,12 @@ complete before the ordinary owners have actually been returned. Explicit
 discard also excludes concurrent cleanup and retains failed cleanup for retry.
 
 The final host authority, cancellation and captured-source checks run after
-awaited coordination release as well. If they fail after release, the completed
+awaited coordination release as well. Every selected native, suggestion,
+revision, version and upload owner must still have genuine live custody at that
+boundary. A database version change cannot be cleared by retrying a failed save;
+ordinary aborted saves remain retryable. The upload-owner check performs no I/O
+and does not replace settled host work or an exact source/upload capture.
+If final admission fails after release, the completed
 handle cannot hand off or transfer into an operation again, even after permission
 returns. Explicit close/discard remains available. Close those native owners and
 resume the exact recovery with fresh current authority; the acknowledged stores
@@ -188,10 +193,17 @@ policy, and readable exports remain available until explicit disposal. Across
 66 families, source and fresh installed archives each retain 264 exact exports
 and stored records, refuse the retired owners and restore 264 fresh participants.
 The combined run passes 68 selected checks, 1,157 script tests and 385 editor
-tests, with three existing opt-in skips. Independent suggestion, revision and
-version-store upgrade handoffs remain a separate reproduced fault. These local
-checks neither revoke preexisting host references nor replace current server
-authorization.
+tests, with three existing opt-in skips.
+
+The [retained-owner qualification](qualification/2026-10-20-retained-owner-handoffs.json)
+repairs the separate suggestion, revision, version and upload-store retirement
+handoffs. Source and fresh installed archives each pass 312 upgrade refusals
+across 66 native families, 312 separately named fresh recoveries and 180 ordinary
+save-retry handoffs. Exact committed records and readable packet exports remain
+unchanged; future native Undo/Redo matches independent references. The combined
+run passes 71 selected checks, 1,172 script tests and 385 editor tests, with three
+existing opt-in skips. These local checks neither revoke preexisting host
+references nor replace current server authorization.
 
 This coordinator covers one declared participant and separate component
 transactions, not an atomic transaction across all databases. The host must

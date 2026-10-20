@@ -101,6 +101,14 @@ remains readable for backup but cannot be handed out as a managed session. If
 authority fails after release, the original file remains readable until explicit
 `close()` or `discardAndClose()`; the released owner cannot hand off again.
 
+The final admission also checks the actual upload store, not just the native
+source. A database upgrade or explicit upload-store close during release refuses
+the handoff. The retained participant file remains readable, and cleanup stays
+available. This synchronous live-owner check does not flush uploads, wait for
+host work or prove provider reference closure. Upgraded destinations are not
+silently downgraded or overwritten; use explicit host recovery and separately
+named targets when restoring the original cut.
+
 ## Supported boundaries
 
 The original file families, policy meanings, transport protocols and storage
@@ -119,6 +127,16 @@ authenticated whole-room generation activation remain separate work. All 13 V1
 gates remain open.
 
 ## Functional verification
+
+The later [retained-owner qualification](qualification/2026-10-20-retained-owner-handoffs.json)
+passes 71 selected checks, 1,172 script tests and 385 editor tests, with three
+existing opt-in skips. All 341 generation assertions pass against source and
+fresh offline public archives, retaining the earlier 329 and adding twelve
+upload handoff cases: local, relay and retained sources, ready and operational
+owners, and database upgrade or explicit close during actual lease release.
+The same twelve cases fail against the preserved old public archives. Current
+retained files, explicit cleanup and future native histories remain verified;
+no provider closure or physical-browser durability is inferred.
 
 The [2026-10-20 qualification](qualification/2026-10-20-generation-participant-operation.json)
 passes 62 selected checks, 1,155 script tests and 385 editor tests, with three

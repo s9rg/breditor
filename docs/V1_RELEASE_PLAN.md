@@ -43,24 +43,37 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
-Original participant and aggregate-room handoffs now distinguish readable native
-history from live managed session/core custody. Storage upgrades and retirement
-refuse before owners transfer, including retirement in the room's final host
-callback. Read-only operation and retired-source backup exports keep their
-original meanings. The [managed handoff qualification](qualification/2026-10-20-managed-handoff-boundaries.json)
-passes 68 selected checks, 1,157 script tests and 385 editor tests, with three
-existing opt-in skips. Source and fresh archives each pass 264 participant
-retirement refusals and fresh recoveries, plus twenty room upgrade refusals and
-ten final-callback retirement refusals. All 329 generation assertions and the
-existing authenticated workflows pass in source and installed consumers.
+Original participant and aggregate-room handoffs now check live custody of every
+selected native session, suggestion queue, revision outbox, version catalog and
+upload store before returning owners. Independent database upgrades refuse even
+when native histories or retained packets remain readable. Temporary save errors
+remain retryable; they are not treated as irreversible storage retirement.
+Generation participant handoffs also refuse upload-store retirement or explicit
+close during release. The additive `RichAssetStore.checkOpen()` checks local
+liveness only, without I/O; it is not a flush, idle barrier or provider-closure
+proof.
+
+The [retained-owner qualification](qualification/2026-10-20-retained-owner-handoffs.json)
+passes 71 selected checks, 1,172 script tests and 385 editor tests, with three
+existing opt-in skips. Source and fresh installed archives each pass 312
+participant upgrade refusals, 180 ordinary save-retry handoffs and 80 room
+all-or-nothing handoff cases. They compare exact committed bytes and original
+files, fresh recovery and future native Undo/Redo. The 341 generation assertions
+pass in both source and installed consumers, including twelve upload handoff
+regressions. The same final probes reproduce 29 failures against the preserved
+old archives; six ordinary save-retry controls already pass there. Earlier
+native-retirement and authority/cancellation regressions remain mandatory.
 
 The Wasm pair is hash-verified and reused; 2,747 unchanged native inputs carry
 the prior 653 shared and 216 relay Rust tests, not a fresh full native suite.
-Inventory fixture builds run normally. Independent suggestion, revision and
-version-store upgrades still reproduce six failed-durability handoffs; that is
-the next repair. All 13 V1 gates remain open, including whole-room generation
-activation and release/platform qualification. No package version is promoted,
-and nothing is pushed, tagged, published or deployed.
+Inventory fixture builds run normally. One earlier synthetic room setup refused
+with `catalog_integrity` before fault injection. Its original inner cause was
+not captured; later full runs pass, but that observation remains unexplained,
+not repaired. Participant/room generation integration, independent comment and
+server-log generations, complete provider/client closure and authenticated
+whole-room activation remain substantive work. All 13 V1 gates remain open,
+including release/platform qualification. No package version is promoted, and
+nothing is pushed, tagged, published or deployed.
 
 Original ready, operational and aggregate-room handoffs now recheck current
 authority and cancellation after coordination release. Room children remain

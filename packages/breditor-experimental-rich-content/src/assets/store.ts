@@ -101,6 +101,9 @@ export class RichAssetStore {
   }
 
   #live(): void { if (this.#closed) throw Error("Asset store is closed"); }
+  /** Synchronous live-owner check for composite handoff. Does no storage I/O, upload,
+   * notification or mutation; it is not a flush, idle barrier or reference-closure proof. */
+  checkOpen(): void { this.#live(); }
   #notify(record: AssetRecord): void {
     try { this.#options.onChange?.(assetInfo(record)); } catch { /* Observers cannot undo durability. */ }
   }

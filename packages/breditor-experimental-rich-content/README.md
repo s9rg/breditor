@@ -427,6 +427,14 @@ it does not delete assets. No garbage collection is implemented because history,
 offline peers and backups may still reference them. Session JSON is not a portable
 asset-byte backup.
 
+`assets.checkOpen()` synchronously throws if this genuine store is closed,
+including closure caused by a database version change. It performs no storage
+I/O, upload, mutation or notification. Composite recovery uses it immediately
+before transferring an upload owner. It is not a flush, an idle barrier,
+proof of a captured cut or provider authorization; hosts must still settle and
+fence their own work. Closing a store does not delete its committed bytes or
+invalidate an already exported archive.
+
 `exportBackup({signal?})` returns a bounded binary Blob containing every retained
 raster and its exact upload/cancellation state. Explicit
 `RichAssetStore.restoreBackup(name, blob, {uploadState: 'preserve', signal?, limits?})`

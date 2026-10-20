@@ -127,7 +127,11 @@ suggestions and versions before each session and upload owner.
 
 After awaited release, the parent rechecks current authority and cancellation,
 every child's native origin, and all source captures before consuming any child
-handle. Child consumption is one aggregate commit, not nested independent
+handle. After the final host callback, each child's actual native, suggestion,
+revision, version and upload owners must still have live custody. Readable
+exports alone do not establish that their databases remain usable. Temporary
+save failures remain retryable; database-version retirement does not.
+Child consumption is one aggregate commit, not nested independent
 handoffs. A late refusal leaves every child owned for explicit cleanup; it cannot
 return a partial participant list. Once release completed, that parent and its
 children cannot hand off again. Close/discard them and cold-resume the retained
@@ -192,10 +196,23 @@ read-only policy and exact histories. Source and fresh installed archives repeat
 the same assertions. The combined run passes 68 selected checks, 1,157 script
 tests and 385 editor tests, with three existing opt-in skips.
 
-Native session/core retirement is now covered, but independent suggestion,
-revision and version-store upgrades still reproduce failed-durability handoffs.
-Neither this local transfer barrier nor its tests establish server authorization
-or cross-device writer fencing.
+The [retained-owner qualification](qualification/2026-10-20-retained-owner-handoffs.json)
+adds every declared independent suggestion, revision, version and upload owner
+across all ten native room families. Source and fresh installed archives each
+pass forty upgrades during parent release, thirty upgrades after asynchronous
+preparation and ten upload closes in the final host callback. None consumes a
+partial child cohort. Five hundred stored-record comparisons and two hundred
+original-file comparisons preserve exact bytes; 120 fresh participants recover,
+and forty unaffected participants cold-reopen read-only. The combined run passes
+71 selected checks, 1,172 script tests and 385 editor tests, with three existing
+opt-in skips. Neither this local transfer barrier nor its tests establish server
+authorization or cross-device writer fencing.
+
+One initial synthetic room setup refused with `catalog_integrity` before fault
+injection. Its inner cause and exact failed fixture snapshot were not retained.
+Later complete diagnostic and uninstrumented runs pass; the original observation
+remains unexplained, not a confirmed repair. Its original stderr is preserved in
+the qualification evidence without relaxing integrity admission.
 
 The functional suite exercises ten original native compilers/transports, twenty
 participants, thirty cold room reopens, saved Redo, pending suggestions/versions

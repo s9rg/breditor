@@ -3,6 +3,7 @@ import {SharedRelayError} from "../relay/validation.js";
 import {checkSourceCheckpoint} from "../persistence/source_checkpoint.js";
 import {segmentedRetainedPort,type SegmentedRetainedPort} from "../segmented_relay/retained_port.js";
 import {SharedEditorError} from "../core.js";
+import {registerManagedSource,managedSourceUnavailable} from "../managed_custody.js";
 import {isOperationalComponent} from "../participant_operation/component_admission.js";
 import {existingOperationalComponent} from "../participant_operation/existing_component.js";
 import {operationFailure} from "../participant_operation/errors.js";
@@ -27,12 +28,13 @@ export class VersionCatalogStore<P extends SharedSelectionPolicy=SharedSelection
  readonly #assertSource:()=>void;
  #record:SharedVersionCatalogRecord;#retained=new Map<string,Retained>();#durable=new Map<string,RetainedVersionPacket>();#saved="";
  #pending:SharedVersionCatalogRecord|undefined;#running:Promise<void>|undefined;#failure:unknown;#retiring=false;#closed=false;#closing:Promise<void>|undefined;#released:Promise<void>|undefined;
- #listeners=new Set<()=>void>();#notifying=false;
+ #listeners=new Set<()=>void>();#notifying=false;#storageChanged=false;
  #restoreInsert=false;#restoreSignal:AbortSignal|undefined;
  private constructor(options:SharedDocumentVersionsOptions<P>,db:IDBDatabase|undefined,lease:VersionCatalogLease,record:SharedVersionCatalogRecord,assertSource:()=>void,segmented?:SegmentedRetainedPort<"versions">){
   this.#segmented=segmented;
   this.options=options;this.#db=db;this.#lease=lease;this.#assertSource=()=>{assertSource();if(this.options!==options)throw new SharedRelayError("version_source_replaced");};this.#record=record;this.#retained=this.#admit(record);
-  if(db)db.onversionchange=()=>{db.close();this.#failure=new SharedRelayError("version_cache_versionchange");this.#notify();};
+  registerManagedSource(this,options.storage.core,()=>{this.#live();if(this.#retiring||this.#storageChanged)throw managedSourceUnavailable();});
+  if(db)db.onversionchange=()=>{this.#storageChanged=true;db.close();this.#failure=new SharedRelayError("version_cache_versionchange");this.#notify();};
  }
  static async open<Q extends SharedSelectionPolicy>(input:SharedDocumentVersionsOptions<Q>):Promise<VersionCatalogStore<Q>>{
   return VersionCatalogStore.#open(input);

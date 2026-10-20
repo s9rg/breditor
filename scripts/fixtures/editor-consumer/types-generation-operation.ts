@@ -7,6 +7,7 @@ await held.check();const original:Blob=held.file();void original;
 const parts:Readonly<OperationalSharedGenerationParticipantParts<"document-v1">>=await held.intoParts();
 const source:SharedGenerationSourceSelection<"document-v1">=parts.source;void source;
 await parts.uploads.list();
+const liveUpload:void=parts.uploads.checkOpen();void liveUpload;
 await OperationalSharedGenerationParticipant.resumeRecovered(begin);
 const cold=await OperationalSharedGenerationParticipant.resume(resume);await cold.close();
 // @ts-expect-error Detached backup metadata is not genuine recovered custody.

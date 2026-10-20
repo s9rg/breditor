@@ -1,0 +1,163 @@
+{
+  "format": "breditor/retained-owner-handoff-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-20",
+  "classification": "PROGRESS",
+  "v1Ready": false,
+  "publicationApproved": false,
+  "openV1Gates": 13,
+  "scope": "Genuine dependent-store and upload custody at original ready, operational, aggregate-room and generation participant handoff boundaries. Ordinary save failures remain retryable. Not whole-room generation activation, platform durability or V1 approval.",
+  "source": {
+    "baseCommit": "2923c829bceb003274bb53227cbe9cba9255530a",
+    "testedWorkingTreeSha256": "2fc99be019678aa7f74754b01fab8c327eab0e0dded657c5dca99fa4909cf391",
+    "files": 4830,
+    "bytes": 41627551,
+    "nonDocumentationSha256": "d21eb11e6b36e50497664a200aeaf49201c82946c4d65d2e7d6d39ba1f2cfef4",
+    "postQualificationChanges": "Only five recovery/release guides and this scoped qualification record. Package README and all production/test inputs were frozen before qualification."
+  },
+  "evidence": {
+    "candidate": "target/v1-candidate-runs/run-Zp2BHa/result.json",
+    "result": "target/retained-owner-qualification-bqhZE0/result.json",
+    "audit": "target/retained-owner-qualification-bqhZE0/checkpoint-audit.json",
+    "artifactSnapshots": "target/retained-owner-qualification-bqhZE0/snapshots",
+    "archives": "target/retained-owner-qualification-bqhZE0/archives",
+    "baselineReproductions": "target/retained-owner-qualification-bqhZE0/before-fix.json",
+    "sourceUpgrades": "target/v1-candidate-runs/run-Zp2BHa/52-retained-owner-upgrade-handoffs.log",
+    "sourceRetries": "target/v1-candidate-runs/run-Zp2BHa/53-retained-owner-save-retries.log",
+    "sourceRooms": "target/v1-candidate-runs/run-Zp2BHa/57-retained-room-owner-handoffs.log",
+    "installedOwners": "target/retained-owner-qualification-bqhZE0/snapshots/target/retained-owner-handoffs-installed-consumer.json",
+    "installedParticipants": "target/retained-owner-qualification-bqhZE0/snapshots/target/participant-operation-installed-consumer.json",
+    "installedRooms": "target/retained-owner-qualification-bqhZE0/snapshots/target/room-operational-recovery-installed-consumer.json",
+    "installedGenerationAssets": "target/retained-owner-qualification-bqhZE0/snapshots/target/generation-assets-installed-consumer.json"
+  },
+  "implementation": {
+    "repairedPaths": [
+      "Original ready and operational participant handoffs refuse retirement of every selected suggestion, revision, version and upload store after actual asynchronous release.",
+      "The aggregate room commit checks every child's dependent owners after the final host callback and before consuming any child.",
+      "Generation ready and operational handoffs refuse an upgraded or explicitly closed upload owner; genuine ready-to-operation transfer also checks final source/upload liveness."
+    ],
+    "admission": "Genuine constructor registrations bind packet owners to their original core, source and private lease/lifecycle checks. Independent storage-version retirement is irreversible and distinct from an ordinary retryable save failure. No edit, native hold, save or notification is used as an admission probe.",
+    "publicApiAddition": "RichAssetStore.checkOpen(): void is an additive pure synchronous liveness check. It performs no I/O, upload, mutation or notification and is not a flush, idle barrier, exact-cut or provider-closure proof.",
+    "retention": "Late refusals consume no partial owner group and preserve committed native/packet/upload records, exact original files and readable packet exports. Post-release owners are cleanup-only. Upgraded destinations are not downgraded or overwritten; separately named fresh recovery follows explicit cleanup.",
+    "authorityBoundary": "Host work still must be settled and fenced. Local ownership checks do not revoke preexisting host references, authenticate current server/account permission, reconcile provider references or fence other devices.",
+    "baselineCollaborationArchiveSha256": "69a02a19d50359aeb9e16dfe3fdf85a7cdb2ce374a8754d17fb4918c66c97053",
+    "baselineRichArchiveSha256": "0acb66257da3df8bd91349ca65914a63fabff2979d6404f6634bf7f25eb458df",
+    "originalProtocolMeaningsDefaultsAndBoundsUnchanged": true,
+    "productionRustSourceChanged": false,
+    "vendorSourceChanged": false,
+    "dependencyVersionUpgrades": false,
+    "automaticRollover": false,
+    "compactionOrGarbageCollection": false,
+    "unlimitedLifetime": false
+  },
+  "tests": {
+    "selectedChecksPassed": 71,
+    "scriptTestsPassed": 1172,
+    "existingOptInScriptChecksSkipped": 3,
+    "editorTestsPassed": 385,
+    "generationSourceTestsPassed": 341,
+    "generationInstalledTestsPassed": 341,
+    "generationUploadHandoffCases": 12,
+    "reproducedBaselineScenarios": 29,
+    "baselineOrdinaryRetryControls": 6,
+    "ownerUpgrades": {
+      "nativeFamilies": 66,
+      "cases": 312,
+      "ready": 156,
+      "operational": 156,
+      "suggestions": 60,
+      "revisions": 60,
+      "versions": 60,
+      "uploads": 132,
+      "readablePacketExports": 720,
+      "storedRecordComparisons": 1344,
+      "freshRecoveries": 312,
+      "retryableSaveHandoffs": 0,
+      "futureDocumentCheckpoints": 624,
+      "futureReviewCheckpoints": 480
+    },
+    "ordinarySaveRetries": {
+      "nativeFamilies": 66,
+      "cases": 180,
+      "ready": 90,
+      "operational": 90,
+      "suggestions": 60,
+      "revisions": 60,
+      "versions": 60,
+      "uploads": 0,
+      "readablePacketExports": 540,
+      "storedRecordComparisons": 900,
+      "freshRecoveries": 0,
+      "retryableSaveHandoffs": 180,
+      "futureDocumentCheckpoints": 360,
+      "futureReviewCheckpoints": 360
+    },
+    "roomHandoffs": {
+      "nativeRooms": 10,
+      "parentUpgradeRefusals": 40,
+      "lateUpgradeRefusals": 30,
+      "lastCallbackUploadCloseRefusals": 10,
+      "suggestions": 10,
+      "revisions": 10,
+      "versions": 20,
+      "uploads": 40,
+      "storedRecordComparisons": 500,
+      "retainedFiles": 200,
+      "freshParticipants": 120,
+      "unaffectedColdParticipants": 40
+    },
+    "sharedRustCarriedPassed": 653,
+    "relayRustCarriedPassed": 216,
+    "freshRustSuiteThisRun": false,
+    "nativeSourceAndBuildInputsUnchanged": 2747,
+    "freshWasmProducerRebuild": false,
+    "nativeInventoryFixtureBuildsInvokedNormally": true,
+    "nativeQualificationCarriedFrom": "2928ff7cc8bef611b08668b2ca66214ff1846bbd",
+    "allPriorParticipantAndRoomAssertionsRetained": true,
+    "sourceAndInstalledMatricesEqual": true,
+    "storageLocksAndRaster": "Actual canonical Wasm and native hosts with explicit synthetic IndexedDB, locks and raster decoding. Controlled lifecycle faults, not physical-browser or process/power-loss durability."
+  },
+  "artifacts": {
+    "sharedWasmSha256": "5accbfe1c8d850ffac7b9689c639ae526d9db1997991aaec05b6e665afa86ead",
+    "localWasmSha256": "d2f0e56fa6e3ec0b42ba1784d6f17ba344247450fc5358ab0ca796fbf09dbb81",
+    "nativeRevisionHostSha256": "e5bc62cc731c8f98b6dd3ea14433044440b8778606b420c7adb48a8f30dda0b7",
+    "browserArchiveSha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+    "richArchiveSha256": "466eed1a8d9090cfb6ff7d091e4148b8f0f8c362e65abb6106ade8970a2588db",
+    "collaborationArchiveSha256": "2aa271cd7a15eee19b084a1db0d1cbbf77babccc2f99fcc731f21145486b82d9"
+  },
+  "verification": {
+    "checkedFiles": 180,
+    "immutableArtifactSnapshots": 17,
+    "frozenSourceUnchangedDuringAllChecks": true,
+    "runtimePairHashVerified": true,
+    "publicArchivesStrictTypes": true,
+    "workspaceLinks": false,
+    "noWorkspaceReactOrSyntheticStorageInProduction": true,
+    "explicitOverrides": [
+      {
+        "id": "installed-session-backups",
+        "args": ["scripts/check-session-backups-installed.mjs", "--reuse-runtimes"],
+        "reason": "Reuse only the hash-verified paired Wasm producers after checking 2,747 unchanged native inputs. New handoff tests, all prior consumer assertions and ordinary native inventory builds still run; the permanent plans retain their normal producer-build requirements."
+      }
+    ],
+    "producerReuseScope": "Only the paired Wasm producers are reused. Inventory fixture builds and native assertions run normally; no fresh full Rust-suite qualification is claimed."
+  },
+  "knownUnexplainedObservation": {
+    "fixed": false,
+    "reliablyReproduced": false,
+    "evidence": "target/retained-owner-qualification-bqhZE0/room-refusal-observation.json",
+    "originalStderr": "target/retained-owner-qualification-bqhZE0/early-room-refusal.stderr",
+    "exactFailedFixtureSnapshotAvailable": false,
+    "description": "One initial synthetic room setup refused catalog_integrity before handoff fault injection; its inner cause was normalized and not recorded. Subsequent diagnostic and uninstrumented runs pass, but do not establish a cause or repair. No integrity check was relaxed and no data was repaired.",
+    "next": "Retain the observation and capture its original inner error and exact selected fixture if it recurs."
+  },
+  "remaining": [
+    "Trace the unexplained initial synthetic catalog-integrity refusal if it recurs",
+    "Participant and room catalog integration with generation-aware operational custody",
+    "Independent comment and server-log generations",
+    "Complete provider/client closure and protected credential handoff",
+    "Authenticated whole-room generation activation and cross-device writer fencing",
+    "Performance, browser reliability, licenses, hosted verification and all remaining V1 release gates; the historical WebKit fault is not confirmed fixed"
+  ],
+  "pushTagPublishDeploy": false
+}

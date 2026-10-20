@@ -146,6 +146,11 @@ session and upload owner, using their ordinary close contracts.
 
 Authority and cancellation are checked again after awaited release, before
 ordinary owners are returned. A captured source check also spans that interval.
+Actual suggestion, revision and version owners must retain their original
+core/source binding and live storage custody. Irreversible database retirement
+is checked separately from ordinary retryable save failures. The actual upload
+owner must remain open; its synchronous `checkOpen()` performs no I/O and is not
+a flush, idle barrier or proof that provider references have been reconciled.
 If this final admission fails after coordination was released, the handle permits
 cleanup only: regaining authority does not make another handoff on it valid.
 Use `close()` or `discardAndClose()`, then resume the retained operation with
@@ -186,9 +191,16 @@ across 66 families, retain exact stored records and readable exports, and restor
 264 fresh participants. Their future history matches independent native replay
 at 528 document and 240 review checkpoints. The combined run passes 68 selected
 checks, 1,157 script tests and 385 editor tests, with three existing opt-in skips.
-Independent suggestion, revision and version-store upgrades still reproduce six
-failed-durability handoffs and remain open. Existing host references and server
-or cross-device authorization are not fenced by these local checks.
+
+The [retained-owner qualification](qualification/2026-10-20-retained-owner-handoffs.json)
+repairs the independent retained-store and upload handoffs. Source and fresh
+installed archives each pass 312 upgrade refusals and 180 ordinary save-retry
+handoffs across all 66 native families. Refusals retain exact committed bytes
+and readable packet exports for explicit cleanup and separately named recovery;
+future native history matches independent references. The combined run passes
+71 selected checks, 1,172 script tests and 385 editor tests, with three existing
+opt-in skips. Existing host references and server or cross-device authorization
+are not fenced by these local checks.
 
 Functional probes cover all 66 original native configurations, 198 current-state
 reopens, fresh read-only policy, peer edits, saved Redo, new pending proposals and

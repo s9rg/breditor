@@ -18,6 +18,6 @@ const {currentPolicy,...missingPolicy}=resume;
 OperationalSharedParticipant.resume(missingPolicy);
 // @ts-expect-error Current document policy is Boolean, not a persisted role name.
 OperationalSharedParticipant.resume({...resume,currentPolicy:{documentReadOnly:"reader",reviewAccess:"read_only"}});
-async function consumers(){const owner=await documentOperation,parts=await owner.intoParts();const selection:SharedDocumentSelection|null=parts.session.core.view().selection;parts.session.core.selectDocument();return selection;}
+async function consumers(){const owner=await documentOperation,parts=await owner.intoParts();const checked:void=parts.uploads.checkOpen();void checked;const selection:SharedDocumentSelection|null=parts.session.core.view().selection;parts.session.core.selectDocument();return selection;}
 const retained=RichAssetStore.openRetained("retained-assets");
 void [operation,documentOperation,reopen,currentPolicy,consumers,retained];

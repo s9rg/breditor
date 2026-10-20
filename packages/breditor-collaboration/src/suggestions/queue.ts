@@ -1,6 +1,7 @@
 /** Durable client intent, not a second document, current authority or optimistic accepted content. */
 import {SharedRelayError} from "../relay/validation.js";
 import {SharedEditorError} from "../core.js";
+import {registerManagedSource,managedSourceUnavailable} from "../managed_custody.js";
 import {encodeRetainedStoreBackup,decodeRetainedStoreBackup,checkRetainedStoreRecovery,checkRetainedStoreSignal,retainedStoreNativeAdmission} from "../backups/retained_store.js";
 import {retainedStoreDestinationExists,insertRetainedStoreRecord} from "../backups/retained_store_database.js";
 import type {SharedSuggestionQueueBackupOptions,SharedRetainedStoreBackupOptions} from "../backups/retained_store_types.js";
@@ -30,9 +31,9 @@ export class SharedSuggestionQueue<P extends SharedSelectionPolicy=SharedSelecti
  readonly #assertSource:()=>void;
  #record:SharedSuggestionQueueRecord;#rows=new Map<string,{info:SharedDocumentSuggestionInfo;row:SharedRetainedSuggestion}>();#durable=new Map<string,string>();
  #pending:SharedSuggestionQueueRecord|undefined;#running:Promise<void>|undefined;#failure:unknown;#retiring=false;#closed=false;#closing:Promise<void>|undefined;#released:Promise<void>|undefined;
- #listeners=new Set<()=>void>();#notifying=false;
+ #listeners=new Set<()=>void>();#notifying=false;#storageChanged=false;
  #restoreInsert=false;#restoreSignal:AbortSignal|undefined;
- private constructor(options:SharedSuggestionQueueOptions<P>,db:IDBDatabase|undefined,lease:SuggestionQueueLease,record:SharedSuggestionQueueRecord,assertSource:()=>void,segmented?:SegmentedRetainedPort<"suggestions">){this.#segmented=segmented;this.#options=options;this.#db=db;this.#lease=lease;this.#assertSource=assertSource;this.#record=record;this.#rows=this.#admit(record);registerSuggestionRecoveryParticipant(this,()=>{this.#live();this.#assertSource();if(this.#retiring||this.#running)throw new SharedRelayError("suggestion_recovery_in_use");});if(db)db.onversionchange=()=>{db.close();this.#failure=new SharedRelayError("suggestion_database_versionchange");this.#notify();};}
+ private constructor(options:SharedSuggestionQueueOptions<P>,db:IDBDatabase|undefined,lease:SuggestionQueueLease,record:SharedSuggestionQueueRecord,assertSource:()=>void,segmented?:SegmentedRetainedPort<"suggestions">){this.#segmented=segmented;this.#options=options;this.#db=db;this.#lease=lease;this.#assertSource=assertSource;this.#record=record;this.#rows=this.#admit(record);registerManagedSource(this,options.storage.core,()=>{this.#live();this.#assertSource();if(this.#retiring||this.#storageChanged)throw managedSourceUnavailable();});registerSuggestionRecoveryParticipant(this,()=>{this.#live();this.#assertSource();if(this.#retiring||this.#running)throw new SharedRelayError("suggestion_recovery_in_use");});if(db)db.onversionchange=()=>{this.#storageChanged=true;db.close();this.#failure=new SharedRelayError("suggestion_database_versionchange");this.#notify();};}
  static async open<Q extends SharedSelectionPolicy>(input:SharedSuggestionQueueOptions<Q>):Promise<SharedSuggestionQueue<Q>>{
   return SharedSuggestionQueue.#open(input);
  }

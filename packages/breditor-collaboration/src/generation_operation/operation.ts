@@ -14,6 +14,7 @@ import {beginGenerationOperationSnapshot,operationCurrentGuard,prepareTransferre
 import {createGenerationOperationDatabase,existingGenerationOperationDatabase,readGenerationOperationDatabase,generationOperationRecord,publishGenerationOperation,type GenerationOperationRecord} from "./database.js";
 import {openOperationalGenerationOwners,verifyOperationalGenerationOwners} from "./components.js";
 import {generationOperationFailure as fail} from "./policy.js";
+import {RichAssetStore} from "@breditor/experimental-rich-content";
 import type {SharedGenerationOperationBeginOptions,SharedGenerationOperationResumeOptions,SharedGenerationOperationProgress,OperationalSharedGenerationParticipantParts} from "./contract.js";
 interface State<P extends SharedSelectionPolicy>{p:PreparedGenerationRecovery<P>;owners:GenerationRecoveryOwners<P>;origin:NativeGenerationOperationOrigin;db:IDBDatabase;recoveryDb:IDBDatabase;record:GenerationOperationRecord;leases:RecoveryLease[];life:GenerationOperationLife}
 const key=Object.freeze({});
@@ -59,7 +60,7 @@ export class OperationalSharedGenerationParticipant<P extends SharedSelectionPol
  async check():Promise<void>{this.#start();try{this.#guard();await retained(this.#state);await verifyOperationalGenerationOwners(this.#state.p,this.#state.owners,this.#state.origin);}finally{this.#busy=false;}}
  /** The host may continue editing/transport after transfer; saved operation intent stays retained. */
  async intoParts():Promise<Readonly<OperationalSharedGenerationParticipantParts<P>>>{
-  this.#start();try{const s=this.#state;this.#guard();await retained(s);await verifyOperationalGenerationOwners(s.p,s.owners,s.origin);const parts=Object.freeze({source:generationOwnerSource(s.p,s.owners),uploads:s.owners.uploads!});await release(s.db,s.recoveryDb,s.leases);this.#released=true;s.p.guard();s.origin.verifySource(parts.source);s.origin.dispose();s.p.backup.dispose();this.#closed=true;return parts;}finally{this.#busy=false;}
+  this.#start();try{const s=this.#state;this.#guard();await retained(s);await verifyOperationalGenerationOwners(s.p,s.owners,s.origin);const parts=Object.freeze({source:generationOwnerSource(s.p,s.owners),uploads:s.owners.uploads!});await release(s.db,s.recoveryDb,s.leases);this.#released=true;s.p.guard();s.origin.verifySource(parts.source);RichAssetStore.prototype.checkOpen.call(parts.uploads);s.origin.dispose();s.p.backup.dispose();this.#closed=true;return parts;}finally{this.#busy=false;}
  }
  /** Failed ordinary saves or custody releases remain retryable; original files are not discarded. */
  async close():Promise<void>{if(this.#closed)return;this.#start(false);try{const s=this.#state;await s.owners.session?.close();s.owners.uploads?.close();await release(s.db,s.recoveryDb,s.leases);this.#released=true;s.origin.dispose();s.p.backup.dispose();this.#closed=true;}finally{this.#busy=false;}}

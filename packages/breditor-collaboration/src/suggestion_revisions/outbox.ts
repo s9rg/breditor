@@ -5,6 +5,7 @@ import {checkSourceCheckpoint} from "../persistence/source_checkpoint.js";
 import {segmentedRetainedPort,type SegmentedRetainedPort} from "../segmented_relay/retained_port.js";
 import {same} from "../suggestions/validation.js";
 import {SharedEditorError} from "../core.js";
+import {registerManagedSource,checkManagedSource,managedSourceUnavailable} from "../managed_custody.js";
 import {isOperationalComponent} from "../participant_operation/component_admission.js";
 import {existingOperationalComponent} from "../participant_operation/existing_component.js";
 import {operationFailure} from "../participant_operation/errors.js";
@@ -40,11 +41,12 @@ export class SharedSuggestionRevisions<P extends SharedSelectionPolicy=SharedSel
  #wanted:boolean;#epoch=0;#serial=Promise.resolve();#scheduled=false;#dirty=false;#signature="";#error:string|null=null;#working=false;
  #downloads=new Map<string,ReturnType<typeof loadRevision<P>>>();
  #restoreInsert=false;#restoreSignal:AbortSignal|undefined;
- #tasks=0;#connections=new Set<Promise<void>>();
+ #tasks=0;#connections=new Set<Promise<void>>();#storageChanged=false;
  private constructor(options:SharedSuggestionRevisionsOptions<P>,db:IDBDatabase|undefined,record:SharedSuggestionRevisionsRecord,segmented?:SegmentedRetainedPort<"revisions">){
   this.#segmented=segmented;
   this.#options=options;this.#core=options.queue.core;this.#db=db;this.#record=record;this.#wanted=options.autoStart!==false;this.#admit(record);
-  if(db)db.onversionchange=()=>{db.close();this.#failure=new SharedRelayError("suggestion_database_versionchange");this.#report(this.#failure);};
+  registerManagedSource(this,this.#core,()=>{this.#localCheck();if(this.#closing||this.#storageChanged)throw managedSourceUnavailable();checkManagedSource(options.queue,this.#core);});
+  if(db)db.onversionchange=()=>{this.#storageChanged=true;db.close();this.#failure=new SharedRelayError("suggestion_database_versionchange");this.#report(this.#failure);};
   this.#off.push(registerSuggestionRecoveryParticipant(options.queue,()=>this.#recoveryIdle()));
   try{this.#off.push(options.queue.subscribe(()=>this.#changed()));this.#off.push(options.transport.subscribe(()=>this.#changed()));this.#off.push(this.#core.subscribe(()=>this.#changed()));}catch(error){this.#closed=true;this.#wanted=false;this.#epoch++;for(const off of [...this.#off].reverse())try{off();}catch{/* Failed construction owns no live delivery path. */}throw error;}
  }

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {IDBFactory,IDBObjectStore} from "fake-indexeddb";
+import {IDBFactory,IDBObjectStore,IDBDatabase} from "fake-indexeddb";
 import {RichAssetStore} from "../packages/breditor-experimental-rich-content/dist/browser/assets/store.js";
 import {readRichAssetBackup,RichAssetArchive} from "../packages/breditor-experimental-rich-content/dist/browser/assets/archive/read_backup.js";
 import {openDatabase} from "../packages/breditor-experimental-rich-content/dist/browser/assets/database.js";
@@ -9,6 +9,12 @@ const originals=new Map(["indexedDB","Image","navigator"].map(key=>[key,Object.g
 test.beforeEach(()=>{for(const [key,value]of Object.entries({indexedDB:new IDBFactory(),Image:ReviewFixtureImage,navigator:{locks:{request:(_name,run)=>Promise.resolve().then(run)}}}))Object.defineProperty(globalThis,key,{value,configurable:true});});
 test.afterEach(()=>{for(const [key,value]of originals)if(value)Object.defineProperty(globalThis,key,value);else delete globalThis[key];});
 const blob=value=>new Blob([value],{type:"image/png"});
+test("live asset-owner admission is synchronous and performs no I/O, write or notification",async()=>{
+ let notices=0;const source=await RichAssetStore.open("live-owner",{onChange(){notices++;}});try{await source.ingest(blob(pixel));const before=new Uint8Array(await(await source.exportBackup()).arrayBuffer()),count=notices,transaction=IDBDatabase.prototype.transaction;try{IDBDatabase.prototype.transaction=function(){throw Error("Unexpected admission I/O");};for(let i=0;i<3;i++)assert.equal(source.checkOpen(),undefined);assert.throws(()=>RichAssetStore.prototype.checkOpen.call({}));}finally{IDBDatabase.prototype.transaction=transaction;}assert.equal(notices,count);assert.deepEqual(new Uint8Array(await(await source.exportBackup()).arrayBuffer()),before);}finally{source.close();}assert.throws(()=>source.checkOpen(),/Asset store is closed/);
+});
+test("live asset-owner admission refuses a genuine database version-change retirement",async()=>{
+ const source=await RichAssetStore.open("upgraded-live-owner");try{await source.ingest(blob(pixel));const db=await new Promise((resolve,reject)=>{const request=indexedDB.open("upgraded-live-owner",2);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});try{assert.equal(db.version,2);assert.throws(()=>source.checkOpen(),/Asset store is closed/);await assert.rejects(source.list(),/Asset store is closed/);const count=await new Promise((resolve,reject)=>{const tx=db.transaction("assets","readonly"),request=tx.objectStore("assets").count();tx.oncomplete=()=>resolve(request.result);tx.onabort=()=>reject(tx.error);});assert.equal(count,1);}finally{db.close();}}finally{source.close();}
+});
 test("source callback executes in an active asset snapshot and a queued write cannot split its cut",async()=>{
  const source=await RichAssetStore.open("source");let tx,queued,archive,restored;const cursor=IDBObjectStore.prototype.openCursor;
  try{await source.ingest(blob(pixel));IDBObjectStore.prototype.openCursor=function(...args){if(this.name==="assets")tx=this.transaction;return cursor.apply(this,args);};
