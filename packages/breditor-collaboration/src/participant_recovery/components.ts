@@ -11,12 +11,15 @@ import {cacheKey} from "../versions/database.js";
 import {participantDigest} from "../participant_backup/format.js";
 import {inspectRecord,inspectUploads} from "./inspect.js";
 import {recoveryFailure} from "./errors.js";
+import {checkManagedSource} from "../managed_custody.js";
 import type {PreparedRecovery} from "./prepare.js";
 import type {SharedSelectionPolicy} from "../types.js";
 import type {SharedAssetReferenceCaptureOptions} from "../asset_references_capture.js";
 import type {SharedParticipantRecoveryStep} from "./types.js";
 export type RecoverySession<P extends SharedSelectionPolicy>=SharedPersistentSession<P>|SharedReviewPersistentSession<P>;
 export interface RecoveryOwners<P extends SharedSelectionPolicy> {session?:RecoverySession<P>;suggestions?:SharedSuggestionQueue<P>;revisions?:SharedSuggestionRevisions<P>;versions?:SharedDocumentVersions<P>;uploads?:RichAssetStore}
+/** A readable native cut is not proof of a live session or its original writer leases. */
+export function checkManagedRecoveryOwners<P extends SharedSelectionPolicy>(owners:RecoveryOwners<P>):void{if(!owners.session)throw recoveryFailure("recovery_missing");checkManagedSource(owners.session,owners.session.core);}
 /** No empty-document fallback, implicit history upgrade or file-selected factory. */
 async function session<P extends SharedSelectionPolicy>(p:PreparedRecovery<P>,adopt:boolean):Promise<RecoverySession<P>>{
  const selected=p.session,common={database:p.destinations.document},backup={...common,backupJson:p.backups.document,writerRecovery:"host-reacquired" as const},open={...common,create:()=>{throw recoveryFailure("recovery_missing");}};

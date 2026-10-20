@@ -12,6 +12,7 @@ import type {SharedSessionBackupOptions,SharedDocumentBackupOptions,SharedSearch
 import {fenceOpeningDatabase} from "./opening_database.js";
 import {recoveryOriginFor,inheritRecoveryOrigin} from "../participant_operation/admission.js";
 import {existingSessionDatabase} from "../participant_operation/existing_session.js";
+import {registerManagedSource,managedSourceUnavailable} from "../managed_custody.js";
 
 export interface SharedSessionOptions {
  database:string;room:string;writer:string;
@@ -50,14 +51,15 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
  readonly #selectionPolicy:P;
  readonly #search:boolean;
  #pending:{json:string;revision:string}|undefined;#running:Promise<void>|undefined;#failure:unknown;
- #saved:string|undefined;#savedRevision:string|null=null;#closed=false;
+ #saved:string|undefined;#savedRevision:string|null=null;#closed=false;#storageChanged=false;
  #closeRequest:Promise<void>|undefined;#released:Promise<void>|undefined;
  private constructor(db:IDBDatabase,lease:SharedWriterLease,core:SharedRichEditor<P>,recovered:boolean,options:SharedSessionOptions|SharedDocumentSessionOptions,selectionPolicy:P,search=false){
   this.#db=db;this.#lease=lease;this.core=core;this.recovered=recovered;this.#options=options;this.#selectionPolicy=selectionPolicy;this.#search=search;
   this.#unsubscribe=core.subscribe(()=>{try{this.save();}catch(error){this.#failed(error);}});
+  registerManagedSource(this,core,()=>{this.#live();if(this.core!==core||this.#storageChanged||this.#closeRequest)throw managedSourceUnavailable();});
   db.onversionchange=()=>{
    // An upgrade must unblock its database, not silently destroy an unsaved native journal.
-   this.core.retire();db.close();
+   this.#storageChanged=true;core.retire();db.close();
    this.#failed(new SharedEditorError("session_versionchange","Shared storage changed; export the retired journal before explicitly discarding this writer"));
   };
  }

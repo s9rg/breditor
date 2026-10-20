@@ -22,6 +22,7 @@ import {encodeBlockLayoutPatch} from "@breditor/experimental-rich-content/render
 import type {RichSearchQuery,RichSearchReplacement,RichInputRuleOutcome} from "@breditor/experimental-rich-content";
 import {SharedSearchResults,nativeSearchResults} from "./search_results.js";
 import {parseSegmentedHistoryInfo,type SharedSegmentedHistoryInfo} from "./segmented_history.js";
+import {registerManagedCore} from "./managed_custody.js";
 export class SharedEditorError extends Error {
  constructor(readonly code:string,message:string){super(message);this.name="SharedEditorError";}
 }
@@ -87,7 +88,7 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
    if(view.format!==(this.#selectionPolicy==="document-v1"?"breditor/shared-document-view":"breditor/shared-rich-view")||view.formatVersion!==1)throw new SharedEditorError("owner_abi","Use the matching explicitly selected shared view family");
    if(this.#selectionPolicy==="document-v1"&&(!("selectionEditing" in view)||view.selectionEditing!=="document-v1"))throw new SharedEditorError("selection_policy","Native document view did not declare the selected scope policy");
    if(view.rangeEditing!==undefined&&(view.rangeEditing!=="general-v1"||!this.supportsGeneralRanges()))throw new SharedEditorError("general_range_unavailable","Use a complete matching native general-range owner");
-   owners.add(raw);
+   owners.add(raw);registerManagedCore(this,()=>{this.#live();if(this.#retired)throw new SharedEditorError("retired","The shared writer no longer has live managed custody");});
   }
   catch(error){this.#observation?.free();this.#raw=undefined;raw.free();throw error;}
  }

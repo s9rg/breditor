@@ -5,7 +5,7 @@ import {prepareRecovery,type PreparedRecovery} from "./prepare.js";
 import {RecoveryLease} from "./lease.js";
 import {createRecoveryJournal,existingDatabase,readRecoveryJournal,writeRecoveryJournal,type RecoveryRecord} from "./journal.js";
 import {requireAbsent} from "./inspect.js";
-import {restoreComponent,checkComponent,ownerSources,discardRecoveryOwners,type RecoveryOwners,type RecoverySession} from "./components.js";
+import {restoreComponent,checkComponent,checkManagedRecoveryOwners,ownerSources,discardRecoveryOwners,type RecoveryOwners,type RecoverySession} from "./components.js";
 import {recoveryFailure} from "./errors.js";
 import type {SharedParticipantRecoveryOptions,SharedParticipantRecoveryProgress} from "./types.js";
 import type {SharedSelectionPolicy} from "../types.js";
@@ -13,7 +13,7 @@ const recoveryKey=Object.freeze({});
 export interface ReadyState<P extends SharedSelectionPolicy>{prepared:PreparedRecovery<P>;owners:RecoveryOwners<P>;db:IDBDatabase;leases:RecoveryLease[]}
 export interface RecoveredSharedParticipantParts<P extends SharedSelectionPolicy=SharedSelectionPolicy>{readonly sources:SharedAssetReferenceCaptureOptions<P>;readonly session:RecoverySession<P>;readonly uploads:RichAssetStore}
 async function verify<P extends SharedSelectionPolicy>(p:PreparedRecovery<P>,owners:RecoveryOwners<P>):Promise<void>{
- p.guard();const source=captureSharedAssetReferences(ownerSources(p,owners));try{await SharedParticipantBackup.prototype.verifyRecovered.call(p.backup,source,owners.uploads!,p.signal?{signal:p.signal}:{});}finally{source.dispose();}p.guard();
+ p.guard();checkManagedRecoveryOwners(owners);const source=captureSharedAssetReferences(ownerSources(p,owners));try{await SharedParticipantBackup.prototype.verifyRecovered.call(p.backup,source,owners.uploads!,p.signal?{signal:p.signal}:{});}finally{source.dispose();}p.guard();checkManagedRecoveryOwners(owners);
 }
 async function release(db:IDBDatabase,leases:RecoveryLease[]):Promise<void>{const results=await Promise.allSettled([...leases].reverse().map(lease=>lease.close()));if(results.some(r=>r.status==="rejected"))throw recoveryFailure("recovery_storage");db.close();}
 let readyFactory:<P extends SharedSelectionPolicy>(state:ReadyState<P>)=>RecoveredSharedParticipant<P>;
@@ -37,14 +37,14 @@ export class RecoveredSharedParticipant<P extends SharedSelectionPolicy=SharedSe
   transferReady=async<Q extends SharedSelectionPolicy,T>(owner:RecoveredSharedParticipant<Q>,take:(state:ReadyState<Q>)=>Promise<T>)=>{
    if(owner.#closed||owner.#released)throw recoveryFailure("recovery_closed");if(owner.#busy)throw recoveryFailure("recovery_in_use");owner.#busy=true;
    try{const state=owner.#state,{prepared:p,owners,db}=state;await verify(p,owners);if((await readRecoveryJournal(db,p.record)).phase!=="ready")throw recoveryFailure("recovery_diverged");p.guard();
-    const result=await take(state);await verify(p,owners);if((await readRecoveryJournal(db,p.record)).phase!=="ready")throw recoveryFailure("recovery_diverged");p.guard();owner.#closed=true;return result;
+    const result=await take(state);await verify(p,owners);if((await readRecoveryJournal(db,p.record)).phase!=="ready")throw recoveryFailure("recovery_diverged");p.guard();checkManagedRecoveryOwners(owners);owner.#closed=true;return result;
    }finally{owner.#busy=false;}
   };
  }
  /** Revalidate the actual owners and retained completion before releasing only coordinator locks. */
  async intoParts():Promise<Readonly<RecoveredSharedParticipantParts<P>>>{
   if(this.#closed||this.#released)throw recoveryFailure("recovery_closed");if(this.#busy)throw recoveryFailure("recovery_in_use");this.#busy=true;
-  try{const {prepared:p,owners,db,leases}=this.#state;await verify(p,owners);const record=await readRecoveryJournal(db,p.record);if(record.phase!=="ready")throw recoveryFailure("recovery_diverged");p.guard();const source=captureSharedAssetReferences(ownerSources(p,owners));try{await release(db,leases);this.#released=true;p.guard();source.check();this.#closed=true;return Object.freeze({sources:this.sources,session:this.session,uploads:this.uploads});}finally{source.dispose();}}finally{this.#busy=false;}
+  try{const {prepared:p,owners,db,leases}=this.#state;await verify(p,owners);const record=await readRecoveryJournal(db,p.record);if(record.phase!=="ready")throw recoveryFailure("recovery_diverged");p.guard();const source=captureSharedAssetReferences(ownerSources(p,owners));try{await release(db,leases);this.#released=true;p.guard();source.check();checkManagedRecoveryOwners(owners);this.#closed=true;return Object.freeze({sources:this.sources,session:this.session,uploads:this.uploads});}finally{source.dispose();}}finally{this.#busy=false;}
  }
  /** Graceful close retains failures for retry through the original owner close contracts. */
  async close():Promise<void>{if(this.#closed)return;if(this.#busy)throw recoveryFailure("recovery_in_use");this.#busy=true;try{const {owners,db,leases}=this.#state;await owners.revisions?.close();await owners.suggestions?.close();await owners.versions?.close();await owners.session?.close();owners.uploads?.close();await release(db,leases);this.#closed=true;}finally{this.#busy=false;}}
@@ -78,7 +78,7 @@ export class SharedParticipantRecovery<P extends SharedSelectionPolicy=SharedSel
     if(row.state!=="complete")await this.#update({...this.#record,steps:this.#record.steps.map((r,i)=>i===index?{...r,state:"complete"}:r)});
    }
    await verify(p,owners);this.#guard();await this.progress();if(this.#record.phase!=="ready")await this.#update({...this.#record,phase:"ready"});this.#guard();await this.progress();
-   const result=readyFactory({prepared:p,owners,db:this.#db,leases:this.#leases});this.#closed=true;transferred=true;return result;
+   checkManagedRecoveryOwners(owners);const result=readyFactory({prepared:p,owners,db:this.#db,leases:this.#leases});this.#closed=true;transferred=true;return result;
   }finally{if(!transferred)await discardRecoveryOwners(owners);}
  }
  /** Wait for private in-flight cleanup, then release handles; retain all committed destinations. */

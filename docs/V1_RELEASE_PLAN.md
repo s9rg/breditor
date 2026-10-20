@@ -43,6 +43,25 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+Original participant and aggregate-room handoffs now distinguish readable native
+history from live managed session/core custody. Storage upgrades and retirement
+refuse before owners transfer, including retirement in the room's final host
+callback. Read-only operation and retired-source backup exports keep their
+original meanings. The [managed handoff qualification](qualification/2026-10-20-managed-handoff-boundaries.json)
+passes 68 selected checks, 1,157 script tests and 385 editor tests, with three
+existing opt-in skips. Source and fresh archives each pass 264 participant
+retirement refusals and fresh recoveries, plus twenty room upgrade refusals and
+ten final-callback retirement refusals. All 329 generation assertions and the
+existing authenticated workflows pass in source and installed consumers.
+
+The Wasm pair is hash-verified and reused; 2,747 unchanged native inputs carry
+the prior 653 shared and 216 relay Rust tests, not a fresh full native suite.
+Inventory fixture builds run normally. Independent suggestion, revision and
+version-store upgrades still reproduce six failed-durability handoffs; that is
+the next repair. All 13 V1 gates remain open, including whole-room generation
+activation and release/platform qualification. No package version is promoted,
+and nothing is pushed, tagged, published or deployed.
+
 Original ready, operational and aggregate-room handoffs now recheck current
 authority and cancellation after coordination release. Room children remain
 owned together until one synchronous final commit, so a late refusal consumes
@@ -54,12 +73,11 @@ participant and ten room families, including 268 participant cold resumes,
 hash-verified and reused; unchanged native inputs carry the prior Rust-suite
 qualification, not a fresh full native run. Inventory fixture builds run normally.
 
-This is a scoped authority/cancellation repair. A separate native source
-database upgrade during release still reproduces a readable but retired owner
-in ready and operational participant handoffs. Managed-custody admission is the
-next repair. Generation catalog integration, independent comment/server
-generations, whole-room activation and the other V1 gates remain open. No version,
-tag, publication or deployment is promoted; all 13 release gates remain open.
+That checkpoint covered authority/cancellation admission; the later managed
+native checks above close its separately reproduced retired-session fault.
+Generation catalog integration, independent comment/server generations,
+whole-room activation and the other V1 gates remain open. No version, tag,
+publication or deployment is promoted.
 
 The [operational generation participant](GENERATION_PARTICIPANT_OPERATION.md)
 now continues genuine recovery custody, edits and seals further native history,

@@ -1,0 +1,152 @@
+{
+  "format": "breditor/managed-native-handoff-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-20",
+  "classification": "PROGRESS",
+  "v1Ready": false,
+  "publicationApproved": false,
+  "openV1Gates": 13,
+  "scope": "Original ready, operational and aggregate-room native session/core custody after asynchronous release and final host callbacks. Independent retained-store retirement remains open. Not platform qualification, whole-room activation or V1 approval.",
+  "source": {
+    "baseCommit": "77eee40361b2958f1d457fa432cd3e38fc9fbbf4",
+    "testedWorkingTreeSha256": "0a9a7825da5695ff2c2f1ba0c0a7635e2606453f81535b8c82529d37ba4587bd",
+    "files": 4825,
+    "bytes": 41579834,
+    "nonDocumentationSha256": "536a991656da1d9ede0a71c6777a45a65427a425d08a790508f6842a9a76c8c8",
+    "postQualificationChanges": "Only the three recovery guides, V1 checkpoint note and this scoped record."
+  },
+  "evidence": {
+    "candidate": "target/v1-candidate-runs/run-GO0XwO/result.json",
+    "result": "target/managed-handoff-qualification-pNktX2/result.json",
+    "audit": "target/managed-handoff-qualification-pNktX2/checkpoint-audit.json",
+    "artifactSnapshots": "target/managed-handoff-qualification-pNktX2/snapshots",
+    "archives": "target/managed-handoff-qualification-pNktX2/archives",
+    "baselineReproductions": "target/managed-handoff-qualification-pNktX2/before-fix.json",
+    "remainingRetainedStoreReproduction": "target/managed-handoff-qualification-pNktX2/remaining-retained-store-fault.json",
+    "installedParticipants": "target/managed-handoff-qualification-pNktX2/snapshots/target/participant-operation-installed-consumer.json",
+    "installedRooms": "target/managed-handoff-qualification-pNktX2/snapshots/target/room-operational-recovery-installed-consumer.json"
+  },
+  "implementation": {
+    "repairedPaths": [
+      "RecoveredSharedParticipant.intoParts refuses a retired native source after coordination release.",
+      "OperationalSharedParticipant.intoParts refuses a retired native source after coordination release.",
+      "The aggregate room handoff refuses an upgrade in either child or retirement in the final host guard before consuming any child."
+    ],
+    "baselineArchiveSha256": "6e293a003c6ddb7a5b946f2a16a6f187a2d552a448dc305e23b287002a460d8f",
+    "admission": "Internal genuine-constructor registrations check private core retirement/disposal and actual session closure, original core binding, irreversible storage-version change and original writer leases. The checks probe no edit, hold, save or publication and do not change read-only policy.",
+    "boundaries": "Native checks repeat in ready verification/finish/transfer, operational verification and post-release handoff, and after every final aggregate host guard before any child consumption.",
+    "retention": "Native retirement keeps exact readable histories, backup exports, pending work, uploads and committed records. Failed post-release handoffs remain cleanup-only. Upgraded destinations are not downgraded or overwritten; explicit discard releases native leases before separately named fresh recovery.",
+    "authorityBoundary": "These local checks do not revoke preexisting host references, authenticate current server permission or fence other devices.",
+    "rootApiExportsChanged": false,
+    "originalProtocolMeaningsDefaultsAndBoundsUnchanged": true,
+    "productionRustSourceChanged": false,
+    "vendorSourceChanged": false,
+    "dependencyVersionUpgrades": false,
+    "automaticRollover": false,
+    "compactionOrGarbageCollection": false,
+    "unlimitedLifetime": false
+  },
+  "tests": {
+    "selectedChecksPassed": 68,
+    "scriptTestsPassed": 1157,
+    "existingOptInScriptChecksSkipped": 3,
+    "editorTestsPassed": 385,
+    "generationSourceTestsPassed": 329,
+    "generationInstalledTestsPassed": 329,
+    "reproducedBaselineScenarios": 7,
+    "participantManagedHandoffs": {
+      "nativeFamilies": 66,
+      "readySourceUpgrade": 66,
+      "operationalSourceUpgrade": 66,
+      "readyCoreRetire": 66,
+      "operationalCoreRetire": 66,
+      "readableSourceExports": 264,
+      "unchangedStoredRecords": 264,
+      "freshRecoveries": 264,
+      "futureDocumentCheckpoints": 528,
+      "futureReviewCheckpoints": 240
+    },
+    "roomManagedHandoffs": {
+      "nativeRooms": 10,
+      "sourceUpgradeRefusals": 20,
+      "unchangedStoredRecords": 20,
+      "retainedFiles": 60,
+      "freshParticipants": 40,
+      "lateRetiredChildRefusals": 10,
+      "lateCohortColdParticipants": 20
+    },
+    "originalAuthorityHandoffs": {
+      "nativeFamilies": 66,
+      "readyAuthority": 66,
+      "readyAbort": 66,
+      "readyCallbackAbort": 2,
+      "operationalAuthority": 66,
+      "operationalAbort": 66,
+      "operationalCallbackAbort": 2,
+      "coldReopens": 268,
+      "futureDocumentCheckpoints": 536,
+      "futureReviewCheckpoints": 244
+    },
+    "originalRoomAuthorityHandoffs": {
+      "nativeRooms": 10,
+      "authority": 10,
+      "abort": 10,
+      "coldReopens": 20,
+      "retainedFiles": 60,
+      "participants": 40,
+      "lateCohortRefusals": 10,
+      "lateCohortColdParticipants": 20
+    },
+    "sharedRustCarriedPassed": 653,
+    "relayRustCarriedPassed": 216,
+    "freshRustSuiteThisRun": false,
+    "nativeSourceAndBuildInputsUnchanged": 2747,
+    "freshWasmProducerRebuild": false,
+    "nativeInventoryFixtureBuildsInvokedNormally": true,
+    "nativeQualificationCarriedFrom": "2928ff7cc8bef611b08668b2ca66214ff1846bbd",
+    "allPriorParticipantAndRoomAssertionsRetained": true,
+    "sourceAndInstalledParticipantAndRoomResultsEqual": true,
+    "storageLocksAndRaster": "Actual canonical Wasm with synthetic IndexedDB, locks and raster decoding. Controlled faults, not physical durability or browser qualification."
+  },
+  "artifacts": {
+    "sharedWasmSha256": "5accbfe1c8d850ffac7b9689c639ae526d9db1997991aaec05b6e665afa86ead",
+    "localWasmSha256": "d2f0e56fa6e3ec0b42ba1784d6f17ba344247450fc5358ab0ca796fbf09dbb81",
+    "nativeRevisionHostSha256": "e5bc62cc731c8f98b6dd3ea14433044440b8778606b420c7adb48a8f30dda0b7",
+    "browserArchiveSha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+    "richArchiveSha256": "0acb66257da3df8bd91349ca65914a63fabff2979d6404f6634bf7f25eb458df",
+    "collaborationArchiveSha256": "69a02a19d50359aeb9e16dfe3fdf85a7cdb2ce374a8754d17fb4918c66c97053"
+  },
+  "verification": {
+    "checkedFiles": 172,
+    "immutableArtifactSnapshots": 16,
+    "frozenSourceUnchangedDuringAllChecks": true,
+    "runtimePairHashVerified": true,
+    "publicArchivesStrictTypes": true,
+    "workspaceLinks": false,
+    "noWorkspaceReactOrSyntheticStorageInProduction": true,
+    "explicitOverrides": [
+      {
+        "id": "installed-session-backups",
+        "args": ["scripts/check-session-backups-installed.mjs", "--reuse-runtimes"],
+        "reason": "Reuse only the hash-verified paired Wasm producers after checking2747 unchanged native inputs. All consumer assertions and ordinary native inventory fixture builds remain; permanent functional/full plans are unchanged."
+      }
+    ],
+    "producerReuseScope": "Only the paired Wasm producers are reused. Inventory fixture builds and native assertions run normally; no fresh full Rust-suite qualification is claimed."
+  },
+  "knownReproducedRemainingIssue": {
+    "fixed": false,
+    "cases": 6,
+    "components": ["suggestions", "revisions", "versions"],
+    "description": "Independent retained-store database upgrades during ready or operational handoff can still return a store whose persistence is failed. The actual returned store flush refuses with suggestion_database_versionchange or version_cache_versionchange while native session history remains readable.",
+    "next": "Add genuine retained-store managed-custody admission, distinct from readable exports and recoverable save failures, including every selected component at aggregate final commit."
+  },
+  "remaining": [
+    "Independent retained-store upgrade handoff admission and room-level qualification",
+    "Participant and room catalog integration with generation-aware operational custody",
+    "Independent comment and server-log generations",
+    "Complete provider/client closure and protected credential handoff",
+    "Authenticated whole-room generation activation and cross-device writer fencing",
+    "Performance, browser reliability, licenses, hosted verification and all remaining V1 release gates"
+  ],
+  "pushTagPublishDeploy": false
+}

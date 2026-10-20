@@ -173,12 +173,22 @@ regressions cold-resume 268 retained participants and compare 536 future documen
 and 244 future review checkpoints against independent native references. Fresh
 installed archives repeat the same assertions.
 
-This repairs authority and cancellation admission, not every managed-custody
-boundary. A separate reproduced fault remains open: changing the native source
-database version during release can still return a readable but retired owner
-that refuses editing. Its saved reproduction is included in the qualification.
-Existing host references and server or cross-device authorization are not fenced
-by this local handoff repair.
+The later [managed native handoff qualification](qualification/2026-10-20-managed-handoff-boundaries.json)
+closes the separate native-source retirement fault. Genuine private lifecycle
+checks distinguish live session/core custody from readable history; a storage
+upgrade, retirement, disposal or changed session core cannot admit a handoff.
+Read-only policy remains valid, and retired histories remain exportable before
+explicit disposal. All children are checked after the aggregate's final host
+callback and before any child is consumed.
+
+Source and fresh installed archives each refuse 264 native retirement handoffs
+across 66 families, retain exact stored records and readable exports, and restore
+264 fresh participants. Their future history matches independent native replay
+at 528 document and 240 review checkpoints. The combined run passes 68 selected
+checks, 1,157 script tests and 385 editor tests, with three existing opt-in skips.
+Independent suggestion, revision and version-store upgrades still reproduce six
+failed-durability handoffs and remain open. Existing host references and server
+or cross-device authorization are not fenced by these local checks.
 
 Functional probes cover all 66 original native configurations, 198 current-state
 reopens, fresh read-only policy, peer edits, saved Redo, new pending proposals and

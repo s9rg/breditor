@@ -5,7 +5,7 @@ import {transferRecoveredParticipant} from "../participant_recovery/recovery.js"
 import {RecoveryLease} from "../participant_recovery/lease.js";
 import {existingDatabase,readRecoveryJournal} from "../participant_recovery/journal.js";
 import type {PreparedRecovery} from "../participant_recovery/prepare.js";
-import {checkComponent,ownerSources,discardRecoveryOwners,type RecoveryOwners} from "../participant_recovery/components.js";
+import {checkComponent,checkManagedRecoveryOwners,ownerSources,discardRecoveryOwners,type RecoveryOwners} from "../participant_recovery/components.js";
 import {ParticipantOrigin} from "./origin.js";
 import {operationDestination,prepareTransferredOrigin,prepareOperationalResume} from "./prepare.js";
 import {operationFailure,operationSignal,operationName,SharedParticipantOperationError} from "./errors.js";
@@ -58,7 +58,7 @@ export class OperationalSharedParticipant<P extends SharedSelectionPolicy=Shared
   prepareOperationalGroup=async(owners,take,verify)=>{
    if(new Set(owners).size!==owners.length)throw operationFailure("operation_policy");for(const owner of owners){if(owner.#closed||owner.#released)throw operationFailure("operation_closed");if(owner.#busy)throw operationFailure("operation_in_use");}for(const owner of owners)owner.#busy=true;
    let offered=false,finished=false;const abandon=()=>{if(finished)return;finished=true;for(const owner of owners)owner.#busy=false;};
-   try{for(const owner of owners)await owner.#verify();const states=owners.map(owner=>owner.#state),result=await take(states,()=>{for(const owner of owners)owner.#released=true;});const handoff=Object.freeze({commit(){if(finished)throw operationFailure("operation_closed");try{verify(states);for(const owner of owners){owner.#state.origin.dispose();owner.#state.p.backup.dispose();owner.#closed=true;}return result;}finally{abandon();}},abandon});offered=true;return handoff;}finally{if(!offered)abandon();}
+   try{for(const owner of owners)await owner.#verify();const states=owners.map(owner=>owner.#state),result=await take(states,()=>{for(const owner of owners)owner.#released=true;});const handoff=Object.freeze({commit(){if(finished)throw operationFailure("operation_closed");try{verify(states);for(const owner of owners)checkManagedRecoveryOwners(owner.#state.owners);for(const owner of owners){owner.#state.origin.dispose();owner.#state.p.backup.dispose();owner.#closed=true;}return result;}finally{abandon();}},abandon});offered=true;return handoff;}finally{if(!offered)abandon();}
   };
  }
  /** Publish retained origin and operational intent before transferring genuine completed custody. */
@@ -97,12 +97,12 @@ export class OperationalSharedParticipant<P extends SharedSelectionPolicy=Shared
  origin(){if(this.#closed)throw operationFailure("operation_closed");return participantSelection(this.#state.p.expected);}
  /** Durable phase only. Actual checks still read native owners and current component data. */
  async progress():Promise<Readonly<SharedParticipantOperationProgress>>{if(this.#busy)throw operationFailure("operation_in_use");this.#busy=true;try{this.#guard();await retained(this.#state);this.#guard();return Object.freeze({phase:this.#state.record.phase});}finally{this.#busy=false;}}
- async #verify():Promise<void>{this.#guard();await retained(this.#state);await verifyOperationalOwners(this.#state.p,this.#state.owners,this.#state.origin);this.#guard();}
+ async #verify():Promise<void>{this.#guard();await retained(this.#state);await verifyOperationalOwners(this.#state.p,this.#state.owners,this.#state.origin);this.#guard();checkManagedRecoveryOwners(this.#state.owners);}
  async check():Promise<void>{if(this.#busy)throw operationFailure("operation_in_use");this.#busy=true;try{await this.#verify();}finally{this.#busy=false;}}
  /** Release coordination only after actual continuity checks; native author leases stay with parts. */
  async intoParts():Promise<Readonly<OperationalSharedParticipantParts<P>>>{
   if(this.#closed||this.#released)throw operationFailure("operation_closed");if(this.#busy)throw operationFailure("operation_in_use");this.#busy=true;
-  try{await this.#verify();const s=this.#state,parts=Object.freeze({sources:Object.freeze(ownerSources(s.p,s.owners)),session:s.owners.session!,uploads:s.owners.uploads!}),source=captureSharedAssetReferences(parts.sources);try{await release(s.db,s.recoveryDb,s.leases);this.#released=true;s.p.guard();s.origin.verify(parts.session.core as unknown as SharedRichEditor<SharedSelectionPolicy>);source.check();s.origin.dispose();s.p.backup.dispose();this.#closed=true;return parts;}finally{source.dispose();}}finally{this.#busy=false;}
+  try{await this.#verify();const s=this.#state,parts=Object.freeze({sources:Object.freeze(ownerSources(s.p,s.owners)),session:s.owners.session!,uploads:s.owners.uploads!}),source=captureSharedAssetReferences(parts.sources);try{await release(s.db,s.recoveryDb,s.leases);this.#released=true;s.p.guard();s.origin.verify(parts.session.core as unknown as SharedRichEditor<SharedSelectionPolicy>);source.check();checkManagedRecoveryOwners(s.owners);s.origin.dispose();s.p.backup.dispose();this.#closed=true;return parts;}finally{source.dispose();}}finally{this.#busy=false;}
  }
  /** Save ordinary owners before releasing custody. Failed saves/releases remain retryable. */
  async close():Promise<void>{if(this.#closed)return;if(this.#busy)throw operationFailure("operation_in_use");this.#busy=true;try{const s=this.#state,o=s.owners;await o.revisions?.close();await o.suggestions?.close();await o.versions?.close();await o.session?.close();o.uploads?.close();await release(s.db,s.recoveryDb,s.leases);s.origin.dispose();s.p.backup.dispose();this.#closed=true;}finally{this.#busy=false;}}

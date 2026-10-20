@@ -21,6 +21,7 @@ import type {SharedReviewedHistoryIdentity} from "../reviewed_history_types.js";
 import {reviewProgress,reviewStorageIdentity} from "../relay/review_validation.js";
 import {recoveryOriginFor} from "../participant_operation/admission.js";
 import {existingSessionDatabase} from "../participant_operation/existing_session.js";
+import {registerManagedSource,managedSourceUnavailable} from "../managed_custody.js";
 import type {SharedReviewRelayStorageIdentity,SharedReviewRelayProgress} from "../relay/review_types.js";
 import {admitPairedVersions,checkPairedNativeProgress} from "./review_record_admission.js";
 export type SharedPairedCheckpointRecord=ReviewCheckpointRecord|ReviewRelayCheckpointRecord|ReviewObserverCheckpointRecord|ReviewedReviewCheckpointRecord|SearchReviewCheckpointRecord;
@@ -53,14 +54,15 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
  readonly #db:IDBDatabase;readonly #documentLease:SharedWriterLease;readonly #reviewLease:ReviewWriterLease;readonly #options:SessionOptions<P>;
  #versions=new Map<string,string>();#unsubscribe:(()=>void)[]=[];#pending:PairedRecord|undefined;#running:Promise<void>|undefined;
  #relayProgress:SharedReviewRelayProgress={cursor:null,accepted:null,sequence:null};#durableRelayProgress:SharedReviewRelayProgress={cursor:null,accepted:null,sequence:null};
- #saved:string|undefined;#failure:unknown;#closed=false;#retiring=false;#closedRevisions:{documentRevision:string;reviewRevision:string}|undefined;#closing:Promise<void>|undefined;#released:Promise<void>|undefined;
+ #saved:string|undefined;#failure:unknown;#closed=false;#retiring=false;#storageChanged=false;#closedRevisions:{documentRevision:string;reviewRevision:string}|undefined;#closing:Promise<void>|undefined;#released:Promise<void>|undefined;
  private constructor(db:IDBDatabase,documentLease:SharedWriterLease,reviewLease:ReviewWriterLease,core:SharedRichEditor<P>,options:SessionOptions<P>,recovered:boolean,versions:readonly string[],progress?:SharedReviewRelayProgress){
   this.#db=db;this.#documentLease=documentLease;this.#reviewLease=reviewLease;this.core=core;this.#options=options;this.recovered=recovered;
   if(progress){this.#relayProgress=structuredClone(progress);this.#durableRelayProgress=structuredClone(progress);this.#validateNativeProgress(progress);}
   this.#versions=admitPairedVersions(core,versions);
   const autosave=()=>{try{this.save();}catch(error){this.#failed(error);}};
   this.#unsubscribe=[core.subscribe(autosave),core.subscribeReview(autosave)];
-  db.onversionchange=()=>{core.retire();db.close();this.#failed(new SharedEditorError("review_versionchange","Paired storage changed; export both readable histories before explicitly discarding this writer"));};
+  registerManagedSource(this,core,()=>{this.#live();if(this.core!==core||this.#storageChanged||this.#retiring)throw managedSourceUnavailable();});
+  db.onversionchange=()=>{this.#storageChanged=true;core.retire();db.close();this.#failed(new SharedEditorError("review_versionchange","Paired storage changed; export both readable histories before explicitly discarding this writer"));};
  }
  static async open<Q extends SharedSelectionPolicy>(input:SharedReviewSessionOptions<Q>):Promise<SharedReviewPersistentSession<Q>>{
   if("reviewedHistory" in input&&input.reviewedHistory!==undefined)return Promise.reject(new SharedEditorError("reviewed_session_factory","Use the explicitly reviewed paired factory"));

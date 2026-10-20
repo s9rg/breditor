@@ -182,11 +182,20 @@ cold-resume. Source and fresh installed archives repeat the same assertions.
 The combined run passes 68 selected checks, 1,156 script tests and 385 editor
 tests, with three existing opt-in skips.
 
-These regressions qualify aggregate authority/cancellation admission. A separate
-database-version-change fault still reproduces retired native owners in the
-original participant handoffs. Its room-level equivalent and managed-source
-liveness admission remain work. Neither this local transfer barrier nor its
-tests establish server authorization or cross-device writer fencing.
+The later [managed native handoff qualification](qualification/2026-10-20-managed-handoff-boundaries.json)
+refuses native database upgrades in either child across all ten room families.
+Twenty refusals preserve exact stored records and 60 original files; forty fresh
+participants recover. Ten additional cases retire a child in the final host
+callback, after the native-origin checks. The synchronous aggregate commit
+consumes neither child, and all twenty retained participants cold-resume with
+read-only policy and exact histories. Source and fresh installed archives repeat
+the same assertions. The combined run passes 68 selected checks, 1,157 script
+tests and 385 editor tests, with three existing opt-in skips.
+
+Native session/core retirement is now covered, but independent suggestion,
+revision and version-store upgrades still reproduce failed-durability handoffs.
+Neither this local transfer barrier nor its tests establish server authorization
+or cross-device writer fencing.
 
 The functional suite exercises ten original native compilers/transports, twenty
 participants, thirty cold room reopens, saved Redo, pending suggestions/versions

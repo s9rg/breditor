@@ -38,6 +38,11 @@ test("both profiles retain original workflows and require real native late-hando
  for(const name of ["participant-recovery","room-operation"]){const fixture=readFileSync(join(repository,"scripts/fixtures",name,"handoff-boundaries.mjs"),"utf8");assert.ok(fixture.includes("await close.apply(this,args)"));assert.ok(fixture.includes("controller.abort()"));assert.ok(fixture.includes("await assert.rejects(owner.intoParts()"));}
 });
 
+test("native managed-source retirement regressions remain mandatory in source and fresh installed consumers",()=>{
+ const installed=readFileSync(join(repository,"scripts/check-session-backups-installed.mjs"),"utf8");for(const text of ["participant-recovery/managed-handoffs.mjs","room-operation/managed-handoffs.mjs","participantOperation.managedHandoffs","roomOperationalRecovery.managedHandoffs","readySourceUpgrade:66","operationalCoreRetire:66","freshRecoveries:264","sourceUpgradeRefusals:20","lateRetiredChildRefusals:10"])assert.ok(installed.includes(text),text);
+ for(const[probe,fixture]of [["probe-participant-operation.mjs","participant-recovery"],["probe-room-operational-recovery.mjs","room-operation"]]){assert.ok(readFileSync(join(repository,"scripts",probe),"utf8").includes(`./fixtures/${fixture}/managed-handoffs.mjs`));const source=readFileSync(join(repository,"scripts/fixtures",fixture,"managed-handoffs.mjs"),"utf8");assert.ok(source.includes("await close.apply(this,args)"));assert.ok(source.includes(".retire()"));assert.ok(source.includes(".stores"));}
+});
+
 test("both profiles require permanent observer generation custody and fresh public archives",()=>{
  for(const profile of ["functional","full"]){const p=candidateReleasePlan({profile}),find=id=>{const c=p.checks.find(c=>c.id===id);assert.ok(c,id);return c;};
   assert.deepEqual(find("segmented-observer-storage-contracts").args,["--test","scripts/segmented-observer-storage.test.mjs"]);

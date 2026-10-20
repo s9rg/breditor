@@ -178,10 +178,20 @@ repeats ready and operational authority/cancellation regressions across 66 actua
 native families in source and fresh installed archives. Late refusals retain
 exact native, pending-work and upload data for explicit cleanup and cold resume.
 The selected run passes 68 checks, 1,156 script tests and 385 editor tests, with
-three existing opt-in skips. A separate native database-version change during
-release still reproduces a retired-source handoff; managed-source liveness
-admission remains open. The authority repair does not revoke preexisting host
-references or replace current server authorization.
+three existing opt-in skips.
+
+The later [managed native handoff qualification](qualification/2026-10-20-managed-handoff-boundaries.json)
+refuses a native database-version change or direct retirement during release.
+Actual private session/core lifecycle and original writer-lease checks run
+independently of readable backup capture. Retirement does not become read-only
+policy, and readable exports remain available until explicit disposal. Across
+66 families, source and fresh installed archives each retain 264 exact exports
+and stored records, refuse the retired owners and restore 264 fresh participants.
+The combined run passes 68 selected checks, 1,157 script tests and 385 editor
+tests, with three existing opt-in skips. Independent suggestion, revision and
+version-store upgrade handoffs remain a separate reproduced fault. These local
+checks neither revoke preexisting host references nor replace current server
+authorization.
 
 This coordinator covers one declared participant and separate component
 transactions, not an atomic transaction across all databases. The host must
