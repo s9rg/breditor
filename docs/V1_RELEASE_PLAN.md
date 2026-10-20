@@ -43,6 +43,39 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+Participant recovery and both room catalogs now keep actual rollback custody
+before native component restoration and staging-helper awaits. The private
+[cleanup scope](RECOVERY_ROLLBACK_CUSTODY.md) retains failed cleanup functions,
+attempts every independent entry, shares in-flight retries and forgets cleanup
+only after successful ownership transfer. It cannot reconstruct an owner from
+saved progress, grant authority, connect a transport or reset native history.
+
+The [participant rollback qualification](qualification/2026-10-20-participant-rollback-custody.json)
+passes 41 selected architecture checks, 1,219 script tests, 385 editor tests,
+eight scope laws and 15 V2 storage laws, with three existing opt-in skips.
+The same twelve participant-internal paths fail against the preserved previous
+archive and pass in source and fresh installed archives with identical Wasm.
+They cover a failed ready marker followed by a failed attempt release or native
+discard, retain 64 committed-record snapshots and 52 original files, and
+cold-reopen all twelve participants. The previous six parent-cleanup cases,
+all 362 generation assertions, native inventory/cohort checks and future
+document/review Undo/Redo remain passing in the installed consumers.
+
+A separate initial-open leak is now reproduced on six catalog/family/transport
+paths: setup aborts before returning a participant attempt, then coordinator
+release fails. No destination placeholder or native owner is created, but a
+lease remains held after parent close. That boundary is the next repair, not
+part of the passing post-admission rollback claim. The two older intermittent
+room refusals remain unexplained and are not identified as this fault.
+
+Native room fixtures build normally. Prior native-suite and Wasm qualification
+carry across 2,747 unchanged native inputs; no fresh native-suite or producer
+rebuild is claimed. Initial-open custody, mixed operational transfer,
+historic-copy dispositions, independent comment/server generations,
+client/provider closure and authenticated activation remain work. All 13 V1
+gates remain open; no public API freeze, version, push, tag, publication or
+deployment is promoted.
+
 The additive [mixed-family V2 catalog](GENERATION_ROOM_CATALOG.md) now retains
 the selected server file, native inventory and every supplied original or
 generation participant backup. It cold-restores selected participants into
@@ -69,7 +102,8 @@ pass after repair. They retain 32 stored-record snapshots and 26 original files,
 then cold-recover all six participants. The stopped pre-repair qualifier is
 preserved; none of its passes are carried into the 40-check result.
 
-Factory-internal partial-acquisition rollback remains a separate audit risk.
+At that checkpoint, factory-internal partial-acquisition rollback remained a
+separate audit risk.
 Mixed-family operational transfer still needs one common final native cut and
 liveness commit. Historic-copy dispositions, independent comment/server-log
 generations, complete client/provider closure and authenticated room activation

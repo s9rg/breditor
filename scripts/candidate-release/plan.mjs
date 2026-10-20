@@ -98,6 +98,7 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   script("selected-asset-bytes","probe-selected-asset-bytes.mjs",["target/promoted-shared-web"]),
   script("participant-backups","probe-participant-backups.mjs",["target/promoted-shared-web"]),
   stage("participant-recovery-storage-contracts",node,["--test","scripts/participant-recovery-storage.test.mjs"]),
+  stage("recovery-cleanup-scope-contracts",node,["--test","scripts/recovery-cleanup-scope.test.mjs"]),
   stage("participant-recovery-type-fence",node,["node_modules/typescript/bin/tsc","--noEmit","--strict","--exactOptionalPropertyTypes","--target","ES2022","--module","NodeNext","--lib","ES2022,DOM","scripts/fixtures/editor-consumer/types-participant-recovery.ts"]),
   script("participant-recovery","probe-participant-recovery.mjs",["target/promoted-shared-web"]),
   script("document-participant-recovery","probe-document-participant-recovery.mjs",["target/promoted-shared-web"]),

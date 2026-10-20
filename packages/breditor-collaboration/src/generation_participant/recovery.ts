@@ -1,5 +1,6 @@
 /** Restartable, non-overwriting generation source + whole-upload recovery. Never activates a room. */
 import {RecoveryLease} from "../participant_recovery/lease.js";
+import {RecoveryCleanupScope} from "../participant_recovery/cleanup_scope.js";
 import {existingDatabase} from "../participant_recovery/journal.js";
 import {requireAbsent} from "../participant_recovery/inspect.js";
 import type {SharedSelectionPolicy} from "../types.js";
@@ -52,6 +53,7 @@ export class RecoveredSharedGenerationParticipant<P extends SharedSelectionPolic
 }
 export class SharedGenerationParticipantRecovery<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
  readonly #p:PreparedGenerationRecovery<P>;readonly #db:IDBDatabase;readonly #leases:RecoveryLease[];#record:GenerationRecoveryRecord;#pending:GenerationRecoveryRecord|undefined;#closed=false;#closing=false;#running:Promise<RecoveredSharedGenerationParticipant<P>>|undefined;
+ readonly #rollback=new RecoveryCleanupScope(()=>fail());
  private constructor(token:object,p:PreparedGenerationRecovery<P>,db:IDBDatabase,leases:RecoveryLease[],record:GenerationRecoveryRecord){if(token!==key)throw fail("generation_participant_closed");this.#p=p;this.#db=db;this.#leases=leases;this.#record=record;db.onversionchange=()=>{this.#closing=true;db.close();};Object.freeze(this);}
  static begin<Q extends SharedSelectionPolicy>(options:SharedGenerationParticipantRecoveryOptions<Q>):Promise<SharedGenerationParticipantRecovery<Q>>{return this.#open(options,false);}
  static resume<Q extends SharedSelectionPolicy>(options:SharedGenerationParticipantResumeOptions<Q>):Promise<SharedGenerationParticipantRecovery<Q>>{return this.#open(options,true);}
@@ -68,15 +70,15 @@ export class SharedGenerationParticipantRecovery<P extends SharedSelectionPolicy
  /** Durable markers only; finish always re-inspects and natively reopens actual components. */
  async progress():Promise<SharedGenerationParticipantRecoveryProgress>{this.#guard();const r=await retained(this.#p,this.#db,[this.#record,...(this.#pending?[this.#pending]:[])]);this.#guard();return Object.freeze({phase:r.phase,source:r.source,uploads:r.uploads});}
  async #update(next:GenerationRecoveryRecord):Promise<void>{this.#guard();this.#pending=next;try{await writeGenerationRecoveryRecord(this.#db,this.#record,next,()=>this.#guard());this.#guard();this.#record=next;}finally{this.#pending=undefined;}}
- finish():Promise<RecoveredSharedGenerationParticipant<P>>{this.#guard();if(this.#running)return this.#running;this.#running=this.#finish().finally(()=>{this.#running=undefined;});return this.#running;}
+ finish():Promise<RecoveredSharedGenerationParticipant<P>>{this.#guard();if(this.#running)return this.#running;if(this.#rollback.pending)throw fail("generation_participant_busy");this.#running=this.#finish().finally(()=>{this.#running=undefined;});return this.#running;}
  async #finish():Promise<RecoveredSharedGenerationParticipant<P>>{
-  const p=this.#p,owners:GenerationRecoveryOwners<P>={};let transferred=false;
+  const p=this.#p,owners:GenerationRecoveryOwners<P>={},cleanup=this.#rollback.retain(()=>discardGenerationOwners(owners));let transferred=false;
   try{await this.progress();for(const step of ["source","uploads"] as const){this.#guard();const state=this.#record[step];if(state==="reserved"){await requireAbsent(p.options.destinations[step]);await this.#update({...this.#record,[step]:"started"});}
     if(step==="source")await restoreGenerationSource(p,owners,state==="complete");else await restoreGenerationUploads(p,owners,state==="complete");this.#guard();checkGenerationOwner(p,owners);if(state!=="complete")await this.#update({...this.#record,[step]:"complete"});
    }
    await verifyGenerationOwners(p,owners);this.#guard();await this.progress();if(this.#record.phase!=="ready")await this.#update({...this.#record,phase:"ready"});await this.progress();this.#guard();
-   const result=recoveredGeneration({p,owners,db:this.#db,leases:this.#leases,record:this.#record});this.#closed=true;transferred=true;return result;
-  }finally{if(!transferred)await discardGenerationOwners(owners);}
+   const result=recoveredGeneration({p,owners,db:this.#db,leases:this.#leases,record:this.#record});cleanup.complete();this.#closed=true;transferred=true;return result;
+  }finally{if(!transferred)await cleanup.rollback();}
  }
- async close():Promise<void>{if(this.#closed)return;this.#closing=true;try{await this.#running;}catch{/* finish retains the original failure; committed destinations stay intact. */}if(this.#closed)return;await release(this.#db,this.#leases);this.#closed=true;this.#p.backup.dispose();}
+ async close():Promise<void>{if(this.#closed)return;this.#closing=true;try{await this.#running;}catch{/* finish retains the original failure; committed destinations stay intact. */}if(this.#closed)return;await this.#rollback.drain();await release(this.#db,this.#leases);this.#closed=true;this.#p.backup.dispose();}
 }

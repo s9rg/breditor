@@ -7,6 +7,7 @@ import {createRecoveryJournal,existingDatabase,readRecoveryJournal,writeRecovery
 import {requireAbsent} from "./inspect.js";
 import {restoreComponent,checkComponent,checkManagedRecoveryOwners,ownerSources,discardRecoveryOwners,type RecoveryOwners,type RecoverySession} from "./components.js";
 import {recoveryFailure} from "./errors.js";
+import {RecoveryCleanupScope} from "./cleanup_scope.js";
 import type {SharedParticipantRecoveryOptions,SharedParticipantRecoveryProgress} from "./types.js";
 import type {SharedSelectionPolicy} from "../types.js";
 const recoveryKey=Object.freeze({});
@@ -54,6 +55,7 @@ export class RecoveredSharedParticipant<P extends SharedSelectionPolicy=SharedSe
 /** Durable per-participant restart coordinator. Original stored families and startup stay unchanged. */
 export class SharedParticipantRecovery<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
  readonly #prepared:PreparedRecovery<P>;readonly #db:IDBDatabase;readonly #leases:RecoveryLease[];#record:RecoveryRecord;#closed=false;#closing=false;#running:Promise<RecoveredSharedParticipant<P>>|undefined;
+ readonly #rollback=new RecoveryCleanupScope(()=>recoveryFailure("recovery_storage"));
  private constructor(token:object,p:PreparedRecovery<P>,db:IDBDatabase,leases:RecoveryLease[],record:RecoveryRecord){if(token!==recoveryKey)throw recoveryFailure("recovery_closed");this.#prepared=p;this.#db=db;this.#leases=leases;this.#record=record;db.onversionchange=()=>{this.#closing=true;db.close();};Object.freeze(this);}
  static begin<Q extends SharedSelectionPolicy>(options:SharedParticipantRecoveryOptions<Q>):Promise<SharedParticipantRecovery<Q>>{return this.#open(options,false);}
  static resume<Q extends SharedSelectionPolicy>(options:SharedParticipantRecoveryOptions<Q>):Promise<SharedParticipantRecovery<Q>>{return this.#open(options,true);}
@@ -68,9 +70,9 @@ export class SharedParticipantRecovery<P extends SharedSelectionPolicy=SharedSel
  /** Durable markers only. Finish always inspects and natively reopens every actual component. */
  async progress():Promise<SharedParticipantRecoveryProgress>{this.#guard();const record=await readRecoveryJournal(this.#db,this.#prepared.record);this.#guard();if(JSON.stringify(record)!==JSON.stringify(this.#record))throw recoveryFailure("recovery_diverged");return Object.freeze({phase:record.phase,steps:Object.freeze(record.steps.map(s=>Object.freeze({...s})))});}
  async #update(next:RecoveryRecord):Promise<void>{this.#guard();await writeRecoveryJournal(this.#db,this.#record,next,this.#prepared.signal);this.#guard();this.#record=next;}
- finish():Promise<RecoveredSharedParticipant<P>>{this.#guard();if(this.#running)return this.#running;this.#running=this.#finish().finally(()=>{this.#running=undefined;});return this.#running;}
+ finish():Promise<RecoveredSharedParticipant<P>>{this.#guard();if(this.#running)return this.#running;if(this.#rollback.pending)throw recoveryFailure("recovery_in_use");this.#running=this.#finish().finally(()=>{this.#running=undefined;});return this.#running;}
  async #finish():Promise<RecoveredSharedParticipant<P>>{
-  const p=this.#prepared,owners:RecoveryOwners<P>={};let transferred=false;
+  const p=this.#prepared,owners:RecoveryOwners<P>={},cleanup=this.#rollback.retain(()=>discardRecoveryOwners(owners));let transferred=false;
   try{await this.progress();for(const [index,row]of this.#record.steps.entries()){
     this.#guard();if(row.state==="reserved"){await requireAbsent(p.destinations[row.step]!);await this.#update({...this.#record,steps:this.#record.steps.map((r,i)=>i===index?{...r,state:"started"}:r)});}
     await restoreComponent(p,owners,row.step,row.state==="complete");this.#guard();
@@ -78,9 +80,9 @@ export class SharedParticipantRecovery<P extends SharedSelectionPolicy=SharedSel
     if(row.state!=="complete")await this.#update({...this.#record,steps:this.#record.steps.map((r,i)=>i===index?{...r,state:"complete"}:r)});
    }
    await verify(p,owners);this.#guard();await this.progress();if(this.#record.phase!=="ready")await this.#update({...this.#record,phase:"ready"});this.#guard();await this.progress();
-   checkManagedRecoveryOwners(owners);const result=readyFactory({prepared:p,owners,db:this.#db,leases:this.#leases});this.#closed=true;transferred=true;return result;
-  }finally{if(!transferred)await discardRecoveryOwners(owners);}
+   checkManagedRecoveryOwners(owners);const result=readyFactory({prepared:p,owners,db:this.#db,leases:this.#leases});cleanup.complete();this.#closed=true;transferred=true;return result;
+  }finally{if(!transferred)await cleanup.rollback();}
  }
  /** Wait for private in-flight cleanup, then release handles; retain all committed destinations. */
- async close():Promise<void>{if(this.#closed)return;this.#closing=true;try{await this.#running;}catch{/* The caller of finish retains its original failure. */}if(this.#closed)return;await release(this.#db,this.#leases);this.#closed=true;}
+ async close():Promise<void>{if(this.#closed)return;this.#closing=true;try{await this.#running;}catch{/* The caller of finish retains its original failure. */}if(this.#closed)return;await this.#rollback.drain();await release(this.#db,this.#leases);this.#closed=true;}
 }

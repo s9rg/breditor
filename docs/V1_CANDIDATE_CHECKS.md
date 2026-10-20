@@ -12,6 +12,10 @@ The native V2 probe also injects a failed cleanup release in generation,
 mixed-original and original-catalog staging on both transports. Failed cleanup
 must retain private custody for close retry, exact file/record retention and
 fresh native recovery. The fresh public consumer repeats those same six paths.
+Both profiles additionally require `recovery-cleanup-scope-contracts`. Twelve
+participant-internal native rollback paths abort a ready marker and refuse
+attempt release or native cleanup; source and installed consumers retain exact
+records/files and cold-reopen the participants without losing private owners.
 
 The candidate verifier checks the current opt-in rich editor, collaboration,
 interchange and review packages alongside the original default workspace. It

@@ -10,6 +10,7 @@ import {recoverParticipant} from './fixtures/room-participant-inventory/particip
 import {pixel,secondPixel} from './fixtures/review-assets/pixels.mjs';
 import {catalogV2Faults} from './fixtures/room-recovery-catalog-v2/faults.mjs';
 import {catalogCleanupFailures} from './fixtures/room-recovery-catalog-v2/cleanup-failures.mjs';
+import {participantCleanupFailures} from './fixtures/room-recovery-catalog-v2/acquisition-failures.mjs';
 export async function probeRoomRecoveryCatalogV2(directory,manifestPath,modules){
  const api=modules?.collaboration??await import('../packages/breditor-collaboration/dist/index.js'),rich=modules?.rich??await import('../packages/breditor-experimental-rich-content/index.js'),{SharedRoomRecoveryCatalogArchiveV2,SharedRoomRecoveryCatalogV2}=api;
  assert.equal(typeof SharedRoomRecoveryCatalogV2,'function');
@@ -47,7 +48,9 @@ try{for(const[roomIndex,item]of manifest.cases.entries()){
     const requests=prefix=>generations.map((g,index)=>generationRequestFrom(g.request,prefix+'-'+index)),mixedRequests=prefix=>[originalRequestFrom(original,prefix+'-old'),generationRequestFrom(generations[1].request,prefix+'-gen')];
     await catalogV2Faults({api,archive,tag:tag+'-faults',requests,mixedRequests,counts});
     const originalInput={...input,participants:input.participants.filter(row=>row.family==='original').map(({family:_family,...row})=>row)};
-    await catalogCleanupFailures({api,RecoveryLease,archive,originalInput,requests,mixedRequests,tag,counts});testedTransports.add(fixture.atomic);
+    await catalogCleanupFailures({api,RecoveryLease,archive,originalInput,requests,mixedRequests,tag,counts});
+    Object.assign(counts,Object.fromEntries(['failedAcquisitionRetries','originalCatalogAcquisitionRetries','generationCatalogAcquisitionRetries','mixedOriginalAcquisitionRetries','acquisitionRetainedRecordComparisons','acquisitionColdParticipants','acquisitionOriginalFileComparisons'].map(key=>[key,counts[key]??0])));
+    await participantCleanupFailures({api,RecoveryLease,archive,originalInput,requests,mixedRequests,tag,counts});testedTransports.add(fixture.atomic);
    }
    counts.families++;
   }catch(error){console.error('V2 catalog case',roomIndex,kind);throw error;}finally{await catalog?.discardAndClose();archive?.dispose();for(const h of held.reverse())await h.close();}
@@ -59,6 +62,7 @@ function generationRequestFrom(row,tag){return{...row,recovery:{...row.recovery,
 function originalRequestFrom(row,tag){return{...row,recovery:{...row.recovery,database:tag+'-attempt',destinations:Object.fromEntries(Object.keys(row.recovery.destinations).map(k=>[k,tag+'-'+k]))}};}
  for(const[key,value]of Object.entries({"nativeRooms":10,"families":30,"stagedGeneration":60,"stagedMixed":60,"coldGeneration":60,"coldMixed":60,"files":150,"duplicateWriterRefusals":30,"legacyCopiesRetained":30,"futureDocumentCheckpoints":54,"futureReviewCheckpoints":54,"wrongFamilyRefusals":30,"oldReaderRefusals":30,"changedPlanRefusals":30,"networkCalls":0,"restoredParticipants":30,"restoredComponents":120,"lostAcknowledgementResumes":6,"planAbortRetries":2,"parentMarkerAbortResumes":2,"fabricatedCompletionRefusals":2,"policySnapshots":2,"partialNativeRestoreResumes":2,"closeDuringRestoreResumes":2,"reentrancyRefusals":2,"authorityRefusals":2,"mixedPolicySnapshots":2}))assert.equal(counts[key],value,key);
  for(const[key,value]of Object.entries({failedCleanupRetries:6,originalCatalogCleanupRetries:2,generationCatalogCleanupRetries:2,mixedOriginalCleanupRetries:2,cleanupColdParticipants:6}))assert.equal(counts[key],value,key);
- return{format:'breditor/room-recovery-catalog-v2-probe',formatVersion:1,passed:true,...counts,scope:'Explicit original/generation files in one closed V2 manifest, normal native room histories, genuine readonly staging, duplicate/historic retention, interrupted commits, changed plans and exact cold/future histories. Six failed-cleanup custody retries retain exact records and files across both catalog versions and cold native resumes. Synthetic storage/locks/raster; not mixed operational parent transfer, current provider/client closure, independent comment/server generations, browser durability or authenticated room activation.'};
+ for(const[key,value]of Object.entries({failedAcquisitionRetries:12,originalCatalogAcquisitionRetries:4,generationCatalogAcquisitionRetries:4,mixedOriginalAcquisitionRetries:4,acquisitionColdParticipants:12}))assert.equal(counts[key],value,key);
+ return{format:'breditor/room-recovery-catalog-v2-probe',formatVersion:1,passed:true,...counts,scope:'Explicit original/generation files in one closed V2 manifest, normal native room histories, genuine readonly staging, duplicate/historic retention, interrupted commits, changed plans and exact cold/future histories. Six parent-cleanup retries and twelve participant-internal cleanup paths retain exact records and files, then cold-reopen real native owners. Synthetic storage/locks/raster; not mixed operational parent transfer, current provider/client closure, independent comment/server generations, browser durability or authenticated room activation.'};
 }
 if(process.argv[1]&&realpathSync(process.argv[1])===fileURLToPath(import.meta.url)){if(process.argv.length!==4)throw Error('Expected canonical shared runtime and native inventory manifest');console.log(JSON.stringify(await probeRoomRecoveryCatalogV2(process.argv[2],process.argv[3]),null,2));}
