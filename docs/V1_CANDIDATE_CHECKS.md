@@ -22,6 +22,10 @@ release. Source and installed consumers must recover without placeholders,
 record/file changes or closing a competing returned owner. The private ledger
 retains actual failed cleanup in its original context, with 4,096 pending opens
 per context; successful transfer frees that runtime reservation immediately.
+Eight more startup regressions cover both catalog factories' begin/resume on
+both native transports. The installed consumer must preserve exact catalog
+records and files, leave no aborted-create placeholder, protect returned live
+owners and reopen all eight catalogs after retrying actual failed cleanup.
 The installed generation-asset stage streams bounded child output into its
 unique consumer directory before inspecting exit status. It retains a hashed
 child report on both failure and success; a later install cannot replace that

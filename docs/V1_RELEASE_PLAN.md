@@ -43,6 +43,46 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+Both catalog factories now retain actual startup cleanup before acquiring their
+first lease. If original/V2 begin or resume fails before returning an owner and
+release fails too, a valid-policy retry drains that actual failed opening.
+Successful returned owners leave the private ledger immediately and remain
+protected from a competing retry. No file, journal, native history or public
+declaration changes meaning.
+
+The [catalog startup qualification](qualification/2026-10-20-catalog-opening-custody.json)
+passes 37 selected architecture checks, 1,235 script tests, 385 editor tests,
+16 opening laws, eight cleanup laws and 15 V2 storage laws, with three existing
+opt-in skips. The same eight catalog assertions fail against the preceding
+public archive and pass in source and fresh installed packages. They retain
+four committed catalog snapshots and 32 original files, leave four aborted
+creations absent, protect eight live owners and cold-reopen eight catalogs.
+The existing twenty participant startup and eighteen earlier rollback paths,
+all thirty native families and future document/review Undo/Redo remain passing.
+
+All 362 individual generation assertion names also execute freshly within the
+root suite. Five separate generation stages carry their preceding clean
+42-check qualification across unchanged inputs rather than being counted as
+fresh standalone runs. The audit checks 568 unchanged SDK/generation-test inputs
+and permits only the two catalog source modules plus their three probe/fence
+scripts and new fixture to differ outside documentation. Prior native-suite and
+Wasm qualification carries across 2,747 unchanged native inputs; native fixtures
+build normally. The default full V1 plan and its gates are unchanged.
+
+The [cleanup contract](RECOVERY_ROLLBACK_CUSTODY.md) states the remaining direct
+factory limitation: a retry checks current admission policy before draining the
+private ledger; there is no public cleanup-only capability for a rejected
+direct call. Parent close can drain failed participant openings it owns.
+
+The next architectural step is one common mixed-family operational barrier,
+not independently committing original and generation children. Historic-copy
+dispositions, independent comment/server-log generations, complete client/provider
+closure and current authenticated activation remain required. The three earlier
+intermittent native observations remain unexplained. All 13 V1 gates remain
+open; no version, push, tag, publication or deployment is promoted.
+
+### Previous participant opening checkpoint
+
 Participant static recovery now retains actual startup custody before acquiring
 its first coordinator lease. If begin/resume fails before returning an attempt
 and release fails too, a later valid-policy retry or catalog cleanup drains the
@@ -70,9 +110,8 @@ status, retains the unique consumer log and hashes its report on failure and
 success. The fresh 42-check run carries no earlier partial pass forward. Its
 installed generation log retains all 89,721 bytes.
 
-Catalog factories' own static startup is the next confirmed repair: eight
-original/V2 begin/resume paths strand a catalog lease when initial creation/read
-and release both fail. They are separate from the repaired participant paths.
+At that checkpoint, catalog factories' own startup remained a separate confirmed
+fault. The current eight-path qualification above repairs that boundary.
 The two older intermittent room refusals and the installed generation failure
 remain unexplained. Native fixtures build normally; prior suite/Wasm
 qualification carries across 2,747 unchanged native inputs, not a fresh native

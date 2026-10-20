@@ -1,5 +1,6 @@
 import {RecoveryLease} from "../participant_recovery/lease.js";
 import {RecoveryCleanupScope} from "../participant_recovery/cleanup_scope.js";
+import {RecoveryOpeningCustody,recoveryOpeningContext} from "../participant_recovery/opening_custody.js";
 import {SharedRoomRecoveryCatalogArchiveV2,catalogV2ArchiveState} from "./archive.js";
 import {createCatalogV2Database,existingCatalogV2Database,readCatalogV2Database,updateCatalogV2Record} from "./database.js";
 import type {CatalogV2Record} from "./record.js";
@@ -27,18 +28,22 @@ export class SharedRoomRecoveryCatalogV2 {
  static resume(options:SharedRoomRecoveryCatalogV2OpenOptions):Promise<SharedRoomRecoveryCatalogV2>{return this.#open(options);}
  static async #open(supplied:SharedRoomRecoveryCatalogV2OpenOptions,input?:SharedRoomRecoveryCatalogArchiveV2):Promise<SharedRoomRecoveryCatalogV2>{
   const options={...supplied},database=databaseName(options.database),expected=selected(options.expected),check=authority(options.checkAuthority),signal=options.signal,guard=()=>{signalCheck(signal);check();signalCheck(signal);};guard();
-  let lease:RecoveryLease|undefined,db:IDBDatabase|undefined,archive:SharedRoomRecoveryCatalogArchiveV2|undefined;
+  let lease:RecoveryLease|undefined,db:IDBDatabase|undefined,archive:SharedRoomRecoveryCatalogArchiveV2|undefined,opening:RecoveryOpeningCustody|undefined;
   try{
    // Snapshot the admitted source before awaiting. Caller disposal cannot change the selected blobs.
    const source=input?catalogV2ArchiveState(input):undefined;if(source&&JSON.stringify(source.selection)!==JSON.stringify(expected))throw failure("catalog_integrity");
+   // Own initial rollback before the first lease; a rejected factory has no public close handle.
+   opening=await RecoveryOpeningCustody.reserve(recoveryOpeningContext(),[database],async()=>{
+    const results=await Promise.allSettled([Promise.resolve().then(()=>archive?.dispose()),Promise.resolve().then(()=>db?.close()),Promise.resolve().then(()=>lease?.close())]);if(results.some(result=>result.status==="rejected"))throw failure();
+   },{policy:()=>failure("catalog_policy"),busy:()=>failure("catalog_in_use"),storage:()=>failure()});guard();
    lease=await RecoveryLease.acquire(JSON.stringify(database));guard();
    if(source){archive=await SharedRoomRecoveryCatalogArchiveV2.read(source.manifest,source.files,expected,{checkAuthority:guard,...(signal?{signal}:{})});guard();db=await createCatalogV2Database(database,catalogV2ArchiveState(archive),guard);}
    else{db=await existingCatalogV2Database(database);guard();if(!db)throw failure("catalog_missing");}
    const stored=await readCatalogV2Database(db,source?.manifest);guard();
    if(!archive)archive=await SharedRoomRecoveryCatalogArchiveV2.read(stored.record.manifest,stored.files,expected,{checkAuthority:guard,...(signal?{signal}:{})});
    else{const verified=await SharedRoomRecoveryCatalogArchiveV2.read(stored.record.manifest,stored.files,expected,{checkAuthority:guard,...(signal?{signal}:{})});verified.dispose();}
-   guard();return new SharedRoomRecoveryCatalogV2(key,database,db,lease,archive,stored.record,check,signal);
-  }catch(error){archive?.dispose();db?.close();await lease?.close();throw known(error);}
+   guard();const result=new SharedRoomRecoveryCatalogV2(key,database,db,lease,archive,stored.record,check,signal);opening.complete();return result;
+  }catch(error){if(opening)await opening.rollback();throw known(error);}
  }
  #guard=():void=>{if(this.#closed||this.#closing)throw failure("catalog_closed");signalCheck(this.#signal);this.#authority();if(this.#closed||this.#closing)throw failure("catalog_closed");signalCheck(this.#signal);catalogV2ArchiveState(this.#archive);};
  selection():SharedRoomRecoveryCatalogV2Selection{return this.#state.selection;}
