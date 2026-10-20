@@ -121,3 +121,17 @@ export {OperationalSharedParticipant} from "./participant_operation/operation.js
 export {SharedParticipantOperationError} from "./participant_operation/errors.js";
 export type {SharedParticipantOperationBeginOptions,SharedParticipantOperationResumeOptions,SharedParticipantOperationCurrentPolicy,SharedParticipantOperationProgress,OperationalSharedParticipantParts} from "./participant_operation/types.js";
 export type {SharedParticipantRecoveryOptions,SharedParticipantRecoveryDestinations,SharedParticipantRecoverySession,SharedParticipantRecoveryStep,SharedParticipantRecoveryProgress} from "./participant_recovery/types.js";
+export {SharedGenerationSourceCapture,captureSharedGenerationSource,type SharedGenerationSourceMetadata} from "./generation_source/capture.js";
+export {SharedGenerationSourceError} from "./generation_source/identity.js";
+export type {SharedGenerationSourceIdentity,SharedGenerationSourceKind,SharedGenerationSourceSelection,SharedGenerationSourceRecord,SharedGenerationSourceRecordKind} from "./generation_source/contract.js";
+export {SharedGenerationAssetCapture,captureSharedGenerationAssets,exportSharedGenerationAssetBackup} from "./generation_assets/capture.js";
+export {SharedGenerationAssetArchive,readSharedGenerationAssetBackup} from "./generation_assets/read.js";
+export type {SharedGenerationAssetMetadata,SharedGenerationAssetCaptureOptions} from "./generation_assets/types.js";
+export {SharedGenerationParticipantBackup,captureSharedGenerationParticipant,readSharedGenerationParticipant} from "./generation_participant/backup.js";
+export {SharedGenerationParticipantError} from "./generation_participant/policy.js";
+export type {SharedGenerationParticipantIdentity,SharedGenerationParticipantSelection,SharedGenerationParticipantOptions,SharedGenerationParticipantCaptureOptions} from "./generation_participant/contract.js";
+export {SharedGenerationParticipantRecovery,RecoveredSharedGenerationParticipant,type RecoveredSharedGenerationParticipantParts} from "./generation_participant/recovery.js";
+export type {SharedGenerationRecoveryFactory,SharedGenerationRecoverySession,SharedGenerationParticipantRecoveryOptions,SharedGenerationParticipantResumeOptions,SharedGenerationParticipantRecoveryProgress} from "./generation_participant/recovery_contract.js";
+export {MAX_GENERATION_SOURCE_BYTES,MAX_GENERATION_SOURCE_IDENTITY_BYTES,MAX_GENERATION_SOURCE_RECORDS} from "./generation_source/contract.js";
+export {MAX_GENERATION_ASSET_BACKUP_BYTES,MAX_GENERATION_ASSET_HEADER_BYTES} from "./generation_assets/codec.js";
+export {MAX_GENERATION_PARTICIPANT_BYTES,MAX_GENERATION_PARTICIPANT_HEADER_BYTES} from "./generation_participant/codec.js";

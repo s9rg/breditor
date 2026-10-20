@@ -14,6 +14,15 @@ const plan=checks=>({profile:"functional",deferred:["not-a-v1-certification"],ch
 const stable=()=>({commit:"1".repeat(40),dirty:true,sha256:"2".repeat(64),files:1,bytes:1});
 function quiet(options={}){return {snapshot:stable,report:()=>{},...options};}
 
+test("both profiles require complete generation assets, restartable participants, strict types and fresh public archives",()=>{
+ for(const profile of ["functional","full"]){const p=candidateReleasePlan({profile}),find=id=>{const c=p.checks.find(c=>c.id===id);assert.ok(c,id);return c;};
+  assert.deepEqual(find("generation-assets-source-contracts").args,["--test","scripts/generation-asset-source.test.mjs"]);
+  assert.ok(find("generation-assets-type-fence").args.includes("scripts/fixtures/editor-consumer/types-generation-assets.ts"));
+  assert.deepEqual(find("installed-generation-assets").artifacts,[{path:"target/generation-assets-installed-consumer.json",fresh:true},{path:"target/generation-assets-installed-consumer.tap",fresh:true}]);
+ }
+ const installed=readFileSync(join(repository,"scripts/check-generation-assets-installed.mjs"),"utf8");for(const text of ["generation-asset-source.test.mjs","types-generation-assets.ts","tests:86","documentOnlyProfileCases:18","generation_participant/recovery.js","sourceUnchanged:true"])assert.ok(installed.includes(text),text);
+});
+
 test("both profiles require permanent observer generation custody and fresh public archives",()=>{
  for(const profile of ["functional","full"]){const p=candidateReleasePlan({profile}),find=id=>{const c=p.checks.find(c=>c.id===id);assert.ok(c,id);return c;};
   assert.deepEqual(find("segmented-observer-storage-contracts").args,["--test","scripts/segmented-observer-storage.test.mjs"]);

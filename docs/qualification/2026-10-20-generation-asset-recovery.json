@@ -1,0 +1,130 @@
+{
+  "format": "breditor/generation-asset-recovery-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-20",
+  "classification": "PROGRESS",
+  "v1Ready": false,
+  "publicationApproved": false,
+  "openV1Gates": 13,
+  "scope": "Explicit generation source, selected image bytes, complete upload-state backup and restartable exact native recovery. Not operational generation continuation, independent comment/server generations, whole-room activation or platform/release approval.",
+  "source": {
+    "baseCommit": "2928ff7cc8bef611b08668b2ca66214ff1846bbd",
+    "testedWorkingTreeSha256": "d201a904331ff980c3f0f3e216bae67047dddc8b06e58406d132f99ecc33fb62",
+    "files": 4804,
+    "bytes": 41425720,
+    "nonDocumentationSha256": "77be11722a4ca5264db3b867ebc5bebbda754b0a5827a098fb0ac9fd45b50f45",
+    "postQualificationChanges": "Only compatibility wording, scoped qualification/private-backup guidance, the V1 checkpoint note and this record."
+  },
+  "evidence": {
+    "candidate": "target/v1-candidate-runs/run-NlxNrX/result.json",
+    "result": "target/generation-assets-qualification-Vh1JuX/result.json",
+    "audit": "target/generation-assets-qualification-Vh1JuX/checkpoint-audit.json",
+    "artifactSnapshots": "target/generation-assets-qualification-Vh1JuX/snapshots",
+    "archives": "target/generation-assets-qualification-Vh1JuX/archives",
+    "installed": "target/generation-assets-installed-consumer.json",
+    "installedTap": "target/generation-assets-installed-consumer.tap",
+    "reproducedOriginalFamilyFailure": "target/generation-assets-qualification-Vh1JuX/original-family-before-fix.json",
+    "parentPostCommit": "target/segmented-observer-qualification-nX4dgl/post-commit-audit.json"
+  },
+  "implementation": {
+    "apis": [
+      "captureSharedGenerationSource",
+      "captureSharedGenerationAssets",
+      "exportSharedGenerationAssetBackup",
+      "readSharedGenerationAssetBackup",
+      "captureSharedGenerationParticipant",
+      "readSharedGenerationParticipant",
+      "SharedGenerationParticipantRecovery.begin",
+      "SharedGenerationParticipantRecovery.resume",
+      "RecoveredSharedGenerationParticipant.intoParts"
+    ],
+    "fileFamilies": [
+      "breditor/shared-generation-asset-backup/v1",
+      "breditor/shared-generation-participant-backup/v1"
+    ],
+    "coordinatorRecords": [
+      "breditor/shared-generation-participant-plan/v1",
+      "breditor/shared-generation-participant-recovery/v1"
+    ],
+    "sourceCustody": "Actual local, relay or retained session private ports. Complete native/checkpoint strings, paired review, local versions and all selected companion records remain separate bounded chunks. Public exporter overrides and detached metadata do not select a live source.",
+    "sourceChecks": "Private change identities cover native document/review, versions, selected records and relay progress; 1,000 live checks do not repeat native serialization. No-op save acknowledgements keep an unchanged cut valid.",
+    "uploadCut": "Complete source capture executes synchronously inside the whole upload snapshot transaction. All four statuses, epochs, attempts, opaque receipts and unreferenced immutable payloads remain exact. Missing source or provider bytes return pending.",
+    "recovery": "Independently selected file/identity, explicit matching native factories, current synchronous host authority and dedicated destinations. Retained original file and monotonic durable steps precede exact inspection/native replay. Lost acknowledgements resume; changed or missing acknowledged state is not repaired or overwritten.",
+    "currentAuthority": "Host must reacquire writer authority and supply fresh read-only/review policy. Files restore neither credentials nor account grants. Recovery starts no connection or upload.",
+    "operationalBoundary": "After custody transfer, the exact-cut recovery coordinator is not the general reopening API for an evolved participant. Operational generation continuation and participant/room catalogs remain work.",
+    "reproducedRepairs": [
+      "Original asset capture now refuses native generation owners instead of declaring the original bounded family.",
+      "Closed generation fields require actual own names, not comma-joined aliases."
+    ],
+    "originalProtocolMeaningsDefaultsAndBoundsUnchanged": true,
+    "productionRustSourceChanged": false,
+    "vendorSourceChanged": false,
+    "dependencyVersionUpgrades": false,
+    "automaticRollover": false,
+    "compactionOrGarbageCollection": false,
+    "unlimitedLifetime": false
+  },
+  "tests": {
+    "selectedChecksPassed": 59,
+    "scriptTestsPassed": 911,
+    "existingOptInScriptChecksSkipped": 3,
+    "editorTestsPassed": 385,
+    "generationSourceTestsPassed": 86,
+    "generationInstalledTestsPassed": 86,
+    "pairedSourceConfigurations": 36,
+    "documentOnlyNativeRestoreConfigurations": 18,
+    "pairedColdParticipantRecoveryCases": 6,
+    "originalWireVersionOnlyRecovery": true,
+    "allFourUploadStatesAndExactOpaqueReceipts": true,
+    "originalLocalGenerationCases": 216,
+    "originalRelayCases": 10,
+    "maximalV2NegativeCase": 1,
+    "originalAuthorRetainedCases": 6,
+    "originalObserverCases": 6,
+    "originalObserverColdReopens": 24,
+    "originalRevisionReaderTrials": 6,
+    "originalReviewTrials": 4,
+    "sharedRustCarriedPassed": 653,
+    "relayRustCarriedPassed": 216,
+    "freshRustSuiteThisRun": false,
+    "nativeSourceAndBuildInputsUnchanged": 2747,
+    "nativeQualificationCarriedFrom": "2928ff7cc8bef611b08668b2ca66214ff1846bbd",
+    "sourceAndInstalledStableResultsEqual": true,
+    "wireRequestCountsExcludedFromEquality": "Asynchronous hint timing varies; stable outcomes and assertions remain identical.",
+    "storageLocksAndRaster": "Actual canonical Wasm with explicit synthetic IndexedDB, locks and PNG fixture decoding; controlled transaction failures, not physical durability or browser qualification."
+  },
+  "artifacts": {
+    "sharedWasmSha256": "5accbfe1c8d850ffac7b9689c639ae526d9db1997991aaec05b6e665afa86ead",
+    "localWasmSha256": "d2f0e56fa6e3ec0b42ba1784d6f17ba344247450fc5358ab0ca796fbf09dbb81",
+    "nativeRevisionHostSha256": "e5bc62cc731c8f98b6dd3ea14433044440b8778606b420c7adb48a8f30dda0b7",
+    "browserArchiveSha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+    "richArchiveSha256": "0acb66257da3df8bd91349ca65914a63fabff2979d6404f6634bf7f25eb458df",
+    "collaborationArchiveSha256": "b2e3a47fc85bdcdc795a562aa3b4cbb22e881da1eb471e44cef78bf1c9f14604"
+  },
+  "verification": {
+    "checkedFiles": 85,
+    "immutableArtifactSnapshots": 14,
+    "frozenSourceUnchangedDuringAllChecks": true,
+    "runtimePairRebuiltWithMatchingHashes": true,
+    "publicArchivesStrictTypes": true,
+    "workspaceLinks": false,
+    "noWorkspaceReactOrSyntheticStorageInProduction": true,
+    "registryArtifactsPinned": 45
+  },
+  "cleanup": {
+    "removedRegenerableBuildProducts": 808,
+    "allocatedBytesRemoved": 2553331712,
+    "targetDirectoryBefore": "6.7 GiB",
+    "targetDirectoryAfterQualificationAndCleanup": "5.6 GiB",
+    "sourceReportsArchivesWasmAndNamedHostsPreserved": true,
+    "scope": "Validated ignored Cargo hashed example/test executables and deps .rlib/.rmeta/.o files in three explicit Breditor build roots. Compilation can regenerate them; no source, user data, traces or declared qualification deliverables were removed."
+  },
+  "remaining": [
+    "Operational generation-aware participant continuation and participant/room catalog integration",
+    "Independent comment and server-log generations",
+    "Complete provider/client closure and protected credential handoff",
+    "Authenticated whole-room generation activation and cross-device writer fencing",
+    "Remaining feature/parity, performance, license, hosted/platform and full V1 release gates"
+  ],
+  "pushTagPublishDeploy": false
+}

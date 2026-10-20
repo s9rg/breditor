@@ -14,6 +14,10 @@ export class SegmentedRelayCompanion implements SegmentedSessionCompanion {
  #current:SharedSegmentedRelayProgress;#durable:SharedSegmentedRelayProgress;
  #core:SharedRichEditor<SharedSelectionPolicy>|undefined;
  #retired=false;#retireHook:(()=>void)|undefined;
+ #sourceStamp:object=Object.freeze({});
+ /** Private change identity; not a counter, lease, persisted field or acceptance proof. */
+ sourceStamp():object{return this.#sourceStamp;}
+ protected sourceChanged():void{this.#sourceStamp=Object.freeze({});}
  constructor(options:SharedSegmentedRelaySessionOptions,initial?:unknown){
   this.binding=relayBinding(options.binding);const d=this.binding.document,r=this.binding.review;
   if(d.room!==options.room||d.writer!==options.writer||options.selectionEditing==="document-v1"&&transportVersion(d.writerTransport)!==2||options.reviewedHistory&&(transportVersion(d.writerTransport)!==2||options.reviewedHistory.principal!==d.principal)||!!r!==!!options.review||r&&(r.actor!==options.review?.actor||r.principal!==options.review.principal||r.reviewEditing==="read_only"&&options.review.access!=="read_only"))throw new SharedRelayError("segmented_relay_binding");
@@ -27,7 +31,7 @@ export class SegmentedRelayCompanion implements SegmentedSessionCompanion {
  }
  protected decodeRelaySource(input:string):SegmentedHead{return this.#read(input).source;}
  readonly readHead=(input:string):SegmentedHead=>this.decodeRelaySource(input);
- load(input:string):void{const h=this.#read(input);this.#current=h.relay;this.#durable=structuredClone(h.relay);}
+ load(input:string):void{const h=this.#read(input);this.#current=h.relay;this.#durable=structuredClone(h.relay);this.sourceChanged();}
  capture():string{return JSON.stringify(this.#current);}
  admit(core:SharedRichEditor<SharedSelectionPolicy>):void{if(this.#core)throw new SharedRelayError("segmented_relay_source_reused");admitRelayProgress(core,this.#current);this.#core=core;}
  wrap(source:SegmentedHead,capture:string):string{
@@ -35,7 +39,7 @@ export class SegmentedRelayCompanion implements SegmentedSessionCompanion {
  }
  current():SharedSegmentedRelayProgress{return structuredClone(this.#current);}
  durable():SharedSegmentedRelayProgress{return structuredClone(this.#durable);}
- propose(input:unknown):void{const next=relayProgress(input,this.binding);forwardProgress(this.#current,next);if(!this.#core)throw new SharedRelayError("segmented_relay_source");admitRelayProgress(this.#core,next);this.#current=next;}
+ propose(input:unknown):void{const next=relayProgress(input,this.binding);forwardProgress(this.#current,next);if(!this.#core)throw new SharedRelayError("segmented_relay_source");admitRelayProgress(this.#core,next);if(JSON.stringify(next)!==JSON.stringify(this.#current))this.sourceChanged();this.#current=next;}
  confirm(encoded:string|null):void{if(encoded===null)throw new SharedRelayError("segmented_relay_unsaved");const saved=relayProgress(JSON.parse(encoded),this.binding);forwardProgress(this.#durable,saved);this.#durable=saved;}
  acknowledged(capture:string):void{this.confirm(capture);}
  setRetireHook(hook:()=>void):void{if(this.#retired)throw new SharedRelayError("segmented_relay_source_retired");this.#retireHook=hook;}

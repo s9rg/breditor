@@ -17,6 +17,8 @@ import {SharedSuggestionRevisions} from "../suggestion_revisions/outbox.js";
 import {SharedDocumentVersions} from "../versions/catalog.js";
 import type {SharedSuggestionRevisionsOptions} from "../suggestion_revisions/types.js";
 import type {SharedDocumentVersionsOptions} from "../versions/types.js";
+import {generationNative,registerGenerationSource} from "../generation_source/admission.js";
+import {generationRecords} from "../generation_source/records.js";
 
 export type SharedSegmentedVersionsOpenOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy>=Omit<SharedDocumentVersionsOptions<P>,"identity"|"database"|"storage"|"autoConnect">&{autoConnect?:false};
 export type SharedSegmentedRevisionsOpenOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy>=Omit<SharedSuggestionRevisionsOptions<P>,"binding"|"database"|"storage"|"queue"|"autoStart">&{autoStart?:false};
@@ -28,6 +30,8 @@ export class SharedSegmentedRelaySession<P extends SharedSelectionPolicy=SharedS
  #openings=new Set<Promise<unknown>>();#closing:Promise<void>|undefined;#discarding:Promise<void>|undefined;#released:Promise<void>|undefined;
  private constructor(session:SharedSegmentedPersistentSession<P>,companion:SegmentedRelayCompanion){
   this.#session=session;this.#companion=companion;this.#core=session.core;companion.confirm(session.savedCompanion());
+  const native=generationNative(session),retained=companion instanceof SegmentedRetainedCompanion?companion:null,check=()=>{native.check();if(this.core!==this.#core)throw new SharedRelayError("segmented_relay_source_retired");};
+  registerGenerationSource(this,{core:native.core,identity:{kind:retained?"retained":"relay",native:structuredClone(native.identity),review:structuredClone(native.review),relay:structuredClone(companion.binding),retained:retained?structuredClone(retained.retainedBinding):null},check,stamp:()=>{check();return[native.stamp(),companion.sourceStamp()];},read:()=>{check();return generationRecords(native.read(),companion.current(),retained?.records());}});
   companion.setRetireHook(()=>this.#stop());
   registerSegmentedRelaySession(this,{core:this.#core as unknown as SharedRichEditor<SharedSelectionPolicy>,binding:structuredClone(companion.binding),check:()=>this.#check(),flush:()=>this.#flushSource(),durable:()=>companion.durable(),persistDocument:p=>this.#persistDocument(p),persistReview:(p,r)=>this.#persistReview(p,r),track:a=>{this.#check();for(const ref of this.#adapters)if(!ref.deref())this.#adapters.delete(ref);this.#adapters.add(new WeakRef(a));}});
  }

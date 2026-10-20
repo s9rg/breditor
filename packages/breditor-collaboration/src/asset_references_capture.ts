@@ -8,6 +8,7 @@ import type {SharedDocumentVersions} from "./versions/catalog.js";
 import type {SharedSuggestionQueue} from "./suggestions/queue.js";
 import type {SharedSuggestionRevisions} from "./suggestion_revisions/outbox.js";
 import type {SharedPacketAssetIdentity,SharedPacketAssetReferencesRead} from "./packet_asset_references.js";
+import {SharedGenerationSourceError} from "./generation_source/identity.js";
 
 export type SharedAssetCaptureSourceKind="document"|"paired-session"|"version-catalog"|"suggestions"|"suggestion-revisions";
 export interface SharedAssetCaptureRecord {readonly kind:SharedAssetCaptureSourceKind;readonly json:string}
@@ -69,6 +70,7 @@ export class SharedAssetReferenceCapture {
   return SharedAssetReferenceCapture.#capture(core,readers,()=>{});
  }
  static #capture<P extends SharedSelectionPolicy>(core:SharedRichEditor<P>,input:readonly SharedAssetRecordReader[],guard:()=>void):SharedAssetReferenceCapture {
+  if(core.segmentedHistoryPolicy()!==null)throw new SharedGenerationSourceError("generation_source_policy","Use the explicitly selected generation source capture, not the original bounded record family");
   const readers=input.map(reader=>Object.freeze({...reader}));guard();const kinds=["paired-session","version-catalog","suggestions","suggestion-revisions"],selected=readers.map(reader=>reader.kind);let previous=-1;
   for(const kind of selected){const at=kinds.indexOf(kind);if(at<=previous)throw failed();previous=at;}
   if(selected.includes("suggestion-revisions")&&!selected.includes("suggestions"))throw failed();

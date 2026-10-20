@@ -14,6 +14,8 @@ import {checkSegmentedCheckpoint,object} from "./segmented_checkpoint.js";
 import {requireBackupRecovery} from "../backups/identity.js";
 import {admitPairedVersions} from "./review_record_admission.js";
 import type {SegmentedSessionIdentity,SegmentedReview,SegmentedCut} from "./segmented_contract.js";
+import {registerGenerationNative,registerGenerationSource} from "../generation_source/admission.js";
+import {generationRecords} from "../generation_source/records.js";
 
 export interface SharedSegmentedSessionOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy> extends Omit<SegmentedSessionIdentity,"selectionEditing"> {
  database:string;selectionEditing:P;readOnly:boolean;
@@ -40,13 +42,18 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
  readonly #db:IDBDatabase;readonly #documentLease:SharedWriterLease;readonly #reviewLease:ReviewWriterLease|undefined;
  readonly #identity:SegmentedSessionIdentity;readonly #options:Pick<SharedSegmentedSessionOptions<P>,"review"|"onError"|"onState">;
  readonly #companion:SegmentedSessionCompanion|undefined;
- #versions=new Map<string,string>();#off:(()=>void)[]=[];#pending:Capture|undefined;#attempt:Attempt|undefined;#running:Promise<void>|undefined;
+ #versions=new Map<string,string>();#sourceStamp:object=Object.freeze({});#off:(()=>void)[]=[];#pending:Capture|undefined;#attempt:Attempt|undefined;#running:Promise<void>|undefined;
  #savedHead:string|null;#saved:Capture|undefined;#closedSaved:{documentRevision:string|null;reviewRevision:string|null}|undefined;#failure:unknown;#closed=false;#retiring=false;#storageChanged=false;#closing:Promise<void>|undefined;#released:Promise<void>|undefined;
  private constructor(db:IDBDatabase,lease:SharedWriterLease,reviewLease:ReviewWriterLease|undefined,core:SharedRichEditor<P>,options:SharedSegmentedSessionOptions<P>,identity:SegmentedSessionIdentity,head:string|null,versions:readonly string[],recovered=head!==null,companion?:SegmentedSessionCompanion){
   this.#companion=companion;companion?.admit(core as unknown as SharedRichEditor<SharedSelectionPolicy>);
   this.#db=db;this.#documentLease=lease;this.#reviewLease=reviewLease;this.core=core;this.#options={...(options.review?{review:options.review}:{}),...(options.onError?{onError:options.onError}:{}),...(options.onState?{onState:options.onState}:{})};this.#identity=identity;this.#savedHead=head;this.recovered=recovered;this.#versions=admitPairedVersions(core,versions);
+  const check=()=>{this.#live();if(this.core!==core||core.segmentedHistoryPolicy()!=="segmented-v1")throw new SharedEditorError("segmented_source_unavailable","The actual generation source was replaced");},read=()=>{check();return this.#recovery();},review=options.review?{actor:options.review.actor,principal:options.review.principal}:null,stamp=()=>{check();return this.#sourceStamp;};
+  registerGenerationNative(this,{core:core as unknown as SharedRichEditor<SharedSelectionPolicy>,identity:structuredClone(identity),review,companion:!!companion,check,stamp,read});
+  if(!companion)registerGenerationSource(this,{core:core as unknown as SharedRichEditor<SharedSelectionPolicy>,identity:{kind:"local",native:structuredClone(identity),review,relay:null,retained:null},check,stamp:()=>[stamp()],read:()=>generationRecords(read())});
   const save=()=>{try{this.save();}catch(error){this.#failed(error);}};
-  this.#off=[core.subscribe(save),...(options.review?[core.subscribeReview(save)]:[])];
+  let documentRevision=core.view().revision,reviewRevision=options.review?core.reviewSnapshot().reviewRevision:null;
+  const changed=(document:string,review?:string)=>{if(document!==documentRevision||review!==undefined&&review!==reviewRevision){this.#sourceStamp=Object.freeze({});documentRevision=document;if(review!==undefined)reviewRevision=review;}save();};
+  this.#off=[core.subscribe(e=>changed(e.view.revision)),...(options.review?[core.subscribeReview(e=>changed(e.documentRevision,e.reviewRevision))]:[])];
   db.onversionchange=()=>{this.#storageChanged=true;try{this.#companion?.retire?.();}finally{core.retire();db.close();this.#failed(new SharedEditorError("segmented_versionchange","Generation storage changed; export the readable native histories before explicitly discarding"));}};
  }
  static async open<Q extends SharedSelectionPolicy>(input:SharedSegmentedSessionOptions<Q>):Promise<SharedSegmentedPersistentSession<Q>>{return this.#open(input);}
@@ -107,7 +114,8 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
  #checkCapture(capture:Capture):void{checkSegmentedCapture(capture.checkpoint,this.#identity,capture.review,capture.versions);if(this.#companion)this.#companion.wrap(JSON.parse(previewSegmentedHead(capture.checkpoint,this.#identity,capture.review,capture.versions)),capture.companion!);}
  state():SharedSegmentedSaveState{return{status:this.#closed?"closed":this.#failure?"failed":this.#pending||this.#attempt||this.#running?"pending":"saved",documentRevision:this.#closedSaved?.documentRevision??this.#saved?.documentRevision??null,reviewRevision:this.#closedSaved?.reviewRevision??this.#saved?.reviewRevision??null,error:this.#failure?String(this.#failure):null};}
  /** Exact native files remain exportable after write/version-change failures; no role is exported. */
- exportRecovery():SharedSegmentedRecovery{this.#live();const c=this.#capture();return Object.freeze({format:"breditor/shared-generation-recovery",formatVersion:1,checkpoint:c.checkpoint,reviewCheckpoint:c.review?.checkpoint??null,versions:Object.freeze([...c.versions])});}
+ #recovery():SharedSegmentedRecovery{this.#live();const c=this.#capture();return Object.freeze({format:"breditor/shared-generation-recovery",formatVersion:1,checkpoint:c.checkpoint,reviewCheckpoint:c.review?.checkpoint??null,versions:Object.freeze([...c.versions])});}
+ exportRecovery():SharedSegmentedRecovery{return this.#recovery();}
  save():void{this.#live();if(this.#storageChanged)throw new SharedEditorError("segmented_versionchange","The generation database changed");const capture=this.#capture();this.#checkCapture(capture);if(same(this.#saved,capture)&&!this.#attempt&&!this.#pending&&!this.#running&&!this.#failure)return;this.#pending=capture;this.#failure=undefined;this.#notify();this.#start();}
  #start():void{if(this.#running||this.#closed||this.#failure||!this.#attempt&&!this.#pending)return;this.#running=this.#drain().catch(error=>this.#failed(error)).finally(()=>{this.#running=undefined;if(!this.#failure)this.#start();});}
  async #drain():Promise<void>{while(!this.#closed&&(this.#attempt||this.#pending)){
@@ -126,7 +134,7 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
  /** Explicit observer archive operation; native read-only and zero-prefix checks remain live. */
  async sealObserverGeneration(next:string):Promise<void>{this.#live();this.core.sealObserverHistoryGeneration(next);await this.flush();}
  saveVersion(name:string,createdAtMs:string):SharedDocumentVersionInfo{this.#live();if(!this.#options.review)throw new SharedEditorError("segmented_review_policy","Named paired versions require an explicit review account");return this.retainVersion(this.core.captureVersion(name,this.#options.review.principal,createdAtMs));}
- retainVersion(packet:string):SharedDocumentVersionInfo{this.#live();if(this.#retiring||this.#storageChanged)throw new SharedEditorError("segmented_session_closing","Cannot change the version catalog after retirement or a storage change");const info=this.core.readVersion(packet),known=this.#versions.get(info.id);if(known!==undefined){if(known!==packet)throw new SharedEditorError("version_catalog","Immutable version has different bytes");return info;}if(this.#versions.size>=32||new TextEncoder().encode(packet).length>4*1024*1024)throw new SharedEditorError("version_catalog","The original named-version budget is full");const c=this.#capture();this.#checkCapture({...c,versions:[...c.versions,packet]});this.#versions.set(info.id,packet);this.save();return info;}
+ retainVersion(packet:string):SharedDocumentVersionInfo{this.#live();if(this.#retiring||this.#storageChanged)throw new SharedEditorError("segmented_session_closing","Cannot change the version catalog after retirement or a storage change");const info=this.core.readVersion(packet),known=this.#versions.get(info.id);if(known!==undefined){if(known!==packet)throw new SharedEditorError("version_catalog","Immutable version has different bytes");return info;}if(this.#versions.size>=32||new TextEncoder().encode(packet).length>4*1024*1024)throw new SharedEditorError("version_catalog","The original named-version budget is full");const c=this.#capture();this.#checkCapture({...c,versions:[...c.versions,packet]});this.#versions.set(info.id,packet);this.#sourceStamp=Object.freeze({});this.save();return info;}
  versions():readonly SharedDocumentVersionInfo[]{this.#live();return [...this.#versions.values()].map(p=>this.core.readVersion(p));}
  versionPacket(id:string):string{this.#live();const packet=this.#versions.get(id);if(packet===undefined)throw new SharedEditorError("version_unknown","Unknown immutable version");return packet;}
  /** Retire first. Failed final persistence retains readable histories and both leases for retry. */

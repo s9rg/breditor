@@ -55,6 +55,6 @@ export class SegmentedRetainedCompanion extends SegmentedRelayCompanion {
  override confirm(capture:string|null):void{if(capture===null)throw new SharedRelayError("segmented_relay_unsaved");const c=closed(JSON.parse(capture),"relay,retained"),retained=this.#validate(c["retained"]);super.confirm(JSON.stringify(c["relay"]));this.#durableRecords=retained;}
  records():SegmentedRetainedRecords{return structuredClone(this.#records);}
  durableRecords():SegmentedRetainedRecords{return structuredClone(this.#durableRecords);}
- releaseRecords():void{this.#records={suggestions:null,revisions:null,versions:null};this.#durableRecords={suggestions:null,revisions:null,versions:null};this.#owner=undefined;}
- proposeRecord<K extends SegmentedRetainedKind>(kind:K,record:NonNullable<SegmentedRetainedRecords[K]>):void{if(!this.#owner)throw new SharedRelayError("segmented_relay_source");const next=this.#validate({...this.#records,[kind]:record});this.#admit(this.#owner,next);this.#records=next;}
+ releaseRecords():void{this.#records={suggestions:null,revisions:null,versions:null};this.#durableRecords={suggestions:null,revisions:null,versions:null};this.#owner=undefined;this.sourceChanged();}
+ proposeRecord<K extends SegmentedRetainedKind>(kind:K,record:NonNullable<SegmentedRetainedRecords[K]>):void{if(!this.#owner)throw new SharedRelayError("segmented_relay_source");const next=this.#validate({...this.#records,[kind]:record});this.#admit(this.#owner,next);if(JSON.stringify(next[kind])!==JSON.stringify(this.#records[kind]))this.sourceChanged();this.#records=next;}
 }

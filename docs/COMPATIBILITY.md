@@ -54,7 +54,7 @@ migration/support promises and immutable RC qualification remain release gates.
 
 ### Current bounded lifetime
 
-The shared replica currently admits at most 1,000 replay-journal entries and a
+The original shared-session family admits at most 1,000 replay-journal entries and a
 16 MiB journal. Local changes, new remote records, Undo/Redo and reviewed-history
 records share that entry budget. It is not a rolling window of 1,000 Undo actions,
 and natural typing groups do not remove the journal-entry ceiling. See the
@@ -70,11 +70,14 @@ is not a complete or approved V1 operating envelope.
 
 The approved V1 requirement preserves Undo/Redo and outstanding offline edits
 across generations. A rollover that resets history, even with an archived old
-session, does not satisfy that requirement. This is a release target, not an
-implemented extension of the current bounded lifetime above.
+session, does not satisfy that requirement. The explicit
+[native history-generation family](SEGMENTED_NATIVE_HISTORY.md) retains the
+original and sealed inputs, Undo/Redo and pending causal work within its own
+64 MiB archive bound. It does not widen the original journal, select itself
+automatically or promise an unlimited operational lifetime.
 
-V1 still needs the native history/identity bridge, tested rotation and coordinated
-room backup/restore. Shared session and raster archives offer separate insert-only
+V1 still needs operational participant integration, coordinated room rotation and
+activation around that native bridge. Shared session and raster archives offer separate insert-only
 recovery components. The separate [server-log archive](SERVER_ROOM_BACKUPS.md)
 adds exact insert-only server recovery after native replay and host-selected
 identity checks; it excludes the server asset directory and account-authentication
@@ -85,8 +88,12 @@ now selects those two components together and completes their resumable recovery
 behind one durable native barrier. Complete-room client asset closure,
 coordinated activation and generation rollover remain separate. The [native reference reads](RETAINED_ASSET_REFERENCES.md)
 add a conservative owner-only image-history inventory; unsupported metadata or
-incomplete histories refuse that read. Separate versions, review outboxes and
-extension-owned assets still need their own inventory and coordination.
+incomplete histories refuse that read. The explicit
+[generation source and asset backup](GENERATION_ASSET_RECOVERY.md) adds selected
+local versions, retained review/version packets and the complete upload store,
+with restartable exact recovery. Uncached dependencies stay pending. Extension
+assets outside the closed raster contract and operational participant/room
+coordination still require explicit closure.
 Rotation must preserve pending updates, writer ownership,
 authenticated receipts and final review decisions, existing reader contracts,
 and retained version/asset references. Raising old counters, copying a live writer
