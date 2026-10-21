@@ -1,4 +1,5 @@
 import {managedSourceCore} from "../managed_custody.js";
+import {retainInternalFailureCause} from "../internal_failure_cause.js";
 import {SharedParticipantBackup} from "../participant_backup/archive.js";
 import {participantAuthority,participantSelection} from "../participant_backup/policy.js";
 import {captureSharedAssetReferences} from "../asset_references_capture.js";
@@ -37,7 +38,7 @@ export function verifyOperationalParticipantAtOrigin<P extends SharedSelectionPo
 export function resumeOperationalFromRecovered<P extends SharedSelectionPolicy>(options:SharedParticipantOperationBeginOptions<P>):Promise<OperationalSharedParticipant<P>>{return resumeHeld(options);}
 function fence(db:IDBDatabase,life:Life):void{db.onversionchange=()=>{life.changed=true;db.close();};}
 function guarded<P extends SharedSelectionPolicy>(p:PreparedRecovery<P>,life:Life):PreparedRecovery<P>{const before=p.guard;return{...p,guard(){if(life.changed)throw operationFailure("operation_versionchange");before();if(life.changed)throw operationFailure("operation_versionchange");}};}
-function failure(error:unknown):Error{return error instanceof SharedParticipantOperationError?error:operationFailure("operation_admission");}
+function failure(error:unknown):Error{return error instanceof SharedParticipantOperationError?error:retainInternalFailureCause(operationFailure("operation_admission"),error);}
 async function release(db:IDBDatabase,recoveryDb:IDBDatabase,leases:RecoveryLease[]):Promise<void>{const results=await Promise.allSettled([...leases].reverse().map(lease=>lease.close()));if(results.some(r=>r.status==="rejected"))throw operationFailure();db.close();recoveryDb.close();}
 async function retained<P extends SharedSelectionPolicy>(state:Pick<State<P>,"p"|"db"|"record"|"recoveryDb">):Promise<void>{
  const {p,db,record,recoveryDb}=state;p.guard();const old=await readRecoveryJournal(recoveryDb,p.record);if(old.phase!=="ready")throw operationFailure("operation_diverged");p.guard();

@@ -24,8 +24,11 @@ export class SharedRoomRecoveryCatalog {
   if(token!==key)throw failure("catalog_closed");this.#database=database;this.#db=db;this.#lease=lease;this.#archive=archive;this.#state=catalogArchiveState(archive);this.#record=record;this.#authority=check;this.#signal=signal;db.onversionchange=()=>{this.#closing=true;db.close();};Object.freeze(this);
  }
  static{takeCatalog=async<T>(catalog:SharedRoomRecoveryCatalog,take:(held:CatalogCustody)=>Promise<{value:T;prepareCommit:()=>void;commit:()=>void}>)=>{
-  if(catalog.#busy||catalog.#rollback.pending)throw failure("catalog_in_use");catalog.#guard();catalog.#busy=true;let done!:()=>void;catalog.#transferring=new Promise<void>(resolve=>{done=resolve;});
-  try{const record=await catalog.#retained(true);if(record.phase!=="checked"||record.participants.length!==catalog.#owners.length)throw failure("catalog_diverged");for(const owner of catalog.#owners)await verifyStagedParticipant(owner,catalog.#guard);
+  if(catalog.#busy||catalog.#rollback.pending)throw failure("catalog_in_use");
+  // Reserve before the first host guard: it may synchronously attempt staging
+  // or close. Close must observe this transfer, including a throwing guard.
+  catalog.#busy=true;let done!:()=>void;catalog.#transferring=new Promise<void>(resolve=>{done=resolve;});
+  try{catalog.#guard();const record=await catalog.#retained(true);if(record.phase!=="checked"||record.participants.length!==catalog.#owners.length)throw failure("catalog_diverged");for(const owner of catalog.#owners)await verifyStagedParticipant(owner,catalog.#guard);
    catalog.#state.inventory.checkSources(catalog.#owners.map(owner=>({backup:owner.policy.options.backup,source:owner.source})));catalog.#guard();
    const result=await take({database:catalog.#database,db:catalog.#db,lease:catalog.#lease,archive:catalog.#archive,state:catalog.#state,record,owners:catalog.#owners});
    await catalog.#retained(true);for(const owner of catalog.#owners)await verifyStagedParticipant(owner,catalog.#guard);catalog.#guard();result.prepareCommit();

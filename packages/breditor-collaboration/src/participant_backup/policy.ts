@@ -3,6 +3,7 @@ import {checkBackupCheckpoint} from "../backups/session.js";
 import {readPairedBackupRecord} from "../backups/paired.js";
 import type {SharedAssetCaptureRecord,SharedAssetReferenceCaptureMetadata} from "../asset_references_capture.js";
 import type {SharedParticipantBackupIdentity,SharedParticipantBackupSelection} from "./types.js";
+import {retainInternalFailureCause} from "../internal_failure_cause.js";
 export class SharedParticipantBackupError extends Error {
  constructor(readonly code:"participant_policy"|"participant_source"|"participant_authority"|"participant_format"|"participant_integrity"|"participant_budget"|"participant_aborted"|"participant_closed",message:string){super(message);this.name="SharedParticipantBackupError";}
 }
@@ -28,7 +29,7 @@ export function participantSelection(value:unknown):Readonly<SharedParticipantBa
 export function participantSignal(signal?:AbortSignal):void{if(signal?.aborted)throw new SharedParticipantBackupError("participant_aborted","Participant backup work was cancelled");}
 export function participantAuthority(check:()=>void):()=>void{
  if(typeof check!=="function")throw new SharedParticipantBackupError("participant_authority","An explicit synchronous host authority check is required");
- return()=>{let value:unknown;try{value=check();if(value!==undefined){if(value&&(typeof value==="object"||typeof value==="function")&&typeof(value as {then?:unknown}).then==="function")void Promise.resolve(value).catch(()=>{});throw Error();}}catch{throw new SharedParticipantBackupError("participant_authority","The host participant authority check did not hold synchronously");}};
+ return()=>{let value:unknown;try{value=check();if(value!==undefined){if(value&&(typeof value==="object"||typeof value==="function")&&typeof(value as {then?:unknown}).then==="function")void Promise.resolve(value).catch(()=>{});throw Error();}}catch(error){throw retainInternalFailureCause(new SharedParticipantBackupError("participant_authority","The host participant authority check did not hold synchronously"),error);}};
 }
 export function checkParticipantSource(identity:SharedParticipantBackupIdentity,metadata:Pick<SharedAssetReferenceCaptureMetadata,"document">&Partial<Pick<SharedAssetReferenceCaptureMetadata,"sources">>,records:readonly SharedAssetCaptureRecord[]):void{
  try{

@@ -23,6 +23,9 @@ export interface OperationalGenerationCustody<P extends SharedSelectionPolicy>{p
 type State<P extends SharedSelectionPolicy>=OperationalGenerationCustody<P>;
 export interface OperationalGenerationHandoff<T>{commit():T;abandon():void}
 let reserveGenerationGroup:(owners:readonly OperationalSharedGenerationParticipant<SharedSelectionPolicy>[])=>OperationalCohortReservation<State<SharedSelectionPolicy>>;
+let exactGeneration:(owner:OperationalSharedGenerationParticipant<SharedSelectionPolicy>)=>Promise<void>;
+/** A prepared aggregate parent may publish only the exact original native/upload cut. */
+export function verifyOperationalGenerationAtOrigin(owner:OperationalSharedGenerationParticipant<SharedSelectionPolicy>):Promise<void>{return exactGeneration(owner);}
 /** Internal all-or-nothing custody capsule for the generation-aware room adapter.
  * Only genuine held operation owners participate; this is not a public adoption API. */
 export async function prepareOperationalGenerationHandoff<T>(owners:readonly OperationalSharedGenerationParticipant<SharedSelectionPolicy>[],take:(states:readonly State<SharedSelectionPolicy>[],released:()=>void)=>Promise<T>,verify:(states:readonly State<SharedSelectionPolicy>[])=>void,checkSources:()=>void=()=>{}):Promise<OperationalGenerationHandoff<T>>{const group=reserveOperationalGenerationGroup(owners);return prepareOperationalCohort([group],released=>take(group.states,released),()=>verify(group.states),checkSources,()=>fail("generation_operation_closed"));}
@@ -39,6 +42,7 @@ export class OperationalSharedGenerationParticipant<P extends SharedSelectionPol
  readonly #state:State<P>;readonly #file:Blob;#closed=false;#busy=false;#released=false;
  private constructor(token:object,state:State<P>){if(token!==key)throw fail("generation_operation_closed");this.#state=state;this.#file=SharedGenerationParticipantBackup.prototype.file.call(state.p.backup);generationOperationFence(state.db,state.life);generationOperationFence(state.recoveryDb,state.life);Object.freeze(this);}
  static{
+  exactGeneration=async owner=>{owner.#start();try{owner.#guard();await retained(owner.#state);await verifyOperationalGenerationOwners(owner.#state.p,owner.#state.owners,owner.#state.origin);await verifyGenerationOwners(owner.#state.p,owner.#state.owners);owner.#guard();}finally{owner.#busy=false;}};
   reserveGenerationGroup=input=>{
    if(!Array.isArray(input)||input.length>1024)throw fail("generation_operation_policy");const owners=[...input];
    if(new Set(owners).size!==owners.length)throw fail("generation_operation_policy");

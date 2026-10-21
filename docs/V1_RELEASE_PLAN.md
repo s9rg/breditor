@@ -43,6 +43,68 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The separate [durable mixed-room parent](MIXED_ROOM_OPERATIONAL_RECOVERY.md)
+now recovers genuinely staged original and generation participants together.
+It commits prepared intent and every source file before consuming the V2 catalog;
+all ready guards validate before any preparation pointer changes. Source transfer
+reserves the catalog before its first host callback. Old formats/defaults remain
+unchanged and no stored completion can manufacture a native owner.
+
+Ordered child intent survives interrupted commits and lost acknowledgements.
+Prepared publication requires exact original native/upload cuts; operational
+cold reopen accepts verified later continuations. Every resumed participant
+supplies explicit current document/review policy, including a child missing
+after interrupted preparation. Failed staged-owner close stays pending for
+retry. Immutable observer transport restrictions remain enforced. Unselected
+historical copies stay retained and unreconciled; transports remain disconnected.
+
+The [mixed V2 qualification](qualification/2026-10-20-mixed-v2-operational-recovery.json)
+passes all 57 selected architecture checks, 1,300 script tests, 385 editor tests,
+four private-diagnostic laws, eight retarget/lifetime laws and sixteen V2 storage
+laws, with three existing opt-in skips. Source and fresh offline installed
+consumers repeat all thirty native configurations: sixty returned participants,
+120 cold participant reopens, 150 original files, 180 exact retained-record and
+180 whole-upload comparisons, and 27 future document plus 27 review Redo checks.
+Faults cover aborted/lost-acknowledged parent creation, both child publications,
+parent progress markers, source close/reentry, missing/changed data, unpublished
+native append, aggregate release retry, late policy/cancellation and atomic
+ready-guard refusal in either family. Twelve prepared-policy release retries
+verify the current-policy transition before returning any child.
+
+The same supported original-catalog reentry assertion fails in both preserved
+old transport fixtures and passes six times each in source and installed
+packages. Its reservation-order cause is repaired. The earlier initial-finish
+admission observations are distinct and remain unexplained. New private bounded
+diagnostics preserve error causes for explicit developer tracing without public
+cause fields or automatic production logging; passing checks is not an
+intermittent-fault repair claim.
+
+The existing mixed barrier freshly passes 480 cohorts, 960 cold reopens and
+864 future history comparisons per domain. All 362 generation assertions run
+freshly in source and installed consumers, and original participant/room,
+retained-owner, rollback/opening and both catalog workflows remain mandatory.
+Both normal Wasm producers rebuild freshly with identical bytes. The 653 shared
+and 216 relay Rust tests carry qualification across 2,747 unchanged native/build
+inputs, not fresh suite runs. Strict installed types and a production module
+graph qualify the new public exports without workspace, React or synthetic
+storage dependencies in that production graph.
+
+A separate startup-custody gap is now reproduced in 36 cases against preserved
+actual SDK modules: operational factory refusal plus cleanup failure can strand
+acquired coordinators before any owner is returned. The isolated repair and
+expanded matrix are prepared for the next checkpoint, not integrated or counted
+as qualified here. No committed source file is deleted or overwritten.
+
+The parent retains a second durable catalog copy and does not raise existing
+storage bounds. Arbitrary host factory closures are not rewritten. Historic-copy
+dispositions, independent comment/server-log generations, full provider/client
+reference closure and current authenticated activation remain required, along
+with the remaining selected feature parity and all thirteen V1 gates. No version,
+push, tag, publication or deployment is promoted. Historical WebKit and other
+unexplained native/installed observations remain open.
+
+### Previous managed-binding checkpoint
+
 Managed-source transfers now pin semantic read-only bindings and registered
 native cores. Replaced fields or prototype accessors are rejected without
 invoking the replacement. Semantically unchanged freezing/sealing remains
@@ -70,12 +132,12 @@ consumer, archives and logs are preserved. One unchanged replay and thirteen
 traced replays pass; they establish neither cause nor repair. The final fresh
 51-check run carries no partial pass from either failed attempt.
 
-A separate deterministic original-catalog bug is now reproduced against that
-preserved package in both transport fixtures: transfer invokes its source guard
-before reserving the catalog, allowing reentrant staging to start. That
-reservation-order fix belongs to the next durable V2 recovery checkpoint; it is
-not fixed here and is not a reproduction of the unexplained initial-finish
-refusal. The four earlier intermittent observations also remain unexplained.
+At that checkpoint a separate deterministic original-catalog bug was reproduced
+against the preserved package in both transport fixtures: transfer invoked its
+source guard before reserving the catalog, allowing reentrant staging to start.
+Its reservation-order repair is now qualified in the durable V2 checkpoint
+above; it is not a reproduction of the unexplained initial-finish refusal.
+The four earlier intermittent observations also remain unexplained.
 
 Both normal Wasm producers execute freshly in installed original recovery with
 identical output bytes. The 653 shared and 216 relay Rust tests carry prior

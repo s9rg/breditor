@@ -10,14 +10,14 @@ import {MAX_CATALOG_V2_PLAN_BYTES} from "./record.js";
 import type {CatalogV2ArchiveState} from "./archive.js";
 import type {SharedRoomRecoveryCatalogV2Participant} from "./contract.js";
 export type V2StagedPolicy=Readonly<{id:string;family:"original";value:StagedPolicy}>|Readonly<{id:string;family:"generation";options:SharedGenerationParticipantRecoveryOptions<SharedSelectionPolicy>;plan:string}>;
-function snapshot(input:SharedRoomRecoveryCatalogV2Participant):SharedRoomRecoveryCatalogV2Participant{
+export function snapshotCatalogV2Participant(input:SharedRoomRecoveryCatalogV2Participant):SharedRoomRecoveryCatalogV2Participant{
  object(input,"family,id,recovery");if(input.family==="original")return{...snapshotCatalogParticipant({id:input.id,recovery:input.recovery}),family:"original"};
  if(input.family!=="generation")throw failure("catalog_policy");
  const chosen=input.recovery;if(!chosen||typeof chosen!=="object"||!chosen.session||!chosen.session.options)throw failure("catalog_policy");
  const o=chosen.session.options,extra=o as typeof o&{binding?:unknown;retained?:unknown};return{id:id(input.id),family:"generation",recovery:{...chosen,destinations:{...chosen.destinations},session:{kind:chosen.session.kind,options:{...o,readOnly:true,...(o.review?{review:{...o.review,access:"read_only"}}:{}),...(o.editor?{editor:{...o.editor}}:{}),...(extra.binding!==undefined?{binding:structuredClone(extra.binding)}:{}),...(extra.retained!==undefined?{retained:structuredClone(extra.retained)}:{})}} as typeof chosen.session,...(chosen.limits?{limits:{...chosen.limits}}:{})}};
 }
 export async function prepareCatalogV2Stage(input:readonly SharedRoomRecoveryCatalogV2Participant[],state:CatalogV2ArchiveState,database:string,guard:()=>void,signal?:AbortSignal):Promise<{plan:string;policies:V2StagedPolicy[]}>{
- if(!Array.isArray(input)||input.length>1024)throw failure("catalog_policy");const rows=input.map(snapshot).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0),names=new Set([database]),writers=new Set<string>(),actors=new Set<string>(),policies:V2StagedPolicy[]=[];
+ if(!Array.isArray(input)||input.length>1024)throw failure("catalog_policy");const rows=input.map(snapshotCatalogV2Participant).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0),names=new Set([database]),writers=new Set<string>(),actors=new Set<string>(),policies:V2StagedPolicy[]=[];
  for(const[index,row]of rows.entries()){
   if(index&&row.id===rows[index-1]!.id)throw failure("catalog_policy");const saved=state.participants.get(row.id);if(!saved||saved.family!==row.family)throw failure("catalog_policy");
   const identity=saved.backup.selection().identity,source=identity.source,native="native" in source?source.native:source,metadata=state.inventory.metadata(),registered=metadata.writers.find(w=>w.clock.writer===native.writer);

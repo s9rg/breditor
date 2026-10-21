@@ -204,9 +204,9 @@
     {
       "id":"offline-recovery","area":"Collaboration","status":"implemented",
       "summary":"Offline editing, reconnect and exact reload",
-      "current":"Exclusive writer ownership, durable local journals, queued uploads, reconnect and restart recovery work through real browser/network tests. Explicit shared document/paired and raster-store archives add verified non-overwriting recovery components. Complete-room capture, outbox/server reconciliation and lifetime/retention remain open.",
+      "current":"Exclusive writer ownership, durable local journals, queued uploads, reconnect and restart recovery work through real browser/network tests. Explicit shared document/paired and raster-store archives add verified non-overwriting recovery components. A separate V2 operational parent retains mixed original/generation files and native histories, retries interrupted child intent and requires explicit current policy on cold resume. It does not activate the room. Historic-copy dispositions, independent comment/server-log generations, full client/provider closure and authenticated activation remain open.",
       "acceptance":"Qualify supported history/document limits and operational recovery, not only the normal offline/reconnect path.",
-      "evidence":["experiments/shared-browser/persistence.spec.mjs","experiments/shared-browser/relay-sync.spec.mjs","experiments/shared-browser/network-demo.spec.mjs","docs/SHARED_SESSION_BACKUPS.md","docs/RICH_ASSET_BACKUPS.md","docs/qualification/2026-10-18-shared-session-backups.json"],
+      "evidence":["experiments/shared-browser/persistence.spec.mjs","experiments/shared-browser/relay-sync.spec.mjs","experiments/shared-browser/network-demo.spec.mjs","docs/SHARED_SESSION_BACKUPS.md","docs/RICH_ASSET_BACKUPS.md","docs/qualification/2026-10-18-shared-session-backups.json","docs/MIXED_ROOM_OPERATIONAL_RECOVERY.md","scripts/check-room-operational-recovery-v2-sdk.mjs","scripts/check-room-operational-recovery-v2-installed.mjs"],
       "sources":["tiptap-offline"]
     },
     {

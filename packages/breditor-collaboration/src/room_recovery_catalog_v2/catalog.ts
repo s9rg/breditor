@@ -12,18 +12,34 @@ import {authority,databaseName,selected,signalCheck,failure,known} from "../room
 import {frozen} from "../room_participant_inventory/policy.js";
 import type {SharedRoomRecoveryCatalogV2BeginOptions,SharedRoomRecoveryCatalogV2OpenOptions,SharedRoomRecoveryCatalogV2Selection,SharedRoomRecoveryCatalogV2Metadata,SharedRoomRecoveryCatalogV2Progress,SharedRoomRecoveryCatalogV2Participant,SharedRoomRecoveryCatalogV2Check} from "./contract.js";
 const key=Object.freeze({});
+export interface CatalogV2Custody{readonly database:string;readonly db:IDBDatabase;readonly lease:RecoveryLease;readonly archive:SharedRoomRecoveryCatalogArchiveV2;readonly state:import("./archive.js").CatalogV2ArchiveState;readonly record:CatalogV2Record;readonly owners:readonly V2StagedParticipant[]}
+let takeCatalogV2:<T>(catalog:SharedRoomRecoveryCatalogV2,take:(held:CatalogV2Custody)=>Promise<{value:T;prepareCommit:()=>void;commit:()=>void}>)=>Promise<T>;
+/** Genuine private catalog custody, never a saved completion/adoption DTO. The
+ * successor retains all original files before committing any ready-owner guard. */
+export function transferRoomCatalogV2<T>(catalog:SharedRoomRecoveryCatalogV2,take:(held:CatalogV2Custody)=>Promise<{value:T;prepareCommit:()=>void;commit:()=>void}>):Promise<T>{return takeCatalogV2(catalog,take);}
 const policyOptions=(p:V2StagedPolicy)=>p.family==="generation"?p.options:p.value.options;
 async function discard(owners:readonly V2StagedParticipant[]):Promise<void>{const results=await Promise.allSettled([...owners].reverse().map(o=>closeCatalogV2Participant(o,true)));if(results.some(r=>r.status==="rejected"))throw failure();}
 /** Durable selected files plus private inactive native owners. This class never activates or connects. */
 export class SharedRoomRecoveryCatalogV2 {
  readonly #db:IDBDatabase;readonly #lease:RecoveryLease;readonly #archive:SharedRoomRecoveryCatalogArchiveV2;readonly #state:import("./archive.js").CatalogV2ArchiveState;readonly #database:string;readonly #authority:()=>void;readonly #signal:AbortSignal|undefined;
- #record:CatalogV2Record;#pending:CatalogV2Record|undefined;#closed=false;#closing=false;#busy=false;#staging:Promise<SharedRoomRecoveryCatalogV2Check>|undefined;#cleanup:Promise<void>|undefined;#cleanupMode:"graceful"|"discard"|undefined;readonly #owners:V2StagedParticipant[]=[];
+ #record:CatalogV2Record;#pending:CatalogV2Record|undefined;#closed=false;#closing=false;#busy=false;#staging:Promise<SharedRoomRecoveryCatalogV2Check>|undefined;#transferring:Promise<void>|undefined;#cleanup:Promise<void>|undefined;#cleanupMode:"graceful"|"discard"|undefined;readonly #owners:V2StagedParticipant[]=[];
  // A failed cleanup does not relinquish custody. Keep these owners cleanup-only
  // until a later idempotent close releases every actual child lease.
  readonly #rollback=new RecoveryCleanupScope(failure);
  private constructor(token:object,database:string,db:IDBDatabase,lease:RecoveryLease,archive:SharedRoomRecoveryCatalogArchiveV2,record:CatalogV2Record,check:()=>void,signal?:AbortSignal){
   if(token!==key)throw failure("catalog_closed");this.#database=database;this.#db=db;this.#lease=lease;this.#archive=archive;this.#state=catalogV2ArchiveState(archive);this.#record=record;this.#authority=check;this.#signal=signal;db.onversionchange=()=>{this.#closing=true;db.close();};Object.freeze(this);
  }
+ static{takeCatalogV2=async<T>(catalog:SharedRoomRecoveryCatalogV2,take:(held:CatalogV2Custody)=>Promise<{value:T;prepareCommit:()=>void;commit:()=>void}>)=>{
+  if(!catalog||typeof catalog!=="object"||!(#record in catalog))throw failure("catalog_policy");if(catalog.#busy||catalog.#rollback.pending)throw failure("catalog_in_use");catalog.#busy=true;let done!:()=>void;catalog.#transferring=new Promise<void>(resolve=>{done=resolve;});
+  try{
+   catalog.#guard();const record=await catalog.#retained(true);if(record.phase!=="checked"||record.participants.length!==catalog.#owners.length)throw failure("catalog_diverged");for(const owner of catalog.#owners)await verifyCatalogV2Participant(owner,catalog.#guard);catalogV2Coverage(catalog.#state.inventory,catalog.#owners);catalog.#guard();
+   const result=await take({database:catalog.#database,db:catalog.#db,lease:catalog.#lease,archive:catalog.#archive,state:catalog.#state,record,owners:catalog.#owners});
+   await catalog.#retained(true);for(const owner of catalog.#owners)await verifyCatalogV2Participant(owner,catalog.#guard);catalog.#guard();result.prepareCommit();
+   // The successor checks every genuine ready state before the first private
+   // pointer write. No await, native destruction or authority callback follows.
+   if(catalog.#closed||catalog.#closing)throw failure("catalog_closed");signalCheck(catalog.#signal);result.commit();catalog.#owners.length=0;catalog.#closed=true;return result.value;
+  }finally{catalog.#busy=false;done();catalog.#transferring=undefined;}
+ };}
  static begin(options:SharedRoomRecoveryCatalogV2BeginOptions):Promise<SharedRoomRecoveryCatalogV2>{return this.#open(options,options.archive);}
  static resume(options:SharedRoomRecoveryCatalogV2OpenOptions):Promise<SharedRoomRecoveryCatalogV2>{return this.#open(options);}
  static async #open(supplied:SharedRoomRecoveryCatalogV2OpenOptions,input?:SharedRoomRecoveryCatalogArchiveV2):Promise<SharedRoomRecoveryCatalogV2>{
@@ -93,6 +109,7 @@ export class SharedRoomRecoveryCatalogV2 {
  }
  async #finishClose(mode:"graceful"|"discard"):Promise<void>{
   try{await this.#staging;}catch{/* Stage retains its original failure and committed work. */}
+  try{await this.#transferring;}catch{/* The original transfer caller retains its error. */}
   if(this.#closed)return;
   // Failed staging remains cleanup-only on both graceful and discard paths.
  // A failed retry leaves the scope's private handles reachable for another close.

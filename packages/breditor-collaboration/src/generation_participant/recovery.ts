@@ -18,6 +18,7 @@ import {restoreGenerationSource,restoreGenerationUploads,checkGenerationOwner,ve
 import type {SharedGenerationParticipantRecoveryOptions,SharedGenerationParticipantResumeOptions,SharedGenerationParticipantRecoveryProgress} from "./recovery_contract.js";
 import {captureSharedGenerationSource,type SharedGenerationSourceCapture} from "../generation_source/capture.js";
 import {SharedRichEditor} from "../core.js";
+import type {ReadyPreparationRetarget} from "../participant_recovery/ready_retarget.js";
 let captureStagedGeneration:<P extends SharedSelectionPolicy>(owner:RecoveredSharedGenerationParticipant<P>)=>Promise<SharedGenerationSourceCapture>;
 /** Internal readonly catalog borrowing. The genuine owner remains held; no editable session escapes. */
 export function captureReadOnlyRecoveredGenerationSource<P extends SharedSelectionPolicy>(owner:RecoveredSharedGenerationParticipant<P>):Promise<SharedGenerationSourceCapture>{return captureStagedGeneration(owner);}
@@ -26,6 +27,11 @@ export interface RecoveredGenerationCustody<P extends SharedSelectionPolicy>{p:P
 type ReadyState<P extends SharedSelectionPolicy>=RecoveredGenerationCustody<P>;
 let recoveredGeneration:<P extends SharedSelectionPolicy>(state:ReadyState<P>)=>RecoveredSharedGenerationParticipant<P>;
 let transferGeneration:<P extends SharedSelectionPolicy,T>(owner:RecoveredSharedGenerationParticipant<P>,take:(state:ReadyState<P>)=>Promise<T>,verify:(value:T)=>void)=>Promise<T>;
+type GenerationRetargetInput=Readonly<{owner:RecoveredSharedGenerationParticipant;checkAuthority:()=>void;signal?:AbortSignal}>;
+let retargetGeneration:(values:readonly GenerationRetargetInput[])=>ReadyPreparationRetarget;
+/** Internal genuine ready-owner port. Reuses the admitted file, native cut and
+ * companion; only fresh explicit guards/cancellation replace the old parent. */
+export function prepareRecoveredGenerationRetargets(values:readonly GenerationRetargetInput[]):ReadyPreparationRetarget{return retargetGeneration(values);}
 /** Internal actual custody transfer. Never an archive/metadata adoption hook. */
 export function transferRecoveredGenerationParticipant<P extends SharedSelectionPolicy,T>(owner:RecoveredSharedGenerationParticipant<P>,take:(state:ReadyState<P>)=>Promise<T>,verify:(value:T)=>void):Promise<T>{return transferGeneration(owner,take,verify);}
 async function release(db:IDBDatabase,leases:RecoveryLease[]):Promise<void>{const result=await Promise.allSettled([...leases].reverse().map(l=>l.close()));if(result.some(r=>r.status==="rejected"))throw fail();db.close();}
@@ -37,6 +43,12 @@ export class RecoveredSharedGenerationParticipant<P extends SharedSelectionPolic
  readonly #state:ReadyState<P>;#closed=false;#busy=false;#released=false;
  private constructor(token:object,state:ReadyState<P>){if(token!==key)throw fail("generation_participant_closed");this.#state=state;Object.freeze(this);}
  static{recoveredGeneration=<Q extends SharedSelectionPolicy>(state:ReadyState<Q>)=>new RecoveredSharedGenerationParticipant(key,state);
+  retargetGeneration=values=>{
+   if(!Array.isArray(values)||values.length>1024||new Set(values.map(row=>row.owner)).size!==values.length)throw fail("generation_participant_policy");
+   const selected=values.map(({owner,checkAuthority,signal})=>{if(!owner||typeof owner!=="object"||!(#state in owner))throw fail("generation_participant_policy");const state=owner.#state as RecoveredGenerationCustody<SharedSelectionPolicy>,before=state.p,{signal:_oldSignal,checkAuthority:_oldAuthority,...rest}=before.options,base=snapshotGenerationRecovery({...rest,checkAuthority,...(signal?{signal}:{})},false);if(base.options.database!==before.options.database||base.record.plan!==before.record.plan)throw fail("generation_participant_diverged");return{owner,state,before,next:{...before,options:base.options,session:base.options.session,guard:base.guard}};});
+   const validate=()=>{for(const {owner,state,before}of selected){if(owner.#closed||owner.#released||owner.#busy||state.p!==before)throw fail("generation_participant_diverged");generationSource(generationOwnerSource(before,state.owners).session).checkManaged();RichAssetStore.prototype.checkOpen.call(state.owners.uploads!);}};validate();
+   return Object.freeze({validate,commit(){for(const {state,next}of selected)state.p=next;}});
+  };
   captureStagedGeneration=async owner=>{
    if(!owner||typeof owner!=="object"||!(#state in owner)||owner.#closed||owner.#released)throw fail("generation_participant_closed");if(owner.#busy)throw fail("generation_participant_busy");owner.#busy=true;let source:SharedGenerationSourceCapture|undefined,complete=false;
    try{const s=owner.#state;await retained(s.p,s.db,[s.record]);await verifyGenerationOwners(s.p,s.owners);s.p.guard();source=captureSharedGenerationSource(generationOwnerSource(s.p,s.owners));SharedGenerationParticipantBackup.prototype.verifySource.call(s.p.backup,source);

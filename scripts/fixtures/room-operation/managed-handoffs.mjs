@@ -29,3 +29,9 @@ export async function checkRoomManagedHandoffs(h,{indices=[0,1],late=true}={}){
  }finally{handoff?.abandon();if(escaped)await discardParts(escaped);for(const child of held.reverse())await child.operation.discardAndClose();for(const backup of backups)backup.dispose();}
  return counts;
 }
+
+/** Explicit developer diagnostics for unexpected fixture failures only. Public
+ * exceptions remain sanitized; the SDK never logs private causes itself. */
+export async function roomFailureDiagnostic(error){
+ try{const{internalFailureChain}=await import(new URL("./internal_failure_cause.js",import.meta.resolve("@breditor/collaboration")).href);return internalFailureChain(error).map(value=>({name:typeof value.name==='string'?value.name.slice(0,200):'Error',code:typeof value.code==='string'?value.code.slice(0,200):null,message:typeof value.message==='string'?value.message.slice(0,2000):null,stack:typeof value.stack==='string'?value.stack.slice(0,8000):null}));}catch{return[{name:'DiagnosticUnavailable'}];}
+}

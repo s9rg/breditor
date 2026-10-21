@@ -10,6 +10,7 @@ import {recoveryFailure,SharedParticipantRecoveryError} from "./errors.js";
 import type {SharedParticipantRecoveryOptions,SharedParticipantRecoveryStep} from "./types.js";
 import type {SharedSelectionPolicy} from "../types.js";
 import type {RecoveryRecord} from "./journal.js";
+import {retainInternalFailureCause} from "../internal_failure_cause.js";
 const name=(v:unknown):v is string=>typeof v==="string"&&v.length>0&&v.length<=200;
 /** Snapshot host-selected nonsecret policy before writes; function closures remain host responsibilities. */
 export async function prepareRecovery<P extends SharedSelectionPolicy>(supplied:SharedParticipantRecoveryOptions<P>){
@@ -17,7 +18,7 @@ export async function prepareRecovery<P extends SharedSelectionPolicy>(supplied:
   const input={...supplied},expected=participantSelection(input.expected),actual=SharedParticipantBackup.prototype.selection.call(input.backup);
   SharedParticipantBackup.prototype.file.call(input.backup);if(JSON.stringify(actual)!==JSON.stringify(expected)||!name(input.database))throw recoveryFailure("recovery_policy");
   let authority:()=>void;try{authority=participantAuthority(input.checkAuthority);}catch{throw recoveryFailure("recovery_authority");}
-  const guard=()=>{if(input.signal?.aborted)throw recoveryFailure("recovery_aborted");try{authority();}catch{throw recoveryFailure("recovery_authority");}if(input.signal?.aborted)throw recoveryFailure("recovery_aborted");SharedParticipantBackup.prototype.file.call(input.backup);};guard();
+  const guard=()=>{if(input.signal?.aborted)throw recoveryFailure("recovery_aborted");try{authority();}catch(error){throw retainInternalFailureCause(recoveryFailure("recovery_authority"),error);}if(input.signal?.aborted)throw recoveryFailure("recovery_aborted");SharedParticipantBackup.prototype.file.call(input.backup);};guard();
   const destinations=Object.fromEntries(Object.entries(input.destinations).sort(([a],[b])=>a<b?-1:a>b?1:0)) as SharedParticipantRecoveryOptions<P>["destinations"],sources=expected.identity.stores,paired=sources.includes("paired-session"),kind=input.session.kind;
   const options={...input.session.options},raw=options as unknown as Record<string,unknown>;
   if(!["document","document-selection","search-document","paired","reviewed-paired","search-paired"].includes(kind)||paired!==kind.includes("paired"))throw recoveryFailure("recovery_policy");
@@ -47,6 +48,6 @@ export async function prepareRecovery<P extends SharedSelectionPolicy>(supplied:
   const record:RecoveryRecord={format:"breditor/shared-participant-recovery",formatVersion:1,plan,phase:"preparing",steps:steps.map(step=>({step,state:"reserved"}))};
   guard();
   return {database:input.database,backup:input.backup,expected,destinations,session,suggestions,revisions,versions,limits,records,backups,record,guard,signal:input.signal};
- }catch(error){if(error instanceof SharedParticipantRecoveryError)throw error;throw recoveryFailure("recovery_policy");}
+ }catch(error){if(error instanceof SharedParticipantRecoveryError)throw error;throw retainInternalFailureCause(recoveryFailure("recovery_policy"),error);}
 }
 export type PreparedRecovery<P extends SharedSelectionPolicy>=Awaited<ReturnType<typeof prepareRecovery<P>>>;
