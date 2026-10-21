@@ -28,13 +28,15 @@ pub use backup::{
     VerifiedServerRecoveryContinuation, VerifiedServerRecoveryState, router_with_server_backups,
 };
 pub use generation_recovery::{
-    PhysicalServerAssetRecoveryState, PhysicalServerRoomRecoveryCoverage,
+    PhysicalServerAssetAvailabilityRead, PhysicalServerAssetRecoveryState,
+    PhysicalServerRecoveryAssetCoverage, PhysicalServerRoomRecoveryCoverage,
     PhysicalServerRoomRecoveryState, PhysicalServerRoomRecoveryStateIdentity,
     PreparedLogGenerationRecoveryHost, PreparedPhysicalRoomRecoveryHost,
     ServerLogGenerationAssetRecoveryState, ServerLogGenerationRecoveryCoverage,
     ServerLogGenerationRecoveryState, ServerLogGenerationRecoveryStateIdentity,
-    VerifiedPhysicalServerRoomRecoveryState, VerifiedServerLogGenerationRecoveryState,
-    prepare_log_generation_recovery_host, prepare_physical_room_recovery_host,
+    VerifiedPhysicalServerRecoveryAssets, VerifiedPhysicalServerRoomRecoveryState,
+    VerifiedServerLogGenerationRecoveryState, prepare_log_generation_recovery_host,
+    prepare_physical_room_recovery_host,
 };
 use std::sync::{Arc, Mutex};
 use tokio::sync::{Semaphore, watch};

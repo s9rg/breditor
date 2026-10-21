@@ -53,7 +53,7 @@ async fn verify_public_state(
     Ok(())
 }
 
-async fn prepare_public_host(
+pub(super) async fn prepare_public_host(
     operation: OperationalLogGenerationServerRoom,
     ancestor: &ServerLogGenerationRoomBackup,
     local: &ServerLogGenerationRoomBackup,

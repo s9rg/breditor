@@ -79,8 +79,29 @@ Its [callback ordering qualification](qualification/2026-10-21-provider-callback
 passes all 16 selected stages, 345 server-enabled Rust checks, fresh no-networking
 public compatibility and 1,529 script tests with three existing opt-in skips.
 Fresh source/installed recovery consumers preserve exact native histories and
-byte-identical public packages. Separate physical-host provider availability and
-the combined SDK/native parent remain architectural work.
+byte-identical public packages. That qualification predates the physical-host
+provider availability contract below; the combined SDK/native parent remains
+architectural work.
+
+The distinct [physical provider availability contract](PHYSICAL_SERVER_ASSET_AVAILABILITY.md)
+now joins genuine native A/B/C protected-stream continuity to exact current
+provider mappings and actual native PNG/JPEG/WebP bytes. It reuses the original
+server-private resolver without changing canonical/opaque identifier meanings.
+Weak native/provider proofs stale on complete source changes; final actual
+source comparisons follow every callback before Verified or Pending publication.
+Ten native and ten exported-only grammar/transport cases preserve actual local
+origin, offline document/review work and future peer-preserving Undo/Redo.
+Client/outbox closure, historic-copy decisions, SDK/native parent integration
+and fenced activation remain separate; no V1 gate is closed by this feature.
+
+Its [physical provider qualification](qualification/2026-10-21-physical-server-asset-availability.json)
+passes all 21 selected stages, 358 server-enabled and 267 complete no-networking
+Rust checks, and 1,531 script tests with three existing opt-in skips. A separate
+locked offline Rust project repeats the exported-only consumer. Fresh source and
+installed client-operation workflows retain exact native histories, files and
+whole uploads with unchanged assertions. Public packages and the normal shared
+runtime remain byte-identical; this is server-scope functionality, not a V1 or
+whole-room activation approval.
 
 Its [functional qualification](qualification/2026-10-21-physical-room-client-operation.json)
 passes 33 selected stages and 1,525 script tests, with three existing opt-in

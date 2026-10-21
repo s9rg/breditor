@@ -1,5 +1,6 @@
 //! Real restored later origins, independent retained ancestors and complete native continuations.
 mod ancestry;
+mod asset_availability;
 mod current_cut;
 mod custody;
 mod fixture;

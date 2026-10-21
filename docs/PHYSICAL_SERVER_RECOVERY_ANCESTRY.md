@@ -74,9 +74,11 @@ one authenticated transaction and the existing complete encoded-result budget.
 The references retain the exact current native source. Ready and Pending keep
 their original meanings; Pending is not flattened to an empty reference list.
 
-This is server-scope coverage. Complete provider mappings and bytes, all client
-journals/outboxes, historic-copy choices, matching SDK-parent integration,
-deployment fencing and authenticated whole-room activation remain separate.
+The separate [physical asset-availability contract](PHYSICAL_SERVER_ASSET_AVAILABILITY.md)
+now joins genuine native continuity with actual server provider mappings and
+bytes. This remains server-scope coverage: all client journals/outboxes,
+historic-copy choices, matching SDK-parent integration, deployment fencing and
+authenticated whole-room activation remain separate.
 Existing file, raster, history and memory ceilings are unchanged. Complete
 archive admission and cold native replay still scale with retained history.
 

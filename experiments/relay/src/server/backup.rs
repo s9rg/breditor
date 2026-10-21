@@ -5,12 +5,15 @@ use axum::Router;
 mod asset_availability;
 mod recovery_check;
 mod recovery_inventory;
-pub(in crate::server) use asset_availability::check_complete_asset_read_budget;
 pub use asset_availability::{
     ContentAddressedServerAssets, MAX_SERVER_ASSET_AVAILABILITY_BYTES,
     ServerAssetAvailabilityCoverage, ServerAssetAvailabilityMissing, ServerAssetAvailabilityRead,
     ServerAssetRecoveryState, ServerAssetResolution, ServerRecoveryAssetCoverage,
     ServerRecoveryAssetProvider, VerifiedServerAssetAvailability, VerifiedServerRecoveryAssets,
+};
+pub(in crate::server) use asset_availability::{
+    ResolvedServerAssets, check_complete_asset_read_budget, check_server_asset_provider,
+    resolve_server_assets,
 };
 pub use recovery_check::{
     ServerRecoveryContinuationCoverage, ServerRecoveryContinuationIdentity, ServerRecoveryCoverage,

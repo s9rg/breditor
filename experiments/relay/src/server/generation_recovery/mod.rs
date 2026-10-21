@@ -5,10 +5,11 @@ pub use asset_state::ServerLogGenerationAssetRecoveryState;
 mod coordinator;
 mod physical;
 pub use physical::{
-    PhysicalServerAssetRecoveryState, PhysicalServerRoomRecoveryCoverage,
+    PhysicalServerAssetAvailabilityRead, PhysicalServerAssetRecoveryState,
+    PhysicalServerRecoveryAssetCoverage, PhysicalServerRoomRecoveryCoverage,
     PhysicalServerRoomRecoveryState, PhysicalServerRoomRecoveryStateIdentity,
-    PreparedPhysicalRoomRecoveryHost, VerifiedPhysicalServerRoomRecoveryState,
-    prepare_physical_room_recovery_host,
+    PreparedPhysicalRoomRecoveryHost, VerifiedPhysicalServerRecoveryAssets,
+    VerifiedPhysicalServerRoomRecoveryState, prepare_physical_room_recovery_host,
 };
 mod prepare;
 mod selected;

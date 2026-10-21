@@ -6,12 +6,12 @@ use crate::{
 };
 use breditor_collab_feasibility::rich_replica::VersionAssetReference;
 use std::collections::BTreeMap;
-pub(super) struct Resolved {
+pub(in crate::server) struct Resolved {
     pub resolutions: Vec<ServerAssetResolution>,
     pub assets: Vec<AssetInfo>,
     pub missing: Vec<ServerAssetAvailabilityMissing>,
 }
-pub(super) fn guard(provider: &dyn ServerRecoveryAssetProvider) -> Result<()> {
+pub(in crate::server) fn guard(provider: &dyn ServerRecoveryAssetProvider) -> Result<()> {
     provider.check().map_err(|_| Error::Contract("server asset provider guard refused"))
 }
 fn key(value: &str) -> Result<()> {
@@ -43,7 +43,7 @@ fn target(
     guard(provider)?;
     Ok(target)
 }
-pub(super) fn resolve(
+pub(in crate::server) fn resolve(
     assets: &AssetStore,
     references: &[VersionAssetReference],
     provider: &dyn ServerRecoveryAssetProvider,

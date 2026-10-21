@@ -1,0 +1,107 @@
+//! Opaque mappings and actual missing payloads stay Pending; source selections are never retargeted.
+use super::super::super::source::TestResult;
+use super::{
+    fixture::Fixture,
+    provider::{mappings, provider},
+};
+use crate::{
+    ServerAssetReferenceOutcome,
+    server::{
+        ContentAddressedServerAssets, PhysicalServerRecoveryAssetCoverage,
+        ServerAssetAvailabilityMissing,
+    },
+};
+use std::{io::Cursor, sync::Arc};
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn missing_exact_opaque_mappings_or_actual_payloads_do_not_create_a_physical_proof()
+-> TestResult {
+    let fixture = Box::pin(Fixture::new((3, true), true)).await?;
+    let PhysicalServerRecoveryAssetCoverage::Pending { state, missing } = fixture
+        .host()
+        .verify_recovery_asset_availability(
+            "owner",
+            &fixture.owner,
+            fixture.native.clone(),
+            Arc::new(ContentAddressedServerAssets),
+        )
+        .await?
+    else {
+        return Err("missing opaque mappings produced a proof".into());
+    };
+    assert_eq!(state.current, fixture.expected);
+    assert!(matches!(state.references.outcome, ServerAssetReferenceOutcome::Ready { .. }));
+    assert_eq!(missing.len(), 2);
+    assert!(
+        missing.iter().all(|row| matches!(row, ServerAssetAvailabilityMissing::Mapping { .. }))
+    );
+    let state = mappings()?;
+    let mut bytes = Cursor::new(Vec::new());
+    image::DynamicImage::new_rgb8(9, 11).write_to(&mut bytes, image::ImageFormat::Png)?;
+    let absent = crate::assets::asset_id(&bytes.into_inner());
+    for content in state.lock().map_err(|_| "mapping guard")?.pairs.values_mut() {
+        *content = absent.clone();
+    }
+    let PhysicalServerRecoveryAssetCoverage::Pending { state: selected, missing } = fixture
+        .host()
+        .verify_recovery_asset_availability(
+            "owner",
+            &fixture.owner,
+            fixture.native.clone(),
+            provider(&state)?,
+        )
+        .await?
+    else {
+        return Err("missing actual payloads produced a proof".into());
+    };
+    assert_eq!(selected.current, fixture.expected);
+    assert_eq!(missing.len(), 2);
+    assert!(missing.iter().all(|row| matches!(row, ServerAssetAvailabilityMissing::Bytes { .. })));
+    assert_eq!(
+        fixture.host().capture_recovery_state("owner", &fixture.owner).await?.identity()?,
+        fixture.expected
+    );
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn invalid_divergent_or_changing_opaque_mappings_refuse_without_changing_native_sources()
+-> TestResult {
+    let fixture = Box::pin(Fixture::new((3, true), true)).await?;
+    for wrong in ["invalid", "divergent", "changing"] {
+        let state = mappings()?;
+        {
+            let mut value = state.lock().map_err(|_| "mapping guard")?;
+            if wrong == "invalid" {
+                value.pairs.insert(
+                    ("asset".into(), "generation".into()),
+                    "private-invalid-mapping".into(),
+                );
+            } else if wrong == "divergent" {
+                let different = value.flip_target.clone();
+                value.pairs.insert(("asset".into(), "generation".into()), different);
+            } else {
+                value.flip_on = Some(1);
+            }
+        }
+        assert!(
+            fixture
+                .host()
+                .verify_recovery_asset_availability(
+                    "owner",
+                    &fixture.owner,
+                    fixture.native.clone(),
+                    provider(&state)?,
+                )
+                .await
+                .is_err(),
+            "{wrong}"
+        );
+        assert_eq!(
+            fixture.host().capture_recovery_state("owner", &fixture.owner).await?.identity()?,
+            fixture.expected
+        );
+        fixture.native.check_live(fixture.host(), "owner", &fixture.owner).await?;
+    }
+    Ok(())
+}

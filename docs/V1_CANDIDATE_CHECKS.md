@@ -8,6 +8,16 @@ Rust consumer profiles. Full relay and no-networking suites remain mandatory.
 These native checks do not substitute for the combined SDK/server parent,
 complete provider/client closure or authenticated whole-room activation.
 
+Both profiles also require `physical-host-assets-plan-contracts`,
+`relay-physical-host-assets-native` and `relay-physical-host-assets-public`.
+They join genuine same-host A/B/C continuity with actual provider-backed rasters,
+including ten native and ten exported-only grammar/transport modes, stale-cut
+refusal, weak native/provider lifetime and final-callback source comparisons on
+Verified and missing-byte Pending. See the
+[physical availability contract](PHYSICAL_SERVER_ASSET_AVAILABILITY.md).
+Existing full-native, ancestry, original-provider and no-networking stages remain
+required; this is not complete client/outbox closure or activation.
+
 Both profiles also require `provider-callback-custody-plan-contracts` and
 `relay-provider-callback-custody`. Four actual public Rust regressions require
 the final source comparison to follow every provider callback before Verified

@@ -46,7 +46,13 @@ async fn changed_custody_or_selected_file_refuses_every_native_read_without_repa
         };
         let path = match change {
             "control-body" | "control-inode" => root.join(".operational.json"),
-            "native" => native.join(".head.json"),
+            "native" => {
+                let selected: serde_json::Value =
+                    serde_json::from_slice(&fs::read(native.join(".component.json"))?)?;
+                native
+                    .join(selected["directory"].as_str().ok_or("actual native data")?)
+                    .join(".head.json")
+            }
             "raster" => {
                 let component: serde_json::Value =
                     serde_json::from_slice(&fs::read(root.join(".rasters.json"))?)?;

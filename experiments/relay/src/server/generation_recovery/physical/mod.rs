@@ -1,4 +1,9 @@
 //! Separate ancestor/local-origin/current contracts. Original host origin semantics stay closed.
+mod asset_availability;
+pub use asset_availability::{
+    PhysicalServerAssetAvailabilityRead, PhysicalServerRecoveryAssetCoverage,
+    VerifiedPhysicalServerRecoveryAssets,
+};
 mod asset_state;
 mod capture;
 mod coordinator;
