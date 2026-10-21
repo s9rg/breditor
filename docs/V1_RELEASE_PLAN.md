@@ -43,13 +43,32 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+[Independent history delivery](INDEPENDENT_DELIVERY.md) now binds independently
+selected native document/comment histories, relay receipts and all three retained
+review/version stores to one atomic client transaction. Named adapters require
+actual ownership; old constructors refuse the new family even when its document
+lane is original. Current readable recovery remains distinct from acknowledged
+durable progress. The functional plan now has 238 checks, including native,
+authenticated loopback and unchanged fresh installed-package assertions for the
+new family. Physical whole-room/asset adoption, independent server-log generations
+and authenticated activation remain unfinished. All thirteen V1 gates remain open.
+
+Its [qualification](qualification/2026-10-21-independent-delivery.json) passes
+53 selected stages, 1,752 script tests with three existing skips, and fresh
+379-test server-enabled and 267-test no-server native suites. Source and installed
+packages repeat the same 120 local native and 88 authenticated network cases,
+with 32 focused laws. Twelve installed reports retain matching package hashes;
+the original browser/rich archives and six normal shared runtime files stay
+unchanged. The exact final legacy-adapter regression fails on the preserved old
+archive. This is selected functional evidence, not full-plan or V1 approval.
+
 [Capture-bound native histories](CAPTURED_NATIVE_HISTORIES.md) distinguish both
 native lane families and absent versus unselected comments. Inventory and
 operational coverage consume actual lifetime-checked reads without widening old
 archive codecs. Private live change identities avoid rebuilding comment views
 on each guard check. Independent local captures expose both lanes internally;
-independent relay/outboxes and whole-room adoption remain separate work. The
-functional plan now has 234 checks. The
+whole-room adoption remains separate work. The
+functional plan at that checkpoint had 234 checks. The
 [captured-history qualification](qualification/2026-10-21-captured-native-histories.json)
 passes 34 selected checks and 1,719 script tests, with three existing skips.
 Source and installed packages each repeat 300 native cases, 300 cold pairs,

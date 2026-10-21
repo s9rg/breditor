@@ -33,6 +33,11 @@ and interchange gaps, compatibility and reliability work remain. The [V1 release
 CKEditor, package promotion and explicit release gates. Run `npm run audit:v1`
 to inspect the remaining work; `npm run check:v1` fails while it remains open.
 
+The opt-in [independent history delivery contract](docs/INDEPENDENT_DELIVERY.md)
+joins independently selected native document/comment histories, relay receipts
+and pending review/version work in one atomic client save. It is separate from
+unfinished physical whole-room adoption and authenticated activation.
+
 Start the loopback-only combined developer demo after following its
 [toolchain and setup instructions](packages/breditor-experimental-collaboration/README.md):
 

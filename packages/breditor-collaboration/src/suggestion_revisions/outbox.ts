@@ -2,7 +2,7 @@
  * Children enter the unchanged proposal queue only after authenticated revision commitment. */
 import {SharedRelayError} from "../relay/validation.js";
 import {checkSourceCheckpoint} from "../persistence/source_checkpoint.js";
-import {segmentedRetainedPort,type SegmentedRetainedPort} from "../segmented_relay/retained_port.js";
+import {selectedRetainedStorePort,type RetainedStorePort} from "../delivery_ports/retained.js";
 import {same} from "../suggestions/validation.js";
 import {SharedEditorError} from "../core.js";
 import {registerManagedSource,checkManagedSource,managedSourceUnavailable} from "../managed_custody.js";
@@ -34,7 +34,7 @@ import type {SharedSuggestionRevisionsOptions,SharedSuggestionRevisionsRecord,Sh
 const constructionKey=Object.freeze({}),attached=new WeakSet<object>();
 export class SharedSuggestionRevisions<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
  readonly #options:SharedSuggestionRevisionsOptions<P>;readonly #core;readonly #db:IDBDatabase|undefined;
- readonly #segmented:SegmentedRetainedPort<"revisions">|undefined;
+ readonly #atomic:RetainedStorePort<"revisions">|undefined;
  #record:SharedSuggestionRevisionsRecord;#infos=new Map<string,SharedSuggestionRevisionInfo>();#feed=new Map<string,SharedSuggestionRevisionReceipt>();
  #pending:SharedSuggestionRevisionsRecord|undefined;#writing:Promise<void>|undefined;#failure:unknown;#durable="";
  #closed=false;#closing:Promise<void>|undefined;#listeners=new Set<()=>void>();#off:(()=>void)[]=[];#notifyQueued=false;
@@ -42,9 +42,9 @@ export class SharedSuggestionRevisions<P extends SharedSelectionPolicy=SharedSel
  #downloads=new Map<string,ReturnType<typeof loadRevision<P>>>();
  #restoreInsert=false;#restoreSignal:AbortSignal|undefined;
  #tasks=0;#connections=new Set<Promise<void>>();#storageChanged=false;
- private constructor(key:object,options:SharedSuggestionRevisionsOptions<P>,db:IDBDatabase|undefined,record:SharedSuggestionRevisionsRecord,segmented?:SegmentedRetainedPort<"revisions">){
+ private constructor(key:object,options:SharedSuggestionRevisionsOptions<P>,db:IDBDatabase|undefined,record:SharedSuggestionRevisionsRecord,atomic?:RetainedStorePort<"revisions">){
   if(key!==constructionKey)throw new SharedEditorError('managed_source_construction','Use the actual revision outbox open or recovery factory');
-  this.#segmented=segmented;
+  this.#atomic=atomic;
   this.#options=options;this.#core=options.queue.core;this.#db=db;this.#record=record;this.#wanted=options.autoStart!==false;this.#admit(record);
   registerManagedSource(this,this.#core,()=>{this.#localCheck();if(this.#closing||this.#storageChanged)throw managedSourceUnavailable();checkManagedSource(options.queue,this.#core);});
   if(db)db.onversionchange=()=>{this.#storageChanged=true;db.close();this.#failure=new SharedRelayError("suggestion_database_versionchange");this.#report(this.#failure);};
@@ -62,20 +62,20 @@ export class SharedSuggestionRevisions<P extends SharedSelectionPolicy=SharedSel
   if(source.core!==core||queue.core!==core)throw new SharedRelayError("suggestion_source_replaced");return SharedSuggestionRevisions.#open({...options,binding,autoStart:false},recovered,signal);
  }
  static async #open<Q extends SharedSelectionPolicy>(input:SharedSuggestionRevisionsOptions<Q>,recovered?:SharedSuggestionRevisionsRecord,signal?:AbortSignal):Promise<SharedSuggestionRevisions<Q>>{
-  const queue=input.queue;checkSuggestionRecoveryIdle(queue);const core=queue.core,binding=revisionsBinding({binding:input.binding}).binding,options={...input,binding},segmented=segmentedRetainedPort(input,"revisions");
+  const queue=input.queue;checkSuggestionRecoveryIdle(queue);const core=queue.core,binding=revisionsBinding({binding:input.binding}).binding,options={...input,binding},atomic=selectedRetainedStorePort(input,"revisions");
   if(attached.has(queue))throw new SharedRelayError("suggestion_revisions_already_attached");
   const opening=registerSuggestionRecoveryParticipant(queue,()=>{throw new SharedRelayError("suggestion_recovery_in_use");});attached.add(queue);let db:IDBDatabase|undefined,outbox:SharedSuggestionRevisions<Q>|undefined;
   try{if(input.storage.core!==core||!core.supportsSuggestionRevisions()||!input.transport.checkSuggestionRevisions||!input.transport.requestSuggestionRevision||!input.transport.suggestionRevisionsReady)throw new SharedRelayError("suggestion_revisions_unavailable");
-   input.transport.checkSuggestionRevisions(core,queue.identity(),binding);if(segmented)segmented.check();else checkSourceCheckpoint(core,queue.identity().room,queue.identity().documentWriter);
-   checkRetainedStoreSignal(signal);const retained=isOperationalComponent(input)?await existingOperationalComponent(input.database,"revisions",revisionKey(queue.identity(),binding)):undefined;if(!segmented)db=retained?.db??await openRevisionDatabase(input.database);let saved:SharedSuggestionRevisionsRecord|null;
-   if(recovered){if(await retainedStoreDestinationExists(db!,"revisions",revisionKey(queue.identity(),binding),signal))throw new SharedEditorError("backup_destination_exists","Retained restore destination already contains a record");saved=recovered;}else saved=segmented?checkRevisionRecord(segmented.read(),queue.identity(),binding):await readRevisionRecord(db!,queue.identity(),binding);
+   input.transport.checkSuggestionRevisions(core,queue.identity(),binding);if(atomic)atomic.check();else checkSourceCheckpoint(core,queue.identity().room,queue.identity().documentWriter);
+   checkRetainedStoreSignal(signal);const retained=isOperationalComponent(input)?await existingOperationalComponent(input.database,"revisions",revisionKey(queue.identity(),binding)):undefined;if(!atomic)db=retained?.db??await openRevisionDatabase(input.database);let saved:SharedSuggestionRevisionsRecord|null;
+   if(recovered){if(await retainedStoreDestinationExists(db!,"revisions",revisionKey(queue.identity(),binding),signal))throw new SharedEditorError("backup_destination_exists","Retained restore destination already contains a record");saved=recovered;}else saved=atomic?checkRevisionRecord(atomic.read(),queue.identity(),binding):await readRevisionRecord(db!,queue.identity(),binding);
    if(retained&&(!saved||JSON.stringify(saved)!==JSON.stringify(retained.record)))throw operationFailure("operation_diverged");
-   const create=()=>new SharedSuggestionRevisions(constructionKey,options,db,saved??{format:"breditor/shared-suggestion-revisions",formatVersion:1,identity:queue.identity(),binding,retained:[]},segmented);outbox=recovered?retainedStoreNativeAdmission(create):create();retained?.assertCurrent();outbox.#restoreInsert=recovered!==undefined;outbox.#restoreSignal=signal;outbox.#pending=structuredClone(outbox.#record);outbox.#startWrite();await outbox.flush();outbox.#check();checkRetainedStoreSignal(signal);outbox.#changed();opening();return outbox;}
+   const create=()=>new SharedSuggestionRevisions(constructionKey,options,db,saved??{format:"breditor/shared-suggestion-revisions",formatVersion:1,identity:queue.identity(),binding,retained:[]},atomic);outbox=recovered?retainedStoreNativeAdmission(create):create();retained?.assertCurrent();outbox.#restoreInsert=recovered!==undefined;outbox.#restoreSignal=signal;outbox.#pending=structuredClone(outbox.#record);outbox.#startWrite();await outbox.flush();outbox.#check();checkRetainedStoreSignal(signal);outbox.#changed();opening();return outbox;}
   catch(error){opening();if(outbox)await outbox.discardAndClose();else{db?.close();attached.delete(queue);}throw error;}
  }
- #localCheck():void{if(this.#closed)throw new SharedRelayError("suggestion_revisions_closed");const o=this.#options;if(o.storage.core!==this.#core||o.queue.core!==this.#core)throw new SharedRelayError("suggestion_source_replaced");const state=o.queue.state();if(state.closed||state.retiring)throw new SharedRelayError("suggestion_queue_closed");this.#segmented?.check();}
+ #localCheck():void{if(this.#closed)throw new SharedRelayError("suggestion_revisions_closed");const o=this.#options;if(o.storage.core!==this.#core||o.queue.core!==this.#core)throw new SharedRelayError("suggestion_source_replaced");const state=o.queue.state();if(state.closed||state.retiring)throw new SharedRelayError("suggestion_queue_closed");this.#atomic?.check();}
  #check():void{this.#localCheck();this.#options.transport.checkSuggestionRevisions!(this.#core,this.#record.identity,this.#options.binding);}
- #writable():void{checkSuggestionRecoveryIdle(this.#options.queue);this.#check();this.#segmented?.writable();if(this.#closing)throw new SharedRelayError("suggestion_revisions_closed");}
+ #writable():void{checkSuggestionRecoveryIdle(this.#options.queue);this.#check();this.#atomic?.writable();if(this.#closing)throw new SharedRelayError("suggestion_revisions_closed");}
  #recoveryIdle():void{if(this.#closed||this.#closing||this.#wanted||this.#tasks||this.#working||this.#scheduled||this.#writing||this.#connections.size||this.#downloads.size)throw new SharedRelayError("suggestion_recovery_in_use");}
  #enqueue(work:()=>Promise<void>):Promise<void>{this.#tasks++;const task=this.#serial.then(work).finally(()=>{this.#tasks--;});this.#serial=task.catch(()=>{});return task;}
  /** Await already-disconnected local/delivery work without stopping the borrowed transport. */
@@ -83,7 +83,7 @@ export class SharedSuggestionRevisions<P extends SharedSelectionPolicy=SharedSel
  #admit(record:SharedSuggestionRevisionsRecord):void{
   this.#infos=admitRevisionRecord(this.#core,record);
  }
- #mark(record:SharedSuggestionRevisionsRecord):void{const checked=checkRevisionRecord(record,this.#record.identity,this.#record.binding);this.#admit(checked);if(same(checked,this.#record)&&!this.#failure)return;this.#segmented?.stage(checked);this.#record=checked;this.#pending=structuredClone(checked);this.#startWrite();this.#notify();this.#schedule();}
+ #mark(record:SharedSuggestionRevisionsRecord):void{const checked=checkRevisionRecord(record,this.#record.identity,this.#record.binding);this.#admit(checked);if(same(checked,this.#record)&&!this.#failure)return;this.#atomic?.stage(checked);this.#record=checked;this.#pending=structuredClone(checked);this.#startWrite();this.#notify();this.#schedule();}
  #row(id:string):SharedSuggestionRevisionRow{const index=[...this.#infos.keys()].indexOf(id);if(index<0)throw new SharedRelayError("suggestion_revision_unknown");return this.#record.retained[index]!;}
  #replace(id:string,change:(row:SharedSuggestionRevisionRow)=>SharedSuggestionRevisionRow):void{const row=this.#row(id);this.#mark({...this.#record,retained:this.#record.retained.map(value=>value===row?change(value):value)});}
  /** Pure capture plus local durable intent, not supersession, rejection or accepted document edits. */
@@ -124,11 +124,11 @@ export class SharedSuggestionRevisions<P extends SharedSelectionPolicy=SharedSel
  #notify():void{if(this.#notifyQueued)return;this.#notifyQueued=true;queueMicrotask(()=>{this.#notifyQueued=false;for(const listener of [...this.#listeners])try{listener();}catch{/* Borrowed observers cannot acknowledge persistence. */}});}
  #report(error:unknown):void{const failure=error instanceof SharedRelayError?error:new SharedRelayError("suggestion_revision_sync_failed");this.#error=failure.code;this.#wanted=false;this.#notify();try{this.#options.onError?.(failure);}catch{/* Reporting cannot discard the draft. */}}
  #startWrite():void{if(this.#writing||!this.#pending||this.#failure||this.#closed)return;this.#writing=this.#drain().catch(error=>{this.#failure=error??new SharedRelayError("local_save_failed");this.#report(new SharedRelayError("local_save_failed"));}).finally(()=>{this.#writing=undefined;this.#notify();if(!this.#failure)this.#startWrite();});}
- async #drain():Promise<void>{while(this.#pending&&!this.#closed){const next=this.#pending;this.#pending=undefined;try{if(this.#segmented){this.#localCheck();await this.#options.queue.flush();this.#localCheck();await this.#segmented.write(next);this.#localCheck();}else{this.#check();checkRetainedStoreSignal(this.#restoreSignal);this.#options.storage.save();await this.#options.storage.flush();this.#check();await this.#options.queue.flush();this.#check();
+ async #drain():Promise<void>{while(this.#pending&&!this.#closed){const next=this.#pending;this.#pending=undefined;try{if(this.#atomic){this.#localCheck();await this.#options.queue.flush();this.#localCheck();await this.#atomic.write(next);this.#localCheck();}else{this.#check();checkRetainedStoreSignal(this.#restoreSignal);this.#options.storage.save();await this.#options.storage.flush();this.#check();await this.#options.queue.flush();this.#check();
   if(this.#restoreInsert){await insertRetainedStoreRecord(this.#db!,"revisions",revisionKey(next.identity,next.binding),next,this.#restoreSignal);this.#restoreInsert=false;checkRetainedStoreSignal(this.#restoreSignal);this.#restoreSignal=undefined;}else await writeRevisionRecord(this.#db!,next);
   this.#check();}this.#durable=JSON.stringify(next);}catch(error){this.#pending??=next;throw error;}}}
  async flush():Promise<void>{if(this.#closed)throw new SharedRelayError("suggestion_revisions_closed");while(this.#writing)await this.#writing;if(this.#failure)throw this.#failure;}
- async retry():Promise<void>{checkSuggestionRecoveryIdle(this.#options.queue);if(this.#segmented)this.#localCheck();else this.#check();if(this.#writing)await this.#writing;checkSuggestionRecoveryIdle(this.#options.queue);this.#failure=undefined;this.#error=null;this.#pending=structuredClone(this.#record);this.#startWrite();await this.flush();this.#schedule();}
+ async retry():Promise<void>{checkSuggestionRecoveryIdle(this.#options.queue);if(this.#atomic)this.#localCheck();else this.#check();if(this.#writing)await this.#writing;checkSuggestionRecoveryIdle(this.#options.queue);this.#failure=undefined;this.#error=null;this.#pending=structuredClone(this.#record);this.#startWrite();await this.flush();this.#schedule();}
  #changed():void{if(this.#closed)return;try{this.#check();const t=this.#options.transport,s=t.suggestionState(),q=this.#options.queue;const signature=JSON.stringify([t.suggestionRevisionsReady!(),s.revision,s.documentRevision,this.#core.view().causalVersion,q.proposals().map(info=>{const r=q.status(info.id);return [info.id,r.publish,r.publication,r.decision];})]);if(signature!==this.#signature){this.#signature=signature;this.#schedule();}this.#notify();}catch(error){this.#epoch++;this.#report(error);}}
  #schedule():void{this.#dirty=true;if(this.#scheduled||this.#closed||!this.#wanted||!this.#options.transport.suggestionRevisionsReady?.()||this.#failure)return;this.#scheduled=true;const epoch=this.#epoch;
   const task=this.#enqueue(async()=>{if(!this.#active(epoch))return;this.#dirty=false;await this.#synchronize(epoch);});this.#serial=task.catch(error=>{if(this.#active(epoch))this.#report(error);}).finally(()=>{this.#scheduled=false;if(this.#dirty&&this.#active(epoch))this.#schedule();});

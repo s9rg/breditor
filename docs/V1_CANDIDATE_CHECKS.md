@@ -1,5 +1,22 @@
 # V1 candidate checks
 
+Both profiles require `independent-delivery-contracts`,
+`independent-delivery-type-fence`, `independent-delivery` and
+`installed-independent-delivery`. They check the
+[atomic delivery contract](INDEPENDENT_DELIVERY.md): complete independently
+selected native histories, exact pending review/version work, acknowledged
+receipt discipline, real authenticated author and observer recovery, and future
+native Undo/Redo. Fresh offline archives repeat the same functional assertions
+and strict public types. The current functional plan has 238 checks; these
+stages do not qualify physical whole-room adoption or V1 readiness.
+
+The [delivery qualification](qualification/2026-10-21-independent-delivery.json)
+records 51 main stages and two fresh complete native suite stages passing against
+one frozen source. The script suite passes 1,752 tests with three existing skips;
+native suites pass 379 server-enabled and 267 no-server tests/doctests. Each source
+and installed run repeats 120 local native and 88 authenticated network cases,
+plus 32 focused laws. Twelve installed reports match all package archive hashes.
+
 Both profiles require `native-history-read-plan-contracts`,
 `native-history-read-contracts`, `native-history-read-type-fence`,
 `native-history-read` and `installed-native-history-read`. They check the
@@ -51,7 +68,7 @@ managed local-generation captures, with instance/prototype facade overrides,
 across all five grammar/inline profiles. Installed consumers use fresh offline
 public archives without workspace links. The original 1,000-check lightweight
 generation-stamp law and broader recovery/script stages remain required.
-The functional plan now has 234 checks; the recorded selections below are
+The functional plan at that checkpoint had 234 checks; the recorded selections below are
 historical subsets, not whole-plan or V1 approval.
 
 Both profiles also require `physical-recovery-assets-plan-contracts`,
@@ -64,8 +81,8 @@ mandatory. Source and fresh offline packages repeat the same native/client
 assertions; Pending queues and unselected historical copies are not settled by
 available bytes. See [the distinct contract](PHYSICAL_CLIENT_ASSET_RECONCILIATION.md).
 At that asset checkpoint the functional plan had 216 checks; the current
-234-check plan also includes canonical readers, independent participant recovery,
-owned-core lifetime and explicit native-history read checks. Selecting a
+238-check plan also includes canonical readers, independent participant recovery,
+owned-core lifetime, explicit native-history reads and independent delivery. Selecting a
 subset or passing functional checks does not grant V1, public-hosting or
 activation approval.
 

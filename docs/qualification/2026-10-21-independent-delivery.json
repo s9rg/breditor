@@ -1,0 +1,326 @@
+{
+  "format": "breditor/independent-delivery-functional-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-21",
+  "passed": true,
+  "source": {
+    "commit": "5e243802d856e286619125834a63fcf8b066f51c",
+    "dirty": true,
+    "sha256": "63b0ac9bd021b986b83380ab403ef6c586d9279eac305f6adfa2518e4d70f64d",
+    "files": 5426,
+    "bytes": 44788452
+  },
+  "nonDocumentation": {
+    "files": 4855,
+    "sha256": "991490b34c0728e4775c956e2cd64e5d73b8ee86d9b4c2abc4c272be61bc131f"
+  },
+  "nativeInputs": {
+    "files": 2986,
+    "sha256": "a4a716e0a6237d7c0d6122e5ab1eefc7ab02bda557cfeff9b786794c9c23d420"
+  },
+  "normalSharedRuntime": [
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.js",
+      "bytes": 197057,
+      "sha256": "eedaf4d3fbdfd9cfd115484030cc07d3be185aac00c3ccc4922f6df905de40ae"
+    },
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+      "bytes": 13444371,
+      "sha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329"
+    },
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.d.ts",
+      "bytes": 76829,
+      "sha256": "fe5579cc17725f1f63cf47ef147a6a570bdb3b6be5c522820e9ce1a61ec21e26"
+    },
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/breditor_dependency_inventory.json",
+      "bytes": 124122,
+      "sha256": "6714d5160bc54a23292eebb667a203c3d55358899e0e8df148b2388abf0bd688"
+    },
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/THIRD_PARTY_NOTICES.txt",
+      "bytes": 1380448,
+      "sha256": "4bdd58691c23f4733fd973aff84ebb1a38a670c97c64ce8e4c79c624f594f204"
+    },
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/RUST_COPYRIGHT-library.html",
+      "bytes": 1512520,
+      "sha256": "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6"
+    }
+  ],
+  "selection": {
+    "functionalPlanChecks": 238,
+    "selectedStages": 53,
+    "planStages": 52,
+    "additionalCompleteNoServerNativeSuite": 1,
+    "mainStages": 51,
+    "nativeSuiteStages": 2,
+    "sourceUnchangedDuringAllRuns": true,
+    "wholePlanExecuted": false,
+    "postQualificationChanges": "Documentation only; implementation and non-documentation inputs retain the recorded fingerprint."
+  },
+  "regression": {
+    "defect": "Legacy original document relay constructor accepted independently owned native storage without explicit atomic-delivery custody. Both original-document comment-family combinations reproduced before the repair.",
+    "exactFinalTest": "legacy original constructor cannot bypass independently selected native storage",
+    "oldArchiveSha256": "b8498c1be77361217a8d728ac9722e4d15211f8532b5411aacc77f6cc9767004",
+    "installedArchiveFilesByteCompared": 743,
+    "sourceAssertionsSha256": "0bfa1e40cd7e89af2c2aa29564004078384048d2b82d1f5d3edebd39e171895c",
+    "reversibleModuleLocationOnly": true,
+    "oldResult": {
+      "exitCode": 1,
+      "failed": 1,
+      "message": "Missing expected exception"
+    },
+    "repairedSourceAndInstalledPass": true,
+    "evidenceDirectory": "target/independent-delivery-qualified-ezC0S0"
+  },
+  "proof": {
+    "scriptTests": {
+      "passed": 1752,
+      "failed": 0,
+      "skipped": 3
+    },
+    "freshNativeSuites": [
+      {
+        "id": "relay-native",
+        "passed": 379,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "id": "relay-native-no-server-full",
+        "passed": 267,
+        "failed": 0,
+        "ignored": 0
+      }
+    ],
+    "eachSourceAndInstalled": {
+      "focusedNativeStorageLaws": 32,
+      "localNativeConfigurations": 120,
+      "localColdPairs": 120,
+      "localFutureNativeHistoryComparisons": 360,
+      "retainedPackets": 360,
+      "localIndependentBoundaries": 120,
+      "exactLocalDurableCutComparisons": 240,
+      "authenticatedAuthorCases": 40,
+      "authorColdReopens": 120,
+      "offlinePeerReconnects": 40,
+      "retainedNativeReceipts": 160,
+      "authorIndependentBoundaries": 80,
+      "receiptSaveAborts": 2,
+      "serverRollbackRefusalsBeforeAuthorResume": 2,
+      "futureAuthorDocumentSteps": 80,
+      "futureAuthorCommentSteps": 80,
+      "advancedReviewCases": 24,
+      "advancedColdReopens": 72,
+      "ownedAccepts": 24,
+      "publishedVersions": 24,
+      "futureAdvancedDocumentSteps": 72,
+      "futureAdvancedCommentSteps": 48,
+      "advancedNativeBoundaries": 48,
+      "advancedHostRestarts": 24,
+      "advancedReceiptSaveFailures": 4,
+      "permanentObserverCases": 24,
+      "observerReaders": 48,
+      "observerColdReopens": 96,
+      "retainedObserverRevisions": 48,
+      "observerNativeDocumentSeals": 24,
+      "observerForeignAcceptImports": 48,
+      "observerReviewerRejects": 24,
+      "observerHostRestarts": 24,
+      "observerSourceSaveFailures": 4,
+      "editorRegrantAcceptRefusals": 24,
+      "observerAuthorRegistrations": 0,
+      "observerAuthorResumes": 0,
+      "observerDocumentSubmissions": 0
+    },
+    "sourceAndInstalledAssertions": "Same probe assertions; module and fixture locations are reversible. Only nondeterministic wire request counts are omitted when comparing complete acceptance summaries.",
+    "freshInstalled": {
+      "workspaceLinks": false,
+      "strictPublicTypes": true,
+      "registryArtifacts": 45,
+      "productionModuleCount": 163,
+      "noWorkspaceReactOrSyntheticStorageInProduction": true,
+      "matchingArchiveReports": 12,
+      "archiveHashes": [
+        {
+          "name": "@breditor/browser",
+          "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+        },
+        {
+          "name": "@breditor/experimental-rich-content",
+          "sha256": "e6b524a4d3b9cab485e6df2ff62af133a3772291ec463fd3bba73934c13ac40f"
+        },
+        {
+          "name": "@breditor/collaboration",
+          "sha256": "2f54e5c68efa1b1810273b82f50321b094eff3510ce433b851389d89d72abd59"
+        }
+      ]
+    }
+  },
+  "evidence": {
+    "immutableCopies": 102,
+    "index": {
+      "path": "target/independent-delivery-qualified-ezC0S0/index.json",
+      "bytes": 61060,
+      "sha256": "07c902a5f1f5c240ed7feb688969f7ab83d16f85a18c06caf9c0e71487b1b026",
+      "modifiedAtMs": 1792626772409.097
+    },
+    "main": {
+      "original": "/Users/s/code/breditor/target/independent-delivery-regression-batches.json",
+      "path": "target/independent-delivery-qualified-ezC0S0/aggregate.json",
+      "bytes": 7859,
+      "sha256": "2f0505b340a58cde85ef197cdc659faaf8ed17d44a1138e709255252fc93b058",
+      "modifiedAtMs": 1792626772052.302
+    },
+    "batches": [
+      {
+        "name": "build",
+        "status": "passed",
+        "stageCount": 4,
+        "result": {
+          "original": "/Users/s/code/breditor/target/v1-candidate-runs/run-gdlXMK/result.json",
+          "path": "target/independent-delivery-qualified-ezC0S0/build-result.json",
+          "bytes": 7906,
+          "sha256": "41d3551f5e6bbab1d0823be31b6a1504faefd3a999b6a2ed3960c4e21f365dc4",
+          "modifiedAtMs": 1792626772053.3015
+        }
+      },
+      {
+        "name": "new-delivery",
+        "status": "passed",
+        "stageCount": 6,
+        "result": {
+          "original": "/Users/s/code/breditor/target/v1-candidate-runs/run-PfpaQ9/result.json",
+          "path": "target/independent-delivery-qualified-ezC0S0/new-delivery-result.json",
+          "bytes": 10612,
+          "sha256": "58965977810d74aed437ef55edb07d2ea2b4be72d4cafbb37727e12db3f751bc",
+          "modifiedAtMs": 1792626772301.1824
+        }
+      },
+      {
+        "name": "original-delivery",
+        "status": "passed",
+        "stageCount": 19,
+        "result": {
+          "original": "/Users/s/code/breditor/target/v1-candidate-runs/run-bhctez/result.json",
+          "path": "target/independent-delivery-qualified-ezC0S0/original-delivery-result.json",
+          "bytes": 31514,
+          "sha256": "6cb710ffef4bc5bcef439f2b4a53a35612b0898349685e423ac1c6e9de0fd36a",
+          "modifiedAtMs": 1792626772310.5908
+        }
+      },
+      {
+        "name": "native-custody",
+        "status": "passed",
+        "stageCount": 22,
+        "result": {
+          "original": "/Users/s/code/breditor/target/v1-candidate-runs/run-xzha76/result.json",
+          "path": "target/independent-delivery-qualified-ezC0S0/native-custody-result.json",
+          "bytes": 36202,
+          "sha256": "07103f14fd12a39e3e81bfe64ae0a350a48f3e94122bcacfa7381e7d80a1e636",
+          "modifiedAtMs": 1792626772331.6152
+        }
+      }
+    ],
+    "nativeResult": {
+      "original": "/Users/s/code/breditor/target/v1-candidate-runs/run-HJC8Tx/result.json",
+      "path": "target/independent-delivery-qualified-ezC0S0/native-suites-result.json",
+      "bytes": 4131,
+      "sha256": "3a8a39b93a7e65e992e660e9c3cab5919c776957b84360445a34956ab9d6a11c",
+      "modifiedAtMs": 1792626772406.9287
+    },
+    "sourceReport": {
+      "path": "target/independent-delivery-qualified-ezC0S0/report-independent-delivery-sdk.json",
+      "bytes": 11853,
+      "sha256": "4adb20f31f91f1600abd3d60075f9ed491a65e73e2d28c602f55f34c0df5783c",
+      "modifiedAtMs": 1792626772371.267
+    },
+    "installedReport": {
+      "path": "target/independent-delivery-qualified-ezC0S0/report-independent-delivery-installed-consumer.json",
+      "bytes": 15682,
+      "sha256": "bf0e88dd3d988d7764c87db9dd0efcf035eb2566b67c97e4991e56b205fab28e",
+      "modifiedAtMs": 1792626772371.6877
+    },
+    "installedUnitLog": {
+      "original": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-independent-delivery-installed-wlmzz0/unit-contracts.log",
+      "path": "target/independent-delivery-qualified-ezC0S0/installed-unit-contracts.log",
+      "bytes": 7420,
+      "sha256": "a3e347e2dcd87105a7ef953279ce5380de37a62bf139e1ff4479969fcf240b19",
+      "modifiedAtMs": 1792626772401.5032
+    },
+    "installedAssertionAndLockFiles": [
+      {
+        "path": "target/independent-delivery-qualified-ezC0S0/installed-package.json",
+        "bytes": 765,
+        "sha256": "e832cfc8c1be741a1b31c94916713e344d433c12bd9595cf0d60fab72ecccd76",
+        "modifiedAtMs": 1792626772402.2004
+      },
+      {
+        "path": "target/independent-delivery-qualified-ezC0S0/installed-package-lock.json",
+        "bytes": 23269,
+        "sha256": "9eb48b26b02babdfda00b0f42fce2b10c80febc21e3e8b29027577b5681bf46e",
+        "modifiedAtMs": 1792626772402.653
+      },
+      {
+        "path": "target/independent-delivery-qualified-ezC0S0/installed-types-independent-delivery.ts",
+        "bytes": 3912,
+        "sha256": "79630f578b9905b15a27c928d7d168b2333c26a143ea3927343f498055c39915",
+        "modifiedAtMs": 1792626772403.2185
+      },
+      {
+        "path": "target/independent-delivery-qualified-ezC0S0/installed-probe-independent-delivery.mjs",
+        "bytes": 6569,
+        "sha256": "1a27b71f0172b570c6e4ed3980a47d0e590fc26badaebaaf198220f17f08d747",
+        "modifiedAtMs": 1792626772403.6167
+      },
+      {
+        "path": "target/independent-delivery-qualified-ezC0S0/installed-probe-independent-relay.mjs",
+        "bytes": 18931,
+        "sha256": "b41a6fc8cb01c4856978b82bb731e25469041af90936b00f337ddf4118e7a547",
+        "modifiedAtMs": 1792626772404.015
+      },
+      {
+        "path": "target/independent-delivery-qualified-ezC0S0/installed-probe-segmented-retained.mjs",
+        "bytes": 23264,
+        "sha256": "cba57b9cd4bb81b777adb56ee09f04c3a0f8738168b77010f7e1412f023e2fc8",
+        "modifiedAtMs": 1792626772404.5215
+      },
+      {
+        "path": "target/independent-delivery-qualified-ezC0S0/installed-probe-segmented-observer.mjs",
+        "bytes": 17368,
+        "sha256": "3af86c1b6c535d0645ebdc254ea699ac057eb911605fc1a68ef106c85f3d564e",
+        "modifiedAtMs": 1792626772405.2168
+      },
+      {
+        "path": "target/independent-delivery-qualified-ezC0S0/installed-independent-delivery-acceptance.mjs",
+        "bytes": 2603,
+        "sha256": "a35ce49f491e94c687ba92b2a7960f32376b1752bf7268719a780374a19bab2b",
+        "modifiedAtMs": 1792626772405.6797
+      },
+      {
+        "path": "target/independent-delivery-qualified-ezC0S0/installed-independent-delivery.test.mjs",
+        "bytes": 29618,
+        "sha256": "53613eaaa778a4a428371b760277ee04817990084ee99b61bf780b630a7b076a",
+        "modifiedAtMs": 1792626772406.1487
+      }
+    ]
+  },
+  "boundaries": {
+    "v1Ready": false,
+    "allThirteenV1GatesRemainOpen": true,
+    "publicationApproved": false,
+    "versionChanged": false,
+    "pushed": false,
+    "physicalIndependentDeliveryParticipantAndAssetAdoption": false,
+    "independentServerLogGenerationIntegration": false,
+    "completeDurableProviderClientCoordination": false,
+    "authenticatedWholeRoomActivation": false,
+    "nativeClientUndoInputCapStill1000": true,
+    "syntheticStorageAndLocks": true,
+    "platformCrashDurability": false,
+    "oldOriginalNativeWireAndStoreMeaningsUnchanged": true
+  }
+}

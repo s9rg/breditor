@@ -1,0 +1,11 @@
+/** Atomic delivery cannot inherit qualification from a local-only or old segmented source. */
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {join} from 'node:path';
+import {candidateReleasePlan,repository} from './candidate-release/plan.mjs';
+test('both candidate profiles require native and installed independent delivery laws',()=>{
+ for(const profile of ['functional','full']){const plan=candidateReleasePlan({profile}),find=id=>{const row=plan.checks.find(r=>r.id===id);assert.ok(row,id);return row;};assert.deepEqual(find('independent-delivery-contracts').args,['--test','scripts/independent-delivery.test.mjs','scripts/independent-delivery-candidate-plan.test.mjs']);assert.ok(find('independent-delivery-type-fence').args.includes('scripts/fixtures/editor-consumer/types-independent-delivery.ts'));for(const[id,file,path]of [['independent-delivery','check-independent-delivery-sdk.mjs','target/independent-delivery-sdk.json'],['installed-independent-delivery','check-independent-delivery-installed.mjs','target/independent-delivery-installed-consumer.json']]){const row=find(id);assert.ok(row.args.includes('scripts/'+file));assert.deepEqual(row.artifacts,[{path,fresh:true}]);for(const host of ['segmented-relay-native-host','segmented-retained-native-host'])assert.ok(plan.checks.indexOf(find(host))<plan.checks.indexOf(row));}assert.equal(plan.v1Ready,false);}
+ const installed=readFileSync(join(repository,'scripts/check-independent-delivery-installed.mjs'),'utf8');for(const text of ['--offline','--ignore-scripts','verifySearchConsumerRegistry','reversibleLocationsOnly:true','strictPublicTypes:true','workspaceLinks:false','sourceUnchanged:true','independent-delivery.test.mjs','^# pass 32$','Only reversible module/fixture locations may change'])assert.ok(installed.includes(text),text);
+ const acceptance=readFileSync(join(repository,'scripts/independent-delivery-acceptance.mjs'),'utf8');for(const text of ['probeIndependentDelivery','probeIndependentRelay','probeSegmentedRetained','probeSegmentedObserver','cases:40','coldReopens:120','coldReopens:18','readerAuthorRegistrations:0','readerDocumentSubmissions:0'])assert.ok(acceptance.includes(text),text);
+});

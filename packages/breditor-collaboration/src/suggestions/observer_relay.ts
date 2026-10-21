@@ -16,14 +16,15 @@ import type {SharedSuggestionObserverOptions,SharedSuggestionObserverIdentity} f
 import type {SharedSuggestionTransport} from "./transport_port.js";
 import {revisionsBinding,revisionsDescriptor,revisionRequest} from "../suggestion_revisions/transport.js";
 import type {SharedSuggestionRevisionRequest} from "../suggestion_revisions/types.js";
-import {segmentedObserverPort,type SegmentedRelayPort} from "../segmented_relay/admission.js";
+import {selectedObserverSource} from '../relay/durable_source_selection.js';
+import type {DurableRelaySourcePort} from '../relay/durable_source_port.js';
 const attached=new WeakSet<object>(),transient=new Set(["connection_lost","connection_timeout","request_timeout","storage_unavailable","entropy_unavailable"]);
 interface Run {epoch:number;promise:Promise<void>}
 export class SharedSuggestionObserverRelay<P extends SharedSelectionPolicy=SharedSelectionPolicy> implements SharedSuggestionTransport<P> {
  readonly suggestionDecisionMode="observer" as const;
  readonly #core:SharedRichEditor<P>;readonly #identity:SharedSuggestionObserverIdentity;readonly #queueIdentity:SharedSuggestionQueueIdentity;readonly #options:SharedSuggestionObserverOptions<P>;
  readonly #milliseconds:number;readonly #minimum:number;readonly #maximum:number;readonly #off:()=>void;
- readonly #segmented:SegmentedRelayPort|undefined;#hydrating=false;
+ readonly #durableSource:DurableRelaySourcePort|undefined;#hydrating=false;
  #channel:RelayChannel|undefined;#abort:AbortController|undefined;#epoch=0;#closed=false;#wanted=false;#ready=false;
  #status:SharedRelayStatus="offline";#error:string|null=null;#permissions:SharedSuggestionPermissions|null=null;#clock:SharedWriterClock|null=null;
  #revision=0;#documentRevision=0;#requests=0;#attempts=0;#retry:ReturnType<typeof setTimeout>|undefined;
@@ -31,20 +32,20 @@ export class SharedSuggestionObserverRelay<P extends SharedSelectionPolicy=Share
  #notifyQueued=false;#listeners=new Set<()=>void>();#reported:string|null=null;
  constructor(options:SharedSuggestionObserverOptions<P>){
   this.#identity=observerIdentity(options.identity);this.#queueIdentity=sharedSuggestionObserverQueueIdentity(this.#identity);this.#options={...options};this.#core=options.storage.core;
-  this.#segmented=segmentedObserverPort(options);
+  this.#durableSource=selectedObserverSource(options);
   if(attached.has(this.#core))throw new SharedRelayError("suggestion_observer_already_attached");
   if(!this.#core.supportsReadOnly()||!this.#core.supportsWriterTransportV2()||!this.#core.supportsDocumentSuggestions()||typeof options.storage.save!=="function"||typeof options.storage.flush!=="function")throw new SharedRelayError("suggestion_observer_unavailable");
   if(options.suggestionRevisions){if(!this.#core.supportsSuggestionRevisions())throw new SharedRelayError("suggestion_revisions_unavailable");this.#options={...this.#options,suggestionRevisions:revisionsBinding(options.suggestionRevisions)};}
-  if(this.#segmented){const p=this.#segmented,d=p.binding.document,i=this.#identity;p.check();if(p.core as object!==this.#core as object||d.endpoint!==i.endpoint||d.principal!==i.principal||d.room!==i.room||d.writer!==i.documentWriter||d.writerTransport!=="atomic-v2")throw new SharedRelayError("segmented_observer_source");if(this.#core.view().readOnly!==true)throw new SharedRelayError("suggestion_observer_writable");const saved=p.durable().document;if(saved.receipt||saved.accepted&&saved.accepted.through!=="0")throw new SharedRelayError("suggestion_observer_authored");}
+  if(this.#durableSource){const p=this.#durableSource,d=p.binding.document,i=this.#identity;p.check();if(p.core as object!==this.#core as object||d.endpoint!==i.endpoint||d.principal!==i.principal||d.room!==i.room||d.writer!==i.documentWriter||d.writerTransport!=="atomic-v2")throw new SharedRelayError("segmented_observer_source");if(this.#core.view().readOnly!==true)throw new SharedRelayError("suggestion_observer_writable");const saved=p.durable().document;if(saved.receipt||saved.accepted&&saved.accepted.through!=="0")throw new SharedRelayError("suggestion_observer_authored");}
   else checkSourceCheckpoint(this.#core,this.#identity.room,this.#identity.documentWriter);this.#zeroPrefix();
   const reviewed=this.#core.reviewedHistoryIdentity();if(reviewed&&(reviewed.principal!==this.#identity.principal||reviewed.binding!==this.#identity.binding||reviewed.effectWriter!==this.#identity.effectWriter))throw new SharedRelayError("suggestion_transport_identity");
   this.#milliseconds=timeout(options.requestTimeoutMs);this.#minimum=options.reconnectMinimumMs??500;this.#maximum=options.reconnectMaximumMs??30000;
   if(!Number.isInteger(this.#minimum)||!Number.isInteger(this.#maximum)||this.#minimum<50||this.#minimum>this.#maximum||this.#maximum>30000)throw new SharedRelayError("reconnect_limits");
-  if(!this.#segmented)this.#core.setReadOnly(true);this.#off=this.#core.subscribe(()=>{try{this.#guard();}catch(error){this.#fail(this.#failure(error),this.#epoch);}});attached.add(this.#core);
+  if(!this.#durableSource)this.#core.setReadOnly(true);this.#off=this.#core.subscribe(()=>{try{this.#guard();}catch(error){this.#fail(this.#failure(error),this.#epoch);}});attached.add(this.#core);
   this.#wanted=options.autoConnect!==false;if(this.#wanted)queueMicrotask(()=>{if(this.#wanted&&!this.#closed)void this.connect().catch(()=>{});});
  }
  #zeroPrefix():void{if(this.#core.writerClockV2(this.#identity.documentWriter).through!=="0")throw new SharedRelayError("suggestion_observer_authored");}
- #guard():void{if(this.#closed)throw new SharedRelayError("closed");this.#segmented?.check();if(this.#options.storage.core!==this.#core)throw new SharedRelayError("suggestion_source_replaced");if(this.#core.view().readOnly!==true)throw new SharedRelayError("suggestion_observer_writable");this.#zeroPrefix();}
+ #guard():void{if(this.#closed)throw new SharedRelayError("closed");this.#durableSource?.check();if(this.#options.storage.core!==this.#core)throw new SharedRelayError("suggestion_source_replaced");if(this.#core.view().readOnly!==true)throw new SharedRelayError("suggestion_observer_writable");this.#zeroPrefix();}
  state():SharedRelayState{return {status:this.#status,writer:this.#identity.documentWriter,localThrough:"0",locallyDurableThrough:this.#clock?"0":null,serverThrough:this.#clock?.through??null,serverPrefixDigest:this.#clock?.prefixDigest??null,serverReceiptSequence:null,waitingFor:[],pending:false,error:this.#error};}
  suggestionState():SharedSuggestionRelayState{return {ready:this.#ready,revision:this.#revision,documentRevision:this.#documentRevision,permissions:this.#permissions?{...this.#permissions,canAccept:false}:null};}
  suggestionRevisionsReady():boolean{return this.#ready&&!!this.#options.suggestionRevisions;}
@@ -69,8 +70,8 @@ export class SharedSuggestionObserverRelay<P extends SharedSelectionPolicy=Share
    if(event["kind"]!=="catchup")throw new SharedRelayError("protocol_error");this.#latest=frame(event["frame"]);this.#documentRevision++;this.#notify();if(this.#ready||this.#hydrating)void this.#drainFrames(epoch).catch(()=>{});
   }catch(error){this.#fail(this.#failure(error),epoch);}
  }
- async #save(epoch:number):Promise<void>{this.#check(epoch);try{if(this.#segmented)await this.#segmented.flush();else{this.#options.storage.save();await this.#options.storage.flush();}}catch{throw new SharedRelayError("local_save_failed");}this.#check(epoch);}
- async #saveClock(current:SharedWriterClock,epoch:number):Promise<void>{this.#check(epoch);try{await this.#segmented!.persistDocument({accepted:current,receipt:null});}catch{throw new SharedRelayError("local_save_failed");}this.#check(epoch);}
+ async #save(epoch:number):Promise<void>{this.#check(epoch);try{if(this.#durableSource)await this.#durableSource.flush();else{this.#options.storage.save();await this.#options.storage.flush();}}catch{throw new SharedRelayError("local_save_failed");}this.#check(epoch);}
+ async #saveClock(current:SharedWriterClock,epoch:number):Promise<void>{this.#check(epoch);try{await this.#durableSource!.persistDocument({accepted:current,receipt:null});}catch{throw new SharedRelayError("local_save_failed");}this.#check(epoch);}
  async #readClock(channel:RelayChannel,epoch:number):Promise<SharedWriterClock>{const response=await channel.request({kind:"clock",writer:this.#identity.documentWriter});this.#check(epoch);if(response["kind"]!=="clock")throw new SharedRelayError("protocol_error");const current=clock(response["clock"],this.#identity.documentWriter);if(current.through!=="0")throw new SharedRelayError("suggestion_observer_authored");checkClock(this.#core,current,2);return current;}
  async connect():Promise<void>{
   if(this.#closed)throw new SharedRelayError("closed");this.#guard();this.#wanted=true;clearTimeout(this.#retry);this.#retry=undefined;if(this.#connecting)return this.#connecting;if(this.#ready){await this.flush();return;}
@@ -83,7 +84,7 @@ export class SharedSuggestionObserverRelay<P extends SharedSelectionPolicy=Share
    if(this.#options.suggestionRevisions)revisionsDescriptor(auth["documentSuggestionRevisionsDescriptor"],this.#options.suggestionRevisions.binding,this.#identity);
    this.#permissions={...suggestionPermissions(auth["documentSuggestionsPermissions"]),canAccept:false};this.#revision++;await this.#readClock(channel,epoch);
    const resumed=await channel.request({kind:"resumeObserver",writer:this.#identity.documentWriter,credential:this.#identity.observerCredential});this.#check(epoch);if(resumed["kind"]!=="observerResumed"||object(resumed["lease"])["writer"]!==this.#identity.documentWriter)throw new SharedRelayError("writer_mismatch");
-   const current=await this.#readClock(channel,epoch);this.#latest??=frame(auth["frame"]);if(this.#segmented)this.#hydrating=true;else this.#ready=true;await this.#drainFrames(epoch);this.#check(epoch);if(this.#segmented)await this.#saveClock(current,epoch);this.#clock=current;this.#hydrating=false;this.#ready=true;this.#status="ready";this.#error=null;this.#reported=null;this.#attempts=0;this.#notify();
+   const current=await this.#readClock(channel,epoch);this.#latest??=frame(auth["frame"]);if(this.#durableSource)this.#hydrating=true;else this.#ready=true;await this.#drainFrames(epoch);this.#check(epoch);if(this.#durableSource)await this.#saveClock(current,epoch);this.#clock=current;this.#hydrating=false;this.#ready=true;this.#status="ready";this.#error=null;this.#reported=null;this.#attempts=0;this.#notify();
   })().catch(error=>{const failure=this.#failure(error);this.#fail(failure,epoch);throw failure;});this.#connecting=work;try{await work;}finally{if(this.#connecting===work)this.#connecting=undefined;}
  }
  #drainFrames(epoch:number):Promise<void>{
