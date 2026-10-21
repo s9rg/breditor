@@ -3,7 +3,8 @@
 A persistent session owns the native editor acquired by its genuine constructor.
 Its public `core` property is a convenient application handle, not a transferable
 ownership slot. This applies to original document/search sessions, atomic paired
-review sessions and generation-aware sessions.
+review sessions, generation-aware sessions and the separately selected
+[independent history session](INDEPENDENT_HISTORY_STORAGE.md).
 
 ## Reproduced failure and repair
 
@@ -69,3 +70,10 @@ The subsequent [native architecture qualification](qualification/2026-10-21-read
 adds 36 direct relay configurations: 72 shadow-binding refusals with no getter
 calls or changed native cuts, plus 36 ordinary seals and exact cold reopens.
 The genuine earlier relay wrapper reproduces the invalid getter/advance behavior.
+
+The [independent-history qualification](qualification/2026-10-21-independent-history-storage.json)
+adds 576 source and installed configurations with 1,152 binding refusals and no
+getter invocation per consumer. Its focused contracts also distinguish readable
+retired native history from live custody for version-catalog mutation. A version
+already retained in memory does not acknowledge a preceding failed durable save:
+its repeated `retainVersion` promise must still await successful persistence.

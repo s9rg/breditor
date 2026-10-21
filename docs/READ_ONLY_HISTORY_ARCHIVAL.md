@@ -10,8 +10,10 @@ passes fresh Rust suites, both normal Wasm producers and 65 selected checks.
 Identical source and fresh installed consumers exercise 144 independent native
 document/comment configurations and 216 managed document-generation
 configurations, including exact cold/future histories, aborted saves and lost
-acknowledgements. The native comment lifecycle remains a raw native/Wasm API at
-this checkpoint; independent SDK comment storage is not implied.
+acknowledgements. The subsequent
+[SDK/storage qualification](qualification/2026-10-21-independent-history-storage.json)
+adds the explicit SDK comment lifecycle and atomic independent history storage;
+neither checkpoint qualifies server negotiation or whole-room activation.
 
 This capability closes a lifecycle gap between two existing operations. The
 author archive API requires current authoring permission. The strict observer
@@ -55,11 +57,15 @@ the managed operation uses the privately registered original owner, flushes the
 atomic document/comment cut and rechecks live storage custody. Failed and
 uncertain saves retain their ordinary exact retry semantics.
 
-The managed cut still pairs document generations with original comment history.
-The new native review archive APIs do not select a segmented review family in
-the SDK, change old database keys or negotiate a server generation profile.
-Independent comment storage and server retention remain separate integration
-work.
+The existing managed generation cut still pairs document generations with
+original comments. The separately selected
+[independent history store](INDEPENDENT_HISTORY_STORAGE.md) can pair either
+document family with either comment family. Its explicit read-only document and
+comment seals save the exact pair without changing current authoring permission.
+The SDK review facade exposes `supportsReadOnlyReviewHistoryLifecycle`,
+`enableReadOnlyReviewHistoryGenerations` and
+`sealReadOnlyReviewHistoryGeneration`. Old database keys and families remain
+unchanged. No server generation profile is negotiated by selecting these APIs.
 
 ## Admission and operating limits
 

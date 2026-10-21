@@ -9,9 +9,12 @@ smaller checkpoint.
 The optional Wasm/SDK exposes explicit selection, seals and recovery, with
 [dedicated local storage](SEGMENTED_SESSION_RECOVERY.md) for document generations
 and paired comments. Generation-aware relay delivery and retained review stores
-have their [own integration](SEGMENTED_RETAINED_RECOVERY.md). Independent comment
-history rollover, assets and operational participant bindings, and room-wide
-activation remain work. This is not the completed whole-room cross-generation bridge.
+have their [own integration](SEGMENTED_RETAINED_RECOVERY.md). The separate
+[independent history store](INDEPENDENT_HISTORY_STORAGE.md) also selects native
+comment rollover independently of the document family. Matching complete asset,
+relay and operational participant bindings for that new store, server/log
+generations and room-wide activation remain work. This is not the completed
+whole-room cross-generation bridge.
 
 ## Select the separate recovery family
 

@@ -1,0 +1,178 @@
+{
+  "format": "breditor/independent-history-sdk-architecture-qualification",
+  "date": "2026-10-21",
+  "passed": true,
+  "v1Ready": false,
+  "openV1Gates": 13,
+  "publicationApproved": false,
+  "source": {
+    "commit": "c1551c6fd2b6da21973142508007a57e95fe6094",
+    "dirty": true,
+    "sha256": "3332036cd225d82a8b91515e1ef475e70b9a92f41060ef251a05da832f8d2690",
+    "files": 4999,
+    "bytes": 42579688
+  },
+  "nonDocumentation": {
+    "sha256": "adf11c58b947d34efad1b667037a34d0f2d1f09f6750fd02e578b3a46c425a2e",
+    "files": 4469,
+    "excluded": "docs/** only"
+  },
+  "manifest": {
+    "path": "target/v1-candidate-runs/run-JjDeiY/result.json",
+    "bytes": 57133,
+    "sha256": "f5a23a0355f29d246b015a1b426de5381464b368d8ae9ce35108b0abbce8afcc",
+    "modifiedAtMs": 1792560999995.275
+  },
+  "tests": {
+    "selectedChecksPassed": 36,
+    "wholeFunctionalPlan": false,
+    "scriptContractsPassed": 1330,
+    "existingOptInScriptChecksSkipped": 3,
+    "editorTestsPassed": 385,
+    "focusedSourceContracts": 22,
+    "focusedInstalledContracts": 21
+  },
+  "facade": {
+    "format": "breditor/review-generation-sdk-probe",
+    "passed": true,
+    "cases": 72,
+    "independentDocumentFamilies": 72,
+    "coldPairs": 144,
+    "futureHistoryPairs": 216,
+    "staleGuardRefusals": 144,
+    "foreignGuardRefusals": 72,
+    "originalGetterRefusals": 72,
+    "pinnedStoreRefusals": 180,
+    "strictObserverRefusals": 72,
+    "readOnlyBoundaries": 144,
+    "exactFiles": 288,
+    "pairedNativeOrigins": 72,
+    "sharedWasmSha256": "b525798df56d921281819e6fd43053f9a094bcb117fe8d86c3b66a61c4b54c29",
+    "scope": "Real native comments in both document history families through the explicitly selected SDK facade. Composite guards, old-store refusals, read-only former authors, old offline peer and exact future native histories. No independent managed storage or authenticated relay capability is implied."
+  },
+  "storage": {
+    "format": "breditor/independent-history-sdk-probe",
+    "passed": true,
+    "cases": 576,
+    "coldPairs": 1728,
+    "futureHistoryPairs": 1728,
+    "sameGenerationIds": 288,
+    "saveAborts": 4,
+    "lostAcknowledgements": 4,
+    "retainedVersionPackets": 576,
+    "exactImmutableFiles": 1152,
+    "sourceBindingRefusals": 1152,
+    "getterCalls": 0,
+    "sharedWasmSha256": "b525798df56d921281819e6fd43053f9a094bcb117fe8d86c3b66a61c4b54c29",
+    "scope": "Genuine normal native histories with synthetic IndexedDB/Web Locks. All four document/comment families, immutable lane namespaces, cold current-policy recovery, versions, offline peer and future native Undo/Redo; not physical durability, relay/server generations, room activation or complete V1."
+  },
+  "sourceAndInstalledIdentical": true,
+  "readOnly": {
+    "format": "breditor/read-only-history-sdk-probe",
+    "formatVersion": 1,
+    "passed": true,
+    "cases": 216,
+    "pairedCases": 144,
+    "coldPairs": 648,
+    "passiveSeals": 432,
+    "oldObserverRefusals": 216,
+    "rootFileComparisons": 432,
+    "firstSealedFileComparisons": 216,
+    "saveAborts": 2,
+    "lostAcknowledgements": 2,
+    "futureHistoryPairs": 648,
+    "scope": "Actual native document histories and original paired comments through managed SDK storage, synthetic IndexedDB/Web Locks, exact cold current-policy recovery, failed save/lost ack retries and later separately granted future history. No independent review-generation storage, physical durability, relay generation or activation qualification."
+  },
+  "ownership": {
+    "segmented": {
+      "format": "breditor/managed-core-binding-probe",
+      "passed": true,
+      "cases": 72,
+      "captureRefusals": 1728,
+      "accessorCalls": 0,
+      "exactPairChecks": 432,
+      "cleanupChecks": 144,
+      "failedCloseChecks": 72,
+      "failedSaveChecks": 2,
+      "sharedWasmSha256": "b525798df56d921281819e6fd43053f9a094bcb117fe8d86c3b66a61c4b54c29",
+      "scope": "Actual normal native owners and SDK; synthetic IDB/Web Locks. Public binding replacement, deletion and accessors cannot redirect capture or ownership cleanup. Not physical crash durability or whole-room activation."
+    },
+    "original": {
+      "format": "breditor/managed-original-core-binding-probe",
+      "passed": true,
+      "pairedOnly": false,
+      "cases": 144,
+      "captureRefusals": 1728,
+      "accessorCalls": 0,
+      "exactPairChecks": 864,
+      "cleanupChecks": 288,
+      "failedCloseChecks": 144,
+      "failedSaveChecks": 4,
+      "sharedWasmSha256": "b525798df56d921281819e6fd43053f9a094bcb117fe8d86c3b66a61c4b54c29",
+      "scope": "Unchanged native original/search/document and paired durable families; synthetic IDB/Web Locks. Public binding changes cannot redirect capture, backup, version admission or cleanup. No physical crash-durability claim."
+    },
+    "relay": {
+      "format": "breditor/relay-core-binding-probe",
+      "passed": true,
+      "cases": 36,
+      "shadowRefusals": 72,
+      "getterCalls": 0,
+      "exactNativeCuts": 72,
+      "successfulSeals": 36,
+      "coldReopens": 36,
+      "sharedWasmSha256": "b525798df56d921281819e6fd43053f9a094bcb117fe8d86c3b66a61c4b54c29",
+      "scope": "Genuine idle relay sessions and actual native owners with synthetic IDB/Web Locks. Direct guards reject own shadow bindings without executing getters. No relay connection, authenticated server or physical durability claim."
+    }
+  },
+  "native": {
+    "freshNativeSuites": false,
+    "normalRuntimesRebuilt": false,
+    "unchangedInputs": 2709,
+    "unchangedArtifacts": 12,
+    "qualification": "target/read-only-history-qualification-0AOolq/result.json",
+    "workspaceRustCarried": 2643,
+    "sharedRustCarried": 658,
+    "relayRustCarried": 216,
+    "sharedWasmSha256": "b525798df56d921281819e6fd43053f9a094bcb117fe8d86c3b66a61c4b54c29"
+  },
+  "beforeDevelopmentControls": {
+    "retiredCore": "target/review-generation-sdk-development-sVH99m/retired-control.json",
+    "versionAcknowledgement": "target/review-generation-sdk-development-CQK36i/duplicate-version-control.json",
+    "sameActualNativeRuntime": true,
+    "unchangedPositiveAssertions": true,
+    "scope": "Actual earlier development archives, not a claim that these new session APIs existed in the previous root release."
+  },
+  "installed": {
+    "registryArtifacts": 45,
+    "workspaceLinks": false,
+    "strictPublicTypes": true,
+    "noWorkspaceReactOrSyntheticStorageInProduction": true,
+    "productionModuleCount": 32,
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "target/independent-history-sdk-qualification-aMKtIm/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "target/independent-history-sdk-qualification-aMKtIm/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "e6b524a4d3b9cab485e6df2ff62af133a3772291ec463fd3bba73934c13ac40f"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "target/independent-history-sdk-qualification-aMKtIm/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "684683a51f3a0342be2aeb6e0af98028da7a3af14150d36ff188e53b9d52ae15"
+      }
+    ]
+  },
+  "scope": "Explicit SDK comment-generation lifecycle and a separate atomic client store selecting original/segmented document and comment histories independently. Real native exact cold/future history, immutable lane file keys, uncertain-save retries and source custody through fresh public archives. Native Rust and normal runtime bytes carried only after exact input/artifact verification.",
+  "limitations": [
+    "New family is refused by old relay, source/asset, participant and room adapters; matching integrations remain work.",
+    "Native server/log generations, complete provider/client reconciliation, historic-copy decisions and authenticated room activation remain open.",
+    "Existing native Undo/archive limits are not widened. Live saves still serialize complete bounded native archives; no approved latency or unlimited-lifetime claim.",
+    "Synthetic IndexedDB/Web Locks are not physical crash durability or cross-device writer fencing.",
+    "No browser-specific, clipboard, IME, VoiceOver, historical WebKit repair or V1 release gate is qualified.",
+    "No version, tag, push, publication or deployment is promoted."
+  ]
+}

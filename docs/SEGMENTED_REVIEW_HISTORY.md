@@ -8,8 +8,10 @@ clear history or change accepted document content.
 
 The native implementation and normal application Wasm pass the
 [functional qualification](qualification/2026-10-20-native-review-generations.json),
-including fresh offline public archives. Atomic SDK storage, relay negotiation
-and participant/room integration remain separate work. The original review
+including fresh offline public archives. The subsequent
+[SDK/storage qualification](qualification/2026-10-21-independent-history-storage.json)
+adds an explicit facade and separate atomic client store. Relay negotiation
+and participant/room integration remain work. The original review
 checkpoint and event-frame meanings and defaults stay unchanged.
 
 ## Select and seal explicitly
@@ -42,7 +44,7 @@ Former authors whose current policy is read-only use separately named
 authored prefix and future native history without borrowing an author grant or
 pretending to satisfy the strict zero-authored observer contract. This
 [read-only lifecycle](READ_ONLY_HISTORY_ARCHIVAL.md) is qualified in native and
-normal Wasm consumers; independent SDK comment storage remains separate work.
+normal Wasm consumers and the explicit SDK/store family described below.
 
 ## Retain native files and replay every cut
 
@@ -106,7 +108,7 @@ replay-speed guarantee. Document and review families are independent choices.
 Replay admission uses an immutable birth index, checked against the preserved
 full-prefix validator on valid and corrupted histories. Actual live authority
 and visible register materialization retain their original implementation.
-Atomic SDK heads must select both native owners explicitly; neither local/relay
+Atomic SDK heads select both native owners explicitly; neither local/relay
 transport nor a document segment implies segmented comments. The relay also
 needs an explicit native document/comment history profile as well as log
 generations. Reconnecting offline peers requires compatible capabilities without
@@ -119,13 +121,23 @@ observer enable/seal methods, `enable_segmented_review` and
 facade selection. Original event frames remain independently readable by an
 original peer within that peer's original capacity.
 
+The SDK facade separately offers `enableReviewHistoryGenerations`,
+`enableObserverReviewHistoryGenerations`, the read-only former-author lifecycle,
+the corresponding seals, `enableSegmentedReview` for exact cold recovery and
+`reviewSegmentedCheckpoint` for the selected family. Complete matching native
+capabilities are required. Boundaries refresh composite guards without creating
+an event. Pinned original paired and document-generation stores refuse switching
+comment family. `SharedIndependentHistoryPersistentSession` is the separate
+[atomic client store](INDEPENDENT_HISTORY_STORAGE.md), not an upgrade of those
+old stores. Its two native history families are independently selected.
+
 Source and fresh installed consumers each cover 72 author configurations and
 six observers, exact root/sealed files, cold recovery under current policy,
 original offline peer frames, native receipts, image anchors and future review
 Undo/Redo. The qualification also compares exact original-family data in both
 runtime directions. Retention bounds are not a measured latency envelope.
 
-Atomic client storage, authenticated relay delivery, complete
-provider/client reconciliation, historic-copy decisions and authenticated
+Authenticated relay delivery for this new family, complete provider/client
+reconciliation, historic-copy decisions and authenticated
 whole-room activation remain required. This native contract does not complete
 feature parity or close a V1 release gate.

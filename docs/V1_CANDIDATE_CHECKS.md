@@ -1,12 +1,27 @@
 # V1 candidate checks
 
+Both profiles require `independent-history-contracts`,
+`independent-history-type-fence`, `independent-history-sdk` and
+`installed-independent-history`. They qualify the separately selected SDK comment
+generation facade and atomic two-lane native history store. Source and fresh
+offline public archives repeat 72 facade and 576 storage configurations, exact
+cold/future histories, immutable lane files, uncertain-save retries and native
+ownership refusals. The installed consumer also repeats 21 unchanged public
+contracts, strict public types and a production module graph without workspace
+links, React or synthetic storage. Old source/relay/participant adapters remain
+closed to this new storage family. Native server/log generations and authenticated
+room activation are not implied. The complete functional plan now has 176 checks;
+the [SDK checkpoint](qualification/2026-10-21-independent-history-storage.json)
+runs an explicitly recorded selection of 36, not that entire plan.
+
 Both profiles require `read-only-history`, `read-only-history-type-fence` and
 `installed-read-only-history`. Current read-only former authors archive without
 unlocking or resetting native identity. Native consumers cover 144 independent
 document/comment configurations; managed document storage covers 216 with exact
 cold recovery and failed/uncertain-save retry. Partial/future capabilities and
-pinned old stores refuse before publication. This does not select independent
-comment generations in SDK storage or activate a server generation profile.
+pinned old stores refuse before publication. Those three stages do not select
+independent SDK comment storage; the separate stages above cover that family.
+Neither selection activates a server generation profile.
 
 The ownership probes additionally exercise the relay wrapper's direct lifecycle
 guard in 36 configurations. Own shadow `core` bindings must refuse without

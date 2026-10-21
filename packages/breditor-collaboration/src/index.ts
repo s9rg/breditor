@@ -51,6 +51,9 @@ export {SharedPresence,createSharedDocumentPresence,type SharedPeerIdentity,type
 export {SharedPresenceOverlay,type SharedPresenceOverlayOptions} from "./presence_overlay.js";
 export type * from "./types.js";
 export type * from "./review_types.js";
+export type * from "./review_generations.js";
+export {SharedIndependentHistoryPersistentSession} from "./independent_history/session.js";
+export type {SharedIndependentHistorySessionOptions,SharedIndependentHistorySaveState,SharedIndependentHistoryRecovery,IndependentDocumentHistoryOptions,IndependentReviewHistoryOptions} from "./independent_history/contract.js";
 export type * from "./version_types.js";
 export type * from "./suggestion_types.js";
 export type * from "./reviewed_history_types.js";

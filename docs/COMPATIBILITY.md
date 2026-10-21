@@ -83,15 +83,19 @@ events and author-local history across independent immutable cuts, within
 65,536 events, 64 generations and 64 MiB including nested JSON escaping. Root
 and active count toward that generation ceiling. It does not widen the original
 family or select comment generations when document generations are selected.
-Normal Wasm and fresh installed native consumers are qualified; atomic SDK heads
+Normal Wasm and fresh installed native consumers are qualified. The separate
+[atomic SDK history store](INDEPENDENT_HISTORY_STORAGE.md) now selects either
+family independently for both lanes, preserving native strings and lane-specific
+file hashes. Old stores refuse it. Matching complete asset/participant readers
 and negotiated server retention still require explicit integration.
 
 The separately named [read-only archival lifecycle](READ_ONLY_HISTORY_ARCHIVAL.md)
 allows former authors to retain further peer input without resetting their
 authored prefixes or temporarily restoring write permission. Original author
 and strict zero-authored observer APIs remain unchanged. Native document/comment
-lifecycles and managed document-generation storage are qualified; that does not
-select SDK comment generations or negotiate a new server history profile.
+lifecycles, the explicit SDK comment lifecycle and both managed storage families
+are qualified. A current host must still select the families separately; none
+negotiates a new server history profile or authenticates room activation.
 
 V1 still needs participant/room catalog integration, coordinated room rotation and
 activation around that native bridge. The explicit

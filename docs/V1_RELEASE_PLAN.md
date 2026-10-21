@@ -43,6 +43,49 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The SDK now exposes independent native comment generations and a separate
+[atomic client history store](INDEPENDENT_HISTORY_STORAGE.md). Document and
+comment histories each select original or segmented recovery explicitly. One
+transaction saves their exact paired head and immutable lane files, plus local
+version packets. A generation boundary keeps native Undo/Redo, original actor
+counters and offline peer input; no visible-AST reconstruction substitutes for
+the retained histories. Existing storage families remain unchanged and refuse
+the new family rather than silently adopting it.
+
+The [SDK/storage qualification](qualification/2026-10-21-independent-history-storage.json)
+passes all 36 selected architecture stages on one frozen source tree, including
+1,330 script contracts, 385 editor tests, 22 focused source contracts and 21
+unchanged installed public contracts. Source and fresh offline public archives
+each exercise 72 facade configurations and 576 storage configurations. The
+storage matrix compares 1,728 exact cold pairs and 1,728 future-history pairs,
+including failed transactions, lost acknowledgements, versions and cross-lane
+generation-ID collisions. Strict public types and the production module graph
+are checked separately.
+
+Two failures in earlier development archives are retained as negative controls:
+a retired editor could add version metadata, and a duplicate version could
+report success after a failed save. The same positive assertions now pass against
+the repaired source and public archives. They are development regressions, not
+claims that this new session existed in the preceding root release.
+
+Rust qualification carries from the native checkpoint below only after hashing
+all 2,709 unchanged native/build inputs and 12 unchanged normal runtime artifacts.
+This SDK slice does not rerun those Rust suites or rebuild those binaries. The
+three existing opt-in script skips remain unqualified platform work. Native
+Undo/archive ceilings remain; live saves still serialize complete bounded
+histories. Neither unlimited retention nor an approved latency envelope is implied.
+
+The next architectural work is compatible native server/log generations, then
+complete provider/client and asset/outbox recovery closure and authenticated
+whole-room activation. Server admission must validate a prepared candidate in
+its explicitly selected native history family before durable publication; its
+current original-only document checkpoint preflight is not sufficient for a
+generation-enabled server. Structural extension parity follows these integrity
+requirements. All 13 V1 gates remain open. No version, push, tag, publication or
+deployment is promoted.
+
+### Previous read-only native checkpoint
+
 Current read-only former authors can archive their retained native document and
 comment histories without unlocking authoring, resetting a writer or clearing
 Undo/Redo. Author operations and strict zero-authored observer operations retain
@@ -71,7 +114,8 @@ executing getters or advancing native history. Its 36-configuration regression
 passes in source and fresh installed packages, alongside the original ownership
 cohorts. Original formats, counters, defaults and native limits remain unchanged.
 
-Atomic SDK comment generations, compatible native server/log generations,
+At that native checkpoint, atomic SDK comment generations remained work; the
+current SDK checkpoint above adds them. Compatible native server/log generations,
 historic-copy disposition, complete provider/client closure, authenticated
 whole-room activation and structural extension parity remain substantive work.
 All 13 V1 gates remain open. No version, push, tag, publication or deployment is
@@ -131,9 +175,10 @@ remain exact as well.
 
 The original comment checkpoint/frame limits and defaults are unchanged. The
 new archive has separate bounded retention; it does not establish a latency
-envelope. The read-only former-author lifecycle is now qualified above. Atomic
-SDK comment storage, compatible native server and log generations, historic-copy dispositions,
-provider/client closure and authenticated whole-room activation remain work.
+envelope. The read-only former-author lifecycle and atomic SDK comment storage
+are now qualified above. Compatible native server and log generations,
+historic-copy dispositions, provider/client closure and authenticated whole-room
+activation remain work.
 Structural extension contracts remain ahead of presentation-only parity work.
 All 13 V1 gates remain open. No version, push, tag, publication or deployment
 is promoted.
