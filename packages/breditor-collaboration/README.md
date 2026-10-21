@@ -45,6 +45,14 @@ they do not implement rotation. See [the shared backup contract](../../docs/SHAR
 for exact families, limits and failed-close recovery. The default package has a
 different backup format; managed editor startup is not silently redirected.
 
+Ordinary closed live candidates now fork the actual native document and history
+without replaying the Breditor semantic journal. Cold recovery remains complete
+semantic replay, and original natural typing-group reopening retains that path.
+Pending causal inputs, native Undo/Redo and failure isolation remain required;
+native copying and validation still scale with retained state. See the
+[live staging contract](../../docs/LIVE_HISTORY_STAGING.md). No format or default
+changes, history truncation or resource-envelope promotion is implied.
+
 ## Dependent offline backups
 
 The proposal queue, revision outbox and public version catalog now also expose

@@ -112,7 +112,17 @@ fn admitted_prefix_reuse_and_fresh_replay_have_identical_exact_future_history() 
             }
             assert!(live.undo()?);
             assert!(live.redo()?);
-            let mut staged = live.staged()?;
+            // Exercise admitted replay-cache reuse directly. A live stage can
+            // instead fork its actual native owner without replaying entries.
+            let mut staged = RichReplica::from_segmented_journal_cached(
+                live.codec.clone(),
+                live.journal.clone(),
+                live.typing.as_ref().map(|history| history.joins.clone()),
+                false,
+                live.replay_capabilities(),
+                Some(live.replay_projections.fork_for_replay()),
+                live.segmented.clone(),
+            )?;
             assert!(staged.replay_projections.replay_hits() > 0);
             assert!(!staged.replay_projections.has_source());
             let mut fresh = RichReplica::from_journal_parts(

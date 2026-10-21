@@ -21,8 +21,8 @@ pub(super) const MAX_JOURNAL_BYTES: usize = 16 * 1024 * 1024;
 pub(super) const MAX_UPDATE_BYTES: usize = 1024 * 1024;
 const MAX_CAUSAL_VIEW_BYTES: usize = 4 * 1024 * 1024;
 
-#[path = "fork_segmented_owner.rs"]
-mod fork_segmented_owner;
+#[path = "fork_live_owner.rs"]
+mod fork_live_owner;
 
 #[cfg(test)]
 #[path = "known_remote_tests.rs"]
@@ -30,6 +30,10 @@ mod known_remote_tests;
 #[cfg(test)]
 #[path = "session_projection_tests.rs"]
 mod projection_tests;
+
+#[cfg(test)]
+#[path = "live_staging_tests.rs"]
+mod live_staging_tests;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
@@ -535,6 +539,8 @@ impl RichReplica {
             if keep_open && !entry.authored() {
                 return Err(Error::ReplayMismatch);
             }
+            #[cfg(test)]
+            live_staging_tests::note_replay();
             candidate.replay(entry, join, keep_open)?;
             candidate.restore_segment_boundary(index + 1)?;
         }
@@ -845,8 +851,10 @@ impl RichReplica {
         self.staged_for_typing(false)
     }
     fn staged_for_typing(&self, leave_open: bool) -> Result<Self, Error> {
-        if self.segmented.is_some() {
-            return self.fork_segmented_owner(leave_open);
+        // Ordinary closed stages can fork actual native history too. Original
+        // natural-group reopening still needs its untracked semantic replay.
+        if self.segmented.is_some() || !leave_open {
+            return self.fork_live_owner(leave_open);
         }
         let mut candidate = Self::from_segmented_journal_cached(
             self.codec.clone(),

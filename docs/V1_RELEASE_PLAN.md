@@ -43,6 +43,23 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+Ordinary closed [live history staging](LIVE_HISTORY_STAGING.md) now forks the
+actual native document and Undo/Redo owner without replaying the Breditor
+semantic journal. Every retained causal input is re-admitted before full
+candidate validation. Cold restore remains independent complete semantic replay;
+original natural typing-group reopening retains its replay path. Deterministic
+work-count laws and actual old/new native histories cover this distinction. The
+fork still copies retained native operations and validates the full candidate;
+long-session resource qualification and existing Undo limits remain separate.
+
+Its [functional qualification](qualification/2026-10-21-live-history-staging.json)
+passes all 37 selected architectural checks, including 669 collaboration, 325
+relay, 264 complete no-networking and three independent-review Rust cases.
+Source and fresh installed old/new runtimes each pass 144 policy configurations,
+3,168 exact owner comparisons, 288 cross-version restores and 1,728 future-history
+comparisons. The independent installed-history and copied native consumers pass
+too. These results do not close the remaining room-integration or V1 gates.
+
 The reference host now has an explicit Unix
 [physical server-log generation backend](SERVER_LOG_GENERATIONS.md). Rotation
 retains every accepted file, global receipt positions and native history; manual
@@ -262,7 +279,7 @@ Next, in architectural risk order:
    native client staging and a matching operational parent around the prepared native host. Preserve
    source ancestry, real owners and refusal of unrequested repair or cleanup.
    Keep original formats closed. Address
-   retained Undo limits and live staging/replay costs as separate lifetime
+   retained Undo limits and remaining native staging/replay costs as separate lifetime
    requirements, not by dropping history or widening old bounds.
 2. Compose the matching generation participant and retained-asset inventories
    and joined server archive with complete provider and client/outbox sources, then provider/client

@@ -5,10 +5,7 @@ use crate::Error;
 use std::sync::Arc;
 
 impl RichReplica {
-    pub(in crate::rich_replica) fn fork_segmented_owner(
-        &self,
-        leave_open: bool,
-    ) -> Result<Self, Error> {
+    pub(in crate::rich_replica) fn fork_live_owner(&self, leave_open: bool) -> Result<Self, Error> {
         let (doc, undo) = self.doc.fork_with_undo_for_staging(&self.undo)?;
         // The native snapshot covers applied operations only. Re-admit EVERY retained input,
         // including unresolved causal imports, before a candidate can publish anything.
