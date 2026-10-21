@@ -45,6 +45,7 @@ export interface SharedSearchSessionOptions<P extends SharedSelectionPolicy=Shar
 }
 
 /** Exact causal recovery with bounded coalesced writes and origin-wide writer exclusion. */
+const constructionKey=Object.freeze({});
 export class SharedPersistentSession<P extends SharedSelectionPolicy="original"> {
  readonly core:SharedRichEditor<P>;readonly recovered:boolean;
  readonly #ownedCore:SharedRichEditor<P>;
@@ -54,7 +55,8 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
  #pending:{json:string;revision:string}|undefined;#running:Promise<void>|undefined;#failure:unknown;
  #saved:string|undefined;#savedRevision:string|null=null;#closed=false;#storageChanged=false;
  #closeRequest:Promise<void>|undefined;#released:Promise<void>|undefined;
- private constructor(db:IDBDatabase,lease:SharedWriterLease,core:SharedRichEditor<P>,recovered:boolean,options:SharedSessionOptions|SharedDocumentSessionOptions,selectionPolicy:P,search=false){
+ private constructor(key:object,db:IDBDatabase,lease:SharedWriterLease,core:SharedRichEditor<P>,recovered:boolean,options:SharedSessionOptions|SharedDocumentSessionOptions,selectionPolicy:P,search=false){
+  if(key!==constructionKey)throw new SharedEditorError('managed_source_construction','Use the actual shared session open or recovery factory');
   this.#db=db;this.#lease=lease;this.#ownedCore=core;this.core=core;this.recovered=recovered;this.#options=options;this.#selectionPolicy=selectionPolicy;this.#search=search;
   this.#unsubscribe=core.subscribe(()=>{try{this.save();}catch(error){this.#failed(error);}});
   registerManagedSource(this,core,()=>{this.#live();this.#boundCore();if(this.#storageChanged||this.#closeRequest)throw managedSourceUnavailable();});
@@ -136,8 +138,8 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
    else checkCheckpoint(core.checkpointJson(),options.room,options.writer,options.richLanguage,history,ranges);
    if(recoveryOrigin){if(checkpoint===null)throw new SharedEditorError("recovery_origin_missing","The operational journal is absent");if(core.checkpointJson()!==checkpoint.json)throw new SharedEditorError("recovery_origin_native","Operational native replay must retain the exact stored journal");recoveryOrigin.verify(core as unknown as SharedRichEditor<SharedSelectionPolicy>);}
    opening.assertCurrent();nativeBackupAdmission=false;
-   if(backup){const session=new SharedPersistentSession(db,lease,core,true,options,selectionPolicy,search);try{const checkpointJson=core.checkpointJson();if(checkpointJson!==backup.checkpointJson)throw new SharedEditorError("backup_native_replay","Native replay did not preserve the exact canonical checkpoint");await insertSessionBackup(db,checkpointJson,backup.identity);if(session.#failure)throw session.#failure;session.#saved=checkpointJson;session.#savedRevision=core.view().revision;session.#notify();return session;}catch(error){await session.discardAndClose();throw error;}}
-   const session=new SharedPersistentSession(db,lease,core,checkpoint!==null,options,selectionPolicy,search);session.save();
+   if(backup){const session=new SharedPersistentSession(constructionKey,db,lease,core,true,options,selectionPolicy,search);try{const checkpointJson=core.checkpointJson();if(checkpointJson!==backup.checkpointJson)throw new SharedEditorError("backup_native_replay","Native replay did not preserve the exact canonical checkpoint");await insertSessionBackup(db,checkpointJson,backup.identity);if(session.#failure)throw session.#failure;session.#saved=checkpointJson;session.#savedRevision=core.view().revision;session.#notify();return session;}catch(error){await session.discardAndClose();throw error;}}
+   const session=new SharedPersistentSession(constructionKey,db,lease,core,checkpoint!==null,options,selectionPolicy,search);session.save();
    try{await session.flush();}catch(error){await session.discardAndClose();throw error;}return session;
   }catch(error){core?.dispose();db?.close();await lease.close();if(nativeBackupAdmission&&!(error instanceof SharedEditorError&&error.code==="session_open_versionchange"))throw new SharedEditorError("backup_native_replay","Matching native replay rejected the backup");throw error;}
  }

@@ -49,6 +49,7 @@ export interface SharedSearchReviewSessionOptions<P extends SharedSelectionPolic
 type SessionOptions<P extends SharedSelectionPolicy>=Omit<SharedReviewSessionOptions<P>,"restore">&{reviewedHistory?:SharedReviewedHistoryIdentity;searchHistory?:"search-v1"};
 export interface SharedReviewSaveState {status:"saved"|"pending"|"failed"|"closed";documentRevision:string|null;reviewRevision:string|null;error:string|null}
 /** Native document/review owners plus a local immutable packet catalog, saved as one atomic record. */
+const constructionKey=Object.freeze({});
 export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
  readonly core:SharedRichEditor<P>;readonly recovered:boolean;
  readonly #ownedCore:SharedRichEditor<P>;
@@ -56,7 +57,8 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
  #versions=new Map<string,string>();#unsubscribe:(()=>void)[]=[];#pending:PairedRecord|undefined;#running:Promise<void>|undefined;
  #relayProgress:SharedReviewRelayProgress={cursor:null,accepted:null,sequence:null};#durableRelayProgress:SharedReviewRelayProgress={cursor:null,accepted:null,sequence:null};
  #saved:string|undefined;#failure:unknown;#closed=false;#retiring=false;#storageChanged=false;#closedRevisions:{documentRevision:string;reviewRevision:string}|undefined;#closing:Promise<void>|undefined;#released:Promise<void>|undefined;
- private constructor(db:IDBDatabase,documentLease:SharedWriterLease,reviewLease:ReviewWriterLease,core:SharedRichEditor<P>,options:SessionOptions<P>,recovered:boolean,versions:readonly string[],progress?:SharedReviewRelayProgress){
+ private constructor(key:object,db:IDBDatabase,documentLease:SharedWriterLease,reviewLease:ReviewWriterLease,core:SharedRichEditor<P>,options:SessionOptions<P>,recovered:boolean,versions:readonly string[],progress?:SharedReviewRelayProgress){
+  if(key!==constructionKey)throw new SharedEditorError('managed_source_construction','Use the actual paired session open or recovery factory');
   this.#db=db;this.#documentLease=documentLease;this.#reviewLease=reviewLease;this.#ownedCore=core;this.core=core;this.#options=options;this.recovered=recovered;
   if(progress){this.#relayProgress=structuredClone(progress);this.#durableRelayProgress=structuredClone(progress);this.#validateNativeProgress(progress);}
   this.#versions=admitPairedVersions(core,versions);
@@ -129,7 +131,7 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
    if(options.relay&&!core.supportsReviewTransport())throw new SharedEditorError("review_transport_unavailable","Paired relay storage needs matching native lineage proofs");
    if(recoveryOrigin&&(core.checkpointJson()!==saved?.documentCheckpointJson||core.reviewCheckpoint()!==saved?.reviewCheckpointJson))throw new SharedEditorError("recovery_origin_native","Operational native replay must retain both exact stored journals");
    recoveryOrigin?.verify(core as unknown as SharedRichEditor<SharedSelectionPolicy>);
-   opening.assertCurrent();const session=new SharedReviewPersistentSession(db,documentLease,reviewLease,core,options,saved!==null,saved?.versions??[],saved&&"progress" in saved?saved.progress??undefined:undefined);nativeBackupAdmission=false;
+   opening.assertCurrent();const session=new SharedReviewPersistentSession(constructionKey,db,documentLease,reviewLease,core,options,saved!==null,saved?.versions??[],saved&&"progress" in saved?saved.progress??undefined:undefined);nativeBackupAdmission=false;
    if(backup){try{const record=session.#record();session.#checkRecord(record);if(JSON.stringify(record)!==backup.recordJson)throw new SharedEditorError("backup_native_replay","Native paired replay did not preserve the exact canonical histories/catalog");await insertBackupRecord(db,[options.room,options.writer],record);if(session.#failure)throw session.#failure;session.#saved=backup.recordJson;return session;}catch(error){await session.discardAndClose();throw error;}}
    session.save();try{await session.flush();}catch(error){await session.discardAndClose();throw error;}return session;
   }catch(error){core?.dispose();db?.close();try{await reviewLease?.close();}finally{await documentLease.close();}if(nativeBackupAdmission&&!(error instanceof SharedEditorError&&error.code==="review_open_versionchange"))throw new SharedEditorError("backup_native_replay","Matching native paired replay rejected the backup");throw error;}

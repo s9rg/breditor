@@ -1,5 +1,21 @@
 # V1 candidate checks
 
+Both profiles require `independent-participant-plan-contracts`,
+`independent-participant-contracts`, `independent-participant-type-fence`,
+`independent-participant` and `installed-independent-participant`. The new explicit
+local family preserves both native lanes, versions, selected raster bytes and
+whole upload state. Source and fresh offline archives repeat 80 native
+configurations, 160 cold pairs, 240 future history comparisons and 30 focused
+laws. The existing independent storage and original/generation recovery checks
+remain mandatory. See [the contract](INDEPENDENT_PARTICIPANT_BACKUP.md).
+
+The [independent participant checkpoint](qualification/2026-10-21-independent-participant-backup.json)
+records all 24 selected stages passing and 1,642 script passes with three existing
+skips. The exact construction regression fails against the preserved pre-key
+package and passes against the repaired source and fresh installed package.
+Native Cargo suites are carried only across unchanged native inputs/runtime;
+this is not whole-plan, physical durability, authenticated activation or V1 approval.
+
 Both profiles require `canonical-source-readers-plan-contracts`,
 `canonical-source-readers` and `installed-canonical-source-readers`. They run the
 same actual-Wasm binding and mutation assertions against genuine original and
@@ -7,7 +23,7 @@ managed local-generation captures, with instance/prototype facade overrides,
 across all five grammar/inline profiles. Installed consumers use fresh offline
 public archives without workspace links. The original 1,000-check lightweight
 generation-stamp law and broader recovery/script stages remain required.
-The functional plan now has 219 checks; the recorded selections below are
+The functional plan now has 224 checks; the recorded selections below are
 historical subsets, not whole-plan or V1 approval.
 
 Both profiles also require `physical-recovery-assets-plan-contracts`,
@@ -20,7 +36,7 @@ mandatory. Source and fresh offline packages repeat the same native/client
 assertions; Pending queues and unselected historical copies are not settled by
 available bytes. See [the distinct contract](PHYSICAL_CLIENT_ASSET_RECONCILIATION.md).
 At that asset checkpoint the functional plan had 216 checks; the current
-219-check plan also includes canonical reader qualification above. Selecting a
+224-check plan also includes canonical readers and independent participant recovery. Selecting a
 subset or passing functional checks does not grant V1, public-hosting or
 activation approval.
 

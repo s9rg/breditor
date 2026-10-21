@@ -8,7 +8,9 @@ flattened into their visible discussion view.
 
 This is a separate opt-in client-storage family. It does not migrate an old
 database, negotiate a server profile or activate a room. Existing generation
-source, relay and participant adapters refuse it until matching readers exist.
+source, relay and participant adapters refuse it. Separately named
+[independent source and participant readers](INDEPENDENT_PARTICIPANT_BACKUP.md)
+now preserve its actual two-lane histories and complete local asset state.
 
 ## Select both native families explicitly
 
@@ -117,9 +119,10 @@ IndexedDB/Web Locks qualify functional transactions, not physical crash durabili
 or cross-device fencing. The reference host now supports explicit
 [native document/comment retention](SERVER_NATIVE_HISTORY_GENERATIONS.md),
 without selecting this client store or rotating its physical log. Matching
-complete source/asset and participant readers, physical server-log generations,
+independent transport/room integration, physical server-log recovery,
 provider/client reconciliation, historic-copy decisions and authenticated
-whole-room activation remain separate work.
+whole-room activation remain separate work. The separate local participant reader
+does not promote old recovery formats or provide an all-store activation marker.
 
 The [2026-10-21 SDK/storage qualification](qualification/2026-10-21-independent-history-storage.json)
 passes all 36 selected stages, including the same 576-configuration storage
@@ -127,3 +130,10 @@ matrix and 72-configuration facade matrix in source and fresh public archives.
 Native Rust qualification is carried only across 2,709 unchanged inputs and 12
 unchanged normal runtime artifacts; it is not a fresh native suite/build claim.
 All 13 V1 gates remain open.
+
+The later [independent participant checkpoint](qualification/2026-10-21-independent-participant-backup.json)
+adds genuine source/asset/whole-upload capture and portable local recovery, with
+the same native history strings and current-policy cold replay. Runtime-only
+constructor keys prevent direct JavaScript construction from registering a source
+with supplied fake leases or a borrowed core. This does not select an independent
+relay/retained family or activate a physical room.

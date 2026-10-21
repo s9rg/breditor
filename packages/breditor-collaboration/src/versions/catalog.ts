@@ -9,20 +9,20 @@ import type {SharedDocumentVersionsOptions,SharedDocumentVersionsState,SharedDoc
 import type {SharedDocumentVersionsBackupOptions,SharedRetainedStoreBackupOptions} from "../backups/retained_store_types.js";
 import type {SharedParticipantReplay} from "../participant_replay/read.js";
 import type {SharedRetainedVersionRecoveryResult} from "./reconcile_types.js";
-const attached=new WeakSet<object>();
+const constructionKey=Object.freeze({}),attached=new WeakSet<object>();
 /** Opt-in shared immutable versions: independent cache/intent durability, one borrowed native owner. */
 export class SharedDocumentVersions<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
  readonly #store:VersionCatalogStore<P>;readonly #sync:VersionCatalogSync<P>;#retiring=false;#closed=false;#closing:Promise<void>|undefined;#released:Promise<void>|undefined;
  #recovering=false;
- private constructor(store:VersionCatalogStore<P>){this.#store=store;this.#sync=new VersionCatalogSync(store);const core=store.options.storage.core;registerManagedSource(this,core,()=>{this.#writable();checkManagedSource(store,core);},[store]);}
+ private constructor(key:object,store:VersionCatalogStore<P>){if(key!==constructionKey)throw new SharedRelayError('managed_source_construction');this.#store=store;this.#sync=new VersionCatalogSync(store);const core=store.options.storage.core;registerManagedSource(this,core,()=>{this.#writable();checkManagedSource(store,core);},[store]);}
  static async open<Q extends SharedSelectionPolicy>(options:SharedDocumentVersionsOptions<Q>):Promise<SharedDocumentVersions<Q>>{
   const core=options.storage.core;if(attached.has(core))throw new SharedRelayError("version_catalog_already_attached");attached.add(core);let store:VersionCatalogStore<Q>|undefined;
-  try{store=await VersionCatalogStore.open(options);return new SharedDocumentVersions(store);}catch(error){if(store)await store.discardAndClose();attached.delete(core);throw error;}
+  try{store=await VersionCatalogStore.open(options);return new SharedDocumentVersions(constructionKey,store);}catch(error){if(store)await store.discardAndClose();attached.delete(core);throw error;}
  }
  /** Empty-key recovery only. The host supplies current authority; no connection starts here. */
  static async restoreBackup<Q extends SharedSelectionPolicy>(options:SharedDocumentVersionsBackupOptions<Q>):Promise<SharedDocumentVersions<Q>>{
   const core=options.storage.core;if(attached.has(core))throw new SharedRelayError("version_catalog_already_attached");attached.add(core);let store:VersionCatalogStore<Q>|undefined;
-  try{store=await VersionCatalogStore.restoreBackup(options);return new SharedDocumentVersions(store);}catch(error){if(store)await store.discardAndClose();attached.delete(core);throw error;}
+  try{store=await VersionCatalogStore.restoreBackup(options);return new SharedDocumentVersions(constructionKey,store);}catch(error){if(store)await store.discardAndClose();attached.delete(core);throw error;}
  }
  #writable():void{if(this.#closed)throw new SharedRelayError("version_cache_closed");if(this.#retiring)throw new SharedRelayError("version_cache_closing");if(this.#recovering)throw new SharedRelayError("version_recovery_in_use");}
  state():SharedDocumentVersionsState{return this.#sync.state();}

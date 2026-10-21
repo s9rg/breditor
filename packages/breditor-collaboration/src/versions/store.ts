@@ -22,6 +22,7 @@ import {replayVersionRecord} from "../participant_replay/version_record.js";
 import type {SharedParticipantReplay} from "../participant_replay/read.js";
 import {reconcileRetainedVersionRecord} from "./reconcile_retained.js";
 import type {SharedRetainedVersionRecoveryResult} from "./reconcile_types.js";
+const constructionKey=Object.freeze({});
 export class VersionCatalogStore<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
  readonly options:SharedDocumentVersionsOptions<P>;readonly #db:IDBDatabase|undefined;readonly #lease:VersionCatalogLease;
  readonly #segmented:SegmentedRetainedPort<"versions">|undefined;
@@ -30,7 +31,8 @@ export class VersionCatalogStore<P extends SharedSelectionPolicy=SharedSelection
  #pending:SharedVersionCatalogRecord|undefined;#running:Promise<void>|undefined;#failure:unknown;#retiring=false;#closed=false;#closing:Promise<void>|undefined;#released:Promise<void>|undefined;
  #listeners=new Set<()=>void>();#notifying=false;#storageChanged=false;
  #restoreInsert=false;#restoreSignal:AbortSignal|undefined;
- private constructor(options:SharedDocumentVersionsOptions<P>,db:IDBDatabase|undefined,lease:VersionCatalogLease,record:SharedVersionCatalogRecord,assertSource:()=>void,segmented?:SegmentedRetainedPort<"versions">){
+ private constructor(key:object,options:SharedDocumentVersionsOptions<P>,db:IDBDatabase|undefined,lease:VersionCatalogLease,record:SharedVersionCatalogRecord,assertSource:()=>void,segmented?:SegmentedRetainedPort<"versions">){
+  if(key!==constructionKey)throw new SharedEditorError('managed_source_construction','Use the actual version store open or recovery factory');
   this.#segmented=segmented;
   this.options=options;this.#db=db;this.#lease=lease;this.#assertSource=()=>{assertSource();if(this.options!==options)throw new SharedRelayError("version_source_replaced");};this.#record=record;this.#retained=this.#admit(record);
   registerManagedSource(this,options.storage.core,()=>{this.#live();if(this.#retiring||this.#storageChanged)throw managedSourceUnavailable();});
@@ -56,7 +58,7 @@ export class VersionCatalogStore<P extends SharedSelectionPolicy=SharedSelection
   try{assertSource();checkRetainedStoreSignal(signal);const retained=isOperationalComponent(input)?await existingOperationalComponent(options.database,"catalogs",cacheKey(identity)):undefined;if(!segmented)db=retained?.db??await openCatalogDatabase(options.database);assertSource();let saved:SharedVersionCatalogRecord|null;
    if(recovered){if(await retainedStoreDestinationExists(db!,"catalogs",cacheKey(identity),signal))throw new SharedEditorError("backup_destination_exists","Retained restore destination already contains a record");saved=recovered;}else saved=segmented?checkCatalogRecord(segmented.read(),identity):await readCatalogRecord(db!,identity);
    if(retained&&(!saved||JSON.stringify(saved)!==JSON.stringify(retained.record)))throw operationFailure("operation_diverged");
-   assertSource();const record=saved??{format:"breditor/shared-version-catalog-cache" as const,formatVersion:1 as const,identity,catalog:null,packets:[]},create=()=>new VersionCatalogStore(options,db,lease,record,assertSource,segmented);store=recovered?retainedStoreNativeAdmission(create):create();retained?.assertCurrent();store.#restoreInsert=recovered!==undefined;store.#restoreSignal=signal;store.#pending=record;store.#start();await store.flush();assertSource();checkRetainedStoreSignal(signal);return store;}
+   assertSource();const record=saved??{format:"breditor/shared-version-catalog-cache" as const,formatVersion:1 as const,identity,catalog:null,packets:[]},create=()=>new VersionCatalogStore(constructionKey,options,db,lease,record,assertSource,segmented);store=recovered?retainedStoreNativeAdmission(create):create();retained?.assertCurrent();store.#restoreInsert=recovered!==undefined;store.#restoreSignal=signal;store.#pending=record;store.#start();await store.flush();assertSource();checkRetainedStoreSignal(signal);return store;}
   catch(error){if(store)await store.discardAndClose();else{db?.close();await lease.close();}throw error;}
  }
  #live(checkSource=true):void{if(this.#closed)throw new SharedRelayError("version_cache_closed");this.#lease.assertLive();if(checkSource)this.#assertSource();}

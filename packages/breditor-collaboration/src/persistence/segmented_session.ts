@@ -39,6 +39,7 @@ interface Attempt {capture:Capture;cut:SegmentedCut|undefined}
 const same=(a:Capture|undefined,b:Capture)=>!!a&&a.checkpoint===b.checkpoint&&a.review?.checkpoint===b.review?.checkpoint&&JSON.stringify(a.versions)===JSON.stringify(b.versions)&&a.companion===b.companion;
 
 /** Both leases precede cold native replay. Only complete superseded captures are coalesced. */
+const constructionKey=Object.freeze({});
 export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
  readonly core:SharedRichEditor<P>;readonly recovered:boolean;
  readonly #ownedCore:SharedRichEditor<P>;
@@ -47,7 +48,8 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
  readonly #companion:SegmentedSessionCompanion|undefined;
  #versions=new Map<string,string>();#sourceStamp:object=Object.freeze({});#off:(()=>void)[]=[];#pending:Capture|undefined;#attempt:Attempt|undefined;#running:Promise<void>|undefined;
  #savedHead:string|null;#saved:Capture|undefined;#closedSaved:{documentRevision:string|null;reviewRevision:string|null}|undefined;#failure:unknown;#closed=false;#retiring=false;#storageChanged=false;#closing:Promise<void>|undefined;#released:Promise<void>|undefined;
- private constructor(db:IDBDatabase,lease:SharedWriterLease,reviewLease:ReviewWriterLease|undefined,core:SharedRichEditor<P>,options:SharedSegmentedSessionOptions<P>,identity:SegmentedSessionIdentity,head:string|null,versions:readonly string[],recovered=head!==null,companion?:SegmentedSessionCompanion){
+ private constructor(key:object,db:IDBDatabase,lease:SharedWriterLease,reviewLease:ReviewWriterLease|undefined,core:SharedRichEditor<P>,options:SharedSegmentedSessionOptions<P>,identity:SegmentedSessionIdentity,head:string|null,versions:readonly string[],recovered=head!==null,companion?:SegmentedSessionCompanion){
+  if(key!==constructionKey)throw new SharedEditorError('managed_source_construction','Use the actual generation session open or recovery factory');
   this.#companion=companion;companion?.admit(core as unknown as SharedRichEditor<SharedSelectionPolicy>);
   this.#db=db;this.#documentLease=lease;this.#reviewLease=reviewLease;this.#ownedCore=core;this.core=core;this.#options={...(options.review?{review:options.review}:{}),...(options.onError?{onError:options.onError}:{}),...(options.onState?{onState:options.onState}:{})};this.#identity=identity;this.#savedHead=head;this.recovered=recovered;this.#versions=admitPairedVersions(core,versions);
   const segmentedPolicy=SharedRichEditor.prototype.segmentedHistoryPolicy;
@@ -105,7 +107,7 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
    core.sealSegmentedPolicies(identity.history,identity.rangeEditing);
    if(source!==undefined&&(core.checkpointJson()!==source||options.review&&core.reviewCheckpoint()!==sourceReview))throw new SharedEditorError("segmented_native_replay","Native replay must preserve the exact document and comment files");
    operation?.verifyCore(core as unknown as SharedRichEditor<SharedSelectionPolicy>,saved!.record.versions,companion);
-   opening.assertCurrent();const session=new SharedSegmentedPersistentSession(db,lease,reviewLease,core,options,identity,saved?.head??null,saved?.record.versions??recovery?.versions??[],source!==undefined,companion);
+   opening.assertCurrent();const session=new SharedSegmentedPersistentSession(constructionKey,db,lease,reviewLease,core,options,identity,saved?.head??null,saved?.record.versions??recovery?.versions??[],source!==undefined,companion);
    session.save();try{await session.flush();}catch(error){await session.discardAndClose();throw error;}return session;
   }catch(error){core?.dispose();db?.close();try{await reviewLease?.close();}finally{await lease.close();}throw error;}
  }

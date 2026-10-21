@@ -32,6 +32,14 @@ use `ESNext.Disposable`.
 
 ## Exact session archives
 
+Local sessions that independently select document/comment history can use
+`captureSharedIndependentSource` and `captureSharedIndependentParticipant`.
+The separate portable participant family preserves both exact native lanes,
+local versions, selected raster bytes and complete upload state. It requires
+current host authority for capture and explicit native replay/current permissions
+for recovery; it does not activate a room or relabel old archive families. See
+[the independent participant contract](../../docs/INDEPENDENT_PARTICIPANT_BACKUP.md).
+
 `SharedPersistentSession.exportBackup()` captures exact native history, including
 Redo, without a save or publication. Paired `SharedReviewPersistentSession`
 archives also retain comments, local version packets and selected nonsecret

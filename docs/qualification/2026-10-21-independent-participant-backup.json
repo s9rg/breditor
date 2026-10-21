@@ -1,0 +1,334 @@
+{
+  "format": "breditor/independent-participant-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-21",
+  "passed": true,
+  "source": {
+    "commit": "b01c0860e3236d8207df3213e8154a27540b1379",
+    "dirty": true,
+    "sha256": "22dd36e5ff0878171ecac1d1396f2287c962b83418a99ddce64f560612a59955",
+    "files": 5375,
+    "bytes": 44511179
+  },
+  "qualifiedScope": "Explicit local independently selected document/comment histories, exact native/version records, selected raster bytes and complete whole-upload state. Runtime-only construction admission for source owners. This is functional qualification, not complete V1 or parity.",
+  "qualification": {
+    "original": "target/v1-candidate-runs/run-Kic0je/result.json",
+    "retained": {
+      "original": "/Users/s/code/breditor/target/v1-candidate-runs/run-Kic0je/result.json",
+      "path": "target/independent-participant-qualified-wa1xXK/result.json",
+      "bytes": 38533,
+      "sha256": "97050706ad7842cec5a48a3ca380eca2064afbf1fa4e175415dea5a9a9f3a23b",
+      "modifiedAtMs": 1792620938263.7336
+    },
+    "selectedStages": [
+      {
+        "id": "candidate-runner-contracts",
+        "status": "passed"
+      },
+      {
+        "id": "collaboration-build",
+        "status": "passed"
+      },
+      {
+        "id": "typescript-tests-and-script-contracts",
+        "status": "passed"
+      },
+      {
+        "id": "independent-participant-plan-contracts",
+        "status": "passed"
+      },
+      {
+        "id": "independent-participant-contracts",
+        "status": "passed"
+      },
+      {
+        "id": "independent-participant-type-fence",
+        "status": "passed"
+      },
+      {
+        "id": "independent-participant",
+        "status": "passed"
+      },
+      {
+        "id": "installed-independent-participant",
+        "status": "passed"
+      },
+      {
+        "id": "independent-history-contracts",
+        "status": "passed"
+      },
+      {
+        "id": "independent-history-type-fence",
+        "status": "passed"
+      },
+      {
+        "id": "independent-history-sdk",
+        "status": "passed"
+      },
+      {
+        "id": "installed-independent-history",
+        "status": "passed"
+      },
+      {
+        "id": "canonical-source-readers-plan-contracts",
+        "status": "passed"
+      },
+      {
+        "id": "canonical-source-readers",
+        "status": "passed"
+      },
+      {
+        "id": "installed-canonical-source-readers",
+        "status": "passed"
+      },
+      {
+        "id": "generation-native-stamp-guard",
+        "status": "passed"
+      },
+      {
+        "id": "physical-recovery-control-contracts",
+        "status": "passed"
+      },
+      {
+        "id": "physical-recovery-control-type-fence",
+        "status": "passed"
+      },
+      {
+        "id": "physical-recovery-control",
+        "status": "passed"
+      },
+      {
+        "id": "installed-physical-recovery-control",
+        "status": "passed"
+      },
+      {
+        "id": "physical-recovery-assets-contracts",
+        "status": "passed"
+      },
+      {
+        "id": "physical-recovery-assets-type-fence",
+        "status": "passed"
+      },
+      {
+        "id": "physical-recovery-assets",
+        "status": "passed"
+      },
+      {
+        "id": "installed-physical-recovery-assets",
+        "status": "passed"
+      }
+    ],
+    "functionalPlanChecks": 224,
+    "wholePlanExecuted": false,
+    "scriptTests": {
+      "passed": 1642,
+      "failed": 0,
+      "skipped": 3
+    }
+  },
+  "sourceAndInstalled": {
+    "each": {
+      "configurations": 80,
+      "grammarInlineProfiles": 5,
+      "laneCombinations": 4,
+      "selectionPolicies": [
+        "original",
+        "document-v1"
+      ],
+      "historyMasks": [
+        "explicit",
+        "typing-search-reviewed"
+      ],
+      "coldNativePairs": 160,
+      "futureDocumentAndCommentHistoryPairs": 240,
+      "wholeUploadComparisons": 240,
+      "retainedLocalVersions": 80,
+      "oldFamilySourceRefusals": 80,
+      "readOnlyEditRefusals": 160,
+      "staleSourceRefusals": 80,
+      "closedSourceRefusals": 80,
+      "instancePrototypeOverrideCases": 4,
+      "testedUploadStates": [
+        "pending",
+        "cancelled"
+      ]
+    },
+    "focusedLaws": 30,
+    "unchangedProbeSha256": "7e033a060f6c6bdb430572adc097104e80b6bfb50c30eeb3e431dbaeadca1f0d",
+    "sourceTestSha256": "1df475d2ef4ed3fc664ef8f883281c8ecbff90a5ec5866a3e836b377028d90ba",
+    "installedTestSha256": "2b926e2da17618d1edaaf094e7a00656064ad0e9617f79de7bc1612b3bb89382",
+    "assertionImportsReversible": true,
+    "strictBarePublicTypes": true,
+    "registryArtifacts": 45,
+    "workspaceLinks": false,
+    "productionModuleCount": 73,
+    "noWorkspaceReactOrSyntheticStorageInProduction": true
+  },
+  "constructorRepair": {
+    "reproduced": true,
+    "condition": "The TypeScript-private independent session constructor was callable directly from JavaScript with fake lease objects and a borrowed actual core; it registered a readable source without its own checked opening.",
+    "actualNativeHistoriesUnchangedDuringReproduction": true,
+    "repair": "Per-module runtime-only keys guard checked factory construction before reading supplied stores, leases or cores. Keys are never exported or serialized.",
+    "guardedSourceOwnerConstructors": 9,
+    "exportedConstructorsExercised": 8,
+    "missingAndCopiedKeyRefusals": 24,
+    "sourceTestSha256": "1df475d2ef4ed3fc664ef8f883281c8ecbff90a5ec5866a3e836b377028d90ba",
+    "installedTestSha256": "2b926e2da17618d1edaaf094e7a00656064ad0e9617f79de7bc1612b3bb89382",
+    "exactSameFinalRegression": {
+      "preKeyArchiveSha256": "a29a3100c53b09ac4fb33e4ac9129915f5ffd056316427f02372547afc2d9fdd",
+      "failingSelectedTests": 1,
+      "failure": "Missing expected exception",
+      "currentSourceAndInstalledRegressionPassed": true,
+      "retained": {
+        "result": {
+          "original": "/Users/s/code/breditor/target/independent-construction-exact-red-Na2Zc4/result.json",
+          "path": "target/independent-participant-qualified-wa1xXK/construction-red-result.json",
+          "bytes": 1201,
+          "sha256": "7a295fbd1b769660111f490ca738d1288118b73850b778de0b4b41cf61535317",
+          "modifiedAtMs": 1792620938294.9844
+        },
+        "log": {
+          "original": "/Users/s/code/breditor/target/independent-construction-exact-red-Na2Zc4/red.log",
+          "path": "target/independent-participant-qualified-wa1xXK/construction-red.log",
+          "bytes": 1047,
+          "sha256": "aa55b9b817a1f65375e6ff1b8ea8eff0d8fbaf090556b056fd4ecdcc938ac86f",
+          "modifiedAtMs": 1792620938295.4614
+        },
+        "archive": {
+          "original": "/Users/s/code/breditor/target/independent-construction-exact-red-Na2Zc4/pre-key-collaboration.tgz",
+          "path": "target/independent-participant-qualified-wa1xXK/construction-pre-key-collaboration.tgz",
+          "bytes": 4108950,
+          "sha256": "a29a3100c53b09ac4fb33e4ac9129915f5ffd056316427f02372547afc2d9fdd",
+          "modifiedAtMs": 1792620938300.2737
+        }
+      }
+    },
+    "scope": "SDK ownership admission, not arbitrary application JavaScript sandboxing, native-module attestation or a new permission grant."
+  },
+  "artifacts": {
+    "retainedDirectory": "target/independent-participant-qualified-wa1xXK",
+    "immutableCopies": 41,
+    "packages": [
+      {
+        "name": "@breditor/browser",
+        "original": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-independent-participant-installed-wA0YNI/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "path": "target/independent-participant-qualified-wa1xXK/browser.tgz",
+        "bytes": 327732,
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+        "modifiedAtMs": 1792620938273.8171
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "original": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-independent-participant-installed-wA0YNI/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "path": "target/independent-participant-qualified-wa1xXK/experimental-rich-content.tgz",
+        "bytes": 1914597,
+        "sha256": "e6b524a4d3b9cab485e6df2ff62af133a3772291ec463fd3bba73934c13ac40f",
+        "modifiedAtMs": 1792620938276.9705
+      },
+      {
+        "name": "@breditor/collaboration",
+        "original": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-independent-participant-installed-wA0YNI/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "path": "target/independent-participant-qualified-wa1xXK/collaboration.tgz",
+        "bytes": 4109287,
+        "sha256": "3a05ed9a361a73e6d09e1fa839119e1e7ad408241f923fb5dbb51892dc41327f",
+        "modifiedAtMs": 1792620938285.5808
+      }
+    ],
+    "sharedRuntime": [
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.js",
+        "bytes": 197057,
+        "sha256": "eedaf4d3fbdfd9cfd115484030cc07d3be185aac00c3ccc4922f6df905de40ae",
+        "modifiedAtMs": 1792592625540.0828
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+        "bytes": 13444371,
+        "sha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+        "modifiedAtMs": 1792592625559.278
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.d.ts",
+        "bytes": 76829,
+        "sha256": "fe5579cc17725f1f63cf47ef147a6a570bdb3b6be5c522820e9ce1a61ec21e26",
+        "modifiedAtMs": 1792592625540.6763
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_dependency_inventory.json",
+        "bytes": 124122,
+        "sha256": "6714d5160bc54a23292eebb667a203c3d55358899e0e8df148b2388abf0bd688",
+        "modifiedAtMs": 1792592625565.1223
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/THIRD_PARTY_NOTICES.txt",
+        "bytes": 1380448,
+        "sha256": "4bdd58691c23f4733fd973aff84ebb1a38a670c97c64ce8e4c79c624f594f204",
+        "modifiedAtMs": 1792592625566.9912
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/RUST_COPYRIGHT-library.html",
+        "bytes": 1512520,
+        "sha256": "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6",
+        "modifiedAtMs": 1792592625569.9858
+      }
+    ],
+    "nonDocumentation": {
+      "files": 4810,
+      "sha256": "daec77fdce066877e17fbc8cfe6a8f48bb098ee524b02f8e65972d3460c44b34"
+    }
+  },
+  "nativeRelaySuiteCarry": {
+    "from": "qualification/2026-10-21-physical-client-asset-reconciliation.json",
+    "originalResult": "target/v1-candidate-runs/run-0SurLH/result.json",
+    "originalResultSha256": "f797f9fcf446cc2e75794b6a8b0a574ad1eeff011864f7c05d01aea7d8bd4131",
+    "serverTestsAndDoctests": 379,
+    "noServerTestsAndDoctests": 267,
+    "cargoSuitesReexecutedInThisSdkFollowup": false,
+    "condition": "All 2,986 native input files and all six normal shared runtime artifacts are byte-identical to the qualified native checkpoint.",
+    "nativeInputs": {
+      "files": 2986,
+      "sha256": "a4a716e0a6237d7c0d6122e5ab1eefc7ab02bda557cfeff9b786794c9c23d420"
+    }
+  },
+  "earlierRun": {
+    "result": "target/v1-candidate-runs/run-mpHa7f/result.json",
+    "passedStages": 18,
+    "totalStages": 24,
+    "sourceSha256": "7f17fc344d7b9fdffb11fb05493f2badbac42a9a394de2591a14d0422029fcfd",
+    "disposition": "Deliberately interrupted the positively identified test-owned stage process group after reproducing the constructor-admission defect. Not a production recovery-control failure. All 24 stages were rerun on the repaired frozen source above."
+  },
+  "documentationFollowup": {
+    "policy": "Only repository docs/ additions and links follow qualification; non-documentation, native inputs and shared runtime bytes must remain unchanged. The qualification file itself is not included in the pre-followup source digest.",
+    "auditedNonDocumentation": {
+      "files": 4810,
+      "sha256": "daec77fdce066877e17fbc8cfe6a8f48bb098ee524b02f8e65972d3460c44b34"
+    }
+  },
+  "remaining": [
+    "Independent relay/retained progress and outboxes committed with actual history cuts",
+    "Explicit independent-family physical-room integration through genuine native-history capabilities",
+    "Fresh authenticated permissions for every selected reconnecting client",
+    "Durable all-store coordinator including actual native restore origin and provider/client closure",
+    "Explicit historical-copy dispositions and authenticated activation fencing",
+    "Native 1000-item Undo and bounded complete-history/Blob resource envelopes",
+    "Remaining feature catalog parity and all 13 V1 qualification gates"
+  ],
+  "limits": {
+    "syntheticClientStorageAndLocks": true,
+    "fixtureImageDecoder": true,
+    "physicalCrashDurabilityQualified": false,
+    "remoteAuthenticationOrActivationImplemented": false,
+    "oldArchiveReadersWidened": false,
+    "protocolDefaultsChanged": false,
+    "unlimitedHistoryClaim": false,
+    "goalComplete": false,
+    "v1Ready": false,
+    "parityComplete": false,
+    "gatesOpen": 13,
+    "versionChanged": false,
+    "pushed": false,
+    "published": false,
+    "tagged": false,
+    "deployed": false
+  }
+}

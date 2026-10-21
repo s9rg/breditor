@@ -70,12 +70,30 @@ The exact byte-identical real-Wasm probe fails on the prior public archive and
 passes twenty source and twenty installed cases; actual mutations still refuse.
 Private generation stamps retain their original lightweight 1,000-check law.
 Complete native evidence is carried only across unchanged native inputs/runtime,
-not claimed as reexecuted in this SDK follow-up. The full functional plan now has
+not claimed as reexecuted in this SDK follow-up. The functional plan then had
 219 checks; neither checkpoint is whole-plan, parity or V1 approval.
 
+The separate [independent participant backup](INDEPENDENT_PARTICIPANT_BACKUP.md)
+now captures actual independently selected document/comment histories with local
+versions, selected native raster bytes and the complete upload-state file. It
+preserves cold native pairs and future document/comment Undo/Redo after offline
+peer changes; missing bytes remain Pending. Old original/generation readers and
+native formats remain closed. Explicit current policy, empty destinations and
+actual Rust replay are still required. The functional plan now has 224 checks.
+
+Its [selected qualification](qualification/2026-10-21-independent-participant-backup.json)
+passes all 24 stages and 1,642 script tests with three existing skips. Both source
+and fresh offline packages repeat 80 native configurations, 160 cold pairs,
+240 future history comparisons and 30 focused laws. A reproduced JavaScript
+construction gap is repaired with runtime-only keys on nine source-owner
+constructors; the exact final regression fails on the retained pre-key archive
+and passes on the repaired source and installed package. Native Cargo evidence
+is carried only across unchanged native inputs/runtime. All thirteen V1 gates
+remain open.
+
 Durable native/client intent, fresh selected-client permissions, independently
-segmented comment sessions, explicit historical-copy decisions and authenticated
-activation fencing remain the highest architectural priorities. Cosmetics and
+segmented comment transport/room integration, explicit historical-copy decisions
+and authenticated activation fencing remain the highest architectural priorities. Cosmetics and
 platform polish do not substitute for that functionality.
 
 The distinct [physical client-operation parent](PHYSICAL_ROOM_CLIENT_OPERATION.md)
