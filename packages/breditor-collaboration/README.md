@@ -155,6 +155,15 @@ continuation, not native-host ancestry transfer, provider reconciliation or
 authenticated server activation. See the
 [client-operation contract](../../docs/PHYSICAL_ROOM_CLIENT_OPERATION.md).
 
+`SharedPhysicalRoomRecoveryHost.open` selects a separate authenticated read-only
+operator endpoint. `operation.checkNativeHost(host)` checks actual native A/B/C
+and provider ownership while holding every selected client and its current native
+history. This keeps later offline edits, never infers a relay binding from a local
+review actor, and leaves missing or historical copies Pending. It does not write
+whole-room intent, flush clients or grant activation. Ordinary editing routes and
+exact-backup readers are unchanged. See the
+[live control contract](../../docs/PHYSICAL_RECOVERY_CONTROL.md).
+
 ## Retained image references
 
 `core.supportsRetainedAssetReferences()` requires the complete optional native

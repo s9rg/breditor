@@ -1,0 +1,247 @@
+{
+  "format": "breditor/physical-recovery-control-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-21",
+  "passed": true,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "implementation": "An opt-in read-only native operator control is composed with the actual held physical original/generation client parent. A retained ancestor, B actual local restore origin and C current server stay separate. This is a live continuity read, not durable whole-room reconciliation or activation.",
+  "guarantees": [
+    "Native operator tokens cannot overlap any native editor account; the controller retains only the backend account digest. Ordinary routers and defaults remain unchanged.",
+    "The controller owns actual native/provider leases; its router is weak. A closed controller refuses an actual paused-worker result while that worker retains native custody until completion.",
+    "Closed requests and complete responses are bounded64KiB; exact-Origin authentication and two nonqueued authenticated handler slots precede body reading. Public hosting still needs connection, duration and worker qualification.",
+    "SDK endpoint policy, fresh operator auth, canonical complete bounded receipts, cancellation/reentry and private brands prevent metadata or public method overrides from substituting a live check.",
+    "Both actual client families are held through source/native checks and RPC; continued offline histories use distinct operational prefix verification. Original exact-snapshot readers stay strict.",
+    "Local unbound reviews, missing or server-ahead streams and all unselected historical copies remain Pending; no client is flushed, no owner released, no source retargeted and no history or byte deleted."
+  ],
+  "reproducedFix": {
+    "test": "header refusal and post-transfer authority loss cancel the actual response stream",
+    "before": "The unchanged new assertion observed zero cancellations instead of one on rejected Content-Length before the fix.",
+    "after": "The same test passes for length, MIME and late-authority refusal; unread response bodies are cancelled and released."
+  },
+  "functionalCoverage": {
+    "nativeProfiles": 10,
+    "sourceAndInstalledEach": {
+      "jointReads": 108,
+      "operatorRequests": 136,
+      "writableGenerationAuthorReads": 18,
+      "continuedReads": 36,
+      "localReviewPending": 36,
+      "prototypeChecks": 6,
+      "reentryRefusals": 12,
+      "parentCloseColdResumes": 6,
+      "cancelledChecks": 6,
+      "foreignSourceRefusals": 6,
+      "mixedCases": 30,
+      "exactSourceFiles": 180,
+      "nativeRecordComparisons": 180,
+      "wholeUploadComparisons": 180,
+      "additionalWritableAuthorCohorts": 6
+    },
+    "nativeFixture": "Joint-control fixtures have genuine older A and physically later actual B=C, independent document/review history and one real cut beyond8192 records. These paragraph histories have no native image dependency. Separate native provider tests exercise actual PNG/JPEG/WebP at genuine later C.",
+    "storage": "Node IndexedDB/cooperative locks/raster presentation are explicit synthetic fixtures, not platform or cross-device fencing certification."
+  },
+  "source": {
+    "commit": "9eb4eed4b58b9b41c5852e0048edd9af0811591d",
+    "dirty": true,
+    "sha256": "261441a632d98494d9613ccb7d998b4d207ec2048a967c21a77f7cddbc5d7133",
+    "files": 5327,
+    "bytes": 44244334
+  },
+  "qualification": {
+    "path": "target/v1-candidate-runs/run-4VcVKi/result.json",
+    "bytes": 44896,
+    "sha256": "74b43e6737a8b925931d20d916102b23b9856331c38252730d5ca934d7b3343d",
+    "modifiedAtMs": 1792609809645.5767
+  },
+  "selectedStages": 28,
+  "fullFunctionalPlanRun": false,
+  "functionalPlanChecks": 210,
+  "openV1Gates": 13,
+  "nonDocumentation": {
+    "files": 4768,
+    "sha256": "e9b4405f7de02d5a3ccef9cf55b4b079eda63d3b36f513857ebd034ed4e331ab"
+  },
+  "nativeInputs": {
+    "files": 2974,
+    "sha256": "f1e19525e0d6b4f1f247b25adb77718cf5f8e0443b6d4e679bcd23481b82014e"
+  },
+  "runtime": {
+    "rebuilt": false,
+    "artifacts": [
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.js",
+        "bytes": 197057,
+        "sha256": "eedaf4d3fbdfd9cfd115484030cc07d3be185aac00c3ccc4922f6df905de40ae",
+        "modifiedAtMs": 1792592625540.0828
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+        "bytes": 13444371,
+        "sha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+        "modifiedAtMs": 1792592625559.278
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.d.ts",
+        "bytes": 76829,
+        "sha256": "fe5579cc17725f1f63cf47ef147a6a570bdb3b6be5c522820e9ce1a61ec21e26",
+        "modifiedAtMs": 1792592625540.6763
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_dependency_inventory.json",
+        "bytes": 124122,
+        "sha256": "6714d5160bc54a23292eebb667a203c3d55358899e0e8df148b2388abf0bd688",
+        "modifiedAtMs": 1792592625565.1223
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/THIRD_PARTY_NOTICES.txt",
+        "bytes": 1380448,
+        "sha256": "4bdd58691c23f4733fd973aff84ebb1a38a670c97c64ce8e4c79c624f594f204",
+        "modifiedAtMs": 1792592625566.9912
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/RUST_COPYRIGHT-library.html",
+        "bytes": 1512520,
+        "sha256": "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6",
+        "modifiedAtMs": 1792592625569.9858
+      }
+    ]
+  },
+  "reports": [
+    {
+      "id": "source",
+      "original": {
+        "path": "target/physical-recovery-control-sdk.json",
+        "bytes": 15668,
+        "sha256": "f59242b1d04669689c4ba8d4a8f781ff549b4e2f5420f0db8e51c99242b4e63d",
+        "modifiedAtMs": 1792608541003.1213
+      },
+      "retained": {
+        "path": "target/physical-control-qualified-P9L27p/source.json",
+        "bytes": 15668,
+        "sha256": "f59242b1d04669689c4ba8d4a8f781ff549b4e2f5420f0db8e51c99242b4e63d",
+        "modifiedAtMs": 1792609819707.375
+      }
+    },
+    {
+      "id": "installed",
+      "original": {
+        "path": "target/physical-recovery-control-installed.json",
+        "bytes": 18447,
+        "sha256": "42db487e701bdc190949cea0fc0d805e63a59016e54eea6c6147abb3131de714",
+        "modifiedAtMs": 1792608359032.0728
+      },
+      "retained": {
+        "path": "target/physical-control-qualified-P9L27p/installed.json",
+        "bytes": 18447,
+        "sha256": "42db487e701bdc190949cea0fc0d805e63a59016e54eea6c6147abb3131de714",
+        "modifiedAtMs": 1792609819725.175
+      }
+    },
+    {
+      "id": "nativeLegacy",
+      "original": {
+        "path": "target/server-generation-inventory-native.json",
+        "bytes": 15343,
+        "sha256": "a615923733c89379e5e4928ba5f76f5d6919ee28eb06142b0f41eaec57e2e2a3",
+        "modifiedAtMs": 1792609470075.603
+      },
+      "retained": {
+        "path": "target/physical-control-qualified-P9L27p/nativeLegacy.json",
+        "bytes": 15343,
+        "sha256": "a615923733c89379e5e4928ba5f76f5d6919ee28eb06142b0f41eaec57e2e2a3",
+        "modifiedAtMs": 1792609819744.083
+      }
+    },
+    {
+      "id": "sourceLegacy",
+      "original": {
+        "path": "target/physical-room-operation-sdk.json",
+        "bytes": 3261,
+        "sha256": "8c58d77aef3ec73f02ac726c6a58fdb490a7057b54a0d9a5ee43442e7442c5bb",
+        "modifiedAtMs": 1792609542152.9521
+      },
+      "retained": {
+        "path": "target/physical-control-qualified-P9L27p/sourceLegacy.json",
+        "bytes": 3261,
+        "sha256": "8c58d77aef3ec73f02ac726c6a58fdb490a7057b54a0d9a5ee43442e7442c5bb",
+        "modifiedAtMs": 1792609819761.9468
+      }
+    },
+    {
+      "id": "installedLegacy",
+      "original": {
+        "path": "target/physical-room-operation-installed.json",
+        "bytes": 5093,
+        "sha256": "afb746bbd5f8b3d13a36ec77108a5c5c15d870d0891038730748ed22164257cf",
+        "modifiedAtMs": 1792609617189.1106
+      },
+      "retained": {
+        "path": "target/physical-control-qualified-P9L27p/installedLegacy.json",
+        "bytes": 5093,
+        "sha256": "afb746bbd5f8b3d13a36ec77108a5c5c15d870d0891038730748ed22164257cf",
+        "modifiedAtMs": 1792609819762.907
+      }
+    }
+  ],
+  "tests": {
+    "server": 367,
+    "noNetworking": 267,
+    "controlNativeFunctions": 7,
+    "wireContracts": 33,
+    "planContracts": 2,
+    "scriptPassed": 1566,
+    "scriptSkipped": 3,
+    "overlap": "Focused/native/public laws repeat inside full suites; counts are not added as unique tests."
+  },
+  "installed": {
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-physical-control-installed-QvWt9F/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-physical-control-installed-QvWt9F/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "e6b524a4d3b9cab485e6df2ff62af133a3772291ec463fd3bba73934c13ac40f"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-physical-control-installed-QvWt9F/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "abe48a5c24ccd9ae91ecad4fea0f627a861b946ff5ad9f223236a25080ddb749"
+      }
+    ],
+    "registryArtifacts": 45,
+    "workspaceLinks": false,
+    "strictPublicTypes": true,
+    "wireContracts": 33,
+    "assertionsUnchanged": true,
+    "noWorkspaceReactOrSyntheticStorageInProduction": true,
+    "productionModuleCount": 245
+  },
+  "sharedCoreEvidence": {
+    "fresh": false,
+    "priorQualification": {
+      "path": "docs/qualification/2026-10-21-physical-server-asset-availability.json",
+      "bytes": 24534,
+      "sha256": "177e35424c9f7b483674fd82f59458556269ea9b5ad2ecb3fd73704bb32b68f0",
+      "modifiedAtMs": 1792605574858.3025
+    },
+    "unchangedInputs": [
+      "crates/",
+      "experiments/collaboration/",
+      "Cargo.toml",
+      "Cargo.lock",
+      "rust-toolchain.toml"
+    ],
+    "scope": "Audited unchanged tracked inputs and no new nonignored inputs in those core scopes. All six actual normal shared runtime bytes match the prior qualification. No fresh shared/core suite or Wasm rebuild is claimed; both complete relay suites are freshly run."
+  },
+  "remaining": [
+    "Restartable durable native/client whole-room intent and true custody/lifetime integration.",
+    "Actual selected-client resume credentials, current permissions, client/outbox/reference/upload and provider byte closure, including dependency Pending.",
+    "Independent client comment-generation sessions and explicit historical-copy dispositions.",
+    "Authenticated native deployment fencing and atomic activation, not a point-in-time receipt.",
+    "Body-duration/connection/worker and long-session resource qualification; all13 V1 gates, remaining catalog parity and dependency/license review remain open. No push, version, tag, publish or deploy."
+  ]
+}

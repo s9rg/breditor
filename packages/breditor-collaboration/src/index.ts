@@ -159,8 +159,12 @@ export {SharedPhysicalRoomParticipantStage} from "./physical_room_stage/stage.js
 export {SharedPhysicalRoomParticipantStageError,MAX_PHYSICAL_ROOM_STAGE_PARTICIPANTS,MAX_PHYSICAL_ROOM_STAGE_PLAN_BYTES} from "./physical_room_stage/policy.js";
 export type {SharedPhysicalRoomStageParticipant,SharedPhysicalRoomStageOpenOptions,SharedPhysicalRoomStageCheck,SharedPhysicalRoomStageProgress} from "./physical_room_stage/contract.js";
 export {SharedPhysicalRoomClientOperation} from "./physical_room_operation/operation.js";
+export {SharedPhysicalRoomRecoveryHost} from "./physical_recovery_control/host.js";
+export {SharedPhysicalRecoveryControlError,MAX_PHYSICAL_RECOVERY_CONTROL_BYTES} from "./physical_recovery_control/policy.js";
+export type {SharedPhysicalServerRecoveryIdentity,SharedPhysicalRecoveryControlSelection,SharedPhysicalRecoveryHostOptions} from "./physical_recovery_control/contract.js";
 export {SharedPhysicalRoomClientOperationError} from "./physical_room_operation/policy.js";
-export type {SharedPhysicalRoomOperationTarget,SharedPhysicalRoomOperationBeginOptions,SharedPhysicalRoomOperationParticipant,SharedPhysicalRoomOperationResumeOptions,SharedPhysicalRoomOperationProgress,SharedPhysicalRoomOperationParts} from "./physical_room_operation/contract.js";
+export type {SharedPhysicalRoomOperationTarget,SharedPhysicalRoomOperationBeginOptions,SharedPhysicalRoomOperationParticipant,SharedPhysicalRoomOperationResumeOptions,SharedPhysicalRoomOperationProgress,SharedPhysicalRoomOperationParts,SharedPhysicalRoomNativeCheck} from "./physical_room_operation/contract.js";
+export {SharedPhysicalRoomNativeCheckError} from "./physical_room_operation/native_check.js";
 export {SharedPhysicalRoomRecoveryCatalogError,MAX_PHYSICAL_ROOM_CATALOG_FILES,MAX_PHYSICAL_ROOM_CATALOG_BYTES,MAX_PHYSICAL_ROOM_CATALOG_METADATA_BYTES} from "./physical_room_catalog/policy.js";
 export type {SharedPhysicalRoomRecoveryCatalogSelection,SharedPhysicalRoomRecoveryCatalogMetadata,SharedPhysicalRoomRecoveryCatalogCaptureOptions,SharedPhysicalRoomRecoveryCatalogSource,SharedPhysicalRoomRecoveryCatalogCheck,SharedPhysicalRoomRecoveryCatalogOpenOptions,SharedPhysicalRoomRecoveryCatalogBeginOptions} from "./physical_room_catalog/contract.js";
 export {OperationalSharedGenerationParticipant} from "./generation_operation/operation.js";

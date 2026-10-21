@@ -50,8 +50,29 @@ cold-reopens complete clients under explicit current permissions and releases
 all clients or none. First owners remain read-only; a completion marker cannot
 manufacture native readiness or promote a permanent review observer. The
 separate native ancestry contract below now preserves ancestor, actual local
-origin and current host state. Connecting both actual parents, complete
-provider/client closure and server activation remain architectural work.
+origin and current host state. The separate live control below now joins genuine
+native/client reads. Durable whole-room intent, complete provider/client closure
+and server activation remain architectural work.
+
+The [physical recovery control](PHYSICAL_RECOVERY_CONTROL.md) introduces explicit
+read-only operator authentication and a live `checkNativeHost` client method.
+Actual owners remain held across callbacks, cancellation and close; current
+operational descendants keep offline work without relaxing exact-backup readers.
+Missing/unbound streams and historical copies remain Pending. The native router
+holds only a weak reference and has no edit/upload/restore/activation routes.
+This live join does not yet implement the durable whole-room coordinator,
+complete client/provider byte closure or authenticated activation.
+
+Its [live control qualification](qualification/2026-10-21-physical-recovery-control.json)
+passes all 28 selected stages, 367 server-enabled and 267 complete no-networking
+Rust checks, and 1,566 script tests with three existing opt-in skips. Source and
+fresh offline installed packages each perform 108 joint reads, including eighteen
+writable-generation-author reads, while retaining exact files, records, uploads
+and future Undo/Redo. The script suite also covers a reproduced unread-response
+cleanup defect. All six normal shared runtime files and core inputs are unchanged;
+the collaboration SDK package changes, while browser/rich-content archives do not.
+This is an explicit selection from the 210-check functional plan, not full-plan
+qualification or closure of any of the thirteen V1 release gates.
 
 The [physical server ancestry contract](PHYSICAL_SERVER_RECOVERY_ANCESTRY.md)
 now wraps genuine prepared native ownership without rewriting the actual local

@@ -122,6 +122,22 @@ impl VerifiedPhysicalServerRoomRecoveryState {
         token: &str,
     ) -> Result<()> {
         handle.local.host.authentication.authenticate(principal, token)?;
+        self.check_current(handle, principal).await
+    }
+    pub(in crate::server) async fn check_live_digest(
+        &self,
+        handle: &PreparedPhysicalRoomRecoveryHost,
+        principal: &str,
+        digest: &[u8; 32],
+    ) -> Result<()> {
+        handle.local.host.authentication.authenticate_digest(principal, digest)?;
+        self.check_current(handle, principal).await
+    }
+    async fn check_current(
+        &self,
+        handle: &PreparedPhysicalRoomRecoveryHost,
+        principal: &str,
+    ) -> Result<()> {
         if principal != self.owner
             || !self.room.upgrade().is_some_and(|room| Arc::ptr_eq(&room, &handle.local.host.room))
         {

@@ -9,6 +9,12 @@ pub(super) fn origin<'a>(host: &Host, headers: &'a HeaderMap) -> Option<&'a str>
     headers.get("origin").and_then(|h| h.to_str().ok()).filter(|o| host.authentication.origin(o))
 }
 pub(super) fn account(host: &Host, headers: &HeaderMap) -> Result<String> {
+    account_for(&host.authentication, headers)
+}
+pub(super) fn account_for(
+    authentication: &super::Authentication,
+    headers: &HeaderMap,
+) -> Result<String> {
     let principal = headers
         .get("x-breditor-principal")
         .and_then(|h| h.to_str().ok())
@@ -18,7 +24,7 @@ pub(super) fn account(host: &Host, headers: &HeaderMap) -> Result<String> {
         .and_then(|h| h.to_str().ok())
         .and_then(|h| h.strip_prefix("Bearer "))
         .ok_or(Error::Permission)?;
-    host.authentication.authenticate(principal, token)?;
+    authentication.authenticate(principal, token)?;
     Ok(principal.into())
 }
 pub(super) fn cors(mut response: Response, allowed: &str) -> Response {

@@ -50,6 +50,24 @@ impl VerifiedPhysicalServerRecoveryAssets {
         provider: Arc<dyn ServerRecoveryAssetProvider>,
     ) -> Result<()> {
         self.continuation.check_live(handle, principal, token).await?;
+        self.check_current(handle, principal, provider).await
+    }
+    pub(in crate::server) async fn check_live_digest(
+        &self,
+        handle: &PreparedPhysicalRoomRecoveryHost,
+        principal: &str,
+        digest: &[u8; 32],
+        provider: Arc<dyn ServerRecoveryAssetProvider>,
+    ) -> Result<()> {
+        self.continuation.check_live_digest(handle, principal, digest).await?;
+        self.check_current(handle, principal, provider).await
+    }
+    async fn check_current(
+        &self,
+        handle: &PreparedPhysicalRoomRecoveryHost,
+        principal: &str,
+        provider: Arc<dyn ServerRecoveryAssetProvider>,
+    ) -> Result<()> {
         if !self.provider.upgrade().is_some_and(|held| Arc::ptr_eq(&held, &provider)) {
             return Err(Error::Contract("physical asset provider owner differs"));
         }

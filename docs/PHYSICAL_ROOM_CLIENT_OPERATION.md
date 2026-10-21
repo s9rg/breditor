@@ -74,6 +74,12 @@ their actual native writer custody remains attached. Unselected historical
 copies remain retained and unresolved; returning client parts does not reconcile
 them or prove server/provider closure.
 
+The opt-in [native control join](PHYSICAL_RECOVERY_CONTROL.md) adds
+`checkNativeHost` under genuine held client reservations and separate live
+operator authentication. It verifies current native prefixes without weakening
+the old exact-snapshot readers. Missing, unbound and historical copies stay
+Pending; it does not write durable whole-room intent or grant activation.
+
 ## Failure and lifetime
 
 Initial cancellation, authority loss, interrupted child/parent commits, failed
@@ -106,7 +112,7 @@ offline installed consumer repeats the unchanged assertions against public
 package archives, with strict public types and production import checks.
 
 Synthetic IndexedDB/locks and raster-presentation fixtures are not physical
-browser qualification. Native-host ancestry composition, independent comment
+browser qualification. Durable native/client coordination, independent comment
 generation sessions, complete provider/client-outbox closure, every historical
 copy's disposition and authenticated deployment fencing/activation remain
 substantive work. All thirteen V1 gates remain open.

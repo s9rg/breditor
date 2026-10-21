@@ -6,7 +6,12 @@ pub use asset_availability::{
 };
 mod asset_state;
 mod capture;
+mod control;
 mod coordinator;
+pub use control::{
+    PhysicalRoomRecoveryControl, PhysicalRoomRecoveryControlIdentity,
+    prepare_physical_room_recovery_control,
+};
 mod prepare;
 mod selected;
 mod state;

@@ -72,7 +72,15 @@ impl Authentication {
     pub(super) fn authenticate(&self, principal: &str, token: &str) -> Result<()> {
         access::principal(principal).map_err(|_| Error::Permission)?;
         let digest = credentials::hash(token).map_err(|_| Error::Permission)?;
-        if self.accounts.get(principal) == Some(&digest) { Ok(()) } else { Err(Error::Permission) }
+        self.authenticate_digest(principal, &digest)
+    }
+    // Server-private retained account guard. Never accepted from HTTP or a portable record.
+    pub(super) fn authenticate_digest(&self, principal: &str, digest: &[u8; 32]) -> Result<()> {
+        access::principal(principal).map_err(|_| Error::Permission)?;
+        if self.accounts.get(principal) == Some(digest) { Ok(()) } else { Err(Error::Permission) }
+    }
+    pub(super) fn shares_account_tokens(&self, other: &Self) -> bool {
+        self.accounts.values().any(|value| other.accounts.values().any(|old| old == value))
     }
     /// Generate a new account bearer token and its config digest. Display/save the secret only to
     /// its account; keep it separate from room resume credentials and portable document journals.

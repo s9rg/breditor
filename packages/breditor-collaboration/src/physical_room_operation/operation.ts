@@ -24,7 +24,9 @@ import {initialPhysicalRoomOperation,type PhysicalRoomOperationRecord} from "./r
 import {physicalOperationTargets,physicalOperationParticipants,physicalOperationNames,preparePhysicalOperationResume} from "./prepare.js";
 import {physicalOperationLifetime,physicalOperationFence,type PhysicalOperationLife} from "./lifetime.js";
 import {physicalOperationFailure as fail,physicalOperationKnown as known} from "./policy.js";
-import type {SharedPhysicalRoomOperationBeginOptions,SharedPhysicalRoomOperationResumeOptions,SharedPhysicalRoomOperationProgress,SharedPhysicalRoomOperationParts} from "./contract.js";
+import type {SharedPhysicalRoomOperationBeginOptions,SharedPhysicalRoomOperationResumeOptions,SharedPhysicalRoomOperationProgress,SharedPhysicalRoomOperationParts,SharedPhysicalRoomNativeCheck} from "./contract.js";
+import type {SharedPhysicalRoomRecoveryHost} from "../physical_recovery_control/host.js";
+import {checkPhysicalRoomNativeHost,physicalNativeCheckFailure} from "./native_check.js";
 const key=Object.freeze({});
 interface State {readonly database:string;readonly db:IDBDatabase;readonly stageDb:IDBDatabase;readonly catalogDb:IDBDatabase;readonly leases:readonly RecoveryLease[];readonly archive:SharedPhysicalRoomRecoveryCatalogArchive;readonly source:PhysicalCatalogArchiveState;readonly children:V2OperationChild[];readonly life:PhysicalOperationLife;readonly guard:()=>void;readonly local:()=>void;readonly context:ArchiveIntegrityContext;readonly factory:IDBFactory;readonly locks:LockManager;readonly signal:AbortSignal|undefined;record:PhysicalRoomOperationRecord;pending:PhysicalRoomOperationRecord|undefined}
 /** Native clients remain private until every selected family crosses one mixed handoff barrier. */
@@ -71,9 +73,9 @@ export class SharedPhysicalRoomClientOperation {
  }
  #guard=():void=>{if(!this.#state.life.committed)throw fail("physical_operation_closed");this.#state.guard();};
  #failure(error:unknown):Error{const s=this.#state;return s.signal?.aborted?fail("physical_operation_aborted"):s.life.closed||s.life.closing||s.life.changed?fail("physical_operation_closed"):known(error);}
- #exclusive<T>(work:()=>Promise<T>):Promise<T>{
+ #exclusive<T>(work:()=>Promise<T>,failure:(error:unknown)=>Error=error=>this.#failure(error)):Promise<T>{
   if(this.#busy)throw fail("physical_operation_in_use");this.#busy=true;let done!:()=>void;this.#running=new Promise<void>(resolve=>{done=resolve;});
-  try{return work().catch(error=>{throw this.#failure(error);}).finally(()=>{this.#busy=false;this.#running=undefined;done();});}catch(error){this.#busy=false;this.#running=undefined;done();throw this.#failure(error);}
+  try{return work().catch(error=>{throw failure(error);}).finally(()=>{this.#busy=false;this.#running=undefined;done();});}catch(error){this.#busy=false;this.#running=undefined;done();throw failure(error);}
  }
  database():string{return this.#state.database;}
  stageDatabase():string{return this.#state.record.stageDatabase;}
@@ -109,6 +111,13 @@ export class SharedPhysicalRoomClientOperation {
  }
  async #verify():Promise<void>{const s=this.#state;await this.#retained();if(s.record.phase!=="operational"||s.children.some(child=>!child.operation||child.currentPolicyPending))throw fail("physical_operation_restore");for(const child of s.children){await child.operation!.check();this.#guard();}}
  check():Promise<void>{return this.#exclusive(()=>this.#verify());}
+ /** Joint live read under all genuine client reservations and a real authenticated native check.
+  * Historic copies and incomplete registered coverage remain Pending. No file, client flush,
+  * ownership release, source retarget, provider/client closure or service activation occurs. */
+ checkNativeHost(host:SharedPhysicalRoomRecoveryHost):Promise<SharedPhysicalRoomNativeCheck>{return this.#exclusive(async()=>{
+  const s=this.#state;await this.#retained();if(s.record.phase!=="operational"||s.children.some(child=>!child.operation||child.currentPolicyPending))throw fail("physical_operation_restore");
+  return checkPhysicalRoomNativeHost(s.children,s.source,host,()=>this.#retained(),this.#guard);
+ },error=>{const s=this.#state;return s.signal?.aborted||s.life.closed||s.life.closing||s.life.changed?this.#failure(error):physicalNativeCheckFailure(error);});}
  /** All native clients or none; remains disconnected and is not server activation. */
  intoParts():Promise<SharedPhysicalRoomOperationParts>{return this.#exclusive(async()=>{
   await this.#verify();const s=this.#state,handoff=await prepareMixedRoomParticipants(mixedV2Children(s.children),[s.db,s.stageDb,s.catalogDb],s.leases,()=>this.#retained(),this.#guard,()=>{s.life.released=true;});

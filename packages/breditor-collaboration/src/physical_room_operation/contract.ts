@@ -5,6 +5,8 @@ import type {SharedPhysicalRoomStageParticipant} from "../physical_room_stage/co
 import type {SharedPhysicalRoomRecoveryCatalogSelection} from "../physical_room_catalog/contract.js";
 import type {SharedParticipantOperationCurrentPolicy} from "../participant_operation/types.js";
 import type {MixedRoomOperationParts} from "../mixed_room_operation/custody.js";
+import type {SharedPhysicalRecoveryControlSelection} from "../physical_recovery_control/contract.js";
+import type {SharedPhysicalRoomRecoveryCatalogCheck} from "../physical_room_catalog/contract.js";
 export interface SharedPhysicalRoomOperationTarget {readonly id:string;readonly family:"original"|"generation";readonly operationDatabase:string}
 export interface SharedPhysicalRoomOperationBeginOptions extends SharedArchiveIntegrityOptions {
  readonly database:string;readonly stage:SharedPhysicalRoomParticipantStage;readonly expected:SharedPhysicalRoomRecoveryCatalogSelection;
@@ -23,3 +25,11 @@ export interface SharedPhysicalRoomOperationProgress {
 }
 /** Actual disconnected clients. Never permission to start a replacement server. */
 export type SharedPhysicalRoomOperationParts=MixedRoomOperationParts;
+/** Detached joint read, not durable disposition, client-byte closure or permission to activate. */
+export interface SharedPhysicalRoomNativeCheck {
+ readonly format:"breditor/shared-physical-room-native-check";readonly formatVersion:1;
+ readonly control:SharedPhysicalRecoveryControlSelection;
+ readonly catalog:SharedPhysicalRoomRecoveryCatalogSelection;
+ readonly scope:"native-host-and-selected-client-continuity";
+ readonly coverage:SharedPhysicalRoomRecoveryCatalogCheck;
+}

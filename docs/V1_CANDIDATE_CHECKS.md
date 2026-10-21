@@ -1,5 +1,16 @@
 # V1 candidate checks
 
+Both profiles require `physical-recovery-control-plan-contracts`,
+`relay-physical-recovery-control-native`, `physical-recovery-control-contracts`,
+`physical-recovery-control-type-fence`, `physical-recovery-control` and
+`installed-physical-recovery-control`. These join separately authenticated actual
+native A/B/C and provider checks with held original/generation client histories.
+The source and fresh offline public-package probes share unchanged assertions;
+original native/provider, client-operation and no-networking checks stay required.
+See the [live control contract](PHYSICAL_RECOVERY_CONTROL.md) for lifetime, Pending
+coverage and the distinct remaining durable coordinator/activation work. This
+adds six stages to the preceding 204-check functional plan, not V1 approval.
+
 Both profiles require `physical-host-plan-contracts`,
 `relay-physical-host-native` and `relay-physical-host-public`. These exercise the
 distinct [physical server ancestry contract](PHYSICAL_SERVER_RECOVERY_ANCESTRY.md),
