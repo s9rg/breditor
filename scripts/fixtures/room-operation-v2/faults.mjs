@@ -2,6 +2,9 @@
 import assert from 'node:assert/strict';
 import {checkOriginalSourceReservation} from './original-source-reservation.mjs';
 import {checkPreparedCurrentPolicy} from './prepared-policy.mjs';
+import {checkOperationOpeningCleanup} from './operation-opening.mjs';
+import {checkResumedOperationOpening} from './operation-resume-opening.mjs';
+import {checkHeldReadyOperationRetry} from './operation-held-retry.mjs';
 import {IDBObjectStore} from 'fake-indexeddb';
 import {SharedRoomOperationalRecoveryV2 as Parent} from '../../../packages/breditor-collaboration/dist/index.js';
 import {RecoveryLease} from '../../../packages/breditor-collaboration/dist/participant_recovery/lease.js';
@@ -33,6 +36,9 @@ export async function v2OperationFaults(h){
  let sourceContext,reenter=false;await run('source-reenter',async ctx=>{sourceContext=ctx;reenter=true;await ctx.begin();assert.equal(reenter,false);await ctx.owner.finish();counts.sourceReentrancyRefusals++;},{beforeBegin:true,sourceGuard(){if(reenter){reenter=false;assert.throws(()=>{const p=sourceContext.catalog.stage(sourceContext.requests);p?.catch(()=>{});},e=>e.code==='catalog_in_use');}}});
  Object.assign(counts,await checkOriginalSourceReservation({api,input,chosen,tag}));
  counts.preparedCurrentPolicyParticipants=0;counts.preparedPolicyReleaseRetries=0;
+ counts.operationOpeningCleanupRetries=0;for(const family of ['original','generation'])counts.operationOpeningCleanupRetries+=(await checkOperationOpeningCleanup({...h,family})).operationOpeningCleanupRetries;
+ for(const family of ['original','generation']){const observed=await checkHeldReadyOperationRetry({...h,family});for(const[k,v]of Object.entries(observed))counts[k]=(counts[k]??0)+v;}
+ for(const family of ['original','generation'])for(const at of ['acquire','uploads']){const observed=await checkResumedOperationOpening({...h,family,at});for(const[k,v]of Object.entries(observed))counts[k]=(counts[k]??0)+v;}
  for(const family of ['original','generation']){const observed=await checkPreparedCurrentPolicy({...h,family,finish:async owner=>{const prototype=(family==='original'?api.OperationalSharedParticipant:api.OperationalSharedGenerationParticipant).prototype,close=prototype.close;let fired=false;try{prototype.close=async function(...args){if(!fired){fired=true;throw Error('PRIVATE CURRENT POLICY RELEASE');}return close.apply(this,args);};await assert.rejects(owner.finish());}finally{prototype.close=close;}assert.equal(fired,true);await owner.finish();counts.preparedPolicyReleaseRetries++;}});counts.preparedCurrentPolicyParticipants+=observed.preparedCurrentPolicyParticipants;}
  for(const index of [0,1]){let deny=false;await run('child-ack-'+index,async ctx=>{const restore=mark(ctx,(db,_store,value)=>db===ctx.targets[index].operationDatabase&&value.phase==='operational',()=>{deny=true;});try{await assert.rejects(ctx.owner.finish());}finally{restore();}assert.equal((await ctx.owner.progress()).participants[index].state,'started');await ctx.owner.finish();await ctx.owner.check();await ctx.checkFiles();counts.childLostAcknowledgements++;},{guard(){if(deny){deny=false;throw Error('PRIVATE CHILD ACK');}}});}
  for(const state of ['started','complete','operational']){let deny=false;await run('parent-ack-'+state,async ctx=>{const restore=mark(ctx,(db,store,value)=>db===ctx.database&&store===marker&&(state==='operational'?value.phase==='operational':value.participants[0].state===state),()=>{deny=true;});try{await assert.rejects(ctx.owner.finish());}finally{restore();}const saved=await ctx.owner.progress();assert.equal(state==='operational'?saved.phase:saved.participants[0].state,state);await ctx.owner.finish();counts.parentLostAcknowledgementsAfterMarkers++;},{guard(){if(deny){deny=false;throw Error('PRIVATE PARENT ACK');}}});}

@@ -43,6 +43,66 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+Operational factories now retain actual startup cleanup before acquiring their
+first new coordinator. A refused new open or cold resume cannot abandon the
+acquired locks, journals, native owners or readers if rollback also fails. The
+mixed V2 parent can drain both component-recovery and operational startup
+failures. Independent releases are attempted even when one fails; failed cleanup
+remains reachable for retry. A returned owner is removed from this failed-opening
+ledger and is never closed by a later competing startup.
+
+The repair also preserves the same genuine ready predecessor on an interrupted
+transfer. Generation rollback restores its original database-version fence;
+retry cannot substitute a cold-created owner or silently consume the old owner.
+No committed file or native input is deleted, rewritten or reset. Existing root
+declarations, wire formats and native history meanings remain unchanged.
+
+The [operational-opening qualification](qualification/2026-10-20-operational-opening-custody.json)
+passes all 57 selected architecture checks, 1,300 script tests, 385 editor tests
+and all 362 generation assertions in source and fresh offline installed packages,
+with three existing opt-in skips. The same positive assertions fail in 48 cases
+against preserved actual pre-fix SDK modules: twelve new-operation opens,
+twenty-four early/late cold resumes and twelve same-parent held-owner retries.
+Source and installed consumers each pass all 48 repaired paths. They compare
+108 source-store targets across failed and successful retries, 180 original
+files and 48 exact native document/review cuts, with no diagnostic teardown
+before the successful retry assertion.
+
+The full thirty-configuration V2 native matrix remains passing, including future
+document/review Redo, interrupted child intent, current-policy transitions,
+unchanged native/upload cuts and all-or-none mixed custody. The existing mixed
+barrier again passes 480 cohorts, 960 cold participant reopens and 864 future
+history comparisons per domain. Original recovery, both catalogs, managed-binding
+refusals and earlier cleanup/opening regressions remain mandatory and passing.
+
+Private source and installed preflights were development checks, not carried
+passes. Final installed checks regenerate native fixtures from the frozen root
+and rebuild both normal Wasm producers freshly; their bytes remain identical.
+The 653 shared and 216 relay Rust tests carry qualification across 2,747 unchanged
+native/build inputs, not fresh Rust suite runs. Strict installed public types,
+actual archive contents and the production module graph are checked separately.
+
+This repairs the reproduced operational-startup gap, not the unrelated historical
+WebKit or unexplained native/installed observations. Direct static retry still
+checks current admission policy before draining failed-opening custody; it does
+not expose a cleanup-only public capability after authority revocation. Local
+locks remain cooperative exclusion, not cross-device writer fencing. Existing
+storage/history bounds and retained historical copies are unchanged.
+
+Next architectural work is explicit historic-copy disposition, independent native
+comment and server-log generations, complete provider/client reference closure
+and current authenticated whole-room activation, followed by remaining selected
+feature parity. Outer server-log rollover alone would leave its original-family
+native replica's journal ceiling intact: the next server profile must select
+compatible native document/comment history and storage generations, preserving
+global receipt/decision order and offline writer identities. Structural extension
+contracts remain a feature-parity blocker ahead of presentation-only affordances.
+These are planned obligations, not capabilities completed by this repair.
+Browser/cosmetic work stays deferred. All thirteen V1 gates remain open; no
+version, push, tag, publication or deployment is promoted.
+
+### Previous durable mixed-room checkpoint
+
 The separate [durable mixed-room parent](MIXED_ROOM_OPERATIONAL_RECOVERY.md)
 now recovers genuinely staged original and generation participants together.
 It commits prepared intent and every source file before consuming the V2 catalog;
@@ -89,11 +149,11 @@ inputs, not fresh suite runs. Strict installed types and a production module
 graph qualify the new public exports without workspace, React or synthetic
 storage dependencies in that production graph.
 
-A separate startup-custody gap is now reproduced in 36 cases against preserved
-actual SDK modules: operational factory refusal plus cleanup failure can strand
-acquired coordinators before any owner is returned. The isolated repair and
-expanded matrix are prepared for the next checkpoint, not integrated or counted
-as qualified here. No committed source file is deleted or overwritten.
+At that checkpoint a separate startup-custody gap was reproduced in 36 cases
+against preserved actual SDK modules: operational factory refusal plus cleanup
+failure could strand acquired coordinators before any owner was returned. Its
+expanded 48-path repair is now integrated and qualified in the operational-opening
+checkpoint above. No committed source file is deleted or overwritten.
 
 The parent retains a second durable catalog copy and does not raise existing
 storage bounds. Arbitrary host factory closures are not rewritten. Historic-copy

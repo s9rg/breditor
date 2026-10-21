@@ -3,7 +3,8 @@
 A failed recovery still owns every resource it acquired. Cleanup failure must
 retain the real attempt, native session and dependent stores for retry; a durable
 progress marker cannot stand in for those owners. This contract applies to both
-original and generation participant recovery and both room catalog versions.
+original and generation participant recovery, both operational participant
+families, both room catalog versions and the durable mixed-family parent.
 
 ## Own rollback before awaiting
 
@@ -70,6 +71,42 @@ ledger. These APIs expose no cleanup-only capability for a rejected direct call.
 Parent close can drain failed participant openings it owns without new restore
 admission; that does not create a public direct-factory cleanup API.
 
+## Operational factories and parent cleanup
+
+Operational `begin()` and held-owner resume reserve cleanup before acquiring
+their new operation coordinator. Their closure owns only newly acquired
+resources: the operation connection/lease and temporary origin/backup readers.
+It never closes the predecessor's genuinely held native owners on a refused
+transfer. Failed generation transfer also restores the predecessor connection's
+version-change handler. Successful transfer removes the opening entry before
+returning the operational owner.
+
+Cold operational `resume()` instead owns every connection, coordinator and
+native/dependent owner it opens. Rollback attempts all independent cleanup even
+when one release fails; it does not abandon earlier acquired namespaces after a
+failed close. The actual closure remains in the existing context/namespace
+ledger until cleanup succeeds. Returned owners are absent from that ledger and
+cannot be closed by another factory's failed opening.
+
+The [V2 room parent](MIXED_ROOM_OPERATIONAL_RECOVERY.md) retains a per-child
+cleanup obligation before invoking either component-recovery or operational
+factories. A factory that returned nothing can still leave actual failed
+startup custody. Parent retry/close drains those failed entries, without
+discarding successful earlier children or treating a saved completion as an
+owner. Repeated cleanup failure retains the obligation for another close.
+The direct-factory admission-before-drain limitation above remains unchanged.
+
+Mandatory native regressions exercise twelve new-operation, twelve same-parent
+held-ready retry and twenty-four cold operational startup paths across both
+participant families and grouped/atomic transports. Held-ready retry keeps the
+same genuine predecessor; it cannot substitute a cold restoration after a
+refused transfer. Cold failures occur immediately after coordinator acquisition
+and after retained uploads open. The probes compare 108 source-store targets
+across failed and successful retry, 180 complete retained files and 48 native
+document/review cuts. The same positive assertions run in source and fresh offline
+archives; separate preserved unfixed SDKs establish the before-fix lock failures.
+They are not reproductions of the older unexplained intermittent refusals.
+
 ## Reproduced failures and native checks
 
 The participant-internal regression aborts the final ready-marker transaction,
@@ -112,6 +149,7 @@ remain registered in startup cleanup.
 These checks use controlled IndexedDB, lock and raster fixtures around actual
 native histories. They do not qualify browser crash durability or identify the
 older unexplained intermittent room refusals or installed generation failure.
-Mixed-family operational transfer, historical-copy disposition, provider/client
-closure, independent comment/server generations and current authenticated
-activation remain required work.
+The separate mixed-family parent now uses the common operational custody
+barrier. Historical-copy disposition, provider/client closure, independent
+comment/server generations and current authenticated activation remain required
+work.

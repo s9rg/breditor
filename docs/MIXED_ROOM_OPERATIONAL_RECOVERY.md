@@ -74,8 +74,11 @@ original session. Transports remain disconnected until the host explicitly acts.
 
 ## Cleanup and remaining limits
 
-Static opening retains actual cleanup before acquiring the first new lease.
-Failed participant openings stay reachable through the parent's cleanup scope.
+Parent and operational-participant static openings retain actual cleanup before
+acquiring their first new lease. Failed component-recovery and operational
+openings stay reachable through the parent's cleanup scope, including factories
+that returned no owner. Cleanup failure retains every acquired namespace; a
+successful earlier child or returned owner is never drained as failed startup.
 `close()` saves held work; `discardAndClose()` abandons private unsaved runtime
 state. Neither deletes a committed catalog, operation, source journal or upload.
 Failed cleanup remains retryable through the owner or failed-opening ledger.

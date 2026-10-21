@@ -40,6 +40,12 @@ async function reopenReady(child:V2OperationChild,guard:()=>void,scope:RecoveryC
  }catch(error){await cleanup.rollback();throw error;}
 }
 export async function openV2ChildOperation(child:V2OperationChild,database:string,present:boolean,guard:()=>void,scope:RecoveryCleanupScope,signal?:AbortSignal):Promise<void>{
+ const options=v2PolicyOptions(child.policy),context=recoveryOpeningContext(),names=[database,options.database,...Object.values(options.destinations)],cleanup=scope.retain(()=>drainFailedRecoveryOpenings(context,names));
+ try{await openHeldV2ChildOperation(child,database,present,guard,scope,signal);cleanup.complete();}catch(error){await cleanup.rollback();throw error;}
+}
+/** Parent cleanup can drain both component recovery and operational factory
+ * failures without revoking or closing an owner that was actually returned. */
+async function openHeldV2ChildOperation(child:V2OperationChild,database:string,present:boolean,guard:()=>void,scope:RecoveryCleanupScope,signal?:AbortSignal):Promise<void>{
  if(child.operation&&!child.currentPolicyPending)return;
  // A prior close may have failed after publishing a child under staged policy.
  // Retain that actual owner for retry, never mistake it for current admission.
