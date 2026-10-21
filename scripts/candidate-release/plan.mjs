@@ -47,6 +47,8 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   relayCargo("relay-asset-backups",["test","--features","server","--locked","--offline","--release","--test","asset_backups"]),
   relayCargo("relay-asset-owner-paths",["test","--features","server","--locked","--offline","--release","--test","asset_store_paths"]),
   relayCargo("relay-server-room-backups",["test","--features","server","--locked","--offline","--release","--test","server_room_backups"]),
+  stage("provider-callback-custody-plan-contracts",node,["--test","scripts/provider-callback-custody-candidate-plan.test.mjs"]),
+  relayCargo("relay-provider-callback-custody",["test","--features","server","--locked","--offline","--release","--test","server_room_backups","provider_callback_custody::"]),
   relayCargo("relay-participant-inventory",["test","--features","server","--locked","--offline","--release","--test","participant_inventory"]),
   relayCargo("relay-backups-no-server",["test","--locked","--offline","--release","--lib","--test","room_backups"]),
   relayCargo("relay-assets-no-server",["test","--locked","--offline","--release","--lib","--test","asset_backups","--test","asset_store_paths"]),

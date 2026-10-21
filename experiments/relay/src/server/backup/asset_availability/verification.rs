@@ -60,13 +60,14 @@ fn check(
     let ServerAssetReferenceOutcome::Ready { references } = &state.references.outcome else {
         super::read_budget::pending(&state, &[])?;
         resolve::guard(provider)?;
+        check_selected(room, assets, owner, expected)?;
         return Ok(Checked::Pending(Box::new(state), Vec::new()));
     };
     let resolved = resolve::resolve(assets, references, provider)?;
-    check_selected(room, assets, owner, expected)?;
     resolve::guard(provider)?;
     if !resolved.missing.is_empty() {
         super::read_budget::pending(&state, &resolved.missing)?;
+        check_selected(room, assets, owner, expected)?;
         return Ok(Checked::Pending(Box::new(state), resolved.missing));
     }
     let read = ServerAssetAvailabilityRead {
@@ -76,6 +77,8 @@ fn check(
     };
     super::read_budget::check(&read)?;
     resolve::guard(provider)?;
+    // No provider callback may run after the final actual native/raster source comparison.
+    check_selected(room, assets, owner, expected)?;
     Ok(Checked::Ready(Box::new(read)))
 }
 impl ServerBackupHandle {

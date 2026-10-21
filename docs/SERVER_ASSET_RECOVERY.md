@@ -55,6 +55,13 @@ every original reference pair remains in the result. Mapping and authority
 checks repeat during resolution; changed mappings refuse. Resolver errors are
 sanitized before crossing the native host boundary.
 
+The final actual native/raster source comparison runs after every provider
+callback, including the last authority guard, before either Verified or Pending
+is returned. No later callback can invalidate that comparison inside the native
+transaction. A source changed during a successful callback refuses immediately;
+verification preserves the changed files rather than repairing them. This is
+still a check at one instant, not a reservation against a later external change.
+
 `ServerAssetAvailabilityCoverage::Pending` returns the selected current state
 and missing mappings or bytes. When native packet source is incomplete, the
 missing source records stay in `state.references.outcome` and no mapping scan
@@ -140,3 +147,17 @@ The [server recovery qualification](qualification/2026-10-19-server-asset-recove
 records the 23 passing selected checks, source and artifact hashes, reproduced
 opaque-ID regression and fresh installed-package evidence. It is not V1 release
 approval.
+
+Four permanent public Rust regressions cover final successful callbacks changing
+an actual native log or raster manifest on both Verified and missing-byte Pending
+paths. All four fail before the ordering repair and pass with identical assertions
+after it. Both candidate profiles require `relay-provider-callback-custody` in
+addition to the existing full native and server-recovery checks.
+
+The [callback ordering qualification](qualification/2026-10-21-provider-callback-source-ordering.json)
+retains the failing and passing identical tests and independent caller binaries.
+All 16 selected stages pass, including 345 server-enabled Rust checks, 41 public
+recovery cases, five fresh no-networking public cases and 1,529 script tests with
+three existing opt-in skips. The prior complete 267-case no-networking suite is
+explicitly carried across server-only changes, not reported as rerun. Normal
+runtime and public package bytes remain unchanged.

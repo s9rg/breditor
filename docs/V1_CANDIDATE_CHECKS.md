@@ -8,6 +8,12 @@ Rust consumer profiles. Full relay and no-networking suites remain mandatory.
 These native checks do not substitute for the combined SDK/server parent,
 complete provider/client closure or authenticated whole-room activation.
 
+Both profiles also require `provider-callback-custody-plan-contracts` and
+`relay-provider-callback-custody`. Four actual public Rust regressions require
+the final source comparison to follow every provider callback before Verified
+or Pending publication, for native-log and raster-manifest changes. The broader
+server-recovery suite remains required; no saved format or provider rule changes.
+
 The native log suites also pin exact original frame bytes and all incomplete
 final-frame suffixes, and separately exercise continuation family/sequence/hash
 admission beyond a real full original log. The

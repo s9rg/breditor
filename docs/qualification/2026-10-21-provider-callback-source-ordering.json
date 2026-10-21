@@ -1,0 +1,439 @@
+{
+  "format": "breditor/provider-callback-source-ordering-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-21",
+  "passed": true,
+  "source": {
+    "commit": "742623ba3d2e94d0d1e61ea5c036f1ec9591ad4d",
+    "dirty": true,
+    "sha256": "2b09ce83a494d8599bb86b0151cbecc7fd3d85ecf4ce61f68ad847e5fdd99371",
+    "files": 5280,
+    "bytes": 44014432
+  },
+  "qualification": {
+    "path": "target/v1-candidate-runs/run-MnkCX6/result.json",
+    "bytes": 26107,
+    "sha256": "5579cf7388f64e926d6176ecf5c90f14239dca2af99ed42334b9ca6e6e514cf7",
+    "modifiedAtMs": 1792603392317.4482
+  },
+  "selectedStages": 16,
+  "fullFunctionalPlanRun": false,
+  "functionalPlanChecks": 201,
+  "openV1Gates": 13,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "nonDocumentation": {
+    "files": 4725,
+    "sha256": "99a2aaf698673f7b09b28f42503a56ff88f04b05f7eb5a4951bfc42f7c70d0a7"
+  },
+  "nativeInputs": {
+    "files": 2946,
+    "sha256": "be757fa10ef3bb5ee0333e03ce1cf59ba395c2c24c2339f19755905388519109"
+  },
+  "nativeChanges": [
+    "experiments/relay/src/server/backup/asset_availability/verification.rs",
+    "experiments/relay/tests/server_room_backups.rs",
+    "experiments/relay/tests/support/provider_callback_custody.rs"
+  ],
+  "tests": {
+    "freshRelay": 345,
+    "freshPublicServerRecovery": 41,
+    "freshFocusedCallback": 4,
+    "freshNoNetworkingPublicRecovery": 5,
+    "carriedCompleteNoNetworking": 267,
+    "scripts": 1529,
+    "existingOptInSkipped": 3
+  },
+  "regressionSource": {
+    "path": "experiments/relay/tests/support/provider_callback_custody.rs",
+    "bytes": 4316,
+    "sha256": "920019e0a8b725d9ed2f0c8446e2c11c6083f5441b22b4f9a54f3ca6d13638b4",
+    "modifiedAtMs": 1792602384035.8137
+  },
+  "implementation": {
+    "before": {
+      "path": "experiments/relay/src/server/backup/asset_availability/verification.rs",
+      "bytes": 7806,
+      "sha256": "85abb32285f9f518d28453f0495e958e7943e9633d242065b70cbca050b7c353",
+      "modifiedAtMs": 1792432230988.1692
+    },
+    "after": {
+      "path": "experiments/relay/src/server/backup/asset_availability/verification.rs",
+      "bytes": 8010,
+      "sha256": "6583c1d92a627077f9e96e4fae65f81742c9b3c64536f1f32233979f11e549ae",
+      "modifiedAtMs": 1792602437406.43
+    }
+  },
+  "beforeFailure": {
+    "permanentBefore": {
+      "original": {
+        "path": "target/provider-final-callback-red-wIwfkk/before.json",
+        "bytes": 2158,
+        "sha256": "2ddec3779b96279fdcde15cbef1c141bbe19ed063e1454c43495e4fdd924c65f",
+        "modifiedAtMs": 1792602412845.3916
+      },
+      "copy": {
+        "path": "target/v1-candidate-runs/run-MnkCX6/permanent-before.json",
+        "bytes": 2158,
+        "sha256": "2ddec3779b96279fdcde15cbef1c141bbe19ed063e1454c43495e4fdd924c65f",
+        "modifiedAtMs": 1792603413956.4124
+      }
+    },
+    "permanentBeforeLog": {
+      "original": {
+        "path": "target/provider-final-callback-red-wIwfkk/regression.log",
+        "bytes": 2896,
+        "sha256": "44a018063ae093f3fe9cfd5b2f3f4efe5342f4f14456275a49e263b7a9746ba9",
+        "modifiedAtMs": 1792602412446.5015
+      },
+      "copy": {
+        "path": "target/v1-candidate-runs/run-MnkCX6/permanent-before.log",
+        "bytes": 2896,
+        "sha256": "44a018063ae093f3fe9cfd5b2f3f4efe5342f4f14456275a49e263b7a9746ba9",
+        "modifiedAtMs": 1792603413956.93
+      }
+    },
+    "permanentAfter": {
+      "original": {
+        "path": "target/provider-final-callback-green-0TbRWc/after.json",
+        "bytes": 2327,
+        "sha256": "65aed44b9629f58c3cbce02cf6ac275d1000cb22a85692aa22892087866f4d61",
+        "modifiedAtMs": 1792602467211.7668
+      },
+      "copy": {
+        "path": "target/v1-candidate-runs/run-MnkCX6/permanent-after.json",
+        "bytes": 2327,
+        "sha256": "65aed44b9629f58c3cbce02cf6ac275d1000cb22a85692aa22892087866f4d61",
+        "modifiedAtMs": 1792603413957.274
+      }
+    },
+    "permanentAfterLog": {
+      "original": {
+        "path": "target/provider-final-callback-green-0TbRWc/regression.log",
+        "bytes": 1290,
+        "sha256": "a74d8bac1ccdee0701f20a9db715428ef7da68f97b4c7441bfa7e49cccd8c0e6",
+        "modifiedAtMs": 1792602465866.8064
+      },
+      "copy": {
+        "path": "target/v1-candidate-runs/run-MnkCX6/permanent-after.log",
+        "bytes": 1290,
+        "sha256": "a74d8bac1ccdee0701f20a9db715428ef7da68f97b4c7441bfa7e49cccd8c0e6",
+        "modifiedAtMs": 1792603413957.757
+      }
+    },
+    "independentAfter": {
+      "original": {
+        "path": "target/provider-final-callback-after.json",
+        "bytes": 2759,
+        "sha256": "8137a6b1ad70a74d2f9b1cf706010568203831678f1f4c2b2f6aff53179dc440",
+        "modifiedAtMs": 1792602632606.2205
+      },
+      "copy": {
+        "path": "target/v1-candidate-runs/run-MnkCX6/independent-after.json",
+        "bytes": 2759,
+        "sha256": "8137a6b1ad70a74d2f9b1cf706010568203831678f1f4c2b2f6aff53179dc440",
+        "modifiedAtMs": 1792603413957.9656
+      }
+    },
+    "independentAfterBinary": {
+      "original": {
+        "path": "target/owned-history-relay-native/release/breditor-provider-final-callback-repro",
+        "bytes": 18865008,
+        "sha256": "fb6810fd072d77539c8796a7e8ccd8e4fb15cf5a4f354aa5500c6749393b5b9a",
+        "modifiedAtMs": 1792602559021.6829
+      },
+      "copy": {
+        "path": "target/v1-candidate-runs/run-MnkCX6/independent-after.bin",
+        "bytes": 18865008,
+        "sha256": "fb6810fd072d77539c8796a7e8ccd8e4fb15cf5a4f354aa5500c6749393b5b9a",
+        "modifiedAtMs": 1792603413985.4197
+      }
+    },
+    "independentBefore": {
+      "report": {
+        "original": {
+          "path": "target/provider-final-callback-before.json",
+          "bytes": 2348,
+          "sha256": "8316f9dc8abea2f9f914393f0b363025550b79b0b3609a23fd537ce305ad110d",
+          "modifiedAtMs": 1792601544422.8325
+        },
+        "copy": {
+          "path": "target/v1-candidate-runs/run-WOoTfd/provider-final-callback-before.json",
+          "bytes": 2348,
+          "sha256": "8316f9dc8abea2f9f914393f0b363025550b79b0b3609a23fd537ce305ad110d",
+          "modifiedAtMs": 1792602293541.1677
+        }
+      },
+      "binary": {
+        "original": {
+          "path": "target/owned-history-relay-native/release/breditor-provider-final-callback-repro",
+          "bytes": 18864688,
+          "sha256": "ceb4f07884ebd6401810afd2bc29b1f77484f644f83e47a6aeba4ac291cb32d1",
+          "modifiedAtMs": 1792601486385.4502
+        },
+        "copy": {
+          "path": "target/v1-candidate-runs/run-WOoTfd/provider-final-callback-before.bin",
+          "bytes": 18864688,
+          "sha256": "ceb4f07884ebd6401810afd2bc29b1f77484f644f83e47a6aeba4ac291cb32d1",
+          "modifiedAtMs": 1792602293574.7087
+        }
+      },
+      "harness": [
+        {
+          "path": "target/v1-candidate-runs/run-WOoTfd/provider-final-callback-before-Cargo.toml",
+          "bytes": 668,
+          "sha256": "211730d7fa99b7c0d34669df5b1c7c1be1e31993f8c6f38205f3374432e9b875",
+          "modifiedAtMs": 1792602293599.5745
+        },
+        {
+          "path": "target/v1-candidate-runs/run-WOoTfd/provider-final-callback-before-Cargo.lock",
+          "bytes": 53500,
+          "sha256": "456022fe48e3a5b310e78d388808ab318bafbcf638de97449c24898070ab8fa2",
+          "modifiedAtMs": 1792602293600.6035
+        },
+        {
+          "path": "target/v1-candidate-runs/run-WOoTfd/provider-final-callback-before-main.rs",
+          "bytes": 3600,
+          "sha256": "46042145e2e0578d4e7b6622d6d84a01f49f2ba8a630153f8a8b3e7f83b68cac",
+          "modifiedAtMs": 1792602293601.5571
+        }
+      ]
+    }
+  },
+  "reports": [
+    {
+      "id": "native-server-generation-inventory",
+      "original": {
+        "path": "target/server-generation-inventory-native.json",
+        "bytes": 15338,
+        "sha256": "be99f9e08df6b761e90a90e31561ebbd9ffaa36d9c74293e55d37f0309d39d91",
+        "modifiedAtMs": 1792603067467.4148
+      },
+      "copy": {
+        "path": "target/v1-candidate-runs/run-MnkCX6/native-server-generation-inventory-report.json",
+        "bytes": 15338,
+        "sha256": "be99f9e08df6b761e90a90e31561ebbd9ffaa36d9c74293e55d37f0309d39d91",
+        "modifiedAtMs": 1792603413805.7476
+      }
+    },
+    {
+      "id": "physical-room-operation",
+      "original": {
+        "path": "target/physical-room-operation-sdk.json",
+        "bytes": 3262,
+        "sha256": "e136213d1c5c207e5f1cc74fc897c9e64447615361cf4f2c3859f7715cb634f3",
+        "modifiedAtMs": 1792603137096.8271
+      },
+      "copy": {
+        "path": "target/v1-candidate-runs/run-MnkCX6/physical-room-operation-report.json",
+        "bytes": 3262,
+        "sha256": "e136213d1c5c207e5f1cc74fc897c9e64447615361cf4f2c3859f7715cb634f3",
+        "modifiedAtMs": 1792603413806.6494
+      }
+    },
+    {
+      "id": "installed-physical-room-operation",
+      "original": {
+        "path": "target/physical-room-operation-installed.json",
+        "bytes": 5094,
+        "sha256": "8d7b553884fa3f1b9fb1b28286375c9840a07b5b8e7450957260598230e7a511",
+        "modifiedAtMs": 1792603213342.6064
+      },
+      "copy": {
+        "path": "target/v1-candidate-runs/run-MnkCX6/installed-physical-room-operation-report.json",
+        "bytes": 5094,
+        "sha256": "8d7b553884fa3f1b9fb1b28286375c9840a07b5b8e7450957260598230e7a511",
+        "modifiedAtMs": 1792603413806.8992
+      }
+    }
+  ],
+  "noNetworkingCarry": {
+    "baseline": {
+      "path": "docs/qualification/2026-10-21-physical-server-recovery-ancestry.json",
+      "bytes": 19968,
+      "sha256": "5267bb060e5dcbae66c330896780fef22151c295ea299e7fe740bd7ab05ad18b",
+      "modifiedAtMs": 1792602338431.4148
+    },
+    "productionChangeServerFeatureOnly": true,
+    "newTestsServerFeatureOnly": true,
+    "configUnchanged": true,
+    "fullSuiteFreshlyRun": false,
+    "scope": "Prior267 complete no-networking tests are carried, not reported as rerun. Only the server-gated implementation and server-gated public test module changed. Fresh no-default-features all-target strict lint and all5 public recovery tests pass."
+  },
+  "runtime": {
+    "rebuilt": false,
+    "artifacts": [
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.js",
+        "bytes": 197057,
+        "sha256": "eedaf4d3fbdfd9cfd115484030cc07d3be185aac00c3ccc4922f6df905de40ae",
+        "modifiedAtMs": 1792592625540.0828
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+        "bytes": 13444371,
+        "sha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+        "modifiedAtMs": 1792592625559.278
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.d.ts",
+        "bytes": 76829,
+        "sha256": "fe5579cc17725f1f63cf47ef147a6a570bdb3b6be5c522820e9ce1a61ec21e26",
+        "modifiedAtMs": 1792592625540.6763
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_dependency_inventory.json",
+        "bytes": 124122,
+        "sha256": "6714d5160bc54a23292eebb667a203c3d55358899e0e8df148b2388abf0bd688",
+        "modifiedAtMs": 1792592625565.1223
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/THIRD_PARTY_NOTICES.txt",
+        "bytes": 1380448,
+        "sha256": "4bdd58691c23f4733fd973aff84ebb1a38a670c97c64ce8e4c79c624f594f204",
+        "modifiedAtMs": 1792592625566.9912
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/RUST_COPYRIGHT-library.html",
+        "bytes": 1512520,
+        "sha256": "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6",
+        "modifiedAtMs": 1792592625569.9858
+      }
+    ],
+    "scope": "All six normal shared runtime files are byte-identical; no new shared/core native suite, Wasm rebuild or browser qualification is claimed."
+  },
+  "installed": {
+    "format": "breditor/physical-room-operation-installed-consumer",
+    "formatVersion": 1,
+    "passed": true,
+    "source": {
+      "commit": "742623ba3d2e94d0d1e61ea5c036f1ec9591ad4d",
+      "dirty": true,
+      "sha256": "2b09ce83a494d8599bb86b0151cbecc7fd3d85ecf4ce61f68ad847e5fdd99371",
+      "files": 5280,
+      "bytes": 44014432
+    },
+    "sourceUnchanged": true,
+    "nativeEvidence": {
+      "path": "target/server-generation-inventory-native.json",
+      "bytes": 15338,
+      "sha256": "be99f9e08df6b761e90a90e31561ebbd9ffaa36d9c74293e55d37f0309d39d91",
+      "modifiedAtMs": 1792603067467.4148
+    },
+    "consumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-physical-room-operation-installed-xAgsYE/consumer",
+    "workspaceLinks": false,
+    "strictPublicTypes": true,
+    "registryArtifacts": 45,
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-physical-room-operation-installed-xAgsYE/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-physical-room-operation-installed-xAgsYE/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "e6b524a4d3b9cab485e6df2ff62af133a3772291ec463fd3bba73934c13ac40f"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-physical-room-operation-installed-xAgsYE/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "d428aefa9bd1ef46b2223a506c4a1f37ada004816a08cf005d0222a41808622e"
+      }
+    ],
+    "acceptance": {
+      "format": "breditor/physical-room-client-operation-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "nativeRooms": 10,
+      "cases": 30,
+      "longNativeCuts": 1,
+      "policySnapshots": 30,
+      "restoredParticipants": 36,
+      "restoredComponents": 132,
+      "networkCalls": 0,
+      "participants": 60,
+      "coldParticipants": 120,
+      "files": 180,
+      "oldSignalDetaches": 30,
+      "documentRedo": 27,
+      "reviewRedo": 27,
+      "participantRecordComparisons": 180,
+      "wholeUploadComparisons": 180,
+      "generationAuthors": {
+        "cases": 6,
+        "initialReadOnly": 6,
+        "coldGenerationAuthors": 12,
+        "historicalDocumentComparisons": 12,
+        "historicalReviewComparisons": 12,
+        "futureDocumentComparisons": 6,
+        "futureReviewComparisons": 6,
+        "exactRecords": 12,
+        "wholeUploads": 12,
+        "retainedFiles": 48
+      },
+      "faults": {
+        "initialAbortRetries": 2,
+        "initialLostAckResumes": 2,
+        "sourceReentryRefusals": 2,
+        "parentReentryRefusals": 2,
+        "sourceCloseRefusals": 2,
+        "storageContextRefusals": 2,
+        "parentLostAckRetries": 6,
+        "childLostAckRetries": 4,
+        "releaseRetries": 2,
+        "cleanupRetries": 2,
+        "lateAuthorityRefusals": 2,
+        "lateAbortRefusals": 2,
+        "missingCompleteRefusals": 2,
+        "changedPhysicalFileRefusals": 2,
+        "changedStageRefusals": 2,
+        "closeDuringRestoreResumes": 2,
+        "signalAbortResumes": 2,
+        "preparedCurrentPolicyParticipants": 4,
+        "preparedAppendRefusals": 2,
+        "immutableObserverPolicyRefusals": 2,
+        "immutableObserverEditsRefused": 2
+      },
+      "scope": "Actual original/current physical server+raster files, immutable source/staging/operation stores, mixed native owners and future document/review history. Readonly initial handoff, six additional writable generation-author cohorts across both native wire transports and all three client modes, cold explicit current policy, native continuation and a second exact cold reopen with all selected records and whole uploads. Synthetic storage/locks/raster fixtures; not native-host ancestry integration, provider/client-outbox closure, independent comment-generation sessions, historical-copy disposition, browser qualification, authenticated server activation or V1 approval."
+    },
+    "intentContracts": 41,
+    "sourceProbeSha256": "5080da56ab59579ab1d31fe28ec403f1fd7b0506bbe362fc339de217d9c4b456",
+    "installedProbeSha256": "5c5323d640c8efa8bbff21339e98f643efea924de7f8189b1346630d3d073166",
+    "assertionsUnchanged": true,
+    "sourceUnitSha256": "1d9b03bd96a28ae995a5a3fee339207ac91ac344c676ed9945e0f2c634953ffb",
+    "installedUnitSha256": "d3ecda2e1cb931c770b90b0a7fe7b994bb1bf21cff8e27bd794ca7295822d558",
+    "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "productionModuleCount": 239,
+    "noWorkspaceReactOrSyntheticStorageInProduction": true,
+    "scope": "Fresh offline public packages, exact native physical fixture bytes and unchanged source assertions. Physical client-operation custody, cold explicit permissions and durable native continuation; not native-host ancestry integration, independent comment-generation session support, complete provider/client-outbox closure, historical-copy disposition, browser qualification, authenticated server activation or V1 approval."
+  },
+  "rootCause": "The original server asset-availability check invoked successful provider guards after its final actual native/raster comparison. A final guard could change its own source files while the method still returned Verified or missing-byte Pending. A later live proof check detected the stale Ready result, but the original call had not refused.",
+  "repair": "Move the final actual selected-source comparison after every provider callback before Verified, native-source Pending, or mapping/byte Pending publication. No provider callback follows that final comparison. Current authentication, exact source identity, complete result budgets, provider mapping rules, output formats and no-repair behavior remain unchanged.",
+  "regression": {
+    "cases": 4,
+    "unchangedAssertions": true,
+    "matrix": [
+      "native log / Verified",
+      "raster manifest / Verified",
+      "native log / missing-byte Pending",
+      "raster manifest / missing-byte Pending"
+    ],
+    "before": "All four baseline scenarios first establish successful unchanged source coverage, then fail the expected refusal assertion after a final successful provider callback appends and syncs its exclusively owned source file.",
+    "after": "The identical four assertions pass: source changes refuse before returning coverage and all changed bytes remain exact. Test source SHA-256 is unchanged across before/after.",
+    "independentCaller": "The unchanged separately compiled public Rust caller flips both native-log returns from accepted to immediate refusal. Its source hashes and both before/after binaries are retained. The historical subsequentCheckRefused field is not counted as a newly executed after-fix check."
+  },
+  "guarantees": [
+    "No caller-visible readiness is published after an unchecked final provider callback.",
+    "Actual native/raster source changes cause refusal, not missing-data success, metadata retargeting, cleanup or repair.",
+    "Normal Ready/Pending mapping and immutable content-ID behavior remain covered by the complete41-case public server recovery suite, including existing decoder/provider/credential and lifetime cases.",
+    "Both candidate profiles require the four focused regressions in addition to full native/provider/recovery checks.",
+    "Fresh native fixtures and unchanged source/installed mixed recovery assertions retain all180 original files/records/upload comparisons, future histories and writable-generation-author conformance."
+  ],
+  "remaining": [
+    "Native A/B/C ancestry and SDK client operation parents still need combined ownership integration, provider/client-outbox closure, independent comment-generation session support and historic-copy disposition.",
+    "Server provider availability for the separate physical A/B/C host is the next implementation slice, not implied by this original-family repair.",
+    "Deployment fencing and authenticated whole-room activation are not provided by a point-in-time weak proof.",
+    "All thirteen V1 gates, existing dependency/notice/license review, resource limits and platform qualification remain open. No version, push, tag, publication or deployment promotion."
+  ]
+}

@@ -64,9 +64,23 @@ matching document clocks. Original recovery APIs remain closed.
 Its [native ancestry qualification](qualification/2026-10-21-physical-server-recovery-ancestry.json)
 passes 25 selected stages, 341 server-enabled and 267 no-networking Rust checks,
 plus 1,527 script tests and fresh installed recovery consumers. The normal shared
-runtime and public packages remain byte-identical. A separate deterministic
-provider-callback stale-result reproduction is retained for the next repair;
-that original availability path is not part of the new ancestry wrapper.
+runtime and public packages remain byte-identical. During qualification a
+separate deterministic provider-callback stale-result defect was reproduced in
+the original availability path, outside the new ancestry wrapper.
+
+That callback ordering is now repaired: the final actual native/raster source
+comparison follows every provider callback before either Verified or Pending
+publication. Four unchanged public Rust regressions now pass after failing on
+the previous implementation. Saved formats, mapping rules and activation
+permissions are unchanged; altered source files are preserved, never repaired
+incidentally.
+
+Its [callback ordering qualification](qualification/2026-10-21-provider-callback-source-ordering.json)
+passes all 16 selected stages, 345 server-enabled Rust checks, fresh no-networking
+public compatibility and 1,529 script tests with three existing opt-in skips.
+Fresh source/installed recovery consumers preserve exact native histories and
+byte-identical public packages. Separate physical-host provider availability and
+the combined SDK/native parent remain architectural work.
 
 Its [functional qualification](qualification/2026-10-21-physical-room-client-operation.json)
 passes 33 selected stages and 1,525 script tests, with three existing opt-in

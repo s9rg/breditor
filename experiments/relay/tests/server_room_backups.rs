@@ -16,6 +16,9 @@ mod operational;
 #[cfg(feature = "server")]
 #[path = "support/server_operation_live.rs"]
 mod operational_live;
+#[cfg(feature = "server")]
+#[path = "support/provider_callback_custody.rs"]
+mod provider_callback_custody;
 #[path = "support/server_recovery.rs"]
 mod support;
 use breditor_collab_feasibility::rich_replica::{RichReplica, SharedRichProfile};
