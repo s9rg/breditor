@@ -1,5 +1,12 @@
 # V1 candidate checks
 
+Both profiles require `managed-core-binding` and `installed-managed-core-binding`.
+The same positive probes exercise 72 generation and 144 original/search/paired
+native configurations. Public `core` replacement, deletion or getters must not
+redirect capture, backup, version admission or cleanup. Failed close keeps the
+actual retired owner and leases available for retry; explicit discard never
+disposes a replacement editor. The production bundle excludes synthetic storage.
+
 Both profiles require `native-review-generations`,
 `research-review-generations`, `native-review-generations-type-fence` and
 `installed-native-review-generations`. The normal application Wasm must expose

@@ -51,17 +51,18 @@ export interface SharedReviewSaveState {status:"saved"|"pending"|"failed"|"close
 /** Native document/review owners plus a local immutable packet catalog, saved as one atomic record. */
 export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
  readonly core:SharedRichEditor<P>;readonly recovered:boolean;
+ readonly #ownedCore:SharedRichEditor<P>;
  readonly #db:IDBDatabase;readonly #documentLease:SharedWriterLease;readonly #reviewLease:ReviewWriterLease;readonly #options:SessionOptions<P>;
  #versions=new Map<string,string>();#unsubscribe:(()=>void)[]=[];#pending:PairedRecord|undefined;#running:Promise<void>|undefined;
  #relayProgress:SharedReviewRelayProgress={cursor:null,accepted:null,sequence:null};#durableRelayProgress:SharedReviewRelayProgress={cursor:null,accepted:null,sequence:null};
  #saved:string|undefined;#failure:unknown;#closed=false;#retiring=false;#storageChanged=false;#closedRevisions:{documentRevision:string;reviewRevision:string}|undefined;#closing:Promise<void>|undefined;#released:Promise<void>|undefined;
  private constructor(db:IDBDatabase,documentLease:SharedWriterLease,reviewLease:ReviewWriterLease,core:SharedRichEditor<P>,options:SessionOptions<P>,recovered:boolean,versions:readonly string[],progress?:SharedReviewRelayProgress){
-  this.#db=db;this.#documentLease=documentLease;this.#reviewLease=reviewLease;this.core=core;this.#options=options;this.recovered=recovered;
+  this.#db=db;this.#documentLease=documentLease;this.#reviewLease=reviewLease;this.#ownedCore=core;this.core=core;this.#options=options;this.recovered=recovered;
   if(progress){this.#relayProgress=structuredClone(progress);this.#durableRelayProgress=structuredClone(progress);this.#validateNativeProgress(progress);}
   this.#versions=admitPairedVersions(core,versions);
   const autosave=()=>{try{this.save();}catch(error){this.#failed(error);}};
   this.#unsubscribe=[core.subscribe(autosave),core.subscribeReview(autosave)];
-  registerManagedSource(this,core,()=>{this.#live();if(this.core!==core||this.#storageChanged||this.#retiring)throw managedSourceUnavailable();});
+  registerManagedSource(this,core,()=>{this.#live();this.#boundCore();if(this.#storageChanged||this.#retiring)throw managedSourceUnavailable();});
   db.onversionchange=()=>{this.#storageChanged=true;core.retire();db.close();this.#failed(new SharedEditorError("review_versionchange","Paired storage changed; export both readable histories before explicitly discarding this writer"));};
  }
  static async open<Q extends SharedSelectionPolicy>(input:SharedReviewSessionOptions<Q>):Promise<SharedReviewPersistentSession<Q>>{
@@ -134,9 +135,11 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
   }catch(error){core?.dispose();db?.close();try{await reviewLease?.close();}finally{await documentLease.close();}if(nativeBackupAdmission&&!(error instanceof SharedEditorError&&error.code==="review_open_versionchange"))throw new SharedEditorError("backup_native_replay","Matching native paired replay rejected the backup");throw error;}
  }
  #live():void{if(this.#closed)throw new SharedEditorError("review_session_closed","The paired review session is closed");this.#documentLease.assertLive();this.#reviewLease.assertLive();}
+ /** A readable public replacement cannot become the owner of this atomic native pair. */
+ #boundCore():SharedRichEditor<P>{const binding=Object.getOwnPropertyDescriptor(this,"core");if(!binding||binding.value!==this.#ownedCore)throw managedSourceUnavailable();return this.#ownedCore;}
  #failed(error:unknown):void{this.#failure=error;try{this.#options.onError?.(error);}catch{/* Reporting cannot replace either native history. */}}
  #record(versions=this.#versions):PairedRecord{
-  const base={formatVersion:1 as const,history:this.#options.history,rangeEditing:this.#options.rangeEditing,selectionEditing:this.#options.selectionEditing,richLanguage:this.#options.richLanguage,reviewActor:this.#options.review.actor,principal:this.#options.review.principal,documentCheckpointJson:this.core.checkpointJson(),reviewCheckpointJson:this.core.reviewCheckpoint(),versions:[...versions.values()]};
+  const core=this.#boundCore(),base={formatVersion:1 as const,history:this.#options.history,rangeEditing:this.#options.rangeEditing,selectionEditing:this.#options.selectionEditing,richLanguage:this.#options.richLanguage,reviewActor:this.#options.review.actor,principal:this.#options.review.principal,documentCheckpointJson:core.checkpointJson(),reviewCheckpointJson:core.reviewCheckpoint(),versions:[...versions.values()]};
   if(this.#options.searchHistory)return {format:"breditor/shared-search-review-checkpoint-record",...base,reviewedHistory:this.#options.reviewedHistory?{...this.#options.reviewedHistory}:null,relay:this.#options.relay?{...this.#options.relay}:null,progress:this.#options.relay?structuredClone(this.#relayProgress):null};
   if(this.#options.reviewedHistory)return {format:"breditor/shared-reviewed-review-checkpoint-record",...base,reviewedHistory:{...this.#options.reviewedHistory},relay:this.#options.relay?{...this.#options.relay}:null,progress:this.#options.relay?structuredClone(this.#relayProgress):null};
   if(!this.#options.relay)return {format:"breditor/shared-review-checkpoint-record",...base};
@@ -144,7 +147,7 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
   return relay.reviewEditing==="read_only"?{format:"breditor/shared-review-observer-checkpoint-record",...base,relay:{...relay,reviewEditing:"read_only"},progress}:{format:"breditor/shared-review-relay-checkpoint-record",...base,relay,progress};
  }
  #checkRecord(record:PairedRecord):void{if(record.format==="breditor/shared-search-review-checkpoint-record")checkSearchReviewRecord(record,[this.#options.room,this.#options.writer]);else if(record.format==="breditor/shared-reviewed-review-checkpoint-record")checkReviewedReviewRecord(record,[this.#options.room,this.#options.writer]);else if(record.format==="breditor/shared-review-observer-checkpoint-record")checkReviewObserverRecord(record,[this.#options.room,this.#options.writer]);else if(record.format==="breditor/shared-review-relay-checkpoint-record")checkReviewRelayRecord(record,[this.#options.room,this.#options.writer]);else checkReviewRecord(record,[this.#options.room,this.#options.writer]);}
- #validateNativeProgress(progress:SharedReviewRelayProgress):void{checkPairedNativeProgress(this.core,this.#options.relay,this.#options.review.principal,progress);}
+ #validateNativeProgress(progress:SharedReviewRelayProgress):void{checkPairedNativeProgress(this.#boundCore(),this.#options.relay,this.#options.review.principal,progress);}
  /** Exact readable paired export, including after a failed save/close; it grants no live permissions. */
  exportRecovery():PairedRecord{this.#live();return this.#record();}
  /** Exact bounded paired history/catalog capture, not assets, credentials or other durable outboxes. */
@@ -160,7 +163,7 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
   if(previous.cursor&&(!next.cursor||BigInt(next.cursor.after)<BigInt(previous.cursor.after))||previous.accepted&&(!next.accepted||BigInt(next.accepted.through)<BigInt(previous.accepted.through)||next.accepted.through===previous.accepted.through&&next.accepted.prefixDigest!==previous.accepted.prefixDigest))throw new SharedEditorError("review_relay_rollback","Paired relay progress cannot move backwards");
   this.#validateNativeProgress(next);this.#relayProgress=next;this.save();await this.flush();
  }
- state():SharedReviewSaveState{const snapshot=this.#closedRevisions??this.core.reviewSnapshot();return {status:this.#closed?"closed":this.#failure?"failed":this.#pending||this.#running?"pending":"saved",documentRevision:snapshot.documentRevision,reviewRevision:snapshot.reviewRevision,error:this.#failure?String(this.#failure):null};}
+ state():SharedReviewSaveState{const snapshot=this.#closedRevisions??this.#ownedCore.reviewSnapshot();return {status:this.#closed?"closed":this.#failure?"failed":this.#pending||this.#running?"pending":"saved",documentRevision:snapshot.documentRevision,reviewRevision:snapshot.reviewRevision,error:this.#failure?String(this.#failure):null};}
  /** Synchronously capture both exact native lanes; coalesce only complete superseded pairs. */
  save():void{this.#live();if(this.#options.relay?.reviewEditing==="read_only")this.#validateNativeProgress(this.#relayProgress);const record=this.#record();this.#checkRecord(record);const encoded=JSON.stringify(record);if(encoded===this.#saved&&!this.#pending&&!this.#running&&!this.#failure)return;this.#pending=record;this.#failure=undefined;this.#start();}
  #start():void{if(this.#running||this.#closed||!this.#pending)return;this.#running=this.#drain().catch(error=>this.#failed(error)).finally(()=>{this.#running=undefined;if(!this.#failure)this.#start();});}
@@ -168,13 +171,13 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
  async flush():Promise<void>{this.#live();while(this.#running){await this.#running;if(this.#failure)throw this.#failure;}if(this.#failure)throw this.#failure;}
  async retry():Promise<void>{this.#live();if(this.#running)await this.#running;this.save();await this.flush();}
  /** Capture and retain one immutable named snapshot; publication and packet persistence are host-local. */
- saveVersion(name:string,createdAtMs:string):SharedDocumentVersionInfo{this.#live();const packet=this.core.captureVersion(name,this.#options.review.principal,createdAtMs);return this.retainVersion(packet);}
+ saveVersion(name:string,createdAtMs:string):SharedDocumentVersionInfo{this.#live();const packet=this.#boundCore().captureVersion(name,this.#options.review.principal,createdAtMs);return this.retainVersion(packet);}
  /** The host must authenticate imported provenance separately; native digest/binding/content still admit. */
- retainVersion(packet:string):SharedDocumentVersionInfo{this.#live();if(this.#retiring)throw new SharedEditorError("review_session_closing","Cannot retain versions after retirement");const info=this.core.readVersion(packet),candidate=new Map(this.#versions),known=candidate.get(info.id);if(known!==undefined){if(known!==packet)throw new SharedEditorError("version_catalog","Different packet bytes under a retained immutable version");return info;}candidate.set(info.id,packet);this.#checkRecord(this.#record(candidate));this.#versions=candidate;this.save();return info;}
- versions():readonly SharedDocumentVersionInfo[]{this.#live();return [...this.#versions.values()].map(packet=>this.core.readVersion(packet));}
+ retainVersion(packet:string):SharedDocumentVersionInfo{this.#live();if(this.#retiring)throw new SharedEditorError("review_session_closing","Cannot retain versions after retirement");const info=this.#boundCore().readVersion(packet),candidate=new Map(this.#versions),known=candidate.get(info.id);if(known!==undefined){if(known!==packet)throw new SharedEditorError("version_catalog","Different packet bytes under a retained immutable version");return info;}candidate.set(info.id,packet);this.#checkRecord(this.#record(candidate));this.#versions=candidate;this.save();return info;}
+ versions():readonly SharedDocumentVersionInfo[]{this.#live();const core=this.#boundCore();return [...this.#versions.values()].map(packet=>core.readVersion(packet));}
  versionPacket(id:string):string{this.#live();const packet=this.#versions.get(id);if(packet===undefined)throw new SharedEditorError("version_unknown","Unknown retained version");return packet;}
  /** Retire synchronously; a failed final write retains both readable histories and both leases for retry. */
- close():Promise<void>{if(this.#closed)return this.#released??Promise.resolve();if(this.#closing)return this.#closing;this.#retiring=true;this.core.retire();this.#closing=Promise.resolve().then(async()=>{if(this.#closed){await this.#released;return;}this.save();await this.flush();await this.discardAndClose();}).finally(()=>{this.#closing=undefined;});return this.#closing;}
+ close():Promise<void>{if(this.#closed)return this.#released??Promise.resolve();if(this.#closing)return this.#closing;this.#retiring=true;this.#ownedCore.retire();this.#closing=Promise.resolve().then(async()=>{if(this.#closed){await this.#released;return;}this.save();await this.flush();await this.discardAndClose();}).finally(()=>{this.#closing=undefined;});return this.#closing;}
  /** Explicitly abandon unsaved in-memory pairs; the previous committed record is not deleted. */
- discardAndClose():Promise<void>{if(this.#closed)return this.#released??Promise.resolve();const snapshot=this.core.reviewSnapshot();this.#closedRevisions={documentRevision:snapshot.documentRevision,reviewRevision:snapshot.reviewRevision};this.#closed=true;this.core.retire();for(const off of this.#unsubscribe)off();this.#unsubscribe=[];this.core.dispose();this.#pending=undefined;this.#db.close();this.#released=(this.#running??Promise.resolve()).then(async()=>{try{await this.#reviewLease.close();}finally{await this.#documentLease.close();}});return this.#released;}
+ discardAndClose():Promise<void>{if(this.#closed)return this.#released??Promise.resolve();const snapshot=this.#ownedCore.reviewSnapshot();this.#closedRevisions={documentRevision:snapshot.documentRevision,reviewRevision:snapshot.reviewRevision};this.#closed=true;this.#ownedCore.retire();for(const off of this.#unsubscribe)off();this.#unsubscribe=[];this.#ownedCore.dispose();this.#pending=undefined;this.#db.close();this.#released=(this.#running??Promise.resolve()).then(async()=>{try{await this.#reviewLease.close();}finally{await this.#documentLease.close();}});return this.#released;}
 }

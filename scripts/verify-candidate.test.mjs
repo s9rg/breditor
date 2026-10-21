@@ -14,6 +14,18 @@ const plan=checks=>({profile:"functional",deferred:["not-a-v1-certification"],ch
 const stable=()=>({commit:"1".repeat(40),dirty:true,sha256:"2".repeat(64),files:1,bytes:1});
 function quiet(options={}){return {snapshot:stable,report:()=>{},...options};}
 
+test('persistent native custody is mandatory in source and unchanged fresh archive probes',()=>{
+ for(const profile of ['functional','full']){
+  const p=candidateReleasePlan({profile}),find=id=>{const row=p.checks.find(c=>c.id===id);assert.ok(row,id);return row;};
+  for(const [id,file,path]of [['managed-core-binding','check-managed-core-binding.mjs','target/managed-core-binding-source.json'],['installed-managed-core-binding','check-managed-core-binding-installed.mjs','target/managed-core-binding-installed-consumer.json']]){
+   assert.deepEqual(find(id).args,[`scripts/${file}`]);assert.deepEqual(find(id).artifacts,[{path,fresh:true}]);assert.ok(p.checks.indexOf(find('collaboration-build'))<p.checks.indexOf(find(id)));
+  }
+ }
+ const installed=readFileSync(join(repository,'scripts/check-managed-core-binding-installed.mjs'),'utf8');
+ for(const text of ['probe-managed-core-binding','probe-managed-original-core-binding','probe.replace(to,from),originalProbe','value.captureRefusals,1728','value.accessorCalls,0','verifySearchConsumerRegistry','sourceUnchanged:true'])assert.ok(installed.includes(text),text);
+ for(const name of ['shared_session','review_session','segmented_session']){const source=readFileSync(join(repository,`packages/breditor-collaboration/src/persistence/${name}.ts`),'utf8');assert.ok(source.includes('readonly #ownedCore:'));assert.ok(source.includes('Object.getOwnPropertyDescriptor(this,"core")'));assert.ok(!source.includes('this.core.'));}
+});
+
 test('both profiles require native independent review generations and the unchanged installed assertions',()=>{
  for(const profile of ['functional','full']){
   const p=candidateReleasePlan({profile}),find=id=>{const row=p.checks.find(c=>c.id===id);assert.ok(row,id);return row;};

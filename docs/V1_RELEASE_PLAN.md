@@ -43,6 +43,39 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+Original document/search, paired review and generation persistence now bind
+capture, backup, version admission and cleanup to their privately owned native
+editor. Replacing or deleting public `core`, or installing a getter there,
+cannot redirect the saved cut or dispose a different editor. Ordinary close
+retires the actual editor first; a failed final save retains its exact readable
+histories and leases for retry. Explicit discard releases that owner and leaves
+foreign editors and committed files alone.
+
+The [ownership qualification](qualification/2026-10-21-managed-core-binding.json)
+passes 26 selected architecture stages, 1,303 script contracts and 385 editor
+tests. Source and fresh offline public archives each pass 216 native
+configurations, 3,456 capture refusals, 1,296 exact-cut comparisons, 432 cleanup
+checks, 216 failed-close checks and six failed-save retries, with zero getter
+invocations. The preserved old SDK reproduces redirected persistence and wrong
+native disposal; the same original document/paired positive assertions also fail
+there. Repaired source and archives preserve exact native histories and cold
+recovery. Mixed-room and operational recovery remain passing.
+
+The three public persistence declarations are byte-for-byte unchanged. Native
+qualification carries across 2,693 exact source/build inputs and the identical
+normal Wasm pair; this checkpoint does not rerun the native suites or rebuild
+the runtimes. Original formats, counters, defaults and storage families remain
+unchanged. See the [ownership contract](PERSISTENT_NATIVE_OWNERSHIP.md).
+
+The separately tested next work covers read-only former-author archival, a direct
+relay lifecycle guard and comment replay cost. Atomic SDK comment generations,
+native server/log generations, historic-copy disposition, complete provider/client
+closure and authenticated whole-room activation remain substantive work before
+the remaining feature parity. All 13 V1 gates remain open. Nothing is pushed,
+tagged, published or deployed.
+
+### Independent native comment retention checkpoint
+
 The [independent native comment family](SEGMENTED_REVIEW_HISTORY.md) now retains
 original events, native actor counters, author-local Undo/Redo and exact
 root/sealed files across explicit boundaries. Document and comment generations
@@ -67,8 +100,6 @@ new archive has separate bounded retention; it does not establish a latency
 envelope. Atomic SDK comment storage, explicit read-only former-author archival,
 compatible native server and log generations, historic-copy dispositions,
 provider/client closure and authenticated whole-room activation remain work.
-A separate managed-storage audit has reproduced public `core` replacement
-redirecting capture/cleanup; its repair is being integrated independently.
 Structural extension contracts remain ahead of presentation-only parity work.
 All 13 V1 gates remain open. No version, push, tag, publication or deployment
 is promoted.

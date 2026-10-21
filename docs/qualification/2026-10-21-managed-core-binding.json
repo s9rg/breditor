@@ -1,0 +1,142 @@
+{
+  "format": "breditor/managed-core-binding-qualification",
+  "date": "2026-10-21",
+  "passed": true,
+  "v1Ready": false,
+  "openV1Gates": 13,
+  "publicationApproved": false,
+  "source": {
+    "baseCommit": "3a254181f09424c5e8a485dbe011269f651d2913",
+    "testedWorkingTreeSha256": "c808a7ab8cdb7bd5bf7d42b10a746f3d5d90da01ababdc010934a01a6b59760b",
+    "nonDocumentationSha256": "aadad6e68879319030511b6586857cc679e22a440a4f4dec7f2405c06bef7edc",
+    "files": 4957,
+    "bytes": 42348138
+  },
+  "tests": {
+    "selectedChecksPassed": 26,
+    "wholeFunctionalPlan": false,
+    "scriptContractsPassed": 1303,
+    "existingOptInScriptChecksSkipped": 3,
+    "editorTestsPassed": 385,
+    "source": {
+      "segmented": {
+        "format": "breditor/managed-core-binding-probe",
+        "passed": true,
+        "cases": 72,
+        "captureRefusals": 1728,
+        "accessorCalls": 0,
+        "exactPairChecks": 432,
+        "cleanupChecks": 144,
+        "failedCloseChecks": 72,
+        "failedSaveChecks": 2,
+        "sharedWasmSha256": "1215c367666ff0c41723f351f8ddd15e460a723a4d64a81a60cfb0ce91f96ef9",
+        "scope": "Actual normal native owners and SDK; synthetic IDB/Web Locks. Public binding replacement, deletion and accessors cannot redirect capture or ownership cleanup. Not physical crash durability or whole-room activation."
+      },
+      "original": {
+        "format": "breditor/managed-original-core-binding-probe",
+        "passed": true,
+        "pairedOnly": false,
+        "cases": 144,
+        "captureRefusals": 1728,
+        "accessorCalls": 0,
+        "exactPairChecks": 864,
+        "cleanupChecks": 288,
+        "failedCloseChecks": 144,
+        "failedSaveChecks": 4,
+        "sharedWasmSha256": "1215c367666ff0c41723f351f8ddd15e460a723a4d64a81a60cfb0ce91f96ef9",
+        "scope": "Unchanged native original/search/document and paired durable families; synthetic IDB/Web Locks. Public binding changes cannot redirect capture, backup, version admission or cleanup. No physical crash-durability claim."
+      }
+    },
+    "installed": {
+      "segmented": {
+        "format": "breditor/managed-core-binding-probe",
+        "passed": true,
+        "cases": 72,
+        "captureRefusals": 1728,
+        "accessorCalls": 0,
+        "exactPairChecks": 432,
+        "cleanupChecks": 144,
+        "failedCloseChecks": 72,
+        "failedSaveChecks": 2,
+        "sharedWasmSha256": "1215c367666ff0c41723f351f8ddd15e460a723a4d64a81a60cfb0ce91f96ef9",
+        "scope": "Actual normal native owners and SDK; synthetic IDB/Web Locks. Public binding replacement, deletion and accessors cannot redirect capture or ownership cleanup. Not physical crash durability or whole-room activation."
+      },
+      "original": {
+        "format": "breditor/managed-original-core-binding-probe",
+        "passed": true,
+        "pairedOnly": false,
+        "cases": 144,
+        "captureRefusals": 1728,
+        "accessorCalls": 0,
+        "exactPairChecks": 864,
+        "cleanupChecks": 288,
+        "failedCloseChecks": 144,
+        "failedSaveChecks": 4,
+        "sharedWasmSha256": "1215c367666ff0c41723f351f8ddd15e460a723a4d64a81a60cfb0ce91f96ef9",
+        "scope": "Unchanged native original/search/document and paired durable families; synthetic IDB/Web Locks. Public binding changes cannot redirect capture, backup, version admission or cleanup. No physical crash-durability claim."
+      }
+    }
+  },
+  "native": {
+    "freshNativeSuites": false,
+    "normalRuntimesRebuilt": false,
+    "unchangedBuildInputs": 2693,
+    "inputEvidence": {
+      "path": "target/native-review-generations-qualification-wChQlc/native-inputs.json",
+      "bytes": 538354,
+      "sha256": "b2a4cf7e6bd7707ea671dcc0d87d550b8893a5a754ecad3e135a13d480861eb7",
+      "modifiedAtMs": 1792553961586.9226
+    },
+    "suiteBaseline": "target/native-review-generations-qualification-wChQlc/result.json",
+    "workspaceTestsCarried": 2639,
+    "sharedTestsCarried": 656,
+    "relayTestsCarried": 216,
+    "sharedWasmSha256": "1215c367666ff0c41723f351f8ddd15e460a723a4d64a81a60cfb0ce91f96ef9"
+  },
+  "publicPersistentDeclarationsByteIdentical": true,
+  "beforeRepair": {
+    "segmented": "target/managed-core-binding-reproduction-ycew2j/result.json",
+    "documentAndPairedControls": "target/managed-owner-before-controls-3B2Vum/result.json",
+    "oldSdkOrigin": "target/managed-core-binding-before-Q5C2SY/origin.json",
+    "segmentedPassedAfterRepair": "target/managed-core-binding-reproduction-H33n5a/result.json",
+    "sameNativeRuntime": true,
+    "importOnlyPositiveControls": true
+  },
+  "installed": {
+    "registryArtifacts": 45,
+    "workspaceLinks": false,
+    "productionModuleCount": 55,
+    "noWorkspaceReactOrSyntheticStorageInProduction": true,
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "target/managed-core-binding-qualification-XeART4/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "target/managed-core-binding-qualification-XeART4/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "e6b524a4d3b9cab485e6df2ff62af133a3772291ec463fd3bba73934c13ac40f"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "target/managed-core-binding-qualification-XeART4/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "a4e209c7b6f09f8c58fd444d08e5cb2ecc9b8a93aa71cf7eb68939fa6eac82da"
+      }
+    ]
+  },
+  "manifest": {
+    "path": "target/v1-candidate-runs/run-O0XbUW/result.json",
+    "bytes": 39608,
+    "sha256": "e8693dd52fa146212bb59b64e46be6b3d76fa7a8363701281a361f6d942d0372",
+    "modifiedAtMs": 1792555317223.2693
+  },
+  "scope": "Three persistence classes bind all native captures/admission and resource cleanup to their privately owned editor. Public replacement/getters cannot redirect ownership. Existing native, storage and public type contracts are unchanged. Not the entire functional profile or a release approval.",
+  "limitations": [
+    "Synthetic IndexedDB/Web Locks are functional transaction fixtures, not physical crash durability or cross-device writer fencing.",
+    "An arbitrary host replacing globals, prototypes or native-owner methods is not a separate JavaScript-realm security boundary.",
+    "Independent SDK review generations, native server/log generations, full provider/client closure and authenticated room activation remain open.",
+    "The read-only former-author lifecycle, direct relay guard refinement and review replay optimization remain separate development work.",
+    "No V1 gate, API freeze, version, push, publication or deployment is promoted."
+  ]
+}

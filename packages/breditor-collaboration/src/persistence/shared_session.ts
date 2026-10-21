@@ -47,6 +47,7 @@ export interface SharedSearchSessionOptions<P extends SharedSelectionPolicy=Shar
 /** Exact causal recovery with bounded coalesced writes and origin-wide writer exclusion. */
 export class SharedPersistentSession<P extends SharedSelectionPolicy="original"> {
  readonly core:SharedRichEditor<P>;readonly recovered:boolean;
+ readonly #ownedCore:SharedRichEditor<P>;
  #db:IDBDatabase;#lease:SharedWriterLease;#options:SharedSessionOptions|SharedDocumentSessionOptions;#unsubscribe:()=>void;
  readonly #selectionPolicy:P;
  readonly #search:boolean;
@@ -54,9 +55,9 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
  #saved:string|undefined;#savedRevision:string|null=null;#closed=false;#storageChanged=false;
  #closeRequest:Promise<void>|undefined;#released:Promise<void>|undefined;
  private constructor(db:IDBDatabase,lease:SharedWriterLease,core:SharedRichEditor<P>,recovered:boolean,options:SharedSessionOptions|SharedDocumentSessionOptions,selectionPolicy:P,search=false){
-  this.#db=db;this.#lease=lease;this.core=core;this.recovered=recovered;this.#options=options;this.#selectionPolicy=selectionPolicy;this.#search=search;
+  this.#db=db;this.#lease=lease;this.#ownedCore=core;this.core=core;this.recovered=recovered;this.#options=options;this.#selectionPolicy=selectionPolicy;this.#search=search;
   this.#unsubscribe=core.subscribe(()=>{try{this.save();}catch(error){this.#failed(error);}});
-  registerManagedSource(this,core,()=>{this.#live();if(this.core!==core||this.#storageChanged||this.#closeRequest)throw managedSourceUnavailable();});
+  registerManagedSource(this,core,()=>{this.#live();this.#boundCore();if(this.#storageChanged||this.#closeRequest)throw managedSourceUnavailable();});
   db.onversionchange=()=>{
    // An upgrade must unblock its database, not silently destroy an unsaved native journal.
    this.#storageChanged=true;core.retire();db.close();
@@ -141,15 +142,17 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
   }catch(error){core?.dispose();db?.close();await lease.close();if(nativeBackupAdmission&&!(error instanceof SharedEditorError&&error.code==="session_open_versionchange"))throw new SharedEditorError("backup_native_replay","Matching native replay rejected the backup");throw error;}
  }
  #live():void{if(this.#closed)throw new SharedEditorError("session_closed","The persistent shared session is closed");this.#lease.assertLive();}
+ /** Captures require the original data binding; replacement accessors are never invoked. */
+ #boundCore():SharedRichEditor<P>{const binding=Object.getOwnPropertyDescriptor(this,"core");if(!binding||binding.value!==this.#ownedCore)throw managedSourceUnavailable();return this.#ownedCore;}
  #report(error:unknown):void{try{this.#options.onError?.(error);}catch{/* Host reporting cannot change a committed write. */}}
  #notify():void{try{this.#options.onState?.(this.state());}catch(error){this.#report(error);}}
  #failed(error:unknown):void{this.#failure=error;this.#report(error);this.#notify();}
  state():SharedSaveState{return{status:this.#closed?"closed":this.#failure?"failed":this.#pending||this.#running?"pending":"saved",revision:this.#savedRevision,error:this.#failure?String(this.#failure):null};}
  /** Capture accepted native history now, then encode integrity asynchronously. Does not flush or include assets/outboxes. */
- async exportBackup():Promise<string>{this.#live();const checkpoint=this.core.checkpointJson(),identity:SharedBackupIdentity={room:this.#options.room,writer:this.#options.writer,richLanguage:this.#options.richLanguage??1,history:this.#options.history??"explicit",rangeEditing:this.#options.rangeEditing??(this.#selectionPolicy==="document-v1"?"general-v1":"original"),selectionEditing:this.#selectionPolicy,searchHistory:this.#search?"search-v1":null};return encodeSharedSessionBackup(identity,checkpoint);}
+ async exportBackup():Promise<string>{this.#live();const checkpoint=this.#boundCore().checkpointJson(),identity:SharedBackupIdentity={room:this.#options.room,writer:this.#options.writer,richLanguage:this.#options.richLanguage??1,history:this.#options.history??"explicit",rangeEditing:this.#options.rangeEditing??(this.#selectionPolicy==="document-v1"?"general-v1":"original"),selectionEditing:this.#selectionPolicy,searchHistory:this.#search?"search-v1":null};return encodeSharedSessionBackup(identity,checkpoint);}
  /** Capture a complete exact journal synchronously; coalesce only superseded complete checkpoints. */
  save():void{
-  this.#live();const json=this.core.checkpointJson(),revision=this.core.view().revision;
+  this.#live();const core=this.#boundCore(),json=core.checkpointJson(),revision=core.view().revision;
   if(this.#search)checkSearchCheckpoint(json,this.#options.room,this.#options.writer,this.#options.richLanguage??1,this.#options.history??"explicit",this.#options.rangeEditing??"original",this.#selectionPolicy);
   else if(this.#selectionPolicy==="document-v1")checkDocumentCheckpoint(json,this.#options.room,this.#options.writer,this.#options.richLanguage,this.#options.history);
   else checkCheckpoint(json,this.#options.room,this.#options.writer,this.#options.richLanguage,this.#options.history,this.#options.rangeEditing);
@@ -174,13 +177,13 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
  /** Retire publications synchronously; failed saves retain the readable owner/lease for close retry. */
  close():Promise<void>{
   if(this.#closed)return this.#released??Promise.resolve();if(this.#closeRequest)return this.#closeRequest;
-  this.core.retire();
+  this.#ownedCore.retire();
   this.#closeRequest=Promise.resolve().then(async()=>{if(this.#closed){await this.#released;return;}this.save();await this.flush();await this.discardAndClose();}).finally(()=>{this.#closeRequest=undefined;});
   return this.#closeRequest;
  }
  /** Explicitly abandon unsaved in-memory work without deleting the last durable journal. */
  discardAndClose():Promise<void>{
-  if(this.#closed)return this.#released??Promise.resolve();this.#closed=true;this.#unsubscribe();this.core.dispose();this.#pending=undefined;this.#db.close();
+  if(this.#closed)return this.#released??Promise.resolve();this.#closed=true;this.#unsubscribe();this.#ownedCore.dispose();this.#pending=undefined;this.#db.close();
   // A transaction already started may still commit after db.close(); do not release the writer early.
   this.#released=(this.#running??Promise.resolve()).then(()=>this.#lease.close()).catch(error=>this.#report(error));this.#notify();return this.#released;
  }
