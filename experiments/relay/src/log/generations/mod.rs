@@ -20,6 +20,7 @@ mod verify;
 pub(crate) use capture::GenerationFileSection;
 pub(crate) use closure::{
     MAX_GENERATION_BODY_BYTES, MAX_GENERATION_FILES, verify_generation_files,
+    visit_generation_records,
 };
 pub(crate) use create::Creation;
 pub(crate) use directory::{

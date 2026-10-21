@@ -4,7 +4,7 @@ use super::{
     RecoveryServerAuthorKind, RoomParticipantInventory, RoomParticipantInventoryMetadata,
 };
 use crate::room::{ProfileSeed, suggestions::EFFECT_WRITER};
-use crate::{Error, Result, Role, Room};
+use crate::{Error, Result, Role, Room, RoomBackupIdentity};
 use std::collections::BTreeSet;
 
 impl Room {
@@ -25,6 +25,21 @@ impl Room {
         self.recovery_inventory_owner(principal)?;
         let room = self.backup_identity()?;
         let _ = self.export_backup()?; // Validate actual retained file bytes, not just an in-memory cut.
+        let inventory = self.capture_participant_inventory_at(principal, room.clone())?;
+        if self.backup_identity()? != room {
+            return Err(Error::Contract("participant inventory cut changed"));
+        }
+        Ok(inventory)
+    }
+
+    // Only the original checked capture above and the distinct generation capture call this.
+    // The caller pins and rechecks actual retained source bytes; this does not prove storage.
+    pub(in crate::room) fn capture_participant_inventory_at(
+        &self,
+        principal: &str,
+        room: RoomBackupIdentity,
+    ) -> Result<RoomParticipantInventory> {
+        self.recovery_inventory_owner(principal)?;
         let review = self.review_recovery_inventory()?;
         let mut principals = BTreeSet::from([self.owner.clone()]);
         principals.extend(self.roles.keys().cloned());
@@ -67,9 +82,6 @@ impl Room {
                 kind: RecoveryServerAuthorKind::SuggestionEffect,
                 clock: self.recovery_document_clock(EFFECT_WRITER)?,
             });
-        }
-        if self.backup_identity()? != room {
-            return Err(Error::Contract("participant inventory cut changed"));
         }
         RoomParticipantInventory::encode(RoomParticipantInventoryMetadata {
             format: "breditor/room-participant-inventory".into(),

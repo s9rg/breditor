@@ -61,6 +61,27 @@ forty independent document/comment family combinations. This is not production
 activation or complete joined raster/client recovery: original-only participant,
 retained-reference and joined raster APIs still refuse the new layout.
 
+Distinct generation-aware native participant and retained-asset readers now bind
+their whole output to the exact archive and physical manifest. Participant
+continuity requires actual native verification plus every original protected
+resume record, including revoked accounts and observers. A physical-only cut
+stales that proof even without new document operations. Retained-asset traversal
+includes deleted causal image bindings, versions and rejected/abandoned review
+packets across files; visible ASTs and active catalogs are not substitutes.
+These are server-scope inventories, not raster-byte recovery, client/outbox
+coverage, provider reconciliation or authenticated activation.
+
+The [generation-reader qualification](qualification/2026-10-21-generation-native-readers.json)
+passes 286 relay, 176 no-networking, 66 candidate-runner and 1,331 script cases
+on one frozen source. Strict linting in both configurations and rustdoc pass;
+three existing opt-in script skips remain skips. The public native restore cases
+retain old offline Undo and match participant/asset selections in all ten
+profile/transport choices, while the participant matrix covers forty independent
+native families. Both complete readers pass at maximum retained layout under an
+isolated 192-descriptor limit. This remains a native architecture slice: the
+178-check functional plan, core suites and normal Wasm producers are not rerun in
+full. Exact unchanged input/runtime/package evidence is carried explicitly.
+
 The [physical storage qualification](qualification/2026-10-21-server-log-generations.json)
 passes fresh 251 relay, 142 no-networking and 1,331 script cases, plus strict
 linting in both feature configurations. The four reproduced positive failures
@@ -117,8 +138,9 @@ Next, in architectural risk order:
    closure around the native log archive. Keep original formats closed. Address
    retained Undo limits and live staging/replay costs as separate lifetime
    requirements, not by dropping history or widening old bounds.
-2. Complete matching independent-history source, participant, asset and outbox
-   readers, then provider/client reconciliation and historic-copy disposition.
+2. Compose the matching generation participant and retained-asset inventories
+   with complete raster/provider and client/outbox sources, then provider/client
+   reconciliation and historic-copy disposition.
 3. Implement authenticated whole-room activation with fresh host authority;
    valid archived bytes must not create a second live writer.
 4. Extend native node/restricted-editing contracts before their product controls,

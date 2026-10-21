@@ -88,6 +88,31 @@ impl Read for NeverRead {
         panic!("An oversized declaration must be refused before source I/O")
     }
 }
+
+#[test]
+fn fallible_streaming_reader_propagates_a_source_failure_instead_of_returning_a_checked_cut()
+-> TestResult {
+    let encoded =
+        frame::encode(super::framing_tests::seed(), frame::Family::Continuation, 0, [0; 32])?;
+    let bytes = [encoded.header.as_slice(), encoded.payload.as_slice()].concat();
+    let mut calls = 0;
+    assert!(matches!(
+        scan::visit_records_from(
+            &mut bytes.as_slice(),
+            bytes.len() as u64,
+            frame::Family::Continuation,
+            0,
+            [0; 32],
+            |_| {
+                calls += 1;
+                Err(Error::Contract("whole retained read failed"))
+            }
+        ),
+        Err(Error::Contract("whole retained read failed"))
+    ));
+    assert_eq!(calls, 1);
+    Ok(())
+}
 #[test]
 fn streaming_integrity_keeps_declared_budgets_and_explicit_origin_without_source_reads() {
     assert!(matches!(

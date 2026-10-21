@@ -1,5 +1,6 @@
 //! Owner-selected complete server registrations and private non-mutating credential verification.
 mod capture;
+mod check_credentials;
 mod codec;
 mod credentials;
 #[cfg(test)]

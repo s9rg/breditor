@@ -100,6 +100,39 @@ uploader starts. Old connection leases stay absent; credentials resume under
 current host-authenticated account permissions. Later accepted edits or a new
 physical head make a historic restore attempt refuse, never roll the room back.
 
+## Generation-bound native inventories
+
+`log_generation_participant_inventory` uses a separate closed metadata family.
+Its identity binds the complete archive digest and selected manifest, not only
+document counters. All registered document/comment streams, including empty
+observers and revoked accounts, remain present. The unchanged native declaration
+is a detached nested component; extracting it cannot bypass the original
+storage reader's native verification requirements.
+
+Metadata checksums do not establish native state. `verify_native` recaptures the
+actual held source; `verify_registrations` additionally matches every separately
+protected original document/comment resume record. Missing inputs yield Pending,
+never a partial proof. Wrong supplied secrets refuse. A non-deserializable
+`VerifiedGenerationRecoveryRegistrations` is bound to the entire source and must
+be rechecked against the current owner. Ephemeral resume does not stale it, but
+a physical rotation or changed unpublished stage does, even at unchanged native
+counters. Verification revives neither a revoked grant nor a connection lease.
+
+`log_generation_retained_asset_references` also binds that exact archive. It
+reads conservative native causal/effect history and every complete retained
+version, proposal and revision preparation, including rejected, superseded and
+abandoned packets. One fallible packet traversal spans the physical files, so a
+Prepare/Commit pair retains its ancestry across a boundary. The traversal does
+not collect another decoded-record copy; its output remains private until the
+whole read succeeds. Missing dependencies yield whole Pending, not partial Ready.
+The complete 100,000-pair and 8 MiB result bounds remain enforced.
+
+Both reads require current owner access and capture/recheck the full source
+around native reads. Two large archive buffers are not retained together. This
+is bounded maintenance work, not an incremental hot-path or performance claim.
+Original methods still refuse the physical layout, and these explicit methods
+refuse original storage without poisoning an otherwise usable original owner.
+
 ## Remaining release work
 
 The layout requires a cooperative local Unix filesystem with working locks,
@@ -109,10 +142,13 @@ open. Failed initial creation may leave an unready private directory; use a new
 destination rather than overwriting it.
 
 Original-only backup, participant, retained-reference and joined raster-recovery
-readers still refuse this layout. The new log archive excludes actual raster
-bytes and clients' offline journals. Matching complete component/source/provider
-closure and authenticated whole-room activation remain required; valid saved
-bytes alone cannot grant a second live deployment authority.
+readers still refuse this layout. Explicit generation-aware native participant
+and retained-reference readers are available; joined raster recovery and matching
+provider/client source reconciliation are not supplied by these inventories.
+The log archive excludes actual raster bytes and clients' offline journals.
+Complete component/source/provider closure and authenticated whole-room
+activation remain required; valid saved bytes alone cannot grant a second live
+deployment authority.
 
 The functional regressions use the actual native room and filesystem. They cover
 all ten profile/transport choices, two manual cuts, two automatic capacity cuts,
@@ -137,3 +173,14 @@ positive assertion unchanged under the same isolated 192-descriptor limit at
 the maximum 64-WAL layout. No parent process or Mac limits were changed.
 The unchanged core/runtime qualification is carried explicitly rather than
 reported as a new build or whole-plan run. All thirteen V1 gates remain open.
+
+The subsequent [generation-reader qualification](qualification/2026-10-21-generation-native-readers.json)
+passes 286 relay, 176 no-networking, 66 candidate-runner and 1,331 script cases
+on frozen source, with strict linting in both feature configurations and strict
+rustdoc. Public consumers retain genuine offline Undo across exact native
+restoration in all ten profile/transport choices. The participant matrix covers
+all forty independent document/comment families. Historical asset regressions
+retain deleted bindings, rejected proposals and abandoned preparations, including
+committed revision ancestry spanning physical files. Both complete readers pass
+at the 64-WAL ceiling under an isolated 192-descriptor limit. Core/runtime/package
+evidence is explicitly carried, not reported as a fresh whole-plan qualification.

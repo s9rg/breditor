@@ -7,7 +7,8 @@ use crate::{
     log::{Event, Record},
 };
 use breditor_collab_feasibility::rich_replica::{
-    PacketAssetIdentity, PacketAssetOutcome, PacketAssetReferences, VersionAssetReference,
+    PacketAssetIdentity, PacketAssetOutcome, PacketAssetReferences, SharedObservation,
+    VersionAssetReference,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -55,39 +56,59 @@ impl References {
 }
 pub(super) fn collect(room: &Room, records: Vec<Record>, output: &mut References) -> Result<()> {
     let observed = room.replica.observe()?;
-    let mut proposals = BTreeMap::new();
-    let mut prepared: Option<(u64, String, String, String)> = None;
+    let mut scanner = PacketScanner::default();
     for record in records {
-        let previous = prepared.take();
+        scanner.accept(room, &observed, record, output)?;
+    }
+    room.replica.check(&observed)?;
+    Ok(())
+}
+
+/// State spans physical files, including a Prepare at one file's end and its following Commit.
+/// No native publication occurs here; the caller discards all state on any traversal error.
+#[derive(Default)]
+pub(super) struct PacketScanner {
+    proposals: BTreeMap<String, String>,
+    prepared: Option<(u64, String, String, String)>,
+}
+impl PacketScanner {
+    pub fn accept(
+        &mut self,
+        room: &Room,
+        observed: &SharedObservation,
+        record: Record,
+        output: &mut References,
+    ) -> Result<()> {
+        let previous = self.prepared.take();
         match record.event {
             Event::PublishDocumentVersionV1 { packet, .. } => {
                 output.packet(
                     record.sequence,
-                    room.replica.document_version_asset_references_guarded(&observed, &packet)?,
+                    room.replica.document_version_asset_references_guarded(observed, &packet)?,
                 )?;
             }
             Event::PublishDocumentSuggestionV1 { packet, .. } => {
                 let PacketAssetIdentity::Suggestion { id } = output.packet(
                     record.sequence,
-                    room.replica
-                        .document_suggestion_asset_references_guarded(&observed, &packet)?,
+                    room.replica.document_suggestion_asset_references_guarded(observed, &packet)?,
                 )?
                 else {
                     return Err(Error::Contract("server asset proposal identity differs"));
                 };
-                if proposals.insert(id, packet).is_some() {
+                if self.proposals.insert(id, packet).is_some() {
                     return Err(Error::Contract("server asset duplicate proposal record"));
                 }
             }
             Event::PrepareDocumentSuggestionRevisionV1 { request, .. } => {
-                let parent = proposals
+                let parent = self
+                    .proposals
                     .get(&request.previous_suggestion_id)
                     .ok_or(Error::Contract("server asset revision predecessor absent"))?;
                 let PacketAssetIdentity::SuggestionRevision { id, suggestion_id, .. } = output
                     .packet(
                         record.sequence,
                         room.replica.document_suggestion_revision_asset_references_guarded(
-                            &observed,
+                            observed,
                             parent,
                             &request.revision_packet,
                         )?,
@@ -98,7 +119,7 @@ pub(super) fn collect(room: &Room, records: Vec<Record>, output: &mut References
                 let child = room
                     .replica
                     .document_suggestion_revision_packet(parent, &request.revision_packet)?;
-                prepared = Some((record.sequence, id, suggestion_id, child));
+                self.prepared = Some((record.sequence, id, suggestion_id, child));
             }
             Event::CommitDocumentSuggestionRevisionV1 { prepared_at, revision_id } => {
                 let (at, id, child_id, child) = previous
@@ -106,16 +127,15 @@ pub(super) fn collect(room: &Room, records: Vec<Record>, output: &mut References
                 if prepared_at != at.to_string()
                     || at.checked_add(1) != Some(record.sequence)
                     || revision_id != id
-                    || proposals.insert(child_id, child).is_some()
+                    || self.proposals.insert(child_id, child).is_some()
                 {
                     return Err(Error::Contract("server asset revision commit differs"));
                 }
             }
             _ => {}
         }
+        Ok(())
     }
-    room.replica.check(&observed)?;
-    Ok(())
 }
 
 #[cfg(test)]

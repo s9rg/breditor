@@ -16,6 +16,8 @@ use breditor_collab_feasibility::{
 use serde_json::{Value, json};
 use std::{fs, io::Write, path::PathBuf};
 type TestResult<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
+#[path = "tests/generations.rs"]
+mod generations;
 struct Directory(PathBuf);
 impl Directory {
     fn new() -> TestResult<Self> {

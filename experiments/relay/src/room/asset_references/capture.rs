@@ -5,7 +5,7 @@ use super::{
     read_budget,
 };
 use crate::{Error, Result, Room};
-use breditor_collab_feasibility::rich_replica::VersionAssetReference;
+use breditor_collab_feasibility::rich_replica::{SharedObservation, VersionAssetReference};
 impl Room {
     /// Inventory conservative native causal history and every complete retained server packet.
     /// Includes deleted/losing image bindings, versions, proposals, committed revisions and
@@ -25,16 +25,7 @@ impl Room {
         let selected = self.backup_identity()?;
         let records = self.log.snapshot()?.records()?;
         let observation = self.replica.observe()?;
-        let mut output = References::default();
-        output.add(
-            self.replica.retained_asset_references_guarded(&observation)?.into_iter().map(|r| {
-                VersionAssetReference {
-                    asset: r.asset().as_str().into(),
-                    generation: r.generation().as_str().into(),
-                }
-            }),
-        )?;
-        output.add(self.retained_effect_asset_references()?)?;
+        let mut output = self.native_retained_reference_seed(&observation)?;
         packets::collect(self, records, &mut output)?;
         self.replica.check(&observation)?;
         if self.backup_identity()? != selected {
@@ -55,5 +46,20 @@ impl Room {
         };
         read_budget::check(&value)?;
         Ok(value)
+    }
+
+    pub(super) fn native_retained_reference_seed(
+        &self,
+        observed: &SharedObservation,
+    ) -> Result<References> {
+        let mut output = References::default();
+        output.add(self.replica.retained_asset_references_guarded(observed)?.into_iter().map(
+            |r| VersionAssetReference {
+                asset: r.asset().as_str().into(),
+                generation: r.generation().as_str().into(),
+            },
+        ))?;
+        output.add(self.retained_effect_asset_references()?)?;
+        Ok(output)
     }
 }

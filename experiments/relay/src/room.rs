@@ -17,6 +17,11 @@ mod document_presence;
 mod layout_v3;
 mod log_generations;
 pub use log_generations::{
+    GenerationRecoveryRegistrationCoverage, MAX_GENERATION_PARTICIPANT_INVENTORY_BYTES,
+    ServerLogGenerationParticipantIdentity, ServerLogGenerationParticipantInventory,
+    ServerLogGenerationParticipantMetadata, VerifiedGenerationRecoveryRegistrations,
+};
+pub use log_generations::{
     MAX_SERVER_LOG_GENERATION_BACKUP_BYTES, ServerLogGenerationBackup,
     ServerLogGenerationBackupIdentity, ServerLogGenerationBackupInfo,
 };
@@ -34,7 +39,7 @@ mod versions;
 pub use asset_references::{
     MAX_SERVER_ASSET_REFERENCE_BYTES, MAX_SERVER_ASSET_REFERENCE_PAIRS,
     ServerAssetReferenceOutcome, ServerAssetReferencePending, ServerAssetReferenceSource,
-    ServerRetainedAssetReferences,
+    ServerLogGenerationRetainedAssetReferences, ServerRetainedAssetReferences,
 };
 pub use atomic_transport_v2::AtomicTransportProfile;
 pub use backup::{

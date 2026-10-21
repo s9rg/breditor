@@ -4,6 +4,7 @@ mod capture;
 mod format;
 mod identity;
 mod selected_files;
+mod visit_records;
 pub use format::MAX_SERVER_LOG_GENERATION_BACKUP_BYTES;
 pub use identity::{ServerLogGenerationBackupIdentity, ServerLogGenerationBackupInfo};
 

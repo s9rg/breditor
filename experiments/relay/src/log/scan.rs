@@ -18,7 +18,7 @@ pub(super) fn verify_records_from(
     first: u64,
     previous: [u8; 32],
 ) -> Result<ScannedLog> {
-    visit_records_from(reader, length, family, first, previous, drop)
+    visit_records_from(reader, length, family, first, previous, |_| Ok(()))
 }
 
 /// Private transport visitor. Callbacks may observe a prefix before a later error and must not
@@ -29,7 +29,7 @@ pub(super) fn visit_records_from(
     family: frame::Family,
     first: u64,
     mut previous: [u8; 32],
-    mut visit: impl FnMut(Record),
+    mut visit: impl FnMut(Record) -> Result<()>,
 ) -> Result<ScannedLog> {
     if family == frame::Family::Original && (first != 0 || previous != [0; 32]) {
         return Err(Error::Contract("original log requires its original origin"));
@@ -60,7 +60,7 @@ pub(super) fn visit_records_from(
         previous = parsed.digest;
         offset += parsed.bytes;
         records += 1;
-        visit(record);
+        visit(record)?;
     }
     if records == 0 && family == frame::Family::Original {
         return Err(Error::Contract("log has no complete seed"));

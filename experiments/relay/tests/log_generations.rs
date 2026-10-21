@@ -9,10 +9,14 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{fs, path::PathBuf};
 type TestResult<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
+#[path = "log_generations/assets.rs"]
+mod assets;
 #[path = "log_generations/backup.rs"]
 mod backup;
 #[path = "log_generations/recovery.rs"]
 mod generation_recovery;
+#[path = "log_generations/participants.rs"]
+mod participants;
 
 struct Files(PathBuf);
 impl Files {

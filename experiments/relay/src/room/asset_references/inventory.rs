@@ -1,5 +1,5 @@
 //! Detached complete-read data. Native ownership, provider authority and deletion are not inferred.
-use crate::RoomBackupIdentity;
+use crate::{RoomBackupIdentity, ServerLogGenerationBackupIdentity};
 use breditor_collab_feasibility::rich_replica::{
     PacketAssetIdentity, VersionAssetReference, WriterDependency,
 };
@@ -58,5 +58,24 @@ pub struct ServerRetainedAssetReferences {
     /// Every retained complete packet record, including orphaned/superseded preparations.
     pub sources: Vec<ServerAssetReferenceSource>,
     /// Whole Ready or whole Pending; errors never truncate this result.
+    pub outcome: ServerAssetReferenceOutcome,
+}
+
+/// Complete conservative server references pinned to an exact physical archive, not native clocks
+/// alone. Serialized metadata never proves client/provider closure or authorizes asset deletion.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ServerLogGenerationRetainedAssetReferences {
+    /// Distinct generation-reader family; original readers keep their existing meaning.
+    pub format: &'static str,
+    /// Exact independent reader revision.
+    pub format_version: u32,
+    /// Whole selected physical archive, including manifest and retained unpublished files.
+    pub source: ServerLogGenerationBackupIdentity,
+    /// Explicit server-only native causal and complete retained packet scope.
+    pub scope: &'static str,
+    /// Every complete version/proposal/revision source at its original global sequence.
+    pub sources: Vec<ServerAssetReferenceSource>,
+    /// Whole conservative Ready or whole Pending; errors never return a usable prefix.
     pub outcome: ServerAssetReferenceOutcome,
 }

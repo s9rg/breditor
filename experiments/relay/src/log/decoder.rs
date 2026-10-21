@@ -29,6 +29,7 @@ pub(super) fn read_records_from(
     let mut records = Vec::new();
     let cut = scan::visit_records_from(reader, length, family, first, previous, |record| {
         records.push(record);
+        Ok(())
     })?;
     Ok(DecodedLog { records, bytes: cut.bytes, previous: cut.previous, recovery: cut.recovery })
 }

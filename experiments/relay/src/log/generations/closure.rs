@@ -5,7 +5,7 @@ use super::{
 };
 use crate::{
     Error, Result, credentials,
-    log::{frame, scan},
+    log::{Record, frame, scan},
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -77,6 +77,15 @@ fn unpublished(files: &BTreeMap<&str, &[u8]>, selected: &BTreeSet<String>) -> Re
 }
 
 pub(crate) fn verify_generation_files(files: &BTreeMap<&str, &[u8]>) -> Result<GenerationCut> {
+    visit_generation_records(files, |_| Ok(()))
+}
+
+/// Private fallible traversal. A callback may see a prefix before whole-closure refusal, and
+/// must keep its state private until this returns successfully. Never an import/publication API.
+pub(crate) fn visit_generation_records(
+    files: &BTreeMap<&str, &[u8]>,
+    mut visit: impl FnMut(Record) -> Result<()>,
+) -> Result<GenerationCut> {
     if files.len() > MAX_GENERATION_FILES {
         return Err(Error::Contract("generation archive file count"));
     }
@@ -103,12 +112,13 @@ pub(crate) fn verify_generation_files(files: &BTreeMap<&str, &[u8]>) -> Result<G
             return Err(Error::Contract("generation archive closed log bytes"));
         }
         let mut reader = bytes;
-        let cut = scan::verify_records_from(
+        let cut = scan::visit_records_from(
             &mut reader,
             item.bytes,
             frame::Family::Continuation,
             item.first,
             item.previous,
+            &mut visit,
         )?;
         if cut.recovery.truncated_bytes != 0
             || cut.records != item.records
@@ -128,12 +138,13 @@ pub(crate) fn verify_generation_files(files: &BTreeMap<&str, &[u8]>) -> Result<G
         return Err(Error::Contract("generation archive retained WAL budget"));
     }
     let mut reader = active;
-    let cut = scan::verify_records_from(
+    let cut = scan::visit_records_from(
         &mut reader,
         active.len() as u64,
         frame::Family::Continuation,
         selected.active.first,
         selected.active.previous,
+        &mut visit,
     )?;
     if cut.recovery.truncated_bytes != 0 {
         return Err(Error::Contract("generation archive incomplete active tail"));

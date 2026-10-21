@@ -1,5 +1,11 @@
 //! Explicit physical storage actions; no original file API infers this separate family.
 mod backup;
+mod participants;
+pub use participants::{
+    GenerationRecoveryRegistrationCoverage, MAX_GENERATION_PARTICIPANT_INVENTORY_BYTES,
+    ServerLogGenerationParticipantIdentity, ServerLogGenerationParticipantInventory,
+    ServerLogGenerationParticipantMetadata, VerifiedGenerationRecoveryRegistrations,
+};
 mod recovery;
 pub use recovery::{
     RecoveredLogGenerationRoom, ServerLogGenerationRecovery, ServerLogGenerationRecoveryProgress,

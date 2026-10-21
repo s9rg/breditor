@@ -22,7 +22,7 @@ impl Files {
         fs::create_dir(&path)?;
         Ok(Self(path))
     }
-    pub(super) fn room(&self) -> PathBuf {
+    pub(in crate::room) fn room(&self) -> PathBuf {
         self.0.join("room")
     }
     pub(in crate::room) fn recovery(&self) -> PathBuf {

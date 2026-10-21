@@ -41,6 +41,11 @@ pub use room::{
     StoredReviewBatch,
 };
 pub use room::{
+    GenerationRecoveryRegistrationCoverage, MAX_GENERATION_PARTICIPANT_INVENTORY_BYTES,
+    ServerLogGenerationParticipantIdentity, ServerLogGenerationParticipantInventory,
+    ServerLogGenerationParticipantMetadata, VerifiedGenerationRecoveryRegistrations,
+};
+pub use room::{
     MAX_ROOM_BACKUP_BYTES, RoomBackup, RoomBackupIdentity, RoomBackupInfo, RoomRecoveryPolicy,
 };
 pub use room::{
@@ -54,7 +59,7 @@ pub use room::{
 pub use room::{
     MAX_SERVER_ASSET_REFERENCE_BYTES, MAX_SERVER_ASSET_REFERENCE_PAIRS,
     ServerAssetReferenceOutcome, ServerAssetReferencePending, ServerAssetReferenceSource,
-    ServerRetainedAssetReferences,
+    ServerLogGenerationRetainedAssetReferences, ServerRetainedAssetReferences,
 };
 pub use room::{
     MAX_SERVER_LOG_GENERATION_BACKUP_BYTES, ServerLogGenerationBackup,

@@ -3,8 +3,7 @@ use super::{
     MissingRecoveryRegistration, RecoveryRegistrationCredentials, RoomParticipantInventory,
     RoomParticipantInventoryIdentity,
 };
-use crate::{Error, Result, Room, credentials};
-use std::collections::BTreeSet;
+use crate::{Error, Result, Room};
 
 /// All original registration secrets matched this selected native cut. Not authentication,
 /// live fencing, client journal coverage or permission to activate an account.
@@ -61,54 +60,7 @@ impl RoomParticipantInventory {
         supplied: &RecoveryRegistrationCredentials,
     ) -> Result<RecoveryRegistrationCoverage> {
         self.verify_native(room, authenticated_owner)?;
-        let review_writers = self.metadata.review.as_ref().map_or(0, |r| r.writers.len());
-        if supplied.documents.len() > self.metadata.writers.len()
-            || supplied.reviews.len() > review_writers
-        {
-            return Err(Error::Lease);
-        }
-        let mut documents = BTreeSet::new();
-        for record in &supplied.documents {
-            if !documents.insert(record.writer.as_str()) {
-                return Err(Error::Lease);
-            }
-            let registered = room.writers.get(&record.writer).ok_or(Error::Lease)?;
-            if registered.principal != record.principal
-                || registered.resume_hash != credentials::hash(&record.credential)?
-            {
-                return Err(Error::Lease);
-            }
-        }
-        let mut reviews = BTreeSet::new();
-        for record in &supplied.reviews {
-            if !reviews.insert(record.actor.as_str()) {
-                return Err(Error::Lease);
-            }
-            room.check_recovery_review_credential(
-                &record.principal,
-                &record.actor,
-                &record.credential,
-            )?;
-        }
-        let mut missing = Vec::new();
-        for registered in &self.metadata.writers {
-            if !documents.contains(registered.clock.writer.as_str()) {
-                missing.push(MissingRecoveryRegistration::Document {
-                    principal: registered.principal.clone(),
-                    writer: registered.clock.writer.clone(),
-                });
-            }
-        }
-        if let Some(review) = &self.metadata.review {
-            for registered in &review.writers {
-                if !reviews.contains(registered.clock.actor.as_str()) {
-                    missing.push(MissingRecoveryRegistration::Review {
-                        principal: registered.principal.clone(),
-                        actor: registered.clock.actor.as_str().into(),
-                    });
-                }
-            }
-        }
+        let missing = room.missing_recovery_registrations(&self.metadata, supplied)?;
         if missing.is_empty() {
             Ok(RecoveryRegistrationCoverage::Verified(VerifiedRecoveryRegistrations {
                 identity: self.identity.clone(),

@@ -1,0 +1,71 @@
+{
+  "format": "breditor/generation-native-reader-qualification",
+  "date": "2026-10-21",
+  "passed": true,
+  "v1Ready": false,
+  "openV1Gates": 13,
+  "publicationApproved": false,
+  "source": {
+    "commit": "05ae673581728d97baa706f6d98ccfeb808b50c4",
+    "dirty": true,
+    "sha256": "c431d18611635d4f2d240f9148f2088554ff8065fe8d444ef6c671468d0200fd",
+    "files": 5093,
+    "bytes": 43034270
+  },
+  "nonDocumentation": {
+    "files": 4556,
+    "sha256": "8bafd0663a4288c207a09a51db0baec5f0e14d88ebd992ad894724da1119ebb5"
+  },
+  "report": "target/generation-readers-qualification-Zhh2cu/result.json",
+  "tests": {
+    "relayRust": 286,
+    "noNetworkingRust": 176,
+    "candidateContracts": 66,
+    "scriptContracts": 1331,
+    "existingOptInSkipped": 3,
+    "strictServerLint": true,
+    "strictNoNetworkingLint": true,
+    "strictRustdoc": true,
+    "participantNativeFamilies": 40,
+    "publicProfileTransportChoices": 10,
+    "retainedImageProfileTransportChoices": 10,
+    "maximumWalFiles": 64,
+    "isolatedDescriptorLimit": 192,
+    "functionalPlanChecks": 178,
+    "wholePlanRun": false
+  },
+  "verified": [
+    "Separate generation participant metadata binds the entire actual native archive, including its physical manifest and retained unpublished work, not only document counters.",
+    "Native verification rejects checksum-valid omissions and false prefixes; protected-input verification includes observers and revoked registrations, revives no lease/grant and returns no partial proof.",
+    "A physical-only rotation or unpublished-stage change stales prior proofs; ephemeral resume alone does not. Extracted detached native metadata cannot bypass original storage verification.",
+    "Complete retained asset reads keep deleted/intermediate image bindings and all retained version/proposal/revision sources, including rejected and abandoned packets and cross-file committed ancestry.",
+    "Public native restoration retains old offline input and future Undo/Redo while participant and asset inventories select the same exact archive; explicit new readers refuse original storage without poisoning it.",
+    "Both complete readers and the prior positive archive regression pass at the maximum retained layout under the same isolated descriptor bound. No parent process or Mac limits are changed."
+  ],
+  "resourceScope": {
+    "maximumWalFiles": 64,
+    "isolatedDescriptorLimit": 192,
+    "parentOrMacLimitsChanged": false,
+    "completeDecodedLogCopyInNewReader": false,
+    "nativeColdReplayStillCollectsRecords": true
+  },
+  "carriedCore": {
+    "baseline": "target/v1-candidate-runs/run-M8n7a3/result.json",
+    "unchangedNonRelayNativeInputs": 2505,
+    "workspaceRustPreviouslyQualified": 2643,
+    "sharedRustPreviouslyQualified": 661,
+    "researchReviewPreviouslyQualified": 3,
+    "unchangedNormalRuntimeFiles": 12,
+    "normalSharedWasmSha256": "e8afdb083c9e849505c6d1ca85b721485bd673fed71ce1ea1690b20f9c500f9a",
+    "nativeCoreSuitesRerun": false,
+    "normalProducersRerun": false,
+    "freshPublicArchivesByteIdentical": 3
+  },
+  "remaining": [
+    "Joined raster-byte recovery and matching operational/provider/client sources are not supplied by these generation-aware native inventories.",
+    "Provider/client reconciliation, historic-copy disposition and authenticated whole-room activation remain required.",
+    "Complete maintenance readers capture the bounded source twice; native cold replay memory and live staging costs remain unqualified. Original lifetime and Undo limits are unchanged.",
+    "Local ownership and controlled filesystem prefixes do not qualify physical power loss or cross-host fencing.",
+    "All V1 and full feature-parity gates remain open. No version, push, tag, publication or deployment is promoted."
+  ]
+}
