@@ -14,6 +14,17 @@ const plan=checks=>({profile:"functional",deferred:["not-a-v1-certification"],ch
 const stable=()=>({commit:"1".repeat(40),dirty:true,sha256:"2".repeat(64),files:1,bytes:1});
 function quiet(options={}){return {snapshot:stable,report:()=>{},...options};}
 
+test('both profiles require complete physical server inventory pins and identical installed native-prefix probes',()=>{
+ for(const profile of ['functional','full']){
+  const p=candidateReleasePlan({profile}),find=id=>{const row=p.checks.find(c=>c.id===id);assert.ok(row,id);return row;};
+  assert.deepEqual(find('server-generation-inventory-contracts').args,['--test','scripts/server-generation-inventory.test.mjs']);
+  assert.ok(find('server-generation-inventory-type-fence').args.includes('scripts/fixtures/editor-consumer/types-server-generation-inventory.ts'));
+  for(const[id,file,path]of [['native-server-generation-inventory','check-server-generation-inventory-native.mjs','target/server-generation-inventory-native.json'],['server-generation-inventory','check-server-generation-inventory-sdk.mjs','target/server-generation-inventory-sdk.json'],['installed-server-generation-inventory','check-server-generation-inventory-installed.mjs','target/server-generation-inventory-installed.json']]){const row=find(id);assert.deepEqual(row.args,[`scripts/${file}`]);assert.deepEqual(row.artifacts,[{path,fresh:true}]);assert.ok(p.checks.indexOf(find('collaboration-build'))<p.checks.indexOf(row));}
+  for(const id of ['server-generation-inventory','installed-server-generation-inventory'])assert.ok(p.checks.indexOf(find('native-server-generation-inventory'))<p.checks.indexOf(find(id)));
+ }
+ const installed=readFileSync(join(repository,'scripts/check-server-generation-inventory-installed.mjs'),'utf8');for(const text of ["'--offline'",'assert.deepEqual(native.source,source','fileEvidence(root,file.path)','verifySearchConsumerRegistry','types-server-generation-inventory.ts','probe-server-generation-inventory.mjs','strictPublicTypes:true','workspaceLinks:false','sharedWasmSha256','assert.deepEqual(sourceEvidence(root),source)'])assert.ok(installed.includes(text),text);
+});
+
 test('read-only archival is explicitly native, type fenced and repeated in fresh public packages',()=>{
  for(const profile of ['functional','full']){
   const p=candidateReleasePlan({profile}),find=id=>{const row=p.checks.find(c=>c.id===id);assert.ok(row,id);return row;};

@@ -68,6 +68,11 @@ path = "examples/participant_inventory_fixture.rs"
 required-features = ["server"]
 
 [[example]]
+name = "server_generation_inventory_fixture"
+path = "examples/server_generation_inventory_fixture.rs"
+required-features = ["server"]
+
+[[example]]
 name = "segmented_relay_functional"
 path = "examples/segmented_relay_functional.rs"
 required-features = ["server"]

@@ -92,6 +92,35 @@ dependency reads retain their physical source pin and whole Ready/Pending result
 The prepared host exposes no router. Matching room catalogs, provider/client
 reconciliation and authenticated whole-room activation remain separate work.
 
+The SDK now has a distinct
+[physical participant inventory](SERVER_GENERATION_PARTICIPANT_INVENTORY.md)
+reader. It retains the complete native cut, physical manifest and archive digest
+through original, generation and mixed client-prefix diagnostics, without
+widening the original single-log reader or either existing catalog. Mixed
+cohorts use genuine source owners, preserve pending histories and refuse
+duplicate writer/actor copies; ordinary writer/review leases remain required.
+The native file bridge includes cold operational recovery, physical-only source
+changes and a global cut beyond 8,192 records. Matching physical-server catalog
+storage, provider/client closure and activation remain the next integration.
+
+The [physical inventory SDK qualification](qualification/2026-10-21-server-generation-inventory-sdk.json)
+passes 35 new metadata contracts, the 20 original metadata contracts, 67
+candidate-runner and 1,367 script cases on frozen source. Actual native captures
+cover ten profile/transport choices, independent native document/comment cuts,
+fresh protected-stream verification and physical-only changes. Source and fresh
+offline installed packages run identical genuine-client assertions: 60 cold
+generation recoveries, 60 mixed cohorts, 120 duplicate-entry refusals and future
+document/review Undo/Redo. Existing document/review leases refuse duplicate-owner
+requests; tests do not disable those guards to create overlapping writers.
+
+The unchanged positive byte-budget assertion also passes after reproducing a
+Blob subclass that could misreport public size. Admission now checks actual
+native length before byte allocation/hash reads. Original native-inventory,
+generation-inventory and V2-catalog probes pass again. Five named checks bring
+the functional plan to 183, not all run by this slice. Unchanged native
+implementation/tests and normal Wasm artifacts carry their earlier qualification
+explicitly; three opt-in script skips and all 13 V1 gates remain open.
+
 The [prepared-host qualification](qualification/2026-10-21-prepared-generation-host.json)
 passes 325 relay, 203 no-networking, 66 candidate-runner and 1,331 script cases on
 frozen source. Two positive before-fix failures show that cancelling an async
@@ -190,9 +219,10 @@ and 1,440 native comment comparisons, both recovery directions and future histor
 
 Next, in architectural risk order:
 
-1. Complete durable generation-aware operational handoff and reopen around the
-   joined native/raster recovery, preserving source ancestry and refusing
-   unrequested tail repair or cleanup. Keep original formats closed. Address
+1. Carry complete original/current physical selections through a matching SDK
+   room catalog and operational parent around the prepared native host. Preserve
+   source ancestry, real owners and refusal of unrequested repair or cleanup.
+   Keep original formats closed. Address
    retained Undo limits and live staging/replay costs as separate lifetime
    requirements, not by dropping history or widening old bounds.
 2. Compose the matching generation participant and retained-asset inventories

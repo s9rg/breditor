@@ -75,6 +75,27 @@ See the [selected-byte contract](../../docs/SELECTED_ASSET_BYTES.md). This file
 excludes asset-store upload state, unselected participants and server state; it is
 not a room-wide transaction, provider grant, generation bridge or deletion proof.
 
+## Physical server generation inventories
+
+`readSharedServerLogGenerationParticipantInventory(file, expected)` admits the
+separate native physical-generation metadata family. Select `expected`
+independently from authenticated native capture; do not derive trust from the
+incoming file. The immutable reader retains the global native cut, physical
+manifest, complete native archive digest and whole inventory digest.
+
+`checkSources`, `checkGenerationSources` and `checkMixedSources` use genuine client
+backup/capture pairs. Mixed entries carry explicit `original` or `generation`
+family tags. Results retain `{source, coverage}`, including physical-only changes
+that leave document counters unchanged. Missing/unbound histories stay pending;
+duplicate writer/review copies refuse. Checks do not flush, connect, authenticate,
+acquire leases or activate a room. Existing writer/actor exclusion still applies
+when opening the actual client owners.
+
+The original reader and catalogs keep their old formats and limits. This new
+reader does not establish complete provider/client closure or whole-room
+activation. See the [physical participant contract](../../docs/SERVER_GENERATION_PARTICIPANT_INVENTORY.md)
+for selection, bounds, ownership and remaining integration requirements.
+
 ## Retained image references
 
 `core.supportsRetainedAssetReferences()` requires the complete optional native

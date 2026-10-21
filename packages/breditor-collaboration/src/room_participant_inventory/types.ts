@@ -4,7 +4,8 @@ import type {SharedWriterClock} from "../types.js";
 import type {SharedReviewWriterClock} from "../review_types.js";
 import type {SharedGenerationParticipantBackup} from "../generation_participant/backup.js";
 import type {SharedGenerationSourceCapture} from "../generation_source/capture.js";
-/** Original native server cut. This detached value neither authenticates nor fences a host. */
+/** Native semantic cut declaration. Its enclosing file supplies the storage family
+ * and record bound; detached data neither authenticates nor fences a host. */
 export interface SharedRoomBackupCut {
  readonly document:string;readonly owner:string;readonly assetBinding:string;
  readonly profile:Readonly<{kind:"original"}>|Readonly<{kind:"structuralV2"|"layoutV3";standardInlineV1:boolean}>;

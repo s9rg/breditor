@@ -151,6 +151,12 @@ of another host. Original-only operational APIs keep their original meanings.
 
 ## Prepared authenticated host
 
+The SDK's [physical participant reader](SERVER_GENERATION_PARTICIPANT_INVENTORY.md)
+retains this complete native physical source rather than treating its nested
+native declarations as an original single-log file. Client-prefix diagnostics
+are separate from the authenticated native state and protected-credential checks
+below.
+
 `prepare_log_generation_recovery_host` consumes the actual operational owner and
 original admitted archive under an independently retained original selection and
 fresh host authentication. Blocking native checks run on a worker, not the async

@@ -1,0 +1,550 @@
+{
+  "format": "breditor/server-generation-inventory-sdk-qualification",
+  "date": "2026-10-21",
+  "passed": true,
+  "source": {
+    "commit": "d985dabf9fd4a52bd5248fffb760d7ea3a5808b1",
+    "dirty": true,
+    "sha256": "48db6a048b696b463ff83c7c6caca202af103c80273954efd4c20f476f5f86ff",
+    "files": 5174,
+    "bytes": 43394716
+  },
+  "report": {
+    "path": "target/server-generation-inventory-qualification-z299Pe/result.json",
+    "bytes": 38367,
+    "sha256": "391ec9f55b24a0eb308b7a6c9385b0a5e1a558e75ddf3740b4b9c59c1e0857a1",
+    "modifiedAtMs": 1792587361758.3242
+  },
+  "tests": {
+    "metadataContracts": 35,
+    "originalMetadataContracts": 20,
+    "candidateContracts": 67,
+    "scriptContracts": 1367,
+    "existingOptInSkipped": 3,
+    "functionalPlanChecks": 183,
+    "wholePlanRun": false
+  },
+  "nonDocumentation": {
+    "files": 4631,
+    "sha256": "f8822865ccfd9b007bac61d1ea7b9ad0440c0267358548f5b5b224775795887d"
+  },
+  "reports": [
+    {
+      "id": "original-native",
+      "original": {
+        "path": "target/room-participant-inventory-native.json",
+        "bytes": 9775,
+        "sha256": "45d7782bacbf24fe35dd74e7a3397794325067e125db7b2be9414ecf6a843919",
+        "modifiedAtMs": 1792587045919.4094
+      },
+      "copy": {
+        "path": "target/server-generation-inventory-qualification-z299Pe/original-native-report.json",
+        "bytes": 9775,
+        "sha256": "45d7782bacbf24fe35dd74e7a3397794325067e125db7b2be9414ecf6a843919",
+        "modifiedAtMs": 1792587046266.9734
+      }
+    },
+    {
+      "id": "original-sdk",
+      "original": {
+        "path": "target/room-participant-inventory-sdk.json",
+        "bytes": 2247,
+        "sha256": "c7e0dea72b5a93ca43dcbaee37258eb6e9344a29e77869e805e15f394daf6fe5",
+        "modifiedAtMs": 1792587050944.075
+      },
+      "copy": {
+        "path": "target/server-generation-inventory-qualification-z299Pe/original-sdk-report.json",
+        "bytes": 2247,
+        "sha256": "c7e0dea72b5a93ca43dcbaee37258eb6e9344a29e77869e805e15f394daf6fe5",
+        "modifiedAtMs": 1792587051308.457
+      }
+    },
+    {
+      "id": "original-generation-sdk",
+      "original": {
+        "path": "target/generation-room-inventory-sdk.json",
+        "bytes": 2142,
+        "sha256": "fd4807afca32ad55be6453d8224e954dad03c090b2209c7fecd18fc6ff48c413",
+        "modifiedAtMs": 1792587066223.6707
+      },
+      "copy": {
+        "path": "target/server-generation-inventory-qualification-z299Pe/original-generation-sdk-report.json",
+        "bytes": 2142,
+        "sha256": "fd4807afca32ad55be6453d8224e954dad03c090b2209c7fecd18fc6ff48c413",
+        "modifiedAtMs": 1792587066598.3147
+      }
+    },
+    {
+      "id": "original-catalog-v2-sdk",
+      "original": {
+        "path": "target/room-recovery-catalog-v2-sdk.json",
+        "bytes": 3327,
+        "sha256": "187349e4fbee3d7afaa00d0d242d1844bae5b7f88f54b402fbb583d1c0a1cc69",
+        "modifiedAtMs": 1792587099051.7913
+      },
+      "copy": {
+        "path": "target/server-generation-inventory-qualification-z299Pe/original-catalog-v2-sdk-report.json",
+        "bytes": 3327,
+        "sha256": "187349e4fbee3d7afaa00d0d242d1844bae5b7f88f54b402fbb583d1c0a1cc69",
+        "modifiedAtMs": 1792587099457.2761
+      }
+    },
+    {
+      "id": "physical-native",
+      "original": {
+        "path": "target/server-generation-inventory-native.json",
+        "bytes": 15227,
+        "sha256": "3db09945585c62f6765e6d7c59c2b3fd987cd212e0f021ecc3fba529ae2397cf",
+        "modifiedAtMs": 1792587152461.0703
+      },
+      "copy": {
+        "path": "target/server-generation-inventory-qualification-z299Pe/physical-native-report.json",
+        "bytes": 15227,
+        "sha256": "3db09945585c62f6765e6d7c59c2b3fd987cd212e0f021ecc3fba529ae2397cf",
+        "modifiedAtMs": 1792587152810.8872
+      }
+    },
+    {
+      "id": "physical-sdk",
+      "original": {
+        "path": "target/server-generation-inventory-sdk.json",
+        "bytes": 1809,
+        "sha256": "5bd374a1fe23ee09db20bdf735ba9ce6bbd7fcfc962125122385b9036742392b",
+        "modifiedAtMs": 1792587171353.957
+      },
+      "copy": {
+        "path": "target/server-generation-inventory-qualification-z299Pe/physical-sdk-report.json",
+        "bytes": 1809,
+        "sha256": "5bd374a1fe23ee09db20bdf735ba9ce6bbd7fcfc962125122385b9036742392b",
+        "modifiedAtMs": 1792587171713.231
+      }
+    },
+    {
+      "id": "physical-installed",
+      "original": {
+        "path": "target/server-generation-inventory-installed.json",
+        "bytes": 3667,
+        "sha256": "289b37fcf37ddd371a4f9e2cac7f86cd965e9bdf0c7ae790d0aeb0341369b4c0",
+        "modifiedAtMs": 1792587193164.915
+      },
+      "copy": {
+        "path": "target/server-generation-inventory-qualification-z299Pe/physical-installed-report.json",
+        "bytes": 3667,
+        "sha256": "289b37fcf37ddd371a4f9e2cac7f86cd965e9bdf0c7ae790d0aeb0341369b4c0",
+        "modifiedAtMs": 1792587193520.5676
+      }
+    }
+  ],
+  "native": {
+    "cases": 10,
+    "longNativeCuts": 1,
+    "physicalOnlyCuts": 10,
+    "protectedStreams": 40,
+    "manifest": {
+      "path": "target/native-server-generation-inventory-IbXKKq/fixtures.json",
+      "bytes": 4200,
+      "sha256": "d54963dd311fd99ee6326a27834364fcd519d33cc0755a892e2aafbea69fd15d",
+      "modifiedAtMs": 1792587152452.1633
+    },
+    "files": [
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-1-standard-false-atomic-false/fixture.json",
+        "bytes": 56778,
+        "sha256": "37790e3725bf1330ef01e0e8406c18b917563173b1938809759afe4453f7f290",
+        "modifiedAtMs": 1792587102090.207
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-1-standard-false-atomic-false/inventory.json",
+        "bytes": 3045,
+        "sha256": "a403afd4106fe48a1c51164b15f9321bd17fe53ee2e959ffd8fe328b481b5f32",
+        "modifiedAtMs": 1792587102072.8528
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-1-standard-false-atomic-false/inventory-after.json",
+        "bytes": 3044,
+        "sha256": "d31f56910a27ff740c194ed01bca9b9ba995fa6ed8e77e9443aa396be0b90b7a",
+        "modifiedAtMs": 1792587102078.4905
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-1-standard-false-atomic-false/server.backup",
+        "bytes": 21042,
+        "sha256": "b743577ebde80dd96d09f066a5b8de670daa2fa231e4580e008f1bbfa9ca5a1b",
+        "modifiedAtMs": 1792587102083.405
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-1-standard-false-atomic-false/server-after.backup",
+        "bytes": 23581,
+        "sha256": "409a5a88bec4de3dcf32eef30e82fb1212ace8aae72a80e5287b20bf8b8373a5",
+        "modifiedAtMs": 1792587102086.404
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-1-standard-false-atomic-true/fixture.json",
+        "bytes": 57065,
+        "sha256": "f7f0811d577768987bac5679292e0c8bda163d59aaab99f02424f7a1932391b9",
+        "modifiedAtMs": 1792587103168.0344
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-1-standard-false-atomic-true/inventory.json",
+        "bytes": 3329,
+        "sha256": "d2a3be33001d2ecd21fa15d79636bb719f9dd6ccd3f3c2219a961a1badf00846",
+        "modifiedAtMs": 1792587103150.5305
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-1-standard-false-atomic-true/inventory-after.json",
+        "bytes": 3339,
+        "sha256": "53f378087d6a99ebb62794fd3a68123a57ba4dbbd322b0336b7bd794a4a180b1",
+        "modifiedAtMs": 1792587103155.3965
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-1-standard-false-atomic-true/server.backup",
+        "bytes": 21976,
+        "sha256": "390bc5e4b43eec76e9fb11389b87a5c447adf7982f7f6205d529689c7df06e07",
+        "modifiedAtMs": 1792587103159.9192
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-1-standard-false-atomic-true/server-after.backup",
+        "bytes": 24535,
+        "sha256": "f7cf7f3721de747451a2d2aeee11113781cab219b3ca5e0587388969f53fa876",
+        "modifiedAtMs": 1792587103162.8782
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-2-standard-false-atomic-false/fixture.json",
+        "bytes": 57411,
+        "sha256": "155f403721bc9a6f629b0693869fd67e086d882df629c0dbff654b8da3ae5dc0",
+        "modifiedAtMs": 1792587104215.0742
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-2-standard-false-atomic-false/inventory.json",
+        "bytes": 3104,
+        "sha256": "9becc95d861b4ec9a6145caa6f16789183ab28ff569cc0cd921d6f24eb7d9341",
+        "modifiedAtMs": 1792587104196.571
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-2-standard-false-atomic-false/inventory-after.json",
+        "bytes": 3104,
+        "sha256": "f4a94157b5d33fdbaa2e58c9ed34380818301879ae536f305448b78c0dc66720",
+        "modifiedAtMs": 1792587104202.2249
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-2-standard-false-atomic-false/server.backup",
+        "bytes": 21238,
+        "sha256": "deb1db17d0865443c9375f024fdfc08fcf368a8297c4d4cefef9d970cf13a482",
+        "modifiedAtMs": 1792587104206.0908
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-2-standard-false-atomic-false/server-after.backup",
+        "bytes": 23785,
+        "sha256": "1a17d38588be16adcc89cd98a61f0f0e3afe04169e38b3c9d799f15c8cc3566f",
+        "modifiedAtMs": 1792587104210.0708
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-2-standard-false-atomic-true/fixture.json",
+        "bytes": 57760,
+        "sha256": "105913935c73cd38d019b6e9e619ad6e0ce2d4a371541fc505d40dc394c522c9",
+        "modifiedAtMs": 1792587105312.026
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-2-standard-false-atomic-true/inventory.json",
+        "bytes": 3413,
+        "sha256": "27865bae02df3193ab45b95985dbc37f0ee9b90b177ca6775d7345882fa2601f",
+        "modifiedAtMs": 1792587105296.7166
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-2-standard-false-atomic-true/inventory-after.json",
+        "bytes": 3417,
+        "sha256": "3dc3ff56d2aa2592ac0c98dad118f928757a07e4cc2581a402ae7d1546dbbd75",
+        "modifiedAtMs": 1792587105301.2983
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-2-standard-false-atomic-true/server.backup",
+        "bytes": 22151,
+        "sha256": "d0251b56c8ab1ea9fb20b61160eae57371dbf628ef110090edb7ab70c602d199",
+        "modifiedAtMs": 1792587105305.2458
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-2-standard-false-atomic-true/server-after.backup",
+        "bytes": 24732,
+        "sha256": "0bd3a8f62522e6227b6f43ce074bb95fed765843e2f4965412ef9a7f1da3fe34",
+        "modifiedAtMs": 1792587105308.1445
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-2-standard-true-atomic-false/fixture.json",
+        "bytes": 57365,
+        "sha256": "e0cde85d178a9b454cc6b9dca40b07786c5d48303500d8d53c687da9b229d272",
+        "modifiedAtMs": 1792587106353.5261
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-2-standard-true-atomic-false/inventory.json",
+        "bytes": 3107,
+        "sha256": "a94bcf5dc7495c1bdb1c9eb43d91fa23a04b246652975b0d7a8f71a91587e3ec",
+        "modifiedAtMs": 1792587106335.1172
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-2-standard-true-atomic-false/inventory-after.json",
+        "bytes": 3105,
+        "sha256": "5af54ba35dc94faac837d13d29feabdb4340eb998538e797a67551eedd260587",
+        "modifiedAtMs": 1792587106339.8887
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-2-standard-true-atomic-false/server.backup",
+        "bytes": 21218,
+        "sha256": "b110c4208fe15295ce410d67fb3cd35dc311730d6b0a4eeb9bdc960fec774543",
+        "modifiedAtMs": 1792587106344.5615
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-2-standard-true-atomic-false/server-after.backup",
+        "bytes": 23752,
+        "sha256": "c47632223ee85e9ec3e727006bba1d23c3010d8531b9e452641321729278c6e0",
+        "modifiedAtMs": 1792587106348.69
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-2-standard-true-atomic-true/fixture.json",
+        "bytes": 57635,
+        "sha256": "539b85adced91d3c37844637ecce2c1950085d9e0f4a3863ae6e1650626ba819",
+        "modifiedAtMs": 1792587107441.7974
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-2-standard-true-atomic-true/inventory.json",
+        "bytes": 3392,
+        "sha256": "991a73d8dc1ff6eeb27845a52e931715769ce83ae791f69722ca753f5d392800",
+        "modifiedAtMs": 1792587107422.5408
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-2-standard-true-atomic-true/inventory-after.json",
+        "bytes": 3395,
+        "sha256": "f7bf2911818705101256f5f9e7f0f57dc4a21903acefdcf18ab78433f545eadf",
+        "modifiedAtMs": 1792587107427.9482
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-2-standard-true-atomic-true/server.backup",
+        "bytes": 22078,
+        "sha256": "d00d3a3d924376d7e3f94e28647b3410c99226ee9cdae7f0d1edaea3787359c9",
+        "modifiedAtMs": 1792587107431.7285
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-2-standard-true-atomic-true/server-after.backup",
+        "bytes": 24614,
+        "sha256": "c8ed14c84dcb1118b7566baea7fff8a865843d0bae46b68a52454a34db281610",
+        "modifiedAtMs": 1792587107435.9827
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-3-standard-false-atomic-false/fixture.json",
+        "bytes": 58738,
+        "sha256": "034fd225d1adc14e9e51764183b4bfbf398b31144f61c86f88869b79fa5ed9d8",
+        "modifiedAtMs": 1792587108485.4521
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-3-standard-false-atomic-false/inventory.json",
+        "bytes": 3073,
+        "sha256": "eab2f99642e17bfda0555267a621dc6fa3e7f68780ce100f5a3fff94bbf6688c",
+        "modifiedAtMs": 1792587108469.036
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-3-standard-false-atomic-false/inventory-after.json",
+        "bytes": 3065,
+        "sha256": "c14a281272dee69bfef8b9c9776aa99adcb644ea3bd46695ed1c02a8c0e8eb35",
+        "modifiedAtMs": 1792587108472.7617
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-3-standard-false-atomic-false/server.backup",
+        "bytes": 21123,
+        "sha256": "4375ea14e288a246f90ef208f1d5b148bc6abc70cc35ac1e0600906c61d7d7a4",
+        "modifiedAtMs": 1792587108476.5315
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-3-standard-false-atomic-false/server-after.backup",
+        "bytes": 23618,
+        "sha256": "ca196c1175935458b87864f8442d6b0edf84dbaf0b457ade437bffa1a4b46e28",
+        "modifiedAtMs": 1792587108481.4705
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-3-standard-false-atomic-true/fixture.json",
+        "bytes": 59107,
+        "sha256": "07abbb26c48a2e4b7bb016a7ff75c53c9a48c97d9163559d9007bd321e6c46d9",
+        "modifiedAtMs": 1792587109583.2104
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-3-standard-false-atomic-true/inventory.json",
+        "bytes": 3382,
+        "sha256": "44faff7816a31b5e1b34966a389f9b81ee8b4f7f8c044836f4d5d4db4c791551",
+        "modifiedAtMs": 1792587109556.7322
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-3-standard-false-atomic-true/inventory-after.json",
+        "bytes": 3382,
+        "sha256": "cf0f62fc215f02dc131e11c703d774bde5eb88fcda1d750f9b19ddfdcd6b3da6",
+        "modifiedAtMs": 1792587109564.4253
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-3-standard-false-atomic-true/server.backup",
+        "bytes": 22089,
+        "sha256": "74c2959e620e448215ec0ad891c7a4bfb6e967b7636cd6109493bad9f8ddea61",
+        "modifiedAtMs": 1792587109569.2573
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-3-standard-false-atomic-true/server-after.backup",
+        "bytes": 24628,
+        "sha256": "7c3535a17f0065404a5f71b8cd8bafc5a0c0e5a5e097f900afb8851356b4b0fe",
+        "modifiedAtMs": 1792587109572.528
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-3-standard-true-atomic-false/fixture.json",
+        "bytes": 58755,
+        "sha256": "4a623065a5126edd91c06a2569a70a80580abb772371bd8f05cd3dc4d54905d1",
+        "modifiedAtMs": 1792587110609.6187
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-3-standard-true-atomic-false/inventory.json",
+        "bytes": 3078,
+        "sha256": "20a2a9316d070a99a1fa6b45f130cd2557c8fe6d9345a2c08755687e1fda532e",
+        "modifiedAtMs": 1792587110592.3142
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-3-standard-true-atomic-false/inventory-after.json",
+        "bytes": 3076,
+        "sha256": "7362c40832fe260c13a8ce8fb25feec17e81953086a7203ad0a7917190ac6ee6",
+        "modifiedAtMs": 1792587110597.9019
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-3-standard-true-atomic-false/server.backup",
+        "bytes": 21209,
+        "sha256": "b2b6c6c4370875f088eecc24b42d1813fbe378c771a53e8b18e54df5d9e44f1c",
+        "modifiedAtMs": 1792587110601.8677
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-3-standard-true-atomic-false/server-after.backup",
+        "bytes": 23747,
+        "sha256": "33eea75f37720b91e0fa23eddea8ec35127dbd4ff0ceea7954277d658379d5ea",
+        "modifiedAtMs": 1792587110605.8542
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-3-standard-true-atomic-true/fixture.json",
+        "bytes": 59339,
+        "sha256": "2bf1742e49558187361fc1de1b3aaf050aa42d22502b0f88e2b782880b2e368d",
+        "modifiedAtMs": 1792587152068.2798
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-3-standard-true-atomic-true/inventory.json",
+        "bytes": 3511,
+        "sha256": "2671a1a11c9037f69f751839be52c33e2c7f01c73919e2aa8e43da6fb43f6da3",
+        "modifiedAtMs": 1792587152049.7622
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-3-standard-true-atomic-true/inventory-after.json",
+        "bytes": 3505,
+        "sha256": "a8e69aa88e7867d7a0aa037369dba138f1b3a4688e2737d280db2c239f070939",
+        "modifiedAtMs": 1792587152054.4146
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-3-standard-true-atomic-true/server.backup",
+        "bytes": 2964541,
+        "sha256": "06e9e6926ddd377c510a4ecc0989b99e46af4ee324bfc06a98da06fdc5a044b1",
+        "modifiedAtMs": 1792587152058.912
+      },
+      {
+        "path": "target/native-server-generation-inventory-IbXKKq/language-3-standard-true-atomic-true/server-after.backup",
+        "bytes": 2968111,
+        "sha256": "0b1a0945a8b5fd0c24d48b346c567eaea865dc76adbcc8d354f3b5bcea58e4d5",
+        "modifiedAtMs": 1792587152063.76
+      }
+    ]
+  },
+  "acceptance": {
+    "format": "breditor/server-generation-inventory-sdk-probe",
+    "passed": true,
+    "nativeRooms": 10,
+    "longNativeCuts": 1,
+    "physicalOnlyCuts": 10,
+    "originalParticipants": 20,
+    "generationParticipants": 60,
+    "sourceFamilies": 30,
+    "coldParticipants": 60,
+    "restoredParticipants": 80,
+    "restoredComponents": 240,
+    "coveredStreams": 120,
+    "localUnboundReviews": 20,
+    "pureChecks": 30,
+    "sourceComparisons": 240,
+    "duplicateRefusals": 30,
+    "mixedCohorts": 60,
+    "mixedDuplicateRefusals": 120,
+    "mixedRetainedComparisons": 120,
+    "crossFamilyWriterOwnershipRefusals": 60,
+    "crossFamilyReviewOwnershipRefusals": 1,
+    "spoofRefusals": 60,
+    "revokedContributors": 3,
+    "observerZeroPrefixes": 60,
+    "futureDocumentCheckpoints": 54,
+    "futureReviewCheckpoints": 54,
+    "networkCalls": 0,
+    "scope": "Actual separately admitted physical native files and complete source pins, genuine original and local/relay/retained generation client histories in all ten compilers/transports, cold recovery and future exact document/review Undo/Redo. Synthetic IndexedDB/lock/raster fixtures, not browser durability, whole-room provider/client closure or authenticated activation."
+  },
+  "installed": {
+    "consumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-server-generation-inventory-installed-EJhEAW/consumer",
+    "workspaceLinks": false,
+    "strictPublicTypes": true,
+    "registryArtifacts": 45,
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-server-generation-inventory-installed-EJhEAW/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-server-generation-inventory-installed-EJhEAW/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "e6b524a4d3b9cab485e6df2ff62af133a3772291ec463fd3bba73934c13ac40f"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-server-generation-inventory-installed-EJhEAW/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "646f8ce0ee865d92b47c12b3886facdcb2b73c0f8b4dccece3061940ec0109ed"
+      }
+    ],
+    "sharedWasmSha256": "e8afdb083c9e849505c6d1ca85b721485bd673fed71ce1ea1690b20f9c500f9a",
+    "noWorkspaceReactOrSyntheticStorageInProduction": true
+  },
+  "boundedInputRepair": {
+    "before": {
+      "path": "target/server-generation-inventory-budget-before-Fbhh6r/result.json",
+      "bytes": 1314,
+      "sha256": "e8005c33685a8685a86609c50fa8b283a07741986f39455e7ebb2d39837bd20d",
+      "modifiedAtMs": 1792586850593.1292
+    },
+    "positiveFailure": true,
+    "wholeTestFileUnchanged": true
+  },
+  "carriedNative": {
+    "qualification": {
+      "path": "docs/qualification/2026-10-21-prepared-generation-host.json",
+      "bytes": 5685,
+      "sha256": "081b75cd42c973fc471df9c3dc6f808832b259fed42ca0cb88bcf876cb3cbec9",
+      "modifiedAtMs": 1792585869087.3467
+    },
+    "cleanCheckpoint": {
+      "path": "target/prepared-generation-host-qualification-smUnQo/commit.json",
+      "bytes": 943,
+      "sha256": "4b5fe48f641bf880b6b76a06d3c7881287479077883cc86fe7909be3b633b914",
+      "modifiedAtMs": 1792585908352.076
+    },
+    "unchangedNativeImplementationAndTests": true,
+    "relayManifestOnlyAddsFixture": true,
+    "unchangedNonRelayNativeInputs": 2505,
+    "normalRuntimeFiles": 12,
+    "nativeCoreSuitesRerun": false,
+    "normalWasmProducersRerun": false,
+    "earlierRelayRust": 325,
+    "earlierNoNetworkingRust": 203
+  },
+  "remaining": [
+    "Matching physical-server catalog storage and operational parent must retain complete original/current selections.",
+    "Bounded complete joined-server archive hashing/capture must not silently allocate another full history buffer.",
+    "Independent client comment-generation integration, all journals/outboxes and historic-copy disposition remain required.",
+    "Provider mappings and actual asset bytes, fresh authenticated whole-room activation and all thirteen V1 gates remain open."
+  ],
+  "v1Ready": false,
+  "openV1Gates": 13,
+  "push": false,
+  "publication": false,
+  "deployment": false
+}
