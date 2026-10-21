@@ -43,6 +43,23 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The distinct [physical client stage](PHYSICAL_ROOM_PARTICIPANT_STAGING.md) now
+co-owns the immutable catalog and a separate intent database. It restores mixed
+original/generation clients privately and read-only, pins actual storage context,
+and requires native reopening rather than completion markers on restart. Thirty
+mixed cohorts retain all 180 files and unresolved historical copies while
+preserving future document/review history. Closed catalogs now release their
+private Blob/client maps after a reproduced retention failure. Matching native
+host/operational-parent integration, complete source closure and activation
+remain work; no V1 gate is closed by these implementation checks.
+
+Its [functional qualification](qualification/2026-10-21-physical-room-participant-staging.json)
+passes 29 selected architectural stages and 1,482 script tests, with three
+existing opt-in skips. Fresh offline installed packages repeat all native staging
+assertions and 41 storage/intent laws. The native source/runtime bytes are
+unchanged from the preceding committed qualification, so that prior native suite
+evidence is explicitly carried rather than reported as newly executed.
+
 Ordinary closed [live history staging](LIVE_HISTORY_STAGING.md) now forks the
 actual native document and Undo/Redo owner without replaying the Breditor
 semantic journal. Every retained causal input is re-admitted before full
@@ -275,8 +292,8 @@ and 1,440 native comment comparisons, both recovery directions and future histor
 
 Next, in architectural risk order:
 
-1. Carry the now-retained complete original/current physical selections through
-   native client staging and a matching operational parent around the prepared native host. Preserve
+1. Carry the now-staged complete original/current physical selections and actual
+   read-only client owners into a matching operational parent around the prepared native host. Preserve
    source ancestry, real owners and refusal of unrequested repair or cleanup.
    Keep original formats closed. Address
    retained Undo limits and remaining native staging/replay costs as separate lifetime

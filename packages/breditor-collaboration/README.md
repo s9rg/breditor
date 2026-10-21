@@ -123,6 +123,22 @@ unreconciled histories pending; they perform no I/O or activation. See the
 [contract](../../docs/PHYSICAL_ROOM_RECOVERY_CATALOG.md) for exact bounds, immutable
 storage, cleanup, continued-origin limitations and remaining operational work.
 
+## Physical room client staging
+
+`SharedPhysicalRoomParticipantStage.begin` and `resume` take a genuine physical
+catalog, an independent selection and fresh native/host policy. Success transfers
+the actual catalog database, archive and lease into a distinct staging owner.
+`stage` restores explicit original/generation clients privately and read-only;
+`check` re-admits actual source bytes and native stores. Cold progress markers do
+not stand in for reopening those owners. Historical copies remain unresolved,
+and no editable parts, connection or activation is exposed.
+
+Its separate insert-only intent, exact retries, synchronous ownership transfer
+and retryable cleanup leave immutable files and older catalog protocols intact.
+Closed owners release private data maps without deleting durable files. See the
+[staging contract](../../docs/PHYSICAL_ROOM_PARTICIPANT_STAGING.md) for policy
+snapshots, limits, native history tests and remaining operational integration.
+
 ## Retained image references
 
 `core.supportsRetainedAssetReferences()` requires the complete optional native

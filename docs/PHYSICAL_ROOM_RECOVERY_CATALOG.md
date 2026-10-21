@@ -35,6 +35,8 @@ collection or deletion is inferred.
 `files()` returns a detached map of immutable Blobs, not the internal map.
 Detached metadata stays inspectable after `dispose`; disposed readers cannot
 return files or check sources. Disposal does not close borrowed clients.
+It also releases the private file/client maps retained by closed catalog/stage
+objects; cached metadata and detached caller Blob snapshots remain usable.
 
 ## Bounded server archive integrity
 
@@ -117,8 +119,11 @@ every current registered stream. Duplicate selected entries refuse. Existing
 native prefix checks and writer/review leases still reject duplicate author
 ownership; no test disables them. Local unbound reviews remain unresolved.
 
-The complete operational parent remains work: native client staging, continued
-restore lineage, current provider mappings and actual bytes, every client/outbox
+The separate [participant staging contract](PHYSICAL_ROOM_PARTICIPANT_STAGING.md)
+now consumes genuine catalog custody and keeps read-only native clients in a
+distinct intent database. The retention class itself still does not stage clients.
+The complete operational parent remains work: continued restore lineage,
+current provider mappings and actual bytes, every client/outbox
 source, explicit historic-copy disposition, fresh protected credentials and
 authenticated whole-room activation. Restoring a later server archive to a fresh
 destination establishes a new native recovery origin; retaining an older origin

@@ -155,6 +155,9 @@ export type {SharedServerLogGenerationRoomBackupIdentity,SharedServerLogGenerati
 export {MAX_SHARED_SERVER_GENERATION_ARCHIVE_BYTES,MAX_SHARED_SERVER_GENERATION_ARCHIVE_HEADER_BYTES,MAX_SHARED_SERVER_LOG_GENERATION_BACKUP_BYTES,MAX_SHARED_SERVER_RASTER_BACKUP_BYTES} from "./server_generation_archive/framing.js";
 export {SharedPhysicalRoomRecoveryCatalogArchive} from "./physical_room_catalog/archive.js";
 export {SharedPhysicalRoomRecoveryCatalog} from "./physical_room_catalog/catalog.js";
+export {SharedPhysicalRoomParticipantStage} from "./physical_room_stage/stage.js";
+export {SharedPhysicalRoomParticipantStageError,MAX_PHYSICAL_ROOM_STAGE_PARTICIPANTS,MAX_PHYSICAL_ROOM_STAGE_PLAN_BYTES} from "./physical_room_stage/policy.js";
+export type {SharedPhysicalRoomStageParticipant,SharedPhysicalRoomStageOpenOptions,SharedPhysicalRoomStageCheck,SharedPhysicalRoomStageProgress} from "./physical_room_stage/contract.js";
 export {SharedPhysicalRoomRecoveryCatalogError,MAX_PHYSICAL_ROOM_CATALOG_FILES,MAX_PHYSICAL_ROOM_CATALOG_BYTES,MAX_PHYSICAL_ROOM_CATALOG_METADATA_BYTES} from "./physical_room_catalog/policy.js";
 export type {SharedPhysicalRoomRecoveryCatalogSelection,SharedPhysicalRoomRecoveryCatalogMetadata,SharedPhysicalRoomRecoveryCatalogCaptureOptions,SharedPhysicalRoomRecoveryCatalogSource,SharedPhysicalRoomRecoveryCatalogCheck,SharedPhysicalRoomRecoveryCatalogOpenOptions,SharedPhysicalRoomRecoveryCatalogBeginOptions} from "./physical_room_catalog/contract.js";
 export {OperationalSharedGenerationParticipant} from "./generation_operation/operation.js";

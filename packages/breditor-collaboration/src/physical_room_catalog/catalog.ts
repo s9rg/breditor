@@ -7,16 +7,32 @@ import {createPhysicalCatalogDatabase,existingPhysicalCatalogDatabase,readPhysic
 import {physicalCatalogDatabase,physicalCatalogSelection,physicalCatalogFailure,physicalCatalogKnown} from "./policy.js";
 import type {SharedPhysicalRoomRecoveryCatalogOpenOptions,SharedPhysicalRoomRecoveryCatalogBeginOptions,SharedPhysicalRoomRecoveryCatalogSelection,SharedPhysicalRoomRecoveryCatalogMetadata,SharedPhysicalRoomRecoveryCatalogSource,SharedPhysicalRoomRecoveryCatalogCheck} from "./contract.js";
 const key=Object.freeze({});
+/** Internal actual file/database/lease custody. Detached selections never create this handle. */
+export interface PhysicalCatalogCustody {readonly database:string;readonly db:IDBDatabase;readonly lease:RecoveryLease;readonly archive:SharedPhysicalRoomRecoveryCatalogArchive;readonly state:PhysicalCatalogArchiveState;readonly factory:IDBFactory;readonly locks:LockManager}
+let takePhysicalCatalog:<T>(catalog:SharedPhysicalRoomRecoveryCatalog,prepare:(held:PhysicalCatalogCustody)=>(()=>Promise<{value:T;prepareCommit:()=>void;commit:()=>void}>))=>Promise<T>;
+/** Reserve before host callbacks and retain every actual file until one synchronous successor commit. */
+export function transferPhysicalRoomCatalog<T>(catalog:SharedPhysicalRoomRecoveryCatalog,prepare:(held:PhysicalCatalogCustody)=>(()=>Promise<{value:T;prepareCommit:()=>void;commit:()=>void}>)):Promise<T>{return takePhysicalCatalog(catalog,prepare);}
 export class SharedPhysicalRoomRecoveryCatalog {
- readonly #database:string;readonly #db:IDBDatabase;readonly #lease:RecoveryLease;readonly #archive:SharedPhysicalRoomRecoveryCatalogArchive;readonly #state:PhysicalCatalogArchiveState;readonly #context:ArchiveIntegrityContext;readonly #signal:AbortSignal|undefined;
- #closed=false;#closing=false;#busy=false;#running:Promise<void>|undefined;#cleanup:Promise<void>|undefined;
- private constructor(token:object,database:string,db:IDBDatabase,lease:RecoveryLease,archive:SharedPhysicalRoomRecoveryCatalogArchive,context:ArchiveIntegrityContext,signal?:AbortSignal){
-  if(token!==key)throw physicalCatalogFailure("catalog_closed");this.#database=database;this.#db=db;this.#lease=lease;this.#archive=archive;this.#state=physicalCatalogArchiveState(archive);this.#context=context;this.#signal=signal;db.onversionchange=()=>{this.#closing=true;db.close();};Object.freeze(this);
+ readonly #database:string;readonly #db:IDBDatabase;readonly #lease:RecoveryLease;readonly #archive:SharedPhysicalRoomRecoveryCatalogArchive;readonly #state:PhysicalCatalogArchiveState;readonly #context:ArchiveIntegrityContext;readonly #factory:IDBFactory;readonly #locks:LockManager;readonly #signal:AbortSignal|undefined;
+ #closed=false;#closing=false;#busy=false;#running:Promise<void>|undefined;#transferring:Promise<void>|undefined;#cleanup:Promise<void>|undefined;
+ private constructor(token:object,database:string,db:IDBDatabase,lease:RecoveryLease,archive:SharedPhysicalRoomRecoveryCatalogArchive,context:ArchiveIntegrityContext,factory:IDBFactory,locks:LockManager,signal?:AbortSignal){
+  if(token!==key)throw physicalCatalogFailure("catalog_closed");this.#database=database;this.#db=db;this.#lease=lease;this.#archive=archive;this.#state=physicalCatalogArchiveState(archive);this.#context=context;this.#factory=factory;this.#locks=locks;this.#signal=signal;db.onversionchange=()=>{this.#closing=true;db.close();};Object.freeze(this);
  }
+ static{takePhysicalCatalog=async<T>(catalog:SharedPhysicalRoomRecoveryCatalog,prepare:(held:PhysicalCatalogCustody)=>(()=>Promise<{value:T;prepareCommit:()=>void;commit:()=>void}>))=>{
+  if(!catalog||typeof catalog!=="object"||!(#state in catalog))throw physicalCatalogFailure("catalog_policy");if(catalog.#busy)throw physicalCatalogFailure("catalog_in_use");catalog.#busy=true;let done!:()=>void;catalog.#transferring=new Promise<void>(resolve=>{done=resolve;});
+  try{
+   if(catalog.#closed||catalog.#closing)throw physicalCatalogFailure("catalog_closed");
+   const proceed=prepare({database:catalog.#database,db:catalog.#db,lease:catalog.#lease,archive:catalog.#archive,state:catalog.#state,factory:catalog.#factory,locks:catalog.#locks});
+   catalog.#guard();await catalog.#verify();catalog.#guard();const result=await proceed();
+   await catalog.#verify();catalog.#guard();result.prepareCommit();
+   // No await, host callback, native destruction or file write follows this final check.
+   if(catalog.#closed||catalog.#closing||catalog.#signal?.aborted)throw physicalCatalogFailure("catalog_closed");result.commit();catalog.#closed=true;return result.value;
+  }finally{catalog.#busy=false;done();catalog.#transferring=undefined;}
+ };}
  static begin(options:SharedPhysicalRoomRecoveryCatalogBeginOptions):Promise<SharedPhysicalRoomRecoveryCatalog>{return this.#open(options,options.archive);}
  static resume(options:SharedPhysicalRoomRecoveryCatalogOpenOptions):Promise<SharedPhysicalRoomRecoveryCatalog>{return this.#open(options);}
  static async #open(supplied:SharedPhysicalRoomRecoveryCatalogOpenOptions,input?:SharedPhysicalRoomRecoveryCatalogArchive):Promise<SharedPhysicalRoomRecoveryCatalog>{
-  const options={...supplied},database=physicalCatalogDatabase(options.database),expected=physicalCatalogSelection(options.expected),context=prepareArchiveIntegrity(options);let factory:IDBFactory;try{factory=recoveryOpeningContext();}catch{throw physicalCatalogFailure("catalog_policy");}context.guard();
+  const options={...supplied},database=physicalCatalogDatabase(options.database),expected=physicalCatalogSelection(options.expected),context=prepareArchiveIntegrity(options);let factory:IDBFactory,locks:LockManager;try{factory=recoveryOpeningContext();locks=navigator.locks;}catch{throw physicalCatalogFailure("catalog_policy");}context.guard();
   let lease:RecoveryLease|undefined,db:IDBDatabase|undefined,archive:SharedPhysicalRoomRecoveryCatalogArchive|undefined,opening:RecoveryOpeningCustody|undefined;
   try{
    const source=input?physicalCatalogArchiveState(input):undefined;if(source&&JSON.stringify(source.selection)!==JSON.stringify(expected))throw physicalCatalogFailure("catalog_integrity");
@@ -29,7 +45,7 @@ export class SharedPhysicalRoomRecoveryCatalog {
    // Always read and independently re-admit actual durable bytes, including files we just wrote.
    const stored=await readPhysicalCatalogDatabase(db,context.guard,initial?.manifest);context.guard();
    archive=await SharedPhysicalRoomRecoveryCatalogArchive.read(stored.record.manifest,stored.files,expected,{wasm:context.wasm,checkAuthority:context.guard,...(options.signal?{signal:options.signal}:{})});context.guard();
-   const result=new SharedPhysicalRoomRecoveryCatalog(key,database,db,lease,archive,context,options.signal);opening.complete();return result;
+   const result=new SharedPhysicalRoomRecoveryCatalog(key,database,db,lease,archive,context,factory,locks,options.signal);opening.complete();return result;
   }catch(error){if(opening)await opening.rollback();throw physicalCatalogKnown(error,"catalog_storage");}
  }
  #guard=():void=>{if(this.#closed||this.#closing)throw physicalCatalogFailure("catalog_closed");this.#context.guard();if(this.#closed||this.#closing)throw physicalCatalogFailure("catalog_closed");physicalCatalogArchiveState(this.#archive);};
@@ -55,5 +71,5 @@ export class SharedPhysicalRoomRecoveryCatalog {
  checkSources(sources:readonly SharedPhysicalRoomRecoveryCatalogSource[]):SharedPhysicalRoomRecoveryCatalogCheck{this.#guard();const result=this.#archive.checkSources(sources);this.#guard();return result;}
  /** Close private read handles and the actual lease. Never deletes or rewrites any database or file. */
  close():Promise<void>{if(this.#closed)return Promise.resolve();if(this.#cleanup)return this.#cleanup;this.#closing=true;this.#cleanup=this.#finishClose().catch(error=>{throw physicalCatalogKnown(error,"catalog_storage");}).finally(()=>{this.#cleanup=undefined;});return this.#cleanup;}
- async #finishClose():Promise<void>{try{await this.#running;}catch{/* The verification caller keeps its original error. */}if(this.#closed)return;this.#archive.dispose();this.#db.close();await this.#lease.close();this.#closed=true;}
+ async #finishClose():Promise<void>{try{await this.#running;}catch{/* The verification caller keeps its original error. */}try{await this.#transferring;}catch{/* The transfer caller keeps its original error. */}if(this.#closed)return;this.#archive.dispose();this.#db.close();await this.#lease.close();this.#closed=true;}
 }

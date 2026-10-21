@@ -20,7 +20,14 @@ export interface PhysicalCatalogArchiveState {readonly manifest:string;readonly 
 const token=Object.freeze({}),states=new WeakMap<SharedPhysicalRoomRecoveryCatalogArchive,PhysicalCatalogArchiveState>();
 /** @internal Genuine private read handles, not a JSON readiness constructor or native owner. */
 export function physicalCatalogArchiveState(archive:SharedPhysicalRoomRecoveryCatalogArchive):PhysicalCatalogArchiveState{const state=states.get(archive);if(!state)throw physicalCatalogFailure("catalog_closed");return state;}
-function dispose(state:Pick<PhysicalCatalogArchiveState,"origin"|"current"|"inventory"|"clients">):void{state.origin.dispose();state.current.dispose();state.inventory.dispose();for(const client of state.clients.values())client.backup.dispose();}
+function dispose(state:Pick<PhysicalCatalogArchiveState,"origin"|"current"|"inventory"|"clients"|"files">):void{
+ state.origin.dispose();state.current.dispose();state.inventory.dispose();for(const client of state.clients.values())client.backup.dispose();
+ // Closed catalog/stage objects retain their cached metadata state. Release its
+ // private data maps too; deleting only the archive WeakMap entry leaves these
+ // potentially large Blob/client references reachable through the closed owner.
+ // Detached caller Blob snapshots and every durable file remain untouched.
+ Map.prototype.clear.call(state.clients);Map.prototype.clear.call(state.files);
+}
 async function admit(manifest:string,input:ReadonlyMap<string,Blob>,expect:SharedPhysicalRoomRecoveryCatalogSelection,context:ArchiveIntegrityContext,signal?:AbortSignal):Promise<PhysicalCatalogArchiveState>{
  const selected=physicalCatalogSelection(expect),metadata=parsePhysicalCatalogManifest(manifest),files=new Map<string,Blob>(),clients=new Map<string,Client>();
  const expectedFiles=new Map<string,number>([["origin-server",metadata.origin.bytes],["current-server",metadata.current.server.bytes],["inventory",metadata.current.participants.bytes],...metadata.participants.map(row=>[physicalParticipantKey(row.id),row.bytes] as [string,number])]);
