@@ -43,14 +43,37 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The reference host now has an explicit Unix
+[physical server-log generation backend](SERVER_LOG_GENERATIONS.md). Rotation
+retains every accepted file, global receipt positions and native history; manual
+and automatic cuts share a synced-intent protocol and exact cold retry. Real
+filesystem regressions cover eight interruption points, two capacity cuts beyond
+8,192 events, and a native suggestion revision split across files. Reproduced
+in-place change detection and original-reader suffix loss are repaired. The seed
+uses the separate framing family too, so copied or hard-linked roots cannot
+masquerade as original standalone rooms; existing original logs are not rewritten.
+
+This is retained rotation, not complete multi-file backup/recovery or a production
+storage claim. Original backup and joined raster-recovery APIs explicitly refuse
+the new layout. Complete archives, trusted resumable restore and matching source,
+participant, asset and provider readers are the next architectural work.
+
+The [physical storage qualification](qualification/2026-10-21-server-log-generations.json)
+passes fresh 251 relay, 142 no-networking and 1,331 script cases, plus strict
+linting in both feature configurations. The four reproduced positive failures
+pass unchanged. Both candidate profiles require the public generation laws; the
+functional plan now has 178 checks, not all run by this storage-only slice.
+Unchanged non-relay native inputs, 12 normal runtime artifacts and three freshly
+packed byte-identical archives carry the prior core/runtime qualification.
+
 The reference host now supports independent
 [native document and comment generations](SERVER_NATIVE_HISTORY_GENERATIONS.md),
 including the private suggestion-effect author's retained history. Explicit
 owner-side Enable/Seal calls stage complete native candidates, sync one durable
 boundary record, then publish. Identical retries return their original global
 receipt even after later boundaries or cold recovery. Original constructors,
-transport meanings and bounds remain unchanged; these calls do not rotate the
-physical server log or activate a recovered room.
+transport meanings and bounds remain unchanged. A native boundary is not physical
+log compaction or authority to activate a recovered room.
 
 The [server-native qualification](qualification/2026-10-21-server-native-history-generations.json)
 passes all 65 selected architecture checks on one frozen working tree: fresh
@@ -80,7 +103,7 @@ and 1,440 native comment comparisons, both recovery directions and future histor
 
 Next, in architectural risk order:
 
-1. Implement explicit server-log generations with complete multi-file recovery,
+1. Finish explicit server-log generations with complete multi-file recovery,
    stable global receipts and independently guarded physical heads. Keep original
    formats closed. Address retained Undo limits and live staging/replay costs as
    separate lifetime requirements, not by dropping history or widening old bounds.
@@ -99,8 +122,8 @@ promoted. Browser-specific polish and platform qualification remain later work.
 The private log codec now supports explicitly selected continuation framing
 without changing original record bytes or letting an original reader infer a
 new family. A continuation retains absolute sequence and preceding payload
-digest across file cuts; its per-file admission remains bounded. Current Room
-creation, opening and backup still select only the original log family.
+digest across file cuts; its per-file admission remains bounded. That framing
+checkpoint still used original-only Room creation, opening and backup.
 
 The [framing qualification](qualification/2026-10-21-log-continuation-framing.json)
 passes fresh 236 relay and 127 no-networking Rust cases, including eight new
@@ -113,10 +136,10 @@ forks, gaps, wrong families, corruption and overflow still refuse.
 This server-only slice carries the prior core/runtime evidence across 2,505
 unchanged non-relay native inputs and 12 unchanged normal runtime artifacts.
 Three freshly packed public archives are byte-identical. Core suites and Wasm
-producers are not rerun in this framing slice. A directory backend, durable
-rotation intents and heads, complete multi-file archives and matching recovery
-are still the next implementation work; transport parsing is not room activation
-or a solution to the current log lifetime limit.
+producers are not rerun in this framing slice. The separate backend above now
+implements directory ownership, durable intents and physical heads. Complete
+multi-file archives and matching recovery remain required; transport parsing
+does not qualify activation or eliminate retained lifetime bounds.
 
 ### Previous independent SDK storage checkpoint
 

@@ -15,6 +15,7 @@ mod atomic_transport_v2;
 mod backup;
 mod document_presence;
 mod layout_v3;
+mod log_generations;
 mod native_history;
 mod observers;
 mod participant_inventory;
@@ -193,6 +194,25 @@ impl Room {
         profile_seed: ProfileSeed,
         atomic_transport_v2: bool,
     ) -> Result<Self> {
+        Self::create_with_log(
+            configuration,
+            document,
+            owner,
+            profile,
+            profile_seed,
+            atomic_transport_v2,
+            |seed| Log::create(path, seed),
+        )
+    }
+    fn create_with_log(
+        configuration: &str,
+        document: &str,
+        owner: &str,
+        profile: SharedRichProfile,
+        profile_seed: ProfileSeed,
+        atomic_transport_v2: bool,
+        make_log: impl FnOnce(Event) -> Result<Log>,
+    ) -> Result<Self> {
         let replica = profile.create(document, "1".into())?;
         let seed_writer_through = replica.writer_clock("1")?.through;
         let journal = replica.checkpoint()?;
@@ -230,7 +250,7 @@ impl Room {
                 },
             }
         };
-        let log = Log::create(path, seed)?;
+        let log = make_log(seed)?;
         Ok(Self {
             atomic_transport_v2,
             profile_seed,
@@ -267,7 +287,15 @@ impl Room {
     }
 
     fn open_with_tail_policy(path: &Path, truncate_tail: bool) -> Result<(Self, Recovery)> {
-        let (log, mut records, recovery) = Log::open(path)?;
+        let (log, records, recovery) = Log::open(path)?;
+        Self::replay_loaded(log, records, recovery, truncate_tail)
+    }
+    fn replay_loaded(
+        log: Log,
+        mut records: Vec<Record>,
+        recovery: Recovery,
+        truncate_tail: bool,
+    ) -> Result<(Self, Recovery)> {
         if !truncate_tail && recovery.truncated_bytes != 0 {
             return Err(Error::Contract("operational log has an incomplete tail"));
         }

@@ -1,5 +1,5 @@
 //! Exact complete persisted bytes. No compaction, serialization rewrite or acknowledgement.
-use super::{Log, decoder};
+use super::{Log, decoder, frame};
 use crate::{Error, Result};
 use std::io::{Read, Seek, SeekFrom};
 
@@ -46,6 +46,9 @@ impl LogSnapshot {
 impl Log {
     /// A byte-identical replacement inode is not this owner's exclusive native log.
     pub(crate) fn guard_path(&self, path: &std::path::Path) -> Result<()> {
+        if self.generations.is_some() || self.family != frame::Family::Original {
+            return Err(Error::Contract("original log path guard cannot select generations"));
+        }
         let actual = std::fs::symlink_metadata(path)?;
         if !actual.is_file() {
             return Err(Error::Contract("native log path type"));
@@ -65,11 +68,17 @@ impl Log {
 
     pub fn snapshot_cut(&self) -> Result<(u64, [u8; 32])> {
         self.ready()?;
+        if self.generations.is_some() || self.family != frame::Family::Original {
+            return Err(Error::Contract("use explicit physical log generation identity"));
+        }
         Ok((self.next, self.previous))
     }
 
     pub fn snapshot(&mut self) -> Result<LogSnapshot> {
         self.ready()?;
+        if self.generations.is_some() || self.family != frame::Family::Original {
+            return Err(Error::Contract("use complete physical log generation archive"));
+        }
         let result = (|| {
             if self.file.metadata()?.len() != self.bytes {
                 return Err(Error::Contract("live log bytes changed outside authority"));

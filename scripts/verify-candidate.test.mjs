@@ -242,6 +242,16 @@ test("both profiles require owner-authenticated participant inventory and the no
   }
  }
 });
+test("both profiles require real physical log capacity, old-reader refusal and offline-history recovery with and without networking",()=>{
+ for(const profile of ["functional","full"]){
+  const plan=candidateReleasePlan({profile,environment:{BREDITOR_CARGO:"/tool path/cargo"}}),native=plan.checks.find(row=>row.id==="relay-native");
+  for(const [id,flags]of [["relay-log-generations",["--features","server"]],["relay-log-generations-no-server",["--no-default-features"]]]){
+   const check=plan.checks.find(row=>row.id===id);assert.ok(check,id);assert.equal(check.command,"/tool path/cargo");
+   assert.deepEqual(check.args,["test","--manifest-path","experiments/relay/Cargo.toml",...flags,"--locked","--offline","--release","--test","log_generations"]);
+   assert.equal(check.env.CARGO_TARGET_DIR,native.env.CARGO_TARGET_DIR);assert.ok(plan.checks.indexOf(check)>plan.checks.indexOf(native));
+  }
+ }
+});
 test("both profiles require retained-store recovery and fresh installed backup acceptance without reuse",()=>{
  for(const profile of ["functional","full"]){const p=candidateReleasePlan({profile}),check=p.checks.find(c=>c.id==="retained-store-backups"),installed=p.checks.find(c=>c.id==="installed-session-backups");assert.deepEqual(check.args,["scripts/probe-retained-store-backups.mjs","target/promoted-shared-web"]);assert.deepEqual(installed.args,["scripts/check-session-backups-installed.mjs"]);assert.ok(p.checks.indexOf(check)>p.checks.findIndex(c=>c.id==="collaboration-build"));}
 });

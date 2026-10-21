@@ -13,6 +13,7 @@ mod decoder;
 mod frame;
 #[cfg(test)]
 mod framing_tests;
+pub(crate) mod generations;
 mod snapshot;
 pub(crate) use snapshot::LogSnapshot;
 
@@ -162,10 +163,12 @@ pub(crate) struct Record {
 }
 pub(crate) struct Log {
     file: File,
+    family: frame::Family,
     next: u64,
     previous: [u8; 32],
     bytes: u64,
     poisoned: bool,
+    generations: Option<generations::Generations>,
     #[cfg(test)]
     read_only_after_append: Option<std::path::PathBuf>,
 }
@@ -187,14 +190,19 @@ fn options() -> OpenOptions {
 }
 impl Log {
     pub fn create(path: &Path, event: Event) -> Result<Self> {
+        Self::create_in_family(path, event, frame::Family::Original)
+    }
+    fn create_in_family(path: &Path, event: Event, family: frame::Family) -> Result<Self> {
         let file = options().create_new(true).open(path)?;
         lock(&file)?;
         let mut log = Self {
             file,
+            family,
             next: 0,
             previous: [0; 32],
             bytes: 0,
             poisoned: false,
+            generations: None,
             #[cfg(test)]
             read_only_after_append: None,
         };
@@ -215,10 +223,12 @@ impl Log {
         Ok((
             Self {
                 file,
+                family: frame::Family::Original,
                 next: u64::try_from(records.len()).map_err(|_| Error::Contract("log sequence"))?,
                 previous,
                 bytes,
                 poisoned: false,
+                generations: None,
                 #[cfg(test)]
                 read_only_after_append: None,
             },
@@ -227,14 +237,27 @@ impl Log {
         ))
     }
     pub fn finish_recovery(&mut self, recovery: Recovery) -> Result<()> {
+        // Semantic replay precedes physical resume, and forged controls precede all tail repair.
+        self.recover_generation_rotation()?;
         if recovery.truncated_bytes > 0 {
             self.file.set_len(self.bytes)?;
             self.file.sync_all()?;
         }
+        if let Some(state) = &mut self.generations {
+            state.opening_length = None;
+            state.refresh_active(&self.file)?;
+        }
+        self.file.seek(SeekFrom::Start(self.bytes))?;
         Ok(())
     }
     pub fn ready(&self) -> Result<()> {
-        if self.poisoned { Err(Error::NeedsRecovery) } else { Ok(()) }
+        if self.poisoned {
+            return Err(Error::NeedsRecovery);
+        }
+        if let Some(state) = &self.generations {
+            state.guard(&self.file, self.bytes)?;
+        }
+        Ok(())
     }
     pub fn invalidate(&mut self) {
         self.poisoned = true;
@@ -251,11 +274,27 @@ impl Log {
     }
     pub fn append(&mut self, event: Event) -> Result<u64> {
         self.ready()?;
-        if self.next >= MAX_RECORDS {
+        if self.generations.is_none() && self.next >= MAX_RECORDS {
             return Err(Error::Contract("log record budget"));
         }
         let sequence = self.next;
-        let encoded = frame::encode(event, frame::Family::Original, sequence, self.previous)?;
+        let encoded = frame::encode(event, self.family, sequence, self.previous)?;
+        if let Some(state) = &self.generations {
+            if self.next >= MAX_RECORDS * generations::MAX_PHYSICAL_GENERATIONS as u64
+                || state
+                    .closed_bytes()
+                    .checked_add(self.bytes)
+                    .and_then(|bytes| bytes.checked_add(encoded.bytes))
+                    .is_none_or(|bytes| bytes > generations::MAX_PHYSICAL_LOG_BYTES)
+            {
+                return Err(Error::Contract("physical log retained lifetime budget"));
+            }
+            if self.next - state.active_first() >= MAX_RECORDS
+                || self.bytes + encoded.bytes > MAX_LOG
+            {
+                self.auto_rotate_generations()?;
+            }
+        }
         if self.bytes + encoded.bytes > MAX_LOG {
             return Err(Error::Contract("log byte budget"));
         }
@@ -265,10 +304,14 @@ impl Log {
         self.file.write_all(&encoded.header)?;
         self.file.write_all(&encoded.payload)?;
         self.file.sync_all()?;
-        self.poisoned = false;
         self.next += 1;
         self.previous = encoded.digest;
         self.bytes += encoded.bytes;
+        if let Some(state) = &mut self.generations {
+            state.refresh_active(&self.file)?;
+            state.guard(&self.file, self.bytes)?;
+        }
+        self.poisoned = false;
         #[cfg(test)]
         if let Some(path) = self.read_only_after_append.take() {
             self.file = File::open(path)?;

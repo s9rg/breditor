@@ -52,6 +52,8 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   relayCargo("relay-assets-no-server",["test","--locked","--offline","--release","--lib","--test","asset_backups","--test","asset_store_paths"]),
   relayCargo("relay-server-backups-no-server",["test","--locked","--offline","--release","--lib","--test","server_room_backups"]),
   relayCargo("relay-inventory-no-server",["test","--locked","--offline","--release","--lib","--test","participant_inventory"]),
+  relayCargo("relay-log-generations",["test","--features","server","--locked","--offline","--release","--test","log_generations"]),
+  relayCargo("relay-log-generations-no-server",["test","--no-default-features","--locked","--offline","--release","--test","log_generations"]),
   stage("relay-docs",cargo,["doc","--manifest-path","experiments/relay/Cargo.toml","--features","server","--no-deps","--locked","--offline","--release"],{CARGO_TARGET_DIR:relay,RUSTDOCFLAGS:"-D warnings"}),
   script("independent-native-consumer","check-collaboration-native-consumer.mjs",[],[{path:"target/collaboration-native-consumer.json",fresh:true}]),
   stage("default-typescript-build",npm,["run","build"]),

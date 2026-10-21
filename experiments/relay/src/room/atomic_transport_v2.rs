@@ -28,7 +28,7 @@ pub enum AtomicTransportProfile {
     },
 }
 impl AtomicTransportProfile {
-    fn compile(self, configuration: &str) -> Result<SharedRichProfile> {
+    pub(super) fn compile(self, configuration: &str) -> Result<SharedRichProfile> {
         Ok(match self {
             Self::Original => SharedRichProfile::from_configuration_json(configuration)?,
             Self::StructuralV2 { standard_inline_v1: false } => {

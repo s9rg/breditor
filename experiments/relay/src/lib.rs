@@ -15,6 +15,9 @@ mod room;
 pub mod server;
 
 pub use access::Role;
+pub use log::generations::{
+    ServerLogGenerationDescriptor, ServerLogGenerationOptions, ServerLogGenerationReceipt,
+};
 pub use presence::PresencePeer;
 pub use protocol::{Admission, DurableReceipt, Lease, Receipt, Recovery, Registration};
 pub use room::AtomicTransportProfile;

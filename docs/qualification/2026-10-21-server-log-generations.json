@@ -1,0 +1,77 @@
+{
+  "format": "breditor/server-log-generations-qualification",
+  "date": "2026-10-21",
+  "passed": true,
+  "v1Ready": false,
+  "openV1Gates": 13,
+  "publicationApproved": false,
+  "source": {
+    "commit": "ea2d62d25c9af34123c32d2ef2fc359611685c7f",
+    "dirty": true,
+    "sha256": "ae1e3988437848301c90e147dcfef4d39df4d2f98fd40f874015b0bad6b30c1c",
+    "files": 5056,
+    "bytes": 42847494
+  },
+  "nonDocumentation": {
+    "files": 4521,
+    "sha256": "f46ac8199e1bd1765e32736005dfdea527f6cd30b85390001f70e6fd9d1cf49a"
+  },
+  "report": "target/physical-generations-qualification-7Ott0x/result.json",
+  "tests": {
+    "relayRust": 251,
+    "noNetworkingRust": 142,
+    "candidateContracts": 66,
+    "scriptContracts": 1331,
+    "existingOptInSkipped": 3,
+    "strictServerLint": true,
+    "strictNoNetworkingLint": true,
+    "strictRustdoc": true,
+    "newNativeLaws": 15,
+    "nativeProfileTransportChoices": 10,
+    "durableRotationPrefixes": 8,
+    "automaticCapacityEventsAtSelectedCut": 8204,
+    "functionalPlanChecks": 178,
+    "wholePlanRun": false
+  },
+  "repairs": {
+    "positiveBeforeFailures": 4,
+    "positiveAssertionsUnchanged": true,
+    "before": [
+      {"path":"target/generation-in-place-before-UlVz8e/result.json","sha256":"4cbcff89bb05a4f66042d30af6e746fa8a8b59169f812578f93a7d67b0166391"},
+      {"path":"target/generation-original-member-before-QZwcVS/result.json","sha256":"b99390437ce9cb3bf5ebc0f8b0affa0f798faf83aae9c92e329d7946f8654f1c"},
+      {"path":"target/generation-copied-root-before-5xq31b/result.json","sha256":"59c5c6b8bd95be533b6f63825f01a9c96c11d847542171267aab52a0ca2ab6bb"}
+    ],
+    "liveInPlaceChangeFencesUntilColdRecovery": true,
+    "allNewFilesIncludingSeedUseContinuationFamily": true,
+    "copiedAndHardlinkedRootsRefuseOriginalReaders": true,
+    "originalReadersHaveNoNamespaceSniffing": true,
+    "existingOriginalFilesAreNotRewritten": true,
+    "earlierPathOnlyRunIsNotFinalQualification": "target/physical-generations-qualification-diL12f"
+  },
+  "verified": [
+    "Exact global positions, receipts, old offline edits and future native Undo/Redo across two manual and two automatic physical cuts.",
+    "Real filesystem interruption prefixes recover without publishing partial native state; invalid native history or forged intent refuses before cleanup or torn-tail trim.",
+    "An unrelated occupied continuation, even empty, is not adopted or overwritten.",
+    "Revision Prepare/Commit remain globally adjacent across a full-file boundary, with exact cold retry and later exactly-once acceptance.",
+    "Permissions, lifetime IDs, ambiguous paths and unselected directory contents refuse without moving the selected cut or removing unrelated work."
+  ],
+  "carriedCore": {
+    "baseline": "target/v1-candidate-runs/run-M8n7a3/result.json",
+    "unchangedNonRelayNativeInputs": 2505,
+    "workspaceRustPreviouslyQualified": 2643,
+    "sharedRustPreviouslyQualified": 661,
+    "researchReviewPreviouslyQualified": 3,
+    "unchangedNormalRuntimeFiles": 12,
+    "normalSharedWasmSha256": "e8afdb083c9e849505c6d1ca85b721485bd673fed71ce1ea1690b20f9c500f9a",
+    "nativeCoreSuitesRerun": false,
+    "normalProducersRerun": false,
+    "freshPublicArchivesByteIdentical": 3
+  },
+  "remaining": [
+    "Complete multi-file archive and independently trusted, insert-only resumable restore are not implemented by this checkpoint.",
+    "Matching source, participant, asset/provider and operational readers remain required; original-only readers refuse this layout.",
+    "The retained layout is bounded at 64 WAL files and 512 MiB; it does not prune history or raise native Undo-item limits.",
+    "Local Unix custody and controlled sync/publication prefixes do not qualify physical power loss, cross-host fencing, memory/performance envelopes or deployment activation.",
+    "All V1 and full feature-parity gates remain open. No version, push, tag, package publication or deployment is promoted."
+  ]
+}
