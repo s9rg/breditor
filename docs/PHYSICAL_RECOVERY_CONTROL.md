@@ -26,6 +26,9 @@ and in-flight results without prematurely releasing a running native worker's
 actual file ownership. After all actual workers and owners finish, cold native
 recovery still uses B, not A relabeled as the local origin.
 
+`close()` revokes checks; the guard still owns its native/provider handles until
+it is dropped. Dropping the guard releases otherwise idle ownership immediately.
+
 ## Closed selection and bounded requests
 
 `breditor/physical-room-recovery-control` version one pins a fresh nonsecret
@@ -38,6 +41,13 @@ admits at most two authenticated request handlers without a waiting queue.
 Request and complete response bodies are each bounded to 64 KiB. Deployment must
 also bound connections, body duration and host/provider resources; these handler
 limits are not public-service denial-of-service certification.
+
+While an authenticated body is incomplete, its handler retains only the
+independent request permit, not native/provider ownership. Dropping the controller
+can release an otherwise idle document without waiting for those sockets. After
+complete body admission the same weak controller is reacquired and checked;
+stale requests cannot attach to a replacement controller. Real running native
+workers continue to retain custody until their work ends.
 
 Each check repeats genuine native continuity and actual provider/raster
 verification before and after response serialization. Physical-only rotation,
@@ -119,3 +129,15 @@ passes 28 selected stages, both complete relay suites and 1,566 script tests,
 with three existing opt-in skips. Source and installed probes repeat the same
 assertions; public archives, native inputs and the unchanged shared runtime are
 pinned in that evidence. This is not the full 210-check functional plan.
+
+The [body custody repair](qualification/2026-10-21-physical-control-body-custody.json)
+then reproduces an idle-lock defect with two actual authenticated incomplete HTTP
+bodies. The unchanged test fails on the prior committed production and passes
+after moving native ownership past body admission. Actual cold B reopening,
+offline work and future peer-preserving history are required in both runs; a
+setup failure cannot count as the reproduced defect. A separate unchanged paused
+native-worker law still requires its lock to remain held until work finishes.
+All 28 follow-up stages pass, with 368 server-enabled, 267 no-networking and
+1,566 script checks plus three existing opt-in skips. All three public package
+archives and six shared runtime files remain byte-identical. This does not add
+connection deadlines, certify public hosting or close a V1 gate.

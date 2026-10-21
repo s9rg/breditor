@@ -126,8 +126,15 @@ async fn check(Extract(weak): Extract<Weak<State>>, request: Request) -> Respons
     let Ok(_permit) = state.requests.clone().try_acquire_owned() else {
         return http::cors(StatusCode::SERVICE_UNAVAILABLE.into_response(), &origin);
     };
+    // An authenticated socket owns only its independent request permit while waiting for
+    // bytes, not native/provider custody. Actual native workers retain State only after
+    // complete admission below. Dropping the controller can therefore release an idle host.
+    drop(state);
     let Ok(body) = to_bytes(body, REQUEST_BYTES).await else {
         return http::cors(StatusCode::PAYLOAD_TOO_LARGE.into_response(), &origin);
+    };
+    let Some(state) = weak.upgrade().filter(|state| state.local().is_ok()) else {
+        return http::cors(StatusCode::SERVICE_UNAVAILABLE.into_response(), &origin);
     };
     let result = read(state, body).await;
     http::cors(

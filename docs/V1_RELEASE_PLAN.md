@@ -74,6 +74,17 @@ the collaboration SDK package changes, while browser/rich-content archives do no
 This is an explicit selection from the 210-check functional plan, not full-plan
 qualification or closure of any of the thirteen V1 release gates.
 
+A follow-up [native body custody repair](qualification/2026-10-21-physical-control-body-custody.json)
+fixes a reproduced lock leak: an authenticated incomplete HTTP body held actual
+native ownership after the controller was dropped. Waiting bodies now retain
+only their independent quota permit; native ownership is reacquired from the
+same live controller after complete admission. Running native workers still
+retain their actual leases until completion. The same failing/passing test and
+exact old production inputs are pinned. All 28 selected stages pass again,
+including 368 server-enabled, 267 no-networking and 1,566 script checks with three
+existing skips. All three public package archives and the shared runtime remain
+unchanged; durable coordination and all thirteen V1 gates remain open.
+
 The [physical server ancestry contract](PHYSICAL_SERVER_RECOVERY_ANCESTRY.md)
 now wraps genuine prepared native ownership without rewriting the actual local
 restore origin. Complete archive ancestry is verified separately from each
