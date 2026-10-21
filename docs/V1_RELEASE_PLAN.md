@@ -43,13 +43,26 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+[Capture-bound native histories](CAPTURED_NATIVE_HISTORIES.md) distinguish both
+native lane families and absent versus unselected comments. Inventory and
+operational coverage consume actual lifetime-checked reads without widening old
+archive codecs. Private live change identities avoid rebuilding comment views
+on each guard check. Independent local captures expose both lanes internally;
+independent relay/outboxes and whole-room adoption remain separate work. The
+functional plan now has 234 checks. The
+[captured-history qualification](qualification/2026-10-21-captured-native-histories.json)
+passes 34 selected checks and 1,719 script tests, with three existing skips.
+Source and installed packages each repeat 300 native cases, 300 cold pairs,
+900 future history comparisons and 47 focused laws. Full selected-source
+validation remains mandatory; native-only reads cannot certify retained outboxes.
+
 [Owned core lifetime](OWNED_CORE_LIFETIME.md) now separates a failed final save
 from explicit resource abandonment after prior native disposal. The actual
 leases release only after existing storage work settles; committed histories
 stay intact for native cold replay. Last observed revision clocks are metadata,
 not a replacement native checkpoint or live grant. Canonical terminal operations
 cannot be redirected through a public core getter or method override. The
-functional plan now has 229 checks. The
+functional plan at that lifetime checkpoint had 229 checks. The
 [lifetime qualification](qualification/2026-10-21-owned-core-lifetime.json)
 records the reproduced old-archive failure, 29 passing selected checks and 1,670
 script passes with three existing skips. Independent transport/outboxes, fresh

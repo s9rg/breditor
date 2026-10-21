@@ -9,6 +9,7 @@ import {generationIdentity,generationFields,freezeGeneration,SharedGenerationSou
 import {checkGenerationRecords} from "./validate_records.js";
 import {generationNativeRead} from "./native_read.js";
 import {sourceCoreMethods as nativeCore} from '../source_native_read.js';
+import {registerCapturedNativeHistory,releaseCapturedNativeHistory} from '../native_history_read/registry.js';
 import type {SharedCapturedRecoveryRead} from "../asset_references_capture.js";
 import type {SharedGenerationSourceIdentity,SharedGenerationSourceRecord,SharedGenerationSourceSelection,GenerationSourcePort} from "./contract.js";
 export interface SharedGenerationSourceMetadata {
@@ -19,13 +20,14 @@ export interface SharedGenerationSourceMetadata {
 }
 const key=Object.freeze({}),states=new WeakMap<SharedGenerationSourceCapture,{port:GenerationSourcePort;records:readonly SharedGenerationSourceRecord[];check:()=>void;native:SharedCapturedRecoveryRead}>();
 const closed=()=>new SharedGenerationSourceError("generation_source_closed","The source capture is closed or was not created by this SDK");
+function checkGenerationSource(source:SharedGenerationSourceCapture):void{const state=states.get(source);if(!state)throw closed();state.check();if(states.get(source)!==state)throw closed();}
 export class SharedGenerationSourceCapture {
  readonly #metadata:SharedGenerationSourceMetadata;
  private constructor(token:object,metadata:SharedGenerationSourceMetadata,state:{port:GenerationSourcePort;records:readonly SharedGenerationSourceRecord[];check:()=>void;native:SharedCapturedRecoveryRead}){if(token!==key)throw closed();this.#metadata=metadata;states.set(this,state);Object.freeze(this);}
  metadata():SharedGenerationSourceMetadata{return this.#metadata;}
  records():readonly SharedGenerationSourceRecord[]{const s=states.get(this);if(!s)throw closed();return s.records;}
- check():void{const s=states.get(this);if(!s)throw closed();s.check();if(states.get(this)!==s)throw closed();}
- dispose():void{states.delete(this);}
+ check():void{checkGenerationSource(this);}
+ dispose():void{states.delete(this);releaseCapturedNativeHistory(this);}
  static capture<P extends SharedSelectionPolicy>(input:SharedGenerationSourceSelection<P>):SharedGenerationSourceCapture{
   if(!generationFields(input,"kind,session"))throw sourceFailure();const port=generationSource(input.session),identity=generationIdentity(port.identity);if(input.kind!==identity.kind)throw sourceFailure();
   const stamp=port.stamp(),records=port.read(),{core}=port,admitted=checkGenerationRecords(identity,records),base=nativeCore.retainedAssetReferences.call(core),revision=base.revision;
@@ -45,7 +47,8 @@ export class SharedGenerationSourceCapture {
   nativeCore.checkRetainedAssetReferences.call(core,base,revision);const check=()=>{port.check();const now=port.stamp();if(now.length!==stamp.length||now.some((v,i)=>v!==stamp[i]))throw new SharedGenerationSourceError("generation_source_changed","The complete generation source changed");};check();
   const sorted=[...references.values()].sort((a,b)=>a.asset<b.asset?-1:a.asset>b.asset?1:a.generation<b.generation?-1:a.generation>b.generation?1:0);
   const metadata=freezeGeneration({format:"breditor/shared-generation-asset-reference-capture" as const,formatVersion:1 as const,identity,document:base.document,revision,packets,outcome:pending.length?{kind:"pending" as const,pending}:{kind:"ready" as const,references:sorted}});
-  return new SharedGenerationSourceCapture(key,metadata,{port,records,check,native});
+  const source=new SharedGenerationSourceCapture(key,metadata,{port,records,check,native}),review=records.find(record=>record.kind==='review');
+  registerCapturedNativeHistory(source,core,{document:{kind:'segmented-v1',checkpoint:records[0]!.json},review:review?{kind:'original',checkpoint:review.json}:null},()=>checkGenerationSource(source));return source;
  }
 }
 export const captureSharedGenerationSource=<P extends SharedSelectionPolicy>(input:SharedGenerationSourceSelection<P>):SharedGenerationSourceCapture=>SharedGenerationSourceCapture.capture(input);

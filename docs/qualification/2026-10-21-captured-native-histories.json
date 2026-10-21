@@ -1,0 +1,253 @@
+{
+  "format": "breditor/captured-native-history-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-21",
+  "passed": true,
+  "source": {
+    "commit": "88518cd6882814de952d1f4266d7f286b143b4c6",
+    "dirty": true,
+    "sha256": "373cbd8999ca6da074d1e0445c8a3bddc2921dd661cc4249c4982824a05a5be9",
+    "files": 5401,
+    "bytes": 44640486
+  },
+  "qualifiedScope": "Internal genuine capture-bound native history reads and existing public original/generation inventory/operational consumers. Explicit independent local lanes are readable; this does not add independent relay/physical-room adoption or approve V1/parity.",
+  "architecture": {
+    "documentFamilies": [
+      "original",
+      "segmented-v1"
+    ],
+    "reviewSelections": [
+      "absent",
+      "unselected",
+      "original",
+      "segmented-v1"
+    ],
+    "actualNativeStringsMatchedAtRegistration": true,
+    "oldCapturedRecoveryReadMeaningUnchanged": true,
+    "segmentedCommentsStillRefusedByOriginalReviewCheckpoint": true,
+    "nativeOnlyReads": "Check registration, actual core liveness, native family and private publication identities before and after each synchronous native call. They do not certify retained queues/catalogs.",
+    "completeSourceCheck": "Acquisition, check() and runtime reader admission also validate the complete selected source; recovery/inventory algorithms retain full validation at their boundaries and after async gaps.",
+    "retainedStoreChanges": "May leave the native-only checkpoint unchanged; full check still refuses the changed selected source.",
+    "privateLivePublicationIdentities": "Registered only by the actual facade constructor. Separate document/comment identities update before subscribers using existing publication/revision changes. Native disposal rejects; retirement does not confer authoring.",
+    "noFullOriginalRecordExportPerPrefixRead": true,
+    "noReviewViewMaterializationInPrivateGuard": true,
+    "borrowedReaderDisposal": "Capture disposal removes registry references; saved read closures cannot read or retain that registry's core afterward. No native/session/store/lease is disposed through the reader.",
+    "privateHelpersRootExported": false,
+    "actualNativeModuleIsTrustedHostInput": true
+  },
+  "qualification": {
+    "aggregate": {
+      "original": "/Users/s/code/breditor/target/native-history-read-regression-batches.json",
+      "path": "target/native-history-read-qualified-ifqqcV/aggregate.json",
+      "bytes": 5841,
+      "sha256": "6be1dcd8da287eef256531f864ce06844889de6e3edf2cb316e532170c6afc09",
+      "modifiedAtMs": 1792623803908.7188
+    },
+    "batches": [
+      {
+        "name": "build",
+        "status": "passed",
+        "stageCount": 1,
+        "result": {
+          "original": "/Users/s/code/breditor/target/v1-candidate-runs/run-UkHDmV/result.json",
+          "path": "target/native-history-read-qualified-ifqqcV/build-result.json",
+          "bytes": 2371,
+          "sha256": "af3ba1544ab30bd0f831732eb9cd3c5cd78d682794514ed5f249788284ff2af3",
+          "modifiedAtMs": 1792623803909.1414
+        }
+      },
+      {
+        "name": "sdk-storage",
+        "status": "passed",
+        "stageCount": 25,
+        "result": {
+          "original": "/Users/s/code/breditor/target/v1-candidate-runs/run-PqCmvp/result.json",
+          "path": "target/native-history-read-qualified-ifqqcV/sdk-storage-result.json",
+          "bytes": 39866,
+          "sha256": "271aca790299f72d1b2ad95f46a484cee7b8050f8577e57394d29161937e8365",
+          "modifiedAtMs": 1792623803910.5364
+        }
+      },
+      {
+        "name": "native-control",
+        "status": "passed",
+        "stageCount": 4,
+        "result": {
+          "original": "/Users/s/code/breditor/target/v1-candidate-runs/run-qex6kK/result.json",
+          "path": "target/native-history-read-qualified-ifqqcV/native-control-result.json",
+          "bytes": 7439,
+          "sha256": "900c9a1f10dddcefe12fdfed0a448f0d9d2c5c9f01d316474e41b03de872c85e",
+          "modifiedAtMs": 1792623803930.3528
+        }
+      },
+      {
+        "name": "native-assets",
+        "status": "passed",
+        "stageCount": 4,
+        "result": {
+          "original": "/Users/s/code/breditor/target/v1-candidate-runs/run-2e5VPw/result.json",
+          "path": "target/native-history-read-qualified-ifqqcV/native-assets-result.json",
+          "bytes": 7419,
+          "sha256": "23fcc10fe7434f56078403be02a4782b6a15156f7712384b808afdcd7446e6e8",
+          "modifiedAtMs": 1792623803933.4321
+        }
+      }
+    ],
+    "buildCompletedBeforeParallelGroups": true,
+    "sourceUnchangedAcrossAllBatches": true,
+    "selectedStages": 34,
+    "functionalPlanChecks": 234,
+    "wholePlanExecuted": false,
+    "scriptTests": {
+      "passed": 1719,
+      "failed": 0,
+      "skipped": 3
+    }
+  },
+  "sourceAndInstalled": {
+    "each": {
+      "format": "breditor/captured-native-history-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "cases": 300,
+      "selectedReviewLanes": 240,
+      "absentReviewLanes": 60,
+      "exactDocumentReads": 300,
+      "exactReviewReads": 240,
+      "transportReadPairs": 600,
+      "unchangedDurableCuts": 300,
+      "disposedCaptureRefusals": 3120,
+      "coldPairs": 300,
+      "futureHistoryPairs": 900,
+      "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+      "scope": "Internal genuine capture reads through actual normal native histories across ten persistence families. Both native wire reads, byte-exact original/segmented lanes, offline peers and future local Undo/Redo remain unchanged. No editing/owner/transport capability is exported. Synthetic storage/locks; not independent relay adoption, physical durability, authentication, activation or V1 approval."
+    },
+    "focusedLaws": 47,
+    "grammarInlineProfiles": 5,
+    "selectionRangeScopes": 3,
+    "historyMasksPerScope": 2,
+    "persistenceFamilies": 10,
+    "unchangedProbeSha256": "38dc83da34cad3fe378b61a7f4513f98248f0d1e7e8a1eb9cf6a982080009b4e",
+    "sourceUnitSha256": "af489b21e7e4b6216b015e8968350af0be6687ca453aa3748d2c75cd0d142058",
+    "installedUnitSha256": "917702d9f5e49cb7fdb9c87b315c84a2efdc7a7f04185703250daac978b0aeaf",
+    "assertionImportRewritesReversible": true,
+    "strictBarePublicTypes": true,
+    "internalDiscriminatedTypes": true,
+    "opaqueReaderCopiesRefused": true,
+    "privateImplementationLoadedExplicitlyForLaws": true,
+    "privateImplementationIsNotPublicAPI": true,
+    "workspaceLinks": false,
+    "registryArtifacts": 45,
+    "matchingInstalledPackageReports": 7,
+    "productionModuleCount": 260,
+    "noWorkspaceReactOrSyntheticStorageInProduction": true
+  },
+  "focusedScope": [
+    "Both document transport clock/group reads, exact selected native comments and original getter refusal.",
+    "Copied source/reader/metadata admission, source/native disposal and frozen borrowed interfaces.",
+    "Native document/selected-comment mutations, absent-to-present family change, unselected-comment independence and retired reads.",
+    "Nonempty document/comment generation boundaries, typing boundaries and true no-ops.",
+    "Canonical native facade methods and a replaced public paired-record reader.",
+    "1000 repeated live-guard pairs without native history or review-view materialization.",
+    "1000 original prefix/local-comment clock pairs with zero full record exports; explicit full check still validates the selected record.",
+    "Changed retained version catalog refuses complete validation without pretending native-only reads certify that catalog."
+  ],
+  "regressions": "Existing owned-core cleanup, independent participant/storage, canonical native reads, physical recovery control and provider/client asset checks all remain selected and pass. Both source and fresh installed probes preserve old native histories and future Undo/Redo.",
+  "artifacts": {
+    "retainedDirectory": "target/native-history-read-qualified-ifqqcV",
+    "immutableCopies": 58,
+    "packages": [
+      {
+        "name": "@breditor/browser",
+        "original": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-native-history-read-installed-pGqL3q/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "path": "target/native-history-read-qualified-ifqqcV/package-0.tgz",
+        "bytes": 327732,
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+        "modifiedAtMs": 1792623803937.862
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "original": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-native-history-read-installed-pGqL3q/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "path": "target/native-history-read-qualified-ifqqcV/package-1.tgz",
+        "bytes": 1914597,
+        "sha256": "e6b524a4d3b9cab485e6df2ff62af133a3772291ec463fd3bba73934c13ac40f",
+        "modifiedAtMs": 1792623803941.701
+      },
+      {
+        "name": "@breditor/collaboration",
+        "original": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-native-history-read-installed-pGqL3q/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "path": "target/native-history-read-qualified-ifqqcV/package-2.tgz",
+        "bytes": 4114154,
+        "sha256": "b8498c1be77361217a8d728ac9722e4d15211f8532b5411aacc77f6cc9767004",
+        "modifiedAtMs": 1792623803954.247
+      }
+    ],
+    "sharedRuntime": [
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.js",
+        "bytes": 197057,
+        "sha256": "eedaf4d3fbdfd9cfd115484030cc07d3be185aac00c3ccc4922f6df905de40ae",
+        "modifiedAtMs": 1792592625540.0828
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+        "bytes": 13444371,
+        "sha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+        "modifiedAtMs": 1792592625559.278
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.d.ts",
+        "bytes": 76829,
+        "sha256": "fe5579cc17725f1f63cf47ef147a6a570bdb3b6be5c522820e9ce1a61ec21e26",
+        "modifiedAtMs": 1792592625540.6763
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_dependency_inventory.json",
+        "bytes": 124122,
+        "sha256": "6714d5160bc54a23292eebb667a203c3d55358899e0e8df148b2388abf0bd688",
+        "modifiedAtMs": 1792592625565.1223
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/THIRD_PARTY_NOTICES.txt",
+        "bytes": 1380448,
+        "sha256": "4bdd58691c23f4733fd973aff84ebb1a38a670c97c64ce8e4c79c624f594f204",
+        "modifiedAtMs": 1792592625566.9912
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/RUST_COPYRIGHT-library.html",
+        "bytes": 1512520,
+        "sha256": "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6",
+        "modifiedAtMs": 1792592625569.9858
+      }
+    ]
+  },
+  "nativeCarry": {
+    "source": "docs/qualification/2026-10-21-owned-core-lifetime.json",
+    "nativeInputs": {
+      "files": 2986,
+      "sha256": "a4a716e0a6237d7c0d6122e5ab1eefc7ab02bda557cfeff9b786794c9c23d420"
+    },
+    "serverTests": 379,
+    "noServerTests": 267,
+    "rerun": false,
+    "condition": "All native source inputs and all six normal shared runtime artifacts match exactly. Cargo suites are carried, not freshly executed in this SDK read-boundary checkpoint."
+  },
+  "finalDocumentationOnlyFollowup": {
+    "qualifiedNonDocumentation": {
+      "files": 4832,
+      "sha256": "dc9af339e1e72a283bd0b1724b76a44985664b32d7573dd3d01201a0ca7fef6a"
+    },
+    "condition": "Only docs/ qualification and links follow the frozen run; code, scripts, fixtures, package inputs and runtime must remain unchanged."
+  },
+  "limitations": [
+    "Full selected-source check remains required around multi-store algorithms and async gaps; native-only reads do not certify retained queues/catalogs.",
+    "Synthetic IndexedDB/Web Locks and functional native hosts are not physical crash durability or browser/IME/screen-reader qualification.",
+    "Independent relay/retained outboxes need an explicit new atomic storage family, not old-head optional fields or shape casts.",
+    "Fresh per-client authorization, durable whole-room coordination, exact provider/client closure and fenced activation remain unfinished.",
+    "The native 1000-item Undo cap and bounded native/archive resource limits remain unchanged.",
+    "No old protocol/default/version changes, push, tag, publication or deployment."
+  ],
+  "v1Ready": false,
+  "publicationApproved": false,
+  "openV1Gates": 13
+}

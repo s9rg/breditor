@@ -12,6 +12,11 @@ source, relay and participant adapters refuse it. Separately named
 [independent source and participant readers](INDEPENDENT_PARTICIPANT_BACKUP.md)
 now preserve its actual two-lane histories and complete local asset state.
 
+The internal [capture-bound native reader](CAPTURED_NATIVE_HISTORIES.md) now
+distinguishes both selected native families without exposing writable ownership.
+That read boundary does not adopt an independent session into old relay or
+physical-room archive families.
+
 ## Select both native families explicitly
 
 `SharedIndependentHistorySessionOptions` requires `documentHistory` and

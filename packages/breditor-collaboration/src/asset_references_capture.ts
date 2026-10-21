@@ -10,6 +10,7 @@ import type {SharedSuggestionRevisions} from "./suggestion_revisions/outbox.js";
 import type {SharedPacketAssetIdentity,SharedPacketAssetReferencesRead} from "./packet_asset_references.js";
 import {SharedGenerationSourceError} from "./generation_source/identity.js";
 import {sourceCoreMethods as nativeCore,sourceNativeRecoveryRead} from './source_native_read.js';
+import {registerCapturedNativeHistory,releaseCapturedNativeHistory} from './native_history_read/registry.js';
 
 export type SharedAssetCaptureSourceKind="document"|"paired-session"|"version-catalog"|"suggestions"|"suggestion-revisions";
 export interface SharedAssetCaptureRecord {readonly kind:SharedAssetCaptureSourceKind;readonly json:string}
@@ -39,6 +40,7 @@ export const MAX_SHARED_ASSET_CAPTURE_PACKETS=1024;
 export type SharedCapturedRecoveryRead=Pick<SharedRichEditor,"descriptor"|"checkpointJson"|"writerClock"|"writerClockV2"|"writerGroups"|"writerGroupsV2"|"reviewWriterClock"|"reviewCheckpoint"|"localReviewClock">;
 const key=Object.freeze({}),proofs=new WeakMap<SharedAssetReferenceCapture,{records:readonly SharedAssetCaptureRecord[];check:()=>void;native:SharedCapturedRecoveryRead}>();
 const failed=()=>new Error("The selected asset capture source is closed, replaced or no longer current");
+function checkReferenceSource(source:SharedAssetReferenceCapture):void{const value=proofs.get(source);if(!value)throw failed();value.check();if(proofs.get(source)!==value)throw failed();}
 /** Internal canonical record readers, used after native/record admission of a retained archive. */
 export type SharedAssetRecordReader=
  |Readonly<{kind:"paired-session";read:()=>ReturnType<SharedReviewPersistentSession["exportRecovery"]>}>
@@ -56,9 +58,9 @@ export class SharedAssetReferenceCapture {
  /** Exact captured recovery JSON, not current credentials or a server/writer grant. */
  records():readonly SharedAssetCaptureRecord[]{const value=proofs.get(this);if(!value)throw failed();return value.records;}
  /** Recheck after every async byte resolution/capture step; no producer is flushed or mutated. */
- check():void{const value=proofs.get(this);if(!value)throw failed();value.check();if(proofs.get(this)!==value)throw failed();}
+ check():void{checkReferenceSource(this);}
  /** Release retained source bytes/borrowed producers; never closes a session, queue or native owner. */
- dispose():void{proofs.delete(this);}
+ dispose():void{proofs.delete(this);releaseCapturedNativeHistory(this);}
  static{captureRecorded=(core,readers,guard)=>SharedAssetReferenceCapture.#capture(core,readers,guard);}
  static capture<P extends SharedSelectionPolicy>(input:SharedAssetReferenceCaptureOptions<P>):SharedAssetReferenceCapture {
   const {core,session,versions,suggestions,revisions}=input;
@@ -77,7 +79,7 @@ export class SharedAssetReferenceCapture {
   if(selected.includes("suggestion-revisions")&&!selected.includes("suggestions"))throw failed();
   if(!nativeCore.supportsRetainedAssetReferences.call(core)||!nativeCore.supportsPacketAssetReferences.call(core))throw Error("Use complete matching native owner and packet dependency reads");
   const base=nativeCore.retainedAssetReferences.call(core),revision=base.revision,records:SharedAssetCaptureRecord[]=[],checks:(()=>void)[]=[],sources:{kind:SharedAssetCaptureSourceKind;utf8Bytes:number}[]=[];
-  let sourceBytes=0,packetCount=0;
+  let sourceBytes=0,packetCount=0,selectedReview:string|undefined;
   const record=<T>(kind:SharedAssetCaptureSourceKind,read:()=>T):T=>{
    const value=read(),json=typeof value==="string"?value:JSON.stringify(value),bytes=new TextEncoder().encode(json).byteLength;
    sourceBytes+=bytes;if(sourceBytes>MAX_SHARED_ASSET_CAPTURE_SOURCE_BYTES)throw Error("Asset capture source byte budget exceeded");
@@ -94,7 +96,7 @@ export class SharedAssetReferenceCapture {
   };
   const snapshot=(packet:string)=>consume(`version:${packet}`,()=>nativeCore.versionAssetReferences.call(core,packet,revision));
   for(const reader of readers)switch(reader.kind){
-   case"paired-session":{const value=record(reader.kind,reader.read);for(const packet of value.versions)snapshot(packet);break;}
+   case"paired-session":{const value=record(reader.kind,reader.read);selectedReview=value.reviewCheckpointJson;for(const packet of value.versions)snapshot(packet);break;}
    case"version-catalog":{const value=record(reader.kind,reader.read),cached=new Set<string>();for(const row of value.packets)cached.add(snapshot(row.packet).id);for(const entry of value.catalog?.entries??[])if(!cached.has(entry.version.id))pending.push(Object.freeze({kind:"uncached_version",id:entry.version.id}));break;}
    case"suggestions":{const value=record(reader.kind,reader.read);for(const row of value.retained)consume(`suggestion:${row.packet}`,()=>nativeCore.suggestionAssetReferences.call(core,row.packet,revision));break;}
    case"suggestion-revisions":{const value=record(reader.kind,reader.read);for(const row of value.retained)consume(`revision:${JSON.stringify([row.previousPacket,row.packet])}`,()=>nativeCore.suggestionRevisionAssetReferences.call(core,row.previousPacket,row.packet,revision));break;}
@@ -105,7 +107,8 @@ export class SharedAssetReferenceCapture {
   const metadata:SharedAssetReferenceCaptureMetadata=Object.freeze({format:"breditor/shared-asset-reference-capture",formatVersion:1,document:base.document,revision,scope:"native-and-selected-retained-packets",sources:Object.freeze(sources),packets:Object.freeze(packets),outcome});
   seen.clear();pairs.clear();
   const native=sourceNativeRecoveryRead(core);
-  return new SharedAssetReferenceCapture(key,metadata,Object.freeze(records),check,native);
+  const source=new SharedAssetReferenceCapture(key,metadata,Object.freeze(records),check,native);
+  registerCapturedNativeHistory(source,core,{document:{kind:'original',checkpoint:records[0]!.json},review:selectedReview===undefined?null:{kind:'original',checkpoint:selectedReview}},()=>checkReferenceSource(source));return source;
  }
 }
 /** Explicit source list; omitted stores, server state, SDK remote queues and extensions are excluded. */

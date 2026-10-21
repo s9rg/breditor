@@ -6,6 +6,7 @@ import type {SharedPacketAssetIdentity} from '../packet_asset_references.js';
 import type {SharedAssetCapturePending} from '../asset_references_capture.js';
 import {canonicalIndependentHistoryIdentity} from '../independent_history/cut.js';
 import {sourceCoreMethods as native} from '../source_native_read.js';
+import {registerCapturedNativeHistory,releaseCapturedNativeHistory} from '../native_history_read/registry.js';
 import {freezeGeneration,generationFields} from '../generation_source/identity.js';
 import {independentSource} from './admission.js';
 import {independentFailure,independentRecords,independentRecovery} from './records.js';
@@ -17,13 +18,14 @@ export interface SharedIndependentSourceMetadata {
  readonly outcome:Readonly<{kind:'ready';references:readonly RichRetainedAssetReference[]}>|Readonly<{kind:'pending';pending:readonly SharedAssetCapturePending[]}>;
 }
 const key=Object.freeze({}),states=new WeakMap<SharedIndependentSourceCapture,{records:readonly SharedIndependentSourceRecord[];check:()=>void}>();
+function checkIndependentSource(source:SharedIndependentSourceCapture):void{const state=states.get(source);if(!state)throw independentFailure('independent_source_closed');state.check();if(states.get(source)!==state)throw independentFailure('independent_source_closed');}
 export class SharedIndependentSourceCapture {
  readonly #metadata:SharedIndependentSourceMetadata;
  private constructor(token:object,metadata:SharedIndependentSourceMetadata,state:{records:readonly SharedIndependentSourceRecord[];check:()=>void}){if(token!==key)throw independentFailure();this.#metadata=metadata;states.set(this,state);Object.freeze(this);}
  metadata():SharedIndependentSourceMetadata{return this.#metadata;}
  records():readonly SharedIndependentSourceRecord[]{const state=states.get(this);if(!state)throw independentFailure('independent_source_closed');return state.records;}
- check():void{const state=states.get(this);if(!state)throw independentFailure('independent_source_closed');state.check();if(states.get(this)!==state)throw independentFailure('independent_source_closed');}
- dispose():void{states.delete(this);}
+ check():void{checkIndependentSource(this);}
+ dispose():void{states.delete(this);releaseCapturedNativeHistory(this);}
  static capture<P extends SharedSelectionPolicy>(input:SharedIndependentSourceSelection<P>):SharedIndependentSourceCapture{
   if(!generationFields(input,'session'))throw independentFailure();const port=independentSource(input.session),identity=canonicalIndependentHistoryIdentity(port.identity),stamp=port.stamp(),records=independentRecords(port.read()),recovery=independentRecovery(identity,records),core=port.core;
   const base=native.retainedAssetReferences.call(core);if(base.document!==identity.native.room)throw independentFailure();const references=new Map<string,RichRetainedAssetReference>(),packets:SharedPacketAssetIdentity[]=[],pending:SharedAssetCapturePending[]=[];
@@ -32,7 +34,8 @@ export class SharedIndependentSourceCapture {
   native.checkRetainedAssetReferences.call(core,base,base.revision);
   const check=()=>{port.check();if(port.stamp()!==stamp)throw independentFailure('independent_source_changed');};check();
   const sorted=[...references.values()].sort((a,b)=>a.asset<b.asset?-1:a.asset>b.asset?1:a.generation<b.generation?-1:a.generation>b.generation?1:0);
-  return new SharedIndependentSourceCapture(key,freezeGeneration({format:'breditor/shared-independent-source-capture' as const,formatVersion:1 as const,identity,document:base.document,revision:base.revision,packets,outcome:pending.length?{kind:'pending' as const,pending}:{kind:'ready' as const,references:sorted}}),{records,check});
+  const source=new SharedIndependentSourceCapture(key,freezeGeneration({format:'breditor/shared-independent-source-capture' as const,formatVersion:1 as const,identity,document:base.document,revision:base.revision,packets,outcome:pending.length?{kind:'pending' as const,pending}:{kind:'ready' as const,references:sorted}}),{records,check});
+  registerCapturedNativeHistory(source,core,{document:{kind:identity.documentHistory,checkpoint:records[0]!.json},review:{kind:identity.reviewHistory,checkpoint:records[1]!.json}},()=>checkIndependentSource(source));return source;
  }
 }
 export const captureSharedIndependentSource=<P extends SharedSelectionPolicy>(input:SharedIndependentSourceSelection<P>)=>SharedIndependentSourceCapture.capture(input);

@@ -1,5 +1,20 @@
 # V1 candidate checks
 
+Both profiles require `native-history-read-plan-contracts`,
+`native-history-read-contracts`, `native-history-read-type-fence`,
+`native-history-read` and `installed-native-history-read`. They check the
+[capture-bound native history contract](CAPTURED_NATIVE_HISTORIES.md): genuine
+explicit document/comment families, absent versus unselected comments, exact
+native histories and lifetime-checked borrowed reads. Root API fences remain
+closed; installed implementation laws load private modules explicitly.
+
+The [captured-history qualification](qualification/2026-10-21-captured-native-histories.json)
+records all 34 selected checks passing in four batches with one frozen source and
+1,719 script passes with three existing skips. Source and installed packages each
+repeat 300 native cases and 47 focused laws; seven installed regression reports
+retain identical package archive hashes. Native-only reads remain distinct from
+the full selected-source check required at recovery boundaries.
+
 Both profiles require `owned-core-cleanup-plan-contracts`,
 `owned-core-cleanup-contracts`, `owned-core-cleanup-type-fence`,
 `owned-core-cleanup` and `installed-owned-core-cleanup`. They cover actual SDK
@@ -36,7 +51,7 @@ managed local-generation captures, with instance/prototype facade overrides,
 across all five grammar/inline profiles. Installed consumers use fresh offline
 public archives without workspace links. The original 1,000-check lightweight
 generation-stamp law and broader recovery/script stages remain required.
-The functional plan now has 229 checks; the recorded selections below are
+The functional plan now has 234 checks; the recorded selections below are
 historical subsets, not whole-plan or V1 approval.
 
 Both profiles also require `physical-recovery-assets-plan-contracts`,
@@ -49,8 +64,8 @@ mandatory. Source and fresh offline packages repeat the same native/client
 assertions; Pending queues and unselected historical copies are not settled by
 available bytes. See [the distinct contract](PHYSICAL_CLIENT_ASSET_RECONCILIATION.md).
 At that asset checkpoint the functional plan had 216 checks; the current
-229-check plan also includes canonical readers, independent participant recovery
-and owned-core lifetime checks. Selecting a
+234-check plan also includes canonical readers, independent participant recovery,
+owned-core lifetime and explicit native-history read checks. Selecting a
 subset or passing functional checks does not grant V1, public-hosting or
 activation approval.
 

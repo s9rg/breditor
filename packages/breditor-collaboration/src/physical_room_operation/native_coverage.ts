@@ -2,8 +2,10 @@
  * Snapshot inventory readers keep exact-record equality. No persisted family is widened. */
 import {SharedParticipantBackup} from '../participant_backup/archive.js';
 import {SharedGenerationParticipantBackup} from '../generation_participant/backup.js';
-import {SharedAssetReferenceCapture,capturedRecoveryRead,type SharedAssetCaptureRecord} from '../asset_references_capture.js';
-import {SharedGenerationSourceCapture,capturedGenerationRecoveryRead} from '../generation_source/capture.js';
+import {SharedAssetReferenceCapture,type SharedAssetCaptureRecord} from '../asset_references_capture.js';
+import {SharedGenerationSourceCapture} from '../generation_source/capture.js';
+import {capturedNativeHistoryRead} from '../native_history_read/registry.js';
+import type {CapturedDocumentHistoryRead,CapturedReviewHistorySelection} from '../native_history_read/contract.js';
 import {SharedServerLogGenerationParticipantInventory} from '../server_generation_inventory/read.js';
 import {readPairedBackupRecord} from '../backups/paired.js';
 import {checkInventoryStores} from '../room_participant_inventory/stores.js';
@@ -18,21 +20,21 @@ const fork=()=>new SharedRoomParticipantInventoryError('inventory_fork','The acc
 const duplicate=()=>new SharedRoomParticipantInventoryError('inventory_duplicate','Reconcile multiple operational copies explicitly; no source was selected or discarded');
 const originalSelection=SharedParticipantBackup.prototype.selection,generationSelection=SharedGenerationParticipantBackup.prototype.selection,inventoryMetadata=SharedServerLogGenerationParticipantInventory.prototype.metadata,inventoryIdentity=SharedServerLogGenerationParticipantInventory.prototype.identity;
 const originalRecords=SharedAssetReferenceCapture.prototype.records,generationRecords=SharedGenerationSourceCapture.prototype.records,generationMetadata=SharedGenerationSourceCapture.prototype.metadata,originalCheck=SharedAssetReferenceCapture.prototype.check,generationCheck=SharedGenerationSourceCapture.prototype.check;
-const checkSource=(row:SharedPhysicalRoomRecoveryCatalogSource)=>row.family==='original'?originalCheck.call(row.source):generationCheck.call(row.source);
+const checkSource=(row:SharedPhysicalRoomRecoveryCatalogSource)=>{if(row.family==='original')originalCheck.call(row.source);else generationCheck.call(row.source);capturedNativeHistoryRead(row.source);};
 export function physicalOperationalCoverage(state:PhysicalCatalogArchiveState,sources:readonly SharedPhysicalRoomRecoveryCatalogSource[]):SharedPhysicalRoomRecoveryCatalogCheck {
  const metadata=inventoryMetadata.call(state.inventory).native,documents=new Set<string>(),reviews=new Set<string>(),behindDocuments=new Set<string>(),behindReviews=new Set<string>(),unbound:SharedRoomParticipantMissing[]=[],checked:SharedRoomParticipantCoverage['checkedParticipants'][number][]=[],chosen=new Set<string>();
  for(const row of sources){
   checkSource(row);const client=state.clients.get(row.id);if(!client||client.family!==row.family||chosen.has(row.id))throw sourceError();chosen.add(row.id);
   let principal:string,participant:string,writer:string,room:string,language:number,review:{actor:string;principal:string}|null=null,relay:{binding:string;principal:string;documentWriter:string;room:string;writerTransport?:'atomic-v2';reviewEditing?:string}|null=null;
-  let records:readonly SharedAssetCaptureRecord[],native:ReturnType<typeof capturedRecoveryRead>;
+  let records:readonly SharedAssetCaptureRecord[],native:CapturedDocumentHistoryRead,reviewNative:CapturedReviewHistorySelection;
   if(row.family==='original'&&client.family==='original'){
    const identity=originalSelection.call(client.backup).identity,source=identity.source;
-   native=capturedRecoveryRead(row.source);records=originalRecords.call(row.source);principal=identity.principal;participant=identity.participant;writer=source.writer;room=source.room;language=source.richLanguage;if(native.checkpointJson()!==records[0]?.json)throw sourceError();
-   const paired=records.find(record=>record.kind==='paired-session');if(paired){const record=readPairedBackupRecord(paired.json,source);review={actor:record.reviewActor,principal:record.principal};relay='relay'in record?record.relay:null;if(native.reviewCheckpoint()!==record.reviewCheckpointJson)throw sourceError();}
+   const lanes=capturedNativeHistoryRead(row.source);native=lanes.document;reviewNative=lanes.review;records=originalRecords.call(row.source);principal=identity.principal;participant=identity.participant;writer=source.writer;room=source.room;language=source.richLanguage;if(native.kind!=='original'||native.checkpointJson()!==records[0]?.json)throw sourceError();
+   const paired=records.find(record=>record.kind==='paired-session');if(paired){const record=readPairedBackupRecord(paired.json,source);review={actor:record.reviewActor,principal:record.principal};relay='relay'in record?record.relay:null;if(reviewNative.kind!=='original'||reviewNative.checkpointJson()!==record.reviewCheckpointJson)throw sourceError();}
   }else if(row.family==='generation'&&client.family==='generation'){
    const identity=generationSelection.call(client.backup).identity,id=identity.source;
-   native=capturedGenerationRecoveryRead(row.source);const captured=generationRecords.call(row.source);principal=identity.principal;participant=identity.participant;writer=id.native.writer;room=id.native.room;language=id.native.richLanguage;review=id.review;relay=id.relay?.review??null;
-   if(JSON.stringify(generationMetadata.call(row.source).identity)!==JSON.stringify(id)||native.checkpointJson()!==captured[0]?.json||review&&native.reviewCheckpoint()!==captured.find(record=>record.kind==='review')?.json)throw sourceError();
+   const lanes=capturedNativeHistoryRead(row.source);native=lanes.document;reviewNative=lanes.review;const captured=generationRecords.call(row.source);principal=identity.principal;participant=identity.participant;writer=id.native.writer;room=id.native.room;language=id.native.richLanguage;review=id.review;relay=id.relay?.review??null;
+   if(native.kind!=='segmented-v1'||JSON.stringify(generationMetadata.call(row.source).identity)!==JSON.stringify(id)||native.checkpointJson()!==captured[0]?.json||review&&(reviewNative.kind!=='original'||reviewNative.checkpointJson()!==captured.find(record=>record.kind==='review')?.json))throw sourceError();
    const document=id.relay?.document;if(document&&(document.writer!==writer||document.principal!==principal||document.room!==metadata.room.document||transportVersion(document.writerTransport)!==metadata.room.writerTransportVersion))throw sourceError();
    records=captured.flatMap<SharedAssetCaptureRecord>(record=>record.kind==='suggestions'?[{kind:'suggestions',json:record.json}]:record.kind==='revisions'?[{kind:'suggestion-revisions',json:record.json}]:record.kind==='versions'?[{kind:'version-catalog',json:record.json}]:[]);
   }else throw sourceError();
@@ -44,13 +46,13 @@ export function physicalOperationalCoverage(state:PhysicalCatalogArchiveState,so
   if(BigInt(local.through)<BigInt(registration.clock.through))behindDocuments.add(writer);else if(prefixAt(native,writer,registration.clock.through,version)!==registration.clock.prefixDigest)throw fork();
   checked.push({participant,principal,writer,observer:registration.observer,localThrough:local.through,acceptedThrough:registration.clock.through});
   if(review){
-   if(review.principal!==principal||native.localReviewClock().actor!==review.actor)throw sourceError();
+   if(review.principal!==principal||reviewNative.kind!=='original'||reviewNative.localReviewClock().actor!==review.actor)throw sourceError();
    if(!relay)unbound.push({kind:'unbound_review',participant,principal,actor:review.actor});
    else{
     const registered=metadata.review?.writers.find(value=>value.clock.actor===review.actor);
     if(!registered||registered.principal!==principal||metadata.review?.binding!==relay.binding||relay.principal!==principal||relay.documentWriter!==writer||relay.room!==room||transportVersion(relay.writerTransport)!==version||registered.observer!==(relay.reviewEditing==='read_only'))throw sourceError();
-    if(reviews.has(review.actor))throw duplicate();reviews.add(review.actor);const head=native.reviewWriterClock(review.actor,principal);
-    if(registered.observer&&head.through!=='0')throw sourceError();if(BigInt(head.through)<BigInt(registered.clock.through))behindReviews.add(review.actor);else if(native.reviewWriterClock(review.actor,principal,registered.clock.through).prefixDigest!==registered.clock.prefixDigest)throw fork();
+    if(reviews.has(review.actor))throw duplicate();reviews.add(review.actor);const head=reviewNative.reviewWriterClock(review.actor,principal);
+    if(registered.observer&&head.through!=='0')throw sourceError();if(BigInt(head.through)<BigInt(registered.clock.through))behindReviews.add(review.actor);else if(reviewNative.reviewWriterClock(review.actor,principal,registered.clock.through).prefixDigest!==registered.clock.prefixDigest)throw fork();
    }
   }
   checkSource(row);

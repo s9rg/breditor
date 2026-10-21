@@ -23,6 +23,7 @@ import type {RichSearchQuery,RichSearchReplacement,RichInputRuleOutcome} from "@
 import {SharedSearchResults,nativeSearchResults} from "./search_results.js";
 import {parseSegmentedHistoryInfo,type SharedSegmentedHistoryInfo} from "./segmented_history.js";
 import {registerManagedCore} from "./managed_custody.js";
+import {registerCoreReadStamp} from './core_read_stamp.js';
 import type {SharedReviewHistoryPolicy} from "./review_generations.js";
 export class SharedEditorError extends Error {
  constructor(readonly code:string,message:string){super(message);this.name="SharedEditorError";}
@@ -39,6 +40,7 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  readonly #packetAssetReferences=new SharedPacketAssetReferenceRegistry();
  #raw:SharedRustOwner|undefined;#observation:ReturnType<SharedRustOwner["observe"]>|undefined;#view="";#descriptor="";
  #disposedRevisions:{documentRevision:string;reviewRevision:string}|undefined;
+ #documentReadStamp:object=Object.freeze({});#reviewReadStamp:object=Object.freeze({});
  #listeners=new Set<(event:SharedPublication<P>)=>void>();#queue:Pending[]=[];#bytes=0;#holds=0;#publishing=false;#draining=false;#retired=false;
  #options:SharedEditorOptions<P>;#maxFrames:number;#maxBytes:number;#fixedHistory:"explicit"|"typing-v1"|undefined;
  readonly #selectionPolicy:SharedSelectionPolicy;
@@ -92,6 +94,7 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
    if(this.#selectionPolicy==="document-v1"&&(!("selectionEditing" in view)||view.selectionEditing!=="document-v1"))throw new SharedEditorError("selection_policy","Native document view did not declare the selected scope policy");
    if(view.rangeEditing!==undefined&&(view.rangeEditing!=="general-v1"||!this.supportsGeneralRanges()))throw new SharedEditorError("general_range_unavailable","Use a complete matching native general-range owner");
    owners.add(raw);registerManagedCore(this,()=>{this.#live();if(this.#retired)throw new SharedEditorError("retired","The shared writer no longer has live managed custody");},()=>this.#retainedRevisions());
+   registerCoreReadStamp(this,()=>{this.#live();return{document:this.#documentReadStamp,review:this.#reviewReadStamp};});
   }
   catch(error){this.#observation?.free();this.#raw=undefined;raw.free();throw error;}
  }
@@ -171,7 +174,7 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
   this.#check(revision);if(this.#retired)throw new SharedEditorError("retired","The shared writer is retired for durable closure");if(this.#publishing)throw new SharedEditorError("reentrant_publication","Publication callbacks cannot publish reentrantly");
   if(write&&this.view().readOnly===true)throw new SharedEditorError("read_only","The shared editor is read-only");
   const raw=this.#live(),before=this.#view,reviewBefore=this.#reviewRevision;this.#publishing=true;
-  try{const result=work(raw,this.#observation);const next=this.#observe(raw),view=next.view_json();this.#observation?.free();this.#observation=next;this.#view=view;if(before!==view)this.#notify(source);else if(reviewBefore!==this.#reviewRevision)this.#notifyReview();return result;}
+  try{const result=work(raw,this.#observation);const next=this.#observe(raw),view=next.view_json();this.#observation?.free();this.#observation=next;this.#view=view;if(before!==view)this.#documentReadStamp=Object.freeze({});if(reviewBefore!==this.#reviewRevision)this.#reviewReadStamp=Object.freeze({});if(before!==view)this.#notify(source);else if(reviewBefore!==this.#reviewRevision)this.#notifyReview();return result;}
   finally{this.#publishing=false;if(!this.#draining)this.#flush();}
  }
  view():SharedEditorView<P>{this.#live();return JSON.parse(this.#view) as SharedEditorView<P>;}
