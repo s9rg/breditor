@@ -1,0 +1,321 @@
+{
+  "format": "breditor/physical-generation-author-conformance-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-21",
+  "passed": true,
+  "source": {
+    "commit": "6a5b5db5fbfe76fd4b331286a400c28684180cd9",
+    "dirty": true,
+    "sha256": "68c2ade7c6f252b20d0107598682c907ba3b278c8613551b35b37b3dfd7a9fbb",
+    "files": 5252,
+    "bytes": 43894604
+  },
+  "qualification": {
+    "path": "target/v1-candidate-runs/run-1IIP9X/result.json",
+    "bytes": 16212,
+    "sha256": "43aa1d77e9c41b80985e9035cf1a4df613ee751a468c9eaa17b9c8b03492fb41",
+    "modifiedAtMs": 1792599772972.3328
+  },
+  "selectedStages": 11,
+  "baseQualification": {
+    "path": "docs/qualification/2026-10-21-physical-room-client-operation.json",
+    "bytes": 19695,
+    "sha256": "1808de89dd66cd844a44124169104a73aefd67295965f29602c9a349e8afb005",
+    "modifiedAtMs": 1792599127079.6016
+  },
+  "baseCommit": "6a5b5db5fbfe76fd4b331286a400c28684180cd9",
+  "baseSelectedStages": 33,
+  "productionSourcesUnchanged": true,
+  "fullFunctionalPlanRun": false,
+  "functionalPlanChecks": 196,
+  "openV1Gates": 13,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "nonDocumentation": {
+    "files": 4700,
+    "sha256": "b364c7517e4ea689f86181112a4a2a60c59df6b3d3ad670d3d418e7510211450"
+  },
+  "nativeInputs": {
+    "files": 2923,
+    "sha256": "d7a512c1f8bd24d08e66a7f568fc702b822309134a3bd23e789842a014233466"
+  },
+  "nativeSuitesFreshlyRun": false,
+  "carriedNativeTests": {
+    "collaboration": 669,
+    "relay": 325,
+    "noNetworking": 264,
+    "independentReview": 3,
+    "nativeLiveStagingLaws": 3
+  },
+  "scripts": {
+    "passed": 1525,
+    "existingOptInSkipped": 3
+  },
+  "runtime": {
+    "wasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "artifacts": [
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.js",
+        "bytes": 197057,
+        "sha256": "eedaf4d3fbdfd9cfd115484030cc07d3be185aac00c3ccc4922f6df905de40ae",
+        "modifiedAtMs": 1792592625540.0828
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+        "bytes": 13444371,
+        "sha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+        "modifiedAtMs": 1792592625559.278
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.d.ts",
+        "bytes": 76829,
+        "sha256": "fe5579cc17725f1f63cf47ef147a6a570bdb3b6be5c522820e9ce1a61ec21e26",
+        "modifiedAtMs": 1792592625540.6763
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_dependency_inventory.json",
+        "bytes": 124122,
+        "sha256": "6714d5160bc54a23292eebb667a203c3d55358899e0e8df148b2388abf0bd688",
+        "modifiedAtMs": 1792592625565.1223
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/THIRD_PARTY_NOTICES.txt",
+        "bytes": 1380448,
+        "sha256": "4bdd58691c23f4733fd973aff84ebb1a38a670c97c64ce8e4c79c624f594f204",
+        "modifiedAtMs": 1792592625566.9912
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/RUST_COPYRIGHT-library.html",
+        "bytes": 1512520,
+        "sha256": "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6",
+        "modifiedAtMs": 1792592625569.9858
+      }
+    ],
+    "comparisons": {
+      "original-document-runtime-comparison": {
+        "format": "breditor/shared-v1-runtime-comparison",
+        "formatVersion": 1,
+        "beforeWasmSha256": "1836883c3c306ed10b5d7306812fdc628152915836f84d1c0d6d9d2e49096e4f",
+        "afterWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+        "comparedCheckpoints": 49,
+        "crossVersionRestores": 2,
+        "futureHistorySteps": 12,
+        "modelVersion": 11,
+        "journalVersion": 12,
+        "passed": true
+      },
+      "original-review-runtime-comparison": {
+        "format": "breditor/original-review-runtime-comparison",
+        "formatVersion": 1,
+        "passed": true,
+        "beforeWasmSha256": "1836883c3c306ed10b5d7306812fdc628152915836f84d1c0d6d9d2e49096e4f",
+        "afterWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+        "cases": 72,
+        "exactNativeComparisons": 1440,
+        "crossVersionRestores": 144,
+        "futureHistoryComparisons": 1080,
+        "scope": "Exact original native review checkpoints, event frames, views, actor clocks and document cuts in actual old/new application Wasm; both cross-version recovery directions and future Undo/Redo. No new review-family capability is assumed in the old build."
+      }
+    }
+  },
+  "sourceAcceptance": {
+    "format": "breditor/physical-room-client-operation-probe",
+    "formatVersion": 1,
+    "passed": true,
+    "nativeRooms": 10,
+    "cases": 30,
+    "longNativeCuts": 1,
+    "policySnapshots": 30,
+    "restoredParticipants": 36,
+    "restoredComponents": 132,
+    "networkCalls": 0,
+    "participants": 60,
+    "coldParticipants": 120,
+    "files": 180,
+    "oldSignalDetaches": 30,
+    "documentRedo": 27,
+    "reviewRedo": 27,
+    "participantRecordComparisons": 180,
+    "wholeUploadComparisons": 180,
+    "generationAuthors": {
+      "cases": 6,
+      "initialReadOnly": 6,
+      "coldGenerationAuthors": 12,
+      "historicalDocumentComparisons": 12,
+      "historicalReviewComparisons": 12,
+      "futureDocumentComparisons": 6,
+      "futureReviewComparisons": 6,
+      "exactRecords": 12,
+      "wholeUploads": 12,
+      "retainedFiles": 48
+    },
+    "faults": {
+      "initialAbortRetries": 2,
+      "initialLostAckResumes": 2,
+      "sourceReentryRefusals": 2,
+      "parentReentryRefusals": 2,
+      "sourceCloseRefusals": 2,
+      "storageContextRefusals": 2,
+      "parentLostAckRetries": 6,
+      "childLostAckRetries": 4,
+      "releaseRetries": 2,
+      "cleanupRetries": 2,
+      "lateAuthorityRefusals": 2,
+      "lateAbortRefusals": 2,
+      "missingCompleteRefusals": 2,
+      "changedPhysicalFileRefusals": 2,
+      "changedStageRefusals": 2,
+      "closeDuringRestoreResumes": 2,
+      "signalAbortResumes": 2,
+      "preparedCurrentPolicyParticipants": 4,
+      "preparedAppendRefusals": 2,
+      "immutableObserverPolicyRefusals": 2,
+      "immutableObserverEditsRefused": 2
+    },
+    "scope": "Actual original/current physical server+raster files, immutable source/staging/operation stores, mixed native owners and future document/review history. Readonly initial handoff, six additional writable generation-author cohorts across both native wire transports and all three client modes, cold explicit current policy, native continuation and a second exact cold reopen with all selected records and whole uploads. Synthetic storage/locks/raster fixtures; not native-host ancestry integration, provider/client-outbox closure, independent comment-generation sessions, historical-copy disposition, browser qualification, authenticated server activation or V1 approval."
+  },
+  "installed": {
+    "evidence": {
+      "path": "target/v1-candidate-runs/run-1IIP9X/reports/physical-room-operation-installed.json",
+      "bytes": 5383,
+      "sha256": "0c0efd3f55ca19124248e4781af921468281ef3aea8465606180aa76947efd7e",
+      "modifiedAtMs": 1792599834446.599
+    },
+    "consumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-physical-room-operation-installed-GRZXAX/consumer",
+    "workspaceLinks": false,
+    "strictPublicTypes": true,
+    "assertionsUnchanged": true,
+    "packageBytesUnchanged": true,
+    "baselineQualification": {
+      "path": "docs/qualification/2026-10-21-physical-room-client-operation.json",
+      "bytes": 19695,
+      "sha256": "1808de89dd66cd844a44124169104a73aefd67295965f29602c9a349e8afb005",
+      "modifiedAtMs": 1792599127079.6016
+    },
+    "registryArtifacts": 45,
+    "intentContracts": 41,
+    "acceptance": {
+      "format": "breditor/physical-room-client-operation-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "nativeRooms": 10,
+      "cases": 30,
+      "longNativeCuts": 1,
+      "policySnapshots": 30,
+      "restoredParticipants": 36,
+      "restoredComponents": 132,
+      "networkCalls": 0,
+      "participants": 60,
+      "coldParticipants": 120,
+      "files": 180,
+      "oldSignalDetaches": 30,
+      "documentRedo": 27,
+      "reviewRedo": 27,
+      "participantRecordComparisons": 180,
+      "wholeUploadComparisons": 180,
+      "generationAuthors": {
+        "cases": 6,
+        "initialReadOnly": 6,
+        "coldGenerationAuthors": 12,
+        "historicalDocumentComparisons": 12,
+        "historicalReviewComparisons": 12,
+        "futureDocumentComparisons": 6,
+        "futureReviewComparisons": 6,
+        "exactRecords": 12,
+        "wholeUploads": 12,
+        "retainedFiles": 48
+      },
+      "faults": {
+        "initialAbortRetries": 2,
+        "initialLostAckResumes": 2,
+        "sourceReentryRefusals": 2,
+        "parentReentryRefusals": 2,
+        "sourceCloseRefusals": 2,
+        "storageContextRefusals": 2,
+        "parentLostAckRetries": 6,
+        "childLostAckRetries": 4,
+        "releaseRetries": 2,
+        "cleanupRetries": 2,
+        "lateAuthorityRefusals": 2,
+        "lateAbortRefusals": 2,
+        "missingCompleteRefusals": 2,
+        "changedPhysicalFileRefusals": 2,
+        "changedStageRefusals": 2,
+        "closeDuringRestoreResumes": 2,
+        "signalAbortResumes": 2,
+        "preparedCurrentPolicyParticipants": 4,
+        "preparedAppendRefusals": 2,
+        "immutableObserverPolicyRefusals": 2,
+        "immutableObserverEditsRefused": 2
+      },
+      "scope": "Actual original/current physical server+raster files, immutable source/staging/operation stores, mixed native owners and future document/review history. Readonly initial handoff, six additional writable generation-author cohorts across both native wire transports and all three client modes, cold explicit current policy, native continuation and a second exact cold reopen with all selected records and whole uploads. Synthetic storage/locks/raster fixtures; not native-host ancestry integration, provider/client-outbox closure, independent comment-generation sessions, historical-copy disposition, browser qualification, authenticated server activation or V1 approval."
+    },
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-physical-room-operation-installed-GRZXAX/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-physical-room-operation-installed-GRZXAX/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "e6b524a4d3b9cab485e6df2ff62af133a3772291ec463fd3bba73934c13ac40f"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-physical-room-operation-installed-GRZXAX/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "d428aefa9bd1ef46b2223a506c4a1f37ada004816a08cf005d0222a41808622e"
+      }
+    ],
+    "productionModuleCount": 239,
+    "noWorkspaceReactOrSyntheticStorageInProduction": true
+  },
+  "reports": [
+    {
+      "stage": "physical-operation-author-carry",
+      "evidence": {
+        "path": "target/v1-candidate-runs/run-1IIP9X/reports/physical-room-operation-author-carry.json",
+        "bytes": 3232,
+        "sha256": "dc49a876a43c40c51a07793b4b5b2c5133f96e402ece7b7e724f99098262898a",
+        "modifiedAtMs": 1792599834444.1614
+      }
+    },
+    {
+      "stage": "native-server-generation-inventory",
+      "evidence": {
+        "path": "target/v1-candidate-runs/run-1IIP9X/reports/server-generation-inventory-native.json",
+        "bytes": 15344,
+        "sha256": "e4c7dc3ede344d152cc24094ad670532e0e3b2937ce6458f94e17072fbff3d9d",
+        "modifiedAtMs": 1792599834444.7375
+      }
+    },
+    {
+      "stage": "physical-room-operation",
+      "evidence": {
+        "path": "target/v1-candidate-runs/run-1IIP9X/reports/physical-room-operation-sdk.json",
+        "bytes": 3262,
+        "sha256": "2aa5491bfd924c9cec9a9e681ffb9c1724418062207ca238eb5bc179e75a7cf5",
+        "modifiedAtMs": 1792599834445.6602
+      }
+    },
+    {
+      "stage": "installed-physical-room-operation",
+      "evidence": {
+        "path": "target/v1-candidate-runs/run-1IIP9X/reports/physical-room-operation-installed.json",
+        "bytes": 5383,
+        "sha256": "0c0efd3f55ca19124248e4781af921468281ef3aea8465606180aa76947efd7e",
+        "modifiedAtMs": 1792599834446.599
+      }
+    }
+  ],
+  "boundaries": [
+    "This is a test-only extension of the committed 33-stage physical client-operation implementation, not another production source change. The exact five checker/fixture edits are audited, and all three freshly packed public package archives match the committed implementation byte-for-byte.",
+    "Each source/installed probe repeats the 30 native mixed cases and 21 two-transport fault categories, then adds six writable-generation-author cohorts: original/atomic native wire formats crossed with local, relay and retained client modes. These supplemental author cohorts use the v1 grammar; the existing mixed matrix still covers all ten native physical profiles.",
+    "Each supplemental author cohort begins read-only, restores fresh mutable document/review policy, requires committed historical document/review Undo/Redo, retains newly pending Redo through another cold parent reopen and compares exact native records plus whole uploads.",
+    "Per consumer, six initial read-only authors and twelve cold author opens pass twelve historical document comparisons, twelve historical review comparisons, six future document and six future review comparisons, twelve exact record and twelve whole-upload comparisons, and 48 exact retained files. Unselected historical copies remain retained and unresolved.",
+    "The new tests require committed review events and positive document history work, so equal no-op results cannot satisfy their history laws. No current native/protocol behavior, saved format, API/default, core history limit or package version changes.",
+    "Native source/runtime bytes and prior native suites remain unchanged and carried explicitly. Fresh exact-source native fixture production, public types, storage contracts, source/installed probes and all 1,525 script tests execute; three existing opt-in skips are not platform qualification.",
+    "The explicit --author-conformance flag enforces package-byte identity only for this test-only qualification. The normal portable installed check remains valid for later intentional production changes.",
+    "Native ancestor/local-origin/current composition, full provider/client-outbox closure, independent comment-generation sessions, historical-copy disposition and authenticated deployment fencing/activation remain required. No browser/IME/VoiceOver, resource, license, full functional profile or V1 readiness is inferred. Nothing is pushed, published, tagged or deployed."
+  ]
+}

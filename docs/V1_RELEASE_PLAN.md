@@ -55,9 +55,18 @@ activation remain separate architectural work.
 Its [functional qualification](qualification/2026-10-21-physical-room-client-operation.json)
 passes 33 selected stages and 1,525 script tests, with three existing opt-in
 skips. The same thirty native mixed cases and interruption assertions pass in
-fresh offline archives. The writable-generation-author cold/future path remains
-a focused follow-up; the existing mixed fixture's generation participant is an
-observer. No source, browser or V1 gate is implicitly waived.
+fresh offline archives. At that checkpoint the writable-generation-author
+cold/future path remained a focused follow-up: the mixed fixture's generation
+participant is an observer. No source, browser or V1 gate is implicitly waived.
+
+The subsequent [author conformance](qualification/2026-10-21-physical-generation-author-conformance.json)
+now closes that test gap. Eleven selected stages preserve byte-identical public
+packages while source and installed probes add six writable-author cohorts across
+both native wire transports and three client modes. Twelve cold author opens
+retain actual pending document/review history, exact native records and whole
+uploads. History actions must commit rather than merely match no-ops. All 1,525
+script tests pass again with three existing skips. Production code, protocol
+meanings and all thirteen still-open V1 gates remain unchanged.
 
 The distinct [physical client stage](PHYSICAL_ROOM_PARTICIPANT_STAGING.md) now
 co-owns the immutable catalog and a separate intent database. It restores mixed

@@ -1,0 +1,17 @@
+/** Carry the committed implementation only across this explicit test-only author conformance slice. */
+import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
+import {readFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import {resolve,dirname} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {sourceEvidence,fileEvidence,saveEvidence} from './candidate-release/evidence.mjs';
+const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),base='6a5b5db5fbfe76fd4b331286a400c28684180cd9';if(process.argv.length!==2)throw Error('This carry audit selects its committed historical checkpoint explicitly');
+const git=args=>execFileSync('git',args,{cwd:root,encoding:'utf8',maxBuffer:8*1024*1024}),source=sourceEvidence(root);assert.equal(source.commit,base,'Use the exact unpromoted SDK checkpoint for this slice');
+const path='docs/qualification/2026-10-21-physical-room-client-operation.json',beforeBytes=git(['show',base+':'+path]);assert.equal(readFileSync(resolve(root,path),'utf8'),beforeBytes);const before=JSON.parse(beforeBytes);assert.equal(before.passed,true);assert.equal(before.selectedStages,33);
+const paths=[...new Set(git(['ls-files','--cached','--others','--exclude-standard','-z']).split('\0').filter(Boolean))].sort(),native=paths.filter(p=>p.startsWith('crates/')||p.startsWith('experiments/')||/^(Cargo\.(toml|lock)|rust-toolchain(\.toml)?)$/.test(p)).map(p=>fileEvidence(root,p)),hash=createHash('sha256');for(const {path,bytes,sha256}of native)hash.update(JSON.stringify([path,bytes,sha256])+'\n');const nativeInputs={files:native.length,sha256:hash.digest('hex')};assert.deepEqual(nativeInputs,before.nativeInputs);
+const changed=[...new Set([...git(['diff','--name-only',base,'--']).trim().split('\n'),...git(['ls-files','--others','--exclude-standard','-z']).split('\0')].filter(Boolean))].sort();
+const exact=new Set(['scripts/check-physical-room-operation-sdk.mjs','scripts/check-physical-room-operation-installed.mjs','scripts/check-physical-room-operation-author-carry.mjs','scripts/probe-physical-room-operation.mjs','scripts/fixtures/physical-room-operation/generation-author.mjs']);
+for(const name of changed)assert.ok(exact.has(name)||name.startsWith('docs/'),'A production/non-author-test input changed: '+name);
+const runtime=before.runtime.artifacts.map(file=>{const actual=fileEvidence(root,file.path);assert.equal(actual.bytes,file.bytes);assert.equal(actual.sha256,file.sha256);return actual;});assert.equal(runtime.length,6);assert.deepEqual(sourceEvidence(root),source);
+const report={format:'breditor/physical-room-operation-author-carry',formatVersion:1,passed:true,source,base,qualifiedEvidence:fileEvidence(root,path),nativeInputs,runtime,reviewedTestOnlyChanges:changed,productionSourcesUnchanged:true,previousSelectedSdkStages:33,nativeSuitesFreshlyRun:false,previousQualifiedTests:before.carriedNativeTests,scope:'Only the enumerated author-test/checker/docs files changed after the committed 33-stage SDK qualification. All native inputs and six runtime artifacts remain byte-identical; fresh installed package bytes must also match that qualification. Prior native suites and unrelated SDK stages are carried, not rerun or promoted. No platform/resource/V1 approval.'};saveEvidence(resolve(root,'target/physical-room-operation-author-carry.json'),report);console.log(JSON.stringify(report,null,2));

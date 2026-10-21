@@ -1,0 +1,47 @@
+/** Writable generation author, original observer, real pending history and two cold parent reopens. */
+import assert from 'node:assert/strict';
+import {recoverParticipant} from '../room-participant-inventory/participant.mjs';
+import {generationParticipant} from '../room-participant-inventory/generation-participant.mjs';
+import {pixel,secondPixel} from '../review-assets/pixels.mjs';
+const binary=async file=>new Uint8Array(await file.arrayBuffer());
+function originalRequest(h,id,tag){const{backup:_b,expected:_e,checkAuthority:_g,...rest}=h.recovery;return{id,family:'original',recovery:{...rest,database:tag+'-attempt',destinations:Object.fromEntries(Object.keys(rest.destinations).map(key=>[key,tag+'-'+key]))}};}
+function generationRequest(h,id,tag){const{database:_d,create:_c,initialGenerations:_i,initialReviewCheckpoint:_r,binding,retained,...native}=h.options;return{id,family:'generation',recovery:{database:tag+'-attempt',destinations:{source:tag+'-source',uploads:tag+'-uploads'},session:{kind:h.kind,options:{...native,...(h.kind!=='local'?{binding}:{}),...(h.kind==='retained'?{retained}:{})}}}};}
+async function closeParts(parts){for(const row of [...parts.participants].reverse()){if(row.family==='original'){await row.parts.sources.revisions?.close();await row.parts.sources.suggestions?.close();await row.parts.sources.versions?.close();await row.parts.session.close();}else await row.parts.source.session.close();row.parts.uploads.close();}}
+const sessionOf=row=>row.family==='original'?row.parts.session:row.parts.source.session;
+const recordsOf=(kind,session)=>structuredClone(kind==='retained'?session.exportRetainedRecovery():session.exportRecovery());
+function reference(api,profile,room,review,document,checkpoint){const core=new api.SharedRichEditor(profile.restore_segmented(room,document),{segmentedHistory:'segmented-v1'});core.enableReview({...review,access:'comment'},checkpoint);return core;}
+export async function checkPhysicalGenerationAuthor({api,rich,profile,fixture,kind,input,tag,counts}){
+ let original,generation,archive,catalog,stage,operation,parts,gold;
+ const prefix=tag+'-author',Parent=api.SharedPhysicalRoomClientOperation,expectedUnselected=input.participants.map(row=>row.id).sort();
+ const checked={cases:0,initialReadOnly:0,coldGenerationAuthors:0,historicalDocumentComparisons:0,historicalReviewComparisons:0,futureDocumentComparisons:0,futureReviewComparisons:0,exactRecords:0,wholeUploads:0,retainedFiles:0};
+ try{
+  original=await recoverParticipant({api,rich,profile,fixture,client:fixture.clients[1],counts,tag:prefix+'-observer',uploads:[pixel,secondPixel]});
+  generation=await generationParticipant({api,rich,profile,fixture,client:fixture.clients[0],kind,counts,tag:prefix+'-generation'});
+  assert.equal(original.readOnly,true);assert.equal(generation.readOnly,false);
+  const originalRow={id:'b-original-observer',family:'original',file:original.backup.file(),expected:original.backup.selection()},generationRow={id:'c-generation-author',family:'generation',file:generation.backup.file(),expected:generation.backup.selection()},requests=[originalRequest(original,originalRow.id,prefix+'-stage-observer'),generationRequest(generation,generationRow.id,prefix+'-stage-author')];
+  const before={document:generation.session.core.checkpointJson(),review:generation.session.core.reviewCheckpoint(),records:recordsOf(kind,generation.session),uploads:generation.backup.uploadBackup()},room=generation.options.room,review=generation.options.review;
+  archive=await api.SharedPhysicalRoomRecoveryCatalogArchive.capture({...input,catalog:prefix,participants:[...input.participants,originalRow,generationRow]});const expected=archive.selection(),files=archive.files();
+  await generation.close();await original.close();
+  const catalogDatabase=prefix+'-catalog',stageDatabase=prefix+'-stage',database=prefix+'-parent',targets=requests.map(row=>({id:row.id,family:row.family,operationDatabase:prefix+'-operation-'+row.id}));
+  catalog=await api.SharedPhysicalRoomRecoveryCatalog.begin({wasm:input.wasm,database:catalogDatabase,archive,expected,checkAuthority(){}});
+  stage=await api.SharedPhysicalRoomParticipantStage.begin({wasm:input.wasm,database:stageDatabase,catalog,expected,checkAuthority(){}});await stage.stage(requests);
+  operation=await Parent.begin({wasm:input.wasm,database,stage,expected,participants:targets,checkAuthority(){}});await stage.close();stage=undefined;await catalog.close();catalog=undefined;await operation.finish();
+  assert.deepEqual((await operation.progress()).unreconciledParticipants,expectedUnselected);
+  for(const[name,file]of files){const actual=name==='origin-server'?operation.originServerFile():name==='current-server'?operation.currentServerFile():name==='inventory'?operation.inventoryFile():operation.participantFile(name.slice('participant:'.length));assert.deepEqual(await binary(actual),await binary(file));checked.retainedFiles++;}
+  parts=await operation.intoParts();operation=undefined;let author=parts.participants.find(row=>row.id===generationRow.id),core=sessionOf(author).core;
+  assert.equal(core.view().readOnly,true);assert.equal(core.checkpointJson(),before.document);assert.equal(core.reviewCheckpoint(),before.review);assert.deepEqual(recordsOf(kind,sessionOf(author)),before.records);assert.throws(()=>core.type('Denied initial generation write'));checked.initialReadOnly++;
+  await closeParts(parts);parts=undefined;
+  const resume={wasm:input.wasm,database,stageDatabase,catalogDatabase,expected,participants:requests.map((row,index)=>({...row,operationDatabase:targets[index].operationDatabase,currentPolicy:{documentReadOnly:row.family==='original',reviewAccess:row.family==='original'?'read_only':'comment'}})),checkAuthority(){}};
+  operation=await Parent.resume(resume);await assert.rejects(operation.check(),e=>e.code==='physical_operation_restore');await operation.finish();parts=await operation.intoParts();operation=undefined;author=parts.participants.find(row=>row.id===generationRow.id);core=sessionOf(author).core;
+  assert.equal(core.view().readOnly===true,false);assert.equal(core.checkpointJson(),before.document);assert.equal(core.reviewCheckpoint(),before.review);assert.deepEqual(recordsOf(kind,sessionOf(author)),before.records);checked.exactRecords++;assert.deepEqual(await binary(await author.parts.uploads.exportBackup()),await binary(before.uploads));checked.wholeUploads++;checked.coldGenerationAuthors++;
+  gold=reference(api,profile,room,review,before.document,before.review);
+  for(const method of ['redo','undo']){assert.equal(core[method](),true);assert.equal(gold[method](),true);assert.equal(core.checkpointJson(),gold.checkpointJson());assert.equal(core.documentJson(),gold.documentJson());checked.historicalDocumentComparisons++;const actualReview=core[method+'Review'](),expectedReview=gold[method+'Review']();assert.equal(actualReview.kind,'committed');assert.equal(expectedReview.kind,'committed');assert.deepEqual(actualReview,expectedReview);assert.equal(core.reviewCheckpoint(),gold.reviewCheckpoint());checked.historicalReviewComparisons++;}
+  gold.dispose();gold=undefined;
+  core.select({kind:'text',anchor:{block:'p',offset:'0',affinity:'after'},focus:{block:'p',offset:'0',affinity:'after'}});core.type('Physical generation author continuation 🙂');core.undo();core.dispatchReview({kind:'create_thread',data:{anchorJson:core.captureReviewAnchor({kind:'document'}),body:'Physical generation author review continuation'}});assert.equal(core.undoReview().kind,'committed');await sessionOf(author).flush();
+  const saved={document:core.checkpointJson(),review:core.reviewCheckpoint(),records:recordsOf(kind,sessionOf(author))};gold=reference(api,profile,room,review,saved.document,saved.review);assert.equal(gold.redo(),true);assert.equal(gold.redoReview().kind,'committed');const future={document:gold.checkpointJson(),review:gold.reviewCheckpoint()};gold.dispose();gold=undefined;
+  await closeParts(parts);parts=undefined;operation=await Parent.resume(resume);await operation.finish();parts=await operation.intoParts();operation=undefined;author=parts.participants.find(row=>row.id===generationRow.id);core=sessionOf(author).core;
+  assert.equal(core.checkpointJson(),saved.document);assert.equal(core.reviewCheckpoint(),saved.review);assert.deepEqual(recordsOf(kind,sessionOf(author)),saved.records);checked.exactRecords++;assert.deepEqual(await binary(await author.parts.uploads.exportBackup()),await binary(before.uploads));checked.wholeUploads++;checked.coldGenerationAuthors++;
+  assert.equal(core.redo(),true);assert.equal(core.redoReview().kind,'committed');assert.equal(core.checkpointJson(),future.document);assert.equal(core.reviewCheckpoint(),future.review);assert.ok(core.documentJson().includes('Physical generation author continuation'));checked.futureDocumentComparisons++;checked.futureReviewComparisons++;checked.cases++;
+  assert.deepEqual(checked,{cases:1,initialReadOnly:1,coldGenerationAuthors:2,historicalDocumentComparisons:2,historicalReviewComparisons:2,futureDocumentComparisons:1,futureReviewComparisons:1,exactRecords:2,wholeUploads:2,retainedFiles:8});return checked;
+ }finally{gold?.dispose();if(parts)await closeParts(parts);await operation?.discardAndClose();await stage?.discardAndClose();await catalog?.close();archive?.dispose();await generation?.close();await original?.close();}
+}

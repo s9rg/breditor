@@ -117,6 +117,17 @@ existing opt-in skips. Source and fresh installed archives each check thirty
 mixed cases, 180 exact source files, 180 native client-record and whole-upload
 comparisons, plus both-transport interruption cases. The mixed fixture pairs an
 original author with a generation observer: its 27 future Redo comparisons are
-not separate writable-generation-author coverage. That focused follow-up remains
-explicit. Native suites are carried only after all 2,923 native inputs and six
+not separate writable-generation-author coverage. That focused follow-up was
+kept explicit. Native suites are carried only after all 2,923 native inputs and six
 actual runtime files match the preceding committed qualification byte-for-byte.
+
+The subsequent [writable-author conformance](qualification/2026-10-21-physical-generation-author-conformance.json)
+passes eleven selected stages without changing production source or any of the
+three public package archives. In both source and fresh offline packages, six
+additional cohorts cross both native wire transports with local, relay and
+retained clients. They cover twelve cold author opens, committed historical
+document/review Undo/Redo, newly pending Redo after another cold reopen, exact
+native records/whole uploads and 48 retained files. Matching no-op history results
+cannot pass these assertions. The 1,525-test script suite passes again, with the
+same three existing opt-in skips. These additional author cohorts use the v1
+grammar; the existing thirty-case mixed matrix covers all ten native profiles.
