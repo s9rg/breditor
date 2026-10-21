@@ -1,5 +1,15 @@
 # V1 candidate checks
 
+Both profiles require `canonical-source-readers-plan-contracts`,
+`canonical-source-readers` and `installed-canonical-source-readers`. They run the
+same actual-Wasm binding and mutation assertions against genuine original and
+managed local-generation captures, with instance/prototype facade overrides,
+across all five grammar/inline profiles. Installed consumers use fresh offline
+public archives without workspace links. The original 1,000-check lightweight
+generation-stamp law and broader recovery/script stages remain required.
+The functional plan now has 219 checks; the recorded selections below are
+historical subsets, not whole-plan or V1 approval.
+
 Both profiles also require `physical-recovery-assets-plan-contracts`,
 `relay-physical-recovery-assets-native`, `physical-recovery-assets-contracts`,
 `physical-recovery-assets-type-fence`, `physical-recovery-assets` and
@@ -9,8 +19,10 @@ the separately authenticated control. The old continuity contracts remain
 mandatory. Source and fresh offline packages repeat the same native/client
 assertions; Pending queues and unselected historical copies are not settled by
 available bytes. See [the distinct contract](PHYSICAL_CLIENT_ASSET_RECONCILIATION.md).
-The functional plan now has 216 checks; selecting a subset or passing functional
-checks does not grant V1, public-hosting or activation approval.
+At that asset checkpoint the functional plan had 216 checks; the current
+219-check plan also includes canonical reader qualification above. Selecting a
+subset or passing functional checks does not grant V1, public-hosting or
+activation approval.
 
 Both profiles require `physical-recovery-control-plan-contracts`,
 `relay-physical-recovery-control-native`, `physical-recovery-control-contracts`,

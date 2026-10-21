@@ -75,6 +75,17 @@ can invalidate the capture without advancing native publication. Copies and
 serialized metadata are not source handles. Cancellation returns no partial Ready
 result and does not retire borrowed owners or cancel their ordinary later work.
 
+Native reference, packet and borrowed recovery readers now use canonical facade
+intrinsics captured at module initialization. Replacing an instance or prototype
+read/guard method cannot substitute an empty binding list for the actual native
+read. This preserves existing native capabilities, packet Pending and saved
+formats; it does not turn arbitrary application/native-module code into a sandbox.
+The [canonical reader qualification](qualification/2026-10-21-canonical-native-source-readers.json)
+repeats the exact failing/passing real-Wasm probe against source and fresh public
+archives: twenty cases each across original/generation sources, all five native
+grammar/inline profiles and instance/prototype overrides. Real source changes
+still refuse the captured handle. This does not add authority, activation or GC.
+
 A Ready handle exposes `metadata()`, exact `records()`, `blob(asset, generation)`,
 `payload(contentAsset)`, `check()` and `dispose()`. Previously captured bytes and
 records remain readable after staleness for rescue, but live checking and export

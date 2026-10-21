@@ -1,0 +1,307 @@
+{
+  "format": "breditor/canonical-native-source-readers-qualification",
+  "formatVersion": 1,
+  "passed": true,
+  "source": {
+    "commit": "100f97c0fa5b8f6fc183f61ee373d25e28b97828",
+    "dirty": true,
+    "sha256": "3df1ce3397011d4ada97513bd2512024a9c74ac5abbca863e67ce1ff686c6c1c",
+    "files": 5359,
+    "bytes": 44404776
+  },
+  "selection": {
+    "executed": 17,
+    "completeFunctionalPlan": 219,
+    "fullPlanExecuted": false
+  },
+  "result": {
+    "path": "target/v1-candidate-runs/run-5GtARs/result.json",
+    "bytes": 27073,
+    "sha256": "ca2d2e6213b54916c96cf065589b470afae763a29ecb1abcdd18efd8903310fe",
+    "modifiedAtMs": 1792618275177.4302
+  },
+  "retainedEvidenceDirectory": "target/canonical-source-readers-qualified-VAyell",
+  "retained": [
+    {
+      "original": {
+        "path": "target/v1-candidate-runs/run-5GtARs/result.json",
+        "bytes": 27073,
+        "sha256": "ca2d2e6213b54916c96cf065589b470afae763a29ecb1abcdd18efd8903310fe",
+        "modifiedAtMs": 1792618275177.4302
+      },
+      "retained": {
+        "path": "target/canonical-source-readers-qualified-VAyell/00-result.json",
+        "bytes": 27073,
+        "sha256": "ca2d2e6213b54916c96cf065589b470afae763a29ecb1abcdd18efd8903310fe",
+        "modifiedAtMs": 1792618322412.6973
+      }
+    },
+    {
+      "original": {
+        "path": "target/canonical-source-reader-exact-red-MZVWm0/result.json",
+        "bytes": 1725,
+        "sha256": "04e7ed7cc40d7204e24fb3c94fc6193d9632e327a6e2dc65d282f378b9225462",
+        "modifiedAtMs": 1792617211525.4058
+      },
+      "retained": {
+        "path": "target/canonical-source-readers-qualified-VAyell/01-result.json",
+        "bytes": 1725,
+        "sha256": "04e7ed7cc40d7204e24fb3c94fc6193d9632e327a6e2dc65d282f378b9225462",
+        "modifiedAtMs": 1792618322413.3853
+      }
+    },
+    {
+      "original": {
+        "path": "target/canonical-source-reader-exact-red-MZVWm0/regression.log",
+        "bytes": 773,
+        "sha256": "b908c243be9a1933895d3c4a12b966bcb815d397dd36d4e093c451bc73d9fd9d",
+        "modifiedAtMs": 1792617211186.2349
+      },
+      "retained": {
+        "path": "target/canonical-source-readers-qualified-VAyell/02-regression.log",
+        "bytes": 773,
+        "sha256": "b908c243be9a1933895d3c4a12b966bcb815d397dd36d4e093c451bc73d9fd9d",
+        "modifiedAtMs": 1792618322413.7996
+      }
+    },
+    {
+      "original": {
+        "path": "target/canonical-source-readers-sdk.json",
+        "bytes": 1177,
+        "sha256": "7ab95a7f26358261fdabccb59a73962c04fe527e2b80aaab13c256ef04ee1b85",
+        "modifiedAtMs": 1792617301775.1794
+      },
+      "retained": {
+        "path": "target/canonical-source-readers-qualified-VAyell/03-canonical-source-readers-sdk.json",
+        "bytes": 1177,
+        "sha256": "7ab95a7f26358261fdabccb59a73962c04fe527e2b80aaab13c256ef04ee1b85",
+        "modifiedAtMs": 1792618322414.1147
+      }
+    },
+    {
+      "original": {
+        "path": "target/canonical-source-readers-installed.json",
+        "bytes": 2707,
+        "sha256": "7fce976027818f67a74b8a0fca93e6ab567d17fc2a48dd5b14cd04efcc84902d",
+        "modifiedAtMs": 1792617306197.4875
+      },
+      "retained": {
+        "path": "target/canonical-source-readers-qualified-VAyell/04-canonical-source-readers-installed.json",
+        "bytes": 2707,
+        "sha256": "7fce976027818f67a74b8a0fca93e6ab567d17fc2a48dd5b14cd04efcc84902d",
+        "modifiedAtMs": 1792618322414.414
+      }
+    },
+    {
+      "original": {
+        "path": "target/physical-recovery-control-sdk.json",
+        "bytes": 15664,
+        "sha256": "37e49e93ffd613458c9545399896434b6d7fe331aebba2c26bb213bf5ebe73bc",
+        "modifiedAtMs": 1792617668451.4023
+      },
+      "retained": {
+        "path": "target/canonical-source-readers-qualified-VAyell/05-physical-recovery-control-sdk.json",
+        "bytes": 15664,
+        "sha256": "37e49e93ffd613458c9545399896434b6d7fe331aebba2c26bb213bf5ebe73bc",
+        "modifiedAtMs": 1792618322414.6777
+      }
+    },
+    {
+      "original": {
+        "path": "target/physical-recovery-control-installed.json",
+        "bytes": 18448,
+        "sha256": "fb471c35f94c8bca9a4b1417e59a0a2f5e0cc51ff94906d8152e7939b2927cf3",
+        "modifiedAtMs": 1792617849924.1758
+      },
+      "retained": {
+        "path": "target/canonical-source-readers-qualified-VAyell/06-physical-recovery-control-installed.json",
+        "bytes": 18448,
+        "sha256": "fb471c35f94c8bca9a4b1417e59a0a2f5e0cc51ff94906d8152e7939b2927cf3",
+        "modifiedAtMs": 1792618322415.199
+      }
+    },
+    {
+      "original": {
+        "path": "target/physical-recovery-assets-sdk.json",
+        "bytes": 15907,
+        "sha256": "43f11a4670068d8240a2b1cab5c7dd9c7ab0902630a1a92b39970efa7db50556",
+        "modifiedAtMs": 1792618059914.3345
+      },
+      "retained": {
+        "path": "target/canonical-source-readers-qualified-VAyell/07-physical-recovery-assets-sdk.json",
+        "bytes": 15907,
+        "sha256": "43f11a4670068d8240a2b1cab5c7dd9c7ab0902630a1a92b39970efa7db50556",
+        "modifiedAtMs": 1792618322415.7563
+      }
+    },
+    {
+      "original": {
+        "path": "target/physical-recovery-assets-installed.json",
+        "bytes": 18745,
+        "sha256": "ee9ee9be4b3f920dd5577ff137f56ce1d73ca1e089beb94f853cda51577c10a0",
+        "modifiedAtMs": 1792618274457.5469
+      },
+      "retained": {
+        "path": "target/canonical-source-readers-qualified-VAyell/08-physical-recovery-assets-installed.json",
+        "bytes": 18745,
+        "sha256": "ee9ee9be4b3f920dd5577ff137f56ce1d73ca1e089beb94f853cda51577c10a0",
+        "modifiedAtMs": 1792618322416.142
+      }
+    }
+  ],
+  "regression": {
+    "baselineCommit": "100f97c0fa5b8f6fc183f61ee373d25e28b97828",
+    "previousArchive": {
+      "path": "target/canonical-source-readers-qualified-VAyell/previous-collaboration-archive.tgz",
+      "bytes": 4100923,
+      "sha256": "a52e2d3a56ff20c70a7755f2de55e1c96f01a5ad0ef19c5227bcc222b95343e8",
+      "modifiedAtMs": 1792618322418.2722
+    },
+    "probe": {
+      "path": "scripts/probe-canonical-source-readers.mjs",
+      "bytes": 5282,
+      "sha256": "5cb2ccd4d5a3b27a163210cfc5d1b3ad6ed7a39506a8ab3855ca8d2bc09d868d",
+      "modifiedAtMs": 1792617156459.6743
+    },
+    "fixture": {
+      "path": "crates/breditor-core/tests/fixtures/rich-local-root.json",
+      "bytes": 2305,
+      "sha256": "761ce4641bafcca82c10081d79e318a9dab5bf33aa11919c0c69909dbc8f2eca",
+      "modifiedAtMs": 1791945575163.1812
+    },
+    "redResult": {
+      "path": "target/canonical-source-reader-exact-red-MZVWm0/result.json",
+      "bytes": 1725,
+      "sha256": "04e7ed7cc40d7204e24fb3c94fc6193d9632e327a6e2dc65d282f378b9225462",
+      "modifiedAtMs": 1792617211525.4058
+    },
+    "redLog": {
+      "path": "target/canonical-source-reader-exact-red-MZVWm0/regression.log",
+      "bytes": 773,
+      "sha256": "b908c243be9a1933895d3c4a12b966bcb815d397dd36d4e093c451bc73d9fd9d",
+      "modifiedAtMs": 1792617211186.2349
+    },
+    "oldActualNativeBindings": 1,
+    "oldCapturedBindings": 0,
+    "assertionsByteIdenticalToGreen": true,
+    "sourceAndInstalledCasesEach": 20,
+    "sourceMutationRefusalsEach": 20,
+    "originalCasesEach": 10,
+    "generationCasesEach": 10,
+    "instanceOverridesEach": 10,
+    "prototypeOverridesEach": 10,
+    "normalWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329"
+  },
+  "implementation": {
+    "canonicalModuleInitializedFacadeReads": true,
+    "originalAndGeneration": true,
+    "nativeAndPacketAndBorrowedRecoveryReads": true,
+    "unchangedPrivateGenerationStamp": true,
+    "existingThousandCheckGuardPassed": true,
+    "savedFormatsChanged": false,
+    "nativeAbiChanged": false,
+    "applicationOrNativeModuleSandbox": false
+  },
+  "tests": {
+    "scriptPassed": 1610,
+    "scriptSkipped": 3,
+    "wireControl": 33,
+    "wireAssets": 40
+  },
+  "sourceAndInstalledRecovery": {
+    "jointReadsEach": 108,
+    "operatorRequestsEach": 136,
+    "assetRequestsEach": 120,
+    "lateParentCloseAssetReadsEach": 6,
+    "writableGenerationAuthorReadsEach": 18,
+    "originalFilesEach": 180,
+    "recordsEach": 180,
+    "wholeUploadsEach": 180
+  },
+  "nativeQualificationCarry": {
+    "from": {
+      "path": "target/v1-candidate-runs/run-0SurLH/result.json",
+      "bytes": 54482,
+      "sha256": "f797f9fcf446cc2e75794b6a8b0a574ad1eeff011864f7c05d01aea7d8bd4131",
+      "modifiedAtMs": 1792616789414.6436
+    },
+    "nativeInputs": {
+      "files": 2986,
+      "sha256": "a4a716e0a6237d7c0d6122e5ab1eefc7ab02bda557cfeff9b786794c9c23d420"
+    },
+    "fullRelayServer": 379,
+    "fullRelayNoServer": 267,
+    "reexecutedInThisSdkFollowup": false,
+    "requiresByteIdenticalNativeInputsAndSharedRuntime": true
+  },
+  "archives": [
+    {
+      "name": "@breditor/browser",
+      "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+    },
+    {
+      "name": "@breditor/experimental-rich-content",
+      "sha256": "e6b524a4d3b9cab485e6df2ff62af133a3772291ec463fd3bba73934c13ac40f"
+    },
+    {
+      "name": "@breditor/collaboration",
+      "sha256": "3ff5f92784ba315da3b2078280aa56f0739779fb88f35c85e00990cf7551559b"
+    }
+  ],
+  "installed": {
+    "registryArtifacts": 45,
+    "noWorkspaceLinks": true,
+    "assertionsUnchanged": true,
+    "productionModuleCount": 47,
+    "noWorkspaceReactOrSyntheticStorageInProduction": true
+  },
+  "v1Ready": false,
+  "qualificationGatesClosed": 0,
+  "publicationApproved": false,
+  "nativeInputs": {
+    "files": 2986,
+    "sha256": "a4a716e0a6237d7c0d6122e5ab1eefc7ab02bda557cfeff9b786794c9c23d420"
+  },
+  "nonDocumentation": {
+    "files": 4796,
+    "sha256": "179f1f22bd6aed9228abcfe1f5faf4eb395d4a3ef5ef12936932a0be38d8df7c"
+  },
+  "sharedRuntime": [
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.js",
+      "bytes": 197057,
+      "sha256": "eedaf4d3fbdfd9cfd115484030cc07d3be185aac00c3ccc4922f6df905de40ae",
+      "modifiedAtMs": 1792592625540.0828
+    },
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+      "bytes": 13444371,
+      "sha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+      "modifiedAtMs": 1792592625559.278
+    },
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.d.ts",
+      "bytes": 76829,
+      "sha256": "fe5579cc17725f1f63cf47ef147a6a570bdb3b6be5c522820e9ce1a61ec21e26",
+      "modifiedAtMs": 1792592625540.6763
+    },
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/breditor_dependency_inventory.json",
+      "bytes": 124122,
+      "sha256": "6714d5160bc54a23292eebb667a203c3d55358899e0e8df148b2388abf0bd688",
+      "modifiedAtMs": 1792592625565.1223
+    },
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/THIRD_PARTY_NOTICES.txt",
+      "bytes": 1380448,
+      "sha256": "4bdd58691c23f4733fd973aff84ebb1a38a670c97c64ce8e4c79c624f594f204",
+      "modifiedAtMs": 1792592625566.9912
+    },
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/RUST_COPYRIGHT-library.html",
+      "bytes": 1512520,
+      "sha256": "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6",
+      "modifiedAtMs": 1792592625569.9858
+    }
+  ]
+}

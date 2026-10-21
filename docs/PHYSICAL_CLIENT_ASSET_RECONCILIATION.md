@@ -1,8 +1,8 @@
 # Physical client asset reconciliation
 
 Contract status: implemented and selected functional qualification passed.
-This is not V1 readiness or a durable activation contract. The separate
-source-reader override defect below remains a required follow-up.
+This is not V1 readiness or a durable activation contract. The separate canonical
+source-reader repair below is also qualified.
 
 The read-only asset requirement check joins the current native server's retained
 bindings with declared client bindings and complete upload content IDs. A native
@@ -78,11 +78,21 @@ cold B reopening and future history assertions remain mandatory. No production
 behavior was changed to pass that test.
 
 A separate read-only real-Wasm audit reproduced a source-reader defect: replacing
-public core reference/guard methods can make an existing genuine capture report
-zero bindings while the native owner has one. This checkpoint does not claim
-override-resistant source reads. Canonical native source readers and their
-failing/passing regression are the next repair; no file loss, mutation or service
-activation occurred in the audit.
+public core reference/guard methods could make an existing genuine capture report
+zero bindings while the native owner had one. The
+[canonical reader repair](qualification/2026-10-21-canonical-native-source-readers.json)
+binds reference, packet and borrowed recovery reads to module-initialized facade
+intrinsics. Its exact unchanged probe fails on the retained prior public archive
+and passes twenty source and twenty fresh installed cases, including genuine
+source mutation refusal. The existing 1,000-check generation guard stays
+lightweight and keeps its original error ordering. This is facade-override
+correctness, not an arbitrary-host JavaScript/native-module sandbox; no file
+loss, native mutation or service activation occurred in the audit.
+
+The follow-up passes 17 selected SDK stages and 1,610 script tests with three
+existing skips. Complete relay evidence is carried only across byte-identical
+native inputs and all six unchanged shared runtime files; those native suites
+were not rerun in the SDK-only follow-up. All thirteen V1 gates remain open.
 
 With the paired normal runtimes already built by the candidate pipeline,
 reproduce the new SDK path from the repository root with

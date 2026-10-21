@@ -60,14 +60,23 @@ This is a subset of the 216-check functional plan, not a V1 or parity approval.
 The paired shared runtime and browser/rich archives are unchanged; the SDK adds
 the explicit new read scope. All thirteen V1 gates remain open.
 
-The next repair is an independently reproduced existing source-reader defect:
-public facade reference/guard overrides can hide a native image binding from
-capture metadata. Canonical native readers need a real-Wasm failing/passing
-regression before override-resistant source reads are claimed. Durable
-native/client intent, fresh selected-client permissions, independently segmented
-comment sessions, explicit historical-copy decisions and authenticated activation
-fencing remain the highest architectural priorities. Cosmetics and platform
-polish do not substitute for that functionality.
+An independently reproduced existing source-reader defect is now repaired:
+public facade reference/guard overrides could hide a native image binding from
+capture metadata. Canonical module-initialized reference, packet and borrowed
+recovery readers now retain the actual native read. The
+[reader repair qualification](qualification/2026-10-21-canonical-native-source-readers.json)
+passes 17 selected stages and 1,610 script tests with three existing skips.
+The exact byte-identical real-Wasm probe fails on the prior public archive and
+passes twenty source and twenty installed cases; actual mutations still refuse.
+Private generation stamps retain their original lightweight 1,000-check law.
+Complete native evidence is carried only across unchanged native inputs/runtime,
+not claimed as reexecuted in this SDK follow-up. The full functional plan now has
+219 checks; neither checkpoint is whole-plan, parity or V1 approval.
+
+Durable native/client intent, fresh selected-client permissions, independently
+segmented comment sessions, explicit historical-copy decisions and authenticated
+activation fencing remain the highest architectural priorities. Cosmetics and
+platform polish do not substitute for that functionality.
 
 The distinct [physical client-operation parent](PHYSICAL_ROOM_CLIENT_OPERATION.md)
 now co-owns actual staged mixed clients, all original/current source files and

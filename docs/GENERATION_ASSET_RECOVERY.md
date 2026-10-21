@@ -51,6 +51,16 @@ instead of incorrectly describing their data as the original bounded family.
 Its original-family behavior remains unchanged. Copied options, public exporter
 overrides, parsed metadata and prototype lookalikes cannot replace a live source.
 
+The native reference, packet and borrowed recovery readers also retain canonical
+facade intrinsics rather than resolving mutable public methods during capture.
+The genuine private session change stamp remains the history guard: repeated
+checks do not serialize complete checkpoints, and original refusal ordering and
+record families stay unchanged. The
+[canonical reader qualification](qualification/2026-10-21-canonical-native-source-readers.json)
+passes twenty actual-Wasm original/generation instance/prototype cases each in
+source and fresh installed packages, plus the existing 1,000-check guard law.
+Native inputs and the shared runtime remain unchanged; no saved format is widened.
+
 ## Keep the file families and nested limits distinct
 
 The new selected-byte file is `breditor/shared-generation-asset-backup` version

@@ -8,6 +8,7 @@ import {generationSource} from "./admission.js";
 import {generationIdentity,generationFields,freezeGeneration,SharedGenerationSourceError,sourceFailure} from "./identity.js";
 import {checkGenerationRecords} from "./validate_records.js";
 import {generationNativeRead} from "./native_read.js";
+import {sourceCoreMethods as nativeCore} from '../source_native_read.js';
 import type {SharedCapturedRecoveryRead} from "../asset_references_capture.js";
 import type {SharedGenerationSourceIdentity,SharedGenerationSourceRecord,SharedGenerationSourceSelection,GenerationSourcePort} from "./contract.js";
 export interface SharedGenerationSourceMetadata {
@@ -27,21 +28,24 @@ export class SharedGenerationSourceCapture {
  dispose():void{states.delete(this);}
  static capture<P extends SharedSelectionPolicy>(input:SharedGenerationSourceSelection<P>):SharedGenerationSourceCapture{
   if(!generationFields(input,"kind,session"))throw sourceFailure();const port=generationSource(input.session),identity=generationIdentity(port.identity);if(input.kind!==identity.kind)throw sourceFailure();
-  const stamp=port.stamp(),records=port.read(),{core}=port,admitted=checkGenerationRecords(identity,records),base=core.retainedAssetReferences(),revision=base.revision;
+  const stamp=port.stamp(),records=port.read(),{core}=port,admitted=checkGenerationRecords(identity,records),base=nativeCore.retainedAssetReferences.call(core),revision=base.revision;
   if(base.document!==identity.native.room)throw sourceFailure();const references=new Map<string,RichRetainedAssetReference>(),packets:SharedPacketAssetIdentity[]=[],seen=new Set<string>(),pending:SharedAssetCapturePending[]=[];
   const add=(rows:readonly RichRetainedAssetReference[])=>{for(const r of rows){references.set(JSON.stringify([r.asset,r.generation]),{asset:r.asset,generation:r.generation});if(references.size>100000)throw new SharedGenerationSourceError("generation_source_budget","Complete native/packet reference budget exceeded");}};add(base.references);
-  const consume=(id:string,read:()=>SharedPacketAssetReferencesRead)=>{if(seen.has(id))return;seen.add(id);if(seen.size>1024)throw sourceFailure();const r=read();core.checkPacketAssetReferences(r,revision);packets.push(r.packet);if(r.outcome.kind==="ready")add(r.outcome.references);else pending.push({kind:"source",packet:r.packet,missing:r.outcome.missing});};
-  const version=(packet:string)=>consume("version:"+packet,()=>core.versionAssetReferences(packet,revision));for(const packet of admitted.source.versions)version(packet);
+  const consume=(id:string,read:()=>SharedPacketAssetReferencesRead)=>{if(seen.has(id))return;seen.add(id);if(seen.size>1024)throw sourceFailure();const r=read();nativeCore.checkPacketAssetReferences.call(core,r,revision);packets.push(r.packet);if(r.outcome.kind==="ready")add(r.outcome.references);else pending.push({kind:"source",packet:r.packet,missing:r.outcome.missing});};
+  const version=(packet:string)=>consume("version:"+packet,()=>nativeCore.versionAssetReferences.call(core,packet,revision));for(const packet of admitted.source.versions)version(packet);
   if(identity.kind==="retained"){
    const r=(admitted.recovery as SharedSegmentedRetainedRecovery).retained;
-   for(const row of r.suggestions?.retained??[])consume("suggestion:"+row.packet,()=>core.suggestionAssetReferences(row.packet,revision));
-   for(const row of r.revisions?.retained??[])consume(JSON.stringify(["revision",row.previousPacket,row.packet]),()=>core.suggestionRevisionAssetReferences(row.previousPacket,row.packet,revision));
-   const cached=new Set<string>();for(const row of r.versions?.packets??[]){version(row.packet);cached.add(core.readVersion(row.packet).id);}for(const row of r.versions?.catalog?.entries??[])if(!cached.has(row.version.id))pending.push({kind:"uncached_version",id:row.version.id});
+   for(const row of r.suggestions?.retained??[])consume("suggestion:"+row.packet,()=>nativeCore.suggestionAssetReferences.call(core,row.packet,revision));
+   for(const row of r.revisions?.retained??[])consume(JSON.stringify(["revision",row.previousPacket,row.packet]),()=>nativeCore.suggestionRevisionAssetReferences.call(core,row.previousPacket,row.packet,revision));
+   const cached=new Set<string>();for(const row of r.versions?.packets??[]){version(row.packet);cached.add(nativeCore.readVersion.call(core,row.packet).id);}for(const row of r.versions?.catalog?.entries??[])if(!cached.has(row.version.id))pending.push({kind:"uncached_version",id:row.version.id});
   }
-  core.checkRetainedAssetReferences(base,revision);const check=()=>{port.check();const now=port.stamp();if(now.length!==stamp.length||now.some((v,i)=>v!==stamp[i]))throw new SharedGenerationSourceError("generation_source_changed","The complete generation source changed");};check();
+  const native=generationNativeRead(core);
+  // The genuine private session stamp remains the constant-work history guard. Do not
+  // reserialize complete checkpoint strings on every inspection or widen old failure order.
+  nativeCore.checkRetainedAssetReferences.call(core,base,revision);const check=()=>{port.check();const now=port.stamp();if(now.length!==stamp.length||now.some((v,i)=>v!==stamp[i]))throw new SharedGenerationSourceError("generation_source_changed","The complete generation source changed");};check();
   const sorted=[...references.values()].sort((a,b)=>a.asset<b.asset?-1:a.asset>b.asset?1:a.generation<b.generation?-1:a.generation>b.generation?1:0);
   const metadata=freezeGeneration({format:"breditor/shared-generation-asset-reference-capture" as const,formatVersion:1 as const,identity,document:base.document,revision,packets,outcome:pending.length?{kind:"pending" as const,pending}:{kind:"ready" as const,references:sorted}});
-  return new SharedGenerationSourceCapture(key,metadata,{port,records,check,native:generationNativeRead(core)});
+  return new SharedGenerationSourceCapture(key,metadata,{port,records,check,native});
  }
 }
 export const captureSharedGenerationSource=<P extends SharedSelectionPolicy>(input:SharedGenerationSourceSelection<P>):SharedGenerationSourceCapture=>SharedGenerationSourceCapture.capture(input);

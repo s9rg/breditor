@@ -1,6 +1,6 @@
 /** Consistent owner + selected retained packet capture; no provider fetch, save, finality or GC. */
 import type {RichRetainedAssetReference} from "@breditor/experimental-rich-content";
-import {SharedRichEditor} from "./core.js";
+import type {SharedRichEditor} from "./core.js";
 import type {SharedSelectionPolicy} from "./types.js";
 import type {SharedReviewPersistentSession} from "./persistence/review_session.js";
 import type {VersionCatalogStore} from "./versions/store.js";
@@ -9,6 +9,7 @@ import type {SharedSuggestionQueue} from "./suggestions/queue.js";
 import type {SharedSuggestionRevisions} from "./suggestion_revisions/outbox.js";
 import type {SharedPacketAssetIdentity,SharedPacketAssetReferencesRead} from "./packet_asset_references.js";
 import {SharedGenerationSourceError} from "./generation_source/identity.js";
+import {sourceCoreMethods as nativeCore,sourceNativeRecoveryRead} from './source_native_read.js';
 
 export type SharedAssetCaptureSourceKind="document"|"paired-session"|"version-catalog"|"suggestions"|"suggestion-revisions";
 export interface SharedAssetCaptureRecord {readonly kind:SharedAssetCaptureSourceKind;readonly json:string}
@@ -70,46 +71,40 @@ export class SharedAssetReferenceCapture {
   return SharedAssetReferenceCapture.#capture(core,readers,()=>{});
  }
  static #capture<P extends SharedSelectionPolicy>(core:SharedRichEditor<P>,input:readonly SharedAssetRecordReader[],guard:()=>void):SharedAssetReferenceCapture {
-  if(core.segmentedHistoryPolicy()!==null)throw new SharedGenerationSourceError("generation_source_policy","Use the explicitly selected generation source capture, not the original bounded record family");
+  if(nativeCore.segmentedHistoryPolicy.call(core)!==null)throw new SharedGenerationSourceError("generation_source_policy","Use the explicitly selected generation source capture, not the original bounded record family");
   const readers=input.map(reader=>Object.freeze({...reader}));guard();const kinds=["paired-session","version-catalog","suggestions","suggestion-revisions"],selected=readers.map(reader=>reader.kind);let previous=-1;
   for(const kind of selected){const at=kinds.indexOf(kind);if(at<=previous)throw failed();previous=at;}
   if(selected.includes("suggestion-revisions")&&!selected.includes("suggestions"))throw failed();
-  if(!core.supportsRetainedAssetReferences()||!core.supportsPacketAssetReferences())throw Error("Use complete matching native owner and packet dependency reads");
-  const base=core.retainedAssetReferences(),revision=base.revision,records:SharedAssetCaptureRecord[]=[],checks:(()=>void)[]=[],sources:{kind:SharedAssetCaptureSourceKind;utf8Bytes:number}[]=[];
+  if(!nativeCore.supportsRetainedAssetReferences.call(core)||!nativeCore.supportsPacketAssetReferences.call(core))throw Error("Use complete matching native owner and packet dependency reads");
+  const base=nativeCore.retainedAssetReferences.call(core),revision=base.revision,records:SharedAssetCaptureRecord[]=[],checks:(()=>void)[]=[],sources:{kind:SharedAssetCaptureSourceKind;utf8Bytes:number}[]=[];
   let sourceBytes=0,packetCount=0;
   const record=<T>(kind:SharedAssetCaptureSourceKind,read:()=>T):T=>{
    const value=read(),json=typeof value==="string"?value:JSON.stringify(value),bytes=new TextEncoder().encode(json).byteLength;
    sourceBytes+=bytes;if(sourceBytes>MAX_SHARED_ASSET_CAPTURE_SOURCE_BYTES)throw Error("Asset capture source byte budget exceeded");
    records.push(Object.freeze({kind,json}));sources.push(Object.freeze({kind,utf8Bytes:bytes}));checks.push(()=>{const next=read(),encoded=typeof next==="string"?next:JSON.stringify(next);if(encoded!==json)throw failed();});return value;
   };
-  record("document",()=>core.checkpointJson());
+  record("document",()=>nativeCore.checkpointJson.call(core));
   const pairs=new Map<string,RichRetainedAssetReference>(),packets:SharedPacketAssetIdentity[]=[],pending:SharedAssetCapturePending[]=[],seen=new Map<string,SharedPacketAssetIdentity>();
   const add=(references:readonly RichRetainedAssetReference[])=>{for(const reference of references){pairs.set(`${reference.asset}/${reference.generation}`,reference);if(pairs.size>100000)throw Error("Asset capture complete reference budget exceeded");}};
   add(base.references);
   const consume=(cacheKey:string,read:()=>SharedPacketAssetReferencesRead):SharedPacketAssetIdentity=>{
    const known=seen.get(cacheKey);if(known)return known;if(++packetCount>MAX_SHARED_ASSET_CAPTURE_PACKETS)throw Error("Asset capture packet budget exceeded");
-   const value=read();core.checkPacketAssetReferences(value,revision);packets.push(value.packet);seen.set(cacheKey,value.packet);
+   const value=read();nativeCore.checkPacketAssetReferences.call(core,value,revision);packets.push(value.packet);seen.set(cacheKey,value.packet);
    if(value.outcome.kind==="ready")add(value.outcome.references);else pending.push(Object.freeze({kind:"source",packet:value.packet,missing:value.outcome.missing}));return value.packet;
   };
-  const snapshot=(packet:string)=>consume(`version:${packet}`,()=>core.versionAssetReferences(packet,revision));
+  const snapshot=(packet:string)=>consume(`version:${packet}`,()=>nativeCore.versionAssetReferences.call(core,packet,revision));
   for(const reader of readers)switch(reader.kind){
    case"paired-session":{const value=record(reader.kind,reader.read);for(const packet of value.versions)snapshot(packet);break;}
    case"version-catalog":{const value=record(reader.kind,reader.read),cached=new Set<string>();for(const row of value.packets)cached.add(snapshot(row.packet).id);for(const entry of value.catalog?.entries??[])if(!cached.has(entry.version.id))pending.push(Object.freeze({kind:"uncached_version",id:entry.version.id}));break;}
-   case"suggestions":{const value=record(reader.kind,reader.read);for(const row of value.retained)consume(`suggestion:${row.packet}`,()=>core.suggestionAssetReferences(row.packet,revision));break;}
-   case"suggestion-revisions":{const value=record(reader.kind,reader.read);for(const row of value.retained)consume(`revision:${JSON.stringify([row.previousPacket,row.packet])}`,()=>core.suggestionRevisionAssetReferences(row.previousPacket,row.packet,revision));break;}
+   case"suggestions":{const value=record(reader.kind,reader.read);for(const row of value.retained)consume(`suggestion:${row.packet}`,()=>nativeCore.suggestionAssetReferences.call(core,row.packet,revision));break;}
+   case"suggestion-revisions":{const value=record(reader.kind,reader.read);for(const row of value.retained)consume(`revision:${JSON.stringify([row.previousPacket,row.packet])}`,()=>nativeCore.suggestionRevisionAssetReferences.call(core,row.previousPacket,row.packet,revision));break;}
   }
-  const check=()=>{guard();core.checkRetainedAssetReferences(base,revision);for(const read of checks)read();core.checkRetainedAssetReferences(base,revision);guard();};check();
+  const check=()=>{guard();nativeCore.checkRetainedAssetReferences.call(core,base,revision);for(const read of checks)read();nativeCore.checkRetainedAssetReferences.call(core,base,revision);guard();};check();
   const references=Object.freeze([...pairs.values()].sort((a,b)=>a.asset<b.asset?-1:a.asset>b.asset?1:a.generation<b.generation?-1:a.generation>b.generation?1:0));
   const outcome=pending.length?Object.freeze({kind:"pending" as const,pending:Object.freeze(pending)}):Object.freeze({kind:"ready" as const,references});
   const metadata:SharedAssetReferenceCaptureMetadata=Object.freeze({format:"breditor/shared-asset-reference-capture",formatVersion:1,document:base.document,revision,scope:"native-and-selected-retained-packets",sources:Object.freeze(sources),packets:Object.freeze(packets),outcome});
   seen.clear();pairs.clear();
-  const {descriptor,checkpointJson,writerClock,writerClockV2,writerGroups,writerGroupsV2,reviewWriterClock,reviewCheckpoint,localReviewClock}=SharedRichEditor.prototype,native:SharedCapturedRecoveryRead=Object.freeze({
-   descriptor:()=>descriptor.call(core),checkpointJson:()=>checkpointJson.call(core),
-   writerClock:(writer:string)=>writerClock.call(core,writer),writerClockV2:(writer:string)=>writerClockV2.call(core,writer),
-   writerGroups:(after:string)=>writerGroups.call(core,after),writerGroupsV2:(after:string)=>writerGroupsV2.call(core,after),
-   reviewWriterClock:(actor:string,principal:string,through?:string)=>reviewWriterClock.call(core,actor,principal,through),
-   reviewCheckpoint:()=>reviewCheckpoint.call(core),localReviewClock:()=>localReviewClock.call(core),
-  });
+  const native=sourceNativeRecoveryRead(core);
   return new SharedAssetReferenceCapture(key,metadata,Object.freeze(records),check,native);
  }
 }
