@@ -13,7 +13,9 @@ test("clipboard interchange requires the complete separate pure capability",()=>
  for(const name of clipboardInterchangeMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native clipboard interchange capability/);}
 });
 function fixture(){
- const module={SharedEditorOwner:class {},SharedObservation:class {},SharedRichProfile:class {},SharedVersionRestorePlan:class {},SharedSuggestionPreparation:class {},SharedSuggestionEffectProof:class {},SharedSearchResults:class {},default:()=>{},initSync:()=>{}};
+ const module={SharedArchiveDigest:class {},SharedEditorOwner:class {},SharedObservation:class {},SharedRichProfile:class {},SharedVersionRestorePlan:class {},SharedSuggestionPreparation:class {},SharedSuggestionEffectProof:class {},SharedSearchResults:class {},default:()=>{},initSync:()=>{}};
+ for(const name of ["version","maximum_bytes","maximum_chunk_bytes","create"])module.SharedArchiveDigest[name]=()=>{};
+ for(const name of ["update","finish","free"])module.SharedArchiveDigest.prototype[name]=()=>{};
  for(const name of ["initial_read_only_version","initialize_read_only"])module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of searchOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of writingOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
@@ -66,8 +68,9 @@ function fixture(){
  for(const name of ["general_range_version","enable_general_ranges","replace_general_range_text","replace_general_range_plain_text","replace_general_range_typing_text","general_checkpoint","general_typing_checkpoint","general_inline_paste_version","paste_general_inline_clipboard"])module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of ["general_range_version","restore_general","restore_general_typing"])module.SharedRichProfile.prototype[name]=()=>{};
  for(const name of ["create","join_frame","restore","descriptor_json","inline_catalog_json","typing_history_version","restore_typing"])module.SharedRichProfile.prototype[name]=()=>{};
- return {module,declarations:["SharedEditorOwner","SharedObservation","SharedRichProfile","SharedVersionRestorePlan","SharedSuggestionPreparation","SharedSuggestionEffectProof","SharedSearchResults"].map(name=>`export class ${name} {\n private constructor();\n}`).join("\n")};
+ return {module,declarations:["SharedArchiveDigest","SharedEditorOwner","SharedObservation","SharedRichProfile","SharedVersionRestorePlan","SharedSuggestionPreparation","SharedSuggestionEffectProof","SharedSearchResults"].map(name=>`export class ${name} {\n private constructor();\n}`).join("\n")};
 }
+test('bounded archive hashing requires a separate complete native factory and owner',()=>{for(const name of ['version','maximum_bytes','maximum_chunk_bytes','create']){const f=fixture();delete f.module.SharedArchiveDigest[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing bounded archive digest factory/);}for(const name of ['update','finish','free']){const f=fixture();delete f.module.SharedArchiveDigest.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing bounded archive digest owner/);}});
 test("initial policy initialization must ship as a complete native capability",()=>{
  for(const name of ["initial_read_only_version","initialize_read_only"]){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native read-only capability/);}
 });

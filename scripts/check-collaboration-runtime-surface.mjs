@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {readFileSync,realpathSync} from "node:fs";
 import {resolve} from "node:path";
 import {fileURLToPath,pathToFileURL} from "node:url";
-export const applicationExports=Object.freeze(["SharedEditorOwner","SharedObservation","SharedRichProfile","SharedVersionRestorePlan","SharedSuggestionPreparation","SharedSuggestionEffectProof","SharedSearchResults","default","initSync"]);
+export const applicationExports=Object.freeze(["SharedArchiveDigest","SharedEditorOwner","SharedObservation","SharedRichProfile","SharedVersionRestorePlan","SharedSuggestionPreparation","SharedSuggestionEffectProof","SharedSearchResults","default","initSync"]);
 export const searchOwnerMethods=Object.freeze(["search_version","find_text","check_search_results","select_search_match","replace_search_one","replace_search_all","search_history_enabled","enable_search_history","search_checkpoint"]);
 export const writingOwnerMethods=Object.freeze(["writing_tools_version","writing_tools_json"]);
 export const retainedAssetOwnerMethods=Object.freeze(["retained_asset_references_version","retained_asset_references_json"]);
@@ -36,7 +36,9 @@ export const reviewedHistoryMethods=Object.freeze(["reviewed_history_version","r
 /** Generated glue must expose only configured factories, opaque observations and guarded owners. */
 export function admitApplicationSurface(module,binary,declarations){
  assert.deepEqual(Object.keys(module).sort(),[...applicationExports].sort(),"Application runtime exports must not include research probes");
- for(const name of ["SharedEditorOwner","SharedObservation","SharedRichProfile","SharedVersionRestorePlan","SharedSuggestionPreparation","SharedSuggestionEffectProof","SharedSearchResults"]){assert.equal(typeof module[name],"function");assert.match(declarations,new RegExp(`export class ${name}\\s*\\{\\s*private constructor\\(\\);`),`${name} must have no public native constructor`);}
+ for(const name of ["SharedArchiveDigest","SharedEditorOwner","SharedObservation","SharedRichProfile","SharedVersionRestorePlan","SharedSuggestionPreparation","SharedSuggestionEffectProof","SharedSearchResults"]){assert.equal(typeof module[name],"function");assert.match(declarations,new RegExp(`export class ${name}\\s*\\{\\s*private constructor\\(\\);`),`${name} must have no public native constructor`);}
+ for(const name of ["version","maximum_bytes","maximum_chunk_bytes","create"])assert.equal(typeof module.SharedArchiveDigest[name],"function",`Missing bounded archive digest factory ${name}`);
+ for(const name of ["update","finish","free"])assert.equal(typeof module.SharedArchiveDigest.prototype[name],"function",`Missing bounded archive digest owner ${name}`);
  for(const name of searchOwnerMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native search capability ${name}`);
  for(const name of writingOwnerMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native writing capability ${name}`);
  for(const name of retainedAssetOwnerMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native retained asset capability ${name}`);

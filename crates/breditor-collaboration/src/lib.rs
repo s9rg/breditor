@@ -8,6 +8,7 @@
 #[cfg(feature = "research")]
 pub mod actions;
 pub mod anchor;
+pub mod archive_digest;
 #[cfg(feature = "research")]
 pub mod engine_history_fixture;
 #[cfg(feature = "research")]
@@ -54,6 +55,9 @@ mod rich_replica_wasm;
 
 #[cfg(target_arch = "wasm32")]
 mod shared_profile_wasm;
+
+#[cfg(target_arch = "wasm32")]
+mod shared_archive_digest_wasm;
 
 /// Failures isolated before a candidate session replaces published state.
 #[derive(Debug, thiserror::Error)]

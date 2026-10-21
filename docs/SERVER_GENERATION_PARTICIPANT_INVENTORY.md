@@ -69,10 +69,12 @@ and separately protected stream credentials. Client tests use genuine original
 and generation histories, cold reopen and future document/review Undo/Redo. A
 physical-only cut keeps native counters unchanged but changes the complete source.
 
-The matching physical-server catalog, complete provider mappings and actual asset
-bytes, all client journals/outboxes, historic-copy disposition and authenticated
-whole-room activation remain required. Existing original-only catalogs are not
-silently upgraded to carry this new source family.
+The distinct [physical room catalog](PHYSICAL_ROOM_RECOVERY_CATALOG.md) now
+retains original/current server files, this inventory and every selected tagged
+client file with fresh durable-byte admission. Its operational parent, complete
+provider mappings and actual asset bytes, all client journals/outboxes,
+historic-copy disposition and authenticated whole-room activation remain
+required. Existing original-only catalogs are not silently upgraded.
 
 The [qualification](qualification/2026-10-21-server-generation-inventory-sdk.json)
 pins the native files, complete source and fresh installed archives. Ten native

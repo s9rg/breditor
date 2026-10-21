@@ -96,6 +96,25 @@ reader does not establish complete provider/client closure or whole-room
 activation. See the [physical participant contract](../../docs/SERVER_GENERATION_PARTICIPANT_INVENTORY.md)
 for selection, bounds, ownership and remaining integration requirements.
 
+## Physical room file retention
+
+`SharedPhysicalRoomRecoveryCatalogArchive` separately selects complete original
+and current generation-server archives, current native participant metadata and
+all original/generation client copies. `SharedPhysicalRoomRecoveryCatalog.begin`
+atomically retains those files only in a fresh database; `resume` and `verify`
+re-admit actual durable bytes against the independent selection. Occupied
+destinations are never overwritten, and historic copies are never silently
+chosen or discarded. Existing catalog versions and protocols stay unchanged.
+
+Both require the matching explicit Wasm digest module and synchronous host
+authority. `hashSharedArchive` and `readSharedServerLogGenerationRoomArchive`
+use a dedicated bounded native SHA-256 owner, without whole-large-file buffer
+reads or a hash fallback. Integrity does not confer native replay or account
+authority. Cached `checkSources` diagnostics retain full physical pins and leave
+unreconciled histories pending; they perform no I/O or activation. See the
+[contract](../../docs/PHYSICAL_ROOM_RECOVERY_CATALOG.md) for exact bounds, immutable
+storage, cleanup, continued-origin limitations and remaining operational work.
+
 ## Retained image references
 
 `core.supportsRetainedAssetReferences()` requires the complete optional native

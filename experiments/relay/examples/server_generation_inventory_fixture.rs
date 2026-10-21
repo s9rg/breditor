@@ -30,7 +30,8 @@ async fn main() -> Result {
     }
     println!(
         "{}",
-        serde_json::json!({"format":"breditor/native-server-generation-inventory-fixtures","formatVersion":1,"cases":cases})
+        serde_json::json!({"format":"breditor/native-server-generation-inventory-fixtures","formatVersion":1,
+            "archiveLimits":{"serverBytes":breditor_collab_relay::MAX_SERVER_LOG_GENERATION_ROOM_BACKUP_BYTES,"nativeBytes":breditor_collab_relay::MAX_SERVER_LOG_GENERATION_BACKUP_BYTES,"rasterBytes":breditor_collab_relay::assets::MAX_SERVER_ASSET_BACKUP_BYTES},"cases":cases})
     );
     Ok(())
 }

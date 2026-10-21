@@ -1,0 +1,329 @@
+{
+  "format": "breditor/physical-room-catalog-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-21",
+  "passed": true,
+  "source": {
+    "commit": "f43fc7dd9e48d308ac9c3722c9202c3397dacf79",
+    "dirty": true,
+    "sha256": "0be89b90843db257a999544c58b554dcb9210357e9dff0e7474bd4228d21f3b1",
+    "files": 5203,
+    "bytes": 43556097
+  },
+  "qualification": {
+    "path": "target/v1-candidate-runs/run-sKFr7F/result.json",
+    "bytes": 47353,
+    "sha256": "a228c9d2868fed02ab754070a040a972edc469bf2d740584b05b296aa4657f4f",
+    "modifiedAtMs": 1792590985733.5737
+  },
+  "selectedStages": 30,
+  "fullFunctionalPlanRun": false,
+  "functionalPlanChecks": 188,
+  "openV1Gates": 13,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "nonDocumentation": {
+    "files": 4658,
+    "sha256": "ca2bdfbef1b2bb13f062faa42633f32157bc348f5ad899a3a4cd188bd422f70e"
+  },
+  "tests": {
+    "relay": 325,
+    "noNetworking": 264,
+    "collaboration": 666,
+    "independentReview": 3,
+    "newNativeDigest": 5,
+    "archiveIntegrity": 35,
+    "physicalCatalogStorage": 35,
+    "runtimeSurface": 41,
+    "candidateRunner": 68,
+    "scripts": 1439,
+    "existingOptInSkipped": 3
+  },
+  "reports": [
+    {
+      "id": "room-participant-inventory-native",
+      "original": {
+        "path": "target/room-participant-inventory-native.json",
+        "bytes": 9775,
+        "sha256": "042d12159e6acda87a176e6a42f7f877a0392fa5ee611ae88efa8c49008dc683",
+        "modifiedAtMs": 1792589394833.7239
+      },
+      "copy": {
+        "path": "target/v1-candidate-runs/run-sKFr7F/room-participant-inventory-native-report.json",
+        "bytes": 9775,
+        "sha256": "042d12159e6acda87a176e6a42f7f877a0392fa5ee611ae88efa8c49008dc683",
+        "modifiedAtMs": 1792591053781.0415
+      }
+    },
+    {
+      "id": "room-participant-inventory-sdk",
+      "original": {
+        "path": "target/room-participant-inventory-sdk.json",
+        "bytes": 2247,
+        "sha256": "9dfc5781fe94dee483c75b2a3ce0786acde4330528b27d8115f67e9fcdc93134",
+        "modifiedAtMs": 1792589399897.1267
+      },
+      "copy": {
+        "path": "target/v1-candidate-runs/run-sKFr7F/room-participant-inventory-sdk-report.json",
+        "bytes": 2247,
+        "sha256": "9dfc5781fe94dee483c75b2a3ce0786acde4330528b27d8115f67e9fcdc93134",
+        "modifiedAtMs": 1792591053781.8672
+      }
+    },
+    {
+      "id": "generation-room-inventory-sdk",
+      "original": {
+        "path": "target/generation-room-inventory-sdk.json",
+        "bytes": 2142,
+        "sha256": "f00450197113fbc6cbce1c2b824c65d6503bf4345170d9114d6d21eb1aacb70a",
+        "modifiedAtMs": 1792589415759.4834
+      },
+      "copy": {
+        "path": "target/v1-candidate-runs/run-sKFr7F/generation-room-inventory-sdk-report.json",
+        "bytes": 2142,
+        "sha256": "f00450197113fbc6cbce1c2b824c65d6503bf4345170d9114d6d21eb1aacb70a",
+        "modifiedAtMs": 1792591053782.4548
+      }
+    },
+    {
+      "id": "server-generation-inventory-native",
+      "original": {
+        "path": "target/server-generation-inventory-native.json",
+        "bytes": 15340,
+        "sha256": "8ec199c4576a21405048affc94f5cb672734a13d0a938ec085c0e72db52803f2",
+        "modifiedAtMs": 1792589468956.8137
+      },
+      "copy": {
+        "path": "target/v1-candidate-runs/run-sKFr7F/server-generation-inventory-native-report.json",
+        "bytes": 15340,
+        "sha256": "8ec199c4576a21405048affc94f5cb672734a13d0a938ec085c0e72db52803f2",
+        "modifiedAtMs": 1792591053783.01
+      }
+    },
+    {
+      "id": "server-generation-inventory-sdk",
+      "original": {
+        "path": "target/server-generation-inventory-sdk.json",
+        "bytes": 1809,
+        "sha256": "bab6b101d8b1323b82ca08b8d0d84eb3e864128ee564fd48a2ccca4998afdb9a",
+        "modifiedAtMs": 1792589491771.9177
+      },
+      "copy": {
+        "path": "target/v1-candidate-runs/run-sKFr7F/server-generation-inventory-sdk-report.json",
+        "bytes": 1809,
+        "sha256": "bab6b101d8b1323b82ca08b8d0d84eb3e864128ee564fd48a2ccca4998afdb9a",
+        "modifiedAtMs": 1792591053783.6047
+      }
+    },
+    {
+      "id": "physical-room-catalog-sdk",
+      "original": {
+        "path": "target/physical-room-catalog-sdk.json",
+        "bytes": 2215,
+        "sha256": "d2e006ef45c8cb8c17f5f04e2c1fa736a80c638cf19c620cd51d5b29c9c1add1",
+        "modifiedAtMs": 1792589505787.117
+      },
+      "copy": {
+        "path": "target/v1-candidate-runs/run-sKFr7F/physical-room-catalog-sdk-report.json",
+        "bytes": 2215,
+        "sha256": "d2e006ef45c8cb8c17f5f04e2c1fa736a80c638cf19c620cd51d5b29c9c1add1",
+        "modifiedAtMs": 1792591053784.4753
+      }
+    },
+    {
+      "id": "room-recovery-catalog-v2-sdk",
+      "original": {
+        "path": "target/room-recovery-catalog-v2-sdk.json",
+        "bytes": 3327,
+        "sha256": "cd61b34afddf48a4994593f9eb7859797f625bfea8ba4d0e566b0780a9593545",
+        "modifiedAtMs": 1792589542916.6003
+      },
+      "copy": {
+        "path": "target/v1-candidate-runs/run-sKFr7F/room-recovery-catalog-v2-sdk-report.json",
+        "bytes": 3327,
+        "sha256": "cd61b34afddf48a4994593f9eb7859797f625bfea8ba4d0e566b0780a9593545",
+        "modifiedAtMs": 1792591053784.909
+      }
+    },
+    {
+      "id": "server-generation-inventory-installed",
+      "original": {
+        "path": "target/server-generation-inventory-installed.json",
+        "bytes": 3667,
+        "sha256": "b431b4490f6800faf999aeb3b4291f544d2b9554623ec9553782beca66709df2",
+        "modifiedAtMs": 1792589566423.1807
+      },
+      "copy": {
+        "path": "target/v1-candidate-runs/run-sKFr7F/server-generation-inventory-installed-report.json",
+        "bytes": 3667,
+        "sha256": "b431b4490f6800faf999aeb3b4291f544d2b9554623ec9553782beca66709df2",
+        "modifiedAtMs": 1792591053785.6118
+      }
+    },
+    {
+      "id": "physical-room-catalog-installed",
+      "original": {
+        "path": "target/physical-room-catalog-installed.json",
+        "bytes": 4294,
+        "sha256": "9a846d2d2e212d32100a5ec7b545e011b1c912c5736813f1dcbb96907f841c9a",
+        "modifiedAtMs": 1792589579860.1897
+      },
+      "copy": {
+        "path": "target/v1-candidate-runs/run-sKFr7F/physical-room-catalog-installed-report.json",
+        "bytes": 4294,
+        "sha256": "9a846d2d2e212d32100a5ec7b545e011b1c912c5736813f1dcbb96907f841c9a",
+        "modifiedAtMs": 1792591053786.1394
+      }
+    }
+  ],
+  "native": {
+    "cases": 10,
+    "longNativeCuts": 1,
+    "physicalOnlyCuts": 10,
+    "protectedStreams": 40,
+    "rawCredentialsExported": false,
+    "limits": {
+      "nativeBytes": 554041408,
+      "rasterBytes": 273727541,
+      "serverBytes": 827900086
+    },
+    "manifest": {
+      "path": "target/native-server-generation-inventory-kEQmuF/fixtures.json",
+      "bytes": 4315,
+      "sha256": "95e5c0feeec582a0ff383ce2cc7f4e1770e66a0925a118087a6b1d17e11d88a6",
+      "modifiedAtMs": 1792589468946.225
+    }
+  },
+  "catalog": {
+    "format": "breditor/physical-room-catalog-probe",
+    "formatVersion": 1,
+    "passed": true,
+    "nativeRooms": 10,
+    "longNativeCuts": 1,
+    "actualServerArchives": 20,
+    "physicalOnlySourceChanges": 10,
+    "sourceFamilies": 30,
+    "selectedOriginalClients": 30,
+    "selectedGenerationClients": 30,
+    "historicCopiesRetained": 30,
+    "coldCatalogs": 30,
+    "exactRetainedFiles": 180,
+    "rehashedCatalogs": 30,
+    "duplicateEntryRefusals": 30,
+    "familyMismatchRefusals": 30,
+    "pureChecks": 30,
+    "selectionAndFactorySnapshots": 1,
+    "storageContextSnapshots": 1,
+    "independentSelectionRefusals": 2,
+    "exclusiveOpenRefusals": 1,
+    "lostAcknowledgementResumes": 2,
+    "durableCorruptionRefusals": 6,
+    "failedCleanupCustodyRefusals": 1,
+    "failedCleanupRetries": 1,
+    "closeWaits": 1,
+    "verificationReentryRefusals": 1,
+    "networkCalls": 0,
+    "restoredParticipants": 30,
+    "restoredComponents": 120,
+    "coldParticipants": 0,
+    "scope": "Twenty real native server/raster transport files with independent complete hashes and exact native limits; thirty mixed original/generation catalogs retaining both server cuts, native metadata and every historic client copy. Fresh disk re-admission, exact cold retained bytes, stale physical pin/changed selection refusal, interrupted acknowledgements, cleanup custody and read/close serialization. Genuine native client prefix diagnostics remain pending for historic copies. Synthetic IndexedDB/locks/raster fixtures; not native staging, continued restore lineage, provider/client closure, browser durability or authenticated whole-room activation."
+  },
+  "installed": {
+    "consumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-physical-room-catalog-installed-6qeYOW/consumer",
+    "registryArtifacts": 45,
+    "workspaceLinks": false,
+    "strictPublicTypes": true,
+    "assertionsUnchanged": true,
+    "digestContracts": 35,
+    "productionModules": 129,
+    "noWorkspaceReactOrSyntheticStorageInProduction": true,
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-physical-room-catalog-installed-6qeYOW/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-physical-room-catalog-installed-6qeYOW/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "e6b524a4d3b9cab485e6df2ff62af133a3772291ec463fd3bba73934c13ac40f"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-physical-room-catalog-installed-6qeYOW/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "518a418f6f0b251ca8ff8ee2f905db617fe54dd5c41790332afb9d098a363cf1"
+      }
+    ]
+  },
+  "runtime": {
+    "wasmSha256": "1836883c3c306ed10b5d7306812fdc628152915836f84d1c0d6d9d2e49096e4f",
+    "wasm": {
+      "path": "target/promoted-shared-web/breditor_shared_bg.wasm",
+      "bytes": 13444336,
+      "sha256": "1836883c3c306ed10b5d7306812fdc628152915836f84d1c0d6d9d2e49096e4f",
+      "modifiedAtMs": 1792589380852.6553
+    },
+    "javascriptExports": 10,
+    "wasmExports": 267,
+    "originalDocumentComparison": {
+      "format": "breditor/shared-v1-runtime-comparison",
+      "formatVersion": 1,
+      "beforeWasmSha256": "e8afdb083c9e849505c6d1ca85b721485bd673fed71ce1ea1690b20f9c500f9a",
+      "afterWasmSha256": "1836883c3c306ed10b5d7306812fdc628152915836f84d1c0d6d9d2e49096e4f",
+      "comparedCheckpoints": 49,
+      "crossVersionRestores": 2,
+      "futureHistorySteps": 12,
+      "modelVersion": 11,
+      "journalVersion": 12,
+      "passed": true
+    },
+    "originalReviewComparison": {
+      "format": "breditor/original-review-runtime-comparison",
+      "formatVersion": 1,
+      "passed": true,
+      "beforeWasmSha256": "e8afdb083c9e849505c6d1ca85b721485bd673fed71ce1ea1690b20f9c500f9a",
+      "afterWasmSha256": "1836883c3c306ed10b5d7306812fdc628152915836f84d1c0d6d9d2e49096e4f",
+      "cases": 72,
+      "exactNativeComparisons": 1440,
+      "crossVersionRestores": 144,
+      "futureHistoryComparisons": 1080,
+      "scope": "Exact original native review checkpoints, event frames, views, actor clocks and document cuts in actual old/new application Wasm; both cross-version recovery directions and future Undo/Redo. No new review-family capability is assumed in the old build."
+    },
+    "dependencyNoticeGap": "generic-btree@0.10.7; existing gap remains open",
+    "licenseReview": "not-approved"
+  },
+  "repair": {
+    "cause": "Verification promise was assigned after synchronous authority callback, permitting reentrant overlapping verification",
+    "positiveBefore": {
+      "path": "target/v1-candidate-runs/run-IySd2L/result.json",
+      "bytes": 1628,
+      "sha256": "8ddb1464e29e8a38ac8683d61357ec2449ba6656fd03e2b0e3989b509ac3c331",
+      "modifiedAtMs": 1792589290812.8757
+    },
+    "positiveBeforeLog": {
+      "path": "target/v1-candidate-runs/run-IySd2L/01-physical-catalog-reentry-before.log",
+      "bytes": 661,
+      "sha256": "ae4002bb3432123df5cc37eca69e28add53e862fd694a862aa5ea84a3e89b9e2",
+      "modifiedAtMs": 1792589290464.7405
+    },
+    "permanentRegression": {
+      "path": "scripts/fixtures/physical-room-catalog/failures.mjs",
+      "bytes": 8187,
+      "sha256": "f952d2c822325e93168f689369fcce43f255d78d42c049037143843860522f95",
+      "modifiedAtMs": 1792589287151.0972
+    },
+    "sourceAndInstalledNowPass": true,
+    "unchangedAssertion": true
+  },
+  "discardedRuns": [
+    {
+      "path": "target/v1-candidate-runs/run-AUoElx/result.json",
+      "reason": "Stopped the initial qualification after reproducing verification reentry; not counted as a pass"
+    },
+    {
+      "path": "target/v1-candidate-runs/run-YChPNB/result.json",
+      "reason": "First new regression had a fixture syntax error, corrected before the actual positive reproduction; not counted as a product failure or pass"
+    }
+  ],
+  "scope": "Immutable physical server/client file retention with actual native hashes and genuine cached prefix diagnostics. Full original/current pins and historical copies retained. Not native client staging, continued-origin transfer, complete provider/client reconciliation, browser/platform/resource qualification or authenticated whole-room activation. No version, API freeze, push, tag, publication or deployment promoted."
+}

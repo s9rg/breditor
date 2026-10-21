@@ -100,8 +100,47 @@ widening the original single-log reader or either existing catalog. Mixed
 cohorts use genuine source owners, preserve pending histories and refuse
 duplicate writer/actor copies; ordinary writer/review leases remain required.
 The native file bridge includes cold operational recovery, physical-only source
-changes and a global cut beyond 8,192 records. Matching physical-server catalog
-storage, provider/client closure and activation remain the next integration.
+changes and a global cut beyond 8,192 records. The separate physical-server
+retention catalog is described next; its operational parent, provider/client
+closure and activation remain the next integration.
+
+The distinct [physical room recovery catalog](PHYSICAL_ROOM_RECOVERY_CATALOG.md)
+now retains both complete original/current native+raster server files, current
+native participant metadata and every selected original/generation client copy.
+Atomic absent-only storage, fresh complete durable-byte admission and retryable
+cleanup do not overwrite old or occupied stores. Historical copies stay pending
+until explicitly reconciled. The new bounded Rust SHA-256 owner avoids whole
+large-server-file buffers and does not own an editor or confer replay/authority.
+The existing native file bounds, original protocols and defaults are unchanged.
+
+The functional bridge admits twenty actual native server files in ten profiles,
+including a cut beyond 8,192 records. Thirty mixed catalogs cold-reopen all 180
+retained files exactly. Separate failures exercise changed physical pins,
+corruption, lost acknowledgements, changed caller selections/factories, actual
+storage context, cleanup custody and close/read ordering. This is file retention
+and genuine prefix diagnostics, not native staging, continued-origin transfer,
+provider/client closure or authenticated activation. Its full resource envelope
+and platform durability still require qualification.
+
+The [physical catalog qualification](qualification/2026-10-21-physical-room-catalog.json)
+passes all thirty selected architectural stages on frozen source: 325 relay,
+264 complete no-networking, 666 collaboration and three independent-review
+tests, plus 1,439 script cases with three existing opt-in skips. The complete
+no-networking run is broader than the earlier carried 203-case selected subset.
+Fresh offline public packages verify the same thirty catalogs, all 180 retained
+files and the 35 bounded digest tests, with strict public types and 45 pinned
+registry artifacts. No workspace links, React or synthetic storage enter the
+production import graph.
+
+A reproduced callback re-entry could start two verifications before the first
+promise was assigned. Busy ownership now reserves before callbacks; the same
+positive assertion passes in source and installed packages. Old/new application
+Wasm retains 49 exact original document checkpoints and 1,440 original review
+comparisons, cross-version recovery and future history. Export, path and
+dependency guards are intact; the existing notice/license gap is not waived.
+Five additional checks bring the functional plan to 188, not all run here.
+Native client staging, continued-origin transfer, full provider/client closure
+and authenticated activation remain work; all thirteen release gates stay open.
 
 The [physical inventory SDK qualification](qualification/2026-10-21-server-generation-inventory-sdk.json)
 passes 35 new metadata contracts, the 20 original metadata contracts, 67
@@ -219,8 +258,8 @@ and 1,440 native comment comparisons, both recovery directions and future histor
 
 Next, in architectural risk order:
 
-1. Carry complete original/current physical selections through a matching SDK
-   room catalog and operational parent around the prepared native host. Preserve
+1. Carry the now-retained complete original/current physical selections through
+   native client staging and a matching operational parent around the prepared native host. Preserve
    source ancestry, real owners and refusal of unrequested repair or cleanup.
    Keep original formats closed. Address
    retained Undo limits and live staging/replay costs as separate lifetime
