@@ -101,8 +101,53 @@ check changes roles, prunes data or reconciles providers and clients.
 
 Later edits/uploads make historic exact restore refuse rather than roll accepted
 work back. A fresh capture can restore a later cut to a new absent destination.
-Durable operational handoff and reopening a continuing joined directory remain
-separate work; exact historic restore is not operational resume.
+Exact historic restore is not operational resume.
+
+## Operational handoff and cold reopen
+
+`RecoveredLogGenerationServerRoom::begin_operation` first verifies the exact
+completed source under a host-authenticated owner principal and independently
+selected archive identity. It retains the actual parent, native and raster
+leases throughout the transition. A separate operation intent records an actual
+empty marker inode before any marker-body write. The eventual marker also binds
+the actual intent inode, original source and recovery identity, and fingerprints
+of the immutable parent/native recovery controls and their local custody.
+Preserved unselected components have their child names, control bytes and file
+inodes pinned too; an unchanged directory inode alone does not prove they stayed
+unchanged.
+
+Marker publication appends only the selected owned prefix, syncs it, links that
+same inode to an absent target, syncs the directory, and retires only its owned
+staging alias. An unrelated target refuses even if its bytes match. A failure
+before the intent is selected leaves a recognized empty stage; exact recovery
+can preserve it. Once the intent exists, use explicit operational resume rather
+than re-entering historic restoration. Retain every file after an uncertain
+result: the marker may already be committed.
+
+`OperationalLogGenerationServerRoom::resume` requires the original independently
+trusted archive selection, explicit `HostReacquired` policy and authenticated
+owner. Before marker commitment both components must still match the exact
+source. After commitment, native replay and retained-source checks admit complete
+later edits, independent native document/comment boundaries, physical rotations
+and immutable raster additions. The original manifest lineage, entire selected
+prefix, raster bytes and original raster-file inodes must remain intact.
+Byte-identical replacement intent/control files do not substitute for selected
+custody. Unknown parent work remains refused and preserved.
+
+Cold operational admission does not finish pending physical rotations, trim torn
+native tails, initialize raster storage or clean pending uploads. Those require a
+separate explicit host recovery decision. Component owners are reacquired under
+the held parent lease; the raster lock transfers directly into its store without
+a release/reopen gap. `check_live_source` repeats current retained-source and
+control checks on the actual operational owners. Old ephemeral leases remain
+absent after cold replay; original protected credentials and current account
+permissions still govern resume.
+
+This is a local Unix storage lifecycle, not portable deployment authority.
+`origin` identifies the original recovery source rather than the room's current
+content. The type does not launch services or establish provider mappings,
+client journal/outbox coverage, asset availability beyond stored bytes, or fencing
+of another host. Original-only operational APIs keep their original meanings.
 
 ## Functional evidence and remaining work
 
@@ -113,7 +158,22 @@ choices and repeat capture/restore after editing. Fourteen controlled filesystem
 interruption prefixes resume without early joined completion. These are not
 physical power-loss certification.
 
-Remaining lifecycle work is durable operational handoff/reopen, provider/client
+The [operational qualification](qualification/2026-10-21-generation-operational-recovery.json)
+passes 313 relay, 203 no-networking, 66 candidate-runner and 1,331 script cases
+on frozen source, plus strict linting/rustdoc and an independent public Rust
+consumer. Forty independent document/comment families retain old offline input,
+exact receipts and peer-preserving Undo/Redo through two operational cold reopens.
+Six real operational publication prefixes resolve without adopting unrelated
+files. A reproduced shared-finalizer failure passes with its positive assertion
+unchanged: complete replay now refuses a real pending rotation without finishing
+it, while explicit native repair remains separate.
+
+Maximum-layout operational recovery also passes under the isolated
+192-descriptor limit. Three existing opt-in skips remain skips. The unchanged
+core/runtime inputs and byte-identical public archives carry their prior
+qualification; the complete 178-check functional plan is not rerun by this slice.
+
+Remaining lifecycle work is generation-aware host/catalog integration, provider/client
 journal and outbox reconciliation, historic-copy disposition and authenticated
 whole-room activation. A stored raster inventory does not prove all historical
 or offline asset references have provider mappings and available bytes. Cross-host
@@ -121,7 +181,7 @@ fencing and complete memory/performance qualification remain open. This server
 component does not establish V1/full feature parity or close the thirteen release
 gates.
 
-The [joined qualification](qualification/2026-10-21-joined-generation-server-recovery.json)
+The earlier [joined qualification](qualification/2026-10-21-joined-generation-server-recovery.json)
 passes 304 relay, 194 no-networking, 66 candidate-runner and 1,331 script cases
 on frozen source, plus strict linting/rustdoc and two independent Rust-consumer
 checks. Three existing opt-in script skips remain skips. Both reproduced

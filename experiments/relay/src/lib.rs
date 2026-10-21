@@ -67,10 +67,10 @@ pub use room::{
     ServerLogGenerationBackupIdentity, ServerLogGenerationBackupInfo,
 };
 pub use room::{
-    MAX_SERVER_LOG_GENERATION_ROOM_BACKUP_BYTES, RecoveredLogGenerationServerRoom,
-    ServerLogGenerationRoomBackup, ServerLogGenerationRoomBackupIdentity,
-    ServerLogGenerationRoomBackupInfo, ServerLogGenerationRoomRecovery,
-    ServerLogGenerationRoomRecoveryProgress,
+    MAX_SERVER_LOG_GENERATION_ROOM_BACKUP_BYTES, OperationalLogGenerationServerRoom,
+    RecoveredLogGenerationServerRoom, ServerLogGenerationRoomBackup,
+    ServerLogGenerationRoomBackupIdentity, ServerLogGenerationRoomBackupInfo,
+    ServerLogGenerationRoomRecovery, ServerLogGenerationRoomRecoveryProgress,
 };
 pub use room::{
     MAX_SERVER_ROOM_BACKUP_BYTES, OperationalServerRoom, RecoveredServerRoom, ServerRoomBackup,

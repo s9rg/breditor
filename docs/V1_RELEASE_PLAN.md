@@ -79,9 +79,27 @@ state and checks both owners before one joined completion barrier. Streaming
 output and owned-input admission avoid another full native history buffer.
 Exact retries, forty native family combinations, old offline document/comment
 work and future peer-preserving history are covered by functional regressions.
-Operational handoff/reopen and provider/client activation remain separate work.
+An explicit operational handoff now retains the actual joined owners and synced
+storage provenance. Cold reopen admits complete later history and immutable
+uploads while preserving original physical ancestry, rasters and recovery-file
+custody; it refuses pending rotation/uploads and torn tails without repairing
+them incidentally. Host/catalog integration, provider/client reconciliation and
+authenticated whole-room activation remain separate work.
 
-The [joined server qualification](qualification/2026-10-21-joined-generation-server-recovery.json)
+The [operational generation qualification](qualification/2026-10-21-generation-operational-recovery.json)
+passes 313 relay, 203 no-networking, 66 candidate-runner and 1,331 script cases,
+strict linting/rustdoc and an independent public Rust consumer on frozen source.
+Forty native document/comment family combinations preserve old offline work,
+receipt retries and peer-preserving Undo/Redo through two operational cold reopens.
+Six real handoff prefixes resolve. The unchanged positive regression reproduces
+and repairs a shared finalizer that could complete a pending rotation during
+non-repair replay. Preserved orphan-component controls remain pinned too, and
+maximum-layout actual cold reopen passes under the isolated 192-descriptor budget.
+Three existing opt-in skips remain skips; unchanged core/runtime/package evidence
+is carried explicitly. This does not run the whole functional plan or close a
+V1 gate.
+
+The earlier [joined server qualification](qualification/2026-10-21-joined-generation-server-recovery.json)
 passes 304 relay, 194 no-networking, 66 candidate-runner and 1,331 script cases
 on frozen source, plus strict linting/rustdoc and an independent public Rust
 consumer. Fourteen actual interruption prefixes resume, and both positive

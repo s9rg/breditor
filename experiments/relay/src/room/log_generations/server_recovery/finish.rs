@@ -76,9 +76,9 @@ impl ServerLogGenerationRoomRecovery {
         let controls = super::super::control_seal::RecoveryControlSeal::capture(
             &self.directory,
             Some(&names),
+            &components,
         )?;
-        let native_controls =
-            super::super::control_seal::RecoveryControlSeal::capture(native.control_root(), None)?;
+        let native_controls = native.recovery_control_seal()?;
         Ok(RecoveredLogGenerationServerRoom {
             controls,
             native_controls,

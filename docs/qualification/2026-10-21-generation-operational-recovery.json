@@ -1,0 +1,106 @@
+{
+  "format": "breditor/operational-generation-server-native-qualification",
+  "date": "2026-10-21",
+  "passed": true,
+  "source": {
+    "commit": "e5d38673b88b3745608cb17ea62bd45a824b72f9",
+    "dirty": true,
+    "sha256": "69ebe7cc868e27b84724171d81bf52ad9fe0b63e9650286a926f8b4a34dfc4c9",
+    "files": 5136,
+    "bytes": 43228167
+  },
+  "report": {
+    "path": "target/operational-generations-qualification-GjzI7p/result.json",
+    "bytes": 18507,
+    "sha256": "2e057fb8a411af2e930963cf600bb4f5acc980e1584cc2aec645c869088c2cb5",
+    "modifiedAtMs": 1792583041455.5918
+  },
+  "tests": {
+    "relayRust": 313,
+    "noNetworkingRust": 203,
+    "candidateContracts": 66,
+    "scriptContracts": 1331,
+    "existingOptInSkipped": 3,
+    "operationalNativeFamilyCombinations": 40,
+    "publicProfileTransportChoices": 10,
+    "operationalHandoffPrefixes": 6,
+    "joinedRestorePrefixes": 14,
+    "maximumWalFiles": 64,
+    "isolatedDescriptorLimit": 192,
+    "independentRustConsumer": 2,
+    "wholePlanRun": false,
+    "functionalPlanChecks": 178
+  },
+  "nonDocumentation": {
+    "files": 4596,
+    "sha256": "a70546e36c607b96437b85bf230d686447a6445f303eab779289eefbb83c9d00"
+  },
+  "replayFinalizerRepair": {
+    "before": {
+      "path": "target/operational-finalizer-before-sB7XZF/result.json",
+      "bytes": 648,
+      "sha256": "21accad9c3765e89802fd42db3aa6b1866bc220f0dd9819ae88b5a6a86a9969e",
+      "modifiedAtMs": 1792581968172.1963
+    },
+    "positiveBeforeFailures": 1,
+    "positiveAssertionUnchanged": true
+  },
+  "consumerFiles": [
+    {
+      "path": "target/operational-native-consumer-QxdJsh/Cargo.toml",
+      "bytes": 559,
+      "sha256": "f0c30984f8b03f1de8521df9bc8734b05ce5087b5500559e6d89b298322ae8cd",
+      "modifiedAtMs": 1792581673771.8079
+    },
+    {
+      "path": "target/operational-native-consumer-QxdJsh/Cargo.lock",
+      "bytes": 44104,
+      "sha256": "674eb59467aeb3fe0914f9febfd533da73e280edade8eb34b5dda43ee38b5015",
+      "modifiedAtMs": 1792581673772.5151
+    },
+    {
+      "path": "target/operational-native-consumer-QxdJsh/tests/consumer.rs",
+      "bytes": 7661,
+      "sha256": "dd3e6e32a12e51d76b0bd7726c748f1461e7f9d8937d8f3fb5f2f2a12745b30f",
+      "modifiedAtMs": 1792581738124.9639
+    }
+  ],
+  "carriedCore": {
+    "baseline": {
+      "path": "target/v1-candidate-runs/run-M8n7a3/result.json",
+      "bytes": 103544,
+      "sha256": "d24ed27e02faa6379eb6c6037da5aec0be10bd71f9d9b0dcbbc87752d8ed86e9",
+      "modifiedAtMs": 1792568195312.4988
+    },
+    "unchangedNonRelayNativeInputs": 2505,
+    "normalRuntimeFiles": 12,
+    "normalSharedWasmSha256": "e8afdb083c9e849505c6d1ca85b721485bd673fed71ce1ea1690b20f9c500f9a",
+    "nativeCoreSuitesRerun": false,
+    "normalProducersRerun": false,
+    "publicArchivesByteIdentical": [
+      {
+        "name": "@breditor/browser",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "sha256": "e6b524a4d3b9cab485e6df2ff62af133a3772291ec463fd3bba73934c13ac40f"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "sha256": "47ead41c8ec8dac6f0b651ed69ad894c3657019d09e9b7c7e768605cfc900fd8"
+      }
+    ]
+  },
+  "remaining": [
+    "Generation-aware authenticated host capture/state and operational router custody still require integration.",
+    "SDK catalog/provider/client reconciliation must retain the complete original physical source pin.",
+    "All offline journals/outboxes, historical-copy disposition and authenticated whole-room activation remain required.",
+    "Physical power loss, cross-host fencing, complete resource/performance envelope and all thirteen V1 gates remain open."
+  ],
+  "v1Ready": false,
+  "openV1Gates": 13,
+  "push": false,
+  "publication": false,
+  "deployment": false
+}

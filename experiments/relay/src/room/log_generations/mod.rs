@@ -10,8 +10,8 @@ pub use server_backup::{
     ServerLogGenerationRoomBackupIdentity, ServerLogGenerationRoomBackupInfo,
 };
 pub use server_recovery::{
-    RecoveredLogGenerationServerRoom, ServerLogGenerationRoomRecovery,
-    ServerLogGenerationRoomRecoveryProgress,
+    OperationalLogGenerationServerRoom, RecoveredLogGenerationServerRoom,
+    ServerLogGenerationRoomRecovery, ServerLogGenerationRoomRecoveryProgress,
 };
 mod participants;
 pub use participants::{

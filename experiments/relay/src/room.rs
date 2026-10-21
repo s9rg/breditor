@@ -26,10 +26,10 @@ pub use log_generations::{
     ServerLogGenerationBackupIdentity, ServerLogGenerationBackupInfo,
 };
 pub use log_generations::{
-    MAX_SERVER_LOG_GENERATION_ROOM_BACKUP_BYTES, RecoveredLogGenerationServerRoom,
-    ServerLogGenerationRoomBackup, ServerLogGenerationRoomBackupIdentity,
-    ServerLogGenerationRoomBackupInfo, ServerLogGenerationRoomRecovery,
-    ServerLogGenerationRoomRecoveryProgress,
+    MAX_SERVER_LOG_GENERATION_ROOM_BACKUP_BYTES, OperationalLogGenerationServerRoom,
+    RecoveredLogGenerationServerRoom, ServerLogGenerationRoomBackup,
+    ServerLogGenerationRoomBackupIdentity, ServerLogGenerationRoomBackupInfo,
+    ServerLogGenerationRoomRecovery, ServerLogGenerationRoomRecoveryProgress,
 };
 pub use log_generations::{
     RecoveredLogGenerationRoom, ServerLogGenerationRecovery, ServerLogGenerationRecoveryProgress,
@@ -392,7 +392,11 @@ impl Room {
             result.replay(record)?;
         }
         result.abandon_suggestion_revision_preparation();
-        result.log.finish_recovery(recovery)?;
+        if truncate_tail {
+            result.log.finish_recovery(recovery)?;
+        } else {
+            result.log.finish_complete_recovery(recovery)?;
+        }
         Ok((result, recovery))
     }
 

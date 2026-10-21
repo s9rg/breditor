@@ -115,6 +115,23 @@ impl Log {
     ) -> Result<(Self, Vec<Record>, Recovery)> {
         Self::open_generation_directory(directory, ".ready.json")
     }
+    /// Provenance admission is read-only: pending rotation and torn tails require a separate
+    /// explicit recovery decision. Never let Room replay finish/repair them incidentally.
+    pub(crate) fn open_complete_owned_generations(
+        directory: Directory,
+    ) -> Result<(Self, Vec<Record>, Recovery)> {
+        directory.absent(".rotation.json")?;
+        let (log, records, recovery) = Self::open_owned_generations(directory)?;
+        if recovery.truncated_bytes != 0 {
+            return Err(Error::Contract("operational generation log has an incomplete tail"));
+        }
+        log.generations
+            .as_ref()
+            .ok_or(Error::Contract("operational generation owner absent"))?
+            .directory
+            .absent(".rotation.json")?;
+        Ok((log, records, recovery))
+    }
     pub(crate) fn open_prepared_generations(
         directory: Directory,
     ) -> Result<(Self, Vec<Record>, Recovery)> {

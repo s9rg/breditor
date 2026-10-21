@@ -1,6 +1,7 @@
 //! Explicit physical storage family. Original file readers never infer this layout.
 mod capture;
 mod closure;
+mod complete_recovery;
 mod create;
 mod directory;
 mod format;

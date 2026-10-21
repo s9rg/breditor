@@ -2,7 +2,8 @@
 use super::{TestResult, insert, send, setup};
 use breditor_collab_feasibility::rich_replica::{Command, actions::ReplaceImage};
 use breditor_collab_relay::{
-    Role, RoomRecoveryPolicy, ServerLogGenerationRoomBackup, ServerLogGenerationRoomRecovery,
+    OperationalLogGenerationServerRoom, Role, RoomRecoveryPolicy, ServerLogGenerationRoomBackup,
+    ServerLogGenerationRoomRecovery,
     assets::{AssetStore, asset_id, prepare_asset},
 };
 use image::{DynamicImage, ImageFormat};
@@ -83,6 +84,12 @@ fn workflow(version: u32, standard: bool, atomic: bool) -> TestResult {
     )?
     .finish(&backup)?;
     recovered.check_live_source(&backup, "owner")?;
+    let mut recovered = recovered.begin_operation(
+        &backup,
+        &identity,
+        RoomRecoveryPolicy::HostReacquired,
+        "owner",
+    )?;
     assert_eq!(recovered.assets().count(), 3);
     assert_eq!(recovered.assets_mut().export_backup()?.to_bytes()?, raster_bytes);
     assert!(recovered.room().validate_lease("alice", &author.lease).is_err());
@@ -105,7 +112,7 @@ fn workflow(version: u32, standard: bool, atomic: bool) -> TestResult {
     room.rotate_log_generation("owner", "after-recovery")?;
     backup.check_retained(room, assets, "owner")?;
     assert!(backup.check_live(room, assets, "owner").is_err());
-    let current = ServerLogGenerationRoomBackup::capture(room, assets, "owner")?;
+    recovered.check_live_source(&backup, "owner")?;
     drop(recovered);
     assert!(
         ServerLogGenerationRoomRecovery::resume(
@@ -116,7 +123,41 @@ fn workflow(version: u32, standard: bool, atomic: bool) -> TestResult {
         )
         .is_err()
     );
+    let current =
+        continue_cold_author(&target, &backup, &mut client, &author, &through, atomic, &ids[0])?;
     verify_second_restore(&files, &profile, &current, client.document_json())
+}
+fn continue_cold_author(
+    target: &std::path::Path,
+    backup: &ServerLogGenerationRoomBackup,
+    client: &mut breditor_collab_feasibility::rich_replica::RichReplica,
+    author: &breditor_collab_relay::Registration,
+    through: &str,
+    atomic: bool,
+    asset: &str,
+) -> TestResult<ServerLogGenerationRoomBackup> {
+    let mut through = through.to_owned();
+    let mut cold = OperationalLogGenerationServerRoom::resume(
+        target,
+        backup,
+        &backup.info()?.identity,
+        RoomRecoveryPolicy::HostReacquired,
+        "owner",
+    )?;
+    assert_eq!(cold.origin(), &backup.info()?.identity);
+    let (room, assets) = cold.components_mut();
+    let lease = room.resume("alice", &author.lease.writer, &author.credential)?;
+    client.receive_frame(&room.catchup("alice")?)?;
+    for redo in [false, true] {
+        assert!(if redo { client.redo()? } else { client.undo()? });
+        through = send(room, client, "alice", &lease, &through, atomic)?;
+        assert!(client.document_json().contains("Peer preserved "));
+        assert_eq!(client.document_json().contains("Old offline "), redo);
+        assert!(client.document_json().contains(asset));
+    }
+    let current = ServerLogGenerationRoomBackup::capture(room, assets, "owner")?;
+    cold.check_live_source(backup, "owner")?;
+    Ok(current)
 }
 fn verify_second_restore(
     files: &super::Files,
@@ -174,5 +215,21 @@ fn maximum_physical_layout_supports_streamed_joined_capture_and_actual_joined_re
     recovered.check_live_source(&backup, "owner")?;
     assert_eq!(recovered.room().log_generation_descriptor("owner")?.sealed, 62);
     assert_eq!(recovered.assets().count(), 3);
+    let mut operational = recovered.begin_operation(
+        &backup,
+        &backup.info()?.identity,
+        RoomRecoveryPolicy::HostReacquired,
+        "owner",
+    )?;
+    operational.check_live_source(&backup, "owner")?;
+    drop(operational);
+    let mut operational = OperationalLogGenerationServerRoom::resume(
+        &files.0.join("maximum-joined"),
+        &backup,
+        &backup.info()?.identity,
+        RoomRecoveryPolicy::HostReacquired,
+        "owner",
+    )?;
+    operational.check_live_source(&backup, "owner")?;
     Ok(())
 }

@@ -21,6 +21,7 @@ pub(super) struct RecoveryControlSeal {
     names: BTreeSet<String>,
     files: BTreeMap<String, Control>,
     directories: BTreeMap<String, (u64, u64)>,
+    orphans: BTreeMap<String, BTreeSet<String>>,
 }
 fn names(root: &Path) -> Result<BTreeSet<String>> {
     let mut output = BTreeSet::new();
@@ -90,32 +91,95 @@ impl RecoveryControlSeal {
     pub(super) fn capture(
         root: &GenerationDirectory,
         expected: Option<&BTreeSet<String>>,
+        mutable: &BTreeSet<String>,
+    ) -> Result<Self> {
+        Self::capture_excluding(root, expected, &BTreeSet::new(), mutable)
+    }
+    pub(super) fn capture_excluding(
+        root: &GenerationDirectory,
+        expected: Option<&BTreeSet<String>>,
+        extra: &BTreeSet<String>,
+        mutable: &BTreeSet<String>,
     ) -> Result<Self> {
         root.guard()?;
-        let names = names(&root.path)?;
+        let names = names(&root.path)?.difference(extra).cloned().collect();
         if expected.is_some_and(|expected| expected != &names) {
             return Err(Error::Contract("recovery control namespace changed before seal"));
         }
         let mut files = BTreeMap::new();
         let mut directories = BTreeMap::new();
+        let mut orphans = BTreeMap::new();
+        let mut orphan_bytes = 0;
         for name in &names {
             let path = root.path.join(name);
             if fs::symlink_metadata(&path)?.is_dir() {
                 directories.insert(name.clone(), directory(&path)?);
+                if !mutable.contains(name) {
+                    let children = self::names(&path)?;
+                    if children.len() > 2 || orphans.len() >= 64 {
+                        return Err(Error::Contract("recovery orphan control entry budget"));
+                    }
+                    for child in &children {
+                        let value = control(&path.join(child))?;
+                        orphan_bytes += value.bytes;
+                        if orphan_bytes > 128 * 1024 * 64 {
+                            return Err(Error::Contract("recovery orphan control byte budget"));
+                        }
+                        files.insert(format!("{name}/{child}"), value);
+                    }
+                    orphans.insert(name.clone(), children);
+                }
             } else {
                 files.insert(name.clone(), control(&path)?);
             }
         }
-        let value = Self { names, files, directories };
-        value.check(root)?;
+        let value = Self { names, files, directories, orphans };
+        value.check_with_extras(root, extra)?;
         Ok(value)
     }
+    /// Local durable phase pin, not portable native validity or deployment authority.
+    /// Names, immutable bytes and actual inode identities are framed independently of stamps.
+    pub(super) fn fingerprint(&self) -> Result<[u8; 32]> {
+        let mut hash = Sha256::new();
+        hash.update(b"breditor/recovery-control-custody/1\0");
+        for (name, file) in &self.files {
+            hash.update(b"file\0");
+            hash.update((name.len() as u64).to_le_bytes());
+            hash.update(name.as_bytes());
+            let identity = serde_json::to_vec(&file.identity)?;
+            hash.update((identity.len() as u64).to_le_bytes());
+            hash.update(identity);
+            hash.update(file.bytes.to_le_bytes());
+            hash.update(file.sha256);
+        }
+        for (name, (device, inode)) in &self.directories {
+            hash.update(b"directory\0");
+            hash.update((name.len() as u64).to_le_bytes());
+            hash.update(name.as_bytes());
+            hash.update(device.to_le_bytes());
+            hash.update(inode.to_le_bytes());
+        }
+        Ok(hash.finalize().into())
+    }
     pub(super) fn check(&self, root: &GenerationDirectory) -> Result<()> {
+        self.check_with_extras(root, &BTreeSet::new())
+    }
+    pub(super) fn check_with_extras(
+        &self,
+        root: &GenerationDirectory,
+        extra: &BTreeSet<String>,
+    ) -> Result<()> {
         root.guard()?;
-        if names(&root.path)? != self.names {
+        let actual: BTreeSet<_> = names(&root.path)?.difference(extra).cloned().collect();
+        if actual != self.names {
             return Err(Error::Contract(
                 "recovery control namespace changed after native completion",
             ));
+        }
+        for (name, children) in &self.orphans {
+            if names(&root.path.join(name))? != *children {
+                return Err(Error::Contract("unselected recovery component work changed"));
+            }
         }
         for (name, expected) in &self.files {
             let actual = control(&root.path.join(name))?;

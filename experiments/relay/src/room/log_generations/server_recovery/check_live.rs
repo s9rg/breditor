@@ -5,6 +5,7 @@ use super::{
     selection::{Marker, NativeComponent, RasterComponent},
 };
 use crate::{Error, Result};
+use std::collections::BTreeSet;
 impl RecoveredLogGenerationServerRoom {
     /// Verify original joined controls, actual component custody and exact native/raster bytes.
     /// Current account authentication remains the host's responsibility. This method does not
@@ -16,8 +17,17 @@ impl RecoveredLogGenerationServerRoom {
         backup: &ServerLogGenerationRoomBackup,
         principal: &str,
     ) -> Result<()> {
+        self.check_source(backup, principal, true, &BTreeSet::new())
+    }
+    pub(super) fn check_source(
+        &mut self,
+        backup: &ServerLogGenerationRoomBackup,
+        principal: &str,
+        exact: bool,
+        extra: &BTreeSet<String>,
+    ) -> Result<()> {
         self.directory.guard()?;
-        self.controls.check(&self.directory)?;
+        self.controls.check_with_extras(&self.directory, extra)?;
         self.native_controls.check(self.native.control_root())?;
         if backup.info()?.identity != self.marker.identity {
             return Err(Error::Contract("joined actual source selection differs"));
@@ -50,9 +60,13 @@ impl RecoveredLogGenerationServerRoom {
         self.native.guard_custody(&native.witness)?;
         self.raster.guard_selected(&raster.witness, &self.assets)?;
         self.check_original_raster_custody(backup, &raster)?;
-        backup.check_live(self.native.room_mut(), &self.assets, principal)?;
+        if exact {
+            backup.check_live(self.native.room_mut(), &self.assets, principal)?;
+        } else {
+            backup.check_retained(self.native.room_mut(), &mut self.assets, principal)?;
+        }
         self.directory.guard()?;
-        self.controls.check(&self.directory)?;
+        self.controls.check_with_extras(&self.directory, extra)?;
         self.native_controls.check(self.native.control_root())?;
         self.native.guard_custody(&native.witness)?;
         self.check_original_raster_custody(backup, &raster)?;

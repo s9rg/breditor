@@ -569,3 +569,106 @@ fn forty_independent_native_families_keep_real_rasters_old_offline_work_and_peer
     assert_eq!(cases, 40);
     Ok(())
 }
+
+fn joined_operational_resume(
+    profile_choice: (u32, bool),
+    atomic: bool,
+    document: bool,
+    review: bool,
+) -> TestResult {
+    use crate::{
+        OperationalLogGenerationServerRoom, ServerLogGenerationRoomBackup,
+        ServerLogGenerationRoomRecovery,
+    };
+    let (files, mut room, mut assets, profile) =
+        crate::room::log_generations::joined_generation_source_for_test(
+            profile_choice.0,
+            profile_choice.1,
+            atomic,
+        )?;
+    let (mut author, first, offline) = prepare_offline_author(&profile, &mut room, atomic)?;
+    if document {
+        enable(&mut room, Lane::Document)?;
+    }
+    if review {
+        enable(&mut room, Lane::Review)?;
+    }
+    let peer = advance_peer(&profile, &mut room, atomic, document, review)?;
+    let actual_raster = accept_real_raster_binding(&mut room, &mut assets, &profile, atomic)?;
+    room.rotate_log_generation("owner", "operational-source")?;
+    let backup = ServerLogGenerationRoomBackup::capture(&mut room, &mut assets, "owner")?;
+    let identity = backup.info()?.identity;
+    drop(room);
+    drop(assets);
+    let recovered = ServerLogGenerationRoomRecovery::begin(
+        &files.recovery(),
+        &backup,
+        &identity,
+        RoomRecoveryPolicy::HostReacquired,
+    )?
+    .finish(&backup)?;
+    let mut live = recovered.begin_operation(
+        &backup,
+        &identity,
+        RoomRecoveryPolicy::HostReacquired,
+        "owner",
+    )?;
+    live.room_mut().grant("owner", "operational-reader", Some(Role::Reader))?;
+    live.room_mut().rotate_log_generation("owner", "after-handoff")?;
+    live.check_live_source(&backup, "owner")?;
+    drop(live);
+    let mut cold = OperationalLogGenerationServerRoom::resume(
+        &files.recovery(),
+        &backup,
+        &identity,
+        RoomRecoveryPolicy::HostReacquired,
+        "owner",
+    )?;
+    resume_joined_author(cold.room_mut(), &mut author, &first)?;
+    reconnect(&profile, cold.room_mut(), &mut author, &first, &offline, &peer, atomic)?;
+    continue_physical_native(cold.room_mut(), &mut author, atomic)?;
+    assert!(cold.room().replica.document_json().contains(&actual_raster));
+    if document {
+        seal(cold.room_mut(), Lane::Document, "after-handoff")?;
+    }
+    if review {
+        seal(cold.room_mut(), Lane::Review, "after-handoff")?;
+    }
+    let document_cut = cold.room_mut().native_history_checkpoint("owner", Lane::Document)?;
+    let review_cut = cold.room_mut().native_history_checkpoint("owner", Lane::Review)?;
+    cold.room_mut().rotate_log_generation("owner", "after-offline-merge")?;
+    cold.check_live_source(&backup, "owner")?;
+    drop(cold);
+    let mut cold = OperationalLogGenerationServerRoom::resume(
+        &files.recovery(),
+        &backup,
+        &identity,
+        RoomRecoveryPolicy::HostReacquired,
+        "owner",
+    )?;
+    assert_eq!(cold.room_mut().native_history_checkpoint("owner", Lane::Document)?, document_cut);
+    assert_eq!(cold.room_mut().native_history_checkpoint("owner", Lane::Review)?, review_cut);
+    resume_joined_author(cold.room_mut(), &mut author, &first)?;
+    continue_physical_native(cold.room_mut(), &mut author, atomic)?;
+    assert!(cold.room().replica.document_json().contains(&actual_raster));
+    assert!(cold.assets().get(&actual_raster)?.is_some());
+    cold.check_live_source(&backup, "owner")?;
+    Ok(())
+}
+#[test]
+fn forty_independent_native_families_keep_old_offline_documents_comments_receipts_and_peer_undo_through_two_operational_cold_reopens()
+-> TestResult {
+    let mut cases = 0;
+    for profile in [(1, false), (2, false), (2, true), (3, false), (3, true)] {
+        for atomic in [false, true] {
+            for document in [false, true] {
+                for review in [false, true] {
+                    joined_operational_resume(profile, atomic, document, review)?;
+                    cases += 1;
+                }
+            }
+        }
+    }
+    assert_eq!(cases, 40);
+    Ok(())
+}

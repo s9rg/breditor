@@ -88,7 +88,9 @@ impl ServerLogGenerationRoomRecovery {
             if known.contains(&name) {
                 continue;
             }
-            if let Some(nonce) = name.strip_prefix(".raster-data-") {
+            if let Some(nonce) =
+                name.strip_prefix(".raster-data-").or_else(|| name.strip_prefix(".operation-data-"))
+            {
                 credentials::hash(nonce)?;
                 if metadata.len() != 0 {
                     return Err(Error::Contract("joined unselected data is not empty"));
