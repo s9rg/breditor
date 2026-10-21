@@ -1,5 +1,13 @@
 # V1 candidate checks
 
+The native log suites also pin exact original frame bytes and all incomplete
+final-frame suffixes, and separately exercise continuation family/sequence/hash
+admission beyond a real full original log. The
+[framing checkpoint](qualification/2026-10-21-log-continuation-framing.json)
+passes fresh server and no-networking suites; core/runtime evidence is carried
+only across unchanged inputs and artifacts. These existing native stages do not
+yet qualify directory rotation, durable physical heads or multi-file recovery.
+
 The native suites and public Rust consumer now include the
 [server-native retention laws](SERVER_NATIVE_HISTORY_GENERATIONS.md): 144
 suggestion-preparation and 288 staged-transport configurations, 40 independent

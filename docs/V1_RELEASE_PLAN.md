@@ -94,6 +94,30 @@ Next, in architectural risk order:
 All 13 V1 gates remain open. No version, push, tag, publication or deployment is
 promoted. Browser-specific polish and platform qualification remain later work.
 
+### Physical log framing foundation
+
+The private log codec now supports explicitly selected continuation framing
+without changing original record bytes or letting an original reader infer a
+new family. A continuation retains absolute sequence and preceding payload
+digest across file cuts; its per-file admission remains bounded. Current Room
+creation, opening and backup still select only the original log family.
+
+The [framing qualification](qualification/2026-10-21-log-continuation-framing.json)
+passes fresh 236 relay and 127 no-networking Rust cases, including eight new
+framing laws and the existing I/O-fencing law. An independent pre-refactor
+golden frame remains exact, every incomplete final-frame prefix preserves the
+complete prior cut, and a real 4,096-record original log refuses another append
+without mutation. Two continuation cuts retain global positions; checksum-valid
+forks, gaps, wrong families, corruption and overflow still refuse.
+
+This server-only slice carries the prior core/runtime evidence across 2,505
+unchanged non-relay native inputs and 12 unchanged normal runtime artifacts.
+Three freshly packed public archives are byte-identical. Core suites and Wasm
+producers are not rerun in this framing slice. A directory backend, durable
+rotation intents and heads, complete multi-file archives and matching recovery
+are still the next implementation work; transport parsing is not room activation
+or a solution to the current log lifetime limit.
+
 ### Previous independent SDK storage checkpoint
 
 The SDK now exposes independent native comment generations and a separate

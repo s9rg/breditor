@@ -137,6 +137,13 @@ memory or performance envelope. The original log decoder is shared with ordinary
 open, preserving its existing torn-tail recovery semantics outside this stricter
 archive path. No old data family or startup default is reinterpreted.
 
+The writer and reader share a [qualified private frame codec](qualification/2026-10-21-log-continuation-framing.json).
+Original serialized bytes remain pinned by a pre-refactor golden vector.
+Explicit continuation framing preserves a separately selected preceding global
+cut, but this original backup and `Room::open` reject it. A complete directory
+backend, durable physical rotation and multi-file archive remain separate work;
+the continuation decoder alone is not a complete room or native replay proof.
+
 ## Coordination still required
 
 This file contains private accepted text, deleted history, permission metadata and

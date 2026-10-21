@@ -2,13 +2,17 @@
 //! is the authority for accepted history and account/writer ownership after a process restart.
 use crate::{Error, Recovery, Result, Role, protocol::Receipt};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::{
     fs::{File, OpenOptions, TryLockError},
     io::{Seek, SeekFrom, Write},
     path::Path,
 };
+#[cfg(test)]
+mod continuation_tests;
 mod decoder;
+mod frame;
+#[cfg(test)]
+mod framing_tests;
 mod snapshot;
 pub(crate) use snapshot::LogSnapshot;
 
@@ -250,39 +254,26 @@ impl Log {
         if self.next >= MAX_RECORDS {
             return Err(Error::Contract("log record budget"));
         }
-        let record = Record {
-            format: "breditor/relay-log".into(),
-            version: 1,
-            sequence: self.next,
-            previous: self.previous,
-            event,
-        };
-        let payload = serde_json::to_vec(&record)?;
-        let size = u64::try_from(payload.len()).map_err(|_| Error::Contract("log record size"))?;
-        if size > MAX_RECORD || self.bytes + HEADER + size > MAX_LOG {
+        let sequence = self.next;
+        let encoded = frame::encode(event, frame::Family::Original, sequence, self.previous)?;
+        if self.bytes + encoded.bytes > MAX_LOG {
             return Err(Error::Contract("log byte budget"));
         }
-        let digest: [u8; 32] = Sha256::digest(&payload).into();
-        let mut header = [0_u8; 72];
-        header[..8].copy_from_slice(&size.to_be_bytes());
-        header[8..40].copy_from_slice(&digest);
-        let header_digest: [u8; 32] = Sha256::digest(&header[..40]).into();
-        header[40..].copy_from_slice(&header_digest);
         // Once any write can start, failure is uncertain: no subsequent read, write or ack may
         // treat this process's memory as the authority. Recovery replays complete records.
         self.poisoned = true;
-        self.file.write_all(&header)?;
-        self.file.write_all(&payload)?;
+        self.file.write_all(&encoded.header)?;
+        self.file.write_all(&encoded.payload)?;
         self.file.sync_all()?;
         self.poisoned = false;
         self.next += 1;
-        self.previous = digest;
-        self.bytes += HEADER + size;
+        self.previous = encoded.digest;
+        self.bytes += encoded.bytes;
         #[cfg(test)]
         if let Some(path) = self.read_only_after_append.take() {
             self.file = File::open(path)?;
         }
-        Ok(record.sequence)
+        Ok(sequence)
     }
 }
 

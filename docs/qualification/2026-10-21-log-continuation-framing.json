@@ -1,0 +1,96 @@
+{
+  "format": "breditor/log-continuation-framing-qualification",
+  "passed": true,
+  "v1Ready": false,
+  "openV1Gates": 13,
+  "source": {
+    "commit": "8b758773b5159fe6436c4d885765d5636769fe0c",
+    "dirty": true,
+    "sha256": "c0e880647d5af55096f2078cb26095a101f09a92f693d5b85893d725c9566b77",
+    "files": 5031,
+    "bytes": 42731992
+  },
+  "nonDocumentation": {
+    "files": 4498,
+    "sha256": "81089583c95bbcd539affc95dd8a5195ca79f6a8562522cab876fedfc720a966"
+  },
+  "before": {
+    "path": "target/log-framing-before-S0mR3U/result.json",
+    "bytes": 1032,
+    "sha256": "7a8e8eac4d4a17cd4a4aab5cef92e71596ace25722791abac70749e00cf595bb",
+    "modifiedAtMs": 1792568595677.9587
+  },
+  "originalPositiveAssertionsUnchanged": true,
+  "independentGoldenBytesUnchanged": true,
+  "tests": {
+    "relayRust": 236,
+    "noNetworkingRust": 127,
+    "logLevelLaws": 9,
+    "newLogLaws": 8,
+    "strictServerLint": true,
+    "strictNoNetworkingLint": true
+  },
+  "logs": [
+    {
+      "path": "target/log-framing-qualification-Gkw91a/server.log",
+      "bytes": 31965,
+      "sha256": "d14bfde2c4b9746d512190a4f709e039663309961a2a4972201d77caea558775",
+      "modifiedAtMs": 1792569174883.071
+    },
+    {
+      "path": "target/log-framing-qualification-Gkw91a/no-networking.log",
+      "bytes": 17713,
+      "sha256": "1d86de973dd5a87d8135411b33853ee8b1a3de918e05bc9297775c2212cc1bff",
+      "modifiedAtMs": 1792569373664.9177
+    }
+  ],
+  "names": [
+    "original_frame_matches_the_independent_literal_pre_refactor_vector",
+    "every_incomplete_original_final_frame_keeps_the_complete_prefix_without_repair",
+    "full_original_log_then_two_continuation_cuts_preserve_absolute_positions_and_exact_root_bytes",
+    "original_and_continuation_families_cannot_impersonate_each_other_even_at_zero",
+    "every_incomplete_continuation_tail_retains_its_precise_predecessor_cut",
+    "continuation_budget_is_per_file_not_a_reset_or_an_unbounded_global_counter",
+    "checksum_valid_forks_gaps_versions_and_mixed_families_refuse_without_a_partial_result",
+    "complete_corruption_is_not_torn_recovery_and_oversized_input_is_not_read",
+    "a_real_write_error_requires_recovery_before_any_further_transaction"
+  ],
+  "carriedCore": {
+    "baseline": {
+      "path": "target/v1-candidate-runs/run-M8n7a3/result.json",
+      "bytes": 103544,
+      "sha256": "d24ed27e02faa6379eb6c6037da5aec0be10bd71f9d9b0dcbbc87752d8ed86e9",
+      "modifiedAtMs": 1792568195312.4988
+    },
+    "unchangedNonRelayNativeInputs": 2505,
+    "workspaceRust": 2643,
+    "sharedRust": 661,
+    "researchReviewRust": 3,
+    "normalRuntimeFiles": 12,
+    "normalSharedWasmSha256": "e8afdb083c9e849505c6d1ca85b721485bd673fed71ce1ea1690b20f9c500f9a",
+    "nativeCoreSuitesRerun": false,
+    "normalProducersRerun": false,
+    "publicArchivesByteIdentical": [
+      {
+        "name": "@breditor/browser",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "sha256": "e6b524a4d3b9cab485e6df2ff62af133a3772291ec463fd3bba73934c13ac40f"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "sha256": "47ead41c8ec8dac6f0b651ed69ad894c3657019d09e9b7c7e768605cfc900fd8"
+      }
+    ]
+  },
+  "scope": "Private transport codec and original writer refactor. Exact original bytes and original full-file refusal remain; explicitly selected continuation frames preserve global sequence and payload-digest ancestry across two cuts. Full current relay/recovery suites run freshly. Unchanged non-relay native inputs and normal/package bytes carry prior core/runtime qualification, not a fresh core/Wasm claim.",
+  "remaining": [
+    "No directory generation backend, durable manifest/head rotation, resumable physical boundary or complete multi-file archive is implemented by this codec.",
+    "Current Room open/create/backup APIs still select only the original 4096-record/256 MiB log and reject continuation framing.",
+    "Native replay, whole-room source/provider/asset closure, authenticated activation and all V1/parity gates remain required.",
+    "No browser/platform, physical crash, cross-device fencing, performance envelope or publication is qualified."
+  ],
+  "date": "2026-10-21"
+}
