@@ -4,6 +4,7 @@
 //! own atomic document/review publication. Authenticated hosts supply actor policy separately;
 //! restored data never grants permission to author new events.
 pub mod actions;
+mod causal_births;
 mod codec;
 mod event;
 mod generation;

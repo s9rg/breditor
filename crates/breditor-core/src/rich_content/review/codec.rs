@@ -266,6 +266,7 @@ pub(super) fn validate_all(session: &ReviewSession) -> Result<(), ReviewError> {
     let mut local_targets = BTreeSet::new();
     let mut streams = BTreeMap::<ReviewActorId, &Event>::new();
     let mut histories = BTreeMap::<_, (Vec<ReviewEventId>, usize)>::new();
+    let mut births = super::causal_births::CausalBirths::default();
     for event in ordered {
         let expected = streams.get(&event.id.actor).map_or_else(
             || event::genesis(&session.binding, &event.id.actor, &event.principal),
@@ -284,18 +285,8 @@ pub(super) fn validate_all(session: &ReviewSession) -> Result<(), ReviewError> {
             return Err(ReviewError::Permission);
         }
         if let Payload::Action(action) = &event.payload {
-            let base = session
-                .events
-                .iter()
-                .filter(|e| event::observes(&event.dependencies, &e.id))
-                .cloned()
-                .collect::<Vec<_>>();
-            session.projection(&base)?.validate_action(
-                &session.binding,
-                action,
-                None,
-                &event.dependencies,
-            )?;
+            births.validate_action(&session.binding, action, &event.dependencies)?;
+            births.record_validated_action(&event.id, action);
             if event.id.actor == session.policy.actor {
                 local_targets.insert(&event.id);
             }

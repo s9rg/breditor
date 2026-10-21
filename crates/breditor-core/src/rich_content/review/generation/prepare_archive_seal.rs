@@ -1,0 +1,35 @@
+//! One immutable-file planner for author, strict-observer and read-only archive actions.
+//! Policy/observation gates belong to those named actions; no prepared candidate is public.
+use super::{
+    super::{ReviewError, ReviewSession},
+    encode_segment::encode_active,
+    history::{SealedReviewGeneration, file_digest},
+    record::{generation_budget, generation_id},
+};
+pub(super) fn prepare(owner: &ReviewSession, next: String) -> Result<ReviewSession, ReviewError> {
+    generation_id(&next)?;
+    let old = owner.generations.as_ref().ok_or(ReviewError::Contract("review history family"))?;
+    if old.contains_id(&next) {
+        return Err(ReviewError::Contract("reused review generation"));
+    }
+    if old.active_start == owner.events.len() {
+        return Err(ReviewError::Contract("empty review generation seal"));
+    }
+    generation_budget(old.sealed.len() + 3, owner.events.len())?;
+    let json = encode_active(owner)?;
+    let digest = file_digest(&json)?;
+    let mut candidate = owner.staged();
+    let state =
+        candidate.generations.as_mut().ok_or(ReviewError::Contract("review history family"))?;
+    state.sealed.push(SealedReviewGeneration {
+        generation: state.active_generation.clone(),
+        json: json.into(),
+        digest,
+        start: state.active_start,
+        end: owner.events.len(),
+    });
+    state.active_generation = next;
+    state.active_start = owner.events.len();
+    candidate.admit()?;
+    Ok(candidate)
+}

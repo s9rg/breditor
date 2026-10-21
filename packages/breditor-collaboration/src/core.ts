@@ -110,6 +110,20 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
   if(this.#fixedHistory!==undefined||this.#fixedRanges!==undefined)throw new SharedEditorError("segmented_storage_required","Old durable storage cannot change its history family");
   this.#run("local",(raw,o)=>{raw.enable_segmented_history!(o,root,active);this.#segmented=true;},revision);
  }
+ /** Complete separate native capability; old runtimes cannot imitate passive archival by unlocking. */
+ supportsReadOnlyHistoryLifecycle():boolean{const r=this.#live();return this.supportsSegmentedHistory()&&r.read_only_history_lifecycle_version?.()==="1"&&[r.enable_read_only_segmented_history,r.seal_read_only_history_segment].every(f=>typeof f==="function");}
+ /** Archive a current read-only former author without unlocking it or changing an old durable family. */
+ enableReadOnlySegmentedHistory(root:string,active:string,revision?:string):void{
+  this.#check(revision);if(!this.supportsReadOnlyHistoryLifecycle())throw new SharedEditorError("read_only_history_unavailable","Use the complete native read-only archive capability");
+  if(this.#fixedHistory!==undefined||this.#fixedRanges!==undefined)throw new SharedEditorError("segmented_storage_required","Old durable storage cannot change its history family");
+  this.#run("local",(raw,o)=>{raw.enable_read_only_segmented_history!(o,root,active);this.#segmented=true;},revision,false);
+ }
+ /** Same native generation family, no new authoring or current-policy grant. Persistence stays explicit. */
+ sealReadOnlyHistoryGeneration(next:string,revision?:string):void{
+  if(!this.#segmented)throw new SharedEditorError("segmented_history_required","Select segmented history first");
+  if(!this.supportsReadOnlyHistoryLifecycle())throw new SharedEditorError("read_only_history_unavailable","Use the complete native read-only archive capability");
+  this.#run("local",(raw,o)=>raw.seal_read_only_history_segment!(o,next),revision,false);
+ }
  /** Native publication only; the explicit generation session must durably commit the new cut. */
  sealHistoryGeneration(next:string,revision?:string):void{if(!this.#segmented)throw new SharedEditorError("segmented_history_required","Select segmented history first");this.#run("local",(raw,o)=>raw.seal_history_segment!(o,next),revision);}
  /** Separate native gate: read-only AND zero authored atoms, never a temporary unlock. */

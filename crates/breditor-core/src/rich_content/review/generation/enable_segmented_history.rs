@@ -3,8 +3,7 @@
 //! boundary invalidates the observation; stale/policy/identity/budget refusal is atomic.
 use super::{
     super::{ReviewAccess, ReviewError, ReviewObservation, ReviewSession},
-    history::ReviewGenerations,
-    record::generation_id,
+    prepare_archive_enable::prepare,
 };
 
 impl ReviewSession {
@@ -38,18 +37,7 @@ pub(super) fn enable(
     } else if owner.policy.access == ReviewAccess::ReadOnly {
         return Err(ReviewError::Permission);
     }
-    if owner.generations.is_some() {
-        return Err(ReviewError::Contract("review history already segmented"));
-    }
-    generation_id(&root)?;
-    generation_id(&active)?;
-    if root == active {
-        return Err(ReviewError::Contract("reused review generation"));
-    }
-    let json = owner.checkpoint_json()?;
-    let mut candidate = owner.staged();
-    candidate.generations = Some(ReviewGenerations::new(root, json, active, owner.events.len())?);
-    candidate.admit()?;
+    let candidate = prepare(owner, root, active)?;
     owner.adopt(candidate);
     Ok(())
 }

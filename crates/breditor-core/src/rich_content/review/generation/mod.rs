@@ -1,13 +1,17 @@
 //! Explicit native comment retention; no document, transport or permission upgrade.
 mod enable_observer_segmented_history;
+mod enable_read_only_segmented_history;
 mod enable_segmented_history;
 mod encode_segment;
 mod history;
+mod prepare_archive_enable;
+mod prepare_archive_seal;
 mod record;
 mod recovery_origin;
 mod restore_segmented;
 mod seal_history_generation;
 mod seal_observer_history_generation;
+mod seal_read_only_history_generation;
 mod segmented_checkpoint;
 
 pub(super) use history::ReviewGenerations;

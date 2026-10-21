@@ -43,6 +43,42 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+Current read-only former authors can archive their retained native document and
+comment histories without unlocking authoring, resetting a writer or clearing
+Undo/Redo. Author operations and strict zero-authored observer operations retain
+their original checks. The separately named read-only lifecycle preserves exact
+root/sealed files and invalidates old live guards without creating an event.
+See [read-only history archival](READ_ONLY_HISTORY_ARCHIVAL.md).
+
+The native comment replay validator now checks immutable thread/message births
+instead of repeatedly rebuilding dependency-prefix discussion views. Live
+authority and visible register materialization remain unchanged. Two preserved
+full-prefix oracle properties pass 4,096 generated cases each, including corrupt
+histories; original-runtime comparisons still preserve exact data and future
+Undo/Redo. This is admission equivalence, not an approved latency envelope.
+
+The [architecture qualification](qualification/2026-10-21-read-only-history-architecture.json)
+passes 65 selected stages on one frozen source tree, with fresh 2,643 workspace,
+658 shared and 216 relay Rust tests, three canonical research contracts,
+1,308 script contracts and 385 editor tests. Both normal Wasm producers rebuild
+freshly. Source and fresh offline installed consumers each cover 144 independent
+native document/comment configurations and 216 managed document-generation
+configurations, exact cold/future histories and failed/uncertain-save retries.
+The three existing opt-in script skips remain skips, not browser qualification.
+
+The direct relay lifecycle guard also refuses own shadow `core` bindings without
+executing getters or advancing native history. Its 36-configuration regression
+passes in source and fresh installed packages, alongside the original ownership
+cohorts. Original formats, counters, defaults and native limits remain unchanged.
+
+Atomic SDK comment generations, compatible native server/log generations,
+historic-copy disposition, complete provider/client closure, authenticated
+whole-room activation and structural extension parity remain substantive work.
+All 13 V1 gates remain open. No version, push, tag, publication or deployment is
+promoted.
+
+### Previous native ownership checkpoint
+
 Original document/search, paired review and generation persistence now bind
 capture, backup, version admission and cleanup to their privately owned native
 editor. Replacing or deleting public `core`, or installing a getter there,
@@ -67,12 +103,10 @@ normal Wasm pair; this checkpoint does not rerun the native suites or rebuild
 the runtimes. Original formats, counters, defaults and storage families remain
 unchanged. See the [ownership contract](PERSISTENT_NATIVE_OWNERSHIP.md).
 
-The separately tested next work covers read-only former-author archival, a direct
-relay lifecycle guard and comment replay cost. Atomic SDK comment generations,
-native server/log generations, historic-copy disposition, complete provider/client
-closure and authenticated whole-room activation remain substantive work before
-the remaining feature parity. All 13 V1 gates remain open. Nothing is pushed,
-tagged, published or deployed.
+At that ownership checkpoint, read-only former-author archival, a direct relay
+lifecycle guard and comment replay cost remained separate development work.
+The current native checkpoint above covers those changes. Broader retention and
+room-integration requirements remain open; no release gate is waived.
 
 ### Independent native comment retention checkpoint
 
@@ -97,8 +131,8 @@ remain exact as well.
 
 The original comment checkpoint/frame limits and defaults are unchanged. The
 new archive has separate bounded retention; it does not establish a latency
-envelope. Atomic SDK comment storage, explicit read-only former-author archival,
-compatible native server and log generations, historic-copy dispositions,
+envelope. The read-only former-author lifecycle is now qualified above. Atomic
+SDK comment storage, compatible native server and log generations, historic-copy dispositions,
 provider/client closure and authenticated whole-room activation remain work.
 Structural extension contracts remain ahead of presentation-only parity work.
 All 13 V1 gates remain open. No version, push, tag, publication or deployment

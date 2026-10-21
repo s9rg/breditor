@@ -1,5 +1,18 @@
 # V1 candidate checks
 
+Both profiles require `read-only-history`, `read-only-history-type-fence` and
+`installed-read-only-history`. Current read-only former authors archive without
+unlocking or resetting native identity. Native consumers cover 144 independent
+document/comment configurations; managed document storage covers 216 with exact
+cold recovery and failed/uncertain-save retry. Partial/future capabilities and
+pinned old stores refuse before publication. This does not select independent
+comment generations in SDK storage or activate a server generation profile.
+
+The ownership probes additionally exercise the relay wrapper's direct lifecycle
+guard in 36 configurations. Own shadow `core` bindings must refuse without
+invoking getters or advancing the native archive; ordinary unshadowed sealing
+and cold recovery must still pass.
+
 Both profiles require `managed-core-binding` and `installed-managed-core-binding`.
 The same positive probes exercise 72 generation and 144 original/search/paired
 native configurations. Public `core` replacement, deletion or getters must not

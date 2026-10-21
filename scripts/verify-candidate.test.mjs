@@ -14,6 +14,17 @@ const plan=checks=>({profile:"functional",deferred:["not-a-v1-certification"],ch
 const stable=()=>({commit:"1".repeat(40),dirty:true,sha256:"2".repeat(64),files:1,bytes:1});
 function quiet(options={}){return {snapshot:stable,report:()=>{},...options};}
 
+test('read-only archival is explicitly native, type fenced and repeated in fresh public packages',()=>{
+ for(const profile of ['functional','full']){
+  const p=candidateReleasePlan({profile}),find=id=>{const row=p.checks.find(c=>c.id===id);assert.ok(row,id);return row;};
+  for(const[id,file,path]of [['read-only-history','check-read-only-history-native.mjs','target/read-only-history-native.json'],['installed-read-only-history','check-read-only-history-installed.mjs','target/read-only-history-installed-consumer.json']]){const row=find(id);assert.deepEqual(row.args,[`scripts/${file}`]);assert.deepEqual(row.artifacts,[{path,fresh:true}]);assert.ok(p.checks.indexOf(find('collaboration-build'))<p.checks.indexOf(row));}
+  assert.ok(find('read-only-history-type-fence').args.includes('scripts/fixtures/editor-consumer/types-read-only-history.ts'));
+ }
+ const installed=readFileSync(join(repository,'scripts/check-read-only-history-installed.mjs'),'utf8');for(const value of ['probe-read-only-history-native','probe-read-only-history-sdk','strictPublicTypes:true','probe.replaceAll(to,from).replace(local,fixture),original','saveAborts:2,lostAcknowledgements:2','sourceUnchanged:true'])assert.ok(installed.includes(value),value);
+ const ownership=readFileSync(join(repository,'scripts/check-managed-core-binding-installed.mjs'),'utf8');assert.ok(ownership.includes('probe-relay-core-binding'));assert.ok(ownership.includes('getterCalls:0'));
+ const relay=readFileSync(join(repository,'packages/breditor-collaboration/src/segmented_relay/session.ts'),'utf8');assert.ok(!relay.includes('this.core!==this.#core'));
+});
+
 test('persistent native custody is mandatory in source and unchanged fresh archive probes',()=>{
  for(const profile of ['functional','full']){
   const p=candidateReleasePlan({profile}),find=id=>{const row=p.checks.find(c=>c.id===id);assert.ok(row,id);return row;};

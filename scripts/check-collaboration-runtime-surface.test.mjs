@@ -4,6 +4,7 @@ import {packetAssetOwnerMethods} from "./check-collaboration-runtime-surface.mjs
 import {recoveryOriginOwnerMethods} from "./check-collaboration-runtime-surface.mjs";
 import {segmentedHistoryOwnerMethods,segmentedHistoryProfileMethods,observerHistorySealingOwnerMethods} from "./check-collaboration-runtime-surface.mjs";
 import {segmentedReviewMethods} from "./check-collaboration-runtime-surface.mjs";
+import {readOnlyHistoryLifecycleMethods} from "./check-collaboration-runtime-surface.mjs";
 import assert from "node:assert/strict";
 import {admitApplicationSurface,applicationExports,documentOwnerMethods,documentProfileMethods,documentClipboardMethods,documentNavigationMethods,documentToolsMethods,documentPresenceMethods,clipboardInterchangeMethods,reviewMethods,reviewTransportMethods,historicalReviewMethods,versionMethods,suggestionMethods,suggestionGeneralTextMethods,suggestionRevisionMethods,suggestionFormatRebaseMethods,suggestionTextRebaseMethods,reviewedHistoryMethods} from "./check-collaboration-runtime-surface.mjs";
 import {searchOwnerMethods,writingOwnerMethods,placeholderOwnerMethods,placeholderProfileMethods} from "./check-collaboration-runtime-surface.mjs";
@@ -22,6 +23,7 @@ function fixture(){
  for(const name of segmentedHistoryOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of segmentedHistoryProfileMethods)module.SharedRichProfile.prototype[name]=()=>{};
  for(const name of observerHistorySealingOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
+ for(const name of readOnlyHistoryLifecycleMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of placeholderOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of placeholderProfileMethods)module.SharedRichProfile.prototype[name]=()=>{};
  for(const name of ["search_history_version","restore_search"])module.SharedRichProfile.prototype[name]=()=>{};
@@ -78,6 +80,9 @@ test("segmented history requires explicit complete native reads mutations and re
 });
 test("observer sealing requires its own complete versioned native capability",()=>{
  for(const name of observerHistorySealingOwnerMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native observer history sealing capability/);}
+});
+test("read-only former authors require their separate complete native archive capability",()=>{
+ for(const name of readOnlyHistoryLifecycleMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native read-only history lifecycle capability/);}
 });
 test("retained image reads require their complete independent guarded capability",()=>{
  for(const name of retainedAssetOwnerMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native retained asset capability/);}

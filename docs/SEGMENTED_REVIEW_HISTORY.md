@@ -36,6 +36,14 @@ policy change remains a separate host-authorized operation, not a grant read
 from stored files. Immutable observer transport restrictions remain obligations
 of the corresponding adapter.
 
+Former authors whose current policy is read-only use separately named
+`enable_read_only_segmented_history_guarded` and
+`seal_read_only_history_generation_guarded` operations. They preserve a nonzero
+authored prefix and future native history without borrowing an author grant or
+pretending to satisfy the strict zero-authored observer contract. This
+[read-only lifecycle](READ_ONLY_HISTORY_ARCHIVAL.md) is qualified in native and
+normal Wasm consumers; independent SDK comment storage remains separate work.
+
 ## Retain native files and replay every cut
 
 `segmented_checkpoint_json` returns
@@ -95,6 +103,9 @@ No file, event or history item is silently evicted.
 
 These are bounded retention contracts, not unlimited lifetime, compaction or a
 replay-speed guarantee. Document and review families are independent choices.
+Replay admission uses an immutable birth index, checked against the preserved
+full-prefix validator on valid and corrupted histories. Actual live authority
+and visible register materialization retain their original implementation.
 Atomic SDK heads must select both native owners explicitly; neither local/relay
 transport nor a document segment implies segmented comments. The relay also
 needs an explicit native document/comment history profile as well as log

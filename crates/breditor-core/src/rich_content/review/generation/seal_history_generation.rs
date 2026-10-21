@@ -3,9 +3,7 @@
 //! No document/selection/pending-format change or authored event occurs. Refusal is atomic.
 use super::{
     super::{ReviewAccess, ReviewError, ReviewObservation, ReviewSession},
-    encode_segment::encode_active,
-    history::{SealedReviewGeneration, file_digest},
-    record::{generation_budget, generation_id},
+    prepare_archive_seal::prepare,
 };
 
 impl ReviewSession {
@@ -37,30 +35,7 @@ pub(super) fn seal(
     } else if owner.policy.access == ReviewAccess::ReadOnly {
         return Err(ReviewError::Permission);
     }
-    generation_id(&next)?;
-    let old = owner.generations.as_ref().ok_or(ReviewError::Contract("review history family"))?;
-    if old.contains_id(&next) {
-        return Err(ReviewError::Contract("reused review generation"));
-    }
-    if old.active_start == owner.events.len() {
-        return Err(ReviewError::Contract("empty review generation seal"));
-    }
-    generation_budget(old.sealed.len() + 3, owner.events.len())?;
-    let json = encode_active(owner)?;
-    let digest = file_digest(&json)?;
-    let mut candidate = owner.staged();
-    let state =
-        candidate.generations.as_mut().ok_or(ReviewError::Contract("review history family"))?;
-    state.sealed.push(SealedReviewGeneration {
-        generation: state.active_generation.clone(),
-        json: json.into(),
-        digest,
-        start: state.active_start,
-        end: owner.events.len(),
-    });
-    state.active_generation = next;
-    state.active_start = owner.events.len();
-    candidate.admit()?;
+    let candidate = prepare(owner, next)?;
     owner.adopt(candidate);
     Ok(())
 }

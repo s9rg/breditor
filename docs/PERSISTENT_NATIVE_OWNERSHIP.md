@@ -21,6 +21,11 @@ the descriptor without invoking an application-supplied replacement getter.
 Internal cleanup always retires/disposes the privately owned editor. It never
 adopts or destroys a replacement supplied through the public property.
 
+The relay wrapper already owns its editor privately. Its direct lifecycle guards
+also reject an own shadow `core` property before any getter can run, matching the
+existing registered-source rule. Prototype access to the ordinary getter remains
+unchanged. An invalid shadow binding cannot advance a native archive boundary.
+
 ## Failure and retry contract
 
 A missing, accessor or different-editor binding refuses new capture before it
@@ -59,3 +64,8 @@ cross-device fencing, browser/accessibility or whole-room activation approval.
 The [functional qualification](qualification/2026-10-21-managed-core-binding.json)
 records the actual failing old SDK, the repaired source and fresh installed
 matrices, and unchanged native build inputs and public persistence declarations.
+
+The subsequent [native architecture qualification](qualification/2026-10-21-read-only-history-architecture.json)
+adds 36 direct relay configurations: 72 shadow-binding refusals with no getter
+calls or changed native cuts, plus 36 ordinary seals and exact cold reopens.
+The genuine earlier relay wrapper reproduces the invalid getter/advance behavior.

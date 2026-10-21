@@ -6,6 +6,7 @@ import type {SharedSuggestionsRustCapability} from "./suggestion_types.js";
 import type {SharedReviewedHistoryRustCapability,SharedReviewedHistoryIdentity} from "./reviewed_history_types.js";
 import type {SharedNativeSearchResults} from "./search_results.js";
 import type {SharedSegmentedRustCapability} from "./segmented_history.js";
+import type {SharedReadOnlyHistoryRustCapability} from "./read_only_history.js";
 export type {RichSelection,RichPoint,RichCell,FormatLiteral,ElementNode,RichModel,RenderOptions,AssetBinding} from "@breditor/experimental-rich-content/rendering";
 export type {RichInlineFormatState,RichInlineFormatStateRead} from "@breditor/experimental-rich-content/rendering";
 export type SharedView=Omit<RichView,"format">&{format:"breditor/shared-rich-view";causalVersion:string;selectionOutcome:{kind:string;reason?:string};historyPolicy?:"reviewed-v1"};
@@ -93,7 +94,7 @@ export interface SharedWriterGroups {format:"breditor/shared-writer-groups";form
 /** Explicit atom-lineage transport; never accepted as an original group batch. */
 export interface SharedWriterGroupsV2 extends Omit<SharedWriterGroups,"formatVersion"> {formatVersion:2}
 /** Exclusive generated Rust owner. Ownership transfers to SharedRichEditor; never reuse it elsewhere. */
-export interface SharedRustOwner extends SharedReviewRustCapability,SharedVersionsRustCapability,SharedSuggestionsRustCapability,SharedReviewedHistoryRustCapability,SharedSegmentedRustCapability {
+export interface SharedRustOwner extends SharedReviewRustCapability,SharedVersionsRustCapability,SharedSuggestionsRustCapability,SharedReviewedHistoryRustCapability,SharedSegmentedRustCapability,SharedReadOnlyHistoryRustCapability {
  /** Additive opaque search reads; mutations require explicitly selected search history. */
  writing_tools_version?():string;writing_tools_json?(observation:unknown):string;
  retained_asset_references_version?():string;retained_asset_references_json?(observation:unknown):string;

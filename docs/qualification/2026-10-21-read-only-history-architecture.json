@@ -1,0 +1,195 @@
+{
+  "format": "breditor/read-only-history-architecture-qualification",
+  "date": "2026-10-21",
+  "passed": true,
+  "v1Ready": false,
+  "openV1Gates": 13,
+  "publicationApproved": false,
+  "source": {
+    "commit": "a447dd54a86f8201f9c18d8c17bf5dea6799316a",
+    "dirty": true,
+    "sha256": "0d11d337f80909bda7475e39fd451211ed624510697ecb94973eab3f1a3bf1a8",
+    "files": 4983,
+    "bytes": 42448523
+  },
+  "nonDocumentation": {
+    "sha256": "0c9512d8f031c3a0adcc07a5e58e1337ad8a55a6c49a54bcd124cb99228121e7",
+    "files": 4455,
+    "excluded": "docs/** only"
+  },
+  "manifest": {
+    "path": "target/v1-candidate-runs/run-kVDpnF/result.json",
+    "bytes": 103087,
+    "sha256": "231b88d6cb5f0d36144b1e96071bab97a95ab20db9db9059feebd4435fb2525e",
+    "modifiedAtMs": 1792559276767.5466
+  },
+  "tests": {
+    "selectedChecksPassed": 65,
+    "wholeFunctionalPlan": false,
+    "workspaceRust": 2643,
+    "sharedRust": 658,
+    "relayRust": 216,
+    "researchReviewRust": 3,
+    "preservedOracleProperties": 2,
+    "casesPerOracleProperty": 4096,
+    "scriptContractsPassed": 1308,
+    "existingOptInScriptChecksSkipped": 3,
+    "editorTestsPassed": 385,
+    "freshRustSuites": true,
+    "freshNormalWasmProducers": true
+  },
+  "readOnly": {
+    "native": {
+      "format": "breditor/read-only-native-history-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "cases": 144,
+      "coldPairs": 144,
+      "enabledDocumentArchives": 72,
+      "enabledReviewArchives": 72,
+      "strictObserverRefusals": 288,
+      "readOnlySeals": 288,
+      "futurePairedComparisons": 432,
+      "rootFileComparisons": 288,
+      "activeFileComparisons": 288,
+      "sharedWasmSha256": "b525798df56d921281819e6fd43053f9a094bcb117fe8d86c3b66a61c4b54c29",
+      "scope": "Actual normal application Wasm and former-author histories in independent original/segmented lanes. Current read-only persists through archival and cold recovery; only a later explicit host grant permits future Undo/Redo. No SDK storage or relay-lifetime qualification."
+    },
+    "sdk": {
+      "format": "breditor/read-only-history-sdk-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "cases": 216,
+      "pairedCases": 144,
+      "coldPairs": 648,
+      "passiveSeals": 432,
+      "oldObserverRefusals": 216,
+      "rootFileComparisons": 432,
+      "firstSealedFileComparisons": 216,
+      "saveAborts": 2,
+      "lostAcknowledgements": 2,
+      "futureHistoryPairs": 648,
+      "scope": "Actual native document histories and original paired comments through managed SDK storage, synthetic IndexedDB/Web Locks, exact cold current-policy recovery, failed save/lost ack retries and later separately granted future history. No independent review-generation storage, physical durability, relay generation or activation qualification."
+    },
+    "sourceAndInstalledIdentical": true
+  },
+  "ownership": {
+    "segmented": {
+      "format": "breditor/managed-core-binding-probe",
+      "passed": true,
+      "cases": 72,
+      "captureRefusals": 1728,
+      "accessorCalls": 0,
+      "exactPairChecks": 432,
+      "cleanupChecks": 144,
+      "failedCloseChecks": 72,
+      "failedSaveChecks": 2,
+      "sharedWasmSha256": "b525798df56d921281819e6fd43053f9a094bcb117fe8d86c3b66a61c4b54c29",
+      "scope": "Actual normal native owners and SDK; synthetic IDB/Web Locks. Public binding replacement, deletion and accessors cannot redirect capture or ownership cleanup. Not physical crash durability or whole-room activation."
+    },
+    "original": {
+      "format": "breditor/managed-original-core-binding-probe",
+      "passed": true,
+      "pairedOnly": false,
+      "cases": 144,
+      "captureRefusals": 1728,
+      "accessorCalls": 0,
+      "exactPairChecks": 864,
+      "cleanupChecks": 288,
+      "failedCloseChecks": 144,
+      "failedSaveChecks": 4,
+      "sharedWasmSha256": "b525798df56d921281819e6fd43053f9a094bcb117fe8d86c3b66a61c4b54c29",
+      "scope": "Unchanged native original/search/document and paired durable families; synthetic IDB/Web Locks. Public binding changes cannot redirect capture, backup, version admission or cleanup. No physical crash-durability claim."
+    },
+    "relay": {
+      "format": "breditor/relay-core-binding-probe",
+      "passed": true,
+      "cases": 36,
+      "shadowRefusals": 72,
+      "getterCalls": 0,
+      "exactNativeCuts": 72,
+      "successfulSeals": 36,
+      "coldReopens": 36,
+      "sharedWasmSha256": "b525798df56d921281819e6fd43053f9a094bcb117fe8d86c3b66a61c4b54c29",
+      "scope": "Genuine idle relay sessions and actual native owners with synthetic IDB/Web Locks. Direct guards reject own shadow bindings without executing getters. No relay connection, authenticated server or physical durability claim."
+    },
+    "sourceAndInstalledIdentical": true,
+    "beforeControl": "target/relay-core-binding-before-5v40zm/result.json"
+  },
+  "nativeReview": {
+    "format": "breditor/native-segmented-review-probe",
+    "formatVersion": 1,
+    "passed": true,
+    "cases": 72,
+    "coldReopens": 144,
+    "sourceFileComparisons": 288,
+    "futureHistoryComparisons": 216,
+    "oldGetterRefusals": 150,
+    "readonlyRefusals": 78,
+    "nativeReceiptComparisons": 72,
+    "staleRefusals": 72,
+    "documentCutComparisons": 504,
+    "observerCases": 6,
+    "observerColdReopens": 6,
+    "networkCalls": 0,
+    "sharedWasmSha256": "b525798df56d921281819e6fd43053f9a094bcb117fe8d86c3b66a61c4b54c29",
+    "scope": "Actual normal application Wasm, separate document/review families, original offline peer, real image anchors, native receipts, exact cold current-policy recovery and future review history. No synthetic storage, sockets, SDK persistence or room activation is inferred."
+  },
+  "originalReview": {
+    "format": "breditor/original-review-runtime-comparison",
+    "formatVersion": 1,
+    "passed": true,
+    "beforeWasmSha256": "5accbfe1c8d850ffac7b9689c639ae526d9db1997991aaec05b6e665afa86ead",
+    "afterWasmSha256": "b525798df56d921281819e6fd43053f9a094bcb117fe8d86c3b66a61c4b54c29",
+    "cases": 72,
+    "exactNativeComparisons": 1440,
+    "crossVersionRestores": 144,
+    "futureHistoryComparisons": 1080,
+    "scope": "Exact original native review checkpoints, event frames, views, actor clocks and document cuts in actual old/new application Wasm; both cross-version recovery directions and future Undo/Redo. No new review-family capability is assumed in the old build."
+  },
+  "originalDocument": {
+    "format": "breditor/shared-v1-runtime-comparison",
+    "formatVersion": 1,
+    "beforeWasmSha256": "5accbfe1c8d850ffac7b9689c639ae526d9db1997991aaec05b6e665afa86ead",
+    "afterWasmSha256": "b525798df56d921281819e6fd43053f9a094bcb117fe8d86c3b66a61c4b54c29",
+    "comparedCheckpoints": 49,
+    "crossVersionRestores": 2,
+    "futureHistorySteps": 12,
+    "modelVersion": 11,
+    "journalVersion": 12,
+    "passed": true
+  },
+  "sharedWasmSha256": "b525798df56d921281819e6fd43053f9a094bcb117fe8d86c3b66a61c4b54c29",
+  "installed": {
+    "registryArtifacts": 45,
+    "workspaceLinks": false,
+    "strictPublicTypes": true,
+    "noWorkspaceReactOrSyntheticStorageInProduction": true,
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "target/read-only-history-qualification-0AOolq/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "target/read-only-history-qualification-0AOolq/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "e6b524a4d3b9cab485e6df2ff62af133a3772291ec463fd3bba73934c13ac40f"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "target/read-only-history-qualification-0AOolq/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "3a6234aa74c3c1450fc1fddae09d4ea296d9eb1faadc7fa79b2ba728222c94b2"
+      }
+    ]
+  },
+  "scope": "Explicit read-only former-author archival in both native lanes, managed document-generation storage with original comments, exact causal-birth validator equivalence and getter-free relay binding. Fresh Rust, normal Wasm and independent installed consumers on one frozen source. Not the entire functional profile or V1 approval.",
+  "limitations": [
+    "Managed SDK/storage of the independent review-generation family remains unimplemented; its new lifecycle remains native/raw Wasm only.",
+    "Synthetic IndexedDB/Web Locks do not qualify physical crash durability or cross-device fencing.",
+    "Native server/log generations, historical-copy dispositions, full provider/client reference closure, authenticated whole-room activation and structural extension parity remain open.",
+    "Retained capacity and the diagnostic replay optimization do not establish an approved latency/operating envelope.",
+    "No native browser/clipboard/IME/VoiceOver or historical WebKit repair is qualified.",
+    "All 13 V1 gates stay open; no public API freeze, version, push, tag, publication or deployment is promoted."
+  ]
+}

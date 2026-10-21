@@ -86,6 +86,13 @@ family or select comment generations when document generations are selected.
 Normal Wasm and fresh installed native consumers are qualified; atomic SDK heads
 and negotiated server retention still require explicit integration.
 
+The separately named [read-only archival lifecycle](READ_ONLY_HISTORY_ARCHIVAL.md)
+allows former authors to retain further peer input without resetting their
+authored prefixes or temporarily restoring write permission. Original author
+and strict zero-authored observer APIs remain unchanged. Native document/comment
+lifecycles and managed document-generation storage are qualified; that does not
+select SDK comment generations or negotiate a new server history profile.
+
 V1 still needs participant/room catalog integration, coordinated room rotation and
 activation around that native bridge. The explicit
 [operational generation participant](GENERATION_PARTICIPANT_OPERATION.md) now

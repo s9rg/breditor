@@ -12,6 +12,7 @@ export const recoveryOriginOwnerMethods=Object.freeze(["recovery_origin_version"
 export const segmentedHistoryOwnerMethods=Object.freeze(["segmented_history_version","segmented_history_enabled","segmented_history_info_json","enable_segmented_history","seal_history_segment","segmented_checkpoint","verify_segmented_recovery_origin"]);
 export const segmentedHistoryProfileMethods=Object.freeze(["segmented_history_version","restore_segmented"]);
 export const observerHistorySealingOwnerMethods=Object.freeze(["observer_history_sealing_version","seal_observer_history_segment"]);
+export const readOnlyHistoryLifecycleMethods=Object.freeze(["read_only_history_lifecycle_version","enable_read_only_segmented_history","seal_read_only_history_segment","read_only_review_history_lifecycle_version","enable_read_only_review_history_generations","seal_read_only_review_history_generation"]);
 export const placeholderOwnerMethods=Object.freeze(["placeholder_version","placeholder_empty"]);
 export const placeholderProfileMethods=Object.freeze(["placeholder_version"]);
 export const documentOwnerMethods=Object.freeze(["document_selection_version","document_typing_version","document_selection_enabled","enable_document_selection","observe_document","document_view_json","select_document","copy_document_clipboard","replace_document_plain_text","replace_document_typing_text","document_checkpoint","document_typing_checkpoint"]);
@@ -44,6 +45,7 @@ export function admitApplicationSurface(module,binary,declarations){
  for(const name of segmentedHistoryOwnerMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native segmented history capability ${name}`);
  for(const name of segmentedHistoryProfileMethods)assert.equal(typeof module.SharedRichProfile.prototype[name],"function",`Missing native segmented recovery ${name}`);
  for(const name of observerHistorySealingOwnerMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native observer history sealing capability ${name}`);
+ for(const name of readOnlyHistoryLifecycleMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native read-only history lifecycle capability ${name}`);
  for(const name of placeholderOwnerMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native placeholder capability ${name}`);
  for(const name of placeholderProfileMethods)assert.equal(typeof module.SharedRichProfile.prototype[name],"function",`Missing native placeholder profile capability ${name}`);
  for(const name of ["search_history_version","restore_search"])assert.equal(typeof module.SharedRichProfile.prototype[name],"function",`Missing native search recovery ${name}`);
