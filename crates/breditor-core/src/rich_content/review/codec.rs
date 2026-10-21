@@ -4,7 +4,6 @@ use super::{
     ReviewActorId, ReviewActorPolicy, ReviewBinding, ReviewError, ReviewEventId,
     ReviewImportOutcome, ReviewObservation, ReviewSession,
     event::{self, Event, Payload},
-    materialize::Projection,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -37,13 +36,16 @@ impl ReviewSession {
     /// # Errors
     /// Serialization or the unchanged review checkpoint ceiling rejects without mutation.
     pub fn checkpoint_json(&self) -> Result<String, ReviewError> {
+        if self.generations.is_some() {
+            return Err(ReviewError::Contract("review history family"));
+        }
         let json = serde_json::to_string(&Checkpoint {
             format: "breditor/review-session".into(),
             format_version: 1,
             binding: self.binding.clone(),
             actor: self.policy.actor.clone(),
             principal: self.policy.principal.clone(),
-            events: event::ordered(&self.events)?.into_iter().cloned().collect(),
+            events: event::ordered(&self.events, event::MAX_EVENTS)?.into_iter().cloned().collect(),
             history: self.history.clone(),
             cursor: self.cursor,
         })?;
@@ -226,7 +228,7 @@ impl ReviewSession {
                     }
                     _ => {}
                 }
-                Projection::build(&base)?.validate_action(
+                self.projection(&base)?.validate_action(
                     &self.binding,
                     action,
                     Some(verified),
@@ -240,7 +242,7 @@ impl ReviewSession {
                 let Payload::Action(action) = &original.payload else {
                     return Err(ReviewError::Contract("history toggle target"));
                 };
-                Projection::build(&base)?.validate_action(
+                self.projection(&base)?.validate_action(
                     &self.binding,
                     action,
                     Some(verified),
@@ -259,7 +261,7 @@ impl ReviewSession {
     }
 }
 pub(super) fn validate_all(session: &ReviewSession) -> Result<(), ReviewError> {
-    let ordered = event::ordered(&session.events)?;
+    let ordered = event::ordered(&session.events, session.event_limit())?;
     let mut principals = BTreeMap::new();
     let mut local_targets = BTreeSet::new();
     let mut streams = BTreeMap::<ReviewActorId, &Event>::new();
@@ -288,7 +290,7 @@ pub(super) fn validate_all(session: &ReviewSession) -> Result<(), ReviewError> {
                 .filter(|e| event::observes(&event.dependencies, &e.id))
                 .cloned()
                 .collect::<Vec<_>>();
-            Projection::build(&base)?.validate_action(
+            session.projection(&base)?.validate_action(
                 &session.binding,
                 action,
                 None,

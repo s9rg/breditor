@@ -76,6 +76,16 @@ original and sealed inputs, Undo/Redo and pending causal work within its own
 64 MiB archive bound. It does not widen the original journal, select itself
 automatically or promise an unlimited operational lifetime.
 
+Original comment owners separately retain at most 8,192 events and a 16 MiB
+checkpoint, with 128 events and 1 MiB per frame. The explicit
+[native comment generation family](SEGMENTED_REVIEW_HISTORY.md) retains original
+events and author-local history across independent immutable cuts, within
+65,536 events, 64 generations and 64 MiB including nested JSON escaping. Root
+and active count toward that generation ceiling. It does not widen the original
+family or select comment generations when document generations are selected.
+Normal Wasm and fresh installed native consumers are qualified; atomic SDK heads
+and negotiated server retention still require explicit integration.
+
 V1 still needs participant/room catalog integration, coordinated room rotation and
 activation around that native bridge. The explicit
 [operational generation participant](GENERATION_PARTICIPANT_OPERATION.md) now

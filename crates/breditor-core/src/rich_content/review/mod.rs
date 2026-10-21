@@ -6,6 +6,7 @@
 pub mod actions;
 mod codec;
 mod event;
+mod generation;
 mod identity;
 mod materialize;
 mod recovery_origin;

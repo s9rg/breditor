@@ -30,6 +30,7 @@ pub struct ReviewSession {
     pub(super) events: Vec<Event>,
     pub(super) history: Vec<ReviewEventId>,
     pub(super) cursor: usize,
+    pub(super) generations: Option<super::generation::ReviewGenerations>,
     token: Arc<()>,
 }
 impl ReviewSession {
@@ -44,6 +45,7 @@ impl ReviewSession {
             events: vec![],
             history: vec![],
             cursor: 0,
+            generations: None,
             token: Arc::new(()),
         })
     }
@@ -80,7 +82,7 @@ impl ReviewSession {
     /// Rejects a broken internal event/dependency invariant rather than fabricating a projection.
     pub fn view(&self) -> Result<ReviewView, ReviewError> {
         Ok(ReviewView {
-            threads: Projection::build(&self.events)?.view(),
+            threads: self.projection(&self.events)?.view(),
             undo_depth: self.cursor,
             redo_depth: self.history.len() - self.cursor,
         })
@@ -132,7 +134,7 @@ impl ReviewSession {
         action: ReviewAction,
     ) -> Result<ReviewOutcome, ReviewError> {
         self.check(observed)?;
-        let projection = Projection::build(&self.events)?;
+        let projection = self.projection(&self.events)?;
         projection.validate_action(
             &self.binding,
             &action,
@@ -159,6 +161,7 @@ impl ReviewSession {
             events: self.events.clone(),
             history: self.history.clone(),
             cursor: self.cursor,
+            generations: self.generations.clone(),
             token: Arc::new(()),
         }
     }
@@ -167,13 +170,27 @@ impl ReviewSession {
     }
     pub(super) fn admit(&self) -> Result<(), ReviewError> {
         super::codec::validate_all(self)?;
-        event::ordered(&self.events)?;
-        if self.events.len() > event::MAX_EVENTS {
+        event::ordered(&self.events, self.event_limit())?;
+        if self.events.len() > self.event_limit() {
             return Err(ReviewError::Limit("events"));
         }
-        self.checkpoint_json()?;
-        Projection::build(&self.events)?;
+        if self.generations.is_some() {
+            self.segmented_checkpoint_json()?;
+        } else {
+            self.checkpoint_json()?;
+        }
+        self.projection(&self.events)?;
         Ok(())
+    }
+    pub(super) const fn event_limit(&self) -> usize {
+        if self.generations.is_some() {
+            super::generation::MAX_RETAINED_EVENTS
+        } else {
+            event::MAX_EVENTS
+        }
+    }
+    pub(super) fn projection(&self, events: &[Event]) -> Result<Projection, ReviewError> {
+        Projection::build(events, self.event_limit())
     }
     pub(super) fn history_step(
         &mut self,
@@ -195,7 +212,7 @@ impl ReviewSession {
             .find(|e| e.id == target)
             .ok_or(ReviewError::Contract("review history birth"))?;
         if let Payload::Action(action) = &original.payload {
-            Projection::build(&self.events)?.validate_action(
+            self.projection(&self.events)?.validate_action(
                 &self.binding,
                 action,
                 Some(&self.policy),

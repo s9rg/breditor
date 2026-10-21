@@ -43,6 +43,38 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [independent native comment family](SEGMENTED_REVIEW_HISTORY.md) now retains
+original events, native actor counters, author-local Undo/Redo and exact
+root/sealed files across explicit boundaries. Document and comment generations
+remain independent choices. Native recovery replays every cut and verifies the
+actual original root and retained prefixes; matching visible discussions or
+re-sliced events cannot substitute for that custody. Author and zero-authored
+read-only observer operations remain separate, and saved files grant no role.
+
+Its [functional qualification](qualification/2026-10-20-native-review-generations.json)
+passes 63 selected architecture stages on one frozen source tree, with fresh
+2,639 workspace, 656 shared and 216 relay Rust tests, three canonical research
+contracts, 1,302 script contracts and 385 editor tests. Both normal Wasm
+producers rebuild freshly. Source and independent offline installed archives
+each cover 72 author configurations and six observers, including exact files,
+native receipts, image anchors, cold current-policy recovery and future history.
+Old/new original review runtimes retain 1,440 exact comparisons, 144 cross-runtime
+restores and 1,080 future-history comparisons. Original document comparisons
+remain exact as well.
+
+The original comment checkpoint/frame limits and defaults are unchanged. The
+new archive has separate bounded retention; it does not establish a latency
+envelope. Atomic SDK comment storage, explicit read-only former-author archival,
+compatible native server and log generations, historic-copy dispositions,
+provider/client closure and authenticated whole-room activation remain work.
+A separate managed-storage audit has reproduced public `core` replacement
+redirecting capture/cleanup; its repair is being integrated independently.
+Structural extension contracts remain ahead of presentation-only parity work.
+All 13 V1 gates remain open. No version, push, tag, publication or deployment
+is promoted.
+
+### Earlier operational startup custody checkpoint
+
 Operational factories now retain actual startup cleanup before acquiring their
 first new coordinator. A refused new open or cold resume cannot abandon the
 acquired locks, journals, native owners or readers if rollback also fails. The
@@ -89,8 +121,8 @@ not expose a cleanup-only public capability after authority revocation. Local
 locks remain cooperative exclusion, not cross-device writer fencing. Existing
 storage/history bounds and retained historical copies are unchanged.
 
-Next architectural work is explicit historic-copy disposition, independent native
-comment and server-log generations, complete provider/client reference closure
+Next architectural work is explicit historic-copy disposition, atomic SDK
+integration of native comment generations, server-log generations, complete provider/client reference closure
 and current authenticated whole-room activation, followed by remaining selected
 feature parity. Outer server-log rollover alone would leave its original-family
 native replica's journal ceiling intact: the next server profile must select

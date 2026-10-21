@@ -58,14 +58,15 @@ pub(super) fn clock(events: &[Event]) -> Clock {
     }
     result
 }
-pub(super) fn ordered(events: &[Event]) -> Result<Vec<&Event>, ReviewError> {
-    if events.len() > MAX_EVENTS {
+pub(super) fn ordered(events: &[Event], limit: usize) -> Result<Vec<&Event>, ReviewError> {
+    if events.len() > limit {
         return Err(ReviewError::Limit("events"));
     }
     let mut waiting = events.iter().map(|e| (&e.id, e)).collect::<BTreeMap<_, _>>();
     if waiting.len() != events.len() {
         return Err(ReviewError::Fork);
     }
+    let indexed = waiting.clone();
     let mut result: Vec<&Event> = Vec::with_capacity(events.len());
     let mut applied = Clock::new();
     while !waiting.is_empty() {
@@ -88,13 +89,20 @@ pub(super) fn ordered(events: &[Event]) -> Result<Vec<&Event>, ReviewError> {
         {
             return Err(ReviewError::Fork);
         }
-        // A claimed observed event also brings all of its causal dependencies.
-        for dependency in &result {
-            if observes(&event.dependencies, &dependency.id)
-                && dependency
-                    .dependencies
-                    .iter()
-                    .any(|(a, c)| event.dependencies.get(a).is_none_or(|seen| seen < c))
+        // Each accepted actor prefix already closes over its earlier events.
+        // Checking the last observed event of each actor therefore proves the
+        // same transitive closure without rescanning the entire retained past.
+        for (actor, through) in &event.dependencies {
+            if through.0 == 0 {
+                continue;
+            }
+            let dependency = indexed
+                .get(&ReviewEventId { actor: actor.clone(), counter: *through })
+                .ok_or(ReviewError::Contract("nonclosed review causal frontier"))?;
+            if dependency
+                .dependencies
+                .iter()
+                .any(|(a, c)| event.dependencies.get(a).is_none_or(|seen| seen < c))
             {
                 return Err(ReviewError::Contract("nonclosed review causal frontier"));
             }
@@ -104,6 +112,9 @@ pub(super) fn ordered(events: &[Event]) -> Result<Vec<&Event>, ReviewError> {
     }
     Ok(result)
 }
+
+#[cfg(test)]
+mod ordering_tests;
 pub(super) fn text(input: &str) -> Result<(), ReviewError> {
     if input.len() > 16 * 1024 {
         return Err(ReviewError::Limit("message bytes"));

@@ -1,5 +1,15 @@
 # V1 candidate checks
 
+Both profiles require `native-review-generations`,
+`research-review-generations`, `native-review-generations-type-fence` and
+`installed-native-review-generations`. The normal application Wasm must expose
+the explicitly selected native comment family without native proof constructors
+or server-finalization effects. Source and fresh public archives run identical
+72-configuration author and six-observer probes, preserving exact immutable
+files, native receipts, anchors and future history. Strict bare-import native
+types remain mandatory. These stages qualify the native component, not atomic
+SDK comment storage, server-log generations or room activation.
+
 Both profiles require `room-recovery-catalog-v2-contracts`,
 `room-recovery-catalog-v2-type-fence`, `room-recovery-catalog-v2` and
 `installed-room-recovery-catalog-v2`. The separate V2 family retains original

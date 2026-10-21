@@ -2,11 +2,16 @@
 mod commit_review_batch;
 mod create_review_session;
 mod dispatch_review;
+mod enable_observer_review_segmented_history;
+mod enable_review_segmented_history;
 mod prepare_review_batch;
 mod receive_review;
 mod redo_review;
 mod restore_review;
+mod restore_segmented_review;
 mod review_view;
+mod seal_observer_review_history_generation;
+mod seal_review_history_generation;
 mod undo_review;
 
 use super::{ReviewAnchorResolution, RichReplica};

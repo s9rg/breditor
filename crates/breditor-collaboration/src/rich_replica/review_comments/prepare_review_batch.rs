@@ -23,6 +23,12 @@ impl PreparedDocumentReviewBatch {
     pub fn checkpoint_json(&self) -> Result<String, Error> {
         Ok(self.metadata.checkpoint_json()?)
     }
+    /// Retain the exact candidate in the explicitly selected segmented comment family.
+    /// # Errors
+    /// An original candidate or native file/archive budgets reject without publication.
+    pub fn segmented_checkpoint_json(&self) -> Result<String, Error> {
+        Ok(self.metadata.segmented_checkpoint_json()?)
+    }
 }
 /// Pure preparation result; no incomplete prefix is published or acknowledged.
 pub enum DocumentReviewBatchPreparation {

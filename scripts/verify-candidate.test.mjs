@@ -14,6 +14,22 @@ const plan=checks=>({profile:"functional",deferred:["not-a-v1-certification"],ch
 const stable=()=>({commit:"1".repeat(40),dirty:true,sha256:"2".repeat(64),files:1,bytes:1});
 function quiet(options={}){return {snapshot:stable,report:()=>{},...options};}
 
+test('both profiles require native independent review generations and the unchanged installed assertions',()=>{
+ for(const profile of ['functional','full']){
+  const p=candidateReleasePlan({profile}),find=id=>{const row=p.checks.find(c=>c.id===id);assert.ok(row,id);return row;};
+  for(const [id,file,path]of [['native-review-generations','check-review-generations-native.mjs','target/native-review-generations.json'],['installed-native-review-generations','check-review-generations-installed.mjs','target/native-review-generations-installed-consumer.json']]){
+   assert.deepEqual(find(id).args,[`scripts/${file}`]);assert.deepEqual(find(id).artifacts,[{path,fresh:true}]);assert.ok(p.checks.indexOf(find('paired-shared-runtime'))<p.checks.indexOf(find(id)));
+  }
+  assert.ok(find('native-review-generations-type-fence').args.includes('scripts/fixtures/editor-consumer/types-review-generations.ts'));
+  assert.deepEqual(find('research-review-generations').args,['test','--manifest-path','experiments/collaboration/Cargo.toml','--locked','--offline','--release','--test','review_generation_contracts']);
+  assert.ok(p.checks.indexOf(find('shared-native'))<p.checks.indexOf(find('research-review-generations')));
+  assert.ok(p.checks.indexOf(find('collaboration-build'))<p.checks.indexOf(find('installed-native-review-generations')));
+ }
+ const installed=readFileSync(join(repository,'scripts/check-review-generations-installed.mjs'),'utf8');
+ for(const text of ['probe-segmented-review-native.mjs','types-review-generations.ts','installedProbe.replace(to,from),sourceProbe','sourceUnchanged:true','futureHistoryComparisons:216','observerColdReopens:6','networkCalls:0','verifySearchConsumerRegistry'])assert.ok(installed.includes(text),text);
+ const source=readFileSync(join(repository,'scripts/check-review-generations-native.mjs'),'utf8');assert.ok(source.includes('assert.deepEqual(sourceEvidence(root),source'));
+});
+
 test("both profiles require the separate V2 catalog family, actual native staging and identical installed assertions",()=>{
  for(const profile of ["functional","full"]){const p=candidateReleasePlan({profile}),find=id=>{const row=p.checks.find(c=>c.id===id);assert.ok(row,id);return row;};
   assert.deepEqual(find("room-recovery-catalog-v2-contracts").args,["--test","scripts/room-recovery-catalog-v2-storage.test.mjs"]);

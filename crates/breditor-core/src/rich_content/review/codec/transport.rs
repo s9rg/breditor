@@ -50,6 +50,12 @@ impl PreparedReviewBatch {
     pub fn checkpoint_json(&self) -> Result<String, ReviewError> {
         self.candidate.checkpoint_json()
     }
+    /// Retain the exact candidate under the explicitly selected segmented family.
+    /// # Errors
+    /// Original-family candidates or the native generation/file budgets reject.
+    pub fn segmented_checkpoint_json(&self) -> Result<String, ReviewError> {
+        self.candidate.segmented_checkpoint_json()
+    }
 }
 /// No accepted mutation occurs during preparation, including an incomplete batch.
 pub enum ReviewBatchPreparation {

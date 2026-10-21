@@ -1,0 +1,40 @@
+/** Fresh offline public-package native comment-generation consumer. Never publishes. */
+import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
+import {cpSync,mkdirSync,mkdtempSync,readFileSync,realpathSync,writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {dirname,join,resolve} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {sourceEvidence,saveEvidence} from './candidate-release/evidence.mjs';
+import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
+
+if(process.argv.length!==2)throw Error('Use current explicitly built candidate runtime; no automatic rebuild or publication');
+const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),source=sourceEvidence(root),temporary=mkdtempSync(join(tmpdir(),'breditor-review-generations-installed-')),archives=join(temporary,'archives'),consumer=join(temporary,'consumer');
+const node=process.execPath,npm=process.env.BREDITOR_NPM??process.env.NPM_BIN??'npm',sha=bytes=>createHash('sha256').update(bytes).digest('hex');
+const run=(command,args,cwd=root)=>execFileSync(command,args,{cwd,stdio:'inherit'});
+mkdirSync(archives);mkdirSync(consumer);
+const names=['@breditor/browser','@breditor/experimental-rich-content','@breditor/collaboration'],packs=JSON.parse(execFileSync(npm,['pack','--ignore-scripts','--json','--pack-destination',archives,...names.flatMap(name=>['--workspace',name])],{cwd:root,encoding:'utf8'})),paths=packs.map(pack=>join(archives,pack.filename));
+const producer=JSON.parse(readFileSync(join(root,'package-lock.json'),'utf8')),locked=searchConsumerLock(producer,packs.map((pack,index)=>({name:pack.name,path:paths[index]})));
+writeFileSync(join(consumer,'package.json'),JSON.stringify(locked.manifest));writeFileSync(join(consumer,'package-lock.json'),JSON.stringify(locked.lock));
+run(npm,['install','--offline','--ignore-scripts','--no-audit','--no-fund'],consumer);
+const registryArtifacts=verifySearchConsumerRegistry(producer,JSON.parse(readFileSync(join(consumer,'package-lock.json'),'utf8')));
+for(const name of names)assert.ok(realpathSync(join(consumer,'node_modules',name)).startsWith(realpathSync(consumer)+'/node_modules/'),'Installed proof must not escape through workspace links');
+cpSync(join(root,'scripts/fixtures/editor-consumer/types-review-generations.ts'),join(consumer,'types-review-generations.ts'));
+// The generated opt-in Wasm declarations already expose Symbol.dispose; check them fully.
+run(node,[join(root,'node_modules/typescript/bin/tsc'),'--noEmit','--strict','--exactOptionalPropertyTypes','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM,ESNext.Disposable','types-review-generations.ts'],consumer);
+cpSync(join(root,'crates/breditor-core/tests/fixtures/rich-local-root.json'),join(consumer,'retained-asset-root.json'));
+cpSync(join(root,'scripts/check-collaboration-runtime-surface.mjs'),join(consumer,'check-collaboration-runtime-surface.mjs'));
+const sourceProbe=readFileSync(join(root,'scripts/probe-segmented-review-native.mjs'),'utf8'),from="new URL('../crates/breditor-core/tests/fixtures/rich-local-root.json',import.meta.url)",to="new URL('./retained-asset-root.json',import.meta.url)";
+assert.equal(sourceProbe.split(from).length,2);
+const installedProbe=sourceProbe.replace(from,to);
+assert.equal(installedProbe.replace(to,from),sourceProbe,'Consumer changes resource paths only, never native assertions');
+assert.ok(!installedProbe.includes('../packages/')&&!installedProbe.includes('../crates/'));
+writeFileSync(join(consumer,'review-generations.mjs'),installedProbe);
+const runtime=join(consumer,'node_modules/@breditor/collaboration/dist/runtime'),acceptance=JSON.parse(execFileSync(node,['review-generations.mjs',runtime],{cwd:consumer,encoding:'utf8',maxBuffer:2*1024*1024,timeout:600000}));
+for(const [key,expected]of Object.entries({passed:true,cases:72,coldReopens:144,sourceFileComparisons:288,futureHistoryComparisons:216,oldGetterRefusals:150,readonlyRefusals:78,nativeReceiptComparisons:72,staleRefusals:72,documentCutComparisons:504,observerCases:6,observerColdReopens:6,networkCalls:0}))assert.equal(acceptance[key],expected,key);
+assert.equal(acceptance.sharedWasmSha256,sha(readFileSync(join(root,'target/promoted-shared-web/breditor_shared_bg.wasm'))));
+assert.deepEqual(sourceEvidence(root),source,'Source changed during installed native comment-generation qualification');
+const report={format:'breditor/native-review-generations-installed-consumer',formatVersion:1,passed:true,source,sourceUnchanged:true,consumer,workspaceLinks:false,strictPublicTypes:true,registryArtifacts,archives:packs.map((pack,index)=>({name:pack.name,path:paths[index],sha256:sha(readFileSync(paths[index]))})),probe:{sourceSha256:sha(sourceProbe),consumerSha256:sha(installedProbe),resourcePathOnly:true},acceptance,scope:'Fresh offline public archives, generated public Wasm types, identical native assertions and actual bundled application runtime. No managed SDK persistence, relay generations, browser durability or V1 qualification.'};
+saveEvidence(join(root,'target/native-review-generations-installed-consumer.json'),report);
+console.log(JSON.stringify(report,null,2));

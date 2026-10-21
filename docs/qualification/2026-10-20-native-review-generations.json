@@ -1,0 +1,154 @@
+{
+  "format": "breditor/native-review-generations-qualification",
+  "date": "2026-10-20",
+  "v1Ready": false,
+  "openV1Gates": 13,
+  "publicationApproved": false,
+  "source": {
+    "baseCommit": "62a268d828d6ba48760f39f18c13f40148ca67c4",
+    "testedWorkingTreeSha256": "66e3be38e3f1c0b3896793190cfa8c35ee1b3591479ffce31858a7bb9a24e3af",
+    "nonDocumentationSha256": "95b20e0bc48f06cc74f9640e25cbd29da03f74ae8812056ff49cecefd666ba9f",
+    "files": 4951,
+    "bytes": 42302840
+  },
+  "implementation": {
+    "independentlySelectedNativeCommentFamily": true,
+    "originalRootAndSealedStringsRemainExact": true,
+    "nativeActorCountersReceiptsAndUndoRedoRetained": true,
+    "explicitAuthorAndZeroPrefixObserverOperations": true,
+    "fullNativeReplayAtEveryCut": true,
+    "nativeRecoveryOriginRequiresActualPrefixCustody": true,
+    "mutableStagingBuffersIndependent": true,
+    "causalFrontierOptimizationHasPreservedFullScanOracle": true,
+    "originalCheckpointFrameMeaningsDefaultsAndLimitsUnchanged": true,
+    "allRustActionsInSeparateNamedModules": true,
+    "noSavedRoleOrImplicitUpgrade": true
+  },
+  "tests": {
+    "workspaceRust": 2639,
+    "sharedRust": 656,
+    "relayRust": 216,
+    "researchReviewRust": 3,
+    "freshRustSuites": true,
+    "freshPairedWasmProducers": true,
+    "selectedChecksPassed": 63,
+    "wholeFunctionalPlan": false,
+    "scriptContractsPassed": 1302,
+    "existingOptInScriptChecksSkipped": 3,
+    "otherTypescriptPackageTestsPassed": 2647,
+    "editorTestsPassed": 385,
+    "native": {
+      "format": "breditor/native-segmented-review-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "cases": 72,
+      "coldReopens": 144,
+      "sourceFileComparisons": 288,
+      "futureHistoryComparisons": 216,
+      "oldGetterRefusals": 150,
+      "readonlyRefusals": 78,
+      "nativeReceiptComparisons": 72,
+      "staleRefusals": 72,
+      "documentCutComparisons": 504,
+      "observerCases": 6,
+      "observerColdReopens": 6,
+      "networkCalls": 0,
+      "sharedWasmSha256": "1215c367666ff0c41723f351f8ddd15e460a723a4d64a81a60cfb0ce91f96ef9",
+      "scope": "Actual normal application Wasm, separate document/review families, original offline peer, real image anchors, native receipts, exact cold current-policy recovery and future review history. No synthetic storage, sockets, SDK persistence or room activation is inferred."
+    },
+    "installed": {
+      "format": "breditor/native-segmented-review-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "cases": 72,
+      "coldReopens": 144,
+      "sourceFileComparisons": 288,
+      "futureHistoryComparisons": 216,
+      "oldGetterRefusals": 150,
+      "readonlyRefusals": 78,
+      "nativeReceiptComparisons": 72,
+      "staleRefusals": 72,
+      "documentCutComparisons": 504,
+      "observerCases": 6,
+      "observerColdReopens": 6,
+      "networkCalls": 0,
+      "sharedWasmSha256": "1215c367666ff0c41723f351f8ddd15e460a723a4d64a81a60cfb0ce91f96ef9",
+      "scope": "Actual normal application Wasm, separate document/review families, original offline peer, real image anchors, native receipts, exact cold current-policy recovery and future review history. No synthetic storage, sockets, SDK persistence or room activation is inferred.",
+      "strictPublicTypes": true,
+      "registryArtifacts": 45
+    }
+  },
+  "normalRuntime": {
+    "sharedWasmSha256": "1215c367666ff0c41723f351f8ddd15e460a723a4d64a81a60cfb0ce91f96ef9",
+    "javascriptExports": 9,
+    "wasmExports": 254,
+    "normalApplicationNotResearchRuntime": true
+  },
+  "originalReview": {
+    "format": "breditor/original-review-runtime-comparison",
+    "formatVersion": 1,
+    "passed": true,
+    "beforeWasmSha256": "5accbfe1c8d850ffac7b9689c639ae526d9db1997991aaec05b6e665afa86ead",
+    "afterWasmSha256": "1215c367666ff0c41723f351f8ddd15e460a723a4d64a81a60cfb0ce91f96ef9",
+    "cases": 72,
+    "exactNativeComparisons": 1440,
+    "crossVersionRestores": 144,
+    "futureHistoryComparisons": 1080,
+    "scope": "Exact original native review checkpoints, event frames, views, actor clocks and document cuts in actual old/new application Wasm; both cross-version recovery directions and future Undo/Redo. No new review-family capability is assumed in the old build."
+  },
+  "originalDocument": {
+    "format": "breditor/shared-v1-runtime-comparison",
+    "formatVersion": 1,
+    "beforeWasmSha256": "5accbfe1c8d850ffac7b9689c639ae526d9db1997991aaec05b6e665afa86ead",
+    "afterWasmSha256": "1215c367666ff0c41723f351f8ddd15e460a723a4d64a81a60cfb0ce91f96ef9",
+    "comparedCheckpoints": 49,
+    "crossVersionRestores": 2,
+    "futureHistorySteps": 12,
+    "modelVersion": 11,
+    "journalVersion": 12,
+    "passed": true
+  },
+  "nativeInputEvidence": {
+    "path": "target/native-review-generations-qualification-wChQlc/native-inputs.json",
+    "files": 2693,
+    "sha256": "b2a4cf7e6bd7707ea671dcc0d87d550b8893a5a754ecad3e135a13d480861eb7"
+  },
+  "archives": [
+    {
+      "name": "@breditor/browser",
+      "path": "target/native-review-generations-qualification-wChQlc/archives/breditor-browser-0.3.0-alpha.22.tgz",
+      "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+    },
+    {
+      "name": "@breditor/experimental-rich-content",
+      "path": "target/native-review-generations-qualification-wChQlc/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+      "sha256": "e6b524a4d3b9cab485e6df2ff62af133a3772291ec463fd3bba73934c13ac40f"
+    },
+    {
+      "name": "@breditor/collaboration",
+      "path": "target/native-review-generations-qualification-wChQlc/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+      "sha256": "353b2164d58139573e26a074df647712c94a7958995297ba274114278ce26262"
+    }
+  ],
+  "manifest": {
+    "path": "target/v1-candidate-runs/run-E6GdG6/result.json",
+    "bytes": 102978,
+    "sha256": "b2216417ee3a68cc5d87940c3b015d12d1421924969d4a3ebc8e9f4de76aee7c",
+    "modifiedAtMs": 1792553890366.6184
+  },
+  "diagnostics": {
+    "initialFixtureRefusals": "target/review-generation-fixture-refusals-F246Gw/result.json",
+    "initialSuiteRoutingFailure": "target/v1-candidate-runs/run-SVgGQv/result.json",
+    "routingRepair": "Added canonical research conformance wrapper; all 63 selected checks reran freshly on one frozen tree.",
+    "productionAdmissionWeakened": false,
+    "unrelatedHistoricalWebKitRepairClaimed": false
+  },
+  "limitations": [
+    "Managed SDK/storage and relay negotiation do not yet select the new review family.",
+    "Independent server-log generations, historical-copy dispositions, full provider/client reference closure and authenticated whole-room activation remain open.",
+    "Former authors restored read-only retain Undo/Redo but cannot seal through the zero-authored observer API; explicit passive lifecycle support remains work.",
+    "Retained event capacity is not a latency guarantee; diagnostic native review and original-document replay costs remain substantial.",
+    "No native browser/clipboard/IME/VoiceOver or historical WebKit repair is qualified.",
+    "No V1 gate, public API freeze, version, publication or deployment is promoted."
+  ]
+}

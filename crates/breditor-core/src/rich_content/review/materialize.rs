@@ -31,8 +31,8 @@ pub(super) struct Projection {
     messages: BTreeMap<ReviewMessageId, Message>,
 }
 impl Projection {
-    pub(super) fn build(events: &[Event]) -> Result<Self, ReviewError> {
-        let events = event::ordered(events)?;
+    pub(super) fn build(events: &[Event], limit: usize) -> Result<Self, ReviewError> {
+        let events = event::ordered(events, limit)?;
         let mut visibility = BTreeMap::new();
         for event in &events {
             if let Payload::Visibility { target, visible } = &event.payload {

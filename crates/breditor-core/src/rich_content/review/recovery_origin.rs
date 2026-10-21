@@ -26,6 +26,7 @@ impl ReviewSession {
         {
             return Err(ReviewError::Contract("review recovery origin identity differs"));
         }
+        super::generation::check_generation_origin(self, origin)?;
         let current =
             self.events.iter().map(|event| (&event.id, event)).collect::<BTreeMap<_, _>>();
         for event in &origin.events {
