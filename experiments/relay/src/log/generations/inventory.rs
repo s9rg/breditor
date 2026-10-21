@@ -7,7 +7,18 @@ impl Generations {
     pub(super) fn verify_inventory(&self) -> Result<()> {
         self.directory.guard()?;
         let mut known: BTreeSet<String> =
-            [".owner", ".head.json", ".ready.json"].into_iter().map(String::from).collect();
+            [".owner", ".head.json", self.ready_name].into_iter().map(String::from).collect();
+        if self.ready_name == ".prepared.json" {
+            match fs::symlink_metadata(self.directory.path.join(".ready.json")) {
+                Ok(_) => {
+                    self.ready_identity
+                        .guard(&self.ready, &self.directory.path.join(".ready.json"))?;
+                    known.insert(".ready.json".into());
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => return Err(error.into()),
+            }
+        }
         for manifest in &self.history {
             known.insert(format::manifest_name(&manifest.hash));
         }

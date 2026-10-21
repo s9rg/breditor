@@ -53,18 +53,28 @@ in-place change detection and original-reader suffix loss are repaired. The seed
 uses the separate framing family too, so copied or hard-linked roots cannot
 masquerade as original standalone rooms; existing original logs are not rewritten.
 
-This is retained rotation, not complete multi-file backup/recovery or a production
-storage claim. Original backup and joined raster-recovery APIs explicitly refuse
-the new layout. Complete archives, trusted resumable restore and matching source,
-participant, asset and provider readers are the next architectural work.
+The separate native archive now retains the complete selected file closure and
+bounded unpublished stages. Insert-only resumable restore replays native state
+and checks the independently trusted source before public readiness. Exact native
+histories, old offline input and future peer-preserving Undo/Redo survive in all
+forty independent document/comment family combinations. This is not production
+activation or complete joined raster/client recovery: original-only participant,
+retained-reference and joined raster APIs still refuse the new layout.
 
 The [physical storage qualification](qualification/2026-10-21-server-log-generations.json)
 passes fresh 251 relay, 142 no-networking and 1,331 script cases, plus strict
 linting in both feature configurations. The four reproduced positive failures
 pass unchanged. Both candidate profiles require the public generation laws; the
 functional plan now has 178 checks, not all run by this storage-only slice.
-Unchanged non-relay native inputs, 12 normal runtime artifacts and three freshly
-packed byte-identical archives carry the prior core/runtime qualification.
+The subsequent [native archive qualification](qualification/2026-10-21-server-log-generation-archives.json)
+passes fresh 270 relay, 161 no-networking, 66 candidate-runner and 1,331 script
+cases on frozen source. Strict linting, rustdoc and the unchanged positive
+descriptor-exhaustion regression pass; the latter uses an isolated 192-descriptor
+limit at the supported 64-WAL layout. Forty independent native family combinations
+and thirteen actual restore interruption prefixes retain offline work and future
+history. Unchanged non-relay native inputs, 12 normal runtime artifacts and three
+freshly packed byte-identical archives carry the prior core/runtime qualification.
+Neither storage slice runs the whole functional plan or closes a V1 gate.
 
 The reference host now supports independent
 [native document and comment generations](SERVER_NATIVE_HISTORY_GENERATIONS.md),
@@ -103,10 +113,10 @@ and 1,440 native comment comparisons, both recovery directions and future histor
 
 Next, in architectural risk order:
 
-1. Finish explicit server-log generations with complete multi-file recovery,
-   stable global receipts and independently guarded physical heads. Keep original
-   formats closed. Address retained Undo limits and live staging/replay costs as
-   separate lifetime requirements, not by dropping history or widening old bounds.
+1. Finish generation-aware whole-room recovery with complete component/source
+   closure around the native log archive. Keep original formats closed. Address
+   retained Undo limits and live staging/replay costs as separate lifetime
+   requirements, not by dropping history or widening old bounds.
 2. Complete matching independent-history source, participant, asset and outbox
    readers, then provider/client reconciliation and historic-copy disposition.
 3. Implement authenticated whole-room activation with fresh host authority;

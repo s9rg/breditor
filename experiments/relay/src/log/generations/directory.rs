@@ -10,7 +10,7 @@ use std::{
     path::{Component, Path, PathBuf},
 };
 
-pub(super) struct Directory {
+pub(crate) struct Directory {
     pub path: PathBuf,
     root: File,
     owner: File,
@@ -18,6 +18,15 @@ pub(super) struct Directory {
     owner_bytes: Vec<u8>,
     #[cfg(unix)]
     root_id: (u64, u64),
+}
+
+/// Local partial-recovery custody only; deliberately not a portable deployment capability.
+#[derive(Clone, Debug, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct DirectoryWitness {
+    device: u64,
+    inode: u64,
+    owner_sha256: [u8; 32],
 }
 fn anchored(path: &Path) -> Result<PathBuf> {
     let encoded = path.as_os_str().as_encoded_bytes();
@@ -32,6 +41,27 @@ fn anchored(path: &Path) -> Result<PathBuf> {
     Ok(parent.canonicalize()?.join(path.file_name().ok_or(Error::Contract("directory name"))?))
 }
 impl Directory {
+    pub(crate) fn witness(&self) -> Result<DirectoryWitness> {
+        self.guard()?;
+        #[cfg(unix)]
+        {
+            Ok(DirectoryWitness {
+                device: self.root_id.0,
+                inode: self.root_id.1,
+                owner_sha256: format::sha(&self.owner_bytes),
+            })
+        }
+        #[cfg(not(unix))]
+        {
+            Err(Error::Contract("generation recovery requires Unix custody"))
+        }
+    }
+    pub(crate) fn guard_witness(&self, expected: &DirectoryWitness) -> Result<()> {
+        if &self.witness()? != expected {
+            return Err(Error::Contract("generation recovery component custody differs"));
+        }
+        Ok(())
+    }
     pub fn create(path: &Path) -> Result<Self> {
         let path = anchored(path)?;
         let mut builder = fs::DirBuilder::new();

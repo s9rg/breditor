@@ -38,11 +38,14 @@ pub(in crate::log) struct Generations {
     pub(super) active_stamp: FileStamp,
     pub(in crate::log) opening_length: Option<u64>,
     pub(super) ready: File,
+    pub(super) ready_name: &'static str,
     pub(super) ready_bytes: Vec<u8>,
     pub(super) ready_identity: FileIdentity,
     pub(super) fenced: AtomicBool,
     #[cfg(test)]
     pub(super) stop_after: Option<super::RotationPoint>,
+    #[cfg(test)]
+    pub(super) stop_ready_after_link: bool,
 }
 impl Generations {
     pub(super) fn current(&self) -> &HeldManifest {
@@ -71,7 +74,7 @@ impl Generations {
         if held_file::read(&self.head, format::MAX_CONTROL)? != self.head_bytes {
             return Err(Error::Contract("log physical head changed"));
         }
-        self.ready_identity.guard(&self.ready, &self.directory.path.join(".ready.json"))?;
+        self.ready_identity.guard(&self.ready, &self.directory.path.join(self.ready_name))?;
         if held_file::read(&self.ready, format::MAX_CONTROL)? != self.ready_bytes {
             return Err(Error::Contract("physical log readiness changed"));
         }

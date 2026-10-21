@@ -128,11 +128,14 @@ impl Creation {
             active_stamp,
             opening_length: None,
             ready,
+            ready_name: ".ready.json",
             ready_bytes,
             ready_identity,
             fenced: std::sync::atomic::AtomicBool::new(false),
             #[cfg(test)]
             stop_after: None,
+            #[cfg(test)]
+            stop_ready_after_link: false,
         });
         log.bytes = 0;
         log.ready()?;

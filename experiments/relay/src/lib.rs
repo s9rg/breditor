@@ -57,8 +57,15 @@ pub use room::{
     ServerRetainedAssetReferences,
 };
 pub use room::{
+    MAX_SERVER_LOG_GENERATION_BACKUP_BYTES, ServerLogGenerationBackup,
+    ServerLogGenerationBackupIdentity, ServerLogGenerationBackupInfo,
+};
+pub use room::{
     MAX_SERVER_ROOM_BACKUP_BYTES, OperationalServerRoom, RecoveredServerRoom, ServerRoomBackup,
     ServerRoomBackupIdentity, ServerRoomBackupInfo, ServerRoomRecovery, ServerRoomRecoveryProgress,
+};
+pub use room::{
+    RecoveredLogGenerationRoom, ServerLogGenerationRecovery, ServerLogGenerationRecoveryProgress,
 };
 pub use room::{
     ServerNativeHistoryBoundary, ServerNativeHistoryDescriptor, ServerNativeHistoryFamily,

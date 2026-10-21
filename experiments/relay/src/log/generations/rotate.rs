@@ -11,7 +11,7 @@ use super::{
 };
 use crate::{
     Error, Result, credentials,
-    log::{Log, decoder, frame},
+    log::{Log, frame, scan},
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -82,7 +82,7 @@ impl Generations {
         log.file.seek(SeekFrom::Start(log.bytes))?;
         self.guard(&log.file, log.bytes)?;
         let active = &self.current().value.active;
-        let parsed = decoder::read_records_from(
+        let parsed = scan::verify_records_from(
             &mut bytes.as_slice(),
             bytes.len() as u64,
             frame::Family::Continuation,
@@ -92,14 +92,14 @@ impl Generations {
         if parsed.recovery.truncated_bytes != 0
             || parsed.bytes != log.bytes
             || parsed.previous != log.previous
-            || active.first.checked_add(parsed.records.len() as u64) != Some(log.next)
+            || active.first.checked_add(parsed.records) != Some(log.next)
         {
             return Err(Error::Contract("physical rotation source cut differs"));
         }
         Ok(ClosedFile {
             generation: active.generation.clone(),
             first: active.first,
-            records: parsed.records.len() as u64,
+            records: parsed.records,
             previous: active.previous,
             terminal: log.previous,
             bytes: log.bytes,

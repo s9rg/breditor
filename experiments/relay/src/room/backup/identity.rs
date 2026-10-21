@@ -10,7 +10,14 @@ impl Room {
     /// Rejects a room whose uncertain storage result requires recovery.
     pub fn backup_identity(&self) -> Result<RoomBackupIdentity> {
         let (records, terminal_log_digest) = self.log.snapshot_cut()?;
-        Ok(RoomBackupIdentity {
+        Ok(self.native_identity_at(records, terminal_log_digest))
+    }
+    pub(in crate::room) fn native_identity_at(
+        &self,
+        records: u64,
+        terminal_log_digest: [u8; 32],
+    ) -> RoomBackupIdentity {
+        RoomBackupIdentity {
             document: self.replica.document_id().into(),
             owner: self.owner.clone(),
             asset_binding: self.asset_binding.clone(),
@@ -18,6 +25,6 @@ impl Room {
             writer_transport_version: self.writer_transport_version(),
             records,
             terminal_log_digest,
-        })
+        }
     }
 }

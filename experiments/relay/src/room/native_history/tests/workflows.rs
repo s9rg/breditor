@@ -285,3 +285,138 @@ fn forty_independent_server_families_preserve_exact_archives_receipts_offline_ed
     assert_eq!(cases, 40);
     Ok(())
 }
+
+fn physical_restore(
+    profile_version: (u32, bool),
+    atomic: bool,
+    document_generations: bool,
+    review_generations: bool,
+) -> TestResult {
+    use crate::{ServerLogGenerationBackup, ServerLogGenerationRecovery};
+    let (files, mut room, profile) = crate::room::log_generations::tests::setup_profile(
+        profile_version.0,
+        profile_version.1,
+        atomic,
+    )?;
+    let (mut author, first, offline) = prepare_offline_author(&profile, &mut room, atomic)?;
+    if document_generations {
+        enable(&mut room, Lane::Document)?;
+    }
+    if review_generations {
+        enable(&mut room, Lane::Review)?;
+    }
+    room.rotate_log_generation("owner", "physical-two")?;
+    let peer = advance_peer(&profile, &mut room, atomic, document_generations, review_generations)?;
+    room.rotate_log_generation("owner", "physical-three")?;
+    let document_cut = room.native_history_checkpoint("owner", Lane::Document)?;
+    let review_cut = room.native_history_checkpoint("owner", Lane::Review)?;
+    let descriptor = room.native_history_descriptor("owner")?;
+    let bytes = room.export_log_generation_backup("owner")?.to_bytes();
+    let backup = ServerLogGenerationBackup::from_owned_bytes(bytes.clone())?;
+    let identity = backup.info().identity;
+    drop(room);
+    let mut restored = ServerLogGenerationRecovery::begin(
+        &files.recovery(),
+        &backup,
+        &identity,
+        RoomRecoveryPolicy::HostReacquired,
+    )?
+    .finish(&backup)?;
+    let room = restored.room_mut();
+    assert_eq!(room.native_history_checkpoint("owner", Lane::Document)?, document_cut);
+    assert_eq!(room.native_history_checkpoint("owner", Lane::Review)?, review_cut);
+    assert_eq!(room.native_history_descriptor("owner")?, descriptor);
+    assert_eq!(room.export_log_generation_backup("owner")?.to_bytes(), bytes);
+    assert!(room.validate_lease("alice", &author.document_registration.lease).is_err());
+    assert!(room.validate_review_lease("alice", &author.review_registration.lease).is_err());
+    author.document_registration.lease = room.resume(
+        "alice",
+        &author.document_registration.lease.writer,
+        &author.document_registration.credential,
+    )?;
+    author.review_registration.lease = room.resume_review(
+        "alice",
+        &author.review_registration.lease.actor,
+        &author.review_registration.credential,
+    )?;
+    let Admission::Durable(repeated) =
+        room.admit("alice", &author.document_registration.lease, &first.document_frame)?
+    else {
+        return Err("document retry".into());
+    };
+    assert!(repeated.duplicate);
+    assert_eq!(repeated.sequence, first.document_receipt.sequence);
+    assert_eq!(repeated.receipt, first.document_receipt.receipt);
+    let ReviewAdmission::Durable(repeated) =
+        room.admit_review("alice", &author.review_registration.lease, &first.review_frame)?
+    else {
+        return Err("comment retry".into());
+    };
+    assert!(repeated.duplicate);
+    assert_eq!(repeated.sequence, first.review_receipt.sequence);
+    assert_eq!(repeated.receipt, first.review_receipt.receipt);
+    reconnect(&profile, room, &mut author, &first, &offline, &peer, atomic)?;
+    continue_physical_native(room, &mut author, atomic)
+}
+fn continue_physical_native(room: &mut Room, author: &mut Author, atomic: bool) -> TestResult {
+    let mut review_through = author.review.local_writer_clock()?.through.parse()?;
+    for redo in [false, true] {
+        assert!(if redo { author.document.redo()? } else { author.document.undo()? });
+        author.through = send_document(
+            room,
+            "alice",
+            &author.document,
+            &author.document_registration.lease,
+            &author.through,
+            atomic,
+        )?
+        .0;
+        assert!(room.replica.document_json().contains("Bob peer 0"));
+        assert!(room.replica.document_json().contains("Bob peer 1"));
+        let observed = author.review.observe();
+        let outcome = if redo {
+            author.document.redo_review_guarded(
+                &author.document.observe()?,
+                &mut author.review,
+                &observed,
+            )?
+        } else {
+            author.document.undo_review_guarded(
+                &author.document.observe()?,
+                &mut author.review,
+                &observed,
+            )?
+        };
+        assert!(matches!(outcome, ReviewOutcome::Committed(_)));
+        send_review(
+            room,
+            "alice",
+            &author.review,
+            &author.review_registration.lease,
+            review_through,
+        )?;
+        review_through = author.review.local_writer_clock()?.through.parse()?;
+        let view = room.review.as_ref().ok_or("review")?.session.view()?;
+        assert!(view.threads.iter().any(|thread| thread.messages.iter().any(|message| {
+            message.versions.iter().any(|value| value.text.as_deref() == Some("Bob peer 0"))
+        })));
+    }
+    Ok(())
+}
+#[test]
+fn forty_independent_native_document_and_comment_families_survive_physical_archive_restore_and_old_offline_histories()
+-> TestResult {
+    let mut cases = 0;
+    for atomic in [false, true] {
+        for profile in [(1, false), (2, false), (2, true), (3, false), (3, true)] {
+            for document in [false, true] {
+                for review in [false, true] {
+                    physical_restore(profile, atomic, document, review)?;
+                    cases += 1;
+                }
+            }
+        }
+    }
+    assert_eq!(cases, 40);
+    Ok(())
+}

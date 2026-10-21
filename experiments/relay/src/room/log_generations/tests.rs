@@ -11,7 +11,7 @@ use sha2::{Digest, Sha256};
 use std::{fs, path::PathBuf};
 type TestResult<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
-struct Files(PathBuf);
+pub(in crate::room) struct Files(PathBuf);
 impl Files {
     fn new() -> TestResult<Self> {
         static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
@@ -22,8 +22,11 @@ impl Files {
         fs::create_dir(&path)?;
         Ok(Self(path))
     }
-    fn room(&self) -> PathBuf {
+    pub(super) fn room(&self) -> PathBuf {
         self.0.join("room")
+    }
+    pub(in crate::room) fn recovery(&self) -> PathBuf {
+        self.0.join("recovered")
     }
 }
 impl Drop for Files {
@@ -32,27 +35,58 @@ impl Drop for Files {
         let _ = fs::remove_dir_all(&self.0);
     }
 }
-fn setup() -> TestResult<(Files, Room, SharedRichProfile)> {
+pub(super) fn setup() -> TestResult<(Files, Room, SharedRichProfile)> {
+    setup_profile(3, true, true)
+}
+pub(in crate::room) fn setup_profile(
+    version: u32,
+    standard: bool,
+    atomic: bool,
+) -> TestResult<(Files, Room, SharedRichProfile)> {
     let files = Files::new()?;
-    let configuration = json!({"format":"breditor/shared-rich-profile","formatVersion":3,
+    let configuration = json!({"format":"breditor/shared-rich-profile","formatVersion":version,
         "schema":{"name":"example/rotation-prefix","version":1},"extensions":[]})
     .to_string();
-    let profile = SharedRichProfile::from_standard_configuration_json_v3(&configuration)?;
+    let profile = match (version, standard) {
+        (1, false) => SharedRichProfile::from_configuration_json(&configuration)?,
+        (2, false) => SharedRichProfile::from_configuration_json_v2(&configuration)?,
+        (2, true) => SharedRichProfile::from_standard_configuration_json_v2(&configuration)?,
+        (3, false) => SharedRichProfile::from_configuration_json_v3(&configuration)?,
+        (3, true) => SharedRichProfile::from_standard_configuration_json_v3(&configuration)?,
+        _ => return Err("explicit native generation fixture compiler".into()),
+    };
     let document = json!({"format":"breditor/document","formatVersion":2,
         "schema":{"name":"example/rotation-prefix","version":1},
         "schemaFingerprint":profile.schema().fingerprint().to_string(),
         "root":serde_json::from_str::<Value>(include_str!("../../../../../crates/breditor-core/tests/fixtures/rich-local-root.json"))?}).to_string();
-    let room = Room::create_atomic_log_generations_v2(
-        &files.room(),
-        &configuration,
-        &document,
-        "owner",
-        AtomicTransportProfile::LayoutV3 { standard_inline_v1: true },
-        &ServerLogGenerationOptions { root: "root".into(), active: "one".into() },
-    )?;
+    let profile_kind = match version {
+        1 => AtomicTransportProfile::Original,
+        2 => AtomicTransportProfile::StructuralV2 { standard_inline_v1: standard },
+        _ => AtomicTransportProfile::LayoutV3 { standard_inline_v1: standard },
+    };
+    let options = ServerLogGenerationOptions { root: "root".into(), active: "one".into() };
+    let room = if atomic {
+        Room::create_atomic_log_generations_v2(
+            &files.room(),
+            &configuration,
+            &document,
+            "owner",
+            profile_kind,
+            &options,
+        )?
+    } else {
+        Room::create_log_generations(
+            &files.room(),
+            &configuration,
+            &document,
+            "owner",
+            profile_kind,
+            &options,
+        )?
+    };
     Ok((files, room, profile))
 }
-fn send(
+pub(super) fn send(
     room: &mut Room,
     author: &RichReplica,
     lease: &crate::Lease,

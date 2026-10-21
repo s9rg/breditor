@@ -176,3 +176,175 @@ fn owned_mixed_structure_accept_keeps_client_undo_peer_text_and_idle_effect_file
     assert_eq!(fs::read(files.path("restored.log"))?, exact);
     Ok(())
 }
+
+fn future_owned_physical(
+    room: &mut Room,
+    client: &mut RichReplica,
+    lease: &crate::Lease,
+    through: &mut String,
+) -> TestResult {
+    for redo in [false, true] {
+        assert!(if redo { client.redo()? } else { client.undo()? });
+        *through = send_document(room, "owner", client, lease, through, true)?.0;
+        assert_eq!(room.replica.document_json(), client.document_json());
+        assert!(client.document_json().contains("Bob retained "));
+        assert_eq!(client.document_json().contains("accepted-row-block"), redo);
+        assert_eq!(client.document_json().contains("Accepted caption 🙂"), redo);
+    }
+    Ok(())
+}
+fn server_text_after_physical(
+    room: &mut Room,
+    client: &mut RichReplica,
+) -> TestResult<SuggestionDecisionRequest> {
+    let packet = client.capture_document_suggestion_guarded(
+        &client.observe()?,
+        "Server after restore",
+        ReviewPrincipalId::try_new("owner")?,
+        "1",
+        DocumentSuggestionDraft {
+            scope: DocumentSuggestionScope::Commands,
+            edit: DocumentSuggestionEdit::Commands(vec![Command::InsertText(InsertText {
+                block: "p".into(),
+                offset: 0,
+                text: "Server effect retained ".into(),
+            })]),
+        },
+    )?;
+    let DocumentSuggestionAdmission::Durable(published) =
+        room.publish_document_suggestion("owner", &packet)?
+    else {
+        return Err("server proposal".into());
+    };
+    let request = SuggestionDecisionRequest {
+        binding: room.document_suggestions_descriptor("owner")?.binding,
+        suggestion_id: published.publication.suggestion.id,
+        decision: SuggestionDecision::Accept,
+    };
+    assert!(matches!(
+        room.decide_document_suggestion("owner", &request)?,
+        DocumentSuggestionDecisionAdmission::Durable(_)
+    ));
+    client.receive_frame(&room.catchup("owner")?)?;
+    assert!(client.document_json().contains("Server effect retained "));
+    Ok(request)
+}
+
+#[test]
+fn physical_restore_keeps_mixed_owned_structures_and_the_private_effect_author_can_continue_and_recover_again()
+-> TestResult {
+    use crate::{ServerLogGenerationBackup, ServerLogGenerationRecovery};
+    let (files, mut room, profile) =
+        crate::room::log_generations::tests::setup_profile(3, true, true)?;
+    let (mut client, writer) = reviewed_client(&profile, &mut room)?;
+    insert(&mut client, "Owner retained ")?;
+    let (mut through, _, _) = send_document(&mut room, "owner", &client, &writer.lease, "0", true)?;
+    enable(&mut room, Lane::Document)?;
+    let packet = client.capture_document_suggestion_guarded(
+        &client.observe()?,
+        "Mixed physical restore",
+        ReviewPrincipalId::try_new("owner")?,
+        "0",
+        draft(),
+    )?;
+    let DocumentSuggestionAdmission::Durable(proposed) =
+        room.publish_document_suggestion("owner", &packet)?
+    else {
+        return Err("proposal".into());
+    };
+    let owned = SuggestionDecisionRequest {
+        binding: room.document_suggestions_descriptor("owner")?.binding,
+        suggestion_id: proposed.publication.suggestion.id,
+        decision: SuggestionDecision::Accept,
+    };
+    let DocumentSuggestionDecisionAdmission::Durable(accepted) =
+        room.accept_document_suggestion_owned("owner", &writer.lease, &owned)?
+    else {
+        return Err("owned".into());
+    };
+    client.receive_frame(&room.catchup("owner")?)?;
+    adopt(&mut client, &packet, &accepted)?;
+    seal(&mut room, Lane::Document, "second")?;
+    client.seal_history_segment_guarded(&client.observe()?, "client-two".into())?;
+    room.rotate_log_generation("owner", "physical-two")?;
+    room.grant("owner", "bob", Some(Role::Editor))?;
+    let peer = room.register("bob")?;
+    let mut other =
+        profile.join_frame("room".into(), peer.lease.writer.clone(), &room.catchup("bob")?)?;
+    insert(&mut other, "Bob retained ")?;
+    send_document(&mut room, "bob", &other, &peer.lease, "0", true)?;
+    client.receive_frame(&room.catchup("owner")?)?;
+    seal(&mut room, Lane::Document, "third")?;
+    room.rotate_log_generation("owner", "physical-three")?;
+    let idle =
+        room.suggestions.as_ref().ok_or("effect owner")?.effect_owner.segmented_checkpoint()?;
+    let client_saved = client.segmented_checkpoint()?;
+    let document_cut = room.native_history_checkpoint("owner", Lane::Document)?;
+    let backup = ServerLogGenerationBackup::from_owned_bytes(
+        room.export_log_generation_backup("owner")?.to_bytes(),
+    )?;
+    let identity = backup.info().identity;
+    drop(room);
+    let mut restored = ServerLogGenerationRecovery::begin(
+        &files.recovery(),
+        &backup,
+        &identity,
+        RoomRecoveryPolicy::HostReacquired,
+    )?
+    .finish(&backup)?;
+    let room = restored.room_mut();
+    assert_eq!(room.native_history_checkpoint("owner", Lane::Document)?, document_cut);
+    assert_eq!(
+        room.suggestions.as_ref().ok_or("effect owner")?.effect_owner.segmented_checkpoint()?,
+        idle
+    );
+    client = profile.restore_segmented("room", &client_saved)?;
+    let lease = room.resume("owner", &writer.lease.writer, &writer.credential)?;
+    future_owned_physical(room, &mut client, &lease, &mut through)?;
+    let DocumentSuggestionDecisionAdmission::Durable(retry) =
+        room.accept_document_suggestion_owned("owner", &lease, &owned)?
+    else {
+        return Err("owned retry".into());
+    };
+    assert!(retry.duplicate);
+    assert_eq!(retry.decision, accepted.decision);
+    let server = server_text_after_physical(room, &mut client)?;
+    let effect_cut =
+        room.suggestions.as_ref().ok_or("effect owner")?.effect_owner.segmented_checkpoint()?;
+    let native = room.catchup("owner")?;
+    let again = room.export_log_generation_backup("owner")?;
+    drop(restored);
+    let next = files.recovery().with_file_name("recovered-again");
+    second_physical_effect_restore(&next, &again, &native, &effect_cut, &server)
+}
+fn second_physical_effect_restore(
+    destination: &std::path::Path,
+    backup: &crate::ServerLogGenerationBackup,
+    native: &str,
+    effect_cut: &str,
+    request: &SuggestionDecisionRequest,
+) -> TestResult {
+    use crate::ServerLogGenerationRecovery;
+    let expected = backup.info().identity;
+    let mut restored = ServerLogGenerationRecovery::begin(
+        destination,
+        backup,
+        &expected,
+        RoomRecoveryPolicy::HostReacquired,
+    )?
+    .finish(backup)?;
+    let room = restored.room_mut();
+    assert_eq!(room.catchup("owner")?, native);
+    assert_eq!(
+        room.suggestions.as_ref().ok_or("effect owner")?.effect_owner.segmented_checkpoint()?,
+        effect_cut
+    );
+    let DocumentSuggestionDecisionAdmission::Durable(retry) =
+        room.decide_document_suggestion("owner", request)?
+    else {
+        return Err("server retry".into());
+    };
+    assert!(retry.duplicate);
+    assert_eq!(room.catchup("owner")?, native);
+    Ok(())
+}

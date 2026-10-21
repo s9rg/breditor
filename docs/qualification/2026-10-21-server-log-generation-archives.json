@@ -1,0 +1,70 @@
+{
+  "format": "breditor/server-log-generation-archive-qualification",
+  "date": "2026-10-21",
+  "passed": true,
+  "v1Ready": false,
+  "openV1Gates": 13,
+  "publicationApproved": false,
+  "source": {
+    "commit": "2bbaab4ae69cb5499521531b2eccca2c9163ee48",
+    "dirty": true,
+    "sha256": "c2066e0f5d3e860ff2832d67123270c58bb962ab265a1ca8d6af7dd72af41d73",
+    "files": 5080,
+    "bytes": 42969399
+  },
+  "nonDocumentation": {
+    "files": 4544,
+    "sha256": "91c1eeb45c9b98653a0854be7fd6ee3701fe5b1ce19c71b1adf9a5f719de09f2"
+  },
+  "report": "target/generation-archives-qualification-LJzQmD/result.json",
+  "tests": {
+    "relayRust": 270,
+    "noNetworkingRust": 161,
+    "candidateContracts": 66,
+    "scriptContracts": 1331,
+    "existingOptInSkipped": 3,
+    "strictServerLint": true,
+    "strictNoNetworkingLint": true,
+    "strictRustdoc": true,
+    "nativeFamilyCombinations": 40,
+    "publicProfileTransportChoices": 10,
+    "restorePrefixes": 13,
+    "maximumWalFiles": 64,
+    "isolatedDescriptorLimit": 192,
+    "functionalPlanChecks": 178,
+    "wholePlanRun": false
+  },
+  "descriptorRepair": {
+    "positiveBeforeFailures": 1,
+    "before": "target/generation-archive-fd-before-dhFRzP/result.json",
+    "positiveAssertionUnchanged": true,
+    "frozenAfter": "target/generation-archives-qualification-LJzQmD/fd-budget.log",
+    "parentOrMacLimitsChanged": false
+  },
+  "verified": [
+    "Complete canonical selected file closure, every retained WAL/manifest/control and bounded unpublished stage survive exact transport admission and native restoration.",
+    "Independent native document/comment families, original registrations and receipts, old offline inputs and future peer-preserving Undo/Redo remain usable after restore.",
+    "Mixed owned heading/table/caption acceptance and the private suggestion-effect author continue and recover again without resetting their history.",
+    "Thirteen actual filesystem interruption prefixes resume under the same local owners; checksum-valid native authority errors cannot publish readiness.",
+    "Unrelated occupied targets and byte-identical replacement components refuse without overwrite or adoption; later source writes defeat historic restore attempts."
+  ],
+  "carriedCore": {
+    "baseline": "target/v1-candidate-runs/run-M8n7a3/result.json",
+    "unchangedNonRelayNativeInputs": 2505,
+    "workspaceRustPreviouslyQualified": 2643,
+    "sharedRustPreviouslyQualified": 661,
+    "researchReviewPreviouslyQualified": 3,
+    "unchangedNormalRuntimeFiles": 12,
+    "normalSharedWasmSha256": "e8afdb083c9e849505c6d1ca85b721485bd673fed71ce1ea1690b20f9c500f9a",
+    "nativeCoreSuitesRerun": false,
+    "normalProducersRerun": false,
+    "freshPublicArchivesByteIdentical": 3
+  },
+  "remaining": [
+    "Original-only participant, retained-reference, joined raster and operational readers still refuse this storage family.",
+    "Raster bytes, client journals/outboxes, provider reconciliation and authenticated whole-room activation are not supplied by this native log archive.",
+    "The retained layout remains bounded; complete native cold replay still collects records and its memory/performance envelope remains unqualified.",
+    "Local filesystem ownership and controlled interruptions do not qualify physical power loss or cross-host fencing.",
+    "All V1 and full feature-parity gates remain open. No version, push, tag, publication or deployment is promoted."
+  ]
+}

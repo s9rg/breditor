@@ -14,6 +14,9 @@ mod frame;
 #[cfg(test)]
 mod framing_tests;
 pub(crate) mod generations;
+mod scan;
+#[cfg(test)]
+mod scan_tests;
 mod snapshot;
 pub(crate) use snapshot::LogSnapshot;
 

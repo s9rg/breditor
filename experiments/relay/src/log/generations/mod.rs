@@ -1,4 +1,6 @@
 //! Explicit physical storage family. Original file readers never infer this layout.
+mod capture;
+mod closure;
 mod create;
 mod directory;
 mod format;
@@ -10,14 +12,23 @@ mod manifest;
 mod open;
 mod options;
 mod publication;
+mod publish_ready;
 mod receipt;
 mod rotate;
 mod state;
 mod verify;
+pub(crate) use capture::GenerationFileSection;
+pub(crate) use closure::{
+    MAX_GENERATION_BODY_BYTES, MAX_GENERATION_FILES, verify_generation_files,
+};
 pub(crate) use create::Creation;
+pub(crate) use directory::{
+    Directory as GenerationDirectory, DirectoryWitness as GenerationDirectoryWitness,
+};
 pub(super) use format::{
     MAX_GENERATIONS as MAX_PHYSICAL_GENERATIONS, MAX_WAL_BYTES as MAX_PHYSICAL_LOG_BYTES,
 };
+pub(crate) use held_file::FileIdentity as GenerationFileWitness;
 #[cfg(test)]
 pub(crate) use interruption::RotationPoint;
 pub use options::ServerLogGenerationOptions;

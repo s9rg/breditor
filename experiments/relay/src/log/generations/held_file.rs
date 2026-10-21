@@ -40,12 +40,12 @@ impl FileStamp {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub(super) struct FileIdentity {
+pub(crate) struct FileIdentity {
     device: u64,
     inode: u64,
 }
 impl FileIdentity {
-    pub(super) fn of(file: &File) -> Result<Self> {
+    pub(crate) fn of(file: &File) -> Result<Self> {
         Self::metadata(&file.metadata()?)
     }
     fn metadata(metadata: &Metadata) -> Result<Self> {
@@ -66,7 +66,7 @@ impl FileIdentity {
             Err(Error::Contract("log generations require Unix inode custody"))
         }
     }
-    pub(super) fn guard(&self, file: &File, path: &Path) -> Result<()> {
+    pub(crate) fn guard(&self, file: &File, path: &Path) -> Result<()> {
         let named = std::fs::symlink_metadata(path)?;
         if !named.is_file() || Self::of(file)? != *self || Self::metadata(&named)? != *self {
             return Err(Error::Contract("log generation file custody differs"));

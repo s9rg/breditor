@@ -16,8 +16,12 @@ use std::{
     path::Path,
 };
 
-fn ready(directory: &Directory, root: [u8; 32]) -> Result<(std::fs::File, Vec<u8>, FileIdentity)> {
-    let file = held_file::open(&directory.path.join(".ready.json"))?;
+fn ready(
+    directory: &Directory,
+    root: [u8; 32],
+    name: &str,
+) -> Result<(std::fs::File, Vec<u8>, FileIdentity)> {
+    let file = held_file::open(&directory.path.join(name))?;
     let bytes = held_file::read(&file, format::MAX_CONTROL)?;
     let mark: Ready = format::decode(&bytes)?;
     mark.validate(root)?;
@@ -104,6 +108,22 @@ fn closed(
 impl Log {
     pub(crate) fn open_generations(path: &Path) -> Result<(Self, Vec<Record>, Recovery)> {
         let directory = Directory::open(path)?;
+        Self::open_owned_generations(directory)
+    }
+    pub(crate) fn open_owned_generations(
+        directory: Directory,
+    ) -> Result<(Self, Vec<Record>, Recovery)> {
+        Self::open_generation_directory(directory, ".ready.json")
+    }
+    pub(crate) fn open_prepared_generations(
+        directory: Directory,
+    ) -> Result<(Self, Vec<Record>, Recovery)> {
+        Self::open_generation_directory(directory, ".prepared.json")
+    }
+    fn open_generation_directory(
+        directory: Directory,
+        ready_name: &'static str,
+    ) -> Result<(Self, Vec<Record>, Recovery)> {
         let head = held_file::open(&directory.path.join(".head.json"))?;
         let head_bytes = held_file::read(&head, format::MAX_CONTROL)?;
         let selected: Head = format::decode(&head_bytes)?;
@@ -112,6 +132,7 @@ impl Log {
         let (ready, ready_bytes, ready_identity) = ready(
             &directory,
             history.first().ok_or(Error::Contract("physical root absent"))?.hash,
+            ready_name,
         )?;
         let current = history.last().ok_or(Error::Contract("missing physical log head"))?;
         let mut records = Vec::new();
@@ -167,11 +188,14 @@ impl Log {
                 active_stamp,
                 opening_length: Some(length),
                 ready,
+                ready_name,
                 ready_bytes,
                 ready_identity,
                 fenced: std::sync::atomic::AtomicBool::new(false),
                 #[cfg(test)]
                 stop_after: None,
+                #[cfg(test)]
+                stop_ready_after_link: false,
             }),
             #[cfg(test)]
             read_only_after_append: None,

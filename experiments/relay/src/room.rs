@@ -16,6 +16,13 @@ mod backup;
 mod document_presence;
 mod layout_v3;
 mod log_generations;
+pub use log_generations::{
+    MAX_SERVER_LOG_GENERATION_BACKUP_BYTES, ServerLogGenerationBackup,
+    ServerLogGenerationBackupIdentity, ServerLogGenerationBackupInfo,
+};
+pub use log_generations::{
+    RecoveredLogGenerationRoom, ServerLogGenerationRecovery, ServerLogGenerationRecoveryProgress,
+};
 mod native_history;
 mod observers;
 mod participant_inventory;
