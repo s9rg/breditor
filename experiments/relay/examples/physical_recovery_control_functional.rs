@@ -24,9 +24,12 @@ async fn main() -> Result {
     let mut tasks = Vec::new();
     for (language, standard) in [(1, false), (2, false), (2, true), (3, false), (3, true)] {
         for atomic in [false, true] {
-            let running =
-                Box::pin(case::generate(&parent, source::Spec { language, standard, atomic }))
-                    .await?;
+            let running = Box::pin(case::generate(
+                &parent,
+                source::Spec { language, standard, atomic },
+                None,
+            ))
+            .await?;
             let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
             let address = listener.local_addr()?;
             cases.push(serde_json::json!({"path":running.path,"endpoint":format!("http://{address}/recovery/physical/v1/check"),"selection":running.control.identity(),"operatorToken":running.operator_token,"nativeProtectedStreamsVerified":true,"nativeProviderVerified":true}));

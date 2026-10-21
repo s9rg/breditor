@@ -94,31 +94,16 @@ async fn two_authenticated_incomplete_requests_bound_native_operator_work_withou
     let first = server.unfinished(&setup.token).await?;
     let second = server.unfinished(&setup.token).await?;
     let body = serde_json::to_vec(&setup.selection())?;
-    let mut saturated = false;
-    for _ in 0..16 {
-        let status = server.request(&Request::check(&setup.token), &body).await?.status;
-        if status == 503 {
-            saturated = true;
-            break;
-        }
-        assert_eq!(status, 200);
-        tokio::task::yield_now().await;
-    }
-    assert!(saturated, "Two admitted bodies occupy the bounded operator request permits");
-    drop(first);
-    drop(second);
-    // Draining an empty body refuses; retry is safe and cannot publish unrelated work.
-    let mut restored = false;
-    for _ in 0..16 {
-        let status = server.request(&Request::check(&setup.token), &body).await?.status;
-        if status == 200 {
-            restored = true;
-            break;
-        }
-        assert_eq!(status, 503);
-        tokio::task::yield_now().await;
-    }
-    assert!(restored);
+    assert_eq!(
+        server.request(&Request::check(&setup.token), &body).await?.status,
+        503,
+        "Two actual Continue handshakes precede the quota assertion"
+    );
+    // Complete each real request with malformed JSON and observe its final refusal.
+    // Its permit has then retired, rather than guessing when a dropped socket is serviced.
+    assert_eq!(Network::finish_unfinished(first).await?.status, 400);
+    assert_eq!(Network::finish_unfinished(second).await?.status, 400);
+    assert_eq!(server.request(&Request::check(&setup.token), &body).await?.status, 200);
     server.stop().await?;
     Ok(())
 }

@@ -78,6 +78,11 @@ path = "examples/physical_recovery_control_functional.rs"
 required-features = ["server"]
 
 [[example]]
+name = "physical_recovery_asset_control_functional"
+path = "examples/physical_recovery_asset_control_functional.rs"
+required-features = ["server"]
+
+[[example]]
 name = "segmented_relay_functional"
 path = "examples/segmented_relay_functional.rs"
 required-features = ["server"]

@@ -1,6 +1,6 @@
 /** Bounded complete strict UTF-8 operator response; rejected streams are cancelled and released. */
-import {MAX_PHYSICAL_RECOVERY_CONTROL_BYTES as maximum,controlFailure as fail} from './policy.js';
-export async function readPhysicalControlResponse(response:Response):Promise<string> {
+import {MAX_PHYSICAL_RECOVERY_CONTROL_BYTES,controlFailure as fail} from './policy.js';
+export async function readPhysicalControlResponse(response:Response,maximum=MAX_PHYSICAL_RECOVERY_CONTROL_BYTES):Promise<string> {
  const length=response.headers.get('content-length');
  if(length!==null&&(!/^\d+$/.test(length)||length.length>20||BigInt(length)>BigInt(maximum))||response.headers.get('content-type')?.split(';',1)[0]!=='application/json'||!response.body){await response.body?.cancel().catch(()=>{});throw fail();}
  const reader=response.body.getReader(),chunks:Uint8Array[]=[];let size=0,complete=false;

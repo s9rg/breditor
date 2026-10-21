@@ -21,7 +21,7 @@ impl Spec {
         format!("language-{}-standard-{}-atomic-{}", self.language, self.standard, self.atomic)
     }
 }
-pub fn create(directory: &Path, spec: Spec) -> Result<Source> {
+pub fn create(directory: &Path, spec: Spec, asset: Option<&str>) -> Result<Source> {
     let configuration=json!({"format":"breditor/shared-rich-profile","formatVersion":spec.language,"schema":{"name":"example/native-inventory-sdk","version":1},"extensions":[]}).to_string();
     let profile = match (spec.language, spec.standard) {
         (1, false) => SharedRichProfile::from_configuration_json(&configuration)?,
@@ -35,7 +35,14 @@ pub fn create(directory: &Path, spec: Spec) -> Result<Source> {
         "../../../../crates/breditor-core/tests/fixtures/rich-local-root.json"
     ))?;
     let paragraph = tree["children"][0]["children"][0]["children"][0]["children"][0].clone();
-    tree["children"] = json!([paragraph]);
+    if let Some(asset) = asset {
+        let mut image = tree["children"][0]["children"][0]["children"][0]["children"][1].clone();
+        image["properties"]["breditor/asset-id"] = json!(asset);
+        image["properties"]["breditor/asset-generation"] = json!("native-image-binding");
+        tree["children"] = json!([paragraph, image]);
+    } else {
+        tree["children"] = json!([paragraph]);
+    }
     let document=json!({"format":"breditor/document","formatVersion":2,"schema":{"name":"example/native-inventory-sdk","version":1},"schemaFingerprint":profile.schema().fingerprint().to_string(),"root":tree}).to_string();
     let transport = match spec.language {
         1 => AtomicTransportProfile::Original,

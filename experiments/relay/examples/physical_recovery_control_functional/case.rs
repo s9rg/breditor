@@ -2,7 +2,7 @@
 use super::{Result, clients, source, storage};
 use breditor_collab_relay::{
     Role, RoomRecoveryPolicy, ServerLogGenerationRoomBackup, ServerLogGenerationRoomRecovery,
-    assets::AssetStore,
+    assets::{AssetStore, asset_id, prepare_asset},
     server::{
         Authentication, ContentAddressedServerAssets, PhysicalRoomRecoveryControl,
         PhysicalServerRecoveryAssetCoverage, PhysicalServerRoomRecoveryCoverage,
@@ -57,13 +57,44 @@ async fn prepare_control(
     .await?;
     Ok((router, control, token))
 }
-pub async fn generate(parent: &Path, spec: source::Spec) -> Result<Running> {
+pub async fn generate(
+    parent: &Path,
+    spec: source::Spec,
+    bytes: Option<&[Vec<u8>]>,
+) -> Result<Running> {
+    if bytes.is_some_and(|rasters| rasters.len() != 2) {
+        return Err("exactly two private seed rasters are required".into());
+    }
+    Box::pin(generate_selected(parent, spec, bytes.unwrap_or(&[]))).await
+}
+fn seed_assets(
+    directory: &Path,
+    room: &mut breditor_collab_relay::Room,
+    rasters: &[Vec<u8>],
+) -> Result<AssetStore> {
+    let mut assets = AssetStore::open(&directory.join("source-rasters"), room.asset_binding())?;
+    for bytes in rasters {
+        room.put_asset(
+            "owner",
+            &mut assets,
+            prepare_asset(&asset_id(bytes), "image/png", bytes.clone())?,
+        )?;
+    }
+    Ok(assets)
+}
+async fn generate_selected(
+    parent: &Path,
+    spec: source::Spec,
+    rasters: &[Vec<u8>],
+) -> Result<Running> {
     let root = parent.join(spec.name());
     storage::directory(&root)?;
-    let source::Source { profile, mut room, configuration } = source::create(&root, spec)?;
+    let asset = rasters.first().map(|first| asset_id(first));
+    let source::Source { profile, mut room, configuration } =
+        source::create(&root, spec, asset.as_deref())?;
     let clients::CapturedClients { records, protected, secrets } =
         clients::capture(&mut room, &profile, spec)?;
-    let mut assets = AssetStore::open(&root.join("source-rasters"), room.asset_binding())?;
+    let mut assets = seed_assets(&root, &mut room, rasters)?;
     room.seal_document_history_generation("owner", "document-two".into())?;
     room.rotate_log_generation("owner", "two")?;
     room.seal_review_history_generation("owner", "review-two".into())?;

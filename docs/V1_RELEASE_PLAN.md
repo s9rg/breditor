@@ -43,6 +43,32 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [physical client/provider asset read](PHYSICAL_CLIENT_ASSET_RECONCILIATION.md)
+now derives actual selected original/generation native/packet requirements,
+snapshots complete upload stores and resolves them together with native server
+bindings and actual provider bytes. Missing mappings, binding bytes and whole
+upload bytes remain distinct. Provider availability does not settle pending,
+cancelled or failed queue work. Frozen server mappings, source files and actual
+in-flight ownership remain protected; no owner is released or source retargeted.
+
+Its [selected qualification](qualification/2026-10-21-physical-client-asset-reconciliation.json)
+passes 34 stages, 379 server-enabled and 267 no-server relay tests/doctests,
+and 1,608 script tests with three existing skips. Source and fresh offline public
+archives each repeat 108 joint reads with native images and unreferenced upload
+bytes, 180 exact file/record/upload comparisons and future native history.
+This is a subset of the 216-check functional plan, not a V1 or parity approval.
+The paired shared runtime and browser/rich archives are unchanged; the SDK adds
+the explicit new read scope. All thirteen V1 gates remain open.
+
+The next repair is an independently reproduced existing source-reader defect:
+public facade reference/guard overrides can hide a native image binding from
+capture metadata. Canonical native readers need a real-Wasm failing/passing
+regression before override-resistant source reads are claimed. Durable
+native/client intent, fresh selected-client permissions, independently segmented
+comment sessions, explicit historical-copy decisions and authenticated activation
+fencing remain the highest architectural priorities. Cosmetics and platform
+polish do not substitute for that functionality.
+
 The distinct [physical client-operation parent](PHYSICAL_ROOM_CLIENT_OPERATION.md)
 now co-owns actual staged mixed clients, all original/current source files and
 three durable store/lease owners. It replaces both private native guards together,

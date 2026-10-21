@@ -58,6 +58,14 @@ impl ServerRecoveryAssetProvider for Guard {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn closing_operator_guard_during_actual_native_work_refuses_result_and_retains_lease_until_done()
 -> TestResult {
+    Box::pin(workflow(false)).await
+}
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn closing_operator_during_actual_asset_read_retains_the_native_worker_lease_until_done()
+-> TestResult {
+    Box::pin(workflow(true)).await
+}
+async fn workflow(assets: bool) -> TestResult {
     let mut setup = Box::pin(Setup::new((3, true), true)).await?;
     drop(setup.control.take());
     let (entered, received) = mpsc::sync_channel(1);
@@ -91,16 +99,23 @@ async fn closing_operator_guard_during_actual_native_work_refuses_result_and_ret
         operators(&setup.token)?,
     )
     .await?;
-    let body = serde_json::to_vec(&control.identity())?;
+    let body = if assets {
+        serde_json::to_vec(
+            &serde_json::json!({"format":"breditor/physical-room-recovery-asset-requirements","formatVersion":1,"selection":control.identity(),"references":[],"uploads":[]}),
+        )?
+    } else {
+        serde_json::to_vec(&control.identity())?
+    };
     let network = Arc::new(Network::start(router).await?);
     pause.armed.store(true, Ordering::Release);
     let request_network = network.clone();
     let token = setup.token.clone();
     let request = tokio::spawn(async move {
-        request_network
-            .request(&Request::check(&token), &body)
-            .await
-            .map_err(|error| error.to_string())
+        let mut read = Request::check(&token);
+        if assets {
+            read.path = "/recovery/physical/v1/assets/check";
+        }
+        request_network.request(&read, &body).await.map_err(|error| error.to_string())
     });
     tokio::task::spawn_blocking(move || received.recv_timeout(Duration::from_secs(5))).await??;
     setup.fixture.stop();

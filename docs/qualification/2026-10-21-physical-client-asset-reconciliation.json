@@ -1,0 +1,270 @@
+{
+  "format": "breditor/physical-client-asset-reconciliation-qualification",
+  "formatVersion": 1,
+  "passed": true,
+  "source": {
+    "commit": "a1ef091ad75ec52502f1de970f351f3c91dd7fde",
+    "dirty": true,
+    "sha256": "5b57f16e87b8dbc6736ce10ce7c195b3c858635e9ee5986705615335f4190461",
+    "files": 5353,
+    "bytes": 44373567
+  },
+  "selection": {
+    "executed": 34,
+    "completeFunctionalPlan": 216,
+    "fullPlanExecuted": false
+  },
+  "result": {
+    "path": "target/v1-candidate-runs/run-0SurLH/result.json",
+    "bytes": 54482,
+    "sha256": "f797f9fcf446cc2e75794b6a8b0a574ad1eeff011864f7c05d01aea7d8bd4131",
+    "modifiedAtMs": 1792616789414.6436
+  },
+  "retainedEvidenceDirectory": "target/physical-client-assets-qualified-8OkDuk",
+  "retained": [
+    {
+      "original": {
+        "path": "target/v1-candidate-runs/run-0SurLH/result.json",
+        "bytes": 54482,
+        "sha256": "f797f9fcf446cc2e75794b6a8b0a574ad1eeff011864f7c05d01aea7d8bd4131",
+        "modifiedAtMs": 1792616789414.6436
+      },
+      "retained": {
+        "path": "target/physical-client-assets-qualified-8OkDuk/00-result.json",
+        "bytes": 54482,
+        "sha256": "f797f9fcf446cc2e75794b6a8b0a574ad1eeff011864f7c05d01aea7d8bd4131",
+        "modifiedAtMs": 1792616829289.7036
+      }
+    },
+    {
+      "original": {
+        "path": "target/physical-recovery-control-installed.json",
+        "bytes": 18446,
+        "sha256": "a2086de400113f23dc151fdacb55b6984450afe55cd0a74723bb6a508f97dd52",
+        "modifiedAtMs": 1792615720061.403
+      },
+      "retained": {
+        "path": "target/physical-client-assets-qualified-8OkDuk/01-physical-recovery-control-installed.json",
+        "bytes": 18446,
+        "sha256": "a2086de400113f23dc151fdacb55b6984450afe55cd0a74723bb6a508f97dd52",
+        "modifiedAtMs": 1792616829290.13
+      }
+    },
+    {
+      "original": {
+        "path": "target/physical-recovery-control-sdk.json",
+        "bytes": 15666,
+        "sha256": "a3fb2d12d5b981c8f42a98741c5acd477035bf46fecb0c56b1fd183f35570bf1",
+        "modifiedAtMs": 1792615888780.6545
+      },
+      "retained": {
+        "path": "target/physical-client-assets-qualified-8OkDuk/02-physical-recovery-control-sdk.json",
+        "bytes": 15666,
+        "sha256": "a3fb2d12d5b981c8f42a98741c5acd477035bf46fecb0c56b1fd183f35570bf1",
+        "modifiedAtMs": 1792616829290.883
+      }
+    },
+    {
+      "original": {
+        "path": "target/server-generation-inventory-native.json",
+        "bytes": 15341,
+        "sha256": "edf7989402b6e9e006fbc4bd59664ec5fbe4e6218c4db3d8abf6a11da2d2d4b8",
+        "modifiedAtMs": 1792615981076.508
+      },
+      "retained": {
+        "path": "target/physical-client-assets-qualified-8OkDuk/03-server-generation-inventory-native.json",
+        "bytes": 15341,
+        "sha256": "edf7989402b6e9e006fbc4bd59664ec5fbe4e6218c4db3d8abf6a11da2d2d4b8",
+        "modifiedAtMs": 1792616829291.4846
+      }
+    },
+    {
+      "original": {
+        "path": "target/physical-room-operation-sdk.json",
+        "bytes": 3261,
+        "sha256": "ee1d923149e75727d226378a2c4634a24bd37a2c6c293d7a05de47fde8d2e895",
+        "modifiedAtMs": 1792616049937.3374
+      },
+      "retained": {
+        "path": "target/physical-client-assets-qualified-8OkDuk/04-physical-room-operation-sdk.json",
+        "bytes": 3261,
+        "sha256": "ee1d923149e75727d226378a2c4634a24bd37a2c6c293d7a05de47fde8d2e895",
+        "modifiedAtMs": 1792616829292.255
+      }
+    },
+    {
+      "original": {
+        "path": "target/physical-room-operation-installed.json",
+        "bytes": 5093,
+        "sha256": "d6b7b8a307c496c5ea729fb26c263adf3140751182a08c2240b237dd6ee3d071",
+        "modifiedAtMs": 1792616121056.8647
+      },
+      "retained": {
+        "path": "target/physical-client-assets-qualified-8OkDuk/05-physical-room-operation-installed.json",
+        "bytes": 5093,
+        "sha256": "d6b7b8a307c496c5ea729fb26c263adf3140751182a08c2240b237dd6ee3d071",
+        "modifiedAtMs": 1792616829292.6924
+      }
+    },
+    {
+      "original": {
+        "path": "target/physical-recovery-assets-sdk.json",
+        "bytes": 15907,
+        "sha256": "ed5dfb495990701155027b3e3ba34063e4528a77f6f48a5d5b1a8f3593a29584",
+        "modifiedAtMs": 1792616575907.145
+      },
+      "retained": {
+        "path": "target/physical-client-assets-qualified-8OkDuk/06-physical-recovery-assets-sdk.json",
+        "bytes": 15907,
+        "sha256": "ed5dfb495990701155027b3e3ba34063e4528a77f6f48a5d5b1a8f3593a29584",
+        "modifiedAtMs": 1792616829292.9067
+      }
+    },
+    {
+      "original": {
+        "path": "target/physical-recovery-assets-installed.json",
+        "bytes": 18745,
+        "sha256": "cb6eeb6767ce344e787f8f4755da623b1336baccb6a5b9818d8d32ecc204a2c4",
+        "modifiedAtMs": 1792616788655.3027
+      },
+      "retained": {
+        "path": "target/physical-client-assets-qualified-8OkDuk/07-physical-recovery-assets-installed.json",
+        "bytes": 18745,
+        "sha256": "cb6eeb6767ce344e787f8f4755da623b1336baccb6a5b9818d8d32ecc204a2c4",
+        "modifiedAtMs": 1792616829293.1943
+      }
+    }
+  ],
+  "tests": {
+    "fullRelayServer": 379,
+    "fullRelayNoServer": 267,
+    "controllerNative": 19,
+    "requirementsNative": 9,
+    "scriptPassed": 1608,
+    "scriptSkipped": 3,
+    "assetWireContracts": 40
+  },
+  "sourceAndInstalled": {
+    "nativeHosts": 10,
+    "jointReadsEach": 108,
+    "assetRequestsEach": 120,
+    "lateClosedAssetRequestsEach": 6,
+    "operatorRequestsEach": 136,
+    "writableGenerationAuthorReadsEach": 18,
+    "originalFileComparisonsEach": 180,
+    "recordComparisonsEach": 180,
+    "wholeUploadComparisonsEach": 180,
+    "queueWorkRetained": true,
+    "unreferencedUploadBytes": true,
+    "ordinaryEditingNetworkCalls": 0,
+    "credentialsPersisted": false,
+    "assertionsUnchanged": true
+  },
+  "archives": [
+    {
+      "name": "@breditor/browser",
+      "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+    },
+    {
+      "name": "@breditor/experimental-rich-content",
+      "sha256": "e6b524a4d3b9cab485e6df2ff62af133a3772291ec463fd3bba73934c13ac40f"
+    },
+    {
+      "name": "@breditor/collaboration",
+      "sha256": "a52e2d3a56ff20c70a7755f2de55e1c96f01a5ad0ef19c5227bcc222b95343e8"
+    }
+  ],
+  "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+  "installed": {
+    "registryArtifacts": 45,
+    "strictPublicTypes": true,
+    "noWorkspaceLinks": true,
+    "productionModuleCount": 249,
+    "noWorkspaceReactOrSyntheticStorageInProduction": true
+  },
+  "failedEarlierRun": {
+    "result": {
+      "path": "target/v1-candidate-runs/run-JzhVG6/result.json",
+      "bytes": 24043,
+      "sha256": "1cdaa61565bc1ee0ab76bf0ae8c07bdbd45eb666d2373f8310f5bc909b7e56d2",
+      "modifiedAtMs": 1792614387801.5989
+    },
+    "log": {
+      "path": "target/v1-candidate-runs/run-JzhVG6/15-relay-physical-host-assets-native.log",
+      "bytes": 6745,
+      "sha256": "1083fad4b065e9191d786efc8b0a0b2ded810036d0989fcac064b1d2fe2e0c6d",
+      "modifiedAtMs": 1792614386711.725
+    },
+    "kind": "test admission precondition was not observed; not a production custody failure",
+    "followup": "Replace guessed socket scheduling with actual HTTP Continue handshakes and final refusals, then require immediate saturation, early native B reopening and unchanged future history. No production behavior changed for this test-only correction."
+  },
+  "knownFollowup": {
+    "kind": "canonical-native-source-readers",
+    "reproduced": true,
+    "actualNativeBindings": 1,
+    "capturedBindingsUnderPublicOverrides": 0,
+    "scope": "A public facade read/guard override can hide a real binding from existing capture metadata. No native/file mutation or activation occurred. Repair with actual-Wasm regression remains required before claiming override-resistant source reads."
+  },
+  "limits": {
+    "readOnly": true,
+    "pointInTime": true,
+    "newCompleteRequestResponseBytes": 33554432,
+    "combinedRequirements": 100000,
+    "originalContinuityBytes": 65536,
+    "existingNativeIdentityGrammarUnchanged": true,
+    "queueStatesNotPromoted": true,
+    "noDurableCoordinator": true,
+    "noIndependentCommentSessionIntegration": true,
+    "noHistoricalCopyDisposition": true,
+    "noAuthenticatedActivationFence": true
+  },
+  "v1Ready": false,
+  "qualificationGatesClosed": 0,
+  "publicationApproved": false,
+  "nativeInputs": {
+    "files": 2986,
+    "sha256": "a4a716e0a6237d7c0d6122e5ab1eefc7ab02bda557cfeff9b786794c9c23d420"
+  },
+  "nonDocumentation": {
+    "files": 4791,
+    "sha256": "fba7068f4081d14bbc2e1f3a0917ccabb52ac5b9d605a3df867b6f4c2036979d"
+  },
+  "sharedRuntime": [
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.js",
+      "bytes": 197057,
+      "sha256": "eedaf4d3fbdfd9cfd115484030cc07d3be185aac00c3ccc4922f6df905de40ae",
+      "modifiedAtMs": 1792592625540.0828
+    },
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+      "bytes": 13444371,
+      "sha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+      "modifiedAtMs": 1792592625559.278
+    },
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.d.ts",
+      "bytes": 76829,
+      "sha256": "fe5579cc17725f1f63cf47ef147a6a570bdb3b6be5c522820e9ce1a61ec21e26",
+      "modifiedAtMs": 1792592625540.6763
+    },
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/breditor_dependency_inventory.json",
+      "bytes": 124122,
+      "sha256": "6714d5160bc54a23292eebb667a203c3d55358899e0e8df148b2388abf0bd688",
+      "modifiedAtMs": 1792592625565.1223
+    },
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/THIRD_PARTY_NOTICES.txt",
+      "bytes": 1380448,
+      "sha256": "4bdd58691c23f4733fd973aff84ebb1a38a670c97c64ce8e4c79c624f594f204",
+      "modifiedAtMs": 1792592625566.9912
+    },
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/RUST_COPYRIGHT-library.html",
+      "bytes": 1512520,
+      "sha256": "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6",
+      "modifiedAtMs": 1792592625569.9858
+    }
+  ]
+}

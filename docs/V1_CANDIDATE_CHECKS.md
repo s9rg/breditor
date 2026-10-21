@@ -1,5 +1,17 @@
 # V1 candidate checks
 
+Both profiles also require `physical-recovery-assets-plan-contracts`,
+`relay-physical-recovery-assets-native`, `physical-recovery-assets-contracts`,
+`physical-recovery-assets-type-fence`, `physical-recovery-assets` and
+`installed-physical-recovery-assets`. They add actual retained native image
+bindings, native provider payloads and complete held client upload snapshots to
+the separately authenticated control. The old continuity contracts remain
+mandatory. Source and fresh offline packages repeat the same native/client
+assertions; Pending queues and unselected historical copies are not settled by
+available bytes. See [the distinct contract](PHYSICAL_CLIENT_ASSET_RECONCILIATION.md).
+The functional plan now has 216 checks; selecting a subset or passing functional
+checks does not grant V1, public-hosting or activation approval.
+
 Both profiles require `physical-recovery-control-plan-contracts`,
 `relay-physical-recovery-control-native`, `physical-recovery-control-contracts`,
 `physical-recovery-control-type-fence`, `physical-recovery-control` and

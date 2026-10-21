@@ -12,22 +12,34 @@ use crate::OperationalLogGenerationServerRoom;
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn dropping_control_releases_native_custody_while_admitted_bodies_remain_incomplete()
 -> TestResult {
+    Box::pin(workflow(false)).await
+}
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn asset_read_incomplete_bodies_share_the_quota_without_retaining_native_custody()
+-> TestResult {
+    Box::pin(workflow(true)).await
+}
+async fn workflow(assets: bool) -> TestResult {
     let mut setup = Box::pin(Setup::new((3, true), true)).await?;
     let server = Network::start(setup.router.clone()).await?;
-    let first = server.unfinished(&setup.token).await?;
-    let second = server.unfinished(&setup.token).await?;
-    let body = serde_json::to_vec(&setup.selection())?;
-    let mut saturated = false;
-    for _ in 0..16 {
-        let status = server.request(&Request::check(&setup.token), &body).await?.status;
-        if status == 503 {
-            saturated = true;
-            break;
-        }
-        assert_eq!(status, 200);
-        tokio::task::yield_now().await;
+    let mut read = Request::check(&setup.token);
+    if assets {
+        read.path = "/recovery/physical/v1/assets/check";
     }
-    assert!(saturated, "Both authenticated handlers must be waiting for their actual HTTP bodies");
+    let first = server.unfinished_request(&read).await?;
+    let second = server.unfinished(&setup.token).await?;
+    let body = if assets {
+        serde_json::to_vec(
+            &serde_json::json!({"format":"breditor/physical-room-recovery-asset-requirements","formatVersion":1,"selection":setup.selection(),"references":[],"uploads":[]}),
+        )?
+    } else {
+        serde_json::to_vec(&setup.selection())?
+    };
+    assert_eq!(
+        server.request(&read, &body).await?.status,
+        503,
+        "Two actual Continue handshakes precede the quota assertion"
+    );
     let calls = setup.mapping.lock().map_err(|_| "mapping")?.calls;
     setup.fixture.stop();
     drop(setup.control.take());
@@ -40,9 +52,9 @@ async fn dropping_control_releases_native_custody_while_admitted_bodies_remain_i
     );
     let released_before_body_completion = early.is_ok();
     // Always drain this test's actual sockets before asserting the regression, including RED.
-    assert_eq!(server.request(&Request::check(&setup.token), &body).await?.status, 503);
-    drop(first);
-    drop(second);
+    assert_eq!(server.request(&read, &body).await?.status, 503);
+    assert_eq!(Network::finish_unfinished(first).await?.status, 503);
+    assert_eq!(Network::finish_unfinished(second).await?.status, 503);
     server.stop().await?;
     assert_eq!(setup.mapping.lock().map_err(|_| "mapping")?.calls, calls);
     let mut operation = match early {

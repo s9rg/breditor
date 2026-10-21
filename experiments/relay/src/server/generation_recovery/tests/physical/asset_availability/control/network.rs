@@ -22,12 +22,43 @@ fn complete(bytes: &[u8]) -> Option<usize> {
     let end = split.checked_add(4)?.checked_add(length)?;
     (bytes.len() >= end).then_some(end)
 }
+fn response_bytes(stream: &mut TcpStream) -> std::io::Result<Vec<u8>> {
+    let mut response = Vec::new();
+    let mut chunk = [0_u8; 4096];
+    loop {
+        let count = stream.read(&mut chunk)?;
+        if count == 0 {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::UnexpectedEof,
+                "incomplete HTTP test response",
+            ));
+        }
+        response.extend_from_slice(&chunk[..count]);
+        if let Some(end) = complete(&response) {
+            response.truncate(end);
+            return Ok(response);
+        }
+        if response.len() > 128 * 1024 {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "HTTP test response budget",
+            ));
+        }
+    }
+}
+fn decode_response(bytes: &[u8]) -> TestResult<Response> {
+    let split = bytes.windows(4).position(|part| part == b"\r\n\r\n").ok_or("HTTP head")?;
+    let headers = std::str::from_utf8(&bytes[..split])?.to_owned();
+    let status = headers.split_whitespace().nth(1).ok_or("HTTP status")?.parse()?;
+    Ok(Response { status, headers, body: bytes[split + 4..].to_vec() })
+}
 
 pub(super) struct Response {
     pub status: u16,
     pub headers: String,
     pub body: Vec<u8>,
 }
+#[derive(Clone, Copy)]
 pub(super) struct Request<'a> {
     pub method: &'a str,
     pub path: &'a str,
@@ -83,44 +114,46 @@ impl Network {
             stream.set_write_timeout(Some(Duration::from_secs(10)))?;
             stream.write_all(head.as_bytes())?;
             stream.write_all(&bytes)?;
-            let mut response = Vec::new();
-            let mut chunk = [0_u8; 4096];
-            loop {
-                let count = stream.read(&mut chunk)?;
-                if count == 0 {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::UnexpectedEof,
-                        "incomplete HTTP test response",
-                    ));
-                }
-                response.extend_from_slice(&chunk[..count]);
-                if let Some(end) = complete(&response) {
-                    response.truncate(end);
-                    return Ok(response);
-                }
-                if response.len() > 128 * 1024 {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        "HTTP test response budget",
-                    ));
-                }
-            }
+            response_bytes(&mut stream)
         })
         .await??;
-        let split = bytes.windows(4).position(|part| part == b"\r\n\r\n").ok_or("HTTP head")?;
-        let headers = std::str::from_utf8(&bytes[..split])?.to_owned();
-        let status = headers.split_whitespace().nth(1).ok_or("HTTP status")?.parse()?;
-        Ok(Response { status, headers, body: bytes[split + 4..].to_vec() })
+        decode_response(&bytes)
     }
     pub async fn unfinished(&self, token: &str) -> TestResult<TcpStream> {
-        let head = Request::check(token).head(self.address, 1);
+        self.unfinished_request(&Request::check(token)).await
+    }
+    pub async fn unfinished_request(&self, request: &Request<'_>) -> TestResult<TcpStream> {
+        // Hyper's EXPECT channel sends Continue only after the handler polls the body.
+        // Authentication and this controller's permit acquisition therefore precede this
+        // actual wire witness. No scheduling guesses, sleeps or private state hook is used.
+        let extra = format!("{}Expect: 100-continue\r\n", request.extra);
+        let head = Request { extra: &extra, ..*request }.head(self.address, 1);
         let address = self.address;
         Ok(tokio::task::spawn_blocking(move || -> std::io::Result<TcpStream> {
             let mut stream = TcpStream::connect_timeout(&address, Duration::from_secs(10))?;
+            stream.set_read_timeout(Some(Duration::from_secs(10)))?;
+            stream.set_write_timeout(Some(Duration::from_secs(10)))?;
             stream.write_all(head.as_bytes())?;
+            let expected = b"HTTP/1.1 100 Continue\r\n\r\n";
+            let mut actual = [0_u8; 25];
+            stream.read_exact(&mut actual)?;
+            if actual != *expected {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "HTTP body was not actually admitted",
+                ));
+            }
             Ok(stream)
         })
         .await??)
+    }
+    pub async fn finish_unfinished(mut stream: TcpStream) -> TestResult<Response> {
+        let bytes = tokio::task::spawn_blocking(move || -> std::io::Result<Vec<u8>> {
+            stream.write_all(b"?")?;
+            response_bytes(&mut stream)
+        })
+        .await??;
+        decode_response(&bytes)
     }
     pub async fn stop(mut self) -> TestResult {
         self.stop.take().ok_or("server stop")?.send(()).map_err(|()| "server stopped")?;

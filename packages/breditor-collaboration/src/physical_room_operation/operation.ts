@@ -27,6 +27,8 @@ import {physicalOperationFailure as fail,physicalOperationKnown as known} from "
 import type {SharedPhysicalRoomOperationBeginOptions,SharedPhysicalRoomOperationResumeOptions,SharedPhysicalRoomOperationProgress,SharedPhysicalRoomOperationParts,SharedPhysicalRoomNativeCheck} from "./contract.js";
 import type {SharedPhysicalRoomRecoveryHost} from "../physical_recovery_control/host.js";
 import {checkPhysicalRoomNativeHost,physicalNativeCheckFailure} from "./native_check.js";
+import {checkPhysicalRoomNativeAssets} from "./native_assets.js";
+import type {SharedPhysicalRoomNativeAssetsCheck} from "./native_assets_contract.js";
 const key=Object.freeze({});
 interface State {readonly database:string;readonly db:IDBDatabase;readonly stageDb:IDBDatabase;readonly catalogDb:IDBDatabase;readonly leases:readonly RecoveryLease[];readonly archive:SharedPhysicalRoomRecoveryCatalogArchive;readonly source:PhysicalCatalogArchiveState;readonly children:V2OperationChild[];readonly life:PhysicalOperationLife;readonly guard:()=>void;readonly local:()=>void;readonly context:ArchiveIntegrityContext;readonly factory:IDBFactory;readonly locks:LockManager;readonly signal:AbortSignal|undefined;record:PhysicalRoomOperationRecord;pending:PhysicalRoomOperationRecord|undefined}
 /** Native clients remain private until every selected family crosses one mixed handoff barrier. */
@@ -117,6 +119,12 @@ export class SharedPhysicalRoomClientOperation {
  checkNativeHost(host:SharedPhysicalRoomRecoveryHost):Promise<SharedPhysicalRoomNativeCheck>{return this.#exclusive(async()=>{
   const s=this.#state;await this.#retained();if(s.record.phase!=="operational"||s.children.some(child=>!child.operation||child.currentPolicyPending))throw fail("physical_operation_restore");
   return checkPhysicalRoomNativeHost(s.children,s.source,host,()=>this.#retained(),this.#guard);
+ },error=>{const s=this.#state;return s.signal?.aborted||s.life.closed||s.life.closing||s.life.changed?this.#failure(error):physicalNativeCheckFailure(error);});}
+ /** Snapshot actual native/packet sources and every whole upload store under genuine reservations,
+  * recheck current provider bytes and exact source/queue stamps, retaining every Pending. */
+ checkNativeAssets(host:SharedPhysicalRoomRecoveryHost):Promise<SharedPhysicalRoomNativeAssetsCheck>{return this.#exclusive(async()=>{
+  const s=this.#state;await this.#retained();if(s.record.phase!=="operational"||s.children.some(child=>!child.operation||child.currentPolicyPending))throw fail("physical_operation_restore");
+  return checkPhysicalRoomNativeAssets(s.children,s.source,host,s.context,()=>this.#retained(),this.#guard,s.signal);
  },error=>{const s=this.#state;return s.signal?.aborted||s.life.closed||s.life.closing||s.life.changed?this.#failure(error):physicalNativeCheckFailure(error);});}
  /** All native clients or none; remains disconnected and is not server activation. */
  intoParts():Promise<SharedPhysicalRoomOperationParts>{return this.#exclusive(async()=>{

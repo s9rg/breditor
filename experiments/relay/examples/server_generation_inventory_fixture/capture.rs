@@ -111,7 +111,7 @@ fn capture_original(
 pub async fn generate(parent: &Path, spec: source::Spec) -> Result<Value> {
     let root = parent.join(spec.name());
     storage::directory(&root)?;
-    let source::Source { profile, mut room, configuration } = source::create(&root, spec)?;
+    let source::Source { profile, mut room, configuration } = source::create(&root, spec, None)?;
     let clients::CapturedClients { records, protected, secrets } =
         clients::capture(&mut room, &profile, spec)?;
     let long = spec.language == 3 && spec.standard && spec.atomic;

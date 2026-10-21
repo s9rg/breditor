@@ -15,7 +15,9 @@ Origins. No operator token may reuse any native editor account token. The
 controller retains only the native account digest, not the plaintext token.
 
 The returned router exposes only POST and OPTIONS at
-`/recovery/physical/v1/check`. Serving it is an explicit host action; ordinary
+`/recovery/physical/v1/check` and the separately scoped
+[`/recovery/physical/v1/assets/check`](PHYSICAL_CLIENT_ASSET_RECONCILIATION.md).
+Serving it is an explicit host action; ordinary
 editing routers and constructors are unchanged. There is no editing, archive
 download, upload, restore or activation endpoint. Metadata cannot construct the
 private native proof or controller.
@@ -38,7 +40,9 @@ of its new nonce.
 
 Exact operator Origin and authentication precede body reading. Each controller
 admits at most two authenticated request handlers without a waiting queue.
-Request and complete response bodies are each bounded to 64 KiB. Deployment must
+The original continuity request and complete response bodies remain bounded to
+64 KiB. The separate asset requirement read has its own documented bounds and
+shares the same two-handler quota. Deployment must
 also bound connections, body duration and host/provider resources; these handler
 limits are not public-service denial-of-service certification.
 
@@ -54,7 +58,8 @@ verification before and after response serialization. Physical-only rotation,
 provider epoch or mapping changes and altered native/raster files refuse without
 repair or deletion. The closed four-field response contains only family/version,
 checked selection and `native-physical-and-server-provider` scope. It contains no
-asset-reference list, mapping, archive bytes or protected credentials.
+asset-reference list, mapping, archive bytes or protected credentials. That old
+response is unchanged; asset requirements use a different request/result family.
 
 ## SDK authentication and lifetime
 

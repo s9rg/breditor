@@ -80,6 +80,13 @@ operator authentication. It verifies current native prefixes without weakening
 the old exact-snapshot readers. Missing, unbound and historical copies stay
 Pending; it does not write durable whole-room intent or grant activation.
 
+The separately scoped [asset reconciliation read](PHYSICAL_CLIENT_ASSET_RECONCILIATION.md)
+adds `checkNativeAssets`. It derives genuine held client native/packet bindings,
+snapshots every complete upload store, reads current native/provider bytes and
+rechecks the exact snapshots. Pending/cancelled/failed queue work stays separate
+from provider availability. It neither marks uploads complete nor releases or
+retargets any owner; durable coordination and activation remain separate.
+
 ## Failure and lifetime
 
 Initial cancellation, authority loss, interrupted child/parent commits, failed

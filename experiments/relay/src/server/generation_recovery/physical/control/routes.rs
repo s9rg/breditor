@@ -1,5 +1,5 @@
 //! Bounded exact-Origin operator read; no DTO can substitute for genuine native/provider owners.
-use super::{PhysicalRoomRecoveryControlIdentity, lease::State};
+use super::{PhysicalRoomRecoveryControlIdentity, asset_requirements, lease::State};
 use crate::{Error, Result, server::http};
 use axum::{
     Router,
@@ -24,6 +24,7 @@ struct Read<'a> {
 pub(super) fn router(state: Weak<State>) -> Router {
     Router::new()
         .route("/recovery/physical/v1/check", post(check).options(preflight))
+        .route("/recovery/physical/v1/assets/check", post(check_assets).options(preflight))
         .with_state(state)
 }
 async fn preflight(Extract(weak): Extract<Weak<State>>, headers: HeaderMap) -> Response {
@@ -96,6 +97,12 @@ async fn read(state: Arc<State>, body: Bytes) -> Result<Vec<u8>> {
     Ok(bytes)
 }
 async fn check(Extract(weak): Extract<Weak<State>>, request: Request) -> Response {
+    respond(weak, request, false).await
+}
+async fn check_assets(Extract(weak): Extract<Weak<State>>, request: Request) -> Response {
+    respond(weak, request, true).await
+}
+async fn respond(weak: Weak<State>, request: Request, assets: bool) -> Response {
     let (parts, body) = request.into_parts();
     let headers = parts.headers;
     let Some(state) = weak.upgrade().filter(|state| state.local().is_ok()) else {
@@ -130,13 +137,15 @@ async fn check(Extract(weak): Extract<Weak<State>>, request: Request) -> Respons
     // bytes, not native/provider custody. Actual native workers retain State only after
     // complete admission below. Dropping the controller can therefore release an idle host.
     drop(state);
-    let Ok(body) = to_bytes(body, REQUEST_BYTES).await else {
+    let limit = if assets { asset_requirements::MAX_BYTES } else { REQUEST_BYTES };
+    let Ok(body) = to_bytes(body, limit).await else {
         return http::cors(StatusCode::PAYLOAD_TOO_LARGE.into_response(), &origin);
     };
     let Some(state) = weak.upgrade().filter(|state| state.local().is_ok()) else {
         return http::cors(StatusCode::SERVICE_UNAVAILABLE.into_response(), &origin);
     };
-    let result = read(state, body).await;
+    let result =
+        if assets { asset_requirements::read(state, body).await } else { read(state, body).await };
     http::cors(
         match result {
             Ok(bytes) => ([("content-type", "application/json")], bytes).into_response(),
