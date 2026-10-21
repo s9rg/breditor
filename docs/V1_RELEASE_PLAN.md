@@ -48,9 +48,25 @@ now co-owns actual staged mixed clients, all original/current source files and
 three durable store/lease owners. It replaces both private native guards together,
 cold-reopens complete clients under explicit current permissions and releases
 all clients or none. First owners remain read-only; a completion marker cannot
-manufacture native readiness or promote a permanent review observer. Matching
-native-host ancestry composition, full provider/client closure and server
-activation remain separate architectural work.
+manufacture native readiness or promote a permanent review observer. The
+separate native ancestry contract below now preserves ancestor, actual local
+origin and current host state. Connecting both actual parents, complete
+provider/client closure and server activation remain architectural work.
+
+The [physical server ancestry contract](PHYSICAL_SERVER_RECOVERY_ANCESTRY.md)
+now wraps genuine prepared native ownership without rewriting the actual local
+restore origin. Complete archive ancestry is verified separately from each
+archive's retention in the current host. Full A/B/C captures, all current
+protected streams and conservative server asset reads share authenticated native
+transactions. Weak proofs bind the exact host and source selections, not only
+matching document clocks. Original recovery APIs remain closed.
+
+Its [native ancestry qualification](qualification/2026-10-21-physical-server-recovery-ancestry.json)
+passes 25 selected stages, 341 server-enabled and 267 no-networking Rust checks,
+plus 1,527 script tests and fresh installed recovery consumers. The normal shared
+runtime and public packages remain byte-identical. A separate deterministic
+provider-callback stale-result reproduction is retained for the next repair;
+that original availability path is not part of the new ancestry wrapper.
 
 Its [functional qualification](qualification/2026-10-21-physical-room-client-operation.json)
 passes 33 selected stages and 1,525 script tests, with three existing opt-in
@@ -317,10 +333,10 @@ and 1,440 native comment comparisons, both recovery directions and future histor
 
 Next, in architectural risk order:
 
-1. Compose the physical client-operation parent with the matching prepared native
-   host. Distinguish retained ancestor, actual local restore origin and current
-   complete native cut; restoring a later archive must not relabel it as an older
-   local origin. Preserve actual owners and refusal of unrequested repair/cleanup.
+1. Connect the physical client-operation parent with the separate prepared native
+   A/B/C host contract. The native contract now distinguishes retained ancestor,
+   actual local restore origin and current complete native cut. The combined
+   parent must preserve both actual owners and refuse unrequested repair/cleanup.
    Keep original formats closed. Address
    retained Undo limits and remaining native staging/replay costs as separate lifetime
    requirements, not by dropping history or widening old bounds.

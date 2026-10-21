@@ -77,7 +77,7 @@ async fn workflow(
     operational.check_live_source(&source.original, "owner")?;
     Ok(())
 }
-fn merge_review_after_host(
+pub(super) fn merge_review_after_host(
     room: &mut crate::Room,
     author: &breditor_collab_feasibility::rich_replica::RichReplica,
     peer_document: &breditor_collab_feasibility::rich_replica::RichReplica,

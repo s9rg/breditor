@@ -1,5 +1,7 @@
 //! Separate complete physical archive. Admission alone does not replay or activate a native room.
 mod admission;
+#[cfg(any(feature = "server", test))]
+mod ancestry;
 mod capture;
 mod format;
 mod identity;

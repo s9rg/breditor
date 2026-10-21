@@ -1,5 +1,13 @@
 # V1 candidate checks
 
+Both profiles require `physical-host-plan-contracts`,
+`relay-physical-host-native` and `relay-physical-host-public`. These exercise the
+distinct [physical server ancestry contract](PHYSICAL_SERVER_RECOVERY_ANCESTRY.md),
+including all forty independent native history configurations and ten exported
+Rust consumer profiles. Full relay and no-networking suites remain mandatory.
+These native checks do not substitute for the combined SDK/server parent,
+complete provider/client closure or authenticated whole-room activation.
+
 The native log suites also pin exact original frame bytes and all incomplete
 final-frame suffixes, and separately exercise continuation family/sequence/hash
 admission beyond a real full original log. The

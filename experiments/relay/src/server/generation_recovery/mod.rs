@@ -3,6 +3,13 @@ mod asset_state;
 mod capture;
 pub use asset_state::ServerLogGenerationAssetRecoveryState;
 mod coordinator;
+mod physical;
+pub use physical::{
+    PhysicalServerAssetRecoveryState, PhysicalServerRoomRecoveryCoverage,
+    PhysicalServerRoomRecoveryState, PhysicalServerRoomRecoveryStateIdentity,
+    PreparedPhysicalRoomRecoveryHost, VerifiedPhysicalServerRoomRecoveryState,
+    prepare_physical_room_recovery_host,
+};
 mod prepare;
 mod selected;
 mod state;

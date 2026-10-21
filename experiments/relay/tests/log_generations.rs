@@ -22,6 +22,9 @@ mod host;
 mod joined_room;
 #[path = "log_generations/participants.rs"]
 mod participants;
+#[cfg(feature = "server")]
+#[path = "log_generations/physical_host.rs"]
+mod physical_host;
 
 struct Files(PathBuf);
 impl Files {

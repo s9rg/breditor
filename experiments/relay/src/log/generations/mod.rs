@@ -20,6 +20,8 @@ mod rotate;
 mod state;
 mod verify;
 mod verify_archive;
+#[cfg(any(feature = "server", test))]
+mod verify_archive_ancestor;
 pub(crate) use capture::GenerationFileSection;
 pub(crate) use closure::{
     MAX_GENERATION_BODY_BYTES, MAX_GENERATION_FILES, verify_generation_files,
@@ -39,3 +41,5 @@ pub(crate) use interruption::RotationPoint;
 pub use options::ServerLogGenerationOptions;
 pub use receipt::{ServerLogGenerationDescriptor, ServerLogGenerationReceipt};
 pub(super) use state::Generations;
+#[cfg(any(feature = "server", test))]
+pub(crate) use verify_archive_ancestor::verify_archive_ancestor;

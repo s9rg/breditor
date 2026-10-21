@@ -1,0 +1,391 @@
+{
+  "format": "breditor/physical-server-recovery-ancestry-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-21",
+  "passed": true,
+  "source": {
+    "commit": "ddf31de8e4465a6c8dd8ceca737bc5786101fd65",
+    "dirty": true,
+    "sha256": "31febabb63b2a8a8d1f3ab5bee711b728abc7df7ad0983d72ae6232ce41d5cbb",
+    "files": 5277,
+    "bytes": 43985826
+  },
+  "qualification": {
+    "path": "target/v1-candidate-runs/run-WOoTfd/result.json",
+    "bytes": 40184,
+    "sha256": "ead0736ef104aecacb303c455473d034b06b7f0b8d86fc0ee3a299a33ab987c2",
+    "modifiedAtMs": 1792602269703.9963
+  },
+  "selectedStages": 25,
+  "fullFunctionalPlanRun": false,
+  "functionalPlanChecks": 199,
+  "openV1Gates": 13,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "nonDocumentation": {
+    "files": 4723,
+    "sha256": "641b0d9aba4879f3b673c7ca9a9ac24bcf5fa023587b48ed97653680c690c9b7"
+  },
+  "nativeInputs": {
+    "files": 2945,
+    "sha256": "f25b7643d0155547b271cc875414c5534c26181b3f41bcd5bfd14e195a5a8bb7"
+  },
+  "nativeChanges": [
+    "experiments/relay/src/log/generations/mod.rs",
+    "experiments/relay/src/log/generations/verify_archive_ancestor.rs",
+    "experiments/relay/src/room/log_generations/backup/ancestry.rs",
+    "experiments/relay/src/room/log_generations/backup/mod.rs",
+    "experiments/relay/src/room/log_generations/server_backup/ancestry.rs",
+    "experiments/relay/src/room/log_generations/server_backup/ancestry_tests.rs",
+    "experiments/relay/src/room/log_generations/server_backup/mod.rs",
+    "experiments/relay/src/server/generation_recovery/mod.rs",
+    "experiments/relay/src/server/generation_recovery/physical/asset_state.rs",
+    "experiments/relay/src/server/generation_recovery/physical/capture.rs",
+    "experiments/relay/src/server/generation_recovery/physical/coordinator.rs",
+    "experiments/relay/src/server/generation_recovery/physical/mod.rs",
+    "experiments/relay/src/server/generation_recovery/physical/prepare.rs",
+    "experiments/relay/src/server/generation_recovery/physical/selected.rs",
+    "experiments/relay/src/server/generation_recovery/physical/state.rs",
+    "experiments/relay/src/server/generation_recovery/physical/verification.rs",
+    "experiments/relay/src/server/generation_recovery/tests/mod.rs",
+    "experiments/relay/src/server/generation_recovery/tests/physical/ancestry.rs",
+    "experiments/relay/src/server/generation_recovery/tests/physical/current_cut.rs",
+    "experiments/relay/src/server/generation_recovery/tests/physical/custody.rs",
+    "experiments/relay/src/server/generation_recovery/tests/physical/fixture.rs",
+    "experiments/relay/src/server/generation_recovery/tests/physical/history.rs",
+    "experiments/relay/src/server/generation_recovery/tests/physical/mod.rs",
+    "experiments/relay/src/server/generation_recovery/tests/physical/proof_scope.rs",
+    "experiments/relay/src/server/generation_recovery/tests/physical/selection.rs",
+    "experiments/relay/src/server/generation_recovery/tests/physical/workflows.rs",
+    "experiments/relay/src/server/generation_recovery/tests/workflows.rs",
+    "experiments/relay/src/server/mod.rs",
+    "experiments/relay/tests/log_generations.rs",
+    "experiments/relay/tests/log_generations/physical_host.rs"
+  ],
+  "tests": {
+    "freshRelay": 341,
+    "freshNoNetworking": 267,
+    "physicalHostNativeFunctions": 10,
+    "physicalHostPublicFunctions": 1,
+    "independentNativeHistoryScenarios": 40,
+    "publicNativeProfiles": 10,
+    "scripts": 1527,
+    "existingOptInSkipped": 3
+  },
+  "runtime": {
+    "rebuilt": false,
+    "artifacts": [
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.js",
+        "bytes": 197057,
+        "sha256": "eedaf4d3fbdfd9cfd115484030cc07d3be185aac00c3ccc4922f6df905de40ae",
+        "modifiedAtMs": 1792592625540.0828
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+        "bytes": 13444371,
+        "sha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+        "modifiedAtMs": 1792592625559.278
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.d.ts",
+        "bytes": 76829,
+        "sha256": "fe5579cc17725f1f63cf47ef147a6a570bdb3b6be5c522820e9ce1a61ec21e26",
+        "modifiedAtMs": 1792592625540.6763
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_dependency_inventory.json",
+        "bytes": 124122,
+        "sha256": "6714d5160bc54a23292eebb667a203c3d55358899e0e8df148b2388abf0bd688",
+        "modifiedAtMs": 1792592625565.1223
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/THIRD_PARTY_NOTICES.txt",
+        "bytes": 1380448,
+        "sha256": "4bdd58691c23f4733fd973aff84ebb1a38a670c97c64ce8e4c79c624f594f204",
+        "modifiedAtMs": 1792592625566.9912
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/RUST_COPYRIGHT-library.html",
+        "bytes": 1512520,
+        "sha256": "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6",
+        "modifiedAtMs": 1792592625569.9858
+      }
+    ],
+    "sharedSourcesUnchangedFrom": "311567546f2f394708f05fb29e442bd0979c063c",
+    "sharedNativeSuitesFreshlyRun": false,
+    "scope": "All new Rust implementation and native fixture changes are in the relay only. Shared/core source and all six normal shared runtime artifacts remain unchanged; this does not report a fresh shared/core native suite or rebuild."
+  },
+  "installed": {
+    "format": "breditor/physical-room-operation-installed-consumer",
+    "formatVersion": 1,
+    "passed": true,
+    "source": {
+      "commit": "ddf31de8e4465a6c8dd8ceca737bc5786101fd65",
+      "dirty": true,
+      "sha256": "31febabb63b2a8a8d1f3ab5bee711b728abc7df7ad0983d72ae6232ce41d5cbb",
+      "files": 5277,
+      "bytes": 43985826
+    },
+    "sourceUnchanged": true,
+    "nativeEvidence": {
+      "path": "target/server-generation-inventory-native.json",
+      "bytes": 15342,
+      "sha256": "d9e0b13a8d27d0800d2fc157ab4fea8e83d44c1793a819e2ea06060f1666849e",
+      "modifiedAtMs": 1792601865961.6587
+    },
+    "consumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-physical-room-operation-installed-7HXLno/consumer",
+    "workspaceLinks": false,
+    "strictPublicTypes": true,
+    "registryArtifacts": 45,
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-physical-room-operation-installed-7HXLno/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-physical-room-operation-installed-7HXLno/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "e6b524a4d3b9cab485e6df2ff62af133a3772291ec463fd3bba73934c13ac40f"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-physical-room-operation-installed-7HXLno/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "d428aefa9bd1ef46b2223a506c4a1f37ada004816a08cf005d0222a41808622e"
+      }
+    ],
+    "acceptance": {
+      "format": "breditor/physical-room-client-operation-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "nativeRooms": 10,
+      "cases": 30,
+      "longNativeCuts": 1,
+      "policySnapshots": 30,
+      "restoredParticipants": 36,
+      "restoredComponents": 132,
+      "networkCalls": 0,
+      "participants": 60,
+      "coldParticipants": 120,
+      "files": 180,
+      "oldSignalDetaches": 30,
+      "documentRedo": 27,
+      "reviewRedo": 27,
+      "participantRecordComparisons": 180,
+      "wholeUploadComparisons": 180,
+      "generationAuthors": {
+        "cases": 6,
+        "initialReadOnly": 6,
+        "coldGenerationAuthors": 12,
+        "historicalDocumentComparisons": 12,
+        "historicalReviewComparisons": 12,
+        "futureDocumentComparisons": 6,
+        "futureReviewComparisons": 6,
+        "exactRecords": 12,
+        "wholeUploads": 12,
+        "retainedFiles": 48
+      },
+      "faults": {
+        "initialAbortRetries": 2,
+        "initialLostAckResumes": 2,
+        "sourceReentryRefusals": 2,
+        "parentReentryRefusals": 2,
+        "sourceCloseRefusals": 2,
+        "storageContextRefusals": 2,
+        "parentLostAckRetries": 6,
+        "childLostAckRetries": 4,
+        "releaseRetries": 2,
+        "cleanupRetries": 2,
+        "lateAuthorityRefusals": 2,
+        "lateAbortRefusals": 2,
+        "missingCompleteRefusals": 2,
+        "changedPhysicalFileRefusals": 2,
+        "changedStageRefusals": 2,
+        "closeDuringRestoreResumes": 2,
+        "signalAbortResumes": 2,
+        "preparedCurrentPolicyParticipants": 4,
+        "preparedAppendRefusals": 2,
+        "immutableObserverPolicyRefusals": 2,
+        "immutableObserverEditsRefused": 2
+      },
+      "scope": "Actual original/current physical server+raster files, immutable source/staging/operation stores, mixed native owners and future document/review history. Readonly initial handoff, six additional writable generation-author cohorts across both native wire transports and all three client modes, cold explicit current policy, native continuation and a second exact cold reopen with all selected records and whole uploads. Synthetic storage/locks/raster fixtures; not native-host ancestry integration, provider/client-outbox closure, independent comment-generation sessions, historical-copy disposition, browser qualification, authenticated server activation or V1 approval."
+    },
+    "intentContracts": 41,
+    "sourceProbeSha256": "5080da56ab59579ab1d31fe28ec403f1fd7b0506bbe362fc339de217d9c4b456",
+    "installedProbeSha256": "5c5323d640c8efa8bbff21339e98f643efea924de7f8189b1346630d3d073166",
+    "assertionsUnchanged": true,
+    "sourceUnitSha256": "1d9b03bd96a28ae995a5a3fee339207ac91ac344c676ed9945e0f2c634953ffb",
+    "installedUnitSha256": "d3ecda2e1cb931c770b90b0a7fe7b994bb1bf21cff8e27bd794ca7295822d558",
+    "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "productionModuleCount": 239,
+    "noWorkspaceReactOrSyntheticStorageInProduction": true,
+    "scope": "Fresh offline public packages, exact native physical fixture bytes and unchanged source assertions. Physical client-operation custody, cold explicit permissions and durable native continuation; not native-host ancestry integration, independent comment-generation session support, complete provider/client-outbox closure, historical-copy disposition, browser qualification, authenticated server activation or V1 approval.",
+    "packageBytesUnchangedFrom": "docs/qualification/2026-10-21-physical-room-client-operation.json"
+  },
+  "reports": [
+    {
+      "id": "native-server-generation-inventory",
+      "original": {
+        "path": "target/server-generation-inventory-native.json",
+        "bytes": 15342,
+        "sha256": "d9e0b13a8d27d0800d2fc157ab4fea8e83d44c1793a819e2ea06060f1666849e",
+        "modifiedAtMs": 1792601865961.6587
+      },
+      "copy": {
+        "path": "target/v1-candidate-runs/run-WOoTfd/native-server-generation-inventory-report.json",
+        "bytes": 15342,
+        "sha256": "d9e0b13a8d27d0800d2fc157ab4fea8e83d44c1793a819e2ea06060f1666849e",
+        "modifiedAtMs": 1792602293404.4111
+      }
+    },
+    {
+      "id": "server-generation-inventory",
+      "original": {
+        "path": "target/server-generation-inventory-sdk.json",
+        "bytes": 1809,
+        "sha256": "aedaaec1edcf5cece303c8d7f429bd8aeafe0a2c6ecc8282fa028969b0876608",
+        "modifiedAtMs": 1792601888214.1284
+      },
+      "copy": {
+        "path": "target/v1-candidate-runs/run-WOoTfd/server-generation-inventory-report.json",
+        "bytes": 1809,
+        "sha256": "aedaaec1edcf5cece303c8d7f429bd8aeafe0a2c6ecc8282fa028969b0876608",
+        "modifiedAtMs": 1792602293405.4165
+      }
+    },
+    {
+      "id": "physical-room-catalog",
+      "original": {
+        "path": "target/physical-room-catalog-sdk.json",
+        "bytes": 2215,
+        "sha256": "901a2fd9d62a05c6e682154d7861f6771f31dd32acf77056dc988ebacca7bfa0",
+        "modifiedAtMs": 1792601900594.618
+      },
+      "copy": {
+        "path": "target/v1-candidate-runs/run-WOoTfd/physical-room-catalog-report.json",
+        "bytes": 2215,
+        "sha256": "901a2fd9d62a05c6e682154d7861f6771f31dd32acf77056dc988ebacca7bfa0",
+        "modifiedAtMs": 1792602293406.037
+      }
+    },
+    {
+      "id": "physical-room-stage",
+      "original": {
+        "path": "target/physical-room-stage-sdk.json",
+        "bytes": 2261,
+        "sha256": "3a3fc342a1a83813eb97c453a63cc62ebc07bd4a3eec0ca832470e4f0bf2f9cc",
+        "modifiedAtMs": 1792601932345.786
+      },
+      "copy": {
+        "path": "target/v1-candidate-runs/run-WOoTfd/physical-room-stage-report.json",
+        "bytes": 2261,
+        "sha256": "3a3fc342a1a83813eb97c453a63cc62ebc07bd4a3eec0ca832470e4f0bf2f9cc",
+        "modifiedAtMs": 1792602293406.5454
+      }
+    },
+    {
+      "id": "physical-room-operation",
+      "original": {
+        "path": "target/physical-room-operation-sdk.json",
+        "bytes": 3262,
+        "sha256": "3c3e364d31efdd8d5c46537746aa4b49c23c1f594c5375f6d86d2e0ea8717e51",
+        "modifiedAtMs": 1792602002321.9749
+      },
+      "copy": {
+        "path": "target/v1-candidate-runs/run-WOoTfd/physical-room-operation-report.json",
+        "bytes": 3262,
+        "sha256": "3c3e364d31efdd8d5c46537746aa4b49c23c1f594c5375f6d86d2e0ea8717e51",
+        "modifiedAtMs": 1792602293407.0378
+      }
+    },
+    {
+      "id": "installed-physical-room-operation",
+      "original": {
+        "path": "target/physical-room-operation-installed.json",
+        "bytes": 5094,
+        "sha256": "33fd7c65b394ea89b7ce6cce1e1da7170d59a1dd53b49684c88253b8e8aa007b",
+        "modifiedAtMs": 1792602075857.4326
+      },
+      "copy": {
+        "path": "target/v1-candidate-runs/run-WOoTfd/installed-physical-room-operation-report.json",
+        "bytes": 5094,
+        "sha256": "33fd7c65b394ea89b7ce6cce1e1da7170d59a1dd53b49684c88253b8e8aa007b",
+        "modifiedAtMs": 1792602293407.8245
+      }
+    }
+  ],
+  "reproducedNextDefect": {
+    "repairedInThisCheckpoint": false,
+    "evidence": {
+      "report": {
+        "original": {
+          "path": "target/provider-final-callback-before.json",
+          "bytes": 2348,
+          "sha256": "8316f9dc8abea2f9f914393f0b363025550b79b0b3609a23fd537ce305ad110d",
+          "modifiedAtMs": 1792601544422.8325
+        },
+        "copy": {
+          "path": "target/v1-candidate-runs/run-WOoTfd/provider-final-callback-before.json",
+          "bytes": 2348,
+          "sha256": "8316f9dc8abea2f9f914393f0b363025550b79b0b3609a23fd537ce305ad110d",
+          "modifiedAtMs": 1792602293541.1677
+        }
+      },
+      "binary": {
+        "original": {
+          "path": "target/owned-history-relay-native/release/breditor-provider-final-callback-repro",
+          "bytes": 18864688,
+          "sha256": "ceb4f07884ebd6401810afd2bc29b1f77484f644f83e47a6aeba4ac291cb32d1",
+          "modifiedAtMs": 1792601486385.4502
+        },
+        "copy": {
+          "path": "target/v1-candidate-runs/run-WOoTfd/provider-final-callback-before.bin",
+          "bytes": 18864688,
+          "sha256": "ceb4f07884ebd6401810afd2bc29b1f77484f644f83e47a6aeba4ac291cb32d1",
+          "modifiedAtMs": 1792602293574.7087
+        }
+      },
+      "harness": [
+        {
+          "path": "target/v1-candidate-runs/run-WOoTfd/provider-final-callback-before-Cargo.toml",
+          "bytes": 668,
+          "sha256": "211730d7fa99b7c0d34669df5b1c7c1be1e31993f8c6f38205f3374432e9b875",
+          "modifiedAtMs": 1792602293599.5745
+        },
+        {
+          "path": "target/v1-candidate-runs/run-WOoTfd/provider-final-callback-before-Cargo.lock",
+          "bytes": 53500,
+          "sha256": "456022fe48e3a5b310e78d388808ab318bafbcf638de97449c24898070ab8fa2",
+          "modifiedAtMs": 1792602293600.6035
+        },
+        {
+          "path": "target/v1-candidate-runs/run-WOoTfd/provider-final-callback-before-main.rs",
+          "bytes": 3600,
+          "sha256": "46042145e2e0578d4e7b6622d6d84a01f49f2ba8a630153f8a8b3e7f83b68cac",
+          "modifiedAtMs": 1792602293601.5571
+        }
+      ]
+    },
+    "scope": "An isolated actual public Rust API probe shows that the original server asset-availability path accepts stale Verified or Pending after its final successful provider guard changes its own temporary native log. The subsequent Ready proof recheck refuses. This path is not called by the new physical ancestry contract. Permanent regressions and final native check ordering are the immediate follow-up; no V1 readiness is claimed."
+  },
+  "guarantees": [
+    "Complete immutable ancestor A is proven contained in actual local-origin archive B before constructing the physical wrapper. A and B separately retained in C are insufficient.",
+    "Native file closures, physical manifest lineage, exact closed/readiness/unpublished bytes, the formerly active WAL prefix and every original raster file remain required. Equal logical clocks and byte-valid active forks are not containment.",
+    "Original prepared-host and cold operational origin fields remain B. New closed revision-one metadata separately retains ancestor, localOrigin, current complete server and every current native participant source.",
+    "Actual native/raster custody, complete A/C retention, current capture and protected-stream verification run on blocking native workers under serialized room-then-raster locks. No new router, role, writer, event, provider write, cleanup, acknowledgement or activation.",
+    "Every current document/review protected record, including revoked and permanent observers, remains required. Missing credentials yield Pending only after actual source checks; checksum-valid omissions refuse.",
+    "Weak nonserializable proof binds exact native host/owner and A/B/C cut. It cannot be constructed by Default or Deserialize, keeps no stopped host alive and is not an activation reservation.",
+    "Physical-only rotations, raster-only additions and new registrations stale old proofs. Different actual host or ancestor selections cannot reuse a proof even with equal current bytes.",
+    "One authenticated complete server asset-reference read retains exact A/B/C and whole native Ready/Pending under the existing encoded-result bound.",
+    "Forty independent grammar/transport/document/review native scenarios and ten public-only Rust profiles keep old offline work and future native Undo/Redo. Separate native laws cover forks, reversal, lost/changed stages/files and altered actual control custody without repair."
+  ],
+  "boundaries": [
+    "Native ancestry and existing SDK client-operation parents are qualified separately, not yet connected into one operational parent.",
+    "Complete provider/client-outbox closure, independent comment-generation SDK session integration, historic-copy disposition, deployment fencing and authenticated whole-room activation remain required.",
+    "The new wrapper rechecks actual retained A independently; no private lineage-capsule/transitivity performance optimization or constant-time recovery claim.",
+    "Existing retained-history, Undo, physical-file, raster and memory ceilings are unchanged. Complete archive admission and native cold replay scale with retained history.",
+    "Synthetic SDK storage/locks and Node Wasm regressions are not physical browser, clipboard, IME, screen-reader, mobile or crash-durability qualification.",
+    "All thirteen V1 gates remain open, including complete dependency/license review and the existing generic-btree notice gap. No package version, push, tag, publication or deployment is promoted."
+  ]
+}

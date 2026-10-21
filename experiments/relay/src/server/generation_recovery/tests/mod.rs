@@ -2,6 +2,7 @@
 mod authentication;
 mod current_cut;
 mod custody;
+mod physical;
 mod selection;
 mod source;
 mod workflows;
