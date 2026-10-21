@@ -43,6 +43,22 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The distinct [physical client-operation parent](PHYSICAL_ROOM_CLIENT_OPERATION.md)
+now co-owns actual staged mixed clients, all original/current source files and
+three durable store/lease owners. It replaces both private native guards together,
+cold-reopens complete clients under explicit current permissions and releases
+all clients or none. First owners remain read-only; a completion marker cannot
+manufacture native readiness or promote a permanent review observer. Matching
+native-host ancestry composition, full provider/client closure and server
+activation remain separate architectural work.
+
+Its [functional qualification](qualification/2026-10-21-physical-room-client-operation.json)
+passes 33 selected stages and 1,525 script tests, with three existing opt-in
+skips. The same thirty native mixed cases and interruption assertions pass in
+fresh offline archives. The writable-generation-author cold/future path remains
+a focused follow-up; the existing mixed fixture's generation participant is an
+observer. No source, browser or V1 gate is implicitly waived.
+
 The distinct [physical client stage](PHYSICAL_ROOM_PARTICIPANT_STAGING.md) now
 co-owns the immutable catalog and a separate intent database. It restores mixed
 original/generation clients privately and read-only, pins actual storage context,
@@ -292,9 +308,10 @@ and 1,440 native comment comparisons, both recovery directions and future histor
 
 Next, in architectural risk order:
 
-1. Carry the now-staged complete original/current physical selections and actual
-   read-only client owners into a matching operational parent around the prepared native host. Preserve
-   source ancestry, real owners and refusal of unrequested repair or cleanup.
+1. Compose the physical client-operation parent with the matching prepared native
+   host. Distinguish retained ancestor, actual local restore origin and current
+   complete native cut; restoring a later archive must not relabel it as an older
+   local origin. Preserve actual owners and refusal of unrequested repair/cleanup.
    Keep original formats closed. Address
    retained Undo limits and remaining native staging/replay costs as separate lifetime
    requirements, not by dropping history or widening old bounds.

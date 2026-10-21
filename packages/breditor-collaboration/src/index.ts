@@ -158,6 +158,9 @@ export {SharedPhysicalRoomRecoveryCatalog} from "./physical_room_catalog/catalog
 export {SharedPhysicalRoomParticipantStage} from "./physical_room_stage/stage.js";
 export {SharedPhysicalRoomParticipantStageError,MAX_PHYSICAL_ROOM_STAGE_PARTICIPANTS,MAX_PHYSICAL_ROOM_STAGE_PLAN_BYTES} from "./physical_room_stage/policy.js";
 export type {SharedPhysicalRoomStageParticipant,SharedPhysicalRoomStageOpenOptions,SharedPhysicalRoomStageCheck,SharedPhysicalRoomStageProgress} from "./physical_room_stage/contract.js";
+export {SharedPhysicalRoomClientOperation} from "./physical_room_operation/operation.js";
+export {SharedPhysicalRoomClientOperationError} from "./physical_room_operation/policy.js";
+export type {SharedPhysicalRoomOperationTarget,SharedPhysicalRoomOperationBeginOptions,SharedPhysicalRoomOperationParticipant,SharedPhysicalRoomOperationResumeOptions,SharedPhysicalRoomOperationProgress,SharedPhysicalRoomOperationParts} from "./physical_room_operation/contract.js";
 export {SharedPhysicalRoomRecoveryCatalogError,MAX_PHYSICAL_ROOM_CATALOG_FILES,MAX_PHYSICAL_ROOM_CATALOG_BYTES,MAX_PHYSICAL_ROOM_CATALOG_METADATA_BYTES} from "./physical_room_catalog/policy.js";
 export type {SharedPhysicalRoomRecoveryCatalogSelection,SharedPhysicalRoomRecoveryCatalogMetadata,SharedPhysicalRoomRecoveryCatalogCaptureOptions,SharedPhysicalRoomRecoveryCatalogSource,SharedPhysicalRoomRecoveryCatalogCheck,SharedPhysicalRoomRecoveryCatalogOpenOptions,SharedPhysicalRoomRecoveryCatalogBeginOptions} from "./physical_room_catalog/contract.js";
 export {OperationalSharedGenerationParticipant} from "./generation_operation/operation.js";

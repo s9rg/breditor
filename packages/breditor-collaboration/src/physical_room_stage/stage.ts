@@ -19,12 +19,28 @@ import {physicalStageFailure as fail,physicalStageKnown as known,MAX_PHYSICAL_RO
 import type {SharedPhysicalRoomStageOpenOptions,SharedPhysicalRoomStageParticipant,SharedPhysicalRoomStageCheck,SharedPhysicalRoomStageProgress} from "./contract.js";
 interface Life {closing:boolean;closed:boolean;changed:boolean;committed:boolean}
 interface State {readonly database:string;readonly db:IDBDatabase;readonly lease:RecoveryLease;readonly held:PhysicalCatalogCustody;readonly source:PhysicalStageSource;readonly context:ArchiveIntegrityContext;readonly guard:()=>void;readonly signal:AbortSignal|undefined;readonly life:Life;record:PhysicalStageRecord;pending:PhysicalStageRecord|undefined}
+/** Genuine private ownership, not a portable progress/selection object. */
+export interface PhysicalStageCustody {readonly database:string;readonly db:IDBDatabase;readonly lease:RecoveryLease;readonly held:PhysicalCatalogCustody;readonly source:PhysicalStageSource;readonly record:PhysicalStageRecord;readonly owners:readonly V2StagedParticipant[]}
+let takePhysicalStage:<T>(stage:SharedPhysicalRoomParticipantStage,prepare:(held:PhysicalStageCustody)=>(()=>Promise<{value:T;prepareCommit:()=>void;commit:()=>void}>))=>Promise<T>;
+/** Internal source reservation; every actual readonly owner and source lease transfers together. */
+export function transferPhysicalRoomStage<T>(stage:SharedPhysicalRoomParticipantStage,prepare:(held:PhysicalStageCustody)=>(()=>Promise<{value:T;prepareCommit:()=>void;commit:()=>void}>)):Promise<T>{return takePhysicalStage(stage,prepare);}
 const key=Object.freeze({}),policyOptions=(p:MixedCatalogStagePolicy)=>p.family==="generation"?p.options:p.value.options;
 async function discard(owners:readonly V2StagedParticipant[]):Promise<void>{const results=await Promise.allSettled([...owners].reverse().map(owner=>closeCatalogV2Participant(owner,true)));if(results.some(row=>row.status==="rejected"))throw fail();}
 export class SharedPhysicalRoomParticipantStage {
  readonly #state:State;readonly #owners:V2StagedParticipant[]=[];readonly #rollback=new RecoveryCleanupScope(()=>fail());
  #busy=false;#running:Promise<void>|undefined;#cleanup:Promise<void>|undefined;#cleanupMode:"graceful"|"discard"|undefined;
  private constructor(token:object,state:State){if(token!==key)throw fail("physical_stage_closed");this.#state=state;state.db.onversionchange=()=>{state.life.changed=true;state.db.close();};Object.freeze(this);}
+ static{takePhysicalStage=async<T>(stage:SharedPhysicalRoomParticipantStage,prepare:(held:PhysicalStageCustody)=>(()=>Promise<{value:T;prepareCommit:()=>void;commit:()=>void}>))=>{
+  if(!stage||typeof stage!=="object"||!(#state in stage))throw fail("physical_stage_policy");
+  return stage.#exclusive(async()=>{
+   const s=stage.#state,proceed=prepare({database:s.database,db:s.db,lease:s.lease,held:s.held,source:s.source,record:s.record,owners:Object.freeze([...stage.#owners])});
+   await stage.#rollback.drain();await stage.#retained(true);await stage.#ready();stage.#guard();
+   const result=await proceed();await stage.#retained(true);await stage.#ready();stage.#guard();result.prepareCommit();
+   if(s.life.closed||s.life.closing||s.life.changed||s.signal?.aborted||globalThis.indexedDB!==s.held.factory||globalThis.navigator?.locks!==s.held.locks)throw fail("physical_stage_closed");
+   // No callback, await, native destruction or write after this final local check.
+   result.commit();s.life.closed=true;stage.#owners.splice(0);return result.value;
+  },true);
+ };}
  static begin(options:SharedPhysicalRoomStageOpenOptions):Promise<SharedPhysicalRoomParticipantStage>{return this.#open(options,false);}
  static resume(options:SharedPhysicalRoomStageOpenOptions):Promise<SharedPhysicalRoomParticipantStage>{return this.#open(options,true);}
  static async #open(supplied:SharedPhysicalRoomStageOpenOptions,resume:boolean):Promise<SharedPhysicalRoomParticipantStage>{
@@ -60,10 +76,12 @@ export class SharedPhysicalRoomParticipantStage {
  #guard=():void=>{if(!this.#state.life.committed)throw fail("physical_stage_closed");this.#state.guard();};
  #failure(error:unknown):Error{const s=this.#state;return s.signal?.aborted?fail("physical_stage_aborted"):s.life.closed||s.life.closing||s.life.changed?fail("physical_stage_closed"):known(error);}
  /** Reserve the wait handle before any authority callback can reenter or close this owner. */
- #exclusive<T>(work:()=>Promise<T>):Promise<T>{
+ #exclusive<T>(work:()=>Promise<T>,preserveSuccessorFailure=false):Promise<T>{
   if(this.#busy)throw fail("physical_stage_in_use");this.#busy=true;let done!:()=>void;this.#running=new Promise<void>(resolve=>{done=resolve;});
-  try{return work().catch(error=>{throw this.#failure(error);}).finally(()=>{this.#busy=false;this.#running=undefined;done();});}
-  catch(error){this.#busy=false;this.#running=undefined;done();throw this.#failure(error);}
+  // Internal outgoing custody leaves error classification to the successor.
+  // Otherwise cancellation/authority failures become misleading source storage failures.
+  try{return work().catch(error=>{throw preserveSuccessorFailure?error:this.#failure(error);}).finally(()=>{this.#busy=false;this.#running=undefined;done();});}
+  catch(error){this.#busy=false;this.#running=undefined;done();throw preserveSuccessorFailure?error:this.#failure(error);}
  }
  selection(){return this.#state.source.selection;}
  metadata(){return this.#state.held.state.metadata;}
@@ -120,10 +138,9 @@ export class SharedPhysicalRoomParticipantStage {
  }
  /** Recheck complete source bytes and every actual private native owner, never the marker alone. */
  check():Promise<SharedPhysicalRoomStageCheck>{return this.#exclusive(async()=>{
-  await this.#rollback.drain();await this.#retained(true);const s=this.#state;
-  if(s.record.phase!=="staged"||s.record.participants.length!==this.#owners.length)throw fail("physical_stage_restore");
-  for(const owner of this.#owners)await verifyCatalogV2Participant(owner,this.#guard);this.#guard();return this.#coverage();
+  await this.#rollback.drain();await this.#retained(true);await this.#ready();this.#guard();return this.#coverage();
  });}
+ async #ready():Promise<void>{const s=this.#state;if(s.record.phase!=="staged"||s.record.participants.length!==this.#owners.length)throw fail("physical_stage_restore");for(const owner of this.#owners)await verifyCatalogV2Participant(owner,this.#guard);this.#guard();}
  close():Promise<void>{return this.#close("graceful");}
  discardAndClose():Promise<void>{return this.#close("discard");}
  #close(mode:"graceful"|"discard"):Promise<void>{

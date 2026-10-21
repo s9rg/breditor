@@ -139,6 +139,22 @@ Closed owners release private data maps without deleting durable files. See the
 [staging contract](../../docs/PHYSICAL_ROOM_PARTICIPANT_STAGING.md) for policy
 snapshots, limits, native history tests and remaining operational integration.
 
+## Physical room client continuation
+
+`SharedPhysicalRoomClientOperation` takes an actual completed physical stage,
+keeps the catalog/stage/operation stores and leases together and restores every
+selected native client before an all-or-none disconnected handoff. The initial
+handoff remains read-only; cold resume requires explicit fresh factories and
+current document/review policy. Saved completion never substitutes for native
+readiness, and permanent review observers cannot be promoted into commenters.
+
+The separate intent never rewrites the source schemas or duplicates their large
+files. Exact retries, partial-progress recovery and close/cancellation retain
+all histories, uploads and unresolved historical copies. This is client-side
+continuation, not native-host ancestry transfer, provider reconciliation or
+authenticated server activation. See the
+[client-operation contract](../../docs/PHYSICAL_ROOM_CLIENT_OPERATION.md).
+
 ## Retained image references
 
 `core.supportsRetainedAssetReferences()` requires the complete optional native

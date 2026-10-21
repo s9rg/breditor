@@ -133,8 +133,10 @@ profile, browser qualification or permission to release.
 
 ## Remaining integration
 
-This stage does not transfer continued native-host ancestry or form the matching
-operational room parent. Independent comment-generation session integration,
+The distinct [physical client-operation parent](PHYSICAL_ROOM_CLIENT_OPERATION.md)
+now carries these actual owners and all source leases through restartable client
+continuation. Neither stage nor client parent transfers continued native-host
+ancestry or activates a server. Independent comment-generation session integration,
 complete provider mappings and byte closure, every client/outbox, historic-copy
 disposition and authenticated whole-room activation remain required. An archive
 digest or `staged` marker does not grant current account permissions or create a

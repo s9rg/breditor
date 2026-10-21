@@ -1,0 +1,439 @@
+{
+  "format": "breditor/physical-room-client-operation-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-21",
+  "passed": true,
+  "source": {
+    "commit": "f1c61b49d11f0c4410ccc993f3937df0060a4a89",
+    "dirty": true,
+    "sha256": "807e8248cd120bd0f349476af9b42c9fee15a53211cd345657b9a12f19074391",
+    "files": 5249,
+    "bytes": 43858903
+  },
+  "qualification": {
+    "path": "target/v1-candidate-runs/run-bbTgiF/result.json",
+    "bytes": 51001,
+    "sha256": "9303aa9876d75a179eb44b1c056efd99fe7cb65d644a3aff3ec27e0efb5a7628",
+    "modifiedAtMs": 1792599003469.011
+  },
+  "selectedStages": 33,
+  "fullFunctionalPlanRun": false,
+  "functionalPlanChecks": 196,
+  "openV1Gates": 13,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "nonDocumentation": {
+    "files": 4698,
+    "sha256": "c5ce878bc899e80c1df70a9ec1af6be3f84d4e7fb5d57013334c70637077e97b"
+  },
+  "nativeInputs": {
+    "files": 2923,
+    "sha256": "d7a512c1f8bd24d08e66a7f568fc702b822309134a3bd23e789842a014233466"
+  },
+  "nativeSuitesFreshlyRun": false,
+  "carriedNativeQualification": {
+    "path": "docs/qualification/2026-10-21-live-history-staging.json",
+    "bytes": 18840,
+    "sha256": "a08b0aa3adf6ef6dbc94122c3ea01dc7fea2588f64ac59fbcb848be38068ae01",
+    "modifiedAtMs": 1792594356239.2805
+  },
+  "carriedNativeTests": {
+    "collaboration": 669,
+    "relay": 325,
+    "noNetworking": 264,
+    "independentReview": 3,
+    "nativeLiveStagingLaws": 3
+  },
+  "scripts": {
+    "passed": 1525,
+    "existingOptInSkipped": 3
+  },
+  "beforeFailure": {
+    "result": {
+      "path": "target/v1-candidate-runs/run-bbTgiF/positive-before-result.json",
+      "bytes": 1723,
+      "sha256": "67f57f176bb7467a20fcff0ee884642937b5648a3a82e7061c4d808caf7870f1",
+      "modifiedAtMs": 1792599069958.9785
+    },
+    "log": {
+      "path": "target/v1-candidate-runs/run-bbTgiF/positive-before.log",
+      "bytes": 3434,
+      "sha256": "dbf55be78a0b28048c9eea22a29e4dfb24f9826bd657be42259377b3197dec5d",
+      "modifiedAtMs": 1792599069959.243
+    },
+    "expected": "physical_operation_aborted",
+    "actual": "physical_operation_storage",
+    "note": "The unchanged native initial-ack cancellation assertion expected physical_operation_aborted, but the source stage rewrote the successor's cancellation into physical_operation_storage. The private outgoing handoff now preserves successor errors; ordinary public stage error translation remains unchanged. This was an error-classification defect, not observed loss of committed data."
+  },
+  "runtime": {
+    "wasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "artifacts": [
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.js",
+        "bytes": 197057,
+        "sha256": "eedaf4d3fbdfd9cfd115484030cc07d3be185aac00c3ccc4922f6df905de40ae",
+        "modifiedAtMs": 1792592625540.0828
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+        "bytes": 13444371,
+        "sha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+        "modifiedAtMs": 1792592625559.278
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.d.ts",
+        "bytes": 76829,
+        "sha256": "fe5579cc17725f1f63cf47ef147a6a570bdb3b6be5c522820e9ce1a61ec21e26",
+        "modifiedAtMs": 1792592625540.6763
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_dependency_inventory.json",
+        "bytes": 124122,
+        "sha256": "6714d5160bc54a23292eebb667a203c3d55358899e0e8df148b2388abf0bd688",
+        "modifiedAtMs": 1792592625565.1223
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/THIRD_PARTY_NOTICES.txt",
+        "bytes": 1380448,
+        "sha256": "4bdd58691c23f4733fd973aff84ebb1a38a670c97c64ce8e4c79c624f594f204",
+        "modifiedAtMs": 1792592625566.9912
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/RUST_COPYRIGHT-library.html",
+        "bytes": 1512520,
+        "sha256": "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6",
+        "modifiedAtMs": 1792592625569.9858
+      }
+    ],
+    "comparisons": {
+      "original-document-runtime-comparison": {
+        "format": "breditor/shared-v1-runtime-comparison",
+        "formatVersion": 1,
+        "beforeWasmSha256": "1836883c3c306ed10b5d7306812fdc628152915836f84d1c0d6d9d2e49096e4f",
+        "afterWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+        "comparedCheckpoints": 49,
+        "crossVersionRestores": 2,
+        "futureHistorySteps": 12,
+        "modelVersion": 11,
+        "journalVersion": 12,
+        "passed": true
+      },
+      "original-review-runtime-comparison": {
+        "format": "breditor/original-review-runtime-comparison",
+        "formatVersion": 1,
+        "passed": true,
+        "beforeWasmSha256": "1836883c3c306ed10b5d7306812fdc628152915836f84d1c0d6d9d2e49096e4f",
+        "afterWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+        "cases": 72,
+        "exactNativeComparisons": 1440,
+        "crossVersionRestores": 144,
+        "futureHistoryComparisons": 1080,
+        "scope": "Exact original native review checkpoints, event frames, views, actor clocks and document cuts in actual old/new application Wasm; both cross-version recovery directions and future Undo/Redo. No new review-family capability is assumed in the old build."
+      }
+    }
+  },
+  "sourceAcceptance": {
+    "format": "breditor/physical-room-client-operation-probe",
+    "formatVersion": 1,
+    "passed": true,
+    "nativeRooms": 10,
+    "cases": 30,
+    "longNativeCuts": 1,
+    "policySnapshots": 30,
+    "restoredParticipants": 30,
+    "restoredComponents": 120,
+    "networkCalls": 0,
+    "participants": 60,
+    "coldParticipants": 120,
+    "files": 180,
+    "oldSignalDetaches": 30,
+    "documentRedo": 27,
+    "reviewRedo": 27,
+    "participantRecordComparisons": 180,
+    "wholeUploadComparisons": 180,
+    "faults": {
+      "initialAbortRetries": 2,
+      "initialLostAckResumes": 2,
+      "sourceReentryRefusals": 2,
+      "parentReentryRefusals": 2,
+      "sourceCloseRefusals": 2,
+      "storageContextRefusals": 2,
+      "parentLostAckRetries": 6,
+      "childLostAckRetries": 4,
+      "releaseRetries": 2,
+      "cleanupRetries": 2,
+      "lateAuthorityRefusals": 2,
+      "lateAbortRefusals": 2,
+      "missingCompleteRefusals": 2,
+      "changedPhysicalFileRefusals": 2,
+      "changedStageRefusals": 2,
+      "closeDuringRestoreResumes": 2,
+      "signalAbortResumes": 2,
+      "preparedCurrentPolicyParticipants": 4,
+      "preparedAppendRefusals": 2,
+      "immutableObserverPolicyRefusals": 2,
+      "immutableObserverEditsRefused": 2
+    },
+    "scope": "Actual original/current physical server+raster files, immutable source/staging/operation stores, mixed native owners and future document/review history. Readonly initial handoff, cold explicit current policy, native continuation and a second exact cold reopen with all selected records and whole uploads. Synthetic storage/locks/raster fixtures; not native-host ancestry integration, provider/client-outbox closure, independent comment-generation sessions, historical-copy disposition, browser qualification, authenticated server activation or V1 approval."
+  },
+  "installed": {
+    "evidence": {
+      "path": "target/v1-candidate-runs/run-bbTgiF/reports/physical-room-operation-installed.json",
+      "bytes": 4630,
+      "sha256": "7774f141ffd7ff76069031acc1bfc3a0c126df6fb3f02e528446e4bf47e36630",
+      "modifiedAtMs": 1792599069957.1577
+    },
+    "consumer": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-physical-room-operation-installed-vGsCb4/consumer",
+    "workspaceLinks": false,
+    "strictPublicTypes": true,
+    "assertionsUnchanged": true,
+    "registryArtifacts": 45,
+    "intentContracts": 41,
+    "acceptance": {
+      "format": "breditor/physical-room-client-operation-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "nativeRooms": 10,
+      "cases": 30,
+      "longNativeCuts": 1,
+      "policySnapshots": 30,
+      "restoredParticipants": 30,
+      "restoredComponents": 120,
+      "networkCalls": 0,
+      "participants": 60,
+      "coldParticipants": 120,
+      "files": 180,
+      "oldSignalDetaches": 30,
+      "documentRedo": 27,
+      "reviewRedo": 27,
+      "participantRecordComparisons": 180,
+      "wholeUploadComparisons": 180,
+      "faults": {
+        "initialAbortRetries": 2,
+        "initialLostAckResumes": 2,
+        "sourceReentryRefusals": 2,
+        "parentReentryRefusals": 2,
+        "sourceCloseRefusals": 2,
+        "storageContextRefusals": 2,
+        "parentLostAckRetries": 6,
+        "childLostAckRetries": 4,
+        "releaseRetries": 2,
+        "cleanupRetries": 2,
+        "lateAuthorityRefusals": 2,
+        "lateAbortRefusals": 2,
+        "missingCompleteRefusals": 2,
+        "changedPhysicalFileRefusals": 2,
+        "changedStageRefusals": 2,
+        "closeDuringRestoreResumes": 2,
+        "signalAbortResumes": 2,
+        "preparedCurrentPolicyParticipants": 4,
+        "preparedAppendRefusals": 2,
+        "immutableObserverPolicyRefusals": 2,
+        "immutableObserverEditsRefused": 2
+      },
+      "scope": "Actual original/current physical server+raster files, immutable source/staging/operation stores, mixed native owners and future document/review history. Readonly initial handoff, cold explicit current policy, native continuation and a second exact cold reopen with all selected records and whole uploads. Synthetic storage/locks/raster fixtures; not native-host ancestry integration, provider/client-outbox closure, independent comment-generation sessions, historical-copy disposition, browser qualification, authenticated server activation or V1 approval."
+    },
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-physical-room-operation-installed-vGsCb4/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-physical-room-operation-installed-vGsCb4/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "e6b524a4d3b9cab485e6df2ff62af133a3772291ec463fd3bba73934c13ac40f"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-physical-room-operation-installed-vGsCb4/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "d428aefa9bd1ef46b2223a506c4a1f37ada004816a08cf005d0222a41808622e"
+      }
+    ],
+    "productionModuleCount": 239,
+    "noWorkspaceReactOrSyntheticStorageInProduction": true
+  },
+  "reports": [
+    {
+      "stage": "native-runtime-unchanged-carry",
+      "evidence": {
+        "path": "target/v1-candidate-runs/run-bbTgiF/reports/physical-room-operation-native-carry.json",
+        "bytes": 4587,
+        "sha256": "29f2d84bc24168d3251c4e376525e0f4402d52b627c25a6ed24156e7ca7ce8c3",
+        "modifiedAtMs": 1792599069947.7024
+      }
+    },
+    {
+      "stage": "native-room-participant-inventory",
+      "evidence": {
+        "path": "target/v1-candidate-runs/run-bbTgiF/reports/room-participant-inventory-native.json",
+        "bytes": 9773,
+        "sha256": "119e62c47af0bcce0453cca27169846a7ace0ef81e5ee4edf8563a760d9336b6",
+        "modifiedAtMs": 1792599069948.5764
+      }
+    },
+    {
+      "stage": "room-participant-inventory",
+      "evidence": {
+        "path": "target/v1-candidate-runs/run-bbTgiF/reports/room-participant-inventory-sdk.json",
+        "bytes": 2246,
+        "sha256": "3e6820bd6a4b172d2d78f24c99efa481d3ba3ad84aadd1c14b630ff390f6046f",
+        "modifiedAtMs": 1792599069949.6726
+      }
+    },
+    {
+      "stage": "generation-room-inventory",
+      "evidence": {
+        "path": "target/v1-candidate-runs/run-bbTgiF/reports/generation-room-inventory-sdk.json",
+        "bytes": 2141,
+        "sha256": "fe8d55e0b877ccb0b637f945eda4e4a7f0464b0d8e691b202a8d0874365decb8",
+        "modifiedAtMs": 1792599069950.4265
+      }
+    },
+    {
+      "stage": "native-server-generation-inventory",
+      "evidence": {
+        "path": "target/v1-candidate-runs/run-bbTgiF/reports/server-generation-inventory-native.json",
+        "bytes": 15339,
+        "sha256": "f58906d8d6c273d3cd7ebc02213eab7847d9b6538e3288a6a542b4b8340ae033",
+        "modifiedAtMs": 1792599069951.1096
+      }
+    },
+    {
+      "stage": "server-generation-inventory",
+      "evidence": {
+        "path": "target/v1-candidate-runs/run-bbTgiF/reports/server-generation-inventory-sdk.json",
+        "bytes": 1809,
+        "sha256": "5379acd24821095bbb8d427dd33fc6a993374f8a393e877a46d3d673f88a8435",
+        "modifiedAtMs": 1792599069951.6362
+      }
+    },
+    {
+      "stage": "physical-room-catalog",
+      "evidence": {
+        "path": "target/v1-candidate-runs/run-bbTgiF/reports/physical-room-catalog-sdk.json",
+        "bytes": 2215,
+        "sha256": "104936d14fdd78ffcf61d0f30991d158365bb30eb998295b16d93293ab96833f",
+        "modifiedAtMs": 1792599069952.1196
+      }
+    },
+    {
+      "stage": "physical-room-stage",
+      "evidence": {
+        "path": "target/v1-candidate-runs/run-bbTgiF/reports/physical-room-stage-sdk.json",
+        "bytes": 2261,
+        "sha256": "e4dbb8228551d4ba95d2c567cb3cbb19c61ed3ff6a2bae2532c0326cb7b7a675",
+        "modifiedAtMs": 1792599069952.6638
+      }
+    },
+    {
+      "stage": "physical-room-operation",
+      "evidence": {
+        "path": "target/v1-candidate-runs/run-bbTgiF/reports/physical-room-operation-sdk.json",
+        "bytes": 2798,
+        "sha256": "872654bc2973cdb64ae1144e98cd5b71665fb5dc42931017b7647136252e4e9b",
+        "modifiedAtMs": 1792599069953.1697
+      }
+    },
+    {
+      "stage": "room-recovery-catalog-v2",
+      "evidence": {
+        "path": "target/v1-candidate-runs/run-bbTgiF/reports/room-recovery-catalog-v2-sdk.json",
+        "bytes": 3326,
+        "sha256": "8d620ad2138b3197d91556e904bad0af2a0bbd97fd4ef4076099980637e57123",
+        "modifiedAtMs": 1792599069953.615
+      }
+    },
+    {
+      "stage": "room-operational-recovery-v2",
+      "evidence": {
+        "path": "target/v1-candidate-runs/run-bbTgiF/reports/room-operational-recovery-v2-sdk.json",
+        "bytes": 3164,
+        "sha256": "93153eeb97dd2879fa45fb78028089346aee275410b921c95fb299f5baa407cd",
+        "modifiedAtMs": 1792599069954.229
+      }
+    },
+    {
+      "stage": "generation-room-custody",
+      "evidence": {
+        "path": "target/v1-candidate-runs/run-bbTgiF/reports/generation-room-custody-sdk.json",
+        "bytes": 1739,
+        "sha256": "3e8213011b26b8d68e8dc7d7a7c58888f551000e83dc088b12a4616c189ff83f",
+        "modifiedAtMs": 1792599069954.7876
+      }
+    },
+    {
+      "stage": "mixed-room-custody",
+      "evidence": {
+        "path": "target/v1-candidate-runs/run-bbTgiF/reports/mixed-room-custody-sdk.json",
+        "bytes": 3039,
+        "sha256": "639825f3eca186b6ae19e08da5716bd2e2231d6ee63b9a7b8e56a7f3508f4dcb",
+        "modifiedAtMs": 1792599069955.1245
+      }
+    },
+    {
+      "stage": "installed-server-generation-inventory",
+      "evidence": {
+        "path": "target/v1-candidate-runs/run-bbTgiF/reports/server-generation-inventory-installed.json",
+        "bytes": 3667,
+        "sha256": "dc7fca56c7348a933b2f5b4e2ded618c9ed2d646dce715bde57e6243e3ff5898",
+        "modifiedAtMs": 1792599069955.5679
+      }
+    },
+    {
+      "stage": "installed-physical-room-catalog",
+      "evidence": {
+        "path": "target/v1-candidate-runs/run-bbTgiF/reports/physical-room-catalog-installed.json",
+        "bytes": 4294,
+        "sha256": "62f55150d3b03cca56c35416ddb6392a1ba1bcde5fb67a7fc8fe31c138f46d0d",
+        "modifiedAtMs": 1792599069956.1392
+      }
+    },
+    {
+      "stage": "installed-physical-room-stage",
+      "evidence": {
+        "path": "target/v1-candidate-runs/run-bbTgiF/reports/physical-room-stage-installed.json",
+        "bytes": 4421,
+        "sha256": "ea8bfa6429ec8c5ea866d9e1a45720779c641483ca35657691a9cfc7afd897ac",
+        "modifiedAtMs": 1792599069956.7725
+      }
+    },
+    {
+      "stage": "installed-physical-room-operation",
+      "evidence": {
+        "path": "target/v1-candidate-runs/run-bbTgiF/reports/physical-room-operation-installed.json",
+        "bytes": 4630,
+        "sha256": "7774f141ffd7ff76069031acc1bfc3a0c126df6fb3f02e528446e4bf47e36630",
+        "modifiedAtMs": 1792599069957.1577
+      }
+    },
+    {
+      "stage": "installed-room-recovery-catalog-v2",
+      "evidence": {
+        "path": "target/v1-candidate-runs/run-bbTgiF/reports/room-recovery-catalog-v2-installed-consumer.json",
+        "bytes": 15132,
+        "sha256": "abda600272ede896ae23c8d802948351b3c4eeedb1d40b894c441bc22a1fad0b",
+        "modifiedAtMs": 1792599069957.616
+      }
+    },
+    {
+      "stage": "installed-room-operational-recovery-v2",
+      "evidence": {
+        "path": "target/v1-candidate-runs/run-bbTgiF/reports/room-operational-recovery-v2-installed-consumer.json",
+        "bytes": 18325,
+        "sha256": "fb3ca98cea7926aa738961861d9377c5b9058d28b4d4982a947edd9f27292341",
+        "modifiedAtMs": 1792599069958.0684
+      }
+    }
+  ],
+  "boundaries": [
+    "Separate client-operation family pins all three actual stores and source leases. The original physical catalog, staging schema, old V2 parent and original native protocol meanings/defaults are unchanged.",
+    "The initial actual native handoff is read-only. Cold resume requires fresh explicit current permissions and every real native store. Immutable review observers cannot become commenters; the entire invalid cohort refuses before any client operation opens.",
+    "Source and fresh offline installed archives each pass 30 native mixed cases, 60 initial and 120 cold client owners, 180 retained files, 180 native record comparisons, 180 whole-upload comparisons and 27 future document/review Redo comparisons.",
+    "Both native transports cover interrupted initial/child/parent commits, source/parent reentrancy, changed storage, lost acknowledgements, retryable cleanup/release, late authority/cancellation, missing completed stores, changed files/intent and blocked native restoration. Prepared current policy is explicit; an unpublished native append refuses unchanged.",
+    "The main mixed fixture pairs an original author with a read-only generation observer. A focused writable-generation-author cold/future test is planned separately; do not report the existing 27 Redo comparisons as writable-generation-author coverage.",
+    "All 2,923 native inputs and six normal-runtime artifacts match the committed 37-stage native qualification. Those suites are explicitly carried, not freshly rerun; exact-source native fixture producers, all selected source probes and independent installed probes run freshly.",
+    "The parent exposes disconnected client parts, not native-host ancestry or authenticated activation. Unselected historical copies remain retained and unresolved. Ancestor/local-origin/current composition, full provider/client-outbox closure, independent comment-generation sessions, historical-copy disposition and deployment fencing remain work.",
+    "No physical-browser, IME/VoiceOver, aggregate resource/latency, full functional profile, license approval, public API freeze, version promotion, push/tag/publication or deployment is inferred. All thirteen V1 gates remain open."
+  ]
+}
