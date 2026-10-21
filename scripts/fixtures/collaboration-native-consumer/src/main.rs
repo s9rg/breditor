@@ -8,6 +8,7 @@ use breditor_collaboration::{
     },
 };
 use serde_json::{Value, json};
+mod segmented_candidates;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let profile = SharedRichProfile::from_standard_configuration_json_v1(
@@ -92,6 +93,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(recovered.retained_asset_references_guarded(&recovered.observe()?)?, references);
     recovered.redo()?;
     assert!(recovered.document_json().contains("replacement-generation"));
+    segmented_candidates::verify(&profile, recovered)?;
     println!(
         "Independent native configured profile, offline merge, retained image references and recovered future history passed"
     );

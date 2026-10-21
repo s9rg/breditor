@@ -23,10 +23,17 @@ impl Room {
         recorded_frame: Option<&str>,
     ) -> Result<EffectPreparation> {
         let state = self.suggestions_state()?;
-        let mut owner = self.profile.restore_document(
-            self.replica.document_id(),
-            &state.effect_owner.document_checkpoint()?,
-        )?;
+        let mut owner = if state.effect_owner.segmented_history_enabled() {
+            self.profile.restore_segmented(
+                self.replica.document_id(),
+                &state.effect_owner.segmented_checkpoint()?,
+            )?
+        } else {
+            self.profile.restore_document(
+                self.replica.document_id(),
+                &state.effect_owner.document_checkpoint()?,
+            )?
+        };
         owner.receive_frame(&self.replica.update_frame()?)?;
         if owner.document_json() != self.replica.document_json() {
             return Err(Error::Contract("suggestion effect source differs from accepted room"));
@@ -58,8 +65,12 @@ impl Room {
         {
             return Err(Error::Contract("recorded suggestion effect differs from native intent"));
         }
-        receiver.checkpoint()?;
-        owner.document_checkpoint()?;
+        self.check_prepared_document_history(&receiver)?;
+        if owner.segmented_history_enabled() {
+            owner.segmented_checkpoint()?;
+        } else {
+            owner.document_checkpoint()?;
+        }
         receiver.update_frame()?;
         Ok(EffectPreparation::Ready(Box::new(PreparedEffect { owner, receiver, effect, frame })))
     }

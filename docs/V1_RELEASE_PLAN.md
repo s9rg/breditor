@@ -43,6 +43,59 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The reference host now supports independent
+[native document and comment generations](SERVER_NATIVE_HISTORY_GENERATIONS.md),
+including the private suggestion-effect author's retained history. Explicit
+owner-side Enable/Seal calls stage complete native candidates, sync one durable
+boundary record, then publish. Identical retries return their original global
+receipt even after later boundaries or cold recovery. Original constructors,
+transport meanings and bounds remain unchanged; these calls do not rotate the
+physical server log or activate a recovered room.
+
+The [server-native qualification](qualification/2026-10-21-server-native-history-generations.json)
+passes all 65 selected architecture checks on one frozen working tree: fresh
+2,643 workspace, 661 shared and 228 relay Rust tests, three canonical research
+contracts, 1,330 script contracts and 385 editor tests. A separate no-networking
+pass covers 119 Rust cases. Both normal Wasm producers rebuild, and source/fresh
+offline public archives repeat the independent 72-facade and 576-storage matrices.
+The three existing opt-in script skips remain skips. This is a selection from the
+176-check functional plan, not the whole plan or release approval.
+
+The native matrices cover 40 server profile/transport/history combinations,
+10 effect-author creation orders, mixed heading/table/caption owned acceptance,
+exact cold recovery and future peer-preserving Undo/Redo. A real 1,025-input
+workflow crosses two native seals while retaining one Undo item; it does not
+raise the 1,000-item Undo ceiling. Joined log/raster recovery additionally keeps
+exact native cuts, asset references and original image bytes; that public case
+passes 16 repeated runs across both feature configurations.
+
+The reproduced segmented suggestion-preparation bug used an original-only
+checkpoint preflight. Separate staged getters now validate the selected family;
+the same positive 144-configuration assertion passes after failing before the
+repair, alongside 288 transport configurations and an external copied Rust
+consumer. An independently reproduced temporary-fixture collision is also fixed:
+cleanup custody begins only after exclusive creation succeeds, without test
+serialization. Original-runtime comparisons preserve 49 document checkpoints
+and 1,440 native comment comparisons, both recovery directions and future history.
+
+Next, in architectural risk order:
+
+1. Implement explicit server-log generations with complete multi-file recovery,
+   stable global receipts and independently guarded physical heads. Keep original
+   formats closed. Address retained Undo limits and live staging/replay costs as
+   separate lifetime requirements, not by dropping history or widening old bounds.
+2. Complete matching independent-history source, participant, asset and outbox
+   readers, then provider/client reconciliation and historic-copy disposition.
+3. Implement authenticated whole-room activation with fresh host authority;
+   valid archived bytes must not create a second live writer.
+4. Extend native node/restricted-editing contracts before their product controls,
+   preserving selection, history, interchange and collaboration semantics.
+
+All 13 V1 gates remain open. No version, push, tag, publication or deployment is
+promoted. Browser-specific polish and platform qualification remain later work.
+
+### Previous independent SDK storage checkpoint
+
 The SDK now exposes independent native comment generations and a separate
 [atomic client history store](INDEPENDENT_HISTORY_STORAGE.md). Document and
 comment histories each select original or segmented recovery explicitly. One
@@ -75,14 +128,11 @@ three existing opt-in script skips remain unqualified platform work. Native
 Undo/archive ceilings remain; live saves still serialize complete bounded
 histories. Neither unlimited retention nor an approved latency envelope is implied.
 
-The next architectural work is compatible native server/log generations, then
-complete provider/client and asset/outbox recovery closure and authenticated
-whole-room activation. Server admission must validate a prepared candidate in
-its explicitly selected native history family before durable publication; its
-current original-only document checkpoint preflight is not sufficient for a
-generation-enabled server. Structural extension parity follows these integrity
-requirements. All 13 V1 gates remain open. No version, push, tag, publication or
-deployment is promoted.
+At this SDK-only checkpoint, compatible native server admission was still work.
+The current native checkpoint above repairs its original-only preflight and
+adds explicit retention boundaries. Physical log generations, complete
+provider/client and asset/outbox recovery closure, authenticated activation and
+structural extension parity remain required. All 13 V1 gates remain open.
 
 ### Previous read-only native checkpoint
 

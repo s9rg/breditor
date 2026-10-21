@@ -66,6 +66,13 @@ pub(crate) enum Event {
         actor: String,
         binding: String,
     },
+    NativeHistoryBoundaryV1 {
+        actor: String,
+        lane: crate::ServerNativeHistoryLane,
+        boundary: crate::room::NativeHistoryBoundary,
+        before: [u8; 32],
+        after: [u8; 32],
+    },
     GrantReviewV1 {
         actor: String,
         principal: String,

@@ -12,6 +12,8 @@ mod info;
 #[cfg(test)]
 mod observer_sealing_tests;
 #[cfg(test)]
+mod prepared_candidate_tests;
+#[cfg(test)]
 mod read_only_archive_tests;
 mod restore_segmented_history;
 mod seal_history_segment;
@@ -19,6 +21,8 @@ mod seal_observer_history_segment;
 mod seal_read_only_history_segment;
 mod segment;
 mod state;
+#[cfg(test)]
+mod suggestion_admission_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]

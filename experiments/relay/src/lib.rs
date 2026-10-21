@@ -57,6 +57,10 @@ pub use room::{
     MAX_SERVER_ROOM_BACKUP_BYTES, OperationalServerRoom, RecoveredServerRoom, ServerRoomBackup,
     ServerRoomBackupIdentity, ServerRoomBackupInfo, ServerRoomRecovery, ServerRoomRecoveryProgress,
 };
+pub use room::{
+    ServerNativeHistoryBoundary, ServerNativeHistoryDescriptor, ServerNativeHistoryFamily,
+    ServerNativeHistoryLane, ServerNativeHistoryReceipt,
+};
 
 /// Explicit service rejection. An I/O failure may have reached storage without an acknowledgement;
 /// reopen and retry the exact group instead of assuming that the write was lost.

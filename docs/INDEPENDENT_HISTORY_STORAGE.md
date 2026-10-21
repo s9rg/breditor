@@ -114,9 +114,12 @@ Source and fresh offline installed consumers must repeat exact cold pairs,
 future native Undo/Redo, old offline peer input, version packets, failed/uncertain
 saves, cross-lane ID collisions and resource-custody refusals. Synthetic
 IndexedDB/Web Locks qualify functional transactions, not physical crash durability
-or cross-device fencing. Native server/log generations, complete source/asset
-and participant readers, provider/client reconciliation, historic-copy decisions
-and authenticated whole-room activation remain separate work.
+or cross-device fencing. The reference host now supports explicit
+[native document/comment retention](SERVER_NATIVE_HISTORY_GENERATIONS.md),
+without selecting this client store or rotating its physical log. Matching
+complete source/asset and participant readers, physical server-log generations,
+provider/client reconciliation, historic-copy decisions and authenticated
+whole-room activation remain separate work.
 
 The [2026-10-21 SDK/storage qualification](qualification/2026-10-21-independent-history-storage.json)
 passes all 36 selected stages, including the same 576-configuration storage

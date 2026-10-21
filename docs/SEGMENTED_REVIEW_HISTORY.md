@@ -10,8 +10,10 @@ The native implementation and normal application Wasm pass the
 [functional qualification](qualification/2026-10-20-native-review-generations.json),
 including fresh offline public archives. The subsequent
 [SDK/storage qualification](qualification/2026-10-21-independent-history-storage.json)
-adds an explicit facade and separate atomic client store. Relay negotiation
-and participant/room integration remain work. The original review
+adds an explicit facade and separate atomic client store. The
+[native server checkpoint](SERVER_NATIVE_HISTORY_GENERATIONS.md) adds explicit
+comment retention with a permanently read-only server observer. Relay negotiation,
+physical log generations and participant/room integration remain work. The original review
 checkpoint and event-frame meanings and defaults stay unchanged.
 
 ## Select and seal explicitly
@@ -109,10 +111,11 @@ Replay admission uses an immutable birth index, checked against the preserved
 full-prefix validator on valid and corrupted histories. Actual live authority
 and visible register materialization retain their original implementation.
 Atomic SDK heads select both native owners explicitly; neither local/relay
-transport nor a document segment implies segmented comments. The relay also
-needs an explicit native document/comment history profile as well as log
-generations. Reconnecting offline peers requires compatible capabilities without
-resetting their actors or counters.
+transport nor a document segment implies segmented comments. The native reference
+host now selects document/comment retention explicitly; this does not negotiate
+a policy for an older client or rotate its log. Matching relay/client
+capabilities and physical log generations remain required. Reconnecting offline
+peers must preserve their original actors and counters.
 
 The opt-in Wasm owner exposes the explicit version-one family through
 `review_history_generation_version`, `review_history_family`, the author and

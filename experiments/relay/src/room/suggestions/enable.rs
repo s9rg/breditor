@@ -22,7 +22,12 @@ impl Room {
             &self.replica.update_frame()?,
         )?;
         effect_owner.enable_document_selection_guarded(&effect_owner.observe()?)?;
-        effect_owner.document_checkpoint()?;
+        self.configure_effect_history(&mut effect_owner)?;
+        if effect_owner.segmented_history_enabled() {
+            effect_owner.segmented_checkpoint()?;
+        } else {
+            effect_owner.document_checkpoint()?;
+        }
         Ok(SuggestionsState {
             binding: binding.into(),
             enabled_at,

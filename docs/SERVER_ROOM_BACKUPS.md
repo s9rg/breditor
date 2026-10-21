@@ -12,6 +12,14 @@ final decisions already in that log. Ephemeral leases and presence are not in th
 log. Client Undo stacks, unsent offline work, raster-store files and the host's
 account-authentication configuration remain separate recovery components.
 
+Explicit [native history boundaries](SERVER_NATIVE_HISTORY_GENERATIONS.md) now
+add typed `NativeHistoryBoundaryV1` records. Complete log replay retains the
+document/comment archives, private effect-author history and original boundary
+receipts alongside earlier accepted work. Existing outer backup framing and
+log bounds stay unchanged. An older reader that does not understand the new
+event must refuse it, not omit the boundary or flatten its retained history.
+These records do not implement physical log rotation.
+
 ## Capture through the live Rust owner
 
 ```rust

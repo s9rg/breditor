@@ -1,5 +1,18 @@
 # V1 candidate checks
 
+The native suites and public Rust consumer now include the
+[server-native retention laws](SERVER_NATIVE_HISTORY_GENERATIONS.md): 144
+suggestion-preparation and 288 staged-transport configurations, 40 independent
+server families, ten private-effect creation orders, real history beyond 1,000
+inputs, exact receipt retry and cold recovery. Public joined recovery keeps
+native cuts, asset references and original rasters without overwriting later
+service work. Same-clock/parallel fixture reservations must preserve cleanup
+custody; tests do not serialize threads to hide collisions. Existing mandatory
+native, public-backup and no-networking stages exercise these laws. The
+[65-check qualification](qualification/2026-10-21-server-native-history-generations.json)
+records an explicit architecture selection, not the entire unchanged 176-check
+functional plan, physical crash certification or server-log rotation.
+
 Both profiles require `independent-history-contracts`,
 `independent-history-type-fence`, `independent-history-sdk` and
 `installed-independent-history`. They qualify the separately selected SDK comment

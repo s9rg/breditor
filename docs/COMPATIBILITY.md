@@ -86,8 +86,11 @@ family or select comment generations when document generations are selected.
 Normal Wasm and fresh installed native consumers are qualified. The separate
 [atomic SDK history store](INDEPENDENT_HISTORY_STORAGE.md) now selects either
 family independently for both lanes, preserving native strings and lane-specific
-file hashes. Old stores refuse it. Matching complete asset/participant readers
-and negotiated server retention still require explicit integration.
+file hashes. Old stores refuse it. The reference host now has explicit
+[native retention boundaries](SERVER_NATIVE_HISTORY_GENERATIONS.md) for both
+lanes and its private effect author, with exact replay and original durable
+receipts. Physical server-log rotation, matching complete asset/participant
+readers and negotiated client/server retention still require explicit integration.
 
 The separately named [read-only archival lifecycle](READ_ONLY_HISTORY_ARCHIVAL.md)
 allows former authors to retain further peer input without resetting their

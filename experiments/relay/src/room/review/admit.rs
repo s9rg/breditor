@@ -79,7 +79,11 @@ impl Room {
                 }))
             }
             Preparation::Prepared(prepared) => {
-                prepared.checkpoint_json()?;
+                if self.review_state()?.session.has_segmented_history() {
+                    prepared.segmented_checkpoint_json()?;
+                } else {
+                    prepared.checkpoint_json()?;
+                }
                 let receipt = prepared.receipt().clone();
                 let sequence = self.log.append(Event::CommitReviewV1 {
                     source: source.clone(),

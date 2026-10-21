@@ -46,7 +46,7 @@ pub(super) struct SuggestionsState {
     roles: BTreeMap<String, SuggestionRole>,
     proposals: BTreeMap<String, StoredProposal>,
     updates: BTreeMap<u64, SuggestionUpdate>,
-    effect_owner: RichReplica,
+    pub(in crate::room) effect_owner: RichReplica,
     revisions: Option<revisions::RevisionsState>,
 }
 impl Room {

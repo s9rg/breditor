@@ -15,6 +15,7 @@ mod atomic_transport_v2;
 mod backup;
 mod document_presence;
 mod layout_v3;
+mod native_history;
 mod observers;
 mod participant_inventory;
 mod recovery;
@@ -30,6 +31,11 @@ pub use asset_references::{
 pub use atomic_transport_v2::AtomicTransportProfile;
 pub use backup::{
     MAX_ROOM_BACKUP_BYTES, RoomBackup, RoomBackupIdentity, RoomBackupInfo, RoomRecoveryPolicy,
+};
+pub(crate) use native_history::NativeHistoryBoundary;
+pub use native_history::{
+    ServerNativeHistoryBoundary, ServerNativeHistoryDescriptor, ServerNativeHistoryFamily,
+    ServerNativeHistoryLane, ServerNativeHistoryReceipt,
 };
 pub use participant_inventory::{
     MAX_ROOM_PARTICIPANT_INVENTORY_BYTES, MissingRecoveryRegistration, RecoveryAccount,
@@ -104,6 +110,7 @@ pub struct Room {
     suggestions: Option<suggestions::SuggestionsState>,
     /// Immutable seed boundary; later service-authored actions must not redefine genesis.
     seed_writer_through: String,
+    native_history_boundaries: BTreeMap<String, ServerNativeHistoryReceipt>,
 }
 
 impl Room {
@@ -241,6 +248,7 @@ impl Room {
             versions: None,
             suggestions: None,
             seed_writer_through,
+            native_history_boundaries: BTreeMap::new(),
         })
     }
 
@@ -332,6 +340,7 @@ impl Room {
             versions: None,
             suggestions: None,
             seed_writer_through,
+            native_history_boundaries: BTreeMap::new(),
         };
         for record in records {
             result.replay(record)?;
@@ -378,6 +387,16 @@ impl Room {
             }
             Event::RegisterObserverV1 { principal, writer, resume_hash } => {
                 self.replay_observer(principal, writer, resume_hash)?;
+            }
+            Event::NativeHistoryBoundaryV1 { actor, lane, boundary, before, after } => {
+                self.replay_native_history(
+                    record.sequence,
+                    &actor,
+                    lane,
+                    &boundary,
+                    before,
+                    after,
+                )?;
             }
             event @ (Event::EnableReviewV1 { .. }
             | Event::GrantReviewV1 { .. }
@@ -712,7 +731,7 @@ impl Room {
             }
             WriterGroupPreparation::Prepared(prepared) => {
                 // Prove that exact recovery remains inside the native journal budget before I/O.
-                prepared.checkpoint()?;
+                self.check_prepared_document_history(&prepared)?;
                 let receipt = Receipt::from(prepared.receipt().clone());
                 let sequence = self.log.append(Event::Commit {
                     principal: principal.into(),

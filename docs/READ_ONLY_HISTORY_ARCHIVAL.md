@@ -13,7 +13,10 @@ configurations, including exact cold/future histories, aborted saves and lost
 acknowledgements. The subsequent
 [SDK/storage qualification](qualification/2026-10-21-independent-history-storage.json)
 adds the explicit SDK comment lifecycle and atomic independent history storage;
-neither checkpoint qualifies server negotiation or whole-room activation.
+neither checkpoint qualifies server negotiation or whole-room activation. The
+subsequent [native server retention](SERVER_NATIVE_HISTORY_GENERATIONS.md)
+independently preserves a permanently read-only, zero-authored comment receiver;
+it does not borrow a client identity or temporarily grant write access.
 
 This capability closes a lifecycle gap between two existing operations. The
 author archive API requires current authoring permission. The strict observer

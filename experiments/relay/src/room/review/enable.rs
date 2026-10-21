@@ -7,6 +7,13 @@ use breditor_collab_feasibility::review::{
 use std::collections::BTreeMap;
 
 impl Room {
+    pub(in crate::room) fn review_receiver_policy(&self) -> Result<ReviewActorPolicy> {
+        Ok(ReviewActorPolicy {
+            actor: ReviewActorId::try_new(SERVER_ACTOR)?,
+            principal: ReviewPrincipalId::try_new(&self.owner)?,
+            access: ReviewAccess::ReadOnly,
+        })
+    }
     /// Enable review V1 once, without changing the document seed, roles, writer grammar or AST.
     /// # Errors
     /// Rejects non-owner calls, entropy, native binding and persistence errors.
@@ -27,11 +34,7 @@ impl Room {
     pub(super) fn new_review_state(&self, binding: &str, enabled_at: u64) -> Result<ReviewState> {
         // Reuse the closed random-hex spelling validator. This public identity is NOT a credential.
         credentials::hash(binding)?;
-        let session = self.replica.create_review_session(ReviewActorPolicy {
-            actor: ReviewActorId::try_new(SERVER_ACTOR)?,
-            principal: ReviewPrincipalId::try_new(&self.owner)?,
-            access: ReviewAccess::ReadOnly,
-        })?;
+        let session = self.replica.create_review_session(self.review_receiver_policy()?)?;
         Ok(ReviewState {
             binding: binding.into(),
             enabled_at,

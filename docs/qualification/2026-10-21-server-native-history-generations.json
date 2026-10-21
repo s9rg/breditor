@@ -1,0 +1,212 @@
+{
+  "format": "breditor/server-native-history-functional-checkpoint",
+  "formatVersion": 1,
+  "date": "2026-10-21",
+  "passed": true,
+  "v1Ready": false,
+  "openV1Gates": 13,
+  "publicationApproved": false,
+  "source": {
+    "commit": "ea4098cc9f63238698d90b896492bdc35fc4c55f",
+    "dirty": true,
+    "sha256": "6da0642b0d53627ca04828583f163095e2ca4ebbf782994c35d30dbc0db399c5",
+    "files": 5026,
+    "bytes": 42699733
+  },
+  "qualificationManifest": {
+    "path": "target/v1-candidate-runs/run-M8n7a3/result.json",
+    "bytes": 103544,
+    "sha256": "d24ed27e02faa6379eb6c6037da5aec0be10bd71f9d9b0dcbbc87752d8ed86e9",
+    "modifiedAtMs": 1792568195312.4988
+  },
+  "nonDocumentation": {
+    "sha256": "e8344f8bd6d7189e5693f3c1aaf70d015e258625d78764d67f289c7c01d0cd17",
+    "files": 4494,
+    "excluded": "docs/** only"
+  },
+  "nativeInputFiles": 2740,
+  "tests": {
+    "selectedChecksPassed": 65,
+    "wholeFunctionalPlan": false,
+    "workspaceRust": 2643,
+    "sharedRust": 661,
+    "relayRust": 228,
+    "researchReviewRust": 3,
+    "noNetworkingRust": 119,
+    "scriptContractsPassed": 1330,
+    "existingOptInScriptChecksSkipped": 3,
+    "editorTestsPassed": 385,
+    "freshRustSuites": true,
+    "freshNormalWasmProducers": true
+  },
+  "serverNative": {
+    "profilesAndIndependentFamilies": 40,
+    "effectAuthorCreationOrders": 10,
+    "mixedOwnedStructuralAcceptance": true,
+    "durableInputsBeyondOriginalJournalCeiling": 1025,
+    "retainedClientUndoItemsInCapacityTest": 1,
+    "sourceAndNoNetworkingCases": [
+      "forty_independent_server_families_preserve_exact_archives_receipts_offline_edits_and_future_history",
+      "all_ten_effect_lifecycles_keep_accepted_history_across_native_boundaries_and_cold_backup",
+      "owned_mixed_structure_accept_keeps_client_undo_peer_text_and_idle_effect_files_across_cold_seals",
+      "exact_boundary_retries_keep_the_original_receipt_without_sealing_newer_native_input",
+      "synced_boundary_replays_exactly_after_interruption_before_in_memory_publication",
+      "refused_and_uncertain_boundaries_never_publish_candidates_or_remove_durable_input",
+      "correct_log_hashes_do_not_admit_forged_native_cuts_or_trim_their_torn_tail",
+      "more_than_one_thousand_durable_native_inputs_keep_old_offline_history_and_peer_work",
+      "public_native_history_boundaries_recover_review_versions_revisions_and_exactly_once_accept",
+      "same_clock_reservation_cannot_delete_a_competing_fixtures_owned_files",
+      "parallel_same_clock_reservations_and_occupied_targets_preserve_actual_fixture_custody",
+      "native_generations_joined_restore_keeps_exact_histories_rasters_offline_work_and_peer_undo"
+    ],
+    "scope": "Actual native owners, file locks and synced durable logs; explicit source policies, exact native cuts, original receipt/decision retry, cold whole-log backup and future history. Interrupted publication is a controlled functional interruption, not a power-loss certification.",
+    "joinedRasterBackup": {
+      "exactDocumentAndReviewCuts": true,
+      "exactClientSegmentedArchive": true,
+      "completeRetainedAssetReferences": true,
+      "originalRasterBytes": true,
+      "offlineContinuation": true,
+      "futureUndoRedoPreservesPeer": true,
+      "originalTransportAndRecoveryFormatsUnchanged": true,
+      "repeatedQualification": {
+        "report": {
+          "path": "target/native-joined-history-repeat-22gY8z/result.json",
+          "bytes": 3918,
+          "sha256": "41835363637ccac4c6315b6f18d80c38ddd5e37a1d0f33bb3e32b9307f25238f",
+          "modifiedAtMs": 1792565599421.4495
+        },
+        "featureModes": 2,
+        "exactNativeTests": 16
+      }
+    }
+  },
+  "nativePreparedCandidates": {
+    "transportConfigurations": 288,
+    "suggestionConfigurations": 144,
+    "sourceBefore": {
+      "path": "target/segmented-suggestion-admission-before-MrbdYX/result.json",
+      "bytes": 638,
+      "sha256": "df156d521863f5b00a5b1a6213ab45f7be6c706bd53546312594abbb0f582ffe",
+      "modifiedAtMs": 1792561371808.9438
+    },
+    "preservedBeforeDirectory": "target/server-native-history-before-JECzQV",
+    "samePositiveAssertionAfterFormatting": true,
+    "independentCopiedNativeConsumer": true,
+    "oldGettersStillRefuseSegmentedFamily": true
+  },
+  "fixtureCustody": {
+    "deterministicBeforeControl": "target/server-native-fixture-custody-before-CIyd2p/result.json",
+    "samePositiveAssertionAfterFormatting": true,
+    "sameClockParallelReservations": true,
+    "occupiedPathNeverMintsCleanupCustody": true,
+    "failedQualification": "target/v1-candidate-runs/run-S0skMa/result.json",
+    "scope": "Integration-test temporary directories only. This is not a production room-data failure, and no test-thread serialization was introduced.",
+    "repeatedQualification": {
+      "report": {
+        "path": "target/server-native-fixture-custody-after-Qp3PSz/result.json",
+        "bytes": 530,
+        "sha256": "efbb0b6f4e3a508090506cd9964459d5c64e54fe64e8bcee6d08ed054c36ceaf",
+        "modifiedAtMs": 1792564504589.8567
+      },
+      "runs": 40,
+      "publicAssertions": 160,
+      "featureModes": 2
+    }
+  },
+  "client": {
+    "facade": {
+      "format": "breditor/review-generation-sdk-probe",
+      "passed": true,
+      "cases": 72,
+      "independentDocumentFamilies": 72,
+      "coldPairs": 144,
+      "futureHistoryPairs": 216,
+      "staleGuardRefusals": 144,
+      "foreignGuardRefusals": 72,
+      "originalGetterRefusals": 72,
+      "pinnedStoreRefusals": 180,
+      "strictObserverRefusals": 72,
+      "readOnlyBoundaries": 144,
+      "exactFiles": 288,
+      "pairedNativeOrigins": 72,
+      "sharedWasmSha256": "e8afdb083c9e849505c6d1ca85b721485bd673fed71ce1ea1690b20f9c500f9a",
+      "scope": "Real native comments in both document history families through the explicitly selected SDK facade. Composite guards, old-store refusals, read-only former authors, old offline peer and exact future native histories. No independent managed storage or authenticated relay capability is implied."
+    },
+    "storage": {
+      "format": "breditor/independent-history-sdk-probe",
+      "passed": true,
+      "cases": 576,
+      "coldPairs": 1728,
+      "futureHistoryPairs": 1728,
+      "sameGenerationIds": 288,
+      "saveAborts": 4,
+      "lostAcknowledgements": 4,
+      "retainedVersionPackets": 576,
+      "exactImmutableFiles": 1152,
+      "sourceBindingRefusals": 1152,
+      "getterCalls": 0,
+      "sharedWasmSha256": "e8afdb083c9e849505c6d1ca85b721485bd673fed71ce1ea1690b20f9c500f9a",
+      "scope": "Genuine normal native histories with synthetic IndexedDB/Web Locks. All four document/comment families, immutable lane namespaces, cold current-policy recovery, versions, offline peer and future native Undo/Redo; not physical durability, relay/server generations, room activation or complete V1."
+    },
+    "sourceAndInstalledIdentical": true
+  },
+  "compatibility": {
+    "originalDocument": {
+      "format": "breditor/shared-v1-runtime-comparison",
+      "formatVersion": 1,
+      "beforeWasmSha256": "b525798df56d921281819e6fd43053f9a094bcb117fe8d86c3b66a61c4b54c29",
+      "afterWasmSha256": "e8afdb083c9e849505c6d1ca85b721485bd673fed71ce1ea1690b20f9c500f9a",
+      "comparedCheckpoints": 49,
+      "crossVersionRestores": 2,
+      "futureHistorySteps": 12,
+      "modelVersion": 11,
+      "journalVersion": 12,
+      "passed": true
+    },
+    "originalReview": {
+      "format": "breditor/original-review-runtime-comparison",
+      "formatVersion": 1,
+      "passed": true,
+      "beforeWasmSha256": "b525798df56d921281819e6fd43053f9a094bcb117fe8d86c3b66a61c4b54c29",
+      "afterWasmSha256": "e8afdb083c9e849505c6d1ca85b721485bd673fed71ce1ea1690b20f9c500f9a",
+      "cases": 72,
+      "exactNativeComparisons": 1440,
+      "crossVersionRestores": 144,
+      "futureHistoryComparisons": 1080,
+      "scope": "Exact original native review checkpoints, event frames, views, actor clocks and document cuts in actual old/new application Wasm; both cross-version recovery directions and future Undo/Redo. No new review-family capability is assumed in the old build."
+    }
+  },
+  "normalSharedWasmSha256": "e8afdb083c9e849505c6d1ca85b721485bd673fed71ce1ea1690b20f9c500f9a",
+  "installed": {
+    "registryArtifacts": 45,
+    "workspaceLinks": false,
+    "strictPublicTypes": true,
+    "noWorkspaceReactOrSyntheticStorageInProduction": true,
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "target/server-native-history-qualification-HFPELX/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "target/server-native-history-qualification-HFPELX/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "e6b524a4d3b9cab485e6df2ff62af133a3772291ec463fd3bba73934c13ac40f"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "target/server-native-history-qualification-HFPELX/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "47ead41c8ec8dac6f0b651ed69ad894c3657019d09e9b7c7e768605cfc900fd8"
+      }
+    ]
+  },
+  "scope": "Explicit server-native document/comment generations and private effect-author retention with durable idempotent boundary receipts. Repairs the reproduced segmented suggestion-preparation checkpoint-family failure without widening original getter meanings. Fresh Rust, normal paired Wasm producers and unchanged source/installed client contracts on one frozen tree; not the full functional profile or release approval.",
+  "limitations": [
+    "Native server history retention is not server write-ahead-log rotation: the original 4096-record, 256 MiB log bounds remain.",
+    "Matching client/relay capability negotiation, complete provider/asset/outbox closure, historic-copy decisions and authenticated whole-room activation remain open.",
+    "Native Undo/archive limits remain unchanged. Full native serialization/replay is not an approved latency or unlimited-lifetime claim.",
+    "Synthetic client storage tests and controlled native interruption cases are not physical crash-durability or cross-device fencing qualification.",
+    "No browser/clipboard/IME/VoiceOver/historical WebKit repair or V1 gate is qualified.",
+    "No version, tag, push, publication or deployment is promoted."
+  ]
+}

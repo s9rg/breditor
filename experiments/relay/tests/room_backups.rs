@@ -16,10 +16,37 @@ use breditor_collab_relay::{
     SuggestionRevisionRequest, SuggestionRole,
 };
 use serde_json::{Value, json};
-use std::{fs, path::PathBuf};
+use std::{
+    fs,
+    path::PathBuf,
+    sync::atomic::{AtomicU64, Ordering},
+};
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 struct Directory(PathBuf);
+impl Directory {
+    fn try_reserve(path: PathBuf) -> std::io::Result<Self> {
+        // Cleanup custody exists only AFTER this exact new directory was acquired.
+        fs::create_dir(&path)?;
+        Ok(Self(path))
+    }
+    fn reserve_at(nonce: u128) -> Result<Self> {
+        static NEXT: AtomicU64 = AtomicU64::new(0);
+        for _ in 0..1024 {
+            let serial = NEXT.fetch_add(1, Ordering::Relaxed);
+            let path = std::env::temp_dir().join(format!(
+                "breditor-public-room-backup-{}-{nonce}-{serial}",
+                std::process::id()
+            ));
+            match Self::try_reserve(path) {
+                Ok(directory) => return Ok(directory),
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+                Err(error) => return Err(error.into()),
+            }
+        }
+        Err("temporary fixture reservation budget".into())
+    }
+}
 impl Drop for Directory {
     fn drop(&mut self) {
         for name in ["source.log", "restored.log"] {
@@ -30,11 +57,7 @@ impl Drop for Directory {
 }
 fn setup() -> Result<(Directory, SharedRichProfile, Room)> {
     let nonce = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_nanos();
-    let directory = Directory(
-        std::env::temp_dir()
-            .join(format!("breditor-public-room-backup-{}-{nonce}", std::process::id())),
-    );
-    fs::create_dir(&directory.0)?;
+    let directory = Directory::reserve_at(nonce)?;
     let configuration = json!({"format":"breditor/shared-rich-profile","formatVersion":3,
         "schema":{"name":"example/public-room-backup","version":1},"extensions":[]})
     .to_string();
@@ -218,5 +241,170 @@ fn public_archive_preserves_all_durable_lanes_and_never_reexecutes_a_final_accep
     let (reopened, recovery) = Room::open(&directory.0.join("restored.log"))?;
     assert_eq!(recovery.truncated_bytes, 0);
     assert_eq!(state(&reopened, &profile)?, before);
+    Ok(())
+}
+
+fn native_cuts(room: &Room) -> Result<(String, String)> {
+    use breditor_collab_relay::ServerNativeHistoryLane;
+    Ok((
+        room.native_history_checkpoint("owner", ServerNativeHistoryLane::Document)?,
+        room.native_history_checkpoint("owner", ServerNativeHistoryLane::Review)?,
+    ))
+}
+
+#[test]
+fn same_clock_reservation_cannot_delete_a_competing_fixtures_owned_files() -> Result {
+    let nonce = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_nanos();
+    let first = Directory::reserve_at(nonce)?;
+    let original = b"Owned by the first successfully reserved fixture";
+    fs::write(first.0.join("source.log"), original)?;
+    let second = Directory::reserve_at(nonce);
+    assert_eq!(
+        fs::read(first.0.join("source.log")).ok().as_deref(),
+        Some(original.as_slice()),
+        "a failed reservation must never delete another fixture's files"
+    );
+    let second = second?;
+    assert_ne!(first.0, second.0);
+    Ok(())
+}
+
+#[test]
+fn parallel_same_clock_reservations_and_occupied_targets_preserve_actual_fixture_custody() -> Result
+{
+    use std::{
+        collections::BTreeSet,
+        sync::{Arc, Barrier},
+        thread,
+    };
+    let nonce = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_nanos();
+    let original = Directory::reserve_at(nonce)?;
+    fs::write(original.0.join("source.log"), b"Original owner's exact data")?;
+    assert!(Directory::try_reserve(original.0.clone()).is_err());
+    assert_eq!(fs::read(original.0.join("source.log"))?, b"Original owner's exact data");
+    let barrier = Arc::new(Barrier::new(4));
+    let reserved = thread::scope(|scope| {
+        let mut workers = Vec::new();
+        for _ in 0..4 {
+            let ready = Arc::clone(&barrier);
+            workers.push(scope.spawn(move || {
+                ready.wait();
+                Directory::reserve_at(nonce).expect("independent exclusive fixture")
+            }));
+        }
+        workers
+            .into_iter()
+            .map(|worker| worker.join().expect("reservation worker"))
+            .collect::<Vec<_>>()
+    });
+    assert_eq!(
+        reserved.iter().map(|directory| directory.0.clone()).collect::<BTreeSet<_>>().len(),
+        4
+    );
+    for (index, directory) in reserved.iter().enumerate() {
+        fs::write(directory.0.join("source.log"), index.to_string())?;
+    }
+    drop(original);
+    for (index, directory) in reserved.iter().enumerate() {
+        assert_eq!(fs::read(directory.0.join("source.log"))?, index.to_string().as_bytes());
+    }
+    Ok(())
+}
+
+#[test]
+fn public_native_history_boundaries_recover_review_versions_revisions_and_exactly_once_accept()
+-> Result {
+    use breditor_collab_relay::{ServerNativeHistoryFamily, ServerNativeHistoryLane};
+    let (directory, profile, mut source) = setup()?;
+    assert_eq!(
+        source.native_history_descriptor("alice")?.document,
+        ServerNativeHistoryFamily::Original
+    );
+    let first = source.enable_document_history_generations("owner", "root".into(), "one".into())?;
+    let comments =
+        source.enable_review_history_generations("owner", "root".into(), "one".into())?;
+    let writer = source.register_review("alice", ReviewActorId::try_new("alice.comments")?)?;
+    let client = profile.join_frame("room".into(), "900".into(), &source.catchup("alice")?)?;
+    let mut review = client.create_review_session(ReviewActorPolicy {
+        actor: writer.lease.actor.clone(),
+        principal: ReviewPrincipalId::try_new("alice")?,
+        access: ReviewAccess::Comment,
+    })?;
+    let observed = review.observe();
+    client.dispatch_review_guarded(
+        &client.observe()?,
+        &mut review,
+        &observed,
+        ReviewAction::CreateThread(CreateReviewThread {
+            anchor_json: client
+                .capture_review_anchor_guarded(&client.observe()?, &ReviewAnchorTarget::Document)?,
+            body: "Generation-retained comment".into(),
+        }),
+    )?;
+    assert!(matches!(
+        source.admit_review("alice", &writer.lease, &review.export_frame(0)?)?,
+        ReviewAdmission::Durable(_)
+    ));
+    let version = client.capture_document_version_guarded(
+        &client.observe()?,
+        "Original native version",
+        ReviewPrincipalId::try_new("alice")?,
+        "0",
+    )?;
+    let DocumentVersionAdmission::Durable(published) =
+        source.publish_document_version("alice", &version)?
+    else {
+        return Err("version publication".into());
+    };
+    let (_, decision) = propose(&mut source, &client)?;
+    let document = source.seal_document_history_generation("owner", "two".into())?;
+    let review = source.seal_review_history_generation("owner", "two".into())?;
+    assert_eq!(document.lane, ServerNativeHistoryLane::Document);
+    assert_eq!(review.lane, ServerNativeHistoryLane::Review);
+    let cut = native_cuts(&source)?;
+    let before = state(&source, &profile)?;
+    let backup = RoomBackup::from_bytes(&source.export_backup()?.to_bytes())?;
+    let identity = source.backup_identity()?;
+    let bytes = fs::read(directory.0.join("source.log"))?;
+    drop(source);
+    let mut restored = Room::restore_backup(
+        &directory.0.join("restored.log"),
+        &backup,
+        &identity,
+        RoomRecoveryPolicy::HostReacquired,
+    )?;
+    assert_eq!(state(&restored, &profile)?, before);
+    assert_eq!(native_cuts(&restored)?, cut);
+    assert_eq!(
+        restored.document_version_packet("alice", &published.entry.version.id)?,
+        Some(version)
+    );
+    let mut retried =
+        restored.enable_document_history_generations("owner", "root".into(), "one".into())?;
+    assert!(retried.duplicate);
+    retried.duplicate = false;
+    assert_eq!(retried, first);
+    let mut retried =
+        restored.enable_review_history_generations("owner", "root".into(), "one".into())?;
+    assert!(retried.duplicate);
+    retried.duplicate = false;
+    assert_eq!(retried, comments);
+    let mut retried = restored.seal_document_history_generation("owner", "two".into())?;
+    assert!(retried.duplicate);
+    retried.duplicate = false;
+    assert_eq!(retried, document);
+    let mut retried = restored.seal_review_history_generation("owner", "two".into())?;
+    assert!(retried.duplicate);
+    retried.duplicate = false;
+    assert_eq!(retried, review);
+    let DocumentSuggestionDecisionAdmission::Durable(retried) =
+        restored.decide_document_suggestion("owner", &decision)?
+    else {
+        return Err("decision retry".into());
+    };
+    assert!(retried.duplicate);
+    assert_eq!(state(&restored, &profile)?, before);
+    assert_eq!(native_cuts(&restored)?, cut);
+    assert_eq!(fs::read(directory.0.join("restored.log"))?, bytes);
     Ok(())
 }

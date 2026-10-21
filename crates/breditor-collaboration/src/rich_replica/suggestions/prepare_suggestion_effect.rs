@@ -7,6 +7,7 @@ use crate::{
     },
 };
 use serde::{Deserialize, Serialize};
+mod checkpoint_segmented_history;
 
 /// Native authored effect identity, not a decision receipt or permission credential.
 /// The host must bind this to its authenticated, exactly-once review decision and durably append
@@ -166,7 +167,11 @@ impl RichReplica {
             group_json,
         };
         // Fail before the host can persist a decision whose exact native recovery is too large.
-        prepared.checkpoint()?;
+        if self.segmented_history_enabled() {
+            prepared.segmented_checkpoint()?;
+        } else {
+            prepared.checkpoint()?;
+        }
         prepared.update_frame()?;
         Ok(prepared)
     }

@@ -11,8 +11,10 @@ The optional Wasm/SDK exposes explicit selection, seals and recovery, with
 and paired comments. Generation-aware relay delivery and retained review stores
 have their [own integration](SEGMENTED_RETAINED_RECOVERY.md). The separate
 [independent history store](INDEPENDENT_HISTORY_STORAGE.md) also selects native
-comment rollover independently of the document family. Matching complete asset,
-relay and operational participant bindings for that new store, server/log
+comment rollover independently of the document family. The reference host also
+has explicit [native document/comment retention](SERVER_NATIVE_HISTORY_GENERATIONS.md),
+including its private effect author. Matching complete asset, relay and
+operational participant bindings for the new store, physical server-log
 generations and room-wide activation remain work. This is not the completed
 whole-room cross-generation bridge.
 

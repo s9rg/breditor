@@ -32,7 +32,7 @@ struct ReviewWriter {
 pub(super) struct ReviewState {
     binding: String,
     enabled_at: u64,
-    session: ReviewSession,
+    pub(in crate::room) session: ReviewSession,
     roles: BTreeMap<String, ReviewRole>,
     writers: BTreeMap<ReviewActorId, ReviewWriter>,
     leases: BTreeMap<ReviewActorId, String>,
