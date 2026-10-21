@@ -2,6 +2,7 @@
 mod capture;
 mod provider;
 mod read_budget;
+pub(in crate::server) use read_budget::check as check_complete_asset_read_budget;
 mod recovery;
 mod report;
 mod resolve;

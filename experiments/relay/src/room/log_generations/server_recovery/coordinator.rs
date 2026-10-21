@@ -1,6 +1,5 @@
 //! Actual held joined owners. No router/provider starts and no account privilege is inferred.
-use super::super::RecoveredLogGenerationRoom;
-use super::{raster_directory::RasterCustody, selection::Marker};
+use super::{custody::JoinedRecoveryCustody, selection::Marker};
 use crate::{Room, assets::AssetStore, log::generations::GenerationDirectory};
 use std::path::Path;
 
@@ -15,29 +14,25 @@ pub struct ServerLogGenerationRoomRecovery {
 /// Client/provider reconciliation, original protected credentials and fresh host authority remain
 /// required before deployment. Old connection leases stay absent and revoked grants stay revoked.
 pub struct RecoveredLogGenerationServerRoom {
-    pub(super) controls: super::super::control_seal::RecoveryControlSeal,
-    pub(super) native_controls: super::super::control_seal::RecoveryControlSeal,
-    pub(super) directory: GenerationDirectory,
-    pub(super) marker: Marker,
-    pub(super) native: RecoveredLogGenerationRoom,
+    pub(super) custody: JoinedRecoveryCustody,
+    pub(super) room: Room,
     pub(super) assets: AssetStore,
-    pub(super) raster: RasterCustody,
 }
 impl RecoveredLogGenerationServerRoom {
     /// Exact inactive server root, not an activation credential.
     #[must_use]
     pub fn root(&self) -> &Path {
-        &self.directory.path
+        &self.custody.directory.path
     }
     /// Actual held native room; callers still authenticate every account operation.
     #[must_use]
     pub fn room(&self) -> &Room {
-        self.native.room()
+        &self.room
     }
     /// Mutate native history under the usual host-authenticated Room contracts.
     #[must_use]
     pub fn room_mut(&mut self) -> &mut Room {
-        self.native.room_mut()
+        &mut self.room
     }
     /// Exact original raster owner; no provider mapping or deletion authority is inferred.
     #[must_use]
@@ -53,6 +48,6 @@ impl RecoveredLogGenerationServerRoom {
     /// Host authentication and any later operational/deployment transition remain explicit.
     #[must_use]
     pub fn components_mut(&mut self) -> (&mut Room, &mut AssetStore) {
-        (self.native.room_mut(), &mut self.assets)
+        (&mut self.room, &mut self.assets)
     }
 }

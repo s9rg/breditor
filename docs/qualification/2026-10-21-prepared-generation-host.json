@@ -1,0 +1,154 @@
+{
+  "format": "breditor/prepared-generation-host-native-qualification",
+  "date": "2026-10-21",
+  "passed": true,
+  "source": {
+    "commit": "095a730ed813cfb3d7888d1497e371cf3e875277",
+    "dirty": true,
+    "sha256": "87c9e5903ca3271e3cc81c5e39857059661a7a49b70e1cdb0815d980846a4db2",
+    "files": 5156,
+    "bytes": 43309873
+  },
+  "report": {
+    "path": "target/prepared-generation-host-qualification-smUnQo/result.json",
+    "bytes": 29334,
+    "sha256": "69a458bcfae1e9c613d799bf7cc9d628efd1de345236d716c544600bf6634179",
+    "modifiedAtMs": 1792585856862.7747
+  },
+  "tests": {
+    "relayRust": 325,
+    "noNetworkingRust": 203,
+    "candidateContracts": 66,
+    "scriptContracts": 1331,
+    "existingOptInSkipped": 3,
+    "preparedHostNativeFamilyCombinations": 40,
+    "publicPreparedHostProfileTransportChoices": 10,
+    "cancellationRepetitions": 12,
+    "operationalNativeFamilyCombinations": 40,
+    "publicProfileTransportChoices": 10,
+    "operationalHandoffPrefixes": 6,
+    "joinedRestorePrefixes": 14,
+    "maximumWalFiles": 64,
+    "isolatedDescriptorLimit": 192,
+    "serverEnabledMaximumHostQualified": true,
+    "parentOrMacLimitsChanged": false,
+    "independentRustConsumer": 2,
+    "wholePlanRun": false,
+    "functionalPlanChecks": 178
+  },
+  "nonDocumentation": {
+    "files": 4615,
+    "sha256": "70acadb13d64a4b447320066248b1e21b56c4745c37bae7ae124f6727c04a4ed"
+  },
+  "ownershipRepair": {
+    "before": [
+      {
+        "path": "target/prepared-host-before-parent-native-3Oz99T/result.json",
+        "bytes": 827,
+        "sha256": "83c255d2e74e6eb10c0ac210c58e962e5cdff53f0d5a251d7997cd9a917c12d5",
+        "modifiedAtMs": 1792584492001.27
+      },
+      {
+        "path": "target/prepared-host-before-raster-TDgYqe/result.json",
+        "bytes": 834,
+        "sha256": "cf377804f1f3d66b3d7070cad29ba2f0c332982754d70c7fca1fe6c2fce181b8",
+        "modifiedAtMs": 1792584556022.2976
+      }
+    ],
+    "positiveBeforeFailures": 2,
+    "positiveAssertionsUnchanged": true,
+    "cancellation": "a_cancelled_native_transaction_retains_parent_and_native_recovery_leases_until_worker_finishes"
+  },
+  "consumerFiles": [
+    {
+      "path": "target/prepared-host-native-consumer-f1qNHM/Cargo.toml",
+      "bytes": 656,
+      "sha256": "906273bc4292102a6232cca81ff9c2522233b2c510edf53a015dd5005370cbb6",
+      "modifiedAtMs": 1792584538776.7864
+    },
+    {
+      "path": "target/prepared-host-native-consumer-f1qNHM/Cargo.lock",
+      "bytes": 53493,
+      "sha256": "d533898dacd75490f693d95139bf55ff09b7e5c60e7c85c03c684267b10426d2",
+      "modifiedAtMs": 1792584576599.3613
+    },
+    {
+      "path": "target/prepared-host-native-consumer-f1qNHM/tests/consumer.rs",
+      "bytes": 9840,
+      "sha256": "41d4db6574b041d3c87daae20ea530e43cd99da7f4a11c49764ce4d224914717",
+      "modifiedAtMs": 1792584592981.309
+    }
+  ],
+  "supplemental": {
+    "report": {
+      "path": "target/prepared-host-long-prefix-consumer-BjWjPw/result.json",
+      "bytes": 1680,
+      "sha256": "52784a3e4ff73f686632193965a5ff6a89d3b8822bd050559aefaa411e3caac8",
+      "modifiedAtMs": 1792585553118.579
+    },
+    "files": [
+      {
+        "path": "target/prepared-host-long-prefix-consumer-BjWjPw/Cargo.toml",
+        "bytes": 668,
+        "sha256": "98db66215717a4cec174b7186532637382e5be5c9f1213f15a9f41d6659bb153",
+        "modifiedAtMs": 1792585358753.975
+      },
+      {
+        "path": "target/prepared-host-long-prefix-consumer-BjWjPw/Cargo.lock",
+        "bytes": 53505,
+        "sha256": "6bb85deca2a713b2eaf90a9725147873770d79a2cbf99d1d4cc9738b8454e586",
+        "modifiedAtMs": 1792585358790.6482
+      },
+      {
+        "path": "target/prepared-host-long-prefix-consumer-BjWjPw/tests/consumer.rs",
+        "bytes": 10430,
+        "sha256": "4dfe6f3f303fb3f3aaae714dcfe1f60b495c23c3aef356819258e87fa9105241",
+        "modifiedAtMs": 1792585358826.3438
+      }
+    ],
+    "minimumRecords": 8193,
+    "minimumSealedWalFiles": 4,
+    "actualNativeEventsAdded": 8200,
+    "actualRaster": true,
+    "oldOfflineUndoRedo": true,
+    "independentlyPinnedConsumer": true
+  },
+  "carriedCore": {
+    "baseline": {
+      "path": "target/v1-candidate-runs/run-M8n7a3/result.json",
+      "bytes": 103544,
+      "sha256": "d24ed27e02faa6379eb6c6037da5aec0be10bd71f9d9b0dcbbc87752d8ed86e9",
+      "modifiedAtMs": 1792568195312.4988
+    },
+    "unchangedNonRelayNativeInputs": 2505,
+    "normalRuntimeFiles": 12,
+    "normalSharedWasmSha256": "e8afdb083c9e849505c6d1ca85b721485bd673fed71ce1ea1690b20f9c500f9a",
+    "nativeCoreSuitesRerun": false,
+    "normalProducersRerun": false,
+    "publicArchivesByteIdentical": [
+      {
+        "name": "@breditor/browser",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "sha256": "e6b524a4d3b9cab485e6df2ff62af133a3772291ec463fd3bba73934c13ac40f"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "sha256": "47ead41c8ec8dac6f0b651ed69ad894c3657019d09e9b7c7e768605cfc900fd8"
+      }
+    ]
+  },
+  "remaining": [
+    "The prepared host has no router or public native-parts escape; atomic whole-room activation is not implemented by these proofs.",
+    "SDK catalog/provider/client reconciliation must retain the complete original physical source pin.",
+    "All provider mappings/actual bytes, offline journals/outboxes and historical-copy disposition remain required.",
+    "Physical power loss, cross-host fencing, complete resource/performance envelope and all thirteen V1 gates remain open."
+  ],
+  "v1Ready": false,
+  "openV1Gates": 13,
+  "push": false,
+  "publication": false,
+  "deployment": false
+}

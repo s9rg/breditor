@@ -5,6 +5,7 @@ use axum::Router;
 mod asset_availability;
 mod recovery_check;
 mod recovery_inventory;
+pub(in crate::server) use asset_availability::check_complete_asset_read_budget;
 pub use asset_availability::{
     ContentAddressedServerAssets, MAX_SERVER_ASSET_AVAILABILITY_BYTES,
     ServerAssetAvailabilityCoverage, ServerAssetAvailabilityMissing, ServerAssetAvailabilityRead,

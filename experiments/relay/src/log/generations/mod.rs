@@ -5,6 +5,7 @@ mod complete_recovery;
 mod create;
 mod directory;
 mod format;
+mod guard_directory;
 mod held_file;
 #[cfg(test)]
 mod interruption;

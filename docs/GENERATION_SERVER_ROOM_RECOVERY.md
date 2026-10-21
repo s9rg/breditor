@@ -149,6 +149,72 @@ content. The type does not launch services or establish provider mappings,
 client journal/outbox coverage, asset availability beyond stored bytes, or fencing
 of another host. Original-only operational APIs keep their original meanings.
 
+## Prepared authenticated host
+
+`prepare_log_generation_recovery_host` consumes the actual operational owner and
+original admitted archive under an independently retained original selection and
+fresh host authentication. Blocking native checks run on a worker, not the async
+I/O thread. Transfer keeps the actual joined/native directory leases, raster
+root and both native owners; there is no public bare-parts escape or drop/reopen
+gap. The returned `PreparedLogGenerationRecoveryHost` exposes no router and starts
+no network service. Failed preparation preserves durable files for explicit cold
+operational resume.
+
+Cloned handles retain actual ownership. An already running native transaction
+also retains the directory custody and raster owner if its async caller is
+cancelled and every handle is dropped. A native write can finish without an
+acknowledgement in that case; exact native retries and cold recovery resolve its
+outcome. Merely keeping the directory guards is insufficient if the raster lock
+can close while that native write is still running. Raster decoding workers that
+touch no existing store do not acquire storage ownership.
+
+The host retains the original immutable archive through shared ownership for
+later physical-prefix and raster-continuity checks. Cloning a handle does not
+copy that archive. Large captures and native cold replay still need the complete
+memory/performance qualification described above; the prepared host does not
+change existing storage limits or qualify a production resource envelope.
+
+The [prepared-host qualification](qualification/2026-10-21-prepared-generation-host.json)
+records both positive cancellation failures before the repair and the same
+regression passing afterward, including twelve repetitions. The public native
+consumer keeps old offline work, rasters and future peer-preserving Undo/Redo;
+an independently pinned long-prefix consumer repeats that workflow after 8,200
+additional native events. The actual maximum 64-WAL prepared host also passes
+under an isolated 192-descriptor limit. These are functional storage-lifecycle
+checks, not physical power-loss, resource-envelope or production certification.
+
+`capture_recovery_state` authenticates the current owner and captures complete
+current native/raster files and every current registration under the same
+room-then-assets transaction. `ServerLogGenerationRecoveryStateIdentity` pins the
+original joined archive, complete current joined archive and current
+generation-bound participant inventory. It never substitutes document/comment
+clocks or an original-only room identity for the physical manifest and whole
+native archive. Actual native directory and raster-lock witnesses bind each
+borrowed component to its coordinator; equal archive bytes from another restored
+directory do not transfer that custody.
+
+`verify_selected_recovery_state` requires independent current selection, fresh
+owner authentication, actual retained original files and every current protected
+document/review resume record. Revoked and permanent-observer streams remain in
+that set. Later registrations need their own credentials in addition to all
+originals. Missing records yield Pending rather than a partial proof; wrong,
+unknown or checksum-valid omitted records refuse. Verification changes no grant,
+registration, native event, acknowledgement or connection lease.
+
+`VerifiedServerLogGenerationRecoveryState` is a weak, non-serializable proof for
+one exact live host and cut. `check_live` reauthenticates and checks the actual
+complete source again. Physical-only cuts, raster-only additions and changed
+registrations or permissions stale it. Ephemeral resume alone does not change
+the selected files. The proof neither keeps a stopped host alive nor authorizes
+a byte-identical second host.
+
+`capture_asset_recovery_state` composes that same current selection with the
+complete generation-bound server dependency read. Whole Ready/Pending semantics
+and the existing 32 MiB encoded-result bound remain intact. Ready means complete
+server references, not available provider bytes or client/offline completeness.
+No provider fetch, upload, pruning or client flush occurs. Original server
+capture, identity, provider and router meanings remain unchanged.
+
 ## Functional evidence and remaining work
 
 Native regressions cover forty independent document/comment families with real
@@ -173,9 +239,9 @@ Maximum-layout operational recovery also passes under the isolated
 core/runtime inputs and byte-identical public archives carry their prior
 qualification; the complete 178-check functional plan is not rerun by this slice.
 
-Remaining lifecycle work is generation-aware host/catalog integration, provider/client
+Remaining lifecycle work is matching generation-aware room catalogs, provider/client
 journal and outbox reconciliation, historic-copy disposition and authenticated
-whole-room activation. A stored raster inventory does not prove all historical
+whole-room host activation. A stored raster inventory does not prove all historical
 or offline asset references have provider mappings and available bytes. Cross-host
 fencing and complete memory/performance qualification remain open. This server
 component does not establish V1/full feature parity or close the thirteen release

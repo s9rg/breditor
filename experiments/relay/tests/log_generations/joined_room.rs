@@ -231,5 +231,7 @@ fn maximum_physical_layout_supports_streamed_joined_capture_and_actual_joined_re
         "owner",
     )?;
     operational.check_live_source(&backup, "owner")?;
+    #[cfg(feature = "server")]
+    super::host::maximum_host(operational, &backup)?;
     Ok(())
 }

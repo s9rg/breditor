@@ -16,7 +16,7 @@ impl Write for Counter {
         Ok(())
     }
 }
-pub(super) fn check(value: &impl Serialize) -> Result<()> {
+pub(in crate::server) fn check(value: &impl Serialize) -> Result<()> {
     serde_json::to_writer(&mut Counter(0), value)
         .map_err(|_| Error::Contract("server asset availability complete encoded budget"))
 }

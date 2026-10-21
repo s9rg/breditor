@@ -79,14 +79,15 @@ impl ServerLogGenerationRoomRecovery {
             &components,
         )?;
         let native_controls = native.recovery_control_seal()?;
-        Ok(RecoveredLogGenerationServerRoom {
+        let (room, native_directory) = native.into_joined_parts();
+        let custody = super::custody::JoinedRecoveryCustody {
             controls,
             native_controls,
             directory: self.directory,
             marker: self.marker,
-            native,
-            assets,
+            native_directory,
             raster,
-        })
+        };
+        Ok(RecoveredLogGenerationServerRoom { custody, room, assets })
     }
 }

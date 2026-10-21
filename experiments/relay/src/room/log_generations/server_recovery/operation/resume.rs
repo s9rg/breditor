@@ -79,20 +79,21 @@ impl OperationalLogGenerationServerRoom {
             &raster_selection.witness,
         )?;
         let (assets, raster) = raster_directory.into_store(native.room().asset_binding())?;
-        let mut recovered = RecoveredLogGenerationServerRoom {
+        let (authority, native_directory) = native.into_joined_parts();
+        let custody = super::super::custody::JoinedRecoveryCustody {
             directory: attempt.directory,
             marker: attempt.marker,
             controls,
             native_controls,
-            native,
-            assets,
+            native_directory,
             raster,
         };
+        let mut recovered = RecoveredLogGenerationServerRoom { custody, room: authority, assets };
         recovered.check_source(backup, principal, !context.committed, &context.extra)?;
-        context.publish(&recovered.directory, &Interruption::default())?;
+        context.publish(&recovered.custody.directory, &Interruption::default())?;
         recovered.check_source(backup, principal, !context.committed, &context.extra)?;
         let value = Self { recovered, context };
-        if !value.context.guard(&value.recovered.directory)? {
+        if !value.context.guard(&value.recovered.custody.directory)? {
             return Err(Error::Contract("continuing generation marker not committed"));
         }
         Ok(value)

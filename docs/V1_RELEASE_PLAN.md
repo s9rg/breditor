@@ -83,8 +83,27 @@ An explicit operational handoff now retains the actual joined owners and synced
 storage provenance. Cold reopen admits complete later history and immutable
 uploads while preserving original physical ancestry, rasters and recovery-file
 custody; it refuses pending rotation/uploads and torn tails without repairing
-them incidentally. Host/catalog integration, provider/client reconciliation and
-authenticated whole-room activation remain separate work.
+them incidentally. The prepared authenticated host now retains actual coordinator
+and raster ownership across handles and cancelled native workers. Its complete
+original/current server and participant selections require fresh owner auth and
+every current protected stream, including revoked/observer records. Weak live
+proofs stale on physical-only cuts and raster-only additions; complete server
+dependency reads retain their physical source pin and whole Ready/Pending result.
+The prepared host exposes no router. Matching room catalogs, provider/client
+reconciliation and authenticated whole-room activation remain separate work.
+
+The [prepared-host qualification](qualification/2026-10-21-prepared-generation-host.json)
+passes 325 relay, 203 no-networking, 66 candidate-runner and 1,331 script cases on
+frozen source. Two positive before-fix failures show that cancelling an async
+caller could release directory custody or the raster owner while its native
+worker was still running. The unchanged regression now passes, including twelve
+repetitions. Forty native family combinations and the public consumer retain old
+offline work and future peer-preserving Undo/Redo through the prepared host. A
+separately pinned consumer also passes after 8,200 additional actual native
+events, beyond the original single-log limit. Maximum-layout host recovery passes
+under the isolated 192-descriptor budget. Strict linting/rustdoc pass; three
+existing opt-in skips remain skips. Unchanged core/runtime/package evidence is
+carried explicitly, not relabeled as a new whole-plan or V1 run.
 
 The [operational generation qualification](qualification/2026-10-21-generation-operational-recovery.json)
 passes 313 relay, 203 no-networking, 66 candidate-runner and 1,331 script cases,

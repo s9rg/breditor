@@ -7,6 +7,23 @@ impl ServerLogGenerationRecovery {
     }
 }
 impl RecoveredLogGenerationRoom {
+    pub(in crate::room::log_generations) fn into_joined_parts(
+        self,
+    ) -> (crate::Room, crate::log::generations::GenerationDirectory) {
+        (self.room, self.directory)
+    }
+    pub(in crate::room::log_generations) fn guard_joined_native_owner(
+        directory: &crate::log::generations::GenerationDirectory,
+        room: &crate::Room,
+    ) -> Result<()> {
+        let component: super::types::Component =
+            super::files::read(&directory.path.join(".component.json"))?;
+        directory.guard()?;
+        room.log.guard_generation_directory(
+            &directory.path.join(component.directory),
+            &component.witness,
+        )
+    }
     /// Reopen a continuing selected component without invoking exact historic part restoration,
     /// tail trimming, rotation completion or raster cleanup. The caller retains the joined lease.
     pub(in crate::room::log_generations) fn open_continuing(
@@ -65,11 +82,6 @@ impl RecoveredLogGenerationRoom {
             None,
             &std::collections::BTreeSet::from([component.directory]),
         )
-    }
-    pub(in crate::room::log_generations) fn control_root(
-        &self,
-    ) -> &crate::log::generations::GenerationDirectory {
-        &self.directory
     }
     pub(in crate::room::log_generations) fn guard_custody(
         &self,

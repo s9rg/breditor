@@ -5,6 +5,7 @@ mod assets;
 mod authentication;
 mod backup;
 mod connection;
+mod generation_recovery;
 mod http;
 mod versions;
 mod wire;
@@ -26,6 +27,12 @@ pub use backup::{
     ServerRecoveryStateIdentity, VerifiedServerAssetAvailability, VerifiedServerRecoveryAssets,
     VerifiedServerRecoveryContinuation, VerifiedServerRecoveryState, router_with_server_backups,
 };
+pub use generation_recovery::{
+    PreparedLogGenerationRecoveryHost, ServerLogGenerationAssetRecoveryState,
+    ServerLogGenerationRecoveryCoverage, ServerLogGenerationRecoveryState,
+    ServerLogGenerationRecoveryStateIdentity, VerifiedServerLogGenerationRecoveryState,
+    prepare_log_generation_recovery_host,
+};
 use std::sync::{Arc, Mutex};
 use tokio::sync::{Semaphore, watch};
 
@@ -43,6 +50,7 @@ pub(super) struct Host {
     versions_changed: watch::Sender<u64>,
     version_operations: Arc<Semaphore>,
     suggestions_changed: watch::Sender<u64>,
+    generation_custody: Option<Arc<crate::room::GenerationOperationCustody>>,
 }
 impl Host {
     pub async fn transaction<T: Send + 'static>(
@@ -50,7 +58,11 @@ impl Host {
         f: impl FnOnce(&mut Room) -> Result<T> + Send + 'static,
     ) -> Result<T> {
         let room = self.room.clone();
+        let custody = self.generation_custody.clone();
+        let assets = self.assets.clone();
         tokio::task::spawn_blocking(move || {
+            let _custody = custody;
+            let _assets = assets;
             let mut room = room.lock().map_err(|_| Error::NeedsRecovery)?;
             f(&mut room)
         })
@@ -127,6 +139,7 @@ fn create_host(
         versions_changed,
         version_operations: Arc::new(Semaphore::new(4)),
         suggestions_changed,
+        generation_custody: None,
     }
 }
 fn routes(host: Host) -> Router {

@@ -9,6 +9,8 @@ pub use server_backup::{
     MAX_SERVER_LOG_GENERATION_ROOM_BACKUP_BYTES, ServerLogGenerationRoomBackup,
     ServerLogGenerationRoomBackupIdentity, ServerLogGenerationRoomBackupInfo,
 };
+#[cfg(feature = "server")]
+pub(crate) use server_recovery::GenerationOperationCustody;
 pub use server_recovery::{
     OperationalLogGenerationServerRoom, RecoveredLogGenerationServerRoom,
     ServerLogGenerationRoomRecovery, ServerLogGenerationRoomRecoveryProgress,

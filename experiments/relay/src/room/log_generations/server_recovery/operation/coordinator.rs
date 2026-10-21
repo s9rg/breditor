@@ -57,11 +57,11 @@ impl OperationalLogGenerationServerRoom {
         backup: &ServerLogGenerationRoomBackup,
         principal: &str,
     ) -> Result<()> {
-        if !self.context.guard(&self.recovered.directory)? {
+        if !self.context.guard(&self.recovered.custody.directory)? {
             return Err(Error::Contract("generation operational marker no longer committed"));
         }
         self.recovered.check_source(backup, principal, false, &self.context.extra)?;
-        if !self.context.guard(&self.recovered.directory)? {
+        if !self.context.guard(&self.recovered.custody.directory)? {
             return Err(Error::Contract("generation operational marker changed during check"));
         }
         Ok(())

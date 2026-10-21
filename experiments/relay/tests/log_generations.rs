@@ -15,6 +15,9 @@ mod assets;
 mod backup;
 #[path = "log_generations/recovery.rs"]
 mod generation_recovery;
+#[cfg(feature = "server")]
+#[path = "log_generations/host.rs"]
+mod host;
 #[path = "log_generations/joined_room.rs"]
 mod joined_room;
 #[path = "log_generations/participants.rs"]

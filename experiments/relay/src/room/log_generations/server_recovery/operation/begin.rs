@@ -36,17 +36,17 @@ impl RecoveredLogGenerationServerRoom {
     ) -> Result<OperationalLogGenerationServerRoom> {
         selected(backup, expected, policy)?;
         self.check_live_source(backup, principal)?;
-        self.directory.absent(".operation-intent.json")?;
-        self.directory.absent(".operational.json")?;
+        self.custody.directory.absent(".operation-intent.json")?;
+        self.custody.directory.absent(".operational.json")?;
         let selection = Selection {
-            recovery: self.marker.id.clone(),
+            recovery: self.custody.marker.id.clone(),
             source: expected.clone(),
-            root: self.directory.witness()?,
-            controls: self.controls.fingerprint()?,
-            native_controls: self.native_controls.fingerprint()?,
+            root: self.custody.directory.witness()?,
+            controls: self.custody.controls.fingerprint()?,
+            native_controls: self.custody.native_controls.fingerprint()?,
         };
         let stage = format!(".operation-data-{}", credentials::issue()?);
-        let file = self.directory.create_file(&stage, &[])?;
+        let file = self.custody.directory.create_file(&stage, &[])?;
         let witness = GenerationFileWitness::of(&file)?;
         drop(file);
         stop.after(Point::StageCreated)?;
@@ -57,12 +57,12 @@ impl RecoveredLogGenerationServerRoom {
             stage,
             witness,
         };
-        files::insert(&self.directory, ".operation-intent.json", &files::encode(&intent)?)?;
+        files::insert(&self.custody.directory, ".operation-intent.json", &files::encode(&intent)?)?;
         stop.after(Point::IntentSelected)?;
-        let context = Context::read(&self.directory, &self.marker)?;
+        let context = Context::read(&self.custody.directory, &self.custody.marker)?;
         self.check_source(backup, principal, true, &context.extra)?;
-        context.publish(&self.directory, stop)?;
-        if !context.guard(&self.directory)? {
+        context.publish(&self.custody.directory, stop)?;
+        if !context.guard(&self.custody.directory)? {
             return Err(Error::Contract("generation operational handoff not committed"));
         }
         self.check_source(backup, principal, true, &context.extra)?;

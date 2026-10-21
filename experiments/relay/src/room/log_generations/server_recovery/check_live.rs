@@ -4,7 +4,7 @@ use super::{
     RecoveredLogGenerationServerRoom, files,
     selection::{Marker, NativeComponent, RasterComponent},
 };
-use crate::{Error, Result};
+use crate::{Error, Result, Room, assets::AssetStore};
 use std::collections::BTreeSet;
 impl RecoveredLogGenerationServerRoom {
     /// Verify original joined controls, actual component custody and exact native/raster bytes.
@@ -26,9 +26,27 @@ impl RecoveredLogGenerationServerRoom {
         exact: bool,
         extra: &BTreeSet<String>,
     ) -> Result<()> {
+        self.custody.check_source(
+            (&mut self.room, &mut self.assets),
+            backup,
+            principal,
+            exact,
+            extra,
+        )
+    }
+}
+impl super::custody::JoinedRecoveryCustody {
+    pub(super) fn check_source(
+        &self,
+        (room, assets): (&mut Room, &mut AssetStore),
+        backup: &ServerLogGenerationRoomBackup,
+        principal: &str,
+        exact: bool,
+        extra: &BTreeSet<String>,
+    ) -> Result<()> {
         self.directory.guard()?;
         self.controls.check_with_extras(&self.directory, extra)?;
-        self.native_controls.check(self.native.control_root())?;
+        self.native_controls.check(&self.native_directory)?;
         if backup.info()?.identity != self.marker.identity {
             return Err(Error::Contract("joined actual source selection differs"));
         }
@@ -53,24 +71,32 @@ impl RecoveredLogGenerationServerRoom {
             || native.format_version != 1
             || raster.format != "breditor/joined-generation-raster-component"
             || raster.format_version != 1
-            || self.directory.path.join(&native.directory) != self.native.root()
+            || self.directory.path.join(&native.directory) != self.native_directory.path
         {
             return Err(Error::Contract("joined actual component owner differs"));
         }
-        self.native.guard_custody(&native.witness)?;
-        self.raster.guard_selected(&raster.witness, &self.assets)?;
+        self.native_directory.guard_witness(&native.witness)?;
+        super::super::RecoveredLogGenerationRoom::guard_joined_native_owner(
+            &self.native_directory,
+            room,
+        )?;
+        self.raster.guard_selected(&raster.witness, assets)?;
         self.check_original_raster_custody(backup, &raster)?;
         if exact {
-            backup.check_live(self.native.room_mut(), &self.assets, principal)?;
+            backup.check_live(room, assets, principal)?;
         } else {
-            backup.check_retained(self.native.room_mut(), &mut self.assets, principal)?;
+            backup.check_retained(room, assets, principal)?;
         }
         self.directory.guard()?;
         self.controls.check_with_extras(&self.directory, extra)?;
-        self.native_controls.check(self.native.control_root())?;
-        self.native.guard_custody(&native.witness)?;
+        self.native_controls.check(&self.native_directory)?;
+        self.native_directory.guard_witness(&native.witness)?;
+        super::super::RecoveredLogGenerationRoom::guard_joined_native_owner(
+            &self.native_directory,
+            room,
+        )?;
         self.check_original_raster_custody(backup, &raster)?;
-        self.raster.guard_selected(&raster.witness, &self.assets)
+        self.raster.guard_selected(&raster.witness, assets)
     }
     fn check_original_raster_custody(
         &self,
