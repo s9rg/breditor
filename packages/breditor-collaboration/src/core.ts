@@ -38,6 +38,7 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  readonly #assetReferences=new RichRetainedAssetReferenceRegistry();
  readonly #packetAssetReferences=new SharedPacketAssetReferenceRegistry();
  #raw:SharedRustOwner|undefined;#observation:ReturnType<SharedRustOwner["observe"]>|undefined;#view="";#descriptor="";
+ #disposedRevisions:{documentRevision:string;reviewRevision:string}|undefined;
  #listeners=new Set<(event:SharedPublication<P>)=>void>();#queue:Pending[]=[];#bytes=0;#holds=0;#publishing=false;#draining=false;#retired=false;
  #options:SharedEditorOptions<P>;#maxFrames:number;#maxBytes:number;#fixedHistory:"explicit"|"typing-v1"|undefined;
  readonly #selectionPolicy:SharedSelectionPolicy;
@@ -90,11 +91,12 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
    if(view.format!==(this.#selectionPolicy==="document-v1"?"breditor/shared-document-view":"breditor/shared-rich-view")||view.formatVersion!==1)throw new SharedEditorError("owner_abi","Use the matching explicitly selected shared view family");
    if(this.#selectionPolicy==="document-v1"&&(!("selectionEditing" in view)||view.selectionEditing!=="document-v1"))throw new SharedEditorError("selection_policy","Native document view did not declare the selected scope policy");
    if(view.rangeEditing!==undefined&&(view.rangeEditing!=="general-v1"||!this.supportsGeneralRanges()))throw new SharedEditorError("general_range_unavailable","Use a complete matching native general-range owner");
-   owners.add(raw);registerManagedCore(this,()=>{this.#live();if(this.#retired)throw new SharedEditorError("retired","The shared writer no longer has live managed custody");});
+   owners.add(raw);registerManagedCore(this,()=>{this.#live();if(this.#retired)throw new SharedEditorError("retired","The shared writer no longer has live managed custody");},()=>this.#retainedRevisions());
   }
   catch(error){this.#observation?.free();this.#raw=undefined;raw.free();throw error;}
  }
  #live():SharedRustOwner{if(!this.#raw)throw new SharedEditorError("disposed","The shared editor is disposed");return this.#raw;}
+ #retainedRevisions():{documentRevision:string;reviewRevision:string}{return this.#disposedRevisions??{documentRevision:(JSON.parse(this.#view) as SharedEditorView<P>).revision,reviewRevision:this.#reviewRevision.toString()};}
  #observe(raw:SharedRustOwner):ReturnType<SharedRustOwner["observe"]>{return this.#selectionPolicy==="document-v1"?raw.observe_document!():raw.observe();}
  #check(revision?:string):void{this.#live();if(revision!==undefined&&revision!==this.view().revision)throw new SharedEditorError("stale_observation","The request was prepared from an older shared publication");}
  /** Native pure reads remain available in read-only mode and never publish to subscribers. */
@@ -460,12 +462,13 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
    try{while(this.#raw&&!this.#retired&&!this.#holds&&this.#queue.length){const next=this.#queue.shift()!;this.#bytes-=next.bytes;next.cleanup();try{const before=this.#view;this.#run("remote",raw=>raw.receive_frame(next.frame),undefined,false);next.resolve(before!==this.#view);}catch(error){next.reject(error);this.#report(error);}}}
   finally{this.#draining=false;}
  }
- /** Permanent UI/transport retirement, not document read-only mode. Reads survive until explicit disposal. */
+ /** Permanent UI/transport retirement, not document read-only mode. Reads survive
+  * until explicit disposal. Repeating retirement after disposal is a terminal no-op. */
  retire():void{
-  this.#live();if(this.#retired)return;this.#retired=true;
+  if(!this.#raw||this.#retired)return;this.#retired=true;
   const pending=this.#queue;this.#queue=[];this.#bytes=0;
   const error=new SharedEditorError("retired","The shared writer retired before queued remote admission");
   for(const entry of pending){entry.cleanup();entry.reject(error);}
  }
- dispose():void{if(!this.#raw)return;const raw=this.#raw;this.#raw=undefined;this.#listeners.clear();this.#reviewListeners.clear();for(const result of [...this.#searches])result.dispose();for(const plan of [...this.#versionPlans])plan.dispose();for(const preview of [...this.#suggestionPreviews])preview.dispose();for(const proof of [...this.#suggestionEffects])proof.dispose();const error=new SharedEditorError("disposed","The shared editor was disposed before remote admission");for(const entry of this.#queue){entry.cleanup();entry.reject(error);}this.#queue=[];this.#bytes=0;this.#observation?.free();this.#observation=undefined;raw.free();}
+ dispose():void{if(!this.#raw)return;this.#disposedRevisions=this.#retainedRevisions();const raw=this.#raw;this.#raw=undefined;this.#listeners.clear();this.#reviewListeners.clear();for(const result of [...this.#searches])result.dispose();for(const plan of [...this.#versionPlans])plan.dispose();for(const preview of [...this.#suggestionPreviews])preview.dispose();for(const proof of [...this.#suggestionEffects])proof.dispose();const error=new SharedEditorError("disposed","The shared editor was disposed before remote admission");for(const entry of this.#queue){entry.cleanup();entry.reject(error);}this.#queue=[];this.#bytes=0;this.#observation?.free();this.#observation=undefined;raw.free();}
 }

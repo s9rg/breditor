@@ -1,5 +1,18 @@
 # V1 candidate checks
 
+Both profiles require `owned-core-cleanup-plan-contracts`,
+`owned-core-cleanup-contracts`, `owned-core-cleanup-type-fence`,
+`owned-core-cleanup` and `installed-owned-core-cleanup`. They cover actual SDK
+lease cleanup after prior native disposal without treating cached revision
+numbers as live source proof. Source and installed packages repeat 300 native
+cases, 300 cold pairs, 900 future history comparisons and 26 focused laws,
+including actual in-flight commit/abort barriers and co-owned version resources.
+See [the lifetime contract](OWNED_CORE_LIFETIME.md) and its
+[qualification](qualification/2026-10-21-owned-core-lifetime.json). The build and
+three isolated regression batches pass all 29 selected checks against one frozen
+source; the script suite passes 1,670 tests with three existing skips. The exact
+final disposed-owner regression fails against the retained old public archive.
+
 Both profiles require `independent-participant-plan-contracts`,
 `independent-participant-contracts`, `independent-participant-type-fence`,
 `independent-participant` and `installed-independent-participant`. The new explicit
@@ -23,7 +36,7 @@ managed local-generation captures, with instance/prototype facade overrides,
 across all five grammar/inline profiles. Installed consumers use fresh offline
 public archives without workspace links. The original 1,000-check lightweight
 generation-stamp law and broader recovery/script stages remain required.
-The functional plan now has 224 checks; the recorded selections below are
+The functional plan now has 229 checks; the recorded selections below are
 historical subsets, not whole-plan or V1 approval.
 
 Both profiles also require `physical-recovery-assets-plan-contracts`,
@@ -36,7 +49,8 @@ mandatory. Source and fresh offline packages repeat the same native/client
 assertions; Pending queues and unselected historical copies are not settled by
 available bytes. See [the distinct contract](PHYSICAL_CLIENT_ASSET_RECONCILIATION.md).
 At that asset checkpoint the functional plan had 216 checks; the current
-224-check plan also includes canonical readers and independent participant recovery. Selecting a
+229-check plan also includes canonical readers, independent participant recovery
+and owned-core lifetime checks. Selecting a
 subset or passing functional checks does not grant V1, public-hosting or
 activation approval.
 

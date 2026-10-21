@@ -1,3 +1,4 @@
+import {retireOwnedCore,disposeOwnedCore} from '../owned_core_lifetime.js';
 import {SharedRichEditor,SharedEditorError,createSharedDocumentEditor} from "../core.js";
 import type {SharedEditorOptions,SharedRustOwner,SharedHistoryPolicy,SharedRangePolicy,SharedSelectionPolicy} from "../types.js";
 import {SharedWriterLease} from "./writer_lease.js";
@@ -62,7 +63,7 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
   registerManagedSource(this,core,()=>{this.#live();this.#boundCore();if(this.#storageChanged||this.#closeRequest)throw managedSourceUnavailable();});
   db.onversionchange=()=>{
    // An upgrade must unblock its database, not silently destroy an unsaved native journal.
-   this.#storageChanged=true;core.retire();db.close();
+   this.#storageChanged=true;retireOwnedCore(core);db.close();
    this.#failed(new SharedEditorError("session_versionchange","Shared storage changed; export the retired journal before explicitly discarding this writer"));
   };
  }
@@ -141,7 +142,7 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
    if(backup){const session=new SharedPersistentSession(constructionKey,db,lease,core,true,options,selectionPolicy,search);try{const checkpointJson=core.checkpointJson();if(checkpointJson!==backup.checkpointJson)throw new SharedEditorError("backup_native_replay","Native replay did not preserve the exact canonical checkpoint");await insertSessionBackup(db,checkpointJson,backup.identity);if(session.#failure)throw session.#failure;session.#saved=checkpointJson;session.#savedRevision=core.view().revision;session.#notify();return session;}catch(error){await session.discardAndClose();throw error;}}
    const session=new SharedPersistentSession(constructionKey,db,lease,core,checkpoint!==null,options,selectionPolicy,search);session.save();
    try{await session.flush();}catch(error){await session.discardAndClose();throw error;}return session;
-  }catch(error){core?.dispose();db?.close();await lease.close();if(nativeBackupAdmission&&!(error instanceof SharedEditorError&&error.code==="session_open_versionchange"))throw new SharedEditorError("backup_native_replay","Matching native replay rejected the backup");throw error;}
+  }catch(error){core&&disposeOwnedCore(core);db?.close();await lease.close();if(nativeBackupAdmission&&!(error instanceof SharedEditorError&&error.code==="session_open_versionchange"))throw new SharedEditorError("backup_native_replay","Matching native replay rejected the backup");throw error;}
  }
  #live():void{if(this.#closed)throw new SharedEditorError("session_closed","The persistent shared session is closed");this.#lease.assertLive();}
  /** Captures require the original data binding; replacement accessors are never invoked. */
@@ -179,13 +180,13 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
  /** Retire publications synchronously; failed saves retain the readable owner/lease for close retry. */
  close():Promise<void>{
   if(this.#closed)return this.#released??Promise.resolve();if(this.#closeRequest)return this.#closeRequest;
-  this.#ownedCore.retire();
+  retireOwnedCore(this.#ownedCore);
   this.#closeRequest=Promise.resolve().then(async()=>{if(this.#closed){await this.#released;return;}this.save();await this.flush();await this.discardAndClose();}).finally(()=>{this.#closeRequest=undefined;});
   return this.#closeRequest;
  }
  /** Explicitly abandon unsaved in-memory work without deleting the last durable journal. */
  discardAndClose():Promise<void>{
-  if(this.#closed)return this.#released??Promise.resolve();this.#closed=true;this.#unsubscribe();this.#ownedCore.dispose();this.#pending=undefined;this.#db.close();
+  if(this.#closed)return this.#released??Promise.resolve();this.#closed=true;this.#unsubscribe();disposeOwnedCore(this.#ownedCore);this.#pending=undefined;this.#db.close();
   // A transaction already started may still commit after db.close(); do not release the writer early.
   this.#released=(this.#running??Promise.resolve()).then(()=>this.#lease.close()).catch(error=>this.#report(error));this.#notify();return this.#released;
  }

@@ -43,6 +43,18 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+[Owned core lifetime](OWNED_CORE_LIFETIME.md) now separates a failed final save
+from explicit resource abandonment after prior native disposal. The actual
+leases release only after existing storage work settles; committed histories
+stay intact for native cold replay. Last observed revision clocks are metadata,
+not a replacement native checkpoint or live grant. Canonical terminal operations
+cannot be redirected through a public core getter or method override. The
+functional plan now has 229 checks. The
+[lifetime qualification](qualification/2026-10-21-owned-core-lifetime.json)
+records the reproduced old-archive failure, 29 passing selected checks and 1,670
+script passes with three existing skips. Independent transport/outboxes, fresh
+client permissions and durable activation fencing remain unfinished.
+
 The [physical client/provider asset read](PHYSICAL_CLIENT_ASSET_RECONCILIATION.md)
 now derives actual selected original/generation native/packet requirements,
 snapshots complete upload stores and resolves them together with native server
@@ -79,7 +91,7 @@ versions, selected native raster bytes and the complete upload-state file. It
 preserves cold native pairs and future document/comment Undo/Redo after offline
 peer changes; missing bytes remain Pending. Old original/generation readers and
 native formats remain closed. Explicit current policy, empty destinations and
-actual Rust replay are still required. The functional plan now has 224 checks.
+actual Rust replay are still required. That checkpoint's functional plan had 224 checks.
 
 Its [selected qualification](qualification/2026-10-21-independent-participant-backup.json)
 passes all 24 stages and 1,642 script tests with three existing skips. Both source

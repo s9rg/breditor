@@ -1,3 +1,5 @@
+import {retireOwnedCore,disposeOwnedCore} from '../owned_core_lifetime.js';
+import {managedCoreRetainedRevisions} from '../managed_custody.js';
 import {SharedRichEditor,SharedEditorError,createSharedDocumentEditor} from "../core.js";
 import type {SharedRustOwner,SharedSelectionPolicy,SharedRangePolicy,SharedHistoryPolicy,SharedEditorOptions} from "../types.js";
 import type {SharedReviewPolicy} from "../review_types.js";
@@ -65,7 +67,7 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
   const autosave=()=>{try{this.save();}catch(error){this.#failed(error);}};
   this.#unsubscribe=[core.subscribe(autosave),core.subscribeReview(autosave)];
   registerManagedSource(this,core,()=>{this.#live();this.#boundCore();if(this.#storageChanged||this.#retiring)throw managedSourceUnavailable();});
-  db.onversionchange=()=>{this.#storageChanged=true;core.retire();db.close();this.#failed(new SharedEditorError("review_versionchange","Paired storage changed; export both readable histories before explicitly discarding this writer"));};
+  db.onversionchange=()=>{this.#storageChanged=true;retireOwnedCore(core);db.close();this.#failed(new SharedEditorError("review_versionchange","Paired storage changed; export both readable histories before explicitly discarding this writer"));};
  }
  static async open<Q extends SharedSelectionPolicy>(input:SharedReviewSessionOptions<Q>):Promise<SharedReviewPersistentSession<Q>>{
   if("reviewedHistory" in input&&input.reviewedHistory!==undefined)return Promise.reject(new SharedEditorError("reviewed_session_factory","Use the explicitly reviewed paired factory"));
@@ -134,7 +136,7 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
    opening.assertCurrent();const session=new SharedReviewPersistentSession(constructionKey,db,documentLease,reviewLease,core,options,saved!==null,saved?.versions??[],saved&&"progress" in saved?saved.progress??undefined:undefined);nativeBackupAdmission=false;
    if(backup){try{const record=session.#record();session.#checkRecord(record);if(JSON.stringify(record)!==backup.recordJson)throw new SharedEditorError("backup_native_replay","Native paired replay did not preserve the exact canonical histories/catalog");await insertBackupRecord(db,[options.room,options.writer],record);if(session.#failure)throw session.#failure;session.#saved=backup.recordJson;return session;}catch(error){await session.discardAndClose();throw error;}}
    session.save();try{await session.flush();}catch(error){await session.discardAndClose();throw error;}return session;
-  }catch(error){core?.dispose();db?.close();try{await reviewLease?.close();}finally{await documentLease.close();}if(nativeBackupAdmission&&!(error instanceof SharedEditorError&&error.code==="review_open_versionchange"))throw new SharedEditorError("backup_native_replay","Matching native paired replay rejected the backup");throw error;}
+  }catch(error){core&&disposeOwnedCore(core);db?.close();try{await reviewLease?.close();}finally{await documentLease.close();}if(nativeBackupAdmission&&!(error instanceof SharedEditorError&&error.code==="review_open_versionchange"))throw new SharedEditorError("backup_native_replay","Matching native paired replay rejected the backup");throw error;}
  }
  #live():void{if(this.#closed)throw new SharedEditorError("review_session_closed","The paired review session is closed");this.#documentLease.assertLive();this.#reviewLease.assertLive();}
  /** A readable public replacement cannot become the owner of this atomic native pair. */
@@ -165,7 +167,7 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
   if(previous.cursor&&(!next.cursor||BigInt(next.cursor.after)<BigInt(previous.cursor.after))||previous.accepted&&(!next.accepted||BigInt(next.accepted.through)<BigInt(previous.accepted.through)||next.accepted.through===previous.accepted.through&&next.accepted.prefixDigest!==previous.accepted.prefixDigest))throw new SharedEditorError("review_relay_rollback","Paired relay progress cannot move backwards");
   this.#validateNativeProgress(next);this.#relayProgress=next;this.save();await this.flush();
  }
- state():SharedReviewSaveState{const snapshot=this.#closedRevisions??this.#ownedCore.reviewSnapshot();return {status:this.#closed?"closed":this.#failure?"failed":this.#pending||this.#running?"pending":"saved",documentRevision:snapshot.documentRevision,reviewRevision:snapshot.reviewRevision,error:this.#failure?String(this.#failure):null};}
+ state():SharedReviewSaveState{const snapshot=this.#closedRevisions??managedCoreRetainedRevisions(this.#ownedCore);return {status:this.#closed?"closed":this.#failure?"failed":this.#pending||this.#running?"pending":"saved",documentRevision:snapshot.documentRevision,reviewRevision:snapshot.reviewRevision,error:this.#failure?String(this.#failure):null};}
  /** Synchronously capture both exact native lanes; coalesce only complete superseded pairs. */
  save():void{this.#live();if(this.#options.relay?.reviewEditing==="read_only")this.#validateNativeProgress(this.#relayProgress);const record=this.#record();this.#checkRecord(record);const encoded=JSON.stringify(record);if(encoded===this.#saved&&!this.#pending&&!this.#running&&!this.#failure)return;this.#pending=record;this.#failure=undefined;this.#start();}
  #start():void{if(this.#running||this.#closed||!this.#pending)return;this.#running=this.#drain().catch(error=>this.#failed(error)).finally(()=>{this.#running=undefined;if(!this.#failure)this.#start();});}
@@ -179,7 +181,7 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
  versions():readonly SharedDocumentVersionInfo[]{this.#live();const core=this.#boundCore();return [...this.#versions.values()].map(packet=>core.readVersion(packet));}
  versionPacket(id:string):string{this.#live();const packet=this.#versions.get(id);if(packet===undefined)throw new SharedEditorError("version_unknown","Unknown retained version");return packet;}
  /** Retire synchronously; a failed final write retains both readable histories and both leases for retry. */
- close():Promise<void>{if(this.#closed)return this.#released??Promise.resolve();if(this.#closing)return this.#closing;this.#retiring=true;this.#ownedCore.retire();this.#closing=Promise.resolve().then(async()=>{if(this.#closed){await this.#released;return;}this.save();await this.flush();await this.discardAndClose();}).finally(()=>{this.#closing=undefined;});return this.#closing;}
+ close():Promise<void>{if(this.#closed)return this.#released??Promise.resolve();if(this.#closing)return this.#closing;this.#retiring=true;retireOwnedCore(this.#ownedCore);this.#closing=Promise.resolve().then(async()=>{if(this.#closed){await this.#released;return;}this.save();await this.flush();await this.discardAndClose();}).finally(()=>{this.#closing=undefined;});return this.#closing;}
  /** Explicitly abandon unsaved in-memory pairs; the previous committed record is not deleted. */
- discardAndClose():Promise<void>{if(this.#closed)return this.#released??Promise.resolve();const snapshot=this.#ownedCore.reviewSnapshot();this.#closedRevisions={documentRevision:snapshot.documentRevision,reviewRevision:snapshot.reviewRevision};this.#closed=true;this.#ownedCore.retire();for(const off of this.#unsubscribe)off();this.#unsubscribe=[];this.#ownedCore.dispose();this.#pending=undefined;this.#db.close();this.#released=(this.#running??Promise.resolve()).then(async()=>{try{await this.#reviewLease.close();}finally{await this.#documentLease.close();}});return this.#released;}
+ discardAndClose():Promise<void>{if(this.#closed)return this.#released??Promise.resolve();const snapshot=managedCoreRetainedRevisions(this.#ownedCore);this.#closedRevisions={documentRevision:snapshot.documentRevision,reviewRevision:snapshot.reviewRevision};this.#closed=true;retireOwnedCore(this.#ownedCore);for(const off of this.#unsubscribe)off();this.#unsubscribe=[];disposeOwnedCore(this.#ownedCore);this.#pending=undefined;this.#db.close();this.#released=(this.#running??Promise.resolve()).then(async()=>{try{await this.#reviewLease.close();}finally{await this.#documentLease.close();}});return this.#released;}
 }

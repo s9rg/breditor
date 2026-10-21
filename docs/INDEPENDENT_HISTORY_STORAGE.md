@@ -87,6 +87,12 @@ catalog mutations. Closing retires the actual owner first. A failed final save
 retains exact readable histories and leases for retry; explicit discard releases
 that owner without deleting committed heads or immutable files.
 
+If application code disposed the borrowed core first, a normal final save still
+rejects; it cannot invent fresh native state. Explicit discard now releases the
+actual leases after in-flight storage work settles. Terminal methods are
+canonical internal calls, not mutable public overrides, and last observed
+revision clocks remain metadata only. See [owned core lifetime](OWNED_CORE_LIFETIME.md).
+
 `retainVersion` admits the native packet and the proposed complete cut before
 changing the local catalog. Its promise waits for persistence, including when
 the same packet is already retained in memory after an earlier failed save.

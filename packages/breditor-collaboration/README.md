@@ -32,6 +32,13 @@ use `ESNext.Disposable`.
 
 ## Exact session archives
 
+Sessions own their native cores and writer leases. Close the session for a final
+save; use explicit `discardAndClose()` to abandon unsaved memory. If a borrowed
+core was disposed prematurely, final save still rejects, but explicit discard
+releases the actual leases after in-flight storage settles without rewriting
+committed histories. Retained status clocks are not live native proof. See
+[owned core lifetime](../../docs/OWNED_CORE_LIFETIME.md).
+
 Local sessions that independently select document/comment history can use
 `captureSharedIndependentSource` and `captureSharedIndependentParticipant`.
 The separate portable participant family preserves both exact native lanes,

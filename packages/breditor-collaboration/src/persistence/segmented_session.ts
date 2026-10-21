@@ -1,4 +1,5 @@
 /** Generation-aware native sessions. No old database, checkpoint or writer identity is migrated. */
+import {retireOwnedCore,disposeOwnedCore} from '../owned_core_lifetime.js';
 import {SharedEditorError,SharedRichEditor,createSharedDocumentEditor} from "../core.js";
 import {initializeSharedReadOnly} from "../initialize_read_only.js";
 import type {SharedRustOwner,SharedSelectionPolicy,SharedEditorOptions} from "../types.js";
@@ -62,7 +63,7 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
   let documentRevision=core.view().revision,reviewRevision=options.review?core.reviewSnapshot().reviewRevision:null;
   const changed=(document:string,review?:string)=>{if(document!==documentRevision||review!==undefined&&review!==reviewRevision){this.#sourceStamp=Object.freeze({});documentRevision=document;if(review!==undefined)reviewRevision=review;}save();};
   this.#off=[core.subscribe(e=>changed(e.view.revision)),...(options.review?[core.subscribeReview(e=>changed(e.documentRevision,e.reviewRevision))]:[])];
-  db.onversionchange=()=>{this.#storageChanged=true;try{this.#companion?.retire?.();}finally{core.retire();db.close();this.#failed(new SharedEditorError("segmented_versionchange","Generation storage changed; export the readable native histories before explicitly discarding"));}};
+  db.onversionchange=()=>{this.#storageChanged=true;try{this.#companion?.retire?.();}finally{retireOwnedCore(core);db.close();this.#failed(new SharedEditorError("segmented_versionchange","Generation storage changed; export the readable native histories before explicitly discarding"));}};
  }
  static async open<Q extends SharedSelectionPolicy>(input:SharedSegmentedSessionOptions<Q>):Promise<SharedSegmentedPersistentSession<Q>>{return this.#open(input);}
  /** Native admission into an absent dedicated destination, after host reacquisition/fencing. Never merge or overwrite. */
@@ -109,7 +110,7 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
    operation?.verifyCore(core as unknown as SharedRichEditor<SharedSelectionPolicy>,saved!.record.versions,companion);
    opening.assertCurrent();const session=new SharedSegmentedPersistentSession(constructionKey,db,lease,reviewLease,core,options,identity,saved?.head??null,saved?.record.versions??recovery?.versions??[],source!==undefined,companion);
    session.save();try{await session.flush();}catch(error){await session.discardAndClose();throw error;}return session;
-  }catch(error){core?.dispose();db?.close();try{await reviewLease?.close();}finally{await lease.close();}throw error;}
+  }catch(error){core&&disposeOwnedCore(core);db?.close();try{await reviewLease?.close();}finally{await lease.close();}throw error;}
  }
  #live():void{if(this.#closed)throw new SharedEditorError("segmented_session_closed","The generation session is closed");this.#documentLease.assertLive();this.#reviewLease?.assertLive();}
  /** A public facade property is not native custody. Never invoke a replacement accessor. */
@@ -152,8 +153,8 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
  versionPacket(id:string):string{this.#live();const packet=this.#versions.get(id);if(packet===undefined)throw new SharedEditorError("version_unknown","Unknown immutable version");return packet;}
  /** Retire first. Failed final persistence retains readable histories and both leases for retry. */
  close():Promise<void>{try{return this.#close();}catch(error){return Promise.reject(error);}}
- #close():Promise<void>{if(this.#closed)return this.#released??Promise.resolve();if(this.#closing)return this.#closing;this.#retiring=true;this.#ownedCore.retire();this.#closing=Promise.resolve().then(async()=>{if(this.#closed){await this.#released;return;}this.save();await this.flush();await this.discardAndClose();}).finally(()=>{this.#closing=undefined;});return this.#closing;}
+ #close():Promise<void>{if(this.#closed)return this.#released??Promise.resolve();if(this.#closing)return this.#closing;this.#retiring=true;retireOwnedCore(this.#ownedCore);this.#closing=Promise.resolve().then(async()=>{if(this.#closed){await this.#released;return;}this.save();await this.flush();await this.discardAndClose();}).finally(()=>{this.#closing=undefined;});return this.#closing;}
  /** Explicitly abandon unsaved memory; never delete an immutable file or committed head. */
  discardAndClose():Promise<void>{try{return this.#discardAndClose();}catch(error){return Promise.reject(error);}}
- #discardAndClose():Promise<void>{if(this.#closed)return this.#released??Promise.resolve();this.#closedSaved={documentRevision:this.#saved?.documentRevision??null,reviewRevision:this.#saved?.reviewRevision??null};this.#closed=true;this.#ownedCore.retire();for(const off of this.#off)off();this.#off=[];this.#ownedCore.dispose();this.#pending=undefined;this.#saved=undefined;this.#versions.clear();this.#db.close();this.#released=(this.#running??Promise.resolve()).then(async()=>{this.#attempt=undefined;this.#savedHead=null;try{await this.#reviewLease?.close();}finally{await this.#documentLease.close();}});this.#notify();return this.#released;}
+ #discardAndClose():Promise<void>{if(this.#closed)return this.#released??Promise.resolve();this.#closedSaved={documentRevision:this.#saved?.documentRevision??null,reviewRevision:this.#saved?.reviewRevision??null};this.#closed=true;retireOwnedCore(this.#ownedCore);for(const off of this.#off)off();this.#off=[];disposeOwnedCore(this.#ownedCore);this.#pending=undefined;this.#saved=undefined;this.#versions.clear();this.#db.close();this.#released=(this.#running??Promise.resolve()).then(async()=>{this.#attempt=undefined;this.#savedHead=null;try{await this.#reviewLease?.close();}finally{await this.#documentLease.close();}});this.#notify();return this.#released;}
 }

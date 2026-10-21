@@ -1,0 +1,253 @@
+{
+  "format": "breditor/owned-core-lifetime-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-21",
+  "passed": true,
+  "source": {
+    "commit": "a7474d95a68d6858c981363276c1e9039702c252",
+    "dirty": true,
+    "sha256": "a616ea5db4cd3a3ddfaca406d65abdb45c47d88407fedf5117668411acefa397",
+    "files": 5387,
+    "bytes": 44573246
+  },
+  "qualifiedScope": "Explicit owned-session cleanup after prior native disposal, exact saved histories, actual transaction completion/abort acknowledgement custody, and installed public packages. Synthetic client storage/locks; not V1 or parity approval.",
+  "reproducedDefect": {
+    "condition": "Disposing the actual Rust/Wasm owner before paired, generation or independent session discard threw disposed and left real SDK writer leases held. A cold writer was rejected with writer_in_use; generation/independent second discard could falsely resolve.",
+    "repair": "Canonical terminal methods use the actual privately owned core; retirement after disposal is a terminal no-op. Status uses detached last-observed clocks, not native reads. Explicit discard waits for pending storage acknowledgement before releasing leases; close cannot claim a final save after native disposal.",
+    "exactFinalRegression": {
+      "oldPublicArchiveSha256": "3a05ed9a361a73e6d09e1fa839119e1e7ad408241f923fb5dbb51892dc41327f",
+      "actualInstalledProductionModulesMatchedOldArchive": true,
+      "selectedTest": "already disposed: independent-both",
+      "failedTests": 1,
+      "error": "disposed",
+      "sourceUnitSha256": "76cd55720073c6547a90c0cca8c9d6a43d09e1bd3db09ef63d0f8ced8e02c185",
+      "installedUnitSha256": "15947e91281d8be38f1697081acaf19c3320c40491eff5f85eac82b095e7e754",
+      "assertionsUnchanged": true,
+      "retained": {
+        "result": {
+          "original": "/Users/s/code/breditor/target/owned-core-cleanup-exact-red-hKj89L/result.json",
+          "path": "target/owned-core-cleanup-qualified-EAAAwM/exact-red-result.json",
+          "bytes": 1616,
+          "sha256": "ec3fdf2a3046dbe38003d44fa0db1209a1c2f5d040fd30d8eb245478f58d05ca",
+          "modifiedAtMs": 1792622638189.603
+        },
+        "log": {
+          "original": "/Users/s/code/breditor/target/owned-core-cleanup-exact-red-hKj89L/red.log",
+          "path": "target/owned-core-cleanup-qualified-EAAAwM/exact-red.log",
+          "bytes": 1730,
+          "sha256": "aecf342bfbb2366cf0a74ddf5490246152b1b4be96b6aff6ec63c56cae17f3e9",
+          "modifiedAtMs": 1792622638190.0193
+        },
+        "archive": {
+          "original": "/Users/s/code/breditor/target/owned-core-cleanup-exact-red-hKj89L/pre-fix-collaboration.tgz",
+          "path": "target/owned-core-cleanup-qualified-EAAAwM/pre-fix-collaboration.tgz",
+          "bytes": 4109287,
+          "sha256": "3a05ed9a361a73e6d09e1fa839119e1e7ad408241f923fb5dbb51892dc41327f",
+          "modifiedAtMs": 1792622638193.4097
+        }
+      }
+    }
+  },
+  "qualification": {
+    "aggregate": {
+      "original": "/Users/s/code/breditor/target/owned-core-cleanup-regression-batches.json",
+      "path": "target/owned-core-cleanup-qualified-EAAAwM/aggregate.json",
+      "bytes": 5280,
+      "sha256": "6a7c82047b480ffb692618d38b2d13e0fd1e73cdc16347281c5063d3db55b1ad",
+      "modifiedAtMs": 1792622638139.647
+    },
+    "batches": [
+      {
+        "name": "build",
+        "status": "passed",
+        "stageCount": 1,
+        "result": {
+          "original": "/Users/s/code/breditor/target/v1-candidate-runs/run-qysait/result.json",
+          "path": "target/owned-core-cleanup-qualified-EAAAwM/build-result.json",
+          "bytes": 2373,
+          "sha256": "be286fa37920f67445d8483e3118193f8b643c6563ffc53f00477df961518863",
+          "modifiedAtMs": 1792622638140.1045
+        }
+      },
+      {
+        "name": "sdk-storage",
+        "status": "passed",
+        "stageCount": 20,
+        "result": {
+          "original": "/Users/s/code/breditor/target/v1-candidate-runs/run-S7ybSR/result.json",
+          "path": "target/owned-core-cleanup-qualified-EAAAwM/sdk-storage-result.json",
+          "bytes": 32061,
+          "sha256": "8403fc5f88ee540b1370f350c67442a9fc3cf9ef8dfdf6a3aebfb605346d96d8",
+          "modifiedAtMs": 1792622638141.2097
+        }
+      },
+      {
+        "name": "native-control",
+        "status": "passed",
+        "stageCount": 4,
+        "result": {
+          "original": "/Users/s/code/breditor/target/v1-candidate-runs/run-RC8TnN/result.json",
+          "path": "target/owned-core-cleanup-qualified-EAAAwM/native-control-result.json",
+          "bytes": 7437,
+          "sha256": "78572317bcbd62588a12f7dbbb018d71d94145a1a177d8a6634cd061ba58d990",
+          "modifiedAtMs": 1792622638154.8242
+        }
+      },
+      {
+        "name": "native-assets",
+        "status": "passed",
+        "stageCount": 4,
+        "result": {
+          "original": "/Users/s/code/breditor/target/v1-candidate-runs/run-pGysMy/result.json",
+          "path": "target/owned-core-cleanup-qualified-EAAAwM/native-assets-result.json",
+          "bytes": 7421,
+          "sha256": "3cdbb55f97700d3c9ab9ad6f7a11596d4d28e5c2b03d1dcd188a63b01a86fb8d",
+          "modifiedAtMs": 1792622638158.9648
+        }
+      }
+    ],
+    "buildCompletedBeforeParallelGroups": true,
+    "sourceUnchangedAcrossAllBatches": true,
+    "selectedStages": 29,
+    "functionalPlanChecks": 229,
+    "wholePlanExecuted": false,
+    "scriptTests": {
+      "passed": 1670,
+      "failed": 0,
+      "skipped": 3
+    }
+  },
+  "sourceAndInstalled": {
+    "each": {
+      "format": "breditor/owned-core-cleanup-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "cases": 300,
+      "coldPairs": 300,
+      "futureHistoryPairs": 900,
+      "durableCutComparisons": 600,
+      "stateAfterDisposeComparisons": 300,
+      "failedCloseRefusals": 300,
+      "overrideCases": 10,
+      "publicTerminalCalls": 0,
+      "coreGetterCalls": 0,
+      "foreignOwnerChecks": 10,
+      "retainedVersionOwners": 30,
+      "tokenCalls": 0,
+      "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+      "scope": "Normal native editors and SDK-owned sessions/components. Explicit discard after prior native disposal releases actual SDK writer leases; last publication clocks are metadata only. Native cold/future document/comment histories and original durable cuts stay exact. Synthetic storage/locks only, not physical crash durability, remote authorization or activation."
+    },
+    "focusedLaws": 26,
+    "grammarInlineProfiles": 5,
+    "selectionRangeScopes": 3,
+    "historyMasksPerScope": 2,
+    "persistenceFamilies": 10,
+    "actualStorageAcknowledgementCases": 8,
+    "versionchangeAfterDisposeLaws": 4,
+    "unchangedProbeSha256": "60906ed1d1a496838caaf12bf4bd3e644c3b77650328e6b9daa07c7833b3fb6f",
+    "sourceUnitSha256": "76cd55720073c6547a90c0cca8c9d6a43d09e1bd3db09ef63d0f8ced8e02c185",
+    "installedUnitSha256": "15947e91281d8be38f1697081acaf19c3320c40491eff5f85eac82b095e7e754",
+    "assertionImportsReversible": true,
+    "strictBarePublicTypes": true,
+    "registryArtifacts": 45,
+    "workspaceLinks": false,
+    "productionModuleCount": 161,
+    "noWorkspaceReactOrSyntheticStorageInProduction": true
+  },
+  "artifacts": {
+    "retainedDirectory": "target/owned-core-cleanup-qualified-EAAAwM",
+    "immutableCopies": 55,
+    "packages": [
+      {
+        "name": "@breditor/browser",
+        "original": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-owned-core-cleanup-installed-04LZ3j/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "path": "target/owned-core-cleanup-qualified-EAAAwM/package-0.tgz",
+        "bytes": 327732,
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+        "modifiedAtMs": 1792622638164.0833
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "original": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-owned-core-cleanup-installed-04LZ3j/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "path": "target/owned-core-cleanup-qualified-EAAAwM/package-1.tgz",
+        "bytes": 1914597,
+        "sha256": "e6b524a4d3b9cab485e6df2ff62af133a3772291ec463fd3bba73934c13ac40f",
+        "modifiedAtMs": 1792622638167.6567
+      },
+      {
+        "name": "@breditor/collaboration",
+        "original": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-owned-core-cleanup-installed-04LZ3j/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "path": "target/owned-core-cleanup-qualified-EAAAwM/package-2.tgz",
+        "bytes": 4110484,
+        "sha256": "7ca1e532fd546a7ee720c3115f04b4395a57752e0f900c567f61e2f02edc37ce",
+        "modifiedAtMs": 1792622638176.6199
+      }
+    ],
+    "sharedRuntime": [
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.js",
+        "bytes": 197057,
+        "sha256": "eedaf4d3fbdfd9cfd115484030cc07d3be185aac00c3ccc4922f6df905de40ae",
+        "modifiedAtMs": 1792592625540.0828
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+        "bytes": 13444371,
+        "sha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+        "modifiedAtMs": 1792592625559.278
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.d.ts",
+        "bytes": 76829,
+        "sha256": "fe5579cc17725f1f63cf47ef147a6a570bdb3b6be5c522820e9ce1a61ec21e26",
+        "modifiedAtMs": 1792592625540.6763
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_dependency_inventory.json",
+        "bytes": 124122,
+        "sha256": "6714d5160bc54a23292eebb667a203c3d55358899e0e8df148b2388abf0bd688",
+        "modifiedAtMs": 1792592625565.1223
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/THIRD_PARTY_NOTICES.txt",
+        "bytes": 1380448,
+        "sha256": "4bdd58691c23f4733fd973aff84ebb1a38a670c97c64ce8e4c79c624f594f204",
+        "modifiedAtMs": 1792592625566.9912
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/RUST_COPYRIGHT-library.html",
+        "bytes": 1512520,
+        "sha256": "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6",
+        "modifiedAtMs": 1792592625569.9858
+      }
+    ]
+  },
+  "nativeCarry": {
+    "source": "docs/qualification/2026-10-21-independent-participant-backup.json",
+    "nativeInputs": {
+      "files": 2986,
+      "sha256": "a4a716e0a6237d7c0d6122e5ab1eefc7ab02bda557cfeff9b786794c9c23d420"
+    },
+    "serverTests": 379,
+    "noServerTests": 267,
+    "rerun": false,
+    "condition": "All native inputs and six normal shared runtime artifacts match exactly. These Cargo suites are carried, not newly executed in this SDK lifecycle repair."
+  },
+  "finalDocumentationOnlyFollowup": {
+    "qualifiedNonDocumentation": {
+      "files": 4820,
+      "sha256": "27dbdef4235e4749728386c3780944523b0040a2c5b8b1609eeb88d69e5cbc64"
+    },
+    "condition": "Only docs/ records and links follow qualification; code, fixtures, scripts, packaged README and native runtime must remain byte-exact."
+  },
+  "limitations": [
+    "Destroyed unsaved native memory cannot be reconstructed by discard or UI clock metadata.",
+    "Synthetic IndexedDB/Web Locks are not physical OS lock, crash durability or browser qualification.",
+    "Independent relay/retained outboxes, fresh per-client authorization, durable whole-room coordination and authenticated activation remain unfinished.",
+    "Native 1000-item Undo limit and bounded-resource admission remain unchanged.",
+    "Old protocols, archive meanings, transport defaults and package versions remain unchanged. No push, tag, publication or deployment."
+  ],
+  "v1Ready": false,
+  "publicationApproved": false,
+  "openV1Gates": 13
+}
