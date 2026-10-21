@@ -93,7 +93,10 @@ impl AssetStore {
                 archive_sha256: [0; 32],
             },
         };
-        backup.identity.archive_sha256 = format::sha(&backup.to_bytes()?);
+        let mut digest =
+            crate::archive_digest::ArchiveDigest::new(format::MAX_SERVER_ASSET_BACKUP_BYTES);
+        backup.write_to(&mut digest)?;
+        backup.identity.archive_sha256 = digest.finish().0;
         Ok(backup)
     }
 }

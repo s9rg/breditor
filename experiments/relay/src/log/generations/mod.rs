@@ -17,6 +17,7 @@ mod receipt;
 mod rotate;
 mod state;
 mod verify;
+mod verify_archive;
 pub(crate) use capture::GenerationFileSection;
 pub(crate) use closure::{
     MAX_GENERATION_BODY_BYTES, MAX_GENERATION_FILES, verify_generation_files,
@@ -30,6 +31,7 @@ pub(super) use format::{
     MAX_GENERATIONS as MAX_PHYSICAL_GENERATIONS, MAX_WAL_BYTES as MAX_PHYSICAL_LOG_BYTES,
 };
 pub(crate) use held_file::FileIdentity as GenerationFileWitness;
+pub(crate) use held_file::FileStamp as GenerationFileStamp;
 #[cfg(test)]
 pub(crate) use interruption::RotationPoint;
 pub use options::ServerLogGenerationOptions;

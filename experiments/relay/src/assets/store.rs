@@ -122,6 +122,9 @@ impl AssetStore {
             TryLockError::WouldBlock => Error::Locked,
             TryLockError::Error(e) => Error::Io(e),
         })?;
+        Self::read_locked_root(root, lock, binding, ordinary)
+    }
+    fn read_locked_root(root: PathBuf, lock: File, binding: &str, ordinary: bool) -> Result<Self> {
         let manifest_path =
             if ordinary { initialize_manifest(&root, binding)? } else { root.join("store.json") };
         if !fs::symlink_metadata(&manifest_path)?.is_file() {
@@ -182,6 +185,28 @@ impl AssetStore {
             sync_directory(&root)?;
         }
         Ok(Self { root, binding: binding.into(), lock, entries, bytes, poisoned: false })
+    }
+
+    pub(crate) fn open_recovered_with_lock(
+        root: PathBuf,
+        lock: File,
+        binding: &str,
+    ) -> Result<Self> {
+        key(binding)?;
+        backup::guard_recovered_lock(&root, &lock)?;
+        Self::read_locked_root(root, lock, binding, false)
+    }
+    pub(crate) fn guard_recovered_lock(
+        &self,
+        root: &Path,
+        expected: &crate::log::generations::GenerationFileWitness,
+    ) -> Result<()> {
+        self.ready()?;
+        if self.root != root {
+            return Err(Error::Contract("joined raster owner path differs"));
+        }
+        backup::guard_recovered_lock(root, &self.lock)?;
+        expected.guard(&self.lock, &root.join(".lock"))
     }
     /// Immutable room binding, not a substitute for account/role authentication.
     #[must_use]

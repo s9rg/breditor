@@ -420,3 +420,152 @@ fn forty_independent_native_document_and_comment_families_survive_physical_archi
     assert_eq!(cases, 40);
     Ok(())
 }
+
+fn accept_real_raster_binding(
+    room: &mut Room,
+    assets: &mut crate::assets::AssetStore,
+    profile: &SharedRichProfile,
+    atomic: bool,
+) -> TestResult<String> {
+    let actual =
+        assets.export_backup()?.info().assets.first().ok_or("native raster")?.asset.clone();
+    let registered = room.register("owner")?;
+    let mut peer = profile.join_frame(
+        "room".into(),
+        registered.lease.writer.clone(),
+        &room.catchup("owner")?,
+    )?;
+    peer.apply(vec![Command::ReplaceImage(
+        breditor_collab_feasibility::rich_replica::actions::ReplaceImage {
+            block: "image-block".into(),
+            asset: actual.clone(),
+            generation: "retained-raster".into(),
+        },
+    )])?;
+    send_document(room, "owner", &peer, &registered.lease, "0", atomic)?;
+    Ok(actual)
+}
+fn resume_joined_author(
+    room: &mut Room,
+    author: &mut Author,
+    first: &FirstAcceptance,
+) -> TestResult {
+    assert!(room.validate_lease("alice", &author.document_registration.lease).is_err());
+    assert!(room.validate_review_lease("alice", &author.review_registration.lease).is_err());
+    author.document_registration.lease = room.resume(
+        "alice",
+        &author.document_registration.lease.writer,
+        &author.document_registration.credential,
+    )?;
+    author.review_registration.lease = room.resume_review(
+        "alice",
+        &author.review_registration.lease.actor,
+        &author.review_registration.credential,
+    )?;
+    let Admission::Durable(repeated) =
+        room.admit("alice", &author.document_registration.lease, &first.document_frame)?
+    else {
+        return Err("original joined document receipt".into());
+    };
+    assert!(repeated.duplicate);
+    assert_eq!(repeated.sequence, first.document_receipt.sequence);
+    assert_eq!(repeated.receipt, first.document_receipt.receipt);
+    let ReviewAdmission::Durable(repeated) =
+        room.admit_review("alice", &author.review_registration.lease, &first.review_frame)?
+    else {
+        return Err("original joined comment receipt".into());
+    };
+    assert!(repeated.duplicate);
+    assert_eq!(repeated.sequence, first.review_receipt.sequence);
+    assert_eq!(repeated.receipt, first.review_receipt.receipt);
+    Ok(())
+}
+fn joined_physical_restore(
+    profile_choice: (u32, bool),
+    atomic: bool,
+    document: bool,
+    review: bool,
+) -> TestResult {
+    use crate::{ServerLogGenerationRoomBackup, ServerLogGenerationRoomRecovery};
+    let (files, mut room, mut assets, profile) =
+        crate::room::log_generations::joined_generation_source_for_test(
+            profile_choice.0,
+            profile_choice.1,
+            atomic,
+        )?;
+    let (mut author, first, offline) = prepare_offline_author(&profile, &mut room, atomic)?;
+    if document {
+        enable(&mut room, Lane::Document)?;
+    }
+    if review {
+        enable(&mut room, Lane::Review)?;
+    }
+    let peer = advance_peer(&profile, &mut room, atomic, document, review)?;
+    let actual_raster = accept_real_raster_binding(&mut room, &mut assets, &profile, atomic)?;
+    room.rotate_log_generation("owner", "physical-three")?;
+    let document_cut = room.native_history_checkpoint("owner", Lane::Document)?;
+    let review_cut = room.native_history_checkpoint("owner", Lane::Review)?;
+    let descriptor = room.native_history_descriptor("owner")?;
+    let raster_cut = assets.export_backup()?.to_bytes()?;
+    let inventory = room.log_generation_participant_inventory("owner")?;
+    let references = room.log_generation_retained_asset_references("owner")?;
+    let backup = ServerLogGenerationRoomBackup::capture(&mut room, &mut assets, "owner")?;
+    let encoded = backup.to_bytes()?;
+    let backup = ServerLogGenerationRoomBackup::from_owned_bytes(encoded.clone())?;
+    assert_eq!(backup.info()?.identity.native, inventory.identity().source);
+    assert_eq!(backup.info()?.identity.native, references.source);
+    drop(room);
+    drop(assets);
+    let mut restored = ServerLogGenerationRoomRecovery::begin(
+        &files.recovery(),
+        &backup,
+        &backup.info()?.identity,
+        RoomRecoveryPolicy::HostReacquired,
+    )?
+    .finish(&backup)?;
+    restored.check_live_source(&backup, "owner")?;
+    let (room, assets) = restored.components_mut();
+    assert_eq!(room.native_history_checkpoint("owner", Lane::Document)?, document_cut);
+    assert_eq!(room.native_history_checkpoint("owner", Lane::Review)?, review_cut);
+    assert_eq!(room.native_history_descriptor("owner")?, descriptor);
+    assert_eq!(assets.export_backup()?.to_bytes()?, raster_cut);
+    assert_eq!(ServerLogGenerationRoomBackup::capture(room, assets, "owner")?.to_bytes()?, encoded);
+    inventory.verify_native(room, "owner")?;
+    assert_eq!(room.log_generation_retained_asset_references("owner")?, references);
+    assert!(assets.get(&actual_raster)?.is_some());
+    resume_joined_author(room, &mut author, &first)?;
+    reconnect(&profile, room, &mut author, &first, &offline, &peer, atomic)?;
+    continue_physical_native(room, &mut author, atomic)?;
+    assert!(room.replica.document_json().contains(&actual_raster));
+    room.rotate_log_generation("owner", "continued-after-joined")?;
+    backup.check_retained(room, assets, "owner")?;
+    assert!(backup.check_live(room, assets, "owner").is_err());
+    drop(restored);
+    assert!(
+        ServerLogGenerationRoomRecovery::resume(
+            &files.recovery(),
+            &backup,
+            &backup.info()?.identity,
+            RoomRecoveryPolicy::HostReacquired
+        )
+        .is_err()
+    );
+    Ok(())
+}
+#[test]
+fn forty_independent_native_families_keep_real_rasters_old_offline_work_and_peer_undo_through_joined_physical_restore()
+-> TestResult {
+    let mut cases = 0;
+    for profile in [(1, false), (2, false), (2, true), (3, false), (3, true)] {
+        for atomic in [false, true] {
+            for document in [false, true] {
+                for review in [false, true] {
+                    joined_physical_restore(profile, atomic, document, review)?;
+                    cases += 1;
+                }
+            }
+        }
+    }
+    assert_eq!(cases, 40);
+    Ok(())
+}

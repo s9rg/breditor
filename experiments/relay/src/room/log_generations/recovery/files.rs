@@ -11,8 +11,12 @@ use std::{
     io::{Read, Seek, SeekFrom},
     path::Path,
 };
-pub(super) const MAX_CONTROL: u64 = 128 * 1024;
-pub(super) fn insert(directory: &GenerationDirectory, name: &str, bytes: &[u8]) -> Result<()> {
+pub(in crate::room::log_generations) const MAX_CONTROL: u64 = 128 * 1024;
+pub(in crate::room::log_generations) fn insert(
+    directory: &GenerationDirectory,
+    name: &str,
+    bytes: &[u8],
+) -> Result<()> {
     directory.guard()?;
     directory.absent(name)?;
     let stage = format!(".meta-{}", credentials::issue()?);
@@ -25,21 +29,23 @@ pub(super) fn insert(directory: &GenerationDirectory, name: &str, bytes: &[u8]) 
     fs::remove_file(directory.path.join(stage))?;
     directory.sync()
 }
-pub(super) fn exists(path: &Path) -> Result<bool> {
+pub(in crate::room::log_generations) fn exists(path: &Path) -> Result<bool> {
     match fs::symlink_metadata(path) {
         Ok(_) => Ok(true),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
         Err(e) => Err(e.into()),
     }
 }
-pub(super) fn encode<T: Serialize>(value: &T) -> Result<Vec<u8>> {
+pub(in crate::room::log_generations) fn encode<T: Serialize>(value: &T) -> Result<Vec<u8>> {
     let bytes = serde_json::to_vec(value)?;
     if bytes.len() as u64 > MAX_CONTROL {
         return Err(Error::Contract("generation recovery control budget"));
     }
     Ok(bytes)
 }
-pub(super) fn read<T: DeserializeOwned + Serialize>(path: &Path) -> Result<T> {
+pub(in crate::room::log_generations) fn read<T: DeserializeOwned + Serialize>(
+    path: &Path,
+) -> Result<T> {
     let mut file = File::open(path)?;
     let witness = GenerationFileWitness::of(&file)?;
     witness.guard(&file, path)?;
@@ -61,7 +67,7 @@ pub(super) fn read<T: DeserializeOwned + Serialize>(path: &Path) -> Result<T> {
     }
     Ok(value)
 }
-pub(super) fn open(path: &Path) -> Result<File> {
+pub(in crate::room::log_generations) fn open(path: &Path) -> Result<File> {
     let mut options = OpenOptions::new();
     options.read(true).write(true);
     let file = options.open(path)?;
@@ -72,7 +78,11 @@ pub(super) fn open(path: &Path) -> Result<File> {
     GenerationFileWitness::of(&file)?.guard(&file, path)?;
     Ok(file)
 }
-pub(super) fn compare(file: &mut File, expected: &[u8], partial: bool) -> Result<()> {
+pub(in crate::room::log_generations) fn compare(
+    file: &mut File,
+    expected: &[u8],
+    partial: bool,
+) -> Result<()> {
     let length = usize::try_from(file.metadata()?.len())
         .map_err(|_| Error::Contract("generation recovery file bytes"))?;
     if length > expected.len() || !partial && length != expected.len() {
@@ -94,7 +104,7 @@ pub(super) fn compare(file: &mut File, expected: &[u8], partial: bool) -> Result
     }
     Ok(())
 }
-pub(super) fn key(name: &str) -> String {
+pub(in crate::room::log_generations) fn key(name: &str) -> String {
     let mut hash = Sha256::new();
     hash.update(b"breditor/generation-recovery-file/1\0");
     hash.update(name.as_bytes());
@@ -107,6 +117,6 @@ pub(super) fn key(name: &str) -> String {
 pub(super) fn target(name: &str) -> &str {
     if name == ".ready.json" { ".prepared.json" } else { name }
 }
-pub(super) fn sha(bytes: &[u8]) -> [u8; 32] {
+pub(in crate::room::log_generations) fn sha(bytes: &[u8]) -> [u8; 32] {
     Sha256::digest(bytes).into()
 }

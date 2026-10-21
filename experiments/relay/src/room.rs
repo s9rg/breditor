@@ -26,6 +26,12 @@ pub use log_generations::{
     ServerLogGenerationBackupIdentity, ServerLogGenerationBackupInfo,
 };
 pub use log_generations::{
+    MAX_SERVER_LOG_GENERATION_ROOM_BACKUP_BYTES, RecoveredLogGenerationServerRoom,
+    ServerLogGenerationRoomBackup, ServerLogGenerationRoomBackupIdentity,
+    ServerLogGenerationRoomBackupInfo, ServerLogGenerationRoomRecovery,
+    ServerLogGenerationRoomRecoveryProgress,
+};
+pub use log_generations::{
     RecoveredLogGenerationRoom, ServerLogGenerationRecovery, ServerLogGenerationRecoveryProgress,
 };
 mod native_history;

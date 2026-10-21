@@ -57,9 +57,10 @@ The separate native archive now retains the complete selected file closure and
 bounded unpublished stages. Insert-only resumable restore replays native state
 and checks the independently trusted source before public readiness. Exact native
 histories, old offline input and future peer-preserving Undo/Redo survive in all
-forty independent document/comment family combinations. This is not production
-activation or complete joined raster/client recovery: original-only participant,
-retained-reference and joined raster APIs still refuse the new layout.
+forty independent document/comment family combinations. This native-only archive
+does not include raster bytes or client journals and does not activate a service.
+Original-only participant, retained-reference and joined raster APIs still refuse
+the new layout; separate generation-aware contracts follow below.
 
 Distinct generation-aware native participant and retained-asset readers now bind
 their whole output to the exact archive and physical manifest. Participant
@@ -70,6 +71,24 @@ includes deleted causal image bindings, versions and rejected/abandoned review
 packets across files; visible ASTs and active catalogs are not substitutes.
 These are server-scope inventories, not raster-byte recovery, client/outbox
 coverage, provider reconciliation or authenticated activation.
+
+The distinct [joined generation server recovery](GENERATION_SERVER_ROOM_RECOVERY.md)
+now captures complete native history with actual retained PNG/JPEG/WebP bytes.
+Its insert-only resume binds actual component and file ownership, replays native
+state and checks both owners before one joined completion barrier. Streaming
+output and owned-input admission avoid another full native history buffer.
+Exact retries, forty native family combinations, old offline document/comment
+work and future peer-preserving history are covered by functional regressions.
+Operational handoff/reopen and provider/client activation remain separate work.
+
+The [joined server qualification](qualification/2026-10-21-joined-generation-server-recovery.json)
+passes 304 relay, 194 no-networking, 66 candidate-runner and 1,331 script cases
+on frozen source, plus strict linting/rustdoc and an independent public Rust
+consumer. Fourteen actual interruption prefixes resume, and both positive
+provenance failures pass with unchanged assertions. Maximum-layout actual joined
+restoration passes under the isolated 192-descriptor budget. Three existing
+opt-in skips remain skips; the unchanged core/runtime/package qualification is
+carried, not relabeled as a new whole-plan or production run.
 
 The [generation-reader qualification](qualification/2026-10-21-generation-native-readers.json)
 passes 286 relay, 176 no-networking, 66 candidate-runner and 1,331 script cases
@@ -134,12 +153,13 @@ and 1,440 native comment comparisons, both recovery directions and future histor
 
 Next, in architectural risk order:
 
-1. Finish generation-aware whole-room recovery with complete component/source
-   closure around the native log archive. Keep original formats closed. Address
+1. Complete durable generation-aware operational handoff and reopen around the
+   joined native/raster recovery, preserving source ancestry and refusing
+   unrequested tail repair or cleanup. Keep original formats closed. Address
    retained Undo limits and live staging/replay costs as separate lifetime
    requirements, not by dropping history or widening old bounds.
 2. Compose the matching generation participant and retained-asset inventories
-   with complete raster/provider and client/outbox sources, then provider/client
+   and joined server archive with complete provider and client/outbox sources, then provider/client
    reconciliation and historic-copy disposition.
 3. Implement authenticated whole-room activation with fresh host authority;
    valid archived bytes must not create a second live writer.

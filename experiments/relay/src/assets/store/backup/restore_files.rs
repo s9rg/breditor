@@ -7,7 +7,7 @@ use std::{
     path::Path,
 };
 
-pub(super) fn guard_lock(root: &Path, held: &File) -> Result<()> {
+pub(in crate::assets::store) fn guard_lock(root: &Path, held: &File) -> Result<()> {
     let path = fs::symlink_metadata(root.join(".lock"))?;
     if !path.is_file() {
         return Err(Error::Contract("asset store lock source"));

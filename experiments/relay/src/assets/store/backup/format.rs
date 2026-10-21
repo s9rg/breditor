@@ -6,6 +6,7 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::io::Write;
 
 pub(super) const MAGIC: &[u8] = b"BREDITOR-RASSET1\n";
 pub(super) const PREFIX: usize = MAGIC.len() + 4 + 32;
@@ -62,17 +63,50 @@ impl AssetStoreBackup {
     /// # Errors
     /// Rejects the separate complete framed budget; never truncates files or increases store limits.
     pub fn to_bytes(&self) -> Result<Vec<u8>> {
+        let mut file = Vec::new();
+        file.try_reserve_exact(
+            usize::try_from(self.encoded_len()?)
+                .map_err(|_| Error::Contract("asset backup encoded length"))?,
+        )
+        .map_err(|_| Error::Contract("asset backup output memory"))?;
+        self.write_to(&mut file)?;
+        Ok(file)
+    }
+    /// Exact independent framing length, without copying raster record bodies or source I/O.
+    /// # Errors
+    /// Refuses header, overflow and complete archive budgets before any output is written.
+    pub fn encoded_len(&self) -> Result<u64> {
         let header = serde_json::to_vec(&self.header)?;
-        let mut file = prefix(&header)?;
-        file.extend_from_slice(&header);
-        file.extend_from_slice(&self.manifest);
+        let prefix = prefix(&header)?;
+        let mut length = (prefix.len() as u64)
+            .checked_add(header.len() as u64)
+            .and_then(|value| value.checked_add(self.manifest.len() as u64))
+            .ok_or(Error::Contract("asset backup encoded length"))?;
         for asset in &self.records {
-            file.extend_from_slice(&asset.encoded);
+            length = length
+                .checked_add(asset.encoded.len() as u64)
+                .ok_or(Error::Contract("asset backup encoded length"))?;
         }
-        if file.len() as u64 > MAX_SERVER_ASSET_BACKUP_BYTES {
+        if length > MAX_SERVER_ASSET_BACKUP_BYTES {
             return Err(Error::Contract("asset backup byte budget"));
         }
-        Ok(file)
+        Ok(length)
+    }
+    /// Write the exact original canonical archive without another complete raster buffer.
+    /// Does not read source files, upload, mutate or poison the live store.
+    /// # Errors
+    /// Refuses framing budgets before writing and propagates destination errors. A partial
+    /// destination is not a complete archive and cannot qualify recovery.
+    pub fn write_to(&self, writer: &mut impl Write) -> Result<()> {
+        self.encoded_len()?;
+        let header = serde_json::to_vec(&self.header)?;
+        writer.write_all(&prefix(&header)?)?;
+        writer.write_all(&header)?;
+        writer.write_all(&self.manifest)?;
+        for asset in &self.records {
+            writer.write_all(&asset.encoded)?;
+        }
+        Ok(())
     }
     /// Detached complete original metadata and selected file identity, not a permission grant.
     #[must_use]

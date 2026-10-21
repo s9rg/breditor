@@ -9,12 +9,12 @@ use std::{
 
 /// Ephemeral change witness, not a portable identity or a substitute for replay hashes.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(super) struct FileStamp {
+pub(crate) struct FileStamp {
     modified: (i64, i64),
     changed: (i64, i64),
 }
 impl FileStamp {
-    pub(super) fn of(file: &File) -> Result<Self> {
+    pub(crate) fn of(file: &File) -> Result<Self> {
         let metadata = file.metadata()?;
         #[cfg(unix)]
         {
@@ -30,7 +30,7 @@ impl FileStamp {
             Err(Error::Contract("log generations require Unix change witnesses"))
         }
     }
-    pub(super) fn guard(self, file: &File) -> Result<()> {
+    pub(crate) fn guard(self, file: &File) -> Result<()> {
         if Self::of(file)? != self {
             return Err(Error::Contract("held log storage changed in place"));
         }

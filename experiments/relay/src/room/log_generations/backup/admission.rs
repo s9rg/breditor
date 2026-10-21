@@ -77,6 +77,22 @@ pub(super) fn admit(input: &[u8]) -> Result<Header> {
     Ok(header)
 }
 impl ServerLogGenerationBackup {
+    pub(in crate::room::log_generations) fn inspect_bytes(
+        input: &[u8],
+    ) -> Result<super::ServerLogGenerationBackupInfo> {
+        let header = admit(input)?;
+        Ok(super::ServerLogGenerationBackupInfo {
+            format: "breditor/relay-log-generation-backup",
+            format_version: 1,
+            identity: ServerLogGenerationBackupIdentity {
+                source: header.source,
+                manifest: header.manifest,
+                archive_sha256: format::sha(input),
+            },
+            files: header.files.len(),
+            bytes: input.len() as u64,
+        })
+    }
     /// Admit every exact file, global cut and hash without source writes or native room replay.
     /// A transport-valid archive may still fail native source/role/schema replay at restore.
     /// # Errors

@@ -143,8 +143,10 @@ destination rather than overwriting it.
 
 Original-only backup, participant, retained-reference and joined raster-recovery
 readers still refuse this layout. Explicit generation-aware native participant
-and retained-reference readers are available; joined raster recovery and matching
-provider/client source reconciliation are not supplied by these inventories.
+and retained-reference readers are available. The separate
+[joined server recovery](GENERATION_SERVER_ROOM_RECOVERY.md) additionally retains
+actual raster bytes. Matching operational/provider/client reconciliation is not
+supplied by these native inventories or archives.
 The log archive excludes actual raster bytes and clients' offline journals.
 Complete component/source/provider closure and authenticated whole-room
 activation remain required; valid saved bytes alone cannot grant a second live

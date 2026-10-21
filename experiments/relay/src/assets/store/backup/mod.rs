@@ -9,9 +9,12 @@ mod restore;
 mod restore_files;
 mod restore_scan;
 mod retained;
+mod selected_files;
 #[cfg(test)]
 mod tests;
 mod types;
+mod verify_source;
+pub(super) use restore_files::guard_lock as guard_recovered_lock;
 
 pub use format::MAX_SERVER_ASSET_BACKUP_BYTES;
 pub use types::{AssetBackupIdentity, AssetBackupInfo, AssetRecoveryPolicy, AssetRestoreProgress};

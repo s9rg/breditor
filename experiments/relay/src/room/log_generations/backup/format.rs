@@ -57,6 +57,10 @@ pub(super) fn finish(mut body: Vec<u8>, header: Header) -> Result<ServerLogGener
     Ok(ServerLogGenerationBackup { bytes: body, header, identity })
 }
 impl ServerLogGenerationBackup {
+    #[cfg(test)]
+    pub(in crate::room::log_generations) fn allocation_for_test(&self) -> (usize, usize) {
+        (self.bytes.as_ptr() as usize, self.bytes.capacity())
+    }
     /// Encode the exact admitted file. Large callers can use `write_to` to avoid another copy.
     #[must_use]
     pub fn to_bytes(&self) -> Vec<u8> {

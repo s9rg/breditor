@@ -5,6 +5,7 @@
 //! neither a browser-selected writer ID nor a full-state import. Networking and deployment are
 //! separate adapters; a [`Room`] requires exclusive mutable access across each transaction.
 mod access;
+mod archive_digest;
 pub mod assets;
 mod credentials;
 mod log;
@@ -64,6 +65,12 @@ pub use room::{
 pub use room::{
     MAX_SERVER_LOG_GENERATION_BACKUP_BYTES, ServerLogGenerationBackup,
     ServerLogGenerationBackupIdentity, ServerLogGenerationBackupInfo,
+};
+pub use room::{
+    MAX_SERVER_LOG_GENERATION_ROOM_BACKUP_BYTES, RecoveredLogGenerationServerRoom,
+    ServerLogGenerationRoomBackup, ServerLogGenerationRoomBackupIdentity,
+    ServerLogGenerationRoomBackupInfo, ServerLogGenerationRoomRecovery,
+    ServerLogGenerationRoomRecoveryProgress,
 };
 pub use room::{
     MAX_SERVER_ROOM_BACKUP_BYTES, OperationalServerRoom, RecoveredServerRoom, ServerRoomBackup,

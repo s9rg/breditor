@@ -53,7 +53,7 @@ fn backing_buffer(total: u64) -> Result<Vec<u8>> {
     Ok(body)
 }
 impl Generations {
-    fn selected_file<'a>(&'a self, name: &str, active: &'a File) -> Option<&'a File> {
+    pub(super) fn selected_file<'a>(&'a self, name: &str, active: &'a File) -> Option<&'a File> {
         if name == ".head.json" {
             Some(&self.head)
         } else if name == ".ready.json" {

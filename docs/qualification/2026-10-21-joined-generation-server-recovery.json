@@ -1,0 +1,93 @@
+{
+  "format": "breditor/joined-generation-server-native-qualification",
+  "date": "2026-10-21",
+  "passed": true,
+  "v1Ready": false,
+  "openV1Gates": 13,
+  "publicationApproved": false,
+  "source": {
+    "commit": "b7d4faad7c0fa2d4827fd303fc098619ff543d98",
+    "dirty": true,
+    "sha256": "fe52adb78e0c5323e1cf183d7cd704590d97b9b89ab43b567f3c5b7df85072ea",
+    "files": 5125,
+    "bytes": 43165806
+  },
+  "nonDocumentation": {
+    "files": 4586,
+    "sha256": "c641a01f45a9b230f886d47349621b588756e71c3d53b2fae9bd4d03ef1a384c"
+  },
+  "report": "target/joined-generations-qualification-qnAqQu/result.json",
+  "tests": {
+    "relayRust": 304,
+    "noNetworkingRust": 194,
+    "candidateContracts": 66,
+    "scriptContracts": 1331,
+    "existingOptInSkipped": 3,
+    "strictServerLint": true,
+    "strictNoNetworkingLint": true,
+    "strictRustdoc": true,
+    "nativeFamilyCombinations": 40,
+    "publicProfileTransportChoices": 10,
+    "joinedRestorePrefixes": 14,
+    "maximumWalFiles": 64,
+    "isolatedDescriptorLimit": 192,
+    "independentRustConsumer": 2,
+    "functionalPlanChecks": 178,
+    "wholePlanRun": false
+  },
+  "provenanceRepair": {
+    "before": "target/joined-provenance-before-En531T/result.json",
+    "beforeSha256": "cfa5d3e305a41412de166db5fda5a37ad6cbef602694331918264602bf9f14c3",
+    "positiveBeforeFailures": 2,
+    "positiveAssertionsUnchanged": true,
+    "scope": "Implementation-review regressions in the new joined source-check path, not a claim about earlier released code.",
+    "repairs": [
+      "Changed component-family metadata cannot pass the actual joined source recheck.",
+      "Unexpected parent work is preserved and refused rather than ignored."
+    ]
+  },
+  "verified": [
+    "Distinct complete joined framing retains exact unchanged native and raster component archives and requires independently trusted matching identity before restore reservation.",
+    "Capture and streaming source verification avoid another complete joined/native/raster output buffer; owned admission demonstrably transfers the original allocation to the native component.",
+    "Actual native authority replay precedes the raster phase and joined completion; a transport-valid native authority failure cannot publish readiness for the whole server.",
+    "Fourteen actual synced restore prefixes resume through owned directories and per-file staged inode intents; unrelated occupied or matching replacement raster files are not adopted.",
+    "Forty independent document/comment families retain real rasters, exact old receipts, outstanding offline work and future peer-preserving document/comment Undo/Redo.",
+    "Public consumers cover ten native compiler/transport choices and repeat joined backup/restore after further editing; an isolated independent Rust consumer exercises only public APIs.",
+    "Maximum-layout actual joined capture/restore, both complete readers and the prior archive regression pass under the same isolated descriptor budget without changing Mac or parent-process limits.",
+    "Stale valid native cuts or changed unpublished work refuse source checks without poisoning a valid newer owner; original component encodings and defaults remain unchanged."
+  ],
+  "resourceScope": {
+    "maximumWalFiles": 64,
+    "isolatedDescriptorLimit": 192,
+    "parentOrMacLimitsChanged": false,
+    "captureRetainsAnotherWholeJoinedBuffer": false,
+    "ownedAdmissionTransfersNativeAllocation": true,
+    "nativeColdReplayStillCollectsRecords": true,
+    "completeMemoryEnvelopeQualified": false
+  },
+  "independentConsumer": {
+    "directory": "target/joined-native-consumer-QpFJLu",
+    "tests": 2,
+    "lockedOffline": true,
+    "privateRelayModulesUsed": false
+  },
+  "carriedCore": {
+    "baseline": "target/v1-candidate-runs/run-M8n7a3/result.json",
+    "unchangedNonRelayNativeInputs": 2505,
+    "workspaceRustPreviouslyQualified": 2643,
+    "sharedRustPreviouslyQualified": 661,
+    "researchReviewPreviouslyQualified": 3,
+    "unchangedNormalRuntimeFiles": 12,
+    "normalSharedWasmSha256": "e8afdb083c9e849505c6d1ca85b721485bd673fed71ce1ea1690b20f9c500f9a",
+    "nativeCoreSuitesRerun": false,
+    "normalProducersRerun": false,
+    "freshPublicArchivesByteIdentical": 3
+  },
+  "remaining": [
+    "Durable generation-aware operational handoff/reopen and matching provider/client sources remain required.",
+    "Server raster bytes do not prove current provider mappings or availability of all historical/offline references.",
+    "Client journal/outbox reconciliation, historic-copy disposition and authenticated activation are not implemented by this archive.",
+    "Physical power-loss, cross-host fencing and the complete memory/staging/performance envelope remain unqualified. Original lifetime and Undo budgets are unchanged.",
+    "All V1 and full feature-parity gates remain open. No version, push, tag, publication or deployment is promoted."
+  ]
+}

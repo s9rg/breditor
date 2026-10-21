@@ -11,6 +11,7 @@ mod filesystem;
 mod resumable;
 mod roundtrip;
 mod source;
+mod streaming;
 
 type TestResult<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 const POLICY: AssetRecoveryPolicy = AssetRecoveryPolicy::HostReacquired;

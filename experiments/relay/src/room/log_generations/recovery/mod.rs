@@ -1,7 +1,8 @@
 //! Inactive insert-only native restoration. Completion is not service activation.
 mod begin;
 mod component;
-mod files;
+mod custody;
+pub(super) mod files;
 mod finish;
 #[cfg(test)]
 mod interruption;
