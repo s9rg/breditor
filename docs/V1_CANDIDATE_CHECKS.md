@@ -1,5 +1,16 @@
 # V1 candidate checks
 
+Both profiles require `restored-operation-read-contracts` and
+`installed-restored-operation-read`. The private
+[independent read scope](RESTORED_OPERATION_READ.md) holds actual input/native
+lifetimes under fresh read authorization after writer expiry, without authorizing
+writes. The [selected qualification](qualification/2026-10-22-restored-operation-read.json)
+passes 13 checks from the 287-check functional plan, 15 source/installed read laws
+and all four normal 640-case parent/standalone source/install recovery matrices.
+The new read laws cover both input kinds and four document/comment history
+combinations; the full matrices separately check ordinary restore/write behavior.
+Complete follow-on export, room integration and V1 approval remain open.
+
 Both profiles require `restored-participant-contracts`,
 `restored-participant-type-fence`, `restored-participant` and
 `installed-restored-participant`. The private

@@ -1,0 +1,113 @@
+{
+  "format": "breditor/restored-operation-read-functional-qualification",
+  "formatVersion": 1,
+  "qualifiedDate": "2026-10-22",
+  "calendarTimeZone": "America/Toronto",
+  "passed": true,
+  "source": {
+    "commit": "a42cdb91ce6536b3fa50e95cd7592cf74b49722e",
+    "dirty": true,
+    "sha256": "938fb156111e706cbd360e56763c264dc3e932101650fd2bda767a45ea9992f6",
+    "files": 5611,
+    "bytes": 45920094
+  },
+  "nonDocumentation": {
+    "files": 5013,
+    "sha256": "1e5b53d9634dccba940c9089e8092718259cd650f491cbe3de320d4fdb05892b"
+  },
+  "selection": {
+    "functionalPlanChecks": 287,
+    "uniquePassingPlanChecks": 13,
+    "wholePlanExecuted": false,
+    "sourceUnchangedDuringFinalRuns": true,
+    "postQualificationChanges": "Documentation only; implementation, assertions, candidate plan and packaged README retain the nonDocumentation fingerprint.",
+    "manifests": [
+      "target/v1-candidate-runs/run-wAHMbh/result.json",
+      "target/v1-candidate-runs/run-ZEUp57/result.json",
+      "target/v1-candidate-runs/run-s6d3C4/result.json"
+    ]
+  },
+  "implemented": [
+    "Private independently authorized borrowed read from the actual completed restored source; serialized identities, foreign owners and asynchronous permission callbacks refuse.",
+    "Actual original/input-LIVE read-only native replicas prove data/lifetime after initial admission without retaining an expired writer grant; all writer hooks remain current-policy guarded.",
+    "Independent read signal/grant, exact double-read journal/source admission, complete original/input, current/pending intent, native/version continuation and input-only raster lookup.",
+    "Actual scope and I/O lifetime ledger; shutdown waits even after a scope is released while its digest I/O remains in flight."
+  ],
+  "tests": {
+    "focusedReadLawsSourceAndInstalledEach": 15,
+    "sourceCandidatePlanLaw": 1,
+    "readInputKinds": ["snapshot-v1","lineage-v1"],
+    "readDocumentReviewHistoryCombinations": 4,
+    "writerGrantAndSignalExpiry": true,
+    "readGrantAndSignalRevocationDuringActualDigestIO": true,
+    "scopeReleaseBeforeActualIOCompletes": true,
+    "pendingAndNewerUnsavedLiveRetained": true,
+    "focusedParentLawsSourceAndInstalledEach": 29,
+    "focusedStandaloneLawsSourceAndInstalledEach": 31,
+    "installedFailures": 0,
+    "installedSkips": 0,
+    "workspaceAndDiagnosticTests": 2647,
+    "editorIntegrationTests": 385,
+    "scriptPass": 2250,
+    "scriptFail": 0,
+    "scriptSkipped": 3,
+    "matrixScope": "Full normal restore/write compatibility matrices below; the 15 read laws are separate focused expiry/lifetime coverage, not 640 expiry cases.",
+    "skipScope": "Three existing opt-in checks; no platform qualification inferred."
+  },
+  "sourceAndInstalledParentEach": {
+    "cases": 640,
+    "actualHandoffs": 1280,
+    "coldResumes": 640,
+    "exactNativeStates": 1280,
+    "wholeUploads": 1280,
+    "wholeInputs": 1920,
+    "retainedPacketSets": 1280,
+    "localVersionSets": 1280,
+    "futureHistoryPairs": 1920,
+    "custodyRefusals": 640,
+    "wireOne": 160,
+    "wireTwo": 480,
+    "tokenCalls": 0
+  },
+  "sourceAndInstalledStandaloneEach": {"cases":640,"coldReopens":640,"futureHistoryPairs":1920,"tokenCalls":0},
+  "installedEvidence": {
+    "freshConsumers": 3,
+    "reports": ["target/restored-operation-read-installed-consumer.json","target/restored-participant-installed-consumer.json","target/restored-operation-source-installed-consumer.json"],
+    "matchingArchiveSha256": {
+      "@breditor/browser": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+      "@breditor/experimental-rich-content": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad",
+      "@breditor/collaboration": "1fecf3b5fcb4e08ff2ba79734d22217ba7fd2c6cb273830a3d916322db77c3f3"
+    },
+    "workspaceLinks": false,
+    "strictPublicTypeFences": true,
+    "offlineRegistryIntegrityChecked": true,
+    "assertionChanges": "Reversible module/runtime/fixture locations only; no assertion or case reduction.",
+    "productionBundleExcludesWorkspaceReactAndSyntheticStorage": true
+  },
+  "nativeEvidence": {
+    "normalRuntimeFilesRetained": 12,
+    "normalSharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "normalRichWasmSha256": "bc020ce07ed80600b85735c1e592d5ae163d921f5556fef05269a12bc1d59ec5",
+    "fullRustSuitesFreshlyExecuted": false,
+    "rustImplementationChanged": false
+  },
+  "retained": {
+    "index": "target/restored-operation-read-final-v9hd7F/index.json",
+    "sha256": "35cfa654a5a4d340730e1008266a82c8b3e33381860f186d4387c4f4f15a1c6e",
+    "files": 96,
+    "includes": "Terminal manifests/logs, reports, three matching installed consumers, actual assertions/fixtures, complete source inventory, changed inputs and twelve normal native runtime files."
+  },
+  "scope": "Private read-authorization/lifetime component in controlled IDB/lock/raster fixtures. Not new complete state/graph capture/export or editable graph restore, room reconciliation/activation, physical durability, memory/latency, browser/a11y or V1 approval.",
+  "remaining": [
+    "Complete follow-on state/flat-graph capture/export and real graph restore with repeated editable cold round trips and older input-only pixels.",
+    "Whole-room mixed-family ownership, provider/client reconciliation, independent server comment/log generations and fresh authenticated activation.",
+    "Long-session/resource bounds, large-file hashing, physical durability and remaining full feature-parity/release requirements."
+  ],
+  "historicalWebKitOrRasterRepairClaimed": false,
+  "v1GatesClosed": 0,
+  "v1GatesRemainingOpen": 13,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "packageVersionChanged": false,
+  "pushedTaggedPublishedOrDeployed": false
+}

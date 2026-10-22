@@ -43,6 +43,28 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The private [restored-journal read scope](RESTORED_OPERATION_READ.md) now supports
+fresh read authorization after the write grant or write signal expires. The
+genuine source lends actual original/input-LIVE native and incoming-archive
+lifetimes; writer hooks still require current write policy. Reads admit exact
+CURRENT/PENDING/source state without saving. Shutdown waits for real scopes and
+in-flight digest/raster I/O even if a caller releases its scope first.
+
+Its [selected qualification](qualification/2026-10-22-restored-operation-read.json)
+passes 13 checks from the 287-check plan. Source/fresh offline packages repeat 15
+read laws across snapshot/lineage inputs and four native-history combinations,
+including mid-I/O grant/signal loss and native lifetime holds. Parent and
+standalone restore each pass the full normal 640-case matrix in both source and
+installed packages. Three installed consumers pin matching archives; script tests
+pass 2,250 with three existing opt-in skips. Full Rust suites are not freshly
+rerun; normal native binaries remain unchanged.
+
+This closes a private read-lifetime component, not complete follow-on export or
+graph restore. Whole-room reconciliation, independent server/client generations,
+authenticated activation and remaining feature parity stay required. No historical
+WebKit or intermittent raster repair is inferred. All thirteen V1 gates remain
+open; no version, push, publication or deployment is promoted.
+
 The private [whole-input participant restore](RESTORED_PARTICIPANT.md) now joins
 the genuine native source, immutable incoming archive and whole upload store.
 Actual upload custody precedes source replay, survives interruptions and remains

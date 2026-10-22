@@ -730,6 +730,12 @@ handoff. Cold resume preserves later native edits and upload receipts without
 resetting them to the input. Source journals explicitly bind the parent/upload
 names; standalone restore remains a separate plan profile.
 
+An independent private read scope now retains the actual journal/input/native
+origins under fresh read authorization even after the write grant or signal
+expires. Shutdown waits for outstanding scopes and real digest/raster I/O.
+Read permission never selects a writer factory or permits saving. A complete
+export must still capture LIVE/uploads under an unchanged source stamp.
+
 The next complete provenance export and room reconciliation/activation remain
 required before a public complete-participant restore API. Older exporters
 refuse this source instead of returning an incomplete recovery file.

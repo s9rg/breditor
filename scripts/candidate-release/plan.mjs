@@ -101,6 +101,8 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   stage('restored-participant-type-fence',node,['node_modules/typescript/bin/tsc','--noEmit','--strict','--exactOptionalPropertyTypes','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM,ESNext.Disposable','scripts/fixtures/editor-consumer/types-restored-participant.ts']),
   script('restored-participant','check-restored-participant-sdk.mjs',[],[{path:'target/restored-participant-sdk.json',fresh:true}],2700000),
   script('installed-restored-participant','check-restored-participant-installed.mjs',[],[{path:'target/restored-participant-installed-consumer.json',fresh:true}],2700000),
+  stage('restored-operation-read-contracts',node,['--test','scripts/restored-operation-read.test.mjs','scripts/restored-operation-read-candidate-plan.test.mjs']),
+  script('installed-restored-operation-read','check-restored-operation-read-installed.mjs',[],[{path:'target/restored-operation-read-installed-consumer.json',fresh:true}],180000),
   stage('native-owner-lifetime-contracts',node,['--test','scripts/native-owner-lifetime.test.mjs','scripts/native-owner-lifetime-candidate-plan.test.mjs']),
   stage('bounded-operation-storage-contracts',node,['--test','scripts/bounded-store-read.test.mjs','scripts/bounded-operation-storage.test.mjs','scripts/bounded-operation-storage-candidate-plan.test.mjs']),
   stage('held-asset-restore-contracts',node,['--test','scripts/held-asset-restore.test.mjs','scripts/held-asset-restore-candidate-plan.test.mjs','scripts/asset-backups.test.mjs','scripts/asset-source-backups.test.mjs','scripts/asset-reconciliation.test.mjs','scripts/asset-custody.test.mjs']),
