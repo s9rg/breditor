@@ -8,8 +8,8 @@ import {reserveOperationalGenerationGroup,type OperationalSharedGenerationPartic
 import {prepareOperationalCohort,type OperationalCohortReservation,type OperationalCohortHandoff} from "../operation_cohort/cohort.js";
 import {ownerSources} from "../participant_recovery/components.js";
 import {generationOwnerSource} from "../generation_participant/recovery_components.js";
-import {captureSharedAssetReferences} from "../asset_references_capture.js";
-import {captureSharedGenerationSource} from "../generation_source/capture.js";
+import {captureSharedAssetReferences,SharedAssetReferenceCapture} from "../asset_references_capture.js";
+import {captureSharedGenerationSource,SharedGenerationSourceCapture} from "../generation_source/capture.js";
 import {releaseRoomCustody} from "../room_operation/custody.js";
 import {roomFailure} from "../room_operation/errors.js";
 import type {OperationalSharedParticipantParts} from "../participant_operation/types.js";
@@ -25,6 +25,7 @@ export type MixedRoomParticipantParts =
  | {readonly id:string;readonly family:"original";readonly parts:OperationalSharedParticipantParts<SharedSelectionPolicy>}
  | {readonly id:string;readonly family:"generation";readonly parts:OperationalSharedGenerationParticipantParts<SharedSelectionPolicy>};
 export interface MixedRoomOperationParts{readonly participants:readonly Readonly<MixedRoomParticipantParts>[]}
+const checkOriginal=SharedAssetReferenceCapture.prototype.check,disposeOriginal=SharedAssetReferenceCapture.prototype.dispose,checkGeneration=SharedGenerationSourceCapture.prototype.check,disposeGeneration=SharedGenerationSourceCapture.prototype.dispose;
 
 export async function prepareMixedRoomParticipants(input:readonly MixedRoomParticipant[],databases:readonly IDBDatabase[],leases:readonly RecoveryLease[],beforeRelease:()=>Promise<void>,afterRelease:()=>void,released:()=>void):Promise<OperationalCohortHandoff<MixedRoomOperationParts>>{
  if(!Array.isArray(input)||input.length>1024)throw roomFailure("room_operation_policy");
@@ -39,8 +40,8 @@ export async function prepareMixedRoomParticipants(input:readonly MixedRoomParti
   const generation=reserveOperationalGenerationGroup(values.filter(value=>value.family==="generation").map(value=>value.operation));groups.push(generation);
   const handoff=await prepareOperationalCohort(groups,async markReleased=>{
    await beforeRelease();
-   const originals=original.states.map(s=>{const sources=Object.freeze(ownerSources(s.p,s.owners));captures.push(captureSharedAssetReferences(sources));return Object.freeze({sources,session:s.owners.session!,uploads:s.owners.uploads!});});
-   const generations=generation.states.map(s=>{const source=generationOwnerSource(s.p,s.owners);captures.push(captureSharedGenerationSource(source));return Object.freeze({source,uploads:s.owners.uploads!});});
+   const originals=original.states.map(s=>{const sources=Object.freeze(ownerSources(s.p,s.owners)),capture=captureSharedAssetReferences(sources);captures.push({check:()=>checkOriginal.call(capture),dispose:()=>disposeOriginal.call(capture)});return Object.freeze({sources,session:s.owners.session!,uploads:s.owners.uploads!});});
+   const generations=generation.states.map(s=>{const source=generationOwnerSource(s.p,s.owners),capture=captureSharedGenerationSource(source);captures.push({check:()=>checkGeneration.call(capture),dispose:()=>disposeGeneration.call(capture)});return Object.freeze({source,uploads:s.owners.uploads!});});
    let oi=0,gi=0;
    const parts=Object.freeze({participants:Object.freeze(values.map(value=>value.family==="original"?Object.freeze({id:value.id,family:"original" as const,parts:originals[oi++]!}):Object.freeze({id:value.id,family:"generation" as const,parts:generations[gi++]!})))});
    const states=[...original.states,...generation.states];

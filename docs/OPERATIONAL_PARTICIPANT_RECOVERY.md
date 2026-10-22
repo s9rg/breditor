@@ -146,6 +146,12 @@ session and upload owner, using their ordinary close contracts.
 
 Authority and cancellation are checked again after awaited release, before
 ordinary owners are returned. A captured source check also spans that interval.
+Temporary [whole-store upload custody](OPERATIONAL_COHORT_CUSTODY.md#hold-every-selected-upload-store)
+now spans verification through the final synchronous handoff. Every store in a
+room cohort is held before the first participant is verified. Concurrent current-SDK
+retry/cancel/upload work cannot change the verified cut during release; the
+returned handle can mutate immediately after its own actual lease callback ends.
+Final source guards and disposal use canonical methods, not mutable public facades.
 Actual suggestion, revision and version owners must retain their original
 core/source binding and live storage custody. Irreversible database retirement
 is checked separately from ordinary retryable save failures. The actual upload

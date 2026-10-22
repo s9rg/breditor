@@ -133,9 +133,10 @@ rather than overwrite it with the old archive. A later operation owner must reta
 the immutable origin and verify real native continuation, retained work and upload
 state under fresh policy.
 
-Original/generation operation owners and physical mixed-room parents do not yet
-adopt this complete independent participant or retain its new asset custody.
-Their integration, explicit historical-copy dispositions, complete provider/client
+Original/generation operation and mixed-room handoffs now use temporary
+[whole-store asset custody](OPERATIONAL_COHORT_CUSTODY.md#hold-every-selected-upload-store).
+They still do not adopt this complete independent participant or establish its
+durable operational origin. That integration, explicit historical-copy dispositions, complete provider/client
 reconciliation, independent server-log generations and fresh authenticated room
 activation remain architectural work. This local recovery cannot waive those
 requirements or any of the thirteen V1 gates.

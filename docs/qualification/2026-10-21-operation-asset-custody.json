@@ -1,0 +1,323 @@
+{
+  "format": "breditor/operation-asset-custody-functional-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-22T03:10:28.520Z",
+  "calendarTimeZone": "America/Toronto",
+  "passed": true,
+  "source": {
+    "commit": "7747a345d8583fde0d5d15d4bf89b2a8f8bea9ad",
+    "dirty": true,
+    "sha256": "093f2bd8d7ada1d82f04a06211e72211c3d79d42779910b16c91527f759972c9",
+    "files": 5478,
+    "bytes": 45136285
+  },
+  "nonDocumentation": {
+    "files": 4902,
+    "sha256": "9f764b0f906d63e5f489d214dbd3c0006dc0bcced504527e6dca95df9ac59df7"
+  },
+  "nativeInputs": {
+    "files": 2986,
+    "sha256": "a4a716e0a6237d7c0d6122e5ab1eefc7ab02bda557cfeff9b786794c9c23d420"
+  },
+  "normalSharedRuntime": [
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.js",
+      "bytes": 197057,
+      "sha256": "eedaf4d3fbdfd9cfd115484030cc07d3be185aac00c3ccc4922f6df905de40ae"
+    },
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+      "bytes": 13444371,
+      "sha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329"
+    },
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.d.ts",
+      "bytes": 76829,
+      "sha256": "fe5579cc17725f1f63cf47ef147a6a570bdb3b6be5c522820e9ce1a61ec21e26"
+    },
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/breditor_dependency_inventory.json",
+      "bytes": 124122,
+      "sha256": "6714d5160bc54a23292eebb667a203c3d55358899e0e8df148b2388abf0bd688"
+    },
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/THIRD_PARTY_NOTICES.txt",
+      "bytes": 1380448,
+      "sha256": "4bdd58691c23f4733fd973aff84ebb1a38a670c97c64ce8e4c79c624f594f204"
+    },
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/RUST_COPYRIGHT-library.html",
+      "bytes": 1512520,
+      "sha256": "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6"
+    }
+  ],
+  "normalRichRuntime": [
+    {
+      "path": "packages/breditor-experimental-rich-content/dist/breditor_wasm.js",
+      "bytes": 176594,
+      "sha256": "8ff8899f4d235725a9954623be66565585ca519f557f0f5acc5835d31ff46576"
+    },
+    {
+      "path": "packages/breditor-experimental-rich-content/dist/breditor_wasm_bg.wasm",
+      "bytes": 5910655,
+      "sha256": "bc020ce07ed80600b85735c1e592d5ae163d921f5556fef05269a12bc1d59ec5"
+    },
+    {
+      "path": "packages/breditor-experimental-rich-content/dist/breditor_wasm.d.ts",
+      "bytes": 96700,
+      "sha256": "707887e7fc0cfa40f9210f3035bea41bed9ca040eb89b98d5fd5222195cb6243"
+    },
+    {
+      "path": "packages/breditor-experimental-rich-content/dist/breditor_dependency_inventory.json",
+      "bytes": 29157,
+      "sha256": "047361b860d98118581650dbf0f15d8f6b57abaaa9d4a576d956364915d89014"
+    },
+    {
+      "path": "packages/breditor-experimental-rich-content/dist/THIRD_PARTY_NOTICES.txt",
+      "bytes": 353584,
+      "sha256": "b453b4e00e6ab941cce24809a27ce4ed6801585a81592c2bebe501a1f5a15a9b"
+    },
+    {
+      "path": "packages/breditor-experimental-rich-content/dist/RUST_COPYRIGHT-library.html",
+      "bytes": 1512520,
+      "sha256": "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6"
+    }
+  ],
+  "selection": {
+    "functionalPlanChecks": 250,
+    "selectedStages": 101,
+    "selectedPlanStages": 100,
+    "extraCompleteNoServerNativeSuiteStages": 1,
+    "batches": [
+      {
+        "name": "build",
+        "stageCount": 9
+      },
+      {
+        "name": "new-handoff",
+        "stageCount": 4
+      },
+      {
+        "name": "generation-cohorts",
+        "stageCount": 14
+      },
+      {
+        "name": "original-lifecycle",
+        "stageCount": 15
+      },
+      {
+        "name": "new-recovery",
+        "stageCount": 7
+      },
+      {
+        "name": "complete-participant",
+        "stageCount": 4
+      },
+      {
+        "name": "atomic-delivery",
+        "stageCount": 4
+      },
+      {
+        "name": "original-delivery",
+        "stageCount": 19
+      },
+      {
+        "name": "native-custody",
+        "stageCount": 22
+      },
+      {
+        "name": "exclusive-installed-baseline",
+        "stageCount": 1
+      },
+      {
+        "name": "fresh-native",
+        "stageCount": 2
+      }
+    ],
+    "sourceUnchangedDuringAllRuns": true,
+    "wholePlanExecuted": false,
+    "postQualificationChanges": "Documentation only; implementation and non-documentation inputs retain the recorded fingerprint.",
+    "supersededPreliminaryBroadRun": "An unfrozen preliminary run failed 6 tests; its retained metadata is not promoted to final qualification. Its full stdout was not retained."
+  },
+  "regressions": {
+    "uploadHandoff": {
+      "defect": "Original/generation recovered and operational handoffs, including a mixed cohort, allowed a second actual upload handle to retry cancelled work after verification but before ownership transferred.",
+      "sourceAssertionsSha256": "7079293dea78edccee393c74360f5caeabdf414a98af3d5010ad84cef6ca6fb8",
+      "installedAssertionsSha256": "895ce17139ac389dbac1b01b8401876d9a6108f48da1149225673625c15da132",
+      "fixtureSha256": "4b8d630b1a89ee2d4478b7cd966835bfeefbda48eda5e899068e0e3c4282ee3f",
+      "sourcePreFixFailures": 9,
+      "installedPreFixFailures": 9,
+      "reversibleModuleLocationsOnly": true,
+      "oldInstalledArchiveFilesByteCompared": 1170,
+      "oldArchives": [
+        {
+          "name": "@breditor/browser",
+          "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+          "installedFilesCompared": 193
+        },
+        {
+          "name": "@breditor/experimental-rich-content",
+          "sha256": "340aa47ff8e6c41c56f35476d8d4d5c164aa63fe7470ae3d5367ff19ffd1b109",
+          "installedFilesCompared": 170
+        },
+        {
+          "name": "@breditor/collaboration",
+          "sha256": "8fcf6804caf0db49490ab77a4fc2b74aa7df75dc368f6f7a87e0f8fcec976eff",
+          "installedFilesCompared": 807
+        }
+      ],
+      "repairedSourceAndInstalledPass": true
+    },
+    "finalNativeGuard": {
+      "defect": "Late public capture check/disposal replacements could mask changed native history or run cleanup through a mutable facade. Generation recovered handoffs also lacked a native cut capture spanning asynchronous coordinator release.",
+      "sourceAssertionsSha256": "01d4d0bb0fc4034e573f7e2d8f89b51111e7c8ead792e53220e7281b7507abbd",
+      "installedAssertionsSha256": "b71bf40f3de6371625d4f8fa3e2b32aeb213ac351e687b2aaf520578c7bb1bf7",
+      "fixtureSha256": "4b8d630b1a89ee2d4478b7cd966835bfeefbda48eda5e899068e0e3c4282ee3f",
+      "installedPreFixFailures": 9,
+      "exactPreFixSourceRun": false,
+      "reversibleModuleLocationsOnly": true,
+      "oldInstalledArchiveFilesByteCompared": 1170,
+      "repairedSourceAndInstalledPass": true
+    },
+    "existingRetirementFixtures": {
+      "originalAssertionCallsRetained": 323,
+      "currentAssertionCalls": 324,
+      "allOriginalAssertionAstsRetained": true,
+      "semanticAstComparisonIgnoresOnlyLocationRawSpellingAndComments": true,
+      "actualAbortedUpgradeRetiresOwnersWithoutChangingOriginalVersionOneBytes": true,
+      "synchronousLastCallbackFixtureDispatchesVersionchangeToActualSdkConnection": true,
+      "physicalOperatingSystemEventQualification": false
+    }
+  },
+  "proof": {
+    "scriptTests": {
+      "passed": 1929,
+      "failed": 0,
+      "skipped": 3
+    },
+    "focusedLaws": {
+      "handoffAndPhaseLaws": 45,
+      "mandatoryPlanLaw": 1,
+      "sourceSelectedContracts": 46,
+      "installedSelectedContracts": 45,
+      "actualNativeHandoffCases": 18,
+      "actualAssetPhaseCases": 13,
+      "existingCohortPhaseCases": 14
+    },
+    "recovery": {
+      "sourceAndInstalledAcceptanceEqualAfterOmittingOnlyWireRequests": true,
+      "each": {
+        "cuts": 256,
+        "finishes": 512,
+        "handoffs": 512,
+        "wholeUploads": 512,
+        "retainedOriginalFiles": 512,
+        "readOnlyRefusals": 1024,
+        "currentPolicyReopens": 256
+      }
+    },
+    "generationRoomInstalled": {
+      "generationCohorts": 240,
+      "mixedFamilyCohorts": 480,
+      "managedBindingCohorts": 120
+    },
+    "freshInstalled": {
+      "workspaceLinks": false,
+      "strictPublicTypes": true,
+      "registryArtifactsInFocusedConsumer": 45,
+      "productionModuleCount": 199,
+      "noWorkspaceReactOrSyntheticStorageInProduction": true,
+      "publicRootFence": true,
+      "matchingArchiveReports": 29,
+      "distinctConsumerDirectories": 20,
+      "archiveHashes": [
+        {
+          "name": "@breditor/browser",
+          "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+        },
+        {
+          "name": "@breditor/experimental-rich-content",
+          "sha256": "340aa47ff8e6c41c56f35476d8d4d5c164aa63fe7470ae3d5367ff19ffd1b109"
+        },
+        {
+          "name": "@breditor/collaboration",
+          "sha256": "ab57b7b87ef7db03eeb1287bfc0ec66ccfd2d58a036a9ffeb506ff0e777126ee"
+        },
+        {
+          "name": "@breditor/editor",
+          "sha256": "7b42f032b04fc75c0de2f6304fa466571d9a52c7a10d57013fc7e0f545ea9081"
+        }
+      ],
+      "finalSessionBackupConsumerRebuiltBothNormalNativeProducersExclusively": true
+    },
+    "nativeSuites": {
+      "freshlyReexecutedThisCheckpoint": true,
+      "suites": [
+        {
+          "id": "relay-native",
+          "passed": 379,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "id": "relay-native-no-server-full",
+          "passed": 267,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "normalSharedRuntimeByteIdentical": true,
+      "normalRichRuntimeByteIdentical": true
+    }
+  },
+  "evidence": {
+    "directory": "target/operation-assets-qualified-MYybcl",
+    "index": {
+      "path": "target/operation-assets-qualified-MYybcl/index.json",
+      "bytes": 240369,
+      "sha256": "d094aaf0773ddf0b8720ddd08aacefac67fa4bc5ce14cf2738b396be4817c124",
+      "modifiedAtMs": 1792638607318.1504
+    },
+    "retainedFiles": 245,
+    "stageManifestsLogsAndDeclaredArtifactsRetained": true,
+    "nestedGenerationRoomChildLogsRetained": true,
+    "exactFinalPreFixAssertionsLogsAndOldArchivesRetained": true,
+    "oldAndNewRetirementFixtureSourcesAndAssertionAuditRecipeRetained": true,
+    "focusedInstalledConsumerInputsAndLockfilesRetained": true,
+    "immutableCopies": true
+  },
+  "scope": {
+    "originalNativeWireAssetAndArchiveMeaningsUnchanged": true,
+    "allSelectedStoresHeldBeforeFirstParticipantVerification": true,
+    "actualAssetCustodyAcrossAsynchronousReleaseAndFinalBarrier": true,
+    "canonicalFinalCaptureChecksAndDisposal": true,
+    "partialAssetAdmissionAndCohortAsynchronousPreparationFailureCleanupWaitForActualCallbacks": true,
+    "lateCommitOrAbandonReleasesSynchronouslyAndStoresTrackActualRelease": true,
+    "recipientCanImmediatelyUseItsOwnReturnedUploadHandle": true,
+    "testedOriginalGenerationAndMixedParentsCovered": true,
+    "cooperativeCurrentSdkAssetWritersOnly": true,
+    "legacyDirectIndexedDbAndCrossDeviceWritersRequireSeparateHostFencing": true,
+    "atomicTransactionAcrossSeparateDatabases": false,
+    "durableCompleteIndependentDeliveryOperationalIntentFinished": false,
+    "physicalWholeRoomNewFamilyAdoptionFinished": false,
+    "providerWideClientReconciliationFinished": false,
+    "independentServerLogGenerationsFinished": false,
+    "authenticatedWholeRoomActivationFinished": false,
+    "clientNativeUndoLimit": 1000,
+    "hashStreaming": false,
+    "physicalCrashQuotaMemoryLatencyAndPlatformQualification": false,
+    "syntheticFixtures": [
+      "IndexedDB and shared/exclusive locks",
+      "Fixed raster decoder",
+      "Synchronous retained-room fixture versionchange dispatch"
+    ],
+    "fullFeatureParityFinished": false,
+    "v1Ready": false,
+    "allThirteenV1GatesRemainOpen": true,
+    "versionChanged": false,
+    "pushed": false,
+    "published": false,
+    "tagged": false,
+    "deployed": false
+  }
+}

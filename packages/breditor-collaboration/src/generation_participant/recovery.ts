@@ -16,13 +16,15 @@ import {snapshotGenerationRecovery,prepareGenerationRecovery,type PreparedGenera
 import {createGenerationRecoveryDatabase,readGenerationRecoveryDatabase,writeGenerationRecoveryRecord,type GenerationRecoveryRecord} from "./recovery_database.js";
 import {restoreGenerationSource,restoreGenerationUploads,checkGenerationOwner,verifyGenerationOwners,discardGenerationOwners,generationOwnerSource,type GenerationRecoveryOwners} from "./recovery_components.js";
 import type {SharedGenerationParticipantRecoveryOptions,SharedGenerationParticipantResumeOptions,SharedGenerationParticipantRecoveryProgress} from "./recovery_contract.js";
-import {captureSharedGenerationSource,type SharedGenerationSourceCapture} from "../generation_source/capture.js";
+import {captureSharedGenerationSource,SharedGenerationSourceCapture} from "../generation_source/capture.js";
+import {holdOperationalAssets,type OperationalAssetCustody} from '../operation_cohort/assets.js';
 import {SharedRichEditor} from "../core.js";
 import type {ReadyPreparationRetarget} from "../participant_recovery/ready_retarget.js";
 let captureStagedGeneration:<P extends SharedSelectionPolicy>(owner:RecoveredSharedGenerationParticipant<P>)=>Promise<SharedGenerationSourceCapture>;
 /** Internal readonly catalog borrowing. The genuine owner remains held; no editable session escapes. */
 export function captureReadOnlyRecoveredGenerationSource<P extends SharedSelectionPolicy>(owner:RecoveredSharedGenerationParticipant<P>):Promise<SharedGenerationSourceCapture>{return captureStagedGeneration(owner);}
 const key=Object.freeze({});
+const checkHandoffSource=SharedGenerationSourceCapture.prototype.check,disposeHandoffSource=SharedGenerationSourceCapture.prototype.dispose,disposeHandoffBackup=SharedGenerationParticipantBackup.prototype.dispose;
 export interface RecoveredGenerationCustody<P extends SharedSelectionPolicy>{p:PreparedGenerationRecovery<P>;owners:GenerationRecoveryOwners<P>;db:IDBDatabase;leases:RecoveryLease[];record:GenerationRecoveryRecord}
 type ReadyState<P extends SharedSelectionPolicy>=RecoveredGenerationCustody<P>;
 let recoveredGeneration:<P extends SharedSelectionPolicy>(state:ReadyState<P>)=>RecoveredSharedGenerationParticipant<P>;
@@ -60,7 +62,7 @@ export class RecoveredSharedGenerationParticipant<P extends SharedSelectionPolic
  file():Blob{if(this.#closed)throw fail("generation_participant_closed");return SharedGenerationParticipantBackup.prototype.file.call(this.#state.p.backup);}
  /** Verify actual retained data/native owners, then transfer still-held source leases to the caller. */
  async intoParts():Promise<Readonly<RecoveredSharedGenerationParticipantParts<P>>>{
-  if(this.#closed||this.#released)throw fail("generation_participant_closed");if(this.#busy)throw fail("generation_participant_busy");this.#busy=true;try{const {p,owners,db,leases,record}=this.#state;await retained(p,db,[record]);await verifyGenerationOwners(p,owners);await retained(p,db,[record]);p.guard();const parts=Object.freeze({source:generationOwnerSource(p,owners),uploads:owners.uploads!});await release(db,leases);this.#released=true;p.guard();generationSource(parts.source.session).checkManaged();RichAssetStore.prototype.checkOpen.call(parts.uploads);this.#closed=true;p.backup.dispose();return parts;}finally{this.#busy=false;}
+  if(this.#closed||this.#released)throw fail("generation_participant_closed");if(this.#busy)throw fail("generation_participant_busy");this.#busy=true;let assets:OperationalAssetCustody|undefined,source:SharedGenerationSourceCapture|undefined;try{const {p,owners,db,leases,record}=this.#state;assets=await holdOperationalAssets([owners.uploads!]);await retained(p,db,[record]);await verifyGenerationOwners(p,owners);await retained(p,db,[record]);p.guard();const parts=Object.freeze({source:generationOwnerSource(p,owners),uploads:owners.uploads!});source=captureSharedGenerationSource(parts.source);await release(db,leases);this.#released=true;p.guard();checkHandoffSource.call(source);generationSource(parts.source.session).checkManaged();RichAssetStore.prototype.checkOpen.call(parts.uploads);assets.check();assets.release();this.#closed=true;disposeHandoffBackup.call(p.backup);return parts;}finally{if(source)disposeHandoffSource.call(source);assets?.release();this.#busy=false;}
  }
  async close():Promise<void>{if(this.#closed)return;if(this.#busy)throw fail("generation_participant_busy");this.#busy=true;try{const {p,owners,db,leases}=this.#state;await owners.session?.close();owners.uploads?.close();await release(db,leases);this.#closed=true;p.backup.dispose();}finally{this.#busy=false;}}
  async discardAndClose():Promise<void>{if(this.#closed)return;if(this.#busy)throw fail("generation_participant_busy");this.#busy=true;try{const {p,owners,db,leases}=this.#state;await discardGenerationOwners(owners);await release(db,leases);this.#closed=true;p.backup.dispose();}finally{this.#busy=false;}}

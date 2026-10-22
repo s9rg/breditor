@@ -13,6 +13,36 @@ single set of participant identifiers and the same combined bound. It reserves
 both families before the first await or application authority callback. If the
 second reservation fails, the first is abandoned without consuming any child.
 
+## Hold every selected upload store
+
+Each genuine reservation supplies its actual upload handles, not database names,
+saved ready flags or caller-provided leases. Before verifying any participant,
+the common barrier acquires exclusive current-SDK custody of all selected stores.
+Original and generation stores stay held together through asynchronous source
+verification, coordinator release, native-reader destruction and final checks.
+A second cooperating handle cannot retry a cancelled upload or change its epoch
+between the verified cut and the returned owners.
+
+If a later acquisition is busy, earlier actual leases finish releasing before
+preparation refuses. No child is consumed. Store version change, late authority
+loss, failed release or a changed native source also refuses the whole cohort.
+Abandonment releases every temporary upload reservation; it never settles queue
+work, removes data or rolls a current store back to the original archive.
+
+At the last synchronous barrier, all actual leases and managed owners are checked
+before any upload lease is released or any child is consumed. Lease release and
+private child consumption have no intervening await. Returned handles wait for
+their own actual release callback before immediate mutations or reacquisition.
+Public lease and final source-capture facades cannot redirect internal checks,
+release or disposal.
+
+Exact original and generation recovery `intoParts()` use the same temporary
+store-custody mechanism. Ordinary mutation outside a handoff keeps its existing
+meaning. Read access remains available during custody, but plain close and writes
+cannot cross it. An actual version-change event can still retire the store and
+invalidate the handoff. Legacy runtimes and direct IndexedDB writers require
+separate host fencing; these cooperative leases are not a cross-device grant.
+
 Verification reads actual retained files, native ancestry and managed owners.
 The adapter captures every selected source and constructs its frozen return
 value before releasing coordination leases. One aggregate release includes
@@ -54,6 +84,12 @@ Fresh resume still requires explicit native factories and current policy.
 ## Required functional checks
 
 `operation-cohort-contracts` checks phase ordering and single-use capabilities;
+`operation-asset-custody-contracts` adds actual upload-store exclusion and failure
+cleanup, original/generation recovered and operational handoffs, late canonical
+native-source guards, mixed-family refusal and future native Undo/Redo.
+`operation-asset-custody-type-fence` keeps internal multi-owner reservations out
+of the public root. `installed-operation-asset-custody` repeats the same 45 native,
+asset and phase laws from fresh offline archives, without workspace links.
 `managed-source-binding-contracts` checks semantic descriptor identity and
 zero-accessor refusal. The native binding probe covers replacement before
 commit, in the final authority callback and in native-reader destruction, with
@@ -66,7 +102,21 @@ native document/review Undo/Redo. The same assertions run in fresh offline
 archives under `installed-generation-room`; private installed-file imports are
 explicit fixture hooks, not public adoption APIs.
 
-The shared barrier is an internal prerequisite. Durable V2 operational parent
-intent, historic-copy dispositions, provider/client closure and authenticated
-whole-room activation still need integration. Controlled IndexedDB, locks and
+Upload-retirement fixtures keep the actual SDK connection: asynchronous cases
+abort an upgrader after version change so the original V1 schema remains, while
+the last synchronous callback dispatches the fixture event on that actual
+connection. Every earlier assertion, stored-byte comparison and cold-history
+check remains required. These triggers are storage fixtures, not physical OS events.
+
+The [selected qualification](qualification/2026-10-21-operation-asset-custody.json)
+retains the exact pre-fix upload and native-guard failures, source/installed laws,
+native future-history probes and the retirement-fixture assertion audit. The
+earlier 323 assertion trees remain present; the changed retirement triggers do
+not remove cases, counters or stored-byte comparisons. Its 101 passing stages
+are a subset qualification, not platform durability or release approval.
+
+Existing original/generation V2 operational parents use this internal barrier.
+Complete independent-delivery participant adoption, historic-copy dispositions,
+provider/client closure and authenticated whole-room activation still need
+integration. Controlled IndexedDB, locks and
 raster fixtures do not establish browser crash durability.

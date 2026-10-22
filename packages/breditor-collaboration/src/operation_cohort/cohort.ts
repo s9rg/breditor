@@ -1,8 +1,11 @@
+import type {RichAssetStore} from '@breditor/experimental-rich-content';
+import {holdOperationalAssets,type OperationalAssetCustody} from './assets.js';
 /** Internal reservations are issued only by genuine operation owners. Reserving
  * is synchronous: every family is busy before verification can call host code.
  * No public DTO, readiness marker or selected filename can create a reservation. */
 export interface OperationalCohortReservation<S> {
  readonly states:readonly S[];
+ readonly assetStores:readonly RichAssetStore[];
  verify():Promise<void>;
  markReleased():void;
  checkBindings():void;
@@ -23,10 +26,12 @@ export async function prepareOperationalCohort<T>(
  take:(released:()=>void)=>Promise<T>,verify:()=>void,checkSources:()=>void,
  closed:()=>Error,
 ):Promise<OperationalCohortHandoff<T>>{
- let offered=false,finished=false;
- const abandon=()=>{if(finished)return;finished=true;for(const group of groups)group.abandon();};
+ let offered=false,finished=false,assets:OperationalAssetCustody|undefined;
+ const abandon=()=>{if(finished)return;finished=true;assets?.release();for(const group of groups)group.abandon();};
  try{
+  assets=await holdOperationalAssets(groups.flatMap(group=>group.assetStores));
   for(const group of groups)await group.verify();
+  assets.check();
   const result=await take(()=>{for(const group of groups)group.markReleased();});
   const handoff=Object.freeze({commit(){
    if(finished)throw closed();
@@ -42,10 +47,12 @@ export async function prepareOperationalCohort<T>(
     for(const group of groups)group.checkBindings();
     checkSources();
     for(const group of groups)group.checkManaged();
+    assets!.check();
     // Nothing above may consume a child. Nothing below may call application code.
+    assets!.release();
     for(const group of groups)group.consume();
     return result;
    }finally{abandon();}
   },abandon});offered=true;return handoff;
- }finally{if(!offered)abandon();}
+ }finally{if(!offered)try{await assets?.close();}finally{abandon();}}
 }

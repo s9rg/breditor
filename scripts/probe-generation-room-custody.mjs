@@ -13,6 +13,9 @@ async function databaseSnapshot(name){
  const db=await new Promise((resolve,reject)=>{const r=indexedDB.open(name);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
  try{const result={version:db.version,stores:{}};for(const name of [...db.objectStoreNames])result.stores[name]=await new Promise((resolve,reject)=>{const tx=db.transaction(name,'readonly'),s=tx.objectStore(name),keys=s.getAllKeys(),values=s.getAll();tx.oncomplete=()=>resolve({keys:keys.result,values:values.result});tx.onabort=()=>reject(tx.error);});return await stored(result);}finally{db.close();}
 }
+/** Actual version-change retirement, then abort the upgrader so exact V1 bytes
+ * remain available for the required cold resume. Held custody forbids plain close. */
+async function retireUploadHandle(name){await new Promise((resolve,reject)=>{const r=indexedDB.open(name,2);r.onupgradeneeded=()=>r.transaction.abort();r.onsuccess=()=>{r.result.close();reject(Error('The fixture upgrader must abort'));};r.onerror=()=>r.error?.name==='AbortError'?resolve():reject(r.error);r.onblocked=()=>reject(Error('The actual upload handle must retire on versionchange'));});}
 export async function probeGenerationRoomCustody(directory,manifestPath,modules){
  const api=modules?.collaboration??await import('../packages/breditor-collaboration/dist/index.js'),rich=modules?.rich??await import('../packages/breditor-experimental-rich-content/index.js'),{prepareGenerationRoomParticipants}=await import(new URL('./generation_room_operation/custody.js',import.meta.resolve('@breditor/collaboration')).href),{RecoveryLease}=await import(new URL('./participant_recovery/lease.js',import.meta.resolve('@breditor/collaboration')).href);
  const wasm=await import(pathToFileURL(resolve(directory,'breditor_shared.js')).href);await wasm.default({module_or_path:readFileSync(resolve(directory,'breditor_shared_bg.wasm'))});const manifest=JSON.parse(readFileSync(manifestPath,'utf8'));assert.equal(manifest.cases.length,10);
@@ -38,7 +41,7 @@ export async function probeGenerationRoomCustody(directory,manifestPath,modules)
      const before=await snapshot();held[0].session.core.retire();await assert.rejects(prepare(),e=>e.code==='retired');assert.equal(released,false);await checkStored(before);counts.earlyRetirementRefusals++;
     }else{
      capsule=await prepare();assert.equal(released,true);for(const h of held){await assert.rejects(h.operation.check(),e=>e.code==='generation_operation_busy'||e.code==='generation_operation_closed');counts.busyOwnerRefusals++;}
-     if(fault==='late-upload-close')held[1].uploads.close();
+     if(fault==='late-upload-close')await retireUploadHandle(held[1].recoveryRequest.destinations.uploads);
      if(fault==='changed-cut'){const current=held[0].session.core,peer=new api.SharedRichEditor(profile.join_frame(held[0].options.room,'910',current.updateFrame()));try{peer.select({kind:'text',anchor:{block:'p',offset:'0',affinity:'after'},focus:{block:'p',offset:'0',affinity:'after'}});peer.type('Peer edit during prepared room handoff ');await current.receiveFrame(peer.updateFrame());await held[0].session.flush();}finally{peer.dispose();}}
      const before=await snapshot();
      if(fault==='success'||fault==='release-failure'){

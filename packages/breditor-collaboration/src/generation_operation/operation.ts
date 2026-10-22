@@ -17,7 +17,7 @@ import {openOperationalGenerationOwners,verifyOperationalGenerationOwners} from 
 import {generationOperationFailure as fail} from "./policy.js";
 import {RichAssetStore} from "@breditor/experimental-rich-content";
 import {generationSource} from "../generation_source/admission.js";
-import {captureSharedGenerationSource} from "../generation_source/capture.js";
+import {captureSharedGenerationSource,SharedGenerationSourceCapture} from "../generation_source/capture.js";
 import type {SharedGenerationOperationBeginOptions,SharedGenerationOperationResumeOptions,SharedGenerationOperationProgress,OperationalSharedGenerationParticipantParts} from "./contract.js";
 import {prepareOperationalCohort,type OperationalCohortReservation} from "../operation_cohort/cohort.js";
 export interface OperationalGenerationCustody<P extends SharedSelectionPolicy>{p:PreparedGenerationRecovery<P>;owners:GenerationRecoveryOwners<P>;origin:NativeGenerationOperationOrigin;db:IDBDatabase;recoveryDb:IDBDatabase;record:GenerationOperationRecord;leases:RecoveryLease[];life:GenerationOperationLife;currentGuard:()=>void}
@@ -33,6 +33,7 @@ export async function prepareOperationalGenerationHandoff<T>(owners:readonly Ope
 /** Internal synchronous reservation; never a public structural adoption API. */
 export function reserveOperationalGenerationGroup(owners:readonly OperationalSharedGenerationParticipant<SharedSelectionPolicy>[]):OperationalCohortReservation<State<SharedSelectionPolicy>>{return reserveGenerationGroup(owners);}
 const key=Object.freeze({});
+const checkHandoffSource=SharedGenerationSourceCapture.prototype.check,disposeHandoffSource=SharedGenerationSourceCapture.prototype.dispose;
 async function release(db:IDBDatabase,recoveryDb:IDBDatabase,leases:RecoveryLease[]):Promise<void>{const result=await Promise.allSettled([...leases].reverse().map(l=>l.close()));if(result.some(r=>r.status==="rejected"))throw fail();db.close();recoveryDb.close();}
 /** Read the actual two retained originals and markers, not a cached phase/readiness field. */
 async function retained<P extends SharedSelectionPolicy>(s:Pick<State<P>,"p"|"db"|"record"|"recoveryDb">):Promise<void>{
@@ -49,7 +50,7 @@ export class OperationalSharedGenerationParticipant<P extends SharedSelectionPol
    if(new Set(owners).size!==owners.length)throw fail("generation_operation_policy");
    for(const owner of owners){if(!owner||typeof owner!=="object"||!(#state in owner))throw fail("generation_operation_policy");if(owner.#closed||owner.#released)throw fail("generation_operation_closed");if(owner.#busy)throw fail("generation_operation_busy");}
    for(const owner of owners)owner.#busy=true;
-   return Object.freeze({states:Object.freeze(owners.map(owner=>owner.#state)),
+   return Object.freeze({states:Object.freeze(owners.map(owner=>owner.#state)),assetStores:Object.freeze(owners.map(owner=>owner.#state.owners.uploads!)),
     async verify(){for(const owner of owners){owner.#guard();await retained(owner.#state);await verifyOperationalGenerationOwners(owner.#state.p,owner.#state.owners,owner.#state.origin);owner.#guard();}},
     markReleased(){for(const owner of owners)owner.#released=true;},
     // Generation origin/capture admission already inspects canonical native
@@ -98,7 +99,7 @@ export class OperationalSharedGenerationParticipant<P extends SharedSelectionPol
  /** The host may continue editing/transport after transfer; saved operation intent stays retained. */
  async intoParts():Promise<Readonly<OperationalSharedGenerationParticipantParts<P>>>{
   let source:ReturnType<typeof captureSharedGenerationSource>|undefined,handoff:OperationalGenerationHandoff<OperationalSharedGenerationParticipantParts<SharedSelectionPolicy>>|undefined;
-  try{handoff=await prepareOperationalGenerationHandoff([this as unknown as OperationalSharedGenerationParticipant<SharedSelectionPolicy>],async([s],markReleased)=>{const state=s!,parts=Object.freeze({source:generationOwnerSource(state.p,state.owners),uploads:state.owners.uploads!});source=captureSharedGenerationSource(parts.source);await release(state.db,state.recoveryDb,state.leases);markReleased();return parts;},states=>{for(const s of states){s.p.guard();s.origin.verifySource(generationOwnerSource(s.p,s.owners));}},()=>source!.check());return handoff.commit() as unknown as OperationalSharedGenerationParticipantParts<P>;}finally{handoff?.abandon();source?.dispose();}
+  try{handoff=await prepareOperationalGenerationHandoff([this as unknown as OperationalSharedGenerationParticipant<SharedSelectionPolicy>],async([s],markReleased)=>{const state=s!,parts=Object.freeze({source:generationOwnerSource(state.p,state.owners),uploads:state.owners.uploads!});source=captureSharedGenerationSource(parts.source);await release(state.db,state.recoveryDb,state.leases);markReleased();return parts;},states=>{for(const s of states){s.p.guard();s.origin.verifySource(generationOwnerSource(s.p,s.owners));}},()=>checkHandoffSource.call(source!));return handoff.commit() as unknown as OperationalSharedGenerationParticipantParts<P>;}finally{handoff?.abandon();if(source)disposeHandoffSource.call(source);}
  }
  /** Failed ordinary saves or custody releases remain retryable; original files are not discarded. */
  async close():Promise<void>{if(this.#closed)return;this.#start(false);try{const s=this.#state;await s.owners.session?.close();s.owners.uploads?.close();await release(s.db,s.recoveryDb,s.leases);this.#released=true;s.origin.dispose();s.p.backup.dispose();this.#closed=true;}finally{this.#busy=false;}}

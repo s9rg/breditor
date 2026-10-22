@@ -1,12 +1,26 @@
 # V1 candidate checks
 
+Both profiles require `operation-asset-custody-contracts`,
+`operation-asset-custody-type-fence` and `installed-operation-asset-custody`.
+They qualify [actual multi-owner upload custody](OPERATIONAL_COHORT_CUSTODY.md#hold-every-selected-upload-store)
+and canonical final source guards for original/generation recovered and operational
+handoffs and mixed-family cohorts. The installed consumer repeats the same 45 laws
+with strict public types and reversible module-location changes only. The current
+functional plan has 250 checks; whole-room activation remains separate work.
+
+The [handoff qualification](qualification/2026-10-21-operation-asset-custody.json)
+records 101 passing selected stages, including fresh native suites and the
+isolated producer-rebuild/install check. It does not execute all 250 plan checks
+or close any V1 gate. Its retained index distinguishes 29 matching archive reports
+from the 20 actual consumer installations behind them.
+
 Both profiles require `asset-custody-contracts`,
 `independent-delivery-recovery-contracts`, `independent-delivery-recovery-type-fence`,
 `independent-delivery-recovery` and `installed-independent-delivery-recovery`.
 They qualify the [durable recovery contract](INDEPENDENT_DELIVERY_RECOVERY.md),
 including exact interrupted-commit adoption, native cold replay, current read-only
 handoff and actual upload-store custody through its final barrier. The functional
-plan has 247 checks; operational descendants and whole-room activation remain open.
+plan at that recovery checkpoint had 247 checks; operational descendants and whole-room activation remain open.
 
 The [recovery qualification](qualification/2026-10-21-independent-delivery-recovery.json)
 passes 61 selected stages and 1,897 script tests with three existing skips. Source

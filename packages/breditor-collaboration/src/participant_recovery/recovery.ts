@@ -1,5 +1,6 @@
 import {SharedParticipantBackup} from "../participant_backup/archive.js";
-import {captureSharedAssetReferences,type SharedAssetReferenceCaptureOptions} from "../asset_references_capture.js";
+import {captureSharedAssetReferences,SharedAssetReferenceCapture,type SharedAssetReferenceCaptureOptions} from "../asset_references_capture.js";
+import {holdOperationalAssets,type OperationalAssetCustody} from '../operation_cohort/assets.js';
 import type {RichAssetStore} from "@breditor/experimental-rich-content";
 import {prepareRecovery,type PreparedRecovery} from "./prepare.js";
 import {RecoveryLease} from "./lease.js";
@@ -13,6 +14,7 @@ import {commitReadyPreparationRetargets,type ReadyPreparationRetarget} from "./r
 import type {SharedParticipantRecoveryOptions,SharedParticipantRecoveryProgress} from "./types.js";
 import type {SharedSelectionPolicy} from "../types.js";
 const recoveryKey=Object.freeze({});
+const checkHandoffSource=SharedAssetReferenceCapture.prototype.check,disposeHandoffSource=SharedAssetReferenceCapture.prototype.dispose;
 export interface ReadyState<P extends SharedSelectionPolicy>{prepared:PreparedRecovery<P>;owners:RecoveryOwners<P>;db:IDBDatabase;leases:RecoveryLease[]}
 export interface RecoveredSharedParticipantParts<P extends SharedSelectionPolicy=SharedSelectionPolicy>{readonly sources:SharedAssetReferenceCaptureOptions<P>;readonly session:RecoverySession<P>;readonly uploads:RichAssetStore}
 async function verify<P extends SharedSelectionPolicy>(p:PreparedRecovery<P>,owners:RecoveryOwners<P>):Promise<void>{
@@ -50,7 +52,8 @@ export class RecoveredSharedParticipant<P extends SharedSelectionPolicy=SharedSe
  /** Revalidate the actual owners and retained completion before releasing only coordinator locks. */
  async intoParts():Promise<Readonly<RecoveredSharedParticipantParts<P>>>{
   if(this.#closed||this.#released)throw recoveryFailure("recovery_closed");if(this.#busy)throw recoveryFailure("recovery_in_use");this.#busy=true;
-  try{const {prepared:p,owners,db,leases}=this.#state;await verify(p,owners);const record=await readRecoveryJournal(db,p.record);if(record.phase!=="ready")throw recoveryFailure("recovery_diverged");p.guard();const source=captureSharedAssetReferences(ownerSources(p,owners));try{await release(db,leases);this.#released=true;p.guard();source.check();checkManagedRecoveryOwners(owners);this.#closed=true;return Object.freeze({sources:this.sources,session:this.session,uploads:this.uploads});}finally{source.dispose();}}finally{this.#busy=false;}
+  let assets:OperationalAssetCustody|undefined;
+  try{const {prepared:p,owners,db,leases}=this.#state;assets=await holdOperationalAssets([owners.uploads!]);await verify(p,owners);const record=await readRecoveryJournal(db,p.record);if(record.phase!=="ready")throw recoveryFailure("recovery_diverged");p.guard();const source=captureSharedAssetReferences(ownerSources(p,owners));try{await release(db,leases);this.#released=true;p.guard();checkHandoffSource.call(source);checkManagedRecoveryOwners(owners);assets.check();assets.release();this.#closed=true;return Object.freeze({sources:this.sources,session:this.session,uploads:this.uploads});}finally{disposeHandoffSource.call(source);}}finally{assets?.release();this.#busy=false;}
  }
  /** Graceful close retains failures for retry through the original owner close contracts. */
  async close():Promise<void>{if(this.#closed)return;if(this.#busy)throw recoveryFailure("recovery_in_use");this.#busy=true;try{const {owners,db,leases}=this.#state;await owners.revisions?.close();await owners.suggestions?.close();await owners.versions?.close();await owners.session?.close();owners.uploads?.close();await release(db,leases);this.#closed=true;}finally{this.#busy=false;}}

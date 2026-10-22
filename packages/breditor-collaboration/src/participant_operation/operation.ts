@@ -2,7 +2,7 @@ import {managedSourceCore} from "../managed_custody.js";
 import {retainInternalFailureCause} from "../internal_failure_cause.js";
 import {SharedParticipantBackup} from "../participant_backup/archive.js";
 import {participantAuthority,participantSelection} from "../participant_backup/policy.js";
-import {captureSharedAssetReferences} from "../asset_references_capture.js";
+import {captureSharedAssetReferences,SharedAssetReferenceCapture} from "../asset_references_capture.js";
 import {transferRecoveredParticipant} from "../participant_recovery/recovery.js";
 import {RecoveryLease} from "../participant_recovery/lease.js";
 import {RecoveryOpeningCustody,recoveryOpeningContext} from "../participant_recovery/opening_custody.js";
@@ -24,6 +24,7 @@ import type {SharedParticipantOperationBeginOptions,SharedParticipantOperationRe
 import {prepareOperationalCohort,type OperationalCohortReservation} from "../operation_cohort/cohort.js";
 
 const key=Object.freeze({});
+const checkHandoffSource=SharedAssetReferenceCapture.prototype.check,disposeHandoffSource=SharedAssetReferenceCapture.prototype.dispose;
 interface Life{changed:boolean}
 export interface OperationalParticipantCustody<P extends SharedSelectionPolicy>{p:PreparedRecovery<P>;origin:ParticipantOrigin;owners:RecoveryOwners<P>;db:IDBDatabase;recoveryDb:IDBDatabase;leases:RecoveryLease[];record:OperationRecord;life:Life;currentGuard:()=>void}
 type State<P extends SharedSelectionPolicy>=OperationalParticipantCustody<P>;
@@ -66,7 +67,7 @@ export class OperationalSharedParticipant<P extends SharedSelectionPolicy=Shared
    if(new Set(owners).size!==owners.length)throw operationFailure("operation_policy");
    for(const owner of owners){if(!owner||typeof owner!=="object"||!(#state in owner))throw operationFailure("operation_policy");if(owner.#closed||owner.#released)throw operationFailure("operation_closed");if(owner.#busy)throw operationFailure("operation_in_use");}
    for(const owner of owners)owner.#busy=true;
-   return Object.freeze({states:Object.freeze(owners.map(owner=>owner.#state)),
+   return Object.freeze({states:Object.freeze(owners.map(owner=>owner.#state)),assetStores:Object.freeze(owners.map(owner=>owner.#state.owners.uploads!)),
     async verify(){for(const owner of owners)await owner.#verify();},
     markReleased(){for(const owner of owners)owner.#released=true;},
     checkBindings(){for(const owner of owners)checkRecoveryOwnerBindings(owner.#state.owners);},
@@ -122,7 +123,7 @@ export class OperationalSharedParticipant<P extends SharedSelectionPolicy=Shared
  /** Release coordination only after actual continuity checks; native author leases stay with parts. */
  async intoParts():Promise<Readonly<OperationalSharedParticipantParts<P>>>{
   let source:ReturnType<typeof captureSharedAssetReferences>|undefined,handoff:OperationalParticipantHandoff<OperationalSharedParticipantParts<SharedSelectionPolicy>>|undefined;
-  try{handoff=await prepareOperationalParticipantHandoff([this as unknown as OperationalSharedParticipant<SharedSelectionPolicy>],async([s],markReleased)=>{const state=s!,parts=Object.freeze({sources:Object.freeze(ownerSources(state.p,state.owners)),session:state.owners.session!,uploads:state.owners.uploads!});source=captureSharedAssetReferences(parts.sources);await release(state.db,state.recoveryDb,state.leases);markReleased();return parts;},states=>{for(const s of states){s.p.guard();s.origin.verify(managedSourceCore(s.owners.session!) as SharedRichEditor<SharedSelectionPolicy>);}},()=>source!.check());return handoff.commit() as unknown as OperationalSharedParticipantParts<P>;}finally{handoff?.abandon();source?.dispose();}
+  try{handoff=await prepareOperationalParticipantHandoff([this as unknown as OperationalSharedParticipant<SharedSelectionPolicy>],async([s],markReleased)=>{const state=s!,parts=Object.freeze({sources:Object.freeze(ownerSources(state.p,state.owners)),session:state.owners.session!,uploads:state.owners.uploads!});source=captureSharedAssetReferences(parts.sources);await release(state.db,state.recoveryDb,state.leases);markReleased();return parts;},states=>{for(const s of states){s.p.guard();s.origin.verify(managedSourceCore(s.owners.session!) as SharedRichEditor<SharedSelectionPolicy>);}},()=>checkHandoffSource.call(source!));return handoff.commit() as unknown as OperationalSharedParticipantParts<P>;}finally{handoff?.abandon();if(source)disposeHandoffSource.call(source);}
  }
  /** Save ordinary owners before releasing custody. Failed saves/releases remain retryable. */
  async close():Promise<void>{if(this.#closed)return;if(this.#busy)throw operationFailure("operation_in_use");this.#busy=true;try{const s=this.#state,o=s.owners;await o.revisions?.close();await o.suggestions?.close();await o.versions?.close();await o.session?.close();o.uploads?.close();await release(s.db,s.recoveryDb,s.leases);s.origin.dispose();s.p.backup.dispose();this.#closed=true;}finally{this.#busy=false;}}

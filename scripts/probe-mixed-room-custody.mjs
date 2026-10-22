@@ -9,6 +9,10 @@ import {generationParticipant} from './fixtures/room-participant-inventory/gener
 import {originalOperation} from './fixtures/operation-cohort/original-participant.mjs';
 import {databaseSnapshot} from './fixtures/operation-cohort/snapshot.mjs';
 
+/** Retire the actual upload connection while preserving the V1 schema for cold
+ * resume. Plain close cannot cross the new held upload-custody barrier. */
+async function retireUploadHandle(name){await new Promise((resolve,reject)=>{const r=indexedDB.open(name,2);r.onupgradeneeded=()=>r.transaction.abort();r.onsuccess=()=>{r.result.close();reject(Error('The fixture upgrader must abort'));};r.onerror=()=>r.error?.name==='AbortError'?resolve():reject(r.error);r.onblocked=()=>reject(Error('The actual upload owner must retire'));});}
+
 export async function probeMixedRoomCustody(directory,manifestPath){
  const api=await import('../packages/breditor-collaboration/dist/index.js'),rich=await import('../packages/breditor-experimental-rich-content/index.js'),base=import.meta.resolve('@breditor/collaboration'),{prepareMixedRoomParticipants}=await import(new URL('./mixed_room_operation/custody.js',base).href),{RecoveryLease}=await import(new URL('./participant_recovery/lease.js',base).href);
  const wasm=await import(pathToFileURL(resolve(directory,'breditor_shared.js')).href);await wasm.default({module_or_path:readFileSync(resolve(directory,'breditor_shared_bg.wasm'))});const manifest=JSON.parse(readFileSync(manifestPath,'utf8'));assert.equal(manifest.cases.length,10);
@@ -42,7 +46,7 @@ export async function probeMixedRoomCustody(directory,manifestPath){
      const before=await snapshot();(fault==='early-original-retire'?original.parts.session:generation.session).core.retire();await assert.rejects(prepare(),e=>e.code==='retired');assert.equal(released,false);await checkStored(before);counts.earlyRefusals++;
     }else{
      cap=await prepare();assert.equal(released,true);for(const h of [original,generation]){await assert.rejects(h.operation.check(),e=>['operation_in_use','operation_closed','generation_operation_busy','generation_operation_closed'].includes(e.code));counts.busyOwnerRefusals++;}
-     if(fault==='original-upload')original.parts.uploads.close();if(fault==='generation-upload')generation.uploads.close();
+     if(fault==='original-upload')await retireUploadHandle(original.operationResume.destinations.uploads);if(fault==='generation-upload')await retireUploadHandle(generation.operationResume.destinations.uploads);
      if(fault.endsWith('-cut')){const current=(fault==='original-cut'?original.parts.session:generation.session).core,peer=new api.SharedRichEditor(profile.join_frame(JSON.parse(fixture.inventoryJson).room.document,'910',current.updateFrame()));try{peer.select({kind:'text',anchor:{block:'p',offset:'0',affinity:'after'},focus:{block:'p',offset:'0',affinity:'after'}});peer.type('Concurrent mixed cut ');await current.receiveFrame(peer.updateFrame());await(fault==='original-cut'?original.parts.session:generation.session).flush();}finally{peer.dispose();}}
      const before=await snapshot();armed=fault.startsWith('destructor-');
      if(fault==='success'||fault==='release-failure'){escaped=cap.commit();assert.equal(guardCalls,2);assert.deepEqual(escaped.participants.map(v=>[v.id,v.family]),values.map(v=>[v.id,v.family]));for(const value of escaped.participants)(value.family==='original'?original:generation).takeParts(value.parts);counts.successfulCohorts++;}

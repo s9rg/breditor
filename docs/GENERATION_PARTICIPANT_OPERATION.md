@@ -101,11 +101,14 @@ remains readable for backup but cannot be handed out as a managed session. If
 authority fails after release, the original file remains readable until explicit
 `close()` or `discardAndClose()`; the released owner cannot hand off again.
 
-The final admission also checks the actual upload store, not just the native
-source. A database upgrade or explicit upload-store close during release refuses
-the handoff. The retained participant file remains readable, and cleanup stays
-available. This synchronous live-owner check does not flush uploads, wait for
-host work or prove provider reference closure. Upgraded destinations are not
+The final admission holds [actual upload custody](OPERATIONAL_COHORT_CUSTODY.md#hold-every-selected-upload-store),
+not just a live-store flag. Every original and generation store in a room cohort
+is excluded from cooperating writes before verification and remains held through
+the final synchronous handoff. Plain close cannot cross that custody; an actual
+database version change retires the store and refuses the cohort. Canonical native
+source guards also refuse a cut changed during coordinator release. The retained
+participant file remains readable, and cleanup stays available. These checks do
+not flush uploads, start host work or prove provider reference closure. Upgraded destinations are not
 silently downgraded or overwritten; use explicit host recovery and separately
 named targets when restoring the original cut.
 
@@ -121,7 +124,7 @@ original cut. It is not a global monotonic checkpoint service and does not prove
 that an entire valid store was never rolled back to a later descendant. Fresh
 authenticated server-prefix checks remain the transport's responsibility.
 
-Participant and room catalog integration, complete provider/client closure,
+Complete independent-delivery participant and room catalog integration, provider/client closure,
 protected credential handoff, independent comment/server generations and
 authenticated whole-room generation activation remain separate work. All 13 V1
 gates remain open.

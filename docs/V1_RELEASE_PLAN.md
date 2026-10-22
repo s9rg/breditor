@@ -43,6 +43,27 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+[Whole-store handoff custody](OPERATIONAL_COHORT_CUSTODY.md#hold-every-selected-upload-store)
+now protects original and generation recovery/operation handoffs and their shared
+room barrier. Genuine upload stores stay held together through verification and
+coordinator release; late native cut guards and cleanup use canonical operations.
+The previous packages reproduce nine upload-race and nine native-guard failures.
+Source and fresh offline packages pass 45 focused laws. The functional plan has
+250 checks. Complete independent-delivery operational intent, provider/client
+closure, independent server-log generations and authenticated room activation
+remain architectural work; this is not V1 approval.
+
+Its [selected qualification](qualification/2026-10-21-operation-asset-custody.json)
+passes 101 stages: 100 checks from the 250-check functional plan and one extra
+complete no-server Rust suite. The script suite passes 1,929 tests with three
+existing opt-in checks skipped. Fresh server-enabled and no-server Rust suites
+pass 379 and 267 tests respectively, without ignored tests. Twenty fresh installed
+consumers produce 29 reports with matching archives. Both normal native runtimes
+remain byte-identical after their isolated producer rebuilds. The old packages,
+exact failing assertions, complete passing logs and all 323 earlier retirement
+assertion trees are retained. This is selected functional evidence, not full-plan,
+platform or V1 approval; all thirteen gates remain open.
+
 [Durable independent participant recovery](INDEPENDENT_DELIVERY_RECOVERY.md)
 now retains its original archive and exact attempt, inspects destinations before
 native reopen, and resumes interrupted source/upload commits without overwriting
@@ -50,7 +71,7 @@ retained work. Both native lanes first reopen read-only. Genuine upload custody
 closes a reproduced race in the new coordinator: a second asset handle could
 otherwise change cancelled upload state after verification but before handoff.
 Ordinary current-SDK writers now honor the shared/exclusive custody lane; Cancel
-still fences late upload receipts. The functional plan has 247 checks, including
+still fences late upload receipts. That checkpoint's functional plan had 247 checks, including
 separate custody laws and source/installed recovery workflows. Operational origin
 continuation, mixed-room custody, provider/client closure and authenticated
 activation remain unfinished. All thirteen V1 gates remain open.
