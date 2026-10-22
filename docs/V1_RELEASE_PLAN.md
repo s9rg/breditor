@@ -43,6 +43,23 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The private [recovery lineage data layer](INDEPENDENT_OPERATION_LINEAGE.md)
+retains selected complete inputs with later original/current/pending/live
+snapshots. Shared raw parts avoid recursive whole-archive nesting while keeping
+earlier files byte-for-byte reconstructible. Native comment/version continuity,
+upload counters and opaque image identities are checked against each input, not
+only the legacy original. The 270-check functional plan requires focused laws,
+strict types and source/fresh-installed full native-policy matrices. Actual
+durable restore and source-owned provenance remain the next functional boundary.
+
+Its [selected qualification](qualification/2026-10-22-independent-operation-lineage.json)
+passes 20 checks, the same 29 source/installed laws and both full 640-case matrices.
+The original portable matrices also pass in both environments with matching
+archives. Script tests pass 2,094 with three existing skips. A newly reproduced
+factory-cleanup lifetime defect remains open at this checkpoint: refusing an
+already-owned Rust object must not free its original editor. That repair takes
+priority over operational restore integration. All thirteen V1 gates remain open.
+
 The private [portable operation data boundary](INDEPENDENT_OPERATION_PORTABLE.md)
 now captures immutable original, acknowledged and interrupted saves, newer live
 native work, whole uploads and the exact raster reference union. Current read

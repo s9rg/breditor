@@ -1,0 +1,111 @@
+{
+  "format": "breditor/independent-operation-lineage-functional-qualification",
+  "formatVersion": 1,
+  "qualifiedDate": "2026-10-22",
+  "calendarTimeZone": "America/Toronto",
+  "passed": true,
+  "source": {
+    "commit": "6f1a486217348ae1ca77f9fe39dc93c596175315",
+    "dirty": true,
+    "sha256": "3f31ab2ee526c37976d627d75e43c1d225d37a90f3e2df21704b13bb176fb1a7",
+    "files": 5554,
+    "bytes": 45615697
+  },
+  "nonDocumentation": {"files": 4968, "sha256": "feeae3fa40803260e7c10beb1fda85e4245c53623a8d7cfffb31f6849c43bfd1"},
+  "selection": {
+    "functionalPlanChecks": 270,
+    "uniquePassingPlanChecks": 20,
+    "wholePlanExecuted": false,
+    "sourceUnchangedDuringFinalRuns": true,
+    "postQualificationChanges": "Documentation only; implementation inputs retain the nonDocumentation fingerprint.",
+    "manifests": ["target/v1-candidate-runs/run-0Pcn1e/result.json", "target/v1-candidate-runs/run-m6KAUf/result.json", "target/v1-candidate-runs/run-z2wrPi/result.json", "target/v1-candidate-runs/run-iUhwi2/result.json"]
+  },
+  "tests": {
+    "workspaceAndDiagnosticTests": 2647,
+    "editorIntegrationTests": 385,
+    "scriptPass": 2094,
+    "scriptFail": 0,
+    "scriptSkipped": 3,
+    "sourceLineageLaws": 29,
+    "sourceLineagePlanLaw": 1,
+    "installedLineageLaws": 29,
+    "installedLineageFailures": 0,
+    "installedLineageSkips": 0,
+    "sourceAndInstalledPreviousPortableLawsEach": 31,
+    "sourcePreviousJournalLaws": 50,
+    "sourcePreviousOwnerLaws": 28,
+    "sourcePreviousNativeOriginLaws": 22,
+    "skipScope": "Three existing opt-in checks; not browser, accessibility or platform qualification."
+  },
+  "lineageSourceAndInstalledEach": {
+    "cases": 640,
+    "selectedInputs": 640,
+    "completeLineages": 640,
+    "coldLineageReads": 640,
+    "exactInputFiles": 1280,
+    "currentCutComparisons": 1280,
+    "pendingCutComparisons": 1280,
+    "liveSourceComparisons": 1280,
+    "wholeUploadComparisons": 1280,
+    "originalFileComparisons": 1280,
+    "deduplicatedPartSets": 1280,
+    "unchangedDatabaseComparisons": 1280,
+    "nativeOracleRestores": 640,
+    "futureHistoryPairs": 1920,
+    "expiredWriteRefusals": 1280,
+    "wireOne": 160,
+    "wireTwo": 480,
+    "tokenCalls": 0,
+    "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "nativeOracleScope": "Exact future native history comparisons are a data oracle, not operational restore qualification."
+  },
+  "freshCompatibility": {"portableSourceCases": 640, "portableInstalledCases": 640, "sameNormalRustWasm": true, "controlledIndexedDBLocksAndRasterFixtures": true},
+  "installedEvidence": {
+    "freshConsumers": 2,
+    "matchingArchiveReports": 2,
+    "registryArtifacts": 45,
+    "lineageProductionModules": 113,
+    "workspaceLinks": false,
+    "strictPublicTypes": true,
+    "probeByteIdentical": true,
+    "unitAssertionChanges": "Reversible module and fixture locations only.",
+    "archives": [
+      {"name": "@breditor/browser", "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"},
+      {"name": "@breditor/experimental-rich-content", "sha256": "340aa47ff8e6c41c56f35476d8d4d5c164aa63fe7470ae3d5367ff19ffd1b109"},
+      {"name": "@breditor/collaboration", "sha256": "f7370e0f3f85f66a0f92e494eb30237519f7b4093ab2e701e4c508aaa662b093"}
+    ]
+  },
+  "nativeEvidence": {
+    "baseline": "docs/qualification/2026-10-21-operation-asset-custody.json",
+    "nativeInputs": {"files": 2986, "sha256": "a4a716e0a6237d7c0d6122e5ab1eefc7ab02bda557cfeff9b786794c9c23d420"},
+    "nativeInputsUnchanged": true,
+    "normalRuntimeFilesByteCompared": 12,
+    "normalSharedAndRichRuntimesUnchanged": true,
+    "fullRustSuitesFreshlyExecuted": false,
+    "serverEnabledTestsCarried": 379,
+    "noServerTestsCarried": 267
+  },
+  "retained": {"index": "target/independent-operation-lineage-final-kyYAq8/index.json", "sha256": "79838e624a99dc317453b48719665841810b8a1189019db3f391367a2c141aca", "files": 119},
+  "openReproducedRegression": {
+    "cause": "An invalid native read factory can return an object owned by another editor; refusal cleanup frees the other editor's object.",
+    "assertionSha256": "cb33db6c391eb62cb0ef4317246fddd129d7fe63235619bd721dce43876541bd",
+    "actualPreRepairFailures": 1,
+    "evidence": "target/operation-lineage-reused-native-owner-pre-fix.json",
+    "fixedInThisCheckpoint": false,
+    "oldReleasedPackageClaim": false
+  },
+  "scope": "Private flat immutable complete restore-input provenance and read-only native admission; no destination writes, operational restore or network activation.",
+  "remaining": [
+    "Repair reproduced reused native-owner lifetime cleanup before integrating operational restore",
+    "Durable portable operation restore, cold reopen and source-owned provenance under fresh policy",
+    "Whole-room adoption, historical-copy decisions and complete provider/client reconciliation",
+    "Independent comment/server-log generations and authenticated activation",
+    "Native long-session limits, resource admission, memory/performance, physical durability and remaining feature-parity catalog"
+  ],
+  "v1GatesClosed": 0,
+  "v1GatesRemainingOpen": 13,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "packageVersionChanged": false,
+  "pushedTaggedPublishedOrDeployed": false
+}

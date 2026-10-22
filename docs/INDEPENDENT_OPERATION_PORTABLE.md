@@ -6,6 +6,11 @@ file. Whole upload state and raster bytes referenced by any retained state trave
 with it. This is a complete data capture and read boundary; a portable operation
 restore coordinator and whole-room adoption remain required before public use.
 
+The separate [recovery lineage archive](INDEPENDENT_OPERATION_LINEAGE.md) now
+retains complete selected inputs with later snapshots using shared raw parts.
+That provenance data layer does not yet make a restored source own its input or
+provide the durable restore coordinator.
+
 ## Separate read authorization
 
 Capture requires the actual source that owns the private operation journal, its

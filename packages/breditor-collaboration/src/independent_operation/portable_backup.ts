@@ -61,4 +61,4 @@ export class IndependentOperationBackup {
 }
 const p=IndependentOperationBackup.prototype;
 /** Canonical genuine archive methods for subsequent capture/restore coordinators. */
-export const portableOperationArchive=Object.freeze({read:IndependentOperationBackup.read,file:p.file,selection:p.selection,metadata:p.metadata,originalFile:p.originalFile,current:p.currentCut,pending:p.pendingCut,live:p.liveSource,uploads:p.uploadBackup,entries:p.uploadEntries,blob:p.blob,dispose:p.dispose});
+export const portableOperationArchive=Object.freeze({owns:(value:unknown):value is IndependentOperationBackup=>states.has(value as IndependentOperationBackup),read:IndependentOperationBackup.read,file:p.file,selection:p.selection,metadata:p.metadata,originalFile:p.originalFile,current:p.currentCut,pending:p.pendingCut,live:p.liveSource,uploads:p.uploadBackup,entries:p.uploadEntries,blob:p.blob,dispose:p.dispose});

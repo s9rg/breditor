@@ -1,12 +1,22 @@
 # V1 candidate checks
 
+Both profiles require `independent-operation-lineage-contracts`,
+`independent-operation-lineage-type-fence`, `independent-operation-lineage` and
+`installed-independent-operation-lineage`. The private
+[lineage data family](INDEPENDENT_OPERATION_LINEAGE.md) keeps exact restore inputs
+and later states in a flat content-addressed file. The same 29 laws and
+byte-identical full 640-case probe run in source and fresh installed packages.
+The functional plan has 270 checks. Durable restore/source ownership and room
+activation remain required.
+
 Both profiles require `independent-operation-portable-contracts`,
 `independent-operation-portable-type-fence`, `independent-operation-portable` and
 `installed-independent-operation-portable`. The private
 [portable operation data boundary](INDEPENDENT_OPERATION_PORTABLE.md) retains
 original/current/pending/live native work, whole uploads and the exact raster
 reference union. The same 31 focused laws and byte-identical full 640-case probe
-run in source and fresh installed packages. The functional plan has 266 checks.
+run in source and fresh installed packages. The functional plan at that capture
+checkpoint had 266 checks.
 Portable operation restore, room adoption and activation remain required.
 
 Both profiles require `independent-operation-participant-contracts`,

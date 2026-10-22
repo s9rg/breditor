@@ -1,0 +1,17 @@
+/** Reconstruct exact version-one snapshot bytes from shared immutable parts. This is data
+ * extraction, not a complete restored-operation export or a new permission/owner capability. */
+import type {AssetLimits} from '@breditor/experimental-rich-content';
+import {independentDeliveryParticipantDigest} from '../independent_delivery_participant/codec.js';
+import {OPERATION_BACKUP_MAGIC,OPERATION_BACKUP_PREFIX_BYTES,OPERATION_BACKUP_MIME,MAX_OPERATION_BACKUP_HEADER_BYTES,readOperationPortableHeader} from './portable_codec.js';
+import {portableOperationArchive,type IndependentOperationBackup} from './portable_backup.js';
+import type {IndependentOperationBackupSelection,IndependentOperationPortableHeader} from './portable_contract.js';
+import type {OperationLineageState} from './lineage_contract.js';
+import {operationJournalFailure as fail} from './journal_failure.js';
+export async function captureLineageSnapshot(owner:IndependentOperationBackup,check:()=>void){
+ check();const file=portableOperationArchive.file.call(owner),header=portableOperationArchive.metadata.call(owner),selection=portableOperationArchive.selection.call(owner),prefix=new Uint8Array(await file.slice(0,OPERATION_BACKUP_PREFIX_BYTES).arrayBuffer());check();const length=new DataView(prefix.buffer).getUint32(OPERATION_BACKUP_MAGIC.length),start=OPERATION_BACKUP_PREFIX_BYTES+length,encoded=file.slice(OPERATION_BACKUP_PREFIX_BYTES,start),digest=await independentDeliveryParticipantDigest(encoded);check();if(await encoded.text()!==JSON.stringify(header))throw fail('independent_operation_lineage_integrity');check();const payloads=new Map<string,Blob>([[digest,encoded]]);for(const part of header.parts){const blob=file.slice(start+part.offset,start+part.offset+part.bytes);if(payloads.has(part.sha256)&&payloads.get(part.sha256)!.size!==blob.size)throw fail();payloads.set(part.sha256,blob);}return{state:{manifestSha256:selection.manifestSha256,header:digest},payloads,selection};
+}
+export async function readLineageSnapshot(entry:OperationLineageState,payloads:ReadonlyMap<string,Blob>,original:IndependentOperationBackupSelection['original'],limits:Readonly<AssetLimits>,check:()=>void):Promise<{file:Blob;selection:IndependentOperationBackupSelection;header:IndependentOperationPortableHeader;used:ReadonlySet<string>}>{
+ check();const encoded=payloads.get(entry.header);if(!encoded||encoded.size>MAX_OPERATION_BACKUP_HEADER_BYTES)throw fail('independent_operation_lineage_closure');const json=new TextDecoder('utf-8',{fatal:true}).decode(await encoded.arrayBuffer());check();const raw=JSON.parse(json),parts=raw?.parts;if(!Array.isArray(parts))throw fail('independent_operation_lineage_format');let bytes=0;for(const p of parts){if(!Number.isSafeInteger(p?.bytes)||p.bytes<1)throw fail();bytes+=p.bytes;}
+ const selection={original,manifestSha256:entry.manifestSha256},header=await readOperationPortableHeader(raw,bytes,selection,limits);check();if(JSON.stringify(header)!==json)throw fail('independent_operation_lineage_format');const used=new Set<string>([entry.header]),blobs:Blob[]=[];for(const part of header.parts){const blob=payloads.get(part.sha256);if(!blob||blob.size!==part.bytes)throw fail('independent_operation_lineage_closure');used.add(part.sha256);blobs.push(blob);}
+ const prefix=new Uint8Array(OPERATION_BACKUP_PREFIX_BYTES);prefix.set(OPERATION_BACKUP_MAGIC);new DataView(prefix.buffer).setUint32(OPERATION_BACKUP_MAGIC.length,encoded.size);return{file:new Blob([prefix,encoded,...blobs],{type:OPERATION_BACKUP_MIME}),selection,header,used};
+}
