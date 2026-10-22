@@ -1,0 +1,216 @@
+{
+  "format": "breditor/restored-graph-functional-qualification",
+  "formatVersion": 1,
+  "qualifiedDate": "2026-10-22",
+  "calendarTimeZone": "America/Toronto",
+  "passed": true,
+  "source": {
+    "commit": "a611a4296e3107208fc3b4126f950ee0805c5355",
+    "dirty": true,
+    "sha256": "63ec4abd84261199810285457518865d9ee62b0fee39181632c7581b9689d228",
+    "files": 5638,
+    "bytes": 46075862
+  },
+  "nonDocumentation": {
+    "files": 5038,
+    "sha256": "6690a898d80510812718a1fc9f95241e657d554aada2e685695aa4d405a25f7a"
+  },
+  "selection": {
+    "functionalPlanChecks": 291,
+    "uniquePassingPlanChecks": 29,
+    "wholePlanExecuted": false,
+    "sourceUnchangedDuringFinalRuns": true,
+    "postQualificationChanges": "Repository documentation only; implementation, assertions, candidate plan and packaged README retain the nonDocumentation fingerprint.",
+    "manifests": [
+      "target/v1-candidate-runs/run-FVbb37/result.json",
+      "target/v1-candidate-runs/run-GH6yrv/result.json",
+      "target/v1-candidate-runs/run-yu4Ut9/result.json",
+      "target/v1-candidate-runs/run-lFzukx/result.json"
+    ]
+  },
+  "implemented": [
+    "Explicit state-V2 and flat graph-V2 data with typed previous-input provenance, literal old V1 frames and native records, complete reachability and whole-input reconstruction.",
+    "Genuine graph read admission through native document/comment replay, CURRENT/PENDING/LIVE continuation, local versions, retained packets, raster identity and whole-upload conservation.",
+    "Actual source and whole-participant factories admit explicit lineage-v2 under separate plan-version-two digest domains. Existing kinds, defaults, protocols and plan-version-one bytes stay unchanged.",
+    "Complete next capture from the actual restored source and upload owner under independent read authority and an unchanged actual source stamp; expired writer grants/signals do not authorize writing.",
+    "Older input-only opaque raster bytes survive forgotten pending work, later image use, further graph capture and actual native restore without an external resolver.",
+    "Operational capture/admission share the existing participant-bounded whole-file digest ceiling; the larger data framing ceiling does not claim large-file readiness."
+  ],
+  "tests": {
+    "focusedGraphLawsSourceAndInstalledEach": 28,
+    "sourceCandidatePlanLaw": 1,
+    "documentReviewHistoryCombinations": 4,
+    "initialFocusedInputKinds": [
+      "snapshot-v1",
+      "lineage-v1"
+    ],
+    "focusedRepeatedEditedGraphRestores": 2,
+    "focusedCasesWithRepeatedEditedGraphRestores": 8,
+    "interruptedParentAndSourceCommitCases": 12,
+    "graphLifecycleAndBudgetLaws": 3,
+    "focusedInputOnlyOpaquePixelLaw": 1,
+    "installedFailures": 0,
+    "installedSkips": 0,
+    "focusedParentLawsSourceAndInstalledEach": 29,
+    "focusedStandaloneLawsSourceAndInstalledEach": 31,
+    "focusedReadLawsSourceAndInstalledEach": 15,
+    "workspaceAndDiagnosticTests": 2647,
+    "editorIntegrationTests": 385,
+    "scriptPass": 2279,
+    "scriptFail": 0,
+    "scriptSkipped": 3,
+    "skipScope": "Three existing opt-in checks; no platform qualification inferred."
+  },
+  "sourceAndInstalledGraphEach": {
+    "format": "breditor/restored-graph-probe",
+    "formatVersion": 1,
+    "passed": true,
+    "cases": 640,
+    "graphCaptures": 1280,
+    "graphRestores": 640,
+    "coldResumes": 1280,
+    "exactLiveStates": 3840,
+    "wholeInputs": 3200,
+    "wholeUploads": 2560,
+    "futureHistoryPairs": 1920,
+    "retainedPacketSets": 1280,
+    "localVersionSets": 1280,
+    "writerExpiryRefusals": 2560,
+    "wireOne": 160,
+    "wireTwo": 480,
+    "tokenCalls": 0,
+    "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "scope": "Full fixed native policy domain: two genuine graph captures including version-two source plan, actual editable graph restore, two cold source resumes, whole uploads/input reconstruction and future native document/comment history. Focused laws separately prove deeper two edited graph restores and input-only pending pixels. Not physical durability, resource/performance or room activation/V1 approval."
+  },
+  "sourceAndInstalledParentEach": {
+    "format": "breditor/restored-participant-probe",
+    "formatVersion": 1,
+    "passed": true,
+    "cases": 640,
+    "actualHandoffs": 1280,
+    "coldResumes": 640,
+    "exactNativeStates": 1280,
+    "wholeUploads": 1280,
+    "wholeInputs": 1920,
+    "retainedPacketSets": 1280,
+    "localVersionSets": 1280,
+    "futureHistoryPairs": 1920,
+    "custodyRefusals": 640,
+    "wireOne": 160,
+    "wireTwo": 480,
+    "tokenCalls": 0,
+    "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "scope": "Actual parent, complete immutable input, native source and whole-upload custody/handoff with legitimate later uploaded receipts and cold descendants. Full snapshot-input native policy matrix. NOT next complete provenance export, whole-room activation/reconciliation, memory/performance, physical durability or V1 approval."
+  },
+  "sourceAndInstalledStandaloneEach": {
+    "format": "breditor/restored-operation-source-probe",
+    "formatVersion": 1,
+    "passed": true,
+    "cases": 640,
+    "returnedSources": 1280,
+    "coldReopens": 640,
+    "completeInputs": 1280,
+    "originalFiles": 1280,
+    "exactLive": 1280,
+    "futureHistoryPairs": 1920,
+    "retainedPacketSets": 640,
+    "localVersionSets": 640,
+    "wireOne": 160,
+    "wireTwo": 480,
+    "tokenCalls": 0,
+    "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "scope": "Actual original/CURRENT/PENDING/LIVE source replay, complete retained input, cold reopen and native document/comment Undo/Redo across the full native policy domain. NOT complete source/upload participant handoff, new provenance export, room activation, memory/performance, physical durability or V1 approval."
+  },
+  "disposalRepair": {
+    "before": "target/v1-candidate-runs/run-6r7fuc/result.json",
+    "after": "target/v1-candidate-runs/run-4ltzxr/result.json",
+    "beforeControl": "target/restored-graph-disposal-before-mq2ZUd/index.json",
+    "unchangedRegressionSha256": "0601ea408cc841f8df8259c65c6357955c6fbbf6cfba92bac8a5f13b958e7274",
+    "cause": "Graph input reconstruction returned without a final owner-lifetime check; disposal before asynchronous handoff still allowed the input Blob to escape.",
+    "repair": "Await reconstruction and recheck the actual branded archive state immediately before returning.",
+    "historicalWebKitOrRasterRepair": false
+  },
+  "installedEvidence": {
+    "freshConsumers": 4,
+    "reports": [
+      "target/restored-graph-installed-consumer.json",
+      "target/restored-participant-installed-consumer.json",
+      "target/restored-operation-source-installed-consumer.json",
+      "target/restored-operation-read-installed-consumer.json"
+    ],
+    "matchingArchiveSha256": {
+      "@breditor/browser": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+      "@breditor/experimental-rich-content": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad",
+      "@breditor/collaboration": "a10c44389e7b3915b5ac7db3c5ad67a5ef9bb390d20a124c3ab4cb6a5fdbea51"
+    },
+    "workspaceLinks": false,
+    "strictPublicTypeFences": true,
+    "offlineRegistryIntegrityChecked": true,
+    "assertionChanges": "Reversible module/runtime/fixture locations only; the full probe is byte-identical. No assertion or case reduction.",
+    "productionBundleExcludesWorkspaceReactAndSyntheticStorage": true
+  },
+  "nativeEvidence": {
+    "normalRuntimeFilesRetained": 12,
+    "normalSharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "normalRichWasmSha256": "bc020ce07ed80600b85735c1e592d5ae163d921f5556fef05269a12bc1d59ec5",
+    "fullRustSuitesFreshlyExecuted": false,
+    "rustImplementationChanged": false,
+    "normalRuntimeBytesUnchangedFromPreviousQualifiedCheckpoint": true
+  },
+  "retained": {
+    "index": "target/restored-graph-final-7Qr22r/index.json",
+    "sha256": "478e23b06f36acedaf3220bdba6950601286587f9fafdf4b51bddfcc659ca260",
+    "files": 253,
+    "includes": "Terminal manifests/logs, reports, four matching installed consumers, actual assertions/fixtures, complete source inventory, changed inputs, normal native runtime files, unchanged disposal regression and separately labelled development/diagnostic work."
+  },
+  "developmentOnly": {
+    "qualified": false,
+    "integratedIntoPackage": false,
+    "report": "development-independent-prefix/prototype.json",
+    "independentParticipants": 80,
+    "independentAlternateOwners": 420,
+    "threeFamilyCohorts": 320,
+    "actualGraphRestoredNativeSources": 80,
+    "restoredNativeReadLifetime": {
+      "passed": true,
+      "actualGraphSource": true,
+      "failedGraphAdmissionsWithoutScopeLeak": 16,
+      "asyncAuthorityRefusals": 1,
+      "preAbortedSignalRefusals": 1,
+      "forgedNativeCaptureRefusals": 1,
+      "actualHeldScopes": 8,
+      "overCapacityRefusals": 1,
+      "scopeSlotReuse": true,
+      "readSignalRevocation": true,
+      "canonicalOperationsIgnoreMutableFacades": true,
+      "shadowedCoreGetterNeverInvoked": true,
+      "actualSourceClosureWaitedForBorrow": true,
+      "savedNativeReaderRefusedAfterDisposal": true,
+      "scope": "Development-only complete real graph-restored source with expired writer; actual read ledger and native lifetime. Not public integration, current server/provider closure or activation."
+    },
+    "fourFamilyCohorts": 400,
+    "scope": "Original/generation/independent-delivery/restored-graph native-prefix diagnostics using real owners and previously retained server fixtures. Not current-source native producer qualification, installed integration, durable room adoption or activation."
+  },
+  "nativeLifetimeDiagnostic": {
+    "qualified": false,
+    "repairClaimed": false,
+    "report": "diagnostic-native-lifetime/report.json",
+    "original": "At 1,000 explicit journal entries, insertion 1,001 and Undo refuse without changing the exact checkpoint. A genuine cold replay retains that state.",
+    "segmented": "Ten seals preserve all 1,000 Undo items; insertion 1,001 refuses the retained-Undo ceiling. Future Undo/Redo/Undo remain exact across cold replay.",
+    "scope": "Controlled normal native observation, not a new capacity contract or performance envelope."
+  },
+  "scope": "Private complete local capture/restore/re-export lifecycle in controlled IDB, lock and raster fixtures. Not full room reconciliation, independent server/client integration, provider closure, authenticated activation, physical durability, large-file memory/latency, browser/a11y or V1 approval.",
+  "remaining": [
+    "Production native-prefix admission for independent and graph-restored sources, including explicit unbound/local histories without invented transport bindings.",
+    "Whole-room durable mixed-family ownership, complete provider/client and retained-copy reconciliation, independent server comment/log generations and fresh authenticated activation.",
+    "Sustainable native Undo/history retention without silently dropping Undo, changing original identities or widening old contracts; large-file streaming and resource qualification.",
+    "All remaining full feature-parity and release requirements, including the nine currently missing capability groups and thirteen open V1 gates."
+  ],
+  "historicalWebKitOrRasterRepairClaimed": false,
+  "v1GatesClosed": 0,
+  "v1GatesRemainingOpen": 13,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "packageVersionChanged": false,
+  "pushedTaggedPublishedOrDeployed": false
+}

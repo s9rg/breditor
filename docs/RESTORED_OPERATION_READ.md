@@ -59,10 +59,10 @@ standalone recovery/write matrices each repeat all 640 cases in both source and
 installed packages. Those full matrices are write-path compatibility evidence,
 not a claim that all 640 policies were separately tested after writer expiry.
 
-This is a private lifetime/authorization component for the next complete export,
-not that export itself. The old portable formats stay closed to restored sources.
-Explicit follow-on state/flat-lineage data still needs complete native, upload,
-older-pixel and input-provenance conservation across repeated restore cycles.
+The private [complete graph](RESTORED_OPERATION_GRAPH.md) now uses this component
+for complete native, upload, older-pixel and input-provenance conservation across
+repeated restore cycles. Its qualification is separate from the read-scope
+checkpoint above. Old portable formats stay closed to restored sources.
 Whole-room reconciliation and authenticated activation remain separate.
 
 Functional contracts use actual normal native owners under controlled IDB,

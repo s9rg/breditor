@@ -6,9 +6,10 @@ incoming snapshot or flat lineage before changing either component, holds actual
 upload custody throughout native replay and returns the ordinary source/store
 together after a final current-policy check.
 
-This implements participant ownership, not the next complete provenance export
-or room activation. The factory stays private until that complete export can
-preserve the input alongside subsequent native work, uploads and older pixels.
+This implements participant ownership, not room activation. The private
+[complete graph](RESTORED_OPERATION_GRAPH.md) now preserves the input alongside
+subsequent native work, uploads and older pixels. Both remain private while
+whole-room integration is unfinished.
 
 ## Four real destinations
 
@@ -97,14 +98,14 @@ no browser or physical-durability conclusion follows.
 
 ## Remaining integration
 
-The old complete exporters still refuse the restored source. The next format
-must combine its incoming graph with current/pending/live native state and the
-real whole upload owner, preserving old input-only assets without recursively
-nesting full archives. Read authorization must remain independent of an expired
-write grant or signal.
+The old complete exporters still refuse the restored source. The explicit private
+graph now combines its incoming provenance with current/pending/live native state
+and the real whole-upload owner, preserving old input-only assets without
+recursively nesting full archives. Its read authorization remains independent of
+an expired write grant or signal.
 
 Whole-room mixed-family custody, provider reconciliation, independently segmented
-server comments/logs and fresh authenticated activation follow that export.
+server comments/logs and fresh authenticated activation remain integration work.
 Local custody, data hashes, retained uploaded references and ready rows are not
 new server receipts or permission to resume delivery. Browser, accessibility,
 long-session, performance and physical-durability gates remain separate.

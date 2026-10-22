@@ -8,8 +8,10 @@ it does not require the original live owner or a fabricated completed recovery.
 
 This is the source component of complete participant restore. The private
 [whole participant coordinator](RESTORED_PARTICIPANT.md) now joins it with actual
-upload custody. A complete next-generation provenance export and whole-room
-adoption remain integration work. No source-only factory is exported publicly.
+upload custody. The private [complete graph](RESTORED_OPERATION_GRAPH.md) now
+preserves further native work and incoming provenance across the next capture
+and restore. Whole-room adoption remains integration work. No source-only
+factory is exported publicly.
 
 ## Architectural priorities
 
@@ -86,13 +88,13 @@ Discard frees unsaved memory and owners; it never deletes durable inputs/cuts.
 
 ## Export boundary
 
-The old local and complete-delivery exporters refuse a restored-operation
-source. The immutable input remains readable through the private journal, but a
-public complete export must combine it with the new current/pending/live state
-and real whole-upload owner in an explicit newer snapshot/lineage family. It
-must retain older input-only assets without recursively nesting whole archives.
-This boundary remains required before the component can become a public
-complete-participant restore API or qualify V1.
+The old local and complete-delivery exporters refuse a restored-operation source.
+The separate private graph combines its immutable input with current/pending/live
+state and the actual whole-upload owner. It retains older input-only assets
+without recursively nesting whole archives. Its explicit lineage-V2 input uses
+the actual source and parent factories; old kinds retain their original plan
+bytes and domains. Whole-room integration remains required before a public
+complete-participant restore API or V1 qualification.
 
 ## Functional qualification
 
@@ -107,4 +109,6 @@ Both legacy 640-case journal matrices also pass against the same source and
 matching package archives. Workspace/diagnostic tests pass 2,647, editor tests
 385 and script tests 2,204, with three existing opt-in skips. Native runtime files
 are retained; the full Rust suites were not freshly rerun for this TypeScript
-change. Complete upload/source handoff, next export and V1 gates stay open.
+change. That source checkpoint did not qualify complete upload/source handoff or
+the next export; their later contracts qualify those components separately.
+V1 gates stay open.

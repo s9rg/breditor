@@ -43,7 +43,37 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
-The private [restored-journal read scope](RESTORED_OPERATION_READ.md) now supports
+The private [complete restored operation graph](RESTORED_OPERATION_GRAPH.md) now
+closes the local restore/edit/reopen/re-export lifecycle. It preserves literal
+incoming provenance, both native histories, local versions, retained packets,
+whole uploads and older input-only pixels. Explicit lineage-V2 input uses the
+actual source and parent factories under a separate plan domain; original kinds,
+defaults and protocol bytes stay unchanged. Fresh read authorization supports
+capture after writer expiry without permitting a save.
+
+Its [selected qualification](qualification/2026-10-22-restored-graph.json) passes
+29 checks from the 291-check plan. Source and fresh offline packages repeat 28
+focused laws and the full 640-policy graph matrix each, with 1,280 captures,
+1,280 cold resumes and 1,920 future native history comparisons per run. All four
+existing parent/standalone source/install matrices also pass. Four consumers pin
+matching archives; workspace/diagnostic tests pass 2,647, editor tests 385 and
+script tests 2,279, with three existing opt-in skips. Normal native bytes are
+unchanged; full Rust suites were not freshly rerun for this TypeScript change.
+
+A reproduced archive-disposal bug is fixed: asynchronous input reconstruction
+now rechecks the actual owner before returning. The retained regression is
+unchanged. Separate normal-native diagnostics confirm that history still stops
+at its existing ceilings: ten seals do not remove the 1,000-item Undo bound.
+They preserve recovery, not unlimited editable lifetime. No historical WebKit
+or intermittent raster repair follows from this checkpoint.
+
+Development-only work additionally checks independent and graph-restored native
+prefixes and 400 explicit mixed cohorts against retained server fixtures. It is
+not integrated or installed qualification. Production room admission, complete
+provider/client and retained-copy reconciliation, fresh authenticated activation,+sustainable history retention and remaining feature parity are next. All thirteen
+V1 gates stay open; no version, push, publication or deployment is promoted.
+
+The earlier private [restored-journal read scope](RESTORED_OPERATION_READ.md) supports
 fresh read authorization after the write grant or write signal expires. The
 genuine source lends actual original/input-LIVE native and incoming-archive
 lifetimes; writer hooks still require current write policy. Reads admit exact
@@ -59,8 +89,9 @@ installed packages. Three installed consumers pin matching archives; script test
 pass 2,250 with three existing opt-in skips. Full Rust suites are not freshly
 rerun; normal native binaries remain unchanged.
 
-This closes a private read-lifetime component, not complete follow-on export or
-graph restore. Whole-room reconciliation, independent server/client generations,
+That checkpoint closes the private read-lifetime component; the graph above
+qualifies complete follow-on export and restore separately. Whole-room
+reconciliation, independent server/client generations,
 authenticated activation and remaining feature parity stay required. No historical
 WebKit or intermittent raster repair is inferred. All thirteen V1 gates remain
 open; no version, push, publication or deployment is promoted.

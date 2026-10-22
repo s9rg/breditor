@@ -1,0 +1,37 @@
+/** Pure envelope/closure admission. Native continuation, raster decoding and owners follow later. */
+import type {AssetLimits} from '@breditor/experimental-rich-content';
+import {independentDeliveryParticipantDigest as digest} from '../independent_delivery_participant/codec.js';
+import type {IndependentOperationBackupSelection} from '../independent_operation/portable_contract.js';
+import {operationBackupSelection} from '../independent_operation/portable_identity.js';
+import {readLineageSnapshot} from '../independent_operation/lineage_snapshot.js';
+import {encodeOperationLineage,MAX_OPERATION_LINEAGE_BYTES} from '../independent_operation/lineage_codec.js';
+import {MAX_OPERATION_BACKUP_HEADER_BYTES} from '../independent_operation/portable_codec.js';
+import {operationJournalFailure as fail} from '../independent_operation/journal_failure.js';
+import {readRestoredOperationIdentity} from './identity.js';
+import {STATE_MAGIC,STATE_PREFIX,STATE_MIME,readRestoredStateHeader} from './state_codec.js';
+import {GRAPH_MAGIC,GRAPH_PREFIX,GRAPH_MIME,readGraphHeader,graphChain,encodeGraph} from './graph_codec.js';
+import type {GraphReference,GraphState,GraphNodeRow,GraphHeader} from './graph_codec.js';
+const key=(kind:string,manifest:string)=>kind+':'+manifest;
+async function readState(entry:GraphState,payloads:ReadonlyMap<string,Blob>,original:IndependentOperationBackupSelection['original'],limits:Readonly<AssetLimits>,check:()=>void){
+ if(entry.kind==='snapshot-v1')return{kind:'snapshot-v1' as const,...await readLineageSnapshot(entry,payloads,original,limits,check)};
+ check();const encoded=payloads.get(entry.header);if(!encoded||encoded.size>MAX_OPERATION_BACKUP_HEADER_BYTES)throw fail('restored_graph_closure');const json=new TextDecoder('utf-8',{fatal:true}).decode(await encoded.arrayBuffer());check();const raw=JSON.parse(json),parts=raw?.parts;if(!Array.isArray(parts))throw fail('restored_graph_format');let bytes=0;for(const p of parts){if(!Number.isSafeInteger(p?.bytes)||p.bytes<1)throw fail('restored_graph_format');bytes+=p.bytes;if(bytes>MAX_OPERATION_LINEAGE_BYTES)throw fail('restored_graph_budget');}
+ const selection={original,manifestSha256:entry.manifestSha256},header=await readRestoredStateHeader(raw,bytes,selection,limits);check();if(JSON.stringify(header)!==json)throw fail('restored_graph_format');const used=new Set<string>([entry.header]),blobs:Blob[]=[];for(const part of header.parts){const blob=payloads.get(part.sha256);if(!blob||blob.size!==part.bytes)throw fail('restored_graph_closure');used.add(part.sha256);blobs.push(blob);}const prefix=new Uint8Array(STATE_PREFIX);prefix.set(STATE_MAGIC);new DataView(prefix.buffer).setUint32(STATE_MAGIC.length,encoded.size);return{kind:'state-v2' as const,file:new Blob([prefix,encoded,...blobs],{type:STATE_MIME}),selection,header,used};
+}
+type View=Awaited<ReturnType<typeof readState>>;
+/** Reconstruct just one exact reachable previous input, without recursively embedding it. */
+async function reconstruct(ref:GraphReference,header:GraphHeader,views:ReadonlyMap<string,View>,payloads:ReadonlyMap<string,Blob>,check:()=>void):Promise<Blob>{
+ check();if(ref.kind==='snapshot-v1'){const view=views.get(key('snapshot-v1',ref.manifestSha256));if(!view)throw fail('restored_graph_closure');return view.file;}
+ const nodes=new Map(header.nodes.map(n=>[key(n.kind,n.node.manifestSha256),n])),chosen:GraphNodeRow[]=[],wanted=new Set<string>(),usedNodes=new Set<string>();let selected:GraphReference=ref;
+ while(selected.kind!=='snapshot-v1'){const k=key(selected.kind,selected.manifestSha256),row=nodes.get(k);if(!row||usedNodes.has(k))throw fail('restored_graph_closure');usedNodes.add(k);chosen.push(row);if(row.kind==='lineage-v1'){wanted.add(key('snapshot-v1',row.node.snapshot));selected={kind:row.node.previous.kind==='snapshot'?'snapshot-v1':'lineage-v1',manifestSha256:row.node.previous.manifestSha256};}else{wanted.add(key('state-v2',row.node.state));selected=row.node.previous;}}
+ wanted.add(key('snapshot-v1',selected.manifestSha256));const states=header.states.filter(s=>wanted.has(key(s.kind,s.manifestSha256))),parts=new Map<string,Blob>();if(states.length!==wanted.size)throw fail('restored_graph_closure');for(const entry of states){const view=views.get(key(entry.kind,entry.manifestSha256));if(!view)throw fail('restored_graph_closure');for(const hash of view.used){const part=payloads.get(hash);if(!part)throw fail('restored_graph_closure');parts.set(hash,part);}}
+ if(ref.kind==='lineage-v1'){const oldNodes=chosen.map(n=>{if(n.kind!=='lineage-v1')throw fail('restored_graph_closure');return n.node;}),oldStates=states.map(s=>{if(s.kind!=='snapshot-v1')throw fail('restored_graph_closure');return{manifestSha256:s.manifestSha256,header:s.header};});return(await encodeOperationLineage(ref.manifestSha256,oldStates,oldNodes,parts,check)).file;}
+ return(await encodeGraph(ref.manifestSha256,states,chosen,parts,check)).file;
+}
+export async function readGraphEnvelope(input:Blob,selection:IndependentOperationBackupSelection,limits:Readonly<AssetLimits>,check:()=>void=()=>{}){
+ const expected=operationBackupSelection(selection);check();if(!(input instanceof Blob)||input.size<GRAPH_PREFIX||input.size>MAX_OPERATION_LINEAGE_BYTES)throw fail('restored_graph_budget');const file=new Blob([input],{type:GRAPH_MIME}),prefix=new Uint8Array(await file.slice(0,GRAPH_PREFIX).arrayBuffer());check();if(GRAPH_MAGIC.some((v,i)=>prefix[i]!==v))throw fail('restored_graph_format');const length=new DataView(prefix.buffer).getUint32(GRAPH_MAGIC.length),start=GRAPH_PREFIX+length;if(length<1||length>MAX_OPERATION_BACKUP_HEADER_BYTES||start>file.size)throw fail('restored_graph_budget');const json=new TextDecoder('utf-8',{fatal:true}).decode(await file.slice(GRAPH_PREFIX,start).arrayBuffer());check();const header=await readGraphHeader(JSON.parse(json),file.size-start,expected.manifestSha256,check);if(JSON.stringify(header)!==json)throw fail('restored_graph_format');check();const payloads=new Map<string,Blob>();for(const p of header.parts){const blob=file.slice(start+p.offset,start+p.offset+p.bytes);if(await digest(blob)!==p.sha256)throw fail('restored_graph_integrity');check();payloads.set(p.sha256,blob);}
+ const views=new Map<string,View>(),used=new Set<string>();for(const entry of header.states){const view=await readState(entry,payloads,expected.original,limits,check);for(const hash of view.used)used.add(hash);views.set(key(entry.kind,entry.manifestSha256),view);}if(used.size!==payloads.size)throw fail('restored_graph_closure');check();const chain=graphChain(header);
+ for(const step of chain){if(step.node?.kind!=='lineage-v2')continue;const state=views.get(key('state-v2',step.state));if(!state||state.kind!=='state-v2')throw fail('restored_graph_closure');const identity=await readRestoredOperationIdentity(state.header.operation,expected.original),ref=step.node.node.previous;if(identity.input.kind!==ref.kind||identity.input.selection.manifestSha256!==ref.manifestSha256)throw fail('restored_graph_input');const before=await reconstruct(ref,header,views,payloads,check);if(await digest(before)!==identity.input.fileSha256)throw fail('restored_graph_input');check();}
+ // Already admitted immutable data does not retain the caller's old grant.
+ // A real archive owner supplies its current lifetime/read scope for later work.
+ return{file,header,views,payloads,chain,reconstruct:(ref:GraphReference,readCheck:()=>void=()=>{})=>reconstruct(ref,header,views,payloads,readCheck)};
+}

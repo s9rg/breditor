@@ -733,9 +733,16 @@ names; standalone restore remains a separate plan profile.
 An independent private read scope now retains the actual journal/input/native
 origins under fresh read authorization even after the write grant or signal
 expires. Shutdown waits for outstanding scopes and real digest/raster I/O.
-Read permission never selects a writer factory or permits saving. A complete
-export must still capture LIVE/uploads under an unchanged source stamp.
+Read permission never selects a writer factory or permits saving.
 
-The next complete provenance export and room reconciliation/activation remain
-required before a public complete-participant restore API. Older exporters
-refuse this source instead of returning an incomplete recovery file.
+The private complete graph exporter now binds LIVE/uploads to an unchanged
+source stamp and retains the literal original/input, current/pending state and
+older input-only raster bytes in a flat part pool. Its explicit lineage-V2 input
+restores through the same actual parent/source coordinators, preserving native
+Undo/Redo, versions, packets and whole-upload state across further edits and
+cold reopens. Old input/plan meanings stay unchanged; no completed recovery owner
+is synthesized from metadata. See [the graph contract](../../docs/RESTORED_OPERATION_GRAPH.md)
+for identity, read authority, conservative operational size bounds and remaining
+integration. Whole-room reconciliation/activation and a public complete restore
+API remain work. Older exporters refuse this source instead of returning an
+incomplete recovery file.

@@ -1,5 +1,17 @@
 # V1 candidate checks
 
+Both profiles require `restored-graph-contracts`, `restored-graph-type-fence`,
+`restored-graph` and `installed-restored-graph`. The private
+[complete graph](RESTORED_OPERATION_GRAPH.md) preserves actual native history,
+whole uploads, older input-only pixels and exact incoming provenance through
+further editable restores and cold reopens. The
+[selected qualification](qualification/2026-10-22-restored-graph.json) passes 29
+checks from the 291-check functional plan. Source/fresh installed packages repeat
+28 focused laws and the byte-identical full 640-policy graph probe each; the four
+existing parent/standalone recovery matrices also pass. The retained disposal
+failure has unchanged passing assertions. Whole-room integration, sustainable
+native lifetime and all thirteen V1 gates remain open.
+
 Both profiles require `restored-operation-read-contracts` and
 `installed-restored-operation-read`. The private
 [independent read scope](RESTORED_OPERATION_READ.md) holds actual input/native
