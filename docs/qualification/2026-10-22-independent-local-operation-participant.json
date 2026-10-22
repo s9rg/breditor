@@ -1,0 +1,164 @@
+{
+  "format": "breditor/independent-local-operation-participant-qualification",
+  "formatVersion": 1,
+  "qualifiedDate": "2026-10-22",
+  "calendarTimeZone": "America/Toronto",
+  "passed": true,
+  "source": {
+    "commit": "ba2a54f65df09d26e1f1e00aab54dda5805bdf26",
+    "dirty": true,
+    "sha256": "eb8ffcc84be42d1349bc7801a336fafc2282e6be10aa4457304360a2b41eea78",
+    "files": 5767,
+    "bytes": 46788458
+  },
+  "nonDocumentation": {
+    "files": 5153,
+    "sha256": "aa46e4c1dc399e36a2c6646d068ecfe8afaad2caf7164a8bb9b876ceaefff34d"
+  },
+  "selection": {
+    "functionalPlanChecks": 316,
+    "uniquePassingPlanChecks": 53,
+    "wholePlanExecuted": false,
+    "sourceUnchangedDuringFinalRuns": true,
+    "postQualificationChanges": "Repository documentation only; implementation, assertions, plan and packaged README retain the nonDocumentation fingerprint.",
+    "manifests": [
+      "target/v1-candidate-runs/run-1Vb8oJ/result.json",
+      "target/v1-candidate-runs/run-8VVTS2/result.json",
+      "target/v1-candidate-runs/run-ZjnMQe/result.json",
+      "target/v1-candidate-runs/run-So84wu/result.json",
+      "target/v1-candidate-runs/run-9yIm0T/result.json",
+      "target/v1-candidate-runs/run-A1ypgY/result.json"
+    ]
+  },
+  "implemented": [
+    "Genuine completed local recovery transfers actual read-only native, whole uploads, original archive and namespace leases into a separate operational parent; the old native owner remains live through the transfer witness.",
+    "Six distinct namespaces are reserved before authority; one genuine child may borrow only the exact journal/source subset. Failed child or parent cleanup stays reachable for explicit retry.",
+    "An explicit absent-only parent advances preparing -> prepared -> operational. Initial publication requires the exact original native pair, versions and upload snapshot; missing acknowledged components or ancestry-valid unrelated later states do not silently repair or become ready.",
+    "The new source owns its native journal and separately admitted original provider, independent of the retired recovered grant and parent closed flag. The actual whole upload store conserves original bytes, dimensions, receipts and monotone epochs/attempts.",
+    "Final handoff holds real upload exclusion and a genuine native read witness through awaited releases and the last authority callback, then releases/returns without another callback or await. Denied disposal/handle-close barriers retain retry baselines.",
+    "Actual failed native/journal release retries the same owners instead of caching a permanent rejected close promise; no disposed Rust core is recreated."
+  ],
+  "tests": {
+    "focusedLawsSourceAndInstalledEach": 55,
+    "candidatePlanLaw": 1,
+    "workspaceAndDiagnosticTests": 2647,
+    "editorTests": 385,
+    "scriptsPassed": 2624,
+    "scriptsFailed": 0,
+    "scriptsSkipped": 3,
+    "skipScope": "Three existing opt-in browser checks, not platform qualification."
+  },
+  "sourceAndInstalledEach": {
+    "format": "breditor/independent-local-operation-participant-probe",
+    "formatVersion": 1,
+    "passed": true,
+    "cases": 480,
+    "profiles": 5,
+    "completeRecoveries": 480,
+    "interruptedBegins": 480,
+    "genuineRecoveredResumes": 96,
+    "initialColdResumes": 384,
+    "laterColdResumes": 480,
+    "readOnlyColdResumes": 480,
+    "handoffs": 1440,
+    "nativeSourceOpens": 2304,
+    "referenceSources": 480,
+    "futureNativePairs": 1440,
+    "versionComparisons": 1440,
+    "wholeUploadComparisons": 1440,
+    "originalProviderComparisons": 1440,
+    "readOnlyRefusals": 960,
+    "oldFamilyRefusals": 960,
+    "networkCalls": 0,
+    "boundaryCounts": {
+      "prepared-abort": 48,
+      "prepared-lost-ack": 48,
+      "prepare-abort": 48,
+      "prepare-lost-ack": 48,
+      "source-abort": 48,
+      "source-lost-ack": 48,
+      "ack-abort": 48,
+      "ack-lost-ack": 48,
+      "operational-abort": 48,
+      "operational-lost-ack": 48
+    },
+    "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "scope": "Five actual native compiler profiles, three selection scopes, all eight capability masks and four independent history pairs. All ten parent/native publication failures on a fixed 48-case schedule each. Genuine old or cold ownership resumes, exact whole uploads/original-only providers, later offline peer edits and local versions, future native Undo/Redo and fresh readonly handoff. Reference writers never overlap. Controlled storage/locks/PNG; not portable complete operation export, five-family room adoption, physical durability, sustainable history, provider/client closure or authenticated activation."
+  },
+  "releaseRepair": {
+    "actualPriorInstalledPassed": 0,
+    "actualPriorInstalledFailed": 2,
+    "repairedPassed": 2,
+    "repairedFailed": 0,
+    "unchangedRegression": {
+      "path": "scripts/independent-source-release-retry.test.mjs",
+      "sha256": "f0047cd09e35ebec30c61b38975d24fce5d31011834578755056eecfa4927fc9"
+    },
+    "priorCollaborationArchiveSha256": "f58ac4bfbeba30de8532b15e3a5cc0db87df307f7c2ed47ba5424f8d0e669a55",
+    "actualOldInstalledFilesMatchRetainedArchive": true,
+    "priorPackagePublishedClaim": false,
+    "earlyDevelopmentAssertionCorrection": "An unrelated false-vs-omitted view assertion was corrected before the final same-assertion installed control. Earlier raw-native test observations were invalid; final witness laws use genuine SDK publications."
+  },
+  "compatibility": {
+    "localJournalCasesEach": 480,
+    "localJournalLawsEach": 47,
+    "localOriginCasesEach": 480,
+    "localOriginLawsEach": 37,
+    "deliveryParticipantCasesEach": 640,
+    "deliveryParticipantLawsEach": 28,
+    "restoredGraphCasesEach": 640,
+    "restoredGraphLawsEach": 28,
+    "completeLocalRecoveryCasesEach": 240,
+    "completeLocalRecoveryLawsEach": 128,
+    "localCaptureCasesEach": 80,
+    "deliveryRecoveryLawsEach": 131,
+    "deliveryRecoveryHandoffsEach": 512,
+    "nativeOwnerInstalledLaws": 32,
+    "semanticSourceAndInstalledResultsMatch": true,
+    "deliveryPollTotals": "Only timing-dependent author/advanced/observer wireRequests are retained separately as raw telemetry; original domains and assertions are unchanged."
+  },
+  "installedEvidence": {
+    "freshConsumers": 9,
+    "matchingArchiveSha256": {
+      "@breditor/browser": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+      "@breditor/experimental-rich-content": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad",
+      "@breditor/collaboration": "76bfde0a4d0398d91529f650803ba328b7fe24124b9a92cf8bc3295b710deda6"
+    },
+    "workspaceLinks": false,
+    "strictPublicTypes": true,
+    "offlineRegistryIntegrityChecked": true,
+    "fullLocalProbeByteIdentical": true,
+    "localAssertionChanges": "Reversible module/runtime/fixture locations only.",
+    "productionBundleExcludesWorkspaceReactAndSyntheticStorage": true
+  },
+  "nativeAndCarriedEvidence": {
+    "normalRuntimeFiles": 12,
+    "unchangedRustSourceAndManifestInputs": 2857,
+    "normalSharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "normalRichWasmSha256": "bc020ce07ed80600b85735c1e592d5ae163d921f5556fef05269a12bc1d59ec5",
+    "fullRustSuitesFreshlyExecuted": false,
+    "unchangedCatalogDataReaderModules": 9,
+    "freshFocusedCatalogContracts": true,
+    "fullCatalogMatricesFreshForThisChange": false
+  },
+  "retained": {
+    "index": "target/independent-local-participant-final-SD6hzf/index.json",
+    "sha256": "d53061136895b17d9aa57745b734c778411319c8e0ea7ddb3cc41c69026df517",
+    "files": 348,
+    "includes": "Six terminal qualification manifests/logs, nine fresh offline consumers and matching archives, full source inventory and changed inputs, same-assertion actual pre-repair package control with matching installed JS/tar bytes, repaired inputs and separate development-only native matrix."
+  },
+  "remaining": [
+    "Complete portable local operational export, editable/cold restore and repeated capture retaining original/current/pending/live native state, whole uploads and provider provenance.",
+    "Actual five-family native staging/adoption and every historic-copy/provider/client reconciliation, without re-registering operational sources as incomplete old local captures.",
+    "Freshly authenticated whole-room import and activation; local files and operation ownership grant no relay binding, receipt or server authority.",
+    "Sustainable native Undo/offline retention; generation seals do not lift the current 1000-item retained-Undo ceiling.",
+    "Remaining full feature parity and all thirteen V1 release gates."
+  ],
+  "developmentMatrixQualified": false,
+  "physicalDurabilityQualified": false,
+  "historicalWebKitOrRasterRepair": false,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "versionChanged": false,
+  "pushed": false
+}

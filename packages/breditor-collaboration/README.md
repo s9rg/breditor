@@ -78,6 +78,15 @@ head and dedicated schema. Read authorization remains separate from expired
 write authority. Whole-upload participant ownership and room adoption are still
 separate work. See [the local save journal](../../docs/INDEPENDENT_LOCAL_OPERATION_JOURNAL.md).
 
+The private local operational parent joins that actual source/journal with whole
+upload custody and the retained recovery. Its six-name runtime reservation,
+explicit preparing/prepared/operational publication and final native/policy
+barrier preserve real owners across interrupted transfer and cold resume.
+Original-only pixels stay with a source-owned provider rather than being added
+to uploads. Complete portable operational export, room adoption/activation and
+sustainable history remain separate work. See
+[local participant ownership](../../docs/INDEPENDENT_LOCAL_OPERATION_PARTICIPANT.md).
+
 `SharedPersistentSession.exportBackup()` captures exact native history, including
 Redo, without a save or publication. Paired `SharedReviewPersistentSession`
 archives also retain comments, local version packets and selected nonsecret

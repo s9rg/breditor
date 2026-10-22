@@ -1,0 +1,14 @@
+/** Genuine parent/child namespace delegation never weakens ordinary exclusion. */
+import test from 'node:test';import assert from 'node:assert/strict';import {IDBFactory} from 'fake-indexeddb';
+import {LocalOperationParticipantOpening as Opening,localParticipantJournalOpening as borrow} from '../packages/breditor-collaboration/dist/independent_local_operation/participant_opening.js';
+import {RecoveryOpeningCustody} from '../packages/breditor-collaboration/dist/participant_recovery/opening_custody.js';
+import {environment} from './fixtures/room-participant-inventory/environment.mjs';
+const names=['parent','journal','native','recovery','retired','uploads'],child=['journal','native'],errors={policy:()=>Error('policy'),busy:()=>Error('busy'),storage:()=>Error('storage')};
+test('only the actual selected parent/context/subset issues one child opening',async()=>{
+ const reset=environment();let parent;
+ try{parent=await Opening.reserve(indexedDB,names,child,async()=>{});assert.throws(()=>Reflect.construct(Opening,[]));assert.throws(()=>borrow({},indexedDB,child,async()=>{}),error=>error.code==='independent_local_participant_policy');assert.throws(()=>borrow(parent,new IDBFactory(),child,async()=>{}),error=>error.code==='independent_local_participant_policy');assert.throws(()=>borrow(parent,indexedDB,['parent','native'],async()=>{}),error=>error.code==='independent_local_participant_policy');const actual=borrow(parent,indexedDB,child,async()=>{});assert.throws(()=>borrow(parent,indexedDB,child,async()=>{}),error=>error.code==='independent_local_participant_busy');assert.throws(()=>parent.complete(),error=>error.code==='independent_local_participant_busy');await assert.rejects(RecoveryOpeningCustody.reserve(indexedDB,child,async()=>{},errors),/busy/);actual.complete();parent.complete();await assert.rejects(Opening.reserve(indexedDB,names,['journal','parent','native'],async()=>{}));const next=await Opening.reserve(indexedDB,names,child,async()=>{});await next.rollback();}finally{await parent?.rollback();reset();}
+});
+test('failed child cleanup stays in the actual parent ledger until a real retry settles it',async()=>{
+ const reset=environment(),events=[];let parent,attempts=0;
+ try{parent=await Opening.reserve(indexedDB,names,child,async()=>{events.push('parent');});const actual=borrow(parent,indexedDB,child,async()=>{events.push('child');if(++attempts<3)throw Error('Actual child release failed');});await assert.rejects(actual.rollback());await assert.rejects(parent.rollback());assert.deepEqual(events,['child','child']);const next=await Opening.reserve(indexedDB,names,child,async()=>{events.push('next');});assert.deepEqual(events,['child','child','child','parent']);assert.throws(()=>borrow(parent,indexedDB,child,async()=>{}));await next.rollback();assert.deepEqual(events,['child','child','child','parent','next']);}finally{await parent?.rollback();reset();}
+});

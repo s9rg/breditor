@@ -129,20 +129,26 @@ export class SharedIndependentHistoryPersistentSession<P extends SharedSelection
  versionPacket(id:string):string{this.#live();const packet=this.#versions.get(id);if(packet===undefined)throw new SharedEditorError('version_unknown','Unknown immutable native version');return packet;}
  /** Budget/admit the whole proposed pair before changing the version catalog; source may not move while awaiting hashes. */
  async retainVersion(packet:string):Promise<SharedDocumentVersionInfo>{const core=this.#managed(),info=nativeCore.readVersion.call(core,packet),known=this.#versions.get(info.id);if(known!==undefined){if(known!==packet)throw new SharedEditorError('version_catalog','Immutable version has different bytes');await this.flush();return info;}const captured=this.#capture(),versions=[...captured.versions,packet];await this.#makeCut({...captured,versions});this.#managed();if(!same(captured,this.#capture()))throw new SharedEditorError('independent_history_stale','Source changed while checking the version catalog');this.#versions.set(info.id,packet);this.#sourceStamp=Object.freeze({});this.save();await this.flush();return info;}
- close():Promise<void>{try{if(this.#closed)return this.#released??Promise.resolve();if(this.#closing)return this.#closing;this.#retiring=true;this.#companion?.retire();retireOwnedCore(this.#ownedCore);return this.#closing=Promise.resolve().then(async()=>{if(this.#closed){await this.#released;return;}this.save();if(this.#closed){await this.#released;return;}await this.flush();await this.discardAndClose();}).finally(()=>{this.#closing=undefined;});}catch(error){return Promise.reject(error);}}
+ close():Promise<void>{try{if(this.#closed)return this.#releaseOwners();if(this.#closing)return this.#closing;this.#retiring=true;this.#companion?.retire();retireOwnedCore(this.#ownedCore);return this.#closing=Promise.resolve().then(async()=>{if(this.#closed){await this.#releaseOwners();return;}this.save();if(this.#closed){await this.#releaseOwners();return;}await this.flush();await this.discardAndClose();}).finally(()=>{this.#closing=undefined;});}catch(error){return Promise.reject(error);}}
  discardAndClose():Promise<void>{
   try{
-   if(this.#closed)return this.#released??Promise.resolve();
+   if(this.#closed)return this.#releaseOwners();
    this.#closedRevisions={documentRevision:this.#saved?.documentRevision??null,reviewRevision:this.#saved?.reviewRevision??null};
    this.#closed=true;this.#companion?.retire();retireOwnedCore(this.#ownedCore);
    for(const off of this.#off)off();this.#off=[];disposeOwnedCore(this.#ownedCore);
    this.#pending=undefined;this.#saved=undefined;this.#versions.clear();this.#db.close();
-   this.#released=(this.#running??Promise.resolve()).then(async()=>{
+   const released=this.#releaseOwners();this.#notify();return released;
+  }catch(error){return Promise.reject(error);}
+ }
+ /** Keep the same actual lease owners after a failed release. A retry performs
+  * cleanup only; it never recreates the disposed native core or starts a save. */
+ #releaseOwners():Promise<void>{
+   if(this.#released)return this.#released;
+   const released=(this.#running??Promise.resolve()).then(async()=>{
     this.#attempt=undefined;this.#savedHead=null;
     try{try{await this.#reviewLease.close();}finally{await this.#documentLease.close();}}
     finally{if(this.#localDriver)await this.#localDriver.persistence.release();else if(this.#companion?.persistence)await this.#companion.persistence.release();}
    });
-   this.#notify();return this.#released;
-  }catch(error){return Promise.reject(error);}
+   this.#released=released;void released.catch(()=>{if(this.#released===released)this.#released=undefined;});return released;
  }
 }

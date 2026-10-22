@@ -1,0 +1,56 @@
+/** Actual source/upload custody through callbacks, final barriers and cleanup. */
+import test,{before,after} from 'node:test';
+import assert from 'node:assert/strict';
+import {IDBDatabase} from 'fake-indexeddb';
+import * as api from '../packages/breditor-collaboration/dist/index.js';
+import * as rich from '@breditor/experimental-rich-content';
+import {OperationalIndependentLocalParticipant as Participant} from '../packages/breditor-collaboration/dist/independent_local_operation/participant.js';
+import {IndependentLocalOperationCutJournal as Journal} from '../packages/breditor-collaboration/dist/independent_local_operation/cut_journal.js';
+import {RecoveryLease} from '../packages/breditor-collaboration/dist/participant_recovery/lease.js';
+import {snapshotIndependentRecovery,prepareIndependentRecovery} from '../packages/breditor-collaboration/dist/independent_recovery/prepare.js';
+import {localParticipantBaseline} from '../packages/breditor-collaboration/dist/independent_local_operation/participant_assets.js';
+import {localParticipantWitness} from '../packages/breditor-collaboration/dist/independent_local_operation/participant_owners.js';
+import {openJournaledIndependentLocalHistory} from '../packages/breditor-collaboration/dist/independent_local_operation/open_journaled_source.js';
+import {localParticipantUnitHost} from './fixtures/independent-local-operation/participant.mjs';
+import {localJournalOptions} from './fixtures/independent-local-operation/journal.mjs';
+import {insertCleanupText} from './fixtures/owned-core-cleanup/session.mjs';
+import {pixel,secondAsset} from './fixtures/review-assets/pixels.mjs';
+const runtime=process.env.BREDITOR_LOCAL_PARTICIPANT_RUNTIME??new URL('../target/promoted-shared-web/',import.meta.url).pathname,bytes=async file=>Buffer.from(await file.arrayBuffer());let host;
+before(async()=>{host=await localParticipantUnitHost({api,rich,Participant,runtime,fixture:new URL('../crates/breditor-core/tests/fixtures/rich-local-root.json',import.meta.url)});});after(()=>host?.free());
+test('all six parent namespaces precede current authority and nested journal opens',async()=>{
+ const f=await host.fixture();let armed=true;const nested=[];
+ try{const ready=await f.recover(),options={...f.options,recovery:{...f.options.recovery,checkAuthority(){if(armed){armed=false;nested.push(Participant.resume(f.options).then(()=>assert.fail('Nested parent escaped'),error=>assert.equal(error.code,'independent_local_participant_busy')));nested.push(Journal.begin({...localJournalOptions({...f,options:f.options.session}),database:f.options.journalDatabase,sourceDatabase:f.options.sourceDatabase,backup:f.backup}).then(()=>assert.fail('Nested journal escaped'),error=>assert.equal(error.code,'independent_local_operation_busy')));}}}};const p=await f.begin(ready,'begin',options);await Promise.all(nested);assert.equal(nested.length,2);await f.take(p);}finally{await f.close();}
+});
+test('actual upload exclusion survives awaited namespace releases and a failed final grant',async()=>{
+ const f=await host.fixture(),close=RecoveryLease.prototype.close;let foreign,fired=false;
+ try{const p=await f.begin(await f.recover());foreign=await rich.RichAssetStore.openRetained(f.recoveryOptions.destinations.uploads);RecoveryLease.prototype.close=async function(){if(!fired){fired=true;await assert.rejects(foreign.retry(secondAsset),error=>error.code==='asset_custody_busy');f.setAllowed(false);}return close.call(this);};await assert.rejects(f.take(p),error=>error.code==='participant_authority');assert.deepEqual(p.readableSource(),f.recovery);assert.deepEqual(await bytes(p.blob(f.reference.asset,f.reference.generation)),pixel);await assert.rejects(foreign.retry(secondAsset),error=>error.code==='asset_custody_busy');RecoveryLease.prototype.close=close;f.setAllowed(true);const parts=await f.take(p);await foreign.retry(secondAsset);insertCleanupText(parts.source.session.core,'Owner survives rejected handoff ');await parts.source.session.flush();}finally{RecoveryLease.prototype.close=close;f.setAllowed(true);foreign?.close();await f.close();}
+});
+test('a transient parent namespace release failure keeps the actual owners retryable',async()=>{
+ const f=await host.fixture(),close=RecoveryLease.prototype.close;let failOnce=true,foreign;
+ try{const p=await f.begin(await f.recover());foreign=await rich.RichAssetStore.openRetained(f.recoveryOptions.destinations.uploads);RecoveryLease.prototype.close=async function(){if(failOnce){failOnce=false;throw Error('One real namespace release failed');}return close.call(this);};await assert.rejects(f.take(p),error=>error.code==='independent_local_participant_cleanup');await assert.rejects(foreign.retry(secondAsset),error=>error.code==='asset_custody_busy');assert.deepEqual(p.readableSource(),f.recovery);RecoveryLease.prototype.close=close;const parts=await f.take(p);assert.deepEqual(await bytes(await parts.uploads.exportBackup()),f.uploadBytes);}finally{RecoveryLease.prototype.close=close;foreign?.close();await f.close();}
+});
+for(const lane of ['document','review'])test('a genuine native witness detects '+lane+' edits in its final authority callback',async()=>{
+ const f=await host.fixture();let journal,source,held,p,witness,armed=false,fired=false;
+ try{const authority=()=>{if(armed&&!fired){fired=true;if(lane==='document')insertCleanupText(source.core,'Final authorized native edit ');else assert.equal(source.core.redoReview().kind,'committed');}},base=snapshotIndependentRecovery({...f.options.recovery,checkAuthority:authority},false);p=await prepareIndependentRecovery(base,f.file);const baseline=await localParticipantBaseline(p);journal=await Journal.begin({...localJournalOptions({...f,options:f.options.session}),database:f.options.journalDatabase,sourceDatabase:f.options.sourceDatabase,backup:f.backup});source=await openJournaledIndependentLocalHistory(f.options.session,journal);held=await rich.RichAssetStore.restoreBackupHeld(f.recoveryOptions.destinations.uploads,f.backup.uploadBackup(),{uploadState:'preserve',checkAuthority(){}});const owners={session:source,uploads:held.store,uploadCustody:held.custody};witness=await localParticipantWitness(p,baseline,owners,journal,false);armed=true;assert.throws(witness.check,error=>error.code==='independent_local_participant_source_changed');assert.equal(fired,true);armed=false;witness.release();witness=undefined;await source.flush();assert.notDeepEqual(source.exportRecovery(),f.recovery);assert.deepEqual(await bytes(journal.blob(f.reference.asset,f.reference.generation)),pixel);
+ }finally{armed=false;witness?.release();await source?.discardAndClose();await journal?.close();await held?.custody.close();held?.store.close();p?.backup.dispose();await f.close();}
+});
+test('retired archive disposal may deny the final barrier without destroying retry baselines',async()=>{
+ const f=await host.fixture(),dispose=rich.RichAssetArchive.prototype.dispose,close=RecoveryLease.prototype.close;let armed=false,fired=false;
+ try{const p=await f.begin(await f.recover());rich.RichAssetArchive.prototype.dispose=function(){const value=dispose.call(this);if(armed&&!fired){fired=true;f.setAllowed(false);}return value;};RecoveryLease.prototype.close=async function(){armed=true;return close.call(this);};await assert.rejects(f.take(p),error=>error.code==='participant_authority');assert.equal(fired,true);assert.deepEqual(p.readableSource(),f.recovery);assert.deepEqual(await bytes(p.blob(f.reference.asset,f.reference.generation)),pixel);rich.RichAssetArchive.prototype.dispose=dispose;RecoveryLease.prototype.close=close;f.setAllowed(true);const parts=await f.take(p);insertCleanupText(parts.source.session.core,'Retried with disposed parent wrappers ');await parts.source.session.flush();}finally{rich.RichAssetArchive.prototype.dispose=dispose;RecoveryLease.prototype.close=close;f.setAllowed(true);await f.close();}
+});
+test('a denied final handle-close callback reopens only real retained handles on retry',async()=>{
+ const f=await host.fixture(),close=IDBDatabase.prototype.close;let armed=false,fired=false;
+ try{const p=await f.begin(await f.recover());IDBDatabase.prototype.close=function(){const value=close.call(this);if(armed&&!fired&&this.name===f.options.database){fired=true;f.setAllowed(false);}return value;};armed=true;await assert.rejects(f.take(p),error=>error.code==='participant_authority');assert.equal(fired,true);assert.deepEqual(p.readableSource(),f.recovery);IDBDatabase.prototype.close=close;f.setAllowed(true);await p.check();const parts=await f.take(p);insertCleanupText(parts.source.session.core,'Retry after closed coordinator handles ');await parts.source.session.flush();}finally{IDBDatabase.prototype.close=close;f.setAllowed(true);await f.close();}
+});
+test('parent close retries the same source-owned journal release instead of stranding custody',async()=>{
+ const f=await host.fixture(),close=RecoveryLease.prototype.close;let failOnce=true;
+ try{const p=await f.begin(await f.recover());RecoveryLease.prototype.close=async function(){if(failOnce){failOnce=false;throw Error('Source journal cleanup interrupted');}return close.call(this);};await assert.rejects(p.close());RecoveryLease.prototype.close=close;await p.close();const cold=await f.resume();assert.deepEqual(cold.readableSource(),f.recovery);await f.take(cold);}finally{RecoveryLease.prototype.close=close;await f.close();}
+});
+test('parent and source ownership ignore replaced public journal facades',async()=>{
+ const f=await host.fixture(),names=['file','blob','progress','close'],saved=new Map(names.map(name=>[name,Journal.prototype[name]]));let calls=0;
+ try{const p=await f.begin(await f.recover());for(const name of names)Journal.prototype[name]=()=>{calls++;throw Error('Mutable facade cannot own resources');};await p.progress();const parts=await f.take(p);assert.deepEqual(await bytes(parts.original.file()),await bytes(f.file));assert.deepEqual(await bytes(parts.original.blob(f.reference.asset,f.reference.generation)),pixel);insertCleanupText(parts.source.session.core,'Canonical source persistence ');await parts.source.session.flush();await parts.source.session.close();assert.equal(calls,0);}finally{for(const[name,value]of saved)Journal.prototype[name]=value;await f.close();}
+});
+test('ordinary close waits for the actual upload callback before parent namespace release',async()=>{
+ const f=await host.fixture(),request=navigator.locks.request;let arrive,release,closing;const reached=new Promise(resolve=>{arrive=resolve;}),gate=new Promise(resolve=>{release=resolve;});
+ try{navigator.locks.request=function(name,options,run){const actual=request.call(this,name,options,run);return name==='breditor/assets-custody/'+f.recoveryOptions.destinations.uploads&&options.mode==='exclusive'?actual.then(async value=>{arrive();await gate;return value;}):actual;};const p=await f.begin(await f.recover());let closed=false;closing=p.close().then(()=>{closed=true;});await reached;assert.equal(closed,false);await assert.rejects(RecoveryLease.acquire(JSON.stringify(f.recoveryOptions.database)),error=>error.code==='recovery_in_use');release();await closing;assert.equal(closed,true);const cold=await f.resume();await f.take(cold);}finally{release();await closing;navigator.locks.request=request;await f.close();}
+});

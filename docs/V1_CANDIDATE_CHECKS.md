@@ -1,5 +1,28 @@
 # V1 candidate checks
 
+Both profiles require `independent-local-operation-participant-contracts`,
+`independent-local-operation-participant-type-fence`,
+`independent-local-operation-participant` and
+`installed-independent-local-operation-participant`. The private
+[complete local ownership contract](INDEPENDENT_LOCAL_OPERATION_PARTICIPANT.md)
+retains genuine source/journal/provider and whole-upload custody through transfer,
+cold resume, ten first-publication failure boundaries and callback-safe handoff.
+No readiness-shaped record or serialized flag establishes native ownership.
+
+Its [selected qualification](qualification/2026-10-22-independent-local-operation-participant.json)
+passes 53 checks from the 316-check plan. Source/fresh packages each repeat 55
+focused laws and the full 480-case native domain, including 1,440 handoffs and
+future history pairs. Two unchanged assertions reproduce failed-release retry
+against actual retained pre-repair packages and pass after repair. Nine fresh
+consumers pin matching archives; existing source/installed journal, native-origin,
+delivery-parent, graph, local-recovery, capture and full delivery-recovery workflows
+also pass. Three existing opt-in browser skips are not platform qualification.
+
+Complete portable local operation export/editable restore, five-family adoption,
+all historic-copy/provider/client reconciliation, authenticated activation,
+sustainable native history and full parity remain required. This is not the whole
+candidate plan, physical durability or any of the thirteen V1 release gates.
+
 Both profiles require `independent-local-journal-contracts`,
 `independent-local-journal-type-fence`, `independent-local-journal` and
 `installed-independent-local-journal`. The private

@@ -43,6 +43,41 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The private [complete local operational participant](INDEPENDENT_LOCAL_OPERATION_PARTICIPANT.md)
+now joins the actual native journal, whole upload store and original-only image
+provider. It transfers genuine recovered ownership across six reserved namespaces,
+requires the exact first native/upload snapshot and cold-reopens later work under
+fresh policy. The live source owns its journal/provider independently of the
+retired recovery grant and closed parent. Existing formats and defaults stay closed.
+
+Its [selected qualification](qualification/2026-10-22-independent-local-operation-participant.json)
+passes 53 checks from the 316-check plan. Source and fresh installed packages each
+repeat 55 focused laws and all 480 native cases, including 1,440 handoffs, 1,440
+future history pairs and all ten parent/native publication failure boundaries.
+Missing acknowledged pieces refuse rather than silently reconstructing data.
+Final handoff retains actual upload exclusion and a native witness through the
+last callback and releases without another callback or await.
+
+A reproduced release-retry bug is repaired: failed native/journal cleanup retries
+the same actual owners instead of reusing a permanently rejected close promise.
+The same two assertions fail against retained actual pre-repair packages and pass
+against source and fresh packages. No disposed native owner is recreated.
+
+Nine fresh consumers pin matching archives. Existing journal, native-origin,
+delivery-parent, restored-graph, local-recovery and capture matrices pass 480,
+480, 640, 640, 240 and 80 cases each in source and installed packages; both full
+delivery-recovery workflows pass 512 handoffs. Workspace/diagnostic tests pass
+2,647, editor tests 385 and script tests 2,624, with three existing opt-in browser
+skips. Twelve normal native files and 2,857 Rust/manifest inputs are unchanged;
+full Rust suites and full catalog matrices are not freshly rerun for this change.
+
+Next is complete portable local operation export/editable restore and repeated
+capture, followed by actual five-family native adoption, all historic-copy and
+provider/client reconciliation, freshly authenticated activation and sustainable
+Undo/offline retention. Remaining full parity and all thirteen V1 gates stay open.
+This is selected functional qualification, not whole-plan or physical durability
+approval. No version, push, tag, publication or deployment is promoted.
+
 The private [local operation journal](INDEPENDENT_LOCAL_OPERATION_JOURNAL.md)
 now retains the actual original, acknowledged and pending native save cuts. It
 prepares before publication, acknowledges only exact source readback and replays
@@ -66,9 +101,10 @@ archives. Workspace/diagnostic tests pass 2,647, editor tests 385 and script tes
 2,568 with three existing opt-in browser skips. Twelve normal native files and
 2,857 Rust/manifest inputs are unchanged; full Rust suites are not freshly rerun.
 
-Next is the actual whole-upload local operational parent and portable complete
-operation export/restore, followed by five-family native adoption, all historic
-copy/provider/client reconciliation and authenticated whole-room activation.
+The journal alone did not provide whole-upload operational ownership; the
+separately qualified parent above now does. Portable complete operation
+export/restore, five-family native adoption, all historic-copy/provider/client
+reconciliation and authenticated whole-room activation remain required.
 Sustainable native Undo/offline retention and remaining full parity remain
 required. All thirteen V1 gates remain open; this is not whole-plan or physical
 durability qualification. No version, push, tag, publication or deployment changes.
