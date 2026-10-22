@@ -105,6 +105,17 @@ grants, and failed cleanup retries the same owners. This is not yet the complete
 upload-store parent or repeated flat export. See
 [restored local journals](../../docs/RESTORED_LOCAL_OPERATION_JOURNAL.md).
 
+The private complete restored-local participant now joins that source with the
+actual whole upload store under a four-name cohort and durable parent phases.
+Missing acknowledged components refuse before initialization. Native/upload
+witnesses survive awaited cleanup and final policy callbacks; the source keeps
+its own input/provider after parent retirement. Returned source types preserve
+the selected Rust policy. Fresh read factories can verify data in their own Wasm
+instance independently of retired writer execution policy. `input.file()` is
+imported provenance, not a new backup of later edits. Repeated flat export and
+room activation remain separate. See
+[restored local ownership](../../docs/RESTORED_LOCAL_OPERATION_PARTICIPANT.md).
+
 `SharedPersistentSession.exportBackup()` captures exact native history, including
 Redo, without a save or publication. Paired `SharedReviewPersistentSession`
 archives also retain comments, local version packets and selected nonsecret

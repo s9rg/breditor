@@ -1,0 +1,46 @@
+{
+  "format": "breditor/flat-local-operation-development-record",
+  "formatVersion": 1,
+  "recordedDate": "2026-10-22",
+  "developmentOnly": true,
+  "productQualified": false,
+  "source": {
+    "commit": "211540843d033554d9d5f0a8e8896df3d89deae2",
+    "dirty": true,
+    "sha256": "f0514a7776db6574ee428502de6cb9749e58742997e748e98ad6d09eec14b4d7",
+    "files": 5838,
+    "bytes": 47162180
+  },
+  "retained": {
+    "index": "target/flat-local-operation-development-ERpSne/index.json",
+    "sha256": "77fa376a913a3c5a9c43549657a12599f243b36eb21fa5fb8b7fa7a281ce3b10",
+    "developmentOnly": true,
+    "productQualified": false,
+    "passed": 37,
+    "files": 47
+  },
+  "tests": {
+    "passed": 37,
+    "failed": 0,
+    "skipped": 0,
+    "codecLaws": 11,
+    "actualNativeHistoryCombinations": 4,
+    "editableRestores": 12,
+    "coldResumes": 12,
+    "exactFutureNativePairs": 36,
+    "interruptionBoundaries": 12,
+    "semanticAdmissionLaws": 7,
+    "independentRuntimeLaws": 1
+  },
+  "implementation": "Isolated mechanical JS derivative of sixteen actual current owner modules plus genuine graph input, data reader, capture and prefix-recipe codec. Separate kind/tags/schema; no actual package source or normal native binary is modified by the prototype.",
+  "testCorrection": "The first expanded fixture let autosave race a deliberately unsaved capture. The existing capture correctly refused a changing cut; the test now ends actual persistence before offline capture. This is not claimed as a production bug repair.",
+  "decisions": "See docs/FLAT_LOCAL_OPERATION_PROVENANCE.md and retained DECISIONS.md. Do not ship copied ownership modules; preserve intrinsic family-specific custody while extracting a typed shared kernel.",
+  "strictNewTypesQualified": false,
+  "sourceAndInstalledFullDomainsQualified": false,
+  "sharedKernelIntegrated": false,
+  "physicalDurabilityQualified": false,
+  "sustainableUndoSolved": false,
+  "roomAdoptionOrActivationSolved": false,
+  "repeatedExportProductClosure": false,
+  "v1Ready": false
+}

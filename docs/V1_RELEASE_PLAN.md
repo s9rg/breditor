@@ -43,6 +43,44 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The private [complete restored-local participant](RESTORED_LOCAL_OPERATION_PARTICIPANT.md)
+now coordinates literal incoming provenance, the actual native journal/source and
+whole uploads through four reserved namespaces. Durable preparing, prepared and
+operational phases cold-reconcile retained owners; a saved operational flag cannot
+recreate missing acknowledged storage. The final native witness and upload
+exclusion survive namespace release, input-wrapper disposal and handle closure.
+The handed-off source/provider remains live independently of the retired parent.
+
+Its [selected qualification](qualification/2026-10-22-restored-local-operation-participant.json)
+passes 28 checks from the 328-check plan. Source and fresh installed packages each
+pass 37 focused laws and all 480 native cases: 1,440 handoffs, 1,440 cold resumes,
+1,440 exact future history pairs and twelve interruption boundaries 40 times each.
+The changed standalone journal also freshly passes its full 480-case source and
+installed domains and 33 laws each. Three fresh consumers pin matching archives.
+Workspace/diagnostic tests pass 2,647, editor tests 385 and scripts 2,737, with three
+existing opt-in browser skips.
+
+Unchanged assertions reproduce acknowledged-owner reconstruction and retired
+factory/independent-runtime failures before their development repairs and pass
+afterward. Fresh read execution policy is selected before authority callbacks;
+another Wasm instance replays its own ancestry instead of borrowing a native
+pointer. Earlier assertion imports are reversibly adapted, not weakened.
+
+The 5,194 unchanged prior non-documentation inputs and 1,065 unchanged actual old
+package files carry other legacy full matrices without claiming fresh execution.
+Four old package files changed: README, journal JS/declarations and the induced
+source-binding declaration. Twelve normal native files, 2,857 Rust/manifest inputs,
+public-root meaning and defaults remain unchanged; Rust suites are not freshly
+rerun.
+
+The next [flat-provenance contract](FLAT_LOCAL_OPERATION_PROVENANCE.md) has a
+retained, isolated 37-check development prototype with three editable graph
+generations in all four history combinations. It is not yet a typed integrated
+SDK family or product repeated-export closure. Shared-kernel integration, actual
+room adoption/reconciliation, authenticated activation and sustainable shared
+Undo/offline retention remain substantive work. Full parity and all thirteen V1
+gates remain open; no version, push, tag, publication or deployment is promoted.
+
 The private [restored-local native journal](RESTORED_LOCAL_OPERATION_JOURNAL.md)
 now owns the literal incoming portable archive and an actual writable source.
 It publishes verified input LIVE once under the same document/comment writer
@@ -67,9 +105,9 @@ and candidate plan changed. Earlier full matrices remain carried evidence, not
 fresh runs. Twelve normal native files and 2,857 Rust/manifest inputs are unchanged;
 full Rust suites are not freshly rerun.
 
-The native journal preserves incoming whole uploads as data, not an operational
-upload store. Next is the complete restored-local parent and bounded flat export
-through repeated restores. Actual five-family adoption, complete historic-copy,
+That native-journal checkpoint preserves incoming whole uploads as data. Complete
+restored-local upload ownership is qualified separately above; bounded flat export
+through repeated restores still needs product integration. Actual five-family adoption, complete historic-copy,
 provider/client reconciliation, authenticated activation and sustainable native
 Undo/offline retention remain required. Full parity and all thirteen V1 gates
 stay open; no version, push, tag, publication or deployment is promoted.
@@ -99,8 +137,8 @@ Older full graph/journal/delivery matrices are carried under those exact inputs,
 not called fresh. Twelve normal native files and 2,857 Rust/manifest inputs are
 unchanged; full Rust suites are not freshly rerun.
 
-Writable/cold native publication is qualified separately above. Complete
-operational upload ownership, bounded flat export through repeated restores,
+Writable/cold native publication and complete operational upload ownership are
+qualified separately above. Bounded flat export through repeated restores,
 actual five-family adoption, all historic-copy/provider/client reconciliation,
 authenticated activation and sustainable native history remain required. Full
 parity and all thirteen V1 gates stay open; no version, push, tag, publication or

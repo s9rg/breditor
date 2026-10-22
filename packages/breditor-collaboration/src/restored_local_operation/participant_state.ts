@@ -1,0 +1,22 @@
+/** Concrete restored-local ownership and exact retained phase/input readback.
+ * Saved records never replace the actual native/upload owners held here. */
+import type {SharedSelectionPolicy} from '../types.js';
+import type {SharedIndependentHistoryPersistentSession as Session} from '../independent_history/session.js';
+import type {SharedIndependentHistoryRecovery} from '../independent_history/contract.js';
+import type {snapshotRestoredLocalPolicy} from './policy.js';
+import type {DetachedRestoredLocalInput as Input} from './input.js';
+import type {RecoveryLease} from '../participant_recovery/lease.js';
+import {assetBytesDigest} from '../asset_bytes/format.js';
+import {restoredLocalFailure as fail} from './failure.js';
+import {type RestoredLocalOperationJournal as Journal,restoredLocalJournalBinding} from './journal.js';
+import {type RestoredLocalParticipantUploads as Uploads,restoredLocalUploads as assets} from './participant_assets.js';
+import {RestoredLocalParticipantWitness as Witness} from './participant_witness.js';
+import {type RestoredLocalParentRecord as Record,readRestoredLocalParentRecord} from './participant_record.js';
+import {existingRestoredLocalParentDatabase,readRestoredLocalParentDatabase,writeRestoredLocalParentRecord} from './participant_database.js';
+type Choice<P extends SharedSelectionPolicy=SharedSelectionPolicy>=ReturnType<typeof snapshotRestoredLocalPolicy<P>>;
+export interface RestoredLocalParticipantState<P extends SharedSelectionPolicy=SharedSelectionPolicy>{readonly choice:Choice<P>;readonly context:IDBFactory;readonly locks:LockManager;readonly guard:()=>void;readonly leases:RecoveryLease[];readonly file:Blob;readonly fileSha256:string;readonly initial:SharedIndependentHistoryRecovery;readonly life:{changed:boolean};readonly input:Input;readonly journal:Journal;readonly uploads:Uploads;readonly source:Session<P>;inputDisposed:boolean;db?:IDBDatabase;record:Record;pending?:Record}
+export function fenceRestoredLocalParentDatabase(life:{changed:boolean},db:IDBDatabase){db.onversionchange=()=>{life.changed=true;db.close();};}
+export async function releaseRestoredLocalParentLeases(leases:RecoveryLease[]){const results=await Promise.allSettled([...leases].reverse().map(lease=>lease.close()));if(results.some(r=>r.status==='rejected'))throw fail('restored_local_participant_cleanup');}
+export async function retainedRestoredLocalParentRecord<P extends SharedSelectionPolicy>(s:RestoredLocalParticipantState<P>){s.guard();if(!s.db){s.db=await existingRestoredLocalParentDatabase(s.choice.cohort!.parentDatabase,s.guard);fenceRestoredLocalParentDatabase(s.life,s.db);}const actual=await readRestoredLocalParentDatabase(s.db,s.guard);s.guard();if(actual.file.size!==s.file.size||actual.file.type!==s.file.type)throw fail('restored_local_participant_input_changed');if(await assetBytesDigest(new Uint8Array(await actual.file.arrayBuffer()))!==s.fileSha256)throw fail('restored_local_participant_input_changed');s.guard();const record=readRestoredLocalParentRecord(actual.record,s.record);if(JSON.stringify(record)!==JSON.stringify(s.record)&&(!s.pending||JSON.stringify(record)!==JSON.stringify(s.pending)))throw fail('restored_local_participant_record');s.record=record;delete s.pending;}
+export async function updateRestoredLocalParentRecord<P extends SharedSelectionPolicy>(s:RestoredLocalParticipantState<P>,phase:Record['phase']){await retainedRestoredLocalParentRecord(s);const next={...s.record,phase};s.pending=next;await writeRestoredLocalParentRecord(s.db!,s.record,next,s.file,s.guard,s.choice.read.options.signal);s.guard();await retainedRestoredLocalParentRecord(s);if(s.record.phase!==phase)throw fail('restored_local_participant_record');}
+export async function verifyRestoredLocalParticipant<P extends SharedSelectionPolicy>(s:RestoredLocalParticipantState<P>,initial=false){await retainedRestoredLocalParentRecord(s);const witness=await Witness.prepare({source:s.source,journal:s.journal,uploads:s.uploads,checkAuthority:s.guard,...(s.choice.read.options.signal===undefined?{}:{signal:s.choice.read.options.signal})});let complete=false;try{witness.check();if(initial){const data=restoredLocalJournalBinding(s.journal).readSource(s.source);if(JSON.stringify(data)!==JSON.stringify(s.initial))throw fail('restored_local_participant_initial_diverged');await assets.verify.call(s.uploads,s.guard,true);witness.check();}complete=true;return witness;}finally{if(!complete)witness.release();}}

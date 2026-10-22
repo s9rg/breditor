@@ -1,5 +1,30 @@
 # V1 candidate checks
 
+Both profiles require `restored-local-participant-contracts`,
+`restored-local-participant-type-fence`, `restored-local-participant` and
+`installed-restored-local-participant`. The private
+[four-name restored-local parent](RESTORED_LOCAL_OPERATION_PARTICIPANT.md)
+conserves genuine native/journal/input/provider and whole-upload ownership through
+durable phases, cold resume, callback-safe transfer and same-owner cleanup retry.
+Missing acknowledged components refuse without empty initialization. Fresh read
+factories are independently selected; another runtime reconstructs its own anchor.
+
+Its [selected qualification](qualification/2026-10-22-restored-local-operation-participant.json)
+passes 28 checks from the 328-check plan. Source/fresh packages each repeat 37
+focused laws and all 480 cases, with 1,440 handoffs/cold resumes/future history
+pairs and twelve interruption boundaries 40 times each. The changed standalone
+journal's complete source/installed 480-case domains and 33 laws also pass freshly.
+Three consumers pin matching archives; scripts pass 2,737 with three existing
+opt-in browser skips. Other legacy full matrices remain carried under exact
+unchanged inputs/package bytes, not relabelled fresh.
+
+This qualifies complete restored-local ownership, not product repeated flat
+export. The [flat-provenance development contract](FLAT_LOCAL_OPERATION_PROVENANCE.md)
+has real repeated editable/cold native evidence but still needs typed kernel/SDK
+integration and full source/installed domains. Room adoption/reconciliation,
+authenticated activation, sustainable history, full parity and all thirteen V1
+gates remain open.
+
 Both profiles require `restored-local-journal-contracts`,
 `restored-local-journal-type-fence`, `restored-local-journal` and
 `installed-restored-local-journal`. The distinct
@@ -17,8 +42,8 @@ consumers pin matching archives; scripts pass 2,699 with three existing opt-in
 browser skips. Previous full matrices are carried under 5,175 unchanged inputs
 and 1,048 actual old package files, not relabelled freshly executed.
 
-This is an actual native journal/source restore, not the complete operational
-upload parent or repeated flat export. Five-family adoption, complete historic
+That checkpoint is an actual native journal/source restore; the complete upload
+parent is qualified separately above. Repeated flat export, five-family adoption, complete historic
 copy/provider/client reconciliation, authenticated activation, sustainable native
 history, full parity and all thirteen V1 release gates remain open.
 
@@ -39,8 +64,8 @@ three consumers pin matching archives. All previous implementation/assertion inp
 and 1,030 actual old package files are unchanged except README/candidate-plan
 changes. Earlier full graph/journal/delivery domains are carried, not claimed fresh.
 
-Native-payload replay does not adopt incoming operation/upload ownership.
-Complete editable/cold/repeated restore, flat provenance export, five-family room
+Native-payload replay does not adopt incoming operation/upload ownership; actual
+editable/cold ownership is qualified above. Repeated restore/flat export, five-family room
 adoption, all provider/client/historic-copy reconciliation, authenticated
 activation, sustainable history and all thirteen V1 release gates remain open.
 

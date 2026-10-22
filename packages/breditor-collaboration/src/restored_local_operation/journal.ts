@@ -5,6 +5,8 @@
 import type {SharedSelectionPolicy} from '../types.js';
 import type {IndependentHistoryCut,IndependentHistoryStoredCut} from '../independent_history/contract.js';
 import type {IndependentLocalOperationDriver} from '../independent_history/local_driver.js';
+import type {SharedIndependentRecoveryFactory} from '../independent_recovery/contract.js';
+import {snapshotIndependentRecoveryFactory} from '../independent_recovery/factory_policy.js';
 import {SharedRichEditor} from '../core.js';
 import {independentHistoryNative} from '../independent_history/native_port.js';
 import {sourceCoreMethods as native} from '../source_native_read.js';
@@ -25,12 +27,14 @@ import {initialRestoredLocalIntent} from './intent.js';
 import {createRestoredLocalJournalDatabase,existingRestoredLocalJournalDatabase,readRestoredLocalJournalInput,readRestoredLocalJournalDatabase,writeRestoredLocalJournalDatabase} from './database.js';
 import {admitRestoredLocalCuts} from './cut_validation.js';
 import {restoredLocalFailure as fail} from './failure.js';
+import {restoredLocalJournalOpening,type RestoredLocalParticipantOpening} from './participant_opening.js';
 
 const key=Object.freeze({}),verifyOriginal=SharedRichEditor.prototype.verifyRecoveryOrigin,verifySegmented=SharedRichEditor.prototype.verifySegmentedRecoveryOrigin;
 type Choice=ReturnType<typeof snapshotRestoredLocalPolicy>;
 type Checked=Awaited<ReturnType<typeof admitRestoredLocalCuts>>;
 const same=(actual:IndependentHistoryCut,selected:IndependentHistoryCut)=>sameOperationCut(copyOperationCut(actual),selected);
 let binding:(journal:RestoredLocalOperationJournal)=>ReturnType<RestoredLocalOperationJournal['bindingType']>;
+let openForParticipant:<P extends SharedSelectionPolicy>(parent:RestoredLocalParticipantOpening,provided:RestoredLocalInputOptions<P>,file?:Blob)=>Promise<RestoredLocalOperationJournal>;
 
 export class RestoredLocalOperationJournal{
  readonly #choice:Choice;readonly #id:RestoredLocalIdentity;readonly #db:IDBDatabase;readonly #lease:RecoveryLease;
@@ -50,15 +54,15 @@ export class RestoredLocalOperationJournal{
  }
  static begin<P extends SharedSelectionPolicy>(file:Blob,options:RestoredLocalInputOptions<P>):Promise<RestoredLocalOperationJournal>{if(this!==RestoredLocalOperationJournal)throw fail();return RestoredLocalOperationJournal.#open(options,file);}
  static resume<P extends SharedSelectionPolicy>(options:RestoredLocalInputOptions<P>):Promise<RestoredLocalOperationJournal>{if(this!==RestoredLocalOperationJournal)throw fail();return RestoredLocalOperationJournal.#open(options);}
- static async #open<P extends SharedSelectionPolicy>(provided:RestoredLocalInputOptions<P>,file?:Blob):Promise<RestoredLocalOperationJournal>{
+ static async #open<P extends SharedSelectionPolicy>(provided:RestoredLocalInputOptions<P>,file?:Blob,parent?:RestoredLocalParticipantOpening,delegated=false):Promise<RestoredLocalOperationJournal>{
   const context=recoveryOpeningContext(),locks=navigator.locks,choice=snapshotRestoredLocalPolicy(provided);
   // Parent-cohort delegation is separate; reserving its names is not ownership.
-  if(choice.cohort)throw fail('restored_local_operation_parent_required');
+  if(!!choice.cohort!==delegated)throw fail('restored_local_operation_parent_required');
   const storage=()=>{if(globalThis.indexedDB!==context||globalThis.navigator?.locks!==locks)throw fail('restored_local_operation_storage_changed');};
   const guard=()=>{storage();choice.guard();storage();};
   let db:IDBDatabase|undefined,lease:RecoveryLease|undefined,input:DetachedRestoredLocalInput|undefined,anchor:LocalPortableReplay|undefined,admitted=false;
   const cleanup=async()=>{const results=await Promise.allSettled([Promise.resolve().then(()=>db?.close()),Promise.resolve().then(()=>anchor?.dispose()),Promise.resolve().then(()=>{if(input)incoming.dispose.call(input);}),Promise.resolve().then(()=>lease?.close())]);if(results.some(row=>row.status==='rejected'))throw fail('restored_local_operation_cleanup');};
-  const opening=await RecoveryOpeningCustody.reserve(context,choice.names,cleanup,{policy:()=>fail(),busy:()=>fail('restored_local_operation_busy'),storage:()=>fail('restored_local_operation_cleanup')});
+  const opening=delegated?restoredLocalJournalOpening(parent!,context,[choice.database,choice.sourceDatabase],choice.names,cleanup):await RecoveryOpeningCustody.reserve(context,choice.names,cleanup,{policy:()=>fail(),busy:()=>fail('restored_local_operation_busy'),storage:()=>fail('restored_local_operation_cleanup')});
   try{
    guard();lease=await RecoveryLease.acquire(JSON.stringify(choice.database));guard();
    if(file===undefined){db=await existingRestoredLocalJournalDatabase(choice.database,guard);file=await readRestoredLocalJournalInput(db,guard);guard();}else{await requireAbsent(choice.sourceDatabase);guard();}
@@ -86,13 +90,13 @@ export class RestoredLocalOperationJournal{
   verify.call(core,this.#anchor.core);guard();verify.call(core,this.#anchor.core);
  }
  #readHead=(head:string)=>{const record=readRestoredLocalHead(head,this.#id);if(JSON.stringify(record.identity)!==JSON.stringify(this.#choice.expected.original.identity.source))throw fail('restored_local_operation_source');return record;};
- async #read(guard:()=>void=()=>this.#check()):Promise<Checked>{
+ async #read(guard:()=>void=()=>this.#check(),factory:SharedIndependentRecoveryFactory=this.#choice.read.options.session,anchor:LocalPortableReplay=this.#anchor):Promise<Checked>{
   guard();const stored=await readRestoredLocalJournalDatabase(this.#db,this.#id,guard);guard();
   const selected=incoming.file.call(this.#input);
   if(stored.file.size!==selected.size||stored.file.type!==selected.type)throw fail('restored_local_operation_input_changed');
   const bytes=await stored.file.arrayBuffer();guard();
   if(await assetBytesDigest(new Uint8Array(bytes))!==JSON.parse(this.#id.plan).input.fileSha256)throw fail('restored_local_operation_input_changed');guard();
-  return admitRestoredLocalCuts(stored,this.#id,this.#choice.expected.original,this.#choice.read.options.session,this.#anchor,guard);
+  return admitRestoredLocalCuts(stored,this.#id,this.#choice.expected.original,factory,anchor,guard);
  }
  #source(guard:()=>void=()=>this.#check()):Promise<IndependentHistoryStoredCut|null>{const n=this.#choice.expected.original.identity.source.native;return readDedicatedOperationSourceDatabase(this.#id.sourceDatabase,[n.room,n.writer],this.#readHead,guard,'local-operation-v1');}
  #exclusive<T>(work:()=>Promise<T>):Promise<T>{if(this.#closed||this.#closing)throw fail('restored_local_operation_closed');if(this.#working)throw fail('restored_local_operation_busy');this.#working=true;return Promise.resolve().then(work).finally(()=>{this.#working=false;});}
@@ -146,21 +150,41 @@ export class RestoredLocalOperationJournal{
    },abandon:()=>{if(!settled){this.#opening=false;settled=true;}}};
   },
   readSource:(owner:object)=>{if(this.#owner!==owner)throw fail('restored_local_operation_source');const port=independentHistoryNative(owner);if(port.localOperation!==this||port.companion)throw fail('restored_local_operation_source');return port.read();},
-  borrowRead:(owner:object,provided:()=>void,providedSignal?:AbortSignal)=>{
+  borrowRead:(owner:object,provided:()=>void,providedSignal?:AbortSignal,providedFactory?:SharedIndependentRecoveryFactory)=>{
    if(this.#readers.size>=8)throw fail('restored_local_operation_busy');const authorize=participantAuthority(provided),signal=independentRecoverySignal(providedSignal);
-   let released=false,finish!:()=>void;const held=new Promise<void>(resolve=>{finish=resolve;}),release=()=>{if(!released){released=true;this.#readers.delete(held);finish();}};this.#readers.add(held);
+   let released=false,finish!:()=>void,factory=this.#choice.read.options.session;const held=new Promise<void>(resolve=>{finish=resolve;}),release=()=>{if(!released){released=true;this.#readers.delete(held);finish();}};this.#readers.add(held);
    const check=()=>{if(released)throw fail('restored_local_operation_read_closed');this.#readable();if(this.#owner!==owner)throw fail('restored_local_operation_source');const port=independentHistoryNative(owner);if(port.localOperation!==this||port.companion)throw fail('restored_local_operation_source');checkAssetBytesSignal(signal);authorize();checkAssetBytesSignal(signal);this.#readable();port.check();};
-   try{check();}catch(error){release();throw error;}
+   // Snapshot fresh executable read policy after reservation, before authority.
+   // Retiring a host writer factory must not prevent an independently selected
+   // matching read-only factory from admitting the actual retained native cuts.
+   try{if(providedFactory!==undefined)factory=snapshotIndependentRecoveryFactory(this.#choice.expected.original,providedFactory);check();}catch(error){release();throw error;}
    const track=<T>(run:()=>Promise<T>):Promise<T>=>{check();if(this.#readers.size>=8)throw fail('restored_local_operation_busy');const work=Promise.resolve().then(run);this.#readers.add(work);void work.finally(()=>this.#readers.delete(work)).catch(()=>{});return work;};
    return Object.freeze({identity:structuredClone(this.#id),expected:structuredClone(this.#choice.expected),check,release,
     inputFile:()=>{check();return incoming.file.call(this.#input);},originalFile:()=>{check();return incoming.originalFile.call(this.#input);},uploads:()=>{check();return incoming.uploads.call(this.#input);},blob:(asset:string,generation:string)=>{check();return incoming.blob.call(this.#input,asset,generation);},
     readSource:()=>{check();const port=independentHistoryNative(owner),stamp=port.stamp(),data=port.read();this.#verify(port.core,data.versions,check);if(port.stamp()!==stamp)throw fail('restored_local_operation_capture_changed');return data;},
-    readSnapshot:()=>track(async()=>{const a=await this.#read(check);check();const observed=await this.#source(check);check();const b=await this.#read(check);check();if(JSON.stringify(a.record)!==JSON.stringify(b.record))throw fail('restored_local_operation_capture_changed');const r=a.record,current=r.current===null?null:a.rows.get(r.current)!,pending=r.pending===null?null:a.rows.get(r.pending)!;if(observed===null?current!==null:!((current&&same(observed,current))||(pending&&same(observed,pending))))throw fail('restored_local_operation_source_diverged');return{record:{...r},input:a.file,current:current&&copyOperationCut(current),pending:pending&&copyOperationCut(pending),observed:observed===null?null:observed.head===current?.head?r.current:r.pending};}),
+    readSnapshot:()=>track(async()=>{
+     let selected:LocalPortableReplay|undefined;
+     let result:Readonly<{record:Checked['record'];input:Blob;current:IndependentHistoryCut|null;pending:IndependentHistoryCut|null;observed:string|null}>;
+     try{
+      // A freshly selected runtime reconstructs its own readonly LIVE anchor
+      // from exact owned data. Never pass an old runtime's native pointer into
+      // another Wasm instance when comparing current/pending ancestry.
+      if(providedFactory!==undefined){selected=await replayLocalOperationRecovery(this.#choice.expected.original,factory,this.#anchor.recovery,check);check();}
+      const anchor=selected??this.#anchor,a=await this.#read(check,factory,anchor);check();const observed=await this.#source(check);check();const b=await this.#read(check,factory,anchor);check();
+      if(JSON.stringify(a.record)!==JSON.stringify(b.record))throw fail('restored_local_operation_capture_changed');const r=a.record,current=r.current===null?null:a.rows.get(r.current)!,pending=r.pending===null?null:a.rows.get(r.pending)!;
+      if(observed===null?current!==null:!((current&&same(observed,current))||(pending&&same(observed,pending))))throw fail('restored_local_operation_source_diverged');
+      result={record:{...r},input:a.file,current:current&&copyOperationCut(current),pending:pending&&copyOperationCut(pending),observed:observed===null?null:observed.head===current?.head?r.current:r.pending};
+     }finally{selected?.dispose();}
+     check();return result;
+    }),
    });
   },
  };}
- static{binding=journal=>{if(!journal||typeof journal!=='object'||!(#id in journal)||journal.#closed)throw fail('restored_local_operation_closed');return journal.bindingType();};}
+ static{binding=journal=>{if(!journal||typeof journal!=='object'||!(#id in journal)||journal.#closed)throw fail('restored_local_operation_closed');return journal.bindingType();};openForParticipant=(parent,provided,file)=>RestoredLocalOperationJournal.#open(provided,file,parent,true);}
 }
 const close=RestoredLocalOperationJournal.prototype.close;
 /** An actual private journal, not a stored completion flag or structural DTO. */
 export const restoredLocalJournalBinding=(journal:RestoredLocalOperationJournal)=>binding(journal);
+/** The actual current parent/context/cohort delegates only its native pair.
+ * A serialized flag or retired opening cannot bypass namespace reservation. */
+export const openRestoredLocalJournalForParticipant=<P extends SharedSelectionPolicy>(parent:RestoredLocalParticipantOpening,provided:RestoredLocalInputOptions<P>,file?:Blob)=>openForParticipant(parent,provided,file);
