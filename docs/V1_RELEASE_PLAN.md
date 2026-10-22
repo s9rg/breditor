@@ -43,6 +43,38 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The private [portable local operation format](INDEPENDENT_LOCAL_OPERATION_PORTABLE.md)
+now captures the literal original, CURRENT/PENDING native saves and newer unsaved
+LIVE work, with complete uploads and selected pixels. Fresh read policy is
+independent of ended write grants/signals. Real read-only Rust replay verifies
+both native histories and an ordered catalog of unique immutable versions.
+Missing bytes remain Pending; capture performs no save, retry or upload.
+
+Its [selected qualification](qualification/2026-10-22-independent-local-operation-portable.json)
+passes 26 checks from the 320-check plan. Source and fresh installed packages each
+repeat 40 focused laws and all 480 native cases, including 1,440 exact future
+history comparisons after native-payload replay. That replay does not adopt the
+incoming operation or uploads and is not a complete editable operational restore.
+The recorded policy/version/count failures pass unchanged after repair; the
+earlier prototype lifetime regression is integrated with location-only changes.
+
+Three fresh consumers pin matching archives. Both existing local-parent matrices
+also pass 480 cases and 1,440 handoffs each; workspace/diagnostic tests pass 2,647,
+editor tests 385 and script tests 2,665, with three existing opt-in browser skips.
+The 5,151 unchanged prior non-documentation inputs cover every previous
+implementation and assertion input; only the README and candidate plan changed.
+The 1,030 actual prior package files are unchanged except the package README.
+Older full graph/journal/delivery matrices are carried under those exact inputs,
+not called fresh. Twelve normal native files and 2,857 Rust/manifest inputs are
+unchanged; full Rust suites are not freshly rerun.
+
+Next is a genuine editable/cold restore that publishes verified input LIVE once
+while retaining every earlier cut as incoming provenance, followed by bounded
+flat export through repeated restores. Actual five-family adoption, all historic
+copy/provider/client reconciliation, authenticated activation, sustainable native
+history and the remaining full parity catalog stay required. All thirteen V1
+gates remain open; no version, push, tag, publication or deployment is promoted.
+
 The private [complete local operational participant](INDEPENDENT_LOCAL_OPERATION_PARTICIPANT.md)
 now joins the actual native journal, whole upload store and original-only image
 provider. It transfers genuine recovered ownership across six reserved namespaces,
@@ -71,10 +103,11 @@ delivery-recovery workflows pass 512 handoffs. Workspace/diagnostic tests pass
 skips. Twelve normal native files and 2,857 Rust/manifest inputs are unchanged;
 full Rust suites and full catalog matrices are not freshly rerun for this change.
 
-Next is complete portable local operation export/editable restore and repeated
-capture, followed by actual five-family native adoption, all historic-copy and
-provider/client reconciliation, freshly authenticated activation and sustainable
-Undo/offline retention. Remaining full parity and all thirteen V1 gates stay open.
+Portable local operation export/read is now qualified separately above. Complete
+editable/cold restore and repeated capture, actual five-family native adoption,
+all historic-copy and provider/client reconciliation, freshly authenticated
+activation and sustainable Undo/offline retention remain required. Remaining
+full parity and all thirteen V1 gates stay open.
 This is selected functional qualification, not whole-plan or physical durability
 approval. No version, push, tag, publication or deployment is promoted.
 

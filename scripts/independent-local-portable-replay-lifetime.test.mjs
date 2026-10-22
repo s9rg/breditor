@@ -1,0 +1,9 @@
+/** Development-only self-disposal at the last host callback must not leave a
+ * successful read check on an owner that no longer exists. */
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {pathToFileURL} from 'node:url';
+import * as api from '../packages/breditor-collaboration/dist/index.js';import * as rich from '@breditor/experimental-rich-content';import {nativeProfile} from './fixtures/owned-core-cleanup/session.mjs';import {environment} from './fixtures/room-participant-inventory/environment.mjs';import {localRecoveryFixture,localRecoveryOptions} from './fixtures/independent-recovery/session.mjs';import {replayLocalOperationRecovery as replay} from '../packages/breditor-collaboration/dist/independent_local_operation/portable_replay.js';
+test('a final callback cannot dispose the temporary native reader and return successful check',async()=>{
+ const runtime=process.env.BREDITOR_LOCAL_PORTABLE_RUNTIME??new URL('../target/promoted-shared-web/',import.meta.url).pathname,native=await import(pathToFileURL(runtime+'/breditor_shared.js'));await native.default({module_or_path:readFileSync(runtime+'/breditor_shared_bg.wasm')});const profile=nativeProfile(native,3,true),restore=environment();let f,victim,armed=false,calls=0;
+ try{f=await localRecoveryFixture({api,rich,profile,root:JSON.parse(readFileSync(new URL('../crates/breditor-core/tests/fixtures/rich-local-root.json',import.meta.url),'utf8')),tag:'staged-last-read-callback'});const options=localRecoveryOptions(f.options,f.backup,f.tag);victim=await replay(f.selection,options.session,f.recovery,()=>{if(armed&&++calls===2)victim.dispose();});armed=true;assert.throws(()=>victim.check(),error=>error.code==='independent_local_operation_read_closed');}
+ finally{armed=false;victim?.dispose();await f?.close();restore();profile.free();}
+});

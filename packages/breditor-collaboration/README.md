@@ -83,9 +83,18 @@ upload custody and the retained recovery. Its six-name runtime reservation,
 explicit preparing/prepared/operational publication and final native/policy
 barrier preserve real owners across interrupted transfer and cold resume.
 Original-only pixels stay with a source-owned provider rather than being added
-to uploads. Complete portable operational export, room adoption/activation and
+to uploads. Complete portable editable restoration, room adoption/activation and
 sustainable history remain separate work. See
 [local participant ownership](../../docs/INDEPENDENT_LOCAL_OPERATION_PARTICIPANT.md).
+
+The separate private portable-local format captures the literal original,
+CURRENT/PENDING native cuts and newer unsaved LIVE work, with the complete upload
+store and selected pixels. It uses fresh read authority after writer expiry,
+replays both histories, and conserves unique ordered local versions. Reading
+opens no persistent owner or writer lease. Missing pixels stay explicitly Pending.
+This is export/read admission, not complete editable/cold/repeated operational
+restore or room activation. See
+[portable local operations](../../docs/INDEPENDENT_LOCAL_OPERATION_PORTABLE.md).
 
 `SharedPersistentSession.exportBackup()` captures exact native history, including
 Redo, without a save or publication. Paired `SharedReviewPersistentSession`

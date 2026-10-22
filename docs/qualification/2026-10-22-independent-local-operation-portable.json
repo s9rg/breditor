@@ -1,0 +1,189 @@
+{
+  "format": "breditor/independent-local-operation-portable-qualification",
+  "formatVersion": 1,
+  "qualifiedDate": "2026-10-22",
+  "calendarTimeZone": "America/Toronto",
+  "passed": true,
+  "source": {
+    "commit": "80f96ed048fd8034c8bfe16f3da7571f10419b51",
+    "dirty": true,
+    "sha256": "cf1eb138e56cddc3d94d20829f69de9ddd8f374453f4b2b25f583e46f88abef0",
+    "files": 5793,
+    "bytes": 46911428
+  },
+  "nonDocumentation": {
+    "files": 5177,
+    "sha256": "4cabe397cf0b75aa5d3d5b667d5e07655fcb714bc03a750520d620caa706e485"
+  },
+  "selection": {
+    "functionalPlanChecks": 320,
+    "uniquePassingPlanChecks": 26,
+    "wholePlanExecuted": false,
+    "sourceUnchangedDuringFinalRuns": true,
+    "postQualificationChanges": "Repository documentation only; implementation, assertions, plan and packaged README retain the nonDocumentation fingerprint.",
+    "manifests": [
+      "target/v1-candidate-runs/run-ZzTvqn/result.json",
+      "target/v1-candidate-runs/run-gyKxxc/result.json",
+      "target/v1-candidate-runs/run-jnWhdf/result.json",
+      "target/v1-candidate-runs/run-j2znIx/result.json",
+      "target/v1-candidate-runs/run-IwNiXg/result.json",
+      "target/v1-candidate-runs/run-SjfghD/result.json"
+    ]
+  },
+  "implemented": [
+    "A distinct private canonical local-operation frame retains the literal complete original, actual journal intent/observation, CURRENT/PENDING native cuts, newer unsaved LIVE, whole uploads and selected raster payloads. Old formats/readers/defaults remain closed.",
+    "Actual temporary readonly Rust owners replay each selected state and verify both history continuations, unique native version IDs and an ordered immutable version prefix. Outer hashes alone do not establish ancestry or ownership.",
+    "Fresh read policy/factories/limits are snapshotted before authority; invalid optional signals, limits and resolvers refuse rather than silently selecting defaults. Source-owned borrowed reads stay independent of ended write grants/signals and are released on failure.",
+    "Raster references include native retained histories and immutable versions across all selected states. Missing pixels remain Pending, host provider guards remain current, provider-only pixels do not become upload jobs, and immutable asset identity cannot be rebound by generation.",
+    "Original binding identities, pixels, whole-upload rows/dimensions/receipts and monotone attempts/epochs are conserved. Archive reading opens neither persistent owners nor author leases.",
+    "Actual source close waits for in-flight read/native cleanup; fresh rejected native results free once and a reused native result stays with its first editor. Final temporary-reader callbacks recheck actual owner/native state before successful return."
+  ],
+  "tests": {
+    "focusedLawsSourceAndInstalledEach": 40,
+    "candidatePlanLaw": 1,
+    "workspaceAndDiagnosticTests": 2647,
+    "editorTests": 385,
+    "scriptsPassed": 2665,
+    "scriptsFailed": 0,
+    "scriptsSkipped": 3,
+    "skipScope": "Three existing opt-in browser checks, not platform qualification."
+  },
+  "sourceAndInstalledEach": {
+    "format": "breditor/independent-local-operation-portable-probe",
+    "formatVersion": 1,
+    "passed": true,
+    "cases": 480,
+    "profiles": 5,
+    "captures": 480,
+    "reopens": 480,
+    "wholeOriginal": 480,
+    "wholeUploads": 480,
+    "originalPixels": 480,
+    "exactNativeCuts": 1440,
+    "unsavedWork": 480,
+    "versions": 480,
+    "noSourceOrJournalWrites": 480,
+    "writerRefusals": 960,
+    "corruptRefusals": 480,
+    "oldFamilyRefusals": 480,
+    "dataOnlyRestores": 480,
+    "futureNativePairs": 1440,
+    "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "scope": "All five normal native compiler profiles, three selection scopes, eight capability masks and four document/comment history pairs. Actual original/current/pending/live local export/read without native persistence writes, whole uploads/original-only pixels and 1440 exact future native history comparisons after data-only restoration. Not complete operational editable/cold/repeated restore, room adoption, physical durability, sustainable history, provider/client closure or authenticated activation."
+  },
+  "controls": {
+    "policy": {
+      "beforePassed": 0,
+      "beforeFailed": 3,
+      "afterPassed": 3,
+      "afterFailed": 0,
+      "unchangedRegression": {
+        "path": "scripts/independent-local-portable-policy.test.mjs",
+        "sha256": "386882d87a455098e9568c38d7f2db7184f00801863f2083a5700e5535fd53d1"
+      },
+      "publishedPackageDefectClaim": false
+    },
+    "versions": {
+      "beforePassed": 0,
+      "beforeFailed": 2,
+      "afterPassed": 2,
+      "afterFailed": 0,
+      "unchangedRegression": {
+        "path": "scripts/independent-local-portable-versions.test.mjs",
+        "sha256": "38f1b3af87256425bb79e5da86d9ec563cf501bf5ba8155fb29817f0ffa57851"
+      },
+      "publishedPackageDefectClaim": false
+    },
+    "codec": {
+      "beforePassed": 2,
+      "beforeFailed": 1,
+      "afterPassed": 3,
+      "afterFailed": 0,
+      "unchangedRegression": {
+        "path": "scripts/independent-local-portable-codec.test.mjs",
+        "sha256": "98b522cd1a8352efe8abce7428af92e33637f02e752374e428aae5cfb164dcdb"
+      },
+      "publishedPackageDefectClaim": false
+    }
+  },
+  "prototypeLifetimeRepair": {
+    "beforeFailed": 1,
+    "afterPassed": 1,
+    "originalUnchangedAssertions": {
+      "path": "/private/tmp/breditor-local-portable-staging-PLaHoA/replay-check-lifetime.test.mjs",
+      "sha256": "66085b2edaa9fa5d7da0b2f9837d0f8e5cb038a5dae203279d51e77858560f41"
+    },
+    "integratedRegressionSha256": "3bcb71195af20481b3d513876a0775342dd51774086853649b75900e156d03b0",
+    "locationOnlyIntegration": true,
+    "publishedPackageDefectClaim": false
+  },
+  "developmentProbeQualified": false,
+  "compatibility": {
+    "freshLocalParentCasesSourceAndInstalledEach": 480,
+    "freshLocalParentLawsEach": 55,
+    "freshLocalParentHandoffsEach": 1440,
+    "freshLocalParentPublicationBoundaries": 10,
+    "installedNativeOwnerLaws": 32,
+    "semanticSourceAndInstalledResultsMatch": true
+  },
+  "carriedEvidence": {
+    "prior": {
+      "index": "target/independent-local-participant-final-SD6hzf/index.json",
+      "sha256": "d53061136895b17d9aa57745b734c778411319c8e0ea7ddb3cc41c69026df517",
+      "source": {
+        "commit": "ba2a54f65df09d26e1f1e00aab54dda5805bdf26",
+        "dirty": true,
+        "sha256": "eb8ffcc84be42d1349bc7801a336fafc2282e6be10aa4457304360a2b41eea78",
+        "files": 5767,
+        "bytes": 46788458
+      },
+      "collaborationArchiveSha256": "76bfde0a4d0398d91529f650803ba328b7fe24124b9a92cf8bc3295b710deda6"
+    },
+    "unchangedPriorNonDocumentationInputs": 5151,
+    "changedPriorNonDocumentationInputs": [
+      "packages/breditor-collaboration/README.md",
+      "scripts/candidate-release/plan.mjs"
+    ],
+    "oldPackageFilesUnchangedExceptReadme": 1030,
+    "normalRuntimeFiles": 12,
+    "unchangedRustSourceAndManifestInputs": 2857,
+    "legacyFullMatricesFreshlyExecuted": false,
+    "scope": "Earlier journal/origin, delivery-parent, restored graph, local recovery/capture and full delivery-recovery matrices remain prior evidence across exact unchanged implementation/assertions/fixtures and actual old package bytes. Focused compatibility laws and both complete local-parent matrices are fresh."
+  },
+  "installedEvidence": {
+    "freshConsumers": 3,
+    "matchingArchiveSha256": {
+      "@breditor/browser": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+      "@breditor/experimental-rich-content": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad",
+      "@breditor/collaboration": "4aeb0f8b63c9b0e2b0dea2d585b52760cfd6be0958858e97f3516a955ec600ee"
+    },
+    "workspaceLinks": false,
+    "strictPublicTypes": true,
+    "offlineRegistryIntegrityChecked": true,
+    "probeByteIdentical": true,
+    "assertionChanges": "Reversible module/runtime/fixture locations only.",
+    "productionBundleExcludesWorkspaceReactAndSyntheticStorage": true
+  },
+  "retained": {
+    "index": "target/independent-local-portable-final-4dWNrE/index.json",
+    "sha256": "b5ec84fce6c16f8efe0ba638c09df0aea3158cd116d1f9439cb48bcd6c6c57a9",
+    "files": 220,
+    "includes": "Six terminal manifests/logs, five reports, three clean consumers and matching archives, actual unchanged policy/version/count controls, the prototype lifetime regression and location-only integration proof, full source inventory and exact old-input carry."
+  },
+  "remaining": [
+    "Complete operational editable/cold restore with genuine incoming provenance, whole-upload ownership and a first publication of verified input LIVE under one native writer lease.",
+    "Repeated local capture/export with bounded flat provenance retaining every incoming original/CURRENT/PENDING/LIVE cut and older provider-only pixels.",
+    "Actual five-family native staging/adoption and all historic-copy/provider/client reconciliation without silently enrolling operational sources as incomplete old captures.",
+    "Freshly authenticated whole-room activation; hashes and owned local archives grant no relay binding, receipt or server permission.",
+    "Sustainable native Undo/offline retention, remaining full feature parity and all thirteen V1 release gates."
+  ],
+  "nativeRustSuitesFreshlyExecuted": false,
+  "physicalDurabilityQualified": false,
+  "completeEditableOperationalRestore": false,
+  "repeatedExportClosure": false,
+  "historicalWebKitOrRasterRepair": false,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "versionChanged": false,
+  "pushed": false
+}

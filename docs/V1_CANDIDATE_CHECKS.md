@@ -1,5 +1,27 @@
 # V1 candidate checks
 
+Both profiles require `independent-local-portable-contracts`,
+`independent-local-portable-type-fence`, `independent-local-portable` and
+`installed-independent-local-portable`. The distinct
+[portable local contract](INDEPENDENT_LOCAL_OPERATION_PORTABLE.md) retains the
+literal original, acknowledged/pending saves, unsaved LIVE, complete uploads and
+selected pixels. Actual native replay checks both histories, unique ordered
+versions, fresh read scopes and whole-upload conservation without acquiring a
+writer. Missing pixels remain Pending.
+
+Its [selected qualification](qualification/2026-10-22-independent-local-operation-portable.json)
+passes 26 checks from the 320-check plan. Source/fresh packages each repeat 40
+focused laws and the full 480-case domain, including 1,440 future native-payload
+comparisons. Existing local-parent source/installed matrices pass freshly too;
+three consumers pin matching archives. All previous implementation/assertion inputs
+and 1,030 actual old package files are unchanged except README/candidate-plan
+changes. Earlier full graph/journal/delivery domains are carried, not claimed fresh.
+
+Native-payload replay does not adopt incoming operation/upload ownership.
+Complete editable/cold/repeated restore, flat provenance export, five-family room
+adoption, all provider/client/historic-copy reconciliation, authenticated
+activation, sustainable history and all thirteen V1 release gates remain open.
+
 Both profiles require `independent-local-operation-participant-contracts`,
 `independent-local-operation-participant-type-fence`,
 `independent-local-operation-participant` and
