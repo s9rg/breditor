@@ -1,0 +1,147 @@
+{
+  "format": "breditor/independent-operation-participant-functional-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-22T05:49:04.471Z",
+  "calendarTimeZone": "America/Toronto",
+  "passed": true,
+  "source": {
+    "commit": "0ca2d03c6903e2ef4163b3e653aae5ed670caa24",
+    "dirty": true,
+    "sha256": "2352951a57dd8b06c7740e5d9a826bbcb8c6c9cbe0f6b913e04d9a9dfbe256bc",
+    "files": 5520,
+    "bytes": 45401988
+  },
+  "nonDocumentation": {
+    "files": 4938,
+    "sha256": "d98ebe1f1f287c8507d13d70964a1b4d708e82e726c19632afb08cecc86c9c42"
+  },
+  "nativeInputs": {
+    "files": 2986,
+    "sha256": "a4a716e0a6237d7c0d6122e5ab1eefc7ab02bda557cfeff9b786794c9c23d420"
+  },
+  "selection": {
+    "functionalPlanChecks": 262,
+    "uniquePassingPlanChecks": 19,
+    "wholePlanExecuted": false,
+    "sourceUnchangedDuringFinalRuns": true,
+    "postQualificationChanges": "Documentation only; implementation inputs retain the nonDocumentation fingerprint.",
+    "manifests": [
+      "target/v1-candidate-runs/run-LRIOdY/result.json",
+      "target/v1-candidate-runs/run-4jEUdC/result.json",
+      "target/v1-candidate-runs/run-M1kWB9/result.json",
+      "target/v1-candidate-runs/run-N9tt9v/result.json"
+    ],
+    "initialHeapFailure": {
+      "sourceManifest": "target/v1-candidate-runs/run-R5i8Vm/result.json",
+      "installedManifest": "target/v1-candidate-runs/run-pwUBd4/result.json",
+      "cause": "One fake IndexedDB factory rooted every completed case's durable databases; both full matrix processes exhausted the ordinary Node heap before a terminal result.",
+      "resolution": "Each complete case has its own storage/lock context, shared across every cold lifecycle in that case and released only after every owner and actual lock callback settles.",
+      "reversibleCaseContextLifetimeChangesOnly": true,
+      "allAssertionsAnd640ConfigurationsUnchanged": true,
+      "heapLimitIncreased": false,
+      "databasesDeletedBetweenColdReopens": false,
+      "productionPackageArchivesUnchanged": true,
+      "failedManifestsLogsAndPreviousProbeRetained": true,
+      "productionPerformanceClaim": false
+    }
+  },
+  "tests": {
+    "workspaceAndDiagnosticTests": 2647,
+    "editorIntegrationTests": 385,
+    "scriptPass": 2032,
+    "scriptFail": 0,
+    "scriptSkipped": 3,
+    "sourceOwnerLaws": 28,
+    "sourceOwnerPlanLaw": 1,
+    "sourcePreviousJournalLaws": 50,
+    "sourcePreviousJournalPlanLaw": 1,
+    "sourcePreviousNativeOriginLaws": 22,
+    "sourcePreviousNativeOriginPlanLaw": 1,
+    "installedOwnerLaws": 28,
+    "installedOwnerFailures": 0,
+    "installedOwnerSkips": 0,
+    "skipScope": "Three existing opt-in checks; not browser, accessibility or platform qualification."
+  },
+  "sourceAndInstalledEach": {
+    "cases": 640,
+    "genuineRecoveries": 640,
+    "operationalBegins": 640,
+    "coldResumes": 1280,
+    "handoffs": 1920,
+    "pendingReplays": 640,
+    "failedSourceCommits": 640,
+    "futureHistoryPairs": 1920,
+    "retainedPacketComparisons": 2240,
+    "localVersionComparisons": 1280,
+    "wholeUploadComparisons": 1920,
+    "wholeOriginalComparisons": 1920,
+    "retiredSourceComparisons": 640,
+    "readOnlyRefusals": 1280,
+    "originalWireVersionOutboxCases": 160,
+    "atomicWireAllRetainedStoreCases": 480,
+    "tokenCalls": 0,
+    "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "matrix": "Five native grammar/standard profiles, three selection scopes, all eight existing typing/search/owned-review combinations, all four independent native history pairs, and both transports where already supported."
+  },
+  "reproducedAndRepaired": [
+    {
+      "cause": "Revocation during final coordinator release left the real source/uploads held but closed the recovery database before the final barrier; retry failed with InvalidStateError.",
+      "previousImplementationFailures": 1,
+      "fixedImplementationPasses": 1,
+      "unchangedAssertionsSha256": "768066a92fc35b057c533bc4edebd9551006e9a75e0570c92377f9b5d0c454b8",
+      "repair": "Keep the actual recovery read handle until the final synchronous handoff succeeds.",
+      "oldReleasedPackageClaim": false
+    },
+    {
+      "cause": "Retired archive cleanup could invoke a replaced inner archive facade after the previous current-policy guard and let a revoked handoff escape.",
+      "previousImplementationFailures": 1,
+      "fixedImplementationPasses": 1,
+      "unchangedAssertionsSha256": "8b20cbf7ace8af113c095972163ad751cd221f0b7eceb88a51ce1d7da1b3b12f",
+      "repair": "Run retired-backup cleanup before the final policy/source barrier; close the recovery handle and release uploads only afterward.",
+      "oldReleasedPackageClaim": false
+    }
+  ],
+  "installedEvidence": {
+    "freshConsumers": 4,
+    "matchingArchiveReports": 4,
+    "ownerRegistryArtifacts": 45,
+    "ownerProductionModules": 194,
+    "workspaceLinks": false,
+    "strictOwnerPublicTypes": true,
+    "probeByteIdentical": true,
+    "unitAssertionChanges": "Reversible module and fixture locations only.",
+    "archives": [
+      {"name": "@breditor/browser", "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"},
+      {"name": "@breditor/experimental-rich-content", "sha256": "340aa47ff8e6c41c56f35476d8d4d5c164aa63fe7470ae3d5367ff19ffd1b109"},
+      {"name": "@breditor/collaboration", "sha256": "dcbdf8d7f2e9bc1287ef94fd7b66897af077faa2e4e1b6f37a72f86bb968fb64"}
+    ]
+  },
+  "nativeEvidence": {
+    "baseline": "docs/qualification/2026-10-21-operation-asset-custody.json",
+    "nativeInputsUnchanged": true,
+    "normalRuntimeFilesByteCompared": 12,
+    "normalSharedAndRichRuntimesUnchanged": true,
+    "fullRustSuitesFreshlyExecuted": false,
+    "serverEnabledTestsCarried": 379,
+    "noServerTestsCarried": 267
+  },
+  "retained": {
+    "index": "target/independent-operation-participant-final-3nsblR/index.json",
+    "sha256": "81fd02a11d0b249540e8619ae49da6c2e61b7221deb47dc473726f706d1f2d99",
+    "files": 75,
+    "contents": "Actual passing manifests/logs/reports, matching archives, source/installed assertions, byte-identical full probe, consumer lock/fixtures, both handoff regression proofs, and initial heap-failure manifests/logs with the exact reversible fixture-lifetime repair."
+  },
+  "scope": "Private genuine completed-recovery transfer into a source-owned operation journal and actual whole uploads; cold resume under fresh host policy; native history, retained work, immutable uploads and retired-source conservation; actual callback lifetime and final synchronous source/current-policy handoff. Normal Rust/Wasm with controlled IndexedDB, locks and raster fixtures.",
+  "remaining": [
+    "Portable operational export/restore retaining original, acknowledged, pending and newer readable work with whole uploads and native/packet raster references",
+    "Whole-room adoption, historical-copy decisions and complete provider/client reconciliation",
+    "Independently segmented comment/server-log generations and fresh authenticated activation",
+    "Native long-session Undo limits, memory/performance, physical durability and remaining feature-parity catalog"
+  ],
+  "v1GatesClosed": 0,
+  "v1GatesRemainingOpen": 13,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "packageVersionChanged": false,
+  "pushedTaggedPublishedOrDeployed": false
+}

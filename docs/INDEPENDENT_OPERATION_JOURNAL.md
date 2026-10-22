@@ -7,9 +7,10 @@ suggestion, revision and version records. A pending cut retains its native files
 not merely hashes that cannot reconstruct an interrupted save.
 
 This implements durable source intent on the actual editor persistence path.
-Complete participant/upload ownership, portable operational export and room
-adoption remain the next integration boundary. No new operation API is exported
-from the package root.
+The private [operational participant owner](INDEPENDENT_OPERATION_PARTICIPANT.md)
+now joins genuine completed recovery, this source and whole-upload custody.
+Portable operational export and room adoption remain the next integration
+boundary. No new operation API is exported from the package root.
 
 ## Explicit storage and factory selection
 
@@ -126,10 +127,12 @@ source-data reader are data, not complete portable operational backups. The next
 export contract must retain original, acknowledged, pending and newer readable
 work together with the real upload store.
 
-The existing complete recovery coordinator still hands off a read-only source
-and held whole uploads. Its genuine ownership transfer, the new operation source
-and continued upload custody must be joined before a complete operational
-participant can be promoted. Room adoption, historical-copy decisions,
+The existing public recovery coordinator still hands off a read-only source and
+held whole uploads. The private operational participant joins its genuine
+transfer, the new source and continued upload custody under a fresh host policy;
+its live source lifetime is separate from the retired recovery wrapper. Portable
+operational export is still required before this family can be promoted. Room
+adoption, historical-copy decisions,
 provider/client closure, independently segmented server comment logs and fresh
 authenticated room activation remain required.
 

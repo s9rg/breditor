@@ -9,18 +9,17 @@ import {IndependentDeliveryCompanion} from '../independent_delivery/companion.js
 import {independentDeliverySource} from '../independent_delivery_source/admission.js';
 import {RecoveryLease} from '../participant_recovery/lease.js';
 import {requireBackupRecovery} from '../backups/identity.js';
-import {segmentedDigest} from '../persistence/segmented_checkpoint.js';
 import {IndependentNativeOperationOrigin,independentNativeOriginGuard} from './native_origin.js';
 import {wrapOperationHead,unwrapOperationHead} from './operation_head.js';
 import {readOperationCut,operationCutDigest,copyOperationCut,sameOperationCut} from './cut_codec.js';
 import {initialOperationCutIntent,type IndependentOperationJournalIdentity} from './cut_intent.js';
 import {createOperationJournalDatabase,existingOperationJournalDatabase,readOperationJournalDatabase,writeOperationJournalDatabase,type OperationJournalChecked} from './journal_database.js';
 import {operationJournalFailure as fail} from './journal_failure.js';
+import {operationDatabaseName as name,operationJournalIdentity} from './journal_identity.js';
 const key=Object.freeze({}),readOrigin=IndependentNativeOperationOrigin.read,disposeOrigin=IndependentNativeOperationOrigin.prototype.dispose;
 export interface IndependentOperationJournalOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
  readonly database:string;readonly sourceDatabase:string;readonly prepared:PreparedIndependentDeliveryRecovery<P>;readonly writerRecovery:'host-reacquired';
 }
-const name=(value:unknown):string=>{if(typeof value!=='string'||!value.trim()||value.length>200)throw fail();return value;};
 type Checked=OperationJournalChecked&{readonly decoded:ReadonlyMap<string,IndependentHistoryStoredCut>};
 let binding:(journal:IndependentOperationCutJournal)=>ReturnType<IndependentOperationCutJournal['bindingType']>;
 export class IndependentOperationCutJournal {
@@ -38,9 +37,7 @@ export class IndependentOperationCutJournal {
   requireBackupRecovery(input.writerRecovery);const database=name(input.database),sourceDatabase=name(input.sourceDatabase),provided=input.prepared as unknown as PreparedIndependentDeliveryRecovery,context=globalThis.indexedDB,locks=globalThis.navigator?.locks,authority=provided.guard;
   const current=()=>{if(!context||!locks||globalThis.indexedDB!==context||globalThis.navigator?.locks!==locks)throw fail('independent_operation_storage_changed');};
   const guard=()=>{current();authority();current();},p={...provided,guard};guard();
-  if(new Set([database,sourceDatabase,p.options.database,...Object.values(p.options.destinations)]).size!==5)throw fail();p.guard();
-  const plan=JSON.stringify({format:'breditor/shared-independent-operation-plan',formatVersion:1,recovery:p.record.plan,journal:database,source:sourceDatabase});if(new TextEncoder().encode(plan).length>132*1024)throw fail();
-  const id={plan,operation:await segmentedDigest('breditor/independent-operation/1\0'+plan),origin:p.options.expected.sha256,sourceDatabase};p.guard();
+  const id=await operationJournalIdentity(database,sourceDatabase,p);p.guard();
   let lease:RecoveryLease|undefined,db:IDBDatabase|undefined,origin:IndependentNativeOperationOrigin|undefined;
   try{lease=await RecoveryLease.acquire(JSON.stringify(database));p.guard();origin=await readOrigin.call(IndependentNativeOperationOrigin,p);p.guard();
    const recovery=archive.recovery.call(p.backup),decoder=new IndependentDeliveryCompanion(p.factory,recovery),native=await makeIndependentHistoryCut(recovery.source.documentCheckpoint,recovery.source.reviewCheckpoint,recovery.source.identity,recovery.source.versions);p.guard();

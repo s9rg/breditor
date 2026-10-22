@@ -1,13 +1,23 @@
 # V1 candidate checks
 
+Both profiles require `independent-operation-participant-contracts`,
+`independent-operation-participant-type-fence`, `independent-operation-participant`
+and `installed-independent-operation-participant`. The private
+[operational participant](INDEPENDENT_OPERATION_PARTICIPANT.md) joins genuine
+recovery, the new native source/journal and actual whole-upload custody. The same
+28 laws and byte-identical full 640-case probes run in source and fresh installed
+packages. The current functional plan has 262 checks; portable operational export,
+whole-room adoption and activation remain separate work.
+
 Both profiles require `independent-operation-journal-contracts`,
 `independent-operation-journal-type-fence`, `independent-operation-journal` and
 `installed-independent-operation-journal`. The private
 [save journal](INDEPENDENT_OPERATION_JOURNAL.md) runs on actual source open,
 prepare, commit, acknowledgement and close. The checks require the same 50 laws
-and byte-identical 640-case source/installed probe. The current functional plan
-has 258 checks; complete participant/upload ownership, portable operational
-export and room activation remain separate work.
+and byte-identical 640-case source/installed probe. The functional plan at that
+journal checkpoint had 258 checks. The operational owner above joins actual
+participant/upload ownership; portable operational export and room activation
+remain separate work.
 
 Both profiles require `independent-operation-origin-contracts`,
 `independent-operation-origin-type-fence`, `independent-operation-origin` and
