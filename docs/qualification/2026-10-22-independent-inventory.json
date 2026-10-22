@@ -1,0 +1,149 @@
+{
+  "format": "breditor/independent-inventory-functional-qualification",
+  "formatVersion": 1,
+  "qualifiedDate": "2026-10-22",
+  "calendarTimeZone": "America/Toronto",
+  "passed": true,
+  "source": {
+    "commit": "1b313a30d231ada66c8a1edca2c068ac5c118494",
+    "dirty": true,
+    "sha256": "19a8756b1fb8d8804ebaeb37d657a379ece52148225a7a0d6ed8813191c93a36",
+    "files": 5657,
+    "bytes": 46188105
+  },
+  "nonDocumentation": {
+    "files": 5055,
+    "sha256": "21540cada4a9525ec1f8d9fc6f34bb15e4723658323f980c4544153827726637"
+  },
+  "selection": {
+    "functionalPlanChecks": 296,
+    "uniquePassingPlanChecks": 31,
+    "wholePlanExecuted": false,
+    "sourceUnchangedDuringFinalRuns": true,
+    "postQualificationChanges": "Repository documentation only; implementation, assertions, candidate plan and packaged README retain the nonDocumentation fingerprint.",
+    "manifests": [
+      "target/v1-candidate-runs/run-fbyF9c/result.json",
+      "target/v1-candidate-runs/run-yDO4FC/result.json",
+      "target/v1-candidate-runs/run-VxZAqy/result.json",
+      "target/v1-candidate-runs/run-9avY4O/result.json"
+    ]
+  },
+  "implemented": [
+    "Separately named logical and physical independent-local/independent-delivery readers and a wider public physical source cohort. Old mixed input kinds, archive formats, protocols and defaults retain their meanings.",
+    "Private actual graph-restored native source borrows under fresh independent read authorization. Exact original, operation, LIVE, source stamp and genuine native readers remain linked; expired writer grants do not authorize writing.",
+    "Genuine native accepted-prefix checks across independent document/comment families, retained namespaces and explicit unbound local review histories. Duplicate writers or actors refuse without choosing or discarding a copy.",
+    "A shared one-length bounded indexed input snapshot across all eight public inventory methods; caller map/iterator/species methods and later lengths cannot substitute a different traversal."
+  ],
+  "tests": {
+    "focusedLawsSourceAndInstalledEach": 23,
+    "candidatePlanLaw": 1,
+    "nativePhysicalRooms": 10,
+    "matchedDocumentReviewHistoryPairs": 4,
+    "workspaceAndDiagnosticTests": 2647,
+    "editorIntegrationTests": 385,
+    "scriptPass": 2303,
+    "scriptFail": 0,
+    "scriptSkipped": 3,
+    "skipScope": "Three existing opt-in browser checks; not platform qualification."
+  },
+  "sourceAndInstalledEach": {
+    "independentCohorts": 80,
+    "independentLocalParticipants": 80,
+    "independentDeliveryParticipants": 80,
+    "localUnboundReviews": 80,
+    "localVersionPackets": 80,
+    "logicalReaderChecks": 72,
+    "pureNoIOChecks": 80,
+    "coldNativeComparisons": 160,
+    "referenceNativeRestores": 72,
+    "futureNativePairs": 144,
+    "restoredCohorts": 40,
+    "restoredNativeSources": 80,
+    "expiredWriterReads": 80,
+    "restoredOfflineRecaptures": 36,
+    "mixedCohorts": 480,
+    "mixedOriginal": 80,
+    "mixedGeneration": 240,
+    "mixedIndependentLocal": 80,
+    "mixedIndependentDelivery": 80,
+    "mixedLocalPending": 160,
+    "mixedDuplicateRefusals": 960,
+    "mixedWriterRefusals": 480,
+    "mixedReadGrantRefusals": 480,
+    "retainedComparisons": 1280,
+    "networkCalls": 0,
+    "scope": "All ten native compiler/transport rooms and four matched independent history pairs, plus genuine graph-source reads and both author directions in mixed cohorts. No provider closure, durable room adoption or activation claim."
+  },
+  "arraySnapshotRepair": {
+    "before": "target/inventory-input-before-gkxkuT/index.json",
+    "beforeSha256": "5080c3b95eb3cb7597a47421a2700009a7a038faf02a142cf573ee2a5f22b669",
+    "beforeFailed": 8,
+    "afterPassed": 8,
+    "afterRun": "target/v1-candidate-runs/run-fbyF9c/result.json",
+    "unchangedRegressionSha256": "4b8f2e0e13266545beaaf5a1156f00c99b93fac6771b9d2e0b9ef624223c5915",
+    "cause": "Reader admission and traversal consulted different array lengths or delegated to caller-overridable map/iteration. The selected source-array shape was not one bounded snapshot.",
+    "repair": "Read one safe integer length, enforce zero through 1024 before indexed values, reject missing rows and normalize fields through fixed internal callbacks."
+  },
+  "installedEvidence": {
+    "freshConsumers": 2,
+    "reports": [
+      "target/independent-inventory-installed-consumer.json",
+      "target/server-generation-inventory-installed.json"
+    ],
+    "matchingArchiveSha256": {
+      "@breditor/browser": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+      "@breditor/experimental-rich-content": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad",
+      "@breditor/collaboration": "000e048fa376f3258643daec3c191b4fbafd0739eb98b64837a2f952483aac59"
+    },
+    "workspaceLinks": false,
+    "strictPublicTypeFences": true,
+    "offlineRegistryIntegrityChecked": true,
+    "fullProbeByteIdentical": true,
+    "focusedAssertionChanges": "Reversible module/runtime/verified native fixture data locations only.",
+    "productionBundleExcludesWorkspaceReactAndSyntheticStorage": true,
+    "legacyCompatibility": "Both source and installed legacy inventory probes repeat ten native rooms, sixty original/generation mixed cohorts and their native history, ownership and physical-cut checks."
+  },
+  "nativeEvidence": {
+    "freshExactSourceProducer": true,
+    "producerRooms": 10,
+    "protectedStreams": 40,
+    "retainedFixtureFiles": 50,
+    "normalRuntimeFilesRetained": 12,
+    "unchangedRustSourceAndManifestInputs": 2857,
+    "normalSharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "normalRichWasmSha256": "bc020ce07ed80600b85735c1e592d5ae163d921f5556fef05269a12bc1d59ec5",
+    "fullRustSuitesFreshlyExecuted": false,
+    "normalRuntimeBytesUnchangedFromPreviousQualifiedCheckpoint": true
+  },
+  "retained": {
+    "index": "target/independent-inventory-final-1xmF4N/index.json",
+    "sha256": "823ebb88f61a2733b1e382e7660cf4ed06141c6086b8bc6064376a39f2a79af1",
+    "files": 196,
+    "includes": "Terminal manifests/logs, matching installed archives and assertions, fresh native fixture files, source inventory and changed inputs, normal native files, unchanged before/after regression and separately labeled development prototypes."
+  },
+  "developmentOnly": {
+    "qualified": false,
+    "integratedIntoPackage": false,
+    "retainedReports": ["development-catalog/development.json", "development-catalog/faults.json"],
+    "fiveArchiveFamilies": true,
+    "cohorts": 96,
+    "historicCopiesRetained": 480,
+    "exactColdFiles": 960,
+    "coldCatalogs": 96,
+    "reboundActualGraphReaders": 384,
+    "occupiedDestinationRefusals": 192,
+    "faults": 5,
+    "scope": "Two native wire transports in v1 grammar, four matched independent history pairs and both author directions. Actual immutable database/archive/lease ownership and cold readmission, with denial, corruption, bounded-read and reentrant-close faults. Synthetic storage, not operational client adoption, physical durability or activation."
+  },
+  "remaining": [
+    "Integrate durable five-family room catalog and actual participant staging/adoption, including a genuine local-only recovery coordinator without a fabricated delivery binding.",
+    "Reconcile every retained client copy, current provider bytes and pending/outbox work before one freshly authenticated whole-room activation decision.",
+    "Design sustainable native history retention; generation sealing does not lift the retained-Undo ceiling or delta-encode every changed checkpoint.",
+    "Complete the remaining feature-parity catalog and all thirteen V1 release gates."
+  ],
+  "historicalWebKitOrRasterRepair": false,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "versionChanged": false,
+  "pushed": false
+}

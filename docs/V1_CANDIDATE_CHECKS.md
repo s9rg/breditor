@@ -1,5 +1,18 @@
 # V1 candidate checks
 
+Both profiles require `independent-inventory-contracts`,
+`inventory-input-snapshot-contracts`, `independent-inventory-type-fence`,
+`independent-inventory` and `installed-independent-inventory`. The
+[independent participant contract](INDEPENDENT_PARTICIPANT_INVENTORY.md) admits
+genuine independent local/delivery histories and private graph-restored native
+borrows without inferring delivery bindings or activation permission. Its
+[selected qualification](qualification/2026-10-22-independent-inventory.json)
+passes 31 checks from the 296-check functional plan, including 23 source/installed
+laws and the full 480-cohort native matrix each. Eight actual input-snapshot
+failures have unchanged passing assertions. The separate 96-cohort five-family
+catalog remains development-only; durable room adoption and all thirteen V1
+gates stay open.
+
 Both profiles require `restored-graph-contracts`, `restored-graph-type-fence`,
 `restored-graph` and `installed-restored-graph`. The private
 [complete graph](RESTORED_OPERATION_GRAPH.md) preserves actual native history,

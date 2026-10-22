@@ -1,8 +1,10 @@
 import {inventoryMetadata,inventoryIdentity} from "./parse.js";
 import {checkInventorySources} from "./coverage.js";
 import {checkInventoryGenerationSources} from "./generation_coverage.js";
+import {checkInventoryIndependentSources} from './independent_coverage.js';
 import {frozen,inventorySignal,invalid,MAX_SHARED_ROOM_PARTICIPANT_INVENTORY_BYTES,SharedRoomParticipantInventoryError} from "./policy.js";
 import type {SharedRoomParticipantInventoryIdentity,SharedRoomParticipantInventoryMetadata,SharedRoomParticipantSource,SharedRoomGenerationParticipantSource,SharedRoomParticipantCoverage} from "./types.js";
+import type {SharedRoomIndependentParticipantSource} from './types.js';
 const key=Object.freeze({}),states=new WeakMap<SharedRoomParticipantInventory,{file:Blob;metadata:SharedRoomParticipantInventoryMetadata}>();
 const closed=()=>new SharedRoomParticipantInventoryError("inventory_closed","The inventory is disposed or was not admitted by this SDK");
 /** Exact independently selected native metadata, not authentication or native server replay proof. */
@@ -17,6 +19,9 @@ export class SharedRoomParticipantInventory {
  /** Generation-aware native prefix coverage. Retained history is not flattened or
   * reset; current authorization and whole-room activation remain separate. */
  checkGenerationSources(sources:readonly SharedRoomGenerationParticipantSource[]):SharedRoomParticipantCoverage{const state=states.get(this);if(!state)throw closed();try{const result=checkInventoryGenerationSources(state.metadata,sources);if(states.get(this)!==state)throw closed();return result;}catch(error){if(error instanceof SharedRoomParticipantInventoryError)throw error;throw new SharedRoomParticipantInventoryError("inventory_source","The exact generation source could not be verified");}}
+ /** Read both selected native lanes without flattening. No binding is invented
+  * for local-only comments, and no source becomes a current permission grant. */
+ checkIndependentSources(sources:readonly SharedRoomIndependentParticipantSource[]):SharedRoomParticipantCoverage{const state=states.get(this);if(!state)throw closed();try{const result=checkInventoryIndependentSources(state.metadata,sources);if(states.get(this)!==state)throw closed();return result;}catch(error){if(states.get(this)!==state)throw closed();if(error instanceof SharedRoomParticipantInventoryError)throw error;throw new SharedRoomParticipantInventoryError('inventory_source','The genuine independent native source could not be verified');}}
  /** Drops file state; it never closes a borrowed source, upload store, client or connection. */
  dispose():void{states.delete(this);}
  static async read(input:Blob,expected:SharedRoomParticipantInventoryIdentity,options:{readonly signal?:AbortSignal}={}):Promise<SharedRoomParticipantInventory>{

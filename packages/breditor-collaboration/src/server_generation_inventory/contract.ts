@@ -1,6 +1,7 @@
 /** Separate physical server selection. Detached JSON never proves current
  * account authority, native replay, credential continuity or activation. */
 import type {SharedRoomBackupCut,SharedRoomParticipantInventoryMetadata,SharedRoomParticipantCoverage,SharedRoomParticipantSource,SharedRoomGenerationParticipantSource} from "../room_participant_inventory/types.js";
+import type {SharedRoomIndependentParticipantSource} from '../room_participant_inventory/types.js';
 export interface SharedServerLogGenerationBackupIdentity {
  /** Native global cut across the explicitly selected physical files, not a standalone log. */
  readonly source:SharedRoomBackupCut;
@@ -29,3 +30,6 @@ export interface SharedServerLogGenerationParticipantCoverage {
 export type SharedServerLogGenerationParticipantSource=
  |Readonly<{family:"original"}&SharedRoomParticipantSource>
  |Readonly<{family:"generation"}&SharedRoomGenerationParticipantSource>;
+/** Separately named wider diagnostic input. The old mixed-reader union remains
+ * exactly original/generation; no stored file family or default is expanded. */
+export type SharedServerLogGenerationCohortSource = SharedServerLogGenerationParticipantSource | SharedRoomIndependentParticipantSource;

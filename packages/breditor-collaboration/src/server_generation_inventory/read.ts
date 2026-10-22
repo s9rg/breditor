@@ -5,10 +5,15 @@ import {frozen,invalid,inventorySignal,SharedRoomParticipantInventoryError} from
 import {serverGenerationParticipantIdentity,serverGenerationParticipantMetadata} from "./identity.js";
 import {closed,MAX_SHARED_SERVER_LOG_GENERATION_PARTICIPANT_INVENTORY_BYTES} from "./policy.js";
 import {checkPhysicalMixedSources} from "./mixed_coverage.js";
+import {checkInventoryIndependentSources} from '../room_participant_inventory/independent_coverage.js';
+import {checkPhysicalSourceCohort,checkOperationalPhysicalSourceCohort,type OperationalPhysicalCohortSource} from './cohort_coverage.js';
 import type {SharedRoomParticipantSource,SharedRoomGenerationParticipantSource,SharedRoomParticipantCoverage} from "../room_participant_inventory/types.js";
+import type {SharedRoomIndependentParticipantSource} from '../room_participant_inventory/types.js';
 import type {SharedServerLogGenerationParticipantIdentity,SharedServerLogGenerationParticipantMetadata,SharedServerLogGenerationParticipantCoverage,SharedServerLogGenerationParticipantSource} from "./contract.js";
+import type {SharedServerLogGenerationCohortSource} from './contract.js';
 interface State {readonly file:Blob;readonly metadata:SharedServerLogGenerationParticipantMetadata}
 const token=Object.freeze({}),states=new WeakMap<SharedServerLogGenerationParticipantInventory,State>();
+let operationalCohort:(owner:SharedServerLogGenerationParticipantInventory,input:readonly OperationalPhysicalCohortSource[])=>SharedServerLogGenerationParticipantCoverage;
 function snapshot(input:Blob):Blob {
  let bytes:unknown;
  try{if(typeof Blob!=="function"||!(input instanceof Blob))throw invalid();bytes=Object.getOwnPropertyDescriptor(Blob.prototype,"size")?.get?.call(input);}catch{bytes=undefined;}
@@ -31,11 +36,16 @@ export class SharedServerLogGenerationParticipantInventory {
  checkGenerationSources(input:readonly SharedRoomGenerationParticipantSource[]):SharedServerLogGenerationParticipantCoverage{if(!states.has(this))throw closed();return this.#check(state=>checkInventoryGenerationSources(state.metadata.native,input));}
  /** One explicit mixed cohort. Copies of a writer/actor across families refuse as a whole. */
  checkMixedSources(input:readonly SharedServerLogGenerationParticipantSource[]):SharedServerLogGenerationParticipantCoverage{if(!states.has(this))throw closed();return this.#check(state=>checkPhysicalMixedSources(state.metadata.native,input));}
+ /** Explicit independent native families. Local-only comments remain unbound/Pending. */
+ checkIndependentSources(input:readonly SharedRoomIndependentParticipantSource[]):SharedServerLogGenerationParticipantCoverage{if(!states.has(this))throw closed();return this.#check(state=>checkInventoryIndependentSources(state.metadata.native,input));}
+ /** Separately named wider cohort; the old mixed-reader input remains unchanged. */
+ checkSourceCohort(input:readonly SharedServerLogGenerationCohortSource[]):SharedServerLogGenerationParticipantCoverage{if(!states.has(this))throw closed();return this.#check(state=>checkPhysicalSourceCohort(state.metadata.native,input));}
  #check(run:(state:State)=>SharedRoomParticipantCoverage):SharedServerLogGenerationParticipantCoverage {
   const state=states.get(this);if(!state)throw closed();
   try{const coverage=run(state);if(states.get(this)!==state)throw closed();return frozen({source:this.#identity.source,coverage});}
   catch(error){if(states.get(this)!==state)throw closed();if(error instanceof SharedRoomParticipantInventoryError)throw error;throw new SharedRoomParticipantInventoryError("inventory_source","The genuine client history could not be checked against the selected physical source");}
  }
+ static{operationalCohort=(owner,input)=>owner.#check(state=>checkOperationalPhysicalSourceCohort(state.metadata.native,input));}
  /** Close only this file reader, not any borrowed client/source, storage or host. */
  dispose():void{states.delete(this);}
  static async read(input:Blob,expected:SharedServerLogGenerationParticipantIdentity,options:{readonly signal?:AbortSignal}={}):Promise<SharedServerLogGenerationParticipantInventory>{
@@ -51,3 +61,6 @@ export class SharedServerLogGenerationParticipantInventory {
  }
 }
 export const readSharedServerLogGenerationParticipantInventory=(file:Blob,expected:SharedServerLogGenerationParticipantIdentity,options:{readonly signal?:AbortSignal}={}):Promise<SharedServerLogGenerationParticipantInventory>=>SharedServerLogGenerationParticipantInventory.read(file,expected,options);
+/** Private friend: requires the actual inventory brand and its lifetime around
+ * one synchronous native cohort. No data marker or copied facade can stand in. */
+export const checkOperationalPhysicalInventoryCohort=(owner:SharedServerLogGenerationParticipantInventory,input:readonly OperationalPhysicalCohortSource[])=>operationalCohort(owner,input);

@@ -4,6 +4,7 @@ import {SharedGenerationParticipantBackup} from "../generation_participant/backu
 import {readPairedBackupRecord} from "../backups/paired.js";
 import {checkInventorySources} from "../room_participant_inventory/coverage.js";
 import {checkInventoryGenerationSources} from "../room_participant_inventory/generation_coverage.js";
+import {snapshotInventoryInputs} from '../room_participant_inventory/input_snapshot.js';
 import {SharedRoomParticipantInventoryError,frozen} from "../room_participant_inventory/policy.js";
 import type {SharedRoomParticipantInventoryMetadata,SharedRoomParticipantCoverage,SharedRoomParticipantMissing} from "../room_participant_inventory/types.js";
 import type {SharedServerLogGenerationParticipantSource} from "./contract.js";
@@ -11,8 +12,7 @@ const originalSelection=SharedParticipantBackup.prototype.selection,originalReco
 const missingKey=(row:SharedRoomParticipantMissing)=>row.kind==="document"?`document:${row.writer}`:row.kind==="review"?`review:${row.actor}`:`unbound:${row.participant}:${row.actor}`;
 export function checkPhysicalMixedSources(metadata:SharedRoomParticipantInventoryMetadata,input:readonly SharedServerLogGenerationParticipantSource[]):SharedRoomParticipantCoverage {
  const refuse=()=>new SharedRoomParticipantInventoryError("inventory_source","Select genuine explicitly tagged original or generation client histories"),duplicate=()=>new SharedRoomParticipantInventoryError("inventory_duplicate","Reconcile duplicate writer or review actor copies explicitly; no copy was selected or discarded");
- if(!Array.isArray(input)||input.length>1024)throw refuse();
- const rows=Array.from(input,row=>{const family=row?.family;if(family!=="original"&&family!=="generation")throw refuse();return{family,backup:row.backup,source:row.source} as SharedServerLogGenerationParticipantSource;});
+ const rows=snapshotInventoryInputs(input,refuse,row=>{const family=row.family;if(family!=="original"&&family!=="generation")throw refuse();return{family,backup:row.backup,source:row.source} as SharedServerLogGenerationParticipantSource;});
  const original=rows.filter((row):row is Extract<SharedServerLogGenerationParticipantSource,{family:"original"}>=>row.family==="original"),generation=rows.filter((row):row is Extract<SharedServerLogGenerationParticipantSource,{family:"generation"}>=>row.family==="generation");
  const a=checkInventorySources(metadata,original),b=checkInventoryGenerationSources(metadata,generation),writers=new Set<string>(),actors=new Set<string>();
  for(const row of [...a.checkedParticipants,...b.checkedParticipants]){if(writers.has(row.writer))throw duplicate();writers.add(row.writer);}

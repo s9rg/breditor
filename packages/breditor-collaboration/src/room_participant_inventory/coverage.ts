@@ -6,6 +6,7 @@ import {readPairedBackupRecord} from "../backups/paired.js";
 import {prefixAt,transportVersion} from "../relay/validation.js";
 import {sharedProtocolLanguage} from "../protocol.js";
 import {checkInventoryStores} from "./stores.js";
+import {snapshotInventoryInputs} from './input_snapshot.js';
 import {frozen,SharedRoomParticipantInventoryError} from "./policy.js";
 import type {SharedRoomParticipantCoverage,SharedRoomParticipantInventoryMetadata,SharedRoomParticipantMissing,SharedRoomParticipantSource} from "./types.js";
 const sourceError=()=>new SharedRoomParticipantInventoryError("inventory_source","The genuine selected participant source does not match this native registration inventory");
@@ -14,7 +15,7 @@ const duplicate=()=>new SharedRoomParticipantInventoryError("inventory_duplicate
 const verifySource=SharedParticipantBackup.prototype.verifySource,selection=SharedParticipantBackup.prototype.selection,records=SharedParticipantBackup.prototype.records,check=SharedAssetReferenceCapture.prototype.check;
 /** Synchronous pure prefix reconciliation. Current credentials and upload/provider closure are separate. */
 export function checkInventorySources(metadata:SharedRoomParticipantInventoryMetadata,input:readonly SharedRoomParticipantSource[]):SharedRoomParticipantCoverage {
- if(!Array.isArray(input)||input.length>1024)throw sourceError();const sources=input.map(s=>({backup:s.backup,source:s.source})),documents=new Set<string>(),reviews=new Set<string>(),behindDocuments=new Set<string>(),behindReviews=new Set<string>(),unbound:SharedRoomParticipantMissing[]=[],checked:SharedRoomParticipantCoverage["checkedParticipants"][number][]=[];
+ const sources=snapshotInventoryInputs(input,sourceError,s=>({backup:s.backup,source:s.source})),documents=new Set<string>(),reviews=new Set<string>(),behindDocuments=new Set<string>(),behindReviews=new Set<string>(),unbound:SharedRoomParticipantMissing[]=[],checked:SharedRoomParticipantCoverage["checkedParticipants"][number][]=[];
  for(const {backup,source}of sources){
   let identity:ReturnType<SharedParticipantBackup["selection"]>["identity"],native:CapturedDocumentHistoryRead,reviewNative:CapturedReviewHistorySelection,captured:ReturnType<SharedParticipantBackup["records"]>;
   try{verifySource.call(backup,source);identity=selection.call(backup).identity;captured=records.call(backup);const lanes=capturedNativeHistoryRead(source);native=lanes.document;reviewNative=lanes.review;if(native.kind!=='original'||native.checkpointJson()!==captured[0]?.json)throw sourceError();}catch{throw sourceError();}

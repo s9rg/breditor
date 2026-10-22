@@ -4,6 +4,10 @@ import type {SharedWriterClock} from "../types.js";
 import type {SharedReviewWriterClock} from "../review_types.js";
 import type {SharedGenerationParticipantBackup} from "../generation_participant/backup.js";
 import type {SharedGenerationSourceCapture} from "../generation_source/capture.js";
+import type {SharedIndependentParticipantBackup} from '../independent_participant/backup.js';
+import type {SharedIndependentSourceCapture} from '../independent_source/capture.js';
+import type {SharedIndependentDeliveryParticipantBackup} from '../independent_delivery_participant/backup.js';
+import type {SharedIndependentDeliverySourceCapture} from '../independent_delivery_source/capture.js';
 /** Native semantic cut declaration. Its enclosing file supplies the storage family
  * and record bound; detached data neither authenticates nor fences a host. */
 export interface SharedRoomBackupCut {
@@ -29,6 +33,20 @@ export interface SharedRoomParticipantSource {readonly backup:SharedParticipantB
 /** Explicit separate source family. Native generation histories and retained packet
  * bytes remain intact; neither handle can be replaced by a detached JSON summary. */
 export interface SharedRoomGenerationParticipantSource {readonly backup:SharedGenerationParticipantBackup;readonly source:SharedGenerationSourceCapture}
+/** Local histories have no delivery binding. Their comment stream stays explicitly
+ * unbound; checking it never manufactures a relay identity or receipt. */
+export interface SharedRoomIndependentLocalParticipantSource {
+ readonly family: 'independent-local';
+ readonly backup: SharedIndependentParticipantBackup;
+ readonly source: SharedIndependentSourceCapture;
+}
+/** Complete delivery histories keep both selected native families and original outboxes. */
+export interface SharedRoomIndependentDeliveryParticipantSource {
+ readonly family: 'independent-delivery';
+ readonly backup: SharedIndependentDeliveryParticipantBackup;
+ readonly source: SharedIndependentDeliverySourceCapture;
+}
+export type SharedRoomIndependentParticipantSource = SharedRoomIndependentLocalParticipantSource | SharedRoomIndependentDeliveryParticipantSource;
 export type SharedRoomParticipantMissing=
  |Readonly<{kind:"document";principal:string;writer:string;reason:"missing"|"server_ahead"}>
  |Readonly<{kind:"review";principal:string;actor:string;reason:"missing"|"server_ahead"}>

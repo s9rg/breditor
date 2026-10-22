@@ -7,6 +7,7 @@ import {capturedNativeHistoryRead} from '../native_history_read/registry.js';
 import {sharedProtocolLanguage} from "../protocol.js";
 import {prefixAt,transportVersion} from "../relay/validation.js";
 import {checkInventoryStores} from "./stores.js";
+import {snapshotInventoryInputs} from './input_snapshot.js';
 import {frozen,SharedRoomParticipantInventoryError} from "./policy.js";
 import type {SharedAssetCaptureRecord} from "../asset_references_capture.js";
 import type {SharedRoomParticipantInventoryMetadata,SharedRoomGenerationParticipantSource,SharedRoomParticipantCoverage,SharedRoomParticipantMissing} from "./types.js";
@@ -17,8 +18,7 @@ const duplicate=()=>new SharedRoomParticipantInventoryError("inventory_duplicate
 const {verifySource,selection,records}=SharedGenerationParticipantBackup.prototype,check=SharedGenerationSourceCapture.prototype.check;
 
 export function checkInventoryGenerationSources(metadata:SharedRoomParticipantInventoryMetadata,input:readonly SharedRoomGenerationParticipantSource[]):SharedRoomParticipantCoverage {
- if(!Array.isArray(input)||input.length>1024)throw sourceError();
- const sources=input.map(s=>({backup:s.backup,source:s.source})),documents=new Set<string>(),reviews=new Set<string>(),behindDocuments=new Set<string>(),behindReviews=new Set<string>(),unbound:SharedRoomParticipantMissing[]=[],checked:SharedRoomParticipantCoverage["checkedParticipants"][number][]=[];
+ const sources=snapshotInventoryInputs(input,sourceError,s=>({backup:s.backup,source:s.source})),documents=new Set<string>(),reviews=new Set<string>(),behindDocuments=new Set<string>(),behindReviews=new Set<string>(),unbound:SharedRoomParticipantMissing[]=[],checked:SharedRoomParticipantCoverage["checkedParticipants"][number][]=[];
  const writers=new Map(metadata.writers.map(row=>[row.clock.writer,row])),actors=new Map(metadata.review?.writers.map(row=>[row.clock.actor,row])??[]);
  for(const {backup,source}of sources){
   verifySource.call(backup,source);const identity=selection.call(backup).identity,id=identity.source,lanes=capturedNativeHistoryRead(source),native=lanes.document,reviewNative=lanes.review,captured=records.call(backup),writer=id.native.writer,row=writers.get(writer),descriptor=native.descriptor();

@@ -119,6 +119,17 @@ reader does not establish complete provider/client closure or whole-room
 activation. See the [physical participant contract](../../docs/SERVER_GENERATION_PARTICIPANT_INVENTORY.md)
 for selection, bounds, ownership and remaining integration requirements.
 
+Both logical and physical inventories separately expose `checkIndependentSources`
+for explicitly tagged `independent-local` and `independent-delivery` backup/source
+pairs. The physical reader's new `checkSourceCohort` additionally combines those
+with original and generation sources. Old `checkMixedSources` inputs stay unchanged.
+Local comment histories remain explicitly unbound and Pending; matching actor IDs
+never fabricate delivery identity. Genuine native prefixes, complete physical pins
+and duplicate-copy exclusion still apply. A private operational bridge borrows
+actual graph-restored native readers under fresh independent read authority;
+neither it nor a graph-readiness marker is a public input family. See the
+[independent coverage contract](../../docs/INDEPENDENT_PARTICIPANT_INVENTORY.md).
+
 ## Physical room file retention
 
 `SharedPhysicalRoomRecoveryCatalogArchive` separately selects complete original

@@ -43,6 +43,28 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [independent participant inventory](INDEPENDENT_PARTICIPANT_INVENTORY.md)
+now checks actual independent local/delivery histories and private graph-restored
+native readers. Its separately named wider cohort keeps old APIs and protocol
+meanings intact. Local comments remain explicitly unbound/Pending; duplicate
+writer or actor copies refuse without selecting or discarding one.
+
+Its [selected qualification](qualification/2026-10-22-independent-inventory.json)
+passes 31 checks from the 296-check plan. Source/fresh offline packages each repeat
+23 focused laws and 480 mixed cohorts across ten native rooms and four matched
+document/comment pairs. A reproduced array-snapshot bug is repaired across all
+eight public inventory methods, with eight unchanged before/after regressions.
+Workspace/diagnostic tests pass 2,647, editor tests 385 and script tests 2,303,
+with three existing opt-in skips. Native implementation and twelve normal runtime
+files are unchanged; the native fixture producer is fresh, not the full Rust suites.
+
+A separate five-family durable-catalog prototype passes 96 cohorts and five
+storage/policy faults. Its 480 historic copies and 960 cold file comparisons do
+not constitute integrated room adoption. Actual local-only participant recovery,
+retained-copy and provider reconciliation, fresh authenticated activation and
+sustainable Undo retention remain the architectural priorities. Remaining parity
+and all thirteen V1 gates stay open; no version, push or release is promoted.
+
 The private [complete restored operation graph](RESTORED_OPERATION_GRAPH.md) now
 closes the local restore/edit/reopen/re-export lifecycle. It preserves literal
 incoming provenance, both native histories, local versions, retained packets,
@@ -67,11 +89,9 @@ at its existing ceilings: ten seals do not remove the 1,000-item Undo bound.
 They preserve recovery, not unlimited editable lifetime. No historical WebKit
 or intermittent raster repair follows from this checkpoint.
 
-Development-only work additionally checks independent and graph-restored native
-prefixes and 400 explicit mixed cohorts against retained server fixtures. It is
-not integrated or installed qualification. Production room admission, complete
-provider/client and retained-copy reconciliation, fresh authenticated activation,+sustainable history retention and remaining feature parity are next. All thirteen
-V1 gates stay open; no version, push, publication or deployment is promoted.
+The independent prefix work developed at that graph checkpoint is qualified
+separately above. Complete provider/client and retained-copy reconciliation,
+fresh authenticated activation and sustainable history retention remain required.
 
 The earlier private [restored-journal read scope](RESTORED_OPERATION_READ.md) supports
 fresh read authorization after the write grant or write signal expires. The
