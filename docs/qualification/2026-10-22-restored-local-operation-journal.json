@@ -1,0 +1,164 @@
+{
+  "format": "breditor/restored-local-operation-journal-qualification",
+  "formatVersion": 1,
+  "qualifiedDate": "2026-10-22",
+  "calendarTimeZone": "America/Toronto",
+  "passed": true,
+  "source": {
+    "commit": "58d4ce72797461cc0901cbb0348bf07ac99046f2",
+    "dirty": true,
+    "sha256": "abf685debf8c3096ea63193a164a41f3613eb4e20834a488ba51f4e397c2e33a",
+    "files": 5815,
+    "bytes": 47031514
+  },
+  "nonDocumentation": {
+    "files": 5197,
+    "sha256": "efbe1135f62731cdb5a1d9251180822ca23e3d665ae588d0546a5bb03df82d6a"
+  },
+  "selection": {
+    "functionalPlanChecks": 324,
+    "uniquePassingPlanChecks": 24,
+    "wholePlanExecuted": false,
+    "sourceUnchangedDuringFinalRuns": true,
+    "postQualificationChanges": "Repository documentation only; implementation, assertions, plan and packaged README retain the nonDocumentation fingerprint.",
+    "manifests": [
+      "target/v1-candidate-runs/run-ol96vc/result.json",
+      "target/v1-candidate-runs/run-Yr64OW/result.json",
+      "target/v1-candidate-runs/run-K39XYF/result.json",
+      "target/v1-candidate-runs/run-e29g4i/result.json"
+    ]
+  },
+  "implemented": [
+    "A private genuine detached input separately owns the complete incoming portable archive, original/current/pending/live cuts, whole upload data and provider-only pixels after caller disposal. A distinct plan/head/intent/journal schema keeps older formats and public root exports closed.",
+    "The actual writable native source publishes verified input LIVE once through durable prepare/native-save/acknowledge under its same two native writer leases. Earlier imported cuts remain literal incoming provenance, not new bootstrap publications.",
+    "Every current/pending cut is replayed through actual temporary readonly Rust owners and must chronologically continue input LIVE and its preceding retained cut in both native histories, with unique ordered version prefixes. Matching hashes or final trees do not prove that continuity.",
+    "Cold reopen reconciles only exact retained pending/current cuts with the actual native store. Missing acknowledged input/source data refuses; a saved readiness bit never creates an empty editor or reconstructs a missing owner.",
+    "Policy and factories are snapshotted before callbacks. Genuine opening/source reservations reject authority reentry, storage-context replacement cannot redirect cleanup, and fresh authorized read custody survives ended write grants/signals.",
+    "Actual request-success cancellation rolls back active journal/native transactions while exact readable memory survives. Source close waits for held read scopes, final callback mutations refuse stale captures and failed cleanup retries the same actual owners."
+  ],
+  "tests": {
+    "focusedLawsSourceAndInstalledEach": 33,
+    "candidatePlanLaw": 1,
+    "workspaceAndDiagnosticTests": 2647,
+    "editorTests": 385,
+    "scriptsPassed": 2699,
+    "scriptsFailed": 0,
+    "scriptsSkipped": 3,
+    "skipScope": "Three existing opt-in browser checks, not platform qualification."
+  },
+  "sourceAndInstalledEach": {
+    "format": "breditor/restored-local-operation-journal-probe",
+    "formatVersion": 1,
+    "passed": true,
+    "cases": 480,
+    "profiles": 5,
+    "interruptedFirstPublications": 480,
+    "initialColdResumes": 480,
+    "laterColdResumes": 480,
+    "inputLivePublications": 480,
+    "literalInputs": 480,
+    "originalPixels": 480,
+    "incomingWholeUploads": 480,
+    "versions": 480,
+    "futureNativePairs": 1440,
+    "readOnlyRefusals": 960,
+    "oldFamilyRefusals": 1440,
+    "freshReadScopes": 480,
+    "writeRefusals": 480,
+    "boundaryCounts": {
+      "prepare-abort": 80,
+      "prepare-lost-completion": 80,
+      "native-abort": 80,
+      "native-lost-completion": 80,
+      "acknowledge-abort": 80,
+      "acknowledge-lost-completion": 80
+    },
+    "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "scope": "Five normal compiler profiles, three selection scopes, eight capability masks and four document/comment history pairs. Actual writable source-owned journal/input, single verified LIVE first-publication, six terminal save interruptions, cold resume and exact future histories. Incoming uploads are preserved data only; no complete operational upload parent, repeated flat export, room adoption, activation, sustainable history or V1 approval."
+  },
+  "controls": {
+    "inputAdmission": {
+      "beforePassed": 5,
+      "beforeFailed": 2,
+      "afterPassed": 7,
+      "afterFailed": 0,
+      "unchangedRegression": {
+        "path": "scripts/restored-local-journal-admission.test.mjs",
+        "bytes": 5415,
+        "sha256": "824edaff00834486dc1d185131ef6c596e1894905cf3b2d0967522d7b4acf2a5"
+      },
+      "publishedPackageDefectClaim": false
+    }
+  },
+  "compatibility": {
+    "freshFocusedContracts": [
+      "Portable local capture/read",
+      "Complete local operational participant",
+      "Local native save journal and origins",
+      "Local recovery and complete original participant",
+      "Restored graph and physical catalog",
+      "Native-owner lifetime"
+    ],
+    "installedNativeOwnerLaws": 32,
+    "semanticSourceAndInstalledResultsMatch": true
+  },
+  "carriedEvidence": {
+    "prior": {
+      "index": "target/independent-local-portable-final-4dWNrE/index.json",
+      "sha256": "b5ec84fce6c16f8efe0ba638c09df0aea3158cd116d1f9439cb48bcd6c6c57a9",
+      "source": {
+        "commit": "80f96ed048fd8034c8bfe16f3da7571f10419b51",
+        "dirty": true,
+        "sha256": "cf1eb138e56cddc3d94d20829f69de9ddd8f374453f4b2b25f583e46f88abef0",
+        "files": 5793,
+        "bytes": 46911428
+      },
+      "collaborationArchiveSha256": "4aeb0f8b63c9b0e2b0dea2d585b52760cfd6be0958858e97f3516a955ec600ee"
+    },
+    "unchangedPriorNonDocumentationInputs": 5175,
+    "changedPriorNonDocumentationInputs": [
+      "packages/breditor-collaboration/README.md",
+      "scripts/candidate-release/plan.mjs"
+    ],
+    "oldPackageFilesUnchangedExceptReadme": 1048,
+    "normalRuntimeFiles": 12,
+    "unchangedRustSourceAndManifestInputs": 2857,
+    "legacyFullMatricesFreshlyExecuted": false,
+    "scope": "Previous portable/local-parent/journal/origin and older graph/recovery matrices remain prior evidence across exact unchanged implementation, assertions, fixtures and actual old package bytes. Selected compatibility contracts are fresh."
+  },
+  "installedEvidence": {
+    "freshConsumers": 2,
+    "matchingArchiveSha256": {
+      "@breditor/browser": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+      "@breditor/experimental-rich-content": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad",
+      "@breditor/collaboration": "b6163767551596ca8c1e382a03fb5a2c3be12a33de9b656adaa607d8fc29abf1"
+    },
+    "workspaceLinks": false,
+    "strictPublicTypes": true,
+    "offlineRegistryIntegrityChecked": true,
+    "probeByteIdentical": true,
+    "assertionChanges": "Reversible module/runtime/fixture locations only.",
+    "productionBundleExcludesWorkspaceReactAndSyntheticStorage": true
+  },
+  "retained": {
+    "index": "target/restored-local-journal-final-2NZRV8/index.json",
+    "sha256": "987ee235889133fa811dc2132459cb5f1edea14ad80cbb014ee7a3147b01c635",
+    "files": 124,
+    "includes": "Four terminal manifests/logs, three reports, two clean consumers with matching archives, actual unchanged failing/passing input-admission assertions, source inventory, old-input carry and twelve unchanged normal native files."
+  },
+  "remaining": [
+    "A genuine complete restored-local operational parent with four-name cohort custody, verified whole-upload restoration and exact native/upload handoff, plus retained-only cold ownership recovery.",
+    "Repeated capture/export with bounded flat provenance retaining every imported original/CURRENT/PENDING/LIVE cut and provider-only pixel; no origin reset or recursive opaque archive wrapping.",
+    "Actual five-family native staging/adoption, all historic-copy/provider/client reconciliation and freshly authenticated whole-room activation.",
+    "Sustainable native Undo/offline retention, remaining full feature parity and all thirteen V1 release gates."
+  ],
+  "nativeRustSuitesFreshlyExecuted": false,
+  "physicalDurabilityQualified": false,
+  "completeOperationalUploadParent": false,
+  "repeatedExportClosure": false,
+  "historicalWebKitOrRasterRepair": false,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "versionChanged": false,
+  "pushed": false
+}

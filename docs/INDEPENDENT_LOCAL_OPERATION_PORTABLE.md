@@ -73,6 +73,10 @@ flat provenance preserved through cold reopen and repeated export.
 Resetting to the historical original, manufacturing a delivery companion, or
 silently upgrading an old local capture does not satisfy that contract.
 
+The [restored-local journal](RESTORED_LOCAL_OPERATION_JOURNAL.md) now implements
+native publication and cold recovery separately. Complete operational upload
+ownership and repeated flat export remain required.
+
 Five-family room adoption, every historic-copy/provider/client reconciliation,
 fresh authenticated activation, sustainable native history and V1 qualification
 remain separate requirements. Existing native and archive limits stay unchanged.

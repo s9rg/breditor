@@ -96,6 +96,15 @@ This is export/read admission, not complete editable/cold/repeated operational
 restore or room activation. See
 [portable local operations](../../docs/INDEPENDENT_LOCAL_OPERATION_PORTABLE.md).
 
+A private restored-local journal owns that literal incoming archive and an
+actual writable native source. It publishes verified input LIVE once through
+prepare/save/acknowledge under the same two writer leases; earlier cuts remain
+incoming provenance. Cold reopen and subsequent saves verify both chronological
+histories and ordered versions. Independent read scopes survive ended write
+grants, and failed cleanup retries the same owners. This is not yet the complete
+upload-store parent or repeated flat export. See
+[restored local journals](../../docs/RESTORED_LOCAL_OPERATION_JOURNAL.md).
+
 `SharedPersistentSession.exportBackup()` captures exact native history, including
 Redo, without a save or publication. Paired `SharedReviewPersistentSession`
 archives also retain comments, local version packets and selected nonsecret

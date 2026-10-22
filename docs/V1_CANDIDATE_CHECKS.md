@@ -1,5 +1,27 @@
 # V1 candidate checks
 
+Both profiles require `restored-local-journal-contracts`,
+`restored-local-journal-type-fence`, `restored-local-journal` and
+`installed-restored-local-journal`. The distinct
+[restored-local journal](RESTORED_LOCAL_OPERATION_JOURNAL.md) owns literal incoming
+provenance, publishes input LIVE once under actual native writer leases and cold
+reconciles exact current/pending cuts. Both native histories and ordered versions
+must continue input LIVE. Missing acknowledged owners are never initialized away.
+
+Its [selected qualification](qualification/2026-10-22-restored-local-operation-journal.json)
+passes 24 checks from the 324-check plan. Source/fresh packages each repeat 33
+focused laws and the full 480-case domain, including 960 cold resumes, 1,440 exact
+future history comparisons and six interruption boundaries 80 times each. Two
+unchanged admission assertions fail before repair and pass afterward. Two fresh
+consumers pin matching archives; scripts pass 2,699 with three existing opt-in
+browser skips. Previous full matrices are carried under 5,175 unchanged inputs
+and 1,048 actual old package files, not relabelled freshly executed.
+
+This is an actual native journal/source restore, not the complete operational
+upload parent or repeated flat export. Five-family adoption, complete historic
+copy/provider/client reconciliation, authenticated activation, sustainable native
+history, full parity and all thirteen V1 release gates remain open.
+
 Both profiles require `independent-local-portable-contracts`,
 `independent-local-portable-type-fence`, `independent-local-portable` and
 `installed-independent-local-portable`. The distinct
