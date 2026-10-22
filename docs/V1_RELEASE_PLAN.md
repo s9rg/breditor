@@ -43,6 +43,31 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [independent recovery write-policy repair](INDEPENDENT_RECOVERY_WRITE_POLICY.md)
+now checks current authority on actual native bootstrap/schema/first-save
+boundaries and uses held, guarded upload import. It closes two reproduced gaps:
+recovery previously refused its returned owner only after a native head or two
+upload rows had committed after policy loss. Authorized completed bytes still
+survive later denial for explicit retry; completed bootstrap does not retain an
+obsolete recovery policy as the handed-off session's future grant.
+
+Its [selected qualification](qualification/2026-10-22-independent-recovery-policy.json)
+passes 31 checks from the 300-check plan. The same expanded assertions expose
+twenty failures in both unchanged source and actual pre-repair packages; source
+and fresh installed packages now pass all 127 recovery/custody laws. Both original
+reproductions pass without edits. Full source/installed workflows each pass 256
+cuts, 512 handoffs, 120 local native cases and 88 authenticated network cases.
+Four fresh consumers pin matching candidate archives, plus one separate old
+consumer retains the failures. Workspace/diagnostic tests pass 2,647, editor tests
+385 and script tests 2,349, with three existing opt-in skips. Native code and
+runtime bytes remain unchanged; full Rust suites are not freshly rerun.
+
+Next is a genuine complete local-only recovery coordinator and actual five-family
+participant staging. Retained-copy/provider reconciliation, authenticated whole-room
+activation and sustainable Undo/offline history remain architectural requirements.
+This repair does not close those capabilities, remaining feature parity or any of
+the thirteen V1 gates. No version, push, publication or deployment is promoted.
+
 The private [five-family physical catalog](PHYSICAL_ROOM_CATALOG_V2.md) now
 durably retains original, generation, independent-local, independent-delivery
 and restored-graph archives beside separately selected server cuts. It reopens
@@ -59,14 +84,14 @@ Workspace/diagnostic tests pass 2,647, editor tests 385 and script tests 2,321,
 with three existing opt-in skips. Full Rust suites are not freshly rerun;
 the native fixture producer is fresh and normal native files remain unchanged.
 
-That checkpoint also retains two separately reproduced delivery-recovery policy
+That catalog checkpoint also retains two separately reproduced delivery-recovery policy
 gaps: native history and uploads can commit after current policy ends inside
 their respective admission work. An isolated source repair passes the same
-regressions, all 127 expanded laws and the full 512-handoff workflow, but is not
-integrated or production-qualified by this catalog checkpoint. Closing those
-write boundaries is next, before complete local-only participant recovery,
+regressions, all 127 expanded laws and the full 512-handoff workflow, but was not
+integrated or production-qualified by that catalog checkpoint. The subsequent
+repair is qualified separately above. Complete local-only participant recovery,
 provider/client reconciliation, authenticated activation and sustainable Undo
-retention. No editable room adoption or V1 release gate is promoted.
+retention remain required. No editable room adoption or V1 gate is promoted.
 
 The [independent participant inventory](INDEPENDENT_PARTICIPANT_INVENTORY.md)
 now checks actual independent local/delivery histories and private graph-restored

@@ -140,3 +140,6 @@ commit. The candidate refuses the returned owner too late. Retained isolated
 repair evidence changes those counts to zero and passes 127 laws and the complete
 512-handoff workflow, but remains explicitly outside this catalog qualification.
 It is the next source integration, not a WebKit or Rust-runtime repair claim.
+The subsequent [write-policy repair](INDEPENDENT_RECOVERY_WRITE_POLICY.md) is
+qualified separately. Its fresh catalog contracts pass, but it does not relabel
+these two full matrix runs as fresh evidence for the later source checkpoint.

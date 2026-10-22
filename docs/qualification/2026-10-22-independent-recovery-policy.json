@@ -1,0 +1,126 @@
+{
+  "format": "breditor/independent-recovery-write-policy-qualification",
+  "formatVersion": 1,
+  "qualifiedDate": "2026-10-22",
+  "calendarTimeZone": "America/Toronto",
+  "passed": true,
+  "source": {
+    "commit": "b06c5fb446fa84ab0707f8be3645e3c827072b7d",
+    "dirty": true,
+    "sha256": "d918c82f7887e9b1907bcf80f8c276fa1d69a576f4d8a9be5b1dd9eebf81b4dc",
+    "files": 5679,
+    "bytes": 46322398
+  },
+  "nonDocumentation": {
+    "files": 5073,
+    "sha256": "b0d087533e84cf774424d7c844694ae04a18c5093b1c90214cecb014aac087e4"
+  },
+  "selection": {
+    "functionalPlanChecks": 300,
+    "uniquePassingPlanChecks": 31,
+    "wholePlanExecuted": false,
+    "sourceUnchangedDuringFinalRuns": true,
+    "postQualificationChanges": "Repository documentation only; implementation, assertions, candidate plan and packaged README retain the nonDocumentation fingerprint.",
+    "manifests": [
+      "target/v1-candidate-runs/run-IqZqpH/result.json",
+      "target/v1-candidate-runs/run-jg9HbE/result.json",
+      "target/v1-candidate-runs/run-lghxIB/result.json",
+      "target/v1-candidate-runs/run-71KEmp/result.json"
+    ]
+  },
+  "implemented": [
+    "Private explicit current-policy selection forwarded through the real delivery facade without losing its separate genuine companion binding.",
+    "Current checks on schema upgrade, native bootstrap and first actual paired save. Denial inside replay or write callbacks cannot be hidden behind a later returned-owner refusal.",
+    "Canonical held whole-upload import guards creation and insertion while preserving actual custody through verification and handoff.",
+    "Successful bootstrap detaches its temporary grant while ordinary native/operation guards remain. Already authorized completed cuts survive later denial and explicit retry without overwrite or rollback."
+  ],
+  "beforeAndAfter": {
+    "sameExpandedAssertions": true,
+    "sourceBefore": {"passed": 107, "failed": 20, "total": 127},
+    "actualOldPackagesBefore": {"passed": 107, "failed": 20, "total": 127},
+    "sourceAndFreshInstalledAfterEach": {"passed": 127, "failed": 0, "total": 127},
+    "unchangedOldLaws": 99,
+    "newPolicyLaws": 28,
+    "nativeHistoryPairs": 4,
+    "policyBoundariesPerPair": 6,
+    "policyDetachmentLaws": 4,
+    "originalReproductionsUnchanged": true,
+    "originalBefore": {"committedNativeHeads": 1, "committedUploadRows": 2},
+    "originalAfter": {"committedNativeHeads": 0, "committedUploadRows": 0, "uploadDatabaseExists": false}
+  },
+  "sourceAndInstalledWorkflowEach": {
+    "recoveryCuts": 256,
+    "finishes": 512,
+    "handoffs": 512,
+    "wholeUploadComparisons": 512,
+    "retainedOriginalFiles": 512,
+    "readOnlyRefusals": 1024,
+    "freshPolicyReopens": 256,
+    "localNativeCases": 120,
+    "authenticatedNetworkCases": 88,
+    "networkParticipantRestores": 136,
+    "localColdNativePairs": 240,
+    "localFutureNativeHistoryPairs": 360,
+    "caseDomainAndAssertionsUnchanged": true,
+    "allSemanticResultsMatchExactly": true,
+    "transportPollTotals": "Wire-request counts depend on polling timing. Both complete raw reports and each actual authors/advanced/observer wireRequests value are retained independently. Only those explicit telemetry leaves are excluded from cross-run semantic equality; canonical probes and assertions are unchanged."
+  },
+  "tests": {
+    "workspaceAndDiagnosticTests": 2647,
+    "editorIntegrationTests": 385,
+    "scriptPass": 2349,
+    "scriptFail": 0,
+    "scriptSkipped": 3,
+    "skipScope": "Three existing opt-in browser checks; not platform qualification.",
+    "freshInstalledHeldAssetLaws": 78,
+    "freshInstalledNativeLifetimeLaws": 32,
+    "freshInstalledNativeOriginLaws": 22,
+    "compiledRepairModulesIdenticalToIsolatedBuild": 5
+  },
+  "installedEvidence": {
+    "currentFreshConsumers": 4,
+    "separateExpectedFailureOldConsumer": 1,
+    "matchingCandidateArchiveSha256": {
+      "@breditor/browser": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+      "@breditor/experimental-rich-content": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad",
+      "@breditor/collaboration": "ffbd51565156c1acbdf0cf895e22deb4df035b306dbd0e07eaee6102e6113b48"
+    },
+    "workspaceLinks": false,
+    "strictPublicTypes": true,
+    "offlineRegistryIntegrityChecked": true,
+    "assertionChanges": "Reversible module/runtime/native fixture data locations only; the same final expanded assertions run against old and new installed packages.",
+    "productionBundleExcludesWorkspaceReactAndSyntheticStorage": true
+  },
+  "nativeAndCarriedEvidence": {
+    "freshExactSourceNativeProducer": true,
+    "producerRooms": 10,
+    "retainedFixtureFiles": 50,
+    "normalRuntimeFilesRetained": 12,
+    "unchangedRustSourceAndManifestInputs": 2857,
+    "normalSharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "normalRichWasmSha256": "bc020ce07ed80600b85735c1e592d5ae163d921f5556fef05269a12bc1d59ec5",
+    "fullRustSuitesFreshlyExecuted": false,
+    "previousCatalogIndex": "target/physical-catalog-v2-final-5Hb0d6/index.json",
+    "previousCatalogIndexSha256": "df41911c8c0640e8a264d3d758aaf3e3dae1f2872d97399fe1e99442f4c052b5",
+    "unchangedCatalogDataReaderModules": 9,
+    "freshFocusedCatalogContracts": true,
+    "fullCatalogMatricesFreshForThisRepair": false
+  },
+  "retained": {
+    "index": "target/independent-recovery-policy-final-MatqNn/index.json",
+    "sha256": "2a92645a6a912c76c99e103109c98ca0fc616c5569ee635bd802fed3fe190194",
+    "files": 245,
+    "includes": "Terminal manifests/logs, four current offline consumers, matching archives, one actual old-package failure consumer, original unchanged reproductions, isolated/source failure logs, actual native fixture data, compiled repair modules, source inventories and normal native bytes."
+  },
+  "remaining": [
+    "Complete genuine local-only participant recovery and five-family native staging/adoption without inventing delivery bindings.",
+    "Reconcile every retained client copy, provider asset and pending/outbox record before freshly authenticated whole-room activation.",
+    "Provide sustainable native history retention preserving Undo and offline work; generation seals do not lift the existing Undo ceiling.",
+    "Complete the remaining feature-parity catalog and all thirteen V1 release gates."
+  ],
+  "historicalWebKitOrRasterRepair": false,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "versionChanged": false,
+  "pushed": false
+}

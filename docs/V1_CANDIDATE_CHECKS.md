@@ -1,5 +1,21 @@
 # V1 candidate checks
 
+The existing `independent-delivery-recovery-contracts`,
+`independent-delivery-recovery-type-fence`, `independent-delivery-recovery` and
+`installed-independent-delivery-recovery` now include the
+[actual write-policy repair](INDEPENDENT_RECOVERY_WRITE_POLICY.md). The
+[selected qualification](qualification/2026-10-22-independent-recovery-policy.json)
+passes 31 checks from the 300-check plan. Twenty identical failures reproduce
+against both old source and retained installed packages; all 127 expanded
+recovery/custody laws pass against source and fresh packages. Both full workflows
+repeat 256 cuts and 512 handoffs. The original two reproductions pass unchanged.
+Source/installed semantic results match exactly; timing-dependent transport poll
+totals are retained separately, not treated as invariant case counts. Current
+catalog contracts pass freshly, while its two full 480-cohort matrices are
+explicitly carried across unchanged data-reader inputs rather than claimed fresh.
+Local-only recovery, whole-room reconciliation/activation and all thirteen V1
+gates remain open.
+
 Both profiles require `physical-catalog-v2-contracts`,
 `physical-catalog-v2-type-fence`, `physical-catalog-v2` and
 `installed-physical-catalog-v2`. The private
@@ -11,7 +27,8 @@ passes 33 checks from the 300-check plan, 17 source/installed laws and the full
 480-cohort catalog matrix each. Four installed consumers pin matching archives;
 old catalog/inventory contracts remain intact. Separately reproduced native and
 upload recovery policy failures and isolated repair evidence are retained, not
-counted as fixed by the catalog qualification. All thirteen V1 gates remain open.
+counted as fixed by the catalog qualification. They are repaired and qualified
+separately above. All thirteen V1 gates remain open.
 
 Both profiles require `independent-inventory-contracts`,
 `inventory-input-snapshot-contracts`, `independent-inventory-type-fence`,

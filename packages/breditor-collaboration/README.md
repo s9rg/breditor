@@ -32,6 +32,14 @@ use `ESNext.Disposable`.
 
 ## Exact session archives
 
+Complete independent-delivery recovery checks current host policy on actual
+native bootstrap/schema/first-save boundaries and holds real upload custody
+before guarded import. Denial before commit cannot be hidden behind a later
+returned-owner refusal; completed bytes stay available for explicit retry.
+The temporary bootstrap policy detaches after success, without removing ordinary
+native/operation guards or changing protocols. See
+[the recovery write-policy contract](../../docs/INDEPENDENT_RECOVERY_WRITE_POLICY.md).
+
 Sessions own their native cores and writer leases. Close the session for a final
 save; use explicit `discardAndClose()` to abandon unsaved memory. If a borrowed
 core was disposed prematurely, final save still rejects, but explicit discard

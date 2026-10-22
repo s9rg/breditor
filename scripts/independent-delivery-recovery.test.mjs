@@ -3,7 +3,7 @@ import test,{before,after} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
-import {IDBFactory} from 'fake-indexeddb';
+import {IDBFactory,IDBDatabase,IDBObjectStore} from 'fake-indexeddb';
 import * as api from '../packages/breditor-collaboration/dist/index.js';
 import * as rich from '@breditor/experimental-rich-content';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
@@ -127,4 +127,30 @@ test('concurrent upload state cannot change between complete verification and pa
  const f=await fixture(),{RecoveryLease}=await import('../packages/breditor-collaboration/dist/participant_recovery/lease.js'),close=RecoveryLease.prototype.close;let attempt,ready,parts,foreign,once=true;
  try{attempt=await api.SharedIndependentDeliveryParticipantRecovery.begin({...f.options,backup:f.backup});ready=await attempt.finish();foreign=await rich.RichAssetStore.openRetained(f.options.destinations.uploads);RecoveryLease.prototype.close=async function(){if(once){once=false;await foreign.retry(secondAsset);}return close.call(this);};await assert.rejects(ready.intoParts().then(value=>{parts=value;}),'A second upload owner must not mutate the verified cut during handoff');assert.equal((await foreign.get(secondAsset)).status,'cancelled');}
  finally{RecoveryLease.prototype.close=close;foreign?.close();await closeParts(parts);await ready?.discardAndClose();await attempt?.close();await f.close();}
+});
+
+// Bootstrap authorization covers actual writes, not only the eventual returned owner.
+for(const documentSegmented of [false,true])for(const reviewSegmented of [false,true])for(const boundary of ['source-schema','native-factory','native-head','source-committed','upload-raster','upload-write'])test(`current recovery policy ${boundary} document=${documentSegmented} comments=${reviewSegmented} preserves an exact retry`,async()=>{
+ const f=await fixture({documentSegmented,reviewSegmented}),openFactory=IDBFactory.prototype.open,transaction=IDBDatabase.prototype.transaction,add=IDBObjectStore.prototype.add,decode=globalThis.Image.prototype.decode;let allowed=true,hits=0,sourceCommitted=false,attempt,ready,parts;
+ const deny=()=>{if(allowed){allowed=false;hits++;}},checkAuthority=()=>{if(!allowed)throw Error('Current recovery policy ended');},restoreHooks=()=>{IDBFactory.prototype.open=openFactory;IDBDatabase.prototype.transaction=transaction;IDBObjectStore.prototype.add=add;globalThis.Image.prototype.decode=decode;};
+ try{
+  const options={...f.options,checkAuthority},session={...options.session},key=documentSegmented?'restoreSegmented':'restoreOriginal',restore=session.documentHistory[key];
+  if(boundary==='native-factory')session.documentHistory={...session.documentHistory,[key]:async checkpoint=>{const raw=await restore(checkpoint);deny();return raw;}};
+  attempt=await api.SharedIndependentDeliveryParticipantRecovery.begin({...options,session,backup:f.backup});
+  IDBFactory.prototype.open=function(name,...rest){const request=openFactory.call(this,name,...rest);if(boundary==='source-schema'&&name===f.options.destinations.source&&rest[0]===1)deny();return request;};
+  IDBDatabase.prototype.transaction=function(names,mode,...rest){const tx=transaction.call(this,names,mode,...rest);if(this.name===f.options.destinations.source&&mode==='readwrite')tx.addEventListener('complete',()=>{sourceCommitted=true;if(boundary==='source-committed')deny();});return tx;};
+  IDBObjectStore.prototype.add=function(...args){const request=add.apply(this,args);if(boundary==='native-head'&&this.transaction.db.name===f.options.destinations.source&&this.name==='delivery_history_heads'||boundary==='upload-write'&&this.transaction.db.name===f.options.destinations.uploads&&this.name==='assets')deny();return request;};
+  globalThis.Image.prototype.decode=async function(...args){if(boundary==='upload-raster'&&sourceCommitted)deny();return decode.apply(this,args);};
+  await assert.rejects(attempt.finish());assert.equal(hits,1);assert.equal(allowed,false);restoreHooks();
+  const names=await indexedDB.databases(),has=name=>names.some(row=>row.name===name),source=has(f.options.destinations.source)?await databaseValues(f.options.destinations.source):undefined,uploads=has(f.options.destinations.uploads)?await databaseValues(f.options.destinations.uploads):undefined;
+  const beforeCommit=['source-schema','native-factory','native-head'].includes(boundary);assert.equal(source?.delivery_history_heads?.values.length??0,beforeCommit?0:1);if(beforeCommit)assert.equal(source?.delivery_history_files?.values.length??0,0);
+  if(boundary==='source-schema')assert.equal(has(f.options.destinations.source),false);assert.equal(uploads?.assets?.values.length??0,0);if(boundary==='upload-raster')assert.equal(has(f.options.destinations.uploads),false);
+  await attempt.close();attempt=undefined;await assert.rejects(api.SharedIndependentDeliveryParticipantRecovery.resume({...f.options,checkAuthority}));if(source)assert.deepEqual(await databaseValues(f.options.destinations.source),source);if(uploads)assert.deepEqual(await databaseValues(f.options.destinations.uploads),uploads);
+  allowed=true;attempt=await api.SharedIndependentDeliveryParticipantRecovery.resume({...f.options,checkAuthority});ready=await attempt.finish();parts=await ready.intoParts();ready=undefined;await verifyParts(f,parts);assert.equal((await parts.uploads.list()).length,2);
+ }finally{restoreHooks();await closeParts(parts);await ready?.discardAndClose();await attempt?.close();await f.close();}
+});
+for(const documentSegmented of [false,true])for(const reviewSegmented of [false,true])test(`completed bootstrap does not retain the old recovery policy document=${documentSegmented} comments=${reviewSegmented}`,async()=>{
+ const f=await fixture({documentSegmented,reviewSegmented});let allowed=true,attempt,ready,parts;
+ try{attempt=await api.SharedIndependentDeliveryParticipantRecovery.begin({...f.options,backup:f.backup,checkAuthority(){if(!allowed)throw Error('Completed recovery policy ended');}});ready=await attempt.finish();parts=await ready.intoParts();ready=undefined;allowed=false;await verifyParts(f,parts);await parts.source.session.close();parts.uploads.close();parts=undefined;}
+ finally{await closeParts(parts);await ready?.discardAndClose();await attempt?.close();await f.close();}
 });

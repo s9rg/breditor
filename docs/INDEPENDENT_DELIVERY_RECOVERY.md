@@ -12,6 +12,13 @@ This coordinator uses the existing
 attempt schema does not reinterpret original, generation or local-only recovery
 families. Original native, wire, asset and archive formats remain unchanged.
 
+The [write-policy boundary](INDEPENDENT_RECOVERY_WRITE_POLICY.md) carries current
+host checks through actual schema creation, native bootstrap and the first
+paired save, and uses guarded whole-upload restore with custody held before
+insertion. A returned-owner check alone is not write authorization. This private
+bootstrap path does not reinterpret local-only histories or retain a completed
+recovery grant as the future session's policy.
+
 ## Explicit host selection
 
 `begin` requires the genuine backup, its independently selected identity/hash,
