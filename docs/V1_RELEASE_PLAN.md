@@ -43,14 +43,31 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The private [portable operation data boundary](INDEPENDENT_OPERATION_PORTABLE.md)
+now captures immutable original, acknowledged and interrupted saves, newer live
+native work, whole uploads and the exact raster reference union. Current read
+authorization is independent of an expired write grant. Whole-source namespace
+checks and native continuation checks repair reproduced foreign-row and live
+rollback admission defects. Both candidate profiles require focused laws, a
+public type fence and full source/installed native-policy probes in the 266-check
+functional plan. A durable portable restore coordinator remains the next
+functional boundary; this is not operation restore or V1 approval.
+
+Its [selected qualification](qualification/2026-10-22-independent-operation-portable.json)
+passes 20 checks, 31 source/installed laws and the full 640-case portable matrix in
+both environments. Both earlier journal and operational-owner matrices also pass.
+Three fresh consumers use matching archives. The checkpoint retains three actual
+failing/repaired regressions and passes 2064 script tests with three existing
+skips. All thirteen V1 gates remain open.
+
 The private [independent operational participant](INDEPENDENT_OPERATION_PARTICIPANT.md)
 now joins genuine completed recovery, a new source-owned journal/native source
 and the actual whole-upload store. Cold resume checks actual retained originals,
 the retired source and upload conservation under fresh host policy. Final
 handoff retains source and upload owners through its last synchronous barrier;
 an actual prematurely closed recovery handle is reproduced and repaired. The
-262-check plan requires source laws, a type fence and full source/installed
-native-policy matrices. Portable operational export, whole-room adoption and
+262-check plan at that checkpoint required source laws, a type fence and full source/installed
+native-policy matrices. Portable operational restore, whole-room adoption and
 activation remain architectural work; the new family remains private.
 
 Its [selected qualification](qualification/2026-10-22-independent-operation-participant.json)

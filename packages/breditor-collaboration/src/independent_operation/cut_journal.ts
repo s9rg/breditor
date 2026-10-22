@@ -9,13 +9,17 @@ import {IndependentDeliveryCompanion} from '../independent_delivery/companion.js
 import {independentDeliverySource} from '../independent_delivery_source/admission.js';
 import {RecoveryLease} from '../participant_recovery/lease.js';
 import {requireBackupRecovery} from '../backups/identity.js';
-import {IndependentNativeOperationOrigin,independentNativeOriginGuard} from './native_origin.js';
+import {IndependentNativeOperationOrigin,independentNativeOriginGuard,independentNativeOriginReadGuard} from './native_origin.js';
+import {readOperationSourceDatabase} from './read_source_database.js';
+import type {SharedIndependentDeliveryRecovery} from '../independent_delivery/contract.js';
 import {wrapOperationHead,unwrapOperationHead} from './operation_head.js';
 import {readOperationCut,operationCutDigest,copyOperationCut,sameOperationCut} from './cut_codec.js';
 import {initialOperationCutIntent,type IndependentOperationJournalIdentity} from './cut_intent.js';
 import {createOperationJournalDatabase,existingOperationJournalDatabase,readOperationJournalDatabase,writeOperationJournalDatabase,type OperationJournalChecked} from './journal_database.js';
 import {operationJournalFailure as fail} from './journal_failure.js';
 import {operationDatabaseName as name,operationJournalIdentity} from './journal_identity.js';
+import {participantAuthority} from '../participant_backup/policy.js';
+import {checkAssetBytesSignal} from '../asset_bytes/guards.js';
 const key=Object.freeze({}),readOrigin=IndependentNativeOperationOrigin.read,disposeOrigin=IndependentNativeOperationOrigin.prototype.dispose;
 export interface IndependentOperationJournalOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
  readonly database:string;readonly sourceDatabase:string;readonly prepared:PreparedIndependentDeliveryRecovery<P>;readonly writerRecovery:'host-reacquired';
@@ -24,11 +28,11 @@ type Checked=OperationJournalChecked&{readonly decoded:ReadonlyMap<string,Indepe
 let binding:(journal:IndependentOperationCutJournal)=>ReturnType<IndependentOperationCutJournal['bindingType']>;
 export class IndependentOperationCutJournal {
  readonly #p:PreparedIndependentDeliveryRecovery;readonly #db:IDBDatabase;readonly #lease:RecoveryLease;readonly #origin:IndependentNativeOperationOrigin;
- readonly #native:ReturnType<typeof independentNativeOriginGuard>;readonly #id:IndependentOperationJournalIdentity;readonly #decoder:IndependentDeliveryCompanion;readonly #baseline:IndependentHistoryCut;
+ readonly #native:ReturnType<typeof independentNativeOriginGuard>;readonly #readNative:ReturnType<typeof independentNativeOriginReadGuard>;readonly #id:IndependentOperationJournalIdentity;readonly #decoder:IndependentDeliveryCompanion;readonly #baseline:IndependentHistoryCut;
  readonly #context:IDBFactory;readonly #locks:LockManager;#changed=false;#closed=false;#opening=false;#owner:object|undefined;#working=false;#closing:Promise<void>|undefined;
  readonly #readers=new Set<Promise<unknown>>();
  private constructor(token:object,p:PreparedIndependentDeliveryRecovery,db:IDBDatabase,lease:RecoveryLease,origin:IndependentNativeOperationOrigin,id:IndependentOperationJournalIdentity,decoder:IndependentDeliveryCompanion,baseline:IndependentHistoryCut){
-  if(token!==key)throw fail();this.#p=p;this.#db=db;this.#lease=lease;this.#origin=origin;this.#native=independentNativeOriginGuard(origin);this.#id=Object.freeze({...id});this.#decoder=decoder;this.#baseline=copyOperationCut(baseline);this.#context=indexedDB;this.#locks=navigator.locks;
+  if(token!==key)throw fail();this.#p=p;this.#db=db;this.#lease=lease;this.#origin=origin;this.#native=independentNativeOriginGuard(origin);this.#readNative=independentNativeOriginReadGuard(origin);this.#id=Object.freeze({...id});this.#decoder=decoder;this.#baseline=copyOperationCut(baseline);this.#context=indexedDB;this.#locks=navigator.locks;
   db.onversionchange=()=>{this.#changed=true;db.close();};Object.freeze(this);
  }
  static begin<P extends SharedSelectionPolicy>(options:IndependentOperationJournalOptions<P>):Promise<IndependentOperationCutJournal>{return this.#open(options,false);}
@@ -46,16 +50,19 @@ export class IndependentOperationCutJournal {
    const result=new IndependentOperationCutJournal(key,p,db,lease,origin,id,decoder,baseline);await result.#read();return result;
   }catch(error){db?.close();if(origin)disposeOrigin.call(origin);await lease?.close();throw error;}
  }
- #check():void{if(this.#closed)throw fail('independent_operation_closed');if(this.#changed||globalThis.indexedDB!==this.#context||globalThis.navigator?.locks!==this.#locks)throw fail('independent_operation_storage_changed');this.#native.check();}
+ #readable():void{if(this.#closed)throw fail('independent_operation_closed');if(this.#changed||globalThis.indexedDB!==this.#context||globalThis.navigator?.locks!==this.#locks)throw fail('independent_operation_storage_changed');this.#readNative.check();}
+ #check():void{this.#readable();this.#native.check();}
  #unwrap=(head:string):string=>{const inner=unwrapOperationHead(head,this.#id);this.#decoder.readHead(inner);return inner;};
  #readHead=(head:string)=>this.#decoder.readHead(this.#unwrap(head));
- async #read():Promise<Checked>{
-  this.#check();const raw=await readOperationJournalDatabase(this.#db,this.#id);this.#check();if(await independentDeliveryParticipantDigest(raw.file,this.#p.options.signal)!==this.#id.origin)throw fail();this.#check();
-  const rows=new Map<string,IndependentHistoryCut>(),decoded=new Map<string,IndependentHistoryStoredCut>();for(const [id,value]of raw.rows){const cut=await readOperationCut(value,this.#readHead);this.#check();if(await operationCutDigest(cut)!==id)throw fail();rows.set(id,copyOperationCut(cut));decoded.set(id,cut);}
-  this.#check();return{record:raw.record,file:raw.file,rows,decoded};
+ async #read(readCheck?:()=>void,options?:{signal?:AbortSignal}):Promise<Checked>{
+  const check=readCheck??(()=>this.#check()),signal=readCheck?options?.signal:this.#p.options.signal;
+  check();const raw=await readOperationJournalDatabase(this.#db,this.#id);check();if(await independentDeliveryParticipantDigest(raw.file,signal)!==this.#id.origin)throw fail();check();
+  const rows=new Map<string,IndependentHistoryCut>(),decoded=new Map<string,IndependentHistoryStoredCut>();for(const [id,value]of raw.rows){const cut=await readOperationCut(value,this.#readHead);check();if(await operationCutDigest(cut)!==id)throw fail();rows.set(id,copyOperationCut(cut));decoded.set(id,cut);}
+  check();return{record:raw.record,file:raw.file,rows,decoded};
  }
  async #exclusive<T>(run:()=>Promise<T>):Promise<T>{this.#check();if(this.#working)throw fail('independent_operation_busy');this.#working=true;try{return await run();}finally{this.#working=false;}}
  async #select(actual:IndependentHistoryStoredCut|null):Promise<IndependentHistoryStoredCut|null>{return this.#exclusive(async()=>{
+  const complete=await readOperationSourceDatabase(this.#id.sourceDatabase,[this.#decoder.identity.history.native.room,this.#decoder.identity.history.native.writer],this.#readHead,()=>this.#check());this.#check();if(actual===null?complete!==null:complete===null||!sameOperationCut(copyOperationCut(actual),complete))throw fail('independent_operation_source_diverged');
   const state=await this.#read(),current=state.record.current===null?null:state.decoded.get(state.record.current)!,pending=state.record.pending===null?null:state.decoded.get(state.record.pending)!,observed=actual===null?null:copyOperationCut(actual);
   if(pending){if(!(observed===null&&current===null||observed!==null&&(current!==null&&sameOperationCut(observed,current)||sameOperationCut(observed,pending))))throw fail('independent_operation_source_diverged');return pending;}
   if(current){if(!observed||!sameOperationCut(observed,current))throw fail('independent_operation_source_diverged');return actual;}
@@ -91,6 +98,20 @@ export class IndependentOperationCutJournal {
   persistence:Object.freeze({select:(actual:IndependentHistoryStoredCut|null)=>this.#select(actual),prepare:(expected:string|null,cut:IndependentHistoryCut)=>this.#prepare(expected,cut),acknowledge:(cut:IndependentHistoryCut)=>this.#acknowledge(cut),release:async()=>{if(!this.#owner)return;this.#owner=undefined;await closeJournal.call(this);}}),
   reserve:()=>{this.#check();if(this.#owner||this.#opening||this.#working||this.#closing)throw fail('independent_operation_in_use');this.#opening=true;let settled=false;return{claim:(owner:object)=>{if(settled||!this.#opening||this.#owner)throw fail();this.#check();const port=independentDeliverySource(owner);if(port.operation!==this||JSON.stringify(port.identity)!==JSON.stringify(this.#decoder.identity))throw fail('independent_operation_source');this.#owner=owner;this.#opening=false;settled=true;},abandon:()=>{if(!settled){this.#opening=false;settled=true;}}};},
   readSource:(owner:object)=>{if(this.#owner!==owner)throw fail('independent_operation_source');const port=independentDeliverySource(owner);if(port.operation!==this)throw fail('independent_operation_source');return port.read();},
+  /** A real outstanding read scope holds the journal/origin until release and actual I/O finish.
+   * The caller supplies current read authorization; no write hook accepts this capability. */
+  borrowRead:(owner:object,readAuthority:()=>void,signal?:AbortSignal)=>{
+   this.#readable();if(this.#closing||this.#readers.size>=8)throw fail('independent_operation_busy');let released=false,finish!:()=>void;const held=new Promise<void>(resolve=>{finish=resolve;}),port=independentDeliverySource(owner),authorize=participantAuthority(readAuthority);
+   const check=()=>{if(released)throw fail('independent_operation_read_closed');this.#readable();if(this.#owner!==owner||port.operation!==this)throw fail('independent_operation_source');checkAssetBytesSignal(signal);authorize();checkAssetBytesSignal(signal);this.#readable();port.check();};check();this.#readers.add(held);
+   const track=<T>(run:()=>Promise<T>):Promise<T>=>{check();if(this.#readers.size>=8)throw fail('independent_operation_busy');const work=Promise.resolve().then(run);this.#readers.add(work);void work.finally(()=>this.#readers.delete(work)).catch(()=>{});return work;};
+   return Object.freeze({identity:structuredClone(this.#id),expected:structuredClone(this.#p.options.expected),sourceIdentity:structuredClone(this.#decoder.identity),check,
+    readSource:()=>{check();const data=port.read();this.#readNative.capture(port.core,data.source.versions);check();return data;},
+    verifyCore:(core:Parameters<ReturnType<typeof independentNativeOriginReadGuard>['capture']>[0],versions:readonly string[])=>{check();this.#readNative.capture(core,versions);check();},
+    readSnapshot:()=>track(async()=>{const a=await this.#read(check,signal?{signal}:{});check();const stored=await readOperationSourceDatabase(this.#id.sourceDatabase,[this.#decoder.identity.history.native.room,this.#decoder.identity.history.native.writer],this.#readHead,check),observed=stored&&copyOperationCut(stored);check();const b=await this.#read(check,signal?{signal}:{});check();if(JSON.stringify(a.record)!==JSON.stringify(b.record))throw fail('independent_operation_capture_changed');const current=a.record.current===null?null:a.rows.get(a.record.current)!,pending=a.record.pending===null?null:a.rows.get(a.record.pending)!;if(observed===null?(current!==null):!(current&&sameOperationCut(observed,current)||pending&&sameOperationCut(observed,pending)))throw fail('independent_operation_source_diverged');return{record:{...a.record},file:a.file,current:current&&copyOperationCut(current),pending:pending&&copyOperationCut(pending),observed:observed===null?null:observed.head===current?.head?a.record.current:a.record.pending};}),
+    recovery:(cut:IndependentHistoryCut):Promise<SharedIndependentDeliveryRecovery>=>track(async()=>{const selected=await readOperationCut(cut,this.#readHead);check();const companion=new IndependentDeliveryCompanion(this.#p.factory);companion.load(this.#unwrap(selected.head));return{format:'breditor/shared-independent-delivery-recovery',formatVersion:1,source:{format:'breditor/shared-independent-history-recovery',formatVersion:1,identity:structuredClone(selected.record.identity),documentCheckpoint:selected.documentCheckpoint,reviewCheckpoint:selected.reviewCheckpoint,versions:[...selected.record.versions]},relay:companion.current(),retainedBinding:structuredClone(companion.retainedBinding),retained:companion.records()};}),
+    release:()=>{if(released)return;released=true;this.#readers.delete(held);finish();},
+   });
+  },
  };}
  static{binding=journal=>{if(journal.#closed)throw fail('independent_operation_closed');return journal.bindingType();};}
 }

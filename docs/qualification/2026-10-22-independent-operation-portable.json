@@ -1,0 +1,156 @@
+{
+  "format": "breditor/independent-operation-portable-functional-qualification",
+  "formatVersion": 1,
+  "qualifiedDate": "2026-10-22",
+  "calendarTimeZone": "America/Toronto",
+  "passed": true,
+  "source": {
+    "commit": "1c29e4a507dfd6148fd097d42001394a32128f78",
+    "dirty": true,
+    "sha256": "84c7e112b1259a3a5abf416a507bfe91beb7ab744acf6a1bdd2107b5ddef0ef5",
+    "files": 5542,
+    "bytes": 45526245
+  },
+  "nonDocumentation": {
+    "files": 4958,
+    "sha256": "46a791b767227c2b476a96e4312a4195306f26685bbe7c1b15389a9f7a9d4b2f"
+  },
+  "selection": {
+    "functionalPlanChecks": 266,
+    "uniquePassingPlanChecks": 20,
+    "wholePlanExecuted": false,
+    "sourceUnchangedDuringFinalRuns": true,
+    "postQualificationChanges": "Documentation only; implementation inputs retain the nonDocumentation fingerprint.",
+    "manifests": [
+      "target/v1-candidate-runs/run-vDOXHn/result.json",
+      "target/v1-candidate-runs/run-nPkPw3/result.json",
+      "target/v1-candidate-runs/run-rtk0CE/result.json",
+      "target/v1-candidate-runs/run-vOz6St/result.json"
+    ]
+  },
+  "tests": {
+    "workspaceAndDiagnosticTests": 2647,
+    "editorIntegrationTests": 385,
+    "scriptPass": 2064,
+    "scriptFail": 0,
+    "scriptSkipped": 3,
+    "sourcePortableLaws": 31,
+    "sourcePortablePlanLaw": 1,
+    "installedPortableLaws": 31,
+    "installedPortableFailures": 0,
+    "installedPortableSkips": 0,
+    "sourceAndInstalledPreviousJournalLawsEach": 50,
+    "sourceAndInstalledPreviousOwnerLawsEach": 28,
+    "sourcePreviousNativeOriginLaws": 22,
+    "skipScope": "Three existing opt-in checks; not browser, accessibility or platform qualification."
+  },
+  "portableSourceAndInstalledEach": {
+    "cases": 640,
+    "captures": 640,
+    "independentReads": 640,
+    "completeCutComparisons": 2560,
+    "liveNativeComparisons": 1280,
+    "originalFileComparisons": 1280,
+    "wholeUploadComparisons": 1280,
+    "unchangedDatabaseComparisons": 1280,
+    "localVersionComparisons": 1280,
+    "retainedPacketComparisons": 1280,
+    "nativeReferenceRestores": 640,
+    "futureHistoryPairs": 1920,
+    "expiredWriteRefusals": 1280,
+    "originalWireVersionOutboxCases": 160,
+    "atomicWireAllRetainedStoreCases": 480,
+    "tokenCalls": 0,
+    "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "matrix": "Five native grammar/standard profiles, three selection scopes, all eight existing typing/search/owned-review combinations, all four independent native history pairs and both transports where already supported.",
+    "nativeOracleScope": "The reference restore checks exact native future history only; it is not portable operation restore or original/current/pending journal adoption."
+  },
+  "freshCompatibility": {
+    "journalSourceCases": 640,
+    "journalInstalledCases": 640,
+    "operationalOwnerSourceCases": 640,
+    "operationalOwnerInstalledCases": 640,
+    "sameNormalRustWasm": true,
+    "controlledIndexedDBLocksAndRasterFixtures": true
+  },
+  "reproducedAndRepaired": [
+    {
+      "cause": "Dedicated operation source startup selected one head while ignoring an extra stored head before autosave.",
+      "previousCheckpoint": "1c29e4a507dfd6148fd097d42001394a32128f78",
+      "previousSdkArchiveSha256": "dcbdf8d7f2e9bc1287ef94fd7b66897af077faa2e4e1b6f37a72f86bb968fb64",
+      "repair": "Read and validate the complete dedicated source namespace before factory selection or autosave.",
+      "previousFailures": 1,
+      "fixedPasses": 1,
+      "sameAssertions": true,
+      "oldReleasedPackageClaim": false
+    },
+    {
+      "cause": "A fully hashed portable file could put valid live native history behind its newer acknowledged cut.",
+      "repair": "Verify native continuation, local versions and forward relay progress from original through current, pending and live states.",
+      "previousFailures": 1,
+      "fixedPasses": 1,
+      "sameAssertions": true,
+      "oldReleasedPackageClaim": false
+    },
+    {
+      "cause": "Read authority could expire during opening a source read connection, before entering the cleanup scope; refusal leaked that actual connection.",
+      "repair": "Run the post-open current-authority check within the connection's try/finally scope.",
+      "previousFailures": 1,
+      "fixedPasses": 1,
+      "sameAssertions": true,
+      "oldReleasedPackageClaim": false
+    }
+  ],
+  "initialMatrixFailure": {
+    "manifests": ["target/v1-candidate-runs/run-DNMk0F/result.json", "target/v1-candidate-runs/run-uQe2xM/result.json"],
+    "cause": "The probe incorrectly expected remote text literally in a native journal that stores remote frames as opaque bytes.",
+    "repair": "Query the actual native document view while keeping the exact checkpoint comparisons and all 640 configurations.",
+    "failedProbeAndPackageArchivesRetained": true,
+    "productionArchiveUnchangedClaim": false,
+    "separateProductionChange": "The independently reproduced read-handle cleanup repair also changed the SDK between these runs."
+  },
+  "installedEvidence": {
+    "freshConsumers": 3,
+    "matchingArchiveReports": 3,
+    "portableRegistryArtifacts": 45,
+    "portableProductionModules": 118,
+    "workspaceLinks": false,
+    "strictPublicTypes": true,
+    "probeByteIdentical": true,
+    "unitAssertionChanges": "Reversible module and fixture locations only.",
+    "archives": [
+      {"name": "@breditor/browser", "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"},
+      {"name": "@breditor/experimental-rich-content", "sha256": "340aa47ff8e6c41c56f35476d8d4d5c164aa63fe7470ae3d5367ff19ffd1b109"},
+      {"name": "@breditor/collaboration", "sha256": "78aefea91d9c6649d40affc0a581736f6608c996173622b273161338491f0855"}
+    ]
+  },
+  "nativeEvidence": {
+    "baseline": "docs/qualification/2026-10-21-operation-asset-custody.json",
+    "nativeInputs": {"files": 2986, "sha256": "a4a716e0a6237d7c0d6122e5ab1eefc7ab02bda557cfeff9b786794c9c23d420"},
+    "nativeInputsUnchanged": true,
+    "normalRuntimeFilesByteCompared": 12,
+    "normalSharedAndRichRuntimesUnchanged": true,
+    "fullRustSuitesFreshlyExecuted": false,
+    "serverEnabledTestsCarried": 379,
+    "noServerTestsCarried": 267
+  },
+  "retained": {
+    "index": "target/independent-operation-portable-final-lgbYHi/index.json",
+    "sha256": "8814b84255ad56ded6e7e190ccf632716e877c1cfe6ad5419a180739878d8e7d",
+    "files": 168,
+    "contents": "Actual passing manifests/logs/reports, matching archives, source/installed assertions, byte-identical full probe, consumer locks/fixtures, all three failing/repaired regressions and the initial fixture-failure probe/logs/archives."
+  },
+  "scope": "Private complete portable original/current/pending/live data capture and read-only native admission, whole uploads and exact native/packet raster reference union. Read authorization is independent of the expired write grant. No autosave retry, destination write or network activation during capture/read.",
+  "remaining": [
+    "Durable portable operation restore preserving the full incoming archive, immutable original, earlier selected cuts and future export provenance under fresh host policy",
+    "Whole-room adoption, historical-copy decisions and complete provider/client reconciliation",
+    "Independent comment/server-log generations and fresh authenticated activation",
+    "Native long-session Undo limits, resource admission, memory/performance, physical durability and remaining feature-parity catalog"
+  ],
+  "v1GatesClosed": 0,
+  "v1GatesRemainingOpen": 13,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "packageVersionChanged": false,
+  "pushedTaggedPublishedOrDeployed": false
+}

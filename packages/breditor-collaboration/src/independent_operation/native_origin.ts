@@ -54,23 +54,32 @@ export class IndependentNativeOperationOrigin {
  }
  /** Canonical lifetime/current-host check; no stored hash is an authority grant. */
  check():void{
-  if(this.#closed)throw closed();this.#guard();
+  if(this.#closed)throw closed();this.#guard();checkReadableOrigin.call(this);
+ }
+ /** Private data-lifetime check only. A caller must independently authorize its read.
+  * This never selects a persistence driver or bypasses the normal write guard. */
+ checkReadable():void{
   if(this.#closed)throw closed();
   if(readFile.call(this.#backup)!==this.#file||native.view.call(this.#core).readOnly!==true||native.checkpointJson.call(this.#core)!==this.#document||(this.#identity.reviewHistory==='original'?native.reviewCheckpoint.call(this.#core):native.reviewSegmentedCheckpoint.call(this.#core))!==this.#review)throw invalid();
  }
  /** Both original/segmented native lanes must descend from the genuine replay.
   * The current local version set may grow, but cannot lose any selected packet. */
- verifyCore(core:SharedRichEditor<SharedSelectionPolicy>,versions:readonly string[]):void{
+ verifyCore(core:SharedRichEditor<SharedSelectionPolicy>,versions:readonly string[]):void{this.#verify(core,versions,()=>checkOrigin.call(this));}
+ /** Read-authorized recovery can inspect ancestry after the write grant/signal expires. */
+ verifyReadableCore(core:SharedRichEditor<SharedSelectionPolicy>,versions:readonly string[]):void{this.#verify(core,versions,()=>checkReadableOrigin.call(this));}
+ #verify(core:SharedRichEditor<SharedSelectionPolicy>,versions:readonly string[],check:()=>void):void{
   if(this.#checking)throw new SharedEditorError('independent_operation_origin_busy','A native origin verification is already in progress');this.#checking=true;
   try{
-   checkOrigin.call(this);if((native.segmentedHistoryPolicy.call(core)??'original')!==this.#identity.documentHistory||native.reviewHistoryPolicy.call(core)!==this.#identity.reviewHistory)throw invalid();
+   check();if((native.segmentedHistoryPolicy.call(core)??'original')!==this.#identity.documentHistory||native.reviewHistoryPolicy.call(core)!==this.#identity.reviewHistory)throw invalid();
    const verify=this.#identity.documentHistory==='original'?verifyOriginal:verifySegmented;verify.call(core,this.#core);
    for(const packet of this.#versions)if(!versions.includes(packet))throw invalid();
-   checkOrigin.call(this);verify.call(core,this.#core);
+   check();verify.call(core,this.#core);
   }finally{this.#checking=false;}
  }
  dispose():void{if(this.#closed)return;this.#closed=true;disposeCore.call(this.#core);}
 }
-const checkOrigin=IndependentNativeOperationOrigin.prototype.check,verifyOrigin=IndependentNativeOperationOrigin.prototype.verifyCore;
+const checkOrigin=IndependentNativeOperationOrigin.prototype.check,verifyOrigin=IndependentNativeOperationOrigin.prototype.verifyCore,checkReadableOrigin=IndependentNativeOperationOrigin.prototype.checkReadable,verifyReadableOrigin=IndependentNativeOperationOrigin.prototype.verifyReadableCore;
 /** Frozen private guard issued by a genuine native origin, never a caller DTO. */
 export function independentNativeOriginGuard(origin:IndependentNativeOperationOrigin){checkOrigin.call(origin);return Object.freeze({check:()=>checkOrigin.call(origin),capture:(core:SharedRichEditor<SharedSelectionPolicy>,versions:readonly string[])=>verifyOrigin.call(origin,core,versions)});}
+/** Genuine read capability, not an author grant; storage and host read checks belong to its owner. */
+export function independentNativeOriginReadGuard(origin:IndependentNativeOperationOrigin){checkReadableOrigin.call(origin);return Object.freeze({check:()=>checkReadableOrigin.call(origin),capture:(core:SharedRichEditor<SharedSelectionPolicy>,versions:readonly string[])=>verifyReadableOrigin.call(origin,core,versions)});}

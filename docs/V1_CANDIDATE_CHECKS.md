@@ -1,13 +1,22 @@
 # V1 candidate checks
 
+Both profiles require `independent-operation-portable-contracts`,
+`independent-operation-portable-type-fence`, `independent-operation-portable` and
+`installed-independent-operation-portable`. The private
+[portable operation data boundary](INDEPENDENT_OPERATION_PORTABLE.md) retains
+original/current/pending/live native work, whole uploads and the exact raster
+reference union. The same 31 focused laws and byte-identical full 640-case probe
+run in source and fresh installed packages. The functional plan has 266 checks.
+Portable operation restore, room adoption and activation remain required.
+
 Both profiles require `independent-operation-participant-contracts`,
 `independent-operation-participant-type-fence`, `independent-operation-participant`
 and `installed-independent-operation-participant`. The private
 [operational participant](INDEPENDENT_OPERATION_PARTICIPANT.md) joins genuine
 recovery, the new native source/journal and actual whole-upload custody. The same
 28 laws and byte-identical full 640-case probes run in source and fresh installed
-packages. The current functional plan has 262 checks; portable operational export,
-whole-room adoption and activation remain separate work.
+packages. The functional plan at that owner checkpoint had 262 checks; portable
+operation restore, whole-room adoption and activation remain separate work.
 
 Both profiles require `independent-operation-journal-contracts`,
 `independent-operation-journal-type-fence`, `independent-operation-journal` and

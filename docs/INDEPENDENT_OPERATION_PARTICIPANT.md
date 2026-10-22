@@ -3,8 +3,10 @@
 The private `OperationalIndependentDeliveryParticipant` joins a genuine completed
 delivery recovery, the [source save journal](INDEPENDENT_OPERATION_JOURNAL.md), a
 new live native source and the actual whole-upload store. It supports cold resume
-and a checked final handoff. It does not yet provide a portable operational backup
-or adopt the participant into a room, and is not exported from the package root.
+and a checked final handoff. Its live source now supports separate
+[portable capture and reading](INDEPENDENT_OPERATION_PORTABLE.md); portable
+operation restore and room adoption remain required. It is not exported from the
+package root.
 
 ## Explicit selection and unchanged formats
 
@@ -110,8 +112,9 @@ keeps the full 640 cases and every assertion without increasing the heap limit
 or deleting the retained stores being tested. This harness repair is not a
 production memory or performance qualification.
 
-Portable operational export must still retain original, acknowledged, pending
-and newer readable work with whole uploads and native/packet raster references.
+Portable operation capture now retains original, acknowledged, pending and newer
+readable work with whole uploads and native/packet raster references. Its restore
+coordinator must still adopt those states durably under fresh host policy.
 Whole-room adoption, historical-copy decisions, complete provider/client closure,
 independent comment/server-log generations and fresh authenticated activation
 remain separate architectural work. Native lifetime ceilings, quota, memory,
