@@ -43,6 +43,24 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The public [held whole-upload restore](HELD_ASSET_RESTORE.md) now returns the
+actual imported store with genuine cooperative custody still held. Fresh host
+policy guards schema creation and atomic insertion; competing writers cannot
+cross that scope. Cancelled/uploaded rows and counters survive, occupied or
+foreign storage refuses without overwrite, and a late post-commit refusal keeps
+durable data for explicit retry. Ordinary restore and archive meanings stay intact.
+
+Its [selected qualification](qualification/2026-10-22-held-asset-restore.json)
+passes 21 checks from the 277-check plan, 20 new and 58 unchanged asset laws in
+source/fresh installed packages, strict public types and both full 640-case
+journal matrices. Three installed reports pin matching archives; script tests
+pass 2,172 with three existing skips. Normal native inputs and twelve selected
+runtime files remain byte-identical; full Rust-suite evidence is carried rather
+than freshly rerun. The factory is a building block, not the complete writable
+portable restore coordinator. Source-owned incoming provenance, whole-room
+reconciliation and authenticated activation remain next. All thirteen V1 gates
+stay open; no public release or deployment is promoted.
+
 The [bounded operational storage repair](BOUNDED_OPERATION_STORAGE.md) counts each
 store before cloning keys or values. Bounded requests and final save comparisons
 remain in the same transaction, with all original schema/native-byte checks and

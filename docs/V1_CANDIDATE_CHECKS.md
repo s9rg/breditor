@@ -1,10 +1,17 @@
 # V1 candidate checks
 
+Both profiles require `held-asset-restore-contracts`,
+`held-asset-restore-type-fence` and `installed-held-asset-restore`. The
+[held whole-upload factory](HELD_ASSET_RESTORE.md) keeps actual custody through
+policy-guarded insertion and return. Source/installed packages repeat 20 new and
+58 unchanged asset laws, with strict public types. The functional plan has 277
+checks. Complete writable operation restore and room activation remain separate.
+
 Both profiles require `bounded-operation-storage-contracts` and
 `installed-bounded-operation-storage`. The [storage admission repair](BOUNDED_OPERATION_STORAGE.md)
 checks row bounds before value reads without changing save transaction semantics
 or stored families. Source and fresh offline packages repeat the same 23 laws.
-The functional plan has 274 checks; byte/memory and physical durability
+The functional plan at that storage checkpoint had 274 checks; byte/memory and physical durability
 qualification remain separate.
 
 Both profiles require `native-owner-lifetime-contracts` and

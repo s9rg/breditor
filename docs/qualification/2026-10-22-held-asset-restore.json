@@ -1,0 +1,164 @@
+{
+  "format": "breditor/held-asset-restore-functional-qualification",
+  "formatVersion": 1,
+  "qualifiedDate": "2026-10-22",
+  "calendarTimeZone": "America/Toronto",
+  "passed": true,
+  "source": {
+    "commit": "a36b8945ad8d6e2f250eb0434e98557e2893616b",
+    "dirty": true,
+    "sha256": "3c75c5d028aaa84d558fdc24696c156624307d72de3922d8a5496f0f0c278d81",
+    "files": 5577,
+    "bytes": 45717797
+  },
+  "nonDocumentation": {
+    "files": 4985,
+    "sha256": "bf25abba3fc9b7c865e80d6e9039530aac9a8baa89cae769313fa62cf50c3b1e"
+  },
+  "selection": {
+    "functionalPlanChecks": 277,
+    "uniquePassingPlanChecks": 21,
+    "wholePlanExecuted": false,
+    "sourceUnchangedDuringFinalRuns": true,
+    "postQualificationChanges": "Documentation only; implementation and packaged README retain the nonDocumentation fingerprint.",
+    "manifests": [
+      "target/v1-candidate-runs/run-NZb9J2/result.json",
+      "target/v1-candidate-runs/run-2yUdpP/result.json",
+      "target/v1-candidate-runs/run-fVkNKr/result.json",
+      "target/v1-candidate-runs/run-c3EC1d/result.json"
+    ]
+  },
+  "tests": {
+    "workspaceAndDiagnosticTests": 2647,
+    "editorIntegrationTests": 385,
+    "scriptPass": 2172,
+    "scriptFail": 0,
+    "scriptSkipped": 3,
+    "sourceNewHeldLaws": 20,
+    "sourceUnchangedAssetLaws": 58,
+    "sourceHeldPlanLaw": 1,
+    "installedNewHeldLaws": 20,
+    "installedUnchangedAssetLaws": 58,
+    "installedFailures": 0,
+    "installedSkips": 0,
+    "sourceAndInstalledBoundedStorageLawsEach": 23,
+    "sourcePreviousNativeLifetimeLaws": 32,
+    "sourcePreviousLineageLaws": 29,
+    "sourcePreviousPortableLaws": 31,
+    "sourcePreviousJournalLaws": 50,
+    "sourcePreviousOperationalOwnerLaws": 28,
+    "installedJournalLaws": 50,
+    "strictPublicTypes": true,
+    "skipScope": "Three existing opt-in checks; no browser, accessibility, memory/latency or physical durability qualification."
+  },
+  "sourceAndInstalledJournalEach": {
+    "format": "breditor/independent-operation-journal-probe",
+    "formatVersion": 1,
+    "passed": true,
+    "cases": 640,
+    "nativeOrigins": 1920,
+    "nativeSourceOpens": 1920,
+    "pendingReplays": 640,
+    "failedSourceCommits": 640,
+    "futureHistoryPairs": 1920,
+    "retainedPacketComparisons": 2240,
+    "localVersionComparisons": 1280,
+    "wholeOriginalComparisons": 640,
+    "boundedCurrentCuts": 1280,
+    "readOnlyRefusals": 1280,
+    "wireOne": 160,
+    "wireTwo": 480,
+    "tokenCalls": 0,
+    "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "scope": "Actual closed operational source and bounded original/current/pending journal through all existing native policy combinations, pending-only packet changes, failed source commits, cold replay and exact future document/comment history. Controlled IDB, locks and raster fixtures. Not complete participant/upload ownership or portable operational export, room adoption/activation, performance or platform crash durability."
+  },
+  "implemented": [
+    "Explicit new RichAssetStore.restoreBackupHeld API with readonly real store/custody result; ordinary restoreBackup and archive meanings unchanged",
+    "Pure raster admission, pinned current host policy, actual guarded schema creation and genuine cooperative custody before insertion through return",
+    "Exact empty schema/counter admission, in-transaction permission checks, complete rollback, post-commit retained data and canonical awaited cleanup without automatic network"
+  ],
+  "installedEvidence": {
+    "freshConsumers": 3,
+    "matchingArchiveReports": 3,
+    "registryArtifacts": 45,
+    "heldProductionModules": 28,
+    "workspaceLinks": false,
+    "strictPublicTypes": true,
+    "copiedAssertions": [
+      {
+        "file": "held-asset-restore.test.mjs",
+        "sourceSha256": "939132be044658d21116ca980b85d709c7755aae8e30da277ecaec7fced668cd",
+        "installedSha256": "435fa1728c4e51ee286dd45840519fd274824ddcbe6f43d98b960ae11e19e638",
+        "assertionsUnchanged": true
+      },
+      {
+        "file": "asset-backups.test.mjs",
+        "sourceSha256": "92faef94bd3597ab723df63e8b57579b2f6ea9716b9d140898f6e7e9cca7b9b8",
+        "installedSha256": "c26d9fbfa8df96e37e14cf36f8994c679aedc746bbf4f1a55f227be6f7876127",
+        "assertionsUnchanged": true
+      },
+      {
+        "file": "asset-source-backups.test.mjs",
+        "sourceSha256": "6cfd45ab2e0d142c3e8feef737fa35abb92369826ff95e583ffa1bdff3d57b56",
+        "installedSha256": "2b4cfafe228e4f6d282c3c9ec6887bd4e458caa60b961b692deebbc7459feeda",
+        "assertionsUnchanged": true
+      },
+      {
+        "file": "asset-reconciliation.test.mjs",
+        "sourceSha256": "cec00d97c2a5e132e037b5edd4dab9c0211b80df8df8522158e5ee7c9a9ac7c8",
+        "installedSha256": "863bc7c352665b33e732b7ee80abcf4661eb5928ccc4750138320259cfc2b2f9",
+        "assertionsUnchanged": true
+      },
+      {
+        "file": "asset-custody.test.mjs",
+        "sourceSha256": "950b8e2575a1957a80929f88a5b752a6a8ec7dae9563ef845b8f222628132448",
+        "installedSha256": "950b8e2575a1957a80929f88a5b752a6a8ec7dae9563ef845b8f222628132448",
+        "assertionsUnchanged": true
+      }
+    ],
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "sha256": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "sha256": "95c1671238e0bab5aad6a3ebad2906a9d9bb5e3914cacfee9302dad4a6349734"
+      }
+    ]
+  },
+  "nativeEvidence": {
+    "baseline": "docs/qualification/2026-10-21-operation-asset-custody.json",
+    "nativeInputs": {
+      "files": 2986,
+      "sha256": "a4a716e0a6237d7c0d6122e5ab1eefc7ab02bda557cfeff9b786794c9c23d420"
+    },
+    "nativeInputsUnchanged": true,
+    "normalRuntimeFilesByteCompared": 12,
+    "normalSharedAndRichRuntimesUnchanged": true,
+    "fullRustSuitesFreshlyExecuted": false,
+    "serverEnabledTestsCarried": 379,
+    "noServerTestsCarried": 267
+  },
+  "retained": {
+    "index": "target/held-asset-restore-final-ZYKaId/index.json",
+    "sha256": "306165d3645759e19e0b886a438c23be95ec39252a791efae5d0e61ac683605e",
+    "files": 88
+  },
+  "scope": "Actual new held whole-upload import with controlled IDB/shared-exclusive locks/raster fixtures. Custody grants exclusion, not authority. A complete coordinator must separately retain the incoming archive, actual source/input owners and fresh permission through its final barrier. This primitive is not operational portable restore, global fencing or whole-room activation.",
+  "remaining": [
+    "Complete durable portable operation restore, genuine journal restore hold, actual source ownership, cold reopen and future complete input-provenance export",
+    "Whole-room adoption/provider closure, independent server comment/log generations and authenticated activation",
+    "Remaining feature-parity catalog, native lifetime/resource limits and final release gates"
+  ],
+  "v1GatesClosed": 0,
+  "v1GatesRemainingOpen": 13,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "packageVersionChanged": false,
+  "pushedTaggedPublishedOrDeployed": false
+}

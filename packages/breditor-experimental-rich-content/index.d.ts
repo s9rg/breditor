@@ -10,7 +10,7 @@ export {mountRichFullscreenControls,type RichFullscreenControls,type RichFullscr
 export type {RichClipboardInterchange,RichClipboardInterchangeReport,RichInterchangeFormatReport,RichInterchangeNotice,RichInterchangeResult} from "./dist/browser/clipboard_interchange.js";
 export {mountRichEditor,mountDocumentRichEditor,RichDomEditor,defaultToolbar,RichAssetStore,defaultAssetLimits,insertImageFiles,type RichEditorOptions,type RichDocumentEditorOptions,type ToolbarControl,type ActionContext,type AssetBinding,type RenderOptions,type RichAssetOptions,type AssetInfo,type AssetLimits,type AssetStatus,type AssetUploader,type RasterMime} from "./dist/browser/index.js";
 export {RichAssetStoreCustody,RichAssetCustodyError} from './dist/browser/index.js';
-export {RichAssetBackupError,MAX_ASSET_BACKUP_BYTES,MAX_ASSET_BACKUP_HEADER_BYTES,ASSET_BACKUP_MIME,type RichAssetBackupOptions,type RichAssetRestoreOptions} from "./dist/browser/index.js";
+export {RichAssetBackupError,MAX_ASSET_BACKUP_BYTES,MAX_ASSET_BACKUP_HEADER_BYTES,ASSET_BACKUP_MIME,type RichAssetBackupOptions,type RichAssetRestoreOptions,type RichAssetHeldRestoreOptions} from "./dist/browser/index.js";
 export {RichAssetArchive,readRichAssetBackup,type RichAssetSourceBackup,type RichAssetArchiveEntry,type RichAssetArchiveOptions} from "./dist/browser/index.js";
 export {RichAssetReconciliation,RichAssetReconciliationError,type RichAssetReconciliationOptions,type RichAssetReconciliationChoice,type RichAssetReconciliationConflict,type RichAssetReconciliationPreview,type RichAssetUploadState} from "./dist/browser/index.js";
 export {checkRichAssetLimits,inspectRichRaster,type RichRasterInspection,type RichRasterInspectionOptions} from "./dist/browser/index.js";

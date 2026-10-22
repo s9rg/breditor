@@ -447,6 +447,17 @@ encryption or server authority. This is separate from document/session recovery,
 not coordinated room backup or retention/rotation. See the
 [raster archive contract](../../docs/RICH_ASSET_BACKUPS.md).
 
+`RichAssetStore.restoreBackupHeld(name, blob, {uploadState: 'preserve', checkAuthority, signal?, limits?})`
+additionally requires current synchronous authority and Web Locks. It guards
+schema creation and insertion, then returns a readonly `{store, custody}` pair
+with the actual exclusive custody still held. Cooperating handles cannot mutate
+or upload until release. The lease grants exclusion, not permission: recheck host
+policy before subsequent source/handoff steps. Failures never overwrite occupied
+data; a post-commit refusal retains bytes for explicit retry. Await
+`custody.close()` during cleanup, then close the store. This is a restore building
+block, not coordinated document or room recovery. See
+[held whole-upload restore](../../docs/HELD_ASSET_RESTORE.md).
+
 `cacheRemote(asset, blob, storageRef)` admits a downloaded raster through the
 same decode/dimension/digest checks, then verifies the expected content key
 before any storage transaction. A newly cached remote record starts uploaded,

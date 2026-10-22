@@ -9,6 +9,9 @@ import {insertAssetArchive} from "./archive/database.js";
 import {captureAssetArchiveSnapshot} from "./archive/database.js";
 import {RichAssetBackupError,checkAssetBackupSignal} from "./archive/error.js";
 import {openRetainedAssetDatabase} from "./archive/open_retained.js";
+import {heldAssetRestorePolicy,type RichAssetHeldRestoreOptions} from './archive/held_restore_policy.js';
+import {insertHeldAssetArchive} from './archive/insert_held.js';
+import {openHeldAssetDestination} from './archive/open_held_destination.js';
 import type {RichAssetBackupOptions,RichAssetRestoreOptions,RichAssetSourceBackup} from "./archive/types.js";
 import {beginAssetReconciliation,resumeAssetReconciliation,type AssetReconciliationPort,type RichAssetReconciliationOptions,type RichAssetReconciliation} from "./reconciliation/coordinator.js";
 import {RichAssetReconciliationError} from "./reconciliation/error.js";
@@ -65,6 +68,18 @@ export class RichAssetStore {
     let store:RichAssetStore|undefined,db:IDBDatabase|undefined;
     try{db=await openDatabase(name);store=new RichAssetStore(db,name,options);const target=db;await store.#write(()=>insertAssetArchive(target,records,signal));store.#live();checkAssetBackupSignal(signal);return store;}
     catch(error){store?.close();db?.close();if(error instanceof RichAssetBackupError)throw error;throw new RichAssetBackupError("asset_backup_storage","Asset archive destination could not commit");}
+  }
+
+  /** Restore while retaining actual cooperative exclusion before insertion through return.
+   * The returned custody owns exclusion, not permission; later steps must recheck host policy. */
+  static async restoreBackupHeld(name:string,backup:Blob,input:RichAssetHeldRestoreOptions):Promise<Readonly<{store:RichAssetStore;custody:RichAssetStoreCustody}>>{
+    const policy=heldAssetRestorePolicy(input),{signal,limits,onChange}=policy.selected,options={limits:checkedAssetLimits(limits),...(onChange?{onChange}:{})};
+    const records=await importAssetBackup(backup,options.limits,signal);policy.check();let store:RichAssetStore|undefined,db:IDBDatabase|undefined,custody:RichAssetStoreCustody|undefined;
+    try{
+      db=await openHeldAssetDestination(name,policy.check);policy.check();store=new RichAssetStore(db,name,options);custody=await store.acquireRecoveryCustody();
+      const owned=store,held=custody,check=()=>{policy.check();owned.#live();if(owned.#custody!==held)throw new RichAssetCustodyError('asset_custody_closed');checkAssetStoreCustody(held);};
+      check();await insertHeldAssetArchive(db,records,check,signal);check();return Object.freeze({store:owned,custody:held});
+    }catch(error){try{if(custody)await closeAssetStoreCustody(custody);}finally{try{if(store)store.#close();}finally{db?.close();}}throw error;}
   }
 
   /** One atomic retained snapshot, including cancelled/failed uploads and assets used only by history. */

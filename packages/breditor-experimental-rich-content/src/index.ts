@@ -10,6 +10,7 @@ export type {RichAssetReconciliationChoice,RichAssetReconciliationConflict,RichA
 export {RichAssetBackupError} from "./assets/archive/error.js";
 export {MAX_ASSET_BACKUP_BYTES} from "./assets/archive/codec.js";
 export {ASSET_BACKUP_MIME,MAX_ASSET_BACKUP_HEADER_BYTES,type RichAssetBackupOptions,type RichAssetRestoreOptions,type RichAssetSourceBackup} from "./assets/archive/types.js";
+export type {RichAssetHeldRestoreOptions} from './assets/archive/held_restore_policy.js';
 export {RichAssetArchive,readRichAssetBackup,type RichAssetArchiveEntry,type RichAssetArchiveOptions} from "./assets/archive/read_backup.js";
 export {defaultAssetLimits,type AssetInfo,type AssetLimits,type AssetStatus,type AssetUploader,type RasterMime} from "./assets/types.js";
 export {checkedAssetLimits as checkRichAssetLimits} from "./assets/limits.js";
