@@ -1,0 +1,156 @@
+{
+  "format": "breditor/bounded-operation-storage-functional-qualification",
+  "formatVersion": 1,
+  "qualifiedDate": "2026-10-22",
+  "calendarTimeZone": "America/Toronto",
+  "passed": true,
+  "source": {
+    "commit": "54bd04f12844294e8d0d3d75a405b3f4496d4fe4",
+    "dirty": true,
+    "sha256": "f607689919bf443aeacaccd76c095a919f3673869ca70b45678aa8109e4f0358",
+    "files": 5568,
+    "bytes": 45676641
+  },
+  "nonDocumentation": {
+    "files": 4978,
+    "sha256": "b14e6bdd4330092f00200f746de2b67ec4c52a5a38615799ee670838b8b158ca"
+  },
+  "selection": {
+    "functionalPlanChecks": 274,
+    "uniquePassingPlanChecks": 20,
+    "wholePlanExecuted": false,
+    "sourceUnchangedDuringFinalRuns": true,
+    "postQualificationChanges": "Documentation only; implementation retains the nonDocumentation fingerprint.",
+    "manifests": [
+      "target/v1-candidate-runs/run-yyKj8x/result.json",
+      "target/v1-candidate-runs/run-3DacGj/result.json",
+      "target/v1-candidate-runs/run-BlgUTO/result.json",
+      "target/v1-candidate-runs/run-eSsZ3E/result.json"
+    ]
+  },
+  "tests": {
+    "workspaceAndDiagnosticTests": 2647,
+    "editorIntegrationTests": 385,
+    "scriptPass": 2151,
+    "scriptFail": 0,
+    "scriptSkipped": 3,
+    "sourceBoundedLaws": 23,
+    "sourcePlanLaw": 1,
+    "installedBoundedLaws": 23,
+    "installedBoundedFailures": 0,
+    "installedBoundedSkips": 0,
+    "sourcePreviousNativeLifetimeLaws": 32,
+    "sourcePreviousLineageLaws": 29,
+    "sourcePreviousPortableLaws": 31,
+    "sourcePreviousJournalLaws": 50,
+    "sourcePreviousOperationalOwnerLaws": 28,
+    "sourcePreviousNativeOriginLaws": 22,
+    "sourcePreviousCoreCleanupLaws": 26,
+    "installedJournalLaws": 50,
+    "skipScope": "Three existing opt-in checks; no browser, accessibility, memory/latency or physical durability qualification."
+  },
+  "sourceAndInstalledJournalEach": {
+    "format": "breditor/independent-operation-journal-probe",
+    "formatVersion": 1,
+    "passed": true,
+    "cases": 640,
+    "nativeOrigins": 1920,
+    "nativeSourceOpens": 1920,
+    "pendingReplays": 640,
+    "failedSourceCommits": 640,
+    "futureHistoryPairs": 1920,
+    "retainedPacketComparisons": 2240,
+    "localVersionComparisons": 1280,
+    "wholeOriginalComparisons": 640,
+    "boundedCurrentCuts": 1280,
+    "readOnlyRefusals": 1280,
+    "wireOne": 160,
+    "wireTwo": 480,
+    "tokenCalls": 0,
+    "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "scope": "Actual closed operational source and bounded original/current/pending journal through all existing native policy combinations, pending-only packet changes, failed source commits, cold replay and exact future document/comment history. Controlled IDB, locks and raster fixtures. Not complete participant/upload ownership or portable operational export, room adoption/activation, performance or platform crash durability."
+  },
+  "reproducedAndRepaired": {
+    "cause": "Each source/journal store loaded all values before validating existing cardinality bounds.",
+    "repair": "Count each store before bounded key/value requests in the same existing transaction; preserve all exact validation and save compare-and-write callbacks.",
+    "beforeFailures": 5,
+    "afterPasses": 5,
+    "sameAssertions": true,
+    "assertionSha256": "1d43bab6fdb0f1fefea8b094acf9a722c079eb05f867af55e874518bd403bfcc",
+    "before": "target/storage-bounded-read-before.json",
+    "after": "target/storage-bounded-read-fixed.json",
+    "oldReleasedPackageClaim": false
+  },
+  "installedEvidence": {
+    "freshConsumers": 2,
+    "matchingArchiveReports": 2,
+    "registryArtifacts": 45,
+    "boundedProductionModules": 20,
+    "workspaceLinks": false,
+    "strictPublicTypes": true,
+    "copiedAssertions": [
+      {
+        "file": "bounded-store-read.test.mjs",
+        "sourceSha256": "932eed0c93c8e4d3ca03f90220372f011cc022a49588d0c48bbbba59d52bda03",
+        "installedSha256": "802e123c08b7a763944a0621082a23306f1fc3d1a8f62a7fde5247d7aac45527",
+        "assertionsUnchanged": true
+      },
+      {
+        "file": "bounded-operation-storage.test.mjs",
+        "sourceSha256": "1d43bab6fdb0f1fefea8b094acf9a722c079eb05f867af55e874518bd403bfcc",
+        "installedSha256": "1d43bab6fdb0f1fefea8b094acf9a722c079eb05f867af55e874518bd403bfcc",
+        "assertionsUnchanged": true
+      }
+    ],
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "sha256": "340aa47ff8e6c41c56f35476d8d4d5c164aa63fe7470ae3d5367ff19ffd1b109"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "sha256": "95c1671238e0bab5aad6a3ebad2906a9d9bb5e3914cacfee9302dad4a6349734"
+      }
+    ]
+  },
+  "nativeEvidence": {
+    "baseline": "docs/qualification/2026-10-21-operation-asset-custody.json",
+    "nativeInputs": {
+      "files": 2986,
+      "sha256": "a4a716e0a6237d7c0d6122e5ab1eefc7ab02bda557cfeff9b786794c9c23d420"
+    },
+    "nativeInputsUnchanged": true,
+    "normalRuntimeFilesByteCompared": 12,
+    "normalSharedAndRichRuntimesUnchanged": true,
+    "fullRustSuitesFreshlyExecuted": false,
+    "serverEnabledTestsCarried": 379,
+    "noServerTestsCarried": 267
+  },
+  "earlierWiderSdkQualification": {
+    "path": "docs/qualification/2026-10-22-native-owner-lifetime.json",
+    "freshlyRepeatedHere": false,
+    "note": "This storage checkpoint freshly repeats the full source/installed journal matrices and focused compatibility laws, not all five earlier matrices or every earlier installed suite."
+  },
+  "retained": {
+    "index": "target/bounded-operation-storage-final-gRd05F/index.json",
+    "sha256": "987e94e1de1ab5aace5dc71eb777b51b84748b27841151f2c74b92b1699efc0d",
+    "files": 75
+  },
+  "scope": "Private transaction-local enforcement of unchanged row bounds. No schema/default/protocol changes or native history truncation. Per-value bytes, aggregate memory, latency and physical durability are not qualified.",
+  "remaining": [
+    "Integrate and qualify held whole-upload import",
+    "Complete durable portable operation restore, actual source ownership and future input-provenance export",
+    "Whole-room adoption/provider closure, independent server comment/log generations and authenticated activation",
+    "Remaining feature-parity catalog, native lifetime/resource limits and final release gates"
+  ],
+  "v1GatesClosed": 0,
+  "v1GatesRemainingOpen": 13,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "packageVersionChanged": false,
+  "pushedTaggedPublishedOrDeployed": false
+}

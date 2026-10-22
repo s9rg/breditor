@@ -43,6 +43,21 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [bounded operational storage repair](BOUNDED_OPERATION_STORAGE.md) counts each
+store before cloning keys or values. Bounded requests and final save comparisons
+remain in the same transaction, with all original schema/native-byte checks and
+row ceilings intact. Five actual overfull-store failures now pass under the same
+assertions; no valid row is truncated or silently dropped.
+
+Its [selected qualification](qualification/2026-10-22-bounded-operation-storage.json)
+passes 20 checks from the 274-check plan, all 23 source/installed laws and both
+full 640-case save-journal matrices. Two installed reports pin matching archives.
+Script tests pass 2,151 with three existing skips. The wider five-matrix lifetime
+checkpoint below stays separately pinned; those other matrices were not all
+freshly rerun for this storage change. Per-value memory, latency and physical
+durability are not qualified. Held upload import, writable portable operation
+restore and whole-room activation remain required; all thirteen V1 gates stay open.
+
 The [native-owner lifetime repair](NATIVE_OWNER_LIFETIME.md) reserves transfer
 before option/native callbacks and keeps factory cleanup distinct from disposal
 by the owning editor. Two actual failures are retained with unchanged passing

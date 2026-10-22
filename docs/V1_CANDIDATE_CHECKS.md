@@ -1,10 +1,18 @@
 # V1 candidate checks
 
+Both profiles require `bounded-operation-storage-contracts` and
+`installed-bounded-operation-storage`. The [storage admission repair](BOUNDED_OPERATION_STORAGE.md)
+checks row bounds before value reads without changing save transaction semantics
+or stored families. Source and fresh offline packages repeat the same 23 laws.
+The functional plan has 274 checks; byte/memory and physical durability
+qualification remain separate.
+
 Both profiles require `native-owner-lifetime-contracts` and
 `installed-native-owner-lifetime`. The [lifetime contract](NATIVE_OWNER_LIFETIME.md)
 reserves native ownership before callbacks and distinguishes factory cleanup from
 an editor's own disposal. The same 32 laws run in source and fresh offline
-installed packages. The functional plan has 272 checks; no V1 gate is closed.
+installed packages. The functional plan at that lifetime checkpoint had 272
+checks; no V1 gate is closed.
 
 Both profiles require `independent-operation-lineage-contracts`,
 `independent-operation-lineage-type-fence`, `independent-operation-lineage` and

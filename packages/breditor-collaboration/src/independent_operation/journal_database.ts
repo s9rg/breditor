@@ -4,6 +4,7 @@ import type {IndependentHistoryCut} from '../independent_history/contract.js';
 import {copyOperationCut,sameOperationCut} from './cut_codec.js';
 import {readOperationCutIntent,checkOperationCutTransition,type IndependentOperationCutIntent,type IndependentOperationJournalIdentity} from './cut_intent.js';
 import {operationJournalFailure as fail} from './journal_failure.js';
+import {readBoundedStore} from '../persistence/read_bounded_store.js';
 const intent='operation_intent',original='operation_original',cuts='operation_cuts',stateKey='state',fileKey='participant',names=[intent,original,cuts];
 export interface OperationJournalStored {
  readonly record:IndependentOperationCutIntent;readonly file:Blob;readonly rows:ReadonlyMap<string,unknown>;
@@ -12,7 +13,7 @@ export interface OperationJournalChecked extends Omit<OperationJournalStored,'ro
 function schema(db:IDBDatabase):void{if(db.version!==1||[...db.objectStoreNames].sort().join(',')!==[...names].sort().join(','))throw fail();}
 /** Read all keys and values in the same transaction; the callback may perform the final CAS. */
 function readInside(tx:IDBTransaction,id:IndependentOperationJournalIdentity,accept:(value:OperationJournalStored)=>void,abort:(reason:unknown)=>void):void{
- const tables=new Map<string,{keys:IDBValidKey[];values:unknown[]}>();let left=names.length*2;
+ const tables=new Map<string,{keys:IDBValidKey[];values:unknown[]}>();let left=names.length;
  const ready=()=>{if(--left)return;try{
   const i=tables.get(intent)!,o=tables.get(original)!,c=tables.get(cuts)!;
   if(i.keys.length!==1||i.keys[0]!==stateKey||o.keys.length!==1||o.keys[0]!==fileKey||!(o.values[0] instanceof Blob))throw fail();
@@ -20,8 +21,8 @@ function readInside(tx:IDBTransaction,id:IndependentOperationJournalIdentity,acc
   if(c.keys.length!==references.size||c.keys.some(key=>typeof key!=='string'||!references.has(key)))throw fail();
   accept({record,file:o.values[0],rows:new Map(c.keys.map((key,index)=>[key as string,c.values[index]]))});
  }catch(error){abort(error);}};
- try{for(const name of names){const s=tx.objectStore(name);if(s.keyPath!==null||s.autoIncrement||s.indexNames.length)throw fail();const table={keys:[] as IDBValidKey[],values:[] as unknown[]};tables.set(name,table);
-   s.getAllKeys().onsuccess=e=>{table.keys=(e.target as IDBRequest<IDBValidKey[]>).result;ready();};s.getAll().onsuccess=e=>{table.values=(e.target as IDBRequest<unknown[]>).result;ready();};
+ try{for(const name of names){const s=tx.objectStore(name);if(s.keyPath!==null||s.autoIncrement||s.indexNames.length)throw fail();
+   readBoundedStore(s,name===cuts?2:1,table=>{tables.set(name,table);ready();},abort,()=>fail());
  }}catch(error){abort(error);}
 }
 export function createOperationJournalDatabase(name:string,record:IndependentOperationCutIntent,file:Blob,guard:()=>void):Promise<IDBDatabase>{

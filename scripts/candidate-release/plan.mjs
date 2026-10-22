@@ -94,6 +94,8 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   script('installed-independent-operation-portable','check-independent-operation-portable-installed.mjs',[],[{path:'target/independent-operation-portable-installed-consumer.json',fresh:true}]),
   stage('independent-operation-lineage-contracts',node,['--test','scripts/independent-operation-lineage.test.mjs','scripts/independent-operation-lineage-candidate-plan.test.mjs']),
   stage('native-owner-lifetime-contracts',node,['--test','scripts/native-owner-lifetime.test.mjs','scripts/native-owner-lifetime-candidate-plan.test.mjs']),
+  stage('bounded-operation-storage-contracts',node,['--test','scripts/bounded-store-read.test.mjs','scripts/bounded-operation-storage.test.mjs','scripts/bounded-operation-storage-candidate-plan.test.mjs']),
+  script('installed-bounded-operation-storage','check-bounded-operation-storage-installed.mjs',[],[{path:'target/bounded-operation-storage-installed-consumer.json',fresh:true}]),
   script('installed-native-owner-lifetime','check-native-owner-lifetime-installed.mjs',[],[{path:'target/native-owner-lifetime-installed-consumer.json',fresh:true}]),
   stage('independent-operation-lineage-type-fence',node,['node_modules/typescript/bin/tsc','--noEmit','--strict','--exactOptionalPropertyTypes','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM,ESNext.Disposable','scripts/fixtures/editor-consumer/types-independent-operation-lineage.ts']),
   script('independent-operation-lineage','check-independent-operation-lineage-sdk.mjs',[],[{path:'target/independent-operation-lineage-sdk.json',fresh:true}],2700000),
