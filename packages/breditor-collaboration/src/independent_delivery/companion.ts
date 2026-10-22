@@ -5,25 +5,26 @@ import type {IndependentHistoryHead,IndependentHistoryIdentity} from '../indepen
 import type {IndependentHistoryCompanion} from '../independent_history/driver.js';
 import {readIndependentHistoryHead} from '../independent_history/cut.js';
 import {independentOptionsIdentity} from '../independent_history/identity.js';
-import {SharedRelayError,transportVersion} from '../relay/validation.js';
-import {closed,relayBinding,relayProgress,initialRelayProgress,forwardProgress} from '../segmented_relay/validation.js';
+import {SharedRelayError} from '../relay/validation.js';
+import {closed,relayProgress,initialRelayProgress,forwardProgress} from '../segmented_relay/validation.js';
 import type {SharedSegmentedRelayProgress} from '../segmented_relay/contract.js';
 import type {SharedSegmentedRetainedBinding,SegmentedRetainedKind,SegmentedRetainedRecords} from '../segmented_relay/retained_contract.js';
-import {deliveryRetainedBinding,deliveryRetainedRecords,emptyDeliveryRetainedRecords,admitDeliveryRetainedRecords} from '../delivery_state/retained.js';
+import {deliveryRetainedRecords,emptyDeliveryRetainedRecords,admitDeliveryRetainedRecords} from '../delivery_state/retained.js';
 import {admitNativeDeliveryProgress} from '../delivery_state/native_progress.js';
 import {sourceCoreMethods as native} from '../source_native_read.js';
-import {MAX_INDEPENDENT_DELIVERY_HEAD_BYTES,type SharedIndependentDeliveryOptions,type SharedIndependentDeliveryBinding,type SharedIndependentDeliveryRecovery} from './contract.js';
+import {MAX_INDEPENDENT_DELIVERY_HEAD_BYTES,type SharedIndependentDeliveryOptions,type SharedIndependentDeliveryBinding,type SharedIndependentDeliveryRecovery,type SharedIndependentDeliveryIdentity} from './contract.js';
+import {independentDeliveryIdentity} from './identity.js';
 
 export class IndependentDeliveryCompanion implements IndependentHistoryCompanion {
- readonly binding:SharedIndependentDeliveryBinding;readonly retainedBinding:SharedSegmentedRetainedBinding;
+ readonly binding:SharedIndependentDeliveryBinding;readonly retainedBinding:SharedSegmentedRetainedBinding;readonly identity:SharedIndependentDeliveryIdentity;
  readonly #identity:IndependentHistoryIdentity;
  #current:SharedSegmentedRelayProgress;#durable:SharedSegmentedRelayProgress;
  #records:SegmentedRetainedRecords;#durableRecords:SegmentedRetainedRecords;
  #core:SharedRichEditor<SharedSelectionPolicy>|undefined;#stamp:object=Object.freeze({});#retired=false;#retireHook:(()=>void)|undefined;
  constructor(options:SharedIndependentDeliveryOptions,initial?:Pick<SharedIndependentDeliveryRecovery,'relay'|'retainedBinding'|'retained'>){
-  this.#identity=independentOptionsIdentity(options);const binding=relayBinding(options.binding),d=binding.document,r=binding.review,id=this.#identity;
-  if(!r||d.room!==id.native.room||d.writer!==id.native.writer||d.principal!==id.review.principal||r.actor!==id.review.actor||r.principal!==id.review.principal||r.reviewEditing==='read_only'&&options.review.access!=='read_only'||(id.native.selectionEditing==='document-v1'||id.native.reviewedHistory!==null)&&transportVersion(d.writerTransport)!==2)throw new SharedRelayError('independent_delivery_binding');
-  this.binding=binding as SharedIndependentDeliveryBinding;this.retainedBinding=deliveryRetainedBinding(options.retained,binding,id.native.reviewedHistory);
+  this.#identity=independentOptionsIdentity(options);this.identity=independentDeliveryIdentity(this.#identity,options.binding,options.retained);const binding=this.identity.binding,r=binding.review;
+  if(r.reviewEditing==='read_only'&&options.review.access!=='read_only')throw new SharedRelayError('independent_delivery_binding');
+  this.binding=binding;this.retainedBinding=this.identity.retained;
   if(initial&&JSON.stringify(initial.retainedBinding)!==JSON.stringify(this.retainedBinding))throw new SharedRelayError('independent_delivery_binding');
   this.#current=initial?relayProgress(initial.relay,binding):initialRelayProgress(binding);this.#durable=structuredClone(this.#current);
   this.#records=deliveryRetainedRecords(initial?.retained??emptyDeliveryRetainedRecords(this.retainedBinding),this.retainedBinding);this.#durableRecords=structuredClone(this.#records);

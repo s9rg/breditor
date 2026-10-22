@@ -76,6 +76,12 @@ network startup before adoption. Native-only captures and old generation
 captures refuse the full delivery session rather than producing an incomplete
 backup that drops pending work.
 
+The distinct [complete participant contract](INDEPENDENT_DELIVERY_PARTICIPANT.md)
+adds a genuine full source capture and portable native/retained/raster/upload
+archive. It preserves current readable failed-save work without treating a
+native-only reader as proof of all outboxes. Component recovery remains separate
+from unfinished durable multi-participant coordination and activation.
+
 ## Recovery and retirement
 
 The closed `breditor/shared-independent-delivery-recovery` version-one DTO carries

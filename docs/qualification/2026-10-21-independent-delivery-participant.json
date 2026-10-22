@@ -1,0 +1,326 @@
+{
+  "format": "breditor/independent-delivery-participant-functional-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-21",
+  "calendarTimeZone": "America/Toronto",
+  "passed": true,
+  "source": {
+    "commit": "3ceb204b2b920adc09ad2e32bcadeabc25374bee",
+    "dirty": true,
+    "sha256": "f96ddd217312b82ba180b7ef136476b1b501b774253945744032daf9c807b62d",
+    "files": 5446,
+    "bytes": 44932396
+  },
+  "nonDocumentation": {
+    "files": 4873,
+    "sha256": "d5dbf7543486d284144f851a210daf12d9686c78958d12acf9f55daf17e0de7d"
+  },
+  "nativeInputs": {
+    "files": 2986,
+    "sha256": "a4a716e0a6237d7c0d6122e5ab1eefc7ab02bda557cfeff9b786794c9c23d420"
+  },
+  "normalSharedRuntime": [
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.js",
+      "bytes": 197057,
+      "sha256": "eedaf4d3fbdfd9cfd115484030cc07d3be185aac00c3ccc4922f6df905de40ae"
+    },
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+      "bytes": 13444371,
+      "sha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329"
+    },
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.d.ts",
+      "bytes": 76829,
+      "sha256": "fe5579cc17725f1f63cf47ef147a6a570bdb3b6be5c522820e9ce1a61ec21e26"
+    },
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/breditor_dependency_inventory.json",
+      "bytes": 124122,
+      "sha256": "6714d5160bc54a23292eebb667a203c3d55358899e0e8df148b2388abf0bd688"
+    },
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/THIRD_PARTY_NOTICES.txt",
+      "bytes": 1380448,
+      "sha256": "4bdd58691c23f4733fd973aff84ebb1a38a670c97c64ce8e4c79c624f594f204"
+    },
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/RUST_COPYRIGHT-library.html",
+      "bytes": 1512520,
+      "sha256": "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6"
+    }
+  ],
+  "selection": {
+    "functionalPlanChecks": 242,
+    "selectedStages": 55,
+    "batches": [
+      {
+        "name": "build",
+        "stageCount": 4
+      },
+      {
+        "name": "new-participant",
+        "stageCount": 6
+      },
+      {
+        "name": "atomic-delivery",
+        "stageCount": 4
+      },
+      {
+        "name": "original-delivery",
+        "stageCount": 19
+      },
+      {
+        "name": "native-custody",
+        "stageCount": 22
+      }
+    ],
+    "sourceUnchangedDuringAllRuns": true,
+    "wholePlanExecuted": false,
+    "postQualificationChanges": "Documentation only; implementation and non-documentation inputs retain the recorded fingerprint."
+  },
+  "regression": {
+    "defect": "Local-only participant capture used mutable public archive read and source verification facades. Replacing both returned a false Ready result for an actual native source and upload store.",
+    "exactFinalTest": "local-only participant capture pins actual read and source verification",
+    "oldArchiveSha256": "2f54e5c68efa1b1810273b82f50321b094eff3510ce433b851389d89d72abd59",
+    "installedArchiveFilesByteCompared": 769,
+    "sourceAssertionsSha256": "9e4dc70e63c99031b4a00b0649ce53a43ebdf086abfbea315bf32fa126ff6393",
+    "reversibleModuleAndFixtureLocationsOnly": true,
+    "oldResult": {
+      "exitCode": 1,
+      "failed": 1,
+      "message": "A fake facade return must never become a ready participant"
+    },
+    "repairedSourceAndInstalledPass": true,
+    "internalReadVerificationAndDisposalCanonical": true,
+    "scope": "Genuine SDK source/archive admission, not an arbitrary same-realm application-JavaScript sandbox."
+  },
+  "proof": {
+    "scriptTests": {
+      "passed": 1797,
+      "failed": 0,
+      "skipped": 3
+    },
+    "focusedSourceAndInstalledLaws": 44,
+    "eachSourceAndInstalled": {
+      "localNativeConfigurations": 120,
+      "localColdPairs": 240,
+      "localFutureNativeHistoryPairs": 360,
+      "exactWholeUploadComparisons": 360,
+      "retainedPacketComparisons": 360,
+      "oldSourceFamilyRefusals": 240,
+      "currentReadOnlyRefusals": 240,
+      "publicSourceOverrideCases": 4,
+      "staleSourceRefusals": 120,
+      "closedSourceRefusals": 120,
+      "localTokenCalls": 0,
+      "authenticatedNetworkCases": 88,
+      "completeNetworkArchiveRestores": 136,
+      "authorCases": 40,
+      "authorArchiveRestores": 40,
+      "authorColdReopens": 120,
+      "offlinePeerReconnects": 40,
+      "retainedNativeReceipts": 160,
+      "receiptSaveAborts": 2,
+      "serverRollbackRefusalsBeforeAuthorResume": 2,
+      "futureAuthorDocumentSteps": 80,
+      "futureAuthorCommentSteps": 80,
+      "advancedReviewCases": 24,
+      "advancedArchiveRestores": 48,
+      "advancedColdReopens": 72,
+      "ownedAccepts": 24,
+      "publishedVersions": 24,
+      "futureAdvancedDocumentSteps": 72,
+      "futureAdvancedCommentSteps": 48,
+      "advancedNativeBoundaries": 48,
+      "advancedHostRestarts": 24,
+      "advancedReceiptSaveFailures": 4,
+      "permanentObserverCases": 24,
+      "observerReaders": 48,
+      "observerArchiveRestores": 48,
+      "observerColdReopens": 96,
+      "retainedObserverRevisions": 48,
+      "observerNativeDocumentSeals": 24,
+      "observerForeignAcceptImports": 48,
+      "observerReviewerRejects": 24,
+      "observerHostRestarts": 24,
+      "observerSourceSaveFailures": 4,
+      "editorRegrantAcceptRefusals": 24,
+      "observerAuthorRegistrations": 0,
+      "observerAuthorResumes": 0,
+      "observerDocumentSubmissions": 0
+    },
+    "sourceAndInstalledAssertions": "Same assertions, reversible module/fixture locations only. Only nondeterministic wire request counts are omitted when comparing complete acceptance summaries.",
+    "freshInstalled": {
+      "workspaceLinks": false,
+      "strictPublicTypes": true,
+      "registryArtifacts": 45,
+      "productionModuleCount": 164,
+      "noWorkspaceReactOrSyntheticStorageInProduction": true,
+      "matchingArchiveReports": 13,
+      "archiveHashes": [
+        {
+          "name": "@breditor/browser",
+          "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+        },
+        {
+          "name": "@breditor/experimental-rich-content",
+          "sha256": "e6b524a4d3b9cab485e6df2ff62af133a3772291ec463fd3bba73934c13ac40f"
+        },
+        {
+          "name": "@breditor/collaboration",
+          "sha256": "008ab070a55b34916e56f1eaedf643037cfa87cbe52ab057da59bf902e2cfae5"
+        }
+      ],
+      "browserAndRichArchivesUnchanged": true
+    },
+    "nativeSuiteEvidence": {
+      "freshlyReexecutedThisCheckpoint": false,
+      "carriedOnlyAcrossExactNativeInputsAndRuntime": true,
+      "previousQualification": "docs/qualification/2026-10-21-independent-delivery.json",
+      "suites": [
+        {
+          "id": "relay-native",
+          "passed": 379,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "id": "relay-native-no-server-full",
+          "passed": 267,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "note": "These 379 server-enabled and 267 no-server tests were freshly executed for the immediately preceding independent-delivery checkpoint, not reexecuted here. All 2,986 native inputs and all six normal shared runtime files are byte-identical. Native authenticated functional hosts were built and exercised in this checkpoint."
+    }
+  },
+  "evidence": {
+    "immutableCopies": 111,
+    "index": {
+      "path": "target/delivery-participant-qualified-Bg94xc/index.json",
+      "bytes": 69399,
+      "sha256": "14522c1b76ea3183ba520c11cc572b05d7e83c1c65df6590c21f3a232d03320a"
+    },
+    "aggregate": {
+      "path": "target/delivery-participant-qualified-Bg94xc/aggregate.json",
+      "bytes": 8766,
+      "sha256": "da45eb690747188a138ce77dd4791b8e6076f0eee043231368a50632e54f9686"
+    },
+    "batches": [
+      {
+        "name": "build",
+        "status": "passed",
+        "stageCount": 4,
+        "result": {
+          "path": "target/delivery-participant-qualified-Bg94xc/build-result.json",
+          "bytes": 7904,
+          "sha256": "c47e8e168cc86c14a3125590027e520aa002e964cd4688ba22da8d6b37ebedf2"
+        }
+      },
+      {
+        "name": "new-participant",
+        "status": "passed",
+        "stageCount": 6,
+        "result": {
+          "path": "target/delivery-participant-qualified-Bg94xc/new-participant-result.json",
+          "bytes": 10896,
+          "sha256": "b662611ade8bf654a64d4dad3fc2909e0d942389be32d58628e851f3f227ff5f"
+        }
+      },
+      {
+        "name": "atomic-delivery",
+        "status": "passed",
+        "stageCount": 4,
+        "result": {
+          "path": "target/delivery-participant-qualified-Bg94xc/atomic-delivery-result.json",
+          "bytes": 7880,
+          "sha256": "45feb787da8856bd571cbe6dddc2e9f00194b803df7f4cc26d79678c217c57c3"
+        }
+      },
+      {
+        "name": "original-delivery",
+        "status": "passed",
+        "stageCount": 19,
+        "result": {
+          "path": "target/delivery-participant-qualified-Bg94xc/original-delivery-result.json",
+          "bytes": 31519,
+          "sha256": "7ba1710d6ee7f0ceb0e338fcdddbaf51f937fe075ffc7cc81b8f304f4544293f"
+        }
+      },
+      {
+        "name": "native-custody",
+        "status": "passed",
+        "stageCount": 22,
+        "result": {
+          "path": "target/delivery-participant-qualified-Bg94xc/native-custody-result.json",
+          "bytes": 36201,
+          "sha256": "550f653bcdc5cafd87d78397d381df91480a710f49fd5867aad8d85bb9603e3b"
+        }
+      }
+    ],
+    "packages": [
+      {
+        "name": "@breditor/browser",
+        "path": "target/delivery-participant-qualified-Bg94xc/package-0.tgz",
+        "bytes": 327732,
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "target/delivery-participant-qualified-Bg94xc/package-1.tgz",
+        "bytes": 1914597,
+        "sha256": "e6b524a4d3b9cab485e6df2ff62af133a3772291ec463fd3bba73934c13ac40f"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "target/delivery-participant-qualified-Bg94xc/package-2.tgz",
+        "bytes": 4125975,
+        "sha256": "008ab070a55b34916e56f1eaedf643037cfa87cbe52ab057da59bf902e2cfae5"
+      }
+    ],
+    "installedUnitLog": {
+      "path": "target/delivery-participant-qualified-Bg94xc/installed-unit-contracts.log",
+      "bytes": 9426,
+      "sha256": "a1d498685a94aadd8da129c3e704262e7054b568bf8542ea463753f2abfb74dd"
+    },
+    "exactRed": {
+      "path": "target/delivery-participant-qualified-Bg94xc/exact-red.json"
+    },
+    "originalRegressionArchive": {
+      "path": "target/delivery-participant-qualified-Bg94xc/old-collaboration.tgz"
+    },
+    "exactInstalledAssertionsAndLock": "The immutable index pins the copied assertions, installed lockfile, strict public types, runner, unit log, reports and all selected stage logs/artifacts.",
+    "localEvidenceNotPublished": true
+  },
+  "scope": {
+    "originalNativeWireStorageAndArchiveMeaningsUnchanged": true,
+    "actualNativeWasmAndAuthenticatedServerOrder": true,
+    "syntheticFixtures": [
+      "IndexedDB and locks",
+      "Two-PNG raster presentation decoder",
+      "Network fixture host mapping callback"
+    ],
+    "currentPermissionsAndColdRustReplayRequired": true,
+    "readableFailedSaveCutPreserved": true,
+    "missingDependenciesRemainPending": true,
+    "cancelledAndUnreferencedUploadsPreserved": true,
+    "componentRestoresAreNotAtomicMultiStoreRecovery": true,
+    "durableCompleteParticipantCoordinatorFinished": false,
+    "physicalWholeRoomNewFamilyAdoptionFinished": false,
+    "providerWideReconciliationFinished": false,
+    "authenticatedWholeRoomActivationFinished": false,
+    "clientNativeUndoLimit": 1000,
+    "hashStreaming": false,
+    "quotaMemoryLatencyCertified": false,
+    "fullFeatureParityFinished": false,
+    "v1Ready": false,
+    "allThirteenV1GatesRemainOpen": true,
+    "versionChanged": false,
+    "pushed": false,
+    "published": false,
+    "tagged": false,
+    "deployed": false
+  }
+}

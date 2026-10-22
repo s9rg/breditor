@@ -20,6 +20,7 @@ import type {SharedSuggestionRevisionsOptions} from '../suggestion_revisions/typ
 import type {SharedDocumentVersionsOptions} from '../versions/types.js';
 import {IndependentDeliveryCompanion} from './companion.js';
 import {registerIndependentDeliverySession} from './admission.js';
+import {registerIndependentDeliverySource} from '../independent_delivery_source/admission.js';
 import {MAX_INDEPENDENT_DELIVERY_RECOVERY_BYTES,type SharedIndependentDeliveryOptions,type SharedIndependentDeliveryRecovery,type SharedIndependentDeliveryRecoveryOptions} from './contract.js';
 
 export type SharedIndependentVersionsOpenOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy>=Omit<SharedDocumentVersionsOptions<P>,'identity'|'database'|'storage'|'autoConnect'>&{autoConnect?:false};
@@ -38,6 +39,7 @@ export class SharedIndependentDeliverySession<P extends SharedSelectionPolicy=Sh
   this.#storage=Object.freeze({core:this.#core,save:()=>this.#session.save(),flush:()=>this.#flushSource()});
   const saved=this.#native.savedCompanion();if(saved===null)throw new SharedRelayError('independent_delivery_unsaved');companion.acknowledged(saved);companion.setRetireHook(()=>this.#stop());
   registerIndependentDeliverySession(this,{core:this.#native.core,binding:structuredClone(companion.binding),check:()=>this.#check(),save:()=>this.#session.save(),flush:()=>this.#flushSource(),durable:()=>companion.durable(),persistDocument:progress=>this.#persistDocument(progress),persistReview:(progress,receipt)=>this.#persistReview(progress,receipt),track:adapter=>{this.#check();for(const ref of this.#adapters)if(!ref.deref())this.#adapters.delete(ref);this.#adapters.add(new WeakRef(adapter));}});
+  registerIndependentDeliverySource(this,{core:this.#native.core,identity:companion.identity,check:()=>this.#checkReadable(),stamp:()=>{this.#checkReadable();return[this.#native.stamp(),companion.sourceStamp()];},read:()=>this.#readRecovery()});
  }
  static async open<Q extends SharedSelectionPolicy>(input:SharedIndependentDeliveryOptions<Q>):Promise<SharedIndependentDeliverySession<Q>>{
   if(this!==SharedIndependentDeliverySession)throw new SharedRelayError('independent_delivery_factory_receiver');
@@ -56,6 +58,7 @@ export class SharedIndependentDeliverySession<P extends SharedSelectionPolicy=Sh
  get core():SharedRichEditor<P>{return this.#core;}
  get recovered():boolean{return this.#session.recovered;}
  #check():void{if(this.#retiring||Object.hasOwn(this,'core'))throw new SharedRelayError('independent_delivery_retired');this.#native.checkManaged();this.#native.checkBorrowed(this.#core);}
+ #checkReadable():void{if(Object.hasOwn(this,'core'))throw new SharedRelayError('independent_delivery_source');this.#native.check();}
  state(){return this.#session.state();}
  relayProgress(){return this.#companion.durable();}
  reviewRelayIdentity(){return structuredClone(this.#companion.binding.review);}
@@ -74,11 +77,12 @@ export class SharedIndependentDeliverySession<P extends SharedSelectionPolicy=Sh
  versions(){return this.#session.versions();}
  versionPacket(id:string){return this.#session.versionPacket(id);}
  async retainVersion(packet:string){this.#check();return this.#session.retainVersion(packet);}
- exportRecovery():SharedIndependentDeliveryRecovery{
-  if(Object.hasOwn(this,'core'))throw new SharedRelayError('independent_delivery_source');const stamp=this.#native.stamp(),delivery=this.#companion.sourceStamp(),source=this.#native.read(),relay=this.#companion.current(),retained=this.#companion.records();
+ #readRecovery():SharedIndependentDeliveryRecovery{
+  this.#checkReadable();const stamp=this.#native.stamp(),delivery=this.#companion.sourceStamp(),source=this.#native.read(),relay=this.#companion.current(),retained=this.#companion.records();
   this.#native.check();if(this.#native.stamp()!==stamp||this.#companion.sourceStamp()!==delivery)throw new SharedRelayError('independent_delivery_changed');
   return{format:'breditor/shared-independent-delivery-recovery',formatVersion:1,source,relay,retainedBinding:structuredClone(this.#companion.retainedBinding),retained};
  }
+ exportRecovery():SharedIndependentDeliveryRecovery{return this.#readRecovery();}
  retainedRecords():SegmentedRetainedRecords{if(this.#session.state().status==='closed')throw new SharedRelayError('independent_delivery_closed');return this.#companion.durableRecords();}
  #port<K extends SegmentedRetainedKind>(kind:K):RetainedStorePort<K>{const c=this.#companion;if(c.retainedBinding[kind]===null)throw new SharedRelayError('independent_retained_unselected');return{kind,check:()=>this.#native.checkBorrowed(this.#core),writable:()=>this.#check(),read:()=>c.records()[kind] as NonNullable<SegmentedRetainedRecords[K]>,stage:record=>{this.#native.checkBorrowed(this.#core);c.proposeRecord(kind,record);},write:async()=>{this.#native.checkBorrowed(this.#core);await this.#flushSource();}};}
  #opening<T>(create:()=>Promise<T>,discard:(value:T)=>Promise<void>):Promise<T>{this.#check();const work=(async()=>{const value=await create();try{this.#check();return value;}catch(error){await discard(value);throw error;}})();this.#openings.add(work);void work.finally(()=>this.#openings.delete(work)).catch(()=>{});return work;}

@@ -1,5 +1,24 @@
 # V1 candidate checks
 
+Both profiles require `independent-delivery-participant-contracts`,
+`independent-delivery-participant-type-fence`, `independent-delivery-participant`
+and `installed-independent-delivery-participant`. They qualify the
+[complete participant contract](INDEPENDENT_DELIVERY_PARTICIPANT.md), including
+exact pending records, receipts, raster payloads, whole cancelled upload state,
+current-policy recovery and real authenticated author/observer continuation.
+Canonical facade tests include the repaired old local-only capture. The current
+functional plan has 242 checks; whole-room coordination and activation remain open.
+
+The [complete participant checkpoint](qualification/2026-10-21-independent-delivery-participant.json)
+passes 55 selected stages and 1,797 script tests with three existing skips. Source
+and fresh installed packages each repeat 44 focused laws, 120 local native cases
+and 88 authenticated network cases, with 136 complete network archive restores.
+Thirteen installed reports pin matching archives. The exact final false-Ready
+regression fails on the retained previous archive. Complete native-suite evidence
+is carried only across unchanged native inputs and all six normal shared runtime
+files; it is not freshly reexecuted in this SDK checkpoint. This is selected
+functional evidence, not whole-plan, physical durability, activation or V1 approval.
+
 Both profiles require `independent-delivery-contracts`,
 `independent-delivery-type-fence`, `independent-delivery` and
 `installed-independent-delivery`. They check the
@@ -7,7 +26,7 @@ Both profiles require `independent-delivery-contracts`,
 selected native histories, exact pending review/version work, acknowledged
 receipt discipline, real authenticated author and observer recovery, and future
 native Undo/Redo. Fresh offline archives repeat the same functional assertions
-and strict public types. The current functional plan has 238 checks; these
+and strict public types. The functional plan at that checkpoint had 238 checks; these
 stages do not qualify physical whole-room adoption or V1 readiness.
 
 The [delivery qualification](qualification/2026-10-21-independent-delivery.json)

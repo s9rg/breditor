@@ -16,6 +16,11 @@ import type {SharedIndependentParticipantCaptureOptions,SharedIndependentPartici
 interface State {file:Blob;header:IndependentParticipantHeader;selection:SharedIndependentParticipantSelection;records:readonly SharedIndependentSourceRecord[];recovery:SharedIndependentHistoryRecovery;payloads:ReadonlyMap<string,Blob>;uploads:RichAssetArchive}
 const key=Object.freeze({}),states=new WeakMap<SharedIndependentParticipantBackup,State>(),captureStore=RichAssetStore.prototype.captureBackup,captureSource=SharedIndependentSourceCapture.capture,checkSource=SharedIndependentSourceCapture.prototype.check;
 const state=(owner:SharedIndependentParticipantBackup)=>{const value=states.get(owner);if(!value)throw fail('independent_participant_closed');return value;};
+function verifyIndependentParticipantSource(owner:SharedIndependentParticipantBackup,source:SharedIndependentSourceCapture):void{
+ const s=state(owner),selected=independentSourceSnapshot(source),metadata=selected.metadata;
+ if(metadata.document!==s.header.metadata.document||metadata.revision!==s.header.metadata.revision||JSON.stringify(metadata.identity)!==JSON.stringify(s.header.metadata.identity.source)||metadata.outcome.kind!=='ready'||JSON.stringify(metadata.outcome.references)!==JSON.stringify(s.header.metadata.bindings.map(({asset,generation})=>({asset,generation})))||selected.records.length!==s.records.length||selected.records.some((row,index)=>{const original=s.records[index]!;return row.kind!==original.kind||row.index!==original.index||row.json!==original.json;}))throw fail('independent_participant_source');selected.check();
+}
+function disposeIndependentParticipant(owner:SharedIndependentParticipantBackup):void{const s=states.get(owner);if(!s)return;states.delete(owner);s.uploads.dispose();}
 export class SharedIndependentParticipantBackup {
  readonly #selection:SharedIndependentParticipantSelection;
  private constructor(token:object,value:State){if(token!==key)throw fail();this.#selection=value.selection;states.set(this,value);Object.freeze(this);}
@@ -28,14 +33,11 @@ export class SharedIndependentParticipantBackup {
  uploadEntries(){return state(this).uploads.entries();}
  uploadBlob(asset:string):Blob|undefined{return state(this).uploads.blob(asset);}
  blob(asset:string,generation:string):Blob|undefined{const s=state(this),id=assetBytesKey(asset,generation),binding=s.header.metadata.bindings.find(value=>assetBytesKey(value.asset,value.generation)===id);return binding?s.payloads.get(binding.contentAsset):undefined;}
- verifySource(source:SharedIndependentSourceCapture):void{
-  const s=state(this),selected=independentSourceSnapshot(source),metadata=selected.metadata;
-  if(metadata.document!==s.header.metadata.document||metadata.revision!==s.header.metadata.revision||JSON.stringify(metadata.identity)!==JSON.stringify(s.header.metadata.identity.source)||metadata.outcome.kind!=='ready'||JSON.stringify(metadata.outcome.references)!==JSON.stringify(s.header.metadata.bindings.map(({asset,generation})=>({asset,generation})))||selected.records.length!==s.records.length||selected.records.some((row,index)=>{const original=s.records[index]!;return row.kind!==original.kind||row.index!==original.index||row.json!==original.json;}))throw fail('independent_participant_source');selected.check();
- }
+ verifySource(source:SharedIndependentSourceCapture):void{verifyIndependentParticipantSource(this,source);}
  async verifyRecovered(source:SharedIndependentSourceCapture,uploads:RichAssetStore,options:Pick<SharedAssetBytesOptions,'signal'>={}):Promise<void>{
-  const s=state(this),check=()=>{checkAssetBytesSignal(options.signal);if(states.get(this)!==s)throw fail('independent_participant_closed');SharedIndependentParticipantBackup.prototype.verifySource.call(this,source);};check();const cut=await captureStore.call(uploads,()=>{check();return undefined;},options);check();const sha=await independentParticipantDigest(cut.backup,options.signal);check();if(sha!==s.header.uploads.sha256)throw fail('independent_participant_integrity');
+  const s=state(this),check=()=>{checkAssetBytesSignal(options.signal);if(states.get(this)!==s)throw fail('independent_participant_closed');verifyIndependentParticipantSource(this,source);};check();const cut=await captureStore.call(uploads,()=>{check();return undefined;},options);check();const sha=await independentParticipantDigest(cut.backup,options.signal);check();if(sha!==s.header.uploads.sha256)throw fail('independent_participant_integrity');
  }
- dispose():void{const s=states.get(this);if(!s)return;states.delete(this);s.uploads.dispose();}
+ dispose():void{disposeIndependentParticipant(this);}
  static async capture<P extends SharedSelectionPolicy>(input:SharedIndependentParticipantCaptureOptions<P>):Promise<{kind:'ready';backup:SharedIndependentParticipantBackup}|{kind:'pending';pending:readonly SharedAssetBytesPending[]}>{
   const {participant,principal,source:provided,assets,checkAuthority,resolveAsset,signal,limits:supplied}={...input},source={...provided},authority=participantAuthority(checkAuthority),limits=checkRichAssetLimits(supplied),abort=signal??new AbortController().signal;
   let captured:SharedIndependentSourceCapture|undefined,uploads:RichAssetArchive|undefined;
@@ -47,7 +49,7 @@ export class SharedIndependentParticipantBackup {
    const resolved=await resolveSelectedAssetBytes(snapshot.metadata.outcome.references,async(reference,requestedSignal)=>{check();const blob=local.blob(reference.asset);if(blob)return{asset:reference.asset,generation:reference.generation,identity:'content-addressed',blob,check(){check();local.backup();}};return resolveAsset?await resolveAsset(reference,requestedSignal):undefined;},limits,check,abort);check();
    if(resolved.missing.length)return{kind:'pending',pending:resolved.missing};
    const live=()=>{check();resolved.check();check();},sourceBytes=snapshot.records.reduce((n,row)=>n+new TextEncoder().encode(row.json).length,0),metadata=freezeGeneration({format:'breditor/shared-independent-participant-bytes' as const,formatVersion:1 as const,identity,document:snapshot.metadata.document,revision:snapshot.metadata.revision,bindings:resolved.bindings,assets:resolved.assets,sourceBytes,assetBytes:resolved.assetBytes});
-   const file=await encodeIndependentParticipant(metadata,snapshot.records,resolved.payloads,cut.backup,live,signal);live();const sha256=await independentParticipantDigest(file,signal);live();const backup=await SharedIndependentParticipantBackup.read(file,{identity,sha256},{limits,...(signal?{signal}:{})});try{live();SharedIndependentParticipantBackup.prototype.verifySource.call(backup,captured!);live();return{kind:'ready',backup};}catch(error){backup.dispose();throw error;}
+   const file=await encodeIndependentParticipant(metadata,snapshot.records,resolved.payloads,cut.backup,live,signal);live();const sha256=await independentParticipantDigest(file,signal);live();const backup=await readIndependentParticipant(file,{identity,sha256},{limits,...(signal?{signal}:{})});try{live();verifyIndependentParticipantSource(backup,captured!);live();return{kind:'ready',backup};}catch(error){disposeIndependentParticipant(backup);throw error;}
   }finally{captured?.dispose();uploads?.dispose();}
  }
  static async read(input:Blob,supplied:SharedIndependentParticipantSelection,options:SharedAssetBytesOptions={}):Promise<SharedIndependentParticipantBackup>{
@@ -63,5 +65,6 @@ export class SharedIndependentParticipantBackup {
   try{uploads=await readRichAssetBackup(uploadFile,{limits,...(signal?{signal}:{})});check();return new SharedIndependentParticipantBackup(key,{file,header,selection:expected,records:Object.freeze(records),recovery,payloads,uploads});}catch(error){uploads?.dispose();throw error;}
  }
 }
+const readIndependentParticipant=SharedIndependentParticipantBackup.read;
 export const captureSharedIndependentParticipant=<P extends SharedSelectionPolicy>(input:SharedIndependentParticipantCaptureOptions<P>)=>SharedIndependentParticipantBackup.capture(input);
 export const readSharedIndependentParticipant=(file:Blob,expected:SharedIndependentParticipantSelection,options:SharedAssetBytesOptions={})=>SharedIndependentParticipantBackup.read(file,expected,options);

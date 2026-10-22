@@ -2,10 +2,16 @@
 import type {SharedSelectionPolicy} from '../types.js';
 import type {SharedRelayIdentity} from '../relay/types.js';
 import type {SharedReviewRelayStorageIdentity} from '../relay/review_types.js';
-import type {SharedIndependentHistorySessionOptions,SharedIndependentHistoryRecovery} from '../independent_history/contract.js';
+import type {SharedIndependentHistorySessionOptions,SharedIndependentHistoryRecovery,IndependentHistoryIdentity} from '../independent_history/contract.js';
 import type {SharedSegmentedRelayBinding,SharedSegmentedRelayProgress} from '../segmented_relay/contract.js';
 import type {SharedSegmentedRetainedBinding,SegmentedRetainedRecords} from '../segmented_relay/retained_contract.js';
 export type SharedIndependentDeliveryBinding=SharedSegmentedRelayBinding&{readonly review:SharedReviewRelayStorageIdentity};
+/** Historical nonsecret identities, never current permissions or writer ownership. */
+export interface SharedIndependentDeliveryIdentity {
+ readonly history:IndependentHistoryIdentity;
+ readonly binding:SharedIndependentDeliveryBinding;
+ readonly retained:SharedSegmentedRetainedBinding;
+}
 export type SharedIndependentDeliveryOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy>=SharedIndependentHistorySessionOptions<P>&{
  binding:SharedIndependentDeliveryBinding&{
   document:P extends 'document-v1'?Omit<SharedRelayIdentity,'credential'>&{writerTransport:'atomic-v2'}:Omit<SharedRelayIdentity,'credential'>;

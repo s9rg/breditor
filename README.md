@@ -37,6 +37,9 @@ The opt-in [independent history delivery contract](docs/INDEPENDENT_DELIVERY.md)
 joins independently selected native document/comment histories, relay receipts
 and pending review/version work in one atomic client save. It is separate from
 unfinished physical whole-room adoption and authenticated activation.
+Its [complete participant recovery](docs/INDEPENDENT_DELIVERY_PARTICIPANT.md)
+also preserves selected raster bytes and whole upload queues without dropping
+receipts or pending packets.
 
 Start the loopback-only combined developer demo after following its
 [toolchain and setup instructions](packages/breditor-experimental-collaboration/README.md):

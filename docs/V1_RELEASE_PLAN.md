@@ -43,12 +43,35 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+[Complete independent delivery participants](INDEPENDENT_DELIVERY_PARTICIPANT.md)
+now retain both native lanes, exact receipts and pending work, selected rasters and
+whole upload state in a distinct portable file. Complete source guards include
+outbox-only changes; actual packet/native sources still gate Ready. Canonical
+private verification also repairs a reproduced fake-Ready facade path in the old
+local-only participant capture. The functional plan now has 242 checks, including
+separate participant contracts, strict types and source/installed workflows.
+Durable multi-store participant/room coordination and authenticated activation
+remain substantive work, not inferred from component restore or archive hashes.
+
+The [complete participant qualification](qualification/2026-10-21-independent-delivery-participant.json)
+passes all 55 selected stages and 1,797 script tests with three existing skips.
+Source and fresh offline packages each pass 44 focused laws, 120 local native
+configurations and 88 authenticated network cases, including 136 complete network
+archive restores. Thirteen installed reports pin the same archives; the exact
+final fake-Ready regression fails on the preserved previous package. All 2,986
+native inputs and six normal shared runtime files remain byte-identical, so the
+preceding complete native-suite evidence is carried, not freshly reexecuted.
+This is a subset of the 242-check plan. Automatic interrupted recovery across the
+complete delivery and upload stores is the next risk-first boundary, followed by
+whole-room/provider integration and fresh authenticated activation. All thirteen
+V1 gates remain open.
+
 [Independent history delivery](INDEPENDENT_DELIVERY.md) now binds independently
 selected native document/comment histories, relay receipts and all three retained
 review/version stores to one atomic client transaction. Named adapters require
 actual ownership; old constructors refuse the new family even when its document
 lane is original. Current readable recovery remains distinct from acknowledged
-durable progress. The functional plan now has 238 checks, including native,
+durable progress. The functional plan at that checkpoint had 238 checks, including native,
 authenticated loopback and unchanged fresh installed-package assertions for the
 new family. Physical whole-room/asset adoption, independent server-log generations
 and authenticated activation remain unfinished. All thirteen V1 gates remain open.

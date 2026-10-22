@@ -12,6 +12,12 @@ This opt-in family closes local capture and portable recovery for
 ownership to a room coordinator or activate a server. Original and generation
 participant formats remain unchanged and refuse this family.
 
+The separate [complete delivery participant](INDEPENDENT_DELIVERY_PARTICIPANT.md)
+also retains independently selected receipts and proposal/revision/version outboxes.
+This local-only family never adopts that larger scope by payload shape. Both
+participant captures pin canonical internal read/verify operations; public facade
+overrides cannot substitute fake Ready archives.
+
 ## Capture an actual paired source
 
 `captureSharedIndependentSource({session})` requires the genuine independently
