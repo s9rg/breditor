@@ -42,6 +42,12 @@ Denial before commit aborts the entire native file/head transaction. Both lanes,
 local versions, receipts and retained packets still form the same exact cut;
 there is no separate unguarded lane save.
 
+An explicit bootstrap signal also subscribes the actual paired write transaction
+to Abort. Cancellation after the last head request succeeds but before commit
+aborts that transaction, including its native files. Polling cancellation only
+between callbacks would leave a late-commit gap. Local and delivery recovery use
+the same separately selected runtime signal; no signal or grant is persisted.
+
 After successful first flush and its final current check, the temporary bootstrap
 selection detaches before the session returns. Ordinary native ownership,
 read-only policy, writer leases and operation-origin guards remain intact. The
@@ -74,9 +80,9 @@ Resume re-admits actual components and continues without overwriting them.
 
 The first save's temporary policy is independent of source-history identity.
 Original protocol meanings, formats, native limits, default APIs and local-only
-comment bindings do not change. The private helper can support a future genuine
-local-only recovery coordinator, but that coordinator is not implemented by this
-repair. Provider/client reconciliation, complete room adoption, authenticated
+comment bindings do not change. The helper now also supports the separately
+qualified [complete local-only coordinator](INDEPENDENT_PARTICIPANT_RECOVERY.md).
+Provider/client reconciliation, complete room adoption, authenticated
 activation, sustainable Undo retention and V1 qualification remain separate.
 
 ## Selected functional qualification
@@ -105,3 +111,9 @@ Rust suites are carried rather than freshly executed. Workspace/diagnostic tests
 pass 2,647, editor tests 385 and script tests 2,349, with three existing opt-in
 browser skips. This is functional repair evidence, not platform durability,
 browser qualification, unlimited history, whole-room activation or V1 readiness.
+
+The subsequent [complete local qualification](qualification/2026-10-22-independent-participant-recovery.json)
+separately closes the late-cancellation gap between the last successful native
+head request and commit. That signal subscription was not part of the first
+127-law checkpoint above. Its four unchanged failures now pass; restoring the
+recorded prior bootstrap implementation in an isolated build reproduces them.

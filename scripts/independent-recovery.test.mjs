@@ -1,0 +1,18 @@
+/** Complete actual local source/original-provider/upload handoff and recovery. */
+import test,{before,after}from'node:test';import assert from'node:assert/strict';
+import*as api from'../packages/breditor-collaboration/dist/index.js';import*as rich from'@breditor/experimental-rich-content';
+import{localRecoveryOptions,localNativePair,closeLocalRecoveryParts,verifyLocalRecoveryParts}from'./fixtures/independent-recovery/session.mjs';import{localRecoveryUnitHost}from'./fixtures/independent-recovery/unit.mjs';
+const runtime=process.env.BREDITOR_INDEPENDENT_RECOVERY_RUNTIME??new URL('../target/promoted-shared-web/',import.meta.url).pathname;let host;
+before(async()=>{host=await localRecoveryUnitHost({api,rich,runtime,fixture:new URL('../crates/breditor-core/tests/fixtures/rich-local-root.json',import.meta.url)});});after(()=>host?.free());const fixture=extra=>host.fixture(extra);
+test('local-only recovery constructors refuse fake resources before reading their fields',()=>{let reads=0;const fake=new Proxy({}, {get(){reads++;throw Error('must not read');}});for(const name of['SharedIndependentParticipantRecovery','RecoveredSharedIndependentParticipant'])for(const args of[[],Array(10).fill(fake)])assert.throws(()=>Reflect.construct(api[name],args));assert.equal(reads,0);});
+for(const documentSegmented of[false,true])for(const reviewSegmented of[false,true])test(`complete local recovery retains original-only pixels and both histories document=${documentSegmented} comments=${reviewSegmented}`,async()=>{
+ const f=await fixture({documentSegmented,reviewSegmented}),options=localRecoveryOptions(f.options,f.backup,f.tag);let attempt,ready,parts,cold;
+ try{
+  for(const reopen of[false,true]){attempt=reopen?await api.SharedIndependentParticipantRecovery.resume(options):await api.SharedIndependentParticipantRecovery.begin({...options,backup:f.backup});const first=attempt.finish();assert.equal(attempt.finish(),first);ready=await first;assert.deepEqual(Buffer.from(await ready.file().arrayBuffer()),Buffer.from(await f.file.arrayBuffer()));parts=await ready.intoParts();await attempt.close();await ready.close();ready=undefined;await verifyLocalRecoveryParts(api,f,parts);await closeLocalRecoveryParts(parts);parts=undefined;}
+  cold=await api.SharedIndependentHistoryPersistentSession.open({...f.options,database:options.destinations.source});for(const[index,method]of['redo','undo','redo'].entries()){assert.equal(cold.core[method](),true);assert.equal(cold.core[method==='redo'?'redoReview':'undoReview']().kind,'committed');assert.deepEqual(localNativePair(cold.core,reviewSegmented),f.future[index]);assert.match(cold.core.documentJson(),/Offline peer/);assert.match(JSON.stringify(cold.core.reviewSnapshot().view),/Offline independent comment/);}await cold.close();
+  attempt=await api.SharedIndependentParticipantRecovery.resume(options);await assert.rejects(attempt.finish(),error=>error.code==='independent_recovery_diverged');
+ }finally{await closeLocalRecoveryParts(parts);await ready?.discardAndClose();await attempt?.close();await cold?.discardAndClose();await f.close();}
+});
+test('local recovery rejects delivery-shaped factories and never creates their destinations',async()=>{
+ const f=await fixture(),options=localRecoveryOptions(f.options,f.backup,f.tag);try{const before=await indexedDB.databases();for(const extra of[{binding:{}},{retained:{}},{create(){}},{database:'foreign'}])await assert.rejects(api.SharedIndependentParticipantRecovery.begin({...options,session:{...options.session,...extra},backup:f.backup}));assert.deepEqual(await indexedDB.databases(),before);}finally{await f.close();}
+});

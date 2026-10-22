@@ -110,8 +110,9 @@ family combinations, policy denial, corruption, bounded reads, callback binding,
 namespace reentry, schema isolation, actual transfer and cleanup retry. Installed
 assertions may change only module/runtime/native fixture data locations.
 
-Actual five-family participant staging and operational adoption remain separate,
-including a genuine local-only complete recovery coordinator. Complete provider
+Actual five-family participant staging and operational adoption remain separate.
+The [complete local-only coordinator](INDEPENDENT_PARTICIPANT_RECOVERY.md) now
+exists, but its resources are not automatically adopted into this catalog. Complete provider
 and client/outbox reconciliation, every historic copy's disposition, fresh
 authenticated activation and sustainable Undo retention remain required. No public
 room API or V1 release gate is promoted by this data component.

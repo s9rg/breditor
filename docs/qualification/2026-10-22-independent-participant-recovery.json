@@ -1,0 +1,141 @@
+{
+  "format": "breditor/complete-independent-local-recovery-qualification",
+  "formatVersion": 1,
+  "qualifiedDate": "2026-10-22",
+  "calendarTimeZone": "America/Toronto",
+  "passed": true,
+  "source": {
+    "commit": "9602f05273501bbd17443fc99209ed6d0b3b3c1c",
+    "dirty": true,
+    "sha256": "8fde55c453cfed952ef3903aab4b68eb510df6d97961c40e47a05f0e3b7c4e1c",
+    "files": 5704,
+    "bytes": 46451603
+  },
+  "nonDocumentation": {
+    "files": 5096,
+    "sha256": "a38b88ac33e6a7ad3062008ebcb876b1babb1d8739a406b056946bfdc8afcc85"
+  },
+  "selection": {
+    "functionalPlanChecks": 304,
+    "uniquePassingPlanChecks": 38,
+    "wholePlanExecuted": false,
+    "sourceUnchangedDuringFinalRuns": true,
+    "postQualificationChanges": "Repository documentation only; implementation, assertions, candidate plan and packaged README retain the nonDocumentation fingerprint.",
+    "manifests": [
+      "target/v1-candidate-runs/run-yqvgLt/result.json",
+      "target/v1-candidate-runs/run-jFRx6a/result.json",
+      "target/v1-candidate-runs/run-RLhCGl/result.json",
+      "target/v1-candidate-runs/run-ZGcBRb/result.json",
+      "target/v1-candidate-runs/run-Xbwymm/result.json",
+      "target/v1-candidate-runs/run-T4Ru96/result.json"
+    ]
+  },
+  "implemented": [
+    "Public complete local-only recovery with explicit read-only native factories and no fabricated delivery companion, binding, receipt or old completed parent.",
+    "Actual native source, complete upload store and separately admitted original archive/provider transfer together; original-only pixels are not lost or inserted into uploads.",
+    "Dedicated insert-only attempt schema, bounded count-before-value reads, exact native cut inspection, explicit cold resume and non-overwriting interrupted-commit reconciliation.",
+    "Reservation before authority callbacks, pinned native/factory/storage context, real cleanup retry custody, reentrant finish/close protection and callback-free final source-stamp checks.",
+    "Optional runtime bootstrap signal subscribes the actual first paired write transaction to cancellation; it detaches with the temporary policy after bootstrap. Existing archive/native formats and default APIs stay unchanged."
+  ],
+  "tests": {
+    "localFocusedLawsSourceAndInstalledEach": 128,
+    "candidatePlanLaw": 1,
+    "workspaceAndDiagnosticTests": 2647,
+    "editorIntegrationTests": 385,
+    "scriptPass": 2482,
+    "scriptFail": 0,
+    "scriptSkipped": 3,
+    "skipScope": "Three existing opt-in browser checks; not platform qualification."
+  },
+  "localSourceAndInstalledEach": {
+    "nativeCompilers": 5,
+    "selectionRangeScopes": 3,
+    "capabilityMasks": 2,
+    "documentReviewHistoryPairs": 4,
+    "pixelLayouts": 2,
+    "cases": 240,
+    "archiveOnlyCases": 120,
+    "handoffs": 480,
+    "coldResumes": 240,
+    "originalCopiesTransferred": 480,
+    "originalFileComparisons": 480,
+    "wholeUploadComparisons": 480,
+    "archiveOnlyPixelComparisons": 240,
+    "localVersionComparisons": 480,
+    "futureNativePairs": 720,
+    "readOnlyRefusals": 960,
+    "deliveryFamilyRefusals": 480,
+    "oldGrantClosures": 480,
+    "networkCalls": 0
+  },
+  "lateNativeCancellationRepair": {
+    "before": {"failed": 4, "committedNativeHeadsEach": 1},
+    "after": {"passed": 4, "failed": 0, "committedNativeHeadsEach": 0, "committedNativeFilesEach": 0},
+    "regressionFile": "scripts/independent-recovery-policy.test.mjs",
+    "unchangedRegressionSha256": "fbe7f7959d49932e967945ee94da3f93e078d207d449ba4f0ff0bbe7addf3448",
+    "scope": "Four independent history pairs with normal standard-V3 native owners. Abort fires on the last head request success before transaction completion. The original assertions remain unchanged and also run in the full installed law set.",
+    "controlledRebuild": {
+      "qualified": false,
+      "expectedFailures": 4,
+      "committedNativeHeadsEach": 1,
+      "entireEarlierDirtyTreeReconstructed": false,
+      "scope": "Same final local participant/installed assertions, rebuilt with the actual recorded earlier native bootstrap files and matching delivery compatibility call. This causal control reproduces the missing subscription without editing the qualified candidate."
+    }
+  },
+  "compatibility": {
+    "localCaptureCasesSourceAndInstalledEach": 80,
+    "deliveryFocusedLawsSourceAndInstalledEach": 131,
+    "deliveryRecoveryCutsEach": 256,
+    "deliveryHandoffsEach": 512,
+    "deliveryWholeUploadComparisonsEach": 512,
+    "deliveryRetainedOriginalFilesEach": 512,
+    "deliveryReadOnlyRefusalsEach": 1024,
+    "deliveryFreshPolicyReopensEach": 256,
+    "heldAssetInstalledLaws": 78,
+    "nativeOwnerInstalledLaws": 32,
+    "nativeOriginInstalledLaws": 22,
+    "deliverySemanticResultsMatchExactly": true,
+    "deliveryPollTotals": "Timing-dependent authors/advanced/observer wireRequests values remain independently retained in complete raw reports and the evidence index. No canonical assertion or fixed case domain is changed."
+  },
+  "installedEvidence": {
+    "freshConsumers": 6,
+    "matchingArchiveSha256": {
+      "@breditor/browser": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+      "@breditor/experimental-rich-content": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad",
+      "@breditor/collaboration": "697a95aaf4d208403fc85df37fa97b15c4468225bac433b3a6be47ff9f23d393"
+    },
+    "workspaceLinks": false,
+    "strictPublicTypes": true,
+    "offlineRegistryIntegrityChecked": true,
+    "localFullProbeByteIdentical": true,
+    "localAssertionChanges": "Reversible module/runtime/native fixture locations only.",
+    "productionBundleExcludesWorkspaceReactAndSyntheticStorage": true
+  },
+  "nativeAndCarriedEvidence": {
+    "normalRuntimeFilesRetained": 12,
+    "unchangedRustSourceAndManifestInputs": 2857,
+    "normalSharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "normalRichWasmSha256": "bc020ce07ed80600b85735c1e592d5ae163d921f5556fef05269a12bc1d59ec5",
+    "fullRustSuitesFreshlyExecuted": false,
+    "unchangedCatalogDataReaderModules": 9,
+    "freshFocusedCatalogContracts": true,
+    "fullCatalogMatricesFreshForThisChange": false
+  },
+  "retained": {
+    "index": "target/independent-local-recovery-final-XM2kIR/index.json",
+    "sha256": "4e7ec743f29d6c1fe6894f4f14bdfa613b5c25e4160a90054285e37968fa37cb",
+    "files": 245,
+    "includes": "Terminal manifests/logs, six actual offline consumers and matching archives, source inventories, original unchanged cancellation failures, repaired runs, isolated causal build inputs/outputs, normal native files and changed source."
+  },
+  "remaining": [
+    "Integrate actual five-family native participant staging/adoption and explicit local operation provenance without reinterpreting existing graph formats.",
+    "Reconcile every retained client copy, provider asset and pending/outbox record before freshly authenticated whole-room activation.",
+    "Provide sustainable native history retention preserving Undo and offline work; generation seals do not lift the existing Undo ceiling.",
+    "Complete the remaining feature-parity catalog and all thirteen V1 release gates."
+  ],
+  "historicalWebKitOrRasterRepair": false,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "versionChanged": false,
+  "pushed": false
+}

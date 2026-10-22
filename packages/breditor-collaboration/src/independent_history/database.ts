@@ -3,6 +3,7 @@ import {SharedEditorError} from '../core.js';
 import {readIndependentHistoryHead,joinIndependentHistoryLane,makeIndependentHistoryCut} from './cut.js';
 import type {IndependentHistoryCut,IndependentHistoryStoredCut,IndependentHistoryFile,IndependentHistoryHead} from './contract.js';
 import type {IndependentHistoryCompanion} from './driver.js';
+import {onIndependentBootstrapAbort} from './bootstrap_policy.js';
 const fail=(message:string)=>new SharedEditorError('independent_history_storage',message);
 const references=(head:IndependentHistoryHead)=>(['document','review'] as const).flatMap(lane=>{const selected=head[lane];return selected.kind==='original'?[]:[selected.root,...selected.sealed].map((reference,index)=>({lane,...reference,kind:index===0?'root' as const:'sealed' as const}));});
 const stores=(companion?:IndependentHistoryCompanion)=>companion?.storage==='restored-operation-v1'?['restored_operation_history_files','restored_operation_history_heads'] as const:companion?.storage==='operation-v1'?['operation_history_files','operation_history_heads'] as const:companion?['delivery_history_files','delivery_history_heads'] as const:['history_files','history_heads'] as const;
@@ -37,12 +38,16 @@ export async function readIndependentHistoryCut(db:IDBDatabase,key:readonly[stri
  return{...checked,head:stored.head,documentCheckpoint,reviewCheckpoint,record};
 }
 /** Lost acknowledgements retry exactly, before newer cuts. An acknowledged missing file is never repaired. */
-export function writeIndependentHistoryCut(db:IDBDatabase,key:readonly[string,string],expected:string|null,cut:IndependentHistoryCut,companion?:IndependentHistoryCompanion,checkCurrent?:()=>void):Promise<void>{
+export function writeIndependentHistoryCut(db:IDBDatabase,key:readonly[string,string],expected:string|null,cut:IndependentHistoryCut,companion?:IndependentHistoryCompanion,checkCurrent?:()=>void,signal?:AbortSignal):Promise<void>{
  try{checkCurrent?.();const head=(companion?.readHead??readIndependentHistoryHead)(cut.head),refs=references(head);if(head.identity.native.room!==key[0]||head.identity.native.writer!==key[1]||cut.files.length!==refs.length||cut.files.some((file,index)=>{const ref=refs[index]!;return file.lane!==ref.lane||file.generation!==ref.generation||file.sha256!==ref.sha256||file.kind!==ref.kind||typeof file.json!=='string';}))throw fail('Wrong paired head or native file set');checkCurrent?.();}catch(error){return Promise.reject(error);}
  return new Promise((resolve,reject)=>{
-  const [filesName,headsName]=stores(companion),tx=db.transaction([filesName,headsName],'readwrite'),heads=tx.objectStore(headsName),files=tx.objectStore(filesName),request=heads.get([...key]);let failure:unknown;
-  const abort=(error:unknown)=>{failure=error;tx.abort();};
-  request.onsuccess=()=>{try{checkCurrent?.();const actual=request.result===undefined?null:request.result,already=actual===cut.head;if(!already&&actual!==expected)throw fail('Paired head changed since its last acknowledgement');let left=cut.files.length;const publish=()=>{checkCurrent?.();if(!already){if(expected===null)heads.add(cut.head,[...key]);else heads.put(cut.head,[...key]);}checkCurrent?.();};if(left===0){publish();return;}for(const file of cut.files){const fileKey=[...key,file.lane,file.generation],json=JSON.stringify(file),read=files.get(fileKey);read.onsuccess=()=>{try{checkCurrent?.();if(read.result!==undefined&&read.result!==json)throw fail('Immutable native file already has different bytes in this lane');if(read.result===undefined){if(already)throw fail('An acknowledged cut lost a native file; refusing silent repair');files.add(json,fileKey);}if(--left===0)publish();}catch(error){abort(error);}};}}catch(error){abort(error);}};
-  tx.oncomplete=()=>resolve();tx.onabort=()=>reject(failure??tx.error??fail('Paired-history commit aborted'));
+  let tx:IDBTransaction|undefined,failure:unknown,settled=()=>{};const aborted=()=>new SharedEditorError('independent_history_aborted','The native bootstrap save was cancelled before it committed'),abort=(error:unknown)=>{failure??=error;try{tx?.abort();}catch{/* A completed commit is retained for exact readback. */}};
+  try{
+   settled=onIndependentBootstrapAbort(signal,()=>abort(aborted()));checkCurrent?.();if(signal?.aborted||failure)throw failure??aborted();
+   const [filesName,headsName]=stores(companion),active=db.transaction([filesName,headsName],'readwrite');tx=active;
+   active.oncomplete=()=>{settled();resolve();};active.onabort=()=>{settled();reject(failure??active.error??fail('Paired-history commit aborted'));};
+   checkCurrent?.();if(signal?.aborted||failure)throw failure??aborted();const heads=active.objectStore(headsName),files=active.objectStore(filesName),request=heads.get([...key]);
+   request.onsuccess=()=>{try{checkCurrent?.();const actual=request.result===undefined?null:request.result,already=actual===cut.head;if(!already&&actual!==expected)throw fail('Paired head changed since its last acknowledgement');let left=cut.files.length;const publish=()=>{checkCurrent?.();if(!already){if(expected===null)heads.add(cut.head,[...key]);else heads.put(cut.head,[...key]);}checkCurrent?.();};if(left===0){publish();return;}for(const file of cut.files){const fileKey=[...key,file.lane,file.generation],json=JSON.stringify(file),read=files.get(fileKey);read.onsuccess=()=>{try{checkCurrent?.();if(read.result!==undefined&&read.result!==json)throw fail('Immutable native file already has different bytes in this lane');if(read.result===undefined){if(already)throw fail('An acknowledged cut lost a native file; refusing silent repair');files.add(json,fileKey);}if(--left===0)publish();}catch(error){abort(error);}};}}catch(error){abort(error);}};
+  }catch(error){if(tx)abort(error);else{settled();reject(error);}}
  });
 }

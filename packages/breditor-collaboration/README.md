@@ -55,6 +55,14 @@ current host authority for capture and explicit native replay/current permission
 for recovery; it does not activate a room or relabel old archive families. See
 [the independent participant contract](../../docs/INDEPENDENT_PARTICIPANT_BACKUP.md).
 
+Complete local-only archives restore through `SharedIndependentParticipantRecovery`
+with explicit native factories, current authority and read-only staging in both
+lanes. Handoff transfers the actual source, whole upload store and original
+archive/provider together, including pixels absent from uploads. Native bootstrap
+cancellation is wired to its real first-save transaction; interrupted committed
+cuts remain for exact retry. No delivery binding or room activation is inferred.
+See [complete local recovery](../../docs/INDEPENDENT_PARTICIPANT_RECOVERY.md).
+
 `SharedPersistentSession.exportBackup()` captures exact native history, including
 Redo, without a save or publication. Paired `SharedReviewPersistentSession`
 archives also retain comments, local version packets and selected nonsecret

@@ -43,6 +43,35 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [complete local participant coordinator](INDEPENDENT_PARTICIPANT_RECOVERY.md)
+now restores both genuine native histories, the whole upload store and the exact
+incoming archive/provider together. Original-only image bytes survive handoff
+without being lost or added to the upload queue. First ownership is read-only
+in both lanes; no delivery binding or old completed owner is fabricated.
+
+Its [selected qualification](qualification/2026-10-22-independent-participant-recovery.json)
+passes 38 checks from the 304-check plan. Source and fresh offline packages each
+pass 128 focused laws and all 240 native cases, including 480 handoffs, 240 cold
+resumes and 720 future history comparisons after offline peer edits. Six actual
+consumers pin matching archives. Existing capture's two 80-case matrices and
+delivery recovery's two 512-handoff workflows pass; delivery's 131 focused laws
+include four new cancellation boundaries.
+
+A real native-save cancellation gap is repaired: Abort after the last head
+request succeeded could still commit before the returned-owner check noticed.
+The four original failing assertions now pass unchanged with zero heads/files;
+an isolated rebuild of the prior bootstrap implementation reproduces all four
+commits again. The actual first paired transaction now subscribes to its selected
+signal and detaches it after completion. Native code and protocol bytes are
+unchanged. Workspace/diagnostic tests pass 2,647, editor tests 385 and script tests
+2,482, with three existing opt-in skips; full Rust suites are not freshly rerun.
+
+Next is actual five-family participant staging/adoption and explicit local
+operation provenance, then complete retained-copy/provider/client reconciliation
+and freshly authenticated whole-room activation. Sustainable native Undo/offline
+retention and the remaining parity catalog also remain required. All thirteen
+V1 gates stay open; no version, push, publication or deployment is promoted.
+
 The [independent recovery write-policy repair](INDEPENDENT_RECOVERY_WRITE_POLICY.md)
 now checks current authority on actual native bootstrap/schema/first-save
 boundaries and uses held, guarded upload import. It closes two reproduced gaps:
@@ -62,11 +91,10 @@ consumer retains the failures. Workspace/diagnostic tests pass 2,647, editor tes
 385 and script tests 2,349, with three existing opt-in skips. Native code and
 runtime bytes remain unchanged; full Rust suites are not freshly rerun.
 
-Next is a genuine complete local-only recovery coordinator and actual five-family
-participant staging. Retained-copy/provider reconciliation, authenticated whole-room
-activation and sustainable Undo/offline history remain architectural requirements.
-This repair does not close those capabilities, remaining feature parity or any of
-the thirteen V1 gates. No version, push, publication or deployment is promoted.
+The complete local-only coordinator is now qualified separately above. Actual
+five-family participant staging, retained-copy/provider reconciliation,
+authenticated activation and sustainable Undo/offline history remain required.
+The first write-policy repair did not close those capabilities or V1 readiness.
 
 The private [five-family physical catalog](PHYSICAL_ROOM_CATALOG_V2.md) now
 durably retains original, generation, independent-local, independent-delivery
@@ -89,8 +117,8 @@ gaps: native history and uploads can commit after current policy ends inside
 their respective admission work. An isolated source repair passes the same
 regressions, all 127 expanded laws and the full 512-handoff workflow, but was not
 integrated or production-qualified by that catalog checkpoint. The subsequent
-repair is qualified separately above. Complete local-only participant recovery,
-provider/client reconciliation, authenticated activation and sustainable Undo
+repair and complete local-only recovery are qualified separately above.
+Provider/client reconciliation, authenticated activation and sustainable Undo
 retention remain required. No editable room adoption or V1 gate is promoted.
 
 The [independent participant inventory](INDEPENDENT_PARTICIPANT_INVENTORY.md)

@@ -1,5 +1,23 @@
 # V1 candidate checks
 
+Both profiles require `independent-recovery-contracts`,
+`independent-recovery-type-fence`, `independent-recovery` and
+`installed-independent-recovery`. The
+[complete local contract](INDEPENDENT_PARTICIPANT_RECOVERY.md) transfers actual
+native/original-provider/upload owners without inventing a delivery binding.
+Its [selected qualification](qualification/2026-10-22-independent-participant-recovery.json)
+passes 38 checks from the 304-check plan. Source/fresh packages each repeat 128
+laws and the fixed full 240-case native matrix, including 480 handoffs, 240 cold
+resumes and 720 future history pairs. Six consumers pin matching archives; old
+local capture and delivery recovery source/installed matrices also pass.
+
+Four unchanged regressions prove the native late-cancellation repair; an isolated
+rebuild with the recorded previous bootstrap implementation reproduces them.
+Delivery's focused set now has 131 laws, including the same four transaction
+boundaries. Original formats/defaults and normal native bytes stay unchanged.
+Whole-room adoption, provider/client reconciliation, authenticated activation,
+sustainable history and all thirteen V1 gates remain open.
+
 The existing `independent-delivery-recovery-contracts`,
 `independent-delivery-recovery-type-fence`, `independent-delivery-recovery` and
 `installed-independent-delivery-recovery` now include the
