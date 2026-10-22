@@ -1,5 +1,24 @@
 # V1 candidate checks
 
+Both profiles require `independent-local-origin-contracts`,
+`independent-local-origin-type-fence`, `independent-local-origin` and
+`installed-independent-local-origin`. The private
+[local native-origin contract](INDEPENDENT_LOCAL_NATIVE_ORIGIN.md) preserves
+local source meanings while verifying actual document/comment ancestry and
+immutable local versions before autosave and later persistence. It explicitly
+forwards temporary bootstrap policy, refuses incompatible private companions and
+subscribes both selected first-write cancellation scopes.
+
+Its [selected qualification](qualification/2026-10-22-independent-local-native-origin.json)
+passes 39 checks from the 308-check plan. Source/fresh packages each pass 37 laws
+and all 480 native cases, with 960 cold opens and 1,440 future history pairs.
+Three development composition failures pass unchanged after the repair; an
+isolated installed build with the recorded prior policy files reproduces them.
+Existing source/installed delivery-origin, local recovery, capture and full
+delivery-recovery workflows pass too. Six actual consumers pin matching archives.
+This is not the whole candidate plan, a historical released-package bug claim,
+five-family native adoption, sustainable history or V1 approval.
+
 Both profiles require `independent-recovery-contracts`,
 `independent-recovery-type-fence`, `independent-recovery` and
 `installed-independent-recovery`. The

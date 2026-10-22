@@ -43,6 +43,34 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The private [local native-origin prerequisite](INDEPENDENT_LOCAL_NATIVE_ORIGIN.md)
+now verifies both native ancestries before first autosave and every later local
+persistence capture. It retains local source/schema meanings and readable unsaved
+work without inventing a delivery binding. Temporary bootstrap policy is forwarded
+explicitly; incompatible private companions refuse, and both selected signals
+subscribe to the first actual native write rather than replacing one another.
+
+Its [selected qualification](qualification/2026-10-22-independent-local-native-origin.json)
+passes 39 checks from the 308-check plan. Source/fresh packages each repeat 37
+focused laws and the full 480-case policy domain, including 960 cold opens and
+1,440 future history comparisons. Three development-only composition failures
+have unchanged passing assertions; rebuilding an isolated installed consumer with
+the recorded three pre-repair policy files reproduces them. This is not a defect
+claim about an older released package.
+
+Existing delivery-origin matrices each pass 640 cases, complete local recovery
+240 cases and local capture 80 cases. Both full delivery-recovery workflows pass
+512 handoffs with 131 focused laws. Six fresh consumers pin matching archives.
+Workspace/diagnostic tests pass 2,647, editor tests 385 and script tests 2,520,
+with three existing opt-in browser skips. Twelve normal native files and 2,857
+Rust/manifest inputs are unchanged; full Rust suites are not freshly rerun.
+
+Actual five-family native staging/adoption, complete local operational ownership,
+all retained-copy/provider/client reconciliation, authenticated activation and
+sustainable Undo/offline retention remain required. Native proof and read-only
+readiness are not those capabilities. All thirteen V1 gates remain open; no
+version change, push or publication is promoted.
+
 The [complete local participant coordinator](INDEPENDENT_PARTICIPANT_RECOVERY.md)
 now restores both genuine native histories, the whole upload store and the exact
 incoming archive/provider together. Original-only image bytes survive handoff

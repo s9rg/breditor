@@ -63,6 +63,13 @@ cancellation is wired to its real first-save transaction; interrupted committed
 cuts remain for exact retry. No delivery binding or room activation is inferred.
 See [complete local recovery](../../docs/INDEPENDENT_PARTICIPANT_RECOVERY.md).
 
+Internal room work also has a separately selected local-only native-origin guard
+for future autosaves. It verifies both genuine history ancestries and retained
+versions without changing local source/schema meanings or inventing a delivery
+binding. Its lifetime authority/signal is distinct from temporary recovery
+bootstrap policy. It is not a public completed operation owner or room activation
+API. See [local native origins](../../docs/INDEPENDENT_LOCAL_NATIVE_ORIGIN.md).
+
 `SharedPersistentSession.exportBackup()` captures exact native history, including
 Redo, without a save or publication. Paired `SharedReviewPersistentSession`
 archives also retain comments, local version packets and selected nonsecret

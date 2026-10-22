@@ -1,0 +1,135 @@
+{
+  "format": "breditor/independent-local-native-origin-qualification",
+  "formatVersion": 1,
+  "qualifiedDate": "2026-10-22",
+  "calendarTimeZone": "America/Toronto",
+  "passed": true,
+  "source": {
+    "commit": "50a157e372dc41a099f2197c2ee705de347ccbda",
+    "dirty": true,
+    "sha256": "430098ffe2c0b955ab08f00b157aa0f2ac9d9e49b7b3f5609eb9515d85fc24b0",
+    "files": 5717,
+    "bytes": 46531487
+  },
+  "nonDocumentation": {
+    "files": 5107,
+    "sha256": "e06c8d6f56453ae76976685dee2f9a06e40c9faa00e7b701714414bf26ab0995"
+  },
+  "selection": {
+    "functionalPlanChecks": 308,
+    "uniquePassingPlanChecks": 39,
+    "wholePlanExecuted": false,
+    "sourceUnchangedDuringFinalRuns": true,
+    "postQualificationChanges": "Repository documentation only; source, assertions, plan and packaged README retain the nonDocumentation fingerprint.",
+    "manifests": [
+      "target/v1-candidate-runs/run-7mX1nr/result.json",
+      "target/v1-candidate-runs/run-OZthhM/result.json",
+      "target/v1-candidate-runs/run-4FXi6Y/result.json",
+      "target/v1-candidate-runs/run-bp3tCP/result.json",
+      "target/v1-candidate-runs/run-CE5UJp/result.json",
+      "target/v1-candidate-runs/run-wAzXiF/result.json"
+    ]
+  },
+  "implemented": [
+    "Private genuine local-only native origin: actual original or segmented document and independently selected comment replay, with original versions and no author lease or fabricated delivery binding.",
+    "Lifetime native ancestry/current-authority verification on the actual local source before autosave, later persistence capture and paired write callbacks, while readable unsaved exports remain local-only.",
+    "Factory/native policy snapshots before host callbacks, canonical native/archive dispatch, genuine private origin selection and explicit incompatible-companion refusal.",
+    "Explicit temporary-bootstrap policy forwarding and independent temporary/lifetime cancellation subscriptions on the actual first write. Later saves retain the lifetime origin policy, not an obsolete bootstrap grant.",
+    "Unchanged native/source formats, ordinary defaults, exact lost-acknowledgement retries, local version append semantics and borrowed original-provider lifetime."
+  ],
+  "tests": {
+    "focusedLawsSourceAndInstalledEach": 37,
+    "candidatePlanLaw": 1,
+    "workspaceAndDiagnosticTests": 2647,
+    "editorTests": 385,
+    "scriptPass": 2520,
+    "scriptFail": 0,
+    "scriptSkipped": 3,
+    "skipScope": "Three existing opt-in browser checks; not platform qualification."
+  },
+  "sourceAndInstalledEach": {
+    "nativeCompilers": 5,
+    "selectionScopes": 3,
+    "capabilityMasks": 8,
+    "independentHistoryPairs": 4,
+    "cases": 480,
+    "nativeOrigins": 480,
+    "coldSources": 960,
+    "futureNativePairs": 1440,
+    "localVersionComparisons": 960,
+    "appendVersionComparisons": 480,
+    "readOnlyRefusals": 960,
+    "localFamilyCaptures": 960,
+    "deliveryFamilyRefusals": 960,
+    "originalProviderComparisons": 960,
+    "originDisposalPreservesOriginalProviders": 480,
+    "networkCalls": 0
+  },
+  "compositionRepair": {
+    "developmentBefore": {"passed": 1, "failed": 3},
+    "fixed": {"passed": 4, "failed": 0},
+    "isolatedInstalledControl": {"qualified": false, "passed": 1, "failed": 3},
+    "unchangedRegression": {
+      "path": "scripts/independent-local-native-origin-composition.test.mjs",
+      "sha256": "f90a049f2c5874ab7b3dc264664b1fd7cf9dc2445e3f34c44cc413a9e531cc36"
+    },
+    "scope": "The control restores only the three actual retained development-before private policy files into a fresh isolated current consumer build; it is not an entire earlier tree reconstruction or a defect claim about an older released package."
+  },
+  "compatibility": {
+    "deliveryNativeOriginCasesEach": 640,
+    "deliveryNativeOriginFocusedLawsEach": 22,
+    "completeLocalRecoveryCasesEach": 240,
+    "completeLocalRecoveryFocusedLawsEach": 128,
+    "localCaptureCasesEach": 80,
+    "deliveryRecoveryFocusedLawsEach": 131,
+    "deliveryRecoveryCutsEach": 256,
+    "deliveryRecoveryHandoffsEach": 512,
+    "deliveryReadOnlyRefusalsEach": 1024,
+    "deliveryFreshPolicyReopensEach": 256,
+    "nativeOwnerInstalledLaws": 32,
+    "semanticSourceAndInstalledResultsMatch": true,
+    "deliveryPollTotals": "Only timing-dependent authors/advanced/observer wireRequests values are retained separately as raw telemetry. The original fixed case domains and assertions are unchanged."
+  },
+  "installedEvidence": {
+    "freshConsumers": 6,
+    "matchingArchiveSha256": {
+      "@breditor/browser": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+      "@breditor/experimental-rich-content": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad",
+      "@breditor/collaboration": "d06841d47a1345a972542c61098fdc86050661b436034133eca58634efaa62e5"
+    },
+    "workspaceLinks": false,
+    "strictPublicTypes": true,
+    "offlineRegistryIntegrityChecked": true,
+    "fullLocalProbeByteIdentical": true,
+    "localAssertionChanges": "Reversible module/runtime/native fixture locations only.",
+    "productionBundleExcludesWorkspaceReactAndSyntheticStorage": true
+  },
+  "nativeAndCarriedEvidence": {
+    "normalRuntimeFiles": 12,
+    "unchangedRustSourceAndManifestInputs": 2857,
+    "normalSharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "normalRichWasmSha256": "bc020ce07ed80600b85735c1e592d5ae163d921f5556fef05269a12bc1d59ec5",
+    "fullRustSuitesFreshlyExecuted": false,
+    "unchangedCatalogDataReaderModules": 9,
+    "freshFocusedCatalogContracts": true,
+    "fullCatalogMatricesFreshForThisChange": false
+  },
+  "retained": {
+    "index": "target/independent-local-origin-final-mQdy8L/index.json",
+    "sha256": "7be719445e7fca834f67ca5e68de5ae50bfcc679a45167c585db8e89e5142677",
+    "files": 232,
+    "includes": "Terminal logs/manifests, six actual offline consumers and matching archives, full source inventory, unchanged development failures/repaired assertions, isolated causal control source/compiled files and normal native bytes."
+  },
+  "remaining": [
+    "Complete actual local operational parent/source/provider lifetime ownership and explicit native provenance, not a readiness-shaped record or delivery reinterpretation.",
+    "Integrate actual five-family native participant staging/adoption with namespace/context custody and exact retained-copy/client/outbox/provider reconciliation.",
+    "Implement freshly authenticated whole-room activation without invented historic bindings or receipts.",
+    "Provide sustainable native Undo/offline retention; generation seals do not lift the retained-Undo ceiling.",
+    "Complete the remaining feature-parity catalog and all thirteen V1 release gates."
+  ],
+  "historicalWebKitOrRasterRepair": false,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "versionChanged": false,
+  "pushed": false
+}
