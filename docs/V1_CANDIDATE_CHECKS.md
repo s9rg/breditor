@@ -1,12 +1,18 @@
 # V1 candidate checks
 
+Both profiles require `native-owner-lifetime-contracts` and
+`installed-native-owner-lifetime`. The [lifetime contract](NATIVE_OWNER_LIFETIME.md)
+reserves native ownership before callbacks and distinguishes factory cleanup from
+an editor's own disposal. The same 32 laws run in source and fresh offline
+installed packages. The functional plan has 272 checks; no V1 gate is closed.
+
 Both profiles require `independent-operation-lineage-contracts`,
 `independent-operation-lineage-type-fence`, `independent-operation-lineage` and
 `installed-independent-operation-lineage`. The private
 [lineage data family](INDEPENDENT_OPERATION_LINEAGE.md) keeps exact restore inputs
 and later states in a flat content-addressed file. The same 29 laws and
 byte-identical full 640-case probe run in source and fresh installed packages.
-The functional plan has 270 checks. Durable restore/source ownership and room
+The functional plan at that lineage checkpoint had 270 checks. Durable restore/source ownership and room
 activation remain required.
 
 Both profiles require `independent-operation-portable-contracts`,

@@ -1,4 +1,5 @@
 import {retireOwnedCore,disposeOwnedCore} from '../owned_core_lifetime.js';
+import {freeUnclaimedSharedRustOwner} from '../raw_owner_lifetime.js';
 import {managedCoreRetainedRevisions} from '../managed_custody.js';
 import {SharedRichEditor,SharedEditorError,createSharedDocumentEditor} from "../core.js";
 import type {SharedRustOwner,SharedSelectionPolicy,SharedRangePolicy,SharedHistoryPolicy,SharedEditorOptions} from "../types.js";
@@ -108,7 +109,7 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
   const options:SessionOptions<Q>={...input,review:{...input.review},...(input.relay?{relay:reviewStorageIdentity(input.relay)}:{}),...(reviewed?{reviewedHistory:reviewed}:{}),...(search?{searchHistory:"search-v1"}:{})};
   if(options.relay?.reviewEditing==="read_only"&&options.review.access!=="read_only")throw new SharedEditorError("review_observer_policy","A fixed metadata observer must start with read-only native policy");
   if(![1,2,3].includes(options.richLanguage)||(options.history!=="explicit"&&options.history!=="typing-v1")||(options.rangeEditing!=="original"&&options.rangeEditing!=="general-v1")||(options.selectionEditing!=="original"&&options.selectionEditing!=="document-v1")||(options.selectionEditing==="document-v1"&&options.rangeEditing!=="general-v1"))throw new SharedEditorError("review_session_policy","Explicit compatible review session policies are required");
-  const documentLease=await SharedWriterLease.acquire(options.room,options.writer);let reviewLease:ReviewWriterLease|undefined,db:IDBDatabase|undefined,core:SharedRichEditor<Q>|undefined,nativeBackupAdmission=false;
+  const documentLease=await SharedWriterLease.acquire(options.room,options.writer);let reviewLease:ReviewWriterLease|undefined,db:IDBDatabase|undefined,core:SharedRichEditor<Q>|undefined,raw:SharedRustOwner|undefined,nativeBackupAdmission=false;
   try{
    reviewLease=await ReviewWriterLease.acquire(options.room,options.review.actor);const retained=recoveryOrigin?await existingSessionDatabase(options.database,[options.room,options.writer],"review_open_versionchange"):undefined;db=retained?.db??await openSessionDatabase(options.database);
    const opening=retained?.opening??fenceOpeningDatabase(db,"review_open_versionchange");
@@ -122,7 +123,7 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
    if(saved&&(saved.reviewActor!==options.review.actor||saved.principal!==options.review.principal||saved.history!==options.history||saved.rangeEditing!==options.rangeEditing||saved.selectionEditing!==options.selectionEditing||saved.richLanguage!==options.richLanguage))throw new SharedEditorError("review_session_identity","Stored review identity/policies do not match the explicitly leased session");
    const selected:SharedReviewSessionPolicy<Q>={history:options.history,rangeEditing:options.rangeEditing,selectionEditing:options.selectionEditing,richLanguage:options.richLanguage};
    nativeBackupAdmission=!!backup;
-   const raw=opening.admit(await(saved?restoreSaved.call(options,saved.documentCheckpointJson,Object.freeze(selected)):options.create()));
+   raw=opening.admit(await(saved?restoreSaved.call(options,saved.documentCheckpointJson,Object.freeze(selected)):options.create()));
    const editor={...options.editor,...(reviewed?{reviewedHistory:reviewed}:{}),...(search?{searchHistory:"search-v1" as const}:{}),...(options.onError&&!options.editor?.onError?{onError:options.onError}:{})};
    // The immutable constructor branch and stored policy check above establish the generic family.
    core=(options.selectionEditing==="document-v1"?createSharedDocumentEditor(raw,editor):new SharedRichEditor<"original">(raw,editor)) as unknown as SharedRichEditor<Q>;
@@ -136,7 +137,10 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
    opening.assertCurrent();const session=new SharedReviewPersistentSession(constructionKey,db,documentLease,reviewLease,core,options,saved!==null,saved?.versions??[],saved&&"progress" in saved?saved.progress??undefined:undefined);nativeBackupAdmission=false;
    if(backup){try{const record=session.#record();session.#checkRecord(record);if(JSON.stringify(record)!==backup.recordJson)throw new SharedEditorError("backup_native_replay","Native paired replay did not preserve the exact canonical histories/catalog");await insertBackupRecord(db,[options.room,options.writer],record);if(session.#failure)throw session.#failure;session.#saved=backup.recordJson;return session;}catch(error){await session.discardAndClose();throw error;}}
    session.save();try{await session.flush();}catch(error){await session.discardAndClose();throw error;}return session;
-  }catch(error){core&&disposeOwnedCore(core);db?.close();try{await reviewLease?.close();}finally{await documentLease.close();}if(nativeBackupAdmission&&!(error instanceof SharedEditorError&&error.code==="review_open_versionchange"))throw new SharedEditorError("backup_native_replay","Matching native paired replay rejected the backup");throw error;}
+  }catch(error){
+   try{if(core)disposeOwnedCore(core);}finally{try{if(raw)freeUnclaimedSharedRustOwner(raw);}finally{db?.close();try{await reviewLease?.close();}finally{await documentLease.close();}}}
+   if(nativeBackupAdmission&&!(error instanceof SharedEditorError&&error.code==="review_open_versionchange"))throw new SharedEditorError("backup_native_replay","Matching native paired replay rejected the backup");throw error;
+  }
  }
  #live():void{if(this.#closed)throw new SharedEditorError("review_session_closed","The paired review session is closed");this.#documentLease.assertLive();this.#reviewLease.assertLive();}
  /** A readable public replacement cannot become the owner of this atomic native pair. */

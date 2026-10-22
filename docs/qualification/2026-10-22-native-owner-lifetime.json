@@ -1,0 +1,194 @@
+{
+  "format": "breditor/native-owner-lifetime-functional-qualification",
+  "formatVersion": 1,
+  "qualifiedDate": "2026-10-22",
+  "calendarTimeZone": "America/Toronto",
+  "passed": true,
+  "source": {
+    "commit": "e7a6c3d5a31f6684c9032d1fa5888bf26f344f08",
+    "dirty": true,
+    "sha256": "cab35e28e40e724beb097690156f8aefd5628081a16caa905e8d06066c92d251",
+    "files": 5561,
+    "bytes": 45649287
+  },
+  "nonDocumentation": {
+    "files": 4973,
+    "sha256": "b37edab74f67991b551c5bc2e945d24088166877f51705037a6116d011cce16d"
+  },
+  "selection": {
+    "functionalPlanChecks": 272,
+    "uniquePassingPlanChecks": 32,
+    "wholePlanExecuted": false,
+    "sourceUnchangedDuringFinalRuns": true,
+    "postQualificationChanges": "Documentation only; implementation retains the nonDocumentation fingerprint.",
+    "manifests": [
+      "target/v1-candidate-runs/run-yiMjtJ/result.json",
+      "target/v1-candidate-runs/run-xrIZiD/result.json",
+      "target/v1-candidate-runs/run-yS5fWO/result.json",
+      "target/v1-candidate-runs/run-HlLy1h/result.json",
+      "target/v1-candidate-runs/run-aLlHHk/result.json"
+    ]
+  },
+  "tests": {
+    "workspaceAndDiagnosticTests": 2647,
+    "editorIntegrationTests": 385,
+    "scriptPass": 2127,
+    "scriptFail": 0,
+    "scriptSkipped": 3,
+    "sourceLifetimeLaws": 32,
+    "sourceLifetimePlanLaw": 1,
+    "installedLifetimeLaws": 32,
+    "installedLifetimeFailures": 0,
+    "installedLifetimeSkips": 0,
+    "previousSourceAndInstalledCleanupLawsEach": 26,
+    "sourceAndInstalledCleanupMatricesEach": 300,
+    "initialReadOnlyFamilies": 108,
+    "exactReadOnlyRestarts": 216,
+    "initialPolicyFutureHistoryComparisons": 432,
+    "nativeInventoryFixtures": 10,
+    "protectedParticipantRestoresAndReopensEach": 20,
+    "skipScope": "Three existing opt-in checks; no browser, accessibility or physical durability qualification."
+  },
+  "fullNativePolicyMatrices": [
+    {
+      "report": "target/independent-operation-native-origin-sdk.json",
+      "cases": 640,
+      "futureHistoryPairs": 1920
+    },
+    {
+      "report": "target/independent-operation-journal-sdk.json",
+      "cases": 640,
+      "futureHistoryPairs": 1920
+    },
+    {
+      "report": "target/independent-operation-participant-sdk.json",
+      "cases": 640,
+      "futureHistoryPairs": 1920
+    },
+    {
+      "report": "target/independent-operation-portable-sdk.json",
+      "cases": 640,
+      "futureHistoryPairs": 1920
+    },
+    {
+      "report": "target/independent-operation-lineage-sdk.json",
+      "cases": 640,
+      "futureHistoryPairs": 1920
+    },
+    {
+      "report": "target/independent-operation-native-origin-installed-consumer.json",
+      "cases": 640,
+      "futureHistoryPairs": 1920
+    },
+    {
+      "report": "target/independent-operation-journal-installed-consumer.json",
+      "cases": 640,
+      "futureHistoryPairs": 1920
+    },
+    {
+      "report": "target/independent-operation-participant-installed-consumer.json",
+      "cases": 640,
+      "futureHistoryPairs": 1920
+    },
+    {
+      "report": "target/independent-operation-portable-installed-consumer.json",
+      "cases": 640,
+      "futureHistoryPairs": 1920
+    },
+    {
+      "report": "target/independent-operation-lineage-installed-consumer.json",
+      "cases": 640,
+      "futureHistoryPairs": 1920
+    }
+  ],
+  "reproducedAndRepaired": [
+    {
+      "cause": "A read factory returning an already transferred object could make refusal cleanup free the unrelated editor that owned it.",
+      "repair": "Claim transfer before constructor callbacks; temporarily reserve initialization; failure cleanup never frees a consumed or reserved object.",
+      "beforeFailures": 1,
+      "afterPasses": 1,
+      "sameAssertions": true,
+      "assertionSha256": "cb33db6c391eb62cb0ef4317246fddd129d7fe63235619bd721dce43876541bd",
+      "oldReleasedPackageClaim": false
+    },
+    {
+      "cause": "A fresh native result was cleared from its failure scope before late editor-option preparation; a thrown getter leaked it.",
+      "repair": "Retain the result through preparation and constructor transfer; cleanup releases only an unclaimed result and database/writer owners release in finally.",
+      "beforeFailures": 1,
+      "afterPasses": 32,
+      "sameAssertions": true,
+      "assertionSha256": "f0ed09da1714cd2423a7f1718a7fa319a92faf6c0e3e35fa45bf0980ac634ec7",
+      "oldReleasedPackageClaim": false
+    }
+  ],
+  "supersededFailure": {
+    "manifest": "target/v1-candidate-runs/run-QlDkql/result.json",
+    "cause": "Read-only recovery correctly refused native fixture evidence tied to an older source snapshot.",
+    "repair": "Regenerated normal native fixtures for the exact frozen source, then reran all selected fast stages without source changes or weakened checks.",
+    "retained": true
+  },
+  "installedEvidence": {
+    "freshConsumers": 7,
+    "matchingArchiveReports": 7,
+    "lifetimeRegistryArtifacts": 45,
+    "lifetimeProductionModules": 68,
+    "workspaceLinks": false,
+    "strictPublicTypes": true,
+    "unitAssertionChanges": "Reversible module and fixture locations only.",
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "sha256": "340aa47ff8e6c41c56f35476d8d4d5c164aa63fe7470ae3d5367ff19ffd1b109"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "sha256": "aee87f9a8ddd2ae35e622872de5fca43103f9bb81d1e66126891bbdf50fd7ec0"
+      }
+    ]
+  },
+  "nativeEvidence": {
+    "baseline": "docs/qualification/2026-10-21-operation-asset-custody.json",
+    "nativeInputs": {
+      "files": 2986,
+      "sha256": "a4a716e0a6237d7c0d6122e5ab1eefc7ab02bda557cfeff9b786794c9c23d420"
+    },
+    "nativeInputsUnchanged": true,
+    "normalRuntimeFilesByteCompared": 12,
+    "normalSharedAndRichRuntimesUnchanged": true,
+    "fullRustSuitesFreshlyExecuted": false,
+    "serverEnabledTestsCarried": 379,
+    "noServerTestsCarried": 267,
+    "nativeInventoryExampleFreshlyExecuted": true,
+    "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329"
+  },
+  "retained": {
+    "index": "target/native-owner-lifetime-final-uShBaB/index.json",
+    "sha256": "10def8be4e90e023f724d0a872f398bb82f1c9d7dd835ed4beb86db3d9f71c44",
+    "files": 693
+  },
+  "scope": "Exact native object lifetime in one SDK module instance. All ten session families, failed/reentrant construction/initialization, cold restore, real pending-factory versionchange, lineage failure and genuine source/native histories. Controlled IDB/locks/raster fixtures; not arbitrary host wrappers or separately bundled SDK copies.",
+  "openReproducedStorageRisk": {
+    "cause": "Operation source and journal readers clone all stored values before refusing overfull namespaces.",
+    "actualBeforeFailures": 5,
+    "evidence": "target/storage-bounded-read-before.json",
+    "fixedInThisCheckpoint": false,
+    "isolatedRepairQualifiedAsProduct": false
+  },
+  "remaining": [
+    "Land and qualify bounded operational storage admission",
+    "Land and qualify actual held whole-upload import",
+    "Implement complete durable portable operation restore with original/input provenance and source ownership",
+    "Whole-room adoption/provider closure, independent server comment/log generations and authenticated activation",
+    "Native lifetime/resource limits, remaining feature-parity catalog and final V1 gates"
+  ],
+  "v1GatesClosed": 0,
+  "v1GatesRemainingOpen": 13,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "packageVersionChanged": false,
+  "pushedTaggedPublishedOrDeployed": false
+}

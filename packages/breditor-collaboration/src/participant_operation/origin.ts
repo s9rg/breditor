@@ -1,5 +1,6 @@
 import {SharedRichEditor,createSharedDocumentEditor,SharedEditorError} from "../core.js";
 import {initializeSharedReadOnly} from "../initialize_read_only.js";
+import {freeUnclaimedSharedRustOwner} from '../raw_owner_lifetime.js';
 import {nativeRestoreBinding} from "../native_restore_factory.js";
 import type {SharedEditorOptions,SharedRustOwner,SharedSelectionPolicy} from "../types.js";
 import type {SharedReviewedHistoryIdentity} from "../reviewed_history_types.js";
@@ -23,7 +24,7 @@ export class ParticipantOrigin {
    raw=await(binding.factory as (...args:unknown[])=>SharedRustOwner|Promise<SharedRustOwner>).call(binding.receiver,document,...(chosen.kind.includes("paired")?[policy]:chosen.kind==="document-selection"?[source.history]:chosen.kind==="search-document"?[]:[source.history,source.rangeEditing]));
    p.guard();initializeSharedReadOnly(raw,true);
    const editor:SharedEditorOptions<"original">={...(o["editor"] as SharedEditorOptions<"original">|undefined),...(o["reviewedHistory"]?{reviewedHistory:o["reviewedHistory"] as SharedReviewedHistoryIdentity}:{}),...(source.searchHistory?{searchHistory:"search-v1" as const}:{})};
-   const owned=raw;raw=undefined;
+   const owned=raw;
    core=(source.selectionEditing==="document-v1"?createSharedDocumentEditor(owned,editor):new SharedRichEditor(owned,editor)) as SharedRichEditor<SharedSelectionPolicy>;
    if(source.history==="typing-v1")core.enableTypingHistory();
    if(source.rangeEditing==="general-v1")core.enableGeneralRanges();
@@ -34,7 +35,7 @@ export class ParticipantOrigin {
    }else{core.sealHistoryPolicy(source.history);core.sealRangePolicy(source.rangeEditing);}
    if(!core.supportsRecoveryOrigin()||core.view().readOnly!==true||core.checkpointJson()!==document||review!==undefined&&core.reviewCheckpoint()!==review)throw unavailable();
    p.guard();return new ParticipantOrigin(key,core,document,review,p.guard);
-  }catch(error){core?.dispose();raw?.free();throw error;}
+  }catch(error){core?.dispose();if(raw)freeUnclaimedSharedRustOwner(raw);throw error;}
  }
  /** A live native origin, not a caller-supplied predicate or stored readiness DTO. */
  verify(current:SharedRichEditor<SharedSelectionPolicy>):void {

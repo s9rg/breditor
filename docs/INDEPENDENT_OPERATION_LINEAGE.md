@@ -81,9 +81,11 @@ data oracle, not qualification of an operational restore coordinator.
 
 The [selected functional qualification](qualification/2026-10-22-independent-operation-lineage.json)
 records both passing matrices and exact installed archives. A separate actual
-factory-cleanup regression is retained as open: rejecting a native object already
-owned by another editor must not free that editor's object. Its repair is required
-before integrating the durable restore coordinator.
+factory-cleanup regression was retained as open at that checkpoint. The following
+[native lifetime repair](NATIVE_OWNER_LIFETIME.md) prevents rejecting an already
+owned object from freeing its original editor and retains fresh results until
+constructor transfer. Its functional qualification remains separate from durable
+restore integration.
 
 ## Required durable restore implementation
 

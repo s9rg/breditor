@@ -2,6 +2,7 @@
 import {retireOwnedCore,disposeOwnedCore} from '../owned_core_lifetime.js';
 import {SharedEditorError,SharedRichEditor,createSharedDocumentEditor} from "../core.js";
 import {initializeSharedReadOnly} from "../initialize_read_only.js";
+import {freeUnclaimedSharedRustOwner} from '../raw_owner_lifetime.js';
 import type {SharedRustOwner,SharedSelectionPolicy,SharedEditorOptions} from "../types.js";
 import type {SharedReviewPolicy} from "../review_types.js";
 import type {SharedDocumentVersionInfo} from "../version_types.js";
@@ -83,7 +84,7 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
   if(input.reviewedHistory&&(!input.review||input.review.principal!==input.reviewedHistory.principal)||!input.review&&input.initialReviewCheckpoint!==undefined)throw new SharedEditorError("segmented_review_policy","Reviewed ownership and initial comments require the matching explicitly paired account");
   const options={...input,initialGenerations:{...input.initialGenerations},...(input.review?{review:{...input.review}}:{}),...(input.editor?{editor:{...input.editor}}:{})};
   if(options.editor&&["selectionEditing","reviewedHistory","searchHistory","segmentedHistory"].some(k=>k in options.editor!))throw new SharedEditorError("segmented_session_policy","Pin generation policies through the dedicated session, not nested editor options");
-  const lease=await SharedWriterLease.acquire(identity.room,identity.writer);let reviewLease:ReviewWriterLease|undefined,db:IDBDatabase|undefined,core:SharedRichEditor<Q>|undefined;
+  const lease=await SharedWriterLease.acquire(identity.room,identity.writer);let reviewLease:ReviewWriterLease|undefined,db:IDBDatabase|undefined,core:SharedRichEditor<Q>|undefined,raw:SharedRustOwner|undefined;
   try{
    if(options.review)reviewLease=await ReviewWriterLease.acquire(identity.room,options.review.actor);
    const existing=operation?await existingGenerationOperationSource(options.database,[identity.room,identity.writer],companion?.readHead??readSegmentedHead):undefined;db=existing?.db;operation?.check();db??=await openSegmentedDatabase(options.database);const opening=existing?.opening??fenceOpeningDatabase(db,"session_open_versionchange"),saved=await readSegmentedCut(db,[identity.room,identity.writer],companion?.readHead);operation?.check();if(operation&&(!saved||saved.head!==existing!.head))throw new SharedEditorError("segmented_native_replay","Operational source changed or disappeared while opening");
@@ -92,11 +93,10 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
    if(saved&&(JSON.stringify(saved.record.identity)!==JSON.stringify(identity)||!!saved.record.review!==!!options.review||saved.record.review&&(saved.record.review.actor!==options.review?.actor||saved.record.review.principal!==options.review.principal)))throw new SharedEditorError("segmented_session_identity","Stored generation/account policy differs from the selected session");
    const source=saved?.checkpoint??recovery?.checkpoint,sourceReview=saved?.record.review?.checkpoint??recovery?.reviewCheckpoint??null;
    if(recovery){if((sourceReview!==null)!==!!options.review)throw new SharedEditorError("segmented_recovery","Recovery comment lane differs from the selected account");checkSegmentedCapture(recovery.checkpoint,identity,options.review?{actor:options.review.actor,principal:options.review.principal,checkpoint:sourceReview!}:null,recovery.versions);}
-   const raw=opening.admit(await(source!==undefined?options.restoreSegmented(source):options.create()));
+   raw=opening.admit(await(source!==undefined?options.restoreSegmented(source):options.create()));
    if(source!==undefined){
-    // Initial policy runs before facade ownership transfer. A refused unpublished owner is
-    // still ours to release; the outer cleanup has no core to dispose at this point.
-    try{initializeSharedReadOnly(raw,options.readOnly);}catch(error){raw.free();throw error;}
+    // Factory cleanup may release a fresh result, never an object owned by another editor.
+    try{initializeSharedReadOnly(raw,options.readOnly);}catch(error){freeUnclaimedSharedRustOwner(raw);throw error;}
    }
    const editor={...options.editor,...(identity.searchHistory?{searchHistory:identity.searchHistory}:{}),...(identity.reviewedHistory?{reviewedHistory:identity.reviewedHistory}:{}),...(source!==undefined?{segmentedHistory:"segmented-v1" as const}:{})};
    core=(identity.selectionEditing==="document-v1"?createSharedDocumentEditor(raw,editor):new SharedRichEditor<"original">(raw,editor)) as unknown as SharedRichEditor<Q>;
@@ -110,7 +110,7 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
    operation?.verifyCore(core as unknown as SharedRichEditor<SharedSelectionPolicy>,saved!.record.versions,companion);
    opening.assertCurrent();const session=new SharedSegmentedPersistentSession(constructionKey,db,lease,reviewLease,core,options,identity,saved?.head??null,saved?.record.versions??recovery?.versions??[],source!==undefined,companion);
    session.save();try{await session.flush();}catch(error){await session.discardAndClose();throw error;}return session;
-  }catch(error){core&&disposeOwnedCore(core);db?.close();try{await reviewLease?.close();}finally{await lease.close();}throw error;}
+  }catch(error){try{if(core)disposeOwnedCore(core);}finally{try{if(raw)freeUnclaimedSharedRustOwner(raw);}finally{db?.close();try{await reviewLease?.close();}finally{await lease.close();}}}throw error;}
  }
  #live():void{if(this.#closed)throw new SharedEditorError("segmented_session_closed","The generation session is closed");this.#documentLease.assertLive();this.#reviewLease?.assertLive();}
  /** A public facade property is not native custody. Never invoke a replacement accessor. */

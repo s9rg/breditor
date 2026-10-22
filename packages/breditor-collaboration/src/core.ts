@@ -25,11 +25,10 @@ import {parseSegmentedHistoryInfo,type SharedSegmentedHistoryInfo} from "./segme
 import {registerManagedCore} from "./managed_custody.js";
 import {registerCoreReadStamp} from './core_read_stamp.js';
 import type {SharedReviewHistoryPolicy} from "./review_generations.js";
-export class SharedEditorError extends Error {
- constructor(readonly code:string,message:string){super(message);this.name="SharedEditorError";}
-}
+import {SharedEditorError} from './shared_editor_error.js';
+import {claimSharedRustOwner} from './raw_owner_lifetime.js';
+export {SharedEditorError} from './shared_editor_error.js';
 interface Pending {frame:string;bytes:number;resolve:(changed:boolean)=>void;reject:(reason:unknown)=>void;cleanup:()=>void}
-const owners=new WeakSet<SharedRustOwner>();
 /** Explicit typed entry point. Original constructors and durable sessions do not infer this policy. */
 export function createSharedDocumentEditor(raw:SharedRustOwner,options:Omit<SharedEditorOptions<"document-v1">,"selectionEditing">={}):SharedRichEditor<"document-v1">{
  return new SharedRichEditor<"document-v1">(raw,{...options,selectionEditing:"document-v1"});
@@ -56,10 +55,10 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  #segmented=false;
  constructor(raw:SharedRustOwner,...args:P extends "document-v1"?[options:SharedEditorOptions<P>&{selectionEditing:"document-v1"}]:[options?:SharedEditorOptions<P>]){
   const options=(args[0]??{}) as SharedEditorOptions<P>;
-  if(owners.has(raw))throw new SharedEditorError("owner_reused","A Rust owner can only be transferred once");
-  this.#options=options;this.#maxFrames=options.maxPendingFrames??64;this.#maxBytes=options.maxPendingBytes??8*1024*1024;
-  this.#raw=raw;this.#selectionPolicy=options.selectionEditing??"original";this.#searchHistory=options.searchHistory==="search-v1";
+  claimSharedRustOwner(raw);this.#raw=raw;
   try{
+   this.#options=options;this.#maxFrames=options.maxPendingFrames??64;this.#maxBytes=options.maxPendingBytes??8*1024*1024;
+   this.#selectionPolicy=options.selectionEditing??"original";this.#searchHistory=options.searchHistory==="search-v1";
    if(this.#selectionPolicy!=="original"&&this.#selectionPolicy!=="document-v1")throw new SharedEditorError("selection_policy","Expected selectionEditing original or document-v1");
    if(!Number.isSafeInteger(this.#maxFrames)||this.#maxFrames<1||this.#maxFrames>64||!Number.isSafeInteger(this.#maxBytes)||this.#maxBytes<1||this.#maxBytes>8*1024*1024)throw new SharedEditorError("queue_limits","Remote limits can only tighten defaults");
    if(typeof raw.descriptor_json!=="function")throw new SharedEditorError("owner_abi","Use the matching shared Rust owner");
@@ -93,10 +92,10 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
    if(view.format!==(this.#selectionPolicy==="document-v1"?"breditor/shared-document-view":"breditor/shared-rich-view")||view.formatVersion!==1)throw new SharedEditorError("owner_abi","Use the matching explicitly selected shared view family");
    if(this.#selectionPolicy==="document-v1"&&(!("selectionEditing" in view)||view.selectionEditing!=="document-v1"))throw new SharedEditorError("selection_policy","Native document view did not declare the selected scope policy");
    if(view.rangeEditing!==undefined&&(view.rangeEditing!=="general-v1"||!this.supportsGeneralRanges()))throw new SharedEditorError("general_range_unavailable","Use a complete matching native general-range owner");
-   owners.add(raw);registerManagedCore(this,()=>{this.#live();if(this.#retired)throw new SharedEditorError("retired","The shared writer no longer has live managed custody");},()=>this.#retainedRevisions());
+   registerManagedCore(this,()=>{this.#live();if(this.#retired)throw new SharedEditorError("retired","The shared writer no longer has live managed custody");},()=>this.#retainedRevisions());
    registerCoreReadStamp(this,()=>{this.#live();return{document:this.#documentReadStamp,review:this.#reviewReadStamp};});
   }
-  catch(error){this.#observation?.free();this.#raw=undefined;raw.free();throw error;}
+  catch(error){try{this.#observation?.free();}finally{this.#raw=undefined;raw.free();}throw error;}
  }
  #live():SharedRustOwner{if(!this.#raw)throw new SharedEditorError("disposed","The shared editor is disposed");return this.#raw;}
  #retainedRevisions():{documentRevision:string;reviewRevision:string}{return this.#disposedRevisions??{documentRevision:(JSON.parse(this.#view) as SharedEditorView<P>).revision,reviewRevision:this.#reviewRevision.toString()};}

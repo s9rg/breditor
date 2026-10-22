@@ -3,6 +3,7 @@
  * current server permission or whole-room activation. No author lease is acquired. */
 import {SharedRichEditor,createSharedDocumentEditor,SharedEditorError} from '../core.js';
 import {initializeSharedReadOnly} from '../initialize_read_only.js';
+import {freeUnclaimedSharedRustOwner} from '../raw_owner_lifetime.js';
 import {nativeRestoreBinding} from '../native_restore_factory.js';
 import {sourceCoreMethods as native} from '../source_native_read.js';
 import {independentOptionsIdentity} from '../independent_history/identity.js';
@@ -36,7 +37,7 @@ export class IndependentNativeOperationOrigin {
   let raw:SharedRustOwner|undefined,core:SharedRichEditor<SharedSelectionPolicy>|undefined;
   try{
    const history=o.documentHistory,restore=history.kind==='original'?history.restoreOriginal:history.restoreSegmented,binding=nativeRestoreBinding(restore,history);
-   raw=await binding.factory.call(binding.receiver,source.documentCheckpoint);guard();initializeSharedReadOnly(raw,true);const owned=raw;raw=undefined;
+   raw=await binding.factory.call(binding.receiver,source.documentCheckpoint);guard();initializeSharedReadOnly(raw,true);const owned=raw;
    const editor={...o.editor,...(id.native.searchHistory?{searchHistory:id.native.searchHistory}:{}),...(id.native.reviewedHistory?{reviewedHistory:id.native.reviewedHistory}:{}),...(id.documentHistory==='segmented-v1'?{segmentedHistory:'segmented-v1' as const}:{})} as Omit<SharedEditorOptions<'document-v1'>,'selectionEditing'>;
    core=(id.native.selectionEditing==='document-v1'?createSharedDocumentEditor(owned,editor):new SharedRichEditor(owned,editor)) as SharedRichEditor<SharedSelectionPolicy>;
    if(core.richLanguageVersion()!==id.native.richLanguage)throw invalid();
@@ -50,7 +51,7 @@ export class IndependentNativeOperationOrigin {
    if(native.view.call(core).readOnly!==true||native.checkpointJson.call(core)!==source.documentCheckpoint||(id.reviewHistory==='original'?native.reviewCheckpoint.call(core):native.reviewSegmentedCheckpoint.call(core))!==source.reviewCheckpoint)throw invalid();
    for(const packet of source.versions)native.readVersion.call(core,packet);
    guard();const result=new IndependentNativeOperationOrigin(key,prepared,core);checkOrigin.call(result);return result;
-  }catch(error){if(core)disposeCore.call(core);raw?.free();throw error;}
+  }catch(error){if(core)disposeCore.call(core);if(raw)freeUnclaimedSharedRustOwner(raw);throw error;}
  }
  /** Canonical lifetime/current-host check; no stored hash is an authority grant. */
  check():void{

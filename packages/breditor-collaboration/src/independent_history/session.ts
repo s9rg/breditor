@@ -2,7 +2,8 @@
 import {retireOwnedCore,disposeOwnedCore} from '../owned_core_lifetime.js';
 import {SharedEditorError,SharedRichEditor,createSharedDocumentEditor} from '../core.js';
 import {initializeSharedReadOnly} from '../initialize_read_only.js';
-import type {SharedSelectionPolicy,SharedEditorOptions} from '../types.js';
+import {freeUnclaimedSharedRustOwner} from '../raw_owner_lifetime.js';
+import type {SharedSelectionPolicy,SharedEditorOptions,SharedRustOwner} from '../types.js';
 import type {SharedDocumentVersionInfo} from '../version_types.js';
 import {SharedWriterLease} from '../persistence/writer_lease.js';
 import {ReviewWriterLease} from '../persistence/review_writer_lease.js';
@@ -54,7 +55,7 @@ export class SharedIndependentHistoryPersistentSession<P extends SharedSelection
   if(typeof input.readOnly!=='boolean'||typeof input.create!=='function'||!['read_only','comment','moderate'].includes(input.review.access)||input.documentHistory.kind==='original'&&typeof input.documentHistory.restoreOriginal!=='function'||input.documentHistory.kind==='segmented-v1'&&typeof input.documentHistory.restoreSegmented!=='function'||input.editor&&['selectionEditing','reviewedHistory','searchHistory','segmentedHistory'].some(key=>key in input.editor!))throw new SharedEditorError('independent_history_policy','Choose explicit current host policy and exact native recovery factories');
   if(recovery&&JSON.stringify(recovery.identity)!==JSON.stringify(identity))throw new SharedEditorError('independent_history_recovery','Recovery family, room, writer and account must match exactly');
   const options={...input,review:{...input.review},documentHistory:input.documentHistory.kind==='segmented-v1'?{...input.documentHistory,initialGenerations:{...input.documentHistory.initialGenerations}}:{...input.documentHistory},reviewHistory:input.reviewHistory.kind==='segmented-v1'?{...input.reviewHistory,initialGenerations:{...input.reviewHistory.initialGenerations}}:{...input.reviewHistory},...(input.editor?{editor:{...input.editor}}:{})};
-  const documentLease=await SharedWriterLease.acquire(identity.native.room,identity.native.writer);let reviewLease:ReviewWriterLease|undefined,db:IDBDatabase|undefined,core:SharedRichEditor<Q>|undefined;
+  const documentLease=await SharedWriterLease.acquire(identity.native.room,identity.native.writer);let reviewLease:ReviewWriterLease|undefined,db:IDBDatabase|undefined,core:SharedRichEditor<Q>|undefined,raw:SharedRustOwner|undefined;
   try{
    reviewLease=await ReviewWriterLease.acquire(identity.native.room,identity.review.actor);db=await openIndependentHistoryDatabase(options.database,companion);const opening=fenceOpeningDatabase(db,'session_open_versionchange'),actualSaved=await readIndependentHistoryCut(db,[identity.native.room,identity.native.writer],companion);
    if(actualSaved&&recovery)throw new SharedEditorError('independent_history_destination_exists','Recovery never overwrites a committed paired destination');if(actualSaved&&JSON.stringify(actualSaved.record.identity)!==JSON.stringify(identity))throw new SharedEditorError('independent_history_identity','Stored native families differ from the explicitly selected session');
@@ -62,8 +63,8 @@ export class SharedIndependentHistoryPersistentSession<P extends SharedSelection
    if(actualSaved&&!saved||saved&&JSON.stringify(saved.record.identity)!==JSON.stringify(identity))throw new SharedEditorError('independent_history_identity','The selected pending native pair must retain the actual source identity');
    if(saved)companion?.load(saved.head);
    const documentCheckpoint=saved?.documentCheckpoint??recovery?.documentCheckpoint,reviewCheckpoint=saved?.reviewCheckpoint??recovery?.reviewCheckpoint;
-   const raw=opening.admit(await(documentCheckpoint===undefined?options.create():options.documentHistory.kind==='original'?options.documentHistory.restoreOriginal(documentCheckpoint):options.documentHistory.restoreSegmented(documentCheckpoint)));
-   if(documentCheckpoint!==undefined)try{initializeSharedReadOnly(raw,options.readOnly);}catch(error){raw.free();throw error;}
+   raw=opening.admit(await(documentCheckpoint===undefined?options.create():options.documentHistory.kind==='original'?options.documentHistory.restoreOriginal(documentCheckpoint):options.documentHistory.restoreSegmented(documentCheckpoint)));
+   if(documentCheckpoint!==undefined)try{initializeSharedReadOnly(raw,options.readOnly);}catch(error){freeUnclaimedSharedRustOwner(raw);throw error;}
    const editor={...options.editor,...(identity.native.searchHistory?{searchHistory:identity.native.searchHistory}:{}),...(identity.native.reviewedHistory?{reviewedHistory:identity.native.reviewedHistory}:{}),...(documentCheckpoint!==undefined&&identity.documentHistory==='segmented-v1'?{segmentedHistory:'segmented-v1' as const}:{})} as Omit<SharedEditorOptions<'document-v1'>,'selectionEditing'>;
    core=(identity.native.selectionEditing==='document-v1'?createSharedDocumentEditor(raw,editor):new SharedRichEditor<'original'>(raw,editor)) as unknown as SharedRichEditor<Q>;
    if(core.richLanguageVersion()!==identity.native.richLanguage)throw new SharedEditorError('independent_history_identity','Native grammar differs from the selected paired history');
@@ -78,7 +79,7 @@ export class SharedIndependentHistoryPersistentSession<P extends SharedSelection
    core.sealIndependentHistoryPolicies(identity.documentHistory,identity.reviewHistory,identity.native.history,identity.native.rangeEditing);
    const actualReview=identity.reviewHistory==='original'?core.reviewCheckpoint():core.reviewSegmentedCheckpoint();if(documentCheckpoint!==undefined&&(core.checkpointJson()!==documentCheckpoint||actualReview!==reviewCheckpoint))throw new SharedEditorError('independent_history_native_replay','Cold native replay must preserve both exact histories');
    opening.assertCurrent();const session=new SharedIndependentHistoryPersistentSession(constructionKey,db,documentLease,reviewLease,core,options,identity,actualSaved?.head??null,saved?.record.versions??recovery?.versions??[],documentCheckpoint!==undefined,companion);session.save();try{await session.flush();}catch(error){await session.discardAndClose();throw error;}return session;
-  }catch(error){core&&disposeOwnedCore(core);db?.close();try{await reviewLease?.close();}finally{await documentLease.close();}throw error;}
+  }catch(error){try{if(core)disposeOwnedCore(core);}finally{try{if(raw)freeUnclaimedSharedRustOwner(raw);}finally{db?.close();try{await reviewLease?.close();}finally{await documentLease.close();}}}throw error;}
  }
  #live():void{if(this.#closed)throw new SharedEditorError('independent_history_closed','The paired history session is closed');this.#documentLease.assertLive();this.#reviewLease.assertLive();}
  #bound():SharedRichEditor<P>{const binding=Object.getOwnPropertyDescriptor(this,'core');if(!binding||binding.value!==this.#ownedCore)throw new SharedEditorError('independent_history_source','The original privately owned editor binding is required');return this.#ownedCore;}

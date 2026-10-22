@@ -43,6 +43,28 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The [native-owner lifetime repair](NATIVE_OWNER_LIFETIME.md) reserves transfer
+before option/native callbacks and keeps factory cleanup distinct from disposal
+by the owning editor. Two actual failures are retained with unchanged passing
+assertions: freeing a different editor's object after a bad factory result, and
+leaking a fresh result before constructor transfer when option preparation throws.
+
+Its [selected qualification](qualification/2026-10-22-native-owner-lifetime.json)
+passes 32 checks from the 272-check plan. All five 640-case native-policy matrices
+pass in both source and fresh installed packages; seven installed reports pin
+matching archives. The same 32 focused lifetime laws pass in both environments,
+and script tests pass 2,127 with three existing skips. Fresh native inventory
+fixtures and all 108 initial-policy families also pass after an initial correct
+stale-fixture refusal. The remaining full native-suite evidence is carried only
+across byte-identical inputs/runtimes, not freshly reexecuted.
+
+An actual storage admission defect remains open at this checkpoint: source and
+journal readers clone all values before refusing overfull namespaces. A bounded
+read repair and a held whole-upload import are tested in separate builds, not
+integrated by this qualification. They precede the complete portable writable
+restore coordinator, whole-room reconciliation and authenticated activation.
+No V1 gate, public version, publication or deployment is promoted.
+
 The private [recovery lineage data layer](INDEPENDENT_OPERATION_LINEAGE.md)
 retains selected complete inputs with later original/current/pending/live
 snapshots. Shared raw parts avoid recursive whole-archive nesting while keeping

@@ -1,4 +1,5 @@
 import {retireOwnedCore,disposeOwnedCore} from '../owned_core_lifetime.js';
+import {freeUnclaimedSharedRustOwner} from '../raw_owner_lifetime.js';
 import {SharedRichEditor,SharedEditorError,createSharedDocumentEditor} from "../core.js";
 import type {SharedEditorOptions,SharedRustOwner,SharedHistoryPolicy,SharedRangePolicy,SharedSelectionPolicy} from "../types.js";
 import {SharedWriterLease} from "./writer_lease.js";
@@ -108,7 +109,7 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
   const editorSelection=(options.editor as {selectionEditing?:unknown}|undefined)?.selectionEditing;
   if(editorSelection!==undefined&&editorSelection!==selectionPolicy)throw new SharedEditorError("session_selection","Editor selection policy must match its explicitly selected durable session");
   // Acquire before reading/restoring: a same-writer clone never becomes live first.
-  const lease=await SharedWriterLease.acquire(options.room,options.writer);let db:IDBDatabase|undefined,core:SharedRichEditor<Q>|undefined,nativeBackupAdmission=false;
+  const lease=await SharedWriterLease.acquire(options.room,options.writer);let db:IDBDatabase|undefined,core:SharedRichEditor<Q>|undefined,raw:SharedRustOwner|undefined,nativeBackupAdmission=false;
   try{
    const retained=recoveryOrigin?await existingSessionDatabase(options.database,[options.room,options.writer],"session_open_versionchange"):undefined;
    db=retained?.db??await openSessionDatabase(options.database);
@@ -126,7 +127,7 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
     if(checkpoint.history==="typing-v1"&&history!=="typing-v1")throw new SharedEditorError("session_history","Grouped recovery requires explicit typing-v1 history");
    }
    nativeBackupAdmission=!!backup;
-   const raw=opening.admit(await(checkpoint===null?options.create():storedDocument?(options as SharedDocumentSessionOptions).restoreDocument(checkpoint.json,checkpoint.history):storedRanges==="general-v1"?options.restore(checkpoint.json,checkpoint.history,storedRanges):options.restore(checkpoint.json,checkpoint.history)));
+   raw=opening.admit(await(checkpoint===null?options.create():storedDocument?(options as SharedDocumentSessionOptions).restoreDocument(checkpoint.json,checkpoint.history):storedRanges==="general-v1"?options.restore(checkpoint.json,checkpoint.history,storedRanges):options.restore(checkpoint.json,checkpoint.history)));
    core=(selectionPolicy==="document-v1"?createSharedDocumentEditor(raw,options.editor as SharedDocumentSessionOptions["editor"]):new SharedRichEditor(raw,options.editor as SharedSessionOptions["editor"])) as SharedRichEditor<Q>;
    if(core.richLanguageVersion()!==(options.richLanguage??1))throw new SharedEditorError("session_identity","Shared owner language does not match the explicitly selected session");
    if(history==="typing-v1")core.enableTypingHistory();
@@ -142,7 +143,10 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
    if(backup){const session=new SharedPersistentSession(constructionKey,db,lease,core,true,options,selectionPolicy,search);try{const checkpointJson=core.checkpointJson();if(checkpointJson!==backup.checkpointJson)throw new SharedEditorError("backup_native_replay","Native replay did not preserve the exact canonical checkpoint");await insertSessionBackup(db,checkpointJson,backup.identity);if(session.#failure)throw session.#failure;session.#saved=checkpointJson;session.#savedRevision=core.view().revision;session.#notify();return session;}catch(error){await session.discardAndClose();throw error;}}
    const session=new SharedPersistentSession(constructionKey,db,lease,core,checkpoint!==null,options,selectionPolicy,search);session.save();
    try{await session.flush();}catch(error){await session.discardAndClose();throw error;}return session;
-  }catch(error){core&&disposeOwnedCore(core);db?.close();await lease.close();if(nativeBackupAdmission&&!(error instanceof SharedEditorError&&error.code==="session_open_versionchange"))throw new SharedEditorError("backup_native_replay","Matching native replay rejected the backup");throw error;}
+  }catch(error){
+   try{if(core)disposeOwnedCore(core);}finally{try{if(raw)freeUnclaimedSharedRustOwner(raw);}finally{db?.close();await lease.close();}}
+   if(nativeBackupAdmission&&!(error instanceof SharedEditorError&&error.code==="session_open_versionchange"))throw new SharedEditorError("backup_native_replay","Matching native replay rejected the backup");throw error;
+  }
  }
  #live():void{if(this.#closed)throw new SharedEditorError("session_closed","The persistent shared session is closed");this.#lease.assertLive();}
  /** Captures require the original data binding; replacement accessors are never invoked. */
