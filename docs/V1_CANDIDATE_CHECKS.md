@@ -1,11 +1,22 @@
 # V1 candidate checks
 
+Both profiles require `restored-operation-source-contracts`,
+`restored-operation-source-type-fence`, `restored-operation-source` and
+`installed-restored-operation-source`. The private
+[source restore component](RESTORED_OPERATION_SOURCE.md) retains full incoming
+provenance while replaying original/CURRENT/PENDING/LIVE through actual native
+source owners. Source and fresh offline installed packages repeat 31 laws and
+the byte-identical full 640-policy snapshot restore probe. The functional plan
+has 281 checks. Complete upload/source handoff, next provenance export and room
+activation remain required; no V1 gate is closed.
+
 Both profiles require `held-asset-restore-contracts`,
 `held-asset-restore-type-fence` and `installed-held-asset-restore`. The
 [held whole-upload factory](HELD_ASSET_RESTORE.md) keeps actual custody through
 policy-guarded insertion and return. Source/installed packages repeat 20 new and
-58 unchanged asset laws, with strict public types. The functional plan has 277
-checks. Complete writable operation restore and room activation remain separate.
+58 unchanged asset laws, with strict public types. At that held-asset checkpoint,
+the functional plan had 277 checks. Complete participant restore and room
+activation remain separate.
 
 Both profiles require `bounded-operation-storage-contracts` and
 `installed-bounded-operation-storage`. The [storage admission repair](BOUNDED_OPERATION_STORAGE.md)

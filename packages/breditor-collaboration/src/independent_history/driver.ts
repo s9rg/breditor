@@ -5,7 +5,7 @@ import type {IndependentHistoryHead,IndependentHistoryCut,IndependentHistoryStor
 export interface IndependentHistoryCompanion {
  readonly readHead:(input:string)=>IndependentHistoryHead;
  /** Explicit private profile; old source schemas stay closed. */
- readonly storage?:'operation-v1';
+ readonly storage?:'operation-v1'|'restored-operation-v1';
  readonly persistence?:Readonly<{
   select(actual:IndependentHistoryStoredCut|null):Promise<IndependentHistoryStoredCut|null>;
   prepare(expected:string|null,cut:IndependentHistoryCut):Promise<void>;

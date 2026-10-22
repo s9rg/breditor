@@ -24,6 +24,8 @@ import {registerIndependentDeliverySource} from '../independent_delivery_source/
 import {guardedIndependentCompanion} from '../independent_operation/native_capture_guard.js';
 import {journaledIndependentCompanion,operationJournalSelected,selectedOperationJournal} from '../independent_operation/journal_binding.js';
 import type {IndependentOperationCutJournal} from '../independent_operation/cut_journal.js';
+import {restoredIndependentCompanion,selectedRestoredOperationJournal} from '../restored_operation/source_binding.js';
+import type {RestoredOperationJournal} from '../restored_operation/journal.js';
 import {MAX_INDEPENDENT_DELIVERY_RECOVERY_BYTES,type SharedIndependentDeliveryOptions,type SharedIndependentDeliveryRecovery,type SharedIndependentDeliveryRecoveryOptions} from './contract.js';
 
 export type SharedIndependentVersionsOpenOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy>=Omit<SharedDocumentVersionsOptions<P>,'identity'|'database'|'storage'|'autoConnect'>&{autoConnect?:false};
@@ -36,7 +38,7 @@ export class SharedIndependentDeliverySession<P extends SharedSelectionPolicy=Sh
  #retiring=false;#adapters=new Set<WeakRef<{dispose():void}>>();#openings=new Set<Promise<unknown>>();
  #queue:SharedSuggestionQueue<P>|undefined;#revisions:SharedSuggestionRevisions<P>|undefined;#versions:SharedDocumentVersions<P>|undefined;
  #closing:Promise<void>|undefined;#discarding:Promise<void>|undefined;#released:Promise<void>|undefined;
- private constructor(key:object,session:SharedIndependentHistoryPersistentSession<P>,companion:IndependentDeliveryCompanion,operation?:IndependentOperationCutJournal){
+ private constructor(key:object,session:SharedIndependentHistoryPersistentSession<P>,companion:IndependentDeliveryCompanion,operation?:IndependentOperationCutJournal|RestoredOperationJournal){
   if(key!==constructionKey)throw new SharedRelayError('managed_source_construction');
   this.#session=session;this.#native=independentHistoryNative(session);if(!this.#native.companion)throw new SharedRelayError('independent_delivery_required');this.#core=session.core;this.#companion=companion;this.#operation=!!operation;
   this.#storage=Object.freeze({core:this.#core,save:()=>this.#session.save(),flush:()=>this.#flushSource()});
@@ -46,11 +48,12 @@ export class SharedIndependentDeliverySession<P extends SharedSelectionPolicy=Sh
  }
  static async open<Q extends SharedSelectionPolicy>(input:SharedIndependentDeliveryOptions<Q>):Promise<SharedIndependentDeliverySession<Q>>{
   if(this!==SharedIndependentDeliverySession)throw new SharedRelayError('independent_delivery_factory_receiver');
-  const {binding,retained,...options}=input,companion=new IndependentDeliveryCompanion(input),journal=journaledIndependentCompanion(input,companion),session=await SharedIndependentHistoryPersistentSession.open(withIndependentDeliveryCompanion(options,journal??guardedIndependentCompanion(input,companion)));
-  try{return new SharedIndependentDeliverySession(constructionKey,session,companion,selectedOperationJournal(input));}catch(error){await session.discardAndClose();throw error;}
+  if(operationJournalSelected(input)&&selectedRestoredOperationJournal(input))throw new SharedRelayError('independent_operation_factory');
+  const {binding,retained,...options}=input,companion=new IndependentDeliveryCompanion(input),journal=journaledIndependentCompanion(input,companion)??restoredIndependentCompanion(input,companion),session=await SharedIndependentHistoryPersistentSession.open(withIndependentDeliveryCompanion(options,journal??guardedIndependentCompanion(input,companion)));
+  try{return new SharedIndependentDeliverySession(constructionKey,session,companion,selectedOperationJournal(input)??selectedRestoredOperationJournal(input));}catch(error){await session.discardAndClose();throw error;}
  }
  static async restoreRecovery<Q extends SharedSelectionPolicy>(input:SharedIndependentDeliveryRecoveryOptions<Q>):Promise<SharedIndependentDeliverySession<Q>>{
-  if(this!==SharedIndependentDeliverySession)throw new SharedRelayError('independent_delivery_factory_receiver');if(operationJournalSelected(input))throw new SharedRelayError('independent_operation_factory');requireBackupRecovery(input.writerRecovery);
+  if(this!==SharedIndependentDeliverySession)throw new SharedRelayError('independent_delivery_factory_receiver');if(operationJournalSelected(input)||selectedRestoredOperationJournal(input))throw new SharedRelayError('independent_operation_factory');requireBackupRecovery(input.writerRecovery);
   const r=input.recovery;closed(r,'format,formatVersion,relay,retained,retainedBinding,source');if(r.format!=='breditor/shared-independent-delivery-recovery'||r.formatVersion!==1||new TextEncoder().encode(JSON.stringify(r)).length>MAX_INDEPENDENT_DELIVERY_RECOVERY_BYTES)throw new SharedRelayError('independent_delivery_recovery');
   closed(r.source,'documentCheckpoint,format,formatVersion,identity,reviewCheckpoint,versions');if(r.source.format!=='breditor/shared-independent-history-recovery'||r.source.formatVersion!==1||!Array.isArray(r.source.versions))throw new SharedRelayError('independent_delivery_recovery');
   const recovery=structuredClone(r),identity=canonicalIndependentHistoryIdentity(recovery.source.identity),companion=new IndependentDeliveryCompanion(input,recovery),cut=await makeIndependentHistoryCut(recovery.source.documentCheckpoint,recovery.source.reviewCheckpoint,identity,recovery.source.versions);

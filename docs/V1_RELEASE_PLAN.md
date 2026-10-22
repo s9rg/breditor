@@ -43,6 +43,24 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The private [retained-input source restore](RESTORED_OPERATION_SOURCE.md) now
+replays a detached snapshot or flat lineage into a genuine editable source.
+Its separate journal retains the entire incoming archive and legacy original,
+orders original/CURRENT/PENDING/LIVE through normal source commits, and cold
+reopens with fresh host policy. Native document/comment Undo/Redo, local versions
+and retained packets survive; no old completed recovery is fabricated.
+
+Its [selected qualification](qualification/2026-10-22-restored-operation-source.json)
+passes 15 checks from the 281-check plan. Source/fresh installed packages repeat
+31 focused laws and the complete 640-policy snapshot-restore matrix, including
+640 cold reopens and 1,920 future history comparisons each. Both legacy 640-case
+journal matrices pass too. Script tests pass 2,204 with three existing skips;
+two fresh consumers pin matching archives. This is a private source component:
+the parent whole-upload coordinator and explicit next provenance export remain
+required before complete participant restore. Whole-room reconciliation,
+authenticated activation and all thirteen V1 gates stay open. No version, push,
+publication or deployment is promoted.
+
 The public [held whole-upload restore](HELD_ASSET_RESTORE.md) now returns the
 actual imported store with genuine cooperative custody still held. Fresh host
 policy guards schema creation and atomic insertion; competing writers cannot

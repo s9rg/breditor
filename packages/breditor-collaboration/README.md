@@ -714,3 +714,17 @@ partial/lost-acknowledgement child commits before aggregate `intoParts` handoff.
 restoring the old catalog cut over them. Historic copies remain retained and
 unreconciled, not automatically obsolete. See [the room contract](../../docs/OPERATIONAL_ROOM_RECOVERY.md)
 for cancellation, lease ownership, retryable cleanup and activation boundaries.
+
+## Retained input source restore
+
+The private restored-operation source path replays a selected complete snapshot
+or flat lineage through original, acknowledged, pending and latest live native
+states. It retains the full incoming file and legacy original in a separate
+journal, resumes interrupted saves before later cuts, and reopens from that
+retained input under fresh host policy. Native document/comment histories,
+local versions and delivery packets remain in their original formats.
+
+This is an internal source component, not a public complete-participant restore.
+Whole-upload custody, the next complete provenance export and room activation
+still need their coordinating implementation. Older exporters refuse this
+source instead of returning an incomplete recovery file.

@@ -1,0 +1,126 @@
+{
+  "format": "breditor/restored-operation-source-functional-qualification",
+  "formatVersion": 1,
+  "qualifiedDate": "2026-10-22",
+  "calendarTimeZone": "America/Toronto",
+  "passed": true,
+  "source": {
+    "commit": "16ae6f69a3dd13ddf8661bb2d36ee1f8037537b7",
+    "dirty": true,
+    "sha256": "f2cbf6f17de0561a0f5eb6f53bb68a6c0c3dc2673ab1a739cfb60ecb7276b495",
+    "files": 5593,
+    "bytes": 45803382
+  },
+  "nonDocumentation": {
+    "files": 4999,
+    "sha256": "8b8dd62989cfedb7db196c4989ef4b4c24ca2b297be6c27ed38a69a56cc96c6a"
+  },
+  "selection": {
+    "functionalPlanChecks": 281,
+    "uniquePassingPlanChecks": 15,
+    "wholePlanExecuted": false,
+    "sourceUnchangedDuringFinalRuns": true,
+    "postQualificationChanges": "Documentation only; implementation, assertions, candidate plan and packaged README retain the nonDocumentation fingerprint.",
+    "manifests": [
+      "target/v1-candidate-runs/run-9CGi83/result.json",
+      "target/v1-candidate-runs/run-6bx5At/result.json",
+      "target/v1-candidate-runs/run-uGRKG6/result.json"
+    ]
+  },
+  "implemented": [
+    "Private detached snapshot-v1 or lineage-v1 restore into a genuine editable independent native source, without manufacturing an old completed recovery owner.",
+    "Separate plan domain, four-store journal and dedicated source family; unchanged legacy formats/defaults/readers refuse the new family.",
+    "Immutable whole incoming archive and unchanged legacy original persist before source writes and stay owned by the actual source journal.",
+    "Original/CURRENT/PENDING/LIVE replay through real source constructors under both native writer leases and normal prepare/source-commit/ack; cursor advances atomically with ack.",
+    "Cold resume reads the actual retained input with fresh explicit host factories/authority, finishes exact pending before later cuts, and refuses divergence without overwrite or repair.",
+    "Genuine restore hold survives intermediate source closure and actual author callbacks; final actual source consumes it synchronously after current-policy, native and source-stamp checks.",
+    "Ongoing captures preserve original and input-LIVE native ancestry/local versions; admitted saved cuts cannot regress input relay progress.",
+    "Old public complete exporters refuse the source. No incomplete participant/upload/next-export API is promoted."
+  ],
+  "tests": {
+    "sourceFocusedRestoreLaws": 31,
+    "sourceCandidatePlanLaw": 1,
+    "installedFocusedRestoreLaws": 31,
+    "installedFailures": 0,
+    "installedSkips": 0,
+    "interruptedCommitWindows": 20,
+    "lateFinalAcknowledgementRevocation": true,
+    "flatLineageRestoreAndColdReopen": true,
+    "legacyJournalSourceLaws": 50,
+    "legacyJournalInstalledLaws": 50,
+    "workspaceAndDiagnosticTests": 2647,
+    "editorIntegrationTests": 385,
+    "scriptPass": 2204,
+    "scriptFail": 0,
+    "scriptSkipped": 3,
+    "strictPublicTypeFenceSourceAndInstalled": true,
+    "skipScope": "Three existing opt-in checks; no browser, accessibility, physical durability or performance qualification is inferred."
+  },
+  "sourceAndInstalledSnapshotRestoreEach": {
+    "cases": 640,
+    "returnedSources": 1280,
+    "coldReopens": 640,
+    "completeInputs": 1280,
+    "originalFiles": 1280,
+    "exactLive": 1280,
+    "futureDocumentCommentHistoryPairs": 1920,
+    "retainedPacketSets": 640,
+    "localVersionSets": 640,
+    "wireOne": 160,
+    "wireTwo": 480,
+    "tokenCalls": 0,
+    "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329"
+  },
+  "legacyJournalSourceAndInstalledEach": {
+    "cases": 640,
+    "nativeOrigins": 1920,
+    "nativeSourceOpens": 1920,
+    "pendingReplays": 640,
+    "failedSourceCommits": 640,
+    "futureHistoryPairs": 1920,
+    "tokenCalls": 0
+  },
+  "installedEvidence": {
+    "freshConsumers": 2,
+    "reports": [
+      "target/restored-operation-source-installed-consumer.json",
+      "target/independent-operation-journal-installed-consumer.json"
+    ],
+    "matchingArchiveSha256": {
+      "@breditor/browser": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+      "@breditor/experimental-rich-content": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad",
+      "@breditor/collaboration": "0ef8a6f2116fd235e87f1e98f63fbec2ee27f6ea7f07d5e30d8b6854fffdbdb9"
+    },
+    "workspaceLinks": false,
+    "offlineRegistryIntegrityChecked": true,
+    "probeByteIdentical": true,
+    "assertionChanges": "Reversible module/runtime/fixture locations only; no assertion or case reduction.",
+    "productionBundleExcludesWorkspaceReactAndSyntheticStorage": true
+  },
+  "nativeEvidence": {
+    "normalRuntimeFilesRetained": 12,
+    "normalSharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "normalRichWasmSha256": "bc020ce07ed80600b85735c1e592d5ae163d921f5556fef05269a12bc1d59ec5",
+    "fullRustSuitesFreshlyExecuted": false,
+    "rustImplementationChanged": false
+  },
+  "retained": {
+    "index": "target/restored-operation-source-final-mENqp5/index.json",
+    "sha256": "90b9254efa8ad395f20b00068f57094b5fec95448e503e2682523b4696e5de46",
+    "files": 97,
+    "includes": "Terminal manifests/logs, reports, matching archives, actual installed fixtures/assertions, complete source inventory, changed inputs and twelve normal native runtime files."
+  },
+  "scope": "Private functional source restore in controlled IDB/lock/raster fixtures. The full 640-case native-policy matrix selects snapshot input; focused source/installed laws also exercise flat lineage input and cold reopen. Not complete participant upload/source handoff, next complete provenance export, room adoption/activation, physical durability, memory/latency, browser/a11y or V1 release approval.",
+  "remaining": [
+    "Real parent coordinator and whole-upload custody through final source/input/upload handoff.",
+    "Explicit state2 and flat-lineage2 complete capture/export with independent read authorization after write grant/signal expiry, input-only rasters and repeat restore cycles.",
+    "Whole-room mixed-family adoption, provider/client reconciliation, independent comment/server log generations and fresh authenticated activation.",
+    "Long-session, quota, physical durability and remaining full parity/release gates."
+  ],
+  "v1GatesClosed": 0,
+  "v1GatesRemainingOpen": 13,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "packageVersionChanged": false,
+  "pushedTaggedPublishedOrDeployed": false
+}
