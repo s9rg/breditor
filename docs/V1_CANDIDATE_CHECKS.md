@@ -1,5 +1,28 @@
 # V1 candidate checks
 
+Both profiles require `independent-local-journal-contracts`,
+`independent-local-journal-type-fence`, `independent-local-journal` and
+`installed-independent-local-journal`. The private
+[local operation journal](INDEPENDENT_LOCAL_OPERATION_JOURNAL.md) retains actual
+original/current/pending native saves under a distinct local-only storage family,
+without manufacturing a delivery binding or silently dropping operation provenance.
+
+Its [selected qualification](qualification/2026-10-22-independent-local-operation-journal.json)
+passes 47 checks from the 312-check plan. Source/fresh packages repeat 47 focused
+laws and the fixed 480-case native domain each, with 1,920 native opens, 1,440
+cold journal resumes and all six prepare/source/acknowledge interruption
+boundaries. Failed prepares require an explicit live retry; the other 400
+interrupted cases cold-recover retained pending or committed data. The unchanged
+fresh-read/expired-write-signal assertions pass after repair; an isolated build
+with the retained development-before journal reproduces the failure.
+
+Seven fresh installed consumers pin matching archives. Existing local-origin,
+delivery-journal, local recovery, capture and full delivery-recovery workflows
+also pass. The source-owned journal is not a complete whole-upload participant
+parent, portable complete operational archive, five-family native room adoption,
+sustainable history or authenticated activation. This is not the whole plan,
+platform durability, a historical WebKit repair or any of the thirteen V1 gates.
+
 Both profiles require `independent-local-origin-contracts`,
 `independent-local-origin-type-fence`, `independent-local-origin` and
 `installed-independent-local-origin`. The private

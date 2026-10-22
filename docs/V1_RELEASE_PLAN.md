@@ -43,6 +43,36 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The private [local operation journal](INDEPENDENT_LOCAL_OPERATION_JOURNAL.md)
+now retains the actual original, acknowledged and pending native save cuts. It
+prepares before publication, acknowledges only exact source readback and replays
+both independent native histories before autosave. The actual source owns its
+journal, native origin and original-only provider bytes through save, cold-open
+and release; original local/delivery/restored families keep their meanings.
+
+Its [selected qualification](qualification/2026-10-22-independent-local-operation-journal.json)
+passes 47 checks from the 312-check plan. Source/fresh packages each repeat 47
+focused laws and all 480 native cases, including 1,920 native opens, 1,440 cold
+journal resumes, 1,440 future history pairs and all six save interruption
+boundaries. The 80 failed prepares are explicitly retried live, not counted as
+crash-durable memory; the other 400 interruptions cold-recover retained cuts.
+A reproduced fresh-read-scope/expired-write-signal bug passes unchanged assertions;
+an isolated rebuild with the retained development-before class reproduces it.
+
+Existing local-origin, delivery-journal, complete local recovery and capture
+source/installed matrices pass 480, 640, 240 and 80 cases each. Both complete
+delivery-recovery workflows pass 512 handoffs; seven fresh consumers pin matching
+archives. Workspace/diagnostic tests pass 2,647, editor tests 385 and script tests
+2,568 with three existing opt-in browser skips. Twelve normal native files and
+2,857 Rust/manifest inputs are unchanged; full Rust suites are not freshly rerun.
+
+Next is the actual whole-upload local operational parent and portable complete
+operation export/restore, followed by five-family native adoption, all historic
+copy/provider/client reconciliation and authenticated whole-room activation.
+Sustainable native Undo/offline retention and remaining full parity remain
+required. All thirteen V1 gates remain open; this is not whole-plan or physical
+durability qualification. No version, push, tag, publication or deployment changes.
+
 The private [local native-origin prerequisite](INDEPENDENT_LOCAL_NATIVE_ORIGIN.md)
 now verifies both native ancestries before first autosave and every later local
 persistence capture. It retains local source/schema meanings and readable unsaved

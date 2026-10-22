@@ -70,6 +70,14 @@ binding. Its lifetime authority/signal is distinct from temporary recovery
 bootstrap policy. It is not a public completed operation owner or room activation
 API. See [local native origins](../../docs/INDEPENDENT_LOCAL_NATIVE_ORIGIN.md).
 
+The separate private local operation journal now retains the actual original
+archive plus acknowledged/pending native cuts. Its live source owns the journal,
+native origin and original-only provider through saves, interrupted publication
+and cold reopen. Old local/delivery readers stay closed to its explicitly tagged
+head and dedicated schema. Read authorization remains separate from expired
+write authority. Whole-upload participant ownership and room adoption are still
+separate work. See [the local save journal](../../docs/INDEPENDENT_LOCAL_OPERATION_JOURNAL.md).
+
 `SharedPersistentSession.exportBackup()` captures exact native history, including
 Redo, without a save or publication. Paired `SharedReviewPersistentSession`
 archives also retain comments, local version packets and selected nonsecret

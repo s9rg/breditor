@@ -1,0 +1,150 @@
+{
+  "format": "breditor/independent-local-operation-journal-qualification",
+  "formatVersion": 1,
+  "qualifiedDate": "2026-10-22",
+  "calendarTimeZone": "America/Toronto",
+  "passed": true,
+  "source": {
+    "commit": "4255113a8cc1b912935a0bd9bf90940c74a63bff",
+    "dirty": true,
+    "sha256": "603be593dbee3e65534940f39295391551d3bbe2aa776826756f0aef3764cf7c",
+    "files": 5741,
+    "bytes": 46653792
+  },
+  "nonDocumentation": {
+    "files": 5129,
+    "sha256": "aa227ede9779abc962f139d44a7cf11903d7c0fb0dc82fdf0f45e140a8042d0d"
+  },
+  "selection": {
+    "functionalPlanChecks": 312,
+    "uniquePassingPlanChecks": 47,
+    "wholePlanExecuted": false,
+    "sourceUnchangedDuringFinalRuns": true,
+    "postQualificationChanges": "Repository documentation only; source, assertions, plan and packaged README retain the nonDocumentation fingerprint.",
+    "manifests": [
+      "target/v1-candidate-runs/run-Nut8JA/result.json",
+      "target/v1-candidate-runs/run-xneWvW/result.json",
+      "target/v1-candidate-runs/run-gUAC2t/result.json",
+      "target/v1-candidate-runs/run-ptmBmt/result.json",
+      "target/v1-candidate-runs/run-BC5z8y/result.json",
+      "target/v1-candidate-runs/run-5YunPr/result.json"
+    ]
+  },
+  "implemented": [
+    "Private explicitly tagged local-only plan, journal intent and native-head family; original local, delivery and restored-operation meanings/defaults remain unchanged.",
+    "Genuine original/current/pending native save ownership: prepare exact cut before source publication and acknowledge only its actual readback; pending cuts cannot be replaced by newer work.",
+    "Cold reconciliation through actual native replay in both independent history lanes, preserving original ancestry, append-only local versions and original-only image providers before autosave.",
+    "Actual namespace/source/read reservations, pinned storage and lock contexts, closed schemas and bounded row admission, exact CAS and real transaction cancellation.",
+    "Source-owned journal/original lifetime and retryable cleanup, with independently authorized readable native and journal data after write authority or its signal ends. Raw native export is not a complete portable operation archive."
+  ],
+  "tests": {
+    "focusedLawsSourceAndInstalledEach": 47,
+    "candidatePlanLaw": 1,
+    "workspaceAndDiagnosticTests": 2647,
+    "editorTests": 385,
+    "scriptPass": 2568,
+    "scriptFail": 0,
+    "scriptSkipped": 3,
+    "skipScope": "Three existing opt-in browser checks; not platform qualification."
+  },
+  "sourceAndInstalledEach": {
+    "nativeCompilers": 5,
+    "selectionScopes": 3,
+    "capabilityMasks": 8,
+    "independentHistoryPairs": 4,
+    "cases": 480,
+    "journalBegins": 480,
+    "coldSources": 1920,
+    "journalColdResumes": 1440,
+    "referenceSources": 480,
+    "futureNativePairs": 1440,
+    "interruptedSaves": 480,
+    "durableInterruptedColdResumes": 400,
+    "explicitLiveRetries": 80,
+    "readableNativeComparisons": 480,
+    "versionComparisons": 1920,
+    "readOnlyRefusals": 960,
+    "oldFamilyRefusals": 960,
+    "originalProviderComparisons": 960,
+    "readSnapshots": 480,
+    "networkCalls": 0,
+    "boundaryCounts": {
+      "prepare-abort": 80,
+      "prepare-lost-ack": 80,
+      "source-abort": 80,
+      "source-lost-ack": 80,
+      "ack-abort": 80,
+      "ack-lost-ack": 80
+    },
+    "failedPreparePolicy": "The 80 failed prepares are explicitly retried live before discard; this does not claim crash durability for memory not yet retained in the journal."
+  },
+  "readScopeRepair": {
+    "developmentBefore": {"passed": 1, "failed": 1},
+    "fixed": {"passed": 2, "failed": 0},
+    "isolatedInstalledControl": {"qualified": false, "passed": 1, "failed": 1},
+    "unchangedRegression": {
+      "path": "scripts/independent-local-operation-read.test.mjs",
+      "sha256": "bb451d2d50a47a2073a71fc03300b3cfc69bffb50d32707f55f3132f37dbe8b5"
+    },
+    "scope": "A fresh read scope must not default to an expired write signal. The control rebuild restores only the retained development-before journal class into an isolated current consumer; not a complete prior tree reconstruction or historical released-package bug claim.",
+    "earlierDevelopmentMatrixQualified": false
+  },
+  "compatibility": {
+    "localNativeOriginCasesEach": 480,
+    "localNativeOriginLawsEach": 37,
+    "deliveryOperationJournalCasesEach": 640,
+    "deliveryOperationJournalLawsEach": 50,
+    "completeLocalRecoveryCasesEach": 240,
+    "completeLocalRecoveryLawsEach": 128,
+    "localCaptureCasesEach": 80,
+    "deliveryRecoveryLawsEach": 131,
+    "deliveryRecoveryCutsEach": 256,
+    "deliveryRecoveryHandoffsEach": 512,
+    "nativeOwnerInstalledLaws": 32,
+    "semanticSourceAndInstalledResultsMatch": true,
+    "deliveryPollTotals": "Only timing-dependent authors/advanced/observer wireRequests are retained separately. Fixed case domains and assertions remain unchanged."
+  },
+  "installedEvidence": {
+    "freshConsumers": 7,
+    "matchingArchiveSha256": {
+      "@breditor/browser": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+      "@breditor/experimental-rich-content": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad",
+      "@breditor/collaboration": "f58ac4bfbeba30de8532b15e3a5cc0db87df307f7c2ed47ba5424f8d0e669a55"
+    },
+    "workspaceLinks": false,
+    "strictPublicTypes": true,
+    "offlineRegistryIntegrityChecked": true,
+    "fullLocalProbeByteIdentical": true,
+    "localAssertionChanges": "Reversible module/runtime/native fixture locations only.",
+    "productionBundleExcludesWorkspaceReactAndSyntheticStorage": true
+  },
+  "nativeAndCarriedEvidence": {
+    "normalRuntimeFiles": 12,
+    "unchangedRustSourceAndManifestInputs": 2857,
+    "normalSharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "normalRichWasmSha256": "bc020ce07ed80600b85735c1e592d5ae163d921f5556fef05269a12bc1d59ec5",
+    "fullRustSuitesFreshlyExecuted": false,
+    "unchangedCatalogDataReaderModules": 9,
+    "freshFocusedCatalogContracts": true,
+    "fullCatalogMatricesFreshForThisChange": false
+  },
+  "retained": {
+    "index": "target/independent-local-journal-final-qpYDDX/index.json",
+    "sha256": "eccc64f84c1f2fad797f057790dc9a0c79f01217fe804d954acff3c2ec7202b3",
+    "files": 272,
+    "includes": "Six terminal manifests and logs, seven actual offline consumers and matching archives, full source inventory and changed inputs, unchanged development regression/before/after inputs, isolated control source/compiled output, separate development-only matrix and normal native bytes."
+  },
+  "remaining": [
+    "Join the actual local native journal with the complete upload-owning operational participant parent and a no-gap ownership handoff.",
+    "Implement complete portable local operational export/restore with original/current/pending/live native data and whole-upload/provider provenance.",
+    "Integrate actual five-family native staging/adoption and every historic-copy/provider/client reconciliation, with freshly authenticated whole-room activation.",
+    "Provide sustainable native Undo/offline retention; generation seals do not lift the existing 1000-item retained-Undo ceiling.",
+    "Complete remaining full feature parity and all thirteen V1 release gates."
+  ],
+  "physicalDurabilityQualified": false,
+  "historicalWebKitOrRasterRepair": false,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "versionChanged": false,
+  "pushed": false
+}

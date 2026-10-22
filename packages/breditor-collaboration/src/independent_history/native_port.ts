@@ -5,6 +5,8 @@ import type {IndependentHistoryIdentity,SharedIndependentHistoryRecovery} from '
 export interface IndependentHistoryNativePort {
  readonly core:SharedRichEditor<SharedSelectionPolicy>;readonly identity:IndependentHistoryIdentity;
  readonly companion:boolean;
+ /** A distinct actual local operation owner, never a delivery binding or stored DTO. */
+ readonly localOperation?:object;
  check():void;checkManaged():void;stamp():object;read():SharedIndependentHistoryRecovery;
  checkBorrowed(core:object):void;savedCompanion():string|null;
 }

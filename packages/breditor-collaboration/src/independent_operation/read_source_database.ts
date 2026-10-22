@@ -10,8 +10,8 @@ export async function readOperationSourceDatabase(name:string,key:readonly[strin
  return readDedicatedOperationSourceDatabase(name,key,readHead,check,'operation-v1');
 }
 /** Private explicit family selection; no stored field auto-detects or migrates a schema. */
-export async function readDedicatedOperationSourceDatabase(name:string,key:readonly[string,string],readHead:(head:string)=>IndependentHistoryHead,check:()=>void,family:'operation-v1'|'restored-operation-v1'):Promise<IndependentHistoryStoredCut|null>{
- const filesName=family==='operation-v1'?'operation_history_files':'restored_operation_history_files',headsName=family==='operation-v1'?'operation_history_heads':'restored_operation_history_heads';
+export async function readDedicatedOperationSourceDatabase(name:string,key:readonly[string,string],readHead:(head:string)=>IndependentHistoryHead,check:()=>void,family:'operation-v1'|'restored-operation-v1'|'local-operation-v1'):Promise<IndependentHistoryStoredCut|null>{
+ const filesName=family==='operation-v1'?'operation_history_files':family==='local-operation-v1'?'local_operation_history_files':'restored_operation_history_files',headsName=family==='operation-v1'?'operation_history_heads':family==='local-operation-v1'?'local_operation_history_heads':'restored_operation_history_heads';
  check();const db=await existingDatabase(name);if(!db){check();return null;}let changed=false;db.onversionchange=()=>{changed=true;db.close();};
  const current=()=>{check();if(changed)throw fail('independent_operation_storage_changed');};
  try{
