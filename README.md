@@ -40,6 +40,9 @@ unfinished physical whole-room adoption and authenticated activation.
 Its [complete participant recovery](docs/INDEPENDENT_DELIVERY_PARTICIPANT.md)
 also preserves selected raster bytes and whole upload queues without dropping
 receipts or pending packets.
+The [durable recovery coordinator](docs/INDEPENDENT_DELIVERY_RECOVERY.md) adds
+interrupted-commit resumption, actual native replay and held upload custody through
+read-only handoff. Operational descendants and whole-room activation remain separate.
 
 Start the loopback-only combined developer demo after following its
 [toolchain and setup instructions](packages/breditor-experimental-collaboration/README.md):

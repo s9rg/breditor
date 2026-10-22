@@ -1,5 +1,22 @@
 # V1 candidate checks
 
+Both profiles require `asset-custody-contracts`,
+`independent-delivery-recovery-contracts`, `independent-delivery-recovery-type-fence`,
+`independent-delivery-recovery` and `installed-independent-delivery-recovery`.
+They qualify the [durable recovery contract](INDEPENDENT_DELIVERY_RECOVERY.md),
+including exact interrupted-commit adoption, native cold replay, current read-only
+handoff and actual upload-store custody through its final barrier. The functional
+plan has 247 checks; operational descendants and whole-room activation remain open.
+
+The [recovery qualification](qualification/2026-10-21-independent-delivery-recovery.json)
+passes 61 selected stages and 1,897 script tests with three existing skips. Source
+and fresh installed packages each repeat 99 focused laws and 256 recovery cuts,
+including 512 handoffs and exact upload/original-file checks. Fourteen installed
+reports pin matching archives. Both pre-fix regression package sets and the
+superseded interrupted run are retained explicitly. Complete native-suite
+evidence is carried only across unchanged native inputs/runtime; this is not
+whole-plan, operational continuation, physical durability, activation or V1 approval.
+
 Both profiles require `independent-delivery-participant-contracts`,
 `independent-delivery-participant-type-fence`, `independent-delivery-participant`
 and `installed-independent-delivery-participant`. They qualify the
@@ -7,7 +24,7 @@ and `installed-independent-delivery-participant`. They qualify the
 exact pending records, receipts, raster payloads, whole cancelled upload state,
 current-policy recovery and real authenticated author/observer continuation.
 Canonical facade tests include the repaired old local-only capture. The current
-functional plan has 242 checks; whole-room coordination and activation remain open.
+functional plan at that checkpoint had 242 checks; whole-room coordination and activation remain open.
 
 The [complete participant checkpoint](qualification/2026-10-21-independent-delivery-participant.json)
 passes 55 selected stages and 1,797 script tests with three existing skips. Source
@@ -99,8 +116,8 @@ the separately authenticated control. The old continuity contracts remain
 mandatory. Source and fresh offline packages repeat the same native/client
 assertions; Pending queues and unselected historical copies are not settled by
 available bytes. See [the distinct contract](PHYSICAL_CLIENT_ASSET_RECONCILIATION.md).
-At that asset checkpoint the functional plan had 216 checks; the current
-238-check plan also includes canonical readers, independent participant recovery,
+At that asset checkpoint the functional plan had 216 checks; the subsequent
+238-check plan also included canonical readers, independent participant recovery,
 owned-core lifetime, explicit native-history reads and independent delivery. Selecting a
 subset or passing functional checks does not grant V1, public-hosting or
 activation approval.

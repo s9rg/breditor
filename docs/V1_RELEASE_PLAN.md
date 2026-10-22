@@ -43,15 +43,39 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+[Durable independent participant recovery](INDEPENDENT_DELIVERY_RECOVERY.md)
+now retains its original archive and exact attempt, inspects destinations before
+native reopen, and resumes interrupted source/upload commits without overwriting
+retained work. Both native lanes first reopen read-only. Genuine upload custody
+closes a reproduced race in the new coordinator: a second asset handle could
+otherwise change cancelled upload state after verification but before handoff.
+Ordinary current-SDK writers now honor the shared/exclusive custody lane; Cancel
+still fences late upload receipts. The functional plan has 247 checks, including
+separate custody laws and source/installed recovery workflows. Operational origin
+continuation, mixed-room custody, provider/client closure and authenticated
+activation remain unfinished. All thirteen V1 gates remain open.
+
+Its [selected qualification](qualification/2026-10-21-independent-delivery-recovery.json)
+passes all 61 stages and 1,897 script tests with three existing skips. Source and
+fresh offline packages each repeat 99 focused laws and 256 recovery cuts, with
+512 handoffs and exact whole-upload/original-file comparisons. Fourteen installed
+reports pin matching archives. Preserved pre-fix packages reproduce the upload
+handoff race and three cleanup/recipient-lifetime defects. Both normal native
+runtime sets and all 2,986 native inputs remain unchanged; complete native-suite
+evidence is carried, not freshly reexecuted. This is selected functional evidence,
+not operational-descendant intent, mixed-room custody, provider/client closure,
+authenticated activation or V1 approval.
+
 [Complete independent delivery participants](INDEPENDENT_DELIVERY_PARTICIPANT.md)
 now retain both native lanes, exact receipts and pending work, selected rasters and
 whole upload state in a distinct portable file. Complete source guards include
 outbox-only changes; actual packet/native sources still gate Ready. Canonical
 private verification also repairs a reproduced fake-Ready facade path in the old
-local-only participant capture. The functional plan now has 242 checks, including
+local-only participant capture. The functional plan at that checkpoint had 242 checks, including
 separate participant contracts, strict types and source/installed workflows.
-Durable multi-store participant/room coordination and authenticated activation
-remain substantive work, not inferred from component restore or archive hashes.
+The separate durable participant coordinator above closes interrupted component
+recovery; room coordination and authenticated activation remain substantive work,
+not inferred from component restore or archive hashes.
 
 The [complete participant qualification](qualification/2026-10-21-independent-delivery-participant.json)
 passes all 55 selected stages and 1,797 script tests with three existing skips.
@@ -61,9 +85,9 @@ archive restores. Thirteen installed reports pin the same archives; the exact
 final fake-Ready regression fails on the preserved previous package. All 2,986
 native inputs and six normal shared runtime files remain byte-identical, so the
 preceding complete native-suite evidence is carried, not freshly reexecuted.
-This is a subset of the 242-check plan. Automatic interrupted recovery across the
-complete delivery and upload stores is the next risk-first boundary, followed by
-whole-room/provider integration and fresh authenticated activation. All thirteen
+This was a subset of the 242-check plan. Operational continuation and
+whole-room/provider integration remain the next boundaries before fresh
+authenticated activation. All thirteen
 V1 gates remain open.
 
 [Independent history delivery](INDEPENDENT_DELIVERY.md) now binds independently

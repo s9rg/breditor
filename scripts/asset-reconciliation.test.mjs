@@ -5,9 +5,10 @@ import {RichAssetStore,RichAssetReconciliation} from "../packages/breditor-exper
 import {openDatabase} from "../packages/breditor-experimental-rich-content/dist/browser/assets/database.js";
 import {equalAssetBytes} from "../packages/breditor-experimental-rich-content/dist/browser/assets/reconciliation/equal_bytes.js";
 import {pixel,pixelAsset,secondPixel,secondAsset,ReviewFixtureImage} from "./fixtures/review-assets/pixels.mjs";
+import {assetLockHost} from './fixtures/asset-custody/locks.mjs';
 const originals=new Map(["indexedDB","Image","navigator"].map(n=>[n,Object.getOwnPropertyDescriptor(globalThis,n)]));
 let held;
-test.beforeEach(()=>{held=new Map();const locks={async request(name,options,run){if(typeof options==="function"){run=options;options={};}while(held.has(name)){if(options.ifAvailable)return run(null);await held.get(name);}let release;held.set(name,new Promise(r=>release=r));try{return await run({name,mode:"exclusive"});}finally{held.delete(name);release();}}};for(const[n,v]of Object.entries({indexedDB:new IDBFactory(),Image:ReviewFixtureImage,navigator:{locks}}))Object.defineProperty(globalThis,n,{value:v,configurable:true});});
+test.beforeEach(()=>{const host=assetLockHost();held=host.held;for(const[n,v]of Object.entries({indexedDB:new IDBFactory(),Image:ReviewFixtureImage,navigator:{locks:host.locks}}))Object.defineProperty(globalThis,n,{value:v,configurable:true});});
 test.afterEach(()=>{assert.equal(held.size,0,"Every owned reconciliation/target lease is released");for(const[n,v]of originals)if(v)Object.defineProperty(globalThis,n,v);else delete globalThis[n];});
 const blob=p=>new Blob([p],{type:"image/png"}),options=(database="attempt")=>({database,checkSource(){}}),bytes=async b=>new Uint8Array(await b.arrayBuffer());
 async function state(name){const db=await openDatabase(name);try{return await new Promise((resolve,reject)=>{const tx=db.transaction(["assets","metadata"],"readonly"),a=tx.objectStore("assets").getAll(),b=tx.objectStore("metadata").get("bytes");tx.oncomplete=()=>resolve({records:a.result,bytes:b.result});tx.onabort=()=>reject(tx.error);});}finally{db.close();}}

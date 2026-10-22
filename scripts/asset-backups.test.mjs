@@ -6,8 +6,9 @@ import {openDatabase} from "../packages/breditor-experimental-rich-content/dist/
 import {ASSET_BACKUP_MAGIC,ASSET_BACKUP_PREFIX_BYTES,ASSET_BACKUP_MIME} from "../packages/breditor-experimental-rich-content/dist/browser/assets/archive/types.js";
 import {assetArchiveDigest,MAX_ASSET_BACKUP_BYTES} from "../packages/breditor-experimental-rich-content/dist/browser/assets/archive/codec.js";
 import {pixel,pixelAsset,secondPixel,secondAsset,ReviewFixtureImage} from "./fixtures/review-assets/pixels.mjs";
+import {assetLockHost} from './fixtures/asset-custody/locks.mjs';
 const original=new Map(["indexedDB","Image","navigator"].map(name=>[name,Object.getOwnPropertyDescriptor(globalThis,name)]));
-test.beforeEach(()=>{for(const [name,value]of Object.entries({indexedDB:new IDBFactory(),Image:ReviewFixtureImage,navigator:{locks:{request:(_name,run)=>Promise.resolve().then(run)}}}))Object.defineProperty(globalThis,name,{value,configurable:true});});
+test.beforeEach(()=>{for(const [name,value]of Object.entries({indexedDB:new IDBFactory(),Image:ReviewFixtureImage,navigator:{locks:assetLockHost().locks}}))Object.defineProperty(globalThis,name,{value,configurable:true});});
 test.afterEach(()=>{for(const [name,descriptor]of original)if(descriptor)Object.defineProperty(globalThis,name,descriptor);else delete globalThis[name];});
 const blob=bytes=>new Blob([bytes],{type:"image/png"});
 async function state(name){const db=await openDatabase(name);try{return await new Promise((resolve,reject)=>{const tx=db.transaction(["assets","metadata"],"readonly"),a=tx.objectStore("assets").getAll(),b=tx.objectStore("metadata").get("bytes");tx.oncomplete=()=>resolve({records:a.result,bytes:b.result});tx.onabort=()=>reject(tx.error);});}finally{db.close();}}

@@ -1,0 +1,11 @@
+/** Complete durable recovery cannot inherit backup-only or older-family qualification. */
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {join} from 'node:path';
+import {candidateReleasePlan,repository} from './candidate-release/plan.mjs';
+test('both profiles require complete durable recovery, native replay and fresh installed assertions',()=>{
+ for(const profile of ['functional','full']){const p=candidateReleasePlan({profile}),find=id=>{const row=p.checks.find(r=>r.id===id);assert.ok(row,id);return row;};assert.deepEqual(find('independent-delivery-recovery-contracts').args,['--test','scripts/independent-delivery-recovery.test.mjs','scripts/independent-delivery-recovery-candidate-plan.test.mjs']);assert.ok(find('independent-delivery-recovery-type-fence').args.includes('scripts/fixtures/editor-consumer/types-independent-delivery-recovery.ts'));for(const[id,file,path]of [['independent-delivery-recovery','check-independent-delivery-recovery-sdk.mjs','target/independent-delivery-recovery-sdk.json'],['installed-independent-delivery-recovery','check-independent-delivery-recovery-installed.mjs','target/independent-delivery-recovery-installed-consumer.json']]){const row=find(id);assert.ok(row.args.includes('scripts/'+file));assert.deepEqual(row.artifacts,[{path,fresh:true}]);for(const host of ['segmented-relay-native-host','segmented-retained-native-host'])assert.ok(p.checks.indexOf(find(host))<p.checks.indexOf(row));}assert.equal(p.v1Ready,false);}
+ const installed=readFileSync(join(repository,'scripts/check-independent-delivery-recovery-installed.mjs'),'utf8');for(const text of ['--offline','--ignore-scripts','verifySearchConsumerRegistry','reversibleLocationsOnly:true','strictPublicTypes:true','workspaceLinks:false','sourceUnchanged:true','^# pass 99$','Only reversible module/fixture locations may change'])assert.ok(installed.includes(text),text);
+ const acceptance=readFileSync(join(repository,'scripts/independent-delivery-recovery-acceptance.mjs'),'utf8');for(const text of ['participantRecovery:true','cuts:256','finishes:512','handoffs:512','wholeUploads:512','retainedOriginalFiles:512','readOnlyRefusals:1024','currentPolicyReopens:256'])assert.ok(acceptance.includes(text),text);
+});

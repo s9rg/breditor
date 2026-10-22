@@ -96,10 +96,12 @@ Validation never requires unlocking read-only owners. Named delivery adapters
 reconnect with fresh tokens and actual server admission. Permanent observers retain
 their zero author prefix and Accept refusal after recovery and account regrants.
 
-Component restores are not an atomic multi-store coordinator. On partial failure,
-retain the archive and any already restored destination; inspect/reopen explicitly
-rather than overwriting it or treating a marker as ownership. The remaining durable
-participant/room coordinator must own both stores, retain every historical-copy
+These component restore methods are not an atomic multi-store coordinator. Prefer
+the separate [durable recovery coordinator](INDEPENDENT_DELIVERY_RECOVERY.md) for
+resumption across interrupted source/upload commits and real upload custody through
+read-only handoff. Manual component restore still requires retaining the archive
+and any committed destination after partial failure, without overwriting it.
+Operational descendants and the room coordinator must retain every historical-copy
 decision and bind current provider/client state before authenticated activation.
 
 ## Bounds and qualification scope
@@ -134,25 +136,14 @@ were compared with its preserved package. The six normal shared runtime files
 and 2,986 native inputs are unchanged. Complete native-suite evidence is carried
 only across those exact inputs, not claimed as freshly reexecuted here.
 
-## Next risk-first implementation boundary
+## Remaining operational and room recovery boundary
 
-The next coordinator must own the complete delivery destination, the complete
-upload destination and its durable attempt record together. Creation is
-insert-only; resumption must match the selected archive, plan and previous intent
-exactly. A lost acknowledgement must reopen and inspect already committed
-components, never overwrite them or infer success from a completion marker.
+The durable participant coordinator now retains both actual source/upload owners
+through exact cold recovery. Subsequent operational edits still need immutable
+origins and genuine native continuation verification, not repeated equality with
+the original backup. A room parent must adopt that custody explicitly together
+with original/generation participants and retain historical-copy decisions.
 
-Cold resumption must retain the actual native/source/upload leases, replay both
-native lanes and verify all receipts, retained records and whole uploads before
-handing out any owner. Fresh current policy must remain separate from historical
-identity, and the first staged handoff stays read-only. Failure, cancellation and
-close must retain retryable custody until in-flight work settles. Subsequent
-operational edits need immutable origins and exact continuation verification,
-not repeated equality with the original backup.
-
-Required interruption laws include every component boundary, commit-before-ack,
-abort-after-commit, existing foreign destinations, unknown schemas, changed
-authority, concurrent open, failed cleanup and cold writable continuation with
-offline work and future Undo/Redo. Physical room adoption, complete provider/client
-reconciliation and fresh authenticated activation follow this boundary; none is
-granted by a backup hash or local ready record.
+Physical room adoption, complete provider/client reconciliation, independent
+server-log generations and fresh authenticated activation follow this boundary.
+None is granted by a backup hash, a local ready record or component restore.

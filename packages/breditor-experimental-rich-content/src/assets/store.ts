@@ -14,6 +14,7 @@ import {beginAssetReconciliation,resumeAssetReconciliation,type AssetReconciliat
 import {RichAssetReconciliationError} from "./reconciliation/error.js";
 import {applyRetainedAssetPlan} from "./reconciliation/apply.js";
 import {captureAssetReconciliationSnapshot} from "./reconciliation/snapshot.js";
+import {RichAssetStoreCustody,RichAssetCustodyError,acquireAssetStoreCustody,withAssetMutationLock,withAssetExclusiveLock,checkAssetStoreCustody,releaseAssetStoreCustody,closeAssetStoreCustody,type AssetCustodyLocks} from "./custody.js";
 
 export interface RichAssetOptions {
   limits?: Partial<AssetLimits>;
@@ -32,9 +33,14 @@ export class RichAssetStore {
   #closed = false;
   #tasks = 0;
   #reconciling = false;
+  readonly #custodyLocks:AssetCustodyLocks|undefined;
+  #custody:RichAssetStoreCustody|undefined;
+  #custodyOpening=false;
+  #custodyReleasing:Promise<void>|undefined;
 
   private constructor(db: IDBDatabase, name: string, options: RichAssetOptions) {
     this.#db = db; this.#name = name; this.#options = options;
+    this.#custodyLocks=globalThis.navigator?.locks;
     this.limits = checkedAssetLimits(options.limits);
     db.onversionchange = () => this.#close();
   }
@@ -57,7 +63,7 @@ export class RichAssetStore {
     const {uploadState,signal,...supplied}={...input};if(uploadState!=="preserve")throw new RichAssetBackupError("asset_backup_policy","Explicit preservation of archived upload state is required");
     const options={...supplied,limits:checkedAssetLimits(supplied.limits)},records=await importAssetBackup(backup,options.limits,signal);checkAssetBackupSignal(signal);
     let store:RichAssetStore|undefined,db:IDBDatabase|undefined;
-    try{db=await openDatabase(name);store=new RichAssetStore(db,name,options);await insertAssetArchive(db,records,signal);store.#live();checkAssetBackupSignal(signal);return store;}
+    try{db=await openDatabase(name);store=new RichAssetStore(db,name,options);const target=db;await store.#write(()=>insertAssetArchive(target,records,signal));store.#live();checkAssetBackupSignal(signal);return store;}
     catch(error){store?.close();db?.close();if(error instanceof RichAssetBackupError)throw error;throw new RichAssetBackupError("asset_backup_storage","Asset archive destination could not commit");}
   }
 
@@ -80,15 +86,24 @@ export class RichAssetStore {
     }};
   }
   async #useReconciliation<T>(work: () => Promise<T>): Promise<T> {
-    this.#live(); if (this.#reconciling || this.#tasks || this.#draining) throw new RichAssetReconciliationError("asset_reconciliation_busy", "Settle asset writes and uploads before reconciliation");
-    if (typeof navigator === "undefined" || !navigator.locks?.request) throw new RichAssetReconciliationError("asset_reconciliation_policy", "Asset reconciliation requires Web Locks");
+    this.#live(); if (this.#reconciling || this.#tasks || this.#draining || this.#custody || this.#custodyOpening) throw new RichAssetReconciliationError("asset_reconciliation_busy", "Settle asset writes and uploads before reconciliation");
+    if (!this.#custodyLocks?.request) throw new RichAssetReconciliationError("asset_reconciliation_policy", "Asset reconciliation requires Web Locks");
     this.#reconciling = true;
-    try {return await navigator.locks.request(`breditor/assets/${this.#name}`, {mode: "exclusive", ifAvailable: true}, async lock => {
+    try {if(this.#custodyReleasing)await this.#custodyReleasing;this.#live();return await withAssetExclusiveLock(this.#custodyLocks,this.#name,()=>this.#custodyLocks!.request(`breditor/assets/${this.#name}`, {mode: "exclusive", ifAvailable: true}, async lock => {
       if (!lock) throw new RichAssetReconciliationError("asset_reconciliation_busy", "Another owner is using the asset store"); this.#live(); return work();
-    });} finally {this.#reconciling = false;}
+    }));}catch(error){if(error instanceof RichAssetCustodyError&&error.code==='asset_custody_busy')throw new RichAssetReconciliationError('asset_reconciliation_busy','Another custody operation owns the retained asset store');throw error;} finally {this.#reconciling = false;}
   }
-  #writable(): void {this.#live(); if (this.#reconciling) throw new RichAssetReconciliationError("asset_reconciliation_busy", "An asset reconciliation operation owns this store");}
-  async #write<T>(work: () => Promise<T>): Promise<T> {this.#writable(); this.#tasks++; try {return await work();} finally {this.#tasks--;}}
+  #writable(): void {this.#live();if(this.#custody||this.#custodyOpening)throw new RichAssetCustodyError('asset_custody_busy');if (this.#reconciling) throw new RichAssetReconciliationError("asset_reconciliation_busy", "An asset reconciliation operation owns this store");}
+  async #write<T>(work: () => Promise<T>): Promise<T> {this.#writable(); this.#tasks++; try {if(this.#custodyReleasing)await this.#custodyReleasing;return await withAssetMutationLock(this.#custodyLocks,this.#name,async()=>{this.#writable();return work();});} finally {this.#tasks--;}}
+
+  /** Hold real cooperative exclusion across asynchronous native/source checks and final handoff.
+   * Reads remain allowed; ordinary cooperating handles cannot write or upload while held.
+   * Settle selected-owner tasks first. No bytes, epochs, receipts or upload state are changed. */
+  async acquireRecoveryCustody():Promise<RichAssetStoreCustody>{
+    this.#writable();if(this.#tasks||this.#draining)throw new RichAssetCustodyError('asset_custody_busy');this.#custodyOpening=true;let custody:RichAssetStoreCustody|undefined,complete=false;
+    try{if(this.#custodyReleasing)await this.#custodyReleasing;this.#live();custody=await acquireAssetStoreCustody(this.#custodyLocks,this.#name,()=>this.#live(),owner=>{if(this.#custody===owner){this.#custody=undefined;const releasing=closeAssetStoreCustody(owner);this.#custodyReleasing=releasing;void releasing.then(()=>{if(this.#custodyReleasing===releasing)this.#custodyReleasing=undefined;},()=>{/* Retain the actual failed release for subsequent operations/cleanup. */});}});this.#live();this.#custody=custody;checkAssetStoreCustody(custody);complete=true;return custody;}
+    finally{this.#custodyOpening=false;if(!complete&&custody)await closeAssetStoreCustody(custody);}
+  }
 
   /** Capture immutable source data in the same active asset snapshot before asynchronous encoding.
    * No flush, upload or notification. The callback must be synchronous; it may run before a later
@@ -178,18 +193,20 @@ export class RichAssetStore {
       }
     };
     // Web Locks coordinate live tabs. Receipts still require host idempotence after crashes.
-    const work = navigator.locks ? navigator.locks.request(`breditor/assets/${this.#name}`, drain) : drain();
+    const work = (async()=>{if(this.#custodyReleasing)await this.#custodyReleasing;return withAssetMutationLock(this.#custodyLocks,this.#name,async()=>{this.#writable();return this.#custodyLocks ? this.#custodyLocks.request(`breditor/assets/${this.#name}`, drain) : drain();});})();
     this.#draining = work.finally(() => { this.#draining = undefined; });
     return this.#draining;
   }
 
   /** Abort live network work and revoke this owner's URLs, but retain durable bytes. */
   close(): void {
+    if(this.#custody||this.#custodyOpening)throw new RichAssetCustodyError('asset_custody_busy');
     if (this.#reconciling) throw new RichAssetReconciliationError("asset_reconciliation_busy", "Wait for the active asset reconciliation operation");
     this.#close();
   }
   #close(): void {
     if (this.#closed) return; this.#closed = true;
+    if(this.#custody)releaseAssetStoreCustody(this.#custody);
     for (const controller of this.#active.values()) controller.abort();
     for (const url of this.#urls.values()) URL.revokeObjectURL(url);
     this.#urls.clear(); this.#db.close();

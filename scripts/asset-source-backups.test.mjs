@@ -5,8 +5,9 @@ import {RichAssetStore} from "../packages/breditor-experimental-rich-content/dis
 import {readRichAssetBackup,RichAssetArchive} from "../packages/breditor-experimental-rich-content/dist/browser/assets/archive/read_backup.js";
 import {openDatabase} from "../packages/breditor-experimental-rich-content/dist/browser/assets/database.js";
 import {pixel,pixelAsset,secondPixel,secondAsset,ReviewFixtureImage} from "./fixtures/review-assets/pixels.mjs";
+import {assetLockHost} from './fixtures/asset-custody/locks.mjs';
 const originals=new Map(["indexedDB","Image","navigator"].map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)]));
-test.beforeEach(()=>{for(const [key,value]of Object.entries({indexedDB:new IDBFactory(),Image:ReviewFixtureImage,navigator:{locks:{request:(_name,run)=>Promise.resolve().then(run)}}}))Object.defineProperty(globalThis,key,{value,configurable:true});});
+test.beforeEach(()=>{for(const [key,value]of Object.entries({indexedDB:new IDBFactory(),Image:ReviewFixtureImage,navigator:{locks:assetLockHost().locks}}))Object.defineProperty(globalThis,key,{value,configurable:true});});
 test.afterEach(()=>{for(const [key,value]of originals)if(value)Object.defineProperty(globalThis,key,value);else delete globalThis[key];});
 const blob=value=>new Blob([value],{type:"image/png"});
 test("live asset-owner admission is synchronous and performs no I/O, write or notification",async()=>{

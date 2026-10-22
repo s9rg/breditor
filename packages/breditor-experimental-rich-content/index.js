@@ -23,6 +23,7 @@ export {mountRichEditor,mountDocumentRichEditor,RichDomEditor,defaultToolbar,Ric
 export {RichAssetBackupError,MAX_ASSET_BACKUP_BYTES,MAX_ASSET_BACKUP_HEADER_BYTES,ASSET_BACKUP_MIME} from "./dist/browser/index.js";
 export {RichAssetArchive,readRichAssetBackup} from "./dist/browser/index.js";
 export {RichAssetReconciliation,RichAssetReconciliationError} from "./dist/browser/index.js";
+export {RichAssetStoreCustody,RichAssetCustodyError} from './dist/browser/index.js';
 export {checkRichAssetLimits,inspectRichRaster} from "./dist/browser/index.js";
 export {createRichInlinePresentation} from "./dist/browser/index.js";
 export {createStandardRichInlinePresentationV1,standardInlineKindsV1,standardInlinePropertiesV1,standardInlineStylesV1} from "./dist/browser/index.js";

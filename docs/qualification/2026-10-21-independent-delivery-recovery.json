@@ -1,0 +1,443 @@
+{
+  "format": "breditor/independent-delivery-recovery-functional-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-21",
+  "calendarTimeZone": "America/Toronto",
+  "passed": true,
+  "source": {
+    "commit": "65d5394b92ea59c7702342d5b7d87af050b345d4",
+    "dirty": true,
+    "sha256": "9409188ab03e602c31607b4c2329f23a27a5e691d3d6e05a052ec58a4ba7620d",
+    "files": 5469,
+    "bytes": 45070675
+  },
+  "nonDocumentation": {
+    "files": 4894,
+    "sha256": "ef5eb541bc880b1ec15e6521334404b76b2d3098ab9d5427ee1fd406406813e2"
+  },
+  "nativeInputs": {
+    "files": 2986,
+    "sha256": "a4a716e0a6237d7c0d6122e5ab1eefc7ab02bda557cfeff9b786794c9c23d420"
+  },
+  "normalSharedRuntime": [
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.js",
+      "bytes": 197057,
+      "sha256": "eedaf4d3fbdfd9cfd115484030cc07d3be185aac00c3ccc4922f6df905de40ae"
+    },
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+      "bytes": 13444371,
+      "sha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329"
+    },
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/breditor_shared.d.ts",
+      "bytes": 76829,
+      "sha256": "fe5579cc17725f1f63cf47ef147a6a570bdb3b6be5c522820e9ce1a61ec21e26"
+    },
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/breditor_dependency_inventory.json",
+      "bytes": 124122,
+      "sha256": "6714d5160bc54a23292eebb667a203c3d55358899e0e8df148b2388abf0bd688"
+    },
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/THIRD_PARTY_NOTICES.txt",
+      "bytes": 1380448,
+      "sha256": "4bdd58691c23f4733fd973aff84ebb1a38a670c97c64ce8e4c79c624f594f204"
+    },
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/RUST_COPYRIGHT-library.html",
+      "bytes": 1512520,
+      "sha256": "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6"
+    }
+  ],
+  "normalRichRuntime": [
+    {
+      "path": "packages/breditor-experimental-rich-content/dist/breditor_wasm.js",
+      "bytes": 176594,
+      "sha256": "8ff8899f4d235725a9954623be66565585ca519f557f0f5acc5835d31ff46576"
+    },
+    {
+      "path": "packages/breditor-experimental-rich-content/dist/breditor_wasm_bg.wasm",
+      "bytes": 5910655,
+      "sha256": "bc020ce07ed80600b85735c1e592d5ae163d921f5556fef05269a12bc1d59ec5"
+    },
+    {
+      "path": "packages/breditor-experimental-rich-content/dist/breditor_wasm.d.ts",
+      "bytes": 96700,
+      "sha256": "707887e7fc0cfa40f9210f3035bea41bed9ca040eb89b98d5fd5222195cb6243"
+    },
+    {
+      "path": "packages/breditor-experimental-rich-content/dist/breditor_dependency_inventory.json",
+      "bytes": 29157,
+      "sha256": "047361b860d98118581650dbf0f15d8f6b57abaaa9d4a576d956364915d89014"
+    },
+    {
+      "path": "packages/breditor-experimental-rich-content/dist/THIRD_PARTY_NOTICES.txt",
+      "bytes": 353584,
+      "sha256": "b453b4e00e6ab941cce24809a27ce4ed6801585a81592c2bebe501a1f5a15a9b"
+    },
+    {
+      "path": "packages/breditor-experimental-rich-content/dist/RUST_COPYRIGHT-library.html",
+      "bytes": 1512520,
+      "sha256": "68129500b616d5838629e68f55ff3aed5e096dacf60ce9eb41bbe599a563afa6"
+    }
+  ],
+  "selection": {
+    "functionalPlanChecks": 247,
+    "selectedStages": 61,
+    "batches": [
+      {
+        "name": "build",
+        "stageCount": 5
+      },
+      {
+        "name": "new-recovery",
+        "stageCount": 7
+      },
+      {
+        "name": "complete-participant",
+        "stageCount": 4
+      },
+      {
+        "name": "atomic-delivery",
+        "stageCount": 4
+      },
+      {
+        "name": "original-delivery",
+        "stageCount": 19
+      },
+      {
+        "name": "native-custody",
+        "stageCount": 22
+      }
+    ],
+    "sourceUnchangedDuringAllRuns": true,
+    "wholePlanExecuted": false,
+    "postQualificationChanges": "Documentation only; implementation and non-documentation inputs retain the recorded fingerprint.",
+    "supersededBaseline": "Earlier intentionally stopped qualification is retained separately and is not counted as a pass."
+  },
+  "regressions": {
+    "uploadHandoff": {
+      "defect": "Another actual upload handle could retry a cancelled upload after complete verification but before the participant handoff returned. The old coordinator reported success for a changed verified cut.",
+      "exactFinalTest": "concurrent upload state cannot change between complete verification and participant handoff",
+      "sourceAssertionsSha256": "d1523f2036aab53355aeddb3653e96640f310c097eb143a5e9a95badd0f10b53",
+      "sourceAndInstalledPreFixReproduced": true,
+      "installedArchiveFilesByteCompared": 1168,
+      "reversibleModuleAndFixtureLocationsOnly": true,
+      "oldResult": {
+        "exitCode": 1,
+        "failed": 1,
+        "message": "Missing expected rejection: A second upload owner must not mutate the verified cut during handoff"
+      },
+      "oldArchives": [
+        {
+          "name": "@breditor/browser",
+          "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+          "installedFilesCompared": 193
+        },
+        {
+          "name": "@breditor/experimental-rich-content",
+          "sha256": "e6b524a4d3b9cab485e6df2ff62af133a3772291ec463fd3bba73934c13ac40f",
+          "installedFilesCompared": 168
+        },
+        {
+          "name": "@breditor/collaboration",
+          "sha256": "e433402609160227902b65f7aacc2cdf103b77624b37f42e9fbb4c02d483f96d",
+          "installedFilesCompared": 807
+        }
+      ],
+      "repairedSourceAndInstalledPass": true
+    },
+    "canonicalCleanupAndRecipientLifetime": {
+      "defects": [
+        "Internal lease close dispatched through mutable public release, which could stall cleanup.",
+        "Version-change retirement could be redirected through the same public release facade.",
+        "Immediate use of the returned upload handle raced its own actual exclusive callback release and incorrectly failed busy."
+      ],
+      "sourceAssertionsSha256": "950b8e2575a1957a80929f88a5b752a6a8ec7dae9563ef845b8f222628132448",
+      "installedAssertionsSha256": "950b8e2575a1957a80929f88a5b752a6a8ec7dae9563ef845b8f222628132448",
+      "assertionsByteIdentical": true,
+      "oldInstalledSelectedTests": 3,
+      "oldResult": {
+        "exitCode": 1,
+        "failed": 3
+      },
+      "installedArchiveFilesByteCompared": 1170,
+      "oldArchives": [
+        {
+          "name": "@breditor/browser",
+          "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+          "installedFilesCompared": 193
+        },
+        {
+          "name": "@breditor/experimental-rich-content",
+          "sha256": "296757bc97d6bd22be65304e4c41a50e28dc4cfaceb91b1a31b789361e92ddf7",
+          "installedFilesCompared": 170
+        },
+        {
+          "name": "@breditor/collaboration",
+          "sha256": "8fcf6804caf0db49490ab77a4fc2b74aa7df75dc368f6f7a87e0f8fcec976eff",
+          "installedFilesCompared": 807
+        }
+      ],
+      "repairedSourceAndInstalledPass": true,
+      "scope": "The exact final three laws reproduce against the preserved pre-fix installed package; source diagnosis also used separate inline probes. No exact three-law pre-fix source run is claimed."
+    }
+  },
+  "proof": {
+    "scriptTests": {
+      "passed": 1897,
+      "failed": 0,
+      "skipped": 3
+    },
+    "focusedSourceAndInstalledLaws": 99,
+    "eachSourceAndInstalled": {
+      "coordinator": {
+        "cuts": 256,
+        "finishes": 512,
+        "handoffs": 512,
+        "wholeUploads": 512,
+        "retainedOriginalFiles": 512,
+        "readOnlyRefusals": 1024,
+        "currentPolicyReopens": 256
+      },
+      "localNativeConfigurations": 120,
+      "localColdPairs": 240,
+      "localFutureNativeHistoryPairs": 360,
+      "localWholeUploadComparisons": 360,
+      "localRetainedPacketComparisons": 360,
+      "authenticatedAuthorCases": 40,
+      "authorColdReopens": 120,
+      "offlinePeerReconnects": 40,
+      "retainedAuthorReceipts": 160,
+      "authorAcknowledgementSaveRefusals": 2,
+      "serverRollbackRefusalsBeforeAuthorResume": 2,
+      "futureAuthorDocumentSteps": 80,
+      "futureAuthorReviewSteps": 80,
+      "advancedReviewCases": 24,
+      "ownedAccepts": 24,
+      "publishedVersions": 24,
+      "advancedReceiptSaveFailures": 4,
+      "permanentObserverCases": 24,
+      "observerColdReopens": 96,
+      "observerRetainedRevisions": 48,
+      "observerDocumentSeals": 24,
+      "foreignAcceptImports": 48,
+      "reviewerRejects": 24,
+      "observerSourceSaveFailures": 4,
+      "editorRegrantAcceptRefusals": 24,
+      "observerAuthorRegistrations": 0,
+      "observerAuthorResumes": 0,
+      "observerDocumentSubmissions": 0,
+      "completeNetworkArchiveRestores": 136
+    },
+    "sourceAndInstalledAssertions": "Only reversible module and fixture locations differ; complete acceptance summaries compare equal after omitting only nondeterministic wireRequests counts.",
+    "freshInstalled": {
+      "workspaceLinks": false,
+      "strictPublicTypes": true,
+      "registryArtifacts": 45,
+      "productionModuleCount": 178,
+      "noWorkspaceReactOrSyntheticStorageInProduction": true,
+      "matchingArchiveReports": 14,
+      "archiveHashes": [
+        {
+          "name": "@breditor/browser",
+          "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+        },
+        {
+          "name": "@breditor/experimental-rich-content",
+          "sha256": "340aa47ff8e6c41c56f35476d8d4d5c164aa63fe7470ae3d5367ff19ffd1b109"
+        },
+        {
+          "name": "@breditor/collaboration",
+          "sha256": "8fcf6804caf0db49490ab77a4fc2b74aa7df75dc368f6f7a87e0f8fcec976eff"
+        }
+      ]
+    },
+    "nativeSuites": {
+      "freshlyReexecutedThisCheckpoint": false,
+      "carriedOnlyAcrossExactNativeInputsAndRuntime": true,
+      "suites": [
+        {
+          "id": "relay-native",
+          "passed": 379,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "id": "relay-native-no-server-full",
+          "passed": 267,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "normalSharedRuntimeByteIdentical": true,
+      "normalRichRuntimeByteIdentical": true
+    }
+  },
+  "evidence": {
+    "immutableCopies": 134,
+    "index": {
+      "path": "target/delivery-recovery-qualified-c4hAo9/index.json",
+      "bytes": 81911,
+      "sha256": "c6b0a729063308d8e933b798de4e828410b375656c8851f9e39bc9b7769360e8"
+    },
+    "aggregate": {
+      "path": "target/delivery-recovery-qualified-c4hAo9/aggregate.json",
+      "bytes": 9832,
+      "sha256": "92ed26c12649d0b3c2703df825cf822a73747d9a36ae4cdad2372d46f2382da7"
+    },
+    "batches": [
+      {
+        "name": "build",
+        "status": "passed",
+        "stageCount": 5,
+        "result": {
+          "path": "target/delivery-recovery-qualified-c4hAo9/build-result.json",
+          "bytes": 9328,
+          "sha256": "4813e03a3c5fd5bbb2b85ba373115100232b6a99d190d2c25f4dec1630708dd0"
+        }
+      },
+      {
+        "name": "new-recovery",
+        "status": "passed",
+        "stageCount": 7,
+        "result": {
+          "path": "target/delivery-recovery-qualified-c4hAo9/new-recovery-result.json",
+          "bytes": 12162,
+          "sha256": "0d8658a997c25d87f2b9475fa844f8c8a3df1e3662397ee2d9ea3b12978d7654"
+        }
+      },
+      {
+        "name": "complete-participant",
+        "status": "passed",
+        "stageCount": 4,
+        "result": {
+          "path": "target/delivery-recovery-qualified-c4hAo9/complete-participant-result.json",
+          "bytes": 8164,
+          "sha256": "5249e0f772acc8679f96d4d8b7934e9e7c7923c22e0d23b9ffbe6496c202d93e"
+        }
+      },
+      {
+        "name": "atomic-delivery",
+        "status": "passed",
+        "stageCount": 4,
+        "result": {
+          "path": "target/delivery-recovery-qualified-c4hAo9/atomic-delivery-result.json",
+          "bytes": 7878,
+          "sha256": "20440d0a4254dcd0f56f95fae9ca8edbd1bd0ddfc9bda166baafe546702c0e29"
+        }
+      },
+      {
+        "name": "original-delivery",
+        "status": "passed",
+        "stageCount": 19,
+        "result": {
+          "path": "target/delivery-recovery-qualified-c4hAo9/original-delivery-result.json",
+          "bytes": 31517,
+          "sha256": "63fc2deca42de1d245cbfaa27e7fc4d0a393f2c57156c1699ce15c36db4ac115"
+        }
+      },
+      {
+        "name": "native-custody",
+        "status": "passed",
+        "stageCount": 22,
+        "result": {
+          "path": "target/delivery-recovery-qualified-c4hAo9/native-custody-result.json",
+          "bytes": 36201,
+          "sha256": "24be901399552d8abdd6b88f7a8c5c62d473087864a17dfb492b6603545507a5"
+        }
+      }
+    ],
+    "packages": [
+      {
+        "name": "@breditor/browser",
+        "path": "target/delivery-recovery-qualified-c4hAo9/package-0.tgz",
+        "bytes": 327732,
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "target/delivery-recovery-qualified-c4hAo9/package-1.tgz",
+        "bytes": 1916749,
+        "sha256": "340aa47ff8e6c41c56f35476d8d4d5c164aa63fe7470ae3d5367ff19ffd1b109"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "target/delivery-recovery-qualified-c4hAo9/package-2.tgz",
+        "bytes": 4134715,
+        "sha256": "8fcf6804caf0db49490ab77a4fc2b74aa7df75dc368f6f7a87e0f8fcec976eff"
+      }
+    ],
+    "sourceReport": {
+      "path": "target/delivery-recovery-qualified-c4hAo9/report-independent-delivery-recovery-sdk.json",
+      "bytes": 14706,
+      "sha256": "750278c7828eadae17b28b54239ca205c42a7541cd9aaeb793edbd011d0509c4"
+    },
+    "installedReport": {
+      "path": "target/delivery-recovery-qualified-c4hAo9/report-independent-delivery-recovery-installed-consumer.json",
+      "bytes": 18707,
+      "sha256": "966c988d9b508a00d081b1f98ddddd26ab081b2a14533a3645cc4622bcb224d1"
+    },
+    "installedUnitLog": {
+      "path": "target/delivery-recovery-qualified-c4hAo9/installed-unit-contracts.log",
+      "bytes": 21926,
+      "sha256": "5173c08a9904d68b3cdd487e7667552b19d49366954cc3a9ca2caeb0f183d1fd"
+    },
+    "exactUploadHandoffRed": {
+      "path": "target/delivery-recovery-qualified-c4hAo9/exact-red.json",
+      "bytes": 2099,
+      "sha256": "7c4c40c56980447a32074c15c9bc3be89975c32d7f866c86f6a7c78eb9e64ab8"
+    },
+    "exactCleanupLifetimeRed": {
+      "path": "target/delivery-recovery-qualified-c4hAo9/cleanup-lifetime-red.json",
+      "bytes": 1781,
+      "sha256": "171cf24dda37f1cc127cdd78028961e1760e2bac9a96aef43a2793d529f2348c"
+    },
+    "supersededQualification": {
+      "path": "target/delivery-recovery-qualified-c4hAo9/superseded-qualification.json",
+      "bytes": 934,
+      "sha256": "89f6307526afae65db905abced6cdc4379661cfcfdf1ba214d5b311a88d1a784"
+    },
+    "exactInstalledAssertionsAndLock": "The retained index pins copied assertions, installed lockfile, strict public types, runner, unit log, complete reports, every selected stage log/artifact and both pre-fix package sets.",
+    "localEvidenceNotPublished": true
+  },
+  "scope": {
+    "originalNativeWireAssetAndArchiveMeaningsUnchanged": true,
+    "actualNativeWasmAndAuthenticatedServerOrder": true,
+    "syntheticFixtures": [
+      "IndexedDB and shared/exclusive lock host",
+      "Two-PNG raster presentation decoder",
+      "Network fixture host mapping callback"
+    ],
+    "durableExactOriginalParticipantCoordinatorFinished": true,
+    "atomicTransactionAcrossSeparateDatabases": false,
+    "initialNativeLanesReadOnly": true,
+    "commitBeforeAcknowledgementAndAbortRetries": true,
+    "completeSourceAndWholeUploadVerification": true,
+    "actualAssetCustodyAcrossAsyncHandoff": true,
+    "canonicalInternalCleanup": true,
+    "recipientWaitsForOwnActualLeaseRelease": true,
+    "cooperativeCurrentSdkAssetWritersOnly": true,
+    "legacyOrDirectIndexedDbWritersNeedSeparateHostFencing": true,
+    "durableOperationalDescendantIntentFinished": false,
+    "physicalWholeRoomNewFamilyAdoptionFinished": false,
+    "allOldOperationParentsAdoptNewAssetCustody": false,
+    "providerWideClientReconciliationFinished": false,
+    "independentServerLogGenerationsFinished": false,
+    "authenticatedWholeRoomActivationFinished": false,
+    "clientNativeUndoLimit": 1000,
+    "hashStreaming": false,
+    "quotaMemoryLatencyCertified": false,
+    "physicalPowerLossCertified": false,
+    "fullFeatureParityFinished": false,
+    "v1Ready": false,
+    "allThirteenV1GatesRemainOpen": true,
+    "versionChanged": false,
+    "pushed": false,
+    "published": false,
+    "tagged": false,
+    "deployed": false
+  }
+}

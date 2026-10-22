@@ -3,6 +3,7 @@ export type {RichClipboardInterchange,RichClipboardInterchangeReport,RichInterch
 export {defaultToolbar,type ToolbarControl,type ActionContext} from "./actions.js";
 export type {AssetBinding,RenderOptions} from "./render.js";
 export {RichAssetStore,type RichAssetOptions} from "./assets/store.js";
+export {RichAssetStoreCustody,RichAssetCustodyError} from './assets/custody.js';
 export {RichAssetReconciliation,type RichAssetReconciliationOptions} from "./assets/reconciliation/coordinator.js";
 export {RichAssetReconciliationError} from "./assets/reconciliation/error.js";
 export type {RichAssetReconciliationChoice,RichAssetReconciliationConflict,RichAssetReconciliationPreview,RichAssetUploadState} from "./assets/reconciliation/types.js";
