@@ -6,6 +6,7 @@ import {restoredLocalFailure as fail} from './failure.js';
 const key=Object.freeze({}),errors={policy:()=>fail('restored_local_participant_policy'),busy:()=>fail('restored_local_participant_busy'),storage:()=>fail('restored_local_participant_cleanup')};
 let borrow:(parent:RestoredLocalParticipantOpening,context:IDBFactory,subset:readonly string[],cohort:readonly string[],cleanup:()=>Promise<void>)=>RecoveryCleanupTicket;
 let borrowAssets:typeof borrow;
+let requireOpening:(value:unknown)=>RestoredLocalParticipantOpening;
 export class RestoredLocalParticipantOpening{
  readonly #context:IDBFactory;readonly #names:readonly string[];readonly #subset:readonly string[];readonly #uploads:string;readonly #root:RecoveryOpeningCustody;readonly #children:RecoveryCleanupScope;
  #child:RecoveryCleanupTicket|undefined;#closed=false;#rollingBack=false;
@@ -16,10 +17,13 @@ export class RestoredLocalParticipantOpening{
  }
  complete():void{if(this.#closed||this.#rollingBack||this.#child||this.#children.pending)throw errors.busy();this.#root.complete();this.#closed=true;}
  rollback():Promise<void>{if(this.#closed)return Promise.resolve();this.#rollingBack=true;return this.#root.rollback().then(()=>{this.#closed=true;});}
- static{const selected=(parent:RestoredLocalParticipantOpening,context:IDBFactory,subset:readonly string[],cohort:readonly string[],cleanup:()=>Promise<void>,kind:'native'|'assets')=>{
+ static{requireOpening=value=>{if(!value||typeof value!=='object'||!(#context in value))throw errors.policy();return value;};const selected=(parent:RestoredLocalParticipantOpening,context:IDBFactory,subset:readonly string[],cohort:readonly string[],cleanup:()=>Promise<void>,kind:'native'|'assets')=>{
   if(!parent||typeof parent!=='object'||!(#context in parent)||parent.#closed||parent.#rollingBack||context!==parent.#context||cohort.length!==4||JSON.stringify([...subset].sort())!==JSON.stringify(kind==='native'?parent.#subset:[parent.#uploads])||JSON.stringify([...cohort].sort())!==JSON.stringify(parent.#names)||typeof cleanup!=='function')throw errors.policy();
   if(parent.#child||parent.#children.pending)throw errors.busy();const actual=parent.#children.retain(cleanup);parent.#child=actual;let done=false;return Object.freeze({complete(){if(done||parent.#closed||parent.#rollingBack||parent.#child!==actual)throw errors.busy();actual.complete();parent.#child=undefined;done=true;},async rollback(){if(done)return;await actual.rollback();if(parent.#child===actual)parent.#child=undefined;done=true;}});
  };borrow=(...args)=>selected(...args,'native');borrowAssets=(...args)=>selected(...args,'assets');}
 }
 export const restoredLocalJournalOpening=(parent:RestoredLocalParticipantOpening,context:IDBFactory,subset:readonly string[],cohort:readonly string[],cleanup:()=>Promise<void>)=>borrow(parent,context,subset,cohort,cleanup);
 export const restoredLocalAssetsOpening=(parent:RestoredLocalParticipantOpening,context:IDBFactory,subset:readonly string[],cohort:readonly string[],cleanup:()=>Promise<void>)=>borrowAssets(parent,context,subset,cohort,cleanup);
+/** Exact intrinsic brand admission for shared machinery. No field or prototype
+ * chain selects this format's actual opening custody. */
+export const requireRestoredLocalParticipantOpening=(value:unknown)=>requireOpening(value);

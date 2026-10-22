@@ -1,0 +1,257 @@
+{
+  "format": "breditor/native-input-journal-qualification",
+  "formatVersion": 1,
+  "qualifiedDate": "2026-10-22",
+  "calendarTimeZone": "America/Toronto",
+  "passed": true,
+  "source": {
+    "commit": "85b410b8309841ecbbfc98c93bceb84bffd4ac38",
+    "dirty": true,
+    "sha256": "1148e267499b2ee3d4f2a020ed56069c1fb0249dee4d0eed6698be62a53a8549",
+    "files": 5850,
+    "bytes": 47227995
+  },
+  "nonDocumentation": {
+    "files": 5226,
+    "sha256": "81601c544a1d23cc0be88725dbf56c29beb8bcf6f71a0f24455747cfc9ea54a6"
+  },
+  "selection": {
+    "functionalPlanChecks": 331,
+    "uniquePassingPlanChecks": 31,
+    "wholePlanExecuted": false,
+    "sourceUnchangedDuringFinalRuns": true,
+    "postQualificationChanges": "Repository documentation only; implementation, assertions, candidate plan and packaged README retain the exact nonDocumentation fingerprint.",
+    "manifests": [
+      "target/v1-candidate-runs/run-ythOO7/result.json",
+      "target/v1-candidate-runs/run-xDmNZz/result.json",
+      "target/v1-candidate-runs/run-rvtqfT/result.json",
+      "target/v1-candidate-runs/run-niR6ZH/result.json",
+      "target/v1-candidate-runs/run-E12BDE/result.json",
+      "target/v1-candidate-runs/run-47q5B9/result.json",
+      "target/v1-candidate-runs/run-TJzXij/result.json"
+    ]
+  },
+  "implemented": [
+    "One typed native-input kernel now owns the actual prepare/native-save/acknowledge machinery, readonly ancestry, bounded fresh-read scopes and cleanup retry. The existing snapshot facade delegates to that kernel without widening its input kind, plan, head, intent or schema.",
+    "A closed, private-branded family identity captures exact input/intent/database/facade intrinsics. There is no caller, imported-file, plugin or runtime registration path. Only snapshot-v1 is integrated in the product registry at this checkpoint.",
+    "Construction claims one actual facade before any reentrant freeze callback. Public file/blob/progress/cleanup and source binding refuse an unreturned facade until initial admission and opening completion have finished. No callback or await follows exposure.",
+    "The actual native driver retains the concrete facade identity. A different facade, kernel family, companion or serialized ready-shaped object cannot borrow its source reservation.",
+    "Each format owns literal-file verification. The generic kernel retains size/MIME prechecks and delegates digest verification to the genuine input owner instead of parsing snapshot-v1 plans for every possible format.",
+    "Concrete input, intent and facade types remain linked to the sealed family. NoInfer prevents provided options from widening its kind. Existing exact snapshot intent and parent selection-policy fences still pass."
+  ],
+  "tests": {
+    "newFocusedLaws": 6,
+    "newCandidatePlanLaw": 1,
+    "installedFamilyLaws": 6,
+    "actualProductionBundleFamilyLaws": 6,
+    "freshParentLawsEach": 37,
+    "freshStandaloneJournalLawsEach": 33,
+    "workspaceAndDiagnosticTests": 2647,
+    "editorTests": 385,
+    "scriptsPassed": 2744,
+    "scriptsFailed": 0,
+    "scriptsSkipped": 3,
+    "skipScope": "Three existing opt-in browser checks, not platform qualification."
+  },
+  "sourceAndInstalledParentEach": {
+    "format": "breditor/restored-local-operation-participant-probe",
+    "formatVersion": 1,
+    "passed": true,
+    "cases": 480,
+    "profiles": 5,
+    "interruptedBegins": 480,
+    "initialColdResumes": 480,
+    "laterColdResumes": 960,
+    "handoffs": 1440,
+    "literalInputs": 480,
+    "originalProviders": 1440,
+    "wholeUploadComparisons": 1440,
+    "versionComparisons": 1440,
+    "futureNativePairs": 1440,
+    "postHandoffEdits": 480,
+    "readOnlyRefusals": 960,
+    "oldFamilyRefusals": 960,
+    "freshReadScopes": 480,
+    "writeRefusals": 480,
+    "networkCalls": 0,
+    "boundaryCounts": {
+      "journal-schema-cancel": 40,
+      "upload-abort": 40,
+      "prepared-abort": 40,
+      "prepared-lost-completion": 40,
+      "prepare-abort": 40,
+      "prepare-lost-completion": 40,
+      "native-abort": 40,
+      "native-lost-completion": 40,
+      "acknowledge-abort": 40,
+      "acknowledge-lost-completion": 40,
+      "operational-abort": 40,
+      "operational-lost-completion": 40
+    },
+    "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "scope": "All five normal native compiler profiles, three selection scopes, eight capability masks and four document/comment history pairs. Complete four-name parent, genuine native/upload ownership, twelve first-publication interruptions, three real handoffs, cold later edits/versions/readonly reopen and exact future histories. No repeated flat provenance export, room adoption, authenticated activation, sustainable history, physical durability or V1 approval."
+  },
+  "sourceAndInstalledJournalEach": {
+    "format": "breditor/restored-local-operation-journal-probe",
+    "formatVersion": 1,
+    "passed": true,
+    "cases": 480,
+    "profiles": 5,
+    "interruptedFirstPublications": 480,
+    "initialColdResumes": 480,
+    "laterColdResumes": 480,
+    "inputLivePublications": 480,
+    "literalInputs": 480,
+    "originalPixels": 480,
+    "incomingWholeUploads": 480,
+    "versions": 480,
+    "futureNativePairs": 1440,
+    "readOnlyRefusals": 960,
+    "oldFamilyRefusals": 1440,
+    "freshReadScopes": 480,
+    "writeRefusals": 480,
+    "boundaryCounts": {
+      "prepare-abort": 80,
+      "prepare-lost-completion": 80,
+      "native-abort": 80,
+      "native-lost-completion": 80,
+      "acknowledge-abort": 80,
+      "acknowledge-lost-completion": 80
+    },
+    "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "scope": "Five normal compiler profiles, three selection scopes, eight capability masks and four document/comment history pairs. Actual writable source-owned journal/input, single verified LIVE first-publication, six terminal save interruptions, cold resume and exact future histories. Incoming uploads are preserved data only; no complete operational upload parent, repeated flat export, room adoption, activation, sustainable history or V1 approval."
+  },
+  "controls": {
+    "facadeConstruction": {
+      "beforePassed": 0,
+      "beforeFailed": 2,
+      "afterPassed": 2,
+      "afterFailed": 0,
+      "unchangedRegression": {
+        "path": "scripts/native-input-journal-facade.test.mjs",
+        "bytes": 2864,
+        "sha256": "b51cc1011599ec23739ffac2ab190b790fd016d481bd54840e394b1b77e023d5"
+      },
+      "actualKernelFreezeReentry": true,
+      "actualFacadeFreezeReentry": true,
+      "publishedPackageDefectClaim": false
+    }
+  },
+  "compatibility": {
+    "freshFocusedContracts": [
+      "Closed family and one-use constructor custody",
+      "Existing complete restored-local parent and standalone journal",
+      "Portable local capture/read",
+      "Complete local participant and save journal",
+      "Local native origins and recovery",
+      "Original participant, restored graph and physical catalog",
+      "Native-owner lifetime"
+    ],
+    "installedNativeOwnerLaws": 32,
+    "semanticSourceAndInstalledResultsMatch": true,
+    "normalRuntimeAndPublicRootMeaningUnchanged": true
+  },
+  "carriedEvidence": {
+    "prior": {
+      "index": "target/restored-local-participant-final-QiiMpw/index.json",
+      "sha256": "31944e8b9996452ccbcff9d863b097a414900f81a7d989d307e925422327e8f4",
+      "source": {
+        "commit": "211540843d033554d9d5f0a8e8896df3d89deae2",
+        "dirty": true,
+        "sha256": "f0514a7776db6574ee428502de6cb9749e58742997e748e98ad6d09eec14b4d7",
+        "files": 5838,
+        "bytes": 47162180
+      },
+      "collaborationArchiveSha256": "3b6635a139429e3ca76f31b612380b8a8dc3deff8f2387c50ea900194db6646d"
+    },
+    "unchangedPriorNonDocumentationInputs": 5213,
+    "changedPriorNonDocumentationInputs": [
+      "packages/breditor-collaboration/README.md",
+      "scripts/candidate-release/plan.mjs",
+      "packages/breditor-collaboration/src/restored_local_operation/input.ts",
+      "packages/breditor-collaboration/src/restored_local_operation/journal.ts",
+      "packages/breditor-collaboration/src/restored_local_operation/participant_opening.ts"
+    ],
+    "unchangedOldPackageFiles": 1077,
+    "changedOldPackageFiles": [
+      {
+        "path": "README.md",
+        "beforeSha256": "8d6263d531be4e4c2bf26cfb629fb6ed260a4169c6a71b54c3a5957269e188a9",
+        "afterSha256": "f9c2f7dc0791ede57823c60ddaa61d55200ac6b81296dff6470111e77ca884c0"
+      },
+      {
+        "path": "dist/restored_local_operation/input.d.ts",
+        "beforeSha256": "eaf61085d4a5ab41f18c379f251d7c30ae478e56f11ac52ff551b46372f9a9b5",
+        "afterSha256": "39de53e51e481d7566458f27380f7aab95a7ef374e79c1f3c46201d629f16a67"
+      },
+      {
+        "path": "dist/restored_local_operation/input.js",
+        "beforeSha256": "bf017fcf288cfc2f288e3a53241676dfd66e7628c94bd2df6dd844d361e8dac1",
+        "afterSha256": "5104e88f5cf0ebc025f5035975fd3435d55726763297ec8fb05ea8c3ddf5713f"
+      },
+      {
+        "path": "dist/restored_local_operation/journal.d.ts",
+        "beforeSha256": "42a73f302e240b69aa503ea8c05415b1ef3f67df869308a580bdf9e4be84a751",
+        "afterSha256": "22be2aaa418c280616dac2e7f931275fdd8a938652dc4d84b59479849a39d9aa"
+      },
+      {
+        "path": "dist/restored_local_operation/journal.js",
+        "beforeSha256": "cacb89e94cad29a4863f511dc1618403dc36fbf31871249203385e0d71216e18",
+        "afterSha256": "18dadb6f9cd6bc171132ec7df2777d9623add5ac2f4f2069959ce7c2fc66b5a0"
+      },
+      {
+        "path": "dist/restored_local_operation/participant_opening.d.ts",
+        "beforeSha256": "5a9babe4333c5d51de53c1cb90c530142420e39680788dc5c19d173800ee16b1",
+        "afterSha256": "1d6102edd7b7fda4dc41f8ca042c6126ffd355885bb36ab05d85366e8381051e"
+      },
+      {
+        "path": "dist/restored_local_operation/participant_opening.js",
+        "beforeSha256": "057293c73376b627af57c5368c9242c76af4d261cdbe2991dac32b2e7839c577",
+        "afterSha256": "3aacf6206c4584c9aa3f5fd3a58b27f47f83097285f95ccee21fcf2ff2292a9c"
+      },
+      {
+        "path": "dist/restored_local_operation/source_binding.d.ts",
+        "beforeSha256": "8cb2e52862953805a727711e00d682746ace8b29da49fd95af1d836933e0b462",
+        "afterSha256": "7184faf56e411d293d23fe1dccf68018b0791483a40fc764cc15fe2d94e7628a"
+      }
+    ],
+    "normalRuntimeFiles": 12,
+    "unchangedRustSourceAndManifestInputs": 2857,
+    "otherLegacyFullMatricesFreshlyExecuted": false,
+    "scope": "All changed snapshot standalone and complete-parent native source/installed domains are freshly executed. Other old full matrices are carried across actual unchanged source and archive bytes. Eight old archive files changed and are not called byte-identical."
+  },
+  "installedEvidence": {
+    "freshConsumers": 4,
+    "matchingArchiveSha256": {
+      "@breditor/browser": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+      "@breditor/experimental-rich-content": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad",
+      "@breditor/collaboration": "668df4e1a4c4a93f92975f8ad5229dde76c31f98f21255a7a4b1cde00614ec07"
+    },
+    "workspaceLinks": false,
+    "strictPublicTypes": true,
+    "offlineRegistryIntegrityChecked": true,
+    "assertionChanges": "Reversible module/runtime/fixture locations only. The same six family/constructor assertions also run against the actual production bundle; no substitute runtime or reduced native domain.",
+    "productionBundleExcludesWorkspaceReactAndSyntheticStorage": true
+  },
+  "retained": {
+    "index": "target/native-input-journal-final-fxOHWn/index.json",
+    "sha256": "c2843f7034aeff6eeaa816f19a151344d6931ac21c379da7b920c36943bc0f03",
+    "files": 185,
+    "includes": "Seven terminal manifests and all 31 stage logs, six reports, four clean consumers and matching archives, actual same-assertion construction failure controls, source inventory, exact old-input/archive carry and twelve unchanged normal native files."
+  },
+  "remaining": [
+    "Integrate the strictly typed flat graph codec/semantic reader and its actual complete operational parent/capture through shared machinery; isolated second-family work does not establish product repeated-export closure.",
+    "Actual room-family native staging/adoption, complete historic-copy/provider/client reconciliation and freshly authenticated whole-room activation.",
+    "Sustainable shared-editor native Undo/offline retention, remaining full feature parity and all thirteen V1 release gates."
+  ],
+  "nativeRustSuitesFreshlyExecuted": false,
+  "physicalDurabilityQualified": false,
+  "snapshotFamilyUsesSharedKernel": true,
+  "graphFamilyIntegrated": false,
+  "repeatedExportClosure": false,
+  "historicalWebKitOrRasterRepair": false,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "versionChanged": false,
+  "pushed": false
+}

@@ -26,6 +26,12 @@ export class DetachedRestoredLocalInput{
   }finally{if(owner&&!complete)archive.dispose.call(owner);}
  }
  checkReadable():void{state(this);}
+ /** This format owns its literal-file digest rule. Sharing journal mechanics
+  * must not teach another format to parse a snapshot-v1 operation plan. */
+ async verifyFile(file:Blob,guard:()=>void):Promise<void>{
+  const value=state(this);guard();if(!(file instanceof Blob)||file.size!==value.file.size||file.type!==value.file.type)throw fail('restored_local_operation_input_changed');
+  const bytes=await file.arrayBuffer();guard();if(await assetBytesDigest(new Uint8Array(bytes))!==value.fileSha256)throw fail('restored_local_operation_input_changed');guard();state(this);
+ }
  file():Blob{return state(this).file;}
  originalFile():Blob{return archive.originalFile.call(state(this).owner);}
  selection(){return structuredClone(state(this).policy.expected);}
@@ -40,4 +46,4 @@ export class DetachedRestoredLocalInput{
 const p=DetachedRestoredLocalInput.prototype;
 /** Actual private state, not a structural ready object. Journal code separately
  * reserves storage names and transfers this freshly admitted input lifetime. */
-export const restoredLocalInput=Object.freeze({owns:(owner:unknown):owner is DetachedRestoredLocalInput=>states.has(owner as DetachedRestoredLocalInput),read:DetachedRestoredLocalInput.read,check:p.checkReadable,file:p.file,originalFile:p.originalFile,selection:p.selection,identity:p.identity,original:p.original,live:p.live,targets:p.targets,uploads:p.uploadBackup,blob:p.blob,dispose:p.dispose});
+export const restoredLocalInput=Object.freeze({owns:(owner:unknown):owner is DetachedRestoredLocalInput=>states.has(owner as DetachedRestoredLocalInput),read:DetachedRestoredLocalInput.read,check:p.checkReadable,verifyFile:p.verifyFile,file:p.file,originalFile:p.originalFile,selection:p.selection,identity:p.identity,original:p.original,live:p.live,targets:p.targets,uploads:p.uploadBackup,blob:p.blob,dispose:p.dispose});

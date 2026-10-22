@@ -43,6 +43,33 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The private [shared native-input journal](NATIVE_INPUT_OPERATION_JOURNAL.md) now
+owns publication and read lifetime through a sealed typed kernel. The existing
+snapshot facade keeps its original kind, head/intent/schema and exact input-file
+rules. Constructor custody permits one genuine facade and refuses unreturned
+reads or source binding; imported data and caller adapters cannot register a family.
+
+Its [selected qualification](qualification/2026-10-22-native-input-journal.json)
+passes 31 checks from the 331-check plan. The existing standalone journal and
+complete parent each freshly pass all 480 cases in source and installed form.
+Their 33 and 37 focused laws pass too. Four clean consumers pin matching archives;
+the six new family/constructor laws also pass against the actual production bundle.
+Workspace/diagnostic tests pass 2,647, editor tests 385 and scripts 2,744, with three
+existing opt-in browser skips. Other legacy matrices are carried under exact
+unchanged inputs/archive bytes, not called fresh. Normal native binaries, Rust,
+public-root meaning and defaults remain unchanged.
+
+A separate [typed flat-graph development proof](development/2026-10-22-typed-flat-local-operation.json)
+passes 49 tests and strict type fences. Its second family uses the same two
+production machinery modules with import-only relocation: twelve editable and
+cold restores, 36 exact future history pairs, an independent-Wasm read and six
+interrupted first publications pass. This is not a product graph family or a
+qualified four-name graph parent; uploads in the shared proof are separately
+restored real stores. Production graph integration/resource contracts, actual room
+adoption/reconciliation, authenticated activation and sustainable native history
+remain required. Full parity and all thirteen V1 gates remain open. No version,
+push, tag, publication or deployment is promoted.
+
 The private [complete restored-local participant](RESTORED_LOCAL_OPERATION_PARTICIPANT.md)
 now coordinates literal incoming provenance, the actual native journal/source and
 whole uploads through four reserved namespaces. Durable preparing, prepared and

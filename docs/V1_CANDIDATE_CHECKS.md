@@ -1,5 +1,25 @@
 # V1 candidate checks
 
+Both profiles now also require `native-input-journal-family-contracts`,
+`native-input-journal-type-fence` and `installed-native-input-journal-family`.
+The private [shared journal machinery](NATIVE_INPUT_OPERATION_JOURNAL.md) retains
+closed snapshot-v1 wire semantics while sharing actual native publication and
+read lifetime. Family identity and one-use facade construction use genuine
+private slots; caller adapters, structural DTOs and unreturned owners refuse.
+
+Its [selected qualification](qualification/2026-10-22-native-input-journal.json)
+passes 31 checks from the 331-check functional plan. Full existing standalone and
+complete-parent source/installed 480-case domains are freshly repeated, as are
+their 33/37 focused laws. Four consumers pin matching archives; six new laws pass
+both installed and genuinely bundled. Scripts pass 2,744 with three existing
+browser skips. Unchanged legacy inputs/archive bytes carry other old full matrices.
+
+The [49-test typed graph development proof](development/2026-10-22-typed-flat-local-operation.json)
+does not integrate a graph family into the product registry, qualify its complete
+parent or close repeated product export. All thirteen V1 gates, room adoption,
+complete reconciliation, authenticated activation and sustainable native history
+remain open.
+
 Both profiles require `restored-local-participant-contracts`,
 `restored-local-participant-type-fence`, `restored-local-participant` and
 `installed-restored-local-participant`. The private

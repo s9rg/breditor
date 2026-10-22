@@ -1,0 +1,60 @@
+{
+  "format": "breditor/typed-flat-local-operation-development-record",
+  "formatVersion": 1,
+  "recordedDate": "2026-10-22",
+  "developmentOnly": true,
+  "productQualified": false,
+  "source": {
+    "commit": "85b410b8309841ecbbfc98c93bceb84bffd4ac38",
+    "dirty": true,
+    "sha256": "1148e267499b2ee3d4f2a020ed56069c1fb0249dee4d0eed6698be62a53a8549",
+    "files": 5850,
+    "bytes": 47227995
+  },
+  "retained": {
+    "index": "target/typed-flat-shared-final-fU4bKX/index.json",
+    "sha256": "3b9711cd18ccac9a443774dd491e9abfb63dd80d5e80aa69f08c693cbf8651de",
+    "files": 10,
+    "passed": 49,
+    "source": {
+      "commit": "85b410b8309841ecbbfc98c93bceb84bffd4ac38",
+      "dirty": true,
+      "sha256": "1148e267499b2ee3d4f2a020ed56069c1fb0249dee4d0eed6698be62a53a8549",
+      "files": 5850,
+      "bytes": 47227995
+    }
+  },
+  "tests": {
+    "passed": 49,
+    "failed": 0,
+    "skipped": 0,
+    "unchangedOriginalAssertions": 37,
+    "exactDevelopmentWireRounds": 32,
+    "sharedKernelHistoryCombinations": 4,
+    "sharedKernelEditableRestores": 12,
+    "sharedKernelColdResumes": 12,
+    "exactSharedFutureNativePairs": 36,
+    "independentSharedRuntimeLaws": 1,
+    "sharedFirstPublicationAbortOrLostAcknowledgementBoundaries": 6,
+    "strictTypeFixtures": 2,
+    "dataNegativeAssertions": 4,
+    "graphNegativeAssertions": 6
+  },
+  "implementation": "A strictly typed graph framing codec and actual native semantic reader replace the JavaScript data layer through unchanged assertions. A separate graph-family registry/facade then uses exactly two mechanically relocated production kernel/contract modules, with reversible import-only changes; the old sixteen-owner overlay is not used for that shared-kernel proof.",
+  "typeCorrection": "Two unchanged negative assignments reproduce public-method DTOs satisfying unbranded development data-owner types before nominal private fields are added; the same assertions pass afterward. Runtime genuine-owner checks already refused these DTOs. No published-package defect or browser fault is claimed.",
+  "conservation": "Actual native chronology, whole uploads, original-only pixels and exact incoming file recipes survive repeated edit/save/cold/offline capture. A fresh matching Wasm instance reads after writer factory and grant retirement. Six first-publication abort/lost-acknowledgement points cold-recover without empty native initialization.",
+  "remaining": [
+    "Only snapshot-v1 is integrated in the production family registry. The separate typed graph proof is not installed-package qualification or product repeated-export closure.",
+    "Whole uploads are separately restored real stores; a genuine four-name graph parent and atomic handoff still need implementation.",
+    "Development 8 MiB/128-state/4096-payload bounds are not shipping limits. Production framing/resource contracts, sustainable native Undo/offline retention, actual room adoption/reconciliation and authenticated activation remain required."
+  ],
+  "newShippingLimits": false,
+  "physicalDurabilityQualified": false,
+  "graphFamilyIntegrated": false,
+  "fourNameGraphParent": false,
+  "sourceAndInstalledFullGraphDomainsQualified": false,
+  "sustainableUndoSolved": false,
+  "roomAdoptionOrActivationSolved": false,
+  "historicalWebKitRepair": false,
+  "v1Ready": false
+}

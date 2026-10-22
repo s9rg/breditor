@@ -6,10 +6,12 @@ immutable versions, whole uploads and historical provider-only pixels. An AST
 snapshot, origin reset or recursively nested operation archive does not meet
 that contract.
 
-This design has a retained executable development prototype. It is not yet a
-typed, integrated SDK family, a public export, a room activation protocol or V1
-qualification. The [development record](development/2026-10-22-flat-local-operation.json)
-keeps that distinction explicit.
+This design has retained executable development prototypes, including a strict
+typed data/shared-kernel proof. It is not yet an integrated SDK family, a public
+export, a room activation protocol or V1 qualification. The original
+[development record](development/2026-10-22-flat-local-operation.json) and later
+[typed proof](development/2026-10-22-typed-flat-local-operation.json) keep that
+distinction explicit.
 
 ## Representation
 
@@ -74,6 +76,28 @@ generations are not 64 editor recoveries. The development bounds—8 MiB, 128 st
 rows and 4,096 payloads—are not new shipped limits. Neither experiment fixes the
 native 1,000-entry Undo or 64-generation ceilings, proves large-file performance
 or certifies physical crash durability.
+
+## Typed shared-kernel development
+
+The later [typed development record](development/2026-10-22-typed-flat-local-operation.json)
+retains 49 passing tests and two strict type fixtures. The codec/semantic reader
+passes all 37 unchanged earlier assertions. Thirty-two additional codec rounds
+reproduce the original development bytes exactly. Private nominal fields also
+reject method-shaped data-owner DTOs at compile time; runtime ownership already
+rejected them.
+
+A separate graph registry/facade uses exactly the two production kernel/contract
+modules with reversible import-only relocation, not the old sixteen-owner overlay.
+All four history combinations pass three editable generations and cold resumes,
+36 exact future history pairs, an independently instantiated Wasm read after
+writer retirement and six abort/lost-acknowledgement publication boundaries.
+Whole uploads are separately restored real stores in this shared-kernel proof;
+the actual four-name graph participant and atomic handoff are not implemented.
+
+The production registry still selects snapshot-v1 only. The typed proof's bounds
+are development limits, not a shipping resource contract. No installed full graph
+qualification, product repeated-export closure, sustainable Undo, room adoption,
+activation, historical WebKit repair or V1 approval is inferred.
 
 ## Production integration order
 

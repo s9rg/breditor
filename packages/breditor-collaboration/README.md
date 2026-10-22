@@ -116,6 +116,15 @@ imported provenance, not a new backup of later edits. Repeated flat export and
 room activation remain separate. See
 [restored local ownership](../../docs/RESTORED_LOCAL_OPERATION_PARTICIPANT.md).
 
+The closed snapshot journal now delegates publication, persistence and read
+custody to a shared typed native-input kernel. Its intrinsic family still owns
+the exact input codec, literal-file verification, parsers, schemas and genuine
+parent opening; a caller descriptor cannot register another format. Facade
+construction is claimed once and remains unavailable until actual admission
+completes. Existing snapshot meanings and public-root exports are unchanged.
+The graph family still needs integration. See the
+[shared journal contract](../../docs/NATIVE_INPUT_OPERATION_JOURNAL.md).
+
 `SharedPersistentSession.exportBackup()` captures exact native history, including
 Redo, without a save or publication. Paired `SharedReviewPersistentSession`
 archives also retain comments, local version packets and selected nonsecret
