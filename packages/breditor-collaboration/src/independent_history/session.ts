@@ -56,8 +56,10 @@ export class SharedIndependentHistoryPersistentSession<P extends SharedSelection
   const options={...input,review:{...input.review},documentHistory:input.documentHistory.kind==='segmented-v1'?{...input.documentHistory,initialGenerations:{...input.documentHistory.initialGenerations}}:{...input.documentHistory},reviewHistory:input.reviewHistory.kind==='segmented-v1'?{...input.reviewHistory,initialGenerations:{...input.reviewHistory.initialGenerations}}:{...input.reviewHistory},...(input.editor?{editor:{...input.editor}}:{})};
   const documentLease=await SharedWriterLease.acquire(identity.native.room,identity.native.writer);let reviewLease:ReviewWriterLease|undefined,db:IDBDatabase|undefined,core:SharedRichEditor<Q>|undefined;
   try{
-   reviewLease=await ReviewWriterLease.acquire(identity.native.room,identity.review.actor);db=await openIndependentHistoryDatabase(options.database,companion);const opening=fenceOpeningDatabase(db,'session_open_versionchange'),saved=await readIndependentHistoryCut(db,[identity.native.room,identity.native.writer],companion);
-   if(saved&&recovery)throw new SharedEditorError('independent_history_destination_exists','Recovery never overwrites a committed paired destination');if(saved&&JSON.stringify(saved.record.identity)!==JSON.stringify(identity))throw new SharedEditorError('independent_history_identity','Stored native families differ from the explicitly selected session');
+   reviewLease=await ReviewWriterLease.acquire(identity.native.room,identity.review.actor);db=await openIndependentHistoryDatabase(options.database,companion);const opening=fenceOpeningDatabase(db,'session_open_versionchange'),actualSaved=await readIndependentHistoryCut(db,[identity.native.room,identity.native.writer],companion);
+   if(actualSaved&&recovery)throw new SharedEditorError('independent_history_destination_exists','Recovery never overwrites a committed paired destination');if(actualSaved&&JSON.stringify(actualSaved.record.identity)!==JSON.stringify(identity))throw new SharedEditorError('independent_history_identity','Stored native families differ from the explicitly selected session');
+   const saved=companion?.persistence?await companion.persistence.select(actualSaved):actualSaved;opening.assertCurrent();
+   if(actualSaved&&!saved||saved&&JSON.stringify(saved.record.identity)!==JSON.stringify(identity))throw new SharedEditorError('independent_history_identity','The selected pending native pair must retain the actual source identity');
    if(saved)companion?.load(saved.head);
    const documentCheckpoint=saved?.documentCheckpoint??recovery?.documentCheckpoint,reviewCheckpoint=saved?.reviewCheckpoint??recovery?.reviewCheckpoint;
    const raw=opening.admit(await(documentCheckpoint===undefined?options.create():options.documentHistory.kind==='original'?options.documentHistory.restoreOriginal(documentCheckpoint):options.documentHistory.restoreSegmented(documentCheckpoint)));
@@ -75,7 +77,7 @@ export class SharedIndependentHistoryPersistentSession<P extends SharedSelection
    if(documentCheckpoint===undefined&&options.readOnly)core.setReadOnly(true);
    core.sealIndependentHistoryPolicies(identity.documentHistory,identity.reviewHistory,identity.native.history,identity.native.rangeEditing);
    const actualReview=identity.reviewHistory==='original'?core.reviewCheckpoint():core.reviewSegmentedCheckpoint();if(documentCheckpoint!==undefined&&(core.checkpointJson()!==documentCheckpoint||actualReview!==reviewCheckpoint))throw new SharedEditorError('independent_history_native_replay','Cold native replay must preserve both exact histories');
-   opening.assertCurrent();const session=new SharedIndependentHistoryPersistentSession(constructionKey,db,documentLease,reviewLease,core,options,identity,saved?.head??null,saved?.record.versions??recovery?.versions??[],documentCheckpoint!==undefined,companion);session.save();try{await session.flush();}catch(error){await session.discardAndClose();throw error;}return session;
+   opening.assertCurrent();const session=new SharedIndependentHistoryPersistentSession(constructionKey,db,documentLease,reviewLease,core,options,identity,actualSaved?.head??null,saved?.record.versions??recovery?.versions??[],documentCheckpoint!==undefined,companion);session.save();try{await session.flush();}catch(error){await session.discardAndClose();throw error;}return session;
   }catch(error){core&&disposeOwnedCore(core);db?.close();try{await reviewLease?.close();}finally{await documentLease.close();}throw error;}
  }
  #live():void{if(this.#closed)throw new SharedEditorError('independent_history_closed','The paired history session is closed');this.#documentLease.assertLive();this.#reviewLease.assertLive();}
@@ -92,7 +94,20 @@ export class SharedIndependentHistoryPersistentSession<P extends SharedSelection
  exportRecovery():SharedIndependentHistoryRecovery{this.#live();if(this.#companion)throw new SharedEditorError('independent_delivery_recovery_required','Export the whole delivery cut, not an incomplete local-only history');return this.#recovery();}
  save():void{this.#live();if(this.#storageChanged)throw new SharedEditorError('independent_history_versionchange','The paired database changed');const capture=this.#capture(true);if(same(this.#saved,capture)&&!this.#pending&&!this.#attempt&&!this.#running&&!this.#failure)return;this.#pending=capture;this.#failure=undefined;this.#notify();this.#start();}
  #start():void{if(this.#closed||this.#failure||this.#running||!this.#pending&&!this.#attempt)return;this.#running=this.#drain().catch(error=>this.#failed(error)).finally(()=>{this.#running=undefined;if(!this.#failure)this.#start();});}
- async #drain():Promise<void>{while(!this.#closed&&(this.#attempt||this.#pending)){this.#documentLease.assertLive();this.#reviewLease.assertLive();if(!this.#attempt){const capture=this.#pending!;this.#pending=undefined;if(same(this.#saved,capture))continue;this.#attempt={capture,cut:undefined};}const attempt=this.#attempt;attempt.cut??=await this.#makeCut(attempt.capture);this.#captureGuard?.check();await writeIndependentHistoryCut(this.#db,[this.#identity.native.room,this.#identity.native.writer],this.#savedHead,attempt.cut,this.#companion,this.#captureGuard?.check);if(this.#closed){this.#attempt=undefined;return;}this.#captureGuard?.check();this.#savedHead=attempt.cut.head;this.#saved=attempt.capture;this.#attempt=undefined;if(attempt.capture.companion!==null)this.#companion?.acknowledged(attempt.capture.companion);this.#notify();}}
+ async #drain():Promise<void>{
+  const persistence=this.#companion?.persistence;
+  while(!this.#closed&&(this.#attempt||this.#pending)){
+   this.#documentLease.assertLive();this.#reviewLease.assertLive();
+   if(!this.#attempt){const capture=this.#pending!;this.#pending=undefined;if(same(this.#saved,capture))continue;this.#attempt={capture,cut:undefined};}
+   const attempt=this.#attempt;attempt.cut??=await this.#makeCut(attempt.capture);this.#captureGuard?.check();
+   if(persistence){await persistence.prepare(this.#savedHead,attempt.cut);this.#captureGuard?.check();}
+   await writeIndependentHistoryCut(this.#db,[this.#identity.native.room,this.#identity.native.writer],this.#savedHead,attempt.cut,this.#companion,this.#captureGuard?.check);
+   if(this.#closed){this.#attempt=undefined;return;}this.#captureGuard?.check();
+   if(persistence){await persistence.acknowledge(attempt.cut);this.#captureGuard?.check();}
+   this.#savedHead=attempt.cut.head;this.#saved=attempt.capture;this.#attempt=undefined;
+   if(attempt.capture.companion!==null)this.#companion?.acknowledged(attempt.capture.companion);this.#notify();
+  }
+ }
  async flush():Promise<void>{this.#live();while(this.#running){await this.#running;if(this.#failure)throw this.#failure;}if(this.#failure)throw this.#failure;}
  async retry():Promise<void>{this.#live();if(this.#running)await this.#running;this.save();await this.flush();}
  async sealDocumentGeneration(next:string):Promise<void>{const core=this.#managed();core.sealHistoryGeneration(next);await this.flush();this.#managed();}
@@ -104,5 +119,19 @@ export class SharedIndependentHistoryPersistentSession<P extends SharedSelection
  /** Budget/admit the whole proposed pair before changing the version catalog; source may not move while awaiting hashes. */
  async retainVersion(packet:string):Promise<SharedDocumentVersionInfo>{const core=this.#managed(),info=nativeCore.readVersion.call(core,packet),known=this.#versions.get(info.id);if(known!==undefined){if(known!==packet)throw new SharedEditorError('version_catalog','Immutable version has different bytes');await this.flush();return info;}const captured=this.#capture(),versions=[...captured.versions,packet];await this.#makeCut({...captured,versions});this.#managed();if(!same(captured,this.#capture()))throw new SharedEditorError('independent_history_stale','Source changed while checking the version catalog');this.#versions.set(info.id,packet);this.#sourceStamp=Object.freeze({});this.save();await this.flush();return info;}
  close():Promise<void>{try{if(this.#closed)return this.#released??Promise.resolve();if(this.#closing)return this.#closing;this.#retiring=true;this.#companion?.retire();retireOwnedCore(this.#ownedCore);return this.#closing=Promise.resolve().then(async()=>{if(this.#closed){await this.#released;return;}this.save();if(this.#closed){await this.#released;return;}await this.flush();await this.discardAndClose();}).finally(()=>{this.#closing=undefined;});}catch(error){return Promise.reject(error);}}
- discardAndClose():Promise<void>{try{if(this.#closed)return this.#released??Promise.resolve();this.#closedRevisions={documentRevision:this.#saved?.documentRevision??null,reviewRevision:this.#saved?.reviewRevision??null};this.#closed=true;this.#companion?.retire();retireOwnedCore(this.#ownedCore);for(const off of this.#off)off();this.#off=[];disposeOwnedCore(this.#ownedCore);this.#pending=undefined;this.#saved=undefined;this.#versions.clear();this.#db.close();this.#released=(this.#running??Promise.resolve()).then(async()=>{this.#attempt=undefined;this.#savedHead=null;try{await this.#reviewLease.close();}finally{await this.#documentLease.close();}});this.#notify();return this.#released;}catch(error){return Promise.reject(error);}}
+ discardAndClose():Promise<void>{
+  try{
+   if(this.#closed)return this.#released??Promise.resolve();
+   this.#closedRevisions={documentRevision:this.#saved?.documentRevision??null,reviewRevision:this.#saved?.reviewRevision??null};
+   this.#closed=true;this.#companion?.retire();retireOwnedCore(this.#ownedCore);
+   for(const off of this.#off)off();this.#off=[];disposeOwnedCore(this.#ownedCore);
+   this.#pending=undefined;this.#saved=undefined;this.#versions.clear();this.#db.close();
+   this.#released=(this.#running??Promise.resolve()).then(async()=>{
+    this.#attempt=undefined;this.#savedHead=null;
+    try{try{await this.#reviewLease.close();}finally{await this.#documentLease.close();}}
+    finally{if(this.#companion?.persistence)await this.#companion.persistence.release();}
+   });
+   this.#notify();return this.#released;
+  }catch(error){return Promise.reject(error);}
+ }
 }

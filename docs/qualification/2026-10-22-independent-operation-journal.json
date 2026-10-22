@@ -1,0 +1,121 @@
+{
+  "format": "breditor/independent-operation-journal-functional-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-22T05:14:53.919Z",
+  "calendarTimeZone": "America/Toronto",
+  "passed": true,
+  "source": {
+    "commit": "f4e57b7766bd36a8869ff3eade6312ddb61e8acc",
+    "dirty": true,
+    "sha256": "5bdb7e064280a5c6540293bbcc01be95753d6b6531051c9b61370587943013e4",
+    "files": 5505,
+    "bytes": 45314294
+  },
+  "nonDocumentation": {
+    "files": 4925,
+    "sha256": "4d25fe89f695baa053a5026ac811033540efc67fc1bd209a987f3ee936e602ff"
+  },
+  "nativeInputs": {
+    "files": 2986,
+    "sha256": "a4a716e0a6237d7c0d6122e5ab1eefc7ab02bda557cfeff9b786794c9c23d420"
+  },
+  "selection": {
+    "functionalPlanChecks": 258,
+    "uniquePassingPlanChecks": 21,
+    "wholePlanExecuted": false,
+    "sourceUnchangedDuringAllRuns": true,
+    "postQualificationChanges": "Documentation only; implementation inputs retain the nonDocumentation fingerprint.",
+    "manifests": [
+      "target/v1-candidate-runs/run-7BH3Zb/result.json",
+      "target/v1-candidate-runs/run-TXP1AO/result.json",
+      "target/v1-candidate-runs/run-8oPsAo/result.json",
+      "target/v1-candidate-runs/run-eDh8tE/result.json"
+    ]
+  },
+  "tests": {
+    "workspaceAndDiagnosticTests": 2647,
+    "editorIntegrationTests": 385,
+    "scriptPass": 2003,
+    "scriptFail": 0,
+    "scriptSkipped": 3,
+    "sourceJournalLaws": 50,
+    "sourceJournalPlanLaw": 1,
+    "sourcePreviousNativeOriginLaws": 22,
+    "sourcePreviousNativeOriginPlanLaw": 1,
+    "installedJournalLaws": 50,
+    "installedJournalFailures": 0,
+    "installedJournalSkips": 0,
+    "skipScope": "Three existing opt-in checks; not browser or platform qualification."
+  },
+  "sourceAndInstalledEach": {
+    "cases": 640,
+    "nativeOrigins": 1920,
+    "nativeSourceOpens": 1920,
+    "pendingReplays": 640,
+    "failedSourceCommits": 640,
+    "futureHistoryPairs": 1920,
+    "retainedPacketComparisons": 2240,
+    "localVersionComparisons": 1280,
+    "wholeOriginalComparisons": 640,
+    "boundedCurrentCuts": 1280,
+    "readOnlyRefusals": 1280,
+    "originalWireVersionOutboxCases": 160,
+    "atomicWireAllRetainedStoreCases": 480,
+    "tokenCalls": 0,
+    "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "matrix": "Five native grammar/standard profiles, three selection scopes, all eight existing typing/search/owned-review combinations, all four independent document/comment history pairs, and both existing transports where supported."
+  },
+  "reproducedAndRepaired": {
+    "cause": "A read-only journal snapshot held the save serializer, causing actual autosave to fail with independent_operation_busy while a progress read was delayed.",
+    "previousSerializerFailures": 1,
+    "fixedSerializerPasses": 1,
+    "unchangedAssertionSha256": "745ca6cca264f0414d728dca7900703227a05551b4f1a898977102276db4f61e",
+    "repair": "Track bounded actual read promises separately and retain the native origin and journal lease until all reads finish during close.",
+    "previousSourceCompiledCodeAssertionsLogsAndReportsRetained": true,
+    "oldReleasedPackageClaim": false
+  },
+  "installedEvidence": {
+    "freshConsumers": 6,
+    "matchingArchiveReports": 6,
+    "journalRegistryArtifacts": 45,
+    "journalProductionModules": 177,
+    "workspaceLinks": false,
+    "strictJournalPublicTypes": true,
+    "probeByteIdentical": true,
+    "unitAssertionChanges": "Reversible module and fixture locations only.",
+    "archives": [
+      {"name": "@breditor/browser", "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"},
+      {"name": "@breditor/experimental-rich-content", "sha256": "340aa47ff8e6c41c56f35476d8d4d5c164aa63fe7470ae3d5367ff19ffd1b109"},
+      {"name": "@breditor/collaboration", "sha256": "0502dbf61cedbdf8ef43db18b9bbb2b70d06f8dd76081001d6721caee886156e"}
+    ]
+  },
+  "nativeEvidence": {
+    "baseline": "docs/qualification/2026-10-21-operation-asset-custody.json",
+    "nativeInputsUnchanged": true,
+    "normalRuntimeFilesByteCompared": 12,
+    "normalSharedAndRichRuntimesUnchanged": true,
+    "fullRustSuitesFreshlyExecuted": false,
+    "serverEnabledTestsCarried": 379,
+    "noServerTestsCarried": 267
+  },
+  "retained": {
+    "index": "target/independent-operation-journal-qualified-PyZxTH/index.json",
+    "sha256": "1a7d6825d6a1ffaeefd128c1dff9511fe32e1ca1b62ec2fcedfa1a71d1ed7b1a",
+    "files": 79,
+    "contents": "Actual manifests, stage logs, reports, matching package archives, unchanged regression assertions with old/fixed source and compiled code, and installed consumer assertions, lock and fixtures."
+  },
+  "scope": "Private complete original/current/pending write-ahead journal on the actual independent source-owner open/save/close path, cold pending native replay, retained packets, exact interruption retries, legitimate Stop/Forget, source-bound ownership and nonblocking progress reads. Actual normal Rust/Wasm histories with controlled IndexedDB, locks and raster fixtures.",
+  "remaining": [
+    "Complete independent operational participant and actual whole-upload ownership",
+    "Portable operational export including readable unsaved work and pending intent",
+    "Whole-room adoption, explicit historical-copy decisions and complete provider/client closure",
+    "Independently segmented server comment transport and authenticated room activation",
+    "Native long-session Undo limits, performance, platform durability and remaining feature-parity catalog"
+  ],
+  "v1GatesClosed": 0,
+  "v1GatesRemainingOpen": 13,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "packageVersionChanged": false,
+  "pushedTaggedPublishedOrDeployed": false
+}

@@ -1,0 +1,28 @@
+/** Bounded two-slot write-ahead intent. A stored phase never grants authority. */
+import {generationFields} from '../generation_source/identity.js';
+import {operationJournalFailure as fail} from './journal_failure.js';
+export interface IndependentOperationJournalIdentity {
+ readonly plan:string;readonly operation:string;readonly origin:string;readonly sourceDatabase:string;
+}
+export interface IndependentOperationCutIntent {
+ readonly format:'breditor/shared-independent-operation-cut-intent';readonly formatVersion:1;
+ readonly plan:string;readonly operation:string;readonly sequence:string;
+ readonly current:string|null;readonly pending:string|null;
+}
+const digest=(value:unknown):value is string=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
+export function readOperationCutIntent(raw:unknown,identity:IndependentOperationJournalIdentity):IndependentOperationCutIntent{
+ if(!generationFields(raw,'format,formatVersion,plan,operation,sequence,current,pending'))throw fail();
+ const r=raw as unknown as IndependentOperationCutIntent;
+ if(r.format!=='breditor/shared-independent-operation-cut-intent'||r.formatVersion!==1||r.plan!==identity.plan||r.operation!==identity.operation||typeof r.sequence!=='string'||!/^(0|[1-9][0-9]{0,19})$/.test(r.sequence)||BigInt(r.sequence)>0xffffffffffffffffn||r.current!==null&&!digest(r.current)||r.pending!==null&&!digest(r.pending)||r.pending!==null&&r.pending===r.current)throw fail();
+ const sequence=BigInt(r.sequence);
+ if(r.pending===null&&(sequence%2n!==0n||(r.current===null)!==(sequence===0n))||r.pending!==null&&(sequence%2n!==1n||(r.current===null)!==(sequence===1n)))throw fail();
+ return{format:r.format,formatVersion:1,plan:r.plan,operation:r.operation,sequence:r.sequence,current:r.current,pending:r.pending};
+}
+export const initialOperationCutIntent=(id:IndependentOperationJournalIdentity):IndependentOperationCutIntent=>readOperationCutIntent({format:'breditor/shared-independent-operation-cut-intent',formatVersion:1,plan:id.plan,operation:id.operation,sequence:'0',current:null,pending:null},id);
+/** Only prepare one cut or acknowledge that exact cut; no rollback, replacement or eviction. */
+export function checkOperationCutTransition(before:IndependentOperationCutIntent,next:IndependentOperationCutIntent,id:IndependentOperationJournalIdentity):void{
+ readOperationCutIntent(before,id);readOperationCutIntent(next,id);
+ const prepare=before.pending===null&&next.current===before.current&&next.pending!==null;
+ const acknowledge=before.pending!==null&&next.current===before.pending&&next.pending===null;
+ if(BigInt(next.sequence)!==BigInt(before.sequence)+1n||!prepare&&!acknowledge)throw fail();
+}

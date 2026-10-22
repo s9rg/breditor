@@ -43,15 +43,34 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The private [independent operation save journal](INDEPENDENT_OPERATION_JOURNAL.md)
+now retains its immutable original and complete acknowledged/pending source cuts
+before publication. Actual source open cold-replays pending native histories and
+packets, distinguishes each lost-acknowledgement window and preserves legitimate
+Stop/Forget actions. The source owns the journal through close, and progress
+reads no longer contend with autosave. Old complete exporters refuse this new
+closed family. The 258-check plan requires separate source, type and fresh
+installed-package checks. Complete participant/upload ownership, portable
+operational export, room adoption and activation remain architectural work.
+
+The journal's [selected qualification](qualification/2026-10-22-independent-operation-journal.json)
+passes 21 checks, 50 source and installed journal laws, and the full 640-case
+matrix in both environments. Six fresh consumers pin matching archives. The
+actual read-versus-autosave failure and its repair are retained under unchanged
+assertions. Script tests pass 2,003 with three existing skips; workspace and
+editor integration checks also pass. This is a verified source-journal
+checkpoint, not complete operational participant or V1 approval.
+
 [Private independent native origins](INDEPENDENT_OPERATION_NATIVE_ORIGIN.md)
 now guard actual source-open, insert-only recovery, autosave and transaction
 callbacks before current state can be acknowledged. Both native ancestry lanes
 and original local-version packets remain selected; lost authority blocks writes
 without hiding readable unsaved recovery. Source laws and the full 640-case
-native-policy matrix pass. The 254-check functional plan requires separate source,
-type and fresh installed-package checks. Durable source/outbox intent, legitimate
-retirement accounting, complete participant/room adoption and activation remain
-architectural work; this private admission layer is not a completed operation API.
+native-policy matrix pass. That checkpoint's 254-check functional plan requires
+separate source, type and fresh installed-package checks. The save journal above
+adds durable source/outbox cut intent; complete participant/room adoption and
+activation remain architectural work. Neither private layer is a completed
+operational participant API.
 
 Its [selected qualification](qualification/2026-10-22-independent-native-origin.json)
 passes 32 checks from the 254-check plan, 1,952 script tests with three existing

@@ -1,5 +1,14 @@
 # V1 candidate checks
 
+Both profiles require `independent-operation-journal-contracts`,
+`independent-operation-journal-type-fence`, `independent-operation-journal` and
+`installed-independent-operation-journal`. The private
+[save journal](INDEPENDENT_OPERATION_JOURNAL.md) runs on actual source open,
+prepare, commit, acknowledgement and close. The checks require the same 50 laws
+and byte-identical 640-case source/installed probe. The current functional plan
+has 258 checks; complete participant/upload ownership, portable operational
+export and room activation remain separate work.
+
 Both profiles require `independent-operation-origin-contracts`,
 `independent-operation-origin-type-fence`, `independent-operation-origin` and
 `installed-independent-operation-origin`. They check the private
@@ -7,8 +16,9 @@ Both profiles require `independent-operation-origin-contracts`,
 original/segmented document and independent comment replays, zero-write refusal,
 transaction/lost-acknowledgement laws and readable unsaved exports. Fresh archives
 repeat the 22 focused laws and full 640-case legal native-policy matrix. The
-functional plan now has 254 checks; durable complete operation intent and
-whole-room activation remain separate work.
+functional plan at that native-origin checkpoint had 254 checks. The source
+journal above adds durable cut intent; complete operation/room ownership remains
+separate work.
 
 Both profiles require `operation-asset-custody-contracts`,
 `operation-asset-custody-type-fence` and `installed-operation-asset-custody`.

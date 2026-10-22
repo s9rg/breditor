@@ -71,11 +71,13 @@ several actions coalesced into one saved cut. An operation owner must distinguis
 those actual transitions from missing work without resurrecting cancelled
 decisions or requiring every old cache row to remain active forever.
 
-The next durable contract must retain the immutable original and bind actual
-current and pending source cuts before publication, reconcile interrupted commits
-and preserve the real source/outbox transaction. It must coordinate whole-upload
-custody with genuine owners, keep old readers closed to any new stored family,
-and require fresh current policy rather than deriving a grant from an archive.
+The separate [save journal](INDEPENDENT_OPERATION_JOURNAL.md) now retains the
+immutable original and actual current/pending source cuts before publication,
+reconciles interrupted commits and preserves the real source/outbox transaction.
+It keeps old readers/exporters closed to its explicit new family and retains the
+origin for the whole source lifetime. Complete operation ownership must still
+coordinate whole-upload custody with genuine owners and portable operational
+export under fresh current policy.
 Room adoption, provider/client closure, independent server-log generations and
 authenticated activation remain required integrations.
 

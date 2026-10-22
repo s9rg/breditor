@@ -22,6 +22,8 @@ import {IndependentDeliveryCompanion} from './companion.js';
 import {registerIndependentDeliverySession} from './admission.js';
 import {registerIndependentDeliverySource} from '../independent_delivery_source/admission.js';
 import {guardedIndependentCompanion} from '../independent_operation/native_capture_guard.js';
+import {journaledIndependentCompanion,operationJournalSelected,selectedOperationJournal} from '../independent_operation/journal_binding.js';
+import type {IndependentOperationCutJournal} from '../independent_operation/cut_journal.js';
 import {MAX_INDEPENDENT_DELIVERY_RECOVERY_BYTES,type SharedIndependentDeliveryOptions,type SharedIndependentDeliveryRecovery,type SharedIndependentDeliveryRecoveryOptions} from './contract.js';
 
 export type SharedIndependentVersionsOpenOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy>=Omit<SharedDocumentVersionsOptions<P>,'identity'|'database'|'storage'|'autoConnect'>&{autoConnect?:false};
@@ -29,26 +31,26 @@ export type SharedIndependentRevisionsOpenOptions<P extends SharedSelectionPolic
 const constructionKey=Object.freeze({});
 export class SharedIndependentDeliverySession<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
  readonly #session:SharedIndependentHistoryPersistentSession<P>;readonly #native:IndependentHistoryNativePort;
- readonly #core:SharedRichEditor<P>;readonly #companion:IndependentDeliveryCompanion;
+ readonly #core:SharedRichEditor<P>;readonly #companion:IndependentDeliveryCompanion;readonly #operation:boolean;
  readonly #storage:{readonly core:SharedRichEditor<P>;save():void;flush():Promise<void>};
  #retiring=false;#adapters=new Set<WeakRef<{dispose():void}>>();#openings=new Set<Promise<unknown>>();
  #queue:SharedSuggestionQueue<P>|undefined;#revisions:SharedSuggestionRevisions<P>|undefined;#versions:SharedDocumentVersions<P>|undefined;
  #closing:Promise<void>|undefined;#discarding:Promise<void>|undefined;#released:Promise<void>|undefined;
- private constructor(key:object,session:SharedIndependentHistoryPersistentSession<P>,companion:IndependentDeliveryCompanion){
+ private constructor(key:object,session:SharedIndependentHistoryPersistentSession<P>,companion:IndependentDeliveryCompanion,operation?:IndependentOperationCutJournal){
   if(key!==constructionKey)throw new SharedRelayError('managed_source_construction');
-  this.#session=session;this.#native=independentHistoryNative(session);if(!this.#native.companion)throw new SharedRelayError('independent_delivery_required');this.#core=session.core;this.#companion=companion;
+  this.#session=session;this.#native=independentHistoryNative(session);if(!this.#native.companion)throw new SharedRelayError('independent_delivery_required');this.#core=session.core;this.#companion=companion;this.#operation=!!operation;
   this.#storage=Object.freeze({core:this.#core,save:()=>this.#session.save(),flush:()=>this.#flushSource()});
   const saved=this.#native.savedCompanion();if(saved===null)throw new SharedRelayError('independent_delivery_unsaved');companion.acknowledged(saved);companion.setRetireHook(()=>this.#stop());
   registerIndependentDeliverySession(this,{core:this.#native.core,binding:structuredClone(companion.binding),check:()=>this.#check(),save:()=>this.#session.save(),flush:()=>this.#flushSource(),durable:()=>companion.durable(),persistDocument:progress=>this.#persistDocument(progress),persistReview:(progress,receipt)=>this.#persistReview(progress,receipt),track:adapter=>{this.#check();for(const ref of this.#adapters)if(!ref.deref())this.#adapters.delete(ref);this.#adapters.add(new WeakRef(adapter));}});
-  registerIndependentDeliverySource(this,{core:this.#native.core,identity:companion.identity,check:()=>this.#checkReadable(),stamp:()=>{this.#checkReadable();return[this.#native.stamp(),companion.sourceStamp()];},read:()=>this.#readRecovery()});
+  registerIndependentDeliverySource(this,{core:this.#native.core,identity:companion.identity,...(operation?{operation}:{}),check:()=>this.#checkReadable(),stamp:()=>{this.#checkReadable();return[this.#native.stamp(),companion.sourceStamp()];},read:()=>this.#readRecovery()});
  }
  static async open<Q extends SharedSelectionPolicy>(input:SharedIndependentDeliveryOptions<Q>):Promise<SharedIndependentDeliverySession<Q>>{
   if(this!==SharedIndependentDeliverySession)throw new SharedRelayError('independent_delivery_factory_receiver');
-  const {binding,retained,...options}=input,companion=new IndependentDeliveryCompanion(input),session=await SharedIndependentHistoryPersistentSession.open(withIndependentDeliveryCompanion(options,guardedIndependentCompanion(input,companion)));
-  try{return new SharedIndependentDeliverySession(constructionKey,session,companion);}catch(error){await session.discardAndClose();throw error;}
+  const {binding,retained,...options}=input,companion=new IndependentDeliveryCompanion(input),journal=journaledIndependentCompanion(input,companion),session=await SharedIndependentHistoryPersistentSession.open(withIndependentDeliveryCompanion(options,journal??guardedIndependentCompanion(input,companion)));
+  try{return new SharedIndependentDeliverySession(constructionKey,session,companion,selectedOperationJournal(input));}catch(error){await session.discardAndClose();throw error;}
  }
  static async restoreRecovery<Q extends SharedSelectionPolicy>(input:SharedIndependentDeliveryRecoveryOptions<Q>):Promise<SharedIndependentDeliverySession<Q>>{
-  if(this!==SharedIndependentDeliverySession)throw new SharedRelayError('independent_delivery_factory_receiver');requireBackupRecovery(input.writerRecovery);
+  if(this!==SharedIndependentDeliverySession)throw new SharedRelayError('independent_delivery_factory_receiver');if(operationJournalSelected(input))throw new SharedRelayError('independent_operation_factory');requireBackupRecovery(input.writerRecovery);
   const r=input.recovery;closed(r,'format,formatVersion,relay,retained,retainedBinding,source');if(r.format!=='breditor/shared-independent-delivery-recovery'||r.formatVersion!==1||new TextEncoder().encode(JSON.stringify(r)).length>MAX_INDEPENDENT_DELIVERY_RECOVERY_BYTES)throw new SharedRelayError('independent_delivery_recovery');
   closed(r.source,'documentCheckpoint,format,formatVersion,identity,reviewCheckpoint,versions');if(r.source.format!=='breditor/shared-independent-history-recovery'||r.source.formatVersion!==1||!Array.isArray(r.source.versions))throw new SharedRelayError('independent_delivery_recovery');
   const recovery=structuredClone(r),identity=canonicalIndependentHistoryIdentity(recovery.source.identity),companion=new IndependentDeliveryCompanion(input,recovery),cut=await makeIndependentHistoryCut(recovery.source.documentCheckpoint,recovery.source.reviewCheckpoint,identity,recovery.source.versions);
@@ -83,7 +85,7 @@ export class SharedIndependentDeliverySession<P extends SharedSelectionPolicy=Sh
   this.#native.check();if(this.#native.stamp()!==stamp||this.#companion.sourceStamp()!==delivery)throw new SharedRelayError('independent_delivery_changed');
   return{format:'breditor/shared-independent-delivery-recovery',formatVersion:1,source,relay,retainedBinding:structuredClone(this.#companion.retainedBinding),retained};
  }
- exportRecovery():SharedIndependentDeliveryRecovery{return this.#readRecovery();}
+ exportRecovery():SharedIndependentDeliveryRecovery{if(this.#operation)throw new SharedRelayError('independent_operation_export_required');return this.#readRecovery();}
  retainedRecords():SegmentedRetainedRecords{if(this.#session.state().status==='closed')throw new SharedRelayError('independent_delivery_closed');return this.#companion.durableRecords();}
  #port<K extends SegmentedRetainedKind>(kind:K):RetainedStorePort<K>{const c=this.#companion;if(c.retainedBinding[kind]===null)throw new SharedRelayError('independent_retained_unselected');return{kind,check:()=>this.#native.checkBorrowed(this.#core),writable:()=>this.#check(),read:()=>c.records()[kind] as NonNullable<SegmentedRetainedRecords[K]>,stage:record=>{this.#native.checkBorrowed(this.#core);c.proposeRecord(kind,record);},write:async()=>{this.#native.checkBorrowed(this.#core);await this.#flushSource();}};}
  #opening<T>(create:()=>Promise<T>,discard:(value:T)=>Promise<void>):Promise<T>{this.#check();const work=(async()=>{const value=await create();try{this.#check();return value;}catch(error){await discard(value);throw error;}})();this.#openings.add(work);void work.finally(()=>this.#openings.delete(work)).catch(()=>{});return work;}

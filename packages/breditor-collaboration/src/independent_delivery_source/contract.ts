@@ -11,5 +11,7 @@ export const MAX_INDEPENDENT_DELIVERY_SOURCE_RECORDS=38;
 export const MAX_INDEPENDENT_DELIVERY_SOURCE_BYTES=352*1024*1024+64*1024;
 export interface IndependentDeliverySourcePort{
  readonly identity:SharedIndependentDeliveryIdentity;readonly core:SharedRichEditor<SharedSelectionPolicy>;
+ /** A complete operational export must retain its journal/original, not only this source cut. */
+ readonly operation?:object;
  check():void;stamp():readonly object[];read():SharedIndependentDeliveryRecovery;
 }

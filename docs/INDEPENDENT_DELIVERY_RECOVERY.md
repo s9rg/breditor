@@ -136,9 +136,11 @@ state under fresh policy.
 The private [native origin admission](INDEPENDENT_OPERATION_NATIVE_ORIGIN.md)
 now verifies both native ancestry lanes and retained local versions before
 autosave, including guarded transaction callbacks and readable recovery after
-authority loss. It is a prerequisite, not that durable operation owner: actual
-outbox retirement accounting, current/pending cut intent and coordinated upload
-ownership still need integration.
+authority loss. The separate [save journal](INDEPENDENT_OPERATION_JOURNAL.md) now
+retains current/pending cuts on the actual source path and preserves legitimate
+outbox cancellation/forgetting. Neither is the complete operational participant:
+genuine recovery transfer, continued upload ownership and portable operational
+export still need integration.
 
 Original/generation operation and mixed-room handoffs now use temporary
 [whole-store asset custody](OPERATIONAL_COHORT_CUSTODY.md#hold-every-selected-upload-store).
