@@ -1,0 +1,130 @@
+{
+  "format": "breditor/physical-catalog-v2-functional-qualification",
+  "formatVersion": 1,
+  "qualifiedDate": "2026-10-22",
+  "calendarTimeZone": "America/Toronto",
+  "passed": true,
+  "source": {
+    "commit": "51d2af411f42469170914979bd9057bd42bec1b5",
+    "dirty": true,
+    "sha256": "3f7273a10c9152dc1f7b703942df8acb4c50512d66300beff2f04859a524dbb8",
+    "files": 5676,
+    "bytes": 46299055
+  },
+  "nonDocumentation": {
+    "files": 5072,
+    "sha256": "2ed60bf438aaccbd9e44e63f7f001461cea78a39db7bc549932ca9c40f6b83fa"
+  },
+  "selection": {
+    "functionalPlanChecks": 300,
+    "uniquePassingPlanChecks": 33,
+    "wholePlanExecuted": false,
+    "sourceUnchangedDuringFinalRuns": true,
+    "postQualificationChanges": "Repository documentation only; implementation, assertions, candidate plan and packaged README retain the nonDocumentation fingerprint.",
+    "manifests": [
+      "target/v1-candidate-runs/run-5Qreja/result.json",
+      "target/v1-candidate-runs/run-XFjh8z/result.json",
+      "target/v1-candidate-runs/run-327mmN/result.json",
+      "target/v1-candidate-runs/run-FP0HYP/result.json"
+    ]
+  },
+  "implemented": [
+    "Private explicit version-two physical catalog retaining original, generation, independent-local, independent-delivery and restored-graph files without changing old readers, protocols or defaults.",
+    "Genuine complete child admission, independently selected graph native read factories, exact durable file reopening and source diagnostics preserving unbound local comments and every unresolved historical copy.",
+    "Actual archive/database/lease ownership, context-bound reservation before callbacks, bounded reads, insert-only creation, explicit resume and retryable cleanup; private successor transfer preserves the actual resources."
+  ],
+  "tests": {
+    "focusedLawsSourceAndInstalledEach": 17,
+    "candidatePlanLaw": 1,
+    "workspaceAndDiagnosticTests": 2647,
+    "editorIntegrationTests": 385,
+    "scriptPass": 2321,
+    "scriptFail": 0,
+    "scriptSkipped": 3,
+    "skipScope": "Three existing opt-in browser checks; not platform qualification."
+  },
+  "sourceAndInstalledEach": {
+    "nativeRooms": 10,
+    "matchedHistoryPairs": 4,
+    "olderSourceKinds": 6,
+    "authorDirections": 2,
+    "cohorts": 480,
+    "wireOne": 240,
+    "wireTwo": 240,
+    "longNativeCuts": 1,
+    "longCutCatalogs": 48,
+    "localUnboundPending": 160,
+    "historicCopiesRetained": 2400,
+    "exactColdFiles": 4800,
+    "coldCatalogs": 480,
+    "rehashedCatalogs": 480,
+    "actualGraphReborrows": 1920,
+    "staleGraphRefusals": 480,
+    "occupiedDestinationRefusals": 480,
+    "duplicateSourceRefusals": 480,
+    "oldReaderRefusals": 480,
+    "pureCachedChecks": 480,
+    "unchangedOlderRecords": 480,
+    "unchangedRestoredNativePairs": 480,
+    "networkCalls": 0
+  },
+  "installedEvidence": {
+    "freshConsumers": 4,
+    "matchingArchiveSha256": {
+      "@breditor/browser": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+      "@breditor/experimental-rich-content": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad",
+      "@breditor/collaboration": "aaa053db8628a3eb88a7e2529ac540f21d749afd677e1ab18db3582c729cc2eb"
+    },
+    "workspaceLinks": false,
+    "strictPublicAndPrivateTypeFences": true,
+    "offlineRegistryIntegrityChecked": true,
+    "v2ProbeByteIdentical": true,
+    "assertionChanges": "Reversible module/runtime/verified native fixture data locations only.",
+    "productionBundleExcludesWorkspaceReactAndSyntheticStorage": true,
+    "legacyCompatibility": "Both source and installed original inventory and catalog probes pass, plus the full installed independent-prefix matrix. No old input kind is silently reinterpreted."
+  },
+  "nativeEvidence": {
+    "freshExactSourceProducer": true,
+    "producerRooms": 10,
+    "protectedStreams": 40,
+    "retainedFixtureFiles": 50,
+    "normalRuntimeFilesRetained": 12,
+    "unchangedRustSourceAndManifestInputs": 2857,
+    "normalSharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "normalRichWasmSha256": "bc020ce07ed80600b85735c1e592d5ae163d921f5556fef05269a12bc1d59ec5",
+    "fullRustSuitesFreshlyExecuted": false,
+    "normalRuntimeBytesUnchangedFromPreviousQualifiedCheckpoint": true
+  },
+  "retained": {
+    "index": "target/physical-catalog-v2-final-5Hb0d6/index.json",
+    "sha256": "df41911c8c0640e8a264d3d758aaf3e3dae1f2872d97399fe1e99442f4c052b5",
+    "files": 244,
+    "includes": "Terminal manifests/logs, matching package archives and installed assertions, fresh native fixture data, source inventories, normal runtime files, and separately labeled actual delivery-policy failures and isolated source repair evidence."
+  },
+  "developmentOnlyDeliveryPolicyRepair": {
+    "qualified": false,
+    "integratedIntoProduction": false,
+    "beforeNativeHeads": 1,
+    "beforeUploadRows": 2,
+    "isolatedAfterNativeHeads": 0,
+    "isolatedAfterUploadRows": 0,
+    "sameExpandedAssertionsBefore": {"passed": 107, "failed": 20, "total": 127},
+    "isolatedAfterExpandedLaws": 127,
+    "unchangedOldLaws": 99,
+    "isolatedFullWorkflowCuts": 256,
+    "isolatedFullWorkflowHandoffs": 512,
+    "scope": "An older public recovery coordinator checks current policy after native/source and upload imports can commit. Isolated source work guards bootstrap/first native save and uses actual held upload restore. This catalog checkpoint still contains the old write paths; integration and fresh package qualification follow separately."
+  },
+  "remaining": [
+    "Integrate and qualify current-policy checks on actual native bootstrap and upload insertion.",
+    "Complete genuine local-only participant recovery and five-family native staging/adoption without invented delivery bindings.",
+    "Reconcile every retained client copy, provider asset and pending/outbox record before freshly authenticated whole-room activation.",
+    "Design sustainable native history retention preserving Undo and offline work; generation seals do not lift the Undo ceiling.",
+    "Complete the remaining feature-parity catalog and all thirteen V1 release gates."
+  ],
+  "historicalWebKitOrRasterRepair": false,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "versionChanged": false,
+  "pushed": false
+}

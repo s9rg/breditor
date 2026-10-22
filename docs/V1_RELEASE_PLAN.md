@@ -43,6 +43,31 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The private [five-family physical catalog](PHYSICAL_ROOM_CATALOG_V2.md) now
+durably retains original, generation, independent-local, independent-delivery
+and restored-graph archives beside separately selected server cuts. It reopens
+actual files, holds the real database/archive/lease and transfers that custody
+without selecting or discarding a historical writer copy. Version-one readers,
+protocol meanings and defaults stay unchanged; local comments remain unbound.
+
+Its [selected qualification](qualification/2026-10-22-physical-catalog-v2.json)
+passes 33 checks from the 300-check plan. Source/fresh offline packages each pass
+17 focused laws and all 480 catalog cohorts, including 2,400 retained historical
+copies, 4,800 exact cold files and 1,920 actual graph reborrows. Old inventory and
+catalog source/installed probes pass too; four consumers pin matching archives.
+Workspace/diagnostic tests pass 2,647, editor tests 385 and script tests 2,321,
+with three existing opt-in skips. Full Rust suites are not freshly rerun;
+the native fixture producer is fresh and normal native files remain unchanged.
+
+That checkpoint also retains two separately reproduced delivery-recovery policy
+gaps: native history and uploads can commit after current policy ends inside
+their respective admission work. An isolated source repair passes the same
+regressions, all 127 expanded laws and the full 512-handoff workflow, but is not
+integrated or production-qualified by this catalog checkpoint. Closing those
+write boundaries is next, before complete local-only participant recovery,
+provider/client reconciliation, authenticated activation and sustainable Undo
+retention. No editable room adoption or V1 release gate is promoted.
+
 The [independent participant inventory](INDEPENDENT_PARTICIPANT_INVENTORY.md)
 now checks actual independent local/delivery histories and private graph-restored
 native readers. Its separately named wider cohort keeps old APIs and protocol
@@ -58,12 +83,12 @@ Workspace/diagnostic tests pass 2,647, editor tests 385 and script tests 2,303,
 with three existing opt-in skips. Native implementation and twelve normal runtime
 files are unchanged; the native fixture producer is fresh, not the full Rust suites.
 
-A separate five-family durable-catalog prototype passes 96 cohorts and five
-storage/policy faults. Its 480 historic copies and 960 cold file comparisons do
-not constitute integrated room adoption. Actual local-only participant recovery,
-retained-copy and provider reconciliation, fresh authenticated activation and
-sustainable Undo retention remain the architectural priorities. Remaining parity
-and all thirteen V1 gates stay open; no version, push or release is promoted.
+Its earlier 96-cohort durable-catalog prototype is superseded by the separately
+qualified V2 file component above, not by integrated editable room adoption.
+Actual local-only participant recovery, retained-copy and provider reconciliation,
+fresh authenticated activation and sustainable Undo retention remain required.
+Remaining parity and all thirteen V1 gates stay open; no version, push or release
+is promoted.
 
 The private [complete restored operation graph](RESTORED_OPERATION_GRAPH.md) now
 closes the local restore/edit/reopen/re-export lifecycle. It preserves literal

@@ -149,6 +149,14 @@ unreconciled histories pending; they perform no I/O or activation. See the
 [contract](../../docs/PHYSICAL_ROOM_RECOVERY_CATALOG.md) for exact bounds, immutable
 storage, cleanup, continued-origin limitations and remaining operational work.
 
+A private version-two catalog component separately retains all five original,
+generation, independent-local, independent-delivery and restored-graph file
+families. It uses a distinct insert-only schema, independently selected graph
+read factories and actual archive/database/lease ownership. Old catalog formats
+and root APIs stay unchanged. Historical copies and unbound local comments remain
+Pending; this does not add editable staging, provider closure or activation. See
+the [five-family contract](../../docs/PHYSICAL_ROOM_CATALOG_V2.md).
+
 ## Physical room client staging
 
 `SharedPhysicalRoomParticipantStage.begin` and `resume` take a genuine physical

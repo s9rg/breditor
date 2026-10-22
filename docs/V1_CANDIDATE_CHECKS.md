@@ -1,5 +1,18 @@
 # V1 candidate checks
 
+Both profiles require `physical-catalog-v2-contracts`,
+`physical-catalog-v2-type-fence`, `physical-catalog-v2` and
+`installed-physical-catalog-v2`. The private
+[five-family file contract](PHYSICAL_ROOM_CATALOG_V2.md) keeps actual immutable
+archive/database/lease ownership and explicit graph read factories, without
+turning file retention or prefix diagnostics into editable room adoption.
+Its [selected qualification](qualification/2026-10-22-physical-catalog-v2.json)
+passes 33 checks from the 300-check plan, 17 source/installed laws and the full
+480-cohort catalog matrix each. Four installed consumers pin matching archives;
+old catalog/inventory contracts remain intact. Separately reproduced native and
+upload recovery policy failures and isolated repair evidence are retained, not
+counted as fixed by the catalog qualification. All thirteen V1 gates remain open.
+
 Both profiles require `independent-inventory-contracts`,
 `inventory-input-snapshot-contracts`, `independent-inventory-type-fence`,
 `independent-inventory` and `installed-independent-inventory`. The
@@ -9,9 +22,9 @@ borrows without inferring delivery bindings or activation permission. Its
 [selected qualification](qualification/2026-10-22-independent-inventory.json)
 passes 31 checks from the 296-check functional plan, including 23 source/installed
 laws and the full 480-cohort native matrix each. Eight actual input-snapshot
-failures have unchanged passing assertions. The separate 96-cohort five-family
-catalog remains development-only; durable room adoption and all thirteen V1
-gates stay open.
+failures have unchanged passing assertions. Its earlier 96-cohort five-family
+catalog prototype is superseded by the separately qualified file component
+above; editable room adoption and all thirteen V1 gates stay open.
 
 Both profiles require `restored-graph-contracts`, `restored-graph-type-fence`,
 `restored-graph` and `installed-restored-graph`. The private
