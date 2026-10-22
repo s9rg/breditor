@@ -43,6 +43,30 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+The private [whole-input participant restore](RESTORED_PARTICIPANT.md) now joins
+the genuine native source, immutable incoming archive and whole upload store.
+Actual upload custody precedes source replay, survives interruptions and remains
+held through the final policy/native/source-stamp check. Cold resume admits real
+components rather than trusting completion markers. Distinct parent/upload names
+are bound to source provenance; no old completed recovery owner is fabricated.
+
+Its [selected qualification](qualification/2026-10-22-restored-participant.json)
+passes 17 checks from the 285-check functional plan. Source and fresh offline
+installed packages repeat 29 focused laws and the full 640-policy snapshot-input
+matrix each, including 640 cold resumes and 1,920 future history comparisons.
+Standalone restore's two 640-case matrices also pass. The unchanged test that
+reproduced interrupted custody acquisition now passes on the same owner after
+fresh authorization. Script tests pass 2,234 with three existing opt-in skips;
+two fresh installed consumers pin matching package archives.
+
+One earlier normal run refused raster admission after 137 successful cases.
+Subsequent normal source/installed runs and separate strict-decoder diagnostics
+did not reproduce it; the cause remains open. These results do not repair the
+historical WebKit fault or qualify physical durability, latency or large-file
+memory. Complete follow-on export with independent read authorization, room
+reconciliation and authenticated activation remain architectural priorities.
+All thirteen V1 gates remain open; no version, push or release is promoted.
+
 The private [retained-input source restore](RESTORED_OPERATION_SOURCE.md) now
 replays a detached snapshot or flat lineage into a genuine editable source.
 Its separate journal retains the entire incoming archive and legacy original,

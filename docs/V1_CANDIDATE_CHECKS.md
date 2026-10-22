@@ -1,14 +1,27 @@
 # V1 candidate checks
 
+Both profiles require `restored-participant-contracts`,
+`restored-participant-type-fence`, `restored-participant` and
+`installed-restored-participant`. The private
+[whole-input participant coordinator](RESTORED_PARTICIPANT.md) retains genuine
+source and upload ownership across interrupted restore and final handoff. The
+[selected qualification](qualification/2026-10-22-restored-participant.json)
+passes 17 checks from the 285-check functional plan. Source/fresh offline packages
+repeat 29 focused laws and the full 640-policy snapshot-input matrix each;
+flat lineage and pending-only pixels have separate focused coverage. A reproduced
+partial-owner retry failure has unchanged before/after assertions. An intermittent
+raster-admission refusal remains unexplained, not repaired by subsequent passes.
+Complete follow-on provenance export and whole-room activation remain required.
+
 Both profiles require `restored-operation-source-contracts`,
 `restored-operation-source-type-fence`, `restored-operation-source` and
 `installed-restored-operation-source`. The private
 [source restore component](RESTORED_OPERATION_SOURCE.md) retains full incoming
 provenance while replaying original/CURRENT/PENDING/LIVE through actual native
 source owners. Source and fresh offline installed packages repeat 31 laws and
-the byte-identical full 640-policy snapshot restore probe. The functional plan
-has 281 checks. Complete upload/source handoff, next provenance export and room
-activation remain required; no V1 gate is closed.
+the byte-identical full 640-policy snapshot restore probe. At that source
+checkpoint the functional plan had 281 checks; parent handoff is added separately
+above. Next provenance export and room activation remain required; no V1 gate is closed.
 
 Both profiles require `held-asset-restore-contracts`,
 `held-asset-restore-type-fence` and `installed-held-asset-restore`. The

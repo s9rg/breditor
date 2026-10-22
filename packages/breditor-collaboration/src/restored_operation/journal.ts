@@ -91,7 +91,7 @@ export class RestoredOperationJournal {
   return this.#closing=Promise.resolve().then(async()=>{this.#db.close();try{await this.#lease.close();}finally{this.#original.dispose();this.#live.dispose();this.#input.dispose();this.#closed=true;}}).finally(()=>{this.#closing=undefined;});
  }
  private bindingType(){return{
-  identity:structuredClone(this.#decoder.identity),sourceDatabase:this.#input.sourceDatabase,
+  identity:structuredClone(this.#decoder.identity),operationIdentity:structuredClone(this.#input.identity),sourceDatabase:this.#input.sourceDatabase,
   readHead:this.#readHead,unwrap:this.#unwrap,wrap:(head:string)=>{this.#decoder.readHead(head);return wrapOperationHead(head,this.#input.identity);},nativeCaptureGuard:Object.freeze({check:this.#check,capture:this.#capture}),
   persistence:Object.freeze({select:(actual:IndependentHistoryStoredCut|null)=>this.#select(actual),prepare:(expected:string|null,cut:IndependentHistoryCut)=>this.#prepare(expected,cut),acknowledge:(cut:IndependentHistoryCut)=>this.#acknowledge(cut),release:async()=>{if(!this.#owner)return;this.#owner=undefined;if(!this.#held)await closeJournal.call(this);}}),
   reserve:()=>{this.#check();if(this.#owner||this.#opening||this.#working)throw fail('restored_operation_in_use');this.#opening=true;let settled=false;return{claim:(owner:object)=>{if(settled||!this.#opening||this.#owner)throw fail();this.#check();const port=independentDeliverySource(owner);if(port.operation!==this||JSON.stringify(port.identity)!==JSON.stringify(this.#decoder.identity))throw fail('restored_operation_source');this.#owner=owner;this.#opening=false;settled=true;},abandon:()=>{if(!settled){settled=true;this.#opening=false;}}};},

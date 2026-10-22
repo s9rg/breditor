@@ -6,9 +6,10 @@ retains the entire incoming file and the unchanged legacy original. A later cold
 reopen reads that retained input with fresh factories and host authorization;
 it does not require the original live owner or a fabricated completed recovery.
 
-This is the source component of complete participant restore. Whole-upload
-custody, a complete next-generation provenance export and whole-room adoption
-remain separate integration work. No source-only factory is exported publicly.
+This is the source component of complete participant restore. The private
+[whole participant coordinator](RESTORED_PARTICIPANT.md) now joins it with actual
+upload custody. A complete next-generation provenance export and whole-room
+adoption remain integration work. No source-only factory is exported publicly.
 
 ## Architectural priorities
 
@@ -32,6 +33,11 @@ fresh native factories, current access, synchronous authority check, cancellatio
 and limits. The restore plan binds that selection, the full incoming file digest
 and the two actual journal/source database names under a separate digest domain.
 It does not select factories from the file or invent unused legacy destinations.
+
+The parent coordinator selects a separate coordinated plan variant and digest
+domain that also binds its actual parent and upload-store names. The standalone
+plan remains unchanged. Opening either variant with the other's identity refuses
+instead of retargeting existing native work or upload custody.
 
 The source uses dedicated `restored_operation_history_files` and
 `restored_operation_history_heads` stores. Its journal has exactly four stores:

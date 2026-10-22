@@ -724,7 +724,12 @@ journal, resumes interrupted saves before later cuts, and reopens from that
 retained input under fresh host policy. Native document/comment histories,
 local versions and delivery packets remain in their original formats.
 
-This is an internal source component, not a public complete-participant restore.
-Whole-upload custody, the next complete provenance export and room activation
-still need their coordinating implementation. Older exporters refuse this
-source instead of returning an incomplete recovery file.
+The private whole-participant coordinator now joins that source with the actual
+upload store, retaining custody through native replay and final current-policy
+handoff. Cold resume preserves later native edits and upload receipts without
+resetting them to the input. Source journals explicitly bind the parent/upload
+names; standalone restore remains a separate plan profile.
+
+The next complete provenance export and room reconciliation/activation remain
+required before a public complete-participant restore API. Older exporters
+refuse this source instead of returning an incomplete recovery file.

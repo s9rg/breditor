@@ -1,0 +1,123 @@
+{
+  "format": "breditor/restored-participant-functional-qualification",
+  "formatVersion": 1,
+  "qualifiedDate": "2026-10-22",
+  "calendarTimeZone": "America/Toronto",
+  "passed": true,
+  "source": {
+    "commit": "cb3c62bb430db18f35720883e2ffafccf6f0e44f",
+    "dirty": true,
+    "sha256": "9043370312de90a377b83132d067897f1b7f02e19aa15e32b18582967952053a",
+    "files": 5606,
+    "bytes": 45883808
+  },
+  "nonDocumentation": {
+    "files": 5010,
+    "sha256": "0f485083afd4409fa5a051596629f951d8d1c6c0b863c0b3b39615a3714b2077"
+  },
+  "selection": {
+    "functionalPlanChecks": 285,
+    "uniquePassingPlanChecks": 17,
+    "additionalFocusedRepairDiagnostic": 1,
+    "wholePlanExecuted": false,
+    "sourceUnchangedDuringFinalRuns": true,
+    "postQualificationChanges": "Documentation only; implementation, assertions, candidate plan and packaged README retain the nonDocumentation fingerprint.",
+    "manifests": [
+      "target/v1-candidate-runs/run-3wj97f/result.json",
+      "target/v1-candidate-runs/run-Zq9CPL/result.json",
+      "target/v1-candidate-runs/run-pAC2Pw/result.json",
+      "target/v1-candidate-runs/run-ZvJmgK/result.json"
+    ]
+  },
+  "implemented": [
+    "Private genuine whole-input/source/upload coordinator, with distinct actual destinations and exact immutable input retained before component mutation.",
+    "Actual held upload import precedes native replay; completed components must exist and conserve input rows and uploaded references.",
+    "Coordinated source provenance binds actual parent/upload names without changing standalone or legacy format meanings.",
+    "Final awaited coordinator callbacks finish while source journal, native writers, incoming input and whole upload custody remain owned; a fresh synchronous barrier precedes ordinary source/store handoff.",
+    "Late authorization refusal retains actual owners for same-owner retry; cold resume re-admits actual stored input/components without overwriting missing or divergent completed state.",
+    "Repaired a reproduced interruption after retained store open but before custody acquisition: retry acquires custody on the actual retained partial owner, not a Boolean ready flag."
+  ],
+  "tests": {
+    "focusedParentLawsSourceAndInstalledEach": 29,
+    "sourceCandidatePlanLaw": 1,
+    "focusedStandaloneLawsSourceAndInstalledEach": 31,
+    "installedFailures": 0,
+    "installedSkips": 0,
+    "interruptedParentCommitWindows": 12,
+    "flatLineageAndPendingOnlyRasterFocusedCoverage": true,
+    "partialOwnerUnchangedBeforeAfterAssertions": true,
+    "partialOwnerAssertionSha256": "dfa297a29e442bb175a027cee0ed61a047ca236c1f052eaefa40d3b2fdac06d1",
+    "workspaceAndDiagnosticTests": 2647,
+    "editorIntegrationTests": 385,
+    "scriptPass": 2234,
+    "scriptFail": 0,
+    "scriptSkipped": 3,
+    "skipScope": "Three existing opt-in checks; no platform qualification inferred."
+  },
+  "sourceAndInstalledParentEach": {
+    "cases": 640,
+    "actualHandoffs": 1280,
+    "coldResumes": 640,
+    "exactNativeStates": 1280,
+    "wholeUploads": 1280,
+    "wholeInputs": 1920,
+    "retainedPacketSets": 1280,
+    "localVersionSets": 1280,
+    "futureHistoryPairs": 1920,
+    "custodyRefusals": 640,
+    "wireOne": 160,
+    "wireTwo": 480,
+    "tokenCalls": 0
+  },
+  "standaloneSourceAndInstalledEach": {"cases":640,"coldReopens":640,"futureHistoryPairs":1920,"tokenCalls":0},
+  "installedEvidence": {
+    "freshConsumers": 2,
+    "reports": ["target/restored-participant-installed-consumer.json","target/restored-operation-source-installed-consumer.json"],
+    "matchingArchiveSha256": {
+      "@breditor/browser": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+      "@breditor/experimental-rich-content": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad",
+      "@breditor/collaboration": "838be4ccac19e5b387eee7738890c66c9ccce8544518428de4a8e1c56c13b9e4"
+    },
+    "workspaceLinks": false,
+    "strictPublicTypeFences": true,
+    "offlineRegistryIntegrityChecked": true,
+    "probeByteIdentical": true,
+    "assertionChanges": "Reversible module/runtime/fixture locations only; no assertion or case reduction.",
+    "productionBundleExcludesWorkspaceReactAndSyntheticStorage": true
+  },
+  "nativeEvidence": {
+    "normalRuntimeFilesRetained": 12,
+    "normalSharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "normalRichWasmSha256": "bc020ce07ed80600b85735c1e592d5ae163d921f5556fef05269a12bc1d59ec5",
+    "fullRustSuitesFreshlyExecuted": false,
+    "rustImplementationChanged": false
+  },
+  "openRasterObservation": {
+    "fixed": false,
+    "normalFailedManifest": "target/v1-candidate-runs/run-b5bhQa/result.json",
+    "successfulCasesBeforeRefusal": 137,
+    "code": "asset_backup_raster",
+    "instrumentedStrictDecodes": 75520,
+    "instrumentedDecoderErrors": 0,
+    "ordinaryFixtureMicroDecodes": 50000,
+    "scope": "Instrumented and micro runs are diagnostics, not normal qualification or an identified repair. Later normal source/installed matrices pass, but the original cause remains unexplained."
+  },
+  "retained": {
+    "index": "target/restored-participant-final-ganDb0/index.json",
+    "sha256": "fc0a335ddcc841ff40e9e8c2ad99882412fa2badf17d120623892a611f2ec141",
+    "files": 108,
+    "includes": "Terminal manifests/logs, reports, matching archives, actual installed assertions/fixtures, complete source inventory, changed inputs, twelve normal native files, unchanged partial-owner before/after proof and separately open raster diagnostics."
+  },
+  "scope": "Private functional whole-input participant restore in controlled IDB/lock/raster fixtures. The full matrix uses snapshot-v1 input; flat-lineage-v1 is additionally covered by focused laws. Not next complete provenance export, room adoption/reconciliation/activation, physical durability, memory/latency, browser/a11y or V1 release approval.",
+  "remaining": [
+    "Explicit complete state/flat-lineage follow-on capture/export with independent read authorization after writer expiry, input-only rasters and repeat restore/edit/export cycles.",
+    "Whole-room mixed-family ownership, provider/client reconciliation, independent server comment/log generations and fresh authenticated activation.",
+    "Long-session/resource bounds, large-file hashing, physical durability and the remaining full feature-parity/release requirements."
+  ],
+  "v1GatesClosed": 0,
+  "v1GatesRemainingOpen": 13,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "packageVersionChanged": false,
+  "pushedTaggedPublishedOrDeployed": false
+}
