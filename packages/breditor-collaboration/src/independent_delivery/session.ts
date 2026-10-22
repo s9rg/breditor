@@ -21,6 +21,7 @@ import type {SharedDocumentVersionsOptions} from '../versions/types.js';
 import {IndependentDeliveryCompanion} from './companion.js';
 import {registerIndependentDeliverySession} from './admission.js';
 import {registerIndependentDeliverySource} from '../independent_delivery_source/admission.js';
+import {guardedIndependentCompanion} from '../independent_operation/native_capture_guard.js';
 import {MAX_INDEPENDENT_DELIVERY_RECOVERY_BYTES,type SharedIndependentDeliveryOptions,type SharedIndependentDeliveryRecovery,type SharedIndependentDeliveryRecoveryOptions} from './contract.js';
 
 export type SharedIndependentVersionsOpenOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy>=Omit<SharedDocumentVersionsOptions<P>,'identity'|'database'|'storage'|'autoConnect'>&{autoConnect?:false};
@@ -43,7 +44,7 @@ export class SharedIndependentDeliverySession<P extends SharedSelectionPolicy=Sh
  }
  static async open<Q extends SharedSelectionPolicy>(input:SharedIndependentDeliveryOptions<Q>):Promise<SharedIndependentDeliverySession<Q>>{
   if(this!==SharedIndependentDeliverySession)throw new SharedRelayError('independent_delivery_factory_receiver');
-  const {binding,retained,...options}=input,companion=new IndependentDeliveryCompanion(input),session=await SharedIndependentHistoryPersistentSession.open(withIndependentDeliveryCompanion(options,companion));
+  const {binding,retained,...options}=input,companion=new IndependentDeliveryCompanion(input),session=await SharedIndependentHistoryPersistentSession.open(withIndependentDeliveryCompanion(options,guardedIndependentCompanion(input,companion)));
   try{return new SharedIndependentDeliverySession(constructionKey,session,companion);}catch(error){await session.discardAndClose();throw error;}
  }
  static async restoreRecovery<Q extends SharedSelectionPolicy>(input:SharedIndependentDeliveryRecoveryOptions<Q>):Promise<SharedIndependentDeliverySession<Q>>{
@@ -52,7 +53,7 @@ export class SharedIndependentDeliverySession<P extends SharedSelectionPolicy=Sh
   closed(r.source,'documentCheckpoint,format,formatVersion,identity,reviewCheckpoint,versions');if(r.source.format!=='breditor/shared-independent-history-recovery'||r.source.formatVersion!==1||!Array.isArray(r.source.versions))throw new SharedRelayError('independent_delivery_recovery');
   const recovery=structuredClone(r),identity=canonicalIndependentHistoryIdentity(recovery.source.identity),companion=new IndependentDeliveryCompanion(input,recovery),cut=await makeIndependentHistoryCut(recovery.source.documentCheckpoint,recovery.source.reviewCheckpoint,identity,recovery.source.versions);
   companion.wrap(JSON.parse(cut.head),companion.capture());
-  const {binding,retained,recovery:_recovery,writerRecovery,...options}=input,session=await SharedIndependentHistoryPersistentSession.restoreRecovery(withIndependentDeliveryCompanion(options,companion),recovery.source,writerRecovery);
+  const {binding,retained,recovery:_recovery,writerRecovery,...options}=input,session=await SharedIndependentHistoryPersistentSession.restoreRecovery(withIndependentDeliveryCompanion(options,guardedIndependentCompanion(input,companion)),recovery.source,writerRecovery);
   try{return new SharedIndependentDeliverySession(constructionKey,session,companion);}catch(error){await session.discardAndClose();throw error;}
  }
  get core():SharedRichEditor<P>{return this.#core;}

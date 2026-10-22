@@ -4,6 +4,8 @@ import type {SharedSelectionPolicy} from '../types.js';
 import type {IndependentHistoryHead} from './contract.js';
 export interface IndependentHistoryCompanion {
  readonly readHead:(input:string)=>IndependentHistoryHead;
+ /** Optional genuine operation-origin checks; never selected by stored fields. */
+ readonly nativeCaptureGuard?:Readonly<{check():void;capture(core:SharedRichEditor<SharedSelectionPolicy>,versions:readonly string[]):void}>;
  load(input:string):void;capture():string;
  admit(core:SharedRichEditor<SharedSelectionPolicy>):void;
  wrap(source:IndependentHistoryHead,capture:string):string;

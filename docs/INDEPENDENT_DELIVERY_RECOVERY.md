@@ -133,6 +133,13 @@ rather than overwrite it with the old archive. A later operation owner must reta
 the immutable origin and verify real native continuation, retained work and upload
 state under fresh policy.
 
+The private [native origin admission](INDEPENDENT_OPERATION_NATIVE_ORIGIN.md)
+now verifies both native ancestry lanes and retained local versions before
+autosave, including guarded transaction callbacks and readable recovery after
+authority loss. It is a prerequisite, not that durable operation owner: actual
+outbox retirement accounting, current/pending cut intent and coordinated upload
+ownership still need integration.
+
 Original/generation operation and mixed-room handoffs now use temporary
 [whole-store asset custody](OPERATIONAL_COHORT_CUSTODY.md#hold-every-selected-upload-store).
 They still do not adopt this complete independent participant or establish its

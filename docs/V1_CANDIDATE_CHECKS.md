@@ -1,12 +1,22 @@
 # V1 candidate checks
 
+Both profiles require `independent-operation-origin-contracts`,
+`independent-operation-origin-type-fence`, `independent-operation-origin` and
+`installed-independent-operation-origin`. They check the private
+[native autosave boundary](INDEPENDENT_OPERATION_NATIVE_ORIGIN.md) with genuine
+original/segmented document and independent comment replays, zero-write refusal,
+transaction/lost-acknowledgement laws and readable unsaved exports. Fresh archives
+repeat the 22 focused laws and full 640-case legal native-policy matrix. The
+functional plan now has 254 checks; durable complete operation intent and
+whole-room activation remain separate work.
+
 Both profiles require `operation-asset-custody-contracts`,
 `operation-asset-custody-type-fence` and `installed-operation-asset-custody`.
 They qualify [actual multi-owner upload custody](OPERATIONAL_COHORT_CUSTODY.md#hold-every-selected-upload-store)
 and canonical final source guards for original/generation recovered and operational
 handoffs and mixed-family cohorts. The installed consumer repeats the same 45 laws
 with strict public types and reversible module-location changes only. The current
-functional plan has 250 checks; whole-room activation remains separate work.
+functional plan at that handoff checkpoint had 250 checks; whole-room activation remains separate work.
 
 The [handoff qualification](qualification/2026-10-21-operation-asset-custody.json)
 records 101 passing selected stages, including fresh native suites and the

@@ -43,13 +43,33 @@ publication or deployment is promoted.
 
 ## Current functional checkpoint
 
+[Private independent native origins](INDEPENDENT_OPERATION_NATIVE_ORIGIN.md)
+now guard actual source-open, insert-only recovery, autosave and transaction
+callbacks before current state can be acknowledged. Both native ancestry lanes
+and original local-version packets remain selected; lost authority blocks writes
+without hiding readable unsaved recovery. Source laws and the full 640-case
+native-policy matrix pass. The 254-check functional plan requires separate source,
+type and fresh installed-package checks. Durable source/outbox intent, legitimate
+retirement accounting, complete participant/room adoption and activation remain
+architectural work; this private admission layer is not a completed operation API.
+
+Its [selected qualification](qualification/2026-10-22-independent-native-origin.json)
+passes 32 checks from the 254-check plan, 1,952 script tests with three existing
+skips, and 385 editor integration tests. Source and fresh installed packages each
+repeat the full 640-case native-policy matrix and 22 focused laws. Nine fresh
+consumers pin matching archives. The retained evidence includes an initial stale
+fixture refusal, actual native fixture regeneration and successful dependent
+checks. All native inputs and twelve normal runtime files are unchanged; complete
+native-suite evidence is carried, not freshly reexecuted. All thirteen V1 gates
+remain open.
+
 [Whole-store handoff custody](OPERATIONAL_COHORT_CUSTODY.md#hold-every-selected-upload-store)
 now protects original and generation recovery/operation handoffs and their shared
 room barrier. Genuine upload stores stay held together through verification and
 coordinator release; late native cut guards and cleanup use canonical operations.
 The previous packages reproduce nine upload-race and nine native-guard failures.
-Source and fresh offline packages pass 45 focused laws. The functional plan has
-250 checks. Complete independent-delivery operational intent, provider/client
+Source and fresh offline packages pass 45 focused laws. The functional plan at
+that handoff checkpoint had 250 checks. Complete independent-delivery operational intent, provider/client
 closure, independent server-log generations and authenticated room activation
 remain architectural work; this is not V1 approval.
 

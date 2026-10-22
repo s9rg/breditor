@@ -1,0 +1,127 @@
+{
+  "format": "breditor/independent-native-origin-functional-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-22T04:27:04.721Z",
+  "calendarTimeZone": "America/Toronto",
+  "passed": true,
+  "source": {
+    "commit": "2c35d628ddb52f32d6b27b154588c3244aa947c1",
+    "dirty": true,
+    "sha256": "49a3b025de1a18d3ff6735a646e3755e965e822fd568763425bbbaeaa1e10c5b",
+    "files": 5489,
+    "bytes": 45212076
+  },
+  "nonDocumentation": {
+    "files": 4911,
+    "sha256": "6578d41f66216269f469d00bd2ec20ea10d47f6977b88c87a64c25aae0e4972e"
+  },
+  "nativeInputs": {
+    "files": 2986,
+    "sha256": "a4a716e0a6237d7c0d6122e5ab1eefc7ab02bda557cfeff9b786794c9c23d420"
+  },
+  "selection": {
+    "functionalPlanChecks": 254,
+    "uniquePassingPlanChecks": 32,
+    "wholePlanExecuted": false,
+    "sourceUnchangedDuringAllRuns": true,
+    "postQualificationChanges": "Documentation only; implementation inputs retain the nonDocumentation fingerprint.",
+    "manifests": [
+      "target/v1-candidate-runs/run-5YlZBb/result.json",
+      "target/v1-candidate-runs/run-3kUNSY/result.json",
+      "target/v1-candidate-runs/run-peEqDV/result.json",
+      "target/v1-candidate-runs/run-WawGEo/result.json"
+    ],
+    "setupRefusal": {
+      "initialBatchStatus": "failed",
+      "passedBeforeRefusal": 18,
+      "stage": "physical-room-operation",
+      "cause": "The selected subset omitted a producer dependency. The exact-source guard refused native fixtures retained from an older source before acceptance assertions ran.",
+      "resolution": "Both native fixture producers actually regenerated their fixtures from the unchanged current source; physical-room-operation and room-operational-recovery-v2 then passed.",
+      "failedManifestAndLogRetained": true,
+      "fixtureMetadataRelabeled": false,
+      "assertionsWeakened": false
+    }
+  },
+  "tests": {
+    "workspaceAndDiagnosticTests": 2647,
+    "editorIntegrationTests": 385,
+    "scriptPass": 1952,
+    "scriptFail": 0,
+    "scriptSkipped": 3,
+    "sourceNativeOriginLaws": 22,
+    "sourceCandidatePlanLaw": 1,
+    "installedNativeOriginLaws": 22,
+    "installedNativeOriginFailures": 0,
+    "installedNativeOriginSkips": 0,
+    "skipScope": "Three existing opt-in checks; not browser or platform qualification."
+  },
+  "sourceAndInstalledEach": {
+    "cases": 640,
+    "nativeOrigins": 640,
+    "coldSources": 1280,
+    "futureHistoryPairs": 1920,
+    "retainedPacketComparisons": 1600,
+    "localVersionComparisons": 1280,
+    "readOnlyRefusals": 1280,
+    "originalWireVersionOutboxCases": 160,
+    "atomicWireAllRetainedStoreCases": 480,
+    "tokenCalls": 0,
+    "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "matrix": "Five native grammar/standard profiles, three selection scopes, all eight existing typing/search/owned-review flag combinations, all four independent document/comment history pairs, and both transports where already supported."
+  },
+  "installedEvidence": {
+    "freshConsumers": 9,
+    "matchingArchiveReports": 9,
+    "nativeOriginRegistryArtifacts": 45,
+    "nativeOriginProductionModules": 168,
+    "workspaceLinks": false,
+    "strictNativeOriginPublicTypes": true,
+    "probeByteIdentical": true,
+    "unitAssertionChanges": "Reversible module and fixture locations only.",
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "sha256": "340aa47ff8e6c41c56f35476d8d4d5c164aa63fe7470ae3d5367ff19ffd1b109"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "sha256": "e9816c4445875fdb765741977d2a04fb1a952aad901cc437bc31e70cb3b7ccdb"
+      }
+    ]
+  },
+  "nativeEvidence": {
+    "baseline": "docs/qualification/2026-10-21-operation-asset-custody.json",
+    "nativeInputsUnchanged": true,
+    "normalRuntimeFilesByteCompared": 12,
+    "normalSharedAndRichRuntimesUnchanged": true,
+    "fullRustSuitesFreshlyExecuted": false,
+    "serverEnabledTestsCarried": 379,
+    "noServerTestsCarried": 267,
+    "freshNativeFixtureProducerCases": 20,
+    "freshPhysicalFixtureIncludesMoreThan8192ActualRecords": true
+  },
+  "retained": {
+    "index": "target/independent-native-origin-qualified-4Bgqxn/index.json",
+    "sha256": "6a29d37cf188fea276ad6afaaaa7ee69c16d6c170f23fd164253cc7e03e378c1",
+    "files": 161,
+    "contents": "Actual manifests, successful and refused-stage logs, reports, native fixtures, package archives, source and installed assertions, byte-identical matrix probe, consumer lock and supporting fixtures."
+  },
+  "scope": "Private native ancestry and original local-version admission before autosave and inside actual source transactions; exact lost-acknowledgement retry, readable unsaved recovery, native factory cleanup, and compatibility with existing source/operation/upload ownership. Actual normal Rust/Wasm replay with controlled IndexedDB, locks and raster presentation.",
+  "remaining": [
+    "Durable operational current/pending source-cut intent and legitimate outbox retirement accounting",
+    "Complete independent operational participant lifetime, export and whole-room adoption",
+    "Complete provider/client closure and explicit historical-copy decisions",
+    "Independently segmented server comment transport and authenticated room activation",
+    "Long-session native history limits, performance and the remaining feature-parity catalog"
+  ],
+  "v1GatesClosed": 0,
+  "v1GatesRemainingOpen": 13,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "packageVersionChanged": false,
+  "pushedTaggedPublishedOrDeployed": false
+}
