@@ -1,0 +1,218 @@
+{
+  "format": "breditor/selected-functional-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-23",
+  "checkpoint": "five-family-retained-reference-read-and-status-epoch-repair",
+  "status": "passed",
+  "v1Ready": false,
+  "publicationApproved": false,
+  "source": {
+    "commit": "528b72538d6d7d8964bbff608217dc9a25d4179a",
+    "dirty": true,
+    "sha256": "bb011d8c4aed76ee9db8539e8f61c487f45a3385fc8429752a66de4028d85c0b",
+    "files": 6071,
+    "bytes": 48556693
+  },
+  "sourceFrozenBeforeDocumentation": true,
+  "retainedEvidence": {
+    "index": "target/local-input-references-final-kDEJeV/index.json",
+    "sha256": "2519f103cc190b96422071e621cffea4ffaf7e049b6271785665b0803c576a9f",
+    "entries": 7871,
+    "nonDocumentationInputs": 5387
+  },
+  "normalCandidateRunner": {
+    "passed": 12,
+    "selected": 12,
+    "functionalPlanStages": 376,
+    "fullPlanStages": 384,
+    "fullPlanExecuted": false,
+    "groups": [
+      {
+        "name": "foundation",
+        "manifest": "target/v1-candidate-runs/run-0y1xAg/result.json",
+        "stages": 10,
+        "exitCode": 0
+      },
+      {
+        "name": "source",
+        "manifest": "target/v1-candidate-runs/run-LNFONv/result.json",
+        "stages": 1,
+        "exitCode": 0
+      },
+      {
+        "name": "installed",
+        "manifest": "target/v1-candidate-runs/run-kDtqN5/result.json",
+        "stages": 1,
+        "exitCode": 0
+      }
+    ],
+    "contractStages": [
+      {
+        "id": "candidate-runner-contracts",
+        "passed": 68,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "id": "independent-local-operation-participant-contracts",
+        "passed": 56,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "id": "restored-local-journal-contracts",
+        "passed": 34,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "id": "restored-local-participant-contracts",
+        "passed": 42,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "id": "native-input-journal-family-contracts",
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "id": "flat-local-participant-contracts",
+        "passed": 67,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "id": "native-input-cohort-contracts",
+        "passed": 24,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "id": "operation-references-contracts",
+        "passed": 119,
+        "failed": 0,
+        "skipped": 0
+      }
+    ]
+  },
+  "functionalDomain": {
+    "sourceAssertions": 243,
+    "freshInstalledAssertions": 243,
+    "actualProductionBundleAssertions": 243,
+    "matchingAssertions": true,
+    "failed": 0,
+    "skipped": 0,
+    "priorThreeFamilyWorkload": 197,
+    "additionalLocalStatusLaw": 1,
+    "localInputReferenceLaws": 43,
+    "additionalInputCallbackReleaseLaws": 2,
+    "totalCallbackReleaseFamilies": 5,
+    "contractAssertionsIncludingPlan": 119,
+    "strictPrivateTypeFixtures": 5,
+    "families": [
+      "independent-delivery",
+      "restored-graph",
+      "independent-local",
+      "local-operation-snapshot",
+      "local-operation-flat"
+    ],
+    "nativeProfile": "normal-language-three",
+    "documentReviewHistoryPairs": 4,
+    "readRuntimes": [
+      "same-instance",
+      "separately-loaded-normal-Wasm"
+    ],
+    "writeGrants": [
+      "active",
+      "expired"
+    ],
+    "verified": [
+      "Closed genuine snapshot/flat journal brands select one shared local-input read implementation",
+      "Every admitted imported native state and its exact binding manifest contributes before current/pending/live",
+      "Chronological document/comment native ancestry and ordered immutable version prefixes remain mandatory",
+      "No current upload store or later pixel fetch is required; original/input raster admission is unchanged",
+      "Read and durable verification preserve exact native recovery and committed database bytes",
+      "Actual input-file corruption fails durable verification independently of current managed epochs",
+      "Private journal epochs detect persistence retries with unchanged native stamps",
+      "Independent read revocation, cancellation, reentry, late policy failure and cleanup remain separate from write rights",
+      "All five callback-release laws retain five disposed reports per family without retaining read callbacks"
+    ]
+  },
+  "statusInspectionRepair": {
+    "oldFailures": 3,
+    "fixedPasses": 3,
+    "assertionsChanged": false,
+    "nativeRuntimeChanged": false,
+    "controls": [
+      {
+        "family": "independent-local",
+        "oldBaseline": "saved Main code at 528b7253",
+        "laws": 1,
+        "workload": "scripts/local-operation-reference-capture-development.test.mjs",
+        "workloadSha256": "92be7a8ecc8bc87357180ff439acec7005c75d470db00dafcaf59ecc2b9b35be"
+      },
+      {
+        "families": [
+          "local-operation-snapshot",
+          "local-operation-flat"
+        ],
+        "oldBaseline": "uncommitted development local-input reader",
+        "laws": 2,
+        "workload": "scripts/local-input-reference-capture-development.test.mjs",
+        "workloadSha256": "5c53a2c05d20f4b0ed8c4f4d1dc2b2460acf06939601afc04c6a5f9228e86ce2"
+      }
+    ],
+    "meaning": "Completed read-only journal progress inspection preserves a valid reference pin. Actual source selection, save preparation and acknowledgement attempts still advance the epoch before awaiting, including failed persistence attempts."
+  },
+  "packages": {
+    "freshOfflineArchives": 3,
+    "registryArtifacts": 45,
+    "workspaceLinks": false,
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "sha256": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "sha256": "8eec70a5f014b0a787304fb311506992c308512632b3bef3c986b73f7a2dc24a"
+      }
+    ],
+    "actualProductionModules": 579,
+    "actualProductionBundleSha256": "3c3a0656027dc34d50d3727b7f4d1daea942d62d0213e3472e7b403642f2e5f7",
+    "noWorkspaceReactOrSyntheticStorageInProduction": true
+  },
+  "native": {
+    "normalWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "nativeProductSourcesUnchanged": true,
+    "fullRustSuitesFreshlyExecuted": false,
+    "fullNativePolicyMatricesFreshlyExecuted": false
+  },
+  "bounds": {
+    "referenceReadUnionPairs": 100000,
+    "overflow": "refuse-without-truncation",
+    "existingFileAndNativeAdmissionUnchanged": true
+  },
+  "boundaries": [
+    "Five reference-read families, not all seven or joint coordinator reference reconciliation",
+    "Original and generation families still need complete durable/current/pending reference integration; separate original record projections remain development work",
+    "Original/input archives retain complete raster admission; later bytes and whole upload/provider receipts require independent reconciliation",
+    "Native reference readiness is not current server/account/provider authorization or authenticated activation",
+    "Synthetic storage/locks/raster environment, not process/power-loss or physical browser durability",
+    "One normal language-three profile, not the full native policy matrix",
+    "Sustainable native Undo/offline lifetime, remaining parity and all thirteen V1 gates remain open",
+    "No historical WebKit or engine repair claim"
+  ],
+  "publicRootAndDefaultsUnchanged": true,
+  "versionChanged": false,
+  "pushed": false,
+  "tagged": false,
+  "published": false,
+  "deployed": false
+}

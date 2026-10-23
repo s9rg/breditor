@@ -31,6 +31,8 @@ export interface NativeInputReadScope<R extends NativeInputCutIntent>{
  /** Actual held scope/source/storage check only, after policy callbacks. Never
   * authorizes a new read or invokes a writer/read authority callback. */
  checkCurrent():void;
+ /** Pin private journal activity separately from native/immutable version stamps. */
+ pinRetained():()=>void;
  release():void;inputFile():Blob;originalFile():Blob;uploads():Blob;blob(asset:string,generation:string):Blob|undefined;
  readSource():SharedIndependentHistoryRecovery;
  readSnapshot():Promise<Readonly<{record:R;input:Blob;current:IndependentHistoryCut|null;pending:IndependentHistoryCut|null;observed:string|null}>>;

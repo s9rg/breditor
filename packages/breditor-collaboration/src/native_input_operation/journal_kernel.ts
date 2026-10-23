@@ -32,6 +32,7 @@ export class NativeInputJournal<A,C extends NativeInputJournalChoice,O,R extends
  readonly #context:IDBFactory;readonly #locks:LockManager;readonly #authority:()=>void;
  #facade:F|undefined;#facadePhase:'idle'|'ready'|'claimed'|'attached'='idle';#exposed=false;#driver!:IndependentLocalOperationDriver;readonly #readers=new Set<Promise<unknown>>();
  #owner:object|undefined;#opening=false;#working=false;#closed=false;#changed=false;#dbClosed=false;#closing:Promise<void>|undefined;#sourceReleasePending=false;
+ #readEpoch:object=Object.freeze({});
  private constructor(token:object,family:NativeInputJournalFamily<A,C,O,R,F>,intrinsics:NativeInputJournalIntrinsics<A,C,O,R,F>,choice:C,id:NativeInputJournalIdentity,db:IDBDatabase,lease:RecoveryLease,input:O,anchor:LocalPortableReplay,baseline:IndependentHistoryStoredCut,context:IDBFactory,locks:LockManager,authority:()=>void){
   if(token!==key)throw new SharedEditorError('native_input_operation_closed','Use a genuine family opener');
   this.#family=family;this.#intrinsics=intrinsics;this.#choice=choice;this.#id=id;this.#db=db;this.#lease=lease;this.#input=input;this.#anchor=anchor;this.#baseline=baseline;this.#context=context;this.#locks=locks;this.#authority=authority;
@@ -84,7 +85,7 @@ export class NativeInputJournal<A,C extends NativeInputJournalChoice,O,R extends
   return this.#intrinsics.admit(stored,this.#id,this.#choice.expected.original,factory,anchor,guard);
  }
  #source(guard:()=>void=()=>this.#check()):Promise<IndependentHistoryStoredCut|null>{const n=this.#choice.expected.original.identity.source.native;return readDedicatedOperationSourceDatabase(this.#id.sourceDatabase,[n.room,n.writer],this.#readHead,guard,'local-operation-v1');}
- #exclusive<T>(work:()=>Promise<T>):Promise<T>{if(!this.#exposed||this.#closed||this.#closing)throw this.#error('closed');if(this.#working)throw this.#error('busy');this.#working=true;return Promise.resolve().then(work).finally(()=>{this.#working=false;});}
+ #exclusive<T>(work:()=>Promise<T>,retains=true):Promise<T>{if(!this.#exposed||this.#closed||this.#closing)throw this.#error('closed');if(this.#working)throw this.#error('busy');if(retains)this.#readEpoch=Object.freeze({});this.#working=true;return Promise.resolve().then(work).finally(()=>{this.#working=false;});}
  #select(actual:IndependentHistoryStoredCut|null):Promise<IndependentHistoryStoredCut|null>{return this.#exclusive(async()=>{
   if(!this.#opening||this.#owner)throw this.#error('in_use');
   const state=await this.#read(),observed=await this.#source();this.#check();if(actual===null?observed!==null:observed===null||!same(observed,actual))throw this.#error('source_changed');
@@ -115,7 +116,7 @@ export class NativeInputJournal<A,C extends NativeInputJournalChoice,O,R extends
   await this.#intrinsics.database.write(this.#db,this.#id,state,next,undefined,()=>this.#check(),this.#choice.read.options.signal);this.#check();
   const saved=await this.#read();if(JSON.stringify(saved.record)!==JSON.stringify(next))throw this.#error('cut');
  });}
- progress(){return this.#exclusive(async()=>{const state=await this.#read();return Object.freeze({sequence:state.record.sequence,current:state.record.current,pending:state.record.pending});});}
+ progress(){return this.#exclusive(async()=>{const state=await this.#read();return Object.freeze({sequence:state.record.sequence,current:state.record.current,pending:state.record.pending});},false);}
  file():Blob{if(!this.#exposed||this.#closed)throw this.#error('closed');return this.#intrinsics.input.file(this.#input);}
  blob(asset:string,generation:string):Blob|undefined{if(!this.#exposed||this.#closed)throw this.#error('closed');return this.#intrinsics.input.blob(this.#input,asset,generation);}
  close():Promise<void>{
@@ -147,6 +148,7 @@ export class NativeInputJournal<A,C extends NativeInputJournalChoice,O,R extends
    try{if(providedFactory!==undefined)factory=snapshotIndependentRecoveryFactory(this.#choice.expected.original,providedFactory);check();}catch(error){release();throw error;}
    const track=<T>(run:()=>Promise<T>):Promise<T>=>{check();if(this.#readers.size>=8)throw this.#error('busy');const work=Promise.resolve().then(run);this.#readers.add(work);void work.finally(()=>this.#readers.delete(work)).catch(()=>{});return work;};
    return Object.freeze({identity:structuredClone(this.#id),expected:structuredClone(this.#choice.expected),check,checkCurrent,release,
+    pinRetained:()=>{checkCurrent();if(this.#working)throw this.#error('busy');const epoch=this.#readEpoch;return()=>{checkCurrent();if(this.#working||this.#readEpoch!==epoch)throw this.#error('reference_changed');};},
     inputFile:()=>{check();return this.#intrinsics.input.file(this.#input);},originalFile:()=>{check();return this.#intrinsics.input.originalFile(this.#input);},uploads:()=>{check();return this.#intrinsics.input.uploads(this.#input);},blob:(asset:string,generation:string)=>{check();return this.#intrinsics.input.blob(this.#input,asset,generation);},
     readSource:()=>{check();const port=independentHistoryNative(owner),stamp=port.stamp(),data=port.read();this.#verify(port.core,data.versions,check);if(port.stamp()!==stamp)throw this.#error('capture_changed');return data;},
     readSnapshot:()=>track(async()=>{

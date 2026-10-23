@@ -121,8 +121,16 @@ code each pass the same 197 laws, including all prior delivery/graph and 40 loca
 portable laws, 22 local reference laws and callback release for all three families.
 It preserves local-only semantics, native history, ordered versions and separate
 read authorization; it does not fabricate a delivery companion. The
-[contract](OPERATION_REFERENCE_READ.md) now covers these three families. The other
-four families, joint coordinator integration, provider/client reconciliation,
+[shared snapshot/flat reference reader](qualification/2026-10-23-local-input-reference-read.json)
+now covers both imported local families as well. Twelve selected normal stages
+pass, including journal/participant/cohort regressions and five strict type
+fixtures. Source, fresh packages and actual bundled code each pass the same 243
+laws. All imported native states remain represented before CURRENT/PENDING/LIVE;
+the latest tree or input LIVE cannot substitute for them. Three unchanged
+reproductions also establish the journal status-read repair: completed inspection
+keeps a valid reference pin, while actual persistence attempts invalidate it.
+The [contract](OPERATION_REFERENCE_READ.md) now covers five families. The original
+and generation families, joint coordinator integration, provider/client reconciliation,
 authenticated activation and sustainable history remain required. All thirteen
 V1 gates remain open.
 

@@ -2,7 +2,8 @@
 
 The private reference readers discover required asset addresses before later
 image bytes are available. They cover complete independent-delivery operations,
-restored delivery graphs and independent local-only operations. They require genuine journal-backed sources,
+restored delivery graphs, independent local-only operations and imported snapshot
+or flat local operations. They require genuine journal-backed sources,
 matching read-only factories and current read authorization. They do not require
 a current upload store or resolve later raster bytes.
 
@@ -30,6 +31,14 @@ It does not invent a relay, delivery outbox or retained-review registration. An
 independent read grant remains usable after the writer grant ends. A save retry
 with identical native state still invalidates the private retained-state pin.
 
+`captureLocalInputOperationReferences` uses one closed read path for genuine
+snapshot-v1 and flat-local-v1 source journals. Every admitted imported native
+state contributes its references, followed by the operation's CURRENT, PENDING
+and LIVE. The imported binding manifest remains explicit. Neither a format tag
+nor a caller adapter can select a different family; no relay is fabricated.
+The native states preserve chronological document/comment ancestry and exact
+ordered version prefixes in the independently selected read runtime.
+
 Read-only replays use the independently selected reader runtime. Restored
 CURRENT and PENDING must continue both the historical original and newer
 imported input-LIVE, including their retained version sets. The writer's own
@@ -54,6 +63,13 @@ pins, even if that attempt later fails. Serialized sequence numbers cannot issue
 this witness. Direct stored-byte changes require durable verification; a local
 epoch is not a replacement for reading storage.
 
+A completed read-only journal `progress()` inspection does not advance that
+epoch. The inspection still excludes concurrent journal work while it runs.
+Three fixed laws exposed the former status-read invalidation: one against saved
+local-only code and two against the developing shared snapshot/flat reader. The
+same laws pass after changing only the respective journal modules. Actual save
+and retry attempts continue to invalidate earlier pins.
+
 Writer authorization and cancellation do not authorize this read. An ended
 writer grant may coexist with a valid independent read grant, but the read does
 not allow further writes. Native packet dependencies that remain unresolved
@@ -74,8 +90,8 @@ after closing the actual source and synthetic database fixture. Old handles reta
 the callbacks and fail; repaired handles release them and pass. Closing the
 fixture before collection separates this ownership test from fake-indexeddb's
 retained completed transaction history. This is not a browser heap benchmark.
-The local-only family now passes the same collection law with five disposed
-handles intentionally retained; its read callbacks are also released.
+All five families now pass the collection law with five disposed handles per
+family intentionally retained; their read callbacks are released.
 
 ## Bounds and remaining integration
 
@@ -83,15 +99,16 @@ Each reference read has a separate 100000-pair union budget. Exceeding it refuse
 without truncation; it does not change old file admission or native history limits.
 Original/input, packet, native and operational source bounds remain in force.
 
-The [three-family qualification](qualification/2026-10-23-local-operation-reference-read.json)
-passes six normal selected stages. Source, fresh offline packages and actual
-bundled code each pass the same 197 laws: the prior 134 delivery/graph laws,
-40 existing local portable laws, 22 local reference laws and one additional
-local disposal law. Four strict type fixtures also pass.
+The [five-family qualification](qualification/2026-10-23-local-input-reference-read.json)
+passes twelve normal selected stages. Source, fresh offline packages and actual
+bundled code each pass the same 243 laws. The prior 197 laws remain, with one
+local status-inspection regression, 43 snapshot/flat reference laws and two
+additional callback-release laws. Five strict type fixtures and the selected
+legacy journal, participant and cohort regression stages also pass.
 The new domain uses one normal language-three profile with all four native
 history pairs and active/expired writer grants, not the full native-policy matrix.
 
-The other four recovery families, all-seven coordinator integration, explicit
+The original and generation recovery families, all-seven coordinator integration, explicit
 historical-copy decisions, actual upload/provider bytes, current server authority
 and authenticated activation remain separate work. These readers alone do not
 establish complete provider/client reconciliation or V1 readiness.

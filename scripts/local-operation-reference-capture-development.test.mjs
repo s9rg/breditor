@@ -31,6 +31,10 @@ for(const documentSegmented of [false,true])for(const reviewSegmented of [false,
  }finally{faults?.clear();read?.dispose();empty?.close();f?.setAllowed(true);await f?.close();faults?.restore();}
 });
 async function localFixture(tag){const f=await localParticipantFixture({api,rich,Participant,profile:pa,root,tag});try{const parts=await f.take(await f.begin(await f.recover()));return{f,source:parts.source.session,readOptions:{session:f.options.recovery.session,checkAuthority(){}}};}catch(error){await f.close();throw error;}}
+test('local reference proof survives a completed read-only journal status inspection',async()=>{
+ const{f,source,readOptions}=await localFixture('local-reference-status');let read;
+ try{read=await capture({source,...readOptions});const before=source.exportRecovery(),stores=await snapshotReadDatabases(),stamp=port(source).stamp();await port(source).localOperation.progress();assert.equal(port(source).stamp(),stamp);assert.deepEqual(source.exportRecovery(),before);assert.deepEqual(await snapshotReadDatabases(),stores);read.checkCurrent();read.check();await read.verify();}finally{read?.dispose();await f.close();}
+});
 test('local reference cancellation holds cleanup until explicit release',async()=>{
  const{f,source,readOptions}=await localFixture('local-reference-cancellation');let read,closed=false;
  try{const abort=new AbortController();read=await capture({source,...readOptions,signal:abort.signal});abort.abort();assert.throws(()=>read.check());assert.throws(()=>read.checkCurrent());const closing=source.discardAndClose().then(()=>{closed=true;});await new Promise(resolve=>setTimeout(resolve,20));assert.equal(closed,false);read.dispose();read=undefined;await closing;assert.equal(closed,true);}finally{read?.dispose();await f.close();}
