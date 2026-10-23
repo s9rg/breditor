@@ -7,8 +7,11 @@ snapshot, origin reset or recursively nested operation archive does not meet
 that contract.
 
 This design has retained executable development prototypes, including a strict
-typed data/shared-kernel proof. It is not yet an integrated SDK family, a public
-export, a room activation protocol or V1 qualification. The original
+typed data/shared-kernel proof. Their evidence is distinct from the later
+[production-source flat family](FLAT_LOCAL_OPERATION_PARTICIPANT.md), whose
+format, bounds and mandatory qualification are defined separately. Neither the
+prototypes nor that private family are a public export or room activation
+protocol. The original
 [development record](development/2026-10-22-flat-local-operation.json) and later
 [typed proof](development/2026-10-22-typed-flat-local-operation.json) keep that
 distinction explicit.
@@ -94,7 +97,7 @@ writer retirement and six abort/lost-acknowledgement publication boundaries.
 Whole uploads are separately restored real stores in this shared-kernel proof;
 the actual four-name graph participant and atomic handoff are not implemented.
 
-The production registry still selects snapshot-v1 only. The typed proof's bounds
+At that development checkpoint the registry selected snapshot-v1 only. The typed proof's bounds
 are development limits, not a shipping resource contract. No installed full graph
 qualification, product repeated-export closure, sustainable Undo, room adoption,
 activation, historical WebKit repair or V1 approval is inferred.
@@ -115,8 +118,9 @@ exclusion, namespace reservation and cleanup retries on the same actual owners.
 Immutable data-only payload/recipe/image admission results may be reused within
 a genuine owner; permissions and native pointers may not be cached as proofs.
 
-Then integrate the graph reader/capture and editable journal/parent, followed by
-the fixed source and installed-consumer domains and old-family regressions.
+The separate production contract now defines the graph reader/capture and
+editable journal/parent, followed by the fixed source and installed-consumer
+domains and old-family regressions.
 Actual room-family adoption, complete historic-copy/provider/client
 reconciliation, authenticated whole-room activation and sustainable retained
 Undo/offline history remain separate required work. Full parity and all V1

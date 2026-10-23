@@ -1,0 +1,670 @@
+{
+  "format": "breditor/flat-local-operation-participant-qualification",
+  "formatVersion": 1,
+  "qualifiedDate": "2026-10-22",
+  "calendarTimeZone": "America/Toronto",
+  "passed": true,
+  "source": {
+    "commit": "37ca4b51595c882ad0b284ff1d8c716848aee526",
+    "dirty": true,
+    "sha256": "e98058ce2f2558d03a557a23367e97b244a0871dd9029ea8915aab1bcd715edf",
+    "files": 5899,
+    "bytes": 47503525
+  },
+  "nonDocumentation": {
+    "files": 5272,
+    "sha256": "5408ab3916265bacdf6f3520ea54d87f1ef8287977c41af320a1ab2b6884d611"
+  },
+  "selection": {
+    "functionalPlanChecks": 335,
+    "fullPlanChecks": 343,
+    "uniquePassingPlanChecks": 35,
+    "wholePlanExecuted": false,
+    "sourceUnchangedDuringFinalRuns": true,
+    "postQualificationChanges": "Repository docs only. Implementation, assertions, candidate plan and packaged README retain the exact nonDocumentation fingerprint.",
+    "manifests": [
+      "target/v1-candidate-runs/run-k0WmWc/result.json",
+      "target/v1-candidate-runs/run-2m76XW/result.json",
+      "target/v1-candidate-runs/run-YQHGEY/result.json",
+      "target/v1-candidate-runs/run-iG3LKj/result.json",
+      "target/v1-candidate-runs/run-cNt1Ce/result.json",
+      "target/v1-candidate-runs/run-KeJSnq/result.json",
+      "target/v1-candidate-runs/run-llbaNf/result.json",
+      "target/v1-candidate-runs/run-29CYKQ/result.json",
+      "target/v1-candidate-runs/run-3BuO01/result.json"
+    ]
+  },
+  "implemented": [
+    "A distinct private flat-local-v1 production family now owns canonical framing, full chronological native admission, real source capture, writable journal and complete four-name participant. It uses the actual shared kernel and genuine shared opening/upload/final-witness machinery, not a copied owner overlay.",
+    "One raw payload pool and canonical table-prefix recipes reproduce every incoming file byte for byte. The first snapshot retains its existing whole-file SHA rule; later flat files use canonical manifest identity plus verified raw payload digests. No old aggregate graph file or cumulative header is stored as an opaque payload.",
+    "Original, CURRENT, PENDING and unsaved LIVE document/review histories, unique ordered versions, whole upload rows and historical provider-only pixels remain conserved. Capture appends to the actual imported input and does not flush edits, retry uploads or activate a network peer.",
+    "Exact payload roles, native lane digest spellings, counts, per-role bytes and declared semantic uses are validated before native factory execution. Retained parent/journal input MIME and length also refuse early. Correct hashes alone do not establish valid native chronology or upload/pixel continuity.",
+    "Genuine family identity and child tickets reserve the actual four names. Preparing/prepared/operational phases cold-reconcile aborted or lost-completion saves without reconstructing acknowledged missing owners. The live source keeps its journal/input/provider independently of the retired parent.",
+    "Actual upload exclusion and native witnesses survive awaited releases, input disposal, handle closure and final callbacks. Unreturned owners and uncommitted handoff wrappers deny use. All wrappers are constructed before the last native comparison; cleanup retries the same actual owners.",
+    "Fresh read execution policy and an independent Wasm instance work after the writer grant/factory retires. Exact family/intent types, nominal owners and native source selection-policy types survive complete handoff."
+  ],
+  "tests": {
+    "sourceFocusedContracts": 67,
+    "installedFlatContracts": 66,
+    "newCandidatePlanLaw": 1,
+    "strictPrivateTypeFixtures": 2,
+    "sourceAndInstalledEach": {
+      "format": "breditor/flat-local-operation-participant-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "cases": 480,
+      "profiles": 5,
+      "interruptedBegins": 480,
+      "initialColdResumes": 480,
+      "laterColdResumes": 960,
+      "handoffs": 1440,
+      "literalInputs": 480,
+      "originalProviders": 1440,
+      "wholeUploadComparisons": 1440,
+      "versionComparisons": 1440,
+      "futureNativePairs": 1440,
+      "postHandoffEdits": 480,
+      "readOnlyRefusals": 960,
+      "oldFamilyRefusals": 960,
+      "freshReadScopes": 480,
+      "writeRefusals": 480,
+      "networkCalls": 0,
+      "boundaryCounts": {
+        "journal-schema-cancel": 40,
+        "upload-abort": 40,
+        "prepared-abort": 40,
+        "prepared-lost-completion": 40,
+        "prepare-abort": 40,
+        "prepare-lost-completion": 40,
+        "native-abort": 40,
+        "native-lost-completion": 40,
+        "acknowledge-abort": 40,
+        "acknowledge-lost-completion": 40,
+        "operational-abort": 40,
+        "operational-lost-completion": 40
+      },
+      "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+      "scope": "All five normal native compiler profiles, three selection scopes, eight capability masks and four document/comment history pairs. Complete four-name parent, genuine native/upload ownership, twelve first-publication interruptions, three real handoffs, cold later edits/versions/readonly reopen and exact future histories. The separate native unit suite covers three successive flat export/import generations in all four history combinations. This fixed 480-case matrix covers first flat input, complete four-name ownership, interruptions and later cold edits. No room adoption, authenticated activation, sustainable history, physical durability or V1 approval."
+    },
+    "repeatNativeUnitDomain": {
+      "historyCombinations": 4,
+      "editableImports": 12,
+      "coldResumes": 12,
+      "futureNativePairs": 36,
+      "successiveGenerationsPerCombination": 3
+    },
+    "existingParentFocusedLawsEach": 37,
+    "existingStandaloneJournalFocusedLawsEach": 33,
+    "installedAndActualBundleKernelLawsEach": 6,
+    "workspace": 2647,
+    "editor": 385,
+    "scriptsPassed": 2811,
+    "scriptsFailed": 0,
+    "existingOptInBrowserSkips": 3,
+    "installedNativeOwnerLaws": 32
+  },
+  "controls": {
+    "nativeReviewDigest": {
+      "beforePassed": 0,
+      "beforeFailed": 1,
+      "afterPassed": 1,
+      "afterFailed": 0,
+      "unchangedAssertion": {
+        "path": "scripts/flat-local-journal.test.mjs",
+        "bytes": 5915,
+        "sha256": "16925b01c19fa72e2a1f3f782521d9d36facdc85269eacf29de488e73e51d834"
+      },
+      "unchangedFixture": {
+        "path": "scripts/fixtures/flat-local-operation/session.mjs",
+        "bytes": 2431,
+        "sha256": "8464e8d4f9e0ee71b814415db870e11bed01d6ae2675616d407c7d9be24f9649"
+      },
+      "publishedPackageDefectClaim": false
+    },
+    "payloadUsePreflight": {
+      "beforePassed": 7,
+      "beforeFailed": 1,
+      "afterAdmissionPassed": 8,
+      "afterConstructorPassed": 4,
+      "nativeFactoryCallsBefore": 7,
+      "nativeFactoryCallsAfter": 0,
+      "unchangedAssertionSha256": "21f6b85a21b7b41011abc3081e7327efd26b6a0cf4151f21a6cc0d0e36110927",
+      "publishedPackageDefectClaim": false
+    }
+  },
+  "additionalDevelopmentDiagnostic": {
+    "retainedCopies": {
+      "developmentOnly": true,
+      "passed": true,
+      "cases": 8,
+      "rows": [
+        {
+          "documentSegmented": false,
+          "reviewSegmented": false,
+          "lane": "document",
+          "sameAcceptedDocument": true,
+          "sameWriterAndCounters": true,
+          "differentNativePrefixDigest": true,
+          "differentNativeHistory": true,
+          "bothContinueCommonInput": true,
+          "bothFalseContinuationsRefused": true
+        },
+        {
+          "documentSegmented": false,
+          "reviewSegmented": false,
+          "lane": "review",
+          "sameAcceptedDocument": true,
+          "sameWriterAndCounters": true,
+          "differentNativePrefixDigest": true,
+          "differentNativeHistory": true,
+          "bothContinueCommonInput": true,
+          "bothFalseContinuationsRefused": true
+        },
+        {
+          "documentSegmented": false,
+          "reviewSegmented": true,
+          "lane": "document",
+          "sameAcceptedDocument": true,
+          "sameWriterAndCounters": true,
+          "differentNativePrefixDigest": true,
+          "differentNativeHistory": true,
+          "bothContinueCommonInput": true,
+          "bothFalseContinuationsRefused": true
+        },
+        {
+          "documentSegmented": false,
+          "reviewSegmented": true,
+          "lane": "review",
+          "sameAcceptedDocument": true,
+          "sameWriterAndCounters": true,
+          "differentNativePrefixDigest": true,
+          "differentNativeHistory": true,
+          "bothContinueCommonInput": true,
+          "bothFalseContinuationsRefused": true
+        },
+        {
+          "documentSegmented": true,
+          "reviewSegmented": false,
+          "lane": "document",
+          "sameAcceptedDocument": true,
+          "sameWriterAndCounters": true,
+          "differentNativePrefixDigest": true,
+          "differentNativeHistory": true,
+          "bothContinueCommonInput": true,
+          "bothFalseContinuationsRefused": true
+        },
+        {
+          "documentSegmented": true,
+          "reviewSegmented": false,
+          "lane": "review",
+          "sameAcceptedDocument": true,
+          "sameWriterAndCounters": true,
+          "differentNativePrefixDigest": true,
+          "differentNativeHistory": true,
+          "bothContinueCommonInput": true,
+          "bothFalseContinuationsRefused": true
+        },
+        {
+          "documentSegmented": true,
+          "reviewSegmented": true,
+          "lane": "document",
+          "sameAcceptedDocument": true,
+          "sameWriterAndCounters": true,
+          "differentNativePrefixDigest": true,
+          "differentNativeHistory": true,
+          "bothContinueCommonInput": true,
+          "bothFalseContinuationsRefused": true
+        },
+        {
+          "documentSegmented": true,
+          "reviewSegmented": true,
+          "lane": "review",
+          "sameAcceptedDocument": true,
+          "sameWriterAndCounters": true,
+          "differentNativePrefixDigest": true,
+          "differentNativeHistory": true,
+          "bothContinueCommonInput": true,
+          "bothFalseContinuationsRefused": true
+        }
+      ],
+      "scope": "Distinct document-only and review-only same-writer forks with equal accepted documents and counters but different native prefix digests are rejected in both directions under all four native history pairs. Document edits are undone so only their native/Redo history differs. The full native clock already includes its digest. This is existing protective behavior and a future room-reconciliation requirement, not a new corruption or repair claim."
+    },
+    "partOfSelectedPlanChecks": false,
+    "newCorruptionOrRepairClaim": false,
+    "incomingVersusLive": {
+      "developmentOnly": true,
+      "passed": true,
+      "cases": 8,
+      "rows": [
+        {
+          "kind": "snapshot",
+          "documentSegmented": false,
+          "reviewSegmented": false,
+          "inputSelectionMatches": true,
+          "literalIncomingPreserved": true,
+          "liveIsLaterThanIncoming": true,
+          "exactLiveEqualityWouldRefuse": true,
+          "realBothLanePrefixAccepted": true,
+          "falseReverseContinuationRefused": true
+        },
+        {
+          "kind": "snapshot",
+          "documentSegmented": false,
+          "reviewSegmented": true,
+          "inputSelectionMatches": true,
+          "literalIncomingPreserved": true,
+          "liveIsLaterThanIncoming": true,
+          "exactLiveEqualityWouldRefuse": true,
+          "realBothLanePrefixAccepted": true,
+          "falseReverseContinuationRefused": true
+        },
+        {
+          "kind": "snapshot",
+          "documentSegmented": true,
+          "reviewSegmented": false,
+          "inputSelectionMatches": true,
+          "literalIncomingPreserved": true,
+          "liveIsLaterThanIncoming": true,
+          "exactLiveEqualityWouldRefuse": true,
+          "realBothLanePrefixAccepted": true,
+          "falseReverseContinuationRefused": true
+        },
+        {
+          "kind": "snapshot",
+          "documentSegmented": true,
+          "reviewSegmented": true,
+          "inputSelectionMatches": true,
+          "literalIncomingPreserved": true,
+          "liveIsLaterThanIncoming": true,
+          "exactLiveEqualityWouldRefuse": true,
+          "realBothLanePrefixAccepted": true,
+          "falseReverseContinuationRefused": true
+        },
+        {
+          "kind": "flat",
+          "documentSegmented": false,
+          "reviewSegmented": false,
+          "inputSelectionMatches": true,
+          "literalIncomingPreserved": true,
+          "liveIsLaterThanIncoming": true,
+          "exactLiveEqualityWouldRefuse": true,
+          "realBothLanePrefixAccepted": true,
+          "falseReverseContinuationRefused": true
+        },
+        {
+          "kind": "flat",
+          "documentSegmented": false,
+          "reviewSegmented": true,
+          "inputSelectionMatches": true,
+          "literalIncomingPreserved": true,
+          "liveIsLaterThanIncoming": true,
+          "exactLiveEqualityWouldRefuse": true,
+          "realBothLanePrefixAccepted": true,
+          "falseReverseContinuationRefused": true
+        },
+        {
+          "kind": "flat",
+          "documentSegmented": true,
+          "reviewSegmented": false,
+          "inputSelectionMatches": true,
+          "literalIncomingPreserved": true,
+          "liveIsLaterThanIncoming": true,
+          "exactLiveEqualityWouldRefuse": true,
+          "realBothLanePrefixAccepted": true,
+          "falseReverseContinuationRefused": true
+        },
+        {
+          "kind": "flat",
+          "documentSegmented": true,
+          "reviewSegmented": true,
+          "inputSelectionMatches": true,
+          "literalIncomingPreserved": true,
+          "liveIsLaterThanIncoming": true,
+          "exactLiveEqualityWouldRefuse": true,
+          "realBothLanePrefixAccepted": true,
+          "falseReverseContinuationRefused": true
+        }
+      ],
+      "scope": "A genuine unchanged incoming file and a later real editable source are different cuts. Admit their explicit prefix relationship through both native histories and ordered versions; do not copy a same-point-export equality check into generic room adoption. No live activation, room catalog, physical durability or new product repair is qualified."
+    },
+    "recoveryReadWork": {
+      "developmentOnly": true,
+      "passed": true,
+      "historyCombinations": 4,
+      "generationsEach": 3,
+      "normalRuntime": true,
+      "rows": [
+        {
+          "documentSegmented": false,
+          "reviewSegmented": false,
+          "generation": 1,
+          "incomingStates": 1,
+          "incomingFileBytes": 188558,
+          "incomingPayloadBytes": 186772,
+          "snapshotNativeFactoryCalls": 3,
+          "captureNativeFactoryCalls": 22,
+          "captureGuardCalls": 4661,
+          "nextFileBytes": 267341
+        },
+        {
+          "documentSegmented": false,
+          "reviewSegmented": false,
+          "generation": 2,
+          "incomingStates": 2,
+          "incomingFileBytes": 267341,
+          "incomingPayloadBytes": 264908,
+          "snapshotNativeFactoryCalls": 3,
+          "captureNativeFactoryCalls": 26,
+          "captureGuardCalls": 5613,
+          "nextFileBytes": 349878
+        },
+        {
+          "documentSegmented": false,
+          "reviewSegmented": false,
+          "generation": 3,
+          "incomingStates": 3,
+          "incomingFileBytes": 349878,
+          "incomingPayloadBytes": 346798,
+          "snapshotNativeFactoryCalls": 3,
+          "captureNativeFactoryCalls": 30,
+          "captureGuardCalls": 6565,
+          "nextFileBytes": 436171
+        },
+        {
+          "documentSegmented": false,
+          "reviewSegmented": true,
+          "generation": 1,
+          "incomingStates": 1,
+          "incomingFileBytes": 192151,
+          "incomingPayloadBytes": 190025,
+          "snapshotNativeFactoryCalls": 3,
+          "captureNativeFactoryCalls": 22,
+          "captureGuardCalls": 5177,
+          "nextFileBytes": 271934
+        },
+        {
+          "documentSegmented": false,
+          "reviewSegmented": true,
+          "generation": 2,
+          "incomingStates": 2,
+          "incomingFileBytes": 271934,
+          "incomingPayloadBytes": 269152,
+          "snapshotNativeFactoryCalls": 3,
+          "captureNativeFactoryCalls": 26,
+          "captureGuardCalls": 6165,
+          "nextFileBytes": 355617
+        },
+        {
+          "documentSegmented": false,
+          "reviewSegmented": true,
+          "generation": 3,
+          "incomingStates": 3,
+          "incomingFileBytes": 355617,
+          "incomingPayloadBytes": 352179,
+          "snapshotNativeFactoryCalls": 3,
+          "captureNativeFactoryCalls": 30,
+          "captureGuardCalls": 7153,
+          "nextFileBytes": 443202
+        },
+        {
+          "documentSegmented": true,
+          "reviewSegmented": false,
+          "generation": 1,
+          "incomingStates": 1,
+          "incomingFileBytes": 145443,
+          "incomingPayloadBytes": 143315,
+          "snapshotNativeFactoryCalls": 3,
+          "captureNativeFactoryCalls": 22,
+          "captureGuardCalls": 5177,
+          "nextFileBytes": 202205
+        },
+        {
+          "documentSegmented": true,
+          "reviewSegmented": false,
+          "generation": 2,
+          "incomingStates": 2,
+          "incomingFileBytes": 202205,
+          "incomingPayloadBytes": 199421,
+          "snapshotNativeFactoryCalls": 3,
+          "captureNativeFactoryCalls": 26,
+          "captureGuardCalls": 6165,
+          "nextFileBytes": 262881
+        },
+        {
+          "documentSegmented": true,
+          "reviewSegmented": false,
+          "generation": 3,
+          "incomingStates": 3,
+          "incomingFileBytes": 262881,
+          "incomingPayloadBytes": 259441,
+          "snapshotNativeFactoryCalls": 3,
+          "captureNativeFactoryCalls": 30,
+          "captureGuardCalls": 7153,
+          "nextFileBytes": 327471
+        },
+        {
+          "documentSegmented": true,
+          "reviewSegmented": true,
+          "generation": 1,
+          "incomingStates": 1,
+          "incomingFileBytes": 149036,
+          "incomingPayloadBytes": 146570,
+          "snapshotNativeFactoryCalls": 3,
+          "captureNativeFactoryCalls": 22,
+          "captureGuardCalls": 5693,
+          "nextFileBytes": 206797
+        },
+        {
+          "documentSegmented": true,
+          "reviewSegmented": true,
+          "generation": 2,
+          "incomingStates": 2,
+          "incomingFileBytes": 206797,
+          "incomingPayloadBytes": 203668,
+          "snapshotNativeFactoryCalls": 3,
+          "captureNativeFactoryCalls": 26,
+          "captureGuardCalls": 6717,
+          "nextFileBytes": 268618
+        },
+        {
+          "documentSegmented": true,
+          "reviewSegmented": true,
+          "generation": 3,
+          "incomingStates": 3,
+          "incomingFileBytes": 268618,
+          "incomingPayloadBytes": 264826,
+          "snapshotNativeFactoryCalls": 3,
+          "captureNativeFactoryCalls": 30,
+          "captureGuardCalls": 7741,
+          "nextFileBytes": 334499
+        }
+      ],
+      "scope": "Counts of actual matching read-only native factory invocations and current guard calls across three genuine successive flat export/import generations. No substituted runtime, fake owner or changed source. This work count is not timing, supported resource bounds, physical durability, large-file or long-session approval."
+    }
+  },
+  "compatibility": {
+    "sourceAndInstalledExistingParentEach": {
+      "format": "breditor/restored-local-operation-participant-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "cases": 480,
+      "profiles": 5,
+      "interruptedBegins": 480,
+      "initialColdResumes": 480,
+      "laterColdResumes": 960,
+      "handoffs": 1440,
+      "literalInputs": 480,
+      "originalProviders": 1440,
+      "wholeUploadComparisons": 1440,
+      "versionComparisons": 1440,
+      "futureNativePairs": 1440,
+      "postHandoffEdits": 480,
+      "readOnlyRefusals": 960,
+      "oldFamilyRefusals": 960,
+      "freshReadScopes": 480,
+      "writeRefusals": 480,
+      "networkCalls": 0,
+      "boundaryCounts": {
+        "journal-schema-cancel": 40,
+        "upload-abort": 40,
+        "prepared-abort": 40,
+        "prepared-lost-completion": 40,
+        "prepare-abort": 40,
+        "prepare-lost-completion": 40,
+        "native-abort": 40,
+        "native-lost-completion": 40,
+        "acknowledge-abort": 40,
+        "acknowledge-lost-completion": 40,
+        "operational-abort": 40,
+        "operational-lost-completion": 40
+      },
+      "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+      "scope": "All five normal native compiler profiles, three selection scopes, eight capability masks and four document/comment history pairs. Complete four-name parent, genuine native/upload ownership, twelve first-publication interruptions, three real handoffs, cold later edits/versions/readonly reopen and exact future histories. No repeated flat provenance export, room adoption, authenticated activation, sustainable history, physical durability or V1 approval."
+    },
+    "sourceAndInstalledExistingJournalEach": {
+      "format": "breditor/restored-local-operation-journal-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "cases": 480,
+      "profiles": 5,
+      "interruptedFirstPublications": 480,
+      "initialColdResumes": 480,
+      "laterColdResumes": 480,
+      "inputLivePublications": 480,
+      "literalInputs": 480,
+      "originalPixels": 480,
+      "incomingWholeUploads": 480,
+      "versions": 480,
+      "futureNativePairs": 1440,
+      "readOnlyRefusals": 960,
+      "oldFamilyRefusals": 1440,
+      "freshReadScopes": 480,
+      "writeRefusals": 480,
+      "boundaryCounts": {
+        "prepare-abort": 80,
+        "prepare-lost-completion": 80,
+        "native-abort": 80,
+        "native-lost-completion": 80,
+        "acknowledge-abort": 80,
+        "acknowledge-lost-completion": 80
+      },
+      "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+      "scope": "Five normal compiler profiles, three selection scopes, eight capability masks and four document/comment history pairs. Actual writable source-owned journal/input, single verified LIVE first-publication, six terminal save interruptions, cold resume and exact future histories. Incoming uploads are preserved data only; no complete operational upload parent, repeated flat export, room adoption, activation, sustainable history or V1 approval."
+    },
+    "semanticSourceAndInstalledResultsMatch": true,
+    "existingSnapshotWireAndDefaultsUnchanged": true,
+    "publicRootExportsUnchanged": true,
+    "normalNativeBinariesUnchanged": true
+  },
+  "carriedEvidence": {
+    "prior": {
+      "index": "target/native-input-journal-final-fxOHWn/index.json",
+      "sha256": "c2843f7034aeff6eeaa816f19a151344d6931ac21c379da7b920c36943bc0f03",
+      "source": {
+        "commit": "85b410b8309841ecbbfc98c93bceb84bffd4ac38",
+        "dirty": true,
+        "sha256": "1148e267499b2ee3d4f2a020ed56069c1fb0249dee4d0eed6698be62a53a8549",
+        "files": 5850,
+        "bytes": 47227995
+      },
+      "collaborationArchiveSha256": "668df4e1a4c4a93f92975f8ad5229dde76c31f98f21255a7a4b1cde00614ec07"
+    },
+    "unchangedPriorNonDocumentationInputs": 5220,
+    "unchangedOldPackageFiles": 1083,
+    "changedOldPackageFiles": [
+      {
+        "path": "README.md",
+        "beforeSha256": "f9c2f7dc0791ede57823c60ddaa61d55200ac6b81296dff6470111e77ca884c0",
+        "afterSha256": "7f2ea109aae0e9119b4261e1d03b35bab218b7d5a6864db8098800070574a226"
+      },
+      {
+        "path": "dist/native_input_operation/journal_contract.d.ts",
+        "beforeSha256": "8a8870cf5a5ce072718de78e00d41338cc467b0c1edbeaa236391096c53c5510",
+        "afterSha256": "61503be42fb7677faa25d5484f1f964f4eecbedcea8e9188768292f3e81f6794"
+      },
+      {
+        "path": "dist/native_input_operation/journal_families.d.ts",
+        "beforeSha256": "cbe2a2948ad881098fbcb02560a56752d0c5d7e85c651eba31731beef00b4211",
+        "afterSha256": "0767f416f357f60f161fe3920da6b5aba7a327608b3b2ed62e055e52b999f271"
+      },
+      {
+        "path": "dist/native_input_operation/journal_families.js",
+        "beforeSha256": "72995f23e15f54944ef9358c339b6a404b44c4befc80105aefc429d7bce418a7",
+        "afterSha256": "7553ff3d137feb7ed134b259f676a0fb07095272854611c318d94cd6cb6d1c9e"
+      },
+      {
+        "path": "dist/restored_local_operation/input.d.ts",
+        "beforeSha256": "39de53e51e481d7566458f27380f7aab95a7ef374e79c1f3c46201d629f16a67",
+        "afterSha256": "dfd0fa32ea8704c3c78b073cb46891caad7107a1157473122e3952dcb3da1776"
+      },
+      {
+        "path": "dist/restored_local_operation/input.js",
+        "beforeSha256": "5104e88f5cf0ebc025f5035975fd3435d55726763297ec8fb05ea8c3ddf5713f",
+        "afterSha256": "54e6fcd64c91bc97df2c6c04432a382db0c72bb8ae71c429412fb8d4b412dcf7"
+      },
+      {
+        "path": "dist/restored_local_operation/journal.d.ts",
+        "beforeSha256": "22be2aaa418c280616dac2e7f931275fdd8a938652dc4d84b59479849a39d9aa",
+        "afterSha256": "24d59cac559ab7e8cac5627eeebcc0849a69073ab5109db6105d0e9a4f5a5278"
+      },
+      {
+        "path": "dist/restored_local_operation/journal.js",
+        "beforeSha256": "18dadb6f9cd6bc171132ec7df2777d9623add5ac2f4f2069959ce7c2fc66b5a0",
+        "afterSha256": "513366792b12e119f5e7eb6bd73b04a573e7df27ed131d0c6c02ee4f0f73e173"
+      }
+    ],
+    "normalRuntimeFiles": 12,
+    "unchangedNativeInputs": 2857,
+    "otherLegacyMatricesFresh": false,
+    "otherLegacyFullMatricesFreshlyExecuted": false,
+    "nativeRustSuitesFreshlyExecuted": false,
+    "scope": "The changed existing standalone and complete-parent domains and the new full flat native domain are freshly executed in source and installed packages. Other legacy matrices carry only across actual unchanged source/archive bytes. Eight old archive files changed; new private archive files are additions, not called byte-identical."
+  },
+  "installedEvidence": {
+    "freshConsumers": 5,
+    "matchingArchiveSha256": {
+      "@breditor/browser": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+      "@breditor/experimental-rich-content": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad",
+      "@breditor/collaboration": "b5d5078eb410491446b8c52c040eace2da78c1abb20965e14fa3b818a4a2cb1d"
+    },
+    "workspaceLinks": false,
+    "offlineRegistryIntegrityChecked": true,
+    "assertionChanges": "Only reversible module/runtime/fixture locations. The fixed native probe is copied byte-identically; no runtime substitution or reduced domain.",
+    "productionBundleExcludesWorkspaceReactAndSyntheticStorage": true
+  },
+  "resourceContract": {
+    "newFamilyOnly": true,
+    "stateRecipeLimit": 128,
+    "totalFile": "Twice the existing local portable backup file bound",
+    "payload": "Existing local portable backup file bound",
+    "headerAndState": "Existing local portable backup header bound",
+    "payloadCount": "Explicitly derived from historical raster references, 128 states, native cut files and the existing source-record bound",
+    "roleBoundsPreserved": true,
+    "reachingLimit": "Refuse without history pruning, origin reset or user-data overwrite",
+    "largeFileOrLongSessionPerformanceQualified": false,
+    "nativeUndoLimitUnfixed": 1000,
+    "nativeGenerationLimitsUnfixed": 64
+  },
+  "retained": {
+    "index": "target/flat-local-participant-final-LxC6aB/index.json",
+    "sha256": "8db6b2dd159ccaedd7eff60e8e1887d7a4d6d5c181ff1b90f19671a6b7ff0fee",
+    "files": 295,
+    "includes": "Nine terminal manifests and all 35 stage logs, eight reports, five fresh consumers with matching archives, actual unchanged-assertion integration controls, full source inventory, exact old-source/archive carry and twelve unchanged normal native files."
+  },
+  "remaining": [
+    "Explicit room catalog retention/adoption for local-operation snapshot and flat families without reinterpreting any of the existing five catalog families.",
+    "Complete historical-copy/provider/client reconciliation and newly authenticated whole-room activation, preserving outstanding offline work and review/assets.",
+    "Sustainable retained shared Undo and independent comment/server-log generations, remaining full parity and all thirteen V1 release gates."
+  ],
+  "flatFamilyIntegrated": true,
+  "genuineFourNameFlatParent": true,
+  "boundedRepeatedNativeEditableRecovery": true,
+  "sustainableNativeHistorySolved": false,
+  "roomAdoptionOrActivationSolved": false,
+  "physicalDurabilityQualified": false,
+  "historicalWebKitRepair": false,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "versionChanged": false,
+  "pushed": false
+}

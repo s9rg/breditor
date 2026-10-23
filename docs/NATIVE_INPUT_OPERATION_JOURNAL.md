@@ -3,8 +3,9 @@
 The private native-input journal kernel shares publication, persistence and read
 custody without sharing wire semantics. The existing snapshot facade still
 selects only its original format, actual input owner, head/intent parsers and
-parent opening. Only that snapshot family is currently registered; the
-[flat graph family](FLAT_LOCAL_OPERATION_PROVENANCE.md) still needs integration.
+parent opening. A second closed
+[flat-local family](FLAT_LOCAL_OPERATION_PARTICIPANT.md) now selects its own
+framing, input admission, literal verification, schemas and facade.
 
 ## Intrinsic families
 
@@ -68,8 +69,20 @@ Source, fresh installed-package and actual production-bundle tests cover
 structural-family refusal, constructor reentry, one-use facade creation,
 unreturned-owner refusal and old-kind isolation. Full standalone-journal and
 complete-parent native source/installed domains remain separate mandatory
-checks. This extraction does not qualify the graph family, repeated product
-restore, room adoption, sustainable Undo, physical durability or V1 readiness.
+checks. The flat family has its own mandatory source/installed qualification;
+passing snapshot assertions cannot substitute for it. Room adoption, sustainable
+Undo, physical durability and V1 readiness require separate work.
+
+## Shared complete ownership
+
+The flat family also uses actual shared opening, upload and final-witness
+machinery. Four-name custody and delegated child tickets retain the intrinsic
+family identity; no imported phase or caller descriptor can grant ownership.
+Constructor callbacks cannot read, close or transfer an unreturned owner.
+Prepared handoff wrappers remain gated until the last native/upload comparison
+commits. Fresh read factories and source-owned literal input survive retirement
+of the temporary parent input wrapper. The existing snapshot opening retains
+its original private brand and entry points.
 
 ## Selected qualification
 
@@ -85,5 +98,13 @@ The same two constructor-reentry assertions fail before their development repair
 and pass unchanged afterward. This is not a published-package or historical
 WebKit repair claim. Other legacy full matrices remain carried under exact
 unchanged source/archive bytes. Normal runtimes and Rust inputs are unchanged;
-the full Rust suites are not freshly rerun. Graph product integration, all other
-required architecture work and all thirteen V1 gates remain open.
+the full Rust suites are not freshly rerun. That selected record qualifies the
+snapshot extraction; it predates the separate flat-family implementation and
+does not qualify it. All thirteen V1 gates remain open.
+
+The later [flat-family qualification](qualification/2026-10-22-flat-local-operation-participant.json) covers the actual
+second family, four-name opening/upload/final-witness machinery and repeatable
+native capture/restore. All 35 selected stages pass, including fresh existing
+snapshot standalone/parent source/installed domains and 67/66 source/installed
+flat-family laws. It retains the original snapshot protocol meanings and does
+not promote room adoption, sustainable history or V1 readiness.

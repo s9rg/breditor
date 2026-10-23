@@ -41,7 +41,52 @@ rotation/recovery and remaining feature parity are substantive work, not waived
 by passing the current tests. No package version, public API freeze, tag,
 publication or deployment is promoted.
 
-## Current functional checkpoint
+## Current flat recovery implementation
+
+The private [repeatable flat-local family](FLAT_LOCAL_OPERATION_PARTICIPANT.md)
+now uses production-source framing, full chronological native admission and the
+actual shared journal/opening/upload/final-witness machinery. Three successive
+editable/cold generations pass in all four document/review history combinations,
+including offline work, exact future histories, whole uploads and retained pixels.
+Interrupted commits, lost completions, same-owner cleanup retry and independent
+read-only Wasm execution have focused functional coverage.
+
+The new format keeps one raw payload pool and canonical prefix recipes, not a
+nested archive or a new copy of each cumulative header. Existing snapshot
+meanings, public-root exports, Rust and normal native binaries remain unchanged.
+Its separate bounds do not approve large-file performance or fix the native
+1,000-entry Undo and 64-generation limits.
+
+The [selected qualification](qualification/2026-10-22-flat-local-operation-participant.json) passes all 35 selected stages
+from the 335-check functional plan. Source contracts pass 67 laws; fresh installed
+packages pass the same 66 functional laws, with a separate candidate-plan law.
+Both full flat-family domains pass all 480 native cases: 1,440 handoffs, 1,440 cold
+resumes and 1,440 exact future history pairs each. Twelve first-publication
+interruption boundaries run 40 times each. The separate repeated-generation
+suite preserves three successive editable/cold generations in each of four
+history combinations, with 36 future native pairs per source/installed run.
+
+Both existing snapshot-parent and standalone-journal 480-case source/installed
+domains are also freshly repeated. Five clean consumers pin matching archives;
+the shared-kernel laws pass installed and in an actual production bundle.
+Workspace/diagnostic tests pass 2,647, editor tests 385 and scripts 2,811, with
+three existing browser opt-in skips. Other legacy full matrices are carried only
+across exact unchanged source/archive bytes; Rust suites are not freshly rerun.
+
+Unchanged integration assertions reproduce the native review-digest rule failure
+and late opaque-payload refusal before their repairs. Role/use preflight now
+rejects the latter before any native factory call. A separate eight-case native
+diagnostic confirms that equal documents and counters cannot substitute for
+full history identity: distinct document/Redo and review histories refuse in
+both directions. This is existing protection to preserve in room reconciliation,
+not a new corruption or historical WebKit repair claim.
+
+Actual room-family adoption, complete historical/provider/client reconciliation,
+authenticated whole-room activation and sustainable native history remain the
+next architectural work. Full parity and all thirteen V1 gates remain open;
+no version, push, tag, publication or deployment is promoted.
+
+## Previous shared journal checkpoint
 
 The private [shared native-input journal](NATIVE_INPUT_OPERATION_JOURNAL.md) now
 owns publication and read lifetime through a sealed typed kernel. The existing
@@ -65,9 +110,10 @@ production machinery modules with import-only relocation: twelve editable and
 cold restores, 36 exact future history pairs, an independent-Wasm read and six
 interrupted first publications pass. This is not a product graph family or a
 qualified four-name graph parent; uploads in the shared proof are separately
-restored real stores. Production graph integration/resource contracts, actual room
-adoption/reconciliation, authenticated activation and sustainable native history
-remain required. Full parity and all thirteen V1 gates remain open. No version,
+restored real stores. The later flat-family qualification above covers production
+graph integration and its separate resource contract. Actual room adoption and
+reconciliation, authenticated activation and sustainable native history remain
+required. Full parity and all thirteen V1 gates remain open. No version,
 push, tag, publication or deployment is promoted.
 
 The private [complete restored-local participant](RESTORED_LOCAL_OPERATION_PARTICIPANT.md)

@@ -112,8 +112,8 @@ witnesses survive awaited cleanup and final policy callbacks; the source keeps
 its own input/provider after parent retirement. Returned source types preserve
 the selected Rust policy. Fresh read factories can verify data in their own Wasm
 instance independently of retired writer execution policy. `input.file()` is
-imported provenance, not a new backup of later edits. Repeated flat export and
-room activation remain separate. See
+imported provenance, not a new backup of later edits. Repeated export uses the
+separate flat family below; room activation remains separate. See
 [restored local ownership](../../docs/RESTORED_LOCAL_OPERATION_PARTICIPANT.md).
 
 The closed snapshot journal now delegates publication, persistence and read
@@ -122,8 +122,20 @@ the exact input codec, literal-file verification, parsers, schemas and genuine
 parent opening; a caller descriptor cannot register another format. Facade
 construction is claimed once and remains unavailable until actual admission
 completes. Existing snapshot meanings and public-root exports are unchanged.
-The graph family still needs integration. See the
+See the
 [shared journal contract](../../docs/NATIVE_INPUT_OPERATION_JOURNAL.md).
+
+The separate private `flat-local-v1` family adds repeatable capture and editable
+four-name restoration through that actual kernel and shared opening/upload/final
+witnesses. Raw payloads are deduplicated; canonical prefix recipes reproduce
+literal incoming files without nesting old cumulative archives. Every native
+cut, ordered version, whole upload row and historical pixel is admitted; saved
+phase flags grant no ownership. Invalid payload roles/uses and retained file
+MIME/size refuse before native execution. This is a distinct bounded format,
+not the earlier development overlay or a public-root export. Its fixed source
+and installed-consumer domains remain mandatory. Native history ceilings, room
+adoption/reconciliation, authenticated activation and V1 gates remain open. See
+[repeatable local recovery](../../docs/FLAT_LOCAL_OPERATION_PARTICIPANT.md).
 
 `SharedPersistentSession.exportBackup()` captures exact native history, including
 Redo, without a save or publication. Paired `SharedReviewPersistentSession`

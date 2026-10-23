@@ -35,6 +35,7 @@ export class DetachedRestoredLocalInput{
  file():Blob{return state(this).file;}
  originalFile():Blob{return archive.originalFile.call(state(this).owner);}
  selection(){return structuredClone(state(this).policy.expected);}
+ cohort(){return structuredClone(state(this).policy.cohort);}
  identity(){return structuredClone(state(this).identity);}
  original(){return structuredClone(state(this).original);}
  live(){return structuredClone(state(this).live);}
@@ -46,4 +47,4 @@ export class DetachedRestoredLocalInput{
 const p=DetachedRestoredLocalInput.prototype;
 /** Actual private state, not a structural ready object. Journal code separately
  * reserves storage names and transfers this freshly admitted input lifetime. */
-export const restoredLocalInput=Object.freeze({owns:(owner:unknown):owner is DetachedRestoredLocalInput=>states.has(owner as DetachedRestoredLocalInput),read:DetachedRestoredLocalInput.read,check:p.checkReadable,verifyFile:p.verifyFile,file:p.file,originalFile:p.originalFile,selection:p.selection,identity:p.identity,original:p.original,live:p.live,targets:p.targets,uploads:p.uploadBackup,blob:p.blob,dispose:p.dispose});
+export const restoredLocalInput=Object.freeze({owns:(owner:unknown):owner is DetachedRestoredLocalInput=>states.has(owner as DetachedRestoredLocalInput),read:DetachedRestoredLocalInput.read,check:p.checkReadable,verifyFile:p.verifyFile,file:p.file,originalFile:p.originalFile,selection:p.selection,cohort:p.cohort,identity:p.identity,original:p.original,live:p.live,targets:p.targets,uploads:p.uploadBackup,blob:p.blob,dispose:p.dispose});

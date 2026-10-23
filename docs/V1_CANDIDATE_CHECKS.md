@@ -1,5 +1,24 @@
 # V1 candidate checks
 
+Both profiles now require `flat-local-participant-contracts`,
+`flat-local-participant-type-fence`, `flat-local-participant` and
+`installed-flat-local-participant`. The distinct private
+[flat family](FLAT_LOCAL_OPERATION_PARTICIPANT.md) uses actual production
+framing, semantic admission, shared journal and four-name native/upload custody.
+The type fence preserves exact family/intent and source selection-policy types.
+The fixed 480-case native domain and fresh installed assertions remain mandatory;
+the earlier development overlays and snapshot qualifications do not replace them.
+The [selected qualification](qualification/2026-10-22-flat-local-operation-participant.json) passes all 35 selected stages
+from the 335-check functional plan. The flat source/installed domains each pass
+480 cases and 1,440 handoffs, cold resumes and future history pairs. The separate
+source and fresh-package suites pass 67/66 laws, including three repeated native
+generations in all four history combinations; the source count includes the
+candidate-plan law. Five consumers pin matching archives. Existing snapshot
+standalone/complete-parent source/installed matrices pass freshly too.
+Workspace/diagnostic tests pass 2,647, editor tests 385 and scripts 2,811, with
+three existing browser opt-in skips. Other legacy matrices carry only across
+exact unchanged bytes. All thirteen V1 gates remain open.
+
 Both profiles now also require `native-input-journal-family-contracts`,
 `native-input-journal-type-fence` and `installed-native-input-journal-family`.
 The private [shared journal machinery](NATIVE_INPUT_OPERATION_JOURNAL.md) retains
@@ -15,10 +34,11 @@ both installed and genuinely bundled. Scripts pass 2,744 with three existing
 browser skips. Unchanged legacy inputs/archive bytes carry other old full matrices.
 
 The [49-test typed graph development proof](development/2026-10-22-typed-flat-local-operation.json)
-does not integrate a graph family into the product registry, qualify its complete
-parent or close repeated product export. All thirteen V1 gates, room adoption,
-complete reconciliation, authenticated activation and sustainable native history
-remain open.
+alone did not integrate a graph family into the product registry or qualify its
+complete parent and repeated product export. The later flat-family qualification
+above covers those components. All thirteen V1 gates, room adoption, complete
+reconciliation, authenticated activation and sustainable native history remain
+open.
 
 Both profiles require `restored-local-participant-contracts`,
 `restored-local-participant-type-fence`, `restored-local-participant` and
@@ -38,12 +58,12 @@ Three consumers pin matching archives; scripts pass 2,737 with three existing
 opt-in browser skips. Other legacy full matrices remain carried under exact
 unchanged inputs/package bytes, not relabelled fresh.
 
-This qualifies complete restored-local ownership, not product repeated flat
-export. The [flat-provenance development contract](FLAT_LOCAL_OPERATION_PROVENANCE.md)
-has real repeated editable/cold native evidence but still needs typed kernel/SDK
-integration and full source/installed domains. Room adoption/reconciliation,
-authenticated activation, sustainable history, full parity and all thirteen V1
-gates remain open.
+That snapshot checkpoint qualifies complete restored-local ownership, not product
+repeated flat export. The [flat-provenance development contract](FLAT_LOCAL_OPERATION_PROVENANCE.md)
+had repeated editable/cold native evidence but did not replace typed kernel/SDK
+integration and full source/installed domains. The later flat-family qualification
+above covers those components. Room adoption/reconciliation, authenticated
+activation, sustainable history, full parity and all thirteen V1 gates remain open.
 
 Both profiles require `restored-local-journal-contracts`,
 `restored-local-journal-type-fence`, `restored-local-journal` and
@@ -63,9 +83,10 @@ browser skips. Previous full matrices are carried under 5,175 unchanged inputs
 and 1,048 actual old package files, not relabelled freshly executed.
 
 That checkpoint is an actual native journal/source restore; the complete upload
-parent is qualified separately above. Repeated flat export, five-family adoption, complete historic
-copy/provider/client reconciliation, authenticated activation, sustainable native
-history, full parity and all thirteen V1 release gates remain open.
+parent and repeated flat export are qualified separately above. Room-family
+adoption, complete historic copy/provider/client reconciliation, authenticated
+activation, sustainable native history, full parity and all thirteen V1 release
+gates remain open.
 
 Both profiles require `independent-local-portable-contracts`,
 `independent-local-portable-type-fence`, `independent-local-portable` and

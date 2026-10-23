@@ -13,6 +13,7 @@ type Kernel=NativeInputJournal<RestoredLocalInputOptions,RestoredLocalJournalCho
 const key=Object.freeze({});
 let create:(kernel:Kernel)=>RestoredLocalOperationJournal;
 let binding:(journal:RestoredLocalOperationJournal)=>ReturnType<RestoredLocalOperationJournal['bindingType']>;
+let owns:(value:unknown)=>value is RestoredLocalOperationJournal;
 let openForParticipant:<P extends SharedSelectionPolicy>(parent:RestoredLocalParticipantOpening,provided:RestoredLocalInputOptions<P>,file?:Blob)=>Promise<RestoredLocalOperationJournal>;
 export class RestoredLocalOperationJournal{
  readonly #kernel:Kernel;
@@ -28,12 +29,18 @@ export class RestoredLocalOperationJournal{
  static{
   create=kernel=>new RestoredLocalOperationJournal(key,kernel);
   binding=journal=>{if(!journal||typeof journal!=='object'||!(#kernel in journal))throw fail('restored_local_operation_closed');return journal.bindingType();};
+  owns=(value):value is RestoredLocalOperationJournal=>!!value&&typeof value==='object'&&#kernel in value;
   openForParticipant=(parent,provided,file)=>RestoredLocalOperationJournal.#open(provided,file,parent,true);
  }
 }
 /** Intrinsic registry bridge. Its constructor validates the actual unattached
  * kernel and family before wrapping; exporting this never admits a fake owner. */
 export function createRestoredLocalJournalFacade(kernel:Kernel):RestoredLocalOperationJournal{return create(kernel);}
+export function ownsRestoredLocalJournal(value:unknown):value is RestoredLocalOperationJournal{return owns(value);}
 export const restoredLocalJournalBinding=(journal:RestoredLocalOperationJournal)=>binding(journal);
 /** Only this format's actual current cohort delegates its native pair. */
 export const openRestoredLocalJournalForParticipant=<P extends SharedSelectionPolicy>(parent:RestoredLocalParticipantOpening,provided:RestoredLocalInputOptions<P>,file?:Blob)=>openForParticipant(parent,provided,file);
+/** Deferred intrinsic registry access preserves the actual facade brand and
+ * canonical methods without an eager class read in the module cycle. */
+const p=RestoredLocalOperationJournal.prototype;
+export const restoredLocalJournalAccess=Object.freeze({file:p.file,blob:p.blob,progress:p.progress,close:p.close});
