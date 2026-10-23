@@ -13,8 +13,8 @@ import {RecoveryLease} from '../participant_recovery/lease.js';
 import {RecoveryOpeningCustody,recoveryOpeningContext} from '../participant_recovery/opening_custody.js';
 import {requireAbsent} from '../participant_recovery/inspect.js';
 import {participantAuthority} from '../participant_backup/policy.js';
-import {checkAssetBytesSignal} from '../asset_bytes/guards.js';
-import {independentRecoverySignal} from '../independent_recovery/signal.js';
+import {SharedAssetBytesError} from '../asset_bytes/guards.js';
+import {observeIndependentRecoveryAbort} from '../independent_recovery/signal.js';
 import {IndependentLocalNativeOperationOrigin,independentLocalNativeOriginGuard,independentLocalNativeOriginReadGuard} from './native_origin.js';
 import {snapshotLocalJournal,type LocalOperationJournalBeginOptions,type LocalOperationJournalResumeOptions} from './journal_policy.js';
 import {localOperationJournalIdentity,type LocalOperationJournalIdentity} from './journal_identity.js';
@@ -86,8 +86,9 @@ export class IndependentLocalOperationCutJournal{
   reserve:()=>{if(this.#closed||this.#closing||this.#owner||this.#opening||this.#working)throw fail('independent_local_operation_in_use');this.#opening=true;try{this.#check();}catch(error){this.#opening=false;throw error;}let settled=false;return{claim:(owner:object)=>{if(settled||!this.#opening||this.#owner)throw fail('independent_local_operation_in_use');this.#check();const port=independentHistoryNative(owner);if(port.localOperation!==this||port.companion||JSON.stringify(port.identity)!==JSON.stringify(this.#choice.expected.identity.source))throw fail('independent_local_operation_source');this.#check();this.#owner=owner;this.#opening=false;settled=true;},abandon:()=>{if(!settled){this.#opening=false;settled=true;}}};},
   readSource:(owner:object)=>{if(this.#owner!==owner)throw fail('independent_local_operation_source');const port=independentHistoryNative(owner);if(port.localOperation!==this||port.companion)throw fail('independent_local_operation_source');return port.read();},
   borrowRead:(owner:object,readAuthority:()=>void,providedSignal?:AbortSignal)=>{
-   if(this.#readers.size>=8)throw fail('independent_local_operation_busy');const authority=participantAuthority(readAuthority),signal=independentRecoverySignal(providedSignal);let released=false,finish!:()=>void;const held=new Promise<void>(resolve=>{finish=resolve;}),release=()=>{if(!released){released=true;this.#readers.delete(held);finish();}};this.#readers.add(held);
-   const checkCurrent=()=>{if(released)throw fail('independent_local_operation_read_closed');this.#readable();if(this.#owner!==owner)throw fail('independent_local_operation_source');const port=independentHistoryNative(owner);if(port.localOperation!==this||port.companion)throw fail('independent_local_operation_source');checkAssetBytesSignal(signal);port.checkBorrowed(port.core);};
+   if(this.#readers.size>=8)throw fail('independent_local_operation_busy');const authority=participantAuthority(readAuthority),signal=providedSignal;let released=false,finish!:()=>void,observation:ReturnType<typeof observeIndependentRecoveryAbort>|undefined;const held=new Promise<void>(resolve=>{finish=resolve;}),release=()=>{if(!released){released=true;observation?.release();this.#readers.delete(held);finish();}};this.#readers.add(held);
+   try{observation=observeIndependentRecoveryAbort(signal,held);}catch(error){release();throw error;}
+   const checkCurrent=()=>{if(released)throw fail('independent_local_operation_read_closed');this.#readable();if(this.#owner!==owner)throw fail('independent_local_operation_source');const port=independentHistoryNative(owner);if(port.localOperation!==this||port.companion)throw fail('independent_local_operation_source');if(observation!.aborted())throw new SharedAssetBytesError('asset_bytes_aborted','Asset byte work was cancelled');port.checkBorrowed(port.core);};
    const check=()=>{checkCurrent();authority();checkCurrent();};
    try{check();}catch(error){release();throw error;}const track=<T>(run:()=>Promise<T>):Promise<T>=>{check();if(this.#readers.size>=8)throw fail('independent_local_operation_busy');const work=Promise.resolve().then(run);this.#readers.add(work);void work.finally(()=>this.#readers.delete(work)).catch(()=>{});return work;};
    return Object.freeze({identity:structuredClone(this.#id),expected:structuredClone(this.#choice.expected),check,checkCurrent,release,

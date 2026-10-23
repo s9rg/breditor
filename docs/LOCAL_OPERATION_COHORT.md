@@ -5,6 +5,11 @@ native writers and complete upload stores in one in-process handoff. They use
 the existing room handoff kernel. Each file family keeps its original meaning;
 this transfer does not activate a server or reconcile a room's other copies.
 
+The later [delivery and local cohort](DELIVERY_OPERATION_COHORT.md) adds genuine
+complete-delivery and restored-operation parents through the same kernel. Its
+53-stage qualification also rechecks this three-family cohort and repairs final
+cancellation observation shared by its borrowed read scopes.
+
 ## Reservation and current state
 
 The private router admits a bounded, indexed collection with distinct IDs and

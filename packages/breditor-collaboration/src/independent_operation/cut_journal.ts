@@ -19,7 +19,8 @@ import {createOperationJournalDatabase,existingOperationJournalDatabase,readOper
 import {operationJournalFailure as fail} from './journal_failure.js';
 import {operationDatabaseName as name,operationJournalIdentity} from './journal_identity.js';
 import {participantAuthority} from '../participant_backup/policy.js';
-import {checkAssetBytesSignal} from '../asset_bytes/guards.js';
+import {SharedAssetBytesError} from '../asset_bytes/guards.js';
+import {observeIndependentRecoveryAbort} from '../independent_recovery/signal.js';
 const key=Object.freeze({}),readOrigin=IndependentNativeOperationOrigin.read,disposeOrigin=IndependentNativeOperationOrigin.prototype.dispose;
 export interface IndependentOperationJournalOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
  readonly database:string;readonly sourceDatabase:string;readonly prepared:PreparedIndependentDeliveryRecovery<P>;readonly writerRecovery:'host-reacquired';
@@ -101,15 +102,16 @@ export class IndependentOperationCutJournal {
   /** A real outstanding read scope holds the journal/origin until release and actual I/O finish.
    * The caller supplies current read authorization; no write hook accepts this capability. */
   borrowRead:(owner:object,readAuthority:()=>void,signal?:AbortSignal)=>{
-   this.#readable();if(this.#closing||this.#readers.size>=8)throw fail('independent_operation_busy');let released=false,finish!:()=>void;const held=new Promise<void>(resolve=>{finish=resolve;}),port=independentDeliverySource(owner),authorize=participantAuthority(readAuthority);
-   const check=()=>{if(released)throw fail('independent_operation_read_closed');this.#readable();if(this.#owner!==owner||port.operation!==this)throw fail('independent_operation_source');checkAssetBytesSignal(signal);authorize();checkAssetBytesSignal(signal);this.#readable();port.check();};check();this.#readers.add(held);
+   this.#readable();if(this.#closing||this.#readers.size>=8)throw fail('independent_operation_busy');let released=false,finish!:()=>void,observation:ReturnType<typeof observeIndependentRecoveryAbort>|undefined;const held=new Promise<void>(resolve=>{finish=resolve;}),port=independentDeliverySource(owner),authorize=participantAuthority(readAuthority),release=()=>{if(!released){released=true;observation?.release();this.#readers.delete(held);finish();}};this.#readers.add(held);
+   const checkCurrent=()=>{if(released)throw fail('independent_operation_read_closed');this.#readable();if(this.#owner!==owner||port.operation!==this)throw fail('independent_operation_source');if(observation!.aborted())throw new SharedAssetBytesError('asset_bytes_aborted','Asset byte work was cancelled');port.check();};
+   const check=()=>{checkCurrent();authorize();checkCurrent();};try{observation=observeIndependentRecoveryAbort(signal,held);check();}catch(error){release();throw error;}
    const track=<T>(run:()=>Promise<T>):Promise<T>=>{check();if(this.#readers.size>=8)throw fail('independent_operation_busy');const work=Promise.resolve().then(run);this.#readers.add(work);void work.finally(()=>this.#readers.delete(work)).catch(()=>{});return work;};
-   return Object.freeze({identity:structuredClone(this.#id),expected:structuredClone(this.#p.options.expected),sourceIdentity:structuredClone(this.#decoder.identity),check,
+   return Object.freeze({identity:structuredClone(this.#id),expected:structuredClone(this.#p.options.expected),sourceIdentity:structuredClone(this.#decoder.identity),check,checkCurrent,
     readSource:()=>{check();const data=port.read();this.#readNative.capture(port.core,data.source.versions);check();return data;},
     verifyCore:(core:Parameters<ReturnType<typeof independentNativeOriginReadGuard>['capture']>[0],versions:readonly string[])=>{check();this.#readNative.capture(core,versions);check();},
     readSnapshot:()=>track(async()=>{const a=await this.#read(check,signal?{signal}:{});check();const stored=await readOperationSourceDatabase(this.#id.sourceDatabase,[this.#decoder.identity.history.native.room,this.#decoder.identity.history.native.writer],this.#readHead,check),observed=stored&&copyOperationCut(stored);check();const b=await this.#read(check,signal?{signal}:{});check();if(JSON.stringify(a.record)!==JSON.stringify(b.record))throw fail('independent_operation_capture_changed');const current=a.record.current===null?null:a.rows.get(a.record.current)!,pending=a.record.pending===null?null:a.rows.get(a.record.pending)!;if(observed===null?(current!==null):!(current&&sameOperationCut(observed,current)||pending&&sameOperationCut(observed,pending)))throw fail('independent_operation_source_diverged');return{record:{...a.record},file:a.file,current:current&&copyOperationCut(current),pending:pending&&copyOperationCut(pending),observed:observed===null?null:observed.head===current?.head?a.record.current:a.record.pending};}),
     recovery:(cut:IndependentHistoryCut):Promise<SharedIndependentDeliveryRecovery>=>track(async()=>{const selected=await readOperationCut(cut,this.#readHead);check();const companion=new IndependentDeliveryCompanion(this.#p.factory);companion.load(this.#unwrap(selected.head));return{format:'breditor/shared-independent-delivery-recovery',formatVersion:1,source:{format:'breditor/shared-independent-history-recovery',formatVersion:1,identity:structuredClone(selected.record.identity),documentCheckpoint:selected.documentCheckpoint,reviewCheckpoint:selected.reviewCheckpoint,versions:[...selected.record.versions]},relay:companion.current(),retainedBinding:structuredClone(companion.retainedBinding),retained:companion.records()};}),
-    release:()=>{if(released)return;released=true;this.#readers.delete(held);finish();},
+    release,
    });
   },
  };}

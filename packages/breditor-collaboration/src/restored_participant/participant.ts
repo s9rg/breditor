@@ -4,6 +4,11 @@
 import type {SharedSelectionPolicy} from '../types.js';
 import {SharedIndependentDeliverySession} from '../independent_delivery/session.js';
 import {independentDeliverySource} from '../independent_delivery_source/admission.js';
+import {independentDeliverySessionPort} from '../independent_delivery/admission.js';
+import {snapshotInventoryInputs} from '../room_participant_inventory/input_snapshot.js';
+import {prepareSourceUploadHandoff,type SourceUploadHandoff} from '../operation_cohort/source_handoff.js';
+import {prepareOperationalCohort,type OperationalCohortReservation} from '../operation_cohort/cohort.js';
+import type {RestoredOperationParticipantParts} from './parts.js';
 import {readRestoredOperationInput,type RestoredOperationInput} from '../restored_operation/input.js';
 import {openRestoredOperationSource} from '../restored_operation/open_source.js';
 import {restoredOperationJournalBinding} from '../restored_operation/journal.js';
@@ -28,9 +33,36 @@ async function closeState<P extends SharedSelectionPolicy>(s:State<P>,discard:bo
  if(s.pair)await(discard?discardSource:closeSource).call(s.pair.source);await closeRestoredUploads(s.uploads);await releaseLeases(s);retireInput(s);if(!s.dbClosed){s.db.close();s.dbClosed=true;}
 }
 function fence<P extends SharedSelectionPolicy>(s:State<P>){s.db.onversionchange=()=>{s.choice.life.changed=true;s.db.close();s.dbClosed=true;};}
+/** Actual source/origin lifetime and both native/companion epochs remain held
+ * after temporary input/coordinator cleanup and through the final group fence. */
+async function witness<P extends SharedSelectionPolicy>(s:State<P>){
+ s.choice.guard();if(!s.pair)throw fail('restored_participant_not_ready');const source=s.pair.source,port=independentDeliverySource(source),managed=independentDeliverySessionPort(source).check,scope=restoredOperationJournalBinding(s.pair.journal).borrowRead(source,s.choice.guard,s.input.options.signal);let returned=false;
+ try{const data=scope.readSource(),stamp=port.stamp(),current=()=>{scope.checkCurrent();managed();checkRestoredUploads(s.uploads);const now=port.stamp();if(now.length!==stamp.length||now.some((v,i)=>v!==stamp[i]))throw fail('restored_participant_source_changed');},check=()=>{scope.check();current();if(JSON.stringify(port.read())!==JSON.stringify(data))throw fail('restored_participant_source_changed');current();};
+  check();await scope.readSnapshot();check();await verifyRestoredUploads(s.input,s.uploads,false,check);check();const result={check,current,release:scope.release};check();returned=true;return result;
+ }finally{if(!returned)scope.release();}
+}
+let reserve:<P extends SharedSelectionPolicy>(owners:readonly RestoredOperationParticipant<P>[])=>OperationalCohortReservation<Readonly<RestoredOperationParticipantParts<P>>>;
+/** Genuine restored-graph parents use their own input/journal/source contract;
+ * no local provenance or caller readiness flag supplies this reservation. */
+export function reserveRestoredOperationGroup<P extends SharedSelectionPolicy>(owners:readonly RestoredOperationParticipant<P>[]):OperationalCohortReservation<Readonly<RestoredOperationParticipantParts<P>>>{return reserve(owners);}
 export class RestoredOperationParticipant<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
- readonly #state:State<P>;#closed=false;#busy=false;
+ readonly #state:State<P>;#exposed=false;#closed=false;#busy=false;
  private constructor(token:object,state:State<P>){if(token!==key)throw fail('restored_participant_closed');this.#state=state;Object.freeze(this);}
+ static{reserve=<Q extends SharedSelectionPolicy>(provided:readonly RestoredOperationParticipant<Q>[])=>{
+  const owners=snapshotInventoryInputs(provided,()=>fail('restored_participant_policy'),owner=>{if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('restored_participant_policy');if(!owner.#exposed||owner.#closed)throw fail('restored_participant_closed');if(owner.#busy)throw fail('restored_participant_busy');return owner;});
+  if(new Set(owners).size!==owners.length)throw fail('restored_participant_policy');for(const owner of owners)owner.#busy=true;
+  const witnesses:Awaited<ReturnType<typeof witness>>[]=[],handoffs:SourceUploadHandoff<Readonly<RestoredOperationParticipantParts<Q>>>[]=[];let finished=false,started=false;
+  const current=()=>{if(finished||handoffs.length!==owners.length)throw fail('restored_participant_closed');};
+  const abandon=()=>{if(finished)return;finished=true;try{for(const h of handoffs)h.abandon();}finally{try{for(const w of witnesses)w.release();}finally{for(const owner of owners)owner.#busy=false;}}};
+  try{const part=(index:number)=>{const h=handoffs[index];if(!h)throw fail('restored_participant_closed');return h.value;},states=Object.freeze(owners.map((_,i)=>Object.freeze({get source(){return part(i).source;},get uploads(){return part(i).uploads;}})));
+   return{states,assetStores:[],
+    async verify(){if(finished||started)throw fail('restored_participant_busy');started=true;for(const owner of owners){await owner.#verify();const s=owner.#state,w=await witness(s);witnesses.push(w);await releaseLeases(s);w.check();retireInput(s);w.check();if(!s.dbClosed){s.db.close();s.dbClosed=true;}w.check();handoffs.push(prepareSourceUploadHandoff({source:s.pair!.source,check:w.check,current:w.current,uploads:()=>{restoredUploadCustody.release.call(s.uploads.custody!);return s.uploads.store!;},release:w.release,closed:()=>fail('restored_participant_closed'),createParts(readSource,readUploads){const source=Object.freeze({get session(){return readSource();}});return Object.freeze({get source(){readSource();return source;},get uploads(){return readUploads();}});}}));}},
+    markReleased(){current();},checkBindings(){current();},disposeAuxiliaries(){current();},
+    checkCurrent(){current();for(const h of handoffs)h.check();},checkManaged(){current();for(const h of handoffs)h.checkCurrent();},
+    consume(){for(const h of handoffs)h.consume();for(const owner of owners){owner.#closed=true;owner.#busy=false;}finished=true;},abandon,
+   };
+  }catch(error){abandon();throw error;}
+ };}
  static begin<Q extends SharedSelectionPolicy>(file:Blob,options:RestoredParticipantOptions<Q>):Promise<RestoredOperationParticipant<Q>>{return RestoredOperationParticipant.#open(options,file);}
  static resume<Q extends SharedSelectionPolicy>(options:RestoredParticipantOptions<Q>):Promise<RestoredOperationParticipant<Q>>{return RestoredOperationParticipant.#open(options);}
  static async #open<Q extends SharedSelectionPolicy>(options:RestoredParticipantOptions<Q>,file?:Blob):Promise<RestoredOperationParticipant<Q>>{
@@ -42,10 +74,11 @@ export class RestoredOperationParticipant<P extends SharedSelectionPolicy=Shared
    input=await readRestoredOperationInput(file,choice.sourceOptions) as unknown as RestoredOperationInput;choice.guard();
    const plan=JSON.stringify({format:'breditor/shared-restored-participant-plan',formatVersion:1,input:{kind:input.kind,selection:input.selection,fileSha256:input.fileSha256},databases:{coordinator:choice.database,journal:choice.journalDatabase,source:choice.sourceDatabase,uploads:choice.uploadsDatabase}});
    db??=await createRestoredParticipantDatabase(choice.database,initialRestoredParticipant(plan),input.file,choice.guard);choice.guard();
-   state={choice,input,plan,db,dbClosed:false,leases,leasesReleased:false,inputRetired:false,uploads:{}};fence(state);const result=new RestoredOperationParticipant(key,state);await result.#read();opening.complete();return result;
+   state={choice,input,plan,db,dbClosed:false,leases,leasesReleased:false,inputRetired:false,uploads:{}};fence(state);const result=new RestoredOperationParticipant(key,state);await result.#read();choice.guard();opening.complete();result.#exposed=true;return result;
   }catch(e){if(opening)await opening.rollback();throw e;}
  }
- #start(){if(this.#closed)throw fail('restored_participant_closed');if(this.#busy)throw fail('restored_participant_busy');this.#busy=true;}
+ #readable(){if(!this.#exposed||this.#closed)throw fail('restored_participant_closed');}
+ #start(){this.#readable();if(this.#busy)throw fail('restored_participant_busy');this.#busy=true;}
  async #database(){const s=this.#state;s.choice.guard();if(s.leasesReleased){const leases:RecoveryLease[]=[];try{for(const name of coordinatorNames(s.choice)){leases.push(await RecoveryLease.acquire(JSON.stringify(name)));s.choice.guard();}s.leases=leases;s.leasesReleased=false;}catch(e){await Promise.allSettled(leases.map(l=>l.close()));throw e;}}
   if(s.dbClosed){s.db=await existingRestoredParticipantDatabase(s.choice.database);s.dbClosed=false;fence(s);s.choice.guard();}return s.db;
  }
@@ -53,8 +86,8 @@ export class RestoredOperationParticipant<P extends SharedSelectionPolicy=Shared
  async #move(before:RestoredParticipantRecord,next:RestoredParticipantRecord){const s=this.#state;await writeRestoredParticipantDatabase(s.db,before,next,s.choice.guard);s.choice.guard();}
  #sourceCheck(stamp?:readonly object[]){const s=this.#state;s.choice.guard();if(!s.pair)throw fail('restored_participant_source');const b=restoredOperationJournalBinding(s.pair.journal),port=independentDeliverySource(s.pair.source);if(JSON.stringify(b.operationIdentity)!==JSON.stringify(s.input.identity)||port.operation!==s.pair.journal)throw fail('restored_participant_source');const data=b.readSource(s.pair.source);b.nativeCaptureGuard.capture(port.core,data.source.versions);checkRestoredUploads(s.uploads);if(stamp){const now=port.stamp();if(stamp.length!==now.length||stamp.some((v,i)=>v!==now[i]))throw fail('restored_participant_source_changed');}s.choice.guard();}
  async #verify(){const s=this.#state,r=await this.#read();if(r.source!=='complete'||r.uploads!=='complete'||!s.pair)throw fail('restored_participant_not_ready');this.#sourceCheck();const port=independentDeliverySource(s.pair.source),stamp=port.stamp();await verifyRestoredUploads(s.input,s.uploads,false,s.choice.guard);const b=restoredOperationJournalBinding(s.pair.journal),progress=await b.progress();if(!progress.ready)throw fail('restored_participant_not_ready');if(await digest(b.inputFile(),s.input.options.signal)!==s.input.fileSha256)throw fail('restored_participant_input_changed');await this.#read();this.#sourceCheck(stamp);}
- file():Blob{if(this.#closed)throw fail('restored_participant_closed');return this.#state.input.file;}
- readableSource(){if(this.#closed||!this.#state.pair)throw fail('restored_participant_source');return restoredOperationJournalBinding(this.#state.pair.journal).readSource(this.#state.pair.source);}
+ file():Blob{this.#readable();return this.#state.input.file;}
+ readableSource(){if(!this.#exposed)throw fail('restored_participant_closed');if(this.#closed||!this.#state.pair)throw fail('restored_participant_source');return restoredOperationJournalBinding(this.#state.pair.journal).readSource(this.#state.pair.source);}
  async progress(){this.#start();try{const r=await this.#read();return Object.freeze({uploads:r.uploads,source:r.source,phase:r.source==='complete'?'ready' as const:'preparing' as const});}finally{this.#busy=false;}}
  /** Failed finish retains actual partial owners for retry; a cold resume independently
   * re-admits stored input/components. No component is inferred from its marker alone. */
@@ -68,9 +101,7 @@ export class RestoredOperationParticipant<P extends SharedSelectionPolicy=Shared
  async check(){this.#start();try{await this.#verify();}finally{this.#busy=false;}}
  /** All awaited coordinator callbacks settle while real source/input/uploads remain
   * owned. A late refusal keeps those owners and can reacquire coordinator leases. */
- async intoParts(){this.#start();try{const s=this.#state;await this.#verify();const source=s.pair!.source,port=independentDeliverySource(source),stamp=port.stamp(),parts=Object.freeze({source:Object.freeze({session:source}),uploads:s.uploads.store!});
-  await releaseLeases(s);retireInput(s);if(!s.dbClosed){s.db.close();s.dbClosed=true;}this.#sourceCheck(stamp);restoredUploadCustody.release.call(s.uploads.custody!);this.#closed=true;return parts;
- }finally{this.#busy=false;}}
+ async intoParts():Promise<Readonly<RestoredOperationParticipantParts<P>>>{const group=reserveRestoredOperationGroup([this]),handoff=await prepareOperationalCohort([group],async()=>group.states[0]!,()=>{},()=>{},()=>fail('restored_participant_closed'));return handoff.commit();}
  async close():Promise<void>{return this.#close(false);}
  async discardAndClose():Promise<void>{return this.#close(true);}
  async #close(discard:boolean){if(this.#closed)return;this.#start();try{await closeState(this.#state,discard);this.#closed=true;}finally{this.#busy=false;}}

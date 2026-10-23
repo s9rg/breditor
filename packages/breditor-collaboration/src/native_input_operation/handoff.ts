@@ -4,6 +4,7 @@
 import type {RichAssetStore} from '@breditor/experimental-rich-content';
 import type {SharedSelectionPolicy} from '../types.js';
 import type {SharedIndependentHistoryPersistentSession as Session} from '../independent_history/session.js';
+import {prepareSourceUploadHandoff} from '../operation_cohort/source_handoff.js';
 
 export interface NativeInputHandoffParts<P extends SharedSelectionPolicy>{
  readonly source:Readonly<{session:Session<P>}>;
@@ -24,17 +25,9 @@ export function prepareNativeInputHandoff<P extends SharedSelectionPolicy>(o:{
  readonly file:()=>Blob;readonly blob:(asset:string,generation:string)=>Blob|undefined;
  readonly closed:()=>Error;
 }):NativeInputHandoff<P>{
- let finished=false,committed=false,checked=false,uploads:RichAssetStore|undefined;
- const pending=()=>{if(finished)throw o.closed();};
- const ready=()=>{if(!committed||!uploads)throw o.closed();};
- const source=Object.freeze({get session(){ready();return o.source;}});
- const input=Object.freeze({file(){ready();return o.file();},blob(asset:string,generation:string){ready();return o.blob(asset,generation);}});
- const value=Object.freeze({get source(){ready();return source;},get uploads(){ready();return uploads!;},get input(){ready();return input;}});
- // The private control is not passed through a host construction hook.
- return{value,
-  check(){pending();checked=false;o.check();pending();checked=true;},
-  checkCurrent(){pending();if(!checked)throw o.closed();o.current();pending();},
-  consume(){pending();if(!checked)throw o.closed();uploads=o.uploads();o.release();finished=true;committed=true;},
-  abandon(){if(finished)return;finished=true;o.release();},
- };
+ return prepareSourceUploadHandoff({...o,createParts(readSource,readUploads){
+  const source=Object.freeze({get session(){return readSource();}});
+  const input=Object.freeze({file(){readSource();return o.file();},blob(asset:string,generation:string){readSource();return o.blob(asset,generation);}});
+  return Object.freeze({get source(){readSource();return source;},get uploads(){return readUploads();},get input(){readSource();return input;}});
+ }});
 }

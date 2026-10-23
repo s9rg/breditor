@@ -1,0 +1,24 @@
+/** Actual source constructors and the fixed forty five-family cohorts. */
+import assert from 'node:assert/strict';
+import {resolve,dirname,join} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import * as api from '../packages/breditor-collaboration/dist/index.js';
+import * as rich from '@breditor/experimental-rich-content';
+import {OperationalIndependentLocalParticipant as Legacy} from '../packages/breditor-collaboration/dist/independent_local_operation/participant.js';
+import {OperationalRestoredLocalParticipant as Snapshot} from '../packages/breditor-collaboration/dist/restored_local_operation/participant.js';
+import {OperationalFlatLocalParticipant as Flat} from '../packages/breditor-collaboration/dist/flat_local_operation/participant.js';
+import {OperationalIndependentDeliveryParticipant as Delivery} from '../packages/breditor-collaboration/dist/independent_operation/participant.js';
+import {RestoredOperationParticipant as Restored} from '../packages/breditor-collaboration/dist/restored_participant/participant.js';
+import {captureLocalOperationBackup} from '../packages/breditor-collaboration/dist/independent_local_operation/portable_capture.js';
+import {captureIndependentOperationBackup} from '../packages/breditor-collaboration/dist/independent_operation/portable_capture.js';
+import {IndependentOperationLineageBackup} from '../packages/breditor-collaboration/dist/independent_operation/lineage_archive.js';
+import {independentDeliverySource} from '../packages/breditor-collaboration/dist/independent_delivery_source/admission.js';
+import {operationJournalBinding} from '../packages/breditor-collaboration/dist/independent_operation/cut_journal.js';
+import {restoredOperationJournalBinding} from '../packages/breditor-collaboration/dist/restored_operation/journal.js';
+import {handoffDeliveryOperationParticipants} from '../packages/breditor-collaboration/dist/delivery_operation_cohort/cohort.js';
+import {sourceEvidence,saveEvidence} from './candidate-release/evidence.mjs';
+import {probeDeliveryOperationCohort} from './probe-delivery-operation-cohort.mjs';
+if(process.argv.length!==2)throw Error('No substituted runtime or reduced workload accepted');
+const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),source=sourceEvidence(root);
+const acceptance=await probeDeliveryOperationCohort({api,rich,internals:{Legacy,Snapshot,Flat,Delivery,Restored,captureLocalOperationBackup,captureIndependentOperationBackup,IndependentOperationLineageBackup,independentDeliverySource,operationJournalBinding,restoredOperationJournalBinding,handoffDeliveryOperationParticipants},runtime:join(root,'target/promoted-shared-web'),fixture:new URL('../crates/breditor-core/tests/fixtures/rich-local-root.json',import.meta.url)});
+assert.deepEqual(sourceEvidence(root),source);const report={format:'breditor/delivery-operation-cohort-sdk',formatVersion:1,passed:true,source,sourceUnchanged:true,acceptance};saveEvidence(join(root,'target/delivery-operation-cohort-sdk.json'),report);console.log(JSON.stringify(report));

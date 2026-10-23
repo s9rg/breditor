@@ -41,7 +41,41 @@ rotation/recovery and remaining feature parity are substantive work, not waived
 by passing the current tests. No package version, public API freeze, tag,
 publication or deployment is promoted.
 
-## Current local operational cohort
+## Current complete delivery cohort
+
+Complete-delivery and restored-operation parents now share the existing room
+handoff kernel with legacy local, snapshot-local and flat-local parents. Genuine
+reservations and closed result wrappers prevent partial transfer. Final native
+checks now read private cancellation state: four unchanged reproductions expose
+the former caller-getter reentrancy failure before its repair and pass afterward,
+using the same normal Wasm binary.
+
+The [five-family contract](DELIVERY_OPERATION_COHORT.md) has
+[53 normally passed selected main stages](qualification/2026-10-23-delivery-operation-cohort.json)
+from the 355-stage functional plan. Source contracts pass 41 laws; fresh packages
+pass 120 functional laws. Source, installed archives and the actual production
+bundle each pass forty five-writer cohorts, with 400 handoffs and 200 exact cold
+continuations, later edits, versions and both Undo/Redo lanes. The cohort covers
+five native profiles, four history pairs and restored snapshot-v1/lineage-v1
+inputs; scope/mask coverage rotates rather than forming the full Cartesian
+product. It does not establish mixed lineage-v2 custody.
+
+All six complete-delivery/restored journal, parent, source, portable-export and
+lineage source/installed domains pass their full 640 cases and 1,920 future native
+history pairs each. The restored source/parent matrices use snapshot inputs.
+Snapshot/flat cohort, incoming-source and catalog integration also pass. Eleven
+fresh consumers pin matching archives. Workspace tests pass 2,647, editor tests
+385 and scripts 2,929, with three existing opt-in browser skips. All 2,857 native
+inputs and twelve normal runtime files remain unchanged; native Rust suites are
+carried evidence, not fresh executions in this slice.
+
+This is five-family in-process ownership. Seven-family durable catalog writer
+adoption, complete reconciliation, authenticated activation, sustainable history,
+remaining parity and all thirteen V1 gates remain open. The separate seven-family
+and durable-coordinator prototypes are not promoted here. No version, public-root
+API freeze, push, tag, publication or deployment is promoted.
+
+## Three family local cohort checkpoint
 
 Legacy local, snapshot and flat-local parents now share one existing room
 handoff kernel. Genuine reservations, closed result wrappers and a final
@@ -69,8 +103,9 @@ remain unchanged; native Rust suites are carried rather than freshly run here.
 
 This is three-family in-process ownership, not complete seven-family physical
 catalog adoption. Complete reconciliation, authenticated activation, sustainable
-history, remaining parity and all thirteen V1 release gates remain open. The
-separate delivery/restored development is not promoted by this qualification.
+history, remaining parity and all thirteen V1 release gates remain open. That
+three-family qualification did not promote the then-separate delivery and restored
+development; the later five-family checkpoint above qualifies it.
 No version, public-root API freeze, push, tag, publication or deployment occurs.
 
 ## Snapshot and flat cohort checkpoint

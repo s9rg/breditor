@@ -16,7 +16,8 @@ import {wrapOperationHead,unwrapOperationHead} from '../independent_operation/op
 import {copyOperationCut,sameOperationCut,readOperationCut,operationCutDigest} from '../independent_operation/cut_codec.js';
 import {operationJournalFailure as fail} from '../independent_operation/journal_failure.js';
 import {participantAuthority} from '../participant_backup/policy.js';
-import {checkAssetBytesSignal} from '../asset_bytes/guards.js';
+import {SharedAssetBytesError} from '../asset_bytes/guards.js';
+import {observeIndependentRecoveryAbort} from '../independent_recovery/signal.js';
 import {portableCutRecovery} from '../independent_operation/portable_cut.js';
 import {forwardProgress} from '../segmented_relay/validation.js';
 import {initialRestoredOperationStage} from './stage.js';
@@ -116,16 +117,17 @@ export class RestoredOperationJournal {
    * A bootstrap hold, serialized identity or caller facade cannot issue this scope. */
   borrowRead:(owner:object,readAuthority:()=>void,signal?:AbortSignal)=>{
    this.#readable();if(!this.#active||this.#held||this.#readers.size>=8)throw fail('restored_operation_busy');
-   let released=false,finish!:()=>void;const held=new Promise<void>(resolve=>{finish=resolve;}),port=independentDeliverySource(owner),authorize=participantAuthority(readAuthority);
-   const check=()=>{if(released)throw fail('restored_operation_read_closed');this.#readable();if(this.#owner!==owner||port.operation!==this)throw fail('restored_operation_source');checkAssetBytesSignal(signal);authorize();checkAssetBytesSignal(signal);this.#readable();port.check();};check();this.#readers.add(held);
+   let released=false,finish!:()=>void,observation:ReturnType<typeof observeIndependentRecoveryAbort>|undefined;const held=new Promise<void>(resolve=>{finish=resolve;}),port=independentDeliverySource(owner),authorize=participantAuthority(readAuthority),release=()=>{if(!released){released=true;observation?.release();this.#readers.delete(held);finish();}};this.#readers.add(held);
+   const checkCurrent=()=>{if(released)throw fail('restored_operation_read_closed');this.#readable();if(this.#owner!==owner||port.operation!==this)throw fail('restored_operation_source');if(observation!.aborted())throw new SharedAssetBytesError('asset_bytes_aborted','Asset byte work was cancelled');port.check();};
+   const check=()=>{checkCurrent();authorize();checkCurrent();};try{observation=observeIndependentRecoveryAbort(signal,held);check();}catch(error){release();throw error;}
    const track=<T>(run:()=>Promise<T>):Promise<T>=>{check();if(this.#readers.size>=8)throw fail('restored_operation_busy');const work=Promise.resolve().then(run);this.#readers.add(work);void work.finally(()=>this.#readers.delete(work)).catch(()=>{});return work;};
-   return Object.freeze({identity:structuredClone(this.#input.identity),expected:structuredClone(this.#input.selection.original),inputSelection:structuredClone(this.#input.selection),inputKind:this.#input.kind,inputFileSha256:this.#input.fileSha256,sourceIdentity:structuredClone(this.#decoder.identity),check,
+   return Object.freeze({identity:structuredClone(this.#input.identity),expected:structuredClone(this.#input.selection.original),inputSelection:structuredClone(this.#input.selection),inputKind:this.#input.kind,inputFileSha256:this.#input.fileSha256,sourceIdentity:structuredClone(this.#decoder.identity),check,checkCurrent,
     readSource:()=>{check();const data=port.read();this.#captureWith(port.core,data.source.versions,check);check();return data;},
     verifyCore:(core:SharedRichEditor<SharedSelectionPolicy>,versions:readonly string[])=>this.#captureWith(core,versions,check),
     readSnapshot:()=>track(async()=>{const a=await this.#read(check,signal?{signal}:{});check();const id=this.#decoder.identity.history.native,stored=await readDedicatedOperationSourceDatabase(this.#input.sourceDatabase,[id.room,id.writer],this.#readHead,check,'restored-operation-v1'),observed=stored&&copyOperationCut(stored);check();const b=await this.#read(check,signal?{signal}:{});if(JSON.stringify(a.record)!==JSON.stringify(b.record))throw fail('restored_operation_capture_changed');const r=a.record.intent,current=r.current===null?null:a.rows.get(r.current)!,pending=r.pending===null?null:a.rows.get(r.pending)!;if(observed===null?current!==null:!(current&&sameOperationCut(observed,current)||pending&&sameOperationCut(observed,pending)))throw fail('restored_operation_source_diverged');check();return{record:{...r},original:a.original,input:a.input,current:current&&copyOperationCut(current),pending:pending&&copyOperationCut(pending),observed:observed===null?null:observed.head===current?.head?r.current:r.pending};}),
     recovery:(cut:IndependentHistoryCut)=>track(async()=>{check();const data=await portableCutRecovery(this.#input.factory,this.#input.identity,cut);check();return data;}),
     inputBlob:(asset:string,generation:string)=>track(async()=>{check();const blob=await this.#input.blob(asset,generation);check();return blob;}),
-    release:()=>{if(released)return;released=true;this.#readers.delete(held);finish();},
+    release,
    });
   },
  };}

@@ -1,5 +1,34 @@
 # V1 candidate checks
 
+Both profiles require `delivery-operation-cohort-contracts`,
+`delivery-operation-cohort-type-fence`, `delivery-operation-cohort` and
+`installed-delivery-operation-cohort`. The private
+[five-family contract](DELIVERY_OPERATION_COHORT.md) joins complete-delivery and
+restored-operation parents to the existing local cohort without changing native
+or file protocols. Four unchanged getter-reentrancy regressions fail before the
+private cancellation fence and pass after it. Five real-cancellation laws retain
+all upload owners and the established error-cause contracts.
+
+The [selected qualification](qualification/2026-10-23-delivery-operation-cohort.json)
+passes all 53 selected stages normally from the 355-stage functional plan.
+Source contracts pass 41 laws and fresh packages pass 120 functional laws.
+Source, installed packages and the actual production bundle each execute forty
+five-family cohorts with 400 exact handoffs and 200 cold continuations, covering
+five native profiles, four history pairs and restored snapshot-v1/lineage-v1
+inputs. Scope/mask schedules are not their full Cartesian domain; mixed
+lineage-v2 and the complete bundled negative suite are not established here.
+
+All six full complete-delivery/restored source and installed domains pass
+640 cases and 1,920 future native history pairs each. The restored source/parent
+matrices use snapshot inputs. Existing local-cohort, native-input-cohort,
+incoming-source and catalog integrations also pass. Eleven consumers pin matching
+archives. Workspace tests pass 2,647, editor tests 385 and scripts 2,929, with three
+existing browser skips. The 2,857 native inputs and twelve normal runtime files
+are byte-identical to the prior native qualification, not freshly tested Rust
+suites. Complete 355/363-check plans, seven-family durable adoption, reconciliation,
+authenticated activation, sustainable history, full parity and all thirteen V1
+release gates remain open.
+
 Both profiles now also require `physical-catalog-v3-contracts`,
 `physical-catalog-v3-type-fence`, `physical-catalog-v3` and
 `installed-physical-catalog-v3`. The private
@@ -18,9 +47,10 @@ source/installed/bundle workload has equal twenty-case results. The full flat,
 snapshot, journal and five-family source/installed matrices are freshly repeated.
 Workspace/diagnostic tests pass 2,647, editor tests 385 and scripts 2,839, with
 three existing browser opt-in skips. Eight fresh consumers pin matching archives.
-The complete 343/351-check plans are not executed. A separate snapshot handoff
-construction repair still needs integration and normal full reruns. All thirteen
-V1 gates remain open.
+The complete 343/351-check plans were not executed. The subsequent
+[snapshot construction repair](qualification/2026-10-23-snapshot-handoff-construction.json)
+is integrated; the current qualification above also repeats snapshot/flat cohort
+and incoming-source integration. All thirteen V1 gates remain open.
 
 Both profiles now require `native-input-incoming-source-contracts`,
 `native-input-incoming-source-type-fence`, `native-input-incoming-source` and

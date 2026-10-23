@@ -17,8 +17,8 @@ import {RecoveryLease} from '../participant_recovery/lease.js';
 import {RecoveryOpeningCustody,recoveryOpeningContext} from '../participant_recovery/opening_custody.js';
 import {requireAbsent} from '../participant_recovery/inspect.js';
 import {participantAuthority} from '../participant_backup/policy.js';
-import {independentRecoverySignal} from '../independent_recovery/signal.js';
-import {checkAssetBytesSignal} from '../asset_bytes/guards.js';
+import {observeIndependentRecoveryAbort} from '../independent_recovery/signal.js';
+import {SharedAssetBytesError} from '../asset_bytes/guards.js';
 import {nativeInputJournalFamily,type NativeInputJournalFamily} from './journal_families.js';
 import type {NativeInputJournalChoice,NativeInputCutIntent,NativeInputJournalIdentity,NativeInputJournalIntrinsics,NativeInputJournalChecked} from './journal_contract.js';
 const key=Object.freeze({}),verifyOriginal=SharedRichEditor.prototype.verifyRecoveryOrigin,verifySegmented=SharedRichEditor.prototype.verifySegmentedRecoveryOrigin;
@@ -136,9 +136,10 @@ export class NativeInputJournal<A,C extends NativeInputJournalChoice,O,R extends
   },
   readSource:(owner:object)=>{if(this.#owner!==owner)throw this.#error('source');const port=independentHistoryNative(owner);if(port.localOperation!==this.#facade||port.companion)throw this.#error('source');return port.read();},
   borrowRead:(owner:object,provided:()=>void,providedSignal?:AbortSignal,providedFactory?:SharedIndependentRecoveryFactory)=>{
-   if(this.#readers.size>=8)throw this.#error('busy');const authorize=participantAuthority(provided),signal=independentRecoverySignal(providedSignal);
-   let released=false,finish!:()=>void,factory=this.#choice.read.options.session;const held=new Promise<void>(resolve=>{finish=resolve;}),release=()=>{if(!released){released=true;this.#readers.delete(held);finish();}};this.#readers.add(held);
-   const checkCurrent=()=>{if(released)throw this.#error('read_closed');this.#readable();if(this.#owner!==owner)throw this.#error('source');const port=independentHistoryNative(owner);if(port.localOperation!==this.#facade||port.companion)throw this.#error('source');checkAssetBytesSignal(signal);port.checkBorrowed(port.core);};
+   if(this.#readers.size>=8)throw this.#error('busy');const authorize=participantAuthority(provided),signal=providedSignal;
+   let released=false,finish!:()=>void,factory=this.#choice.read.options.session,observation:ReturnType<typeof observeIndependentRecoveryAbort>|undefined;const held=new Promise<void>(resolve=>{finish=resolve;}),release=()=>{if(!released){released=true;observation?.release();this.#readers.delete(held);finish();}};this.#readers.add(held);
+   try{observation=observeIndependentRecoveryAbort(signal,held);}catch(error){release();throw error;}
+   const checkCurrent=()=>{if(released)throw this.#error('read_closed');this.#readable();if(this.#owner!==owner)throw this.#error('source');const port=independentHistoryNative(owner);if(port.localOperation!==this.#facade||port.companion)throw this.#error('source');if(observation!.aborted())throw new SharedAssetBytesError('asset_bytes_aborted','Asset byte work was cancelled');port.checkBorrowed(port.core);};
    const check=()=>{checkCurrent();authorize();checkCurrent();};
    // Snapshot fresh executable read policy after reservation, before authority.
    // Retiring a host writer factory must not prevent an independently selected
