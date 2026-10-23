@@ -4,6 +4,11 @@ Snapshot and flat-local operational parents can hand off their actual native
 writers and complete upload stores together. They use the existing room handoff
 kernel; they do not activate a room or reconcile its other retained copies.
 
+The separate [local operational cohort](LOCAL_OPERATION_COHORT.md) admits those
+same two families together with genuine legacy-local parents. It uses this
+reservation contract and the same kernel; it does not relabel legacy `original`
+providers as snapshot/flat `input` providers.
+
 ## Genuine reservations before callbacks
 
 The private router accepts distinct IDs and the two explicitly named families.

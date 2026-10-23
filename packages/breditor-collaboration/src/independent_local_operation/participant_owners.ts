@@ -12,8 +12,9 @@ const close=Session.prototype.close,discard=Session.prototype.discardAndClose,cl
 export async function localParticipantWitness(p:PreparedIndependentRecovery,baseline:LocalParticipantBaseline,owners:LocalParticipantOwners,journal:IndependentLocalOperationCutJournal,initial:boolean){
  p.guard();if(!owners.session)throw fail('independent_local_participant_missing');const source=owners.session,port=independentHistoryNative(source),scope=localOperationJournalBinding(journal).borrowRead(source,p.guard,p.options.signal);let returned=false;
  try{const data=scope.readSource(),stamp=port.stamp(),check=()=>{scope.check();checkLocalUploads(owners);port.checkManaged();const actual=port.read();if(port.stamp()!==stamp||actual.documentCheckpoint!==data.documentCheckpoint||actual.reviewCheckpoint!==data.reviewCheckpoint||actual.versions.length!==data.versions.length||actual.versions.some((packet,index)=>packet!==data.versions[index]))throw fail('independent_local_participant_source_changed');};
+  const current=()=>{scope.checkCurrent();checkLocalUploads(owners);port.checkManaged();if(port.stamp()!==stamp)throw fail('independent_local_participant_source_changed');};
   check();if(initial&&(data.documentCheckpoint!==p.recovery.documentCheckpoint||data.reviewCheckpoint!==p.recovery.reviewCheckpoint||data.versions.length!==p.recovery.versions.length||data.versions.some((packet,index)=>packet!==p.recovery.versions[index])))throw fail('independent_local_participant_initial_diverged');
-  await scope.readSnapshot();check();await verifyLocalUploads(p,baseline,owners,check,initial);check();returned=true;return Object.freeze({data,check,release:scope.release});
+  await scope.readSnapshot();check();await verifyLocalUploads(p,baseline,owners,check,initial);check();const result=Object.freeze({data,check,current,release:scope.release});check();returned=true;return result;
  }finally{if(!returned)scope.release();}
 }
 /** Preserve ordering: native persistence/author leases, actual upload callback,

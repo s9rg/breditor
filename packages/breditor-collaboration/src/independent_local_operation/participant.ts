@@ -22,11 +22,37 @@ import {localParticipantWitness,type LocalParticipantOwners} from './participant
 import {fenceLocalParticipantDatabase,retainedLocalParticipantRecord,updateLocalParticipant,releaseLocalParticipantLeases,disposeLocalParticipantBackups,closeLocalParticipantHandles,closeLocalParticipantState,type LocalParticipantState} from './participant_state.js';
 import type {LocalOperationParticipantOptions,LocalOperationParticipantBeginOptions,LocalOperationParticipantParts} from './participant_contract.js';
 import {localJournalFailure as fail} from './journal_failure.js';
+import {snapshotInventoryInputs} from '../room_participant_inventory/input_snapshot.js';
+import {prepareNativeInputHandoff,type NativeInputHandoff} from '../native_input_operation/handoff.js';
+import type {OperationalCohortReservation} from '../operation_cohort/cohort.js';
 const key=Object.freeze({}),closeSource=Session.prototype.close,journalFile=Journal.prototype.file,journalBlob=Journal.prototype.blob,journalClose=Journal.prototype.close,journalProgress=Journal.prototype.progress;
+let reserve:<P extends SharedSelectionPolicy>(owners:readonly OperationalIndependentLocalParticipant<P>[])=>OperationalCohortReservation<Readonly<LocalOperationParticipantParts<P>>>;
+/** Intrinsic legacy-local group. Original provider semantics remain original;
+ * neither a snapshot family tag nor a saved marker supplies these owners. */
+export function reserveOperationalIndependentLocalGroup<P extends SharedSelectionPolicy>(owners:readonly OperationalIndependentLocalParticipant<P>[]):OperationalCohortReservation<Readonly<LocalOperationParticipantParts<P>>>{return reserve(owners);}
 async function verified(state:LocalParticipantState,initial=false){await retainedLocalParticipantRecord(state);await verifyLocalRetainedRecovery(state.p,state.recoveryDb!);state.choice.guard();return localParticipantWitness(state.p,state.baseline,state.owners,state.journal,initial);}
 export class OperationalIndependentLocalParticipant<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
- readonly #state:LocalParticipantState<P>;#closed=false;#busy=false;
+ readonly #state:LocalParticipantState<P>;#exposed=false;#closed=false;#busy=false;
  private constructor(token:object,state:LocalParticipantState<P>){if(token!==key)throw fail('independent_local_participant_closed');this.#state=state;Object.freeze(this);}
+ static{reserve=<Q extends SharedSelectionPolicy>(provided:readonly OperationalIndependentLocalParticipant<Q>[])=>{
+  const owners=snapshotInventoryInputs(provided,()=>fail('independent_local_participant_policy'),owner=>{if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('independent_local_participant_policy');if(!owner.#exposed||owner.#closed)throw fail('independent_local_participant_closed');if(owner.#busy)throw fail('independent_local_participant_busy');return owner;});
+  if(new Set(owners).size!==owners.length)throw fail('independent_local_participant_policy');for(const owner of owners)owner.#busy=true;
+  const witnesses:Awaited<ReturnType<typeof verified>>[]=[],handoffs:NativeInputHandoff<Q>[]=[];let finished=false,started=false;
+  const current=()=>{if(finished||handoffs.length!==owners.length)throw fail('independent_local_participant_closed');};
+  const abandon=()=>{if(finished)return;finished=true;try{for(const h of handoffs)h.abandon();}finally{try{for(const w of witnesses)w.release();}finally{for(const owner of owners)owner.#busy=false;}}};
+  try{
+   const part=(index:number)=>{const h=handoffs[index];if(!h)throw fail('independent_local_participant_closed');return h.value;};
+   const states=Object.freeze(owners.map((_,index)=>Object.freeze({get source(){return part(index).source;},get uploads(){return part(index).uploads;},get original(){return part(index).input;}})));
+   return{states,assetStores:[],
+    async verify(){if(finished||started)throw fail('independent_local_participant_busy');started=true;for(const owner of owners){const s=owner.#state,w=await verified(s);witnesses.push(w);if(s.record.phase!=='operational')throw fail('independent_local_participant_record');await releaseLocalParticipantLeases(s);w.check();await retainedLocalParticipantRecord(s);await verifyLocalRetainedRecovery(s.p,s.recoveryDb!);w.check();disposeLocalParticipantBackups(s);w.check();closeLocalParticipantHandles(s);w.check();const source=s.owners.session!,journal=s.journal;handoffs.push(prepareNativeInputHandoff({source,check:w.check,current:w.current,uploads:()=>{localUploadCustody.release.call(s.owners.uploadCustody!);return s.owners.uploads!;},release:w.release,file:()=>journalFile.call(journal),blob:(asset,generation)=>journalBlob.call(journal,asset,generation),closed:()=>fail('independent_local_participant_closed')}));}},
+    markReleased(){current();},checkBindings(){current();},disposeAuxiliaries(){current();},
+    checkCurrent(){current();for(const h of handoffs)h.check();},
+    checkManaged(){current();for(const h of handoffs)h.checkCurrent();},
+    consume(){for(const h of handoffs)h.consume();for(const owner of owners){owner.#closed=true;owner.#busy=false;}finished=true;},
+    abandon,
+   };
+  }catch(error){abandon();throw error;}
+ };}
  static begin<Q extends SharedSelectionPolicy>(input:LocalOperationParticipantBeginOptions<Q>):Promise<OperationalIndependentLocalParticipant<Q>>{if(this!==OperationalIndependentLocalParticipant)throw fail('independent_local_participant_policy');return OperationalIndependentLocalParticipant.#fromRecovered(input,false);}
  static resumeRecovered<Q extends SharedSelectionPolicy>(input:LocalOperationParticipantBeginOptions<Q>):Promise<OperationalIndependentLocalParticipant<Q>>{if(this!==OperationalIndependentLocalParticipant)throw fail('independent_local_participant_policy');return OperationalIndependentLocalParticipant.#fromRecovered(input,true);}
  static async #fromRecovered<Q extends SharedSelectionPolicy>(input:LocalOperationParticipantBeginOptions<Q>,resume:boolean):Promise<OperationalIndependentLocalParticipant<Q>>{
@@ -46,8 +72,7 @@ export class OperationalIndependentLocalParticipant<P extends SharedSelectionPol
    // The genuine old owner completed its final source/upload checks above. Only
    // now can this parent retire that native owner and acquire the author again.
    await closeSource.call(state.legacySession!);delete state.legacySession;choice.guard();state.owners.session=await openJournaledIndependentLocalHistory(choice.session,state.journal);choice.guard();
-   const witness=await verified(state,true);try{witness.check();await updateLocalParticipant(state,'operational');witness.check();}finally{witness.release();}
-   const result=new OperationalIndependentLocalParticipant(key,state);opening.complete();return result;
+   const witness=await verified(state,true);try{witness.check();await updateLocalParticipant(state,'operational');witness.check();const result=new OperationalIndependentLocalParticipant(key,state);witness.check();opening.complete();result.#exposed=true;return result;}finally{witness.release();}
   }catch(error){await opening.rollback();throw error;}
  }
  static async resume<Q extends SharedSelectionPolicy>(input:LocalOperationParticipantOptions<Q>):Promise<OperationalIndependentLocalParticipant<Q>>{
@@ -58,14 +83,14 @@ export class OperationalIndependentLocalParticipant<P extends SharedSelectionPol
    const initial=await localParticipantRecord(choice);choice.guard();parentDb=await existingDatabase(choice.database);if(!parentDb)throw fail('independent_local_participant_missing');choice.guard();const record=await readLocalParticipantDatabase(parentDb,initial,choice.guard);choice.guard();recoveryDb=await existingDatabase(choice.base.options.database);if(!recoveryDb)throw fail('independent_local_participant_missing');choice.guard();const saved=await readIndependentRecoveryDatabase(recoveryDb,choice.base.record,choice.guard);choice.guard();
    p=await prepareIndependentRecovery(choice.base,saved.file);choice.guard();await verifyLocalRetainedRecovery(p,recoveryDb);const baseline=await localParticipantBaseline(p);choice.guard();journal=await prepareLocalParticipantJournal(opening,choice,p,record,true);choice.guard();if(record.phase!=='operational')await verifyInitialLocalJournal(choice,p,journal);choice.guard();state={choice,p,baseline,journal,owners,parentDb,recoveryDb,leases,record,backupDisposed:false};fenceLocalParticipantDatabase(state,parentDb);fenceLocalParticipantDatabase(state,recoveryDb);
    await openLocalUploads(p,baseline,owners,record.phase!=='operational');choice.guard();if(state.record.phase==='preparing')await updateLocalParticipant(state,'prepared');owners.session=await openJournaledIndependentLocalHistory(choice.session,journal);choice.guard();
-   const witness=await verified(state,record.phase!=='operational');try{witness.check();if(state.record.phase!=='operational')await updateLocalParticipant(state,'operational');witness.check();}finally{witness.release();}
-   const result=new OperationalIndependentLocalParticipant(key,state);opening.complete();return result;
+   const witness=await verified(state,record.phase!=='operational');try{witness.check();if(state.record.phase!=='operational')await updateLocalParticipant(state,'operational');witness.check();const result=new OperationalIndependentLocalParticipant(key,state);witness.check();opening.complete();result.#exposed=true;return result;}finally{witness.release();}
   }catch(error){await opening.rollback();throw error;}
  }
- #start():void{if(this.#closed)throw fail('independent_local_participant_closed');if(this.#busy)throw fail('independent_local_participant_busy');this.#busy=true;}
- file():Blob{if(this.#closed)throw fail('independent_local_participant_closed');return this.#state.baseline.file;}
- blob(asset:string,generation:string):Blob|undefined{if(this.#closed)throw fail('independent_local_participant_closed');return journalBlob.call(this.#state.journal,asset,generation);}
- readableSource(){if(this.#closed)throw fail('independent_local_participant_closed');return readJournaledLocalSourceData(this.#state.owners.session!,this.#state.journal);}
+ #readable():void{if(!this.#exposed||this.#closed)throw fail('independent_local_participant_closed');}
+ #start():void{this.#readable();if(this.#busy)throw fail('independent_local_participant_busy');this.#busy=true;}
+ file():Blob{this.#readable();return this.#state.baseline.file;}
+ blob(asset:string,generation:string):Blob|undefined{this.#readable();return journalBlob.call(this.#state.journal,asset,generation);}
+ readableSource(){this.#readable();return readJournaledLocalSourceData(this.#state.owners.session!,this.#state.journal);}
  async progress(){this.#start();try{const s=this.#state;await retainedLocalParticipantRecord(s);await verifyLocalRetainedRecovery(s.p,s.recoveryDb!);const cut=await journalProgress.call(s.journal);s.choice.guard();return Object.freeze({phase:s.record.phase,pending:cut.pending!==null,sequence:cut.sequence});}finally{this.#busy=false;}}
  async check():Promise<void>{this.#start();try{const witness=await verified(this.#state);try{witness.check();}finally{witness.release();}}finally{this.#busy=false;}}
  async intoParts():Promise<Readonly<LocalOperationParticipantParts<P>>>{

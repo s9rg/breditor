@@ -66,6 +66,13 @@ upload custody and returns without another await or host callback. A failed
 barrier retains the actual owners for retry. Retiring archive wrappers precedes
 that barrier and does not remove the immutable baseline needed for retry.
 
+The private [local operational cohort](LOCAL_OPERATION_COHORT.md) reserves this
+actual parent together with snapshot and flat-local parents through the same
+room kernel. It keeps all genuine upload leases and native read scopes until
+every member passes the final callback-free comparison. Legacy `original`
+providers keep their meaning. The parent also remains unavailable during
+construction and rechecks its current grant before publication.
+
 Source close settles the same real native and journal leases. Failed asynchronous
 release is retryable cleanup, not permanent cached failure or native resurrection.
 Explicit discard may abandon unsaved memory but never deletes acknowledged
@@ -81,7 +88,7 @@ forked, rollback or unrelated storage before autosave.
 
 This participant is not a complete portable local operation archive. That export
 must explicitly retain original/current/pending/live native data, whole uploads
-and provider provenance. Five-family native room adoption, retained-copy/client
+and provider provenance. Complete seven-family native room adoption, retained-copy/client
 reconciliation, authenticated activation and sustainable native history remain
 separate requirements. Existing history limits are unchanged.
 
