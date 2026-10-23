@@ -53,6 +53,14 @@ alone is insufficient: live state cannot roll back behind an acknowledged cut.
 Temporary read-only owners do not acquire author leases or open destination
 stores.
 
+The read factory may be an independently loaded instance of the same supported
+runtime. Capture replays the exact original inside that reader instance and
+compares temporary owners there. The live writer remains checked by its own
+journal and native origin; its native owner is never passed into another
+instance's bindings. This changes no native checkpoint or file protocol. The
+[reader-runtime qualification](qualification/2026-10-23-reader-runtime-recovery.json)
+records the reproduced failure and the unchanged passing regressions.
+
 The raster manifest is the exact union of native retained-history, local-version,
 queued suggestion, revision and cached-version references across those states.
 Pending-only images retain their bytes even after the proposal is forgotten in

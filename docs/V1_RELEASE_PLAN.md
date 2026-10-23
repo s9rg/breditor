@@ -96,6 +96,17 @@ closure and current server authority remain the next dependencies. The
 [ownership contract](PHYSICAL_ROOM_OPERATION_V3.md#native-inspection-without-handoff)
 records that boundary. All thirteen V1 gates remain open.
 
+The [independent-reader runtime repair](qualification/2026-10-23-reader-runtime-recovery.json)
+passes six selected normal stages. Source, fresh offline packages and actual
+bundled code each pass the same 85 assertions, including 32 cases with a second
+independently loaded copy of the normal runtime. All four native history pairs,
+active/expired writer grants and all three restored input families are covered.
+The unchanged 32-case workload fails against retained old capture code and passes
+after replacing only the two repaired capture modules. Native runtime bytes,
+original protocols, graph ancestry requirements and public-root defaults remain
+unchanged. Complete reconciliation, activation and sustainable history remain
+architectural work.
+
 ## Complete delivery cohort checkpoint
 
 Complete-delivery and restored-operation parents now share the existing room

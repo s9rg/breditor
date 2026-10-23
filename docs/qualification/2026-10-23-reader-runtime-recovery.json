@@ -1,0 +1,108 @@
+{
+  "format": "breditor/selected-functional-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-23",
+  "checkpoint": "independently-loaded-read-runtime-operation-and-graph-capture",
+  "status": "passed",
+  "v1Ready": false,
+  "publicationApproved": false,
+  "source": {
+    "commit": "0cd5d3eb713160a73c575c89808b0554bd806ec7",
+    "dirty": true,
+    "sha256": "ea7aa07b36e678feebc6d9cb7ff247caaea1033fe2b83930fc0d79149d20186f",
+    "files": 6049,
+    "bytes": 48406822
+  },
+  "sourceFrozenBeforeDocumentation": true,
+  "retainedEvidence": {
+    "index": "target/reader-runtime-final-CpzO4r/index.json",
+    "sha256": "bf544cd58999368e45f75fe71fa4b6c0b3471c82f535d211bc10a40d38c1748e",
+    "entries": 7765,
+    "nonDocumentationInputs": 5369
+  },
+  "normalCandidateRunner": {
+    "passed": 6,
+    "selected": 6,
+    "functionalPlanStages": 372,
+    "fullPlanStages": 380,
+    "fullPlanExecuted": false,
+    "groups": [
+      {"name": "foundation", "manifest": "target/v1-candidate-runs/run-YlFyMI/result.json", "stages": 4, "exitCode": 0},
+      {"name": "source", "manifest": "target/v1-candidate-runs/run-r6HMN5/result.json", "stages": 1, "exitCode": 0},
+      {"name": "installed", "manifest": "target/v1-candidate-runs/run-l92hMW/result.json", "stages": 1, "exitCode": 0}
+    ]
+  },
+  "functionalDomain": {
+    "sourceAssertions": 85,
+    "freshInstalledAssertions": 85,
+    "actualProductionBundleAssertions": 85,
+    "matchingAssertions": true,
+    "failed": 0,
+    "skipped": 0,
+    "independentReaderCases": 32,
+    "independentOperationReaderCases": 8,
+    "restoredGraphReaderCases": 24,
+    "independentDocumentReviewHistoryPairs": 4,
+    "writerAuthorityLifetimes": ["active", "expired"],
+    "restoredInputFamilies": ["snapshot-v1", "lineage-v1", "lineage-v2"],
+    "nativeProfile": "normal-language-three",
+    "strictPrivateTypeFixtures": 2,
+    "readerContractsIncludingPlan": 33,
+    "priorPortableAndGraphLaws": 53,
+    "verified": [
+      "Writer and read-only backup factory use distinct independently initialized module namespaces with identical normal Wasm bytes",
+      "Temporary replay comparisons use genuine native owners within the reader runtime",
+      "Writer source remains checked by its own actual journal and native origin",
+      "Both historical original and newer imported input-LIVE ancestry/version anchors remain mandatory",
+      "A valid old original refuses as a replacement for newer input-LIVE in every restored input/history/writer-lifetime case",
+      "Exact original or imported input bytes, pending-only retired proposal pixels, source checkpoints and committed database bytes survive reads",
+      "Future document history remains usable; independent operation cases also exercise future review history",
+      "All prior portable and graph identity, capture, reentry, corruption, asset, recovery, lifetime and repeated-roundtrip laws remain in the fixed workload"
+    ]
+  },
+  "reproduction": {
+    "retainedOldCaptureModules": [
+      {"path": "independent_operation/portable_capture.js", "sha256": "b80abeb4545b0a818e9951171e7afdaf2437dd3f040b5cdea48ce896b8e4704b"},
+      {"path": "restored_graph/capture.js", "sha256": "edf1799c133c9caa16219edb2a1db5160c8426935d3deb1f5d9ea1dbbb9b738d"}
+    ],
+    "sameRegressionBaselineFailures": 32,
+    "originalHistoryMappedOriginRefusals": 16,
+    "segmentedHistoryCheckedClassRefusals": 16,
+    "sameRegressionFixedPasses": 32,
+    "assertionsChanged": false,
+    "baselineLogSha256": "c7260b6b8f0294a2ab2404816c35990c217817885668083efc6da9f44d45f126",
+    "fixedLogSha256": "cfa62e4f8683f0ff02d50ddfb7f14e87af4122e36990917f8e7abbdeb5935c80",
+    "scope": "Literal retained old capture modules with exact current assertions and carried common dependencies. Only the two compiled capture modules are replaced for the passing control; independent package and production-bundle qualification is separate."
+  },
+  "packages": {
+    "freshOfflineArchives": 3,
+    "registryArtifacts": 45,
+    "workspaceLinks": false,
+    "browserSha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+    "richContentSha256": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad",
+    "collaborationSha256": "c18bf1c252e4faa33e27007b7f7944225d4fb1351a693d80d46a507e504fafa9",
+    "actualProductionModules": 499,
+    "actualProductionBundleSha256": "bb45779c3f0bd348ee26441063c29c6f1787d744d8f0f2aa39a70f1fa35a2cfa",
+    "noWorkspaceReactOrSyntheticStorageInProduction": true
+  },
+  "native": {
+    "normalWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "nativeProductSourcesUnchanged": true,
+    "fullRustSuitesFreshlyExecuted": false,
+    "fullNativePolicyMatricesFreshlyExecuted": false
+  },
+  "boundaries": [
+    "One normal language-three profile, not the full compiler/profile/role/feature-policy Cartesian domain",
+    "Synthetic storage, locks and raster presentation; not physical-browser or process/power-loss durability",
+    "The read runtime remains a trusted matching host-selected factory, not an arbitrary-module sandbox",
+    "Retained-reference discovery without later raster bytes remains separate development work",
+    "Complete provider/client reconciliation, authenticated activation, sustainable history, remaining parity and all thirteen V1 gates remain open",
+    "No historical WebKit or engine repair is claimed"
+  ],
+  "publicRootAndDefaultsUnchanged": true,
+  "versionChanged": false,
+  "pushed": false,
+  "tagged": false,
+  "published": false,
+  "deployed": false
+}

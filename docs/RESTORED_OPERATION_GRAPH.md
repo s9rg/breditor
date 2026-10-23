@@ -70,6 +70,14 @@ Reentrant source changes refuse capture; there is no implicit flush, retry,
 upload or token request. Closing an archive prevents asynchronous reconstruction
 from handing its input file to a caller after disposal.
 
+An independently loaded reader runtime replays both the historical original and
+the newer imported input-LIVE in its own instance. CURRENT and PENDING must
+continue both anchors and retain both version sets. A valid historical original
+alone cannot replace the newer input-LIVE. The writer's own journal separately
+checks live source ancestry in the writer instance. The
+[reader-runtime qualification](qualification/2026-10-23-reader-runtime-recovery.json)
+covers snapshot-v1, lineage-v1 and lineage-v2 inputs without weakening that rule.
+
 ## Bounds and remaining integration
 
 The data frame reuses the existing 16 GiB lineage ceiling, 1,024-node bound and
