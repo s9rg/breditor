@@ -67,6 +67,11 @@ authority callback precedes exact native value/stamp checks. A changed document
 or comment publication refuses the handoff. No callback or await follows the
 final native comparison and synchronous upload release.
 
+Returned session, provider and outer wrappers are constructed before that last
+check. They remain closed until the synchronous custody transfer commits. A
+construction interruption therefore leaves the genuine parent and upload lease
+retryable; an unreturned wrapper cannot expose a native owner or input provider.
+
 The same returned upload handle waits for its real release callback before later
 mutations; a foreign handle can briefly report Busy during that completion.
 Denied handoff keeps actual owners for retry, even after parent wrappers or
@@ -94,12 +99,23 @@ The [flat-provenance contract](FLAT_LOCAL_OPERATION_PROVENANCE.md) must preserve
 every incoming original/CURRENT/PENDING/LIVE cut,
 later native work, whole uploads and historical provider-only pixels in a bounded
 flat graph. Resetting the origin or recursively nesting opaque operation archives
-does not satisfy that requirement. Actual five-family room adoption, complete
+does not satisfy that requirement. Actual seven-family room adoption, complete
 historic-copy/provider/client reconciliation and authenticated activation remain
 separate work. Sustainable native Undo/offline retention and all V1 parity and
 release gates remain open.
 
 ## Selected qualification
+
+The [construction repair qualification](qualification/2026-10-23-snapshot-handoff-construction.json)
+adds four unchanged before/after laws: all four fail against the old witness and
+pass after the repair. Seventeen selected main stages pass normally, including
+42 source laws, strict types, catalog/incoming source and installed/bundle checks
+and the broader functional suites. Two independent frozen full SDK stages also
+pass normally: each checks all 480 native cases, 1,440 handoffs and 1,440 future
+history pairs; the installed run passes 41 functional laws. All 5,305 common
+non-documentation inputs and the three actual package archives match main.
+Those two full runs are independent-copy executions, not fresh main SDK runs.
+Earlier interrupted SDK failures remain failures in the retained evidence.
 
 The [retained record](qualification/2026-10-22-restored-local-operation-participant.json)
 pins 28 passing checks from the 328-check functional plan, not the whole plan.

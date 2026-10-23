@@ -95,8 +95,12 @@ actual bundle each pass the twenty-case workload with equal results. The full
 480-case flat, snapshot and journal source/installed domains and the five-family
 480-cohort domains also pass. Eight fresh consumers pin matching archives.
 
-A separate snapshot handoff construction fault has an isolated repair with
-four unchanged regressions and passing types. It is not integrated here; its
-full normal reruns remain required. Native Undo and generation ceilings,
+A subsequent [snapshot handoff repair](qualification/2026-10-23-snapshot-handoff-construction.json)
+is integrated and verified separately. Four unchanged regressions reproduce the
+old construction fault; 17 selected main stages and two independent frozen full
+SDK stages pass normally. Matching common inputs and actual archives bind those
+full source/installed results to the repair without relabelling them main runs.
+The original V3 qualification above remains an immutable earlier checkpoint.
+Native Undo and generation ceilings,
 operational recovery, remaining feature parity and all thirteen V1 gates remain
 open. No version, public API, publication, push, tag or deployment is promoted.

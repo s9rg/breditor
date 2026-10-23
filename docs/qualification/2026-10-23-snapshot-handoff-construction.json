@@ -1,0 +1,107 @@
+{
+  "format": "breditor/snapshot-handoff-construction-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-23",
+  "passed": true,
+  "scope": "Private snapshot handoff construction and ownership integrity repair. No protocol, default, public root, Rust or native-runtime change. This is selected functional qualification, not whole-room adoption, full candidate qualification or V1 approval.",
+  "priorCheckpoint": "bd5341f08239170f9fc341a49721db94007445dd",
+  "testedMainSource": {
+    "commit": "bd5341f08239170f9fc341a49721db94007445dd",
+    "dirty": true,
+    "sha256": "05e0a6a5f12b3b402c2e9acfa8c64b1abbeff91bb1dc0992ab5e5bcfdd357e33",
+    "files": 5937,
+    "bytes": 47776728
+  },
+  "testedNonDocumentation": {
+    "files": 5305,
+    "sha256": "8c1b5b792d12dfa9627e36756f43aea341b60f64b16e1c5030b282a9ff1153b4"
+  },
+  "retention": {
+    "index": "target/snapshot-handoff-repair-3mk7wt/index.json",
+    "sha256": "25d08eadfd40d41360efe843cc641c81f0c7d6da7c22099aaded173bd9f35f00",
+    "files": 220,
+    "includes": [
+      "All four normal main manifests, 17 complete stage logs and their artifacts",
+      "Both independent frozen full SDK normal manifests, logs and complete reports",
+      "Fresh actual source, installed-consumer and production-bundle results",
+      "Three matching actual package archives and installed assertion/fixture sources",
+      "Byte-identical portable before/after assertions and real failing/passing controls",
+      "Original failed orphan SDK envelopes and the separate closed-stderr control",
+      "All 5305 common input hashes, normal runtime bytes and actual distribution diff",
+      "Five changed source/test inputs and the previous V3 retention index"
+    ]
+  },
+  "reproduction": {
+    "cause": "The old witness released actual upload custody before constructing returned wrappers. A throwing construction boundary rejected the handoff after ownership had already been consumed; construction could also expose unreturned owners.",
+    "repair": "Construct guarded closed wrappers before the last policy/native check, then synchronously release custody and open the returned wrappers. No wrapper construction, permission callback or await follows the final comparison.",
+    "beforePassed": 0,
+    "beforeFailed": 4,
+    "afterPassed": 4,
+    "afterFailed": 0,
+    "assertionsChanged": false,
+    "assertionSha256": "024471709e5e9e4cac6fd7a835a57f7cd4883c5ef034573591997be8a51beb85"
+  },
+  "normalMainStages": 17,
+  "normalIndependentFullSdkStages": 2,
+  "mainSourceLaws": 42,
+  "independentInstalledFunctionalLaws": 41,
+  "independentFullSourceAndInstalledEach": {
+    "cases": 480,
+    "handoffs": 1440,
+    "futureNativePairs": 1440,
+    "firstPublicationBoundaries": 12,
+    "repetitionsPerBoundary": 40,
+    "reportsEqual": true,
+    "normalRunnerPassed": true,
+    "reducedWorkload": false,
+    "substitutedRuntime": false
+  },
+  "independentExecutionBinding": {
+    "freshMainFullSdkRunClaim": false,
+    "commonNonDocumentationInputs": 5305,
+    "allCommonInputsIdentical": true,
+    "actualFreshMainPackagesEqualTestedInstalledPackages": true,
+    "isolatedExtraUnselectedDevelopmentScripts": 5,
+    "differentDocumentationAndGitIdentity": true,
+    "isolatedSourceSha256": "a055b5992ecb9b785011ab58f778d6ed49e878e1db7a98203ed7929349a07f3f"
+  },
+  "mainCatalogSourceInstalledAndBundleEach": {"cases": 20, "fullCartesianDomain": false},
+  "mainIncomingSourceInstalledAndBundleEach": {"cases": 40, "fullCartesianDomain": false},
+  "mainBroad": {"workspacePassed": 2647, "editorPassed": 385, "scriptsPassed": 2843, "scriptsFailed": 0, "existingBrowserSkips": 3},
+  "archives": [
+    {"name": "@breditor/browser", "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"},
+    {"name": "@breditor/experimental-rich-content", "sha256": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad"},
+    {"name": "@breditor/collaboration", "sha256": "73f40882c1bba1c906b5279244f0af9e5f1c7c0f1ed190e453e1d84e010b811a"}
+  ],
+  "distributedChanges": [
+    "dist/restored_local_operation/participant_witness.js",
+    "dist/restored_local_operation/participant_witness.d.ts"
+  ],
+  "failureAccounting": {
+    "originalOrphanSdkExitCodes": [1, 1],
+    "originalFailuresCountedAsPasses": false,
+    "originalManifestsUnchanged": true,
+    "separateNormalFullRerunsPassed": true,
+    "closedStderrControl": "An actual EPIPE follows the completed source read when its Git stderr reader is removed; draining that reader exits zero. This is consistent with the orphan failures, not a reconstruction of their lost error tails."
+  },
+  "functionalPlanStages": 343,
+  "fullPlanStages": 351,
+  "completeCandidatePlanExecuted": false,
+  "nativeRustSuitesFresh": false,
+  "normalNativeRuntimeChanged": false,
+  "physicalDurabilityQualified": false,
+  "historicalWebKitRepair": false,
+  "v1Ready": false,
+  "remaining": [
+    "Actual seven-family writer/upload adoption",
+    "Complete retained-copy, provider and client reconciliation",
+    "Authenticated whole-room activation",
+    "Sustainable native Undo and offline retention beyond current ceilings",
+    "Remaining full feature parity and all thirteen V1 gates"
+  ],
+  "push": false,
+  "publish": false,
+  "tag": false,
+  "versionChange": false,
+  "deployment": false
+}

@@ -68,9 +68,15 @@ editor tests 385 and scripts 2,839, with three existing browser opt-in skips.
 
 The new twenty-case domain covers five normal profiles, four history pairs,
 atomic-v2 inventories and all seven file families, not the full Cartesian
-role/transport/older-family domain. A separate snapshot handoff construction
-fault has an isolated repair and unchanged regressions; integration and full
-normal reruns remain required. Actual writer/upload adoption, complete
+role/transport/older-family domain. A subsequent
+[snapshot handoff construction repair](qualification/2026-10-23-snapshot-handoff-construction.json)
+is now integrated. Its four unchanged regressions fail before and pass after;
+17 selected main stages pass normally. Two independent frozen full source and
+installed SDK stages each pass all 480 cases and 1,440 future history pairs.
+Their 5,305 common non-documentation inputs and three actual package archives
+match main; they are not relabelled fresh main SDK executions. Workspace tests
+pass 2,647, editor tests 385 and scripts 2,843, with three existing opt-in skips.
+Actual writer/upload adoption, complete
 retained-copy/provider/client reconciliation, authenticated activation,
 sustainable history, full parity and all thirteen V1 gates remain open.
 

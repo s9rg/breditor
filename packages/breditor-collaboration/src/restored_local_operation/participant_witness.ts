@@ -2,6 +2,7 @@
  * retain and verify its own cohort record before consuming this witness. */
 import type {SharedIndependentHistoryPersistentSession as Session} from '../independent_history/session.js';
 import type {SharedSelectionPolicy} from '../types.js';
+import type {RichAssetStore} from '@breditor/experimental-rich-content';
 import type {RestoredLocalOperationJournal as Journal} from './journal.js';
 import {RestoredLocalOperationJournal,restoredLocalJournalBinding} from './journal.js';
 import {independentHistoryNative} from '../independent_history/native_port.js';
@@ -23,9 +24,16 @@ export class RestoredLocalParticipantWitness{
   }finally{if(!complete)scope.release();}
  }
  check():void{const s=states.get(this);if(!s)throw fail('restored_local_handoff_closed');s.check();}
- take<P extends SharedSelectionPolicy>(source:Session<P>){const s=states.get(this);if(!s)throw fail('restored_local_handoff_closed');if(s.source!==source)throw fail('restored_local_handoff_source_mismatch');s.check();
-  // No authority callback or await follows the exact native/policy comparison.
-  const uploads=assets.release.call(s.uploads);states.delete(this);s.scope.release();return Object.freeze({source:Object.freeze({session:source}),uploads,input:Object.freeze({file:()=>file.call(s.journal),blob:(asset:string,generation:string)=>blob.call(s.journal,asset,generation)})});
+ take<P extends SharedSelectionPolicy>(source:Session<P>){const s=states.get(this);if(!s)throw fail('restored_local_handoff_closed');if(s.source!==source)throw fail('restored_local_handoff_source_mismatch');
+  let committed=false,uploads:RichAssetStore|undefined;
+  const ready=()=>{if(!committed||!uploads)throw fail('restored_local_handoff_closed');};
+  // Construct every returned wrapper before the last policy/native check and
+  // before consuming upload custody. A throwing construction hook leaves the
+  // genuine parent retryable; a reentrant hook cannot use unreturned owners.
+  const native=Object.freeze({get session(){ready();return source;}}),input=Object.freeze({file:()=>{ready();return file.call(s.journal);},blob:(asset:string,generation:string)=>{ready();return blob.call(s.journal,asset,generation);}}),parts=Object.freeze({get source(){ready();return native;},get uploads(){ready();return uploads!;},get input(){ready();return input;}});
+  s.check();
+  // No wrapper construction, permission callback or await follows this check.
+  uploads=assets.release.call(s.uploads);states.delete(this);s.scope.release();committed=true;return parts;
  }
  release():void{const s=states.get(this);if(!s)return;states.delete(this);s.scope.release();}
 }
