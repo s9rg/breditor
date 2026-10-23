@@ -1,0 +1,120 @@
+{
+  "format": "breditor/selected-functional-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-23",
+  "checkpoint": "two-family-complete-retained-reference-read",
+  "status": "passed",
+  "v1Ready": false,
+  "publicationApproved": false,
+  "source": {
+    "commit": "b44b405cd6c74f2766e326005f94cc1c8f952384",
+    "dirty": true,
+    "sha256": "3797c1b64233cb258461548c318ce2803a06fd64622d413aff1c50007be50b42",
+    "files": 6061,
+    "bytes": 48485397
+  },
+  "sourceFrozenBeforeDocumentation": true,
+  "retainedEvidence": {
+    "index": "target/operation-references-final-tmr4NM/index.json",
+    "sha256": "234e4b2d2550848e412d61408913b5ef5bc966deef018ed549fc5d1e514fd99d",
+    "entries": 7794,
+    "nonDocumentationInputs": 5380
+  },
+  "normalCandidateRunner": {
+    "passed": 6,
+    "selected": 6,
+    "functionalPlanStages": 376,
+    "fullPlanStages": 384,
+    "fullPlanExecuted": false,
+    "groups": [
+      {"name": "foundation", "manifest": "target/v1-candidate-runs/run-eXj32Q/result.json", "stages": 4, "exitCode": 0},
+      {"name": "source", "manifest": "target/v1-candidate-runs/run-JmKmzf/result.json", "stages": 1, "exitCode": 0},
+      {"name": "installed", "manifest": "target/v1-candidate-runs/run-VDvHbS/result.json", "stages": 1, "exitCode": 0}
+    ]
+  },
+  "functionalDomain": {
+    "sourceAssertions": 134,
+    "freshInstalledAssertions": 134,
+    "actualProductionBundleAssertions": 134,
+    "matchingAssertions": true,
+    "failed": 0,
+    "skipped": 0,
+    "priorPortableAndGraphLaws": 85,
+    "independentOperationReferenceLaws": 22,
+    "restoredGraphReferenceLaws": 25,
+    "callbackDisposalLaws": 2,
+    "referenceContractsIncludingPlan": 50,
+    "strictPrivateTypeFixtures": 3,
+    "families": ["independent-delivery", "restored-graph"],
+    "independentNativeHistoryPairs": 4,
+    "restoredInputFamilies": ["snapshot-v1", "lineage-v1", "lineage-v2"],
+    "writerAuthorityLifetimes": ["active", "expired"],
+    "nativeProfile": "normal-language-three",
+    "verified": [
+      "Later missing pixels do not prevent original/current/pending/live native and retained-packet reference discovery",
+      "Every distinct admitted imported ancestry state contributes its exact reference bindings",
+      "An old pending-only opaque image survives reference discovery when every current slot and the actual upload store omit it",
+      "All four native document/review history pairs and active/expired writer grants preserve exact source and committed database snapshots",
+      "Independent same-byte reader runtimes retain both graph anchors and ordered native histories",
+      "A real retry advances retained journal state while native/companion stamps stay identical; the separate private epoch invalidates the read",
+      "Actual durable byte corruption refuses verification instead of trusting a current local epoch",
+      "Read revocation, cancellation, reentry and late failure cleanup do not grant writes or orphan journal borrows",
+      "Future native Undo/Redo remains usable; no source is flushed, retried, activated or handed off by reference discovery"
+    ]
+  },
+  "disposalRepair": {
+    "initial132LawFunctionalBaseline": "target/reference-disposal-refusal-b8V9mQ/index.json",
+    "initialBaselineSha256": "e43319fd4de9093310cb2b64e15d5164eaac8f87ef6d2c151cfb3b51c841a08b",
+    "unchangedRegressionBaselineFailures": 2,
+    "unchangedRegressionFixedPasses": 2,
+    "disposedHandlesIntentionallyKeptPerFamily": 5,
+    "fixtureClosedBeforeCollection": true,
+    "oldReadAuthorizationFunctionsRetainedPerFamily": 5,
+    "fixedReadAuthorizationFunctionsRetainedPerFamily": 0,
+    "assertionsChanged": false,
+    "nativeRuntimeChanged": false,
+    "workloadSha256": {
+      "scripts/operation-reference-disposal.test.mjs": "08f4039ef5097b00c1cf7e695706a41774797c9cd94af4857b434cdca9fa60cf",
+      "scripts/fixtures/operation-references/disposal-law.mjs": "a6a9d16352670e8508d91ecdc93d1a8a8f766ae4f0e401da58e6edd530557c37"
+    },
+    "scope": "The initial uncommitted read classes retained check/current/verify/release closures after disposal. Those links now clear. The unchanged real-runtime laws close actual source owners and the synthetic database factory before collection, isolating read-handle retention from fake-indexeddb completed-transaction history. Not a physical-browser heap or performance claim."
+  },
+  "packages": {
+    "freshOfflineArchives": 3,
+    "registryArtifacts": 45,
+    "workspaceLinks": false,
+    "browserSha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+    "richContentSha256": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad",
+    "collaborationSha256": "6cef0641893df513aad63a3a951f23f1f363166ec0ba5ee1e0274c2b2d575523",
+    "actualProductionModules": 502,
+    "actualProductionBundleSha256": "ef530385fa338a5e04d87bdc290ea8c2e9c73a666781d8683fe4d9a3f1702990",
+    "noWorkspaceReactOrSyntheticStorageInProduction": true
+  },
+  "native": {
+    "normalWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "nativeProductSourcesUnchanged": true,
+    "fullRustSuitesFreshlyExecuted": false,
+    "fullNativePolicyMatricesFreshlyExecuted": false
+  },
+  "bounds": {
+    "referenceReadUnionPairs": 100000,
+    "overflow": "refuse-without-truncation",
+    "existingFileAndNativeAdmissionUnchanged": true
+  },
+  "boundaries": [
+    "Two complete delivery families, not all seven recovery families or joint coordinator reference integration",
+    "Existing original/input file readers remain complete, including their retained raster bytes; later bytes require separate provider/upload reconciliation",
+    "Reference ready means native packet dependencies resolved, not that bytes or permissions are available",
+    "Synthetic storage, locks and raster presentation; not physical-browser or process/power-loss durability",
+    "One normal language-three profile, not the complete compiler/role/feature-policy domain",
+    "The local-only reference implementation remains development-only and is not promoted here",
+    "Current server authority, retained-copy decisions, complete provider/client reconciliation, authenticated activation, sustainable history, remaining parity and all thirteen V1 gates remain open",
+    "No historical WebKit or engine repair is claimed"
+  ],
+  "publicRootAndDefaultsUnchanged": true,
+  "versionChanged": false,
+  "pushed": false,
+  "tagged": false,
+  "published": false,
+  "deployed": false
+}

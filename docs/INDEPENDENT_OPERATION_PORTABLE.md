@@ -28,6 +28,10 @@ journal close also waits for its outstanding reads. A newly opened read connecti
 closes even when authorization expires during that open. An actual reproduced
 late-refusal leak is covered by the same failing and repaired lifetime assertion.
 
+The separate [reference read](OPERATION_REFERENCE_READ.md) discovers required
+addresses without a current upload store or later pixel resolution. Its result
+is not a complete portable backup or a provider-availability proof.
+
 ## Coherent original and save states
 
 The journal retains its original file unchanged. Capture reads complete journal

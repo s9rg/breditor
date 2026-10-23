@@ -31,6 +31,8 @@ export class RestoredOperationJournal {
  readonly #context:IDBFactory;readonly #locks:LockManager;readonly #authority:()=>void;
  #changed=false;#closed=false;#closing:Promise<void>|undefined;#working=false;#opening=false;#owner:object|undefined;#held=true;#active=false;
  readonly #readers=new Set<Promise<unknown>>();
+ // A persistence retry can change retained cuts without changing native LIVE.
+ #readEpoch:object=Object.freeze({});
  private constructor(token:object,input:RestoredOperationInput,db:IDBDatabase,lease:RecoveryLease,original:Replay,live:Replay,targets:readonly string[],context:IDBFactory,locks:LockManager,authority:()=>void){
   if(token!==key)throw fail();this.#input=input;this.#db=db;this.#lease=lease;this.#original=original;this.#live=live;this.#targets=Object.freeze([...targets]);this.#context=context;this.#locks=locks;this.#authority=authority;this.#decoder=new IndependentDeliveryCompanion(input.factory);
   db.onversionchange=()=>{this.#changed=true;db.close();};Object.freeze(this);
@@ -73,7 +75,7 @@ export class RestoredOperationJournal {
   if(await digest(raw.original,signal)!==this.#input.identity.origin||await digest(raw.input,signal)!==this.#input.fileSha256)throw fail('restored_operation_integrity');check();
   const rows=new Map<string,IndependentHistoryCut>();for(const[k,v]of raw.rows){const cut=await readOperationCut(v,this.#readHead);check();if(await operationCutDigest(cut)!==k)throw fail('restored_operation_integrity');if(raw.record.completed===this.#targets.length){const decoder=new IndependentDeliveryCompanion(this.#input.factory);decoder.load(this.#unwrap(cut.head));forwardProgress(this.#input.live.relay,decoder.current());}rows.set(k,copyOperationCut(cut));}check();this.#active=raw.record.completed===this.#targets.length;return{...raw,rows};
  }
- async #exclusive<T>(run:()=>Promise<T>):Promise<T>{this.#check();if(this.#working)throw fail('restored_operation_busy');this.#working=true;try{return await run();}finally{this.#working=false;}}
+ async #exclusive<T>(run:()=>Promise<T>):Promise<T>{this.#check();if(this.#working)throw fail('restored_operation_busy');this.#readEpoch=Object.freeze({});this.#working=true;try{return await run();}finally{this.#working=false;}}
  async #select(actual:IndependentHistoryStoredCut|null){return this.#exclusive(async()=>{
   const id=this.#decoder.identity.history.native,complete=await readDedicatedOperationSourceDatabase(this.#input.sourceDatabase,[id.room,id.writer],this.#readHead,this.#check,'restored-operation-v1');this.#check();
   if(actual===null?complete!==null:complete===null||!sameOperationCut(copyOperationCut(actual),complete))throw fail('restored_operation_source_diverged');
@@ -124,6 +126,7 @@ export class RestoredOperationJournal {
    return Object.freeze({identity:structuredClone(this.#input.identity),expected:structuredClone(this.#input.selection.original),inputSelection:structuredClone(this.#input.selection),inputKind:this.#input.kind,inputFileSha256:this.#input.fileSha256,sourceIdentity:structuredClone(this.#decoder.identity),check,checkCurrent,
     readSource:()=>{check();const data=port.read();this.#captureWith(port.core,data.source.versions,check);check();return data;},
     verifyCore:(core:SharedRichEditor<SharedSelectionPolicy>,versions:readonly string[])=>this.#captureWith(core,versions,check),
+    pinRetained:()=>{checkCurrent();if(this.#working)throw fail('restored_operation_busy');const epoch=this.#readEpoch;return()=>{checkCurrent();if(this.#working||epoch!==this.#readEpoch)throw fail('restored_graph_reference_changed');};},
     readSnapshot:()=>track(async()=>{const a=await this.#read(check,signal?{signal}:{});check();const id=this.#decoder.identity.history.native,stored=await readDedicatedOperationSourceDatabase(this.#input.sourceDatabase,[id.room,id.writer],this.#readHead,check,'restored-operation-v1'),observed=stored&&copyOperationCut(stored);check();const b=await this.#read(check,signal?{signal}:{});if(JSON.stringify(a.record)!==JSON.stringify(b.record))throw fail('restored_operation_capture_changed');const r=a.record.intent,current=r.current===null?null:a.rows.get(r.current)!,pending=r.pending===null?null:a.rows.get(r.pending)!;if(observed===null?current!==null:!(current&&sameOperationCut(observed,current)||pending&&sameOperationCut(observed,pending)))throw fail('restored_operation_source_diverged');check();return{record:{...r},original:a.original,input:a.input,current:current&&copyOperationCut(current),pending:pending&&copyOperationCut(pending),observed:observed===null?null:observed.head===current?.head?r.current:r.pending};}),
     recovery:(cut:IndependentHistoryCut)=>track(async()=>{check();const data=await portableCutRecovery(this.#input.factory,this.#input.identity,cut);check();return data;}),
     inputBlob:(asset:string,generation:string)=>track(async()=>{check();const blob=await this.#input.blob(asset,generation);check();return blob;}),

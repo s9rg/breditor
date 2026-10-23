@@ -45,6 +45,9 @@ export class RestoredOperationGraphArchive{
  liveSource(){return live(state(this).latest);}
  currentCut(){return current(state(this).latest);}
  pendingCut(){return pending(state(this).latest);}
+ /** Exact binding references from every distinct admitted ancestry state.
+  * The final AST and latest LIVE alone cannot cover older pending-only pixels. */
+ retainedReferenceStates(){const s=state(this),seen=new Set<string>(),rows:{kind:'snapshot-v1'|'state-v2';manifestSha256:string;references:{asset:string;generation:string}[]}[]=[];for(const step of s.envelope.chain){const key=step.kind+':'+step.state;if(seen.has(key))continue;seen.add(key);const view=s.envelope.views.get(key);if(!view)throw fail('restored_graph_closure');rows.push({kind:view.kind,manifestSha256:step.state,references:view.header.bindings.map(({asset,generation})=>({asset,generation}))});}return rows;}
  uploadEntries(){return entries(state(this).latest);}
  uploadBackup(){const s=state(this).latest;return s.kind==='snapshot-v1'?old.uploads.call(s.owner):s.owner.uploadBackup();}
  originalFile(){const s=state(this).latest;return s.kind==='snapshot-v1'?old.originalFile.call(s.owner):s.owner.originalFile();}
@@ -55,4 +58,4 @@ export class RestoredOperationGraphArchive{
 }
 const p=RestoredOperationGraphArchive.prototype;
 /** Canonical methods and actual brand admission; no serialized data selects an owner. */
-export const restoredGraphArchive=Object.freeze({owns:(value:unknown):value is RestoredOperationGraphArchive=>!!value&&typeof value==='object'&&states.has(value as RestoredOperationGraphArchive),read:RestoredOperationGraphArchive.read,file:p.file,selection:p.selection,metadata:p.metadata,latestMetadata:p.latestMetadata,original:p.originalFile,originalRecovery:p.originalRecovery,current:p.currentCut,pending:p.pendingCut,live:p.liveSource,uploads:p.uploadBackup,entries:p.uploadEntries,input:p.inputFile,blob:p.blob,dispose:p.dispose});
+export const restoredGraphArchive=Object.freeze({owns:(value:unknown):value is RestoredOperationGraphArchive=>!!value&&typeof value==='object'&&states.has(value as RestoredOperationGraphArchive),read:RestoredOperationGraphArchive.read,file:p.file,selection:p.selection,metadata:p.metadata,latestMetadata:p.latestMetadata,original:p.originalFile,originalRecovery:p.originalRecovery,current:p.currentCut,pending:p.pendingCut,live:p.liveSource,uploads:p.uploadBackup,entries:p.uploadEntries,references:p.retainedReferenceStates,input:p.inputFile,blob:p.blob,dispose:p.dispose});

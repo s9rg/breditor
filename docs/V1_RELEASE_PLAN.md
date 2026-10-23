@@ -107,6 +107,20 @@ original protocols, graph ancestry requirements and public-root defaults remain
 unchanged. Complete reconciliation, activation and sustainable history remain
 architectural work.
 
+The [two-family reference-read checkpoint](qualification/2026-10-23-operation-reference-read.json)
+passes six selected normal stages. Source, fresh offline packages and actual
+bundled code each pass the same 134 assertions, including the 85 prior
+portable/graph laws, 47 reference laws and two reproduced disposal regressions.
+It discovers original/current/pending/live and complete imported-state addresses
+even when later image bytes are missing. Separate durable verification and a
+private persistence epoch prevent native stamps from hiding retained-cut changes.
+Disposed handles retain their reports without retaining their read callbacks.
+The [contract](OPERATION_REFERENCE_READ.md) covers delivery and restored-graph
+sources only; the local-only variant remains development work. The other five
+families, joint coordinator integration, provider/client reconciliation,
+authenticated activation and sustainable history remain required. All thirteen
+V1 gates remain open.
+
 ## Complete delivery cohort checkpoint
 
 Complete-delivery and restored-operation parents now share the existing room

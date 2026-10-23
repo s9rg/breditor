@@ -78,6 +78,10 @@ checks live source ancestry in the writer instance. The
 [reader-runtime qualification](qualification/2026-10-23-reader-runtime-recovery.json)
 covers snapshot-v1, lineage-v1 and lineage-v2 inputs without weakening that rule.
 
+The separate [reference read](OPERATION_REFERENCE_READ.md) covers every admitted
+input state as well as original/CURRENT/PENDING/LIVE without fetching later image
+bytes. It does not replace complete graph capture or provider reconciliation.
+
 ## Bounds and remaining integration
 
 The data frame reuses the existing 16 GiB lineage ceiling, 1,024-node bound and

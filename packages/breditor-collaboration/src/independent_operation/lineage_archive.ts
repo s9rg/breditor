@@ -36,6 +36,12 @@ export class IndependentOperationLineageBackup {
  liveSource(){return snapshot.live.call(state(this).latest);}
  uploadBackup():Blob{return snapshot.uploads.call(state(this).latest);}
  uploadEntries(){return snapshot.entries.call(state(this).latest);}
+ /** Genuine admitted ancestry references, including older pending-only packets.
+  * No raster fetch, write grant or current source is inferred from these rows. */
+ async retainedReferenceStates(){
+  const s=state(this),check=()=>{if(state(this)!==s)throw fail('independent_operation_lineage_closed');},seen=new Set<string>(),rows:{kind:'snapshot-v1';manifestSha256:string;references:{asset:string;generation:string}[]}[]=[];
+  for(const step of lineageChain(s.header)){if(seen.has(step.state))continue;seen.add(step.state);const entry=s.header.states.find(row=>row.manifestSha256===step.state)!,view=await readLineageSnapshot(entry,s.payloads,s.selection.original,s.limits,check);check();rows.push({kind:'snapshot-v1',manifestSha256:step.state,references:view.header.bindings.map(({asset,generation})=>({asset,generation}))});}check();return rows;
+ }
  /** Immediate immutable restore input, byte for byte. Not a source-owner transfer. */
  async inputFile():Promise<Blob>{
   const s=state(this),check=()=>{if(state(this)!==s)throw fail();},root=s.header.nodes.find(n=>n.manifestSha256===s.header.root)!,previous=root.previous;
@@ -84,4 +90,4 @@ export class IndependentOperationLineageBackup {
 }
 const p=IndependentOperationLineageBackup.prototype;
 const readLineage=IndependentOperationLineageBackup.read;
-export const operationLineageArchive=Object.freeze({owns:(value:unknown):value is IndependentOperationLineageBackup=>states.has(value as IndependentOperationLineageBackup),read:IndependentOperationLineageBackup.read,append:IndependentOperationLineageBackup.append,file:p.file,selection:p.selection,metadata:p.metadata,latestMetadata:(owner:IndependentOperationLineageBackup)=>snapshot.metadata.call(state(owner).latest),originalRecovery:(owner:IndependentOperationLineageBackup)=>snapshot.originalRecovery(state(owner).latest),input:p.inputFile,original:p.originalFile,current:p.currentCut,pending:p.pendingCut,live:p.liveSource,uploads:p.uploadBackup,entries:p.uploadEntries,blob:p.blob,dispose:p.dispose});
+export const operationLineageArchive=Object.freeze({owns:(value:unknown):value is IndependentOperationLineageBackup=>states.has(value as IndependentOperationLineageBackup),read:IndependentOperationLineageBackup.read,append:IndependentOperationLineageBackup.append,file:p.file,selection:p.selection,metadata:p.metadata,latestMetadata:(owner:IndependentOperationLineageBackup)=>snapshot.metadata.call(state(owner).latest),originalRecovery:(owner:IndependentOperationLineageBackup)=>snapshot.originalRecovery(state(owner).latest),input:p.inputFile,original:p.originalFile,current:p.currentCut,pending:p.pendingCut,live:p.liveSource,uploads:p.uploadBackup,entries:p.uploadEntries,references:p.retainedReferenceStates,blob:p.blob,dispose:p.dispose});
