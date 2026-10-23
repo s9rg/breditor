@@ -41,6 +41,38 @@ rotation/recovery and remaining feature parity are substantive work, not waived
 by passing the current tests. No package version, public API freeze, tag,
 publication or deployment is promoted.
 
+## Current local writer cohort
+
+Snapshot and flat-local operational parents now join the same existing room
+handoff kernel. All genuine owners become busy before host callbacks; closed
+result wrappers and a final callback-free native/storage fence prevent partial
+transfers. Constructor publication guards and bounded indexed input admission
+close six reproduced contract failures. Original file families, native histories,
+version catalogs, upload receipts and source-owned providers retain their meanings.
+
+The [selected qualification](qualification/2026-10-23-native-input-cohort.json)
+passes all 30 selected stages normally from the 347-stage functional plan.
+Source contracts pass 24 laws including the plan law; fresh packages pass the
+same 23 functional laws. Source, installed archives and the actual production
+bundle each pass ten two-writer cohorts across all four history combinations,
+both family orders and homogeneous groups: forty handoffs and twenty exact cold
+continuations. This new cohort domain uses the normal language-three profile,
+not the full Cartesian native-profile/policy domain.
+
+Both complete snapshot and flat-local source/installed domains are freshly
+repeated: 480 cases, 1,440 handoffs and 1,440 future native history pairs each.
+Incoming-source and catalog source/installed/bundle integration also pass.
+Five clean consumers pin matching archives; workspace tests pass 2,647, editor
+tests 385 and scripts 2,867, with three existing opt-in browser skips.
+All 2,857 native inputs and twelve normal runtime files remain unchanged; Rust
+suites are carried evidence rather than freshly executed in this slice.
+
+This is a two-family in-process ownership contract, not complete seven-family
+physical catalog adoption. Full retained-copy/provider/client reconciliation,
+authenticated activation, sustainable native lifetime, remaining parity and all
+thirteen V1 release gates remain open. No version, public-root API freeze, push,
+tag, publication or deployment is promoted.
+
 ## Current seven family catalog implementation
 
 The private [V3 catalog](PHYSICAL_ROOM_CATALOG_V3.md) now retains original,

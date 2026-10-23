@@ -75,6 +75,13 @@ transfer commits. No authority callback, wrapper construction or await follows
 that comparison. Cleanup retries the same actual owners; a failed handoff does
 not recreate a disposed editor. Source selection-policy types survive handoff.
 
+The private [native local cohort](NATIVE_INPUT_COHORT_OPERATION.md) uses those
+same actual owners in an all-or-none transfer with snapshot parents. It joins
+the existing room kernel without reacquiring upload leases already held by the
+parents. Late changes to an earlier native source refuse every member; failed
+preparation leaves genuine writers and uploads available for retry. No file
+format is relabelled, and this does not adopt the complete seven-family catalog.
+
 ## Resource contract
 
 The new provenance envelope permits at most 128 state/recipe rows. Its header

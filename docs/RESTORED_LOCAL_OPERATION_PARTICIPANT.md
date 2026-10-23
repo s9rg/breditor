@@ -80,6 +80,13 @@ native/upload callbacks and retries the same owners instead of recreating a
 disposed native editor. The source/provider lifetime never captures parent-closed
 state, so editing and saving continue after parent retirement.
 
+The private [native local cohort](NATIVE_INPUT_COHORT_OPERATION.md) adds an
+all-or-none handoff with flat-local parents through the existing room kernel.
+Every actual parent is reserved before policy callbacks. Unreturned snapshot
+parents, witnesses and upload owners remain closed during construction, and the
+parent rechecks its grant after construction before publication. This is not
+seven-family catalog adoption or room activation.
+
 ## Independent read execution policy
 
 Borrowed journal reads use fresh synchronous authority and cancellation. They

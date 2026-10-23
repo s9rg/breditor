@@ -15,10 +15,16 @@ export interface RestoredLocalUploadsOptions{readonly database:string;readonly c
 const key=Object.freeze({}),read=RichAssetArchive.read,entries=RichAssetArchive.prototype.entries,dispose=RichAssetArchive.prototype.dispose;
 const restore=RichAssetStore.restoreBackupHeld,open=RichAssetStore.openRetained,capture=RichAssetStore.prototype.captureBackup,acquire=RichAssetStore.prototype.acquireRecoveryCustody,checkStore=RichAssetStore.prototype.checkOpen,closeStore=RichAssetStore.prototype.close;
 const checkCustody=RichAssetStoreCustody.prototype.check,releaseCustody=RichAssetStoreCustody.prototype.release,closeCustody=RichAssetStoreCustody.prototype.close;
-interface State{readonly store:RichAssetStore;readonly custody:RichAssetStoreCustody;readonly baseline:readonly RichAssetArchiveEntry[];readonly file:Blob;readonly digest:string;readonly inputIdentity:ReturnType<typeof input.identity>;readonly context:IDBFactory;readonly locks:LockManager;readonly limits:Readonly<AssetLimits>;closing?:Promise<void>}
+interface State{readonly store:RichAssetStore;readonly custody:RichAssetStoreCustody;readonly baseline:readonly RichAssetArchiveEntry[];readonly file:Blob;readonly digest:string;readonly inputIdentity:ReturnType<typeof input.identity>;readonly context:IDBFactory;readonly locks:LockManager;readonly limits:Readonly<AssetLimits>;exposed:boolean;closing?:Promise<void>}
 let openForParent:(parent:RestoredLocalParticipantOpening,owner:DetachedRestoredLocalInput,provided:RestoredLocalUploadsOptions,resume:boolean)=>Promise<RestoredLocalParticipantUploads>;
 const states=new WeakMap<RestoredLocalParticipantUploads,State>();
-const state=(owner:RestoredLocalParticipantUploads)=>{const value=states.get(owner);if(!value)throw fail('restored_local_uploads_closed');if(globalThis.indexedDB!==value.context||globalThis.navigator?.locks!==value.locks)throw fail('restored_local_uploads_storage_changed');checkStore.call(value.store);checkCustody.call(value.custody);return value;};
+const state=(owner:RestoredLocalParticipantUploads,admitting=false)=>{const value=states.get(owner);if(!value||!admitting&&!value.exposed)throw fail('restored_local_uploads_closed');if(globalThis.indexedDB!==value.context||globalThis.navigator?.locks!==value.locks)throw fail('restored_local_uploads_storage_changed');checkStore.call(value.store);checkCustody.call(value.custody);return value;};
+async function verifyOwner(owner:RestoredLocalParticipantUploads,provided:()=>void,initial:boolean,admitting=false):Promise<void>{
+ const s=state(owner,admitting),authority=participantAuthority(provided),guard=()=>{state(owner,admitting);authority();state(owner,admitting);};guard();const actual=await capture.call(s.store,()=>{guard();return undefined;});guard();
+ if(initial){if(await assetBytesDigest(new Uint8Array(await actual.backup.arrayBuffer()))!==s.digest)throw fail('restored_local_uploads_diverged');guard();return;}
+ const archive=await read.call(RichAssetArchive,actual.backup,{limits:s.limits});
+ try{guard();const current=new Map(entries.call(archive).map(row=>[row.asset,row]));for(const before of s.baseline){const now=current.get(before.asset);if(!now||now.mime!==before.mime||now.bytes!==before.bytes||now.width!==before.width||now.height!==before.height||now.epoch<before.epoch||now.attempts<before.attempts||before.status==='uploaded'&&(now.status!=='uploaded'||now.storageRef!==before.storageRef))throw fail('restored_local_uploads_diverged');}guard();}finally{dispose.call(archive);}
+}
 export class RestoredLocalParticipantUploads{
  private constructor(token:object,value:State){if(token!==key)throw fail();states.set(this,value);Object.freeze(this);}
  static begin(owner:DetachedRestoredLocalInput,provided:RestoredLocalUploadsOptions){if(this!==RestoredLocalParticipantUploads)throw fail();return RestoredLocalParticipantUploads.#open(owner,provided,false);}
@@ -39,22 +45,17 @@ export class RestoredLocalParticipantUploads{
   const opening=delegated?restoredLocalAssetsOpening(parent!,context,[database],[identity.database,identity.sourceDatabase,cohort.parentDatabase,cohort.uploadsDatabase],cleanup):await RecoveryOpeningCustody.reserve(context,[database],cleanup,{policy:()=>fail(),busy:()=>fail('restored_local_uploads_busy'),storage:()=>fail('restored_local_uploads_cleanup')});
   try{guard();archive=await read.call(RichAssetArchive,file,{limits,...(signal===undefined?{}:{signal})});guard();const baseline=Object.freeze(entries.call(archive).map(row=>Object.freeze({...row}))),digest=await assetBytesDigest(new Uint8Array(await file.arrayBuffer()));guard();
    if(resume){store=await open.call(RichAssetStore,database,{limits});guard();custody=await acquire.call(store);}else{const actual=await restore.call(RichAssetStore,database,file,{limits,uploadState:'preserve',checkAuthority:guard,...(signal===undefined?{}:{signal})});store=actual.store;custody=actual.custody;}
-   guard();const result=new RestoredLocalParticipantUploads(key,{store,custody,baseline,file,digest,inputIdentity:identity,context,locks,limits});await verify.call(result,guard,!resume);guard();dispose.call(archive);archive=undefined;guard();opening.complete();return result;
+   guard();const value:State={store,custody,baseline,file,digest,inputIdentity:identity,context,locks,limits,exposed:false},result=new RestoredLocalParticipantUploads(key,value);await verifyOwner(result,guard,!resume,true);guard();dispose.call(archive);archive=undefined;guard();opening.complete();value.exposed=true;return result;
   }catch(error){await opening.rollback();throw error;}
  }
  check():void{state(this);}
  identity(){return structuredClone(state(this).inputIdentity);}
  file():Blob{return state(this).file;}
- async verify(provided:()=>void,initial=false):Promise<void>{
-  const s=state(this),authority=participantAuthority(provided),guard=()=>{state(this);authority();state(this);};guard();const actual=await capture.call(s.store,()=>{guard();return undefined;});guard();
-  if(initial){if(await assetBytesDigest(new Uint8Array(await actual.backup.arrayBuffer()))!==s.digest)throw fail('restored_local_uploads_diverged');guard();return;}
-  const archive=await read.call(RichAssetArchive,actual.backup,{limits:s.limits});
-  try{guard();const current=new Map(entries.call(archive).map(row=>[row.asset,row]));for(const before of s.baseline){const now=current.get(before.asset);if(!now||now.mime!==before.mime||now.bytes!==before.bytes||now.width!==before.width||now.height!==before.height||now.epoch<before.epoch||now.attempts<before.attempts||before.status==='uploaded'&&(now.status!=='uploaded'||now.storageRef!==before.storageRef))throw fail('restored_local_uploads_diverged');}guard();}finally{dispose.call(archive);}
- }
+ verify(provided:()=>void,initial=false):Promise<void>{return verifyOwner(this,provided,initial);}
  release():RichAssetStore{const s=state(this);releaseCustody.call(s.custody);states.delete(this);return s.store;}
- close():Promise<void>{const s=states.get(this);if(!s)return Promise.resolve();if(s.closing)return s.closing;const work=Promise.resolve().then(async()=>{await closeCustody.call(s.custody);closeStore.call(s.store);states.delete(this);}).finally(()=>{delete s.closing;});s.closing=work;return work;}
+ close():Promise<void>{const s=states.get(this);if(!s)return Promise.resolve();if(!s.exposed)throw fail('restored_local_uploads_closed');if(s.closing)return s.closing;const work=Promise.resolve().then(async()=>{await closeCustody.call(s.custody);closeStore.call(s.store);states.delete(this);}).finally(()=>{delete s.closing;});s.closing=work;return work;}
  static{openForParent=(parent,owner,provided,resume)=>RestoredLocalParticipantUploads.#open(owner,provided,resume,parent,true);}
 }
-const p=RestoredLocalParticipantUploads.prototype,verify=p.verify;
-export const restoredLocalUploads=Object.freeze({owns:(owner:unknown):owner is RestoredLocalParticipantUploads=>states.has(owner as RestoredLocalParticipantUploads),check:p.check,identity:p.identity,file:p.file,verify,release:p.release,close:p.close});
+const p=RestoredLocalParticipantUploads.prototype;
+export const restoredLocalUploads=Object.freeze({owns:(owner:unknown):owner is RestoredLocalParticipantUploads=>states.get(owner as RestoredLocalParticipantUploads)?.exposed===true,check:p.check,identity:p.identity,file:p.file,verify:p.verify,release:p.release,close:p.close});
 export const openRestoredLocalUploadsForParticipant=(parent:RestoredLocalParticipantOpening,owner:DetachedRestoredLocalInput,provided:RestoredLocalUploadsOptions,resume:boolean)=>openForParent(parent,owner,provided,resume);

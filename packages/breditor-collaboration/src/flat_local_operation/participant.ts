@@ -14,10 +14,22 @@ import {makeFlatLocalParentRecord,readFlatLocalParentRecord} from './participant
 import {createFlatLocalParentDatabase,existingFlatLocalParentDatabase,readFlatLocalParentDatabase,writeFlatLocalParentRecord} from './participant_database.js';
 import {fenceFlatLocalParentDatabase,releaseFlatLocalParentLeases,retainedFlatLocalParentRecord,updateFlatLocalParentRecord,verifyFlatLocalParticipant,type FlatLocalParticipantState} from './participant_state.js';
 import type {FlatLocalParticipantOptions,FlatLocalParticipantParts} from './participant_contract.js';import {flatLocalFailure as fail} from './failure.js';
+import type {NativeInputParticipantReservation} from '../native_input_operation/cohort_member.js';
 const key=Object.freeze({}),closeSource=Session.prototype.close,discardSource=Session.prototype.discardAndClose;
+let reserve:<P extends SharedSelectionPolicy>(owner:OperationalFlatLocalParticipant<P>)=>NativeInputParticipantReservation<P>;
+/** Internal genuine-parent reservation. Flat input is never a snapshot adapter. */
+export function reserveFlatLocalParticipant<P extends SharedSelectionPolicy>(owner:OperationalFlatLocalParticipant<P>):NativeInputParticipantReservation<P>{return reserve(owner);}
 export class OperationalFlatLocalParticipant<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
  readonly #state:FlatLocalParticipantState<P>;#exposed=false;#closed=false;#busy=false;
  private constructor(token:object,state:FlatLocalParticipantState<P>){if(token!==key)throw fail('flat_local_input_participant_policy');this.#state=state;Object.freeze(this);}
+ static{reserve=<Q extends SharedSelectionPolicy>(owner:OperationalFlatLocalParticipant<Q>)=>{
+  if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('flat_local_input_participant_policy');owner.#start();const s=owner.#state;let witness:Awaited<ReturnType<typeof verifyFlatLocalParticipant<Q>>>|undefined,prepared=false,finished=false;
+  return{
+   async prepare(){if(finished||prepared)throw fail('flat_local_input_participant_busy');prepared=true;witness=await verifyFlatLocalParticipant(s);if(s.record.phase!=='operational')throw fail('flat_local_input_participant_record');await releaseFlatLocalParentLeases(s.leases);witness.check();await retainedFlatLocalParentRecord(s);witness.check();if(!s.inputDisposed){input.dispose.call(s.input);s.inputDisposed=true;}witness.check();if(s.db){s.db.close();delete s.db;}witness.check();return witness.prepareHandoff(s.source);},
+   consume(){owner.#closed=true;owner.#busy=false;finished=true;},
+   abandon(){if(finished)return;finished=true;try{witness?.release();}finally{owner.#busy=false;}},
+  };
+ };}
  static begin<Q extends SharedSelectionPolicy>(file:Blob,provided:FlatLocalParticipantOptions<Q>):Promise<OperationalFlatLocalParticipant<Q>>{if(this!==OperationalFlatLocalParticipant)throw fail();return OperationalFlatLocalParticipant.#open(provided,file);}
  static resume<Q extends SharedSelectionPolicy>(provided:FlatLocalParticipantOptions<Q>):Promise<OperationalFlatLocalParticipant<Q>>{if(this!==OperationalFlatLocalParticipant)throw fail();return OperationalFlatLocalParticipant.#open(provided);}
  static async #open<Q extends SharedSelectionPolicy>(provided:FlatLocalParticipantOptions<Q>,file?:Blob):Promise<OperationalFlatLocalParticipant<Q>>{

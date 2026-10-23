@@ -19,10 +19,22 @@ import {restoredLocalParentRecord,readRestoredLocalParentRecord} from './partici
 import {createRestoredLocalParentDatabase,existingRestoredLocalParentDatabase,readRestoredLocalParentDatabase,writeRestoredLocalParentRecord} from './participant_database.js';
 import type {RestoredLocalParticipantOptions,RestoredLocalParticipantParts} from './participant_contract.js';
 import {fenceRestoredLocalParentDatabase,retainedRestoredLocalParentRecord,updateRestoredLocalParentRecord,releaseRestoredLocalParentLeases,verifyRestoredLocalParticipant,type RestoredLocalParticipantState} from './participant_state.js';
+import type {NativeInputParticipantReservation} from '../native_input_operation/cohort_member.js';
 const key=Object.freeze({}),closeSource=Session.prototype.close,discardSource=Session.prototype.discardAndClose,closeJournal=Journal.prototype.close,progressJournal=Journal.prototype.progress,journalBlob=Journal.prototype.blob;
+let reserve:<P extends SharedSelectionPolicy>(owner:OperationalRestoredLocalParticipant<P>)=>NativeInputParticipantReservation<P>;
+/** Internal genuine-parent reservation, never a structural adapter or root API. */
+export function reserveRestoredLocalParticipant<P extends SharedSelectionPolicy>(owner:OperationalRestoredLocalParticipant<P>):NativeInputParticipantReservation<P>{return reserve(owner);}
 export class OperationalRestoredLocalParticipant<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
- readonly #state:RestoredLocalParticipantState<P>;#closed=false;#busy=false;
+ readonly #state:RestoredLocalParticipantState<P>;#exposed=false;#closed=false;#busy=false;
  private constructor(token:object,state:RestoredLocalParticipantState<P>){if(token!==key)throw fail();this.#state=state;Object.freeze(this);}
+ static{reserve=<Q extends SharedSelectionPolicy>(owner:OperationalRestoredLocalParticipant<Q>)=>{
+  if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('restored_local_participant_policy');owner.#start();const s=owner.#state;let witness:Awaited<ReturnType<typeof verifyRestoredLocalParticipant<Q>>>|undefined,prepared=false,finished=false;
+  return{
+   async prepare(){if(finished||prepared)throw fail('restored_local_participant_busy');prepared=true;witness=await verifyRestoredLocalParticipant(s);if(s.record.phase!=='operational')throw fail('restored_local_participant_record');await releaseRestoredLocalParentLeases(s.leases);witness.check();await retainedRestoredLocalParentRecord(s);witness.check();if(!s.inputDisposed){incoming.dispose.call(s.input);s.inputDisposed=true;}witness.check();if(s.db){s.db.close();delete s.db;}witness.check();return witness.prepareHandoff(s.source);},
+   consume(){owner.#closed=true;owner.#busy=false;finished=true;},
+   abandon(){if(finished)return;finished=true;try{witness?.release();}finally{owner.#busy=false;}},
+  };
+ };}
  static begin<Q extends SharedSelectionPolicy>(file:Blob,provided:RestoredLocalParticipantOptions<Q>){if(this!==OperationalRestoredLocalParticipant)throw fail();return OperationalRestoredLocalParticipant.#open(provided,file);}
  static resume<Q extends SharedSelectionPolicy>(provided:RestoredLocalParticipantOptions<Q>){if(this!==OperationalRestoredLocalParticipant)throw fail();return OperationalRestoredLocalParticipant.#open(provided);}
  static async #open<Q extends SharedSelectionPolicy>(provided:RestoredLocalParticipantOptions<Q>,file?:Blob){
@@ -50,14 +62,14 @@ export class OperationalRestoredLocalParticipant<P extends SharedSelectionPolicy
     const next={...record,phase:'prepared' as const};await writeRestoredLocalParentRecord(db,record,next,incoming.file.call(input),guard,choice.read.options.signal);guard();const actualRecord=await readRestoredLocalParentDatabase(db,guard);record=readRestoredLocalParentRecord(actualRecord.record,next);if(record.phase!=='prepared')throw fail('restored_local_participant_record');
    }
    source=await openRestoredLocalHistory(choice.source,journal);guard();state={choice,context,locks,guard,leases,file:incoming.file.call(input),fileSha256,initial,life,input,journal,uploads,source,inputDisposed:false,db,record};
-   const witness=await verifyRestoredLocalParticipant(state,record.phase!=='operational');try{witness.check();if(state.record.phase!=='operational')await updateRestoredLocalParentRecord(state,'operational');witness.check();}finally{witness.release();}
-   const result=new OperationalRestoredLocalParticipant<Q>(key,state);opening.complete();return result;
+   const witness=await verifyRestoredLocalParticipant(state,record.phase!=='operational');try{witness.check();if(state.record.phase!=='operational')await updateRestoredLocalParentRecord(state,'operational');witness.check();const result=new OperationalRestoredLocalParticipant<Q>(key,state);witness.check();opening.complete();result.#exposed=true;return result;}finally{witness.release();}
   }catch(error){await opening.rollback();throw error;}
  }
- #start(){if(this.#closed)throw fail('restored_local_participant_closed');if(this.#busy)throw fail('restored_local_participant_busy');this.#busy=true;}
- file(){if(this.#closed)throw fail('restored_local_participant_closed');return this.#state.file;}
- blob(asset:string,generation:string){if(this.#closed)throw fail('restored_local_participant_closed');return journalBlob.call(this.#state.journal,asset,generation);}
- readableSource(){if(this.#closed)throw fail('restored_local_participant_closed');return restoredLocalJournalBinding(this.#state.journal).readSource(this.#state.source);}
+ #readable(){if(!this.#exposed||this.#closed)throw fail('restored_local_participant_closed');}
+ #start(){this.#readable();if(this.#busy)throw fail('restored_local_participant_busy');this.#busy=true;}
+ file(){this.#readable();return this.#state.file;}
+ blob(asset:string,generation:string){this.#readable();return journalBlob.call(this.#state.journal,asset,generation);}
+ readableSource(){this.#readable();return restoredLocalJournalBinding(this.#state.journal).readSource(this.#state.source);}
  async progress(){this.#start();try{const s=this.#state;await retainedRestoredLocalParentRecord(s);const cut=await progressJournal.call(s.journal);s.guard();return{phase:s.record.phase,pending:cut.pending!==null,sequence:cut.sequence};}finally{this.#busy=false;}}
  async check(){this.#start();try{const witness=await verifyRestoredLocalParticipant(this.#state);try{witness.check();}finally{witness.release();}}finally{this.#busy=false;}}
  async intoParts():Promise<Readonly<RestoredLocalParticipantParts<P>>>{this.#start();try{const s=this.#state,witness=await verifyRestoredLocalParticipant(s);try{if(s.record.phase!=='operational')throw fail('restored_local_participant_record');await releaseRestoredLocalParentLeases(s.leases);witness.check();await retainedRestoredLocalParentRecord(s);witness.check();if(!s.inputDisposed){incoming.dispose.call(s.input);s.inputDisposed=true;}witness.check();if(s.db){s.db.close();delete s.db;}witness.check();const parts=witness.take(s.source);this.#closed=true;return parts;}finally{witness.release();}}finally{this.#busy=false;}}
