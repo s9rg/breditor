@@ -1,0 +1,140 @@
+{
+  "format": "breditor/selected-functional-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-23",
+  "checkpoint": "local-only-native-reference-read",
+  "status": "passed",
+  "v1Ready": false,
+  "publicationApproved": false,
+  "source": {
+    "commit": "187564595fc41457ec27c62140260098f5edc481",
+    "dirty": true,
+    "sha256": "0de70206fbe91d1c234aeceb568ab6887b30919d4ab1a6a6c22726afad90d67f",
+    "files": 6066,
+    "bytes": 48521948
+  },
+  "sourceFrozenBeforeDocumentation": true,
+  "retainedEvidence": {
+    "index": "target/local-references-final-eWFG0r/index.json",
+    "sha256": "2a1d4471a0c525c8c2756982c013e6dfd8ea90f61291c6ff095e462c50e9f094",
+    "entries": 7827,
+    "nonDocumentationInputs": 5383
+  },
+  "normalCandidateRunner": {
+    "passed": 6,
+    "selected": 6,
+    "functionalPlanStages": 376,
+    "fullPlanStages": 384,
+    "fullPlanExecuted": false,
+    "groups": [
+      {
+        "name": "foundation",
+        "manifest": "target/v1-candidate-runs/run-zy6KsW/result.json",
+        "stages": 4,
+        "exitCode": 0
+      },
+      {
+        "name": "source",
+        "manifest": "target/v1-candidate-runs/run-Oo2ITn/result.json",
+        "stages": 1,
+        "exitCode": 0
+      },
+      {
+        "name": "installed",
+        "manifest": "target/v1-candidate-runs/run-KjGuup/result.json",
+        "stages": 1,
+        "exitCode": 0
+      }
+    ]
+  },
+  "functionalDomain": {
+    "sourceAssertions": 197,
+    "freshInstalledAssertions": 197,
+    "actualProductionBundleAssertions": 197,
+    "matchingAssertions": true,
+    "failed": 0,
+    "skipped": 0,
+    "priorDeliveryAndGraphAssertions": 134,
+    "priorLocalPortableAssertions": 40,
+    "localReferenceAssertions": 22,
+    "additionalLocalCallbackReleaseAssertions": 1,
+    "totalCallbackReleaseFamilies": 3,
+    "contractAssertionsIncludingPlan": 73,
+    "strictPrivateTypeFixtures": 4,
+    "families": [
+      "independent-delivery",
+      "restored-graph",
+      "independent-local"
+    ],
+    "nativeProfile": "normal-language-three",
+    "documentReviewHistoryPairs": 4,
+    "readRuntimes": [
+      "same-instance",
+      "separately-loaded-normal-Wasm"
+    ],
+    "writeGrants": [
+      "active",
+      "expired"
+    ],
+    "localVerified": [
+      "Actual original/current/pending/live native cuts and ordered immutable versions contribute exact required image addresses",
+      "Later missing raster bytes do not prevent reference discovery; original complete admission remains mandatory",
+      "Reference discovery and durable verification leave exact native recovery and actual committed database bytes unchanged",
+      "A real save retry advances the journal while native stamps stay identical; the private epoch invalidates all live checks",
+      "Actual original byte corruption fails durable verification without relying on managed epoch changes",
+      "Independent read revocation, cancellation, reentry and late failure cannot grant writes or leak read borrows",
+      "The callback-free final fence invokes no read authorization callbacks",
+      "Source cleanup waits for the genuine read borrow; disposal preserves metadata but drops read callbacks",
+      "Future native document and comment Undo/Redo remain usable"
+    ]
+  },
+  "packages": {
+    "freshOfflineArchives": 3,
+    "registryArtifacts": 45,
+    "workspaceLinks": false,
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "sha256": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "sha256": "7fa8402c5d374b2efd47fdc9957cc335e0cc7df8b85d5776e5ca4f34a62ae97b"
+      }
+    ],
+    "actualProductionModules": 533,
+    "actualProductionBundleSha256": "712fb099a81e8600ce9f88a3d32e2b2a0c985226f4e6331e8e2e78e602e3b9ed",
+    "noWorkspaceReactOrSyntheticStorageInProduction": true
+  },
+  "native": {
+    "normalWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "nativeProductSourcesUnchanged": true,
+    "fullRustSuitesFreshlyExecuted": false,
+    "fullNativePolicyMatricesFreshlyExecuted": false
+  },
+  "bounds": {
+    "referenceReadUnionPairs": 100000,
+    "overflow": "refuse-without-truncation",
+    "existingFileAndNativeAdmissionUnchanged": true
+  },
+  "boundaries": [
+    "Three reference-read families, not all seven or joint coordinator reference integration",
+    "Original/input archives still require their existing retained raster admission; later upload/provider bytes remain separate",
+    "Native readiness is not provider permission, writer authority or authenticated activation",
+    "Synthetic storage/locks/raster presentation, not physical process or power-loss durability",
+    "One normal language-three profile, not the full native policy matrix",
+    "Snapshot/flat local input reference work remains separate development work",
+    "Current server authority, historical-copy decisions, full provider/client reconciliation, sustainable history, remaining parity and all thirteen V1 gates remain open",
+    "No historical WebKit or engine repair claim"
+  ],
+  "publicRootAndDefaultsUnchanged": true,
+  "versionChanged": false,
+  "pushed": false,
+  "tagged": false,
+  "published": false,
+  "deployed": false
+}

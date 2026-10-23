@@ -1,8 +1,8 @@
 # Operational reference reads
 
 The private reference readers discover required asset addresses before later
-image bytes are available. They cover complete independent-delivery operations
-and restored delivery graphs. They require genuine journal-backed sources,
+image bytes are available. They cover complete independent-delivery operations,
+restored delivery graphs and independent local-only operations. They require genuine journal-backed sources,
 matching read-only factories and current read authorization. They do not require
 a current upload store or resolve later raster bytes.
 
@@ -23,6 +23,12 @@ state in its snapshot-v1, lineage-v1 or lineage-v2 input. Input-state manifests
 remain explicit in the detached report. The latest input LIVE cannot replace
 earlier input bindings. An older pending-only opaque image remains required
 even when all current slots and the upload store omit it.
+
+`captureLocalOperationReferences` covers ORIGINAL, CURRENT, PENDING and LIVE
+for local-only native document/comment histories and ordered immutable versions.
+It does not invent a relay, delivery outbox or retained-review registration. An
+independent read grant remains usable after the writer grant ends. A save retry
+with identical native state still invalidates the private retained-state pin.
 
 Read-only replays use the independently selected reader runtime. Restored
 CURRENT and PENDING must continue both the historical original and newer
@@ -68,6 +74,8 @@ after closing the actual source and synthetic database fixture. Old handles reta
 the callbacks and fail; repaired handles release them and pass. Closing the
 fixture before collection separates this ownership test from fake-indexeddb's
 retained completed transaction history. This is not a browser heap benchmark.
+The local-only family now passes the same collection law with five disposed
+handles intentionally retained; its read callbacks are also released.
 
 ## Bounds and remaining integration
 
@@ -75,14 +83,15 @@ Each reference read has a separate 100000-pair union budget. Exceeding it refuse
 without truncation; it does not change old file admission or native history limits.
 Original/input, packet, native and operational source bounds remain in force.
 
-The [selected qualification](qualification/2026-10-23-operation-reference-read.json)
+The [three-family qualification](qualification/2026-10-23-local-operation-reference-read.json)
 passes six normal selected stages. Source, fresh offline packages and actual
-bundled code each pass the same 134 laws: 85 prior portable/graph laws, 47 new
-reference-read laws and two disposal laws. Three strict type fixtures also pass.
+bundled code each pass the same 197 laws: the prior 134 delivery/graph laws,
+40 existing local portable laws, 22 local reference laws and one additional
+local disposal law. Four strict type fixtures also pass.
 The new domain uses one normal language-three profile with all four native
 history pairs and active/expired writer grants, not the full native-policy matrix.
 
-The other five recovery families, all-seven coordinator integration, explicit
+The other four recovery families, all-seven coordinator integration, explicit
 historical-copy decisions, actual upload/provider bytes, current server authority
 and authenticated activation remain separate work. These readers alone do not
 establish complete provider/client reconciliation or V1 readiness.

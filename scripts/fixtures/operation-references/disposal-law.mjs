@@ -14,9 +14,12 @@ import {captureIndependentOperationBackup as captureOld} from '../../../packages
 import {captureRestoredGraph as captureGraph} from '../../../packages/breditor-collaboration/dist/restored_graph/capture.js';
 import {captureIndependentOperationReferences} from '../../../packages/breditor-collaboration/dist/independent_operation/reference_capture.js';
 import {captureRestoredGraphReferences} from '../../../packages/breditor-collaboration/dist/restored_graph/reference_capture.js';
+import {OperationalIndependentLocalParticipant as LocalParticipant} from '../../../packages/breditor-collaboration/dist/independent_local_operation/participant.js';
+import {captureLocalOperationReferences} from '../../../packages/breditor-collaboration/dist/independent_local_operation/reference_capture.js';
 import {environment} from '../room-participant-inventory/environment.mjs';
 import {portableFixture} from '../independent-operation/portable.mjs';
 import {readerRuntimeGraphFixture} from '../restored-graph/reader-runtime.mjs';
+import {localParticipantFixture} from '../independent-local-operation/participant.mjs';
 import {nativeProfile} from '../owned-core-cleanup/session.mjs';
 
 export function verifyReferenceCallbackRelease(family,runtime,fixture){
@@ -25,11 +28,12 @@ export function verifyReferenceCallbackRelease(family,runtime,fixture){
 }
 async function closedRead(capture,source,readOptions){const marker={read:'ended'},guard=function endedReferenceReadAuthorization(){assert.equal(marker.read,'ended');},weak=new WeakRef(guard),proof=await capture({source,...readOptions,checkAuthority:guard});proof.dispose();return{proof,weak};}
 async function probe(family,runtime,fixture){
- assert.ok(['independent-delivery','restored-graph'].includes(family));assert.equal(typeof global.gc,'function');const wasm=readFileSync(runtime+'/breditor_shared_bg.wasm'),native=await import(pathToFileURL(runtime+'/breditor_shared.js'));await native.default({module_or_path:wasm});const profile=nativeProfile(native,3,true),seed=JSON.parse(readFileSync(fixture)),reset=environment(),kept=[];let f,owner,parts,source,readOptions;
+ assert.ok(['independent-delivery','restored-graph','independent-local'].includes(family));assert.equal(typeof global.gc,'function');const wasm=readFileSync(runtime+'/breditor_shared_bg.wasm'),native=await import(pathToFileURL(runtime+'/breditor_shared.js'));await native.default({module_or_path:wasm});const profile=nativeProfile(native,3,true),seed=JSON.parse(readFileSync(fixture)),reset=environment(),kept=[];let f,owner,parts,source,readOptions;
  try{
   if(family==='independent-delivery'){f=await portableFixture({api,rich,Participant:OldParticipant,profile,seed,tag:'reference-release-independent'});source=f.source;readOptions=f.readOptions;}
-  else{f=await readerRuntimeGraphFixture({api,rich,OldParticipant,Participant,captureOld,capture:captureGraph,profile,seed,tag:'reference-release-graph'},'lineage-v2');owner=await Participant.begin(f.input.file(),f.options);await owner.finish();parts=await owner.intoParts();source=parts.source.session;readOptions=f.readOptions;}
-  const capture=family==='independent-delivery'?captureIndependentOperationReferences:captureRestoredGraphReferences;for(let i=0;i<5;i++)kept.push(await closedRead(capture,source,readOptions));
+  else if(family==='restored-graph'){f=await readerRuntimeGraphFixture({api,rich,OldParticipant,Participant,captureOld,capture:captureGraph,profile,seed,tag:'reference-release-graph'},'lineage-v2');owner=await Participant.begin(f.input.file(),f.options);await owner.finish();parts=await owner.intoParts();source=parts.source.session;readOptions=f.readOptions;}
+  else{f=await localParticipantFixture({api,rich,Participant:LocalParticipant,profile,root:seed,tag:'reference-release-local'});source=(await f.take(await f.begin(await f.recover()))).source.session;readOptions={session:f.options.recovery.session,checkAuthority(){}};}
+  const capture=family==='independent-delivery'?captureIndependentOperationReferences:family==='restored-graph'?captureRestoredGraphReferences:captureLocalOperationReferences;for(let i=0;i<5;i++)kept.push(await closedRead(capture,source,readOptions));
   await parts?.source.session.discardAndClose();parts?.uploads.close();parts=undefined;await owner?.discardAndClose();owner=undefined;await f.close();f=undefined;source=undefined;readOptions=undefined;reset();
   for(let i=0;i<30;i++){await new Promise(resolve=>setImmediate(resolve));global.gc();}await new Promise(resolve=>setImmediate(resolve));
   const retained=kept.filter(row=>row.weak.deref()!==undefined).length,report={family,closedProofsIntentionallyKept:kept.length,fixtureClosedBeforeCollection:true,readAuthorizationFunctionsRetained:retained,normalWasmSha256:createHash('sha256').update(wasm).digest('hex')};console.log(JSON.stringify(report));assert.equal(retained,0,'Disposed reference handles must release read authority and captured recovery closures');for(const row of kept){assert.ok(row.proof.metadata().references.length);assert.throws(()=>row.proof.check());row.proof.dispose();}

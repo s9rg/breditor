@@ -115,9 +115,14 @@ It discovers original/current/pending/live and complete imported-state addresses
 even when later image bytes are missing. Separate durable verification and a
 private persistence epoch prevent native stamps from hiding retained-cut changes.
 Disposed handles retain their reports without retaining their read callbacks.
-The [contract](OPERATION_REFERENCE_READ.md) covers delivery and restored-graph
-sources only; the local-only variant remains development work. The other five
-families, joint coordinator integration, provider/client reconciliation,
+The [local-only reference extension](qualification/2026-10-23-local-operation-reference-read.json)
+also passes six selected normal stages. Source, fresh packages and actual bundled
+code each pass the same 197 laws, including all prior delivery/graph and 40 local
+portable laws, 22 local reference laws and callback release for all three families.
+It preserves local-only semantics, native history, ordered versions and separate
+read authorization; it does not fabricate a delivery companion. The
+[contract](OPERATION_REFERENCE_READ.md) now covers these three families. The other
+four families, joint coordinator integration, provider/client reconciliation,
 authenticated activation and sustainable history remain required. All thirteen
 V1 gates remain open.
 

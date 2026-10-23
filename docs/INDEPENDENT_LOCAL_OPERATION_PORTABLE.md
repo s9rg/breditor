@@ -59,6 +59,20 @@ Caller facade replacements and serialized readiness flags do not establish that
 ownership. Disposal closes that owner; previously returned immutable Blob values
 remain caller-owned data.
 
+## Reference discovery before resolving later images
+
+`captureLocalOperationReferences` reads the same four native states and their
+ordered version references without capturing current uploads or fetching later
+pixels. The original file must still satisfy its existing complete admission.
+Its result distinguishes native dependency readiness from byte availability.
+`verify()` rereads actual durable cuts; `checkCurrent()` checks the private
+journal epoch and native lifetime without host authorization callbacks.
+
+The [reference-read contract](OPERATION_REFERENCE_READ.md) and
+[three-family qualification](qualification/2026-10-23-local-operation-reference-read.json)
+cover this separate private API. It does not transfer source owners, restore
+write permission, or authorize activation.
+
 ## Editable restore remains separate
 
 This format supplies complete capture and read admission, not a complete editable
