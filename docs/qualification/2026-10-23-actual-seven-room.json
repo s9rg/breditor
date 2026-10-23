@@ -1,0 +1,222 @@
+{
+  "format": "breditor/selected-functional-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-23",
+  "checkpoint": "actual-seven-writer-physical-room-recovery",
+  "status": "passed",
+  "v1Ready": false,
+  "publicationApproved": false,
+  "source": {
+    "commit": "2bacaa56e4c87801f4ffbb6cb20e051f16c622f9",
+    "dirty": true,
+    "sha256": "d7cac086b2dc28f9a472e25112c389a252ad53609cc23aaa03b5f2ffa5d0d357",
+    "files": 6017,
+    "bytes": 48257131
+  },
+  "sourceFrozenBeforeDocumentation": true,
+  "retainedEvidence": {
+    "index": "target/seven-room-final-Cwxptl/index.json",
+    "sha256": "4a71a1b13b2f6ca65ddcbb7cbb85136a89a8b692101131468e255761bd5b5c9d",
+    "entries": 7736,
+    "nonDocumentationInputs": 5339
+  },
+  "normalCandidateRunner": {
+    "passed": 13,
+    "selected": 13,
+    "functionalPlanStages": 364,
+    "fullPlanStages": 372,
+    "fullPlanExecuted": false,
+    "groups": [
+      {
+        "name": "foundation",
+        "manifest": "/Users/s/code/breditor/target/v1-candidate-runs/run-pha6E4/result.json",
+        "stages": [
+          {
+            "id": "candidate-runner-contracts",
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/Users/s/code/breditor/target/v1-candidate-runs/run-pha6E4/01-candidate-runner-contracts.log"
+          },
+          {
+            "id": "relay-format",
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/Users/s/code/breditor/target/v1-candidate-runs/run-pha6E4/02-relay-format.log"
+          },
+          {
+            "id": "relay-lint",
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/Users/s/code/breditor/target/v1-candidate-runs/run-pha6E4/03-relay-lint.log"
+          },
+          {
+            "id": "relay-no-server-lint",
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/Users/s/code/breditor/target/v1-candidate-runs/run-pha6E4/04-relay-no-server-lint.log"
+          },
+          {
+            "id": "relay-native",
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/Users/s/code/breditor/target/v1-candidate-runs/run-pha6E4/05-relay-native.log"
+          },
+          {
+            "id": "collaboration-build",
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/Users/s/code/breditor/target/v1-candidate-runs/run-pha6E4/06-collaboration-build.log"
+          },
+          {
+            "id": "physical-operation-v3-type-fence",
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/Users/s/code/breditor/target/v1-candidate-runs/run-pha6E4/07-physical-operation-v3-type-fence.log"
+          },
+          {
+            "id": "complete-operation-cohort-contracts",
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/Users/s/code/breditor/target/v1-candidate-runs/run-pha6E4/08-complete-operation-cohort-contracts.log"
+          },
+          {
+            "id": "physical-operation-v3-contracts",
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/Users/s/code/breditor/target/v1-candidate-runs/run-pha6E4/09-physical-operation-v3-contracts.log"
+          },
+          {
+            "id": "physical-operation-v3-seven-room-plan-contracts",
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/Users/s/code/breditor/target/v1-candidate-runs/run-pha6E4/10-physical-operation-v3-seven-room-plan-contracts.log"
+          },
+          {
+            "id": "native-complete-cohort",
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/Users/s/code/breditor/target/v1-candidate-runs/run-pha6E4/11-native-complete-cohort.log"
+          }
+        ],
+        "exitCode": 0
+      },
+      {
+        "name": "source",
+        "manifest": "/Users/s/code/breditor/target/v1-candidate-runs/run-Q6Lcmq/result.json",
+        "stages": [
+          {
+            "id": "physical-operation-v3-seven-room",
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/Users/s/code/breditor/target/v1-candidate-runs/run-Q6Lcmq/01-physical-operation-v3-seven-room.log"
+          }
+        ],
+        "exitCode": 0
+      },
+      {
+        "name": "installed",
+        "manifest": "/Users/s/code/breditor/target/v1-candidate-runs/run-ekE3ZZ/result.json",
+        "stages": [
+          {
+            "id": "installed-physical-operation-v3-seven-room",
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/Users/s/code/breditor/target/v1-candidate-runs/run-ekE3ZZ/01-installed-physical-operation-v3-seven-room.log"
+          }
+        ],
+        "exitCode": 0
+      }
+    ]
+  },
+  "functionalDomain": {
+    "nativeProducer": {
+      "profiles": 10,
+      "registeredDocumentWritersPerRoom": 7,
+      "registeredReviewActorsPerRoom": 7,
+      "protectedStreamsPerRoom": 14,
+      "retainedFiles": 50,
+      "actualOwnerAuthentication": true,
+      "coldNativeHostReopen": true,
+      "physicalOnlyStaleCutRefusal": true,
+      "rawCredentialsExported": false,
+      "sourceMatched": true
+    },
+    "sdk": {
+      "sourceRooms": 40,
+      "freshInstalledRooms": 40,
+      "actualProductionBundleRooms": 40,
+      "distinctWritersPerRoom": 7,
+      "distinctReviewActorsPerRoom": 7,
+      "coldClientsPerRun": 280,
+      "wholeNonemptyUploadStoresPerRun": 280,
+      "independentDocumentReviewHistoryPairs": 4,
+      "matchingAssertions": true,
+      "failed": 0,
+      "skipped": 0
+    },
+    "verified": [
+      "All seven concrete families in one actual native room per case",
+      "Exact native histories, whole uploads and original/input/full-graph provenance",
+      "One SDK cold resume before joint handoff",
+      "Both Undo/Redo lanes and later edits after recovery-job authority/cancellation ends",
+      "No partial or duplicate-writer relabeling to construct the fixture",
+      "No network, token request or service activation during inactive client recovery"
+    ],
+    "boundaries": [
+      "Seven currently enabled document/editor and review/comment writers under one account; no full role/observer/revocation Cartesian domain",
+      "Explicit history/original range and selection policies; this is not the full UI/feature/mask Cartesian product",
+      "Two whole PNG upload entries per client; not provider reference closure or inline-image rendering qualification",
+      "Synthetic IndexedDB/locks/raster presentation; not process/power-loss or physical-browser durability",
+      "Post-job edits are flushed; a second cold reopen after those later edits is not a new assertion in this matrix"
+    ]
+  },
+  "regressions": {
+    "completeCohortAssertions": 56,
+    "existingRoomAssertionsIncludingPlan": 54,
+    "additionalSevenRoomPlanAssertions": 1,
+    "strictPrivateTypeFixtures": 2
+  },
+  "native": {
+    "freshServerEnabledRelayTestsAndDoctests": 379,
+    "serverEnabledStrictLint": true,
+    "noServerStrictLint": true,
+    "relayFormatting": true,
+    "normalWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "nativeProductSourcesUnchanged": true,
+    "fullWorkspaceRustSuitesFreshlyRun": false
+  },
+  "installed": {
+    "workspaceLinks": false,
+    "registryArtifacts": 45,
+    "productionModules": 604,
+    "bundleSha256": "59b0f266ff3158a36bb3dc1fd94e567583f2e9085b595acc83c2e755f4d64bd2",
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "sha256": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "sha256": "d34274fee13a38efa8b3e0fbf1d5fc735f26ceba2a05b9e96bc426f7c4954ad0"
+      }
+    ],
+    "archiveBytesUnchangedSinceParent": true
+  },
+  "observedRefusal": {
+    "manifest": "target/v1-candidate-runs/run-ZL78XE/result.json",
+    "kind": "new-fixture strict lint refused a 105-line function",
+    "repair": "Extracted registration validation into its named helper; no lint allowance, product-protocol change or weakened assertion",
+    "sameNormalStagesRepeated": true
+  },
+  "remaining": [
+    "Retained historical-copy and provider/client reconciliation",
+    "Authenticated whole-room activation and cross-device writer fencing",
+    "Sustainable native Undo/Redo and outstanding offline retention beyond current bounds",
+    "Remaining catalog feature parity and all thirteen V1 release gates"
+  ],
+  "noPushTagVersionPublishOrDeployment": true
+}

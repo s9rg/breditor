@@ -73,6 +73,11 @@ path = "examples/server_generation_inventory_fixture.rs"
 required-features = ["server"]
 
 [[example]]
+name = "complete_cohort_fixture"
+path = "examples/complete_cohort_fixture.rs"
+required-features = ["server"]
+
+[[example]]
 name = "physical_recovery_control_functional"
 path = "examples/physical_recovery_control_functional.rs"
 required-features = ["server"]

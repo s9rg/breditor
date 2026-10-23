@@ -58,13 +58,27 @@ each pass the same 53 functional assertions; both private type fixtures pass.
 The source-matched native fixture producers are fresh. The unchanged legacy
 480-cohort mixed domain, cleanup and binding-refusal probes also pass.
 
-The new room tests cover individual cold/continuation paths for every family and
-one real two-writer local/graph room, not seven distinct registered writers
-together. Retained-copy/provider/client reconciliation, authenticated activation,
-sustainable history, remaining parity and all thirteen V1 gates remain required.
-Native product sources, normal Wasm, public-root APIs and defaults are unchanged.
-Full Rust-suite execution remains carried evidence. No version, push, tag,
-publication or deployment is promoted.
+That initial room domain covers individual cold/continuation paths for every
+family and one real two-writer local/graph room. A subsequent
+[actual seven-writer qualification](qualification/2026-10-23-actual-seven-room.json)
+passes thirteen selected normal stages from the expanded 364-stage functional
+plan. Source, fresh offline packages and the actual production bundle each pass
+the same forty cases: ten native profile/wire combinations times four independent
+history pairs. Every room has seven real registered writers and comment actors,
+one per recovery family; each run cold-recovers 280 clients with exact histories,
+whole nonempty uploads and provenance. Both Undo/Redo lanes and later editing
+survive retirement of the recovery job. The separate native producer requires all
+fourteen protected streams and checks real authenticated/cold/stale-cut behavior;
+it does not connect or authenticate the SDK clients.
+
+The checkpoint freshly passes relay formatting, strict server/no-server lint and
+379 server-enabled relay tests/doctests. Package archive bytes, native product
+sources, normal Wasm, public-root APIs and defaults remain unchanged. Full
+workspace Rust suites, browser durability and the full role/feature-policy domain
+are not freshly qualified here. Retained-copy/provider/client reconciliation,
+authenticated activation, sustainable history, remaining parity and all thirteen
+V1 gates remain required. No version, push, tag, publication or deployment is
+promoted.
 
 ## Complete delivery cohort checkpoint
 

@@ -1,0 +1,9 @@
+/** Explicit new seven-author producer reader. The old two-author inventory
+ * fixture stays closed and is independently required. No source DTO is minted. */
+import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {resolve} from 'node:path';import {pathToFileURL} from 'node:url';import {createHash} from 'node:crypto';
+const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
+export async function sevenNativeFixtures({runtime=new URL('../../../target/promoted-shared-web/',import.meta.url).pathname,report=new URL('../../../target/complete-cohort-native.json',import.meta.url)}={}){
+ const root=resolve(new URL('../../../',import.meta.url).pathname),selected=JSON.parse(readFileSync(report));assert.equal(selected.format,'breditor/native-complete-cohort-check');assert.equal(selected.passed,true);assert.equal(selected.registeredWritersPerRoom,7);assert.equal(selected.protectedStreamsPerRoom,14);for(const row of selected.files){const bytes=readFileSync(resolve(root,row.path));assert.equal(bytes.length,row.bytes);assert.equal(sha(bytes),row.sha256);}assert.equal(sha(readFileSync(selected.manifest)),selected.manifestEvidence.sha256);const manifest=JSON.parse(readFileSync(selected.manifest));assert.equal(manifest.format,'breditor/native-complete-cohort-fixtures');assert.equal(manifest.cases.length,10);
+ const native=await import(pathToFileURL(resolve(runtime,'breditor_shared.js')).href);await native.default({module_or_path:readFileSync(resolve(runtime,'breditor_shared_bg.wasm'))});
+ return{native,manifest,source:selected,fixture:item=>JSON.parse(readFileSync(item.path)),profile(fixture){const name=fixture.language===1?'from_configuration_json':fixture.standard?'from_standard_configuration_json_v'+fixture.language:'from_configuration_json_v'+fixture.language;return native.SharedRichProfile[name](fixture.configuration);}};
+}

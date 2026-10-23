@@ -99,11 +99,41 @@ the room contracts pass 54, including their candidate-plan law. Fresh source SDK
 installed packages and actual bundled code each pass the same 53 functional
 assertions. Both private contract type fixtures pass strict checks.
 
-The room domain covers each family independently through cold recovery, exact
-native/upload/provenance checks and post-job continuation, plus one real
+That initial room domain covers each family independently through cold recovery,
+exact native/upload/provenance checks and post-job continuation, plus one real
 two-writer local/graph room. It exercises lost acknowledgements at three commit
 points, missing completed sources, occupied destinations and cancellation/cleanup
-boundaries. It does not yet establish seven distinct registered writers together.
+boundaries.
+
+The subsequent [actual seven-writer qualification](qualification/2026-10-23-actual-seven-room.json)
+passes thirteen selected normal main stages from the 364-stage functional plan.
+Source, fresh offline installed packages and the actual production bundle each
+pass the same forty room cases: ten native profile/wire combinations times four
+independent document/review history pairs. Each case uses seven actual registered
+writers and comment actors in one room, one per concrete recovery family.
+Every run cold-recovers 280 clients with exact native histories, nonempty whole
+uploads and provenance; both Undo/Redo lanes and later edits remain usable after
+the finite job's authority and cancellation end. This matrix cold-opens before
+handoff; it does not add another cold reopen after those later edits.
+
+A separate new native fixture format preserves the old two-writer fixture's
+meaning. Its ten actual producers authenticate a native owner, require all
+fourteen protected streams, cold-reopen native operational state and refuse stale
+physical-only cuts without exporting raw credentials. These native checks do not
+authenticate or connect the seven SDK clients. All seven are currently enabled
+editor/comment authors under one account, not a complete role/observer domain.
+Two retained PNG entries per upload store do not prove inline-image/provider
+reference closure. IndexedDB, locks and raster presentation remain explicit Node
+fixtures.
+
+The seven-writer checkpoint also freshly passes strict server/no-server relay
+lint, relay formatting and all 379 server-enabled relay tests/doctests. Its three
+actual package archives remain byte-identical to the parent recovery checkpoint.
+The installed consumer pins 45 registry artifacts; the actual bundle contains 604
+production modules and no workspace source, React or synthetic IDB implementation.
+The initial strict lint refusal is retained: splitting the new fixture's long
+function into its named registration helper satisfied the unchanged lint, with
+no allowance or product-protocol change.
 
 Source-matched native fixture producers run freshly. The legacy mixed probe
 retains its full 480 cohorts across ten native profiles, 960 cold participants
