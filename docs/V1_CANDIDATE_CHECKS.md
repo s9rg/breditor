@@ -1,5 +1,26 @@
 # V1 candidate checks
 
+Both profiles now require `native-input-incoming-source-contracts`,
+`native-input-incoming-source-type-fence`, `native-input-incoming-source` and
+`installed-native-input-incoming-source`. The private
+[incoming native source](NATIVE_INPUT_INCOMING_SOURCE.md) binds an actual admitted
+input handle to its genuine live journal/source, with fresh read policy and
+both-lane native/version continuation. It is not a custody or activation grant.
+The forty-case source/installed workload covers five native profiles, four
+history pairs and both input families, with rotated scope/mask coverage rather
+than a full Cartesian domain. The real production bundle repeats the workload;
+installed assertions change reversible import/runtime/fixture locations only.
+The [selected qualification](qualification/2026-10-22-native-input-incoming-source.json)
+passes all 33 selected stages from the 339-check functional plan. Source/installed
+laws pass 16/15, including one source plan law; each of source, installed archives
+and the actual bundle passes forty cases with equal semantic results. Three
+offline consumers pin matching archives. Workspace/diagnostic tests pass 2,647,
+editor tests 385 and scripts 2,827, with three existing browser opt-in skips.
+The initial false-only view assertion is corrected to full view equality; failed
+runs remain retained and no native repair is claimed. Previous full recovery
+matrices carry only across verified unchanged bytes, not as fresh executions.
+The complete 339/347-check plans are not executed. All thirteen V1 gates remain open.
+
 Both profiles now require `flat-local-participant-contracts`,
 `flat-local-participant-type-fence`, `flat-local-participant` and
 `installed-flat-local-participant`. The distinct private

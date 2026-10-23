@@ -86,6 +86,32 @@ authenticated whole-room activation and sustainable native history remain the
 next architectural work. Full parity and all thirteen V1 gates remain open;
 no version, push, tag, publication or deployment is promoted.
 
+## Current incoming source implementation
+
+The private [incoming-source implementation](NATIVE_INPUT_INCOMING_SOURCE.md)
+now binds genuine snapshot/flat inputs to later native sources under fresh read
+policy. Literal incoming bytes, both native histories and the ordered version
+prefix are checked without transferring writers or activating a server. Actual
+archive handles and held journal scopes, not matching metadata or saved flags,
+bind its lifetime.
+
+The [selected qualification](qualification/2026-10-22-native-input-incoming-source.json)
+passes 33 selected stages from the 339-check functional plan. Source/installed
+laws pass 16/15, including the separate source plan law; source, fresh installed
+archives and the actual production bundle each pass forty representative native
+cases with equal results. Strict nominal types pass, and three offline consumers
+pin matching archives. Workspace/diagnostic tests pass 2,647, editor tests 385 and
+scripts 2,827, with three existing opt-in browser skips. The first probe's explicit
+false `readOnly` assumption is corrected to full view equality without changing
+native semantics; its two failed stages remain retained. Earlier full recovery
+matrices carry under exact unchanged inputs/archive bytes rather than being
+freshly executed in this read-only slice.
+
+The next room contract must explicitly add both local-operation families to the
+existing five-family catalog and preserve every unresolved historical copy.
+Full reconciliation, authenticated activation, sustainable history, remaining
+feature parity and all thirteen V1 gates remain required.
+
 ## Previous shared journal checkpoint
 
 The private [shared native-input journal](NATIVE_INPUT_OPERATION_JOURNAL.md) now

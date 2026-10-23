@@ -137,6 +137,16 @@ and installed-consumer domains remain mandatory. Native history ceilings, room
 adoption/reconciliation, authenticated activation and V1 gates remain open. See
 [repeatable local recovery](../../docs/FLAT_LOCAL_OPERATION_PARTICIPANT.md).
 
+A separate private incoming-source capture borrows the actual snapshot/flat
+journal and verifies its literal incoming file against later LIVE document and
+comment histories plus ordered versions. Read permission and native factories
+are selected afresh; no native pointer crosses Wasm instances. The same admitted
+archive handle and unchanged native/version stamp remain required throughout
+the borrow. Captured metadata grants neither writer/upload custody nor room
+activation. Source, installed and actual production-bundle checks are required;
+this is not a public-root API. See the
+[incoming native source contract](../../docs/NATIVE_INPUT_INCOMING_SOURCE.md).
+
 `SharedPersistentSession.exportBackup()` captures exact native history, including
 Redo, without a save or publication. Paired `SharedReviewPersistentSession`
 archives also retain comments, local version packets and selected nonsecret

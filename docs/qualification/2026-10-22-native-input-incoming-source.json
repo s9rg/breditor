@@ -1,0 +1,203 @@
+{
+  "format": "breditor/native-input-incoming-source-qualification",
+  "formatVersion": 1,
+  "qualifiedDate": "2026-10-22",
+  "calendarTimeZone": "America/Toronto",
+  "passed": true,
+  "source": {
+    "commit": "4de9a9466e0e12fa335c95b975b53b57166e766d",
+    "dirty": true,
+    "sha256": "ac15f64a513be7c5eafacd5449fe5534e8fed7a1bac8f556dd1c76548393d424",
+    "files": 5911,
+    "bytes": 47599155
+  },
+  "nonDocumentation": {
+    "files": 5282,
+    "sha256": "9acd3496171a3d2fb9f2bbed9cab70e30dbd98d4a907ed562536b73fc7d7ea27"
+  },
+  "selection": {
+    "functionalPlanChecks": 339,
+    "fullPlanChecks": 347,
+    "uniquePassingPlanChecks": 33,
+    "wholePlanExecuted": false,
+    "sourceUnchangedDuringFinalRuns": true,
+    "postQualificationChanges": "Repository docs only. Production source, assertions, candidate plan and packaged README retain the exact nonDocumentation fingerprint.",
+    "manifests": [
+      "/Users/s/code/breditor/target/v1-candidate-runs/run-VLFM6z/result.json",
+      "/Users/s/code/breditor/target/v1-candidate-runs/run-v1SYsZ/result.json",
+      "/Users/s/code/breditor/target/v1-candidate-runs/run-WMuhx1/result.json",
+      "/Users/s/code/breditor/target/v1-candidate-runs/run-wY3nHW/result.json",
+      "/Users/s/code/breditor/target/v1-candidate-runs/run-tldesk/result.json"
+    ]
+  },
+  "implemented": [
+    "A genuine private capture binds the actual admitted snapshot-v1 or flat-local-v1 input handle to its actual restored-local/flat-local native source. Incoming provenance is not same-point export equality or arbitrary historical-copy reconciliation.",
+    "Literal input bytes, both native history lanes and the exact ordered version prefix are checked. Incoming and LIVE histories are replayed in the independently selected read-only runtime; no runtime A pointer enters runtime B.",
+    "The actual journal read scope is reserved before callbacks and held until disposal. Fresh read policy survives an ended writer grant without acquiring writer custody. Mutation, revocation, retirement and disposal invalidate coherent reads; cleanup remains available.",
+    "Temporary owners are disposed before final construction. Unreturned owners deny reads, result wrappers precede the last stamp check, and nominal source/policy types plus actual WeakMap brands reject structural stand-ins.",
+    "No public-root API, old file/schema/default, native binary, flush, upload mutation or network behavior changes."
+  ],
+  "tests": {
+    "sourceContracts": 16,
+    "installedContracts": 15,
+    "newCandidatePlanLaw": 1,
+    "strictPrivateTypeFixtures": 1,
+    "sourceInstalledAndProductionBundleEach": {
+      "format": "breditor/native-input-incoming-source-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "cases": 40,
+      "profiles": 5,
+      "prefixReads": 40,
+      "writerGrantRefusals": 40,
+      "exactNativeRecoveries": 40,
+      "versionCatalogs": 40,
+      "wholeUploads": 40,
+      "originalPixels": 40,
+      "readGrantRefusals": 80,
+      "staleNativeRefusals": 40,
+      "disposedReaderRefusals": 80,
+      "distinctArchiveHandleRefusals": 2,
+      "futureUndoPairs": 40,
+      "networkCalls": 0,
+      "kinds": {
+        "snapshot-v1": 20,
+        "flat-local-v1": 20
+      },
+      "histories": {
+        "original/original": 10,
+        "original/segmented-v1": 10,
+        "segmented-v1/original": 10,
+        "segmented-v1/segmented-v1": 10
+      },
+      "selectionScopes": [
+        0,
+        1,
+        2
+      ],
+      "capabilityMasks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "fullCartesianDomain": false,
+      "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+      "scope": "Forty fixed representative cases: each of five normal native profiles, four document/comment history pairs and both actual local input families. Selection scopes and capability masks rotate, not a full Cartesian matrix. Fresh read after ended writer grant; exact captured native records and versions; unchanged whole uploads/pixels; same-metadata distinct real archive refusal; real future Undo; stale/revoked/disposed refusal. No room adoption, authenticated activation, physical durability, sustainable history or V1 approval."
+    },
+    "semanticResultsMatch": true,
+    "productionModuleCount": 558,
+    "workspace": 2647,
+    "editor": 385,
+    "scriptsPassed": 2827,
+    "scriptsFailed": 0,
+    "existingOptInBrowserSkips": 3,
+    "installedNativeOwnerLaws": 32,
+    "installedAndBundledKernelLawsEach": 6
+  },
+  "assertionCorrection": {
+    "beforeSource": {
+      "commit": "4de9a9466e0e12fa335c95b975b53b57166e766d",
+      "dirty": true,
+      "sha256": "75442ad0c6c22ee0a47739655230705da4db52c0b92fde5cd9bf4692c1e938a4",
+      "files": 5911,
+      "bytes": 47599137
+    },
+    "beforePassingStages": 31,
+    "beforeFailedStages": 2,
+    "afterPassingStages": 33,
+    "interruptedProcesses": 0,
+    "assertionChanged": true,
+    "unchangedAssertionProductionRepairClaim": false,
+    "nativeViewDefaultChanged": false,
+    "reason": "Both new representative probes assert an explicit false readOnly field, but the unchanged native view format emits that field only when true. Replace this incorrect assumption with complete before/after view equality.",
+    "probeBeforeSha256": "5ae9f7faaf14983874bf6c80ea7fdcaa96135b6edbfc4a131738941c26138cf6",
+    "probeAfterSha256": "3e7fa3ca69fa9e848faaa5876319e707733b1271682e90938280183efc19fb15"
+  },
+  "compatibility": {
+    "publicRootExportsUnchanged": true,
+    "existingFamilyMeaningsUnchanged": true,
+    "normalNativeFilesUnchanged": 12,
+    "unchangedNativeRustInputs": 2857,
+    "legacySnapshotAndFlatFullRecoveryMatrices": "Carried from the previous verified checkpoint under exact prior production/archive bytes; not freshly executed in this read-only slice."
+  },
+  "carriedEvidence": {
+    "prior": {
+      "index": "target/flat-local-participant-final-LxC6aB/index.json",
+      "sha256": "8db6b2dd159ccaedd7eff60e8e1887d7a4d6d5c181ff1b90f19671a6b7ff0fee",
+      "source": {
+        "commit": "37ca4b51595c882ad0b284ff1d8c716848aee526",
+        "dirty": true,
+        "sha256": "e98058ce2f2558d03a557a23367e97b244a0871dd9029ea8915aab1bcd715edf",
+        "files": 5899,
+        "bytes": 47503525
+      }
+    },
+    "unchangedPriorNonDocumentationInputs": 5270,
+    "unchangedNativeInputs": 2857,
+    "normalRuntimeFiles": 12,
+    "legacyFullMatricesFresh": false,
+    "priorPackages": [
+      {
+        "name": "@breditor/browser",
+        "priorArchiveSha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+        "unchangedFiles": 193,
+        "changed": []
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "priorArchiveSha256": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad",
+        "unchangedFiles": 176,
+        "changed": []
+      },
+      {
+        "name": "@breditor/collaboration",
+        "priorArchiveSha256": "b5d5078eb410491446b8c52c040eace2da78c1abb20965e14fa3b818a4a2cb1d",
+        "unchangedFiles": 1144,
+        "changed": [
+          {
+            "path": "README.md",
+            "beforeSha256": "7f2ea109aae0e9119b4261e1d03b35bab218b7d5a6864db8098800070574a226",
+            "afterSha256": "8d3778fea05b01b866513b06b8322d809ec0b161e7ee3762fa638bfc3182b87d"
+          }
+        ]
+      }
+    ]
+  },
+  "installedEvidence": {
+    "freshConsumers": 3,
+    "matchingArchiveSha256": {
+      "@breditor/browser": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+      "@breditor/experimental-rich-content": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad",
+      "@breditor/collaboration": "4f7bae024c3019a57511ca122326a71fea51d53e5bce1e90f456f5f57f6361ce"
+    },
+    "workspaceLinks": false,
+    "offlineRegistryIntegrityChecked": true,
+    "assertionChanges": "Only reversible module/runtime/fixture locations in installed copies. Fixed source probe copied byte-identically; the bundle probe changes fixture locations only. No alternate runtime or reduced workload.",
+    "productionBundleExcludesWorkspaceReactAndSyntheticStorage": true
+  },
+  "retained": {
+    "index": "target/native-input-incoming-source-final-opCNbx/index.json",
+    "sha256": "33cedd3aba942ca642ec506a6ceffff64dd07c24f21c427cd1281352ffd5e369",
+    "files": 212,
+    "includes": "Five final terminal manifests and 33 logs; four reports; three fresh consumers and matching archives; real production bundle and fixed assertions; diagnosed failed round with 43 retained files; full source inventory, unchanged-source/package carry and twelve normal runtime files."
+  },
+  "remaining": [
+    "Explicit seven-family room catalog retention and actual operational adoption, preserving original family meanings and every retained copy.",
+    "Complete historical-copy/provider/client reconciliation, writer/upload custody and newly authenticated whole-room activation.",
+    "Sustainable native retained Undo, independent comment/server-log generations, remaining full parity and all thirteen V1 release gates."
+  ],
+  "nativeRustSuitesFresh": false,
+  "roomAdoptionOrActivationSolved": false,
+  "sustainableNativeHistorySolved": false,
+  "physicalDurabilityQualified": false,
+  "historicalWebKitRepair": false,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "versionChanged": false,
+  "pushed": false
+}

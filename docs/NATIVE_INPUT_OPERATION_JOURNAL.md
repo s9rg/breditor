@@ -108,3 +108,13 @@ native capture/restore. All 35 selected stages pass, including fresh existing
 snapshot standalone/parent source/installed domains and 67/66 source/installed
 flat-family laws. It retains the original snapshot protocol meanings and does
 not promote room adoption, sustainable history or V1 readiness.
+
+The private [incoming native source](NATIVE_INPUT_INCOMING_SOURCE.md) additionally
+holds an actual journal read scope while comparing its literal imported input to
+later LIVE native/version history. A new read policy can outlive the writer's
+grant, but cannot transfer that writer or bind local comments to a relay. This
+separate incoming-provenance contract has its own
+[selected qualification](qualification/2026-10-22-native-input-incoming-source.json):
+33 selected stages pass, including 16/15 source/installed laws and forty identical
+representative native cases in source, installed archives and the actual bundle.
+It does not qualify the remaining seven-family room integration.
