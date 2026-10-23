@@ -26,6 +26,8 @@ export class NativeInputParticipantWitness{
   }finally{if(!done)scope.release();}
  }
  check():void{state(this).check();}
+ /** Callback-free read fence, independent of handoff preparation/consumption. */
+ checkCurrent():void{state(this).current();}
  prepareHandoff<P extends SharedSelectionPolicy>(source:Session<P>){const s=state(this);if(s.source!==source)throw s.fail('handoff_source_mismatch');const current=()=>{if(states.get(this)!==s||!s.exposed)throw s.fail('handoff_closed');s.current();};
   return prepareNativeInputHandoff({source,check:()=>{current();s.check();current();},current,uploads:()=>uploads.release.call(s.uploads),release:()=>{states.delete(this);s.scope.release();},file:s.file,blob:s.blob,closed:()=>s.fail('handoff_closed')});
  }

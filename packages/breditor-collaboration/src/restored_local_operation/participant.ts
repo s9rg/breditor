@@ -20,8 +20,17 @@ import {createRestoredLocalParentDatabase,existingRestoredLocalParentDatabase,re
 import type {RestoredLocalParticipantOptions,RestoredLocalParticipantParts} from './participant_contract.js';
 import {fenceRestoredLocalParentDatabase,retainedRestoredLocalParentRecord,updateRestoredLocalParentRecord,releaseRestoredLocalParentLeases,verifyRestoredLocalParticipant,type RestoredLocalParticipantState} from './participant_state.js';
 import type {NativeInputParticipantReservation} from '../native_input_operation/cohort_member.js';
+import {operationalReadReservation,type OperationalReadReservation} from '../operation_read/reservation.js';
+import {checkRecoveryLeasesHeld} from '../participant_recovery/lease.js';
+import {readRestoredLocalUploadStore} from './participant_assets.js';
+import {RestoredLocalParticipantWitness as ReadWitness} from './participant_witness.js';
 const key=Object.freeze({}),closeSource=Session.prototype.close,discardSource=Session.prototype.discardAndClose,closeJournal=Journal.prototype.close,progressJournal=Journal.prototype.progress,journalBlob=Journal.prototype.blob;
+const readWitnessCheck=ReadWitness.prototype.check,readWitnessCurrent=ReadWitness.prototype.checkCurrent,readWitnessRelease=ReadWitness.prototype.release;
 let reserve:<P extends SharedSelectionPolicy>(owner:OperationalRestoredLocalParticipant<P>)=>NativeInputParticipantReservation<P>;
+type ReadParts<P extends SharedSelectionPolicy>=Readonly<Omit<RestoredLocalParticipantParts<P>,'input'>>;
+let reserveRead:<P extends SharedSelectionPolicy>(owner:OperationalRestoredLocalParticipant<P>)=>OperationalReadReservation<ReadParts<P>>;
+/** Non-consuming snapshot/source/upload read. No input or coordinator retires. */
+export function reserveRestoredLocalRead<P extends SharedSelectionPolicy>(owner:OperationalRestoredLocalParticipant<P>):OperationalReadReservation<ReadParts<P>>{return reserveRead(owner);}
 /** Internal genuine-parent reservation, never a structural adapter or root API. */
 export function reserveRestoredLocalParticipant<P extends SharedSelectionPolicy>(owner:OperationalRestoredLocalParticipant<P>):NativeInputParticipantReservation<P>{return reserve(owner);}
 export class OperationalRestoredLocalParticipant<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
@@ -34,6 +43,16 @@ export class OperationalRestoredLocalParticipant<P extends SharedSelectionPolicy
    consume(){owner.#closed=true;owner.#busy=false;finished=true;},
    abandon(){if(finished)return;finished=true;try{witness?.release();}finally{owner.#busy=false;}},
   };
+ };}
+ static{reserveRead=<Q extends SharedSelectionPolicy>(owner:OperationalRestoredLocalParticipant<Q>)=>{
+  if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('restored_local_participant_policy');owner.#start();const s=owner.#state,error=()=>fail('restored_local_participant_busy');
+  try{return operationalReadReservation(1,async()=>{
+   checkRecoveryLeasesHeld(s.leases);const witness=await verifyRestoredLocalParticipant(s);let complete=false;
+   const current=()=>{if(owner.#closed||!owner.#busy||s.inputDisposed||!s.db)throw error();checkRecoveryLeasesHeld(s.leases);readWitnessCurrent.call(witness);};
+   try{if(s.record.phase!=='operational')throw fail('restored_local_participant_record');current();const value=Object.freeze({source:Object.freeze({session:s.source}),uploads:readRestoredLocalUploadStore(s.uploads)});
+    const result={value,check:()=>{readWitnessCheck.call(witness);current();},current,async verify(){checkRecoveryLeasesHeld(s.leases);await retainedRestoredLocalParentRecord(s);readWitnessCheck.call(witness);current();},release:()=>readWitnessRelease.call(witness)};current();complete=true;return result;
+   }finally{if(!complete)readWitnessRelease.call(witness);}
+  },()=>{owner.#busy=false;},error);}catch(error){owner.#busy=false;throw error;}
  };}
  static begin<Q extends SharedSelectionPolicy>(file:Blob,provided:RestoredLocalParticipantOptions<Q>){if(this!==OperationalRestoredLocalParticipant)throw fail();return OperationalRestoredLocalParticipant.#open(provided,file);}
  static resume<Q extends SharedSelectionPolicy>(provided:RestoredLocalParticipantOptions<Q>){if(this!==OperationalRestoredLocalParticipant)throw fail();return OperationalRestoredLocalParticipant.#open(provided);}

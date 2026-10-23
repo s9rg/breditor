@@ -51,3 +51,5 @@ export class NativeInputParticipantUploads{
 const p=NativeInputParticipantUploads.prototype;
 export const nativeInputUploads=Object.freeze({belongs:(owner:unknown,family:object):owner is NativeInputParticipantUploads=>{const s=states.get(owner as NativeInputParticipantUploads);return !!s&&s.exposed&&s.family===family;},check:p.check,identity:p.identity,cohort:p.cohort,file:p.file,verify:p.verify,release:p.release,close:p.close});
 export function openNativeInputUploadsForParticipant<A,C extends NativeInputJournalChoice,O,R extends NativeInputCutIntent,F extends object>(family:NativeInputJournalFamily<A,C,O,R,F>,parent:unknown,input:O,options:NativeInputUploadsOptions,resume:boolean){return openForParent(family,parent,input,options,resume);}
+/** Actual internal store borrow without releasing its preheld recovery custody. */
+export function readNativeInputUploadStore(owner:NativeInputParticipantUploads):RichAssetStore{return state(owner).store;}

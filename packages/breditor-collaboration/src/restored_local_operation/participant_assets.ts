@@ -59,3 +59,6 @@ export class RestoredLocalParticipantUploads{
 const p=RestoredLocalParticipantUploads.prototype;
 export const restoredLocalUploads=Object.freeze({owns:(owner:unknown):owner is RestoredLocalParticipantUploads=>states.get(owner as RestoredLocalParticipantUploads)?.exposed===true,check:p.check,identity:p.identity,file:p.file,verify:p.verify,release:p.release,close:p.close});
 export const openRestoredLocalUploadsForParticipant=(parent:RestoredLocalParticipantOpening,owner:DetachedRestoredLocalInput,provided:RestoredLocalUploadsOptions,resume:boolean)=>openForParent(parent,owner,provided,resume);
+/** Internal actual store borrow. It keeps the existing recovery custody held;
+ * it is not release(), transfer, upload completion or provider readiness. */
+export function readRestoredLocalUploadStore(owner:RestoredLocalParticipantUploads):RichAssetStore{return state(owner).store;}

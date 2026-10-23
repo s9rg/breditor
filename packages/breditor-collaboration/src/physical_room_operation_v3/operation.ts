@@ -21,6 +21,9 @@ import {physicalOperationV3LegacyPolicies,openPhysicalOperationV3Child,closePhys
 import type {MixedCatalogStagePolicy} from '../mixed_catalog_stage/prepare.js';
 import type {PhysicalOperationV3BeginOptions,PhysicalOperationV3ResumeOptions,PhysicalOperationV3OpenOptions,PhysicalOperationV3Progress,PhysicalOperationV3Parts} from './contract.js';
 import {physicalOperationV3Failure as fail,physicalOperationV3Known as known,physicalOperationV3Database as dbName} from './policy.js';
+import {borrowCompleteNativeRead} from '../complete_operation_cohort/native_read.js';
+import {inspectPhysicalOperationV3Native} from './native_read.js';
+import type {PhysicalOperationV3NativeRead} from './native_read_contract.js';
 const key=Object.freeze({});
 const errors={policy:()=>fail('physical_operation_v3_policy'),busy:()=>fail('physical_operation_v3_in_use'),storage:()=>fail()};
 interface State{
@@ -98,6 +101,17 @@ export class PhysicalRoomClientOperationV3{
  });}
  async #verify():Promise<void>{await this.#retained();const s=this.#s;if(s.record.phase!=='operational'||s.children.some(child=>!child.live))throw fail('physical_operation_v3_restore');for(const child of s.children){await child.live!.operation.check();this.#guard();}}
  check():Promise<void>{return this.#run(()=>this.#verify());}
+ /** Inspect currently held native prefixes without initiating handoff, releasing
+  * any coordinator lease, writing a marker, starting delivery or binding a local
+  * review lane. Historical copies and missing registrations remain explicit. */
+ readNative():Promise<PhysicalOperationV3NativeRead>{return this.#run(async()=>{
+  await this.#rollback.drain();await this.#verify();const s=this.#s;
+  const read=borrowCompleteNativeRead(s.children.map(child=>child.live!)),cleanup=this.#rollback.retain(()=>read.close());let complete=false;
+  try{await read.prepare();await this.#retained();await read.verify();this.#guard();
+   const result=inspectPhysicalOperationV3Native(s.held.state,s.children.map(child=>child.selected),read);
+   this.#guard();read.checkCurrent();await read.close();cleanup.complete();complete=true;return result;
+  }finally{if(!complete)await cleanup.rollback();}
+ });}
  #disposeArchive():void{const s=this.#s;if(!s.archiveDisposed){archive.dispose.call(s.held.archive);s.archiveDisposed=true;}}
  /** Reserve this actual job alongside every real child. Temporary native reader
   * cleanup precedes the last client barriers. consume is private flag writes

@@ -3,33 +3,13 @@
  * selecting two copies of one writer/actor is not two independent clients. */
 import type {PhysicalCatalogV3ArchiveState} from '../physical_room_catalog_v3/archive.js';
 import {physicalCatalogV3ParticipantHeader} from '../physical_room_catalog_v3/participant.js';
-import type {PhysicalRoomCatalogV3Entry} from '../physical_room_catalog_v3/contract.js';
-import {SharedParticipantBackup} from '../participant_backup/archive.js';
-import {readPairedBackupRecord} from '../backups/paired.js';
+import {physicalOperationV3SourceIdentity as identity,type PhysicalOperationV3SourceIdentity as Identity} from './source_identity.js';
 import {participantAuthority} from '../participant_backup/policy.js';
 import {snapshotPhysicalOperationV3Policy as snapshot,physicalOperationV3PolicyFields as fields} from './policy_snapshot.js';
 import {operationV3Rows as rows} from './input_snapshot.js';
 import {checkPhysicalOperationV3Namespaces} from './namespaces.js';
 import type {PhysicalOperationV3Participant,PhysicalOperationV3Target,PhysicalOperationV3Role} from './contract.js';
 import {physicalOperationV3Failure as fail,physicalOperationV3Name as name,physicalOperationV3Database as dbName} from './policy.js';
-const originalRecords=SharedParticipantBackup.prototype.records;
-type Identity=Readonly<{principal:string;room:string;writer:string;richLanguage:1|2|3;actor:string|undefined;reviewPrincipal:string|undefined}>;
-/** Only admitted catalog data supplies provenance, never caller policy fields. */
-function identity(source:PhysicalCatalogV3ArchiveState,entry:PhysicalRoomCatalogV3Entry):Identity{
- if(entry.family==='original'){
-  const selected=entry.selection.identity,client=source.clients.get(entry.id);if(!client||client.family!=='original')throw fail('physical_operation_v3_diverged');
-  const paired=originalRecords.call(client.backup).find(row=>row.kind==='paired-session'),record=paired&&readPairedBackupRecord(paired.json,selected.source);
-  return{principal:selected.principal,...selected.source,actor:record?.reviewActor,reviewPrincipal:record?.principal};
- }
- const result=(principal:string,native:Pick<Identity,'room'|'writer'|'richLanguage'>,review:{actor:string;principal:string}|null|undefined):Identity=>({principal,room:native.room,writer:native.writer,richLanguage:native.richLanguage,actor:review?.actor,reviewPrincipal:review?.principal});
- switch(entry.family){
-  case'generation':{const id=entry.selection.identity;return result(id.principal,id.source.native,id.source.review);}
-  case'independent-local':{const id=entry.selection.identity;return result(id.principal,id.source.native,id.source.review);}
-  case'independent-delivery':{const id=entry.selection.identity;return result(id.principal,id.source.history.native,id.source.history.review);}
-  case'restored-graph':{const id=entry.selection.original.identity;return result(id.principal,id.source.history.native,id.source.history.review);}
-  case'local-operation-snapshot':case'local-operation-flat':{const id=entry.selection.original.identity;return result(id.principal,id.source.native,id.source.review);}
- }
-}
 function authority(input:unknown):void{if(typeof input!=='function')throw fail('physical_operation_v3_policy');participantAuthority(input as ()=>void);}
 export interface PhysicalOperationV3PreparedTarget{readonly input:PhysicalOperationV3Participant;readonly target:PhysicalOperationV3Target;readonly identity:Identity}
 /** No callbacks, storage requests, format conversion or writer construction.

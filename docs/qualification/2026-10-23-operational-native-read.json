@@ -1,0 +1,122 @@
+{
+  "format": "breditor/selected-functional-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-23",
+  "checkpoint": "non-consuming-seven-family-operational-native-inspection",
+  "status": "passed",
+  "v1Ready": false,
+  "publicationApproved": false,
+  "source": {
+    "commit": "ce2aa10761a2744941313bbddba5ed47d8e1df9d",
+    "dirty": true,
+    "sha256": "adfc7e1a21185959e358a79166864e1326cf75b1e2b639dde7472925a02d6ffd",
+    "files": 6041,
+    "bytes": 48364367
+  },
+  "sourceFrozenBeforeDocumentation": true,
+  "retainedEvidence": {
+    "index": "target/native-read-final-k1zT0H/index.json",
+    "sha256": "5003054f5b8eb9cf91186df034e09474dc691ba1139c844a0665b64673e5d152",
+    "entries": 7873,
+    "nonDocumentationInputs": 5362
+  },
+  "normalCandidateRunner": {
+    "passed": 13,
+    "selected": 13,
+    "functionalPlanStages": 368,
+    "fullPlanStages": 376,
+    "fullPlanExecuted": false,
+    "groups": [
+      {"name": "foundation", "manifest": "target/v1-candidate-runs/run-wjdFhU/result.json", "stages": 11, "exitCode": 0},
+      {"name": "source", "manifest": "target/v1-candidate-runs/run-41N8d1/result.json", "stages": 1, "exitCode": 0},
+      {"name": "installed", "manifest": "target/v1-candidate-runs/run-FSNzFE/result.json", "stages": 1, "exitCode": 0}
+    ]
+  },
+  "functionalDomain": {
+    "sourceAssertions": 53,
+    "freshInstalledAssertions": 53,
+    "actualProductionBundleAssertions": 53,
+    "matchingAssertions": true,
+    "failed": 0,
+    "skipped": 0,
+    "kernelLaws": 5,
+    "legacyUploadCustodyLaws": 2,
+    "actualSevenWriterRoomHistoryCases": 40,
+    "lateCancellationLaws": 1,
+    "documentOnlyAndUnselectedReviewLaws": 4,
+    "realConcurrentRuntimeInitializationLaws": 1,
+    "nativeProfileWireCombinations": 10,
+    "independentNativeHistoryPairs": 4,
+    "freshSourceMatchedNativeInputFiles": 130,
+    "freshActualSevenAuthorInputFiles": 50,
+    "registeredDocumentWritersPerSevenAuthorInput": 7,
+    "registeredReviewActorsPerSevenAuthorInput": 7,
+    "protectedStreamsPerSevenAuthorInput": 14,
+    "strictPrivateTypeFixtures": 3,
+    "readContractsIncludingPlan": 39,
+    "existingCommonCohortContracts": 56,
+    "existingRoomContractsIncludingPlan": 54,
+    "verified": [
+      "All seven actual operational families remain held and reusable across repeated native-only reads",
+      "Exact committed database bytes, native histories, original/input provenance and whole uploads remain unchanged",
+      "Separate read reservations have no consume, handoff or parent-lease release operation",
+      "Actual original/generation upload custody includes delayed lock-manager release acknowledgement before parent reuse",
+      "Both native Undo/Redo lanes, subsequent cohort handoff and later editing remain usable",
+      "Missing/server-ahead streams, unbound local reviews and unselected historical participants stay explicit",
+      "Document-only captures do not count absent or unselected review lanes as server registration coverage"
+    ]
+  },
+  "reproducedRepairs": [
+    {
+      "kind": "new-read-implementation-legacy-upload-custody",
+      "retainedBaseline": "target/native-read-upload-refusal-6hQH7f/index.json",
+      "retainedBaselineSha256": "84869f755413f401a733771e6d866eea54bdf026582c7f557b11d329c782900f",
+      "unchangedRegressionBaselineFailures": 2,
+      "unchangedRegressionFixedPasses": 2,
+      "assertionsChanged": false,
+      "scope": "The initial uncommitted read path omitted original/generation whole-upload holds; both real competing handles acquired custody before repair. The five newer families already held custody."
+    },
+    {
+      "kind": "test-fixture-concurrent-normal-runtime-initialization",
+      "retainedFailure": "target/native-read-init-refusal-ZWMULh/index.json",
+      "retainedFailureSha256": "62a6b9d861022bd5a83a1c1871c9babff5af0708bd204f0783dc47c3fedcee5e",
+      "unchangedRegressionBaselineFailures": 1,
+      "unchangedRegressionFixedPasses": 1,
+      "baselineNormalInitializations": 2,
+      "fixedNormalInitializations": 1,
+      "assertionsChanged": false,
+      "scope": "Concurrent fixture imports shared one generated namespace without sharing its initialization promise. Tiny normalization modules are excluded. Product editor runtime loaders already coalesce initialization. No generated-runtime edit or historical WebKit repair is claimed."
+    }
+  ],
+  "packages": {
+    "freshOfflineArchives": 3,
+    "registryArtifacts": 45,
+    "workspaceLinks": false,
+    "browserSha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+    "richContentSha256": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad",
+    "collaborationSha256": "37c09336992863f2e3c3c4d19e165f3a529bd3083b0259109d0678a5cd01939e",
+    "actualProductionModules": 610,
+    "actualProductionBundleSha256": "c5184159945f98ff28da7dbaf2dc2c247100247445fa070122924adff2dbbd8a",
+    "noWorkspaceReactOrSyntheticStorageInProduction": true
+  },
+  "native": {
+    "normalWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "normalWasmBytes": 13444371,
+    "nativeProductSourcesUnchanged": true,
+    "fullRustSuitesFreshlyExecuted": false
+  },
+  "boundaries": [
+    "Synthetic IndexedDB, locks, raster presentation and offline transports; not physical-browser or process/power-loss durability",
+    "Seven enabled document/editor and review/comment writers under Alice; not the complete role/feature-policy Cartesian product",
+    "Cached catalog inventory is not current authenticated server authority",
+    "Retained-copy, complete historical reference/provider/client reconciliation and cross-device activation remain open",
+    "Separate independent-reader-runtime recovery repairs remain development work, not promoted in this checkpoint",
+    "Sustainable native Undo/offline lifetime, remaining parity and all thirteen V1 gates remain open"
+  ],
+  "publicRootAndDefaultsUnchanged": true,
+  "versionChanged": false,
+  "pushed": false,
+  "tagged": false,
+  "published": false,
+  "deployed": false
+}

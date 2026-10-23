@@ -21,6 +21,8 @@ import {operationJournalFailure as fail} from './journal_failure.js';
 import {snapshotInventoryInputs} from '../room_participant_inventory/input_snapshot.js';
 import {prepareSourceUploadHandoff,type SourceUploadHandoff} from '../operation_cohort/source_handoff.js';
 import {prepareOperationalCohort,type OperationalCohortReservation} from '../operation_cohort/cohort.js';
+import {operationalReadReservation,type OperationalReadReservation} from '../operation_read/reservation.js';
+import {checkRecoveryLeasesHeld} from '../participant_recovery/lease.js';
 interface State<P extends SharedSelectionPolicy>{readonly choice:OperationParticipantSnapshot<P>;readonly p:PreparedIndependentDeliveryRecovery<P>;readonly journal:IndependentOperationCutJournal;readonly owners:OperationParticipantOwners<P>;recoveryDb:IDBDatabase;recoveryDbClosed?:boolean;readonly leases:RecoveryLease[];legacySession?:SharedIndependentDeliverySession<P>|undefined;legacyPrepared?:PreparedIndependentDeliveryRecovery<P>|undefined}
 const key=Object.freeze({}),closeSource=SharedIndependentDeliverySession.prototype.close,discardSource=SharedIndependentDeliverySession.prototype.discardAndClose;
 const names=(s:OperationParticipantSnapshot)=>[s.database,s.sourceDatabase,s.base.options.database,...Object.values(s.base.options.destinations)].sort();
@@ -38,6 +40,10 @@ async function retained<P extends SharedSelectionPolicy>(s:State<P>):Promise<voi
 function closeRecoveryHandle<P extends SharedSelectionPolicy>(s:State<P>):void{if(!s.recoveryDbClosed){s.recoveryDb.close();s.recoveryDbClosed=true;}}
 const openingErrors={policy:()=>fail('independent_operation_policy'),busy:()=>fail('independent_operation_busy'),storage:()=>fail('independent_operation_cleanup')};
 let reserve:<P extends SharedSelectionPolicy>(owners:readonly OperationalIndependentDeliveryParticipant<P>[])=>OperationalCohortReservation<Readonly<IndependentOperationParticipantParts<P>>>;
+let reserveRead:<P extends SharedSelectionPolicy>(owners:readonly OperationalIndependentDeliveryParticipant<P>[])=>OperationalReadReservation<Readonly<IndependentOperationParticipantParts<P>>>;
+/** Read-only source/upload custody. Unlike the handoff reservation, preparing
+ * this scope never releases parent leases or retires retained originals. */
+export function reserveIndependentDeliveryRead<P extends SharedSelectionPolicy>(owners:readonly OperationalIndependentDeliveryParticipant<P>[]):OperationalReadReservation<Readonly<IndependentOperationParticipantParts<P>>>{return reserveRead(owners);}
 /** Actual complete-delivery writers join the existing shared kernel. Retained
  * packets and receipts keep their complete-delivery identity, never local-only. */
 export function reserveOperationalIndependentDeliveryGroup<P extends SharedSelectionPolicy>(owners:readonly OperationalIndependentDeliveryParticipant<P>[]):OperationalCohortReservation<Readonly<IndependentOperationParticipantParts<P>>>{return reserve(owners);}
@@ -60,6 +66,17 @@ export class OperationalIndependentDeliveryParticipant<P extends SharedSelection
     consume(){for(const h of handoffs)h.consume();for(const owner of owners){owner.#closed=true;owner.#busy=false;}finished=true;},abandon,
    };
   }catch(error){abandon();throw error;}
+ };}
+ static{reserveRead=<Q extends SharedSelectionPolicy>(provided:readonly OperationalIndependentDeliveryParticipant<Q>[])=>{
+  const error=()=>fail('independent_operation_busy'),owners=snapshotInventoryInputs(provided,()=>fail('independent_operation_policy'),owner=>{if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('independent_operation_policy');owner.#readable();if(owner.#busy)throw error();return owner;});
+  if(new Set(owners).size!==owners.length)throw fail('independent_operation_policy');for(const owner of owners)owner.#busy=true;
+  try{return operationalReadReservation(owners.length,async index=>{
+   const owner=owners[index]!,s=owner.#state;checkRecoveryLeasesHeld(s.leases);await retained(s);const witness=await operationParticipantWitness(s.p,s.owners,s.journal);let complete=false;
+   const current=()=>{if(owner.#closed||!owner.#busy)throw error();checkRecoveryLeasesHeld(s.leases);witness.current();};
+   try{current();const value=Object.freeze({source:Object.freeze({session:s.owners.session!}),uploads:s.owners.uploads!});
+    const result={value,check:()=>{witness.check();current();},current,async verify(){checkRecoveryLeasesHeld(s.leases);await retained(s);witness.check();current();},release:witness.release};current();complete=true;return result;
+   }finally{if(!complete)witness.release();}
+  },()=>{for(const owner of owners)owner.#busy=false;},error);}catch(error){for(const owner of owners)owner.#busy=false;throw error;}
  };}
  static begin<Q extends SharedSelectionPolicy>(input:IndependentOperationParticipantBeginOptions<Q>):Promise<OperationalIndependentDeliveryParticipant<Q>>{return this.#fromRecovered(input,false);}
  /** Retry publication while the same genuine completed first-stage owner is still held. */

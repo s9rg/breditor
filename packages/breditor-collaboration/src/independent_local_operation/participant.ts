@@ -25,8 +25,14 @@ import {localJournalFailure as fail} from './journal_failure.js';
 import {snapshotInventoryInputs} from '../room_participant_inventory/input_snapshot.js';
 import {prepareNativeInputHandoff,type NativeInputHandoff} from '../native_input_operation/handoff.js';
 import type {OperationalCohortReservation} from '../operation_cohort/cohort.js';
+import {operationalReadReservation,type OperationalReadReservation} from '../operation_read/reservation.js';
+import {checkRecoveryLeasesHeld} from '../participant_recovery/lease.js';
 const key=Object.freeze({}),closeSource=Session.prototype.close,journalFile=Journal.prototype.file,journalBlob=Journal.prototype.blob,journalClose=Journal.prototype.close,journalProgress=Journal.prototype.progress;
 let reserve:<P extends SharedSelectionPolicy>(owners:readonly OperationalIndependentLocalParticipant<P>[])=>OperationalCohortReservation<Readonly<LocalOperationParticipantParts<P>>>;
+export interface LocalParticipantReadParts<P extends SharedSelectionPolicy=SharedSelectionPolicy>{readonly source:Readonly<{session:Session<P>}>;readonly uploads:NonNullable<LocalParticipantOwners<P>['uploads']>}
+let reserveRead:<P extends SharedSelectionPolicy>(owners:readonly OperationalIndependentLocalParticipant<P>[])=>OperationalReadReservation<LocalParticipantReadParts<P>>;
+/** Non-consuming native/upload inspection; no coordinator lease is released. */
+export function reserveIndependentLocalRead<P extends SharedSelectionPolicy>(owners:readonly OperationalIndependentLocalParticipant<P>[]):OperationalReadReservation<LocalParticipantReadParts<P>>{return reserveRead(owners);}
 /** Intrinsic legacy-local group. Original provider semantics remain original;
  * neither a snapshot family tag nor a saved marker supplies these owners. */
 export function reserveOperationalIndependentLocalGroup<P extends SharedSelectionPolicy>(owners:readonly OperationalIndependentLocalParticipant<P>[]):OperationalCohortReservation<Readonly<LocalOperationParticipantParts<P>>>{return reserve(owners);}
@@ -52,6 +58,17 @@ export class OperationalIndependentLocalParticipant<P extends SharedSelectionPol
     abandon,
    };
   }catch(error){abandon();throw error;}
+ };}
+ static{reserveRead=<Q extends SharedSelectionPolicy>(provided:readonly OperationalIndependentLocalParticipant<Q>[])=>{
+  const error=()=>fail('independent_local_participant_busy'),owners=snapshotInventoryInputs(provided,()=>fail('independent_local_participant_policy'),owner=>{if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('independent_local_participant_policy');owner.#readable();if(owner.#busy)throw error();return owner;});
+  if(new Set(owners).size!==owners.length)throw fail('independent_local_participant_policy');for(const owner of owners)owner.#busy=true;
+  try{return operationalReadReservation(owners.length,async index=>{
+   const owner=owners[index]!,s=owner.#state;checkRecoveryLeasesHeld(s.leases);const witness=await verified(s);let complete=false;
+   const current=()=>{if(owner.#closed||!owner.#busy)throw error();checkRecoveryLeasesHeld(s.leases);witness.current();};
+   try{if(s.record.phase!=='operational')throw fail('independent_local_participant_record');current();const value=Object.freeze({source:Object.freeze({session:s.owners.session!}),uploads:s.owners.uploads!});
+    const result={value,check:()=>{witness.check();current();},current,async verify(){await retainedLocalParticipantRecord(s);await verifyLocalRetainedRecovery(s.p,s.recoveryDb!);witness.check();current();},release:witness.release};current();complete=true;return result;
+   }finally{if(!complete)witness.release();}
+  },()=>{for(const owner of owners)owner.#busy=false;},error);}catch(error){for(const owner of owners)owner.#busy=false;throw error;}
  };}
  static begin<Q extends SharedSelectionPolicy>(input:LocalOperationParticipantBeginOptions<Q>):Promise<OperationalIndependentLocalParticipant<Q>>{if(this!==OperationalIndependentLocalParticipant)throw fail('independent_local_participant_policy');return OperationalIndependentLocalParticipant.#fromRecovered(input,false);}
  static resumeRecovered<Q extends SharedSelectionPolicy>(input:LocalOperationParticipantBeginOptions<Q>):Promise<OperationalIndependentLocalParticipant<Q>>{if(this!==OperationalIndependentLocalParticipant)throw fail('independent_local_participant_policy');return OperationalIndependentLocalParticipant.#fromRecovered(input,true);}

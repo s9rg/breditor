@@ -21,6 +21,8 @@ import {restoredParticipantPolicy,type RestoredParticipantOptions} from './polic
 import {initialRestoredParticipant,readRestoredParticipantRecord,type RestoredParticipantRecord} from './record.js';
 import {createRestoredParticipantDatabase,existingRestoredParticipantDatabase,readRestoredParticipantDatabase,writeRestoredParticipantDatabase} from './database.js';
 import {checkRestoredUploads,openRestoredUploads,verifyRestoredUploads,closeRestoredUploads,restoredUploadCustody,type RestoredUploadOwners} from './uploads.js';
+import {operationalReadReservation,type OperationalReadReservation} from '../operation_read/reservation.js';
+import {checkRecoveryLeasesHeld} from '../participant_recovery/lease.js';
 type Pair<P extends SharedSelectionPolicy>=Awaited<ReturnType<typeof openRestoredOperationSource<P>>>;
 interface State<P extends SharedSelectionPolicy>{readonly choice:ReturnType<typeof restoredParticipantPolicy<P>>;readonly input:RestoredOperationInput;readonly plan:string;db:IDBDatabase;dbClosed:boolean;leases:RecoveryLease[];leasesReleased:boolean;inputRetired:boolean;readonly uploads:RestoredUploadOwners;pair?:Pair<P>}
 const key=Object.freeze({}),closeSource=SharedIndependentDeliverySession.prototype.close,discardSource=SharedIndependentDeliverySession.prototype.discardAndClose;
@@ -42,6 +44,9 @@ async function witness<P extends SharedSelectionPolicy>(s:State<P>){
  }finally{if(!returned)scope.release();}
 }
 let reserve:<P extends SharedSelectionPolicy>(owners:readonly RestoredOperationParticipant<P>[])=>OperationalCohortReservation<Readonly<RestoredOperationParticipantParts<P>>>;
+let reserveRead:<P extends SharedSelectionPolicy>(owners:readonly RestoredOperationParticipant<P>[])=>OperationalReadReservation<Readonly<RestoredOperationParticipantParts<P>>>;
+/** Non-consuming graph read, retaining input, coordinator and source leases. */
+export function reserveRestoredOperationRead<P extends SharedSelectionPolicy>(owners:readonly RestoredOperationParticipant<P>[]):OperationalReadReservation<Readonly<RestoredOperationParticipantParts<P>>>{return reserveRead(owners);}
 /** Genuine restored-graph parents use their own input/journal/source contract;
  * no local provenance or caller readiness flag supplies this reservation. */
 export function reserveRestoredOperationGroup<P extends SharedSelectionPolicy>(owners:readonly RestoredOperationParticipant<P>[]):OperationalCohortReservation<Readonly<RestoredOperationParticipantParts<P>>>{return reserve(owners);}
@@ -62,6 +67,17 @@ export class RestoredOperationParticipant<P extends SharedSelectionPolicy=Shared
     consume(){for(const h of handoffs)h.consume();for(const owner of owners){owner.#closed=true;owner.#busy=false;}finished=true;},abandon,
    };
   }catch(error){abandon();throw error;}
+ };}
+ static{reserveRead=<Q extends SharedSelectionPolicy>(provided:readonly RestoredOperationParticipant<Q>[])=>{
+  const error=()=>fail('restored_participant_busy'),owners=snapshotInventoryInputs(provided,()=>fail('restored_participant_policy'),owner=>{if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('restored_participant_policy');owner.#readable();if(owner.#busy)throw error();return owner;});
+  if(new Set(owners).size!==owners.length)throw fail('restored_participant_policy');for(const owner of owners)owner.#busy=true;
+  try{return operationalReadReservation(owners.length,async index=>{
+   const owner=owners[index]!,s=owner.#state;checkRecoveryLeasesHeld(s.leases);await owner.#verify();const held=await witness(s);let complete=false;
+   const current=()=>{if(owner.#closed||!owner.#busy||s.leasesReleased||s.dbClosed||s.inputRetired)throw error();checkRecoveryLeasesHeld(s.leases);held.current();};
+   try{current();const value=Object.freeze({source:Object.freeze({session:s.pair!.source}),uploads:s.uploads.store!});
+    const result={value,check:()=>{held.check();current();},current,async verify(){checkRecoveryLeasesHeld(s.leases);await owner.#verify();held.check();current();},release:held.release};current();complete=true;return result;
+   }finally{if(!complete)held.release();}
+  },()=>{for(const owner of owners)owner.#busy=false;},error);}catch(error){for(const owner of owners)owner.#busy=false;throw error;}
  };}
  static begin<Q extends SharedSelectionPolicy>(file:Blob,options:RestoredParticipantOptions<Q>):Promise<RestoredOperationParticipant<Q>>{return RestoredOperationParticipant.#open(options,file);}
  static resume<Q extends SharedSelectionPolicy>(options:RestoredParticipantOptions<Q>):Promise<RestoredOperationParticipant<Q>>{return RestoredOperationParticipant.#open(options);}

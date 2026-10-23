@@ -15,8 +15,17 @@ import {createFlatLocalParentDatabase,existingFlatLocalParentDatabase,readFlatLo
 import {fenceFlatLocalParentDatabase,releaseFlatLocalParentLeases,retainedFlatLocalParentRecord,updateFlatLocalParentRecord,verifyFlatLocalParticipant,type FlatLocalParticipantState} from './participant_state.js';
 import type {FlatLocalParticipantOptions,FlatLocalParticipantParts} from './participant_contract.js';import {flatLocalFailure as fail} from './failure.js';
 import type {NativeInputParticipantReservation} from '../native_input_operation/cohort_member.js';
+import {operationalReadReservation,type OperationalReadReservation} from '../operation_read/reservation.js';
+import {checkRecoveryLeasesHeld} from '../participant_recovery/lease.js';
+import {readNativeInputUploadStore} from '../native_input_operation/participant_uploads.js';
+import {NativeInputParticipantWitness as ReadWitness} from '../native_input_operation/participant_witness.js';
 const key=Object.freeze({}),closeSource=Session.prototype.close,discardSource=Session.prototype.discardAndClose;
+const readWitnessCheck=ReadWitness.prototype.check,readWitnessCurrent=ReadWitness.prototype.checkCurrent,readWitnessRelease=ReadWitness.prototype.release;
 let reserve:<P extends SharedSelectionPolicy>(owner:OperationalFlatLocalParticipant<P>)=>NativeInputParticipantReservation<P>;
+type ReadParts<P extends SharedSelectionPolicy>=Readonly<Omit<FlatLocalParticipantParts<P>,'input'>>;
+let reserveRead:<P extends SharedSelectionPolicy>(owner:OperationalFlatLocalParticipant<P>)=>OperationalReadReservation<ReadParts<P>>;
+/** Non-consuming flat-input/source/upload read, without rewriting provenance. */
+export function reserveFlatLocalRead<P extends SharedSelectionPolicy>(owner:OperationalFlatLocalParticipant<P>):OperationalReadReservation<ReadParts<P>>{return reserveRead(owner);}
 /** Internal genuine-parent reservation. Flat input is never a snapshot adapter. */
 export function reserveFlatLocalParticipant<P extends SharedSelectionPolicy>(owner:OperationalFlatLocalParticipant<P>):NativeInputParticipantReservation<P>{return reserve(owner);}
 export class OperationalFlatLocalParticipant<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
@@ -29,6 +38,16 @@ export class OperationalFlatLocalParticipant<P extends SharedSelectionPolicy=Sha
    consume(){owner.#closed=true;owner.#busy=false;finished=true;},
    abandon(){if(finished)return;finished=true;try{witness?.release();}finally{owner.#busy=false;}},
   };
+ };}
+ static{reserveRead=<Q extends SharedSelectionPolicy>(owner:OperationalFlatLocalParticipant<Q>)=>{
+  if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('flat_local_input_participant_policy');owner.#start();const s=owner.#state,error=()=>fail('flat_local_input_participant_busy');
+  try{return operationalReadReservation(1,async()=>{
+   checkRecoveryLeasesHeld(s.leases);const witness=await verifyFlatLocalParticipant(s);let complete=false;
+   const current=()=>{if(owner.#closed||!owner.#busy||s.inputDisposed||!s.db)throw error();checkRecoveryLeasesHeld(s.leases);readWitnessCurrent.call(witness);};
+   try{if(s.record.phase!=='operational')throw fail('flat_local_input_participant_record');current();const value=Object.freeze({source:Object.freeze({session:s.source}),uploads:readNativeInputUploadStore(s.uploads)});
+    const result={value,check:()=>{readWitnessCheck.call(witness);current();},current,async verify(){checkRecoveryLeasesHeld(s.leases);await retainedFlatLocalParentRecord(s);readWitnessCheck.call(witness);current();},release:()=>readWitnessRelease.call(witness)};current();complete=true;return result;
+   }finally{if(!complete)readWitnessRelease.call(witness);}
+  },()=>{owner.#busy=false;},error);}catch(error){owner.#busy=false;throw error;}
  };}
  static begin<Q extends SharedSelectionPolicy>(file:Blob,provided:FlatLocalParticipantOptions<Q>):Promise<OperationalFlatLocalParticipant<Q>>{if(this!==OperationalFlatLocalParticipant)throw fail();return OperationalFlatLocalParticipant.#open(provided,file);}
  static resume<Q extends SharedSelectionPolicy>(provided:FlatLocalParticipantOptions<Q>):Promise<OperationalFlatLocalParticipant<Q>>{if(this!==OperationalFlatLocalParticipant)throw fail();return OperationalFlatLocalParticipant.#open(provided);}

@@ -26,6 +26,8 @@ export class RestoredLocalParticipantWitness{
   }finally{if(!complete)scope.release();}
  }
  check():void{state(this).check();}
+ /** Callback-free read fence; it never prepares or consumes an asset handoff. */
+ checkCurrent():void{state(this).current();}
  prepareHandoff<P extends SharedSelectionPolicy>(source:Session<P>){const s=state(this);if(s.source!==source)throw fail('restored_local_handoff_source_mismatch');
   const current=()=>{if(states.get(this)!==s)throw fail('restored_local_handoff_closed');s.current();};
   return prepareNativeInputHandoff({source,check:()=>{current();s.check();current();},current,uploads:()=>assets.release.call(s.uploads),release:()=>{states.delete(this);s.scope.release();},file:()=>file.call(s.journal),blob:(asset,generation)=>blob.call(s.journal,asset,generation),closed:()=>fail('restored_local_handoff_closed')});

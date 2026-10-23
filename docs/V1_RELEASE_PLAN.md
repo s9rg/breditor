@@ -80,6 +80,22 @@ authenticated activation, sustainable history, remaining parity and all thirteen
 V1 gates remain required. No version, push, tag, publication or deployment is
 promoted.
 
+The [non-consuming native inspection checkpoint](qualification/2026-10-23-operational-native-read.json)
+passes thirteen normal selected stages. Source, fresh offline packages and the
+actual production bundle each pass the same 53 assertions, including forty real
+seven-writer/history rooms. Three strict type fixtures, 39 read contracts and
+130 freshly produced native input files also pass their selected checks.
+Original/generation reads hold whole uploads until actual cleanup acknowledgement;
+the five newer families retain their existing custody. Read reservations expose
+no handoff or lease-release operation.
+
+Inspection reports missing or unbound review streams and unselected historical
+copies rather than inferring coverage. Its cached-inventory result is not
+reconciliation or permission to activate a room. Complete historical-copy/provider
+closure and current server authority remain the next dependencies. The
+[ownership contract](PHYSICAL_ROOM_OPERATION_V3.md#native-inspection-without-handoff)
+records that boundary. All thirteen V1 gates remain open.
+
 ## Complete delivery cohort checkpoint
 
 Complete-delivery and restored-operation parents now share the existing room

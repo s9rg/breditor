@@ -66,6 +66,41 @@ retarget the coordinator's private source or destination pin. An `operational`
 phase means the selected client components were prepared, not that historic
 copies, unbound comment streams or the server have been reconciled.
 
+## Native inspection without handoff
+
+The coordinator's private `readNative()` operation borrows genuine clients
+without preparing their handoff. All seven families remain busy and retain
+their coordinator leases, input provenance, native history and whole upload
+custody. Repeated reads do not write intent markers or flush delivery. A separate
+read reservation exposes no consume, release-leases or transfer operation;
+cleanup releases only its temporary readers and can retry on the same handles.
+Original and generation parents require a temporary whole-upload hold; the five
+newer families already own that custody and must not reacquire it. Closing the
+complete read awaits the actual lock-manager acknowledgement before unlocking
+the two legacy parents for reuse.
+
+The detached report compares held document and selected review prefixes against
+the catalog's cached native inventory. Missing registrations, server-ahead
+streams, unbound local review and unselected historical copies stay explicit.
+A document-only capture covers no review registration, whether the actual native
+review lane is absent or merely unselected. Equal actor IDs do not bind a local
+review stream to the server. Current policy, observed cancellation and native
+state are checked again after callbacks, before returning a report.
+
+This native-only report grants no editing or activation permission. It does not
+prove complete provider references, historical-copy reconciliation, fresh server
+currentness or cross-device exclusivity. Those are separate required contracts.
+
+The [native-read qualification](qualification/2026-10-23-operational-native-read.json)
+passes the same 53 assertions in source, fresh offline packages and actual bundled
+code. It includes forty seven-writer/history rooms, exact committed storage
+comparisons, repeated reads, subsequent handoff and actual original/generation
+upload-lock acknowledgement. An unchanged regression reproduces the omitted
+legacy upload hold in the initial implementation and passes after the repair.
+A separate fixture initialization repair coalesces concurrent loads of the same
+normal Wasm namespace; product loaders already do this. Neither changes native
+runtime bytes or establishes a historical WebKit repair.
+
 ## Atomic handoff and provider lifetime
 
 The seven-family router composes the existing original/generation and five-family
