@@ -17,19 +17,30 @@ import type {OperationalSharedGenerationParticipantParts} from "../generation_op
 import type {SharedSelectionPolicy} from "../types.js";
 import type {SharedRichEditor} from "../core.js";
 import type {RecoveryLease} from "../participant_recovery/lease.js";
+import type {DeliveryOperationCohortMember} from '../delivery_operation_cohort/cohort.js';
 
-export type MixedRoomParticipant =
- | {readonly id:string;readonly family:"original";readonly operation:OperationalSharedParticipant<SharedSelectionPolicy>}
- | {readonly id:string;readonly family:"generation";readonly operation:OperationalSharedGenerationParticipant<SharedSelectionPolicy>};
-export type MixedRoomParticipantParts =
- | {readonly id:string;readonly family:"original";readonly parts:OperationalSharedParticipantParts<SharedSelectionPolicy>}
- | {readonly id:string;readonly family:"generation";readonly parts:OperationalSharedGenerationParticipantParts<SharedSelectionPolicy>};
-export interface MixedRoomOperationParts{readonly participants:readonly Readonly<MixedRoomParticipantParts>[]}
+export type MixedRoomParticipant<P extends SharedSelectionPolicy=SharedSelectionPolicy> =
+ | {readonly id:string;readonly family:"original";readonly operation:OperationalSharedParticipant<P>}
+ | {readonly id:string;readonly family:"generation";readonly operation:OperationalSharedGenerationParticipant<P>};
+export type MixedRoomParticipantParts<P extends SharedSelectionPolicy=SharedSelectionPolicy> =
+ | {readonly id:string;readonly family:"original";readonly parts:OperationalSharedParticipantParts<P>}
+ | {readonly id:string;readonly family:"generation";readonly parts:OperationalSharedGenerationParticipantParts<P>};
+export interface MixedRoomOperationParts<P extends SharedSelectionPolicy=SharedSelectionPolicy>{readonly participants:readonly Readonly<MixedRoomParticipantParts<P>>[]}
 const checkOriginal=SharedAssetReferenceCapture.prototype.check,disposeOriginal=SharedAssetReferenceCapture.prototype.dispose,checkGeneration=SharedGenerationSourceCapture.prototype.check,disposeGeneration=SharedGenerationSourceCapture.prototype.dispose;
 
-export async function prepareMixedRoomParticipants(input:readonly MixedRoomParticipant[],databases:readonly IDBDatabase[],leases:readonly RecoveryLease[],beforeRelease:()=>Promise<void>,afterRelease:()=>void,released:()=>void):Promise<OperationalCohortHandoff<MixedRoomOperationParts>>{
+export function prepareMixedRoomParticipants<P extends SharedSelectionPolicy>(input:readonly MixedRoomParticipant<P>[],databases:readonly IDBDatabase[],leases:readonly RecoveryLease[],beforeRelease:()=>Promise<void>,afterRelease:()=>void,released:()=>void):Promise<OperationalCohortHandoff<MixedRoomOperationParts<P>>>{
+ return prepareMixedRoomWithDelivery(input,()=>undefined,parts=>parts,databases,leases,beforeRelease,afterRelease,released);
+}
+/** Internal composition of the existing two-family and five-family reservations.
+ * The result builder cannot manufacture or consume a reservation. Every genuine
+ * owner is busy before any factory/authority callback; the original release and
+ * final witness sequence is shared, never copied into another transfer engine. */
+export async function prepareMixedRoomWithDelivery<P extends SharedSelectionPolicy,T>(input:readonly MixedRoomParticipant<P>[],reserveDelivery:()=>OperationalCohortReservation<DeliveryOperationCohortMember<P>>|undefined,combine:(mixed:MixedRoomOperationParts<P>,delivery:readonly DeliveryOperationCohortMember<P>[])=>T,databases:readonly IDBDatabase[],leases:readonly RecoveryLease[],beforeRelease:()=>Promise<void>,afterRelease:()=>void,released:()=>void,parent?:OperationalCohortReservation<never>):Promise<OperationalCohortHandoff<T>>{
  if(!Array.isArray(input)||input.length>1024)throw roomFailure("room_operation_policy");
- const values=input.map(value=>{if(!value||typeof value!=="object"||typeof value.id!=="string"||!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/.test(value.id)||(value.family!=="original"&&value.family!=="generation"))throw roomFailure("room_operation_policy");return{...value};});
+ // The old private reservations erase their invariant factory parameter. They
+ // verify the actual owner and invoke only its stored P policy; no factory is
+ // substituted or called with a different selection policy by this adapter.
+ const values=input.map(value=>{if(!value||typeof value!=="object"||typeof value.id!=="string"||!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/.test(value.id)||(value.family!=="original"&&value.family!=="generation"))throw roomFailure("room_operation_policy");return{...value} as unknown as MixedRoomParticipant;});
  if(new Set(values.map(value=>value.id)).size!==values.length)throw roomFailure("room_operation_policy");
  const groups:OperationalCohortReservation<unknown>[]=[],captures:{check():void;dispose():void}[]=[];
  let offered=false;
@@ -38,12 +49,19 @@ export async function prepareMixedRoomParticipants(input:readonly MixedRoomParti
   // No await or application callback until both genuine families are reserved.
   const original=reserveOperationalParticipantGroup(values.filter(value=>value.family==="original").map(value=>value.operation));groups.push(original);
   const generation=reserveOperationalGenerationGroup(values.filter(value=>value.family==="generation").map(value=>value.operation));groups.push(generation);
+  // The closed seven-family entry point supplies the genuine reservation. The
+  // original two-family path does not eagerly load unrelated native factories.
+  const delivery=reserveDelivery();if(delivery)groups.push(delivery);
+  // The genuine coordinator has already reserved itself. Its temporary-reader
+  // disposal and last private job/lifetime check share this same barrier; no
+  // parent callback or native destruction may follow child consumption.
+  if(parent)groups.push(parent);
   const handoff=await prepareOperationalCohort(groups,async markReleased=>{
    await beforeRelease();
    const originals=original.states.map(s=>{const sources=Object.freeze(ownerSources(s.p,s.owners)),capture=captureSharedAssetReferences(sources);captures.push({check:()=>checkOriginal.call(capture),dispose:()=>disposeOriginal.call(capture)});return Object.freeze({sources,session:s.owners.session!,uploads:s.owners.uploads!});});
    const generations=generation.states.map(s=>{const source=generationOwnerSource(s.p,s.owners),capture=captureSharedGenerationSource(source);captures.push({check:()=>checkGeneration.call(capture),dispose:()=>disposeGeneration.call(capture)});return Object.freeze({source,uploads:s.owners.uploads!});});
    let oi=0,gi=0;
-   const parts=Object.freeze({participants:Object.freeze(values.map(value=>value.family==="original"?Object.freeze({id:value.id,family:"original" as const,parts:originals[oi++]!}):Object.freeze({id:value.id,family:"generation" as const,parts:generations[gi++]!})))});
+   const parts=combine(Object.freeze({participants:Object.freeze(values.map(value=>value.family==="original"?Object.freeze({id:value.id,family:"original" as const,parts:originals[oi++]!}):Object.freeze({id:value.id,family:"generation" as const,parts:generations[gi++]!})))}) as unknown as MixedRoomOperationParts<P>,delivery?.states??[]);
    const states=[...original.states,...generation.states];
    await releaseRoomCustody([...databases,...states.flatMap(s=>[s.db,s.recoveryDb])],[...leases,...states.flatMap(s=>s.leases)]);markReleased();released();return parts;
   },()=>{

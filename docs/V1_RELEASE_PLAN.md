@@ -41,7 +41,32 @@ rotation/recovery and remaining feature parity are substantive work, not waived
 by passing the current tests. No package version, public API freeze, tag,
 publication or deployment is promoted.
 
-## Current complete delivery cohort
+## Current seven family client recovery
+
+The [private room coordinator](PHYSICAL_ROOM_OPERATION_V3.md) now transfers actual
+catalog custody into restartable recovery for all seven client families. It pins
+exact component namespaces, validates current policies before child recovery,
+preserves complete lineage-v2 inputs and crosses the existing native handoff
+barrier as one cohort. Job authority and returned-client lifetimes are separate;
+missing completed stores refuse instead of silently recreating empty data.
+
+Its [functional qualification](qualification/2026-10-23-physical-operation-v3.json)
+passes twelve selected normal main stages from the 360-stage functional plan.
+Common-cohort contracts pass 56 assertions and room contracts 54 including the
+plan law. Source SDK, fresh installed packages and the actual production bundle
+each pass the same 53 functional assertions; both private type fixtures pass.
+The source-matched native fixture producers are fresh. The unchanged legacy
+480-cohort mixed domain, cleanup and binding-refusal probes also pass.
+
+The new room tests cover individual cold/continuation paths for every family and
+one real two-writer local/graph room, not seven distinct registered writers
+together. Retained-copy/provider/client reconciliation, authenticated activation,
+sustainable history, remaining parity and all thirteen V1 gates remain required.
+Native product sources, normal Wasm, public-root APIs and defaults are unchanged.
+Full Rust-suite execution remains carried evidence. No version, push, tag,
+publication or deployment is promoted.
+
+## Complete delivery cohort checkpoint
 
 Complete-delivery and restored-operation parents now share the existing room
 handoff kernel with legacy local, snapshot-local and flat-local parents. Genuine

@@ -1,0 +1,254 @@
+{
+  "format": "breditor/physical-operation-v3-functional-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-23",
+  "passed": true,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "source": {
+    "commit": "3456254d10bdefaee9e840a47aa50bdbfce7e1a4",
+    "dirty": true,
+    "sha256": "518806c1fafca98408d285e8920aa36d885fb90df293234e03160c2b19ccb15a",
+    "files": 6004,
+    "bytes": 48184799
+  },
+  "sourceScope": "Frozen working-tree inputs before documentation; all non-documentation inputs and fresh package bytes are rechecked before the local save.",
+  "normalRuns": [
+    {
+      "group": "foundation",
+      "manifest": "target/v1-candidate-runs/run-PDacr7/result.json",
+      "checks": [
+        {
+          "id": "candidate-runner-contracts",
+          "status": "passed",
+          "log": "target/v1-candidate-runs/run-PDacr7/01-candidate-runner-contracts.log"
+        },
+        {
+          "id": "collaboration-build",
+          "status": "passed",
+          "log": "target/v1-candidate-runs/run-PDacr7/02-collaboration-build.log"
+        },
+        {
+          "id": "physical-operation-v3-type-fence",
+          "status": "passed",
+          "log": "target/v1-candidate-runs/run-PDacr7/03-physical-operation-v3-type-fence.log"
+        },
+        {
+          "id": "native-room-participant-inventory",
+          "status": "passed",
+          "log": "target/v1-candidate-runs/run-PDacr7/04-native-room-participant-inventory.log"
+        },
+        {
+          "id": "native-server-generation-inventory",
+          "status": "passed",
+          "log": "target/v1-candidate-runs/run-PDacr7/05-native-server-generation-inventory.log"
+        }
+      ]
+    },
+    {
+      "group": "contracts",
+      "manifest": "target/v1-candidate-runs/run-sAuVAJ/result.json",
+      "checks": [
+        {
+          "id": "complete-operation-cohort-contracts",
+          "status": "passed",
+          "log": "target/v1-candidate-runs/run-sAuVAJ/01-complete-operation-cohort-contracts.log"
+        },
+        {
+          "id": "physical-operation-v3-contracts",
+          "status": "passed",
+          "log": "target/v1-candidate-runs/run-sAuVAJ/02-physical-operation-v3-contracts.log"
+        }
+      ]
+    },
+    {
+      "group": "sdk",
+      "manifest": "target/v1-candidate-runs/run-TprTDy/result.json",
+      "checks": [
+        {
+          "id": "physical-operation-v3",
+          "status": "passed",
+          "log": "target/v1-candidate-runs/run-TprTDy/01-physical-operation-v3.log"
+        },
+        {
+          "id": "installed-physical-operation-v3",
+          "status": "passed",
+          "log": "target/v1-candidate-runs/run-TprTDy/02-installed-physical-operation-v3.log"
+        }
+      ]
+    },
+    {
+      "group": "mixed",
+      "manifest": "target/v1-candidate-runs/run-y4K50W/result.json",
+      "checks": [
+        {
+          "id": "mixed-room-custody",
+          "status": "passed",
+          "log": "target/v1-candidate-runs/run-y4K50W/01-mixed-room-custody.log"
+        }
+      ]
+    },
+    {
+      "group": "catalog",
+      "manifest": "target/v1-candidate-runs/run-TZpTG1/result.json",
+      "checks": [
+        {
+          "id": "physical-catalog-v3-contracts",
+          "status": "passed",
+          "log": "target/v1-candidate-runs/run-TZpTG1/01-physical-catalog-v3-contracts.log"
+        },
+        {
+          "id": "physical-catalog-v3-type-fence",
+          "status": "passed",
+          "log": "target/v1-candidate-runs/run-TZpTG1/02-physical-catalog-v3-type-fence.log"
+        }
+      ]
+    }
+  ],
+  "selectedNormalStages": 12,
+  "functionalPlanChecks": 360,
+  "fullPlanChecks": 368,
+  "sourceContracts": {
+    "completeCohort": 56,
+    "physicalRoom": 54,
+    "physicalRoomIncludesPlanLaw": true,
+    "note": "The common cohort stage imports existing five-family laws separately in each test file; counts are executions, not unique new laws."
+  },
+  "sourceSdkContracts": 53,
+  "installedContracts": {
+    "passed": 53,
+    "failed": 0,
+    "skipped": 0
+  },
+  "actualProductionBundleContracts": {
+    "passed": 53,
+    "failed": 0,
+    "skipped": 0
+  },
+  "strictTypeFixtures": 2,
+  "workspaceLinks": false,
+  "pinnedRegistryArtifacts": 45,
+  "archives": [
+    {
+      "name": "@breditor/browser",
+      "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+    },
+    {
+      "name": "@breditor/experimental-rich-content",
+      "sha256": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad"
+    },
+    {
+      "name": "@breditor/collaboration",
+      "sha256": "d34274fee13a38efa8b3e0fbf1d5fc735f26ceba2a05b9e96bc426f7c4954ad0"
+    }
+  ],
+  "productionModuleCount": 609,
+  "bundleSha256": "f64f9aa1c50df920aec8c6ded80d06eed27e95ebcda82f6d0840d497e4d35240",
+  "normalWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+  "native": {
+    "sourceMatchedFixtureProducersFresh": true,
+    "serverGenerationFixtureFilesVerified": 50,
+    "nativeProductInputsChanged": false,
+    "completeRustTestSuitesFreshlyExecuted": false
+  },
+  "legacyMixed": {
+    "cohorts": 480,
+    "nativeRooms": 10,
+    "coldParticipants": 960,
+    "historyComparisons": 960,
+    "uploadComparisons": 960,
+    "futureDocumentCheckpoints": 864,
+    "futureReviewCheckpoints": 864,
+    "networkCalls": 0,
+    "cleanup": {
+      "format": "breditor/operation-cohort-cleanup-probe",
+      "passed": true,
+      "cases": 4,
+      "retirementRefusals": 4,
+      "retainedOrigins": 8,
+      "coldHistories": 8,
+      "networkCalls": 0,
+      "restoredParticipants": 4,
+      "restoredComponents": 12
+    },
+    "bindings": {
+      "format": "breditor/managed-source-bindings-probe",
+      "passed": true,
+      "nativeRooms": 10,
+      "sourceFamilies": 30,
+      "cohorts": 120,
+      "participants": 240,
+      "refusals": 120,
+      "preparedRefusals": 40,
+      "authorityRefusals": 40,
+      "destructorRefusals": 40,
+      "accessorInvocations": 0,
+      "coldParticipants": 240,
+      "fileComparisons": 240,
+      "storedRecordComparisons": 1200,
+      "historyComparisons": 240,
+      "uploadComparisons": 240,
+      "futureDocumentCheckpoints": 216,
+      "futureReviewCheckpoints": 216,
+      "networkCalls": 0,
+      "restoredParticipants": 150,
+      "restoredComponents": 540,
+      "scope": "Unsupported readonly-binding replacement refuses before accessor evaluation in genuine original and original/local-relay-retained mixed cohorts. All ten native profiles/transports, exact committed files/records, cold histories and future document/review Undo/Redo. Not a sandbox against arbitrary intrinsic/native-method replacement, browser durability or whole-room activation."
+    }
+  },
+  "retained": {
+    "index": "target/physical-operation-v3-final-JJgDTA/index.json",
+    "sha256": "88e7763c7575f0ddc4a1d870a388e032f5529c473f4c34791aa149ad16fe8873",
+    "entries": 341,
+    "nonDocumentationInputs": 5328,
+    "nonDocumentationInputsSha256": "8f5222caa727a6bddd95479400392502e5ec40e5b7af3f0e971fa8f263ed8714",
+    "exclusions": "docs/** and Markdown files; packed package bytes are checked separately"
+  },
+  "unchangedAssertionsBeforeAfter": [
+    {
+      "boundary": "Plain policy snapshot preserves rejection of actual private lifecycle/driver markers",
+      "before": {
+        "passed": 0,
+        "failed": 4
+      },
+      "after": {
+        "passed": 4,
+        "failed": 0
+      },
+      "testSha256": "14f37866c350f14c8d62c3df2c4ed3b426b711dc7fc88f0e10a1c8cc33289bb5"
+    },
+    {
+      "boundary": "Progress cannot mutate the retained intent namespace pin",
+      "before": {
+        "passed": 0,
+        "failed": 1
+      },
+      "after": {
+        "passed": 1,
+        "failed": 0
+      },
+      "testSha256": "8c99482b18ec322302b9341efbc6f3d888e2ded067ca909706eca7d661059633"
+    },
+    {
+      "boundary": "Validate every current factory before child recovery can begin",
+      "before": {
+        "passed": 0,
+        "failed": 1
+      },
+      "after": {
+        "passed": 1,
+        "failed": 0
+      },
+      "testSha256": "2ea1c402fe5735420882867810740f5aa2cbb03c54a18a45121f6c21cf9bbeea"
+    }
+  ],
+  "scope": "Private seven-family room client recovery: individual native/upload/provenance cold and post-job continuation paths, one two-distinct-writer flat/lineage-v2 room, actual catalog custody and synthetic IndexedDB restart/lifecycle faults. Historical duplicate copies remain retained, not silently selected as independent writers.",
+  "remaining": [
+    "Seven distinct registered writers together in one physical room",
+    "Complete historical-copy/provider/client reconciliation",
+    "Authenticated whole-room activation",
+    "Sustainable native Undo and outstanding offline-edit retention",
+    "Remaining selected feature parity and all thirteen V1 gates",
+    "Physical-browser durability and platform/release qualification"
+  ]
+}

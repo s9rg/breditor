@@ -34,7 +34,7 @@ const bytes=async file=>Buffer.from(await file.arrayBuffer()),runtime=new URL('.
 let host,sequence=0,networkCalls=0;
 before(async()=>{host=await localParticipantUnitHost({api,rich,Participant:Legacy,runtime,fixture:new URL('../crates/breditor-core/tests/fixtures/rich-local-root.json',import.meta.url)});});
 after(()=>{opened.clear();host?.free();assert.equal(networkCalls,0);});
-async function fixture({documentSegmented=true,reviewSegmented=true,restoredKind='snapshot-v1',policy=()=>{},signals=[]}={}){
+export async function fixture({documentSegmented=true,reviewSegmented=true,restoredKind='snapshot-v1',policy=()=>{},signals=[]}={}){
  const rows=[];let restore=()=>{},parts,queues,restoredQueues;
  try{
   const reset=environment();let f;
