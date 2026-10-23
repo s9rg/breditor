@@ -138,13 +138,14 @@ export class NativeInputJournal<A,C extends NativeInputJournalChoice,O,R extends
   borrowRead:(owner:object,provided:()=>void,providedSignal?:AbortSignal,providedFactory?:SharedIndependentRecoveryFactory)=>{
    if(this.#readers.size>=8)throw this.#error('busy');const authorize=participantAuthority(provided),signal=independentRecoverySignal(providedSignal);
    let released=false,finish!:()=>void,factory=this.#choice.read.options.session;const held=new Promise<void>(resolve=>{finish=resolve;}),release=()=>{if(!released){released=true;this.#readers.delete(held);finish();}};this.#readers.add(held);
-   const check=()=>{if(released)throw this.#error('read_closed');this.#readable();if(this.#owner!==owner)throw this.#error('source');const port=independentHistoryNative(owner);if(port.localOperation!==this.#facade||port.companion)throw this.#error('source');checkAssetBytesSignal(signal);authorize();checkAssetBytesSignal(signal);this.#readable();port.check();};
+   const checkCurrent=()=>{if(released)throw this.#error('read_closed');this.#readable();if(this.#owner!==owner)throw this.#error('source');const port=independentHistoryNative(owner);if(port.localOperation!==this.#facade||port.companion)throw this.#error('source');checkAssetBytesSignal(signal);port.checkBorrowed(port.core);};
+   const check=()=>{checkCurrent();authorize();checkCurrent();};
    // Snapshot fresh executable read policy after reservation, before authority.
    // Retiring a host writer factory must not prevent an independently selected
    // matching read-only factory from admitting the actual retained native cuts.
    try{if(providedFactory!==undefined)factory=snapshotIndependentRecoveryFactory(this.#choice.expected.original,providedFactory);check();}catch(error){release();throw error;}
    const track=<T>(run:()=>Promise<T>):Promise<T>=>{check();if(this.#readers.size>=8)throw this.#error('busy');const work=Promise.resolve().then(run);this.#readers.add(work);void work.finally(()=>this.#readers.delete(work)).catch(()=>{});return work;};
-   return Object.freeze({identity:structuredClone(this.#id),expected:structuredClone(this.#choice.expected),check,release,
+   return Object.freeze({identity:structuredClone(this.#id),expected:structuredClone(this.#choice.expected),check,checkCurrent,release,
     inputFile:()=>{check();return this.#intrinsics.input.file(this.#input);},originalFile:()=>{check();return this.#intrinsics.input.originalFile(this.#input);},uploads:()=>{check();return this.#intrinsics.input.uploads(this.#input);},blob:(asset:string,generation:string)=>{check();return this.#intrinsics.input.blob(this.#input,asset,generation);},
     readSource:()=>{check();const port=independentHistoryNative(owner),stamp=port.stamp(),data=port.read();this.#verify(port.core,data.versions,check);if(port.stamp()!==stamp)throw this.#error('capture_changed');return data;},
     readSnapshot:()=>track(async()=>{

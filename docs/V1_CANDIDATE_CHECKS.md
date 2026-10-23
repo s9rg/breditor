@@ -1,5 +1,27 @@
 # V1 candidate checks
 
+Both profiles now also require `physical-catalog-v3-contracts`,
+`physical-catalog-v3-type-fence`, `physical-catalog-v3` and
+`installed-physical-catalog-v3`. The private
+[seven-family catalog](PHYSICAL_ROOM_CATALOG_V3.md) retains both local-operation
+formats without widening old readers, owns distinct absent-only database stores
+and fences native/input observations after callbacks. Its fixed twenty-case
+domain covers five normal profiles and four history pairs with atomic-v2
+inventories; it is not the complete role/transport/older-family Cartesian domain.
+The actual package/bundle workload and new nominal type fence are mandatory.
+The [functional evidence](qualification/2026-10-23-physical-catalog-v3-functional-evidence.json)
+covers 49 selected domains: 45 normal stages and four SDK completions recovered
+after their runner parents were interrupted. Actual zero exits, original
+deadlines, exact inputs and complete reports are verified; interrupted manifests
+and partial logs are preserved, not converted into normal passes. The new
+source/installed/bundle workload has equal twenty-case results. The full flat,
+snapshot, journal and five-family source/installed matrices are freshly repeated.
+Workspace/diagnostic tests pass 2,647, editor tests 385 and scripts 2,839, with
+three existing browser opt-in skips. Eight fresh consumers pin matching archives.
+The complete 343/351-check plans are not executed. A separate snapshot handoff
+construction repair still needs integration and normal full reruns. All thirteen
+V1 gates remain open.
+
 Both profiles now require `native-input-incoming-source-contracts`,
 `native-input-incoming-source-type-fence`, `native-input-incoming-source` and
 `installed-native-input-incoming-source`. The private

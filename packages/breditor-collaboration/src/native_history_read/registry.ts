@@ -59,3 +59,10 @@ export function capturedNativeHistoryRead(source:object):CapturedNativeHistoryRe
 export function checkCapturedNativeHistoryRead(capability:CapturedNativeHistoryRead):void{
  const source=readers.get(capability);if(!source||checked(source,true).read!==capability)throw unavailable();
 }
+/** Internal final native fence after all policy/wrapper callbacks. It checks the
+ * same actual registry owner and native lane epochs without invoking its guard.
+ * This is not fresh permission, retained-store evidence or source lease custody. */
+export function capturedNativeHistoryFinalCheck(capability:CapturedNativeHistoryRead):()=>void{
+ const source=readers.get(capability);if(!source)throw unavailable();const state=checked(source,true);if(state.read!==capability)throw unavailable();
+ return()=>{if(readers.get(capability)!==source||checked(source)!==state||state.read!==capability)throw unavailable();};
+}

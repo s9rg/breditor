@@ -27,7 +27,11 @@ export interface NativeInputJournalChecked<R extends NativeInputCutIntent> exten
  * binding below. A caller-created object cannot select a family or owner. */
 export interface NativeInputReadScope<R extends NativeInputCutIntent>{
  readonly identity:NativeInputJournalIdentity;readonly expected:LocalOperationBackupSelection;
- check():void;release():void;inputFile():Blob;originalFile():Blob;uploads():Blob;blob(asset:string,generation:string):Blob|undefined;
+ check():void;
+ /** Actual held scope/source/storage check only, after policy callbacks. Never
+  * authorizes a new read or invokes a writer/read authority callback. */
+ checkCurrent():void;
+ release():void;inputFile():Blob;originalFile():Blob;uploads():Blob;blob(asset:string,generation:string):Blob|undefined;
  readSource():SharedIndependentHistoryRecovery;
  readSnapshot():Promise<Readonly<{record:R;input:Blob;current:IndependentHistoryCut|null;pending:IndependentHistoryCut|null;observed:string|null}>>;
 }

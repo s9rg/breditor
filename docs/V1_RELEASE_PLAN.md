@@ -41,7 +41,40 @@ rotation/recovery and remaining feature parity are substantive work, not waived
 by passing the current tests. No package version, public API freeze, tag,
 publication or deployment is promoted.
 
-## Current flat recovery implementation
+## Current seven family catalog implementation
+
+The private [V3 catalog](PHYSICAL_ROOM_CATALOG_V3.md) now retains original,
+generation, independent-local, independent-delivery, restored-graph, local
+snapshot and local flat files through their actual readers. Fresh local policies
+are selected per file; old catalog formats, root APIs and native binaries retain
+their meanings. Distinct absent-only stores reopen exact durable files and refuse
+occupied, old-schema or incomplete destinations without overwriting them.
+
+A reproduced cross-source callback failure now has an unchanged regression:
+the last permission callback could change another native source after its check.
+The final native/input witness closes that gap, including the catalog parent's
+last authority callback. It does not establish every legacy retained-store epoch,
+live provider or authenticated room grant.
+
+The [functional evidence](qualification/2026-10-23-physical-catalog-v3-functional-evidence.json)
+covers 49 selected domains: 45 normal stages and four recovered SDK completions
+with directly observed zero exits, complete reports and exact inputs. Their
+interrupted manifests and partial logs remain unchanged; normal runner
+qualification is not claimed. Source, fresh installed packages and the actual
+bundle each pass the same twenty cases. Both full flat, snapshot and journal
+480-case domains and both five-family 480-cohort domains are freshly repeated.
+Eight consumers pin matching archives; workspace/diagnostic tests pass 2,647,
+editor tests 385 and scripts 2,839, with three existing browser opt-in skips.
+
+The new twenty-case domain covers five normal profiles, four history pairs,
+atomic-v2 inventories and all seven file families, not the full Cartesian
+role/transport/older-family domain. A separate snapshot handoff construction
+fault has an isolated repair and unchanged regressions; integration and full
+normal reruns remain required. Actual writer/upload adoption, complete
+retained-copy/provider/client reconciliation, authenticated activation,
+sustainable history, full parity and all thirteen V1 gates remain open.
+
+## Previous flat recovery checkpoint
 
 The private [repeatable flat-local family](FLAT_LOCAL_OPERATION_PARTICIPANT.md)
 now uses production-source framing, full chronological native admission and the
@@ -107,8 +140,9 @@ native semantics; its two failed stages remain retained. Earlier full recovery
 matrices carry under exact unchanged inputs/archive bytes rather than being
 freshly executed in this read-only slice.
 
-The next room contract must explicitly add both local-operation families to the
-existing five-family catalog and preserve every unresolved historical copy.
+The seven-family catalog above now retains both local-operation families. The
+next operational contract must adopt their genuine owners while preserving
+every unresolved historical copy.
 Full reconciliation, authenticated activation, sustainable history, remaining
 feature parity and all thirteen V1 gates remain required.
 

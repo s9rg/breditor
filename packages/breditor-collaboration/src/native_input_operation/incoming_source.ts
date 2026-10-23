@@ -14,7 +14,7 @@ import {ownsFlatLocalJournal,flatLocalJournalBinding} from '../flat_local_operat
 import {replayLocalOperationRecovery,verifyLocalOperationContinuation,type LocalPortableReplay} from '../independent_local_operation/portable_replay.js';
 import {independentRecords} from '../independent_source/records.js';
 import {freezeGeneration} from '../generation_source/identity.js';
-import {registerCapturedNativeHistory,releaseCapturedNativeHistory,capturedNativeHistoryRead} from '../native_history_read/registry.js';
+import {registerCapturedNativeHistory,releaseCapturedNativeHistory,capturedNativeHistoryRead,capturedNativeHistoryFinalCheck} from '../native_history_read/registry.js';
 import type {NativeInputReadScope,NativeInputCutIntent} from './journal_contract.js';
 import type {NativeInputIncomingArchive,NativeInputIncomingSourceOptions} from './incoming_source_contract.js';
 import {verifyNativeInputIncomingLiteral} from './incoming_literal.js';
@@ -27,7 +27,7 @@ interface ArchiveSnapshot{
 interface State{
  readonly archive:ArchiveSnapshot;readonly reader:NativeInputReadScope<NativeInputCutIntent>;
  readonly snapshot:Readonly<{metadata:Readonly<{identity:SharedIndependentHistoryRecovery['identity']}>;records:ReturnType<typeof independentRecords>}>;
- readonly check:()=>void;exposed:boolean;
+ readonly check:()=>void;readonly current:()=>void;exposed:boolean;
 }
 const token=Object.freeze({}),states=new WeakMap<NativeInputIncomingSourceCapture,State>();
 function fields(value:unknown,required:readonly string[],optional:readonly string[]=[]):void{
@@ -69,6 +69,7 @@ export class NativeInputIncomingSourceCapture{
   const policy=localPortableReadPolicy(archive.expected.original,readOptions),reader:NativeInputReadScope<NativeInputCutIntent>=binding.borrowRead(source,policy.guard,policy.options.signal,policy.options.session);
   let stamp:object|undefined,older:LocalPortableReplay|undefined,newer:LocalPortableReplay|undefined,owner:NativeInputIncomingSourceCapture|undefined,complete=false;
   const check=()=>{reader.check();archive.check();reader.check();if(stamp&&port.stamp()!==stamp)throw fail();};
+  const current=()=>{reader.checkCurrent();archive.check();if(stamp&&port.stamp()!==stamp)throw fail();};
   try{
    check();stamp=port.stamp();const live=reader.readSource();check();
    const cut=await reader.readSnapshot();check();await verifyNativeInputIncomingLiteral(cut.input,archive.file,check);check();
@@ -78,7 +79,7 @@ export class NativeInputIncomingSourceCapture{
    newer=await replayLocalOperationRecovery(archive.expected.original,policy.options.session,live,check);check();verifyLocalOperationContinuation(newer,older);check();
    const captured=freezeGeneration({metadata:{identity:newer.recovery.identity},records:independentRecords(newer.recovery)});
    newer.dispose();newer=undefined;older.dispose();older=undefined;check();
-   owner=new NativeInputIncomingSourceCapture(token,{archive,reader,snapshot:captured,check,exposed:false});
+   owner=new NativeInputIncomingSourceCapture(token,{archive,reader,snapshot:captured,check,current,exposed:false});
    const actual=owner;
    registerCapturedNativeHistory(actual,port.core,{document:{kind:live.identity.documentHistory,checkpoint:live.documentCheckpoint},review:{kind:live.identity.reviewHistory,checkpoint:live.reviewCheckpoint}},()=>{checked(actual,true);});
    checked(actual,true).exposed=true;complete=true;return actual;
@@ -97,6 +98,13 @@ export function readNativeInputIncomingSource(provided:Readonly<{input:NativeInp
  if(row.kind!==state.archive.input.kind||row.backup!==state.archive.input.backup)throw fail();
  const lanes=capturedNativeHistoryRead(source),capture={...state.snapshot,check:()=>{checked(source);}},selected=freezeGeneration(state.archive.expected),result={kind:state.archive.input.kind,selected,capture,lanes};checked(source);
  return result;
+}
+/** Same held capture, checked after every host callback. The returned closure
+ * has no permission/factory hooks; it cannot replace the preceding authorized
+ * read or prove upload/provider availability. */
+export function nativeInputIncomingFinalCheck(owner:NativeInputIncomingSourceCapture):()=>void{
+ const state=checked(owner),native=capturedNativeHistoryFinalCheck(capturedNativeHistoryRead(owner));
+ return()=>{if(states.get(owner)!==state||!state.exposed)throw fail();state.current();native();if(states.get(owner)!==state)throw fail();};
 }
 const capture=NativeInputIncomingSourceCapture.capture,dispose=NativeInputIncomingSourceCapture.prototype.dispose;
 export const nativeInputIncomingSource=Object.freeze({

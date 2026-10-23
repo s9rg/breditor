@@ -113,9 +113,13 @@ The full candidate plan and Rust suites are not freshly executed.
 
 ## Remaining room recovery work
 
-The physical catalog still needs explicit retention/adoption contracts for both
-local-operation families in addition to its existing five families. Its old
-versions must keep their existing meanings. Actual writer/upload custody,
+The private [V3 physical catalog](PHYSICAL_ROOM_CATALOG_V3.md) adds explicit
+retention for both local-operation families. Its
+[functional evidence](qualification/2026-10-23-physical-catalog-v3-functional-evidence.json)
+separates 45 normal passes from four observed successful SDK completions whose
+runner parents were interrupted; it does not claim normal runner qualification.
+Older catalog versions keep their existing meanings.
+Actual writer/upload adoption and custody,
 historical-copy dispositions, complete provider/client reconciliation and newly
 authenticated whole-room activation remain required. Native shared Undo and
 generation ceilings, full feature parity and all thirteen V1 gates remain open.

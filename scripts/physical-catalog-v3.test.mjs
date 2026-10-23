@@ -1,0 +1,39 @@
+/** Development only. Actual seven-family files and genuine native sources;
+ * synthetic IndexedDB is not physical durability or operational activation. */
+import test,{before}from'node:test';import assert from'node:assert/strict';
+import*as api from'../packages/breditor-collaboration/dist/index.js';import*as rich from'@breditor/experimental-rich-content';
+import{PhysicalRoomCatalogV2Archive,physicalCatalogV2ArchiveState as oldState}from'../packages/breditor-collaboration/dist/physical_room_catalog_v2/archive.js';
+import{PhysicalRoomCatalogV2,physicalRoomCatalogV2State as oldStoreState}from'../packages/breditor-collaboration/dist/physical_room_catalog_v2/catalog.js';
+import{PhysicalRoomCatalogV3Archive as Archive,physicalCatalogV3ArchiveState as state,physicalCatalogV3Archive as archive}from'../packages/breditor-collaboration/dist/physical_room_catalog_v3/archive.js';
+import{restoredGraphNativeSource}from'../packages/breditor-collaboration/dist/restored_graph/native_source.js';import{nativeInputIncomingSource as incoming}from'../packages/breditor-collaboration/dist/native_input_operation/incoming_source.js';
+import{nativeInventoryFixtures}from'./fixtures/independent-inventory/native.mjs';import{physicalCatalogV2Fixture}from'./fixtures/physical-catalog-v2/fixture.mjs';import{roomLocalParticipant}from'./fixtures/physical-catalog-v3/local-participant.mjs';
+import{insertCleanupText}from'./fixtures/owned-core-cleanup/session.mjs';
+let fixtures;before(async()=>{fixtures=await nativeInventoryFixtures();});const bytes=async file=>Buffer.from(await file.arrayBuffer());
+const internals={PhysicalRoomCatalogV2Archive,PhysicalRoomCatalogV2,archiveState:oldState,storeState:oldStoreState,restoredGraphNativeSource};
+test('seven distinct native file families retain all copies and reopen against fresh actual owners',async()=>{
+ const h=await physicalCatalogV2Fixture({api,rich,internals,fixtures,tag:'seven-family-development',documentSegmented:true,reviewSegmented:true});let local,owner,reopened,localCapture,graphCapture;
+ try{
+  await h.older.close();local=await roomLocalParticipant({api,rich,profile:h.profile,fixture:h.fixture,metadata:h.inventory.metadata().native,client:h.fixture.clients[0],documentSegmented:true,reviewSegmented:true,tag:'seven-family-local'});
+  const localRows=[{id:'local-snapshot',family:'local-operation-snapshot',file:local.snapshot.file(),expected:local.snapshot.selection()},{id:'local-flat',family:'local-operation-flat',file:local.flat.file(),expected:local.flat.selection()}],localPolicies=localRows.map(r=>({id:r.id,family:r.family,original:r.expected.original,options:local.readOptions})),options={...h.options,localPolicies};
+  owner=await Archive.capture({...h.capture,...options,participants:[...h.participants,...localRows]});assert.equal(owner.metadata().formatVersion,3);assert.deepEqual([...new Set(owner.metadata().participants.map(r=>r.family))].sort(),['generation','independent-delivery','independent-local','local-operation-flat','local-operation-snapshot','original','restored-graph']);
+  assert.equal(owner.files().size,h.originalFiles.size+2);for(const r of localRows)assert.deepEqual(await bytes(owner.participantFile(r.id)),await bytes(r.file));
+  await assert.rejects(PhysicalRoomCatalogV2Archive.read(owner.manifestJson(),owner.files(),owner.selection(),h.options));assert.equal('PhysicalRoomCatalogV3Archive'in api,false);assert.equal(typeof owner.activate,'undefined');
+  const flat=state(owner).clients.get('local-flat');localCapture=await incoming.capture({...local.readOptions,input:{kind:'flat-local-v1',backup:flat.backup},source:local.source});const graph=state(owner).clients.get('b-current');graphCapture=restoredGraphNativeSource.capture({source:h.current.source,backup:graph.backup,checkAuthority:h.current.readOptions.checkAuthority});
+  const result=owner.checkSources([{id:'local-flat',family:'local-operation-flat',source:localCapture},{id:'b-current',family:'restored-graph',source:graphCapture}]);assert.equal(result.kind,'pending');assert.equal(result.coverage.checkedParticipants.length,2);assert.equal(result.coverage.missing.some(r=>r.kind==='unbound_review'),true);assert.deepEqual(result.unreconciledParticipants,owner.metadata().participants.filter(r=>!['local-flat','b-current'].includes(r.id)).map(r=>r.id));
+  const manifest=owner.manifestJson(),files=owner.files(),selected=owner.selection();reopened=await Archive.read(manifest,files,selected,options);for(const[key,file]of reopened.files())assert.deepEqual(await bytes(file),await bytes(files.get(key)),key);
+  assert.throws(()=>reopened.checkSources([{id:'local-flat',family:'local-operation-flat',source:localCapture}]));incoming.dispose(localCapture);localCapture=await incoming.capture({...local.readOptions,input:{kind:'flat-local-v1',backup:state(reopened).clients.get('local-flat').backup},source:local.source});assert.equal(reopened.checkSources([{id:'local-flat',family:'local-operation-flat',source:localCapture}]).kind,'pending');
+  reopened.dispose();reopened=undefined;assert.throws(()=>incoming.read({input:{kind:'flat-local-v1',backup:flat.backup},source:localCapture}));incoming.dispose(localCapture);localCapture=undefined;
+  const freeze=Object.freeze;let observed=false;try{Object.freeze=function(value){const result=freeze(value);if(value instanceof Archive){observed=true;assert.equal(archive.owns(value),false);assert.throws(()=>value.files());assert.throws(()=>value.metadata());}return result;};const fresh=await Archive.read(manifest,files,selected,options);fresh.dispose();assert.equal(observed,true);}finally{Object.freeze=freeze;}
+ }finally{if(localCapture)incoming.dispose(localCapture);if(graphCapture)restoredGraphNativeSource.dispose(graphCapture);reopened?.dispose();owner?.dispose();await local?.close();await h.close();}
+});
+test('the last policy callback cannot mutate another selected native source after its final check',async()=>{
+ const h=await physicalCatalogV2Fixture({api,rich,internals,fixtures,tag:'seven-family-cross-callback',historic:false,documentSegmented:true,reviewSegmented:true});let local,owner,localCapture,graphCapture;
+ try{
+  await h.older.close();local=await roomLocalParticipant({api,rich,profile:h.profile,fixture:h.fixture,metadata:h.inventory.metadata().native,client:h.fixture.clients[0],documentSegmented:true,reviewSegmented:true,tag:'seven-family-cross-local'});
+  const localRows=[{id:'local-snapshot',family:'local-operation-snapshot',file:local.snapshot.file(),expected:local.snapshot.selection()},{id:'local-flat',family:'local-operation-flat',file:local.flat.file(),expected:local.flat.selection()}],localPolicies=localRows.map(r=>({id:r.id,family:r.family,original:r.expected.original,options:local.readOptions}));owner=await Archive.capture({...h.capture,localPolicies,participants:[...h.participants,...localRows]});
+  localCapture=await incoming.capture({...local.readOptions,input:{kind:'flat-local-v1',backup:state(owner).clients.get('local-flat').backup},source:local.source});let calls=0,mutateAt=Infinity,changed=false;
+  graphCapture=restoredGraphNativeSource.capture({source:h.current.source,backup:state(owner).clients.get('b-current').backup,checkAuthority(){h.current.readOptions.checkAuthority();if(++calls===mutateAt){changed=true;insertCleanupText(local.source.core,'last other-source callback ');}}});
+  const rows=[{id:'local-flat',family:'local-operation-flat',source:localCapture},{id:'b-current',family:'restored-graph',source:graphCapture}];calls=0;owner.checkSources(rows);mutateAt=calls;assert.ok(mutateAt>0);calls=0;
+  assert.throws(()=>owner.checkSources(rows),'A cohort read must not return native evidence made stale by its last other-source policy callback');assert.equal(changed,true);
+ }finally{if(localCapture)incoming.dispose(localCapture);if(graphCapture)restoredGraphNativeSource.dispose(graphCapture);owner?.dispose();await local?.close();await h.close();}
+});

@@ -257,6 +257,16 @@ and root APIs stay unchanged. Historical copies and unbound local comments remai
 Pending; this does not add editable staging, provider closure or activation. See
 the [five-family contract](../../docs/PHYSICAL_ROOM_CATALOG_V2.md).
 
+A distinct private V3 catalog additionally retains `local-operation-snapshot`
+and `local-operation-flat` through their actual native readers and fresh per-file
+read policies. Its own absent-only stores cold re-admit every file; historical
+copies and unbound local comments stay unresolved. Final native/input witnesses
+run after callbacks, including the parent catalog's last authority callback.
+They are not complete retained-store/provider reconciliation, writer/upload
+adoption or authenticated activation. Existing formats and package-root exports
+remain unchanged. Source, installed and actual bundled qualification is required;
+see the [seven-family contract](../../docs/PHYSICAL_ROOM_CATALOG_V3.md).
+
 ## Physical room client staging
 
 `SharedPhysicalRoomParticipantStage.begin` and `resume` take a genuine physical

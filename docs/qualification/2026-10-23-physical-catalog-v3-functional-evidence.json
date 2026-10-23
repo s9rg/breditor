@@ -1,0 +1,562 @@
+{
+  "format": "breditor/physical-catalog-v3-functional-evidence",
+  "formatVersion": 1,
+  "recordedDate": "2026-10-23",
+  "calendarTimeZone": "America/Toronto",
+  "passed": true,
+  "functionalEvidenceComplete": true,
+  "normalQualificationComplete": false,
+  "source": {
+    "commit": "6ef9fec8f31fee6e34e5aef87540d027722e1b83",
+    "dirty": true,
+    "sha256": "1bef7134d52942e91d1e2e56f9e7efbd324514dcdf4b82a3247ca25cf3800ed4",
+    "files": 5935,
+    "bytes": 47740708
+  },
+  "nonDocumentation": {
+    "files": 5304,
+    "sha256": "6ca18dd20efa0529f3a2fc8e4e4f8c492f8fad94d0b029ff3b58a42f7644fdf0"
+  },
+  "selection": {
+    "functionalPlanChecks": 343,
+    "fullPlanChecks": 351,
+    "functionalDomainsVerified": 49,
+    "uniqueNormallyPassingPlanChecks": 45,
+    "recoveredSdkFunctionalCommands": 4,
+    "normalRunnerCompletionClaim": false,
+    "wholePlanExecuted": false,
+    "sourceUnchangedDuringFinalRuns": true,
+    "postEvidenceChanges": "Repository docs only. Source, assertions, candidate plan and packaged README retain the exact nonDocumentation fingerprint.",
+    "manifests": [
+      "/Users/s/code/breditor/target/v1-candidate-runs/run-M5fS55/result.json",
+      "/Users/s/code/breditor/target/v1-candidate-runs/run-7WSsgj/result.json",
+      "/Users/s/code/breditor/target/v1-candidate-runs/run-o1loUu/result.json",
+      "/Users/s/code/breditor/target/v1-candidate-runs/run-HDQzQ8/result.json",
+      "/Users/s/code/breditor/target/v1-candidate-runs/run-lobHBH/result.json",
+      "/Users/s/code/breditor/target/v1-candidate-runs/run-0uLYXW/result.json",
+      "/Users/s/code/breditor/target/v1-candidate-runs/run-vXFyVA/result.json",
+      "/Users/s/code/breditor/target/v1-candidate-runs/run-1CLbd3/result.json",
+      "/Users/s/code/breditor/target/v1-candidate-runs/run-yjvcMK/result.json",
+      "/Users/s/code/breditor/target/v1-candidate-runs/run-SIlDhB/result.json",
+      "/Users/s/code/breditor/target/v1-candidate-runs/run-0Bg9Qr/result.json",
+      "/Users/s/code/breditor/target/v1-candidate-runs/run-GFLcB0/result.json",
+      "/Users/s/code/breditor/target/v1-candidate-runs/run-XGn1K1/result.json",
+      "/Users/s/code/breditor/target/v1-candidate-runs/run-tYfMMO/result.json",
+      "/Users/s/code/breditor/target/v1-candidate-runs/run-QSiVN6/result.json",
+      "/Users/s/code/breditor/target/v1-candidate-runs/run-Zb2I7l/result.json"
+    ],
+    "recoveredSdkChecks": [
+      {
+        "group": "flatSource",
+        "id": "flat-local-participant",
+        "actualSdkExitCode": 0,
+        "normalStagePass": false,
+        "evidence": "target/physical-catalog-v3-final-frosuY/recovered-functional/flatSource/result.json",
+        "sha256": "f9dd25b0fc30e882f08379dd8b6dbd59e9cde6969ee675965cafc9140d2789e9",
+        "originalManifestRetained": true
+      },
+      {
+        "group": "flatInstalled",
+        "id": "installed-flat-local-participant",
+        "actualSdkExitCode": 0,
+        "normalStagePass": false,
+        "evidence": "target/physical-catalog-v3-final-frosuY/recovered-functional/flatInstalled/result.json",
+        "sha256": "863ff1f904527975d54af949f0a3cc9d5eb89b98e1ef3029275f1315dc149251",
+        "originalManifestRetained": true
+      },
+      {
+        "group": "fiveSource",
+        "id": "physical-catalog-v2",
+        "actualSdkExitCode": 0,
+        "normalStagePass": false,
+        "evidence": "target/physical-catalog-v3-final-frosuY/recovered-functional/fiveSource/result.json",
+        "sha256": "4263dc0efd53b14f884eeaaae6078ce00569ea9a371aeb54f6248061c44df1e1",
+        "originalManifestRetained": true
+      },
+      {
+        "group": "fiveInstalled",
+        "id": "installed-physical-catalog-v2",
+        "actualSdkExitCode": 0,
+        "normalStagePass": false,
+        "evidence": "target/physical-catalog-v3-final-frosuY/recovered-functional/fiveInstalled/result.json",
+        "sha256": "d66930b0d2e876b01c04c37df6fb3788837fee871ebb811f88a99681ba5a71f8",
+        "originalManifestRetained": true
+      }
+    ]
+  },
+  "implemented": [
+    "A private explicit version-three physical catalog retains seven concrete native file families, including separately tagged local snapshots and flat local provenance. Every older reader, wire/schema/default meaning and public-root export remains unchanged.",
+    "Fresh read-only native policy is independently selected per local file, with exact family, catalog ID and original identity. Graph policies retain their separate delivery meaning; imported data cannot select factories or reuse a writer grant.",
+    "Actual canonical readers, archive owners, database connections and cooperative leases conserve the complete immutable file table. Distinct V3 stores are absent-only and cold re-admit every file; occupied, old-schema and acknowledged missing-file destinations refuse without overwrite or reconstruction.",
+    "Incoming local source captures bind the actual admitted archive handle. Reopening requires fresh genuine captures; local comments stay unbound and every omitted historical copy stays unresolved.",
+    "Final native/input witnesses run after policy and wrapper callbacks, including the catalog parent final callback. They check actual registry ownership and native lane epochs, admitted file lifetime and local source/journal/storage/version stamps without invoking another permission/factory callback.",
+    "The final native witness is not complete legacy retained-store or provider epoch coverage, writer/upload custody, disposition or authenticated activation. None of those obligations is replaced by a checked data flag."
+  ],
+  "tests": {
+    "sourceV3Laws": 12,
+    "installedV3Laws": 11,
+    "separateCandidatePlanLaw": 1,
+    "strictPrivateTypeFixtures": 1,
+    "v3SourceInstalledAndActualBundleEach": {
+      "format": "breditor/physical-catalog-v3-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "cases": 20,
+      "profiles": 5,
+      "exactColdFiles": 240,
+      "coldCatalogs": 20,
+      "rehashedCatalogs": 40,
+      "freshIncomingBorrows": 40,
+      "retainedUnreconciledCopies": 140,
+      "localCommentsUnbound": 20,
+      "unchangedNativeRecoveries": 20,
+      "unchangedViews": 20,
+      "unchangedWholeUploads": 20,
+      "networkCalls": 0,
+      "families": 7,
+      "historyPairs": 4,
+      "transport": "atomic-v2",
+      "fullCartesianPolicyDomain": false,
+      "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+      "scope": "Five actual normal native profiles, four document/comment history pairs, atomic-v2 inventories and all seven retained file families. Real native incoming borrows, exact cold files, native/version/view/whole-upload conservation and unresolved historical copies/local comments. Synthetic storage is not physical durability, actual writer/upload adoption, complete retained-store/provider/client reconciliation, authenticated activation, sustainable history or V1 approval."
+    },
+    "incomingSourceInstalledAndActualBundleEach": {
+      "format": "breditor/native-input-incoming-source-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "cases": 40,
+      "profiles": 5,
+      "prefixReads": 40,
+      "writerGrantRefusals": 40,
+      "exactNativeRecoveries": 40,
+      "versionCatalogs": 40,
+      "wholeUploads": 40,
+      "originalPixels": 40,
+      "readGrantRefusals": 80,
+      "staleNativeRefusals": 40,
+      "disposedReaderRefusals": 80,
+      "distinctArchiveHandleRefusals": 2,
+      "futureUndoPairs": 40,
+      "networkCalls": 0,
+      "kinds": {
+        "snapshot-v1": 20,
+        "flat-local-v1": 20
+      },
+      "histories": {
+        "original/original": 10,
+        "original/segmented-v1": 10,
+        "segmented-v1/original": 10,
+        "segmented-v1/segmented-v1": 10
+      },
+      "selectionScopes": [
+        0,
+        1,
+        2
+      ],
+      "capabilityMasks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "fullCartesianDomain": false,
+      "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+      "scope": "Forty fixed representative cases: each of five normal native profiles, four document/comment history pairs and both actual local input families. Selection scopes and capability masks rotate, not a full Cartesian matrix. Fresh read after ended writer grant; exact captured native records and versions; unchanged whole uploads/pixels; same-metadata distinct real archive refusal; real future Undo; stale/revoked/disposed refusal. No room adoption, authenticated activation, physical durability, sustainable history or V1 approval."
+    },
+    "flatSourceAndInstalledEach": {
+      "format": "breditor/flat-local-operation-participant-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "cases": 480,
+      "profiles": 5,
+      "interruptedBegins": 480,
+      "initialColdResumes": 480,
+      "laterColdResumes": 960,
+      "handoffs": 1440,
+      "literalInputs": 480,
+      "originalProviders": 1440,
+      "wholeUploadComparisons": 1440,
+      "versionComparisons": 1440,
+      "futureNativePairs": 1440,
+      "postHandoffEdits": 480,
+      "readOnlyRefusals": 960,
+      "oldFamilyRefusals": 960,
+      "freshReadScopes": 480,
+      "writeRefusals": 480,
+      "networkCalls": 0,
+      "boundaryCounts": {
+        "journal-schema-cancel": 40,
+        "upload-abort": 40,
+        "prepared-abort": 40,
+        "prepared-lost-completion": 40,
+        "prepare-abort": 40,
+        "prepare-lost-completion": 40,
+        "native-abort": 40,
+        "native-lost-completion": 40,
+        "acknowledge-abort": 40,
+        "acknowledge-lost-completion": 40,
+        "operational-abort": 40,
+        "operational-lost-completion": 40
+      },
+      "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+      "scope": "All five normal native compiler profiles, three selection scopes, eight capability masks and four document/comment history pairs. Complete four-name parent, genuine native/upload ownership, twelve first-publication interruptions, three real handoffs, cold later edits/versions/readonly reopen and exact future histories. The separate native unit suite covers three successive flat export/import generations in all four history combinations. This fixed 480-case matrix covers first flat input, complete four-name ownership, interruptions and later cold edits. No room adoption, authenticated activation, sustainable history, physical durability or V1 approval."
+    },
+    "parentSourceAndInstalledEach": {
+      "format": "breditor/restored-local-operation-participant-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "cases": 480,
+      "profiles": 5,
+      "interruptedBegins": 480,
+      "initialColdResumes": 480,
+      "laterColdResumes": 960,
+      "handoffs": 1440,
+      "literalInputs": 480,
+      "originalProviders": 1440,
+      "wholeUploadComparisons": 1440,
+      "versionComparisons": 1440,
+      "futureNativePairs": 1440,
+      "postHandoffEdits": 480,
+      "readOnlyRefusals": 960,
+      "oldFamilyRefusals": 960,
+      "freshReadScopes": 480,
+      "writeRefusals": 480,
+      "networkCalls": 0,
+      "boundaryCounts": {
+        "journal-schema-cancel": 40,
+        "upload-abort": 40,
+        "prepared-abort": 40,
+        "prepared-lost-completion": 40,
+        "prepare-abort": 40,
+        "prepare-lost-completion": 40,
+        "native-abort": 40,
+        "native-lost-completion": 40,
+        "acknowledge-abort": 40,
+        "acknowledge-lost-completion": 40,
+        "operational-abort": 40,
+        "operational-lost-completion": 40
+      },
+      "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+      "scope": "All five normal native compiler profiles, three selection scopes, eight capability masks and four document/comment history pairs. Complete four-name parent, genuine native/upload ownership, twelve first-publication interruptions, three real handoffs, cold later edits/versions/readonly reopen and exact future histories. No repeated flat provenance export, room adoption, authenticated activation, sustainable history, physical durability or V1 approval."
+    },
+    "journalSourceAndInstalledEach": {
+      "format": "breditor/restored-local-operation-journal-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "cases": 480,
+      "profiles": 5,
+      "interruptedFirstPublications": 480,
+      "initialColdResumes": 480,
+      "laterColdResumes": 480,
+      "inputLivePublications": 480,
+      "literalInputs": 480,
+      "originalPixels": 480,
+      "incomingWholeUploads": 480,
+      "versions": 480,
+      "futureNativePairs": 1440,
+      "readOnlyRefusals": 960,
+      "oldFamilyRefusals": 1440,
+      "freshReadScopes": 480,
+      "writeRefusals": 480,
+      "boundaryCounts": {
+        "prepare-abort": 80,
+        "prepare-lost-completion": 80,
+        "native-abort": 80,
+        "native-lost-completion": 80,
+        "acknowledge-abort": 80,
+        "acknowledge-lost-completion": 80
+      },
+      "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+      "scope": "Five normal compiler profiles, three selection scopes, eight capability masks and four document/comment history pairs. Actual writable source-owned journal/input, single verified LIVE first-publication, six terminal save interruptions, cold resume and exact future histories. Incoming uploads are preserved data only; no complete operational upload parent, repeated flat export, room adoption, activation, sustainable history or V1 approval."
+    },
+    "fiveFamilySourceAndInstalledEach": {
+      "format": "breditor/physical-catalog-v2-probe",
+      "formatVersion": 1,
+      "passed": true,
+      "nativeRooms": 10,
+      "historyPairCases": 40,
+      "cohorts": 480,
+      "wireOne": 240,
+      "wireTwo": 240,
+      "longNativeCuts": 1,
+      "longCutCatalogs": 48,
+      "baselineChecks": 480,
+      "baselineLocalPending": 160,
+      "historicCopiesRetained": 2400,
+      "exactColdFiles": 4800,
+      "coldCatalogs": 480,
+      "rehashedCatalogs": 480,
+      "actualGraphReborrows": 1920,
+      "staleGraphRefusals": 480,
+      "occupiedDestinationRefusals": 480,
+      "duplicateSourceRefusals": 480,
+      "oldReaderRefusals": 480,
+      "pureCachedChecks": 480,
+      "unchangedOlderRecords": 480,
+      "unchangedRestoredNativePairs": 480,
+      "networkCalls": 0,
+      "sharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+      "scope": "Ten actual native profile/transport rooms, four independent document/comment policy pairs, six older source kinds and both writer directions. Complete five-family files retained, rehashed and cold re-admitted with fresh actual graph-source borrows and historical-copy Pending. Synthetic IndexedDB/locks/raster fixtures; not operational participant staging/adoption, provider closure, physical durability, authenticated activation or V1 approval."
+    },
+    "freshNativeFixtureProducer": {
+      "rooms": 10,
+      "longNativeCuts": 1,
+      "physicalOnlyCuts": 10,
+      "protectedStreams": 40,
+      "rawCredentialsExported": false
+    },
+    "workspace": 2647,
+    "editor": 385,
+    "scriptsPassed": 2839,
+    "scriptsFailed": 0,
+    "existingBrowserSkips": 3,
+    "installedNativeOwnerLaws": 32,
+    "installedAndBundledKernelLawsEach": 6
+  },
+  "controls": {
+    "lastOtherSourceCallback": {
+      "beforePassed": 1,
+      "beforeFailed": 1,
+      "afterPassed": 2,
+      "afterFailed": 0,
+      "assertionSha256": "44d4b0b6780bf6a7f29a55562d2227518b31e85e5c8e505b3ea95317b8c2dd01",
+      "assertionChanged": false,
+      "publishedPackageDefectClaim": false
+    },
+    "additionalDevelopment": {
+      "focusedPassed": 11,
+      "legacyPassed": 194,
+      "representativeNativeCases": 20,
+      "qualified": false,
+      "providerLifetime": {
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "qualified": false,
+        "scope": "Two genuine snapshot/flat source-owned original providers remain byte-identical and readable after later document/comment edits and a retained version, while an earlier incoming LIVE capture becomes stale. Provider calls refuse after actual source closure. No new provider adapter, all-family adoption, physical durability or V1 claim."
+      },
+      "snapshotHandoff": {
+        "beforePassed": 0,
+        "beforeFailed": 4,
+        "afterPassed": 4,
+        "afterFailed": 0,
+        "unchangedPortableAssertionSha256": "024471709e5e9e4cac6fd7a835a57f7cd4883c5ef034573591997be8a51beb85",
+        "broaderDevelopmentRegressionsPassed": 41,
+        "alignedSourceContractsPassed": 42,
+        "alignedBuildAndStrictTypesPassed": true,
+        "initialTypeFailure": "The temporary dependency symlink resolved public types from main and private types from the copy. Independent copied dependencies restore matching nominal types; the unchanged fixture then passes. Offline full development install hit an uncached test dependency; no registry/network substitution was used.",
+        "integratedIntoFrozenCandidate": false,
+        "qualifiedMain": false,
+        "frozenSnapshotWitnessStillNeedsRepair": true,
+        "fullSdkDataCountersReportedPassedButActualExits": [
+          1,
+          1
+        ],
+        "failedSdkRunsAcceptedAsPasses": false,
+        "closedStderrControl": "Drained sourceEvidence Git stderr exits0; closing its reader reproduces an actual EPIPE and exit1 after the identical source read completes. This matches the observed SDK pattern but their lost error tails are not reconstructed.",
+        "freshNormalFullRerunsPending": true
+      }
+    }
+  },
+  "compatibility": {
+    "publicRootExportsUnchanged": true,
+    "olderFormatAndDefaultMeaningsUnchanged": true,
+    "normalNativeFilesUnchanged": 12,
+    "unchangedNativeRustInputs": 2857,
+    "changedPrivateDeclarations": "The new checkCurrent read-scope field also propagates to three existing private facade declaration files. Those exact one-line additions are verified and listed with changed archive bytes, not called byte-identical.",
+    "sourceAndInstalledSemanticResultsMatch": true
+  },
+  "carriedEvidence": {
+    "prior": {
+      "index": "target/native-input-incoming-source-final-opCNbx/index.json",
+      "sha256": "33cedd3aba942ca642ec506a6ceffff64dd07c24f21c427cd1281352ffd5e369",
+      "source": {
+        "commit": "4de9a9466e0e12fa335c95b975b53b57166e766d",
+        "dirty": true,
+        "sha256": "ac15f64a513be7c5eafacd5449fe5534e8fed7a1bac8f556dd1c76548393d424",
+        "files": 5911,
+        "bytes": 47599155
+      }
+    },
+    "unchangedPriorNonDocumentationInputs": 5276,
+    "changedPriorNonDocumentationInputs": [
+      {
+        "path": "packages/breditor-collaboration/README.md",
+        "beforeSha256": "8d3778fea05b01b866513b06b8322d809ec0b161e7ee3762fa638bfc3182b87d",
+        "afterSha256": "55ebc1f65153528c7c9ebef2059323ed358ea71c3c3c1b570d741f2142851f84"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/native_history_read/registry.ts",
+        "beforeSha256": "609be871b959d6446e62c8ee6dce98ac18b6244a276b72c4d4feb923f94469d6",
+        "afterSha256": "1d354c1294cc183be50f4964e5082bd3b2273b0cde7daf8055bd3b06cac3e8c1"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/native_input_operation/incoming_source.ts",
+        "beforeSha256": "abec751451daa9acbcfc6b6bb8d03c2bed09810faaa87a3875abf91ef052120a",
+        "afterSha256": "2dd423249d7dad61aad3a168407bc251014a73916fbb4892e33fabd239f02347"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/native_input_operation/journal_contract.ts",
+        "beforeSha256": "824d465aeabbe4f7835ff6babbdeaa2648b66897a62b85f7a686f7e32424e358",
+        "afterSha256": "4fadbd96e59224d1a05091723b04fef76a18244d7d6c9984ddc91cd0e48d069c"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/native_input_operation/journal_kernel.ts",
+        "beforeSha256": "a909f90acecfab4f7dddc4c80f6261317b34dd8f4a18948a6d743073187ca4db",
+        "afterSha256": "522bb5bb4f63ae65255a09ba16d95f4f912783208d89064f3326383202ccd7ca"
+      },
+      {
+        "path": "scripts/candidate-release/plan.mjs",
+        "beforeSha256": "2032e178c2b0f1a15588e5a956247291a167edc3f2479fcf66a211c29b8c7590",
+        "afterSha256": "21ce739d4bea6ff0d10a4f4658a5e8691245cd617f23fcc3c1332919db46b565"
+      }
+    ],
+    "normalRuntimeFiles": 12,
+    "unchangedNativeInputs": 2857,
+    "packages": [
+      {
+        "name": "@breditor/browser",
+        "priorArchiveSha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+        "unchangedFiles": 193,
+        "changed": []
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "priorArchiveSha256": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad",
+        "unchangedFiles": 176,
+        "changed": []
+      },
+      {
+        "name": "@breditor/collaboration",
+        "priorArchiveSha256": "4f7bae024c3019a57511ca122326a71fea51d53e5bce1e90f456f5f57f6361ce",
+        "unchangedFiles": 1142,
+        "changed": [
+          {
+            "path": "README.md",
+            "beforeSha256": "8d3778fea05b01b866513b06b8322d809ec0b161e7ee3762fa638bfc3182b87d",
+            "afterSha256": "55ebc1f65153528c7c9ebef2059323ed358ea71c3c3c1b570d741f2142851f84"
+          },
+          {
+            "path": "dist/flat_local_operation/journal.d.ts",
+            "beforeSha256": "db06ba1d15679e13c7f31650dd7826e71c74cf85dee1c6ab5e72fbfe2d08e365",
+            "afterSha256": "9e695942bb66fcf67cfe068b58bc1c25d50d172a58a50c1b4e24048242549208"
+          },
+          {
+            "path": "dist/native_history_read/registry.d.ts",
+            "beforeSha256": "7192df4d9894344183df2dafc8dff4d7071087571dd42fdb917f47a52fe4044b",
+            "afterSha256": "3fc02e090d27b83a000650c5065e46c543475c4eaf35f7ec9a71b60a1aef9c24"
+          },
+          {
+            "path": "dist/native_history_read/registry.js",
+            "beforeSha256": "6a79b0f536b88d4c5470b8c3a72d8c0c2376a8cdd0e9fbe5cbee09afeafe016c",
+            "afterSha256": "d83a5b42d18b278757286fd73e82e7210fbb70e236597dd86c787a36d3fe654d"
+          },
+          {
+            "path": "dist/native_input_operation/incoming_source.d.ts",
+            "beforeSha256": "766625ebd4766111c40446faefc7e10c3ca7701ec0fe6ea1681f10cacaeff4a8",
+            "afterSha256": "be208d302a446fe8deb0bde5549f1631a5583294a65f48b8ff6cd97106a2f9e7"
+          },
+          {
+            "path": "dist/native_input_operation/incoming_source.js",
+            "beforeSha256": "4685c20e741521db37030b4bde01ffcd610573596b6904f46b241c044acb616c",
+            "afterSha256": "685fad27b206a6405227df96df0694ed1f2214ae56fef7b3909064f270b05e94"
+          },
+          {
+            "path": "dist/native_input_operation/journal_contract.d.ts",
+            "beforeSha256": "61503be42fb7677faa25d5484f1f964f4eecbedcea8e9188768292f3e81f6794",
+            "afterSha256": "c256c9a03aa6aa73fd73fa8fba0b20b2c3399eb611cf4e6dd262c3dc36c731c1"
+          },
+          {
+            "path": "dist/native_input_operation/journal_kernel.d.ts",
+            "beforeSha256": "f2a9fb81d1a84b8343b021aa98aff5340043fde89d3b58c80a61c1c4897bfe20",
+            "afterSha256": "78d49d9c0c15c9744716cf876bc2f364e6477d32d3e8e8b0686d189741726fcd"
+          },
+          {
+            "path": "dist/native_input_operation/journal_kernel.js",
+            "beforeSha256": "4807580dd6863507d3c9aa03dc30f4a4279ed36810b6c1a977c8ae7aa09a688c",
+            "afterSha256": "534753bf237b7956c675c85ba63202c92923cc85a05ede36df34c635f8b1f8e5"
+          },
+          {
+            "path": "dist/restored_local_operation/journal.d.ts",
+            "beforeSha256": "24d59cac559ab7e8cac5627eeebcc0849a69073ab5109db6105d0e9a4f5a5278",
+            "afterSha256": "10df75c4e26ccd9a1ac35604cfe930867bfb585b848f4125ef68d6eaf1f4c844"
+          },
+          {
+            "path": "dist/restored_local_operation/source_binding.d.ts",
+            "beforeSha256": "7184faf56e411d293d23fe1dccf68018b0791483a40fc764cc15fe2d94e7628a",
+            "afterSha256": "c5dfe4e2b55ef2f460b2fabedbc7c57dffd396fee6a7a0171a9af9d2597625b6"
+          }
+        ]
+      }
+    ],
+    "otherLegacyFullMatricesFresh": false,
+    "nativeRustSuitesFresh": false
+  },
+  "installedEvidence": {
+    "freshConsumers": 8,
+    "matchingArchiveSha256": {
+      "@breditor/browser": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+      "@breditor/experimental-rich-content": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad",
+      "@breditor/collaboration": "dcfb0d2d4df11c8ff4ac602517cad486f7c15d574fab1706ad83d4f81aca6e3b"
+    },
+    "workspaceLinks": false,
+    "offlineRegistryIntegrityChecked": true,
+    "assertionChanges": "Only reversible module/runtime/fixture locations in installed copies. Fixed probes are copied byte-identically. Bundled V3/incoming probes change fixture locations only; proxies point to the same real production bundle-owned modules, classes and registrations. No alternate runtime or reduced workload.",
+    "productionBundlesExcludeWorkspaceReactAndSyntheticStorage": true
+  },
+  "retained": {
+    "index": "target/physical-catalog-v3-final-frosuY/index.json",
+    "sha256": "b0d3a048329542e10e3415962cb225ed567f3e9a0056af54cf823fde42a4eb50",
+    "files": 617,
+    "includes": "Twelve normal terminal manifests and45 complete stage logs; four unchanged interrupted manifests/partial logs and separately observed native-zero SDK completions; fifteen reports; eight fresh consumers and matching archives; actual production bundles; fresh native producer/data; unchanged-assertion controls; full source inventory, archive compatibility and twelve normal runtime files."
+  },
+  "recovery": {
+    "normalStagePasses": 45,
+    "recoveredSdkCommands": 4,
+    "originalInterruptedManifestsRewritten": false,
+    "originalRunnerExitCodesInvented": false,
+    "stdoutTailUnavailableForRecoveredCommands": true,
+    "actualNativeExitCodes": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "originalPlanDeadlinesChecked": true,
+    "actualCommandsCwdsAndSourcesBound": true,
+    "completeWorkloadsAndArtifactsVerified": true,
+    "scope": "Recovered functional evidence is not normal candidate-runner qualification. The separate repair SDKs exited1 and are not accepted as passes; their failed executions are preserved and full normal reruns are separate."
+  },
+  "resourceContract": {
+    "physicalFileTableLimit": 4096,
+    "canonicalMetadataBytes": 16777216,
+    "declaredTotalBytes": 17179869184,
+    "separateSourceDiagnosticLimit": 1024,
+    "childLimitsPreserved": true,
+    "largeFileAndLongSessionPerformanceQualified": false,
+    "nativeRetainedUndoLimitUnfixed": 1000,
+    "nativeGenerationLimitsUnfixed": 64
+  },
+  "remaining": [
+    "A separate snapshot handoff construction fault has a retained unchanged-assertion four-failure/four-pass isolated repair and 42 passing aligned source laws plus strict types. This frozen catalog candidate retains the old snapshot witness; integrate and qualify the repair before aggregate operational adoption.",
+    "Actual seven-family writer/upload adoption with genuine aggregate custody, durable interrupted-phase reconciliation and no lost offline state.",
+    "Complete legacy retained-store/source-epoch and historical-copy/provider/client reconciliation; no branch is chosen or discarded merely because text or counters match.",
+    "Newly authenticated whole-room activation, sustainable shared Undo and comment/server-log generations, remaining full feature parity and all thirteen V1 release gates."
+  ],
+  "integratedPrivateV3Retention": true,
+  "completeLegacyRetainedStoreEpochWitness": false,
+  "operationalWriterUploadAdoption": false,
+  "completeHistoricalProviderClientReconciliation": false,
+  "authenticatedActivation": false,
+  "sustainableNativeHistorySolved": false,
+  "physicalDurabilityQualified": false,
+  "historicalWebKitRepair": false,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "versionChanged": false,
+  "pushed": false
+}
