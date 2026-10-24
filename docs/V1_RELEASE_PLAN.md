@@ -43,6 +43,16 @@ publication or deployment is promoted.
 
 ## Current seven family client recovery
 
+The [explicit protected-history reference scope](OPERATIONAL_HISTORY_REFERENCES.md)
+now replays original and both generation parent archives before current records
+in the selected read-only native runtime. Successfully forgotten image-bearing
+proposals/revisions remain covered when absent from every current slot. Thirteen
+selected normal stages pass; source, fresh offline packages and actual bundled
+code each pass 1,181 cumulative laws, with nine strict consumer type fixtures.
+Default source-only scopes remain unchanged. Fresh all-member reservations,
+five-family integration, whole-provider/client reconciliation, authenticated
+activation, sustainable history and all thirteen V1 gates remain required.
+
 The [generation parent reader](GENERATION_OPERATIONAL_RECORD_READ.md) now reads
 both actual protected archives with independent fresh permission and no editable
 source projection. Its thirteen selected normal stages pass; source, fresh

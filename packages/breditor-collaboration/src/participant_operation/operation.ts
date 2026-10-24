@@ -31,6 +31,10 @@ import {readOriginalOperationalRecords} from './read_records.js';
 import {captureOriginalRecordReferences,type OriginalRecordReferenceMetadata} from '../persistence/original_record_reference_capture.js';
 import type {OriginalReferenceRestore,OriginalReferenceEditor} from '../persistence/original_reference_replay.js';
 import {parentReferenceOptions} from '../operation_read/reference_options.js';
+import {originalHistoryRecords} from './history_records.js';
+import {captureOriginalRecordReferencesAfterOrigins,type OriginalRecordReferenceCapture} from '../persistence/original_record_reference_capture.js';
+import {composeOperationalHistoryReferences,type OperationalHistoryReferenceMetadata} from '../operation_read/history_references.js';
+import type {OperationalParentReferenceRead} from '../operation_read/reference_read.js';
 
 const key=Object.freeze({});
 const checkHandoffSource=SharedAssetReferenceCapture.prototype.check,disposeHandoffSource=SharedAssetReferenceCapture.prototype.dispose;
@@ -44,8 +48,12 @@ let resumeHeld:<P extends SharedSelectionPolicy>(options:SharedParticipantOperat
 export interface OriginalOperationalReferenceOptions{readonly restore:OriginalReferenceRestore;readonly editor?:OriginalReferenceEditor;readonly checkAuthority:()=>void;readonly signal?:AbortSignal}
 export type OriginalOperationalRecordRead=OperationalParentRecordRead<OriginalOperationalReferenceOptions,OriginalRecordReferenceMetadata>;
 let captureParentRecords:<P extends SharedSelectionPolicy>(owner:OperationalSharedParticipant<P>,authority:()=>void,signal?:AbortSignal)=>Promise<OriginalOperationalRecordRead>;
+let captureHistoryReferences:<P extends SharedSelectionPolicy>(owner:OperationalSharedParticipant<P>,options:OriginalOperationalReferenceOptions)=>Promise<OperationalParentReferenceRead<OperationalHistoryReferenceMetadata<OriginalRecordReferenceMetadata>>>;
 /** Fresh read authorization, not the parent's old writer grant or handoff gate. */
 export function captureOriginalOperationalRecords<P extends SharedSelectionPolicy>(owner:OperationalSharedParticipant<P>,checkAuthority:()=>void,signal?:AbortSignal){return captureParentRecords(owner,checkAuthority,signal);}
+/** Explicit archive-plus-current scope. Preserves the source-only reader's
+ * defaults, and owns a fresh parent reservation until this opaque read closes. */
+export function captureOriginalOperationalHistoryReferences<P extends SharedSelectionPolicy>(owner:OperationalSharedParticipant<P>,options:OriginalOperationalReferenceOptions){return captureHistoryReferences(owner,options);}
 /** Internal aggregate custody: keep every genuine child busy, then verify and consume all together. */
 export async function prepareOperationalParticipantHandoff<T>(owners:readonly OperationalSharedParticipant<SharedSelectionPolicy>[],take:(states:readonly State<SharedSelectionPolicy>[],released:()=>void)=>Promise<T>,verify:(states:readonly State<SharedSelectionPolicy>[])=>void,checkSources:()=>void=()=>{}):Promise<OperationalParticipantHandoff<T>>{const group=reserveOperationalParticipantGroup(owners);return prepareOperationalCohort([group],released=>take(group.states,released),()=>verify(group.states),checkSources,()=>operationFailure("operation_closed"));}
 /** Internal synchronous reservation for the common mixed-family barrier. */
@@ -74,6 +82,11 @@ export class OperationalSharedParticipant<P extends SharedSelectionPolicy=Shared
  readonly #state:State<P>;#closed=false;#busy=false;#released=false;
  private constructor(token:object,state:State<P>){if(token!==key)throw operationFailure("operation_closed");this.#state=state;fence(state.db,state.life);fence(state.recoveryDb,state.life);Object.freeze(this);}
  static{
+  captureHistoryReferences=async(owner,provided)=>{
+   const o=parentReferenceOptions(provided,'restore'),parent=await captureParentRecords(owner,o.checkAuthority,o.signal);let capture:OriginalRecordReferenceCapture|undefined,complete=false;
+   try{const s=owner.#state,check=()=>parent.check(),stored=await readOriginalOperationalRecords(s,check,o.signal);check();const origins=await originalHistoryRecords(s,stored.files[0]!.file,check,o.signal);check();const read=await captureOriginalRecordReferencesAfterOrigins({source:s.owners.session!,restore:o.restore,checkAuthority:check,...(o.editor!==undefined?{editor:o.editor}:{}),...(o.signal!==undefined?{signal:o.signal}:{}),...(s.owners.versions?{versions:s.owners.versions}:{}),...(s.owners.revisions?{revisions:s.owners.revisions}:s.owners.suggestions?{suggestions:s.owners.suggestions}:{})},origins);capture=read.capture;check();const result=composeOperationalHistoryReferences('original',parent,capture,read.origins);result.check();complete=true;return result;}
+   finally{if(!complete){try{capture?.dispose();}finally{parent.dispose();}}}
+  };
   captureParentRecords=async<Q extends SharedSelectionPolicy>(owner:OperationalSharedParticipant<Q>,provided:()=>void,signal?:AbortSignal)=>{
    if(!owner||typeof owner!=='object'||!(#state in owner))throw operationFailure('operation_policy');if(owner.#closed||owner.#released)throw operationFailure('operation_closed');if(owner.#busy)throw operationFailure('operation_in_use');const authority=participantAuthority(provided);owner.#busy=true;
    const s=owner.#state,session=s.owners.session,uploads=s.owners.uploads,queue=s.owners.suggestions,revisions=s.owners.revisions,versions=s.owners.versions;let observation:OperationalReadCancellation|undefined,result:OriginalOperationalRecordRead|undefined,released=false,complete=false;

@@ -55,7 +55,9 @@ backup checks pass too. Native Rust and normal Wasm bytes are unchanged.
 
 Child references cover the current source's committed, pending and LIVE states,
 not fresh native ancestry/reference replay of the historical parent archive.
+The separate [explicit historical scope](OPERATIONAL_HISTORY_REFERENCES.md) now
+adds that archive replay before current records without changing these defaults.
 Synchronous fresh reservations across every selected room member, historical
-copy closure, whole-upload/provider/client reconciliation, authenticated
+copy integration, whole-upload/provider/client reconciliation, authenticated
 activation and sustainable history remain required. No handoff or activation
 capability is issued, and all thirteen V1 gates remain open.

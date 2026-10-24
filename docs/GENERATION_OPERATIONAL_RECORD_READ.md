@@ -46,7 +46,9 @@ also pass. Existing source and installed generation-operation probes each retain
 six cases, 24 handoffs and 18 operational cold reopens. Normal Wasm is unchanged.
 
 This is not fresh native/reference replay of historical parent archives. That
-closure, synchronous fresh reservations across every room member, whole-provider
+separate [explicit historical scope](OPERATIONAL_HISTORY_REFERENCES.md) now
+replays both actual archives before current records. Synchronous fresh
+reservations across every room member, whole-provider
 and client reconciliation, authenticated activation, sustainable history and
 remaining parity are still required. All thirteen V1 gates remain open. No version,
 push, tag, publication or deployment is promoted.

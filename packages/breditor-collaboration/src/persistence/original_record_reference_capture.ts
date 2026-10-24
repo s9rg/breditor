@@ -23,7 +23,7 @@ import {sourceNativeRecoveryRead} from '../source_native_read.js';
 import {nativeRestoreBinding} from '../native_restore_factory.js';
 import {frozen} from '../room_participant_inventory/policy.js';
 import {replayOriginalReferenceState,verifyOriginalReferenceContinuation,type OriginalReferenceNativeState,type OriginalReferenceRestore,type OriginalReferenceEditor,type OriginalReferenceReplay} from './original_reference_replay.js';
-import {originalReferencePackets} from './original_reference_packets.js';
+import {originalReferencePackets,type OriginalReferencePacketRows} from './original_reference_packets.js';
 type Immutable<T>=T extends readonly(infer V)[]?readonly Immutable<V>[]:T extends object?{readonly[K in keyof T]:Immutable<T[K]>}:T;
 interface OriginalRecordReferenceBase<P extends SharedSelectionPolicy>{
  readonly source:SharedPersistentSession<P>|SharedReviewPersistentSession<P>;readonly restore:OriginalReferenceRestore;readonly editor?:OriginalReferenceEditor;
@@ -38,6 +38,11 @@ export interface OriginalRecordReferenceState{readonly source:'native'|'versions
 export interface OriginalRecordReferenceMetadata{readonly format:'breditor/original-record-reference-capture';readonly formatVersion:1;readonly scope:'original-native-and-selected-stores-committed-pending-live';readonly paired:boolean;readonly states:readonly OriginalRecordReferenceState[];readonly kind:'ready'|'pending';readonly references:readonly RichRetainedAssetReference[]}
 interface Read{check():void;checkCurrent():void;verify():Promise<void>;dispose():void}
 interface Callbacks{check():void;current():void;verify():Promise<void>;release():void}
+/** Trusted parent composition only. Archive records are admitted independently
+ * before this replay, and never substitute for genuine current source custody. */
+export interface OriginalReferenceOrigin{readonly role:'operation-origin';readonly native:OriginalReferenceNativeState;readonly packets:OriginalReferencePacketRows}
+export interface OriginalReferenceOriginResult{readonly role:'operation-origin';readonly references:readonly RichRetainedAssetReference[];readonly pending:readonly Immutable<SharedAssetCapturePending>[]}
+let captureAfterOrigins:<P extends SharedSelectionPolicy>(provided:OriginalRecordReferenceOptions<P>,origins:readonly OriginalReferenceOrigin[])=>Promise<{capture:OriginalRecordReferenceCapture;origins:readonly OriginalReferenceOriginResult[]}>;
 const key=Object.freeze({}),fail=(suffix:string)=>new SharedEditorError('original_record_reference_'+suffix,'Read exact genuine original native and selected retained stores');
 export class OriginalRecordReferenceCapture{
  readonly #metadata:OriginalRecordReferenceMetadata;#callbacks:Callbacks|undefined;#closed=false;#checking=false;#verifying=false;
@@ -47,7 +52,9 @@ export class OriginalRecordReferenceCapture{
  checkCurrent():void{if(this.#closed)throw fail('closed');this.#callbacks!.current();if(this.#closed)throw fail('closed');}
  async verify():Promise<void>{if(this.#closed)throw fail('closed');if(this.#verifying)throw fail('busy');this.#verifying=true;try{checkCapture.call(this);await this.#callbacks!.verify();checkCapture.call(this);}finally{this.#verifying=false;}}
  dispose():void{if(this.#closed)return;this.#closed=true;const callbacks=this.#callbacks;this.#callbacks=undefined;callbacks?.release();}
- static async capture<P extends SharedSelectionPolicy>(provided:OriginalRecordReferenceOptions<P>):Promise<OriginalRecordReferenceCapture>{
+ static capture<P extends SharedSelectionPolicy>(provided:OriginalRecordReferenceOptions<P>):Promise<OriginalRecordReferenceCapture>{return OriginalRecordReferenceCapture.#capture(provided);}
+ static{captureAfterOrigins=async(provided,origins)=>{if(origins.length!==1)throw fail('origin');const rows:OriginalReferenceOriginResult[]=[];const capture=await this.#capture(provided,{origins,rows});return{capture,origins:rows};};}
+ static async #capture<P extends SharedSelectionPolicy>(provided:OriginalRecordReferenceOptions<P>,prelude?:{origins:readonly OriginalReferenceOrigin[];rows:OriginalReferenceOriginResult[]}):Promise<OriginalRecordReferenceCapture>{
   if(!provided||typeof provided!=='object'||Array.isArray(provided))throw fail('policy');const names=Object.keys(provided),values:Record<string,unknown>={};if(names.some(n=>!['source','restore','editor','versions','suggestions','revisions','checkAuthority','signal'].includes(n))||['source','restore','checkAuthority'].some(n=>!Object.hasOwn(provided,n)))throw fail('policy');for(const n of names){const d=Object.getOwnPropertyDescriptor(provided,n);if(!d||!('value'in d))throw fail('policy');values[n]=d.value;}
   const input=values as unknown as OriginalRecordReferenceOptions<P>;if(typeof input.restore!=='function'||input.revisions&&input.suggestions)throw fail('policy');let editor:OriginalReferenceEditor|undefined;if(input.editor!==undefined){if(!input.editor||typeof input.editor!=='object'||Array.isArray(input.editor))throw fail('policy');const copied:Record<string,unknown>={};for(const n of Object.keys(input.editor)){const d=Object.getOwnPropertyDescriptor(input.editor,n);if(!d||!('value'in d)||['selectionEditing','reviewedHistory','searchHistory','segmentedHistory'].includes(n))throw fail('policy');copied[n]=d.value;}editor=copied;}
   const core=managedSourceCore(input.source) as SharedRichEditor<P>,paired=input.source instanceof SharedReviewPersistentSession;if(!paired&&!(input.source instanceof SharedPersistentSession))throw fail('source');for(const selected of[input.versions,input.suggestions,input.revisions])if(selected&&managedSourceCore(selected)!==core)throw fail('source');
@@ -62,6 +69,7 @@ export class OriginalRecordReferenceCapture{
    const selected=nativeStates(nativeRead.metadata()),states:OriginalRecordReferenceState[]=[],union=new Map<string,RichRetainedAssetReference>();let previous:OriginalReferenceReplay|undefined;
    const add=(source:OriginalRecordReferenceState['source'],slot:OriginalRecordReferenceState['slot'],value:ReturnType<typeof originalReferencePackets>)=>{for(const r of value.references){union.set(JSON.stringify([r.asset,r.generation]),r);if(union.size>100000)throw fail('budget');}states.push({source,slot,...value});};
    try{
+    for(const origin of prelude?.origins??[]){const next=await replayOriginalReferenceState(origin.native,binding,editor,descriptor,check);let kept=false;try{if(previous)verifyOriginalReferenceContinuation(next,previous);const refs=originalReferencePackets(next.core,{...origin.packets,localVersions:origin.native.paired?.versions},next.check);prelude!.rows.push({role:origin.role,...refs});previous?.dispose();previous=next;kept=true;}finally{if(!kept)next.dispose();}}
     for(const state of selected){const next=await replayOriginalReferenceState(state,binding,editor,descriptor,check);let kept=false;try{if(previous)verifyOriginalReferenceContinuation(next,previous);add('native',state.slot,originalReferencePackets(next.core,{localVersions:state.paired?.versions},next.check));previous?.dispose();previous=next;kept=true;}finally{if(!kept)next.dispose();}}
     if(!previous)throw fail('source');const latest=previous,reviewed=latest.state.reviewedHistory?'reviewed-v1' as const:undefined;
     if(versionRead)for(const[slot,value]of recordVariants(versionRead.metadata()))add('versions',slot,originalReferencePackets(latest.core,{versions:structuredClone(value) as SharedVersionCatalogRecord},latest.check));
@@ -73,7 +81,9 @@ export class OriginalRecordReferenceCapture{
  }
 }
 const checkCapture=OriginalRecordReferenceCapture.prototype.check;
-export const captureOriginalRecordReferences=OriginalRecordReferenceCapture.capture;
+export const captureOriginalRecordReferences=<P extends SharedSelectionPolicy>(provided:OriginalRecordReferenceOptions<P>)=>OriginalRecordReferenceCapture.capture(provided);
+/** Explicit historical scope for SDK-owned original-parent composition only. */
+export function captureOriginalRecordReferencesAfterOrigins<P extends SharedSelectionPolicy>(provided:OriginalRecordReferenceOptions<P>,origins:readonly OriginalReferenceOrigin[]){return captureAfterOrigins(provided,origins);}
 function recordVariants<T>(value:{committed:T;pending:T|null;live:T}):readonly(readonly['committed'|'pending'|'live',T])[]{return[['committed',value.committed],...(value.pending?[['pending',value.pending] as const]:[]),['live',value.live]];}
 function nativeStates(value:OriginalNativeRecords|PersistentPairedMetadata):OriginalReferenceNativeState[]{
  if(value.format==='breditor/persistent-original-native-record-read')return recordVariants<{checkpoint:string}>(value).map(([slot,row])=>({slot,checkpoint:row.checkpoint,...value.identity,reviewedHistory:null,paired:null}));

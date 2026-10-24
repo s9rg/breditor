@@ -25,6 +25,10 @@ import {OperationalReadCancellation} from '../operation_read/cancellation.js';
 import {checkRecoveryLeasesHeld} from '../participant_recovery/lease.js';
 import {participantAuthority} from '../participant_backup/policy.js';
 import {readGenerationOperationalRecords} from './read_records.js';
+import {generationHistoryRecords} from './history_records.js';
+import {captureGenerationRecordReferencesAfterOrigins,type GenerationRecordReferenceCapture} from '../generation_source/record_reference_capture.js';
+import {composeOperationalHistoryReferences,type OperationalHistoryReferenceMetadata} from '../operation_read/history_references.js';
+import type {OperationalParentReferenceRead} from '../operation_read/reference_read.js';
 import {SharedEditorError} from '../core.js';
 import {captureGenerationRecordReferences,type GenerationRecordReferenceMetadata,type GenerationRecordReferenceOptions} from '../generation_source/record_reference_capture.js';
 import {parentReferenceOptions} from '../operation_read/reference_options.js';
@@ -36,8 +40,12 @@ let exactGeneration:(owner:OperationalSharedGenerationParticipant<SharedSelectio
 export type GenerationOperationalReferenceOptions=Omit<GenerationRecordReferenceOptions,'source'>;
 export type GenerationOperationalRecordRead=OperationalParentRecordRead<GenerationOperationalReferenceOptions,GenerationRecordReferenceMetadata,GenerationOperationalRecordMetadata>;
 let captureParentRecords:<P extends SharedSelectionPolicy>(owner:OperationalSharedGenerationParticipant<P>,authority:()=>void,signal?:AbortSignal)=>Promise<GenerationOperationalRecordRead>;
+let captureHistoryReferences:<P extends SharedSelectionPolicy>(owner:OperationalSharedGenerationParticipant<P>,options:GenerationOperationalReferenceOptions)=>Promise<OperationalParentReferenceRead<OperationalHistoryReferenceMetadata<GenerationRecordReferenceMetadata>>>;
 /** New fresh-permission read scope, not the original handoff/writer guard. */
 export function captureGenerationOperationalRecords<P extends SharedSelectionPolicy>(owner:OperationalSharedGenerationParticipant<P>,checkAuthority:()=>void,signal?:AbortSignal){return captureParentRecords(owner,checkAuthority,signal);}
+/** All protected origin archives plus every actual current generation state.
+ * Fresh read permission is independent from the original job's writer grant. */
+export function captureGenerationOperationalHistoryReferences<P extends SharedSelectionPolicy>(owner:OperationalSharedGenerationParticipant<P>,options:GenerationOperationalReferenceOptions){return captureHistoryReferences(owner,options);}
 /** A prepared aggregate parent may publish only the exact original native/upload cut. */
 export function verifyOperationalGenerationAtOrigin(owner:OperationalSharedGenerationParticipant<SharedSelectionPolicy>):Promise<void>{return exactGeneration(owner);}
 /** Internal all-or-nothing custody capsule for the generation-aware room adapter.
@@ -57,6 +65,11 @@ export class OperationalSharedGenerationParticipant<P extends SharedSelectionPol
  readonly #state:State<P>;readonly #file:Blob;#closed=false;#busy=false;#released=false;
  private constructor(token:object,state:State<P>){if(token!==key)throw fail("generation_operation_closed");this.#state=state;this.#file=SharedGenerationParticipantBackup.prototype.file.call(state.p.backup);generationOperationFence(state.db,state.life);generationOperationFence(state.recoveryDb,state.life);Object.freeze(this);}
  static{
+  captureHistoryReferences=async(owner,provided)=>{
+   const o=parentReferenceOptions(provided,'restoreSegmented'),parent=await captureParentRecords(owner,o.checkAuthority,o.signal);let capture:GenerationRecordReferenceCapture|undefined,complete=false;
+   try{const s=owner.#state,check=()=>parent.check(),stored=await readGenerationOperationalRecords(s,check,o.signal);check();const origins=await generationHistoryRecords(s,stored.files,check,o.signal);check();const read=await captureGenerationRecordReferencesAfterOrigins({source:s.owners.session!,restoreSegmented:o.restoreSegmented,checkAuthority:check,...(o.editor!==undefined?{editor:o.editor}:{}),...(o.signal!==undefined?{signal:o.signal}:{})},origins);capture=read.capture;check();const result=composeOperationalHistoryReferences('generation',parent,capture,read.origins);result.check();complete=true;return result;}
+   finally{if(!complete){try{capture?.dispose();}finally{parent.dispose();}}}
+  };
   captureParentRecords=async<Q extends SharedSelectionPolicy>(owner:OperationalSharedGenerationParticipant<Q>,provided:()=>void,signal?:AbortSignal)=>{
    if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('generation_operation_policy');if(owner.#closed||owner.#released)throw fail('generation_operation_closed');if(owner.#busy)throw fail('generation_operation_busy');const authority=participantAuthority(provided);owner.#busy=true;
    const s=owner.#state,session=s.owners.session,uploads=s.owners.uploads;let observation:OperationalReadCancellation|undefined,result:GenerationOperationalRecordRead|undefined,released=false,complete=false;

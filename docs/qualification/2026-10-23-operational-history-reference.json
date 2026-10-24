@@ -1,0 +1,61 @@
+{
+  "format": "breditor/operational-history-reference-qualification",
+  "formatVersion": 1,
+  "passed": true,
+  "directory": "/Users/s/code/breditor/target/operational-history-reference-final-BDcuMc",
+  "index": "target/operational-history-reference-final-BDcuMc/index.json",
+  "indexSha256": "058c01e287c90581ab8bb96cee3d473177f9a43418cb8a8974af93829401f14f",
+  "retainedEntries": 7967,
+  "source": {
+    "commit": "3962953a11bb31271aefddca11d715446f186ac2",
+    "dirty": true,
+    "sha256": "ab69749ff2b8cdebb5eed3e004345ab78912fb41a9e8e4bd8674b2a1d2562082",
+    "files": 6173,
+    "bytes": 49085318
+  },
+  "normalStages": 13,
+  "functionalPlanChecks": 408,
+  "fullPlanChecks": 416,
+  "sourceAssertions": 1181,
+  "installedAssertions": 1181,
+  "bundledAssertions": 1181,
+  "newHistoryAssertions": 131,
+  "priorAssertions": 1050,
+  "strictTypes": 9,
+  "contractAssertionsIncludingPlan": 132,
+  "legacyOriginalOperationCases": 66,
+  "legacyOriginalCustodyTransfers": 66,
+  "legacyOriginalColdReopens": 198,
+  "legacyGenerationOperationCases": 6,
+  "legacyGenerationOperationHandoffs": 24,
+  "legacyGenerationOperationalColdReopens": 18,
+  "registryArtifacts": 45,
+  "productionModules": 500,
+  "bundleSha256": "fe7641b631caaf567cdfe58ce6ad1fdcd2ac082c149d3b34895b288c753265fc",
+  "archives": [
+    {
+      "name": "@breditor/browser",
+      "path": "/private/tmp/breditor-operational-history-reference-installed-vRew1a/archives/breditor-browser-0.3.0-alpha.22.tgz",
+      "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+    },
+    {
+      "name": "@breditor/experimental-rich-content",
+      "path": "/private/tmp/breditor-operational-history-reference-installed-vRew1a/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+      "sha256": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad"
+    },
+    {
+      "name": "@breditor/collaboration",
+      "path": "/private/tmp/breditor-operational-history-reference-installed-vRew1a/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+      "sha256": "8805d3e3882331d8a5c0cd84c92b0565f70945a06dd3d7ea1b64adedc67efdb2"
+    }
+  ],
+  "normalWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+  "nonDocumentationInputs": 5477,
+  "scope": "Explicit original and generation protected archives plus all actual current native/packet records. Not all-member fresh reservation, other five-family integration, provider/client reconciliation, activation, sustainable history or V1 readiness.",
+  "allThirteenV1GatesOpen": true,
+  "noPush": true,
+  "noTag": true,
+  "noVersionChange": true,
+  "noPublication": true,
+  "noDeployment": true
+}
