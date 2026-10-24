@@ -1,0 +1,55 @@
+{
+  "format": "breditor/fresh-delivery-history-qualification",
+  "formatVersion": 1,
+  "passed": true,
+  "directory": "/Users/s/code/breditor/target/fresh-delivery-history-final-19ex7l",
+  "index": "target/fresh-delivery-history-final-19ex7l/index.json",
+  "indexSha256": "f6034000222bd458970c109c87ac9138d66b97c976031a3bf8fb238b709aa6a0",
+  "retainedEntries": 8096,
+  "source": {
+    "commit": "af087f38bd49ba0aea77976907ee2fe5c89e4c18",
+    "dirty": true,
+    "sha256": "23f6dd19bd1e43e6976fb5a582bbff33c39f8c3c10f249678f4ca964324520cb",
+    "files": 6211,
+    "bytes": 49234546
+  },
+  "normalStages": 18,
+  "functionalPlanChecks": 416,
+  "fullPlanChecks": 424,
+  "sourceAssertions": 1230,
+  "installedAssertions": 1230,
+  "bundledAssertions": 1230,
+  "newFreshDeliveryAssertions": 31,
+  "priorAssertions": 1199,
+  "strictTypes": 11,
+  "contractAssertionsIncludingPlan": 32,
+  "registryArtifacts": 45,
+  "productionModules": 612,
+  "bundleSha256": "745f2e6887f983b11064ac9d73552889bf6095f86a3f9cf980e0e45cf129e82f",
+  "archives": [
+    {
+      "name": "@breditor/browser",
+      "path": "/private/tmp/breditor-fresh-delivery-history-installed-WcFqgs/archives/breditor-browser-0.3.0-alpha.22.tgz",
+      "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+    },
+    {
+      "name": "@breditor/experimental-rich-content",
+      "path": "/private/tmp/breditor-fresh-delivery-history-installed-WcFqgs/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+      "sha256": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad"
+    },
+    {
+      "name": "@breditor/collaboration",
+      "path": "/private/tmp/breditor-fresh-delivery-history-installed-WcFqgs/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+      "sha256": "330c584b6a94f2f9d1993fb42995344565204c8cf309d12db753954ea9470cfd"
+    }
+  ],
+  "normalWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+  "nonDocumentationInputs": 5511,
+  "scope": "Five genuine delivery/local protected parent history readers with fresh permission, actual durable byte verification, opaque read-only reports and preserved native Undo/Redo/custody. Not complete seven-family coordinator integration, provider/client closure, activation, sustainable history or V1 readiness.",
+  "allThirteenV1GatesOpen": true,
+  "noPush": true,
+  "noTag": true,
+  "noVersionChange": true,
+  "noPublication": true,
+  "noDeployment": true
+}

@@ -20,6 +20,7 @@ export function snapshotLocalParticipant<P extends SharedSelectionPolicy>(provid
  const database=independentRecoveryName(input.database),journalDatabase=independentRecoveryName(input.journalDatabase),sourceDatabase=independentRecoveryName(input.sourceDatabase),base=snapshotIndependentRecovery(recovery,false),session=snapshotLocalOperationFactory(base.options.expected,input.session);
  const names=Object.freeze([database,journalDatabase,sourceDatabase,base.options.database,...Object.values(base.options.destinations)].sort());if(new Set(names).size!==6||session.database!==sourceDatabase)throw fail('independent_local_participant_policy');
  const life={changed:false},current=()=>{if(globalThis.indexedDB!==context||globalThis.navigator?.locks!==locks)throw fail('independent_local_participant_storage_changed');},lifetime=()=>{current();base.guard();current();},guard=()=>{if(life.changed)throw fail('independent_local_participant_storage_changed');lifetime();if(life.changed)throw fail('independent_local_participant_storage_changed');};
- return{database,journalDatabase,sourceDatabase,context,names,session,life,lifetime,guard,base:{...base,guard},recovered:begin?(input as LocalOperationParticipantBeginOptions<P>).recovered:undefined};
+ const readCurrent=()=>{if(life.changed)throw fail('independent_local_participant_storage_changed');current();};
+ return{database,journalDatabase,sourceDatabase,context,names,session,life,lifetime,guard,readCurrent,base:{...base,guard},recovered:begin?(input as LocalOperationParticipantBeginOptions<P>).recovered:undefined};
 }
 export type LocalParticipantChoice<P extends SharedSelectionPolicy=SharedSelectionPolicy>=ReturnType<typeof snapshotLocalParticipant<P>>;

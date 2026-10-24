@@ -27,10 +27,14 @@ import {prepareNativeInputHandoff,type NativeInputHandoff} from '../native_input
 import type {OperationalCohortReservation} from '../operation_cohort/cohort.js';
 import {operationalReadReservation,type OperationalReadReservation} from '../operation_read/reservation.js';
 import {checkRecoveryLeasesHeld} from '../participant_recovery/lease.js';
+import {makeFreshLocalParentHistoryRead,type FreshLocalParentHistoryOptions,type FreshLocalParentHistoryRead} from './fresh_parent_history.js';
 const key=Object.freeze({}),closeSource=Session.prototype.close,journalFile=Journal.prototype.file,journalBlob=Journal.prototype.blob,journalClose=Journal.prototype.close,journalProgress=Journal.prototype.progress;
 let reserve:<P extends SharedSelectionPolicy>(owners:readonly OperationalIndependentLocalParticipant<P>[])=>OperationalCohortReservation<Readonly<LocalOperationParticipantParts<P>>>;
 export interface LocalParticipantReadParts<P extends SharedSelectionPolicy=SharedSelectionPolicy>{readonly source:Readonly<{session:Session<P>}>;readonly uploads:NonNullable<LocalParticipantOwners<P>['uploads']>}
 let reserveRead:<P extends SharedSelectionPolicy>(owners:readonly OperationalIndependentLocalParticipant<P>[])=>OperationalReadReservation<LocalParticipantReadParts<P>>;
+let reserveFreshRead:<P extends SharedSelectionPolicy>(owner:OperationalIndependentLocalParticipant<P>,read:FreshLocalParentHistoryOptions<P>,authority:()=>void,signal?:AbortSignal)=>FreshLocalParentHistoryRead;
+/** Fresh non-consuming protected-parent read; no mutable source escapes. */
+export function reserveFreshIndependentLocalHistoryRead<P extends SharedSelectionPolicy>(owner:OperationalIndependentLocalParticipant<P>,read:FreshLocalParentHistoryOptions<P>,checkAuthority:()=>void,signal?:AbortSignal){return reserveFreshRead(owner,read,checkAuthority,signal);}
 /** Non-consuming native/upload inspection; no coordinator lease is released. */
 export function reserveIndependentLocalRead<P extends SharedSelectionPolicy>(owners:readonly OperationalIndependentLocalParticipant<P>[]):OperationalReadReservation<LocalParticipantReadParts<P>>{return reserveRead(owners);}
 /** Intrinsic legacy-local group. Original provider semantics remain original;
@@ -38,8 +42,12 @@ export function reserveIndependentLocalRead<P extends SharedSelectionPolicy>(own
 export function reserveOperationalIndependentLocalGroup<P extends SharedSelectionPolicy>(owners:readonly OperationalIndependentLocalParticipant<P>[]):OperationalCohortReservation<Readonly<LocalOperationParticipantParts<P>>>{return reserve(owners);}
 async function verified(state:LocalParticipantState,initial=false){await retainedLocalParticipantRecord(state);await verifyLocalRetainedRecovery(state.p,state.recoveryDb!);state.choice.guard();return localParticipantWitness(state.p,state.baseline,state.owners,state.journal,initial);}
 export class OperationalIndependentLocalParticipant<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
- readonly #state:LocalParticipantState<P>;#exposed=false;#closed=false;#busy=false;
+ readonly #state:LocalParticipantState<P>;#exposed=false;#closed=false;#busy=false;#readToken:object|undefined;
  private constructor(token:object,state:LocalParticipantState<P>){if(token!==key)throw fail('independent_local_participant_closed');this.#state=state;Object.freeze(this);}
+ static{reserveFreshRead=(owner,read,authority,signal)=>{if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('independent_local_participant_policy');owner.#start();const token={};owner.#readToken=token;let released=false;
+  const held=()=>{if(released||owner.#closed||!owner.#exposed||!owner.#busy||owner.#readToken!==token)throw fail('independent_local_participant_closed');},release=()=>{if(released)return;held();released=true;owner.#readToken=undefined;owner.#busy=false;};
+  try{return makeFreshLocalParentHistoryRead(owner.#state,held,release,read,authority,signal);}catch(error){release();throw error;}
+ };}
  static{reserve=<Q extends SharedSelectionPolicy>(provided:readonly OperationalIndependentLocalParticipant<Q>[])=>{
   const owners=snapshotInventoryInputs(provided,()=>fail('independent_local_participant_policy'),owner=>{if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('independent_local_participant_policy');if(!owner.#exposed||owner.#closed)throw fail('independent_local_participant_closed');if(owner.#busy)throw fail('independent_local_participant_busy');return owner;});
   if(new Set(owners).size!==owners.length)throw fail('independent_local_participant_policy');for(const owner of owners)owner.#busy=true;

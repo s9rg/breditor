@@ -19,18 +19,26 @@ import {operationalReadReservation,type OperationalReadReservation} from '../ope
 import {checkRecoveryLeasesHeld} from '../participant_recovery/lease.js';
 import {readNativeInputUploadStore} from '../native_input_operation/participant_uploads.js';
 import {NativeInputParticipantWitness as ReadWitness} from '../native_input_operation/participant_witness.js';
+import {makeFreshFlatLocalHistoryRead,type FreshFlatLocalHistoryOptions,type FreshFlatLocalHistoryRead} from './fresh_parent_history.js';
 const key=Object.freeze({}),closeSource=Session.prototype.close,discardSource=Session.prototype.discardAndClose;
 const readWitnessCheck=ReadWitness.prototype.check,readWitnessCurrent=ReadWitness.prototype.checkCurrent,readWitnessRelease=ReadWitness.prototype.release;
 let reserve:<P extends SharedSelectionPolicy>(owner:OperationalFlatLocalParticipant<P>)=>NativeInputParticipantReservation<P>;
 type ReadParts<P extends SharedSelectionPolicy>=Readonly<Omit<FlatLocalParticipantParts<P>,'input'>>;
 let reserveRead:<P extends SharedSelectionPolicy>(owner:OperationalFlatLocalParticipant<P>)=>OperationalReadReservation<ReadParts<P>>;
+let reserveFreshRead:<P extends SharedSelectionPolicy>(owner:OperationalFlatLocalParticipant<P>,read:FreshFlatLocalHistoryOptions<P>,authority:()=>void,signal?:AbortSignal)=>FreshFlatLocalHistoryRead;
+/** Fresh manifest-preserving flat parent read; not a snapshot adapter. */
+export function reserveFreshFlatLocalHistoryRead<P extends SharedSelectionPolicy>(owner:OperationalFlatLocalParticipant<P>,read:FreshFlatLocalHistoryOptions<P>,checkAuthority:()=>void,signal?:AbortSignal){return reserveFreshRead(owner,read,checkAuthority,signal);}
 /** Non-consuming flat-input/source/upload read, without rewriting provenance. */
 export function reserveFlatLocalRead<P extends SharedSelectionPolicy>(owner:OperationalFlatLocalParticipant<P>):OperationalReadReservation<ReadParts<P>>{return reserveRead(owner);}
 /** Internal genuine-parent reservation. Flat input is never a snapshot adapter. */
 export function reserveFlatLocalParticipant<P extends SharedSelectionPolicy>(owner:OperationalFlatLocalParticipant<P>):NativeInputParticipantReservation<P>{return reserve(owner);}
 export class OperationalFlatLocalParticipant<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
- readonly #state:FlatLocalParticipantState<P>;#exposed=false;#closed=false;#busy=false;
+ readonly #state:FlatLocalParticipantState<P>;#exposed=false;#closed=false;#busy=false;#readToken:object|undefined;
  private constructor(token:object,state:FlatLocalParticipantState<P>){if(token!==key)throw fail('flat_local_input_participant_policy');this.#state=state;Object.freeze(this);}
+ static{reserveFreshRead=(owner,read,authority,signal)=>{if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('flat_local_input_participant_policy');owner.#start();const token={};owner.#readToken=token;let released=false;
+  const held=()=>{if(released||owner.#closed||!owner.#exposed||!owner.#busy||owner.#readToken!==token)throw fail('flat_local_input_participant_closed');},release=()=>{if(released)return;held();released=true;owner.#readToken=undefined;owner.#busy=false;};
+  try{return makeFreshFlatLocalHistoryRead(owner.#state,held,release,read,authority,signal);}catch(error){release();throw error;}
+ };}
  static{reserve=<Q extends SharedSelectionPolicy>(owner:OperationalFlatLocalParticipant<Q>)=>{
   if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('flat_local_input_participant_policy');owner.#start();const s=owner.#state;let witness:Awaited<ReturnType<typeof verifyFlatLocalParticipant<Q>>>|undefined,prepared=false,finished=false;
   return{

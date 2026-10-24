@@ -43,14 +43,26 @@ publication or deployment is promoted.
 
 ## Current seven family client recovery
 
+The [five fresh protected-parent readers](FRESH_DELIVERY_PARENT_HISTORY.md) now
+verify actual parent/archive and held source history records independently of
+expired operational job permission or cancellation. Eighteen selected normal
+stages pass; source, fresh offline packages and actual production-bundled code
+each pass 1,230 cumulative laws, with eleven strict consumer fixtures. All five
+existing participant contract and type-fence stages pass as well. Reads preserve
+real custody and both native Undo/Redo lanes, and expose no mutable source.
+Together with the original/generation barrier, these are the per-family building
+blocks for a fresh seven-family coordinator read, not completed room
+reconciliation. Provider/client closure, authenticated activation, sustainable
+history, remaining parity and all thirteen V1 gates remain required.
+
 The [fresh protected-history barrier](PROTECTED_HISTORY_GROUP_READ.md) now reserves
 all selected original/generation parents before the first fresh read callback.
 It verifies actual archives and all current records, catches late changes in
 earlier members, and releases only read borrows while preserving real custody and
 future Undo/Redo. Twelve selected normal stages pass; source, fresh offline
 packages and actual bundled code each pass 1,199 cumulative laws, with ten strict
-consumer type fixtures. The five newer families still require fresh parent
-admission. Full room/provider/client reconciliation, authenticated activation,
+consumer type fixtures. The five newer families now have separate fresh parent
+admission; joint room integration remains next. Full room/provider/client reconciliation, authenticated activation,
 sustainable history, remaining parity and all thirteen V1 gates remain required.
 
 The [explicit protected-history reference scope](OPERATIONAL_HISTORY_REFERENCES.md)

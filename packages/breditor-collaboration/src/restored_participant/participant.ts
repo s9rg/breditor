@@ -23,8 +23,10 @@ import {createRestoredParticipantDatabase,existingRestoredParticipantDatabase,re
 import {checkRestoredUploads,openRestoredUploads,verifyRestoredUploads,closeRestoredUploads,restoredUploadCustody,type RestoredUploadOwners} from './uploads.js';
 import {operationalReadReservation,type OperationalReadReservation} from '../operation_read/reservation.js';
 import {checkRecoveryLeasesHeld} from '../participant_recovery/lease.js';
+import {makeFreshRestoredDeliveryHistoryRead,type FreshRestoredDeliveryHistoryOptions,type FreshRestoredDeliveryHistoryRead} from './fresh_parent_history.js';
 type Pair<P extends SharedSelectionPolicy>=Awaited<ReturnType<typeof openRestoredOperationSource<P>>>;
 interface State<P extends SharedSelectionPolicy>{readonly choice:ReturnType<typeof restoredParticipantPolicy<P>>;readonly input:RestoredOperationInput;readonly plan:string;db:IDBDatabase;dbClosed:boolean;leases:RecoveryLease[];leasesReleased:boolean;inputRetired:boolean;readonly uploads:RestoredUploadOwners;pair?:Pair<P>}
+export type RestoredDeliveryParentCustody<P extends SharedSelectionPolicy=SharedSelectionPolicy>=State<P>;
 const key=Object.freeze({}),closeSource=SharedIndependentDeliverySession.prototype.close,discardSource=SharedIndependentDeliverySession.prototype.discardAndClose;
 const errors={policy:()=>fail('restored_participant_policy'),busy:()=>fail('restored_participant_busy'),storage:()=>fail('restored_participant_cleanup')};
 const coordinatorNames=(s:State<SharedSelectionPolicy>['choice'])=>[s.database,s.sourceDatabase,s.uploadsDatabase].sort();
@@ -45,14 +47,21 @@ async function witness<P extends SharedSelectionPolicy>(s:State<P>){
 }
 let reserve:<P extends SharedSelectionPolicy>(owners:readonly RestoredOperationParticipant<P>[])=>OperationalCohortReservation<Readonly<RestoredOperationParticipantParts<P>>>;
 let reserveRead:<P extends SharedSelectionPolicy>(owners:readonly RestoredOperationParticipant<P>[])=>OperationalReadReservation<Readonly<RestoredOperationParticipantParts<P>>>;
+let reserveFreshRead:<P extends SharedSelectionPolicy>(owner:RestoredOperationParticipant<P>,read:FreshRestoredDeliveryHistoryOptions<P>,authority:()=>void,signal?:AbortSignal)=>FreshRestoredDeliveryHistoryRead;
+/** Fresh parent/input/native read; no mutable delivery owner is projected. */
+export function reserveFreshRestoredDeliveryHistoryRead<P extends SharedSelectionPolicy>(owner:RestoredOperationParticipant<P>,read:FreshRestoredDeliveryHistoryOptions<P>,checkAuthority:()=>void,signal?:AbortSignal){return reserveFreshRead(owner,read,checkAuthority,signal);}
 /** Non-consuming graph read, retaining input, coordinator and source leases. */
 export function reserveRestoredOperationRead<P extends SharedSelectionPolicy>(owners:readonly RestoredOperationParticipant<P>[]):OperationalReadReservation<Readonly<RestoredOperationParticipantParts<P>>>{return reserveRead(owners);}
 /** Genuine restored-graph parents use their own input/journal/source contract;
  * no local provenance or caller readiness flag supplies this reservation. */
 export function reserveRestoredOperationGroup<P extends SharedSelectionPolicy>(owners:readonly RestoredOperationParticipant<P>[]):OperationalCohortReservation<Readonly<RestoredOperationParticipantParts<P>>>{return reserve(owners);}
 export class RestoredOperationParticipant<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
- readonly #state:State<P>;#exposed=false;#closed=false;#busy=false;
+ readonly #state:State<P>;#exposed=false;#closed=false;#busy=false;#readToken:object|undefined;
  private constructor(token:object,state:State<P>){if(token!==key)throw fail('restored_participant_closed');this.#state=state;Object.freeze(this);}
+ static{reserveFreshRead=(owner,read,authority,signal)=>{if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('restored_participant_policy');owner.#start();const token={};owner.#readToken=token;let released=false;
+  const held=()=>{if(released||owner.#closed||!owner.#exposed||!owner.#busy||owner.#readToken!==token)throw fail('restored_participant_closed');},release=()=>{if(released)return;held();released=true;owner.#readToken=undefined;owner.#busy=false;};
+  try{return makeFreshRestoredDeliveryHistoryRead(owner.#state,held,release,read,authority,signal);}catch(error){release();throw error;}
+ };}
  static{reserve=<Q extends SharedSelectionPolicy>(provided:readonly RestoredOperationParticipant<Q>[])=>{
   const owners=snapshotInventoryInputs(provided,()=>fail('restored_participant_policy'),owner=>{if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('restored_participant_policy');if(!owner.#exposed||owner.#closed)throw fail('restored_participant_closed');if(owner.#busy)throw fail('restored_participant_busy');return owner;});
   if(new Set(owners).size!==owners.length)throw fail('restored_participant_policy');for(const owner of owners)owner.#busy=true;

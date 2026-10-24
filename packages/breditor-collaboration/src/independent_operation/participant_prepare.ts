@@ -11,8 +11,8 @@ export function snapshotOperationParticipant<P extends SharedSelectionPolicy>(in
  if(!input||typeof input!=='object'||Object.keys(input).some(k=>!['database','sourceDatabase','recovery','writerRecovery',...(begin?['recovered']:[])].includes(k)))throw fail('independent_operation_policy');
  requireBackupRecovery(input.writerRecovery);const database=operationDatabaseName(input.database),sourceDatabase=operationDatabaseName(input.sourceDatabase),base=snapshotIndependentDeliveryRecovery(input.recovery,false,false),context=recoveryOpeningContext(),locks=navigator.locks,life={changed:false};
  if(new Set([database,sourceDatabase,base.options.database,...Object.values(base.options.destinations)]).size!==5)throw fail('independent_operation_policy');
- const guard=()=>{if(life.changed||globalThis.indexedDB!==context||globalThis.navigator?.locks!==locks)throw fail('independent_operation_storage_changed');base.guard();if(life.changed||globalThis.indexedDB!==context||globalThis.navigator?.locks!==locks)throw fail('independent_operation_storage_changed');};guard();
- return{database,sourceDatabase,base:{...base,guard},context,life,guard,recovered:begin?(input as IndependentOperationParticipantBeginOptions<P>).recovered:undefined};
+ const readCurrent=()=>{if(life.changed||globalThis.indexedDB!==context||globalThis.navigator?.locks!==locks)throw fail('independent_operation_storage_changed');},guard=()=>{readCurrent();base.guard();readCurrent();};guard();
+ return{database,sourceDatabase,base:{...base,guard},context,life,guard,readCurrent,recovered:begin?(input as IndependentOperationParticipantBeginOptions<P>).recovered:undefined};
 }
 export type OperationParticipantSnapshot<P extends SharedSelectionPolicy=SharedSelectionPolicy>=ReturnType<typeof snapshotOperationParticipant<P>>;
 /** Read the actual retained original before a factory runs; never obtain it from a phase marker. */

@@ -24,18 +24,26 @@ import {operationalReadReservation,type OperationalReadReservation} from '../ope
 import {checkRecoveryLeasesHeld} from '../participant_recovery/lease.js';
 import {readRestoredLocalUploadStore} from './participant_assets.js';
 import {RestoredLocalParticipantWitness as ReadWitness} from './participant_witness.js';
+import {makeFreshSnapshotLocalHistoryRead,type FreshSnapshotLocalHistoryOptions,type FreshSnapshotLocalHistoryRead} from './fresh_parent_history.js';
 const key=Object.freeze({}),closeSource=Session.prototype.close,discardSource=Session.prototype.discardAndClose,closeJournal=Journal.prototype.close,progressJournal=Journal.prototype.progress,journalBlob=Journal.prototype.blob;
 const readWitnessCheck=ReadWitness.prototype.check,readWitnessCurrent=ReadWitness.prototype.checkCurrent,readWitnessRelease=ReadWitness.prototype.release;
 let reserve:<P extends SharedSelectionPolicy>(owner:OperationalRestoredLocalParticipant<P>)=>NativeInputParticipantReservation<P>;
 type ReadParts<P extends SharedSelectionPolicy>=Readonly<Omit<RestoredLocalParticipantParts<P>,'input'>>;
 let reserveRead:<P extends SharedSelectionPolicy>(owner:OperationalRestoredLocalParticipant<P>)=>OperationalReadReservation<ReadParts<P>>;
+let reserveFreshRead:<P extends SharedSelectionPolicy>(owner:OperationalRestoredLocalParticipant<P>,read:FreshSnapshotLocalHistoryOptions<P>,authority:()=>void,signal?:AbortSignal)=>FreshSnapshotLocalHistoryRead;
+/** Fresh snapshot parent read, preserving literal input and held uploads. */
+export function reserveFreshSnapshotLocalHistoryRead<P extends SharedSelectionPolicy>(owner:OperationalRestoredLocalParticipant<P>,read:FreshSnapshotLocalHistoryOptions<P>,checkAuthority:()=>void,signal?:AbortSignal){return reserveFreshRead(owner,read,checkAuthority,signal);}
 /** Non-consuming snapshot/source/upload read. No input or coordinator retires. */
 export function reserveRestoredLocalRead<P extends SharedSelectionPolicy>(owner:OperationalRestoredLocalParticipant<P>):OperationalReadReservation<ReadParts<P>>{return reserveRead(owner);}
 /** Internal genuine-parent reservation, never a structural adapter or root API. */
 export function reserveRestoredLocalParticipant<P extends SharedSelectionPolicy>(owner:OperationalRestoredLocalParticipant<P>):NativeInputParticipantReservation<P>{return reserve(owner);}
 export class OperationalRestoredLocalParticipant<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
- readonly #state:RestoredLocalParticipantState<P>;#exposed=false;#closed=false;#busy=false;
+ readonly #state:RestoredLocalParticipantState<P>;#exposed=false;#closed=false;#busy=false;#readToken:object|undefined;
  private constructor(token:object,state:RestoredLocalParticipantState<P>){if(token!==key)throw fail();this.#state=state;Object.freeze(this);}
+ static{reserveFreshRead=(owner,read,authority,signal)=>{if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('restored_local_participant_policy');owner.#start();const token={};owner.#readToken=token;let released=false;
+  const held=()=>{if(released||owner.#closed||!owner.#exposed||!owner.#busy||owner.#readToken!==token)throw fail('restored_local_participant_closed');},release=()=>{if(released)return;held();released=true;owner.#readToken=undefined;owner.#busy=false;};
+  try{return makeFreshSnapshotLocalHistoryRead(owner.#state,held,release,read,authority,signal);}catch(error){release();throw error;}
+ };}
  static{reserve=<Q extends SharedSelectionPolicy>(owner:OperationalRestoredLocalParticipant<Q>)=>{
   if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('restored_local_participant_policy');owner.#start();const s=owner.#state;let witness:Awaited<ReturnType<typeof verifyRestoredLocalParticipant<Q>>>|undefined,prepared=false,finished=false;
   return{
