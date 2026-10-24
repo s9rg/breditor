@@ -195,6 +195,18 @@ of a revision's base queue. Historical parent files, held coordinator integratio
 provider/client reconciliation, current authenticated activation and sustainable
 history remain required. Current source reference readiness alone closes no V1 gate.
 
+The [original parent reader](ORIGINAL_OPERATIONAL_RECORD_READ.md) now admits the
+actual operation archive and ready recovery marker under independent current read
+permission, including after the old job ends. Twelve selected normal stages pass;
+source, fresh packages and actual bundled code each pass 953 laws, with seven
+strict consumer type fixtures. Its opaque child reads keep catalog/queue gates
+and parent/source fences together without exposing editable facades. An unchanged
+development control reproduces the first interface's mutable-child escape and
+passes after its repair. Existing original operation, native inspection, storage
+and paired backup regressions pass. Whole historical native/reference closure,
+fresh group reservation, provider/client reconciliation, authenticated activation
+and sustainable history remain required; no V1 gate is closed.
+
 Complete-delivery and restored-operation parents now share the existing room
 handoff kernel with legacy local, snapshot-local and flat-local parents. Genuine
 reservations and closed result wrappers prevent partial transfer. Final native

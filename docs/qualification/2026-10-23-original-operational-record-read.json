@@ -1,0 +1,105 @@
+{
+  "format": "breditor/original-operational-record-read-qualification",
+  "formatVersion": 1,
+  "passed": true,
+  "source": {
+    "commit": "95fab05ae497a53f9c26c6b89461aac92a021b98",
+    "dirty": true,
+    "sha256": "0dbb162de4f339adf2ccdcf24a22507f5b98b25ae42af65771f39e21ad6e372c",
+    "files": 6148,
+    "bytes": 48971470
+  },
+  "normalRunner": true,
+  "normalStages": 12,
+  "functionalPlanChecks": 400,
+  "fullPlanChecks": 408,
+  "manifests": {
+    "foundation": "/Users/s/code/breditor/target/v1-candidate-runs/run-PbaOYt/result.json",
+    "source": "/Users/s/code/breditor/target/v1-candidate-runs/run-iiWsPi/result.json",
+    "installed": "/Users/s/code/breditor/target/v1-candidate-runs/run-l6VScd/result.json"
+  },
+  "assertions": {
+    "source": 953,
+    "installed": 953,
+    "bundled": 953,
+    "newOriginalParent": 52,
+    "priorSourceRecordReferenceStorage": 901,
+    "contractsIncludingPlan": 53,
+    "strictTypesInConsumer": 7,
+    "legacyOriginalOperationCases": 66,
+    "legacyCustodyTransfers": 66,
+    "legacyColdReopens": 198
+  },
+  "retained": {
+    "index": "target/original-operational-record-read-final-wz3PYu/index.json",
+    "sha256": "f2fd552127464d8e3bb5f0e9bdf335c283c7f6453df5d0a11ecc5e3d4305b496",
+    "entries": 7924,
+    "nonDocumentationInputs": 5456
+  },
+  "consumer": {
+    "directory": "/private/tmp/breditor-original-operational-record-read-installed-y2lgYV",
+    "workspaceLinks": false,
+    "registryArtifacts": 45,
+    "productionModules": 496,
+    "bundleSha256": "617beafb25321bc5797a4c738ddb12dd8681af2c1573b2ad0463239dd4eb4f5b",
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/private/tmp/breditor-original-operational-record-read-installed-y2lgYV/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/private/tmp/breditor-original-operational-record-read-installed-y2lgYV/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/private/tmp/breditor-original-operational-record-read-installed-y2lgYV/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "7886cd1352f07697fdec0e9bf60f8c55e1cae45bb59ebf1f890514ef0c6fdd3a"
+      }
+    ]
+  },
+  "normalWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+  "developmentOpacityControl": {
+    "index": "target/parent-reader-opacity-control-dzGzyc/index.json",
+    "indexSha256": "8633b7ed9689110135781a02caa4811a805e787890313144cc381e5f04610069",
+    "workload": {
+      "path": "/private/tmp/breditor-delivery-cohort-qualified-VqXa2J/original-parent-reader-opacity.control.mjs",
+      "sha256": "71f8ade168b31c01548670b600c5da7caf93665d9e7cbc9bd995680cf51b41cc"
+    },
+    "before": {
+      "exitCode": 1,
+      "passed": 0,
+      "failed": 1,
+      "skipped": 0,
+      "directory": "/private/tmp/breditor-parent-reader-opacity-before-3cpYEl",
+      "moduleSha256": "e595674b371fd35618d73ae81fb25e7b3c458c2cef3425e4e55af57ae5e28905"
+    },
+    "after": {
+      "exitCode": 0,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "directory": "/private/tmp/breditor-parent-reader-opacity-after-NgSITz",
+      "moduleSha256": "01213e615829729e94a0307fdc8c1346a48671146253443dbf37f24995cc1b1f"
+    },
+    "assertionsChanged": false,
+    "scope": "Caught before committing the developing new private parent-read API. The mutable child projection let the isolated fixture edit its live native owner despite an expired old job grant. Opaque child reference reads remove that projection and parent disposal closes their gates. This is not a defect claim against the earlier saved/released API.",
+    "prior949LawPrototypeAccepted": false
+  },
+  "scope": "Genuine original operational parent actual ready recovery marker and one protected operation-origin archive under independent fresh read permission. Existing old job/handoff authorization is unchanged. New read handles expose no mutable child facade; captureReferences selects the held source/stores and returns an opaque child with parent/source pure fences and real-byte verification. Parent disposal closes its child, including queued catalog/proposal/revision read gates. Language-3 original/paired history/range/search/reviewed variants, actual stored tampering, old and new cancellation, late factories, callback release, future native Undo/Redo and unchanged legacy regressions are represented. This is parent record discovery and current-source reference capture, not fresh historical-native ancestry/reference closure.",
+  "remaining": [
+    "Generation parent counterpart and fresh synchronous all-member reservation",
+    "Fresh historical parent native/packet reference closure and explicit copy decisions",
+    "Whole-upload/provider/client reconciliation and authenticated activation",
+    "Sustainable native Undo/offline lifetime and remaining parity"
+  ],
+  "v1Ready": false,
+  "allThirteenV1GatesOpen": true,
+  "noPush": true,
+  "noTag": true,
+  "noVersionChange": true,
+  "noPublication": true,
+  "noDeployment": true
+}

@@ -22,6 +22,15 @@ import type {SharedSelectionPolicy} from "../types.js";
 import type {SharedRichEditor} from "../core.js";
 import type {SharedParticipantOperationBeginOptions,SharedParticipantOperationResumeOptions,SharedParticipantOperationProgress,OperationalSharedParticipantParts} from "./types.js";
 import {prepareOperationalCohort,type OperationalCohortReservation} from "../operation_cohort/cohort.js";
+import {createOriginalOperationalRecordRead,type OperationalParentRecordRead} from '../operation_read/parent_records.js';
+import {OperationalReadCancellation} from '../operation_read/cancellation.js';
+import {checkRecoveryLeasesHeld} from '../participant_recovery/lease.js';
+import {checkManagedSource} from '../managed_custody.js';
+import {RichAssetStore} from '@breditor/experimental-rich-content';
+import {readOriginalOperationalRecords} from './read_records.js';
+import {captureOriginalRecordReferences,type OriginalRecordReferenceMetadata} from '../persistence/original_record_reference_capture.js';
+import type {OriginalReferenceRestore,OriginalReferenceEditor} from '../persistence/original_reference_replay.js';
+import {parentReferenceOptions} from '../operation_read/reference_options.js';
 
 const key=Object.freeze({});
 const checkHandoffSource=SharedAssetReferenceCapture.prototype.check,disposeHandoffSource=SharedAssetReferenceCapture.prototype.dispose;
@@ -32,6 +41,11 @@ export interface OperationalParticipantHandoff<T>{commit():T;abandon():void}
 let reserveOperationalGroup:(owners:readonly OperationalSharedParticipant<SharedSelectionPolicy>[])=>OperationalCohortReservation<State<SharedSelectionPolicy>>;
 let exactOperational:<P extends SharedSelectionPolicy>(owner:OperationalSharedParticipant<P>)=>Promise<void>;
 let resumeHeld:<P extends SharedSelectionPolicy>(options:SharedParticipantOperationBeginOptions<P>)=>Promise<OperationalSharedParticipant<P>>;
+export interface OriginalOperationalReferenceOptions{readonly restore:OriginalReferenceRestore;readonly editor?:OriginalReferenceEditor;readonly checkAuthority:()=>void;readonly signal?:AbortSignal}
+export type OriginalOperationalRecordRead=OperationalParentRecordRead<OriginalOperationalReferenceOptions,OriginalRecordReferenceMetadata>;
+let captureParentRecords:<P extends SharedSelectionPolicy>(owner:OperationalSharedParticipant<P>,authority:()=>void,signal?:AbortSignal)=>Promise<OriginalOperationalRecordRead>;
+/** Fresh read authorization, not the parent's old writer grant or handoff gate. */
+export function captureOriginalOperationalRecords<P extends SharedSelectionPolicy>(owner:OperationalSharedParticipant<P>,checkAuthority:()=>void,signal?:AbortSignal){return captureParentRecords(owner,checkAuthority,signal);}
 /** Internal aggregate custody: keep every genuine child busy, then verify and consume all together. */
 export async function prepareOperationalParticipantHandoff<T>(owners:readonly OperationalSharedParticipant<SharedSelectionPolicy>[],take:(states:readonly State<SharedSelectionPolicy>[],released:()=>void)=>Promise<T>,verify:(states:readonly State<SharedSelectionPolicy>[])=>void,checkSources:()=>void=()=>{}):Promise<OperationalParticipantHandoff<T>>{const group=reserveOperationalParticipantGroup(owners);return prepareOperationalCohort([group],released=>take(group.states,released),()=>verify(group.states),checkSources,()=>operationFailure("operation_closed"));}
 /** Internal synchronous reservation for the common mixed-family barrier. */
@@ -60,6 +74,15 @@ export class OperationalSharedParticipant<P extends SharedSelectionPolicy=Shared
  readonly #state:State<P>;#closed=false;#busy=false;#released=false;
  private constructor(token:object,state:State<P>){if(token!==key)throw operationFailure("operation_closed");this.#state=state;fence(state.db,state.life);fence(state.recoveryDb,state.life);Object.freeze(this);}
  static{
+  captureParentRecords=async<Q extends SharedSelectionPolicy>(owner:OperationalSharedParticipant<Q>,provided:()=>void,signal?:AbortSignal)=>{
+   if(!owner||typeof owner!=='object'||!(#state in owner))throw operationFailure('operation_policy');if(owner.#closed||owner.#released)throw operationFailure('operation_closed');if(owner.#busy)throw operationFailure('operation_in_use');const authority=participantAuthority(provided);owner.#busy=true;
+   const s=owner.#state,session=s.owners.session,uploads=s.owners.uploads,queue=s.owners.suggestions,revisions=s.owners.revisions,versions=s.owners.versions;let observation:OperationalReadCancellation|undefined,result:OriginalOperationalRecordRead|undefined,released=false,complete=false;
+   const release=()=>{if(released)return;released=true;try{observation?.close();}finally{owner.#busy=false;}};
+   const current=()=>{if(released||owner.#closed||owner.#released||!owner.#busy||s.life.changed||s.owners.session!==session||s.owners.uploads!==uploads||s.owners.suggestions!==queue||s.owners.revisions!==revisions||s.owners.versions!==versions||!session||!uploads)throw operationFailure('operation_diverged');checkRecoveryLeasesHeld(s.leases);checkRecoveryOwnerBindings(s.owners);const core=managedSourceCore(session);checkManagedSource(session,core);for(const selected of[queue,revisions,versions])if(selected&&managedSourceCore(selected)!==core)throw operationFailure('operation_diverged');RichAssetStore.prototype.checkOpen.call(uploads);observation?.check(()=>operationFailure('operation_aborted'));};
+   const check=()=>{current();authority();current();};
+   try{observation=new OperationalReadCancellation(signal);check();const stored=await readOriginalOperationalRecords(s,check,signal);check();result=createOriginalOperationalRecordRead<OriginalOperationalReferenceOptions,OriginalRecordReferenceMetadata>(stored.metadata,{check,current,readReferences:async provided=>{const o=parentReferenceOptions(provided,'restore'),readAuthority=participantAuthority(o.checkAuthority),guard=()=>{check();readAuthority();current();};return captureOriginalRecordReferences({source:session!,restore:o.restore,checkAuthority:guard,...(o.editor!==undefined?{editor:o.editor}:{}),...(o.signal!==undefined?{signal:o.signal}:{}),...(versions?{versions}:{}),...(revisions?{revisions}:queue?{suggestions:queue}:{})});},files:()=>stored.files,verify:async()=>{check();const actual=await readOriginalOperationalRecords(s,check,signal);check();if(JSON.stringify(actual.metadata)!==JSON.stringify(stored.metadata))throw operationFailure('operation_diverged');},release});result.check();complete=true;return result;}
+   finally{if(!complete){result?.dispose();release();}}
+  };
   resumeHeld=options=>this.#fromRecovered(options,true);
   exactOperational=async owner=>{if(owner.#busy)throw operationFailure("operation_in_use");owner.#busy=true;try{await owner.#verify();await exact(owner.#state.p,owner.#state.owners);owner.#guard();}finally{owner.#busy=false;}};
   reserveOperationalGroup=input=>{

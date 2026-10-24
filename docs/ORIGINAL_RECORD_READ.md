@@ -179,6 +179,9 @@ runtime, stored formats, author policies and public-root defaults are unchanged.
 Current original and generation states now have genuine record discovery and
 native/packet reference replay. The separate
 [generation reader](GENERATION_RECORD_READ.md) preserves complete atomic cuts.
+The [original operational reader](ORIGINAL_OPERATIONAL_RECORD_READ.md) separately
+keeps parent custody and admits its actual archive/marker under fresh permission;
+its opaque child reads expose no mutable editor or producer facade.
 Selected historical parent files, held coordinator integration, provider/client
 reconciliation, authenticated activation and sustainable history remain required.
 All thirteen V1 gates remain open.
