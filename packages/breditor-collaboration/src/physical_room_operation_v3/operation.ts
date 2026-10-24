@@ -12,6 +12,7 @@ import {participantAuthority} from '../participant_backup/policy.js';
 import {prepareArchiveIntegrity} from '../archive_integrity/context.js';
 import {prepareCompleteOperationParticipants,type CompleteOperationParticipant} from '../complete_operation_cohort/cohort.js';
 import type {OperationalCohortReservation} from '../operation_cohort/cohort.js';
+import type {OperationalAssetCustody} from '../operation_cohort/assets.js';
 import {PhysicalOperationV3IntentStore} from './storage.js';
 import {PhysicalOperationV3Cancellation} from './storage_cancellation.js';
 import {preflightPhysicalOperationV3} from './preflight.js';
@@ -34,6 +35,7 @@ import type {PhysicalOperationV3HistoryAssetsRead} from './history_assets_contra
 import type {SharedPhysicalRoomRecoveryHost} from '../physical_recovery_control/host.js';
 import {capturePhysicalOperationV3RecordCut,visitPhysicalOperationV3RecordCut,type PhysicalRecordCutVisit} from './record_cut.js';
 import type {PhysicalRoomRecordCutFile} from '../physical_room_record_cut/contract.js';
+import type {RetainedNativeReadBorrow} from '../complete_operation_cohort/retained_native_read.js';
 const key=Object.freeze({});
 const errors={policy:()=>fail('physical_operation_v3_policy'),busy:()=>fail('physical_operation_v3_in_use'),storage:()=>fail()};
 interface State{
@@ -46,6 +48,14 @@ interface State{
 /** Type-only internal custody; a detached report never creates this state. */
 export type PhysicalOperationV3Custody=State;
 let withAssets:<T>(owner:PhysicalRoomClientOperationV3,options:PhysicalAssetReadOptions,visit:(scope:PhysicalAssetReadScope)=>Promise<T>)=>Promise<T>;
+let withFreshRetained:<P extends SharedSelectionPolicy,T>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit,borrow:RetainedNativeReadBorrow)=>Promise<T>)=>Promise<T>;
+let captureInherited:<P extends SharedSelectionPolicy>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,assets:OperationalAssetCustody)=>Promise<PhysicalRoomRecordCutFile>;
+/** SDK-only read under inherited ACTUAL origin-store exclusion. The full reader
+ * checks exact store identities, not a copied custody facade or database name. */
+export const capturePhysicalOperationV3WithOriginCustody=<P extends SharedSelectionPolicy>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,assets:OperationalAssetCustody)=>captureInherited(owner,options,assets);
+/** Internal fresh-job-independent bridge from the SAME full record reservation.
+ * Still not parent consumption or permission to expose mutable clients. */
+export const withPhysicalOperationV3FreshRetainedNative=<P extends SharedSelectionPolicy,T>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit,borrow:RetainedNativeReadBorrow)=>Promise<T>):Promise<T>=>withFreshRetained(owner,options,visit);
 let withRecords:<P extends SharedSelectionPolicy,T>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit)=>Promise<T>)=>Promise<T>;
 /** Internal brand-checked composition, not a public/replaceable root method. */
 export const withPhysicalOperationV3RecordCut=<P extends SharedSelectionPolicy,T>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit)=>Promise<T>):Promise<T>=>withRecords(owner,options,visit);
@@ -68,6 +78,15 @@ export class PhysicalRoomClientOperationV3{
  };withRecords=(owner,options,visit)=>{
   if(!owner||typeof owner!=='object'||!(#s in owner))return Promise.reject(fail('physical_operation_v3_policy'));
   const chosen=snapshotPhysicalHistoryReadOptions(options);return owner.#run(async()=>{if(owner.#rollback.pending)await owner.#rollback.drain();return visitPhysicalOperationV3RecordCut(owner.#s,()=>{if(!owner.#exposed||!owner.#busy)throw fail('physical_operation_v3_closed');},owner.#rollback,chosen,cancel=>{if(owner.#s.life.closing)cancel();else owner.#closingListeners.add(cancel);return()=>{owner.#closingListeners.delete(cancel);};},visit);},error=>error instanceof Error?error:known(error));
+ };withFreshRetained=(owner,options,visit)=>{
+  if(!owner||typeof owner!=='object'||!(#s in owner))return Promise.reject(fail('physical_operation_v3_policy'));
+  const chosen=snapshotPhysicalHistoryReadOptions(options);return owner.#run(async()=>{if(owner.#rollback.pending)await owner.#rollback.drain();let ticket:ReturnType<RecoveryCleanupScope['retain']>|undefined,borrow:RetainedNativeReadBorrow|undefined;
+   try{const value=await visitPhysicalOperationV3RecordCut(owner.#s,()=>{if(!owner.#exposed||!owner.#busy)throw fail('physical_operation_v3_closed');},owner.#rollback,chosen,cancel=>{if(owner.#s.life.closing)cancel();else owner.#closingListeners.add(cancel);return()=>{owner.#closingListeners.delete(cancel);};},async scope=>{if(!scope.retainNative)throw fail('physical_operation_v3_policy');borrow=scope.retainNative();ticket=owner.#rollback.retain(()=>borrow!.close());return visit(scope,borrow);},true);borrow!.check();ticket!.complete();return value;}
+   catch(error){if(ticket)await ticket.rollback();throw error;}
+  },error=>error instanceof Error?error:known(error));
+ };captureInherited=(owner,options,assets)=>{
+  if(!owner||typeof owner!=='object'||!(#s in owner))return Promise.reject(fail('physical_operation_v3_policy'));
+  const chosen=snapshotPhysicalHistoryReadOptions(options);return owner.#run(async()=>{if(owner.#rollback.pending)await owner.#rollback.drain();return capturePhysicalOperationV3RecordCut(owner.#s,()=>{if(!owner.#exposed||!owner.#busy)throw fail('physical_operation_v3_closed');},owner.#rollback,chosen,undefined,assets);},error=>error instanceof Error?error:known(error));
  };}
  static begin(input:PhysicalOperationV3BeginOptions):Promise<PhysicalRoomClientOperationV3>{return PhysicalRoomClientOperationV3.#open(input,true);}
  static resume(input:PhysicalOperationV3ResumeOptions):Promise<PhysicalRoomClientOperationV3>{return PhysicalRoomClientOperationV3.#open(input,false);}

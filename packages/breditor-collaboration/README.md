@@ -686,6 +686,12 @@ retention call, including retry. Public `RoomAssetApprovalArchive.read` and
 does not return editable clients, replace their upload baseline, or activate
 server writers.
 
+The [retained native continuation contract](../../docs/RETAINED_NATIVE_CONTINUATION.md)
+describes the private same-cut bridge to actual sessions and exact held origin
+stores. It preserves temporary read gates and independently supplied participant
+authority. It adds no package-root owner constructor, parent handoff or selected
+asset-baseline change; ordinary native and asset read paths remain unchanged.
+
 ## Natural shared typing history
 
 `SharedPersistentSession.open({history: 'typing-v1', ...})` selects native grouped

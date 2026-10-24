@@ -6,10 +6,12 @@ import {frozen} from '../room_participant_inventory/policy.js';
 import {forwardSourceRecordPayload,forgetSourceRecordPayload} from './record_payload.js';
 import type {ParentReferenceSource,ParentReferenceProducer} from './reference_read.js';
 import type {RichAssetStore} from '@breditor/experimental-rich-content';
-interface Callbacks<M extends ParentReferenceSource>{current():void;open():Promise<ParentReferenceProducer<M>>;release():void;uploads?:()=>RichAssetStore}
+import type {NativeRetentionSource} from './native_retention.js';
+interface Callbacks<M extends ParentReferenceSource>{current():void;open():Promise<ParentReferenceProducer<M>>;release():void;uploads?:()=>RichAssetStore;native?:()=>NativeRetentionSource}
 const key=Object.freeze({}),fail=(kind:string)=>new SharedEditorError('fresh_parent_read_'+kind,'Keep the genuine parent and its independent read reservation alive');
 let create:<M extends ParentReferenceSource>(callbacks:Callbacks<M>)=>FreshParentHistoryReservation<M>;
 let upload:<M extends ParentReferenceSource>(owner:FreshParentHistoryReservation<M>)=>RichAssetStore;
+let native:<M extends ParentReferenceSource>(owner:FreshParentHistoryReservation<M>)=>NativeRetentionSource;
 export class FreshParentHistoryReservation<M extends ParentReferenceSource>{
  #callbacks:Callbacks<M>|undefined;#read:ParentReferenceProducer<M>|undefined;#metadata:M|undefined;#working=false;#closed=false;
  private constructor(token:object,callbacks:Callbacks<M>){if(token!==key)throw fail('source');this.#callbacks=callbacks;Object.freeze(this);}
@@ -24,10 +26,12 @@ export class FreshParentHistoryReservation<M extends ParentReferenceSource>{
  checkCurrent():void{if(this.#closed)throw fail('closed');this.#callbacks!.current();this.#read?.checkCurrent();this.#callbacks!.current();}
  async verify():Promise<void>{if(this.#closed||this.#working||!this.#read||!this.#metadata)throw fail('busy');this.#working=true;try{this.#callbacks!.current();await this.#read.verify();this.#callbacks!.current();this.#read.checkCurrent();}finally{this.#working=false;}}
  close():void{if(this.#closed)return;if(this.#working)throw fail('busy');this.#read?.dispose();this.#read=undefined;this.#callbacks!.release();forgetSourceRecordPayload(this);this.#callbacks=undefined;this.#closed=true;}
- static{create=callbacks=>new FreshParentHistoryReservation(key,callbacks);upload=owner=>{if(!owner||typeof owner!=='object'||!(#callbacks in owner)||owner.#closed||!owner.#callbacks?.uploads)throw fail('source');owner.#callbacks.current();const store=owner.#callbacks.uploads();owner.#callbacks.current();return store;};}
+ static{create=callbacks=>new FreshParentHistoryReservation(key,callbacks);upload=owner=>{if(!owner||typeof owner!=='object'||!(#callbacks in owner)||owner.#closed||!owner.#callbacks?.uploads)throw fail('source');owner.#callbacks.current();const store=owner.#callbacks.uploads();owner.#callbacks.current();return store;};native=owner=>{if(!owner||typeof owner!=='object'||!(#callbacks in owner)||owner.#closed||owner.#working||!owner.#read||!owner.#callbacks?.native)throw fail('source');owner.checkCurrent();const value=owner.#callbacks.native();owner.checkCurrent();return value;};}
 }
 /** Trusted family implementation only, not admission of caller-supplied DTOs. */
 export function createFreshParentHistoryReservation<M extends ParentReferenceSource>(callbacks:Callbacks<M>){return create(callbacks);}
 /** Internal actual-parent store borrow. The read retains its original whole-store
  * custody; no store is selected by metadata or released by this accessor. */
 export function freshParentHistoryUploads<M extends ParentReferenceSource>(owner:FreshParentHistoryReservation<M>):RichAssetStore{return upload(owner);}
+/** Internal genuine source, while the SAME complete record reader is held. */
+export function freshParentNativeRetention<M extends ParentReferenceSource>(owner:FreshParentHistoryReservation<M>):NativeRetentionSource{return native(owner);}

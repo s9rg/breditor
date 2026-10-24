@@ -1,0 +1,14 @@
+/** Private continuation capabilities are actual runtime custody, never data. */
+import test from 'node:test';import assert from 'node:assert/strict';
+import {sameNativeRetentionValue as same} from '../packages/breditor-collaboration/dist/operation_read/native_retention.js';
+import {withPhysicalOperationV3FreshRetainedNative as borrow,capturePhysicalOperationV3WithOriginCustody as capture} from '../packages/breditor-collaboration/dist/physical_room_operation_v3/operation.js';
+import {takeRetainedNativeOriginCustody as take} from '../packages/breditor-collaboration/dist/complete_operation_cohort/retained_native_read.js';
+import {recordLiveBasis} from '../packages/breditor-collaboration/dist/complete_operation_cohort/record_live_basis.js';
+import {holdOperationalAssets,checkOperationalAssetStores as stores} from '../packages/breditor-collaboration/dist/operation_cohort/assets.js';
+test('LIVE comparison preserves JSON object meaning without depending on insertion order',()=>{assert.equal(same({a:'exact',b:[1,{native:'x'}]},{b:[1,{native:'x'}],a:'exact'}),true);});
+test('LIVE comparison rejects changed nested bytes, shapes, values and array lengths',()=>{for(const value of [{a:'changed'},{a:'exact',extra:null},{a:['exact']},null])assert.equal(same({a:'exact'},value),false);assert.equal(same([],Array(2)),false);assert.equal(same([null],[undefined]),false);assert.equal(same([1,2],[2,1]),false);});
+test('a source data projection neither admits malformed families nor becomes native custody',()=>{for(const family of ['original','generation','independent-local'])assert.throws(()=>recordLiveBasis(family,{source:{live:{checkpoint:'a document projection'}}}));assert.throws(()=>take({clients:[],liveBasis:()=>[],check(){},close:async()=>{}}));});
+test('a copied root cannot invoke a fresh native factory or host permission hook',async()=>{let calls=0;await assert.rejects(borrow({},{reads:[],checkAuthority(){calls++;}},async()=>{calls++;}));assert.equal(calls,0);});
+test('a copied root cannot admit an inherited upload token by invoking its methods',async()=>{let calls=0;await assert.rejects(capture({},{reads:[],checkAuthority(){calls++;}},{check(){calls++;},close:async()=>{calls++;},release(){calls++;}}));assert.equal(calls,0);});
+test('a detached retained-native facade cannot donate actual origin custody',()=>{let calls=0;assert.throws(()=>take({get clients(){calls++;throw Error('not a genuine retained reader');}}));assert.equal(calls,0);});
+test('even an empty actual custody token has identity and cannot be reconstructed from copied methods',async()=>{const actual=await holdOperationalAssets([]);try{stores(actual,[]);assert.throws(()=>stores({...actual},[]));let calls=0;assert.throws(()=>stores({check(){calls++;},close:async()=>{},release(){}},[]));assert.equal(calls,0);actual.release();assert.throws(()=>stores(actual,[]));}finally{await actual.close();}});

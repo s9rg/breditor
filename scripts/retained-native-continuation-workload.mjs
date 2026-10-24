@@ -1,0 +1,9 @@
+/** Keep every prior complete-cut, provider and independent-approval law. The
+ * new seam is actual SDK-private continuation, never a writer/parent grant. */
+import {roomAssetApprovalWorkload as prior} from './room-asset-approval-workload.mjs';
+export const retainedNativeContinuationWorkload=Object.freeze({
+ assertions:1572,newNativeContinuationAssertions:18,priorApprovalAssertions:prior.assertions,
+ tests:Object.freeze([...prior.tests,'retained-native-continuation-contracts.test.mjs','retained-native-continuation-sdk.test.mjs','retained-native-custody-sdk.test.mjs']),
+ types:Object.freeze([...prior.types,'types-retained-native-boundary.ts']),
+ scope:'SDK-private retention of the actual seven native sessions from the SAME complete record-cut reservation under a fresh read grant, independent of the expired whole-room recovery job. Exact LIVE native/packet data and policy stamps survive temporary-reader cleanup; ordinary capture read gates stay intact and post-cleanup changes refuse. Four independent document/comment history pairs preserve exact cold native state and both future Undo/Redo lanes under independently supplied participant lifetime authority. Genuine donated legacy origin-upload custody can support future current full captures without reacquisition or accidental cleanup release, and only for the exact actual stores. Copied roots, detached/native-data facades, forged/shallow-copy custody and unrelated genuine-store custody refuse before host callbacks. All prior1554 laws remain cumulative. Ordinary native/asset read implementations, old protocols, package versions, public root API and normal Wasm are unchanged. Controlled functional storage/locks/raster, not physical durability, native parent consumption, a finished editable selected-asset successor, provider/registered-stream closure, authenticated activation/fencing, sustainable history or full V1/parity.'
+});

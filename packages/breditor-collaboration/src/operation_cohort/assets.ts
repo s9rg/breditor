@@ -11,6 +11,9 @@ export interface OperationalAssetCustody {
  /** Failed asynchronous preparation waits for every actual callback to finish. */
  close():Promise<void>;
 }
+/** Internal actual-store identity, never supplied by saved metadata. */
+const ownedStores=new WeakMap<OperationalAssetCustody,readonly RichAssetStore[]>();
+export function checkOperationalAssetStores(custody:OperationalAssetCustody,stores:readonly RichAssetStore[]):void{const actual=ownedStores.get(custody);if(!actual||actual.length!==stores.length||actual.some((store,i)=>store!==stores[i]))throw new RichAssetCustodyError('asset_custody_policy');custody.check();}
 export async function holdOperationalAssets(input:readonly RichAssetStore[]):Promise<OperationalAssetCustody>{
  if(!Array.isArray(input)||input.length>2048||new Set(input).size!==input.length)throw new RichAssetCustodyError('asset_custody_policy');
  const stores=[...input],leases:RichAssetStoreCustody[]=[];
@@ -21,6 +24,6 @@ export async function holdOperationalAssets(input:readonly RichAssetStore[]):Pro
  try{
   for(const store of stores)leases.push(await acquire.call(store));
   const check=()=>{if(released)throw new RichAssetCustodyError('asset_custody_closed');for(const store of stores)checkStore.call(store);for(const lease of leases)checkLease.call(lease);};
-  check();return Object.freeze({check,release,close});
+  check();const custody=Object.freeze({check,release,close});ownedStores.set(custody,Object.freeze([...stores]));return custody;
  }catch(error){try{await close();}catch(cleanup){throw new AggregateError([error,cleanup],'Upload custody admission and cleanup failed');}throw error;}
 }

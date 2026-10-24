@@ -43,6 +43,20 @@ publication or deployment is promoted.
 
 ## Current seven family client recovery
 
+The [retained native continuation contract](RETAINED_NATIVE_CONTINUATION.md)
+adds a private bridge from the same fresh complete-cut reservation to the actual
+native sessions and held origin uploads. It preserves read gates, compares exact
+LIVE state across real cleanup, keeps participant writer authority separate from
+recovery-job authority, and permits current captures to borrow only the actual
+held stores. Ordinary native/asset reads and public-root APIs are unchanged.
+Its [qualification](qualification/2026-10-24-retained-native-continuation.json)
+passes eighteen selected normal stages: source, independently installed offline
+packages and the actual production bundle each pass 1,572 cumulative assertions
+with twenty-one strict consumer fixtures. All sixty test-owned native control
+ports are closed. This prerequisite does not consume native parents or finish
+editable selected-base succession.
+All thirteen V1 gates remain open.
+
 The [independent asset approval contract](ROOM_ASSET_APPROVAL.md) now separates a
 fresh exact-choice decision from staged readiness and from future native
 ownership transfer. It compares the complete room cut and selected bases under

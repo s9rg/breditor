@@ -1,0 +1,139 @@
+{
+  "format": "breditor/retained-native-continuation-qualification",
+  "formatVersion": 1,
+  "qualified": true,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "date": "2026-10-24",
+  "directory": "/Users/s/code/breditor/target/retained-native-continuation-final-GdESoS",
+  "index": "target/retained-native-continuation-final-GdESoS/index.json",
+  "indexSha256": "01383f2d100e62e6a279875efcf4b3450d4f26b3c822407a888c41313f72136d",
+  "entries": 8868,
+  "source": {
+    "commit": "4171c7bccf1fff89c680e274d43b0299c8bb2eb7",
+    "dirty": true,
+    "sha256": "736837d1244dfa3e8104f7939dbde39de33c3d5a24858c2cf016faa9d0fb6936",
+    "files": 6348,
+    "bytes": 50010490
+  },
+  "selectedNormalStages": 18,
+  "functionalPlanChecks": 449,
+  "fullPlanChecks": 457,
+  "sourceAssertions": 1572,
+  "installedAssertions": 1572,
+  "bundledAssertions": 1572,
+  "newNativeContinuationScenarios": 18,
+  "newIndependentHistoryPairs": 4,
+  "newNativeClientsPerPath": 36,
+  "strictTypes": 21,
+  "registryArtifacts": 45,
+  "productionModules": 685,
+  "bundleSha256": "7b91f80fe792557915ea73d004bfab94a9d67ea44133e51ea4e6355704c49aeb",
+  "archives": [
+    {
+      "name": "@breditor/browser",
+      "path": "/private/tmp/breditor-retained-native-continuation-installed-TNspYF/archives/breditor-browser-0.3.0-alpha.22.tgz",
+      "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+    },
+    {
+      "name": "@breditor/experimental-rich-content",
+      "path": "/private/tmp/breditor-retained-native-continuation-installed-TNspYF/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+      "sha256": "23bb4160babd07354daf373f81e731820ff41e45877ee711eb36401bac46497d"
+    },
+    {
+      "name": "@breditor/collaboration",
+      "path": "/private/tmp/breditor-retained-native-continuation-installed-TNspYF/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+      "sha256": "6bfc84fda98a9641f0431c56bdf3db0649616e3feccebf3ca908f0bcb93f3340"
+    }
+  ],
+  "nativeFiles": 100,
+  "nativeReports": [
+    {
+      "path": "target/complete-image-cohort-native.json",
+      "sha256": "332d06eba2b29520969507b9a0b089a118df5a985c06ee70f57cfe3872df521a"
+    },
+    {
+      "path": "target/complete-cohort-native.json",
+      "sha256": "507ee8a44f05f9cc57b77b56a42cb8a9f016ff639b8633caa8e6cff5d8315f40"
+    }
+  ],
+  "nativeProducerBinarySha256": "9f5948a8bba3367b601622f8316ec45012aa625cbd59e8a9656ca4793620ab46",
+  "standardNativeBinarySha256": "0d64e4b268a197a004a2913e6f1b7ec339d5b997478b0d449af5ac667ea7025f",
+  "actualLiveControlRuns": [
+    {
+      "directory": "/Users/s/code/breditor/target/complete-control-running-KnZkCK",
+      "cases": 10
+    },
+    {
+      "directory": "/Users/s/code/breditor/target/complete-control-running-MwaDVM",
+      "cases": 10
+    },
+    {
+      "directory": "/Users/s/code/breditor/target/complete-control-running-hcdyGd",
+      "cases": 10
+    },
+    {
+      "directory": "/Users/s/code/breditor/target/complete-control-running-ro6cwX",
+      "cases": 10
+    },
+    {
+      "directory": "/Users/s/code/breditor/target/complete-control-running-sULNWf",
+      "cases": 10
+    },
+    {
+      "directory": "/Users/s/code/breditor/target/complete-control-running-xG62wb",
+      "cases": 10
+    }
+  ],
+  "actualLivePublicFiles": 300,
+  "actualClosedPorts": 60,
+  "normalWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+  "nonDocumentationInputs": 5631,
+  "contracts": {
+    "candidate-runner-contracts": 68,
+    "complete-history-provider-contracts": 3,
+    "room-record-cut-contracts": 46,
+    "room-asset-approval-contracts": 46,
+    "retained-native-continuation-contracts": 8,
+    "operational-native-read-contracts": 39
+  },
+  "scope": "SDK-private retention of the actual seven native sessions from the SAME complete record-cut reservation under a fresh read grant, independent of the expired whole-room recovery job. Exact LIVE native/packet data and policy stamps survive temporary-reader cleanup; ordinary capture read gates stay intact and post-cleanup changes refuse. Four independent document/comment history pairs preserve exact cold native state and both future Undo/Redo lanes under independently supplied participant lifetime authority. Genuine donated legacy origin-upload custody can support future current full captures without reacquisition or accidental cleanup release, and only for the exact actual stores. Copied roots, detached/native-data facades, forged/shallow-copy custody and unrelated genuine-store custody refuse before host callbacks. All prior1554 laws remain cumulative. Ordinary native/asset read implementations, old protocols, package versions, public root API and normal Wasm are unchanged. Controlled functional storage/locks/raster, not physical durability, native parent consumption, a finished editable selected-asset successor, provider/registered-stream closure, authenticated activation/fencing, sustainable history or full V1/parity.",
+  "newAssertions": {
+    "privateCapabilityAndLiveDataContracts": 7,
+    "actualNativeSdk": 11,
+    "total": 18
+  },
+  "independentHistoryPairs": 4,
+  "sevenFamilySelectedIdentitiesAcrossPairs": 28,
+  "additionalSelectedScenarioIdentitiesPerPath": 8,
+  "actualRustNative": true,
+  "controlledIndexedDbLocksAndRaster": true,
+  "ordinaryNativeAndAssetReadImplementationsUnchanged": true,
+  "packageRootRuntimeAdditions": [],
+  "allPriorRootRuntimeNamesPreserved": true,
+  "packageVersionsChanged": false,
+  "oldNativeAndStoredProtocolsChanged": false,
+  "normalWasmChanged": false,
+  "existing1554LawsRetained": true,
+  "nativeParentConsumption": false,
+  "editableSelectedAssetSuccessor": false,
+  "registeredStreamClosure": false,
+  "authenticatedActivation": false,
+  "crossDeviceFencing": false,
+  "physicalBrowserCrashDurability": false,
+  "v1GatesOpen": 13,
+  "limitations": [
+    "The private continuation retains actual sessions and origin-store exclusion; it does not consume native parents, complete a root-plus-stage ownership barrier or construct a public editable owner",
+    "Fresh read permission is separate from participant lifetime write authority; an expired or revoked writer grant is not renewed by data, saved readiness or an approval file",
+    "The complete cut retains all admitted committed/attempt/pending/LIVE and literal inputs; a LIVE comparison alone is neither a complete backup nor provider/registered-stream closure",
+    "Four actual SDK history pairs use standard/atomic language 3 fixtures; base producers are fresh for ten profile/wire rooms each, not an additional full ten-by-four SDK matrix",
+    "Original per-family history, JSON, file and upload budgets remain; no measured sustainable-history, memory, latency or download qualification",
+    "Controlled functional storage/locks/raster, not physical browser durability, cross-browser/IME/accessibility or historical WebKit repair",
+    "Native parent consumption, durable selected-asset successor intent/current capture/cold resume, complete reconciliation, authenticated activation/fencing, sustainable history and remaining parity are still required",
+    "Eighteen selected normal stages, not the full candidate release plan or V1 approval"
+  ],
+  "noPush": true,
+  "noTag": true,
+  "noPublication": true,
+  "noDeployment": true
+}
