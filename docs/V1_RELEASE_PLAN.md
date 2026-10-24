@@ -43,6 +43,16 @@ publication or deployment is promoted.
 
 ## Current seven family client recovery
 
+The [generation parent reader](GENERATION_OPERATIONAL_RECORD_READ.md) now reads
+both actual protected archives with independent fresh permission and no editable
+source projection. Its thirteen selected normal stages pass; source, fresh
+offline packages and actual bundled code each pass 1,050 cumulative laws, with
+eight strict consumer type fixtures. Existing source and installed operational
+probes retain six cases, 24 handoffs and 18 operational cold reopens each. The
+historical archive native/reference prelude, synchronous all-member fresh read
+reservations and whole-provider/client reconciliation remain architecture work.
+This checkpoint does not close any of the thirteen V1 gates.
+
 The [private room coordinator](PHYSICAL_ROOM_OPERATION_V3.md) now transfers actual
 catalog custody into restartable recovery for all seven client families. It pins
 exact component namespaces, validates current policies before child recovery,

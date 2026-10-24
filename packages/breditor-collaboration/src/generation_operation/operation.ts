@@ -20,11 +20,24 @@ import {generationSource} from "../generation_source/admission.js";
 import {captureSharedGenerationSource,SharedGenerationSourceCapture} from "../generation_source/capture.js";
 import type {SharedGenerationOperationBeginOptions,SharedGenerationOperationResumeOptions,SharedGenerationOperationProgress,OperationalSharedGenerationParticipantParts} from "./contract.js";
 import {prepareOperationalCohort,type OperationalCohortReservation} from "../operation_cohort/cohort.js";
+import {createGenerationOperationalRecordRead,type GenerationOperationalRecordMetadata,type OperationalParentRecordRead} from '../operation_read/parent_records.js';
+import {OperationalReadCancellation} from '../operation_read/cancellation.js';
+import {checkRecoveryLeasesHeld} from '../participant_recovery/lease.js';
+import {participantAuthority} from '../participant_backup/policy.js';
+import {readGenerationOperationalRecords} from './read_records.js';
+import {SharedEditorError} from '../core.js';
+import {captureGenerationRecordReferences,type GenerationRecordReferenceMetadata,type GenerationRecordReferenceOptions} from '../generation_source/record_reference_capture.js';
+import {parentReferenceOptions} from '../operation_read/reference_options.js';
 export interface OperationalGenerationCustody<P extends SharedSelectionPolicy>{p:PreparedGenerationRecovery<P>;owners:GenerationRecoveryOwners<P>;origin:NativeGenerationOperationOrigin;db:IDBDatabase;recoveryDb:IDBDatabase;record:GenerationOperationRecord;leases:RecoveryLease[];life:GenerationOperationLife;currentGuard:()=>void}
 type State<P extends SharedSelectionPolicy>=OperationalGenerationCustody<P>;
 export interface OperationalGenerationHandoff<T>{commit():T;abandon():void}
 let reserveGenerationGroup:(owners:readonly OperationalSharedGenerationParticipant<SharedSelectionPolicy>[])=>OperationalCohortReservation<State<SharedSelectionPolicy>>;
 let exactGeneration:(owner:OperationalSharedGenerationParticipant<SharedSelectionPolicy>)=>Promise<void>;
+export type GenerationOperationalReferenceOptions=Omit<GenerationRecordReferenceOptions,'source'>;
+export type GenerationOperationalRecordRead=OperationalParentRecordRead<GenerationOperationalReferenceOptions,GenerationRecordReferenceMetadata,GenerationOperationalRecordMetadata>;
+let captureParentRecords:<P extends SharedSelectionPolicy>(owner:OperationalSharedGenerationParticipant<P>,authority:()=>void,signal?:AbortSignal)=>Promise<GenerationOperationalRecordRead>;
+/** New fresh-permission read scope, not the original handoff/writer guard. */
+export function captureGenerationOperationalRecords<P extends SharedSelectionPolicy>(owner:OperationalSharedGenerationParticipant<P>,checkAuthority:()=>void,signal?:AbortSignal){return captureParentRecords(owner,checkAuthority,signal);}
 /** A prepared aggregate parent may publish only the exact original native/upload cut. */
 export function verifyOperationalGenerationAtOrigin(owner:OperationalSharedGenerationParticipant<SharedSelectionPolicy>):Promise<void>{return exactGeneration(owner);}
 /** Internal all-or-nothing custody capsule for the generation-aware room adapter.
@@ -44,6 +57,15 @@ export class OperationalSharedGenerationParticipant<P extends SharedSelectionPol
  readonly #state:State<P>;readonly #file:Blob;#closed=false;#busy=false;#released=false;
  private constructor(token:object,state:State<P>){if(token!==key)throw fail("generation_operation_closed");this.#state=state;this.#file=SharedGenerationParticipantBackup.prototype.file.call(state.p.backup);generationOperationFence(state.db,state.life);generationOperationFence(state.recoveryDb,state.life);Object.freeze(this);}
  static{
+  captureParentRecords=async<Q extends SharedSelectionPolicy>(owner:OperationalSharedGenerationParticipant<Q>,provided:()=>void,signal?:AbortSignal)=>{
+   if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('generation_operation_policy');if(owner.#closed||owner.#released)throw fail('generation_operation_closed');if(owner.#busy)throw fail('generation_operation_busy');const authority=participantAuthority(provided);owner.#busy=true;
+   const s=owner.#state,session=s.owners.session,uploads=s.owners.uploads;let observation:OperationalReadCancellation|undefined,result:GenerationOperationalRecordRead|undefined,released=false,complete=false;
+   const release=()=>{if(released)return;released=true;try{observation?.close();}finally{owner.#busy=false;}};
+   const current=()=>{if(released||owner.#closed||owner.#released||!owner.#busy||s.life.changed||!session||!uploads||s.owners.session!==session||s.owners.uploads!==uploads)throw fail('generation_operation_diverged');checkRecoveryLeasesHeld(s.leases);const port=generationSource(session);port.checkManaged();if(JSON.stringify(port.identity)!==JSON.stringify(s.p.options.expected.identity.source))throw fail('generation_operation_diverged');RichAssetStore.prototype.checkOpen.call(uploads);observation?.check(()=>new SharedEditorError('generation_parent_record_aborted','The independently selected parent read was cancelled'));};
+   const check=()=>{current();authority();current();};
+   try{observation=new OperationalReadCancellation(signal);check();const stored=await readGenerationOperationalRecords(s,check,signal);check();result=createGenerationOperationalRecordRead<GenerationOperationalReferenceOptions,GenerationRecordReferenceMetadata>(stored.metadata,{check,current,readReferences:async provided=>{const o=parentReferenceOptions(provided,'restoreSegmented'),readAuthority=participantAuthority(o.checkAuthority),guard=()=>{check();readAuthority();current();};return captureGenerationRecordReferences({source:session!,restoreSegmented:o.restoreSegmented,checkAuthority:guard,...(o.editor!==undefined?{editor:o.editor}:{}),...(o.signal!==undefined?{signal:o.signal}:{})});},files:()=>stored.files,verify:async()=>{check();const actual=await readGenerationOperationalRecords(s,check,signal);check();if(JSON.stringify(actual.metadata)!==JSON.stringify(stored.metadata))throw fail('generation_operation_diverged');},release});result.check();complete=true;return result;}
+   finally{if(!complete){result?.dispose();release();}}
+  };
   exactGeneration=async owner=>{owner.#start();try{owner.#guard();await retained(owner.#state);await verifyOperationalGenerationOwners(owner.#state.p,owner.#state.owners,owner.#state.origin);await verifyGenerationOwners(owner.#state.p,owner.#state.owners);owner.#guard();}finally{owner.#busy=false;}};
   reserveGenerationGroup=input=>{
    if(!Array.isArray(input)||input.length>1024)throw fail("generation_operation_policy");const owners=[...input];

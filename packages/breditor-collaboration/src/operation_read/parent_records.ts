@@ -6,6 +6,9 @@ import {frozen} from '../room_participant_inventory/policy.js';
 import type {SharedParticipantBackupSelection} from '../participant_backup/types.js';
 import type {OperationRecord} from '../participant_operation/record.js';
 import type {RecoveryRecord} from '../participant_recovery/journal.js';
+import type {SharedGenerationParticipantSelection} from '../generation_participant/contract.js';
+import type {GenerationOperationRecord} from '../generation_operation/database.js';
+import type {GenerationRecoveryRecord} from '../generation_participant/recovery_database.js';
 import {createParentReferenceRead,type ParentReferenceSource,type ParentReferenceProducer,type OperationalParentReferenceRead} from './reference_read.js';
 type Immutable<T>=T extends readonly(infer V)[]?readonly Immutable<V>[]:T extends object?{readonly[K in keyof T]:Immutable<T[K]>}:T;
 export interface OriginalOperationalRecordMetadata{
@@ -14,14 +17,21 @@ export interface OriginalOperationalRecordMetadata{
  readonly operation:OperationRecord;readonly recovery:Immutable<RecoveryRecord>;
  readonly files:readonly Readonly<{role:'operation-origin';bytes:number;sha256:string}>[];
 }
-export interface ParentRecordFile{readonly role:'operation-origin';readonly file:Blob}
+export interface GenerationOperationalRecordMetadata{
+ readonly format:'breditor/generation-operational-record-read';readonly formatVersion:1;
+ readonly scope:'held-generation-parent-markers-and-two-archives';readonly selection:Immutable<SharedGenerationParticipantSelection>;
+ readonly operation:GenerationOperationRecord;readonly recovery:GenerationRecoveryRecord;
+ readonly files:readonly Readonly<{role:'operation-origin'|'recovery-origin';bytes:number;sha256:string}>[];
+}
+type ParentRecordMetadata=OriginalOperationalRecordMetadata|GenerationOperationalRecordMetadata;
+export interface ParentRecordFile{readonly role:'operation-origin'|'recovery-origin';readonly file:Blob}
 interface Callbacks<O,R extends ParentReferenceSource>{check():void;current():void;verify():Promise<void>;readReferences(options:O):Promise<ParentReferenceProducer<R>>;files():readonly ParentRecordFile[];release():void}
 const key=Object.freeze({}),fail=(suffix:string)=>new SharedEditorError('operational_parent_read_'+suffix,'Use a genuine held parent and fresh independent read permission');
-let create:<O,R extends ParentReferenceSource>(metadata:OriginalOperationalRecordMetadata,callbacks:Callbacks<O,R>)=>OperationalParentRecordRead<O,R>;
+let create:<O,R extends ParentReferenceSource,M extends ParentRecordMetadata>(metadata:M,callbacks:Callbacks<O,R>)=>OperationalParentRecordRead<O,R,M>;
 /** Global class: closed reports retain no producer, archive, policy or source callbacks. */
-export class OperationalParentRecordRead<O,R extends ParentReferenceSource>{
- readonly #metadata:OriginalOperationalRecordMetadata;#callbacks:Callbacks<O,R>|undefined;readonly #children=new Set<OperationalParentReferenceRead<R>>();#closed=false;#checking=false;#verifying=false;#readingReferences=false;
- private constructor(token:object,metadata:OriginalOperationalRecordMetadata,callbacks:Callbacks<O,R>){if(token!==key)throw fail('source');this.#metadata=frozen(structuredClone(metadata));this.#callbacks=callbacks;Object.freeze(this);}
+export class OperationalParentRecordRead<O,R extends ParentReferenceSource,M extends ParentRecordMetadata=OriginalOperationalRecordMetadata>{
+ readonly #metadata:M;#callbacks:Callbacks<O,R>|undefined;readonly #children=new Set<OperationalParentReferenceRead<R>>();#closed=false;#checking=false;#verifying=false;#readingReferences=false;
+ private constructor(token:object,metadata:M,callbacks:Callbacks<O,R>){if(token!==key)throw fail('source');this.#metadata=frozen(structuredClone(metadata));this.#callbacks=callbacks;Object.freeze(this);}
  metadata(){return this.#metadata;}
  check():void{if(this.#closed)throw fail('closed');if(this.#checking)throw fail('busy');this.#checking=true;try{this.#callbacks!.check();if(this.#closed)throw fail('closed');}finally{this.#checking=false;}}
  checkCurrent():void{if(this.#closed)throw fail('closed');this.#callbacks!.current();if(this.#closed)throw fail('closed');}
@@ -40,3 +50,5 @@ export class OperationalParentRecordRead<O,R extends ParentReferenceSource>{
 const check=OperationalParentRecordRead.prototype.check;
 /** Trusted family wrapper only; not an incoming parent/source admission API. */
 export function createOriginalOperationalRecordRead<O,R extends ParentReferenceSource>(metadata:OriginalOperationalRecordMetadata,callbacks:Callbacks<O,R>){return create(metadata,callbacks);}
+/** Trusted generation composition only; metadata cannot act as incoming custody. */
+export function createGenerationOperationalRecordRead<O,R extends ParentReferenceSource>(metadata:GenerationOperationalRecordMetadata,callbacks:Callbacks<O,R>){return create(metadata,callbacks);}

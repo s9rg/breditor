@@ -85,6 +85,11 @@ historical parent files outside them or the upload/provider bytes themselves.
 
 ## Functional qualification and integration
 
+The separate [operational parent reader](GENERATION_OPERATIONAL_RECORD_READ.md)
+adds fresh independently authorized admission of both protected parent archives
+and an opaque current-source reference child. Its historical parent native and
+packet reference closure remains a separate obligation.
+
 The [generation-record qualification](qualification/2026-10-23-generation-record-read.json)
 passes twelve selected normal stages. Source, fresh offline packages and actual
 bundled code each pass the same 290 laws: 188 generation reader laws, 74 original

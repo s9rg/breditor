@@ -1,0 +1,59 @@
+{
+  "format": "breditor/generation-operational-record-read-qualification",
+  "formatVersion": 1,
+  "passed": true,
+  "directory": "/Users/s/code/breditor/target/generation-operational-record-read-final-8ci8vH",
+  "index": "target/generation-operational-record-read-final-8ci8vH/index.json",
+  "indexSha256": "e3e6b80c9638669e52a5bf9d09cd666ec05df4ece70de6d808d0a5f3c9cf5dfb",
+  "retainedEntries": 7942,
+  "source": {
+    "commit": "42a9b30f2b46b863f858e1cd4480d8118010d353",
+    "dirty": true,
+    "sha256": "f6132977b49aaec349f48c1cb5db7c5ed87172a28ee2770ed057681c0120d85a",
+    "files": 6160,
+    "bytes": 49026208
+  },
+  "normalStages": 13,
+  "functionalPlanChecks": 404,
+  "fullPlanChecks": 412,
+  "sourceAssertions": 1050,
+  "installedAssertions": 1050,
+  "bundledAssertions": 1050,
+  "generationParentRecordAssertions": 97,
+  "priorAssertions": 953,
+  "strictTypes": 8,
+  "contractAssertionsIncludingPlan": 98,
+  "legacyGenerationAssetAssertions": 362,
+  "legacyGenerationOperationCasesEach": 6,
+  "legacyGenerationOperationHandoffsEach": 24,
+  "legacyGenerationOperationalColdReopensEach": 18,
+  "registryArtifacts": 45,
+  "productionModules": 497,
+  "bundleSha256": "de12eecb77fce89255f85caea02f8f529eb1bb3820395035261ec8a3e6537ec9",
+  "archives": [
+    {
+      "name": "@breditor/browser",
+      "path": "/private/tmp/breditor-generation-operational-record-read-installed-sNKmWb/archives/breditor-browser-0.3.0-alpha.22.tgz",
+      "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+    },
+    {
+      "name": "@breditor/experimental-rich-content",
+      "path": "/private/tmp/breditor-generation-operational-record-read-installed-sNKmWb/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+      "sha256": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad"
+    },
+    {
+      "name": "@breditor/collaboration",
+      "path": "/private/tmp/breditor-generation-operational-record-read-installed-sNKmWb/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+      "sha256": "2c26bfdf5ca161b2046cf9743f1d0731f423a03bc34423acf8e24e96d5dcb769"
+    }
+  ],
+  "normalWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+  "nonDocumentationInputs": 5466,
+  "scope": "Fresh opaque generation parent record/reference reads; both actual protected archives; current source references only. Not historical parent native/reference closure, all-member fresh reservation, provider/client reconciliation, activation, sustainable history or V1 readiness.",
+  "allThirteenV1GatesOpen": true,
+  "noPush": true,
+  "noTag": true,
+  "noVersionChange": true,
+  "noPublication": true,
+  "noDeployment": true
+}
