@@ -3,7 +3,7 @@
  * Historical references are addresses, not provider availability or activation. */
 import {SharedEditorError} from '../core.js';
 import type {SharedSelectionPolicy} from '../types.js';
-import {reserveProtectedOperationalHistoryRead,checkProtectedHistoryHeldCurrent,type ProtectedHistoryParticipant,type ProtectedHistoryGroupMetadata} from '../operation_read/protected_history_group.js';
+import {reserveProtectedOperationalHistoryRead,checkProtectedHistoryHeldCurrent,protectedHistoryUploads,type ProtectedHistoryParticipant,type ProtectedHistoryGroupMetadata} from '../operation_read/protected_history_group.js';
 import {OperationalIndependentLocalParticipant,reserveFreshIndependentLocalHistoryRead} from '../independent_local_operation/participant.js';
 import type {FreshLocalParentHistoryOptions,FreshLocalParentHistoryMetadata} from '../independent_local_operation/fresh_parent_history.js';
 import {OperationalIndependentDeliveryParticipant,reserveFreshIndependentDeliveryHistoryRead} from '../independent_operation/participant.js';
@@ -14,7 +14,7 @@ import {OperationalRestoredLocalParticipant,reserveFreshSnapshotLocalHistoryRead
 import type {FreshSnapshotLocalHistoryOptions,FreshSnapshotLocalHistoryMetadata} from '../restored_local_operation/fresh_parent_history.js';
 import {OperationalFlatLocalParticipant,reserveFreshFlatLocalHistoryRead} from '../flat_local_operation/participant.js';
 import type {FreshFlatLocalHistoryOptions,FreshFlatLocalHistoryMetadata} from '../flat_local_operation/fresh_parent_history.js';
-import {createFreshParentHistoryReservation,type FreshParentHistoryReservation} from '../operation_read/fresh_parent_reservation.js';
+import {createFreshParentHistoryReservation,freshParentHistoryUploads,type FreshParentHistoryReservation} from '../operation_read/fresh_parent_reservation.js';
 import {participantAuthority} from '../participant_backup/policy.js';
 import {OperationalReadCancellation} from '../operation_read/cancellation.js';
 import {snapshotReadFactoryData} from '../operation_read/read_factory_snapshot.js';
@@ -37,7 +37,9 @@ function snapshot<P extends SharedSelectionPolicy>(input:readonly CompleteHistor
  for(let i=0;i<length;i++){const d=Object.getOwnPropertyDescriptor(input,String(i));if(!d||!('value'in d))throw fail('policy');const row=d.value;if(!row||typeof row!=='object'||Array.isArray(row)||Object.keys(row).sort().join(',')!=='family,id,operation,read')throw fail('policy');const value:Record<string,unknown>={};for(const key of['id','family','operation','read']){const field=Object.getOwnPropertyDescriptor(row,key);if(!field||!('value'in field))throw fail('policy');value[key]=field.value;}if(typeof value['id']!=='string'||!value['id']||value['id'].length>200||!families.includes(value['family'] as string))throw fail('policy');value['read']=snapshotReadFactoryData(value['read']);result.push(value as unknown as CompleteHistoryParticipant<P>);}
  if(new Set(result.map(row=>row.id)).size!==result.length||new Set(result.map(row=>row.operation)).size!==result.length)throw fail('policy');return result;
 }
-export function reserveCompleteOperationalHistoryRead<P extends SharedSelectionPolicy>(provided:readonly CompleteHistoryParticipant<P>[],providedAuthority:()=>void,signal?:AbortSignal):FreshParentHistoryReservation<CompleteOperationalHistoryMetadata>{
+/** Trusted composition with optional actual-upload inspection. Existing history
+ * callers receive only read and acquire no additional whole-upload locks. */
+export function reserveCompleteHistoryWithUploads<P extends SharedSelectionPolicy>(provided:readonly CompleteHistoryParticipant<P>[],providedAuthority:()=>void,signal?:AbortSignal){
  const rows=snapshot(provided),authority=participantAuthority(providedAuthority),scopes:Read[]=[],pending=new Set<Read>(),delivery=new Map<string,FreshParentHistoryReservation<DeliveryMetadata>>();let protectedRead:ReturnType<typeof reserveProtectedOperationalHistoryRead<P>>|undefined,protectedPrepared=false,observation:OperationalReadCancellation|undefined,closed=false;
  const current=()=>{if(closed)throw fail('closed');observation?.check(()=>fail('aborted'));if(protectedRead)checkProtectedHistoryHeldCurrent(protectedRead);for(const read of delivery.values())read.checkCurrent();},check=()=>{current();authority();current();};
  const release=()=>{if(closed)return;let error:unknown;for(const read of [...pending].reverse())try{read.close();pending.delete(read);}catch(cause){error??=cause;}if(pending.size)throw error??fail('cleanup');observation?.close();closed=true;};
@@ -49,9 +51,12 @@ export function reserveCompleteOperationalHistoryRead<P extends SharedSelectionP
    switch(row.family){case'original':case'generation':continue;case'independent-local':read=reserveFreshIndependentLocalHistoryRead(row.operation,row.read,check,signal);break;case'independent-delivery':read=reserveFreshIndependentDeliveryHistoryRead(row.operation,row.read,check,signal);break;case'restored-graph':read=reserveFreshRestoredDeliveryHistoryRead(row.operation,row.read,check,signal);break;case'local-operation-snapshot':read=reserveFreshSnapshotLocalHistoryRead(row.operation,row.read,check,signal);break;case'local-operation-flat':read=reserveFreshFlatLocalHistoryRead(row.operation,row.read,check,signal);break;}
    delivery.set(row.id,read);scopes.push(read);pending.add(read);
   }
-  return createFreshParentHistoryReservation({current,release,open:async()=>{observation=new OperationalReadCancellation(signal);check();if(protectedRead){await protectedRead.prepare();protectedPrepared=true;current();}for(const read of delivery.values()){await read.prepare();current();}check();
+  const read=createFreshParentHistoryReservation({current,release,open:async()=>{observation=new OperationalReadCancellation(signal);check();if(protectedRead){await protectedRead.prepare();protectedPrepared=true;current();}for(const read of delivery.values()){await read.prepare();current();}check();
    const protectedRows=new Map(protectedRead?.metadata().participants.map(row=>[row.id,row.history])??[]),budget=protectedHistoryGroupBudget(),union=new Map<string,RichRetainedAssetReference>(),participants=rows.map(row=>{const history:HistoryMetadata|undefined=row.family==='original'||row.family==='generation'?protectedRows.get(row.id):delivery.get(row.id)?.metadata();if(!history)throw fail('source');budget.add(history);for(const reference of history.references)union.set(JSON.stringify([reference.asset,reference.generation]),reference);return{id:row.id,family:row.family,history};}),metadata:CompleteOperationalHistoryMetadata={format:'breditor/complete-operational-history-read',formatVersion:1,scope:'held-seven-family-protected-history-records',participants,kind:participants.some(row=>row.history.kind==='pending')?'pending':'ready',references:[...union.values()].sort((a,b)=>a.asset<b.asset?-1:a.asset>b.asset?1:a.generation<b.generation?-1:a.generation>b.generation?1:0)};
    current();return{metadata:()=>metadata,check:()=>{check();for(const read of scopes)read.check();current();},checkCurrent:current,verify:async()=>{check();for(const read of scopes){await read.verify();current();}check();},dispose:release};
   }});
+  return Object.freeze({read,legacyUploads:()=>protectedRead?protectedHistoryUploads(protectedRead).map(row=>row.store):[],uploads:()=>{current();const legacy=new Map(protectedRead?protectedHistoryUploads(protectedRead).map(row=>[row.id,row.store]):[]);return Object.freeze(rows.map(row=>Object.freeze({id:row.id,family:row.family,store:row.family==='original'||row.family==='generation'?legacy.get(row.id)!:freshParentHistoryUploads(delivery.get(row.id)!)})));}});
  }catch(error){release();throw error;}
 }
+/** Original reference-only behavior: no asset acquisition or whole-file I/O. */
+export function reserveCompleteOperationalHistoryRead<P extends SharedSelectionPolicy>(provided:readonly CompleteHistoryParticipant<P>[],providedAuthority:()=>void,signal?:AbortSignal):FreshParentHistoryReservation<CompleteOperationalHistoryMetadata>{return reserveCompleteHistoryWithUploads(provided,providedAuthority,signal).read;}

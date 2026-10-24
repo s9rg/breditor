@@ -98,6 +98,14 @@ Unselected historical copies remain explicit in `unreconciledParticipants`, even
 when the selected local clones are ready. Neither equal actor IDs nor a local
 receipt proves registered-stream or current provider coverage.
 
+The [held history and provider reader](ROOM_HISTORY_PROVIDER_CHECK.md) now checks
+the original held clients' protected history and whole upload stores against the
+actual authenticated native provider, including unreferenced content IDs. It
+re-admits stored records and upload bytes after network I/O. This does not admit
+the separately staged selected clones, approve their choices or replace the
+operational root; those still require the complete selected native/record/upload
+basis and durable handoff below.
+
 The next operational contract must combine these staged stores with genuine
 native/source ownership, complete current/pending/offline/review/version admission,
 all retained-client decisions and current provider byte checks. It must then cross

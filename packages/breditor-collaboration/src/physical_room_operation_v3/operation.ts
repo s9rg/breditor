@@ -29,6 +29,9 @@ import type {PhysicalOperationV3HistoryReadOptions,PhysicalOperationV3HistoryRea
 import type {SharedSelectionPolicy} from '../types.js';
 import {readPhysicalOperationV3Assets} from './asset_read.js';
 import type {PhysicalAssetReadOptions,PhysicalAssetReadScope} from './asset_read_contract.js';
+import {readPhysicalOperationV3HistoryAssets} from './history_assets.js';
+import type {PhysicalOperationV3HistoryAssetsRead} from './history_assets_contract.js';
+import type {SharedPhysicalRoomRecoveryHost} from '../physical_recovery_control/host.js';
 const key=Object.freeze({});
 const errors={policy:()=>fail('physical_operation_v3_policy'),busy:()=>fail('physical_operation_v3_in_use'),storage:()=>fail()};
 interface State{
@@ -129,6 +132,9 @@ export class PhysicalRoomClientOperationV3{
  /** Fresh protected history/custody inspection after an old job ends. Existing
   * readNative/handoff defaults keep their original grant and signal contracts. */
  readHistory<P extends SharedSelectionPolicy>(input:PhysicalOperationV3HistoryReadOptions<P>):Promise<PhysicalOperationV3HistoryRead>{return this.#run(()=>readPhysicalOperationV3History(this.#s,()=>{if(!this.#exposed||!this.#busy)throw fail('physical_operation_v3_closed');},input));}
+ /** Fresh protected-history AND whole-upload availability against the genuine
+  * authenticated native host. No upload, receipt promotion or activation. */
+ readHistoryAssets<P extends SharedSelectionPolicy>(host:SharedPhysicalRoomRecoveryHost,input:PhysicalOperationV3HistoryReadOptions<P>):Promise<PhysicalOperationV3HistoryAssetsRead>{return this.#run(async()=>{await this.#rollback.drain();return readPhysicalOperationV3HistoryAssets(this.#s,()=>{if(!this.#exposed||!this.#busy)throw fail('physical_operation_v3_closed');},this.#rollback,host,input);});}
  #disposeArchive():void{const s=this.#s;if(!s.archiveDisposed){archive.dispose.call(s.held.archive);s.archiveDisposed=true;}}
  /** Reserve this actual job alongside every real child. Temporary native reader
   * cleanup precedes the last client barriers. consume is private flag writes

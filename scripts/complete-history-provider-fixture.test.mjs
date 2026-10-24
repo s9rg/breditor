@@ -1,0 +1,7 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {IDBFactory} from 'fake-indexeddb';
+import {putControlFixtureRecord as put} from './fixtures/physical-recovery-control/record-write.mjs';
+for(const inline of[false,true])test('provider tampering and restoration use actual '+(inline?'inline':'out-of-line')+' keys without altering other rows',async()=>{
+ const factory=new IDBFactory(),database=await new Promise((resolve,reject)=>{const q=factory.open('fixture');q.onupgradeneeded=()=>q.result.createObjectStore('records',inline?{keyPath:'asset'}:undefined);q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error);}),original={asset:'selected',epoch:3},other={asset:'unselected',epoch:9},row={key:'selected',value:original};
+ const change=run=>new Promise((resolve,reject)=>{const tx=database.transaction('records','readwrite');run(tx.objectStore('records'));tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);}),read=()=>new Promise((resolve,reject)=>{const tx=database.transaction('records','readonly'),q=tx.objectStore('records').getAll();tx.oncomplete=()=>resolve(q.result);tx.onabort=()=>reject(tx.error);});
+ try{await change(store=>{put(store,row,original);put(store,{key:'unselected'},other);});await change(store=>put(store,row,{...original,epoch:4}));assert.deepEqual(await read(),[{...original,epoch:4},other]);await change(store=>put(store,row,original));assert.deepEqual(await read(),[original,other]);}finally{database.close();}
+});

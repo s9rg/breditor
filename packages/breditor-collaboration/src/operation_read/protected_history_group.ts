@@ -29,10 +29,11 @@ export type ProtectedHistoryParticipant<P extends SharedSelectionPolicy=SharedSe
  |Readonly<{id:string;family:'generation';operation:OperationalSharedGenerationParticipant<P>;read:Omit<GenerationOperationalReferenceOptions,'checkAuthority'|'signal'>}>;
 type Metadata=OperationalHistoryReferenceMetadata<OriginalRecordReferenceMetadata|GenerationRecordReferenceMetadata>;
 export interface ProtectedHistoryGroupMetadata{readonly format:'breditor/protected-operational-history-group-read';readonly formatVersion:1;readonly scope:'held-original-and-generation-archives-and-current-records';readonly participants:readonly Readonly<{id:string;family:'original'|'generation';history:Metadata}>[];readonly kind:'ready'|'pending'}
-interface Callbacks{prepare():Promise<ProtectedHistoryGroupMetadata>;check():void;current():void;verify():Promise<void>;release():void}
+interface Callbacks{prepare():Promise<ProtectedHistoryGroupMetadata>;check():void;current():void;verify():Promise<void>;release():void;uploads():readonly Readonly<{id:string;store:RichAssetStore}>[]}
 const token=Object.freeze({}),fail=(suffix:string)=>new SharedEditorError('protected_history_group_'+suffix,'Reserve every selected genuine original/generation parent before fresh read callbacks');
 let create:(callbacks:Callbacks)=>ProtectedOperationalHistoryGroupRead;
 let heldCurrent:(owner:ProtectedOperationalHistoryGroupRead)=>void;
+let heldUploads:(owner:ProtectedOperationalHistoryGroupRead)=>readonly Readonly<{id:string;store:RichAssetStore}>[];
 /** No mutable producer or individual unlock operation escapes this barrier. */
 export class ProtectedOperationalHistoryGroupRead{
  #callbacks:Callbacks|undefined;#metadata:ProtectedHistoryGroupMetadata|undefined;#working=false;#closed=false;
@@ -45,7 +46,7 @@ export class ProtectedOperationalHistoryGroupRead{
  /** Clear callbacks only after cleanup succeeds, so partial cleanup can retry. */
  close():void{if(this.#closed)return;if(this.#working)throw fail('busy');this.#callbacks!.release();this.#callbacks=undefined;this.#closed=true;}
  static reserve<P extends SharedSelectionPolicy>(input:readonly ProtectedHistoryParticipant<P>[],checkAuthority:()=>void,signal?:AbortSignal):ProtectedOperationalHistoryGroupRead{return reserve(input,checkAuthority,signal);}
- static{create=callbacks=>new ProtectedOperationalHistoryGroupRead(token,callbacks);heldCurrent=owner=>{if(owner.#closed)throw fail('closed');owner.#callbacks!.current();};}
+ static{create=callbacks=>new ProtectedOperationalHistoryGroupRead(token,callbacks);heldCurrent=owner=>{if(owner.#closed)throw fail('closed');owner.#callbacks!.current();};heldUploads=owner=>{if(!owner||typeof owner!=='object'||!(#callbacks in owner)||owner.#closed)throw fail('source');owner.#callbacks!.current();return owner.#callbacks!.uploads();};}
 }
 /** Closed data properties only; no caller iterator, field getter or source/store selector. */
 function dataObject(value:unknown,required:readonly string[],optional:readonly string[]=[]):Record<string,unknown>{if(!value||typeof value!=='object'||Array.isArray(value))throw fail('policy');const names=Object.keys(value),copy:Record<string,unknown>={};if(required.some(name=>!Object.hasOwn(value,name))||names.some(name=>!required.includes(name)&&!optional.includes(name)))throw fail('policy');for(const name of names){const d=Object.getOwnPropertyDescriptor(value,name);if(!d||!('value'in d))throw fail('policy');copy[name]=d.value;}return copy;}
@@ -68,7 +69,7 @@ function reserve<P extends SharedSelectionPolicy>(provided:readonly ProtectedHis
     budget.add(result.metadata());reads.set(row.id,result);pending.add(result);check();complete=true;
    }finally{if(!complete){if(result)result.dispose();else capture?.dispose();}}}
    prepared=true;current();return{format:'breditor/protected-operational-history-group-read',formatVersion:1,scope:'held-original-and-generation-archives-and-current-records',participants:rows.map(row=>({id:row.id,family:row.family,history:reads.get(row.id)!.metadata()})),kind:[...reads.values()].some(read=>read.metadata().kind==='pending')?'pending':'ready'};
-  },check:()=>{check();for(const read of reads.values())read.check();current();},current,verify:async()=>{check();for(const read of reads.values()){await read.verify();current();}check();},release});
+  },check:()=>{check();for(const read of reads.values())read.check();current();},current,verify:async()=>{check();for(const read of reads.values()){await read.verify();current();}check();},release,uploads:()=>{current();return Object.freeze([...original!.states.map((s,i)=>Object.freeze({id:originals[i]!.id,store:s.owners.uploads!})),...generation!.states.map((s,i)=>Object.freeze({id:generations[i]!.id,store:s.owners.uploads!}))]);}});
  }catch(error){release();throw error;}
 }
 export const reserveProtectedOperationalHistoryRead=<P extends SharedSelectionPolicy>(input:readonly ProtectedHistoryParticipant<P>[],checkAuthority:()=>void,signal?:AbortSignal)=>ProtectedOperationalHistoryGroupRead.reserve(input,checkAuthority,signal);
@@ -76,3 +77,6 @@ export const reserveProtectedOperationalHistoryRead=<P extends SharedSelectionPo
  * only, including during preparation/verification. No grant, signal getter,
  * metadata projection or I/O. The ordinary checkCurrent busy policy is intact. */
 export const checkProtectedHistoryHeldCurrent=(owner:ProtectedOperationalHistoryGroupRead):void=>heldCurrent(owner);
+/** Internal legacy stores: caller must acquire their actual temporary custody
+ * before any fresh read authority runs. This accessor performs no acquisition. */
+export const protectedHistoryUploads=(owner:ProtectedOperationalHistoryGroupRead)=>heldUploads(owner);

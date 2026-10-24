@@ -1,0 +1,9 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {candidateReleasePlan} from './candidate-release/plan.mjs';
+import {completeHistoryProviderWorkload as workload} from './complete-history-provider-workload.mjs';
+test('complete history/provider qualification keeps every old law plus whole-upload, source/install/bundle/native and strict-type scopes',()=>{
+ assert.equal(workload.assertions,1421);assert.equal(workload.newProviderAssertions,15);assert.equal(workload.tests.length,41);assert.equal(new Set(workload.tests).size,41);assert.equal(workload.types.length,18);assert.equal(new Set(workload.types).size,18);
+ for(const profile of['functional','full']){const plan=candidateReleasePlan({profile}),find=id=>{const rows=plan.checks.filter(row=>row.id===id);assert.equal(rows.length,1,id);return rows[0];},position=id=>plan.checks.indexOf(find(id));assert.deepEqual(find('complete-history-provider-contracts').args,['--test','scripts/complete-history-provider-fixture.test.mjs','scripts/complete-history-provider-candidate-plan.test.mjs']);assert.deepEqual(find('complete-history-provider-type-fence').args.slice(-18),workload.types.map(name=>'scripts/fixtures/editor-consumer/'+name));
+  for(const[id,script,artifact,timeout]of[['complete-history-provider','check-complete-history-provider-sdk.mjs','target/complete-history-provider-sdk.json',7200000],['installed-complete-history-provider','check-complete-history-provider-installed.mjs','target/complete-history-provider-installed-consumer.json',14400000]]){const row=find(id);assert.deepEqual(row.args,['scripts/'+script]);assert.deepEqual(row.artifacts,[{path:artifact,fresh:true}]);assert.ok(row.timeoutMs>=timeout);for(const dependency of['rich-browser-build','collaboration-build','native-complete-cohort','native-complete-image-cohort','complete-history-provider-contracts','complete-history-provider-type-fence'])assert.ok(position(dependency)<position(id));}
+ }
+});

@@ -43,6 +43,22 @@ publication or deployment is promoted.
 
 ## Current seven family client recovery
 
+The [held history and whole-upload provider reader](ROOM_HISTORY_PROVIDER_CHECK.md)
+now checks actual authenticated provider availability while every genuine
+selected parent and upload store remains held. Unreferenced uploads remain in
+the request, and actual native/persisted records, whole uploads and retained
+root/catalog files are checked again after network I/O. Twelve selected normal
+stages pass; source, fresh offline packages and the actual production bundle
+each pass 1,421 cumulative laws, with eighteen strict consumer fixtures. Four
+new history-pair cases cold-reopen 28 client instances per path and exercise both
+future native Undo/Redo lanes, using language 3 standard/atomic data. Separate
+unchanged installed assertions reproduce and verify the abort/root-close race
+during actual cleanup acknowledgements. This is point-in-time availability for
+the original held clients, not selected-clone adoption or activation. Complete
+durable native/record retention, independently approved exact choices and genuine
+operational handoff remain next, followed by registered-stream closure,
+authenticated fencing and sustainable history. All thirteen V1 gates stay open.
+
 The [room-bound asset stager](ROOM_ASSET_ADOPTION_STAGING.md) now retains complete
 base choices against actual held root/native/upload cuts before creating exact
 selected clones. Eighteen selected normal stages pass; source, fresh offline

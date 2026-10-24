@@ -1,0 +1,138 @@
+{
+  "format": "breditor/held-history-provider-qualification",
+  "formatVersion": 1,
+  "directory": "/Users/s/code/breditor/target/complete-history-provider-final-kh7M6q",
+  "index": "target/complete-history-provider-final-kh7M6q/index.json",
+  "indexSha256": "af21a0879af4a0bd79d3bdc7d2bf16b4915f63777b69c5f11a3b6b5393b894ef",
+  "entries": 8941,
+  "source": {
+    "commit": "f98112676e0f53a5a31facc090760d4b308ecd31",
+    "dirty": true,
+    "sha256": "c0988c931bc7f6256b67f4ac9dd2c1c007ae12d37cdbc661e77eaba961828347",
+    "files": 6293,
+    "bytes": 49658163
+  },
+  "selectedNormalStages": 12,
+  "functionalPlanChecks": 437,
+  "fullPlanChecks": 445,
+  "sourceAssertions": 1421,
+  "installedAssertions": 1421,
+  "bundledAssertions": 1421,
+  "newProviderScenarios": 15,
+  "newIndependentHistoryPairs": 4,
+  "newNativeClientsPerPath": 28,
+  "strictTypes": 18,
+  "registryArtifacts": 45,
+  "productionModules": 664,
+  "bundleSha256": "2f9ebb0efb343b4eda363a28cf5b94ce03b95bfd83b6b64400cb91b704638dab",
+  "archives": [
+    {
+      "name": "@breditor/browser",
+      "path": "/private/tmp/breditor-complete-history-provider-installed-sjn1hn/archives/breditor-browser-0.3.0-alpha.22.tgz",
+      "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+    },
+    {
+      "name": "@breditor/experimental-rich-content",
+      "path": "/private/tmp/breditor-complete-history-provider-installed-sjn1hn/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+      "sha256": "23bb4160babd07354daf373f81e731820ff41e45877ee711eb36401bac46497d"
+    },
+    {
+      "name": "@breditor/collaboration",
+      "path": "/private/tmp/breditor-complete-history-provider-installed-sjn1hn/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+      "sha256": "615070b77ffc012b3ff10f279657982b30116825c060f9692604ff290b2ee369"
+    }
+  ],
+  "nativeFiles": 100,
+  "nativeReports": [
+    {
+      "path": "target/complete-image-cohort-native.json",
+      "sha256": "d3d38d12fff6f1a2e6830b5c490586cf39e3e46cd31f70d065a6336987daf282"
+    },
+    {
+      "path": "target/complete-cohort-native.json",
+      "sha256": "151598e7f138b7ce23c0c6b1fab7b0758cfd36cefb22feb06534a818eeb4c068"
+    }
+  ],
+  "nativeProducerBinarySha256": "9f5948a8bba3367b601622f8316ec45012aa625cbd59e8a9656ca4793620ab46",
+  "standardNativeBinarySha256": "0d64e4b268a197a004a2913e6f1b7ec339d5b997478b0d449af5ac667ea7025f",
+  "actualLiveControlRuns": [
+    {
+      "directory": "/Users/s/code/breditor/target/complete-control-running-FUgVHF",
+      "cases": 10
+    },
+    {
+      "directory": "/Users/s/code/breditor/target/complete-control-running-JOiMKJ",
+      "cases": 10
+    },
+    {
+      "directory": "/Users/s/code/breditor/target/complete-control-running-W85YOL",
+      "cases": 10
+    }
+  ],
+  "actualLivePublicFiles": 150,
+  "actualClosedPorts": 30,
+  "normalWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+  "nonDocumentationInputs": 5582,
+  "contracts": {
+    "candidate-runner-contracts": 68,
+    "complete-history-provider-contracts": 3,
+    "operational-native-read-contracts": 39
+  },
+  "scope": "Actual authenticated Rust provider requests while genuine root and all seven protected-history/whole-upload reservations remain held. Exact current whole queues, including unreferenced bytes, and original/current/pending/LIVE native, review, version and packet references remain distinct and revalidated after I/O. Four new independent document/comment history pairs on language 3 standard/atomic preserve cold recovery and both future Undo/Redo lanes. Eleven other native scenarios cover absent unreferenced provider bytes despite local uploaded receipts, exact first-grant/upload custody, denied/forged/prototype hosts, partial selections, snapshotted/late cancellation, concurrent close, root/catalog/upload tampering, all seven source-journal tamper cases, actual delayed lock acknowledgements and abort/root-close during that cleanup await. Existing 1245 history laws and 161 asset staging/reconciliation laws remain unchanged. Source-matched native producers cover ten profile/wire rooms each. Synthetic IDB/locks/raster; not a full ten-by-four new SDK matrix, independently approved asset selection, selected-clone operational adoption, durable room handoff, registered-stream reconciliation, activation, cross-device fencing, physical durability or V1/parity.",
+  "normalRunnerActualExitCodes": [
+    0,
+    0,
+    0
+  ],
+  "priorHistoryAssertions": 1245,
+  "priorAssetAssertions": 161,
+  "newProviderAssertions": 15,
+  "newNativeDomain": "The four new SDK history-pair cases cold-reopen 28 genuine original client instances per execution path, then exercise both future native Undo/Redo lanes. They reuse language 3 standard/atomic input, not 28 unique server registrations or a full ten-profile-by-four-history new SDK matrix. Eleven other native scenarios exercise missing bytes, custody, authentication, partial selections, cancellation, tampering and actual cleanup. Two fresh source-matched native producers cover ten profile/wire rooms each, with 100 input files verified.",
+  "cleanupControl": {
+    "changedModule": "node_modules/@breditor/collaboration/dist/physical_room_operation_v3/history_read.js",
+    "beforeSha256": "66591ed02af02e47a7f1abb35567f1b4b3a9d91bf35450e2d08edab417aa0f84",
+    "fixedSha256": "d9ddda9daf6bacb43e686650ffa755d91fc4fbcd076ddcd4ce25ead8b711256c",
+    "assertionsSha256": "1cecfc7886e1ac8f0cda5a5af995a88c0dcf8d0f8391d77ad526a1ec333067d0",
+    "assertionsChanged": false,
+    "fixedPassed": 2,
+    "beforeFixFailed": 2,
+    "restoredFixedPassed": 2,
+    "actualNativeControlRuns": 3,
+    "scope": "Only the captured actual pre-repair history-read module is substituted in a separate fresh offline consumer. Both unchanged native/provider assertions require refusal after abort or root close while actual two-lock cleanup acknowledgements remain pending. The old module returns the prepared report; fixed packages reject and retain exact cold recovery. Main and the qualified consumer remain untouched."
+  },
+  "supersededRuns": {
+    "beforeRepair": "The first run was deliberately stopped after an independent unchanged-assertion probe reproduced the cleanup publication race. Its ten foundation stages passed, but its source/installed jobs are not counted as final qualification. Exact stopped test-owned processes and 40 independently refused endpoints are retained.",
+    "fixtureFailure": {
+      "indexSha256": "ae097b0ec4d7ebb05f9841a4aacc5e03a76b8605f94d6b219041ea3607f8fa56",
+      "retainedEntries": 139,
+      "sourcePassed": 1420,
+      "sourceFailed": 1,
+      "installedPassed": 1420,
+      "installedFailed": 1,
+      "bundleExecuted": false,
+      "reason": "The fault injector incorrectly supplied an explicit second key to an inline-key upload store. IDB DataError occurred before the intended mutation. The corrected helper respects the actual store keyPath; assertions and product code were unchanged for that fixture correction. The complete current run executes all 1,421 laws in each path."
+    }
+  },
+  "newPrivateReadReportFormat": "breditor/physical-operation-v3-assets-read version 1",
+  "cleanupPublicationBugScope": "Reproduced in the new development read path, not a claim about an already published release or the historical WebKit fault.",
+  "nativeRustAssetRequirementTests": 9,
+  "fullRustSuiteExecuted": false,
+  "selectedPlanOnly": true,
+  "fullCandidatePlanExecuted": false,
+  "physicalBrowserDurabilityQualified": false,
+  "performanceBudgetQualified": false,
+  "v1Ready": false,
+  "featureParityComplete": false,
+  "publicationApproved": false,
+  "v1GatesOpen": 13,
+  "oldNativeAssetCatalogProtocolsChanged": false,
+  "publicRootExportNamesChanged": false,
+  "packageVersionsChanged": false,
+  "nativeSourcesChanged": false,
+  "normalWasmChanged": false,
+  "historicalWebKitConfirmedFixed": false,
+  "noPush": true,
+  "noTag": true,
+  "noPublication": true,
+  "noDeployment": true
+}
