@@ -179,9 +179,21 @@ code each pass the same 755 laws, with five strict consumer type fixtures.
 Read-only replay checks exact histories and chronological native ancestry within
 the independently selected read runtime, preserving writer policy and future
 Undo/Redo. The existing 362-case generation asset/recovery domain passes too.
-Original reference replay, historical parent files, held room reconciliation,
+Historical parent files, held room reconciliation,
 provider bytes, current authenticated activation and sustainable history remain
 required. This does not close a V1 gate or authorize publication.
+
+The [original reference replay](qualification/2026-10-23-original-record-references.json)
+now covers original native committed/pending/LIVE histories and every selected
+independently saved catalog, proposal and revision/base-queue state. Ten selected
+normal stages pass; source, fresh offline packages and actual bundled code each
+pass the same 901 laws, with six strict consumer type fixtures. Separate native
+read runtimes preserve both history lanes, source policies and future Undo/Redo.
+Failed forgetting retains actual stored packet dependencies; uncached versions
+remain pending. The TypeScript and runtime contracts refuse duplicate ownership
+of a revision's base queue. Historical parent files, held coordinator integration,
+provider/client reconciliation, current authenticated activation and sustainable
+history remain required. Current source reference readiness alone closes no V1 gate.
 
 Complete-delivery and restored-operation parents now share the existing room
 handoff kernel with legacy local, snapshot-local and flat-local parents. Genuine

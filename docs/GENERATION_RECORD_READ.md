@@ -103,6 +103,8 @@ relay/retained factories, compatible reviewed/search policies and future
 document/comment Undo/Redo. The existing 362-case generation asset/recovery domain
 also passes. Native runtime bytes, formats, policies and defaults are unchanged.
 
-Original reference replay, selected historical parent files, held coordinator
-integration, provider/client reconciliation, authenticated room activation and
-sustainable history remain architectural work. All thirteen V1 gates remain open.
+The [original reference reader](ORIGINAL_RECORD_READ.md#native-and-packet-reference-replay)
+also covers current original journals and selected independently saved stores.
+Selected historical parent files, held coordinator integration, provider/client
+reconciliation, authenticated room activation and sustainable history remain
+architectural work. All thirteen V1 gates remain open.

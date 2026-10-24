@@ -109,6 +109,43 @@ permissions. Disposal releases the read permit or queue reservation and clears
 all producer and authorization callbacks. Frozen detached metadata stays readable
 after disposal; keeping it does not keep the read alive.
 
+## Native and packet reference replay
+
+`captureOriginalRecordReferences` acquires genuine original native readers and
+the explicitly selected version, proposal or revision readers. The revision
+reader already owns its exact base queue; selecting both is refused in the
+TypeScript contract and at runtime. Stores from a different native owner refuse
+before read authorization runs. Atomic generation owners use their complete
+driver instead of these original-store readers.
+
+The host selects the native restore factory independently. Each committed,
+pending and LIVE native state is replayed read-only with exact checkpoints,
+descriptor, language and original history policies. Native continuation in both
+document and comment lanes and the ordered local version prefix must survive
+between states. Comparisons remain inside the selected read runtime, including
+when it is a separately loaded copy of the normal Wasm runtime. There is no AST
+equality fallback or temporary author grant.
+
+Selected catalogs, queues and revision outboxes keep their own committed,
+pending and LIVE rows. Native packet/source and receipt admission runs against
+the latest exact native replay. These independent stores are not represented as
+one atomic save. A committed proposal or revision forgotten from LIVE after a
+failed save still contributes its image references. Lost acknowledgement instead
+uses the row actually committed. Uncached catalog versions and missing remote
+packet dependencies stay pending, not ready.
+
+The reader finds addresses without a current upload store or a provider request.
+It refuses above 100,000 distinct asset/generation pairs across the result and
+1,024 packet reads per state; it never truncates a complete result. Temporary
+native replicas are disposed after discovery. Genuine record reservations remain
+held until result disposal, and actual-byte verification and pure final source
+fences remain separate. Disposal clears all callbacks without closing sources or
+their writer leases; frozen detached metadata remains readable.
+
+This scope is the current source's native histories and explicitly selected
+stores. Historical parent files, upload bytes, provider availability, current
+server authority and activation are not covered by an address report.
+
 ## Functional qualification
 
 The [original-record checkpoint](qualification/2026-10-23-original-record-read.json)
@@ -128,12 +165,20 @@ natural/search policies. Version/revision rows also cover reviewed ownership,
 aborted and lost-acknowledgement saves. Existing participant recovery, paired
 backups, retained-version and pending-work reconciliation checks pass.
 
-All original native and retained-store kinds now have genuine committed, pending
-and LIVE discovery. Whole reference closure still requires native replay of those
-states and every selected historical parent file. The separate
-[generation record reader](GENERATION_RECORD_READ.md) covers complete atomic cuts.
-Original reference replay and selected historical parent files still need
-closure. Generation reference capture now replays the actual four retained
-states; its scope excludes parent files outside those states. Coordinator
-integration, provider/client reconciliation and authenticated activation remain required.
+The [original reference qualification](qualification/2026-10-23-original-record-references.json)
+passes ten selected normal stages. Source, fresh offline packages and actual
+bundled code each pass the same 901 laws: 146 new reference/disposal laws and all
+755 prior original/generation record and storage laws. All six strict consumer
+type fixtures pass. The new domain covers all three native languages, all three
+selection scopes, original paired policies, actual independently retained rows,
+both read runtimes, pending uncached versions, failed saves and lost
+acknowledgements, future document/comment Undo/Redo and callback release.
+The existing 362-case generation asset/recovery domain also passes. The native
+runtime, stored formats, author policies and public-root defaults are unchanged.
+
+Current original and generation states now have genuine record discovery and
+native/packet reference replay. The separate
+[generation reader](GENERATION_RECORD_READ.md) preserves complete atomic cuts.
+Selected historical parent files, held coordinator integration, provider/client
+reconciliation, authenticated activation and sustainable history remain required.
 All thirteen V1 gates remain open.

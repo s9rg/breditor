@@ -1,0 +1,79 @@
+{
+  "format": "breditor/original-record-references-qualification",
+  "formatVersion": 1,
+  "passed": true,
+  "source": {
+    "commit": "2377983066f5bdd4adf59220bbeccec2f3dc3479",
+    "dirty": true,
+    "sha256": "ec3d4093efdeb0820759d20f41838e980938b92ec29e8340b07ce0f6d3bd87be",
+    "files": 6134,
+    "bytes": 48909383
+  },
+  "normalRunner": true,
+  "normalStages": 10,
+  "functionalPlanChecks": 396,
+  "fullPlanChecks": 404,
+  "manifests": {
+    "foundation": "/Users/s/code/breditor/target/v1-candidate-runs/run-1tmUKL/result.json",
+    "source": "/Users/s/code/breditor/target/v1-candidate-runs/run-wY7GSV/result.json",
+    "installed": "/Users/s/code/breditor/target/v1-candidate-runs/run-zlFVRj/result.json"
+  },
+  "assertions": {
+    "source": 901,
+    "installed": 901,
+    "bundled": 901,
+    "newOriginalReferences": 146,
+    "priorGenerationReferences": 268,
+    "priorOriginalRetained": 197,
+    "priorRecordRead": 262,
+    "compoundStorageRegression": 28,
+    "contractsIncludingPlan": 147,
+    "legacyGenerationAssetRecovery": 362,
+    "strictTypesInConsumer": 6
+  },
+  "retained": {
+    "index": "target/original-record-references-final-KCxfH6/index.json",
+    "sha256": "9822709a53fd2eb9c9998afd67cd2a9b24403124ee14a5ddd62f690485737e09",
+    "entries": 7882,
+    "nonDocumentationInputs": 5443
+  },
+  "consumer": {
+    "directory": "/private/tmp/breditor-original-record-references-installed-qhctr6",
+    "workspaceLinks": false,
+    "registryArtifacts": 45,
+    "productionModules": 491,
+    "bundleSha256": "e6e3161dd58b30052f9c03081ac388a9617fb2e49c64f8e977b17a62cc3e55bc",
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/private/tmp/breditor-original-record-references-installed-qhctr6/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/private/tmp/breditor-original-record-references-installed-qhctr6/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/private/tmp/breditor-original-record-references-installed-qhctr6/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "82c5ae80fd1ecc687b185d8aa9fe25a62e41aae12fa27ffa66227d4305965423"
+      }
+    ]
+  },
+  "normalWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+  "scope": "Exact read-only native committed/pending/LIVE replay and selected independently retained original version/proposal/revision/base-queue states. Native matrices cover all three languages and selection scopes; paired/store policies use language 3 and both separately selected read runtimes. Actual aborted or lost-acknowledgement saves, stored-only packet image references, uncached version Pending, read-only policy, no mixed genuine source, exact journal mismatch refusal, pure final fences, real-byte verification, future native Undo/Redo and callback release. No current upload store, provider request, flush, author restoration or activation.",
+  "remaining": [
+    "Selected historical original/generation parent files and fresh independent held read projections",
+    "Joint coordinator integration and explicit historical-copy decisions",
+    "Whole-upload/provider/client reconciliation and authenticated activation",
+    "Sustainable native Undo/offline lifetime and remaining parity"
+  ],
+  "v1Ready": false,
+  "allThirteenV1GatesOpen": true,
+  "noPush": true,
+  "noTag": true,
+  "noVersionChange": true,
+  "noPublication": true,
+  "noDeployment": true
+}
