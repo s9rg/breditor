@@ -1,0 +1,59 @@
+{
+  "format": "breditor/fresh-room-history-qualification",
+  "formatVersion": 1,
+  "passed": true,
+  "directory": "/Users/s/code/breditor/target/fresh-room-history-final-Yd7a8M",
+  "index": "target/fresh-room-history-final-Yd7a8M/index.json",
+  "indexSha256": "ac5a7c390705739b955cfb5847ad33021a2aa0bd792e7ed45bc1ff5ab3b203e3",
+  "retainedEntries": 8209,
+  "source": {
+    "commit": "514344570e3f661375dcff4e2df3518fb468bb28",
+    "dirty": true,
+    "sha256": "2fae9ecc7aca35b18cef299dbb2a1212a0078c6b761d0738ebe294d4ed24beb9",
+    "files": 6228,
+    "bytes": 49304521
+  },
+  "normalStages": 15,
+  "functionalPlanChecks": 420,
+  "fullPlanChecks": 428,
+  "sourceAssertions": 1245,
+  "installedAssertions": 1245,
+  "bundledAssertions": 1245,
+  "newRoomHistoryAssertions": 15,
+  "priorAssertions": 1230,
+  "strictTypes": 12,
+  "contractAssertionsIncludingPlan": 16,
+  "registryArtifacts": 45,
+  "productionModules": 651,
+  "bundleSha256": "eede25fd4f301bc4a8faa1aa6aab0559c2f433a6855b9bb8b01c11cc065bdb8f",
+  "archives": [
+    {
+      "name": "@breditor/browser",
+      "path": "/private/tmp/breditor-fresh-room-history-installed-o1EdLS/archives/breditor-browser-0.3.0-alpha.22.tgz",
+      "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+    },
+    {
+      "name": "@breditor/experimental-rich-content",
+      "path": "/private/tmp/breditor-fresh-room-history-installed-o1EdLS/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+      "sha256": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad"
+    },
+    {
+      "name": "@breditor/collaboration",
+      "path": "/private/tmp/breditor-fresh-room-history-installed-o1EdLS/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+      "sha256": "f15a7c18db42fbd8767cf12bfbdf89f927b0d459de131a217f91c2557eeef125"
+    }
+  ],
+  "normalWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+  "nativeInputsFreshForSource": true,
+  "nativeFiles": 50,
+  "nativeReportSha256": "e4901c1c056e8d72f77a16e843189ed6d2eb823730d5f8cdda7226850ae0a19e",
+  "nativeProducerBinarySha256": "0d64e4b268a197a004a2913e6f1b7ec339d5b997478b0d449af5ac667ea7025f",
+  "nonDocumentationInputs": 5526,
+  "scope": "Fresh root/catalog/selected-parent history inspection across seven genuine operational families. Six targeted real seven-writer orchestration cases and explicit fault/lifetime laws, cumulative with all prior 1230 laws. Synthetic client storage/locks. Not current provider/client closure, registered-stream coverage, activation, sustainable history, physical-browser crash durability or V1 readiness.",
+  "allThirteenV1GatesOpen": true,
+  "noPush": true,
+  "noTag": true,
+  "noVersionChange": true,
+  "noPublication": true,
+  "noDeployment": true
+}

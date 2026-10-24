@@ -34,18 +34,25 @@ export class PhysicalOperationV3IntentStore{
   });
  }
  read(expected?:PhysicalOperationV3Record):Promise<PhysicalOperationV3Record>{return this.#run(()=>this.#transaction('readonly',undefined,expected));}
+ /** Fresh readonly access to this exact already-open connection. No old job
+  * authority/cancellation, opening, repair, write or pending-phase adoption. */
+ checkReadCurrent():void{if(this.#closed||this.#closing||this.#changed||!this.#db||globalThis.indexedDB!==this.#factory)throw fail('physical_operation_v3_closed');}
+ readFresh(expected:PhysicalOperationV3Record,providedAuthority:()=>void,signal?:AbortSignal):Promise<PhysicalOperationV3Record>{return this.#run(async()=>{
+  const authority=participantAuthority(providedAuthority),cancellation=new PhysicalOperationV3Cancellation(signal),check=()=>{this.checkReadCurrent();cancellation.check();authority();this.checkReadCurrent();cancellation.check();};
+  try{return await this.#transaction('readonly',undefined,expected,check,cancellation);}finally{cancellation.close();}
+ });}
  /** A lost acknowledgement is resolved by reading the exact before/after record
   * on retry; this write itself never blindly repeats or replaces unrelated data. */
  advance(before:PhysicalOperationV3Record,next:PhysicalOperationV3Record):Promise<void>{return this.#run(async()=>{const old=record(before),after=record(next,old);transition(old,after);await this.#transaction('readwrite',{before:old,after});});}
- #transaction(mode:IDBTransactionMode,write?:{before:PhysicalOperationV3Record;after:PhysicalOperationV3Record},expected?:PhysicalOperationV3Record):Promise<PhysicalOperationV3Record>{
-  this.#check();const db=this.#db;if(!db)throw fail('physical_operation_v3_missing');schema(db);
+ #transaction(mode:IDBTransactionMode,write?:{before:PhysicalOperationV3Record;after:PhysicalOperationV3Record},expected?:PhysicalOperationV3Record,check:()=>void=()=>this.#check(),cancellation:PhysicalOperationV3Cancellation=this.#cancellation):Promise<PhysicalOperationV3Record>{
+  check();const db=this.#db;if(!db)throw fail('physical_operation_v3_missing');schema(db);
   return new Promise((resolve,reject)=>{
    const tx=db.transaction(table,mode),store=tx.objectStore(table);let value:PhysicalOperationV3Record|undefined,reason:Error|undefined,unwatch=()=>{};
    const abort=(error:unknown)=>{reason=known(error,'physical_operation_v3_diverged');try{tx.abort();}catch{}};
-   try{unwatch=this.#cancellation.watch(()=>abort(fail('physical_operation_v3_aborted')));}catch(error){abort(error);}
+   try{unwatch=cancellation.watch(()=>abort(fail('physical_operation_v3_aborted')));}catch(error){abort(error);}
    tx.onabort=()=>{unwatch();reject(reason??fail());};tx.onerror=()=>{if(!reason)reason=fail();};
-   tx.oncomplete=()=>{unwatch();try{this.#check();if(!value)throw fail('physical_operation_v3_diverged');resolve(value);}catch(error){reject(known(error));}};
-   try{shape(store);const count=store.count();count.onsuccess=()=>{try{this.#check();if(count.result!==1)throw fail('physical_operation_v3_diverged');const get=store.get('state');get.onsuccess=()=>{try{this.#check();value=record(get.result,expected);if(value.database!==this.#name)throw fail('physical_operation_v3_diverged');if(write){if(JSON.stringify(value)!==JSON.stringify(write.before))throw fail('physical_operation_v3_diverged');store.put(write.after,'state');value=write.after;}}catch(error){abort(error);}};}catch(error){abort(error);}};}catch(error){abort(error);}
+   tx.oncomplete=()=>{unwatch();try{check();if(!value)throw fail('physical_operation_v3_diverged');resolve(value);}catch(error){reject(known(error));}};
+   try{shape(store);const count=store.count();count.onsuccess=()=>{try{check();if(count.result!==1)throw fail('physical_operation_v3_diverged');const get=store.get('state');get.onsuccess=()=>{try{check();value=record(get.result,expected);if(value.database!==this.#name)throw fail('physical_operation_v3_diverged');if(write){if(JSON.stringify(value)!==JSON.stringify(write.before))throw fail('physical_operation_v3_diverged');store.put(write.after,'state');value=write.after;}}catch(error){abort(error);}};}catch(error){abort(error);}};}catch(error){abort(error);}
   });
  }
  /** Wait for active I/O. A blocked late open stays reachable and refuses cleanup

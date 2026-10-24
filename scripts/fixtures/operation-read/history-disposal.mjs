@@ -1,0 +1,13 @@
+/** Detached root reports must not retain read permission or selected factories. */
+import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
+import {sevenNativeFixtures} from '../physical-operation-v3/seven-native.mjs';
+import {completeHistoryFixture} from './history-session.mjs';
+export function verifyRootHistoryRelease(runtime,mode){const output=execFileSync(process.execPath,['--expose-gc',fileURLToPath(import.meta.url),'--root-history-release',runtime,mode],{encoding:'utf8',timeout:180000,maxBuffer:1024*1024}),result=JSON.parse(output.trim());assert.equal(result.readCallbacksRetained,0);assert.equal(result.restoreFactoriesRetained,0);assert.equal(result.actualFixtureClosed,true);assert.equal(result.detachedReportsKept,mode==='prepared'?1:0);return result;}
+async function capture(f,mode){const marker={read:'ended'},grant=function endedRootHistoryPermission(){assert.equal(marker.read,'ended');if(mode==='denied')throw Error('Read ended');},original=f.reads.find(row=>row.id==='original').read.restore,restore=function endedRootHistoryFactory(checkpoint){assert.equal(marker.read,'ended');return original(checkpoint);},weak=new WeakRef(grant),factory=new WeakRef(restore),reads=f.reads.map(row=>row.id==='original'?{...row,read:{...row.read,restore}}:row);let report;
+ if(mode==='prepared')report=await f.owner.readHistory({reads,checkAuthority:grant});else await assert.rejects(f.owner.readHistory({reads,checkAuthority:grant}));return{report,weak,factory};}
+async function probe(runtime,mode){assert.equal(typeof global.gc,'function');assert.ok(['prepared','denied'].includes(mode));const fixtures=await sevenNativeFixtures({runtime});let f;const kept=[];
+ try{f=await completeHistoryFixture({fixtures,tag:'root-history-release'});kept.push(await capture(f,mode));await f.close();f=undefined;for(let i=0;i<30;i++){await new Promise(resolve=>setImmediate(resolve));global.gc();}await new Promise(resolve=>setImmediate(resolve));const result={mode,detachedReportsKept:kept.filter(row=>row.report).length,readCallbacksRetained:kept.filter(row=>row.weak.deref()!==undefined).length,restoreFactoriesRetained:kept.filter(row=>row.factory.deref()!==undefined).length,actualFixtureClosed:true};console.log(JSON.stringify(result));assert.equal(result.readCallbacksRetained,0);assert.equal(result.restoreFactoriesRetained,0);for(const row of kept)if(row.report){assert.equal(row.report.format,'breditor/physical-operation-v3-history-read');assert.equal(Object.isFrozen(row.report.history.participants),true);}}
+ finally{await f?.close();}}
+if(process.argv[2]==='--root-history-release')await probe(process.argv[3],process.argv[4]);

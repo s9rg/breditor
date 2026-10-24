@@ -32,6 +32,7 @@ export interface ProtectedHistoryGroupMetadata{readonly format:'breditor/protect
 interface Callbacks{prepare():Promise<ProtectedHistoryGroupMetadata>;check():void;current():void;verify():Promise<void>;release():void}
 const token=Object.freeze({}),fail=(suffix:string)=>new SharedEditorError('protected_history_group_'+suffix,'Reserve every selected genuine original/generation parent before fresh read callbacks');
 let create:(callbacks:Callbacks)=>ProtectedOperationalHistoryGroupRead;
+let heldCurrent:(owner:ProtectedOperationalHistoryGroupRead)=>void;
 /** No mutable producer or individual unlock operation escapes this barrier. */
 export class ProtectedOperationalHistoryGroupRead{
  #callbacks:Callbacks|undefined;#metadata:ProtectedHistoryGroupMetadata|undefined;#working=false;#closed=false;
@@ -44,7 +45,7 @@ export class ProtectedOperationalHistoryGroupRead{
  /** Clear callbacks only after cleanup succeeds, so partial cleanup can retry. */
  close():void{if(this.#closed)return;if(this.#working)throw fail('busy');this.#callbacks!.release();this.#callbacks=undefined;this.#closed=true;}
  static reserve<P extends SharedSelectionPolicy>(input:readonly ProtectedHistoryParticipant<P>[],checkAuthority:()=>void,signal?:AbortSignal):ProtectedOperationalHistoryGroupRead{return reserve(input,checkAuthority,signal);}
- static{create=callbacks=>new ProtectedOperationalHistoryGroupRead(token,callbacks);}
+ static{create=callbacks=>new ProtectedOperationalHistoryGroupRead(token,callbacks);heldCurrent=owner=>{if(owner.#closed)throw fail('closed');owner.#callbacks!.current();};}
 }
 /** Closed data properties only; no caller iterator, field getter or source/store selector. */
 function dataObject(value:unknown,required:readonly string[],optional:readonly string[]=[]):Record<string,unknown>{if(!value||typeof value!=='object'||Array.isArray(value))throw fail('policy');const names=Object.keys(value),copy:Record<string,unknown>={};if(required.some(name=>!Object.hasOwn(value,name))||names.some(name=>!required.includes(name)&&!optional.includes(name)))throw fail('policy');for(const name of names){const d=Object.getOwnPropertyDescriptor(value,name);if(!d||!('value'in d))throw fail('policy');copy[name]=d.value;}return copy;}
@@ -71,3 +72,7 @@ function reserve<P extends SharedSelectionPolicy>(provided:readonly ProtectedHis
  }catch(error){release();throw error;}
 }
 export const reserveProtectedOperationalHistoryRead=<P extends SharedSelectionPolicy>(input:readonly ProtectedHistoryParticipant<P>[],checkAuthority:()=>void,signal?:AbortSignal)=>ProtectedOperationalHistoryGroupRead.reserve(input,checkAuthority,signal);
+/** Internal nested-barrier fence: private held flags and already captured pins
+ * only, including during preparation/verification. No grant, signal getter,
+ * metadata projection or I/O. The ordinary checkCurrent busy policy is intact. */
+export const checkProtectedHistoryHeldCurrent=(owner:ProtectedOperationalHistoryGroupRead):void=>heldCurrent(owner);

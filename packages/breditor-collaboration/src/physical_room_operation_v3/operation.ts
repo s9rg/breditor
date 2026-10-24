@@ -24,15 +24,20 @@ import {physicalOperationV3Failure as fail,physicalOperationV3Known as known,phy
 import {borrowCompleteNativeRead} from '../complete_operation_cohort/native_read.js';
 import {inspectPhysicalOperationV3Native} from './native_read.js';
 import type {PhysicalOperationV3NativeRead} from './native_read_contract.js';
+import {readPhysicalOperationV3History} from './history_read.js';
+import type {PhysicalOperationV3HistoryReadOptions,PhysicalOperationV3HistoryRead} from './history_read_contract.js';
+import type {SharedSelectionPolicy} from '../types.js';
 const key=Object.freeze({});
 const errors={policy:()=>fail('physical_operation_v3_policy'),busy:()=>fail('physical_operation_v3_in_use'),storage:()=>fail()};
 interface State{
  readonly options:PhysicalOperationV3OpenOptions;readonly database:string;readonly held:PhysicalCatalogV3Custody;
  readonly intent:PhysicalOperationV3IntentStore;readonly lease:RecoveryLease;readonly cancellation:PhysicalOperationV3Cancellation;
- readonly guard:()=>void;readonly local:()=>void;readonly children:PhysicalOperationV3Child[];
+ readonly guard:()=>void;readonly local:()=>void;readonly readCurrent:()=>void;readonly children:PhysicalOperationV3Child[];
  readonly life:{closed:boolean;closing:boolean;changed:boolean;released:boolean};
  readonly policies:readonly MixedCatalogStagePolicy[];record:PhysicalOperationV3Record;pending?:PhysicalOperationV3Record;archiveDisposed:boolean;
 }
+/** Type-only internal custody; a detached report never creates this state. */
+export type PhysicalOperationV3Custody=State;
 /** Opaque wasm/catalog handles stay genuine; every ordinary policy value is
  * detached synchronously, before callbacks can alter a later client choice. */
 function options(input:PhysicalOperationV3BeginOptions|PhysicalOperationV3ResumeOptions,begin:boolean){
@@ -54,7 +59,7 @@ export class PhysicalRoomClientOperationV3{
     const actions=[()=>intent?.close(),()=>lease?.close(),()=>{if(owned&&held){archive.dispose.call(held.archive);held.db.close();return held.lease.close();}return undefined;},()=>{if(!begin&&!owned)return catalog?.close();return undefined;}];
     const results=await Promise.allSettled(actions.map(action=>Promise.resolve().then(action)));if(results.some(row=>row.status==='rejected'))throw fail();cancellation?.close();
    },errors);
-   cancellation=new PhysicalOperationV3Cancellation(chosen.signal);const actualCancellation=cancellation,authority=participantAuthority(chosen.checkAuthority),local=()=>{if(life.closed||life.closing||life.changed)throw fail('physical_operation_v3_closed');if(globalThis.indexedDB!==factory||globalThis.navigator?.locks!==locks)throw fail('physical_operation_v3_policy');actualCancellation.check();},guard=()=>{local();authority();local();};guard();
+   cancellation=new PhysicalOperationV3Cancellation(chosen.signal);const actualCancellation=cancellation,authority=participantAuthority(chosen.checkAuthority),readCurrent=()=>{if(life.closed||life.closing||life.changed)throw fail('physical_operation_v3_closed');if(globalThis.indexedDB!==factory||globalThis.navigator?.locks!==locks)throw fail('physical_operation_v3_policy');},local=()=>{readCurrent();actualCancellation.check();},guard=()=>{local();authority();local();};guard();
    const context=prepareArchiveIntegrity({wasm:chosen.wasm,checkAuthority:guard}),read={wasm:context.wasm,checkAuthority:guard,...(chosen.graphPolicies?{graphPolicies:chosen.graphPolicies}:{}),...(chosen.localPolicies?{localPolicies:chosen.localPolicies}:{})};guard();
    if(!begin){catalog=await PhysicalRoomCatalogV3.resume({...read,database:selected.catalogDatabase!,expected:chosen.expected});guard();}
    const result=await transferPhysicalCatalogV3(catalog!,source=>{
@@ -66,7 +71,7 @@ export class PhysicalRoomClientOperationV3{
      guard();lease=await RecoveryLease.acquire(JSON.stringify(database));guard();intent=new PhysicalOperationV3IntentStore(factory,database,guard,chosen.signal);
      if(begin){for(const row of prepared)for(const ns of row.target.namespaces)if(await physicalOperationV3Present(ns.database,guard))throw fail('physical_operation_v3_exists');await intent.create(initial);}else await intent.open();guard();
      const record=await intent.read(initial);guard();const children=prepared.map(selected=>({selected})) as PhysicalOperationV3Child[],policies=await physicalOperationV3LegacyPolicies(children,source.state,[database,source.database],guard);guard();
-     const state:State={options:{...chosen,wasm:context.wasm},database,held:source,intent,lease,cancellation:actualCancellation,guard,local,children,policies,life,record,archiveDisposed:false},owner=new PhysicalRoomClientOperationV3(key,state);
+     const state:State={options:{...chosen,wasm:context.wasm},database,held:source,intent,lease,cancellation:actualCancellation,guard,local,readCurrent,children,policies,life,record,archiveDisposed:false},owner=new PhysicalRoomClientOperationV3(key,state);
      return{value:owner,prepareCommit(){guard();},commit(){local();source.db.onversionchange=()=>{life.changed=true;source.db.close();};owned=true;owner.#exposed=true;}};
     };
    });opening.complete();return result;
@@ -112,6 +117,9 @@ export class PhysicalRoomClientOperationV3{
    this.#guard();read.checkCurrent();await read.close();cleanup.complete();complete=true;return result;
   }finally{if(!complete)await cleanup.rollback();}
  });}
+ /** Fresh protected history/custody inspection after an old job ends. Existing
+  * readNative/handoff defaults keep their original grant and signal contracts. */
+ readHistory<P extends SharedSelectionPolicy>(input:PhysicalOperationV3HistoryReadOptions<P>):Promise<PhysicalOperationV3HistoryRead>{return this.#run(()=>readPhysicalOperationV3History(this.#s,()=>{if(!this.#exposed||!this.#busy)throw fail('physical_operation_v3_closed');},input));}
  #disposeArchive():void{const s=this.#s;if(!s.archiveDisposed){archive.dispose.call(s.held.archive);s.archiveDisposed=true;}}
  /** Reserve this actual job alongside every real child. Temporary native reader
   * cleanup precedes the last client barriers. consume is private flag writes

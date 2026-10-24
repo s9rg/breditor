@@ -56,10 +56,9 @@ Late mutation, actual archive tampering, failed later admission/factory cleanup,
 expired job cancellation, asynchronous permission refusal, final metadata fences,
 held namespace leases and closed callback/factory release are checked.
 
-The [five newer delivery/local readers](FRESH_DELIVERY_PARENT_HISTORY.md) now have
-separate fresh parent admission. Joining all seven families in the room
-coordinator, whole-provider/client
-reconciliation against current server authority, authenticated activation,
+The [five newer delivery/local readers](FRESH_DELIVERY_PARENT_HISTORY.md) now join
+this barrier in the [fresh seven-family room reader](FRESH_ROOM_HISTORY_READ.md).
+Whole-provider/client reconciliation against current server authority, authenticated activation,
 sustainable history and remaining parity are substantive next work. All thirteen
 V1 gates remain open. Normal Wasm, public-root exports, versions and original
 protocol meanings are unchanged. No push, tag, publication or deployment is made.

@@ -74,8 +74,8 @@ cancellation, invalid/reentrant permission checks, late native factory failure,
 modified stored markers/files, future document/comment Undo/Redo, rejected owner
 substitutions and closed prepared/unprepared callback/factory release.
 
-These readers and the separate original/generation barrier provide per-family
-building blocks. Complete seven-family coordinator integration, current
+These readers and the original/generation barrier now join the
+[fresh seven-family coordinator read](FRESH_ROOM_HISTORY_READ.md). Current
 provider/client reconciliation, authenticated room activation and sustainable
 history remain required. All thirteen V1 gates remain open. The normal Wasm,
 public-root exports, versions and original protocol meanings are unchanged.

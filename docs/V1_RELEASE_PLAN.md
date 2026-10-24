@@ -43,6 +43,17 @@ publication or deployment is promoted.
 
 ## Current seven family client recovery
 
+The [fresh seven-family room reader](FRESH_ROOM_HISTORY_READ.md) now holds every
+selected genuine parent, verifies actual root/catalog/archive/source records and
+inspects historical references independently of ended job grants or signals.
+Fifteen selected normal stages pass; source, fresh offline packages and actual
+production-bundled code each pass 1,245 cumulative laws, with twelve strict
+consumer fixtures. Real seven-writer orchestration retains stored bytes, custody,
+whole uploads and both native Undo/Redo lanes through failures and cold recovery.
+Unselected historical copies remain explicit. Current provider/client closure,
+registered-stream coverage, authenticated activation, sustainable history,
+remaining parity and all thirteen V1 gates remain required.
+
 The [five fresh protected-parent readers](FRESH_DELIVERY_PARENT_HISTORY.md) now
 verify actual parent/archive and held source history records independently of
 expired operational job permission or cancellation. Eighteen selected normal
@@ -50,8 +61,8 @@ stages pass; source, fresh offline packages and actual production-bundled code
 each pass 1,230 cumulative laws, with eleven strict consumer fixtures. All five
 existing participant contract and type-fence stages pass as well. Reads preserve
 real custody and both native Undo/Redo lanes, and expose no mutable source.
-Together with the original/generation barrier, these are the per-family building
-blocks for a fresh seven-family coordinator read, not completed room
+Together with the original/generation barrier, these now support the fresh
+seven-family coordinator read, not completed room
 reconciliation. Provider/client closure, authenticated activation, sustainable
 history, remaining parity and all thirteen V1 gates remain required.
 
@@ -62,7 +73,7 @@ earlier members, and releases only read borrows while preserving real custody an
 future Undo/Redo. Twelve selected normal stages pass; source, fresh offline
 packages and actual bundled code each pass 1,199 cumulative laws, with ten strict
 consumer type fixtures. The five newer families now have separate fresh parent
-admission; joint room integration remains next. Full room/provider/client reconciliation, authenticated activation,
+admission and joint room history inspection. Full room/provider/client reconciliation, authenticated activation,
 sustainable history, remaining parity and all thirteen V1 gates remain required.
 
 The [explicit protected-history reference scope](OPERATIONAL_HISTORY_REFERENCES.md)
