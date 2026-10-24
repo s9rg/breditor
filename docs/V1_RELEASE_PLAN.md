@@ -43,6 +43,19 @@ publication or deployment is promoted.
 
 ## Current seven family client recovery
 
+The [held asset reconciler](HELD_ASSET_RECONCILIATION.md) now commits explicit
+local upload-state choices while retaining the exact caller-owned store lease.
+Its fifteen selected normal stages pass; source, fresh offline packages and the
+actual production bundle each pass the same 67 laws, with three strict type
+fixtures. Four image-bearing seven-writer cases reconcile 28 client instances and
+cold-reopen all 28 across independent native history pairs, preserving exact
+document/comment checkpoints and future Undo/Redo. The SDK cases select language
+3 standard/atomic and reuse that native room across history policies; the native
+producer covers ten profile/wire inputs. This is a
+local mutation primitive after explicit ownership acquisition, not automatic
+room reconciliation or permission to replace a participant's original uploaded
+baseline. Full retained-copy/provider/client closure, authenticated activation,+sustainable history, remaining parity and all thirteen V1 gates remain required.
+
 The [fresh seven-family room reader](FRESH_ROOM_HISTORY_READ.md) now holds every
 selected genuine parent, verifies actual root/catalog/archive/source records and
 inspects historical references independently of ended job grants or signals.

@@ -6,6 +6,11 @@ result is a readonly pair containing the real store and `RichAssetStoreCustody`.
 Ordinary cooperating handles cannot ingest, cancel, retry, reconcile or upload
 through that held scope. Reads remain available.
 
+The separate [held reconciliation entry points](HELD_ASSET_RECONCILIATION.md)
+require the exact lease already owned by that store instance. They apply explicit
+local queue choices while retaining it; ordinary reconciliation still refuses
+under held custody. A saved reconciliation phase never supplies the lease.
+
 The host explicitly selects the destination, `uploadState: "preserve"`, current
 synchronous `checkAuthority`, optional cancellation and asset limits. Unknown
 fields and asynchronous authority callbacks refuse. Current IndexedDB and lock

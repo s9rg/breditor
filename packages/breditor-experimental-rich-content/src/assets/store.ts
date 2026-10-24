@@ -17,6 +17,7 @@ import {beginAssetReconciliation,resumeAssetReconciliation,type AssetReconciliat
 import {RichAssetReconciliationError} from "./reconciliation/error.js";
 import {applyRetainedAssetPlan} from "./reconciliation/apply.js";
 import {captureAssetReconciliationSnapshot} from "./reconciliation/snapshot.js";
+import {heldAssetReconciliationPort} from './reconciliation/held_port.js';
 import {RichAssetStoreCustody,RichAssetCustodyError,acquireAssetStoreCustody,withAssetMutationLock,withAssetExclusiveLock,checkAssetStoreCustody,releaseAssetStoreCustody,closeAssetStoreCustody,type AssetCustodyLocks} from "./custody.js";
 
 export interface RichAssetOptions {
@@ -34,6 +35,7 @@ export class RichAssetStore {
   #active = new Map<string, AbortController>();
   #draining: Promise<void> | undefined;
   #closed = false;
+  readonly #factory:IDBFactory;
   #tasks = 0;
   #reconciling = false;
   readonly #custodyLocks:AssetCustodyLocks|undefined;
@@ -41,23 +43,25 @@ export class RichAssetStore {
   #custodyOpening=false;
   #custodyReleasing:Promise<void>|undefined;
 
-  private constructor(db: IDBDatabase, name: string, options: RichAssetOptions) {
+  private constructor(db: IDBDatabase, name: string, options: RichAssetOptions,factory:IDBFactory) {
     this.#db = db; this.#name = name; this.#options = options;
+    this.#factory=factory;
     this.#custodyLocks=globalThis.navigator?.locks;
     this.limits = checkedAssetLimits(options.limits);
     db.onversionchange = () => this.#close();
   }
 
   static async open(name: string, options: RichAssetOptions = {}): Promise<RichAssetStore> {
+    const factory=globalThis.indexedDB;
     const db = await openDatabase(name);
-    try { return new RichAssetStore(db, name, options); }
+    try { return new RichAssetStore(db, name, options,factory); }
     catch (error) { db.close(); throw error; }
   }
 
   /** Existing complete retained storage only. Fully admit all bytes without initializing or uploading. */
   static async openRetained(name:string,options:RichAssetOptions={}):Promise<RichAssetStore>{
-    const selected={...options,limits:checkedAssetLimits(options.limits)},retained=await openRetainedAssetDatabase(name);let store:RichAssetStore|undefined;
-    try{retained.assertCurrent();store=new RichAssetStore(retained.db,name,selected);await store.exportBackup();retained.assertCurrent();store.#live();return store;}
+    const selected={...options,limits:checkedAssetLimits(options.limits)},factory=globalThis.indexedDB,retained=await openRetainedAssetDatabase(name);let store:RichAssetStore|undefined;
+    try{retained.assertCurrent();store=new RichAssetStore(retained.db,name,selected,factory);await store.exportBackup();retained.assertCurrent();store.#live();return store;}
     catch(error){store?.close();retained.db.close();throw error;}
   }
 
@@ -66,7 +70,7 @@ export class RichAssetStore {
     const {uploadState,signal,...supplied}={...input};if(uploadState!=="preserve")throw new RichAssetBackupError("asset_backup_policy","Explicit preservation of archived upload state is required");
     const options={...supplied,limits:checkedAssetLimits(supplied.limits)},records=await importAssetBackup(backup,options.limits,signal);checkAssetBackupSignal(signal);
     let store:RichAssetStore|undefined,db:IDBDatabase|undefined;
-    try{db=await openDatabase(name);store=new RichAssetStore(db,name,options);const target=db;await store.#write(()=>insertAssetArchive(target,records,signal));store.#live();checkAssetBackupSignal(signal);return store;}
+    try{const factory=globalThis.indexedDB;db=await openDatabase(name);store=new RichAssetStore(db,name,options,factory);const target=db;await store.#write(()=>insertAssetArchive(target,records,signal));store.#live();checkAssetBackupSignal(signal);return store;}
     catch(error){store?.close();db?.close();if(error instanceof RichAssetBackupError)throw error;throw new RichAssetBackupError("asset_backup_storage","Asset archive destination could not commit");}
   }
 
@@ -76,7 +80,7 @@ export class RichAssetStore {
     const policy=heldAssetRestorePolicy(input),{signal,limits,onChange}=policy.selected,options={limits:checkedAssetLimits(limits),...(onChange?{onChange}:{})};
     const records=await importAssetBackup(backup,options.limits,signal);policy.check();let store:RichAssetStore|undefined,db:IDBDatabase|undefined,custody:RichAssetStoreCustody|undefined;
     try{
-      db=await openHeldAssetDestination(name,policy.check);policy.check();store=new RichAssetStore(db,name,options);custody=await store.acquireRecoveryCustody();
+      const factory=globalThis.indexedDB;db=await openHeldAssetDestination(name,policy.check);policy.check();store=new RichAssetStore(db,name,options,factory);custody=await store.acquireRecoveryCustody();
       const owned=store,held=custody,check=()=>{policy.check();owned.#live();if(owned.#custody!==held)throw new RichAssetCustodyError('asset_custody_closed');checkAssetStoreCustody(held);};
       check();await insertHeldAssetArchive(db,records,check,signal);check();return Object.freeze({store:owned,custody:held});
     }catch(error){try{if(custody)await closeAssetStoreCustody(custody);}finally{try{if(store)store.#close();}finally{db?.close();}}throw error;}
@@ -93,6 +97,25 @@ export class RichAssetStore {
   /** Reopen an existing attempt only; missing files or a changed target are not repaired. */
   async resumeReconciliation(options: RichAssetReconciliationOptions): Promise<RichAssetReconciliation> {
     this.#live(); return resumeAssetReconciliation(this.#reconciliationPort(), options);
+  }
+  /** Reconcile while the caller retains this exact store's genuine recovery
+   * custody. Ordinary writers remain excluded; this never releases/reacquires
+   * the lease, uploads bytes, authenticates receipts or activates a room.
+   * Both complete files and explicit queue conflicts use the unchanged ledger. */
+  async beginHeldReconciliation(custody:RichAssetStoreCustody,original:Blob,options:RichAssetReconciliationOptions):Promise<RichAssetReconciliation>{
+    return beginAssetReconciliation(this.#heldReconciliationPort(custody),original,options);
+  }
+  /** Resume requires a currently held lease for this actual store. The saved
+   * phase supplies neither custody nor permission; source checks stay fresh. */
+  async resumeHeldReconciliation(custody:RichAssetStoreCustody,options:RichAssetReconciliationOptions):Promise<RichAssetReconciliation>{
+    return resumeAssetReconciliation(this.#heldReconciliationPort(custody),options);
+  }
+  #heldReconciliationPort(custody:RichAssetStoreCustody):AssetReconciliationPort{
+    const check=()=>{this.#live();if(globalThis.indexedDB!==this.#factory||globalThis.navigator?.locks!==this.#custodyLocks)throw new RichAssetReconciliationError('asset_reconciliation_policy','Held reconciliation storage context changed');if(!this.#custody||this.#custody!==custody)throw new RichAssetCustodyError('asset_custody_closed');checkAssetStoreCustody(custody);};
+    check();return heldAssetReconciliationPort({name:this.#name,db:this.#db,limits:this.limits,check,use:async<T>(work:()=>Promise<T>)=>{
+      check();if(this.#reconciling||this.#tasks||this.#draining||this.#custodyOpening)throw new RichAssetReconciliationError('asset_reconciliation_busy','A retained asset operation already owns this store');
+      this.#reconciling=true;try{check();return await work();}finally{this.#reconciling=false;}
+    },checkApplying:()=>{check();if(!this.#reconciling)throw new RichAssetReconciliationError('asset_reconciliation_policy','Held recovery requires an exclusive checked store operation');}});
   }
   #reconciliationPort(): AssetReconciliationPort {
     return {name: this.#name, limits: this.limits, check: () => this.#live(), use: work => this.#useReconciliation(work), snapshot: async () => {this.#live(); const rows=await captureAssetReconciliationSnapshot(this.#db,this.limits);this.#live();return encodeAssetArchiveSnapshot(rows,this.limits);}, apply: async (before, after, check, signal) => {
