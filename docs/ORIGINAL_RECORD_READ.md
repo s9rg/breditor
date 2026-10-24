@@ -5,6 +5,21 @@ LIVE records. A failed save may leave an older row on disk; a lost acknowledgeme
 may leave a newer committed row than the SDK's last acknowledged state. These
 private readers expose those states separately without saving or editing them.
 
+## Document only native records
+
+`captureOriginalNativeRecords` requires a genuine original unpaired session.
+It reads the actual selected legacy, typing, general, document or search storage
+codec, validates its room/writer/language/history identity without upgrading it,
+and returns committed, pending and unsaved LIVE checkpoints separately. LIVE
+uses the captured native checkpoint method, not a replacement instance hook.
+
+The session's existing 16 MiB journal budget and original record formats remain
+unchanged. Its private save-attempt epoch and native document revision invalidate
+earlier reads after a retry, edit or even a no-op save attempt. Status inspection
+does not. There are at most eight live reads per source; dispose them to release
+permits. Ordinary edits and source closure invalidate reads rather than waiting
+for them or being reversed by them.
+
 ## Paired native records
 
 `capturePersistentPairedRecords` requires a genuine original paired session and
@@ -38,6 +53,42 @@ editable through the old API but cannot issue this new managed read. Compound
 atomic queues refuse this standalone reader and require their complete source
 driver, so separate child exports cannot fabricate an atomic cut.
 
+## Version catalogs
+
+`captureOriginalVersionRecords` reads the genuine adapter's actual original
+catalog row separately from pending and LIVE packets, receipts and retry intent.
+It holds one disconnected synchronization reservation and blocks mutation and
+delivery for that read's lifetime. It does not call the adapter's writable source
+check while the reservation is held. The underlying private store reader also
+checks genuine source bindings, its lease and a separate persistence-attempt pin.
+
+An idle `local-save-failed` adapter remains readable. The separate read
+reservation leaves its failure, status, retry intent and stored bytes unchanged;
+it does not retry, acknowledge or start delivery. The original writable
+`reserveLocalRecovery()` contract still refuses that failed adapter. The new
+reader initially reused that stricter reservation and failed all 48 save-failure
+cases in development. The same unchanged workload passes after selecting the
+separate non-mutating read reservation.
+
+## Revision outboxes
+
+`captureOriginalRevisionRecords` reads a genuine original revision outbox and
+its base proposal queue under one existing shared queue reservation. It returns
+committed, pending and LIVE revision records plus those queue states. It never
+reserves the already-held queue a second time. Actual verification rereads both
+stores; a changed queue row invalidates the result even when the outbox row is
+unchanged.
+
+The source and every attached delivery adapter must already be idle. The reader
+uses current independent read permission, not an expired transport callback or a
+network-ready probe. A revision removed from LIVE after a failed save remains
+visible in its actual committed row, including an image found only in that
+retained packet. Reading does not requeue, publish or accept the revision.
+
+Custom borrowed version and revision storage keeps its existing editing API but
+cannot issue these managed reads. Atomic compound sources require their complete
+driver and refuse the original-store readers before invoking read authorization.
+
 ## Checks and disposal
 
 `check()` checks source bindings and lifetime around the current read-authorization
@@ -46,6 +97,11 @@ record validator. `checkCurrent()` is the final callback-free, I/O-free fence;
 run it after host callbacks before using the result. It does not replace durable
 verification. Pending and acknowledged record identities are pinned independently
 of the native document/comment clocks.
+
+Native readers pin their selected native revisions. Retained-store readers pin
+their record and persistence state; none alone is a complete multi-store/native
+snapshot. A coordinator must acquire all genuine selected readers and apply final
+fences together before native replay and reconciliation.
 
 Read authorization does not grant writing, review acceptance, network access,
 asset custody or room activation. No read acquires an author or changes native
@@ -63,8 +119,18 @@ type fixtures pass. The source domain covers all three selection scopes,
 reviewed/search combinations, aborted and lost-acknowledgement saves, all five
 paired record formats, real stored-byte changes and callback release.
 
-Whole original reference closure still needs original unpaired native records,
-version catalogs and revision outboxes. The separate
+The [native and retained extension](qualification/2026-10-23-original-retained-record-read.json)
+passes fourteen selected normal stages. The same 487 laws pass in source, fresh
+offline packages and actual bundled code, including 197 new laws and all 290 prior
+record/storage laws. Four strict type fixtures pass in the fresh consumer. Native
+rows cover all three languages, all three selection scopes and compatible
+natural/search policies. Version/revision rows also cover reviewed ownership,
+aborted and lost-acknowledgement saves. Existing participant recovery, paired
+backups, retained-version and pending-work reconciliation checks pass.
+
+All original native and retained-store kinds now have genuine committed, pending
+and LIVE discovery. Whole reference closure still requires native replay of those
+states and every selected historical parent file. The separate
 [generation record reader](GENERATION_RECORD_READ.md) covers complete atomic cuts.
 Original and generation reference capture, coordinator integration,
 provider/client reconciliation and authenticated activation remain required.

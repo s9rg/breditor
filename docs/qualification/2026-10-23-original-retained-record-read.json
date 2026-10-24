@@ -1,0 +1,99 @@
+{
+  "format": "breditor/original-retained-record-read-qualification",
+  "formatVersion": 1,
+  "passed": true,
+  "source": {
+    "commit": "80c1e2fcf8db06e623e6753c19969a42e5a44e48",
+    "dirty": true,
+    "sha256": "6146c4bb9c65c361dfe3849376056f2b56dd19aaddee4c99be76a6515dc470bd",
+    "files": 6112,
+    "bytes": 48778490
+  },
+  "normalRunner": true,
+  "normalStages": 14,
+  "functionalPlanChecks": 388,
+  "fullPlanChecks": 396,
+  "manifests": {
+    "foundation": "/Users/s/code/breditor/target/v1-candidate-runs/run-okeLTH/result.json",
+    "source": "/Users/s/code/breditor/target/v1-candidate-runs/run-6zmszN/result.json",
+    "installed": "/Users/s/code/breditor/target/v1-candidate-runs/run-FM4zKN/result.json"
+  },
+  "assertions": {
+    "source": 487,
+    "installed": 487,
+    "bundled": 487,
+    "newOriginalNativeRetained": 197,
+    "priorRecord": 262,
+    "compoundStorageRegression": 28,
+    "contractsIncludingPlan": 198,
+    "strictTypesInConsumer": 4
+  },
+  "retained": {
+    "index": "target/original-retained-record-read-final-SjxywM/index.json",
+    "sha256": "41fd96bc0bdaf9bfbd096e859689111e6e652d44d11d17bddb4a33a186b341b9",
+    "entries": 7849,
+    "nonDocumentationInputs": 5423
+  },
+  "consumer": {
+    "directory": "/private/tmp/breditor-original-retained-record-read-installed-J0TZFd",
+    "workspaceLinks": false,
+    "registryArtifacts": 45,
+    "productionModules": 486,
+    "bundleSha256": "2e48b3363aab2bdf3d365d51f2fb289fae106f7cd489270f91fb8dfc4483f8b6",
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/private/tmp/breditor-original-retained-record-read-installed-J0TZFd/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/private/tmp/breditor-original-retained-record-read-installed-J0TZFd/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/private/tmp/breditor-original-retained-record-read-installed-J0TZFd/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "77fd30b247b706e164a93325e7c0e3527e8b9cf8ba1a27b8963e34d42b00165c"
+      }
+    ]
+  },
+  "normalWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+  "developmentControl": {
+    "workload": {
+      "path": "scripts/original-version-record-read.test.mjs",
+      "sha256": "e090a95b1b3437145a88005063c1b9fe6eb70783d30456349561e4621df5e252"
+    },
+    "directory": "/private/tmp/breditor-original-version-read-policy-cGlXMN",
+    "before": {
+      "exitCode": 1,
+      "passed": 7,
+      "failed": 48,
+      "syncSha256": "15d6531c6f3188325dcc1f9b5c96585fe78be6b8dad24e0570fe3fe1a394e659",
+      "catalogSha256": "40556824b60bd845f296515dd70bb3382d1b65fb3411ca7f465d93daa6650287"
+    },
+    "after": {
+      "exitCode": 0,
+      "passed": 55,
+      "failed": 0,
+      "syncSha256": "5c07b06470d8402b9066a76737ebb151424beaa633b82b1983914fbf2788889f",
+      "catalogSha256": "a8400ca9f9a0c52568c895998007c0f89fc859988c7442e70665f2c58c6407e3"
+    },
+    "assertionsChanged": false,
+    "scope": "The developing new version reader incorrectly reused the existing writable recovery reservation. The old reservation contract is not changed. New record discovery instead reserves idle failed adapters without clearing failure, retrying, writing or starting delivery. This is not a defect claim against the prior released API."
+  },
+  "scope": "Actual original unpaired native committed/pending/unsaved LIVE across all three languages and selection scopes; original version and revision/base-queue rows under genuine source custody, fresh read permission, real-byte verification and separate pure currentness. Existing actual participant-operation recovery, paired backups, retained-version and pending-work reconciliation pass. Reading grants no native ancestry, writer, provider or server authority.",
+  "remaining": [
+    "Native reference replay across all original/generation retained states and selected parent files",
+    "Joint held coordinator integration and explicit historical-copy decisions",
+    "Whole-upload/provider/client reconciliation and authenticated activation",
+    "Sustainable native Undo/offline lifetime and remaining parity"
+  ],
+  "v1Ready": false,
+  "allThirteenV1GatesOpen": true,
+  "noPush": true,
+  "noTag": true,
+  "noVersionChange": true,
+  "noPublication": true,
+  "noDeployment": true
+}

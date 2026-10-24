@@ -35,6 +35,14 @@ export class VersionCatalogSync<P extends SharedSelectionPolicy=SharedSelectionP
   if(this.#recovering||this.#wanted||this.#status!=="offline"||this.#tasks||this.#working||this.#channel||this.#connecting||this.#downloads.size||this.#publishing.size)throw new SharedRelayError("version_recovery_in_use");
   this.#recovering=true;let released=false;return()=>{if(!released){released=true;this.#recovering=false;}};
  }
+ /** Record discovery must remain possible after a local save failed. Unlike
+  * writable recovery this read may reserve an idle failed adapter, but it never
+  * clears the failure, starts delivery or retries/acknowledges a local write. */
+ reserveLocalRead():()=>void{
+  if(this.#closed)throw new SharedRelayError('closed');
+  if(this.#recovering||this.#wanted||(this.#status!=='offline'&&this.#status!=='local-save-failed')||this.#tasks||this.#working||this.#channel||this.#connecting||this.#downloads.size||this.#publishing.size)throw new SharedRelayError('version_recovery_in_use');
+  this.#recovering=true;let released=false;return()=>{if(!released){released=true;this.#recovering=false;}};
+ }
  /** Wait only for already-disconnected work; starts no connection or storage mutation. */
  async waitForDisconnected():Promise<void>{
   if(this.#closed)throw new SharedRelayError("closed");if(this.#wanted||this.#recovering||this.#status!=="offline")throw new SharedRelayError("version_recovery_in_use");

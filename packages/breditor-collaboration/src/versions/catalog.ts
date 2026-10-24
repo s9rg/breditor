@@ -1,7 +1,9 @@
-import {VersionCatalogStore} from "./store.js";
+import {VersionCatalogStore,captureOriginalVersionStoreRecords} from "./store.js";
 import {VersionCatalogSync} from "./sync.js";
 import {SharedRelayError} from "../relay/validation.js";
-import {registerManagedSource,checkManagedSource} from "../managed_custody.js";
+import {registerManagedSource,checkManagedSource,checkManagedSourceBindings} from "../managed_custody.js";
+import {participantAuthority} from '../participant_backup/policy.js';
+import {createOriginalRecordRead,type OriginalRecordRead,type OriginalVersionRecords} from '../persistence/original_record_read.js';
 import type {SharedSelectionPolicy} from "../types.js";
 import type {SharedRichEditor} from "../core.js";
 import type {SharedDocumentVersionInfo} from "../version_types.js";
@@ -10,11 +12,18 @@ import type {SharedDocumentVersionsBackupOptions,SharedRetainedStoreBackupOption
 import type {SharedParticipantReplay} from "../participant_replay/read.js";
 import type {SharedRetainedVersionRecoveryResult} from "./reconcile_types.js";
 const constructionKey=Object.freeze({}),attached=new WeakSet<object>();
+let readOriginalCatalog:(owner:SharedDocumentVersions,authority:()=>void,signal?:AbortSignal)=>Promise<OriginalRecordRead<OriginalVersionRecords>>;
 /** Opt-in shared immutable versions: independent cache/intent durability, one borrowed native owner. */
 export class SharedDocumentVersions<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
  readonly #store:VersionCatalogStore<P>;readonly #sync:VersionCatalogSync<P>;#retiring=false;#closed=false;#closing:Promise<void>|undefined;#released:Promise<void>|undefined;
  #recovering=false;
  private constructor(key:object,store:VersionCatalogStore<P>){if(key!==constructionKey)throw new SharedRelayError('managed_source_construction');this.#store=store;this.#sync=new VersionCatalogSync(store);const core=store.options.storage.core;registerManagedSource(this,core,()=>{this.#writable();checkManagedSource(store,core);},[store]);}
+ static{readOriginalCatalog=async(owner,provided,signal)=>{
+  if(!owner||typeof owner!=='object'||!(#store in owner))throw new SharedRelayError('version_record_read_source');const authority=participantAuthority(provided);owner.#writable();checkManagedSourceBindings(owner);const releaseSync=owner.#sync.reserveLocalRead();owner.#recovering=true;let inner:OriginalRecordRead<OriginalVersionRecords>|undefined,result:OriginalRecordRead<OriginalVersionRecords>|undefined,released=false;
+  const release=()=>{if(!released){released=true;inner?.dispose();owner.#recovering=false;releaseSync();}},current=()=>{if(released||owner.#closed||owner.#retiring||!owner.#recovering)throw new SharedRelayError('version_record_read_closed');checkManagedSourceBindings(owner);inner!.checkCurrent();};
+  try{inner=await captureOriginalVersionStoreRecords(owner.#store,authority,signal);current();const read=inner;result=createOriginalRecordRead(read.metadata(),{check(){current();read.check();current();},current,async verify(){current();await read.verify();current();},release});result.check();return result;}
+  catch(error){result?.dispose();release();throw error;}
+ };}
  static async open<Q extends SharedSelectionPolicy>(options:SharedDocumentVersionsOptions<Q>):Promise<SharedDocumentVersions<Q>>{
   const core=options.storage.core;if(attached.has(core))throw new SharedRelayError("version_catalog_already_attached");attached.add(core);let store:VersionCatalogStore<Q>|undefined;
   try{store=await VersionCatalogStore.open(options);return new SharedDocumentVersions(constructionKey,store);}catch(error){if(store)await store.discardAndClose();attached.delete(core);throw error;}
@@ -63,3 +72,6 @@ export class SharedDocumentVersions<P extends SharedSelectionPolicy=SharedSelect
  /** Explicitly abandon unsaved cache state; the last committed record and native owners remain. */
  discardAndClose():Promise<void>{if(this.#recovering)return Promise.reject(new SharedRelayError("version_recovery_in_use"));if(this.#closed)return this.#released??Promise.resolve();this.#retiring=true;this.#closed=true;this.#sync.dispose();this.#released=this.#store.discardAndClose().finally(()=>attached.delete(this.#store.options.storage.core));return this.#released;}
 }
+/** Genuine offline adapter owns one synchronization reservation. Its read fence
+ * deliberately does not call the writable guard while that reservation is held. */
+export function captureOriginalVersionRecords<P extends SharedSelectionPolicy>(owner:SharedDocumentVersions<P>,checkAuthority:()=>void,signal?:AbortSignal){return readOriginalCatalog(owner as unknown as SharedDocumentVersions,checkAuthority,signal);}

@@ -14,7 +14,12 @@ import type {SharedSessionBackupOptions,SharedDocumentBackupOptions,SharedSearch
 import {fenceOpeningDatabase} from "./opening_database.js";
 import {recoveryOriginFor,inheritRecoveryOrigin} from "../participant_operation/admission.js";
 import {existingSessionDatabase} from "../participant_operation/existing_session.js";
-import {registerManagedSource,managedSourceUnavailable} from "../managed_custody.js";
+import {registerManagedSource,managedSourceUnavailable,checkManagedSource,managedCoreRetainedRevisions} from "../managed_custody.js";
+import {sourceCoreMethods as nativeRead} from '../source_native_read.js';
+import {participantAuthority} from '../participant_backup/policy.js';
+import {observeIndependentRecoveryAbort} from '../independent_recovery/signal.js';
+import {retainInternalFailureCause} from '../internal_failure_cause.js';
+import {createOriginalRecordRead,type OriginalRecordRead,type OriginalNativeRecords} from './original_record_read.js';
 
 export interface SharedSessionOptions {
  database:string;room:string;writer:string;
@@ -48,6 +53,7 @@ export interface SharedSearchSessionOptions<P extends SharedSelectionPolicy=Shar
 
 /** Exact causal recovery with bounded coalesced writes and origin-wide writer exclusion. */
 const constructionKey=Object.freeze({});
+let readOriginalNative:(owner:SharedPersistentSession<SharedSelectionPolicy>,authority:()=>void,signal?:AbortSignal)=>Promise<OriginalRecordRead<OriginalNativeRecords>>;
 export class SharedPersistentSession<P extends SharedSelectionPolicy="original"> {
  readonly core:SharedRichEditor<P>;readonly recovered:boolean;
  readonly #ownedCore:SharedRichEditor<P>;
@@ -57,6 +63,7 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
  #pending:{json:string;revision:string}|undefined;#running:Promise<void>|undefined;#failure:unknown;
  #saved:string|undefined;#savedRevision:string|null=null;#closed=false;#storageChanged=false;
  #closeRequest:Promise<void>|undefined;#released:Promise<void>|undefined;
+ #recordReadEpoch:object=Object.freeze({});readonly #recordReaders=new Set<object>();
  private constructor(key:object,db:IDBDatabase,lease:SharedWriterLease,core:SharedRichEditor<P>,recovered:boolean,options:SharedSessionOptions|SharedDocumentSessionOptions,selectionPolicy:P,search=false){
   if(key!==constructionKey)throw new SharedEditorError('managed_source_construction','Use the actual shared session open or recovery factory');
   this.#db=db;this.#lease=lease;this.#ownedCore=core;this.core=core;this.recovered=recovered;this.#options=options;this.#selectionPolicy=selectionPolicy;this.#search=search;
@@ -68,6 +75,17 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
    this.#failed(new SharedEditorError("session_versionchange","Shared storage changed; export the retired journal before explicitly discarding this writer"));
   };
  }
+ static{readOriginalNative=async(owner,provided,signal)=>{
+  const fail=(suffix:string)=>new SharedEditorError('native_record_read_'+suffix,'Read the actual selected original native journal with independent current read permission');
+  if(!owner||typeof owner!=='object'||!(#ownedCore in owner))throw fail('source');const authority=participantAuthority(provided);if(owner.#recordReaders.size>=8)throw fail('busy');
+  const core=owner.#ownedCore,epoch=owner.#recordReadEpoch,pending=owner.#pending,saved=owner.#saved,revision=managedCoreRetainedRevisions(core),token=Object.freeze({}),o=owner.#options,identity:OriginalNativeRecords['identity']={room:o.room,writer:o.writer,richLanguage:o.richLanguage??1,history:o.history??'explicit',rangeEditing:o.rangeEditing??(owner.#selectionPolicy==='document-v1'?'general-v1':'original'),selectionEditing:owner.#selectionPolicy,searchHistory:owner.#search?'search-v1':null};owner.#recordReaders.add(token);
+  let released=false,complete=false,finish!:()=>void,observation:ReturnType<typeof observeIndependentRecoveryAbort>|undefined,result:OriginalRecordRead<OriginalNativeRecords>|undefined;const held=new Promise<void>(resolve=>{finish=resolve;}),release=()=>{if(!released){released=true;owner.#recordReaders.delete(token);observation?.release();finish();}};
+  const current=()=>{if(released||!owner.#recordReaders.has(token))throw fail('closed');checkManagedSource(owner,core);if(owner.#running||owner.#recordReadEpoch!==epoch||owner.#pending!==pending||owner.#saved!==saved||managedCoreRetainedRevisions(core).documentRevision!==revision.documentRevision)throw fail('changed');if(observation?.aborted())throw fail('aborted');};
+  const check=()=>{current();authority();current();},admit=(checkpoint:string)=>{if(owner.#search)checkSearchCheckpoint(checkpoint,identity.room,identity.writer,identity.richLanguage,identity.history,identity.rangeEditing,identity.selectionEditing);else if(identity.selectionEditing==='document-v1')checkDocumentCheckpoint(checkpoint,identity.room,identity.writer,identity.richLanguage,identity.history);else checkCheckpoint(checkpoint,identity.room,identity.writer,identity.richLanguage,identity.history,identity.rangeEditing);};
+  const readStored=async():Promise<OriginalNativeRecords['committed']|null>=>{try{const key:[string,string]=[identity.room,identity.writer];if(owner.#search){const r=await readSearchRecord(owner.#db,key);if(!r)return null;if(r.history!==identity.history||r.rangeEditing!==identity.rangeEditing||r.selectionEditing!==identity.selectionEditing||r.richLanguage!==identity.richLanguage)throw fail('identity');admit(r.checkpointJson);return{checkpoint:r.checkpointJson,storageFamily:'search-v1'};}const r=await(identity.selectionEditing==='document-v1'?readDocumentSessionCheckpoint:readSessionCheckpoint)(owner.#db,key);if(!r)return null;const document='selectionEditing'in r&&r.selectionEditing==='document-v1';if(r.history!==identity.history||(r.rangeEditing??'original')!==identity.rangeEditing||document!==(identity.selectionEditing==='document-v1')||r.richLanguage!==undefined&&r.richLanguage!==identity.richLanguage)throw fail('identity');admit(r.json);return{checkpoint:r.json,storageFamily:document?'document-v1':r.rangeEditing==='general-v1'?'general-v1':r.history==='typing-v1'?'typing-v1':'original'};}catch(error){throw retainInternalFailureCause(fail('record'),error);}};
+  try{observation=observeIndependentRecoveryAbort(signal,held);check();const live={checkpoint:nativeRead.checkpointJson.call(core),revision:revision.documentRevision};admit(live.checkpoint);check();const committed=await readStored();check();if(!committed)throw fail('missing');const json=JSON.stringify(committed);result=createOriginalRecordRead({format:'breditor/persistent-original-native-record-read',formatVersion:1,scope:'original-native-committed-pending-live',identity,committed,pending:pending?{checkpoint:pending.json,revision:pending.revision}:null,live},{check,current,verify:async()=>{check();const actual=await readStored();check();if(JSON.stringify(actual)!==json)throw fail('changed');},release});result.check();complete=true;return result;}
+  finally{if(!complete){result?.dispose();release();}}
+ };}
  static open(options:SharedSessionOptions):Promise<SharedPersistentSession>{return SharedPersistentSession.#open(options,"original");}
  /** Explicit document-scope lifecycle with separately declared durable records and recovery. */
  static openDocument(options:SharedDocumentSessionOptions):Promise<SharedPersistentSession<"document-v1">>{return SharedPersistentSession.#open(options,"document-v1");}
@@ -159,7 +177,7 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
  async exportBackup():Promise<string>{this.#live();const checkpoint=this.#boundCore().checkpointJson(),identity:SharedBackupIdentity={room:this.#options.room,writer:this.#options.writer,richLanguage:this.#options.richLanguage??1,history:this.#options.history??"explicit",rangeEditing:this.#options.rangeEditing??(this.#selectionPolicy==="document-v1"?"general-v1":"original"),selectionEditing:this.#selectionPolicy,searchHistory:this.#search?"search-v1":null};return encodeSharedSessionBackup(identity,checkpoint);}
  /** Capture a complete exact journal synchronously; coalesce only superseded complete checkpoints. */
  save():void{
-  this.#live();const core=this.#boundCore(),json=core.checkpointJson(),revision=core.view().revision;
+  this.#live();this.#recordReadEpoch=Object.freeze({});const core=this.#boundCore(),json=core.checkpointJson(),revision=core.view().revision;
   if(this.#search)checkSearchCheckpoint(json,this.#options.room,this.#options.writer,this.#options.richLanguage??1,this.#options.history??"explicit",this.#options.rangeEditing??"original",this.#selectionPolicy);
   else if(this.#selectionPolicy==="document-v1")checkDocumentCheckpoint(json,this.#options.room,this.#options.writer,this.#options.richLanguage,this.#options.history);
   else checkCheckpoint(json,this.#options.room,this.#options.writer,this.#options.richLanguage,this.#options.history,this.#options.rangeEditing);
@@ -195,3 +213,6 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
   this.#released=(this.#running??Promise.resolve()).then(()=>this.#lease.close()).catch(error=>this.#report(error));this.#notify();return this.#released;
  }
 }
+/** Private original-store discovery; neither a detached checkpoint nor a format
+ * option can choose a different source. Reading never saves or restores authors. */
+export function captureOriginalNativeRecords<P extends SharedSelectionPolicy>(owner:SharedPersistentSession<P>,checkAuthority:()=>void,signal?:AbortSignal){return readOriginalNative(owner as SharedPersistentSession<SharedSelectionPolicy>,checkAuthority,signal);}

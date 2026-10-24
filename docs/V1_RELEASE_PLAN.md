@@ -144,8 +144,8 @@ selected normal stages. Source, fresh offline packages and actual bundled code
 each pass the same 102 laws; both strict type fixtures pass. Existing participant
 operation, paired backup, compound-storage and reference-read compatibility checks
 also pass. These readers neither flush sources nor turn metadata into ancestry,
-writer permission or activation authority. Original unpaired/version/revision
-closure and joint reconciliation remain required.
+writer permission or activation authority. Whole reference closure and joint
+reconciliation remain required.
 All thirteen V1 gates remain open.
 
 The [complete generation record reader](GENERATION_RECORD_READ.md) now reads an
@@ -159,6 +159,17 @@ earlier original/compound laws. Three strict type fixtures and the existing
 author policy and never fabricates acknowledgement from cached state. Complete
 reference closure, held coordinator integration, current provider/client
 reconciliation, authenticated activation and sustainable history remain required.
+
+The [original native and retained-store extension](qualification/2026-10-23-original-retained-record-read.json)
+adds actual unpaired native journals, version catalogs and revision outboxes with
+their base queues. Fourteen selected normal stages pass. Source, fresh offline
+packages and actual bundled code each pass the same 487 laws, including all 290
+prior record laws, and four strict type fixtures pass in the fresh consumer.
+Version discovery after failed saves uses a separate non-mutating reservation;
+the original writable-recovery refusal remains intact. Revision discovery holds
+the shared queue reservation once. These complete original record reads precede,
+but do not replace, native reference replay and held room reconciliation. All
+thirteen V1 gates remain open.
 
 Complete-delivery and restored-operation parents now share the existing room
 handoff kernel with legacy local, snapshot-local and flat-local parents. Genuine

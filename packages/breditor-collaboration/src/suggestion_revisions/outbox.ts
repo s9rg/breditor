@@ -5,7 +5,12 @@ import {checkSourceCheckpoint} from "../persistence/source_checkpoint.js";
 import {selectedRetainedStorePort,type RetainedStorePort} from "../delivery_ports/retained.js";
 import {same} from "../suggestions/validation.js";
 import {SharedEditorError} from "../core.js";
-import {registerManagedSource,checkManagedSource,managedSourceUnavailable} from "../managed_custody.js";
+import {registerManagedSource,checkManagedSource,managedSourceUnavailable,managedSourceCore,checkManagedSourceBindings} from "../managed_custody.js";
+import {participantAuthority} from '../participant_backup/policy.js';
+import {retainInternalFailureCause} from '../internal_failure_cause.js';
+import {borrowPersistentSuggestionRecords} from '../suggestions/queue.js';
+import type {PersistentSuggestionRead} from '../suggestions/persistent_read_contract.js';
+import {createOriginalRecordRead,type OriginalRecordRead,type OriginalRevisionRecords} from '../persistence/original_record_read.js';
 import {isOperationalComponent} from "../participant_operation/component_admission.js";
 import {existingOperationalComponent} from "../participant_operation/existing_component.js";
 import {operationFailure} from "../participant_operation/errors.js";
@@ -32,9 +37,11 @@ import type {SharedParticipantReplay} from "../participant_replay/read.js";
 import type {SharedRetainedRevisionsRecoveryResult} from "./reconcile_types.js";
 import type {SharedSuggestionRevisionsOptions,SharedSuggestionRevisionsRecord,SharedSuggestionRevisionRow,SharedSuggestionRevisionReceipt,SharedSuggestionRevisionDraft,SharedSuggestionRevisionRequest,SharedSuggestionFormatRebaseDraft,SharedSuggestionFormatRebaseQueued,SharedSuggestionTextRebaseDraft,SharedSuggestionTextRebaseQueued} from "./types.js";
 const constructionKey=Object.freeze({}),attached=new WeakSet<object>();
+let readOriginalRevision:(owner:SharedSuggestionRevisions,authority:()=>void,signal?:AbortSignal)=>Promise<OriginalRecordRead<OriginalRevisionRecords>>;
 export class SharedSuggestionRevisions<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
  readonly #options:SharedSuggestionRevisionsOptions<P>;readonly #core;readonly #db:IDBDatabase|undefined;
  readonly #atomic:RetainedStorePort<"revisions">|undefined;
+ readonly #recordSource:object|undefined;
  #record:SharedSuggestionRevisionsRecord;#infos=new Map<string,SharedSuggestionRevisionInfo>();#feed=new Map<string,SharedSuggestionRevisionReceipt>();
  #pending:SharedSuggestionRevisionsRecord|undefined;#writing:Promise<void>|undefined;#failure:unknown;#durable="";
  #closed=false;#closing:Promise<void>|undefined;#listeners=new Set<()=>void>();#off:(()=>void)[]=[];#notifyQueued=false;
@@ -42,15 +49,26 @@ export class SharedSuggestionRevisions<P extends SharedSelectionPolicy=SharedSel
  #downloads=new Map<string,ReturnType<typeof loadRevision<P>>>();
  #restoreInsert=false;#restoreSignal:AbortSignal|undefined;
  #tasks=0;#connections=new Set<Promise<void>>();#storageChanged=false;
- private constructor(key:object,options:SharedSuggestionRevisionsOptions<P>,db:IDBDatabase|undefined,record:SharedSuggestionRevisionsRecord,atomic?:RetainedStorePort<"revisions">){
+ private constructor(key:object,options:SharedSuggestionRevisionsOptions<P>,db:IDBDatabase|undefined,record:SharedSuggestionRevisionsRecord,atomic?:RetainedStorePort<"revisions">,recordSource?:object){
   if(key!==constructionKey)throw new SharedEditorError('managed_source_construction','Use the actual revision outbox open or recovery factory');
-  this.#atomic=atomic;
+  this.#atomic=atomic;this.#recordSource=recordSource;
   this.#options=options;this.#core=options.queue.core;this.#db=db;this.#record=record;this.#wanted=options.autoStart!==false;this.#admit(record);
   registerManagedSource(this,this.#core,()=>{this.#localCheck();if(this.#closing||this.#storageChanged)throw managedSourceUnavailable();checkManagedSource(options.queue,this.#core);});
   if(db)db.onversionchange=()=>{this.#storageChanged=true;db.close();this.#failure=new SharedRelayError("suggestion_database_versionchange");this.#report(this.#failure);};
   this.#off.push(registerSuggestionRecoveryParticipant(options.queue,()=>this.#recoveryIdle()));
   try{this.#off.push(options.queue.subscribe(()=>this.#changed()));this.#off.push(options.transport.subscribe(()=>this.#changed()));this.#off.push(this.#core.subscribe(()=>this.#changed()));}catch(error){this.#closed=true;this.#wanted=false;this.#epoch++;for(const off of [...this.#off].reverse())try{off();}catch{/* Failed construction owns no live delivery path. */}throw error;}
  }
+ static{readOriginalRevision=async(owner,provided,signal)=>{
+  const fail=(suffix:string)=>new SharedRelayError('revision_record_read_'+suffix);
+  if(!owner||typeof owner!=='object'||!(#record in owner))throw fail('source');if(owner.#atomic||!owner.#db||!owner.#recordSource)throw fail('family');const authority=participantAuthority(provided),record=owner.#record,pending=owner.#pending,durable=owner.#durable,epoch=owner.#epoch,source=owner.#recordSource,core=owner.#core;
+  let queue:PersistentSuggestionRead|undefined,result:OriginalRecordRead<OriginalRevisionRecords>|undefined,released=false,complete=false;
+  const release=()=>{if(!released){released=true;queue?.dispose();}},current=()=>{if(released||!queue)throw fail('closed');checkManagedSourceBindings(owner);queue.checkCurrent();owner.#recoveryIdle();if(owner.#storageChanged||owner.#record!==record||owner.#pending!==pending||owner.#durable!==durable||owner.#epoch!==epoch)throw fail('changed');checkManagedSource(source,core);queue.checkCurrent();},check=()=>{current();queue!.check();current();},readStored=async()=>{try{return await readRevisionRecord(owner.#db!,record.identity,record.binding);}catch(error){throw retainInternalFailureCause(fail('record'),error);}};
+  try{
+   // This one queue borrow reserves all attached adapters, including this outbox.
+   // A second reserveSuggestionRecovery call here would reject our own read.
+   queue=await borrowPersistentSuggestionRecords(owner.#options.queue,authority,signal);check();const committed=await readStored();check();if(!committed)throw fail('missing');const json=JSON.stringify(committed);result=createOriginalRecordRead({format:'breditor/persistent-original-revision-record-read',formatVersion:1,scope:'original-revision-and-queue-committed-pending-live',committed,pending:pending??null,live:record,queue:queue.metadata()},{check,current,verify:async()=>{check();await queue!.verify();check();const actual=await readStored();check();if(JSON.stringify(actual)!==json)throw fail('changed');},release});result.check();complete=true;return result;
+  }finally{if(!complete){result?.dispose();release();}}
+ };}
  static async open<Q extends SharedSelectionPolicy>(input:SharedSuggestionRevisionsOptions<Q>):Promise<SharedSuggestionRevisions<Q>>{
   return SharedSuggestionRevisions.#open(input);
  }
@@ -70,7 +88,8 @@ export class SharedSuggestionRevisions<P extends SharedSelectionPolicy=SharedSel
    checkRetainedStoreSignal(signal);const retained=isOperationalComponent(input)?await existingOperationalComponent(input.database,"revisions",revisionKey(queue.identity(),binding)):undefined;if(!atomic)db=retained?.db??await openRevisionDatabase(input.database);let saved:SharedSuggestionRevisionsRecord|null;
    if(recovered){if(await retainedStoreDestinationExists(db!,"revisions",revisionKey(queue.identity(),binding),signal))throw new SharedEditorError("backup_destination_exists","Retained restore destination already contains a record");saved=recovered;}else saved=atomic?checkRevisionRecord(atomic.read(),queue.identity(),binding):await readRevisionRecord(db!,queue.identity(),binding);
    if(retained&&(!saved||JSON.stringify(saved)!==JSON.stringify(retained.record)))throw operationFailure("operation_diverged");
-   const create=()=>new SharedSuggestionRevisions(constructionKey,options,db,saved??{format:"breditor/shared-suggestion-revisions",formatVersion:1,identity:queue.identity(),binding,retained:[]},atomic);outbox=recovered?retainedStoreNativeAdmission(create):create();retained?.assertCurrent();outbox.#restoreInsert=recovered!==undefined;outbox.#restoreSignal=signal;outbox.#pending=structuredClone(outbox.#record);outbox.#startWrite();await outbox.flush();outbox.#check();checkRetainedStoreSignal(signal);outbox.#changed();opening();return outbox;}
+   let recordSource:object|undefined;try{if(managedSourceCore(input.storage)===core)recordSource=input.storage;}catch{/* Old custom sources remain editable, but issue no managed record-read custody. */}
+   const create=()=>new SharedSuggestionRevisions(constructionKey,options,db,saved??{format:"breditor/shared-suggestion-revisions",formatVersion:1,identity:queue.identity(),binding,retained:[]},atomic,recordSource);outbox=recovered?retainedStoreNativeAdmission(create):create();retained?.assertCurrent();outbox.#restoreInsert=recovered!==undefined;outbox.#restoreSignal=signal;outbox.#pending=structuredClone(outbox.#record);outbox.#startWrite();await outbox.flush();outbox.#check();checkRetainedStoreSignal(signal);outbox.#changed();opening();return outbox;}
   catch(error){opening();if(outbox)await outbox.discardAndClose();else{db?.close();attached.delete(queue);}throw error;}
  }
  #localCheck():void{if(this.#closed)throw new SharedRelayError("suggestion_revisions_closed");const o=this.#options;if(o.storage.core!==this.#core||o.queue.core!==this.#core)throw new SharedRelayError("suggestion_source_replaced");const state=o.queue.state();if(state.closed||state.retiring)throw new SharedRelayError("suggestion_queue_closed");this.#atomic?.check();}
@@ -156,3 +175,6 @@ export class SharedSuggestionRevisions<P extends SharedSelectionPolicy=SharedSel
  async close():Promise<void>{checkSuggestionRecoveryIdle(this.#options.queue);if(this.#closed)return;if(this.#closing)return this.#closing;this.disconnect();const work=this.flush().then(()=>this.discardAndClose());this.#closing=work;try{await work;}finally{this.#closing=undefined;}}
  async discardAndClose():Promise<void>{checkSuggestionRecoveryIdle(this.#options.queue);if(this.#closed)return;this.disconnect();this.#closed=true;for(const off of this.#off)off();this.#db?.close();await this.#writing;this.#pending=undefined;attached.delete(this.#options.queue);this.#notify();queueMicrotask(()=>this.#listeners.clear());}
 }
+/** Actual original revision and base-queue rows under one shared reservation.
+ * Uses local source custody, never a transport callback as read authorization. */
+export function captureOriginalRevisionRecords<P extends SharedSelectionPolicy>(owner:SharedSuggestionRevisions<P>,checkAuthority:()=>void,signal?:AbortSignal){return readOriginalRevision(owner as unknown as SharedSuggestionRevisions,checkAuthority,signal);}
