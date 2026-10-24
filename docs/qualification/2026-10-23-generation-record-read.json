@@ -1,0 +1,78 @@
+{
+  "format": "breditor/generation-record-read-qualification",
+  "formatVersion": 1,
+  "passed": true,
+  "source": {
+    "commit": "27f64144fa45726ecc212e8cb1df0594832311e5",
+    "dirty": true,
+    "sha256": "9d506cdbc971086018c4b8fe9a49197e947ff283250ebeae035fc0fd186ffb6b",
+    "files": 6098,
+    "bytes": 48687883
+  },
+  "normalRunner": true,
+  "normalStages": 12,
+  "functionalPlanChecks": 384,
+  "fullPlanChecks": 392,
+  "manifests": {
+    "foundation": "/Users/s/code/breditor/target/v1-candidate-runs/run-z1FADo/result.json",
+    "source": "/Users/s/code/breditor/target/v1-candidate-runs/run-5gZdBj/result.json",
+    "installed": "/Users/s/code/breditor/target/v1-candidate-runs/run-NyHeJ5/result.json"
+  },
+  "assertions": {
+    "source": 290,
+    "installed": 290,
+    "bundled": 290,
+    "newGenerationRecordRead": 188,
+    "priorOriginalRecordRead": 74,
+    "compoundStorageRegression": 28,
+    "contractsIncludingPlan": 189,
+    "strictTypesInConsumer": 3,
+    "legacyGenerationAssetRecovery": 362
+  },
+  "retained": {
+    "index": "target/generation-record-read-final-GfwOLL/index.json",
+    "sha256": "011bd221befedb46eda3da7fb3cb987ea6b65622a5e2483b57fb6284196dd74f",
+    "entries": 7796,
+    "nonDocumentationInputs": 5411
+  },
+  "consumer": {
+    "directory": "/private/tmp/breditor-generation-record-read-installed-L16FuO",
+    "workspaceLinks": false,
+    "registryArtifacts": 45,
+    "productionModules": 485,
+    "bundleSha256": "668752c2de5ddf739a0d00a11f2bbab992d364261621f28195d934bfc9a6aab7",
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/private/tmp/breditor-generation-record-read-installed-L16FuO/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/private/tmp/breditor-generation-record-read-installed-L16FuO/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/private/tmp/breditor-generation-record-read-installed-L16FuO/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "1ee8d368ba580d4b35b491fba4eb18ab21119712a6c35a4425adbc71992614d3"
+      }
+    ]
+  },
+  "normalWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+  "scope": "One actual complete generation head and referenced files, plus separate uncertain attempt, pending and LIVE captures. Four genuine native source factories, every compatible scope/natural/reviewed/search combination, acknowledgement loss, actual corruption, current read-only policy and callback release. Existing local/relay/retained/observer storage and original record contracts pass. No source flush, author acquisition, upload/provider resolution or room activation.",
+  "remaining": [
+    "Original unpaired native/version/revision records and full original reference capture",
+    "Full generation native and retained reference capture",
+    "Joint held coordinator integration and historical-copy decisions",
+    "Whole-upload/provider/client reconciliation and authenticated activation",
+    "Sustainable native Undo/offline lifetime and remaining parity"
+  ],
+  "v1Ready": false,
+  "allThirteenV1GatesOpen": true,
+  "noPush": true,
+  "noTag": true,
+  "noVersionChange": true,
+  "noPublication": true,
+  "noDeployment": true
+}

@@ -145,8 +145,20 @@ each pass the same 102 laws; both strict type fixtures pass. Existing participan
 operation, paired backup, compound-storage and reference-read compatibility checks
 also pass. These readers neither flush sources nor turn metadata into ancestry,
 writer permission or activation authority. Original unpaired/version/revision
-closure, complete generation reads and joint reconciliation remain required.
+closure and joint reconciliation remain required.
 All thirteen V1 gates remain open.
+
+The [complete generation record reader](GENERATION_RECORD_READ.md) now reads an
+actual atomic head and all its immutable files while preserving uncertain,
+pending and LIVE captures separately. Its
+[qualification](qualification/2026-10-23-generation-record-read.json) passes twelve
+selected normal stages. Source, fresh offline packages and actual bundled code
+each pass the same 290 laws, including 188 generation reader laws and all 102
+earlier original/compound laws. Three strict type fixtures and the existing
+362-case generation asset/recovery domain pass. Reading preserves current native
+author policy and never fabricates acknowledgement from cached state. Complete
+reference closure, held coordinator integration, current provider/client
+reconciliation, authenticated activation and sustainable history remain required.
 
 Complete-delivery and restored-operation parents now share the existing room
 handoff kernel with legacy local, snapshot-local and flat-local parents. Genuine

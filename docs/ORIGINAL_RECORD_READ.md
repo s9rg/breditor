@@ -64,6 +64,8 @@ reviewed/search combinations, aborted and lost-acknowledgement saves, all five
 paired record formats, real stored-byte changes and callback release.
 
 Whole original reference closure still needs original unpaired native records,
-version catalogs and revision outboxes. Complete generation records, coordinator
-integration, provider/client reconciliation and authenticated activation are
-separate dependencies. All thirteen V1 gates remain open.
+version catalogs and revision outboxes. The separate
+[generation record reader](GENERATION_RECORD_READ.md) covers complete atomic cuts.
+Original and generation reference capture, coordinator integration,
+provider/client reconciliation and authenticated activation remain required.
+All thirteen V1 gates remain open.

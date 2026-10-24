@@ -1,6 +1,8 @@
 /** Explicit generation-aware durable relay source. It never activates an entire room or stores credentials. */
 import {retireOwnedCore} from '../owned_core_lifetime.js';
-import {SharedSegmentedPersistentSession} from "../persistence/segmented_session.js";
+import {SharedSegmentedPersistentSession,captureSegmentedPersistentRecords} from "../persistence/segmented_session.js";
+import {createGenerationRecordRead,type GenerationRecordRead} from '../persistence/generation_record_read.js';
+import {participantAuthority} from '../participant_backup/policy.js';
 import {withSegmentedCompanion} from "../persistence/segmented_driver.js";
 import type {SharedSelectionPolicy} from "../types.js";
 import type {SharedRichEditor} from "../core.js";
@@ -26,6 +28,7 @@ export type SharedSegmentedVersionsOpenOptions<P extends SharedSelectionPolicy=S
 export type SharedSegmentedRevisionsOpenOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy>=Omit<SharedSuggestionRevisionsOptions<P>,"binding"|"database"|"storage"|"queue"|"autoStart">&{autoStart?:false};
 
 const constructionKey=Object.freeze({});
+let readRelayGenerationRecords:(owner:SharedSegmentedRelaySession,authority:()=>void,signal?:AbortSignal)=>Promise<GenerationRecordRead>;
 export class SharedSegmentedRelaySession<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
  readonly #session:SharedSegmentedPersistentSession<P>;readonly #companion:SegmentedRelayCompanion;
  readonly #core:SharedRichEditor<P>;#retiring=false;#adapters=new Set<WeakRef<{dispose():void}>>();
@@ -39,6 +42,10 @@ export class SharedSegmentedRelaySession<P extends SharedSelectionPolicy=SharedS
   companion.setRetireHook(()=>this.#stop());
   registerSegmentedRelaySession(this,{core:this.#core as unknown as SharedRichEditor<SharedSelectionPolicy>,binding:structuredClone(companion.binding),check:()=>this.#check(),save:()=>this.#session.save(),flush:()=>this.#flushSource(),durable:()=>companion.durable(),persistDocument:p=>this.#persistDocument(p),persistReview:(p,r)=>this.#persistReview(p,r),track:a=>{this.#check();for(const ref of this.#adapters)if(!ref.deref())this.#adapters.delete(ref);this.#adapters.add(new WeakRef(a));}});
  }
+ static{readRelayGenerationRecords=async(owner,provided,signal)=>{
+  if(!owner||typeof owner!=='object'||!(#session in owner))throw new SharedRelayError('generation_record_read_source');const authority=participantAuthority(provided);owner.#check();let inner:GenerationRecordRead|undefined,result:GenerationRecordRead|undefined;
+  try{inner=await captureSegmentedPersistentRecords(owner.#session,authority,signal);owner.#check();const read=inner;result=createGenerationRecordRead(read.metadata(),{check(){owner.#check();read.check();owner.#check();},current(){owner.#check();read.checkCurrent();owner.#check();},async verify(){owner.#check();await read.verify();owner.#check();},release(){read.dispose();}});result.check();return result;}catch(error){result?.dispose();inner?.dispose();throw error;}
+ };}
  static async open<Q extends SharedSelectionPolicy>(input:SharedSegmentedRelaySessionOptions<Q>):Promise<SharedSegmentedRelaySession<Q>>{
   if(this!==SharedSegmentedRelaySession)throw new SharedRelayError("segmented_relay_factory_receiver");
   const {binding,...options}=input,companion=new SegmentedRelayCompanion(input as SharedSegmentedRelaySessionOptions),session=await SharedSegmentedPersistentSession.open(inheritGenerationOperationOrigin(input,withSegmentedCompanion(options,companion)));
@@ -99,3 +106,6 @@ export class SharedSegmentedRelaySession<P extends SharedSelectionPolicy=SharedS
  close():Promise<void>{try{if(!(this.#companion instanceof SegmentedRetainedCompanion)){this.#stop();return this.#session.close();}if(this.#session.state().status==="closed")return this.#released??Promise.resolve();if(this.#discarding)return this.#discarding;if(this.#closing)return this.#closing;this.#stop();retireOwnedCore(this.#core);this.#closing=Promise.resolve().then(async()=>{await Promise.allSettled([...this.#openings]);await this.#revisions?.close();await this.#queue?.close();await this.#versions?.close();await this.#session.close();this.#releaseRetained();}).finally(()=>{this.#closing=undefined;});this.#released=this.#closing;return this.#closing;}catch(error){return Promise.reject(error);}}
  discardAndClose():Promise<void>{try{if(!(this.#companion instanceof SegmentedRetainedCompanion)){this.#stop();return this.#session.discardAndClose();}if(this.#session.state().status==="closed")return this.#released??Promise.resolve();if(this.#discarding)return this.#discarding;this.#stop();retireOwnedCore(this.#core);const closing=this.#closing;this.#discarding=Promise.resolve().then(async()=>{await Promise.allSettled([...this.#openings,...(closing?[closing]:[])]);if(this.#session.state().status==="closed")return;await this.#revisions?.discardAndClose();await this.#queue?.discardAndClose();await this.#versions?.discardAndClose();await this.#session.discardAndClose();this.#releaseRetained();}).finally(()=>{this.#discarding=undefined;});this.#released=this.#discarding;return this.#discarding;}catch(error){return Promise.reject(error);}}
 }
+/** Genuine relay/retained parent only; no caller-selected head reader or LIVE
+ * child export may stand in for this atomic durable source. */
+export function captureRelayGenerationRecords<P extends SharedSelectionPolicy>(owner:SharedSegmentedRelaySession<P>,checkAuthority:()=>void,signal?:AbortSignal){return readRelayGenerationRecords(owner as unknown as SharedSegmentedRelaySession,checkAuthority,signal);}

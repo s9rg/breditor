@@ -20,6 +20,12 @@ import {registerGenerationNative,registerGenerationSource,generationNative} from
 import {generationRecords} from "../generation_source/records.js";
 import {generationOperationOrigin} from "../generation_operation/admission.js";
 import {existingGenerationOperationSource} from "../generation_operation/existing_source.js";
+import {sourceCoreMethods as nativeRead} from '../source_native_read.js';
+import {managedCoreRetainedRevisions} from '../managed_custody.js';
+import {participantAuthority} from '../participant_backup/policy.js';
+import {observeIndependentRecoveryAbort} from '../independent_recovery/signal.js';
+import {retainInternalFailureCause} from '../internal_failure_cause.js';
+import {createGenerationRecordRead,type GenerationRecordRead} from './generation_record_read.js';
 
 export interface SharedSegmentedSessionOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy> extends Omit<SegmentedSessionIdentity,"selectionEditing"> {
  database:string;selectionEditing:P;readOnly:boolean;
@@ -42,6 +48,7 @@ const same=(a:Capture|undefined,b:Capture)=>!!a&&a.checkpoint===b.checkpoint&&a.
 
 /** Both leases precede cold native replay. Only complete superseded captures are coalesced. */
 const constructionKey=Object.freeze({});
+let readGenerationRecords:(owner:SharedSegmentedPersistentSession,authority:()=>void,signal?:AbortSignal)=>Promise<GenerationRecordRead>;
 export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
  readonly core:SharedRichEditor<P>;readonly recovered:boolean;
  readonly #ownedCore:SharedRichEditor<P>;
@@ -50,6 +57,7 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
  readonly #companion:SegmentedSessionCompanion|undefined;
  #versions=new Map<string,string>();#sourceStamp:object=Object.freeze({});#off:(()=>void)[]=[];#pending:Capture|undefined;#attempt:Attempt|undefined;#running:Promise<void>|undefined;
  #savedHead:string|null;#saved:Capture|undefined;#closedSaved:{documentRevision:string|null;reviewRevision:string|null}|undefined;#failure:unknown;#closed=false;#retiring=false;#storageChanged=false;#closing:Promise<void>|undefined;#released:Promise<void>|undefined;
+ #recordReadEpoch:object=Object.freeze({});readonly #recordReaders=new Set<object>();
  private constructor(key:object,db:IDBDatabase,lease:SharedWriterLease,reviewLease:ReviewWriterLease|undefined,core:SharedRichEditor<P>,options:SharedSegmentedSessionOptions<P>,identity:SegmentedSessionIdentity,head:string|null,versions:readonly string[],recovered=head!==null,companion?:SegmentedSessionCompanion){
   if(key!==constructionKey)throw new SharedEditorError('managed_source_construction','Use the actual generation session open or recovery factory');
   this.#companion=companion;companion?.admit(core as unknown as SharedRichEditor<SharedSelectionPolicy>);
@@ -66,6 +74,16 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
   this.#off=[core.subscribe(e=>changed(e.view.revision)),...(options.review?[core.subscribeReview(e=>changed(e.documentRevision,e.reviewRevision))]:[])];
   db.onversionchange=()=>{this.#storageChanged=true;try{this.#companion?.retire?.();}finally{retireOwnedCore(core);db.close();this.#failed(new SharedEditorError("segmented_versionchange","Generation storage changed; export the readable native histories before explicitly discarding"));}};
  }
+ static{readGenerationRecords=async(owner,provided,signal)=>{
+  const fail=(suffix:string)=>new SharedEditorError('generation_record_read_'+suffix,'Read the actual complete selected generation cut with independent current read permission');
+  if(!owner||typeof owner!=='object'||!(#ownedCore in owner))throw fail('source');const authority=participantAuthority(provided);if(owner.#recordReaders.size>=8)throw fail('busy');
+  const core=owner.#ownedCore,epoch=owner.#recordReadEpoch,stamp=owner.#sourceStamp,attempt=owner.#attempt,pending=owner.#pending,saved=owner.#saved,savedHead=owner.#savedHead,revision=managedCoreRetainedRevisions(core),companion=owner.#companion?.capture()??null,token=Object.freeze({});owner.#recordReaders.add(token);
+  let released=false,complete=false,finish!:()=>void,observation:ReturnType<typeof observeIndependentRecoveryAbort>|undefined,result:GenerationRecordRead|undefined;const held=new Promise<void>(resolve=>{finish=resolve;}),release=()=>{if(!released){released=true;owner.#recordReaders.delete(token);observation?.release();finish();}};
+  const current=()=>{if(released||!owner.#recordReaders.has(token))throw fail('closed');generationNative(owner).checkManaged();if(owner.#running||owner.#recordReadEpoch!==epoch||owner.#sourceStamp!==stamp||owner.#attempt!==attempt||owner.#pending!==pending||owner.#saved!==saved||owner.#savedHead!==savedHead||(owner.#companion?.capture()??null)!==companion)throw fail('changed');const now=managedCoreRetainedRevisions(core);if(now.documentRevision!==revision.documentRevision||now.reviewRevision!==revision.reviewRevision)throw fail('changed');if(observation?.aborted())throw fail('aborted');};
+  const check=()=>{current();authority();current();},readStored=async()=>{try{return await readSegmentedCut(owner.#db,[owner.#identity.room,owner.#identity.writer],owner.#companion?.readHead);}catch(error){throw retainInternalFailureCause(fail('record'),error);}};
+  try{observation=observeIndependentRecoveryAbort(signal,held);check();const review=owner.#options.review,live:Capture={checkpoint:nativeRead.checkpointJson.call(core),review:review?{actor:review.actor,principal:review.principal,checkpoint:nativeRead.reviewCheckpoint.call(core)}:null,versions:[...owner.#versions.values()],documentRevision:revision.documentRevision,reviewRevision:review?revision.reviewRevision:null,companion};owner.#checkCapture(live);check();const committed=await readStored();check();if(!committed)throw fail('missing');if(JSON.stringify(committed.record.identity)!==JSON.stringify(owner.#identity)||JSON.stringify(committed.record.review&&{actor:committed.record.review.actor,principal:committed.record.review.principal})!==JSON.stringify(review?{actor:review.actor,principal:review.principal}:null))throw fail('identity');const json=JSON.stringify(committed);result=createGenerationRecordRead({format:'breditor/persistent-generation-record-read',formatVersion:1,scope:'atomic-generation-committed-attempt-pending-live',committed,attempt:attempt?{capture:attempt.capture,cut:attempt.cut??null}:null,pending:pending??null,live},{check,current,verify:async()=>{check();const actual=await readStored();check();if(JSON.stringify(actual)!==json)throw fail('changed');},release});result.check();complete=true;return result;}
+  finally{if(!complete){result?.dispose();release();}}
+ };}
  static async open<Q extends SharedSelectionPolicy>(input:SharedSegmentedSessionOptions<Q>):Promise<SharedSegmentedPersistentSession<Q>>{return this.#open(input);}
  /** Native admission into an absent dedicated destination, after host reacquisition/fencing. Never merge or overwrite. */
  static async restoreRecovery<Q extends SharedSelectionPolicy>(input:SharedSegmentedRecoveryOptions<Q>):Promise<SharedSegmentedPersistentSession<Q>>{
@@ -128,7 +146,7 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
  /** Exact native files remain exportable after write/version-change failures; no role is exported. */
  #recovery():SharedSegmentedRecovery{this.#live();const c=this.#capture();return Object.freeze({format:"breditor/shared-generation-recovery",formatVersion:1,checkpoint:c.checkpoint,reviewCheckpoint:c.review?.checkpoint??null,versions:Object.freeze([...c.versions])});}
  exportRecovery():SharedSegmentedRecovery{return this.#recovery();}
- save():void{this.#live();if(this.#storageChanged)throw new SharedEditorError("segmented_versionchange","The generation database changed");const capture=this.#capture();this.#checkCapture(capture);if(same(this.#saved,capture)&&!this.#attempt&&!this.#pending&&!this.#running&&!this.#failure)return;this.#pending=capture;this.#failure=undefined;this.#notify();this.#start();}
+ save():void{this.#live();this.#recordReadEpoch=Object.freeze({});if(this.#storageChanged)throw new SharedEditorError("segmented_versionchange","The generation database changed");const capture=this.#capture();this.#checkCapture(capture);if(same(this.#saved,capture)&&!this.#attempt&&!this.#pending&&!this.#running&&!this.#failure)return;this.#pending=capture;this.#failure=undefined;this.#notify();this.#start();}
  #start():void{if(this.#running||this.#closed||this.#failure||!this.#attempt&&!this.#pending)return;this.#running=this.#drain().catch(error=>this.#failed(error)).finally(()=>{this.#running=undefined;if(!this.#failure)this.#start();});}
  async #drain():Promise<void>{while(!this.#closed&&(this.#attempt||this.#pending)){
   this.#documentLease.assertLive();this.#reviewLease?.assertLive();
@@ -158,3 +176,6 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
  discardAndClose():Promise<void>{try{return this.#discardAndClose();}catch(error){return Promise.reject(error);}}
  #discardAndClose():Promise<void>{if(this.#closed)return this.#released??Promise.resolve();this.#closedSaved={documentRevision:this.#saved?.documentRevision??null,reviewRevision:this.#saved?.reviewRevision??null};this.#closed=true;retireOwnedCore(this.#ownedCore);for(const off of this.#off)off();this.#off=[];disposeOwnedCore(this.#ownedCore);this.#pending=undefined;this.#saved=undefined;this.#versions.clear();this.#db.close();this.#released=(this.#running??Promise.resolve()).then(async()=>{this.#attempt=undefined;this.#savedHead=null;try{await this.#reviewLease?.close();}finally{await this.#documentLease.close();}});this.#notify();return this.#released;}
 }
+/** Private actual-source discovery. One transaction reads the complete committed
+ * head and referenced files. Reading never flushes, acknowledges or edits. */
+export function captureSegmentedPersistentRecords<P extends SharedSelectionPolicy>(owner:SharedSegmentedPersistentSession<P>,checkAuthority:()=>void,signal?:AbortSignal){return readGenerationRecords(owner as unknown as SharedSegmentedPersistentSession,checkAuthority,signal);}
