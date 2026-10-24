@@ -43,6 +43,16 @@ publication or deployment is promoted.
 
 ## Current seven family client recovery
 
+The [fresh protected-history barrier](PROTECTED_HISTORY_GROUP_READ.md) now reserves
+all selected original/generation parents before the first fresh read callback.
+It verifies actual archives and all current records, catches late changes in
+earlier members, and releases only read borrows while preserving real custody and
+future Undo/Redo. Twelve selected normal stages pass; source, fresh offline
+packages and actual bundled code each pass 1,199 cumulative laws, with ten strict
+consumer type fixtures. The five newer families still require fresh parent
+admission. Full room/provider/client reconciliation, authenticated activation,
+sustainable history, remaining parity and all thirteen V1 gates remain required.
+
 The [explicit protected-history reference scope](OPERATIONAL_HISTORY_REFERENCES.md)
 now replays original and both generation parent archives before current records
 in the selected read-only native runtime. Successfully forgotten image-bearing

@@ -58,6 +58,7 @@ checks retain six cases, 24 handoffs and 18 operational cold reopens.
 
 This establishes reference addresses, not whole-provider byte availability or
 activation. Synchronous fresh reservations across all selected room members,
+starting with the separate [original/generation barrier](PROTECTED_HISTORY_GROUP_READ.md),
 integration of the five newer families, provider/client reconciliation against
 current server authority, authenticated activation, sustainable history and
 remaining parity are still required. All thirteen V1 gates remain open. Normal

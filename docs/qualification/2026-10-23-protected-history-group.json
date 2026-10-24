@@ -1,0 +1,55 @@
+{
+  "format": "breditor/protected-history-group-qualification",
+  "formatVersion": 1,
+  "passed": true,
+  "directory": "/Users/s/code/breditor/target/protected-history-group-final-5Y8liO",
+  "index": "target/protected-history-group-final-5Y8liO/index.json",
+  "indexSha256": "cff13afae8111d3ffc2ba2598029b377b86834201690829f94f3ce607877a892",
+  "retainedEntries": 7998,
+  "source": {
+    "commit": "53bd23f43b12eb76de86e50c13dde710737a26dd",
+    "dirty": true,
+    "sha256": "d0157d5210e5778a78b12f6065479d6304280f8c53316ed26b7ba05a47c7da79",
+    "files": 6187,
+    "bytes": 49144083
+  },
+  "normalStages": 12,
+  "functionalPlanChecks": 412,
+  "fullPlanChecks": 420,
+  "sourceAssertions": 1199,
+  "installedAssertions": 1199,
+  "bundledAssertions": 1199,
+  "newProtectedGroupAssertions": 18,
+  "priorAssertions": 1181,
+  "strictTypes": 10,
+  "contractAssertionsIncludingPlan": 19,
+  "registryArtifacts": 45,
+  "productionModules": 502,
+  "bundleSha256": "2abb28e1ae861d2dc2a88d87b44f6d4b7c63767f80c53ab4ed639a175db2b265",
+  "archives": [
+    {
+      "name": "@breditor/browser",
+      "path": "/private/tmp/breditor-protected-history-group-installed-OHzzUk/archives/breditor-browser-0.3.0-alpha.22.tgz",
+      "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+    },
+    {
+      "name": "@breditor/experimental-rich-content",
+      "path": "/private/tmp/breditor-protected-history-group-installed-OHzzUk/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+      "sha256": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad"
+    },
+    {
+      "name": "@breditor/collaboration",
+      "path": "/private/tmp/breditor-protected-history-group-installed-OHzzUk/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+      "sha256": "cfab201db5d7e6a04f5d507414343598c97cd5439437e7d763ec92fa3e9602d4"
+    }
+  ],
+  "normalWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+  "nonDocumentationInputs": 5489,
+  "scope": "Fresh non-consuming original/generation parent group reservation and protected history reads. Not fresh admission of other five families, full room/provider/client reconciliation, activation, sustainable history or V1 readiness.",
+  "allThirteenV1GatesOpen": true,
+  "noPush": true,
+  "noTag": true,
+  "noVersionChange": true,
+  "noPublication": true,
+  "noDeployment": true
+}

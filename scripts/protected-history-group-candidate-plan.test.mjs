@@ -1,0 +1,15 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {join} from 'node:path';
+import {candidateReleasePlan,repository} from './candidate-release/plan.mjs';
+import {protectedHistoryGroupWorkload as workload} from './protected-history-group-workload.mjs';
+test('both profiles qualify the two-family fresh barrier without pretending other families are admitted',()=>{
+ assert.equal(workload.assertions,workload.newProtectedGroupAssertions+workload.priorAssertions);assert.equal(workload.newProtectedGroupAssertions,18);assert.equal(workload.priorAssertions,1181);assert.equal(workload.types.length,10);assert.equal(new Set(workload.tests).size,workload.tests.length);
+ for(const profile of['functional','full']){const plan=candidateReleasePlan({profile}),find=id=>{const rows=plan.checks.filter(s=>s.id===id);assert.equal(rows.length,1,id);return rows[0];};assert.deepEqual(find('protected-history-group-contracts').args,['--test','scripts/protected-history-group-development.test.mjs','scripts/protected-history-group-disposal.test.mjs','scripts/protected-history-group-budget.test.mjs','scripts/protected-history-group-candidate-plan.test.mjs']);assert.ok(find('protected-history-group-type-fence').args.includes('scripts/fixtures/editor-consumer/types-protected-history-group.ts'));
+  for(const[id,script,path,timeout]of[['protected-history-group','check-protected-history-group-sdk.mjs','target/protected-history-group-sdk.json',900000],['installed-protected-history-group','check-protected-history-group-installed.mjs','target/protected-history-group-installed-consumer.json',1800000]]){const stage=find(id);assert.deepEqual(stage.args,['scripts/'+script]);assert.deepEqual(stage.artifacts,[{path,fresh:true}]);assert.ok(stage.timeoutMs>=timeout);for(const dependency of['collaboration-build','protected-history-group-contracts','protected-history-group-type-fence'])assert.ok(plan.checks.indexOf(find(dependency))<plan.checks.indexOf(stage));}
+  for(const id of['participant-operation','generation-operation-live','operational-history-reference','installed-operational-history-reference','operational-native-read-contracts'])find(id);assert.equal(plan.v1Ready,false);
+ }
+ for(const kind of['sdk','installed']){const text=readFileSync(join(repository,'scripts/check-protected-history-group-'+kind+'.mjs'),'utf8');for(const value of['protectedHistoryGroupWorkload as workload','const {tests,types,assertions,scope}=workload',"new RegExp('^# pass '+assertions+'$','m')",'^# fail 0$','^# skipped 0$','maxBuffer:8*1024*1024'])assert.ok(text.includes(value),value);}
+ const installed=readFileSync(join(repository,'scripts/check-protected-history-group-installed.mjs'),'utf8');for(const value of['--offline','--ignore-scripts','verifySearchConsumerRegistry','Only reversible locations may change','workspaceLinks:false','sourceUnchanged:true','operation_read/protected_history_group.js','operation_read/protected_history_budget.js','operation_read/history_references.js','participant_operation/history_records.js','generation_operation/history_records.js'])assert.ok(installed.includes(value),value);
+});
