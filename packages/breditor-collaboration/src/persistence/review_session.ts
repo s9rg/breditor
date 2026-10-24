@@ -24,7 +24,11 @@ import type {SharedReviewedHistoryIdentity} from "../reviewed_history_types.js";
 import {reviewProgress,reviewStorageIdentity} from "../relay/review_validation.js";
 import {recoveryOriginFor} from "../participant_operation/admission.js";
 import {existingSessionDatabase} from "../participant_operation/existing_session.js";
-import {registerManagedSource,managedSourceUnavailable} from "../managed_custody.js";
+import {registerManagedSource,managedSourceUnavailable,checkManagedSource} from "../managed_custody.js";
+import {participantAuthority} from '../participant_backup/policy.js';
+import {observeIndependentRecoveryAbort} from '../independent_recovery/signal.js';
+import {sourceCoreMethods as nativeRead} from '../source_native_read.js';
+import {createPairedRecordRead,type OriginalPairedRecordRead} from './paired_record_read.js';
 import type {SharedReviewRelayStorageIdentity,SharedReviewRelayProgress} from "../relay/review_types.js";
 import {admitPairedVersions,checkPairedNativeProgress} from "./review_record_admission.js";
 export type SharedPairedCheckpointRecord=ReviewCheckpointRecord|ReviewRelayCheckpointRecord|ReviewObserverCheckpointRecord|ReviewedReviewCheckpointRecord|SearchReviewCheckpointRecord;
@@ -53,6 +57,7 @@ type SessionOptions<P extends SharedSelectionPolicy>=Omit<SharedReviewSessionOpt
 export interface SharedReviewSaveState {status:"saved"|"pending"|"failed"|"closed";documentRevision:string|null;reviewRevision:string|null;error:string|null}
 /** Native document/review owners plus a local immutable packet catalog, saved as one atomic record. */
 const constructionKey=Object.freeze({});
+let readPersistentPair:(owner:SharedReviewPersistentSession,authority:()=>void,signal?:AbortSignal)=>Promise<OriginalPairedRecordRead>;
 export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
  readonly core:SharedRichEditor<P>;readonly recovered:boolean;
  readonly #ownedCore:SharedRichEditor<P>;
@@ -60,6 +65,7 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
  #versions=new Map<string,string>();#unsubscribe:(()=>void)[]=[];#pending:PairedRecord|undefined;#running:Promise<void>|undefined;
  #relayProgress:SharedReviewRelayProgress={cursor:null,accepted:null,sequence:null};#durableRelayProgress:SharedReviewRelayProgress={cursor:null,accepted:null,sequence:null};
  #saved:string|undefined;#failure:unknown;#closed=false;#retiring=false;#storageChanged=false;#closedRevisions:{documentRevision:string;reviewRevision:string}|undefined;#closing:Promise<void>|undefined;#released:Promise<void>|undefined;
+ #recordReadEpoch:object=Object.freeze({});readonly #recordReaders=new Set<object>();
  private constructor(key:object,db:IDBDatabase,documentLease:SharedWriterLease,reviewLease:ReviewWriterLease,core:SharedRichEditor<P>,options:SessionOptions<P>,recovered:boolean,versions:readonly string[],progress?:SharedReviewRelayProgress){
   if(key!==constructionKey)throw new SharedEditorError('managed_source_construction','Use the actual paired session open or recovery factory');
   this.#db=db;this.#documentLease=documentLease;this.#reviewLease=reviewLease;this.#ownedCore=core;this.core=core;this.#options=options;this.recovered=recovered;
@@ -70,6 +76,18 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
   registerManagedSource(this,core,()=>{this.#live();this.#boundCore();if(this.#storageChanged||this.#retiring)throw managedSourceUnavailable();});
   db.onversionchange=()=>{this.#storageChanged=true;retireOwnedCore(core);db.close();this.#failed(new SharedEditorError("review_versionchange","Paired storage changed; export both readable histories before explicitly discarding this writer"));};
  }
+ static{readPersistentPair=async(owner,provided,signal)=>{
+  const fail=(suffix:string)=>new SharedEditorError('paired_record_read_'+suffix,'Use genuine original paired storage and independent current read authority');
+  if(!owner||typeof owner!=='object'||!(#ownedCore in owner))throw fail('source');const authority=participantAuthority(provided);if(owner.#recordReaders.size>=8)throw fail('busy');
+  const token=Object.freeze({}),core=owner.#ownedCore,epoch=owner.#recordReadEpoch,pending=owner.#pending,versions=owner.#versions,progress=owner.#relayProgress,saved=owner.#saved,revisions=managedCoreRetainedRevisions(core);owner.#recordReaders.add(token);
+  let released=false,complete=false,finish!:()=>void,observation:ReturnType<typeof observeIndependentRecoveryAbort>|undefined,result:OriginalPairedRecordRead|undefined;const held=new Promise<void>(resolve=>{finish=resolve;}),release=()=>{if(!released){released=true;owner.#recordReaders.delete(token);observation?.release();finish();}};
+  const current=()=>{if(released||!owner.#recordReaders.has(token))throw fail('closed');checkManagedSource(owner,core);if(owner.#running||owner.#recordReadEpoch!==epoch||owner.#pending!==pending||owner.#versions!==versions||owner.#relayProgress!==progress||owner.#saved!==saved)throw fail('changed');const now=managedCoreRetainedRevisions(core);if(now.documentRevision!==revisions.documentRevision||now.reviewRevision!==revisions.reviewRevision)throw fail('changed');if(observation?.aborted())throw fail('aborted');};
+  const check=()=>{current();authority();current();};
+  const readStored=()=>{const key:[string,string]=[owner.#options.room,owner.#options.writer];return owner.#options.searchHistory?readSearchReviewRecord(owner.#db,key):owner.#options.reviewedHistory?readReviewedReviewRecord(owner.#db,key):owner.#options.relay?.reviewEditing==='read_only'?readReviewObserverRecord(owner.#db,key):owner.#options.relay?readReviewRelayRecord(owner.#db,key):readReviewRecord(owner.#db,key);};
+  const identity=(record:PairedRecord)=>JSON.stringify(Object.fromEntries(['format','formatVersion','history','rangeEditing','selectionEditing','richLanguage','reviewActor','principal','relay','reviewedHistory'].filter(key=>Object.hasOwn(record,key)).map(key=>[key,(record as unknown as Record<string,unknown>)[key]])));
+  try{observation=observeIndependentRecoveryAbort(signal,held);check();const live=owner.#recordValue(nativeRead.checkpointJson.call(core),nativeRead.reviewCheckpoint.call(core));owner.#checkRecord(live);check();const committed=await readStored();check();if(!committed)throw fail('missing');if(identity(committed)!==identity(live))throw fail('identity');const json=JSON.stringify(committed);result=createPairedRecordRead({format:'breditor/persistent-paired-record-read',formatVersion:1,scope:'original-paired-committed-pending-live',committed,pending:pending??null,live},{check,current,verify:async()=>{check();const actual=await readStored();check();if(JSON.stringify(actual)!==json)throw fail('changed');},release});result.check();complete=true;return result;}
+  finally{if(!complete){result?.dispose();release();}}
+ };}
  static async open<Q extends SharedSelectionPolicy>(input:SharedReviewSessionOptions<Q>):Promise<SharedReviewPersistentSession<Q>>{
   if("reviewedHistory" in input&&input.reviewedHistory!==undefined)return Promise.reject(new SharedEditorError("reviewed_session_factory","Use the explicitly reviewed paired factory"));
   return this.#open(input,input.restore);
@@ -147,7 +165,10 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
  #boundCore():SharedRichEditor<P>{const binding=Object.getOwnPropertyDescriptor(this,"core");if(!binding||binding.value!==this.#ownedCore)throw managedSourceUnavailable();return this.#ownedCore;}
  #failed(error:unknown):void{this.#failure=error;try{this.#options.onError?.(error);}catch{/* Reporting cannot replace either native history. */}}
  #record(versions=this.#versions):PairedRecord{
-  const core=this.#boundCore(),base={formatVersion:1 as const,history:this.#options.history,rangeEditing:this.#options.rangeEditing,selectionEditing:this.#options.selectionEditing,richLanguage:this.#options.richLanguage,reviewActor:this.#options.review.actor,principal:this.#options.review.principal,documentCheckpointJson:core.checkpointJson(),reviewCheckpointJson:core.reviewCheckpoint(),versions:[...versions.values()]};
+  const core=this.#boundCore();return this.#recordValue(core.checkpointJson(),core.reviewCheckpoint(),versions);
+ }
+ #recordValue(documentCheckpointJson:string,reviewCheckpointJson:string,versions=this.#versions):PairedRecord{
+  const base={formatVersion:1 as const,history:this.#options.history,rangeEditing:this.#options.rangeEditing,selectionEditing:this.#options.selectionEditing,richLanguage:this.#options.richLanguage,reviewActor:this.#options.review.actor,principal:this.#options.review.principal,documentCheckpointJson,reviewCheckpointJson,versions:[...versions.values()]};
   if(this.#options.searchHistory)return {format:"breditor/shared-search-review-checkpoint-record",...base,reviewedHistory:this.#options.reviewedHistory?{...this.#options.reviewedHistory}:null,relay:this.#options.relay?{...this.#options.relay}:null,progress:this.#options.relay?structuredClone(this.#relayProgress):null};
   if(this.#options.reviewedHistory)return {format:"breditor/shared-reviewed-review-checkpoint-record",...base,reviewedHistory:{...this.#options.reviewedHistory},relay:this.#options.relay?{...this.#options.relay}:null,progress:this.#options.relay?structuredClone(this.#relayProgress):null};
   if(!this.#options.relay)return {format:"breditor/shared-review-checkpoint-record",...base};
@@ -173,7 +194,7 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
  }
  state():SharedReviewSaveState{const snapshot=this.#closedRevisions??managedCoreRetainedRevisions(this.#ownedCore);return {status:this.#closed?"closed":this.#failure?"failed":this.#pending||this.#running?"pending":"saved",documentRevision:snapshot.documentRevision,reviewRevision:snapshot.reviewRevision,error:this.#failure?String(this.#failure):null};}
  /** Synchronously capture both exact native lanes; coalesce only complete superseded pairs. */
- save():void{this.#live();if(this.#options.relay?.reviewEditing==="read_only")this.#validateNativeProgress(this.#relayProgress);const record=this.#record();this.#checkRecord(record);const encoded=JSON.stringify(record);if(encoded===this.#saved&&!this.#pending&&!this.#running&&!this.#failure)return;this.#pending=record;this.#failure=undefined;this.#start();}
+ save():void{this.#live();this.#recordReadEpoch=Object.freeze({});if(this.#options.relay?.reviewEditing==="read_only")this.#validateNativeProgress(this.#relayProgress);const record=this.#record();this.#checkRecord(record);const encoded=JSON.stringify(record);if(encoded===this.#saved&&!this.#pending&&!this.#running&&!this.#failure)return;this.#pending=record;this.#failure=undefined;this.#start();}
  #start():void{if(this.#running||this.#closed||!this.#pending)return;this.#running=this.#drain().catch(error=>this.#failed(error)).finally(()=>{this.#running=undefined;if(!this.#failure)this.#start();});}
  async #drain():Promise<void>{while(this.#pending&&!this.#closed){this.#documentLease.assertLive();this.#reviewLease.assertLive();const next=this.#pending;this.#pending=undefined;try{if(next.format==="breditor/shared-search-review-checkpoint-record")await writeSearchReviewRecord(this.#db,[this.#options.room,this.#options.writer],next);else if(next.format==="breditor/shared-reviewed-review-checkpoint-record")await writeReviewedReviewRecord(this.#db,[this.#options.room,this.#options.writer],next);else if(next.format==="breditor/shared-review-observer-checkpoint-record")await writeReviewObserverRecord(this.#db,[this.#options.room,this.#options.writer],next);else if(next.format==="breditor/shared-review-relay-checkpoint-record")await writeReviewRelayRecord(this.#db,[this.#options.room,this.#options.writer],next);else await writeReviewRecord(this.#db,[this.#options.room,this.#options.writer],next);}catch(error){this.#pending??=next;throw error;}this.#saved=JSON.stringify(next);if("progress" in next&&next.progress)this.#durableRelayProgress=structuredClone(next.progress);}}
  async flush():Promise<void>{this.#live();while(this.#running){await this.#running;if(this.#failure)throw this.#failure;}if(this.#failure)throw this.#failure;}
@@ -189,3 +210,7 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
  /** Explicitly abandon unsaved in-memory pairs; the previous committed record is not deleted. */
  discardAndClose():Promise<void>{if(this.#closed)return this.#released??Promise.resolve();const snapshot=managedCoreRetainedRevisions(this.#ownedCore);this.#closedRevisions={documentRevision:snapshot.documentRevision,reviewRevision:snapshot.reviewRevision};this.#closed=true;retireOwnedCore(this.#ownedCore);for(const off of this.#unsubscribe)off();this.#unsubscribe=[];disposeOwnedCore(this.#ownedCore);this.#pending=undefined;this.#db.close();this.#released=(this.#running??Promise.resolve()).then(async()=>{try{await this.#reviewLease.close();}finally{await this.#documentLease.close();}});return this.#released;}
 }
+/** Exact actual original paired rows plus pending/LIVE data. This performs no
+ * save or native replay and does not freeze editing or acquire an author. Source
+ * changes invalidate the witness; source closure invalidates rather than waits. */
+export function capturePersistentPairedRecords<P extends SharedSelectionPolicy>(owner:SharedReviewPersistentSession<P>,checkAuthority:()=>void,signal?:AbortSignal){return readPersistentPair(owner as unknown as SharedReviewPersistentSession,checkAuthority,signal);}

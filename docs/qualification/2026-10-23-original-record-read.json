@@ -1,0 +1,76 @@
+{
+  "format": "breditor/original-record-read-qualification",
+  "formatVersion": 1,
+  "passed": true,
+  "source": {
+    "commit": "85b2dbf1c9e7f8d64aac6afe8a82b5521678dc3c",
+    "dirty": true,
+    "sha256": "ed98e8fc4477cccb2f89636dfe55604a38432c8b86682a567cc527998d921cf8",
+    "files": 6087,
+    "bytes": 48631536
+  },
+  "normalRunner": true,
+  "normalStages": 13,
+  "functionalPlanChecks": 380,
+  "fullPlanChecks": 388,
+  "manifests": {
+    "foundation": "/Users/s/code/breditor/target/v1-candidate-runs/run-nfDamQ/result.json",
+    "source": "/Users/s/code/breditor/target/v1-candidate-runs/run-L4amxZ/result.json",
+    "installed": "/Users/s/code/breditor/target/v1-candidate-runs/run-6L7vmT/result.json"
+  },
+  "assertions": {
+    "source": 102,
+    "installed": 102,
+    "bundled": 102,
+    "newRecordRead": 74,
+    "compoundStorageRegression": 28,
+    "contractsIncludingPlan": 75,
+    "strictTypes": 2
+  },
+  "retained": {
+    "index": "target/original-record-read-final-m6UPPN/index.json",
+    "sha256": "ca6be6e2b95ee35154c10cd7d77f3ddfd0f135149ce97ade3e9728c597872aac",
+    "entries": 7773,
+    "nonDocumentationInputs": 5402
+  },
+  "consumer": {
+    "directory": "/private/tmp/breditor-original-record-read-installed-Ou3p0h",
+    "workspaceLinks": false,
+    "registryArtifacts": 45,
+    "productionModules": 484,
+    "bundleSha256": "7d5f4634440db25f8f221fecb9626a4a7a3271243a395a669602285bc13fb6b4",
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/private/tmp/breditor-original-record-read-installed-Ou3p0h/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/private/tmp/breditor-original-record-read-installed-Ou3p0h/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/private/tmp/breditor-original-record-read-installed-Ou3p0h/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "0c2ecfd4df77b89b84b21a0c48a0e93c16f8094a2ed9fe88ab4385709bd30eac"
+      }
+    ]
+  },
+  "normalWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+  "scope": "Actual original paired committed/pending/LIVE and standalone queue committed/pending/LIVE discovery. Existing 66-family operational recovery, paired backups, compound storage and five-family reference contracts pass. New reads do not save, replay into writable owners or grant author/provider/server authority.",
+  "remaining": [
+    "Original unpaired native/version/revision records and full original reference capture",
+    "Atomic generation records and full generation reference capture",
+    "Joint held coordinator integration and historical-copy decisions",
+    "Whole-upload/provider/client reconciliation and authenticated activation",
+    "Sustainable native Undo/offline lifetime and remaining parity"
+  ],
+  "v1Ready": false,
+  "allThirteenV1GatesOpen": true,
+  "noPush": true,
+  "noTag": true,
+  "noVersionChange": true,
+  "noPublication": true,
+  "noDeployment": true
+}

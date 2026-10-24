@@ -1,0 +1,9 @@
+/** Genuine original paired storage and original queue, no delivery adapter. */
+import {environment} from '../room-participant-inventory/environment.mjs';
+import {cleanupSession} from '../owned-core-cleanup/session.mjs';
+const canonical=value=>Array.isArray(value)?value.map(canonical):value&&typeof value==='object'?Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])])):value;
+export const persistentSuggestionDraft=(asset='persisted-only-image')=>({scope:'commands',edit:{kind:'commands',data:[{kind:'replace_image',data:{block:'image-block',asset,generation:'retained-packet'}}]}});
+export async function originalQueueFixture({api,profile,seed,tag,scope=0,mask=0,relay}){
+ const reset=environment(),selected=cleanupSession(api,profile,{family:'paired',language:3,scope,mask,database:tag+'-source'}),document={...JSON.parse(selected.document),root:canonical(seed)},identity={endpoint:'ws://127.0.0.1:1/ws',room:'room',principal:'alice',binding:'a'.repeat(64),documentWriter:'101',effectWriter:'900',writerTransport:'atomic-v2'};let source,queue;
+ try{selected.options.create=()=>profile.create(JSON.stringify(document),'101');if(relay){selected.options.relay={endpoint:identity.endpoint,principal:'alice',room:'room',actor:'comments',documentWriter:'101',binding:'b'.repeat(64),writerTransport:'atomic-v2',...(relay==='observer'?{reviewEditing:'read_only'}:{})};if(relay==='observer')selected.options.review={...selected.options.review,access:'read_only'};}source=await selected.open();queue=await api.SharedSuggestionQueue.open({database:tag+'-queue',identity,storage:source,...(mask&2?{ownedHistory:'reviewed-v1'}:{})});return{tag,source,queue,identity,database:tag+'-queue',async close(){await queue.discardAndClose();await source.discardAndClose();reset();}};}catch(error){await queue?.discardAndClose();await source?.discardAndClose();reset();throw error;}
+}

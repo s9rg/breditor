@@ -136,6 +136,18 @@ V1 gates remain open.
 
 ## Complete delivery cohort checkpoint
 
+The [original persistent record readers](ORIGINAL_RECORD_READ.md) now distinguish
+actual committed paired histories and standalone proposal rows from pending and
+LIVE states, including saves committed before acknowledgement was lost. Their
+[qualification](qualification/2026-10-23-original-record-read.json) passes thirteen
+selected normal stages. Source, fresh offline packages and actual bundled code
+each pass the same 102 laws; both strict type fixtures pass. Existing participant
+operation, paired backup, compound-storage and reference-read compatibility checks
+also pass. These readers neither flush sources nor turn metadata into ancestry,
+writer permission or activation authority. Original unpaired/version/revision
+closure, complete generation reads and joint reconciliation remain required.
+All thirteen V1 gates remain open.
+
 Complete-delivery and restored-operation parents now share the existing room
 handoff kernel with legacy local, snapshot-local and flat-local parents. Genuine
 reservations and closed result wrappers prevent partial transfer. Final native
