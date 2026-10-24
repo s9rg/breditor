@@ -1,0 +1,140 @@
+{
+  "format": "breditor/room-asset-approval-qualification",
+  "formatVersion": 1,
+  "qualified": true,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "date": "2026-10-24",
+  "directory": "/Users/s/code/breditor/target/room-asset-approval-final-unuQZx",
+  "index": "target/room-asset-approval-final-unuQZx/index.json",
+  "indexSha256": "184a6ec3b456f5a751d12da57f2aab8d2cc6d2a30495cc53bcef8c047da00c6a",
+  "entries": 8835,
+  "source": {
+    "commit": "25f5be79cfc84bd1f43349f14d6b35f9fb2f2454",
+    "dirty": true,
+    "sha256": "e946c65ff458d20a099b5c819205a8145d745070b93156679cb8d5b642e7c569",
+    "files": 6335,
+    "bytes": 49931511
+  },
+  "selectedNormalStages": 16,
+  "functionalPlanChecks": 445,
+  "fullPlanChecks": 453,
+  "sourceAssertions": 1554,
+  "installedAssertions": 1554,
+  "bundledAssertions": 1554,
+  "newApprovalScenarios": 72,
+  "newIndependentHistoryPairs": 4,
+  "newNativeClientsPerPath": 52,
+  "strictTypes": 20,
+  "registryArtifacts": 45,
+  "productionModules": 682,
+  "bundleSha256": "691f418f1561217781c7abdf5c061170ae0953e91b5a82af8b366e496cbbb6cf",
+  "archives": [
+    {
+      "name": "@breditor/browser",
+      "path": "/private/tmp/breditor-room-asset-approval-installed-abVgcV/archives/breditor-browser-0.3.0-alpha.22.tgz",
+      "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+    },
+    {
+      "name": "@breditor/experimental-rich-content",
+      "path": "/private/tmp/breditor-room-asset-approval-installed-abVgcV/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+      "sha256": "23bb4160babd07354daf373f81e731820ff41e45877ee711eb36401bac46497d"
+    },
+    {
+      "name": "@breditor/collaboration",
+      "path": "/private/tmp/breditor-room-asset-approval-installed-abVgcV/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+      "sha256": "cd938d9a611bdb965c8d7d8de8fa22e834394476399831bc05e4b3632bcc2a3e"
+    }
+  ],
+  "nativeFiles": 100,
+  "nativeReports": [
+    {
+      "path": "target/complete-image-cohort-native.json",
+      "sha256": "c243cde87f2151b552bf5cb729530a715a6419d746697ed2fda7ebb6256068e6"
+    },
+    {
+      "path": "target/complete-cohort-native.json",
+      "sha256": "5eaca5d23b0022f4db64e946482bb03fe2f461b98946f88833c4d0380157c2d2"
+    }
+  ],
+  "nativeProducerBinarySha256": "9f5948a8bba3367b601622f8316ec45012aa625cbd59e8a9656ca4793620ab46",
+  "standardNativeBinarySha256": "0d64e4b268a197a004a2913e6f1b7ec339d5b997478b0d449af5ac667ea7025f",
+  "actualLiveControlRuns": [
+    {
+      "directory": "/Users/s/code/breditor/target/complete-control-running-FKwhxu",
+      "cases": 10
+    },
+    {
+      "directory": "/Users/s/code/breditor/target/complete-control-running-J520le",
+      "cases": 10
+    },
+    {
+      "directory": "/Users/s/code/breditor/target/complete-control-running-OYQ1z3",
+      "cases": 10
+    },
+    {
+      "directory": "/Users/s/code/breditor/target/complete-control-running-i6V5s3",
+      "cases": 10
+    },
+    {
+      "directory": "/Users/s/code/breditor/target/complete-control-running-iHQMpK",
+      "cases": 10
+    },
+    {
+      "directory": "/Users/s/code/breditor/target/complete-control-running-xUnB0E",
+      "cases": 10
+    }
+  ],
+  "actualLivePublicFiles": 300,
+  "actualClosedPorts": 60,
+  "normalWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+  "nonDocumentationInputs": 5620,
+  "contracts": {
+    "candidate-runner-contracts": 68,
+    "complete-history-provider-contracts": 3,
+    "room-record-cut-contracts": 46,
+    "room-asset-approval-contracts": 46,
+    "operational-native-read-contracts": 39
+  },
+  "scope": "Fresh independent exact full-cut AND staged asset-base choices, re-admitted from the same genuine complete-record/native/whole-upload reservation before an affirmative host decision. Immutable atomic evidence contains the complete room cut and every whole selected base, including both losing inputs. Every retry needs a fresh decision; saved readiness and saved approval are data, not ownership. Four independent history pairs cover all seven native families and preserve both future Undo/Redo lanes and original upload stores. Changed choices/uploads, denial, exceptions, cancellation, closing, partial catalogs, corruption, absent/aliased namespaces, cold retry, input snapshots, lost acknowledgements, quota, exact non-overwrite and queued-request/lease cleanup remain explicit. All prior 1482 record/history/provider laws remain cumulative. Normal Wasm/native fixtures with controlled local storage/locks/raster; not physical crash durability, editable selected-base successor, native ownership transfer, full retained-copy/provider/registered-stream closure, authenticated activation, cross-device fencing or full V1/parity.",
+  "newAssertions": {
+    "independentChoiceAndFraming": 12,
+    "immutableStorageAndCleanup": 23,
+    "cancellableHostDecision": 10,
+    "actualNativeSdk": 27,
+    "total": 72
+  },
+  "independentHistoryPairs": 4,
+  "sevenFamilyClientsAcrossPairs": 28,
+  "additionalNativeScenarioClientsPerPath": 24,
+  "actualRustNative": true,
+  "controlledIndexedDbLocksAndRaster": true,
+  "physicalBrowserCrashDurability": false,
+  "nativeEditableHandoff": false,
+  "registeredStreamClosure": false,
+  "authenticatedActivation": false,
+  "crossDeviceFencing": false,
+  "v1GatesOpen": 13,
+  "packageVersionsChanged": false,
+  "oldNativeAndStoredProtocolsChanged": false,
+  "normalWasmChanged": false,
+  "existing1482LawsRetained": true,
+  "publicRootRuntimeAdditions": [
+    "RoomAssetApprovalArchive",
+    "readRetainedRoomAssetApproval",
+    "MAX_ROOM_ASSET_APPROVAL_BYTES"
+  ],
+  "limitations": [
+    "Independent affirmative approval retains complete bounded data; it never grants a mutable owner, changes an old native/upload baseline or supplies server authorization",
+    "Selected client data and literal retained inputs are preserved; unselected participants, current provider data and all registered streams are not implicitly reconciled",
+    "Actual native four-pair SDK cases use standard/atomic language 3 fixtures; fresh base producers cover ten profile/wire rooms each, not a new ten-by-four SDK matrix",
+    "Whole approval limit 1 GiB and existing embedded complete-cut/reconciled-base/source budgets remain; no memory/latency or sustainable-history claim",
+    "Controlled IndexedDB, locks and raster fixtures prove functional laws, not physical browser durability, cross-browser/IME/accessibility or historical WebKit repair",
+    "Editable selected-base succession, current capture/cold resume, complete provider/client/registered-stream closure, authenticated activation, stale-writer fencing, sustainable history and remaining parity remain required",
+    "Sixteen selected normal stages, not the full candidate release plan or V1 approval"
+  ],
+  "noPush": true,
+  "noTag": true,
+  "noPublication": true,
+  "noDeployment": true
+}

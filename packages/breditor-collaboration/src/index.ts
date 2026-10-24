@@ -163,6 +163,10 @@ export {PhysicalRoomRecordCutArchive} from "./physical_room_record_cut/archive.j
 export {readRetainedPhysicalRoomRecordCut} from "./physical_room_record_cut/retention.js";
 export {PhysicalRoomRecordCutError,MAX_ROOM_RECORD_CUT_BYTES,MAX_ROOM_RECORD_CUT_HEADER_BYTES,MAX_ROOM_RECORD_CUT_JSON_BYTES} from "./physical_room_record_cut/policy.js";
 export type {PhysicalRoomRecordCutSelection,PhysicalRoomRecordCutFile,PhysicalRoomRecordCutMetadata} from "./physical_room_record_cut/contract.js";
+export {RoomAssetApprovalArchive} from "./physical_room_asset_approval/archive.js";
+export {readRetainedRoomAssetApproval} from "./physical_room_asset_approval/retention.js";
+export {MAX_ROOM_ASSET_APPROVAL_BYTES} from "./physical_room_asset_approval/choice.js";
+export type {RoomAssetApprovalChoice,RoomAssetApprovalSelection,RoomAssetApprovalFile,RoomAssetApprovalOptions} from "./physical_room_asset_approval/contract.js";
 export {SharedServerLogGenerationParticipantInventory,readSharedServerLogGenerationParticipantInventory} from "./server_generation_inventory/read.js";
 export {MAX_SHARED_SERVER_LOG_GENERATION_PARTICIPANT_INVENTORY_BYTES,MAX_SHARED_SERVER_LOG_GENERATION_RECORDS} from "./server_generation_inventory/policy.js";
 export type {SharedServerLogGenerationBackupIdentity,SharedServerLogGenerationParticipantIdentity,SharedServerLogGenerationParticipantMetadata,SharedServerLogGenerationParticipantCoverage,SharedServerLogGenerationParticipantSource,SharedServerLogGenerationCohortSource} from "./server_generation_inventory/contract.js";

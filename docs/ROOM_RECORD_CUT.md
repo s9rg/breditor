@@ -141,10 +141,11 @@ old native/stored protocol meanings are unchanged.
 
 ## Architecture priorities after retention
 
-The next barrier must independently approve the exact retained source cut and
-selected upload-base choices, then create a genuine editable successor while
-preserving both losing inputs and all pending/offline/review/version work. Merely
-swapping upload stores or relabelling a participant family is not a handoff.
+The [independent asset approval contract](ROOM_ASSET_APPROVAL.md) adds a fresh
+decision about the exact complete cut and selected bases, retaining all its data
+atomically. The next ownership barrier must create a genuine editable successor
+while preserving both losing inputs and all pending/offline/review/version work.
+Merely swapping upload stores or relabelling a participant family is not a handoff.
 
 Full reconciliation must then account for every retained client copy, current
 registered document/comment stream and required provider byte. Authenticated

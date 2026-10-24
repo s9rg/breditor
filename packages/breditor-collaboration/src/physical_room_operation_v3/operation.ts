@@ -24,7 +24,7 @@ import {physicalOperationV3Failure as fail,physicalOperationV3Known as known,phy
 import {borrowCompleteNativeRead} from '../complete_operation_cohort/native_read.js';
 import {inspectPhysicalOperationV3Native} from './native_read.js';
 import type {PhysicalOperationV3NativeRead} from './native_read_contract.js';
-import {readPhysicalOperationV3History} from './history_read.js';
+import {readPhysicalOperationV3History,snapshotPhysicalHistoryReadOptions} from './history_read.js';
 import type {PhysicalOperationV3HistoryReadOptions,PhysicalOperationV3HistoryRead} from './history_read_contract.js';
 import type {SharedSelectionPolicy} from '../types.js';
 import {readPhysicalOperationV3Assets} from './asset_read.js';
@@ -32,7 +32,7 @@ import type {PhysicalAssetReadOptions,PhysicalAssetReadScope} from './asset_read
 import {readPhysicalOperationV3HistoryAssets} from './history_assets.js';
 import type {PhysicalOperationV3HistoryAssetsRead} from './history_assets_contract.js';
 import type {SharedPhysicalRoomRecoveryHost} from '../physical_recovery_control/host.js';
-import {capturePhysicalOperationV3RecordCut} from './record_cut.js';
+import {capturePhysicalOperationV3RecordCut,visitPhysicalOperationV3RecordCut,type PhysicalRecordCutVisit} from './record_cut.js';
 import type {PhysicalRoomRecordCutFile} from '../physical_room_record_cut/contract.js';
 const key=Object.freeze({});
 const errors={policy:()=>fail('physical_operation_v3_policy'),busy:()=>fail('physical_operation_v3_in_use'),storage:()=>fail()};
@@ -46,6 +46,9 @@ interface State{
 /** Type-only internal custody; a detached report never creates this state. */
 export type PhysicalOperationV3Custody=State;
 let withAssets:<T>(owner:PhysicalRoomClientOperationV3,options:PhysicalAssetReadOptions,visit:(scope:PhysicalAssetReadScope)=>Promise<T>)=>Promise<T>;
+let withRecords:<P extends SharedSelectionPolicy,T>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit)=>Promise<T>)=>Promise<T>;
+/** Internal brand-checked composition, not a public/replaceable root method. */
+export const withPhysicalOperationV3RecordCut=<P extends SharedSelectionPolicy,T>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit)=>Promise<T>):Promise<T>=>withRecords(owner,options,visit);
 /** Internal actual-root borrow. A report/DTO cannot manufacture this scope. */
 export const withPhysicalOperationV3Assets=<T>(owner:PhysicalRoomClientOperationV3,options:PhysicalAssetReadOptions,visit:(scope:PhysicalAssetReadScope)=>Promise<T>):Promise<T>=>withAssets(owner,options,visit);
 /** Opaque wasm/catalog handles stay genuine; every ordinary policy value is
@@ -57,11 +60,14 @@ function options(input:PhysicalOperationV3BeginOptions|PhysicalOperationV3Resume
  return{options:result,catalog:catalog as PhysicalRoomCatalogV3|undefined,catalogDatabase:begin?undefined:dbName(selected['catalogDatabase'])};
 }
 export class PhysicalRoomClientOperationV3{
- readonly #s:State;readonly #rollback=new RecoveryCleanupScope(()=>fail());#exposed=false;#busy=false;#running:Promise<void>|undefined;#cleanup:Promise<void>|undefined;#cleanupMode:boolean|undefined;
+ readonly #s:State;readonly #rollback=new RecoveryCleanupScope(()=>fail());readonly #closingListeners=new Set<()=>void>();#exposed=false;#busy=false;#running:Promise<void>|undefined;#cleanup:Promise<void>|undefined;#cleanupMode:boolean|undefined;
  private constructor(token:object,state:State){if(token!==key)throw fail('physical_operation_v3_closed');this.#s=state;Object.freeze(this);}
  static{withAssets=(owner,options,visit)=>{
   if(!owner||typeof owner!=='object'||!(#s in owner))return Promise.reject(fail('physical_operation_v3_policy'));
   return owner.#run(()=>readPhysicalOperationV3Assets(owner.#s,()=>{if(!owner.#exposed||!owner.#busy)throw fail('physical_operation_v3_closed');},()=>owner.#retained(),options,visit),error=>error instanceof Error?error:known(error));
+ };withRecords=(owner,options,visit)=>{
+  if(!owner||typeof owner!=='object'||!(#s in owner))return Promise.reject(fail('physical_operation_v3_policy'));
+  const chosen=snapshotPhysicalHistoryReadOptions(options);return owner.#run(async()=>{if(owner.#rollback.pending)await owner.#rollback.drain();return visitPhysicalOperationV3RecordCut(owner.#s,()=>{if(!owner.#exposed||!owner.#busy)throw fail('physical_operation_v3_closed');},owner.#rollback,chosen,cancel=>{if(owner.#s.life.closing)cancel();else owner.#closingListeners.add(cancel);return()=>{owner.#closingListeners.delete(cancel);};},visit);},error=>error instanceof Error?error:known(error));
  };}
  static begin(input:PhysicalOperationV3BeginOptions):Promise<PhysicalRoomClientOperationV3>{return PhysicalRoomClientOperationV3.#open(input,true);}
  static resume(input:PhysicalOperationV3ResumeOptions):Promise<PhysicalRoomClientOperationV3>{return PhysicalRoomClientOperationV3.#open(input,false);}
@@ -159,6 +165,6 @@ export class PhysicalRoomClientOperationV3{
  });}
  close():Promise<void>{return this.#close(false);}
  discardAndClose():Promise<void>{return this.#close(true);}
- #close(discard:boolean):Promise<void>{const s=this.#s;if(s.life.closed)return Promise.resolve();if(this.#cleanup)return this.#cleanupMode===discard?this.#cleanup:Promise.reject(fail('physical_operation_v3_in_use'));s.life.closing=true;this.#cleanupMode=discard;this.#cleanup=this.#finishClose(discard).catch(error=>{throw known(error);}).finally(()=>{this.#cleanup=undefined;this.#cleanupMode=undefined;});return this.#cleanup;}
+ #close(discard:boolean):Promise<void>{const s=this.#s;if(s.life.closed)return Promise.resolve();if(this.#cleanup)return this.#cleanupMode===discard?this.#cleanup:Promise.reject(fail('physical_operation_v3_in_use'));s.life.closing=true;for(const cancel of this.#closingListeners)cancel();this.#closingListeners.clear();this.#cleanupMode=discard;this.#cleanup=this.#finishClose(discard).catch(error=>{throw known(error);}).finally(()=>{this.#cleanup=undefined;this.#cleanupMode=undefined;});return this.#cleanup;}
  async #finishClose(discard:boolean):Promise<void>{await this.#running;const s=this.#s;if(s.life.closed)return;await this.#rollback.drain();for(const child of [...s.children].reverse())await closePhysicalOperationV3Child(child,discard);await s.intent.close();this.#disposeArchive();s.held.db.close();await s.held.lease.close();await s.lease.close();s.cancellation.close();s.life.closed=true;this.#exposed=false;}
 }

@@ -12,6 +12,17 @@ import {parsePhysicalCatalogV3Manifest} from '../physical_room_catalog_v3/manife
 import {projectPhysicalOperationV3History} from './history_read.js';
 import {frozen} from '../room_participant_inventory/policy.js';
 import {physicalOperationV3Failure as fail} from './policy.js';
+import {recordAssetScope} from './record_asset_scope.js';
+import type {PhysicalAssetReadScope} from './asset_read_contract.js';
+/** Internal genuine-root composition only. The visitor runs before the final
+ * complete-source reread and actual read/lock cleanup; no owner escapes. */
+export interface PhysicalRecordCutVisit{readonly cut:PhysicalRoomRecordCutFile;readonly assets:PhysicalAssetReadScope;readonly verify:()=>Promise<void>;readonly signal:AbortSignal|undefined;readonly cleanup:RecoveryCleanupScope;readonly watchClosing:(cancel:()=>void)=>()=>void}
+export function visitPhysicalOperationV3RecordCut<P extends SharedSelectionPolicy,T>(state:PhysicalOperationV3Custody,held:()=>void,cleanup:RecoveryCleanupScope,input:PhysicalOperationV3HistoryReadOptions<P>,watchClosing:PhysicalRecordCutVisit['watchClosing'],visit:(scope:PhysicalRecordCutVisit)=>Promise<T>):Promise<T>{
+ return projectPhysicalOperationV3History(state,held,input,{cleanup,mode:'records-v1',visit:async scope=>{
+  if(!scope.root||!scope.recordPayloads)throw fail('physical_operation_v3_policy');const selected=new Set(scope.root.record.participants.map(row=>row.id)),catalog=parsePhysicalCatalogV3Manifest(scope.root.record.source.manifest),history:PhysicalOperationV3HistoryRead=frozen(structuredClone({format:'breditor/physical-operation-v3-history-read',formatVersion:1,scope:'held-client-history-and-retained-catalog-bytes',selection:scope.root.record.source.selection,catalogFilesVerified:scope.root.files.length,history:scope.history,unreconciledParticipants:catalog.participants.filter(row=>!selected.has(row.id)).map(row=>row.id)}));
+  const cut=await encodePhysicalRoomRecordCut({root:scope.root,history,participants:scope.recordPayloads(),uploads:scope.uploads},{guard:scope.check,digest:scope.digest}),assets=await recordAssetScope(state,scope);scope.check();const value=await visit({cut,assets,verify:scope.verify,signal:scope.signal,cleanup,watchClosing});scope.check();return{value,history};
+ },project:(history,value)=>{if(JSON.stringify(history)!==JSON.stringify(value.history))throw fail('physical_operation_v3_diverged');return value.value;}}) as Promise<T>;
+}
 export function capturePhysicalOperationV3RecordCut<P extends SharedSelectionPolicy>(state:PhysicalOperationV3Custody,held:()=>void,cleanup:RecoveryCleanupScope,input:PhysicalOperationV3HistoryReadOptions<P>,destination?:Readonly<{database:string}>):Promise<PhysicalRoomRecordCutFile>{
  // Requesting retention is distinct from supplying a valid destination. A
  // missing/undefined runtime database must never become portable-only success.

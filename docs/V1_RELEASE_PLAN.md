@@ -43,6 +43,23 @@ publication or deployment is promoted.
 
 ## Current seven family client recovery
 
+The [independent asset approval contract](ROOM_ASSET_APPROVAL.md) now separates a
+fresh exact-choice decision from staged readiness and from future native
+ownership transfer. It compares the complete room cut and selected bases under
+the same genuine source reservation and atomically retains the cut and every
+whole base, including both losing upload inputs. Cancellation and close retire a
+pending decision without admitting a late write. Its
+[qualification](qualification/2026-10-24-room-asset-approval.json) passes sixteen
+selected normal stages: source, independent offline packages and the actual
+production bundle each pass 1,554 cumulative assertions, with twenty strict
+consumer fixtures. Seventy-two new cases cover independent choices, storage,
+cancellable decisions and genuine native sessions across all seven families.
+Four independent document/comment history pairs cover 28 clients per path;
+refusal, mutation and cleanup scenarios add 24. All sixty test-owned native
+control ports are confirmed closed. Editable selected-base succession, complete
+reconciliation, authenticated activation/fencing and sustainable history remain
+architectural work. No release gate closes on an approval data file alone.
+
 The [complete room record cut](ROOM_RECORD_CUT.md) now captures selected native,
 packet and journal payloads, literal source/parent/catalog files and whole uploads
 under the same genuine reservations. It adds immutable absent-only storage and
@@ -55,7 +72,7 @@ Undo/Redo for 28 client instances; partial/corruption/cleanup cases add four.
 Actual-native probes reproduce and verify both missing-destination and
 pending-cleanup handoff repairs. These controlled functional tests do not qualify
 physical durability or create an editable successor from the retained file.
-Exact-choice approval, genuine editable handoff, registered-stream closure,
+Genuine editable handoff, registered-stream closure,
 authenticated activation and sustainable history remain next. All thirteen V1
 gates remain open.
 

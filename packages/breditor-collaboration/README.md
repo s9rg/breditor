@@ -678,6 +678,14 @@ independently pinned data archives, not editable native owners or approval to
 activate writers. Existing history-read defaults and saved protocol meanings
 remain unchanged.
 
+The [independent asset approval contract](../../docs/ROOM_ASSET_APPROVAL.md) adds
+a separate complete-data file containing the exact cut and every staged base.
+The stage compares an outside choice and asks for a fresh host decision on every
+retention call, including retry. Public `RoomAssetApprovalArchive.read` and
+`readRetainedRoomAssetApproval` return pinned evidence only. A saved approval
+does not return editable clients, replace their upload baseline, or activate
+server writers.
+
 ## Natural shared typing history
 
 `SharedPersistentSession.open({history: 'typing-v1', ...})` selects native grouped

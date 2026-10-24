@@ -2,7 +2,7 @@
  * Original sources stay held and unchanged during each operation. New stores
  * are exact selected clones only: no editor is returned and no room activates. */
 import {RichAssetStore,RichAssetStoreCustody} from '@breditor/experimental-rich-content';
-import {withPhysicalOperationV3Assets,PhysicalRoomClientOperationV3} from '../physical_room_operation_v3/operation.js';
+import {withPhysicalOperationV3Assets,withPhysicalOperationV3RecordCut,PhysicalRoomClientOperationV3} from '../physical_room_operation_v3/operation.js';
 import type {PhysicalAssetReadScope,PhysicalAssetReadOptions} from '../physical_room_operation_v3/asset_read_contract.js';
 import {physicalOperationV3Present} from '../physical_room_operation_v3/child.js';
 import {PhysicalOperationV3Cancellation} from '../physical_room_operation_v3/storage_cancellation.js';
@@ -14,6 +14,14 @@ import {RoomAssetAdoptionStore,sameAdoptionBytes,type AdoptionFiles} from './sto
 import {adoptionChoices,prepareAdoptionSelection,verifyAdoptionSelection,selectedAdoptionFile} from './selection.js';
 import type {RoomAssetAdoptionOptions,RoomAssetAdoptionBeginOptions,RoomAssetAdoptionRecord,RoomAssetAdoptionTarget} from './contract.js';
 import {database,fields,fail} from './policy.js';
+import type {SharedSelectionPolicy} from '../types.js';
+import type {PhysicalOperationV3HistoryReadOptions} from '../physical_room_operation_v3/history_read_contract.js';
+import type {PhysicalRecordCutVisit} from '../physical_room_operation_v3/record_cut.js';
+import {approvalChoice} from '../physical_room_asset_approval/choice.js';
+import {encodeRoomAssetApproval} from '../physical_room_asset_approval/archive.js';
+import {retainRoomAssetApproval} from '../physical_room_asset_approval/retention.js';
+import {decideRoomAssetApproval} from '../physical_room_asset_approval/decision.js';
+import type {RoomAssetApprovalChoice,RoomAssetApprovalOptions,RoomAssetApprovalFile} from '../physical_room_asset_approval/contract.js';
 const key=Object.freeze({}),errors={policy:()=>fail('asset_adoption_policy'),busy:()=>fail('asset_adoption_busy'),storage:()=>fail()};
 const restore=RichAssetStore.restoreBackupHeld,open=RichAssetStore.openRetained,acquire=RichAssetStore.prototype.acquireRecoveryCustody,capture=RichAssetStore.prototype.captureBackup,list=RichAssetStore.prototype.list,closeStore=RichAssetStore.prototype.close,checkStore=RichAssetStore.prototype.checkOpen,checkCustody=RichAssetStoreCustody.prototype.check,closeCustody=RichAssetStoreCustody.prototype.close;
 interface Target {readonly store:RichAssetStore;readonly custody:RichAssetStoreCustody}
@@ -30,7 +38,7 @@ async function cleanup(resources:Resources,p:Policy):Promise<void>{
 }
 export class PhysicalRoomAssetAdoption {
  #root:PhysicalRoomClientOperationV3|undefined;readonly #policy;readonly #resources;#record:RoomAssetAdoptionRecord;#files:AdoptionFiles;
- #pending:RoomAssetAdoptionRecord|undefined;#busy=false;#running:Promise<unknown>|undefined;#cleanup:Promise<void>|undefined;
+ #pending:RoomAssetAdoptionRecord|undefined;readonly #closingListeners=new Set<()=>void>();#busy=false;#running:Promise<unknown>|undefined;#cleanup:Promise<void>|undefined;
  private constructor(token:object,root:PhysicalRoomClientOperationV3,p:Policy,r:Resources,record:RoomAssetAdoptionRecord,files:AdoptionFiles){if(token!==key)throw fail('asset_adoption_policy');this.#root=root;this.#policy=p;this.#resources=r;this.#record=record;this.#files=files;Object.freeze(this);}
  /** Detached current files for preparing choices. This snapshot is not a live
   * root/store reservation; begin re-admits every actual source again. */
@@ -86,7 +94,27 @@ export class PhysicalRoomAssetAdoption {
  });}
  check():Promise<RoomAssetAdoptionRecord>{return this.#run(async(scope,check)=>{await this.#retained(scope,check);for(const row of this.#record.participants)if(row.state==='complete')await this.#target(row,scope,check,false);check();return frozen(structuredClone(this.#record));});}
  baseFile(id:string):Promise<Blob>{return this.#run(async(scope,check)=>{await this.#retained(scope,check);const bytes=this.#files.get(id);if(!bytes)throw fail('asset_adoption_policy');return new Blob([bytes]);});}
+ /** A preview is DATA only. Its exact cut includes native histories, uncertain
+  * saves, packet queues, literal origin files and every whole upload archive.
+  * It never turns readiness into permission and returns no mutable owner. */
+ approvalChoice<P extends SharedSelectionPolicy>(input:PhysicalOperationV3HistoryReadOptions<P>):Promise<RoomAssetApprovalChoice>{return this.#approval(input,async scope=>approvalChoice({format:'breditor/room-asset-approval-choice',formatVersion:1,cut:scope.cut.selection,adoption:this.#record}));}
+ /** Retain a fresh independent host decision and ALL its exact data atomically.
+  * Retry still needs the same outside choice and a NEW affirmative callback;
+  * an existing stored ready/approval row never supplies permission itself. */
+ retainApprovedSelection<P extends SharedSelectionPolicy>(destination:string,input:RoomAssetApprovalOptions<P>):Promise<RoomAssetApprovalFile>{
+  let name:string,expected:RoomAssetApprovalChoice,approve:RoomAssetApprovalOptions<P>['approve'],reads:PhysicalOperationV3HistoryReadOptions<P>;
+  try{const raw=fields(input,['reads','checkAuthority','expected','approve'],['signal']);name=database(destination);expected=approvalChoice(raw['expected']);if(typeof raw['approve']!=='function')throw fail('asset_adoption_policy');approve=raw['approve'] as typeof approve;reads={reads:raw['reads'] as typeof input.reads,checkAuthority:raw['checkAuthority'] as ()=>void,...(raw['signal']!==undefined?{signal:raw['signal'] as AbortSignal}:{})};}catch(error){return Promise.reject(error);}
+  return this.#approval(reads,async scope=>{
+   if([this.#policy.name,...scope.assets.namespaces,...this.#record.participants.map(row=>row.targetDatabase)].includes(name))throw fail('asset_adoption_policy');const actual=approvalChoice({format:'breditor/room-asset-approval-choice',formatVersion:1,cut:scope.cut.selection,adoption:this.#record});if(JSON.stringify(actual)!==JSON.stringify(expected))throw fail('asset_adoption_diverged');scope.assets.check();
+   await decideRoomAssetApproval(actual,approve,{check:scope.assets.check,signal:scope.signal,watchClosing:cancel=>{const root=scope.watchClosing(cancel);let policy=()=>{};try{policy=this.#policy.observation.watch(cancel);if(this.#policy.life.closing)cancel();else this.#closingListeners.add(cancel);return()=>{this.#closingListeners.delete(cancel);policy();root();};}catch(error){policy();root();throw error;}}});scope.assets.check();await this.#retained(scope.assets,scope.assets.check);for(const row of this.#record.participants)await this.#target(row,scope.assets,scope.assets.check,false);await scope.verify();scope.assets.check();const file=await encodeRoomAssetApproval(actual,scope.cut,this.#files,{check:scope.assets.check,digest:scope.assets.digest});return retainRoomAssetApproval(name,file,{check:scope.assets.check,digest:scope.assets.digest,signal:scope.signal,cleanup:scope.cleanup});
+  });
+ }
+ #approval<P extends SharedSelectionPolicy,T>(input:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit)=>Promise<T>):Promise<T>{
+  if(this.#policy.life.closed||this.#policy.life.closing)return Promise.reject(fail('asset_adoption_closed'));if(this.#busy)return Promise.reject(fail('asset_adoption_busy'));this.#busy=true;let task:Promise<T>;
+  try{const raw=fields(input,['reads','checkAuthority'],['signal']),authority=participantAuthority(raw['checkAuthority'] as ()=>void),read={reads:raw['reads'] as typeof input.reads,checkAuthority:()=>{this.#check();authority();this.#check();},...(raw['signal']!==undefined?{signal:raw['signal'] as AbortSignal}:{})};task=withPhysicalOperationV3RecordCut(this.#root!,read,async scope=>{const check=()=>{this.#check();scope.assets.check();};const assets={...scope.assets,check};check();await this.#retained(assets,check);if(this.#record.phase!=='ready')throw fail('asset_adoption_diverged');for(const row of this.#record.participants)await this.#target(row,assets,check,false);const result=await visit({...scope,assets});check();await this.#retained(assets,check);for(const row of this.#record.participants)await this.#target(row,assets,check,false);check();return result;});}catch(error){task=Promise.reject(error);}
+  this.#running=task;return task.finally(()=>{this.#running=undefined;this.#busy=false;});
+ }
  /** Cleanup never needs ongoing permission and never closes the caller's root.
   * Actual failed handles stay in this owner (or opening custody) for retry. */
- close():Promise<void>{if(this.#policy.life.closed)return Promise.resolve();if(this.#cleanup)return this.#cleanup;this.#policy.life.closing=true;this.#cleanup=(async()=>{await this.#running?.catch(()=>{});await cleanup(this.#resources,this.#policy);this.#files=new Map();this.#root=undefined;})().finally(()=>{this.#cleanup=undefined;});return this.#cleanup;}
+ close():Promise<void>{if(this.#policy.life.closed)return Promise.resolve();if(this.#cleanup)return this.#cleanup;this.#policy.life.closing=true;for(const cancel of this.#closingListeners)cancel();this.#closingListeners.clear();this.#cleanup=(async()=>{await this.#running?.catch(()=>{});await cleanup(this.#resources,this.#policy);this.#files=new Map();this.#root=undefined;})().finally(()=>{this.#cleanup=undefined;});return this.#cleanup;}
 }

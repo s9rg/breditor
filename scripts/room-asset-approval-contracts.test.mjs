@@ -1,0 +1,14 @@
+/** Closed distinct approval DATA contracts; incoming DTOs manufacture no owner. */
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {approvalChoice,approvalSelection,MAX_ROOM_ASSET_APPROVAL_BYTES} from '../packages/breditor-collaboration/dist/physical_room_asset_approval/choice.js';
+import {withPhysicalOperationV3RecordCut} from '../packages/breditor-collaboration/dist/physical_room_operation_v3/operation.js';
+import {PhysicalRoomAssetAdoption as Adoption} from '../packages/breditor-collaboration/dist/physical_room_asset_adoption/coordinator.js';
+import {RoomAssetApprovalArchive} from '../packages/breditor-collaboration/dist/physical_room_asset_approval/archive.js';
+const pin=()=>({format:'breditor/room-asset-approval-selection',formatVersion:1,bytes:10,sha256:'a'.repeat(64)});
+test('approval pin has a distinct closed format, finite byte budget and frozen independent hash',()=>{assert.equal(MAX_ROOM_ASSET_APPROVAL_BYTES,1024*1024*1024);const value=approvalSelection(pin());assert.deepEqual(value,pin());assert.ok(Object.isFrozen(value));});
+for(const bad of[0,-0,-1,1.5,NaN,Infinity,MAX_ROOM_ASSET_APPROVAL_BYTES+1])test('approval pin refuses noncanonical bytes '+String(bad),()=>{assert.throws(()=>approvalSelection({...pin(),bytes:bad}));});
+test('approval pins refuse another protocol and non-own/accessor fields without executing getters',()=>{let calls=0;const p=pin();Object.defineProperty(p,'sha256',{enumerable:true,get(){calls++;return'a'.repeat(64);}});assert.throws(()=>approvalSelection(p));assert.equal(calls,0);for(const value of[{...pin(),format:'breditor/physical-room-record-cut-selection'},{...pin(),approved:true},{...pin(),sha256:'A'.repeat(64)},Object.create(pin())])assert.throws(()=>approvalSelection(value));});
+test('readiness markers and saved decisions are not independent complete choices',()=>{for(const value of[{phase:'ready'},{approved:true},{format:'breditor/room-asset-approval-choice',formatVersion:1,cut:{},adoption:{}},{format:'breditor/room-asset-approval-choice',formatVersion:1,cut:{},adoption:{},approve:()=>true}])assert.throws(()=>approvalChoice(value));});
+test('only a genuine root can enter the held record composition; facade methods cannot execute',async()=>{let calls=0;const fake={captureRecordCut(){calls++;},readHistory(){calls++;},selection(){calls++;}};await assert.rejects(withPhysicalOperationV3RecordCut(fake,{reads:[],checkAuthority(){calls++;}},async()=>{calls++;}));assert.equal(calls,0);});
+test('approval adds no editable/activation API and its archive cannot be publicly constructed',()=>{assert.equal('intoParts'in Adoption.prototype,false);assert.equal('activate'in Adoption.prototype,false);assert.equal('intoParts'in RoomAssetApprovalArchive.prototype,false);assert.equal('activate'in RoomAssetApprovalArchive.prototype,false);assert.throws(()=>new RoomAssetApprovalArchive({},pin(),{},{}));});
