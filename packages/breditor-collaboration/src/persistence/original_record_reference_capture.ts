@@ -2,6 +2,7 @@
  * stores keep separate committed/pending/LIVE states, not a fabricated atomic
  * cut. Historical parent files and upload/provider bytes are outside this scope. */
 import {SharedRichEditor,SharedEditorError} from '../core.js';
+import {recordReadMode,retainSourceRecordPayload,forgetSourceRecordPayload,type OperationalRecordReadMode} from '../operation_read/record_payload.js';
 import type {SharedSelectionPolicy} from '../types.js';
 import type {RichRetainedAssetReference} from '@breditor/experimental-rich-content';
 import type {SharedAssetCapturePending} from '../asset_references_capture.js';
@@ -42,7 +43,7 @@ interface Callbacks{check():void;current():void;verify():Promise<void>;release()
  * before this replay, and never substitute for genuine current source custody. */
 export interface OriginalReferenceOrigin{readonly role:'operation-origin';readonly native:OriginalReferenceNativeState;readonly packets:OriginalReferencePacketRows}
 export interface OriginalReferenceOriginResult{readonly role:'operation-origin';readonly references:readonly RichRetainedAssetReference[];readonly pending:readonly Immutable<SharedAssetCapturePending>[]}
-let captureAfterOrigins:<P extends SharedSelectionPolicy>(provided:OriginalRecordReferenceOptions<P>,origins:readonly OriginalReferenceOrigin[])=>Promise<{capture:OriginalRecordReferenceCapture;origins:readonly OriginalReferenceOriginResult[]}>;
+let captureAfterOrigins:<P extends SharedSelectionPolicy>(provided:OriginalRecordReferenceOptions<P>,origins:readonly OriginalReferenceOrigin[],mode?:OperationalRecordReadMode)=>Promise<{capture:OriginalRecordReferenceCapture;origins:readonly OriginalReferenceOriginResult[]}>;
 const key=Object.freeze({}),fail=(suffix:string)=>new SharedEditorError('original_record_reference_'+suffix,'Read exact genuine original native and selected retained stores');
 export class OriginalRecordReferenceCapture{
  readonly #metadata:OriginalRecordReferenceMetadata;#callbacks:Callbacks|undefined;#closed=false;#checking=false;#verifying=false;
@@ -51,10 +52,11 @@ export class OriginalRecordReferenceCapture{
  check():void{if(this.#closed)throw fail('closed');if(this.#checking)throw fail('busy');this.#checking=true;try{this.#callbacks!.check();if(this.#closed)throw fail('closed');}finally{this.#checking=false;}}
  checkCurrent():void{if(this.#closed)throw fail('closed');this.#callbacks!.current();if(this.#closed)throw fail('closed');}
  async verify():Promise<void>{if(this.#closed)throw fail('closed');if(this.#verifying)throw fail('busy');this.#verifying=true;try{checkCapture.call(this);await this.#callbacks!.verify();checkCapture.call(this);}finally{this.#verifying=false;}}
- dispose():void{if(this.#closed)return;this.#closed=true;const callbacks=this.#callbacks;this.#callbacks=undefined;callbacks?.release();}
- static capture<P extends SharedSelectionPolicy>(provided:OriginalRecordReferenceOptions<P>):Promise<OriginalRecordReferenceCapture>{return OriginalRecordReferenceCapture.#capture(provided);}
- static{captureAfterOrigins=async(provided,origins)=>{if(origins.length!==1)throw fail('origin');const rows:OriginalReferenceOriginResult[]=[];const capture=await this.#capture(provided,{origins,rows});return{capture,origins:rows};};}
- static async #capture<P extends SharedSelectionPolicy>(provided:OriginalRecordReferenceOptions<P>,prelude?:{origins:readonly OriginalReferenceOrigin[];rows:OriginalReferenceOriginResult[]}):Promise<OriginalRecordReferenceCapture>{
+ dispose():void{if(this.#closed)return;this.#closed=true;forgetSourceRecordPayload(this);const callbacks=this.#callbacks;this.#callbacks=undefined;callbacks?.release();}
+ static capture<P extends SharedSelectionPolicy>(provided:OriginalRecordReferenceOptions<P>,mode?:OperationalRecordReadMode):Promise<OriginalRecordReferenceCapture>{return OriginalRecordReferenceCapture.#capture(provided,undefined,mode);}
+ static{captureAfterOrigins=async(provided,origins,mode)=>{if(origins.length!==1)throw fail('origin');const rows:OriginalReferenceOriginResult[]=[];const capture=await this.#capture(provided,{origins,rows},mode);return{capture,origins:rows};};}
+ static async #capture<P extends SharedSelectionPolicy>(provided:OriginalRecordReferenceOptions<P>,prelude?:{origins:readonly OriginalReferenceOrigin[];rows:OriginalReferenceOriginResult[]},mode?:OperationalRecordReadMode):Promise<OriginalRecordReferenceCapture>{
+  recordReadMode(mode);
   if(!provided||typeof provided!=='object'||Array.isArray(provided))throw fail('policy');const names=Object.keys(provided),values:Record<string,unknown>={};if(names.some(n=>!['source','restore','editor','versions','suggestions','revisions','checkAuthority','signal'].includes(n))||['source','restore','checkAuthority'].some(n=>!Object.hasOwn(provided,n)))throw fail('policy');for(const n of names){const d=Object.getOwnPropertyDescriptor(provided,n);if(!d||!('value'in d))throw fail('policy');values[n]=d.value;}
   const input=values as unknown as OriginalRecordReferenceOptions<P>;if(typeof input.restore!=='function'||input.revisions&&input.suggestions)throw fail('policy');let editor:OriginalReferenceEditor|undefined;if(input.editor!==undefined){if(!input.editor||typeof input.editor!=='object'||Array.isArray(input.editor))throw fail('policy');const copied:Record<string,unknown>={};for(const n of Object.keys(input.editor)){const d=Object.getOwnPropertyDescriptor(input.editor,n);if(!d||!('value'in d)||['selectionEditing','reviewedHistory','searchHistory','segmentedHistory'].includes(n))throw fail('policy');copied[n]=d.value;}editor=copied;}
   const core=managedSourceCore(input.source) as SharedRichEditor<P>,paired=input.source instanceof SharedReviewPersistentSession;if(!paired&&!(input.source instanceof SharedPersistentSession))throw fail('source');for(const selected of[input.versions,input.suggestions,input.revisions])if(selected&&managedSourceCore(selected)!==core)throw fail('source');
@@ -76,14 +78,16 @@ export class OriginalRecordReferenceCapture{
     const queue:PersistentSuggestionRecords|undefined=revisionRead?.metadata().queue??queueRead?.metadata();if(queue)for(const[slot,value]of recordVariants(queue))add('suggestions',slot,originalReferencePackets(latest.core,{suggestions:structuredClone(value) as SharedSuggestionQueueRecord,reviewedHistory:reviewed},latest.check));
     if(revisionRead)for(const[slot,value]of recordVariants(revisionRead.metadata()))add('revisions',slot,originalReferencePackets(latest.core,{revisions:structuredClone(value) as SharedSuggestionRevisionsRecord},latest.check));
    }finally{previous?.dispose();}
-   const references=[...union.values()].sort((a,b)=>a.asset<b.asset?-1:a.asset>b.asset?1:a.generation<b.generation?-1:a.generation>b.generation?1:0);result=new OriginalRecordReferenceCapture(key,{format:'breditor/original-record-reference-capture',formatVersion:1,scope:'original-native-and-selected-stores-committed-pending-live',paired,states,kind:states.some(row=>row.pending.length)?'pending':'ready',references},{check,current,verify:async()=>{check();for(const read of reads){await read.verify();check();}},release});checkCapture.call(result);complete=true;return result;
+   const references=[...union.values()].sort((a,b)=>a.asset<b.asset?-1:a.asset>b.asset?1:a.generation<b.generation?-1:a.generation>b.generation?1:0);result=new OriginalRecordReferenceCapture(key,{format:'breditor/original-record-reference-capture',formatVersion:1,scope:'original-native-and-selected-stores-committed-pending-live',paired,states,kind:states.some(row=>row.pending.length)?'pending':'ready',references},{check,current,verify:async()=>{check();for(const read of reads){await read.verify();check();}},release});
+   if(mode)retainSourceRecordPayload(result,current,()=>({family:'original',state:{format:'breditor/original-source-record-payload',formatVersion:1,native:nativeRead.metadata(),versions:versionRead?.metadata()??null,suggestions:queueRead?.metadata()??null,revisions:revisionRead?.metadata()??null},files:[]}));
+   checkCapture.call(result);complete=true;return result;
   }finally{if(!complete){result?.dispose();release();}}
  }
 }
 const checkCapture=OriginalRecordReferenceCapture.prototype.check;
 export const captureOriginalRecordReferences=<P extends SharedSelectionPolicy>(provided:OriginalRecordReferenceOptions<P>)=>OriginalRecordReferenceCapture.capture(provided);
 /** Explicit historical scope for SDK-owned original-parent composition only. */
-export function captureOriginalRecordReferencesAfterOrigins<P extends SharedSelectionPolicy>(provided:OriginalRecordReferenceOptions<P>,origins:readonly OriginalReferenceOrigin[]){return captureAfterOrigins(provided,origins);}
+export function captureOriginalRecordReferencesAfterOrigins<P extends SharedSelectionPolicy>(provided:OriginalRecordReferenceOptions<P>,origins:readonly OriginalReferenceOrigin[],mode?:OperationalRecordReadMode){return captureAfterOrigins(provided,origins,mode);}
 function recordVariants<T>(value:{committed:T;pending:T|null;live:T}):readonly(readonly['committed'|'pending'|'live',T])[]{return[['committed',value.committed],...(value.pending?[['pending',value.pending] as const]:[]),['live',value.live]];}
 function nativeStates(value:OriginalNativeRecords|PersistentPairedMetadata):OriginalReferenceNativeState[]{
  if(value.format==='breditor/persistent-original-native-record-read')return recordVariants<{checkpoint:string}>(value).map(([slot,row])=>({slot,checkpoint:row.checkpoint,...value.identity,reviewedHistory:null,paired:null}));

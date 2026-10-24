@@ -1,6 +1,7 @@
 /** Complete local operational custody. The native source owns its journal and
  * original provider; this parent owns whole uploads and retained recovery until
  * the final callback-free handoff. No relay identity or activation is inferred. */
+import type {OperationalRecordReadMode} from '../operation_read/record_payload.js';
 import type {SharedSelectionPolicy} from '../types.js';
 import {SharedIndependentHistoryPersistentSession as Session} from '../independent_history/session.js';
 import {transferRecoveredIndependentParticipant} from '../independent_recovery/recovery.js';
@@ -32,9 +33,9 @@ const key=Object.freeze({}),closeSource=Session.prototype.close,journalFile=Jour
 let reserve:<P extends SharedSelectionPolicy>(owners:readonly OperationalIndependentLocalParticipant<P>[])=>OperationalCohortReservation<Readonly<LocalOperationParticipantParts<P>>>;
 export interface LocalParticipantReadParts<P extends SharedSelectionPolicy=SharedSelectionPolicy>{readonly source:Readonly<{session:Session<P>}>;readonly uploads:NonNullable<LocalParticipantOwners<P>['uploads']>}
 let reserveRead:<P extends SharedSelectionPolicy>(owners:readonly OperationalIndependentLocalParticipant<P>[])=>OperationalReadReservation<LocalParticipantReadParts<P>>;
-let reserveFreshRead:<P extends SharedSelectionPolicy>(owner:OperationalIndependentLocalParticipant<P>,read:FreshLocalParentHistoryOptions<P>,authority:()=>void,signal?:AbortSignal)=>FreshLocalParentHistoryRead;
+let reserveFreshRead:<P extends SharedSelectionPolicy>(owner:OperationalIndependentLocalParticipant<P>,read:FreshLocalParentHistoryOptions<P>,authority:()=>void,signal?:AbortSignal,mode?:OperationalRecordReadMode)=>FreshLocalParentHistoryRead;
 /** Fresh non-consuming protected-parent read; no mutable source escapes. */
-export function reserveFreshIndependentLocalHistoryRead<P extends SharedSelectionPolicy>(owner:OperationalIndependentLocalParticipant<P>,read:FreshLocalParentHistoryOptions<P>,checkAuthority:()=>void,signal?:AbortSignal){return reserveFreshRead(owner,read,checkAuthority,signal);}
+export function reserveFreshIndependentLocalHistoryRead<P extends SharedSelectionPolicy>(owner:OperationalIndependentLocalParticipant<P>,read:FreshLocalParentHistoryOptions<P>,checkAuthority:()=>void,signal?:AbortSignal,mode?:OperationalRecordReadMode){return reserveFreshRead(owner,read,checkAuthority,signal,mode);}
 /** Non-consuming native/upload inspection; no coordinator lease is released. */
 export function reserveIndependentLocalRead<P extends SharedSelectionPolicy>(owners:readonly OperationalIndependentLocalParticipant<P>[]):OperationalReadReservation<LocalParticipantReadParts<P>>{return reserveRead(owners);}
 /** Intrinsic legacy-local group. Original provider semantics remain original;
@@ -44,9 +45,9 @@ async function verified(state:LocalParticipantState,initial=false){await retaine
 export class OperationalIndependentLocalParticipant<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
  readonly #state:LocalParticipantState<P>;#exposed=false;#closed=false;#busy=false;#readToken:object|undefined;
  private constructor(token:object,state:LocalParticipantState<P>){if(token!==key)throw fail('independent_local_participant_closed');this.#state=state;Object.freeze(this);}
- static{reserveFreshRead=(owner,read,authority,signal)=>{if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('independent_local_participant_policy');owner.#start();const token={};owner.#readToken=token;let released=false;
+ static{reserveFreshRead=(owner,read,authority,signal,mode)=>{if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('independent_local_participant_policy');owner.#start();const token={};owner.#readToken=token;let released=false;
   const held=()=>{if(released||owner.#closed||!owner.#exposed||!owner.#busy||owner.#readToken!==token)throw fail('independent_local_participant_closed');},release=()=>{if(released)return;held();released=true;owner.#readToken=undefined;owner.#busy=false;};
-  try{return makeFreshLocalParentHistoryRead(owner.#state,held,release,read,authority,signal);}catch(error){release();throw error;}
+  try{return makeFreshLocalParentHistoryRead(owner.#state,held,release,read,authority,signal,mode);}catch(error){release();throw error;}
  };}
  static{reserve=<Q extends SharedSelectionPolicy>(provided:readonly OperationalIndependentLocalParticipant<Q>[])=>{
   const owners=snapshotInventoryInputs(provided,()=>fail('independent_local_participant_policy'),owner=>{if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('independent_local_participant_policy');if(!owner.#exposed||owner.#closed)throw fail('independent_local_participant_closed');if(owner.#busy)throw fail('independent_local_participant_busy');return owner;});

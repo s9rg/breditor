@@ -2,6 +2,7 @@
  * reservation; currentness and actual verification include the held parent. */
 import {SharedEditorError} from '../core.js';
 import {frozen} from '../room_participant_inventory/policy.js';
+import {forgetSourceRecordPayload} from './record_payload.js';
 import type {RichRetainedAssetReference} from '@breditor/experimental-rich-content';
 export interface ParentReferenceSource{readonly kind:'ready'|'pending';readonly references:readonly RichRetainedAssetReference[]}
 export interface ParentReferenceProducer<M extends ParentReferenceSource>{metadata():M;check():void;checkCurrent():void;verify():Promise<void>;dispose():void}
@@ -15,7 +16,7 @@ export class OperationalParentReferenceRead<M extends ParentReferenceSource>{
  check():void{if(this.#closed)throw fail('closed');if(this.#checking)throw fail('busy');this.#checking=true;try{this.#callbacks!.check();if(this.#closed)throw fail('closed');}finally{this.#checking=false;}}
  checkCurrent():void{if(this.#closed)throw fail('closed');this.#callbacks!.current();if(this.#closed)throw fail('closed');}
  async verify():Promise<void>{if(this.#closed)throw fail('closed');if(this.#verifying)throw fail('busy');this.#verifying=true;try{check.call(this);await this.#callbacks!.verify();check.call(this);}finally{this.#verifying=false;}}
- dispose():void{if(this.#closed)return;this.#closed=true;const callbacks=this.#callbacks;this.#callbacks=undefined;callbacks?.release();}
+ dispose():void{if(this.#closed)return;this.#closed=true;forgetSourceRecordPayload(this);const callbacks=this.#callbacks;this.#callbacks=undefined;callbacks?.release();}
  static{create=(metadata,callbacks)=>new OperationalParentReferenceRead(token,metadata,callbacks);}
 }
 const check=OperationalParentReferenceRead.prototype.check;

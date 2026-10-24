@@ -1,0 +1,183 @@
+{
+  "format": "breditor/room-record-cut-qualification",
+  "formatVersion": 1,
+  "qualified": true,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "date": "2026-10-24",
+  "directory": "/Users/s/code/breditor/target/room-record-cut-final-67w6y8",
+  "index": "target/room-record-cut-final-67w6y8/index.json",
+  "indexSha256": "316c473a7e794a4b89194881acaae6b8f08103096aa8d09ecb31bb1763dc3920",
+  "entries": 8827,
+  "source": {
+    "commit": "0c1987cf3df72e41a9a9697ea59471ff6c9ba8db",
+    "dirty": true,
+    "sha256": "6cd26550cc9415e1461a61f31bd1c5bc7718eff5374763a1d1d261405d03d2d0",
+    "files": 6317,
+    "bytes": 49810340
+  },
+  "selectedNormalStages": 14,
+  "functionalPlanChecks": 441,
+  "fullPlanChecks": 449,
+  "sourceAssertions": 1482,
+  "installedAssertions": 1482,
+  "bundledAssertions": 1482,
+  "newRecordCutScenarios": 61,
+  "newIndependentHistoryPairs": 4,
+  "newNativeClientsPerPath": 32,
+  "strictTypes": 19,
+  "registryArtifacts": 45,
+  "productionModules": 676,
+  "bundleSha256": "78c871a7212134418be721632746cd7618a648591aa5bbc63dbf60f99aa26519",
+  "archives": [
+    {
+      "name": "@breditor/browser",
+      "path": "/private/tmp/breditor-room-record-cut-installed-97G43t/archives/breditor-browser-0.3.0-alpha.22.tgz",
+      "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+    },
+    {
+      "name": "@breditor/experimental-rich-content",
+      "path": "/private/tmp/breditor-room-record-cut-installed-97G43t/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+      "sha256": "23bb4160babd07354daf373f81e731820ff41e45877ee711eb36401bac46497d"
+    },
+    {
+      "name": "@breditor/collaboration",
+      "path": "/private/tmp/breditor-room-record-cut-installed-97G43t/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+      "sha256": "6a2a71eb81333c40fc5e68ce6b68b70ef3b689ab05941e549003c826ad30c239"
+    }
+  ],
+  "nativeFiles": 100,
+  "nativeReports": [
+    {
+      "path": "target/complete-image-cohort-native.json",
+      "sha256": "606e969d0feccebb27f0fcc189df8138ff6cfa1c33ff7b7090e00c3532c47534"
+    },
+    {
+      "path": "target/complete-cohort-native.json",
+      "sha256": "d35f9373067726b349857ba6dea921e2fe0367d60443dafe29b60964c7207336"
+    }
+  ],
+  "nativeProducerBinarySha256": "9f5948a8bba3367b601622f8316ec45012aa625cbd59e8a9656ca4793620ab46",
+  "standardNativeBinarySha256": "0d64e4b268a197a004a2913e6f1b7ec339d5b997478b0d449af5ac667ea7025f",
+  "actualLiveControlRuns": [
+    {
+      "directory": "/Users/s/code/breditor/target/complete-control-running-030xyU",
+      "cases": 10
+    },
+    {
+      "directory": "/Users/s/code/breditor/target/complete-control-running-ChYdgu",
+      "cases": 10
+    },
+    {
+      "directory": "/Users/s/code/breditor/target/complete-control-running-JARe8s",
+      "cases": 10
+    },
+    {
+      "directory": "/Users/s/code/breditor/target/complete-control-running-Qobetk",
+      "cases": 10
+    },
+    {
+      "directory": "/Users/s/code/breditor/target/complete-control-running-V73pFT",
+      "cases": 10
+    },
+    {
+      "directory": "/Users/s/code/breditor/target/complete-control-running-VObpog",
+      "cases": 10
+    }
+  ],
+  "actualLivePublicFiles": 300,
+  "actualClosedPorts": 60,
+  "normalWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+  "nonDocumentationInputs": 5604,
+  "contracts": {
+    "candidate-runner-contracts": 68,
+    "complete-history-provider-contracts": 3,
+    "room-record-cut-contracts": 46,
+    "operational-native-read-contracts": 39
+  },
+  "scope": "Complete same-reservation records-v1 payloads from actual seven-family native/typed journal sources, literal origin/input/catalog files and whole uploads, plus bounded lossless canonical framing and immutable absent-only retention. Four independent document/comment history pairs retain all seven clients before actual owners close, then cold-read by namespace and independently selected exact pin and reconstruct native future Undo/Redo. Partial catalog selections preserve unselected literal files explicitly; they are not reconciled. Failed forgetting, aborted/lost-ack saves, bounded CURRENT/PENDING native files, corruption, quota, non-overwrite, actual queued raw requests and real lease-release acknowledgement laws remain separate. All prior 1421 history/provider/reconciliation laws remain cumulative. Actual Rust native controls; synthetic IDB/locks/raster. Data/integrity only: not physical crash durability, native editable successor admission, exact-choice approval, selected-clone operational adoption, registered-stream closure, authenticated activation, cross-device fencing, full V1 or parity.",
+  "newAssertions": {
+    "framingAndDataChannel": 22,
+    "immutableStorageAndCleanup": 23,
+    "failedSaveAndPacketPayloads": 9,
+    "actualNativeSdk": 7,
+    "total": 61
+  },
+  "independentHistoryPairs": 4,
+  "sevenFamilyClientsAcrossPairs": 28,
+  "additionalPartialCorruptionAndCleanupClientInstances": 4,
+  "actualRustNative": true,
+  "controlledIndexedDbLocksAndRaster": true,
+  "physicalBrowserCrashDurability": false,
+  "nativeEditableHandoff": false,
+  "registeredStreamClosure": false,
+  "authenticatedActivation": false,
+  "crossDeviceFencing": false,
+  "v1GatesOpen": 13,
+  "packageVersionsChanged": false,
+  "oldNativeAndStoredProtocolsChanged": false,
+  "normalWasmChanged": false,
+  "existing1421LawsRetained": true,
+  "missingDestinationRepair": {
+    "actualNativeBefore": {
+      "fixed": false,
+      "invalidRetentionReturnedFile": true,
+      "noDurableDatabaseWritten": true,
+      "error": null,
+      "actualNativeControl": true
+    },
+    "actualNativeAfter": {
+      "fixed": true,
+      "invalidRetentionReturnedFile": false,
+      "noDurableDatabaseWritten": true,
+      "error": "record_cut_policy",
+      "actualNativeControl": true
+    },
+    "regression": "Invalid/missing/aliased destination refuses before fresh callbacks; portable capture remains a distinct explicit method"
+  },
+  "pendingCleanupHandoffRepair": {
+    "actualNativeBefore": {
+      "fixed": false,
+      "editablePartsEscapedPendingCleanup": true,
+      "error": null,
+      "afterActualDrainHandoffPassed": true,
+      "actualNativeControl": true
+    },
+    "actualNativeAfter": {
+      "fixed": true,
+      "editablePartsEscapedPendingCleanup": false,
+      "error": "physical_operation_v3_storage",
+      "afterActualDrainHandoffPassed": true,
+      "actualNativeControl": true
+    },
+    "regression": "Pending actual raw request blocks editable handoff; the same root automatically drains real cleanup after it settles, then preserves both native history lanes"
+  },
+  "supersededRuns": {
+    "qualified": false,
+    "normalSourceChangeRefusalRetained": true,
+    "secondRunDeliberatelyInterrupted": true,
+    "actualClosedPorts": 30,
+    "sourceOrUserDataDeleted": false
+  },
+  "publicRootRuntimeAdditions": [
+    "PhysicalRoomRecordCutArchive",
+    "readRetainedPhysicalRoomRecordCut",
+    "PhysicalRoomRecordCutError",
+    "MAX_ROOM_RECORD_CUT_BYTES",
+    "MAX_ROOM_RECORD_CUT_HEADER_BYTES",
+    "MAX_ROOM_RECORD_CUT_JSON_BYTES"
+  ],
+  "limitations": [
+    "Complete selected client payloads and literal room inputs, not current provider data or all unselected native client states",
+    "Cold file read provides bounded data/integrity and closed framing, not family-specific native admission or permission to create a writer",
+    "Four new SDK history pairs reuse language 3 standard/atomic native data; fresh base producers cover ten profile/wire rooms each, not a full new ten-by-four SDK matrix",
+    "Whole cut limit 1 GiB, manifest 16 MiB, JSON entry 256 MiB; original source/component budgets and two-cut CURRENT/PENDING journal contracts remain unchanged",
+    "No qualified memory/latency budget, physical browser durability, cross-browser/input/accessibility result or historical WebKit repair",
+    "Exact-choice approval, genuine editable successor admission/handoff, full provider/client/registered-stream closure, authenticated activation, cross-device fencing, sustainable history and remaining full parity are still required",
+    "Fourteen selected normal stages, not the full candidate release plan or V1 approval"
+  ],
+  "noPush": true,
+  "noTag": true,
+  "noPublication": true,
+  "noDeployment": true
+}

@@ -668,6 +668,16 @@ may become orphaned while their captured quotations and replies stay readable.
 The [review and asset contract](../../docs/RICH_REVIEW.md#image-bytes-during-review-and-restore)
 includes separate native-host and clean-installed combined-workflow commands.
 
+## Complete room record retention
+
+For complete retained room data, see [room record cuts](../../docs/ROOM_RECORD_CUT.md).
+The genuine private room coordinator can capture or immutably retain full native,
+packet, journal, literal-input and upload bytes. Public
+`PhysicalRoomRecordCutArchive.read` and `readRetainedPhysicalRoomRecordCut` return
+independently pinned data archives, not editable native owners or approval to
+activate writers. Existing history-read defaults and saved protocol meanings
+remain unchanged.
+
 ## Natural shared typing history
 
 `SharedPersistentSession.open({history: 'typing-v1', ...})` selects native grouped

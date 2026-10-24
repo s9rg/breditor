@@ -1,5 +1,6 @@
 /** Fresh read admission of a genuine independent delivery parent. Its complete
  * packet/receipt identity is retained, never converted to local-only storage. */
+import type {OperationalRecordReadMode} from '../operation_read/record_payload.js';
 import {checkRichAssetLimits} from '@breditor/experimental-rich-content';
 import type {SharedSelectionPolicy} from '../types.js';
 import type {IndependentDeliveryParentCustody} from './participant.js';
@@ -20,11 +21,11 @@ import {operationJournalFailure as fail} from './journal_failure.js';
 export type FreshDeliveryParentHistoryOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy>=Omit<IndependentOperationReadOptions<P>,'checkAuthority'|'signal'>;
 export type FreshDeliveryParentHistoryMetadata=FreshParentHistoryMetadata<Awaited<ReturnType<typeof readDeliveryParentRecords>>,IndependentOperationReferenceMetadata>;
 export type FreshDeliveryParentHistoryRead=FreshParentHistoryReservation<FreshDeliveryParentHistoryMetadata>;
-export function makeFreshDeliveryParentHistoryRead<P extends SharedSelectionPolicy>(s:IndependentDeliveryParentCustody<P>,held:()=>void,unlock:()=>void,provided:FreshDeliveryParentHistoryOptions<P>,providedAuthority:()=>void,signal?:AbortSignal):FreshDeliveryParentHistoryRead{
+export function makeFreshDeliveryParentHistoryRead<P extends SharedSelectionPolicy>(s:IndependentDeliveryParentCustody<P>,held:()=>void,unlock:()=>void,provided:FreshDeliveryParentHistoryOptions<P>,providedAuthority:()=>void,signal?:AbortSignal,mode?:OperationalRecordReadMode):FreshDeliveryParentHistoryRead{
  const input=snapshotFreshFactoryOptions(provided),session=snapshotIndependentDeliveryFactory(s.p.options.expected,input.session,true),limits=checkRichAssetLimits(input.limits??s.p.options.limits),authority=participantAuthority(providedAuthority),source=s.owners.session,uploads=s.owners.uploads;if(!source||!uploads)throw fail('independent_operation_missing');const managed=independentDeliverySessionPort(source).check;let observation:OperationalReadCancellation|undefined;
  const current=()=>{held();s.choice.readCurrent();if(s.owners.session!==source||s.owners.uploads!==uploads||s.recoveryDbClosed)throw fail('independent_operation_source_changed');checkRecoveryLeasesHeld(s.leases);managed();checkOperationUploads(s.owners);observation?.check(()=>fail('independent_operation_reference_aborted'));},check=()=>{current();authority();current();};
  return createFreshParentHistoryReservation({current,uploads:()=>{current();return uploads;},release:()=>{try{observation?.close();}finally{unlock();}},open:async()=>{observation=new OperationalReadCancellation(signal);check();const parent=await readDeliveryParentRecords(s.p,s.recoveryDb,check,signal);check();let capture:Awaited<ReturnType<typeof captureIndependentOperationReferences>>|undefined,result:ParentReferenceProducer<FreshDeliveryParentHistoryMetadata>|undefined,complete=false;
-  try{capture=await captureIndependentOperationReferences({source,session,limits,checkAuthority:check,...(signal?{signal}:{})});check();result=composeFreshParentHistory('independent-delivery',parent,capture,current,async()=>{const actual=await readDeliveryParentRecords(s.p,s.recoveryDb,check,signal);check();if(JSON.stringify(actual)!==JSON.stringify(parent))throw fail('independent_operation_recovery_diverged');});complete=true;return result;}
+  try{capture=await captureIndependentOperationReferences({source,session,limits,checkAuthority:check,...(signal?{signal}:{})},mode);check();result=composeFreshParentHistory('independent-delivery',parent,capture,current,async()=>{const actual=await readDeliveryParentRecords(s.p,s.recoveryDb,check,signal);check();if(JSON.stringify(actual)!==JSON.stringify(parent))throw fail('independent_operation_recovery_diverged');});complete=true;return result;}
   finally{if(!complete){if(result)result.dispose();else capture?.dispose();}}
  }});
 }

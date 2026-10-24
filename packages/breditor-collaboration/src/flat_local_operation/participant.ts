@@ -1,6 +1,7 @@
 /** Complete graph ownership: literal input, journal/source and whole uploads
  * cross one actual four-name recovery path. All custody and final witnesses
  * use shared genuine machinery, not a copied graph-owner overlay. */
+import type {OperationalRecordReadMode} from '../operation_read/record_payload.js';
 import type {SharedSelectionPolicy} from '../types.js';
 import {SharedIndependentHistoryPersistentSession as Session} from '../independent_history/session.js';
 import {RecoveryLease} from '../participant_recovery/lease.js';import {recoveryOpeningContext} from '../participant_recovery/opening_custody.js';
@@ -25,9 +26,9 @@ const readWitnessCheck=ReadWitness.prototype.check,readWitnessCurrent=ReadWitnes
 let reserve:<P extends SharedSelectionPolicy>(owner:OperationalFlatLocalParticipant<P>)=>NativeInputParticipantReservation<P>;
 type ReadParts<P extends SharedSelectionPolicy>=Readonly<Omit<FlatLocalParticipantParts<P>,'input'>>;
 let reserveRead:<P extends SharedSelectionPolicy>(owner:OperationalFlatLocalParticipant<P>)=>OperationalReadReservation<ReadParts<P>>;
-let reserveFreshRead:<P extends SharedSelectionPolicy>(owner:OperationalFlatLocalParticipant<P>,read:FreshFlatLocalHistoryOptions<P>,authority:()=>void,signal?:AbortSignal)=>FreshFlatLocalHistoryRead;
+let reserveFreshRead:<P extends SharedSelectionPolicy>(owner:OperationalFlatLocalParticipant<P>,read:FreshFlatLocalHistoryOptions<P>,authority:()=>void,signal?:AbortSignal,mode?:OperationalRecordReadMode)=>FreshFlatLocalHistoryRead;
 /** Fresh manifest-preserving flat parent read; not a snapshot adapter. */
-export function reserveFreshFlatLocalHistoryRead<P extends SharedSelectionPolicy>(owner:OperationalFlatLocalParticipant<P>,read:FreshFlatLocalHistoryOptions<P>,checkAuthority:()=>void,signal?:AbortSignal){return reserveFreshRead(owner,read,checkAuthority,signal);}
+export function reserveFreshFlatLocalHistoryRead<P extends SharedSelectionPolicy>(owner:OperationalFlatLocalParticipant<P>,read:FreshFlatLocalHistoryOptions<P>,checkAuthority:()=>void,signal?:AbortSignal,mode?:OperationalRecordReadMode){return reserveFreshRead(owner,read,checkAuthority,signal,mode);}
 /** Non-consuming flat-input/source/upload read, without rewriting provenance. */
 export function reserveFlatLocalRead<P extends SharedSelectionPolicy>(owner:OperationalFlatLocalParticipant<P>):OperationalReadReservation<ReadParts<P>>{return reserveRead(owner);}
 /** Internal genuine-parent reservation. Flat input is never a snapshot adapter. */
@@ -35,9 +36,9 @@ export function reserveFlatLocalParticipant<P extends SharedSelectionPolicy>(own
 export class OperationalFlatLocalParticipant<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
  readonly #state:FlatLocalParticipantState<P>;#exposed=false;#closed=false;#busy=false;#readToken:object|undefined;
  private constructor(token:object,state:FlatLocalParticipantState<P>){if(token!==key)throw fail('flat_local_input_participant_policy');this.#state=state;Object.freeze(this);}
- static{reserveFreshRead=(owner,read,authority,signal)=>{if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('flat_local_input_participant_policy');owner.#start();const token={};owner.#readToken=token;let released=false;
+ static{reserveFreshRead=(owner,read,authority,signal,mode)=>{if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('flat_local_input_participant_policy');owner.#start();const token={};owner.#readToken=token;let released=false;
   const held=()=>{if(released||owner.#closed||!owner.#exposed||!owner.#busy||owner.#readToken!==token)throw fail('flat_local_input_participant_closed');},release=()=>{if(released)return;held();released=true;owner.#readToken=undefined;owner.#busy=false;};
-  try{return makeFreshFlatLocalHistoryRead(owner.#state,held,release,read,authority,signal);}catch(error){release();throw error;}
+  try{return makeFreshFlatLocalHistoryRead(owner.#state,held,release,read,authority,signal,mode);}catch(error){release();throw error;}
  };}
  static{reserve=<Q extends SharedSelectionPolicy>(owner:OperationalFlatLocalParticipant<Q>)=>{
   if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('flat_local_input_participant_policy');owner.#start();const s=owner.#state;let witness:Awaited<ReturnType<typeof verifyFlatLocalParticipant<Q>>>|undefined,prepared=false,finished=false;

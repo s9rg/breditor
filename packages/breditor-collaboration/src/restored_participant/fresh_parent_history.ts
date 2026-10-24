@@ -1,5 +1,6 @@
 /** Genuine coordinated graph read: literal parent input plus every retained
  * original/input/current/pending/LIVE native and packet state. No old job hook. */
+import type {OperationalRecordReadMode} from '../operation_read/record_payload.js';
 import {checkRichAssetLimits} from '@breditor/experimental-rich-content';
 import type {SharedSelectionPolicy} from '../types.js';
 import type {RestoredDeliveryParentCustody} from './participant.js';
@@ -20,11 +21,11 @@ import {operationJournalFailure as fail} from '../independent_operation/journal_
 export type FreshRestoredDeliveryHistoryOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy>=Omit<IndependentOperationReadOptions<P>,'checkAuthority'|'signal'>;
 export type FreshRestoredDeliveryHistoryMetadata=FreshParentHistoryMetadata<Awaited<ReturnType<typeof readRestoredDeliveryParentRecords>>,RestoredGraphReferenceMetadata>;
 export type FreshRestoredDeliveryHistoryRead=FreshParentHistoryReservation<FreshRestoredDeliveryHistoryMetadata>;
-export function makeFreshRestoredDeliveryHistoryRead<P extends SharedSelectionPolicy>(s:RestoredDeliveryParentCustody<P>,held:()=>void,unlock:()=>void,provided:FreshRestoredDeliveryHistoryOptions<P>,providedAuthority:()=>void,signal?:AbortSignal):FreshRestoredDeliveryHistoryRead{
+export function makeFreshRestoredDeliveryHistoryRead<P extends SharedSelectionPolicy>(s:RestoredDeliveryParentCustody<P>,held:()=>void,unlock:()=>void,provided:FreshRestoredDeliveryHistoryOptions<P>,providedAuthority:()=>void,signal?:AbortSignal,mode?:OperationalRecordReadMode):FreshRestoredDeliveryHistoryRead{
  const input=snapshotFreshFactoryOptions(provided),session=snapshotIndependentDeliveryFactory(s.input.selection.original,input.session,true),limits=checkRichAssetLimits(input.limits??s.input.options.limits),authority=participantAuthority(providedAuthority),pair=s.pair;if(!pair)throw fail('restored_participant_not_ready');const managed=independentDeliverySessionPort(pair.source).check;let observation:OperationalReadCancellation|undefined;
  const current=()=>{held();s.choice.readCurrent();if(s.pair!==pair||s.dbClosed||s.inputRetired||s.leasesReleased)throw fail('restored_participant_closed');checkRecoveryLeasesHeld(s.leases);managed();checkRestoredUploads(s.uploads);observation?.check(()=>fail('restored_graph_reference_aborted'));},check=()=>{current();authority();current();};
  return createFreshParentHistoryReservation({current,uploads:()=>{current();return s.uploads.store!;},release:()=>{try{observation?.close();}finally{unlock();}},open:async()=>{observation=new OperationalReadCancellation(signal);check();const parent=await readRestoredDeliveryParentRecords(s.db,s.input,s.plan,check,signal);check();let capture:Awaited<ReturnType<typeof captureRestoredGraphReferences>>|undefined,result:ParentReferenceProducer<FreshRestoredDeliveryHistoryMetadata>|undefined,complete=false;
-  try{capture=await captureRestoredGraphReferences({source:pair.source,session,limits,checkAuthority:check,...(signal?{signal}:{})});check();result=composeFreshParentHistory('restored-graph',parent,capture,current,async()=>{const actual=await readRestoredDeliveryParentRecords(s.db,s.input,s.plan,check,signal);check();if(JSON.stringify(actual)!==JSON.stringify(parent))throw fail('restored_participant_record');});complete=true;return result;}
+  try{capture=await captureRestoredGraphReferences({source:pair.source,session,limits,checkAuthority:check,...(signal?{signal}:{})},mode);check();result=composeFreshParentHistory('restored-graph',parent,capture,current,async()=>{const actual=await readRestoredDeliveryParentRecords(s.db,s.input,s.plan,check,signal);check();if(JSON.stringify(actual)!==JSON.stringify(parent))throw fail('restored_participant_record');});complete=true;return result;}
   finally{if(!complete){if(result)result.dispose();else capture?.dispose();}}
  }});
 }

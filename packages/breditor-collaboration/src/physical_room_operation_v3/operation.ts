@@ -32,6 +32,8 @@ import type {PhysicalAssetReadOptions,PhysicalAssetReadScope} from './asset_read
 import {readPhysicalOperationV3HistoryAssets} from './history_assets.js';
 import type {PhysicalOperationV3HistoryAssetsRead} from './history_assets_contract.js';
 import type {SharedPhysicalRoomRecoveryHost} from '../physical_recovery_control/host.js';
+import {capturePhysicalOperationV3RecordCut} from './record_cut.js';
+import type {PhysicalRoomRecordCutFile} from '../physical_room_record_cut/contract.js';
 const key=Object.freeze({});
 const errors={policy:()=>fail('physical_operation_v3_policy'),busy:()=>fail('physical_operation_v3_in_use'),storage:()=>fail()};
 interface State{
@@ -135,12 +137,23 @@ export class PhysicalRoomClientOperationV3{
  /** Fresh protected-history AND whole-upload availability against the genuine
   * authenticated native host. No upload, receipt promotion or activation. */
  readHistoryAssets<P extends SharedSelectionPolicy>(host:SharedPhysicalRoomRecoveryHost,input:PhysicalOperationV3HistoryReadOptions<P>):Promise<PhysicalOperationV3HistoryAssetsRead>{return this.#run(async()=>{await this.#rollback.drain();return readPhysicalOperationV3HistoryAssets(this.#s,()=>{if(!this.#exposed||!this.#busy)throw fail('physical_operation_v3_closed');},this.#rollback,host,input);});}
+ /** Portable full data under genuine held reads. Retain the file and its exact
+  * independent pin durably before any later approved operational handoff. */
+ captureRecordCut<P extends SharedSelectionPolicy>(input:PhysicalOperationV3HistoryReadOptions<P>):Promise<PhysicalRoomRecordCutFile>{return this.#run(async()=>{await this.#rollback.drain();return capturePhysicalOperationV3RecordCut(this.#s,()=>{if(!this.#exposed||!this.#busy)throw fail('physical_operation_v3_closed');},this.#rollback,input);},error=>error instanceof Error?error:known(error));}
+ /** Immutable absent-only storage under a separate namespace, with exact-byte
+  * idempotent retry. All sources stay held and revalidated through storage and
+  * cleanup. The returned file/pin is data, never approval or a new writer. */
+ retainRecordCut<P extends SharedSelectionPolicy>(database:string,input:PhysicalOperationV3HistoryReadOptions<P>):Promise<PhysicalRoomRecordCutFile>{return this.#run(async()=>{await this.#rollback.drain();return capturePhysicalOperationV3RecordCut(this.#s,()=>{if(!this.#exposed||!this.#busy)throw fail('physical_operation_v3_closed');},this.#rollback,input,{database});},error=>error instanceof Error?error:known(error));}
  #disposeArchive():void{const s=this.#s;if(!s.archiveDisposed){archive.dispose.call(s.held.archive);s.archiveDisposed=true;}}
  /** Reserve this actual job alongside every real child. Temporary native reader
   * cleanup precedes the last client barriers. consume is private flag writes
   * only; no native destructor or host callback can lose returned children. */
  #reservation():OperationalCohortReservation<never>{const s=this.#s;let finished=false;const current=()=>{if(finished)throw fail('physical_operation_v3_closed');s.local();};return{states:[],assetStores:[],verify:()=>this.#retained(),markReleased:current,checkBindings:current,checkCurrent:current,disposeAuxiliaries:()=>{current();this.#disposeArchive();},checkManaged:current,consume:()=>{s.life.closed=true;this.#exposed=false;finished=true;},abandon:()=>{finished=true;}};}
  intoParts():Promise<PhysicalOperationV3Parts>{return this.#run(async()=>{
+  // A failed retention open can own a raw request/namespace lease outside the
+  // participant set. Never consume the root and strand its cleanup scope. The
+  // ordinary no-pending-cleanup handoff keeps its old scheduling semantics.
+  if(this.#rollback.pending)await this.#rollback.drain();
   await this.#verify();const s=this.#s,rows=s.children.map(child=>child.live!) as CompleteOperationParticipant[],parent=this.#reservation(),handoff=await prepareCompleteOperationParticipants(rows,[s.held.db],[s.held.lease,s.lease],async()=>{await this.#retained();s.life.released=true;await s.intent.close();this.#guard();},this.#guard,()=>{s.life.released=true;},parent);
   try{return handoff.commit();}finally{handoff.abandon();if(s.life.closed)s.cancellation.close();}
  });}

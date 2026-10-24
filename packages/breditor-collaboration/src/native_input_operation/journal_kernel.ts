@@ -3,6 +3,8 @@
  * kernel has exactly one genuine facade, preserves source-owned input lifetime
  * and keeps permission separate from native/provenance admission. */
 import {SharedRichEditor,SharedEditorError} from '../core.js';
+import {retainedOperationCuts,sameRetainedOperationCuts,type RetainedOperationCut} from '../operation_read/retained_cuts.js';
+import {recordReadMode,type OperationalRecordReadMode} from '../operation_read/record_payload.js';
 import type {SharedSelectionPolicy} from '../types.js';
 import type {IndependentHistoryCut,IndependentHistoryStoredCut} from '../independent_history/contract.js';
 import type {IndependentLocalOperationDriver} from '../independent_history/local_driver.js';
@@ -151,18 +153,19 @@ export class NativeInputJournal<A,C extends NativeInputJournalChoice,O,R extends
     pinRetained:()=>{checkCurrent();if(this.#working)throw this.#error('busy');const epoch=this.#readEpoch;return()=>{checkCurrent();if(this.#working||this.#readEpoch!==epoch)throw this.#error('reference_changed');};},
     inputFile:()=>{check();return this.#intrinsics.input.file(this.#input);},originalFile:()=>{check();return this.#intrinsics.input.originalFile(this.#input);},uploads:()=>{check();return this.#intrinsics.input.uploads(this.#input);},blob:(asset:string,generation:string)=>{check();return this.#intrinsics.input.blob(this.#input,asset,generation);},
     readSource:()=>{check();const port=independentHistoryNative(owner),stamp=port.stamp(),data=port.read();this.#verify(port.core,data.versions,check);if(port.stamp()!==stamp)throw this.#error('capture_changed');return data;},
-    readSnapshot:()=>track(async()=>{
+    readSnapshot:(mode?:OperationalRecordReadMode)=>track(async()=>{
+     recordReadMode(mode);
      let selected:LocalPortableReplay|undefined;
-     let result:Readonly<{record:R;input:Blob;current:IndependentHistoryCut|null;pending:IndependentHistoryCut|null;observed:string|null}>;
+     let result:Readonly<{record:R;input:Blob;current:IndependentHistoryCut|null;pending:IndependentHistoryCut|null;observed:string|null;retained?:readonly RetainedOperationCut[]}>;
      try{
       // A freshly selected runtime reconstructs its own readonly LIVE anchor
       // from exact owned data. Never pass an old runtime's native pointer into
       // another Wasm instance when comparing current/pending ancestry.
       if(providedFactory!==undefined){selected=await replayLocalOperationRecovery(this.#choice.expected.original,factory,this.#anchor.recovery,check);check();}
       const anchor=selected??this.#anchor,a=await this.#read(check,factory,anchor);check();const observed=await this.#source(check);check();const b=await this.#read(check,factory,anchor);check();
-      if(JSON.stringify(a.record)!==JSON.stringify(b.record))throw this.#error('capture_changed');const r=a.record,current=r.current===null?null:a.rows.get(r.current)!,pending=r.pending===null?null:a.rows.get(r.pending)!;
+      if(JSON.stringify(a.record)!==JSON.stringify(b.record)||mode&&!sameRetainedOperationCuts(a.rows,b.rows))throw this.#error('capture_changed');const r=a.record,current=r.current===null?null:a.rows.get(r.current)!,pending=r.pending===null?null:a.rows.get(r.pending)!;
       if(observed===null?current!==null:!((current&&same(observed,current))||(pending&&same(observed,pending))))throw this.#error('source_diverged');
-      result={record:{...r},input:a.file,current:current&&copyOperationCut(current),pending:pending&&copyOperationCut(pending),observed:observed===null?null:observed.head===current?.head?r.current:r.pending};
+      result={record:{...r},input:a.file,current:current&&copyOperationCut(current),pending:pending&&copyOperationCut(pending),observed:observed===null?null:observed.head===current?.head?r.current:r.pending,...(mode?{retained:retainedOperationCuts(a.rows)}:{})};
      }finally{selected?.dispose();}
      check();return result;
     }),

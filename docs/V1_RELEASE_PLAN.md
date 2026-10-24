@@ -43,6 +43,22 @@ publication or deployment is promoted.
 
 ## Current seven family client recovery
 
+The [complete room record cut](ROOM_RECORD_CUT.md) now captures selected native,
+packet and journal payloads, literal source/parent/catalog files and whole uploads
+under the same genuine reservations. It adds immutable absent-only storage and
+independently pinned cold data reads, without changing ordinary history-read
+defaults. Its [qualification](qualification/2026-10-24-room-record-cut.json) passes
+fourteen selected normal stages: source, fresh offline packages and the actual
+production bundle each pass 1,482 cumulative laws with nineteen strict fixtures.
+Four new seven-family history cases verify cold retained bytes and future native
+Undo/Redo for 28 client instances; partial/corruption/cleanup cases add four.
+Actual-native probes reproduce and verify both missing-destination and
+pending-cleanup handoff repairs. These controlled functional tests do not qualify
+physical durability or create an editable successor from the retained file.
+Exact-choice approval, genuine editable handoff, registered-stream closure,
+authenticated activation and sustainable history remain next. All thirteen V1
+gates remain open.
+
 The [held history and whole-upload provider reader](ROOM_HISTORY_PROVIDER_CHECK.md)
 now checks actual authenticated provider availability while every genuine
 selected parent and upload store remains held. Unreferenced uploads remain in
@@ -54,9 +70,9 @@ new history-pair cases cold-reopen 28 client instances per path and exercise bot
 future native Undo/Redo lanes, using language 3 standard/atomic data. Separate
 unchanged installed assertions reproduce and verify the abort/root-close race
 during actual cleanup acknowledgements. This is point-in-time availability for
-the original held clients, not selected-clone adoption or activation. Complete
-durable native/record retention, independently approved exact choices and genuine
-operational handoff remain next, followed by registered-stream closure,
+the original held clients, not selected-clone adoption or activation. The new
+record cut above supplies complete selected data retention; independently
+approved exact choices and genuine operational handoff remain next, followed by registered-stream closure,
 authenticated fencing and sustainable history. All thirteen V1 gates stay open.
 
 The [room-bound asset stager](ROOM_ASSET_ADOPTION_STAGING.md) now retains complete

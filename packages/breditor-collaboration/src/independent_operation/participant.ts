@@ -1,6 +1,7 @@
 /** A real resumable operational participant: the new native source owns its journal,
  * while this parent holds completed recovery and whole-upload custody until final handoff.
  * No phase marker activates a room, chooses a factory, or authenticates current policy. */
+import type {OperationalRecordReadMode} from '../operation_read/record_payload.js';
 import type {SharedSelectionPolicy} from '../types.js';
 import {SharedIndependentDeliverySession} from '../independent_delivery/session.js';
 import {independentDeliverySource} from '../independent_delivery_source/admission.js';
@@ -43,9 +44,9 @@ function closeRecoveryHandle<P extends SharedSelectionPolicy>(s:State<P>):void{i
 const openingErrors={policy:()=>fail('independent_operation_policy'),busy:()=>fail('independent_operation_busy'),storage:()=>fail('independent_operation_cleanup')};
 let reserve:<P extends SharedSelectionPolicy>(owners:readonly OperationalIndependentDeliveryParticipant<P>[])=>OperationalCohortReservation<Readonly<IndependentOperationParticipantParts<P>>>;
 let reserveRead:<P extends SharedSelectionPolicy>(owners:readonly OperationalIndependentDeliveryParticipant<P>[])=>OperationalReadReservation<Readonly<IndependentOperationParticipantParts<P>>>;
-let reserveFreshRead:<P extends SharedSelectionPolicy>(owner:OperationalIndependentDeliveryParticipant<P>,read:FreshDeliveryParentHistoryOptions<P>,authority:()=>void,signal?:AbortSignal)=>FreshDeliveryParentHistoryRead;
+let reserveFreshRead:<P extends SharedSelectionPolicy>(owner:OperationalIndependentDeliveryParticipant<P>,read:FreshDeliveryParentHistoryOptions<P>,authority:()=>void,signal?:AbortSignal,mode?:OperationalRecordReadMode)=>FreshDeliveryParentHistoryRead;
 /** Fresh read admission never invokes the old writer/handoff grant. */
-export function reserveFreshIndependentDeliveryHistoryRead<P extends SharedSelectionPolicy>(owner:OperationalIndependentDeliveryParticipant<P>,read:FreshDeliveryParentHistoryOptions<P>,checkAuthority:()=>void,signal?:AbortSignal){return reserveFreshRead(owner,read,checkAuthority,signal);}
+export function reserveFreshIndependentDeliveryHistoryRead<P extends SharedSelectionPolicy>(owner:OperationalIndependentDeliveryParticipant<P>,read:FreshDeliveryParentHistoryOptions<P>,checkAuthority:()=>void,signal?:AbortSignal,mode?:OperationalRecordReadMode){return reserveFreshRead(owner,read,checkAuthority,signal,mode);}
 /** Read-only source/upload custody. Unlike the handoff reservation, preparing
  * this scope never releases parent leases or retires retained originals. */
 export function reserveIndependentDeliveryRead<P extends SharedSelectionPolicy>(owners:readonly OperationalIndependentDeliveryParticipant<P>[]):OperationalReadReservation<Readonly<IndependentOperationParticipantParts<P>>>{return reserveRead(owners);}
@@ -55,9 +56,9 @@ export function reserveOperationalIndependentDeliveryGroup<P extends SharedSelec
 export class OperationalIndependentDeliveryParticipant<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
  readonly #state:State<P>;readonly #file:Blob;#exposed=false;#closed=false;#busy=false;#readToken:object|undefined;
  private constructor(token:object,state:State<P>){if(token!==key)throw fail('independent_operation_closed');this.#state=state;this.#file=archive.file.call(state.p.backup);Object.freeze(this);}
- static{reserveFreshRead=(owner,read,authority,signal)=>{if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('independent_operation_policy');owner.#start();const token={};owner.#readToken=token;let released=false;
+ static{reserveFreshRead=(owner,read,authority,signal,mode)=>{if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('independent_operation_policy');owner.#start();const token={};owner.#readToken=token;let released=false;
   const held=()=>{if(released||owner.#closed||!owner.#exposed||!owner.#busy||owner.#readToken!==token)throw fail('independent_operation_closed');},release=()=>{if(released)return;held();released=true;owner.#readToken=undefined;owner.#busy=false;};
-  try{return makeFreshDeliveryParentHistoryRead(owner.#state,held,release,read,authority,signal);}catch(error){release();throw error;}
+  try{return makeFreshDeliveryParentHistoryRead(owner.#state,held,release,read,authority,signal,mode);}catch(error){release();throw error;}
  };}
  static{reserve=<Q extends SharedSelectionPolicy>(provided:readonly OperationalIndependentDeliveryParticipant<Q>[])=>{
   const owners=snapshotInventoryInputs(provided,()=>fail('independent_operation_policy'),owner=>{if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('independent_operation_policy');if(!owner.#exposed||owner.#closed)throw fail('independent_operation_closed');if(owner.#busy)throw fail('independent_operation_busy');return owner;});

@@ -1,0 +1,8 @@
+/** Cumulative old history/provider laws PLUS new complete durable data laws. */
+import {completeHistoryProviderWorkload as prior} from './complete-history-provider-workload.mjs';
+export const roomRecordCutWorkload=Object.freeze({
+ assertions:1482,newRecordCutAssertions:61,priorHistoryAssertions:prior.assertions,
+ tests:Object.freeze([...prior.tests,'room-record-cut-contracts.test.mjs','room-record-cut-storage.test.mjs','room-record-payload-states.test.mjs','room-record-cut-sdk.test.mjs']),
+ types:Object.freeze([...prior.types,'types-room-record-cut.ts']),
+ scope:'Complete same-reservation records-v1 payloads from actual seven-family native/typed journal sources, literal origin/input/catalog files and whole uploads, plus bounded lossless canonical framing and immutable absent-only retention. Four independent document/comment history pairs retain all seven clients before actual owners close, then cold-read by namespace and independently selected exact pin and reconstruct native future Undo/Redo. Partial catalog selections preserve unselected literal files explicitly; they are not reconciled. Failed forgetting, aborted/lost-ack saves, bounded CURRENT/PENDING native files, corruption, quota, non-overwrite, actual queued raw requests and real lease-release acknowledgement laws remain separate. All prior 1421 history/provider/reconciliation laws remain cumulative. Actual Rust native controls; synthetic IDB/locks/raster. Data/integrity only: not physical crash durability, native editable successor admission, exact-choice approval, selected-clone operational adoption, registered-stream closure, authenticated activation, cross-device fencing, full V1 or parity.'
+});

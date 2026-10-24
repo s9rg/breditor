@@ -1,6 +1,7 @@
 /** Private resumable whole-input/source/upload coordinator. Native history is restored
  * by the actual source component while genuine asset custody stays held. A ready row
  * never grants permission or substitutes for either owner. No network starts here. */
+import type {OperationalRecordReadMode} from '../operation_read/record_payload.js';
 import type {SharedSelectionPolicy} from '../types.js';
 import {SharedIndependentDeliverySession} from '../independent_delivery/session.js';
 import {independentDeliverySource} from '../independent_delivery_source/admission.js';
@@ -47,9 +48,9 @@ async function witness<P extends SharedSelectionPolicy>(s:State<P>){
 }
 let reserve:<P extends SharedSelectionPolicy>(owners:readonly RestoredOperationParticipant<P>[])=>OperationalCohortReservation<Readonly<RestoredOperationParticipantParts<P>>>;
 let reserveRead:<P extends SharedSelectionPolicy>(owners:readonly RestoredOperationParticipant<P>[])=>OperationalReadReservation<Readonly<RestoredOperationParticipantParts<P>>>;
-let reserveFreshRead:<P extends SharedSelectionPolicy>(owner:RestoredOperationParticipant<P>,read:FreshRestoredDeliveryHistoryOptions<P>,authority:()=>void,signal?:AbortSignal)=>FreshRestoredDeliveryHistoryRead;
+let reserveFreshRead:<P extends SharedSelectionPolicy>(owner:RestoredOperationParticipant<P>,read:FreshRestoredDeliveryHistoryOptions<P>,authority:()=>void,signal?:AbortSignal,mode?:OperationalRecordReadMode)=>FreshRestoredDeliveryHistoryRead;
 /** Fresh parent/input/native read; no mutable delivery owner is projected. */
-export function reserveFreshRestoredDeliveryHistoryRead<P extends SharedSelectionPolicy>(owner:RestoredOperationParticipant<P>,read:FreshRestoredDeliveryHistoryOptions<P>,checkAuthority:()=>void,signal?:AbortSignal){return reserveFreshRead(owner,read,checkAuthority,signal);}
+export function reserveFreshRestoredDeliveryHistoryRead<P extends SharedSelectionPolicy>(owner:RestoredOperationParticipant<P>,read:FreshRestoredDeliveryHistoryOptions<P>,checkAuthority:()=>void,signal?:AbortSignal,mode?:OperationalRecordReadMode){return reserveFreshRead(owner,read,checkAuthority,signal,mode);}
 /** Non-consuming graph read, retaining input, coordinator and source leases. */
 export function reserveRestoredOperationRead<P extends SharedSelectionPolicy>(owners:readonly RestoredOperationParticipant<P>[]):OperationalReadReservation<Readonly<RestoredOperationParticipantParts<P>>>{return reserveRead(owners);}
 /** Genuine restored-graph parents use their own input/journal/source contract;
@@ -58,9 +59,9 @@ export function reserveRestoredOperationGroup<P extends SharedSelectionPolicy>(o
 export class RestoredOperationParticipant<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
  readonly #state:State<P>;#exposed=false;#closed=false;#busy=false;#readToken:object|undefined;
  private constructor(token:object,state:State<P>){if(token!==key)throw fail('restored_participant_closed');this.#state=state;Object.freeze(this);}
- static{reserveFreshRead=(owner,read,authority,signal)=>{if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('restored_participant_policy');owner.#start();const token={};owner.#readToken=token;let released=false;
+ static{reserveFreshRead=(owner,read,authority,signal,mode)=>{if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('restored_participant_policy');owner.#start();const token={};owner.#readToken=token;let released=false;
   const held=()=>{if(released||owner.#closed||!owner.#exposed||!owner.#busy||owner.#readToken!==token)throw fail('restored_participant_closed');},release=()=>{if(released)return;held();released=true;owner.#readToken=undefined;owner.#busy=false;};
-  try{return makeFreshRestoredDeliveryHistoryRead(owner.#state,held,release,read,authority,signal);}catch(error){release();throw error;}
+  try{return makeFreshRestoredDeliveryHistoryRead(owner.#state,held,release,read,authority,signal,mode);}catch(error){release();throw error;}
  };}
  static{reserve=<Q extends SharedSelectionPolicy>(provided:readonly RestoredOperationParticipant<Q>[])=>{
   const owners=snapshotInventoryInputs(provided,()=>fail('restored_participant_policy'),owner=>{if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('restored_participant_policy');if(!owner.#exposed||owner.#closed)throw fail('restored_participant_closed');if(owner.#busy)throw fail('restored_participant_busy');return owner;});

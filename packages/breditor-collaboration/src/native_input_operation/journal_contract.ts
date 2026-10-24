@@ -35,7 +35,7 @@ export interface NativeInputReadScope<R extends NativeInputCutIntent>{
  pinRetained():()=>void;
  release():void;inputFile():Blob;originalFile():Blob;uploads():Blob;blob(asset:string,generation:string):Blob|undefined;
  readSource():SharedIndependentHistoryRecovery;
- readSnapshot():Promise<Readonly<{record:R;input:Blob;current:IndependentHistoryCut|null;pending:IndependentHistoryCut|null;observed:string|null}>>;
+ readSnapshot(mode?:import('../operation_read/record_payload.js').OperationalRecordReadMode):Promise<Readonly<{record:R;input:Blob;current:IndependentHistoryCut|null;pending:IndependentHistoryCut|null;observed:string|null;retained?:readonly import('../operation_read/retained_cuts.js').RetainedOperationCut[]}>>;
 }
 export interface NativeInputSourceBinding<R extends NativeInputCutIntent>{
  readonly expected:LocalOperationBackupSelection;readonly sourceDatabase:string;readonly driver:IndependentLocalOperationDriver;

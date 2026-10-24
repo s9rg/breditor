@@ -1,5 +1,6 @@
 /** Snapshot parent and source read admission; the snapshot family, literal
  * whole-file identity and independent native reader selection remain explicit. */
+import type {OperationalRecordReadMode} from '../operation_read/record_payload.js';
 import {checkRichAssetLimits} from '@breditor/experimental-rich-content';
 import type {SharedSelectionPolicy} from '../types.js';
 import type {RestoredLocalParticipantState} from './participant_state.js';
@@ -20,11 +21,11 @@ import {restoredLocalFailure as fail} from './failure.js';
 export type FreshSnapshotLocalHistoryOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy>=Omit<LocalOperationReadOptions<P>,'checkAuthority'|'signal'>;
 export type FreshSnapshotLocalHistoryMetadata=FreshParentHistoryMetadata<Awaited<ReturnType<typeof readSnapshotLocalParentRecords>>,LocalInputReferenceMetadata>;
 export type FreshSnapshotLocalHistoryRead=FreshParentHistoryReservation<FreshSnapshotLocalHistoryMetadata>;
-export function makeFreshSnapshotLocalHistoryRead<P extends SharedSelectionPolicy>(s:RestoredLocalParticipantState<P>,held:()=>void,unlock:()=>void,provided:FreshSnapshotLocalHistoryOptions<P>,providedAuthority:()=>void,signal?:AbortSignal):FreshSnapshotLocalHistoryRead{
+export function makeFreshSnapshotLocalHistoryRead<P extends SharedSelectionPolicy>(s:RestoredLocalParticipantState<P>,held:()=>void,unlock:()=>void,provided:FreshSnapshotLocalHistoryOptions<P>,providedAuthority:()=>void,signal?:AbortSignal,mode?:OperationalRecordReadMode):FreshSnapshotLocalHistoryRead{
  const input=snapshotFreshFactoryOptions(provided),session=snapshotIndependentRecoveryFactory(s.choice.expected.original,input.session),limits=checkRichAssetLimits(input.limits??s.choice.read.options.limits),authority=participantAuthority(providedAuthority),source=s.source,port=independentHistoryNative(source);let observation:OperationalReadCancellation|undefined;
  const current=()=>{held();if(s.life.changed||s.inputDisposed||!s.db||s.source!==source||globalThis.indexedDB!==s.context||globalThis.navigator?.locks!==s.locks)throw fail('restored_local_participant_storage_changed');checkRecoveryLeasesHeld(s.leases);port.checkManaged();restoredLocalUploads.check.call(s.uploads);observation?.check(()=>fail('restored_local_participant_aborted'));},check=()=>{current();authority();current();};
  return createFreshParentHistoryReservation({current,uploads:()=>{current();return readRestoredLocalUploadStore(s.uploads);},release:()=>{try{observation?.close();}finally{unlock();}},open:async()=>{observation=new OperationalReadCancellation(signal);check();const parent=await readSnapshotLocalParentRecords(s,check);check();let capture:Awaited<ReturnType<typeof captureLocalInputOperationReferences>>|undefined,result:ParentReferenceProducer<FreshSnapshotLocalHistoryMetadata>|undefined,complete=false;
-  try{capture=await captureLocalInputOperationReferences({source,session,limits,checkAuthority:check,...(signal?{signal}:{})});check();if(capture.metadata().inputKind!=='snapshot-v1')throw fail('restored_local_participant_input_changed');result=composeFreshParentHistory('local-operation-snapshot',parent,capture,current,async()=>{const actual=await readSnapshotLocalParentRecords(s,check);check();if(JSON.stringify(actual)!==JSON.stringify(parent))throw fail('restored_local_participant_record');});complete=true;return result;}
+  try{capture=await captureLocalInputOperationReferences({source,session,limits,checkAuthority:check,...(signal?{signal}:{})},mode);check();if(capture.metadata().inputKind!=='snapshot-v1')throw fail('restored_local_participant_input_changed');result=composeFreshParentHistory('local-operation-snapshot',parent,capture,current,async()=>{const actual=await readSnapshotLocalParentRecords(s,check);check();if(JSON.stringify(actual)!==JSON.stringify(parent))throw fail('restored_local_participant_record');});complete=true;return result;}
   finally{if(!complete){if(result)result.dispose();else capture?.dispose();}}
  }});
 }
