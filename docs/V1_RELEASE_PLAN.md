@@ -43,6 +43,19 @@ publication or deployment is promoted.
 
 ## Current seven family client recovery
 
+The [portable selected asset base](RECONCILED_ASSET_BASE.md) now retains both whole
+upload inputs, explicit choices and the selected union without rewriting an old
+participant baseline. Fourteen selected normal stages pass; source, fresh offline
+packages and the actual production bundle each pass 111 laws with four strict
+consumer fixtures. Four new seven-family/history cases cold-reopen 28 original
+client instances unchanged while separately restoring 28 selected queue branches;
+the older mutation cases add 28 cold reopens. These cases reuse the language 3
+standard/atomic native source, not 56 distinct server registrations. The portable
+file provides continuity evidence for an explicit new base, not automatic room
+adoption, provider authority or activation. Full room adoption, provider/client
+closure, authenticated fencing, sustainable history, remaining parity and all
+thirteen V1 gates remain required.
+
 The [held asset reconciler](HELD_ASSET_RECONCILIATION.md) now commits explicit
 local upload-state choices while retaining the exact caller-owned store lease.
 Its fifteen selected normal stages pass; source, fresh offline packages and the

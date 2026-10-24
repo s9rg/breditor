@@ -9,6 +9,8 @@ import {acquireAssetReconciliationLease} from "./lease.js";
 import {planRetainedAssets} from "./plan.js";
 import {openReconciliationLedger, readReconciliationLedger, writeReconciliationLedger, reconciliationName, sameBytes, type AssetReconciliationRecord, type AssetReconciliationFiles} from "./ledger.js";
 import type {RichAssetReconciliationChoice, RichAssetReconciliationPreview} from "./types.js";
+import {encodeAssetArchiveSnapshot} from '../archive/export_backup.js';
+import {encodeAssetBase} from '../retained_base/framing.js';
 
 export interface RichAssetReconciliationOptions {database: string; checkSource: () => void; signal?: AbortSignal}
 /** @internal Ports are created only inside a genuine RichAssetStore method. */
@@ -64,6 +66,27 @@ export class RichAssetReconciliation {
       this.#check(); if (this.#record.phase !== "applied") {const next = {...this.#record, phase: "applied" as const}; await writeReconciliationLedger(this.#db, this.#record, next, this.#files, this.#check); this.#record = next;}
       return Object.freeze({phase: "applied" as const, retained: this.#preview.unionAssets, bytes: this.#preview.unionBytes});
     });} finally {this.#busy = false;}
+  }
+  /** Retain a separately framed selected base only after actual applied-ledger
+   * and exact target verification. Both complete losing inputs remain embedded.
+   * This does not adopt a room, authenticate receipts, release custody or change
+   * an old participant's baseline. No asset or ledger record is written. */
+  async exportRetainedBase():Promise<Blob>{
+    this.#live();if(this.#busy)throw new RichAssetReconciliationError('asset_reconciliation_busy','An asset reconciliation operation is already running');this.#busy=true;
+    try{const port=this.#port!;return await port.use(async()=>{
+      this.#check();const saved=await readReconciliationLedger(this.#db);this.#check();
+      if(saved.record.phase!=='applied'||saved.record.choices===null)throw new RichAssetReconciliationError('asset_reconciliation_policy','A retained base requires an actually applied decision');
+      if(saved.record.assetDatabase!==port.name||JSON.stringify(saved.record.limits)!==JSON.stringify(port.limits)||JSON.stringify(saved.record.files)!==JSON.stringify(this.#record.files)||!sameBytes(saved.files.current,this.#files.current)||!sameBytes(saved.files.original,this.#files.original)||this.#record.choices!==null&&JSON.stringify(saved.record.choices)!==JSON.stringify(this.#record.choices))throw new RichAssetReconciliationError('asset_reconciliation_format','The complete retained decision changed');
+      const plan=planRetainedAssets(this.#before,this.#original,port.limits,saved.record.choices);
+      if(JSON.stringify(plan.choices)!==JSON.stringify(saved.record.choices))throw new RichAssetReconciliationError('asset_reconciliation_format','The applied decision is not canonical');
+      const selected=await encodeAssetArchiveSnapshot(plan.records!,port.limits,this.#options!.signal);this.#check();
+      const file=await encodeAssetBase(port.name,port.limits,plan.choices!,{current:new Blob([saved.files.current]),original:new Blob([saved.files.original]),selected},this.#check);this.#check();
+      const actual=await readReconciliationLedger(this.#db);this.#check();if(JSON.stringify(actual.record)!==JSON.stringify(saved.record)||!sameBytes(actual.files.current,saved.files.current)||!sameBytes(actual.files.original,saved.files.original))throw new RichAssetReconciliationError('asset_reconciliation_format','The retained decision changed during encoding');
+      // Reuse the existing atomic exact-target barrier AFTER all encoding and
+      // raster callbacks. Equal before/after can only acknowledge existing rows;
+      // it cannot fill missing assets, restore a receipt or perform an upsert.
+      await port.apply(plan.records!,plan.records!,this.#check,this.#options!.signal);this.#check();this.#record=saved.record;return file;
+    });}finally{this.#busy=false;}
   }
   async close(): Promise<void> {if (this.#closed) return; if (this.#busy) throw new RichAssetReconciliationError("asset_reconciliation_busy", "Wait for the active asset reconciliation operation"); this.#closed = true; this.#db.close(); this.#port=undefined;this.#options=undefined;this.#files={current:new ArrayBuffer(0),original:new ArrayBuffer(0)};this.#before=[];this.#original=[];await this.#release();}
   static {begin = RichAssetReconciliation.#begin; resume = RichAssetReconciliation.#resume;}

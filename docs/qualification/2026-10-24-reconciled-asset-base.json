@@ -1,0 +1,75 @@
+{
+  "format": "breditor/reconciled-asset-base-qualification",
+  "formatVersion": 1,
+  "directory": "/Users/s/code/breditor/target/reconciled-asset-base-final-RTg8tl",
+  "index": "target/reconciled-asset-base-final-RTg8tl/index.json",
+  "indexSha256": "7aa6a6d2da37cc5cbbe2e973520a9d7d94078a59772dc6c8e12a0414ed7d09b4",
+  "entries": 8136,
+  "source": {
+    "commit": "59e8b666c66f0faa2e7f75a49d780e6872ad2038",
+    "dirty": true,
+    "sha256": "2d4260a892ece0eb1ad42e425b72800bf836e4bf589f303149db15847ee4990d",
+    "files": 6260,
+    "bytes": 49474554
+  },
+  "selectedNormalStages": 14,
+  "functionalPlanChecks": 429,
+  "fullPlanChecks": 437,
+  "sourceAssertions": 111,
+  "installedAssertions": 111,
+  "bundledAssertions": 111,
+  "newBaseLaws": 40,
+  "nativeRoomLaws": 8,
+  "newBaseNativeCases": 4,
+  "nativeRetainedBaseBranchesPerPath": 28,
+  "nativeOriginalClientsColdReopenedPerPath": 56,
+  "strictTypes": 4,
+  "registryArtifacts": 45,
+  "productionModules": 656,
+  "bundleSha256": "777bda5c08806c73e4aab1dab0c756b1355a068b6ce388647cc802a73fe77501",
+  "archives": [
+    {
+      "name": "@breditor/browser",
+      "path": "/private/tmp/breditor-reconciled-asset-base-installed-uUMCWf/archives/breditor-browser-0.3.0-alpha.22.tgz",
+      "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+    },
+    {
+      "name": "@breditor/experimental-rich-content",
+      "path": "/private/tmp/breditor-reconciled-asset-base-installed-uUMCWf/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+      "sha256": "23bb4160babd07354daf373f81e731820ff41e45877ee711eb36401bac46497d"
+    },
+    {
+      "name": "@breditor/collaboration",
+      "path": "/private/tmp/breditor-reconciled-asset-base-installed-uUMCWf/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+      "sha256": "f15a7c18db42fbd8767cf12bfbdf89f927b0d459de131a217f91c2557eeef125"
+    }
+  ],
+  "nativeFiles": 50,
+  "nativeReportSha256": "42ee881a6da63b3e3735ebcbcf1ab984463756d25b590ce7dac5a9bffc86ed54",
+  "nativeProducerBinarySha256": "9f5948a8bba3367b601622f8316ec45012aa625cbd59e8a9656ca4793620ab46",
+  "normalWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+  "nonDocumentationInputs": 5552,
+  "scope": "Complete unchanged held queue reconciliation plus separately retained selected bases. Every base embeds both whole inputs and the exact explicitly selected union; cold admission recomputes the decision and predecessor/successor continuity keeps immutable raster bytes, epochs, attempts and accepted uploaded receipts. Four new image-bearing seven-family SDK cases retain 28 new-base branches separately, cold-reopen all 28 original client instances unchanged and preserve both exact native histories plus future Undo/Redo. Together with the old four mutation cases this is eight SDK cases and 56 cold client instances per path, not 56 unique registrations. All new SDK cases reuse the language 3 standard/atomic native source across independent history pairs; ten native profiles are freshly produced. No automatic room-level base adoption, authenticated provider receipt, selected-copy settlement, writer activation, cross-device fencing, physical durability or V1 readiness claim.",
+  "nativeIntegrationDomain": "Four new SDK cases keep 28 original client instances unchanged and retain 28 incompatible selected queue branches separately; every original client is cold-reopened and every selected branch is restored under real custody. The existing four mutation cases add 28 original cold reopens. All cases reuse the language 3 standard/atomic native source across four independent document/comment history pairs; the native producer freshly covers ten profile/wire rooms. Not 56 distinct registrations or automatic room-level adoption.",
+  "v1Ready": false,
+  "publicationApproved": false,
+  "oldWireFormatsChanged": false,
+  "nativeSourcesChanged": false,
+  "normalWasmChanged": false,
+  "publicOptInSurface": "Applied reconciliation exporter and independent portable retained-base reader with predecessor/successor continuity. Old native, raster/archive, ledger and participant defaults keep their meanings.",
+  "noPush": true,
+  "noTag": true,
+  "noPublication": true,
+  "noDeployment": true,
+  "reproducedPolicyBug": "The initial new reader admitted a larger successor when fresh options defaulted to or explicitly chose a wider host budget. Every continuity edge now intersects archived limits with current host limits. This was in the new uncommitted path, not a historical native/WebKit repair.",
+  "unchangedAssertionsControl": {
+    "fixedPassed": 2,
+    "beforeFixFailed": 2,
+    "restoredFixedPassed": 2,
+    "assertionsChanged": false,
+    "assertionsSha256": "fa6e8128cada6c067a6c0b4c7d09dba9486ff5be739e4dde6a7b783cb2ec922a",
+    "changedModule": "node_modules/@breditor/experimental-rich-content/dist/browser/assets/retained_base/read.js",
+    "beforeSha256": "fdb8b7a9093bcb89172cdb10113de09a2f32bf767e2ca64b3600bd03891811b2",
+    "fixedSha256": "b8abe44b254b0e3e2a236ff899e3c7645c15ba6dcc3f53ba7894fff2c9e63a39"
+  }
+}

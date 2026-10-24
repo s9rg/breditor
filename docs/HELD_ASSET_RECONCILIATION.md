@@ -70,6 +70,11 @@ coordinator must reconcile retained client copies, retain the selected new base
 and whole upload files, and bind current provider/native authority before its
 final writer transition. Sustainable history and V1 qualification remain separate.
 
+The separate [retained base](RECONCILED_ASSET_BASE.md) exporter now preserves an
+actually applied decision, both whole inputs and its exact selected union. Cold
+admission replans the union and checks continuity on either side without relaxing
+this participant-baseline boundary. Room-level adoption remains explicit work.
+
 ## Functional qualification
 
 The [2026-10-24 qualification](qualification/2026-10-24-held-asset-reconciliation.json)
