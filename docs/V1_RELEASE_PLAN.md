@@ -43,6 +43,21 @@ publication or deployment is promoted.
 
 ## Current seven family client recovery
 
+The [room-bound asset stager](ROOM_ASSET_ADOPTION_STAGING.md) now retains complete
+base choices against actual held root/native/upload cuts before creating exact
+selected clones. Eighteen selected normal stages pass; source, fresh offline
+packages and the actual production bundle each pass 161 laws with five strict
+consumer fixtures. Four new seven-family/history cases cold-reopen 28 original
+clients and 28 selected destinations; ten further native scenarios cover staging
+failures and refusal. Two unchanged installed controls reproduce and verify the
+aborted-insertion and queued-cancellation repairs. These cases select language 3
+standard/atomic data, not distinct server registrations or a full SDK profile
+matrix. Staging does not replace a native root or grant editing/activation.
+The exact approved choice, complete pending/offline/review/version work, provider
+references and all retained client copies still need the final operational
+adoption contract. Authenticated fencing, sustainable history, remaining parity
+and all thirteen V1 gates remain required.
+
 The [portable selected asset base](RECONCILED_ASSET_BASE.md) now retains both whole
 upload inputs, explicit choices and the selected union without rewriting an old
 participant baseline. Fourteen selected normal stages pass; source, fresh offline

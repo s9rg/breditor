@@ -1,0 +1,111 @@
+{
+  "format": "breditor/room-asset-adoption-staging-qualification",
+  "formatVersion": 1,
+  "directory": "/Users/s/code/breditor/target/room-asset-adoption-final-1eBTzy",
+  "index": "target/room-asset-adoption-final-1eBTzy/index.json",
+  "indexSha256": "b518d8e5e85e1cf5cb3f3e85542ebc7c13ebdaa5cd78575d0436e8ba31ce4f3f",
+  "entries": 8207,
+  "source": {
+    "commit": "f74d389caf5605f682264f22f41b80f9c22c54d6",
+    "dirty": true,
+    "sha256": "445754c18a7adde2e7f82693f6e6ffc549351afc739680c574242d8dbec02acf",
+    "files": 6277,
+    "bytes": 49577339
+  },
+  "selectedNormalStages": 18,
+  "functionalPlanChecks": 433,
+  "fullPlanChecks": 441,
+  "sourceAssertions": 161,
+  "installedAssertions": 161,
+  "bundledAssertions": 161,
+  "newStorageLaws": 36,
+  "newAdoptionNativeCases": 14,
+  "newFullHistoryMatrixCases": 4,
+  "newMatrixOriginalClientsColdReopenedPerPath": 28,
+  "newMatrixSelectedClonesColdReopenedPerPath": 28,
+  "legacySourceAssertions": 111,
+  "strictTypes": 5,
+  "registryArtifacts": 45,
+  "productionModules": 662,
+  "bundleSha256": "df16cbd60e1a2c2cbd97fada1a02207f147f4044be7ede1900bad671e5b98875",
+  "archives": [
+    {
+      "name": "@breditor/browser",
+      "path": "/private/tmp/breditor-room-asset-adoption-installed-tBmVUC/archives/breditor-browser-0.3.0-alpha.22.tgz",
+      "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+    },
+    {
+      "name": "@breditor/experimental-rich-content",
+      "path": "/private/tmp/breditor-room-asset-adoption-installed-tBmVUC/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+      "sha256": "23bb4160babd07354daf373f81e731820ff41e45877ee711eb36401bac46497d"
+    },
+    {
+      "name": "@breditor/collaboration",
+      "path": "/private/tmp/breditor-room-asset-adoption-installed-tBmVUC/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+      "sha256": "f839be4cf228fbf4023d6c7cefaa45f01bb429a764e7de02f3f060a12f2f38f3"
+    }
+  ],
+  "nativeFiles": 50,
+  "nativeReportSha256": "3a1eb8f5c44bca9077456974e224c12c310cd7094466b2da6e02f576c0a3e252",
+  "nativeProducerBinarySha256": "9f5948a8bba3367b601622f8316ec45012aa625cbd59e8a9656ca4793620ab46",
+  "normalWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+  "nonDocumentationInputs": 5568,
+  "contracts": {
+    "held-asset-reconciliation-contracts": 64,
+    "held-asset-restore-contracts": 79,
+    "upload-reconciliation-contracts": 22,
+    "reconciled-asset-base-contracts": 104,
+    "room-asset-adoption-contracts": 37,
+    "operational-native-read-contracts": 39
+  },
+  "unchangedAssertionsControl": {
+    "fixed": 1,
+    "beforeFixFailed": 1,
+    "restoredFixed": 1,
+    "assertionsSha256": "e722289b5bcc7c3a0e2977fe5f8760ae452c3fea6e238911bfbbf0f9d324d9c3"
+  },
+  "queuedAbortControl": {
+    "fixed": 2,
+    "beforeFixFailed": 2,
+    "restoredFixed": 2,
+    "assertionsSha256": "ae2ace03be6ea946b0db3bd62d414407201ca9d66b861b4b49e2c3464fff0a44"
+  },
+  "scope": "Durable selection and exact local upload clones bound to a genuine held seven-family room, actual selected native checkpoints, whole upload cuts and unchanged retained base files. Four full history-pair cases cold-reopen 28 original clients and 28 selected destinations without native/upload mutation, then exercise both future Undo/Redo lanes. Ten other native SDK scenarios cover committed-but-unacknowledged phases, missing/changed complete stores, stale choices, occupied targets, all-member custody before callbacks, unselected historical copies and cold retry after an aborted first target insertion. All 111 existing asset-base/reconciliation laws and 36 new storage laws remain, including prompt cancellation of genuinely queued opens with actual request custody until drain. SDK cases reuse language 3 standard/atomic native data; source-matched producer still covers ten native profiles. Staged targets have cooperative namespace and actual asset custody but no editable client or source is returned. Not operational root replacement, historical-copy reconciliation, authenticated provider/writer authority, server activation, cross-device fencing, physical durability or full V1/parity.",
+  "nativeDomain": "Four new SDK matrix cases select all seven genuine recovery families across independent document/comment history pairs, cold-reopening 28 original client instances and 28 selected destinations. Ten additional native SDK cases cover staging interruption/refusal paths. These reuse language 3 standard/atomic native input, not distinct server registrations or a full ten-by-history SDK matrix. The actual native producer freshly covers ten profile/wire rooms.",
+  "controls": {
+    "abortedTarget": {
+      "changedModule": "node_modules/@breditor/collaboration/dist/physical_room_asset_adoption/coordinator.js",
+      "beforeSha256": "4532d891456a51a8b895156be0b3849feff9aa15190e4eaee158cd43750b173f",
+      "fixedSha256": "c6c2a8d0aa2d982e0976cac879a52140ae42e3d8f7b648c71257105b81d2b2dd",
+      "assertionsChanged": false,
+      "fixedPassed": 1,
+      "beforeFixFailed": 1,
+      "restoredFixedPassed": 1,
+      "assertionsSha256": "e722289b5bcc7c3a0e2977fe5f8760ae452c3fea6e238911bfbbf0f9d324d9c3"
+    },
+    "queuedAbort": {
+      "changedModule": "node_modules/@breditor/collaboration/dist/physical_room_asset_adoption/storage.js",
+      "beforeSha256": "fd621653fac97357bb1e1352296bf6d64f3e0bf1bab1eac78e1d34161e5b5906",
+      "fixedSha256": "8a7a6ccd7f564929b63adb6ef1fa7ece3fcb54c991ac530c4504d10bd9ce83a4",
+      "assertionsChanged": false,
+      "fixedPassed": 2,
+      "beforeFixFailed": 2,
+      "restoredFixedPassed": 2,
+      "assertionsSha256": "ae2ace03be6ea946b0db3bd62d414407201ca9d66b861b4b49e2c3464fff0a44"
+    }
+  },
+  "supersededRun": "The first 159-law run passed foundation/source and its first installed pass; the remaining owned bundle workers were deliberately stopped after an independent queued-open probe reproduced the cancellation defect. The repaired v2 run completes all actual processes and all 161 laws. The superseded run is not counted as final qualification.",
+  "v1Ready": false,
+  "publicationApproved": false,
+  "oldNativeAssetCatalogProtocolsChanged": false,
+  "newPrivateStagingFormat": "breditor/physical-room-asset-adoption version 1",
+  "publicRootExportsChanged": false,
+  "packageVersionsChanged": false,
+  "nativeSourcesChanged": false,
+  "normalWasmChanged": false,
+  "historicalWebKitConfirmedFixed": false,
+  "noPush": true,
+  "noTag": true,
+  "noPublication": true,
+  "noDeployment": true
+}

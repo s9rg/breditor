@@ -24,6 +24,7 @@ import {snapshotInventoryInputs} from '../room_participant_inventory/input_snaps
 import {archiveFields} from '../archive_integrity/policy.js';
 import {physicalCatalogName} from '../physical_room_catalog/policy.js';
 import {SharedEditorError} from '../core.js';
+import {RichAssetStore} from '@breditor/experimental-rich-content';
 const freeze=Object.freeze,fail=()=>new SharedEditorError('complete_native_read_policy','Borrow genuine distinct operational parents for a held native-only read');
 const disposeOriginal=SharedAssetReferenceCapture.prototype.dispose,disposeGeneration=SharedGenerationSourceCapture.prototype.dispose,closeCancellation=OperationalReadCancellation.prototype.close;
 export interface CompleteNativeReadMember {
@@ -33,10 +34,13 @@ export interface CompleteNativeReadMember {
 }
 export interface CompleteNativeRead {
  readonly participants:readonly CompleteNativeReadMember[];
- prepare():Promise<void>;
+ prepare(beforeChecks?:()=>void):Promise<void>;
  verify():Promise<void>;
  /** Callback-free final native, lease, binding and cancellation comparison. */
  checkCurrent():void;
+ /** Private staging read only: whole files from these exact held stores. No
+  * mutable store, upload lease or source projection escapes the reservation. */
+ captureUploads(maximumBytes:number):Promise<readonly Readonly<{id:string;file:Blob}>[]>;
  /** Release temporary readers and await actual whole-upload lock cleanup. */
  close():Promise<void>;
 }
@@ -57,6 +61,7 @@ export function borrowCompleteNativeRead<P extends SharedSelectionPolicy>(provid
  let generation:ReturnType<typeof reserveOperationalGenerationGroup>|undefined;
  let delivery:ReturnType<typeof reserveDeliveryOperationRead<P>>|undefined;
  let assets:OperationalAssetCustody|undefined;
+ const uploadStores=new Map<string,RichAssetStore>(),captureUploads=RichAssetStore.prototype.captureBackup;
  const checks:(()=>void)[]=[],cleanups:(()=>void)[]=[],cancellations:OperationalReadCancellation[]=[];
  let prepared=false,working=false,closing=false,closed=false,values:readonly CompleteNativeReadMember[]=[],cleanup:Promise<void>|undefined;
  const current=()=>{
@@ -76,6 +81,7 @@ export function borrowCompleteNativeRead<P extends SharedSelectionPolicy>(provid
   if(error)throw error;
  };
  const finishClose=()=>{
+  uploadStores.clear();
   for(const observation of cancellations)closeCancellation.call(observation);
   generation?.abandon();original?.abandon();closed=true;
  };
@@ -93,28 +99,34 @@ export function borrowCompleteNativeRead<P extends SharedSelectionPolicy>(provid
   for(const s of original.states)cancellations.push(new OperationalReadCancellation(s.p.signal));
   for(const s of generation.states)cancellations.push(new OperationalReadCancellation(s.p.options.signal));
   return freeze({get participants(){current();return values;},
-   prepare:()=>work(async()=>{
+   prepare:(beforeChecks?:()=>void)=>work(async()=>{
     if(prepared||cleanups.length||assets)throw fail();
     // These two legacy parents reserve native owners, but unlike the five
     // newer families they do not keep permanent whole-upload custody. Acquire
     // their actual stores before verification can invoke application hooks.
     // Reacquiring the five families' already held stores would be incorrect.
     assets=await holdOperationalAssets([...original!.assetStores,...generation!.assetStores]);
+    // Explicit internal asset staging can check its fresh grant here, with all
+    // genuine parents busy and both legacy whole-store locks already held.
+    beforeChecks?.();
     await original!.verify();await generation!.verify();await delivery?.prepare();
     const byId=new Map<string,CompleteNativeReadMember>();
     for(const[index,s]of original!.states.entries()){
+     uploadStores.set(originals[index]!.id,s.owners.uploads!);
      const capture=SharedAssetReferenceCapture.capture(ownerSources(s.p,s.owners));
      cleanups.push(()=>disposeOriginal.call(capture));
      const native=capturedNativeHistoryRead(capture);checks.push(capturedNativeHistoryFinalCheck(native));
      byId.set(originals[index]!.id,freeze({id:originals[index]!.id,family:'original',native}));
     }
     for(const[index,s]of generation!.states.entries()){
+     uploadStores.set(generations[index]!.id,s.owners.uploads!);
      const capture=SharedGenerationSourceCapture.capture(generationOwnerSource(s.p,s.owners));
      cleanups.push(()=>disposeGeneration.call(capture));
      const native=capturedNativeHistoryRead(capture);checks.push(capturedNativeHistoryFinalCheck(native));
      byId.set(generations[index]!.id,freeze({id:generations[index]!.id,family:'generation',native}));
     }
     for(const row of delivery?.states??[]){
+     uploadStores.set(row.id,row.parts.uploads);
      const token=freeze({}),session=row.parts.source.session;
      if(row.family==='independent-delivery'||row.family==='restored-graph'){
       const port=independentDeliverySource(session),live=port.read(),identity=live.source.identity;
@@ -131,10 +143,19 @@ export function borrowCompleteNativeRead<P extends SharedSelectionPolicy>(provid
    }),
    verify:()=>work(async()=>{current();await original!.verify();await generation!.verify();await delivery?.verify();current();}),
    checkCurrent:current,close,
+   captureUploads:(maximumBytes:number)=>workCapture(maximumBytes),
   });
  }catch(error){
   // Construction has not acquired uploads or opened any reader. Restore the
   // synchronous parent reservations before returning this admission refusal.
   releaseReaders();finishClose();throw error;
+ }
+ async function workCapture(maximumBytes:number){
+  if(!Number.isSafeInteger(maximumBytes)||maximumBytes<1||maximumBytes>512*1024*1024)throw fail();
+  let result:readonly Readonly<{id:string;file:Blob}>[]=[];
+  await work(async()=>{current();let bytes=0;const files:{id:string;file:Blob}[]=[];
+   for(const row of rows){const store=uploadStores.get(row.id);if(!store)throw fail();const cut=await captureUploads.call(store,()=>{current();return undefined;});current();bytes+=cut.backup.size;if(bytes>maximumBytes)throw fail();files.push(freeze({id:row.id,file:cut.backup}));}
+   current();result=freeze(files);
+  });return result;
  }
 }

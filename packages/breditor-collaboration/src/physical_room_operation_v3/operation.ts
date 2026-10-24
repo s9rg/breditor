@@ -27,6 +27,8 @@ import type {PhysicalOperationV3NativeRead} from './native_read_contract.js';
 import {readPhysicalOperationV3History} from './history_read.js';
 import type {PhysicalOperationV3HistoryReadOptions,PhysicalOperationV3HistoryRead} from './history_read_contract.js';
 import type {SharedSelectionPolicy} from '../types.js';
+import {readPhysicalOperationV3Assets} from './asset_read.js';
+import type {PhysicalAssetReadOptions,PhysicalAssetReadScope} from './asset_read_contract.js';
 const key=Object.freeze({});
 const errors={policy:()=>fail('physical_operation_v3_policy'),busy:()=>fail('physical_operation_v3_in_use'),storage:()=>fail()};
 interface State{
@@ -38,6 +40,9 @@ interface State{
 }
 /** Type-only internal custody; a detached report never creates this state. */
 export type PhysicalOperationV3Custody=State;
+let withAssets:<T>(owner:PhysicalRoomClientOperationV3,options:PhysicalAssetReadOptions,visit:(scope:PhysicalAssetReadScope)=>Promise<T>)=>Promise<T>;
+/** Internal actual-root borrow. A report/DTO cannot manufacture this scope. */
+export const withPhysicalOperationV3Assets=<T>(owner:PhysicalRoomClientOperationV3,options:PhysicalAssetReadOptions,visit:(scope:PhysicalAssetReadScope)=>Promise<T>):Promise<T>=>withAssets(owner,options,visit);
 /** Opaque wasm/catalog handles stay genuine; every ordinary policy value is
  * detached synchronously, before callbacks can alter a later client choice. */
 function options(input:PhysicalOperationV3BeginOptions|PhysicalOperationV3ResumeOptions,begin:boolean){
@@ -49,6 +54,10 @@ function options(input:PhysicalOperationV3BeginOptions|PhysicalOperationV3Resume
 export class PhysicalRoomClientOperationV3{
  readonly #s:State;readonly #rollback=new RecoveryCleanupScope(()=>fail());#exposed=false;#busy=false;#running:Promise<void>|undefined;#cleanup:Promise<void>|undefined;#cleanupMode:boolean|undefined;
  private constructor(token:object,state:State){if(token!==key)throw fail('physical_operation_v3_closed');this.#s=state;Object.freeze(this);}
+ static{withAssets=(owner,options,visit)=>{
+  if(!owner||typeof owner!=='object'||!(#s in owner))return Promise.reject(fail('physical_operation_v3_policy'));
+  return owner.#run(()=>readPhysicalOperationV3Assets(owner.#s,()=>{if(!owner.#exposed||!owner.#busy)throw fail('physical_operation_v3_closed');},()=>owner.#retained(),options,visit),error=>error instanceof Error?error:known(error));
+ };}
  static begin(input:PhysicalOperationV3BeginOptions):Promise<PhysicalRoomClientOperationV3>{return PhysicalRoomClientOperationV3.#open(input,true);}
  static resume(input:PhysicalOperationV3ResumeOptions):Promise<PhysicalRoomClientOperationV3>{return PhysicalRoomClientOperationV3.#open(input,false);}
  static async #open(input:PhysicalOperationV3BeginOptions|PhysicalOperationV3ResumeOptions,begin:boolean):Promise<PhysicalRoomClientOperationV3>{
@@ -78,7 +87,7 @@ export class PhysicalRoomClientOperationV3{
   }catch(error){if(opening)await opening.rollback();throw known(error);}
  }
  #guard=()=>{if(!this.#exposed)throw fail('physical_operation_v3_closed');this.#s.guard();};
- #run<T>(work:()=>Promise<T>):Promise<T>{if(!this.#exposed||this.#s.life.closed||this.#s.life.closing||this.#s.life.released)return Promise.reject(fail('physical_operation_v3_closed'));if(this.#busy)return Promise.reject(fail('physical_operation_v3_in_use'));this.#busy=true;let done!:()=>void;this.#running=new Promise<void>(resolve=>{done=resolve;});let task:Promise<T>;try{task=work();}catch(error){task=Promise.reject(error);}return task.catch(error=>{throw known(error);}).finally(()=>{this.#busy=false;this.#running=undefined;done();});}
+ #run<T>(work:()=>Promise<T>,translate:(error:unknown)=>Error=known):Promise<T>{if(!this.#exposed||this.#s.life.closed||this.#s.life.closing||this.#s.life.released)return Promise.reject(fail('physical_operation_v3_closed'));if(this.#busy)return Promise.reject(fail('physical_operation_v3_in_use'));this.#busy=true;let done!:()=>void;this.#running=new Promise<void>(resolve=>{done=resolve;});let task:Promise<T>;try{task=work();}catch(error){task=Promise.reject(error);}return task.catch(error=>{throw translate(error);}).finally(()=>{this.#busy=false;this.#running=undefined;done();});}
  database():string{return this.#s.database;}
  selection(){return this.#s.held.state.selection;}
  metadata(){return this.#s.held.state.metadata;}

@@ -83,6 +83,11 @@ defaults continue to reject incompatible receipt rollback. The coordinator must
 select the new base through an explicit successor contract rather than rewriting
 those original files or quietly changing the meaning of an old baseline.
 
+The [room-bound stager](ROOM_ASSET_ADOPTION_STAGING.md) now retains those base
+files against actual current native/upload cuts and creates separate exact local
+clones with durable cold retry. It returns no editor and does not replace the
+operational root; the complete successor and final approval remain required.
+
 Whole retained-copy reconciliation, current provider byte admission and fresh
 registered document/comment coverage must precede authenticated activation.
 Activation must bind the native A/B/C selection and current control instance,
