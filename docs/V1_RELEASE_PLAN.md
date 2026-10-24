@@ -171,6 +171,18 @@ the shared queue reservation once. These complete original record reads precede,
 but do not replace, native reference replay and held room reconciliation. All
 thirteen V1 gates remain open.
 
+The [generation reference replay](qualification/2026-10-23-generation-record-references.json)
+now preserves native and retained-packet image references from actual committed,
+uncertain attempt, pending and LIVE states, including images forgotten from LIVE.
+Ten selected normal stages pass; source, fresh offline packages and actual bundled
+code each pass the same 755 laws, with five strict consumer type fixtures.
+Read-only replay checks exact histories and chronological native ancestry within
+the independently selected read runtime, preserving writer policy and future
+Undo/Redo. The existing 362-case generation asset/recovery domain passes too.
+Original reference replay, historical parent files, held room reconciliation,
+provider bytes, current authenticated activation and sustainable history remain
+required. This does not close a V1 gate or authorize publication.
+
 Complete-delivery and restored-operation parents now share the existing room
 handoff kernel with legacy local, snapshot-local and flat-local parents. Genuine
 reservations and closed result wrappers prevent partial transfer. Final native

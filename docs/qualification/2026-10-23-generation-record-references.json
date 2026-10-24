@@ -1,0 +1,85 @@
+{
+  "format": "breditor/generation-record-references-qualification",
+  "formatVersion": 1,
+  "passed": true,
+  "source": {
+    "commit": "3cfcc86bef8f7cf0cd04ddc05f3ec71a70edac68",
+    "dirty": true,
+    "sha256": "dd26b8401a8c8fd9d8ddc8ac220d7eb0d9b431fa7a3a74f82214d0f05bc8bf54",
+    "files": 6122,
+    "bytes": 48841664
+  },
+  "normalRunner": true,
+  "normalStages": 10,
+  "functionalPlanChecks": 392,
+  "fullPlanChecks": 400,
+  "manifests": {
+    "foundation": "/Users/s/code/breditor/target/v1-candidate-runs/run-yUNItX/result.json",
+    "source": "/Users/s/code/breditor/target/v1-candidate-runs/run-xwvFAV/result.json",
+    "installed": "/Users/s/code/breditor/target/v1-candidate-runs/run-cq7HKU/result.json"
+  },
+  "assertions": {
+    "source": 755,
+    "installed": 755,
+    "bundled": 755,
+    "newGenerationReferences": 268,
+    "priorOriginalRetained": 197,
+    "priorRecordRead": 262,
+    "compoundStorageRegression": 28,
+    "contractsIncludingPlan": 269,
+    "legacyGenerationAssetRecovery": 362,
+    "strictTypesInConsumer": 5
+  },
+  "retained": {
+    "index": "target/generation-record-references-final-fno7G6/index.json",
+    "sha256": "1ac0c68a7af92a3f6965657ea936846b307d623ab5b5390d9368eef9c072b0ca",
+    "entries": 7856,
+    "nonDocumentationInputs": 5432
+  },
+  "consumer": {
+    "directory": "/private/tmp/breditor-generation-record-references-installed-DOSkCo",
+    "workspaceLinks": false,
+    "registryArtifacts": 45,
+    "productionModules": 488,
+    "bundleSha256": "ee337041b45dea598fbe2423543fe10d79e96775372d7c97f33b284a646534c4",
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/private/tmp/breditor-generation-record-references-installed-DOSkCo/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/private/tmp/breditor-generation-record-references-installed-DOSkCo/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "30c44ea68d28a5ead030cbab80ff87798527917252cea496f99912b8ca1b62ad"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/private/tmp/breditor-generation-record-references-installed-DOSkCo/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "d9fe9bee1c9e49c10e8b26271b8a6a6494979d386697e1e1424be5445623d430"
+      }
+    ]
+  },
+  "normalWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+  "harnessCorrection": {
+    "initialActualRuntimePasses": 755,
+    "initialIncorrectExpected": 757,
+    "assertionsRemoved": 0,
+    "scope": "Corrected only expected totals, six output-buffer constants and the new installed checker type-fixture list. All original fixture assertions remain in the workload. Failed run evidence remains separately retained.",
+    "failedEvidenceIndex": "target/generation-reference-harness-refusal-ZNeMaP/index.json"
+  },
+  "scope": "Genuine original generation local, paired, relay and retained owners; actual committed, uncertain attempt, pending and LIVE native/packet references, without current upload storage or raster fetch. Exact read-only native replay and chronological both-lane ancestry within one selected same/separately-loaded normal runtime. This source scope excludes historical parents outside these four states.",
+  "remaining": [
+    "Original native/retained-store reference replay and selected historical parent files",
+    "Joint held coordinator integration and explicit historical-copy decisions",
+    "Whole-upload/provider/client reconciliation and authenticated activation",
+    "Sustainable native Undo/offline lifetime and remaining parity"
+  ],
+  "v1Ready": false,
+  "allThirteenV1GatesOpen": true,
+  "noPush": true,
+  "noTag": true,
+  "noVersionChange": true,
+  "noPublication": true,
+  "noDeployment": true
+}

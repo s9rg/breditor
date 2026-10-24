@@ -53,6 +53,36 @@ in `finally` to release permits. Disposal clears source and authorization
 callbacks without closing a source or releasing its writers. Frozen detached
 metadata remains readable after disposal but cannot act as source custody.
 
+## Native and packet references from every retained state
+
+`captureGenerationRecordReferences` consumes a genuine complete record reader.
+It independently replays the committed, uncertain attempt, pending and LIVE
+states in that order. The host supplies an explicitly selected native restore
+factory; the reader never chooses a format from caller-provided metadata.
+
+Every replay starts read-only. Exact document and comment checkpoints, native
+descriptor, language and sealed history policies must match before dependency
+reads. Adjacent replays must preserve native ancestry in both lanes, ordered local
+versions and forward relay progress. These comparisons take place entirely in
+the selected read runtime, which may be a separately loaded copy of the normal
+Rust/Wasm runtime. The writer and its permissions remain untouched.
+
+Native history and retained local versions, proposals, revisions and shared
+versions all contribute references. An image absent from LIVE can remain required
+by a committed or uncertain packet after forgetting fails. The reader preserves
+those references without requiring a current upload store or fetching raster
+bytes. Missing packet dependencies and uncached catalog versions remain explicit
+pending results; known references alone do not establish complete availability.
+The complete union refuses above 100,000 asset/generation pairs and each state
+refuses above 1,024 distinct packet reads, rather than truncating them.
+
+The result keeps the underlying record permit and pure source pins until
+disposal. `verify()` rereads actual committed bytes; `checkCurrent()` is the final
+callback-free fence. Temporary native replicas are disposed after discovery, and
+disposing the result clears producer and authorization callbacks while retaining
+its frozen detached report. This scope covers the source's four states, not
+historical parent files outside them or the upload/provider bytes themselves.
+
 ## Functional qualification and integration
 
 The [generation-record qualification](qualification/2026-10-23-generation-record-read.json)
@@ -63,8 +93,16 @@ fixtures pass in the fresh consumer. The existing 362-case generation
 asset/recovery domain and local, relay, retained and observer storage regressions
 also pass. Native runtime bytes and existing formats and defaults are unchanged.
 
-The readers do not replay native histories, resolve asset bytes or decide which
-historical copies to retain. Complete original and generation reference capture,
-held coordinator integration, provider/client reconciliation, authenticated room
-activation and sustainable history remain architectural work. All thirteen V1
-gates remain open.
+The [four-state reference qualification](qualification/2026-10-23-generation-record-references.json)
+passes ten selected normal stages. Source, fresh offline packages and actual
+bundled code each pass the same 755 laws: 268 new reference and disposal laws and
+all 487 prior record/storage laws. Five strict consumer type fixtures pass.
+The new domain includes separately loaded read runtimes, images retained only
+outside LIVE, all three languages and selection scopes, genuine local/paired/
+relay/retained factories, compatible reviewed/search policies and future
+document/comment Undo/Redo. The existing 362-case generation asset/recovery domain
+also passes. Native runtime bytes, formats, policies and defaults are unchanged.
+
+Original reference replay, selected historical parent files, held coordinator
+integration, provider/client reconciliation, authenticated room activation and
+sustainable history remain architectural work. All thirteen V1 gates remain open.

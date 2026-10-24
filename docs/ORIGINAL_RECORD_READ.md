@@ -132,6 +132,8 @@ All original native and retained-store kinds now have genuine committed, pending
 and LIVE discovery. Whole reference closure still requires native replay of those
 states and every selected historical parent file. The separate
 [generation record reader](GENERATION_RECORD_READ.md) covers complete atomic cuts.
-Original and generation reference capture, coordinator integration,
-provider/client reconciliation and authenticated activation remain required.
+Original reference replay and selected historical parent files still need
+closure. Generation reference capture now replays the actual four retained
+states; its scope excludes parent files outside those states. Coordinator
+integration, provider/client reconciliation and authenticated activation remain required.
 All thirteen V1 gates remain open.
