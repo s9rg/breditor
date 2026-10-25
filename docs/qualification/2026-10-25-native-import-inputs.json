@@ -1,0 +1,240 @@
+{
+  "format": "breditor/native-import-input-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-25T12:17:50.078Z",
+  "qualification": "selected-normal-functional-increment-not-v1-release",
+  "workingTreeSourceAtVerification": {
+    "commit": "5c5bd1961f073b70f3a2ad021f33deb35847bbb5",
+    "dirty": true,
+    "sha256": "793f8788085fb1b38c21224349ba7616fbbbc5afdf7e2a25d1e7080bdce715e2",
+    "files": 6512,
+    "bytes": 50837033
+  },
+  "qualificationMetadataAddedAfterRun": true,
+  "postVerificationSourceAdditions": [
+    "docs/qualification/2026-10-25-native-import-inputs.json"
+  ],
+  "normal": {
+    "passedStages": 10,
+    "parallelAfterCommonBuildAndNativeInputs": true,
+    "manifests": [
+      {
+        "kind": "common",
+        "path": "target/v1-candidate-runs/run-0X0YOc/result.json",
+        "sha256": "61bd2e21dca74467ef79a8121698515c3d5b646169ad0f2baeae0094e283dcd9",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "candidate-runner-contracts",
+            "status": "passed"
+          },
+          {
+            "id": "rich-browser-build",
+            "status": "passed"
+          },
+          {
+            "id": "collaboration-build",
+            "status": "passed"
+          },
+          {
+            "id": "native-complete-cohort",
+            "status": "passed"
+          },
+          {
+            "id": "native-complete-image-cohort",
+            "status": "passed"
+          },
+          {
+            "id": "native-import-input-contracts",
+            "status": "passed"
+          },
+          {
+            "id": "native-import-input-type-fence",
+            "status": "passed"
+          }
+        ]
+      },
+      {
+        "kind": "source",
+        "path": "target/v1-candidate-runs/run-yuR0YF/result.json",
+        "sha256": "a975973d32cdb45c473a7fa46d1190d6faabeccfec389a7103627c6511605538",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "native-import-input",
+            "status": "passed"
+          }
+        ]
+      },
+      {
+        "kind": "installed-and-bundled",
+        "path": "target/v1-candidate-runs/run-ZuxsRj/result.json",
+        "sha256": "e0493cd3660f2b685d08a35bd20e2800e7bce599f4465bab016b2b5ab2642393",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "installed-native-import-input",
+            "status": "passed"
+          }
+        ]
+      },
+      {
+        "kind": "readiness",
+        "path": "target/v1-candidate-runs/run-B24zyL/result.json",
+        "sha256": "9b6d9c74a0e7b163ef990eef988030110266516e537505812ac21220ef51e157",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "readiness-inventory",
+            "status": "passed"
+          }
+        ]
+      }
+    ]
+  },
+  "contracts": {
+    "scope": "Additive immutable-input preparation laws; prior 179-body native reservation, 94-body accepted transfer and full cumulative reconciliation stages remain unchanged and separately available, not rerun or replaced here",
+    "priorFocusedBodies": 166,
+    "additionalBodies": 15,
+    "source": {
+      "passed": 181,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "offlineInstalled": {
+      "passed": 181,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "actualProductionBundle": {
+      "passed": 181,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "strictConsumerFixtures": 27,
+    "actualNewSdkBodies": 7,
+    "actualNewStorageBodies": 8,
+    "productionModules": 716,
+    "productionBundleSha256": "f8b87bbc404714ae8e7643d142dfc455edff19484d450898d368d57baa3b4673",
+    "workspaceLinks": false,
+    "lockedRegistryArtifacts": 45
+  },
+  "native": {
+    "unchangedInputsVerified": 2899,
+    "priorNativeSuitePassed": 411,
+    "priorSuiteRerun": false,
+    "normalWasmUnchanged": true,
+    "freshNativeFilesVerified": 100
+  },
+  "isolatedInstalledControls": [
+    {
+      "name": "expected-input",
+      "scope": "Only the expected-choice/stored-file admission condition is removed. The same changed-input assertion fails; readonly storage and all assertions remain unchanged.",
+      "module": "node_modules/@breditor/collaboration/dist/selected_native_import/input_store.js",
+      "originalModuleSha256": "c7096b2b9649c17096641bb4acdf5f6f8dad604936988d23f772834d091014e8",
+      "removedModuleSha256": "bafc3b2036e7ae73a469ac7847911d04db6a7dcbc2ce1cfa076945a86fde76a4",
+      "actualExits": [
+        0,
+        1,
+        0
+      ],
+      "resultCounts": [
+        {
+          "passed": 8,
+          "failed": 0
+        },
+        {
+          "passed": 7,
+          "failed": 1
+        },
+        {
+          "passed": 8,
+          "failed": 0
+        }
+      ],
+      "assertionsUnchanged": true,
+      "originalInstalledConsumerUnchanged": true,
+      "copyRestoredExactly": true,
+      "evidence": "target/native-import-input-proof-0tGJmr/development/expected-input-control.json"
+    },
+    {
+      "name": "complete-chain",
+      "scope": "Only the final unfinished-review-chain check is removed; whole-file, nested before-file, native page/request/cursor and trailing-byte checks remain. The unchanged real-data SDK law refuses missing accepted pages only when this guard is present.",
+      "module": "node_modules/@breditor/collaboration/dist/selected_native_import/archive.js",
+      "originalModuleSha256": "e684d75255065ee3fcd383e20a29bc07fa2fc194749a74f7c947e78c54296865",
+      "removedModuleSha256": "e8eac32d0b5d00d5883748cac152919e6e7e76a623beaf34ea4dd6f70d03b562",
+      "actualExits": [
+        0,
+        1,
+        0
+      ],
+      "resultCounts": [
+        {
+          "passed": 1,
+          "failed": 0
+        },
+        {
+          "passed": 0,
+          "failed": 1
+        },
+        {
+          "passed": 1,
+          "failed": 0
+        }
+      ],
+      "assertionsUnchanged": true,
+      "originalInstalledConsumerUnchanged": true,
+      "copyRestoredExactly": true,
+      "evidence": "target/native-import-input-proof-0tGJmr/development/complete-chain-control.json"
+    }
+  ],
+  "endpoints": {
+    "groups": 11,
+    "declared": 110,
+    "allConfirmedClosed": true
+  },
+  "retainedProof": {
+    "path": "target/native-import-input-proof-0tGJmr/index.json",
+    "sha256": "f07193dc8bf846a8034d3098a95600e1794b7a920b3c5e04ab56893b1a213ae8",
+    "sourceFiles": "target/native-import-input-proof-0tGJmr/source-files.json"
+  },
+  "implemented": [
+    "A separate complete immutable native-import input family retains the full selected current before-file and every original request/selection-bound accepted document/review page",
+    "Canonical bounded framing re-admits the nested before-file, binds its catalog to the independently selected server, validates every original page and exact cursor chain, and rejects incomplete/extra/reordered/cross-cut/unknown-field/trailing data",
+    "Genuine private retained-current encoding occurs inside actual full source/upload custody with its real pure hashing runtime; new options are inspected only under owner/native exclusion",
+    "No-write preview and a fresh affirmative exact-choice decision precede absent-only complete input storage; exact existing retries read without overwrite or repair",
+    "Intentionally unbound local comment actors remain pending and unchanged; only their exact matching missing registered-review entries are permitted, while other missing/unknown own histories and native forks refuse",
+    "A real cancelled queued opening retains actual cleanup until drain; failure after actual input transaction commit preserves the complete input and no native edit, then a newly approved readonly retry succeeds",
+    "All seven native source families and all four independent history pairs retain native/source/upload bytes and future document/comment Undo during preparation"
+  ],
+  "remaining": [
+    "Existing-input cold open from an independently pinned choice and actual stored complete file, without requiring the current room to equal its earlier before-state",
+    "Durable per-client execution progress, complete observed cuts and uncertain outcome retention BEFORE/AFTER actual imports; this checkpoint performs no native imports",
+    "Retirement before native exclusion releases after any uncertain native admission, including final handoff failure",
+    "Actual interrupted cold execution/resume preserving retained live/current/pending source records and offline work even when current disk is older than an archived live cut",
+    "Explicit unbound-comment adoption; authenticated complete reconciliation and whole-room activation/old-write exclusion",
+    "Sustainable Undo/offline retention, extension/custom-node and remaining agreed feature parity, and all13 V1 release gates"
+  ],
+  "openReleaseGates": [
+    "catalog-coverage",
+    "distribution",
+    "compatibility",
+    "release-ci",
+    "browser-reliability",
+    "accessibility-input-mobile",
+    "performance-and-size",
+    "public-relay-hardening",
+    "storage-lifecycle",
+    "dependency-and-license-review",
+    "integration-docs-and-support",
+    "pilot",
+    "final-rc"
+  ],
+  "v1Ready": false,
+  "publicRootApiChanged": false,
+  "packageVersionsChanged": false,
+  "pushTagPublicationDeploymentPerformed": false
+}

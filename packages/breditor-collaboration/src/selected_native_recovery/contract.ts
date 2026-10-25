@@ -6,11 +6,17 @@ import type {RetainedNativeClient} from '../complete_operation_cohort/retained_n
 import type {SelectedAssetCurrentCut} from '../physical_room_asset_successor/owner.js';
 import type {SharedPhysicalRoomRecoveryHost} from '../physical_recovery_control/host.js';
 import type {SelectedRoomReconciliationRead} from '../selected_room_reconciliation/contract.js';
+import type {SelectedRoomCurrentFile} from '../selected_room_current/contract.js';
+import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
+export interface SelectedNativeRetainedCurrent{readonly current:SelectedRoomCurrentFile;readonly integrity:SharedArchiveIntegrityOptions}
 export interface SelectedNativeRecoveryScope{
  readonly clients:readonly RetainedNativeClient[];
  readonly native:Omit<NativeRecoveryReservation,'close'>;
  readonly signal:AbortSignal;
  check():void;
  capture():Promise<SelectedAssetCurrentCut>;
+ /** Complete encoding uses the actual held read scope's integrity runtime;
+  * detached caller metadata cannot substitute that scope or its source files. */
+ retainCurrent():Promise<SelectedNativeRetainedCurrent>;
  readReconciliation(host:SharedPhysicalRoomRecoveryHost):Promise<SelectedRoomReconciliationRead>;
 }

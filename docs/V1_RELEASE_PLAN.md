@@ -106,9 +106,12 @@ all-client publication exclusion and a genuine selected-owner context for
 serialized full snapshots and native imports. Sibling callbacks cannot edit
 other members, and cancellation or close cannot turn an admitted partial import
 into a successful completion. This is the execution prerequisite for a durable
-importer, not the journal itself. Exact before-input retention, resumable
-per-client progress, explicit local-comment adoption and authenticated whole-room
-activation remain next. Sustainable history, extension parity and all thirteen
+importer, not the journal itself. The [native import input contract](NATIVE_IMPORT_INPUTS.md)
+adds complete immutable before-files and original accepted pages, absent-only
+storage and freshly approved exact retries without mutating clients. Durable
+per-client progress, interrupted execution/cold resume, explicit local-comment
+adoption and authenticated whole-room activation remain next. Sustainable history,
+extension parity and all thirteen
 release gates also remain open.
 
 ## Current native serving fence

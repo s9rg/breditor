@@ -31,6 +31,7 @@ import type {NativeRecoveryReservation} from '../native_recovery/contract.js';
 import {nativeRecoveryFailure} from '../native_recovery/policy.js';
 import type {SelectedNativeRecoveryScope} from '../selected_native_recovery/contract.js';
 import {waitNativePendingWork} from '../native_pending_work.js';
+import {encodeSelectedRoomCurrent} from '../selected_room_current/archive.js';
 const visitReconciliation=RetainedPhysicalRoot.prototype.visitReconciliationRecordCut,catalogMetadata=RetainedPhysicalRoot.prototype.catalogMetadata,closeFinalCancellation=OperationalReadCancellation.prototype.close;
 const rootClients=Object.getOwnPropertyDescriptor(RetainedPhysicalRoot.prototype,'clients')!.get!,visitRecordCut=RetainedPhysicalRoot.prototype.visitRecordCut;
 const methods={check:RichAssetStore.prototype.checkOpen,acquire:RichAssetStore.prototype.acquireRecoveryCustody,capture:RichAssetStore.prototype.captureBackup,close:RichAssetStore.prototype.close,held:RichAssetStoreCustody.prototype.check,release:RichAssetStoreCustody.prototype.release,finish:RichAssetStoreCustody.prototype.close};
@@ -106,7 +107,7 @@ export class RetainedSelectedAssetOwner{
     const readOptions={...chosen,signal:controller.signal,checkAuthority:authorize},imports:SelectedNativeRecoveryScope['native']=Object.freeze({check:importCheck,
      receiveDocument<Q extends SharedSelectionPolicy>(core:import('../core.js').SharedRichEditor<Q>,frame:string){importCheck();const value=native!.receiveDocument(core,frame);authorize();return value;},
      receiveReview<Q extends SharedSelectionPolicy>(core:import('../core.js').SharedRichEditor<Q>,frame:string,verified:import('../review_types.js').SharedReviewPolicy){importCheck();const value=native!.receiveReview(core,frame,verified);authorize();return value;},
-    }),scope:SelectedNativeRecoveryScope=Object.freeze({clients,native:imports,signal:controller.signal,check,capture:()=>readingPhase(()=>this.#visit(readOptions,async cut=>cut,false,undefined,token)),readReconciliation:(host:SharedPhysicalRoomRecoveryHost)=>readingPhase(()=>this.#reconciliation(host,readOptions,token))});
+    }),scope:SelectedNativeRecoveryScope=Object.freeze({clients,native:imports,signal:controller.signal,check,capture:()=>readingPhase(()=>this.#visit(readOptions,async cut=>cut,false,undefined,token)),retainCurrent:()=>readingPhase(()=>this.#visit(readOptions,async(cut,held,current)=>Object.freeze({current:await encodeSelectedRoomCurrent(cut,{wasm:held.wasm,checkAuthority:()=>{authorize();current();},signal:controller.signal}),integrity:Object.freeze({wasm:held.wasm,checkAuthority:authorize,signal:controller.signal})}),false,undefined,token)),readReconciliation:(host:SharedPhysicalRoomRecoveryHost)=>readingPhase(()=>this.#reconciliation(host,readOptions,token))});
     const value=await visit(scope);if(reading){controller.abort();await reading.catch(()=>{});throw nativeRecoveryFailure('native_recovery_busy');}authorize();return value;
    }finally{controller.abort();try{await reading?.catch(()=>{});}finally{active=false;this.#closingListeners.delete(cancel);unwatch();observation?.close();caller?.close();}}
   })();
