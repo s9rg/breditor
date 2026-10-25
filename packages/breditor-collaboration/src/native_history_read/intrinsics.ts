@@ -5,6 +5,7 @@ export const nativeHistoryIntrinsics=Object.freeze({
  descriptor:p.descriptor,checkpointJson:p.checkpointJson,
  documentKind:p.segmentedHistoryPolicy,reviewKind:p.reviewHistoryPolicy,
  writerClock:p.writerClock,writerClockV2:p.writerClockV2,
+ supportsWriterPrefixRead:p.supportsWriterPrefixRead,writerClockAt:p.writerClockAt,
  writerGroups:p.writerGroups,writerGroupsV2:p.writerGroupsV2,
  reviewCheckpoint:p.reviewCheckpoint,reviewSegmentedCheckpoint:p.reviewSegmentedCheckpoint,
  reviewWriterClock:p.reviewWriterClock,localReviewClock:p.localReviewClock,

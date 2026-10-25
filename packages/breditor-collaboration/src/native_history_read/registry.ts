@@ -39,6 +39,8 @@ export function registerCapturedNativeHistory<P extends SharedSelectionPolicy>(s
   checkpointJson:()=>read(source,core=>native.checkpointJson.call(core)),
   writerClock:(writer:string)=>read(source,core=>native.writerClock.call(core,writer)),
   writerClockV2:(writer:string)=>read(source,core=>native.writerClockV2.call(core,writer)),
+  supportsWriterPrefixRead:()=>read(source,core=>native.supportsWriterPrefixRead.call(core)),
+  writerClockAt:(writer:string,through:string,version:1|2=1)=>read(source,core=>native.writerClockAt.call(core,writer,through,version)),
   writerGroups:(after:string,revision?:string)=>read(source,core=>native.writerGroups.call(core,after,revision)),
   writerGroupsV2:(after:string,revision?:string)=>read(source,core=>native.writerGroupsV2.call(core,after,revision)),
  });

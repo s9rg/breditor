@@ -37,15 +37,17 @@ export function descriptor(value:unknown):SharedProfileDescriptor{
  if(d["format"]!=="breditor/shared-rich-profile-descriptor"||d["formatVersion"]!==1||sharedProtocolLanguage(d)===undefined)throw new SharedRelayError("profile_mismatch");
  digest(d["schemaFingerprint"]);return d as unknown as SharedProfileDescriptor;
 }
-export type SharedTransportReader=Pick<SharedRichEditor,"descriptor"|"writerClock"|"writerClockV2"|"writerGroups"|"writerGroupsV2">;
+export type SharedTransportReader=Pick<SharedRichEditor,"descriptor"|"writerClock"|"writerClockV2"|"writerGroups"|"writerGroupsV2">&Partial<Pick<SharedRichEditor,"supportsWriterPrefixRead"|"writerClockAt">>;
 export function checkDescriptor(core:SharedTransportReader,d:SharedProfileDescriptor):void{const local=core.descriptor();if(sharedProtocolLanguage(d)===undefined||d.abiVersion!==local.abiVersion||d.modelVersion!==local.modelVersion||d.journalVersion!==local.journalVersion||d.richLanguageVersion!==local.richLanguageVersion||d.schemaFingerprint!==local.schemaFingerprint||d.schema?.name!==local.schema.name||d.schema?.version!==local.schema.version)throw new SharedRelayError("profile_mismatch");}
 export interface GroupMetadata {writer:string;from:string;through:string;previousDigest:string;groupDigest:string}
 export function groupMetadata(raw:string,version:1|2=1):GroupMetadata{const g=object(JSON.parse(raw));if(g["format"]!=="breditor/shared-writer-group"||g["formatVersion"]!==version||g["kind"]!=="action")throw new SharedRelayError("writer_origin_invalid");return{writer:writer(g["writer"]),from:counter(g["from"]),through:counter(g["through"]),previousDigest:digest(g["previousDigest"]),groupDigest:digest(g["groupDigest"])};}
 /** Read native canonical prefix proof; never rebuild or merge a JS replicated document. */
 export function prefixAt(core:SharedTransportReader,id:string,through:string,version:1|2=1):string{
- const local=version===2?core.writerClockV2(id):core.writerClock(id);if(BigInt(through)>BigInt(local.through))throw new SharedRelayError("server_ahead");
+ writer(id);counter(through);if(version!==1&&version!==2)throw new SharedRelayError("writer_transport_invalid");const local=clock(version===2?core.writerClockV2(id):core.writerClock(id),id);if(BigInt(through)>BigInt(local.through))throw new SharedRelayError("server_ahead");
  if(through===local.through)return local.prefixDigest;
- const first=(version===2?core.writerGroupsV2(through):core.writerGroups(through)).groups[0];if(first===undefined)throw new SharedRelayError("history_fork");
- return groupMetadata(first,version).previousDigest;
+ if(core.supportsWriterPrefixRead?.()===true&&typeof core.writerClockAt==='function'){const value=clock(core.writerClockAt(id,through,version),id);if(value.through!==through)throw new SharedRelayError("protocol_error");return value.prefixDigest;}
+ // Legacy group export is LOCAL-author-only. A foreign clock can be ahead of
+ // the selected server cut; its numeric counter must never index our own groups.
+ const batch=version===2?core.writerGroupsV2(through):core.writerGroups(through);if(batch.writer!==id)throw new SharedRelayError("writer_prefix_unavailable");const first=batch.groups[0];if(first===undefined)throw new SharedRelayError("history_fork");const group=groupMetadata(first,version);if(group.writer!==id||group.from!==through)throw new SharedRelayError("history_fork");return group.previousDigest;
 }
 export function checkClock(core:SharedTransportReader,c:SharedWriterClock,version:1|2=1):void{if(prefixAt(core,c.writer,c.through,version)!==c.prefixDigest)throw new SharedRelayError("history_fork");}

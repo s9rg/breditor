@@ -37,7 +37,7 @@ export interface SharedAssetReferenceCaptureMetadata {
 export const MAX_SHARED_ASSET_CAPTURE_SOURCE_BYTES=160*1024*1024;
 export const MAX_SHARED_ASSET_CAPTURE_PACKETS=1024;
 /** Internal borrowed canonical facade reads; no editing, connection or owner transfer. */
-export type SharedCapturedRecoveryRead=Pick<SharedRichEditor,"descriptor"|"checkpointJson"|"writerClock"|"writerClockV2"|"writerGroups"|"writerGroupsV2"|"reviewWriterClock"|"reviewCheckpoint"|"localReviewClock">;
+export type SharedCapturedRecoveryRead=Pick<SharedRichEditor,"descriptor"|"checkpointJson"|"writerClock"|"writerClockV2"|"writerGroups"|"writerGroupsV2"|"supportsWriterPrefixRead"|"writerClockAt"|"reviewWriterClock"|"reviewCheckpoint"|"localReviewClock">;
 const key=Object.freeze({}),proofs=new WeakMap<SharedAssetReferenceCapture,{records:readonly SharedAssetCaptureRecord[];check:()=>void;native:SharedCapturedRecoveryRead}>();
 const failed=()=>new Error("The selected asset capture source is closed, replaced or no longer current");
 function checkReferenceSource(source:SharedAssetReferenceCapture):void{const value=proofs.get(source);if(!value)throw failed();value.check();if(proofs.get(source)!==value)throw failed();}

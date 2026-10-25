@@ -4,7 +4,7 @@ import type {SharedRichEditor} from '../core.js';
 export type CapturedNativeHistoryKind='original'|'segmented-v1';
 /** Native-only reads; enclosing check() validates the complete selected stores. */
 export type CapturedDocumentHistoryRead=Readonly<
- Pick<SharedRichEditor,'descriptor'|'checkpointJson'|'writerClock'|'writerClockV2'|'writerGroups'|'writerGroupsV2'>
+ Pick<SharedRichEditor,'descriptor'|'checkpointJson'|'writerClock'|'writerClockV2'|'writerGroups'|'writerGroupsV2'|'supportsWriterPrefixRead'|'writerClockAt'>
  &{kind:CapturedNativeHistoryKind}>;
 export type CapturedReviewHistoryRead=Readonly<
  Pick<SharedRichEditor,'reviewWriterClock'|'localReviewClock'>

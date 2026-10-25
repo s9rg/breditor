@@ -1,5 +1,6 @@
 //! Atomic single-writer groups for relay admission, separate from trusted full-state catchup.
 mod admission;
+mod clock_at;
 mod digest;
 mod export;
 mod frame;

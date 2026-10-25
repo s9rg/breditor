@@ -1,0 +1,147 @@
+{
+  "format": "breditor/native-writer-prefix-functional-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-25T05:55:23.638Z",
+  "passed": true,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "source": {
+    "commit": "de3e9a08c14f507d8508bdf6e7189f59ca5379d1",
+    "dirty": true,
+    "sha256": "000b1b51e3cf155108f6f57ebe16e7c972d5c346b28ae8610c2475f27465f439",
+    "files": 6446,
+    "bytes": 50482213
+  },
+  "normalManifest": "target/v1-candidate-runs/run-6XaGZ2/result.json",
+  "normalStages": [
+    {
+      "id": "candidate-runner-contracts",
+      "status": "passed",
+      "log": "b1f96827ceca2e462b4259b2797760f2f5461b6f5b5155a00e0dfc34f279b63b"
+    },
+    {
+      "id": "shared-format",
+      "status": "passed",
+      "log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "shared-lint",
+      "status": "passed",
+      "log": "82bf9caea7ccbd055b4712ea6e7327d8dbff7720ca52df01c569e06e58280d68"
+    },
+    {
+      "id": "shared-native",
+      "status": "passed",
+      "log": "26b1f94f2f8888c4e22c97994e453f9270503453c9db3d9f07d7ac05011591e0"
+    },
+    {
+      "id": "writer-prefix-plan-contracts",
+      "status": "passed",
+      "log": "a9111a59090c642c221198f440e52996577b78a89e171afb932535d5e6e7db86"
+    },
+    {
+      "id": "writer-prefix-native",
+      "status": "passed",
+      "log": "d3dcd62cd0a652a2588e77e9f01dab20ec34caa6cda9c62efcb6120904162d85"
+    },
+    {
+      "id": "paired-shared-runtime",
+      "status": "passed",
+      "log": "2b7a87d2000ea59b50d0128b1bdf3b0051f0c4ab2704350d839c921c23d3b6a1"
+    },
+    {
+      "id": "collaboration-build",
+      "status": "passed",
+      "log": "3ecf4743dfb35b8d860a882c5c54506a891051132b77e773bb2bd8fe690bca12"
+    },
+    {
+      "id": "writer-prefix-type-fence",
+      "status": "passed",
+      "log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "writer-prefix-sdk",
+      "status": "passed",
+      "log": "439cd7632cf3336ab8f7d42692f08af019f2ca5862b68b0d74002293e144a596"
+    },
+    {
+      "id": "installed-writer-prefix",
+      "status": "passed",
+      "log": "57a008ba370314fe9508ce58af5f37946c29626cc27a144a7d50cc422d1d16c8"
+    }
+  ],
+  "retainedProof": {
+    "path": "target/native-writer-prefix-proof-TVLXGu/index.json",
+    "sha256": "8444f9df5176010ce58fcd24ebab26ef4b6a1f8d604a1b14e342eb4a3e04f6b2"
+  },
+  "native": {
+    "suites": 56,
+    "passed": 671,
+    "failed": 0,
+    "ignored": 0,
+    "filtered": 0
+  },
+  "sourceSdk": {
+    "cases": 12,
+    "successfulQueries": 648,
+    "coldRestores": 12,
+    "futureHistorySteps": 24,
+    "wrongAuthorControls": 24
+  },
+  "legacyRuntime": {
+    "wasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "cases": 12,
+    "wrongAuthorControls": 24,
+    "refusedForeignHistoricalReads": true,
+    "localLegacyFallbackPreserved": true
+  },
+  "installed": {
+    "workspaceLinks": false,
+    "registryArtifacts": 45,
+    "strictTypes": true,
+    "publicCasesPerPath": 12,
+    "successfulQueriesPerPath": 120,
+    "coldRestoresPerPath": 12,
+    "futureHistoryStepsPerPath": 24,
+    "productionBundleModules": 19,
+    "wasmSha256": "946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0"
+  },
+  "originalV1Compatibility": {
+    "format": "breditor/shared-v1-runtime-comparison",
+    "formatVersion": 1,
+    "beforeWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "afterWasmSha256": "946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0",
+    "comparedCheckpoints": 49,
+    "crossVersionRestores": 2,
+    "futureHistorySteps": 12,
+    "modelVersion": 11,
+    "journalVersion": 12,
+    "passed": true
+  },
+  "changes": {
+    "publicPurePrefixMethods": true,
+    "completeOptionalNativeCapability": true,
+    "genuineCapturedAndRetainedReaders": true,
+    "legacyLocalOnlyFallback": true,
+    "protocolsChanged": false,
+    "modelChanged": false,
+    "journalChanged": false,
+    "versionsChanged": false,
+    "normalWasmBytesChanged": true,
+    "pushed": false,
+    "published": false
+  },
+  "scope": "Pure arbitrary-author document prefix reads and wrong-local-author fallback repair. Complete current-source shared Rust suite, actual old-source negative control, canonical SDK/paired runtime and offline-installed/public production-bundle cases. Historical cumulative room recovery qualifications remain bound to their older runtime; no full current-runtime room regression, complete reconciliation, activation or V1/parity approval.",
+  "openArchitecturalWork": [
+    "Complete every retained client against all accepted peer/server document and bound review authors at one selected authenticated server/provider cut.",
+    "Preserve and verify complete native/source/packet/journal state and all origin/selected whole uploads through real cleanup before returning reconciliation.",
+    "Durable authenticated activation under final-cut exclusion and a portable deployment authority.",
+    "Sustainable history preserving Undo/Redo and outstanding offline work, then extension/custom-node and remaining feature parity."
+  ],
+  "v1GatesOpen": 13,
+  "environmentNotes": [
+    "The first Wasm linker attempt failed because rust-lld could not locate the installed libLLVM; the successful canonical build explicitly supplied the installed toolchain library directory without changing flags or system files.",
+    "Known vendored unused-import and native rust-objcopy stripping warnings remain; strict first-party Clippy and all selected tests pass.",
+    "Dependency notice inventory remains not-approved, including the existing generic-btree notice gap."
+  ]
+}

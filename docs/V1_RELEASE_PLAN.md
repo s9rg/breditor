@@ -41,6 +41,23 @@ rotation/recovery and remaining feature parity are substantive work, not waived
 by passing the current tests. No package version, public API freeze, tag,
 publication or deployment is promoted.
 
+## Current native author prefix reads
+
+The [native author prefix contract](NATIVE_WRITER_PREFIX_READS.md) repairs a
+collaboration integrity prerequisite: historical peer/server cuts can now be
+read from their own native operation lineage. Equal numeric counters no longer
+let the SDK substitute a local writer group for a foreign author. Older runtimes
+explicitly refuse unsupported foreign historical reads. The capability is pure
+and preserves native checkpoints, current observations and future Undo/Redo.
+
+The additive Rust/Wasm and SDK methods retain both existing digest families and
+all protocol, model, journal and package versions. The new normal Wasm bytes have
+focused source, offline-installed and production-bundle qualification; prior
+cumulative recovery evidence remains bound to its older recorded runtime.
+Complete all-author client/provider reconciliation, durable authenticated room
+activation, sustainable history and extension parity remain next, in that order.
+All thirteen V1 gates remain open.
+
 ## Current native serving fence
 
 The [native serving epoch contract](NATIVE_SERVING_EPOCHS.md) now adds explicit

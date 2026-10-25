@@ -5,6 +5,7 @@ import {recoveryOriginOwnerMethods} from "./check-collaboration-runtime-surface.
 import {segmentedHistoryOwnerMethods,segmentedHistoryProfileMethods,observerHistorySealingOwnerMethods} from "./check-collaboration-runtime-surface.mjs";
 import {segmentedReviewMethods} from "./check-collaboration-runtime-surface.mjs";
 import {readOnlyHistoryLifecycleMethods} from "./check-collaboration-runtime-surface.mjs";
+import {writerPrefixReadMethods} from "./check-collaboration-runtime-surface.mjs";
 import assert from "node:assert/strict";
 import {admitApplicationSurface,applicationExports,documentOwnerMethods,documentProfileMethods,documentClipboardMethods,documentNavigationMethods,documentToolsMethods,documentPresenceMethods,clipboardInterchangeMethods,reviewMethods,reviewTransportMethods,historicalReviewMethods,versionMethods,suggestionMethods,suggestionGeneralTextMethods,suggestionRevisionMethods,suggestionFormatRebaseMethods,suggestionTextRebaseMethods,reviewedHistoryMethods} from "./check-collaboration-runtime-surface.mjs";
 import {searchOwnerMethods,writingOwnerMethods,placeholderOwnerMethods,placeholderProfileMethods} from "./check-collaboration-runtime-surface.mjs";
@@ -39,6 +40,7 @@ function fixture(){
  for(const name of clipboardInterchangeMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of reviewMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of reviewTransportMethods)module.SharedEditorOwner.prototype[name]=()=>{};
+ for(const name of writerPrefixReadMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of segmentedReviewMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of historicalReviewMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of versionMethods)module.SharedEditorOwner.prototype[name]=()=>{};
@@ -147,6 +149,9 @@ test("document scope requires complete guarded authoring, separate observations 
 });
 test("writer transport V2 needs its exact paired native reads",()=>{
  for(const name of ["writer_transport_v2_version","writer_groups_v2","writer_clock_v2"]){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native writer transport V2/);}
+});
+test("arbitrary-author prefix reads require the complete separate pure native capability",()=>{
+ for(const name of writerPrefixReadMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native arbitrary-author prefix capability/);}
 });
 test("clipboard text conversion needs its paired native policy read",()=>{
  for(const name of ["clipboard_text_policy_version","project_clipboard_text"]){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native clipboard text policy/);}

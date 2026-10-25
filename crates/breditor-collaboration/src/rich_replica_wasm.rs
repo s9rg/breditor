@@ -26,6 +26,7 @@ mod segmented_history;
 mod selection_formatting;
 mod suggestions;
 mod typing;
+mod writer_clock_at;
 mod writer_transport_v2;
 mod writing_tools;
 use crate::{

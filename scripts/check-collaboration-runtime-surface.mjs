@@ -24,6 +24,7 @@ export const documentPresenceMethods=Object.freeze(["document_presence_version",
 export const clipboardInterchangeMethods=Object.freeze(["clipboard_interchange_version","admit_clipboard_root","validate_clipboard"]);
 export const reviewMethods=Object.freeze(["review_version","review_enabled","enable_review","capture_review_anchor","resolve_review_anchor","review_view_json","dispatch_review","undo_review","redo_review","set_review_access","receive_review","export_review","review_checkpoint"]);
 export const reviewTransportMethods=Object.freeze(["review_transport_version","local_review_clock","review_writer_clock","retained_review_receipt","export_review_through"]);
+export const writerPrefixReadMethods=Object.freeze(["writer_prefix_read_version","writer_clock_at","writer_clock_at_v2"]);
 export const segmentedReviewMethods=Object.freeze(["review_history_generation_version","review_history_family","enable_review_history_generations","enable_observer_review_history_generations","seal_review_history_generation","seal_observer_review_history_generation","enable_segmented_review","review_segmented_checkpoint"]);
 export const historicalReviewMethods=Object.freeze(["review_quote_version","read_review_quote","document_version_source_version","verify_document_version_source"]);
 export const versionMethods=Object.freeze(["document_versions_version","capture_document_version","read_document_version","compare_document_version","prepare_document_version_restore","apply_document_version_restore"]);
@@ -74,6 +75,7 @@ export function admitApplicationSurface(module,binary,declarations){
  for(const name of clipboardInterchangeMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native clipboard interchange capability ${name}`);
  for(const name of reviewMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing guarded native review capability ${name}`);
  for(const name of reviewTransportMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native review lineage capability ${name}`);
+ for(const name of writerPrefixReadMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native arbitrary-author prefix capability ${name}`);
  for(const name of segmentedReviewMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native segmented review capability ${name}`);
  for(const name of historicalReviewMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native historical review capability ${name}`);
  for(const name of versionMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing guarded native version capability ${name}`);

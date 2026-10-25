@@ -142,6 +142,8 @@ export interface SharedRustOwner extends SharedReviewRustCapability,SharedReview
  presence_frame?(observation:unknown):string;resolve_presence?(frame:string):string;
  writer_groups?(observation:unknown,after:string):string;writer_clock?(writer:string):string;
  writer_transport_v2_version?():string;writer_groups_v2?(observation:unknown,after:string):string;writer_clock_v2?(writer:string):string;
+ /** Additive pure arbitrary-author prefix capability; existing head/group reads remain useful. */
+ writer_prefix_read_version?():string;writer_clock_at?(writer:string,through:string):string;writer_clock_at_v2?(writer:string,through:string):string;
  inline_format_state_json?(observation:unknown,kind:string):string;
  caret_formats_json?(observation:unknown):string;
  patch_inline_format_properties?(observation:unknown,input:string):boolean;
