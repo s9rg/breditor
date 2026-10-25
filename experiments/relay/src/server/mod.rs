@@ -5,6 +5,7 @@ mod assets;
 mod authentication;
 mod backup;
 mod connection;
+mod deployment_fence;
 mod generation_recovery;
 mod http;
 mod versions;
@@ -26,6 +27,11 @@ pub use backup::{
     ServerRecoveryContinuationIdentity, ServerRecoveryCoverage, ServerRecoveryState,
     ServerRecoveryStateIdentity, VerifiedServerAssetAvailability, VerifiedServerRecoveryAssets,
     VerifiedServerRecoveryContinuation, VerifiedServerRecoveryState, router_with_server_backups,
+    router_with_server_backups_and_deployment_lease,
+};
+pub use deployment_fence::{
+    RoomDeploymentAuthority, RoomDeploymentIdentity, RoomDeploymentLease, RoomDeploymentSelection,
+    router_with_assets_and_deployment_lease, router_with_deployment_lease,
 };
 pub use generation_recovery::{
     PhysicalRoomRecoveryControl, PhysicalRoomRecoveryControlIdentity,
@@ -57,6 +63,7 @@ pub(super) struct Host {
     version_operations: Arc<Semaphore>,
     suggestions_changed: watch::Sender<u64>,
     generation_custody: Option<Arc<crate::room::GenerationOperationCustody>>,
+    deployment: Option<RoomDeploymentLease>,
 }
 impl Host {
     pub async fn transaction<T: Send + 'static>(
@@ -66,11 +73,14 @@ impl Host {
         let room = self.room.clone();
         let custody = self.generation_custody.clone();
         let assets = self.assets.clone();
+        let deployment = self.deployment.clone();
         tokio::task::spawn_blocking(move || {
-            let _custody = custody;
-            let _assets = assets;
-            let mut room = room.lock().map_err(|_| Error::NeedsRecovery)?;
-            f(&mut room)
+            deployment_fence::transaction(deployment.as_ref(), || {
+                let _custody = custody;
+                let _assets = assets;
+                let mut room = room.lock().map_err(|_| Error::NeedsRecovery)?;
+                f(&mut room)
+            })
         })
         .await
         .map_err(|_| Error::NeedsRecovery)?
@@ -146,6 +156,7 @@ fn create_host(
         version_operations: Arc::new(Semaphore::new(4)),
         suggestions_changed,
         generation_custody: None,
+        deployment: None,
     }
 }
 fn routes(host: Host) -> Router {

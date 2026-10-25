@@ -3,6 +3,7 @@ use super::{Authentication, Host, create_host, routes};
 use crate::{Error, Result, Room, ServerRoomBackup, assets::AssetStore};
 use axum::Router;
 mod asset_availability;
+mod deployment;
 mod recovery_check;
 mod recovery_inventory;
 pub use asset_availability::{
@@ -15,6 +16,7 @@ pub(in crate::server) use asset_availability::{
     ResolvedServerAssets, check_complete_asset_read_budget, check_server_asset_provider,
     resolve_server_assets,
 };
+pub use deployment::router_with_server_backups_and_deployment_lease;
 pub use recovery_check::{
     ServerRecoveryContinuationCoverage, ServerRecoveryContinuationIdentity, ServerRecoveryCoverage,
     VerifiedServerRecoveryContinuation, VerifiedServerRecoveryState,

@@ -24,6 +24,18 @@ Numerical integration checkpoints below are historical evidence, not the current
 suite totals. Current frozen checks and remaining release gates are recorded in
 the [V1 release plan](../../docs/V1_RELEASE_PLAN.md).
 
+## Native serving epochs
+
+Explicit fenced router constructors can now select a separate host-owned
+`RoomDeploymentAuthority`. Every native transaction and private capture retains
+a genuine serving permit through actual publication; a new durable epoch fences
+old hosts, including asset bodies admitted before takeover. The
+[native serving epoch contract](../../docs/NATIVE_SERVING_EPOCHS.md) defines
+provisioning, exact claims, retryable cleanup and the current Unix filesystem
+backend. Ordinary router defaults are unchanged. This is not complete recovery
+activation: the final accepted cut, all retained clients and providers still need
+coordinated reconciliation before a recovered host can serve.
+
 ## Server room archives
 
 The Rust host also supports `Room::export_backup()`, independent

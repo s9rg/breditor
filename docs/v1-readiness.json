@@ -220,9 +220,9 @@
     {
       "id":"roles-and-auth","area":"Collaboration","status":"partial",
       "summary":"Permissions and application authentication",
-      "current":"Reference-room Reader/Editor authority and revocation are enforced. The local demo bootstrap is not public login, tenant provisioning or TLS deployment.",
+      "current":"Reference-room Reader/Editor authority and revocation are enforced. Explicit native routers can additionally use a separate durable serving epoch with real process-level locks; every native transaction and private capture rechecks it. The current Unix reference backend requires one protected non-rollback authority namespace and does not complete client/provider reconciliation or authenticated recovery activation. The local demo bootstrap is not public login, tenant provisioning or TLS deployment.",
       "acceptance":"Provide host identity adapters, room lifecycle, secure credential storage, observable denial/revocation and deployment guidance with independent authorization tests.",
-      "evidence":["experiments/relay/README.md","packages/breditor-collaboration/src/relay/types.ts"],
+      "evidence":["experiments/relay/README.md","packages/breditor-collaboration/src/relay/types.ts","docs/NATIVE_SERVING_EPOCHS.md","experiments/relay/tests/deployment_fence.rs"],
       "sources":["ckeditor-digest"]
     },
     {

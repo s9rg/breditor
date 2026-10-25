@@ -41,6 +41,32 @@ rotation/recovery and remaining feature parity are substantive work, not waived
 by passing the current tests. No package version, public API freeze, tag,
 publication or deployment is promoted.
 
+## Current native serving fence
+
+The [native serving epoch contract](NATIVE_SERVING_EPOCHS.md) now adds explicit
+reference-host fencing through a separate durable authority. Every fenced native
+transaction and private capture holds a real process-level shared permit through
+publication and a final storage check. A new epoch excludes in-flight work before
+fencing old hosts, including uploads whose bodies arrived after takeover.
+
+The [2026-10-25 native qualification](qualification/2026-10-25-native-serving-epochs.json)
+passes nine selected normal stages and all 404 relay tests/doctests. The focused
+21-law suite covers all ten profile/transport pairs; two external native-consumer
+laws also pass independently. Removing only the actual serving guard makes all four
+unchanged stale-server/upload assertions fail; restoring it passes again. A
+separate real durable-grant regression reproduces and verifies the final-return
+namespace repair without rolling back accepted work. All test-owned listeners
+are closed, with exact endpoint accounting retained in the proof.
+
+This is the current Unix filesystem reference backend, not portable consensus
+or completed recovery activation. Ordinary constructors, protocol defaults,
+package versions and normal shared Wasm bytes remain unchanged. Next priorities
+are complete retained-client/registration/provider closure, an authenticated
+durable cutover intent under exclusive final-cut protection, and sustainable
+history without losing offline edits or Undo/Redo. The custom-node/extension
+platform and other remaining parity follow these integrity contracts. All
+thirteen V1 gates remain open; no publication or deployment is approved.
+
 ## Current seven family client recovery
 
 The [selected-owner recovery contract](SELECTED_OWNER_RECOVERY.md) now supports

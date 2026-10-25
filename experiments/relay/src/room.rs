@@ -13,6 +13,7 @@ use std::{collections::BTreeMap, path::Path};
 mod asset_references;
 mod atomic_transport_v2;
 mod backup;
+mod deployment_binding;
 mod document_presence;
 mod layout_v3;
 mod log_generations;

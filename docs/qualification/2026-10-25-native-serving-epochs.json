@@ -1,0 +1,161 @@
+{
+  "format": "breditor/native-serving-epochs-functional-qualification",
+  "formatVersion": 1,
+  "date": "2026-10-25",
+  "scope": "explicit-native-relay-serving-epochs-on-current-unix-host",
+  "status": "passed",
+  "v1Ready": false,
+  "publicationApproved": false,
+  "source": {
+    "commit": "d995b2bb84ef0144929bf9d12db115cc5708c465",
+    "dirty": true,
+    "sha256": "4444061f0f79068d6275f9d21c973168d3da14e10b250c32d0af26407e9753cc",
+    "files": 6435,
+    "bytes": 50431356
+  },
+  "normalStages": [
+    {
+      "id": "candidate-runner-contracts",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "id": "relay-format",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "id": "relay-lint",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "id": "relay-no-server-lint",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "id": "relay-native",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "id": "native-serving-epochs-plan-contracts",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "id": "relay-serving-epochs-native",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "id": "relay-serving-epochs-public",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "id": "relay-docs",
+      "status": "passed",
+      "exitCode": 0
+    }
+  ],
+  "tests": {
+    "completeNativeRelayIncludingDoctests": {
+      "passed": 404,
+      "failed": 0,
+      "ignored": 0
+    },
+    "focusedInternal": {
+      "passed": 21,
+      "failed": 0,
+      "ignored": 0
+    },
+    "externalNativeConsumer": {
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0
+    },
+    "ledgerAndPlan": {
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0
+    },
+    "profileTransportPairs": {
+      "internalNative": 10,
+      "externalFencedBackup": 1
+    }
+  },
+  "negativeControls": [
+    {
+      "kind": "omit-only-real-host-transaction-guard",
+      "fixedBefore": {
+        "internalPassed": 21,
+        "externalPassed": 2
+      },
+      "missingGuard": {
+        "passed": 0,
+        "failed": 4,
+        "exitCode": 101
+      },
+      "fixedAfter": {
+        "internalPassed": 21,
+        "externalPassed": 2
+      },
+      "sameAssertions": true,
+      "nativeInputFilesMatchedFinalSource": 455,
+      "endpointChecks": [
+        21,
+        7,
+        21
+      ]
+    },
+    {
+      "kind": "namespace-replaced-during-real-durable-native-grant",
+      "old": {
+        "passed": 0,
+        "failed": 1,
+        "exitCode": 101,
+        "observed": "changed authority returned Ok(())"
+      },
+      "fixed": {
+        "passed": 1,
+        "failed": 0,
+        "exitCode": 0
+      },
+      "unchangedAssertionFile": {
+        "path": "experiments/relay/src/server/deployment_fence/tests/storage.rs",
+        "sha256": "d0c4f68a5922b9bcc8bf555774b69a91a8178c257b8f9ada1daef4b074b26f11"
+      },
+      "repair": "Recheck actual namespace and leased bytes before releasing the permit; storage uncertainty permanently retires local authority without rolling back durable work."
+    }
+  ],
+  "normalEndpointsRechecked": 21,
+  "normalSharedWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+  "evidence": {
+    "path": "target/native-serving-epochs-proof-wZO3jn/index.json",
+    "bytes": 7173,
+    "sha256": "f2d642e76e03c084fe10c349258176898b32020fc6cc82902dbc129bb665b3e1",
+    "modifiedAtMs": 1792904786207.77
+  },
+  "unchanged": [
+    "Existing router defaults and editor/relay wire meanings",
+    "Package versions, dependency locks, JavaScript package roots and normal shared Wasm bytes"
+  ],
+  "remaining": [
+    "Complete seven-family retained-client/registration/provider reconciliation",
+    "Authenticated coordinated whole-room activation with durable final-cut intent and interruption recovery",
+    "Portable multi-machine authority backend and deployment qualification",
+    "Sustainable history, remaining feature parity and all thirteen V1 gates"
+  ],
+  "limits": [
+    "Only explicit fenced constructors participate; ordinary routers stay unfenced.",
+    "Current reference backend is Unix and requires one protected non-rollback authority namespace with working file locks/fsync. It is not distributed consensus or power-loss certification.",
+    "Native work already durable before an uncertain return stays accepted; no rollback or authority-file repair is performed.",
+    "This native checkpoint does not freshly rebuild or qualify unchanged npm/browser distributions."
+  ],
+  "environmentNotes": [
+    "Existing vendored unused-import warning remains outside first-party strict Clippy.",
+    "The installed rust-objcopy reports missing libLLVM during stripping; actual native builds/tests complete, but this is not artifact-size/release approval."
+  ]
+}
