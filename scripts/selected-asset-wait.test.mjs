@@ -1,0 +1,10 @@
+/** Wait-mechanism laws; these dummy promises admit no store or native owner. */
+import test from 'node:test';import assert from 'node:assert/strict';
+import {waitSelectedAssetWork as wait} from '../packages/breditor-collaboration/dist/physical_room_asset_successor/wait_work.js';
+const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return{promise,resolve,reject};};
+const turn=()=>new Promise(resolve=>setImmediate(resolve));
+test('a read wait never starts, retries, resolves or aborts the underlying work',async()=>{const work=deferred();let returned=false;const pending=wait(work.promise,()=>{},()=>()=>{}).then(()=>{returned=true;});await turn();assert.equal(returned,false);work.resolve();await pending;assert.equal(returned,true);});
+test('ordinary rejection keeps its exact reason',async()=>{const error=Error('real asset operation failed');await assert.rejects(wait(Promise.reject(error),()=>{},()=>()=>{}),value=>value===error);});
+test('undefined is also a genuine rejected operation, never success',async()=>{let rejected=false;try{await wait(Promise.reject(undefined),()=>{},()=>()=>{});}catch(reason){assert.equal(reason,undefined);rejected=true;}assert.equal(rejected,true);});
+test('cancellation stops only the read wait and observes a late worker rejection',async()=>{const work=deferred(),error=Error('read cancelled');let cancelled=false,notify,watchers=0;const pending=wait(work.promise,()=>{if(cancelled)throw error;},cancel=>{notify=cancel;watchers++;return()=>watchers--;});const refused=assert.rejects(pending,value=>value===error);cancelled=true;notify();await refused;assert.equal(watchers,0);work.reject(Error('late real worker'));await turn();});
+test('a synchronous closing notification removes its freshly installed listener',async()=>{const work=deferred(),error=Error('closing');let closing=false,watchers=0;await assert.rejects(wait(work.promise,()=>{if(closing)throw error;},cancel=>{watchers++;closing=true;cancel();return()=>watchers--;}),value=>value===error);assert.equal(watchers,0);work.resolve();await turn();});

@@ -30,6 +30,9 @@ function leafGuard(child:PhysicalOperationV3Child):()=>void{
  const row=child.selected.input,policy=row.family==='original'||row.family==='generation'?row:row.family==='independent-local'||row.family==='independent-delivery'?row.options.recovery:row.options,check=participantAuthority(policy.checkAuthority),signal=policy.signal;
  return()=>{checkAssetBytesSignal(signal);check();checkAssetBytesSignal(signal);};
 }
+/** Explicit participant lifetime authority, separate from the ended root job.
+ * These application callbacks MUST precede the callback-free ownership barrier. */
+export function checkPhysicalOperationV3WriterPolicies(children:readonly PhysicalOperationV3Child[]):void{for(const child of children)leafGuard(child)();}
 /** Whole structural preflight has already happened. Original/generation planning
  * reuses the genuine readonly stage contract, not a relabelled data reader. */
 export async function physicalOperationV3LegacyPolicies(children:readonly PhysicalOperationV3Child[],source:PhysicalCatalogV3ArchiveState,forbidden:readonly string[],guard:()=>void):Promise<readonly MixedCatalogStagePolicy[]>{

@@ -1,0 +1,710 @@
+{
+  "directory": "/Users/s/code/breditor/target/selected-owner-final-ePOhjD",
+  "index": "target/selected-owner-final-ePOhjD/index.json",
+  "indexSha256": "1fc2872ee962696327be0fe8c2d33d72799d49b8f4f522751b8860bc2922ace6",
+  "entries": 9367,
+  "source": {
+    "commit": "c157f2b10572fe29d39663d8cb6a1b949cc25166",
+    "dirty": true,
+    "sha256": "f20414e3ab970b414ffd5151d53ba9d0278a1a55df412c94c30f9531f3d6110a",
+    "files": 6406,
+    "bytes": 50311346
+  },
+  "selectedNormalStages": 20,
+  "functionalPlanChecks": 453,
+  "fullPlanChecks": 461,
+  "sourceAssertions": 1958,
+  "installedAssertions": 1958,
+  "bundledAssertions": 1958,
+  "newSelectedOwnerAssertions": 386,
+  "newEditableColdScenarios": 2,
+  "newEditableColdSelectedClientsPerPath": 9,
+  "newWarmSelectedOwnerScenarios": 5,
+  "strictTypes": 23,
+  "registryArtifacts": 45,
+  "productionModules": 702,
+  "bundleSha256": "cf8b73b3d7b895ef38d6f196f2f149053c34eba7975221e595094a2250b360a8",
+  "archives": [
+    {
+      "name": "@breditor/browser",
+      "path": "/private/tmp/breditor-selected-owner-installed-oibiqf/archives/breditor-browser-0.3.0-alpha.22.tgz",
+      "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+    },
+    {
+      "name": "@breditor/experimental-rich-content",
+      "path": "/private/tmp/breditor-selected-owner-installed-oibiqf/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+      "sha256": "23bb4160babd07354daf373f81e731820ff41e45877ee711eb36401bac46497d"
+    },
+    {
+      "name": "@breditor/collaboration",
+      "path": "/private/tmp/breditor-selected-owner-installed-oibiqf/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+      "sha256": "c8c27917bbbbcce2a80f8f29e951d27ac0a1d09ac790b3a98c105c5ad53d7e78"
+    }
+  ],
+  "nativeFiles": 100,
+  "nativeReports": [
+    {
+      "path": "target/complete-image-cohort-native.json",
+      "sha256": "4f2d630ec04b7102ec9601b4853367e6e996a196a7de80e027cd41d108bbbe70"
+    },
+    {
+      "path": "target/complete-cohort-native.json",
+      "sha256": "ae032e80218f05f6a7c74e94990299579b6410c83588453b86cf85bc2c6d5022"
+    }
+  ],
+  "nativeProducerBinarySha256": "9f5948a8bba3367b601622f8316ec45012aa625cbd59e8a9656ca4793620ab46",
+  "standardNativeBinarySha256": "0d64e4b268a197a004a2913e6f1b7ec339d5b997478b0d449af5ac667ea7025f",
+  "actualLiveControlRuns": [
+    {
+      "directory": "/Users/s/code/breditor/target/complete-control-running-4EnotF",
+      "cases": 10
+    },
+    {
+      "directory": "/Users/s/code/breditor/target/complete-control-running-5naTqg",
+      "cases": 10
+    },
+    {
+      "directory": "/Users/s/code/breditor/target/complete-control-running-6jzM3U",
+      "cases": 10
+    },
+    {
+      "directory": "/Users/s/code/breditor/target/complete-control-running-GYq6Qv",
+      "cases": 10
+    },
+    {
+      "directory": "/Users/s/code/breditor/target/complete-control-running-Ug1SjO",
+      "cases": 10
+    },
+    {
+      "directory": "/Users/s/code/breditor/target/complete-control-running-dqXWrk",
+      "cases": 10
+    },
+    {
+      "directory": "/Users/s/code/breditor/target/complete-control-running-kU9EfY",
+      "cases": 10
+    },
+    {
+      "directory": "/Users/s/code/breditor/target/complete-control-running-ov2OCD",
+      "cases": 10
+    },
+    {
+      "directory": "/Users/s/code/breditor/target/complete-control-running-uyAikQ",
+      "cases": 10
+    }
+  ],
+  "actualLivePublicFiles": 450,
+  "actualClosedPorts": 90,
+  "normalWasmSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+  "nonDocumentationInputs": 5685,
+  "contracts": {
+    "candidate-runner-contracts": 68,
+    "complete-history-provider-contracts": 3,
+    "room-record-cut-contracts": 46,
+    "room-asset-approval-contracts": 46,
+    "retained-native-continuation-contracts": 8,
+    "selected-owner-contracts": 21,
+    "operational-native-read-contracts": 39
+  },
+  "scope": "SDK-private actual native root/selected-store ownership and editable cold resume. Whole approved basis, current native/source/packet/journal cut and selected queues are retained separately. Current captures conserve later receipts; native ancestry uses existing replay contracts in one explicit read runtime, never AST equality. Fresh independent read permission, genuine reopened parents/stores and a new affirmative outside-choice decision precede an immutable both-file intent and one callback/await-free ownership barrier. Failed/denied/cancelled handoffs preserve the caller root; saved intent is not permission. Original/flat bounded and all-seven independent segmented native cases preserve later uncaptured edits/receipts, exact document/comment checkpoints, future Undo/Redo and a second editable reopen. Real delayed-cleanup, receipt-rollback and ten native-session registry-release checks remain included. Last-callback delivery-reader disposal refuses; held readonly restored anchors use genuine facade epochs only for routine liveness, with full byte/native checks at actual read and lineage boundaries. All existing raw-native owner lifetime laws are cumulative. Held selected-owner provider reads authenticate the independently pinned operator against genuine protected native history and every origin/selected whole upload, then re-admit queues and source/native records after I/O and real cleanup. Partial copies remain pending without subset availability requests. Native origin epochs avoid routine checkpoint serialization without weakening full read/lineage checks. Failed read cleanup keeps actual children and parent release closures, including falsey throws, deferred factories and failed unpublished opens, until explicit retry succeeds. All five fresh parent families retain real unpublished capture cleanup until actual retry succeeds; callback-safe retirement waits for native opening/verification, rejects final-callback closure, and keeps parent custody through cleanup failures. All prior1572 laws remain cumulative. No public root additions, protocol/default/version/Rust/Wasm changes, complete provider/registered-stream reconciliation or authenticated server activation, registered-stream reconciliation, cross-device fencing, physical crash durability, sustainable history or V1/parity claim.",
+  "format": "breditor/selected-owner-recovery-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-25T03:47:09.102Z",
+  "workingTreeQualification": true,
+  "documentationMayAdvanceOnly": true,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "packageVersionsUnchanged": true,
+  "publicRootAdditions": [],
+  "rustSourcesChanged": false,
+  "normalWasmChanged": false,
+  "queueControl": {
+    "format": "breditor/installed-native-queue-control",
+    "formatVersion": 1,
+    "passed": true,
+    "mechanismOnly": true,
+    "directory": "/private/tmp/breditor-native-queue-installed-control-hfG1jy",
+    "source": {
+      "commit": "c157f2b10572fe29d39663d8cb6a1b949cc25166",
+      "dirty": true,
+      "sha256": "38e6268af458631b373f587f46536a8a9bad4e0f2891caecbace51e0f38e13c6",
+      "files": 6390,
+      "bytes": 50236203
+    },
+    "assertionsUnchanged": true,
+    "workspaceLinks": false,
+    "registryArtifacts": 45,
+    "onlyCapturedQueueModuleSubstituted": true,
+    "restored": true,
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/private/tmp/breditor-selected-owner-installed-mv1xpx/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/private/tmp/breditor-selected-owner-installed-mv1xpx/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "23bb4160babd07354daf373f81e731820ff41e45877ee711eb36401bac46497d"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/private/tmp/breditor-selected-owner-installed-mv1xpx/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "543ca37e8efaf2b208f0833b93d869ad8c16cc9d77d017d637257b3b02a5ea10"
+      }
+    ],
+    "rows": [
+      {
+        "name": "fixed",
+        "moduleSha256": "58f10defdd6c73da253617dc357bab47371fcd2b0c866b89c93c1e43b10294c3",
+        "actualExit": 0,
+        "path": "/private/tmp/breditor-native-queue-installed-control-hfG1jy/fixed.log",
+        "logSha256": "f33dfee6dec32f11a227ad28a7cac9a992a259c9f34bbf0a4c6276dcaf26545f"
+      },
+      {
+        "name": "captured-old",
+        "moduleSha256": "734c85a433535ea88d46c2dfd4dec478fc2c1d8feff44a6f4a47516784a12508",
+        "actualExit": 1,
+        "path": "/private/tmp/breditor-native-queue-installed-control-hfG1jy/captured-old.log",
+        "logSha256": "a001e6b90c9225a08c8aae77d36b26b9e20cebcbd618a5242a8884073681b744"
+      },
+      {
+        "name": "restored-fixed",
+        "moduleSha256": "58f10defdd6c73da253617dc357bab47371fcd2b0c866b89c93c1e43b10294c3",
+        "actualExit": 0,
+        "path": "/private/tmp/breditor-native-queue-installed-control-hfG1jy/restored-fixed.log",
+        "logSha256": "d9f3a216a362f0ed07fe8ce8d9e1570c56d8e809d1591c0f067dbe2824808669"
+      }
+    ],
+    "at": "2026-10-25T00:12:15.627Z"
+  },
+  "readerControl": {
+    "format": "breditor/installed-delivery-reader-control",
+    "formatVersion": 1,
+    "passed": true,
+    "directory": "/private/tmp/breditor-delivery-reader-installed-control-uwHg9j",
+    "source": {
+      "commit": "c157f2b10572fe29d39663d8cb6a1b949cc25166",
+      "dirty": true,
+      "sha256": "4609af55eaafad4f57e3369a8ae00f31bc6596e6ebbc744f3c91f2b4ce5d3b75",
+      "files": 6392,
+      "bytes": 50244731
+    },
+    "assertionsUnchanged": true,
+    "onlyReversibleTestLocationsChanged": true,
+    "testOriginalSha256": "cf21b27aecb95151f30c4426802353d65f1bc159c16619d9b9b92c9fe2c3e2c5",
+    "testRelocatedSha256": "a528648a73bfe43e3942abe9408be7e3bfce1ed143d9e6e1c0ffdbd77fb95ca6",
+    "workspaceLinks": false,
+    "registryArtifacts": 45,
+    "onlyCapturedReplayModuleSubstituted": true,
+    "restored": true,
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/private/tmp/breditor-selected-owner-installed-XUooB8/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/private/tmp/breditor-selected-owner-installed-XUooB8/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "23bb4160babd07354daf373f81e731820ff41e45877ee711eb36401bac46497d"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/private/tmp/breditor-selected-owner-installed-XUooB8/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "be045b1af6b193645a9044e7943e2f9738e66b82866f884ebc32dd43eaaee748"
+      }
+    ],
+    "rows": [
+      {
+        "name": "fixed",
+        "moduleSha256": "aaa96869f4a0d9c305d623c8a156e63c0f1989df0b4f148c4c27bc472b3fb4ce",
+        "actualExit": 0,
+        "path": "/private/tmp/breditor-delivery-reader-installed-control-uwHg9j/fixed.log",
+        "logSha256": "e5288727c7d6b14fbf34db8143a99509d77983ad177aa939853c19dbf475c1fc"
+      },
+      {
+        "name": "captured-old",
+        "moduleSha256": "71ad275ebfd6fcc6cd1dc47a7c15d82830e74a1dc5e8925bc7c71db2e151e42b",
+        "actualExit": 1,
+        "path": "/private/tmp/breditor-delivery-reader-installed-control-uwHg9j/captured-old.log",
+        "logSha256": "0f2edad4821079f18f3efaa55ac31f0f4cfc162e12974621f1fb40f7b2f3a0a9"
+      },
+      {
+        "name": "restored-fixed",
+        "moduleSha256": "aaa96869f4a0d9c305d623c8a156e63c0f1989df0b4f148c4c27bc472b3fb4ce",
+        "actualExit": 0,
+        "path": "/private/tmp/breditor-delivery-reader-installed-control-uwHg9j/restored-fixed.log",
+        "logSha256": "d69030643c06c62912e9880f7183cb18682cb93ca88795c1afe4911ee18cdb38"
+      }
+    ],
+    "at": "2026-10-25T01:30:17.616Z"
+  },
+  "cleanupControl": {
+    "format": "breditor/installed-parent-cleanup-control",
+    "formatVersion": 1,
+    "passed": true,
+    "developmentRepair": true,
+    "normalQualification": false,
+    "directory": "/private/tmp/breditor-parent-cleanup-installed-control-vAHm8G",
+    "source": {
+      "commit": "c157f2b10572fe29d39663d8cb6a1b949cc25166",
+      "dirty": true,
+      "sha256": "4609af55eaafad4f57e3369a8ae00f31bc6596e6ebbc744f3c91f2b4ce5d3b75",
+      "files": 6392,
+      "bytes": 50244731
+    },
+    "assertionsUnchanged": true,
+    "onlyReversibleTestLocationsChanged": true,
+    "workspaceLinks": false,
+    "registryArtifacts": 45,
+    "onlyFiveActualCompiledModulesSubstituted": true,
+    "restored": true,
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/private/tmp/breditor-selected-owner-installed-XUooB8/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/private/tmp/breditor-selected-owner-installed-XUooB8/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "23bb4160babd07354daf373f81e731820ff41e45877ee711eb36401bac46497d"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/private/tmp/breditor-selected-owner-installed-XUooB8/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "be045b1af6b193645a9044e7943e2f9738e66b82866f884ebc32dd43eaaee748"
+      }
+    ],
+    "tests": [
+      {
+        "name": "parent-read-opening-cleanup.test.mjs",
+        "sourceSha256": "7fac5e14ead0db2d50e1d03aab9e768b0a399e8356e1b09d3dec99218af506f7",
+        "testSha256": "a83860c6bf01a461b89ceea1515eccd572bf6c056c0ec230e248260838b1988e",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "name": "history-read-cleanup-order.test.mjs",
+        "sourceSha256": "4492e18a1101244186e2aa36918f7434ecd6f3fc6b9bce781741eaa3b98f8940",
+        "testSha256": "4d83dbacd20b22b8280722ade8e3d53648ea08484a25080936f5b06161e6ac47",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "name": "parent-read-cleanup-retry-v2.test.mjs",
+        "sourceSha256": "ce789cbf192037d27cb7bc9926891868e8fe21eb5cc00ce6f22c574b6f73ea88",
+        "testSha256": "ce789cbf192037d27cb7bc9926891868e8fe21eb5cc00ce6f22c574b6f73ea88",
+        "reversibleModuleLocationsOnly": true
+      }
+    ],
+    "modules": [
+      {
+        "path": "operation_read/parent_records.js",
+        "oldSha256": "dec556ac7e033f01a1f5bc1e9cd1d1773d5b33abcf9f6f56291f8d7fcc986ca1",
+        "fixedSha256": "34a875863c51e06604cb0e5ce8c23fbaf0d11dd82e987f53dc0df8f9e0fb13c6"
+      },
+      {
+        "path": "operation_read/reference_read.js",
+        "oldSha256": "8f3ac53d34356cc9af2bc2540ef588ff25236cd4e51b6bb4c95d3022bd2dfdfd",
+        "fixedSha256": "92016a5074e62ea43ae4f013eb2d523273af9f93e084c43717feb5dc9f79b9bf"
+      },
+      {
+        "path": "operation_read/history_references.js",
+        "oldSha256": "0db0501b1d4b6ed2393405ed87f81a11e99c27ba34c942e048af85f75f24c01c",
+        "fixedSha256": "b94ab54d33421229dd3427fdef9834ae9174d5933ef907f2619d88df359e0a10"
+      },
+      {
+        "path": "participant_operation/operation.js",
+        "oldSha256": "8ad56fa76084c1cd1ec18055c740aebf619eff577bf3da4376e7c52da91371c8",
+        "fixedSha256": "c49e3e7099e28657fb3aa63b8e85a7297f2a6b79d1e29882aced764162715986"
+      },
+      {
+        "path": "generation_operation/operation.js",
+        "oldSha256": "7d70d2148b9c63d7892b56d8071f5950ede07a9d1449d5e8cc217b009e2c46c3",
+        "fixedSha256": "b967ab54dc99d6df46b1d23c1a2d04b3830ce848ab57c565c8ee7f9518cd7291"
+      }
+    ],
+    "rows": [
+      {
+        "label": "packed-before",
+        "terminal": {
+          "code": 1,
+          "signal": null
+        },
+        "counts": {
+          "tests": 34,
+          "pass": 4,
+          "fail": 30,
+          "skipped": 0,
+          "cancelled": 0
+        },
+        "log": "/private/tmp/breditor-parent-cleanup-installed-control-vAHm8G/packed-before.log",
+        "logSha256": "e86fe2a009f93c83bb31f645a28d978c14a1cad3bab470f844541ea8ec0930b4"
+      },
+      {
+        "label": "private-fixed",
+        "terminal": {
+          "code": 0,
+          "signal": null
+        },
+        "counts": {
+          "tests": 34,
+          "pass": 34,
+          "fail": 0,
+          "skipped": 0,
+          "cancelled": 0
+        },
+        "log": "/private/tmp/breditor-parent-cleanup-installed-control-vAHm8G/private-fixed.log",
+        "logSha256": "f0eaf5600ff85f20380674eb1d59426789827ab33161548462ee547c6d67f468"
+      },
+      {
+        "label": "restored-packed-before",
+        "terminal": {
+          "code": 1,
+          "signal": null
+        },
+        "counts": {
+          "tests": 34,
+          "pass": 4,
+          "fail": 30,
+          "skipped": 0,
+          "cancelled": 0
+        },
+        "log": "/private/tmp/breditor-parent-cleanup-installed-control-vAHm8G/restored-packed-before.log",
+        "logSha256": "54b1424184526ce1d980e1c30fde8cf5e9897cd82fe3039f77c1c1cc46ebf3f6"
+      }
+    ],
+    "at": "2026-10-25T02:17:14.823Z"
+  },
+  "originCurrentnessControl": {
+    "passed": true,
+    "developmentOnly": true,
+    "benchmark": false,
+    "property": "Routine private held-readonly currentness exports zero checkpoints; full native admission still rejects actual raw mutation in both families and all four history pairs",
+    "directory": "/private/tmp/breditor-restored-anchor-development-AU49wc",
+    "source": {
+      "commit": "c157f2b10572fe29d39663d8cb6a1b949cc25166",
+      "dirty": true,
+      "sha256": "4609af55eaafad4f57e3369a8ae00f31bc6596e6ebbc744f3c91f2b4ce5d3b75",
+      "files": 6392,
+      "bytes": 50244731
+    },
+    "assertionsUnchanged": true,
+    "onlyFourActualCompiledModulesSubstituted": true,
+    "restored": true,
+    "test": "scripts/native-origin-current-development.test.mjs",
+    "testSha256": "06b5ee1e6ba9d3e0ef25dd6da854b6b54f2c4536d9e97d3c9460cd4dbe06c208",
+    "modules": [
+      {
+        "path": "packages/breditor-collaboration/dist/independent_operation/native_origin.js",
+        "sourcePath": "packages/breditor-collaboration/src/independent_operation/native_origin.ts",
+        "sourceSha256": "bb54fd80a0e767eb439058bafabc835765dc22354f143d2f504473c9193b3726",
+        "fixedSha256": "95975a52b8f376e3ea2c487fc9d05e29d5c4976577a36d2bfd70ebddc166e877",
+        "oldSha256": "a181ec29597949464e4897c3e9239f80c0b35d245024acb499122ccae02253a1"
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/independent_operation/cut_journal.js",
+        "sourcePath": "packages/breditor-collaboration/src/independent_operation/cut_journal.ts",
+        "sourceSha256": "316faaa8369e759720b266495c8ccc88e7a2c10d1711f3cc947742e60112f4e3",
+        "fixedSha256": "42c4853c9a2ef418e333f9548878061396176c6f703de27f4b9839a858fd3e4c",
+        "oldSha256": "8df4fb7b2121a1bb13206ab306ae4c4cc5c34483bab5c9c0a909c962cecc5857"
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/independent_local_operation/native_origin.js",
+        "sourcePath": "packages/breditor-collaboration/src/independent_local_operation/native_origin.ts",
+        "sourceSha256": "b9dcf1177313932ff7c322895ef0dca05355deac1f157d14541a6368f9812006",
+        "fixedSha256": "5662407a23cc20ecd3db12ef5ae2dea7446b0e1d3f5324332a70e80637983466",
+        "oldSha256": "23adf95e3ce6cd8cdd98b0856364f322ef6406cfda8ba0f076186729c8d71814"
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/independent_local_operation/cut_journal.js",
+        "sourcePath": "packages/breditor-collaboration/src/independent_local_operation/cut_journal.ts",
+        "sourceSha256": "0a484ba588d5ba76f49837c9107023681bdbe88d7e28e51869c93d624cd5b321",
+        "fixedSha256": "42efd51dbeaa03a28e77c7b4948212bda3710cd7b376bf57de73a6794e4312f4",
+        "oldSha256": "79c44e0302d80adb945524b63605e8b3fd79d8b9499a3732871fc5f52802a903"
+      }
+    ],
+    "runs": [
+      {
+        "label": "fixed",
+        "terminal": {
+          "code": 0,
+          "signal": null
+        },
+        "counts": {
+          "tests": 8,
+          "pass": 8,
+          "fail": 0,
+          "skipped": 0,
+          "cancelled": 0
+        },
+        "exportsPer100Checks": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "log": "/private/tmp/breditor-native-continuation-BvU0rA/native-origin-current-control-fixed.log",
+        "logSha256": "c6aaec222e20a1b34fc2e7f41f7f8adbee63a863af433306ebf869c75e074c09"
+      },
+      {
+        "label": "captured-old",
+        "terminal": {
+          "code": 1,
+          "signal": null
+        },
+        "counts": {
+          "tests": 8,
+          "pass": 0,
+          "fail": 8,
+          "skipped": 0,
+          "cancelled": 0
+        },
+        "exportsPer100Checks": [
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200
+        ],
+        "log": "/private/tmp/breditor-native-continuation-BvU0rA/native-origin-current-control-captured-old.log",
+        "logSha256": "051e9ae96ed02514b2c417aad5d0516f61cdef9d4088ca3da4c451ab377c8270"
+      },
+      {
+        "label": "restored-fixed",
+        "terminal": {
+          "code": 0,
+          "signal": null
+        },
+        "counts": {
+          "tests": 8,
+          "pass": 8,
+          "fail": 0,
+          "skipped": 0,
+          "cancelled": 0
+        },
+        "exportsPer100Checks": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "log": "/private/tmp/breditor-native-continuation-BvU0rA/native-origin-current-control-restored-fixed.log",
+        "logSha256": "f50624272809fc92cd7524f300d87bece86923ae62793deadcd057df236fa23d"
+      }
+    ],
+    "at": "2026-10-25T01:40:25.694Z"
+  },
+  "integratedDevelopment": {
+    "directory": "/Users/s/code/breditor/target/combined-ownership-development-g4IrA1",
+    "index": "/Users/s/code/breditor/target/combined-ownership-development-g4IrA1/index.json",
+    "indexSha256": "5ff788cc5108e5b02dc28157844eb8177e0d887cada101f6a835c638da8ceeaf",
+    "entriesVerified": 8480,
+    "developmentOnly": true,
+    "normalQualification": false,
+    "source": {
+      "commit": "c157f2b10572fe29d39663d8cb6a1b949cc25166",
+      "dirty": true,
+      "sha256": "4609af55eaafad4f57e3369a8ae00f31bc6596e6ebbc744f3c91f2b4ce5d3b75",
+      "files": 6392,
+      "bytes": 50244731
+    },
+    "integratedAssertions": 1936,
+    "supplementalBrandAssertions": 3,
+    "strictTypes": 23,
+    "actualClosedPortsAtCompletion": 30,
+    "at": "2026-10-25T02:36:10.141Z"
+  },
+  "freshOpeningControl": {
+    "format": "breditor/installed-fresh-opening-control",
+    "formatVersion": 1,
+    "passed": true,
+    "developmentRepair": true,
+    "normalQualification": false,
+    "directory": "/private/tmp/breditor-fresh-opening-installed-control-xtsVww",
+    "source": {
+      "commit": "c157f2b10572fe29d39663d8cb6a1b949cc25166",
+      "dirty": true,
+      "sha256": "1ab3ad958cf52ee3a320fd3e885ed951597d2570c90a33830513199b0b050071",
+      "files": 6404,
+      "bytes": 50299894
+    },
+    "assertionsUnchanged": true,
+    "onlyReversibleTestLocationsChanged": true,
+    "workspaceLinks": false,
+    "registryArtifacts": 45,
+    "otherProductFilesUnchanged": 1798,
+    "onlySixActualCompiledModulesSubstituted": true,
+    "restored": true,
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/private/tmp/breditor-selected-owner-installed-dGTUbK/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/private/tmp/breditor-selected-owner-installed-dGTUbK/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "23bb4160babd07354daf373f81e731820ff41e45877ee711eb36401bac46497d"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/private/tmp/breditor-selected-owner-installed-dGTUbK/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "7c6b25dae3ea4bee30f7553f884320f2074758244e54d5f9ab9935d05104782c"
+      }
+    ],
+    "tests": [
+      {
+        "name": "fresh-parent-unpublished-cleanup.test.mjs",
+        "sourceSha256": "adb9ba94775d130d690487a07cdfcba94f68de122ac83f06cd11a3f9c5773923",
+        "testSha256": "dab0e0522627c63d77846e8772e72926704d1b50cd17d133fda33bb841f8a3a0",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "name": "fresh-parent-cleanup-lifetime.test.mjs",
+        "sourceSha256": "075ce7ec042c5675140030d3f7ed78cb3d0a20f9bb1b1dcd5a0fba1d241f4866",
+        "testSha256": "12c80c0149c7a0f521851d9371ea61c981e87ddef96517fd80c0ba39d3eb9830",
+        "reversibleModuleLocationsOnly": true
+      }
+    ],
+    "modules": [
+      {
+        "path": "operation_read/fresh_parent_reservation.js",
+        "oldSha256": "7ed7fd4809ac294de00c9937ee1989cf2207165f37824fa93b415315d6dbce17",
+        "fixedSha256": "d991d4f028128cc17ae9e044785131aaef4bb406564b28a9943692a7f8b2ae91"
+      },
+      {
+        "path": "independent_local_operation/fresh_parent_history.js",
+        "oldSha256": "3a6c581369417062e3dc8fe3f0ba61bc93829ae11ae84224502670fe22726bb7",
+        "fixedSha256": "2222df93be34987ff7304263cffbd33ceda1001a5fd962a9e354eba3ea92880f"
+      },
+      {
+        "path": "independent_operation/fresh_parent_history.js",
+        "oldSha256": "6beefeef4e868e5d2978158ca5abb3798017de4c26d70ff7f7c8b22a9a7d41a6",
+        "fixedSha256": "c01e56091f65deb5550cf161ec0f57a62b79add8c99b402f37f524f26653c986"
+      },
+      {
+        "path": "restored_participant/fresh_parent_history.js",
+        "oldSha256": "76b9709c36bf7b05b053c575840a914daea71376ffb002a0f7da8afb6b37fc68",
+        "fixedSha256": "2e51b8dd641c7e44fc05632c257524521c643fe8ae84e1751d38e637e883ae3d"
+      },
+      {
+        "path": "restored_local_operation/fresh_parent_history.js",
+        "oldSha256": "53ca7e4628f1e9a36987063036a2d8022df99438ff8ea6ef8455a29e23594d60",
+        "fixedSha256": "4c7a16a3e632871cd4144c4e39209c2ea3f7f345fddb293ab5d2bac44abc08f4"
+      },
+      {
+        "path": "flat_local_operation/fresh_parent_history.js",
+        "oldSha256": "baef013b7377148dd883b29d7f1a89adb5ecf845c8734a6f0ff7d3be243d113a",
+        "fixedSha256": "a73afda9194ced3054c0a620a1c7a3e7c6f89aa8912212fdee2ba92324cdc549"
+      }
+    ],
+    "rows": [
+      {
+        "label": "packed-before",
+        "terminal": {
+          "code": 1,
+          "signal": null
+        },
+        "counts": {
+          "tests": 19,
+          "pass": 0,
+          "fail": 19,
+          "skipped": 0,
+          "cancelled": 0
+        },
+        "log": "/private/tmp/breditor-fresh-opening-installed-control-xtsVww/packed-before.log",
+        "logSha256": "24a3390153e3fdaefc7e226eea49da4eb9a7abb95860494905eb3482834ecb9b"
+      },
+      {
+        "label": "private-fixed",
+        "terminal": {
+          "code": 0,
+          "signal": null
+        },
+        "counts": {
+          "tests": 19,
+          "pass": 19,
+          "fail": 0,
+          "skipped": 0,
+          "cancelled": 0
+        },
+        "log": "/private/tmp/breditor-fresh-opening-installed-control-xtsVww/private-fixed.log",
+        "logSha256": "9c4e20606dcfe27be1df8a5deb60836d1a4dda74908a1600876d490487976c61"
+      },
+      {
+        "label": "restored-packed-before",
+        "terminal": {
+          "code": 1,
+          "signal": null
+        },
+        "counts": {
+          "tests": 19,
+          "pass": 0,
+          "fail": 19,
+          "skipped": 0,
+          "cancelled": 0
+        },
+        "log": "/private/tmp/breditor-fresh-opening-installed-control-xtsVww/restored-packed-before.log",
+        "logSha256": "0b6f0a8961611c54ece3bc05af12cb7466ae51fa790206df8d69a333bf11a45f"
+      }
+    ],
+    "at": "2026-10-25T02:56:28.915Z"
+  },
+  "freshOpeningDevelopment": {
+    "developmentOnly": true,
+    "normalQualification": false,
+    "passed": true,
+    "source": {
+      "commit": "c157f2b10572fe29d39663d8cb6a1b949cc25166",
+      "dirty": true,
+      "sha256": "1ab3ad958cf52ee3a320fd3e885ed951597d2570c90a33830513199b0b050071",
+      "files": 6404,
+      "bytes": 50299894
+    },
+    "directory": "/private/tmp/breditor-fresh-opening-development-AUmsde",
+    "terminal": {
+      "code": 0,
+      "signal": null
+    },
+    "counts": {
+      "tests": 108,
+      "pass": 108,
+      "fail": 0,
+      "skipped": 0,
+      "cancelled": 0
+    },
+    "inputsUnchanged": true,
+    "mainInputsUnchanged": true,
+    "log": "/private/tmp/breditor-native-continuation-BvU0rA/fresh-opening-regression-v3.log",
+    "logSha256": "c422c6a311bcae0498e459cb77f3f379722b10cfac2205ab0540a203ccd3ba46",
+    "at": "2026-10-25T02:57:45.753Z"
+  },
+  "supersededCountMismatch": {
+    "directory": "/Users/s/code/breditor/target/selected-owner-count-mismatch-sMUDFa",
+    "index": "/Users/s/code/breditor/target/selected-owner-count-mismatch-sMUDFa/index.json",
+    "indexSha256": "5619469b0e261f67bdeba090f5b281877ed457b53d9bf2a4cdc4b9ab0f74b7fa",
+    "entriesVerified": 8327,
+    "aggregatePassed": false,
+    "actualAssertionsPerPath": 1668,
+    "actualClosedPorts": 60,
+    "source": {
+      "commit": "c157f2b10572fe29d39663d8cb6a1b949cc25166",
+      "dirty": true,
+      "sha256": "38e6268af458631b373f587f46536a8a9bad4e0f2891caecbace51e0f38e13c6",
+      "files": 6390,
+      "bytes": 50236203
+    },
+    "at": "2026-10-25T01:22:38.390Z"
+  }
+}

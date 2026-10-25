@@ -1,0 +1,17 @@
+/** Actual seven-family selected owner and authenticated native operator. Only
+ * browser storage/locks/raster presentation are controlled fixtures. */
+import {SharedPhysicalRoomRecoveryHost as Host} from '../../../packages/breditor-collaboration/dist/physical_recovery_control/host.js';
+import {PhysicalRoomAssetAdoption as Stage,transferRoomAssetAdoption as transfer} from '../../../packages/breditor-collaboration/dist/physical_room_asset_adoption/coordinator.js';
+import {SelectedRoomCurrentArchive as Archive,encodeSelectedRoomCurrent as encode} from '../../../packages/breditor-collaboration/dist/selected_room_current/archive.js';
+import {previewColdSelectedRoom as preview,resumeColdSelectedRoom as resume} from '../../../packages/breditor-collaboration/dist/cold_selected_room/coordinator.js';
+import {completeHistoryFixture} from '../operation-read/history-session.mjs';
+import {roomAssetChoices} from '../room-asset-adoption/bases.mjs';
+export async function selectedProviderSession(fixtures,tag,options={}){
+ const item=fixtures.manifest.cases.at(-1),f=await completeHistoryFixture({fixtures,item,tag,participantAuthority(){},...options});let stage,owner,host,archive,onToken,allowed=true;
+ const input=()=>({reads:f.reads,checkAuthority(){}}),readOptions={wasm:fixtures.native,checkAuthority(){}};
+ try{const choices=await roomAssetChoices(f.owner,tag,{keep:'current'});stage=await Stage.begin(f.owner,{database:tag+'-stage',participants:choices.participants,checkAuthority(){}});await stage.finish();const expected=await stage.approvalChoice(input());f.endOldJob();owner=await transfer(stage,{...input(),expected,approvalDatabase:tag+'-approval',approve:()=>true,checkAssetAuthority(){}});host=await Host.open({endpoint:item.endpoint,expected:item.selection,principal:'operator',async getToken(){const action=onToken;onToken=undefined;await action?.();return allowed?fixtures.controls.token(item.path):'0'.repeat(64);},checkAuthority(){}});
+  return{f,stage,host,choices,get owner(){return owner;},input,onToken(action){onToken=action;},allowToken(value){allowed=value;},read(extra={}){return owner.readHistoryAssets(host,{...input(),...extra});},retain(){return owner.capture(input()).then(cut=>encode(cut,readOptions));},async cold(basis){await owner.close();owner=undefined;await stage.close();await f.cold();f.endOldJob();archive=await Archive.read(basis.file,basis.selection,readOptions);const proposed=await preview(f.owner,archive,{...input(),expectedBasis:basis.selection,intentDatabase:tag+'-cold-intent'});owner=await resume(f.owner,archive,{...input(),expected:proposed.choice,approve:()=>true,checkAssetAuthority(){}});return proposed;},async close(){host.close();archive?.dispose();try{await owner?.discardAndClose();}finally{try{await stage.close();}finally{await f.close();}}}};
+ }catch(error){host?.close();archive?.dispose();try{await owner?.discardAndClose();}finally{try{await stage?.close();}finally{await f.close();}}throw error;}
+}
+export function selectedNativePairs(owner,segmented){return owner.clients.map(row=>[row.id,row.core.checkpointJson(),row.family==='original'||row.family==='generation'||!segmented?row.core.reviewCheckpoint():row.core.reviewSegmentedCheckpoint()]);}
+export function selectStart(core){const point={block:'p',offset:'0',affinity:'after'};core.select({kind:'text',anchor:point,focus:point});}

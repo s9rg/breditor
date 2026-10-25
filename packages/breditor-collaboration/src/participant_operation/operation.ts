@@ -1,3 +1,4 @@
+import {RecoveryCleanupScope,type RecoveryCleanupTicket} from '../participant_recovery/cleanup_scope.js';
 import {managedSourceCore} from "../managed_custody.js";
 import {retainInternalFailureCause} from "../internal_failure_cause.js";
 import {SharedParticipantBackup} from "../participant_backup/archive.js";
@@ -80,24 +81,26 @@ function snapshot<P extends SharedSelectionPolicy>(input:SharedParticipantOperat
 /** Durable storage custody, not account authentication, provider closure or room activation. */
 export class OperationalSharedParticipant<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
  readonly #state:State<P>;#closed=false;#busy=false;#released=false;
+ readonly #readCleanup=new RecoveryCleanupScope(()=>operationFailure());#failedReadCleanup=false;
  private constructor(token:object,state:State<P>){if(token!==key)throw operationFailure("operation_closed");this.#state=state;fence(state.db,state.life);fence(state.recoveryDb,state.life);Object.freeze(this);}
  static{
   captureHistoryReferences=async(owner,provided)=>{
-   const o=parentReferenceOptions(provided,'restore'),parent=await captureParentRecords(owner,o.checkAuthority,o.signal);let capture:OriginalRecordReferenceCapture|undefined,complete=false;
-   try{const s=owner.#state,check=()=>parent.check(),stored=await readOriginalOperationalRecords(s,check,o.signal);check();const origins=await originalHistoryRecords(s,stored.files[0]!.file,check,o.signal);check();const read=await captureOriginalRecordReferencesAfterOrigins({source:s.owners.session!,restore:o.restore,checkAuthority:check,...(o.editor!==undefined?{editor:o.editor}:{}),...(o.signal!==undefined?{signal:o.signal}:{}),...(s.owners.versions?{versions:s.owners.versions}:{}),...(s.owners.revisions?{revisions:s.owners.revisions}:s.owners.suggestions?{suggestions:s.owners.suggestions}:{})},origins);capture=read.capture;check();const result=composeOperationalHistoryReferences('original',parent,capture,read.origins);result.check();complete=true;return result;}
-   finally{if(!complete){try{capture?.dispose();}finally{parent.dispose();}}}
+   const o=parentReferenceOptions(provided,'restore'),parent=await captureParentRecords(owner,o.checkAuthority,o.signal);let capture:OriginalRecordReferenceCapture|undefined,complete=false;const cleanup=owner.#readCleanup.retain(async()=>{capture?.dispose();parent.dispose();});
+   try{const s=owner.#state,check=()=>parent.check(),stored=await readOriginalOperationalRecords(s,check,o.signal);check();const origins=await originalHistoryRecords(s,stored.files[0]!.file,check,o.signal);check();const read=await captureOriginalRecordReferencesAfterOrigins({source:s.owners.session!,restore:o.restore,checkAuthority:check,...(o.editor!==undefined?{editor:o.editor}:{}),...(o.signal!==undefined?{signal:o.signal}:{}),...(s.owners.versions?{versions:s.owners.versions}:{}),...(s.owners.revisions?{revisions:s.owners.revisions}:s.owners.suggestions?{suggestions:s.owners.suggestions}:{})},origins);capture=read.capture;check();const result=composeOperationalHistoryReferences('original',parent,capture,read.origins);result.check();cleanup.complete();complete=true;return result;}
+   finally{if(!complete)await owner.#rollbackRead(cleanup);}
   };
   captureParentRecords=async<Q extends SharedSelectionPolicy>(owner:OperationalSharedParticipant<Q>,provided:()=>void,signal?:AbortSignal)=>{
-   if(!owner||typeof owner!=='object'||!(#state in owner))throw operationFailure('operation_policy');if(owner.#closed||owner.#released)throw operationFailure('operation_closed');if(owner.#busy)throw operationFailure('operation_in_use');const authority=participantAuthority(provided);owner.#busy=true;
+   if(!owner||typeof owner!=='object'||!(#state in owner))throw operationFailure('operation_policy');if(owner.#closed||owner.#released)throw operationFailure('operation_closed');if(owner.#failedReadCleanup)await owner.#drainReadCleanup();if(owner.#busy)throw operationFailure('operation_in_use');const authority=participantAuthority(provided);owner.#busy=true;
    const s=owner.#state,session=s.owners.session,uploads=s.owners.uploads,queue=s.owners.suggestions,revisions=s.owners.revisions,versions=s.owners.versions;let observation:OperationalReadCancellation|undefined,result:OriginalOperationalRecordRead|undefined,released=false,complete=false;
    const release=()=>{if(released)return;released=true;try{observation?.close();}finally{owner.#busy=false;}};
+   const cleanup=owner.#readCleanup.retain(async()=>{if(result)result.dispose();else release();});
    const current=()=>{if(released||owner.#closed||owner.#released||!owner.#busy||s.life.changed||s.owners.session!==session||s.owners.uploads!==uploads||s.owners.suggestions!==queue||s.owners.revisions!==revisions||s.owners.versions!==versions||!session||!uploads)throw operationFailure('operation_diverged');checkRecoveryLeasesHeld(s.leases);checkRecoveryOwnerBindings(s.owners);const core=managedSourceCore(session);checkManagedSource(session,core);for(const selected of[queue,revisions,versions])if(selected&&managedSourceCore(selected)!==core)throw operationFailure('operation_diverged');RichAssetStore.prototype.checkOpen.call(uploads);observation?.check(()=>operationFailure('operation_aborted'));};
    const check=()=>{current();authority();current();};
-   try{observation=new OperationalReadCancellation(signal);check();const stored=await readOriginalOperationalRecords(s,check,signal);check();result=createOriginalOperationalRecordRead<OriginalOperationalReferenceOptions,OriginalRecordReferenceMetadata>(stored.metadata,{check,current,readReferences:async provided=>{const o=parentReferenceOptions(provided,'restore'),readAuthority=participantAuthority(o.checkAuthority),guard=()=>{check();readAuthority();current();};return captureOriginalRecordReferences({source:session!,restore:o.restore,checkAuthority:guard,...(o.editor!==undefined?{editor:o.editor}:{}),...(o.signal!==undefined?{signal:o.signal}:{}),...(versions?{versions}:{}),...(revisions?{revisions}:queue?{suggestions:queue}:{})});},files:()=>stored.files,verify:async()=>{check();const actual=await readOriginalOperationalRecords(s,check,signal);check();if(JSON.stringify(actual.metadata)!==JSON.stringify(stored.metadata))throw operationFailure('operation_diverged');},release});result.check();complete=true;return result;}
-   finally{if(!complete){result?.dispose();release();}}
+   try{observation=new OperationalReadCancellation(signal);check();const stored=await readOriginalOperationalRecords(s,check,signal);check();result=createOriginalOperationalRecordRead<OriginalOperationalReferenceOptions,OriginalRecordReferenceMetadata>(stored.metadata,{check,current,readReferences:async provided=>{const o=parentReferenceOptions(provided,'restore'),readAuthority=participantAuthority(o.checkAuthority),guard=()=>{check();readAuthority();current();};return captureOriginalRecordReferences({source:session!,restore:o.restore,checkAuthority:guard,...(o.editor!==undefined?{editor:o.editor}:{}),...(o.signal!==undefined?{signal:o.signal}:{}),...(versions?{versions}:{}),...(revisions?{revisions}:queue?{suggestions:queue}:{})});},files:()=>stored.files,verify:async()=>{check();const actual=await readOriginalOperationalRecords(s,check,signal);check();if(JSON.stringify(actual.metadata)!==JSON.stringify(stored.metadata))throw operationFailure('operation_diverged');},release});result.check();cleanup.complete();complete=true;return result;}
+   finally{if(!complete)await owner.#rollbackRead(cleanup);}
   };
   resumeHeld=options=>this.#fromRecovered(options,true);
-  exactOperational=async owner=>{if(owner.#busy)throw operationFailure("operation_in_use");owner.#busy=true;try{await owner.#verify();await exact(owner.#state.p,owner.#state.owners);owner.#guard();}finally{owner.#busy=false;}};
+  exactOperational=async owner=>{if(owner.#failedReadCleanup)await owner.#drainReadCleanup();if(owner.#busy)throw operationFailure("operation_in_use");owner.#busy=true;try{await owner.#verify();await exact(owner.#state.p,owner.#state.owners);owner.#guard();}finally{owner.#busy=false;}};
   reserveOperationalGroup=input=>{
    if(!Array.isArray(input)||input.length>1024)throw operationFailure("operation_policy");const owners=[...input];
    if(new Set(owners).size!==owners.length)throw operationFailure("operation_policy");
@@ -149,20 +152,25 @@ export class OperationalSharedParticipant<P extends SharedSelectionPolicy=Shared
    const result=new OperationalSharedParticipant(key,state);opening.complete();return result;
   }catch(error){if(opening)await opening.rollback();throw failure(error);}
  }
+ /** No read permission is renewed by cleanup. Failed actual closures remain
+  * owned here even when opening never returned a facade to its caller. */
+ async #rollbackRead(ticket:RecoveryCleanupTicket):Promise<void>{try{await ticket.rollback();}catch(error){this.#failedReadCleanup=true;throw error;}}
+ async #drainReadCleanup():Promise<void>{await this.#readCleanup.drain();this.#failedReadCleanup=this.#readCleanup.pending;}
  #guard():void{if(this.#closed||this.#released)throw operationFailure("operation_closed");this.#state.p.guard();}
  /** Original immutable selection, never current role or activation authority. */
  origin(){if(this.#closed)throw operationFailure("operation_closed");return participantSelection(this.#state.p.expected);}
  /** Durable phase only. Actual checks still read native owners and current component data. */
- async progress():Promise<Readonly<SharedParticipantOperationProgress>>{if(this.#busy)throw operationFailure("operation_in_use");this.#busy=true;try{this.#guard();await retained(this.#state);this.#guard();return Object.freeze({phase:this.#state.record.phase});}finally{this.#busy=false;}}
+ async progress():Promise<Readonly<SharedParticipantOperationProgress>>{if(this.#failedReadCleanup)await this.#drainReadCleanup();if(this.#busy)throw operationFailure("operation_in_use");this.#busy=true;try{this.#guard();await retained(this.#state);this.#guard();return Object.freeze({phase:this.#state.record.phase});}finally{this.#busy=false;}}
  async #verify():Promise<void>{this.#guard();await retained(this.#state);await verifyOperationalOwners(this.#state.p,this.#state.owners,this.#state.origin);this.#guard();checkManagedRecoveryOwners(this.#state.owners);}
- async check():Promise<void>{if(this.#busy)throw operationFailure("operation_in_use");this.#busy=true;try{await this.#verify();}finally{this.#busy=false;}}
+ async check():Promise<void>{if(this.#failedReadCleanup)await this.#drainReadCleanup();if(this.#busy)throw operationFailure("operation_in_use");this.#busy=true;try{await this.#verify();}finally{this.#busy=false;}}
  /** Release coordination only after actual continuity checks; native author leases stay with parts. */
  async intoParts():Promise<Readonly<OperationalSharedParticipantParts<P>>>{
+  if(this.#failedReadCleanup)await this.#drainReadCleanup();
   let source:ReturnType<typeof captureSharedAssetReferences>|undefined,handoff:OperationalParticipantHandoff<OperationalSharedParticipantParts<SharedSelectionPolicy>>|undefined;
   try{handoff=await prepareOperationalParticipantHandoff([this as unknown as OperationalSharedParticipant<SharedSelectionPolicy>],async([s],markReleased)=>{const state=s!,parts=Object.freeze({sources:Object.freeze(ownerSources(state.p,state.owners)),session:state.owners.session!,uploads:state.owners.uploads!});source=captureSharedAssetReferences(parts.sources);await release(state.db,state.recoveryDb,state.leases);markReleased();return parts;},states=>{for(const s of states){s.p.guard();s.origin.verify(managedSourceCore(s.owners.session!) as SharedRichEditor<SharedSelectionPolicy>);}},()=>checkHandoffSource.call(source!));return handoff.commit() as unknown as OperationalSharedParticipantParts<P>;}finally{handoff?.abandon();if(source)disposeHandoffSource.call(source);}
  }
  /** Save ordinary owners before releasing custody. Failed saves/releases remain retryable. */
- async close():Promise<void>{if(this.#closed)return;if(this.#busy)throw operationFailure("operation_in_use");this.#busy=true;try{const s=this.#state,o=s.owners;await o.revisions?.close();await o.suggestions?.close();await o.versions?.close();await o.session?.close();o.uploads?.close();await release(s.db,s.recoveryDb,s.leases);s.origin.dispose();s.p.backup.dispose();this.#closed=true;}finally{this.#busy=false;}}
+ async close():Promise<void>{if(this.#closed)return;if(this.#failedReadCleanup)await this.#drainReadCleanup();if(this.#busy)throw operationFailure("operation_in_use");this.#busy=true;try{const s=this.#state,o=s.owners;await o.revisions?.close();await o.suggestions?.close();await o.versions?.close();await o.session?.close();o.uploads?.close();await release(s.db,s.recoveryDb,s.leases);s.origin.dispose();s.p.backup.dispose();this.#closed=true;}finally{this.#busy=false;}}
  /** Explicitly discard private unsaved state, retaining every committed operation/source/store file. */
- async discardAndClose():Promise<void>{if(this.#closed)return;if(this.#busy)throw operationFailure("operation_in_use");this.#busy=true;try{const s=this.#state;await discardRecoveryOwners(s.owners);await release(s.db,s.recoveryDb,s.leases);s.origin.dispose();s.p.backup.dispose();this.#closed=true;}finally{this.#busy=false;}}
+ async discardAndClose():Promise<void>{if(this.#closed)return;if(this.#failedReadCleanup)await this.#drainReadCleanup();if(this.#busy)throw operationFailure("operation_in_use");this.#busy=true;try{const s=this.#state;await discardRecoveryOwners(s.owners);await release(s.db,s.recoveryDb,s.leases);s.origin.dispose();s.p.backup.dispose();this.#closed=true;}finally{this.#busy=false;}}
 }

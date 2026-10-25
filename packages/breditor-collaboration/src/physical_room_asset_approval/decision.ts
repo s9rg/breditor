@@ -4,7 +4,10 @@
 import {PhysicalOperationV3Cancellation} from '../physical_room_operation_v3/storage_cancellation.js';
 import {fail} from '../physical_room_asset_adoption/policy.js';
 import type {RoomAssetApprovalChoice} from './contract.js';
-export async function decideRoomAssetApproval(choice:RoomAssetApprovalChoice,approve:(choice:RoomAssetApprovalChoice)=>boolean|Promise<boolean>,scope:Readonly<{check:()=>void;signal:AbortSignal|undefined;watchClosing:(cancel:()=>void)=>()=>void}>):Promise<void>{
+export function decideRoomAssetApproval(choice:RoomAssetApprovalChoice,approve:(choice:RoomAssetApprovalChoice)=>boolean|Promise<boolean>,scope:Readonly<{check:()=>void;signal:AbortSignal|undefined;watchClosing:(cancel:()=>void)=>()=>void}>):Promise<void>{return decideFreshAssetChoice(choice,approve,scope);}
+/** Shared runtime decision mechanism only. Each caller admits its own closed
+ * choice protocol; no saved choice supplies this fresh executable decision. */
+export async function decideFreshAssetChoice<T>(choice:T,approve:(choice:T)=>boolean|Promise<boolean>,scope:Readonly<{check:()=>void;signal:AbortSignal|undefined;watchClosing:(cancel:()=>void)=>()=>void}>):Promise<void>{
  const observation=new PhysicalOperationV3Cancellation(scope.signal);let unwatch=()=>{},unclose=()=>{};
  try{await new Promise<void>((resolve,reject)=>{
   let finished=false;const refuse=(error:unknown)=>{if(finished)return;finished=true;reject(error);},cancel=()=>refuse(fail('asset_adoption_aborted'));

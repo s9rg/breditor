@@ -1,0 +1,8 @@
+/** Incoming data cannot manufacture actual private native or store ownership. */
+import test from 'node:test';import assert from 'node:assert/strict';
+import * as api from '../packages/breditor-collaboration/dist/index.js';
+import {previewColdSelectedRoom,resumeColdSelectedRoom} from '../packages/breditor-collaboration/dist/cold_selected_room/coordinator.js';
+import {RetainedSelectedAssetOwner} from '../packages/breditor-collaboration/dist/physical_room_asset_successor/owner.js';
+test('copied cold roots invoke no archive getter, option getter, factory or host permission',async()=>{let calls=0;const incoming={get reads(){calls++;throw Error('not a root');}},archive={get selection(){calls++;throw Error('not an archive');}};for(const method of[previewColdSelectedRoom,resumeColdSelectedRoom])await assert.rejects(method({},archive,incoming));assert.equal(calls,0);});
+test('incoming native/store facades cannot invoke the private selected-owner constructor',()=>{let calls=0;const facade={get resources(){calls++;throw Error('not actual resources');}};assert.throws(()=>new RetainedSelectedAssetOwner({},facade,facade,facade,facade,()=>{calls++;}));assert.equal(calls,0);});
+test('selected-owner/cold-recovery internals do not widen the public package root',()=>{for(const name of['RetainedSelectedAssetOwner','ColdSelectedIntentStore','ColdSelectedResources','SelectedRoomCurrentArchive','previewColdSelectedRoom','resumeColdSelectedRoom','prepareSelectedAssetOwner','transferPhysicalOperationV3RetainedRoot','checkUnconsumedPhysicalRoot','registerNativePendingWork'])assert.equal(Object.hasOwn(api,name),false,name);});

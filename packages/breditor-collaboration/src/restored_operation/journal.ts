@@ -61,21 +61,23 @@ export class RestoredOperationJournal {
   }catch(e){db?.close();try{await lease?.close();}finally{original?.dispose();live?.dispose();input?.dispose();}throw e;}
  }
  #storage():void{if(this.#closed||this.#closing)throw fail('restored_operation_closed');if(this.#changed||globalThis.indexedDB!==this.#context||globalThis.navigator?.locks!==this.#locks)throw fail('restored_operation_storage_changed');}
- #readable():void{this.#storage();this.#original.check();this.#live.check();this.#storage();}
+ // These anchors are private held readonly replicas. Routine lifetime guards
+ // use real facade epochs; full native byte checks fence reads/capture below.
+ #readable():void{this.#storage();this.#original.checkCurrent();this.#live.checkCurrent();this.#storage();}
  #check=():void=>{this.#storage();this.#authority();this.#readable();};
  #unwrap=(head:string)=>{const inner=unwrapOperationHead(head,this.#input.identity);this.#decoder.readHead(inner);return inner;};
  #readHead=(head:string)=>this.#decoder.readHead(this.#unwrap(head));
  #captureWith=(core:SharedRichEditor<SharedSelectionPolicy>,versions:readonly string[],check:()=>void)=>{
-  check();const verify=this.#input.originalData.source.identity.documentHistory==='original'?verifyOriginal:verifySegmented;verify.call(core,this.#original.core);
+  this.#original.check();this.#live.check();check();const verify=this.#input.originalData.source.identity.documentHistory==='original'?verifyOriginal:verifySegmented;verify.call(core,this.#original.core);
   for(const packet of this.#input.originalData.source.versions)if(!versions.includes(packet))throw fail('restored_operation_origin');
-  if(this.#active){verify.call(core,this.#live.core);for(const packet of this.#input.live.source.versions)if(!versions.includes(packet))throw fail('restored_operation_origin');}check();
+  if(this.#active){verify.call(core,this.#live.core);for(const packet of this.#input.live.source.versions)if(!versions.includes(packet))throw fail('restored_operation_origin');}check();this.#original.check();this.#live.check();
  };
  #capture=(core:SharedRichEditor<SharedSelectionPolicy>,versions:readonly string[])=>this.#captureWith(core,versions,this.#check);
  async #read(readCheck?:()=>void,options?:{signal?:AbortSignal}):Promise<RestoredOperationChecked>{
   const check=readCheck??this.#check,signal=readCheck?options?.signal:this.#input.options.signal;
-  check();const raw=await readRestoredOperationDatabase(this.#db,this.#input.identity,this.#targets);check();
+  this.#original.check();this.#live.check();check();const raw=await readRestoredOperationDatabase(this.#db,this.#input.identity,this.#targets);check();
   if(await digest(raw.original,signal)!==this.#input.identity.origin||await digest(raw.input,signal)!==this.#input.fileSha256)throw fail('restored_operation_integrity');check();
-  const rows=new Map<string,IndependentHistoryCut>();for(const[k,v]of raw.rows){const cut=await readOperationCut(v,this.#readHead);check();if(await operationCutDigest(cut)!==k)throw fail('restored_operation_integrity');if(raw.record.completed===this.#targets.length){const decoder=new IndependentDeliveryCompanion(this.#input.factory);decoder.load(this.#unwrap(cut.head));forwardProgress(this.#input.live.relay,decoder.current());}rows.set(k,copyOperationCut(cut));}check();this.#active=raw.record.completed===this.#targets.length;return{...raw,rows};
+  const rows=new Map<string,IndependentHistoryCut>();for(const[k,v]of raw.rows){const cut=await readOperationCut(v,this.#readHead);check();if(await operationCutDigest(cut)!==k)throw fail('restored_operation_integrity');if(raw.record.completed===this.#targets.length){const decoder=new IndependentDeliveryCompanion(this.#input.factory);decoder.load(this.#unwrap(cut.head));forwardProgress(this.#input.live.relay,decoder.current());}rows.set(k,copyOperationCut(cut));}check();this.#original.check();this.#live.check();this.#storage();this.#active=raw.record.completed===this.#targets.length;return{...raw,rows};
  }
  async #exclusive<T>(run:()=>Promise<T>):Promise<T>{this.#check();if(this.#working)throw fail('restored_operation_busy');this.#readEpoch=Object.freeze({});this.#working=true;try{return await run();}finally{this.#working=false;}}
  async #select(actual:IndependentHistoryStoredCut|null){return this.#exclusive(async()=>{

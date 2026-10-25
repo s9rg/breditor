@@ -6,6 +6,7 @@ import {initializeSharedReadOnly} from '../initialize_read_only.js';
 import {freeUnclaimedSharedRustOwner} from '../raw_owner_lifetime.js';
 import {nativeRestoreBinding} from '../native_restore_factory.js';
 import {sourceCoreMethods as native} from '../source_native_read.js';
+import {coreReadStamp} from '../core_read_stamp.js';
 import {SharedIndependentParticipantBackup} from '../independent_participant/backup.js';
 import {independentParticipantSelection} from '../independent_participant/policy.js';
 import {participantAuthority} from '../participant_backup/policy.js';
@@ -29,8 +30,9 @@ let policy:(origin:IndependentLocalNativeOperationOrigin)=>{selection:SharedInde
 export class IndependentLocalNativeOperationOrigin{
  readonly #backup:SharedIndependentParticipantBackup;readonly #file:Blob;readonly #selection:SharedIndependentParticipantSelection;readonly #identity:IndependentHistoryIdentity;readonly #core:SharedRichEditor<SharedSelectionPolicy>;
  readonly #document:string;readonly #review:string;readonly #versions:readonly string[];readonly #guard:()=>void;readonly #signal:AbortSignal|undefined;#closed=false;#checking=false;
+ readonly #stamp:ReturnType<typeof coreReadStamp>;
  private constructor(token:object,backup:SharedIndependentParticipantBackup,expected:SharedIndependentParticipantSelection,original:Blob,core:SharedRichEditor<SharedSelectionPolicy>,guard:()=>void,signal:AbortSignal|undefined){
-  if(token!==key)throw closed();const source=recovery.call(backup);this.#backup=backup;this.#file=original;this.#selection=expected;this.#identity=source.identity;this.#core=core;this.#document=source.documentCheckpoint;this.#review=source.reviewCheckpoint;this.#versions=Object.freeze([...source.versions]);this.#guard=guard;this.#signal=signal;Object.freeze(this);
+  if(token!==key)throw closed();const source=recovery.call(backup);this.#backup=backup;this.#file=original;this.#selection=expected;this.#identity=source.identity;this.#core=core;this.#document=source.documentCheckpoint;this.#review=source.reviewCheckpoint;this.#versions=Object.freeze([...source.versions]);this.#guard=guard;this.#signal=signal;this.#stamp=coreReadStamp(core);Object.freeze(this);
  }
  static{policy=origin=>{if(!origin||typeof origin!=='object'||!(#core in origin)||origin.#closed)throw closed();return{selection:structuredClone(origin.#selection),signal:origin.#signal};};}
  /** Snapshot executable policy before the first host callback; read actual archive
@@ -55,7 +57,9 @@ export class IndependentLocalNativeOperationOrigin{
  check():void{if(this.#closed)throw closed();this.#guard();readable.call(this);}
  /** Does not grant writes. Owned unsaved recovery remains readable after the
   * independent host's write grant or cancellation scope ends. */
- checkReadable():void{if(this.#closed)throw closed();if(file.call(this.#backup)!==this.#file||native.view.call(this.#core).readOnly!==true||native.checkpointJson.call(this.#core)!==this.#document||(this.#identity.reviewHistory==='original'?native.reviewCheckpoint.call(this.#core):native.reviewSegmentedCheckpoint.call(this.#core))!==this.#review)throw fail();}
+ checkReadable():void{readableCurrent.call(this);if(file.call(this.#backup)!==this.#file||native.view.call(this.#core).readOnly!==true||native.checkpointJson.call(this.#core)!==this.#document||(this.#identity.reviewHistory==='original'?native.reviewCheckpoint.call(this.#core):native.reviewSegmentedCheckpoint.call(this.#core))!==this.#review)throw fail();readableCurrent.call(this);}
+ /** Private held-readonly sentinel, not incoming native proof or permission. */
+ checkReadableCurrent():void{if(this.#closed)throw closed();const stamp=coreReadStamp(this.#core);if(stamp.document!==this.#stamp.document||stamp.review!==this.#stamp.review||file.call(this.#backup)!==this.#file||native.view.call(this.#core).readOnly!==true)throw fail();}
  verifyCore(core:SharedRichEditor<SharedSelectionPolicy>,versions:readonly string[]):void{this.#verify(core,versions,()=>check.call(this));}
  verifyReadableCore(core:SharedRichEditor<SharedSelectionPolicy>,versions:readonly string[]):void{this.#verify(core,versions,()=>readable.call(this));}
  #verify(core:SharedRichEditor<SharedSelectionPolicy>,versions:readonly string[],guard:()=>void):void{
@@ -64,10 +68,10 @@ export class IndependentLocalNativeOperationOrigin{
  }
  dispose():void{if(this.#closed)return;this.#closed=true;disposeCore.call(this.#core);}
 }
-const check=IndependentLocalNativeOperationOrigin.prototype.check,readable=IndependentLocalNativeOperationOrigin.prototype.checkReadable,verify=IndependentLocalNativeOperationOrigin.prototype.verifyCore,verifyReadable=IndependentLocalNativeOperationOrigin.prototype.verifyReadableCore;
+const check=IndependentLocalNativeOperationOrigin.prototype.check,readable=IndependentLocalNativeOperationOrigin.prototype.checkReadable,readableCurrent=IndependentLocalNativeOperationOrigin.prototype.checkReadableCurrent,verify=IndependentLocalNativeOperationOrigin.prototype.verifyCore,verifyReadable=IndependentLocalNativeOperationOrigin.prototype.verifyReadableCore;
 /** Pure genuine-brand policy snapshot, before any authority callback. */
 export const independentLocalNativeOriginPolicy=(origin:IndependentLocalNativeOperationOrigin)=>policy(origin);
 /** Actual native methods are captured once. A serialized/fake origin cannot
  * issue either the persistence capability or separate readable ancestry scope. */
 export function independentLocalNativeOriginGuard(origin:IndependentLocalNativeOperationOrigin){const selected=policy(origin);check.call(origin);return Object.freeze({check:()=>check.call(origin),capture:(core:SharedRichEditor<SharedSelectionPolicy>,versions:readonly string[])=>verify.call(origin,core,versions),signal:selected.signal});}
-export function independentLocalNativeOriginReadGuard(origin:IndependentLocalNativeOperationOrigin){policy(origin);readable.call(origin);return Object.freeze({check:()=>readable.call(origin),capture:(core:SharedRichEditor<SharedSelectionPolicy>,versions:readonly string[])=>verifyReadable.call(origin,core,versions)});}
+export function independentLocalNativeOriginReadGuard(origin:IndependentLocalNativeOperationOrigin){policy(origin);readable.call(origin);return Object.freeze({check:()=>readable.call(origin),checkCurrent:()=>readableCurrent.call(origin),capture:(core:SharedRichEditor<SharedSelectionPolicy>,versions:readonly string[])=>verifyReadable.call(origin,core,versions)});}

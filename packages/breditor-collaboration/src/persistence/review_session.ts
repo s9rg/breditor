@@ -1,4 +1,5 @@
 import {retireOwnedCore,disposeOwnedCore} from '../owned_core_lifetime.js';
+import {registerNativePendingWork} from '../native_pending_work.js';
 import {freeUnclaimedSharedRustOwner} from '../raw_owner_lifetime.js';
 import {managedCoreRetainedRevisions} from '../managed_custody.js';
 import {SharedRichEditor,SharedEditorError,createSharedDocumentEditor} from "../core.js";
@@ -66,9 +67,11 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
  #relayProgress:SharedReviewRelayProgress={cursor:null,accepted:null,sequence:null};#durableRelayProgress:SharedReviewRelayProgress={cursor:null,accepted:null,sequence:null};
  #saved:string|undefined;#failure:unknown;#closed=false;#retiring=false;#storageChanged=false;#closedRevisions:{documentRevision:string;reviewRevision:string}|undefined;#closing:Promise<void>|undefined;#released:Promise<void>|undefined;
  #recordReadEpoch:object=Object.freeze({});readonly #recordReaders=new Set<object>();
+ readonly #releasePendingWork:()=>void;
  private constructor(key:object,db:IDBDatabase,documentLease:SharedWriterLease,reviewLease:ReviewWriterLease,core:SharedRichEditor<P>,options:SessionOptions<P>,recovered:boolean,versions:readonly string[],progress?:SharedReviewRelayProgress){
   if(key!==constructionKey)throw new SharedEditorError('managed_source_construction','Use the actual paired session open or recovery factory');
   this.#db=db;this.#documentLease=documentLease;this.#reviewLease=reviewLease;this.#ownedCore=core;this.core=core;this.#options=options;this.recovered=recovered;
+  this.#releasePendingWork=registerNativePendingWork(core,()=>this.#running);
   if(progress){this.#relayProgress=structuredClone(progress);this.#durableRelayProgress=structuredClone(progress);this.#validateNativeProgress(progress);}
   this.#versions=admitPairedVersions(core,versions);
   const autosave=()=>{try{this.save();}catch(error){this.#failed(error);}};
@@ -208,7 +211,7 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
  /** Retire synchronously; a failed final write retains both readable histories and both leases for retry. */
  close():Promise<void>{if(this.#closed)return this.#released??Promise.resolve();if(this.#closing)return this.#closing;this.#retiring=true;retireOwnedCore(this.#ownedCore);this.#closing=Promise.resolve().then(async()=>{if(this.#closed){await this.#released;return;}this.save();await this.flush();await this.discardAndClose();}).finally(()=>{this.#closing=undefined;});return this.#closing;}
  /** Explicitly abandon unsaved in-memory pairs; the previous committed record is not deleted. */
- discardAndClose():Promise<void>{if(this.#closed)return this.#released??Promise.resolve();const snapshot=managedCoreRetainedRevisions(this.#ownedCore);this.#closedRevisions={documentRevision:snapshot.documentRevision,reviewRevision:snapshot.reviewRevision};this.#closed=true;retireOwnedCore(this.#ownedCore);for(const off of this.#unsubscribe)off();this.#unsubscribe=[];disposeOwnedCore(this.#ownedCore);this.#pending=undefined;this.#db.close();this.#released=(this.#running??Promise.resolve()).then(async()=>{try{await this.#reviewLease.close();}finally{await this.#documentLease.close();}});return this.#released;}
+ discardAndClose():Promise<void>{if(this.#closed)return this.#released??Promise.resolve();const snapshot=managedCoreRetainedRevisions(this.#ownedCore);this.#closedRevisions={documentRevision:snapshot.documentRevision,reviewRevision:snapshot.reviewRevision};this.#closed=true;this.#releasePendingWork();retireOwnedCore(this.#ownedCore);for(const off of this.#unsubscribe)off();this.#unsubscribe=[];disposeOwnedCore(this.#ownedCore);this.#pending=undefined;this.#db.close();this.#released=(this.#running??Promise.resolve()).then(async()=>{try{await this.#reviewLease.close();}finally{await this.#documentLease.close();}});return this.#released;}
 }
 /** Exact actual original paired rows plus pending/LIVE data. This performs no
  * save or native replay and does not freeze editing or acquire an author. Source

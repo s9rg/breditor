@@ -6,6 +6,7 @@ import {initializeSharedReadOnly} from '../initialize_read_only.js';
 import {freeUnclaimedSharedRustOwner} from '../raw_owner_lifetime.js';
 import {nativeRestoreBinding} from '../native_restore_factory.js';
 import {sourceCoreMethods as native} from '../source_native_read.js';
+import {coreReadStamp} from '../core_read_stamp.js';
 import {independentOptionsIdentity} from '../independent_history/identity.js';
 import {IndependentDeliveryCompanion} from '../independent_delivery/companion.js';
 import {SharedIndependentDeliveryParticipantBackup} from '../independent_delivery_participant/backup.js';
@@ -23,10 +24,11 @@ export class IndependentNativeOperationOrigin {
  readonly #backup:SharedIndependentDeliveryParticipantBackup;readonly #file:Blob;readonly #guard:()=>void;
  readonly #core:SharedRichEditor<SharedSelectionPolicy>;readonly #identity:IndependentHistoryIdentity;
  readonly #document:string;readonly #review:string;readonly #versions:readonly string[];
+ readonly #stamp:ReturnType<typeof coreReadStamp>;
  #closed=false;#checking=false;
  private constructor(token:object,prepared:PreparedIndependentDeliveryRecovery<SharedSelectionPolicy>,core:SharedRichEditor<SharedSelectionPolicy>){
   if(token!==key)throw closed();const recovery=readRecovery.call(prepared.backup).source;
-  this.#backup=prepared.backup;this.#file=readFile.call(prepared.backup);this.#guard=prepared.guard;this.#core=core;this.#identity=structuredClone(recovery.identity);this.#document=recovery.documentCheckpoint;this.#review=recovery.reviewCheckpoint;this.#versions=Object.freeze([...recovery.versions]);Object.freeze(this);
+  this.#backup=prepared.backup;this.#file=readFile.call(prepared.backup);this.#guard=prepared.guard;this.#core=core;this.#identity=structuredClone(recovery.identity);this.#document=recovery.documentCheckpoint;this.#review=recovery.reviewCheckpoint;this.#versions=Object.freeze([...recovery.versions]);this.#stamp=coreReadStamp(core);Object.freeze(this);
  }
  /** Factories remain explicit host inputs. A file/ready marker cannot choose one. */
  static async read<P extends SharedSelectionPolicy>(input:PreparedIndependentDeliveryRecovery<P>):Promise<IndependentNativeOperationOrigin>{
@@ -60,9 +62,13 @@ export class IndependentNativeOperationOrigin {
  /** Private data-lifetime check only. A caller must independently authorize its read.
   * This never selects a persistence driver or bypasses the normal write guard. */
  checkReadable():void{
-  if(this.#closed)throw closed();
+  currentReadableOrigin.call(this);
   if(readFile.call(this.#backup)!==this.#file||native.view.call(this.#core).readOnly!==true||native.checkpointJson.call(this.#core)!==this.#document||(this.#identity.reviewHistory==='original'?native.reviewCheckpoint.call(this.#core):native.reviewSegmentedCheckpoint.call(this.#core))!==this.#review)throw invalid();
+  currentReadableOrigin.call(this);
  }
+ /** Private held-readonly liveness only, never byte/native admission or a
+  * renewed host grant. Full checks fence persisted reads and native ancestry. */
+ checkReadableCurrent():void{if(this.#closed)throw closed();const stamp=coreReadStamp(this.#core);if(stamp.document!==this.#stamp.document||stamp.review!==this.#stamp.review||readFile.call(this.#backup)!==this.#file||native.view.call(this.#core).readOnly!==true)throw invalid();}
  /** Both original/segmented native lanes must descend from the genuine replay.
   * The current local version set may grow, but cannot lose any selected packet. */
  verifyCore(core:SharedRichEditor<SharedSelectionPolicy>,versions:readonly string[]):void{this.#verify(core,versions,()=>checkOrigin.call(this));}
@@ -79,8 +85,8 @@ export class IndependentNativeOperationOrigin {
  }
  dispose():void{if(this.#closed)return;this.#closed=true;disposeCore.call(this.#core);}
 }
-const checkOrigin=IndependentNativeOperationOrigin.prototype.check,verifyOrigin=IndependentNativeOperationOrigin.prototype.verifyCore,checkReadableOrigin=IndependentNativeOperationOrigin.prototype.checkReadable,verifyReadableOrigin=IndependentNativeOperationOrigin.prototype.verifyReadableCore;
+const checkOrigin=IndependentNativeOperationOrigin.prototype.check,verifyOrigin=IndependentNativeOperationOrigin.prototype.verifyCore,checkReadableOrigin=IndependentNativeOperationOrigin.prototype.checkReadable,currentReadableOrigin=IndependentNativeOperationOrigin.prototype.checkReadableCurrent,verifyReadableOrigin=IndependentNativeOperationOrigin.prototype.verifyReadableCore;
 /** Frozen private guard issued by a genuine native origin, never a caller DTO. */
 export function independentNativeOriginGuard(origin:IndependentNativeOperationOrigin){checkOrigin.call(origin);return Object.freeze({check:()=>checkOrigin.call(origin),capture:(core:SharedRichEditor<SharedSelectionPolicy>,versions:readonly string[])=>verifyOrigin.call(origin,core,versions)});}
 /** Genuine read capability, not an author grant; storage and host read checks belong to its owner. */
-export function independentNativeOriginReadGuard(origin:IndependentNativeOperationOrigin){checkReadableOrigin.call(origin);return Object.freeze({check:()=>checkReadableOrigin.call(origin),capture:(core:SharedRichEditor<SharedSelectionPolicy>,versions:readonly string[])=>verifyReadableOrigin.call(origin,core,versions)});}
+export function independentNativeOriginReadGuard(origin:IndependentNativeOperationOrigin){checkReadableOrigin.call(origin);return Object.freeze({check:()=>checkReadableOrigin.call(origin),checkCurrent:()=>currentReadableOrigin.call(origin),capture:(core:SharedRichEditor<SharedSelectionPolicy>,versions:readonly string[])=>verifyReadableOrigin.call(origin,core,versions)});}

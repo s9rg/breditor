@@ -1,5 +1,6 @@
 /** Own one genuine editor and one atomic pair of independently selected native history lanes. */
 import {retireOwnedCore,disposeOwnedCore} from '../owned_core_lifetime.js';
+import {registerNativePendingWork} from '../native_pending_work.js';
 import {SharedEditorError,SharedRichEditor,createSharedDocumentEditor} from '../core.js';
 import {initializeSharedReadOnly} from '../initialize_read_only.js';
 import {freeUnclaimedSharedRustOwner} from '../raw_owner_lifetime.js';
@@ -39,9 +40,11 @@ export class SharedIndependentHistoryPersistentSession<P extends SharedSelection
  #bootstrapSignal:AbortSignal|undefined;
  #versions:Map<string,string>;#sourceStamp:object=Object.freeze({});#off:(()=>void)[]=[];#savedHead:string|null;#saved:Capture|undefined;#pending:Capture|undefined;#attempt:Attempt|undefined;#running:Promise<void>|undefined;#failure:unknown;
  #retiring=false;#storageChanged=false;#closed=false;#closing:Promise<void>|undefined;#released:Promise<void>|undefined;#closedRevisions:{documentRevision:string|null;reviewRevision:string|null}|undefined;
+ readonly #releasePendingWork:()=>void;
  private constructor(key:object,db:IDBDatabase,documentLease:SharedWriterLease,reviewLease:ReviewWriterLease,core:SharedRichEditor<P>,options:SharedIndependentHistorySessionOptions<P>,identity:IndependentHistoryIdentity,savedHead:string|null,versions:readonly string[],recovered:boolean,companion?:IndependentHistoryCompanion,bootstrapCheck?:()=>void,bootstrapSignal?:AbortSignal,localCapture?:ReturnType<typeof independentLocalHistoryCapturePolicy>,localDriver?:IndependentLocalOperationDriver){
   if(key!==constructionKey)throw new SharedEditorError('managed_source_construction','Use the actual independent history open or recovery factory');
   this.#db=db;this.#documentLease=documentLease;this.#reviewLease=reviewLease;this.core=core;this.#ownedCore=core;this.#identity=identity;this.#savedHead=savedHead;this.#onError=options.onError;this.#onState=options.onState;this.recovered=recovered;this.#versions=admitPairedVersions(core,versions);
+  this.#releasePendingWork=registerNativePendingWork(core,()=>this.#running);
   this.#bootstrapCheck=bootstrapCheck;this.#bootstrapSignal=bootstrapSignal;this.#bootstrapCheck?.();this.#companion=companion;this.#localDriver=localDriver;this.#captureGuard=localDriver?.nativeCaptureGuard??localCapture??companion?.nativeCaptureGuard;this.#persistenceSignal=localDriver?.nativeCaptureGuard.signal??localCapture?.signal;companion?.admit(core as unknown as SharedRichEditor<SharedSelectionPolicy>);
   this.#captureGuard?.capture(core as unknown as SharedRichEditor<SharedSelectionPolicy>,[...this.#versions.values()]);
   const check=()=>{this.#live();const owned=this.#bound();if((nativeCore.segmentedHistoryPolicy.call(owned)??'original')!==identity.documentHistory||nativeCore.reviewHistoryPolicy.call(owned)!==identity.reviewHistory)throw new SharedEditorError('independent_history_source','Both actual native families must remain selected');};
@@ -134,7 +137,7 @@ export class SharedIndependentHistoryPersistentSession<P extends SharedSelection
   try{
    if(this.#closed)return this.#releaseOwners();
    this.#closedRevisions={documentRevision:this.#saved?.documentRevision??null,reviewRevision:this.#saved?.reviewRevision??null};
-   this.#closed=true;this.#companion?.retire();retireOwnedCore(this.#ownedCore);
+   this.#closed=true;this.#releasePendingWork();this.#companion?.retire();retireOwnedCore(this.#ownedCore);
    for(const off of this.#off)off();this.#off=[];disposeOwnedCore(this.#ownedCore);
    this.#pending=undefined;this.#saved=undefined;this.#versions.clear();this.#db.close();
    const released=this.#releaseOwners();this.#notify();return released;

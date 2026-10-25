@@ -1,0 +1,38 @@
+/** Immutable complete basis/current evidence in one absent-only transaction.
+ * Retry only reads identical data; no put, repair or stored author grant. Raw
+ * queued openings and failed cleanup remain reachable until actual drain. */
+import {PhysicalOperationV3Cancellation} from '../physical_room_operation_v3/storage_cancellation.js';
+import {archiveBlob} from '../archive_integrity/policy.js';
+import {prepareArchiveIntegrity} from '../archive_integrity/context.js';
+import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
+import {fields,fail,database} from '../physical_room_asset_adoption/policy.js';
+import {MAX_SELECTED_ROOM_CURRENT_BYTES} from '../selected_room_current/manifest.js';
+import {coldSelectedRoomChoice} from './choice.js';
+import type {ColdSelectedRoomChoice} from './contract.js';
+export interface ColdSelectedIntentRecord{readonly format:'breditor/cold-selected-owner-intent';readonly formatVersion:1;readonly database:string;readonly choice:ColdSelectedRoomChoice;readonly basis:Blob;readonly current:Blob}
+export function coldSelectedIntentRecord(value:unknown):ColdSelectedIntentRecord{
+ const r=fields(value,['format','formatVersion','database','choice','basis','current']);if(r['format']!=='breditor/cold-selected-owner-intent'||r['formatVersion']!==1)throw fail('asset_adoption_diverged');const choice=coldSelectedRoomChoice(r['choice']),name=database(r['database']),basis=archiveBlob(r['basis'] as Blob,MAX_SELECTED_ROOM_CURRENT_BYTES),current=archiveBlob(r['current'] as Blob,MAX_SELECTED_ROOM_CURRENT_BYTES);if(name!==choice.intentDatabase||basis.size!==choice.basis.bytes||current.size!==choice.current.bytes)throw fail('asset_adoption_diverged');if(basis.size+current.size>MAX_SELECTED_ROOM_CURRENT_BYTES)throw fail('asset_adoption_budget');return Object.freeze({format:'breditor/cold-selected-owner-intent',formatVersion:1,database:name,choice,basis,current});
+}
+const table='intent';function schema(db:IDBDatabase){if(db.version!==1||db.objectStoreNames.length!==1||db.objectStoreNames[0]!==table)throw fail('asset_adoption_exists');}
+export class ColdSelectedIntentStore{
+ readonly #factory;readonly #name;readonly #policy;readonly #cancellation;readonly #wasm;readonly #expected;
+ #db:IDBDatabase|undefined;#request:IDBOpenDBRequest|undefined;#pending=false;#reject:((e:unknown)=>void)|undefined;#changed=false;#closing=false;#closed=false;#running:Promise<unknown>|undefined;#cleanup:Promise<void>|undefined;
+ constructor(factory:IDBFactory,name:string,expected:ColdSelectedIntentRecord,policy:()=>void,wasm:SharedArchiveIntegrityOptions['wasm'],signal?:AbortSignal){this.#factory=factory;this.#name=database(name);this.#expected=coldSelectedIntentRecord(expected);if(this.#expected.database!==this.#name)throw fail('asset_adoption_policy');this.#policy=policy;this.#wasm=wasm;this.#cancellation=new PhysicalOperationV3Cancellation(signal);Object.freeze(this);}
+ checkReadCurrent=()=>{if(this.#closed||this.#closing||this.#changed||!this.#db||globalThis.indexedDB!==this.#factory)throw fail('asset_adoption_closed');};
+ #check=()=>{if(this.#closed||this.#closing||this.#changed||globalThis.indexedDB!==this.#factory)throw fail('asset_adoption_closed');this.#cancellation.check();this.#policy();if(this.#closed||this.#closing||this.#changed)throw fail('asset_adoption_closed');};
+ #attach(db:IDBDatabase){this.#db=db;db.onversionchange=()=>{this.#changed=true;db.close();};}
+ #run<T>(work:()=>Promise<T>):Promise<T>{if(this.#running)return Promise.reject(fail('asset_adoption_busy'));let task:Promise<T>;try{task=work();}catch(error){task=Promise.reject(error);}this.#running=task;return task.finally(()=>{this.#running=undefined;});}
+ open(guard:()=>void):Promise<void>{return this.#run(()=>{
+  this.#check();guard();if(this.#pending||this.#db)throw fail('asset_adoption_busy');return new Promise((resolve,reject)=>{const q=this.#factory.open(this.#name,1);let blocked=false,reason:unknown,unwatch=()=>{};this.#pending=true;this.#request=q;this.#reject=reject;const abort=(error:unknown)=>{reason=error;if(q.transaction){try{q.transaction.abort();}catch{}}else reject(error);},done=()=>{this.#pending=false;this.#request=undefined;this.#reject=undefined;unwatch();};try{unwatch=this.#cancellation.watch(()=>abort(fail('asset_adoption_aborted')));}catch(error){abort(error);}
+   q.onupgradeneeded=event=>{this.#attach(q.result);try{this.#check();guard();if(blocked)throw fail('asset_adoption_busy');if(event.oldVersion!==0)throw fail('asset_adoption_exists');q.result.createObjectStore(table).add(this.#expected,'record');guard();this.#check();}catch(error){abort(error);}};
+   q.onblocked=()=>{blocked=true;unwatch();reject(fail('asset_adoption_busy'));};q.onerror=()=>{done();reject(reason??fail());};q.onsuccess=()=>{this.#attach(q.result);done();try{this.#check();guard();if(blocked)throw fail('asset_adoption_busy');schema(q.result);resolve();}catch(error){reject(error);}};
+  });
+ });}
+ /** A later current capture supplies fresh permission and cancellation, never
+  * the expired recovery job. This same connection cannot create or update data. */
+ verifyFresh(authority:()=>void,signal?:AbortSignal):Promise<void>{return this.#run(async()=>{const observation=new PhysicalOperationV3Cancellation(signal),check=()=>{this.checkReadCurrent();observation.check();authority();this.checkReadCurrent();observation.check();};try{const row=await this.#read(check,observation);check();const context=prepareArchiveIntegrity({wasm:this.#wasm,checkAuthority:check});if(JSON.stringify(row.choice)!==JSON.stringify(this.#expected.choice)||await context.digest(row.basis)!==row.choice.basis.sha256||await context.digest(row.current)!==row.choice.current.sha256)throw fail('asset_adoption_diverged');check();}finally{observation.close();}});}
+ #read(check:()=>void,observation:PhysicalOperationV3Cancellation):Promise<ColdSelectedIntentRecord>{check();const db=this.#db!;schema(db);return new Promise((resolve,reject)=>{const tx=db.transaction(table,'readonly'),store=tx.objectStore(table);let reason:unknown,result:ColdSelectedIntentRecord|undefined,ready=0,unwatch=()=>{};const values:unknown[]=[];const abort=(error:unknown)=>{reason=error;try{tx.abort();}catch{}};try{unwatch=observation.watch(()=>abort(fail('asset_adoption_aborted')));}catch(error){abort(error);}tx.onabort=()=>{unwatch();reject(reason??fail());};tx.onerror=()=>{};tx.oncomplete=()=>{unwatch();try{check();if(!result)throw fail('asset_adoption_diverged');resolve(result);}catch(error){reject(error);}};const take=()=>{if(++ready!==2)return;try{check();const keys=values[1] as IDBValidKey[];if(keys.length!==1||keys[0]!=='record')throw fail('asset_adoption_diverged');result=coldSelectedIntentRecord(values[0]);if(result.database!==this.#name)throw fail('asset_adoption_diverged');check();}catch(error){abort(error);}};
+  try{if(store.keyPath!==null||store.autoIncrement||store.indexNames.length)throw fail('asset_adoption_diverged');for(const[i,q]of[store.get('record'),store.getAllKeys()].entries())q.onsuccess=()=>{values[i]=q.result;take();};}catch(error){abort(error);}
+ });}
+ close():Promise<void>{if(this.#closed)return Promise.resolve();if(this.#cleanup)return this.#cleanup;this.#closing=true;if(this.#pending){this.#reject?.(fail('asset_adoption_closed'));try{this.#request?.transaction?.abort();}catch{}}this.#cleanup=(async()=>{await this.#running?.catch(()=>{});if(this.#pending)throw fail('asset_adoption_busy');this.#db?.close();this.#db=undefined;this.#cancellation.close();this.#closed=true;})().finally(()=>{this.#cleanup=undefined;});return this.#cleanup;}
+}

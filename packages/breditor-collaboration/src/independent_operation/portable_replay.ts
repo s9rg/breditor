@@ -4,6 +4,7 @@ import {initializeSharedReadOnly} from '../initialize_read_only.js';
 import {freeUnclaimedSharedRustOwner} from '../raw_owner_lifetime.js';
 import {nativeRestoreBinding} from '../native_restore_factory.js';
 import {sourceCoreMethods as native} from '../source_native_read.js';
+import {coreReadStamp} from '../core_read_stamp.js';
 import {IndependentDeliveryCompanion} from '../independent_delivery/companion.js';
 import {independentOptionsIdentity} from '../independent_history/identity.js';
 import type {SharedIndependentDeliveryOptions,SharedIndependentDeliveryRecovery} from '../independent_delivery/contract.js';
@@ -26,7 +27,15 @@ export async function replayPortableRecovery<P extends SharedSelectionPolicy>(op
   if(core.richLanguageVersion()!==id.native.richLanguage)throw fail();if(id.native.history==='typing-v1'&&native.view.call(core).historyGrouping!=='typing-v1')core.enableTypingHistory();if(id.native.rangeEditing==='general-v1'&&native.view.call(core).rangeEditing!=='general-v1')core.enableGeneralRanges();
   const review={...options.review,access:'read_only' as const};if(id.reviewHistory==='segmented-v1')core.enableSegmentedReview(review,recovery.source.reviewCheckpoint);else core.enableReview(review,recovery.source.reviewCheckpoint);core.sealIndependentHistoryPolicies(id.documentHistory,id.reviewHistory,id.native.history,id.native.rangeEditing);
   const companion=new IndependentDeliveryCompanion(options,recovery);companion.admit(core);companion.releaseRecords();for(const packet of recovery.source.versions)native.readVersion.call(core,packet);
-  const selected=core,live=()=>{check();if(native.view.call(selected).readOnly!==true||native.checkpointJson.call(selected)!==recovery.source.documentCheckpoint||(id.reviewHistory==='original'?native.reviewCheckpoint:native.reviewSegmentedCheckpoint).call(selected)!==recovery.source.reviewCheckpoint)throw fail('independent_operation_read_changed');check();};live();let closed=false;
-  return Object.freeze({core:selected,check:()=>{if(closed)throw fail('independent_operation_read_closed');live();},dispose:()=>{if(closed)return;closed=true;dispose.call(selected);}});
+  const selected=core;let closed=false;
+  const verify=()=>{if(closed)throw fail('independent_operation_read_closed');if(native.view.call(selected).readOnly!==true||native.checkpointJson.call(selected)!==recovery.source.documentCheckpoint||(id.reviewHistory==='original'?native.reviewCheckpoint:native.reviewSegmentedCheckpoint).call(selected)!==recovery.source.reviewCheckpoint)throw fail('independent_operation_read_changed');coreReadStamp(selected);if(closed)throw fail('independent_operation_read_closed');};
+  // A last host callback can retire the reader. Verify AFTER it too, rather
+  // than returning success for a native owner that no longer exists.
+  const live=()=>{if(closed)throw fail('independent_operation_read_closed');check();verify();check();verify();};live();const stamp=coreReadStamp(selected);
+  /** Private held-readonly currentness, not incoming byte/native admission.
+   * Full check() fences actual reads and lineage verification. No host policy
+   * or checkpoint serialization runs during a hashing/lifetime sentinel. */
+  const current=()=>{if(closed)throw fail('independent_operation_read_closed');const actual=coreReadStamp(selected);if(actual.document!==stamp.document||actual.review!==stamp.review||native.view.call(selected).readOnly!==true)throw fail('independent_operation_read_changed');};
+  current();return Object.freeze({core:selected,check:live,checkCurrent:current,dispose:()=>{if(closed)return;closed=true;dispose.call(selected);}});
  }catch(error){if(core)dispose.call(core);if(raw)freeUnclaimedSharedRustOwner(raw);throw error;}
 }

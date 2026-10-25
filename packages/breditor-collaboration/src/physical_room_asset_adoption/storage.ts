@@ -5,6 +5,7 @@ import {PhysicalOperationV3Cancellation} from '../physical_room_operation_v3/sto
 import {adoptionRecord,adoptionTransition} from './record.js';
 import type {RoomAssetAdoptionRecord} from './contract.js';
 import {fail} from './policy.js';
+import {participantAuthority} from '../participant_backup/policy.js';
 export type AdoptionFiles=ReadonlyMap<string,ArrayBuffer>;
 const tables=['bases','selection'];
 function schema(db:IDBDatabase):void{if(db.version!==1||[...db.objectStoreNames].join(',')!==tables.join(','))throw fail('asset_adoption_diverged');}
@@ -35,14 +36,22 @@ export class RoomAssetAdoptionStore {
   });
  });}
  read(guard:()=>void=this.#check):Promise<{record:RoomAssetAdoptionRecord;files:AdoptionFiles}>{return this.#run(()=>this.#transaction(guard));}
+ /** Fresh READONLY access to the same held stage connection. Its completed
+  * preparation job is not a lifetime permission or cancellation source. This
+  * never opens a database, advances a row, or adopts a pending transition. */
+ checkReadCurrent():void{if(this.#closed||this.#closing||this.#changed||!this.#db||globalThis.indexedDB!==this.#factory)throw fail('asset_adoption_closed');}
+ readFresh(authority:()=>void,signal?:AbortSignal):Promise<{record:RoomAssetAdoptionRecord;files:AdoptionFiles}>{return this.#run(async()=>{
+  const permit=participantAuthority(authority),observation=new PhysicalOperationV3Cancellation(signal),check=()=>{this.checkReadCurrent();observation.check();permit();this.checkReadCurrent();observation.check();};
+  try{return await this.#transaction(check,undefined,check,observation);}finally{observation.close();}
+ });}
  advance(before:RoomAssetAdoptionRecord,after:RoomAssetAdoptionRecord,files:AdoptionFiles,guard:()=>void):Promise<void>{return this.#run(async()=>{adoptionTransition(before,after);await this.#transaction(guard,{before,after,files});});}
- #transaction(guard:()=>void,write?:Readonly<{before:RoomAssetAdoptionRecord;after:RoomAssetAdoptionRecord;files:AdoptionFiles}>):Promise<{record:RoomAssetAdoptionRecord;files:AdoptionFiles}>{
-  this.#check();guard();const db=this.#db;if(!db)throw fail('asset_adoption_missing');schema(db);
+ #transaction(guard:()=>void,write?:Readonly<{before:RoomAssetAdoptionRecord;after:RoomAssetAdoptionRecord;files:AdoptionFiles}>,policy:()=>void=this.#check,observation:PhysicalOperationV3Cancellation=this.#cancellation):Promise<{record:RoomAssetAdoptionRecord;files:AdoptionFiles}>{
+  policy();guard();const db=this.#db;if(!db)throw fail('asset_adoption_missing');schema(db);
   return new Promise((resolve,reject)=>{const tx=db.transaction(tables,write?'readwrite':'readonly'),bases=tx.objectStore('bases'),state=tx.objectStore('selection');let reason:unknown,result:{record:RoomAssetAdoptionRecord;files:AdoptionFiles}|undefined,count=0;const values:unknown[]=[];let unwatch=()=>{};
    const abort=(e:unknown)=>{reason=e;try{tx.abort();}catch{}};
-   try{unwatch=this.#cancellation.watch(()=>abort(fail('asset_adoption_aborted')));}catch(e){abort(e);}
-   tx.onabort=()=>{unwatch();reject(reason??fail());};tx.onerror=()=>{};tx.oncomplete=()=>{unwatch();try{this.#check();guard();if(!result)throw fail('asset_adoption_diverged');resolve(result);}catch(e){reject(e);}};
-   const ready=()=>{if(++count!==4)return;try{this.#check();guard();const[raw,keys,names,files]=values as[unknown,IDBValidKey[],IDBValidKey[],unknown[]],record=adoptionRecord(raw);if(record.database!==this.#name||keys.length!==1||keys[0]!=='state'||names.length!==record.participants.length||files.length!==names.length)throw fail('asset_adoption_diverged');const held=new Map<string,ArrayBuffer>();
+   try{unwatch=observation.watch(()=>abort(fail('asset_adoption_aborted')));}catch(e){abort(e);}
+   tx.onabort=()=>{unwatch();reject(reason??fail());};tx.onerror=()=>{};tx.oncomplete=()=>{unwatch();try{policy();guard();if(!result)throw fail('asset_adoption_diverged');resolve(result);}catch(e){reject(e);}};
+   const ready=()=>{if(++count!==4)return;try{policy();guard();const[raw,keys,names,files]=values as[unknown,IDBValidKey[],IDBValidKey[],unknown[]],record=adoptionRecord(raw);if(record.database!==this.#name||keys.length!==1||keys[0]!=='state'||names.length!==record.participants.length||files.length!==names.length)throw fail('asset_adoption_diverged');const held=new Map<string,ArrayBuffer>();
     for(const[i,row]of record.participants.entries()){const bytes=files[i];if(names[i]!==row.id||!(bytes instanceof ArrayBuffer)||bytes.byteLength!==row.base.bytes)throw fail('asset_adoption_diverged');held.set(row.id,bytes);}
     if(write){if(JSON.stringify(record)!==JSON.stringify(write.before)||write.files.size!==held.size||[...held].some(([id,bytes])=>!sameAdoptionBytes(write.files.get(id),bytes)))throw fail('asset_adoption_diverged');guard();state.put(write.after,'state');result={record:write.after,files:held};}else result={record,files:held};
    }catch(e){abort(e);}};

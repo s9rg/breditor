@@ -70,21 +70,26 @@ export class NativeInputJournal<A,C extends NativeInputJournalChoice,O,R extends
  #readable():void{
   if(this.#closed||this.#closing)throw this.#error('closed');
   if(this.#changed||this.#dbClosed||globalThis.indexedDB!==this.#context||globalThis.navigator?.locks!==this.#locks)throw this.#error('storage_changed');
-  this.#intrinsics.input.check(this.#input);this.#anchor.check();
+  // This anchor is a private immutable readonly replica, not the live source.
+  // Hashing/IDB guards need its real lifetime and facade epoch, not repeated
+  // full journal serialization. Actual read/lineage boundaries still check bytes.
+  this.#intrinsics.input.check(this.#input);this.#anchor.checkCurrent();
  }
  #check():void{this.#readable();this.#authority();this.#readable();}
  #verify(core:SharedRichEditor<SharedSelectionPolicy>,versions:readonly string[],guard:()=>void):void{
   const expected=this.#anchor.recovery,verify=expected.identity.documentHistory==='original'?verifyOriginal:verifySegmented;
+  this.#anchor.check();
   guard();if((native.segmentedHistoryPolicy.call(core)??'original')!==expected.identity.documentHistory||native.reviewHistoryPolicy.call(core)!==expected.identity.reviewHistory||versions.length<expected.versions.length||expected.versions.some((packet,index)=>versions[index]!==packet))throw this.#error('origin');
-  verify.call(core,this.#anchor.core);guard();verify.call(core,this.#anchor.core);
+  verify.call(core,this.#anchor.core);guard();verify.call(core,this.#anchor.core);this.#anchor.check();
  }
  #readHead=(head:string)=>{const record=this.#intrinsics.head.read(head,this.#id);if(JSON.stringify(record.identity)!==JSON.stringify(this.#choice.expected.original.identity.source))throw this.#error('source');return record;};
  async #read(guard:()=>void=()=>this.#check(),factory:SharedIndependentRecoveryFactory=this.#choice.read.options.session,anchor:LocalPortableReplay=this.#anchor):Promise<NativeInputJournalChecked<R>>{
+  this.#anchor.check();
   guard();const stored=await this.#intrinsics.database.read(this.#db,this.#id,guard);guard();
   const selected=this.#intrinsics.input.file(this.#input);
   if(stored.file.size!==selected.size||stored.file.type!==selected.type)throw this.#error('input_changed');
   await this.#intrinsics.input.verifyFile(this.#input,stored.file,guard);guard();
-  return this.#intrinsics.admit(stored,this.#id,this.#choice.expected.original,factory,anchor,guard);
+  const result=await this.#intrinsics.admit(stored,this.#id,this.#choice.expected.original,factory,anchor,guard);guard();this.#anchor.check();return result;
  }
  #source(guard:()=>void=()=>this.#check()):Promise<IndependentHistoryStoredCut|null>{const n=this.#choice.expected.original.identity.source.native;return readDedicatedOperationSourceDatabase(this.#id.sourceDatabase,[n.room,n.writer],this.#readHead,guard,'local-operation-v1');}
  #exclusive<T>(work:()=>Promise<T>,retains=true):Promise<T>{if(!this.#exposed||this.#closed||this.#closing)throw this.#error('closed');if(this.#working)throw this.#error('busy');if(retains)this.#readEpoch=Object.freeze({});this.#working=true;return Promise.resolve().then(work).finally(()=>{this.#working=false;});}

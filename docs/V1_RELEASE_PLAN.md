@@ -43,6 +43,34 @@ publication or deployment is promoted.
 
 ## Current seven family client recovery
 
+The [selected-owner recovery contract](SELECTED_OWNER_RECOVERY.md) now supports
+SDK-private warm handoff and editable cold resume of the actual native parents
+and independently selected asset stores. Complete immutable basis/current files,
+fresh independent read and writer policies, new affirmative decisions and a
+callback-free common ownership barrier preserve later offline/native work,
+packets, journals and upload receipts. Closing retires every client before a
+fallible snapshot; explicit cleanup keeps stored recovery bytes intact.
+
+The [2026-10-25 scoped qualification](qualification/2026-10-25-selected-owner-recovery.json)
+passes twenty normal stages: source, fresh offline packages and the actual
+production bundle each pass 1,958 cumulative laws, with 23 strict fixtures. Both
+source-matched native producers provide 100 verified files; nine real native
+control runs finish with 90 endpoints confirmed closed. A separately installed
+old/fixed-module control reproduces and verifies the queue failure repair.
+A second fresh installed control reproduces and verifies all four final-callback
+reader-lifetime failures. A third offline-installed control verifies the
+cleanup repair: 34 assertions pass with the repaired modules; the old modules
+fail 30 of them. Genuine selected-owner provider reads now authenticate the full
+origin/selected upload set under actual native and source custody, with repeated
+storage checks after I/O. Partial historical copies remain pending. All five newer families now keep failed
+unpublished native captures for real cleanup retry. A fourth fresh installed
+control verifies 19 unchanged regressions with old/fixed/old modules. Full native checks still fence persisted reads and
+lineage; private held-readonly sentinels do not renew authority.
+Full provider/client reconciliation, authenticated activation, stale-writer
+fencing, sustainable history, remaining feature parity and all thirteen V1 gates
+remain open. This checkpoint changes no public root, protocol/default, version,
+Rust source or normal Wasm byte.
+
 The [retained native continuation contract](RETAINED_NATIVE_CONTINUATION.md)
 adds a private bridge from the same fresh complete-cut reservation to the actual
 native sessions and held origin uploads. It preserves read gates, compares exact

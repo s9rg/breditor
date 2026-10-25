@@ -93,3 +93,5 @@ function nativeStates(value:OriginalNativeRecords|PersistentPairedMetadata):Orig
  if(value.format==='breditor/persistent-original-native-record-read')return recordVariants<{checkpoint:string}>(value).map(([slot,row])=>({slot,checkpoint:row.checkpoint,...value.identity,reviewedHistory:null,paired:null}));
  return recordVariants(value).map(([slot,row])=>({slot,checkpoint:row.documentCheckpointJson,history:row.history,rangeEditing:row.rangeEditing,selectionEditing:row.selectionEditing,richLanguage:row.richLanguage,searchHistory:row.format==='breditor/shared-search-review-checkpoint-record'?'search-v1':null,reviewedHistory:'reviewedHistory'in row?row.reviewedHistory:null,paired:row}));
 }
+/** SDK-private reuse of the same closed original record interpretation. */
+export {nativeStates as originalReferenceNativeStates};

@@ -1,3 +1,4 @@
+import {RecoveryCleanupScope,type RecoveryCleanupTicket} from '../participant_recovery/cleanup_scope.js';
 /** Continued native operation from genuine recovery custody. Stored readiness grants no authority. */
 import {transferRecoveredGenerationParticipant} from "../generation_participant/recovery.js";
 import {SharedGenerationParticipantBackup} from "../generation_participant/backup.js";
@@ -63,23 +64,25 @@ async function retained<P extends SharedSelectionPolicy>(s:Pick<State<P>,"p"|"db
 }
 export class OperationalSharedGenerationParticipant<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
  readonly #state:State<P>;readonly #file:Blob;#closed=false;#busy=false;#released=false;
+ readonly #readCleanup=new RecoveryCleanupScope(()=>fail());#failedReadCleanup=false;
  private constructor(token:object,state:State<P>){if(token!==key)throw fail("generation_operation_closed");this.#state=state;this.#file=SharedGenerationParticipantBackup.prototype.file.call(state.p.backup);generationOperationFence(state.db,state.life);generationOperationFence(state.recoveryDb,state.life);Object.freeze(this);}
  static{
   captureHistoryReferences=async(owner,provided)=>{
-   const o=parentReferenceOptions(provided,'restoreSegmented'),parent=await captureParentRecords(owner,o.checkAuthority,o.signal);let capture:GenerationRecordReferenceCapture|undefined,complete=false;
-   try{const s=owner.#state,check=()=>parent.check(),stored=await readGenerationOperationalRecords(s,check,o.signal);check();const origins=await generationHistoryRecords(s,stored.files,check,o.signal);check();const read=await captureGenerationRecordReferencesAfterOrigins({source:s.owners.session!,restoreSegmented:o.restoreSegmented,checkAuthority:check,...(o.editor!==undefined?{editor:o.editor}:{}),...(o.signal!==undefined?{signal:o.signal}:{})},origins);capture=read.capture;check();const result=composeOperationalHistoryReferences('generation',parent,capture,read.origins);result.check();complete=true;return result;}
-   finally{if(!complete){try{capture?.dispose();}finally{parent.dispose();}}}
+   const o=parentReferenceOptions(provided,'restoreSegmented'),parent=await captureParentRecords(owner,o.checkAuthority,o.signal);let capture:GenerationRecordReferenceCapture|undefined,complete=false;const cleanup=owner.#readCleanup.retain(async()=>{capture?.dispose();parent.dispose();});
+   try{const s=owner.#state,check=()=>parent.check(),stored=await readGenerationOperationalRecords(s,check,o.signal);check();const origins=await generationHistoryRecords(s,stored.files,check,o.signal);check();const read=await captureGenerationRecordReferencesAfterOrigins({source:s.owners.session!,restoreSegmented:o.restoreSegmented,checkAuthority:check,...(o.editor!==undefined?{editor:o.editor}:{}),...(o.signal!==undefined?{signal:o.signal}:{})},origins);capture=read.capture;check();const result=composeOperationalHistoryReferences('generation',parent,capture,read.origins);result.check();cleanup.complete();complete=true;return result;}
+   finally{if(!complete)await owner.#rollbackRead(cleanup);}
   };
   captureParentRecords=async<Q extends SharedSelectionPolicy>(owner:OperationalSharedGenerationParticipant<Q>,provided:()=>void,signal?:AbortSignal)=>{
-   if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('generation_operation_policy');if(owner.#closed||owner.#released)throw fail('generation_operation_closed');if(owner.#busy)throw fail('generation_operation_busy');const authority=participantAuthority(provided);owner.#busy=true;
+   if(!owner||typeof owner!=='object'||!(#state in owner))throw fail('generation_operation_policy');if(owner.#closed||owner.#released)throw fail('generation_operation_closed');if(owner.#failedReadCleanup)await owner.#drainReadCleanup();if(owner.#busy)throw fail('generation_operation_busy');const authority=participantAuthority(provided);owner.#busy=true;
    const s=owner.#state,session=s.owners.session,uploads=s.owners.uploads;let observation:OperationalReadCancellation|undefined,result:GenerationOperationalRecordRead|undefined,released=false,complete=false;
    const release=()=>{if(released)return;released=true;try{observation?.close();}finally{owner.#busy=false;}};
+   const cleanup=owner.#readCleanup.retain(async()=>{if(result)result.dispose();else release();});
    const current=()=>{if(released||owner.#closed||owner.#released||!owner.#busy||s.life.changed||!session||!uploads||s.owners.session!==session||s.owners.uploads!==uploads)throw fail('generation_operation_diverged');checkRecoveryLeasesHeld(s.leases);const port=generationSource(session);port.checkManaged();if(JSON.stringify(port.identity)!==JSON.stringify(s.p.options.expected.identity.source))throw fail('generation_operation_diverged');RichAssetStore.prototype.checkOpen.call(uploads);observation?.check(()=>new SharedEditorError('generation_parent_record_aborted','The independently selected parent read was cancelled'));};
    const check=()=>{current();authority();current();};
-   try{observation=new OperationalReadCancellation(signal);check();const stored=await readGenerationOperationalRecords(s,check,signal);check();result=createGenerationOperationalRecordRead<GenerationOperationalReferenceOptions,GenerationRecordReferenceMetadata>(stored.metadata,{check,current,readReferences:async provided=>{const o=parentReferenceOptions(provided,'restoreSegmented'),readAuthority=participantAuthority(o.checkAuthority),guard=()=>{check();readAuthority();current();};return captureGenerationRecordReferences({source:session!,restoreSegmented:o.restoreSegmented,checkAuthority:guard,...(o.editor!==undefined?{editor:o.editor}:{}),...(o.signal!==undefined?{signal:o.signal}:{})});},files:()=>stored.files,verify:async()=>{check();const actual=await readGenerationOperationalRecords(s,check,signal);check();if(JSON.stringify(actual.metadata)!==JSON.stringify(stored.metadata))throw fail('generation_operation_diverged');},release});result.check();complete=true;return result;}
-   finally{if(!complete){result?.dispose();release();}}
+   try{observation=new OperationalReadCancellation(signal);check();const stored=await readGenerationOperationalRecords(s,check,signal);check();result=createGenerationOperationalRecordRead<GenerationOperationalReferenceOptions,GenerationRecordReferenceMetadata>(stored.metadata,{check,current,readReferences:async provided=>{const o=parentReferenceOptions(provided,'restoreSegmented'),readAuthority=participantAuthority(o.checkAuthority),guard=()=>{check();readAuthority();current();};return captureGenerationRecordReferences({source:session!,restoreSegmented:o.restoreSegmented,checkAuthority:guard,...(o.editor!==undefined?{editor:o.editor}:{}),...(o.signal!==undefined?{signal:o.signal}:{})});},files:()=>stored.files,verify:async()=>{check();const actual=await readGenerationOperationalRecords(s,check,signal);check();if(JSON.stringify(actual.metadata)!==JSON.stringify(stored.metadata))throw fail('generation_operation_diverged');},release});result.check();cleanup.complete();complete=true;return result;}
+   finally{if(!complete)await owner.#rollbackRead(cleanup);}
   };
-  exactGeneration=async owner=>{owner.#start();try{owner.#guard();await retained(owner.#state);await verifyOperationalGenerationOwners(owner.#state.p,owner.#state.owners,owner.#state.origin);await verifyGenerationOwners(owner.#state.p,owner.#state.owners);owner.#guard();}finally{owner.#busy=false;}};
+  exactGeneration=async owner=>{if(owner.#failedReadCleanup)await owner.#drainReadCleanup();owner.#start();try{owner.#guard();await retained(owner.#state);await verifyOperationalGenerationOwners(owner.#state.p,owner.#state.owners,owner.#state.origin);await verifyGenerationOwners(owner.#state.p,owner.#state.owners);owner.#guard();}finally{owner.#busy=false;}};
   reserveGenerationGroup=input=>{
    if(!Array.isArray(input)||input.length>1024)throw fail("generation_operation_policy");const owners=[...input];
    if(new Set(owners).size!==owners.length)throw fail("generation_operation_policy");
@@ -125,18 +128,23 @@ export class OperationalSharedGenerationParticipant<P extends SharedSelectionPol
    p.guard();origin.verifySource(generationOwnerSource(p,owners));const result=new OperationalSharedGenerationParticipant(key,state);opening.complete();return result;
   }catch(error){if(opening)await opening.rollback();throw error;}
  }
+ /** No read permission is renewed by cleanup. Failed actual closures remain
+  * owned here even when opening never returned a facade to its caller. */
+ async #rollbackRead(ticket:RecoveryCleanupTicket):Promise<void>{try{await ticket.rollback();}catch(error){this.#failedReadCleanup=true;throw error;}}
+ async #drainReadCleanup():Promise<void>{await this.#readCleanup.drain();this.#failedReadCleanup=this.#readCleanup.pending;}
  #guard():void{if(this.#closed||this.#released)throw fail("generation_operation_closed");this.#state.p.guard();}
  #start(requireCustody=true):void{if(this.#closed||requireCustody&&this.#released)throw fail("generation_operation_closed");if(this.#busy)throw fail("generation_operation_busy");this.#busy=true;}
  origin(){if(this.#closed)throw fail("generation_operation_closed");return generationParticipantSelection(this.#state.p.options.expected);}
  file():Blob{if(this.#closed)throw fail("generation_operation_closed");return this.#file;}
- async progress():Promise<Readonly<SharedGenerationOperationProgress>>{this.#start();try{this.#guard();await retained(this.#state);this.#guard();return Object.freeze({phase:this.#state.record.phase});}finally{this.#busy=false;}}
- async check():Promise<void>{this.#start();try{this.#guard();await retained(this.#state);await verifyOperationalGenerationOwners(this.#state.p,this.#state.owners,this.#state.origin);}finally{this.#busy=false;}}
+ async progress():Promise<Readonly<SharedGenerationOperationProgress>>{if(this.#failedReadCleanup)await this.#drainReadCleanup();this.#start();try{this.#guard();await retained(this.#state);this.#guard();return Object.freeze({phase:this.#state.record.phase});}finally{this.#busy=false;}}
+ async check():Promise<void>{if(this.#failedReadCleanup)await this.#drainReadCleanup();this.#start();try{this.#guard();await retained(this.#state);await verifyOperationalGenerationOwners(this.#state.p,this.#state.owners,this.#state.origin);}finally{this.#busy=false;}}
  /** The host may continue editing/transport after transfer; saved operation intent stays retained. */
  async intoParts():Promise<Readonly<OperationalSharedGenerationParticipantParts<P>>>{
+  if(this.#failedReadCleanup)await this.#drainReadCleanup();
   let source:ReturnType<typeof captureSharedGenerationSource>|undefined,handoff:OperationalGenerationHandoff<OperationalSharedGenerationParticipantParts<SharedSelectionPolicy>>|undefined;
   try{handoff=await prepareOperationalGenerationHandoff([this as unknown as OperationalSharedGenerationParticipant<SharedSelectionPolicy>],async([s],markReleased)=>{const state=s!,parts=Object.freeze({source:generationOwnerSource(state.p,state.owners),uploads:state.owners.uploads!});source=captureSharedGenerationSource(parts.source);await release(state.db,state.recoveryDb,state.leases);markReleased();return parts;},states=>{for(const s of states){s.p.guard();s.origin.verifySource(generationOwnerSource(s.p,s.owners));}},()=>checkHandoffSource.call(source!));return handoff.commit() as unknown as OperationalSharedGenerationParticipantParts<P>;}finally{handoff?.abandon();if(source)disposeHandoffSource.call(source);}
  }
  /** Failed ordinary saves or custody releases remain retryable; original files are not discarded. */
- async close():Promise<void>{if(this.#closed)return;this.#start(false);try{const s=this.#state;await s.owners.session?.close();s.owners.uploads?.close();await release(s.db,s.recoveryDb,s.leases);this.#released=true;s.origin.dispose();s.p.backup.dispose();this.#closed=true;}finally{this.#busy=false;}}
- async discardAndClose():Promise<void>{if(this.#closed)return;this.#start(false);try{const s=this.#state;await discardGenerationOwners(s.owners);await release(s.db,s.recoveryDb,s.leases);this.#released=true;s.origin.dispose();s.p.backup.dispose();this.#closed=true;}finally{this.#busy=false;}}
+ async close():Promise<void>{if(this.#closed)return;if(this.#failedReadCleanup)await this.#drainReadCleanup();this.#start(false);try{const s=this.#state;await s.owners.session?.close();s.owners.uploads?.close();await release(s.db,s.recoveryDb,s.leases);this.#released=true;s.origin.dispose();s.p.backup.dispose();this.#closed=true;}finally{this.#busy=false;}}
+ async discardAndClose():Promise<void>{if(this.#closed)return;if(this.#failedReadCleanup)await this.#drainReadCleanup();this.#start(false);try{const s=this.#state;await discardGenerationOwners(s.owners);await release(s.db,s.recoveryDb,s.leases);this.#released=true;s.origin.dispose();s.p.backup.dispose();this.#closed=true;}finally{this.#busy=false;}}
 }

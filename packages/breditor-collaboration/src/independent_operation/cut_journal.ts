@@ -56,15 +56,15 @@ export class IndependentOperationCutJournal {
    const result=new IndependentOperationCutJournal(key,p,db,lease,origin,id,decoder,baseline);await result.#read();return result;
   }catch(error){db?.close();if(origin)disposeOrigin.call(origin);await lease?.close();throw error;}
  }
- #readable():void{if(this.#closed)throw fail('independent_operation_closed');if(this.#changed||globalThis.indexedDB!==this.#context||globalThis.navigator?.locks!==this.#locks)throw fail('independent_operation_storage_changed');this.#readNative.check();}
+ #readable():void{if(this.#closed)throw fail('independent_operation_closed');if(this.#changed||globalThis.indexedDB!==this.#context||globalThis.navigator?.locks!==this.#locks)throw fail('independent_operation_storage_changed');this.#readNative.checkCurrent();}
  #check():void{this.#readable();this.#native.check();}
  #unwrap=(head:string):string=>{const inner=unwrapOperationHead(head,this.#id);this.#decoder.readHead(inner);return inner;};
  #readHead=(head:string)=>this.#decoder.readHead(this.#unwrap(head));
  async #read(readCheck?:()=>void,options?:{signal?:AbortSignal}):Promise<Checked>{
   const check=readCheck??(()=>this.#check()),signal=readCheck?options?.signal:this.#p.options.signal;
-  check();const raw=await readOperationJournalDatabase(this.#db,this.#id);check();if(await independentDeliveryParticipantDigest(raw.file,signal)!==this.#id.origin)throw fail();check();
+  this.#readNative.check();check();const raw=await readOperationJournalDatabase(this.#db,this.#id);check();if(await independentDeliveryParticipantDigest(raw.file,signal)!==this.#id.origin)throw fail();check();
   const rows=new Map<string,IndependentHistoryCut>(),decoded=new Map<string,IndependentHistoryStoredCut>();for(const [id,value]of raw.rows){const cut=await readOperationCut(value,this.#readHead);check();if(await operationCutDigest(cut)!==id)throw fail();rows.set(id,copyOperationCut(cut));decoded.set(id,cut);}
-  check();return{record:raw.record,file:raw.file,rows,decoded};
+  check();this.#readNative.check();this.#readable();return{record:raw.record,file:raw.file,rows,decoded};
  }
  async #exclusive<T>(run:()=>Promise<T>):Promise<T>{this.#check();if(this.#working)throw fail('independent_operation_busy');this.#readEpoch=Object.freeze({});this.#working=true;try{return await run();}finally{this.#working=false;}}
  async #select(actual:IndependentHistoryStoredCut|null):Promise<IndependentHistoryStoredCut|null>{return this.#exclusive(async()=>{

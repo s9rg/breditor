@@ -1,5 +1,6 @@
 /** Generation-aware native sessions. No old database, checkpoint or writer identity is migrated. */
 import {retireOwnedCore,disposeOwnedCore} from '../owned_core_lifetime.js';
+import {registerNativePendingWork} from '../native_pending_work.js';
 import {SharedEditorError,SharedRichEditor,createSharedDocumentEditor} from "../core.js";
 import {initializeSharedReadOnly} from "../initialize_read_only.js";
 import {freeUnclaimedSharedRustOwner} from '../raw_owner_lifetime.js';
@@ -58,10 +59,12 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
  #versions=new Map<string,string>();#sourceStamp:object=Object.freeze({});#off:(()=>void)[]=[];#pending:Capture|undefined;#attempt:Attempt|undefined;#running:Promise<void>|undefined;
  #savedHead:string|null;#saved:Capture|undefined;#closedSaved:{documentRevision:string|null;reviewRevision:string|null}|undefined;#failure:unknown;#closed=false;#retiring=false;#storageChanged=false;#closing:Promise<void>|undefined;#released:Promise<void>|undefined;
  #recordReadEpoch:object=Object.freeze({});readonly #recordReaders=new Set<object>();
+ readonly #releasePendingWork:()=>void;
  private constructor(key:object,db:IDBDatabase,lease:SharedWriterLease,reviewLease:ReviewWriterLease|undefined,core:SharedRichEditor<P>,options:SharedSegmentedSessionOptions<P>,identity:SegmentedSessionIdentity,head:string|null,versions:readonly string[],recovered=head!==null,companion?:SegmentedSessionCompanion){
   if(key!==constructionKey)throw new SharedEditorError('managed_source_construction','Use the actual generation session open or recovery factory');
   this.#companion=companion;companion?.admit(core as unknown as SharedRichEditor<SharedSelectionPolicy>);
   this.#db=db;this.#documentLease=lease;this.#reviewLease=reviewLease;this.#ownedCore=core;this.core=core;this.#options={...(options.review?{review:options.review}:{}),...(options.onError?{onError:options.onError}:{}),...(options.onState?{onState:options.onState}:{})};this.#identity=identity;this.#savedHead=head;this.recovered=recovered;this.#versions=admitPairedVersions(core,versions);
+  this.#releasePendingWork=registerNativePendingWork(core,()=>this.#running);
   const segmentedPolicy=SharedRichEditor.prototype.segmentedHistoryPolicy;
   // Final custody checks must not invoke an application-supplied getter or method.
   const check=()=>{this.#live();if(segmentedPolicy.call(this.#boundCore())!=="segmented-v1")throw new SharedEditorError("segmented_source_unavailable","The actual generation source was replaced");},read=()=>{check();return this.#recovery();},review=options.review?{actor:options.review.actor,principal:options.review.principal}:null,stamp=()=>{check();return this.#sourceStamp;};
@@ -174,7 +177,7 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
  #close():Promise<void>{if(this.#closed)return this.#released??Promise.resolve();if(this.#closing)return this.#closing;this.#retiring=true;retireOwnedCore(this.#ownedCore);this.#closing=Promise.resolve().then(async()=>{if(this.#closed){await this.#released;return;}this.save();await this.flush();await this.discardAndClose();}).finally(()=>{this.#closing=undefined;});return this.#closing;}
  /** Explicitly abandon unsaved memory; never delete an immutable file or committed head. */
  discardAndClose():Promise<void>{try{return this.#discardAndClose();}catch(error){return Promise.reject(error);}}
- #discardAndClose():Promise<void>{if(this.#closed)return this.#released??Promise.resolve();this.#closedSaved={documentRevision:this.#saved?.documentRevision??null,reviewRevision:this.#saved?.reviewRevision??null};this.#closed=true;retireOwnedCore(this.#ownedCore);for(const off of this.#off)off();this.#off=[];disposeOwnedCore(this.#ownedCore);this.#pending=undefined;this.#saved=undefined;this.#versions.clear();this.#db.close();this.#released=(this.#running??Promise.resolve()).then(async()=>{this.#attempt=undefined;this.#savedHead=null;try{await this.#reviewLease?.close();}finally{await this.#documentLease.close();}});this.#notify();return this.#released;}
+ #discardAndClose():Promise<void>{if(this.#closed)return this.#released??Promise.resolve();this.#closedSaved={documentRevision:this.#saved?.documentRevision??null,reviewRevision:this.#saved?.reviewRevision??null};this.#closed=true;this.#releasePendingWork();retireOwnedCore(this.#ownedCore);for(const off of this.#off)off();this.#off=[];disposeOwnedCore(this.#ownedCore);this.#pending=undefined;this.#saved=undefined;this.#versions.clear();this.#db.close();this.#released=(this.#running??Promise.resolve()).then(async()=>{this.#attempt=undefined;this.#savedHead=null;try{await this.#reviewLease?.close();}finally{await this.#documentLease.close();}});this.#notify();return this.#released;}
 }
 /** Private actual-source discovery. One transaction reads the complete committed
  * head and referenced files. Reading never flushes, acknowledges or edits. */

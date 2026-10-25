@@ -9,20 +9,21 @@ import type {PhysicalRoomRecordCutFile} from '../physical_room_record_cut/contra
 import {encodePhysicalRoomRecordCut} from '../physical_room_record_cut/capture.js';
 import {retainPhysicalRoomRecordCut,roomRecordCutDatabase} from '../physical_room_record_cut/retention.js';
 import {parsePhysicalCatalogV3Manifest} from '../physical_room_catalog_v3/manifest.js';
-import {projectPhysicalOperationV3History} from './history_read.js';
+import {projectPhysicalOperationV3History,type PhysicalHistoryAssetVisit} from './history_read.js';
 import {frozen} from '../room_participant_inventory/policy.js';
 import {physicalOperationV3Failure as fail} from './policy.js';
 import {recordAssetScope} from './record_asset_scope.js';
 import type {PhysicalAssetReadScope} from './asset_read_contract.js';
 import type {RetainedNativeReadBorrow} from '../complete_operation_cohort/retained_native_read.js';
 import type {OperationalAssetCustody} from '../operation_cohort/assets.js';
+import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
 /** Internal genuine-root composition only. The visitor runs before the final
  * complete-source reread and actual read/lock cleanup; no owner escapes. */
-export interface PhysicalRecordCutVisit{readonly cut:PhysicalRoomRecordCutFile;readonly assets:PhysicalAssetReadScope;readonly verify:()=>Promise<void>;readonly signal:AbortSignal|undefined;readonly cleanup:RecoveryCleanupScope;readonly watchClosing:(cancel:()=>void)=>()=>void;readonly retainNative?:()=>RetainedNativeReadBorrow}
-export function visitPhysicalOperationV3RecordCut<P extends SharedSelectionPolicy,T>(state:PhysicalOperationV3Custody,held:()=>void,cleanup:RecoveryCleanupScope,input:PhysicalOperationV3HistoryReadOptions<P>,watchClosing:PhysicalRecordCutVisit['watchClosing'],visit:(scope:PhysicalRecordCutVisit)=>Promise<T>,retainNative?:true):Promise<T>{
- return projectPhysicalOperationV3History(state,held,input,{cleanup,mode:'records-v1',...(retainNative?{retainNative}:{}),visit:async scope=>{
+export interface PhysicalRecordCutVisit{readonly cut:PhysicalRoomRecordCutFile;readonly history:PhysicalOperationV3HistoryRead;readonly uploads:PhysicalHistoryAssetVisit['uploads'];readonly assets:PhysicalAssetReadScope;readonly wasm:SharedArchiveIntegrityOptions['wasm'];readonly verify:()=>Promise<void>;readonly signal:AbortSignal|undefined;readonly cleanup:RecoveryCleanupScope;readonly watchClosing:(cancel:()=>void)=>()=>void;readonly retainNative?:()=>RetainedNativeReadBorrow}
+export function visitPhysicalOperationV3RecordCut<P extends SharedSelectionPolicy,T>(state:PhysicalOperationV3Custody,held:()=>void,cleanup:RecoveryCleanupScope,input:PhysicalOperationV3HistoryReadOptions<P>,watchClosing:PhysicalRecordCutVisit['watchClosing'],visit:(scope:PhysicalRecordCutVisit)=>Promise<T>,retainNative?:true,legacyAssets?:OperationalAssetCustody):Promise<T>{
+ return projectPhysicalOperationV3History(state,held,input,{cleanup,mode:'records-v1',...(retainNative?{retainNative}:{}),...(legacyAssets?{legacyAssets}:{}),visit:async scope=>{
   if(!scope.root||!scope.recordPayloads)throw fail('physical_operation_v3_policy');const selected=new Set(scope.root.record.participants.map(row=>row.id)),catalog=parsePhysicalCatalogV3Manifest(scope.root.record.source.manifest),history:PhysicalOperationV3HistoryRead=frozen(structuredClone({format:'breditor/physical-operation-v3-history-read',formatVersion:1,scope:'held-client-history-and-retained-catalog-bytes',selection:scope.root.record.source.selection,catalogFilesVerified:scope.root.files.length,history:scope.history,unreconciledParticipants:catalog.participants.filter(row=>!selected.has(row.id)).map(row=>row.id)}));
-  const cut=await encodePhysicalRoomRecordCut({root:scope.root,history,participants:scope.recordPayloads(),uploads:scope.uploads},{guard:scope.check,digest:scope.digest}),assets=await recordAssetScope(state,scope);scope.check();const value=await visit({cut,assets,verify:scope.verify,signal:scope.signal,cleanup,watchClosing,...(scope.retainNative?{retainNative:scope.retainNative}:{})});scope.check();return{value,history};
+  const cut=await encodePhysicalRoomRecordCut({root:scope.root,history,participants:scope.recordPayloads(),uploads:scope.uploads},{guard:scope.check,digest:scope.digest}),assets=await recordAssetScope(state,scope);scope.check();const value=await visit({cut,history,uploads:scope.uploads,assets,wasm:state.options.wasm,verify:scope.verify,signal:scope.signal,cleanup,watchClosing,...(scope.retainNative?{retainNative:scope.retainNative}:{})});scope.check();return{value,history};
  },project:(history,value)=>{if(JSON.stringify(history)!==JSON.stringify(value.history))throw fail('physical_operation_v3_diverged');return value.value;}}) as Promise<T>;
 }
 export function capturePhysicalOperationV3RecordCut<P extends SharedSelectionPolicy>(state:PhysicalOperationV3Custody,held:()=>void,cleanup:RecoveryCleanupScope,input:PhysicalOperationV3HistoryReadOptions<P>,destination?:Readonly<{database:string}>,legacyAssets?:OperationalAssetCustody):Promise<PhysicalRoomRecordCutFile>{

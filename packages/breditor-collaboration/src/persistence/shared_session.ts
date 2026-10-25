@@ -1,4 +1,5 @@
 import {retireOwnedCore,disposeOwnedCore} from '../owned_core_lifetime.js';
+import {registerNativePendingWork} from '../native_pending_work.js';
 import {freeUnclaimedSharedRustOwner} from '../raw_owner_lifetime.js';
 import {SharedRichEditor,SharedEditorError,createSharedDocumentEditor} from "../core.js";
 import type {SharedEditorOptions,SharedRustOwner,SharedHistoryPolicy,SharedRangePolicy,SharedSelectionPolicy} from "../types.js";
@@ -63,10 +64,12 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
  #pending:{json:string;revision:string}|undefined;#running:Promise<void>|undefined;#failure:unknown;
  #saved:string|undefined;#savedRevision:string|null=null;#closed=false;#storageChanged=false;
  #closeRequest:Promise<void>|undefined;#released:Promise<void>|undefined;
+ readonly #releasePendingWork:()=>void;
  #recordReadEpoch:object=Object.freeze({});readonly #recordReaders=new Set<object>();
  private constructor(key:object,db:IDBDatabase,lease:SharedWriterLease,core:SharedRichEditor<P>,recovered:boolean,options:SharedSessionOptions|SharedDocumentSessionOptions,selectionPolicy:P,search=false){
   if(key!==constructionKey)throw new SharedEditorError('managed_source_construction','Use the actual shared session open or recovery factory');
   this.#db=db;this.#lease=lease;this.#ownedCore=core;this.core=core;this.recovered=recovered;this.#options=options;this.#selectionPolicy=selectionPolicy;this.#search=search;
+  this.#releasePendingWork=registerNativePendingWork(core,()=>this.#running);
   this.#unsubscribe=core.subscribe(()=>{try{this.save();}catch(error){this.#failed(error);}});
   registerManagedSource(this,core,()=>{this.#live();this.#boundCore();if(this.#storageChanged||this.#closeRequest)throw managedSourceUnavailable();});
   db.onversionchange=()=>{
@@ -208,7 +211,7 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
  }
  /** Explicitly abandon unsaved in-memory work without deleting the last durable journal. */
  discardAndClose():Promise<void>{
-  if(this.#closed)return this.#released??Promise.resolve();this.#closed=true;this.#unsubscribe();disposeOwnedCore(this.#ownedCore);this.#pending=undefined;this.#db.close();
+  if(this.#closed)return this.#released??Promise.resolve();this.#closed=true;this.#releasePendingWork();this.#unsubscribe();disposeOwnedCore(this.#ownedCore);this.#pending=undefined;this.#db.close();
   // A transaction already started may still commit after db.close(); do not release the writer early.
   this.#released=(this.#running??Promise.resolve()).then(()=>this.#lease.close()).catch(error=>this.#report(error));this.#notify();return this.#released;
  }

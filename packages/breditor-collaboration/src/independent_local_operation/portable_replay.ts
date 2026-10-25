@@ -5,6 +5,7 @@ import {initializeSharedReadOnly} from '../initialize_read_only.js';
 import {freeUnclaimedSharedRustOwner} from '../raw_owner_lifetime.js';
 import {nativeRestoreBinding} from '../native_restore_factory.js';
 import {sourceCoreMethods as native} from '../source_native_read.js';
+import {coreReadStamp} from '../core_read_stamp.js';
 import {snapshotIndependentRecoveryFactory} from '../independent_recovery/factory_policy.js';
 import {independentParticipantSelection} from '../independent_participant/policy.js';
 import {checkIndependentRecords,independentRecords} from '../independent_source/records.js';
@@ -32,7 +33,13 @@ export async function replayLocalOperationRecovery<P extends SharedSelectionPoli
   const versions=new Set<string>();for(const packet of recovery.versions){const info=native.readVersion.call(core,packet);if(versions.has(info.id))throw fail('independent_local_operation_versions');versions.add(info.id);}const owned=core;let closed=false;
   const verify=()=>{if(closed)throw fail('independent_local_operation_read_closed');if(native.view.call(owned).readOnly!==true||native.checkpointJson.call(owned)!==recovery.documentCheckpoint||(id.reviewHistory==='original'?native.reviewCheckpoint:native.reviewSegmentedCheckpoint).call(owned)!==recovery.reviewCheckpoint)throw fail('independent_local_operation_read_changed');};
   const live=()=>{if(closed)throw fail('independent_local_operation_read_closed');check();verify();check();verify();};
-  live();return Object.freeze({core:owned,recovery,check:live,dispose:()=>{if(closed)return;closed=true;dispose.call(owned);}});
+  live();const stamp=coreReadStamp(owned);
+  /** SDK-private liveness of this already admitted, held readonly replica.
+   * No checkpoint encoding or host authority callback. This is not byte
+   * admission: full check() stays unchanged and must fence actual data reads,
+   * lineage verification and publication. The kernel never exposes its anchor. */
+  const current=()=>{if(closed)throw fail('independent_local_operation_read_closed');const actual=coreReadStamp(owned);if(actual.document!==stamp.document||actual.review!==stamp.review||native.view.call(owned).readOnly!==true)throw fail('independent_local_operation_read_changed');};
+  current();return Object.freeze({core:owned,recovery,check:live,checkCurrent:current,dispose:()=>{if(closed)return;closed=true;dispose.call(owned);}});
  }catch(error){if(core)dispose.call(core);if(raw)freeUnclaimedSharedRustOwner(raw);throw error;}
 }
 /** Both histories and immutable local versions must continue the preceding cut.

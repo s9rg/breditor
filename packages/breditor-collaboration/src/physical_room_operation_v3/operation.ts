@@ -7,7 +7,7 @@ import {readPhysicalCatalogV3Database} from '../physical_room_catalog_v3/databas
 import {physicalCatalogSelection} from '../physical_room_catalog/policy.js';
 import {RecoveryOpeningCustody,recoveryOpeningContext,drainFailedRecoveryOpenings} from '../participant_recovery/opening_custody.js';
 import {RecoveryCleanupScope} from '../participant_recovery/cleanup_scope.js';
-import {RecoveryLease} from '../participant_recovery/lease.js';
+import {RecoveryLease,checkRecoveryLeasesHeld} from '../participant_recovery/lease.js';
 import {participantAuthority} from '../participant_backup/policy.js';
 import {prepareArchiveIntegrity} from '../archive_integrity/context.js';
 import {prepareCompleteOperationParticipants,type CompleteOperationParticipant} from '../complete_operation_cohort/cohort.js';
@@ -18,7 +18,7 @@ import {PhysicalOperationV3Cancellation} from './storage_cancellation.js';
 import {preflightPhysicalOperationV3} from './preflight.js';
 import {physicalOperationV3PolicyFields as fields,snapshotPhysicalOperationV3Policy as snapshot} from './policy_snapshot.js';
 import {initialPhysicalOperationV3Record,type PhysicalOperationV3Record} from './record.js';
-import {physicalOperationV3LegacyPolicies,openPhysicalOperationV3Child,closePhysicalOperationV3Child,physicalOperationV3Present,type PhysicalOperationV3Child} from './child.js';
+import {physicalOperationV3LegacyPolicies,openPhysicalOperationV3Child,closePhysicalOperationV3Child,physicalOperationV3Present,checkPhysicalOperationV3WriterPolicies,type PhysicalOperationV3Child} from './child.js';
 import type {MixedCatalogStagePolicy} from '../mixed_catalog_stage/prepare.js';
 import type {PhysicalOperationV3BeginOptions,PhysicalOperationV3ResumeOptions,PhysicalOperationV3OpenOptions,PhysicalOperationV3Progress,PhysicalOperationV3Parts} from './contract.js';
 import {physicalOperationV3Failure as fail,physicalOperationV3Known as known,physicalOperationV3Database as dbName} from './policy.js';
@@ -36,6 +36,7 @@ import type {SharedPhysicalRoomRecoveryHost} from '../physical_recovery_control/
 import {capturePhysicalOperationV3RecordCut,visitPhysicalOperationV3RecordCut,type PhysicalRecordCutVisit} from './record_cut.js';
 import type {PhysicalRoomRecordCutFile} from '../physical_room_record_cut/contract.js';
 import type {RetainedNativeReadBorrow} from '../complete_operation_cohort/retained_native_read.js';
+import {prepareRetainedPhysicalRoot,type PreparedRetainedPhysicalRoot,type RetainedPhysicalRoot} from './retained_root.js';
 const key=Object.freeze({});
 const errors={policy:()=>fail('physical_operation_v3_policy'),busy:()=>fail('physical_operation_v3_in_use'),storage:()=>fail()};
 interface State{
@@ -47,15 +48,30 @@ interface State{
 }
 /** Type-only internal custody; a detached report never creates this state. */
 export type PhysicalOperationV3Custody=State;
+/** Trusted SDK coordinator plan, never forwarded from incoming configuration.
+ * consume contains only actual stage/owner flag writes and canonical custody
+ * releases. All host decisions, I/O and fallible cleanup precede that barrier. */
+export interface PhysicalRetainedRootProposal<T>{readonly value:T;verifyAfterRead?():Promise<void>;checkCurrent():void;consume():void;abandon():Promise<void>}
+/** Trusted preflight runs with the actual root wrapper already reserved, before
+ * fresh read grants. It may reopen selected stores but never chooses sources or
+ * grants authority. Its caller retains actual failed opening cleanup. */
+export interface RetainedRootPreparation{readonly factory:IDBFactory;readonly locks:LockManager;readonly namespaces:readonly string[];checkCurrent():void;watchClosing(cancel:()=>void):()=>void}
+export type RetainedRootPrelude=(scope:RetainedRootPreparation)=>Promise<void>;
+let checkUnconsumed:(owner:PhysicalRoomClientOperationV3)=>void;
+export const checkUnconsumedPhysicalRoot=(owner:PhysicalRoomClientOperationV3)=>checkUnconsumed(owner);
+let transferRetained:<P extends SharedSelectionPolicy,T>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,prepare:(scope:PhysicalRecordCutVisit,root:RetainedPhysicalRoot,clients:readonly RetainedNativeReadBorrow['clients'][number][])=>Promise<PhysicalRetainedRootProposal<T>>,prelude?:RetainedRootPrelude)=>Promise<T>;
+/** Internal genuine-root composition for the future root-plus-stage successor.
+ * This does not create a durable successor intent or grant server authorship. */
+export const transferPhysicalOperationV3RetainedRoot=<P extends SharedSelectionPolicy,T>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,prepare:(scope:PhysicalRecordCutVisit,root:RetainedPhysicalRoot,clients:RetainedNativeReadBorrow['clients'])=>Promise<PhysicalRetainedRootProposal<T>>,prelude?:RetainedRootPrelude)=>transferRetained(owner,options,prepare,prelude);
 let withAssets:<T>(owner:PhysicalRoomClientOperationV3,options:PhysicalAssetReadOptions,visit:(scope:PhysicalAssetReadScope)=>Promise<T>)=>Promise<T>;
-let withFreshRetained:<P extends SharedSelectionPolicy,T>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit,borrow:RetainedNativeReadBorrow)=>Promise<T>)=>Promise<T>;
+let withFreshRetained:<P extends SharedSelectionPolicy,T>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit,borrow:RetainedNativeReadBorrow)=>Promise<T>,prelude?:RetainedRootPrelude)=>Promise<T>;
 let captureInherited:<P extends SharedSelectionPolicy>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,assets:OperationalAssetCustody)=>Promise<PhysicalRoomRecordCutFile>;
 /** SDK-only read under inherited ACTUAL origin-store exclusion. The full reader
  * checks exact store identities, not a copied custody facade or database name. */
 export const capturePhysicalOperationV3WithOriginCustody=<P extends SharedSelectionPolicy>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,assets:OperationalAssetCustody)=>captureInherited(owner,options,assets);
 /** Internal fresh-job-independent bridge from the SAME full record reservation.
  * Still not parent consumption or permission to expose mutable clients. */
-export const withPhysicalOperationV3FreshRetainedNative=<P extends SharedSelectionPolicy,T>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit,borrow:RetainedNativeReadBorrow)=>Promise<T>):Promise<T>=>withFreshRetained(owner,options,visit);
+export const withPhysicalOperationV3FreshRetainedNative=<P extends SharedSelectionPolicy,T>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit,borrow:RetainedNativeReadBorrow)=>Promise<T>,prelude?:RetainedRootPrelude):Promise<T>=>withFreshRetained(owner,options,visit,prelude);
 let withRecords:<P extends SharedSelectionPolicy,T>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit)=>Promise<T>)=>Promise<T>;
 /** Internal brand-checked composition, not a public/replaceable root method. */
 export const withPhysicalOperationV3RecordCut=<P extends SharedSelectionPolicy,T>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit)=>Promise<T>):Promise<T>=>withRecords(owner,options,visit);
@@ -70,23 +86,43 @@ function options(input:PhysicalOperationV3BeginOptions|PhysicalOperationV3Resume
  return{options:result,catalog:catalog as PhysicalRoomCatalogV3|undefined,catalogDatabase:begin?undefined:dbName(selected['catalogDatabase'])};
 }
 export class PhysicalRoomClientOperationV3{
- readonly #s:State;readonly #rollback=new RecoveryCleanupScope(()=>fail());readonly #closingListeners=new Set<()=>void>();#exposed=false;#busy=false;#running:Promise<void>|undefined;#cleanup:Promise<void>|undefined;#cleanupMode:boolean|undefined;
+ readonly #s:State;readonly #rollback=new RecoveryCleanupScope(()=>fail());readonly #closingListeners=new Set<()=>void>();#exposed=false;#moved=false;#busy=false;#running:Promise<void>|undefined;#cleanup:Promise<void>|undefined;#cleanupMode:boolean|undefined;
  private constructor(token:object,state:State){if(token!==key)throw fail('physical_operation_v3_closed');this.#s=state;Object.freeze(this);}
- static{withAssets=(owner,options,visit)=>{
+ #preparation():RetainedRootPreparation{const current=()=>{checkUnconsumed(this);if(!this.#busy)throw fail('physical_operation_v3_in_use');};current();return Object.freeze({factory:this.#s.held.factory,locks:this.#s.held.locks,namespaces:Object.freeze([this.#s.database,this.#s.held.database,...this.#s.record.participants.flatMap(row=>row.namespaces.map(ns=>ns.database))]),checkCurrent:current,watchClosing:(cancel:()=>void)=>{current();if(this.#s.life.closing)cancel();else this.#closingListeners.add(cancel);return()=>{this.#closingListeners.delete(cancel);};}});}
+ static{checkUnconsumed=owner=>{if(!owner||typeof owner!=='object'||!(#s in owner)||!owner.#exposed||owner.#moved||owner.#s.life.released||owner.#s.archiveDisposed)throw fail('physical_operation_v3_closed');owner.#s.readCurrent();owner.#s.intent.checkReadCurrent();checkRecoveryLeasesHeld([owner.#s.lease,owner.#s.held.lease]);};withAssets=(owner,options,visit)=>{
   if(!owner||typeof owner!=='object'||!(#s in owner))return Promise.reject(fail('physical_operation_v3_policy'));
   return owner.#run(()=>readPhysicalOperationV3Assets(owner.#s,()=>{if(!owner.#exposed||!owner.#busy)throw fail('physical_operation_v3_closed');},()=>owner.#retained(),options,visit),error=>error instanceof Error?error:known(error));
  };withRecords=(owner,options,visit)=>{
   if(!owner||typeof owner!=='object'||!(#s in owner))return Promise.reject(fail('physical_operation_v3_policy'));
   const chosen=snapshotPhysicalHistoryReadOptions(options);return owner.#run(async()=>{if(owner.#rollback.pending)await owner.#rollback.drain();return visitPhysicalOperationV3RecordCut(owner.#s,()=>{if(!owner.#exposed||!owner.#busy)throw fail('physical_operation_v3_closed');},owner.#rollback,chosen,cancel=>{if(owner.#s.life.closing)cancel();else owner.#closingListeners.add(cancel);return()=>{owner.#closingListeners.delete(cancel);};},visit);},error=>error instanceof Error?error:known(error));
- };withFreshRetained=(owner,options,visit)=>{
+ };withFreshRetained=(owner,options,visit,prelude)=>{
   if(!owner||typeof owner!=='object'||!(#s in owner))return Promise.reject(fail('physical_operation_v3_policy'));
   const chosen=snapshotPhysicalHistoryReadOptions(options);return owner.#run(async()=>{if(owner.#rollback.pending)await owner.#rollback.drain();let ticket:ReturnType<RecoveryCleanupScope['retain']>|undefined,borrow:RetainedNativeReadBorrow|undefined;
-   try{const value=await visitPhysicalOperationV3RecordCut(owner.#s,()=>{if(!owner.#exposed||!owner.#busy)throw fail('physical_operation_v3_closed');},owner.#rollback,chosen,cancel=>{if(owner.#s.life.closing)cancel();else owner.#closingListeners.add(cancel);return()=>{owner.#closingListeners.delete(cancel);};},async scope=>{if(!scope.retainNative)throw fail('physical_operation_v3_policy');borrow=scope.retainNative();ticket=owner.#rollback.retain(()=>borrow!.close());return visit(scope,borrow);},true);borrow!.check();ticket!.complete();return value;}
+   try{if(prelude)await prelude(owner.#preparation());const value=await visitPhysicalOperationV3RecordCut(owner.#s,()=>{if(!owner.#exposed||!owner.#busy)throw fail('physical_operation_v3_closed');},owner.#rollback,chosen,cancel=>{if(owner.#s.life.closing)cancel();else owner.#closingListeners.add(cancel);return()=>{owner.#closingListeners.delete(cancel);};},async scope=>{if(!scope.retainNative)throw fail('physical_operation_v3_policy');borrow=scope.retainNative();ticket=owner.#rollback.retain(()=>borrow!.close());return visit(scope,borrow);},true);borrow!.check();ticket!.complete();return value;}
    catch(error){if(ticket)await ticket.rollback();throw error;}
   },error=>error instanceof Error?error:known(error));
  };captureInherited=(owner,options,assets)=>{
   if(!owner||typeof owner!=='object'||!(#s in owner))return Promise.reject(fail('physical_operation_v3_policy'));
   const chosen=snapshotPhysicalHistoryReadOptions(options);return owner.#run(async()=>{if(owner.#rollback.pending)await owner.#rollback.drain();return capturePhysicalOperationV3RecordCut(owner.#s,()=>{if(!owner.#exposed||!owner.#busy)throw fail('physical_operation_v3_closed');},owner.#rollback,chosen,undefined,assets);},error=>error instanceof Error?error:known(error));
+ };transferRetained=(owner,options,prepare,prelude)=>{
+  if(!owner||typeof owner!=='object'||!(#s in owner))return Promise.reject(fail('physical_operation_v3_policy'));
+  const chosen=snapshotPhysicalHistoryReadOptions(options);return owner.#run(async()=>{
+   if(owner.#rollback.pending)await owner.#rollback.drain();let loan:RetainedNativeReadBorrow|undefined,root:PreparedRetainedPhysicalRoot|undefined,proposal:PhysicalRetainedRootProposal<unknown>|undefined,ticket:ReturnType<RecoveryCleanupScope['retain']>|undefined;
+   const current=()=>{if(!owner.#exposed||!owner.#busy||owner.#moved)throw fail('physical_operation_v3_closed');owner.#s.readCurrent();owner.#s.intent.checkReadCurrent();checkRecoveryLeasesHeld([owner.#s.lease,owner.#s.held.lease]);};
+   try{if(prelude)await prelude(owner.#preparation());const ready=await visitPhysicalOperationV3RecordCut(owner.#s,current,owner.#rollback,chosen,cancel=>{if(owner.#s.life.closing)cancel();else owner.#closingListeners.add(cancel);return()=>{owner.#closingListeners.delete(cancel);};},async scope=>{
+     if(!scope.retainNative)throw fail('physical_operation_v3_policy');loan=scope.retainNative();ticket=owner.#rollback.retain(async()=>{if(root)await root.abandon();else await loan!.close();});root=prepareRetainedPhysicalRoot(owner.#s,loan,discard=>owner.#finishClose(discard));const planned=await prepare(scope,root.value,loan.clients);proposal=planned;return planned;
+    },true),value=ready.value;
+    // Temporary source readers are now REALLY closed. A successor can reread
+    // its retained intent/stores without reusing their disposed scope. Native
+    // parents, origin exclusion and this root remain genuinely reserved.
+    if(ready.verifyAfterRead)await ready.verifyAfterRead();
+    // Every application callback is before the last actual source/lease checks.
+    checkPhysicalOperationV3WriterPolicies(owner.#s.children);ready.checkCurrent();current();loan!.check();root!.prepareOrigins();
+    // SDK-only common barrier: no await, host callback, reader disposal or
+    // native destructor may follow the first parent ownership flag write.
+    owner.#exposed=false;owner.#moved=true;owner.#closingListeners.clear();root!.activate();ready.consume();ticket!.complete();return value;
+   }catch(error){if(owner.#moved)throw error;try{await proposal?.abandon();}finally{if(ticket)await ticket.rollback();else await root?.abandon();}throw error;}
+  },error=>error instanceof Error?error:known(error));
  };}
  static begin(input:PhysicalOperationV3BeginOptions):Promise<PhysicalRoomClientOperationV3>{return PhysicalRoomClientOperationV3.#open(input,true);}
  static resume(input:PhysicalOperationV3ResumeOptions):Promise<PhysicalRoomClientOperationV3>{return PhysicalRoomClientOperationV3.#open(input,false);}
@@ -184,6 +220,6 @@ export class PhysicalRoomClientOperationV3{
  });}
  close():Promise<void>{return this.#close(false);}
  discardAndClose():Promise<void>{return this.#close(true);}
- #close(discard:boolean):Promise<void>{const s=this.#s;if(s.life.closed)return Promise.resolve();if(this.#cleanup)return this.#cleanupMode===discard?this.#cleanup:Promise.reject(fail('physical_operation_v3_in_use'));s.life.closing=true;for(const cancel of this.#closingListeners)cancel();this.#closingListeners.clear();this.#cleanupMode=discard;this.#cleanup=this.#finishClose(discard).catch(error=>{throw known(error);}).finally(()=>{this.#cleanup=undefined;this.#cleanupMode=undefined;});return this.#cleanup;}
+ #close(discard:boolean):Promise<void>{const s=this.#s;if(this.#moved||s.life.closed)return Promise.resolve();if(this.#cleanup)return this.#cleanupMode===discard?this.#cleanup:Promise.reject(fail('physical_operation_v3_in_use'));s.life.closing=true;for(const cancel of this.#closingListeners)cancel();this.#closingListeners.clear();this.#cleanupMode=discard;this.#cleanup=this.#finishClose(discard).catch(error=>{throw known(error);}).finally(()=>{this.#cleanup=undefined;this.#cleanupMode=undefined;});return this.#cleanup;}
  async #finishClose(discard:boolean):Promise<void>{await this.#running;const s=this.#s;if(s.life.closed)return;await this.#rollback.drain();for(const child of [...s.children].reverse())await closePhysicalOperationV3Child(child,discard);await s.intent.close();this.#disposeArchive();s.held.db.close();await s.held.lease.close();await s.lease.close();s.cancellation.close();s.life.closed=true;this.#exposed=false;}
 }

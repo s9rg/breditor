@@ -1,0 +1,21 @@
+/** Actual native policy pairs. Cheap held-replica currentness is distinct from
+ * full byte admission and cannot renew authority, hide disposal or policy edits. */
+import test,{before,after} from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
+import * as api from '../packages/breditor-collaboration/dist/index.js';
+import {replayPortableRecovery as replay} from '../packages/breditor-collaboration/dist/independent_operation/portable_replay.js';
+import {deliveryParticipantSession} from './fixtures/independent-delivery-participant/session.mjs';
+import {recoveryFactory} from './fixtures/independent-delivery-recovery/session.mjs';
+import {environment} from './fixtures/room-participant-inventory/environment.mjs';
+import {nativeProfile,insertCleanupText} from './fixtures/owned-core-cleanup/session.mjs';
+let profile;const runtime=new URL('../target/promoted-shared-web/',import.meta.url),seed=JSON.parse(readFileSync(new URL('../crates/breditor-core/tests/fixtures/rich-local-root.json',import.meta.url),'utf8'));before(async()=>{const native=await import(new URL('breditor_shared.js',runtime).href);await native.default({module_or_path:readFileSync(new URL('breditor_shared_bg.wasm',runtime))});profile=nativeProfile(native,3,true);});after(()=>profile?.free());
+function track(options,counters,raws){const history=options.documentHistory,key=history.kind==='original'?'restoreOriginal':'restoreSegmented';return{...options,documentHistory:{...history,[key]:async(...args)=>{const raw=await Reflect.apply(history[key],history,args);raws.push(raw);for(const name of['checkpoint','segmented_checkpoint','review_checkpoint','review_segmented_checkpoint'])if(typeof raw[name]==='function'){const method=raw[name];Object.defineProperty(raw,name,{configurable:true,value:function(...values){counters.exports++;return method.apply(this,values);}});}return raw;}}};}
+for(const[documentSegmented,reviewSegmented]of[[false,false],[false,true],[true,false],[true,true]])test('delivery readonly current checks avoid full exports but admission stays exact '+documentSegmented+'/'+reviewSegmented,async()=>{
+ const restore=environment(),selected=deliveryParticipantSession(api,profile,seed,{documentSegmented,reviewSegmented,retained:'none',database:'delivery-current-'+documentSegmented+'-'+reviewSegmented}),counters={exports:0},raws=[];let source,victim,checks=0;
+ try{source=await selected.open();const recovery=source.exportRecovery(),options=track(recoveryFactory(selected.options),counters,raws),open=()=>replay(options,recovery,()=>{checks++;});victim=await open();counters.exports=0;const before=checks;for(let i=0;i<1000;i++)victim.checkCurrent();assert.equal(counters.exports,0);assert.equal(checks,before);victim.check();assert.ok(counters.exports>0);assert.ok(checks>before);
+  assert.equal(victim.core.setReadOnly(false),true);assert.throws(()=>victim.checkCurrent(),error=>error.code==='independent_operation_read_changed');victim.dispose();victim=await open();assert.equal(victim.core.setReviewAccess('comment'),true);assert.throws(()=>victim.checkCurrent(),error=>error.code==='independent_operation_read_changed');victim.dispose();assert.throws(()=>victim.checkCurrent(),error=>error.code==='independent_operation_read_closed');victim=await open();victim.core.dispose();assert.throws(()=>victim.checkCurrent());
+ }finally{victim?.dispose();await source?.discardAndClose();restore();}
+});
+test('full delivery byte check still refuses an actual out-of-band raw native edit',async()=>{
+ const restore=environment(),selected=deliveryParticipantSession(api,profile,seed,{documentSegmented:true,reviewSegmented:true,retained:'none',database:'delivery-current-raw-edit'}),counters={exports:0},raws=[];let source,victim,peer;
+ try{source=await selected.open();victim=await replay(track(recoveryFactory(selected.options),counters,raws),source.exportRecovery(),()=>{});peer=new api.SharedRichEditor(profile.join_frame('room','222',victim.core.updateFrame()));insertCleanupText(peer,'raw edit must fail full native byte check ');raws.at(-1).receive_frame(peer.updateFrame());counters.exports=0;assert.throws(()=>victim.check(),error=>error.code==='independent_operation_read_changed');assert.ok(counters.exports>0);}finally{peer?.dispose();victim?.dispose();await source?.discardAndClose();restore();}
+});
