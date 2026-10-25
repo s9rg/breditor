@@ -4,7 +4,7 @@
 import {RecoveryOpeningCustody,recoveryOpeningContext} from '../participant_recovery/opening_custody.js';
 import {RecoveryLease,checkRecoveryLeasesHeld} from '../participant_recovery/lease.js';
 import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
-import {SelectedNativeImportInputStore,nativeImportInputRecord} from './input_store.js';
+import {SelectedNativeImportInputStore,nativeImportInputRecord,existingNativeImportInputStore} from './input_store.js';
 import {fail} from './policy.js';
 import type {SelectedNativeImportFile,SelectedNativeImportChoice} from './contract.js';
 const open=SelectedNativeImportInputStore.prototype.open,verify=SelectedNativeImportInputStore.prototype.verifyFresh,seal=SelectedNativeImportInputStore.prototype.sealPreparation,close=SelectedNativeImportInputStore.prototype.close;
@@ -22,6 +22,12 @@ export class NativeImportInputResources{
   await open.call(store);this.#opened=true;await verify.call(store,()=>{checkRecoveryLeasesHeld([this.#lease!]);integrity.checkAuthority();},integrity.signal);this.check();seal.call(store);this.#file=input;
  }
  file():SelectedNativeImportFile{this.check();if(!this.#file)throw fail('native_import_closed');return this.#file;}
+ /** Reopen only actual existing input. No current room snapshot is substituted
+  * for the old file, and no absent database can become a placeholder. */
+ async openExisting(choice:SelectedNativeImportChoice,integrity:SharedArchiveIntegrityOptions):Promise<void>{
+  this.check();if(this.#opening||this.#lease)throw fail('native_import_busy');const check=()=>{this.check();integrity.checkAuthority();this.check();};
+  this.#opening=await RecoveryOpeningCustody.reserve(this.#factory,[choice.database],()=>this.#close(),{policy:()=>fail('native_import_policy'),busy:()=>fail('native_import_busy'),storage:()=>fail('native_import_storage')});check();this.#lease=await RecoveryLease.acquire(JSON.stringify(choice.database));check();const store=existingNativeImportInputStore(this.#factory,choice,check,integrity.wasm,integrity.signal);this.#store=store;await open.call(store);this.#opened=true;const saved=await verify.call(store,()=>{checkRecoveryLeasesHeld([this.#lease!]);integrity.checkAuthority();},integrity.signal);this.check();seal.call(store);this.#file=Object.freeze({selection:choice.input,file:saved.file});
+ }
  async verifyFresh(authority:()=>void,signal?:AbortSignal):Promise<SelectedNativeImportFile>{this.check();const value=await verify.call(this.#store!,()=>{this.check();authority();this.check();},signal);this.check();return Object.freeze({selection:value.choice.input,file:value.file});}
  consume():void{this.check();if(!this.#file||!this.#opening||this.#moved)throw fail('native_import_busy');this.#opening.complete();this.#moved=true;}
  close():Promise<void>{this.#closing=true;return this.#moved?this.#close():this.#opening?this.#opening.rollback():this.#close();}

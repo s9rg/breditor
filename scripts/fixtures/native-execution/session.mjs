@@ -1,0 +1,6 @@
+/** Complete original input retained through the real seven-family preparation
+ * path. Only browser storage/locks/raster surfaces are controlled fixtures. */
+import{selectedProviderSession}from'../selected-room-provider/session.mjs';
+import{previewSelectedNativeImport,retainSelectedNativeImport}from'../../../packages/breditor-collaboration/dist/selected_native_import/coordinator.js';
+import{SelectedNativeImportArchive}from'../../../packages/breditor-collaboration/dist/selected_native_import/archive.js';
+export async function nativeExecutionSession(fixtures,tag,options={}){const s=await selectedProviderSession(fixtures,tag,{documentSegmented:false,reviewSegmented:false,...options});let input,archive;try{const proposed=await previewSelectedNativeImport(s.owner,s.host,s.input(),{database:tag+'-accepted-input'});input=await retainSelectedNativeImport(s.owner,s.host,s.input(),{expected:proposed.choice,approve:()=>true});archive=await SelectedNativeImportArchive.read(input.file().file,input.file().selection,{wasm:fixtures.native,checkAuthority(){}});const basis=archive.beforeFile();archive.dispose();archive=undefined;return{s,input,basis,async close(){await input.close();await s.close();}};}catch(error){archive?.dispose();await input?.close();await s.close();throw error;}}

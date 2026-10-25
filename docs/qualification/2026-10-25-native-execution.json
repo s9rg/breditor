@@ -1,0 +1,256 @@
+{
+  "format": "breditor/native-execution-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-25T20:34:06.758Z",
+  "qualification": "selected-normal-functional-increment-not-v1-release",
+  "workingTreeSourceAtVerification": {
+    "commit": "63291d17331db607b7a4f7e3692b36a4c8319a46",
+    "dirty": true,
+    "sha256": "bb90be9f75e8c1abface194bd63e2b54385f6a2745f8f0a3462fd200935ab2cd",
+    "files": 6539,
+    "bytes": 50978051
+  },
+  "qualificationMetadataAddedAfterRun": true,
+  "postVerificationSourceAdditions": [
+    "docs/qualification/2026-10-25-native-execution.json"
+  ],
+  "normal": {
+    "passedStages": 12,
+    "fullFunctionalPlanExecuted": false,
+    "parallelAfterCommonBuildAndNativeInputs": true,
+    "manifests": [
+      {
+        "kind": "common",
+        "path": "target/v1-candidate-runs/run-cZIBDG/result.json",
+        "sha256": "ffcf872714227678cef2105fe491861883be797614873bf7a4f4e4415362efda",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "candidate-runner-contracts",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "rich-browser-build",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "collaboration-build",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-complete-cohort",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-complete-image-cohort",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-import-input-contracts",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-import-input-type-fence",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-execution-contracts",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-execution-type-fence",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      },
+      {
+        "kind": "source",
+        "path": "target/v1-candidate-runs/run-iB7lWr/result.json",
+        "sha256": "348939bc78b359b0e4cf4d1ff226a6caf026a8ef28332dd6be099953d87904cb",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "native-execution",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      },
+      {
+        "kind": "installed",
+        "path": "target/v1-candidate-runs/run-yku288/result.json",
+        "sha256": "21652372e49ecbbaa6a42ec018ca7fc846b430c2f0afe9ab2daa147be30458ea",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "installed-native-execution",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      },
+      {
+        "kind": "readiness",
+        "path": "target/v1-candidate-runs/run-0TF2pi/result.json",
+        "sha256": "c7be2ca52e817d0d9944dd049c3d0c46607b58c39eadd8845989329e3fdf9495",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "readiness-inventory",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      }
+    ]
+  },
+  "contracts": {
+    "scope": "Additive actual execution laws. All prior181 immutable-input laws remain unchanged in this workload; earlier179 native-reservation,94 accepted-transfer and cumulative1985 stages remain separately available, not replaced or claimed rerun as those stages.",
+    "priorBodies": 181,
+    "additionalBodies": 22,
+    "source": {
+      "passed": 203,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "offlineInstalled": {
+      "passed": 203,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "actualProductionBundle": {
+      "passed": 203,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "strictConsumerFixtures": 28,
+    "productionModules": 726,
+    "productionBundleSha256": "767f46a1484e83ef2d8046d60ec059fbb4fbce4a6dc75a909c7f03a7076fc168",
+    "workspaceLinks": false,
+    "lockedRegistryArtifacts": 45
+  },
+  "native": {
+    "unchangedInputsVerified": 2899,
+    "priorNativeSuitePassed": 411,
+    "priorSuiteRerun": false,
+    "normalWasmUnchanged": true,
+    "freshNativeFilesVerified": 100
+  },
+  "isolatedInstalledControls": [
+    {
+      "name": "cohort-cas",
+      "module": "selected_native_execution/journal_store.js",
+      "actualExits": [
+        0,
+        1,
+        0
+      ],
+      "resultCounts": [
+        {
+          "passed": 9,
+          "failed": 0
+        },
+        {
+          "passed": 8,
+          "failed": 1
+        },
+        {
+          "passed": 9,
+          "failed": 0
+        }
+      ],
+      "assertionsUnchanged": true,
+      "onlyReversibleImportLocationsChanged": true,
+      "copyRestoredExactly": true,
+      "restoredModuleSha256": "b8f39585289e72e8455fc003e8a34726b7239f6f6ca8739973166180da8711f6"
+    },
+    {
+      "name": "post-admission-retirement",
+      "module": "physical_room_asset_successor/owner.js",
+      "actualExits": [
+        0,
+        1,
+        0
+      ],
+      "resultCounts": [
+        {
+          "passed": 3,
+          "failed": 0
+        },
+        {
+          "passed": 2,
+          "failed": 1
+        },
+        {
+          "passed": 3,
+          "failed": 0
+        }
+      ],
+      "assertionsUnchanged": true,
+      "onlyReversibleImportLocationsChanged": true,
+      "copyRestoredExactly": true,
+      "restoredModuleSha256": "1dd5a2fba6c56467705bb7b07d5f801a854f00ee19fbb371a6d03c46a211ee41"
+    }
+  ],
+  "allInstalledCollaborationProductFilesVerifiedEqual": 1483,
+  "endpoints": {
+    "groups": 49,
+    "declared": 490,
+    "allConfirmedClosed": true
+  },
+  "retainedProof": {
+    "path": "target/native-execution-proof-r9ujzV/index.json",
+    "sha256": "83400ee5a4e8735d094717e6881670c089e3953cddc8970c1941ff50c3755741",
+    "sourceFiles": "target/native-execution-proof-r9ujzV/source-files.json"
+  },
+  "implemented": [
+    "Existing-only immutable input opening uses a fresh independently pinned choice/read grant and actual namespace custody; later local edits do not require recomputing an old before-state",
+    "An absent-only prepared transaction retains full input, latest complete before-file and actual cohort BEFORE the first native admission; every client and resume event retains complete source/native/packet/upload cuts",
+    "Every original accepted request is reauthenticated through the separately selected live host; current reader roles cannot overwrite recipient permissions; intentionally unbound reviews remain pending",
+    "Any failure after an admission attempt, including a late handoff failure, synchronously retires every actual native member before exclusion releases; fallible durable close is observed without implicit discard",
+    "Resume opens the actual journal, proves ALL retained cuts against one current native/source/upload reservation, requires a fresh exact head/current decision and commits a latest complete resume-before cut before replaying ALL original inputs idempotently",
+    "A genuine post-native progress-transaction abort is followed by actual source close/cold reopen and newly approved resume; native author coverage, complete retained cuts and future document/comment Undo remain",
+    "All seven source families and all four independent document/review history pairs execute; the positive seven registered/bound writer case reaches checked native and provider coverage",
+    "Metadata CAS refuses a changed valid cohort before any event commits; bounded row reads, actual transaction rollback, same-size corruption, queued cancellation and committed-but-refused progress remain explicit"
+  ],
+  "remaining": [
+    "Older-disk versus retained LIVE/uncertain source reconstruction into explicit absent-only targets; current resume retains and refuses those states rather than falsely claiming recovery",
+    "Explicit adoption of intentionally unbound local comments",
+    "Authenticated complete whole-room activation and old-writer fencing; journal READ events are diagnostic, not activation or ACK",
+    "Sustainable complete Undo/offline history beyond bounded journals; current complete-cut validation remains storage- and compute-intensive",
+    "Extension/custom-node and remaining agreed feature parity; complete release/platform/performance/storage qualification and all13 V1 gates"
+  ],
+  "openReleaseGates": [
+    "catalog-coverage",
+    "distribution",
+    "compatibility",
+    "release-ci",
+    "browser-reliability",
+    "accessibility-input-mobile",
+    "performance-and-size",
+    "public-relay-hardening",
+    "storage-lifecycle",
+    "dependency-and-license-review",
+    "integration-docs-and-support",
+    "pilot",
+    "final-rc"
+  ],
+  "v1Ready": false,
+  "goalComplete": false,
+  "publicRootApiChanged": false,
+  "packageVersionsChanged": false,
+  "pushTagPublicationDeploymentPerformed": false
+}
+

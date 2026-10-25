@@ -15,11 +15,20 @@ import {frozen} from '../room_participant_inventory/policy.js';
 import {fields,fail,MAX_NATIVE_IMPORT_BYTES,MAX_NATIVE_IMPORT_PAGES} from './policy.js';
 import {nativeImportChoice} from './manifest.js';
 import {encodeSelectedNativeImport} from './archive.js';
+import {SelectedNativeImportArchive} from './archive.js';
+import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
+import {OperationalReadCancellation} from '../operation_read/cancellation.js';
+import {recoveryOpeningContext} from '../participant_recovery/opening_custody.js';
 import {NativeImportInputResources} from './resources.js';
 import type {SelectedNativeImportChoice,SelectedNativeImportFile,SelectedNativeImportPage,SelectedNativeImportPreview} from './contract.js';
 const before={read:SelectedRoomCurrentArchive.read,manifest:SelectedRoomCurrentArchive.prototype.manifest,dispose:SelectedRoomCurrentArchive.prototype.dispose},add=EventTarget.prototype.addEventListener,remove=EventTarget.prototype.removeEventListener,key=Object.freeze({});
-const inputResources={open:NativeImportInputResources.prototype.open,file:NativeImportInputResources.prototype.file,verify:NativeImportInputResources.prototype.verifyFresh,consume:NativeImportInputResources.prototype.consume,close:NativeImportInputResources.prototype.close};
+const inputResources={open:NativeImportInputResources.prototype.open,existing:NativeImportInputResources.prototype.openExisting,file:NativeImportInputResources.prototype.file,verify:NativeImportInputResources.prototype.verifyFresh,consume:NativeImportInputResources.prototype.consume,close:NativeImportInputResources.prototype.close};
+const inputArchive={read:SelectedNativeImportArchive.read,dispose:SelectedNativeImportArchive.prototype.dispose};
 let own:(choice:SelectedNativeImportChoice,resources:NativeImportInputResources)=>RetainedNativeImportInput;
+let inputPort:(owner:RetainedNativeImportInput)=>Readonly<{choice:SelectedNativeImportChoice;check():void;file():SelectedNativeImportFile;verify(authority:()=>void,signal?:AbortSignal):Promise<SelectedNativeImportFile>}>;
+/** Trusted coordinator port. Public methods and copied data cannot substitute
+ * the actual input namespace, complete file or current store connection. */
+export const retainedNativeImportInputPort=(owner:RetainedNativeImportInput)=>inputPort(owner);
 export class RetainedNativeImportInput{
  readonly #choice;readonly #resources;
  private constructor(token:object,choice:SelectedNativeImportChoice,resources:NativeImportInputResources){if(token!==key)throw fail('native_import_policy');this.#choice=choice;this.#resources=resources;Object.freeze(this);}
@@ -27,7 +36,16 @@ export class RetainedNativeImportInput{
  file():SelectedNativeImportFile{return inputResources.file.call(this.#resources);}
  verifyFresh(authority:()=>void,signal?:AbortSignal):Promise<SelectedNativeImportFile>{const grant=participantAuthority(authority);return inputResources.verify.call(this.#resources,grant,signal);}
  close():Promise<void>{return inputResources.close.call(this.#resources);}
- static{own=(choice,resources)=>new RetainedNativeImportInput(key,choice,resources);}
+ static{own=(choice,resources)=>new RetainedNativeImportInput(key,choice,resources);inputPort=owner=>{if(!owner||typeof owner!=='object'||!(#resources in owner))throw fail('native_import_policy');const resources=owner.#resources;resources.check();return Object.freeze({choice:owner.#choice,check:resources.check,file:()=>inputResources.file.call(resources),verify:(authority:()=>void,signal?:AbortSignal)=>inputResources.verify.call(resources,participantAuthority(authority),signal)});};}
+}
+/** Existing-only cold data reopening. Independent explicit hashing runtime and
+ * fresh read permission replace the expired preparation job, not native policy.
+ * The full archive is re-admitted; this still grants no native writer or host. */
+export async function openRetainedNativeImportInput(options:SharedArchiveIntegrityOptions&Readonly<{expected:SelectedNativeImportChoice}>):Promise<RetainedNativeImportInput>{
+ const factory=recoveryOpeningContext(),locks=navigator.locks,raw=fields(options,['expected','wasm','checkAuthority'],['signal']),choice=nativeImportChoice(raw['expected']),authority=participantAuthority(raw['checkAuthority'] as ()=>void),signal=raw['signal'] as AbortSignal|undefined,observation=new OperationalReadCancellation(signal);let resources:NativeImportInputResources|undefined,archive:SelectedNativeImportArchive|undefined,complete=false;
+ const check=()=>{if(globalThis.indexedDB!==factory||globalThis.navigator?.locks!==locks)throw fail('native_import_closed');resources?.check();observation.check(()=>fail('native_import_aborted'));authority();resources?.check();observation.check(()=>fail('native_import_aborted'));};
+ try{check();resources=new NativeImportInputResources();const integrity:SharedArchiveIntegrityOptions={wasm:raw['wasm'] as SharedArchiveIntegrityOptions['wasm'],checkAuthority:check,...(signal?{signal}:{})};await inputResources.existing.call(resources,choice,integrity);const file=inputResources.file.call(resources);archive=await inputArchive.read.call(SelectedNativeImportArchive,file.file,file.selection,integrity);inputArchive.dispose.call(archive);archive=undefined;check();inputResources.consume.call(resources);complete=true;return own(choice,resources);
+ }finally{try{if(archive)inputArchive.dispose.call(archive);if(!complete&&resources)await inputResources.close.call(resources);}finally{observation.close();}}
 }
 async function inspect(scope:SelectedNativeRecoveryScope,host:SharedPhysicalRoomRecoveryHost,name:string){
  const port=physicalRecoveryHostPort(host),initial=await scope.readReconciliation(host),streams=initial.native.ownStreams,unbound=new Set(streams.participants.filter(row=>row.review?.binding===null).map(row=>JSON.stringify([row.principal,row.review!.actor])));

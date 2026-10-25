@@ -18,5 +18,9 @@ export interface SelectedNativeRecoveryScope{
  /** Complete encoding uses the actual held read scope's integrity runtime;
   * detached caller metadata cannot substitute that scope or its source files. */
  retainCurrent():Promise<SelectedNativeRetainedCurrent>;
+ /** Admit native/source/whole-upload ancestry from complete retained data to
+  * a newly captured actual cut, not a caller-supplied alleged current snapshot. */
+ retainExtending(previous:SelectedRoomCurrentFile):Promise<SelectedNativeRetainedCurrent>;
+ retainExtendingAll(previous:readonly SelectedRoomCurrentFile[]):Promise<SelectedNativeRetainedCurrent>;
  readReconciliation(host:SharedPhysicalRoomRecoveryHost):Promise<SelectedRoomReconciliationRead>;
 }

@@ -32,6 +32,7 @@ import {nativeRecoveryFailure} from '../native_recovery/policy.js';
 import type {SelectedNativeRecoveryScope} from '../selected_native_recovery/contract.js';
 import {waitNativePendingWork} from '../native_pending_work.js';
 import {encodeSelectedRoomCurrent} from '../selected_room_current/archive.js';
+import {retainExtendingSelectedCurrent,retainExtendingSelectedCurrents} from '../selected_native_recovery/continuation.js';
 const visitReconciliation=RetainedPhysicalRoot.prototype.visitReconciliationRecordCut,catalogMetadata=RetainedPhysicalRoot.prototype.catalogMetadata,closeFinalCancellation=OperationalReadCancellation.prototype.close;
 const rootClients=Object.getOwnPropertyDescriptor(RetainedPhysicalRoot.prototype,'clients')!.get!,visitRecordCut=RetainedPhysicalRoot.prototype.visitRecordCut;
 const methods={check:RichAssetStore.prototype.checkOpen,acquire:RichAssetStore.prototype.acquireRecoveryCustody,capture:RichAssetStore.prototype.captureBackup,close:RichAssetStore.prototype.close,held:RichAssetStoreCustody.prototype.check,release:RichAssetStoreCustody.prototype.release,finish:RichAssetStoreCustody.prototype.close};
@@ -46,9 +47,14 @@ export interface PreparedSelectedAssetOwner{readonly value:RetainedSelectedAsset
 let prepare:(root:RetainedPhysicalRoot,record:RoomAssetAdoptionRecord,basis:SelectedAssetBasis,approval:RoomAssetApprovalFile,authority:()=>void)=>PreparedSelectedAssetOwner;
 export const prepareSelectedAssetOwner=(root:RetainedPhysicalRoot,record:RoomAssetAdoptionRecord,basis:SelectedAssetBasis,approval:RoomAssetApprovalFile,authority:()=>void)=>prepare(root,record,basis,approval,authority);
 let withNativeRecovery:<P extends SharedSelectionPolicy,T>(owner:RetainedSelectedAssetOwner,input:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:SelectedNativeRecoveryScope)=>Promise<T>)=>Promise<T>;
+let withNativeExecution:typeof withNativeRecovery;
 /** Trusted coordinator composition only. Data, public overrides and copied
  * methods cannot supply native clients, root custody or a selected store set. */
 export const withSelectedNativeRecovery=<P extends SharedSelectionPolicy,T>(owner:RetainedSelectedAssetOwner,input:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:SelectedNativeRecoveryScope)=>Promise<T>):Promise<T>=>withNativeRecovery(owner,input,visit);
+/** Internal durable-execution composition. The coordinator must retain input
+ * and a prepared journal BEFORE admission. After any admission attempt, every
+ * failed handoff retires all real members before exclusion is released. */
+export const withSelectedNativeExecution:typeof withSelectedNativeRecovery=(owner,input,visit)=>withNativeExecution(owner,input,visit);
 export class RetainedSelectedAssetOwner{
  readonly #root;readonly #record;readonly #basis;readonly #approval;readonly #authority;
  readonly #ports=new Map<string,ReturnType<typeof selectedAssetPort>>();
@@ -90,10 +96,10 @@ export class RetainedSelectedAssetOwner{
  #reconciliation<P extends SharedSelectionPolicy>(host:SharedPhysicalRoomRecoveryHost,input:PhysicalOperationV3HistoryReadOptions<P>,recovery?:object):Promise<SelectedRoomReconciliationRead>{
   try{const provider=selectedRoomProvider(host,catalogMetadata.call(this.#root),this.#record);return this.#visit(input,async(cut,scope,check,native)=>{if(!native)throw fail('asset_adoption_policy');const result=await provider(cut,scope,check);check();native.finalCheck();return frozen(structuredClone({format:'breditor/selected-room-reconciliation-read' as const,formatVersion:1 as const,scope:'held-complete-native-source-and-whole-uploads-at-authenticated-cut' as const,kind:native.data.kind==='covered'&&result.kind==='checked'?'checked' as const:'pending' as const,native:native.data,provider:result}));},true,true,recovery);}catch(error){return Promise.reject(error);}
  }
- #recover<P extends SharedSelectionPolicy,T>(input:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:SelectedNativeRecoveryScope)=>Promise<T>):Promise<T>{
+ #recover<P extends SharedSelectionPolicy,T>(input:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:SelectedNativeRecoveryScope)=>Promise<T>,quarantine=false):Promise<T>{
   try{this.#current();if(this.#busy||this.#checking)throw fail('asset_adoption_busy');if(typeof visit!=='function')throw fail('asset_adoption_policy');}catch(error){return Promise.reject(error);}
   this.#busy=true;const token=Object.freeze({});this.#nativeRecoveryToken=token;let finished!:()=>void;this.#running=new Promise<void>(resolve=>{finished=resolve;});
-  let native:NativeRecoveryReservation|undefined,chosen:PhysicalOperationV3HistoryReadOptions<P>,clients:SelectedNativeRecoveryScope['clients'],finalCancellation:OperationalReadCancellation|undefined;
+  let native:NativeRecoveryReservation|undefined,chosen:PhysicalOperationV3HistoryReadOptions<P>,clients:SelectedNativeRecoveryScope['clients'],finalCancellation:OperationalReadCancellation|undefined,attempted=false,closing:Promise<void>|undefined;
   const release=()=>{native?.close();this.#nativeRecoveryToken=undefined;this.#running=undefined;this.#busy=false;finished();};
   try{clients=Object.freeze((rootClients.call(this.#root) as SelectedNativeRecoveryScope['clients']).map(row=>Object.freeze({...row})));native=reserveNativeRecovery(clients.map(row=>row.core));chosen=snapshotPhysicalHistoryReadOptions(input);this.#current();native.check();}catch(error){release();return Promise.reject(error);}
   const work=(async()=>{const controller=new AbortController(),cancel=()=>controller.abort();let caller:PhysicalOperationV3Cancellation|undefined,observation:PhysicalOperationV3Cancellation|undefined,unwatch=()=>{},active=true,phase=false,authorizing=false,reading:Promise<unknown>|undefined;
@@ -105,9 +111,9 @@ export class RetainedSelectedAssetOwner{
     await waitSelectedAssetWork(Promise.all([...this.#ports.values()].map(port=>port.settle())),check,notify=>observation!.watch(notify));
     await Promise.all(clients.map(row=>waitNativePendingWork(row.core,{check,watch:notify=>observation!.watch(notify)})));authorize();
     const readOptions={...chosen,signal:controller.signal,checkAuthority:authorize},imports:SelectedNativeRecoveryScope['native']=Object.freeze({check:importCheck,
-     receiveDocument<Q extends SharedSelectionPolicy>(core:import('../core.js').SharedRichEditor<Q>,frame:string){importCheck();const value=native!.receiveDocument(core,frame);authorize();return value;},
-     receiveReview<Q extends SharedSelectionPolicy>(core:import('../core.js').SharedRichEditor<Q>,frame:string,verified:import('../review_types.js').SharedReviewPolicy){importCheck();const value=native!.receiveReview(core,frame,verified);authorize();return value;},
-    }),scope:SelectedNativeRecoveryScope=Object.freeze({clients,native:imports,signal:controller.signal,check,capture:()=>readingPhase(()=>this.#visit(readOptions,async cut=>cut,false,undefined,token)),retainCurrent:()=>readingPhase(()=>this.#visit(readOptions,async(cut,held,current)=>Object.freeze({current:await encodeSelectedRoomCurrent(cut,{wasm:held.wasm,checkAuthority:()=>{authorize();current();},signal:controller.signal}),integrity:Object.freeze({wasm:held.wasm,checkAuthority:authorize,signal:controller.signal})}),false,undefined,token)),readReconciliation:(host:SharedPhysicalRoomRecoveryHost)=>readingPhase(()=>this.#reconciliation(host,readOptions,token))});
+     receiveDocument<Q extends SharedSelectionPolicy>(core:import('../core.js').SharedRichEditor<Q>,frame:string){importCheck();attempted=true;const value=native!.receiveDocument(core,frame);authorize();return value;},
+     receiveReview<Q extends SharedSelectionPolicy>(core:import('../core.js').SharedRichEditor<Q>,frame:string,verified:import('../review_types.js').SharedReviewPolicy){importCheck();attempted=true;const value=native!.receiveReview(core,frame,verified);authorize();return value;},
+    }),scope:SelectedNativeRecoveryScope=Object.freeze({clients,native:imports,signal:controller.signal,check,capture:()=>readingPhase(()=>this.#visit(readOptions,async cut=>cut,false,undefined,token)),retainCurrent:()=>readingPhase(()=>this.#visit(readOptions,async(cut,held,current)=>Object.freeze({current:await encodeSelectedRoomCurrent(cut,{wasm:held.wasm,checkAuthority:()=>{authorize();current();},signal:controller.signal}),integrity:Object.freeze({wasm:held.wasm,checkAuthority:authorize,signal:controller.signal})}),false,undefined,token)),retainExtending:(previous:import('../selected_room_current/contract.js').SelectedRoomCurrentFile)=>readingPhase(()=>this.#visit(readOptions,(cut,held,current)=>retainExtendingSelectedCurrent(previous,cut,held,readOptions,clients,authorize,current),false,undefined,token)),retainExtendingAll:(previous:readonly import('../selected_room_current/contract.js').SelectedRoomCurrentFile[])=>readingPhase(()=>this.#visit(readOptions,(cut,held,current)=>retainExtendingSelectedCurrents(previous,cut,held,readOptions,clients,authorize,current),false,undefined,token)),readReconciliation:(host:SharedPhysicalRoomRecoveryHost)=>readingPhase(()=>this.#reconciliation(host,readOptions,token))});
     const value=await visit(scope);if(reading){controller.abort();await reading.catch(()=>{});throw nativeRecoveryFailure('native_recovery_busy');}authorize();return value;
    }finally{controller.abort();try{await reading?.catch(()=>{});}finally{active=false;this.#closingListeners.delete(cancel);unwatch();observation?.close();caller?.close();}}
   })();
@@ -115,7 +121,12 @@ export class RetainedSelectedAssetOwner{
   // observation and every native/owner barrier until this final synchronous
   // handoff. No promise continuation may split the fence from flag release.
   const finish=()=>{if(finalCancellation)closeFinalCancellation.call(finalCancellation);release();};
-  return work.then(value=>{try{this.#current();finalCancellation!.check(()=>fail('asset_adoption_aborted'));native!.check();chosen.checkAuthority();this.#current();native!.check();finalCancellation!.check(()=>fail('asset_adoption_aborted'));return value;}finally{finish();}},error=>{finish();throw error;});
+  const refuse=(error:unknown):never=>{try{if(quarantine&&attempted){closing=this.#close(false);void closing.catch(()=>{});}}finally{finish();}throw error;};
+  const result=work.then(value=>{try{this.#current();finalCancellation!.check(()=>fail('asset_adoption_aborted'));native!.check();chosen.checkAuthority();this.#current();native!.check();finalCancellation!.check(()=>fail('asset_adoption_aborted'));finish();return value;}catch(error){return refuse(error);}},refuse);
+  // Retirement above is synchronous and precedes pure flag release. Observe
+  // actual durable close only AFTER releasing this context's completion promise;
+  // awaiting it inside the visitor would wait on the context itself.
+  return quarantine?result.catch(async error=>{if(closing)await closing;throw error;}):result;
  }
  #visit<P extends SharedSelectionPolicy,T>(input:PhysicalOperationV3HistoryReadOptions<P>,visit:(cut:SelectedAssetCurrentCut,scope:PhysicalRecordCutVisit,check:()=>void,native?:SelectedNativeCutWitness)=>Promise<T>,verifyUploads:boolean,inspectNative?:true,recovery?:object):Promise<T>{
   const borrowed=recovery!==undefined;let chosen:PhysicalOperationV3HistoryReadOptions<P>;try{chosen=snapshotPhysicalHistoryReadOptions(input);this.#current();if(borrowed&&recovery!==this.#nativeRecoveryToken||this.#busy&&(!borrowed||recovery!==this.#nativeRecoveryToken))return Promise.reject(fail('asset_adoption_busy'));}catch(error){return Promise.reject(error);}this.#busy=true;
@@ -158,5 +169,5 @@ export class RetainedSelectedAssetOwner{
  }
  static{prepare=(root,record,basis,approval,authority)=>{const owner=new RetainedSelectedAssetOwner(key,root,record,basis,approval,authority);let abandoned=false;
   return Object.freeze({value:owner,check(){if(abandoned||owner.#active)throw fail('asset_adoption_closed');basis.current();checkRecoveryLeasesHeld([basis.resources.lease!,...basis.resources.targetLeases.values()]);for(const target of basis.resources.targets.values()){methods.check.call(target.store);methods.held.call(target.custody);}},activate(){owner.#active=true;for(const target of basis.resources.targets.values())methods.release.call(target.custody);},async abandon(){if(owner.#active)return;abandoned=true;}});
- };withNativeRecovery=(owner,input,visit)=>{if(!owner||typeof owner!=='object'||!(#root in owner))return Promise.reject(fail('asset_adoption_policy'));return owner.#recover(input,visit);};}
+ };withNativeRecovery=(owner,input,visit)=>{if(!owner||typeof owner!=='object'||!(#root in owner))return Promise.reject(fail('asset_adoption_policy'));return owner.#recover(input,visit);};withNativeExecution=(owner,input,visit)=>{if(!owner||typeof owner!=='object'||!(#root in owner))return Promise.reject(fail('asset_adoption_policy'));return owner.#recover(input,visit,true);};}
 }

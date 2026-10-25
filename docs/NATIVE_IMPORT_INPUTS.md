@@ -4,7 +4,8 @@ Accepted native operations must remain recoverable before the first selected
 client changes. The private preparation path retains one complete immutable
 input file under a separate namespace lease. It does not apply operations,
 acknowledge source durability, adopt comments or activate a room. A durable
-per-client execution journal and genuine interrupted resume are the next step.
+per-client execution journal and genuine interrupted resume are defined in the
+[durable native execution contract](NATIVE_EXECUTION.md).
 
 ## Complete immutable input
 
@@ -82,11 +83,11 @@ The header is limited to 16 MiB, with at most 4096 accepted pages. Each page kee
 the original 16 MiB response ceiling and original native frame limits. Oversized
 complete input refuses; nothing is truncated and no existing protocol expands.
 
-The execution journal must retain real per-client progress and complete observed
-cuts, preserve uncertain after-publication outcomes, and retire clients before
-releasing exclusion after a partial failure. Cold execution must reopen genuine
-latest sources, verify continuity from this retained input, and preserve newer
-offline work and both Undo lanes. Metadata or cursors alone cannot skip an import
-or acknowledge durability. Explicit local-comment adoption and authenticated
-whole-room activation follow full reconciliation. Sustainable history, extension
-parity and all thirteen V1 release gates remain open.
+The executor retains real per-client progress and complete observed cuts,
+preserves uncertain after-publication outcomes, and retires clients before
+releasing exclusion after a partial failure. Cold execution reopens genuine
+sources and verifies continuity from all retained cuts; older disk sources still
+need explicit reconstruction. Metadata or cursors cannot skip an import or
+acknowledge durability. Local-comment adoption and authenticated whole-room
+activation follow full reconciliation. Sustainable history, extension parity
+and all thirteen V1 release gates remain open.

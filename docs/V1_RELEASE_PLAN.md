@@ -108,11 +108,14 @@ other members, and cancellation or close cannot turn an admitted partial import
 into a successful completion. This is the execution prerequisite for a durable
 importer, not the journal itself. The [native import input contract](NATIVE_IMPORT_INPUTS.md)
 adds complete immutable before-files and original accepted pages, absent-only
-storage and freshly approved exact retries without mutating clients. Durable
-per-client progress, interrupted execution/cold resume, explicit local-comment
-adoption and authenticated whole-room activation remain next. Sustainable history,
-extension parity and all thirteen
-release gates also remain open.
+storage and freshly approved exact retries without mutating clients. The
+[durable native execution contract](NATIVE_EXECUTION.md) now adds actual
+per-client imports, complete prepared/client/resume cuts, terminal retirement
+after uncertain admission and freshly approved replay from genuine reopened
+sources. Saved progress never skips imports or acknowledges durability. If disk
+is older than retained live work, explicit absent-only source reconstruction is
+still required. Local-comment adoption, authenticated whole-room activation,
+sustainable history, extension parity and all thirteen release gates remain open.
 
 ## Current native serving fence
 
