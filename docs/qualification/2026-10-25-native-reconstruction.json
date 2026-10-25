@@ -1,0 +1,228 @@
+{
+  "format": "breditor/native-reconstruction-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-25T22:00:36.526Z",
+  "qualification": "selected-normal-functional-increment-not-v1-release",
+  "workingTreeSourceAtVerification": {
+    "commit": "32461c4313dfdf386b0e3e463f511b5a3c5e6d30",
+    "dirty": true,
+    "sha256": "1e7b683ac237e185e8ad2a3e686b89bc8b42623d4cff4d60c1e88581e3e81fba",
+    "files": 6553,
+    "bytes": 51056787
+  },
+  "qualificationMetadataAddedAfterRun": true,
+  "postVerificationSourceAdditions": [
+    "docs/qualification/2026-10-25-native-reconstruction.json"
+  ],
+  "normal": {
+    "passedStages": 13,
+    "fullFunctionalPlanExecuted": false,
+    "manifests": [
+      {
+        "kind": "common",
+        "path": "target/v1-candidate-runs/run-cUL9Qp/result.json",
+        "sha256": "6645a09e9a27f92cc265b163861ca63ca617426d08bd004122fe8532bed6dc3e",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "candidate-runner-contracts",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "rich-browser-build",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "collaboration-build",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-complete-cohort",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-complete-image-cohort",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-execution-contracts",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-execution-type-fence",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-reconstruction-contracts",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-reconstruction-type-fence",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      },
+      {
+        "kind": "installed",
+        "path": "target/v1-candidate-runs/run-5aSu8A/result.json",
+        "sha256": "992464dea342a82e80a6c1087d1c39f671bd10740576a0601a5c775488ce8e01",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "installed-native-reconstruction",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      },
+      {
+        "kind": "source",
+        "path": "target/v1-candidate-runs/run-UZcnaW/result.json",
+        "sha256": "cc064749edc578e5e14cafd622edbd3186f708f366ba3f013281528898770c70",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "native-execution",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-reconstruction",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      },
+      {
+        "kind": "readiness",
+        "path": "target/v1-candidate-runs/run-5Ccizv/result.json",
+        "sha256": "a922b1d010127af0230a9e9ef6f99f513a2d78956c0aeea5966ae4ddaf8b9b4a",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "readiness-inventory",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      }
+    ],
+    "sourceAssertions": {
+      "priorExecution": 203,
+      "reconstruction": 4,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0
+    },
+    "offlineInstalledReconstruction": {
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "workspaceLinks": false,
+      "priorExecutionRerun": false
+    },
+    "productionBundleReconstruction": {
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0
+    },
+    "strictSourceConsumerFixtures": 29,
+    "strictInstalledReconstructionFixtures": 1,
+    "freshNativeFilesVerified": 100
+  },
+  "guardControls": {
+    "scope": "Unchanged regressions against isolated actual installed files; normal four-case success, disabled-guard failure, restored selected-case success",
+    "guards": [
+      {
+        "name": "native-ancestry",
+        "initialNormalActualExit": 0,
+        "brokenActualExit": 1,
+        "restoredActualExit": 0,
+        "restoredExactly": true
+      },
+      {
+        "name": "selected-upload",
+        "initialNormalActualExit": 0,
+        "brokenActualExit": 1,
+        "restoredActualExit": 0,
+        "restoredExactly": true
+      }
+    ],
+    "installedProductFilesRestoredAndVerified": 1876
+  },
+  "native": {
+    "sourceAndBuildInputsVerifiedUnchanged": 2899,
+    "normalWasmSha256": "946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0",
+    "priorNativeSuitePassed": 411,
+    "priorNativeSuiteRerun": false,
+    "baselineInventorySha256": "5105338fe31693331b67a898700b312ae532f9bb65239b87b841ab2b99102cb0"
+  },
+  "retainedProof": {
+    "path": "target/native-reconstruction-proof-gdI1BU/index.json",
+    "sha256": "74789363e4db446488e7a1ba01ca92ffac8c42200723436bf977a62137960cca",
+    "files": 323,
+    "endpoints": {
+      "groups": 21,
+      "declared": 210,
+      "allConfirmedClosed": true
+    }
+  },
+  "functionalScope": "Private original-source retained LIVE DATA construction and genuine absent-destination source/dependent-store/upload recovery; whole selected cohort native/upload compatibility preflight; exact cold native restore and future document/comment Undo/Redo. Existing strict execution semantics and all prior stages remain unchanged.",
+  "diagnostics": {
+    "compatibleNonlinearDocumentHistory": {
+      "reproduced": true,
+      "integrated": false,
+      "sourceReconstructionOrActivation": false,
+      "futureNativeUndoRedoComparisons": 4
+    },
+    "independentLocalAdapterDraft": {
+      "dataConstructionAndGenuineColdRecoveryPassed": true,
+      "integrated": false,
+      "fullFourHistoryPairFailedSaveMatrix": false,
+      "retainedVersions": 1,
+      "futureDocumentAndCommentComparisons": 4
+    }
+  },
+  "remaining": [
+    "Other six source-family reconstruction adapters and all independent native history pairs",
+    "Nonempty original dependent-packet permutations and full interleaving/recovery coverage",
+    "Durable complete-cohort preparation, non-overwriting destinations, approved retirement and retry handoff",
+    "Compatible native author/own-intent, packet and whole-upload union; true forks must refuse",
+    "Explicit unbound-comment adoption",
+    "Authenticated whole-room activation and old-writer fencing",
+    "Sustainable native Undo/offline retention",
+    "Extension/custom-node and remaining feature parity",
+    "All thirteen V1 release gates"
+  ],
+  "openV1Gates": [
+    "catalog-coverage",
+    "distribution",
+    "compatibility",
+    "release-ci",
+    "browser-reliability",
+    "accessibility-input-mobile",
+    "performance-and-size",
+    "public-relay-hardening",
+    "storage-lifecycle",
+    "dependency-and-license-review",
+    "integration-docs-and-support",
+    "pilot",
+    "final-rc"
+  ],
+  "v1Ready": false,
+  "publicationApproved": false,
+  "versionChanged": false,
+  "tagCreated": false,
+  "pushed": false
+}

@@ -13,6 +13,21 @@ the FCKeditor lineage. CKEditor 4 reached ordinary EOL in June 2023; its
 is not the modern feature baseline. Breditor remains an independent implementation:
 no ProseMirror, Tiptap or CKEditor document, operation or plugin protocol is adopted.
 
+## Current retained native reconstruction
+
+The [original-source reconstruction contract](NATIVE_RECONSTRUCTION.md) addresses
+a reproduced failed-save case: retained LIVE document/comment histories can be
+newer than the genuinely reopened disk source. Its private inspector compares
+every held selected native and whole selected upload store before building an
+original participant backup. Existing recovery restores that native pair and
+dependent stores into absent databases without overwriting originals. Conflicting
+own branches and unmatched packet/progress records require explicit resolution.
+
+This is a bounded original-source recovery path, not completed whole-room
+reconstruction. The other six source families, compatible native union, durable
+common preparation/retirement and authenticated activation remain architectural
+priorities. All thirteen V1 gates remain open.
+
 ## V1 candidate qualification checkpoint
 
 The [2026-10-18 functional qualification](qualification/2026-10-18-v1-candidate-functional.json)

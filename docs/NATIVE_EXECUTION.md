@@ -71,7 +71,10 @@ history is still required for long-running shared documents.
 Cold resume currently requires genuinely reopened sources whose native history
 extends every retained cut. If disk storage is older than retained live work,
 resume refuses and retains the data. Explicit reconstruction into absent source
-namespaces is still required; refusal is not recovery of that work.
+namespaces is still required; refusal is not recovery of that work. The
+[original-source reconstruction path](NATIVE_RECONSTRUCTION.md) now builds a
+native participant from retained LIVE work and restores it into absent component
+databases. Full seven-family room reconstruction and native union remain open.
 
 Functional tests use actual native clients and source close/reopen, with controlled
 browser storage and namespace locks. They do not qualify physical power loss.
