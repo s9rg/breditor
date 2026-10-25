@@ -92,6 +92,25 @@ missing accepted operations or authenticated room activation. Those mutation
 steps remain the next architectural priority before sustainable history and
 extension parity. All thirteen V1 gates remain open.
 
+## Current accepted native transfer and recovery exclusion
+
+The [accepted native transfer](ACCEPTED_NATIVE_TRANSFER.md) supplies original
+server-accepted document frames and ordered authenticated comment batches at an
+independently selected room cut. Actual imports fill accepted-author gaps across
+the seven supported native client families while preserving offline suffixes,
+both Undo lanes and current permissions. Its focused source, installed and
+bundled qualification is separate from full V1 readiness.
+
+The [native recovery reservation](NATIVE_RECOVERY_RESERVATION.md) adds private
+all-client publication exclusion and a genuine selected-owner context for
+serialized full snapshots and native imports. Sibling callbacks cannot edit
+other members, and cancellation or close cannot turn an admitted partial import
+into a successful completion. This is the execution prerequisite for a durable
+importer, not the journal itself. Exact before-input retention, resumable
+per-client progress, explicit local-comment adoption and authenticated whole-room
+activation remain next. Sustainable history, extension parity and all thirteen
+release gates also remain open.
+
 ## Current native serving fence
 
 The [native serving epoch contract](NATIVE_SERVING_EPOCHS.md) now adds explicit

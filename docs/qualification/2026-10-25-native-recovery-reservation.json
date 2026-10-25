@@ -1,0 +1,264 @@
+{
+  "format": "breditor/native-recovery-reservation-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-25T11:30:37.753Z",
+  "qualification": "selected-normal-functional-increment-not-v1-release",
+  "workingTreeSourceAtVerification": {
+    "commit": "0a90320dab0dab63000faf30c0adf0bd3067ce23",
+    "dirty": true,
+    "sha256": "ae638d05a8255da703e16874ee7e89db31f96c55efb22e52522fbc4c6a7beb46",
+    "files": 6496,
+    "bytes": 50744279
+  },
+  "qualificationMetadataAddedAfterRun": true,
+  "postVerificationSourceAdditions": [
+    "docs/qualification/2026-10-25-native-recovery-reservation.json"
+  ],
+  "normal": {
+    "parallelAfterCommonBuildAndNativeInputs": true,
+    "passedStages": 10,
+    "manifests": [
+      {
+        "kind": "common",
+        "path": "target/v1-candidate-runs/run-2KGar6/result.json",
+        "sha256": "0ce9d8269506926a63fa731d17acdc468270a3a40e878398f03f438212a7317b",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "candidate-runner-contracts",
+            "status": "passed"
+          },
+          {
+            "id": "rich-browser-build",
+            "status": "passed"
+          },
+          {
+            "id": "collaboration-build",
+            "status": "passed"
+          },
+          {
+            "id": "native-complete-cohort",
+            "status": "passed"
+          },
+          {
+            "id": "native-complete-image-cohort",
+            "status": "passed"
+          },
+          {
+            "id": "native-recovery-contracts",
+            "status": "passed"
+          },
+          {
+            "id": "native-recovery-type-fence",
+            "status": "passed"
+          }
+        ]
+      },
+      {
+        "kind": "source",
+        "path": "target/v1-candidate-runs/run-eyrqoj/result.json",
+        "sha256": "665119d3e02ef178da9ad9cf92fbafd39295fa9f95b1394ffee2ff21d6524325",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "native-recovery",
+            "status": "passed"
+          }
+        ]
+      },
+      {
+        "kind": "installed-and-bundled",
+        "path": "target/v1-candidate-runs/run-MNwVjs/result.json",
+        "sha256": "a96ef399fa2e39309e553bbf24116c1587f8410d1fcbe37fae47bbe2ee62baa3",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "installed-native-recovery",
+            "status": "passed"
+          }
+        ]
+      },
+      {
+        "kind": "readiness",
+        "path": "target/v1-candidate-runs/run-iizQg9/result.json",
+        "sha256": "4d4e3f2ca8c057cbaf92fc96c6531b1fccde1e7c50f304ec6c1949df92006c1f",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "readiness-inventory",
+            "status": "passed"
+          }
+        ]
+      }
+    ]
+  },
+  "contracts": {
+    "scope": "Focused additive native-facade exclusion and genuine selected-owner composition; unchanged cumulative 1985-body and accepted-transfer 94-body stages remain separately available and are not replaced or rerun here",
+    "priorFocusedBodies": 152,
+    "additionalBodies": 27,
+    "source": {
+      "passed": 179,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "offlineInstalled": {
+      "passed": 179,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "actualProductionBundle": {
+      "passed": 179,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "strictConsumerFixtures": 26,
+    "productionModules": 710,
+    "productionBundleSha256": "5fac21627d35c974c5d373e1df1b8e17a4345cae88d6faea1c9acc34109a0b06",
+    "workspaceLinks": false,
+    "lockedRegistryArtifacts": 45
+  },
+  "native": {
+    "nativeSourceAndBuildInputsUnchanged": true,
+    "unchangedInputsVerified": 2899,
+    "priorNativeSuitePassed": 411,
+    "priorNativeSuiteRerun": false,
+    "freshFilesVerified": 100,
+    "profileTransportPairs": 10,
+    "normalWasmUnchanged": true,
+    "normalWasmSha256": "946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0"
+  },
+  "finalCleanupRegression": {
+    "beforeActualExit": 1,
+    "afterActualExit": 0,
+    "modes": [
+      "real caller AbortController cancellation",
+      "fresh permission revocation",
+      "actual selected owner close"
+    ],
+    "reproduction": "Two microtasks place the real lifetime change after the visitor grant and during awaited cleanup. The original implementation falsely succeeds. Independent cancellation observation and a fresh synchronous final owner/native/grant/cancel fence followed immediately by pure flag release refuse the unchanged test."
+  },
+  "isolatedInstalledControls": [
+    {
+      "name": "core-guard-final",
+      "scope": "Only the actual native #run recovery access guard is removed.",
+      "actualExits": [
+        0,
+        1,
+        0
+      ],
+      "resultCounts": [
+        {
+          "passed": 14,
+          "failed": 0
+        },
+        {
+          "passed": 7,
+          "failed": 7
+        },
+        {
+          "passed": 14,
+          "failed": 0
+        }
+      ],
+      "module": "node_modules/@breditor/collaboration/dist/core.js",
+      "originalModuleSha256": "bf659710baf85daa3c8c1b52e70edb84c076a845b068d6beacfd7f131cfa0570",
+      "removedModuleSha256": "2188ea8e37e1fe065f99791e765fcb5c3e36dccc9a046e12da4368278cc34807",
+      "assertionsUnchanged": true,
+      "originalInstalledConsumerUnchanged": true,
+      "copyRestoredExactly": true,
+      "evidence": "target/native-recovery-proof-iQelr1/development/core-guard-final-control.json"
+    },
+    {
+      "name": "per-import-final",
+      "scope": "Only pre-import fresh authorize() is removed; post-import authority remains.",
+      "actualExits": [
+        0,
+        1,
+        0
+      ],
+      "resultCounts": [
+        {
+          "passed": 1,
+          "failed": 0
+        },
+        {
+          "passed": 0,
+          "failed": 1
+        },
+        {
+          "passed": 1,
+          "failed": 0
+        }
+      ],
+      "module": "node_modules/@breditor/collaboration/dist/physical_room_asset_successor/owner.js",
+      "originalModuleSha256": "7955a9e17ab18795bb8a0cde24c457015cb35b9d264c32300a578038b5f08478",
+      "removedModuleSha256": "3b0ba6b5607051d9ef118d4d03e16c5893f255fbbaf4cae17ea43320fbbcf87a",
+      "assertionsUnchanged": true,
+      "originalInstalledConsumerUnchanged": true,
+      "copyRestoredExactly": true,
+      "evidence": "target/native-recovery-proof-iQelr1/development/per-import-final-control.json"
+    },
+    {
+      "name": "final-fence",
+      "scope": "Only post-cleanup final owner/native/authority/cancellation checks are removed; original lifetime observation and pure synchronous release remain.",
+      "actualExits": [
+        0,
+        1,
+        0
+      ],
+      "resultCounts": [
+        {
+          "passed": 1,
+          "failed": 0
+        },
+        {
+          "passed": 0,
+          "failed": 1
+        },
+        {
+          "passed": 1,
+          "failed": 0
+        }
+      ],
+      "module": "node_modules/@breditor/collaboration/dist/physical_room_asset_successor/owner.js",
+      "originalModuleSha256": "7955a9e17ab18795bb8a0cde24c457015cb35b9d264c32300a578038b5f08478",
+      "removedModuleSha256": "3e64f6d0df70b8450722a898ed837373f8fad9b9b1282b9b95424e3c29496bd6",
+      "assertionsUnchanged": true,
+      "originalInstalledConsumerUnchanged": true,
+      "copyRestoredExactly": true,
+      "evidence": "target/native-recovery-proof-iQelr1/development/final-fence-control.json"
+    }
+  ],
+  "endpoints": {
+    "groups": 31,
+    "declared": 310,
+    "allConfirmedClosed": true
+  },
+  "retainedProof": {
+    "path": "target/native-recovery-proof-iQelr1/index.json",
+    "sha256": "3329a5a594066fcbc7108dad6bf7a938b673b2746df132f8e533b1a58180e912",
+    "sourceFiles": "target/native-recovery-proof-iQelr1/source-files.json"
+  },
+  "implemented": [
+    "Genuine all-native-facade preflight and flags-only common reservation before imports; every public publication alias remains excluded without changing permissions/history/Undo",
+    "Original synchronous Rust document/review admission, native receipts, unknown-own-author checks and actual configured incoming-byte ceiling remain authoritative",
+    "Genuine selected-owner context reserves before input or grants, observes actual outstanding work and serializes complete source/upload reads and native imports",
+    "Fresh grants before and after each native admission refuse recursive publication and preserve admitted partial results; a late cleanup change cannot report success",
+    "Actual owner close retires native clients and waits outstanding context cleanup before releasing selected namespaces"
+  ],
+  "remaining": [
+    "Durable exact before-cut and authenticated accepted-input journal BEFORE mutation, per-client progress, real interrupted cold resume and quiescent uncertain outcomes",
+    "Explicit unbound local-comment adoption preserving originals",
+    "Authenticated final reconciliation and whole-room activation with old-write exclusion",
+    "Sustainable Undo/offline retention and extension/custom-node parity",
+    "All thirteen V1 release gates, including eventual full functional/browser/platform/release qualification"
+  ],
+  "v1Ready": false,
+  "releaseGatesClosed": 0,
+  "publicRootApiChanged": false,
+  "packageVersionsChanged": false,
+  "pushTagPublicationDeploymentPerformed": false
+}

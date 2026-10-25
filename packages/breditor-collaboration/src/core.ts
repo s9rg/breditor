@@ -27,7 +27,15 @@ import {registerCoreReadStamp} from './core_read_stamp.js';
 import type {SharedReviewHistoryPolicy} from "./review_generations.js";
 import {SharedEditorError} from './shared_editor_error.js';
 import {claimSharedRustOwner} from './raw_owner_lifetime.js';
+import type {NativeRecoveryReservation} from './native_recovery/contract.js';
+import {nativeRecoveryFailure} from './native_recovery/policy.js';
+import {nativeRecoveryMembers} from './native_recovery/members.js';
+import {nativeRecoveryFrame,nativeRecoverySource} from './native_recovery/input.js';
 export {SharedEditorError} from './shared_editor_error.js';
+let reserveNativeRecoveryImpl:(input:unknown)=>NativeRecoveryReservation;
+/** SDK-private actual-facade exclusion. This grants no root/store custody,
+ * authenticated source, durable ACK or permission to activate a room. */
+export function reserveNativeRecovery<P extends SharedSelectionPolicy>(cores:readonly SharedRichEditor<P>[]):NativeRecoveryReservation{return reserveNativeRecoveryImpl(cores);}
 interface Pending {frame:string;bytes:number;resolve:(changed:boolean)=>void;reject:(reason:unknown)=>void;cleanup:()=>void}
 /** Explicit typed entry point. Original constructors and durable sessions do not infer this policy. */
 export function createSharedDocumentEditor(raw:SharedRustOwner,options:Omit<SharedEditorOptions<"document-v1">,"selectionEditing">={}):SharedRichEditor<"document-v1">{
@@ -41,6 +49,7 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  #disposedRevisions:{documentRevision:string;reviewRevision:string}|undefined;
  #documentReadStamp:object=Object.freeze({});#reviewReadStamp:object=Object.freeze({});
  #listeners=new Set<(event:SharedPublication<P>)=>void>();#queue:Pending[]=[];#bytes=0;#holds=0;#publishing=false;#draining=false;#retired=false;
+ #nativeRecovery:object|undefined;
  #options:SharedEditorOptions<P>;#maxFrames:number;#maxBytes:number;#fixedHistory:"explicit"|"typing-v1"|undefined;
  readonly #selectionPolicy:SharedSelectionPolicy;
  #fixedRanges:"original"|"general-v1"|undefined;
@@ -53,6 +62,24 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  #searches=new Set<SharedSearchResults>();
  readonly #searchHistory:boolean;
  #segmented=false;
+ static{reserveNativeRecoveryImpl=input=>{
+  let members=nativeRecoveryMembers(input).map(value=>{if(!value||typeof value!=='object'||!(#raw in value))throw nativeRecoveryFailure();return value as SharedRichEditor<SharedSelectionPolicy>;});
+  // Inspect EVERY member before the first flag. No public methods, native calls,
+  // permission callbacks, application getters or await occur inside this barrier.
+  for(const core of members){if(!core.#raw||core.#retired)throw nativeRecoveryFailure('native_recovery_closed');if(core.#nativeRecovery||core.#publishing||core.#draining||core.#holds||core.#queue.length||core.#bytes)throw nativeRecoveryFailure('native_recovery_busy');}
+  const token=Object.freeze({}),chosen=new Set<object>(members);let closed=false,applying=false;
+  const current=()=>{if(closed)throw nativeRecoveryFailure('native_recovery_closed');for(const core of members){if(core.#nativeRecovery!==token||!core.#raw||core.#retired)throw nativeRecoveryFailure('native_recovery_closed');if(core.#holds||core.#queue.length||core.#bytes||core.#draining||core.#publishing)throw nativeRecoveryFailure('native_recovery_busy');}};
+  const check=()=>{if(applying)throw nativeRecoveryFailure('native_recovery_busy');current();};
+  const apply=<T>(core:object,work:()=>T):T=>{check();if(!chosen.has(core))throw nativeRecoveryFailure('native_recovery_member');applying=true;try{const result=work();current();return result;}finally{applying=false;}};
+  const reservation:NativeRecoveryReservation=Object.freeze({check,
+   receiveDocument<Q extends SharedSelectionPolicy>(core:SharedRichEditor<Q>,frame:string){return apply(core,()=>{const input=nativeRecoveryFrame(frame);if(input.bytes>core.#maxBytes)throw new SharedEditorError('remote_queue_full','Pending remote updates exceed their bounded queue');let before='';core.#run('remote',raw=>{before=core.#view;raw.receive_frame(input.value);},undefined,false,token);return before!==core.#view;});},
+   receiveReview<Q extends SharedSelectionPolicy>(core:SharedRichEditor<Q>,frame:string,verified:SharedReviewPolicy){return apply(core,()=>{const value=nativeRecoveryFrame(frame).value,policy=nativeRecoverySource(verified);return core.#run('remote',(raw,o)=>{core.#requireReview();const result=JSON.parse(raw.receive_review!(o,JSON.stringify(policy),value)) as SharedReviewImportOutcome;if(result.kind==='applied')core.#reviewRevision++;return result;},undefined,false,token);});},
+   close(){if(closed)return;if(applying)throw nativeRecoveryFailure('native_recovery_busy');for(const core of members)if(core.#nativeRecovery===token)core.#nativeRecovery=undefined;closed=true;members=[];chosen.clear();},
+  });
+  // All closures and detached inputs exist before the common flag-only commit.
+  for(const core of members)core.#nativeRecovery=token;
+  return reservation;
+ };}
  constructor(raw:SharedRustOwner,...args:P extends "document-v1"?[options:SharedEditorOptions<P>&{selectionEditing:"document-v1"}]:[options?:SharedEditorOptions<P>]){
   const options=(args[0]??{}) as SharedEditorOptions<P>;
   claimSharedRustOwner(raw);this.#raw=raw;
@@ -98,6 +125,7 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
   catch(error){try{this.#observation?.free();}finally{this.#raw=undefined;raw.free();}throw error;}
  }
  #live():SharedRustOwner{if(!this.#raw)throw new SharedEditorError("disposed","The shared editor is disposed");return this.#raw;}
+ #nativeRecoveryAccess(token?:object):void{if(token!==undefined&&this.#nativeRecovery!==token)throw nativeRecoveryFailure('native_recovery_closed');if(this.#nativeRecovery!==undefined&&this.#nativeRecovery!==token)throw nativeRecoveryFailure('native_recovery_busy');}
  #retainedRevisions():{documentRevision:string;reviewRevision:string}{return this.#disposedRevisions??{documentRevision:(JSON.parse(this.#view) as SharedEditorView<P>).revision,reviewRevision:this.#reviewRevision.toString()};}
  #observe(raw:SharedRustOwner):ReturnType<SharedRustOwner["observe"]>{return this.#selectionPolicy==="document-v1"?raw.observe_document!():raw.observe();}
  #check(revision?:string):void{this.#live();if(revision!==undefined&&revision!==this.view().revision)throw new SharedEditorError("stale_observation","The request was prepared from an older shared publication");}
@@ -142,12 +170,14 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  }
  /** New storage family only; freeze base policies without admitting an old autosave adapter. */
  sealSegmentedPolicies(history:"explicit"|"typing-v1",ranges:"original"|"general-v1"):void{
+  this.#nativeRecoveryAccess();
   if(this.#reviewHistory==="segmented-v1")throw new SharedEditorError("review_generation_storage_required","Original paired comments cannot store independent review generations");
   this.#live();if(!this.#segmented||(history!=="explicit"&&history!=="typing-v1")||(this.view().historyGrouping==="typing-v1"?"typing-v1":"explicit")!==history||(this.#fixedHistory!==undefined&&this.#fixedHistory!==history))throw new SharedEditorError("segmented_history_policy","Generation storage must match the native history policy");
   this.sealRangePolicy(ranges);this.#fixedHistory=history;
  }
  /** Explicit new paired family only. This is a policy pin, never a lease or stored-role proof. */
  sealIndependentHistoryPolicies(document:"original"|"segmented-v1",review:SharedReviewHistoryPolicy,history:"explicit"|"typing-v1",ranges:"original"|"general-v1"):void{
+  this.#nativeRecoveryAccess();
   this.#requireReview();if((document!=="original"&&document!=="segmented-v1")||this.segmentedHistoryPolicy()!==(document==="segmented-v1"?document:null)||this.reviewHistoryPolicy()!==review||(history!=="explicit"&&history!=="typing-v1")||(this.view().historyGrouping==="typing-v1"?"typing-v1":"explicit")!==history||(this.#fixedHistory!==undefined&&this.#fixedHistory!==history))throw new SharedEditorError("independent_history_policy","Both explicit native history families and base policies must match before durable adoption");
   this.sealRangePolicy(ranges);this.#fixedHistory=history;
  }
@@ -169,7 +199,8 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  #report(error:unknown):void{try{this.#options.onError?.(error);}catch{/* A callback cannot rewind committed content. */}}
  #notify(source:"local"|"remote"):void{for(const listener of [...this.#listeners]){if(!this.#raw)break;try{listener({source,view:this.view()});}catch(error){this.#report(error);}}this.#notifyReview();}
  #notifyReview():void{if(!this.#raw||!this.#reviewEnabled||!this.#reviewListeners.size)return;for(const listener of [...this.#reviewListeners]){if(!this.#raw)break;try{listener(this.reviewSnapshot());}catch(error){this.#report(error);}}}
- #run<T>(source:"local"|"remote",work:(raw:SharedRustOwner,observation:unknown)=>T,revision?:string,write=true):T{
+ #run<T>(source:"local"|"remote",work:(raw:SharedRustOwner,observation:unknown)=>T,revision?:string,write=true,recovery?:object):T{
+  this.#nativeRecoveryAccess(recovery);
   this.#check(revision);if(this.#retired)throw new SharedEditorError("retired","The shared writer is retired for durable closure");if(this.#publishing)throw new SharedEditorError("reentrant_publication","Publication callbacks cannot publish reentrantly");
   if(write&&this.view().readOnly===true)throw new SharedEditorError("read_only","The shared editor is read-only");
   const raw=this.#live(),before=this.#view,reviewBefore=this.#reviewRevision;this.#publishing=true;
@@ -373,7 +404,7 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  /** Explicit one-way native admission. Durable hosts must bind the matching save family first. */
  enableGeneralRanges(revision?:string):boolean{return this.#run("local",(_raw,o)=>{if(this.#fixedRanges==="original")throw new SharedEditorError("range_policy","This durable session's range policy is immutable");return this.#generalOwner().enable_general_ranges!(o);},revision,false);}
  /** Durable storage binds this independently from natural/explicit history. */
- sealRangePolicy(policy:"original"|"general-v1"):void{this.#live();if((policy!=="original"&&policy!=="general-v1")||(this.#fixedRanges!==undefined&&this.#fixedRanges!==policy)||(this.view().rangeEditing??"original")!==policy)throw new SharedEditorError("range_policy","Range policy does not match the native owner");this.#fixedRanges=policy;}
+ sealRangePolicy(policy:"original"|"general-v1"):void{this.#nativeRecoveryAccess();this.#live();if((policy!=="original"&&policy!=="general-v1")||(this.#fixedRanges!==undefined&&this.#fixedRanges!==policy)||(this.view().rangeEditing??"original")!==policy)throw new SharedEditorError("range_policy","Range policy does not match the native owner");this.#fixedRanges=policy;}
  replaceGeneralRangeText(selection:Extract<RichSelection,{kind:"text"}>,runs:readonly {text:string;formatsJson:string}[],prefix:string,revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#generalOwner().replace_general_range_text!(o,JSON.stringify({selection,runs,prefix})),revision);}
  replaceGeneralRangePlainText(selection:Extract<RichSelection,{kind:"text"}>,text:string,prefix:string,revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#generalOwner().replace_general_range_plain_text!(o,JSON.stringify({selection,text,prefix})),revision);}
  replaceGeneralRangeTypingText(selection:Extract<RichSelection,{kind:"text"}>,text:string,prefix:string,clockMs:string,revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#generalOwner().replace_general_range_typing_text!(o,JSON.stringify({selection,text,prefix,clockMs})),revision);}
@@ -401,9 +432,9 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  #typingOwner():SharedRustOwner{if(!this.supportsTypingHistory())throw new SharedEditorError("typing_history_unavailable","Use a matching native shared typing-history owner");return this.#live();}
  enableTypingHistory(revision?:string):boolean{return this.#run("local",(_raw,o)=>{if(this.#fixedHistory==="explicit")throw new SharedEditorError("history_policy","This durable session's history policy is immutable");return this.#typingOwner().enable_typing_history!(o);},revision,false);}
  /** An owning durable session seals its selected policy after native admission, not its content. */
- sealHistoryPolicy(policy:"explicit"|"typing-v1"):void{this.#live();if(this.#segmented)throw new SharedEditorError("segmented_storage_required","Use generation-aware storage");if(this.#reviewEnabled)throw new SharedEditorError("review_persistence_unavailable","Review requires separately declared paired durable storage");if((policy!=="explicit"&&policy!=="typing-v1")||(this.#fixedHistory!==undefined&&this.#fixedHistory!==policy)||(this.view().historyGrouping==="typing-v1"?"typing-v1":"explicit")!==policy)throw new SharedEditorError("history_policy","History policy does not match the native owner");this.#fixedHistory=policy;}
+ sealHistoryPolicy(policy:"explicit"|"typing-v1"):void{this.#nativeRecoveryAccess();this.#live();if(this.#segmented)throw new SharedEditorError("segmented_storage_required","Use generation-aware storage");if(this.#reviewEnabled)throw new SharedEditorError("review_persistence_unavailable","Review requires separately declared paired durable storage");if((policy!=="explicit"&&policy!=="typing-v1")||(this.#fixedHistory!==undefined&&this.#fixedHistory!==policy)||(this.view().historyGrouping==="typing-v1"?"typing-v1":"explicit")!==policy)throw new SharedEditorError("history_policy","History policy does not match the native owner");this.#fixedHistory=policy;}
  /** Explicit paired-record lifecycle only. The old document-only sealing path continues to refuse review. */
- sealReviewPolicies(history:"explicit"|"typing-v1",ranges:"original"|"general-v1"):void{this.#requireReview();if(this.#reviewHistory==="segmented-v1")throw new SharedEditorError("review_generation_storage_required","Use explicitly independent paired storage");if(this.#segmented)throw new SharedEditorError("segmented_storage_required","Use generation-aware paired storage");if((history!=="explicit"&&history!=="typing-v1")||(this.#fixedHistory!==undefined&&this.#fixedHistory!==history)||(this.view().historyGrouping==="typing-v1"?"typing-v1":"explicit")!==history)throw new SharedEditorError("history_policy","Review history policy does not match the native owner");this.sealRangePolicy(ranges);this.#fixedHistory=history;}
+ sealReviewPolicies(history:"explicit"|"typing-v1",ranges:"original"|"general-v1"):void{this.#nativeRecoveryAccess();this.#requireReview();if(this.#reviewHistory==="segmented-v1")throw new SharedEditorError("review_generation_storage_required","Use explicitly independent paired storage");if(this.#segmented)throw new SharedEditorError("segmented_storage_required","Use generation-aware paired storage");if((history!=="explicit"&&history!=="typing-v1")||(this.#fixedHistory!==undefined&&this.#fixedHistory!==history)||(this.view().historyGrouping==="typing-v1"?"typing-v1":"explicit")!==history)throw new SharedEditorError("history_policy","Review history policy does not match the native owner");this.sealRangePolicy(ranges);this.#fixedHistory=history;}
  closeTypingGroup(revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#typingOwner().close_typing_group!(o),revision,false);}
  /** Named user input only; programmatic type/paste/composition remain explicit. */
  typeUser(text:string,clockMs:string,revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#typingOwner().insert_typing_text!(o,JSON.stringify({text,clockMs})),revision);}
@@ -428,7 +459,7 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  writerClock(writer:string):SharedWriterClock{const raw=this.#live();if(!raw.writer_clock)throw new SharedEditorError("writer_transport_unavailable","Use a Rust owner with single-writer transport support");if(typeof writer!=="string"||writer.length>20)throw new SharedEditorError("writer_identity","Expected a bounded decimal writer identity");return JSON.parse(raw.writer_clock(writer)) as SharedWriterClock;}
  subscribe(listener:(event:SharedPublication<P>)=>void):()=>void{this.#live();this.#listeners.add(listener);return()=>this.#listeners.delete(listener);}
  /** Hold remote publication across input/composition/callback queues. Release is idempotent. */
- holdRemotes():()=>void{this.#live();if(this.#retired)throw new SharedEditorError("retired","The shared writer is retired for durable closure");if(this.#holds>=128)throw new SharedEditorError("hold_limit","Too many nested remote holds");this.#holds++;let held=true;return()=>{if(!held)return;held=false;this.#holds--;this.#flush();};}
+ holdRemotes():()=>void{this.#nativeRecoveryAccess();this.#live();if(this.#retired)throw new SharedEditorError("retired","The shared writer is retired for durable closure");if(this.#holds>=128)throw new SharedEditorError("hold_limit","Too many nested remote holds");this.#holds++;let held=true;return()=>{if(!held)return;held=false;this.#holds--;this.#flush();};}
  dispatch(request:SharedDispatch,revision?:string):boolean{return this.#run("local",(raw,o)=>raw.dispatch(o,JSON.stringify(request)),revision);}
  select(selection:RichSelection|null,revision?:string):boolean{return this.#run("local",(raw,o)=>raw.set_selection(o,JSON.stringify(selection)),revision,false);}
  setPendingFormats(formats:readonly FormatLiteral[]|null,revision?:string):boolean{return this.#run("local",(raw,o)=>raw.set_pending_formats(o,JSON.stringify(formats)),revision);}
@@ -453,7 +484,7 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  redo(revision?:string):boolean{return this.#run("local",(raw,o)=>raw.redo_observed(o),revision);}
  /** Resolves only after Rust admission. A hold queues bytes, not a guessed document mutation. */
  receiveFrame(frame:string,options:SharedRemoteOptions={}):Promise<boolean>{
-  this.#live();if(this.#retired)return Promise.reject(new SharedEditorError("retired","The shared writer is retired before remote admission"));if(typeof frame!=="string")return Promise.reject(new SharedEditorError("remote_type","A remote frame must be an exact JSON string"));const bytes=new TextEncoder().encode(frame).byteLength;
+  this.#live();if(this.#retired)return Promise.reject(new SharedEditorError("retired","The shared writer is retired before remote admission"));if(this.#nativeRecovery)return Promise.reject(nativeRecoveryFailure('native_recovery_busy'));if(typeof frame!=="string")return Promise.reject(new SharedEditorError("remote_type","A remote frame must be an exact JSON string"));const bytes=new TextEncoder().encode(frame).byteLength;
   if(options.signal?.aborted)return Promise.reject(new SharedEditorError("remote_cancelled","Queued remote publication was cancelled"));
   if(bytes>5*1024*1024||this.#queue.length>=this.#maxFrames||this.#bytes+bytes>this.#maxBytes)return Promise.reject(new SharedEditorError("remote_queue_full","Pending remote updates exceed their bounded queue"));
   return new Promise((resolve,reject)=>{
@@ -464,7 +495,7 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  }
  pendingRemote():Readonly<{frames:number;bytes:number}>{this.#live();return {frames:this.#queue.length,bytes:this.#bytes};}
  #flush():void{
-  if(!this.#raw||this.#retired||this.#holds||this.#publishing||this.#draining)return;this.#draining=true;
+  if(!this.#raw||this.#retired||this.#nativeRecovery||this.#holds||this.#publishing||this.#draining)return;this.#draining=true;
    try{while(this.#raw&&!this.#retired&&!this.#holds&&this.#queue.length){const next=this.#queue.shift()!;this.#bytes-=next.bytes;next.cleanup();try{const before=this.#view;this.#run("remote",raw=>raw.receive_frame(next.frame),undefined,false);next.resolve(before!==this.#view);}catch(error){next.reject(error);this.#report(error);}}}
   finally{this.#draining=false;}
  }

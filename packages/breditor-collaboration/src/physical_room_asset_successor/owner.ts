@@ -26,7 +26,13 @@ import type {PhysicalRecordCutVisit} from '../physical_room_operation_v3/record_
 import type {SelectedRoomReconciliationRead,SelectedNativeCutWitness} from '../selected_room_reconciliation/contract.js';
 import {frozen} from '../room_participant_inventory/policy.js';
 import {OperationalReadCancellation} from '../operation_read/cancellation.js';
+import {reserveNativeRecovery} from '../core.js';
+import type {NativeRecoveryReservation} from '../native_recovery/contract.js';
+import {nativeRecoveryFailure} from '../native_recovery/policy.js';
+import type {SelectedNativeRecoveryScope} from '../selected_native_recovery/contract.js';
+import {waitNativePendingWork} from '../native_pending_work.js';
 const visitReconciliation=RetainedPhysicalRoot.prototype.visitReconciliationRecordCut,catalogMetadata=RetainedPhysicalRoot.prototype.catalogMetadata,closeFinalCancellation=OperationalReadCancellation.prototype.close;
+const rootClients=Object.getOwnPropertyDescriptor(RetainedPhysicalRoot.prototype,'clients')!.get!,visitRecordCut=RetainedPhysicalRoot.prototype.visitRecordCut;
 const methods={check:RichAssetStore.prototype.checkOpen,acquire:RichAssetStore.prototype.acquireRecoveryCustody,capture:RichAssetStore.prototype.captureBackup,close:RichAssetStore.prototype.close,held:RichAssetStoreCustody.prototype.check,release:RichAssetStoreCustody.prototype.release,finish:RichAssetStoreCustody.prototype.close};
 const base={read:RichAssetReconciledBase.read,verify:RichAssetReconciledBase.prototype.verifySuccessor,dispose:RichAssetReconciledBase.prototype.dispose};
 const key=Object.freeze({});
@@ -38,6 +44,10 @@ export interface SelectedAssetCurrentCut{
 export interface PreparedSelectedAssetOwner{readonly value:RetainedSelectedAssetOwner;check():void;activate():void;abandon():Promise<void>}
 let prepare:(root:RetainedPhysicalRoot,record:RoomAssetAdoptionRecord,basis:SelectedAssetBasis,approval:RoomAssetApprovalFile,authority:()=>void)=>PreparedSelectedAssetOwner;
 export const prepareSelectedAssetOwner=(root:RetainedPhysicalRoot,record:RoomAssetAdoptionRecord,basis:SelectedAssetBasis,approval:RoomAssetApprovalFile,authority:()=>void)=>prepare(root,record,basis,approval,authority);
+let withNativeRecovery:<P extends SharedSelectionPolicy,T>(owner:RetainedSelectedAssetOwner,input:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:SelectedNativeRecoveryScope)=>Promise<T>)=>Promise<T>;
+/** Trusted coordinator composition only. Data, public overrides and copied
+ * methods cannot supply native clients, root custody or a selected store set. */
+export const withSelectedNativeRecovery=<P extends SharedSelectionPolicy,T>(owner:RetainedSelectedAssetOwner,input:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:SelectedNativeRecoveryScope)=>Promise<T>):Promise<T>=>withNativeRecovery(owner,input,visit);
 export class RetainedSelectedAssetOwner{
  readonly #root;readonly #record;readonly #basis;readonly #approval;readonly #authority;
  readonly #ports=new Map<string,ReturnType<typeof selectedAssetPort>>();
@@ -45,6 +55,7 @@ export class RetainedSelectedAssetOwner{
  readonly #closingListeners=new Set<()=>void>();
  #uploadBaseline:ReadonlyMap<string,Blob>|undefined;
  #active=false;#closing=false;#closed=false;#busy=false;#checking=false;#running:Promise<unknown>|undefined;#cleanup:Promise<void>|undefined;#cleanupMode:boolean|undefined;
+ #nativeRecoveryToken:object|undefined;
  private constructor(token:object,root:RetainedPhysicalRoot,record:RoomAssetAdoptionRecord,basis:SelectedAssetBasis,approval:RoomAssetApprovalFile,authority:()=>void){
   if(token!==key)throw fail('asset_adoption_policy');this.#root=root;this.#record=record;this.#basis=basis;this.#approval=approval;this.#authority=participantAuthority(authority);this.#uploadBaseline=basis.currentUploads?new Map(basis.currentUploads):undefined;
   for(const row of record.participants){const target=basis.resources.targets.get(row.id);if(!target)throw fail('asset_adoption_missing');this.#ports.set(row.id,selectedAssetPort(target.store,this.#assetPermission));}Object.freeze(this);
@@ -73,10 +84,40 @@ export class RetainedSelectedAssetOwner{
   * cut. Missing peers or unbound comments stay pending; this grants no edits,
   * connection, acknowledgement, credential, adoption or room activation. */
  readReconciliation<P extends SharedSelectionPolicy>(host:SharedPhysicalRoomRecoveryHost,input:PhysicalOperationV3HistoryReadOptions<P>):Promise<SelectedRoomReconciliationRead>{
-  try{const provider=selectedRoomProvider(host,catalogMetadata.call(this.#root),this.#record);return this.#visit(input,async(cut,scope,check,native)=>{if(!native)throw fail('asset_adoption_policy');const result=await provider(cut,scope,check);check();native.finalCheck();return frozen(structuredClone({format:'breditor/selected-room-reconciliation-read' as const,formatVersion:1 as const,scope:'held-complete-native-source-and-whole-uploads-at-authenticated-cut' as const,kind:native.data.kind==='covered'&&result.kind==='checked'?'checked' as const:'pending' as const,native:native.data,provider:result}));},true,true);}catch(error){return Promise.reject(error);}
+  try{return this.#reconciliation(host,input);}catch(error){return Promise.reject(error);}
  }
- #visit<P extends SharedSelectionPolicy,T>(input:PhysicalOperationV3HistoryReadOptions<P>,visit:(cut:SelectedAssetCurrentCut,scope:PhysicalRecordCutVisit,check:()=>void,native?:SelectedNativeCutWitness)=>Promise<T>,verifyUploads:boolean,inspectNative?:true):Promise<T>{
-  let chosen:PhysicalOperationV3HistoryReadOptions<P>;try{chosen=snapshotPhysicalHistoryReadOptions(input);this.#current();if(this.#busy)return Promise.reject(fail('asset_adoption_busy'));}catch(error){return Promise.reject(error);}this.#busy=true;
+ #reconciliation<P extends SharedSelectionPolicy>(host:SharedPhysicalRoomRecoveryHost,input:PhysicalOperationV3HistoryReadOptions<P>,recovery?:object):Promise<SelectedRoomReconciliationRead>{
+  try{const provider=selectedRoomProvider(host,catalogMetadata.call(this.#root),this.#record);return this.#visit(input,async(cut,scope,check,native)=>{if(!native)throw fail('asset_adoption_policy');const result=await provider(cut,scope,check);check();native.finalCheck();return frozen(structuredClone({format:'breditor/selected-room-reconciliation-read' as const,formatVersion:1 as const,scope:'held-complete-native-source-and-whole-uploads-at-authenticated-cut' as const,kind:native.data.kind==='covered'&&result.kind==='checked'?'checked' as const:'pending' as const,native:native.data,provider:result}));},true,true,recovery);}catch(error){return Promise.reject(error);}
+ }
+ #recover<P extends SharedSelectionPolicy,T>(input:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:SelectedNativeRecoveryScope)=>Promise<T>):Promise<T>{
+  try{this.#current();if(this.#busy||this.#checking)throw fail('asset_adoption_busy');if(typeof visit!=='function')throw fail('asset_adoption_policy');}catch(error){return Promise.reject(error);}
+  this.#busy=true;const token=Object.freeze({});this.#nativeRecoveryToken=token;let finished!:()=>void;this.#running=new Promise<void>(resolve=>{finished=resolve;});
+  let native:NativeRecoveryReservation|undefined,chosen:PhysicalOperationV3HistoryReadOptions<P>,clients:SelectedNativeRecoveryScope['clients'],finalCancellation:OperationalReadCancellation|undefined;
+  const release=()=>{native?.close();this.#nativeRecoveryToken=undefined;this.#running=undefined;this.#busy=false;finished();};
+  try{clients=Object.freeze((rootClients.call(this.#root) as SelectedNativeRecoveryScope['clients']).map(row=>Object.freeze({...row})));native=reserveNativeRecovery(clients.map(row=>row.core));chosen=snapshotPhysicalHistoryReadOptions(input);this.#current();native.check();}catch(error){release();return Promise.reject(error);}
+  const work=(async()=>{const controller=new AbortController(),cancel=()=>controller.abort();let caller:PhysicalOperationV3Cancellation|undefined,observation:PhysicalOperationV3Cancellation|undefined,unwatch=()=>{},active=true,phase=false,authorizing=false,reading:Promise<unknown>|undefined;
+   const check=()=>{if(!active)throw nativeRecoveryFailure('native_recovery_closed');this.#current();caller!.check();observation!.check();native!.check();this.#current();},authorize=()=>{check();if(authorizing)throw nativeRecoveryFailure('native_recovery_busy');authorizing=true;try{chosen.checkAuthority();check();}finally{authorizing=false;}};
+   const readingPhase=<R>(read:()=>Promise<R>):Promise<R>=>{try{check();if(phase||authorizing)throw nativeRecoveryFailure('native_recovery_busy');}catch(error){return Promise.reject(error);}phase=true;let task:Promise<R>;try{task=read();}catch(error){task=Promise.reject(error);}const result=task.then(value=>{check();return value;}).finally(()=>{if(reading===result){reading=undefined;phase=false;}});reading=result;return result;};
+   const importCheck=()=>{check();if(phase||authorizing)throw nativeRecoveryFailure('native_recovery_busy');authorize();};
+   this.#closingListeners.add(cancel);
+   try{finalCancellation=new OperationalReadCancellation(chosen.signal);caller=new PhysicalOperationV3Cancellation(chosen.signal);observation=new PhysicalOperationV3Cancellation(controller.signal);unwatch=caller.watch(cancel);authorize();await this.#readCleanup.drain();check();
+    await waitSelectedAssetWork(Promise.all([...this.#ports.values()].map(port=>port.settle())),check,notify=>observation!.watch(notify));
+    await Promise.all(clients.map(row=>waitNativePendingWork(row.core,{check,watch:notify=>observation!.watch(notify)})));authorize();
+    const readOptions={...chosen,signal:controller.signal,checkAuthority:authorize},imports:SelectedNativeRecoveryScope['native']=Object.freeze({check:importCheck,
+     receiveDocument<Q extends SharedSelectionPolicy>(core:import('../core.js').SharedRichEditor<Q>,frame:string){importCheck();const value=native!.receiveDocument(core,frame);authorize();return value;},
+     receiveReview<Q extends SharedSelectionPolicy>(core:import('../core.js').SharedRichEditor<Q>,frame:string,verified:import('../review_types.js').SharedReviewPolicy){importCheck();const value=native!.receiveReview(core,frame,verified);authorize();return value;},
+    }),scope:SelectedNativeRecoveryScope=Object.freeze({clients,native:imports,signal:controller.signal,check,capture:()=>readingPhase(()=>this.#visit(readOptions,async cut=>cut,false,undefined,token)),readReconciliation:(host:SharedPhysicalRoomRecoveryHost)=>readingPhase(()=>this.#reconciliation(host,readOptions,token))});
+    const value=await visit(scope);if(reading){controller.abort();await reading.catch(()=>{});throw nativeRecoveryFailure('native_recovery_busy');}authorize();return value;
+   }finally{controller.abort();try{await reading?.catch(()=>{});}finally{active=false;this.#closingListeners.delete(cancel);unwatch();observation?.close();caller?.close();}}
+  })();
+  // Cleanup can yield after the visit's last grant. Keep an independent caller
+  // observation and every native/owner barrier until this final synchronous
+  // handoff. No promise continuation may split the fence from flag release.
+  const finish=()=>{if(finalCancellation)closeFinalCancellation.call(finalCancellation);release();};
+  return work.then(value=>{try{this.#current();finalCancellation!.check(()=>fail('asset_adoption_aborted'));native!.check();chosen.checkAuthority();this.#current();native!.check();finalCancellation!.check(()=>fail('asset_adoption_aborted'));return value;}finally{finish();}},error=>{finish();throw error;});
+ }
+ #visit<P extends SharedSelectionPolicy,T>(input:PhysicalOperationV3HistoryReadOptions<P>,visit:(cut:SelectedAssetCurrentCut,scope:PhysicalRecordCutVisit,check:()=>void,native?:SelectedNativeCutWitness)=>Promise<T>,verifyUploads:boolean,inspectNative?:true,recovery?:object):Promise<T>{
+  const borrowed=recovery!==undefined;let chosen:PhysicalOperationV3HistoryReadOptions<P>;try{chosen=snapshotPhysicalHistoryReadOptions(input);this.#current();if(borrowed&&recovery!==this.#nativeRecoveryToken||this.#busy&&(!borrowed||recovery!==this.#nativeRecoveryToken))return Promise.reject(fail('asset_adoption_busy'));}catch(error){return Promise.reject(error);}this.#busy=true;
   let finalNative:SelectedNativeCutWitness|undefined,finalCancellation:OperationalReadCancellation|undefined;
   const work=(async()=>{const held:RichAssetStoreCustody[]=[],tickets:ReturnType<RecoveryCleanupScope['retain']>[]=[],controller=new AbortController(),caller=new PhysicalOperationV3Cancellation(chosen.signal),observation=new PhysicalOperationV3Cancellation(controller.signal),cancel=()=>controller.abort(),check=()=>{this.#current();observation.check();caller.check();};let unwatch=()=>{},complete=false;this.#closingListeners.add(cancel);
    try{
@@ -97,9 +138,9 @@ export class RetainedSelectedAssetOwner{
      // Re-admit every actual selected queue, not just old receipts or aliases.
      if(verifyUploads)for(const row of cut.uploads){const target=this.#basis.resources.targets.get(row.id)!,actual=await methods.capture.call(target.store,()=>{current();return undefined;},chosen.signal?{signal:chosen.signal}:{});current();if(actual.backup.size!==row.file.size||await scope.assets.digest(actual.backup)!==row.sha256)throw fail('asset_adoption_diverged');}
      await this.#retained(current,chosen.signal);await scope.verify();current();return{cut,value};
-    };const result=await(inspectNative?visitReconciliation.call(this.#root,readOptions,visitor):this.#root.visitRecordCut(readOptions,visitor));check();complete=true;return result as {cut:SelectedAssetCurrentCut;value:T};
+    };const result=await(inspectNative?visitReconciliation.call(this.#root,readOptions,visitor):borrowed?visitRecordCut.call(this.#root,readOptions,visitor):this.#root.visitRecordCut(readOptions,visitor));check();complete=true;return result as {cut:SelectedAssetCurrentCut;value:T};
    }finally{try{const released=await Promise.allSettled(tickets.reverse().map(ticket=>ticket.rollback()));if(released.some(row=>row.status==='rejected'))throw fail();if(complete)check();}finally{this.#closingListeners.delete(cancel);unwatch();observation.close();caller.close();}}
-  })();this.#running=work;return work.then(result=>{const baseline=new Map(result.cut.uploads.map(row=>[row.id,row.file]));if(inspectNative){this.#current();finalCancellation!.check(()=>fail('asset_adoption_aborted'));chosen.checkAuthority();this.#current();finalNative!.finalCheck();finalCancellation!.check(()=>fail('asset_adoption_aborted'));}this.#uploadBaseline=baseline;return result.value;}).finally(()=>{if(finalCancellation)closeFinalCancellation.call(finalCancellation);this.#running=undefined;this.#busy=false;});
+  })();if(!borrowed)this.#running=work;return work.then(result=>{const baseline=new Map(result.cut.uploads.map(row=>[row.id,row.file]));if(inspectNative){this.#current();finalCancellation!.check(()=>fail('asset_adoption_aborted'));chosen.checkAuthority();this.#current();finalNative!.finalCheck();finalCancellation!.check(()=>fail('asset_adoption_aborted'));}this.#uploadBaseline=baseline;return result.value;}).finally(()=>{if(finalCancellation)closeFinalCancellation.call(finalCancellation);if(!borrowed){this.#running=undefined;this.#busy=false;}});
  }
  /** Native retirement happens synchronously. Actual asset jobs are observed
   * and settle before any selected namespace lease is released. No bytes reset. */
@@ -116,5 +157,5 @@ export class RetainedSelectedAssetOwner{
  }
  static{prepare=(root,record,basis,approval,authority)=>{const owner=new RetainedSelectedAssetOwner(key,root,record,basis,approval,authority);let abandoned=false;
   return Object.freeze({value:owner,check(){if(abandoned||owner.#active)throw fail('asset_adoption_closed');basis.current();checkRecoveryLeasesHeld([basis.resources.lease!,...basis.resources.targetLeases.values()]);for(const target of basis.resources.targets.values()){methods.check.call(target.store);methods.held.call(target.custody);}},activate(){owner.#active=true;for(const target of basis.resources.targets.values())methods.release.call(target.custody);},async abandon(){if(owner.#active)return;abandoned=true;}});
- };}
+ };withNativeRecovery=(owner,input,visit)=>{if(!owner||typeof owner!=='object'||!(#root in owner))return Promise.reject(fail('asset_adoption_policy'));return owner.#recover(input,visit);};}
 }
