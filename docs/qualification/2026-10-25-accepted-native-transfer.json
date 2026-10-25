@@ -1,0 +1,175 @@
+{
+  "format": "breditor/accepted-native-transfer-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-25T09:53:07.595Z",
+  "qualification": "selected-normal-functional-increment-not-v1-release",
+  "workingTreeSourceAtVerification": {
+    "commit": "9c0d2d1c62b127aa81f599877eb183411c960c7c",
+    "dirty": true,
+    "sha256": "2ec186e2cf4dc5f4ae18c62a23da316b6b3686d49492f775a2c9e9e4e26ccd2c",
+    "files": 6481,
+    "bytes": 50659673
+  },
+  "qualificationMetadataAddedAfterRun": true,
+  "postVerificationSourceAdditions": [
+    "docs/qualification/2026-10-25-accepted-native-transfer.json"
+  ],
+  "normal": {
+    "manifest": "target/v1-candidate-runs/run-bY2F1h/result.json",
+    "sha256": "9382a23f901516cf6180a608195de076fb08e1e1f282a763cf975fa9bdbd2c7f",
+    "passedStages": 10,
+    "stages": [
+      {
+        "id": "candidate-runner-contracts",
+        "status": "passed"
+      },
+      {
+        "id": "rich-browser-build",
+        "status": "passed"
+      },
+      {
+        "id": "collaboration-build",
+        "status": "passed"
+      },
+      {
+        "id": "native-complete-cohort",
+        "status": "passed"
+      },
+      {
+        "id": "native-complete-image-cohort",
+        "status": "passed"
+      },
+      {
+        "id": "accepted-native-contracts",
+        "status": "passed"
+      },
+      {
+        "id": "accepted-native-type-fence",
+        "status": "passed"
+      },
+      {
+        "id": "accepted-native",
+        "status": "passed"
+      },
+      {
+        "id": "installed-accepted-native",
+        "status": "passed"
+      },
+      {
+        "id": "readiness-inventory",
+        "status": "passed"
+      }
+    ]
+  },
+  "contracts": {
+    "scope": "Focused additive increment; unchanged 1985-body cumulative reconciliation stages retained and not rerun in this increment",
+    "priorFocusedBodies": 78,
+    "additionalBodies": 16,
+    "source": {
+      "passed": 94,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "offlineInstalled": {
+      "passed": 94,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "actualProductionBundle": {
+      "passed": 94,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "strictConsumerFixtures": 25,
+    "productionModules": 707,
+    "productionBundleSha256": "d81bd56fe8cd8bc0c4aeaf57a46e23afd1169e1d34525669fd0a8ab25a3c2885",
+    "workspaceLinks": false,
+    "lockedRegistryArtifacts": 45
+  },
+  "native": {
+    "releaseTestsAndDoctests": {
+      "passed": 411,
+      "failed": 0,
+      "ignored": 0,
+      "profile": "release",
+      "finalFixedSource": true
+    },
+    "finalTargetedTransferTests": {
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0
+    },
+    "serverAndNoServerStrictLintPassed": true,
+    "freshFilesVerified": 100,
+    "profileTransportPairs": 10,
+    "registeredWritersPerRoom": 7,
+    "reviewActorsPerRoom": 7,
+    "protectedStreamsPerRoom": 14,
+    "normalWasmSha256": "946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0",
+    "relayRustChanged": true,
+    "sharedRustOrWasmChanged": false,
+    "preliminaryDebugRun": "Interrupted after 246 completed bodies, not counted as a passing suite; the complete final-source release-profile suite passed independently"
+  },
+  "requestReservationControl": {
+    "actualExits": [
+      0,
+      1,
+      0
+    ],
+    "resultCounts": [
+      {
+        "passed": 6,
+        "failed": 0
+      },
+      {
+        "passed": 5,
+        "failed": 1
+      },
+      {
+        "passed": 6,
+        "failed": 0
+      }
+    ],
+    "originalModuleSha256": "10c92a62da1903e3ae3775279143e980868f75a15c6cd55f91be930de0c91c10",
+    "removedReservationModuleSha256": "75e308da6ce332f0f2692ae0d4fbdfd6984d3de5cc5618a74dcec4e6cb01d22a",
+    "assertionsUnchanged": true,
+    "originalInstalledConsumerUnchanged": true,
+    "copiedModuleRestoredExactly": true,
+    "scope": "Isolated offline installed copy. Only the accepted request snapshot is moved before the actual request reservation; unchanged re-entry assertion reproduces the failure."
+  },
+  "endpoints": {
+    "ownedControlGroups": 6,
+    "declared": 60,
+    "allConfirmedClosed": true,
+    "evidence": "target/accepted-native-proof-cZt08B/endpoints.json"
+  },
+  "retainedProof": {
+    "path": "target/accepted-native-proof-cZt08B/index.json",
+    "sha256": "d0f7c376707e36004b337dbdb638dfafc77999559c530508395e1646df2e65d7",
+    "sourceFiles": "target/accepted-native-proof-cZt08B/source-files.json"
+  },
+  "implemented": [
+    "New opt-in exact-selection and request-hash-bound native accepted document and ordered review payload route under actual native/asset custody, with final provider/native rechecks",
+    "Original authenticated review source policies and receipts, explicit include/omit and absent/start/after choices, original frame limits and a separate bounded response envelope",
+    "Actual native imports fill all accepted foreign author gaps across seven supported client families and preserve longer own offline suffixes, document/comment Undo and current readonly policies",
+    "Unbound local comment lanes remain unchanged, and native unknown-own-writer suffix refusal is preserved",
+    "Input snapshots reserve the actual host before proxy re-entry, reject accessors without invocation and release the request on malformed input",
+    "Closed Rust tagged empty-struct review choices reject unknown fields; incomplete accepted-read bodies release actual native history custody when their controller drops"
+  ],
+  "preserved": [
+    "Original control and asset request/response meanings and limits, all original protocol defaults and both transport digest families",
+    "Native Undo/Redo, local offline suffixes, complete retained source/packet/outbox records, original comment lanes and whole uploads",
+    "No package version, push, tag, publication, deployment or release approval"
+  ],
+  "remaining": [
+    "Durable whole-selected-cohort actuation with genuine root/store ownership, exclusion of all local aliases, exact before-cut and authenticated input retention, resumable per-client progress and final full reconciliation",
+    "Explicit adoption of unbound local comment lanes while retaining their original histories and independent fresh permissions",
+    "Authenticated whole-room activation under old-write exclusion and a durable final-cut/serving-epoch decision",
+    "Sustainable native Undo/offline retention and remaining extension/custom-node feature parity",
+    "All thirteen V1 release gates, including deferred platform and release qualification"
+  ],
+  "scope": "Authenticated data transfer plus explicit native application through existing APIs in functional tests. Not a durable automatic importer, comment adoption, an ACK of offline work, an editing grant, activation authority or full V1/parity certification. Controlled browser storage/presentation does not certify physical durability or browser behavior."
+}

@@ -1,4 +1,5 @@
 //! Opt-in separately authenticated read-only operator checks, never service activation.
+mod accepted_native;
 mod asset_requirements;
 mod identity;
 mod lease;

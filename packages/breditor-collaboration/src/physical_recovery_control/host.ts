@@ -9,15 +9,18 @@ import {MAX_PHYSICAL_RECOVERY_CONTROL_BYTES} from './policy.js';
 import {MAX_PHYSICAL_RECOVERY_ASSET_BYTES,type SharedPhysicalRecoveryAssetRequirements,type SharedPhysicalRecoveryAssetRead} from './asset_contract.js';
 import {preparePhysicalAssetRequest,physicalAssetEndpoint} from './asset_requirements.js';
 import {readPhysicalAssetReceipt} from './asset_response.js';
+import {MAX_PHYSICAL_RECOVERY_ACCEPTED_BYTES,type SharedPhysicalRecoveryAcceptedRequest,type SharedPhysicalRecoveryAcceptedRead} from './accepted_contract.js';
+import {physicalAcceptedChoices,preparePhysicalAcceptedRequest,physicalAcceptedEndpoint} from './accepted_request.js';
+import {readPhysicalAcceptedNative} from './accepted_response.js';
 const key=Object.freeze({});
 interface State {readonly endpoint:string;readonly expected:SharedPhysicalRecoveryControlSelection;readonly principal:string;readonly getToken:SharedPhysicalRecoveryHostOptions['getToken'];readonly authority:()=>void;readonly signal:AbortSignal|undefined;readonly milliseconds:number;closed:boolean;active:AbortController|undefined}
-let port:(host:SharedPhysicalRoomRecoveryHost)=>Readonly<{selection:SharedPhysicalRecoveryControlSelection;check:(signal?:AbortSignal)=>Promise<void>;checkAssets:(input:SharedPhysicalRecoveryAssetRequirements,signal?:AbortSignal)=>Promise<SharedPhysicalRecoveryAssetRead>}>;
+let port:(host:SharedPhysicalRoomRecoveryHost)=>Readonly<{selection:SharedPhysicalRecoveryControlSelection;check:(signal?:AbortSignal)=>Promise<void>;checkAssets:(input:SharedPhysicalRecoveryAssetRequirements,signal?:AbortSignal)=>Promise<SharedPhysicalRecoveryAssetRead>;readAcceptedNative:(input:SharedPhysicalRecoveryAcceptedRequest,signal?:AbortSignal)=>Promise<SharedPhysicalRecoveryAcceptedRead>}>;
 /** Internal brand-checked native-check port; public prototype overrides cannot manufacture it. */
 export function physicalRecoveryHostPort(host:SharedPhysicalRoomRecoveryHost){return port(host);}
 export class SharedPhysicalRoomRecoveryHost {
  readonly #state:State;
  private constructor(token:object,state:State){if(token!==key)throw fail('control_policy');this.#state=state;Object.freeze(this);}
- static{port=host=>{if(!host||typeof host!=='object'||!(#state in host))throw fail('control_policy');return Object.freeze({selection:host.#state.expected,check:(signal?:AbortSignal)=>host.#run(signal),checkAssets:(input:SharedPhysicalRecoveryAssetRequirements,signal?:AbortSignal)=>host.#assets(input,signal)});};}
+ static{port=host=>{if(!host||typeof host!=='object'||!(#state in host))throw fail('control_policy');return Object.freeze({selection:host.#state.expected,check:(signal?:AbortSignal)=>host.#run(signal),checkAssets:(input:SharedPhysicalRecoveryAssetRequirements,signal?:AbortSignal)=>host.#assets(input,signal),readAcceptedNative:(input:SharedPhysicalRecoveryAcceptedRequest,signal?:AbortSignal)=>host.#accepted(input,signal)});};}
  /** Independently selected caller endpoint/pins and fresh operator auth; no archive-selected policy. */
  static async open(supplied:SharedPhysicalRecoveryHostOptions):Promise<SharedPhysicalRoomRecoveryHost>{
   let host:SharedPhysicalRoomRecoveryHost|undefined;
@@ -39,13 +42,24 @@ export class SharedPhysicalRoomRecoveryHost {
  /** Actual server/provider bytes for declared bindings and whole-upload IDs. Does not authenticate
   * caller metadata as a genuine client capture, settle its queue or authorize activation. */
  checkAssets(input:SharedPhysicalRecoveryAssetRequirements,signal?:AbortSignal):Promise<SharedPhysicalRecoveryAssetRead>{return this.#assets(input,signal);}
+ /** Transfer only accepted server-native payloads at the exact selected cut.
+  * Does not apply them, acknowledge offline work, adopt comments or activate.
+  * Returned reader roles must never replace a recipient's current permissions. */
+ readAcceptedNative(input:SharedPhysicalRecoveryAcceptedRequest,signal?:AbortSignal):Promise<SharedPhysicalRecoveryAcceptedRead>{return this.#accepted(input,signal);}
+ #accepted(input:SharedPhysicalRecoveryAcceptedRequest,signal?:AbortSignal):Promise<SharedPhysicalRecoveryAcceptedRead>{
+  let choices!:SharedPhysicalRecoveryAcceptedRequest;
+  return this.#request(signal,async()=>{const request=await preparePhysicalAcceptedRequest(this.#state.expected,choices);return{endpoint:physicalAcceptedEndpoint(this.#state.endpoint),body:request.body,maximum:MAX_PHYSICAL_RECOVERY_ACCEPTED_BYTES,admit:(text:string)=>readPhysicalAcceptedNative(text,this.#state.expected,request.sha256,choices)};},()=>{choices=physicalAcceptedChoices(input);});
+ }
  #assets(input:SharedPhysicalRecoveryAssetRequirements,signal?:AbortSignal):Promise<SharedPhysicalRecoveryAssetRead>{return this.#request(signal,async()=>{
   const request=await preparePhysicalAssetRequest(this.#state.expected,input);return{endpoint:physicalAssetEndpoint(this.#state.endpoint),body:request.body,maximum:MAX_PHYSICAL_RECOVERY_ASSET_BYTES,admit:(text:string)=>readPhysicalAssetReceipt(text,this.#state.expected,request.sha256,request.requirements)};
  });}
  #run(signal?:AbortSignal):Promise<void>{return this.#request(signal,async()=>({endpoint:this.#state.endpoint,body:JSON.stringify(this.#state.expected),maximum:MAX_PHYSICAL_RECOVERY_CONTROL_BYTES,admit:(text:string)=>checkPhysicalControlReceipt(text,this.#state.expected)}));}
- async #request<T>(signal:AbortSignal|undefined,prepare:()=>Promise<{endpoint:string;body:string;maximum:number;admit:(text:string)=>T}>):Promise<T>{
+ async #request<T>(signal:AbortSignal|undefined,prepare:()=>Promise<{endpoint:string;body:string;maximum:number;admit:(text:string)=>T}>,detach?:()=>void):Promise<T>{
   const s=this.#state;if(s.closed)throw fail('control_closed');if(s.active)throw fail('control_busy');
   const controller=new AbortController();s.active=controller;const abort=()=>controller.abort();
+  // New accepted-transfer data snapshots run under the real request reservation,
+  // but precede permission callbacks and signal hooks. Old requests keep timing.
+  if(detach)try{detach();}catch(error){controller.abort();s.active=undefined;throw error;}
   s.signal?.addEventListener('abort',abort,{once:true});signal?.addEventListener('abort',abort,{once:true});if(s.signal?.aborted||signal?.aborted)abort();const timer=setTimeout(abort,s.milliseconds);
   let response:Response|undefined;
   try{
