@@ -20,6 +20,8 @@ import {sourceCoreMethods} from '../source_native_read.js';
 import {physicalOperationV3Failure as fail} from './policy.js';
 import {waitNativePendingWork} from '../native_pending_work.js';
 import {PhysicalOperationV3Cancellation} from './storage_cancellation.js';
+import {captureSelectedNativeCut} from '../selected_room_reconciliation/native_cut.js';
+import type {SelectedNativeCutWitness} from '../selected_room_reconciliation/contract.js';
 const key=Object.freeze({});
 interface Origins{readonly clients:readonly RetainedNativeClient[];readonly assets:OperationalAssetCustody}
 interface ReadableNative{readonly id:string;readonly family:RetainedNativeClient['family'];readonly document:string;readonly review:string|null}
@@ -57,7 +59,11 @@ export class RetainedPhysicalRoot{
  captureRecordCut<P extends SharedSelectionPolicy>(input:PhysicalOperationV3HistoryReadOptions<P>):Promise<PhysicalRoomRecordCutFile>{return this.visitRecordCut(input,async scope=>scope.cut);}
  /** SDK-only same-cut composition: selected uploads are captured while actual
   * source readers, full packet records and legacy origins remain held. */
- visitRecordCut<P extends SharedSelectionPolicy,T>(input:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit)=>Promise<T>):Promise<T>{const chosen=snapshotPhysicalHistoryReadOptions(input);return this.#run(async()=>{await this.#cleanup.drain();const observation=new PhysicalOperationV3Cancellation(chosen.signal),check=()=>{this.#current();observation.check();};
+ visitRecordCut<P extends SharedSelectionPolicy,T>(input:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit)=>Promise<T>):Promise<T>{return this.#visitRecordCut(input,visit);}
+ /** Distinct same-reservation native/source inspection. No caller DTO can
+  * supply the clients, prepared identities, inventory or actual record scope. */
+ visitReconciliationRecordCut<P extends SharedSelectionPolicy,T>(input:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit,native:SelectedNativeCutWitness)=>Promise<T>):Promise<T>{return this.#visitRecordCut(input,async scope=>{const native=await captureSelectedNativeCut(this.#s,this.#origins!.clients,scope,this.#current);this.#current();return visit(scope,native);});}
+ #visitRecordCut<P extends SharedSelectionPolicy,T>(input:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit)=>Promise<T>):Promise<T>{const chosen=snapshotPhysicalHistoryReadOptions(input);return this.#run(async()=>{await this.#cleanup.drain();const observation=new PhysicalOperationV3Cancellation(chosen.signal),check=()=>{this.#current();observation.check();};
   const watch=(cancel:()=>void)=>{const unwatch=observation.watch(cancel);if(this.#closing)cancel();else this.#closingListeners.add(cancel);return()=>{this.#closingListeners.delete(cancel);unwatch();};};
   try{await Promise.all(this.#origins!.clients.map(row=>waitNativePendingWork(row.core,{check,watch})));check();return await visitPhysicalOperationV3RecordCut(this.#s,this.#current,this.#cleanup,chosen,watch,visit,undefined,this.#origins!.assets);}
   finally{observation.close();}

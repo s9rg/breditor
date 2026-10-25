@@ -9,11 +9,17 @@ import {sharedProtocolLanguage} from '../protocol.js';
 import {frozen,SharedRoomParticipantInventoryError} from '../room_participant_inventory/policy.js';
 import type {SharedRoomParticipantMissing} from '../room_participant_inventory/types.js';
 import type {PhysicalOperationV3NativeRead,PhysicalOperationV3NativeParticipant} from './native_read_contract.js';
+import type {SharedRoomParticipantInventoryMetadata} from '../room_participant_inventory/types.js';
 const invalid=()=>new SharedRoomParticipantInventoryError('inventory_source','The genuine operational native read differs from its admitted catalog source');
 const fork=()=>new SharedRoomParticipantInventoryError('inventory_fork','The actual native history differs from the selected registered prefix');
 
 export function inspectPhysicalOperationV3Native(source:PhysicalCatalogV3ArchiveState,selected:readonly PhysicalOperationV3PreparedTarget[],read:CompleteNativeRead):PhysicalOperationV3NativeRead{
- const metadata=source.inventory.metadata().native,wire=metadata.room.writerTransportVersion;
+ return inspectPhysicalOperationV3NativeAtInventory(source,selected,read,source.inventory.metadata().native);
+}
+/** Internal pure identity scan. The new complete-cut caller supplies canonical
+ * genuine inventory metadata; the original entry point retains its old timing. */
+export function inspectPhysicalOperationV3NativeAtInventory(source:PhysicalCatalogV3ArchiveState,selected:readonly PhysicalOperationV3PreparedTarget[],read:Pick<CompleteNativeRead,'participants'|'checkCurrent'>,metadata:SharedRoomParticipantInventoryMetadata):PhysicalOperationV3NativeRead{
+ const wire=metadata.room.writerTransportVersion;
  const documents=new Set<string>(),reviews=new Set<string>(),behindDocuments=new Set<string>(),behindReviews=new Set<string>();
  const unbound:SharedRoomParticipantMissing[]=[],participants:PhysicalOperationV3NativeParticipant[]=[],chosen=new Set<string>();
  for(const row of read.participants){

@@ -1,0 +1,180 @@
+{
+  "format": "breditor/selected-room-reconciliation-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-25T08:42:42.551Z",
+  "qualification": "selected-normal-functional-checkpoint-not-v1-release",
+  "workingTreeSourceAtVerification": {
+    "commit": "1f970851ddb1939f5aff2a11480672de3d2852ba",
+    "dirty": true,
+    "sha256": "aebc320a29b33f5d034bba0a3ff88d9fc50f5000f3faa646c216074e17145ebd",
+    "files": 6461,
+    "bytes": 50571117
+  },
+  "qualificationMetadataAddedAfterRun": true,
+  "postVerificationSourceAdditions": [
+    "docs/qualification/2026-10-25-selected-reconciliation.json"
+  ],
+  "normal": {
+    "manifest": "target/v1-candidate-runs/run-1QhzzY/result.json",
+    "sha256": "447fa59df4810e6bd1af391fc83450279e8b63e4742fe74a7a7455a04a205911",
+    "passedStages": 12,
+    "stages": [
+      {
+        "id": "candidate-runner-contracts",
+        "status": "passed"
+      },
+      {
+        "id": "rich-browser-build",
+        "status": "passed"
+      },
+      {
+        "id": "collaboration-build",
+        "status": "passed"
+      },
+      {
+        "id": "native-complete-cohort",
+        "status": "passed"
+      },
+      {
+        "id": "native-complete-image-cohort",
+        "status": "passed"
+      },
+      {
+        "id": "selected-owner-contracts",
+        "status": "passed"
+      },
+      {
+        "id": "selected-owner-type-fence",
+        "status": "passed"
+      },
+      {
+        "id": "selected-reconciliation-contracts",
+        "status": "passed"
+      },
+      {
+        "id": "selected-reconciliation-type-fence",
+        "status": "passed"
+      },
+      {
+        "id": "selected-reconciliation",
+        "status": "passed"
+      },
+      {
+        "id": "installed-selected-reconciliation",
+        "status": "passed"
+      },
+      {
+        "id": "readiness-inventory",
+        "status": "passed"
+      }
+    ]
+  },
+  "contracts": {
+    "priorSelectedOwnerBodies": 1958,
+    "additionalBodies": 27,
+    "source": {
+      "passed": 1985,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "offlineInstalled": {
+      "passed": 1985,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "actualProductionBundle": {
+      "passed": 1985,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "strictConsumerFixtures": 24,
+    "productionModules": 705,
+    "workspaceLinks": false,
+    "lockedRegistryArtifacts": 45
+  },
+  "native": {
+    "freshFilesVerified": 100,
+    "profileTransportPairs": 10,
+    "registeredWritersPerRoom": 7,
+    "reviewActorsPerRoom": 7,
+    "protectedStreamsPerRoom": 14,
+    "normalWasmSha256": "946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0",
+    "rustSourcesChanged": false,
+    "wasmChanged": false
+  },
+  "finalNativeFenceControl": {
+    "passed": true,
+    "originalModuleSha256": "5ddc7f51ef9a25bf5444b971f98cef62058911759d7ce81e4d495c55cdfaa8d9",
+    "removedFenceModuleSha256": "a5cbcfa60f8034104eec028cb192935fe08b3a6d228f1de0851afe191e2c25f7",
+    "originalInstalledConsumerUnchanged": true,
+    "copiedModuleRestoredExactly": true,
+    "assertionsUnchanged": true,
+    "actualExits": [
+      {
+        "name": "fixed-before",
+        "code": 0,
+        "signal": null
+      },
+      {
+        "name": "missing-final-fence",
+        "code": 1,
+        "signal": null
+      },
+      {
+        "name": "fixed-after",
+        "code": 0,
+        "signal": null
+      }
+    ],
+    "resultCounts": {
+      "fixedBefore": {
+        "pass": 2,
+        "fail": 0
+      },
+      "onlyFenceRemoved": {
+        "pass": 0,
+        "fail": 2
+      },
+      "fixedAfter": {
+        "pass": 2,
+        "fail": 0
+      }
+    },
+    "scope": "Actual late local-native document/comment edits during real selected-store cleanup. Only finalNative.finalCheck was removed in an isolated copy; native action acceptance here is not server acknowledgement."
+  },
+  "endpoints": {
+    "ownedControlGroups": 27,
+    "declared": 270,
+    "allConfirmedClosed": true,
+    "evidence": "target/selected-reconciliation-proof-iYnZr0/endpoints.json"
+  },
+  "retainedProof": {
+    "path": "target/selected-reconciliation-proof-iYnZr0/index.json",
+    "sha256": "949d9f8b4003de050f49aec621a4fd9be09b0892b3a1b0300fc3dd0e8a61cc02",
+    "sourceFiles": "target/selected-reconciliation-proof-iYnZr0/source-files.json"
+  },
+  "implemented": [
+    "Same genuine complete native/source/packet/origin-upload/selected-upload reservation with fresh independently pinned native/provider authentication",
+    "Every selected client checks every accepted document author; each bound review lane checks every accepted actor/principal",
+    "Missing peer history, partial catalogs and unbound local comment lanes stay pending; any conflicting author prefix refuses",
+    "LIVE immutable retained-store declarations bind to the selected native room; enclosing full readers admit retained phases",
+    "Compact aligned author-counter vectors without reducing native prefix comparisons",
+    "Fresh permission, independently observed cancellation and exact actual native checks after real cleanup, before publication and upload-baseline advancement"
+  ],
+  "preserved": [
+    "Original capture/provider request semantics and both transport digest families",
+    "Native Undo/Redo, comment histories, pending source records, offline suffixes, complete queues and receipts",
+    "No new public-root exports, stored protocol or package versions"
+  ],
+  "remaining": [
+    "Authenticated transfer of missing accepted operations without importing peer unacknowledged suffixes",
+    "Explicit adoption of unbound local comment lanes while preserving their originals",
+    "Authenticated whole-room activation with exclusion of old writes and durable final-cut intent",
+    "Sustainable native Undo/offline retention and remaining extension/custom-node parity",
+    "All thirteen V1 release gates, including deferred platform and release qualification"
+  ],
+  "scope": "SDK-private point-in-time diagnostics, not source custody, durable acknowledgement, editing/activation authority or full V1/parity certification. Controlled storage/presentation does not certify physical durability or browser behavior."
+}

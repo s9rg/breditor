@@ -79,6 +79,19 @@ coverage, explicit treatment of unbound local comments and provider availability
 must be joined under the same genuine cut before room activation. All thirteen
 V1 gates remain open.
 
+## Current selected room reconciliation read
+
+The [selected room reconciliation read](SELECTED_ROOM_RECONCILIATION_READ.md)
+now joins every selected client's accepted document-author prefixes, bound
+comment-author prefixes, complete source packets and both whole-upload
+generations under the same genuine cut and fresh operator read. Conflicting
+prefixes refuse; missing peers and unbound local comments stay pending. The
+new final fence rechecks independent permission, cancellation and actual native
+bytes after real cleanup. This is a private diagnostic contract, not transfer of
+missing accepted operations or authenticated room activation. Those mutation
+steps remain the next architectural priority before sustainable history and
+extension parity. All thirteen V1 gates remain open.
+
 ## Current native serving fence
 
 The [native serving epoch contract](NATIVE_SERVING_EPOCHS.md) now adds explicit
