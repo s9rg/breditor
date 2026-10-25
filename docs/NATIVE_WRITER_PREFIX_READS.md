@@ -39,9 +39,10 @@ It exposes no research constructor or mutation shortcut.
 `writerClockAt(writer, through, version = 1)` returns native read data; select
 version `2` explicitly for V2. Older runtimes remain usable for their existing
 features, but this new method returns `writer_prefix_unavailable`. Genuine
-captured-history and retained-source readers forward the same pure methods
-through their existing custody and lifetime checks. Disposed captures cannot
-retain a usable borrowed native reader.
+captured-history readers keep their existing capture-lifetime checks. Private
+retained-source reads also require their enclosing full-source verification;
+core liveness alone does not certify a stored cut. A disposed capture cannot
+retain a usable registered native-history reader.
 
 ## Wrong author repair
 

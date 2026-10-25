@@ -58,6 +58,27 @@ Complete all-author client/provider reconciliation, durable authenticated room
 activation, sustainable history and extension parity remain next, in that order.
 All thirteen V1 gates remain open.
 
+## Current runtime recovery qualification
+
+The [new runtime recovery qualification](qualification/2026-10-25-prefix-runtime-recovery.json)
+passes eleven selected normal stages. The source, offline-installed package and
+actual production bundle each pass all 1,958 cumulative recovery laws, with zero
+failures or skips and 23 strict consumer fixtures. Fresh native producers supply
+100 verified files across all ten profile/transport pairs. All 110 declared
+endpoints from ten normal control runs and one separate diagnostic are confirmed
+closed. Current checksum guards now select the additive native-prefix runtime;
+all original assertions and historical qualification records are retained.
+
+The read-only seven-client diagnostic checks 63 document-author and 49
+comment-author pairs. Twenty-one document comparisons and 42 comment comparisons
+are behind the accepted cut, while all fourteen whole-upload stores pass the
+separate authenticated provider check. No conflicting digest or change to native
+checkpoints or stores is observed. These are retained offline copies awaiting
+peer reconciliation, not evidence of deleted server operations. Complete native
+coverage, explicit treatment of unbound local comments and provider availability
+must be joined under the same genuine cut before room activation. All thirteen
+V1 gates remain open.
+
 ## Current native serving fence
 
 The [native serving epoch contract](NATIVE_SERVING_EPOCHS.md) now adds explicit

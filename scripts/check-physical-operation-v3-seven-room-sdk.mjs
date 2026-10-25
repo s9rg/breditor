@@ -36,7 +36,7 @@ assert.deepEqual(sourceEvidence(root), source);
 for (const row of native.files) assert.deepEqual(fileEvidence(root, row.path), row);
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const normalWasmSha256 = sha(readFileSync(join(root, 'target/promoted-shared-web/breditor_shared_bg.wasm')));
-assert.equal(normalWasmSha256, 'b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329');
+assert.equal(normalWasmSha256, '946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0');
 const result = {
   format: 'breditor/seven-room-sdk', formatVersion: 1, passed: true,
   source, sourceUnchanged: true, directory, nativeEvidence: fileEvidence(root, nativePath),

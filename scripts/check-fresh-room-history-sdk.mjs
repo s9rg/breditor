@@ -14,7 +14,7 @@ const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),source=sourceEv
 
 const nativePath='target/complete-cohort-native.json',native=JSON.parse(readFileSync(join(root,nativePath)));assert.equal(native.format,'breditor/native-complete-cohort-check');assert.equal(native.passed,true);assert.deepEqual(native.source,source,'Generate the actual seven-author fixture for this exact source');assert.equal(native.registeredWritersPerRoom,7);assert.equal(native.reviewActorsPerRoom,7);assert.equal(native.protectedStreamsPerRoom,14);assert.equal(native.files.length,50);for(const row of native.files)assert.deepEqual(fileEvidence(root,row.path),row);assert.deepEqual(fileEvidence(root,native.manifestEvidence.path),native.manifestEvidence);
 const sha=b=>createHash('sha256').update(b).digest('hex'),normalWasmSha256=sha(readFileSync(join(root,'target/promoted-shared-web/breditor_shared_bg.wasm')));
-assert.equal(normalWasmSha256,'b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329');
+assert.equal(normalWasmSha256,'946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0');
 let output;try{output=execFileSync(process.execPath,['--test',...tests.map(name=>'scripts/'+name)],{cwd:root,encoding:'utf8',timeout:1800000,maxBuffer:8*1024*1024});writeFileSync(join(directory,'contracts.log'),output);}catch(error){writeFileSync(join(directory,'contracts.log'),String(error.stdout??'')+'\n'+String(error.stderr??''));throw error;}
 for(const pattern of [new RegExp('^# pass '+assertions+'$','m'),/^# fail 0$/m,/^# skipped 0$/m])assert.match(output,pattern);
 assert.deepEqual(sourceEvidence(root),source);for(const row of native.files)assert.deepEqual(fileEvidence(root,row.path),row);

@@ -1,0 +1,144 @@
+{
+  "format": "breditor/prefix-runtime-recovery-functional-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-25T06:36:03.635Z",
+  "passed": true,
+  "v1Ready": false,
+  "publicationApproved": false,
+  "source": {
+    "commit": "0003b99823f58c93cfe6d65ead71aaa9fc00ed74",
+    "dirty": true,
+    "sha256": "aa7548b95afcb0abc3e9b32ce7d621f6dfb871f5bf980076e2118e10d8d7750a",
+    "files": 6447,
+    "bytes": 50487889
+  },
+  "normalManifest": "target/v1-candidate-runs/run-2FfcEw/result.json",
+  "normalStages": [
+    {
+      "id": "paired-shared-runtime",
+      "status": "passed",
+      "log": "f86810dfd6b493be050c496a213fdbc46c3b51afcdbd74f99c1b29cefff41893"
+    },
+    {
+      "id": "rich-browser-build",
+      "status": "passed",
+      "log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "collaboration-build",
+      "status": "passed",
+      "log": "3ecf4743dfb35b8d860a882c5c54506a891051132b77e773bb2bd8fe690bca12"
+    },
+    {
+      "id": "writer-prefix-sdk",
+      "status": "passed",
+      "log": "cd9a20ec76b72d6d0991bdf058e3f3cbfb5facb8e678cffb65a0a80b6c780e13"
+    },
+    {
+      "id": "installed-writer-prefix",
+      "status": "passed",
+      "log": "467b407bfadee3a8fe4bd950022e0b4fa4477aadf7714a1283efaa02f2e35728"
+    },
+    {
+      "id": "native-complete-cohort",
+      "status": "passed",
+      "log": "be46958bf8b2ea70e842c50510b9240f41253e571cfdf635686e29e161ee96a1"
+    },
+    {
+      "id": "native-complete-image-cohort",
+      "status": "passed",
+      "log": "046103d9f49cb94444c91153ec101c84dabb670fe1ccf94c22c99bb23cbc37b6"
+    },
+    {
+      "id": "selected-owner-contracts",
+      "status": "passed",
+      "log": "042ccc6b50d09be1747ab32bbfa8f2b3b83811c7e8c49d4b704da96efd9bddde"
+    },
+    {
+      "id": "selected-owner-type-fence",
+      "status": "passed",
+      "log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "selected-owner",
+      "status": "passed",
+      "log": "3d91bcb3088f7924f768b09969bc5098ed85ee5581ff8ddd52767d50acced089"
+    },
+    {
+      "id": "installed-selected-owner",
+      "status": "passed",
+      "log": "538b60de9d1ea0d7997a1596d082dbaf6b0132b2c983969e59fd6d738ad1e0ad"
+    }
+  ],
+  "retainedProof": {
+    "path": "target/prefix-runtime-recovery-proof-8GPPmP/index.json",
+    "sha256": "b0f3c713a37901375e552bbd4230741d2631a1562c52d893dbbad4cb4793a0f4"
+  },
+  "runtime": {
+    "previousSha256": "b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329",
+    "currentSha256": "946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0",
+    "currentPinFiles": 61,
+    "literalOccurrences": 69,
+    "allAssertionsRetained": true,
+    "historicalQualificationsChanged": false
+  },
+  "cumulative": {
+    "source": {
+      "passed": 1958,
+      "failed": 0,
+      "skipped": 0
+    },
+    "offlineInstalled": {
+      "passed": 1958,
+      "failed": 0,
+      "skipped": 0
+    },
+    "actualProductionBundle": {
+      "passed": 1958,
+      "failed": 0,
+      "skipped": 0
+    },
+    "strictConsumerFixtures": 23,
+    "registryArtifacts": 45,
+    "workspaceLinks": false,
+    "productionModuleCount": 702,
+    "nativeFilesVerified": 100,
+    "registeredWritersPerRoom": 7,
+    "registeredReviewActorsPerRoom": 7,
+    "protectedStreamsPerRoom": 14,
+    "profileTransportPairs": 10
+  },
+  "prefixRead": {
+    "sourceSuccessfulQueries": 648,
+    "installedSuccessfulQueries": 120,
+    "productionBundleSuccessfulQueries": 120,
+    "originalNativeQualification": "2026-10-25-native-writer-prefix.json"
+  },
+  "ownedNativeControls": {
+    "normalRuns": 10,
+    "separateReadOnlyInvestigationRuns": 1,
+    "declaredEndpoints": 110,
+    "uniqueEndpoints": 110,
+    "allConfirmedClosed": true
+  },
+  "readOnlyRiskInvestigation": {
+    "clients": 7,
+    "documentChecks": 63,
+    "documentBehind": 21,
+    "documentForks": 0,
+    "reviewChecks": 49,
+    "reviewBehind": 42,
+    "reviewForks": 0,
+    "providerKind": "checked",
+    "originAndSelectedWholeUploadStores": 14,
+    "nativeAndDatabaseBytesPreserved": true,
+    "meaning": "Declared retained offline copies are not yet reconciled with every accepted peer. No server data loss or digest fork was observed. Point-in-time provider availability is not complete client coverage or activation permission."
+  },
+  "implementationChangesSinceNativePrefixCheckpoint": false,
+  "protocolsChanged": false,
+  "versionsChanged": false,
+  "pushed": false,
+  "published": false,
+  "v1GatesOpen": 13,
+  "scope": "Fresh canonical runtime and unchanged cumulative seven-family custody/recovery laws from source, offline-installed archives and the actual production bundle. Mechanical current checksum migration only. The separate actual read-only diagnostic identifies missing accepted peer histories; this checkpoint does not implement complete reconciliation, repair those missing comparisons, adopt unbound comments, activate a room, qualify portable consensus, sustainable history or V1 parity."
+}

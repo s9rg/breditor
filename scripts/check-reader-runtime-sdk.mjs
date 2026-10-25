@@ -11,7 +11,7 @@ if(process.argv.length!==2)throw Error('No substituted source, runtime or reduce
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),source=sourceEvidence(root),directory=mkdtempSync(join(root,'target/reader-runtime-sdk-'));
 const tests=['independent-operation-portable.test.mjs','independent-operation-reader-runtime-development.test.mjs','restored-graph-contracts.test.mjs','restored-graph-roundtrip.test.mjs','restored-graph-lifetime.test.mjs','restored-graph-identity.test.mjs','restored-graph-assets.test.mjs','restored-graph-recovery.test.mjs','restored-graph-reader-runtime-development.test.mjs'];
 const sha=b=>createHash('sha256').update(b).digest('hex'),normalWasmSha256=sha(readFileSync(join(root,'target/promoted-shared-web/breditor_shared_bg.wasm')));
-assert.equal(normalWasmSha256,'b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329');
+assert.equal(normalWasmSha256,'946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0');
 let output;try{output=execFileSync(process.execPath,['--test',...tests.map(name=>'scripts/'+name)],{cwd:root,encoding:'utf8',timeout:600000,maxBuffer:8*1024*1024});writeFileSync(join(directory,'contracts.log'),output);}catch(error){writeFileSync(join(directory,'contracts.log'),String(error.stdout??'')+'\n'+String(error.stderr??''));throw error;}
 for(const pattern of [/^# pass 85$/m,/^# fail 0$/m,/^# skipped 0$/m])assert.match(output,pattern);
 assert.deepEqual(sourceEvidence(root),source);

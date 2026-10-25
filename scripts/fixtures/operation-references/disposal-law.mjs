@@ -30,7 +30,7 @@ import {nativeProfile} from '../owned-core-cleanup/session.mjs';
 
 export function verifyReferenceCallbackRelease(family,runtime,fixture){
  const output=execFileSync(process.execPath,['--expose-gc',fileURLToPath(import.meta.url),'--reference-release-child',family,runtime,fixture],{encoding:'utf8',timeout:120000,maxBuffer:1024*1024});
- const report=JSON.parse(output.trim());assert.equal(report.family,family);assert.equal(report.closedProofsIntentionallyKept,5);assert.equal(report.fixtureClosedBeforeCollection,true);assert.equal(report.readAuthorizationFunctionsRetained,0);assert.equal(report.normalWasmSha256,'b5061a35efb4a34804a925f4dc9d847904f6685b719dc99ff2f324223305e329');return report;
+ const report=JSON.parse(output.trim());assert.equal(report.family,family);assert.equal(report.closedProofsIntentionallyKept,5);assert.equal(report.fixtureClosedBeforeCollection,true);assert.equal(report.readAuthorizationFunctionsRetained,0);assert.equal(report.normalWasmSha256,'946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0');return report;
 }
 async function closedRead(capture,source,readOptions){const marker={read:'ended'},guard=function endedReferenceReadAuthorization(){assert.equal(marker.read,'ended');},weak=new WeakRef(guard),proof=await capture({source,...readOptions,checkAuthority:guard});proof.dispose();return{proof,weak};}
 async function probe(family,runtime,fixture){
