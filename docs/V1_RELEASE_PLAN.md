@@ -15,18 +15,22 @@ no ProseMirror, Tiptap or CKEditor document, operation or plugin protocol is ado
 
 ## Current retained native reconstruction
 
-The [original-source reconstruction contract](NATIVE_RECONSTRUCTION.md) addresses
-a reproduced failed-save case: retained LIVE document/comment histories can be
-newer than the genuinely reopened disk source. Its private inspector compares
-every held selected native and whole selected upload store before building an
-original participant backup. Existing recovery restores that native pair and
-dependent stores into absent databases without overwriting originals. Conflicting
-own branches and unmatched packet/progress records require explicit resolution.
+The [native reconstruction contract](NATIVE_RECONSTRUCTION.md) covers original
+and independent-local source families, including all four independent
+document/comment history combinations. Retained LIVE histories can be newer
+than genuinely reopened disk sources. Private inspectors compare every held
+selected native and whole selected upload store before constructing participant
+backups. Existing recovery restores exact native histories and dependent stores
+into absent databases without overwriting originals. Local current/pending cuts
+and immutable version prefixes are validated individually; conflicting native
+branches and unmatched packet/progress records still require explicit resolution.
 
-This is a bounded original-source recovery path, not completed whole-room
-reconstruction. The other six source families, compatible native union, durable
-common preparation/retirement and authenticated activation remain architectural
-priorities. All thirteen V1 gates remain open.
+DATA builder waits now end on actual input disposal or abort, with late unclaimed
+native owners cleaned up. Earlier capture/preflight factories still require
+cooperative settlement. These two family-specific recovery paths do not complete
+whole-room reconstruction. The other five source families, compatible native
+union, durable common preparation/retirement and authenticated activation remain
+architectural priorities. All thirteen V1 gates remain open.
 
 ## V1 candidate qualification checkpoint
 

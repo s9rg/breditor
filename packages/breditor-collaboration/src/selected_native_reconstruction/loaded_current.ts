@@ -13,26 +13,32 @@ import {fields,fail,identifier} from './policy.js';
 const current={read:SelectedRoomCurrentArchive.read,current:SelectedRoomCurrentArchive.prototype.current,approval:SelectedRoomCurrentArchive.prototype.approval,file:SelectedRoomCurrentArchive.prototype.file,upload:SelectedRoomCurrentArchive.prototype.uploadFile,dispose:SelectedRoomCurrentArchive.prototype.dispose};
 const record={read:PhysicalRoomRecordCutArchive.read,root:PhysicalRoomRecordCutArchive.prototype.root,records:PhysicalRoomRecordCutArchive.prototype.records,files:PhysicalRoomRecordCutArchive.prototype.catalogFiles,upload:PhysicalRoomRecordCutArchive.prototype.uploads,dispose:PhysicalRoomRecordCutArchive.prototype.dispose};
 const token=Object.freeze({});
+interface ReconstructionInputLifetime{readonly signal:AbortSignal|undefined;check():void;release():void}
+let retainLifetime:(source:LoadedNativeReconstructionCurrent,closing:()=>void)=>ReconstructionInputLifetime;
+/** Trusted DATA-read lifetime only; no editable source or writer custody. */
+export const retainNativeReconstructionInput=(source:LoadedNativeReconstructionCurrent,closing:()=>void)=>retainLifetime(source,closing);
 export class LoadedNativeReconstructionCurrent {
- readonly #outer;readonly #inner;readonly #file;readonly #guard;readonly #observation;readonly #catalog;
+ readonly #outer;readonly #inner;readonly #observation;
+ #file:SelectedRoomCurrentFile|undefined;#guard:(()=>void)|undefined;#catalog:ReturnType<typeof parsePhysicalCatalogV3Manifest>|undefined;#signal:AbortSignal|undefined;
+ readonly #closingListeners=new Set<()=>void>();
  #closed=false;
- private constructor(key:object,outer:SelectedRoomCurrentArchive,inner:PhysicalRoomRecordCutArchive,file:SelectedRoomCurrentFile,guard:()=>void,observation:OperationalReadCancellation) {
+ private constructor(key:object,outer:SelectedRoomCurrentArchive,inner:PhysicalRoomRecordCutArchive,file:SelectedRoomCurrentFile,guard:()=>void,observation:OperationalReadCancellation,signal:AbortSignal|undefined) {
   if(key!==token)throw fail('native_reconstruction_policy');
-  this.#outer=outer;this.#inner=inner;this.#file=file;this.#guard=guard;this.#observation=observation;
+  this.#outer=outer;this.#inner=inner;this.#file=file;this.#guard=guard;this.#observation=observation;this.#signal=signal;
   this.#catalog=parsePhysicalCatalogV3Manifest(record.root.call(inner).source.manifest);Object.freeze(this);
  }
- check=()=>{if(this.#closed)throw fail('native_reconstruction_closed');this.#guard();if(this.#closed)throw fail('native_reconstruction_closed');};
- file():SelectedRoomCurrentFile {this.check();return this.#file;}
- catalog(){this.check();return this.#catalog;}
+ check=()=>{const guard=this.#guard;if(this.#closed||!guard)throw fail('native_reconstruction_closed');guard();if(this.#closed||this.#guard!==guard)throw fail('native_reconstruction_closed');};
+ file():SelectedRoomCurrentFile {this.check();return this.#file!;}
+ catalog(){this.check();return this.#catalog!;}
  approval(){this.check();return current.approval.call(this.#outer);}
  /** SDK-only borrowed reader. No mutable source or permissions are admitted. */
  nativeCut():PhysicalRoomRecordCutArchive {this.check();return this.#inner;}
- participant(id:string){this.check();const row=this.#catalog.participants.find(row=>row.id===identifier(id));if(!row)throw fail('native_reconstruction_policy');return row;}
+ participant(id:string){this.check();const row=this.#catalog!.participants.find(row=>row.id===identifier(id));if(!row)throw fail('native_reconstruction_policy');return row;}
  participantFile(id:string):Blob {this.participant(id);const file=record.files.call(this.#inner).get(physicalParticipantKey(id));if(!file)throw fail();this.check();return file;}
  async records(id:string):Promise<unknown> {this.participant(id);const value=await record.records.call(this.#inner,id);this.check();return value;}
  originalUploads(id:string):Blob {this.participant(id);const file=record.upload.call(this.#inner,id);this.check();return file;}
  selectedUploads(id:string):Blob {this.participant(id);const file=current.upload.call(this.#outer,id);this.check();return file;}
- dispose():void {if(this.#closed)return;this.#closed=true;try{record.dispose.call(this.#inner);}finally{try{current.dispose.call(this.#outer);}finally{this.#observation.close();}}}
+ dispose():void {if(this.#closed)return;this.#closed=true;this.#guard=undefined;this.#file=undefined;this.#catalog=undefined;this.#signal=undefined;const listeners=[...this.#closingListeners];this.#closingListeners.clear();try{for(const close of listeners)try{close();}catch{/* Closed input remains terminal even if a cancellation observer fails. */}}finally{try{record.dispose.call(this.#inner);}finally{try{current.dispose.call(this.#outer);}finally{this.#observation.close();}}}}
  static async read(provided:SelectedRoomCurrentFile,options:SharedArchiveIntegrityOptions):Promise<LoadedNativeReconstructionCurrent> {
   const input=fields(provided,['selection','file']),selected=selectedRoomCurrentSelection(input['selection']),raw=fields(options,['wasm','checkAuthority'],['signal']),authority=participantAuthority(raw['checkAuthority'] as ()=>void),signal=raw['signal'] as AbortSignal|undefined,observation=new OperationalReadCancellation(signal);
   const check=()=>{observation.check(()=>fail('native_reconstruction_aborted'));authority();observation.check(()=>fail('native_reconstruction_aborted'));};
@@ -41,7 +47,8 @@ export class LoadedNativeReconstructionCurrent {
   try{
    check();outer=await current.read.call(SelectedRoomCurrentArchive,input['file'] as Blob,selected,integrity);check();
    const source=current.current.call(outer);inner=await record.read.call(PhysicalRoomRecordCutArchive,source.file,source.selection,integrity);check();
-   const file=Object.freeze({selection:selected,file:current.file.call(outer)}),result=new LoadedNativeReconstructionCurrent(token,outer,inner,file,check,observation);result.check();complete=true;return result;
+   const file=Object.freeze({selection:selected,file:current.file.call(outer)}),result=new LoadedNativeReconstructionCurrent(token,outer,inner,file,check,observation,signal);result.check();complete=true;return result;
   }finally{if(!complete){if(inner)record.dispose.call(inner);if(outer)current.dispose.call(outer);observation.close();}}
  }
+ static{retainLifetime=(source,closing)=>{if(!source||typeof source!=='object'||!(#inner in source)||typeof closing!=='function')throw fail('native_reconstruction_policy');source.check();const signal=source.#signal;source.#closingListeners.add(closing);let released=false;return Object.freeze({signal,check(){if(released)throw fail('native_reconstruction_closed');source.check();},release(){if(released)return;released=true;source.#closingListeners.delete(closing);}});};}
 }

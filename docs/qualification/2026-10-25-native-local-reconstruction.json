@@ -1,0 +1,249 @@
+{
+  "format": "breditor/native-local-reconstruction-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-25T23:18:59.394Z",
+  "qualification": "selected-functional-architectural-increment-not-v1-release",
+  "workingTreeSourceAtVerification": {
+    "commit": "a2e6c5afde8e70494f95dde9164bf1d0a7b371f9",
+    "dirty": true,
+    "sha256": "a1835001c961365c4a838d0b10267e71550a41aa8d6c6f2bcbd0ce97ea6f90f2",
+    "files": 6565,
+    "bytes": 51118138
+  },
+  "qualificationMetadataAddedAfterRun": true,
+  "postVerificationSourceAdditions": [
+    "docs/qualification/2026-10-25-native-local-reconstruction.json"
+  ],
+  "normal": {
+    "passedStages": 13,
+    "fullFunctionalPlanExecuted": false,
+    "manifests": [
+      {
+        "kind": "common",
+        "path": "target/v1-candidate-runs/run-ozvqXH/result.json",
+        "sha256": "b3d3546bab2dd552252e5373c533f7b71580221a73304f2490834bda72738686",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "candidate-runner-contracts",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "rich-browser-build",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "collaboration-build",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-complete-cohort",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-complete-image-cohort",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-execution-contracts",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-execution-type-fence",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-reconstruction-contracts",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-reconstruction-type-fence",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      },
+      {
+        "kind": "installed",
+        "path": "target/v1-candidate-runs/run-IWtaoy/result.json",
+        "sha256": "fdcbe9895af1355ac57edce6a5e5833800408702b7dda6eed0cf4a5160eabb52",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "installed-native-reconstruction",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      },
+      {
+        "kind": "source",
+        "path": "target/v1-candidate-runs/run-iwOKSh/result.json",
+        "sha256": "b6c7427b5d1659a519581b0c930953bcb7ab150275a1f08498c2ad7dfc84c49f",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "native-execution",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-reconstruction",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      },
+      {
+        "kind": "readiness",
+        "path": "target/v1-candidate-runs/run-YwiNEJ/result.json",
+        "sha256": "d1299136df2d299c68d57e0a2b9dfd2b96c256360ef7715f4f72a1b040d69d1e",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "readiness-inventory",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      }
+    ],
+    "sourceAssertions": {
+      "priorExecution": 203,
+      "reconstruction": 24,
+      "priorReconstruction": 4,
+      "newLocalAndLifetime": 20,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0
+    },
+    "offlineInstalledReconstruction": {
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "workspaceLinks": false,
+      "priorExecutionRerun": false
+    },
+    "productionBundleReconstruction": {
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0
+    },
+    "strictSourceConsumerFixtures": 30,
+    "strictInstalledReconstructionFixtures": 2,
+    "freshNativeFilesVerified": 100,
+    "resourceCollection": {
+      "initialCollectorExit": 1,
+      "correction": "All twelve selected stage workers passed. The original broad endpoint scan raced an explicitly running preflight diagnostic. After its actual exit and endpoint closure, all new declared endpoints were checked again; no test was changed, skipped or rerun.",
+      "finalDeclaredEndpointsVerifiedClosed": 250,
+      "testsChangedOrRerunForCollection": false
+    }
+  },
+  "guardControls": {
+    "scope": "Two separate guards in a copied actual offline-installed consumer; all assertions unchanged. Passing normal suite, deliberate broken-guard exit 1, restored targeted-law exit 0.",
+    "guards": [
+      {
+        "name": "builder-cancellation",
+        "initialNormalActualExit": 0,
+        "brokenActualExit": 1,
+        "restoredActualExit": 0,
+        "restoredExactly": true
+      },
+      {
+        "name": "immutable-versions",
+        "initialNormalActualExit": 0,
+        "brokenActualExit": 1,
+        "restoredActualExit": 0,
+        "restoredExactly": true
+      }
+    ],
+    "installedProductFilesRestoredAndVerified": 1884,
+    "positiveConsumerUnmodified": true,
+    "resourceCollection": "Initial broad directory scan counted one concurrent execution fixture. This collection selects the actual four control endpoint-evidence families; no tests were rerun or changed."
+  },
+  "native": {
+    "sourceAndBuildInputsVerifiedUnchanged": 2899,
+    "normalWasmSha256": "946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0",
+    "priorNativeSuitePassed": 411,
+    "priorNativeSuiteRerun": false,
+    "baselineInventorySha256": "5105338fe31693331b67a898700b312ae532f9bb65239b87b841ab2b99102cb0"
+  },
+  "retainedProof": {
+    "path": "target/native-reconstruction-proof-OFon3S/index.json",
+    "sha256": "c47ed903b9851cb38368bb255f9c542b2cf9a68baf86a0b9b04b4203f76d0f77",
+    "files": 393,
+    "endpoints": {
+      "groups": 33,
+      "declared": 330,
+      "allConfirmedClosed": true
+    }
+  },
+  "functionalScope": "Original source recovery remains covered. Independent-local reconstruction supports all four native document/comment history pairs and validates original/literal origins, complete current/pending journal cuts, observed membership and exact immutable version prefixes. Actual failed source saves leave a retained newer LIVE suffix missing after a real cold reopen. Absent-only recovery, cold target reopening, future document/comment Undo/Redo, original whole uploads and untouched old databases are verified. DATA waits cancel on actual input/asset abort or disposal; late unclaimed raw owners are freed once, never stealing an editor-owned raw object. No source-write acknowledgement, mutable source grant, retirement or activation is added.",
+  "diagnostics": {
+    "deliveryAdapter": {
+      "integrated": false,
+      "sourceFamilyQualified": false,
+      "originalOriginalDraftDataPassed": true,
+      "genuineFailedSaveSelectedOwnerPreflightPassed": true,
+      "actualFailedWrites": 2,
+      "separateQueuedPacketComponentColdRecovery": {
+        "suggestions": 1,
+        "revisions": 1,
+        "versionPackets": 1,
+        "futureNativeComparisons": 4,
+        "wholeRoomFrameReframedNotGenuineCapture": true
+      },
+      "fullFourPairMatrix": false,
+      "roomActivated": false
+    },
+    "initialCaptureCancellation": {
+      "reproduced": true,
+      "fixedInThisIncrement": false,
+      "inspectionAndActualCloseWaitForHostFactory": true,
+      "nativeRetiresImmediately": true,
+      "lateRawFreedOnce": true
+    }
+  },
+  "remaining": [
+    "Uncooperative native factory cancellation during initial capture and earlier preflight",
+    "Other five source-family reconstruction adapters and their native/packet matrices",
+    "Nonempty original dependent-packet permutations and complete interleaving/recovery coverage",
+    "Durable complete-cohort preparation before absent-only targets, approved retirement and retry handoff",
+    "Compatible native author/own-intent, packet and whole-upload union; true forks must refuse",
+    "Explicit unbound-comment adoption",
+    "Authenticated whole-room activation and old-writer fencing",
+    "Sustainable native Undo/offline retention across explicit generation families",
+    "Extension/custom-node and remaining full feature parity",
+    "All thirteen V1 release gates"
+  ],
+  "openV1Gates": [
+    "catalog-coverage",
+    "distribution",
+    "compatibility",
+    "release-ci",
+    "browser-reliability",
+    "accessibility-input-mobile",
+    "performance-and-size",
+    "public-relay-hardening",
+    "storage-lifecycle",
+    "dependency-and-license-review",
+    "integration-docs-and-support",
+    "pilot",
+    "final-rc"
+  ],
+  "v1Ready": false,
+  "publicationApproved": false,
+  "versionChanged": false,
+  "tagCreated": false,
+  "pushed": false
+}
