@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {pixel,secondPixel,secondAsset} from '../review-assets/pixels.mjs';
 
 const endpoint='ws://127.0.0.1:1/ws';
-export async function generationParticipant({api,rich,profile,fixture,client,kind,tag,counts,edit=true,paired=true,principal=client.principal,documentCheckpoint=client.documentCheckpoint,reviewCheckpoint=client.reviewCheckpoint,readOnly,changeBinding,changeRetained}) {
+export async function generationParticipant({api,rich,profile,fixture,client,kind,tag,counts,edit=true,paired=true,principal=client.principal,documentCheckpoint=client.documentCheckpoint,reviewCheckpoint=client.reviewCheckpoint,readOnly,changeBinding,changeRetained,extraVersions=false}) {
  const metadata=JSON.parse(fixture.inventoryJson),room=metadata.room.document,writer=client.writer;
  readOnly??=client.observer||metadata.accounts.find(row=>row.principal===client.principal).documentRole===null;
  const review=paired?{actor:client.actor,principal,access:readOnly?'read_only':'comment'}:undefined;
@@ -19,6 +19,7 @@ export async function generationParticipant({api,rich,profile,fixture,client,kin
   if(edit&&!readOnly){core.select({kind:'text',anchor:{block:'p',offset:'0',affinity:'after'},focus:{block:'p',offset:'0',affinity:'after'}});core.type('Generation offline suffix 🙂 ');core.undo();if(paired){core.dispatchReview({kind:'create_thread',data:{anchorJson:core.captureReviewAnchor({kind:'document'}),body:'Generation offline comment'}});core.undoReview();}}
   if(edit&&readOnly){const raw=profile.join_frame(room,'909',core.updateFrame()),peer=new api.SharedRichEditor(raw);try{peer.select({kind:'text',anchor:{block:'p',offset:'0',affinity:'after'},focus:{block:'p',offset:'0',affinity:'after'}});peer.type('Unregistered offline peer ');await core.receiveFrame(peer.updateFrame());}finally{peer.dispose();}}
   if(paired)h.session.saveVersion('Retained local generation version','1');
+  if(paired&&extraVersions)h.session.saveVersion('Second retained local generation version','8');
   if(kind==='retained'){
    const getToken=()=>{counts.networkCalls++;throw Error('No network for historical generation inventory');},request=async()=>getToken(),transport={checkSuggestionQueue(){},checkSuggestionRevisions(){},requestSuggestionRevision:request,requestSuggestion:request,refreshDocument:request,connect:request,flush:request,suggestionRevisionsReady:()=>false,subscribe:()=>()=>{},suggestionState:()=>({revision:'0',documentRevision:'0'}),state:()=>({status:'offline'})};
    const versions=await h.session.openVersionCatalog({getToken});versions.saveVersion('Retained published-version candidate','2');await versions.flush();

@@ -15,9 +15,12 @@ no ProseMirror, Tiptap or CKEditor document, operation or plugin protocol is ado
 
 ## Current retained native reconstruction
 
-The [native reconstruction contract](NATIVE_RECONSTRUCTION.md) covers original
-and both independent-local and independent-delivery source families, including
-all four independent document/comment history combinations. Retained LIVE histories can be newer
+The [native reconstruction contract](NATIVE_RECONSTRUCTION.md) covers original,
+generation, independent-local and independent-delivery source families, including
+all four independent document/comment history combinations. Generation recovery
+keeps local, relay and retained source kinds distinct, validates complete heads,
+immutable files and attempted/pending/LIVE captures, and preserves sealed history.
+Retained LIVE histories can be newer
 than genuinely reopened disk sources. Private inspectors compare every held
 selected native and whole selected upload store before constructing participant
 backups. Existing recovery restores exact native histories and dependent stores
@@ -33,8 +36,8 @@ Reconstruction now bounds initial capture, native comparison and DATA builder
 factory waits using actual owner/input cancellation, with late unclaimed native
 owners cleaned up. Abort releases ordinary editing and Close can finish before
 the stalled host factory returns; real storage cleanup retains its own semantics.
-Other legacy public read APIs are unchanged. These three family-specific recovery
-paths do not complete whole-room reconstruction. The other four source families,
+Other legacy public read APIs are unchanged. These four family-specific recovery
+paths do not complete whole-room reconstruction. The other three source families,
 compatible native union, durable common preparation/retirement and authenticated
 activation remain architectural priorities. All thirteen V1 gates remain open.
 

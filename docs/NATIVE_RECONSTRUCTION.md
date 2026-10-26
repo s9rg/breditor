@@ -6,8 +6,8 @@ Ordinary execution resume refuses that mismatch; refusal does not recover the
 missing work.
 
 Private reconstruction paths build new participant backups from retained native
-journals for the original, independent-local and independent-delivery source
-families. Existing recovery restores them into absent databases. Both Undo lanes
+journals for the original, generation, independent-local and independent-delivery
+source families. Existing recovery restores them into absent databases. Both Undo lanes
 survive; visible document trees are never used to reconstruct history.
 
 ## Read and compare before rebuilding
@@ -34,6 +34,23 @@ revision record. Native replay and continuation checks preserve document and
 comment history. The new participant contains the LIVE native pair and dependent
 records. The complete retained file stays attached with earlier save phases,
 literal origins, original uploads and selected uploads.
+
+## Generation native backup construction
+
+The generation path preserves each explicitly selected local, relay or retained
+source kind. It admits both protected origin files and the exact recovery and
+operation plans. Committed heads must match their complete immutable file list
+and decoded native head. An attempted cut, when present, must exactly encode its
+captured document, comments, versions and companion. Pending and LIVE captures
+keep their closed shapes; projection cannot discard unknown companion fields.
+
+Native replay must continue every earlier state, including original roots and
+sealed generations, in both lanes. Immutable version order and relay progress
+must continue too. Facade revision strings remain captured observations, not
+ancestry counters or writer grants. Shared asset framing preserves the existing
+generation format and opaque native strings; a pinned pre-refactor file protects
+its byte compatibility. The inspector applies the same retained-packet
+conservation rules as delivery recovery without changing either source protocol.
 
 ## Independent local native backup construction
 
@@ -109,7 +126,7 @@ native sources and dependent stores rather than writing checkpoint-shaped rows.
 Original databases remain unchanged. An existing live writer still excludes
 recovery of a second writer.
 
-Original, independent-local and independent-delivery regressions fail actual
+Original, generation, independent-local and independent-delivery regressions fail actual
 source saves, retain newer LIVE document/comment history and cold reopen older
 disk data. The independent cases first leave a complete pending attempt, then
 retain a newer unsaved suffix;
@@ -120,8 +137,9 @@ storage and locks do not establish physical power-loss durability.
 
 ## Remaining architectural work
 
-Three family-specific DATA/recovery paths do not complete whole-room reconstruction.
-The other four source families need their own validated recipes. A durable
+Four family-specific DATA/recovery paths do not complete whole-room reconstruction.
+Restored graphs and the two local-operation input families still need validated
+recipes. A durable
 whole-room intent must retain every complete input before creating targets and
 coordinate approved retirement, interrupted retries and a final common handoff.
 
