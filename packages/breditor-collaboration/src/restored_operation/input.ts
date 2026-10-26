@@ -33,8 +33,8 @@ export async function readRestoredOperationInput<P extends SharedSelectionPolicy
   const identity=Object.freeze({plan,operation,origin:selection.original.sha256,sourceDatabase}),factory={...policy.options.session,database:sourceDatabase,create:missing} as SharedIndependentDeliveryOptions<P>;
   const recoveries=[originalData];for(const cut of[current,pending])if(cut)recoveries.push(await portableCutRecovery(factory,metadata.operation,cut));recoveries.push(live);guard();
   const targets=[];for(const recovery of recoveries){const decoder=new IndependentDeliveryCompanion(factory,recovery),native=await makeIndependentHistoryCut(recovery.source.documentCheckpoint,recovery.source.reviewCheckpoint,recovery.source.identity,recovery.source.versions);guard();const target={head:wrapOperationHead(decoder.wrap(JSON.parse(native.head),decoder.capture()),identity),files:native.files};if(!targets.length||!sameOperationCut(target,targets[targets.length-1]!))targets.push(target);}
-  const{dispose,uploads,uploadEntries,blob}=owner;
-  complete=true;return Object.freeze({kind,selection,file:bytes,original,fileSha256,identity,database,sourceDatabase,factory,guard,options:policy.options,originalData,live,targets:Object.freeze(targets),uploads,uploadEntries,blob,dispose});
+  const{dispose,uploads,uploadEntries,blob,flatten}=owner;
+  complete=true;return Object.freeze({kind,selection,file:bytes,original,fileSha256,identity,database,sourceDatabase,factory,guard,options:policy.options,originalData,live,targets:Object.freeze(targets),uploads,uploadEntries,blob,flatten,dispose});
  }finally{if(!complete)owner.dispose();}
 }
 export type RestoredOperationInput=Awaited<ReturnType<typeof readRestoredOperationInput>>;

@@ -6,8 +6,8 @@ Ordinary execution resume refuses that mismatch; refusal does not recover the
 missing work.
 
 Private reconstruction paths build new participant backups from retained native
-journals for the original, generation, independent-local and independent-delivery
-source families. Existing recovery restores them into absent databases. Both Undo lanes
+journals for the original, generation, independent-local, independent-delivery
+and restored-graph source families. Existing recovery restores them into absent databases. Both Undo lanes
 survive; visible document trees are never used to reconstruct history.
 
 ## Read and compare before rebuilding
@@ -91,6 +91,29 @@ they are replayed individually and retained in the complete input file, not
 silently restored over LIVE. A DATA recipe alone does not compare a mutable source
 and cannot grant permission to replace one.
 
+## Restored graph native construction
+
+The graph builder keeps the existing graph family and appends one state to its
+exact literal input. It independently admits the original participant, complete
+parent plan, declared input digest, operation identity and completed bootstrap
+journal. Current, pending, observed and retained cuts must agree, including their
+complete native files and recomputed asset references.
+
+Original, input, current, pending and LIVE histories must continue both native
+lanes, ordered immutable versions and relay progress. The appended state keeps
+the actual current, pending and observed save phases; newer LIVE is not labelled
+as a successful source save. The normal graph reader then re-admits the complete
+ancestry and native state before a recipe is returned. The predecessor can still
+be reconstructed byte-for-byte, and shared append framing is pinned against a
+genuine pre-refactor graph file.
+
+Inspection compares complete current and retained packet rows under the same
+all-member native and upload preflight as delivery recovery. Additional rows
+cannot replace existing decision, retry or publication intents. Decisions remain
+queued, literal inputs and original databases remain intact, and new source and
+upload namespaces must be absent. Both original and segmented document/comment
+lanes preserve future Undo and Redo after recovery and cold reopening.
+
 ## Assets and read lifetimes
 
 Immutable raster bytes resolve from retained uploads and original exact asset
@@ -141,7 +164,8 @@ native sources and dependent stores rather than writing checkpoint-shaped rows.
 Original databases remain unchanged. An existing live writer still excludes
 recovery of a second writer.
 
-Original, generation, independent-local and independent-delivery regressions fail actual
+Original, generation, independent-local, independent-delivery and restored-graph
+regressions fail actual
 source saves, retain newer LIVE document/comment history and cold reopen older
 disk data. The independent cases first leave a complete pending attempt, then
 retain a newer unsaved suffix;
@@ -152,9 +176,8 @@ storage and locks do not establish physical power-loss durability.
 
 ## Remaining architectural work
 
-Four family-specific DATA/recovery paths do not complete whole-room reconstruction.
-Restored graphs and the two local-operation input families still need validated
-recipes. A durable
+Five family-specific DATA/recovery paths do not complete whole-room reconstruction.
+The two local-operation input families still need validated recipes. A durable
 whole-room intent must retain every complete input before creating targets and
 coordinate approved retirement, interrupted retries and a final common handoff.
 

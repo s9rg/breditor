@@ -16,7 +16,8 @@ no ProseMirror, Tiptap or CKEditor document, operation or plugin protocol is ado
 ## Current retained native reconstruction
 
 The [native reconstruction contract](NATIVE_RECONSTRUCTION.md) covers original,
-generation, independent-local and independent-delivery source families, including
+generation, independent-local, independent-delivery and restored-graph source
+families, including
 all four independent document/comment history combinations. Generation recovery
 keeps local, relay and retained source kinds distinct, validates complete heads,
 immutable files and attempted/pending/LIVE captures, and preserves sealed history.
@@ -32,6 +33,12 @@ suggestions, revisions, queued version packets and receipts. Additional admitted
 rows cannot erase or change existing current intents; conflicting packet states
 require reconciliation rather than automatic publication or a server decision.
 
+Restored-graph recovery appends retained native LIVE through the existing graph
+format while preserving the actual current, pending and observed save phases.
+It validates the literal input, parent plan, full journal cuts and asset references
+before normal archive admission. Both native lanes, ordered versions, queued
+packets and exact ancestry remain intact; an append is not a save acknowledgement.
+
 Reconstruction now bounds initial capture, native comparison and DATA builder
 factory waits using actual owner/input cancellation, with late unclaimed native
 owners cleaned up. Abort releases ordinary editing and Close can finish before
@@ -41,8 +48,8 @@ temporary URLs and recovery barriers. Read and asset signals cover the complete
 inspection before its first capture; actual room Close is independent of the
 decoder returning. Ordinary image bytes, admission rules and archive formats
 remain unchanged. Other legacy host-factory callback contracts are unchanged.
-These four family-specific recovery
-paths do not complete whole-room reconstruction. The other three source families,
+These five family-specific recovery
+paths do not complete whole-room reconstruction. The two local-operation input families,
 compatible native union, durable common preparation/retirement and authenticated
 activation remain architectural priorities. All thirteen V1 gates remain open.
 
