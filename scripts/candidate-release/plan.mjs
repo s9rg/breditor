@@ -414,7 +414,7 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   script('native-execution','check-native-execution-sdk.mjs',[],[{path:'target/native-execution-sdk.json',fresh:true}],3600000),
   script('installed-native-execution','check-native-execution-installed.mjs',[],[{path:'target/native-execution-installed-consumer.json',fresh:true}],7200000),
   stage('native-reconstruction-contracts',node,['--test','scripts/native-reconstruction-candidate-plan.test.mjs']),
-  stage('native-reconstruction-type-fence',node,['node_modules/typescript/bin/tsc','--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM,ESNext.Disposable','scripts/fixtures/editor-consumer/types-native-reconstruction.ts','scripts/fixtures/editor-consumer/types-native-local-reconstruction.ts']),
+  stage('native-reconstruction-type-fence',node,['node_modules/typescript/bin/tsc','--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM,ESNext.Disposable','scripts/fixtures/editor-consumer/types-native-reconstruction.ts','scripts/fixtures/editor-consumer/types-native-local-reconstruction.ts','scripts/fixtures/editor-consumer/types-native-delivery-reconstruction.ts']),
   script('native-reconstruction','check-native-reconstruction-sdk.mjs',[],[{path:'target/native-reconstruction-sdk.json',fresh:true}],1800000),
   script('installed-native-reconstruction','check-native-reconstruction-installed.mjs',[],[{path:'target/native-reconstruction-installed-consumer.json',fresh:true}],3600000),
   stage("archive-integrity-contracts",node,["--test","scripts/archive-integrity.test.mjs"]),

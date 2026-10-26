@@ -1,0 +1,238 @@
+{
+  "format": "breditor/native-delivery-reconstruction-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-26T01:29:57.021Z",
+  "qualification": "selected-functional-architectural-increment-not-v1-release",
+  "workingTreeSourceAtVerification": {
+    "commit": "523079537c4edc7c866b9188ba5d1e35dc3a50d7",
+    "dirty": true,
+    "sha256": "c54dafcef2adf8299db2df3b7c0b25033c6f69caf364df784a95f7df0f710af5",
+    "files": 6578,
+    "bytes": 51198555
+  },
+  "qualificationMetadataAddedAfterRun": true,
+  "postVerificationSourceAdditions": [
+    "docs/qualification/2026-10-25-native-delivery-reconstruction.json"
+  ],
+  "normal": {
+    "passedStages": 13,
+    "fullFunctionalPlanExecuted": false,
+    "manifests": [
+      {
+        "kind": "common",
+        "path": "target/v1-candidate-runs/run-0TZQZG/result.json",
+        "sha256": "3960fb7017429ab0c3ab98f76cc9fc5caf7242041cb3ce0640a88b2802ae4664",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "candidate-runner-contracts",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "rich-browser-build",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "collaboration-build",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-complete-cohort",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-complete-image-cohort",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-execution-contracts",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-execution-type-fence",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-reconstruction-contracts",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-reconstruction-type-fence",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      },
+      {
+        "kind": "installed",
+        "path": "target/v1-candidate-runs/run-36QuGa/result.json",
+        "sha256": "4358e78496424efe71681f85817cad13f4d97508b5d6b2b3b03249bb18f12636",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "installed-native-reconstruction",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      },
+      {
+        "kind": "source",
+        "path": "target/v1-candidate-runs/run-uLi3lZ/result.json",
+        "sha256": "b3fd3bc9528e6bc4aa0e28eaccab56309be8756622988cdb7771a21a9be317a5",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "native-execution",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-reconstruction",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      },
+      {
+        "kind": "readiness",
+        "path": "target/v1-candidate-runs/run-vSzh6z/result.json",
+        "sha256": "447952eed5231f7c25572dab134ce1cbd7057e681e87ca290f633d35d0b3d22c",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "readiness-inventory",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      }
+    ],
+    "sourceExecution": {
+      "passed": 203,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "rerunForThisSource": true
+    },
+    "sourceReconstruction": {
+      "passed": 42,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "priorLawsRetained": 29,
+      "newDeliveryLaws": 12,
+      "newLocalExactLiveLaw": 1,
+      "deliveryNativeHistoryPairs": 4
+    },
+    "offlineInstalledReconstruction": {
+      "passed": 42,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "workspaceLinks": false
+    },
+    "productionBundleReconstruction": {
+      "passed": 42,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0
+    },
+    "strictSourceConsumerFixtures": 31,
+    "strictInstalledReconstructionFixtures": 3,
+    "freshNativeFilesVerified": 100
+  },
+  "guardControls": {
+    "scope": "Unchanged assertions against a copied actual offline-installed consumer. Each isolated missing guard must exit 1, every product is restored exactly, then the selected law exits 0. The positive consumer remains unmodified.",
+    "guards": [
+      {
+        "name": "delivery-complete-live",
+        "initialNormalActualExit": 0,
+        "brokenActualExit": 1,
+        "restoredActualExit": 0,
+        "restoredExactly": true
+      },
+      {
+        "name": "delivery-queue-conservation",
+        "initialNormalActualExit": 0,
+        "brokenActualExit": 1,
+        "restoredActualExit": 0,
+        "restoredExactly": true
+      },
+      {
+        "name": "delivery-version-order",
+        "initialNormalActualExit": 0,
+        "brokenActualExit": 1,
+        "restoredActualExit": 0,
+        "restoredExactly": true
+      },
+      {
+        "name": "local-complete-live",
+        "initialNormalActualExit": 0,
+        "brokenActualExit": 1,
+        "restoredActualExit": 0,
+        "restoredExactly": true
+      }
+    ],
+    "installedProductFilesRestoredAndVerified": 1894,
+    "positiveConsumerUnmodified": true
+  },
+  "native": {
+    "sourceAndBuildInputsVerifiedUnchanged": 2899,
+    "normalWasmSha256": "946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0",
+    "priorNativeSuitePassed": 411,
+    "priorNativeSuiteRerun": false,
+    "baselineInventorySha256": "5105338fe31693331b67a898700b312ae532f9bb65239b87b841ab2b99102cb0"
+  },
+  "retainedProof": {
+    "path": "target/native-delivery-reconstruction-proof-or3sdX/index.json",
+    "sha256": "baaa6e95e6ea88dad0d8bfa786affc801a19518a9bff685af5c7b1674bf0525c",
+    "files": 397,
+    "endpoints": {
+      "groups": 37,
+      "declared": 370,
+      "allConfirmedClosed": true
+    }
+  },
+  "functionalScope": "Three source reconstruction families now build exact participant DATA without overwriting source stores. Independent-delivery covers all four native lane combinations after actual failed pending saves and genuine older cold reopen, preserving nonempty queued suggestions/decisions, revisions, version packets, relay receipts, immutable native versions and future document/comment Undo/Redo. Actual live writer exclusion, absent-only participant recovery and repeated cold recovery are exercised. Native-valid missing/changed queue rows require reconciliation. Ordered native version prefixes are checked beyond legacy set membership. Both independent builders require an exact complete LIVE wrapper round-trip, preventing silent loss or relabeling of identity/binding/unknown metadata. Complete parent plans and retained cut references/digests are re-admitted. The genuine current seven-member native/whole-upload preflight and all prior read cancellation guards remain required.",
+  "boundary": "Private DATA/participant recovery, not an editable room, native union, writer retirement, source-write acknowledgement, server-finalized review decision, credential or authenticated activation. Existing original protocol formats, default actor policies, Rust/WASM bytes, package/model versions and thirteen V1 gates remain unchanged. Controlled storage/locks do not establish physical power-loss durability.",
+  "remaining": [
+    "Four other source reconstruction family adapters",
+    "Durable complete-room input preparation before absent-only targets, explicit old-source retirement and interrupted retry handoff",
+    "Compatible native all-author and own-intent union; true forks must refuse",
+    "Dependent packet/receipt reconciliation beyond unchanged rows and safe additions",
+    "Explicit unbound-comment adoption",
+    "Authenticated whole-room activation and old-writer fencing",
+    "Sustainable native Undo/offline retention across generations",
+    "Extension/custom-node and remaining full feature parity",
+    "All thirteen V1 release gates"
+  ],
+  "openV1Gates": [
+    "catalog-coverage",
+    "distribution",
+    "compatibility",
+    "release-ci",
+    "browser-reliability",
+    "accessibility-input-mobile",
+    "performance-and-size",
+    "public-relay-hardening",
+    "storage-lifecycle",
+    "dependency-and-license-review",
+    "integration-docs-and-support",
+    "pilot",
+    "final-rc"
+  ],
+  "v1Ready": false,
+  "publicationApproved": false,
+  "versionChanged": false,
+  "tagCreated": false,
+  "pushed": false
+}

@@ -11,6 +11,7 @@ for(const[label,mutate]of[
  ['duplicate retained native cut',source=>{source.snapshot.retained.push(structuredClone(source.snapshot.retained[0]));}],
  ['current cut differs from its retained native row',source=>{source.snapshot.current.head+=' ';}],
  ['dropped nonempty immutable version history',source=>{assert.ok(source.live.versions.length>0);source.live.versions=[];}],
+ ['unknown LIVE recovery field',source=>{source.live.unknownReconstructionField=true;}],
 ])test('local reconstruction refuses '+label+' after complete frame admission',async()=>{
  const original=await data.load();let candidate;
  try{const file=await reframeReconstructionRecords(original,fixtures.native,'independent-local',mutate);candidate=await Loaded.read(file,{wasm:fixtures.native,checkAuthority(){}});assert.notDeepEqual(file.selection,data.file.selection);await assert.rejects(build(candidate,{id:'independent-local',session:data.localFactory}));assert.deepEqual(await indexedDB.databases(),[]);assert.deepEqual(original.file().selection,data.file.selection);}finally{candidate?.dispose();original.dispose();}

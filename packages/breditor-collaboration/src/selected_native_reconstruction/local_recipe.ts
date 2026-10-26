@@ -41,6 +41,9 @@ export async function buildLocalReconstructionRecipe(source:Loaded,provided:Read
   for(const[slot,key]of[['current',intent.current],['pending',intent.pending]]as const){const cut=snapshot[slot];if(key===null?cut!==null:!cuts.has(key)||!sameOperationCut(cut,cuts.get(key)!))throw fail();}
   if(snapshot['observed']===null?intent.current!==null:typeof snapshot['observed']!=='string'||!named.has(snapshot['observed']))throw fail();
   live=await replayLocalOperationRecovery(entry.selection,factory,data['live'] as SharedIndependentHistoryRecovery,check);check();
+  // Replay admits the closed native components. Do not silently discard an
+  // unknown LIVE wrapper field while constructing a supposedly exact backup.
+  if(JSON.stringify(live.recovery)!==JSON.stringify(data['live']))throw fail('native_reconstruction_integrity');
   const originalRecovery=backup.recovery.call(original);for(const recovery of[originalRecovery,...await Promise.all([...cuts.values()].map(cut=>localPortableCutRecovery(identity,cut)))]){check();const previous=await replayLocalOperationRecovery(entry.selection,factory,recovery,check);try{verifyLocalOperationContinuation(live,previous);previous.check();live.check();}finally{previous.dispose();}}
   const references=localPortableReferences(live.core,live.recovery,live.check);if(references.pending.length)return Object.freeze({kind:'pending' as const,id,pending:[{kind:'source' as const,pending:references.pending}]});
   local=await assets.read(source.originalUploads(id),options);check();selected=await assets.read(source.selectedUploads(id),options);check();

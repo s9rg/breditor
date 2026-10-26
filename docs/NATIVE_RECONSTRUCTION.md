@@ -6,9 +6,9 @@ Ordinary execution resume refuses that mismatch; refusal does not recover the
 missing work.
 
 Private reconstruction paths build new participant backups from retained native
-journals for the original and independent-local source families. Existing recovery
-restores them into absent databases. Both Undo lanes survive; visible document
-trees are never used to reconstruct history.
+journals for the original, independent-local and independent-delivery source
+families. Existing recovery restores them into absent databases. Both Undo lanes
+survive; visible document trees are never used to reconstruct history.
 
 ## Read and compare before rebuilding
 
@@ -47,9 +47,32 @@ Retained LIVE must natively continue the original and every current/pending cut,
 in both lanes. Immutable version packets must preserve their exact ordered prefix.
 Unknown or duplicate cuts, rewritten digests, mismatched native rows and dropped
 versions refuse before mutable stores open. Outstanding causal references remain
-pending. The resulting independent-local participant contains the exact LIVE
+pending. The admitted native components must round-trip the complete LIVE wrapper
+without discarding unknown fields. The resulting independent-local participant contains the exact LIVE
 recovery; its full retained room file keeps the complete earlier save phases and
 both upload generations. No relay or delivery companion is synthesized.
+
+## Independent delivery native backup construction
+
+The delivery builder re-admits the genuine parent recovery plan and its complete
+source and upload phases. It recomputes the operation identity from the declared
+namespaces, checks the literal origin and every current/pending cut, and requires
+LIVE to continue both native lanes, relay progress and ordered immutable versions.
+The admitted component records must round-trip the complete LIVE wrapper exactly;
+a projection cannot relabel a mismatched identity, binding or unknown field.
+The resulting participant contains the exact LIVE recovery, including selected
+suggestion queues, revision outboxes, version packets and relay receipts. Pending
+decisions remain pending; reconstruction does not finalize or publish them.
+
+Before construction, the inspector compares the current and retained delivery
+records under the common native and upload read. Additional admitted packet rows
+are allowed only when every earlier complete row remains unchanged. Changing a
+queued decision or retry flag, dropping a packet, changing an existing catalog
+or selecting different retained bindings requires explicit reconciliation.
+Historical current/pending cuts can legitimately contain earlier packet states;
+they are replayed individually and retained in the complete input file, not
+silently restored over LIVE. A DATA recipe alone does not compare a mutable source
+and cannot grant permission to replace one.
 
 ## Assets and read lifetimes
 
@@ -86,9 +109,10 @@ native sources and dependent stores rather than writing checkpoint-shaped rows.
 Original databases remain unchanged. An existing live writer still excludes
 recovery of a second writer.
 
-Original and independent-local regressions fail actual source saves, retain newer
-LIVE document/comment history and cold reopen older disk data. The local case
-first leaves a complete pending attempt, then retains a newer unsaved suffix;
+Original, independent-local and independent-delivery regressions fail actual
+source saves, retain newer LIVE document/comment history and cold reopen older
+disk data. The independent cases first leave a complete pending attempt, then
+retain a newer unsaved suffix;
 cold reopening may legitimately adopt that pending attempt without recovering
 the later suffix. New destinations restore exact retained LIVE, cold reopen and
 compare future document/comment Undo/Redo with a native reference. Controlled
@@ -96,8 +120,8 @@ storage and locks do not establish physical power-loss durability.
 
 ## Remaining architectural work
 
-Two family-specific DATA/recovery paths do not complete whole-room reconstruction.
-The other five source families need their own validated recipes. A durable
+Three family-specific DATA/recovery paths do not complete whole-room reconstruction.
+The other four source families need their own validated recipes. A durable
 whole-room intent must retain every complete input before creating targets and
 coordinate approved retirement, interrupted retries and a final common handoff.
 

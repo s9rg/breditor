@@ -16,21 +16,25 @@ no ProseMirror, Tiptap or CKEditor document, operation or plugin protocol is ado
 ## Current retained native reconstruction
 
 The [native reconstruction contract](NATIVE_RECONSTRUCTION.md) covers original
-and independent-local source families, including all four independent
-document/comment history combinations. Retained LIVE histories can be newer
+and both independent-local and independent-delivery source families, including
+all four independent document/comment history combinations. Retained LIVE histories can be newer
 than genuinely reopened disk sources. Private inspectors compare every held
 selected native and whole selected upload store before constructing participant
 backups. Existing recovery restores exact native histories and dependent stores
 into absent databases without overwriting originals. Local current/pending cuts
 and immutable version prefixes are validated individually; conflicting native
 branches and unmatched packet/progress records still require explicit resolution.
+Delivery recovery also checks the complete parent plan and preserves pending
+suggestions, revisions, queued version packets and receipts. Additional admitted
+rows cannot erase or change existing current intents; conflicting packet states
+require reconciliation rather than automatic publication or a server decision.
 
 Reconstruction now bounds initial capture, native comparison and DATA builder
 factory waits using actual owner/input cancellation, with late unclaimed native
 owners cleaned up. Abort releases ordinary editing and Close can finish before
 the stalled host factory returns; real storage cleanup retains its own semantics.
-Other legacy public read APIs are unchanged. These two family-specific recovery
-paths do not complete whole-room reconstruction. The other five source families,
+Other legacy public read APIs are unchanged. These three family-specific recovery
+paths do not complete whole-room reconstruction. The other four source families,
 compatible native union, durable common preparation/retirement and authenticated
 activation remain architectural priorities. All thirteen V1 gates remain open.
 
