@@ -1,0 +1,266 @@
+{
+  "format": "breditor/native-preflight-waits-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-26T00:32:34.641Z",
+  "qualification": "selected-functional-architectural-increment-not-v1-release",
+  "workingTreeSourceAtVerification": {
+    "commit": "08cda75d9f43decf8c3a5fe91c27193b97906b7f",
+    "dirty": true,
+    "sha256": "519d70a00c3b9f66184946a1bc1d849b67d70e827b29f9caeecae65a9227981c",
+    "files": 6570,
+    "bytes": 51143278
+  },
+  "qualificationMetadataAddedAfterRun": true,
+  "postVerificationSourceAdditions": [
+    "docs/qualification/2026-10-25-native-preflight-waits.json"
+  ],
+  "normal": {
+    "passedStages": 12,
+    "fullFunctionalPlanExecuted": false,
+    "manifests": [
+      {
+        "kind": "common",
+        "path": "target/v1-candidate-runs/run-0vlPKY/result.json",
+        "sha256": "237f0970a7382f4570efcc9d7b0319b5c5ce9d480394ed076acba8ed4949d8ee",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "candidate-runner-contracts",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "rich-browser-build",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "collaboration-build",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-complete-cohort",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-complete-image-cohort",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-execution-contracts",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-execution-type-fence",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-reconstruction-contracts",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-reconstruction-type-fence",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      },
+      {
+        "kind": "source",
+        "path": "target/v1-candidate-runs/run-hJvY08/result.json",
+        "sha256": "59366496f05a9df7bdbf2080765f5de252839c23486ad8386b368220e54df963",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "native-reconstruction",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      },
+      {
+        "kind": "installed",
+        "path": "target/v1-candidate-runs/run-qQiZDb/result.json",
+        "sha256": "1fa0e43c6fb1b1834d8789c2068f62017774fb5dc3f96493fa8e13dd3416df05",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "installed-native-reconstruction",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      },
+      {
+        "kind": "readiness",
+        "path": "target/v1-candidate-runs/run-CIeUmw/result.json",
+        "sha256": "f5a7f0794bb55da9739054604b720fbe675d99ce36e87ed48714c0c8de27ce4b",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "readiness-inventory",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      }
+    ],
+    "sourceReconstruction": {
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "priorLaws": 24,
+      "newInitialCaptureLaws": 4,
+      "newFixtureOrderingLaw": 1,
+      "concreteSourceFamiliesInAbortMatrix": 7
+    },
+    "offlineInstalledReconstruction": {
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "workspaceLinks": false
+    },
+    "productionBundleReconstruction": {
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0
+    },
+    "strictSourceConsumerFixtures": 30,
+    "strictInstalledReconstructionFixtures": 2,
+    "freshNativeFilesVerified": 100,
+    "priorExecution": {
+      "assertions": 203,
+      "rerun": false,
+      "qualifiedSource": {
+        "commit": "a2e6c5afde8e70494f95dde9164bf1d0a7b371f9",
+        "dirty": true,
+        "sha256": "a1835001c961365c4a838d0b10267e71550a41aa8d6c6f2bcbd0ce97ea6f90f2",
+        "files": 6565,
+        "bytes": 51118138
+      },
+      "proof": "target/native-reconstruction-proof-OFon3S/index.json",
+      "proofSha256": "c47ed903b9851cb38368bb255f9c542b2cf9a68baf86a0b9b04b4203f76d0f77"
+    }
+  },
+  "guardControls": {
+    "scope": "Unchanged assertions against a copied actual offline-installed consumer. Passing normal suite, deliberate disabled-guard exit 1, exact product restoration, restored selected-law exit 0.",
+    "guards": [
+      {
+        "name": "initial-capture-signal",
+        "initialNormalActualExit": 0,
+        "brokenActualExit": 1,
+        "restoredActualExit": 0,
+        "restoredExactly": true
+      },
+      {
+        "name": "immutable-versions",
+        "initialNormalActualExit": 0,
+        "brokenActualExit": 1,
+        "restoredActualExit": 0,
+        "restoredExactly": true
+      }
+    ],
+    "installedProductFilesRestoredAndVerified": 1888,
+    "positiveConsumerUnmodified": true
+  },
+  "native": {
+    "sourceAndBuildInputsVerifiedUnchanged": 2899,
+    "normalWasmSha256": "946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0",
+    "priorNativeSuitePassed": 411,
+    "priorNativeSuiteRerun": false,
+    "baselineInventorySha256": "5105338fe31693331b67a898700b312ae532f9bb65239b87b841ab2b99102cb0"
+  },
+  "retainedProof": {
+    "path": "target/native-preflight-proof-Kxf0Iy/index.json",
+    "sha256": "b61abfdb590098e06fdfc4f915880ee4a0c8b79d0f5423a98bd744a0e0f69537",
+    "files": 360,
+    "endpoints": {
+      "groups": 20,
+      "declared": 200,
+      "allConfirmedClosed": true
+    }
+  },
+  "reproducedBug": {
+    "priorProof": "docs/qualification/2026-10-25-native-local-reconstruction.json",
+    "phase": "initial genuine selected-owner capture",
+    "inspectionAndActualCloseWaitedForUncooperativeHost": true,
+    "nativeAlreadyRetired": true,
+    "lateRawFreedOnceAfterHostReturn": true,
+    "fixedInThisIncrement": true
+  },
+  "interruptedQualification": {
+    "countedAsPass": false,
+    "sourceSha256": "2bfcda19ec2c5ae78a9f6343e02e83c36427e8744c23aea5db9013f57e61c557",
+    "cause": "The test cleanup released its delayed factory before entry, without arming a later entry. Under concurrent startup load the startup guard could expire first and cleanup then wait indefinitely.",
+    "reproducedDeterministicallyWithNativeFactory": true,
+    "repair": "Fixture cleanup arms late entry and observes its settlement; failed laws cancel the real read. A separate 60-second startup guard leaves the 10-second cancellation and actual Close guards unchanged.",
+    "freshQualificationOnly": true,
+    "productionProductsUnchangedBetweenRuns": {
+      "sourceBefore": {
+        "commit": "08cda75d9f43decf8c3a5fe91c27193b97906b7f",
+        "dirty": true,
+        "sha256": "2bfcda19ec2c5ae78a9f6343e02e83c36427e8744c23aea5db9013f57e61c557",
+        "files": 6570,
+        "bytes": 51141747
+      },
+      "sourceAfter": {
+        "commit": "08cda75d9f43decf8c3a5fe91c27193b97906b7f",
+        "dirty": true,
+        "sha256": "519d70a00c3b9f66184946a1bc1d849b67d70e827b29f9caeecae65a9227981c",
+        "files": 6570,
+        "bytes": 51143278
+      },
+      "executableAndDeclarationFilesVerified": 1868,
+      "allExecutablesAndDeclarationsByteIdentical": true,
+      "allProductFilesByteIdentical": true,
+      "oldBundleSha256": "7754300e4c848d0734709123e20a9fd6149309c2b2065719d6648e7a747c06ec",
+      "newBundleSha256": "a6c7187669cbbb95d312c5e3a0f51481a784efa294482c9466d21ccf2cf476c3",
+      "bundleByteIdentical": false,
+      "bundleOnlyDifferentInTemporaryPathRegionComments": true,
+      "commentDifferences": 711
+    },
+    "diagnosticProof": "interrupted-harness-run/ and development/fixture-race-postmortem.json in retained proof"
+  },
+  "functionalScope": "Before the first current file exists, reconstruction binds explicit factories to the actual selected-owner read lifetime. The same wrappers bound later native comparison. Caller abort is checked against every concrete source family; asset abort covers an initial segmented factory; actual owner Close completes before host release; aborted reads release ordinary editing. Shared DATA waits preserve genuine input branding, staged initialization/receivers, exact late raw ownership and undefined rejection. All 24 previous native/version/upload recovery laws remain in source, installed and bundled paths. The Rust/WASM bytes, existing protocol versions, source-write acknowledgements and actor policies are unchanged.",
+  "boundary": "Only reconstruction inspection gets these factory wrappers. Other legacy public read/capture APIs retain their current callback contracts. Actual storage cleanup can still report its own failures. No source custody, writer grant, old-source retirement, server acknowledgement or authenticated activation is inferred from a read result.",
+  "remaining": [
+    "Other five source-family reconstruction adapters and native/packet matrices",
+    "Nonempty dependent-packet conservation/merge, including original pending stores",
+    "Durable complete-cohort input preparation before absent-only targets, approved retirement and interrupted retry handoff",
+    "Compatible native own-intent/all-author, packet and whole-upload union; true forks must refuse",
+    "Explicit unbound-comment adoption",
+    "Authenticated whole-room activation and old-writer fencing",
+    "Sustainable native Undo/offline retention across generations",
+    "Extension/custom-node and remaining full feature parity",
+    "All thirteen V1 release gates"
+  ],
+  "openV1Gates": [
+    "catalog-coverage",
+    "distribution",
+    "compatibility",
+    "release-ci",
+    "browser-reliability",
+    "accessibility-input-mobile",
+    "performance-and-size",
+    "public-relay-hardening",
+    "storage-lifecycle",
+    "dependency-and-license-review",
+    "integration-docs-and-support",
+    "pilot",
+    "final-rc"
+  ],
+  "v1Ready": false,
+  "publicationApproved": false,
+  "versionChanged": false,
+  "tagCreated": false,
+  "pushed": false
+}

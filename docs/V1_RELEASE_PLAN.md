@@ -25,12 +25,14 @@ into absent databases without overwriting originals. Local current/pending cuts
 and immutable version prefixes are validated individually; conflicting native
 branches and unmatched packet/progress records still require explicit resolution.
 
-DATA builder waits now end on actual input disposal or abort, with late unclaimed
-native owners cleaned up. Earlier capture/preflight factories still require
-cooperative settlement. These two family-specific recovery paths do not complete
-whole-room reconstruction. The other five source families, compatible native
-union, durable common preparation/retirement and authenticated activation remain
-architectural priorities. All thirteen V1 gates remain open.
+Reconstruction now bounds initial capture, native comparison and DATA builder
+factory waits using actual owner/input cancellation, with late unclaimed native
+owners cleaned up. Abort releases ordinary editing and Close can finish before
+the stalled host factory returns; real storage cleanup retains its own semantics.
+Other legacy public read APIs are unchanged. These two family-specific recovery
+paths do not complete whole-room reconstruction. The other five source families,
+compatible native union, durable common preparation/retirement and authenticated
+activation remain architectural priorities. All thirteen V1 gates remain open.
 
 ## V1 candidate qualification checkpoint
 

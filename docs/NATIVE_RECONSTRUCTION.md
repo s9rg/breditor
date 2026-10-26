@@ -66,9 +66,17 @@ editor is never freed by the cancelled read. Original factory receivers and
 one-shot initialization are preserved. Releasing one builder does not dispose
 the reusable input or another builder.
 
-This bounds the new DATA builders, not every legacy preflight callback. Initial
-cohort capture and earlier native-continuation factories still require the host
-to settle cooperatively. Cancellation never acknowledges a source write.
+The reconstruction inspector binds the explicit factories to the genuine
+selected-owner scope before its first capture, then uses those same bounded
+wrappers during native comparison. All seven source families are covered, with
+original and segmented factory paths. Aborting an inspection releases its read
+barriers so ordinary editing can resume; closing the actual owner does not wait
+for these stalled read factories. Late native results are still observed.
+
+This scope belongs to reconstruction inspection. Other legacy public read and
+capture APIs keep their existing callback contracts. Actual source and storage
+cleanup still runs normally and can report its own failures. Cancellation neither
+acknowledges a source write nor retires a source on behalf of the host.
 
 ## Nonoverwriting restoration
 

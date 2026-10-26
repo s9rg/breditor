@@ -4,7 +4,7 @@ import{NativeReconstructionWork}from'../../../packages/breditor-collaboration/di
 import{buildLocalReconstructionRecipe}from'../../../packages/breditor-collaboration/dist/selected_native_reconstruction/local_recipe.js';
 import{inspectLocalNativeReconstruction}from'../../../packages/breditor-collaboration/dist/selected_native_reconstruction/inspect_local.js';
 type Assert<T extends true>=T;
-type Private=Assert<Extract<'inspectLocalNativeReconstruction'|'buildLocalReconstructionRecipe'|'NativeReconstructionWork'|'retainNativeReconstructionInput',keyof typeof Root> extends never?true:false>;
+type Private=Assert<Extract<'inspectLocalNativeReconstruction'|'buildLocalReconstructionRecipe'|'NativeReconstructionWork'|'NativeReconstructionWaits'|'NativeReconstructionFactoryScope'|'retainNativeReconstructionInput',keyof typeof Root> extends never?true:false>;
 declare const source:LoadedNativeReconstructionCurrent,options:Parameters<typeof buildLocalReconstructionRecipe>[1],owner:Parameters<typeof inspectLocalNativeReconstruction>[0],reads:Parameters<typeof inspectLocalNativeReconstruction>[1],inspection:Awaited<ReturnType<typeof inspectLocalNativeReconstruction>>;
 void buildLocalReconstructionRecipe(source,options);
 const work=new NativeReconstructionWork(source);void work.call(()=>undefined);work.close();
