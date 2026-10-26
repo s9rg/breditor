@@ -7,7 +7,7 @@ import {SharedIndependentParticipantBackup as Backup} from '../independent_parti
 import {encodeIndependentParticipant,independentParticipantDigest} from '../independent_participant/codec.js';
 import {independentRecords} from '../independent_source/records.js';
 import {PhysicalRoomRecordCutArchive} from '../physical_room_record_cut/archive.js';
-import {localOperationJournalIdentity} from '../independent_local_operation/journal_identity.js';
+import {admitLocalReconstructionParent} from './local_parent_records.js';
 import {readLocalOperationIntent} from '../independent_local_operation/cut_intent.js';
 import {localPortableCutRecovery} from '../independent_local_operation/portable_cut.js';
 import {operationCutDigest,sameOperationCut} from '../independent_operation/cut_codec.js';
@@ -35,7 +35,7 @@ export async function buildLocalReconstructionRecipe(source:Loaded,provided:Read
   const payload=fields(await source.records(id),['parent','source']),data=fields(payload['source'],['format','formatVersion','identity','original','snapshot','live','retainedReferences']);if(data['format']!=='breditor/local-source-record-payload'||data['formatVersion']!==1||JSON.stringify(data['original'])!==JSON.stringify(entry.selection))throw fail();
   original=await backup.read.call(Backup,source.participantFile(id),entry.selection,options);check();
   const literal=inputs.call(source.nativeCut(),id).find(row=>row.role==='source-origin');if(!literal)throw fail();originFile=await backup.read.call(Backup,literal.file,entry.selection,options);check();
-  const declared=fields(data['identity'],['plan','operation','origin','database','sourceDatabase']),identity=await localOperationJournalIdentity(declared['database'] as string,declared['sourceDatabase'] as string,entry.selection);if(JSON.stringify(identity)!==JSON.stringify(data['identity']))throw fail();check();
+  const identity=await admitLocalReconstructionParent(source,id,payload['parent'],factory,options,check);if(JSON.stringify(identity)!==JSON.stringify(data['identity']))throw fail();check();
   const snapshot=fields(data['snapshot'],['record','current','pending','observed','retained']),intent=readLocalOperationIntent(snapshot['record'],identity),cuts=new Map<string,IndependentHistoryCut>();for(const value of rows(snapshot['retained'],2)){const row=fields(value,['id','cut']),key=row['id'];if(typeof key!=='string'||cuts.has(key))throw fail();const cut=row['cut'] as IndependentHistoryCut;await localPortableCutRecovery(identity,cut);check();if(await operationCutDigest(cut)!==key)throw fail();cuts.set(key,cut);}
   const named=new Set([intent.current,intent.pending].filter((value):value is string=>value!==null));if(cuts.size!==named.size||[...cuts.keys()].some(key=>!named.has(key)))throw fail();
   for(const[slot,key]of[['current',intent.current],['pending',intent.pending]]as const){const cut=snapshot[slot];if(key===null?cut!==null:!cuts.has(key)||!sameOperationCut(cut,cuts.get(key)!))throw fail();}

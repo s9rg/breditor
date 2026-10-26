@@ -28,6 +28,15 @@ packets, upload stores and custody; a point-in-time DATA inspection is not a gra
 
 ## Original native backup construction
 
+The original builder re-admits the complete protected parent and recovery plans
+through their original codecs, binds destinations to the captured namespace
+layout, and checks the literal origin digest and file declarations. The recovery
+steps must be complete. The original protected reader's prepared/operational
+marker distinction remains unchanged; neither marker grants source ownership.
+Historical review access and limits remain inert plan data. Current readonly
+native admission and current asset limits are independently selected, and no
+historical transport or token callback can run during plan validation.
+
 The original builder admits the original participant file, full committed,
 pending and LIVE native records, and every selected version, suggestion and
 revision record. Native replay and continuation checks preserve document and
@@ -56,7 +65,10 @@ conservation rules as delivery recovery without changing either source protocol.
 
 The local builder supports all four original or segmented document/comment
 history combinations. It admits the original participant and literal source
-origin, recomputes the journal identity, validates the actual intent and every
+origin, validates the complete operational parent and ready recovery plans,
+and derives the journal identity from the actual six captured namespaces rather
+than source-declared names. Literal origin declarations must match too. It
+validates the actual intent and every
 retained typed cut, and checks exact current/pending references and observed
 membership. Digests identify cuts; their lexical order never establishes history.
 

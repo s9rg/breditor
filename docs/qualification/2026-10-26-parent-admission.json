@@ -1,0 +1,283 @@
+{
+  "format": "breditor/native-parent-admission-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-26T14:11:13.802Z",
+  "qualification": "selected-functional-architectural-increment-not-v1-release",
+  "workingTreeSourceAtVerification": {
+    "commit": "ab273ef6baa6880d1ef2aec198c2dbdf9353726c",
+    "dirty": true,
+    "sha256": "5086094cd1de5119b4030184bdbdbfaa03d06160a38c036fc7a0d2d4f4c21e75",
+    "files": 6607,
+    "bytes": 51708643
+  },
+  "qualificationMetadataAddedAfterRun": true,
+  "postVerificationSourceAdditions": [
+    "docs/qualification/2026-10-26-parent-admission.json"
+  ],
+  "normal": {
+    "passedStages": 13,
+    "fullFunctionalPlanExecuted": false,
+    "manifests": [
+      {
+        "kind": "common",
+        "path": "target/v1-candidate-runs/run-ttACxn/result.json",
+        "sha256": "03acda1084495ae4a641b509070c6abb8e2e124d1ee4fc138807efc1c9704907",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "candidate-runner-contracts",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "rich-browser-build",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "collaboration-build",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-complete-cohort",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-complete-image-cohort",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-execution-contracts",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-execution-type-fence",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-reconstruction-contracts",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-reconstruction-type-fence",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      },
+      {
+        "kind": "source",
+        "path": "target/v1-candidate-runs/run-cwlEIA/result.json",
+        "sha256": "63bac490a09c3cce0c69c5b30f0b4cdf549d1602033a68c0964cd2e40f34d05e",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "native-reconstruction",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      },
+      {
+        "kind": "installed",
+        "path": "target/v1-candidate-runs/run-eSHGCD/result.json",
+        "sha256": "057693d5a305610eb105e5c529d54dcc343291dbde80d6a75514a0cc61654eb1",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "installed-native-reconstruction",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      },
+      {
+        "kind": "execution",
+        "path": "target/v1-candidate-runs/run-djeray/result.json",
+        "sha256": "8c90c663f71a95b007ee0db26faf546cfa5dea4f2f512577c07e8c15cd294cca",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "native-execution",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      },
+      {
+        "kind": "readiness",
+        "path": "target/v1-candidate-runs/run-MTLf5I/result.json",
+        "sha256": "641fae3697c74c4362ed594487d42da925e42479589d820df019cd9c51f5ca2a",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "readiness-inventory",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      }
+    ],
+    "sourceExecution": {
+      "passed": 203,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "rerunForThisSource": true
+    },
+    "sourceReconstruction": {
+      "passed": 94,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "priorLawsRetained": 87,
+      "newParentAdmissionLaws": 7
+    },
+    "offlineInstalledReconstruction": {
+      "passed": 94,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "workspaceLinks": false
+    },
+    "productionBundleReconstruction": {
+      "passed": 94,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0
+    },
+    "strictSourceConsumerFixtures": 33,
+    "strictInstalledReconstructionFixtures": 5,
+    "freshNativeFilesVerified": 100
+  },
+  "guardControls": {
+    "scope": "Unchanged assertions against a copied actual offline-installed consumer. Each isolated missing guard must exit 1, every product is restored exactly, then the selected law exits 0. The positive consumer remains unmodified.",
+    "guards": [
+      {
+        "name": "local-captured-namespaces",
+        "initialNormalActualExit": 0,
+        "brokenActualExit": 1,
+        "restoredActualExit": 0,
+        "restoredExactly": true
+      },
+      {
+        "name": "local-parent-plan",
+        "initialNormalActualExit": 0,
+        "brokenActualExit": 1,
+        "restoredActualExit": 0,
+        "restoredExactly": true
+      },
+      {
+        "name": "local-ready-recovery",
+        "initialNormalActualExit": 0,
+        "brokenActualExit": 1,
+        "restoredActualExit": 0,
+        "restoredExactly": true
+      },
+      {
+        "name": "original-plan-admission",
+        "initialNormalActualExit": 0,
+        "brokenActualExit": 1,
+        "restoredActualExit": 0,
+        "restoredExactly": true
+      }
+    ],
+    "installedProductFilesRestoredAndVerified": 1920,
+    "positiveConsumerUnmodified": true
+  },
+  "native": {
+    "sourceAndBuildInputsVerifiedUnchanged": 2899,
+    "normalWasmSha256": "946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0",
+    "priorNativeSuitePassed": 411,
+    "priorNativeSuiteRerun": false,
+    "baselineInventorySha256": "5105338fe31693331b67a898700b312ae532f9bb65239b87b841ab2b99102cb0"
+  },
+  "retainedProof": {
+    "path": "target/native-parent-admission-proof-134GCw/index.json",
+    "sha256": "71c2208078b84105eb785d7c47124f9b6361c285c6789d470674747f9bb77e12",
+    "files": 490,
+    "endpoints": {
+      "groups": 52,
+      "declared": 520,
+      "allConfirmedClosed": true
+    }
+  },
+  "functionalScope": "Close the reproduced original and independent-local parent-plan admission gaps. Complete protected parent and recovery plans are re-admitted through their existing codecs, literal origins must match declarations, and local journal identity is derived from actual captured namespaces rather than unbound source names. Native-valid journals under unrelated storage refuse. Historical original access and limits remain inert old plan data; original marker phase meanings are preserved, current native owners remain readonly, and no token/transport is invoked. Same prior refusal assertions now pass unchanged apart from reversible output paths, while valid originals remain ready. All prior 87 recovery laws and seven additional groups pass in actual source, offline installed packages and a production bundle. All 203 execution laws are rerun.",
+  "boundary": "Private DATA/participant recovery, not an editable room, native union, writer retirement, source-write acknowledgement, server-finalized review decision, credential or authenticated activation. Existing original protocol formats, default actor policies, Rust/WASM bytes, package/model versions and thirteen V1 gates remain unchanged. Controlled storage/locks do not establish physical power-loss durability.",
+  "remaining": [
+    "Two local-operation input source reconstruction family adapters",
+    "Durable complete-room input preparation before absent-only targets, explicit old-source retirement and interrupted retry handoff",
+    "Compatible native all-author and own-intent union; true forks must refuse",
+    "Dependent packet/receipt reconciliation beyond unchanged rows and safe additions",
+    "Explicit unbound-comment adoption",
+    "Authenticated whole-room activation and old-writer fencing",
+    "Sustainable native Undo/offline retention across generations",
+    "Extension/custom-node and remaining full feature parity",
+    "All thirteen V1 release gates"
+  ],
+  "openV1Gates": [
+    "catalog-coverage",
+    "distribution",
+    "compatibility",
+    "release-ci",
+    "browser-reliability",
+    "accessibility-input-mobile",
+    "performance-and-size",
+    "public-relay-hardening",
+    "storage-lifecycle",
+    "dependency-and-license-review",
+    "integration-docs-and-support",
+    "pilot",
+    "final-rc"
+  ],
+  "v1Ready": false,
+  "publicationApproved": false,
+  "versionChanged": false,
+  "tagCreated": false,
+  "pushed": false,
+  "closedPreviousDiagnostics": [
+    {
+      "kind": "independent-local-parent-plan-admission",
+      "previousActualExit": 1,
+      "previousConfirmations": 2,
+      "previousChangedPlanRecipe": "ready",
+      "fixedActualExit": 0,
+      "fixedChangedPlan": "rejected",
+      "validOriginalStillReady": true,
+      "originalAssertionSha256": "6e891cd48db647683c75a7a6492f09341e2ce838e1260defec0ee79e4b7372e6",
+      "relocatedAssertionSha256": "1d7ed4c7751ee1ceb0fb97f5007d6190634af5d64755a10a1ecf4b1bf81f8ce9",
+      "reversibleOutputLocationOnly": true,
+      "mutableDatabasesCreated": 0
+    },
+    {
+      "kind": "original-parent-plan-admission",
+      "previousActualExit": 1,
+      "previousConfirmations": 2,
+      "previousChangedPlanRecipe": "ready",
+      "fixedActualExit": 0,
+      "fixedChangedPlan": "rejected",
+      "validOriginalStillReady": true,
+      "originalAssertionSha256": "518164653abdc8a4953c939dde9db2c2bdee1b3a2a01ffd0e1fbc99a8aa83148",
+      "relocatedAssertionSha256": "9a5a62bf45fb2c28c4d17a2ebdb889c6afa257a56530c7494dc11a2c0b629de2",
+      "reversibleOutputLocationOnly": true,
+      "mutableDatabasesCreated": 0
+    }
+  ],
+  "carriedQualification": {
+    "graphSource": 640,
+    "graphInstalled": 640,
+    "generationAssetSource": 362,
+    "generationAssetInstalled": 362,
+    "rerunInThisIncrement": false,
+    "allOtherPublicProductsByteForByteUnchanged": true,
+    "unchangedProducts": 1913,
+    "currentProducts": 1920,
+    "scope": "Previous source/installed full graph and generation-asset domains; not rerun. Every public product outside the two private recipes/new guards and one internal declaration remains byte-identical."
+  }
+}

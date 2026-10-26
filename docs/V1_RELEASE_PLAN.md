@@ -39,6 +39,13 @@ It validates the literal input, parent plan, full journal cuts and asset referen
 before normal archive admission. Both native lanes, ordered versions, queued
 packets and exact ancestry remain intact; an append is not a save acknowledgement.
 
+Original and independent-local reconstruction now re-admit complete parent and
+recovery plans instead of trusting native-valid source records alone. Literal
+origins and captured namespaces must agree. The original format keeps its own
+prepared/operational marker meaning; historical access settings and limits never
+become current editing authority or replace current decode policy. No transport
+or token callback is invoked by this DATA validation.
+
 Reconstruction now bounds initial capture, native comparison and DATA builder
 factory waits using actual owner/input cancellation, with late unclaimed native
 owners cleaned up. Abort releases ordinary editing and Close can finish before
