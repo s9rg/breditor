@@ -36,7 +36,12 @@ Reconstruction now bounds initial capture, native comparison and DATA builder
 factory waits using actual owner/input cancellation, with late unclaimed native
 owners cleaned up. Abort releases ordinary editing and Close can finish before
 the stalled host factory returns; real storage cleanup retains its own semantics.
-Other legacy public read APIs are unchanged. These four family-specific recovery
+Raster admission also cancels before an unsettled image decoder returns, releasing
+temporary URLs and recovery barriers. Read and asset signals cover the complete
+inspection before its first capture; actual room Close is independent of the
+decoder returning. Ordinary image bytes, admission rules and archive formats
+remain unchanged. Other legacy host-factory callback contracts are unchanged.
+These four family-specific recovery
 paths do not complete whole-room reconstruction. The other three source families,
 compatible native union, durable common preparation/retirement and authenticated
 activation remain architectural priorities. All thirteen V1 gates remain open.

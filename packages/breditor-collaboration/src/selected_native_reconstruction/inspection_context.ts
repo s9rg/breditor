@@ -22,15 +22,18 @@ import type {RecordPayloadFamily} from '../operation_read/record_payload.js';
 import {LoadedNativeReconstructionCurrent as Loaded} from './loaded_current.js';
 import {fields,identifier,fail} from './policy.js';
 import {NativeReconstructionFactoryScope} from './factory_scope.js';
+import {NativeReconstructionWaits} from './read_waits.js';
 export type NativeReconstructionInspectionOptions=Readonly<{id:string;retained:SelectedRoomCurrentFile;assets?:SharedAssetBytesOptions;resolveAsset?:SharedAssetBytesResolver}>;
 interface Context{readonly id:string;readonly before:Loaded;readonly retained:Loaded;readonly read:PhysicalOperationV3HistoryReadOptions['reads'][number]['read'];readonly descriptor:string;readonly assets:SharedAssetBytesOptions|undefined;readonly resolveAsset:SharedAssetBytesResolver|undefined;check():void}
 const file=Loaded.prototype.file,cut=Loaded.prototype.nativeCut,approval=Loaded.prototype.approval,upload=Loaded.prototype.selectedUploads,dispose=Loaded.prototype.dispose,read=Loaded.read;
 export function inspectNativeReconstructionData<P extends SharedSelectionPolicy,F extends string,R>(owner:RetainedSelectedAssetOwner,provided:PhysicalOperationV3HistoryReadOptions<P>,options:NativeReconstructionInspectionOptions,family:RecordPayloadFamily,format:F,visit:(context:Context)=>Promise<R>){
  const chosen=snapshotPhysicalHistoryReadOptions(provided),raw=fields(options,['id','retained'],['assets','resolveAsset']),id=identifier(raw['id']),input=fields(raw['retained'],['selection','file']),retained={selection:selectedRoomCurrentSelection(input['selection']),file:archiveBlob(input['file'] as Blob,MAX_SELECTED_ROOM_CURRENT_BYTES)},assetOptions=raw['assets']===undefined?undefined:fields(raw['assets'],[],['limits','signal']) as SharedAssetBytesOptions,assets=assetOptions===undefined?undefined:{limits:checkRichAssetLimits(assetOptions.limits),...(assetOptions.signal?{signal:assetOptions.signal}:{})},resolveAsset=raw['resolveAsset'] as SharedAssetBytesResolver|undefined;
  if(resolveAsset!==undefined&&typeof resolveAsset!=='function')throw fail('native_reconstruction_policy');
- const factories=new NativeReconstructionFactoryScope(chosen.reads),scoped={...chosen,reads:factories.reads};
- return withSelectedNativeRecovery(owner,scoped,async scope=>{
-  factories.bind(scope,assets?.signal);
+ // Combine cancellation only, before capture. The genuine owner below still
+ // supplies all custody, current-source and permission checks.
+ const factories=new NativeReconstructionFactoryScope(chosen.reads),cancellation=new NativeReconstructionWaits(()=>{},[chosen.signal,assets?.signal]),scoped={...chosen,signal:cancellation.signal,reads:factories.reads};
+ try{return withSelectedNativeRecovery(owner,scoped,async scope=>{
+  factories.bind(scope);
   let before:Loaded|undefined,after:Loaded|undefined;
   try{
    const actual=await scope.retainCurrent();scope.check();before=await read.call(Loaded,actual.current,actual.integrity);after=await read.call(Loaded,retained,actual.integrity);scope.check();
@@ -41,5 +44,5 @@ export function inspectNativeReconstructionData<P extends SharedSelectionPolicy,
    const recipe=await visit({id,before,retained:after,read:factory.read,descriptor:JSON.stringify(sourceNativeRecoveryRead(member.core).descriptor()),assets,resolveAsset,check:scope.check});scope.check();
    return Object.freeze({format,formatVersion:1 as const,scope:'held-current-versus-retained-data-only' as const,before:file.call(before),retained:file.call(after),recipe});
   }finally{if(after)dispose.call(after);if(before)dispose.call(before);}
- }).finally(()=>factories.close());
+ }).finally(()=>{try{factories.close();}finally{cancellation.close();}});}catch(error){try{factories.close();}finally{cancellation.close();}throw error;}
 }

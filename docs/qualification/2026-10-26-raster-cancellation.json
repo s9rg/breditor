@@ -1,0 +1,279 @@
+{
+  "format": "breditor/raster-cancellation-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-26T04:15:37.167Z",
+  "qualification": "selected-functional-architectural-increment-not-v1-release",
+  "workingTreeSourceAtVerification": {
+    "commit": "4c0640907d7934979b48ff951bd36e61189246b9",
+    "dirty": true,
+    "sha256": "2c70746c90f749794303fcaffc908322e0b989ad20a1f9b552185d2382e71340",
+    "files": 6592,
+    "bytes": 51348637
+  },
+  "qualificationMetadataAddedAfterRun": true,
+  "postVerificationSourceAdditions": [
+    "docs/qualification/2026-10-26-raster-cancellation.json"
+  ],
+  "normal": {
+    "passedStages": 19,
+    "fullFunctionalPlanExecuted": false,
+    "manifests": [
+      {
+        "kind": "common",
+        "path": "target/v1-candidate-runs/run-oNJ9Of/result.json",
+        "sha256": "b469f80fadd39b30a470a452f62ee6da6046d6dc0a587670eb60425a59520fcb",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "candidate-runner-contracts",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "rich-browser-build",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "collaboration-build",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-complete-cohort",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-complete-image-cohort",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-execution-contracts",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-execution-type-fence",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-reconstruction-contracts",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-reconstruction-type-fence",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "generation-assets-source-contracts",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "generation-assets-type-fence",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "installed-generation-assets",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "asset-archive-storage-contracts",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "asset-source-snapshot-contracts",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "asset-source-cancellation-regression",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      },
+      {
+        "kind": "installed",
+        "path": "target/v1-candidate-runs/run-IiIo4E/result.json",
+        "sha256": "a017006417277de50b83d2fb23540c90ddeb7965a59607e72fb7bfe27a298b92",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "installed-native-reconstruction",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      },
+      {
+        "kind": "source",
+        "path": "target/v1-candidate-runs/run-tXFixQ/result.json",
+        "sha256": "3aa72eb85aec05b62f7f289cb3aac0c74eae1ac64e72655175400b9792a88c04",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "native-execution",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-reconstruction",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      },
+      {
+        "kind": "readiness",
+        "path": "target/v1-candidate-runs/run-QklGko/result.json",
+        "sha256": "af68bbcb4d3ae4dd674a7157b4c7d5b5d852b02065d57179e37f9b491ee77334",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "readiness-inventory",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      }
+    ],
+    "sourceExecution": {
+      "passed": 203,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "rerunForThisSource": true
+    },
+    "sourceReconstruction": {
+      "passed": 69,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "priorLawsRetained": 56,
+      "newRasterCancellationLaws": 13,
+      "publicRasterCancellationLaws": 8,
+      "nativeRecoveryCancellationLaws": 5
+    },
+    "offlineInstalledReconstruction": {
+      "passed": 69,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "workspaceLinks": false
+    },
+    "productionBundleReconstruction": {
+      "passed": 69,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0
+    },
+    "strictSourceConsumerFixtures": 32,
+    "strictInstalledReconstructionFixtures": 4,
+    "legacyGenerationAssetSourceAssertions": 362,
+    "legacyGenerationAssetInstalledAssertions": 362,
+    "freshNativeFilesVerified": 100
+  },
+  "guardControls": {
+    "scope": "Unchanged assertions against a copied actual offline-installed consumer. Each isolated missing guard must exit 1, every product is restored exactly, then the selected law exits 0. The positive consumer remains unmodified.",
+    "guards": [
+      {
+        "name": "combined-signal-release",
+        "initialNormalActualExit": 0,
+        "brokenActualExit": 1,
+        "restoredActualExit": 0,
+        "restoredExactly": true
+      },
+      {
+        "name": "initial-asset-signal",
+        "initialNormalActualExit": 0,
+        "brokenActualExit": 1,
+        "restoredActualExit": 0,
+        "restoredExactly": true
+      },
+      {
+        "name": "raster-decode-wait",
+        "initialNormalActualExit": 0,
+        "brokenActualExit": 1,
+        "restoredActualExit": 0,
+        "restoredExactly": true
+      }
+    ],
+    "installedProductFilesRestoredAndVerified": 1906,
+    "positiveConsumerUnmodified": true
+  },
+  "native": {
+    "sourceAndBuildInputsVerifiedUnchanged": 2899,
+    "normalWasmSha256": "946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0",
+    "priorNativeSuitePassed": 411,
+    "priorNativeSuiteRerun": false,
+    "baselineInventorySha256": "5105338fe31693331b67a898700b312ae532f9bb65239b87b841ab2b99102cb0"
+  },
+  "retainedProof": {
+    "path": "target/raster-cancellation-proof-DVdyDZ/index.json",
+    "sha256": "4d32c72839db885c9ac23a5d49bc8b083f847b3ba1ab5ad20688f1b96e69ff97",
+    "files": 441,
+    "endpoints": {
+      "groups": 39,
+      "declared": 390,
+      "allConfirmedClosed": true
+    }
+  },
+  "functionalScope": "The actual public raster wait now cancels before a held image decoder settles. The same eight assertions retained as a failing baseline now pass unchanged. Late success/failure is observed, temporary URLs are revoked, whole-archive reads cancel and aborted restore creates no destination; exact retry remains possible. Five native generation laws verify DATA input disposal before factory entry, invalid-custody observer release, initial capture cancellation by either read or asset signal, normal editing after Abort and actual room Close before decoder return. Both signals cover the complete inspector scope before capture; synchronous rejection also cleans up. All prior recovery/history/packet laws remain required. Ordinary pixel bytes, identities, MIME/dimension limits, archive formats and uncancelled waits retain their meanings.",
+  "boundary": "Private DATA/participant recovery, not an editable room, native union, writer retirement, source-write acknowledgement, server-finalized review decision, credential or authenticated activation. Existing original protocol formats, default actor policies, Rust/WASM bytes, package/model versions and thirteen V1 gates remain unchanged. Controlled storage/locks do not establish physical power-loss durability.",
+  "remaining": [
+    "Three other source reconstruction family adapters",
+    "Durable complete-room input preparation before absent-only targets, explicit old-source retirement and interrupted retry handoff",
+    "Compatible native all-author and own-intent union; true forks must refuse",
+    "Dependent packet/receipt reconciliation beyond unchanged rows and safe additions",
+    "Explicit unbound-comment adoption",
+    "Authenticated whole-room activation and old-writer fencing",
+    "Sustainable native Undo/offline retention across generations",
+    "Extension/custom-node and remaining full feature parity",
+    "All thirteen V1 release gates"
+  ],
+  "openV1Gates": [
+    "catalog-coverage",
+    "distribution",
+    "compatibility",
+    "release-ci",
+    "browser-reliability",
+    "accessibility-input-mobile",
+    "performance-and-size",
+    "public-relay-hardening",
+    "storage-lifecycle",
+    "dependency-and-license-review",
+    "integration-docs-and-support",
+    "pilot",
+    "final-rc"
+  ],
+  "v1Ready": false,
+  "publicationApproved": false,
+  "versionChanged": false,
+  "tagCreated": false,
+  "pushed": false,
+  "closedPreviousDiagnostics": {
+    "rasterCancellation": {
+      "previousQualification": "docs/qualification/2026-10-25-native-generation-reconstruction.json",
+      "previousProof": "target/native-generation-reconstruction-proof-GG4NUV/index.json",
+      "previousExpectedExit": 1,
+      "previousPass": 4,
+      "previousFail": 4,
+      "actualFixedExit": 0,
+      "fixedPass": 8,
+      "fixedFail": 0,
+      "unchangedAssertionSha256": "ef6d25b8cf3f70230fae7127f258e25aa1e78bebdc0ada97f140efed840767cd",
+      "publicLaws": 8,
+      "nativeRecoveryLaws": 5,
+      "scope": "Exact unchanged controlled public assertions now pass; fresh source/installed/bundle laws verify native input disposal, both inspector signals, observer cleanup, editing and actual Close. No claim about the historical WebKit fault or physical crash recovery."
+    }
+  }
+}

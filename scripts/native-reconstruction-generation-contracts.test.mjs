@@ -1,7 +1,7 @@
 /** Complete DATA is not a current source or grant. Native-valid packets and
  * byte hashes cannot substitute for complete heads, attempts and source policy.
  */
-import test,{before,after} from 'node:test';import assert from 'node:assert/strict';import {join} from 'node:path';import {createHash} from 'node:crypto';
+import test,{before,after} from 'node:test';import {getEventListeners} from 'node:events';import assert from 'node:assert/strict';import {join} from 'node:path';import {createHash} from 'node:crypto';
 import legacy from './fixtures/native-reconstruction/generation-asset-legacy.json' with {type:'json'};
 import {completeControlFixtures} from './fixtures/physical-recovery-control/complete-fixtures.mjs';
 import {acceptedControlTransport} from './fixtures/physical-recovery-control/accepted-transport.mjs';
@@ -86,4 +86,44 @@ test('shared generation framing preserves pinned genuine pre-refactor bytes and 
   const abort=new AbortController();abort.abort();await assert.rejects(encode(input,()=>{},abort.signal));
   await encode(input,()=>{throw undefined;}).then(()=>assert.fail('Rejected undefined was lost'),reason=>assert.equal(reason,undefined));await unchanged();
  }finally{archive.dispose();}
+});
+
+/** Hold a real fixture decoder only after it has admitted its exact PNG bytes.
+ * The outer wait must stop while this decoder remains unsettled. */
+function holdDecodedRaster(){
+ const original=Object.getOwnPropertyDescriptor(globalThis,'Image'),ImageType=globalThis.Image,make=URL.createObjectURL,revoke=URL.revokeObjectURL,urls=new Set(),raw=[];let enter,release;
+ const entered=new Promise(done=>enter=done),gate=new Promise(done=>release=done);let restored=false;
+ class HeldImage extends ImageType{decode(){const pending=super.decode().then(()=>{enter();return gate;});raw.push(pending);return pending;}}
+ Object.defineProperty(globalThis,'Image',{value:HeldImage,configurable:true});URL.createObjectURL=function(blob){const value=make.call(this,blob);urls.add(value);return value;};URL.revokeObjectURL=function(url){urls.delete(url);return revoke.call(this,url);};
+ return{entered,release,urls,async finish(){release();await Promise.allSettled(raw);if(restored)return;restored=true;try{assert.equal(urls.size,0,'Cancelled recovery must revoke every temporary raster URL');}finally{URL.createObjectURL=make;URL.revokeObjectURL=revoke;if(original)Object.defineProperty(globalThis,'Image',original);else delete globalThis.Image;}}};
+}
+async function enteredNativeRaster(gate,pending){let timer;try{await Promise.race([gate.entered,pending.then(()=>assert.fail('Expected held recovery raster admission'),error=>{throw error;}),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Recovery raster decoder was not entered')),10000);})]);}finally{clearTimeout(timer);}}
+async function nativeRasterCancelled(pending,gate){let timer;try{const result=await Promise.race([pending.then(()=>({kind:'ready'}),error=>({kind:'rejected',error})),new Promise(resolve=>{timer=setTimeout(()=>resolve({kind:'pending'}),300);})]);assert.equal(result.kind,'rejected','Recovery must settle before the raster decoder is released');assert.match(result.error.code,/_aborted$/);assert.equal(gate.urls.size,0);}finally{clearTimeout(timer);}}
+test('generation DATA input disposal cancels stalled original raster admission before any native factory',async()=>{
+ const input=await Loaded.read(f.retained,{wasm:fixtures.native,checkAuthority(){}}),gate=holdDecodedRaster();let pending,calls=0;
+ try{pending=build(input,{...options(),read:{...f.read,restoreSegmented(...args){calls++;return f.read.restoreSegmented.apply(f.read,args);}}});await enteredNativeRaster(gate,pending);input.dispose();await nativeRasterCancelled(pending,gate);assert.equal(calls,0);await unchanged();}
+ finally{input.dispose();gate.release();await pending?.catch(()=>{});await gate.finish();}
+});
+test('invalid reconstruction custody releases combined read and asset signal observers',async()=>{
+ const a=new AbortController(),b=new AbortController(),signals=[a.signal,b.signal],before=signals.map(signal=>getEventListeners(signal,'abort').length);
+ await assert.rejects(Promise.resolve().then(()=>inspect({}, {...f.s.input(),signal:a.signal},{id:'generation',retained:f.retained,assets:{signal:b.signal}})));
+ await new Promise(resolve=>setImmediate(resolve));assert.deepEqual(signals.map(signal=>getEventListeners(signal,'abort').length),before);await unchanged();
+});
+for(const kind of ['read','asset'])test('generation inspection '+kind+' signal cancels stalled first-capture raster and releases room barriers',async()=>{
+ const client=f.s.owner.clients.find(row=>row.id==='generation'),before={document:client.core.documentJson(),checkpoint:client.core.checkpointJson(),review:client.core.reviewCheckpoint()},gate=holdDecodedRaster(),controller=new AbortController();let pending;
+ try{
+  pending=inspect(f.s.owner,{...f.s.input(),...(kind==='read'?{signal:controller.signal}:{})},{id:'generation',retained:f.retained,...(kind==='asset'?{assets:{signal:controller.signal}}:{})});
+  await enteredNativeRaster(gate,pending);controller.abort();await nativeRasterCancelled(pending,gate);gate.release();await pending.catch(()=>{});await gate.finish();
+  const later=await f.s.retain();assert.ok(later.file.size>0);assert.equal(client.core.checkpointJson(),before.checkpoint);assert.equal(client.core.reviewCheckpoint(),before.review);await unchanged();
+  if(kind==='asset'){client.core.type('Editing after cancelled raster recovery ');assert.equal(client.core.undo(),true);assert.equal(client.core.documentJson(),before.document);}
+ }finally{controller.abort();gate.release();await pending?.catch(()=>{});await gate.finish();}
+});
+
+test('generation room Close finishes before a stalled capture raster decoder returns',async()=>{
+ const retained=await f.s.retain(),gate=holdDecodedRaster();let pending,closing,timer;
+ try{
+  pending=inspect(f.s.owner,f.s.input(),{id:'generation',retained:f.retained});await enteredNativeRaster(gate,pending);closing=f.s.owner.close();
+  const result=await Promise.race([Promise.allSettled([pending,closing]),new Promise(resolve=>{timer=setTimeout(()=>resolve('pending'),1500);})]);
+  assert.notEqual(result,'pending','Actual room Close must finish before the raster decoder is released');assert.equal(result[0].status,'rejected');assert.match(result[0].reason.code,/(?:aborted|closed)$/);assert.equal(result[1].status,'fulfilled');assert.equal(gate.urls.size,0);assert.ok(retained.file.size>0);assert.throws(()=>f.s.owner.clients);
+ }finally{clearTimeout(timer);gate.release();await Promise.allSettled([pending,closing]);await gate.finish();}
 });

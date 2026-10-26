@@ -113,8 +113,23 @@ original and segmented factory paths. Aborting an inspection releases its read
 barriers so ordinary editing can resume; closing the actual owner does not wait
 for these stalled read factories. Late native results are still observed.
 
+Read and asset cancellation signals cover the complete inspection, including
+its first capture. Raster admission stops waiting when its real signal is
+cancelled, even if image decoding has not returned. Temporary object URLs are
+revoked, and late decoder success or failure stays observed. Disposing a DATA
+input also cancels its pending raster admission. The actual room can close
+without waiting for that decoder, and a cancelled read leaves editing barriers
+released. Calls with invalid room custody leave no signal listeners behind.
+
+This changes cancellation, not image admission: ordinary decoding, exact pixel
+bytes and content identities, MIME and dimension checks, resource limits and
+archive formats retain their meanings. A read without cancellation still waits
+for its decoder; no new deadline substitutes for a valid result.
+
 This scope belongs to reconstruction inspection. Other legacy public read and
-capture APIs keep their existing callback contracts. Actual source and storage
+capture APIs keep their existing host-factory callback contracts. Public raster
+and whole-archive reads now honor their existing cancellation signals while
+decoding, before opening any restore destination. Actual source and storage
 cleanup still runs normally and can report its own failures. Cancellation neither
 acknowledges a source write nor retires a source on behalf of the host.
 

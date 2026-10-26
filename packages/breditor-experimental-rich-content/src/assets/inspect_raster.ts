@@ -13,6 +13,6 @@ export async function inspectRichRaster(input:Blob,options:RichRasterInspectionO
  const {signal,limits:supplied}={...options},limits=checkedAssetLimits(supplied);checkAssetBackupSignal(signal);
  if(!(input instanceof Blob))throw new RichAssetBackupError("asset_backup_raster","Expected immutable raster bytes");
  const snapshot=new Blob([input],{type:input.type});let admitted:Awaited<ReturnType<typeof admitRaster>>;
- try{admitted=await admitRaster(snapshot,limits);}catch{checkAssetBackupSignal(signal);throw new RichAssetBackupError("asset_backup_raster","Raster bytes failed ordinary image admission");}
+ try{admitted=await admitRaster(snapshot,limits,signal);}catch{checkAssetBackupSignal(signal);throw new RichAssetBackupError("asset_backup_raster","Raster bytes failed ordinary image admission");}
  checkAssetBackupSignal(signal);return Object.freeze({asset:admitted.asset,mime:admitted.mime,width:admitted.width,height:admitted.height,bytes:admitted.payload.byteLength,blob:Object.freeze(new Blob([admitted.payload],{type:admitted.mime}))});
 }

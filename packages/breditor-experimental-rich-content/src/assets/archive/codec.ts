@@ -13,7 +13,7 @@ export async function assetArchiveDigest(records:readonly AssetArchiveEntry[]):P
 /** Reuse the ordinary byte/header/decoder/hash admission, with no network or upload effects. */
 export async function verifyAssetArchiveRaster(entry:AssetArchiveEntry,file:Blob,limits:Readonly<AssetLimits>,signal?:AbortSignal):Promise<AssetRecord>{
  checkAssetBackupSignal(signal);let admitted:Awaited<ReturnType<typeof admitRaster>>;
- try{admitted=await admitRaster(file,limits);}catch{checkAssetBackupSignal(signal);throw new RichAssetBackupError("asset_backup_raster","Raster archive payload failed image admission");}checkAssetBackupSignal(signal);
+ try{admitted=await admitRaster(file,limits,signal);}catch{checkAssetBackupSignal(signal);throw new RichAssetBackupError("asset_backup_raster","Raster archive payload failed image admission");}checkAssetBackupSignal(signal);
  if(admitted.asset!==entry.asset||admitted.mime!==entry.mime||admitted.width!==entry.width||admitted.height!==entry.height||admitted.payload.byteLength!==entry.bytes)throw new RichAssetBackupError("asset_backup_integrity","Raster archive bytes differ from their exact manifest");
  const {offset:_offset,...metadata}=entry;return{...metadata,payload:admitted.payload};
 }
