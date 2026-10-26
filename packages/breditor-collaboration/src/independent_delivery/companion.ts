@@ -12,6 +12,7 @@ import type {SharedSegmentedRetainedBinding,SegmentedRetainedKind,SegmentedRetai
 import {deliveryRetainedRecords,emptyDeliveryRetainedRecords,admitDeliveryRetainedRecords} from '../delivery_state/retained.js';
 import {admitNativeDeliveryProgress} from '../delivery_state/native_progress.js';
 import {sourceCoreMethods as native} from '../source_native_read.js';
+import {checkManagedCore} from '../managed_custody.js';
 import {MAX_INDEPENDENT_DELIVERY_HEAD_BYTES,type SharedIndependentDeliveryOptions,type SharedIndependentDeliveryBinding,type SharedIndependentDeliveryRecovery,type SharedIndependentDeliveryIdentity} from './contract.js';
 import {independentDeliveryIdentity} from './identity.js';
 
@@ -53,8 +54,8 @@ export class IndependentDeliveryCompanion implements IndependentHistoryCompanion
  records():SegmentedRetainedRecords{return structuredClone(this.#records);}
  durableRecords():SegmentedRetainedRecords{return structuredClone(this.#durableRecords);}
  sourceStamp():object{return this.#stamp;}
- propose(input:unknown):void{const next=relayProgress(input,this.binding);forwardProgress(this.#current,next);if(!this.#core)throw new SharedRelayError('independent_delivery_source');this.#admit(this.#core,next,this.#records);if(JSON.stringify(next)!==JSON.stringify(this.#current))this.#stamp=Object.freeze({});this.#current=next;}
- proposeRecord<K extends SegmentedRetainedKind>(kind:K,input:NonNullable<SegmentedRetainedRecords[K]>):void{if(!this.#core)throw new SharedRelayError('independent_delivery_source');const next=deliveryRetainedRecords({...this.#records,[kind]:input},this.retainedBinding);this.#admit(this.#core,this.#current,next);if(JSON.stringify(next[kind])!==JSON.stringify(this.#records[kind]))this.#stamp=Object.freeze({});this.#records=next;}
+ propose(input:unknown):void{const next=relayProgress(input,this.binding);forwardProgress(this.#current,next);if(!this.#core)throw new SharedRelayError('independent_delivery_source');this.#admit(this.#core,next,this.#records);checkManagedCore(this.#core);if(JSON.stringify(next)!==JSON.stringify(this.#current))this.#stamp=Object.freeze({});this.#current=next;}
+ proposeRecord<K extends SegmentedRetainedKind>(kind:K,input:NonNullable<SegmentedRetainedRecords[K]>):void{if(!this.#core)throw new SharedRelayError('independent_delivery_source');const next=deliveryRetainedRecords({...this.#records,[kind]:input},this.retainedBinding);this.#admit(this.#core,this.#current,next);checkManagedCore(this.#core);if(JSON.stringify(next[kind])!==JSON.stringify(this.#records[kind]))this.#stamp=Object.freeze({});this.#records=next;}
  setRetireHook(hook:()=>void):void{if(this.#retired)throw new SharedRelayError('independent_delivery_retired');this.#retireHook=hook;}
  retire():void{if(this.#retired)return;this.#retired=true;this.#retireHook?.();}
  releaseRecords():void{this.#records={suggestions:null,revisions:null,versions:null};this.#durableRecords={suggestions:null,revisions:null,versions:null};this.#core=undefined;this.#stamp=Object.freeze({});}

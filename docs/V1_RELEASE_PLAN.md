@@ -70,10 +70,21 @@ The [durable room preparation contract](NATIVE_ROOM_PREPARATION.md) now joins
 every concrete participant recipe, both complete snapshots and explicit target
 roles in one immutable absent-only record before any target creation. Cold data
 reopen rechecks the independent choice and full bytes; it recovers no writer
-authority. The next architectural priorities are whole-room target execution and
-interrupted retry/retirement, compatible native union and dependent-packet
-reconciliation, then authenticated activation with old-writer fencing. All thirteen
-V1 gates remain open.
+authority. The [explicit native retirement boundary](NATIVE_ROOM_RETIREMENT.md)
+now independently re-admits every output and retires all actual old cores before
+releasing common exclusion. Actual cleanup can be retried after a failed namespace
+release without reviving a writer. A genuine complete native/packet witness now
+checks after the last authority callback: changing pending suggestion intent there
+refuses retirement and preserves all seven live old writers. Attached metadata
+writers and adapter factories now also check actual native retirement before
+staging new intent; a real shutdown notification cannot change a sibling queue
+after its core retires. Readable exports, captured persistence cleanup and active
+document read-only metadata behavior remain distinct. This is local closure,
+not replacement target
+execution or remote author fencing. The next architectural priorities are a durable
+whole-room execution plan, interrupted target replay/handoff, compatible native
+union and dependent-packet reconciliation, then authenticated activation. All
+thirteen V1 gates remain open.
 
 ## V1 candidate qualification checkpoint
 

@@ -2,6 +2,7 @@
 import {SegmentedRelayCompanion} from "./companion.js";
 import {closed} from "./validation.js";
 import {SharedRelayError} from "../relay/validation.js";
+import {checkManagedCore} from "../managed_custody.js";
 import {deliveryRetainedBinding,deliveryRetainedRecords,emptyDeliveryRetainedRecords,admitDeliveryRetainedRecords} from '../delivery_state/retained.js';
 import type {SegmentedHead} from "../persistence/segmented_contract.js";
 import type {SharedRichEditor} from "../core.js";
@@ -35,5 +36,5 @@ export class SegmentedRetainedCompanion extends SegmentedRelayCompanion {
  records():SegmentedRetainedRecords{return structuredClone(this.#records);}
  durableRecords():SegmentedRetainedRecords{return structuredClone(this.#durableRecords);}
  releaseRecords():void{this.#records={suggestions:null,revisions:null,versions:null};this.#durableRecords={suggestions:null,revisions:null,versions:null};this.#owner=undefined;this.sourceChanged();}
- proposeRecord<K extends SegmentedRetainedKind>(kind:K,record:NonNullable<SegmentedRetainedRecords[K]>):void{if(!this.#owner)throw new SharedRelayError("segmented_relay_source");const next=this.#validate({...this.#records,[kind]:record});this.#admit(this.#owner,next);if(JSON.stringify(next[kind])!==JSON.stringify(this.#records[kind]))this.sourceChanged();this.#records=next;}
+ proposeRecord<K extends SegmentedRetainedKind>(kind:K,record:NonNullable<SegmentedRetainedRecords[K]>):void{if(!this.#owner)throw new SharedRelayError("segmented_relay_source");const next=this.#validate({...this.#records,[kind]:record});this.#admit(this.#owner,next);checkManagedCore(this.#owner);if(JSON.stringify(next[kind])!==JSON.stringify(this.#records[kind]))this.sourceChanged();this.#records=next;}
 }

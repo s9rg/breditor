@@ -11,10 +11,11 @@ import {retainedNativeReadBorrow,type RetainedNativeWitness} from './retained_na
 import {recordLiveBasis} from './record_live_basis.js';
 import {sameNativeRetentionValue,type NativeRetentionWitness} from '../operation_read/native_retention.js';
 import {coreReadStamp} from '../core_read_stamp.js';
+import {prepareFinalNativeCut} from './final_native_cut.js';
 import {sourceCoreMethods} from '../source_native_read.js';
 const capture=RichAssetStore.prototype.captureBackup,fail=()=>new SharedEditorError('complete_history_uploads_policy','Hold genuine whole-upload and protected-history readers until verification and cleanup finish');
 export function reserveCompleteHistoryUploads<P extends SharedSelectionPolicy>(input:readonly CompleteHistoryParticipant<P>[],authority:()=>void,signal?:AbortSignal,mode?:OperationalRecordReadMode,inherited?:OperationalAssetCustody){
- const held=reserveCompleteHistoryWithUploads(input,authority,signal,mode),read=held.read;let assets:OperationalAssetCustody|undefined,loanedAssets:OperationalAssetCustody|undefined,loaned=false,prepared=false,working=false,closing=false,closed=false,cleanup:Promise<void>|undefined;
+ const held=reserveCompleteHistoryWithUploads(input,authority,signal,mode),read=held.read;let assets:OperationalAssetCustody|undefined,loanedAssets:OperationalAssetCustody|undefined,loaned=false,finalRetained=false,prepared=false,working=false,closing=false,closed=false,cleanup:Promise<void>|undefined;
  const current=()=>{if(closing||closed)throw fail();(assets??loanedAssets)?.check();read.checkCurrent();},work=async<T>(run:()=>Promise<T>):Promise<T>=>{if(working||closing||closed)throw fail();working=true;try{return await run();}finally{working=false;}};
  const close=():Promise<void>=>{if(closed)return Promise.resolve();if(cleanup)return cleanup;if(working)return Promise.reject(fail());closing=true;cleanup=(async()=>{if(!inherited)await assets?.close();read.close();closed=true;})().finally(()=>{cleanup=undefined;});return cleanup;};
  return Object.freeze({metadata:()=>read.metadata(),checkCurrent:current,check:()=>{current();read.check();current();},
@@ -38,6 +39,9 @@ export function reserveCompleteHistoryUploads<P extends SharedSelectionPolicy>(i
     }current();const borrow=retainedNativeReadBorrow(sources.map(row=>({id:row.id,family:row.family,core:row.source.core})),witnesses,assets,()=>closed);borrow.check();loanedAssets=assets;assets=undefined;loaned=true;complete=true;return borrow;}
    finally{if(!complete)for(const witness of [...witnesses].reverse())witness.dispose();}
   },
+  /** Separate final-cut retention keeps inherited actual origins with their root.
+   * Only complete fresh source readers can create it; no custody is donated. */
+  retainFinalNative:()=>{if(!inherited||!mode||!prepared||working||closing||closed||finalRetained||!assets)throw fail();current();const witness=prepareFinalNativeCut(held.native(),held.records(),current,()=>closed,()=>inherited.check());finalRetained=true;return witness;},
   captureUploads:(maximumBytes:number)=>work(async()=>{if(!prepared||!Number.isSafeInteger(maximumBytes)||maximumBytes<1||maximumBytes>512*1024*1024)throw fail();current();let bytes=0;const result=[];
    for(const row of held.uploads()){const actual=await capture.call(row.store,()=>{current();return undefined;},signal?{signal}:{});current();bytes+=actual.backup.size;if(bytes>maximumBytes)throw fail();result.push(Object.freeze({id:row.id,family:row.family,file:actual.backup}));}current();return Object.freeze(result);
   }),close,

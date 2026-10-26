@@ -5,6 +5,7 @@ import type {SegmentedHead} from "../persistence/segmented_contract.js";
 import type {SegmentedSessionCompanion} from "../persistence/segmented_driver.js";
 import {readSegmentedHead} from "../persistence/segmented_head.js";
 import {SharedRelayError,transportVersion} from "../relay/validation.js";
+import {checkManagedCore} from "../managed_custody.js";
 import {MAX_SEGMENTED_RELAY_HEAD_BYTES,type SharedSegmentedRelaySessionOptions,type SharedSegmentedRelayProgress,type SharedSegmentedRelayBinding} from "./contract.js";
 import {closed,relayBinding,relayProgress,initialRelayProgress,forwardProgress} from "./validation.js";
 import {admitRelayProgress} from "./native_progress.js";
@@ -39,7 +40,7 @@ export class SegmentedRelayCompanion implements SegmentedSessionCompanion {
  }
  current():SharedSegmentedRelayProgress{return structuredClone(this.#current);}
  durable():SharedSegmentedRelayProgress{return structuredClone(this.#durable);}
- propose(input:unknown):void{const next=relayProgress(input,this.binding);forwardProgress(this.#current,next);if(!this.#core)throw new SharedRelayError("segmented_relay_source");admitRelayProgress(this.#core,next);if(JSON.stringify(next)!==JSON.stringify(this.#current))this.sourceChanged();this.#current=next;}
+ propose(input:unknown):void{const next=relayProgress(input,this.binding);forwardProgress(this.#current,next);if(!this.#core)throw new SharedRelayError("segmented_relay_source");admitRelayProgress(this.#core,next);checkManagedCore(this.#core);if(JSON.stringify(next)!==JSON.stringify(this.#current))this.sourceChanged();this.#current=next;}
  confirm(encoded:string|null):void{if(encoded===null)throw new SharedRelayError("segmented_relay_unsaved");const saved=relayProgress(JSON.parse(encoded),this.binding);forwardProgress(this.#durable,saved);this.#durable=saved;}
  acknowledged(capture:string):void{this.confirm(capture);}
  setRetireHook(hook:()=>void):void{if(this.#retired)throw new SharedRelayError("segmented_relay_source_retired");this.#retireHook=hook;}

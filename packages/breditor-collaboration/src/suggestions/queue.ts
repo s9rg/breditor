@@ -1,7 +1,7 @@
 /** Durable client intent, not a second document, current authority or optimistic accepted content. */
 import {SharedRelayError} from "../relay/validation.js";
 import {SharedEditorError} from "../core.js";
-import {registerManagedSource,managedSourceUnavailable,managedSourceCore,checkManagedSource,checkManagedSourceBindings} from "../managed_custody.js";
+import {registerManagedSource,checkManagedCore,managedSourceUnavailable,managedSourceCore,checkManagedSource,checkManagedSourceBindings} from "../managed_custody.js";
 import {participantAuthority} from '../participant_backup/policy.js';
 import {observeIndependentRecoveryAbort} from '../independent_recovery/signal.js';
 import type {PersistentSuggestionRead,PersistentSuggestionRecords} from './persistent_read_contract.js';
@@ -65,16 +65,17 @@ export class SharedSuggestionQueue<P extends SharedSelectionPolicy=SharedSelecti
  }
  static async #open<Q extends SharedSelectionPolicy>(input:SharedSuggestionQueueOptions<Q>,recovered?:SharedSuggestionQueueRecord,signal?:AbortSignal):Promise<SharedSuggestionQueue<Q>>{
   const source=input.storage,core=source.core,atomic=selectedRetainedStorePort(input,"suggestions"),assertSource=()=>{if(source.core!==core)throw new SharedRelayError("suggestion_source_replaced");atomic?.check();};
+  checkManagedCore(core);
   const options={...input,identity:queueIdentity(input.identity),storage:{core,save:()=>{assertSource();source.save();},flush:async()=>{assertSource();await source.flush();assertSource();}}};
   if(options.ownedHistory!==undefined&&options.ownedHistory!=="reviewed-v1")throw new SharedRelayError("suggestion_history_policy");
   if(attached.has(core))throw new SharedRelayError("suggestion_queue_already_attached");
   if(atomic){atomic.check();checkSuggestionSourcePolicy(core,options.identity,options.ownedHistory);}else checkSuggestionRecordSource(core,options.identity,options.ownedHistory);
-  attached.add(core);let lease:SuggestionQueueLease|undefined,db:IDBDatabase|undefined,queue:SharedSuggestionQueue<Q>|undefined;
-  try{checkRetainedStoreSignal(signal);lease=await SuggestionQueueLease.acquire(options.identity);assertSource();checkRetainedStoreSignal(signal);const retained=isOperationalComponent(input)?await existingOperationalComponent(options.database,"suggestions",queueKey(options.identity)):undefined;if(!atomic)db=retained?.db??await openQueueDatabase(options.database);let saved:SharedSuggestionQueueRecord|null;
+  checkManagedCore(core);attached.add(core);let lease:SuggestionQueueLease|undefined,db:IDBDatabase|undefined,queue:SharedSuggestionQueue<Q>|undefined;
+  try{checkRetainedStoreSignal(signal);lease=await SuggestionQueueLease.acquire(options.identity);assertSource();checkManagedCore(core);checkRetainedStoreSignal(signal);const retained=isOperationalComponent(input)?await existingOperationalComponent(options.database,"suggestions",queueKey(options.identity)):undefined;if(!atomic)db=retained?.db??await openQueueDatabase(options.database);let saved:SharedSuggestionQueueRecord|null;
    if(recovered){if(await retainedStoreDestinationExists(db!,"suggestions",queueKey(options.identity),signal))throw new SharedEditorError("backup_destination_exists","Retained restore destination already contains a record");saved=recovered;}else saved=atomic?checkQueueRecord(atomic.read(),options.identity,options.ownedHistory):await readQueueRecord(db!,options.identity,options.ownedHistory);
    if(retained&&(!saved||JSON.stringify(saved)!==JSON.stringify(retained.record)))throw operationFailure("operation_diverged");
    let recordSource:object|undefined;try{if(managedSourceCore(source)===core)recordSource=source;}catch{/* Existing custom storage stays editable, but cannot issue this new managed read. */}
-   assertSource();const create=()=>new SharedSuggestionQueue(constructionKey,options,db,lease!,saved??{format:options.ownedHistory?"breditor/shared-owned-suggestion-queue":"breditor/shared-suggestion-queue",formatVersion:1,identity:options.identity,retained:[]},assertSource,atomic,recordSource);queue=recovered?retainedStoreNativeAdmission(create):create();retained?.assertCurrent();queue.#restoreInsert=recovered!==undefined;queue.#restoreSignal=signal;queue.#pending=queue.#record;queue.#start();await queue.flush();assertSource();checkRetainedStoreSignal(signal);return queue;}
+   assertSource();checkManagedCore(core);const create=()=>new SharedSuggestionQueue(constructionKey,options,db,lease!,saved??{format:options.ownedHistory?"breditor/shared-owned-suggestion-queue":"breditor/shared-suggestion-queue",formatVersion:1,identity:options.identity,retained:[]},assertSource,atomic,recordSource);queue=recovered?retainedStoreNativeAdmission(create):create();checkManagedCore(core);retained?.assertCurrent();queue.#restoreInsert=recovered!==undefined;queue.#restoreSignal=signal;queue.#pending=queue.#record;queue.#start();await queue.flush();assertSource();checkManagedCore(core);checkRetainedStoreSignal(signal);return queue;}
   catch(error){if(queue)await queue.discardAndClose();else{db?.close();await lease?.close();attached.delete(core);}throw error;}
  }
  #live():void{if(this.#closed)throw new SharedRelayError("suggestion_queue_closed");this.#lease.assertLive();}
@@ -82,14 +83,14 @@ export class SharedSuggestionQueue<P extends SharedSelectionPolicy=SharedSelecti
  get core():SharedRichEditor<P>{this.#live();this.#assertSource();return this.#options.storage.core;}
  /** Detached nonsecret binding for an explicitly matching transport. */
  identity():SharedSuggestionQueueIdentity{this.#live();return {...this.#record.identity};}
- #writable():void{checkSuggestionRecoveryIdle(this);this.#live();this.#assertSource();this.#atomic?.writable();if(this.#retiring)throw new SharedRelayError("suggestion_queue_closing");}
+ #writable():void{checkSuggestionRecoveryIdle(this);this.#live();this.#assertSource();checkManagedCore(this.#options.storage.core);this.#atomic?.writable();if(this.#retiring)throw new SharedRelayError("suggestion_queue_closing");}
  #admit(record:SharedSuggestionQueueRecord):Map<string,{info:SharedDocumentSuggestionInfo;row:SharedRetainedSuggestion}>{
   return admitSuggestionRecord(this.#options.storage.core,record,this.#options.ownedHistory);
  }
  #ownedAcceptance(received:SharedSuggestionDecision|null):SharedOwnedSuggestionAcceptance|null{
   return ownedSuggestionAcceptance(this.#options.identity,this.#options.ownedHistory,received);
  }
- #mark(record:SharedSuggestionQueueRecord):void{const checked=checkQueueRecord(record,this.#options.identity,this.#options.ownedHistory),rows=this.#admit(checked);if(same(checked,this.#record)&&!this.#failure)return;this.#atomic?.stage(checked);this.#record=checked;this.#rows=rows;this.#pending=structuredClone(checked);this.#notify();this.#start();}
+ #mark(record:SharedSuggestionQueueRecord):void{const checked=checkQueueRecord(record,this.#options.identity,this.#options.ownedHistory),rows=this.#admit(checked);checkManagedCore(this.#options.storage.core);if(same(checked,this.#record)&&!this.#failure)return;this.#atomic?.stage(checked);this.#record=checked;this.#rows=rows;this.#pending=structuredClone(checked);this.#notify();this.#start();}
  #replace(id:string,change:(row:SharedRetainedSuggestion)=>SharedRetainedSuggestion):void{const found=this.#rows.get(id);if(!found)throw new SharedRelayError("suggestion_unknown");this.#mark({...this.#record,retained:this.#record.retained.map(row=>row===found.row?change(row):row)});}
  #start():void{if(this.#running||!this.#pending||this.#failure||this.#closed)return;this.#running=this.#drain().catch(error=>{this.#failure=error??new SharedRelayError("local_save_failed");this.#notify();}).finally(()=>{this.#running=undefined;this.#notify();if(!this.#failure)this.#start();});}
  async #drain():Promise<void>{while(this.#pending&&!this.#closed){this.#lease.assertLive();const next=this.#pending;this.#pending=undefined;try{this.#assertSource();checkRetainedStoreSignal(this.#restoreSignal);if(this.#atomic)await this.#atomic.write(next);else{this.#options.storage.save();await this.#options.storage.flush();this.#assertSource();

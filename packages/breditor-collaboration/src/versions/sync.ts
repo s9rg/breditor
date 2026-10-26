@@ -1,5 +1,6 @@
 /** Automatic catalog synchronization borrows one native owner and never submits document operations. */
 import {RelayChannel} from "../relay/channel.js";
+import {checkManagedCore} from "../managed_custody.js";
 import {accountToken} from "../relay/registration.js";
 import {SharedRelayError,object,frame,descriptor,checkDescriptor,checkClock,clock,string,timeout,transportVersion} from "../relay/validation.js";
 import {versionDescriptor,catalogSnapshot} from "./validation.js";
@@ -26,9 +27,9 @@ export class VersionCatalogSync<P extends SharedSelectionPolicy=SharedSelectionP
  state():SharedDocumentVersionsState{const local=this.#store.state();return {status:this.#closed?"closed":local.failed?"local-save-failed":this.#status,canPublish:this.#canPublish,queued:local.queued,catalogEntries:local.catalogEntries,cachedPackets:local.cachedPackets,localPending:local.pending||local.failed,waitingForDocument:this.#waitingForDocument,error:local.failed?"local_save_failed":this.#error};}
  subscribe(listener:()=>void):()=>void{this.#listeners.add(listener);return()=>this.#listeners.delete(listener);}
  busy(id:string):boolean{return this.#publishing.has(id)||this.#downloads.has(id);}
- #active(epoch:number):boolean{return !this.#closed&&this.#epoch===epoch;}
+ #active(epoch:number):boolean{if(this.#closed||this.#epoch!==epoch)return false;try{checkManagedCore(this.#store.options.storage.core);return true;}catch{return false;}}
  #enqueue(work:()=>Promise<void>):Promise<void>{this.#tasks++;const task=this.#serial.then(work).finally(()=>{this.#tasks--;});this.#serial=task.catch(()=>{});return task;}
- #networkAllowed():void{if(this.#recovering)throw new SharedRelayError("version_recovery_in_use");}
+ #networkAllowed():void{if(this.#recovering)throw new SharedRelayError("version_recovery_in_use");checkManagedCore(this.#store.options.storage.core);}
  /** Disconnected status alone does not prove old asynchronous work has settled. */
  reserveLocalRecovery():()=>void{
   if(this.#closed)throw new SharedRelayError("closed");

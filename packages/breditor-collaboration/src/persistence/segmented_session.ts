@@ -22,7 +22,7 @@ import {generationRecords} from "../generation_source/records.js";
 import {generationOperationOrigin} from "../generation_operation/admission.js";
 import {existingGenerationOperationSource} from "../generation_operation/existing_source.js";
 import {sourceCoreMethods as nativeRead} from '../source_native_read.js';
-import {managedCoreRetainedRevisions} from '../managed_custody.js';
+import {managedCoreRetainedRevisions,checkManagedCore} from '../managed_custody.js';
 import {participantAuthority} from '../participant_backup/policy.js';
 import {observeIndependentRecoveryAbort} from '../independent_recovery/signal.js';
 import {retainInternalFailureCause} from '../internal_failure_cause.js';
@@ -68,7 +68,7 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
   const segmentedPolicy=SharedRichEditor.prototype.segmentedHistoryPolicy;
   // Final custody checks must not invoke an application-supplied getter or method.
   const check=()=>{this.#live();if(segmentedPolicy.call(this.#boundCore())!=="segmented-v1")throw new SharedEditorError("segmented_source_unavailable","The actual generation source was replaced");},read=()=>{check();return this.#recovery();},review=options.review?{actor:options.review.actor,principal:options.review.principal}:null,stamp=()=>{check();return this.#sourceStamp;};
-  const checkManaged=()=>{check();if(this.#retiring||this.#storageChanged)throw new SharedEditorError("segmented_source_unavailable","The readable native source no longer has live storage custody");};
+  const checkManaged=()=>{check();checkManagedCore(this.#ownedCore);if(this.#retiring||this.#storageChanged)throw new SharedEditorError("segmented_source_unavailable","The readable native source no longer has live storage custody");};
   registerGenerationNative(this,{core:core as unknown as SharedRichEditor<SharedSelectionPolicy>,identity:structuredClone(identity),review,companion:!!companion,check,checkManaged,stamp,read});
   if(!companion)registerGenerationSource(this,{core:core as unknown as SharedRichEditor<SharedSelectionPolicy>,identity:{kind:"local",native:structuredClone(identity),review,relay:null,retained:null},check,checkManaged,stamp:()=>[stamp()],read:()=>generationRecords(read())});
   const save=()=>{try{this.save();}catch(error){this.#failed(error);}};
@@ -169,7 +169,7 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
  /** Archive current read-only former-author document history; paired comments and current grants remain unchanged. */
  async sealReadOnlyGeneration(next:string):Promise<void>{this.#live();const source=generationNative(this);source.checkManaged();source.core.sealReadOnlyHistoryGeneration(next);await this.flush();source.checkManaged();}
  saveVersion(name:string,createdAtMs:string):SharedDocumentVersionInfo{this.#live();if(!this.#options.review)throw new SharedEditorError("segmented_review_policy","Named paired versions require an explicit review account");return this.retainVersion(this.#boundCore().captureVersion(name,this.#options.review.principal,createdAtMs));}
- retainVersion(packet:string):SharedDocumentVersionInfo{this.#live();if(this.#retiring||this.#storageChanged)throw new SharedEditorError("segmented_session_closing","Cannot change the version catalog after retirement or a storage change");const info=this.#boundCore().readVersion(packet),known=this.#versions.get(info.id);if(known!==undefined){if(known!==packet)throw new SharedEditorError("version_catalog","Immutable version has different bytes");return info;}if(this.#versions.size>=32||new TextEncoder().encode(packet).length>4*1024*1024)throw new SharedEditorError("version_catalog","The original named-version budget is full");const c=this.#capture();this.#checkCapture({...c,versions:[...c.versions,packet]});this.#versions.set(info.id,packet);this.#sourceStamp=Object.freeze({});this.save();return info;}
+ retainVersion(packet:string):SharedDocumentVersionInfo{this.#live();checkManagedCore(this.#ownedCore);if(this.#retiring||this.#storageChanged)throw new SharedEditorError("segmented_session_closing","Cannot change the version catalog after retirement or a storage change");const info=this.#boundCore().readVersion(packet),known=this.#versions.get(info.id);checkManagedCore(this.#ownedCore);if(known!==undefined){if(known!==packet)throw new SharedEditorError("version_catalog","Immutable version has different bytes");return info;}if(this.#versions.size>=32||new TextEncoder().encode(packet).length>4*1024*1024)throw new SharedEditorError("version_catalog","The original named-version budget is full");const c=this.#capture();this.#checkCapture({...c,versions:[...c.versions,packet]});checkManagedCore(this.#ownedCore);this.#versions.set(info.id,packet);this.#sourceStamp=Object.freeze({});this.save();return info;}
  versions():readonly SharedDocumentVersionInfo[]{this.#live();const core=this.#boundCore();return [...this.#versions.values()].map(p=>core.readVersion(p));}
  versionPacket(id:string):string{this.#live();const packet=this.#versions.get(id);if(packet===undefined)throw new SharedEditorError("version_unknown","Unknown immutable version");return packet;}
  /** Retire first. Failed final persistence retains readable histories and both leases for retry. */

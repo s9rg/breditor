@@ -38,6 +38,9 @@ let prepare:(state:PhysicalOperationV3Custody,borrow:RetainedNativeReadBorrow,cl
 /** Internal trusted-root construction only; a public caller must reserve the
  * actual root through its private-brand checked transfer entry point. */
 export const prepareRetainedPhysicalRoot=(state:PhysicalOperationV3Custody,borrow:RetainedNativeReadBorrow,closeParents:(discard:boolean)=>Promise<void>)=>prepare(state,borrow,closeParents);
+let visitFinalCut:<P extends SharedSelectionPolicy,T>(owner:RetainedPhysicalRoot,input:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit)=>Promise<T>)=>Promise<T>;
+/** Trusted final-source read on a genuine retained root, not a host driver. */
+export const visitRetainedPhysicalFinalCut=<P extends SharedSelectionPolicy,T>(owner:RetainedPhysicalRoot,input:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit)=>Promise<T>):Promise<T>=>visitFinalCut(owner,input,visit);
 export class RetainedPhysicalRoot{
  readonly #s:PhysicalOperationV3Custody;readonly #closeParents:(discard:boolean)=>Promise<void>;readonly #cleanup=new RecoveryCleanupScope(()=>fail());
  readonly #closingListeners=new Set<()=>void>();
@@ -63,9 +66,9 @@ export class RetainedPhysicalRoot{
  /** Distinct same-reservation native/source inspection. No caller DTO can
   * supply the clients, prepared identities, inventory or actual record scope. */
  visitReconciliationRecordCut<P extends SharedSelectionPolicy,T>(input:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit,native:SelectedNativeCutWitness)=>Promise<T>):Promise<T>{return this.#visitRecordCut(input,async scope=>{const native=await captureSelectedNativeCut(this.#s,this.#origins!.clients,scope,this.#current);this.#current();return visit(scope,native);});}
- #visitRecordCut<P extends SharedSelectionPolicy,T>(input:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit)=>Promise<T>):Promise<T>{const chosen=snapshotPhysicalHistoryReadOptions(input);return this.#run(async()=>{await this.#cleanup.drain();const observation=new PhysicalOperationV3Cancellation(chosen.signal),check=()=>{this.#current();observation.check();};
+ #visitRecordCut<P extends SharedSelectionPolicy,T>(input:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit)=>Promise<T>,retainFinal=false):Promise<T>{const chosen=snapshotPhysicalHistoryReadOptions(input);return this.#run(async()=>{await this.#cleanup.drain();const observation=new PhysicalOperationV3Cancellation(chosen.signal),check=()=>{this.#current();observation.check();};
   const watch=(cancel:()=>void)=>{const unwatch=observation.watch(cancel);if(this.#closing)cancel();else this.#closingListeners.add(cancel);return()=>{this.#closingListeners.delete(cancel);unwatch();};};
-  try{await Promise.all(this.#origins!.clients.map(row=>waitNativePendingWork(row.core,{check,watch})));check();return await visitPhysicalOperationV3RecordCut(this.#s,this.#current,this.#cleanup,chosen,watch,visit,undefined,this.#origins!.assets);}
+  try{await Promise.all(this.#origins!.clients.map(row=>waitNativePendingWork(row.core,{check,watch})));check();return await visitPhysicalOperationV3RecordCut(this.#s,this.#current,this.#cleanup,chosen,watch,visit,undefined,this.#origins!.assets,retainFinal?true:undefined);}
   finally{observation.close();}
  });}
  close():Promise<void>{return this.#close(false);}
@@ -79,7 +82,7 @@ export class RetainedPhysicalRoot{
   this.#closing=true;this.#s.life.closing=true;for(const cancel of this.#closingListeners)cancel();this.#closingListeners.clear();for(const row of this.#origins.clients)retireOwnedCore(row.core);
   this.#closeMode=discard;this.#closeTask=Promise.resolve().then(async()=>{if(!discard)this.#readable??=this.#snapshot();await this.#running;await this.#cleanup.drain();await this.#origins!.assets.close();await this.#closeParents(discard);this.#origins=undefined;this.#readable=undefined;this.#closed=true;this.#active=false;}).finally(()=>{this.#closeTask=undefined;this.#closeMode=undefined;});return this.#closeTask;
  }
- static{prepare=(state,borrow,closeParents)=>{const owner=new RetainedPhysicalRoot(key,state,closeParents);let abandoned=false;
+ static{visitFinalCut=(owner,input,visit)=>{if(!owner||typeof owner!=='object'||!(#s in owner))return Promise.reject(fail('physical_operation_v3_policy'));return owner.#visitRecordCut(input,visit,true);};prepare=(state,borrow,closeParents)=>{const owner=new RetainedPhysicalRoot(key,state,closeParents);let abandoned=false;
   return Object.freeze({value:owner,prepareOrigins(){if(abandoned||owner.#active||owner.#origins)throw fail('physical_operation_v3_closed');state.readCurrent();state.intent.checkReadCurrent();checkRecoveryLeasesHeld([state.lease,state.held.lease]);borrow.check();owner.#origins=takeRetainedNativeOriginCustody(borrow);},activate(){owner.#active=true;},async abandon(){if(owner.#active||abandoned)return;if(owner.#origins){await owner.#origins.assets.close();owner.#origins=undefined;}else await borrow.close();abandoned=true;}});
  };}
 }

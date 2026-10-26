@@ -31,7 +31,7 @@ let binding:(owner:RestoredOperationJournal)=>ReturnType<RestoredOperationJourna
 export class RestoredOperationJournal {
  readonly #input:RestoredOperationInput;readonly #db:IDBDatabase;readonly #lease:RecoveryLease;readonly #original:Replay;readonly #live:Replay;readonly #decoder:IndependentDeliveryCompanion;readonly #targets:readonly string[];
  readonly #context:IDBFactory;readonly #locks:LockManager;readonly #authority:()=>void;
- #changed=false;#closed=false;#closing:Promise<void>|undefined;#working=false;#opening=false;#owner:object|undefined;#held=true;#active=false;
+ #changed=false;#closed=false;#retiring=false;#closing:Promise<void>|undefined;#working=false;#opening=false;#owner:object|undefined;#held=true;#active=false;
  readonly #readers=new Set<Promise<unknown>>();
  // A persistence retry can change retained cuts without changing native LIVE.
  #readEpoch:object=Object.freeze({});
@@ -60,7 +60,7 @@ export class RestoredOperationJournal {
    const result=new RestoredOperationJournal(key,input,db,lease,original,live,targets,context!,locks!,check);await result.#read();check();admitted=true;return result;
   }catch(e){db?.close();try{await lease?.close();}finally{original?.dispose();live?.dispose();input?.dispose();}throw e;}
  }
- #storage():void{if(this.#closed||this.#closing)throw fail('restored_operation_closed');if(this.#changed||globalThis.indexedDB!==this.#context||globalThis.navigator?.locks!==this.#locks)throw fail('restored_operation_storage_changed');}
+ #storage():void{if(this.#closed||this.#closing||this.#retiring)throw fail('restored_operation_closed');if(this.#changed||globalThis.indexedDB!==this.#context||globalThis.navigator?.locks!==this.#locks)throw fail('restored_operation_storage_changed');}
  // These anchors are private held readonly replicas. Routine lifetime guards
  // use real facade epochs; full native byte checks fence reads/capture below.
  #readable():void{this.#storage();this.#original.checkCurrent();this.#live.checkCurrent();this.#storage();}
@@ -106,12 +106,18 @@ export class RestoredOperationJournal {
  });}
  async close():Promise<void>{
   if(this.#closed)return;if(this.#owner||this.#opening||this.#working)throw fail('restored_operation_in_use');if(this.#closing)return this.#closing;
-  return this.#closing=Promise.resolve().then(async()=>{await Promise.allSettled([...this.#readers]);this.#db.close();try{await this.#lease.close();}finally{this.#original.dispose();this.#live.dispose();this.#input.dispose();this.#closed=true;}}).finally(()=>{this.#closing=undefined;});
+  // Retirement fences reads immediately, but CLOSED means every actual cleanup
+  // obligation completed. A failed lease release keeps this same owner retryable.
+  this.#retiring=true;return this.#closing=Promise.resolve().then(async()=>{
+   await Promise.allSettled([...this.#readers]);const failures:unknown[]=[];
+   for(const release of[()=>this.#db.close(),()=>this.#lease.close(),()=>this.#original.dispose(),()=>this.#live.dispose(),()=>this.#input.dispose()])try{await release();}catch(error){failures.push(error);}
+   if(failures.length)throw failures[0];this.#closed=true;
+  }).finally(()=>{this.#closing=undefined;});
  }
  private bindingType(){return{
   identity:structuredClone(this.#decoder.identity),operationIdentity:structuredClone(this.#input.identity),sourceDatabase:this.#input.sourceDatabase,
   readHead:this.#readHead,unwrap:this.#unwrap,wrap:(head:string)=>{this.#decoder.readHead(head);return wrapOperationHead(head,this.#input.identity);},nativeCaptureGuard:Object.freeze({check:this.#check,capture:this.#capture}),
-  persistence:Object.freeze({select:(actual:IndependentHistoryStoredCut|null)=>this.#select(actual),prepare:(expected:string|null,cut:IndependentHistoryCut)=>this.#prepare(expected,cut),acknowledge:(cut:IndependentHistoryCut)=>this.#acknowledge(cut),release:async()=>{if(!this.#owner)return;this.#owner=undefined;if(!this.#held)await closeJournal.call(this);}}),
+  persistence:Object.freeze({select:(actual:IndependentHistoryStoredCut|null)=>this.#select(actual),prepare:(expected:string|null,cut:IndependentHistoryCut)=>this.#prepare(expected,cut),acknowledge:(cut:IndependentHistoryCut)=>this.#acknowledge(cut),release:async()=>{this.#owner=undefined;if(!this.#held)await closeJournal.call(this);}}),
   reserve:()=>{this.#check();if(this.#owner||this.#opening||this.#working)throw fail('restored_operation_in_use');this.#opening=true;let settled=false;return{claim:(owner:object)=>{if(settled||!this.#opening||this.#owner)throw fail();this.#check();const port=independentDeliverySource(owner);if(port.operation!==this||JSON.stringify(port.identity)!==JSON.stringify(this.#decoder.identity))throw fail('restored_operation_source');this.#owner=owner;this.#opening=false;settled=true;},abandon:()=>{if(!settled){settled=true;this.#opening=false;}}};},
   /** The actual source, not a phase DTO, must finish the last replay. No await between
    * this fresh native/host check and consuming the genuine journal hold. */

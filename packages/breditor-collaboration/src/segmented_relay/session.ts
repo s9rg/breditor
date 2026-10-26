@@ -1,5 +1,6 @@
 /** Explicit generation-aware durable relay source. It never activates an entire room or stores credentials. */
 import {retireOwnedCore} from '../owned_core_lifetime.js';
+import {checkManagedCore} from '../managed_custody.js';
 import {SharedSegmentedPersistentSession,captureSegmentedPersistentRecords} from "../persistence/segmented_session.js";
 import {createGenerationRecordRead,type GenerationRecordRead} from '../persistence/generation_record_read.js';
 import {participantAuthority} from '../participant_backup/policy.js';
@@ -70,7 +71,7 @@ export class SharedSegmentedRelaySession<P extends SharedSelectionPolicy=SharedS
  }
  get core():SharedRichEditor<P>{return this.#core;}
  get recovered():boolean{return this.#session.recovered;}
- #check():void{if(this.#retiring||Object.hasOwn(this,"core"))throw new SharedRelayError("segmented_relay_source_retired");this.#session.checkBorrowedSource(this.#core);}
+ #check():void{if(this.#retiring||Object.hasOwn(this,"core"))throw new SharedRelayError("segmented_relay_source_retired");this.#session.checkBorrowedSource(this.#core);checkManagedCore(this.#core);}
  state(){return this.#session.state();}
  relayProgress(){return this.#companion.durable();}
  /** Paired transport progress readers return detached metadata, not live server grants. */
@@ -92,7 +93,7 @@ export class SharedSegmentedRelaySession<P extends SharedSelectionPolicy=SharedS
  exportRetainedRecovery():SharedSegmentedRetainedRecovery{const c=this.#retained();return {format:"breditor/shared-relay-generation-retained-recovery",formatVersion:1,source:this.#session.exportRecovery(),relay:c.current(),retainedBinding:structuredClone(c.retainedBinding),retained:c.records()};}
  /** Confirmed atomic store cut, not an account grant or server publication claim. */
  retainedRecords():SegmentedRetainedRecords{if(this.#session.state().status==="closed")throw new SharedRelayError("segmented_session_closed");return this.#retained().durableRecords();}
- #port<K extends SegmentedRetainedKind>(kind:K):SegmentedRetainedPort<K>{const c=this.#retained();if(c.retainedBinding[kind]===null)throw new SharedRelayError("segmented_retained_store_unselected");return {kind,check:()=>this.#session.checkBorrowedSource(this.#core),writable:()=>this.#check(),read:()=>c.records()[kind] as NonNullable<SegmentedRetainedRecords[K]>,stage:record=>{this.#session.checkBorrowedSource(this.#core);c.proposeRecord(kind,record);},write:async()=>{this.#session.checkBorrowedSource(this.#core);await this.#flushSource();}};}
+ #port<K extends SegmentedRetainedKind>(kind:K):SegmentedRetainedPort<K>{const c=this.#retained();if(c.retainedBinding[kind]===null)throw new SharedRelayError("segmented_retained_store_unselected");return {kind,check:()=>this.#session.checkBorrowedSource(this.#core),writable:()=>this.#check(),read:()=>c.records()[kind] as NonNullable<SegmentedRetainedRecords[K]>,stage:record=>{this.#check();c.proposeRecord(kind,record);},write:async()=>{this.#session.checkBorrowedSource(this.#core);await this.#flushSource();}};}
  #opening<T>(create:()=>Promise<T>,discard:(value:T)=>Promise<void>):Promise<T>{this.#check();const work=(async()=>{const value=await create();try{this.#check();return value;}catch(error){await discard(value);throw error;}})();this.#openings.add(work);void work.finally(()=>this.#openings.delete(work)).catch(()=>{});return work;}
  async openSuggestionQueue():Promise<SharedSuggestionQueue<P>>{return this.#opening(async()=>{const c=this.#retained(),b=c.retainedBinding.suggestions;if(!b)throw new SharedRelayError("segmented_retained_store_unselected");const value=await SharedSuggestionQueue.open(withSegmentedRetainedPort({database:"atomic-generation-retained",identity:b.identity,storage:this,...(b.ownedHistory?{ownedHistory:b.ownedHistory}:{})},this.#port("suggestions")));this.#queue=value;return value;},value=>value.discardAndClose());}
  async openSuggestionRevisions(input:SharedSegmentedRevisionsOpenOptions<P>):Promise<SharedSuggestionRevisions<P>>{return this.#opening(async()=>{for(const key of ["storage","database","binding","queue"])if(key in input)throw new SharedRelayError("segmented_retained_factory_policy");if(input.autoStart!==undefined&&input.autoStart!==false)throw new SharedRelayError("segmented_retained_factory_policy");const b=this.#retained().retainedBinding.revisions;if(!b||!this.#queue)throw new SharedRelayError("segmented_retained_queue_required");const value=await SharedSuggestionRevisions.open(withSegmentedRetainedPort({...input,autoStart:false,database:"atomic-generation-retained",binding:b.binding,queue:this.#queue,storage:this},this.#port("revisions")));this.#revisions=value;return value;},value=>value.discardAndClose());}

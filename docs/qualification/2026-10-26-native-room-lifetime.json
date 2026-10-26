@@ -1,0 +1,291 @@
+{
+  "format": "breditor/native-room-lifetime-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-26T23:09:11.270Z",
+  "qualification": "selected-functional-architectural-increment-not-v1-release",
+  "workingTreeSourceAtVerification": {
+    "commit": "0590119ba4c3ee6eb0d356a5ee0def8dd1997f15",
+    "dirty": true,
+    "sha256": "c480065bb5cfe3402c7bc0f7d75c508618d7fde07af5d03bbfa01bdb4ffb9304",
+    "files": 6642,
+    "bytes": 51938478
+  },
+  "qualificationMetadataAddedAfterRun": true,
+  "postVerificationSourceAdditions": [
+    "docs/qualification/2026-10-26-native-room-lifetime.json"
+  ],
+  "normal": {
+    "stages": 13,
+    "suites": [
+      {
+        "kind": "execution",
+        "source": 203,
+        "installed": 203,
+        "bundled": 203,
+        "strictTypeFixtures": 28,
+        "normalConsumerProductsVerified": 1954
+      },
+      {
+        "kind": "reconstruction",
+        "source": 175,
+        "installed": 175,
+        "bundled": 175,
+        "strictTypeFixtures": 8,
+        "normalConsumerProductsVerified": 1954
+      }
+    ],
+    "sourceReconstruction": 175,
+    "installedReconstruction": 175,
+    "bundledReconstruction": 175,
+    "sourceExecution": 203,
+    "installedExecution": 203,
+    "bundledExecution": 203,
+    "strictReconstructionFixtures": 8,
+    "priorReconstructionLaws": 134,
+    "newRoomRetirementLaws": 11,
+    "newFinalCutLaws": 1,
+    "newMetadataLaws": 28,
+    "newClosingNotificationLaws": 1,
+    "fullFunctionalPlanExecuted": false,
+    "manifests": [
+      {
+        "kind": "common",
+        "path": "target/v1-candidate-runs/run-jfp5sW/result.json",
+        "sha256": "e64c896847c60598e189ba3d656311ae62ae7954865e92e9238317d4069badd1",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "candidate-runner-contracts",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "rich-browser-build",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "collaboration-build",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-complete-cohort",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-complete-image-cohort",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-execution-contracts",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-execution-type-fence",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-reconstruction-contracts",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-reconstruction-type-fence",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      },
+      {
+        "kind": "execution-source",
+        "path": "target/v1-candidate-runs/run-QPX962/result.json",
+        "sha256": "ad5304590ed85307efc8329cdfa2454f15587ca4ffe508bd74a4784eba79d702",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "native-execution",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      },
+      {
+        "kind": "execution-installed",
+        "path": "target/v1-candidate-runs/run-LiUEMF/result.json",
+        "sha256": "5513ba2299cfd75797c4faea3713031ce69d8b50de85f95c1d134a81c741dffa",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "installed-native-execution",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      },
+      {
+        "kind": "reconstruction-source",
+        "path": "target/v1-candidate-runs/run-rPnEgq/result.json",
+        "sha256": "50c96e541934b8345b6e3f9b97be6425418f99a5b1c3c17d106082c0fa002a1e",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "native-reconstruction",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      },
+      {
+        "kind": "reconstruction-installed",
+        "path": "target/v1-candidate-runs/run-aligYa/result.json",
+        "sha256": "20c1d00907af91c1aec5622fee2c2677a26eebc7055adbf11a2d58526f79cf19",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "installed-native-reconstruction",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      }
+    ]
+  },
+  "products": {
+    "count": 1954,
+    "unchanged": 1921,
+    "changedPrivateProducts": 27,
+    "addedPrivateProducts": 6,
+    "rootApiUnchanged": true
+  },
+  "native": {
+    "freshInputFiles": 100,
+    "unchangedSourceAndBuildInputs": 2899,
+    "normalWasmSha256": "946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0",
+    "rustSuitesRerun": false,
+    "priorExecutionSuitesRerun": true,
+    "priorFlatSuitesRerun": false
+  },
+  "guardControls": {
+    "scope": "One isolated copy of actual offline-installed products; all normal sources/consumers unchanged",
+    "rows": [
+      {
+        "id": "retirement-boundary",
+        "module": "physical_room_asset_successor/owner.js",
+        "guardRemovedActualExit": 1,
+        "guardRestoredActualExit": 0
+      },
+      {
+        "id": "retained-output-equality",
+        "module": "native_room_retirement/coordinator.js",
+        "guardRemovedActualExit": 1,
+        "guardRestoredActualExit": 0
+      },
+      {
+        "id": "old-delivery-cleanup",
+        "module": "independent_delivery/session.js",
+        "guardRemovedActualExit": 1,
+        "guardRestoredActualExit": 0
+      },
+      {
+        "id": "old-journal-cleanup",
+        "module": "restored_operation/journal.js",
+        "guardRemovedActualExit": 1,
+        "guardRestoredActualExit": 0
+      },
+      {
+        "id": "final-complete-cut",
+        "module": "physical_room_asset_successor/owner.js",
+        "guardRemovedActualExit": 1,
+        "guardRestoredActualExit": 0
+      }
+    ],
+    "productsRestoredExactly": 1954,
+    "metadataRows": [
+      {
+        "id": "queue-final-admission",
+        "module": "suggestions/queue.js",
+        "guardRemovedActualExit": 1,
+        "guardRestoredActualExit": 0
+      },
+      {
+        "id": "revision-final-admission",
+        "module": "suggestion_revisions/outbox.js",
+        "guardRemovedActualExit": 1,
+        "guardRestoredActualExit": 0
+      },
+      {
+        "id": "version-final-admission",
+        "module": "versions/store.js",
+        "guardRemovedActualExit": 1,
+        "guardRestoredActualExit": 0
+      },
+      {
+        "id": "paired-final-progress",
+        "module": "persistence/review_session.js",
+        "guardRemovedActualExit": 1,
+        "guardRestoredActualExit": 0
+      },
+      {
+        "id": "generation-final-progress",
+        "module": "segmented_relay/companion.js",
+        "guardRemovedActualExit": 1,
+        "guardRestoredActualExit": 0
+      },
+      {
+        "id": "independent-final-progress",
+        "module": "independent_delivery/companion.js",
+        "guardRemovedActualExit": 1,
+        "guardRestoredActualExit": 0
+      },
+      {
+        "id": "generation-version-rechecks",
+        "module": "persistence/segmented_session.js",
+        "guardRemovedActualExit": 1,
+        "guardRestoredActualExit": 0
+      },
+      {
+        "id": "retired-factory-opening",
+        "module": "suggestions/queue.js",
+        "guardRemovedActualExit": 1,
+        "guardRestoredActualExit": 0
+      }
+    ]
+  },
+  "retainedProof": {
+    "path": "target/native-room-lifetime-proof-rtIMZY/index.json",
+    "sha256": "027fb49eefdc8584d9eb926f94a2fe3e02f3dacf4e8c128b946bc70f5488b77e",
+    "files": 885,
+    "endpoints": {
+      "groups": 89,
+      "declared": 890,
+      "allConfirmedClosed": true
+    }
+  },
+  "scope": "Exact durable preparation and all seven concrete output files are independently re-admitted under one genuine native/upload scope before a fresh decision. Every actual old writer retires before exclusion release; canonical cleanup is awaited without self-wait. Failed actual lease cleanup retries without native revival. A genuine full native/packet witness survives temporary-reader cleanup and checks after the final authority callback. A real late pending-intent change refuses retirement, retains the new intent and leaves all seven actual old writers live. Complete older-but-native-valid output refuses against retained LIVE. Concrete replacement participants preserve both native histories, document bytes and future Undo/Redo. Successful retirement does not rewrite source rows or immutable inputs; host-authored late intent survives refused retirement. Attached metadata writers and factories fence actual native retirement before record staging and across asynchronous opening. A genuine revision-closing notification cannot alter sibling intent after core retirement. All four native history pairs preserve readable exports and captured persistence cleanup. Active document read-only retains its metadata operations.",
+  "limitations": [
+    "Explicit local retirement independently rebuilds all saved outputs and closes actual old writers, but does not execute a replacement root or create targets.",
+    "Concrete target restoration in functional tests uses existing explicit V3 host APIs, not a new durable whole-room execution/restart coordinator.",
+    "A real final-callback pending-intent change refuses through a genuine full source/packet witness; an earlier green145-law baseline did not cover this race and is retained as diagnosed, not qualified.",
+    "Actual native retirement fences new metadata mutation and adapter construction; pure exports and captured persistence cleanup remain readable, and active document-readonly metadata keeps its existing behavior. A genuine shutdown observer and23 additional baseline failures motivated this repair.",
+    "Cold DATA and a saved phase are not mutable native admission, a source save ACK, a provider receipt, a remote writer grant or authenticated activation.",
+    "Cleanup rejection after retirement does not revive old writers; the same actual owner retains retryable cleanup obligations.",
+    "A complete root/catalog/asset namespace choice, interrupted target replay/handoff, selected-asset adoption and whole-room reconciliation remain required.",
+    "Controlled IDB/native-host tests do not establish physical power-loss durability.",
+    "Rust/build inputs and normal Wasm are unchanged. Existing 203 execution laws are freshly rerun in all three forms; Rust suites, prior flat matrices and full candidate profiles are not claimed as rerun."
+  ],
+  "remaining": "Durable whole-root/catalog/asset execution choice and interrupted per-target replay/handoff; actual selected-asset adoption; compatible native/dependent-packet reconciliation; independent comment/server-log generations; authenticated activation/fencing; sustainable Undo/offline retention; extension/full parity and all thirteen release gates.",
+  "v1Ready": false,
+  "openV1GateCount": 13,
+  "versionsChanged": false,
+  "rootApiChanged": false,
+  "publicApiFrozen": false,
+  "pushed": false,
+  "published": false,
+  "tagged": false,
+  "deployed": false
+}

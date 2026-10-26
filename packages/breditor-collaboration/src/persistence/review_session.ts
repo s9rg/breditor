@@ -1,7 +1,7 @@
 import {retireOwnedCore,disposeOwnedCore} from '../owned_core_lifetime.js';
 import {registerNativePendingWork} from '../native_pending_work.js';
 import {freeUnclaimedSharedRustOwner} from '../raw_owner_lifetime.js';
-import {managedCoreRetainedRevisions} from '../managed_custody.js';
+import {managedCoreRetainedRevisions,checkManagedCore} from '../managed_custody.js';
 import {SharedRichEditor,SharedEditorError,createSharedDocumentEditor} from "../core.js";
 import type {SharedRustOwner,SharedSelectionPolicy,SharedRangePolicy,SharedHistoryPolicy,SharedEditorOptions} from "../types.js";
 import type {SharedReviewPolicy} from "../review_types.js";
@@ -190,10 +190,10 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
  reviewRelayProgress():SharedReviewRelayProgress{this.#live();return structuredClone(this.#durableRelayProgress);}
  /** Capture both native journals and progress in one transaction; failed saves retain all inputs. */
  async persistReviewRelayProgress(input:SharedReviewRelayProgress):Promise<void>{
-  this.#live();const identity=this.#options.relay;if(!identity)throw new SharedEditorError("review_relay_storage","Explicit paired relay storage is required");
+  this.#live();checkManagedCore(this.#ownedCore);const identity=this.#options.relay;if(!identity)throw new SharedEditorError("review_relay_storage","Explicit paired relay storage is required");
   const next=reviewProgress(input,identity),previous=this.#relayProgress;
   if(previous.cursor&&(!next.cursor||BigInt(next.cursor.after)<BigInt(previous.cursor.after))||previous.accepted&&(!next.accepted||BigInt(next.accepted.through)<BigInt(previous.accepted.through)||next.accepted.through===previous.accepted.through&&next.accepted.prefixDigest!==previous.accepted.prefixDigest))throw new SharedEditorError("review_relay_rollback","Paired relay progress cannot move backwards");
-  this.#validateNativeProgress(next);this.#relayProgress=next;this.save();await this.flush();
+  this.#validateNativeProgress(next);checkManagedCore(this.#ownedCore);this.#relayProgress=next;this.save();await this.flush();
  }
  state():SharedReviewSaveState{const snapshot=this.#closedRevisions??managedCoreRetainedRevisions(this.#ownedCore);return {status:this.#closed?"closed":this.#failure?"failed":this.#pending||this.#running?"pending":"saved",documentRevision:snapshot.documentRevision,reviewRevision:snapshot.reviewRevision,error:this.#failure?String(this.#failure):null};}
  /** Synchronously capture both exact native lanes; coalesce only complete superseded pairs. */
@@ -205,7 +205,7 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
  /** Capture and retain one immutable named snapshot; publication and packet persistence are host-local. */
  saveVersion(name:string,createdAtMs:string):SharedDocumentVersionInfo{this.#live();const packet=this.#boundCore().captureVersion(name,this.#options.review.principal,createdAtMs);return this.retainVersion(packet);}
  /** The host must authenticate imported provenance separately; native digest/binding/content still admit. */
- retainVersion(packet:string):SharedDocumentVersionInfo{this.#live();if(this.#retiring)throw new SharedEditorError("review_session_closing","Cannot retain versions after retirement");const info=this.#boundCore().readVersion(packet),candidate=new Map(this.#versions),known=candidate.get(info.id);if(known!==undefined){if(known!==packet)throw new SharedEditorError("version_catalog","Different packet bytes under a retained immutable version");return info;}candidate.set(info.id,packet);this.#checkRecord(this.#record(candidate));this.#versions=candidate;this.save();return info;}
+ retainVersion(packet:string):SharedDocumentVersionInfo{this.#live();checkManagedCore(this.#ownedCore);if(this.#retiring)throw new SharedEditorError("review_session_closing","Cannot retain versions after retirement");const info=this.#boundCore().readVersion(packet),candidate=new Map(this.#versions),known=candidate.get(info.id);checkManagedCore(this.#ownedCore);if(known!==undefined){if(known!==packet)throw new SharedEditorError("version_catalog","Different packet bytes under a retained immutable version");return info;}candidate.set(info.id,packet);this.#checkRecord(this.#record(candidate));checkManagedCore(this.#ownedCore);this.#versions=candidate;this.save();return info;}
  versions():readonly SharedDocumentVersionInfo[]{this.#live();const core=this.#boundCore();return [...this.#versions.values()].map(packet=>core.readVersion(packet));}
  versionPacket(id:string):string{this.#live();const packet=this.#versions.get(id);if(packet===undefined)throw new SharedEditorError("version_unknown","Unknown retained version");return packet;}
  /** Retire synchronously; a failed final write retains both readable histories and both leases for retry. */

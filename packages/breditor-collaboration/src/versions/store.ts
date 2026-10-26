@@ -3,7 +3,7 @@ import {SharedRelayError} from "../relay/validation.js";
 import {checkSourceCheckpoint} from "../persistence/source_checkpoint.js";
 import {selectedRetainedStorePort,type RetainedStorePort} from "../delivery_ports/retained.js";
 import {SharedEditorError} from "../core.js";
-import {registerManagedSource,managedSourceUnavailable,managedSourceCore,checkManagedSource,checkManagedSourceBindings} from "../managed_custody.js";
+import {registerManagedSource,checkManagedCore,managedSourceUnavailable,managedSourceCore,checkManagedSource,checkManagedSourceBindings} from "../managed_custody.js";
 import {participantAuthority} from '../participant_backup/policy.js';
 import {observeIndependentRecoveryAbort} from '../independent_recovery/signal.js';
 import {retainInternalFailureCause} from '../internal_failure_cause.js';
@@ -65,29 +65,33 @@ export class VersionCatalogStore<P extends SharedSelectionPolicy=SharedSelection
  }
  static async #open<Q extends SharedSelectionPolicy>(input:SharedDocumentVersionsOptions<Q>,recovered?:SharedVersionCatalogRecord,signal?:AbortSignal):Promise<VersionCatalogStore<Q>>{
   const source=input.storage,core=source.core,atomic=selectedRetainedStorePort(input,"versions");
+  checkManagedCore(core);
   const storage=Object.freeze({core,save():void{assertSource();source.save();assertSource();},async flush():Promise<void>{assertSource();await source.flush();assertSource();}});
   const options=Object.freeze({...input,identity:Object.freeze(versionIdentity(input.identity)),storage}),identity=options.identity;
   const assertSource=():void=>{if(source.core!==core||options.storage!==storage||storage.core!==core)throw new SharedRelayError("version_source_replaced");atomic?.check();};
   assertSource();
   if(!core.supportsVersionSourceProofs())throw new SharedRelayError("version_source_unavailable");
   if(atomic)atomic.check();else checkSourceCheckpoint(core,identity.room,identity.documentWriter);
-  checkRetainedStoreSignal(signal);const lease=await VersionCatalogLease.acquire(identity);let db:IDBDatabase|undefined,store:VersionCatalogStore<Q>|undefined;
-  try{assertSource();checkRetainedStoreSignal(signal);const retained=isOperationalComponent(input)?await existingOperationalComponent(options.database,"catalogs",cacheKey(identity)):undefined;if(!atomic)db=retained?.db??await openCatalogDatabase(options.database);assertSource();let saved:SharedVersionCatalogRecord|null;
+  checkManagedCore(core);checkRetainedStoreSignal(signal);const lease=await VersionCatalogLease.acquire(identity);let db:IDBDatabase|undefined,store:VersionCatalogStore<Q>|undefined;
+  try{assertSource();checkManagedCore(core);checkRetainedStoreSignal(signal);const retained=isOperationalComponent(input)?await existingOperationalComponent(options.database,"catalogs",cacheKey(identity)):undefined;if(!atomic)db=retained?.db??await openCatalogDatabase(options.database);assertSource();let saved:SharedVersionCatalogRecord|null;
    if(recovered){if(await retainedStoreDestinationExists(db!,"catalogs",cacheKey(identity),signal))throw new SharedEditorError("backup_destination_exists","Retained restore destination already contains a record");saved=recovered;}else saved=atomic?checkCatalogRecord(atomic.read(),identity):await readCatalogRecord(db!,identity);
    if(retained&&(!saved||JSON.stringify(saved)!==JSON.stringify(retained.record)))throw operationFailure("operation_diverged");
    let recordSource:object|undefined;try{if(managedSourceCore(source)===core)recordSource=source;}catch{/* Custom borrowed storage keeps its old editing API, not new managed-read custody. */}
-   assertSource();const record=saved??{format:"breditor/shared-version-catalog-cache" as const,formatVersion:1 as const,identity,catalog:null,packets:[]},create=()=>new VersionCatalogStore(constructionKey,options,db,lease,record,assertSource,atomic,recordSource);store=recovered?retainedStoreNativeAdmission(create):create();retained?.assertCurrent();store.#restoreInsert=recovered!==undefined;store.#restoreSignal=signal;store.#pending=record;store.#start();await store.flush();assertSource();checkRetainedStoreSignal(signal);return store;}
+   assertSource();checkManagedCore(core);const record=saved??{format:"breditor/shared-version-catalog-cache" as const,formatVersion:1 as const,identity,catalog:null,packets:[]},create=()=>new VersionCatalogStore(constructionKey,options,db,lease,record,assertSource,atomic,recordSource);store=recovered?retainedStoreNativeAdmission(create):create();checkManagedCore(core);retained?.assertCurrent();store.#restoreInsert=recovered!==undefined;store.#restoreSignal=signal;store.#pending=record;store.#start();await store.flush();assertSource();checkManagedCore(core);checkRetainedStoreSignal(signal);return store;}
   catch(error){if(store)await store.discardAndClose();else{db?.close();await lease.close();}throw error;}
  }
  #live(checkSource=true):void{if(this.#closed)throw new SharedRelayError("version_cache_closed");this.#lease.assertLive();if(checkSource)this.#assertSource();}
- #writable():void{this.#live();this.#atomic?.writable();if(this.#retiring)throw new SharedRelayError("version_cache_closing");}
+ #writable():void{this.#live();checkManagedCore(this.options.storage.core);this.#atomic?.writable();if(this.#retiring)throw new SharedRelayError("version_cache_closing");}
  #admit(record:SharedVersionCatalogRecord):Map<string,Retained>{
   return admitVersionRecord(this.options.storage.core,record);
  }
  #mark(record:SharedVersionCatalogRecord):void{
+  checkManagedCore(this.options.storage.core);
   this.#recordReadEpoch=Object.freeze({});
   const checked=checkCatalogRecord(record,this.options.identity),encoded=JSON.stringify(checked);
-  if(encoded!==JSON.stringify(this.#record)){const retained=this.#admit(checked);this.#atomic?.stage(checked);this.#record=checked;this.#retained=retained;}
+  const retained=encoded!==JSON.stringify(this.#record)?this.#admit(checked):undefined;
+  checkManagedCore(this.options.storage.core);
+  if(retained){this.#atomic?.stage(checked);this.#record=checked;this.#retained=retained;}
   if(encoded===this.#saved&&!this.#pending&&!this.#running&&!this.#failure)return;
   this.#pending=structuredClone(checked);this.#notify();this.#start();
  }

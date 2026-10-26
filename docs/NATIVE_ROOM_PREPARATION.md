@@ -73,10 +73,13 @@ and controlled failure tests do not establish physical power-loss durability.
 
 ## Required execution work
 
-Whole-room target creation, durable per-member execution progress, interruption
-replay, safe retirement of all original writers and a freshly authorized handoff
-remain separate implementation work. Mutable native admission must run again at
-execution; an archive digest or stored choice never replaces it. Compatible native
+The [explicit native retirement contract](NATIVE_ROOM_RETIREMENT.md) now re-admits
+all outputs and closes the actual old writers after fresh approval, without a fake
+import or a self-wait. Actual failed cleanup remains retryable. Whole-room target
+creation, a durable root/catalog/asset plan, per-member execution progress,
+interruption replay and a freshly authorized handoff remain separate work. Mutable
+native admission runs again before retirement; an archive digest or stored choice
+never replaces it. Compatible native
 union, dependent-packet reconciliation and authenticated serving activation remain
 required before the room recovery path is complete. The V1 goal and all thirteen
 release gates remain open.
