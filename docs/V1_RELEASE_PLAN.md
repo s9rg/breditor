@@ -66,10 +66,14 @@ inspection before its first capture; actual room Close is independent of the
 decoder returning. Ordinary image bytes, admission rules and archive formats
 remain unchanged. Other legacy host-factory callback contracts are unchanged.
 These seven family-specific recovery paths do not complete whole-room recovery.
-The next architectural priorities are durable common input preparation and
+The [durable room preparation contract](NATIVE_ROOM_PREPARATION.md) now joins
+every concrete participant recipe, both complete snapshots and explicit target
+roles in one immutable absent-only record before any target creation. Cold data
+reopen rechecks the independent choice and full bytes; it recovers no writer
+authority. The next architectural priorities are whole-room target execution and
 interrupted retry/retirement, compatible native union and dependent-packet
-reconciliation, then authenticated activation with old-writer fencing. Every
-source-to-output format choice must be retained before new targets are created. All thirteen V1 gates remain open.
+reconciliation, then authenticated activation with old-writer fencing. All thirteen
+V1 gates remain open.
 
 ## V1 candidate qualification checkpoint
 

@@ -1,0 +1,159 @@
+{
+  "format": "breditor/native-room-preparation-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-26T17:57:18.419Z",
+  "qualification": "selected-functional-architectural-increment-not-v1-release",
+  "workingTreeSourceAtVerification": {
+    "commit": "e377d13200ab34a57015b9151ffb334eeeb1f7fc",
+    "dirty": true,
+    "sha256": "978551451509492f8eb11917c300072906376e349cc19ddf5ea9dd05b013b7c8",
+    "files": 6630,
+    "bytes": 51850237
+  },
+  "qualificationMetadataAddedAfterRun": true,
+  "postVerificationSourceAdditions": [
+    "docs/qualification/2026-10-26-room-preparation.json"
+  ],
+  "normal": {
+    "stages": 11,
+    "sourceReconstruction": 134,
+    "installedReconstruction": 134,
+    "bundledReconstruction": 134,
+    "strictReconstructionFixtures": 7,
+    "priorReconstructionLaws": 126,
+    "newRoomPreparationLaws": 8,
+    "fullFunctionalPlanExecuted": false,
+    "manifests": [
+      {
+        "kind": "common",
+        "path": "target/v1-candidate-runs/run-OuHBaD/result.json",
+        "sha256": "98d34169985c1e4e629b2abe4965c1b74ebe76096e3f6d793c8cf3eceb5be71e",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "candidate-runner-contracts",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "rich-browser-build",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "collaboration-build",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-complete-cohort",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-complete-image-cohort",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-execution-contracts",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-execution-type-fence",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-reconstruction-contracts",
+            "status": "passed",
+            "actualExit": 0
+          },
+          {
+            "id": "native-reconstruction-type-fence",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      },
+      {
+        "kind": "source",
+        "path": "target/v1-candidate-runs/run-XjQbOF/result.json",
+        "sha256": "e1362e334b368b63f089fade2eccd326a647d6c1e46dfa4871774fdc69b473df",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "native-reconstruction",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      },
+      {
+        "kind": "installed",
+        "path": "target/v1-candidate-runs/run-dCnn7c/result.json",
+        "sha256": "232d15104306b893f4781f25884ead549b1f4fcaae1292d1af4aa08c6b81c13a",
+        "actualExit": 0,
+        "stages": [
+          {
+            "id": "installed-native-reconstruction",
+            "status": "passed",
+            "actualExit": 0
+          }
+        ]
+      }
+    ]
+  },
+  "products": {
+    "count": 1948,
+    "unchanged": 1918,
+    "changedPrivateProducts": 10,
+    "addedPrivateProducts": 20,
+    "fourInspectorDeclarationChangesCommentOnly": true,
+    "rootApiUnchanged": true
+  },
+  "native": {
+    "freshInputFiles": 100,
+    "unchangedSourceAndBuildInputs": 2899,
+    "normalWasmSha256": "946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0",
+    "rustSuitesRerun": false,
+    "priorExecutionAndFlatSuitesRerun": false
+  },
+  "guardControl": {
+    "scope": "One isolated copy of actual offline-installed products, normal source/consumer unchanged",
+    "module": "native_room_preparation/intent_store.js",
+    "removedSignalForwardingActualExit": 1,
+    "restoredActualExit": 0,
+    "productsRestoredExactly": 1948
+  },
+  "retainedProof": {
+    "path": "target/native-room-preparation-proof-GwDLWS/index.json",
+    "sha256": "3cc915dc212430ccf2360f9a1bdd14f5a41888c81a1e3effdecf4155886169d1",
+    "files": 481,
+    "endpoints": {
+      "groups": 48,
+      "declared": 480,
+      "allConfirmedClosed": true
+    }
+  },
+  "scope": "One actual held seven-family native/upload preflight constructs every concrete reconstruction recipe. Both literal room inputs, all output files, exact selections/digests/MIME and a complete per-participant source/output/namespace plan are retained in one immutable absent-only intent before any participant targets exist. Independent existing-only cold DATA read verifies the complete archive and source topology. Four history pairings, genuine failed-save newer retained input, unchanged source rows, lost completion, atomic abort, cancellation during decoding, actual queued-open cleanup, stale plans and bounded storage reads are exercised in source, offline installed packages and actual production bundle.",
+  "limitations": [
+    "Preparation retains complete per-participant target plans but does not execute replacement roots, participant targets or selected upload adoption.",
+    "Cold file/intent admission is DATA, not native mutable admission, a writer retirement, source-save acknowledgement, provider receipt, permission or activation.",
+    "Preparation targets are checked absent but not reserved for a later executor. An already committed preparation survives lost completion or subsequent current-cut refusal.",
+    "The distinct total budget is 1GiB including two full snapshots and all outputs, with16MiB header and1024 members. Overflow refuses without truncating history.",
+    "Controlled IDB/raster/native-host tests do not establish physical power-loss durability.",
+    "Rust/build inputs and normal Wasm are unchanged; Rust suites, prior execution/flat matrices and full candidate profiles are not claimed as rerun."
+  ],
+  "remaining": "Whole-room root/target execution and durable per-member progress; approved old-writer retirement and interruption replay/handoff; compatible native/dependent-packet reconciliation; comment adoption; authenticated activation/fencing; sustainable Undo/offline retention; extension/full parity and all thirteen release gates.",
+  "v1Ready": false,
+  "openV1GateCount": 13,
+  "versionsChanged": false,
+  "rootApiChanged": false,
+  "publicApiFrozen": false,
+  "pushed": false,
+  "published": false,
+  "tagged": false,
+  "deployed": false
+}
