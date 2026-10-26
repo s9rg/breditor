@@ -12,6 +12,7 @@ import {freezeGeneration} from '../generation_source/identity.js';
 import {snapshotRestoredLocalPolicy,type RestoredLocalInputOptions} from './policy.js';
 import {wrapRestoredLocalHead,type RestoredLocalIdentity} from './head.js';
 import {restoredLocalFailure as fail} from './failure.js';
+import {seedFlatLocalSnapshot} from '../flat_local_operation/seed_snapshot.js';
 const key=Object.freeze({});
 interface State{readonly policy:ReturnType<typeof snapshotRestoredLocalPolicy>;readonly owner:IndependentLocalOperationBackup;readonly file:Blob;readonly fileSha256:string;readonly identity:RestoredLocalIdentity;readonly original:ReturnType<typeof archive.originalRecovery>;readonly live:ReturnType<typeof archive.live>;readonly targets:readonly IndependentHistoryCut[]}
 const states=new WeakMap<DetachedRestoredLocalInput,State>(),state=(owner:DetachedRestoredLocalInput)=>{const value=states.get(owner);if(!value||archive.file.call(value.owner)!==value.file)throw fail('restored_local_operation_input_closed');return value;};
@@ -41,10 +42,14 @@ export class DetachedRestoredLocalInput{
  live(){return structuredClone(state(this).live);}
  targets():readonly IndependentHistoryCut[]{return state(this).targets.map(copyOperationCut);}
  uploadBackup():Blob{return archive.uploads.call(state(this).owner);}
+ /** SDK-private DATA access from this freshly admitted literal input. */
+ bindings(){return archive.metadata.call(state(this).owner).bindings;}
+ entries(){return archive.entries.call(state(this).owner);}
+ appendFlatCapture(frame:Blob,extras:readonly Blob[],check:()=>void){return seedFlatLocalSnapshot(state(this).owner,frame,extras,check);}
  blob(asset:string,generation:string):Blob|undefined{return archive.blob.call(state(this).owner,asset,generation);}
  dispose():void{const value=states.get(this);if(!value)return;states.delete(this);archive.dispose.call(value.owner);}
 }
 const p=DetachedRestoredLocalInput.prototype;
 /** Actual private state, not a structural ready object. Journal code separately
  * reserves storage names and transfers this freshly admitted input lifetime. */
-export const restoredLocalInput=Object.freeze({owns:(owner:unknown):owner is DetachedRestoredLocalInput=>states.has(owner as DetachedRestoredLocalInput),read:DetachedRestoredLocalInput.read,check:p.checkReadable,verifyFile:p.verifyFile,file:p.file,originalFile:p.originalFile,selection:p.selection,cohort:p.cohort,identity:p.identity,original:p.original,live:p.live,targets:p.targets,uploads:p.uploadBackup,blob:p.blob,dispose:p.dispose});
+export const restoredLocalInput=Object.freeze({owns:(owner:unknown):owner is DetachedRestoredLocalInput=>states.has(owner as DetachedRestoredLocalInput),read:DetachedRestoredLocalInput.read,check:p.checkReadable,verifyFile:p.verifyFile,file:p.file,originalFile:p.originalFile,selection:p.selection,cohort:p.cohort,identity:p.identity,original:p.original,live:p.live,targets:p.targets,uploads:p.uploadBackup,blob:p.blob,bindings:p.bindings,entries:p.entries,append:p.appendFlatCapture,dispose:p.dispose});

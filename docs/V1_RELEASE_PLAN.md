@@ -16,8 +16,8 @@ no ProseMirror, Tiptap or CKEditor document, operation or plugin protocol is ado
 ## Current retained native reconstruction
 
 The [native reconstruction contract](NATIVE_RECONSTRUCTION.md) covers original,
-generation, independent-local, independent-delivery and restored-graph source
-families, including
+generation, independent-local, independent-delivery, restored-graph and both
+local-operation input source families, including
 all four independent document/comment history combinations. Generation recovery
 keeps local, relay and retained source kinds distinct, validates complete heads,
 immutable files and attempted/pending/LIVE captures, and preserves sealed history.
@@ -39,6 +39,16 @@ It validates the literal input, parent plan, full journal cuts and asset referen
 before normal archive admission. Both native lanes, ordered versions, queued
 packets and exact ancestry remain intact; an append is not a save acknowledgement.
 
+Both local-input families now preserve full native histories through an explicitly
+selected flat output. Snapshot input keeps its exact literal seed; flat input
+keeps its complete predecessor. Full parent plans, actual namespace identities,
+current/pending/observed cuts, retained references and ordered immutable versions
+are admitted without manufacturing save acknowledgements. Operational parents
+require an acknowledged current cut; initial and first-prepare-only journals
+cannot be paired with that phase. This matches the existing concrete parent
+opening rule. Existing recovery keeps
+live-writer exclusion and restores exact retained LIVE into absent destinations.
+
 Original and independent-local reconstruction now re-admit complete parent and
 recovery plans instead of trusting native-valid source records alone. Literal
 origins and captured namespaces must agree. The original format keeps its own
@@ -55,10 +65,11 @@ temporary URLs and recovery barriers. Read and asset signals cover the complete
 inspection before its first capture; actual room Close is independent of the
 decoder returning. Ordinary image bytes, admission rules and archive formats
 remain unchanged. Other legacy host-factory callback contracts are unchanged.
-These five family-specific recovery
-paths do not complete whole-room reconstruction. The two local-operation input families,
-compatible native union, durable common preparation/retirement and authenticated
-activation remain architectural priorities. All thirteen V1 gates remain open.
+These seven family-specific recovery paths do not complete whole-room recovery.
+The next architectural priorities are durable common input preparation and
+interrupted retry/retirement, compatible native union and dependent-packet
+reconciliation, then authenticated activation with old-writer fencing. Every
+source-to-output format choice must be retained before new targets are created. All thirteen V1 gates remain open.
 
 ## V1 candidate qualification checkpoint
 

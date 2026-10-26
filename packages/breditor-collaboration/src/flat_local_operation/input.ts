@@ -35,8 +35,12 @@ export class DetachedFlatLocalInput{
  live(){return archive.live.call(state(this).owner);}
  targets():readonly IndependentHistoryCut[]{return state(this).targets.map(copyOperationCut);}
  uploads():Blob{return archive.uploads.call(state(this).owner);}
+ /** SDK-private DATA access from this freshly admitted literal input. */
+ bindings(){return archive.metadata.call(state(this).owner).bindings;}
+ entries(){return archive.entries.call(state(this).owner);}
+ appendFlatCapture(frame:Blob,extras:readonly Blob[],check:()=>void){return archive.append.call(state(this).owner,frame,check,extras);}
  blob(asset:string,generation:string):Blob|undefined{return archive.blob.call(state(this).owner,asset,generation);}
  dispose():void{const s=states.get(this);if(s){states.delete(this);archive.dispose.call(s.owner);}}
 }
 const p=DetachedFlatLocalInput.prototype;
-export const flatLocalInput=Object.freeze({read:DetachedFlatLocalInput.read,check:p.check,verifyFile:p.verifyFile,file:p.file,originalFile:p.originalFile,selection:p.selection,cohort:p.cohort,identity:p.identity,live:p.live,targets:p.targets,uploads:p.uploads,blob:p.blob,dispose:p.dispose});
+export const flatLocalInput=Object.freeze({read:DetachedFlatLocalInput.read,check:p.check,verifyFile:p.verifyFile,file:p.file,originalFile:p.originalFile,selection:p.selection,cohort:p.cohort,identity:p.identity,live:p.live,targets:p.targets,uploads:p.uploads,blob:p.blob,bindings:p.bindings,entries:p.entries,append:p.appendFlatCapture,dispose:p.dispose});

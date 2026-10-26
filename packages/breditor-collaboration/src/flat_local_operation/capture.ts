@@ -14,7 +14,7 @@ import type {LocalOperationBackupSelection} from '../independent_local_operation
 import {localPortableReferences} from '../independent_local_operation/portable_references.js';
 import {replayLocalOperationRecovery,verifyLocalOperationContinuation,type LocalPortableReplay} from '../independent_local_operation/portable_replay.js';
 import {IndependentLocalOperationBackup,portableLocalOperationArchive as snapshot} from '../independent_local_operation/portable_backup.js';
-import {LOCAL_OPERATION_BACKUP_PREFIX_BYTES} from '../independent_local_operation/portable_codec.js';
+import {seedFlatLocalSnapshot} from './seed_snapshot.js';
 import {ownsRestoredLocalJournal,restoredLocalJournalBinding} from '../restored_local_operation/journal.js';
 import {readRestoredLocalHead} from '../restored_local_operation/head.js';
 import type {NativeInputReadScope,NativeInputCutIntent} from '../native_input_operation/journal_contract.js';
@@ -34,8 +34,8 @@ interface Incoming{readonly live:SharedIndependentHistoryRecovery;readonly bindi
 async function readIncoming<P extends SharedSelectionPolicy>(kind:'snapshot'|'flat',file:Blob,expected:LocalOperationBackupSelection,options:LocalOperationReadOptions<P>):Promise<Incoming>{
  if(kind==='snapshot'){
   const owner=await snapshot.read.call(IndependentLocalOperationBackup,file,expected,options);
-  try{const header=snapshot.metadata.call(owner),input=snapshot.file.call(owner),start=LOCAL_OPERATION_BACKUP_PREFIX_BYTES+new TextEncoder().encode(JSON.stringify(header)).length;
-   return{live:snapshot.live.call(owner),bindings:header.bindings,entries:snapshot.entries.call(owner),blob:(asset,generation)=>snapshot.blob.call(owner,asset,generation),encode:(state,extras,check)=>framing.seed.call(FlatLocalProvenance,input.slice(0,start),header.parts.map(p=>input.slice(start+p.offset,start+p.offset+p.bytes)),input.type,state,check,extras),dispose:()=>snapshot.dispose.call(owner)};
+  try{const header=snapshot.metadata.call(owner);
+   return{live:snapshot.live.call(owner),bindings:header.bindings,entries:snapshot.entries.call(owner),blob:(asset,generation)=>snapshot.blob.call(owner,asset,generation),encode:(state,extras,check)=>seedFlatLocalSnapshot(owner,state,extras,check),dispose:()=>snapshot.dispose.call(owner)};
   }catch(error){snapshot.dispose.call(owner);throw error;}
  }
  const owner=await archive.read.call(FlatLocalArchive,file,expected,options);

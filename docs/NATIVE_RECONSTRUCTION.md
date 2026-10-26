@@ -7,7 +7,9 @@ missing work.
 
 Private reconstruction paths build new participant backups from retained native
 journals for the original, generation, independent-local, independent-delivery
-and restored-graph source families. Existing recovery restores them into absent databases. Both Undo lanes
+and restored-graph source families, plus snapshot-backed and flat-local operation
+inputs. Local-input recovery explicitly selects flat output; other families keep
+their formats. Existing recovery restores them into absent databases. Both Undo lanes
 survive; visible document trees are never used to reconstruct history.
 
 ## Read and compare before rebuilding
@@ -126,6 +128,38 @@ queued, literal inputs and original databases remain intact, and new source and
 upload namespaces must be absent. Both original and segmented document/comment
 lanes preserve future Undo and Redo after recovery and cold reopening.
 
+## Snapshot backed and flat local input construction
+
+Both input families re-admit their literal archive through the genuine detached
+reader. The complete operational parent plan, journal identity and file witness
+must match the actual operation, journal, source and upload namespaces. An
+operational parent requires an acknowledged current cut; empty initial journals
+and first-prepare-only journals refuse, as they do in concrete parent opening. Snapshot
+input retains its whole-file digest rule; flat input retains its own manifest,
+byte-count and MIME rules. Input bindings and every retained cut reference set
+must match actual native replay.
+
+The caller must explicitly select `outputFamily: 'local-operation-flat'`.
+Snapshot-backed recovery seeds the existing flat format from its exact literal
+snapshot prefix and ordered parts. Flat-local recovery appends to its literal
+predecessor. Neither relabels a restored-local head as a snapshot-v1 save. The
+new frame keeps the real current, pending and observed save phases alongside
+newer LIVE; it does not invent a successful source-write acknowledgement.
+
+Every input state, current/pending cut and LIVE must continue both native lanes
+and the exact ordered immutable version prefix. The complete native descriptor
+is independently selected. Whole uploads continue the incoming archive, and
+retained pixels remain available across the full chain. The ordinary flat reader
+re-admits the complete output before a DATA recipe is returned. Generated native
+fixtures compare literal seed encoding with the previous framing expression;
+historical document contents are not copied into source-controlled fixtures.
+
+The existing four-name flat participant restores into absent namespaces under
+current host policy, with actual live-writer exclusion. Snapshot-backed and flat
+sources preserve future document/comment Undo and Redo across all four independent
+history pairs, including genuine failed pending saves, newer unsaved suffixes and
+older cold sources. Original source and journal databases remain unchanged.
+
 ## Assets and read lifetimes
 
 Immutable raster bytes resolve from retained uploads and original exact asset
@@ -176,8 +210,8 @@ native sources and dependent stores rather than writing checkpoint-shaped rows.
 Original databases remain unchanged. An existing live writer still excludes
 recovery of a second writer.
 
-Original, generation, independent-local, independent-delivery and restored-graph
-regressions fail actual
+Original, generation, independent-local, independent-delivery, restored-graph
+and both local-input regressions fail actual
 source saves, retain newer LIVE document/comment history and cold reopen older
 disk data. The independent cases first leave a complete pending attempt, then
 retain a newer unsaved suffix;
@@ -188,10 +222,11 @@ storage and locks do not establish physical power-loss durability.
 
 ## Remaining architectural work
 
-Five family-specific DATA/recovery paths do not complete whole-room reconstruction.
-The two local-operation input families still need validated recipes. A durable
-whole-room intent must retain every complete input before creating targets and
-coordinate approved retirement, interrupted retries and a final common handoff.
+Seven family-specific DATA/recovery paths do not complete whole-room reconstruction.
+A durable whole-room intent must retain every complete input and each explicit
+source-to-output family choice before creating targets. It must coordinate approved
+retirement, interrupted retries and a final common handoff; a collection of ready
+participant recipes is not an activated room.
 
 Compatible histories containing later own offline work and disjoint foreign
 operations need a native union contract; a refused incomparable pair is not a
