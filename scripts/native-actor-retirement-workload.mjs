@@ -1,0 +1,8 @@
+/** Actual room retirement adds to, never replaces, prior input/recovery checks. */
+import {nativeActorRootWorkload as prior} from './native-actor-root-workload.mjs';
+export const nativeActorRetirementWorkload=Object.freeze({
+ assertions:188,priorInputAssertions:159,repeatedReservationAssertions:14,newBoundaryAssertions:7,newIdentityAssertions:4,newPreparedAssertions:1,newFactoryIdentityAssertions:3,
+ tests:Object.freeze([...prior.tests,'native-recovery-reservation.test.mjs','native-reservation-binding.test.mjs','native-actor-retirement.test.mjs','native-prepared-actor-retirement.test.mjs','native-actor-identity.test.mjs']),
+ types:Object.freeze([...prior.types,'types-native-actor-retirement.ts']),
+ scope:'All159 prior input/actor/asset-data checks plus14 unchanged Core reservation laws,4 genuine reservation identity laws,7 actual seven-family retirement/cleanup laws,one complete durable preparation/fresh approval route and3 genuine factory-alias regressions. Actual author custody moves synchronously after all cores stop and before closing observers or parent cleanup. Failed actual cleanup retains the same real actors, and only a canonically closed owner can transfer them once. The complete native/packet final witness and exact genuine whole-native reservation are required, not structural check callbacks or saved phases. An omitted JavaScript reservation cannot silently select ordinary Close. Immutable actor identity prevents re-entering callbacks through factory-reachable options at the native cut. Ordinary retirement/Close keeps its previous release behavior. No replacement targets, whole-room execution intent/replay, cold actor route, provider ACK, authenticated activation or V1 release is claimed.'
+});

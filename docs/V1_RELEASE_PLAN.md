@@ -86,6 +86,28 @@ whole-room execution plan, interrupted target replay/handoff, compatible native
 union and dependent-packet reconciliation, then authenticated activation. All
 thirteen V1 gates remain open.
 
+## Current retained author ownership
+
+The [actor escrow contract](NATIVE_ACTOR_HANDOFF.md) and
+[genuine source/readiness contract](NATIVE_ACTOR_ROOT_RECOVERY.md) retain actual
+document/comment author locks during replacement preparation. The
+[actual retirement contract](NATIVE_ACTOR_RETIREMENT.md) now joins complete saved
+recipes and fresh approval to a callback-free ownership move before old cleanup.
+Failed cleanup keeps those real locks in the same canonical owner for retry;
+only complete old cleanup permits taking them once. An exact genuine native
+reservation is required, including runtime refusal of an omitted JavaScript
+argument. Actor identity is captured immutably so factory-reachable options cannot
+invoke host getters at this irreversible boundary. Ordinary Close and ordinary
+retirement retain their previous lock-release meaning.
+
+Complete upload DATA planning also preserves both losing archives and the exact
+explicit union, including unreferenced pending, failed and cancelled work. These
+are prerequisites, not the complete replacement executor. Durable whole-room
+execution intent, interrupted concrete-target replay, selected upload adoption,
+complete final replacement admission and warm/cold actor routes remain required.
+Local author locks do not provide authenticated cross-device activation. All
+thirteen V1 gates remain open.
+
 ## V1 candidate qualification checkpoint
 
 The [2026-10-18 functional qualification](qualification/2026-10-18-v1-candidate-functional.json)

@@ -32,6 +32,13 @@ import {nativeRecoveryFailure} from './native_recovery/policy.js';
 import {nativeRecoveryMembers} from './native_recovery/members.js';
 import {nativeRecoveryFrame,nativeRecoverySource} from './native_recovery/input.js';
 export {SharedEditorError} from './shared_editor_error.js';
+const actualNativeReservations=new WeakMap<object,(members:readonly unknown[])=>void>();
+/** SDK-private exact whole-cohort check. A copied interface or replaced public
+ * method cannot supply a reservation; all checks use its captured real state. */
+export function checkNativeRecoveryReservation<P extends SharedSelectionPolicy>(reservation:NativeRecoveryReservation,cores:readonly SharedRichEditor<P>[]):void{
+ const current=reservation&&typeof reservation==='object'?actualNativeReservations.get(reservation):undefined;
+ if(!current)throw nativeRecoveryFailure();const selected=nativeRecoveryMembers(cores);current(selected);
+}
 let reserveNativeRecoveryImpl:(input:unknown)=>NativeRecoveryReservation;
 /** SDK-private actual-facade exclusion. This grants no root/store custody,
  * authenticated source, durable ACK or permission to activate a room. */
@@ -76,6 +83,7 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
    receiveReview<Q extends SharedSelectionPolicy>(core:SharedRichEditor<Q>,frame:string,verified:SharedReviewPolicy){return apply(core,()=>{const value=nativeRecoveryFrame(frame).value,policy=nativeRecoverySource(verified);return core.#run('remote',(raw,o)=>{core.#requireReview();const result=JSON.parse(raw.receive_review!(o,JSON.stringify(policy),value)) as SharedReviewImportOutcome;if(result.kind==='applied')core.#reviewRevision++;return result;},undefined,false,token);});},
    close(){if(closed)return;if(applying)throw nativeRecoveryFailure('native_recovery_busy');for(const core of members)if(core.#nativeRecovery===token)core.#nativeRecovery=undefined;closed=true;members=[];chosen.clear();},
   });
+  actualNativeReservations.set(reservation,selected=>{check();if(selected.length!==chosen.size||selected.some(core=>!chosen.has(core as object)))throw nativeRecoveryFailure('native_recovery_member');});
   // All closures and detached inputs exist before the common flag-only commit.
   for(const core of members)core.#nativeRecovery=token;
   return reservation;

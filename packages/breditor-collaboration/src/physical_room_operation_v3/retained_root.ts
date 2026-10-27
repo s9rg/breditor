@@ -9,6 +9,10 @@ import {takeRetainedNativeOriginCustody,type RetainedNativeReadBorrow,type Retai
 import type {OperationalAssetCustody} from '../operation_cohort/assets.js';
 import {checkRecoveryLeasesHeld} from '../participant_recovery/lease.js';
 import {RecoveryCleanupScope} from '../participant_recovery/cleanup_scope.js';
+import {checkNativeRecoveryReservation} from '../core.js';
+import type {NativeRecoveryReservation} from '../native_recovery/contract.js';
+import {NativeActorRetirement} from '../persistence/native_actor_cohort.js';
+import type {StoppedActorCohort} from '../persistence/stopped_actor_cohort.js';
 import {retireOwnedCore} from '../owned_core_lifetime.js';
 import {snapshotPhysicalHistoryReadOptions} from './history_read.js';
 import {visitPhysicalOperationV3RecordCut,type PhysicalRecordCutVisit} from './record_cut.js';
@@ -41,9 +45,19 @@ export const prepareRetainedPhysicalRoot=(state:PhysicalOperationV3Custody,borro
 let visitFinalCut:<P extends SharedSelectionPolicy,T>(owner:RetainedPhysicalRoot,input:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit)=>Promise<T>)=>Promise<T>;
 /** Trusted final-source read on a genuine retained root, not a host driver. */
 export const visitRetainedPhysicalFinalCut=<P extends SharedSelectionPolicy,T>(owner:RetainedPhysicalRoot,input:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit)=>Promise<T>):Promise<T>=>visitFinalCut(owner,input,visit);
+let closeKeepingActors:(owner:RetainedPhysicalRoot,reservation:NativeRecoveryReservation)=>Promise<void>;
+let takeKeptActors:(owner:RetainedPhysicalRoot)=>StoppedActorCohort;
+/** Trusted complete-room execution route. Preflight, retirement and actor move
+ * happen synchronously before any closing observer/parent cleanup. Failed actual
+ * cleanup leaves the genuine cohort owned by this same root for a later retry. */
+export const closeRetainedPhysicalKeepingActors=(owner:RetainedPhysicalRoot,reservation:NativeRecoveryReservation):Promise<void>=>closeKeepingActors(owner,reservation);
+/** Only after canonical old cleanup finishes. Ownership moves once; no saved
+ * record, copied Core, public getter or phase label can mint this resource. */
+export const takeRetainedPhysicalActors=(owner:RetainedPhysicalRoot):StoppedActorCohort=>takeKeptActors(owner);
 export class RetainedPhysicalRoot{
  readonly #s:PhysicalOperationV3Custody;readonly #closeParents:(discard:boolean)=>Promise<void>;readonly #cleanup=new RecoveryCleanupScope(()=>fail());
  readonly #closingListeners=new Set<()=>void>();
+ #actorCustody:StoppedActorCohort|undefined;
  #origins:Origins|undefined;#readable:readonly ReadableNative[]|undefined;#active=false;#closing=false;#closed=false;#busy=false;#running:Promise<void>|undefined;#closeTask:Promise<void>|undefined;#closeMode:boolean|undefined;
  private constructor(token:object,state:PhysicalOperationV3Custody,closeParents:(discard:boolean)=>Promise<void>){if(token!==key)throw fail('physical_operation_v3_policy');this.#s=state;this.#closeParents=closeParents;Object.freeze(this);}
  #current=()=>{if(!this.#active||this.#closing||this.#closed||!this.#origins)throw fail('physical_operation_v3_closed');this.#s.readCurrent();this.#s.intent.checkReadCurrent();checkRecoveryLeasesHeld([this.#s.lease,this.#s.held.lease]);this.#origins.assets.check();};
@@ -75,14 +89,24 @@ export class RetainedPhysicalRoot{
  /** Explicitly abandon only unsaved native memory. All retained intent, source,
   * packet/journal and upload bytes remain; this never resets or deletes data. */
  discardAndClose():Promise<void>{return this.#close(true);}
- #close(discard:boolean):Promise<void>{
+ #close(discard:boolean,reservation?:NativeRecoveryReservation):Promise<void>{
+  const keepActors=reservation!==undefined;
+  if(keepActors&&(this.#closed||this.#closing)&&!this.#actorCustody)return Promise.reject(fail('physical_operation_v3_closed'));
   if(this.#closed)return Promise.resolve();if(this.#closeTask)return this.#closeMode===discard?this.#closeTask:Promise.reject(fail('physical_operation_v3_in_use'));if(!this.#active||!this.#origins)return Promise.reject(fail('physical_operation_v3_closed'));
   // Irreversible retirement of EVERY actual member precedes fallible reads.
   // A disposed sibling must not keep later siblings writable after shutdown.
-  this.#closing=true;this.#s.life.closing=true;for(const cancel of this.#closingListeners)cancel();this.#closingListeners.clear();for(const row of this.#origins.clients)retireOwnedCore(row.core);
+  if(keepActors&&!this.#actorCustody)checkNativeRecoveryReservation(reservation!,this.#origins.clients.map(({core})=>core));
+  const ready=keepActors&&!this.#actorCustody?NativeActorRetirement.prepare(this.#origins.clients.map(({id,core})=>({id,core}))):undefined;
+  ready?.checkBeforeRetirement();
+  this.#closing=true;this.#s.life.closing=true;
+  if(ready){for(const row of this.#origins.clients)retireOwnedCore(row.core);this.#actorCustody=ready.takeAfterRetirement();}
+  for(const cancel of this.#closingListeners)cancel();this.#closingListeners.clear();
+  if(!ready)for(const row of this.#origins.clients)retireOwnedCore(row.core);
   this.#closeMode=discard;this.#closeTask=Promise.resolve().then(async()=>{if(!discard)this.#readable??=this.#snapshot();await this.#running;await this.#cleanup.drain();await this.#origins!.assets.close();await this.#closeParents(discard);this.#origins=undefined;this.#readable=undefined;this.#closed=true;this.#active=false;}).finally(()=>{this.#closeTask=undefined;this.#closeMode=undefined;});return this.#closeTask;
  }
- static{visitFinalCut=(owner,input,visit)=>{if(!owner||typeof owner!=='object'||!(#s in owner))return Promise.reject(fail('physical_operation_v3_policy'));return owner.#visitRecordCut(input,visit,true);};prepare=(state,borrow,closeParents)=>{const owner=new RetainedPhysicalRoot(key,state,closeParents);let abandoned=false;
+ static{closeKeepingActors=(owner,reservation)=>{if(!owner||typeof owner!=='object'||!(#s in owner))return Promise.reject(fail('physical_operation_v3_policy'));if(reservation===undefined)throw fail('physical_operation_v3_policy');return owner.#close(true,reservation);};
+ takeKeptActors=owner=>{if(!owner||typeof owner!=='object'||!(#s in owner)||!owner.#closed||!owner.#actorCustody)throw fail('physical_operation_v3_closed');const actual=owner.#actorCustody;owner.#actorCustody=undefined;return actual;};
+ visitFinalCut=(owner,input,visit)=>{if(!owner||typeof owner!=='object'||!(#s in owner))return Promise.reject(fail('physical_operation_v3_policy'));return owner.#visitRecordCut(input,visit,true);};prepare=(state,borrow,closeParents)=>{const owner=new RetainedPhysicalRoot(key,state,closeParents);let abandoned=false;
   return Object.freeze({value:owner,prepareOrigins(){if(abandoned||owner.#active||owner.#origins)throw fail('physical_operation_v3_closed');state.readCurrent();state.intent.checkReadCurrent();checkRecoveryLeasesHeld([state.lease,state.held.lease]);borrow.check();owner.#origins=takeRetainedNativeOriginCustody(borrow);},activate(){owner.#active=true;},async abandon(){if(owner.#active||abandoned)return;if(owner.#origins){await owner.#origins.assets.close();owner.#origins=undefined;}else await borrow.close();abandoned=true;}});
  };}
 }

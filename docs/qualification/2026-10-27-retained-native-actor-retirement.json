@@ -1,0 +1,150 @@
+{
+  "format": "breditor/retained-native-actor-retirement-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-27T01:32:31.778Z",
+  "qualification": "selected-functional-architectural-increment-not-v1-release",
+  "workingTreeSourceAtVerification": {
+    "commit": "7959f2fc7f08902434b8153831a691ffd0a15b2f",
+    "dirty": true,
+    "sha256": "0b23106e8f0a0d368f640c634faa361c4249ef30b85e6aa47a702af02ca48679",
+    "files": 6682,
+    "bytes": 52194801
+  },
+  "qualificationMetadataAddedAfterRun": true,
+  "postVerificationSourceAdditions": [
+    "docs/qualification/2026-10-27-retained-native-actor-retirement.json"
+  ],
+  "normal": {
+    "stages": 9,
+    "sourceAssertions": 188,
+    "installedAssertions": 188,
+    "bundledAssertions": 188,
+    "priorRootInputAssertionsRepeated": 159,
+    "unchangedCoreReservationAssertionsRepeated": 14,
+    "newArchitecturalAssertions": 15,
+    "strictTypeFixtures": 4,
+    "prior203ExecutionAnd283ReconstructionRerun": false,
+    "fullCandidatePlanExecuted": false
+  },
+  "products": {
+    "count": 1968,
+    "unchanged": 1955,
+    "changed": 13,
+    "added": 0,
+    "publicRootApisAndExportsUnchanged": true,
+    "originalFormatsAndDefaultsUnchanged": true
+  },
+  "native": {
+    "freshInputFiles": 100,
+    "unchangedSourceAndBuildInputs": 2899,
+    "normalWasmSha256": "946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0",
+    "rustSuitesRerun": false
+  },
+  "diagnosis": [
+    {
+      "kind": "actor-identity-snapshot-verified.json",
+      "failedBefore": 3,
+      "passedAfter": 3,
+      "baselineActualExit": 1,
+      "fixedActualExit": 0
+    },
+    {
+      "kind": "missing-reservation-verified.json",
+      "failedBefore": 1,
+      "passedAfter": 1,
+      "baselineActualExit": 1,
+      "fixedActualExit": 0
+    }
+  ],
+  "controls": {
+    "normalInstalled": 68,
+    "rows": [
+      {
+        "id": "shared-immutable-actor-binding",
+        "removedActualExit": 1,
+        "restoredActualExit": 0,
+        "focusedAssertions": 68
+      },
+      {
+        "id": "paired-immutable-actor-binding",
+        "removedActualExit": 1,
+        "restoredActualExit": 0,
+        "focusedAssertions": 68
+      },
+      {
+        "id": "segmented-immutable-actor-binding",
+        "removedActualExit": 1,
+        "restoredActualExit": 0,
+        "focusedAssertions": 68
+      },
+      {
+        "id": "genuine-native-reservation",
+        "removedActualExit": 1,
+        "restoredActualExit": 0,
+        "focusedAssertions": 68
+      },
+      {
+        "id": "exact-native-member-set",
+        "removedActualExit": 1,
+        "restoredActualExit": 0,
+        "focusedAssertions": 68
+      },
+      {
+        "id": "javascript-missing-reservation",
+        "removedActualExit": 1,
+        "restoredActualExit": 0,
+        "focusedAssertions": 1
+      },
+      {
+        "id": "root-requires-real-reservation",
+        "removedActualExit": 1,
+        "restoredActualExit": 0,
+        "focusedAssertions": 1
+      },
+      {
+        "id": "actual-actors-move-before-cleanup",
+        "removedActualExit": 1,
+        "restoredActualExit": 0,
+        "focusedAssertions": 1
+      }
+    ],
+    "productsRestoredExactly": 1968,
+    "normalConsumerUnmodified": true,
+    "isolatedNativeRoot": true
+  },
+  "endpoints": {
+    "normal": 100,
+    "isolatedControls": 60,
+    "total": 160,
+    "allConfirmedClosed": true
+  },
+  "retainedProof": {
+    "path": "target/retained-actor-retirement-proof-435t1V/index.json",
+    "sha256": "c50eae1757a4afe8169d744b567f4ce271b09c316adb5a0ae7a26e217694093e",
+    "files": 387
+  },
+  "scope": "Actual complete saved-room recipes and fresh approval join the genuine final native/packet witness to exact native reservation identity, settled actor sources and a synchronous all-core retirement/actor move before observers or cleanup. Actual failed namespace cleanup retains the same real author cohort until canonical old cleanup finishes; transfer is available once. Three reproduced host-factory option aliases are removed from the cut through immutable actor identity. Missing JavaScript reservation refuses instead of falling through to ordinary lock-releasing Close. Existing ordinary retirement/Close semantics remain intact.",
+  "limitations": [
+    "No durable complete whole-room execution choice or replacement targets are created by this route.",
+    "Interrupted concrete-target journals/lost-ACK replay, explicit per-member selected-upload decisions/adoption, private actor loans at each staging/final factory, complete replacement root admission and promotion remain required.",
+    "Warm author donation does not implement cold actor reacquisition.",
+    "Native/packet/provider reconciliation, independent comment/server generations, authenticated cross-device activation, sustainable Undo/offline retention and remaining feature parity are open.",
+    "No full candidate/Rust/flat suite or physical OS/crash/browser/a11y rerun is claimed; controlled IDB/Web Locks/raster tests are not those platform proofs."
+  ],
+  "previousCheckpoint": {
+    "commit": "7959f2fc7f08902434b8153831a691ffd0a15b2f",
+    "metadataPath": "docs/qualification/2026-10-27-native-root-inputs.json",
+    "proof": {
+      "path": "target/native-root-inputs-proof-OlGwvW/index.json",
+      "sha256": "61b27ceafa85171ba45dda5c3f787d469fe7acdc8e3b707defce8a86a73ba5b5"
+    }
+  },
+  "v1Ready": false,
+  "openV1GateCount": 13,
+  "versionsChanged": false,
+  "publicRootApisChanged": false,
+  "pushed": false,
+  "published": false,
+  "tagged": false,
+  "deployed": false
+}

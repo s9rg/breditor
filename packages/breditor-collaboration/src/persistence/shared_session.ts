@@ -72,6 +72,8 @@ let takeActorCustody:(owner:SharedPersistentSession)=>StoppedActorCustody;
 export const takeStoppedSharedSourceActors=<P extends SharedSelectionPolicy>(owner:SharedPersistentSession<P>):StoppedActorCustody=>takeActorCustody(owner as unknown as SharedPersistentSession);
 export class SharedPersistentSession<P extends SharedSelectionPolicy="original"> {
  readonly core:SharedRichEditor<P>;readonly recovered:boolean;
+ /** Immutable actor DATA: factory callbacks can retain their options object. */
+ readonly #actorBinding:StoppedActorBinding;
  readonly #ownedCore:SharedRichEditor<P>;
  #db:IDBDatabase;#lease:SharedWriterLease;#options:SharedSessionOptions|SharedDocumentSessionOptions;#unsubscribe:()=>void;
  readonly #selectionPolicy:P;
@@ -83,6 +85,7 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
  #recordReadEpoch:object=Object.freeze({});readonly #recordReaders=new Set<object>();
  private constructor(key:object,db:IDBDatabase,lease:SharedWriterLease,core:SharedRichEditor<P>,recovered:boolean,options:SharedSessionOptions|SharedDocumentSessionOptions,selectionPolicy:P,search=false){
   if(key!==constructionKey)throw new SharedEditorError('managed_source_construction','Use the actual shared session open or recovery factory');
+  this.#actorBinding=Object.freeze({room:options.room,writer:options.writer,actor:null});
   this.#db=db;this.#lease=lease;this.#ownedCore=core;this.core=core;this.recovered=recovered;this.#options=options;this.#selectionPolicy=selectionPolicy;this.#search=search;
   this.#releasePendingWork=registerNativePendingWork(core,()=>this.#running);
   this.#unsubscribe=core.subscribe(()=>{try{this.save();}catch(error){this.#failed(error);}});
@@ -94,7 +97,7 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
    this.#failed(new SharedEditorError("session_versionchange","Shared storage changed; export the retired journal before explicitly discarding this writer"));
   };
  }
- static{const inspect=(owner:SharedPersistentSession,stopped=true):StoppedActorBinding=>{if(!owner||typeof owner!=='object'||!(#ownedCore in owner))throw new SharedEditorError('actor_source_unavailable','Use the actual native persistence owner');if(owner.#closed||owner.#running||owner.#closeRequest)throw new SharedEditorError('actor_source_in_use','Settle actual native persistence and cleanup before moving actor custody');if(Object.getOwnPropertyDescriptor(owner,'core')?.value!==owner.#ownedCore)throw new SharedEditorError('actor_source_unavailable','The original native core binding was replaced');if(stopped)requireStoppedActorCore(owner.#ownedCore);else requireLiveActorCore(owner.#ownedCore);const binding=Object.freeze({room:owner.#options.room,writer:owner.#options.writer,actor:null});checkSharedWriterLeaseForEscrow(owner.#lease,binding.room,binding.writer);return binding;};readyActorCustody=owner=>inspect(owner,false);checkActorCustody=owner=>inspect(owner,true);takeActorCustody=owner=>{const binding=inspect(owner);return createSharedWriterLeaseEscrow(owner.#lease,binding.room,binding.writer);};}
+ static{const inspect=(owner:SharedPersistentSession,stopped=true):StoppedActorBinding=>{if(!owner||typeof owner!=='object'||!(#ownedCore in owner))throw new SharedEditorError('actor_source_unavailable','Use the actual native persistence owner');if(owner.#closed||owner.#running||owner.#closeRequest)throw new SharedEditorError('actor_source_in_use','Settle actual native persistence and cleanup before moving actor custody');if(Object.getOwnPropertyDescriptor(owner,'core')?.value!==owner.#ownedCore)throw new SharedEditorError('actor_source_unavailable','The original native core binding was replaced');if(stopped)requireStoppedActorCore(owner.#ownedCore);else requireLiveActorCore(owner.#ownedCore);const binding=owner.#actorBinding;checkSharedWriterLeaseForEscrow(owner.#lease,binding.room,binding.writer);return binding;};readyActorCustody=owner=>inspect(owner,false);checkActorCustody=owner=>inspect(owner,true);takeActorCustody=owner=>{const binding=inspect(owner);return createSharedWriterLeaseEscrow(owner.#lease,binding.room,binding.writer);};}
  static{readOriginalNative=async(owner,provided,signal)=>{
   const fail=(suffix:string)=>new SharedEditorError('native_record_read_'+suffix,'Read the actual selected original native journal with independent current read permission');
   if(!owner||typeof owner!=='object'||!(#ownedCore in owner))throw fail('source');const authority=participantAuthority(provided);if(owner.#recordReaders.size>=8)throw fail('busy');
