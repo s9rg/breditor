@@ -13,7 +13,7 @@ export {RichAssetStoreCustody,RichAssetCustodyError} from './dist/browser/index.
 export {RichAssetBackupError,MAX_ASSET_BACKUP_BYTES,MAX_ASSET_BACKUP_HEADER_BYTES,ASSET_BACKUP_MIME,type RichAssetBackupOptions,type RichAssetRestoreOptions,type RichAssetHeldRestoreOptions} from "./dist/browser/index.js";
 export {RichAssetArchive,readRichAssetBackup,type RichAssetSourceBackup,type RichAssetArchiveEntry,type RichAssetArchiveOptions} from "./dist/browser/index.js";
 export {RichAssetReconciliation,RichAssetReconciliationError,type RichAssetReconciliationOptions,type RichAssetReconciliationChoice,type RichAssetReconciliationConflict,type RichAssetReconciliationPreview,type RichAssetUploadState} from "./dist/browser/index.js";
-export {RichAssetReconciledBase,RichAssetBaseError,ASSET_BASE_MIME,type RichAssetBaseMetadata,type RichAssetBasePart,type RichAssetBaseReadOptions} from './dist/browser/index.js';
+export {RichAssetReconciledBase,RichAssetBaseError,ASSET_BASE_MIME,type RichAssetBaseMetadata,type RichAssetBasePart,type RichAssetBaseReadOptions,type RichAssetBaseBuildOptions} from './dist/browser/index.js';
 export {checkRichAssetLimits,inspectRichRaster,type RichRasterInspection,type RichRasterInspectionOptions} from "./dist/browser/index.js";
 export class RichCommandError extends Error {readonly code: string; constructor(code: string, message: string)}
 export function compileRichProfile(wasm:RichWasmModule,bootstrapJson:string):RichCoreProfile;

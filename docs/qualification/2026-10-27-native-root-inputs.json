@@ -1,0 +1,115 @@
+{
+  "format": "breditor/native-root-inputs-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-27T00:55:37.313Z",
+  "qualification": "selected-functional-architectural-increment-not-v1-release",
+  "workingTreeSourceAtVerification": {
+    "commit": "a9c7c7dfb732d8c54dce93be660bcd678053f90f",
+    "dirty": true,
+    "sha256": "d1c318db16ee54488366d40a0ca7af678ba2044107d0870fc34b5adf4ce18721",
+    "files": 6671,
+    "bytes": 52133207
+  },
+  "qualificationMetadataAddedAfterRun": true,
+  "postVerificationSourceAdditions": [
+    "docs/qualification/2026-10-27-native-root-inputs.json"
+  ],
+  "normal": {
+    "stages": 9,
+    "sourceAssertions": 159,
+    "installedAssertions": 159,
+    "bundledAssertions": 159,
+    "priorActorAndCleanupAssertionsRepeated": 108,
+    "newArchitecturalAssertions": 51,
+    "strictTypeFixtures": 3,
+    "prior203ExecutionAnd283ReconstructionRerun": false,
+    "fullCandidatePlanExecuted": false
+  },
+  "products": {
+    "count": 1968,
+    "unchanged": 1946,
+    "changed": 16,
+    "added": 6,
+    "collaborationRootApiUnchanged": true,
+    "richRuntimeRootExportsUnchanged": true,
+    "richRootTypeAddition": "RichAssetBaseBuildOptions"
+  },
+  "native": {
+    "freshInputFiles": 100,
+    "unchangedSourceAndBuildInputs": 2899,
+    "normalWasmSha256": "946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0",
+    "rustSuitesRerun": false
+  },
+  "controls": {
+    "normalInstalled": 47,
+    "rows": [
+      {
+        "id": "original-native-binding",
+        "removedActualExit": 1,
+        "restoredActualExit": 0
+      },
+      {
+        "id": "real-pending-io-before-retirement",
+        "removedActualExit": 1,
+        "restoredActualExit": 0
+      },
+      {
+        "id": "runtime-readiness-construction",
+        "removedActualExit": 1,
+        "restoredActualExit": 0
+      },
+      {
+        "id": "complete-unreferenced-queue",
+        "removedActualExit": 1,
+        "restoredActualExit": 0
+      },
+      {
+        "id": "test-byte-observation",
+        "removedActualExit": 1,
+        "restoredActualExit": 0
+      }
+    ],
+    "productsRestoredExactly": 1968,
+    "normalConsumerUnmodified": true
+  },
+  "endpoints": {
+    "declared": 40,
+    "allConfirmedClosed": true
+  },
+  "orchestration": {
+    "initialActualExit": 1,
+    "afterAllStagesPassed": true,
+    "reason": "The endpoint collector counted only three operational control groups but incorrectly expected five. The independent finalizer admits the exact three operational groups plus the native image producer group.",
+    "independentFinalizerActualExit": 0
+  },
+  "retainedProof": {
+    "path": "target/native-root-inputs-proof-OlGwvW/index.json",
+    "sha256": "61b27ceafa85171ba45dda5c3f787d469fe7acdc8e3b707defce8a86a73ba5b5",
+    "files": 316
+  },
+  "scope": "Genuine registered native-source lookup, live readiness with actual settled persistence, one stopped actor cohort capped at1024 members, complete explicit asset-data planning and strict binary/schema observations. Four explicit test-owned seven-family native handoffs retain14 author locks across canonical old parent cleanup. All existing defaults and file formats remain unchanged.",
+  "limitations": [
+    "Readiness is not held custody, retirement, native/data admission or authorization.",
+    "The actual retained-actor retirement boundary is still an isolated subsequent prototype, not this qualified source.",
+    "Durable whole-room execution intent, actual interrupted target journals, per-member selected asset decisions/adoption, complete final root admission and warm/cold actor routes remain required.",
+    "Independent comment/server generations, provider reconciliation, authenticated cross-device activation, sustainable offline/Undo retention and full feature parity remain open.",
+    "No physical OS/crash/browser/a11y qualification or full candidate/Rust suite rerun is claimed."
+  ],
+  "previousCheckpoint": {
+    "commit": "a9c7c7dfb732d8c54dce93be660bcd678053f90f",
+    "metadataPath": "docs/qualification/2026-10-27-native-actor-custody.json",
+    "proof": {
+      "path": "target/native-actor-custody-proof-piQInp/index.json",
+      "sha256": "c37ed965a0923eb3f48887f8659f0860b1a1585f1db32b6933e6fec27626a405"
+    }
+  },
+  "v1Ready": false,
+  "openV1GateCount": 13,
+  "versionsChanged": false,
+  "collaborationRootApiChanged": false,
+  "richRootTypeAddition": "RichAssetBaseBuildOptions",
+  "pushed": false,
+  "published": false,
+  "tagged": false,
+  "deployed": false
+}

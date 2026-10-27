@@ -7,7 +7,7 @@ export {RichAssetStoreCustody,RichAssetCustodyError} from './assets/custody.js';
 export {RichAssetReconciliation,type RichAssetReconciliationOptions} from "./assets/reconciliation/coordinator.js";
 export {RichAssetReconciliationError} from "./assets/reconciliation/error.js";
 export {RichAssetReconciledBase} from './assets/retained_base/read.js';
-export {RichAssetBaseError,ASSET_BASE_MIME,type RichAssetBaseMetadata,type RichAssetBasePart,type RichAssetBaseReadOptions} from './assets/retained_base/contract.js';
+export {RichAssetBaseError,ASSET_BASE_MIME,type RichAssetBaseMetadata,type RichAssetBasePart,type RichAssetBaseReadOptions,type RichAssetBaseBuildOptions} from './assets/retained_base/contract.js';
 export type {RichAssetReconciliationChoice,RichAssetReconciliationConflict,RichAssetReconciliationPreview,RichAssetUploadState} from "./assets/reconciliation/types.js";
 export {RichAssetBackupError} from "./assets/archive/error.js";
 export {MAX_ASSET_BACKUP_BYTES} from "./assets/archive/codec.js";

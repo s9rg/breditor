@@ -12,6 +12,9 @@ export interface RichAssetBaseMetadata {
  readonly sha256:string;
 }
 export interface RichAssetBaseReadOptions {readonly limits?:Partial<AssetLimits>;readonly signal?:AbortSignal}
+/** Complete immutable input decision for a future namespace; never a writer,
+ * provider receipt or permission to activate or upload a recovered room. */
+export interface RichAssetBaseBuildOptions extends RichAssetBaseReadOptions{readonly sourceDatabase:string;readonly choices:readonly RichAssetReconciliationChoice[]}
 export class RichAssetBaseError extends Error {
  constructor(readonly code:'asset_base_format'|'asset_base_budget'|'asset_base_integrity'|'asset_base_predecessor'|'asset_base_closed'|'asset_base_aborted',message:string){super(message);this.name='RichAssetBaseError';}
 }

@@ -1,0 +1,7 @@
+/** Additive architecture checks; never replaces the prior 203/283 workloads. */
+export const nativeActorRootWorkload=Object.freeze({
+ assertions:159,priorActorAndCleanupAssertions:108,newRootAssertions:30,newStorageByteAssertions:4,newOperationalAssertions:4,newAssetDataAssertions:13,
+ tests:Object.freeze(["native-actor-factory.test.mjs","native-actor-escrow.test.mjs","native-actor-construction.test.mjs","native-actor-cohort.test.mjs","native-actor-input.test.mjs","native-actor-overlays.test.mjs","owned-core-cleanup.test.mjs","native-actor-root.test.mjs","native-storage-bytes.test.mjs","native-actor-operational.test.mjs","reconciled-asset-base-data.test.mjs"]),
+ types:Object.freeze(["types-native-actor-custody.ts","types-native-actor-root.ts","types-reconciled-asset-base-data.ts"]),
+ scope:'Genuine registered native owners across all ten persistence profiles, live settled-I/O readiness, one stopped-source actor handoff with a complete-room bound of1024, and four actual seven-family operational history pairs retaining all14 author locks through old-parent cleanup. Source schema and actual binary bytes are preserved. Data-only asset base planning preserves complete losing inputs and explicitly selected union, including unreferenced pending/failed/cancelled uploads. It opens no stores or provider requests. The original203 execution and283 reconstruction workloads remain required separately. Explicit test-owned retirement is not the durable whole-room executor, source-save ACK, cold recovery, authenticated serving activation or V1 readiness.'
+});

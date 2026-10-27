@@ -5,6 +5,9 @@ import {importAssetBackup} from '../archive/import_backup.js';
 import {encodeAssetArchiveSnapshot} from '../archive/export_backup.js';
 import {assetInfo,type AssetLimits} from '../types.js';
 import type {RichAssetArchiveEntry} from '../archive/read_backup.js';
+import type {RichAssetReconciliationPreview} from '../reconciliation/types.js';
+import type {RichAssetBaseBuildOptions} from './contract.js';
+import {previewAssetBaseData,buildAssetBaseData} from './data_builder.js';
 import {planRetainedAssets} from '../reconciliation/plan.js';
 import {ASSET_BASE_MIME,RichAssetBaseError,type RichAssetBaseMetadata,type RichAssetBasePart,type RichAssetBaseReadOptions} from './contract.js';
 import {assetBaseDigest,readAssetBaseFrame,checkAssetBaseSignal} from './framing.js';
@@ -41,6 +44,13 @@ export class RichAssetReconciledBase {
   await verifyAssetBaseContinuity(this.#files!.selected,current,limits,check,signal);check();
  }
  dispose():void{this.#file=undefined;this.#files=undefined;}
+ /** Preview complete retained queue conflicts without creating a mutable store. */
+ static preview(current:Blob,original:Blob,options:RichAssetBaseReadOptions={}):Promise<RichAssetReconciliationPreview>{return previewAssetBaseData(current,original,options);}
+ /** Build before target creation, then independently re-admit the unchanged V1
+  * bytes. This remains DATA, not actual source custody or a provider decision. */
+ static async build(current:Blob,original:Blob,options:RichAssetBaseBuildOptions):Promise<RichAssetReconciledBase>{
+  const supplied={...options,...(options.limits?{limits:{...options.limits}}:{})},file=await buildAssetBaseData(current,original,supplied);return RichAssetReconciledBase.read(file,supplied);
+ }
  static async read(input:Blob,options:RichAssetBaseReadOptions={}):Promise<RichAssetReconciledBase>{
   const{limits:supplied,signal}={...options},hostLimits=checkedAssetLimits(supplied),check=()=>checkAssetBaseSignal(signal);check();
   const framed=await readAssetBaseFrame(input,check),m=framed.metadata,limits=selectedLimits(m.limits,hostLimits);

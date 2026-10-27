@@ -14,6 +14,7 @@ import {ActorLeaseEscrow} from './actor_lease_escrow.js';
 import {checkSharedWriterLeaseEscrow,commitSharedWriterLeaseEscrow,checkSharedWriterLeaseEscrowClose,closeSharedWriterLeaseEscrow,type SharedWriterLeaseEscrow} from './writer_lease.js';
 import {bindActorLeaseInput,type ActorLeaseFactoryInput} from './actor_lease_input.js';
 import type {StoppedActorBinding,StoppedActorCustody} from './stopped_actor_source.js';
+import {MAX_NATIVE_ACTOR_COHORT_MEMBERS} from './stopped_actor_source.js';
 
 export type StoppedActorFamily='shared'|'review'|'segmented'|'independent'|'segmented-relay'|'independent-delivery';
 export interface StoppedActorMember{readonly id:string;readonly family:StoppedActorFamily;readonly source:object}
@@ -35,7 +36,7 @@ const fail=(suffix='policy')=>new SharedEditorError('actor_cohort_'+suffix,'Use 
 /** Snapshot all caller DATA before the first actual source inspection. Accessors
  * and extra fields are not policy, nor a reason to run application code mid-cut. */
 function snapshot(input:readonly StoppedActorMember[]):readonly StoppedActorMember[]{
- if(!Array.isArray(input)||input.length<1||input.length>64)throw fail();
+ if(!Array.isArray(input)||input.length<1||input.length>MAX_NATIVE_ACTOR_COHORT_MEMBERS)throw fail();
  const rows:StoppedActorMember[]=[];
  for(let i=0;i<input.length;i++){
   const descriptor=Object.getOwnPropertyDescriptor(input,String(i));

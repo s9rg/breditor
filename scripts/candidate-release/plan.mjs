@@ -419,6 +419,10 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   // retain every law with a bounded two-hour budget, not the prior 30 minutes.
   script('native-reconstruction','check-native-reconstruction-sdk.mjs',[],[{path:'target/native-reconstruction-sdk.json',fresh:true}],7200000),
   script('installed-native-reconstruction','check-native-reconstruction-installed.mjs',[],[{path:'target/native-reconstruction-installed-consumer.json',fresh:true}],7200000),
+  stage('native-actor-root-contracts',node,['--test','scripts/native-actor-root-candidate-plan.test.mjs']),
+  stage('native-actor-root-type-fence',node,['node_modules/typescript/bin/tsc','--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM,ESNext.Disposable',...["types-native-actor-custody.ts","types-native-actor-root.ts","types-reconciled-asset-base-data.ts"].map(name=>'scripts/fixtures/editor-consumer/'+name)]),
+  script('native-actor-root','check-native-actor-root-sdk.mjs',[],[{path:'target/native-actor-root-sdk.json',fresh:true}],3600000),
+  script('installed-native-actor-root','check-native-actor-root-installed.mjs',[],[{path:'target/native-actor-root-installed-consumer.json',fresh:true}],3600000),
   stage("archive-integrity-contracts",node,["--test","scripts/archive-integrity.test.mjs"]),
   stage("physical-room-catalog-contracts",node,["--test","scripts/physical-room-catalog-storage.test.mjs"]),
   stage("physical-room-catalog-type-fence",node,["node_modules/typescript/bin/tsc","--noEmit","--strict","--exactOptionalPropertyTypes","--target","ES2022","--module","NodeNext","--lib","ES2022,DOM,ESNext.Disposable","scripts/fixtures/editor-consumer/types-physical-room-catalog.ts"]),

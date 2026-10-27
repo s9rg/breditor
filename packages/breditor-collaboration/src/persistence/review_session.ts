@@ -1,3 +1,5 @@
+import {requireLiveActorCore}from'./stopped_actor_source.js';
+import {registerNativeActorSource}from'./native_actor_source.js';
 import {checkSharedWriterLeaseForEscrow}from'./writer_lease.js';
 import {checkReviewWriterLeaseForEscrow}from'./review_writer_lease.js';
 import type {StoppedActorBinding}from'./stopped_actor_source.js';
@@ -66,6 +68,8 @@ export interface SharedReviewSaveState {status:"saved"|"pending"|"failed"|"close
 /** Native document/review owners plus a local immutable packet catalog, saved as one atomic record. */
 const constructionKey=Object.freeze({});
 let readPersistentPair:(owner:SharedReviewPersistentSession,authority:()=>void,signal?:AbortSignal)=>Promise<OriginalPairedRecordRead>;
+let readyActorCustody:(owner:SharedReviewPersistentSession)=>StoppedActorBinding;
+export const checkReadyReviewSourceActors=<P extends SharedSelectionPolicy>(owner:SharedReviewPersistentSession<P>):StoppedActorBinding=>readyActorCustody(owner as unknown as SharedReviewPersistentSession);
 let checkActorCustody:(owner:SharedReviewPersistentSession)=>StoppedActorBinding;
 export const checkStoppedReviewSourceActors=<P extends SharedSelectionPolicy>(owner:SharedReviewPersistentSession<P>):StoppedActorBinding=>checkActorCustody(owner as unknown as SharedReviewPersistentSession);
 let takeActorCustody:(owner:SharedReviewPersistentSession)=>StoppedActorCustody;
@@ -89,9 +93,10 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
   const autosave=()=>{try{this.save();}catch(error){this.#failed(error);}};
   this.#unsubscribe=[core.subscribe(autosave),core.subscribeReview(autosave)];
   registerManagedSource(this,core,()=>{this.#live();this.#boundCore();if(this.#storageChanged||this.#retiring)throw managedSourceUnavailable();});
+  registerNativeActorSource(this,'review');
   db.onversionchange=()=>{this.#storageChanged=true;retireOwnedCore(core);db.close();this.#failed(new SharedEditorError("review_versionchange","Paired storage changed; export both readable histories before explicitly discarding this writer"));};
  }
- static{const inspect=(owner:SharedReviewPersistentSession):StoppedActorBinding=>{if(!owner||typeof owner!=='object'||!(#ownedCore in owner))throw new SharedEditorError('actor_source_unavailable','Use the actual native persistence owner');if(owner.#closed||owner.#running||owner.#closing)throw new SharedEditorError('actor_source_in_use','Settle actual native persistence and cleanup before moving actor custody');if(Object.getOwnPropertyDescriptor(owner,'core')?.value!==owner.#ownedCore)throw new SharedEditorError('actor_source_unavailable','The original native core binding was replaced');requireStoppedActorCore(owner.#ownedCore);const binding=Object.freeze({room:owner.#options.room,writer:owner.#options.writer,actor:owner.#options.review.actor});checkSharedWriterLeaseForEscrow(owner.#documentLease,binding.room,binding.writer);if(binding.actor!==null)checkReviewWriterLeaseForEscrow(owner.#reviewLease!,binding.room,binding.actor);return binding;};checkActorCustody=inspect;takeActorCustody=owner=>{const binding=inspect(owner);return binding.actor===null?createSharedWriterLeaseEscrow(owner.#documentLease,binding.room,binding.writer):ActorLeaseEscrow.create(owner.#documentLease,owner.#reviewLease!,binding.room,binding.writer,binding.actor);};}
+ static{const inspect=(owner:SharedReviewPersistentSession,stopped=true):StoppedActorBinding=>{if(!owner||typeof owner!=='object'||!(#ownedCore in owner))throw new SharedEditorError('actor_source_unavailable','Use the actual native persistence owner');if(owner.#closed||owner.#running||owner.#closing)throw new SharedEditorError('actor_source_in_use','Settle actual native persistence and cleanup before moving actor custody');if(Object.getOwnPropertyDescriptor(owner,'core')?.value!==owner.#ownedCore)throw new SharedEditorError('actor_source_unavailable','The original native core binding was replaced');if(stopped)requireStoppedActorCore(owner.#ownedCore);else requireLiveActorCore(owner.#ownedCore);const binding=Object.freeze({room:owner.#options.room,writer:owner.#options.writer,actor:owner.#options.review.actor});checkSharedWriterLeaseForEscrow(owner.#documentLease,binding.room,binding.writer);if(binding.actor!==null)checkReviewWriterLeaseForEscrow(owner.#reviewLease!,binding.room,binding.actor);return binding;};readyActorCustody=owner=>inspect(owner,false);checkActorCustody=owner=>inspect(owner,true);takeActorCustody=owner=>{const binding=inspect(owner);return binding.actor===null?createSharedWriterLeaseEscrow(owner.#documentLease,binding.room,binding.writer):ActorLeaseEscrow.create(owner.#documentLease,owner.#reviewLease!,binding.room,binding.writer,binding.actor);};}
  static{readPersistentPair=async(owner,provided,signal)=>{
   const fail=(suffix:string)=>new SharedEditorError('paired_record_read_'+suffix,'Use genuine original paired storage and independent current read authority');
   if(!owner||typeof owner!=='object'||!(#ownedCore in owner))throw fail('source');const authority=participantAuthority(provided);if(owner.#recordReaders.size>=8)throw fail('busy');
