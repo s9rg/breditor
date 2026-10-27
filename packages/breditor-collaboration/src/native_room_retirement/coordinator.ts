@@ -1,12 +1,12 @@
 /** Explicit closure of old writers from a genuine durable preparation. This
  * is an execution prerequisite, not replacement target creation, native union,
  * a save ACK, a remote writer grant or authenticated room activation. */
-import type {RetainedSelectedAssetOwner} from '../physical_room_asset_successor/owner.js';
+import type {RetainedSelectedAssetOwner,SelectedActorExecutionReservation} from '../physical_room_asset_successor/owner.js';
 import type {PhysicalOperationV3HistoryReadOptions} from '../physical_room_operation_v3/history_read_contract.js';
 import type {SharedSelectionPolicy} from '../types.js';
 import type {RoomPreparationChoice} from '../native_room_preparation/contract.js';
 import type {NativeReconstructionInputOptions} from '../selected_native_reconstruction/input_scope.js';
-import {withNativeReconstructionRetirement,withNativeReconstructionActorRetirement} from '../selected_native_reconstruction/input_scope.js';
+import {withNativeReconstructionRetirement,withNativeReconstructionActorRetirement,withNativeReconstructionReservedActorRetirement} from '../selected_native_reconstruction/input_scope.js';
 import {roomPreparationChoice} from '../native_room_preparation/plan.js';
 import {fields,fail} from '../native_room_preparation/policy.js';
 import {readPreparedRoom} from '../native_room_preparation/coordinator.js';
@@ -23,9 +23,9 @@ export type PreparedRoomRetirementOptions=Omit<NativeReconstructionInputOptions,
 /** Every attempt reads the EXISTING immutable intent and rebuilds every output
  * through its concrete native adapter. A selected file/phase never substitutes
  * for that work or for this call's affirmative decision. */
-function runPreparedRetirement<P extends SharedSelectionPolicy>(owner:RetainedSelectedAssetOwner,provided:PhysicalOperationV3HistoryReadOptions<P>,options:PreparedRoomRetirementOptions,keepActors:boolean):Promise<PreparedRoomRetirementResult>{
+function runPreparedRetirement<P extends SharedSelectionPolicy>(owner:RetainedSelectedAssetOwner,provided:PhysicalOperationV3HistoryReadOptions<P>,options:PreparedRoomRetirementOptions,keepActors:boolean,reservation?:SelectedActorExecutionReservation):Promise<PreparedRoomRetirementResult>{
  const raw=fields(options,['expected','retained','approve'],['assets']),expected=roomPreparationChoice(raw['expected']),approve=raw['approve'] as PreparedRoomRetirementOptions['approve'];if(typeof approve!=='function')throw fail('room_preparation_policy');const input={retained:raw['retained'],...(raw['assets']===undefined?{}:{assets:raw['assets']})} as NativeReconstructionInputOptions;
- const borrow=keepActors?withNativeReconstructionActorRetirement:withNativeReconstructionRetirement;
+ const borrow:typeof withNativeReconstructionRetirement=reservation?(owner,provided,input,expected,complete,visit)=>withNativeReconstructionReservedActorRetirement(owner,reservation,provided,input,expected,complete,visit):keepActors?withNativeReconstructionActorRetirement:withNativeReconstructionRetirement;
  return borrow(owner,provided,input,expected.plan.participants.map(row=>({id:row.id,families:[row.sourceFamily]})),true,async context=>{
   if(JSON.stringify(context.before.file().selection)!==JSON.stringify(expected.plan.before)||JSON.stringify(context.retained.file().selection)!==JSON.stringify(expected.plan.retained))throw fail();const saved=await readPreparedRoom(expected,context.integrity);context.check();let prepared:RoomPreparationArchive|undefined,catalog:PhysicalRoomCatalogV3Archive|undefined;
   try{prepared=await archive.read.call(RoomPreparationArchive,saved.file,expected,context.integrity);catalog=(await readPreparedReconstructionCatalog(context,prepared)).catalog;const digest=prepareArchiveIntegrity(context.integrity);
@@ -44,3 +44,7 @@ export function retirePreparedRoom<P extends SharedSelectionPolicy>(owner:Retain
  * before taking them through takeSelectedRetiredActors. No target or server
  * activation is created, and the stored/result DATA cannot supply custody. */
 export const retirePreparedRoomKeepingActors:typeof retirePreparedRoom=(owner,provided,options)=>runPreparedRetirement(owner,provided,options,true);
+
+/** Reserved warm-executor entry. A competing attempt or ordinary old-owner
+ * closure cannot take custody while this actual reservation remains held. */
+export function retireReservedPreparedRoomKeepingActors<P extends SharedSelectionPolicy>(owner:RetainedSelectedAssetOwner,reservation:SelectedActorExecutionReservation,provided:PhysicalOperationV3HistoryReadOptions<P>,options:PreparedRoomRetirementOptions):Promise<PreparedRoomRetirementResult>{return runPreparedRetirement(owner,provided,options,true,reservation);}

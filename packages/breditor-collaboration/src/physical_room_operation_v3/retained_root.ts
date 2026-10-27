@@ -46,6 +46,10 @@ let visitFinalCut:<P extends SharedSelectionPolicy,T>(owner:RetainedPhysicalRoot
 /** Trusted final-source read on a genuine retained root, not a host driver. */
 export const visitRetainedPhysicalFinalCut=<P extends SharedSelectionPolicy,T>(owner:RetainedPhysicalRoot,input:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit)=>Promise<T>):Promise<T>=>visitFinalCut(owner,input,visit);
 let closeKeepingActors:(owner:RetainedPhysicalRoot,reservation:NativeRecoveryReservation)=>Promise<void>;
+let hasKeptActors:(owner:RetainedPhysicalRoot)=>boolean;
+/** Actual retained resources only; permits canonical cleanup retry after an
+ * approved retirement failed. A saved stage or closed flag is insufficient. */
+export const retainedPhysicalHasActors=(owner:RetainedPhysicalRoot):boolean=>hasKeptActors(owner);
 let takeKeptActors:(owner:RetainedPhysicalRoot)=>StoppedActorCohort;
 /** Trusted complete-room execution route. Preflight, retirement and actor move
  * happen synchronously before any closing observer/parent cleanup. Failed actual
@@ -105,6 +109,7 @@ export class RetainedPhysicalRoot{
   this.#closeMode=discard;this.#closeTask=Promise.resolve().then(async()=>{if(!discard)this.#readable??=this.#snapshot();await this.#running;await this.#cleanup.drain();await this.#origins!.assets.close();await this.#closeParents(discard);this.#origins=undefined;this.#readable=undefined;this.#closed=true;this.#active=false;}).finally(()=>{this.#closeTask=undefined;this.#closeMode=undefined;});return this.#closeTask;
  }
  static{closeKeepingActors=(owner,reservation)=>{if(!owner||typeof owner!=='object'||!(#s in owner))return Promise.reject(fail('physical_operation_v3_policy'));if(reservation===undefined)throw fail('physical_operation_v3_policy');return owner.#close(true,reservation);};
+ hasKeptActors=owner=>{if(!owner||typeof owner!=='object'||!(#s in owner))throw fail('physical_operation_v3_policy');return owner.#actorCustody!==undefined;};
  takeKeptActors=owner=>{if(!owner||typeof owner!=='object'||!(#s in owner)||!owner.#closed||!owner.#actorCustody)throw fail('physical_operation_v3_closed');const actual=owner.#actorCustody;owner.#actorCustody=undefined;return actual;};
  visitFinalCut=(owner,input,visit)=>{if(!owner||typeof owner!=='object'||!(#s in owner))return Promise.reject(fail('physical_operation_v3_policy'));return owner.#visitRecordCut(input,visit,true);};prepare=(state,borrow,closeParents)=>{const owner=new RetainedPhysicalRoot(key,state,closeParents);let abandoned=false;
   return Object.freeze({value:owner,prepareOrigins(){if(abandoned||owner.#active||owner.#origins)throw fail('physical_operation_v3_closed');state.readCurrent();state.intent.checkReadCurrent();checkRecoveryLeasesHeld([state.lease,state.held.lease]);borrow.check();owner.#origins=takeRetainedNativeOriginCustody(borrow);},activate(){owner.#active=true;},async abandon(){if(owner.#active||abandoned)return;if(owner.#origins){await owner.#origins.assets.close();owner.#origins=undefined;}else await borrow.close();abandoned=true;}});

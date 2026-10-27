@@ -6,7 +6,7 @@
  * Per-family packet/journal rules remain with that adapter. A point-in-time
  * inspection must be freshly revalidated by any later reconstruction operation.
  */
-import {withSelectedNativeRecovery,withSelectedNativeRetirement,withSelectedNativeActorRetirement,type RetainedSelectedAssetOwner} from '../physical_room_asset_successor/owner.js';
+import {withSelectedNativeRecovery,withSelectedNativeRetirement,withSelectedNativeActorRetirement,withReservedSelectedActorRetirement,type SelectedActorExecutionReservation,type RetainedSelectedAssetOwner} from '../physical_room_asset_successor/owner.js';
 import {snapshotPhysicalHistoryReadOptions} from '../physical_room_operation_v3/history_read.js';
 import type {PhysicalOperationV3HistoryReadOptions} from '../physical_room_operation_v3/history_read_contract.js';
 import type {SharedSelectionPolicy} from '../types.js';
@@ -30,11 +30,11 @@ export interface ExpectedReconstructionMember{readonly id:string;readonly famili
 const cut=Loaded.prototype.nativeCut,approval=Loaded.prototype.approval,upload=Loaded.prototype.selectedUploads,dispose=Loaded.prototype.dispose,read=Loaded.read;
 /** One held complete cohort. Expectations are private routing data, not source
  * owners. Native and whole-upload comparison run once before the visitor. */
-function runInputs<P extends SharedSelectionPolicy,R>(owner:RetainedSelectedAssetOwner,provided:PhysicalOperationV3HistoryReadOptions<P>,options:NativeReconstructionInputOptions,expected:readonly ExpectedReconstructionMember[],complete:boolean,visit:(context:NativeReconstructionInputs)=>Promise<R>,retire:boolean,keepActors=false){
+function runInputs<P extends SharedSelectionPolicy,R>(owner:RetainedSelectedAssetOwner,provided:PhysicalOperationV3HistoryReadOptions<P>,options:NativeReconstructionInputOptions,expected:readonly ExpectedReconstructionMember[],complete:boolean,visit:(context:NativeReconstructionInputs)=>Promise<R>,retire:boolean,keepActors=false,actorExecution?:SelectedActorExecutionReservation){
  const chosen=snapshotPhysicalHistoryReadOptions(provided),raw=fields(options,['retained'],['assets','resolveAsset']),input=fields(raw['retained'],['selection','file']),retained={selection:selectedRoomCurrentSelection(input['selection']),file:archiveBlob(input['file'] as Blob,MAX_SELECTED_ROOM_CURRENT_BYTES)},assetOptions=raw['assets']===undefined?undefined:fields(raw['assets'],[],['limits','signal']) as SharedAssetBytesOptions,assets=assetOptions===undefined?undefined:{limits:checkRichAssetLimits(assetOptions.limits),...(assetOptions.signal?{signal:assetOptions.signal}:{})},resolveAsset=raw['resolveAsset'] as SharedAssetBytesResolver|undefined;
  if(resolveAsset!==undefined&&typeof resolveAsset!=='function')throw fail('native_reconstruction_policy');
  const factories=new NativeReconstructionFactoryScope(chosen.reads),cancellation=new NativeReconstructionWaits(()=>{},[chosen.signal,assets?.signal]),scoped={...chosen,signal:cancellation.signal,reads:factories.reads};
- const borrow=keepActors?withSelectedNativeActorRetirement:retire?withSelectedNativeRetirement:withSelectedNativeRecovery;
+ const borrow:typeof withSelectedNativeRecovery=actorExecution?(owner,input,visit)=>withReservedSelectedActorRetirement(owner,actorExecution,input,visit):keepActors?withSelectedNativeActorRetirement:retire?withSelectedNativeRetirement:withSelectedNativeRecovery;
  try{return borrow(owner,scoped,async scope=>{
   factories.bind(scope);let before:Loaded|undefined,after:Loaded|undefined;
   try{const actual=await scope.retainCurrent();scope.check();before=await read.call(Loaded,actual.current,actual.integrity);after=await read.call(Loaded,retained,actual.integrity);scope.check();const a=approval.call(before),b=approval.call(after);if(JSON.stringify(a.selection)!==JSON.stringify(b.selection)||JSON.stringify(a.choice)!==JSON.stringify(b.choice))throw fail();
@@ -56,3 +56,7 @@ export const withNativeReconstructionRetirement:typeof withNativeReconstructionI
  * All existing DATA/recipe admission remains unchanged. Actual actor ownership
  * stays in the same canonical owner through failed old cleanup, until taken. */
 export const withNativeReconstructionActorRetirement:typeof withNativeReconstructionInputs=(owner,provided,options,expected,complete,visit)=>runInputs(owner,provided,options,expected,complete,visit,true,true);
+
+/** Actual old-owner reservation is required by the already-returned executor;
+ * unreserved legacy retirement retains its established independent contract. */
+export function withNativeReconstructionReservedActorRetirement<P extends SharedSelectionPolicy,R>(owner:RetainedSelectedAssetOwner,reservation:SelectedActorExecutionReservation,provided:PhysicalOperationV3HistoryReadOptions<P>,options:NativeReconstructionInputOptions,expected:readonly ExpectedReconstructionMember[],complete:boolean,visit:(context:NativeReconstructionInputs)=>Promise<R>){return runInputs(owner,provided,options,expected,complete,visit,true,true,reservation);}

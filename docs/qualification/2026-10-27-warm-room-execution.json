@@ -1,0 +1,109 @@
+{
+  "format": "breditor/warm-room-execution-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-27T05:54:57.771Z",
+  "qualification": "selected-functional-architectural-increment-not-v1-release",
+  "workingTreeSourceAtVerification": {
+    "commit": "7134169eccf32b861295a44fdfec8b0fe87b8644",
+    "dirty": true,
+    "sha256": "2897554ce99409db2426ca1720054e7587600d2e7a4344c8cc388c2702565243",
+    "files": 6746,
+    "bytes": 52558766
+  },
+  "qualificationMetadataAddedAfterRun": true,
+  "postVerificationSourceAdditions": [
+    "docs/qualification/2026-10-27-warm-room-execution.json"
+  ],
+  "normal": {
+    "selectedCandidateStages": 8,
+    "sourceAssertions": 267,
+    "installedAssertions": 267,
+    "productionBundleAssertions": 267,
+    "priorAssertionsRepeated": 251,
+    "newRunAssertions": 16,
+    "strictTypeFixtures": 7,
+    "skipped": 0,
+    "cancelled": 0,
+    "fullCandidatePlanExecuted": false,
+    "prior203ExecutionAnd283ReconstructionRerun": false
+  },
+  "implementation": {
+    "contract": "docs/NATIVE_ROOM_EXECUTION_RUN.md",
+    "immutableExecutionSchemaChanged": false,
+    "explicitlyNamedAppendOnlyStartJournal": true,
+    "actualAttemptReturnedSynchronouslyBeforeRetirement": true,
+    "exclusiveActualOriginalOwnerReservation": true,
+    "sourceMustStillBeCurrentAtNewReservation": true,
+    "freshApprovalBoundToExactJournalIdentityAndHead": true,
+    "realNativeSourceCutRecheckedBeforeRetirement": true,
+    "failedCleanupRequiresActualRetiredActorCustody": true,
+    "actualSevenFamilyNativeTargets": true,
+    "wholeSelectedUploadAdoption": true,
+    "readyReplayReadsActualStoresAndRequiresFreshApproval": true,
+    "actualFailedOpeningsDrainedBeforeActorRelease": true,
+    "terminalCloseDeletesNoData": true,
+    "result": "private-held-local-target-and-selected-asset-readiness",
+    "usableSuccessorExposed": false
+  },
+  "products": {
+    "count": 2022,
+    "unchanged": 1996,
+    "changed": 10,
+    "added": 16,
+    "removed": 0,
+    "priorCount": 2006,
+    "publicRootsUnchanged": true
+  },
+  "native": {
+    "freshInputFiles": 100,
+    "profileAndWireRooms": 10,
+    "unchangedSourceAndBuildInputs": 2899,
+    "normalWasmSha256": "946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0",
+    "rustSuitesRerun": false
+  },
+  "controls": [
+    {
+      "name": "count-first",
+      "removedActualExit": 1,
+      "restoredActualExit": 0,
+      "implementationSha256": "2615c6b97cc0a766aa07529954359e08a24b5015be750400ce78e60d13c321d1",
+      "byteExactRestore": true
+    },
+    {
+      "name": "reservation",
+      "removedActualExit": 1,
+      "restoredActualExit": 0,
+      "implementationSha256": "1b2d16e66d1fe6d388eb86cbd56f0a7cdb9855b338c76573ecc9060e7b221d6d",
+      "byteExactRestore": true
+    }
+  ],
+  "endpoints": {
+    "count": 290,
+    "manifests": 30,
+    "allConfirmedClosed": true
+  },
+  "retainedProof": {
+    "path": "target/room-run-proof-mDcmQW/index.json",
+    "sha256": "9485e8cc2ae8974ce63b6463bfb31b9ed97c29c988009d6aa6dea3922e66b01f",
+    "files": 361
+  },
+  "previousCheckpoint": {
+    "commit": "7134169eccf32b861295a44fdfec8b0fe87b8644",
+    "qualification": "docs/qualification/2026-10-27-canonical-actor-transfer.json"
+  },
+  "limitations": [
+    "The attempt retains targets privately. A complete final native, dependent-packet, selected-asset and actor-promotion barrier must still transfer a usable successor under independent current policies.",
+    "Warm retry after retirement belongs to the SAME actual reserved attempt. A different plan cannot attach to already-retired actors and bypass its own complete current-source comparison. Full-process cold actor acquisition remains required.",
+    "Provider/client compatible native union and dependent-packet reconciliation, independent comment/server generations, authenticated whole-room activation, sustainable Undo/offline/asset retention and remaining feature parity remain required.",
+    "Controlled IndexedDB, cooperative locks, raster fixtures and local native controls do not establish physical power-loss durability, cross-device author fencing or complete browser/platform/accessibility qualification.",
+    "The prior251-law workload remains intact and repeats the four native history-pair target routes. New executor scenarios exercise actual selected independent lane combinations; they are not a full executor/platform/failure cross product."
+  ],
+  "v1Ready": false,
+  "openV1GateCount": 13,
+  "versionsChanged": false,
+  "publicRootApisChanged": false,
+  "pushed": false,
+  "published": false,
+  "tagged": false,
+  "deployed": false
+}

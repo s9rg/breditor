@@ -3,9 +3,10 @@
 Breditor's private `native_room_execution/` SDK saves the complete replacement
 decision before old writers retire or new participants are created. It joins the
 existing native preparation, the rebuilt catalog, every destination namespace and
-two explicit asset decisions per participant. This stage prepares immutable data;
-the mutable executor, its replay journal and authenticated activation remain
-separate work.
+two explicit asset decisions per participant. The immutable format stays separate from the
+[mutable warm executor](NATIVE_ROOM_EXECUTION_RUN.md), which journals actual
+retirement, native target recovery and selected-upload adoption. Complete final
+ownership promotion and authenticated activation remain required.
 
 ## Complete replacement inputs
 
@@ -97,14 +98,15 @@ physical power-loss durability.
 
 ## Remaining mutable execution
 
-The next boundary must save this exact intent before obtaining fresh retirement
-approval, retain the genuine stopped actor cohort through old cleanup, and route
-actual actor loans through the [held target route](NATIVE_ACTOR_TARGET_ROUTES.md)
-into every concrete staging and final native factory. It must
-persist per-target progress, replay interrupted work against real target stores,
-adopt each complete selected asset base, admit the complete final root and move
-the whole actor cohort synchronously. Cold actor acquisition needs its own
-explicit route. No stored stage can skip those checks.
+The [warm executor](NATIVE_ROOM_EXECUTION_RUN.md) saves a separate exact START
+before fresh retirement approval, retains the genuine stopped actor cohort
+through old cleanup, and routes actual actor loans through the
+[held target route](NATIVE_ACTOR_TARGET_ROUTES.md). It replays real participant
+and selected-upload stores while retaining actual handles in an attempt that
+already belongs to the caller. The remaining boundary must admit the complete
+final native, packet and asset root and move the whole actor cohort synchronously.
+Cold actor acquisition needs its own explicit route. No stored stage can skip
+those checks.
 
 Provider and client reconciliation, independent comment and server generations,
 authenticated room activation and sustainable history/asset retention follow
