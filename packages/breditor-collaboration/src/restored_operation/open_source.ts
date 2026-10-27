@@ -1,3 +1,4 @@
+import {inheritActorLeaseInput} from '../persistence/actor_lease_input.js';
 /** Functional source-only restore. Upload custody and whole-room activation belong to
  * the subsequent coordinator; this private entry point is not a complete participant. */
 import type {SharedSelectionPolicy} from '../types.js';
@@ -11,7 +12,7 @@ const open=SharedIndependentDeliverySession.open;
 /** The caller cannot receive an intermediate original/current/pending source. */
 export async function openRestoredOperationSource<P extends SharedSelectionPolicy>(options:RestoredOperationInputOptions<P>,file?:Blob){
  const selected=restoredOperationPolicy(options).options,journal=file===undefined?await RestoredOperationJournal.resume(selected):await RestoredOperationJournal.begin(file,selected),binding=restoredOperationJournalBinding(journal);
- const factory={...selected.session,database:binding.sourceDatabase,create:()=>{throw new Error('Restored source requires its selected native history');}} as SharedIndependentDeliveryOptions<P>;
+ const factory=inheritActorLeaseInput(selected.session,{...selected.session,database:binding.sourceDatabase,create:()=>{throw new Error('Restored source requires its selected native history');}}) as SharedIndependentDeliveryOptions<P>;
  let source:SharedIndependentDeliverySession<P>|undefined,transferred=false;
  try{
   for(;;){const reservation=binding.reserve();try{source=await open.call(SharedIndependentDeliverySession,withRestoredOperationJournal(factory,journal)) as SharedIndependentDeliverySession<P>;reservation.claim(source);}finally{reservation.abandon();}

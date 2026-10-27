@@ -1,3 +1,4 @@
+import {inheritActorLeaseInput} from '../persistence/actor_lease_input.js';
 /** Shared component preparation against admitted native declarations, never a reader-family cast. */
 import {prepareRecovery} from "../participant_recovery/prepare.js";
 import {snapshotCatalogParticipant,type StagedPolicy} from "../room_recovery_catalog/prepare_stage.js";
@@ -17,7 +18,7 @@ export function snapshotMixedCatalogParticipant(input:SharedRoomRecoveryCatalogV
  object(input,"family,id,recovery");if(input.family==="original")return{...snapshotCatalogParticipant({id:input.id,recovery:input.recovery}),family:"original"};
  if(input.family!=="generation")throw failure("catalog_policy");
  const chosen=input.recovery;if(!chosen||typeof chosen!=="object"||!chosen.session||!chosen.session.options)throw failure("catalog_policy");
- const o=chosen.session.options,extra=o as typeof o&{binding?:unknown;retained?:unknown};return{id:id(input.id),family:"generation",recovery:{...chosen,destinations:{...chosen.destinations},session:{kind:chosen.session.kind,options:{...o,readOnly:true,...(o.review?{review:{...o.review,access:"read_only"}}:{}),...(o.editor?{editor:{...o.editor}}:{}),...(extra.binding!==undefined?{binding:structuredClone(extra.binding)}:{}),...(extra.retained!==undefined?{retained:structuredClone(extra.retained)}:{})}} as typeof chosen.session,...(chosen.limits?{limits:{...chosen.limits}}:{})}};
+ const o=chosen.session.options,extra=o as typeof o&{binding?:unknown;retained?:unknown};const normalized=inheritActorLeaseInput(o,{...o,readOnly:true,...(o.review?{review:{...o.review,access:"read_only"}}:{}),...(o.editor?{editor:{...o.editor}}:{}),...(extra.binding!==undefined?{binding:structuredClone(extra.binding)}:{}),...(extra.retained!==undefined?{retained:structuredClone(extra.retained)}:{})});return{id:id(input.id),family:"generation",recovery:{...chosen,destinations:{...chosen.destinations},session:{kind:chosen.session.kind,options:normalized} as typeof chosen.session,...(chosen.limits?{limits:{...chosen.limits}}:{})}};
 }
 /** Native declarations and genuine backup handles come only from the caller's admitted private state.
  * Physical callers request full cohort preflight; original V2 retains its existing admission order. */
@@ -41,7 +42,7 @@ export async function prepareMixedCatalogStage(input:readonly SharedRoomRecovery
   if(row.family==="generation"){
    if(saved.family!=="generation")throw failure("catalog_policy");const backup=saved.backup,options:SharedGenerationParticipantRecoveryOptions<SharedSelectionPolicy>={...row.recovery,backup,expected:backup.selection(),checkAuthority:guard,...(signal?{signal}:{})},base=snapshotGenerationRecovery(options,true);policy={id:row.id,family:"generation",options:{...base.options,backup},plan:base.record.plan};
   }else{
-   if(saved.family!=="original")throw failure("catalog_policy");const chosen=row.recovery,kind=chosen.session.kind,key=kind==="document-selection"?"restoreDocument":kind==="search-document"||kind==="search-paired"?"restoreSearch":kind==="reviewed-paired"?"restoreReviewed":"restore",o={...chosen.session.options} as unknown as Record<string,unknown>,restore=o[key];if(typeof restore!=="function")throw failure("catalog_policy");o[key]=stagedReadOnlyFactory(restore,o,guard);if("review" in o)o["review"]={...o["review"] as Record<string,unknown>,access:"read_only"};
+   if(saved.family!=="original")throw failure("catalog_policy");const chosen=row.recovery,kind=chosen.session.kind,key=kind==="document-selection"?"restoreDocument":kind==="search-document"||kind==="search-paired"?"restoreSearch":kind==="reviewed-paired"?"restoreReviewed":"restore",o={...chosen.session.options} as unknown as Record<string,unknown>,restore=o[key];if(typeof restore!=="function")throw failure("catalog_policy");inheritActorLeaseInput(chosen.session.options,o);o[key]=stagedReadOnlyFactory(restore,o,guard);if("review" in o)o["review"]={...o["review"] as Record<string,unknown>,access:"read_only"};
    const options={...chosen,backup:saved.backup,expected:saved.backup.selection(),session:{kind,options:o},checkAuthority:guard,...(signal?{signal}:{})} as StagedPolicy["options"],prepared=await prepareRecovery(options);policy={id:row.id,family:"original",value:{id:row.id,options,prepared}};
   }
   guard();const options=policy.family==="generation"?policy.options:policy.value.options;

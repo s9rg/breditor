@@ -90,7 +90,7 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
   this.#releasePendingWork=registerNativePendingWork(core,()=>this.#running);
   this.#unsubscribe=core.subscribe(()=>{try{this.save();}catch(error){this.#failed(error);}});
   registerManagedSource(this,core,()=>{this.#live();this.#boundCore();if(this.#storageChanged||this.#closeRequest)throw managedSourceUnavailable();});
-  registerNativeActorSource(this,'shared');
+  registerNativeActorSource(this,'shared',{document:lease});
   db.onversionchange=()=>{
    // An upgrade must unblock its database, not silently destroy an unsaved native journal.
    this.#storageChanged=true;retireOwnedCore(core);db.close();

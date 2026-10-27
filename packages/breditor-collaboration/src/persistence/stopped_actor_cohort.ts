@@ -12,6 +12,7 @@ import {checkStoppedSegmentedRelayActors,takeStoppedSegmentedRelayActors} from '
 import {checkStoppedIndependentDeliveryActors,takeStoppedIndependentDeliveryActors} from '../independent_delivery/session.js';
 import {ActorLeaseEscrow} from './actor_lease_escrow.js';
 import {checkSharedWriterLeaseEscrow,commitSharedWriterLeaseEscrow,checkSharedWriterLeaseEscrowClose,closeSharedWriterLeaseEscrow,type SharedWriterLeaseEscrow} from './writer_lease.js';
+import {DeferredActorLeaseInput,type ActorLeaseRouteTargets} from './deferred_actor_input.js';
 import {bindActorLeaseInput,type ActorLeaseFactoryInput} from './actor_lease_input.js';
 import type {StoppedActorBinding,StoppedActorCustody} from './stopped_actor_source.js';
 import {MAX_NATIVE_ACTOR_COHORT_MEMBERS} from './stopped_actor_source.js';
@@ -30,6 +31,7 @@ const adapters:Readonly<Record<StoppedActorFamily,Adapter>>={
 };
 interface HeldMember{readonly id:string;readonly factory:FactoryFamily;readonly binding:StoppedActorBinding;readonly custody:StoppedActorCustody}
 const key=Object.freeze({});
+const routeCreate=DeferredActorLeaseInput.create,routeClosed=DeferredActorLeaseInput.prototype.closed,routeFinal=DeferredActorLeaseInput.prototype.checkFinalCurrent,routePromoted=DeferredActorLeaseInput.prototype.markPromoted;
 const pairCommit=ActorLeaseEscrow.prototype.commit,pairCheck=ActorLeaseEscrow.prototype.checkCommit,pairClose=ActorLeaseEscrow.prototype.close,pairCloseCheck=ActorLeaseEscrow.prototype.checkClose;
 const fail=(suffix='policy')=>new SharedEditorError('actor_cohort_'+suffix,'Use the actual stopped native cohort and settle every selected target before moving whole-cohort author custody');
 
@@ -55,7 +57,7 @@ function snapshot(input:readonly StoppedActorMember[]):readonly StoppedActorMemb
 /** One branded resource owner. No public custody getter allows the coordinator
  * to accidentally promote just one member before a later member refuses. */
 export class StoppedActorCohort{
- readonly #members:readonly HeldMember[];
+ readonly #members:readonly HeldMember[];readonly #routes=new Map<string,DeferredActorLeaseInput>();
  #committed=false;#closing=false;#closed=false;#closeTask:Promise<void>|undefined;
  private constructor(token:object,members:readonly HeldMember[]){if(token!==key)throw fail();this.#members=members;Object.freeze(this);}
  static take(input:readonly StoppedActorMember[]):StoppedActorCohort{
@@ -75,12 +77,18 @@ export class StoppedActorCohort{
  }
  bind<T extends object>(id:string,input:T,database:string):ActorLeaseFactoryInput<T>{
   if(this.#committed||this.#closing||this.#closed)throw fail('closed');
-  const member=this.#members.find(row=>row.id===id);if(!member)throw fail('member');
+  const member=this.#members.find(row=>row.id===id);if(!member)throw fail('member');const route=this.#routes.get(id);if(route&&!routeClosed.call(route))throw fail('route');
   const{room,writer,actor}=member.binding;
   return bindActorLeaseInput(input,member.factory,database,room,writer,actor,member.custody);
  }
+ /** Pure descriptions are DATA, never the contained actor custody. */
+ bindings():readonly Readonly<{id:string;factory:FactoryFamily;room:string;writer:string;actor:string|null}>[]{if(this.#committed||this.#closing||this.#closed)throw fail('closed');return Object.freeze(this.#members.map(row=>Object.freeze({id:row.id,factory:row.factory,...row.binding})));}
+ /** One actual deferred route per member; returned closed routes may be
+  * replaced during a real interrupted-target retry without releasing actors. */
+ route(id:string,targets:ActorLeaseRouteTargets):DeferredActorLeaseInput{if(this.#committed||this.#closing||this.#closed)throw fail('closed');const member=this.#members.find(row=>row.id===id),old=this.#routes.get(id);if(!member)throw fail('member');if(old&&!routeClosed.call(old))throw fail('route');const{room,writer,actor}=member.binding,created=routeCreate.call(DeferredActorLeaseInput,member.factory,room,writer,actor,member.custody,targets);this.#routes.set(id,created);return created;}
  #checkCommit():void{
   if(this.#committed||this.#closing||this.#closed)throw fail('closed');
+  for(const route of this.#routes.values())if(!routeClosed.call(route))routeFinal.call(route);
   for(const row of this.#members)if(row.binding.actor===null)checkSharedWriterLeaseEscrow(row.custody as SharedWriterLeaseEscrow,row.binding.room,row.binding.writer,'commit');else pairCheck.call(row.custody as ActorLeaseEscrow);
  }
  /** Admit the complete actual replacement root BEFORE calling. This pure
@@ -88,6 +96,7 @@ export class StoppedActorCohort{
  commit():void{
   this.#checkCommit();
   for(const row of this.#members)if(row.binding.actor===null)commitSharedWriterLeaseEscrow(row.custody as SharedWriterLeaseEscrow,row.binding.room,row.binding.writer);else pairCommit.call(row.custody as ActorLeaseEscrow);
+  for(const route of this.#routes.values())if(!routeClosed.call(route))routePromoted.call(route);
   this.#committed=true;
  }
  close():Promise<void>{

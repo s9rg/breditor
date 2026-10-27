@@ -1,3 +1,4 @@
+import {inheritActorLeaseInput} from '../persistence/actor_lease_input.js';
 /** Factory-only journal selection; neither JSON nor a public option chooses this storage family. */
 import {IndependentDeliveryCompanion} from '../independent_delivery/companion.js';
 import type {IndependentHistoryCompanion} from '../independent_history/driver.js';
@@ -5,7 +6,7 @@ import {operationJournalBinding,type IndependentOperationCutJournal} from './cut
 import {operationJournalFailure as fail} from './journal_failure.js';
 const selected=new WeakMap<object,IndependentOperationCutJournal>(),p=IndependentDeliveryCompanion.prototype;
 const load=p.load,capture=p.capture,admit=p.admit,wrap=p.wrap,acknowledged=p.acknowledged,retire=p.retire;
-export function withOperationCutJournal<T extends object>(input:T,journal:IndependentOperationCutJournal):T{operationJournalBinding(journal);const copy={...input};selected.set(copy,journal);return copy;}
+export function withOperationCutJournal<T extends object>(input:T,journal:IndependentOperationCutJournal):T{operationJournalBinding(journal);const copy=inheritActorLeaseInput(input,{...input});selected.set(copy,journal);return copy;}
 export const operationJournalSelected=(input:object):boolean=>selected.has(input);
 /** The exact selected genuine journal, never a copied identity or stored marker. */
 export const selectedOperationJournal=(input:object):IndependentOperationCutJournal|undefined=>selected.get(input);

@@ -1,3 +1,4 @@
+import {inheritActorLeaseInput} from '../persistence/actor_lease_input.js';
 /** Actual closed-family native custody. Durable completion never manufactures an owner. */
 import type {SharedSelectionPolicy} from "../types.js";
 import type {SharedAssetReferenceCapture} from "../asset_references_capture.js";
@@ -59,7 +60,7 @@ async function openHeldV2ChildOperation(child:V2OperationChild,database:string,p
   const p=child.policy.options;
   if(child.ready){const input={database,recovered:child.ready,expected:p.expected,checkAuthority:guard,...(signal?{signal}:{})};child.operation=await(present?OperationalSharedGenerationParticipant.resumeRecovered(input):OperationalSharedGenerationParticipant.begin(input));child.ready=undefined;}
   if(child.currentPolicyPending){if(child.operation){await child.operation.close();child.operation=undefined;guard();}
-   const{backup:_backup,database:recoveryDatabase,...rest}=p,o=p.session.options,review=o.review,session={kind:p.session.kind,options:{...o,readOnly:child.currentPolicy.documentReadOnly,...(review?{review:{...review,access:child.currentPolicy.reviewAccess!}}:{})}} as typeof p.session;
+   const{backup:_backup,database:recoveryDatabase,...rest}=p,o=p.session.options,review=o.review,session={kind:p.session.kind,options:inheritActorLeaseInput(o,{...o,readOnly:child.currentPolicy.documentReadOnly,...(review?{review:{...review,access:child.currentPolicy.reviewAccess!}}:{})})} as typeof p.session;
    child.operation=await OperationalSharedGenerationParticipant.resume({...rest,session,database,recoveryDatabase});child.currentPolicyPending=false;
   }
  }

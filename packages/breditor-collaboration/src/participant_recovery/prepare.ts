@@ -1,3 +1,4 @@
+import {inheritActorLeaseInput} from '../persistence/actor_lease_input.js';
 import {checkRichAssetLimits} from "@breditor/experimental-rich-content";
 import {SharedParticipantBackup} from "../participant_backup/archive.js";
 import {participantSelection,participantAuthority} from "../participant_backup/policy.js";
@@ -38,7 +39,7 @@ export async function prepareRecovery<P extends SharedSelectionPolicy>(supplied:
   if(revisions&&!suggestions||suggestions&&suggestions.identity.principal!==expected.identity.principal||versions&&versions.identity.principal!==expected.identity.principal)throw recoveryFailure("recovery_policy");
   if(Object.keys(destinations).some(k=>!["document","uploads","suggestions","revisions","versions"].includes(k)))throw recoveryFailure("recovery_policy");
   const names=Object.values(destinations);if(!name(destinations.document)||!name(destinations.uploads)||names.some(n=>!name(n))||new Set([input.database,...names]).size!==names.length+1)throw recoveryFailure("recovery_policy");
-  const session={kind,options:{...options,...(review?{review}:{}),...(relay?{relay}:{}),...(owned?{reviewedHistory:owned}:{}),...(options.editor?{editor:{...options.editor}}:{})}} as SharedParticipantRecoveryOptions<P>["session"],limits=checkRichAssetLimits(input.limits);
+  const session={kind,options:inheritActorLeaseInput(input.session.options,{...options,...(review?{review}:{}),...(relay?{relay}:{}),...(owned?{reviewedHistory:owned}:{}),...(options.editor?{editor:{...options.editor}}:{})})} as SharedParticipantRecoveryOptions<P>["session"],limits=checkRichAssetLimits(input.limits);
   // Reconstructing envelopes validates dependent policies without touching a destination.
   const records=new Map(input.backup.records().map(r=>[r.kind,r.json]));
   const backups={document:paired?await input.backup.pairedBackup():await input.backup.documentBackup(),suggestions:suggestions?await input.backup.retainedBackup({kind:"suggestions",...suggestions}):undefined,revisions:revisions?await input.backup.retainedBackup({kind:"suggestion-revisions",identity:suggestions!.identity,binding:revisions.binding}):undefined,versions:versions?await input.backup.retainedBackup({kind:"version-catalog",identity:versions.identity}):undefined,uploads:input.backup.uploadBackup()};

@@ -1,3 +1,4 @@
+import {inheritActorLeaseInput} from '../persistence/actor_lease_input.js';
 /** A real resumable operational participant: the new native source owns its journal,
  * while this parent holds completed recovery and whole-upload custody until final handoff.
  * No phase marker activates a room, chooses a factory, or authenticates current policy. */
@@ -105,7 +106,7 @@ export class OperationalIndependentDeliveryParticipant<P extends SharedSelection
    // The genuine transfer above still checked the old native owner after its callback.
    // Only now may its author leases settle, while the actual upload custody stays held.
    await closeSource.call(state.legacySession!);state.legacySession=undefined;choice.guard();
-   state.owners.session=await openJournaledIndependentDelivery({...state.p.factory,database:choice.sourceDatabase},state.journal);choice.guard();await retained(state);const witness=await operationParticipantWitness(state.p,state.owners,state.journal);try{witness.check();const result=new OperationalIndependentDeliveryParticipant(key,state);witness.check();opening!.complete();result.#exposed=true;return result;}finally{witness.release();}
+   state.owners.session=await openJournaledIndependentDelivery(inheritActorLeaseInput(state.p.factory,{...state.p.factory,database:choice.sourceDatabase}),state.journal);choice.guard();await retained(state);const witness=await operationParticipantWitness(state.p,state.owners,state.journal);try{witness.check();const result=new OperationalIndependentDeliveryParticipant(key,state);witness.check();opening!.complete();result.#exposed=true;return result;}finally{witness.release();}
   }catch(error){if(opening)await opening.rollback();throw error;}
  }
  /** Cold resume reads the actual retained original, cut intent, source and whole uploads.
@@ -116,7 +117,7 @@ export class OperationalIndependentDeliveryParticipant<P extends SharedSelection
    opening=await RecoveryOpeningCustody.reserve(choice.context,names(choice),async()=>{await closeOperationParticipantOwners(owners,true);await journal?.close();if(p&&!journal)archive.dispose.call(p.backup);recoveryDb?.close();const settled=await Promise.allSettled([...leases].reverse().map(lease=>lease.close()));if(settled.some(r=>r.status==='rejected'))throw fail('independent_operation_cleanup');},openingErrors);choice.guard();
    for(const name of names(choice).filter(n=>n!==choice.database)){leases.push(await RecoveryLease.acquire(JSON.stringify(name)));choice.guard();}
    p=await prepareColdOperationParticipant(choice);choice.guard();recoveryDb=await existingDatabase(p.options.database);choice.guard();if(!recoveryDb)throw fail('independent_operation_missing');recoveryDb.onversionchange=()=>{choice.life.changed=true;recoveryDb!.close();};await verifyOperationRetainedRecovery(p,recoveryDb);
-   journal=await IndependentOperationCutJournal.resume({database:choice.database,sourceDatabase:choice.sourceDatabase,prepared:p,writerRecovery:'host-reacquired'});choice.guard();state={choice,p,journal,owners,recoveryDb,leases};await openOperationUploads(p,owners);choice.guard();owners.session=await openJournaledIndependentDelivery({...p.factory,database:choice.sourceDatabase},journal);choice.guard();await retained(state);const witness=await operationParticipantWitness(p,owners,journal);try{witness.check();const result=new OperationalIndependentDeliveryParticipant(key,state);witness.check();opening.complete();result.#exposed=true;return result;}finally{witness.release();}
+   journal=await IndependentOperationCutJournal.resume({database:choice.database,sourceDatabase:choice.sourceDatabase,prepared:p,writerRecovery:'host-reacquired'});choice.guard();state={choice,p,journal,owners,recoveryDb,leases};await openOperationUploads(p,owners);choice.guard();owners.session=await openJournaledIndependentDelivery(inheritActorLeaseInput(p.factory,{...p.factory,database:choice.sourceDatabase}),journal);choice.guard();await retained(state);const witness=await operationParticipantWitness(p,owners,journal);try{witness.check();const result=new OperationalIndependentDeliveryParticipant(key,state);witness.check();opening.complete();result.#exposed=true;return result;}finally{witness.release();}
   }catch(error){if(opening)await opening.rollback();throw error;}
  }
  #readable():void{if(!this.#exposed||this.#closed)throw fail('independent_operation_closed');}

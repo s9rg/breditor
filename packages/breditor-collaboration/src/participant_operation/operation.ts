@@ -1,3 +1,4 @@
+import {inheritActorLeaseInput} from '../persistence/actor_lease_input.js';
 import {RecoveryCleanupScope,type RecoveryCleanupTicket} from '../participant_recovery/cleanup_scope.js';
 import {managedSourceCore} from "../managed_custody.js";
 import {retainInternalFailureCause} from "../internal_failure_cause.js";
@@ -75,7 +76,7 @@ async function exact<P extends SharedSelectionPolicy>(p:PreparedRecovery<P>,owne
  const source=captureSharedAssetReferences(ownerSources(p,owners));try{await p.backup.verifyRecovered(source,owners.uploads!,p.signal?{signal:p.signal}:{});}finally{source.dispose();}p.guard();
 }
 function snapshot<P extends SharedSelectionPolicy>(input:SharedParticipantOperationResumeOptions<P>):SharedParticipantOperationResumeOptions<P>{
- const o=input.session.options,options={...o,...("review" in o?{review:{...o.review}}:{}),...("relay" in o&&o.relay?{relay:{...o.relay}}:{}),...("reviewedHistory" in o&&o.reviewedHistory?{reviewedHistory:{...o.reviewedHistory}}:{}),...(o.editor?{editor:{...o.editor}}:{})};
+ const o=input.session.options,options=inheritActorLeaseInput(o,{...o,...("review" in o?{review:{...o.review}}:{}),...("relay" in o&&o.relay?{relay:{...o.relay}}:{}),...("reviewedHistory" in o&&o.reviewedHistory?{reviewedHistory:{...o.reviewedHistory}}:{}),...(o.editor?{editor:{...o.editor}}:{})});
  return{...input,expected:participantSelection(input.expected),destinations:{...input.destinations},session:{kind:input.session.kind,options} as SharedParticipantOperationResumeOptions<P>["session"],...(input.suggestions?{suggestions:{...input.suggestions,identity:{...input.suggestions.identity}}}:{}),...(input.revisions?{revisions:{...input.revisions}}:{}),...(input.versions?{versions:{...input.versions,identity:{...input.versions.identity}}}:{}),...(input.limits?{limits:{...input.limits}}:{}),currentPolicy:operationPolicy(input.currentPolicy,input.session.kind.includes("paired"))};
 }
 /** Durable storage custody, not account authentication, provider closure or room activation. */

@@ -99,7 +99,8 @@ physical power-loss durability.
 
 The next boundary must save this exact intent before obtaining fresh retirement
 approval, retain the genuine stopped actor cohort through old cleanup, and route
-actual actor loans into every concrete staging and final native factory. It must
+actual actor loans through the [held target route](NATIVE_ACTOR_TARGET_ROUTES.md)
+into every concrete staging and final native factory. It must
 persist per-target progress, replay interrupted work against real target stores,
 adopt each complete selected asset base, admit the complete final root and move
 the whole actor cohort synchronously. Cold actor acquisition needs its own

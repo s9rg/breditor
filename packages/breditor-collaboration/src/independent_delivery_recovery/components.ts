@@ -1,3 +1,4 @@
+import {inheritActorLeaseInput} from '../persistence/actor_lease_input.js';
 /** Actual native/receipt admission and complete upload verification, not stored phase inference. */
 import {RichAssetStore,RichAssetStoreCustody} from '@breditor/experimental-rich-content';
 import {SharedIndependentDeliverySession} from '../independent_delivery/session.js';
@@ -24,7 +25,7 @@ export function checkIndependentDeliveryOwner<P extends SharedSelectionPolicy>(p
 }
 export async function restoreIndependentDeliverySource<P extends SharedSelectionPolicy>(p:PreparedIndependentDeliveryRecovery<P>,owners:IndependentDeliveryRecoveryOwners<P>,complete:boolean):Promise<void>{
  p.guard();const status=await inspectIndependentDeliveryDestination(p);p.guard();if(complete&&status!=='exact')throw fail('independent_delivery_recovery_missing');
- owners.session=(status==='exact'?await openSource.call(SharedIndependentDeliverySession,withIndependentBootstrapPolicy(p.factory,p.guard,p.options.signal)):await restoreSource.call(SharedIndependentDeliverySession,withIndependentBootstrapPolicy({...p.factory,recovery:p.recovery,writerRecovery:'host-reacquired' as const},p.guard,p.options.signal))) as SharedIndependentDeliverySession<P>;
+ owners.session=(status==='exact'?await openSource.call(SharedIndependentDeliverySession,withIndependentBootstrapPolicy(p.factory,p.guard,p.options.signal)):await restoreSource.call(SharedIndependentDeliverySession,withIndependentBootstrapPolicy(inheritActorLeaseInput(p.factory,{...p.factory,recovery:p.recovery,writerRecovery:'host-reacquired' as const}),p.guard,p.options.signal))) as SharedIndependentDeliverySession<P>;
  p.guard();checkIndependentDeliveryOwner(p,owners);if(await inspectIndependentDeliveryDestination(p)!=='exact')throw fail('independent_delivery_recovery_diverged');p.guard();
 }
 export async function restoreIndependentDeliveryUploads<P extends SharedSelectionPolicy>(p:PreparedIndependentDeliveryRecovery<P>,owners:IndependentDeliveryRecoveryOwners<P>,complete:boolean):Promise<void>{

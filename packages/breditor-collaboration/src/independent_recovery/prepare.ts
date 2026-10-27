@@ -1,3 +1,4 @@
+import {inheritActorLeaseInput} from '../persistence/actor_lease_input.js';
 /** Normalize before awaits, but do not call host authority until the actual
  * namespace has been reserved. A historical identity chooses no live grant. */
 import type {SharedSelectionPolicy} from '../types.js';
@@ -22,7 +23,7 @@ export function snapshotIndependentRecovery<P extends SharedSelectionPolicy>(pro
 }
 export async function prepareIndependentRecovery<P extends SharedSelectionPolicy>(base:ReturnType<typeof snapshotIndependentRecovery<P>>,file:Blob){
  const{options,guard,record}=base;guard();let backup:Awaited<ReturnType<typeof archive.read>>|undefined,complete=false;
- try{backup=await archive.read(file,options.expected,{limits:options.limits,...(options.signal?{signal:options.signal}:{})});guard();const recovery=await checkIndependentRecords(options.expected.identity.source,archive.records.call(backup));guard();const cut=await makeIndependentHistoryCut(recovery.documentCheckpoint,recovery.reviewCheckpoint,recovery.identity,recovery.versions);guard();const factory={...options.session,database:options.destinations.source,create:missing};complete=true;return{options,guard,record,backup,recovery,cut,factory};}
+ try{backup=await archive.read(file,options.expected,{limits:options.limits,...(options.signal?{signal:options.signal}:{})});guard();const recovery=await checkIndependentRecords(options.expected.identity.source,archive.records.call(backup));guard();const cut=await makeIndependentHistoryCut(recovery.documentCheckpoint,recovery.reviewCheckpoint,recovery.identity,recovery.versions);guard();const factory=inheritActorLeaseInput(options.session,{...options.session,database:options.destinations.source,create:missing});complete=true;return{options,guard,record,backup,recovery,cut,factory};}
  finally{if(!complete&&backup)archive.dispose.call(backup);}
 }
 export type PreparedIndependentRecovery<P extends SharedSelectionPolicy=SharedSelectionPolicy>=Awaited<ReturnType<typeof prepareIndependentRecovery<P>>>;

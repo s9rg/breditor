@@ -1,3 +1,4 @@
+import {inheritActorLeaseInput} from '../persistence/actor_lease_input.js';
 /** Pure current-policy snapshot. Storage opening must reserve the actual names
  * before invoking guard; serialized files choose neither factories nor grants. */
 import type {SharedSelectionPolicy} from '../types.js';
@@ -27,7 +28,7 @@ export function snapshotFlatLocalPolicy<P extends SharedSelectionPolicy>(provide
  if(!provided||typeof provided!=='object')throw fail();const input={...provided},required=['kind','expected','database','sourceDatabase','sourceFactory','writerRecovery','checkAuthority'];if(required.some(key=>!Object.hasOwn(input,key))||Object.keys(input).some(key=>![...required,'signal','limits','cohort'].includes(key))||input.kind!=='flat-local-v1')throw fail();requireBackupRecovery(input.writerRecovery);
  const expected=localOperationBackupSelection(input.expected),database=independentRecoveryName(input.database),sourceDatabase=independentRecoveryName(input.sourceDatabase),factory=input.sourceFactory;
  if(!factory||typeof factory!=='object'||Object.hasOwn(factory,'database')||Object.hasOwn(factory,'create')||independentDeliveryCompanion(factory)||selectedLocalOperationDriver(factory)||independentBootstrapPolicy(factory)||independentBootstrapSignal(factory)||independentLocalHistoryCapturePolicy(factory))throw fail();
- const source=snapshotLocalOperationFactory(expected.original,{...factory,database:sourceDatabase,create:missing});let cohort:FlatLocalInputOptions['cohort'];
+ const source=snapshotLocalOperationFactory(expected.original,inheritActorLeaseInput(factory,{...factory,database:sourceDatabase,create:missing}));let cohort:FlatLocalInputOptions['cohort'];
  if(input.cohort!==undefined){const selected={...input.cohort};if(!generationFields(selected,'parentDatabase,uploadsDatabase'))throw fail();cohort=Object.freeze({parentDatabase:independentRecoveryName(selected.parentDatabase),uploadsDatabase:independentRecoveryName(selected.uploadsDatabase)});}
  const names=Object.freeze([database,sourceDatabase,...(cohort?Object.values(cohort):[])].sort());if(new Set(names).size!==names.length)throw fail();
  const{database:_database,create:_create,...replayFactories}=source,read=localPortableReadPolicy(expected.original,{session:{...replayFactories,readOnly:true,review:{...source.review,access:'read_only'}},checkAuthority:input.checkAuthority,...(input.signal===undefined?{}:{signal:input.signal}),...(input.limits===undefined?{}:{limits:input.limits})});
@@ -37,6 +38,6 @@ export function snapshotFlatLocalPolicy<P extends SharedSelectionPolicy>(provide
 /** Reconstruct only the already-snapshotted admission options. An opening may
  * call this after authorization without re-reading the caller's policy getters. */
 export function flatLocalInputOptions<P extends SharedSelectionPolicy>(choice:ReturnType<typeof snapshotFlatLocalPolicy<P>>):FlatLocalInputOptions<P>{
- const{database:_database,create:_create,...sourceFactory}=choice.source;
+ const{database:_database,create:_create,...sourceFactory}=choice.source;inheritActorLeaseInput(choice.source,sourceFactory);
  return{kind:choice.kind,expected:choice.expected,database:choice.database,sourceDatabase:choice.sourceDatabase,sourceFactory,writerRecovery:'host-reacquired',checkAuthority:choice.guard,...(choice.read.options.signal===undefined?{}:{signal:choice.read.options.signal}),limits:choice.read.options.limits,...(choice.cohort?{cohort:choice.cohort}:{})};
 }

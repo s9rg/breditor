@@ -1,0 +1,95 @@
+{
+  "format": "breditor/warm-target-actor-routes-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-27T04:16:02.570Z",
+  "qualification": "selected-functional-architectural-increment-not-v1-release",
+  "workingTreeSourceAtVerification": {
+    "commit": "3fb56e994d6de913fbf4dd6d5abf47c4841bc05e",
+    "dirty": true,
+    "sha256": "d176ce637738a324e52305c015d46378f040b320ca2deaf189c3c81aacf4f761",
+    "files": 6720,
+    "bytes": 52414619
+  },
+  "qualificationMetadataAddedAfterRun": true,
+  "postVerificationSourceAdditions": [
+    "docs/qualification/2026-10-27-warm-target-actor-routes.json"
+  ],
+  "normal": {
+    "stages": 8,
+    "sourceAssertions": 247,
+    "installedAssertions": 247,
+    "bundledAssertions": 247,
+    "priorExecutionAndRetirementAssertionsRepeated": 224,
+    "newActorRouteAssertions": 23,
+    "strictTypeFixtures": 6,
+    "skipped": 0,
+    "cancelled": 0,
+    "fullCandidatePlanExecuted": false,
+    "prior203ExecutionAnd283ReconstructionRerun": false
+  },
+  "products": {
+    "count": 2006,
+    "unchanged": 1962,
+    "changed": 40,
+    "added": 4,
+    "removed": 0,
+    "priorCount": 2002,
+    "publicRootsUnchanged": true
+  },
+  "native": {
+    "freshInputFiles": 100,
+    "profileAndWireRooms": 10,
+    "unchangedSourceAndBuildInputs": 2899,
+    "normalWasmSha256": "946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0",
+    "rustSuitesRerun": false
+  },
+  "controls": [
+    {
+      "name": "canonical-final",
+      "removedActualExit": 1,
+      "restoredActualExit": 0,
+      "implementationSha256": "5c09b9c5c01058e88ec545d48a6c753810d1f959b08e6b8aafdb6eb6c9b80b15",
+      "byteExactRestore": true
+    },
+    {
+      "name": "native-borrower",
+      "removedActualExit": 1,
+      "restoredActualExit": 0,
+      "implementationSha256": "05c2e1a989af9f8959b82127961119fbbc37b0689cda8e393891ff87ffca6e64",
+      "byteExactRestore": true
+    },
+    {
+      "name": "forwarding",
+      "removedActualExit": 1,
+      "restoredActualExit": 0,
+      "implementationSha256": "f1300a5c9ef13d0be3cdf25ca841f1d0673524ead73eb5c52ddee9cd10017928",
+      "byteExactRestore": true
+    }
+  ],
+  "endpoints": {
+    "count": 190,
+    "manifests": 20,
+    "allConfirmedClosed": true
+  },
+  "retainedProof": {
+    "path": "target/room-actor-routes-proof-6MiyRK/index.json",
+    "sha256": "e8a93fccbb35483fca70f42d594fcd29a6a2c31aca7eb92a7c688dfebc0e57fc",
+    "files": 355
+  },
+  "scope": "Genuine stopped actors reach every concrete seven-family staging/final constructor and existing-target replay. Whole native registration checks admit exact final loan handles, not matching history or a caller phase. All ten native persistence profiles retain actual authors, constructor failures and stalled factories keep their real loans, and final checks ignore replaceable public validation dispatch. Four complete seven-family cases close and reopen targets while all fourteen actual writer resources remain held, with zero ordinary reacquisition, unchanged source schema and actual binary bytes, and usable future document/comment Undo/Redo. Existing formats, defaults, root exports and normal Wasm remain unchanged.",
+  "limitations": [
+    "This is the warm actor-resource route, not the complete mutable room executor or authenticated room activation.",
+    "A separately named START journal, an executor owner reachable before retirement, full selected-upload adoption and a final common native/packet/asset/actor ownership barrier remain required.",
+    "Cold process actor acquisition, native/provider/client reconciliation, independent comment/server generations, sustainable Undo/offline/asset retention and remaining feature parity remain architectural work.",
+    "A follow-up fault-injection audit reproduced replaceable private constructor dispatch during the earlier stopped-source actor move; canonical constructor and retirement method capture is the next repair. Its isolated repair probe is not counted as this source qualification.",
+    "Controlled IDB/lock/raster tests are not physical crash, OS, browser, accessibility or full release qualification."
+  ],
+  "v1Ready": false,
+  "openV1GateCount": 13,
+  "versionsChanged": false,
+  "publicRootApisChanged": false,
+  "pushed": false,
+  "published": false,
+  "tagged": false,
+  "deployed": false
+}

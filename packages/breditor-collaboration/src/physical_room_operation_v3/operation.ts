@@ -1,6 +1,8 @@
 /** Restartable seven-family client recovery. Catalog files, actual child stores,
  * fresh host policy and one common native barrier are all required. This is not
  * provider reconciliation, authenticated room activation or a server grant. */
+import {PhysicalRootActorRoutes,checkPhysicalRootActors} from './actor_routes.js';
+import type {StoppedActorCohort} from '../persistence/stopped_actor_cohort.js';
 import {PhysicalRoomCatalogV3,transferPhysicalCatalogV3,type PhysicalCatalogV3Custody} from '../physical_room_catalog_v3/catalog.js';
 import {PhysicalRoomCatalogV3Archive,physicalCatalogV3Archive as archive} from '../physical_room_catalog_v3/archive.js';
 import {readPhysicalCatalogV3Database} from '../physical_room_catalog_v3/database.js';
@@ -37,10 +39,15 @@ import {capturePhysicalOperationV3RecordCut,visitPhysicalOperationV3RecordCut,ty
 import type {PhysicalRoomRecordCutFile} from '../physical_room_record_cut/contract.js';
 import type {RetainedNativeReadBorrow} from '../complete_operation_cohort/retained_native_read.js';
 import {prepareRetainedPhysicalRoot,type PreparedRetainedPhysicalRoot,type RetainedPhysicalRoot} from './retained_root.js';
+let openWithActors:(input:PhysicalOperationV3BeginOptions|PhysicalOperationV3ResumeOptions,begin:boolean,actors:StoppedActorCohort)=>Promise<PhysicalRoomClientOperationV3>;
+/** Explicit actual-resource route. Ordinary begin/resume and DTO schemas retain
+ * their original host-reacquisition semantics. Actor custody stays with caller. */
+export const beginPhysicalRootKeepingActors=(input:PhysicalOperationV3BeginOptions,actors:StoppedActorCohort)=>openWithActors(input,true,actors);
+export const resumePhysicalRootKeepingActors=(input:PhysicalOperationV3ResumeOptions,actors:StoppedActorCohort)=>openWithActors(input,false,actors);
 const key=Object.freeze({});
 const errors={policy:()=>fail('physical_operation_v3_policy'),busy:()=>fail('physical_operation_v3_in_use'),storage:()=>fail()};
 interface State{
- readonly options:PhysicalOperationV3OpenOptions;readonly database:string;readonly held:PhysicalCatalogV3Custody;
+ readonly actorRoutes:PhysicalRootActorRoutes|undefined;readonly options:PhysicalOperationV3OpenOptions;readonly database:string;readonly held:PhysicalCatalogV3Custody;
  readonly intent:PhysicalOperationV3IntentStore;readonly lease:RecoveryLease;readonly cancellation:PhysicalOperationV3Cancellation;
  readonly guard:()=>void;readonly local:()=>void;readonly readCurrent:()=>void;readonly children:PhysicalOperationV3Child[];
  readonly life:{closed:boolean;closing:boolean;changed:boolean;released:boolean};
@@ -124,14 +131,15 @@ export class PhysicalRoomClientOperationV3{
    }catch(error){if(owner.#moved)throw error;try{await proposal?.abandon();}finally{if(ticket)await ticket.rollback();else await root?.abandon();}throw error;}
   },error=>error instanceof Error?error:known(error));
  };}
+ static{openWithActors=async(input,begin,actors)=>{checkPhysicalRootActors(actors);return PhysicalRoomClientOperationV3.#open(input,begin,actors);};}
  static begin(input:PhysicalOperationV3BeginOptions):Promise<PhysicalRoomClientOperationV3>{return PhysicalRoomClientOperationV3.#open(input,true);}
  static resume(input:PhysicalOperationV3ResumeOptions):Promise<PhysicalRoomClientOperationV3>{return PhysicalRoomClientOperationV3.#open(input,false);}
- static async #open(input:PhysicalOperationV3BeginOptions|PhysicalOperationV3ResumeOptions,begin:boolean):Promise<PhysicalRoomClientOperationV3>{
+ static async #open(input:PhysicalOperationV3BeginOptions|PhysicalOperationV3ResumeOptions,begin:boolean,actors?:StoppedActorCohort):Promise<PhysicalRoomClientOperationV3>{
   const selected=options(input,begin),chosen=selected.options,database=dbName(chosen.database),factory=recoveryOpeningContext(),locks=navigator.locks,life={closed:false,closing:false,changed:false,released:false};
-  let cancellation:PhysicalOperationV3Cancellation|undefined,intent:PhysicalOperationV3IntentStore|undefined,lease:RecoveryLease|undefined,owned=false,held:PhysicalCatalogV3Custody|undefined,catalog=selected.catalog,opening:RecoveryOpeningCustody|undefined;
+  let actorRoutes:PhysicalRootActorRoutes|undefined,cancellation:PhysicalOperationV3Cancellation|undefined,intent:PhysicalOperationV3IntentStore|undefined,lease:RecoveryLease|undefined,owned=false,held:PhysicalCatalogV3Custody|undefined,catalog=selected.catalog,opening:RecoveryOpeningCustody|undefined;
   try{
    opening=await RecoveryOpeningCustody.reserve(factory,[database],async()=>{
-    const actions=[()=>intent?.close(),()=>lease?.close(),()=>{if(owned&&held){archive.dispose.call(held.archive);held.db.close();return held.lease.close();}return undefined;},()=>{if(!begin&&!owned)return catalog?.close();return undefined;}];
+    const actions=[()=>actorRoutes?.close(),()=>intent?.close(),()=>lease?.close(),()=>{if(owned&&held){archive.dispose.call(held.archive);held.db.close();return held.lease.close();}return undefined;},()=>{if(!begin&&!owned)return catalog?.close();return undefined;}];
     const results=await Promise.allSettled(actions.map(action=>Promise.resolve().then(action)));if(results.some(row=>row.status==='rejected'))throw fail();cancellation?.close();
    },errors);
    cancellation=new PhysicalOperationV3Cancellation(chosen.signal);const actualCancellation=cancellation,authority=participantAuthority(chosen.checkAuthority),readCurrent=()=>{if(life.closed||life.closing||life.changed)throw fail('physical_operation_v3_closed');if(globalThis.indexedDB!==factory||globalThis.navigator?.locks!==locks)throw fail('physical_operation_v3_policy');},local=()=>{readCurrent();actualCancellation.check();},guard=()=>{local();authority();local();};guard();
@@ -143,10 +151,11 @@ export class PhysicalRoomClientOperationV3{
     // aliases are checked before any participant factory or authority executes.
     const prepared=preflightPhysicalOperationV3(chosen.participants,source.state,database,source.database),initial=initialPhysicalOperationV3Record(database,{catalogDatabase:source.database,manifest:source.state.manifest,selection:source.state.selection},prepared.map(row=>row.target));
     return async()=>{
+     if(actors)actorRoutes=await PhysicalRootActorRoutes.create(actors,prepared);guard();
      guard();lease=await RecoveryLease.acquire(JSON.stringify(database));guard();intent=new PhysicalOperationV3IntentStore(factory,database,guard,chosen.signal);
      if(begin){for(const row of prepared)for(const ns of row.target.namespaces)if(await physicalOperationV3Present(ns.database,guard))throw fail('physical_operation_v3_exists');await intent.create(initial);}else await intent.open();guard();
      const record=await intent.read(initial);guard();const children=prepared.map(selected=>({selected})) as PhysicalOperationV3Child[],policies=await physicalOperationV3LegacyPolicies(children,source.state,[database,source.database],guard);guard();
-     const state:State={options:{...chosen,wasm:context.wasm},database,held:source,intent,lease,cancellation:actualCancellation,guard,local,readCurrent,children,policies,life,record,archiveDisposed:false},owner=new PhysicalRoomClientOperationV3(key,state);
+     const state:State={actorRoutes,options:{...chosen,wasm:context.wasm},database,held:source,intent,lease,cancellation:actualCancellation,guard,local,readCurrent,children,policies,life,record,archiveDisposed:false},owner=new PhysicalRoomClientOperationV3(key,state);
      return{value:owner,prepareCommit(){guard();},commit(){local();source.db.onversionchange=()=>{life.changed=true;source.db.close();};owned=true;owner.#exposed=true;}};
     };
    });opening.complete();return result;
@@ -177,8 +186,11 @@ export class PhysicalRoomClientOperationV3{
    try{await openPhysicalOperationV3Child(child,s.held.state,s.policies,current.state==='complete',this.#guard,this.#rollback);this.#guard();cleanup.complete();}catch(error){await cleanup.rollback();throw error;}
    if(current.state!=='complete')await this.#update({...s.record,participants:s.record.participants.map((row,i)=>i===index?{...row,state:'complete'}:row)});
   }
-  await this.#retained();if(s.record.phase==='prepared')await this.#update({...s.record,phase:'operational'});await this.#verify();return this.#progress();
+  await this.#retained();if(s.record.phase==='prepared')await this.#update({...s.record,phase:'operational'});await this.#verify();if(s.actorRoutes)await this.#verifyActorRoutes();return this.#progress();
  });}
+ /** A saved completion row is insufficient: the actual final sources must own
+  * every current loan. The held native registry never exposes mutable cores. */
+ async #verifyActorRoutes():Promise<void>{const s=this.#s;if(!s.actorRoutes)return;const read=borrowCompleteNativeRead(s.children.map(child=>child.live!)),cleanup=this.#rollback.retain(()=>read.close());try{await read.prepare();await this.#retained();await read.verify();this.#guard();s.actorRoutes.checkFinal(read.participants);read.checkCurrent();await read.close();cleanup.complete();this.#guard();}catch(error){await cleanup.rollback();throw error;}}
  async #verify():Promise<void>{await this.#retained();const s=this.#s;if(s.record.phase!=='operational'||s.children.some(child=>!child.live))throw fail('physical_operation_v3_restore');for(const child of s.children){await child.live!.operation.check();this.#guard();}}
  check():Promise<void>{return this.#run(()=>this.#verify());}
  /** Inspect currently held native prefixes without initiating handoff, releasing
@@ -221,5 +233,5 @@ export class PhysicalRoomClientOperationV3{
  close():Promise<void>{return this.#close(false);}
  discardAndClose():Promise<void>{return this.#close(true);}
  #close(discard:boolean):Promise<void>{const s=this.#s;if(this.#moved||s.life.closed)return Promise.resolve();if(this.#cleanup)return this.#cleanupMode===discard?this.#cleanup:Promise.reject(fail('physical_operation_v3_in_use'));s.life.closing=true;for(const cancel of this.#closingListeners)cancel();this.#closingListeners.clear();this.#cleanupMode=discard;this.#cleanup=this.#finishClose(discard).catch(error=>{throw known(error);}).finally(()=>{this.#cleanup=undefined;this.#cleanupMode=undefined;});return this.#cleanup;}
- async #finishClose(discard:boolean):Promise<void>{await this.#running;const s=this.#s;if(s.life.closed)return;await this.#rollback.drain();for(const child of [...s.children].reverse())await closePhysicalOperationV3Child(child,discard);await s.intent.close();this.#disposeArchive();s.held.db.close();await s.held.lease.close();await s.lease.close();s.cancellation.close();s.life.closed=true;this.#exposed=false;}
+ async #finishClose(discard:boolean):Promise<void>{await this.#running;const s=this.#s;if(s.life.closed)return;await this.#rollback.drain();for(const child of [...s.children].reverse())await closePhysicalOperationV3Child(child,discard);await s.actorRoutes?.close();await s.intent.close();this.#disposeArchive();s.held.db.close();await s.held.lease.close();await s.lease.close();s.cancellation.close();s.life.closed=true;this.#exposed=false;}
 }

@@ -1,3 +1,4 @@
+import {inheritActorLeaseInput} from '../persistence/actor_lease_input.js';
 /** Private scoped policy for the first actual native read/create/replay/save.
  * It is not selected by serialized fields and does not invent a delivery binding.
  * Once bootstrap succeeds, ordinary source policy and operation guards remain
@@ -5,7 +6,7 @@
 const selected=new WeakMap<object,()=>void>();
 const signals=new WeakMap<object,AbortSignal>(),add=globalThis.EventTarget?.prototype.addEventListener,remove=globalThis.EventTarget?.prototype.removeEventListener;
 export function withIndependentBootstrapPolicy<T extends object>(input:T,check:()=>void,signal?:AbortSignal):T{
- check();const copy={...input};selected.set(copy,check);if(signal)signals.set(copy,signal);return copy;
+ check();const copy=inheritActorLeaseInput(input,{...input});selected.set(copy,check);if(signal)signals.set(copy,signal);return copy;
 }
 /** Explicit internal forwarding across the delivery facade's option snapshot. */
 export function forwardIndependentBootstrapPolicy<T extends object>(from:object,to:T):T{

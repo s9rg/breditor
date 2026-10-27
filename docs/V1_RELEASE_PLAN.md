@@ -108,7 +108,10 @@ explicit union, including unreferenced pending, failed and cancelled work. These
 are prerequisites, not the complete replacement executor. The whole-room intent
 now binds all three complete asset inputs and persists the exact selected data
 without target creation or source retirement. Interrupted concrete-target replay, selected upload adoption,
-complete final replacement admission and warm/cold actor routes remain required.
+complete final replacement admission and cold actor acquisition remain required.
+The [warm target route](NATIVE_ACTOR_TARGET_ROUTES.md) connects genuine retained
+actors to concrete staging and final constructors without ordinary reacquisition;
+the complete executor and final shared ownership barrier remain separate work.
 Local author locks do not provide authenticated cross-device activation. All
 thirteen V1 gates remain open.
 

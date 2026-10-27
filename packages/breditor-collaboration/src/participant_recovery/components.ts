@@ -1,3 +1,4 @@
+import {inheritActorLeaseInput} from '../persistence/actor_lease_input.js';
 import {RichAssetStore} from "@breditor/experimental-rich-content";
 import {SharedPersistentSession} from "../persistence/shared_session.js";
 import {SharedReviewPersistentSession} from "../persistence/review_session.js";
@@ -30,12 +31,12 @@ async function session<P extends SharedSelectionPolicy>(p:PreparedRecovery<P>,ad
  const selected=p.session,common={database:p.destinations.document},backup={...common,backupJson:p.backups.document,writerRecovery:"host-reacquired" as const},open={...common,create:()=>{throw recoveryFailure("recovery_missing");}};
  // The runtime switch follows the explicit discriminant; its native generic is verified below.
  switch(selected.kind){
-  case"document":return await(adopt?SharedPersistentSession.open({...selected.options,...open}):SharedPersistentSession.restoreBackup({...selected.options,...backup})) as unknown as RecoverySession<P>;
-  case"document-selection":return await(adopt?SharedPersistentSession.openDocument({...selected.options,...open,restore:selected.options.restoreDocument}):SharedPersistentSession.restoreDocumentBackup({...selected.options,...backup})) as unknown as RecoverySession<P>;
-  case"search-document":return await(adopt?SharedPersistentSession.openSearch({...selected.options,...open}):SharedPersistentSession.restoreSearchBackup({...selected.options,...backup})) as unknown as RecoverySession<P>;
-  case"paired":return adopt?SharedReviewPersistentSession.open({...selected.options,...open}):SharedReviewPersistentSession.restoreBackup({...selected.options,...backup});
-  case"reviewed-paired":return adopt?SharedReviewPersistentSession.openReviewed({...selected.options,...open}):SharedReviewPersistentSession.restoreReviewedBackup({...selected.options,...backup});
-  case"search-paired":return adopt?SharedReviewPersistentSession.openSearch({...selected.options,...open}):SharedReviewPersistentSession.restoreSearchBackup({...selected.options,...backup});
+  case"document":return await(adopt?SharedPersistentSession.open(inheritActorLeaseInput(selected.options,{...selected.options,...open})):SharedPersistentSession.restoreBackup(inheritActorLeaseInput(selected.options,{...selected.options,...backup}))) as unknown as RecoverySession<P>;
+  case"document-selection":return await(adopt?SharedPersistentSession.openDocument(inheritActorLeaseInput(selected.options,{...selected.options,...open,restore:selected.options.restoreDocument})):SharedPersistentSession.restoreDocumentBackup(inheritActorLeaseInput(selected.options,{...selected.options,...backup}))) as unknown as RecoverySession<P>;
+  case"search-document":return await(adopt?SharedPersistentSession.openSearch(inheritActorLeaseInput(selected.options,{...selected.options,...open})):SharedPersistentSession.restoreSearchBackup(inheritActorLeaseInput(selected.options,{...selected.options,...backup}))) as unknown as RecoverySession<P>;
+  case"paired":return adopt?SharedReviewPersistentSession.open(inheritActorLeaseInput(selected.options,{...selected.options,...open})):SharedReviewPersistentSession.restoreBackup(inheritActorLeaseInput(selected.options,{...selected.options,...backup}));
+  case"reviewed-paired":return adopt?SharedReviewPersistentSession.openReviewed(inheritActorLeaseInput(selected.options,{...selected.options,...open})):SharedReviewPersistentSession.restoreReviewedBackup(inheritActorLeaseInput(selected.options,{...selected.options,...backup}));
+  case"search-paired":return adopt?SharedReviewPersistentSession.openSearch(inheritActorLeaseInput(selected.options,{...selected.options,...open})):SharedReviewPersistentSession.restoreSearchBackup(inheritActorLeaseInput(selected.options,{...selected.options,...backup}));
  }
 }
 export function ownerSources<P extends SharedSelectionPolicy>(p:PreparedRecovery<P>,owners:RecoveryOwners<P>):SharedAssetReferenceCaptureOptions<P>{

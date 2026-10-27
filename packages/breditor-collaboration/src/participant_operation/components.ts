@@ -1,3 +1,4 @@
+import {inheritActorLeaseInput} from '../persistence/actor_lease_input.js';
 import {RichAssetStore} from "@breditor/experimental-rich-content";
 import {SharedPersistentSession} from "../persistence/shared_session.js";
 import {SharedReviewPersistentSession} from "../persistence/review_session.js";
@@ -28,14 +29,14 @@ export function operationPolicy(input:SharedParticipantOperationCurrentPolicy,pa
 }
 /** The original declared family selects the factory; current host policy is initialized separately. */
 async function session<P extends SharedSelectionPolicy>(p:PreparedRecovery<P>,origin:ParticipantOrigin,policy:SharedParticipantOperationCurrentPolicy):Promise<RecoverySession<P>>{
- const selected=p.session,common={database:p.destinations.document,create:()=>{throw operationFailure("operation_missing");}},wrap=<T>(fn:T)=>factory(fn,selected.options,policy.documentReadOnly);
+ const selected=p.session,forward=<T extends object>(input:T)=>inheritActorLeaseInput(selected.options,input),common={database:p.destinations.document,create:()=>{throw operationFailure("operation_missing");}},wrap=<T>(fn:T)=>factory(fn,selected.options,policy.documentReadOnly);
  switch(selected.kind){
-  case"document":return await SharedPersistentSession.open(withRecoveryOrigin({...selected.options,...common,restore:wrap(selected.options.restore)},origin)) as unknown as RecoverySession<P>;
-  case"document-selection":return await SharedPersistentSession.openDocument(withRecoveryOrigin({...selected.options,...common,restore:wrap(selected.options.restoreDocument),restoreDocument:wrap(selected.options.restoreDocument)},origin)) as unknown as RecoverySession<P>;
-  case"search-document":return await SharedPersistentSession.openSearch(withRecoveryOrigin({...selected.options,...common,restoreSearch:wrap(selected.options.restoreSearch)},origin)) as unknown as RecoverySession<P>;
-  case"paired":return SharedReviewPersistentSession.open(withRecoveryOrigin({...selected.options,...common,review:{...selected.options.review,access:policy.reviewAccess!},restore:wrap(selected.options.restore)},origin));
-  case"reviewed-paired":return SharedReviewPersistentSession.openReviewed(withRecoveryOrigin({...selected.options,...common,review:{...selected.options.review,access:policy.reviewAccess!},restoreReviewed:wrap(selected.options.restoreReviewed)},origin));
-  case"search-paired":return SharedReviewPersistentSession.openSearch(withRecoveryOrigin({...selected.options,...common,review:{...selected.options.review,access:policy.reviewAccess!},restoreSearch:wrap(selected.options.restoreSearch)},origin));
+  case"document":return await SharedPersistentSession.open(withRecoveryOrigin(forward({...selected.options,...common,restore:wrap(selected.options.restore)}),origin)) as unknown as RecoverySession<P>;
+  case"document-selection":return await SharedPersistentSession.openDocument(withRecoveryOrigin(forward({...selected.options,...common,restore:wrap(selected.options.restoreDocument),restoreDocument:wrap(selected.options.restoreDocument)}),origin)) as unknown as RecoverySession<P>;
+  case"search-document":return await SharedPersistentSession.openSearch(withRecoveryOrigin(forward({...selected.options,...common,restoreSearch:wrap(selected.options.restoreSearch)}),origin)) as unknown as RecoverySession<P>;
+  case"paired":return SharedReviewPersistentSession.open(withRecoveryOrigin(forward({...selected.options,...common,review:{...selected.options.review,access:policy.reviewAccess!},restore:wrap(selected.options.restore)}),origin));
+  case"reviewed-paired":return SharedReviewPersistentSession.openReviewed(withRecoveryOrigin(forward({...selected.options,...common,review:{...selected.options.review,access:policy.reviewAccess!},restoreReviewed:wrap(selected.options.restoreReviewed)}),origin));
+  case"search-paired":return SharedReviewPersistentSession.openSearch(withRecoveryOrigin(forward({...selected.options,...common,review:{...selected.options.review,access:policy.reviewAccess!},restoreSearch:wrap(selected.options.restoreSearch)}),origin));
  }
 }
 /** Open actual existing native/retained/upload owners. No source restore or auto network work. */

@@ -1,4 +1,5 @@
 /** Genuine capture registrations and lifetime-checked native reads. No raw owner escapes. */
+import {checkDeferredActorFinal,type DeferredActorLeaseInput} from '../persistence/deferred_actor_input.js';
 import {SharedEditorError,type SharedRichEditor} from '../core.js';
 import type {SharedSelectionPolicy} from '../types.js';
 import {coreReadStamp} from '../core_read_stamp.js';
@@ -68,3 +69,7 @@ export function capturedNativeHistoryFinalCheck(capability:CapturedNativeHistory
  const source=readers.get(capability);if(!source)throw unavailable();const state=checked(source,true);if(state.read!==capability)throw unavailable();
  return()=>{if(readers.get(capability)!==source||checked(source)!==state||state.read!==capability)throw unavailable();};
 }
+
+/** Whole-root actor verification reads the genuine capture's actual core only
+ * inside this closed SDK composition. No core getter or host visitor escapes. */
+export function checkCapturedNativeActorRoute(capability:CapturedNativeHistoryRead,route:DeferredActorLeaseInput):void{const source=readers.get(capability);if(!source)throw unavailable();const state=checked(source,true);if(state.read!==capability)throw unavailable();checkDeferredActorFinal(route,state.core);if(checked(source,true)!==state)throw unavailable();}
