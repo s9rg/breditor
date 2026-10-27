@@ -60,6 +60,14 @@ failed openings, and only then releases actor custody. A rejected cleanup keeps
 its handles reachable for retry. Cleanup does not need continuing read permission
 and never deletes source, target, journal, approval or upload bytes.
 
+## Inspect without repairing
+
+The explicit private [completed room inspection](COMPLETE_EXISTING_ROOM_INSPECTION.md)
+entry uses the same fresh actor and attempt lifetime but refuses incomplete
+parents and pending native saves instead of continuing them. Ordinary cold
+recovery retains its repair-capable defaults. Use the stricter path when checking
+an original before building a replacement; invoke repair as a separate decision.
+
 ## Remaining architectural work
 
 This path requires a complete existing selected root and an independently kept

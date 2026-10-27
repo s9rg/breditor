@@ -9,7 +9,7 @@ import {RoomExecutionReadScope} from '../native_room_execution/read_scope.js';
 import {SelectedRoomCurrentArchive} from '../selected_room_current/archive.js';
 import {selectedRoomCurrentSelection,MAX_SELECTED_ROOM_CURRENT_BYTES} from '../selected_room_current/manifest.js';
 import {archiveBlob} from '../archive_integrity/policy.js';
-import {snapshotPhysicalRootResumeOptions,resumePhysicalRootKeepingActors,PhysicalRoomClientOperationV3} from '../physical_room_operation_v3/operation.js';
+import {snapshotPhysicalRootResumeOptions,resumePhysicalRootKeepingActors,reopenCompletedPhysicalRoot,PhysicalRoomClientOperationV3} from '../physical_room_operation_v3/operation.js';
 import {snapshotPhysicalHistoryReadOptions} from '../physical_room_operation_v3/history_read.js';
 import {previewColdSelectedRoom,resumeColdSelectedRoomWithActors} from '../cold_selected_room/coordinator.js';
 import {coldSelectedRoomChoice} from '../cold_selected_room/choice.js';
@@ -20,14 +20,19 @@ import type {ColdRoomRecoveryOptions,ColdRoomPromotionOptions} from './contract.
 import type {ColdSelectedRoomPreview} from '../cold_selected_room/contract.js';
 import type {RetainedSelectedAssetOwner} from '../physical_room_asset_successor/owner.js';
 const actorsApi={begin:RoomActorAcquisition.begin,acquire:RoomActorAcquisition.prototype.acquire,close:RoomActorAcquisition.prototype.close},closeActors=StoppedActorCohort.prototype.close;
-const rootApi={finish:PhysicalRoomClientOperationV3.prototype.finish,close:PhysicalRoomClientOperationV3.prototype.discardAndClose},recipient={ready:RoomRunSuccessorRecipient.prototype.ready,take:RoomRunSuccessorRecipient.prototype.take,close:RoomRunSuccessorRecipient.prototype.close};
+const rootApi={inspect:reopenCompletedPhysicalRoot,finish:PhysicalRoomClientOperationV3.prototype.finish,close:PhysicalRoomClientOperationV3.prototype.discardAndClose},recipient={ready:RoomRunSuccessorRecipient.prototype.ready,take:RoomRunSuccessorRecipient.prototype.take,close:RoomRunSuccessorRecipient.prototype.close};
 const archive={read:SelectedRoomCurrentArchive.read,dispose:SelectedRoomCurrentArchive.prototype.dispose},scopeClose=RoomExecutionReadScope.prototype.close,add=EventTarget.prototype.addEventListener,remove=EventTarget.prototype.removeEventListener,aborted=Object.getOwnPropertyDescriptor(AbortSignal.prototype,'aborted')!.get!,key=Object.freeze({});
+let beginCompleted:(input:ColdRoomRecoveryOptions)=>ColdRoomRecoveryAttempt;
+/** SDK-only complete-existing admission. Ordinary begin keeps its deliberate
+ * repair-capable defaults; no serialized option can select this private route. */
+export const beginCompletedRoomRecovery=(input:ColdRoomRecoveryOptions)=>beginCompleted(input);
 export class ColdRoomRecoveryAttempt{
- readonly #options;readonly #recipient=new RoomRunSuccessorRecipient();readonly #stop=new AbortController();readonly #unwatch:(()=>void)[]=[];
+ readonly #completeOnly;readonly #options;readonly #recipient=new RoomRunSuccessorRecipient();readonly #stop=new AbortController();readonly #unwatch:(()=>void)[]=[];
  #scope:RoomExecutionReadScope|undefined;#basis:SelectedRoomCurrentArchive|undefined;#plan:Awaited<ReturnType<typeof coldRoomActorPlan>>|undefined;#factory:IDBFactory|undefined;
  #acquisition:RoomActorAcquisition|undefined;#actors:StoppedActorCohort|undefined;#root:PhysicalRoomClientOperationV3|undefined;
  #running:Promise<unknown>|undefined;#cleanup:Promise<void>|undefined;#taking=false;#closing=false;#closed=false;
- private constructor(token:object,input:ColdRoomRecoveryOptions){if(token!==key)throw fail('room_execution_policy');const raw=fields(input,['root','basis','reads','intentDatabase']),b=fields(raw['basis'],['file','selection']),root=snapshotPhysicalRootResumeOptions(raw['root'] as ColdRoomRecoveryOptions['root']),reads=snapshotPhysicalHistoryReadOptions(raw['reads'] as ColdRoomRecoveryOptions['reads']);this.#options=Object.freeze({root,reads,basis:Object.freeze({selection:selectedRoomCurrentSelection(b['selection']),file:archiveBlob(b['file'] as Blob,MAX_SELECTED_ROOM_CURRENT_BYTES)}),intentDatabase:database(raw['intentDatabase'])});Object.freeze(this);}
+ private constructor(token:object,input:ColdRoomRecoveryOptions,completeOnly=false){this.#completeOnly=completeOnly;if(token!==key)throw fail('room_execution_policy');const raw=fields(input,['root','basis','reads','intentDatabase']),b=fields(raw['basis'],['file','selection']),root=snapshotPhysicalRootResumeOptions(raw['root'] as ColdRoomRecoveryOptions['root']),reads=snapshotPhysicalHistoryReadOptions(raw['reads'] as ColdRoomRecoveryOptions['reads']);this.#options=Object.freeze({root,reads,basis:Object.freeze({selection:selectedRoomCurrentSelection(b['selection']),file:archiveBlob(b['file'] as Blob,MAX_SELECTED_ROOM_CURRENT_BYTES)}),intentDatabase:database(raw['intentDatabase'])});Object.freeze(this);}
+ static{beginCompleted=input=>new ColdRoomRecoveryAttempt(key,input,true);}
  static begin(input:ColdRoomRecoveryOptions):ColdRoomRecoveryAttempt{return new ColdRoomRecoveryAttempt(key,input);}
  #admit=()=>{if(this.#running||this.#taking)throw fail('room_execution_busy');if(this.#closing||this.#closed||recipient.ready.call(this.#recipient))throw fail('room_execution_closed');};
  #check=()=>{if(this.#closing||this.#closed||this.#stop.signal.aborted)throw fail('room_execution_closed');this.#scope?.check();if(this.#closing||this.#closed||this.#stop.signal.aborted)throw fail('room_execution_closed');};
@@ -41,7 +46,7 @@ export class ColdRoomRecoveryAttempt{
   if(!this.#actors){await actorsApi.acquire.call(this.#acquisition);this.#check();this.#actors=takeAcquiredActorCohort(this.#acquisition);}
   if(!this.#root){for(const name of this.#plan.names)await drainFailedRecoveryOpenings(this.#factory!,[name],()=>fail('room_execution_storage'));this.#check();
    this.#root=await resumePhysicalRootKeepingActors({...root,checkAuthority:()=>{scope.check();root.checkAuthority();scope.check();},signal:scope.signal},this.#actors);this.#check();}
-  await rootApi.finish.call(this.#root);this.#check();
+  if(this.#completeOnly)await rootApi.inspect(this.#root);else await rootApi.finish.call(this.#root);this.#check();
  }
  /** Existing-only root/child reopening. No mutable client is exposed yet. */
  open():Promise<void>{try{this.#admit();}catch(error){return Promise.reject(error);}const task=Promise.resolve().then(()=>this.#open());this.#running=task;return task.finally(()=>{this.#running=undefined;});}

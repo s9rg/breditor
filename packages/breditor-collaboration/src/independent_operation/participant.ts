@@ -54,6 +54,9 @@ export function reserveIndependentDeliveryRead<P extends SharedSelectionPolicy>(
 /** Actual complete-delivery writers join the existing shared kernel. Retained
  * packets and receipts keep their complete-delivery identity, never local-only. */
 export function reserveOperationalIndependentDeliveryGroup<P extends SharedSelectionPolicy>(owners:readonly OperationalIndependentDeliveryParticipant<P>[]):OperationalCohortReservation<Readonly<IndependentOperationParticipantParts<P>>>{return reserve(owners);}
+let resumeComplete:typeof OperationalIndependentDeliveryParticipant.resume;
+/** SDK-only admission of an already complete source. It never publishes a parent. */
+export const resumeCompletedOperationalIndependentDeliveryParticipant:typeof OperationalIndependentDeliveryParticipant.resume=input=>resumeComplete(input);
 export class OperationalIndependentDeliveryParticipant<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
  readonly #state:State<P>;readonly #file:Blob;#exposed=false;#closed=false;#busy=false;#readToken:object|undefined;
  private constructor(token:object,state:State<P>){if(token!==key)throw fail('independent_operation_closed');this.#state=state;this.#file=archive.file.call(state.p.backup);Object.freeze(this);}
@@ -111,13 +114,15 @@ export class OperationalIndependentDeliveryParticipant<P extends SharedSelection
  }
  /** Cold resume reads the actual retained original, cut intent, source and whole uploads.
   * An interrupted handoff never requires manufacturing another recovered-owner marker. */
- static async resume<Q extends SharedSelectionPolicy>(input:IndependentOperationParticipantOptions<Q>):Promise<OperationalIndependentDeliveryParticipant<Q>>{
+ static{resumeComplete=input=>OperationalIndependentDeliveryParticipant.#resume(input,true);}
+ static resume<Q extends SharedSelectionPolicy>(input:IndependentOperationParticipantOptions<Q>):Promise<OperationalIndependentDeliveryParticipant<Q>>{return OperationalIndependentDeliveryParticipant.#resume(input,false);}
+ static async #resume<Q extends SharedSelectionPolicy>(input:IndependentOperationParticipantOptions<Q>,completeOnly:boolean):Promise<OperationalIndependentDeliveryParticipant<Q>>{
   const choice=snapshotOperationParticipant(input,false),leases:RecoveryLease[]=[],owners:OperationParticipantOwners<Q>={};let opening:RecoveryOpeningCustody|undefined,p:PreparedIndependentDeliveryRecovery<Q>|undefined,journal:IndependentOperationCutJournal|undefined,recoveryDb:IDBDatabase|undefined,state:State<Q>|undefined;
   try{
    opening=await RecoveryOpeningCustody.reserve(choice.context,names(choice),async()=>{await closeOperationParticipantOwners(owners,true);await journal?.close();if(p&&!journal)archive.dispose.call(p.backup);recoveryDb?.close();const settled=await Promise.allSettled([...leases].reverse().map(lease=>lease.close()));if(settled.some(r=>r.status==='rejected'))throw fail('independent_operation_cleanup');},openingErrors);choice.guard();
    for(const name of names(choice).filter(n=>n!==choice.database)){leases.push(await RecoveryLease.acquire(JSON.stringify(name)));choice.guard();}
    p=await prepareColdOperationParticipant(choice);choice.guard();recoveryDb=await existingDatabase(p.options.database);choice.guard();if(!recoveryDb)throw fail('independent_operation_missing');recoveryDb.onversionchange=()=>{choice.life.changed=true;recoveryDb!.close();};await verifyOperationRetainedRecovery(p,recoveryDb);
-   journal=await IndependentOperationCutJournal.resume({database:choice.database,sourceDatabase:choice.sourceDatabase,prepared:p,writerRecovery:'host-reacquired'});choice.guard();state={choice,p,journal,owners,recoveryDb,leases};await openOperationUploads(p,owners);choice.guard();owners.session=await openJournaledIndependentDelivery(inheritActorLeaseInput(p.factory,{...p.factory,database:choice.sourceDatabase}),journal);choice.guard();await retained(state);const witness=await operationParticipantWitness(p,owners,journal);try{witness.check();const result=new OperationalIndependentDeliveryParticipant(key,state);witness.check();opening.complete();result.#exposed=true;return result;}finally{witness.release();}
+   journal=await IndependentOperationCutJournal.resume({database:choice.database,sourceDatabase:choice.sourceDatabase,prepared:p,writerRecovery:'host-reacquired'});choice.guard();state={choice,p,journal,owners,recoveryDb,leases};if(completeOnly){const cut=await journal.snapshot();choice.guard();if(cut.current===null||cut.pending!==null)throw fail('independent_operation_not_ready');}await openOperationUploads(p,owners);choice.guard();owners.session=await openJournaledIndependentDelivery(inheritActorLeaseInput(p.factory,{...p.factory,database:choice.sourceDatabase}),journal);choice.guard();await retained(state);const witness=await operationParticipantWitness(p,owners,journal);try{witness.check();const result=new OperationalIndependentDeliveryParticipant(key,state);witness.check();opening.complete();result.#exposed=true;return result;}finally{witness.release();}
   }catch(error){if(opening)await opening.rollback();throw error;}
  }
  #readable():void{if(!this.#exposed||this.#closed)throw fail('independent_operation_closed');}

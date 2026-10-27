@@ -5,8 +5,8 @@ import type {SharedAssetReferenceCapture} from "../asset_references_capture.js";
 import type {SharedGenerationSourceCapture} from "../generation_source/capture.js";
 import {SharedParticipantRecovery,type RecoveredSharedParticipant} from "../participant_recovery/recovery.js";
 import {SharedGenerationParticipantRecovery,type RecoveredSharedGenerationParticipant} from "../generation_participant/recovery.js";
-import {OperationalSharedParticipant,resumeOperationalFromRecovered,verifyOperationalParticipantAtOrigin} from "../participant_operation/operation.js";
-import {OperationalSharedGenerationParticipant,verifyOperationalGenerationAtOrigin} from "../generation_operation/operation.js";
+import {OperationalSharedParticipant,resumeCompletedOperationalSharedParticipant,resumeOperationalFromRecovered,verifyOperationalParticipantAtOrigin} from "../participant_operation/operation.js";
+import {OperationalSharedGenerationParticipant,resumeCompletedOperationalSharedGenerationParticipant,verifyOperationalGenerationAtOrigin} from "../generation_operation/operation.js";
 import type {SharedParticipantOperationCurrentPolicy} from "../participant_operation/types.js";
 import type {V2StagedPolicy} from "../room_recovery_catalog_v2/prepare_stage.js";
 import type {V2StagedParticipant} from "../room_recovery_catalog_v2/staged_participant.js";
@@ -40,13 +40,14 @@ async function reopenReady(child:V2OperationChild,guard:()=>void,scope:RecoveryC
   guard();await attempt.close();cleanup.complete();
  }catch(error){await cleanup.rollback();throw error;}
 }
-export async function openV2ChildOperation(child:V2OperationChild,database:string,present:boolean,guard:()=>void,scope:RecoveryCleanupScope,signal?:AbortSignal):Promise<void>{
+export async function openV2ChildOperation(child:V2OperationChild,database:string,present:boolean,guard:()=>void,scope:RecoveryCleanupScope,signal?:AbortSignal,completeOnly=false):Promise<void>{
  const options=v2PolicyOptions(child.policy),context=recoveryOpeningContext(),names=[database,options.database,...Object.values(options.destinations)],cleanup=scope.retain(()=>drainFailedRecoveryOpenings(context,names));
- try{await openHeldV2ChildOperation(child,database,present,guard,scope,signal);cleanup.complete();}catch(error){await cleanup.rollback();throw error;}
+ try{await openHeldV2ChildOperation(child,database,present,guard,scope,signal,completeOnly);cleanup.complete();}catch(error){await cleanup.rollback();throw error;}
 }
 /** Parent cleanup can drain both component recovery and operational factory
  * failures without revoking or closing an owner that was actually returned. */
-async function openHeldV2ChildOperation(child:V2OperationChild,database:string,present:boolean,guard:()=>void,scope:RecoveryCleanupScope,signal?:AbortSignal):Promise<void>{
+async function openHeldV2ChildOperation(child:V2OperationChild,database:string,present:boolean,guard:()=>void,scope:RecoveryCleanupScope,signal?:AbortSignal,completeOnly=false):Promise<void>{
+ if(completeOnly&&(!present||child.ready||child.operation&&child.currentPolicyPending))throw v2Failure('room_v2_diverged');
  if(child.operation&&!child.currentPolicyPending)return;
  // A prior close may have failed after publishing a child under staged policy.
  // Retain that actual owner for retry, never mistake it for current admission.
@@ -55,13 +56,13 @@ async function openHeldV2ChildOperation(child:V2OperationChild,database:string,p
  if(child.family==="original"){
   const p=child.policy.value.options;
   if(child.ready){const input={database,recovered:child.ready,expected:p.expected,checkAuthority:guard,...(signal?{signal}:{})};child.operation=await(present?resumeOperationalFromRecovered(input):OperationalSharedParticipant.begin(input));child.ready=undefined;}
-  if(child.currentPolicyPending){if(child.operation){await child.operation.close();child.operation=undefined;guard();}const{backup:_backup,database:recoveryDatabase,...rest}=p;child.operation=await OperationalSharedParticipant.resume({...rest,database,recoveryDatabase,currentPolicy:child.currentPolicy});child.currentPolicyPending=false;}
+  if(child.currentPolicyPending){if(child.operation){await child.operation.close();child.operation=undefined;guard();}const{backup:_backup,database:recoveryDatabase,...rest}=p;child.operation=await(completeOnly?resumeCompletedOperationalSharedParticipant({...rest,database,recoveryDatabase,currentPolicy:child.currentPolicy}):OperationalSharedParticipant.resume({...rest,database,recoveryDatabase,currentPolicy:child.currentPolicy}));child.currentPolicyPending=false;}
  }else{
   const p=child.policy.options;
   if(child.ready){const input={database,recovered:child.ready,expected:p.expected,checkAuthority:guard,...(signal?{signal}:{})};child.operation=await(present?OperationalSharedGenerationParticipant.resumeRecovered(input):OperationalSharedGenerationParticipant.begin(input));child.ready=undefined;}
   if(child.currentPolicyPending){if(child.operation){await child.operation.close();child.operation=undefined;guard();}
    const{backup:_backup,database:recoveryDatabase,...rest}=p,o=p.session.options,review=o.review,session={kind:p.session.kind,options:inheritActorLeaseInput(o,{...o,readOnly:child.currentPolicy.documentReadOnly,...(review?{review:{...review,access:child.currentPolicy.reviewAccess!}}:{})})} as typeof p.session;
-   child.operation=await OperationalSharedGenerationParticipant.resume({...rest,session,database,recoveryDatabase});child.currentPolicyPending=false;
+   child.operation=await(completeOnly?resumeCompletedOperationalSharedGenerationParticipant({...rest,session,database,recoveryDatabase}):OperationalSharedGenerationParticipant.resume({...rest,session,database,recoveryDatabase}));child.currentPolicyPending=false;
   }
  }
  child.source?.dispose();child.source=undefined;guard();

@@ -1,0 +1,6 @@
+/** Preserve every previous cold/warm law and add explicit non-repairing admission. */
+import {coldRoomRecoveryWorkload as prior} from './cold-room-recovery-workload.mjs';
+export const completedRoomInspectionWorkload=Object.freeze({assertions:340,priorAssertions:321,newInspectionAssertions:19,
+ tests:Object.freeze([...prior.tests,'complete-existing-entry.test.mjs','cold-room-completed-only-sdk.test.mjs']),
+ types:Object.freeze([...prior.types,'types-complete-existing-room.ts']),
+ scope:'All321 prior warm/ordinary-cold/fresh-actor laws plus19 explicit completed-source inspection laws. Strict inspection refuses incomplete root/child parents and actual prepared native saves without repairing source bytes. Deliberate ordinary recovery still recovers prepared native work with Undo/Redo. The controlled complete-existing route does not change ordinary defaults or serialized formats, and never supplies a grant from completion DATA. These functional laws do not certify physical crash durability, cold continuation of incomplete replacement builds, provider/client reconciliation, independent comment/server-log generations, authenticated activation, sustainable retention, complete release qualification or V1 parity.'});

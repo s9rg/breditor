@@ -80,6 +80,9 @@ function snapshot<P extends SharedSelectionPolicy>(input:SharedParticipantOperat
  return{...input,expected:participantSelection(input.expected),destinations:{...input.destinations},session:{kind:input.session.kind,options} as SharedParticipantOperationResumeOptions<P>["session"],...(input.suggestions?{suggestions:{...input.suggestions,identity:{...input.suggestions.identity}}}:{}),...(input.revisions?{revisions:{...input.revisions}}:{}),...(input.versions?{versions:{...input.versions,identity:{...input.versions.identity}}}:{}),...(input.limits?{limits:{...input.limits}}:{}),currentPolicy:operationPolicy(input.currentPolicy,input.session.kind.includes("paired"))};
 }
 /** Durable storage custody, not account authentication, provider closure or room activation. */
+let resumeComplete:typeof OperationalSharedParticipant.resume;
+/** SDK-only admission of an already complete source. It never publishes a parent. */
+export const resumeCompletedOperationalSharedParticipant:typeof OperationalSharedParticipant.resume=input=>resumeComplete(input);
 export class OperationalSharedParticipant<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
  readonly #state:State<P>;#closed=false;#busy=false;#released=false;
  readonly #readCleanup=new RecoveryCleanupScope(()=>operationFailure());#failedReadCleanup=false;
@@ -139,16 +142,18 @@ export class OperationalSharedParticipant<P extends SharedSelectionPolicy=Shared
   }catch(error){if(opening)await opening.rollback();throw failure(error);}
  }
  /** Reopen retained source and actual current journals with fresh explicit native policies. */
- static async resume<Q extends SharedSelectionPolicy>(supplied:SharedParticipantOperationResumeOptions<Q>):Promise<OperationalSharedParticipant<Q>>{
+ static{resumeComplete=input=>OperationalSharedParticipant.#resume(input,true);}
+ static resume<Q extends SharedSelectionPolicy>(supplied:SharedParticipantOperationResumeOptions<Q>):Promise<OperationalSharedParticipant<Q>>{return OperationalSharedParticipant.#resume(supplied,false);}
+ static async #resume<Q extends SharedSelectionPolicy>(supplied:SharedParticipantOperationResumeOptions<Q>,completeOnly:boolean):Promise<OperationalSharedParticipant<Q>>{
   const input=snapshot(supplied),life={changed:false},authority=participantAuthority(input.checkAuthority),guard=()=>{operationSignal(input.signal);if(life.changed)throw operationFailure("operation_versionchange");authority();if(life.changed)throw operationFailure("operation_versionchange");operationSignal(input.signal);};
   const names=[input.database,input.recoveryDatabase,...Object.values(input.destinations)];for(const name of names)operationName(name);if(new Set(names).size!==names.length)throw operationFailure("operation_policy");guard();
   const leases:RecoveryLease[]=[],owners:RecoveryOwners<Q>={};let backup:SharedParticipantBackup|undefined,origin:ParticipantOrigin|undefined,db:IDBDatabase|undefined,recoveryDb:IDBDatabase|undefined,opening:RecoveryOpeningCustody|undefined;
   try{
    opening=await RecoveryOpeningCustody.reserve(recoveryOpeningContext(),names,async()=>{const results=await Promise.allSettled([Promise.resolve().then(()=>discardRecoveryOwners(owners)),Promise.resolve().then(()=>origin?.dispose()),Promise.resolve().then(()=>backup?.dispose()),Promise.resolve().then(()=>db?.close()),Promise.resolve().then(()=>recoveryDb?.close()),...[...leases].reverse().map(lease=>Promise.resolve().then(()=>lease.close()))]);if(results.some(row=>row.status==="rejected"))throw operationFailure();},{policy:()=>operationFailure("operation_policy"),busy:()=>operationFailure("operation_in_use"),storage:()=>operationFailure()});guard();for(const name of names.sort()){leases.push(await RecoveryLease.acquire(JSON.stringify(name)));guard();}
    db=await existingOperationDatabase(input.database,current=>fence(current,life));const saved=await readOperationDatabase(db);guard();if(saved.record.recoveryDatabase!==input.recoveryDatabase)throw operationFailure("operation_diverged");
-   backup=await SharedParticipantBackup.read(saved.file,input.expected,{...(input.limits?{limits:input.limits}:{}),...(input.signal?{signal:input.signal}:{})});guard();const p=guarded(await prepareOperationalResume(input,backup),life);operationDestination(input.database,p);let record=saved.record;if(record.plan!==p.record.plan)throw operationFailure("operation_diverged");
+   backup=await SharedParticipantBackup.read(saved.file,input.expected,{...(input.limits?{limits:input.limits}:{}),...(input.signal?{signal:input.signal}:{})});guard();const p=guarded(await prepareOperationalResume(input,backup),life);operationDestination(input.database,p);let record=saved.record;if(completeOnly&&saved.record.phase!=='operational')throw operationFailure('operation_not_ready');if(record.plan!==p.record.plan)throw operationFailure("operation_diverged");
    recoveryDb=await existingDatabase(p.database);if(!recoveryDb)throw operationFailure("operation_missing");fence(recoveryDb,life);const old=await readRecoveryJournal(recoveryDb,p.record);p.guard();if(old.phase!=="ready")throw operationFailure("operation_diverged");
-   origin=await ParticipantOrigin.read(p as unknown as PreparedRecovery<SharedSelectionPolicy>);p.guard();await openOperationalComponents(p,origin,input.currentPolicy,owners);p.guard();const state={p,origin,owners,db,recoveryDb,leases,record,life,currentGuard:guard};await retained(state);await verifyOperationalOwners(p,owners,origin);
+   origin=await ParticipantOrigin.read(p as unknown as PreparedRecovery<SharedSelectionPolicy>);p.guard();await openOperationalComponents(p,origin,input.currentPolicy,owners,completeOnly);p.guard();const state={p,origin,owners,db,recoveryDb,leases,record,life,currentGuard:guard};await retained(state);await verifyOperationalOwners(p,owners,origin);
    if(record.phase==="prepared"){await exact(p,owners);record=await publishParticipantOperation(db,record,p.guard,p.signal);state.record=record;p.guard();await retained(state);await verifyOperationalOwners(p,owners,origin);}
    const result=new OperationalSharedParticipant(key,state);opening.complete();return result;
   }catch(error){if(opening)await opening.rollback();throw failure(error);}

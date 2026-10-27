@@ -8,7 +8,7 @@ import {participantAuthority} from '../participant_backup/policy.js';
 import {observeIndependentRecoveryAbort} from '../independent_recovery/signal.js';
 import {retainInternalFailureCause} from '../internal_failure_cause.js';
 import {createOriginalRecordRead,type OriginalRecordRead,type OriginalVersionRecords} from '../persistence/original_record_read.js';
-import {isOperationalComponent} from "../participant_operation/component_admission.js";
+import {isOperationalComponent,isCompletedOperationalComponent} from "../participant_operation/component_admission.js";
 import {existingOperationalComponent} from "../participant_operation/existing_component.js";
 import {operationFailure} from "../participant_operation/errors.js";
 import {encodeRetainedStoreBackup,decodeRetainedStoreBackup,checkRetainedStoreRecovery,checkRetainedStoreSignal,retainedStoreNativeAdmission} from "../backups/retained_store.js";
@@ -77,7 +77,7 @@ export class VersionCatalogStore<P extends SharedSelectionPolicy=SharedSelection
    if(recovered){if(await retainedStoreDestinationExists(db!,"catalogs",cacheKey(identity),signal))throw new SharedEditorError("backup_destination_exists","Retained restore destination already contains a record");saved=recovered;}else saved=atomic?checkCatalogRecord(atomic.read(),identity):await readCatalogRecord(db!,identity);
    if(retained&&(!saved||JSON.stringify(saved)!==JSON.stringify(retained.record)))throw operationFailure("operation_diverged");
    let recordSource:object|undefined;try{if(managedSourceCore(source)===core)recordSource=source;}catch{/* Custom borrowed storage keeps its old editing API, not new managed-read custody. */}
-   assertSource();checkManagedCore(core);const record=saved??{format:"breditor/shared-version-catalog-cache" as const,formatVersion:1 as const,identity,catalog:null,packets:[]},create=()=>new VersionCatalogStore(constructionKey,options,db,lease,record,assertSource,atomic,recordSource);store=recovered?retainedStoreNativeAdmission(create):create();checkManagedCore(core);retained?.assertCurrent();store.#restoreInsert=recovered!==undefined;store.#restoreSignal=signal;store.#pending=record;store.#start();await store.flush();assertSource();checkManagedCore(core);checkRetainedStoreSignal(signal);return store;}
+   assertSource();checkManagedCore(core);const record=saved??{format:"breditor/shared-version-catalog-cache" as const,formatVersion:1 as const,identity,catalog:null,packets:[]},create=()=>new VersionCatalogStore(constructionKey,options,db,lease,record,assertSource,atomic,recordSource);store=recovered?retainedStoreNativeAdmission(create):create();checkManagedCore(core);retained?.assertCurrent();store.#restoreInsert=recovered!==undefined;store.#restoreSignal=signal;if(isCompletedOperationalComponent(input)){if(!retained||!saved||recovered||atomic)throw operationFailure('operation_diverged');store.#saved=JSON.stringify(record);store.#durable=new Map(record.packets.map(value=>[core.readVersion(value.packet).id,structuredClone(value)]));}else{store.#pending=record;store.#start();await store.flush();}assertSource();checkManagedCore(core);checkRetainedStoreSignal(signal);return store;}
   catch(error){if(store)await store.discardAndClose();else{db?.close();await lease.close();}throw error;}
  }
  #live(checkSource=true):void{if(this.#closed)throw new SharedRelayError("version_cache_closed");this.#lease.assertLive();if(checkSource)this.#assertSource();}

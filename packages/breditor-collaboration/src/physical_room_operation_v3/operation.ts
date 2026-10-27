@@ -20,7 +20,7 @@ import {PhysicalOperationV3Cancellation} from './storage_cancellation.js';
 import {preflightPhysicalOperationV3} from './preflight.js';
 import {physicalOperationV3PolicyFields as fields,snapshotPhysicalOperationV3Policy as snapshot} from './policy_snapshot.js';
 import {initialPhysicalOperationV3Record,type PhysicalOperationV3Record} from './record.js';
-import {physicalOperationV3LegacyPolicies,openPhysicalOperationV3Child,closePhysicalOperationV3Child,physicalOperationV3Present,checkPhysicalOperationV3WriterPolicies,type PhysicalOperationV3Child} from './child.js';
+import {physicalOperationV3LegacyPolicies,openPhysicalOperationV3Child,closePhysicalOperationV3Child,physicalOperationV3Present,checkPhysicalOperationV3WriterPolicies,requirePhysicalOperationV3Components,type PhysicalOperationV3Child} from './child.js';
 import type {MixedCatalogStagePolicy} from '../mixed_catalog_stage/prepare.js';
 import type {PhysicalOperationV3BeginOptions,PhysicalOperationV3ResumeOptions,PhysicalOperationV3OpenOptions,PhysicalOperationV3Progress,PhysicalOperationV3Parts} from './contract.js';
 import {physicalOperationV3Failure as fail,physicalOperationV3Known as known,physicalOperationV3Database as dbName} from './policy.js';
@@ -44,6 +44,10 @@ let openWithActors:(input:PhysicalOperationV3BeginOptions|PhysicalOperationV3Res
  * their original host-reacquisition semantics. Actor custody stays with caller. */
 export const beginPhysicalRootKeepingActors=(input:PhysicalOperationV3BeginOptions,actors:StoppedActorCohort)=>openWithActors(input,true,actors);
 export const resumePhysicalRootKeepingActors=(input:PhysicalOperationV3ResumeOptions,actors:StoppedActorCohort)=>openWithActors(input,false,actors);
+let reopenCompleted:(owner:PhysicalRoomClientOperationV3)=>Promise<PhysicalOperationV3Progress>;
+/** SDK-only inspection of a complete existing root. Unlike finish, this refuses
+ * incomplete children instead of repairing them. A DTO never grants an owner. */
+export const reopenCompletedPhysicalRoot=(owner:PhysicalRoomClientOperationV3)=>reopenCompleted(owner);
 const key=Object.freeze({});
 const errors={policy:()=>fail('physical_operation_v3_policy'),busy:()=>fail('physical_operation_v3_in_use'),storage:()=>fail()};
 interface State{
@@ -138,6 +142,7 @@ export class PhysicalRoomClientOperationV3{
    }catch(error){if(owner.#moved)throw error;try{await proposal?.abandon();}finally{if(ticket)await ticket.rollback();else await root?.abandon();}throw error;}
   },error=>error instanceof Error?error:known(error));
  };}
+ static{reopenCompleted=owner=>{if(!owner||typeof owner!=='object'||!(#s in owner))return Promise.reject(fail('physical_operation_v3_policy'));return owner.#reopenComplete();};}
  static{openWithActors=async(input,begin,actors)=>{checkPhysicalRootActors(actors);return PhysicalRoomClientOperationV3.#open(input,begin,actors);};}
  static begin(input:PhysicalOperationV3BeginOptions):Promise<PhysicalRoomClientOperationV3>{return PhysicalRoomClientOperationV3.#open(input,true);}
  static resume(input:PhysicalOperationV3ResumeOptions):Promise<PhysicalRoomClientOperationV3>{return PhysicalRoomClientOperationV3.#open(input,false);}
@@ -194,6 +199,15 @@ export class PhysicalRoomClientOperationV3{
    if(current.state!=='complete')await this.#update({...s.record,participants:s.record.participants.map((row,i)=>i===index?{...row,state:'complete'}:row)});
   }
   await this.#retained();if(s.record.phase==='prepared')await this.#update({...s.record,phase:'operational'});await this.#verify();if(s.actorRoutes)await this.#verifyActorRoutes();return this.#progress();
+ });}
+ /** No stage writes, missing-component creation or replay is permitted while
+  * inspecting an original. Deliberate target construction still uses finish. */
+ #reopenComplete():Promise<PhysicalOperationV3Progress>{return this.#run(async()=>{const s=this.#s;await this.#rollback.drain();await this.#retained();
+  if(s.record.phase!=='operational'||s.record.participants.some(row=>row.state!=='complete'))throw fail('physical_operation_v3_restore');
+  for(const child of s.children)await requirePhysicalOperationV3Components(child,this.#guard);
+  for(const child of s.children){const cleanup=this.#rollback.retain(()=>drainFailedRecoveryOpenings(s.held.factory,child.selected.target.namespaces.map(ns=>ns.database),()=>fail()));
+   try{await openPhysicalOperationV3Child(child,s.held.state,s.policies,true,this.#guard,this.#rollback,true);this.#guard();cleanup.complete();}catch(error){await cleanup.rollback();throw error;}
+  }await this.#verify();if(s.actorRoutes)await this.#verifyActorRoutes();return this.#progress();
  });}
  /** A saved completion row is insufficient: the actual final sources must own
   * every current loan. The held native registry never exposes mutable cores. */

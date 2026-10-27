@@ -1,0 +1,145 @@
+{
+  "format": "breditor/completed-room-inspection-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-27T13:32:30.676Z",
+  "qualification": "selected-functional-architectural-increment-not-v1-release",
+  "workingTreeSourceAtVerification": {
+    "commit": "e6f44cefca4cdf402e51b0a2839e8f559cce6064",
+    "dirty": true,
+    "sha256": "36adf786d44f213d123a528e5664e6854aaf670203397e0b5b9535aeca1f6c0c",
+    "files": 6788,
+    "bytes": 52800221
+  },
+  "qualificationMetadataAddedAfterRun": true,
+  "postVerificationSourceAdditions": [
+    "docs/qualification/2026-10-27-completed-room-inspection.json"
+  ],
+  "normal": {
+    "selectedCandidateStages": 10,
+    "sourceTests": 340,
+    "offlineInstalledTests": 340,
+    "actualProductionBundleTests": 340,
+    "priorWarmAndOrdinaryColdTestsRepeated": 321,
+    "newInspectionCases": 19,
+    "strictTypeFixtures": 12,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0,
+    "fullCandidateExecuted": false,
+    "fullSelectedOwnerMatrixRerun": false
+  },
+  "implementation": {
+    "contract": "docs/COMPLETE_EXISTING_ROOM_INSPECTION.md",
+    "completeExistingInspectionSeparateFromRepair": true,
+    "incompleteRootOrChildRefusedBeforeNativeOpen": true,
+    "actualPreparedNativeSavesRefusedWithoutAcknowledgement": true,
+    "explicitOrdinaryRecoveryPreservesPreparedWorkAndNativeUndoRedo": true,
+    "sevenNativeSourceFamilies": true,
+    "actualPreparedNativeSaveFamilies": 5,
+    "healthyInspectionPreviewAndCloseIssueNoSourceMutators": true,
+    "exactExistingOriginalNativeAndDependentRecordsInitializeSavedBookkeeping": true,
+    "unreturnedRestoredSourceOwnedBeforeAdmissionCanReject": true,
+    "failedNativeCleanupRetainsActualSourceAndJournalForRetry": true,
+    "cleanupRetryNeedsNoProbeOnlyHandleOrRenewedReadPermission": true,
+    "ordinaryRecoveryDefaultsAndSerializedFormatsUnchanged": true,
+    "noSerializedCompletionFlagProvidesOwnership": true,
+    "localOwnershipIsNotAuthenticatedActivation": true
+  },
+  "reproducedBugs": {
+    "healthyInspectionStartupWrite": {
+      "unfixedFailed": 1,
+      "correctedPassed": 1
+    },
+    "unreturnedRestoredGraphSourceLostAfterAdmissionAndCleanupFailure": {
+      "unfixedFailed": 1,
+      "correctedPassed": 1
+    },
+    "targetedNormalCompilerContracts": {
+      "passed": 6,
+      "failed": 0
+    }
+  },
+  "products": {
+    "count": 2042,
+    "unchanged": 2007,
+    "changed": 31,
+    "added": 4,
+    "removed": 0,
+    "publicRootsUnchanged": true
+  },
+  "native": {
+    "freshFiles": 100,
+    "profileAndWireRooms": 10,
+    "unchangedSourceAndBuildInputs": 2899,
+    "normalWasmSha256": "946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0",
+    "rustSuitesRerun": false
+  },
+  "controls": [
+    {
+      "name": "inspection-not-repair",
+      "removedActualExit": 1,
+      "restoredActualExit": 0,
+      "removedFailures": 2,
+      "restoredPasses": 2,
+      "implementationSha256": "36fdb6a93a03d689c4f57bdd2ef05ddd451ab625e69395a6044f4b28cfab8793",
+      "byteExactRestore": true
+    },
+    {
+      "name": "pending-delivery",
+      "removedActualExit": 1,
+      "restoredActualExit": 0,
+      "removedFailures": 1,
+      "restoredPasses": 1,
+      "implementationSha256": "4aa06f5405c253660c2431f9f92082eb73edc101bc7aae17389abf7774c2afe8",
+      "byteExactRestore": true
+    },
+    {
+      "name": "pending-graph",
+      "removedActualExit": 1,
+      "restoredActualExit": 0,
+      "removedFailures": 1,
+      "restoredPasses": 1,
+      "implementationSha256": "8d5270c2d1486f3815ab87338b0449484a2221e24c128235424444c73b995bec",
+      "byteExactRestore": true
+    },
+    {
+      "name": "unreturned-source-reference",
+      "removedActualExit": 1,
+      "restoredActualExit": 0,
+      "removedFailures": 1,
+      "restoredPasses": 1,
+      "implementationSha256": "88a63a19638460e24a544e8ea9083a4a03025450fb9c004518cf1d0a951a51e2",
+      "byteExactRestore": true
+    }
+  ],
+  "endpoints": {
+    "count": 920,
+    "manifests": 93,
+    "allConfirmedClosed": true
+  },
+  "retainedProof": {
+    "path": "target/completed-room-inspection-proof-wxoD6Z/index.json",
+    "sha256": "f15398e3f70c6323f639fcce89d0be0837511436955a7fcbcdeb4ffa528a9a88",
+    "files": 616
+  },
+  "previousCheckpoint": {
+    "commit": "e6f44cefca4cdf402e51b0a2839e8f559cce6064",
+    "qualification": "docs/qualification/2026-10-27-cold-room-recovery.json"
+  },
+  "limitations": [
+    "Complete-existing inspection is a prerequisite, not cold continuation of an interrupted replacement build. That execution must independently verify the full original cut and retain source assets, partial targets and cleanup obligations through the final barrier.",
+    "A subsequent isolated reproduction found the same unreturned-source cleanup loss in the independent-local and independent-delivery helpers. Those two repairs are the next architectural increment and are not covered by this checkpoint.",
+    "Captured unsaved native work, dependent review packets and later original work must not be dropped in favor of the last saved checkpoint. Conflicting current work requires explicit reconciliation rather than overwrite.",
+    "Provider/client reconciliation, authenticated whole-room activation, independent comment/server-log lifecycle work, sustainable Undo/offline/asset retention and remaining feature parity are still required.",
+    "Controlled IndexedDB, cooperative locks and local native services do not certify physical crash durability, native OS input, cross-browser reliability, accessibility or the full failure cross product.",
+    "All340 declared laws repeat on source, offline-installed archives and an actual production bundle. This is not the complete V1 candidate or a fresh Rust suite matrix."
+  ],
+  "v1Ready": false,
+  "openV1GateCount": 13,
+  "versionsChanged": false,
+  "publicRootApisChanged": false,
+  "pushed": false,
+  "published": false,
+  "tagged": false,
+  "deployed": false
+}

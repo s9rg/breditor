@@ -1,3 +1,4 @@
+import {isCompletedSourceOpen} from './completed_source_open.js';
 import {requireLiveActorCore}from'./stopped_actor_source.js';
 import {registerNativeActorSource}from'./native_actor_source.js';
 import {checkSharedWriterLeaseForEscrow}from'./writer_lease.js';
@@ -141,7 +142,7 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
   const identity:SharedBackupIdentity={room:options.room,writer:options.writer,richLanguage:options.richLanguage,history:options.history,rangeEditing:options.rangeEditing,selectionEditing:options.selectionEditing,searchHistory:search?"search-v1":null},backup=await decodeSharedPairedSessionBackup(backupJson,identity),restoreSaved:SharedReviewSessionOptions<Q>["restore"]=async(checkpoint,policy)=>{try{return await restore.call(options,checkpoint,policy);}catch{throw new SharedEditorError("backup_native_replay","Matching native paired document replay rejected the backup");}};
   return this.#open(inheritActorLeaseInput(input,{...options,create:()=>{throw new SharedEditorError("backup_native_replay","Paired backup import cannot fall back to a new document");}}),restoreSaved,reviewed,search,backup);
  }
- static async #open<Q extends SharedSelectionPolicy>(input:Omit<SharedReviewSessionOptions<Q>,"restore">,restoreSaved:SharedReviewSessionOptions<Q>["restore"],reviewed?:SharedReviewedHistoryIdentity,search=false,backup?:SharedPairedSessionBackup):Promise<SharedReviewPersistentSession<Q>>{
+ static async #open<Q extends SharedSelectionPolicy>(input:Omit<SharedReviewSessionOptions<Q>,"restore">,restoreSaved:SharedReviewSessionOptions<Q>["restore"],reviewed?:SharedReviewedHistoryIdentity,search=false,backup?:SharedPairedSessionBackup,completeOnly=isCompletedSourceOpen(input)):Promise<SharedReviewPersistentSession<Q>>{
   const actorInput=input,recoveryOrigin=recoveryOriginFor(input);
   if(input.editor&&"segmentedHistory" in input.editor&&input.editor.segmentedHistory!==undefined)throw new SharedEditorError("segmented_session_factory","Use the explicitly generation-aware paired family");
   if("searchHistory" in input&&input.searchHistory!==undefined)throw new SharedEditorError("search_session_factory","Select search history through the explicit paired search factory");
@@ -157,6 +158,7 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
    const opening=retained?.opening??fenceOpeningDatabase(db,"review_open_versionchange");
    if(backup&&await backupDestinationExists(db,[options.room,options.writer]))throw new SharedEditorError("backup_destination_exists","Paired backup destination already contains a record");
    const saved=backup?readPairedBackupRecord(backup.recordJson,backup.identity):await(search?readSearchReviewRecord(db,[options.room,options.writer]):reviewed?readReviewedReviewRecord(db,[options.room,options.writer]):options.relay?.reviewEditing==="read_only"?readReviewObserverRecord(db,[options.room,options.writer]):options.relay?readReviewRelayRecord(db,[options.room,options.writer]):readReviewRecord(db,[options.room,options.writer]));
+   if(completeOnly&&(backup||!saved))throw new SharedEditorError('completed_source_required','Inspection requires an existing exact paired source');
    if(recoveryOrigin&&!saved)throw new SharedEditorError("recovery_origin_missing","The operational paired journal is absent");
    if(backup&&saved?.format!==(search?"breditor/shared-search-review-checkpoint-record":reviewed?"breditor/shared-reviewed-review-checkpoint-record":options.relay?.reviewEditing==="read_only"?"breditor/shared-review-observer-checkpoint-record":options.relay?"breditor/shared-review-relay-checkpoint-record":"breditor/shared-review-checkpoint-record"))throw new SharedEditorError("backup_paired_identity","The explicitly selected paired recovery family differs from the backup");
    if(search&&saved&&(!("reviewedHistory" in saved)||!!saved.reviewedHistory!==!!reviewed||!!saved.relay!==!!options.relay))throw new SharedEditorError("search_review_identity","Stored search paired family differs from the explicitly selected source");
@@ -177,6 +179,7 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
    if(recoveryOrigin&&(core.checkpointJson()!==saved?.documentCheckpointJson||core.reviewCheckpoint()!==saved?.reviewCheckpointJson))throw new SharedEditorError("recovery_origin_native","Operational native replay must retain both exact stored journals");
    recoveryOrigin?.verify(core as unknown as SharedRichEditor<SharedSelectionPolicy>);
    opening.assertCurrent();const session=new SharedReviewPersistentSession(constructionKey,db,documentLease,reviewLease,core,options,saved!==null,saved?.versions??[],saved&&"progress" in saved?saved.progress??undefined:undefined);nativeBackupAdmission=false;
+   if(completeOnly){try{const record=session.#record();session.#checkRecord(record);const encoded=JSON.stringify(record);if(encoded!==JSON.stringify(saved))throw new SharedEditorError('completed_source_changed','Inspection refuses native or retained metadata normalization');session.#saved=encoded;if('progress' in record&&record.progress)session.#durableRelayProgress=structuredClone(record.progress);return session;}catch(error){await session.discardAndClose();throw error;}}
    if(backup){try{const record=session.#record();session.#checkRecord(record);if(JSON.stringify(record)!==backup.recordJson)throw new SharedEditorError("backup_native_replay","Native paired replay did not preserve the exact canonical histories/catalog");await insertBackupRecord(db,[options.room,options.writer],record);if(session.#failure)throw session.#failure;session.#saved=backup.recordJson;return session;}catch(error){await session.discardAndClose();throw error;}}
    session.save();try{await session.flush();}catch(error){await session.discardAndClose();throw error;}return session;
   }catch(error){

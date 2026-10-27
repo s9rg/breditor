@@ -1,3 +1,4 @@
+import {isCompletedSourceOpen} from './completed_source_open.js';
 import {requireLiveActorCore}from'./stopped_actor_source.js';
 import {registerNativeActorSource}from'./native_actor_source.js';
 import {checkSharedWriterLeaseForEscrow}from'./writer_lease.js';
@@ -136,9 +137,9 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
  /** Lease before reading/restoring. The host supplies the separately named native search factory. */
  static openSearch<Q extends SharedSelectionPolicy>(options:SharedSearchSessionOptions<Q>):Promise<SharedPersistentSession<Q>>{
   if(typeof options.restoreSearch!=="function"||![1,2,3].includes(options.richLanguage)||(options.history!=="explicit"&&options.history!=="typing-v1")||(options.rangeEditing!=="original"&&options.rangeEditing!=="general-v1")||(options.selectionEditing!=="original"&&options.selectionEditing!=="document-v1")||(options.selectionEditing==="document-v1"&&options.rangeEditing!=="general-v1"))return Promise.reject(new SharedEditorError("search_session_policy","Explicit compatible search session policies and recovery are required"));
-  return SharedPersistentSession.#open(inheritActorLeaseInput(options,inheritRecoveryOrigin(options,{...options,restore:options.restoreSearch,restoreDocument:options.restoreSearch,editor:{...options.editor,searchHistory:"search-v1"}})),options.selectionEditing,true);
+  return SharedPersistentSession.#open(inheritActorLeaseInput(options,inheritRecoveryOrigin(options,{...options,restore:options.restoreSearch,restoreDocument:options.restoreSearch,editor:{...options.editor,searchHistory:"search-v1"}})),options.selectionEditing,true,undefined,isCompletedSourceOpen(options));
  }
- static async #open<Q extends SharedSelectionPolicy>(options:SharedSessionOptions|SharedDocumentSessionOptions,selectionPolicy:Q,search=false,backup?:SharedSessionBackup):Promise<SharedPersistentSession<Q>>{
+ static async #open<Q extends SharedSelectionPolicy>(options:SharedSessionOptions|SharedDocumentSessionOptions,selectionPolicy:Q,search=false,backup?:SharedSessionBackup,completeOnly=isCompletedSourceOpen(options)):Promise<SharedPersistentSession<Q>>{
   const actorInput=options,recoveryOrigin=recoveryOriginFor(options);options={...options};
   if(options.editor?.segmentedHistory!==undefined)throw new SharedEditorError("segmented_session_factory","Use the explicitly generation-aware durable family");
   if(!search&&options.editor?.searchHistory!==undefined)throw new SharedEditorError("search_session_factory","Use the explicit search-aware durable factory");
@@ -182,7 +183,7 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
    if(recoveryOrigin){if(checkpoint===null)throw new SharedEditorError("recovery_origin_missing","The operational journal is absent");if(core.checkpointJson()!==checkpoint.json)throw new SharedEditorError("recovery_origin_native","Operational native replay must retain the exact stored journal");recoveryOrigin.verify(core as unknown as SharedRichEditor<SharedSelectionPolicy>);}
    opening.assertCurrent();nativeBackupAdmission=false;
    if(backup){const session=new SharedPersistentSession(constructionKey,db,lease,core,true,options,selectionPolicy,search);try{const checkpointJson=core.checkpointJson();if(checkpointJson!==backup.checkpointJson)throw new SharedEditorError("backup_native_replay","Native replay did not preserve the exact canonical checkpoint");await insertSessionBackup(db,checkpointJson,backup.identity);if(session.#failure)throw session.#failure;session.#saved=checkpointJson;session.#savedRevision=core.view().revision;session.#notify();return session;}catch(error){await session.discardAndClose();throw error;}}
-   const session=new SharedPersistentSession(constructionKey,db,lease,core,checkpoint!==null,options,selectionPolicy,search);session.save();
+   const session=new SharedPersistentSession(constructionKey,db,lease,core,checkpoint!==null,options,selectionPolicy,search);if(completeOnly){try{const json=core.checkpointJson();if(backup||checkpoint===null||json!==checkpoint.json)throw new SharedEditorError('completed_source_required','Inspection requires the exact existing document checkpoint');session.#saved=json;session.#savedRevision=core.view().revision;return session;}catch(error){await session.discardAndClose();throw error;}}session.save();
    try{await session.flush();}catch(error){await session.discardAndClose();throw error;}return session;
   }catch(error){
    try{if(core)disposeOwnedCore(core);}finally{try{if(raw)freeUnclaimedSharedRustOwner(raw);}finally{db?.close();await lease.close();}}

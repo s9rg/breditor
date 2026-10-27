@@ -6,11 +6,11 @@ import type {PhysicalOperationV3PreparedTarget} from './preflight.js';
 import type {CompleteOperationParticipant} from '../complete_operation_cohort/cohort.js';
 import {SharedIndependentParticipantRecovery} from '../independent_recovery/recovery.js';
 import {SharedIndependentDeliveryParticipantRecovery} from '../independent_delivery_recovery/recovery.js';
-import {OperationalIndependentLocalParticipant} from '../independent_local_operation/participant.js';
-import {OperationalIndependentDeliveryParticipant} from '../independent_operation/participant.js';
-import {RestoredOperationParticipant} from '../restored_participant/participant.js';
-import {OperationalRestoredLocalParticipant} from '../restored_local_operation/participant.js';
-import {OperationalFlatLocalParticipant} from '../flat_local_operation/participant.js';
+import {OperationalIndependentLocalParticipant,resumeCompletedOperationalIndependentLocalParticipant} from '../independent_local_operation/participant.js';
+import {OperationalIndependentDeliveryParticipant,resumeCompletedOperationalIndependentDeliveryParticipant} from '../independent_operation/participant.js';
+import {RestoredOperationParticipant,resumeCompletedRestoredOperationParticipant,reopenCompletedRestoredParticipant} from '../restored_participant/participant.js';
+import {OperationalRestoredLocalParticipant,resumeCompletedOperationalRestoredLocalParticipant} from '../restored_local_operation/participant.js';
+import {OperationalFlatLocalParticipant,resumeCompletedOperationalFlatLocalParticipant} from '../flat_local_operation/participant.js';
 import {prepareMixedCatalogStage,type MixedCatalogStagePolicy,type MixedCatalogSavedClient} from '../mixed_catalog_stage/prepare.js';
 import {stageCatalogV2Participant} from '../room_recovery_catalog_v2/staged_participant.js';
 import {transferredV2Children,openV2ChildOperation,closeV2Child,type V2OperationChild} from '../room_operation_v2/children.js';
@@ -45,8 +45,9 @@ export async function physicalOperationV3LegacyPolicies(children:readonly Physic
 /** Completion demands every actual selected component. A missing component is
  * never repaired by silently starting an empty source or upload database. */
 export async function requirePhysicalOperationV3Components(child:PhysicalOperationV3Child,guard:()=>void):Promise<void>{for(const name of child.selected.target.namespaces)if(!await physicalOperationV3Present(name.database,guard))throw fail('physical_operation_v3_missing');}
-export async function openPhysicalOperationV3Child(child:PhysicalOperationV3Child,source:PhysicalCatalogV3ArchiveState,policies:readonly MixedCatalogStagePolicy[],complete:boolean,guard:()=>void,scope:RecoveryCleanupScope):Promise<void>{
- const row=child.selected.input,independent=leafGuard(child);guard();independent();if(complete)await requirePhysicalOperationV3Components(child,guard);if(child.live){if(child.live.family==='restored-graph')await child.live.operation.finish();await child.live.operation.check();guard();return;}
+export async function openPhysicalOperationV3Child(child:PhysicalOperationV3Child,source:PhysicalCatalogV3ArchiveState,policies:readonly MixedCatalogStagePolicy[],complete:boolean,guard:()=>void,scope:RecoveryCleanupScope,completeOnly=false):Promise<void>{
+ if(completeOnly&&!complete)throw fail('physical_operation_v3_restore');
+ const row=child.selected.input,independent=leafGuard(child);guard();independent();if(complete)await requirePhysicalOperationV3Components(child,guard);if(child.live){if(child.live.family==='restored-graph')await(completeOnly?reopenCompletedRestoredParticipant(child.live.operation):child.live.operation.finish());await child.live.operation.check();guard();return;}
  const operation=child.selected.target.namespaces.find(ns=>ns.role==='operation')!.database,present=await physicalOperationV3Present(operation,guard);
  if(row.family==='original'||row.family==='generation'){
   let policy=policies.find(policy=>policy.id===row.id);if(!policy||policy.family!==row.family)throw fail('physical_operation_v3_policy');
@@ -59,12 +60,12 @@ export async function openPhysicalOperationV3Child(child:PhysicalOperationV3Chil
    child.legacy??={family:policy.family,id:row.id,policy,currentPolicy:row.currentPolicy,currentPolicyPending:true,ready:undefined,source:undefined,operation:undefined} as V2OperationChild;
    if(child.legacy.family==='original'&&policy.family==='original')child.legacy.policy=policy;else if(child.legacy.family==='generation'&&policy.family==='generation')child.legacy.policy=policy;else throw fail('physical_operation_v3_diverged');child.legacy.currentPolicy=row.currentPolicy;child.legacy.currentPolicyPending=true;
   }
-  await openV2ChildOperation(child.legacy,operation,present,independent,scope,row.signal);guard();
+  await openV2ChildOperation(child.legacy,operation,present,independent,scope,row.signal,completeOnly);guard();
   child.live=child.legacy.family==='original'?{id:row.id,family:'original',operation:child.legacy.operation!}:{id:row.id,family:'generation',operation:child.legacy.operation!};return;
  }
  const saved=source.clients.get(row.id);if(!saved||saved.family!==row.family)throw fail('physical_operation_v3_diverged');
  if(row.family==='independent-local'){
-  if(present)child.live={id:row.id,family:row.family,operation:await OperationalIndependentLocalParticipant.resume(row.options)};
+  if(present)child.live={id:row.id,family:row.family,operation:await(completeOnly?resumeCompletedOperationalIndependentLocalParticipant(row.options):OperationalIndependentLocalParticipant.resume(row.options))};
   else{
    if(saved.family!=='independent-local')throw fail('physical_operation_v3_diverged');const options=row.options.recovery,bootstrap={...options,checkAuthority:()=>{guard();independent();guard();}},exists=await physicalOperationV3Present(options.database,guard);
    const recovery=await(exists?SharedIndependentParticipantRecovery.resume(bootstrap):SharedIndependentParticipantRecovery.begin({...bootstrap,backup:saved.backup}));let recovered:Awaited<ReturnType<typeof recovery.finish>>|undefined;
@@ -72,7 +73,7 @@ export async function openPhysicalOperationV3Child(child:PhysicalOperationV3Chil
    try{guard();recovered=await recovery.finish();guard();child.live={id:row.id,family:row.family,operation:await OperationalIndependentLocalParticipant.begin({...row.options,recovered})};await recovery.close();cleanup.complete();}catch(error){await cleanup.rollback();throw error;}
   }
  }else if(row.family==='independent-delivery'){
-  if(present)child.live={id:row.id,family:row.family,operation:await OperationalIndependentDeliveryParticipant.resume(row.options)};
+  if(present)child.live={id:row.id,family:row.family,operation:await(completeOnly?resumeCompletedOperationalIndependentDeliveryParticipant(row.options):OperationalIndependentDeliveryParticipant.resume(row.options))};
   else{
    if(saved.family!=='independent-delivery')throw fail('physical_operation_v3_diverged');const options=row.options.recovery,bootstrap={...options,session:row.stagingSession,checkAuthority:()=>{guard();independent();guard();}},exists=await physicalOperationV3Present(options.database,guard);
    const recovery=await(exists?SharedIndependentDeliveryParticipantRecovery.resume(bootstrap):SharedIndependentDeliveryParticipantRecovery.begin({...bootstrap,backup:saved.backup}));let recovered:Awaited<ReturnType<typeof recovery.finish>>|undefined;
@@ -82,11 +83,11 @@ export async function openPhysicalOperationV3Child(child:PhysicalOperationV3Chil
  }else if(row.family==='restored-graph'){
   // The complete latest lineage-v2 file, never inputFile()/previous provenance.
   if(saved.family!=='restored-graph')throw fail('physical_operation_v3_diverged');const file=saved.backup.file();
-  child.live={id:row.id,family:row.family,operation:await(present?RestoredOperationParticipant.resume(row.options):RestoredOperationParticipant.begin(file,row.options))};await child.live.operation.finish();
+  child.live={id:row.id,family:row.family,operation:await(present?(completeOnly?resumeCompletedRestoredOperationParticipant(row.options):RestoredOperationParticipant.resume(row.options)):RestoredOperationParticipant.begin(file,row.options))};await(completeOnly?reopenCompletedRestoredParticipant(child.live.operation):child.live.operation.finish());
  }else if(row.family==='local-operation-snapshot'){
-  if(saved.family!=='local-operation-snapshot')throw fail('physical_operation_v3_diverged');child.live={id:row.id,family:row.family,operation:await(present?OperationalRestoredLocalParticipant.resume(row.options):OperationalRestoredLocalParticipant.begin(saved.backup.file(),row.options))};
+  if(saved.family!=='local-operation-snapshot')throw fail('physical_operation_v3_diverged');child.live={id:row.id,family:row.family,operation:await(present?(completeOnly?resumeCompletedOperationalRestoredLocalParticipant(row.options):OperationalRestoredLocalParticipant.resume(row.options)):OperationalRestoredLocalParticipant.begin(saved.backup.file(),row.options))};
  }else{
-  if(saved.family!=='local-operation-flat')throw fail('physical_operation_v3_diverged');child.live={id:row.id,family:row.family,operation:await(present?OperationalFlatLocalParticipant.resume(row.options):OperationalFlatLocalParticipant.begin(saved.backup.file(),row.options))};
+  if(saved.family!=='local-operation-flat')throw fail('physical_operation_v3_diverged');child.live={id:row.id,family:row.family,operation:await(present?(completeOnly?resumeCompletedOperationalFlatLocalParticipant(row.options):OperationalFlatLocalParticipant.resume(row.options)):OperationalFlatLocalParticipant.begin(saved.backup.file(),row.options))};
  }
  guard();await child.live.operation.check();guard();
 }
