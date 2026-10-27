@@ -1,0 +1,72 @@
+{
+  "format": "breditor/cold-room-execution-checkpoint-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-27T18:40:58.743Z",
+  "qualification": "composed-functional-law-evidence-after-one-test-only-diagnostic-correction",
+  "source": {
+    "commit": "8b0ab697a9e38ab142b1a0da86dda111939f843f",
+    "dirty": true,
+    "sha256": "690bb1654318bab66ea24ea78320076edba0b85c8de5c146159dd1bfe8a90459",
+    "files": 6817,
+    "bytes": 52959089
+  },
+  "baselineSource": {
+    "commit": "8b0ab697a9e38ab142b1a0da86dda111939f843f",
+    "dirty": true,
+    "sha256": "63cdcf21ab45ee31ca4e5d2500ea6b0737fd432b489b668df84459cc7c4d3733",
+    "files": 6817,
+    "bytes": 52959014
+  },
+  "evidence": {
+    "index": "target/cold-room-execution-composed-proof-B5tUHS/index.json",
+    "sha256": "eeb6411b86a18b366e125502e9faa20fc01ad347ebbc33de98070b987fa5c600",
+    "retainedFiles": 560
+  },
+  "baselineFullRuns": {
+    "paths": 3,
+    "testsPerPath": 377,
+    "passedPerPath": 376,
+    "failedPerPath": 1,
+    "skippedPerPath": 0,
+    "cancelledPerPath": 0,
+    "soleFailure": "incorrect outer error expectation for the storage-context fence"
+  },
+  "correctedFullNativeCase": {
+    "paths": 3,
+    "passedPerPath": 1,
+    "failedPerPath": 0,
+    "skippedPerPath": 0,
+    "cancelledPerPath": 0,
+    "sameCaseName": true
+  },
+  "distinctFunctionalAssertionsCoveredPerPath": 377,
+  "freshFullSuiteOnCorrectedSource": false,
+  "baselineFailuresRetained": true,
+  "productionCodeChangedByCorrection": false,
+  "publicErrorMappingChanged": false,
+  "strictConsumerTypeFixtures": 14,
+  "independentRemovedGuardAndExactRestoreControls": 2,
+  "installedPackageProducts": 2062,
+  "normalWasmSha256": "946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0",
+  "actualProductionBundleSha256": "748e7285462bc73b946c6900471cc2cb8448648db14b2a5d23f0f4c449352565",
+  "nativeSourceAndBuildInputsUnchanged": 2899,
+  "nativeInputFiles": 100,
+  "fixtureEndpoints": {
+    "count": 510,
+    "allConfirmedClosed": true
+  },
+  "scope": "Functional local continuation of interrupted seven-family native/asset construction. The failed full-run reports are preserved separately; only the exact diagnostic predicate changed and the affected complete native body passed in all three unchanged implementations.",
+  "publicPackageRootsChanged": false,
+  "protocolMeaningsOrDefaultsChanged": false,
+  "physicalCrashCertified": false,
+  "completedReplacementWithLaterWorkQualified": false,
+  "fullNativeAuthorAndProviderUnionComplete": false,
+  "authenticatedWholeRoomActivationComplete": false,
+  "independentCommentAndServerLogLifecycleComplete": false,
+  "sustainableHistoryRetentionComplete": false,
+  "scratchNativeDocumentUnionIncluded": false,
+  "v1Ready": false,
+  "openV1Gates": 13,
+  "pushApproved": false,
+  "publicationApproved": false
+}

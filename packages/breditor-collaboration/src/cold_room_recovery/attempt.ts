@@ -9,11 +9,12 @@ import {RoomExecutionReadScope} from '../native_room_execution/read_scope.js';
 import {SelectedRoomCurrentArchive} from '../selected_room_current/archive.js';
 import {selectedRoomCurrentSelection,MAX_SELECTED_ROOM_CURRENT_BYTES} from '../selected_room_current/manifest.js';
 import {archiveBlob} from '../archive_integrity/policy.js';
-import {snapshotPhysicalRootResumeOptions,resumePhysicalRootKeepingActors,reopenCompletedPhysicalRoot,PhysicalRoomClientOperationV3} from '../physical_room_operation_v3/operation.js';
+import {resumePhysicalRootKeepingActors,reopenCompletedPhysicalRoot,PhysicalRoomClientOperationV3} from '../physical_room_operation_v3/operation.js';
 import {snapshotPhysicalHistoryReadOptions} from '../physical_room_operation_v3/history_read.js';
 import {previewColdSelectedRoom,resumeColdSelectedRoomWithActors} from '../cold_selected_room/coordinator.js';
 import {coldSelectedRoomChoice} from '../cold_selected_room/choice.js';
 import {coldRoomActorPlan} from './plan.js';
+import {snapshotColdRootResumeOptions} from './root_policy.js';
 import {fields,database,fail} from '../native_room_execution/policy.js';
 import {recoveryOpeningContext,drainFailedRecoveryOpenings} from '../participant_recovery/opening_custody.js';
 import type {ColdRoomRecoveryOptions,ColdRoomPromotionOptions} from './contract.js';
@@ -31,7 +32,7 @@ export class ColdRoomRecoveryAttempt{
  #scope:RoomExecutionReadScope|undefined;#basis:SelectedRoomCurrentArchive|undefined;#plan:Awaited<ReturnType<typeof coldRoomActorPlan>>|undefined;#factory:IDBFactory|undefined;
  #acquisition:RoomActorAcquisition|undefined;#actors:StoppedActorCohort|undefined;#root:PhysicalRoomClientOperationV3|undefined;
  #running:Promise<unknown>|undefined;#cleanup:Promise<void>|undefined;#taking=false;#closing=false;#closed=false;
- private constructor(token:object,input:ColdRoomRecoveryOptions,completeOnly=false){this.#completeOnly=completeOnly;if(token!==key)throw fail('room_execution_policy');const raw=fields(input,['root','basis','reads','intentDatabase']),b=fields(raw['basis'],['file','selection']),root=snapshotPhysicalRootResumeOptions(raw['root'] as ColdRoomRecoveryOptions['root']),reads=snapshotPhysicalHistoryReadOptions(raw['reads'] as ColdRoomRecoveryOptions['reads']);this.#options=Object.freeze({root,reads,basis:Object.freeze({selection:selectedRoomCurrentSelection(b['selection']),file:archiveBlob(b['file'] as Blob,MAX_SELECTED_ROOM_CURRENT_BYTES)}),intentDatabase:database(raw['intentDatabase'])});Object.freeze(this);}
+ private constructor(token:object,input:ColdRoomRecoveryOptions,completeOnly=false){this.#completeOnly=completeOnly;if(token!==key)throw fail('room_execution_policy');const raw=fields(input,['root','basis','reads','intentDatabase']),b=fields(raw['basis'],['file','selection']),root=snapshotColdRootResumeOptions(raw['root'] as ColdRoomRecoveryOptions['root']),reads=snapshotPhysicalHistoryReadOptions(raw['reads'] as ColdRoomRecoveryOptions['reads']);this.#options=Object.freeze({root,reads,basis:Object.freeze({selection:selectedRoomCurrentSelection(b['selection']),file:archiveBlob(b['file'] as Blob,MAX_SELECTED_ROOM_CURRENT_BYTES)}),intentDatabase:database(raw['intentDatabase'])});Object.freeze(this);}
  static{beginCompleted=input=>new ColdRoomRecoveryAttempt(key,input,true);}
  static begin(input:ColdRoomRecoveryOptions):ColdRoomRecoveryAttempt{return new ColdRoomRecoveryAttempt(key,input);}
  #admit=()=>{if(this.#running||this.#taking)throw fail('room_execution_busy');if(this.#closing||this.#closed||recipient.ready.call(this.#recipient))throw fail('room_execution_closed');};

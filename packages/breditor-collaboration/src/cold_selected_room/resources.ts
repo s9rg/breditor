@@ -12,16 +12,24 @@ import {RecoveryLease,checkRecoveryLeasesHeld} from '../participant_recovery/lea
 import {database,fail} from '../physical_room_asset_adoption/policy.js';
 const open=RichAssetStore.openRetained,acquire=RichAssetStore.prototype.acquireRecoveryCustody,checkStore=RichAssetStore.prototype.checkOpen,closeStore=RichAssetStore.prototype.close,held=RichAssetStoreCustody.prototype.check,closeCustody=RichAssetStoreCustody.prototype.close;
 const errors={policy:()=>fail('asset_adoption_policy'),busy:()=>fail('asset_adoption_busy'),storage:()=>fail()};
+/** SDK-only storage lifetime supplied by a cold build holding genuine fresh
+ * actors and current source/read grants. It is deliberately not a root-busy
+ * witness: these actual upload stores outlive original native-root closure. */
+export interface ColdSelectedStorageContext{readonly factory:IDBFactory;readonly locks:LockManager;readonly namespaces:readonly string[];checkCurrent():void}
 export class ColdSelectedResources{
  readonly record:RoomAssetAdoptionRecord;readonly intentDatabase:string;
  readonly owned:SelectedAssetResources={targets:new Map(),targetLeases:new Map()};
  readonly #observation;readonly #unclaimed=new Map<string,RichAssetStore>();
- #context:RetainedRootPreparation|undefined;#opening:RecoveryOpeningCustody|undefined;#files:AdoptionFiles|undefined;#stageOpened=false;#moved=false;#closing=false;#closed=false;#cleanup:Promise<void>|undefined;
+ #context:ColdSelectedStorageContext|undefined;#opening:RecoveryOpeningCustody|undefined;#files:AdoptionFiles|undefined;#stageOpened=false;#moved=false;#closing=false;#closed=false;#cleanup:Promise<void>|undefined;
  constructor(record:RoomAssetAdoptionRecord,intentDatabase:string,signal?:AbortSignal){this.record=record;this.intentDatabase=database(intentDatabase);this.#observation=new PhysicalOperationV3Cancellation(signal);Object.freeze(this);}
  checkLocal=()=>{const context=this.#context;if(!context||this.#closing||this.#closed||globalThis.indexedDB!==context.factory||globalThis.navigator?.locks!==context.locks)throw fail('asset_adoption_closed');if(this.#stageOpened)this.owned.store!.checkReadCurrent();checkRecoveryLeasesHeld([...(this.owned.lease?[this.owned.lease]:[]),...this.owned.targetLeases.values(),...(this.owned.intentLease?[this.owned.intentLease]:[])]);for(const target of this.owned.targets.values())checkStore.call(target.store);};
  checkJob=()=>{this.checkLocal();this.#observation.check();this.#context!.checkCurrent();for(const target of this.owned.targets.values())held.call(target.custody);};
  get files():AdoptionFiles{if(!this.#files)throw fail('asset_adoption_missing');return this.#files;}
- async prepare(context:RetainedRootPreparation):Promise<void>{
+ /** Ordinary cold-selected recovery retains the genuine root-busy context. */
+ async prepare(context:RetainedRootPreparation):Promise<void>{return this.#prepare(context);}
+ /** Explicit fresh-actor cold-build composition only, never serialized input. */
+ async preparePinned(context:ColdSelectedStorageContext):Promise<void>{return this.#prepare(context);}
+ async #prepare(context:ColdSelectedStorageContext):Promise<void>{
   if(this.#context||this.#closed||this.#moved)throw fail('asset_adoption_busy');this.#context=context;const used=new Set(context.namespaces),names=[this.record.database,this.intentDatabase,...this.record.participants.map(row=>row.targetDatabase)];if(this.record.source.operationDatabase!==context.namespaces[0]||new Set(names).size!==names.length||names.some(name=>used.has(name)))throw fail('asset_adoption_policy');this.checkJob();
   this.#opening=await RecoveryOpeningCustody.reserve(context.factory,[this.record.database],()=>this.#close(),errors);this.checkJob();this.owned.lease=await RecoveryLease.acquire(JSON.stringify(this.record.database));this.checkJob();this.owned.intentLease=await RecoveryLease.acquire(JSON.stringify(this.intentDatabase));this.checkJob();
   // All target namespace choices are reserved before opening a raster store.
