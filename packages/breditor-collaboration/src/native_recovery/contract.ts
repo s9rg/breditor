@@ -10,6 +10,10 @@ export interface NativeRecoveryReservation {
  /** Synchronous native admission; never bypass an existing hold or queue.
   * This does not save, authenticate or acknowledge the supplied operations. */
  receiveDocument<P extends SharedSelectionPolicy>(core:SharedRichEditor<P>,frame:string):boolean;
+ /** Retain compatible native document inputs without replacing own history.
+  * The source must be a genuine quiescent facade. No comment union, source
+  * authentication, persistence, pending-input ACK or generation activation. */
+ reconcileDocumentBranch<P extends SharedSelectionPolicy,Q extends SharedSelectionPolicy>(core:SharedRichEditor<P>,source:SharedRichEditor<Q>):boolean;
  /** Preserve native source-policy and anchor admission. Pending is not an ACK. */
  receiveReview<P extends SharedSelectionPolicy>(core:SharedRichEditor<P>,frame:string,verified:SharedReviewPolicy):SharedReviewImportOutcome;
  /** Pure common flag release, idempotent even after a member terminates.

@@ -89,6 +89,12 @@ compatible native union and dependent-packet reconciliation, then authenticated
 activation remain architectural priorities. All
 thirteen V1 gates remain open.
 
+## Current compatible document branch recovery
+
+The [native document branch contract](NATIVE_DOCUMENT_BRANCH_RECONCILIATION.md) now retains independently arrived peer inputs when the current writer already owns an exact prefix-compatible contribution history. The operation preserves native Undo/Redo, typing partitions, pending original bytes and read-only policy. Unknown own suffixes, causal forks and incomparable immutable generations refuse without changing either owner. A versioned native byte ceiling prevents this separate recovery path from bypassing the selected SDK input limit.
+
+This primitive does not merge comments, packet stores or asset queues and cannot activate a room. Complete durable room union, explicit comment adoption and authenticated stale-writer fencing remain the architectural priorities. All thirteen V1 gates remain open.
+
 ## Current retained author ownership
 
 The [actor escrow contract](NATIVE_ACTOR_HANDOFF.md) and

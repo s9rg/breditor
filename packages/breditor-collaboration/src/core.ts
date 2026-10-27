@@ -80,6 +80,18 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
   const apply=<T>(core:object,work:()=>T):T=>{check();if(!chosen.has(core))throw nativeRecoveryFailure('native_recovery_member');applying=true;try{const result=work();current();return result;}finally{applying=false;}};
   const reservation:NativeRecoveryReservation=Object.freeze({check,
    receiveDocument<Q extends SharedSelectionPolicy>(core:SharedRichEditor<Q>,frame:string){return apply(core,()=>{const input=nativeRecoveryFrame(frame);if(input.bytes>core.#maxBytes)throw new SharedEditorError('remote_queue_full','Pending remote updates exceed their bounded queue');let before='';core.#run('remote',raw=>{before=core.#view;raw.receive_frame(input.value);},undefined,false,token);return before!==core.#view;});},
+   reconcileDocumentBranch<Q extends SharedSelectionPolicy,R extends SharedSelectionPolicy>(core:SharedRichEditor<Q>,source:SharedRichEditor<R>){return apply(core,()=>{
+    if(!source||typeof source!=='object'||!(#raw in source))throw nativeRecoveryFailure('native_recovery_member');source.#check();core.#check();
+    if(source.#publishing||source.#draining||source.#holds||source.#queue.length||source.#bytes||source.#nativeRecovery!==undefined&&source.#nativeRecovery!==token)throw nativeRecoveryFailure('native_recovery_busy');
+    if(!core.#supportsRetainedDocumentBranch()||!source.#supportsRetainedDocumentBranch())throw new SharedEditorError('retained_document_branch_unavailable','Use matching native document-only branch capabilities');
+    if((core as object)===(source as object))return false;
+    // A temporary readonly native source is not a cohort member. Hold its
+    // actual facade across publication callbacks too; no copied source DTO or
+    // public method can provide or release this flag.
+    const borrowed=source.#nativeRecovery===undefined,observed=source.#observation;if(borrowed)source.#nativeRecovery=token;
+    try{const bytes=core.#live().retained_document_branch_input_bytes!(core.#observation,source.#live(),observed);if(!Number.isSafeInteger(bytes)||bytes<0)throw new SharedEditorError('retained_document_branch_data','Invalid native branch byte accounting');if(bytes>core.#maxBytes)throw new SharedEditorError('remote_queue_full','Native branch inputs exceed the selected incoming byte ceiling');const result=core.#run('remote',(raw,current)=>raw.reconcile_retained_document_branch!(current,source.#live(),observed,core.#maxBytes),undefined,false,token);source.#check();if(source.#observation!==observed)throw nativeRecoveryFailure('native_recovery_closed');return result;}
+    finally{if(borrowed&&source.#nativeRecovery===token)source.#nativeRecovery=undefined;}
+   });},
    receiveReview<Q extends SharedSelectionPolicy>(core:SharedRichEditor<Q>,frame:string,verified:SharedReviewPolicy){return apply(core,()=>{const value=nativeRecoveryFrame(frame).value,policy=nativeRecoverySource(verified);return core.#run('remote',(raw,o)=>{core.#requireReview();const result=JSON.parse(raw.receive_review!(o,JSON.stringify(policy),value)) as SharedReviewImportOutcome;if(result.kind==='applied')core.#reviewRevision++;return result;},undefined,false,token);});},
    close(){if(closed)return;if(applying)throw nativeRecoveryFailure('native_recovery_busy');for(const core of members)if(core.#nativeRecovery===token)core.#nativeRecovery=undefined;closed=true;members=[];chosen.clear();},
   });
@@ -194,6 +206,11 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
   this.#check();origin.#check();if(!this.supportsRecoveryOrigin()||!origin.supportsRecoveryOrigin())throw new SharedEditorError("recovery_origin_unavailable","Use matching native recovery-origin checks");
   try{this.#live().verify_recovery_origin!(this.#observation,origin.#live(),origin.#observation);}catch{throw new SharedEditorError("recovery_origin","Native recovery origin continuity did not match");}
  }
+ /** Pure document-only coverage. Neither optional comments nor source storage
+  * are covered, and the old exact-entry/paired origin contract is unchanged. */
+ #supportsRetainedDocumentBranch():boolean{const raw=this.#live();return raw.retained_document_branch_version?.()==='2'&&typeof raw.retained_document_branch_input_bytes==='function'&&typeof raw.verify_retained_document_branch==='function'&&typeof raw.reconcile_retained_document_branch==='function';}
+ supportsRetainedDocumentBranch():boolean{return this.#supportsRetainedDocumentBranch();}
+ verifyRetainedDocumentBranch<Q extends SharedSelectionPolicy>(source:SharedRichEditor<Q>):void{this.#check();if(!source||typeof source!=='object'||!(#raw in source))throw nativeRecoveryFailure('native_recovery_member');source.#check();if(!this.#supportsRetainedDocumentBranch()||!source.#supportsRetainedDocumentBranch())throw new SharedEditorError('retained_document_branch_unavailable','Use matching native document-only branch capabilities');try{this.#live().verify_retained_document_branch!(this.#observation,source.#live(),source.#observation);}catch{throw new SharedEditorError('retained_document_branch','Native document branch coverage did not match');}}
  retainedAssetReferences(revision?:string):RichRetainedAssetReferencesRead{this.#check(revision);if(!this.supportsRetainedAssetReferences())throw new SharedEditorError("asset_references_unavailable","Use complete matching native retained asset reads");return this.#assetReferences.retain(this.#live().retained_asset_references_json!(this.#observation),this.view().revision,"shared-causal",this.documentJson());}
  checkRetainedAssetReferences(value:RichRetainedAssetReferencesRead,revision?:string):void{this.#check(revision);this.#assetReferences.check(value,this.view().revision);}
  supportsPacketAssetReferences():boolean{const r=this.#live();return r.packet_asset_references_version?.()==="1"&&[r.document_version_asset_references_json,r.document_suggestion_asset_references_json,r.document_suggestion_revision_asset_references_json].every(f=>typeof f==="function");}

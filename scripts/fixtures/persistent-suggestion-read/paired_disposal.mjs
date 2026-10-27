@@ -1,3 +1,4 @@
+import {NORMAL_SHARED_WASM_SHA256} from "../native-runtime/normal-shared-identity.mjs";
 /** The paired handle must release source/read closures when kept for a report. */
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
@@ -8,7 +9,7 @@ import * as api from '../../../packages/breditor-collaboration/dist/index.js';
 import {capturePersistentPairedRecords as capture} from '../../../packages/breditor-collaboration/dist/persistence/review_session.js';
 import {nativeProfile} from '../owned-core-cleanup/session.mjs';
 import {originalQueueFixture} from './session.mjs';
-export function verifyPersistentPairedRelease(runtime,fixture){const output=execFileSync(process.execPath,['--expose-gc',fileURLToPath(import.meta.url),'--paired-read-release-child',runtime,fixture],{encoding:'utf8',timeout:120000,maxBuffer:1024*1024}),result=JSON.parse(output.trim());assert.equal(result.closedReportsIntentionallyKept,5);assert.equal(result.readCallbacksRetained,0);assert.equal(result.actualFixtureClosed,true);assert.equal(result.normalWasmSha256,'946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0');return result;}
+export function verifyPersistentPairedRelease(runtime,fixture){const output=execFileSync(process.execPath,['--expose-gc',fileURLToPath(import.meta.url),'--paired-read-release-child',runtime,fixture],{encoding:'utf8',timeout:120000,maxBuffer:1024*1024}),result=JSON.parse(output.trim());assert.equal(result.closedReportsIntentionallyKept,5);assert.equal(result.readCallbacksRetained,0);assert.equal(result.actualFixtureClosed,true);assert.equal(result.normalWasmSha256,NORMAL_SHARED_WASM_SHA256);return result;}
 async function closedRead(source){const marker={read:'ended'},guard=function endedPersistentPairedRead(){assert.equal(marker.read,'ended');},weak=new WeakRef(guard),read=await capture(source,guard);read.dispose();return{read,weak};}
 async function probe(runtime,fixture){
  assert.equal(typeof global.gc,'function');const wasm=readFileSync(runtime+'/breditor_shared_bg.wasm'),native=await import(pathToFileURL(runtime+'/breditor_shared.js'));await native.default({module_or_path:wasm});const profile=nativeProfile(native,3,true),seed=JSON.parse(readFileSync(fixture)),kept=[];let f;

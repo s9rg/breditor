@@ -1,0 +1,56 @@
+{
+  "format": "breditor/native-document-branch-checkpoint-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-27T19:36:42.144Z",
+  "source": {
+    "commit": "db267e3196330bc1e1bcda8646d02f42bb18fead",
+    "dirty": true,
+    "sha256": "4806ae55660eec3d43f87c29ec9a65a482ce204182a97fa6affc619520ba4835",
+    "files": 6832,
+    "bytes": 53038832
+  },
+  "evidence": {
+    "index": "target/native-document-branch-proof-Yvwwat/index.json",
+    "sha256": "28e121ac95827289aeee3989b83bc50404302eb53acde8fca462645d1945618e",
+    "retainedFiles": 247
+  },
+  "boundedCapability": 2,
+  "nativeTests": {
+    "passed": 142,
+    "failed": 0,
+    "ignored": 0,
+    "filteredOut": 0
+  },
+  "functionalTests": {
+    "source": 25,
+    "installedPackage": 25,
+    "actualProductionBundle": 25,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0
+  },
+  "strictConsumerTypeFixtures": 17,
+  "combinedSdkAndRuntimeSurfaceTests": 70,
+  "strictNativeClippyPassed": true,
+  "normalWasmSha256": "80b9151ae35ba0efdd26acfba5d50a6a55a923976b4de47db552c678200b572f",
+  "actualProductionBundleSha256": "29a45105625144bdf7abed6c6dfdd6b7bffbc42722a3ef947fc824b21a2a44cf",
+  "realByteCeilingFailureReproduced": true,
+  "independentNativeBoundEnforced": true,
+  "staleUnboundedCapabilityRefused": true,
+  "checksumConsolidation": {
+    "scripts": 96,
+    "literals": 121,
+    "initialValueUnchanged": true,
+    "exactInverseVerified": true
+  },
+  "scope": "Document-only native compatible-branch union preserving complete own contribution history, pending original inputs and cold Undo/Redo. Existing exact recovery-origin checks, independent comments and protocol defaults are unchanged.",
+  "fullReleaseCorpusRun": false,
+  "durableSevenFamilyUnionQualified": false,
+  "commentAdoptionComplete": false,
+  "authenticatedRoomActivationComplete": false,
+  "independentCommentAndServerLogLifecycleComplete": false,
+  "v1Ready": false,
+  "openV1Gates": 13,
+  "pushApproved": false,
+  "publicationApproved": false
+}

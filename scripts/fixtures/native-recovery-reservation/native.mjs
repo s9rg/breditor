@@ -1,8 +1,9 @@
+import {NORMAL_SHARED_WASM_SHA256} from "../native-runtime/normal-shared-identity.mjs";
 /** Actual normal Rust histories. No simulated document, review or Undo owner. */
 import assert from'node:assert/strict';import{readFileSync}from'node:fs';import{createHash}from'node:crypto';import{pathToFileURL}from'node:url';
 import*as api from'../../../packages/breditor-collaboration/dist/index.js';
 import{nativeProfile,cleanupSession}from'../owned-core-cleanup/session.mjs';
-export async function reservationRuntime(){const path=new URL('../../../target/promoted-shared-web/',import.meta.url),bytes=readFileSync(new URL('breditor_shared_bg.wasm',path));assert.equal(createHash('sha256').update(bytes).digest('hex'),'946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0');const native=await import(pathToFileURL(new URL('breditor_shared.js',path).pathname));await native.default({module_or_path:bytes});return native;}
+export async function reservationRuntime(){const path=new URL('../../../target/promoted-shared-web/',import.meta.url),bytes=readFileSync(new URL('breditor_shared_bg.wasm',path));assert.equal(createHash('sha256').update(bytes).digest('hex'),NORMAL_SHARED_WASM_SHA256);const native=await import(pathToFileURL(new URL('breditor_shared.js',path).pathname));await native.default({module_or_path:bytes});return native;}
 export const insert=(core,text)=>core.dispatch({commands:[{kind:'insert_text',data:{block:'p',offset:0,text}}]});
 export function reservationPeers(native,{documentSegmented=false,reviewSegmented=false}={}){
  const errors=[],options={onError(error){errors.push(error);}},profile=nativeProfile(native,3,true),document=cleanupSession(api,profile,{family:'original',language:3}).document,left=new api.SharedRichEditor(profile.create(document,'101'),options),initial=left.updateFrame(),right=new api.SharedRichEditor(profile.join_frame('room','202',initial),options),peer=new api.SharedRichEditor(profile.join_frame('room','303',initial),options),cores=[left,right,peer],policies=cores.map((_,i)=>({actor:'reservation-actor-'+i,principal:'principal-'+i,access:'comment'}));

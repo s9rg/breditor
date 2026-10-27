@@ -1,7 +1,7 @@
 import test from "node:test";
 import {retainedAssetOwnerMethods} from "./check-collaboration-runtime-surface.mjs";
 import {packetAssetOwnerMethods} from "./check-collaboration-runtime-surface.mjs";
-import {recoveryOriginOwnerMethods} from "./check-collaboration-runtime-surface.mjs";
+import {recoveryOriginOwnerMethods,retainedDocumentBranchOwnerMethods} from "./check-collaboration-runtime-surface.mjs";
 import {segmentedHistoryOwnerMethods,segmentedHistoryProfileMethods,observerHistorySealingOwnerMethods} from "./check-collaboration-runtime-surface.mjs";
 import {segmentedReviewMethods} from "./check-collaboration-runtime-surface.mjs";
 import {readOnlyHistoryLifecycleMethods} from "./check-collaboration-runtime-surface.mjs";
@@ -23,6 +23,7 @@ function fixture(){
  for(const name of retainedAssetOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of packetAssetOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of recoveryOriginOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
+ for(const name of retainedDocumentBranchOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of segmentedHistoryOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of segmentedHistoryProfileMethods)module.SharedRichProfile.prototype[name]=()=>{};
  for(const name of observerHistorySealingOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
@@ -191,3 +192,5 @@ test("general input and opaque inline clipboard require complete guarded authori
  for(const name of ["general_range_version","enable_general_ranges","replace_general_range_text","replace_general_range_plain_text","replace_general_range_typing_text","general_checkpoint","general_typing_checkpoint","general_inline_paste_version","paste_general_inline_clipboard"]){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing (guarded general-range|native general inline clipboard) capability/);}
  for(const name of ["general_range_version","restore_general","restore_general_typing"]){const f=fixture();delete f.module.SharedRichProfile.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing general-range recovery capability/);}
 });
+
+test("document branch reconciliation requires every separate guarded native capability",()=>{for(const name of retainedDocumentBranchOwnerMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native document branch capability/);}});

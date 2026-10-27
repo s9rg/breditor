@@ -2,6 +2,42 @@
 use super::super::{RichReplica, SharedObservation, session::publication};
 use crate::Error;
 impl RichReplica {
+    /// Only the new compatible-branch operation may use generation structure
+    /// independently of the old exact native-entry prefix. No file is rewritten.
+    pub(in crate::rich_replica) fn verify_retained_branch_generations(
+        &self,
+        source: &Self,
+    ) -> Result<(), Error> {
+        let Some(before) = &source.segmented else {
+            return Ok(());
+        };
+        let current = self.segmented.as_ref().ok_or(Error::Contract(
+            "retained segmented source cannot be downgraded",
+        ))?;
+        if current.root.generation != before.root.generation
+            || current.root.json != before.root.json
+            || current.sealed.len() < before.sealed.len()
+            || before
+                .sealed
+                .iter()
+                .zip(&current.sealed)
+                .any(|(left, right)| left.json != right.json)
+        {
+            return Err(Error::Contract(
+                "retained branch immutable generation differs",
+            ));
+        }
+        let continuation = current
+            .sealed
+            .get(before.sealed.len())
+            .map_or(current.active_generation.as_str(), |file| {
+                file.record.generation.as_str()
+            });
+        if continuation != before.active_generation {
+            return Err(Error::Contract("retained branch active generation differs"));
+        }
+        Ok(())
+    }
     /// Verify a native continuation across the explicitly selected segmented history family.
     /// A legacy origin must be within the retained original pre-migration root. A segmented
     /// origin must retain the same exact root and sealed files, plus its original active ID.

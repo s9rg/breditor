@@ -1,3 +1,4 @@
+import {NORMAL_SHARED_WASM_SHA256} from "../native-runtime/normal-shared-identity.mjs";
 /** Collect callbacks only after actual fixture cleanup. fake-indexeddb retains
  * completed transaction handles while its factory is reachable; those are not
  * evidence of a retained editor read. Closed proof objects deliberately remain. */
@@ -30,7 +31,7 @@ import {nativeProfile} from '../owned-core-cleanup/session.mjs';
 
 export function verifyReferenceCallbackRelease(family,runtime,fixture){
  const output=execFileSync(process.execPath,['--expose-gc',fileURLToPath(import.meta.url),'--reference-release-child',family,runtime,fixture],{encoding:'utf8',timeout:120000,maxBuffer:1024*1024});
- const report=JSON.parse(output.trim());assert.equal(report.family,family);assert.equal(report.closedProofsIntentionallyKept,5);assert.equal(report.fixtureClosedBeforeCollection,true);assert.equal(report.readAuthorizationFunctionsRetained,0);assert.equal(report.normalWasmSha256,'946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0');return report;
+ const report=JSON.parse(output.trim());assert.equal(report.family,family);assert.equal(report.closedProofsIntentionallyKept,5);assert.equal(report.fixtureClosedBeforeCollection,true);assert.equal(report.readAuthorizationFunctionsRetained,0);assert.equal(report.normalWasmSha256,NORMAL_SHARED_WASM_SHA256);return report;
 }
 async function closedRead(capture,source,readOptions){const marker={read:'ended'},guard=function endedReferenceReadAuthorization(){assert.equal(marker.read,'ended');},weak=new WeakRef(guard),proof=await capture({source,...readOptions,checkAuthority:guard});proof.dispose();return{proof,weak};}
 async function probe(family,runtime,fixture){

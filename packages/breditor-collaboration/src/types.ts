@@ -155,6 +155,11 @@ export interface SharedRustOwner extends SharedReviewRustCapability,SharedReview
  /** Pure native same-writer journal and optional paired review continuity; never an activation grant. */
  recovery_origin_version?():string;
  verify_recovery_origin?(observation:unknown,origin:SharedRustOwner,originObservation:unknown):void;
+ /** Separate native document-only branch coverage. No comment/activation proof. */
+ retained_document_branch_version?():string;
+ retained_document_branch_input_bytes?(observation:unknown,source:SharedRustOwner,sourceObservation:unknown):number;
+ verify_retained_document_branch?(observation:unknown,source:SharedRustOwner,sourceObservation:unknown):void;
+ reconcile_retained_document_branch?(observation:unknown,source:SharedRustOwner,sourceObservation:unknown,maximumIncomingBytes:number):boolean;
  code_exit_version?():string;
  exit_code_block?(observation:unknown,paragraph:string):boolean;
  flow_navigation_version?():string;

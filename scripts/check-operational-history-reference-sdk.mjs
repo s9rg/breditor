@@ -1,3 +1,4 @@
+import {NORMAL_SHARED_WASM_SHA256} from "./fixtures/native-runtime/normal-shared-identity.mjs";
 /** Fixed read-runtime regression domain on the unchanged normal Wasm binary.
  * No author restoration, relay activation, platform or full V1 qualification. */
 import assert from 'node:assert/strict';
@@ -13,7 +14,7 @@ if(process.argv.length!==2)throw Error('No substituted source, runtime or reduce
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),source=sourceEvidence(root),directory=mkdtempSync(join(root,'target/operational-history-reference-sdk-'));
 
 const sha=b=>createHash('sha256').update(b).digest('hex'),normalWasmSha256=sha(readFileSync(join(root,'target/promoted-shared-web/breditor_shared_bg.wasm')));
-assert.equal(normalWasmSha256,'946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0');
+assert.equal(normalWasmSha256,NORMAL_SHARED_WASM_SHA256);
 let output;try{output=execFileSync(process.execPath,['--test',...tests.map(name=>'scripts/'+name)],{cwd:root,encoding:'utf8',timeout:600000,maxBuffer:8*1024*1024});writeFileSync(join(directory,'contracts.log'),output);}catch(error){writeFileSync(join(directory,'contracts.log'),String(error.stdout??'')+'\n'+String(error.stderr??''));throw error;}
 for(const pattern of [new RegExp('^# pass '+assertions+'$','m'),/^# fail 0$/m,/^# skipped 0$/m])assert.match(output,pattern);
 assert.deepEqual(sourceEvidence(root),source);

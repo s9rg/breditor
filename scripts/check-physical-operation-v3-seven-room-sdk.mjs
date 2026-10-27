@@ -1,3 +1,4 @@
+import {NORMAL_SHARED_WASM_SHA256} from "./fixtures/native-runtime/normal-shared-identity.mjs";
 /** Fixed actual seven-writer recovery matrix on fresh source-matched native
  * inputs. This is functional SDK evidence, not authenticated room activation. */
 import assert from 'node:assert/strict';
@@ -36,7 +37,7 @@ assert.deepEqual(sourceEvidence(root), source);
 for (const row of native.files) assert.deepEqual(fileEvidence(root, row.path), row);
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const normalWasmSha256 = sha(readFileSync(join(root, 'target/promoted-shared-web/breditor_shared_bg.wasm')));
-assert.equal(normalWasmSha256, '946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0');
+assert.equal(normalWasmSha256, NORMAL_SHARED_WASM_SHA256);
 const result = {
   format: 'breditor/seven-room-sdk', formatVersion: 1, passed: true,
   source, sourceUnchanged: true, directory, nativeEvidence: fileEvidence(root, nativePath),
