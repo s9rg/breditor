@@ -10,6 +10,7 @@ export const retainedAssetOwnerMethods=Object.freeze(["retained_asset_references
 export const packetAssetOwnerMethods=Object.freeze(["packet_asset_references_version","document_version_asset_references_json","document_suggestion_asset_references_json","document_suggestion_revision_asset_references_json"]);
 export const recoveryOriginOwnerMethods=Object.freeze(["recovery_origin_version","verify_recovery_origin"]);
 export const retainedDocumentBranchOwnerMethods=Object.freeze(["retained_document_branch_version","retained_document_branch_input_bytes","verify_retained_document_branch","reconcile_retained_document_branch"]);
+export const retainedNativeBranchOwnerMethods=Object.freeze(["retained_native_branch_version","verify_retained_native_branch"]);
 export const segmentedHistoryOwnerMethods=Object.freeze(["segmented_history_version","segmented_history_enabled","segmented_history_info_json","enable_segmented_history","seal_history_segment","segmented_checkpoint","verify_segmented_recovery_origin"]);
 export const segmentedHistoryProfileMethods=Object.freeze(["segmented_history_version","restore_segmented"]);
 export const observerHistorySealingOwnerMethods=Object.freeze(["observer_history_sealing_version","seal_observer_history_segment"]);
@@ -47,6 +48,7 @@ export function admitApplicationSurface(module,binary,declarations){
  for(const name of packetAssetOwnerMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native packet asset capability ${name}`);
  for(const name of recoveryOriginOwnerMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native recovery origin capability ${name}`);
  for(const name of retainedDocumentBranchOwnerMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native document branch capability ${name}`);
+ for(const name of retainedNativeBranchOwnerMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native paired branch capability ${name}`);
  for(const name of segmentedHistoryOwnerMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native segmented history capability ${name}`);
  for(const name of segmentedHistoryProfileMethods)assert.equal(typeof module.SharedRichProfile.prototype[name],"function",`Missing native segmented recovery ${name}`);
  for(const name of observerHistorySealingOwnerMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native observer history sealing capability ${name}`);

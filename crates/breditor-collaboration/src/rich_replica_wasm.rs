@@ -19,6 +19,7 @@ mod paste_general_inline_clipboard;
 mod placeholder_empty;
 mod recovery_origin;
 mod retained_document_branch;
+mod verify_retained_native_branch;
 mod retained_asset_references;
 mod review;
 mod reviewed_history;

@@ -160,6 +160,9 @@ export interface SharedRustOwner extends SharedReviewRustCapability,SharedReview
  retained_document_branch_input_bytes?(observation:unknown,source:SharedRustOwner,sourceObservation:unknown):number;
  verify_retained_document_branch?(observation:unknown,source:SharedRustOwner,sourceObservation:unknown):void;
  reconcile_retained_document_branch?(observation:unknown,source:SharedRustOwner,sourceObservation:unknown,maximumIncomingBytes:number):boolean;
+ /** Pure compatible document coverage plus exact paired comment origin. No mutation or activation. */
+ retained_native_branch_version?():string;
+ verify_retained_native_branch?(observation:unknown,source:SharedRustOwner,sourceObservation:unknown):void;
  code_exit_version?():string;
  exit_code_block?(observation:unknown,paragraph:string):boolean;
  flow_navigation_version?():string;

@@ -1,0 +1,61 @@
+{
+  "format": "breditor/native-paired-branch-checkpoint-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-27T19:54:47.814Z",
+  "source": {
+    "commit": "f3131a99c44e5c6c647f4c02aadef73da654aab0",
+    "dirty": true,
+    "sha256": "8da34e2166daafe0ecccd195aa5114c08a8e92fc975522fb29d04c35364aebaf",
+    "files": 6845,
+    "bytes": 53087739
+  },
+  "evidence": {
+    "index": "target/native-paired-branch-proof-t13cuA/index.json",
+    "sha256": "8413045bc2bf8d50449f53dbe1a032cf14948484102860b2bcffcfaaeab21b4e",
+    "retainedFiles": 106
+  },
+  "boundedDocumentCapability": 2,
+  "pairedCoverageCapability": 1,
+  "nativeTests": {
+    "passed": 142,
+    "failed": 0,
+    "ignored": 0,
+    "filteredOut": 0
+  },
+  "functionalTests": {
+    "source": 43,
+    "installedPackage": 43,
+    "actualProductionBundle": 43,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0
+  },
+  "strictConsumerTypeFixtures": 18,
+  "combinedSdkAndRuntimeSurfaceTests": 89,
+  "completeRecordReads": {
+    "sourceTests": 4,
+    "families": 7,
+    "independentHistoryCombinations": 4,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0,
+    "extendingCutsOnly": true,
+    "mutableInputsSnapshotted": true,
+    "installedRecordPipelineRun": false,
+    "freshNativeProducerRun": false
+  },
+  "strictNativeClippyPassed": true,
+  "newNativeActionFormattingPassed": true,
+  "normalWasmSha256": "9f6ee5c3e02193984f83b12d31b47b45d0722152d573af87f64e2638cf44e7bb",
+  "actualProductionBundleSha256": "ae453bcbcb893f0e9f4b2fb0c517bdad66b1ccf2a62c604865d75d7207da730f",
+  "scope": "Separate pure native document-and-comment branch coverage, complete-record readonly routes, preserved version/delivery progress and unchanged strict continuation. Coverage never grants mutable storage, comment adoption or activation.",
+  "fullReleaseCorpusRun": false,
+  "durableSevenFamilyUnionQualified": false,
+  "commentAdoptionComplete": false,
+  "authenticatedWholeRoomActivationComplete": false,
+  "independentCommentAndServerLogLifecycleComplete": false,
+  "v1Ready": false,
+  "openV1Gates": 13,
+  "pushApproved": false,
+  "publicationApproved": false
+}
