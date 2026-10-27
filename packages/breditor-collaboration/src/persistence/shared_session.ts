@@ -1,3 +1,9 @@
+import {checkSharedWriterLeaseForEscrow}from'./writer_lease.js';
+import type {StoppedActorBinding}from'./stopped_actor_source.js';
+import {ActorLeaseEscrow}from'./actor_lease_escrow.js';
+import {createSharedWriterLeaseEscrow}from'./writer_lease.js';
+import {requireStoppedActorCore,type StoppedActorCustody}from'./stopped_actor_source.js';
+import {inheritActorLeaseInput,takeActorDocumentLease,takeActorReviewLease}from'./actor_lease_input.js';
 import {retireOwnedCore,disposeOwnedCore} from '../owned_core_lifetime.js';
 import {registerNativePendingWork} from '../native_pending_work.js';
 import {freeUnclaimedSharedRustOwner} from '../raw_owner_lifetime.js';
@@ -55,6 +61,11 @@ export interface SharedSearchSessionOptions<P extends SharedSelectionPolicy=Shar
 /** Exact causal recovery with bounded coalesced writes and origin-wide writer exclusion. */
 const constructionKey=Object.freeze({});
 let readOriginalNative:(owner:SharedPersistentSession<SharedSelectionPolicy>,authority:()=>void,signal?:AbortSignal)=>Promise<OriginalRecordRead<OriginalNativeRecords>>;
+let checkActorCustody:(owner:SharedPersistentSession)=>StoppedActorBinding;
+export const checkStoppedSharedSourceActors=<P extends SharedSelectionPolicy>(owner:SharedPersistentSession<P>):StoppedActorBinding=>checkActorCustody(owner as unknown as SharedPersistentSession);
+let takeActorCustody:(owner:SharedPersistentSession)=>StoppedActorCustody;
+/** Actual private source/lease fields only, never a copied stopped-state DTO. */
+export const takeStoppedSharedSourceActors=<P extends SharedSelectionPolicy>(owner:SharedPersistentSession<P>):StoppedActorCustody=>takeActorCustody(owner as unknown as SharedPersistentSession);
 export class SharedPersistentSession<P extends SharedSelectionPolicy="original"> {
  readonly core:SharedRichEditor<P>;readonly recovered:boolean;
  readonly #ownedCore:SharedRichEditor<P>;
@@ -78,6 +89,7 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
    this.#failed(new SharedEditorError("session_versionchange","Shared storage changed; export the retired journal before explicitly discarding this writer"));
   };
  }
+ static{const inspect=(owner:SharedPersistentSession):StoppedActorBinding=>{if(!owner||typeof owner!=='object'||!(#ownedCore in owner))throw new SharedEditorError('actor_source_unavailable','Use the actual native persistence owner');if(owner.#closed||owner.#running||owner.#closeRequest)throw new SharedEditorError('actor_source_in_use','Settle actual native persistence and cleanup before moving actor custody');if(Object.getOwnPropertyDescriptor(owner,'core')?.value!==owner.#ownedCore)throw new SharedEditorError('actor_source_unavailable','The original native core binding was replaced');requireStoppedActorCore(owner.#ownedCore);const binding=Object.freeze({room:owner.#options.room,writer:owner.#options.writer,actor:null});checkSharedWriterLeaseForEscrow(owner.#lease,binding.room,binding.writer);return binding;};checkActorCustody=inspect;takeActorCustody=owner=>{const binding=inspect(owner);return createSharedWriterLeaseEscrow(owner.#lease,binding.room,binding.writer);};}
  static{readOriginalNative=async(owner,provided,signal)=>{
   const fail=(suffix:string)=>new SharedEditorError('native_record_read_'+suffix,'Read the actual selected original native journal with independent current read permission');
   if(!owner||typeof owner!=='object'||!(#ownedCore in owner))throw fail('source');const authority=participantAuthority(provided);if(owner.#recordReaders.size>=8)throw fail('busy');
@@ -97,29 +109,29 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
   const {backupJson,writerRecovery,...supplied}={...input};requireBackupRecovery(writerRecovery);const options={...supplied,...(supplied.editor?{editor:{...supplied.editor}}:{})};
   const identity:SharedBackupIdentity={room:options.room,writer:options.writer,richLanguage:options.richLanguage,history:options.history,rangeEditing:options.rangeEditing,selectionEditing:"original",searchHistory:null},backup=await decodeSharedSessionBackup(backupJson,identity);
   const create=async()=>{try{return await options.restore(backup.checkpointJson,options.history,options.rangeEditing);}catch{throw new SharedEditorError("backup_native_replay","Matching native replay rejected the backup");}};
-  return this.#open({...options,create},"original",false,backup);
+  return this.#open(inheritActorLeaseInput(input,{...options,create}),"original",false,backup);
  }
  /** Separate document-family import; no old/general checkpoint migration is inferred. */
  static async restoreDocumentBackup(input:SharedDocumentBackupOptions):Promise<SharedPersistentSession<"document-v1">>{
   const {backupJson,writerRecovery,...supplied}={...input};requireBackupRecovery(writerRecovery);const options={...supplied,...(supplied.editor?{editor:{...supplied.editor}}:{})};
   const identity:SharedBackupIdentity={room:options.room,writer:options.writer,richLanguage:options.richLanguage,history:options.history,rangeEditing:options.rangeEditing,selectionEditing:"document-v1",searchHistory:null},backup=await decodeSharedSessionBackup(backupJson,identity);
   const create=async()=>{try{return await options.restoreDocument(backup.checkpointJson,options.history);}catch{throw new SharedEditorError("backup_native_replay","Matching native document replay rejected the backup");}};
-  return this.#open({...options,create,restore:options.restoreDocument},"document-v1",false,backup);
+  return this.#open(inheritActorLeaseInput(input,{...options,create,restore:options.restoreDocument}),"document-v1",false,backup);
  }
  /** Search source and every native replay policy remain explicit, independent from file contents. */
  static async restoreSearchBackup<Q extends SharedSelectionPolicy>(input:SharedSearchBackupOptions<Q>):Promise<SharedPersistentSession<Q>>{
   const {backupJson,writerRecovery,...supplied}={...input};requireBackupRecovery(writerRecovery);const options={...supplied,...(supplied.editor?{editor:{...supplied.editor}}:{})};
   const identity:SharedBackupIdentity={room:options.room,writer:options.writer,richLanguage:options.richLanguage,history:options.history,rangeEditing:options.rangeEditing,selectionEditing:options.selectionEditing,searchHistory:"search-v1"},backup=await decodeSharedSessionBackup(backupJson,identity);
   const create=async()=>{try{return await options.restoreSearch(backup.checkpointJson);}catch{throw new SharedEditorError("backup_native_replay","Matching native search replay rejected the backup");}};
-  return this.#open({...options,create,restore:options.restoreSearch,restoreDocument:options.restoreSearch,editor:{...options.editor,searchHistory:"search-v1"}},options.selectionEditing,true,backup);
+  return this.#open(inheritActorLeaseInput(input,{...options,create,restore:options.restoreSearch,restoreDocument:options.restoreSearch,editor:{...options.editor,searchHistory:"search-v1"}}),options.selectionEditing,true,backup);
  }
  /** Lease before reading/restoring. The host supplies the separately named native search factory. */
  static openSearch<Q extends SharedSelectionPolicy>(options:SharedSearchSessionOptions<Q>):Promise<SharedPersistentSession<Q>>{
   if(typeof options.restoreSearch!=="function"||![1,2,3].includes(options.richLanguage)||(options.history!=="explicit"&&options.history!=="typing-v1")||(options.rangeEditing!=="original"&&options.rangeEditing!=="general-v1")||(options.selectionEditing!=="original"&&options.selectionEditing!=="document-v1")||(options.selectionEditing==="document-v1"&&options.rangeEditing!=="general-v1"))return Promise.reject(new SharedEditorError("search_session_policy","Explicit compatible search session policies and recovery are required"));
-  return SharedPersistentSession.#open(inheritRecoveryOrigin(options,{...options,restore:options.restoreSearch,restoreDocument:options.restoreSearch,editor:{...options.editor,searchHistory:"search-v1"}}),options.selectionEditing,true);
+  return SharedPersistentSession.#open(inheritActorLeaseInput(options,inheritRecoveryOrigin(options,{...options,restore:options.restoreSearch,restoreDocument:options.restoreSearch,editor:{...options.editor,searchHistory:"search-v1"}})),options.selectionEditing,true);
  }
  static async #open<Q extends SharedSelectionPolicy>(options:SharedSessionOptions|SharedDocumentSessionOptions,selectionPolicy:Q,search=false,backup?:SharedSessionBackup):Promise<SharedPersistentSession<Q>>{
-  const recoveryOrigin=recoveryOriginFor(options);options={...options};
+  const actorInput=options,recoveryOrigin=recoveryOriginFor(options);options={...options};
   if(options.editor?.segmentedHistory!==undefined)throw new SharedEditorError("segmented_session_factory","Use the explicitly generation-aware durable family");
   if(!search&&options.editor?.searchHistory!==undefined)throw new SharedEditorError("search_session_factory","Use the explicit search-aware durable factory");
   if(options.editor?.reviewedHistory!==undefined)throw new SharedEditorError("reviewed_session_factory","Document-only storage cannot retain reviewed ownership; use the explicit reviewed paired session");
@@ -130,7 +142,7 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
   const editorSelection=(options.editor as {selectionEditing?:unknown}|undefined)?.selectionEditing;
   if(editorSelection!==undefined&&editorSelection!==selectionPolicy)throw new SharedEditorError("session_selection","Editor selection policy must match its explicitly selected durable session");
   // Acquire before reading/restoring: a same-writer clone never becomes live first.
-  const lease=await SharedWriterLease.acquire(options.room,options.writer);let db:IDBDatabase|undefined,core:SharedRichEditor<Q>|undefined,raw:SharedRustOwner|undefined,nativeBackupAdmission=false;
+  const lease=await(takeActorDocumentLease(actorInput,'shared',options.database,options.room,options.writer,null)??SharedWriterLease.acquire(options.room,options.writer));let db:IDBDatabase|undefined,core:SharedRichEditor<Q>|undefined,raw:SharedRustOwner|undefined,nativeBackupAdmission=false;
   try{
    const retained=recoveryOrigin?await existingSessionDatabase(options.database,[options.room,options.writer],"session_open_versionchange"):undefined;
    db=retained?.db??await openSessionDatabase(options.database);

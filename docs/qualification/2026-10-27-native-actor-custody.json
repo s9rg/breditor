@@ -1,0 +1,124 @@
+{
+  "format": "breditor/native-actor-custody-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-27T00:38:16.227Z",
+  "qualification": "selected-functional-architectural-increment-not-v1-release",
+  "workingTreeSourceAtVerification": {
+    "commit": "07b97487bae9ee9b02032bc3d8ba1d2785d31ba1",
+    "dirty": true,
+    "sha256": "55d6c0e88a6e7a8b0c1623acbfa19af8d0d875393bcb3301469667e74b82d21b",
+    "files": 6655,
+    "bytes": 52054986
+  },
+  "qualificationMetadataAddedAfterRun": true,
+  "postVerificationSourceAdditions": [
+    "docs/qualification/2026-10-27-native-actor-custody.json"
+  ],
+  "normal": {
+    "stages": 13,
+    "suites": [
+      {
+        "kind": "execution",
+        "source": 203,
+        "installed": 203,
+        "bundled": 203,
+        "strictTypeFixtures": 28,
+        "normalConsumerProductsVerified": 1962
+      },
+      {
+        "kind": "reconstruction",
+        "source": 283,
+        "installed": 283,
+        "bundled": 283,
+        "strictTypeFixtures": 9,
+        "normalConsumerProductsVerified": 1962
+      }
+    ],
+    "sourceExecution": 203,
+    "installedExecution": 203,
+    "bundledExecution": 203,
+    "sourceReconstruction": 283,
+    "installedReconstruction": 283,
+    "bundledReconstruction": 283,
+    "priorReconstructionLaws": 175,
+    "newActorLaws": 82,
+    "repeatedUnchangedCleanupLaws": 26,
+    "strictReconstructionFixtures": 9,
+    "fullFunctionalPlanExecuted": false
+  },
+  "products": {
+    "count": 1962,
+    "unchanged": 1938,
+    "changedPrivateProducts": 16,
+    "addedPrivateProducts": 8,
+    "rootApiUnchanged": true
+  },
+  "native": {
+    "freshInputFiles": 100,
+    "unchangedSourceAndBuildInputs": 2899,
+    "normalWasmSha256": "946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0",
+    "rustSuitesRerun": false,
+    "priorFlatSuitesRerun": false
+  },
+  "controls": {
+    "normalInstalled": 108,
+    "removedActualExits": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "restoredActualExits": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "normalConsumersUnmodified": true,
+    "isolatedProductsRestoredExactly": 1962
+  },
+  "retainedProof": {
+    "path": "target/native-actor-custody-proof-piQInp/index.json",
+    "sha256": "c37ed965a0923eb3f48887f8659f0860b1a1585f1db32b6933e6fec27626a405",
+    "files": 810,
+    "endpoints": {
+      "groups": 79,
+      "declared": 790,
+      "allConfirmedClosed": true
+    }
+  },
+  "scope": "Actual recovery-owned document/comment actor locks remain held across stopped-source donation, failed mutable target opening, real cleanup, retry and synchronous all-member resource promotion. Runtime constructor keys and private exact factory/namespace binding admit real resources rather than source-shaped data. Rollback derives from actual returned loan handles, not factory stage labels. Existing default factories, explicit selection/typing/search/reviewed policies, nonempty offline delivery packets, exact histories and future both-lane Undo/Redo retain their meanings. All-member prechecks precede ownership moves, final promotion and release.",
+  "limitations": [
+    "The private actor cohort currently accepts at most64 members; the isolated subsequent root bridge aligns that bound with full room preparation, but is not this qualified source.",
+    "Actual retained-root operational-parent integration, durable complete execution intent, interrupted per-target journal replay, selected-upload adoption and complete native root handoff remain required.",
+    "This resource commit does not admit recovery bytes, retire an editor, acknowledge source/provider persistence, grant remote writers or activate authenticated serving.",
+    "Controlled IDB/Web Locks and normal Wasm tests do not establish physical process/OS crash durability.",
+    "No full functional/full candidate profile or Rust/flat suite rerun is claimed."
+  ],
+  "previousCheckpoint": {
+    "commit": "07b97487bae9ee9b02032bc3d8ba1d2785d31ba1",
+    "metadataPath": "docs/qualification/2026-10-26-native-room-lifetime.json",
+    "retainedProof": {
+      "path": "target/native-room-lifetime-proof-rtIMZY/index.json",
+      "sha256": "027fb49eefdc8584d9eb926f94a2fe3e02f3dacf4e8c128b946bc70f5488b77e"
+    }
+  },
+  "v1Ready": false,
+  "openV1GateCount": 13,
+  "versionsChanged": false,
+  "rootApiChanged": false,
+  "pushed": false,
+  "published": false,
+  "tagged": false,
+  "deployed": false
+}

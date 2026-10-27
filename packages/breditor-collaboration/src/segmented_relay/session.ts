@@ -1,3 +1,8 @@
+import {checkStoppedSegmentedSourceActors}from'../persistence/segmented_session.js';
+import type {StoppedActorBinding}from'../persistence/stopped_actor_source.js';
+import {takeStoppedSegmentedSourceActors}from'../persistence/segmented_session.js';
+import type {StoppedActorCustody}from'../persistence/stopped_actor_source.js';
+import {inheritActorLeaseInput}from'../persistence/actor_lease_input.js';
 /** Explicit generation-aware durable relay source. It never activates an entire room or stores credentials. */
 import {retireOwnedCore} from '../owned_core_lifetime.js';
 import {checkManagedCore} from '../managed_custody.js';
@@ -30,6 +35,10 @@ export type SharedSegmentedRevisionsOpenOptions<P extends SharedSelectionPolicy=
 
 const constructionKey=Object.freeze({});
 let readRelayGenerationRecords:(owner:SharedSegmentedRelaySession,authority:()=>void,signal?:AbortSignal)=>Promise<GenerationRecordRead>;
+let checkActorCustody:(owner:SharedSegmentedRelaySession)=>StoppedActorBinding;
+export const checkStoppedSegmentedRelayActors=<P extends SharedSelectionPolicy>(owner:SharedSegmentedRelaySession<P>):StoppedActorBinding=>checkActorCustody(owner as unknown as SharedSegmentedRelaySession);
+let takeActorCustody:(owner:SharedSegmentedRelaySession)=>StoppedActorCustody;
+export const takeStoppedSegmentedRelayActors=<P extends SharedSelectionPolicy>(owner:SharedSegmentedRelaySession<P>):StoppedActorCustody=>takeActorCustody(owner as unknown as SharedSegmentedRelaySession);
 export class SharedSegmentedRelaySession<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
  readonly #session:SharedSegmentedPersistentSession<P>;readonly #companion:SegmentedRelayCompanion;
  readonly #core:SharedRichEditor<P>;#retiring=false;#adapters=new Set<WeakRef<{dispose():void}>>();
@@ -43,30 +52,31 @@ export class SharedSegmentedRelaySession<P extends SharedSelectionPolicy=SharedS
   companion.setRetireHook(()=>this.#stop());
   registerSegmentedRelaySession(this,{core:this.#core as unknown as SharedRichEditor<SharedSelectionPolicy>,binding:structuredClone(companion.binding),check:()=>this.#check(),save:()=>this.#session.save(),flush:()=>this.#flushSource(),durable:()=>companion.durable(),persistDocument:p=>this.#persistDocument(p),persistReview:(p,r)=>this.#persistReview(p,r),track:a=>{this.#check();for(const ref of this.#adapters)if(!ref.deref())this.#adapters.delete(ref);this.#adapters.add(new WeakRef(a));}});
  }
+ static{const inspect=(owner:SharedSegmentedRelaySession):StoppedActorBinding=>{if(!owner||typeof owner!=='object'||!(#session in owner)||Object.hasOwn(owner,'core'))throw new SharedRelayError('actor_source_unavailable');if(owner.#openings.size||owner.#closing||owner.#discarding)throw new SharedRelayError('actor_source_in_use');return checkStoppedSegmentedSourceActors(owner.#session);};checkActorCustody=inspect;takeActorCustody=owner=>{inspect(owner);return takeStoppedSegmentedSourceActors(owner.#session);};}
  static{readRelayGenerationRecords=async(owner,provided,signal)=>{
   if(!owner||typeof owner!=='object'||!(#session in owner))throw new SharedRelayError('generation_record_read_source');const authority=participantAuthority(provided);owner.#check();let inner:GenerationRecordRead|undefined,result:GenerationRecordRead|undefined;
   try{inner=await captureSegmentedPersistentRecords(owner.#session,authority,signal);owner.#check();const read=inner;result=createGenerationRecordRead(read.metadata(),{check(){owner.#check();read.check();owner.#check();},current(){owner.#check();read.checkCurrent();owner.#check();},async verify(){owner.#check();await read.verify();owner.#check();},release(){read.dispose();}});result.check();return result;}catch(error){result?.dispose();inner?.dispose();throw error;}
  };}
  static async open<Q extends SharedSelectionPolicy>(input:SharedSegmentedRelaySessionOptions<Q>):Promise<SharedSegmentedRelaySession<Q>>{
   if(this!==SharedSegmentedRelaySession)throw new SharedRelayError("segmented_relay_factory_receiver");
-  const {binding,...options}=input,companion=new SegmentedRelayCompanion(input as SharedSegmentedRelaySessionOptions),session=await SharedSegmentedPersistentSession.open(inheritGenerationOperationOrigin(input,withSegmentedCompanion(options,companion)));
+  const {binding,...options}=input,companion=new SegmentedRelayCompanion(input as SharedSegmentedRelaySessionOptions),session=await SharedSegmentedPersistentSession.open(inheritActorLeaseInput(input,inheritGenerationOperationOrigin(input,withSegmentedCompanion(options,companion))));
   try{return new SharedSegmentedRelaySession(constructionKey,session,companion);}catch(error){await session.discardAndClose();throw error;}
  }
  static async restoreRecovery<Q extends SharedSelectionPolicy>(input:SharedSegmentedRelayRecoveryOptions<Q>):Promise<SharedSegmentedRelaySession<Q>>{
   if(this!==SharedSegmentedRelaySession)throw new SharedRelayError("segmented_relay_factory_receiver");
   closed(input.recovery,"format,formatVersion,relay,source");const r=input.recovery;if(r.format!=="breditor/shared-relay-generation-recovery"||r.formatVersion!==1)throw new SharedRelayError("segmented_relay_recovery");
   const {binding,recovery,...options}=input,companion=new SegmentedRelayCompanion({...options,binding,initialGenerations:{root:"recovery",active:"restore"},create:()=>{throw new SharedRelayError("segmented_relay_recovery");}} as SharedSegmentedRelaySessionOptions,r.relay);
-  const session=await SharedSegmentedPersistentSession.restoreRecovery(withSegmentedCompanion({...options,recovery:r.source},companion));try{return new SharedSegmentedRelaySession(constructionKey,session,companion);}catch(error){await session.discardAndClose();throw error;}
+  const session=await SharedSegmentedPersistentSession.restoreRecovery(inheritActorLeaseInput(input,withSegmentedCompanion({...options,recovery:r.source},companion)));try{return new SharedSegmentedRelaySession(constructionKey,session,companion);}catch(error){await session.discardAndClose();throw error;}
  }
  /** Explicit new atomic family. Old relay/local opens never infer it from stored fields. */
  static async openRetained<Q extends SharedSelectionPolicy>(input:SharedSegmentedRetainedSessionOptions<Q>):Promise<SharedSegmentedRelaySession<Q>>{
   if(this!==SharedSegmentedRelaySession)throw new SharedRelayError("segmented_relay_factory_receiver");
-  const {binding,retained,...options}=input,companion=new SegmentedRetainedCompanion(input as SharedSegmentedRetainedSessionOptions),session=await SharedSegmentedPersistentSession.open(inheritGenerationOperationOrigin(input,withSegmentedCompanion(options,companion)));
+  const {binding,retained,...options}=input,companion=new SegmentedRetainedCompanion(input as SharedSegmentedRetainedSessionOptions),session=await SharedSegmentedPersistentSession.open(inheritActorLeaseInput(input,inheritGenerationOperationOrigin(input,withSegmentedCompanion(options,companion))));
   try{return new SharedSegmentedRelaySession(constructionKey,session,companion);}catch(error){await session.discardAndClose();throw error;}
  }
  static async restoreRetainedRecovery<Q extends SharedSelectionPolicy>(input:SharedSegmentedRetainedRecoveryOptions<Q>):Promise<SharedSegmentedRelaySession<Q>>{
   if(this!==SharedSegmentedRelaySession)throw new SharedRelayError("segmented_relay_factory_receiver");const r=input.recovery;closed(r,"format,formatVersion,relay,retained,retainedBinding,source");if(r.format!=="breditor/shared-relay-generation-retained-recovery"||r.formatVersion!==1)throw new SharedRelayError("segmented_retained_recovery");
-  const {binding,retained,recovery,...options}=input,companion=new SegmentedRetainedCompanion({...options,binding,retained,initialGenerations:{root:"recovery",active:"restore"},create:()=>{throw new SharedRelayError("segmented_retained_recovery");}} as SharedSegmentedRetainedSessionOptions,r),session=await SharedSegmentedPersistentSession.restoreRecovery(withSegmentedCompanion({...options,recovery:r.source},companion));
+  const {binding,retained,recovery,...options}=input,companion=new SegmentedRetainedCompanion({...options,binding,retained,initialGenerations:{root:"recovery",active:"restore"},create:()=>{throw new SharedRelayError("segmented_retained_recovery");}} as SharedSegmentedRetainedSessionOptions,r),session=await SharedSegmentedPersistentSession.restoreRecovery(inheritActorLeaseInput(input,withSegmentedCompanion({...options,recovery:r.source},companion)));
   try{return new SharedSegmentedRelaySession(constructionKey,session,companion);}catch(error){await session.discardAndClose();throw error;}
  }
  get core():SharedRichEditor<P>{return this.#core;}

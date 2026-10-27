@@ -1,3 +1,10 @@
+import {checkSharedWriterLeaseForEscrow}from'./writer_lease.js';
+import {checkReviewWriterLeaseForEscrow}from'./review_writer_lease.js';
+import type {StoppedActorBinding}from'./stopped_actor_source.js';
+import {ActorLeaseEscrow}from'./actor_lease_escrow.js';
+import {createSharedWriterLeaseEscrow}from'./writer_lease.js';
+import {requireStoppedActorCore,type StoppedActorCustody}from'./stopped_actor_source.js';
+import {inheritActorLeaseInput,takeActorDocumentLease,takeActorReviewLease}from'./actor_lease_input.js';
 import {retireOwnedCore,disposeOwnedCore} from '../owned_core_lifetime.js';
 import {registerNativePendingWork} from '../native_pending_work.js';
 import {freeUnclaimedSharedRustOwner} from '../raw_owner_lifetime.js';
@@ -59,6 +66,11 @@ export interface SharedReviewSaveState {status:"saved"|"pending"|"failed"|"close
 /** Native document/review owners plus a local immutable packet catalog, saved as one atomic record. */
 const constructionKey=Object.freeze({});
 let readPersistentPair:(owner:SharedReviewPersistentSession,authority:()=>void,signal?:AbortSignal)=>Promise<OriginalPairedRecordRead>;
+let checkActorCustody:(owner:SharedReviewPersistentSession)=>StoppedActorBinding;
+export const checkStoppedReviewSourceActors=<P extends SharedSelectionPolicy>(owner:SharedReviewPersistentSession<P>):StoppedActorBinding=>checkActorCustody(owner as unknown as SharedReviewPersistentSession);
+let takeActorCustody:(owner:SharedReviewPersistentSession)=>StoppedActorCustody;
+/** Actual private source/lease fields only, never a copied stopped-state DTO. */
+export const takeStoppedReviewSourceActors=<P extends SharedSelectionPolicy>(owner:SharedReviewPersistentSession<P>):StoppedActorCustody=>takeActorCustody(owner as unknown as SharedReviewPersistentSession);
 export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
  readonly core:SharedRichEditor<P>;readonly recovered:boolean;
  readonly #ownedCore:SharedRichEditor<P>;
@@ -79,6 +91,7 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
   registerManagedSource(this,core,()=>{this.#live();this.#boundCore();if(this.#storageChanged||this.#retiring)throw managedSourceUnavailable();});
   db.onversionchange=()=>{this.#storageChanged=true;retireOwnedCore(core);db.close();this.#failed(new SharedEditorError("review_versionchange","Paired storage changed; export both readable histories before explicitly discarding this writer"));};
  }
+ static{const inspect=(owner:SharedReviewPersistentSession):StoppedActorBinding=>{if(!owner||typeof owner!=='object'||!(#ownedCore in owner))throw new SharedEditorError('actor_source_unavailable','Use the actual native persistence owner');if(owner.#closed||owner.#running||owner.#closing)throw new SharedEditorError('actor_source_in_use','Settle actual native persistence and cleanup before moving actor custody');if(Object.getOwnPropertyDescriptor(owner,'core')?.value!==owner.#ownedCore)throw new SharedEditorError('actor_source_unavailable','The original native core binding was replaced');requireStoppedActorCore(owner.#ownedCore);const binding=Object.freeze({room:owner.#options.room,writer:owner.#options.writer,actor:owner.#options.review.actor});checkSharedWriterLeaseForEscrow(owner.#documentLease,binding.room,binding.writer);if(binding.actor!==null)checkReviewWriterLeaseForEscrow(owner.#reviewLease!,binding.room,binding.actor);return binding;};checkActorCustody=inspect;takeActorCustody=owner=>{const binding=inspect(owner);return binding.actor===null?createSharedWriterLeaseEscrow(owner.#documentLease,binding.room,binding.writer):ActorLeaseEscrow.create(owner.#documentLease,owner.#reviewLease!,binding.room,binding.writer,binding.actor);};}
  static{readPersistentPair=async(owner,provided,signal)=>{
   const fail=(suffix:string)=>new SharedEditorError('paired_record_read_'+suffix,'Use genuine original paired storage and independent current read authority');
   if(!owner||typeof owner!=='object'||!(#ownedCore in owner))throw fail('source');const authority=participantAuthority(provided);if(owner.#recordReaders.size>=8)throw fail('busy');
@@ -118,10 +131,10 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
  static async #fromBackup<Q extends SharedSelectionPolicy>(input:Omit<SharedReviewSessionOptions<Q>,"create"|"restore">&SharedBackupRecovery,restore:SharedReviewSessionOptions<Q>["restore"],reviewed?:SharedReviewedHistoryIdentity,search=false):Promise<SharedReviewPersistentSession<Q>>{
   const {backupJson,writerRecovery,...rest}={...input};requireBackupRecovery(writerRecovery);const options={...rest,review:{...rest.review},...(rest.relay?{relay:{...rest.relay}}:{}),...(rest.editor?{editor:{...rest.editor}}:{})};
   const identity:SharedBackupIdentity={room:options.room,writer:options.writer,richLanguage:options.richLanguage,history:options.history,rangeEditing:options.rangeEditing,selectionEditing:options.selectionEditing,searchHistory:search?"search-v1":null},backup=await decodeSharedPairedSessionBackup(backupJson,identity),restoreSaved:SharedReviewSessionOptions<Q>["restore"]=async(checkpoint,policy)=>{try{return await restore.call(options,checkpoint,policy);}catch{throw new SharedEditorError("backup_native_replay","Matching native paired document replay rejected the backup");}};
-  return this.#open({...options,create:()=>{throw new SharedEditorError("backup_native_replay","Paired backup import cannot fall back to a new document");}},restoreSaved,reviewed,search,backup);
+  return this.#open(inheritActorLeaseInput(input,{...options,create:()=>{throw new SharedEditorError("backup_native_replay","Paired backup import cannot fall back to a new document");}}),restoreSaved,reviewed,search,backup);
  }
  static async #open<Q extends SharedSelectionPolicy>(input:Omit<SharedReviewSessionOptions<Q>,"restore">,restoreSaved:SharedReviewSessionOptions<Q>["restore"],reviewed?:SharedReviewedHistoryIdentity,search=false,backup?:SharedPairedSessionBackup):Promise<SharedReviewPersistentSession<Q>>{
-  const recoveryOrigin=recoveryOriginFor(input);
+  const actorInput=input,recoveryOrigin=recoveryOriginFor(input);
   if(input.editor&&"segmentedHistory" in input.editor&&input.editor.segmentedHistory!==undefined)throw new SharedEditorError("segmented_session_factory","Use the explicitly generation-aware paired family");
   if("searchHistory" in input&&input.searchHistory!==undefined)throw new SharedEditorError("search_session_factory","Select search history through the explicit paired search factory");
   if(input.editor&&"searchHistory" in input.editor&&input.editor.searchHistory!==undefined)throw new SharedEditorError("search_session_factory","Select search history through the explicit paired search factory");
@@ -130,9 +143,9 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
   const options:SessionOptions<Q>={...input,review:{...input.review},...(input.relay?{relay:reviewStorageIdentity(input.relay)}:{}),...(reviewed?{reviewedHistory:reviewed}:{}),...(search?{searchHistory:"search-v1"}:{})};
   if(options.relay?.reviewEditing==="read_only"&&options.review.access!=="read_only")throw new SharedEditorError("review_observer_policy","A fixed metadata observer must start with read-only native policy");
   if(![1,2,3].includes(options.richLanguage)||(options.history!=="explicit"&&options.history!=="typing-v1")||(options.rangeEditing!=="original"&&options.rangeEditing!=="general-v1")||(options.selectionEditing!=="original"&&options.selectionEditing!=="document-v1")||(options.selectionEditing==="document-v1"&&options.rangeEditing!=="general-v1"))throw new SharedEditorError("review_session_policy","Explicit compatible review session policies are required");
-  const documentLease=await SharedWriterLease.acquire(options.room,options.writer);let reviewLease:ReviewWriterLease|undefined,db:IDBDatabase|undefined,core:SharedRichEditor<Q>|undefined,raw:SharedRustOwner|undefined,nativeBackupAdmission=false;
+  const documentLease=await(takeActorDocumentLease(actorInput,'review',options.database,options.room,options.writer,options.review.actor)??SharedWriterLease.acquire(options.room,options.writer));let reviewLease:ReviewWriterLease|undefined,db:IDBDatabase|undefined,core:SharedRichEditor<Q>|undefined,raw:SharedRustOwner|undefined,nativeBackupAdmission=false;
   try{
-   reviewLease=await ReviewWriterLease.acquire(options.room,options.review.actor);const retained=recoveryOrigin?await existingSessionDatabase(options.database,[options.room,options.writer],"review_open_versionchange"):undefined;db=retained?.db??await openSessionDatabase(options.database);
+   reviewLease=await(takeActorReviewLease(actorInput,'review',options.database,options.room,options.writer,options.review.actor)??ReviewWriterLease.acquire(options.room,options.review.actor));const retained=recoveryOrigin?await existingSessionDatabase(options.database,[options.room,options.writer],"review_open_versionchange"):undefined;db=retained?.db??await openSessionDatabase(options.database);
    const opening=retained?.opening??fenceOpeningDatabase(db,"review_open_versionchange");
    if(backup&&await backupDestinationExists(db,[options.room,options.writer]))throw new SharedEditorError("backup_destination_exists","Paired backup destination already contains a record");
    const saved=backup?readPairedBackupRecord(backup.recordJson,backup.identity):await(search?readSearchReviewRecord(db,[options.room,options.writer]):reviewed?readReviewedReviewRecord(db,[options.room,options.writer]):options.relay?.reviewEditing==="read_only"?readReviewObserverRecord(db,[options.room,options.writer]):options.relay?readReviewRelayRecord(db,[options.room,options.writer]):readReviewRecord(db,[options.room,options.writer]));

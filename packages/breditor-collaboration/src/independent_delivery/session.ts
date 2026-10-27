@@ -1,3 +1,8 @@
+import {checkStoppedIndependentSourceActors}from'../independent_history/session.js';
+import type {StoppedActorBinding}from'../persistence/stopped_actor_source.js';
+import {takeStoppedIndependentSourceActors}from'../independent_history/session.js';
+import type {StoppedActorCustody}from'../persistence/stopped_actor_source.js';
+import {inheritActorLeaseInput}from'../persistence/actor_lease_input.js';
 /** Own actual independent native lanes, receipts and all selected retained outboxes in one DB cut. */
 import {SharedIndependentHistoryPersistentSession} from '../independent_history/session.js';
 import {independentHistoryNative,type IndependentHistoryNativePort} from '../independent_history/native_port.js';
@@ -32,6 +37,10 @@ import {MAX_INDEPENDENT_DELIVERY_RECOVERY_BYTES,type SharedIndependentDeliveryOp
 export type SharedIndependentVersionsOpenOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy>=Omit<SharedDocumentVersionsOptions<P>,'identity'|'database'|'storage'|'autoConnect'>&{autoConnect?:false};
 export type SharedIndependentRevisionsOpenOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy>=Omit<SharedSuggestionRevisionsOptions<P>,'binding'|'database'|'storage'|'queue'|'autoStart'>&{autoStart?:false};
 const constructionKey=Object.freeze({});
+let checkActorCustody:(owner:SharedIndependentDeliverySession)=>StoppedActorBinding;
+export const checkStoppedIndependentDeliveryActors=<P extends SharedSelectionPolicy>(owner:SharedIndependentDeliverySession<P>):StoppedActorBinding=>checkActorCustody(owner as unknown as SharedIndependentDeliverySession);
+let takeActorCustody:(owner:SharedIndependentDeliverySession)=>StoppedActorCustody;
+export const takeStoppedIndependentDeliveryActors=<P extends SharedSelectionPolicy>(owner:SharedIndependentDeliverySession<P>):StoppedActorCustody=>takeActorCustody(owner as unknown as SharedIndependentDeliverySession);
 export class SharedIndependentDeliverySession<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
  readonly #session:SharedIndependentHistoryPersistentSession<P>;readonly #native:IndependentHistoryNativePort;
  readonly #core:SharedRichEditor<P>;readonly #companion:IndependentDeliveryCompanion;readonly #operation:boolean;
@@ -47,10 +56,11 @@ export class SharedIndependentDeliverySession<P extends SharedSelectionPolicy=Sh
   registerIndependentDeliverySession(this,{core:this.#native.core,binding:structuredClone(companion.binding),check:()=>this.#check(),save:()=>this.#session.save(),flush:()=>this.#flushSource(),durable:()=>companion.durable(),persistDocument:progress=>this.#persistDocument(progress),persistReview:(progress,receipt)=>this.#persistReview(progress,receipt),track:adapter=>{this.#check();for(const ref of this.#adapters)if(!ref.deref())this.#adapters.delete(ref);this.#adapters.add(new WeakRef(adapter));}});
   registerIndependentDeliverySource(this,{core:this.#native.core,identity:companion.identity,...(operation?{operation}:{}),check:()=>this.#checkReadable(),stamp:()=>{this.#checkReadable();return[this.#native.stamp(),companion.sourceStamp()];},read:()=>this.#readRecovery()});
  }
+ static{const inspect=(owner:SharedIndependentDeliverySession):StoppedActorBinding=>{if(!owner||typeof owner!=='object'||!(#session in owner)||Object.hasOwn(owner,'core'))throw new SharedRelayError('actor_source_unavailable');if(owner.#openings.size||owner.#closing||owner.#discarding)throw new SharedRelayError('actor_source_in_use');return checkStoppedIndependentSourceActors(owner.#session);};checkActorCustody=inspect;takeActorCustody=owner=>{inspect(owner);return takeStoppedIndependentSourceActors(owner.#session);};}
  static async open<Q extends SharedSelectionPolicy>(input:SharedIndependentDeliveryOptions<Q>):Promise<SharedIndependentDeliverySession<Q>>{
   if(this!==SharedIndependentDeliverySession)throw new SharedRelayError('independent_delivery_factory_receiver');
   if(operationJournalSelected(input)&&selectedRestoredOperationJournal(input))throw new SharedRelayError('independent_operation_factory');
-  const {binding,retained,...options}=input,companion=new IndependentDeliveryCompanion(input),journal=journaledIndependentCompanion(input,companion)??restoredIndependentCompanion(input,companion),session=await SharedIndependentHistoryPersistentSession.open(forwardIndependentBootstrapPolicy(input,withIndependentDeliveryCompanion(options,journal??guardedIndependentCompanion(input,companion))));
+  const {binding,retained,...options}=input,companion=new IndependentDeliveryCompanion(input),journal=journaledIndependentCompanion(input,companion)??restoredIndependentCompanion(input,companion),session=await SharedIndependentHistoryPersistentSession.open(inheritActorLeaseInput(input,forwardIndependentBootstrapPolicy(input,withIndependentDeliveryCompanion(options,journal??guardedIndependentCompanion(input,companion)))));
   try{return new SharedIndependentDeliverySession(constructionKey,session,companion,selectedOperationJournal(input)??selectedRestoredOperationJournal(input));}catch(error){await session.discardAndClose();throw error;}
  }
  static async restoreRecovery<Q extends SharedSelectionPolicy>(input:SharedIndependentDeliveryRecoveryOptions<Q>):Promise<SharedIndependentDeliverySession<Q>>{
@@ -59,7 +69,7 @@ export class SharedIndependentDeliverySession<P extends SharedSelectionPolicy=Sh
   closed(r.source,'documentCheckpoint,format,formatVersion,identity,reviewCheckpoint,versions');if(r.source.format!=='breditor/shared-independent-history-recovery'||r.source.formatVersion!==1||!Array.isArray(r.source.versions))throw new SharedRelayError('independent_delivery_recovery');
   const recovery=structuredClone(r),identity=canonicalIndependentHistoryIdentity(recovery.source.identity),companion=new IndependentDeliveryCompanion(input,recovery),cut=await makeIndependentHistoryCut(recovery.source.documentCheckpoint,recovery.source.reviewCheckpoint,identity,recovery.source.versions);
   companion.wrap(JSON.parse(cut.head),companion.capture());
-  const {binding,retained,recovery:_recovery,writerRecovery,...options}=input,session=await SharedIndependentHistoryPersistentSession.restoreRecovery(forwardIndependentBootstrapPolicy(input,withIndependentDeliveryCompanion(options,guardedIndependentCompanion(input,companion))),recovery.source,writerRecovery);
+  const {binding,retained,recovery:_recovery,writerRecovery,...options}=input,session=await SharedIndependentHistoryPersistentSession.restoreRecovery(inheritActorLeaseInput(input,forwardIndependentBootstrapPolicy(input,withIndependentDeliveryCompanion(options,guardedIndependentCompanion(input,companion)))),recovery.source,writerRecovery);
   try{return new SharedIndependentDeliverySession(constructionKey,session,companion);}catch(error){await session.discardAndClose();throw error;}
  }
  get core():SharedRichEditor<P>{return this.#core;}

@@ -94,6 +94,9 @@ strict type fence. Controlled failures are not physical power-loss qualification
 Replacement targets in these laws are opened explicitly through existing V3 host
 APIs. The new retirement SDK does not yet implement a durable root/catalog/asset
 namespace selection, a per-target execution journal, interrupted target replay or
-whole-room handoff. Those remain architectural priorities before provider/client
+whole-room handoff. The separate [native actor handoff contract](NATIVE_ACTOR_HANDOFF.md) retains local
+writer locks across failed target openings and synchronous cohort resource transfer.
+It does not yet connect operational parents to a durable whole-room executor.
+Those integrations remain architectural priorities before provider/client
 reconciliation, compatible native union and authenticated serving activation. All
 thirteen V1 gates and the full parity goal remain open.
