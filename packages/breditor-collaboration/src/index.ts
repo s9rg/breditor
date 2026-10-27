@@ -200,3 +200,6 @@ export {SharedGenerationOperationError} from "./generation_operation/policy.js";
 export type {SharedGenerationOperationBeginOptions,SharedGenerationOperationResumeOptions,SharedGenerationOperationProgress,OperationalSharedGenerationParticipantParts} from "./generation_operation/contract.js";
 
 export type{SharedNativeBranchUnionAuthorization,SharedNativeBranchUnionOutcome}from'./native_branch_union_types.js';
+
+export{prepareSharedIndependentDeliveryBranchUnion}from'./independent_delivery_union/prepare.js';
+export type{SharedIndependentDeliveryUnionOptions,SharedIndependentDeliveryUnionReadFactory,SharedIndependentDeliveryUnionPreparation}from'./independent_delivery_union/contract.js';
