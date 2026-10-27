@@ -61,10 +61,12 @@ export async function verifySelectedRoomNativeBranchCoverage<P extends SharedSel
 export async function verifySelectedRoomNativeDataBranchCoverage<P extends SharedSelectionPolicy>(before:PhysicalRoomRecordCutArchive,after:PhysicalRoomRecordCutArchive,provided:PhysicalOperationV3HistoryReadOptions<P>,descriptors:ReadonlyMap<string,string>,guard:()=>void):Promise<void>{
  const root=readRoot.call(after),selected=new Map(descriptors);if(selected.size!==root.participants.length||root.participants.some(row=>typeof selected.get(row.id)!=='string'))throw fail();return verifyContinuation(before,after,provided,id=>selected.get(id)!,guard,'compatible');
 }
-async function verifyContinuation<P extends SharedSelectionPolicy>(before:PhysicalRoomRecordCutArchive,after:PhysicalRoomRecordCutArchive,provided:PhysicalOperationV3HistoryReadOptions<P>,descriptorFor:(id:string)=>string,guard:()=>void,mode:'exact'|'compatible'='exact'):Promise<void>{
+async function verifyContinuation<P extends SharedSelectionPolicy>(before:PhysicalRoomRecordCutArchive,after:PhysicalRoomRecordCutArchive,provided:PhysicalOperationV3HistoryReadOptions<P>,descriptorFor:(id:string)=>string,guard:()=>void,mode:'exact'|'compatible'='exact',only?:string):Promise<void>{
  const chosen=snapshotPhysicalHistoryReadOptions(provided),oldRoot=readRoot.call(before),root=readRoot.call(after);if(JSON.stringify(oldRoot)!==JSON.stringify(root)||chosen.reads.length!==root.participants.length)throw fail();
+ if(only!==undefined&&!root.participants.some(row=>row.id===only))throw fail();
  const catalog=parsePhysicalCatalogV3Manifest(root.source.manifest),check=()=>{guard();chosen.checkAuthority();guard();};check();
  for(const row of root.participants){
+  if(only!==undefined&&row.id!==only)continue;
   const selected=chosen.reads.find(value=>value.id===row.id),entry=catalog.participants.find(value=>value.id===row.id);if(!selected||!entry||entry.family!==row.family)throw fail();
   const older=await records.call(before,row.id),newer=await records.call(after,row.id);check();const left=object(object(older)['source']),right=object(object(newer)['source']),descriptor=descriptorFor(row.id);
   if(row.family==='original'){
@@ -84,3 +86,8 @@ async function verifyContinuation<P extends SharedSelectionPolicy>(before:Physic
  }
  check();
 }
+
+/** SDK-private exact per-member proof for a closed mixed-mode coordinator. It
+ * does NOT certify omitted members; all ordinary complete-room entry points
+ * above still compare every row with their unchanged strict defaults. */
+export function verifySelectedRoomNativeParticipantContinuation<P extends SharedSelectionPolicy>(before:PhysicalRoomRecordCutArchive,after:PhysicalRoomRecordCutArchive,provided:PhysicalOperationV3HistoryReadOptions<P>,id:string,descriptor:string,guard:()=>void):Promise<void>{if(typeof id!=='string'||typeof descriptor!=='string')throw fail();return verifyContinuation(before,after,provided,()=>descriptor,guard,'exact',id);}

@@ -22,14 +22,19 @@ export type ReconstructionCatalogReadContext=Pick<NativeReconstructionInputs,'be
 /** Returned policies retain the supplied read lifetime; a later mutable owner
  * must choose its own independent host policy, not reuse a retiring job's one. */
 export async function readPreparedReconstructionCatalog(context:ReconstructionCatalogReadContext,prepared:RoomPreparationArchive):Promise<Readonly<{catalog:PhysicalRoomCatalogV3Archive;readOptions:PhysicalRoomCatalogV3ReadOptions}>>{
- const selected=choice.call(prepared),source=context.retained.catalog(),files=context.retained.nativeCut().catalogFiles();checkRoomPreparationSources(context.before,context.retained,selected.plan.database,selected.plan.participants);
+ const selected=choice.call(prepared);return readReconstructionCatalog(context,selected.plan,id=>part.call(prepared,id));
+}
+/** SDK-private DATA assembler shared by independently admitted preparation families.
+ * The closed callers supply every literal file; it returns no writer custody. */
+export async function readReconstructionCatalog(context:ReconstructionCatalogReadContext,plan:Pick<import('../native_room_preparation/contract.js').RoomPreparationPlan,'database'|'participants'>,participantFile:(id:string)=>Blob):Promise<Readonly<{catalog:PhysicalRoomCatalogV3Archive;readOptions:PhysicalRoomCatalogV3ReadOptions}>>{
+ const source=context.retained.catalog(),files=context.retained.nativeCut().catalogFiles();checkRoomPreparationSources(context.before,context.retained,plan.database,plan.participants);
  const graphPolicies:PhysicalRoomCatalogV3GraphPolicy[]=[],localPolicies:PhysicalRoomCatalogV3LocalPolicy[]=[],participants:PhysicalRoomCatalogV3Input[]=[];
- for(const row of selected.plan.participants){context.check();const original=context.retained.participant(row.id),binding=context.nativeReads.find(read=>read.id===row.id);if(!binding||original.family!==row.sourceFamily)throw fail();
+ for(const row of plan.participants){context.check();const original=context.retained.participant(row.id),binding=context.nativeReads.find(read=>read.id===row.id);if(!binding||original.family!==row.sourceFamily)throw fail();
   if(row.family==='restored-graph'){if(original.family!=='restored-graph'||JSON.stringify(original.selection.original)!==JSON.stringify(row.selection.original))throw fail();graphPolicies.push({id:row.id,original:original.selection.original,options:{session:(binding.read as {session:IndependentOperationReadOptions['session']}).session,checkAuthority:context.check,...(context.integrity.signal?{signal:context.integrity.signal}:{}),...(context.assets?.limits?{limits:context.assets.limits}:{})}});}
   else if(row.family==='local-operation-flat'){if(original.family!=='local-operation-flat'&&original.family!=='local-operation-snapshot'||JSON.stringify(original.selection.original)!==JSON.stringify(row.selection.original))throw fail();localPolicies.push({id:row.id,family:row.family,original:original.selection.original,options:{session:(binding.read as {session:LocalOperationReadOptions['session']}).session,checkAuthority:context.check,...(context.integrity.signal?{signal:context.integrity.signal}:{}),...(context.assets?.limits?{limits:context.assets.limits}:{})}});}
   else if(row.family==='local-operation-snapshot')throw fail();
   else if('identity'in original.selection&&'identity'in row.selection){if(JSON.stringify(original.selection.identity)!==JSON.stringify(row.selection.identity))throw fail();}else throw fail();
-  participants.push({id:row.id,family:row.family,expected:row.selection,file:part.call(prepared,row.id)} as PhysicalRoomCatalogV3Input);
+  participants.push({id:row.id,family:row.family,expected:row.selection,file:participantFile(row.id)} as PhysicalRoomCatalogV3Input);
  }
  const take=(name:string)=>{const file=files.get(name);if(!file)throw fail();return file;};context.check();const readOptions:PhysicalRoomCatalogV3ReadOptions={...context.integrity,graphPolicies,localPolicies};const catalog=await PhysicalRoomCatalogV3Archive.capture({...readOptions,catalog:source.catalog,origin:{file:take('origin-server'),expected:source.origin.identity},current:{server:{file:take('current-server'),expected:source.current.server.identity},participants:{file:take('inventory'),expected:source.current.participants.identity}},participants});try{context.check();return Object.freeze({catalog,readOptions});}catch(error){catalog.dispose();throw error;}
 }

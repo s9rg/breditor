@@ -1,0 +1,127 @@
+{
+  "format": "breditor/native-room-union-qualification",
+  "formatVersion": 1,
+  "status": "passed",
+  "qualifiedAt": "2026-10-27T22:59:18.713Z",
+  "source": {
+    "commit": "6e8d9cb5a412c9bfa37f77557f33c90b941faa22",
+    "dirty": true,
+    "sha256": "037590e80d42510d4d9481a2b2cf212ff4aa5bd6aa204afe79353f6cbcb64996",
+    "files": 6922,
+    "bytes": 53489870
+  },
+  "evidence": {
+    "index": "target/native-room-union-proof-yUW4Vz/index.json",
+    "sha256": "f6abaa1c96baac7a6c73806ac006d2f63e1677157531f18314c63fd5e2935f10",
+    "retainedFiles": 87
+  },
+  "functional": {
+    "source": 121,
+    "installedPackage": 121,
+    "actualProductionBundle": 121,
+    "newMixedRoomLaws": 8,
+    "priorNativeSourceParticipantLaws": 113,
+    "strictConsumerTypes": 22,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0
+  },
+  "legacySourceTests": {
+    "completePairedRecordCoverage": 4,
+    "strictRoomPreparation": 8,
+    "actualRoomRetirementAndRestore": 4,
+    "total": 16,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0
+  },
+  "contracts": {
+    "sdkPrivate": true,
+    "sourceFamilies": 7,
+    "unionMutationFamilies": [
+      "independent-delivery"
+    ],
+    "otherMembersRequireExactContinuation": true,
+    "independentHistoryCombinations": 4,
+    "originalRoleWindowsSuppliedFresh": true,
+    "roomJournalOnly": true,
+    "targetsRemainAbsent": true,
+    "completeBeforeAndRetainedCuts": true,
+    "separateSelectedQueuesPreserved": true,
+    "ordinaryProtocolsUnchanged": true
+  },
+  "archiveIdentity": {
+    "kind": "manifest-sha256-and-exact-total-bytes-with-semantically-admitted-components",
+    "wholeOuterFileSha256Claimed": false,
+    "maximumBytes": 17179869184,
+    "headerMaximumBytes": 16777216,
+    "nativeDigestMaximumBytes": 1073741824,
+    "nativeDigestChunkBytes": 1048576,
+    "oldBoundsChanged": false
+  },
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "nativeRustRebuilt": false,
+  "freshRustTestRun": false,
+  "nativeInputsRegenerated": false,
+  "pinnedNativeFilesReverified": 50,
+  "nativeReport": {
+    "path": "target/complete-image-cohort-native.json",
+    "sha256": "6845c6fee53d1249a8c77c73ca3c728fdfa874d8694798dfe2387b43868ae94c"
+  },
+  "actualProductionBundleSha256": "a66df06d58eb7e74e6e75548437a175e59c2ce8e33339324d461baad96de1e0c",
+  "productionModules": 789,
+  "offlineInstalledArchives": [
+    {
+      "name": "@breditor/browser",
+      "path": "/private/tmp/breditor-native-room-union-installed-7Tppo6/archives/breditor-browser-0.3.0-alpha.22.tgz",
+      "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+    },
+    {
+      "name": "@breditor/experimental-rich-content",
+      "path": "/private/tmp/breditor-native-room-union-installed-7Tppo6/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+      "sha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15"
+    },
+    {
+      "name": "@breditor/collaboration",
+      "path": "/private/tmp/breditor-native-room-union-installed-7Tppo6/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+      "sha256": "41c0084a9b412d62dc318533e6758f552f1a5b627b88b73a1a15ef7c4143cada"
+    }
+  ],
+  "registryArtifacts": 45,
+  "workspaceLinks": false,
+  "actualPackageChildren": [
+    {
+      "name": "contracts",
+      "pid": 99607,
+      "code": 0,
+      "signal": null,
+      "log": "/private/tmp/breditor-native-room-union-installed-7Tppo6/contracts.log"
+    },
+    {
+      "name": "bundled-contracts",
+      "pid": 99608,
+      "code": 0,
+      "signal": null,
+      "log": "/private/tmp/breditor-native-room-union-installed-7Tppo6/bundled-contracts.log"
+    }
+  ],
+  "repairedDuringImplementation": {
+    "archiveAccessorExposedMutableInternalTuples": true,
+    "archiveTuplesNowImmutable": true
+  },
+  "scope": "Complete mixed-mode whole-room preparation binds all seven ordinary reconstruction outputs and each delivery union to both complete actual/retained room cuts. Native text/comment forks, local Undo/Redo, independently differing selected upload queues, original nested inputs, late native cancellation, interrupted journals and fresh policy are reproduced without opening replacement targets. Legacy strict preparation and genuine actor retirement keep their existing meanings. Controlled storage/raster tests and old native fixture data are not physical crash or release qualification.",
+  "remaining": [
+    "Genuine retirement and actor handoff using this new union provenance",
+    "Union-aware target execution and interruption recovery",
+    "Union mutation for the other operational source families",
+    "Unknown own-author suffixes and incomparable sealed-generation branches",
+    "Original-role network fetch and client/provider reconciliation",
+    "Independent comment and server-log generation lifecycle",
+    "Authenticated whole-room serving activation",
+    "Retention, version/asset policy, performance, distribution and remaining parity features"
+  ],
+  "fullReleaseCorpusRun": false,
+  "authenticatedActivation": false,
+  "v1Ready": false,
+  "v1GatesChanged": false
+}
