@@ -1,3 +1,4 @@
+import {closeUnreturnedJournalSource,journalSourceCleanupOwnsRelease} from '../persistence/journal_source_opening.js';
 /** Genuine original + bounded current/pending intent, retained for the whole live source lifetime. */
 import {retainedOperationCuts,sameRetainedOperationCuts} from '../operation_read/retained_cuts.js';
 import {recordReadMode,type OperationalRecordReadMode} from '../operation_read/record_payload.js';
@@ -94,14 +95,14 @@ export class IndependentOperationCutJournal {
   this.#readers.add(work);void work.finally(()=>this.#readers.delete(work)).catch(()=>{});return work;
  }
  async close():Promise<void>{if(this.#closed)return;if(this.#owner||this.#opening||this.#working)throw fail('independent_operation_in_use');if(this.#closing)return this.#closing;
-  return this.#closing=Promise.resolve().then(async()=>{await Promise.allSettled([...this.#readers]);this.#db.close();await this.#lease.close();disposeOrigin.call(this.#origin);archive.dispose.call(this.#p.backup);this.#closed=true;}).finally(()=>{this.#closing=undefined;});
+  return this.#closing=Promise.resolve().then(async()=>{await closeUnreturnedJournalSource(this);await Promise.allSettled([...this.#readers]);this.#db.close();await this.#lease.close();disposeOrigin.call(this.#origin);archive.dispose.call(this.#p.backup);this.#closed=true;}).finally(()=>{this.#closing=undefined;});
  }
  /** Genuine private factory hooks; their inferred type describes the private binding. */
  private bindingType(){return{
   identity:structuredClone(this.#decoder.identity),sourceDatabase:this.#id.sourceDatabase,
   nativeCaptureGuard:Object.freeze({check:()=>this.#check(),capture:(...args:Parameters<ReturnType<typeof independentNativeOriginGuard>['capture']>)=>{this.#check();this.#native.capture(...args);this.#check();}}),
   readHead:this.#readHead,unwrap:this.#unwrap,wrap:(head:string)=>{this.#decoder.readHead(head);return wrapOperationHead(head,this.#id);},
-  persistence:Object.freeze({select:(actual:IndependentHistoryStoredCut|null)=>this.#select(actual),prepare:(expected:string|null,cut:IndependentHistoryCut)=>this.#prepare(expected,cut),acknowledge:(cut:IndependentHistoryCut)=>this.#acknowledge(cut),release:async()=>{if(!this.#owner)return;this.#owner=undefined;await closeJournal.call(this);}}),
+  persistence:Object.freeze({select:(actual:IndependentHistoryStoredCut|null)=>this.#select(actual),prepare:(expected:string|null,cut:IndependentHistoryCut)=>this.#prepare(expected,cut),acknowledge:(cut:IndependentHistoryCut)=>this.#acknowledge(cut),release:async()=>{if(!this.#owner)return;this.#owner=undefined;if(!journalSourceCleanupOwnsRelease(this))await closeJournal.call(this);}}),
   reserve:()=>{this.#check();if(this.#owner||this.#opening||this.#working||this.#closing)throw fail('independent_operation_in_use');this.#opening=true;let settled=false;return{claim:(owner:object)=>{if(settled||!this.#opening||this.#owner)throw fail();this.#check();const port=independentDeliverySource(owner);if(port.operation!==this||JSON.stringify(port.identity)!==JSON.stringify(this.#decoder.identity))throw fail('independent_operation_source');this.#owner=owner;this.#opening=false;settled=true;},abandon:()=>{if(!settled){this.#opening=false;settled=true;}}};},
   readSource:(owner:object)=>{if(this.#owner!==owner)throw fail('independent_operation_source');const port=independentDeliverySource(owner);if(port.operation!==this)throw fail('independent_operation_source');return port.read();},
   /** A real outstanding read scope holds the journal/origin until release and actual I/O finish.

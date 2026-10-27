@@ -1,0 +1,142 @@
+{
+  "format": "breditor/journal-source-opening-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-27T15:19:51.353Z",
+  "qualification": "selected-functional-architectural-increment-not-v1-release",
+  "workingTreeSourceAtVerification": {
+    "commit": "edbbc420fdf456021c25bbd30da24d88de1b65b4",
+    "dirty": true,
+    "sha256": "f22a4329b0c3dbc36c70b0755d007572c9e04dec5982e63fdb10c1ef15873068",
+    "files": 6798,
+    "bytes": 52849268
+  },
+  "qualificationMetadataAddedAfterRun": true,
+  "postVerificationSourceAdditions": [
+    "docs/qualification/2026-10-27-journal-source-opening.json"
+  ],
+  "normal": {
+    "selectedCandidateStages": 20,
+    "sourceTests": 353,
+    "offlineInstalledTests": 353,
+    "actualProductionBundleTests": 353,
+    "priorWarmColdAndInspectionTestsRepeated": 340,
+    "newOpeningCases": 13,
+    "strictTypeFixtures": 13,
+    "additionalOriginalJournalCompatibilityStages": 8,
+    "originalJournalNativeCases": {
+      "localSource": 480,
+      "localInstalled": 480,
+      "deliverySource": 640,
+      "deliveryInstalled": 640
+    },
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0,
+    "fullCandidateExecuted": false,
+    "fullSelectedOwnerMatrixRerun": false
+  },
+  "implementation": {
+    "contract": "docs/JOURNALED_SOURCE_OPENING.md",
+    "affectedAdapters": [
+      "independent-local",
+      "independent-delivery"
+    ],
+    "actualSourceOpeningRegisteredBeforeNativeConstructor": true,
+    "actualReturnedSourceRetainedBeforeAdmission": true,
+    "oneUnreturnedSourcePerJournal": true,
+    "pendingCleanupCannotBeReplacedByAnotherConstructor": true,
+    "actualLateConstructorResultJoinedAndClosed": true,
+    "admissionIsSynchronous": true,
+    "ordinarySynchronousConstructorOptionCapturePreserved": true,
+    "sourceTransferIsCallbackFreeAndOneShot": true,
+    "failedCleanupRetainsExactSource": true,
+    "journalCloseRetriesSourceCleanupBeforeOriginDatabaseAndLeaseClosure": true,
+    "internalNativeJournalReleaseDoesNotRecursivelyAwaitItsOwnCleanup": true,
+    "sourceCleanupRetryNeedsNoProbeOnlyHandleOrRenewedReadPermission": true,
+    "storedSourceBytesPreserved": true,
+    "noSaveReplayAcknowledgementOrDeletionDuringCleanup": true,
+    "ordinaryHelperSignaturesSourceFactoriesDefaultsAndStoredFormatsUnchanged": true,
+    "noSerializedCompletionFlagProvidesOwnership": true,
+    "publicPackageRootsUnchanged": true
+  },
+  "reproducedBugs": {
+    "actualReviewWriterReleaseFailureBeforeJournalClaim": {
+      "unfixedLocalFailed": 1,
+      "unfixedDeliveryFailed": 1
+    },
+    "constructorOptionCaptureTiming": {
+      "unfixedFailed": 1,
+      "correctedPassed": 1
+    },
+    "correctedNormalCompilerContracts": {
+      "passed": 13,
+      "failed": 0,
+      "actualNativeBeforeAndAfterClaimCases": 4,
+      "pureOwnershipCases": 9
+    },
+    "actualNativeCleanupRetriedWithoutProbeOnlySourceHandle": true
+  },
+  "products": {
+    "count": 2044,
+    "unchanged": 2036,
+    "changed": 6,
+    "added": 2,
+    "removed": 0,
+    "publicRootsUnchanged": true
+  },
+  "native": {
+    "freshFiles": 100,
+    "profileAndWireRooms": 10,
+    "unchangedSourceAndBuildInputs": 2899,
+    "normalWasmSha256": "946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0",
+    "rustSuitesRerun": false
+  },
+  "controls": [
+    {
+      "name": "local-journal-retains-unreturned-source",
+      "removedActualExit": 1,
+      "restoredActualExit": 0,
+      "removedFailures": 2,
+      "restoredPasses": 2,
+      "implementationSha256": "c70468775ef59264574e2275970ee2d695331d3bc59f46abe35f956ca5e1f25f",
+      "byteExactRestore": true
+    },
+    {
+      "name": "delivery-journal-retains-unreturned-source",
+      "removedActualExit": 1,
+      "restoredActualExit": 0,
+      "removedFailures": 2,
+      "restoredPasses": 2,
+      "implementationSha256": "69601b0c456cae2ac52baf85c20d23d35eb05e13b492b012b2c9c51f8a9883f9",
+      "byteExactRestore": true
+    }
+  ],
+  "endpoints": {
+    "count": 710,
+    "manifests": 72,
+    "allConfirmedClosed": true
+  },
+  "retainedProof": {
+    "path": "target/journal-source-opening-proof-Xlsrrn/index.json",
+    "sha256": "1ab9f2faa85f5282762883c01ffd263f0dea43b1f9830559506c355097855556",
+    "files": 539
+  },
+  "previousCheckpoint": {
+    "commit": "edbbc420fdf456021c25bbd30da24d88de1b65b4",
+    "qualification": "docs/qualification/2026-10-27-completed-room-inspection.json"
+  },
+  "limitations": [
+    "Cold continuation of an interrupted replacement build still needs an independently verified original cut, actual fresh actor ownership, preserved captured unsaved work and retained assets through the final target barrier. Saved readiness and retirement DATA do not supply ownership.",
+    "Provider/client reconciliation, authenticated whole-room activation, independent comment/server-log lifecycle work, sustainable Undo/offline/asset retention and remaining feature parity are still required.",
+    "These tests cover the two actual journal helpers and their unreturned-source ownership. They do not certify every native-constructor failure, physical process crash, power loss, OS input, cross-browser reliability or accessibility.",
+    "All353 declared laws repeat on source, offline-installed archives and an actual production bundle. Eight original journal compatibility stages also repeat. This is not the complete V1 candidate or a fresh Rust suite matrix."
+  ],
+  "v1Ready": false,
+  "openV1GateCount": 13,
+  "versionsChanged": false,
+  "publicRootApisChanged": false,
+  "pushed": false,
+  "published": false,
+  "tagged": false,
+  "deployed": false
+}

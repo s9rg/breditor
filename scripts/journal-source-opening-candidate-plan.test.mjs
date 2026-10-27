@@ -1,0 +1,9 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {candidateReleasePlan} from './candidate-release/plan.mjs';
+import {completedRoomInspectionWorkload as prior} from './completed-room-inspection-workload.mjs';
+import {journalSourceOpeningWorkload as work} from './journal-source-opening-workload.mjs';
+test('failed-source ownership qualification repeats every prior law and actual installed adapter',()=>{
+ assert.equal(prior.assertions,340);assert.equal(work.assertions,353);assert.equal(work.priorAssertions+work.newOpeningAssertions,work.assertions);assert.deepEqual(work.tests.slice(0,prior.tests.length),prior.tests);assert.deepEqual(work.tests.slice(prior.tests.length),['journal-source-opening.test.mjs','journal-source-opening-sdk.test.mjs']);assert.equal(work.types.length,13);assert.deepEqual(work.types.slice(0,prior.types.length),prior.types);
+ for(const profile of['functional','full']){const plan=candidateReleasePlan({profile}),get=id=>{const rows=plan.checks.filter(row=>row.id===id);assert.equal(rows.length,1,id);return rows[0];},at=id=>plan.checks.indexOf(get(id));
+  for(const[id,script,path]of[['journal-source-opening','check-journal-source-opening-sdk.mjs','target/journal-source-opening-sdk.json'],['installed-journal-source-opening','check-journal-source-opening-installed.mjs','target/journal-source-opening-installed-consumer.json']]){assert.deepEqual(get(id).args,['scripts/'+script]);assert.deepEqual(get(id).artifacts,[{path,fresh:true}]);for(const required of['rich-browser-build','collaboration-build','native-complete-cohort','native-complete-image-cohort','completed-room-inspection','installed-completed-room-inspection','journal-source-opening-contracts','journal-source-opening-type-fence'])assert.ok(at(required)<at(id),required);}assert.equal(plan.v1Ready,false);}
+});
