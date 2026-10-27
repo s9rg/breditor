@@ -33,12 +33,24 @@ import type {SharedSegmentedRelayRecovery} from '../segmented_relay/contract.js'
 import {fail} from './manifest.js';
 const readRoot=PhysicalRoomRecordCutArchive.prototype.root,records=PhysicalRoomRecordCutArchive.prototype.records,verifyGeneration=SharedRichEditor.prototype.verifySegmentedRecoveryOrigin;
 const object=(value:unknown):Record<string,unknown>=>{if(!value||typeof value!=='object'||Array.isArray(value))throw fail('selected_current_policy');return value as Record<string,unknown>;};
+/** Existing live-source route still obtains its descriptor from the genuine
+ * managed native core. No DATA descriptor becomes writer custody. */
 export async function verifySelectedRoomNativeContinuation<P extends SharedSelectionPolicy>(before:PhysicalRoomRecordCutArchive,after:PhysicalRoomRecordCutArchive,provided:PhysicalOperationV3HistoryReadOptions<P>,clients:readonly RetainedNativeClient[],guard:()=>void):Promise<void>{
- const chosen=snapshotPhysicalHistoryReadOptions(provided),oldRoot=readRoot.call(before),root=readRoot.call(after);if(JSON.stringify(oldRoot)!==JSON.stringify(root)||chosen.reads.length!==root.participants.length||clients.length!==root.participants.length||new Set(clients.map(row=>row.id)).size!==clients.length)throw fail();
+ const root=readRoot.call(after);if(clients.length!==root.participants.length||new Set(clients.map(row=>row.id)).size!==clients.length||root.participants.some(row=>!clients.some(client=>client.id===row.id&&client.family===row.family)))throw fail();
+ return verifyContinuation(before,after,provided,id=>JSON.stringify(sourceNativeRecoveryRead(clients.find(client=>client.id===id)!.core).descriptor()),guard);
+}
+/** SDK-private DATA-only route. Descriptors must come from actual independent
+ * readonly replay in the caller's bounded read scope, not archive headers.
+ * This proves ancestry; it grants no source, native actor or storage custody. */
+export async function verifySelectedRoomNativeDataContinuation<P extends SharedSelectionPolicy>(before:PhysicalRoomRecordCutArchive,after:PhysicalRoomRecordCutArchive,provided:PhysicalOperationV3HistoryReadOptions<P>,descriptors:ReadonlyMap<string,string>,guard:()=>void):Promise<void>{
+ const root=readRoot.call(after);if(descriptors.size!==root.participants.length||root.participants.some(row=>typeof descriptors.get(row.id)!=='string'))throw fail();return verifyContinuation(before,after,provided,id=>descriptors.get(id)!,guard);
+}
+async function verifyContinuation<P extends SharedSelectionPolicy>(before:PhysicalRoomRecordCutArchive,after:PhysicalRoomRecordCutArchive,provided:PhysicalOperationV3HistoryReadOptions<P>,descriptorFor:(id:string)=>string,guard:()=>void):Promise<void>{
+ const chosen=snapshotPhysicalHistoryReadOptions(provided),oldRoot=readRoot.call(before),root=readRoot.call(after);if(JSON.stringify(oldRoot)!==JSON.stringify(root)||chosen.reads.length!==root.participants.length)throw fail();
  const catalog=parsePhysicalCatalogV3Manifest(root.source.manifest),check=()=>{guard();chosen.checkAuthority();guard();};check();
  for(const row of root.participants){
-  const selected=chosen.reads.find(value=>value.id===row.id),client=clients.find(value=>value.id===row.id),entry=catalog.participants.find(value=>value.id===row.id);if(!selected||!client||client.family!==row.family||!entry||entry.family!==row.family)throw fail();
-  const older=await records.call(before,row.id),newer=await records.call(after,row.id);check();const left=object(object(older)['source']),right=object(object(newer)['source']),descriptor=JSON.stringify(sourceNativeRecoveryRead(client.core).descriptor());
+  const selected=chosen.reads.find(value=>value.id===row.id),entry=catalog.participants.find(value=>value.id===row.id);if(!selected||!entry||entry.family!==row.family)throw fail();
+  const older=await records.call(before,row.id),newer=await records.call(after,row.id);check();const left=object(object(older)['source']),right=object(object(newer)['source']),descriptor=descriptorFor(row.id);
   if(row.family==='original'){
    const options=selected.read as Omit<OriginalRecordReferenceOptions<P>,'source'|'checkAuthority'>,binding=nativeRestoreBinding(options.restore,options),a=originalReferenceNativeStates(left['native'] as OriginalNativeRecords|PersistentPairedMetadata).find(state=>state.slot==='live'),b=originalReferenceNativeStates(right['native'] as OriginalNativeRecords|PersistentPairedMetadata).find(state=>state.slot==='live');if(!a||!b)throw fail();
    const previous=await replayOriginalReferenceState(a,binding,options.editor,descriptor,check);try{const next=await replayOriginalReferenceState(b,binding,options.editor,descriptor,check);try{verifyOriginalReferenceContinuation(next,previous);check();}finally{next.dispose();}}finally{previous.dispose();}

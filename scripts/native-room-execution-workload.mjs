@@ -1,0 +1,6 @@
+/** Whole-room DATA preparation extends every actual actor/retirement law. */
+import {nativeActorRetirementWorkload as prior} from './native-actor-retirement-workload.mjs';
+export const nativeRoomExecutionWorkload=Object.freeze({assertions:224,priorAssertions:188,newExecutionAssertions:36,
+ tests:Object.freeze([...prior.tests,'native-room-execution-assets.test.mjs','native-room-execution-lifetime.test.mjs','native-room-execution-sdk.test.mjs']),
+ types:Object.freeze([...prior.types,'types-native-room-execution.ts']),
+ scope:'All188 prior actual input/actor/retirement laws plus36 complete execution DATA, three-queue asset preservation, readonly native lifetime and genuine seven-family immutable-intent laws. Cold admission proves actual native ancestry and reproduces every exact recipe, not merely hashes or valid older native files. One absent-only intent retains complete before/retained preparation and two explicit whole-queue decision edges per member. Fresh source-cut admission fences actual intent persistence. Failed upgrades, lost completion, count-first reopen, held decoding and actual delayed open cleanup are explicit. Actual target creation, per-target replay, warm actor input routing, cold actor acquisition, provider/client reconciliation, authenticated activation, retention and V1 parity remain required; no serving or release claim.'});

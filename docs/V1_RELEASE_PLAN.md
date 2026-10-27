@@ -81,9 +81,12 @@ staging new intent; a real shutdown notification cannot change a sibling queue
 after its core retires. Readable exports, captured persistence cleanup and active
 document read-only metadata behavior remain distinct. This is local closure,
 not replacement target
-execution or remote author fencing. The next architectural priorities are a durable
-whole-room execution plan, interrupted target replay/handoff, compatible native
-union and dependent-packet reconciliation, then authenticated activation. All
+execution or remote author fencing. The [whole-room execution intent](NATIVE_ROOM_EXECUTION.md)
+now joins the full namespace plan, rebuilt native catalog and two complete asset
+decisions per participant. Cold admission must reproduce every exact native
+recipe, not merely accept a valid older output. Interrupted target replay/handoff,
+compatible native union and dependent-packet reconciliation, then authenticated
+activation remain architectural priorities. All
 thirteen V1 gates remain open.
 
 ## Current retained author ownership
@@ -102,8 +105,9 @@ retirement retain their previous lock-release meaning.
 
 Complete upload DATA planning also preserves both losing archives and the exact
 explicit union, including unreferenced pending, failed and cancelled work. These
-are prerequisites, not the complete replacement executor. Durable whole-room
-execution intent, interrupted concrete-target replay, selected upload adoption,
+are prerequisites, not the complete replacement executor. The whole-room intent
+now binds all three complete asset inputs and persists the exact selected data
+without target creation or source retirement. Interrupted concrete-target replay, selected upload adoption,
 complete final replacement admission and warm/cold actor routes remain required.
 Local author locks do not provide authenticated cross-device activation. All
 thirteen V1 gates remain open.

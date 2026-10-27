@@ -92,9 +92,10 @@ source, offline-installed packages and the actual production bundle, with a priv
 strict type fence. Controlled failures are not physical power-loss qualification.
 
 Replacement targets in these laws are opened explicitly through existing V3 host
-APIs. The new retirement SDK does not yet implement a durable root/catalog/asset
-namespace selection, a per-target execution journal, interrupted target replay or
-whole-room handoff. The separate [native actor handoff contract](NATIVE_ACTOR_HANDOFF.md) retains local
+APIs. The separate [whole-room execution intent](NATIVE_ROOM_EXECUTION.md) now
+retains the complete root/catalog/asset namespace selection and both full asset
+decision edges. A per-target execution journal, interrupted target replay and
+whole-room handoff remain unimplemented. The separate [native actor handoff contract](NATIVE_ACTOR_HANDOFF.md) retains local
 writer locks across failed target openings and synchronous cohort resource transfer.
 It does not yet connect operational parents to a durable whole-room executor.
 Those integrations remain architectural priorities before provider/client

@@ -75,8 +75,9 @@ and controlled failure tests do not establish physical power-loss durability.
 
 The [explicit native retirement contract](NATIVE_ROOM_RETIREMENT.md) now re-admits
 all outputs and closes the actual old writers after fresh approval, without a fake
-import or a self-wait. Actual failed cleanup remains retryable. Whole-room target
-creation, a durable root/catalog/asset plan, per-member execution progress,
+import or a self-wait. Actual failed cleanup remains retryable. The [whole-room execution intent](NATIVE_ROOM_EXECUTION.md) now binds the rebuilt
+catalog, all root/asset destinations and both complete asset decision edges in
+one immutable record. Whole-room target creation, per-member execution progress,
 interruption replay and a freshly authorized handoff remain separate work. Mutable
 native admission runs again before retirement; an archive digest or stored choice
 never replaces it. Compatible native

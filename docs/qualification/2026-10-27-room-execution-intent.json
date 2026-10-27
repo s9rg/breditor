@@ -1,0 +1,97 @@
+{
+  "format": "breditor/native-room-execution-intent-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-27T02:55:09.329Z",
+  "qualification": "selected-functional-architectural-increment-not-v1-release",
+  "workingTreeSourceAtVerification": {
+    "commit": "f20dafc8a6a532daf95800ae9638db350300ea5d",
+    "dirty": true,
+    "sha256": "bb301bdbc4916b5f8e478e6f36eff3b736419249c6104381d84809be30466174",
+    "files": 6709,
+    "bytes": 52337340
+  },
+  "qualificationMetadataAddedAfterRun": true,
+  "postVerificationSourceAdditions": [
+    "docs/qualification/2026-10-27-room-execution-intent.json"
+  ],
+  "normal": {
+    "stages": 8,
+    "sourceAssertions": 224,
+    "installedAssertions": 224,
+    "bundledAssertions": 224,
+    "priorActorRetirementAssertionsRepeated": 188,
+    "newExecutionIntentAssertions": 36,
+    "strictTypeFixtures": 5,
+    "skipped": 0,
+    "cancelled": 0,
+    "prior203ExecutionAnd283ReconstructionRerun": false,
+    "fullCandidatePlanExecuted": false
+  },
+  "products": {
+    "count": 2002,
+    "unchanged": 1966,
+    "changed": 2,
+    "added": 34,
+    "removed": 0,
+    "priorCount": 1968,
+    "publicRootsUnchanged": true
+  },
+  "native": {
+    "freshInputFiles": 100,
+    "profileAndWireRooms": 10,
+    "unchangedSourceAndBuildInputs": 2899,
+    "normalWasmSha256": "946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0",
+    "rustSuitesRerun": false
+  },
+  "controls": [
+    {
+      "name": "assets",
+      "removedActualExit": 1,
+      "restoredActualExit": 0,
+      "actualOfflineInstalledConsumer": true
+    },
+    {
+      "name": "recipe",
+      "removedActualExit": 1,
+      "restoredActualExit": 0,
+      "actualOfflineInstalledConsumer": true
+    },
+    {
+      "name": "limits",
+      "removedActualExit": 1,
+      "restoredActualExit": 0,
+      "actualOfflineInstalledConsumer": true
+    }
+  ],
+  "endpoints": {
+    "count": 170,
+    "manifests": 18,
+    "allConfirmedClosed": true
+  },
+  "retainedProof": {
+    "path": "target/room-execution-proof-dugxxZ/index.json",
+    "sha256": "6acde97d6aa1912dd7e4cde23d7ec13dd41d3bc019beb0e332cd65486825ab0a",
+    "files": 336
+  },
+  "scope": "A new immutable complete-room execution DATA family binds the whole preparation, independently rebuilt catalog, explicit destination layout and two full asset decision edges for every member. Cold admission restores actual readonly native owners, proves before-to-retained continuity and reproduces every exact recipe, refusing native-valid older outputs. All three whole asset queues retain unreferenced pending/failed/cancelled work and both losing inputs; source ceilings cannot widen. A genuine held source cohort and fresh exact current-cut checks fence absent-only persistence. Actual abort, lost completion, count-first readback, stalled decoder cancellation and delayed IDB opening cleanup retain their real obligations. No source retirement or replacement target is performed by this data-preparation route.",
+  "limitations": [
+    "The actual mutable whole-room executor, its separately selected execution journal, per-target existing-store replay and complete final root/asset admission remain required.",
+    "Warm actor inputs must still be routed into actual staging/final native constructors; cold actor reacquisition remains a distinct explicit route.",
+    "Stored DATA, hashes, phases and namespace absence observations provide no author custody or serving permission.",
+    "Divergent native branches, dependent packet/provider/client reconciliation, independent comment/server generations, authenticated activation and sustainable Undo/offline/asset retention remain architectural work.",
+    "The new file has an independent 1 GiB aggregate, 16 MiB header and 1,024-member ceiling; duplicated complete inputs can exceed it and refuse rather than truncate.",
+    "No full candidate, Rust test matrix, physical OS/crash, browser, IME or accessibility rerun is claimed. Controlled IndexedDB, Web Locks and raster tests do not certify those platforms."
+  ],
+  "previousCheckpoint": {
+    "commit": "f20dafc8a6a532daf95800ae9638db350300ea5d",
+    "metadataPath": "docs/qualification/2026-10-27-retained-native-actor-retirement.json"
+  },
+  "v1Ready": false,
+  "openV1GateCount": 13,
+  "versionsChanged": false,
+  "publicRootApisChanged": false,
+  "pushed": false,
+  "published": false,
+  "tagged": false,
+  "deployed": false
+}
