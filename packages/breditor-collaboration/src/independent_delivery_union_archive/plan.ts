@@ -1,0 +1,16 @@
+/** Closed independent choice. Native and whole-upload semantic admission follows hashes. */
+import{checkRichAssetLimits}from'@breditor/experimental-rich-content';
+import{recordCutJson,parseRecordCutJson}from'../physical_room_record_cut/json.js';
+import{independentDeliveryParticipantSelection}from'../independent_delivery_participant/policy.js';
+import{freezeGeneration}from'../generation_source/identity.js';
+import type{SharedIndependentDeliveryUnionArchivePlan,SharedIndependentDeliveryUnionArchiveChoice,SharedIndependentDeliveryUnionLayout}from'./contract.js';
+import{fields,rows,hash,integer,database,fail,MAX_INDEPENDENT_DELIVERY_UNION_ARCHIVE_BYTES as max,MAX_INDEPENDENT_DELIVERY_UNION_ARCHIVE_HEADER_BYTES as headerMax}from'./policy.js';
+export function unionLayout(input:unknown):SharedIndependentDeliveryUnionLayout{const r=fields(input,['database','recoveryDatabase','sourceDatabase','uploadsDatabase']),value={database:database(r['database']),recoveryDatabase:database(r['recoveryDatabase']),sourceDatabase:database(r['sourceDatabase']),uploadsDatabase:database(r['uploadsDatabase'])};if(new Set(Object.values(value)).size!==4)throw fail('delivery_union_policy');return Object.freeze(value);}
+export function unionChoices(input:unknown){return rows(input,100000).map(value=>{const r=fields(value,['asset','keep']);if(typeof r['asset']!=='string'||!/^sha256:[a-f0-9]{64}$/.test(r['asset'])||r['keep']!=='current'&&r['keep']!=='original')throw fail('delivery_union_policy');return{asset:r['asset'],keep:r['keep']};}) as {asset:string;keep:'current'|'original'}[];}
+export function unionArchivePlan(input:unknown):SharedIndependentDeliveryUnionArchivePlan{
+ const r=fields(parseRecordCutJson(recordCutJson(input,headerMax),headerMax),['format','formatVersion','layout','current','incoming','output','limits','choices']);if(r['format']!=='breditor/independent-delivery-union-plan'||r['formatVersion']!==1)throw fail('delivery_union_policy');
+ const current=independentDeliveryParticipantSelection(r['current']),incoming=independentDeliveryParticipantSelection(r['incoming']),output=independentDeliveryParticipantSelection(r['output']);if(JSON.stringify(current.identity)!==JSON.stringify(incoming.identity)||JSON.stringify(output.identity)!==JSON.stringify(current.identity))throw fail('delivery_union_policy');
+ const choices=unionChoices(r['choices']);if(choices.some((value,i)=>i>0&&value.asset<=choices[i-1]!.asset))throw fail('delivery_union_policy');
+ return freezeGeneration({format:'breditor/independent-delivery-union-plan',formatVersion:1,layout:unionLayout(r['layout']),current,incoming,output,limits:checkRichAssetLimits(fields(r['limits'],['maxFileBytes','maxPixels','maxDimension','maxStoredBytes'])),choices});
+}
+export function unionArchiveChoice(input:unknown):SharedIndependentDeliveryUnionArchiveChoice{const r=fields(input,['format','formatVersion','plan','selection']),s=fields(r['selection'],['bytes','manifestSha256']);if(r['format']!=='breditor/independent-delivery-union-choice'||r['formatVersion']!==1)throw fail('delivery_union_policy');return freezeGeneration({format:'breditor/independent-delivery-union-choice',formatVersion:1,plan:unionArchivePlan(r['plan']),selection:{bytes:integer(s['bytes'],max,1),manifestSha256:hash(s['manifestSha256'])}});}

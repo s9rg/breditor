@@ -1,0 +1,120 @@
+{
+  "format": "breditor/independent-delivery-union-archive-qualification",
+  "formatVersion": 1,
+  "status": "passed",
+  "qualifiedAt": "2026-10-27T21:58:14.145Z",
+  "source": {
+    "commit": "8fed30432f1327eccdec01869daab65890efe892",
+    "dirty": true,
+    "sha256": "f0781284e9925df98018e89ac77d9f66461eb9815a76d7f6286146aabaa6ad6f",
+    "files": 6903,
+    "bytes": 53375214
+  },
+  "evidence": {
+    "index": "target/independent-delivery-union-archive-proof-DptevQ/index.json",
+    "sha256": "a310bdf6dd2513a0358aabfa31de1519ea00a53d82a8df3f58d11e4f9aaf9929",
+    "retainedFiles": 116
+  },
+  "functional": {
+    "source": 113,
+    "installedPackage": 113,
+    "actualProductionBundle": 113,
+    "newCompleteParticipantArchiveLaws": 27,
+    "strictConsumerTypes": 21,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0
+  },
+  "legacySourceTests": {
+    "deliveryAndRecovery": 148,
+    "retainedPackets": 21,
+    "total": 169,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0
+  },
+  "newArchiveNativePolicies": {
+    "richLanguage": 3,
+    "selectionEditing": "document-v1",
+    "searchHistory": "search-v1",
+    "reviewedHistory": "reviewed-v1",
+    "typingHistory": "typing-v1",
+    "independentHistoryCombinations": 4
+  },
+  "reproducedAndFixed": {
+    "sourceUnionAcceptedNonVoidAuthority": true,
+    "newJournalCouldRetargetStorageContext": true,
+    "sourceGuardNowRequiresSynchronousUndefined": true,
+    "storageAndLocksPinnedBeforeHostCallbacks": true
+  },
+  "archiveIdentity": {
+    "kind": "manifest-sha256-plus-exact-component-sha256-and-total-bytes",
+    "wholeOuterFileSha256Claimed": false,
+    "maximumBytes": 2491617568,
+    "nativeComponentDigestMaximumBytes": 1073741824,
+    "nativeDigestChunkBytes": 1048576,
+    "oldComponentBoundsReduced": false,
+    "oldNativeDigestBoundsChanged": false
+  },
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "nativeBinaryChanged": false,
+  "nativeRustRebuilt": false,
+  "freshRustTestRun": false,
+  "actualProductionBundleSha256": "f2bc3b035b2c638d89ac47bdf9b4901ea9a5e53b725192bb26745564ad53feac",
+  "productionModules": 720,
+  "offlineInstalledArchives": [
+    {
+      "name": "@breditor/browser",
+      "path": "/private/tmp/breditor-independent-delivery-union-archive-installed-nzJEcw/archives/breditor-browser-0.3.0-alpha.22.tgz",
+      "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+    },
+    {
+      "name": "@breditor/experimental-rich-content",
+      "path": "/private/tmp/breditor-independent-delivery-union-archive-installed-nzJEcw/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+      "sha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15"
+    },
+    {
+      "name": "@breditor/collaboration",
+      "path": "/private/tmp/breditor-independent-delivery-union-archive-installed-nzJEcw/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+      "sha256": "7f54cb56637aa4879cbe99fb4655ec181953482613c14131408322613a5d1112"
+    }
+  ],
+  "registryArtifacts": 45,
+  "workspaceLinks": false,
+  "actualPackageChildren": [
+    {
+      "name": "bundled",
+      "pid": 74472,
+      "code": 0,
+      "signal": null,
+      "log": "/private/tmp/breditor-independent-delivery-union-archive-installed-nzJEcw/bundled.log"
+    },
+    {
+      "name": "installed",
+      "pid": 74471,
+      "code": 0,
+      "signal": null,
+      "log": "/private/tmp/breditor-independent-delivery-union-archive-installed-nzJEcw/installed.log"
+    }
+  ],
+  "scope": "Complete independent-delivery participant union on private native readers, preserving both full originals, all retained stores and hidden future raster bytes, with explicit whole-upload state choices. Immutable absent-only journaling and existing-only cold admission recompute the native/store and asset result; separately selected existing recovery handles interrupted source/upload restoration. Saved roles and receipts are DATA, not actor custody or current server/provider authority.",
+  "ordinaryStrictRoomContinuationChanged": false,
+  "oldWireJournalOrModelDefaultsChanged": false,
+  "durablePreparationJournalImplemented": true,
+  "wholeUploadDecisionRetained": true,
+  "wholeRoomUnionProvenanceIntegrationComplete": false,
+  "durableSevenFamilyUnionQualified": false,
+  "authenticatedOriginalRoleNetworkFetchRun": false,
+  "commentAffiliationAdoptionComplete": false,
+  "authenticatedWholeRoomActivationComplete": false,
+  "independentCommentAndServerLogLifecycleComplete": false,
+  "maximumSizePerformanceOrQuotaQualification": false,
+  "physicalOsCrashQualification": false,
+  "freshSevenFamilyRecordReadRun": false,
+  "fullReleaseCorpusRun": false,
+  "v1Ready": false,
+  "goalComplete": false,
+  "openV1Gates": 13,
+  "pushApproved": false,
+  "publicationApproved": false
+}

@@ -24,7 +24,7 @@ The preparation contains both exact serialized inputs in their existing closed f
 
 ## Remaining room integration
 
-This source union does not itself journal preparation, merge whole upload stores, resolve conflicting user intents, affiliate an unbound comment lane, reconcile every operational source family or authenticate cross-device activation. The whole-room workflow must preserve its complete original archives and explicit asset decisions, retire old owners under held custody, admit interrupted targets and join the authenticated serving fence. A saved preparation is DATA and must not become a credential or reusable role grant. All thirteen V1 gates remain open.
+This source-only function does not itself journal preparation or merge upload stores. The separate [durable participant union archive](INDEPENDENT_DELIVERY_UNION_ARCHIVE.md) now retains both complete participant inputs, an explicit upload decision and a recomputed ordinary recovery output before target creation. Conflicting user intents, unbound comment affiliation, every operational source family and authenticated cross-device activation remain outside this source function. The whole-room workflow must preserve its complete original archives and explicit asset decisions, retire old owners under held custody, admit interrupted targets and join the authenticated serving fence. A saved preparation is DATA and must not become a credential or reusable role grant. All thirteen V1 gates remain open.
 
 ## Functional qualification
 

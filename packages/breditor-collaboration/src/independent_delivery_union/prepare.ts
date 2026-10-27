@@ -1,4 +1,5 @@
 /** Prepare on private native owners. No live adapter, storage, writer lease or provider is mutated. */
+import{participantAuthority}from'../participant_backup/policy.js';
 import{SharedRichEditor,reserveNativeRecovery}from'../core.js';
 import{nativeBranchAuthorizations}from'../native_recovery/branch_authorizations.js';
 import{snapshotReadFactoryData}from'../operation_read/read_factory_snapshot.js';
@@ -24,7 +25,7 @@ export async function prepareSharedIndependentDeliveryBranchUnion(provided:Share
  // Snapshot host data before the first await. A caller cannot swap factories,
  // credentials or historical grants while the native readers are being restored.
  const factory=snapshotReadFactoryData(raw['session'] as SharedIndependentDeliveryUnionOptions['session']),grants=JSON.parse(nativeBranchAuthorizations(raw['authorizations'])).authorizations as SharedIndependentDeliveryUnionOptions['authorizations'];
- const work=new NativeReconstructionWaits(raw['checkAuthority'] as ()=>void,[raw['signal'] as AbortSignal|undefined]),check=work.check;
+ const work=new NativeReconstructionWaits(participantAuthority(raw['checkAuthority'] as ()=>void),[raw['signal'] as AbortSignal|undefined]),check=work.check;
  let before:Awaited<ReturnType<typeof replayPortableRecovery>>|undefined,incoming:typeof before,candidate:typeof before,lease:ReturnType<typeof reserveNativeRecovery>|undefined;
  try{
   const a=await readDeliveryUnionInput(raw['currentJson'],check),b=await readDeliveryUnionInput(raw['incomingJson'],check);
