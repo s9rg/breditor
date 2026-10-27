@@ -29,3 +29,23 @@ export interface RoomRunResult {
  readonly state:'targets-and-assets-ready';readonly scope:'held-local-replacement-only';
 }
 export type RoomRunReadOptions=RoomExecutionReadOptions;
+
+/** Joint fresh decision DATA. The existing execution/journal and approval file
+ * keep their original formats; no new stage or stored writer grant is added. */
+export interface RoomRunPromotionChoice {
+ readonly format:'breditor/native-room-run-promotion-choice';readonly formatVersion:1;
+ readonly identity:RoomRunIdentity;readonly head:RoomRunSnapshot['head'];
+ readonly approval:import('../physical_room_asset_approval/contract.js').RoomAssetApprovalChoice;
+}
+export interface RoomRunPromotionOptions {
+ readonly expected:RoomRunPromotionChoice;
+ readonly approve:(choice:RoomRunPromotionChoice)=>boolean|Promise<boolean>;
+ /** Selected-asset access after handoff, independent of the ended attempt. */
+ readonly checkAssetAuthority:()=>void;
+}
+export interface RoomRunPromotionResult {
+ readonly format:'breditor/native-room-run-promotion-result';readonly formatVersion:1;
+ readonly choice:RoomRunPromotionChoice;
+ readonly approval:import('../physical_room_asset_approval/contract.js').RoomAssetApprovalSelection;
+ readonly scope:'local-native-packet-selected-asset-and-actor-ownership';
+}

@@ -65,9 +65,11 @@ bytes remain intact; Close deletes no database and acknowledges no provider save
 
 ## Remaining execution and activation
 
-The result is held local replacement readiness, not an exposed editor or a
-serving grant. A complete final native, dependent-packet, selected-asset and
-actor-promotion barrier is still required before transferring a usable owner.
+The result of `run` is held local replacement readiness, not an exposed editor
+or serving grant. The separate [ownership promotion](NATIVE_ROOM_PROMOTION.md)
+requires a fresh joint decision, moves the actual root and actor cohort through
+one complete native/packet/selected-store barrier, and exposes the usable owner
+only through a synchronous one-shot take.
 A new warm attempt must reserve the genuine still-current original owner. After
 retirement, only that same reserved attempt may resume cleanup and target work;
 a different plan cannot attach to already-retired actors and bypass its own

@@ -1,7 +1,7 @@
 /** Restartable seven-family client recovery. Catalog files, actual child stores,
  * fresh host policy and one common native barrier are all required. This is not
  * provider reconciliation, authenticated room activation or a server grant. */
-import {PhysicalRootActorRoutes,checkPhysicalRootActors} from './actor_routes.js';
+import {PhysicalRootActorRoutes,checkPhysicalRootActors,checkPhysicalRootActorOwner,promotePhysicalRootActors} from './actor_routes.js';
 import type {StoppedActorCohort} from '../persistence/stopped_actor_cohort.js';
 import {PhysicalRoomCatalogV3,transferPhysicalCatalogV3,type PhysicalCatalogV3Custody} from '../physical_room_catalog_v3/catalog.js';
 import {PhysicalRoomCatalogV3Archive,physicalCatalogV3Archive as archive} from '../physical_room_catalog_v3/archive.js';
@@ -66,10 +66,13 @@ export interface RetainedRootPreparation{readonly factory:IDBFactory;readonly lo
 export type RetainedRootPrelude=(scope:RetainedRootPreparation)=>Promise<void>;
 let checkUnconsumed:(owner:PhysicalRoomClientOperationV3)=>void;
 export const checkUnconsumedPhysicalRoot=(owner:PhysicalRoomClientOperationV3)=>checkUnconsumed(owner);
-let transferRetained:<P extends SharedSelectionPolicy,T>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,prepare:(scope:PhysicalRecordCutVisit,root:RetainedPhysicalRoot,clients:readonly RetainedNativeReadBorrow['clients'][number][])=>Promise<PhysicalRetainedRootProposal<T>>,prelude?:RetainedRootPrelude)=>Promise<T>;
+let transferRetained:<P extends SharedSelectionPolicy,T>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,prepare:(scope:PhysicalRecordCutVisit,root:RetainedPhysicalRoot,clients:readonly RetainedNativeReadBorrow['clients'][number][])=>Promise<PhysicalRetainedRootProposal<T>>,prelude?:RetainedRootPrelude,actors?:StoppedActorCohort)=>Promise<T>;
 /** Internal genuine-root composition for the future root-plus-stage successor.
  * This does not create a durable successor intent or grant server authorship. */
 export const transferPhysicalOperationV3RetainedRoot=<P extends SharedSelectionPolicy,T>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,prepare:(scope:PhysicalRecordCutVisit,root:RetainedPhysicalRoot,clients:RetainedNativeReadBorrow['clients'])=>Promise<PhysicalRetainedRootProposal<T>>,prelude?:RetainedRootPrelude)=>transferRetained(owner,options,prepare,prelude);
+/** Explicit internal promotion route; ordinary retained-root transfers retain
+ * their established no-actor-promotion behavior. No caller option selects it. */
+export const transferPhysicalOperationV3RetainedRootWithActors=<P extends SharedSelectionPolicy,T>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,prepare:(scope:PhysicalRecordCutVisit,root:RetainedPhysicalRoot,clients:RetainedNativeReadBorrow['clients'])=>Promise<PhysicalRetainedRootProposal<T>>,actors:StoppedActorCohort):Promise<T>=>transferRetained(owner,options,prepare,undefined,actors);
 let withAssets:<T>(owner:PhysicalRoomClientOperationV3,options:PhysicalAssetReadOptions,visit:(scope:PhysicalAssetReadScope)=>Promise<T>)=>Promise<T>;
 let withFreshRetained:<P extends SharedSelectionPolicy,T>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit,borrow:RetainedNativeReadBorrow)=>Promise<T>,prelude?:RetainedRootPrelude)=>Promise<T>;
 let captureInherited:<P extends SharedSelectionPolicy>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,assets:OperationalAssetCustody)=>Promise<PhysicalRoomRecordCutFile>;
@@ -111,8 +114,9 @@ export class PhysicalRoomClientOperationV3{
  };captureInherited=(owner,options,assets)=>{
   if(!owner||typeof owner!=='object'||!(#s in owner))return Promise.reject(fail('physical_operation_v3_policy'));
   const chosen=snapshotPhysicalHistoryReadOptions(options);return owner.#run(async()=>{if(owner.#rollback.pending)await owner.#rollback.drain();return capturePhysicalOperationV3RecordCut(owner.#s,()=>{if(!owner.#exposed||!owner.#busy)throw fail('physical_operation_v3_closed');},owner.#rollback,chosen,undefined,assets);},error=>error instanceof Error?error:known(error));
- };transferRetained=(owner,options,prepare,prelude)=>{
+ };transferRetained=(owner,options,prepare,prelude,actors)=>{
   if(!owner||typeof owner!=='object'||!(#s in owner))return Promise.reject(fail('physical_operation_v3_policy'));
+  if(actors){checkPhysicalRootActors(actors);if(!owner.#s.actorRoutes)return Promise.reject(fail('physical_operation_v3_policy'));checkPhysicalRootActorOwner(owner.#s.actorRoutes,actors);}
   const chosen=snapshotPhysicalHistoryReadOptions(options);return owner.#run(async()=>{
    if(owner.#rollback.pending)await owner.#rollback.drain();let loan:RetainedNativeReadBorrow|undefined,root:PreparedRetainedPhysicalRoot|undefined,proposal:PhysicalRetainedRootProposal<unknown>|undefined,ticket:ReturnType<RecoveryCleanupScope['retain']>|undefined;
    const current=()=>{if(!owner.#exposed||!owner.#busy||owner.#moved)throw fail('physical_operation_v3_closed');owner.#s.readCurrent();owner.#s.intent.checkReadCurrent();checkRecoveryLeasesHeld([owner.#s.lease,owner.#s.held.lease]);};
@@ -124,7 +128,8 @@ export class PhysicalRoomClientOperationV3{
     // parents, origin exclusion and this root remain genuinely reserved.
     if(ready.verifyAfterRead)await ready.verifyAfterRead();
     // Every application callback is before the last actual source/lease checks.
-    checkPhysicalOperationV3WriterPolicies(owner.#s.children);ready.checkCurrent();current();loan!.check();root!.prepareOrigins();
+    checkPhysicalOperationV3WriterPolicies(owner.#s.children);ready.checkCurrent();current();loan!.check();const finalClients=actors?loan!.clients:undefined;root!.prepareOrigins();
+    if(actors)promotePhysicalRootActors(owner.#s.actorRoutes!,actors,finalClients!);
     // SDK-only common barrier: no await, host callback, reader disposal or
     // native destructor may follow the first parent ownership flag write.
     owner.#exposed=false;owner.#moved=true;owner.#closingListeners.clear();root!.activate();ready.consume();ticket!.complete();return value;

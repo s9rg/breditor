@@ -78,6 +78,12 @@ export const releaseSelectedActorExecution=(reservation:SelectedActorExecutionRe
 export const withReservedSelectedActorRetirement=<P extends SharedSelectionPolicy,T>(owner:RetainedSelectedAssetOwner,reservation:SelectedActorExecutionReservation,input:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:SelectedNativeRecoveryScope)=>Promise<T>):Promise<T>=>reservedRetirement(owner,reservation,input,visit);
 export const retryReservedSelectedActorCleanup=(reservation:SelectedActorExecutionReservation)=>reservedCleanup(reservation);
 export const takeReservedSelectedActors=(reservation:SelectedActorExecutionReservation)=>reservedTake(reservation);
+let checkSelectedCurrent:(owner:RetainedSelectedAssetOwner)=>void;
+let discardSelected:(owner:RetainedSelectedAssetOwner)=>Promise<void>;
+/** Genuine active-owner checks/cleanup for internal already-reachable recipients.
+ * No public method override or DTO supplies source/selected-store ownership. */
+export const checkSelectedAssetOwnerCurrent=(owner:RetainedSelectedAssetOwner)=>checkSelectedCurrent(owner);
+export const discardSelectedAssetOwner=(owner:RetainedSelectedAssetOwner)=>discardSelected(owner);
 let hasRetiredActors:(owner:RetainedSelectedAssetOwner)=>boolean;
 let retryActorCleanup:(owner:RetainedSelectedAssetOwner)=>Promise<void>;
 /** Closed SDK cleanup path. Neither a journal marker nor a refused preflight
@@ -218,7 +224,9 @@ export class RetainedSelectedAssetOwner{
   // itself up before closing stores; a raw close must not steal its locks.
   this.#cleanup=(async()=>{await this.#running?.catch(()=>{});await this.#readCleanup.drain();for(const target of this.#basis.resources.targets.values())methods.close.call(target.store);await Promise.all([...this.#ports.values()].map(port=>port.settle()));for(const target of this.#basis.resources.targets.values())await methods.finish.call(target.custody);await native;await this.#basis.resources.intent?.close();await this.#basis.resources.store!.close();for(const[id,lease]of [...this.#basis.resources.targetLeases].reverse()){await lease.close();this.#basis.resources.targetLeases.delete(id);}await this.#basis.resources.intentLease?.close();await this.#basis.resources.lease!.close();this.#closed=true;this.#active=false;})().finally(()=>{this.#cleanup=undefined;this.#cleanupMode=undefined;});return this.#cleanup;
  }
- static{reserveActorExecution=owner=>{if(!owner||typeof owner!=='object'||!(#root in owner)||owner.#actorExecution||owner.#busy||owner.#checking)throw fail('asset_adoption_busy');
+ static{checkSelectedCurrent=owner=>{if(!owner||typeof owner!=='object'||!(#root in owner))throw fail('asset_adoption_policy');owner.#current();};
+ discardSelected=owner=>{if(!owner||typeof owner!=='object'||!(#root in owner))return Promise.reject(fail('asset_adoption_policy'));return owner.#close(true);};
+ reserveActorExecution=owner=>{if(!owner||typeof owner!=='object'||!(#root in owner)||owner.#actorExecution||owner.#busy||owner.#checking)throw fail('asset_adoption_busy');
   owner.#current();const token=Object.freeze({});owner.#actorExecution=token;return makeActorExecution(owner,token);};
  releaseActorExecution=(owner,token)=>{if(owner.#actorExecution!==token||owner.#busy||retainedPhysicalHasActors(owner.#root))throw fail('asset_adoption_busy');owner.#actorExecution=undefined;};
  reservedRetirement=(owner,reservation,input,visit)=>{const held=reservationState(reservation);if(owner!==held.owner||owner.#actorExecution!==held.token)return Promise.reject(fail('asset_adoption_policy'));return owner.#recover(input,visit,false,true,true,held.token);};

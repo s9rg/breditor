@@ -2,16 +2,30 @@
  * routes. This is local resource composition, never a stored writer grant.
  * The caller retains the genuine cohort before begin/finish can reject. */
 import {StoppedActorCohort} from '../persistence/stopped_actor_cohort.js';
-import {DeferredActorLeaseInput} from '../persistence/deferred_actor_input.js';
+import {DeferredActorLeaseInput,checkDeferredActorFinal} from '../persistence/deferred_actor_input.js';
 import {checkCapturedNativeActorRoute} from '../native_history_read/registry.js';
+import type {RetainedNativeClient} from '../complete_operation_cohort/retained_native_read.js';
 import type {CompleteNativeRead} from '../complete_operation_cohort/native_read.js';
 import type {PhysicalOperationV3PreparedTarget} from './preflight.js';
 import {physicalOperationV3Failure as fail} from './policy.js';
+let checkActorOwner:(owner:PhysicalRootActorRoutes,actors:StoppedActorCohort)=>void;
+let promoteActors:(owner:PhysicalRootActorRoutes,actors:StoppedActorCohort,clients:readonly RetainedNativeClient[])=>void;
+/** Canonical actual-root/cohort pairing before any host callback or I/O. */
+export const checkPhysicalRootActorOwner=(owner:PhysicalRootActorRoutes,actors:StoppedActorCohort)=>checkActorOwner(owner,actors);
+/** Last source/packet/asset admission precedes this SDK-only whole-cohort move.
+ * Every genuine core must own its exact final loan before the first promotion. */
+export const promotePhysicalRootActors=(owner:PhysicalRootActorRoutes,actors:StoppedActorCohort,clients:readonly RetainedNativeClient[])=>promoteActors(owner,actors,clients);
+const commitActors=StoppedActorCohort.prototype.commit;
 const bindings=StoppedActorCohort.prototype.bindings,createRoute=StoppedActorCohort.prototype.route,select=DeferredActorLeaseInput.prototype.select,closeRoute=DeferredActorLeaseInput.prototype.close,key=Object.freeze({});
 export function checkPhysicalRootActors(actors:StoppedActorCohort):void{try{bindings.call(actors);}catch{throw fail('physical_operation_v3_policy');}}
 export class PhysicalRootActorRoutes{
  readonly #actors;readonly #routes=new Map<string,Readonly<{family:PhysicalOperationV3PreparedTarget['target']['family'];route:DeferredActorLeaseInput}>>();#closed=false;#cleanup:Promise<void>|undefined;
  private constructor(token:object,actors:StoppedActorCohort){if(token!==key)throw fail('physical_operation_v3_policy');this.#actors=actors;Object.freeze(this);}
+ static{checkActorOwner=(owner,actors)=>{if(!owner||typeof owner!=='object'||!(#actors in owner)||owner.#closed||owner.#actors!==actors)throw fail('physical_operation_v3_policy');bindings.call(actors);};
+ promoteActors=(owner,actors,clients)=>{checkActorOwner(owner,actors);if(clients.length!==owner.#routes.size||new Set(clients.map(row=>row.id)).size!==clients.length)throw fail('physical_operation_v3_diverged');
+  for(const client of clients){const selected=owner.#routes.get(client.id);if(!selected||selected.family!==client.family)throw fail('physical_operation_v3_diverged');checkDeferredActorFinal(selected.route,client.core);}
+  commitActors.call(actors);
+ };}
  static async create(actors:StoppedActorCohort,targets:readonly PhysicalOperationV3PreparedTarget[]):Promise<PhysicalRootActorRoutes>{const owner=new PhysicalRootActorRoutes(key,actors);try{owner.#prepare(targets);return owner;}catch(error){await owner.close();throw error;}}
  #prepare(targets:readonly PhysicalOperationV3PreparedTarget[]):void{const members=bindings.call(this.#actors);if(members.length!==targets.length||new Set(targets.map(row=>row.target.id)).size!==targets.length)throw fail('physical_operation_v3_policy');
   const plans=targets.map(row=>{const member=members.find(value=>value.id===row.target.id),family=row.target.family,identity=row.identity,factory=family==='original'?(identity.actor===undefined?'shared':'review'):family==='generation'?'segmented':'independent',finalRole=family==='original'?'document':'source',finalDatabase=row.target.namespaces.find(value=>value.role===finalRole)?.database,databases=row.target.namespaces.filter(value=>value.role===finalRole||value.role==='recovery-source').map(value=>value.database);if(!member||member.factory!==factory||member.room!==identity.room||member.writer!==identity.writer||member.actor!==(identity.actor??null)||!finalDatabase)throw fail('physical_operation_v3_policy');return{row,finalDatabase,databases};});

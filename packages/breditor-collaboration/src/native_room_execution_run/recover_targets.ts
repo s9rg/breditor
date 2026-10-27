@@ -5,25 +5,33 @@ import type {RoomExecutionReadScope} from '../native_room_execution/read_scope.j
 import {withExecutionPrepared} from '../native_room_execution/prepared_scope.js';
 import {PhysicalRoomCatalogV3} from '../physical_room_catalog_v3/catalog.js';
 import {PhysicalRoomClientOperationV3,beginPhysicalRootKeepingActors,resumePhysicalRootKeepingActors} from '../physical_room_operation_v3/operation.js';
-import {PhysicalRoomAssetAdoption} from '../physical_room_asset_adoption/coordinator.js';
+import {PhysicalRoomAssetAdoption,transferRoomAssetAdoptionWithActors} from '../physical_room_asset_adoption/coordinator.js';
 import type {PhysicalOperationV3Participant} from '../physical_room_operation_v3/contract.js';
 import {physicalOperationV3Present} from '../physical_room_operation_v3/child.js';
 import type {StoppedActorCohort} from '../persistence/stopped_actor_cohort.js';
 import type {RoomRunStage,RoomRunIdentity} from './contract.js';
 import {fail} from '../native_room_execution/policy.js';
+import {RoomRunSuccessorRecipient} from './successor_recipient.js';
+import type {RetainedSelectedAssetOwner} from '../physical_room_asset_successor/owner.js';
+import {RetainedSelectedAssetOwner as SelectedOwner} from '../physical_room_asset_successor/owner.js';
+import {roomRunPromotionChoice} from './promotion_choice.js';
+import type {RoomRunPromotionChoice,RoomRunPromotionOptions,RoomRunPromotionResult,RoomRunSnapshot} from './contract.js';
 import {drainFailedRecoveryOpenings,recoveryOpeningContext} from '../participant_recovery/opening_custody.js';
 const catalogApi={begin:PhysicalRoomCatalogV3.begin,resume:PhysicalRoomCatalogV3.resume,close:PhysicalRoomCatalogV3.prototype.close};
 const rootApi={finish:PhysicalRoomClientOperationV3.prototype.finish,check:PhysicalRoomClientOperationV3.prototype.check,close:PhysicalRoomClientOperationV3.prototype.discardAndClose};
 const assetsApi={begin:PhysicalRoomAssetAdoption.begin,resume:PhysicalRoomAssetAdoption.resume,finish:PhysicalRoomAssetAdoption.prototype.finish,check:PhysicalRoomAssetAdoption.prototype.check,base:PhysicalRoomAssetAdoption.prototype.baseFile,close:PhysicalRoomAssetAdoption.prototype.close};
+const recipientApi={ready:RoomRunSuccessorRecipient.prototype.ready,owner:RoomRunSuccessorRecipient.prototype.owner,take:RoomRunSuccessorRecipient.prototype.take,close:RoomRunSuccessorRecipient.prototype.close};
+const selectedApproval=SelectedOwner.prototype.approval,approvalPreview=PhysicalRoomAssetAdoption.prototype.approvalChoice;
 const preparation=RoomExecutionArchive.prototype.preparation,base=RoomExecutionArchive.prototype.base;
 export class RoomRunTargets {
+ readonly #recipient=new RoomRunSuccessorRecipient();
  #factory:IDBFactory|undefined;#names:readonly string[]=[];
  #catalog:PhysicalRoomCatalogV3|undefined;#root:PhysicalRoomClientOperationV3|undefined;#assets:PhysicalRoomAssetAdoption|undefined;
  constructor(){Object.freeze(this);}
  async recover(archive:RoomExecutionArchive,identity:RoomRunIdentity,participants:readonly PhysicalOperationV3Participant[],actors:StoppedActorCohort,scope:RoomExecutionReadScope,seen:(stage:RoomRunStage)=>boolean,advance:(stage:Exclude<RoomRunStage,'start'>)=>Promise<void>):Promise<void> {
   const plan=identity.execution.plan,layout=plan.layout;
   this.#factory??=recoveryOpeningContext();
-  this.#names=[layout.catalogDatabase,layout.operationDatabase,layout.adoptionDatabase,...layout.participants.map(row=>row.selectedUploadsDatabase),...plan.preparation.plan.participants.flatMap(row=>row.namespaces.map(ns=>ns.database))];
+  this.#names=[layout.catalogDatabase,layout.operationDatabase,layout.adoptionDatabase,layout.approvalDatabase,...layout.participants.map(row=>row.selectedUploadsDatabase),...plan.preparation.plan.participants.flatMap(row=>row.namespaces.map(ns=>ns.database))];
   await withExecutionPrepared(preparation.call(archive),scope,async context=>{
    const read={...context.readOptions,checkAuthority:scope.check,signal:scope.signal};
    if(!this.#root){
@@ -63,9 +71,28 @@ export class RoomRunTargets {
    await rootApi.check.call(this.#root);scope.check();await advance('assets-ready');
   });
  }
+ /** Pure actual-recipient state, not a saved completion marker. */
+ hasSuccessor():boolean{return recipientApi.ready.call(this.#recipient);}
+ async preview(identity:RoomRunIdentity,head:RoomRunSnapshot['head'],scope:RoomExecutionReadScope):Promise<RoomRunPromotionChoice>{
+  if(!this.#root||!this.#assets||recipientApi.ready.call(this.#recipient))throw fail('room_execution_closed');
+  const approval=await approvalPreview.call(this.#assets,{reads:scope.reads,checkAuthority:scope.check,signal:scope.signal});scope.check();
+  return roomRunPromotionChoice({format:'breditor/native-room-run-promotion-choice',formatVersion:1,identity,head,approval});
+ }
+ async promote(actors:StoppedActorCohort,scope:RoomExecutionReadScope,input:RoomRunPromotionOptions,prepareComplete:()=>Promise<void>):Promise<RoomRunPromotionResult>{
+  if(!this.#root||!this.#assets||recipientApi.ready.call(this.#recipient))throw fail('room_execution_closed');
+  const expected=input.expected;
+  await transferRoomAssetAdoptionWithActors(this.#assets,{reads:scope.reads,checkAuthority:scope.check,signal:scope.signal,expected:expected.approval,approvalDatabase:expected.identity.execution.plan.layout.approvalDatabase,checkAssetAuthority:input.checkAssetAuthority,approve:approval=>{if(JSON.stringify(approval)!==JSON.stringify(expected.approval))throw fail();return input.approve(expected);}},actors,this.#recipient,prepareComplete);
+  // No callback/await can hide a successor: its recipient has owned it since
+  // before the common barrier. The old wrappers no longer own resources.
+  this.#root=undefined;this.#assets=undefined;
+  const owner=recipientApi.owner.call(this.#recipient),approval=selectedApproval.call(owner);
+  return Object.freeze({format:'breditor/native-room-run-promotion-result',formatVersion:1,choice:expected,approval:approval.selection,scope:'local-native-packet-selected-asset-and-actor-ownership'});
+ }
+ takeOwner():RetainedSelectedAssetOwner{const owner=recipientApi.take.call(this.#recipient);this.#root=undefined;this.#assets=undefined;this.#catalog=undefined;this.#names=[];this.#factory=undefined;return owner;}
  /** Never release actor escrow until all actual native borrowers have closed.
   * A rejected cleanup keeps the same handles for the next close attempt. */
  async close():Promise<void>{
+  await recipientApi.close.call(this.#recipient);
   if(this.#assets){await assetsApi.close.call(this.#assets);this.#assets=undefined;}
   if(this.#root){await rootApi.close.call(this.#root);this.#root=undefined;}
   if(this.#catalog){await catalogApi.close.call(this.#catalog);this.#catalog=undefined;}

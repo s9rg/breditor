@@ -19,19 +19,20 @@ import {RoomRunJournalResources} from './journal_resources.js';
 import {RoomRunTargets} from './recover_targets.js';
 import {checkRoomRunInputs} from './prepare_inputs.js';
 import {roomRunIdentity,roomRunApproval} from './identity.js';
-import type {RoomRunOptions,RoomRunReadOptions,RoomRunSnapshot,RoomRunStage,RoomRunApproval,RoomRunResult} from './contract.js';
+import {roomRunPromotionChoice} from './promotion_choice.js';
+import type {RoomRunOptions,RoomRunReadOptions,RoomRunSnapshot,RoomRunStage,RoomRunApproval,RoomRunResult,RoomRunPromotionChoice,RoomRunPromotionOptions,RoomRunPromotionResult} from './contract.js';
 import {RoomPreparationArchive} from '../native_room_preparation/archive.js';
 const archiveApi={read:RoomExecutionArchive.read,preparation:RoomExecutionArchive.prototype.preparation,dispose:RoomExecutionArchive.prototype.dispose};
 const prepApi={read:RoomPreparationArchive.read,retained:RoomPreparationArchive.prototype.retained,dispose:RoomPreparationArchive.prototype.dispose};
 const journals={open:RoomRunJournalResources.prototype.open,read:RoomRunJournalResources.prototype.read,append:RoomRunJournalResources.prototype.append,close:RoomRunJournalResources.prototype.close};
-const targetsApi={recover:RoomRunTargets.prototype.recover,close:RoomRunTargets.prototype.close},bindings=StoppedActorCohort.prototype.bindings,closeActors=StoppedActorCohort.prototype.close;
+const targetsApi={recover:RoomRunTargets.prototype.recover,preview:RoomRunTargets.prototype.preview,promote:RoomRunTargets.prototype.promote,take:RoomRunTargets.prototype.takeOwner,ready:RoomRunTargets.prototype.hasSuccessor,close:RoomRunTargets.prototype.close},bindings=StoppedActorCohort.prototype.bindings,closeActors=StoppedActorCohort.prototype.close;
 const add=EventTarget.prototype.addEventListener,remove=EventTarget.prototype.removeEventListener;
 const key=Object.freeze({});
 export class RoomExecutionAttempt {
  readonly #old;readonly #reservation:SelectedActorExecutionReservation;readonly #options;readonly #provided;readonly #create;readonly #targets=new RoomRunTargets();readonly #stop=new AbortController();
  #scope:RoomExecutionReadScope|undefined;#journal:RoomRunJournalResources|undefined;#snapshot:RoomRunSnapshot|undefined;
  #actors:StoppedActorCohort|undefined;#openingAttempted=false;#journalOpened=false;#closing=false;#closed=false;#unwatch=()=>{};
- #running:Promise<RoomRunResult>|undefined;#cleanup:Promise<void>|undefined;
+ #running:Promise<unknown>|undefined;#cleanup:Promise<void>|undefined;
  private constructor(token:object,owner:RetainedSelectedAssetOwner,provided:RoomRunReadOptions,options:RoomRunOptions,create:boolean){
   if(token!==key)throw fail('room_execution_policy');selectedOwnerHasRetiredActors(owner);
   const raw=fields(options,['expected','participants']),expected=roomRunIdentity(raw['expected']);
@@ -62,7 +63,7 @@ export class RoomExecutionAttempt {
  async #advance(stage:Exclude<RoomRunStage,'start'>){this.#check();this.#snapshot=await journals.append.call(this.#journal!,this.#snapshot!,stage);this.#check();}
  async #approve(approve:(choice:RoomRunApproval)=>boolean|Promise<boolean>){const scope=this.#scope!,choice=roomRunApproval(this.#options.expected,this.#snapshot!);await decideFreshAssetChoice(choice,approve,{check:scope.check,signal:scope.signal,watchClosing:notify=>{add.call(scope.signal,'abort',notify,{once:true});return()=>remove.call(scope.signal,'abort',notify);}});scope.check();}
  run(approve:(choice:RoomRunApproval)=>boolean|Promise<boolean>):Promise<RoomRunResult>{
-  try{if(this.#running)throw fail('room_execution_busy');if(this.#closing||this.#closed||this.#stop.signal.aborted)throw fail('room_execution_closed');if(typeof approve!=='function')throw fail('room_execution_policy');}catch(error){return Promise.reject(error);}
+  try{if(this.#running)throw fail('room_execution_busy');if(this.#closing||this.#closed||this.#stop.signal.aborted||targetsApi.ready.call(this.#targets))throw fail('room_execution_closed');if(typeof approve!=='function')throw fail('room_execution_policy');}catch(error){return Promise.reject(error);}
   const task=Promise.resolve().then(()=>{this.#check();return this.#execute(approve);});this.#running=task;return task.finally(()=>{this.#running=undefined;});
  }
  async #execute(approve:(choice:RoomRunApproval)=>boolean|Promise<boolean>):Promise<RoomRunResult>{
@@ -101,6 +102,39 @@ export class RoomExecutionAttempt {
    scope.check();this.#journal!.check();bindings.call(this.#actors);
    return Object.freeze({format:'breditor/native-room-run-result',formatVersion:1,identity,head:this.#snapshot!.head,state:'targets-and-assets-ready',scope:'held-local-replacement-only'});
   }finally{if(prepared)prepApi.dispose.call(prepared);if(archive)archiveApi.dispose.call(archive);}
+ }
+ /** Preview is joint DATA only; every promotion rechecks the current actual
+  * head and complete native/packet/asset cut before a new affirmative decision. */
+ previewPromotion():Promise<RoomRunPromotionChoice>{
+  try{this.#admitPromotion();}catch(error){return Promise.reject(error);}
+  const task=Promise.resolve().then(async()=>{this.#check();await this.#openJournal();this.#check();return targetsApi.preview.call(this.#targets,this.#options.expected,this.#snapshot!.head,this.#scope!);});
+  this.#running=task;return task.finally(()=>{this.#running=undefined;});
+ }
+ #admitPromotion():void{if(this.#running)throw fail('room_execution_busy');if(this.#closing||this.#closed||!this.#actors||!this.#scope||targetsApi.ready.call(this.#targets))throw fail('room_execution_closed');}
+ promote(provided:RoomRunPromotionOptions):Promise<RoomRunPromotionResult>{
+  let input:RoomRunPromotionOptions,reservation:Promise<void>|undefined;
+  // Reflection can execute application proxy traps. Reserve before inspecting
+  // any caller input, and never clear another operation's actual task on refusal.
+  try{this.#admitPromotion();reservation=Promise.resolve();this.#running=reservation;const raw=fields(provided,['expected','approve','checkAssetAuthority']),expected=roomRunPromotionChoice(raw['expected']);if(typeof raw['approve']!=='function'||typeof raw['checkAssetAuthority']!=='function'||JSON.stringify(expected.identity)!==JSON.stringify(this.#options.expected))throw fail('room_execution_policy');input={expected,approve:raw['approve'] as RoomRunPromotionOptions['approve'],checkAssetAuthority:raw['checkAssetAuthority'] as ()=>void};}catch(error){if(this.#running===reservation)this.#running=undefined;return Promise.reject(error);}
+  const task=Promise.resolve().then(async()=>{
+   this.#check();const scope=this.#scope!;await readRoomExecution(input.expected.identity.execution,this.#readOptions());scope.check();await this.#openJournal();scope.check();
+   if(JSON.stringify(this.#snapshot!.head)!==JSON.stringify(input.expected.head))throw fail();
+   const actual=await targetsApi.preview.call(this.#targets,this.#options.expected,this.#snapshot!.head,scope);scope.check();if(JSON.stringify(actual)!==JSON.stringify(input.expected))throw fail();
+   return targetsApi.promote.call(this.#targets,this.#actors!,scope,input,async()=>{
+    // Finish actual journal cleanup and release only the old closed owner's
+    // reservation BEFORE the final root/actor barrier. A failed callback leaves
+    // the same attempt holding its real actors and all staged target handles.
+    const current=await journals.read.call(this.#journal!);scope.check();if(JSON.stringify(current.head)!==JSON.stringify(input.expected.head))throw fail();
+    this.#journalOpened=false;await journals.close.call(this.#journal!);this.#journal=undefined;scope.check();releaseSelectedActorExecution(this.#reservation);scope.check();
+   });
+  });this.#running=task;return task.finally(()=>{this.#running=undefined;});
+ }
+ /** Synchronous one-shot take. Finish the old read job while the already-live
+  * successor is still reachable in its recipient; cleanup cannot hide it. */
+ takeOwner():RetainedSelectedAssetOwner{
+  if(this.#running)throw fail('room_execution_busy');if(this.#closing||this.#closed)throw fail('room_execution_closed');
+  if(!targetsApi.ready.call(this.#targets))throw fail('room_execution_closed');
+  this.#scope?.close();this.#unwatch();const owner=targetsApi.take.call(this.#targets);this.#actors=undefined;this.#closed=true;return owner;
  }
  /** Explicit terminal abandonment. Existing intent, journals and every source
   * or target byte stay intact. Never discard a preapproval source on failure. */

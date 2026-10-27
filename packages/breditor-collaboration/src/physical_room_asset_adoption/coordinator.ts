@@ -2,7 +2,7 @@
  * Original sources stay held and unchanged during each operation. New stores
  * are exact selected clones only: no editor is returned and no room activates. */
 import {RichAssetStore,RichAssetStoreCustody} from '@breditor/experimental-rich-content';
-import {withPhysicalOperationV3Assets,withPhysicalOperationV3RecordCut,transferPhysicalOperationV3RetainedRoot,PhysicalRoomClientOperationV3} from '../physical_room_operation_v3/operation.js';
+import {withPhysicalOperationV3Assets,withPhysicalOperationV3RecordCut,transferPhysicalOperationV3RetainedRoot,transferPhysicalOperationV3RetainedRootWithActors,PhysicalRoomClientOperationV3} from '../physical_room_operation_v3/operation.js';
 import type {PhysicalAssetReadScope,PhysicalAssetReadOptions} from '../physical_room_operation_v3/asset_read_contract.js';
 import {physicalOperationV3Present} from '../physical_room_operation_v3/child.js';
 import {PhysicalOperationV3Cancellation} from '../physical_room_operation_v3/storage_cancellation.js';
@@ -22,6 +22,10 @@ import {encodeRoomAssetApproval} from '../physical_room_asset_approval/archive.j
 import {retainRoomAssetApproval} from '../physical_room_asset_approval/retention.js';
 import {decideRoomAssetApproval} from '../physical_room_asset_approval/decision.js';
 import type {RoomAssetApprovalChoice,RoomAssetApprovalOptions,RoomAssetApprovalFile} from '../physical_room_asset_approval/contract.js';
+import {prepareArchiveIntegrity} from '../archive_integrity/context.js';
+import type {StoppedActorCohort} from '../persistence/stopped_actor_cohort.js';
+import {checkPhysicalRootActors} from '../physical_room_operation_v3/actor_routes.js';
+import {RoomRunSuccessorRecipient} from '../native_room_execution_run/successor_recipient.js';
 import {prepareSelectedAssetOwner,type RetainedSelectedAssetOwner,type PreparedSelectedAssetOwner} from '../physical_room_asset_successor/owner.js';
 const key=Object.freeze({}),errors={policy:()=>fail('asset_adoption_policy'),busy:()=>fail('asset_adoption_busy'),storage:()=>fail()};
 const restore=RichAssetStore.restoreBackupHeld,open=RichAssetStore.openRetained,acquire=RichAssetStore.prototype.acquireRecoveryCustody,capture=RichAssetStore.prototype.captureBackup,list=RichAssetStore.prototype.list,closeStore=RichAssetStore.prototype.close,checkStore=RichAssetStore.prototype.checkOpen,checkCustody=RichAssetStoreCustody.prototype.check,closeCustody=RichAssetStoreCustody.prototype.close;
@@ -30,8 +34,14 @@ interface Resources {store?:RoomAssetAdoptionStore;lease?:RecoveryLease;readonly
 /** SDK-private development input. Asset write permission has a distinct lifetime
  * from the finite read/approval job. Neither one grants server authorship. */
 export interface SelectedRoomTransferOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy> extends RoomAssetApprovalOptions<P>{readonly approvalDatabase:string;readonly checkAssetAuthority:()=>void}
-let takeSelectedRoom:<P extends SharedSelectionPolicy>(stage:PhysicalRoomAssetAdoption,input:SelectedRoomTransferOptions<P>)=>Promise<RetainedSelectedAssetOwner>;
+const recipientApi={empty:RoomRunSuccessorRecipient.prototype.checkEmpty,stage:RoomRunSuccessorRecipient.prototype.stage,check:RoomRunSuccessorRecipient.prototype.checkStaged,activate:RoomRunSuccessorRecipient.prototype.activate,abandon:RoomRunSuccessorRecipient.prototype.abandon};
+interface ActorTransfer{readonly actors:StoppedActorCohort;readonly recipient:RoomRunSuccessorRecipient;readonly prepareComplete:()=>Promise<void>}
+let takeSelectedRoom:<P extends SharedSelectionPolicy>(stage:PhysicalRoomAssetAdoption,input:SelectedRoomTransferOptions<P>,actors?:ActorTransfer)=>Promise<RetainedSelectedAssetOwner>;
 export const transferRoomAssetAdoption=<P extends SharedSelectionPolicy>(stage:PhysicalRoomAssetAdoption,input:SelectedRoomTransferOptions<P>)=>takeSelectedRoom(stage,input);
+/** The already-reachable recipient keeps real successor custody if anything
+ * rejects after activation. The completion callback is trusted SDK cleanup,
+ * runs BEFORE all final source checks, and is never an input DATA field. */
+export function transferRoomAssetAdoptionWithActors<P extends SharedSelectionPolicy>(stage:PhysicalRoomAssetAdoption,input:SelectedRoomTransferOptions<P>,actors:StoppedActorCohort,recipient:RoomRunSuccessorRecipient,prepareComplete:()=>Promise<void>):Promise<RetainedSelectedAssetOwner>{checkPhysicalRootActors(actors);recipientApi.empty.call(recipient);if(typeof prepareComplete!=='function')return Promise.reject(fail('asset_adoption_policy'));return takeSelectedRoom(stage,input,{actors,recipient,prepareComplete});}
 interface Policy {readonly name:string;readonly authority:()=>void;readonly check:()=>void;readonly local:()=>void;readonly factory:IDBFactory;readonly locks:LockManager;readonly observation:PhysicalOperationV3Cancellation;readonly life:{closed:boolean;closing:boolean};readonly signal:AbortSignal|undefined}
 function policy(input:RoomAssetAdoptionOptions,begin:boolean){
  const raw=fields(input,['database','checkAuthority',...(begin?['participants']:[])],['signal']),name=database(raw['database']),authority=participantAuthority(raw['checkAuthority'] as ()=>void),factory=recoveryOpeningContext(),locks=navigator.locks,choices=begin?adoptionChoices(raw['participants']):undefined,life={closed:false,closing:false},observation=new PhysicalOperationV3Cancellation(raw['signal'] as AbortSignal|undefined);
@@ -46,21 +56,30 @@ export class PhysicalRoomAssetAdoption {
  #root:PhysicalRoomClientOperationV3|undefined;readonly #policy;readonly #resources;#record:RoomAssetAdoptionRecord;#files:AdoptionFiles;
  #pending:RoomAssetAdoptionRecord|undefined;readonly #closingListeners=new Set<()=>void>();#busy=false;#moved=false;#running:Promise<unknown>|undefined;#cleanup:Promise<void>|undefined;
  private constructor(token:object,root:PhysicalRoomClientOperationV3,p:Policy,r:Resources,record:RoomAssetAdoptionRecord,files:AdoptionFiles){if(token!==key)throw fail('asset_adoption_policy');this.#root=root;this.#policy=p;this.#resources=r;this.#record=record;this.#files=files;Object.freeze(this);}
- static{takeSelectedRoom=(stage,input)=>{
+ static{takeSelectedRoom=(stage,input,actors)=>{
   if(!stage||typeof stage!=='object'||!(#root in stage))return Promise.reject(fail('asset_adoption_policy'));
   if(stage.#busy)return Promise.reject(fail('asset_adoption_busy'));if(stage.#moved||stage.#policy.life.closed||stage.#policy.life.closing)return Promise.reject(fail('asset_adoption_closed'));stage.#busy=true;
   let task:Promise<RetainedSelectedAssetOwner>;
   try{
    const raw=fields(input,['reads','checkAuthority','expected','approve','approvalDatabase','checkAssetAuthority'],['signal']),name=database(raw['approvalDatabase']),expected=approvalChoice(raw['expected']),authority=participantAuthority(raw['checkAuthority'] as ()=>void),assetAuthority=participantAuthority(raw['checkAssetAuthority'] as ()=>void),approve=raw['approve'] as RoomAssetApprovalOptions['approve'];if(typeof approve!=='function')throw fail('asset_adoption_policy');
    const p=stage.#policy,r=stage.#resources,signal=raw['signal'] as AbortSignal|undefined,observation=new PhysicalOperationV3Cancellation(signal),current=()=>{if(p.life.closed||p.life.closing||stage.#moved||!stage.#root)throw fail('asset_adoption_closed');if(globalThis.indexedDB!==p.factory||globalThis.navigator?.locks!==p.locks)throw fail('asset_adoption_policy');observation.check();r.store!.checkReadCurrent();checkRecoveryLeasesHeld([r.lease!,...r.targetLeases.values()]);for(const target of r.targets.values()){checkStore.call(target.store);checkCustody.call(target.custody);}},check=()=>{current();authority();current();};
-   task=transferPhysicalOperationV3RetainedRoot(stage.#root!,{reads:raw['reads'] as typeof input.reads,checkAuthority:check,...(signal?{signal}:{})},async(scope,root)=>{
+   const transfer:typeof transferPhysicalOperationV3RetainedRoot=actors?(root,options,prepare)=>transferPhysicalOperationV3RetainedRootWithActors(root,options,prepare,actors.actors):transferPhysicalOperationV3RetainedRoot;
+   task=transfer(stage.#root!,{reads:raw['reads'] as typeof input.reads,checkAuthority:check,...(signal?{signal}:{})},async(scope,root)=>{
     let prepared:PreparedSelectedAssetOwner|undefined;const verify=async()=>{current();if(stage.#pending||stage.#record.phase!=='ready'||r.targets.size!==stage.#record.participants.length)throw fail('asset_adoption_diverged');const actual=await r.store!.readFresh(check,signal);check();if(JSON.stringify(actual.record)!==JSON.stringify(stage.#record)||actual.files.size!==stage.#files.size||[...actual.files].some(([id,bytes])=>!sameAdoptionBytes(stage.#files.get(id),bytes)))throw fail('asset_adoption_diverged');await verifyAdoptionSelection(stage.#record,actual.files,scope.assets);for(const row of stage.#record.participants){const target=r.targets.get(row.id);if(!target)throw fail('asset_adoption_missing');const snapshot=await capture.call(target.store,()=>{check();return undefined;});check();if(snapshot.backup.size!==row.selected.bytes||await scope.assets.digest(snapshot.backup)!==row.selected.sha256)throw fail('asset_adoption_diverged');}check();};
     await verify();if([p.name,...scope.assets.namespaces,...stage.#record.participants.map(row=>row.targetDatabase)].includes(name))throw fail('asset_adoption_policy');const actual=approvalChoice({format:'breditor/room-asset-approval-choice',formatVersion:1,cut:scope.cut.selection,adoption:stage.#record});if(JSON.stringify(actual)!==JSON.stringify(expected))throw fail('asset_adoption_diverged');
     await decideRoomAssetApproval(actual,approve,{check,signal,watchClosing:cancel=>{const rootWatch=scope.watchClosing(cancel);if(p.life.closing)cancel();else stage.#closingListeners.add(cancel);return()=>{stage.#closingListeners.delete(cancel);rootWatch();};}});await verify();await scope.verify();check();
     const file=await encodeRoomAssetApproval(actual,scope.cut,stage.#files,{check,digest:scope.assets.digest}),saved=await retainRoomAssetApproval(name,file,{check,digest:scope.assets.digest,signal,cleanup:scope.cleanup});check();
     const factory=p.factory,locks=p.locks,basis={files:stage.#files,resources:r,current:()=>{if(globalThis.indexedDB!==factory||globalThis.navigator?.locks!==locks)throw fail('asset_adoption_policy');r.store!.checkReadCurrent();}};
+    if(actors){await actors.prepareComplete();check();}
     prepared=prepareSelectedAssetOwner(root,stage.#record,basis,saved,assetAuthority);
-    return{value:prepared.value,checkCurrent(){current();prepared!.check();},consume(){stage.#moved=true;stage.#root=undefined;p.life.closed=true;p.observation.close();prepared!.activate();},async abandon(){await prepared?.abandon();}};
+    if(actors)recipientApi.stage.call(actors.recipient,prepared.value);
+    // The old temporary read is really closed before this fresh selected-store
+    // verification. Never reuse its disposed assets/read guard for new I/O.
+    const verifySelectedAfterRead=async()=>{const digest=prepareArchiveIntegrity({wasm:scope.wasm,checkAuthority:check,...(signal?{signal}:{})}).digest;
+     const actual=await r.store!.readFresh(check,signal);check();if(JSON.stringify(actual.record)!==JSON.stringify(stage.#record)||actual.files.size!==stage.#files.size||[...actual.files].some(([id,bytes])=>!sameAdoptionBytes(stage.#files.get(id),bytes)))throw fail('asset_adoption_diverged');
+     for(const row of stage.#record.participants){const target=r.targets.get(row.id);if(!target)throw fail('asset_adoption_missing');const snapshot=await capture.call(target.store,()=>{check();return undefined;},signal?{signal}:{});check();if(snapshot.backup.size!==row.selected.bytes||await digest(snapshot.backup)!==row.selected.sha256)throw fail('asset_adoption_diverged');}check();
+    };
+    return{value:prepared.value,...(actors?{verifyAfterRead:verifySelectedAfterRead}:{}),checkCurrent(){current();prepared!.check();if(actors)recipientApi.check.call(actors.recipient);},consume(){stage.#moved=true;stage.#root=undefined;p.life.closed=true;p.observation.close();prepared!.activate();if(actors)recipientApi.activate.call(actors.recipient);},async abandon(){try{await prepared?.abandon();}finally{if(actors)recipientApi.abandon.call(actors.recipient);}}};
    }).finally(()=>observation.close());
   }catch(error){task=Promise.reject(error);}
   stage.#running=task;return task.finally(()=>{stage.#running=undefined;stage.#busy=false;});

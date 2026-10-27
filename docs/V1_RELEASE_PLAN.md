@@ -107,13 +107,19 @@ Complete upload DATA planning also preserves both losing archives and the exact
 explicit union, including unreferenced pending, failed and cancelled work. These
 are prerequisites, not the complete replacement executor. The whole-room intent
 now binds all three complete asset inputs and persists the exact selected data
-without target creation or source retirement. Interrupted concrete-target replay, selected upload adoption,
-complete final replacement admission and cold actor acquisition remain required.
-The [warm target route](NATIVE_ACTOR_TARGET_ROUTES.md) connects genuine retained
-actors to concrete staging and final constructors without ordinary reacquisition;
-the complete executor and final shared ownership barrier remain separate work.
-Local author locks do not provide authenticated cross-device activation. All
-thirteen V1 gates remain open.
+without target creation or source retirement. The
+[warm executor](NATIVE_ROOM_EXECUTION_RUN.md) now owns actual interrupted-target
+retry and whole selected-upload adoption in the same reserved attempt. Its
+[local promotion](NATIVE_ROOM_PROMOTION.md) joins the exact current journal head,
+complete native/source/packet cut, selected stores and retained actor locks under
+fresh approval before one synchronous handoff. An already-owned recipient and
+one-shot take keep a usable successor reachable; input reflection cannot enter
+a second operation before reservation. Ordinary transfers keep their old meaning.
+
+The [warm target route](NATIVE_ACTOR_TARGET_ROUTES.md) uses real retained actors,
+not ordinary reacquisition. Full-process cold actor acquisition and admission of
+later persisted edits/uploads remain required. Local author locks do not provide
+authenticated cross-device activation. All thirteen V1 gates remain open.
 
 ## V1 candidate qualification checkpoint
 

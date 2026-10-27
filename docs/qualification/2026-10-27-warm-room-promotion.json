@@ -1,0 +1,127 @@
+{
+  "format": "breditor/warm-room-promotion-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-27T08:12:19.822Z",
+  "qualification": "selected-functional-architectural-increment-not-v1-release",
+  "workingTreeSourceAtVerification": {
+    "commit": "1d59898b8a14d032be0c3598f6a83011da9572d9",
+    "dirty": true,
+    "sha256": "46f2530c98466229837b48d1c6683a957f5e814cc43243c388482d72a4759855",
+    "files": 6757,
+    "bytes": 52626903
+  },
+  "qualificationMetadataAddedAfterRun": true,
+  "postVerificationSourceAdditions": [
+    "docs/qualification/2026-10-27-warm-room-promotion.json"
+  ],
+  "normal": {
+    "selectedCandidateStages": 8,
+    "sourceTests": 276,
+    "offlineInstalledTests": 276,
+    "actualProductionBundleTests": 276,
+    "priorTestsRepeated": 267,
+    "newPromotionCases": 9,
+    "strictTypeFixtures": 8,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0,
+    "fullCandidateExecuted": false,
+    "prior203ExecutionAnd283ReconstructionRerun": false
+  },
+  "implementation": {
+    "contract": "docs/NATIVE_ROOM_PROMOTION.md",
+    "stagingContract": "docs/NATIVE_ROOM_EXECUTION_RUN.md",
+    "sevenActualSourcePaths": true,
+    "independentDocumentCommentHistoryPairs": 4,
+    "existingIntentJournalAndApprovalSchemasUnchanged": true,
+    "journalStagesStillAdvisory": true,
+    "freshDecisionBindsIdentityHeadAndCompleteNativePacketAssetCut": true,
+    "actualJournalCleanupBeforeOwnershipBarrier": true,
+    "realFailedCloseRetainedForCanonicalRetry": true,
+    "freshSelectedStoreReadbackAfterTemporaryReadCleanup": true,
+    "actualRootAndCohortPairing": true,
+    "finalGenuineCoreOwnsExactDocumentAndReviewLoans": true,
+    "callbackFreeWholeCohortPromotion": true,
+    "alreadyReachableInactiveRecipientBeforeActivation": true,
+    "canonicalRecipientAndCohortOperations": true,
+    "oneShotSynchronousTake": true,
+    "finiteOldJobEndsBeforeOwnerUse": true,
+    "independentParticipantAndSelectedAssetLifetimes": true,
+    "futureNativeDocumentAndReviewUndoRedo": true,
+    "futureEditAndUnreferencedPendingUpload": true,
+    "terminalCloseDeletesNoData": true,
+    "ordinaryTransfersKeepTheirPreviousMeaning": true,
+    "inputCaptureReservedBeforeReflection": true,
+    "busyRefusalNeverClearsAnotherActualTask": true,
+    "localOwnershipIsNotAuthenticatedServingActivation": true
+  },
+  "products": {
+    "count": 2026,
+    "unchanged": 2009,
+    "changed": 13,
+    "added": 4,
+    "removed": 0,
+    "priorCount": 2022,
+    "publicRootsUnchanged": true
+  },
+  "native": {
+    "freshFiles": 100,
+    "profileAndWireRooms": 10,
+    "unchangedSourceAndBuildInputs": 2899,
+    "normalWasmSha256": "946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0",
+    "rustSuitesRerun": false
+  },
+  "controls": [
+    {
+      "name": "private-recipient",
+      "removedActualExit": 1,
+      "restoredActualExit": 0,
+      "implementationSha256": "e385310e251ef335a7e0411b2e743c5fdd4f1c6001576563a2ccc160b4bded91",
+      "byteExactRestore": true
+    },
+    {
+      "name": "whole-cohort-promotion",
+      "removedActualExit": 1,
+      "restoredActualExit": 0,
+      "implementationSha256": "b18bc70aa2739174afffe06d95e651747f7a49401ee829d218c5750640e00d09",
+      "byteExactRestore": true
+    }
+  ],
+  "reproducedInputReentry": {
+    "actualUnfixedExit": 1,
+    "actualCorrectedExit": 0,
+    "ordinaryCompilerEmissionVerified": true,
+    "correctedProductSha256": "a98ff1d97d4c886271a8b4f77f7566fbe7321e21509f7df7241c67b59d8ed72f",
+    "baselineIndex": "target/room-promotion-proof-eJoqju/index.json",
+    "baselineIndexSha256": "caa5dacb0165762c311bec52763cb5045f4068e4f73c5c1492e75eb5cd9fb752"
+  },
+  "endpoints": {
+    "count": 620,
+    "manifests": 63,
+    "allConfirmedClosed": true
+  },
+  "retainedProof": {
+    "path": "target/room-promotion-proof-NaTNb9/index.json",
+    "sha256": "4d3ea0a88bf3d4ca3f42b33b245bf7b226bcff84fbe95441b24934cd6f035fd7",
+    "files": 478
+  },
+  "previousCheckpoint": {
+    "commit": "1d59898b8a14d032be0c3598f6a83011da9572d9",
+    "qualification": "docs/qualification/2026-10-27-warm-room-execution.json"
+  },
+  "limitations": [
+    "This promotes a warm, genuinely reserved current original room. Full-process cold actor acquisition and complete current native/packet/upload admission remain required; initial approval cannot substitute for later edited state.",
+    "Compatible all-author native union and dependent-packet/provider/client reconciliation, independent comment/server-log generations, authenticated whole-room activation, sustainable Undo/offline/asset retention and remaining feature parity remain required.",
+    "Local origin actor locks are actual resources, not authenticated cross-device author fencing or provider save acknowledgements.",
+    "Controlled IndexedDB, cooperative locks, exact raster fixtures and local native services do not establish physical power-loss durability or complete browser/platform/accessibility qualification.",
+    "All276 declared laws repeat on corrected source, its offline-installed package and its real production bundle. This is not the complete candidate plan, Rust matrix or every platform/failure cross product."
+  ],
+  "v1Ready": false,
+  "openV1GateCount": 13,
+  "versionsChanged": false,
+  "publicRootApisChanged": false,
+  "pushed": false,
+  "published": false,
+  "tagged": false,
+  "deployed": false
+}
