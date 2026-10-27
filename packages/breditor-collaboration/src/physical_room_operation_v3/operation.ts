@@ -72,7 +72,7 @@ let transferRetained:<P extends SharedSelectionPolicy,T>(owner:PhysicalRoomClien
 export const transferPhysicalOperationV3RetainedRoot=<P extends SharedSelectionPolicy,T>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,prepare:(scope:PhysicalRecordCutVisit,root:RetainedPhysicalRoot,clients:RetainedNativeReadBorrow['clients'])=>Promise<PhysicalRetainedRootProposal<T>>,prelude?:RetainedRootPrelude)=>transferRetained(owner,options,prepare,prelude);
 /** Explicit internal promotion route; ordinary retained-root transfers retain
  * their established no-actor-promotion behavior. No caller option selects it. */
-export const transferPhysicalOperationV3RetainedRootWithActors=<P extends SharedSelectionPolicy,T>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,prepare:(scope:PhysicalRecordCutVisit,root:RetainedPhysicalRoot,clients:RetainedNativeReadBorrow['clients'])=>Promise<PhysicalRetainedRootProposal<T>>,actors:StoppedActorCohort):Promise<T>=>transferRetained(owner,options,prepare,undefined,actors);
+export const transferPhysicalOperationV3RetainedRootWithActors=<P extends SharedSelectionPolicy,T>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,prepare:(scope:PhysicalRecordCutVisit,root:RetainedPhysicalRoot,clients:RetainedNativeReadBorrow['clients'])=>Promise<PhysicalRetainedRootProposal<T>>,actors:StoppedActorCohort,prelude?:RetainedRootPrelude):Promise<T>=>transferRetained(owner,options,prepare,prelude,actors);
 let withAssets:<T>(owner:PhysicalRoomClientOperationV3,options:PhysicalAssetReadOptions,visit:(scope:PhysicalAssetReadScope)=>Promise<T>)=>Promise<T>;
 let withFreshRetained:<P extends SharedSelectionPolicy,T>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit,borrow:RetainedNativeReadBorrow)=>Promise<T>,prelude?:RetainedRootPrelude)=>Promise<T>;
 let captureInherited:<P extends SharedSelectionPolicy>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,assets:OperationalAssetCustody)=>Promise<PhysicalRoomRecordCutFile>;
@@ -95,6 +95,8 @@ function options(input:PhysicalOperationV3BeginOptions|PhysicalOperationV3Resume
  const{wasm,catalog,...ordinary}=raw,selected=snapshot(ordinary),result={...selected,wasm,expected:physicalCatalogSelection(selected['expected'])} as unknown as PhysicalOperationV3OpenOptions;
  return{options:result,catalog:catalog as PhysicalRoomCatalogV3|undefined,catalogDatabase:begin?undefined:dbName(selected['catalogDatabase'])};
 }
+/** SDK-only cold-entry capture; same ordinary schema/defaults, no I/O or grant. */
+export function snapshotPhysicalRootResumeOptions(input:PhysicalOperationV3ResumeOptions):PhysicalOperationV3ResumeOptions{const selected=options(input,false);return{...selected.options,catalogDatabase:selected.catalogDatabase!};}
 export class PhysicalRoomClientOperationV3{
  readonly #s:State;readonly #rollback=new RecoveryCleanupScope(()=>fail());readonly #closingListeners=new Set<()=>void>();#exposed=false;#moved=false;#busy=false;#running:Promise<void>|undefined;#cleanup:Promise<void>|undefined;#cleanupMode:boolean|undefined;
  private constructor(token:object,state:State){if(token!==key)throw fail('physical_operation_v3_closed');this.#s=state;Object.freeze(this);}

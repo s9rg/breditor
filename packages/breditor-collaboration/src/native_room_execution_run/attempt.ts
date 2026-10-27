@@ -26,12 +26,12 @@ const archiveApi={read:RoomExecutionArchive.read,preparation:RoomExecutionArchiv
 const prepApi={read:RoomPreparationArchive.read,retained:RoomPreparationArchive.prototype.retained,dispose:RoomPreparationArchive.prototype.dispose};
 const journals={open:RoomRunJournalResources.prototype.open,read:RoomRunJournalResources.prototype.read,append:RoomRunJournalResources.prototype.append,close:RoomRunJournalResources.prototype.close};
 const targetsApi={recover:RoomRunTargets.prototype.recover,preview:RoomRunTargets.prototype.preview,promote:RoomRunTargets.prototype.promote,take:RoomRunTargets.prototype.takeOwner,ready:RoomRunTargets.prototype.hasSuccessor,close:RoomRunTargets.prototype.close},bindings=StoppedActorCohort.prototype.bindings,closeActors=StoppedActorCohort.prototype.close;
-const add=EventTarget.prototype.addEventListener,remove=EventTarget.prototype.removeEventListener;
+const scopeClose=RoomExecutionReadScope.prototype.close,add=EventTarget.prototype.addEventListener,remove=EventTarget.prototype.removeEventListener;
 const key=Object.freeze({});
 export class RoomExecutionAttempt {
  readonly #old;readonly #reservation:SelectedActorExecutionReservation;readonly #options;readonly #provided;readonly #create;readonly #targets=new RoomRunTargets();readonly #stop=new AbortController();
  #scope:RoomExecutionReadScope|undefined;#journal:RoomRunJournalResources|undefined;#snapshot:RoomRunSnapshot|undefined;
- #actors:StoppedActorCohort|undefined;#openingAttempted=false;#journalOpened=false;#closing=false;#closed=false;#unwatch=()=>{};
+ #actors:StoppedActorCohort|undefined;#openingAttempted=false;#journalOpened=false;#taking=false;#closing=false;#closed=false;#unwatch=()=>{};
  #running:Promise<unknown>|undefined;#cleanup:Promise<void>|undefined;
  private constructor(token:object,owner:RetainedSelectedAssetOwner,provided:RoomRunReadOptions,options:RoomRunOptions,create:boolean){
   if(token!==key)throw fail('room_execution_policy');selectedOwnerHasRetiredActors(owner);
@@ -63,7 +63,7 @@ export class RoomExecutionAttempt {
  async #advance(stage:Exclude<RoomRunStage,'start'>){this.#check();this.#snapshot=await journals.append.call(this.#journal!,this.#snapshot!,stage);this.#check();}
  async #approve(approve:(choice:RoomRunApproval)=>boolean|Promise<boolean>){const scope=this.#scope!,choice=roomRunApproval(this.#options.expected,this.#snapshot!);await decideFreshAssetChoice(choice,approve,{check:scope.check,signal:scope.signal,watchClosing:notify=>{add.call(scope.signal,'abort',notify,{once:true});return()=>remove.call(scope.signal,'abort',notify);}});scope.check();}
  run(approve:(choice:RoomRunApproval)=>boolean|Promise<boolean>):Promise<RoomRunResult>{
-  try{if(this.#running)throw fail('room_execution_busy');if(this.#closing||this.#closed||this.#stop.signal.aborted||targetsApi.ready.call(this.#targets))throw fail('room_execution_closed');if(typeof approve!=='function')throw fail('room_execution_policy');}catch(error){return Promise.reject(error);}
+  try{if(this.#running||this.#taking)throw fail('room_execution_busy');if(this.#closing||this.#closed||this.#stop.signal.aborted||targetsApi.ready.call(this.#targets))throw fail('room_execution_closed');if(typeof approve!=='function')throw fail('room_execution_policy');}catch(error){return Promise.reject(error);}
   const task=Promise.resolve().then(()=>{this.#check();return this.#execute(approve);});this.#running=task;return task.finally(()=>{this.#running=undefined;});
  }
  async #execute(approve:(choice:RoomRunApproval)=>boolean|Promise<boolean>):Promise<RoomRunResult>{
@@ -110,7 +110,7 @@ export class RoomExecutionAttempt {
   const task=Promise.resolve().then(async()=>{this.#check();await this.#openJournal();this.#check();return targetsApi.preview.call(this.#targets,this.#options.expected,this.#snapshot!.head,this.#scope!);});
   this.#running=task;return task.finally(()=>{this.#running=undefined;});
  }
- #admitPromotion():void{if(this.#running)throw fail('room_execution_busy');if(this.#closing||this.#closed||!this.#actors||!this.#scope||targetsApi.ready.call(this.#targets))throw fail('room_execution_closed');}
+ #admitPromotion():void{if(this.#running||this.#taking)throw fail('room_execution_busy');if(this.#closing||this.#closed||!this.#actors||!this.#scope||targetsApi.ready.call(this.#targets))throw fail('room_execution_closed');}
  promote(provided:RoomRunPromotionOptions):Promise<RoomRunPromotionResult>{
   let input:RoomRunPromotionOptions,reservation:Promise<void>|undefined;
   // Reflection can execute application proxy traps. Reserve before inspecting
@@ -132,19 +132,23 @@ export class RoomExecutionAttempt {
  /** Synchronous one-shot take. Finish the old read job while the already-live
   * successor is still reachable in its recipient; cleanup cannot hide it. */
  takeOwner():RetainedSelectedAssetOwner{
-  if(this.#running)throw fail('room_execution_busy');if(this.#closing||this.#closed)throw fail('room_execution_closed');
-  if(!targetsApi.ready.call(this.#targets))throw fail('room_execution_closed');
-  this.#scope?.close();this.#unwatch();const owner=targetsApi.take.call(this.#targets);this.#actors=undefined;this.#closed=true;return owner;
+  if(this.#running||this.#taking)throw fail('room_execution_busy');if(this.#closing||this.#closed)throw fail('room_execution_closed');
+  if(!targetsApi.ready.call(this.#targets))throw fail('room_execution_closed');this.#taking=true;
+  // Synchronous cleanup observers cannot steal this already-owned successor.
+  // A callback Close cancels take while leaving real custody in the recipient.
+  try{if(this.#scope)scopeClose.call(this.#scope);this.#unwatch();if(this.#closing||this.#closed)throw fail('room_execution_closed');const owner=targetsApi.take.call(this.#targets);this.#actors=undefined;this.#closed=true;return owner;}finally{this.#taking=false;}
  }
  /** Explicit terminal abandonment. Existing intent, journals and every source
   * or target byte stay intact. Never discard a preapproval source on failure. */
- close():Promise<void>{if(this.#closed)return Promise.resolve();if(this.#cleanup)return this.#cleanup;this.#closing=true;this.#stop.abort();this.#scope?.close();
-  this.#cleanup=(async()=>{
+ close():Promise<void>{if(this.#closed)return Promise.resolve();if(this.#cleanup)return this.#cleanup;this.#closing=true;let start!:()=>void,stopError:unknown,stopFailed=false;const gate=new Promise<void>(resolve=>{start=resolve;});
+  // Publish actual cleanup before synchronous abort observers can reenter.
+  // All callers join one operation over this genuine owner/reservation.
+  this.#cleanup=gate.then(async()=>{
    await this.#running?.catch(()=>{});await targetsApi.close.call(this.#targets);
    if(!this.#actors&&selectedOwnerHasRetiredActors(this.#old)){await retryReservedSelectedActorCleanup(this.#reservation);this.#actors=takeReservedSelectedActors(this.#reservation);}
    if(this.#actors){await closeActors.call(this.#actors);this.#actors=undefined;}
    if(this.#journal){await journals.close.call(this.#journal);this.#journal=undefined;}
-   releaseSelectedActorExecution(this.#reservation);this.#unwatch();this.#closed=true;
-  })().finally(()=>{this.#cleanup=undefined;});return this.#cleanup;
+   releaseSelectedActorExecution(this.#reservation);this.#unwatch();if(stopFailed)throw stopError;this.#closed=true;
+  }).finally(()=>{this.#cleanup=undefined;});try{this.#stop.abort();if(this.#scope)scopeClose.call(this.#scope);}catch(error){stopFailed=true;stopError=error;}finally{start();}return this.#cleanup;
  }
 }

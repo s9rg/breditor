@@ -4,6 +4,7 @@ import test,{before,after} from 'node:test';import assert from 'node:assert/stri
 import {completeControlFixtures} from './fixtures/physical-recovery-control/complete-fixtures.mjs';
 import {acceptedControlTransport} from './fixtures/physical-recovery-control/accepted-transport.mjs';
 import {preparedRoomRun} from './fixtures/native-room-run/session.mjs';
+import {takeWithAbortReentry} from './fixtures/native-room-run/take-reentry.mjs';
 import {nativePair,databaseNames} from './fixtures/native-room-retirement/session.mjs';
 import {sourceByteSnapshots,assertSourceBytesUnchanged} from './fixtures/native-actor-custody/storage_bytes.mjs';
 import {RoomExecutionAttempt as Attempt} from '../packages/breditor-collaboration/dist/native_room_execution_run/attempt.js';
@@ -55,6 +56,6 @@ test('refused approval, aborted approval storage and real journal-close failure 
   await assert.rejects(attempt.promote({expected,approve:()=>{approvals++;return true;},checkAssetAuthority(){}}));IDBObjectStore.prototype.add=add;assert.equal(inserted,1);assert.throws(()=>attempt.takeOwner());await held(rows);assert.deepEqual(await databaseNames(),names);await assertSourceBytesUnchanged(source);
   RecoveryLease.prototype.close=function(...args){if(!closeFault&&journalLeases.has(this)){closeFault++;return Promise.reject(Error('Test-owned actual execution journal close failure'));}return close.apply(this,args);};
   await assert.rejects(attempt.promote({expected,approve:()=>{approvals++;return true;},checkAssetAuthority(){}}));assert.equal(closeFault,1);assert.throws(()=>attempt.takeOwner());await held(rows);assert.ok((await databaseNames()).includes(f.layout.approvalDatabase));await assertSourceBytesUnchanged(source);
-  RecoveryLease.prototype.close=close;const after=await attempt.previewPromotion();assert.deepEqual(after,expected);await attempt.promote({expected:after,approve:()=>{approvals++;return true;},checkAssetAuthority(){}});owner=attempt.takeOwner();assert.equal(approvals,4);await attempt.close();await held(rows);assert.equal(owner.clients.length,7);await assertSourceBytesUnchanged(source);await owner.close();owner=undefined;await released(rows);
+  RecoveryLease.prototype.close=close;const after=await attempt.previewPromotion();assert.deepEqual(after,expected);await attempt.promote({expected:after,approve:()=>{approvals++;return true;},checkAssetAuthority(){}});const taken=takeWithAbortReentry(attempt);owner=taken.owner;assert.equal(taken.fired,true,'A real abort observer ran during finite-job cleanup');assert.equal(taken.nestedCode,'room_execution_busy');assert.equal(taken.outerFailed,false);assert.equal(approvals,4);await attempt.close();await held(rows);assert.equal(owner.clients.length,7);await assertSourceBytesUnchanged(source);await owner.close();owner=undefined;await released(rows);
  }finally{RecoveryLease.acquire=acquire;RecoveryLease.prototype.close=close;IDBObjectStore.prototype.add=add;try{await owner?.discardAndClose();}finally{try{await attempt?.close();}finally{await f.close();}}}
 });

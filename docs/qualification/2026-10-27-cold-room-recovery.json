@@ -1,0 +1,152 @@
+{
+  "format": "breditor/cold-room-recovery-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-27T10:54:40.341Z",
+  "qualification": "selected-functional-architectural-increment-not-v1-release",
+  "workingTreeSourceAtVerification": {
+    "commit": "21cc93ebaf637de069812a45f1e9da6a04ab92e8",
+    "dirty": true,
+    "sha256": "d7b253e8f3ed0680d9f8ca8e03cfa48254234ea5ff12e4e62cf5daba4d21cd18",
+    "files": 6777,
+    "bytes": 52728158
+  },
+  "qualificationMetadataAddedAfterRun": true,
+  "postVerificationSourceAdditions": [
+    "docs/qualification/2026-10-27-cold-room-recovery.json"
+  ],
+  "normal": {
+    "selectedCandidateStages": 8,
+    "sourceTests": 321,
+    "offlineInstalledTests": 321,
+    "actualProductionBundleTests": 321,
+    "priorWarmTestsRepeated": 276,
+    "ordinaryColdTestsRepeated": 20,
+    "newRecoveryCases": 25,
+    "strictTypeFixtures": 11,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0,
+    "fullCandidateExecuted": false,
+    "fullSelectedOwnerMatrixRerun": false,
+    "expandedAbortObserverCases": 5
+  },
+  "implementation": {
+    "contract": "docs/COLD_ROOM_RECOVERY.md",
+    "warmPromotionContract": "docs/NATIVE_ROOM_PROMOTION.md",
+    "completeExistingRootWithIndependentlySelectedBasis": true,
+    "noSurvivingOldOwnerOrActorCohortInput": true,
+    "allIdentitiesAndNamespacesAdmittedBeforeFreshWriterRequests": true,
+    "sevenActualSourcePaths": true,
+    "independentDocumentCommentHistoryPairs": 4,
+    "actualFreshOriginWriterLocks": 14,
+    "acquisitionReachableBeforeFirstRequest": true,
+    "actualHandleRetainedBeforePermissionAndCancellationRecheck": true,
+    "partialAcquisitionRetainedForRetry": true,
+    "canonicalPrivateBrandCohortTransfer": true,
+    "existingIntentJournalAndApprovalSchemasUnchanged": true,
+    "completeNativePacketAndUploadContinuation": true,
+    "laterUncapturedWorkAndUploadReceiptsPreserved": true,
+    "newUnreferencedPendingUploadRetained": true,
+    "freshDecisionAfterEachRefusalOrSavedIntent": true,
+    "abortedIntentPublishesNoPartialPair": true,
+    "callbackFreeWholeCohortPromotion": true,
+    "alreadyReachableInactiveRecipientBeforeActivation": true,
+    "oneShotSynchronousTake": true,
+    "finiteJobEndsBeforeOwnerUse": true,
+    "independentParticipantAndAssetLifetimes": true,
+    "futureNativeDocumentAndReviewUndoRedo": true,
+    "terminalCleanupDeletesNoData": true,
+    "synchronousCleanupReentryJoinsOneActualPromise": true,
+    "ordinaryColdTransfersKeepTheirPreviousMeaning": true,
+    "localOwnershipIsNotAuthenticatedActivation": true,
+    "finalPointerTakeReservedBeforeCleanup": true,
+    "callbackCloseRecheckedBeforePointerMove": true
+  },
+  "products": {
+    "count": 2038,
+    "unchanged": 2019,
+    "changed": 7,
+    "added": 12,
+    "removed": 0,
+    "priorCount": 2026,
+    "publicRootsUnchanged": true
+  },
+  "native": {
+    "freshFiles": 100,
+    "profileAndWireRooms": 10,
+    "unchangedSourceAndBuildInputs": 2899,
+    "normalWasmSha256": "946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0",
+    "rustSuitesRerun": false
+  },
+  "controls": [
+    {
+      "name": "acquired-handle-custody",
+      "removedActualExit": 1,
+      "restoredActualExit": 0,
+      "removedFailures": 3,
+      "restoredPasses": 13,
+      "implementationSha256": "e0b2a1c2db3137cdb67451f3c46cdf517b5addc40e7a0469605f6d6f68cbbd83",
+      "byteExactRestore": true
+    },
+    {
+      "name": "synchronous-close-reservation",
+      "removedActualExit": 1,
+      "restoredActualExit": 0,
+      "removedFailures": 1,
+      "restoredPasses": 5,
+      "implementationSha256": "e78c4a0f83bda04e29206129e20fa957476f4659299cce0281ba4fbb6c50bafd",
+      "byteExactRestore": true
+    },
+    {
+      "name": "take-reservation",
+      "removedActualExit": 1,
+      "restoredActualExit": 0,
+      "removedFailures": 1,
+      "restoredPasses": 1,
+      "implementationSha256": "e78c4a0f83bda04e29206129e20fa957476f4659299cce0281ba4fbb6c50bafd",
+      "byteExactRestore": true
+    }
+  ],
+  "reproducedWarmCleanup": {
+    "unfixedFailed": 1,
+    "correctedPassed": 1
+  },
+  "endpoints": {
+    "count": 790,
+    "manifests": 80,
+    "allConfirmedClosed": true
+  },
+  "retainedProof": {
+    "path": "target/cold-room-recovery-proof-QvjUag/index.json",
+    "sha256": "9f2f66756fb1114fb64585b0994f74672c9076565111e46231c3adbb638b630d",
+    "files": 590
+  },
+  "previousCheckpoint": {
+    "commit": "21cc93ebaf637de069812a45f1e9da6a04ab92e8",
+    "qualification": "docs/qualification/2026-10-27-warm-room-promotion.json"
+  },
+  "limitations": [
+    "This recovery needs a complete existing selected root and an independently retained basis. Cold continuation of an interrupted replacement build before that root exists remains required; saved retirement markers do not confer fresh actor custody.",
+    "Compatible all-author native union and dependent-packet/provider/client reconciliation, independent comment/server-log generations, authenticated whole-room activation, sustainable Undo/offline/asset retention and remaining feature parity remain required.",
+    "Origin-wide writer locks provide actual local exclusion, not authenticated cross-device fencing or provider save acknowledgements.",
+    "Controlled IndexedDB, cooperative locks, raster fixtures and local native services do not certify physical power-loss durability, every failure cross product or final browser/platform/accessibility qualification.",
+    "All321 declared laws repeat on source, offline-installed archives and an actual production bundle. This is not the complete V1 candidate, all selected-owner tests or a fresh Rust matrix."
+  ],
+  "v1Ready": false,
+  "openV1GateCount": 13,
+  "versionsChanged": false,
+  "publicRootApisChanged": false,
+  "pushed": false,
+  "published": false,
+  "tagged": false,
+  "deployed": false,
+  "reproducedTakeReentry": {
+    "actualUnfixedCasesFailed": 2,
+    "actualFinalCasesPassed": 5,
+    "genuineAbortObservers": true,
+    "explicitCloseRecheckedBeforePointerTake": true,
+    "normalCompilerProductsVerified": true,
+    "baselineIndex": "target/cold-room-recovery-baseline-proof-GlBjXk/index.json",
+    "baselineIndexSha256": "a5f38075a26eaf00ceff6e6871e320e496dc6aa8469e67dee9f5e8d27f4e2224"
+  }
+}

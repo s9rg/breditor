@@ -52,7 +52,10 @@ hidden in a rejected Promise.
 
 The promotion result is DATA. `takeOwner` synchronously transfers the actual
 active owner once. Old read-job cleanup runs while the recipient still owns it;
-only then is the reference taken. Ending or aborting that completed finite job
+only then is the reference taken. The take itself reserves the attempt before
+cleanup can fire synchronous abort observers. Nested takes refuse as busy; a
+callback Close cancels the move while the recipient still owns the successor.
+Ending or aborting that completed finite job
 does not become the returned native or selected-asset permission. Participant
 policies and the explicitly selected asset-access callback govern their separate
 lifetimes. The new owner can edit, use native document/comment Undo and Redo,
@@ -60,15 +63,19 @@ capture complete current state, and retain new pending uploads under those grant
 
 Closing an unclaimed promoted attempt closes its actual successor before actor
 cleanup. Closing an attempt after take cannot close the transferred owner. Neither
-Close path deletes source, target, journal or approval bytes. An interrupted
+Close path deletes source, target, journal or approval bytes. Cleanup publishes
+its actual Promise before synchronous abort observers run, so reentrant Close
+calls join the same operation over the genuine reservation. An interrupted
 pre-barrier attempt retains its actual handles and needs fresh approval to retry.
 
 ## Remaining recovery and activation
 
 This is the warm path from a genuinely reserved current original owner, not full
 process recovery. A new process must independently admit complete current target
-state and acquire real actor locks. A stored ready or approval record cannot
-stand in for either requirement.
+state and acquire real actor locks. [Fresh actor recovery](COLD_ROOM_RECOVERY.md)
+now provides that path for a complete existing selected room and independently
+kept basis. Interrupted execution before such a root exists remains separate. A
+stored ready or approval record cannot stand in for real current custody.
 
 Compatible native union, dependent-packet and provider/client reconciliation,
 independent comment and server-log generations, authenticated whole-room

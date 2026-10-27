@@ -4,6 +4,7 @@
  * must durably choose every namespace and independently admit its whole root.
  */
 import {SharedEditorError} from '../core.js';
+import {prepareAcquiredRoomActors,type RoomActorAcquisition} from './room_actor_acquisition.js';
 import {checkStoppedSharedSourceActors,takeStoppedSharedSourceActors} from './shared_session.js';
 import {checkStoppedReviewSourceActors,takeStoppedReviewSourceActors} from './review_session.js';
 import {checkStoppedSegmentedSourceActors,takeStoppedSegmentedSourceActors} from './segmented_session.js';
@@ -11,7 +12,7 @@ import {checkStoppedIndependentSourceActors,takeStoppedIndependentSourceActors} 
 import {checkStoppedSegmentedRelayActors,takeStoppedSegmentedRelayActors} from '../segmented_relay/session.js';
 import {checkStoppedIndependentDeliveryActors,takeStoppedIndependentDeliveryActors} from '../independent_delivery/session.js';
 import {ActorLeaseEscrow} from './actor_lease_escrow.js';
-import {checkSharedWriterLeaseEscrow,commitSharedWriterLeaseEscrow,checkSharedWriterLeaseEscrowClose,closeSharedWriterLeaseEscrow,type SharedWriterLeaseEscrow} from './writer_lease.js';
+import {createSharedWriterLeaseEscrow,checkSharedWriterLeaseEscrow,commitSharedWriterLeaseEscrow,checkSharedWriterLeaseEscrowClose,closeSharedWriterLeaseEscrow,type SharedWriterLeaseEscrow} from './writer_lease.js';
 import {DeferredActorLeaseInput,type ActorLeaseRouteTargets} from './deferred_actor_input.js';
 import {bindActorLeaseInput,type ActorLeaseFactoryInput} from './actor_lease_input.js';
 import type {StoppedActorBinding,StoppedActorCustody} from './stopped_actor_source.js';
@@ -30,8 +31,13 @@ const adapters:Readonly<Record<StoppedActorFamily,Adapter>>={
  'independent-delivery':{check:checkStoppedIndependentDeliveryActors,take:takeStoppedIndependentDeliveryActors,factory:'independent'},
 };
 interface HeldMember{readonly id:string;readonly factory:FactoryFamily;readonly binding:StoppedActorBinding;readonly custody:StoppedActorCustody}
+let takeAcquired:(owner:RoomActorAcquisition)=>StoppedActorCohort;
+/** Separate fresh-resource path, never a saved stopped flag or an option that
+ * bypasses source retirement. All real normal handles are checked before move. */
+export const takeAcquiredActorCohort=(owner:RoomActorAcquisition)=>takeAcquired(owner);
 const key=Object.freeze({});
 const routeCreate=DeferredActorLeaseInput.create,routeClosed=DeferredActorLeaseInput.prototype.closed,routeFinal=DeferredActorLeaseInput.prototype.checkFinalCurrent,routePromoted=DeferredActorLeaseInput.prototype.markPromoted;
+const createPair=ActorLeaseEscrow.create;
 const pairCommit=ActorLeaseEscrow.prototype.commit,pairCheck=ActorLeaseEscrow.prototype.checkCommit,pairClose=ActorLeaseEscrow.prototype.close,pairCloseCheck=ActorLeaseEscrow.prototype.checkClose;
 const fail=(suffix='policy')=>new SharedEditorError('actor_cohort_'+suffix,'Use the actual stopped native cohort and settle every selected target before moving whole-cohort author custody');
 
@@ -60,6 +66,12 @@ export class StoppedActorCohort{
  readonly #members:readonly HeldMember[];readonly #routes=new Map<string,DeferredActorLeaseInput>();
  #committed=false;#closing=false;#closed=false;#closeTask:Promise<void>|undefined;
  private constructor(token:object,members:readonly HeldMember[]){if(token!==key)throw fail();this.#members=members;Object.freeze(this);}
+ static{takeAcquired=owner=>{const prepared=prepareAcquiredRoomActors(owner);try{
+  // Canonical acquisition preflights the complete real set. There are no
+  // callbacks or awaits between the first escrow creation and final consumption.
+  const members=prepared.members.map(row=>Object.freeze({id:row.id,factory:row.factory,binding:Object.freeze({room:row.room,writer:row.writer,actor:row.actor}),custody:row.actor===null?createSharedWriterLeaseEscrow(row.document,row.room,row.writer):createPair.call(ActorLeaseEscrow,row.document,row.review!,row.room,row.writer,row.actor)}));
+  const cohort=new StoppedActorCohort(key,Object.freeze(members));prepared.consume();return cohort;
+ }finally{prepared.release();}};}
  static take(input:readonly StoppedActorMember[]):StoppedActorCohort{
   const selected=snapshot(input),ids=new Set<string>(),sources=new Set<object>(),documents=new Set<string>(),reviews=new Set<string>();
   let room:string|undefined;

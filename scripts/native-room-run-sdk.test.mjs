@@ -45,6 +45,11 @@ test('refused approval, forged retirement DATA and closing an unstarted attempt 
   attempt=Attempt.resume(f.f.s.owner,f.reads,f.options);let enter,release;const entered=new Promise(resolve=>enter=resolve),gate=new Promise(resolve=>release=resolve);
   const waiting=attempt.run(()=>{enter();return gate;}),observed=waiting.then(()=>({ready:true}),error=>({ready:false,error}));await entered;await attempt.close();assert.equal((await observed).ready,false);release(true);attempt=undefined;for(const row of f.f.clients)assert.equal(row.core.documentJson(),row.document);
   assert.throws(()=>Attempt.begin({},f.reads,f.options));assert.throws(()=>Attempt.begin(f.f.s.owner,f.reads,{...f.options,expected:{...f.options.expected,database:f.layout.operationDatabase}}));
+  // A real synchronous abort observer must join the already-published Close.
+  // It must not start another cleanup against the same genuine reservation.
+  attempt=Attempt.resume(f.f.s.owner,f.reads,f.options);const abort=AbortController.prototype.abort;let nested,observing=false;
+  try{AbortController.prototype.abort=function(...args){if(!observing){observing=true;this.signal.addEventListener('abort',()=>{nested=attempt.close();},{once:true});}return abort.apply(this,args);};const outer=attempt.close(),same=nested===outer;await Promise.allSettled([outer,nested]);assert.equal(same,true,'Synchronous abort reentry joins the exact warm cleanup Promise');}finally{AbortController.prototype.abort=abort;}
+
  }finally{await attempt?.close();await f.close();}
 });
 test('actual failed old cleanup retains all writer locks in the same owner and resumes only through genuine custody',async()=>{
