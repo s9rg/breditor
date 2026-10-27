@@ -1,0 +1,71 @@
+{
+  "format": "breditor/native-branch-union-checkpoint-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-27T20:57:33.011Z",
+  "source": {
+    "commit": "1d9aa5bc149b46c9e595ead1403b717c06db41b9",
+    "dirty": true,
+    "sha256": "1d0a52a58193e70dd54a3099c8ff31aa1fcf86db5f865b09884df7f6f9564542",
+    "files": 6869,
+    "bytes": 53206497
+  },
+  "evidence": {
+    "index": "target/native-branch-union-proof-LSlUFV/index.json",
+    "sha256": "95a8e7a3a90d0241f20a20f42d6ad68f5918c10daadbf6e1d6044140620c9aab",
+    "retainedFiles": 135
+  },
+  "native": {
+    "coreTests": 1273,
+    "collaborationUnitTests": 142,
+    "pairedIntegrationTests": 4,
+    "totalPassed": 1419,
+    "failed": 0,
+    "ignored": 0,
+    "filteredOut": 0,
+    "newCommentUnionCoreTests": 9,
+    "profileHistoryCases": 24
+  },
+  "functional": {
+    "source": 65,
+    "installedPackage": 65,
+    "actualProductionBundle": 65,
+    "strictConsumerTypes": 19,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0
+  },
+  "combinedSdkRuntimeTests": 112,
+  "completeRecordCompatibility": {
+    "sourceTests": 4,
+    "families": 7,
+    "historyCombinations": 4,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0,
+    "extendingCutsOnly": true,
+    "unionMutationQualified": false,
+    "installedRecordPipelineRun": false,
+    "freshNativeProducerRun": false
+  },
+  "atomicNativeUnionCapability": 1,
+  "boundedDocumentCapability": 2,
+  "exactPairedCoverageCapability": 1,
+  "strictNativeClippyPassed": true,
+  "newRustFormattingPassed": true,
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "actualProductionBundleSha256": "871a9be81857acf26175f22beba98a7c8c1489d6f9b78a86e784a71da01f14a5",
+  "invalidNumericReviewExportInputReproduced": true,
+  "invalidUntypedExportCountersRejectedBeforeFfi": true,
+  "scope": "Atomic in-memory compatible native document/comment union under exact original permission and prefix windows, preserving both local histories and immutable files. Complete-record compatibility is source-only and proves no durable family union.",
+  "protocolMeaningsOrDefaultsChanged": false,
+  "fullReleaseCorpusRun": false,
+  "durableSevenFamilyUnionQualified": false,
+  "authenticatedNetworkGrantFetchRun": false,
+  "commentAffiliationAdoptionComplete": false,
+  "authenticatedWholeRoomActivationComplete": false,
+  "independentCommentAndServerLogLifecycleComplete": false,
+  "v1Ready": false,
+  "openV1Gates": 13,
+  "pushApproved": false,
+  "publicationApproved": false
+}

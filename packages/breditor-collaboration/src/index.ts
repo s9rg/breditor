@@ -198,3 +198,5 @@ export type {SharedPhysicalRoomRecoveryCatalogSelection,SharedPhysicalRoomRecove
 export {OperationalSharedGenerationParticipant} from "./generation_operation/operation.js";
 export {SharedGenerationOperationError} from "./generation_operation/policy.js";
 export type {SharedGenerationOperationBeginOptions,SharedGenerationOperationResumeOptions,SharedGenerationOperationProgress,OperationalSharedGenerationParticipantParts} from "./generation_operation/contract.js";
+
+export type{SharedNativeBranchUnionAuthorization,SharedNativeBranchUnionOutcome}from'./native_branch_union_types.js';

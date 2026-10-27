@@ -11,6 +11,7 @@ mod generation;
 mod identity;
 mod materialize;
 mod recovery_origin;
+mod retained_branch;
 mod session;
 mod types;
 
@@ -20,6 +21,7 @@ pub use codec::{
 pub use identity::{
     ReviewActorId, ReviewEventId, ReviewMessageId, ReviewPrincipalId, ReviewThreadId,
 };
+pub use retained_branch::PreparedReviewBranch;
 pub use session::{ReviewImportOutcome, ReviewObservation, ReviewSession};
 pub use types::{
     ReviewAccess, ReviewActorPolicy, ReviewBinding, ReviewError, ReviewMessageView, ReviewOutcome,

@@ -18,6 +18,8 @@ mod paste_general_flow_clipboard;
 mod paste_general_inline_clipboard;
 mod placeholder_empty;
 mod recovery_origin;
+mod native_branch_union;
+mod native_branch_union_authorizations;
 mod retained_document_branch;
 mod verify_retained_native_branch;
 mod retained_asset_references;

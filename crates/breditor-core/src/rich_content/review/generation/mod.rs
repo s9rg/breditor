@@ -8,6 +8,7 @@ mod prepare_archive_enable;
 mod prepare_archive_seal;
 mod record;
 mod recovery_origin;
+mod retained_branch;
 mod restore_segmented;
 mod seal_history_generation;
 mod seal_observer_history_generation;
@@ -17,6 +18,7 @@ mod segmented_checkpoint;
 pub(super) use history::ReviewGenerations;
 pub(super) use record::MAX_RETAINED_EVENTS;
 pub(super) use recovery_origin::check_generation_origin;
+pub(super) use retained_branch::check_retained_branch_generations;
 
 #[cfg(test)]
 mod tests;

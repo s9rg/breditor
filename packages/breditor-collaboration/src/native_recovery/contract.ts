@@ -4,6 +4,7 @@
 import type {SharedRichEditor} from '../core.js';
 import type {SharedSelectionPolicy} from '../types.js';
 import type {SharedReviewImportOutcome,SharedReviewPolicy} from '../review_types.js';
+import type{SharedNativeBranchUnionAuthorization,SharedNativeBranchUnionOutcome}from'../native_branch_union_types.js';
 export interface NativeRecoveryReservation {
  /** Every exact member remains live, unretired and exclusively reserved. */
  check():void;
@@ -14,6 +15,10 @@ export interface NativeRecoveryReservation {
   * The source must be a genuine quiescent facade. No comment union, source
   * authentication, persistence, pending-input ACK or generation activation. */
  reconcileDocumentBranch<P extends SharedSelectionPolicy,Q extends SharedSelectionPolicy>(core:SharedRichEditor<P>,source:SharedRichEditor<Q>):boolean;
+ /** Atomically retain compatible document AND independently authorized peer
+  * comments. Host grants pin original roles to exact authenticated event prefixes.
+  * This changes neither packet stores nor source affiliation or serving authority. */
+ reconcileNativeBranch<P extends SharedSelectionPolicy,Q extends SharedSelectionPolicy>(core:SharedRichEditor<P>,source:SharedRichEditor<Q>,authorizations:readonly SharedNativeBranchUnionAuthorization[]):SharedNativeBranchUnionOutcome;
  /** Preserve native source-policy and anchor admission. Pending is not an ACK. */
  receiveReview<P extends SharedSelectionPolicy>(core:SharedRichEditor<P>,frame:string,verified:SharedReviewPolicy):SharedReviewImportOutcome;
  /** Pure common flag release, idempotent even after a member terminates.

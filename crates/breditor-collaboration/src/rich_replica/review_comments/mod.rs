@@ -7,6 +7,7 @@ mod enable_read_only_review_segmented_history;
 mod enable_review_segmented_history;
 mod prepare_review_batch;
 mod receive_review;
+mod reconcile_retained_native_branch;
 mod redo_review;
 mod restore_review;
 mod restore_segmented_review;
@@ -20,6 +21,7 @@ use super::{ReviewAnchorResolution, RichReplica};
 use crate::Error;
 use breditor_core::rich_content::review::{ReviewBinding, ReviewError, ReviewSession};
 pub use prepare_review_batch::{DocumentReviewBatchPreparation, PreparedDocumentReviewBatch};
+pub use reconcile_retained_native_branch::{RetainedNativeBranchSource,RetainedNativeBranchBytes,RetainedNativeBranchOutcome};
 pub use review_view::{ResolvedReviewAnchor, ResolvedReviewThread, ResolvedReviewView};
 
 impl RichReplica {

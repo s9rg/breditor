@@ -161,6 +161,7 @@ pub use review_anchor::{
     ReviewQuoteLoss,
 };
 pub use review_comments::{
+    RetainedNativeBranchSource,RetainedNativeBranchBytes,RetainedNativeBranchOutcome,
     DocumentReviewBatchPreparation, PreparedDocumentReviewBatch, ResolvedReviewAnchor,
     ResolvedReviewThread, ResolvedReviewView,
 };

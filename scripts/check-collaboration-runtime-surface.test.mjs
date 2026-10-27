@@ -1,7 +1,7 @@
 import test from "node:test";
 import {retainedAssetOwnerMethods} from "./check-collaboration-runtime-surface.mjs";
 import {packetAssetOwnerMethods} from "./check-collaboration-runtime-surface.mjs";
-import {recoveryOriginOwnerMethods,retainedDocumentBranchOwnerMethods,retainedNativeBranchOwnerMethods} from "./check-collaboration-runtime-surface.mjs";
+import {recoveryOriginOwnerMethods,retainedDocumentBranchOwnerMethods,retainedNativeBranchOwnerMethods,nativeBranchUnionOwnerMethods} from "./check-collaboration-runtime-surface.mjs";
 import {segmentedHistoryOwnerMethods,segmentedHistoryProfileMethods,observerHistorySealingOwnerMethods} from "./check-collaboration-runtime-surface.mjs";
 import {segmentedReviewMethods} from "./check-collaboration-runtime-surface.mjs";
 import {readOnlyHistoryLifecycleMethods} from "./check-collaboration-runtime-surface.mjs";
@@ -25,6 +25,7 @@ function fixture(){
  for(const name of recoveryOriginOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of retainedDocumentBranchOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of retainedNativeBranchOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
+ for(const name of nativeBranchUnionOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of segmentedHistoryOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of segmentedHistoryProfileMethods)module.SharedRichProfile.prototype[name]=()=>{};
  for(const name of observerHistorySealingOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
@@ -197,3 +198,5 @@ test("general input and opaque inline clipboard require complete guarded authori
 test("document branch reconciliation requires every separate guarded native capability",()=>{for(const name of retainedDocumentBranchOwnerMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native document branch capability/);}});
 
 test("paired native branch coverage requires both separate capability methods",()=>{for(const name of retainedNativeBranchOwnerMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native paired branch capability/);}});
+
+test("native branch union requires every separate guarded capability",()=>{for(const name of nativeBranchUnionOwnerMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native branch union capability/);}});
