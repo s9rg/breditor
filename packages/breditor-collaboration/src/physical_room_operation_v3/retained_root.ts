@@ -96,10 +96,10 @@ export class RetainedPhysicalRoot{
   // Irreversible retirement of EVERY actual member precedes fallible reads.
   // A disposed sibling must not keep later siblings writable after shutdown.
   if(keepActors&&!this.#actorCustody)checkNativeRecoveryReservation(reservation!,this.#origins.clients.map(({core})=>core));
-  const ready=keepActors&&!this.#actorCustody?NativeActorRetirement.prepare(this.#origins.clients.map(({id,core})=>({id,core}))):undefined;
-  ready?.checkBeforeRetirement();
+  const ready=keepActors&&!this.#actorCustody?prepareActors.call(NativeActorRetirement,this.#origins.clients.map(({id,core})=>({id,core}))):undefined;
+  if(ready)checkActors.call(ready);
   this.#closing=true;this.#s.life.closing=true;
-  if(ready){for(const row of this.#origins.clients)retireOwnedCore(row.core);this.#actorCustody=ready.takeAfterRetirement();}
+  if(ready){for(const row of this.#origins.clients)retireOwnedCore(row.core);this.#actorCustody=takeActors.call(ready);}
   for(const cancel of this.#closingListeners)cancel();this.#closingListeners.clear();
   if(!ready)for(const row of this.#origins.clients)retireOwnedCore(row.core);
   this.#closeMode=discard;this.#closeTask=Promise.resolve().then(async()=>{if(!discard)this.#readable??=this.#snapshot();await this.#running;await this.#cleanup.drain();await this.#origins!.assets.close();await this.#closeParents(discard);this.#origins=undefined;this.#readable=undefined;this.#closed=true;this.#active=false;}).finally(()=>{this.#closeTask=undefined;this.#closeMode=undefined;});return this.#closeTask;
@@ -110,3 +110,6 @@ export class RetainedPhysicalRoot{
   return Object.freeze({value:owner,prepareOrigins(){if(abandoned||owner.#active||owner.#origins)throw fail('physical_operation_v3_closed');state.readCurrent();state.intent.checkReadCurrent();checkRecoveryLeasesHeld([state.lease,state.held.lease]);borrow.check();owner.#origins=takeRetainedNativeOriginCustody(borrow);},activate(){owner.#active=true;},async abandon(){if(owner.#active||abandoned)return;if(owner.#origins){await owner.#origins.assets.close();owner.#origins=undefined;}else await borrow.close();abandoned=true;}});
  };}
 }
+
+/** SDK intrinsics, captured before host callbacks can replace public methods. */
+const prepareActors=NativeActorRetirement.prepare,checkActors=NativeActorRetirement.prototype.checkBeforeRetirement,takeActors=NativeActorRetirement.prototype.takeAfterRetirement;

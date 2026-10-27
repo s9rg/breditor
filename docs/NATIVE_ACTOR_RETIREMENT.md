@@ -26,6 +26,9 @@ Its canonical DiscardAndClose retries outstanding cleanup without reviving a
 writer or saving again. takeSelectedRetiredActors works once, only after complete
 canonical old cleanup. A result record or saved phase is never actor custody.
 The recipient must retain the returned actual cohort before opening targets.
+The [canonical transfer boundary](NATIVE_ACTOR_TRANSFER_INTRINSICS.md) now captures
+SDK constructor and retirement methods before host callbacks can replace their
+public dispatch. A replaced method cannot split the whole actual source move.
 
 Tests cover all four independent history pairs of the genuine seven-family root,
 all14 held author locks, actual cleanup failure/retry, missing final witness,

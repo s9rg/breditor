@@ -1,0 +1,93 @@
+{
+  "format": "breditor/canonical-actor-transfer-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-10-27T04:50:38.602Z",
+  "qualification": "selected-functional-architectural-increment-not-v1-release",
+  "workingTreeSourceAtVerification": {
+    "commit": "279089b4815b17d4fcd5ef06d7df9212f8ae37f7",
+    "dirty": true,
+    "sha256": "4a57d757836a7c7cd76184b8ea745955fc2b0e28f5ad32e4fb761c3dd4308df9",
+    "files": 6728,
+    "bytes": 52454650
+  },
+  "qualificationMetadataAddedAfterRun": true,
+  "postVerificationSourceAdditions": [
+    "docs/qualification/2026-10-27-canonical-actor-transfer.json"
+  ],
+  "normal": {
+    "stages": 8,
+    "sourceAssertions": 251,
+    "installedAssertions": 251,
+    "bundledAssertions": 251,
+    "priorAssertionsRepeated": 247,
+    "newTransferAssertions": 4,
+    "strictTypeFixtures": 6,
+    "skipped": 0,
+    "cancelled": 0,
+    "fullCandidatePlanExecuted": false,
+    "prior203ExecutionAnd283ReconstructionRerun": false
+  },
+  "products": {
+    "count": 2006,
+    "unchanged": 2002,
+    "changed": 4,
+    "added": 0,
+    "removed": 0,
+    "priorCount": 2006,
+    "publicRootsUnchanged": true
+  },
+  "native": {
+    "freshInputFiles": 100,
+    "profileAndWireRooms": 10,
+    "unchangedSourceAndBuildInputs": 2899,
+    "normalWasmSha256": "946ca19dadd21e06eafc12f366272c44ba831de5349831bc2323f38eda6372f0",
+    "rustSuitesRerun": false
+  },
+  "controls": [
+    {
+      "name": "constructor",
+      "removedActualExit": 1,
+      "restoredActualExit": 0,
+      "implementationSha256": "bb434cd0429ef4dda7af6ccc38888a769635d8703b6c28865dca0530c58bb281",
+      "byteExactRestore": true
+    },
+    {
+      "name": "retirement-method",
+      "removedActualExit": 1,
+      "restoredActualExit": 0,
+      "implementationSha256": "9afe739256e8a6908dbc22234c766ff26b5d877c19b47987761fe564db67c091",
+      "byteExactRestore": true
+    }
+  ],
+  "endpoints": {
+    "count": 210,
+    "manifests": 22,
+    "allConfirmedClosed": true
+  },
+  "retainedProof": {
+    "path": "target/actor-transfer-proof-Zm0ZIi/index.json",
+    "sha256": "5410846e43e3c6c04295b5057c8b80e77bb9e2f1a020eba93fec02dd4098cb45",
+    "files": 323
+  },
+  "previousCheckpoint": {
+    "commit": "279089b4815b17d4fcd5ef06d7df9212f8ae37f7",
+    "qualification": "docs/qualification/2026-10-27-warm-target-actor-routes.json"
+  },
+  "reproducedFailure": "A replaced paired-escrow constructor threw on the second actual source during donation. The first scope had moved, but no whole cohort returned; after old source closure its two global author locks remained owned by a resource unreachable through the SDK result. The diagnostic retained and closed that resource explicitly for safe test cleanup.",
+  "repair": "Actual paired, segmented and independent source movers capture the SDK constructor before host factory/authority callbacks. The retained root captures genuine retirement preparation, readiness and take methods rather than dispatching replaceable static/prototype entries during the irreversible cut. Three actual two-source cases and a genuine saved-seven-family approval-hook case prove no replacement callback runs, native/source bytes remain intact and actual author custody is returned as one cohort. Ordinary public methods, stored formats, root exports and normal Wasm remain unchanged.",
+  "limitations": [
+    "This is scoped SDK ownership hardening, not isolation from arbitrary application JavaScript, modified platform builtins or a mismatched native runtime.",
+    "The complete mutable executor still needs an explicitly named durable START journal, an actual attempt owner retained before irreversible work, complete selected-upload adoption and the final common native/packet/asset/actor barrier.",
+    "Cold process actor acquisition, native/provider/client reconciliation, independent comment/server generations, authenticated activation, sustainable Undo/offline/asset retention and remaining feature parity remain required.",
+    "The new complete approval-hook law selects one actual seven-family native history pair; all previous four-pair target/recovery laws are repeated separately in the251-law workload.",
+    "Controlled IndexedDB/locks/raster checks are not physical crash, OS/browser/accessibility qualification or the full release matrix."
+  ],
+  "v1Ready": false,
+  "openV1GateCount": 13,
+  "versionsChanged": false,
+  "publicRootApisChanged": false,
+  "pushed": false,
+  "published": false,
+  "tagged": false,
+  "deployed": false
+}
