@@ -1,0 +1,130 @@
+{
+  "format": "breditor/generation-parent-availability-qualification",
+  "formatVersion": 1,
+  "status": "functional-checkpoint-passed",
+  "qualifiedAt": "2026-10-28T12:25:56.733Z",
+  "source": {
+    "baseCommit": "a58b7927befa2d0df9826d9a76b01cd7dc660834",
+    "dirty": true,
+    "changeInventorySha256": "c1e61c20dcf37def10efe56a70f36e7d856deb5425bbc6b0dafdb0d675f1ec04",
+    "changedFiles": 22,
+    "root": {
+      "commit": "a58b7927befa2d0df9826d9a76b01cd7dc660834",
+      "dirty": true,
+      "sha256": "6e9a922147416b9d5c729b2696ef276a89e255afd56c1c487ff1486f1a11d649",
+      "files": 7121,
+      "bytes": 54459682
+    }
+  },
+  "evidence": {
+    "directory": "target/generation-parent-proof-DFkF4E",
+    "index": "target/generation-parent-proof-DFkF4E/index.json",
+    "sha256": "a29da3de53613999546c5918827e81dccfa3c7a70b7320ee6e42e7d19e7b9ebe",
+    "retainedFiles": 319,
+    "qualifiedSource": "c1e61c20dcf37def10efe56a70f36e7d856deb5425bbc6b0dafdb0d675f1ec04",
+    "qualifiedAt": "2026-10-28T12:25:56.733Z"
+  },
+  "checks": {
+    "actualRows": 10,
+    "allActualRowsJoined": true,
+    "wireTests": 180,
+    "candidatePlanTests": 174,
+    "strictNativeClippyServerAndNoServer": true,
+    "strictRustdoc": true,
+    "format": true,
+    "strictNewAndLegacyTypes": true
+  },
+  "sourceContracts": {
+    "passed": 68,
+    "failed": 0,
+    "skipped": 0,
+    "newGeneration": 53,
+    "unchangedPhysical": 15
+  },
+  "installedContracts": {
+    "passed": 68,
+    "failed": 0,
+    "skipped": 0
+  },
+  "productionBundleContracts": {
+    "passed": 68,
+    "failed": 0,
+    "skipped": 0
+  },
+  "matrix": {
+    "wholeRoomCombinationsPerPath": 40,
+    "familiesPerRoom": 7,
+    "coldFutureUndoRedoClientsPerPath": 280,
+    "paths": [
+      "source",
+      "installed",
+      "production-bundle"
+    ],
+    "note": "Original and document-generation source families retain their fixed contracts; five independent source families actually select both native document/comment history flags."
+  },
+  "native": {
+    "freshProducers": true,
+    "protectedStreamsPerRoom": 14,
+    "productionSourcesUnchangedFrom": "a58b7927befa2d0df9826d9a76b01cd7dc660834",
+    "fullSuitesInheritedFrom": "docs/qualification/2026-10-28-server-generation-recovery-control.json",
+    "freshFullRustSuites": false,
+    "binaries": [
+      {
+        "name": "generation_complete_control_functional",
+        "sha256": "92b6a9d88a9d5ae93cbfc00bac710c8068734e730850928a38df48fa4b8bcb1a"
+      },
+      {
+        "name": "complete_cohort_control_functional",
+        "sha256": "29c58a35cdd9d41a982c06a8d5c56bff8b5c63773cd1f9e2cf85e2dbba2d64d1"
+      }
+    ]
+  },
+  "distribution": {
+    "developerV3ScopeUnchanged": true,
+    "defaultApiExportChanged": false,
+    "offlineTarballs": true,
+    "workspaceLinks": false,
+    "registryArtifacts": 45,
+    "productionModuleCount": 750,
+    "bundleSha256": "bd20f71b0414dd48dc8078dfc37fc0ed18e5d8bebfaea2d2d770b60b1b1aee9b",
+    "assertionRelocationsReversible": true,
+    "tarballs": [
+      {
+        "name": "@breditor/browser",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "sha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "sha256": "8615a19d6762292e4dcfaac87d48ebab35a98364ae6f73f0b1a98467ae304672"
+      }
+    ]
+  },
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "normalWasmRebuilt": false,
+  "freshCoreFrontendBrowserOrPhysicalCrashQualification": false,
+  "scope": [
+    "New generation-specific seven-family parent provider availability without relabeling physical A/B/C authority or widening old result contracts.",
+    "Actual private root, protected native histories and every whole upload store remain held through authenticated I/O, final complete rereads and acknowledged cleanup.",
+    "Forty room configurations preserve exact cold-recovered sources, old offline native work and future document/comment Undo/Redo on all seven client families.",
+    "Source/prototype/permission/tamper/Pending/close/abort/cleanup laws and new synchronous choice detachment refuse stale or partial success.",
+    "Fresh offline installed and actual production-bundle paths repeat unchanged source assertions with reversible module/fixture locations; original cumulative1421 gate remains intact."
+  ],
+  "remaining": [
+    "Registered native author/client coverage and complete outstanding outbox/historical-copy reconciliation.",
+    "Unknown-own and offline native branch union handling with the approved cross-generation Undo/offline bridge.",
+    "Selected successor/native execution joins through the generation family.",
+    "Generation-aware old-writer exclusion and durable authenticated whole-room activation.",
+    "Remaining full feature parity, operating envelope and all V1 release gates."
+  ],
+  "featureParityComplete": false,
+  "allV1GatesRemainOpen": true,
+  "versionChanged": false,
+  "pushed": false,
+  "published": false,
+  "tagged": false,
+  "deployed": false
+}

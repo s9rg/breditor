@@ -77,8 +77,10 @@ a successful result. Responses cannot manufacture an authenticated host.
 The SDK-private port uses the actual class brand, so replacing public selection,
 check or read methods cannot provide a forged server check. It supports all four
 native requests, including original comment rights. The physical-family SDK
-port remains distinct. Existing parent operations still require their own
-family-aware join; neither a cast nor a relabeled response substitutes for it.
+port remains distinct. The [seven-family generation parent read](GENERATION_RECOVERY_PARENT_AVAILABILITY.md)
+now joins protected histories and whole uploads to this transport. Selected
+successor/execution and complete reconciliation still require their own
+family-aware joins; neither a cast nor a relabeled response substitutes for them.
 
 ## Functional verification and remaining joins
 

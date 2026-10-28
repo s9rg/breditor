@@ -119,3 +119,8 @@ pedantic = { level = "deny", priority = -1 }
 name = "generation_recovery_control_functional"
 path = "examples/generation_recovery_control_functional.rs"
 required-features = ["server"]
+
+[[example]]
+name = "generation_complete_control_functional"
+path = "examples/generation_complete_control_functional.rs"
+required-features = ["server"]

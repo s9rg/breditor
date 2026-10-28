@@ -33,6 +33,9 @@ import type {SharedSelectionPolicy} from '../types.js';
 import {readPhysicalOperationV3Assets} from './asset_read.js';
 import type {PhysicalAssetReadOptions,PhysicalAssetReadScope} from './asset_read_contract.js';
 import {readPhysicalOperationV3HistoryAssets} from './history_assets.js';
+import {prepareServerGenerationHistoryAssets} from './generation_history_assets.js';
+import type {ServerGenerationOperationHistoryAssetsRead} from './generation_history_assets_contract.js';
+import type {SharedServerLogGenerationRecoveryHost} from '../generation_recovery_control/host.js';
 import type {PhysicalOperationV3HistoryAssetsRead} from './history_assets_contract.js';
 import type {SharedPhysicalRoomRecoveryHost} from '../physical_recovery_control/host.js';
 import {capturePhysicalOperationV3RecordCut,visitPhysicalOperationV3RecordCut,type PhysicalRecordCutVisit} from './record_cut.js';
@@ -231,6 +234,10 @@ export class PhysicalRoomClientOperationV3{
  /** Fresh protected-history AND whole-upload availability against the genuine
   * authenticated native host. No upload, receipt promotion or activation. */
  readHistoryAssets<P extends SharedSelectionPolicy>(host:SharedPhysicalRoomRecoveryHost,input:PhysicalOperationV3HistoryReadOptions<P>):Promise<PhysicalOperationV3HistoryAssetsRead>{return this.#run(async()=>{await this.#rollback.drain();return readPhysicalOperationV3HistoryAssets(this.#s,()=>{if(!this.#exposed||!this.#busy)throw fail('physical_operation_v3_closed');},this.#rollback,host,input);});}
+ /** Separate origin/current generation transport under all seven actual source
+  * and whole-upload reservations. No physical-family conversion, queue settlement,
+  * permission change or activation. New choices detach before the first await. */
+ readGenerationHistoryAssets<P extends SharedSelectionPolicy>(host:SharedServerLogGenerationRecoveryHost,input:PhysicalOperationV3HistoryReadOptions<P>):Promise<ServerGenerationOperationHistoryAssetsRead>{return this.#run(async()=>{const read=prepareServerGenerationHistoryAssets(this.#s,()=>{if(!this.#exposed||!this.#busy)throw fail('physical_operation_v3_closed');},this.#rollback,host,input);await this.#rollback.drain();return read();});}
  /** Portable full data under genuine held reads. Retain the file and its exact
   * independent pin durably before any later approved operational handoff. */
  captureRecordCut<P extends SharedSelectionPolicy>(input:PhysicalOperationV3HistoryReadOptions<P>):Promise<PhysicalRoomRecordCutFile>{return this.#run(async()=>{await this.#rollback.drain();return capturePhysicalOperationV3RecordCut(this.#s,()=>{if(!this.#exposed||!this.#busy)throw fail('physical_operation_v3_closed');},this.#rollback,input);},error=>error instanceof Error?error:known(error));}
