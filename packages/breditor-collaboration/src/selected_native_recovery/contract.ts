@@ -30,3 +30,13 @@ export interface SelectedNativeRecoveryScope{
  readReconciliation(host:SharedPhysicalRoomRecoveryHost):Promise<SelectedRoomReconciliationRead>;
  readGenerationReconciliation(host:SharedServerLogGenerationRecoveryHost):Promise<SelectedGenerationReconciliationRead>;
 }
+
+/** Private reconstruction composition. Factories are detached only after the
+ * genuine cohort is reserved, and cancellation bounds every native restore.
+ * These readers return DATA; they are not additional writer or serving rights. */
+export interface SelectedNativeReconstructionScope extends SelectedNativeRecoveryScope{
+ /** Observe an additional real read/asset signal before the first capture.
+  * This can only cancel this finite read job, never grant editing or custody. */
+ observeReadSignal(signal:AbortSignal|undefined):void;
+ readonly reads:import('../physical_room_operation_v3/history_read_contract.js').PhysicalOperationV3HistoryReadOptions['reads'];
+}

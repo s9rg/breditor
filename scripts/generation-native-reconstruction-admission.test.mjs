@@ -1,0 +1,9 @@
+/** Real physical/forged control objects cannot relabel generation recovery. */
+import test,{before,after} from 'node:test';import assert from 'node:assert/strict';
+import {completeControlFixtures} from './fixtures/physical-recovery-control/complete-fixtures.mjs';
+import {completeControlTransport} from './fixtures/physical-recovery-control/complete-transport.mjs';
+import {SharedPhysicalRoomRecoveryHost as PhysicalHost} from '../packages/breditor-collaboration/dist/physical_recovery_control/host.js';
+import {SharedServerLogGenerationRecoveryHost as GenerationHost} from '../packages/breditor-collaboration/dist/generation_recovery_control/host.js';
+import {inspectGenerationJournalReconstruction as inspect,prepareGenerationJournalReconstruction as prepare,previewGenerationReconstructionMaterialization as preview,materializeGenerationReconstruction as materialize} from '../packages/breditor-collaboration/dist/selected_generation_reconstruction/coordinator.js';
+let fixtures,transport,host;before(async()=>{fixtures=await completeControlFixtures(new URL('../',import.meta.url).pathname);transport=completeControlTransport(fixtures.manifest);const item=fixtures.manifest.cases[0];host=await PhysicalHost.open({endpoint:item.endpoint,expected:item.selection,principal:'operator',getToken:()=>fixtures.controls.token(item.path),checkAuthority(){}});});after(async()=>{host?.close();transport?.restore();await fixtures?.close();});
+test('every reconstruction mutation/preview requires genuine generation authority before input reflection',async()=>{let inspected=0;const input=new Proxy({},{get(){inspected++;throw Error('Do not inspect foreign input');},ownKeys(){inspected++;throw Error('Do not reflect foreign input');}});for(const foreign of [host,Object.create(GenerationHost.prototype),{}])for(const run of [inspect,prepare,preview,materialize])await assert.rejects(run(input,foreign,input,input));assert.equal(inspected,0);});

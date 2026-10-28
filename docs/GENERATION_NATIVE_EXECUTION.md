@@ -89,10 +89,12 @@ Inputs and journals retain their explicit one-GiB limits, 4,096 pages or events,
 and existing native frame/source limits. They refuse overflow without truncating
 history. These are bounded recovery lifetimes, not sustainable-history closure.
 
-The selected host cut must still match the retained input exactly. Older disk
-sources than retained native work, a server that has advanced to a different cut,
-and conflicting historical packet copies need their full reconstruction and
-reconciliation joins. Explicit local-comment adoption, authenticated old-serving
+The selected host cut must still match the retained input exactly. The separate
+[generation reconstruction route](GENERATION_NATIVE_RECONSTRUCTION.md) now covers
+older source state wholly contained in the last retained output, without weakening
+ordinary resume. Mixed ahead/behind source frontiers, a server that has advanced
+to a different cut and conflicting historical packet copies still need their
+explicit reconstruction and reconciliation joins. Explicit local-comment adoption, authenticated old-serving
 exclusion and a durable whole-room activation decision remain required. All
 thirteen V1 release gates and the full feature-parity objective remain open.
 

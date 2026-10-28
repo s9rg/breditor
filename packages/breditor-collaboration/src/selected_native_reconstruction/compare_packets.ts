@@ -8,7 +8,7 @@ import type {SharedSegmentedRetainedRecovery} from '../segmented_relay/retained_
 import type {SharedIndependentDeliveryRecovery} from '../independent_delivery/contract.js';
 import {verifyRetainedReconstructionPackets} from './retained_packets.js';
 import {fields,fail} from './policy.js';
-export async function compareReconstructionPackets(context:Context):Promise<void>{
+export async function compareReconstructionPackets(context:Pick<Context,'id'|'before'|'retained'|'check'>):Promise<void>{
  const{id,before,retained:after}=context,entry=after.participant(id),leftRecord=await before.records(id),rightRecord=await after.records(id);context.check();
  if(entry.family==='original'){
   const left=recordLiveBasis('original',leftRecord) as readonly {kind:string;json:string}[],right=recordLiveBasis('original',rightRecord) as typeof left,beforeSource=fields(leftRecord,['parent','source'])['source'] as Record<string,unknown>,afterSource=fields(rightRecord,['parent','source'])['source'] as Record<string,unknown>;

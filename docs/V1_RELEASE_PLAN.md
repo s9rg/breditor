@@ -13,13 +13,29 @@ the FCKeditor lineage. CKEditor 4 reached ordinary EOL in June 2023; its
 is not the modern feature baseline. Breditor remains an independent implementation:
 no ProseMirror, Tiptap or CKEditor document, operation or plugin protocol is adopted.
 
+## Generation recovery from older sources
+
+The [generation reconstruction contract](GENERATION_NATIVE_RECONSTRUCTION.md)
+retains the complete original journal and creates fresh native targets when
+reopened source state is contained in the retained output. All seven source
+families preserve offline work, both native Undo/Redo lanes, packets and uploads;
+new namespaces require a fresh generation input and journal. Source, fresh
+packages and the actual production bundle each pass 107 functional laws.
+
+The harder mixed frontier is reproduced: one client saved newer state while six
+reopened older. A per-client data join prototype conserves both inputs, but its
+durable recovery/activation integration is not implemented. Incomparable native
+branches, cross-cut provider reconciliation, packet settlement, explicit local
+comment adoption and authenticated whole-room activation remain architectural
+priorities. All thirteen V1 gates and the full parity goal stay open.
+
 ## Durable generation native execution
 
 The [generation execution contract](GENERATION_NATIVE_EXECUTION.md) provides
 separate immutable inputs and append-only per-client/resume journals under actual
 generation controls. Every stored page is freshly authenticated before native
 admission, and saved progress cannot skip replay or acknowledge offline work.
-Complete older-disk reconstruction, historical packet reconciliation and durable
+Mixed-source reconstruction, historical packet reconciliation and durable
 whole-room activation remain required. All thirteen V1 gates remain open.
 
 ## Selected generation native reconciliation

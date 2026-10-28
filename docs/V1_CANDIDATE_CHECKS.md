@@ -1,5 +1,13 @@
 # V1 candidate checks
 
+The additive [generation older-disk reconstruction qualification](qualification/2026-10-28-generation-native-reconstruction.json)
+passes 107 source, installed-package and actual production-bundle laws per path,
+including 91 unchanged generation/physical execution laws, six unchanged cold
+execution laws and ten new reconstruction laws. Six strict consumer fixtures,
+180 control laws and 180 candidate-plan laws pass. Sixty-three genuine native
+fixture hosts are preserved. This is not an execution of the complete candidate
+plan or closure of mixed-state recovery, room activation or any V1 release gate.
+
 Both profiles require `delivery-operation-cohort-contracts`,
 `delivery-operation-cohort-type-fence`, `delivery-operation-cohort` and
 `installed-delivery-operation-cohort`. The private

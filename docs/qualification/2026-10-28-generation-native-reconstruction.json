@@ -1,0 +1,226 @@
+{
+  "format": "breditor/generation-native-reconstruction-functional-qualification",
+  "formatVersion": 1,
+  "functionalPassed": true,
+  "releaseReady": false,
+  "v1GatesClosed": 0,
+  "v1GatesTotal": 13,
+  "baseCommit": "84400db249e7aeb84d0a69674a9a5064459c16d2",
+  "qualifiedSource": {
+    "commit": "84400db249e7aeb84d0a69674a9a5064459c16d2",
+    "dirty": true,
+    "sha256": "c292f6ce8230767ba2470a9af96fb8c67dfe7bf8f68e3791687bca65cf89f4cd",
+    "files": 7201,
+    "bytes": 54910923
+  },
+  "changeSetSha256": "179df5fd5e817e8d29aadf1d14c2b73b6b73faa1d14b6ff21182f4ac7c6db240",
+  "scope": "Complete reconstruction when all actual current source records, packets and upload inventories fit inside the last retained generation execution cut. Full original input, every journal cut, diagnostic evidence and concrete seven-family execution are retained. Actual cold actor acquisition, native document/comment Undo/Redo and a fresh replacement generation accepted import pass. Not mixed ahead/behind reconstruction, incomparable branch union, cross-server-cut reconciliation, historical outbox settlement, local-comment adoption or authenticated whole-room activation.",
+  "results": {
+    "source": 107,
+    "installed": 107,
+    "actualProductionBundle": 107,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0,
+    "newReconstructionPerPath": 10,
+    "unchangedExecutionPerPath": 91,
+    "unchangedColdExecutionPerPath": 6
+  },
+  "carriedUnchangedNativeBaseline": {
+    "qualification": "docs/qualification/2026-10-28-generation-native-execution.json",
+    "releaseSerialPassed": 310,
+    "normalWasmUnchanged": true,
+    "productionNativeUnchangedFrom": "84400db249e7aeb84d0a69674a9a5064459c16d2"
+  },
+  "knownPriorParallelNativeShutdownFailure": {
+    "qualification": "docs/qualification/2026-10-28-selected-generation-native.json",
+    "resolved": false,
+    "rootCauseConfirmed": false
+  },
+  "optionalDebugDiagnostic": {
+    "passed": false,
+    "intentionallyCancelled": true,
+    "exitCode": 130,
+    "record": "auxiliary/debug-diagnostic-cancelled.json"
+  },
+  "wireTests": 180,
+  "candidatePlanTests": 180,
+  "strictTypes": [
+    "types-generation-native-import-input.ts",
+    "types-generation-native-execution.ts",
+    "types-generation-native-boundary.ts",
+    "types-native-import-input.ts",
+    "types-native-execution.ts",
+    "types-generation-native-reconstruction.ts"
+  ],
+  "nativePublicFixtureHosts": 63,
+  "nativeGrammarTransportInputConfigurations": 10,
+  "independentDocumentCommentHistoryPairs": 4,
+  "selectedFamiliesPerCase": 7,
+  "newEndToEndReconstructionDomain": {
+    "selectedGrammarTransportCases": 1,
+    "documentSegmented": true,
+    "reviewSegmented": true,
+    "sourceFamilies": 7,
+    "completeGrammarHistoryCartesianDomain": false
+  },
+  "normalSharedWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "nativeProductionUnchangedFrom": "84400db249e7aeb84d0a69674a9a5064459c16d2",
+  "productionModuleCount": 874,
+  "bundleSha256": "87b09bdb15682487c08ebb3bc605b575d4c42850da0a24a3e20a5e4842f914a9",
+  "evidence": {
+    "directory": "/Users/s/code/breditor/target/generation-native-reconstruction-proof-4oLYNo",
+    "indexSha256": "1ce6df89702ce0bb2718094577d3415ea7956e8acc8b92fc423b83a30feb27c3",
+    "files": 4131
+  },
+  "auxiliaryMixedFrontier": {
+    "reproduced": true,
+    "sourceFamilies": 7,
+    "newerCurrentFamilies": 1,
+    "olderCurrentFamilies": 6,
+    "dataOnlyJoinPrototypePassed": true,
+    "productionized": false,
+    "activation": false,
+    "record": "/Users/s/code/breditor/target/generation-native-reconstruction-proof-4oLYNo/auxiliary/mixed-reproduction.json"
+  },
+  "cleanup": {
+    "freedGiB": 39.42721176147461,
+    "availableGiB": 41.42097091674805,
+    "removedBuilds": 8,
+    "removedDependencyInstalls": 183,
+    "archivedRuns": 1524,
+    "archive": "/Users/s/code/breditor/target/archived-native-fixtures-ii43z1/fixtures-pax.tar.gz",
+    "archiveSha256": "55bd46f1f9b22435d0de026cdc93abf9ea9e9ac4527533fad86eb8abddd1804e",
+    "recoverable": true
+  },
+  "implementationAndTests": [
+    {
+      "path": "packages/breditor-collaboration/src/native_room_preparation/coordinator.ts",
+      "bytes": 6900,
+      "sha256": "847e97877afabfbf89bd0d596a3e2aab87053eaad62de3f579951a06e3672748"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/physical_room_asset_successor/owner.ts",
+      "bytes": 39381,
+      "sha256": "c665556206921e5cde0610f2d37018a97e3e65c4bff2ad32fcaf9cef12a6f0ca"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_reconstruction/archive.ts",
+      "bytes": 8677,
+      "sha256": "7625ad33253852532a1b81537b00f0865029fdbd4aa63066e9162c3f3aba69ce"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_reconstruction/contract.ts",
+      "bytes": 2998,
+      "sha256": "747fb2a083ab620ce306eaca02ce344452897dcb079f757900a90310506fc4fd"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_reconstruction/coordinator.ts",
+      "bytes": 17298,
+      "sha256": "d4e6639c6c72a02a74310c7d17db0300f1f6bd3783ec6f87bf04658451cfd298"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_reconstruction/intent_store.ts",
+      "bytes": 7612,
+      "sha256": "0de2a1d70dabd0005dbbe1f1512a293b0dedd0f96706bac966813474e59add6a"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_reconstruction/plan.ts",
+      "bytes": 3490,
+      "sha256": "8097a97638259ecce2d743455e967829c5857bc02c778511105977e491cf05c9"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_reconstruction/policy.ts",
+      "bytes": 2402,
+      "sha256": "b41dd27de384a37b19f4f76b64689b786e7f4a8813172b90de115f7b5ba39aa7"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_reconstruction/resources.ts",
+      "bytes": 3168,
+      "sha256": "c863947463de5ddfc1dad9bf694159dbece586c387cc9af3bd1c9bb54450f9b8"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_reconstruction/snapshot.ts",
+      "bytes": 4628,
+      "sha256": "806ef034ce2158f656fe166471260f68d43328a482afca2bb37da218e858d36c"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_reconstruction/verify_history.ts",
+      "bytes": 3761,
+      "sha256": "27ec5de24dd3b1cd0ee5de9c2e73172bbee16278f0eb3372b07a16dc23ac8192"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_native_reconstruction/compare_packets.ts",
+      "bytes": 2984,
+      "sha256": "1d0ca6c518673924fd6c39d40943f00a790334a2978c1e07e3804e44751d09a0"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_native_reconstruction/held_inputs.ts",
+      "bytes": 3821,
+      "sha256": "c034fa6d08e2060e7578b01d0a86979cb8780ce4aeadb86e3d11ca29d7970211"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_native_recovery/contract.ts",
+      "bytes": 3146,
+      "sha256": "6969467f30a8afa77f44168ce591c61783ae5cd4172f137147a886b5a7599b42"
+    },
+    {
+      "path": "scripts/candidate-release/plan.mjs",
+      "bytes": 120961,
+      "sha256": "e1c1396a31787052894ebb70df9fe1b86ccb87df02f2765c63a1868a92932294"
+    },
+    {
+      "path": "scripts/check-generation-native-reconstruction-installed.mjs",
+      "bytes": 17311,
+      "sha256": "d7031765d705205b2a4a2684a4f3fdffb7350ba09043bc7be96b98e39bfe5b60"
+    },
+    {
+      "path": "scripts/check-generation-native-reconstruction-sdk.mjs",
+      "bytes": 3106,
+      "sha256": "8c3ae70673c6a70ec6bc7ee121111693c0e4b0b86d665e1f0a1a4c7c08cdc942"
+    },
+    {
+      "path": "scripts/fixtures/editor-consumer/types-generation-native-reconstruction.ts",
+      "bytes": 2416,
+      "sha256": "a3ca42ce6a587174db10e9c8097740938bb79c8e13aef7a809b2976da84d0670"
+    },
+    {
+      "path": "scripts/generation-native-reconstruction-admission.test.mjs",
+      "bytes": 1938,
+      "sha256": "5b81c2eb0c90acca2b8057df2a2243d1a2788f4c7c101f22105516ff6da1b19a"
+    },
+    {
+      "path": "scripts/generation-native-reconstruction-candidate-plan.test.mjs",
+      "bytes": 2534,
+      "sha256": "2aa507c61da3544521bdd54cb52e4ff507b150e6b565f40c3f5ee7ce74b114a0"
+    },
+    {
+      "path": "scripts/generation-native-reconstruction-evidence.test.mjs",
+      "bytes": 4964,
+      "sha256": "753ffe276bd338f4052e0578ba41678b78ddaa1f2ae894c6aecbef0227d1935b"
+    },
+    {
+      "path": "scripts/generation-native-reconstruction-lifetime.test.mjs",
+      "bytes": 6376,
+      "sha256": "f59b6295c646a8aedbac653810a57b84ef929675b70c610595a5757dafd4221d"
+    },
+    {
+      "path": "scripts/generation-native-reconstruction-sdk.test.mjs",
+      "bytes": 15148,
+      "sha256": "6a20136868fb8bb6061fd11c9ba53bf954ff125bf7b8c62486790c09b5dfd9c8"
+    },
+    {
+      "path": "scripts/generation-native-reconstruction-workload.mjs",
+      "bytes": 1652,
+      "sha256": "597d9915ab5d48b8e2d52723afa574479f76656a7625ae462446276e79f62d71"
+    }
+  ],
+  "metadataOnlyAfterQualification": [
+    "docs/GENERATION_NATIVE_RECONSTRUCTION.md",
+    "docs/GENERATION_NATIVE_EXECUTION.md",
+    "docs/V1_RELEASE_PLAN.md",
+    "docs/V1_CANDIDATE_CHECKS.md",
+    "docs/qualification/2026-10-28-generation-native-reconstruction.json"
+  ],
+  "noPushPublicationTagVersionOrDeployment": true
+}
