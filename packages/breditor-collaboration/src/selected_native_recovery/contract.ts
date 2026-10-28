@@ -5,6 +5,8 @@ import type {NativeRecoveryReservation} from '../native_recovery/contract.js';
 import type {RetainedNativeClient} from '../complete_operation_cohort/retained_native_read.js';
 import type {SelectedAssetCurrentCut} from '../physical_room_asset_successor/owner.js';
 import type {SharedPhysicalRoomRecoveryHost} from '../physical_recovery_control/host.js';
+import type {SharedServerLogGenerationRecoveryHost} from '../generation_recovery_control/host.js';
+import type {SelectedGenerationReconciliationRead} from '../selected_room_reconciliation/generation_contract.js';
 import type {SelectedRoomReconciliationRead} from '../selected_room_reconciliation/contract.js';
 import type {SelectedRoomCurrentFile} from '../selected_room_current/contract.js';
 import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
@@ -26,4 +28,5 @@ export interface SelectedNativeRecoveryScope{
  retainExtending(previous:SelectedRoomCurrentFile):Promise<SelectedNativeRetainedCurrent>;
  retainExtendingAll(previous:readonly SelectedRoomCurrentFile[]):Promise<SelectedNativeRetainedCurrent>;
  readReconciliation(host:SharedPhysicalRoomRecoveryHost):Promise<SelectedRoomReconciliationRead>;
+ readGenerationReconciliation(host:SharedServerLogGenerationRecoveryHost):Promise<SelectedGenerationReconciliationRead>;
 }

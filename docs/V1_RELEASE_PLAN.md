@@ -13,6 +13,17 @@ the FCKeditor lineage. CKEditor 4 reached ordinary EOL in June 2023; its
 is not the modern feature baseline. Breditor remains an independent implementation:
 no ProseMirror, Tiptap or CKEditor document, operation or plugin protocol is adopted.
 
+## Selected generation native reconciliation
+
+The [selected generation reconciliation contract](SELECTED_GENERATION_RECONCILIATION.md)
+joins the actual standalone origin/current control with complete retained native
+clients, every accepted author prefix and both upload generations. Ahead and
+behind heads remain explicit, and private reserved imports use actual accepted
+document/comment payloads without settling outboxes or binding local comments.
+Complete retained packet reconciliation, durable generation execution and
+authenticated activation remain architectural priorities. All thirteen V1 gates
+remain open.
+
 ## Seven family generation provider read
 
 The [generation parent availability contract](GENERATION_RECOVERY_PARENT_AVAILABILITY.md)

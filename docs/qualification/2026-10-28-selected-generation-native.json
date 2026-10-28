@@ -1,0 +1,172 @@
+{
+  "format": "breditor/selected-generation-native-functional-qualification",
+  "formatVersion": 1,
+  "functionalPassed": true,
+  "nativeSerialPassed": true,
+  "allAttemptsPassed": false,
+  "releaseReady": false,
+  "v1GatesClosed": 0,
+  "v1GatesTotal": 13,
+  "baseCommit": "bcc6aefc01f07bcf8621c5b6c9e7fddde0689c49",
+  "qualifiedSource": {
+    "commit": "bcc6aefc01f07bcf8621c5b6c9e7fddde0689c49",
+    "dirty": true,
+    "sha256": "559b1f696bf7b1299d17f4cf6b9add2e87f9db3b2bfcefdf3e2e33e697e8ad08",
+    "files": 7139,
+    "bytes": 54560855
+  },
+  "changeSetSha256": "d6cebce7082f1128fa03df6a17edb57504622736acec3a28acc5e056d48b5d31",
+  "scope": "Selected generation accepted-author native/source/provider reads and reserved native imports. All source, offline-installed and actual production-bundle workloads retain complete original protocols, offline histories and Undo/Redo. This is not historical outbox closure, generation-specific durable execution, authenticated whole-room activation or V1/parity approval.",
+  "results": {
+    "source": 192,
+    "installed": 192,
+    "actualProductionBundle": 192,
+    "failed": 0,
+    "skipped": 0
+  },
+  "nativeSerial": {
+    "passed": 310,
+    "failed": 0,
+    "ignored": 0,
+    "filteredOut": 0
+  },
+  "knownParallelNativeShutdownFailure": {
+    "passed": 309,
+    "failed": 1,
+    "log": "runs/first/server-tests.log",
+    "assertion": "post-shutdown TCP connect should fail",
+    "rootCauseConfirmed": false,
+    "resolved": false
+  },
+  "isolatedNativeCase": {
+    "passed": 1,
+    "failed": 0,
+    "filteredOut": 309
+  },
+  "wireTests": 180,
+  "candidatePlanTests": 176,
+  "strictTypes": [
+    "types-selected-generation-reconciliation.ts",
+    "types-selected-reconciliation-boundary.ts",
+    "types-generation-history-provider.ts",
+    "types-complete-history-provider.ts"
+  ],
+  "normalSharedWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "nativeProductionUnchangedFrom": "bcc6aefc01f07bcf8621c5b6c9e7fddde0689c49",
+  "independentConfigurationsPerFunctionalPath": 40,
+  "selectedFamiliesPerCase": 7,
+  "coldRecoveredUndoRedoClientsAcrossThreePaths": 840,
+  "productionModuleCount": 776,
+  "evidence": {
+    "directory": "/Users/s/code/breditor/target/selected-generation-native-proof-ZElRA3",
+    "indexSha256": "03163752a1511578740cff099afc1aa5b516c538f14126a6b1e2e8e1124c9660",
+    "files": 1359
+  },
+  "implementationAndTests": [
+    {
+      "path": "packages/breditor-collaboration/src/physical_room_asset_successor/owner.ts",
+      "bytes": 37530,
+      "sha256": "40ebeda8603743dac6250d283363140ca0939b3461b3a68f0d514fe0a519b768"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_native_recovery/contract.ts",
+      "bytes": 2475,
+      "sha256": "39385bf76df2eb2908ce9018c5d620815d115ef0d3a0e427a9f3e65dd6d65a8f"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_room_provider/check.ts",
+      "bytes": 1954,
+      "sha256": "a5824e9e9d6163ac0fde6307bf6eebbe1da3dfd8a4a29b1792f91a096f6f5703"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_room_provider/projection.ts",
+      "bytes": 3582,
+      "sha256": "3cbd8f4bb608a14d96764bb6dd08f86e9083828ba105f9e41add7f7c56bad128"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_room_reconciliation/generation_contract.ts",
+      "bytes": 1823,
+      "sha256": "5f71a57bca405fbca47b699cf161fb3ef43570bda1a567d6cb2f6129dd6fbd11"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_room_reconciliation/generation_heads.ts",
+      "bytes": 1687,
+      "sha256": "ddf2e95f387aa26eb56f240cca243a58149f86c17d739c2331f0f440d7d51589"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_room_reconciliation/generation_provider.ts",
+      "bytes": 1737,
+      "sha256": "6b33f17c6a30069b007a8868c90ddb63fe34c6f5cf8a6bd24d60ec15f15c8aa9"
+    },
+    {
+      "path": "scripts/candidate-release/plan.mjs",
+      "bytes": 118922,
+      "sha256": "eecdbeb41e1bdd5f23461e34a57f4da6f8f6e4a79fc6999046098e1882e78685"
+    },
+    {
+      "path": "scripts/check-selected-generation-reconciliation-installed.mjs",
+      "bytes": 16100,
+      "sha256": "13565ca9e93d14a11ddddcbe74629da17d157c6a9e94b3b2e05a0327d4b36f01"
+    },
+    {
+      "path": "scripts/check-selected-generation-reconciliation-sdk.mjs",
+      "bytes": 3170,
+      "sha256": "a890a89f133bd71f3c1cc5ad055d3cbf7179cb01d52047a405e79bc891aeb61f"
+    },
+    {
+      "path": "scripts/fixtures/editor-consumer/types-selected-generation-reconciliation.ts",
+      "bytes": 2110,
+      "sha256": "6c8429c31828b04dcec0776936171bdc41e1a495a7922d8af5577b35c2bbffb8"
+    },
+    {
+      "path": "scripts/fixtures/selected-generation-reconciliation/accepted-transport.mjs",
+      "bytes": 1119,
+      "sha256": "8c19d532e393022263614fd2a1bf7419d3b4c20cf2177d045e1392212a7409ea"
+    },
+    {
+      "path": "scripts/fixtures/selected-generation-reconciliation/all-bound.mjs",
+      "bytes": 7093,
+      "sha256": "0a1d7beb7245cd253711407f37657fb20a9a8a5c1fdd5f9d84807bdeff571635"
+    },
+    {
+      "path": "scripts/fixtures/selected-generation-reconciliation/session.mjs",
+      "bytes": 3466,
+      "sha256": "2c806dff69034b623b04dfcdc6d1c6309818473935e99dda0c50a268458bef74"
+    },
+    {
+      "path": "scripts/selected-generation-heads.test.mjs",
+      "bytes": 2019,
+      "sha256": "ab9cfcfbe5729ec035e2f02b68d5eee0cffc3b09e78c5478a19b93beee9a3b64"
+    },
+    {
+      "path": "scripts/selected-generation-native-recovery-sdk.test.mjs",
+      "bytes": 15899,
+      "sha256": "e5bf56a97608f0954a774ef744e181831592f7e9cba441e7b08151b011ea8b26"
+    },
+    {
+      "path": "scripts/selected-generation-reconciliation-candidate-plan.test.mjs",
+      "bytes": 2549,
+      "sha256": "21527299fae3b996729f42680b5ba1a8a8af6427107c216b7974d18f55fc67f9"
+    },
+    {
+      "path": "scripts/selected-generation-reconciliation-matrix.test.mjs",
+      "bytes": 8774,
+      "sha256": "2cdee6fe9efe5e3a952816f6b32d3578ae4ded48bf9201dceb6480ca9076cde0"
+    },
+    {
+      "path": "scripts/selected-generation-reconciliation-sdk.test.mjs",
+      "bytes": 14998,
+      "sha256": "2f81ee135cafe440d355f66458fe9ec8f2bee26db4009e0c87105b74547f01c1"
+    },
+    {
+      "path": "scripts/selected-generation-reconciliation-workload.mjs",
+      "bytes": 1827,
+      "sha256": "d5651c6ec5f18ef22b1717c0b1143afe606a6db5e558b539e211bfb8c4ad83ab"
+    }
+  ],
+  "metadataOnlyAfterQualification": [
+    "docs/SELECTED_GENERATION_RECONCILIATION.md",
+    "docs/qualification/2026-10-28-selected-generation-native.json"
+  ],
+  "noPushPublicationTagVersionOrDeployment": true
+}
