@@ -38,8 +38,11 @@ pub use room::{
 };
 pub use room::{
     DurableReviewReceipt, ReviewAdmission, ReviewCatchup, ReviewCursor, ReviewCursorProof,
-    ReviewDescriptor, ReviewLease, ReviewPrefixProof, ReviewRegistration, ReviewRole, ReviewSource,
-    StoredReviewBatch,
+    ReviewDescriptor, ReviewLease, ReviewOriginalAuthorizationPending,
+    ReviewOriginalAuthorizationPendingReason, ReviewOriginalAuthorizationRange,
+    ReviewOriginalAuthorizationRead, ReviewOriginalAuthorizationStatus,
+    ReviewOriginalAuthorizationWindow, ReviewPrefixProof, ReviewRegistration, ReviewRole,
+    ReviewSource, StoredReviewBatch,
 };
 pub use room::{
     GenerationRecoveryRegistrationCoverage, MAX_GENERATION_PARTICIPANT_INVENTORY_BYTES,

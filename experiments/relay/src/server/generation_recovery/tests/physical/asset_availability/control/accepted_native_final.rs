@@ -57,7 +57,7 @@ fn component(setup: &Setup, raster: bool) -> TestResult<PathBuf> {
     }
     Ok(directory.join(if raster { "store.json" } else { ".head.json" }))
 }
-async fn last_callback(raster: bool) -> TestResult {
+async fn last_callback(raster: bool, original_review: bool) -> TestResult {
     let mut setup = Box::pin(Setup::new((3, true), true)).await?;
     let path = component(&setup, raster)?;
     let before = fs::read(&path)?;
@@ -96,6 +96,8 @@ async fn last_callback(raster: bool) -> TestResult {
     setup.router = router;
     setup.provider = provider;
     setup.control = Some(control);
+    let original_body =
+        if original_review { Some(super::original_review::body(&setup).await?) } else { None };
     guard.calls.store(0, Ordering::SeqCst);
     setup
         .proof
@@ -105,11 +107,21 @@ async fn last_callback(raster: bool) -> TestResult {
     assert!(one > 0);
     guard.mutate_at.store(one * 2, Ordering::SeqCst);
     let server = Network::start(setup.router.clone()).await?;
-    let request =
-        Request { path: "/recovery/physical/v1/accepted/read", ..Request::check(&setup.token) };
-    let input = serde_json::to_vec(
-        &serde_json::json!({"format":"breditor/physical-room-recovery-accepted-native-request","formatVersion":1,"selection":setup.selection(),"document":"include","review":{"kind":"start"}}),
-    )?;
+    let request = Request {
+        path: if original_review {
+            "/recovery/physical/v1/review/authorizations/read"
+        } else {
+            "/recovery/physical/v1/accepted/read"
+        },
+        ..Request::check(&setup.token)
+    };
+    let input = if let Some(body) = original_body {
+        serde_json::to_vec(&body)?
+    } else {
+        serde_json::to_vec(
+            &serde_json::json!({"format":"breditor/physical-room-recovery-accepted-native-request","formatVersion":1,"selection":setup.selection(),"document":"include","review":{"kind":"start"}}),
+        )?
+    };
     let response = server.request(&request, &input).await?;
     assert!(guard.mutated.load(Ordering::SeqCst));
     assert!(
@@ -123,9 +135,18 @@ async fn last_callback(raster: bool) -> TestResult {
 }
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn last_provider_callback_changing_native_source_refuses_payload() -> TestResult {
-    last_callback(false).await
+    last_callback(false, false).await
 }
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn last_provider_callback_changing_raster_source_refuses_payload() -> TestResult {
-    last_callback(true).await
+    last_callback(true, false).await
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn last_provider_callback_changing_native_source_refuses_original_rights() -> TestResult {
+    last_callback(false, true).await
+}
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn last_provider_callback_changing_raster_source_refuses_original_rights() -> TestResult {
+    last_callback(true, true).await
 }

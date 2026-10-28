@@ -1,6 +1,7 @@
 //! Bounded exact-Origin operator read; no DTO can substitute for genuine native/provider owners.
 use super::{
     PhysicalRoomRecoveryControlIdentity, accepted_native, asset_requirements, lease::State,
+    original_review,
 };
 use crate::{Error, Result, server::http};
 use axum::{
@@ -20,6 +21,7 @@ enum Kind {
     Control,
     Assets,
     AcceptedNative,
+    OriginalReview,
 }
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -34,6 +36,10 @@ pub(super) fn router(state: Weak<State>) -> Router {
         .route("/recovery/physical/v1/check", post(check).options(preflight))
         .route("/recovery/physical/v1/assets/check", post(check_assets).options(preflight))
         .route("/recovery/physical/v1/accepted/read", post(accepted).options(preflight))
+        .route(
+            "/recovery/physical/v1/review/authorizations/read",
+            post(original_review_authorizations).options(preflight),
+        )
         .with_state(state)
 }
 async fn preflight(Extract(weak): Extract<Weak<State>>, headers: HeaderMap) -> Response {
@@ -114,6 +120,12 @@ async fn check_assets(Extract(weak): Extract<Weak<State>>, request: Request) -> 
 async fn accepted(Extract(weak): Extract<Weak<State>>, request: Request) -> Response {
     respond(weak, request, Kind::AcceptedNative).await
 }
+async fn original_review_authorizations(
+    Extract(weak): Extract<Weak<State>>,
+    request: Request,
+) -> Response {
+    respond(weak, request, Kind::OriginalReview).await
+}
 async fn respond(weak: Weak<State>, request: Request, kind: Kind) -> Response {
     let (parts, body) = request.into_parts();
     let headers = parts.headers;
@@ -153,6 +165,7 @@ async fn respond(weak: Weak<State>, request: Request, kind: Kind) -> Response {
         Kind::Control => REQUEST_BYTES,
         Kind::Assets => asset_requirements::MAX_BYTES,
         Kind::AcceptedNative => accepted_native::MAX_REQUEST_BYTES,
+        Kind::OriginalReview => original_review::MAX_REQUEST_BYTES,
     };
     let Ok(body) = to_bytes(body, limit).await else {
         return http::cors(StatusCode::PAYLOAD_TOO_LARGE.into_response(), &origin);
@@ -164,6 +177,7 @@ async fn respond(weak: Weak<State>, request: Request, kind: Kind) -> Response {
         Kind::Control => read(state, body).await,
         Kind::Assets => asset_requirements::read(state, body).await,
         Kind::AcceptedNative => accepted_native::read(state, body).await,
+        Kind::OriginalReview => original_review::read(state, body).await,
     };
     http::cors(
         match result {

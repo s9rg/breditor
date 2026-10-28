@@ -1,0 +1,3 @@
+/** Origin adaptation for exact test-owned endpoints only. Native replies are never synthesized. */
+import {acceptedControlTransport} from '../physical-recovery-control/accepted-transport.mjs';
+export function originalReviewTransport(manifest){const original=globalThis.fetch,base=acceptedControlTransport(manifest),previous=globalThis.fetch,allowed=new Set(manifest.cases.map(row=>row.endpoint.replace(/\/check$/,'/review/authorizations/read'))),reads=[];globalThis.fetch=(input,options={})=>{if(!allowed.has(String(input)))return previous(input,options);reads.push(JSON.parse(options.body));const headers=new Headers(options.headers);headers.set('Origin','http://127.0.0.1:4187');return original(input,{...options,headers});};return{...base,reads};}

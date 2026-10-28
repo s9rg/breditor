@@ -3,6 +3,7 @@ mod accepted_native;
 mod asset_requirements;
 mod identity;
 mod lease;
+mod original_review;
 mod prepare;
 mod routes;
 pub use identity::PhysicalRoomRecoveryControlIdentity;

@@ -3,6 +3,7 @@ mod admit;
 mod catchup;
 mod enable;
 mod grant;
+mod original_authorizations;
 mod recovery_inventory;
 mod register;
 mod register_observer;
@@ -17,6 +18,7 @@ use crate::{Error, Result, access};
 use breditor_collab_feasibility::review::{
     ReviewActorId, ReviewActorPolicy, ReviewPrincipalId, ReviewSession,
 };
+pub use original_authorizations::*;
 use std::collections::BTreeMap;
 pub use types::*;
 

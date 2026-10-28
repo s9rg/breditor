@@ -14,9 +14,11 @@ native owner authentication and separately provisioned operator accounts and
 Origins. No operator token may reuse any native editor account token. The
 controller retains only the native account digest, not the plaintext token.
 
-The returned router exposes only POST and OPTIONS at
+The returned router exposes POST and OPTIONS at
 `/recovery/physical/v1/check` and the separately scoped
-[`/recovery/physical/v1/assets/check`](PHYSICAL_CLIENT_ASSET_RECONCILIATION.md).
+[`/recovery/physical/v1/assets/check`](PHYSICAL_CLIENT_ASSET_RECONCILIATION.md),
+`/recovery/physical/v1/accepted/read` and
+[`/recovery/physical/v1/review/authorizations/read`](ORIGINAL_REVIEW_AUTHORIZATIONS.md).
 Serving it is an explicit host action; ordinary
 editing routers and constructors are unchanged. There is no editing, archive
 download, upload, restore or activation endpoint. Metadata cannot construct the

@@ -1,0 +1,147 @@
+{
+  "format": "breditor/original-review-authorizations-qualification",
+  "formatVersion": 1,
+  "status": "passed",
+  "qualifiedAt": "2026-10-28T04:12:54.739Z",
+  "source": {
+    "commit": "e02cff886617387d85a06d4c160501486b7ac201",
+    "dirty": true,
+    "sha256": "21c3085550e67a8d047ae997018032e15f51abd9eec8e5439909c027f382906a",
+    "files": 6997,
+    "bytes": 53883435
+  },
+  "evidence": {
+    "index": "target/original-review-proof-6fB2yq/index.json",
+    "sha256": "18d76526deac86823a0c7390e6b1b9e469ce5660cfa66abe106fa51840e93da6",
+    "retainedFiles": 66
+  },
+  "functional": {
+    "source": 197,
+    "offlineInstalledPackage": 197,
+    "actualProductionBundle": 197,
+    "newWireAndNativeCompositionLawGroups": 17,
+    "strictConsumerTypes": 45,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0
+  },
+  "native": {
+    "suites": [
+      {
+        "name": "server",
+        "passed": 259,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "name": "no-server",
+        "passed": 171,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      }
+    ],
+    "strictLintServerAndNoServer": true,
+    "strictDocumentation": true,
+    "format": true,
+    "originalRightsCombinations": 80,
+    "actualHttpProfiles": 10,
+    "freshRelaySuites": true,
+    "freshCoreSuites": false,
+    "rebuiltControlProducers": [
+      {
+        "name": "complete_cohort_control_functional",
+        "path": "target/owned-history-relay-native/release/examples/complete_cohort_control_functional",
+        "bytes": 19419632,
+        "sha256": "21f1b4969bf5919b8af27883e51b919dacf3b7d69420f9cf6651b31a0ff0f009"
+      },
+      {
+        "name": "physical_recovery_control_functional",
+        "path": "target/owned-history-relay-native/release/examples/physical_recovery_control_functional",
+        "bytes": 19423904,
+        "sha256": "a5708cec0e09a2fa55bd4fead186c81fc974c9cdb94213c502109b6806df40da"
+      },
+      {
+        "name": "physical_recovery_asset_control_functional",
+        "path": "target/owned-history-relay-native/release/examples/physical_recovery_asset_control_functional",
+        "bytes": 19432208,
+        "sha256": "deb64ddfaf332131fa4fdd1745ceb4601baadc7ece653c16dcada278b109570e"
+      }
+    ]
+  },
+  "counterValidationRegression": {
+    "beforeActualExit": 101,
+    "afterActualExit": 0,
+    "invalidFields": [
+      "from",
+      "through"
+    ],
+    "oversizedCounterBytes": 65537,
+    "primitiveBoundsPrecedeAggregateEncoding": true,
+    "nativeCutUnchanged": true
+  },
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "normalWasmRebuilt": false,
+  "productionBundleSha256": "2f93cd6f07985fe1936784d5014408884579a31596e3e5ef5e0e7c93689ac5a7",
+  "productionModules": 759,
+  "offlineInstalledArchives": [
+    {
+      "name": "@breditor/browser",
+      "path": "/private/tmp/breditor-original-review-installed-ZhZo0t/archives/breditor-browser-0.3.0-alpha.22.tgz",
+      "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+    },
+    {
+      "name": "@breditor/experimental-rich-content",
+      "path": "/private/tmp/breditor-original-review-installed-ZhZo0t/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+      "sha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15"
+    },
+    {
+      "name": "@breditor/collaboration",
+      "path": "/private/tmp/breditor-original-review-installed-ZhZo0t/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+      "sha256": "49c55f0728319fde18e0288f8ec39885d80ddf4a81bd17a865ca51347392405a"
+    }
+  ],
+  "workspaceLinks": false,
+  "lockedRegistryArtifacts": 45,
+  "actualPackageChildren": [
+    {
+      "name": "contracts",
+      "pid": 28084,
+      "code": 0,
+      "signal": null,
+      "log": "/private/tmp/breditor-original-review-installed-ZhZo0t/contracts.log"
+    },
+    {
+      "name": "bundled-contracts",
+      "pid": 28085,
+      "code": 0,
+      "signal": null,
+      "log": "/private/tmp/breditor-original-review-installed-ZhZo0t/bundled-contracts.log"
+    }
+  ],
+  "implemented": [
+    "Native original review rights join each event to first durable acceptance, preserving original role across overlap, revocation, independent history generations and physical WAL rotation.",
+    "Separate authenticated selected-server original-rights endpoint checks genuine native/provider owners and exact complete selection before and after final callbacks.",
+    "Private SDK branch preparation fetches genuine fresh original rights, uses actual native two-lane union, retains both literal inputs and future Undo/Redo, and leaves unknown offline rights wholly pending.",
+    "Direct native request validation bounds counters before encoding; installed and bundled assertions retain strict reversible path rewrites."
+  ],
+  "scope": "Accepted original rights for private participant branch preparation. Node storage, lock and raster presentation are controlled; real native HTTP producers and the unchanged normal Wasm execute. No whole-room activation, offline suffix ACK, writer acquisition, upload settlement or live client mutation.",
+  "remaining": [
+    "Fresh network rights integrated through every relevant mixed-room warm/cold preparation, execution and handoff boundary",
+    "Complete registered/native/retained-packet/historic-copy/outbox/provider closure at one current server cut",
+    "Authenticated whole-room serving activation excluding old accepted writes with genuine deployment authority",
+    "Unaccepted offline rights, unknown own-author suffixes and other incomparable histories",
+    "Remaining feature parity and all thirteen release qualification gates"
+  ],
+  "qualificationMetadataAddedAfterRun": true,
+  "postVerificationAllowedDocumentationPaths": [
+    "docs/ORIGINAL_REVIEW_AUTHORIZATIONS.md",
+    "docs/qualification/2026-10-28-original-review-authorizations.json"
+  ],
+  "fullReleaseCorpusRun": false,
+  "physicalCrashQualified": false,
+  "authenticatedActivation": false,
+  "v1Ready": false,
+  "v1GatesChanged": false
+}

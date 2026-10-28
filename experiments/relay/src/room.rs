@@ -73,8 +73,11 @@ pub use recovery::{
 };
 pub use review::{
     DurableReviewReceipt, ReviewAdmission, ReviewCatchup, ReviewCursor, ReviewCursorProof,
-    ReviewDescriptor, ReviewLease, ReviewPrefixProof, ReviewRegistration, ReviewRole, ReviewSource,
-    StoredReviewBatch,
+    ReviewDescriptor, ReviewLease, ReviewOriginalAuthorizationPending,
+    ReviewOriginalAuthorizationPendingReason, ReviewOriginalAuthorizationRange,
+    ReviewOriginalAuthorizationRead, ReviewOriginalAuthorizationStatus,
+    ReviewOriginalAuthorizationWindow, ReviewPrefixProof, ReviewRegistration, ReviewRole,
+    ReviewSource, StoredReviewBatch,
 };
 pub use suggestions::{
     DocumentSuggestionAdmission, DocumentSuggestionDecisionAdmission, DocumentSuggestionEntry,

@@ -12,15 +12,18 @@ import {readPhysicalAssetReceipt} from './asset_response.js';
 import {MAX_PHYSICAL_RECOVERY_ACCEPTED_BYTES,type SharedPhysicalRecoveryAcceptedRequest,type SharedPhysicalRecoveryAcceptedRead} from './accepted_contract.js';
 import {physicalAcceptedChoices,preparePhysicalAcceptedRequest,physicalAcceptedEndpoint} from './accepted_request.js';
 import {readPhysicalAcceptedNative} from './accepted_response.js';
+import {MAX_ORIGINAL_REVIEW_RESPONSE_BYTES,type OriginalReviewQuery,type OriginalReviewRead} from '../original_review_authorizations/contract.js';
+import {originalReviewChoices,prepareOriginalReviewRequest,originalReviewEndpoint} from '../original_review_authorizations/request.js';
+import {readOriginalReviewResponse} from '../original_review_authorizations/response.js';
 const key=Object.freeze({});
 interface State {readonly endpoint:string;readonly expected:SharedPhysicalRecoveryControlSelection;readonly principal:string;readonly getToken:SharedPhysicalRecoveryHostOptions['getToken'];readonly authority:()=>void;readonly signal:AbortSignal|undefined;readonly milliseconds:number;closed:boolean;active:AbortController|undefined}
-let port:(host:SharedPhysicalRoomRecoveryHost)=>Readonly<{selection:SharedPhysicalRecoveryControlSelection;check:(signal?:AbortSignal)=>Promise<void>;checkAssets:(input:SharedPhysicalRecoveryAssetRequirements,signal?:AbortSignal)=>Promise<SharedPhysicalRecoveryAssetRead>;readAcceptedNative:(input:SharedPhysicalRecoveryAcceptedRequest,signal?:AbortSignal)=>Promise<SharedPhysicalRecoveryAcceptedRead>}>;
+let port:(host:SharedPhysicalRoomRecoveryHost)=>Readonly<{selection:SharedPhysicalRecoveryControlSelection;check:(signal?:AbortSignal)=>Promise<void>;checkAssets:(input:SharedPhysicalRecoveryAssetRequirements,signal?:AbortSignal)=>Promise<SharedPhysicalRecoveryAssetRead>;readAcceptedNative:(input:SharedPhysicalRecoveryAcceptedRequest,signal?:AbortSignal)=>Promise<SharedPhysicalRecoveryAcceptedRead>;readOriginalReview:(input:OriginalReviewQuery,signal?:AbortSignal)=>Promise<OriginalReviewRead>}>;
 /** Internal brand-checked native-check port; public prototype overrides cannot manufacture it. */
 export function physicalRecoveryHostPort(host:SharedPhysicalRoomRecoveryHost){return port(host);}
 export class SharedPhysicalRoomRecoveryHost {
  readonly #state:State;
  private constructor(token:object,state:State){if(token!==key)throw fail('control_policy');this.#state=state;Object.freeze(this);}
- static{port=host=>{if(!host||typeof host!=='object'||!(#state in host))throw fail('control_policy');return Object.freeze({selection:host.#state.expected,check:(signal?:AbortSignal)=>host.#run(signal),checkAssets:(input:SharedPhysicalRecoveryAssetRequirements,signal?:AbortSignal)=>host.#assets(input,signal),readAcceptedNative:(input:SharedPhysicalRecoveryAcceptedRequest,signal?:AbortSignal)=>host.#accepted(input,signal)});};}
+ static{port=host=>{if(!host||typeof host!=='object'||!(#state in host))throw fail('control_policy');return Object.freeze({selection:host.#state.expected,check:(signal?:AbortSignal)=>host.#run(signal),checkAssets:(input:SharedPhysicalRecoveryAssetRequirements,signal?:AbortSignal)=>host.#assets(input,signal),readAcceptedNative:(input:SharedPhysicalRecoveryAcceptedRequest,signal?:AbortSignal)=>host.#accepted(input,signal),readOriginalReview:(input:OriginalReviewQuery,signal?:AbortSignal)=>host.#originalReview(input,signal)});};}
  /** Independently selected caller endpoint/pins and fresh operator auth; no archive-selected policy. */
  static async open(supplied:SharedPhysicalRecoveryHostOptions):Promise<SharedPhysicalRoomRecoveryHost>{
   let host:SharedPhysicalRoomRecoveryHost|undefined;
@@ -46,6 +49,11 @@ export class SharedPhysicalRoomRecoveryHost {
   * Does not apply them, acknowledge offline work, adopt comments or activate.
   * Returned reader roles must never replace a recipient's current permissions. */
  readAcceptedNative(input:SharedPhysicalRecoveryAcceptedRequest,signal?:AbortSignal):Promise<SharedPhysicalRecoveryAcceptedRead>{return this.#accepted(input,signal);}
+ /** SDK-private original historical rights. No public prototype override can replace this read. */
+ #originalReview(input:OriginalReviewQuery,signal?:AbortSignal):Promise<OriginalReviewRead>{
+  let query!:OriginalReviewQuery;
+  return this.#request(signal,async()=>{const request=await prepareOriginalReviewRequest(this.#state.expected,query);return{endpoint:originalReviewEndpoint(this.#state.endpoint),body:request.body,maximum:MAX_ORIGINAL_REVIEW_RESPONSE_BYTES,admit:(text:string)=>readOriginalReviewResponse(text,this.#state.expected,request.sha256,query)};},()=>{query=originalReviewChoices(input);});
+ }
  #accepted(input:SharedPhysicalRecoveryAcceptedRequest,signal?:AbortSignal):Promise<SharedPhysicalRecoveryAcceptedRead>{
   let choices!:SharedPhysicalRecoveryAcceptedRequest;
   return this.#request(signal,async()=>{const request=await preparePhysicalAcceptedRequest(this.#state.expected,choices);return{endpoint:physicalAcceptedEndpoint(this.#state.endpoint),body:request.body,maximum:MAX_PHYSICAL_RECOVERY_ACCEPTED_BYTES,admit:(text:string)=>readPhysicalAcceptedNative(text,this.#state.expected,request.sha256,choices)};},()=>{choices=physicalAcceptedChoices(input);});
