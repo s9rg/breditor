@@ -13,6 +13,17 @@ the FCKeditor lineage. CKEditor 4 reached ordinary EOL in June 2023; its
 is not the modern feature baseline. Breditor remains an independent implementation:
 no ProseMirror, Tiptap or CKEditor document, operation or plugin protocol is adopted.
 
+## Standalone server generation provider continuity
+
+The [server generation availability contract](SERVER_GENERATION_ASSET_AVAILABILITY.md)
+joins the actual standalone generation host, every protected native stream,
+complete original/current selections and a live provider guard with real raster
+bytes. It does not relabel that host as a physical-recovery source. Forty native
+document/comment family combinations retain offline work and future Undo/Redo
+through genuine host closure and operational reopen. This supplies the missing
+server-family provider proof, not complete client/outbox closure or whole-room
+activation. Those joins and all thirteen V1 gates remain open.
+
 ## Accepted server handover barrier
 
 The [accepted server handover contract](SERVER_HANDOVER_BARRIER.md) adds an

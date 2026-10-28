@@ -29,6 +29,10 @@ mod physical_assets;
 #[path = "log_generations/physical_host.rs"]
 mod physical_host;
 
+#[cfg(feature = "server")]
+#[path = "log_generations/generation_assets.rs"]
+mod generation_assets;
+
 struct Files(PathBuf);
 impl Files {
     fn new() -> TestResult<Self> {

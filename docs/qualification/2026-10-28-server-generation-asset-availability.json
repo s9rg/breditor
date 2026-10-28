@@ -1,0 +1,124 @@
+{
+  "format": "breditor/server-generation-asset-availability-qualification",
+  "formatVersion": 1,
+  "status": "functional-checkpoint-passed",
+  "qualifiedAt": "2026-10-28T10:43:10.842Z",
+  "source": {
+    "baseCommit": "81280ef9eb14cca80f6562de24afe12973c0e148",
+    "dirty": true,
+    "changeInventorySha256": "a2f5c25ebf9cdc1b98023e87a6e1ae871007692cc2488eb9dd04f999c451c8ee",
+    "changedFiles": 28
+  },
+  "evidence": {
+    "index": "target/server-generation-assets-proof-qsrofj/index.json",
+    "sha256": "5cc7a2fb53dfe630f0a95fd9af3c27b75a7a859534664075a96ee6e5ce6aa41a",
+    "retainedFiles": 203
+  },
+  "native": {
+    "server": {
+      "passed": 279,
+      "filtered": 0
+    },
+    "noServer": {
+      "passed": 171,
+      "filtered": 0
+    },
+    "public": {
+      "passed": 30,
+      "filtered": 0
+    },
+    "publicNoServer": {
+      "passed": 26,
+      "filtered": 0
+    },
+    "doctests": {
+      "passed": 25,
+      "filtered": 0
+    },
+    "newGenerationGroups": 12,
+    "nativeHistoryFamilyCombinations": 40,
+    "publicGrammarTransportCombinations": 10,
+    "repeatedSafetyRuns": 5,
+    "repeatedGroupExecutions": 55,
+    "strictLintServerAndNoServer": true,
+    "strictRustdoc": true,
+    "format": true,
+    "allActualRowsJoined": true,
+    "actualRows": 17
+  },
+  "candidate": {
+    "planContractTestsPassed": 170,
+    "profilesRequireNativeAndExportedChecks": [
+      "functional",
+      "full"
+    ],
+    "v1Ready": false
+  },
+  "faultInjection": {
+    "kind": "deliberate-omission-of-new-final-checks-not-historical-bug-baseline",
+    "actualExit": 101,
+    "passed": 0,
+    "failed": 4,
+    "sameTestBodySha256": "0bdf5e2621c8b00788d462ee94dabb94d1b73825d20daeff47b662a1345d2ed6",
+    "bodyUnchanged": true,
+    "guardsRestoredExactly": true,
+    "finalAllFourNativeLawsPassed": true
+  },
+  "publicApiConsumer": {
+    "path": "experiments/relay/examples/generation_assets_functional.rs",
+    "actualExit": 0,
+    "kind": "standalone-server-generation-native-provider-proof",
+    "originalArchivePersisted": true,
+    "documentUndoRedoSteps": 2,
+    "reviewUndoRedoSteps": 2,
+    "coldOwnerReopenedWithProofAlive": true,
+    "revokedProviderRefused": true,
+    "networkServiceStarted": false,
+    "activated": false,
+    "occupiedDestination": {
+      "actualExit": 1,
+      "reason": "AlreadyExists",
+      "existingBytesUnchanged": true
+    }
+  },
+  "externalCaller": {
+    "kind": "separate-caller-using-real-path-dependencies-not-registry-install",
+    "offline": true,
+    "locked": true,
+    "freshRunExit": 0,
+    "manifestSha256": "54b800dc0abdd5e43fbd218df13279f4198b46954a415a1dab7c6473a755d1af",
+    "lockSha256": "4b2e972b9910fe292b12d3b2262651da6c0172d57881ac9daf9bda25fe788c83",
+    "documentUndoRedoSteps": 2,
+    "reviewUndoRedoSteps": 2,
+    "coldOwnerReopenedWithProofAlive": true,
+    "revokedProviderRefused": true,
+    "registryInstallClaimed": false
+  },
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "normalWasmRebuilt": false,
+  "freshCoreSuites": false,
+  "freshFrontendOrInstalledNpmSuites": false,
+  "freshRelaySuites": true,
+  "browserQualification": false,
+  "physicalCrashQualification": false,
+  "scope": [
+    "Genuine standalone generation native/protected-stream proof joined with current provider authority and actual decoded raster bytes.",
+    "Complete origin/current/participant source selections retain their own family; no physical ancestor is fabricated.",
+    "Native/source changes after the last provider callback refuse both ready and missing-byte pending results.",
+    "Exact provider object and actual native owner are weakly retained; byte-identical cold reopen requires fresh verification.",
+    "Original native histories, pending document/comment work and future Undo/Redo survive real host closure and native replay."
+  ],
+  "remaining": [
+    "Independent generation-aware authenticated controller and SDK-parent joins.",
+    "Complete registered/retained client, outbox and historic-copy/provider reconciliation.",
+    "Generation-aware serving exclusion and durable authenticated whole-room activation.",
+    "Approved cross-generation Undo/Redo/offline bridge, remaining feature parity and all V1 release gates."
+  ],
+  "featureParityComplete": false,
+  "allV1GatesRemainOpen": true,
+  "versionChanged": false,
+  "pushed": false,
+  "published": false,
+  "tagged": false,
+  "deployed": false
+}

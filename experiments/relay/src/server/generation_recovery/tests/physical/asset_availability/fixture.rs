@@ -74,7 +74,15 @@ fn supplied(source: &PhysicalSource, peer: &Registration) -> RecoveryRegistratio
 }
 impl Fixture {
     pub async fn new(profile: (u32, bool), atomic: bool) -> TestResult<Self> {
-        let source = PhysicalSource::new(profile, atomic, true, true)?;
+        Box::pin(Self::with_histories(profile, atomic, true, true)).await
+    }
+    pub async fn with_histories(
+        profile: (u32, bool),
+        atomic: bool,
+        document: bool,
+        review: bool,
+    ) -> TestResult<Self> {
+        let source = PhysicalSource::new(profile, atomic, document, review)?;
         let destination = source.source.directory.0.join("provider-current");
         let mut operation = source.operation("provider-current")?;
         // Never reuse the old offline author's ID for these later peer operations.

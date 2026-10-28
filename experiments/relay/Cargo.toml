@@ -102,6 +102,11 @@ name = "server_handover_functional"
 path = "examples/server_handover_functional.rs"
 required-features = ["server"]
 
+[[example]]
+name = "generation_assets_functional"
+path = "examples/generation_assets_functional.rs"
+required-features = ["server"]
+
 [lints.rust]
 unsafe_code = "forbid"
 missing_docs = "deny"

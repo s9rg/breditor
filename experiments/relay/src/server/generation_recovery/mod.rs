@@ -1,5 +1,10 @@
 //! Owner-authenticated complete generation recovery checks without a network activation path.
+mod asset_availability;
 mod asset_state;
+pub use asset_availability::{
+    ServerLogGenerationAssetAvailabilityRead, ServerLogGenerationRecoveryAssetCoverage,
+    VerifiedServerLogGenerationRecoveryAssets,
+};
 mod capture;
 pub use asset_state::ServerLogGenerationAssetRecoveryState;
 mod coordinator;
