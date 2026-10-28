@@ -1,0 +1,138 @@
+{
+  "format": "breditor/native-room-union-handoff-qualification",
+  "formatVersion": 1,
+  "status": "passed",
+  "qualifiedAt": "2026-10-28T00:04:37.191Z",
+  "source": {
+    "commit": "1d0b09cf74a041c1aae0ae02f1f88079560fd36c",
+    "dirty": true,
+    "sha256": "924d3ee8a30b4f088275c02b559c40673db00a26d00169ffa401d47dea2df266",
+    "files": 6944,
+    "bytes": 53599942
+  },
+  "evidence": {
+    "index": "target/native-room-union-handoff-proof-LCy8Qy/index.json",
+    "sha256": "974a3e9d4e9bb9833d25e0905ed4f3f6c7fa28a0c6c4bf7570775bc9403d757b",
+    "retainedFiles": 90
+  },
+  "functional": {
+    "source": 131,
+    "installedPackage": 131,
+    "actualProductionBundle": 131,
+    "priorUnionLaws": 121,
+    "newHandoffAndExecutionLawGroups": 10,
+    "strictConsumerTypes": 24,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0
+  },
+  "legacySourceTests": {
+    "exactRoomActorRoutes": 4,
+    "executionAssetLaws": 13,
+    "nativeReaderLifetime": 5,
+    "total": 22,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0
+  },
+  "actualActorHandoff": {
+    "families": 7,
+    "authorLocks": 14,
+    "independentHistoryCombinations": 4,
+    "ordinaryWriterReacquisitions": 0,
+    "stagedTargetsClosedAndReopened": true,
+    "sourceBytesUnchanged": true,
+    "currentLocalUndoRedoPreserved": true,
+    "foreignTextAndCommentsRetained": true,
+    "reservationForgeryRefused": true,
+    "failedCleanupRetainsActualActors": true,
+    "sameOwnerCleanupRetry": true,
+    "cancelledApprovalCannotRetire": true,
+    "finalWitness": "genuine-one-shot-native-and-packet-cut"
+  },
+  "actualSelectedOwnerComposition": {
+    "completeExecutionFileSaved": true,
+    "fullNativeAndBothSelectedQueueInputs": true,
+    "explicitDecisionEdges": 2,
+    "decisionStateAfterHandoff": "cancelled",
+    "readJobClosedBeforeFutureUse": true,
+    "nativeDocumentHistory": "original",
+    "nativeCommentHistory": "segmented-v1",
+    "allSevenActorAndAssetResourcesTransferred": true,
+    "centralUnionRunJournalImplemented": false
+  },
+  "executionIdentity": {
+    "format": "breditor/native-room-union-execution",
+    "identity": "manifest-sha256-plus-exact-bytes-and-recursive-semantic-component-admission",
+    "wholeOuterFileSha256Claimed": false,
+    "aggregateMaximumBytes": 34359738368,
+    "headerMaximumBytes": 33554432,
+    "members": 1024,
+    "nativeDigestMaximumBytes": 1073741824,
+    "nativeDigestChunkBytes": 1048576,
+    "oldBoundsAndFormatsChanged": false
+  },
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "nativeRustRebuilt": false,
+  "freshRustTestRun": false,
+  "nativeInputsRegenerated": false,
+  "pinnedNativeFilesReverified": 50,
+  "nativeReport": {
+    "path": "target/complete-image-cohort-native.json",
+    "sha256": "6845c6fee53d1249a8c77c73ca3c728fdfa874d8694798dfe2387b43868ae94c"
+  },
+  "actualProductionBundleSha256": "e0ad0665e58a38227f9f24bfe0b5f3290ffc794bcc9d0cf54d77c3cd981a3b40",
+  "productionModules": 807,
+  "offlineInstalledArchives": [
+    {
+      "name": "@breditor/browser",
+      "path": "/private/tmp/breditor-native-room-union-handoff-installed-moMvZt/archives/breditor-browser-0.3.0-alpha.22.tgz",
+      "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+    },
+    {
+      "name": "@breditor/experimental-rich-content",
+      "path": "/private/tmp/breditor-native-room-union-handoff-installed-moMvZt/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+      "sha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15"
+    },
+    {
+      "name": "@breditor/collaboration",
+      "path": "/private/tmp/breditor-native-room-union-handoff-installed-moMvZt/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+      "sha256": "d7a7e4817809b5c090c502829694fa313ff8305b483e8a6ef2a8b40631f32642"
+    }
+  ],
+  "registryArtifacts": 45,
+  "workspaceLinks": false,
+  "actualPackageChildren": [
+    {
+      "name": "bundled-contracts",
+      "pid": 15885,
+      "code": 0,
+      "signal": null,
+      "log": "/private/tmp/breditor-native-room-union-handoff-installed-moMvZt/bundled-contracts.log"
+    },
+    {
+      "name": "contracts",
+      "pid": 15884,
+      "code": 0,
+      "signal": null,
+      "log": "/private/tmp/breditor-native-room-union-handoff-installed-moMvZt/contracts.log"
+    }
+  ],
+  "scope": "SDK-private mixed-proof retirement and execution components. Actual author custody crosses into every ordinary target family without reacquisition. Complete hierarchical execution DATA binds both queue edges to the saved mixed proof and survives controlled interrupted saves. An ordered real target/adoption/actor transfer reaches a usable selected owner after the read scope ends. This functional composition is not a complete union-aware warm/cold run coordinator or physical crash protocol.",
+  "remaining": [
+    "Union-aware warm/cold run identity, progress journal and interruption coordinator",
+    "Fresh actor acquisition for the new run identity after a full restart",
+    "Original-role network authentication and provider/client closure",
+    "Independent comment and server-log generation lifecycle",
+    "Authenticated whole-room serving activation",
+    "Union mutation for the other source families",
+    "Unknown own-author suffixes and incomparable sealed-generation branches",
+    "Sustainable history and retained version/asset policy",
+    "Remaining feature parity and all release gates"
+  ],
+  "fullReleaseCorpusRun": false,
+  "physicalCrashQualified": false,
+  "authenticatedActivation": false,
+  "v1Ready": false,
+  "v1GatesChanged": false
+}

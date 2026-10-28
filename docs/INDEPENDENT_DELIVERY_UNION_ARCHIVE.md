@@ -28,7 +28,7 @@ A lost completion after a committed journal leaves the complete archive availabl
 
 ## Room integration and remaining work
 
-The output is an ordinary recovery input, not actor custody, a provider grant or a serving credential. The SDK-private [mixed-mode room preparation](NATIVE_ROOM_UNION.md) now binds this provenance to both complete room inputs and every member's exact or union proof. Genuine retirement and target execution still must carry that new provenance, preserve actual author locks and authenticate cross-device activation. All seven operational source families are not yet qualified for union mutation. Unknown local-author histories, incomparable sealed branches and conflicting user intents still need explicit resolution; old strict continuation is not relaxed to bypass them. All thirteen V1 gates remain open.
+The output is an ordinary recovery input, not actor custody, a provider grant or a serving credential. The SDK-private [mixed-mode room preparation](NATIVE_ROOM_UNION.md) now binds this provenance to both complete room inputs and every member's exact or union proof. The [execution components](NATIVE_ROOM_UNION_EXECUTION.md) carry it through actor-preserving retirement and ordinary target/selected-asset handoff. A complete union-aware warm/cold run coordinator, progress journal and authenticated cross-device activation remain required. All seven operational source families are not yet qualified for union mutation. Unknown local-author histories, incomparable sealed branches and conflicting user intents still need explicit resolution; old strict continuation is not relaxed to bypass them. All thirteen V1 gates remain open.
 
 ## Functional qualification
 

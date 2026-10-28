@@ -44,7 +44,7 @@ A committed journal survives a lost completion; existing-only reopening semantic
 
 ## Remaining architectural work
 
-The next integration must preserve this new provenance through genuine source retirement, writer-lease transfer, target execution and interruption recovery. It must not disguise a union preparation as an old exact-continuation archive. Compatible union reconstruction is also required for the other source families and for incomparable retained-generation branches.
+The [execution components](NATIVE_ROOM_UNION_EXECUTION.md) now retain both full queue decision edges and support genuine actor-preserving retirement and ordinary target restoration. A complete union-aware warm/cold coordinator and progress journal must still carry that provenance through interruption recovery; an old exact-continuation archive cannot stand in for it. Compatible union reconstruction is also required for the other source families and for incomparable retained-generation branches.
 
 Original-role network fetch, independent comment and server-log generations, complete provider/client closure, authenticated server decision ordering, retained version/asset policy and whole-room serving activation remain release work. Existing finite history and journal budgets still need a lifecycle that preserves outstanding offline edits and future Undo. All V1 gates remain open. Cosmetic and browser-specific work does not close these architectural obligations.
 
