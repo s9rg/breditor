@@ -119,3 +119,14 @@ and verifies all packets and uploads from both inputs. It has not been integrate
 into a durable recovery or target-activation route; the qualified V1 reader must
 still refuse that mixed frontier. The earlier parallel native shutdown failure
 and all thirteen V1 release gates remain open.
+
+## Additive mixed-component route
+
+The later [mixed-component contract](GENERATION_COMPONENT_RECONSTRUCTION.md)
+now productionizes the conservative native/packet/upload component join, durable
+framing, cold target replacement and subsequent authenticated import. It has its
+own family and approval choices; the retained-tail-only reader above still must
+refuse mixed whole-room cuts. No old format, journal meaning or resume default is
+loosened. Genuine forks and incomparable packet/upload inventories still refuse
+with both inputs preserved; complete reconciliation and room activation remain
+open. See its separate 119-law-per-consumer qualification for the tested domain.

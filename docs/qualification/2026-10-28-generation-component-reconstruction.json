@@ -1,0 +1,207 @@
+{
+  "format": "breditor/generation-component-reconstruction-functional-qualification",
+  "formatVersion": 1,
+  "functionalPassed": true,
+  "releaseReady": false,
+  "v1GatesClosed": 0,
+  "v1GatesTotal": 13,
+  "baseCommit": "34c80041fd30ccf91aa2bf1a75e7025c3e891db7",
+  "qualifiedSource": {
+    "commit": "34c80041fd30ccf91aa2bf1a75e7025c3e891db7",
+    "dirty": true,
+    "sha256": "70456253acc52d23e5dbbc60bfd810b6e4afccc0d20a5210d33559c9ae0dbed9",
+    "files": 7224,
+    "bytes": 55054066
+  },
+  "changeSetSha256": "e5245bae836aaa66eb4488925daef31f7101728839a483e12d1297724eeb9b9d",
+  "scope": "Separately versioned mixed current/journal reconstruction at one pinned authenticated server cut. Actual independent native replay and complete packet plus original/selected upload conservation choose each component without claiming a composite was an original journal event. Full original input, every saved journal cut, diagnostics and both concrete execution sides remain retained. All seven real source families replace through cold actor acquisition, retain document/comment Undo/Redo and uploads, then perform a fresh authenticated accepted import. No incomparable branch/packet/inventory union, cross-server-cut settlement, local-comment adoption or authenticated whole-room activation is established.",
+  "results": {
+    "source": 119,
+    "installed": 119,
+    "actualProductionBundle": 119,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0,
+    "newComponentPerPath": 12,
+    "unchangedPriorPerPath": 107
+  },
+  "carriedUnchangedNativeBaseline": {
+    "qualification": "docs/qualification/2026-10-28-generation-native-execution.json",
+    "releaseSerialPassed": 310,
+    "normalWasmUnchanged": true,
+    "productionNativeUnchangedFrom": "84400db249e7aeb84d0a69674a9a5064459c16d2"
+  },
+  "knownPriorParallelNativeShutdownFailure": {
+    "qualification": "docs/qualification/2026-10-28-selected-generation-native.json",
+    "resolved": false,
+    "rootCauseConfirmed": false
+  },
+  "knownNativeEpochRollbackGap": {
+    "integratedRepair": false,
+    "scope": "Production native code is unchanged in this checkpoint. Four isolated actual-ledger regressions exposed revived old leases/stale claims after rollback and hidden observed-prefix replacement. A separately verified native repair must be integrated and qualified before closing this gap.",
+    "reproduction": "/private/tmp/breditor-generation-live-fence-cTGw1W/rollback-reproduction-ansRcN"
+  },
+  "wireTests": 180,
+  "candidatePlanTests": 182,
+  "strictTypes": [
+    "types-generation-native-import-input.ts",
+    "types-generation-native-execution.ts",
+    "types-generation-native-boundary.ts",
+    "types-native-import-input.ts",
+    "types-native-execution.ts",
+    "types-generation-native-reconstruction.ts",
+    "types-generation-component-reconstruction.ts"
+  ],
+  "nativePublicFixtureHosts": 69,
+  "nativeGrammarTransportInputConfigurations": 10,
+  "independentDocumentCommentHistoryPairs": 4,
+  "selectedFamiliesPerCase": 7,
+  "newEndToEndMixedDomain": {
+    "selectedGrammarTransportCases": 1,
+    "documentSegmented": true,
+    "reviewSegmented": true,
+    "sourceFamilies": 7,
+    "reversedActualInputs": true,
+    "validlyRehashedFalseProvenanceRejected": true,
+    "completeGrammarHistoryCartesianDomain": false
+  },
+  "normalSharedWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "nativeProductionUnchangedFrom": "34c80041fd30ccf91aa2bf1a75e7025c3e891db7",
+  "productionModuleCount": 885,
+  "bundleSha256": "95fbe62052d898bf8de9efa98b03b51b4fb5df7583c397e45286b7cd8afa8538",
+  "evidence": {
+    "directory": "/Users/s/code/breditor/target/generation-component-reconstruction-proof-SRIA01",
+    "indexSha256": "741f1b5716e593bc75598d6bab2fd5705ca36f4dc30198ecbee4348dca5e9da3",
+    "files": 4171
+  },
+  "isolatedNativeHandoverAndContinuity": {
+    "productionIntegrated": false,
+    "countedInThisQualification": false
+  },
+  "earlyDiagnostic": {
+    "countedInThisQualification": false,
+    "sourceChangedDuringInitialRun": true,
+    "final119IncludeStrongerForgeryAndReverseInputChecks": true
+  },
+  "implementationAndTests": [
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/archive.ts",
+      "bytes": 9231,
+      "sha256": "50de41298c0dcf963a7060668a99d830512992b01b8fc3a6baf083f111c10e9c"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/candidate.ts",
+      "bytes": 1688,
+      "sha256": "b9a843231985cac087ac203d1f7855a398fec42bf3d3fe1417fbb4743e54e62e"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/components.ts",
+      "bytes": 1351,
+      "sha256": "14161c1e46739c0ec270b9c7c3a3b787721335b0b6183bca17417f351eaf6c70"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/contract.ts",
+      "bytes": 3367,
+      "sha256": "e9f4498cc4440136acbb6ddeb58a3e9b8721ab86ba9cff183df4315f1a760352"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/coordinator.ts",
+      "bytes": 17764,
+      "sha256": "0d4302b1ffd1ba3adc1f0311981b39caa26642104ec18601b00ddc89f049f6e2"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/intent_store.ts",
+      "bytes": 7996,
+      "sha256": "2915bf9c86e9ef437e8739080ed49f34028a767b776519d317223cc0f4dce857"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/join.ts",
+      "bytes": 6952,
+      "sha256": "a71d3f83f08954a148dfa22eade1255802ba517d4aad152a854e04d7791dbe63"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/plan.ts",
+      "bytes": 4066,
+      "sha256": "550bbbcdff922e838796d1fb5ba9d0e05c2c98e147bb64b69b8722f646df27e2"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/policy.ts",
+      "bytes": 2681,
+      "sha256": "2113a10a893ddfcaba939b589d89b8339e636263dd4c0c588bdfb8f6d062bc92"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/resources.ts",
+      "bytes": 3344,
+      "sha256": "bab6f9d413b9312e67e9c8d09c44510c06bffc262ccebd088b6ef08da6d80850"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/snapshot.ts",
+      "bytes": 290,
+      "sha256": "59f767bbddbe687d7f4516cda2a743a3013f95e7bfd5cb41790160431aac081b"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/source_scope.ts",
+      "bytes": 3444,
+      "sha256": "ebd22f5f6c1d153597a96a04b9d4cc30aee6dd728f8ed09bd76761b581e9e50c"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/verify_history.ts",
+      "bytes": 4256,
+      "sha256": "1cff7b8df55ae49b306470fd6edaaf724c40a269b71219617de5404df333a080"
+    },
+    {
+      "path": "scripts/candidate-release/plan.mjs",
+      "bytes": 122099,
+      "sha256": "8f8c54ac4fe49a49501b1aaaf17faa2ee40651bf730bac307fd945fce9778cb5"
+    },
+    {
+      "path": "scripts/check-generation-component-reconstruction-installed.mjs",
+      "bytes": 17988,
+      "sha256": "0ec4dafecba276f7cf31d35eb5fb76b6897152b7122e9d98c52b7b245c569ab8"
+    },
+    {
+      "path": "scripts/check-generation-component-reconstruction-sdk.mjs",
+      "bytes": 3181,
+      "sha256": "6d13f96b4c937d2a11e8c87727825d927386860ddc60b51818c9afbe5a38f945"
+    },
+    {
+      "path": "scripts/fixtures/editor-consumer/types-generation-component-reconstruction.ts",
+      "bytes": 3065,
+      "sha256": "be2f7e26c17a77a446e53eea15fff81e4b9c7f7cbc192c60a057265b7035f061"
+    },
+    {
+      "path": "scripts/generation-component-reconstruction-candidate-plan.test.mjs",
+      "bytes": 2310,
+      "sha256": "11693a79396e51b76fefa2ab2209e04b495ecae177f27b473ab0f7d7af134e0a"
+    },
+    {
+      "path": "scripts/generation-component-reconstruction-candidate.test.mjs",
+      "bytes": 3229,
+      "sha256": "bec5d5b1dd74d5bf0898a0bbcea720942c4be839392e40b3954bceb57caaffc2"
+    },
+    {
+      "path": "scripts/generation-component-reconstruction-lifetime.test.mjs",
+      "bytes": 6373,
+      "sha256": "b16218408e3936ee7002a2980a633f496a47802862b6d5f2f3ec7d9c7439cffc"
+    },
+    {
+      "path": "scripts/generation-component-reconstruction-sdk.test.mjs",
+      "bytes": 19250,
+      "sha256": "ad374491af3241eb8b2fdd4be3275e72a8042abec8ad697e516669c8b537d5a5"
+    },
+    {
+      "path": "scripts/generation-component-reconstruction-workload.mjs",
+      "bytes": 1474,
+      "sha256": "5e974ce3fb8fc73e6d6811976112a84c5deb5dc85ed59332e732ae33388f612c"
+    }
+  ],
+  "metadataOnlyAfterQualification": [
+    "docs/GENERATION_COMPONENT_RECONSTRUCTION.md",
+    "docs/GENERATION_NATIVE_RECONSTRUCTION.md",
+    "docs/GENERATION_NATIVE_EXECUTION.md",
+    "docs/V1_RELEASE_PLAN.md",
+    "docs/V1_CANDIDATE_CHECKS.md",
+    "docs/qualification/2026-10-28-generation-component-reconstruction.json"
+  ],
+  "noPushPublicationTagVersionOrDeployment": true
+}

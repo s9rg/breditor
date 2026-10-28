@@ -1,5 +1,13 @@
 # V1 candidate checks
 
+The additive [mixed-component qualification](qualification/2026-10-28-generation-component-reconstruction.json)
+passes 119 source, 119 installed and 119 actual production-bundle laws, retaining
+all previous 107 assertions and adding twelve component laws per path. Sixty-nine
+native hosts, 180 control laws, 182 candidate-plan laws and seven strict types
+are preserved. Normal Wasm and production Rust are unchanged; the native baseline
+is carried. This does not execute the complete candidate plan, qualify the
+separate native epoch repair or close any of the thirteen V1 release gates.
+
 The additive [generation older-disk reconstruction qualification](qualification/2026-10-28-generation-native-reconstruction.json)
 passes 107 source, installed-package and actual production-bundle laws per path,
 including 91 unchanged generation/physical execution laws, six unchanged cold

@@ -92,9 +92,11 @@ history. These are bounded recovery lifetimes, not sustainable-history closure.
 The selected host cut must still match the retained input exactly. The separate
 [generation reconstruction route](GENERATION_NATIVE_RECONSTRUCTION.md) now covers
 older source state wholly contained in the last retained output, without weakening
-ordinary resume. Mixed ahead/behind source frontiers, a server that has advanced
-to a different cut and conflicting historical packet copies still need their
-explicit reconstruction and reconciliation joins. Explicit local-comment adoption, authenticated old-serving
+ordinary resume. A separate [mixed-component route](GENERATION_COMPONENT_RECONSTRUCTION.md)
+now handles conserved per-client frontiers across actual current and journal
+state. It does not weaken either reader. A server at another cut, genuine native
+forks and incomparable historical packet/upload copies still need their complete
+reconciliation joins. Explicit local-comment adoption, authenticated old-serving
 exclusion and a durable whole-room activation decision remain required. All
 thirteen V1 release gates and the full feature-parity objective remain open.
 

@@ -13,6 +13,22 @@ the FCKeditor lineage. CKEditor 4 reached ordinary EOL in June 2023; its
 is not the modern feature baseline. Breditor remains an independent implementation:
 no ProseMirror, Tiptap or CKEditor document, operation or plugin protocol is adopted.
 
+## Mixed generation-source reconstruction
+
+The [mixed-component contract](GENERATION_COMPONENT_RECONSTRUCTION.md) now
+retains both complete cuts and replaces all seven actual source families when
+current native/packet/upload components and retained journal components conserve
+each other. It reproduces a newer saved recipient, six older reopened peers and
+a failed recipient journal append. Actual cold actors, both native Undo/Redo
+lanes, uploads and a later authenticated import pass. Source, fresh packages and
+the actual production bundle each execute 119 laws without skips.
+
+This is not arbitrary branch or inventory union. Cross-cut provider/client
+reconciliation, historical packet settlement, explicit local-comment adoption
+and authenticated durable whole-room activation remain. Live native serving
+and observed-epoch rollback repairs are being qualified separately; they are not
+part of this unchanged-native package checkpoint. All thirteen V1 gates stay open.
+
 ## Generation recovery from older sources
 
 The [generation reconstruction contract](GENERATION_NATIVE_RECONSTRUCTION.md)
@@ -22,9 +38,9 @@ families preserve offline work, both native Undo/Redo lanes, packets and uploads
 new namespaces require a fresh generation input and journal. Source, fresh
 packages and the actual production bundle each pass 107 functional laws.
 
-The harder mixed frontier is reproduced: one client saved newer state while six
-reopened older. A per-client data join prototype conserves both inputs, but its
-durable recovery/activation integration is not implemented. Incomparable native
+The harder mixed frontier now has the separate component reconstruction route
+above. The older retained-tail-only route keeps its original strict scope.
+Durable whole-room activation is not implemented. Incomparable native
 branches, cross-cut provider reconciliation, packet settlement, explicit local
 comment adoption and authenticated whole-room activation remain architectural
 priorities. All thirteen V1 gates and the full parity goal stay open.
