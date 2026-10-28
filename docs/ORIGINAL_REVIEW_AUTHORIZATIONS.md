@@ -34,9 +34,9 @@ A pending native response returns pending without starting a candidate native re
 
 After private preparation, another real host check verifies that callbacks or native restore factories did not change or close the selected server. No preparation escapes after that final check fails. Historical source rights never become a recipient's current editing policy. Saved output remains data; every new authenticated preparation repeats the network read.
 
-## Whole room integration remains separate
+## Mixed room integration and remaining activation
 
-This authenticates accepted original comment rights for participant preparation. It does not attest rights for events the server has never accepted, discover undeclared client copies, merge unknown own-author histories or provide a complete mixed-room warm/cold authenticated transaction. The mixed-room coordinators still require independently supplied original-role windows until this read is joined to each of their relevant boundaries.
+The separate [authenticated mixed-room path](AUTHENTICATED_ROOM_UNION.md) now joins this read to explicit preparation, execution, retirement, warm/cold run and local handoff entry points. The original caller-window paths remain closed and unchanged. These compositions do not attest rights for events the server has never accepted, discover undeclared client copies or merge unknown own-author histories.
 
 Complete registration, native, retained-packet, historic-copy, outbox and provider closure must still be bound to one current server cut. Serving activation must exclude old accepted writes while validating that complete cut and claiming the genuine deployment authority. A point-in-time authenticated read cannot replace that boundary. All thirteen V1 gates and full feature parity remain open.
 

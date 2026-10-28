@@ -1,0 +1,186 @@
+{
+  "format": "breditor/authenticated-room-union-qualification",
+  "formatVersion": 1,
+  "status": "passed",
+  "qualifiedAt": "2026-10-28T08:43:51.779Z",
+  "source": {
+    "commit": "40240e4d1d350d0e6021f4dd6933565469b4a570",
+    "dirty": true,
+    "sha256": "7e94d3ca2ad959c3e5b9684c6bc9198a8682ea05f209055b8ac98b3da801ae56",
+    "files": 7012,
+    "bytes": 53994116
+  },
+  "evidence": {
+    "index": "target/authenticated-room-union-proof-ZOLp0E/index.json",
+    "sha256": "d5e8480743e63135c7cd330b7524d6441523d2b4ef7c3dad9ec15971d52ca064",
+    "retainedFiles": 136
+  },
+  "functional": {
+    "source": 274,
+    "offlineInstalledPackage": 274,
+    "actualProductionBundle": 274,
+    "retainedUniquePredecessorGroups": 260,
+    "newGroups": 14,
+    "strictConsumerTypes": 52,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0
+  },
+  "native": {
+    "suites": [
+      {
+        "name": "server",
+        "passed": 259,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "name": "no-server",
+        "passed": 171,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      }
+    ],
+    "strictLintServerAndNoServer": true,
+    "strictDocumentation": true,
+    "format": true,
+    "retainedOriginalRightsLawGroups": 11,
+    "retainedOriginalRightsCombinations": 80,
+    "actualHttpProfiles": 10,
+    "freshRelaySuites": true,
+    "freshCoreSuites": false,
+    "rebuiltControlProducers": [
+      {
+        "name": "complete_cohort_control_functional",
+        "path": "target/owned-history-relay-native/release/examples/complete_cohort_control_functional",
+        "bytes": 19419632,
+        "sha256": "21f1b4969bf5919b8af27883e51b919dacf3b7d69420f9cf6651b31a0ff0f009"
+      },
+      {
+        "name": "physical_recovery_control_functional",
+        "path": "target/owned-history-relay-native/release/examples/physical_recovery_control_functional",
+        "bytes": 19423904,
+        "sha256": "a5708cec0e09a2fa55bd4fead186c81fc974c9cdb94213c502109b6806df40da"
+      },
+      {
+        "name": "physical_recovery_asset_control_functional",
+        "path": "target/owned-history-relay-native/release/examples/physical_recovery_asset_control_functional",
+        "bytes": 19432208,
+        "sha256": "deb64ddfaf332131fa4fdd1745ceb4601baadc7ece653c16dcada278b109570e"
+      }
+    ]
+  },
+  "regressions": {
+    "requestLifetime": {
+      "before": {
+        "passed": 1,
+        "failed": 4
+      },
+      "after": {
+        "passed": 5,
+        "failed": 0
+      },
+      "originalDiagnosticBodies": true,
+      "finalBodiesIncludeStrongerCancellationAccessorAssertions": true
+    },
+    "nativeCancellationAccessor": {
+      "before": {
+        "passed": 3,
+        "failed": 2
+      },
+      "after": {
+        "passed": 5,
+        "failed": 0
+      },
+      "beforeWrapperExitNotUsedAsNativeExit": true
+    },
+    "completeReplyBudget": {
+      "beforeActualExit": 1,
+      "afterActualExit": 0,
+      "maximumCompleteRepliesBytes": 16777216,
+      "refusesBeforeAllMemberRepliesAccumulate": true
+    },
+    "journalLifetime": {
+      "beforeActualExit": 1,
+      "afterActualSourceSuiteExit": 0,
+      "sameTestBodySha256": "b1f05307030e73719a9b5fca5c89b65d70bcb89bf1be323446e8ec973b697280",
+      "realVersionChangeWithAbortedUpgrade": true,
+      "originalStoredSourcesUnchanged": true,
+      "all14ActorLocksFreeAfterExplicitCleanup": true,
+      "admittedJournalCheckedBeforeAndAfterHostCallbacks": true,
+      "failedOpensRemainCleanupReachable": true
+    }
+  },
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "normalWasmRebuilt": false,
+  "legacyImageInputs": {
+    "verifiedFiles": 50,
+    "regenerated": false,
+    "reportSha256": "6845c6fee53d1249a8c77c73ca3c728fdfa874d8694798dfe2387b43868ae94c"
+  },
+  "productionBundleSha256": "bcf617892acc5a0b06ac676663f992c4b8a69995fd85b9946a448c03dc5548e0",
+  "productionModules": 843,
+  "offlineInstalledArchives": [
+    {
+      "name": "@breditor/browser",
+      "path": "/private/tmp/breditor-authenticated-room-union-installed-aGdxa0/archives/breditor-browser-0.3.0-alpha.22.tgz",
+      "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+    },
+    {
+      "name": "@breditor/experimental-rich-content",
+      "path": "/private/tmp/breditor-authenticated-room-union-installed-aGdxa0/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+      "sha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15"
+    },
+    {
+      "name": "@breditor/collaboration",
+      "path": "/private/tmp/breditor-authenticated-room-union-installed-aGdxa0/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+      "sha256": "2a1bf950b5d59071fd4be9f08341bece420a5b99bd641b79704cfa4a48e9112b"
+    }
+  ],
+  "workspaceLinks": false,
+  "lockedRegistryArtifacts": 45,
+  "actualPackageChildren": [
+    {
+      "name": "bundled-contracts",
+      "pid": 40527,
+      "code": 0,
+      "signal": null,
+      "log": "/private/tmp/breditor-authenticated-room-union-installed-aGdxa0/bundled-contracts.log"
+    },
+    {
+      "name": "contracts",
+      "pid": 40526,
+      "code": 0,
+      "signal": null,
+      "log": "/private/tmp/breditor-authenticated-room-union-installed-aGdxa0/contracts.log"
+    }
+  ],
+  "implemented": [
+    "Explicit genuine selected-server original rights through whole-cohort preparation, durable admission, both complete asset choices, final approved retirement, warm retries, fresh cold actors and actual common local handoff.",
+    "Both independent document/comment policies, native replay, literal original inputs, retained packets and future document/comment Undo/Redo survive the authenticated workflows; current recipient permissions remain separately selected.",
+    "Missing, extra, duplicate, forged or unknown original rights refuse without partial permission publication or discarding original inputs.",
+    "Physical control request setup and cleanup cannot strand busy custody; native cancellation accessors ignore overridden signal properties; complete authentication replies are incrementally bounded.",
+    "An admitted actual run journal remains in the shared warm/cold runtime liveness guard across asynchronous authentication and nested handoff checks, separate from host-permission callbacks. Failed openings and cleanup-only completion retain their proper lifetimes."
+  ],
+  "scope": "Actual native HTTP and unchanged normal Wasm, with controlled Node IndexedDB, locks and raster presentation. Seven-family complete-cohort recovery uses independent-delivery union where supported and strict continuation for other families. This private SDK composition is not complete room closure, remote serving activation, physical crash/browser qualification or full feature-parity V1.",
+  "remaining": [
+    "Complete registered/native/retained-packet/historic-copy/outbox/provider closure at one current server cut",
+    "Final complete-cut validation and genuine serving claim while old accepted writes are excluded",
+    "Independent server comment/log-generation control lifecycle joins",
+    "Unaccepted offline rights, unknown own-author suffixes and union mutation for the remaining source families",
+    "Remaining feature parity, distribution and all thirteen release qualification gates"
+  ],
+  "qualificationMetadataAddedAfterRun": true,
+  "postVerificationAllowedDocumentationPaths": [
+    "docs/AUTHENTICATED_ROOM_UNION.md",
+    "docs/qualification/2026-10-28-authenticated-room-union.json"
+  ],
+  "fullReleaseCorpusRun": false,
+  "physicalCrashQualified": false,
+  "authenticatedActivation": false,
+  "fullFeatureParity": false,
+  "v1Ready": false,
+  "v1GatesChanged": false
+}

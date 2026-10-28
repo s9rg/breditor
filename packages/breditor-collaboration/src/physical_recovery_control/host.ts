@@ -15,7 +15,8 @@ import {readPhysicalAcceptedNative} from './accepted_response.js';
 import {MAX_ORIGINAL_REVIEW_RESPONSE_BYTES,type OriginalReviewQuery,type OriginalReviewRead} from '../original_review_authorizations/contract.js';
 import {originalReviewChoices,prepareOriginalReviewRequest,originalReviewEndpoint} from '../original_review_authorizations/request.js';
 import {readOriginalReviewResponse} from '../original_review_authorizations/response.js';
-const key=Object.freeze({});
+const key=Object.freeze({}),addListener=EventTarget.prototype.addEventListener,removeListener=EventTarget.prototype.removeEventListener,readAborted=Object.getOwnPropertyDescriptor(AbortSignal.prototype,'aborted')!.get!;
+function aborted(signal:AbortSignal|undefined):boolean{return signal?readAborted.call(signal):false;}
 interface State {readonly endpoint:string;readonly expected:SharedPhysicalRecoveryControlSelection;readonly principal:string;readonly getToken:SharedPhysicalRecoveryHostOptions['getToken'];readonly authority:()=>void;readonly signal:AbortSignal|undefined;readonly milliseconds:number;closed:boolean;active:AbortController|undefined}
 let port:(host:SharedPhysicalRoomRecoveryHost)=>Readonly<{selection:SharedPhysicalRecoveryControlSelection;check:(signal?:AbortSignal)=>Promise<void>;checkAssets:(input:SharedPhysicalRecoveryAssetRequirements,signal?:AbortSignal)=>Promise<SharedPhysicalRecoveryAssetRead>;readAcceptedNative:(input:SharedPhysicalRecoveryAcceptedRequest,signal?:AbortSignal)=>Promise<SharedPhysicalRecoveryAcceptedRead>;readOriginalReview:(input:OriginalReviewQuery,signal?:AbortSignal)=>Promise<OriginalReviewRead>}>;
 /** Internal brand-checked native-check port; public prototype overrides cannot manufacture it. */
@@ -37,7 +38,7 @@ export class SharedPhysicalRoomRecoveryHost {
  }
  /** Detached metadata survives close; it grants no current native/provider authority. */
  selection():SharedPhysicalRecoveryControlSelection{return this.#state.expected;}
- #local(signal?:AbortSignal):void {const s=this.#state;if(s.closed)throw fail('control_closed');if(s.signal?.aborted||signal?.aborted||s.active?.signal.aborted)throw fail('control_cancelled');}
+ #local(signal?:AbortSignal):void {const s=this.#state;if(s.closed)throw fail('control_closed');if(aborted(s.signal)||aborted(signal)||aborted(s.active?.signal))throw fail('control_cancelled');}
  #guard(signal?:AbortSignal):void {this.#local(signal);try{this.#state.authority();}catch{throw fail('control_authority');}this.#local(signal);}
  /** Reauthenticate the separately configured operator and recheck actual native/provider owners.
   * This is a point-in-time server-scope check, not client/outbox closure or an activation grant. */
@@ -67,16 +68,30 @@ export class SharedPhysicalRoomRecoveryHost {
   const controller=new AbortController();s.active=controller;const abort=()=>controller.abort();
   // New accepted-transfer data snapshots run under the real request reservation,
   // but precede permission callbacks and signal hooks. Old requests keep timing.
-  if(detach)try{detach();}catch(error){controller.abort();s.active=undefined;throw error;}
-  s.signal?.addEventListener('abort',abort,{once:true});signal?.addEventListener('abort',abort,{once:true});if(s.signal?.aborted||signal?.aborted)abort();const timer=setTimeout(abort,s.milliseconds);
-  let response:Response|undefined;
+  let response:Response|undefined,timer:ReturnType<typeof setTimeout>|undefined;const watched:AbortSignal[]=[];
   try{
+   if(detach)detach();
+   // Use genuine event methods, not mutable methods/getters on an application signal.
+   // Setup itself is fallible and therefore belongs inside the reserved lifetime.
+   for(const selected of [s.signal,signal])if(selected){watched.push(selected);addListener.call(selected,'abort',abort,{once:true});}
+   if(aborted(s.signal)||aborted(signal))abort();timer=setTimeout(abort,s.milliseconds);
    this.#guard(signal);const request=await prepare();this.#guard(signal);const token=await accountToken(s.getToken,controller.signal,s.milliseconds);this.#guard(signal);
    response=await fetch(request.endpoint,{method:'POST',headers:{'Authorization':`Bearer ${token}`,'X-Breditor-Principal':s.principal,'Content-Type':'application/json'},body:request.body,signal:controller.signal,credentials:'omit',redirect:'error',cache:'no-store'});this.#guard(signal);
    if(response.status!==200){await response.body?.cancel().catch(()=>{});throw fail(response.status===403?'control_permission':[429,503].includes(response.status)?'control_unavailable':'control_protocol');}
    const text=await readPhysicalControlResponse(response,request.maximum);this.#guard(signal);const result=request.admit(text);this.#guard(signal);return result;
-  }catch(error){if(error instanceof SharedPhysicalRecoveryControlError)throw error;this.#local(signal);throw fail('control_transfer');}
-  finally{clearTimeout(timer);s.signal?.removeEventListener('abort',abort);signal?.removeEventListener('abort',abort);controller.abort();if(response?.body&&!response.bodyUsed)await response.body.cancel().catch(()=>{});s.active=undefined;}
+  }catch(error){if(error instanceof SharedPhysicalRecoveryControlError)throw error;try{this.#local(signal);}catch(local){if(local instanceof SharedPhysicalRecoveryControlError)throw local;}throw fail('control_transfer');}
+  finally{
+   let cleanupFailed=false;
+   try{
+    if(timer!==undefined)clearTimeout(timer);
+    for(const selected of watched)try{removeListener.call(selected,'abort',abort);}catch{cleanupFailed=true;}
+    try{controller.abort();}catch{cleanupFailed=true;}
+    try{if(response){const body=response.body;if(body&&!response.bodyUsed)await body.cancel().catch(()=>{});}}catch{cleanupFailed=true;}
+   }finally{s.active=undefined;}
+   // Cleanup uncertainty cannot publish success or leak a host exception, but
+   // it must never strand the real busy reservation after the attempt finishes.
+   if(cleanupFailed)throw fail('control_transfer');
+  }
  }
  /** Stop only this checker and abort its request. Does not stop the native host or close clients. */
  close():void{this.#state.closed=true;this.#state.active?.abort();}

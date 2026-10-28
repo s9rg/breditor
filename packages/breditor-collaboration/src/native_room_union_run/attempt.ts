@@ -3,7 +3,7 @@
  * any author resources. Ready targets remain private until a separate complete
  * admission/promotion barrier; local readiness never activates serving. */
 import {RetainedSelectedAssetOwner,selectedOwnerHasRetiredActors,reserveSelectedActorExecution,releaseSelectedActorExecution,retryReservedSelectedActorCleanup,takeReservedSelectedActors,type SelectedActorExecutionReservation} from '../physical_room_asset_successor/owner.js';
-import {readPreparedNativeRoomUnionExecution} from '../native_room_union_execution/coordinator.js';
+import {readPreparedNativeRoomUnionExecution,readPreparedAuthenticatedNativeRoomUnionExecution} from '../native_room_union_execution/coordinator.js';
 import {NativeRoomUnionExecutionArchive} from '../native_room_union_execution/archive.js';
 import {NativeRoomUnionReadScope} from '../native_room_union/read_scope.js';
 import {snapshotPhysicalHistoryReadOptions} from '../physical_room_operation_v3/history_read.js';
@@ -12,7 +12,7 @@ import {physicalOperationV3Present} from '../physical_room_operation_v3/child.js
 import {executionNames} from '../native_room_execution/plan.js';
 import {fields,fail} from './policy.js';
 import {checkRichAssetLimits} from '@breditor/experimental-rich-content';
-import {retireReservedNativeRoomUnionKeepingActors} from '../native_room_union/retirement.js';
+import {retireReservedNativeRoomUnionKeepingActors,retireReservedAuthenticatedNativeRoomUnionKeepingActors} from '../native_room_union/retirement.js';
 import {decideFreshAssetChoice} from '../physical_room_asset_approval/decision.js';
 import {StoppedActorCohort} from '../persistence/stopped_actor_cohort.js';
 import {NativeRoomUnionRunJournalResources} from './journal_resources.js';
@@ -22,7 +22,9 @@ import {unionRunIdentity,unionRunApproval,MAX_UNION_RUN_METADATA_BYTES} from './
 import {unionRunPromotionChoice} from './promotion_choice.js';
 import type {NativeRoomUnionRunOptions,NativeRoomUnionRunReadOptions,NativeRoomUnionRunSnapshot,NativeRoomUnionRunStage,NativeRoomUnionRunApproval,NativeRoomUnionRunResult,NativeRoomUnionRunPromotionChoice,NativeRoomUnionRunPromotionOptions,NativeRoomUnionRunPromotionResult} from './contract.js';
 import {NativeRoomUnionArchive} from '../native_room_union/archive.js';
-import {unionAuthorizations} from '../native_room_union/plan.js';
+import {unionAuthorizations,unionPlanTargets} from '../native_room_union/plan.js';
+import {NativeRoomUnionAuthentication} from '../native_room_union_authentication/source.js';
+import type {AuthenticatedNativeRoomUnionReadOptions as AuthRead} from '../native_room_union_authentication/contract.js';
 import {recordCutJson} from '../physical_room_record_cut/json.js';
 import type {NativeRoomUnionRunHandoff} from './contract.js';
 const archiveApi={read:NativeRoomUnionExecutionArchive.read,preparation:NativeRoomUnionExecutionArchive.prototype.preparation,dispose:NativeRoomUnionExecutionArchive.prototype.dispose};
@@ -32,20 +34,21 @@ const targetsApi={recover:NativeRoomUnionRunTargets.prototype.recover,preview:Na
 const scopeClose=NativeRoomUnionReadScope.prototype.close,add=EventTarget.prototype.addEventListener,remove=EventTarget.prototype.removeEventListener;
 const key=Object.freeze({});
 export class NativeRoomUnionExecutionAttempt {
- readonly #old;readonly #reservation:SelectedActorExecutionReservation;readonly #options;readonly #provided;readonly #create;readonly #targets=new NativeRoomUnionRunTargets();readonly #stop=new AbortController();
+ readonly #authentication:NativeRoomUnionAuthentication|undefined;readonly #old;readonly #reservation:SelectedActorExecutionReservation;readonly #options;readonly #provided;readonly #create;readonly #targets=new NativeRoomUnionRunTargets();readonly #stop=new AbortController();
  #scope:NativeRoomUnionReadScope|undefined;#journal:NativeRoomUnionRunJournalResources|undefined;#snapshot:NativeRoomUnionRunSnapshot|undefined;
  #actors:StoppedActorCohort|undefined;#openingAttempted=false;#journalOpened=false;#taking=false;#closing=false;#closed=false;#unwatch=()=>{};
  #promotion:NativeRoomUnionRunPromotionChoice|undefined;#handoff:NativeRoomUnionRunHandoff|undefined;#completed=false;
  #running:Promise<unknown>|undefined;#cleanup:Promise<void>|undefined;
- private constructor(token:object,owner:RetainedSelectedAssetOwner,provided:NativeRoomUnionRunReadOptions,options:NativeRoomUnionRunOptions,create:boolean){
+ private constructor(token:object,owner:RetainedSelectedAssetOwner,provided:NativeRoomUnionRunReadOptions|AuthRead,options:NativeRoomUnionRunOptions,create:boolean,authenticated=false){
   if(token!==key)throw fail('room_union_run_policy');selectedOwnerHasRetiredActors(owner);
   const raw=fields(options,['expected','participants']),expected=unionRunIdentity(raw['expected']);
   const participants=snapshotPhysicalOperationV3Policy(raw['participants'] as NativeRoomUnionRunOptions['participants']);
-  const reads=fields(provided,['wasm','reads','authorizations','checkAuthority'],['signal','assets']);
+  const reads=fields(provided,['wasm','reads',authenticated?'authentication':'authorizations','checkAuthority'],['signal','assets']);
+  this.#authentication=authenticated?new NativeRoomUnionAuthentication(reads['authentication'] as AuthRead['authentication']):undefined;
   const fresh=snapshotPhysicalHistoryReadOptions({reads:reads['reads'] as NativeRoomUnionRunReadOptions['reads'],checkAuthority:reads['checkAuthority'] as ()=>void,...(reads['signal']!==undefined?{signal:reads['signal'] as AbortSignal}:{})});
   const assets=reads['assets']===undefined?undefined:fields(reads['assets'],[],['limits','signal']);
   const limits=checkRichAssetLimits(assets?.['limits'] as Parameters<typeof checkRichAssetLimits>[0]);
-  this.#provided={...fresh,authorizations:unionAuthorizations(reads['authorizations']),wasm:reads['wasm'] as NativeRoomUnionRunReadOptions['wasm'],...(assets?{assets:{limits,...(assets['signal']!==undefined?{signal:assets['signal'] as AbortSignal}:{})}}:{})};
+  this.#provided={...fresh,authorizations:authenticated?[]:unionAuthorizations(reads['authorizations']),wasm:reads['wasm'] as NativeRoomUnionRunReadOptions['wasm'],...(assets?{assets:{limits,...(assets['signal']!==undefined?{signal:assets['signal'] as AbortSignal}:{})}}:{})};
   this.#old=owner;this.#options=Object.freeze({expected,participants});this.#create=create;this.#reservation=reserveSelectedActorExecution(owner);Object.freeze(this);
  }
  /** No asynchronous constructor can reject after secretly taking actors. */
@@ -54,8 +57,14 @@ export class NativeRoomUnionExecutionAttempt {
   * After retirement, retry run on the SAME reserved attempt. This is not actor
   * acquisition after a full process restart. */
  static resume(owner:RetainedSelectedAssetOwner,provided:NativeRoomUnionRunReadOptions,options:NativeRoomUnionRunOptions):NativeRoomUnionExecutionAttempt{return new NativeRoomUnionExecutionAttempt(key,owner,provided,options,false);}
+ /** Explicit authenticated modes retain the same real reservation and stopped-cohort owner. */
+ static beginAuthenticated(owner:RetainedSelectedAssetOwner,provided:AuthRead,options:NativeRoomUnionRunOptions):NativeRoomUnionExecutionAttempt{return new NativeRoomUnionExecutionAttempt(key,owner,provided,options,true,true);}
+ static resumeAuthenticated(owner:RetainedSelectedAssetOwner,provided:AuthRead,options:NativeRoomUnionRunOptions):NativeRoomUnionExecutionAttempt{return new NativeRoomUnionExecutionAttempt(key,owner,provided,options,false,true);}
  #check=()=>{if(this.#closing||this.#closed||this.#stop.signal.aborted)throw fail('room_union_run_closed');this.#scope?.check();};
  #readOptions(){const scope=this.#scope!,base=scope.base;return{wasm:base.integrity.wasm,reads:base.reads,authorizations:scope.authorizations,checkAuthority:scope.check,signal:base.signal,...(base.assets?{assets:base.assets}:{})};}
+ #authenticatedReadOptions():AuthRead{const{authorizations:_grants,...base}=this.#readOptions();if(!this.#authentication)throw fail('room_union_run_policy');return{...base,authentication:this.#authentication.options};}
+ async #authenticate(){if(this.#authentication)await this.#scope!.authorize(unionPlanTargets(this.#options.expected.execution.plan.preparation.plan));this.#check();}
+ #readExecution(choice:NativeRoomUnionRunOptions['expected']['execution']){return this.#authentication?readPreparedAuthenticatedNativeRoomUnionExecution(choice,this.#authenticatedReadOptions()):readPreparedNativeRoomUnionExecution(choice,this.#readOptions());}
  async #openJournal(){
   if(this.#journal&&this.#journalOpened){this.#snapshot=await journals.read.call(this.#journal);return;}
   if(this.#journal){await journals.close.call(this.#journal);this.#journal=undefined;}
@@ -74,12 +83,14 @@ export class NativeRoomUnionExecutionAttempt {
   if(!this.#scope){const chosen=this.#provided,signal=chosen.signal,controller=this.#stop,abort=()=>controller.abort();if(signal?.aborted)abort();else if(signal){add.call(signal,'abort',abort,{once:true});this.#unwatch=()=>remove.call(signal,'abort',abort);}
    // The read scope owns its signal observers; the external observer is removed
    // only during actual attempt cleanup, not while target reads remain live.
-   this.#scope=new NativeRoomUnionReadScope({...chosen,signal:controller.signal});
+   // An admitted journal stays in EVERY nested read/handoff guard. Failed
+   // opens remain cleanup-reachable until the actual journal admission completes.
+   const current=()=>{if(this.#journalOpened){if(!this.#journal)throw fail('room_union_run_closed');this.#journal.check();}}, {authorizations:_grants,...base}=chosen;this.#scope=this.#authentication?new NativeRoomUnionReadScope({...base,authentication:this.#authentication.options,signal:controller.signal},true,current):new NativeRoomUnionReadScope({...chosen,signal:controller.signal},false,current);
   }
   const scope=this.#scope!,identity=this.#options.expected;let archive:NativeRoomUnionExecutionArchive|undefined,prepared:NativeRoomUnionArchive|undefined;
   try{
-   const saved=await readPreparedNativeRoomUnionExecution(identity.execution,this.#readOptions());scope.check();
-   archive=await archiveApi.read.call(NativeRoomUnionExecutionArchive,saved.file,identity.execution,this.#readOptions());scope.check();
+   await this.#authenticate();const saved=await this.#readExecution(identity.execution);scope.check();
+   archive=this.#authentication?await NativeRoomUnionExecutionArchive.readAuthenticated(saved.file,identity.execution,this.#authenticatedReadOptions()):await archiveApi.read.call(NativeRoomUnionExecutionArchive,saved.file,identity.execution,this.#readOptions());scope.check();
    await checkNativeRoomUnionRunInputs(archive,identity,this.#options.participants,scope);scope.check();
    await this.#openJournal();scope.check();
    if(this.#snapshot!.events.at(-1)!.event.stage==='handoff-observed')throw fail('room_union_run_closed');
@@ -92,9 +103,10 @@ export class NativeRoomUnionExecutionAttempt {
      if(await physicalOperationV3Present(name,scope.check))throw fail('room_union_run_exists');scope.check();
     }
     const input=archiveApi.preparation.call(archive);
-    prepared=await prepApi.read.call(NativeRoomUnionArchive,input.file,input.choice,this.#readOptions());scope.check();
+    prepared=this.#authentication?await NativeRoomUnionArchive.readAuthenticated(input.file,input.choice,this.#authenticatedReadOptions()):await prepApi.read.call(NativeRoomUnionArchive,input.file,input.choice,this.#readOptions());scope.check();
     const retained=prepApi.retained.call(prepared);
-    await retireReservedNativeRoomUnionKeepingActors(this.#old,this.#reservation,{reads:scope.base.reads,checkAuthority:scope.check,signal:scope.base.signal},{expected:input.choice,retained,authorizations:scope.authorizations,...(scope.base.assets?{assets:scope.base.assets}:{}),approve:()=>this.#approve(approve).then(()=>true)});
+    const retirement={expected:input.choice,retained,...(scope.base.assets?{assets:scope.base.assets}:{}),approve:()=>this.#approve(approve).then(()=>true)},reads={reads:scope.base.reads,checkAuthority:scope.check,signal:scope.base.signal};
+    if(this.#authentication)await retireReservedAuthenticatedNativeRoomUnionKeepingActors(this.#old,this.#reservation,reads,{...retirement,authentication:this.#authentication.options});else await retireReservedNativeRoomUnionKeepingActors(this.#old,this.#reservation,reads,{...retirement,authorizations:scope.authorizations});
     // No await/check/callback between taking the actual cohort and assigning
     // it into this previously returned attempt.
     this.#actors=takeReservedSelectedActors(this.#reservation);
@@ -104,7 +116,7 @@ export class NativeRoomUnionExecutionAttempt {
    }
    bindings.call(this.#actors);scope.check();await this.#advance('retired');
    await targetsApi.recover.call(this.#targets,archive,identity,this.#options.participants,this.#actors,scope,stage=>this.#snapshot!.events.some(row=>row.event.stage===stage),stage=>this.#advance(stage));
-   scope.check();this.#journal!.check();bindings.call(this.#actors);
+   scope.check();this.#journal!.check();bindings.call(this.#actors);if(this.#authentication)await scope.verify();
    return Object.freeze({format:'breditor/native-room-union-run-result',formatVersion:1,identity,head:this.#snapshot!.head,state:'targets-and-assets-ready',scope:'held-local-replacement-only'});
   }finally{if(prepared)prepApi.dispose.call(prepared);if(archive)archiveApi.dispose.call(archive);}
  }
@@ -112,7 +124,7 @@ export class NativeRoomUnionExecutionAttempt {
   * head and complete native/packet/asset cut before a new affirmative decision. */
  previewPromotion():Promise<NativeRoomUnionRunPromotionChoice>{
   try{this.#admitPromotion();}catch(error){return Promise.reject(error);}
-  const task=Promise.resolve().then(async()=>{this.#check();await this.#openJournal();this.#check();return targetsApi.preview.call(this.#targets,this.#options.expected,this.#snapshot!.head,this.#scope!);});
+  const task=Promise.resolve().then(async()=>{this.#check();await this.#authenticate();await this.#openJournal();this.#check();const result=await targetsApi.preview.call(this.#targets,this.#options.expected,this.#snapshot!.head,this.#scope!);if(this.#authentication)await this.#scope!.verify();return result;});
   this.#running=task;return task.finally(()=>{this.#running=undefined;});
  }
  #admitPromotion():void{if(this.#running||this.#taking)throw fail('room_union_run_busy');if(this.#closing||this.#closed||!this.#actors||!this.#scope||targetsApi.ready.call(this.#targets))throw fail('room_union_run_closed');}
@@ -122,7 +134,7 @@ export class NativeRoomUnionExecutionAttempt {
   // any caller input, and never clear another operation's actual task on refusal.
   try{this.#admitPromotion();reservation=Promise.resolve();this.#running=reservation;const raw=fields(provided,['expected','approve','checkAssetAuthority']),expected=unionRunPromotionChoice(raw['expected']);if(typeof raw['approve']!=='function'||typeof raw['checkAssetAuthority']!=='function'||JSON.stringify(expected.identity)!==JSON.stringify(this.#options.expected))throw fail('room_union_run_policy');input={expected,approve:raw['approve'] as NativeRoomUnionRunPromotionOptions['approve'],checkAssetAuthority:raw['checkAssetAuthority'] as ()=>void};}catch(error){if(this.#running===reservation)this.#running=undefined;return Promise.reject(error);}
   const task=Promise.resolve().then(async()=>{
-   this.#check();const scope=this.#scope!;await readPreparedNativeRoomUnionExecution(input.expected.identity.execution,this.#readOptions());scope.check();await this.#openJournal();scope.check();
+   this.#check();const scope=this.#scope!;await this.#authenticate();await this.#readExecution(input.expected.identity.execution);scope.check();await this.#openJournal();scope.check();
    if(JSON.stringify(this.#snapshot!.head)!==JSON.stringify(input.expected.head))throw fail();
    const actual=await targetsApi.preview.call(this.#targets,this.#options.expected,this.#snapshot!.head,scope);scope.check();if(JSON.stringify(actual)!==JSON.stringify(input.expected))throw fail();
    const encoded=recordCutJson(input.expected.approval,MAX_UNION_RUN_METADATA_BYTES),file=new Blob([encoded]);
@@ -134,6 +146,7 @@ export class NativeRoomUnionExecutionAttempt {
     // This marker is preparation DATA, deliberately not proof of transfer.
     const current=await journals.read.call(this.#journal!);scope.check();if(JSON.stringify(current.head)!==JSON.stringify(input.expected.head))throw fail();this.#snapshot=current;
     await this.#advance('handoff-prepared',handoff);
+    if(this.#authentication)await scope.verify();scope.check();
    });
    // The actual recipient already owns the live successor before any awaited
    // completion I/O. A rejected write leaves it reachable by complete()/close().
