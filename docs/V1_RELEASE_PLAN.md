@@ -13,6 +13,18 @@ the FCKeditor lineage. CKEditor 4 reached ordinary EOL in June 2023; its
 is not the modern feature baseline. Breditor remains an independent implementation:
 no ProseMirror, Tiptap or CKEditor document, operation or plugin protocol is adopted.
 
+## Accepted server handover barrier
+
+The [accepted server handover contract](SERVER_HANDOVER_BARRIER.md) adds an
+explicit private operation that compares the whole selected original server
+log/raster archive while excluding old serving writes, then durably fences the
+old epoch without issuing a replacement lease. Stale accepted text or images
+refuse without changing the epoch. Complete native restore, exact outstanding
+offline retry and future Undo/Redo remain intact. This is an original-source
+handover prerequisite, not whole-room activation: independent generation
+lifecycles, complete client/provider closure and the cross-generation bridge
+remain required. All thirteen V1 gates remain open.
+
 ## Current retained native reconstruction
 
 The [native reconstruction contract](NATIVE_RECONSTRUCTION.md) covers original,

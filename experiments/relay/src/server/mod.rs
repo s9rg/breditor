@@ -20,7 +20,7 @@ use axum::{
     routing::get,
 };
 pub use backup::{
-    ContentAddressedServerAssets, MAX_SERVER_ASSET_AVAILABILITY_BYTES,
+    ContentAddressedServerAssets, MAX_SERVER_ASSET_AVAILABILITY_BYTES, SealedServerHandover,
     ServerAssetAvailabilityCoverage, ServerAssetAvailabilityMissing, ServerAssetAvailabilityRead,
     ServerAssetRecoveryState, ServerAssetResolution, ServerBackupHandle,
     ServerRecoveryAssetCoverage, ServerRecoveryAssetProvider, ServerRecoveryContinuationCoverage,

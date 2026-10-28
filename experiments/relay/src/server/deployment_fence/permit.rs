@@ -7,6 +7,7 @@ use std::{
 };
 pub(super) struct Permit<'a> {
     state: &'a State,
+    exclusive: bool,
     file: Option<MutexGuard<'a, File>>,
 }
 pub(super) fn lock_error(error: TryLockError) -> Error {
@@ -25,7 +26,7 @@ impl<'a> Permit<'a> {
         state.healthy()?;
         let locked = if exclusive { File::try_lock(&file) } else { File::try_lock_shared(&file) };
         locked.map_err(lock_error)?;
-        let permit = Self { state, file: Some(file) };
+        let permit = Self { state, exclusive, file: Some(file) };
         state.check_file(permit.file.as_ref().ok_or(Error::NeedsRecovery)?)?;
         Ok(permit)
     }
@@ -34,9 +35,15 @@ impl<'a> Permit<'a> {
         let file = state.file.lock().map_err(|_| Error::NeedsRecovery)?;
         state.healthy()?;
         File::lock_shared(&file)?;
-        let permit = Self { state, file: Some(file) };
+        let permit = Self { state, exclusive: false, file: Some(file) };
         state.check_file(permit.file.as_ref().ok_or(Error::NeedsRecovery)?)?;
         Ok(permit)
+    }
+    pub fn check_authority(&self, state: &State) -> Result<()> {
+        if !self.exclusive || !std::ptr::eq(self.state, state) || self.file.is_none() {
+            return Err(Error::Contract("exclusive deployment owner required"));
+        }
+        self.state.healthy()
     }
     pub fn file(&mut self) -> Result<&mut File> {
         self.file.as_deref_mut().ok_or(Error::NeedsRecovery)

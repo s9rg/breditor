@@ -67,6 +67,9 @@ impl RoomDeploymentLease {
         held.finish()?;
         self.live()
     }
+    pub(super) fn authority(&self) -> super::RoomDeploymentAuthority {
+        super::RoomDeploymentAuthority { state: self.state.authority.clone() }
+    }
     pub(super) fn serving(&self) -> Result<Permit<'_>> {
         self.live()?;
         let mut held = Permit::serving(&self.state.authority)?;

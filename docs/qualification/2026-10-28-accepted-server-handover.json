@@ -1,0 +1,105 @@
+{
+  "format": "breditor/accepted-server-handover-qualification",
+  "formatVersion": 1,
+  "status": "functional-checkpoint-passed",
+  "qualifiedAt": "2026-10-28T09:41:46.473Z",
+  "source": {
+    "baseCommit": "bc39050faad454685449951e373bffd887d21e8a",
+    "dirty": true,
+    "changeInventorySha256": "28d4368e6974becc7143d33735bb8916e9f252dbc79e74a2289723c3fe1313b3",
+    "changedFiles": 17
+  },
+  "evidence": {
+    "index": "target/accepted-server-handover-proof-dHByjV/index.json",
+    "sha256": "0670909b0229598926e3508c77538d58642c01a3ab9b6b047abb6fe5027fff62",
+    "retainedFiles": 62
+  },
+  "native": {
+    "server": {
+      "passed": 267,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    "noServer": {
+      "passed": 171,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    "doctests": {
+      "passed": 23,
+      "failed": 0,
+      "ignored": 0
+    },
+    "newHandoverGroups": 8,
+    "strictLintServerAndNoServer": true,
+    "strictRustdoc": true,
+    "format": true,
+    "allActualRowsJoined": true,
+    "actualRows": 18
+  },
+  "repetition": {
+    "runs": 10,
+    "groupExecutions": 80,
+    "simultaneousSealRaces": 200,
+    "profileTransportCombinationsPerRun": 10,
+    "listenerPairsObservedClosed": 210,
+    "includesActualSecondProcess": true,
+    "includesCallerCancellation": true
+  },
+  "guardFaultInjection": {
+    "kind": "deliberate-removal-of-new-guard-not-historical-bug-baseline",
+    "actualExit": 101,
+    "passed": 2,
+    "failed": 2,
+    "sameTestBodySha256": "6834b3e46a9b226c34c0bbfaae1fbf052c709334b13aabca42710fb60b5c2fcf",
+    "bodyUnchanged": true,
+    "guardRestoredExactly": true,
+    "finalNativeCasesPassed": true
+  },
+  "publicApiConsumer": {
+    "path": "experiments/relay/examples/server_handover_functional.rs",
+    "kind": "original-source-sealed-inactive-replay",
+    "actualExit": 0,
+    "archivePersistedBeforeSeal": true,
+    "oldWriterConnectionLeaseRejected": true,
+    "credentialBoundResumeRequired": true,
+    "exactOfflineDuplicateRetried": true,
+    "futureUndoRedoSteps": 2,
+    "retainedRasters": 1,
+    "noNetworkServiceStarted": true,
+    "occupiedDestination": {
+      "actualExit": 1,
+      "reason": "AlreadyExists",
+      "existingBytesUnchanged": true
+    },
+    "binarySha256": "950574ca61cccf00f3314c373ad53d7e2b07af23ec9606ac3d0314f843c40d47"
+  },
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "normalWasmRebuilt": false,
+  "freshCoreSuites": false,
+  "freshFrontendOrInstalledNpmSuites": false,
+  "freshRelaySuites": true,
+  "physicalCrashQualification": false,
+  "browserQualification": false,
+  "scope": [
+    "Exact complete original server log/raster cut compared under the same real exclusive authority as durable old-epoch fencing.",
+    "Stale native text or unreferenced raster input refuses without a new epoch.",
+    "Original source files, pending native client work and future Undo/Redo remain intact.",
+    "No replacement serving lease, acknowledgement, provider closure or whole-room activation is issued."
+  ],
+  "remaining": [
+    "Independent server-log/comment generation lifecycle integration.",
+    "Complete authenticated registered/retained client, outbox and current/historic provider closure.",
+    "Durable coordinated room activation and the approved cross-generation Undo/Redo and offline-edit bridge.",
+    "Remaining agreed feature parity, operating-envelope and release qualification."
+  ],
+  "allV1GatesRemainOpen": true,
+  "featureParityComplete": false,
+  "versionChanged": false,
+  "pushed": false,
+  "published": false,
+  "tagged": false,
+  "deployed": false
+}

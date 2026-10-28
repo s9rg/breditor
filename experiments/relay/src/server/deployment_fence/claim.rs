@@ -18,6 +18,19 @@ impl RoomDeploymentAuthority {
     /// malformed storage, entropy or uncertain append/sync/unlock refuses.
     pub fn claim(&self, expected: &RoomDeploymentSelection) -> Result<RoomDeploymentLease> {
         let mut held = Permit::try_acquire(&self.state, true)?;
+        let lease = self.claim_held(&mut held, expected)?;
+        held.finish()?;
+        self.state.healthy()?;
+        Ok(lease)
+    }
+    // Internal only: callers must already hold this authority's exclusive
+    // permit. No public callback or detached validation flag can reach this.
+    pub(super) fn claim_held(
+        &self,
+        held: &mut Permit<'_>,
+        expected: &RoomDeploymentSelection,
+    ) -> Result<RoomDeploymentLease> {
+        held.check_authority(&self.state)?;
         let current = self.state.selected(held.file()?)?;
         if &current.selection != expected {
             return Err(Error::Lease);
@@ -48,8 +61,6 @@ impl RoomDeploymentAuthority {
             generation: generation.to_string(),
             owner: Some(journal::nonce(&nonce)),
         };
-        held.finish()?;
-        self.state.healthy()?;
         Ok(RoomDeploymentLease::new(self.state.clone(), selection, generation, bytes))
     }
 }

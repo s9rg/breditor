@@ -11,6 +11,7 @@ mod location;
 mod open;
 mod permit;
 mod read;
+mod seal;
 mod serving;
 mod state;
 #[cfg(all(test, unix))]
@@ -19,6 +20,7 @@ mod transaction;
 pub use authority::RoomDeploymentAuthority;
 pub use identity::{RoomDeploymentIdentity, RoomDeploymentSelection};
 pub use lease::RoomDeploymentLease;
+pub(super) use seal::seal;
 pub(super) use serving::prepare_host;
 pub use serving::{router_with_assets_and_deployment_lease, router_with_deployment_lease};
 pub(super) use transaction::transaction;

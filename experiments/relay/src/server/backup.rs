@@ -4,6 +4,8 @@ use crate::{Error, Result, Room, ServerRoomBackup, assets::AssetStore};
 use axum::Router;
 mod asset_availability;
 mod deployment;
+mod handover;
+pub use handover::SealedServerHandover;
 mod recovery_check;
 mod recovery_inventory;
 pub use asset_availability::{
