@@ -5,6 +5,11 @@ pub use asset_availability::{
     ServerLogGenerationAssetAvailabilityRead, ServerLogGenerationRecoveryAssetCoverage,
     VerifiedServerLogGenerationRecoveryAssets,
 };
+mod control;
+pub use control::{
+    ServerLogGenerationRecoveryControl, ServerLogGenerationRecoveryControlIdentity,
+    prepare_log_generation_recovery_control,
+};
 mod capture;
 pub use asset_state::ServerLogGenerationAssetRecoveryState;
 mod coordinator;

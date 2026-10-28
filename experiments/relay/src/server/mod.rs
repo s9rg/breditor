@@ -40,12 +40,13 @@ pub use generation_recovery::{
     PhysicalServerRoomRecoveryState, PhysicalServerRoomRecoveryStateIdentity,
     PreparedLogGenerationRecoveryHost, PreparedPhysicalRoomRecoveryHost,
     ServerLogGenerationAssetAvailabilityRead, ServerLogGenerationAssetRecoveryState,
-    ServerLogGenerationRecoveryAssetCoverage, ServerLogGenerationRecoveryCoverage,
+    ServerLogGenerationRecoveryAssetCoverage, ServerLogGenerationRecoveryControl,
+    ServerLogGenerationRecoveryControlIdentity, ServerLogGenerationRecoveryCoverage,
     ServerLogGenerationRecoveryState, ServerLogGenerationRecoveryStateIdentity,
     VerifiedPhysicalServerRecoveryAssets, VerifiedPhysicalServerRoomRecoveryState,
     VerifiedServerLogGenerationRecoveryAssets, VerifiedServerLogGenerationRecoveryState,
-    prepare_log_generation_recovery_host, prepare_physical_room_recovery_control,
-    prepare_physical_room_recovery_host,
+    prepare_log_generation_recovery_control, prepare_log_generation_recovery_host,
+    prepare_physical_room_recovery_control, prepare_physical_room_recovery_host,
 };
 use std::sync::{Arc, Mutex};
 use tokio::sync::{Semaphore, watch};

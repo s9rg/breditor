@@ -114,3 +114,8 @@ missing_docs = "deny"
 [lints.clippy]
 all = { level = "deny", priority = -1 }
 pedantic = { level = "deny", priority = -1 }
+
+[[example]]
+name = "generation_recovery_control_functional"
+path = "examples/generation_recovery_control_functional.rs"
+required-features = ["server"]

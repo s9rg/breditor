@@ -1,0 +1,20 @@
+/** Genuine native generation control and exported SDK payload admission, without serving activation. */
+import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
+import {readFileSync,mkdtempSync} from 'node:fs';
+import {resolve,dirname,join} from 'node:path';
+import {homedir} from 'node:os';
+import {fileURLToPath,pathToFileURL} from 'node:url';
+import {createHash} from 'node:crypto';
+import * as api from '../packages/breditor-collaboration/dist/index.js';
+import {generationRecoveryHostPort as port} from '../packages/breditor-collaboration/dist/generation_recovery_control/host.js';
+import {probeGenerationRecoveryControl} from './probe-generation-recovery-control.mjs';
+import {NORMAL_SHARED_WASM_SHA256} from './fixtures/native-runtime/normal-shared-identity.mjs';
+import {sourceEvidence,fileEvidence,saveEvidence} from './candidate-release/evidence.mjs';
+const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');if(process.argv.length!==2)throw Error('No substituted runtime/native arguments accepted');
+const source=sourceEvidence(root),cargo=process.env.BREDITOR_CARGO??process.env.CARGO_BIN??resolve(homedir(),'.cargo/bin/cargo'),target=join(root,'target/owned-history-relay-native');
+execFileSync(cargo,['build','--manifest-path','experiments/relay/Cargo.toml','--locked','--offline','--release','--features','server','--example','generation_recovery_control_functional'],{cwd:root,env:{...process.env,CARGO_TARGET_DIR:target},stdio:'inherit'});
+const runtime=join(root,'packages/breditor-collaboration/dist/runtime'),bytes=readFileSync(join(runtime,'breditor_shared_bg.wasm')),wasm=await import(pathToFileURL(join(runtime,'breditor_shared.js')).href);assert.equal(createHash('sha256').update(bytes).digest('hex'),NORMAL_SHARED_WASM_SHA256);await wasm.default({module_or_path:bytes});
+const directory=mkdtempSync(join(root,'target/generation-control-sdk-')),acceptance=await probeGenerationRecoveryControl({api,port,wasm,root,binary:join(target,'release/examples/generation_recovery_control_functional'),directory});
+assert.equal(acceptance.passed,true);assert.deepEqual(sourceEvidence(root),source);for(const file of acceptance.publicFixtureFiles)assert.deepEqual(fileEvidence(root,file.path),file);
+const report={format:'breditor/generation-recovery-control-sdk-check',formatVersion:1,passed:true,source,acceptance,normalWasmSha256:NORMAL_SHARED_WASM_SHA256,activated:false};saveEvidence(join(root,'target/generation-recovery-control-sdk.json'),report);console.log(JSON.stringify({passed:true,directory,nativeHosts:acceptance.nativeHosts,requests:acceptance.requests}));

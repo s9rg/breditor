@@ -13,6 +13,15 @@ the FCKeditor lineage. CKEditor 4 reached ordinary EOL in June 2023; its
 is not the modern feature baseline. Breditor remains an independent implementation:
 no ProseMirror, Tiptap or CKEditor document, operation or plugin protocol is adopted.
 
+## Standalone generation recovery control
+
+The [generation recovery control](SERVER_GENERATION_RECOVERY_CONTROL.md) adds
+separate operator authentication and a genuine standalone SDK transport for
+native/provider checks, declared image requirements, accepted native payloads
+and original comment acceptance rights. Its origin/current identity is not a
+physical A/B/C alias. Complete parent/client/outbox reconciliation and durable
+whole-room activation remain required; all thirteen V1 gates remain open.
+
 ## Standalone server generation provider continuity
 
 The [server generation availability contract](SERVER_GENERATION_ASSET_AVAILABILITY.md)

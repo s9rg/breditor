@@ -1,0 +1,117 @@
+{
+  "format": "breditor/server-generation-recovery-control-qualification",
+  "formatVersion": 1,
+  "status": "functional-checkpoint-passed",
+  "qualifiedAt": "2026-10-28T11:23:17.215Z",
+  "source": {
+    "baseCommit": "94d31b503a7e7c7374d670b0b0a8c97e5be9200f",
+    "dirty": true,
+    "changeInventorySha256": "8dd8a8e789954e437d37651513e26ae3934716b901595139443e9da0fe20ab35",
+    "changedFiles": 72
+  },
+  "evidence": {
+    "directory": "target/generation-control-proof-O8cayv",
+    "index": "target/generation-control-proof-O8cayv/index.json",
+    "sha256": "9dd419bcda08a07386d105ea6982b178b3193eb19bf94f64ac40dba0988748e7",
+    "retainedFiles": 216,
+    "qualifiedSource": "8dd8a8e789954e437d37651513e26ae3934716b901595139443e9da0fe20ab35",
+    "qualifiedAt": "2026-10-28T11:23:17.215Z"
+  },
+  "tests": {
+    "server": {
+      "passed": 310,
+      "filtered": 0
+    },
+    "noServer": {
+      "passed": 171,
+      "filtered": 0
+    },
+    "public": {
+      "passed": 30,
+      "filtered": 0
+    },
+    "publicNoServer": {
+      "passed": 26,
+      "filtered": 0
+    },
+    "doctests": {
+      "passed": 27,
+      "filtered": 0
+    },
+    "wire": 180,
+    "candidate": 172,
+    "newNativeControlGroups": 31,
+    "nativeGrammarTransportHistoryCombinations": 40,
+    "repeatedSafetyRuns": 3,
+    "repeatedGroupExecutions": 81,
+    "strictClippyServerAndNoServer": true,
+    "strictRustdoc": true,
+    "format": true,
+    "actualRows": 18,
+    "allActualRowsJoined": true
+  },
+  "sdk": {
+    "nativeHosts": 10,
+    "requests": 90,
+    "documentAuthors": 35,
+    "reviewAuthors": 20,
+    "originalWindows": 10,
+    "rasters": 20,
+    "continuedPages": 10,
+    "offlineClients": 9,
+    "readOnlyClients": 1,
+    "activated": false
+  },
+  "installed": {
+    "offline": true,
+    "workspaceLinks": false,
+    "strictPublicTypes": true,
+    "registryArtifacts": 45,
+    "wireContracts": 90,
+    "assertionsUnchanged": true,
+    "probeSha256": "7382dc9f641f26ad1d3bce4cb006eee23c7e6ead74710f56c47f9ec395dd6980",
+    "nativeHosts": 10,
+    "offlineClients": 9,
+    "readOnlyClients": 1,
+    "productionModuleCount": 27,
+    "tarballs": [
+      {
+        "name": "@breditor/browser",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "sha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "sha256": "bd283a9dd0f7643d034279b1726eee3bd3c26976e89258d6c1200522ba483f19"
+      }
+    ],
+    "activated": false
+  },
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "normalWasmRebuilt": false,
+  "freshCoreOrFullFrontendSuites": false,
+  "browserOrPhysicalCrashQualification": false,
+  "scope": [
+    "Genuine standalone origin/current native and provider proof, separately authenticated operator lifetime and four independent bounded endpoint families.",
+    "Original accepted document/comment payloads and historical comment rights are admitted by the actual native shared runtime.",
+    "Retained offline document/comment suffixes and future Undo/Redo survive accepted transfer under current writable policy; revoked recipients remain read-only.",
+    "Source/provider staleness, last callbacks, incomplete HTTP bodies, quotas and actual worker owner lifetimes refuse without mutating source data.",
+    "Fresh offline npm tarballs repeat the unchanged native/SDK probe and wire laws with no workspace links; strict public types and production module graph passed."
+  ],
+  "remaining": [
+    "Complete parent/client/outbox and historical-copy reconciliation through the generation-aware transport.",
+    "Independent generation native branch unions and approved cross-generation Undo/offline bridge.",
+    "Generation-aware serving exclusion and durable authenticated whole-room activation.",
+    "Remaining agreed feature parity, operating envelope and all V1 release gates."
+  ],
+  "featureParityComplete": false,
+  "allV1GatesRemainOpen": true,
+  "versionChanged": false,
+  "pushed": false,
+  "published": false,
+  "tagged": false,
+  "deployed": false
+}

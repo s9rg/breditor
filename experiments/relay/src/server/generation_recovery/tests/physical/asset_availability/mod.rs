@@ -4,6 +4,7 @@ mod coverage;
 mod current_cut;
 mod final_callback;
 mod fixture;
+mod generation_control;
 mod lifetime;
 mod provider;
 mod workflows;

@@ -67,7 +67,7 @@ The existing native, raster and whole encoded-result ceilings are retained.
 
 This is server-scope availability at a checked instant, not a held activation
 reservation. Complete browser-client and outbox reconciliation, historical-copy
-requirements, generation-aware controller integration, serving exclusion and a
+requirements, complete parent integration through the [generation control](SERVER_GENERATION_RECOVERY_CONTROL.md), serving exclusion and a
 durable authenticated whole-room decision remain required. Original protocols,
 default constructors and the separate physical-recovery family are unchanged.
 The full feature-parity goal and all thirteen V1 gates remain open.
