@@ -1,0 +1,150 @@
+{
+  "format": "breditor/native-room-union-run-qualification",
+  "formatVersion": 1,
+  "status": "passed",
+  "qualifiedAt": "2026-10-28T02:11:38.841Z",
+  "source": {
+    "commit": "d0ba8fbdedc5eab7eac678ae80ca3d85415ba115",
+    "dirty": true,
+    "sha256": "0cdbeab0dce6dca913b0509d666e225366cb6c3be9bf647b8f786aacd25d7c47",
+    "files": 6971,
+    "bytes": 53760508
+  },
+  "evidence": {
+    "index": "target/native-room-union-run-proof-Lg2GAO/index.json",
+    "sha256": "5a74d682ba17c3fe295e3882cf38a08379884e4f5a564855d32334a5d48af9dd",
+    "retainedFiles": 95
+  },
+  "functional": {
+    "source": 149,
+    "installedPackage": 149,
+    "actualProductionBundle": 149,
+    "priorUnionLaws": 131,
+    "newWarmColdAndJournalLawGroups": 18,
+    "strictConsumerTypes": 26,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0
+  },
+  "legacySourceTests": {
+    "ordinaryPromotionHistoryPairs": 4,
+    "ordinaryApprovalStorageAndJournalCleanupRetry": 1,
+    "total": 5,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0
+  },
+  "warmExecution": {
+    "synchronouslyReachableBeforeRetirement": true,
+    "genuineOriginalOwnerReservation": true,
+    "actualParticipantFamilies": 7,
+    "retainedAuthorLocks": 14,
+    "ordinaryWriterReacquisitions": 0,
+    "actualOldCleanupFailureAndSameAttemptRetry": true,
+    "partialSelectedUploadTransactionRetry": true,
+    "sourceBytesUnchanged": true,
+    "currentUndoRedoBothLanesAndForeignContributions": true,
+    "declinedAndCancelledApprovalCannotRetire": true
+  },
+  "coldExecution": {
+    "oldOwnerOrCohortNotInput": true,
+    "freshAuthorCohort": true,
+    "nativeAndSelectedAssetInterruptionRecovered": true,
+    "capturedOriginalLegConserved": true,
+    "uncapturedOriginalNativeAndReceiptProgressRefused": true,
+    "sourceBytesUnchanged": true,
+    "documentAndCommentFutureRedoPreserved": true,
+    "separateSelectedQueueDecisionPreserved": "cancelled"
+  },
+  "completion": {
+    "preparedAndObservedAreDistinctData": true,
+    "decisionHeadAndCanonicalApprovalMetadataPinned": true,
+    "actualRetainedApprovalFileSelectionPinned": true,
+    "pinSuppliedByActualCanonicalTransferBarrier": true,
+    "observedOnlyAfterActualRecipientOwnsSuccessor": true,
+    "abortedObservationRetryDoesNotRepeatTransfer": true,
+    "lostCommitAcknowledgementResolvedByExactRead": true,
+    "preparedAndObservedPinsBothReconstructCompleteSelectedBasis": true,
+    "fullTeardownAndFreshSelectedOwnerReopen": true,
+    "laterNativeAndCommentEditsAndUndoRedoPreserved": true,
+    "missingRoleWindowsRefused": true,
+    "corruptRetainedApprovalBytesRefusedWithoutRepair": true,
+    "callbackStorageRetargetingRefusedBeforeForeignOpen": true,
+    "ordinaryCleanupCallbackStillZeroArguments": true
+  },
+  "journal": {
+    "format": "breditor/native-room-union-run",
+    "eventFormat": "breditor/native-room-union-run-event",
+    "maxEvents": 4096,
+    "maxMetadataBytes": 67108864,
+    "absentOnlyStart": true,
+    "existingOnlyResume": true,
+    "genuineWitnessCompareAndSwap": true,
+    "countBeforeRowLoading": true,
+    "observedIsTerminal": true,
+    "storedProgressGrantsActors": false
+  },
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "nativeRustRebuilt": false,
+  "freshRustTestRun": false,
+  "nativeInputsRegenerated": false,
+  "pinnedNativeFilesReverified": 50,
+  "nativeReport": {
+    "path": "target/complete-image-cohort-native.json",
+    "sha256": "6845c6fee53d1249a8c77c73ca3c728fdfa874d8694798dfe2387b43868ae94c"
+  },
+  "actualProductionBundleSha256": "734005ce22c1aa83395548827e9383adc69bdae8d220c2bd2e437b1f394a12ba",
+  "productionModules": 837,
+  "offlineInstalledArchives": [
+    {
+      "name": "@breditor/browser",
+      "path": "/private/tmp/breditor-native-room-union-run-installed-zZ2whI/archives/breditor-browser-0.3.0-alpha.22.tgz",
+      "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+    },
+    {
+      "name": "@breditor/experimental-rich-content",
+      "path": "/private/tmp/breditor-native-room-union-run-installed-zZ2whI/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+      "sha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15"
+    },
+    {
+      "name": "@breditor/collaboration",
+      "path": "/private/tmp/breditor-native-room-union-run-installed-zZ2whI/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+      "sha256": "46d77b094530a2d54a2a49e43f85338445d819429d0f3b1d59613c8a1fff3679"
+    }
+  ],
+  "registryArtifacts": 45,
+  "workspaceLinks": false,
+  "actualPackageChildren": [
+    {
+      "name": "bundled-contracts",
+      "pid": 42141,
+      "code": 0,
+      "signal": null,
+      "log": "/private/tmp/breditor-native-room-union-run-installed-zZ2whI/bundled-contracts.log"
+    },
+    {
+      "name": "contracts",
+      "pid": 42140,
+      "code": 0,
+      "signal": null,
+      "log": "/private/tmp/breditor-native-room-union-run-installed-zZ2whI/contracts.log"
+    }
+  ],
+  "scope": "SDK-private distinct mixed-run warm/cold coordination with a bounded durable progress journal, actual author and target ownership, explicit whole-upload decisions and separate fresh promotion. Handoff preparation binds the actual retained approval file; observation follows a real recipient transfer. Complete selected restart data is reconstructed from either prepared or observed pins, then ordinary selected recovery separately acquires authors and checks actual current targets with fresh approval. Controlled full handle teardown and interrupted storage are not a physical process/power-loss or authenticated serving qualification.",
+  "remaining": [
+    "Original-role network authentication and provider/client reconciliation",
+    "Independent comment and server-log generation lifecycle",
+    "Authenticated whole-room serving activation",
+    "Union mutation for other operational source families",
+    "Unknown own-author suffixes and incomparable sealed-generation branches",
+    "Sustainable history, journal, retained-version and asset lifecycle",
+    "Physical process/power-loss qualification and remaining V1 release gates",
+    "Remaining full feature-catalog parity"
+  ],
+  "fullReleaseCorpusRun": false,
+  "physicalCrashQualified": false,
+  "authenticatedActivation": false,
+  "publicApiPromoted": false,
+  "v1Ready": false,
+  "v1GatesChanged": false
+}

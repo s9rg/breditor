@@ -2,7 +2,7 @@
 
 Breditor can durably retain the complete mixed room proof and both explicit whole-upload decisions, retire a genuinely held cohort while retaining its author locks, and restore ordinary target participants through those same locks. The ordered native and asset handoff reaches a usable selected owner without losing the compatible foreign edits or local Undo and Redo.
 
-These are SDK-private execution components. They do not yet form a complete union-aware warm/cold run coordinator with a durable progress journal. Local ownership is not authenticated server activation. The existing exact-preparation, execution and run protocols keep their original meanings and defaults; a mixed proof is never disguised as one of them.
+These SDK-private components feed the separate [recovery runs](NATIVE_ROOM_UNION_RUN.md), whose distinct progress journal and warm/cold attempts retain the mixed execution identity. Local ownership is not authenticated server activation. The existing exact-preparation, execution and run protocols keep their original meanings and defaults; a mixed proof is never disguised as one of them.
 
 ## Three complete upload inputs
 
@@ -40,7 +40,7 @@ The prepared adoption bases then reach the existing native and selected-asset tr
 
 ## Remaining architecture
 
-A complete union-aware warm/cold run coordinator must persist the chosen layout, progress, interruption disposition and completion boundary around these components. The ordered functional composition is not that crash/restart protocol. Existing exact-run identities cannot stand in for the new execution choice, and saved completion cannot supply actor acquisition or serving authority.
+The [recovery runs](NATIVE_ROOM_UNION_RUN.md) now persist the chosen layout, actual target progress and distinct handoff preparation/observation, with fresh-actor cold recovery and pinned selected-room restart data. Controlled handle teardown is not physical process or power-loss qualification. Existing exact-run identities cannot stand in for the new execution choice, and saved completion cannot supply actor acquisition or serving authority.
 
 Original-role network authentication, provider/client closure, independent comment and server-log generation lifecycle and authenticated whole-room activation remain required. Other operational families still need union mutation; unknown own-author suffixes and incomparable sealed branches retain their existing refusal semantics. Sustainable history, retained versions/assets and all V1 gates remain open.
 

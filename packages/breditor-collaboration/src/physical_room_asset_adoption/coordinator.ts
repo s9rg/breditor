@@ -35,13 +35,17 @@ interface Resources {store?:RoomAssetAdoptionStore;lease?:RecoveryLease;readonly
  * from the finite read/approval job. Neither one grants server authorship. */
 export interface SelectedRoomTransferOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy> extends RoomAssetApprovalOptions<P>{readonly approvalDatabase:string;readonly checkAssetAuthority:()=>void}
 const recipientApi={empty:RoomRunSuccessorRecipient.prototype.checkEmpty,stage:RoomRunSuccessorRecipient.prototype.stage,check:RoomRunSuccessorRecipient.prototype.checkStaged,activate:RoomRunSuccessorRecipient.prototype.activate,abandon:RoomRunSuccessorRecipient.prototype.abandon};
-interface ActorTransfer{readonly actors:StoppedActorCohort;readonly recipient:RoomRunSuccessorRecipient;readonly prepareComplete:()=>Promise<void>}
+interface ActorTransfer{readonly actors:StoppedActorCohort;readonly recipient:RoomRunSuccessorRecipient;readonly prepareComplete:(approval:RoomAssetApprovalFile)=>Promise<void>}
 let takeSelectedRoom:<P extends SharedSelectionPolicy>(stage:PhysicalRoomAssetAdoption,input:SelectedRoomTransferOptions<P>,actors?:ActorTransfer)=>Promise<RetainedSelectedAssetOwner>;
 export const transferRoomAssetAdoption=<P extends SharedSelectionPolicy>(stage:PhysicalRoomAssetAdoption,input:SelectedRoomTransferOptions<P>)=>takeSelectedRoom(stage,input);
 /** The already-reachable recipient keeps real successor custody if anything
  * rejects after activation. The completion callback is trusted SDK cleanup,
  * runs BEFORE all final source checks, and is never an input DATA field. */
-export function transferRoomAssetAdoptionWithActors<P extends SharedSelectionPolicy>(stage:PhysicalRoomAssetAdoption,input:SelectedRoomTransferOptions<P>,actors:StoppedActorCohort,recipient:RoomRunSuccessorRecipient,prepareComplete:()=>Promise<void>):Promise<RetainedSelectedAssetOwner>{checkPhysicalRootActors(actors);recipientApi.empty.call(recipient);if(typeof prepareComplete!=='function')return Promise.reject(fail('asset_adoption_policy'));return takeSelectedRoom(stage,input,{actors,recipient,prepareComplete});}
+export function transferRoomAssetAdoptionWithActors<P extends SharedSelectionPolicy>(stage:PhysicalRoomAssetAdoption,input:SelectedRoomTransferOptions<P>,actors:StoppedActorCohort,recipient:RoomRunSuccessorRecipient,prepareComplete:()=>Promise<void>):Promise<RetainedSelectedAssetOwner>{checkPhysicalRootActors(actors);recipientApi.empty.call(recipient);if(typeof prepareComplete!=='function')return Promise.reject(fail('asset_adoption_policy'));return takeSelectedRoom(stage,input,{actors,recipient,prepareComplete:()=>prepareComplete()});}
+/** Closed mixed-run variant: the trusted SDK cleanup receives the actual saved
+ * complete approval file. The ordinary callback above keeps its zero-argument
+ * invocation and all ordinary serialized contracts remain unchanged. */
+export function transferRoomAssetAdoptionWithActorsAndApproval<P extends SharedSelectionPolicy>(stage:PhysicalRoomAssetAdoption,input:SelectedRoomTransferOptions<P>,actors:StoppedActorCohort,recipient:RoomRunSuccessorRecipient,prepareComplete:(approval:RoomAssetApprovalFile)=>Promise<void>):Promise<RetainedSelectedAssetOwner>{checkPhysicalRootActors(actors);recipientApi.empty.call(recipient);if(typeof prepareComplete!=='function')return Promise.reject(fail('asset_adoption_policy'));return takeSelectedRoom(stage,input,{actors,recipient,prepareComplete});}
 interface Policy {readonly name:string;readonly authority:()=>void;readonly check:()=>void;readonly local:()=>void;readonly factory:IDBFactory;readonly locks:LockManager;readonly observation:PhysicalOperationV3Cancellation;readonly life:{closed:boolean;closing:boolean};readonly signal:AbortSignal|undefined}
 function policy(input:RoomAssetAdoptionOptions,begin:boolean){
  const raw=fields(input,['database','checkAuthority',...(begin?['participants']:[])],['signal']),name=database(raw['database']),authority=participantAuthority(raw['checkAuthority'] as ()=>void),factory=recoveryOpeningContext(),locks=navigator.locks,choices=begin?adoptionChoices(raw['participants']):undefined,life={closed:false,closing:false},observation=new PhysicalOperationV3Cancellation(raw['signal'] as AbortSignal|undefined);
@@ -70,7 +74,7 @@ export class PhysicalRoomAssetAdoption {
     await decideRoomAssetApproval(actual,approve,{check,signal,watchClosing:cancel=>{const rootWatch=scope.watchClosing(cancel);if(p.life.closing)cancel();else stage.#closingListeners.add(cancel);return()=>{stage.#closingListeners.delete(cancel);rootWatch();};}});await verify();await scope.verify();check();
     const file=await encodeRoomAssetApproval(actual,scope.cut,stage.#files,{check,digest:scope.assets.digest}),saved=await retainRoomAssetApproval(name,file,{check,digest:scope.assets.digest,signal,cleanup:scope.cleanup});check();
     const factory=p.factory,locks=p.locks,basis={files:stage.#files,resources:r,current:()=>{if(globalThis.indexedDB!==factory||globalThis.navigator?.locks!==locks)throw fail('asset_adoption_policy');r.store!.checkReadCurrent();}};
-    if(actors){await actors.prepareComplete();check();}
+    if(actors){await actors.prepareComplete(saved);check();}
     prepared=prepareSelectedAssetOwner(root,stage.#record,basis,saved,assetAuthority);
     if(actors)recipientApi.stage.call(actors.recipient,prepared.value);
     // The old temporary read is really closed before this fresh selected-store
