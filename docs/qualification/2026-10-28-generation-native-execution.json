@@ -1,0 +1,281 @@
+{
+  "format": "breditor/generation-native-execution-functional-qualification",
+  "formatVersion": 1,
+  "functionalPassed": true,
+  "nativeSerialPassed": true,
+  "allAttemptsPassed": false,
+  "releaseReady": false,
+  "v1GatesClosed": 0,
+  "v1GatesTotal": 13,
+  "baseCommit": "52c4b5e485ad5acb0c33b098639fe51d0d856617",
+  "qualifiedSource": {
+    "commit": "52c4b5e485ad5acb0c33b098639fe51d0d856617",
+    "dirty": true,
+    "sha256": "8ce76c2e70635f0ca9d75f06f0e22489a8cc1a1c64cfd2a81911be1e018fd8aa",
+    "files": 7180,
+    "bytes": 54775460
+  },
+  "changeSetSha256": "d96ed88309d46c4e3e487308d11c0eaffe9afcb67f88919af4c1cbd9f38c2769",
+  "scope": "Separate generation-native retained input and durable append-only execution. Genuine selected-generation authority, original accepted-page reauthentication, immutable before and per-client/resume cuts, terminal retirement after uncertain admission, complete cold-source ancestry and replay after completed READ retain later offline work and native Undo/Redo. Not older-disk reconstruction, cross-cut server joins, historical outbox settlement, old-serving exclusion, whole-room activation or V1/parity approval.",
+  "results": {
+    "source": 91,
+    "installed": 91,
+    "actualProductionBundle": 91,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0,
+    "newGenerationPerPath": 54,
+    "unchangedPhysicalPerPath": 37
+  },
+  "nativeSerial": {
+    "passed": 310,
+    "failed": 0,
+    "ignored": 0,
+    "filteredOut": 0
+  },
+  "knownPriorParallelNativeShutdownFailure": {
+    "qualification": "docs/qualification/2026-10-28-selected-generation-native.json",
+    "resolved": false,
+    "rootCauseConfirmed": false
+  },
+  "firstAttempt": {
+    "installedFixtureRelocationFailed": true,
+    "sourceSuiteIntentionallyCancelled": true,
+    "reason": "Runtime URL and package-module URL shared a reverse substitution target. Corrected the runtime-only location; the reversible-location assertion and all laws remain unchanged.",
+    "record": "runs/first-qualification.json"
+  },
+  "wireTests": 180,
+  "candidatePlanTests": 178,
+  "strictTypes": [
+    "types-generation-native-import-input.ts",
+    "types-generation-native-execution.ts",
+    "types-generation-native-boundary.ts",
+    "types-native-import-input.ts",
+    "types-native-execution.ts"
+  ],
+  "nativePublicFixtureHosts": 51,
+  "nativeGrammarTransportInputConfigurations": 10,
+  "independentDocumentCommentHistoryPairs": 4,
+  "selectedFamiliesPerCase": 7,
+  "normalSharedWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "nativeProductionUnchangedFrom": "52c4b5e485ad5acb0c33b098639fe51d0d856617",
+  "productionModuleCount": 806,
+  "bundleSha256": "5124eb4928eecc2df65c368ff6ae819b0d228218bdb14f1935e7934d5b25cbd6",
+  "evidence": {
+    "directory": "/Users/s/code/breditor/target/generation-native-execution-proof-ljUXki",
+    "indexSha256": "afb897c9c9d6a1a474b259fe4902626e7c4c92857428679a6e17dd6b84dcd1b8",
+    "files": 3154
+  },
+  "implementationAndTests": [
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_execution/accepted_input.ts",
+      "bytes": 1767,
+      "sha256": "207db6122b85e65704699dd2d337b73c22c86f9c9ca505464c12a1a177815286"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_execution/contract.ts",
+      "bytes": 3174,
+      "sha256": "21a7326a5f507a76e62ea4ad07f0b9963c3830dd1397d2e4bb7b1a423fd1a5a1"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_execution/coordinator.ts",
+      "bytes": 10481,
+      "sha256": "97f24aa2dbede60f2f84b84e38caa7dd8f740470a0b043944e6b694105760d68"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_execution/event.ts",
+      "bytes": 4915,
+      "sha256": "b3c8201f91d2910af6a28403d6d5d498dd67a46f995c9946a7b1b080d649daf7"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_execution/import_client.ts",
+      "bytes": 1872,
+      "sha256": "eb87ec28299c01ac11485fb86374fae7629ce3d5b0707dee9e4ae373b2501117"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_execution/inspection.ts",
+      "bytes": 5960,
+      "sha256": "ee8f28ecd027e8af13cf4157b4fc66e6dd509beeb2ad6e09a63888e65d8c3e46"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_execution/journal_rows.ts",
+      "bytes": 4302,
+      "sha256": "2117d2efb57c3d13e2e852037e1a071237287211954c5d19c9f30aa8674de6d3"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_execution/journal_store.ts",
+      "bytes": 14142,
+      "sha256": "cc3d52ffcbfe5bc850c1bb16b7cfeb898d04512a042836190f099892573190a8"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_execution/policy.ts",
+      "bytes": 2173,
+      "sha256": "2174d34ddf4102aead926c8638f07646e7655326750c34d3ba698f987db67f0c"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_execution/resources.ts",
+      "bytes": 3682,
+      "sha256": "21699337202a1238bef98f80a358c06aecce9baa406a4ad64cdead34c835e7dd"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_import/archive.ts",
+      "bytes": 10172,
+      "sha256": "60c82fdf811910cd1725ed638d6a551732fd0e178cf0df2550212230cb6d801e"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_import/contract.ts",
+      "bytes": 1959,
+      "sha256": "8385a246cf059bd2507b43dbe099e7812e0f83d0ddc818e73fe8ea7f30aa6ef1"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_import/coordinator.ts",
+      "bytes": 12020,
+      "sha256": "efc31592e0b9413075e05389ea0bbc07d8c4bce8a1980ff3cfc5799618fb075d"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_import/input_store.ts",
+      "bytes": 8784,
+      "sha256": "7794271c4c1afd9163d7164fa9ce1414bc8b78ed549b7d18d60cde3b8adbf7e1"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_import/manifest.ts",
+      "bytes": 2899,
+      "sha256": "5e0b29bc1c0caec1f997b9505e855b7e11734fdc6c16177629bf4151632e4507"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_import/policy.ts",
+      "bytes": 1943,
+      "sha256": "2e088b62a0b75e4e46029a37d0dc4ad34852a2e6ab21c1dbb424d911eeac4797"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_generation_import/resources.ts",
+      "bytes": 5377,
+      "sha256": "096e6a36ef2319bf67487894a7331c17a5921cfdaaa6b812a2f578484e7e751b"
+    },
+    {
+      "path": "scripts/candidate-release/plan.mjs",
+      "bytes": 119897,
+      "sha256": "78da1a29717cd2d08cec3c54a91f03a953649f9b9d20d7108e93c5a031a7b6fe"
+    },
+    {
+      "path": "scripts/check-generation-native-execution-installed.mjs",
+      "bytes": 16778,
+      "sha256": "09fd68ce597f7261f23744f2354e28635169166eeee5b73a371e53bc14d8d5fe"
+    },
+    {
+      "path": "scripts/check-generation-native-execution-sdk.mjs",
+      "bytes": 3045,
+      "sha256": "4dcc0f147316e16f9e737dd3237aef01e4ff58493a92704136f1922f1f54cf6f"
+    },
+    {
+      "path": "scripts/fixtures/editor-consumer/types-generation-native-boundary.ts",
+      "bytes": 2110,
+      "sha256": "e496218beb79b132866ade0315da74c28e1fd2c5e0dabb822e2139903af9b859"
+    },
+    {
+      "path": "scripts/fixtures/editor-consumer/types-generation-native-execution.ts",
+      "bytes": 2481,
+      "sha256": "f4c84992b4a187b2b3369e10953123ffe3a575220acad85c4b669b4f191ccba0"
+    },
+    {
+      "path": "scripts/fixtures/editor-consumer/types-generation-native-import-input.ts",
+      "bytes": 1688,
+      "sha256": "33c15517c3b0d6836781ac0a0f3d2321f2277f03d0130879eb6c1900a43c4d56"
+    },
+    {
+      "path": "scripts/fixtures/generation-native-execution/session.mjs",
+      "bytes": 1383,
+      "sha256": "da8fd1e4886e76e928451ac193250a0b33f42c8b5831f51f6672e2c174985b1c"
+    },
+    {
+      "path": "scripts/fixtures/selected-generation-reconciliation/session.mjs",
+      "bytes": 3486,
+      "sha256": "a4c7d90a658cb1e8f4e883f40537c2a99344c36a78e4b3a83bcea1dc1c8c2866"
+    },
+    {
+      "path": "scripts/generation-native-execution-admission.test.mjs",
+      "bytes": 2429,
+      "sha256": "0699ba1f1741fa7829bb57276a42826ce44298f51272f15f541fe862669f1623"
+    },
+    {
+      "path": "scripts/generation-native-execution-bound-sdk.test.mjs",
+      "bytes": 4014,
+      "sha256": "e15ee93751bd32a5e43d06a37bcc8f80296bbe7feb9700d92b1ba996cb0cdf4d"
+    },
+    {
+      "path": "scripts/generation-native-execution-candidate-plan.test.mjs",
+      "bytes": 2881,
+      "sha256": "f30504fcba1a69e4412c1382650f0ecb822ae6e2cdc4ae5059343b1ebae57125"
+    },
+    {
+      "path": "scripts/generation-native-execution-journal.test.mjs",
+      "bytes": 9021,
+      "sha256": "3f898a883397c9988b02d99ec661b43ca5d16537297dca7203d229612b2d1b4d"
+    },
+    {
+      "path": "scripts/generation-native-execution-lifetime.test.mjs",
+      "bytes": 3823,
+      "sha256": "6e0ea9e9874114750a5a66deafff2cc1a0aeada6d2e3ab523a081a08e94407f7"
+    },
+    {
+      "path": "scripts/generation-native-execution-matrix-sdk.test.mjs",
+      "bytes": 4002,
+      "sha256": "ae789498befecd2adc49267905ef0e42fe2fccce92e15bb0ee642d75f94223ee"
+    },
+    {
+      "path": "scripts/generation-native-execution-resume-sdk.test.mjs",
+      "bytes": 6970,
+      "sha256": "87b30f446814d5a9d9efe54ee83f2b1107bab1d1a49356f281ae0e8aaba64ede"
+    },
+    {
+      "path": "scripts/generation-native-execution-sdk.test.mjs",
+      "bytes": 4968,
+      "sha256": "4486d1a076d9e84cca26cd0b00722b2f22fd01be9187effe231934e1c8462bc2"
+    },
+    {
+      "path": "scripts/generation-native-execution-workload.mjs",
+      "bytes": 2412,
+      "sha256": "8b374ca6d9580c1498a56a8345300630d55aa0b918334fa440d31e2f3380a060"
+    },
+    {
+      "path": "scripts/generation-native-family-boundary.test.mjs",
+      "bytes": 4141,
+      "sha256": "7e36a93afa5dd390f08fad1ab0889c01f2e7928e7fb7692c9faae2cb759f1fcc"
+    },
+    {
+      "path": "scripts/generation-native-import-input-sdk.test.mjs",
+      "bytes": 10244,
+      "sha256": "3f88bd886b01d127879de724dc2f7d16346f4598261511a2fe80c8e0bc7c84a5"
+    },
+    {
+      "path": "scripts/generation-native-import-input-storage.test.mjs",
+      "bytes": 6682,
+      "sha256": "a65b476d7e1754875ebaa696c984744417b46ef4b9323722080942e25ba7da31"
+    },
+    {
+      "path": "scripts/generation-native-input-authentication.test.mjs",
+      "bytes": 4167,
+      "sha256": "015a08a0b766550a61d9c40c091f18ba0060b5de619a164f00036a90f0454e82"
+    },
+    {
+      "path": "scripts/generation-native-input-existing-sdk.test.mjs",
+      "bytes": 4423,
+      "sha256": "f5b5c892b0c120977d5494d4235f227289989aea31aa307b846f12434c09c317"
+    },
+    {
+      "path": "scripts/generation-native-input-existing-storage.test.mjs",
+      "bytes": 2916,
+      "sha256": "8ddce8971352311af24af69966aa0a8f4e38b62be984237f8abec276775bda67"
+    },
+    {
+      "path": "scripts/generation-native-input-profiles.test.mjs",
+      "bytes": 3198,
+      "sha256": "935861dfa0c6a37c5d81fb6057c6b3140389b9ffc9aa5e1f49b76ec5d797095d"
+    }
+  ],
+  "metadataOnlyAfterQualification": [
+    "docs/GENERATION_NATIVE_EXECUTION.md",
+    "docs/qualification/2026-10-28-generation-native-execution.json"
+  ],
+  "noPushPublicationTagVersionOrDeployment": true
+}

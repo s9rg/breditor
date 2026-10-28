@@ -57,9 +57,10 @@ excludes ordinary aliases during admission, performs fresh per-import authority
 checks and drains unfinished reads before releasing exclusion. A failed attempt
 can retain already admitted native changes; it never fabricates a rollback.
 
-These are private functional operations. Durable generation-specific input and
-progress journals must precede any production recovery executor; the read and
-scope alone are not such an executor.
+These are private functional operations. The separate
+[generation executor](GENERATION_NATIVE_EXECUTION.md) retains complete inputs and
+per-client/resume journals before native admission. The read and scope alone do
+not provide that execution or whole-room activation.
 
 ## Lifetime and provider availability
 
@@ -85,7 +86,7 @@ assertions with reversible module-location changes only. Node storage, locks
 and raster presentation fixtures are not physical browser or crash qualification.
 
 Complete historical source/outbox reconciliation, unknown-own branch decisions,
-generation-specific durable native execution, old-serving exclusion and an
+older-disk and cross-cut execution joins, old-serving exclusion and an
 authenticated durable whole-room activation decision remain next. The feature
 parity objective and all thirteen V1 release gates remain open.
 
