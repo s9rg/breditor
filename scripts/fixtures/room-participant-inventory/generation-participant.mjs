@@ -3,8 +3,8 @@
 import assert from 'node:assert/strict';
 import {pixel,secondPixel,secondAsset} from '../review-assets/pixels.mjs';
 
-const endpoint='ws://127.0.0.1:1/ws';
-export async function generationParticipant({api,rich,profile,fixture,client,kind,tag,counts,edit=true,paired=true,principal=client.principal,documentCheckpoint=client.documentCheckpoint,reviewCheckpoint=client.reviewCheckpoint,readOnly,changeBinding,changeRetained,extraVersions=false}) {
+const offlineEndpoint='ws://127.0.0.1:1/ws';
+export async function generationParticipant({api,rich,profile,fixture,client,kind,tag,counts,edit=true,paired=true,principal=client.principal,documentCheckpoint=client.documentCheckpoint,reviewCheckpoint=client.reviewCheckpoint,readOnly,changeBinding,changeRetained,extraVersions=false,endpoint=offlineEndpoint}) {
  const metadata=JSON.parse(fixture.inventoryJson),room=metadata.room.document,writer=client.writer;
  readOnly??=client.observer||metadata.accounts.find(row=>row.principal===client.principal).documentRole===null;
  const review=paired?{actor:client.actor,principal,access:readOnly?'read_only':'comment'}:undefined;

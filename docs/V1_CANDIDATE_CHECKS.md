@@ -1,5 +1,16 @@
 # V1 candidate checks
 
+The [real selected-delivery qualification](qualification/2026-10-29-native-selected-delivery.json)
+passes all ten original native grammar/wire modes from source, fresh actual
+package archives and an executed minified SDK: seven offline authors per mode,
+real epoch-fenced/durable services, authentication/raster bytes/receipts,
+idempotent reconnect, future native history and exact cold paired reopen.
+Strict SDK/public types, all-target server-feature lint, format and 73 plan laws
+pass. Both profiles require its source/native and installed/bundled stages.
+The separate retained-owner prototype is not merged or whole-room qualified;
+unbound sources, metadata outboxes, durable delivery preparation and joint
+server/provider/client activation remain open. All thirteen V1 gates stay open.
+
 The [relay quiescence qualification](qualification/2026-10-29-relay-recovery-quiescence.json)
 passes 15 focused laws, four public late-save cases, ten unchanged segmented and
 forty unchanged independent-history relay cases, the complete original 119-case

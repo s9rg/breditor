@@ -13,6 +13,32 @@ the FCKeditor lineage. CKEditor 4 reached ordinary EOL in June 2023; its
 is not the modern feature baseline. Breditor remains an independent implementation:
 no ProseMirror, Tiptap or CKEditor document, operation or plugin protocol is adopted.
 
+## Actual activated service and fresh package delivery
+
+The [native service contract](SELECTED_DELIVERY_NATIVE_SERVICE.md) now supplies
+a genuinely sealed original service and durably activated target, with real
+seven-author credentials retained only in private IPC. Client endpoints are
+bound before source construction. Independent native history/log generations,
+accepted prefixes, offline suffixes and raster bytes remain intact.
+
+The [qualification](qualification/2026-10-29-native-selected-delivery.json) passes
+all ten original native grammar/wire modes from source, fresh offline-installed
+archives and an actually executed minified production SDK: 210 author workflows,
+210 exact cold paired reopens and 840 future document/comment Undo/Redo steps.
+Actual target authentication, sealed-source refusal, durable receipts and
+reconnect without duplicate submission are checked. The old exact operator cut
+correctly refuses after delivery; a fresh actual snapshot accepts. Strict SDK
+types, all-target server-feature Rust lint, formatting and 73 plan/verifier laws
+pass. Both candidate profiles require these source and installed/bundle stages.
+
+Separately, four development tests pass for the genuine retained seven-family
+owner/default source paths. Its four relay-bound families deliver through this
+real service with the same native/source owners after the old job ends. The
+prototype is not merged: three unbound families, metadata outboxes, durable
+delivery preparation and joint advanced server/provider/client activation remain
+unfinished. Node IDB/locks are fixtures, not physical durability evidence.
+Normal Wasm is unchanged; all thirteen V1 gates stay open.
+
 ## Actual document/comment work quiescence
 
 The [quiescence contract](RELAY_RECOVERY_QUIESCENCE.md) now keeps real pending

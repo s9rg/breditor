@@ -124,3 +124,8 @@ required-features = ["server"]
 name = "generation_complete_control_functional"
 path = "examples/generation_complete_control_functional.rs"
 required-features = ["server"]
+
+[[example]]
+name = "selected_delivery_functional"
+path = "examples/selected_delivery_functional.rs"
+required-features = ["server"]

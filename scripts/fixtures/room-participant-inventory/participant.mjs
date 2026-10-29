@@ -1,8 +1,8 @@
 /** Real paired and dependent store factories, coherent participant files and native re-admission. */
 import assert from "node:assert/strict";
-const endpoint="ws://127.0.0.1:1/ws";
+const offlineEndpoint="ws://127.0.0.1:1/ws";
 export function offlineTransport(counts){const request=async()=>{counts.networkCalls++;throw Error("No network during inactive recovery");};return{checkSuggestionQueue(){},checkSuggestionRevisions(){},suggestionRevisionsReady:()=>false,requestSuggestionRevision:request,requestSuggestion:request,refreshDocument:request,connect:request,flush:request,subscribe:()=>()=>{},suggestionState:()=>({revision:"0",documentRevision:"0"}),state:()=>({status:"offline"})};}
-export async function recoverParticipant({api,rich,profile,fixture,client,tag,counts,initialReadOnly,uploads,configureRecoveryOptions}){
+export async function recoverParticipant({api,rich,profile,fixture,client,tag,counts,initialReadOnly,uploads,configureRecoveryOptions,endpoint=offlineEndpoint}){
  const metadata=JSON.parse(fixture.inventoryJson),room=metadata.room.document,writer=client.writer,sourceIdentity={room,writer,richLanguage:fixture.language,history:"explicit",rangeEditing:"original",selectionEditing:"original",searchHistory:null},readOnly=client.observer||metadata.accounts.find(a=>a.principal===client.principal).documentRole===null;
  const review={actor:client.actor,principal:client.principal,access:readOnly?"read_only":"comment"},relay={endpoint,principal:client.principal,room,actor:client.actor,binding:metadata.review.binding,documentWriter:writer,...(fixture.atomic?{writerTransport:"atomic-v2"}:{}),...(client.observer?{reviewEditing:"read_only"}:{})};
  const record={format:client.observer?"breditor/shared-review-observer-checkpoint-record":"breditor/shared-review-relay-checkpoint-record",formatVersion:1,history:"explicit",rangeEditing:"original",selectionEditing:"original",richLanguage:fixture.language,reviewActor:client.actor,principal:client.principal,documentCheckpointJson:client.documentCheckpoint,reviewCheckpointJson:client.reviewCheckpoint,versions:[],relay,progress:{cursor:null,accepted:null,sequence:null}};
