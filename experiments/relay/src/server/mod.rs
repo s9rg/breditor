@@ -40,12 +40,14 @@ pub use generation_backup::{
     router_with_log_generation_backups_and_deployment_lease,
 };
 pub use generation_recovery::{
-    ActivatedNativeLogGenerationHost, NativeLogGenerationActivationIdentity,
+    ActivatedNativeLogGenerationHost, NativeGenerationActivationCheckpointStatus,
+    NativeGenerationActivationPrepareOptions, NativeLogGenerationActivationIdentity,
     PhysicalRoomRecoveryControl, PhysicalRoomRecoveryControlIdentity,
     PhysicalServerAssetAvailabilityRead, PhysicalServerAssetRecoveryState,
     PhysicalServerRecoveryAssetCoverage, PhysicalServerRoomRecoveryCoverage,
     PhysicalServerRoomRecoveryState, PhysicalServerRoomRecoveryStateIdentity,
-    PreparedLogGenerationRecoveryHost, PreparedPhysicalRoomRecoveryHost,
+    PreparedLogGenerationRecoveryHost, PreparedNativeGenerationActivation,
+    PreparedNativeGenerationActivationIdentity, PreparedPhysicalRoomRecoveryHost,
     ServerLogGenerationAssetAvailabilityRead, ServerLogGenerationAssetRecoveryState,
     ServerLogGenerationRecoveryAssetCoverage, ServerLogGenerationRecoveryControl,
     ServerLogGenerationRecoveryControlIdentity, ServerLogGenerationRecoveryCoverage,

@@ -9,8 +9,8 @@ use std::{
     io::{Read, Seek, SeekFrom},
     path::Path,
 };
-pub(super) const MAX_INTENT: u64 = 128 * 1024;
-pub(super) fn open(path: &Path) -> Result<File> {
+pub(in crate::server) const MAX_INTENT: u64 = 128 * 1024;
+pub(in crate::server) fn open(path: &Path) -> Result<File> {
     if !fs::symlink_metadata(path)?.is_file() {
         return Err(Error::Contract("handover regular file required"));
     }
@@ -22,7 +22,7 @@ pub(super) fn open(path: &Path) -> Result<File> {
     GenerationFileWitness::of(&file)?.guard(&file, path)?;
     Ok(file)
 }
-pub(super) fn read(file: &File, path: &Path, limit: u64) -> Result<Vec<u8>> {
+pub(in crate::server) fn read(file: &File, path: &Path, limit: u64) -> Result<Vec<u8>> {
     let witness = GenerationFileWitness::of(file)?;
     let stamp = GenerationFileStamp::of(file)?;
     witness.guard(file, path)?;
@@ -46,7 +46,7 @@ pub(super) fn read(file: &File, path: &Path, limit: u64) -> Result<Vec<u8>> {
     witness.guard(file, path)?;
     Ok(bytes)
 }
-pub(super) fn digest(file: &File, path: &Path, length: u64) -> Result<[u8; 32]> {
+pub(in crate::server) fn digest(file: &File, path: &Path, length: u64) -> Result<[u8; 32]> {
     let witness = GenerationFileWitness::of(file)?;
     let stamp = GenerationFileStamp::of(file)?;
     witness.guard(file, path)?;

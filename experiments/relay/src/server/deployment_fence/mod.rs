@@ -1,5 +1,7 @@
 //! Separate host-owned serving epochs. No archive, receipt or editor token can
 //! construct a lease; room recovery/reconciliation remains a separate decision.
+mod activate_durable_generation;
+pub(super) use activate_durable_generation::activate_durable_native_generation;
 mod activate_generation;
 pub(super) use activate_generation::activate_native_generation;
 mod authority;
@@ -26,7 +28,9 @@ mod state;
 mod tests;
 mod transaction;
 pub use authority::RoomDeploymentAuthority;
-pub(super) use handover_epoch::{handover_selection, prepared_handover_status};
+pub(super) use handover_epoch::{
+    handover_selection, prepared_decision_status, prepared_handover_status,
+};
 pub use identity::{RoomDeploymentIdentity, RoomDeploymentSelection};
 pub use lease::RoomDeploymentLease;
 pub(super) use seal::seal;

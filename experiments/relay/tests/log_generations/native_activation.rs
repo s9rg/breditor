@@ -5,14 +5,16 @@ use breditor_collab_relay::{
     RecoveryDocumentCredential, RecoveryRegistrationCredentials, RecoveryReviewCredential,
     RoomRecoveryPolicy, ServerLogGenerationRoomBackup, ServerLogGenerationRoomRecovery,
     server::{
-        Authentication, NativeLogGenerationActivationIdentity, PreparedLogGenerationRecoveryHost,
-        RoomDeploymentAuthority, ServerLogGenerationRecoveryCoverage,
-        VerifiedServerLogGenerationRecoveryState, prepare_log_generation_recovery_host,
+        Authentication, PreparedLogGenerationRecoveryHost, RoomDeploymentAuthority,
+        ServerLogGenerationRecoveryCoverage, VerifiedServerLogGenerationRecoveryState,
+        prepare_log_generation_recovery_host,
         router_with_log_generation_backups_and_deployment_lease,
     },
 };
 use serde_json::json;
 use std::fs;
+#[path = "native_activation/durable.rs"]
+mod durable;
 #[path = "native_activation/traffic.rs"]
 mod traffic;
 // Reuse the exact bounded TCP/WebSocket test driver; it has no private relay API.
@@ -40,7 +42,7 @@ fn credentials(author: &author::Author) -> RecoveryRegistrationCredentials {
         }],
     }
 }
-async fn workflow(version: u32, standard: bool, atomic: bool) -> TestResult {
+async fn workflow(version: u32, standard: bool, atomic: bool, checkpointed: bool) -> TestResult {
     let (files, profile, mut room) = setup(version, standard, atomic)?;
     let mut prepared = author::prepare(&mut room, &profile, &files.0.join("assets"), atomic)?;
     let authority =
@@ -74,16 +76,17 @@ async fn workflow(version: u32, standard: bool, atomic: bool) -> TestResult {
     let offline_review = prepared.author.review.checkpoint_json()?;
     let (host, token, proof) =
         Box::pin(prepare_target(&files.0, &original, credentials(&prepared.author))).await?;
-    let choice = host
-        .preview_native_service_activation("owner", &token, &authority, &intent, &proof)
-        .await?;
-    fs::write(files.0.join("activation-choice.json"), serde_json::to_vec(&choice)?)?;
-    let choice: NativeLogGenerationActivationIdentity =
-        serde_json::from_slice(&fs::read(files.0.join("activation-choice.json"))?)?;
-    let active = host
-        .activate_native_service("owner", &token, authority.clone(), intent, proof, choice.clone())
-        .await?;
-    assert_eq!(active.selection(), choice.planned_selection());
+    let active = Box::pin(durable::first(
+        &host,
+        &token,
+        &authority,
+        intent.clone(),
+        proof,
+        &files.0,
+        checkpointed,
+    ))
+    .await?;
+    let mut pin = active.selection().clone();
     assert_eq!(prepared.author.document.checkpoint()?, offline_document);
     assert_eq!(prepared.author.review.checkpoint_json()?, offline_review);
     let old = network::Network::start(old_router).await?;
@@ -101,13 +104,35 @@ async fn workflow(version: u32, standard: bool, atomic: bool) -> TestResult {
     )
     .await?;
     service.stop().await?;
+    drop(intent);
+    if checkpointed {
+        insert(&mut prepared.author.document, "offline across native cold restart ")?;
+        author::comment(
+            &prepared.author.document,
+            &mut prepared.author.review,
+            "offline comment across native cold restart",
+        )?;
+        let (active, token) =
+            Box::pin(durable::restart(&files.0, &original, &prepared.author)).await?;
+        pin = active.selection().clone();
+        let service = network::Network::start(active.router()).await?;
+        drop(active);
+        serve(
+            &service,
+            &old,
+            &profile,
+            &mut prepared.author,
+            (&token, &old_token),
+            (&prepared.asset, &prepared.png),
+            atomic,
+        )
+        .await?;
+        service.stop().await?;
+    }
     old.stop().await?;
     drop(live);
-    let cold = RoomDeploymentAuthority::open_at_least(
-        &files.0.join("authority"),
-        choice.planned_selection(),
-    )?;
-    assert_eq!(cold.current_selection()?, *choice.planned_selection());
+    let cold = RoomDeploymentAuthority::open_at_least(&files.0.join("authority"), &pin)?;
+    assert_eq!(cold.current_selection()?, pin);
     Ok(())
 }
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -115,7 +140,7 @@ async fn ten_public_services_reconnect_both_offline_lanes_exact_retries_future_h
 -> TestResult {
     for (version, standard) in [(1, false), (2, false), (2, true), (3, false), (3, true)] {
         for atomic in [false, true] {
-            Box::pin(workflow(version, standard, atomic)).await?;
+            Box::pin(workflow(version, standard, atomic, false)).await?;
         }
     }
     Ok(())
@@ -191,5 +216,16 @@ async fn serve(
     assert_eq!(service.http("GET", &format!("/assets/{}", rasters.0), tokens.1, &[]).await?.0, 403);
     assert_ne!(old.http("GET", &format!("/assets/{}", rasters.0), tokens.1, &[]).await?.0, 200);
     drop(socket);
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn ten_durable_public_native_services_cold_restart_and_keep_both_offline_lanes_future_history_and_rasters()
+-> TestResult {
+    for (version, standard) in [(1, false), (2, false), (2, true), (3, false), (3, true)] {
+        for atomic in [false, true] {
+            Box::pin(workflow(version, standard, atomic, true)).await?;
+        }
+    }
     Ok(())
 }

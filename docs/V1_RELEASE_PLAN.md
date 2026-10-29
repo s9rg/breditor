@@ -13,6 +13,31 @@ the FCKeditor lineage. CKEditor 4 reached ordinary EOL in June 2023; its
 is not the modern feature baseline. Breditor remains an independent implementation:
 no ProseMirror, Tiptap or CKEditor document, operation or plugin protocol is adopted.
 
+## Durable native target activation and cold restart
+
+The [durable-first contract](DURABLE_NATIVE_GENERATION_ACTIVATION.md) now retains
+the complete actual target cut before committing a target-bound native service
+epoch. Cold restart freshly authenticates the same operational owner, requires
+all prior checkpoint history/rasters and takes a new epoch. Extending only the
+older original source is not enough. No saved lease is recreated, original
+custody discarded, or existing warm-only/file/wire meaning changed.
+
+The [qualification](qualification/2026-10-28-durable-native-generation-activation.json) passes 545
+full server-feature tests, 273 no-server tests and 190 plan/verifier laws
+without failures or skips. Ten focused checks include forty native family modes,
+three real process-exit phases with fresh authenticated continuation, cancellation
+at three commit stages and 160 successful concurrent checkpoint reads. A public
+ten-mode HTTP/WebSocket workflow stops services, cold-opens original files and
+retains both offline lanes, exact retries, future Undo/Redo and raster bytes.
+Both strict all-target lint modes, formatting and Rustdoc pass.
+
+This is a durable-first native-service path, not complete room adoption. Current
+provider/client and packet/outbox closure, explicit local-comment adoption,
+coordinated browser-owner activation, warm-only migration and disaster relocation
+remain. Existing native credential proof requirements are not relaxed. Normal
+Wasm is unchanged and earlier npm/bundle evidence is not freshly executed here.
+All thirteen V1 gates remain open; nothing is pushed, published, tagged or deployed.
+
 ## Authenticated native generation service activation
 
 The [native service contract](NATIVE_GENERATION_SERVICE_ACTIVATION.md) now connects

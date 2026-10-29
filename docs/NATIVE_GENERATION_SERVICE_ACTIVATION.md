@@ -115,3 +115,5 @@ adoption of unbound local comments, durable coordinated browser-owner activation
 authenticated cold/new-source continuation and all remaining selected parity and
 release gates. None can be inferred from this native service result. Historical
 WebKit and intermittent parallel TCP shutdown observations are not declared fixed.
+
+The separate [durable-first native activation and cold-restart contract](DURABLE_NATIVE_GENERATION_ACTIVATION.md) adds complete target checkpoints and fresh cold epochs. This older warm-only API keeps its original meanings and does not automatically migrate into that path.

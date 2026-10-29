@@ -1,5 +1,14 @@
 # V1 candidate checks
 
+The [durable native activation qualification](qualification/2026-10-28-durable-native-generation-activation.json) passes
+545 full server-feature tests, 273 no-server tests and 190 plan/verifier
+laws without skips. It covers actual durable target preparation, same-owner cold
+restart, refusal of post-source checkpoint loss, real process exits and native
+HTTP/WebSocket offline/future-history continuation. Both candidate profiles
+require its native and public stages. Both strict all-target lint modes, formatting
+and Rustdoc pass. This is not whole-plan, fresh npm, complete provider/client or
+coordinated whole-room qualification. All thirteen V1 gates stay open.
+
 The [native service qualification](qualification/2026-10-28-native-generation-service-activation.json) passes
 533 full server-feature tests, 273 no-server tests and 188 plan/verifier
 laws without skips. Eight selected laws and a public ten-mode socket workflow

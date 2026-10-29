@@ -76,6 +76,7 @@ pub(in crate::server) fn activate_native_generation(
             .set(NativeGenerationServingCustody {
                 original: handle.original.clone(),
                 source: source.clone(),
+                checkpoint: None,
             })
             .map_err(|_| Error::NeedsRecovery)?;
         slot.begin_commit();

@@ -13,17 +13,17 @@ use crate::{
 };
 use std::{fs, sync::Arc};
 
-struct Setup {
-    source: Source,
-    authority: RoomDeploymentAuthority,
-    intent: Arc<PreparedLogGenerationHandover>,
-    handle: PreparedLogGenerationRecoveryHost,
-    owner: String,
-    reader: String,
-    _old_router: axum::Router,
+pub(super) struct Setup {
+    pub(super) source: Source,
+    pub(super) authority: RoomDeploymentAuthority,
+    pub(super) intent: Arc<PreparedLogGenerationHandover>,
+    pub(super) handle: PreparedLogGenerationRecoveryHost,
+    pub(super) owner: String,
+    pub(super) reader: String,
+    pub(super) _old_router: axum::Router,
 }
 impl Setup {
-    async fn new(
+    pub(super) async fn new(
         profile: (u32, bool),
         atomic: bool,
         history: (bool, bool),
@@ -82,7 +82,7 @@ impl Setup {
             _old_router: router,
         })
     }
-    async fn proof(&self) -> TestResult<VerifiedServerLogGenerationRecoveryState> {
+    pub(super) async fn proof(&self) -> TestResult<VerifiedServerLogGenerationRecoveryState> {
         let state = self.handle.capture_recovery_state("owner", &self.owner).await?;
         let id = state.identity()?;
         let (_, inventory) = state.into_parts();
@@ -118,7 +118,7 @@ impl Setup {
             )
             .await?)
     }
-    fn ledger(&self) -> TestResult<Vec<u8>> {
+    pub(super) fn ledger(&self) -> TestResult<Vec<u8>> {
         Ok(fs::read(self.source.directory.0.join("authority/authority.log"))?)
     }
 }

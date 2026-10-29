@@ -9,6 +9,13 @@ pub(crate) struct GenerationOperationCustody {
     context: Context,
 }
 impl GenerationOperationCustody {
+    /// Detached commitment to the actual original operational directory, control
+    /// selection and intent inode. Call only alongside real source/custody checks.
+    pub(crate) fn activation_owner_digest(&self) -> Result<[u8; 32]> {
+        use sha2::{Digest, Sha256};
+        Ok(Sha256::digest(serde_json::to_vec(&self.context.marker)?).into())
+    }
+
     pub(crate) fn check_source(
         &self,
         room: &mut Room,

@@ -29,7 +29,16 @@ pub(in crate::server) fn prepared_handover_status(
     intent: &PreparedLogGenerationHandoverIdentity,
 ) -> Result<LogGenerationHandoverStatus> {
     intent.validate()?;
-    if authority.identity() != intent.previous.identity {
+    prepared_decision_status(authority, &intent.previous, &intent.sealed)
+}
+pub(in crate::server) fn prepared_decision_status(
+    authority: &RoomDeploymentAuthority,
+    previous: &RoomDeploymentSelection,
+    planned: &RoomDeploymentSelection,
+) -> Result<LogGenerationHandoverStatus> {
+    previous.validate_pin()?;
+    planned.validate_pin()?;
+    if authority.identity() != previous.identity {
         return Err(Error::Contract("handover authority differs"));
     }
     let mut held = Permit::try_acquire(&authority.state, false)?;
@@ -39,9 +48,9 @@ pub(in crate::server) fn prepared_handover_status(
         &authority.state.header_digest,
         authority.state.offset,
         &current,
-        &intent.previous,
+        previous,
     )?;
-    let next = intent.sealed.validate_pin()?;
+    let next = planned.validate_pin()?;
     let status = if current.count < next {
         LogGenerationHandoverStatus::Prepared
     } else {
@@ -69,7 +78,7 @@ pub(in crate::server) fn prepared_handover_status(
                 return Err(error);
             }
         };
-        if Some(nonce).as_ref() == intent.sealed.owner.as_ref() {
+        if Some(nonce).as_ref() == planned.owner.as_ref() {
             LogGenerationHandoverStatus::Sealed
         } else {
             LogGenerationHandoverStatus::Superseded

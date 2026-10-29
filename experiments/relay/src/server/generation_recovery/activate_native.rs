@@ -18,11 +18,17 @@ use std::sync::Arc;
 pub(in crate::server) struct NativeGenerationServingCustody {
     pub original: Arc<ServerLogGenerationRoomBackup>,
     pub source: Arc<PreparedLogGenerationHandover>,
+    pub checkpoint: Option<Arc<super::PreparedNativeGenerationActivation>>,
 }
 
 impl NativeGenerationServingCustody {
     pub(in crate::server) fn check_retained(&self) -> Result<()> {
         if self.original.info()?.identity != *self.source.identity().source() {
+            return Err(Error::NeedsRecovery);
+        }
+        if let Some(checkpoint) = &self.checkpoint
+            && checkpoint.identity().source() != self.source.identity()
+        {
             return Err(Error::NeedsRecovery);
         }
         Ok(())
@@ -38,7 +44,7 @@ impl NativeGenerationServingCustody {
 /// ```
 pub struct ActivatedNativeLogGenerationHost {
     pub(super) host: PreparedLogGenerationRecoveryHost,
-    selection: RoomDeploymentSelection,
+    pub(super) selection: RoomDeploymentSelection,
 }
 impl ActivatedNativeLogGenerationHost {
     /// Detached epoch DATA, not a replacement grant or current status proof.

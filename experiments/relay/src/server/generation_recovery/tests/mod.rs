@@ -9,3 +9,5 @@ mod source;
 mod workflows;
 
 mod native_activation;
+
+mod durable_native_activation;

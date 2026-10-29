@@ -1,5 +1,5 @@
 //! Persisted source intent is DATA; the real epoch decides whether it was sealed.
-mod files;
+pub(in crate::server) mod files;
 mod identity;
 mod interruption;
 mod open;
