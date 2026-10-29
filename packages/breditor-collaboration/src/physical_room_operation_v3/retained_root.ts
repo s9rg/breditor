@@ -1,3 +1,7 @@
+import {captureSelectedDeliveryNativeCut} from '../selected_delivery_reconciliation/native_cut.js';
+import type {SelectedDeliveryInventory} from '../selected_delivery_reconciliation/inventory.js';
+import type {SelectedDeliveryNativeCutWitness} from '../selected_delivery_reconciliation/contract.js';
+import type {RetainedDeliveryClient} from '../complete_operation_cohort/retained_native_read.js';
 /** SDK-private actual root custody. The original native/source/journal parents
  * remain alive, rather than being consumed individually or recreated from data.
  * The enclosing root-plus-stage coordinator must retain its durable basis and
@@ -27,7 +31,7 @@ import {PhysicalOperationV3Cancellation} from './storage_cancellation.js';
 import {captureSelectedNativeCut} from '../selected_room_reconciliation/native_cut.js';
 import type {SelectedNativeCutWitness} from '../selected_room_reconciliation/contract.js';
 const key=Object.freeze({});
-interface Origins{readonly clients:readonly RetainedNativeClient[];readonly assets:OperationalAssetCustody}
+interface Origins{readonly delivery:readonly RetainedDeliveryClient[];readonly clients:readonly RetainedNativeClient[];readonly assets:OperationalAssetCustody}
 interface ReadableNative{readonly id:string;readonly family:RetainedNativeClient['family'];readonly document:string;readonly review:string|null}
 export interface PreparedRetainedPhysicalRoot{
  readonly value:RetainedPhysicalRoot;
@@ -42,6 +46,11 @@ let prepare:(state:PhysicalOperationV3Custody,borrow:RetainedNativeReadBorrow,cl
 /** Internal trusted-root construction only; a public caller must reserve the
  * actual root through its private-brand checked transfer entry point. */
 export const prepareRetainedPhysicalRoot=(state:PhysicalOperationV3Custody,borrow:RetainedNativeReadBorrow,closeParents:(discard:boolean)=>Promise<void>)=>prepare(state,borrow,closeParents);
+let deliverySources:(owner:RetainedPhysicalRoot)=>readonly RetainedDeliveryClient[];
+/** Trusted composition only. The enclosing selected-owner coordinator must
+ * already hold its own lifecycle/native reservation before lending resources.
+ * This getter is never accepted as incoming source, transfer or auth DATA. */
+export const retainedPhysicalDeliverySources=(owner:RetainedPhysicalRoot)=>deliverySources(owner);
 let visitFinalCut:<P extends SharedSelectionPolicy,T>(owner:RetainedPhysicalRoot,input:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit)=>Promise<T>)=>Promise<T>;
 /** Trusted final-source read on a genuine retained root, not a host driver. */
 export const visitRetainedPhysicalFinalCut=<P extends SharedSelectionPolicy,T>(owner:RetainedPhysicalRoot,input:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit)=>Promise<T>):Promise<T>=>visitFinalCut(owner,input,visit);
@@ -84,6 +93,8 @@ export class RetainedPhysicalRoot{
  /** Distinct same-reservation native/source inspection. No caller DTO can
   * supply the clients, prepared identities, inventory or actual record scope. */
  visitReconciliationRecordCut<P extends SharedSelectionPolicy,T>(input:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit,native:SelectedNativeCutWitness)=>Promise<T>):Promise<T>{return this.#visitRecordCut(input,async scope=>{const native=await captureSelectedNativeCut(this.#s,this.#origins!.clients,scope,this.#current);this.#current();return visit(scope,native);});}
+ /** Separate advanced-inventory visit under the same genuine root/record reservation. */
+ visitDeliveryReconciliationRecordCut<P extends SharedSelectionPolicy,T>(input:PhysicalOperationV3HistoryReadOptions<P>,inventory:SelectedDeliveryInventory,visit:(scope:PhysicalRecordCutVisit,native:SelectedDeliveryNativeCutWitness)=>Promise<T>):Promise<T>{return this.#visitRecordCut(input,async scope=>{const native=await captureSelectedDeliveryNativeCut(this.#s,this.#origins!.clients,scope,this.#current,inventory);this.#current();return visit(scope,native);});}
  #visitRecordCut<P extends SharedSelectionPolicy,T>(input:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit)=>Promise<T>,retainFinal=false):Promise<T>{const chosen=snapshotPhysicalHistoryReadOptions(input);return this.#run(async()=>{await this.#cleanup.drain();const observation=new PhysicalOperationV3Cancellation(chosen.signal),check=()=>{this.#current();observation.check();};
   const watch=(cancel:()=>void)=>{const unwatch=observation.watch(cancel);if(this.#closing)cancel();else this.#closingListeners.add(cancel);return()=>{this.#closingListeners.delete(cancel);unwatch();};};
   try{await Promise.all(this.#origins!.clients.map(row=>waitNativePendingWork(row.core,{check,watch})));check();return await visitPhysicalOperationV3RecordCut(this.#s,this.#current,this.#cleanup,chosen,watch,visit,undefined,this.#origins!.assets,retainFinal?true:undefined);}
@@ -108,7 +119,8 @@ export class RetainedPhysicalRoot{
   if(!ready)for(const row of this.#origins.clients)retireOwnedCore(row.core);
   this.#closeMode=discard;this.#closeTask=Promise.resolve().then(async()=>{if(!discard)this.#readable??=this.#snapshot();await this.#running;await this.#cleanup.drain();await this.#origins!.assets.close();await this.#closeParents(discard);this.#origins=undefined;this.#readable=undefined;this.#closed=true;this.#active=false;}).finally(()=>{this.#closeTask=undefined;this.#closeMode=undefined;});return this.#closeTask;
  }
- static{closeKeepingActors=(owner,reservation)=>{if(!owner||typeof owner!=='object'||!(#s in owner))return Promise.reject(fail('physical_operation_v3_policy'));if(reservation===undefined)throw fail('physical_operation_v3_policy');return owner.#close(true,reservation);};
+ static{deliverySources=owner=>{if(!owner||typeof owner!=='object'||!(#s in owner))throw fail('physical_operation_v3_policy');owner.#current();return owner.#origins!.delivery;};
+ closeKeepingActors=(owner,reservation)=>{if(!owner||typeof owner!=='object'||!(#s in owner))return Promise.reject(fail('physical_operation_v3_policy'));if(reservation===undefined)throw fail('physical_operation_v3_policy');return owner.#close(true,reservation);};
  hasKeptActors=owner=>{if(!owner||typeof owner!=='object'||!(#s in owner))throw fail('physical_operation_v3_policy');return owner.#actorCustody!==undefined;};
  takeKeptActors=owner=>{if(!owner||typeof owner!=='object'||!(#s in owner)||!owner.#closed||!owner.#actorCustody)throw fail('physical_operation_v3_closed');const actual=owner.#actorCustody;owner.#actorCustody=undefined;return actual;};
  visitFinalCut=(owner,input,visit)=>{if(!owner||typeof owner!=='object'||!(#s in owner))return Promise.reject(fail('physical_operation_v3_policy'));return owner.#visitRecordCut(input,visit,true);};prepare=(state,borrow,closeParents)=>{const owner=new RetainedPhysicalRoot(key,state,closeParents);let abandoned=false;

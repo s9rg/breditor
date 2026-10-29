@@ -1,3 +1,4 @@
+import {registerSessionDeliveryIO} from '../delivery_source/io.js';
 import {requireLiveActorCore}from'./stopped_actor_source.js';
 import {registerNativeActorSource}from'./native_actor_source.js';
 import {checkSharedWriterLeaseForEscrow}from'./writer_lease.js';
@@ -91,6 +92,7 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
   registerGenerationNative(this,{core:core as unknown as SharedRichEditor<SharedSelectionPolicy>,identity:structuredClone(identity),review,companion:!!companion,check,checkManaged,stamp,read});
   registerNativeActorSource(this,'segmented',{document:lease,...(reviewLease?{review:reviewLease}:{})});
   if(!companion)registerGenerationSource(this,{core:core as unknown as SharedRichEditor<SharedSelectionPolicy>,identity:{kind:"local",native:structuredClone(identity),review,relay:null,retained:null},check,checkManaged,stamp:()=>[stamp()],read:()=>generationRecords(read())});
+  registerSessionDeliveryIO(this,{core,check:checkManaged,save:()=>deliverySaveIntrinsic.call(this),flush:()=>deliveryFlushIntrinsic.call(this)});
   const save=()=>{try{this.save();}catch(error){this.#failed(error);}};
   let documentRevision=core.view().revision,reviewRevision=options.review?core.reviewSnapshot().reviewRevision:null;
   const changed=(document:string,review?:string)=>{if(document!==documentRevision||review!==undefined&&review!==reviewRevision){this.#sourceStamp=Object.freeze({});documentRevision=document;if(review!==undefined)reviewRevision=review;}save();};
@@ -207,3 +209,6 @@ export function captureSegmentedPersistentRecords<P extends SharedSelectionPolic
 /** Capture the SDK-owned constructor before any host factory/authority can
  * replace its public static entry. No callback may split actual actor moves. */
 const createStoppedActorEscrow=ActorLeaseEscrow.create;
+
+/** SDK method identities captured before host callbacks may shadow a facade. */
+const deliverySaveIntrinsic=SharedSegmentedPersistentSession.prototype.save,deliveryFlushIntrinsic=SharedSegmentedPersistentSession.prototype.flush;

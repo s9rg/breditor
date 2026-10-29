@@ -1,18 +1,23 @@
 /** Actual document/comment adapter work, independent of visible socket state.
  * SDK-private: detached status, a disposed facade or a saved ACK cannot provide
  * this reservation. Pending work remains owned until its real promise settles. */
-interface Entry { readonly idle:()=>boolean; readonly work:Set<Promise<void>>; retired:boolean }
+interface Entry { readonly idle:()=>boolean; readonly work:Set<Promise<void>>; retired:boolean; readonly admission:object|undefined }
 interface CoreWork { readonly entries:Set<Entry>; token:object|undefined }
+declare const admissionBrand:unique symbol;
+/** Opaque live admission; serialized/copied fields carry no permission. */
+export interface RelayWorkAdmission{readonly [admissionBrand]:true}
+const admissions=new WeakMap<RelayWorkAdmission,Readonly<{state:CoreWork;token:object}>>();
 const cores=new WeakMap<object,CoreWork>();
 function state(core:object):CoreWork{let value=cores.get(core);if(!value){value={entries:new Set(),token:undefined};cores.set(core,value);}return value;}
 export class RelayWorkCustody {
  readonly #state:CoreWork;readonly #entry:Entry;readonly #fail:()=>Error;
  #retired:(()=>void)|undefined;
- constructor(core:object,idle:()=>boolean,fail:()=>Error){
-  this.#state=state(core);this.#fail=fail;if(this.#state.token)throw fail();
-  this.#entry={idle,work:new Set(),retired:false};this.#state.entries.add(this.#entry);
+ constructor(core:object,idle:()=>boolean,fail:()=>Error,admission?:RelayWorkAdmission){
+  this.#state=state(core);this.#fail=fail;const grant=admission?admissions.get(admission):undefined;
+  if(admission&&(!grant||grant.state!==this.#state||grant.token!==this.#state.token)||!admission&&this.#state.token)throw fail();
+  this.#entry={idle,work:new Set(),retired:false,admission:grant?.token};this.#state.entries.add(this.#entry);
  }
- checkAllowed():void{if(this.#state.token||this.#entry.retired)throw this.#fail();}
+ checkAllowed():void{if(this.#entry.retired||(this.#entry.admission?this.#state.token!==this.#entry.admission:this.#state.token!==undefined))throw this.#fail();}
  /** Install the pending witness BEFORE invoking token/storage/native callbacks.
   * A synchronous reentrant recovery attempt must see this actual work too. */
  run<T>(start:()=>Promise<T>):Promise<T>{
@@ -29,12 +34,17 @@ export class RelayWorkCustody {
 }
 /** Callback-free SDK owner checks: every entry callback reads private fields
  * only. Validate the complete set before setting the first exclusion flag. */
-export function reserveRelayRecoveryWork(members:readonly object[],fail:()=>Error):Readonly<{check():void;close():void}>{
- let selected=members.map(core=>state(core));
+export interface RelayRecoveryWork{check():void;admit(core:object):RelayWorkAdmission;close():void}
+export function reserveRelayRecoveryWork(members:readonly object[],fail:()=>Error):RelayRecoveryWork{
+ let selected=members.map(core=>state(core)),byCore=new Map(members.map((core,index)=>[core,selected[index]!]));
  for(const value of selected)if(value.token||[...value.entries].some(entry=>entry.work.size||!entry.idle()))throw fail();
  const token=Object.freeze({});let closed=false;
  const check=()=>{if(closed||selected.some(value=>value.token!==token))throw fail();};
- const result=Object.freeze({check,close(){if(closed)return;for(const value of selected)if(value.token===token)value.token=undefined;closed=true;selected=[];}});
+ const result=Object.freeze({check,admit(core:object){check();const value=byCore.get(core);if(!value)throw fail();const admission=Object.freeze({}) as RelayWorkAdmission;admissions.set(admission,Object.freeze({state:value,token}));return admission;},close(){if(closed)return;check();
+  // An admitted SDK adapter must actually retire AND drain before either the
+  // work exclusion or native flags can be released. A visible Offline is not enough.
+  if(selected.some(value=>[...value.entries].some(entry=>entry.admission===token)))throw fail();
+  for(const value of selected)if(value.token===token)value.token=undefined;closed=true;selected=[];byCore.clear();}});
  for(const value of selected)value.token=token;return result;
 }
 /** Genuine tracked adapters have already been disposed by their source. Their

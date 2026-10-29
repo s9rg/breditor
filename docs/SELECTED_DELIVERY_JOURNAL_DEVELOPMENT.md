@@ -1,9 +1,10 @@
 # Coupled selected-delivery journal development contract
 
-This isolated implementation is retained in the verified development proof linked
-from [the qualification](qualification/2026-10-29-ordered-delivery-path-coupled-journal.json).
-It is not merged, publicly exported, installed-qualified, or an editing-resume
-contract. Original source/file, transport, receipt and activation meanings remain
+The earlier isolated implementation is retained in the verified development proof
+linked from [the qualification](qualification/2026-10-29-ordered-delivery-path-coupled-journal.json).
+The private composition is now integrated, with a separately specified
+[fresh-approved cold resume](SELECTED_DELIVERY_JOURNAL_RESUME.md). It is not a
+public editing or whole-room activation API. Original source/file, transport, receipt and activation meanings remain
 unchanged. Saved facts never recreate a native owner or writer permission.
 
 ## Actual ownership and sequencing
@@ -49,7 +50,7 @@ gate before rejecting. A write that committed before a later policy refusal is
 retained. readFacts can inspect such immutable data while the same root/resources
 remain owned, but never reopens the gate, creates an ACK, retries a native save
 or permits more delivery. A busy reentrant call refuses without disrupting the
-already-admitted job. There is deliberately no resume or activation method.
+already-admitted job. Fresh-approved resume now has a separate full-history contract; no activation method exists.
 
 close marks the owner closing, starts actual adapter drain, waits for real
 initialization/record/read work, then closes the journal's actual pending
@@ -78,8 +79,7 @@ and receipts are real; Node IndexedDB/locks are fixtures, not durability evidenc
 The [native complete ordered path](SERVER_DELIVERY_PATH.md) now supplies actual
 A <= B <= C1 <= ... <= D verification, including every predecessor raster.
 A [separate authenticated path control and genuine SDK host](SERVER_DELIVERY_PATH_CONTROL.md)
-are now available; this prototype still must compose them into fresh cold
-editing resume. Every saved file must be re-admitted and its
+are composed by the new private cold-resume path. Every saved file must be re-admitted and its
 full native path/source continuation reverified, with fresh policy and explicit
 reapproval producing a new gate. Metadata reads or the old closed gate cannot
 stand in for this. Unbound-source adoption, metadata outbox transport custody,

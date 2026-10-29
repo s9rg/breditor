@@ -1,5 +1,31 @@
 # V1 candidate checks
 
+The [private full-history resume contract](SELECTED_DELIVERY_JOURNAL_RESUME.md)
+is now implemented in the library rather than remaining an isolated prototype.
+It reopens complete saved facts and original preparation data existing-only,
+requires genuine native/server/source continuation for every cut plus fresh
+explicit approval, creates a NEW runtime gate and records its current cut before
+admitting delivery. All old bytes and original catalog A/B meanings stay literal.
+
+The [qualification](qualification/2026-10-29-fresh-cold-delivery-resume.json)
+passes 447 direct checks and eight actual fresh offline-installed consumer checks,
+with strict SDK/private types and no failures, skips or canceled cases. Real
+seven-family cold reopening, after-approval old-byte corruption refusal, final
+two bound-source receipts and all-seven future document/review Undo/Redo pass.
+A genuine permission-boundary cleanup bug was reproduced twice: permission
+refusal correctly blocked editing but retained the preparation namespace.
+The source-compiled repair passes unchanged assertions; main source and fresh
+archives also pass namespace retry, token non-replay and native exclusion checks.
+
+The unchanged normal Wasm and real native service execute these workflows.
+The prior575/273 Rust baseline is carried, not freshly rerun: no Rust changes
+occur here. Public exports, package versions and ordinary defaults stay unchanged.
+The complete600/608-stage plans are not executed. Node IDB/locks are fixtures,
+not physical durability evidence. Three local comment lanes remain unbound;
+authenticated adoption, metadata transport custody, full provider/client/assets
+closure and joint activation remain required. All thirteen V1 gates stay open.
+The historical WebKit fault is not declared repaired.
+
 The [authenticated-path/owned-work qualification](qualification/2026-10-29-authenticated-path-owned-work.json)
 freshly passes 575 server/273 no-server Rust tests, strict Rust/SDK checks, 166
 SDK laws and all 205 plan/verifier laws. All thirty seven-author source/installed/

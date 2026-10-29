@@ -1,3 +1,4 @@
+import {registerNativeRecoveryWork} from './native_recovery/work_admission.js';
 import {reserveRelayRecoveryWork} from './relay/work_custody.js';
 import type {SharedRustOwner,SharedView,SharedDispatch,SharedPublication,SharedEditorOptions,SharedRemoteOptions,SharedOwnerDescriptor,SharedPresenceResolution,SharedWriterClock,SharedWriterGroups,RichSelection,FormatLiteral,ClipboardContent,PasteTarget,Navigation,NavigationResult} from "./types.js";
 import type {RichInlineFormatStateRead} from "./types.js";
@@ -106,9 +107,10 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
     finally{if(borrowed&&source.#nativeRecovery===token)source.#nativeRecovery=undefined;sourceWork?.close();}
    });},
    receiveReview<Q extends SharedSelectionPolicy>(core:SharedRichEditor<Q>,frame:string,verified:SharedReviewPolicy){return apply(core,()=>{const value=nativeRecoveryFrame(frame).value,policy=nativeRecoverySource(verified);return core.#run('remote',(raw,o)=>{core.#requireReview();const result=JSON.parse(raw.receive_review!(o,JSON.stringify(policy),value)) as SharedReviewImportOutcome;if(result.kind==='applied')core.#reviewRevision++;return result;},undefined,false,token);});},
-   close(){if(closed)return;if(applying)throw nativeRecoveryFailure('native_recovery_busy');for(const core of members)if(core.#nativeRecovery===token)core.#nativeRecovery=undefined;relayWork.close();closed=true;members=[];chosen.clear();},
+   close(){if(closed)return;if(applying)throw nativeRecoveryFailure('native_recovery_busy');relayWork.close();for(const core of members)if(core.#nativeRecovery===token)core.#nativeRecovery=undefined;closed=true;members=[];chosen.clear();},
   });
   actualNativeReservations.set(reservation,selected=>{check();if(selected.length!==chosen.size||selected.some(core=>!chosen.has(core as object)))throw nativeRecoveryFailure('native_recovery_member');});
+  registerNativeRecoveryWork(reservation,relayWork,(member,access)=>apply(member,()=>{const core=member as SharedRichEditor<SharedSelectionPolicy>;core.#checkReview();return core.#run('local',(raw,o)=>{const changed=raw.set_review_access!(o,access);if(changed)core.#reviewRevision++;return changed;},undefined,false,token);}));
   // All closures and detached inputs exist before the common flag-only commit.
   for(const core of members)core.#nativeRecovery=token;
   return reservation;

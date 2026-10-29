@@ -36,7 +36,7 @@ export function reserveCompleteHistoryUploads<P extends SharedSelectionPolicy>(i
       if(!retained){const next=row.source.capture();try{if(!sameNativeRetentionValue(next.value,value))throw fail();retained=next;}finally{if(retained!==next)next.dispose();}}retained.check();
      };
      witnesses.push({basis:{id:row.id,family:row.family,value},check,dispose(){if(disposed)return;retained?.dispose();retained=undefined;disposed=true;}});
-    }current();const borrow=retainedNativeReadBorrow(sources.map(row=>({id:row.id,family:row.family,core:row.source.core})),witnesses,assets,()=>closed);borrow.check();loanedAssets=assets;assets=undefined;loaned=true;complete=true;return borrow;}
+    }current();const borrow=retainedNativeReadBorrow(sources.map(row=>({id:row.id,family:row.family,core:row.source.core})),witnesses,assets,()=>closed,sources);borrow.check();loanedAssets=assets;assets=undefined;loaned=true;complete=true;return borrow;}
    finally{if(!complete)for(const witness of [...witnesses].reverse())witness.dispose();}
   },
   /** Separate final-cut retention keeps inherited actual origins with their root.

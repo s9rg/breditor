@@ -1,3 +1,4 @@
+import {registerSessionDeliveryIO} from '../delivery_source/io.js';
 import {waitRetiredRelayWork} from '../relay/work_custody.js';
 import {checkStoppedSegmentedSourceActors}from'../persistence/segmented_session.js';
 import type {StoppedActorBinding}from'../persistence/stopped_actor_source.js';
@@ -52,6 +53,7 @@ export class SharedSegmentedRelaySession<P extends SharedSelectionPolicy=SharedS
   registerGenerationSource(this,{core:native.core,identity:{kind:retained?"retained":"relay",native:structuredClone(native.identity),review:structuredClone(native.review),relay:structuredClone(companion.binding),retained:retained?structuredClone(retained.retainedBinding):null},check,checkManaged:()=>{check();native.checkManaged();},stamp:()=>{check();return[native.stamp(),companion.sourceStamp()];},read:()=>{check();return generationRecords(native.read(),companion.current(),retained?.records());}});
   companion.setRetireHook(()=>this.#stop());
   registerSegmentedRelaySession(this,{core:this.#core as unknown as SharedRichEditor<SharedSelectionPolicy>,binding:structuredClone(companion.binding),check:()=>this.#check(),save:()=>this.#session.save(),flush:()=>this.#flushSource(),durable:()=>companion.durable(),persistDocument:p=>this.#persistDocument(p),persistReview:(p,r)=>this.#persistReview(p,r),track:a=>{this.#check();for(const ref of this.#adapters)if(!ref.deref())this.#adapters.delete(ref);this.#adapters.add(new WeakRef(a));}});
+  registerSessionDeliveryIO(this,{core:this.#core,check:()=>this.#check(),save:()=>this.#session.save(),flush:()=>this.#flushSource(),review:{identity:()=>structuredClone(this.#companion.binding.review),progress:()=>{const progress=this.#companion.durable().review;if(!progress)throw new SharedRelayError('native_delivery_review_unbound');return progress;},persist:progress=>this.#persistReview(progress)}});
  }
  static{const inspect=(owner:SharedSegmentedRelaySession):StoppedActorBinding=>{if(!owner||typeof owner!=='object'||!(#session in owner)||Object.hasOwn(owner,'core'))throw new SharedRelayError('actor_source_unavailable');if(owner.#openings.size||owner.#closing||owner.#discarding)throw new SharedRelayError('actor_source_in_use');return checkStoppedSegmentedSourceActors(owner.#session);};checkActorCustody=inspect;takeActorCustody=owner=>{inspect(owner);return takeStoppedSegmentedSourceActors(owner.#session);};}
  static{readRelayGenerationRecords=async(owner,provided,signal)=>{

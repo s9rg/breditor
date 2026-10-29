@@ -5,7 +5,7 @@ import type {SelectedNativeCutRead} from './contract.js';
 import type {SelectedGenerationHeadRequirement} from './generation_contract.js';
 import {SharedRoomParticipantInventoryError} from '../room_participant_inventory/policy.js';
 export const MAX_SELECTED_GENERATION_HEAD_REQUIREMENTS=100000;
-export function selectedGenerationHeadRequirements(native:SelectedNativeCutRead):readonly SelectedGenerationHeadRequirement[]{
+export function selectedGenerationHeadRequirements(native:Pick<SelectedNativeCutRead,'participants'|'documentAuthors'|'reviewAuthors'>):readonly SelectedGenerationHeadRequirement[]{
  const result:SelectedGenerationHeadRequirement[]=[];
  for(const row of native.participants){
   for(const lane of ['document','review'] as const){const heads=lane==='document'?row.documentHeads:row.review.heads,authors=lane==='document'?native.documentAuthors:native.reviewAuthors;

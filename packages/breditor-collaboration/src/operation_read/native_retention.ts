@@ -1,3 +1,8 @@
+import {retainNativeDeliverySource} from './delivery_retention.js';
+import {checkManagedSource,managedSourceCore} from '../managed_custody.js';
+import type {RecoverySession} from '../participant_recovery/components.js';
+import type {SharedIndependentDeliverySession} from '../independent_delivery/session.js';
+import type {SharedIndependentHistoryPersistentSession} from '../independent_history/session.js';
 /** SDK-private genuine LIVE source retention. Captured while a fresh parent
  * reader holds its real owner, but independent of that temporary reader's busy
  * flag/lifetime. No report, factory, writer grant or parent ownership transfer.
@@ -25,13 +30,22 @@ function source<P extends SharedSelectionPolicy>(core:SharedRichEditor<P>,captur
   finally{if(!complete)witness.dispose();}
  }});
 }
-export function originalNativeRetention<P extends SharedSelectionPolicy>(input:SharedAssetReferenceCaptureOptions<P>,managed:()=>void):NativeRetentionSource{
- return source(input.core,()=>{managed();const capture=captureOriginal(input);return{value:recordsOriginal.call(capture),check(){managed();checkOriginal.call(capture);},dispose:()=>disposeOriginal.call(capture)};});
+export function originalNativeRetention<P extends SharedSelectionPolicy>(input:SharedAssetReferenceCaptureOptions<P>,managed:()=>void,session:RecoverySession<P>):NativeRetentionSource{
+ const core=input.core,check=()=>{managed();if(input.session&&input.session!==session||managedSourceCore(session)!==core)throw fail();checkManagedSource(session,core);for(const selected of[input.suggestions,input.revisions,input.versions])if(selected)checkManagedSource(selected,core);};
+ const native=source(core,()=>{managed();const capture=captureOriginal(input);return{value:recordsOriginal.call(capture),check(){managed();checkOriginal.call(capture);},dispose:()=>disposeOriginal.call(capture)};});
+ const packets=Object.freeze({...(input.suggestions?{suggestions:input.suggestions}:{}),...(input.revisions?{revisions:input.revisions}:{}),...(input.versions?{versions:input.versions}:{})});
+ // P is erased only inside the trusted common-parent implementation. Every
+ // actual object keeps its original native policy and constructor binding.
+ retainNativeDeliverySource(native,{kind:'original',session,packets} as unknown as import('./delivery_retention.js').RetainedDeliveryParent,check);return native;
 }
 export function generationNativeRetention<P extends SharedSelectionPolicy>(input:SharedGenerationSourceSelection<P>,managed:()=>void=()=>{}):NativeRetentionSource{
- return source(generationSource(input.session).core,()=>{const capture=captureGeneration(input);return{value:recordsGeneration.call(capture),check:()=>checkGeneration.call(capture),dispose:()=>disposeGeneration.call(capture)};},managed);
+ const port=generationSource(input.session),native=source(port.core,()=>{const capture=captureGeneration(input);return{value:recordsGeneration.call(capture),check:()=>checkGeneration.call(capture),dispose:()=>disposeGeneration.call(capture)};},managed),selected=Object.freeze({...input});
+ retainNativeDeliverySource(native,{kind:'generation',source:selected} as unknown as import('./delivery_retention.js').RetainedDeliveryParent,()=>{managed();const current=generationSource(selected.session);current.checkManaged();if(current.core!==native.core)throw fail();});return native;
 }
 export function independentNativeRetention(session:object,delivery:boolean,owner:()=>void=()=>{}):NativeRetentionSource{
- if(delivery){const port=independentDeliverySource(session),core=port.core;return source(core,()=>{const stamp=port.stamp(),value=port.read(),managed=port.check,readStamp=port.stamp;return{value,check(){managed();const now=readStamp();if(port.core!==core||now.length!==stamp.length||now.some((entry,i)=>entry!==stamp[i]))throw fail();},dispose(){}};},owner);}
- const port=independentHistoryNative(session),core=port.core;return source(core,()=>{const stamp=port.stamp(),value=port.read(),managed=port.checkManaged,readStamp=port.stamp;return{value,check(){managed();if(port.core!==core||readStamp()!==stamp)throw fail();},dispose(){}};},owner);
+ if(delivery){const port=independentDeliverySource(session),core=port.core,native=source(core,()=>{const stamp=port.stamp(),value=port.read(),managed=port.check,readStamp=port.stamp;return{value,check(){managed();const now=readStamp();if(port.core!==core||now.length!==stamp.length||now.some((entry,i)=>entry!==stamp[i]))throw fail();},dispose(){}};},owner);
+  retainNativeDeliverySource(native,{kind:'independent-delivery',session:session as SharedIndependentDeliverySession<SharedSelectionPolicy>},()=>{owner();const current=independentDeliverySource(session);if(current.core!==core)throw fail();current.check();});return native;
+ }
+ const port=independentHistoryNative(session),core=port.core,native=source(core,()=>{const stamp=port.stamp(),value=port.read(),managed=port.checkManaged,readStamp=port.stamp;return{value,check(){managed();if(port.core!==core||readStamp()!==stamp)throw fail();},dispose(){}};},owner);
+ retainNativeDeliverySource(native,{kind:'independent-local',session:session as SharedIndependentHistoryPersistentSession<SharedSelectionPolicy>},()=>{owner();const current=independentHistoryNative(session);if(current.core!==core)throw fail();current.checkManaged();});return native;
 }

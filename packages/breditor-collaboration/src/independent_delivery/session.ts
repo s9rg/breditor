@@ -1,3 +1,4 @@
+import {registerSessionDeliveryIO} from '../delivery_source/io.js';
 import {waitRetiredRelayWork} from '../relay/work_custody.js';
 import {checkStoppedIndependentSourceActors}from'../independent_history/session.js';
 import type {StoppedActorBinding}from'../persistence/stopped_actor_source.js';
@@ -55,6 +56,7 @@ export class SharedIndependentDeliverySession<P extends SharedSelectionPolicy=Sh
   this.#storage=Object.freeze({core:this.#core,save:()=>this.#session.save(),flush:()=>this.#flushSource()});
   const saved=this.#native.savedCompanion();if(saved===null)throw new SharedRelayError('independent_delivery_unsaved');companion.acknowledged(saved);companion.setRetireHook(()=>this.#stop());
   registerIndependentDeliverySession(this,{core:this.#native.core,binding:structuredClone(companion.binding),check:()=>this.#check(),save:()=>this.#session.save(),flush:()=>this.#flushSource(),durable:()=>companion.durable(),persistDocument:progress=>this.#persistDocument(progress),persistReview:(progress,receipt)=>this.#persistReview(progress,receipt),track:adapter=>{this.#check();for(const ref of this.#adapters)if(!ref.deref())this.#adapters.delete(ref);this.#adapters.add(new WeakRef(adapter));}});
+  registerSessionDeliveryIO(this,{core:this.#core,check:()=>this.#check(),save:()=>this.#session.save(),flush:()=>this.#flushSource(),review:{identity:()=>structuredClone(this.#companion.binding.review),progress:()=>{const progress=this.#companion.durable().review;if(!progress)throw new SharedRelayError('native_delivery_review_unbound');return progress;},persist:progress=>this.#persistReview(progress)}});
   registerIndependentDeliverySource(this,{core:this.#native.core,identity:companion.identity,...(operation?{operation}:{}),check:()=>this.#checkReadable(),stamp:()=>{this.#checkReadable();return[this.#native.stamp(),companion.sourceStamp()];},read:()=>this.#readRecovery()});
  }
  static{const inspect=(owner:SharedIndependentDeliverySession):StoppedActorBinding=>{if(!owner||typeof owner!=='object'||!(#session in owner)||Object.hasOwn(owner,'core'))throw new SharedRelayError('actor_source_unavailable');if(owner.#openings.size||owner.#closing||owner.#discarding)throw new SharedRelayError('actor_source_in_use');return checkStoppedIndependentSourceActors(owner.#session);};checkActorCustody=inspect;takeActorCustody=owner=>{inspect(owner);return takeStoppedIndependentSourceActors(owner.#session);};}

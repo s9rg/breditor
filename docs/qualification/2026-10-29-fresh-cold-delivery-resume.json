@@ -1,0 +1,305 @@
+{
+  "format": "breditor/fresh-cold-delivery-resume-qualification",
+  "formatVersion": 1,
+  "functionalPassed": true,
+  "releaseReady": false,
+  "v1GatesOpen": 13,
+  "v1GatesClosed": 0,
+  "baseCommit": "c67ccb69e51da6e805dbc9219997b35d193384a5",
+  "qualifiedSource": {
+    "commit": "c67ccb69e51da6e805dbc9219997b35d193384a5",
+    "dirty": true,
+    "sha256": "d5e6e4744911db3922df84381ae465990788ac43e107ed795105a872fcaab5f5",
+    "files": 7436,
+    "bytes": 56220973
+  },
+  "sourceUnchangedDuringQualification": true,
+  "logicAndTestsUnchangedAfterQualification": true,
+  "scope": "Integrated SDK-private real retained-source delivery, immutable factual journaling and fresh-approved cold editing resume over every complete saved native/client/source/packet/upload cut. Genuine complete-path/current/predecessor native controls and current provider reads; new gate/checkpoint rather than revived old permission. Source and independent offline-installed packages execute the complete seven-family workflow. Three local comment lanes remain unbound/Pending; not metadata settlement, full provider/client/assets closure, joint whole-room activation, public API stabilization or V1 approval.",
+  "directTests": 447,
+  "nestedInstalledTests": 8,
+  "stages": [
+    {
+      "id": "delivery-journal-resume-private-types",
+      "status": "passed",
+      "startedAt": "2026-10-29T14:40:39.308Z",
+      "finishedAt": "2026-10-29T14:40:40.665Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-admission-close-repair-ghuUXI/qualified-SmZcnT/delivery-journal-resume-private-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "all-generation-operator-sdk-laws",
+      "status": "passed",
+      "startedAt": "2026-10-29T14:40:39.318Z",
+      "finishedAt": "2026-10-29T14:40:42.731Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 18161,
+      "logPath": "/private/tmp/breditor-admission-close-repair-ghuUXI/qualified-SmZcnT/all-generation-operator-sdk-laws.log",
+      "logSha256": "31abc1d5f6a5a85a04b55b38bf6eea5fed993580ff459fb79e1e334660c50f33",
+      "tests": 109
+    },
+    {
+      "id": "strict-integrated-build-types",
+      "status": "passed",
+      "startedAt": "2026-10-29T14:40:39.315Z",
+      "finishedAt": "2026-10-29T14:40:43.403Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-admission-close-repair-ghuUXI/qualified-SmZcnT/strict-integrated-build-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "all-candidate-plan-and-verifier-laws",
+      "status": "passed",
+      "startedAt": "2026-10-29T14:40:39.318Z",
+      "finishedAt": "2026-10-29T14:40:47.869Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 49504,
+      "logPath": "/private/tmp/breditor-admission-close-repair-ghuUXI/qualified-SmZcnT/all-candidate-plan-and-verifier-laws.log",
+      "logSha256": "15b8f57e34573b0dba0e7b79be6705b4049fa06b5aac428d2ff3d0fa7d880061",
+      "tests": 207
+    },
+    {
+      "id": "retained-delivery-work-contracts",
+      "status": "passed",
+      "startedAt": "2026-10-29T14:40:39.309Z",
+      "finishedAt": "2026-10-29T14:41:10.613Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 33566,
+      "logPath": "/private/tmp/breditor-admission-close-repair-ghuUXI/qualified-SmZcnT/retained-delivery-work-contracts.log",
+      "logSha256": "7e145c1458035b0fe0c4b5fdbd7ef1a94bb685564241aa92c483e769f853129b",
+      "tests": 120
+    },
+    {
+      "id": "selected-delivery-preparation-native",
+      "status": "passed",
+      "startedAt": "2026-10-29T14:40:39.310Z",
+      "finishedAt": "2026-10-29T14:44:35.441Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 379,
+      "logPath": "/private/tmp/breditor-admission-close-repair-ghuUXI/qualified-SmZcnT/selected-delivery-preparation-native.log",
+      "logSha256": "d5b8a3eb08f157c5b7b635d0a6aa767c6740c27c927d5259f9b2c4e05da89e71",
+      "tests": 1
+    },
+    {
+      "id": "selected-delivery-current-inventory-native",
+      "status": "passed",
+      "startedAt": "2026-10-29T14:40:39.311Z",
+      "finishedAt": "2026-10-29T14:45:07.110Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 435,
+      "logPath": "/private/tmp/breditor-admission-close-repair-ghuUXI/qualified-SmZcnT/selected-delivery-current-inventory-native.log",
+      "logSha256": "d7bf43e8764dc037d80ca353f4142cf70fde8ec4eeb5415fb5a6cd9d807714b0",
+      "tests": 1
+    },
+    {
+      "id": "retained-delivery-owner",
+      "status": "passed",
+      "startedAt": "2026-10-29T14:40:39.310Z",
+      "finishedAt": "2026-10-29T14:45:34.875Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 1099,
+      "logPath": "/private/tmp/breditor-admission-close-repair-ghuUXI/qualified-SmZcnT/retained-delivery-owner.log",
+      "logSha256": "1e852f0e4de8d180fb6e7f4f2f9f780b9e7545ffb330a99afcbe287ff109a388",
+      "tests": 4
+    },
+    {
+      "id": "selected-delivery-journal-native",
+      "status": "passed",
+      "startedAt": "2026-10-29T14:40:39.312Z",
+      "finishedAt": "2026-10-29T14:45:59.830Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 415,
+      "logPath": "/private/tmp/breditor-admission-close-repair-ghuUXI/qualified-SmZcnT/selected-delivery-journal-native.log",
+      "logSha256": "23e9f9ff82038cdc436a6041371900786b7f7abe24fede4635c538e5922b3cff",
+      "tests": 1
+    },
+    {
+      "id": "delivery-resume-admission-cleanup-native",
+      "status": "passed",
+      "startedAt": "2026-10-29T14:40:39.313Z",
+      "finishedAt": "2026-10-29T14:47:22.022Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 465,
+      "logPath": "/private/tmp/breditor-admission-close-repair-ghuUXI/qualified-SmZcnT/delivery-resume-admission-cleanup-native.log",
+      "logSha256": "ae0ad72d246a8b0ad25b080d54ea746129026cc5347bca69fbac467147f9f994",
+      "tests": 1
+    },
+    {
+      "id": "coupled-delivery-lifecycle",
+      "status": "passed",
+      "startedAt": "2026-10-29T14:40:39.312Z",
+      "finishedAt": "2026-10-29T14:49:38.407Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 428,
+      "logPath": "/private/tmp/breditor-admission-close-repair-ghuUXI/qualified-SmZcnT/coupled-delivery-lifecycle.log",
+      "logSha256": "ef9af22baf0d2d4cd9411d85b201e13e6ead3f9980fd2b777d74f4a1000291c3",
+      "tests": 2
+    },
+    {
+      "id": "delivery-journal-cold-resume-native",
+      "status": "passed",
+      "startedAt": "2026-10-29T14:40:39.313Z",
+      "finishedAt": "2026-10-29T14:59:35.197Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 700,
+      "logPath": "/private/tmp/breditor-admission-close-repair-ghuUXI/qualified-SmZcnT/delivery-journal-cold-resume-native.log",
+      "logSha256": "cd249514e58674cab3e5b56f9e11578d8307560d9c43e248684880b1968c360b",
+      "tests": 1
+    },
+    {
+      "id": "installed-delivery-journal-cold-resume",
+      "status": "passed",
+      "startedAt": "2026-10-29T14:40:39.314Z",
+      "finishedAt": "2026-10-29T14:59:46.933Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 353,
+      "logPath": "/private/tmp/breditor-admission-close-repair-ghuUXI/qualified-SmZcnT/installed-delivery-journal-cold-resume.log",
+      "logSha256": "c2a5dcfd7814ab8a319d6aba2f456444b0e67cae4b4777d025a50f9b3cad47c5",
+      "tests": 0
+    }
+  ],
+  "installed": {
+    "resultPath": "/private/tmp/breditor-cold-delivery-installed-jc4DUr/result.json",
+    "sourceUnchanged": true,
+    "workspaceLinks": false,
+    "registryArtifacts": 45,
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/private/tmp/breditor-cold-delivery-installed-jc4DUr/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/private/tmp/breditor-cold-delivery-installed-jc4DUr/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/private/tmp/breditor-cold-delivery-installed-jc4DUr/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "d35f1d97d40c2f1018480ad53df9ca50e91b387b4a6e17022077b5a5fbe60989"
+      }
+    ],
+    "actualWorkflow": {
+      "id": "installed-cold-resume",
+      "status": "passed",
+      "startedAt": "2026-10-29T14:40:55.869Z",
+      "finishedAt": "2026-10-29T14:59:46.502Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 2167,
+      "logPath": "/private/tmp/breditor-cold-delivery-installed-jc4DUr/installed-cold-resume.log",
+      "logSha256": "273acf6db50e96ed2b8f87d1bf686278819644de7bb640c7216172f870ef6d7b"
+    },
+    "tests": 8
+  },
+  "repair": {
+    "bug": "Fresh permission refusal after consuming a genuine approved admission but before constructing its gate left the immutable preparation namespace held until parent visitor cleanup. Editing was refused, but same-scope retry was blocked.",
+    "actualBeforeFailures": 2,
+    "beforeResult": "/private/tmp/breditor-admission-close-repair-ghuUXI/before-result.json",
+    "beforeLog": "/private/tmp/breditor-admission-close-repair-ghuUXI/before-repeat.log",
+    "beforeLogSha256": "0b90fbf9e27700b8e4dd850a3b68199894f8d16b710f523b862ee175767dcd14",
+    "unchangedAssertionsDebug": "/private/tmp/breditor-admission-close-repair-ghuUXI/result.json",
+    "debugAfterLog": "/private/tmp/breditor-admission-close-repair-ghuUXI/after.log",
+    "debugAfterLogSha256": "8a4ebdf375d33bb7bc564117bcebf8d76f495f1142b631552e21388c272cce94",
+    "strictSourceCompiledModules": [
+      {
+        "path": "selected_delivery_journal/resume_admission.ts",
+        "beforeSourceSha256": "21feb2af79a72def905c3859fad0d1b7742a92f0e308a273463045e09d78b8c9",
+        "afterSourceSha256": "45020582a83657b2a7bd36e0b01ed386f61285028cdfb548f32198818ed0daec",
+        "beforeJSSha256": "e77a741415afee61b6268cb0a65354b2256aae2ba8fda11952deef29e1018a2e",
+        "afterJSSha256": "c8209c344e11a81c19e09de585179735ac9d3cb59eab9b74d8f005ef98eb53ba"
+      },
+      {
+        "path": "selected_delivery_preparation/coordinator.ts",
+        "beforeSourceSha256": "94ec87a6e637cb1d9d65368974f24e4f867b4611caba0fbcb659261fd0df461d",
+        "afterSourceSha256": "522c15cfea54acca5b0977a306dae3e24e7bd66de0deb141d876faadd4a23cd9",
+        "beforeJSSha256": "247d4659d97632166d023ff81802f947e6c3b2f14296de20bfcf05edc7758fb6",
+        "afterJSSha256": "f721b096064b82ae55589c76079a48d236ae802cdc908f38e044c40e297f130e"
+      },
+      {
+        "path": "selected_delivery_journal/coordinator.ts",
+        "beforeSourceSha256": "13bdf0aa1d1e5e351ec5bd01c413bc18dc8adf284d0ca7cb064f8ed6b48fe3f7",
+        "afterSourceSha256": "7b1c2ef3245336a6b4d25da4c42ed0ecc06cdfa8a30f767d25fdea2e892f962c",
+        "beforeJSSha256": "495e0bc0d02089ca1b017aa7d841b7750fc76265a6a56f6c05cc483d3749dfb1",
+        "afterJSSha256": "06601251b9508b49ee9a4b11c370460fe88ed1c3fc8971a14a1f1963b9c01db8"
+      }
+    ],
+    "fix": "Callback-free one-shot brand/scope transfer; every subsequent check/parent registration under awaited actual preparation cleanup, including synchronous refusal. Await actual new gate close if claiming it fails.",
+    "sourceAndFreshInstalledRegression": "scripts/delivery-resume-admission-cleanup.test.mjs",
+    "verified": "Immediate namespace retry after restored permission; consumed token cannot replay; outer native exclusion remains held; complete current bytes unchanged; all-seven future document/review Undo/Redo."
+  },
+  "historyAndData": {
+    "originalPreparationAndAllEventsPreserved": true,
+    "allOldNativeClientPacketUploadCutsReverified": true,
+    "orderedNativePathMultiplicityPreserved": true,
+    "missingDatabaseCreatesNoPlaceholder": true,
+    "freshExplicitApprovalRequired": true,
+    "afterApprovalOldByteCorruptionRefused": true,
+    "genuinelyNewColdNativeCores": true,
+    "actualFinalTwoBoundPairsDelivered": true,
+    "allSevenFutureUndoRedoPreserved": true,
+    "ordinaryWireStorageAndFamilyMeaningsUnchanged": true
+  },
+  "nativeBaseline": {
+    "freshlyRerunThisTurn": false,
+    "rustSourceChanged": false,
+    "carriedFrom": "docs/qualification/2026-10-29-authenticated-path-owned-work.json",
+    "serverTests": 575,
+    "noServerTests": 273,
+    "actualCurrentBinarySha256": "c224c4d39d5f603dcb3815ebc58c1719b59b4d6db6fe554e675f91d4cab46ea7",
+    "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+    "normalWasmUnchanged": true
+  },
+  "plans": {
+    "functional": 600,
+    "full": 608,
+    "executedFullPlans": false
+  },
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/retained-cold-resume-cleanup-fixed-proof-P3HQop",
+    "indexSha256": "55459352b8ae52cbd25446b2d43167ec1a33b8d0ecf32a3d2230860a58d00eb8",
+    "files": 281,
+    "bytes": 29280452,
+    "sourceUnchanged": true,
+    "releaseReady": false
+  },
+  "limitations": [
+    "SDK-private composition, not new public root capabilities. Existing public exports, package versions and ordinary defaults unchanged.",
+    "Node IndexedDB/locks are controlled fixtures; physical browser crash durability is unqualified.",
+    "Complete retained journal refuses4,096entries/2GiB instead of dropping history; large/long-session materialization cost unqualified.",
+    "Earlier prototype installed attempt exceeded its20-minute test deadline and did not qualify; source/installed strengthened40-minute tests now completed normally.",
+    "Historical intermittent WebKit fault is not confirmed fixed by these Node/native tests."
+  ],
+  "remainingFunctionalWork": [
+    "Explicit authenticated adoption of independent-local/local-operation comment sources without inventing bindings or receipts from metadata.",
+    "Complete metadata packet/outbox transport and receipt custody.",
+    "Complete provider/client/assets reconciliation and authenticated joint whole-room activation."
+  ],
+  "actions": {
+    "pushed": false,
+    "published": false,
+    "tagged": false,
+    "deployed": false,
+    "packageVersionChanged": false
+  },
+  "finishedAt": "2026-10-29T14:59:47.578Z"
+}

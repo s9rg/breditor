@@ -1,3 +1,4 @@
+import {registerSessionDeliveryIO} from '../delivery_source/io.js';
 import {requireLiveActorCore}from'../persistence/stopped_actor_source.js';
 import {registerNativeActorSource}from'../persistence/native_actor_source.js';
 import {checkSharedWriterLeaseForEscrow}from'../persistence/writer_lease.js';
@@ -66,6 +67,7 @@ export class SharedIndependentHistoryPersistentSession<P extends SharedSelection
   const check=()=>{this.#live();const owned=this.#bound();if((nativeCore.segmentedHistoryPolicy.call(owned)??'original')!==identity.documentHistory||nativeCore.reviewHistoryPolicy.call(owned)!==identity.reviewHistory)throw new SharedEditorError('independent_history_source','Both actual native families must remain selected');};
   const port={identity:structuredClone(identity),core:core as unknown as SharedRichEditor<SharedSelectionPolicy>,companion:!!companion,...(localDriver?{localOperation:localDriver.operation}:{}),check,checkManaged:()=>{check();this.#managed();},stamp:()=>{check();return this.#sourceStamp;},read:()=>{check();return this.#recovery();},checkBorrowed:(expected:object)=>{check();if(expected!==this.#ownedCore||this.#retiring||this.#storageChanged)throw new SharedEditorError('independent_history_retired','The original independent storage owner is no longer available');},savedCompanion:()=>{this.#live();return this.#saved?.companion??null;}};
   registerIndependentHistoryNative(this,localDriver?Object.freeze(port):port);if(!companion&&!localDriver)registerIndependentSource(this,port);
+  registerSessionDeliveryIO(this,{core,check:port.checkManaged,save:()=>deliverySaveIntrinsic.call(this),flush:()=>deliveryFlushIntrinsic.call(this)});
   registerNativeActorSource(this,'independent',{document:documentLease,review:reviewLease});
   const save=()=>{try{this.save();}catch(error){this.#failed(error);}};let documentRevision=nativeCore.view.call(core).revision,reviewRevision=nativeCore.reviewSnapshot.call(core).reviewRevision;
   const changed=(document:string,review?:string)=>{if(document!==documentRevision||review!==undefined&&review!==reviewRevision){this.#sourceStamp=Object.freeze({});documentRevision=document;if(review!==undefined)reviewRevision=review;}save();};
@@ -177,3 +179,6 @@ export class SharedIndependentHistoryPersistentSession<P extends SharedSelection
 /** Capture the SDK-owned constructor before any host factory/authority can
  * replace its public static entry. No callback may split actual actor moves. */
 const createStoppedActorEscrow=ActorLeaseEscrow.create;
+
+/** SDK method identities captured before host callbacks may shadow a facade. */
+const deliverySaveIntrinsic=SharedIndependentHistoryPersistentSession.prototype.save,deliveryFlushIntrinsic=SharedIndependentHistoryPersistentSession.prototype.flush;

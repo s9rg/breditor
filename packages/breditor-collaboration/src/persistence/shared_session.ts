@@ -1,3 +1,4 @@
+import {registerSessionDeliveryIO} from '../delivery_source/io.js';
 import {isCompletedSourceOpen} from './completed_source_open.js';
 import {requireLiveActorCore}from'./stopped_actor_source.js';
 import {registerNativeActorSource}from'./native_actor_source.js';
@@ -91,6 +92,7 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
   this.#releasePendingWork=registerNativePendingWork(core,()=>this.#running);
   this.#unsubscribe=core.subscribe(()=>{try{this.save();}catch(error){this.#failed(error);}});
   registerManagedSource(this,core,()=>{this.#live();this.#boundCore();if(this.#storageChanged||this.#closeRequest)throw managedSourceUnavailable();});
+  registerSessionDeliveryIO(this,{core,check:()=>{this.#live();this.#boundCore();if(this.#storageChanged||this.#closeRequest)throw managedSourceUnavailable();},save:()=>deliverySaveIntrinsic.call(this),flush:()=>deliveryFlushIntrinsic.call(this)});
   registerNativeActorSource(this,'shared',{document:lease});
   db.onversionchange=()=>{
    // An upgrade must unblock its database, not silently destroy an unsaved native journal.
@@ -240,3 +242,6 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
 /** Private original-store discovery; neither a detached checkpoint nor a format
  * option can choose a different source. Reading never saves or restores authors. */
 export function captureOriginalNativeRecords<P extends SharedSelectionPolicy>(owner:SharedPersistentSession<P>,checkAuthority:()=>void,signal?:AbortSignal){return readOriginalNative(owner as SharedPersistentSession<SharedSelectionPolicy>,checkAuthority,signal);}
+
+/** SDK method identities captured before host callbacks may shadow a facade. */
+const deliverySaveIntrinsic=SharedPersistentSession.prototype.save,deliveryFlushIntrinsic=SharedPersistentSession.prototype.flush;

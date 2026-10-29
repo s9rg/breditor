@@ -1,3 +1,4 @@
+import {selectedNativeRelayDelivery,type NativeRelayDeliveryPort} from './native_delivery.js';
 import {RelayWorkCustody} from './work_custody.js';
 import {SharedRichEditor} from "../core.js";
 import type {SharedWriterClock,SharedSelectionPolicy} from "../types.js";
@@ -27,8 +28,8 @@ const attached=new WeakSet<object>();
 /** Single-writer server sync for an independently owned core. No second JS document or optimistic
  * server acknowledgement exists. Disposal/permission loss keeps the core and exact journal alive. */
 export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
- readonly #work:RelayWorkCustody;
- #core:SharedRichEditor<P>;#identity:SharedRelayIdentity;#options:SharedRelayOptions<P>;#unsubscribe:()=>void;
+ readonly #work:RelayWorkCustody;readonly #nativeDelivery:NativeRelayDeliveryPort|undefined;
+ #core:SharedRichEditor<P>;#identity:SharedRelayIdentity;#options:SharedRelayOptions<P>;#unsubscribe:()=>void=()=>{};
  #status:SharedRelayStatus="offline";#error:string|null=null;#local:string;#durable:string|null=null;
  #acked:SharedWriterClock|undefined;#sequence:string|null=null;#channel:RelayChannel|undefined;
  #epoch=0;#abort:AbortController|undefined;#ready=false;#wanted=false;#closed=false;
@@ -48,11 +49,14 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
  readonly #durableSource:DurableRelaySourcePort|undefined;#durableFloor:SharedWriterClock|null=null;
 
  constructor(core:SharedRichEditor<P>,options:SharedRelayOptions<P>&(P extends "document-v1"?SharedDocumentRelayOptions:unknown)){
+  const sourceOptions=options;
+  this.#nativeDelivery=selectedNativeRelayDelivery(options,core);
+  if(this.#nativeDelivery){if(options.presence)throw new SharedRelayError('native_delivery_presence');options={...options,autoConnect:false,persistLocal:()=>this.#nativeDelivery!.persistLocal()};}
   const policy=options.selectionEditing??"original";
   if(policy!=="original"&&policy!=="document-v1"||policy!==(core.selectionPolicy?.()??"original"))throw new SharedRelayError("relay_selection_policy");
   if(attached.has(core))throw new SharedRelayError("relay_already_attached");
   this.#core=core;this.#identity=identity(options.identity);this.#options={...options,identity:this.#identity};
-  this.#durableSource=selectedDocumentSource(options);
+  this.#durableSource=selectedDocumentSource(sourceOptions);
   this.#transport=transportVersion(this.#identity.writerTransport);
   const reviewed=core.reviewedHistoryIdentity?.()??null;
   if(reviewed&&(reviewed.principal!==this.#identity.principal||this.#transport!==2||typeof options.persistLocal!=="function"))throw new SharedRelayError("reviewed_transport_required");
@@ -72,9 +76,11 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
   else checkSourceCheckpoint(core,this.#identity.room,this.#identity.writer);
   this.#local=this.#clock().through;
   if(options.presence)this.#presence=new RelayPresence(core,options.presence,this.#identity.writer,e=>this.#report(e));
-  this.#work=new RelayWorkCustody(core,()=>!this.#wanted&&(!this.#closed?this.#status==='offline':true),()=>new SharedRelayError('relay_recovery_in_use'));
-  this.#unsubscribe=core.subscribe(()=>{try{const previous=this.#local;this.#refresh();if(previous!==this.#local)this.#schedulePump();}catch{this.#fail(new SharedRelayError("owner_unavailable"),this.#epoch);}});
-  attached.add(core);
+  this.#work=new RelayWorkCustody(core,()=>!this.#wanted&&(!this.#closed?this.#status==='offline':true),()=>new SharedRelayError('relay_recovery_in_use'),this.#nativeDelivery?.admission);
+  try{const listener=()=>{try{const previous=this.#local;this.#refresh();if(previous!==this.#local)this.#schedulePump();}catch{this.#fail(new SharedRelayError("owner_unavailable"),this.#epoch);}};
+   this.#unsubscribe=this.#nativeDelivery?nativeSubscribeIntrinsic.call(core,listener):core.subscribe(listener);attached.add(core);
+   this.#nativeDelivery?.track(()=>nativeDisposeIntrinsic.call(this),()=>nativeDrainIntrinsic.call(this));
+  }catch(error){this.#unsubscribe();this.#presence?.dispose();this.#work.retire(()=>attached.delete(core));throw error;}
   this.#wanted=options.autoConnect!==false;
   if(this.#wanted)queueMicrotask(()=>{if(this.#wanted&&!this.#closed)void this.connect().catch(()=>{});});
  }
@@ -144,7 +150,7 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
 
  /** Explicit connect/retry. A fenced/denied session never automatically steals its writer back. */
  async connect():Promise<void>{
-  if(this.#closed)throw new SharedRelayError("closed");this.#work.checkAllowed();this.#wanted=true;clearTimeout(this.#retry);this.#retry=undefined;
+  if(this.#closed)throw new SharedRelayError("closed");this.#work.checkAllowed();this.#nativeDelivery?.check();this.#wanted=true;clearTimeout(this.#retry);this.#retry=undefined;
   if(this.#connecting)return this.#connecting;
   if(this.#ready&&this.#channel){this.#localFailure=false;this.#error=null;this.#schedulePump();return;}
   this.#stop();const epoch=this.#epoch,abort=new AbortController();this.#abort=abort;this.#status="connecting";this.#error=null;this.#notify();
@@ -153,13 +159,13 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
  }
  async #establish(epoch:number,abort:AbortController):Promise<void>{
   if(this.#durableSource){this.#durableSource.check();try{await this.#durableSource.flush();}catch{throw new SharedRelayError("local_save_failed");}if(!this.#active(epoch))throw new SharedRelayError("disconnected");this.#durableFloor=this.#durableSource.durable().document.accepted;}
-  const token=await accountToken(this.#options.getToken,abort.signal,this.#milliseconds);if(!this.#active(epoch))throw new SharedRelayError("disconnected");
+  this.#nativeDelivery?.check();const token=await accountToken(this.#options.getToken,abort.signal,this.#milliseconds);if(!this.#active(epoch))throw new SharedRelayError("disconnected");
   const open=this.#core.selectionPolicy()==="document-v1"?RelayChannel.openDocument:RelayChannel.open;
   const channel=await(this.#options.suggestions?RelayChannel.openSuggestions(this.#identity.endpoint,this.#milliseconds,e=>this.#event(e,epoch),e=>this.#fail(e,epoch),this.#core.selectionPolicy(),abort.signal):open(this.#identity.endpoint,this.#milliseconds,e=>this.#event(e,epoch),e=>this.#fail(e,epoch),abort.signal));
   if(!this.#active(epoch)){channel.close();throw new SharedRelayError("disconnected");}this.#channel=channel;
   const presenceCapability=this.#core.selectionPolicy()==="document-v1"?"documentPresenceV1":"presence";
   const wanted=[...(this.#options.onAssetsChanged?["assets"]:[]),...(this.#presence?[presenceCapability]:[]),...(this.#transport===2?["writerTransportV2"]:[]),...(this.#options.suggestions?["documentSuggestionsV1"]:[]),...(this.#options.suggestionRevisions?["documentSuggestionRevisionsV1"]:[])];
-  const authenticated=await channel.request({kind:"authenticate",principal:this.#identity.principal,token,...(wanted.length?{capabilities:wanted}:{})});
+  this.#nativeDelivery?.check();const authenticated=await channel.request({kind:"authenticate",principal:this.#identity.principal,token,...(wanted.length?{capabilities:wanted}:{})});
   if(authenticated["kind"]!=="authenticated")throw new SharedRelayError("protocol_error");checkDescriptor(this.#core,descriptor(authenticated["descriptor"]));
   let confirmed=authenticated["capabilities"];
   if(this.#options.suggestions){
@@ -180,7 +186,7 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
   if(this.#earlyPresence&&!this.#presenceEnabled)throw new SharedRelayError("protocol_error");
   const initialFrame=frame(authenticated["frame"]);this.#latest??=initialFrame;
   // Never import a server's own-author future and then pretend it belongs to this local journal.
-  await this.#readClock(channel);const resumed=await channel.request({kind:"resume",writer:this.#identity.writer,credential:this.#identity.credential});
+  await this.#readClock(channel);this.#nativeDelivery?.check();const resumed=await channel.request({kind:"resume",writer:this.#identity.writer,credential:this.#identity.credential});
   if(resumed["kind"]!=="resumed"||object(resumed["lease"])["writer"]!==this.#identity.writer)throw new SharedRelayError("writer_mismatch");
   const current=await this.#readClock(channel);if(!this.#active(epoch))throw new SharedRelayError("disconnected");
   if(this.#acked&&BigInt(current.through)<BigInt(this.#acked.through))throw new SharedRelayError("server_rollback");
@@ -191,7 +197,13 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
   await this.#drainFrames(epoch);if(this.#active(epoch)){this.#refresh();this.#schedulePump();if(this.#assetHints)this.#assetsChanged(epoch);if(this.#presenceEnabled){this.#presence!.start(channel);this.#presenceStarted=true;if(this.#earlyPresence)this.#presence!.receive(this.#earlyPresence);this.#earlyPresence=undefined;}}
  }
  async #readClock(channel:RelayChannel):Promise<SharedWriterClock>{const result=await channel.request({kind:"clock",writer:this.#identity.writer});if(result["kind"]!=="clock")throw new SharedRelayError("protocol_error");const current=clock(result["clock"],this.#identity.writer);checkClock(this.#core,current,this.#transport);if(this.#durableSource){this.#durableSource.check();if(this.#durableFloor&&BigInt(current.through)<BigInt(this.#durableFloor.through)||this.#acked&&BigInt(current.through)<BigInt(this.#acked.through))throw new SharedRelayError("server_rollback");}return current;}
- async #saveDurableSourceProgress(accepted:SharedWriterClock,receipt?:SharedSegmentedDocumentReceipt):Promise<void>{if(!this.#durableSource)return;this.#durableSource.check();try{await this.#durableSource.persistDocument({accepted,receipt:receipt??this.#durableSource.durable().document.receipt});this.#durableFloor=this.#durableSource.durable().document.accepted;}catch{throw new SharedRelayError("local_save_failed");}}
+ async #saveDurableSourceProgress(accepted:SharedWriterClock,receipt?:SharedSegmentedDocumentReceipt):Promise<void>{
+  if(!this.#durableSource)return;this.#nativeDelivery?.check();this.#durableSource.check();
+  try{await this.#durableSource.persistDocument({accepted,receipt:receipt??this.#durableSource.durable().document.receipt});this.#durableFloor=this.#durableSource.durable().document.accepted;}catch{throw new SharedRelayError("local_save_failed");}
+  // A genuine committed receipt remains source DATA if authority was revoked
+  // during its storage callback. It must not settle an old execution's flush.
+  this.#nativeDelivery?.check();
+ }
  /** Bounded suggestion requests use this existing authenticated author connection. Binding and
   * principal/writer authority cannot be supplied by a caller payload. A metadata permission error
   * does not shut down ordinary document sync; an invalid author lease still fences it. */
@@ -211,7 +223,7 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
    default:throw new SharedRelayError("invalid_request");
   }
   this.#suggestionRequests++;
-  try{const result=await channel.request(payload);if(!this.#active(epoch)||this.#channel!==channel)throw new SharedRelayError("disconnected");return result;}
+  try{this.#nativeDelivery?.check();const result=await channel.request(payload);if(!this.#active(epoch)||this.#channel!==channel)throw new SharedRelayError("disconnected");return result;}
   catch(error){if(error instanceof SharedRelayError&&(error.code==="lease_rejected"||transient.has(error.code)))this.#fail(error,epoch);throw error;}
   finally{this.#suggestionRequests--;}
  }
@@ -221,7 +233,7 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
   const binding=this.#options.suggestionRevisions,channel=this.#channel,epoch=this.#epoch;
   if(!binding||!channel||!this.suggestionRevisionsReady())throw new SharedRelayError("suggestion_revision_offline");
   if(this.#suggestionRequests>=2)throw new SharedRelayError("suggestion_request_budget");const payload=revisionRequest(request,binding.binding);this.#suggestionRequests++;
-  try{const result=await channel.request(payload);if(!this.#active(epoch)||this.#channel!==channel)throw new SharedRelayError("disconnected");return result;}
+  try{this.#nativeDelivery?.check();const result=await channel.request(payload);if(!this.#active(epoch)||this.#channel!==channel)throw new SharedRelayError("disconnected");return result;}
   catch(error){if(error instanceof SharedRelayError&&(error.code==="lease_rejected"||transient.has(error.code)))this.#fail(error,epoch);throw error;}
   finally{this.#suggestionRequests--;}
  }
@@ -244,7 +256,7 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
  #drainFrames(epoch:number):Promise<void>{
   if(this.#drain?.epoch===epoch)return this.#drain.promise;
   const run:Run={epoch,promise:Promise.resolve()};this.#drain=run;
-  run.promise=this.#work.run(async()=>{try{while(this.#active(epoch)&&this.#ready&&this.#latest!==undefined){const next=this.#latest;this.#latest=undefined;const signal=this.#abort!.signal;await this.#core.receiveFrame(next,{signal});if(this.#active(epoch)){this.#refresh();this.#schedulePump();}}}
+  run.promise=this.#work.run(async()=>{try{while(this.#active(epoch)&&this.#ready&&this.#latest!==undefined){const next=this.#latest;this.#latest=undefined;const signal=this.#abort!.signal;if(this.#nativeDelivery)this.#nativeDelivery.receiveDocument(next);else await this.#core.receiveFrame(next,{signal});if(this.#active(epoch)){this.#refresh();this.#schedulePump();}}}
    catch(error){if(this.#active(epoch))this.#fail(error instanceof SharedRelayError?error:new SharedRelayError("remote_rejected"),epoch);throw error;}
    finally{if(this.#drain===run){this.#drain=undefined;this.#settle();}}});return run.promise;
  }
@@ -264,7 +276,7 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
    const groups=this.#groups(this.#acked.through);if(!groups.length)throw new SharedRelayError("group_export_failed");
    for(const raw of groups){const g=groupMetadata(raw,this.#transport);if(BigInt(g.through)>BigInt(target))return;
     if(g.writer!==this.#identity.writer||g.from!==this.#acked.through||g.previousDigest!==this.#acked.prefixDigest)throw new SharedRelayError("history_fork");
-    this.#missing=[];const result=await channel.request({kind:"submit",group:raw});if(!this.#active(epoch))return;
+    this.#nativeDelivery?.check();this.#missing=[];const result=await channel.request({kind:"submit",group:raw});if(!this.#active(epoch))return;
     if(result["kind"]==="pending"){
      const dependencies=result["missing"];if(result["writer"]!==this.#identity.writer||!Array.isArray(dependencies)||!dependencies.length||dependencies.length>1024)throw new SharedRelayError("protocol_error");
      this.#missing=dependencies.map(value=>{const d=object(value),n=counter(d["counter"]);if(n==="0")throw new SharedRelayError("protocol_error");return{writer:writer(d["writer"]),counter:n};});return;
@@ -280,7 +292,10 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
  /** Wait for THIS call's authored end to become server durable, not for future typing or every
   * collaborator. Offline/denied/failed work remains in the caller-owned journal. */
  flush():Promise<void>{
-  if(this.#closed)return Promise.reject(new SharedRelayError("closed"));this.#refresh();const target=this.#local;
+  if(this.#closed)return Promise.reject(new SharedRelayError("closed"));
+  // Cached durability is still DATA, not authority for a held execution.
+  try{this.#nativeDelivery?.check();}catch(error){return Promise.reject(error);}
+  this.#refresh();const target=this.#local;
   if(this.#acked&&BigInt(this.#acked.through)>=BigInt(target))return Promise.resolve();
   if(!this.#wanted||this.#localFailure)return Promise.reject(new SharedRelayError(this.#error??"offline"));
   if(this.#waiters.size>=16)return Promise.reject(new SharedRelayError("flush_budget"));
@@ -299,3 +314,5 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
 }
 /** Named immutable document-family adapter; never reuses the original checkpoint validator. */
 export function createSharedDocumentRelaySync(core:SharedRichEditor<"document-v1">,options:SharedDocumentRelayOptions):SharedRelaySync<"document-v1">{return new SharedRelaySync(core,options);}
+
+const nativeSubscribeIntrinsic=SharedRichEditor.prototype.subscribe,nativeDisposeIntrinsic=SharedRelaySync.prototype.dispose,nativeDrainIntrinsic=SharedRelaySync.prototype.waitForDisconnected;

@@ -1,3 +1,4 @@
+import {registerSessionDeliveryIO} from '../delivery_source/io.js';
 import {isCompletedSourceOpen} from './completed_source_open.js';
 import {requireLiveActorCore}from'./stopped_actor_source.js';
 import {registerNativeActorSource}from'./native_actor_source.js';
@@ -97,6 +98,7 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
   const autosave=()=>{try{this.save();}catch(error){this.#failed(error);}};
   this.#unsubscribe=[core.subscribe(autosave),core.subscribeReview(autosave)];
   registerManagedSource(this,core,()=>{this.#live();this.#boundCore();if(this.#storageChanged||this.#retiring)throw managedSourceUnavailable();});
+  registerSessionDeliveryIO(this,{core,check:()=>{this.#live();this.#boundCore();if(this.#storageChanged||this.#retiring)throw managedSourceUnavailable();},save:()=>deliverySaveIntrinsic.call(this),flush:()=>deliveryFlushIntrinsic.call(this),review:{identity:()=>deliveryReviewIdentityIntrinsic.call(this),progress:()=>deliveryReviewProgressIntrinsic.call(this),persist:progress=>this.#persistRelayProgress(progress,()=>deliverySaveIntrinsic.call(this),()=>deliveryFlushIntrinsic.call(this))}});
   registerNativeActorSource(this,'review',{document:documentLease,review:reviewLease});
   db.onversionchange=()=>{this.#storageChanged=true;retireOwnedCore(core);db.close();this.#failed(new SharedEditorError("review_versionchange","Paired storage changed; export both readable histories before explicitly discarding this writer"));};
  }
@@ -213,11 +215,12 @@ export class SharedReviewPersistentSession<P extends SharedSelectionPolicy=Share
  /** Only successfully committed progress, never an attempted/aborted IndexedDB cursor. */
  reviewRelayProgress():SharedReviewRelayProgress{this.#live();return structuredClone(this.#durableRelayProgress);}
  /** Capture both native journals and progress in one transaction; failed saves retain all inputs. */
- async persistReviewRelayProgress(input:SharedReviewRelayProgress):Promise<void>{
+ async persistReviewRelayProgress(input:SharedReviewRelayProgress):Promise<void>{return this.#persistRelayProgress(input,()=>this.save(),()=>this.flush());}
+ async #persistRelayProgress(input:SharedReviewRelayProgress,save:()=>void,flush:()=>Promise<void>):Promise<void>{
   this.#live();checkManagedCore(this.#ownedCore);const identity=this.#options.relay;if(!identity)throw new SharedEditorError("review_relay_storage","Explicit paired relay storage is required");
   const next=reviewProgress(input,identity),previous=this.#relayProgress;
   if(previous.cursor&&(!next.cursor||BigInt(next.cursor.after)<BigInt(previous.cursor.after))||previous.accepted&&(!next.accepted||BigInt(next.accepted.through)<BigInt(previous.accepted.through)||next.accepted.through===previous.accepted.through&&next.accepted.prefixDigest!==previous.accepted.prefixDigest))throw new SharedEditorError("review_relay_rollback","Paired relay progress cannot move backwards");
-  this.#validateNativeProgress(next);checkManagedCore(this.#ownedCore);this.#relayProgress=next;this.save();await this.flush();
+  this.#validateNativeProgress(next);checkManagedCore(this.#ownedCore);this.#relayProgress=next;save();await flush();
  }
  state():SharedReviewSaveState{const snapshot=this.#closedRevisions??managedCoreRetainedRevisions(this.#ownedCore);return {status:this.#closed?"closed":this.#failure?"failed":this.#pending||this.#running?"pending":"saved",documentRevision:snapshot.documentRevision,reviewRevision:snapshot.reviewRevision,error:this.#failure?String(this.#failure):null};}
  /** Synchronously capture both exact native lanes; coalesce only complete superseded pairs. */
@@ -245,3 +248,8 @@ export function capturePersistentPairedRecords<P extends SharedSelectionPolicy>(
 /** Capture the SDK-owned constructor before any host factory/authority can
  * replace its public static entry. No callback may split actual actor moves. */
 const createStoppedActorEscrow=ActorLeaseEscrow.create;
+
+/** SDK method identities captured before host callbacks may shadow a facade. */
+const deliverySaveIntrinsic=SharedReviewPersistentSession.prototype.save,deliveryFlushIntrinsic=SharedReviewPersistentSession.prototype.flush;
+
+const deliveryReviewIdentityIntrinsic=SharedReviewPersistentSession.prototype.reviewRelayIdentity,deliveryReviewProgressIntrinsic=SharedReviewPersistentSession.prototype.reviewRelayProgress;
