@@ -1,5 +1,18 @@
 # V1 candidate checks
 
+The [authenticated-path/owned-work qualification](qualification/2026-10-29-authenticated-path-owned-work.json)
+freshly passes 575 server/273 no-server Rust tests, strict Rust/SDK checks, 166
+SDK laws and all 205 plan/verifier laws. All thirty seven-author source/installed/
+executed-bundle cases require genuine authenticated complete-path reads while
+keeping old prior/current checks literal. Installed modules run unchanged old34
+and new42 wire laws. A concrete four-controller cancellation bug is reproduced
+with exact before sources, then passes ten repeats of its actual native/HTTP
+regressions after repair. All141 unchanged retained-owner prototype tests pass
+against the new native service; that SDK development code remains unmerged.
+This is not cold editing resume, whole-client/provider adoption, physical
+durability, whole589/597-stage plan qualification or V1 approval. All thirteen
+gates remain open; the historical WebKit fault is not declared repaired.
+
 The [complete-path/coupled-journal qualification](qualification/2026-10-29-ordered-delivery-path-coupled-journal.json)
 freshly passes 565 server/273 no-server Rust tests, both strict all-target lint
 modes, Rustdoc, format, public types, 124 SDK contracts and all 203 candidate-plan/

@@ -147,6 +147,26 @@ impl Network {
         })
         .await??)
     }
+    pub async fn admission_status(&self, request: &Request<'_>) -> TestResult<u16> {
+        let extra = format!("{}Expect: 100-continue\r\n", request.extra);
+        let head = Request { extra: &extra, ..*request }.head(self.address, 1);
+        let address = self.address;
+        Ok(tokio::task::spawn_blocking(move || -> std::io::Result<u16> {
+            let mut stream = TcpStream::connect_timeout(&address, Duration::from_secs(10))?;
+            stream.set_read_timeout(Some(Duration::from_secs(10)))?;
+            stream.set_write_timeout(Some(Duration::from_secs(10)))?;
+            stream.write_all(head.as_bytes())?;
+            let mut head = [0_u8; 25];
+            stream.read_exact(&mut head)?;
+            let text = std::str::from_utf8(&head).map_err(std::io::Error::other)?;
+            text.split_whitespace()
+                .nth(1)
+                .ok_or_else(|| std::io::Error::other("HTTP status"))?
+                .parse()
+                .map_err(std::io::Error::other)
+        })
+        .await??)
+    }
     pub async fn finish_unfinished(mut stream: TcpStream) -> TestResult<Response> {
         let bytes = tokio::task::spawn_blocking(move || -> std::io::Result<Vec<u8>> {
             stream.write_all(b"?")?;

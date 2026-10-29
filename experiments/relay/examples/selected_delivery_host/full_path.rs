@@ -1,9 +1,9 @@
 //! Exercise the PUBLIC native complete-path API on the actual activated service.
-//! Returned JSON is test evidence only, never a client/writer or portable proof.
+//! Return the actual opaque proof for trusted controller composition, never a DTO grant.
 use super::{Result, setup::Ready};
 use breditor_collab_relay::{
     ServerLogGenerationRoomBackup,
-    server::{ServerLogGenerationDeliveryPathIdentity, VerifiedServerLogGenerationRecoveryState},
+    server::{VerifiedServerLogGenerationDeliveryPath, VerifiedServerLogGenerationRecoveryState},
 };
 use std::{collections::BTreeMap, sync::Arc};
 fn copy(value: &ServerLogGenerationRoomBackup) -> Result<ServerLogGenerationRoomBackup> {
@@ -14,7 +14,7 @@ pub(super) async fn verify(
     current: &ServerLogGenerationRoomBackup,
     native: Arc<VerifiedServerLogGenerationRecoveryState>,
     observed: &BTreeMap<u64, Arc<ServerLogGenerationRoomBackup>>,
-) -> Result<ServerLogGenerationDeliveryPathIdentity> {
+) -> Result<VerifiedServerLogGenerationDeliveryPath> {
     let path = if observed.is_empty() {
         vec![copy(current)?]
     } else {
@@ -27,5 +27,5 @@ pub(super) async fn verify(
     let host = ready.active.recovery_host();
     let proof = host.verify_delivery_path("owner", &ready.owner_token, path, &pins, native).await?;
     proof.check_live(&host, "owner", &ready.owner_token).await?;
-    Ok(proof.identity())
+    Ok(proof)
 }

@@ -14,3 +14,12 @@ pub use prepare::prepare_log_generation_recovery_control;
 pub(super) fn router_for_delivery(control: &ServerLogGenerationRecoveryControl) -> axum::Router {
     routes::router(std::sync::Arc::downgrade(&control.state))
 }
+
+#[cfg(test)]
+pub(super) fn request_for_test(
+    control: &ServerLogGenerationRecoveryControl,
+    request: axum::extract::Request,
+) -> impl std::future::Future<Output = axum::response::Response> + Send + 'static {
+    let weak = std::sync::Arc::downgrade(&control.state);
+    async move { routes::check(axum::extract::State(weak), request).await }
+}

@@ -1,5 +1,6 @@
 /target/
 /experiments/collaboration/target/
+/experiments/relay/target/
 /crates/breditor-collaboration/target/
 *.profraw
 node_modules/

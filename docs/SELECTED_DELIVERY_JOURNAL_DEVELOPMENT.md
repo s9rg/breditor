@@ -77,8 +77,9 @@ and receipts are real; Node IndexedDB/locks are fixtures, not durability evidenc
 
 The [native complete ordered path](SERVER_DELIVERY_PATH.md) now supplies actual
 A <= B <= C1 <= ... <= D verification, including every predecessor raster.
-A separate authenticated path control and genuine SDK host are still required
-before fresh cold editing resume. Every saved file must be re-admitted and its
+A [separate authenticated path control and genuine SDK host](SERVER_DELIVERY_PATH_CONTROL.md)
+are now available; this prototype still must compose them into fresh cold
+editing resume. Every saved file must be re-admitted and its
 full native path/source continuation reverified, with fresh policy and explicit
 reapproval producing a new gate. Metadata reads or the old closed gate cannot
 stand in for this. Unbound-source adoption, metadata outbox transport custody,

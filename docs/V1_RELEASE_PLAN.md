@@ -13,6 +13,38 @@ the FCKeditor lineage. CKEditor 4 reached ordinary EOL in June 2023; its
 is not the modern feature baseline. Breditor remains an independent implementation:
 no ProseMirror, Tiptap or CKEditor document, operation or plugin protocol is adopted.
 
+## Authenticated complete path and actual read-work ownership
+
+The [new path control](SERVER_DELIVERY_PATH_CONTROL.md) now exposes the genuine
+complete ordered native path through a separately authenticated Rust controller
+and brand-checked SDK host. It composes the actual existing prior/current owner,
+preserving literal selectors, routes, credentials and shared quota. Source,
+installed and executed-bundle reads now use this genuine path controller.
+
+A [concrete cancellation bug](SERVER_RECOVERY_CONTROL_WORK.md) was reproduced
+in all four physical/current/prior/path handlers: a canceled waiter released its
+slot while native provider work was still running. Exact before sources/logs
+are retained. The shared ownership repair keeps the actual permit and complete
+read in a job that outlives its waiter. Ten after-repair repetitions pass twenty
+native tests covering forty actual controller-family cases. Idle bodies still
+retain only quota, not native custody. This is not the historical WebKit fault.
+
+The [qualification](qualification/2026-10-29-authenticated-path-owned-work.json)
+freshly passes 575 server/273 no-server Rust tests, both strict all-target lint
+modes, Rustdoc, formatting, public types, 166 SDK laws and all 205 plan/verifier
+laws. All thirty seven-author source/installed/executed-bundle cases pass with
+genuine authenticated whole-path reads and unchanged prior checks. Installed
+modules also execute all 34 original and 42 new wire/lifetime laws unchanged.
+Normal Wasm and original protocols/defaults remain unchanged.
+
+All 141 unchanged retained-owner development tests also pass against the new
+native service, including real late receipt drain and committed-but-refused
+journal cleanup. That prototype remains unmerged: fresh cold editing resume
+still needs every saved file and native/source continuation re-admitted, fresh
+policy and explicit approval yielding a NEW gate. Unbound lanes, metadata
+transport custody, complete provider/client/assets and joint activation remain.
+The full 589/597-stage plans and all thirteen V1 gates remain open.
+
 ## Complete native delivery path and coupled journal
 
 The [separate native path contract](SERVER_DELIVERY_PATH.md) now verifies every

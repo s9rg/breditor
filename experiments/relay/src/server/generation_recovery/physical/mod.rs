@@ -23,3 +23,6 @@ pub use state::{PhysicalServerRoomRecoveryState, PhysicalServerRoomRecoveryState
 pub use verification::{
     PhysicalServerRoomRecoveryCoverage, VerifiedPhysicalServerRoomRecoveryState,
 };
+
+#[cfg(test)]
+pub(super) use control::request_for_test;

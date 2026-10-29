@@ -9,7 +9,7 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
 };
 
-pub(super) struct State {
+pub(in crate::server::generation_recovery) struct State {
     pub current: ServerLogGenerationRecoveryControl,
     pub continuation: Arc<VerifiedServerLogGenerationDeliveryContinuation>,
     pub selection: ServerLogGenerationDeliveryRecoveryControlIdentity,
@@ -49,7 +49,7 @@ impl State {
 /// let _: ServerLogGenerationDeliveryRecoveryControl = serde_json::from_str("{}").unwrap();
 /// ```
 pub struct ServerLogGenerationDeliveryRecoveryControl {
-    pub(super) state: Arc<State>,
+    pub(in crate::server::generation_recovery) state: Arc<State>,
 }
 impl ServerLogGenerationDeliveryRecoveryControl {
     /// Detached exact pins, not an executable or portable grant.

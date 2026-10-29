@@ -91,6 +91,10 @@ async fn main() -> Result {
             "http://{}/recovery/generation-delivery/v1/check",
             listener.local_addr()?
         ));
+        public["deliveryPathEndpoint"] = serde_json::json!(format!(
+            "http://{}/recovery/generation-delivery-path/v1/check",
+            listener.local_addr()?
+        ));
         controls.push(snapshot.control);
         tasks.push(serve(snapshot.router, listener));
         protocol::reply(

@@ -1,8 +1,9 @@
 //! Fresh complete actual server/provider cuts; old snapshots are never overwritten.
 use super::{Result, authentication, credentials, public_inputs, setup::Ready, storage};
 use breditor_collab_relay::server::{
-    ContentAddressedServerAssets, ServerLogGenerationDeliveryRecoveryControl,
+    ContentAddressedServerAssets, ServerLogGenerationDeliveryPathRecoveryControl,
     ServerLogGenerationRecoveryAssetCoverage, ServerRecoveryAssetProvider,
+    prepare_log_generation_delivery_path_recovery_control,
     prepare_log_generation_delivery_recovery_control, prepare_log_generation_recovery_control,
 };
 use serde_json::{Value, json};
@@ -12,7 +13,7 @@ pub(super) struct Snapshot {
     pub public: Value,
     pub archive: Arc<breditor_collab_relay::ServerLogGenerationRoomBackup>,
     pub operator_token: String,
-    pub control: ServerLogGenerationDeliveryRecoveryControl,
+    pub control: ServerLogGenerationDeliveryPathRecoveryControl,
     pub router: axum::Router,
 }
 pub(super) async fn capture(
@@ -35,7 +36,8 @@ pub(super) async fn capture(
         return Err("native changed during fixture capture".into());
     }
     let native = Arc::new(native);
-    let delivery_path = super::full_path::verify(ready, &current, native.clone(), observed).await?;
+    let path_proof = super::full_path::verify(ready, &current, native.clone(), observed).await?;
+    let delivery_path = path_proof.identity();
     // The first ACTUAL target serving cut B stays distinct from restore origin A.
     // Every fresh capture must prove A <= B <= current C, even after real delivery.
     if ready.initial_snapshot.get().is_none() {
@@ -83,9 +85,13 @@ pub(super) async fn capture(
     )
     .await?;
     let selected_current = control.identity();
-    let (router, control) =
+    let (_, control) =
         prepare_log_generation_delivery_recovery_control(control, Arc::new(continuation)).await?;
     let selected_delivery = control.identity();
+    let (router, control) =
+        prepare_log_generation_delivery_path_recovery_control(control, Arc::new(path_proof))
+            .await?;
+    let selected_path = control.identity();
     let directory = ready.root.join("snapshots").join(format!("cut-{sequence}"));
     storage::directory(&directory)?;
     let fixture = json!({"format":"breditor/native-selected-delivery-fixture","formatVersion":1,
@@ -114,7 +120,7 @@ pub(super) async fn capture(
         current: &current.to_bytes()?,
         credentials: &credentials,
     })?;
-    let public = json!({"path":path,"selection":selected_current,"deliverySelection":selected_delivery,"sequence":sequence,"previousSequence":previous_sequence,
+    let public = json!({"path":path,"selection":selected_current,"deliverySelection":selected_delivery,"deliveryPathSelection":selected_path,"sequence":sequence,"previousSequence":previous_sequence,
         "clientEndpoint":client_endpoint,"retiredEndpoint":retired_endpoint,
         "nativeProtectedStreamsVerified":true,"nativeProviderVerified":true,"nativeDeliveryContinuationVerified":true,"nativeDeliveryPathVerified":true});
     Ok(Snapshot { public, archive: Arc::new(current), operator_token, control, router })

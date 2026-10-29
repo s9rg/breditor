@@ -1,0 +1,320 @@
+{
+  "format": "breditor/authenticated-complete-path-and-owned-read-work-qualification",
+  "formatVersion": 1,
+  "functionalPassed": true,
+  "releaseReady": false,
+  "v1GatesClosed": 0,
+  "v1GatesTotal": 13,
+  "baseCommit": "cbd7b94dd85db5b9fc1da2084fb7fd4f51ae49c7",
+  "qualifiedSource": {
+    "commit": "cbd7b94dd85db5b9fc1da2084fb7fd4f51ae49c7",
+    "dirty": true,
+    "sha256": "c706d240c3298568d5848162798620ada5c59aadffd7fb7dffcb6411bca14535",
+    "files": 7384,
+    "bytes": 55918664
+  },
+  "sourceUnchangedDuringQualification": true,
+  "scope": "Authenticated complete ordered native path and unchanged genuine current/prior provider controls; actual request-slot ownership after canceled waiter, all native regressions, all candidate-plan laws and identical real seven-author source/fresh-installed/executed-bundle workflows. NOT cold editing resume, explicit fresh reapproval, unbound adoption, metadata settlement or joint whole-room activation.",
+  "stages": [
+    {
+      "id": "sdk-build",
+      "status": "passed",
+      "startedAt": "2026-10-29T12:41:20.258Z",
+      "finishedAt": "2026-10-29T12:41:21.310Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-path-control-qualified-ReoqbZ/sdk-build.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "all-control-sdk-laws",
+      "status": "passed",
+      "startedAt": "2026-10-29T12:41:21.920Z",
+      "finishedAt": "2026-10-29T12:41:22.669Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 28939,
+      "logPath": "/private/tmp/breditor-path-control-qualified-ReoqbZ/all-control-sdk-laws.log",
+      "logSha256": "e0bd9832e6870422456505f12b913b1c0e52788effd838ad47c396bd881de564",
+      "tests": 166
+    },
+    {
+      "id": "strict-public-types",
+      "status": "passed",
+      "startedAt": "2026-10-29T12:41:23.239Z",
+      "finishedAt": "2026-10-29T12:41:23.485Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-path-control-qualified-ReoqbZ/strict-public-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "format",
+      "status": "passed",
+      "startedAt": "2026-10-29T12:41:24.050Z",
+      "finishedAt": "2026-10-29T12:41:24.758Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-path-control-qualified-ReoqbZ/format.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "strict-server-all-targets",
+      "status": "passed",
+      "startedAt": "2026-10-29T12:41:25.317Z",
+      "finishedAt": "2026-10-29T12:41:25.891Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 560,
+      "logPath": "/private/tmp/breditor-path-control-qualified-ReoqbZ/strict-server-all-targets.log",
+      "logSha256": "24b24323d067f40328b3549ee5016c3949444db9abe83b863b8febdf42cb3e01"
+    },
+    {
+      "id": "strict-no-server-all-targets",
+      "status": "passed",
+      "startedAt": "2026-10-29T12:41:26.455Z",
+      "finishedAt": "2026-10-29T12:41:26.742Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 560,
+      "logPath": "/private/tmp/breditor-path-control-qualified-ReoqbZ/strict-no-server-all-targets.log",
+      "logSha256": "8344438852505cbe504d20a4c02e69b4323d7f22cd78a87ca5b68a4a32a7da57"
+    },
+    {
+      "id": "strict-docs",
+      "status": "passed",
+      "startedAt": "2026-10-29T12:41:27.275Z",
+      "finishedAt": "2026-10-29T12:41:35.775Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 728,
+      "logPath": "/private/tmp/breditor-path-control-qualified-ReoqbZ/strict-docs.log",
+      "logSha256": "a30fb4a4cd382aeaca5cebe7bf50a79cb6e88daa40ba93668032b92a3806c108"
+    },
+    {
+      "id": "real-native-host-build",
+      "status": "passed",
+      "startedAt": "2026-10-29T12:41:36.370Z",
+      "finishedAt": "2026-10-29T12:42:04.948Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 622,
+      "logPath": "/private/tmp/breditor-path-control-qualified-ReoqbZ/real-native-host-build.log",
+      "logSha256": "bb6ee315860ba0e48f37f4f83fc48fba92962a08879482822a8badcbbdd47107"
+    },
+    {
+      "id": "all-candidate-plan-and-verifier-laws",
+      "status": "passed",
+      "startedAt": "2026-10-29T12:42:05.568Z",
+      "finishedAt": "2026-10-29T12:42:08.493Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 48894,
+      "logPath": "/private/tmp/breditor-path-control-qualified-ReoqbZ/all-candidate-plan-and-verifier-laws.log",
+      "logSha256": "baffd97ca0cd096625603bd00ac944d71c3c3846dfcbf8715170a03dcf9e1df7",
+      "tests": 205
+    },
+    {
+      "id": "source-real-service-ten-modes",
+      "status": "passed",
+      "startedAt": "2026-10-29T12:42:09.078Z",
+      "finishedAt": "2026-10-29T12:46:10.690Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 2740,
+      "logPath": "/private/tmp/breditor-path-control-qualified-ReoqbZ/source-real-service-ten-modes.log",
+      "logSha256": "fe29de5802d49eb6a351c6c613fb749386650d93937a202117a34621ab491128",
+      "tests": 10
+    },
+    {
+      "id": "fresh-installed-and-executed-bundle",
+      "status": "passed",
+      "startedAt": "2026-10-29T12:46:12.573Z",
+      "finishedAt": "2026-10-29T12:53:44.873Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 16030,
+      "logPath": "/private/tmp/breditor-path-control-qualified-ReoqbZ/fresh-installed-and-executed-bundle.log",
+      "logSha256": "7c43eb4254d65d9fcf5d169fea157baf1cfec7cd61d32df59065ece4f81372cf"
+    },
+    {
+      "id": "full-server-native",
+      "status": "passed",
+      "startedAt": "2026-10-29T12:53:45.385Z",
+      "finishedAt": "2026-10-29T13:04:38.048Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 97427,
+      "logPath": "/private/tmp/breditor-path-control-qualified-ReoqbZ/full-server-native.log",
+      "logSha256": "e49c292a97170ec0fd587501c2fee2b27a97192a085999f68915c388a778af2d",
+      "tests": 575
+    },
+    {
+      "id": "full-no-server-native",
+      "status": "passed",
+      "startedAt": "2026-10-29T13:04:40.035Z",
+      "finishedAt": "2026-10-29T13:10:23.481Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 38707,
+      "logPath": "/private/tmp/breditor-path-control-qualified-ReoqbZ/full-no-server-native.log",
+      "logSha256": "d37e0cacd28a6212b3a51c7e8f4bc9e246a3ee012da02e4688c80032983c5ead",
+      "tests": 273
+    }
+  ],
+  "fresh": {
+    "fullRustServer": 575,
+    "fullRustNoServer": 273,
+    "newCompletePathNativeFunctions": 7,
+    "newPhysicalWaiterFunction": 1,
+    "newOpaqueRustdocBoundaries": 2,
+    "newActualPathNativeModes": 40,
+    "sdkControlLaws": 166,
+    "newSDKPathLaws": 42,
+    "allCandidatePlanAndVerifierLaws": 205,
+    "strictBothRustAllTargets": true,
+    "strictRustdoc": true,
+    "format": true,
+    "strictPublicTypes": true,
+    "sourceModes": 10,
+    "installedModes": 10,
+    "executedMinifiedBundleModes": 10,
+    "authorsTotal": 210,
+    "exactColdPairedReopens": 210,
+    "futureNativeHistoryStepsTotal": 840,
+    "authenticatedCompleteNativePathReadRequiredInEveryCase": true,
+    "allOriginalPredecessorChecksPreserved": true,
+    "installedOriginalUnchangedWireLaws": {
+      "tests": 34,
+      "passed": 34,
+      "skipped": 0,
+      "unchangedAssertions": true,
+      "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-selected-delivery-installed-2YYFxC/consumer/generation-delivery-control.tap",
+      "sha256": "77153819c2f28a780e446e4c9653ec84c5fb489ab3c845ad72edbe7dd3c6f78f"
+    },
+    "installedNewUnchangedPathLaws": {
+      "tests": 42,
+      "passed": 42,
+      "skipped": 0,
+      "unchangedAssertions": true,
+      "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-selected-delivery-installed-2YYFxC/consumer/generation-delivery-path-control.tap",
+      "sha256": "03bbc3985c523f0600d957dd429ebeb63a21517c2c1d99fde19ad382b260968b"
+    },
+    "workspaceLinks": false
+  },
+  "nativeController": {
+    "family": "breditor/server-log-generation-delivery-path-recovery-control",
+    "version": 1,
+    "endpoint": "/recovery/generation-delivery-path/v1/check",
+    "scope": "complete-ordered-native-server-path-and-current-provider",
+    "envelopeBytes": 16777216,
+    "oldCurrentEnvelopeBytes": 65536,
+    "oldPriorEnvelopeBytes": 262144,
+    "sharedActualQuota": 2,
+    "literalInnerControl": true,
+    "innerPriorNotRelabelled": true,
+    "weakOnlyRouters": true,
+    "sameActualNativeHostOwnerAndPathProof": true,
+    "noReceiptMutationOrActivation": true
+  },
+  "reproducedAndRepaired": {
+    "contract": "docs/SERVER_RECOVERY_CONTROL_WORK.md",
+    "exactBefore": "/private/tmp/breditor-all-waiters-before-oZl3CA",
+    "exactBeforeProof": {
+      "directory": "/Users/s/code/breditor/target/authenticated-native-path-control-proof-z63DN2",
+      "indexSha256": "098be730d8867103ea5cd8f09bce7906c8c1eebe9e4c3274e769495b5a5d076c",
+      "files": 151,
+      "bytes": 15227068
+    },
+    "controllerFamilies": [
+      "physical",
+      "generation-current",
+      "single-prior",
+      "complete-path"
+    ],
+    "cause": "OwnedSemaphorePermit belonged to the cancellable admitted waiter while actual native provider work could continue in a blocking worker. Aborting that waiter released a slot before actual work finished.",
+    "before": "All four actual callbacks remained blocked; a real second HTTP100-continue occupied the next slot; third admission incorrectly returned100 rather than503. Combined exact-source snapshot retains48 changed files and both failing tests; separate before runs retained.",
+    "repair": "Shared control_work::run moves the real permit and full read future into an owned blocking job and drives all native/provider/serialization/final checks. Aborting its waiter cannot cancel already-started blocking work or release its slot. Body-only requests still own quota only, not native custody.",
+    "after": {
+      "repeats": 10,
+      "nativeTests": 20,
+      "actualControllerFamilyCases": 40,
+      "passed": true,
+      "sourceUnchanged": true,
+      "result": "/private/tmp/breditor-waiter-repair-repeat-78f0KY/result.json"
+    },
+    "unchangedProtocolDefaultsAndUserData": true,
+    "notAHistoricalWebKitRepair": true
+  },
+  "installed": {
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-selected-delivery-installed-2YYFxC/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-selected-delivery-installed-2YYFxC/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-selected-delivery-installed-2YYFxC/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "15eff11880a4ce61441035b3994126a684d62444a259e244246c7894289b1042"
+      }
+    ],
+    "registryArtifacts": 45,
+    "executedProductionBundle": {
+      "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-selected-delivery-installed-2YYFxC/consumer/bundle/selected-delivery.mjs",
+      "sha256": "059b208bee1177d4bfc4ff31f4129d18421ecc4361edecc7c929bc506158b428",
+      "modules": 104
+    },
+    "nativeHostSha256": "c224c4d39d5f603dcb3815ebc58c1719b59b4d6db6fe554e675f91d4cab46ea7",
+    "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0"
+  },
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/authenticated-native-path-control-proof-z63DN2",
+    "indexSha256": "098be730d8867103ea5cd8f09bce7906c8c1eebe9e4c3274e769495b5a5d076c",
+    "files": 151,
+    "bytes": 15227068
+  },
+  "development": {
+    "notMerged": true,
+    "tests": 141,
+    "strictPrototypeAndPrivateTypes": true,
+    "sourceDistAndScriptInputsUnchanged": true,
+    "nativeHostSha256": "c224c4d39d5f603dcb3815ebc58c1719b59b4d6db6fe554e675f91d4cab46ea7",
+    "proof": {
+      "directory": "/Users/s/code/breditor/target/path-controller-retained-owner-regression-proof-ggUuA3",
+      "indexSha256": "f846ed3a3f85ecfd7c380b9a5c1f1b22fc20f848ff3e77b8fde6d070208a7520",
+      "files": 13,
+      "bytes": 967227
+    },
+    "qualification": "/private/tmp/breditor-path-control-prototype-qualified-XpdQpy/result.json",
+    "scope": "Same unchanged isolated SDK sources against the newly authenticated-path/actual-owned-work native service; actual retained-owner preparation, exclusive journal/delivery handoff, true native-work drain before recording, serialized bound-source progress, automatic stop on committed-but-refused recording and readable immutable facts without reopening permission. Includes all136 prior prototype tests and fresh strict private type fences. Synthetic Node IDB/locks; not physical durability, installed release qualification, fresh cold editing resume, unbound adoption, metadata settlement or whole-room activation.",
+    "newPathSDKNotIntegratedIntoResume": true,
+    "notPhysicalDurabilityOrInstalledJournalQualification": true
+  },
+  "candidateProfiles": {
+    "functionalStages": 589,
+    "fullStages": 597,
+    "wholePlansNotExecuted": true
+  },
+  "remaining": [
+    "Fresh journal/client/server/inventory read-admission plus actual full native path/source/upload continuation and explicit fresh approval before a NEW cold editing gate",
+    "Prototype integration and fresh source/installed/executed-bundle same-owner cold resume, preserving all original file/protocol meanings",
+    "Three genuinely unbound local review lanes require explicit native/comment-author adoption",
+    "Actual suggestion/revision/version transport/token/endpoint custody and receipts, complete client/provider/assets reconciliation and authenticated whole-room activation",
+    "Sustainable long-session/size qualification and all remaining feature-parity/release gates; historical intermittent faults are not declared repaired"
+  ],
+  "buildHygiene": {
+    "ignoredDefaultRelayTarget": true,
+    "redundantNewDefaultCacheRemoved": true,
+    "retainedNativeCacheOnly": true
+  },
+  "noPushPublishTagVersionOrDeployment": true
+}

@@ -92,7 +92,7 @@ async fn read(state: Arc<State>, body: Bytes) -> Result<Vec<u8>> {
     state.check().await?;
     Ok(bytes)
 }
-async fn check(Extract(weak): Extract<Weak<State>>, request: Request) -> Response {
+pub(super) async fn check(Extract(weak): Extract<Weak<State>>, request: Request) -> Response {
     let (parts, body) = request.into_parts();
     let headers = parts.headers;
     let Some(state) = weak.upgrade().filter(|state| state.local().is_ok()) else {
@@ -120,7 +120,7 @@ async fn check(Extract(weak): Extract<Weak<State>>, request: Request) -> Respons
             &origin,
         );
     }
-    let Ok(_permit) = state.current.state.requests.clone().try_acquire_owned() else {
+    let Ok(permit) = state.current.state.requests.clone().try_acquire_owned() else {
         return http::cors(StatusCode::SERVICE_UNAVAILABLE.into_response(), &origin);
     };
     drop(state); // Body-only admission retains no host/provider/native lease.
@@ -131,7 +131,8 @@ async fn check(Extract(weak): Extract<Weak<State>>, request: Request) -> Respons
         return http::cors(StatusCode::SERVICE_UNAVAILABLE.into_response(), &origin);
     };
     http::cors(
-        match read(state, body).await {
+        match crate::server::generation_recovery::control_work::run(permit, read(state, body)).await
+        {
             Ok(bytes) => ([("content-type", "application/json")], bytes).into_response(),
             Err(error) => http::failure(&error),
         },

@@ -56,8 +56,9 @@ only; it cannot recreate the native runtime proof.
 
 ## Required before cold editing resume
 
-A separately authenticated complete-path control and genuine SDK composition are
-still required to expose this authorization across a process/network boundary.
+The [separately authenticated complete-path control and genuine SDK host](SERVER_DELIVERY_PATH_CONTROL.md)
+now expose this fresh check across a process/network boundary. Fresh editing
+resume/reapproval and actual current client/provider adoption remain separate.
 Saved path JSON, fixture booleans, old single-prior controls or journal reopen
 must not substitute for that capability. The coupled delivery/journal prototype
 still needs fresh resume reapproval, full current client/provider reconciliation,

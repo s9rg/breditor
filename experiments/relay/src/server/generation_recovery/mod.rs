@@ -17,6 +17,7 @@ pub use asset_availability::{
     VerifiedServerLogGenerationRecoveryAssets,
 };
 mod control;
+mod control_work;
 pub use control::{
     ServerLogGenerationRecoveryControl, ServerLogGenerationRecoveryControlIdentity,
     prepare_log_generation_recovery_control,
@@ -25,6 +26,12 @@ mod delivery_control;
 pub use delivery_control::{
     ServerLogGenerationDeliveryRecoveryControl, ServerLogGenerationDeliveryRecoveryControlIdentity,
     prepare_log_generation_delivery_recovery_control,
+};
+mod delivery_path_control;
+pub use delivery_path_control::{
+    ServerLogGenerationDeliveryPathRecoveryControl,
+    ServerLogGenerationDeliveryPathRecoveryControlIdentity,
+    prepare_log_generation_delivery_path_recovery_control,
 };
 mod delivery_continuation;
 pub use delivery_continuation::{

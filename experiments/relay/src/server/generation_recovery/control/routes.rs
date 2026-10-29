@@ -111,7 +111,7 @@ async fn read(state: Arc<State>, body: Bytes) -> Result<Vec<u8>> {
     state.check().await?;
     Ok(bytes)
 }
-async fn check(Extract(weak): Extract<Weak<State>>, request: Request) -> Response {
+pub(super) async fn check(Extract(weak): Extract<Weak<State>>, request: Request) -> Response {
     respond(weak, request, Kind::Control).await
 }
 async fn check_assets(Extract(weak): Extract<Weak<State>>, request: Request) -> Response {
@@ -154,7 +154,7 @@ async fn respond(weak: Weak<State>, request: Request, kind: Kind) -> Response {
             &origin,
         );
     }
-    let Ok(_permit) = state.requests.clone().try_acquire_owned() else {
+    let Ok(permit) = state.requests.clone().try_acquire_owned() else {
         return http::cors(StatusCode::SERVICE_UNAVAILABLE.into_response(), &origin);
     };
     // An authenticated socket owns only its independent request permit while waiting for
@@ -173,12 +173,15 @@ async fn respond(weak: Weak<State>, request: Request, kind: Kind) -> Response {
     let Some(state) = weak.upgrade().filter(|state| state.local().is_ok()) else {
         return http::cors(StatusCode::SERVICE_UNAVAILABLE.into_response(), &origin);
     };
-    let result = match kind {
-        Kind::Control => read(state, body).await,
-        Kind::Assets => asset_requirements::read(state, body).await,
-        Kind::AcceptedNative => accepted_native::read(state, body).await,
-        Kind::OriginalReview => original_review::read(state, body).await,
-    };
+    let result = crate::server::generation_recovery::control_work::run(permit, async move {
+        match kind {
+            Kind::Control => read(state, body).await,
+            Kind::Assets => asset_requirements::read(state, body).await,
+            Kind::AcceptedNative => accepted_native::read(state, body).await,
+            Kind::OriginalReview => original_review::read(state, body).await,
+        }
+    })
+    .await;
     http::cors(
         match result {
             Ok(bytes) => ([("content-type", "application/json")], bytes).into_response(),
