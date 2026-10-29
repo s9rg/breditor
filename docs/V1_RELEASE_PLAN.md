@@ -13,6 +13,28 @@ the FCKeditor lineage. CKEditor 4 reached ordinary EOL in June 2023; its
 is not the modern feature baseline. Breditor remains an independent implementation:
 no ProseMirror, Tiptap or CKEditor document, operation or plugin protocol is adopted.
 
+## Actual document/comment work quiescence
+
+The [quiescence contract](RELAY_RECOVERY_QUIESCENCE.md) now keeps real pending
+document/comment work and its attachment owned after Dispose. The new public
+waitForDisconnected() drains that work without reconnecting, retrying a save,
+creating an ACK or transferring a writer. Actual native recovery and source
+retirement compose the same work exclusion, rather than trusting socket state.
+
+The [qualification](qualification/2026-10-29-relay-recovery-quiescence.json) passes
+15 focused contracts, four real public late-save cases, the unchanged ten
+segmented and forty independent-history relay cases, all 119 original seven-family
+reconstruction laws, 45 native-branch regressions and 192 plan/verifier laws.
+Fresh installed packages and the actually executed minified bundle each pass the
+four public cases without workspace links; public types pass. The old early
+reattachment bug was reproduced with exact baseline inputs before repair.
+
+Normal Wasm, original protocols/defaults and source families stay unchanged.
+The prior 545/273 native test baseline is carried, not freshly rerun here. This
+is not whole-plan, packet/outbox, provider/client or whole-room qualification.
+The separate held-owner delivery prototype is not merged by this checkpoint.
+All thirteen V1 gates remain open; no version bump, push, publication or deployment.
+
 ## Durable native target activation and cold restart
 
 The [durable-first contract](DURABLE_NATIVE_GENERATION_ACTIVATION.md) now retains

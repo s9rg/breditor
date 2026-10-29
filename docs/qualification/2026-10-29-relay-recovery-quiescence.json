@@ -1,0 +1,173 @@
+{
+  "format": "breditor/relay-recovery-quiescence-qualification",
+  "formatVersion": 1,
+  "functionalPassed": true,
+  "releaseReady": false,
+  "v1GatesClosed": 0,
+  "v1GatesTotal": 13,
+  "baseCommit": "b23795c8014057102040a90ed8bfd0dcdbad7a86",
+  "qualifiedSource": {
+    "commit": "b23795c8014057102040a90ed8bfd0dcdbad7a86",
+    "dirty": true,
+    "sha256": "aaccdb03c0226803be37dcf910e21f8abfaaf8e6e0828426ec4c070fa4a2c2a7",
+    "files": 7296,
+    "bytes": 55513079
+  },
+  "sourceUnchanged": true,
+  "scope": "Actual document/comment work drain, native recovery exclusion and same-lane attachment retention, without changing original protocols, source families, receipt meanings or native runtime.",
+  "qualification": {
+    "completedAt": "2026-10-29T06:47:58.304Z",
+    "results": [
+      {
+        "id": "strict-sdk-types",
+        "code": 0,
+        "signal": null,
+        "elapsedMs": 4966,
+        "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "id": "source-relay-quiescence",
+        "code": 0,
+        "signal": null,
+        "elapsedMs": 73263,
+        "logSha256": "075d630c1633d4a2a1470bf490769375046bdd41d9a9ba6875fce10bb8096ad9"
+      },
+      {
+        "id": "installed-and-bundled-relay-quiescence",
+        "code": 0,
+        "signal": null,
+        "elapsedMs": 24158,
+        "logSha256": "3daec5234c0eed6e25f33baa68788ba3ae2a2da991bf5216450b0b3a942fa235"
+      },
+      {
+        "id": "seven-family-reconstruction",
+        "code": 0,
+        "signal": null,
+        "elapsedMs": 7773745,
+        "logSha256": "a78502b6a5263c2bacba494814615158bedd0829f0c03ed95e6b5f67f3b2c8bd"
+      },
+      {
+        "id": "candidate-plan-and-verifier",
+        "code": 0,
+        "signal": null,
+        "elapsedMs": 6512,
+        "logSha256": "bfd39af5d84357fcd4a13bb8f27169b6921717d7af7cc3f313115f307bc6ad79"
+      },
+      {
+        "id": "original-review-relay",
+        "code": 0,
+        "signal": null,
+        "elapsedMs": 29369,
+        "logSha256": "93185c08767437e470c8bf238c089cd315ca68e4829b5d432f80eb73b473ae29"
+      }
+    ]
+  },
+  "fresh": {
+    "strictSdkTypes": true,
+    "sourceContracts": 15,
+    "publicLateSaveCases": 4,
+    "unchangedSegmentedRelayCases": 10,
+    "unchangedIndependentRelayCases": 40,
+    "allOriginalSevenFamilyReconstructionContracts": 119,
+    "nativeBranchRegressionContracts": 45,
+    "candidatePlanAndVerifierLaws": 192,
+    "originalReviewRelayCases": 4,
+    "installedPublicCases": 4,
+    "executedMinifiedBundleCases": 4,
+    "strictPublicTypes": true,
+    "workspaceLinks": false
+  },
+  "reproduction": {
+    "base": "b23795c8014057102040a90ed8bfd0dcdbad7a86",
+    "exitCode": 1,
+    "inputs": [
+      {
+        "path": "packages/breditor-collaboration/src/core.ts",
+        "sha256": "68ba4b7d740a72fde70134a1a2a315993f984dfa7b57c1d84a1b1a20524fd914"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/relay/sync.ts",
+        "sha256": "f7abfd5023c0cb5cc29b53be5d3f87fafc0e52e50b2458e670c6aeb2d84cd6ec"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/relay/review_sync.ts",
+        "sha256": "111eac834e8c47965d33c89d1a6c4c838e3a698bcbdcc2985ddf10678e708e77"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/segmented_relay/session.ts",
+        "sha256": "689311268f84e9315e3314bbdac662d3e6e045f7bf5268c3b706c965e823511a"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/independent_delivery/session.ts",
+        "sha256": "e1784be2aa56f36eede72de0f0e046025ec4ed20890bc635086147aea2a53f00"
+      }
+    ],
+    "assertion": "Actual disposed document adapter permitted replacement before its held local-save callback settled",
+    "notSevenDistinctBugs": true
+  },
+  "installed": {
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "archive": "breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "archive": "breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "archive": "breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "afdb1a4df2f1c2fa58d1bd13b10a67e5dbf268489b05ff95ae970f40ea7c3618"
+      }
+    ],
+    "productionBundle": {
+      "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-relay-quiescence-installed-clwOmG/consumer/bundle/quiescence.mjs",
+      "sha256": "6d7ff515bed18df288b1554c98f792718f29ffe5def7f0db5f50ff2a6e602599",
+      "modules": 80
+    }
+  },
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "nativeHostBinaries": [
+    {
+      "path": "/Users/s/code/breditor/target/owned-history-relay-native/release/examples/review_functional",
+      "sha256": "3f09f4f4ad21bd4ceba8420c124151a8ae18598f1f270c2382d80ad16127cbe8"
+    },
+    {
+      "path": "/Users/s/code/breditor/target/owned-history-relay-native/release/examples/segmented_relay_functional",
+      "sha256": "b6ee5115ff57f59ac90a7d59529925c11e6b2a8c516dee1ac934bbba6d10ece8"
+    },
+    {
+      "path": "/Users/s/code/breditor/target/owned-history-relay-native/release/examples/generation_complete_control_functional",
+      "sha256": "9aff7a05132187cb3768085c3783c244242f26cf8588a1dbfc7dea30a193f22b"
+    },
+    {
+      "path": "/Users/s/code/breditor/target/owned-history-relay-native/release/examples/complete_cohort_control_functional",
+      "sha256": "f008e300d11488bdb42346a510501364e73ab2bc6417123106ec6c752c6992aa"
+    }
+  ],
+  "carriedNotFresh": {
+    "qualification": "2026-10-28-durable-native-generation-activation.json",
+    "serverTests": 545,
+    "noServerTests": 273,
+    "fullRustSuitesNotRerun": true
+  },
+  "retainedProof": {
+    "path": "/Users/s/code/breditor/target/relay-quiescence-proof-Z7Bgto",
+    "indexSha256": "ff4e52438da04ff894503aeae78ebfba5b784934940837b08ed83335ebc790c7",
+    "files": 45,
+    "bytes": 8290801
+  },
+  "limits": [
+    "Not the complete candidate release plan or V1/parity approval",
+    "No receipt-backed packet/outbox or provider/client reconciliation closure",
+    "No unbound-comment adoption or coordinated browser-owner/whole-room activation",
+    "Node IDB/locks are controlled fixtures, not physical browser/platform durability",
+    "Historical WebKit and native parallel post-shutdown connect assertion remain open",
+    "The separate held-owner delivery prototype and its authority repairs are NOT merged or qualified by this report",
+    "No push, publication, tag, version bump or deployment"
+  ],
+  "createdAt": "2026-10-29T06:54:14.382Z"
+}

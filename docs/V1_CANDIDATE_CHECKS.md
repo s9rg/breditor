@@ -1,5 +1,17 @@
 # V1 candidate checks
 
+The [relay quiescence qualification](qualification/2026-10-29-relay-recovery-quiescence.json)
+passes 15 focused laws, four public late-save cases, ten unchanged segmented and
+forty unchanged independent-history relay cases, the complete original 119-case
+seven-family source suite, 45 native-branch regressions and 192 plan/verifier
+laws. Fresh real package archives and an actually executed minified bundle each
+pass all four public cases, with strict public types and no workspace links.
+Both profiles require the contract, source and installed quiescence stages.
+This does not execute the whole candidate plan, rerun the carried 545/273 Rust
+baseline, merge the separate held-owner delivery prototype, reconcile every
+packet/provider/client, or activate a whole room. Normal Wasm is unchanged and
+all thirteen V1 gates remain open.
+
 The [durable native activation qualification](qualification/2026-10-28-durable-native-generation-activation.json) passes
 545 full server-feature tests, 273 no-server tests and 190 plan/verifier
 laws without skips. It covers actual durable target preparation, same-owner cold

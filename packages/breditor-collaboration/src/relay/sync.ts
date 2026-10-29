@@ -1,3 +1,4 @@
+import {RelayWorkCustody} from './work_custody.js';
 import {SharedRichEditor} from "../core.js";
 import type {SharedWriterClock,SharedSelectionPolicy} from "../types.js";
 import {checkSourceCheckpoint} from "../persistence/source_checkpoint.js";
@@ -26,6 +27,7 @@ const attached=new WeakSet<object>();
 /** Single-writer server sync for an independently owned core. No second JS document or optimistic
  * server acknowledgement exists. Disposal/permission loss keeps the core and exact journal alive. */
 export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
+ readonly #work:RelayWorkCustody;
  #core:SharedRichEditor<P>;#identity:SharedRelayIdentity;#options:SharedRelayOptions<P>;#unsubscribe:()=>void;
  #status:SharedRelayStatus="offline";#error:string|null=null;#local:string;#durable:string|null=null;
  #acked:SharedWriterClock|undefined;#sequence:string|null=null;#channel:RelayChannel|undefined;
@@ -70,6 +72,7 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
   else checkSourceCheckpoint(core,this.#identity.room,this.#identity.writer);
   this.#local=this.#clock().through;
   if(options.presence)this.#presence=new RelayPresence(core,options.presence,this.#identity.writer,e=>this.#report(e));
+  this.#work=new RelayWorkCustody(core,()=>!this.#wanted&&(!this.#closed?this.#status==='offline':true),()=>new SharedRelayError('relay_recovery_in_use'));
   this.#unsubscribe=core.subscribe(()=>{try{const previous=this.#local;this.#refresh();if(previous!==this.#local)this.#schedulePump();}catch{this.#fail(new SharedRelayError("owner_unavailable"),this.#epoch);}});
   attached.add(core);
   this.#wanted=options.autoConnect!==false;
@@ -141,11 +144,11 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
 
  /** Explicit connect/retry. A fenced/denied session never automatically steals its writer back. */
  async connect():Promise<void>{
-  if(this.#closed)throw new SharedRelayError("closed");this.#wanted=true;clearTimeout(this.#retry);this.#retry=undefined;
+  if(this.#closed)throw new SharedRelayError("closed");this.#work.checkAllowed();this.#wanted=true;clearTimeout(this.#retry);this.#retry=undefined;
   if(this.#connecting)return this.#connecting;
   if(this.#ready&&this.#channel){this.#localFailure=false;this.#error=null;this.#schedulePump();return;}
   this.#stop();const epoch=this.#epoch,abort=new AbortController();this.#abort=abort;this.#status="connecting";this.#error=null;this.#notify();
-  const work=this.#establish(epoch,abort).catch(error=>{const failure=error instanceof SharedRelayError?error:new SharedRelayError(this.#active(epoch)?"protocol_error":"disconnected");if(this.#active(epoch))this.#fail(failure,epoch);throw failure;});
+  const work=this.#work.run(()=>this.#establish(epoch,abort)).catch(error=>{const failure=error instanceof SharedRelayError?error:new SharedRelayError(this.#active(epoch)?"protocol_error":"disconnected");if(this.#active(epoch))this.#fail(failure,epoch);throw failure;});
   this.#connecting=work;try{await work;}finally{if(this.#connecting===work)this.#connecting=undefined;}
  }
  async #establish(epoch:number,abort:AbortController):Promise<void>{
@@ -192,7 +195,8 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
  /** Bounded suggestion requests use this existing authenticated author connection. Binding and
   * principal/writer authority cannot be supplied by a caller payload. A metadata permission error
   * does not shut down ordinary document sync; an invalid author lease still fences it. */
- async requestSuggestion(request:SharedSuggestionRelayRequest):Promise<Record<string,unknown>>{
+ async requestSuggestion(request:SharedSuggestionRelayRequest):Promise<Record<string,unknown>>{return this.#work.run(()=>this.#requestSuggestion(request));}
+ async #requestSuggestion(request:SharedSuggestionRelayRequest):Promise<Record<string,unknown>>{
   const binding=this.#options.suggestions,channel=this.#channel,epoch=this.#epoch;
   if(!binding||!channel||!this.#ready||!this.#suggestionsNegotiated)throw new SharedRelayError("suggestion_offline");
   if(this.#suggestionRequests>=2)throw new SharedRelayError("suggestion_request_budget");
@@ -212,7 +216,8 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
   finally{this.#suggestionRequests--;}
  }
  /** Same authenticated socket and combined two-request budget; never an implicit child publish. */
- async requestSuggestionRevision(request:SharedSuggestionRevisionRequest):Promise<Record<string,unknown>>{
+ async requestSuggestionRevision(request:SharedSuggestionRevisionRequest):Promise<Record<string,unknown>>{return this.#work.run(()=>this.#requestSuggestionRevision(request));}
+ async #requestSuggestionRevision(request:SharedSuggestionRevisionRequest):Promise<Record<string,unknown>>{
   const binding=this.#options.suggestionRevisions,channel=this.#channel,epoch=this.#epoch;
   if(!binding||!channel||!this.suggestionRevisionsReady())throw new SharedRelayError("suggestion_revision_offline");
   if(this.#suggestionRequests>=2)throw new SharedRelayError("suggestion_request_budget");const payload=revisionRequest(request,binding.binding);this.#suggestionRequests++;
@@ -222,7 +227,8 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
  }
  /** Merge host catchup through the same serialized native owner queue. This is not a local or
   * server-save acknowledgement; the dependent suggestion queue must save its source afterward. */
- async refreshDocument():Promise<void>{
+ async refreshDocument():Promise<void>{return this.#work.run(()=>this.#refreshDocument());}
+ async #refreshDocument():Promise<void>{
   const epoch=this.#epoch,channel=this.#channel;if(!this.#ready||!channel)throw new SharedRelayError("suggestion_offline");
   try{
   await this.#readClock(channel);const result=await channel.request({kind:"sync"});
@@ -238,9 +244,9 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
  #drainFrames(epoch:number):Promise<void>{
   if(this.#drain?.epoch===epoch)return this.#drain.promise;
   const run:Run={epoch,promise:Promise.resolve()};this.#drain=run;
-  run.promise=(async()=>{try{while(this.#active(epoch)&&this.#ready&&this.#latest!==undefined){const next=this.#latest;this.#latest=undefined;const signal=this.#abort!.signal;await this.#core.receiveFrame(next,{signal});if(this.#active(epoch)){this.#refresh();this.#schedulePump();}}}
+  run.promise=this.#work.run(async()=>{try{while(this.#active(epoch)&&this.#ready&&this.#latest!==undefined){const next=this.#latest;this.#latest=undefined;const signal=this.#abort!.signal;await this.#core.receiveFrame(next,{signal});if(this.#active(epoch)){this.#refresh();this.#schedulePump();}}}
    catch(error){if(this.#active(epoch))this.#fail(error instanceof SharedRelayError?error:new SharedRelayError("remote_rejected"),epoch);throw error;}
-   finally{if(this.#drain===run){this.#drain=undefined;this.#settle();}}})();return run.promise;
+   finally{if(this.#drain===run){this.#drain=undefined;this.#settle();}}});return run.promise;
  }
  #schedulePump():void{
   if(this.#closed||!this.#ready||this.#localFailure)return;if(this.#pump){this.#pumpAgain=true;return;}if(this.#scheduled)return;this.#scheduled=true;
@@ -248,7 +254,7 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
  }
  #startPump():void{
   const epoch=this.#epoch,run:Run={epoch,promise:Promise.resolve()};this.#pump=run;this.#pumpAgain=false;this.#settle();
-  run.promise=this.#sendGroups(epoch).catch(error=>{if(this.#active(epoch))this.#fail(error instanceof SharedRelayError?error:new SharedRelayError("group_export_failed"),epoch);}).finally(()=>{if(this.#pump===run){this.#pump=undefined;const again=this.#pumpAgain;this.#pumpAgain=false;this.#settle();if(again)this.#schedulePump();}});
+  run.promise=this.#work.run(()=>this.#sendGroups(epoch)).catch(error=>{if(this.#active(epoch))this.#fail(error instanceof SharedRelayError?error:new SharedRelayError("group_export_failed"),epoch);}).finally(()=>{if(this.#pump===run){this.#pump=undefined;const again=this.#pumpAgain;this.#pumpAgain=false;this.#settle();if(again)this.#schedulePump();}});
  }
  async #sendGroups(epoch:number):Promise<void>{
   if(!this.#acked||!this.#channel)return;const channel=this.#channel,target=this.#clock().through;
@@ -280,10 +286,16 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
   if(this.#waiters.size>=16)return Promise.reject(new SharedRelayError("flush_budget"));
   return new Promise((resolve,reject)=>{const waiter:Waiter={target,resolve,reject,timer:setTimeout(()=>{this.#waiters.delete(waiter);reject(new SharedRelayError("sync_timeout"));},30_000)};this.#waiters.add(waiter);this.#schedulePump();});
  }
+ /** Await actual old work after disconnect or dispose. No connection, save
+  * retry, server ACK, queue settlement or ownership transfer is implied. */
+ async waitForDisconnected():Promise<void>{
+  const epoch=this.#epoch,check=()=>{if(this.#wanted||epoch!==this.#epoch||!this.#closed&&this.#status!=='offline')throw new SharedRelayError('relay_recovery_in_use');};
+  await this.#work.wait(check);
+ }
  /** Deliberate offline mode cancels queued (not yet admitted) remote frames. */
  disconnect():void{if(this.#closed)return;this.#wanted=false;clearTimeout(this.#retry);this.#retry=undefined;this.#stop();this.#status="offline";this.#error=null;this.#rejectWaiters(new SharedRelayError("disconnected"));this.#notify();}
  /** Stops networking only. Close the persistent session separately after its final local save. */
- dispose():void{if(this.#closed)return;this.disconnect();this.#closed=true;this.#status="closed";this.#unsubscribe();this.#presence?.dispose();attached.delete(this.#core);this.#notify();queueMicrotask(()=>this.#listeners.clear());}
+ dispose():void{if(this.#closed)return;this.disconnect();this.#closed=true;this.#status="closed";this.#unsubscribe();this.#presence?.dispose();this.#work.retire(()=>attached.delete(this.#core));this.#notify();queueMicrotask(()=>this.#listeners.clear());}
 }
 /** Named immutable document-family adapter; never reuses the original checkpoint validator. */
 export function createSharedDocumentRelaySync(core:SharedRichEditor<"document-v1">,options:SharedDocumentRelayOptions):SharedRelaySync<"document-v1">{return new SharedRelaySync(core,options);}

@@ -1,3 +1,4 @@
+import {reserveRelayRecoveryWork} from './relay/work_custody.js';
 import type {SharedRustOwner,SharedView,SharedDispatch,SharedPublication,SharedEditorOptions,SharedRemoteOptions,SharedOwnerDescriptor,SharedPresenceResolution,SharedWriterClock,SharedWriterGroups,RichSelection,FormatLiteral,ClipboardContent,PasteTarget,Navigation,NavigationResult} from "./types.js";
 import type {RichInlineFormatStateRead} from "./types.js";
 import type {SharedWriterGroupsV2} from "./types.js";
@@ -77,9 +78,10 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
   // Inspect EVERY member before the first flag. No public methods, native calls,
   // permission callbacks, application getters or await occur inside this barrier.
   for(const core of members){if(!core.#raw||core.#retired)throw nativeRecoveryFailure('native_recovery_closed');if(core.#nativeRecovery||core.#publishing||core.#draining||core.#holds||core.#queue.length||core.#bytes)throw nativeRecoveryFailure('native_recovery_busy');}
+  const relayWork=reserveRelayRecoveryWork(members,()=>nativeRecoveryFailure('native_recovery_busy'));
   const token=Object.freeze({}),chosen=new Set<object>(members);let closed=false,applying=false;
   const current=()=>{if(closed)throw nativeRecoveryFailure('native_recovery_closed');for(const core of members){if(core.#nativeRecovery!==token||!core.#raw||core.#retired)throw nativeRecoveryFailure('native_recovery_closed');if(core.#holds||core.#queue.length||core.#bytes||core.#draining||core.#publishing)throw nativeRecoveryFailure('native_recovery_busy');}};
-  const check=()=>{if(applying)throw nativeRecoveryFailure('native_recovery_busy');current();};
+  const check=()=>{if(applying)throw nativeRecoveryFailure('native_recovery_busy');relayWork.check();current();};
   const apply=<T>(core:object,work:()=>T):T=>{check();if(!chosen.has(core))throw nativeRecoveryFailure('native_recovery_member');applying=true;try{const result=work();current();return result;}finally{applying=false;}};
   const reservation:NativeRecoveryReservation=Object.freeze({check,
    receiveDocument<Q extends SharedSelectionPolicy>(core:SharedRichEditor<Q>,frame:string){return apply(core,()=>{const input=nativeRecoveryFrame(frame);if(input.bytes>core.#maxBytes)throw new SharedEditorError('remote_queue_full','Pending remote updates exceed their bounded queue');let before='';core.#run('remote',raw=>{before=core.#view;raw.receive_frame(input.value);},undefined,false,token);return before!==core.#view;});},
@@ -91,20 +93,20 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
     // A temporary readonly native source is not a cohort member. Hold its
     // actual facade across publication callbacks too; no copied source DTO or
     // public method can provide or release this flag.
-    const borrowed=source.#nativeRecovery===undefined,observed=source.#observation;if(borrowed)source.#nativeRecovery=token;
+    const borrowed=source.#nativeRecovery===undefined,observed=source.#observation,sourceWork=borrowed?reserveRelayRecoveryWork([source],()=>nativeRecoveryFailure('native_recovery_busy')):undefined;if(borrowed)source.#nativeRecovery=token;
     try{const bytes=core.#live().retained_document_branch_input_bytes!(core.#observation,source.#live(),observed);if(!Number.isSafeInteger(bytes)||bytes<0)throw new SharedEditorError('retained_document_branch_data','Invalid native branch byte accounting');if(bytes>core.#maxBytes)throw new SharedEditorError('remote_queue_full','Native branch inputs exceed the selected incoming byte ceiling');const result=core.#run('remote',(raw,current)=>raw.reconcile_retained_document_branch!(current,source.#live(),observed,core.#maxBytes),undefined,false,token);source.#check();if(source.#observation!==observed)throw nativeRecoveryFailure('native_recovery_closed');return result;}
-    finally{if(borrowed&&source.#nativeRecovery===token)source.#nativeRecovery=undefined;}
+    finally{if(borrowed&&source.#nativeRecovery===token)source.#nativeRecovery=undefined;sourceWork?.close();}
    });},
    reconcileNativeBranch<Q extends SharedSelectionPolicy,R extends SharedSelectionPolicy>(core:SharedRichEditor<Q>,source:SharedRichEditor<R>,authorizations:readonly SharedNativeBranchUnionAuthorization[]):SharedNativeBranchUnionOutcome{return apply(core,()=>{
     if(!source||typeof source!=='object'||!(#raw in source))throw nativeRecoveryFailure('native_recovery_member');source.#check();core.#check();
     if(source.#publishing||source.#draining||source.#holds||source.#queue.length||source.#bytes||source.#nativeRecovery!==undefined&&source.#nativeRecovery!==token)throw nativeRecoveryFailure('native_recovery_busy');
     if(!core.#supportsNativeBranchUnion()||!source.#supportsNativeBranchUnion())throw new SharedEditorError('native_branch_union_unavailable','Use matching complete native document/comment union capabilities');
-    const borrowed=source.#nativeRecovery===undefined,observed=source.#observation;if(borrowed)source.#nativeRecovery=token;
+    const borrowed=source.#nativeRecovery===undefined,observed=source.#observation,sourceWork=borrowed?reserveRelayRecoveryWork([source],()=>nativeRecoveryFailure('native_recovery_busy')):undefined;if(borrowed)source.#nativeRecovery=token;
     try{const input=nativeBranchAuthorizations(authorizations);if((core as object)===(source as object))return Object.freeze({documentChanged:false,reviewChanged:false});const bytes=core.#live().native_branch_union_input_bytes!(core.#observation,source.#live(),observed);if(!Number.isSafeInteger(bytes)||bytes<0)throw new SharedEditorError('native_branch_union_data','Invalid native union byte accounting');if(bytes>core.#maxBytes)throw new SharedEditorError('remote_queue_full','Combined native branch inputs exceed the selected incoming byte ceiling');const result=core.#run('remote',(raw,current)=>{const flags=raw.reconcile_native_branch_union!(current,source.#live(),observed,input,core.#maxBytes);if(!Number.isInteger(flags)||flags<0||flags>3)throw new SharedEditorError('owner_abi','Invalid native union outcome');if(flags&2)core.#reviewRevision++;return Object.freeze({documentChanged:Boolean(flags&1),reviewChanged:Boolean(flags&2)});},undefined,false,token);source.#check();if(source.#observation!==observed)throw nativeRecoveryFailure('native_recovery_closed');return result;}
-    finally{if(borrowed&&source.#nativeRecovery===token)source.#nativeRecovery=undefined;}
+    finally{if(borrowed&&source.#nativeRecovery===token)source.#nativeRecovery=undefined;sourceWork?.close();}
    });},
    receiveReview<Q extends SharedSelectionPolicy>(core:SharedRichEditor<Q>,frame:string,verified:SharedReviewPolicy){return apply(core,()=>{const value=nativeRecoveryFrame(frame).value,policy=nativeRecoverySource(verified);return core.#run('remote',(raw,o)=>{core.#requireReview();const result=JSON.parse(raw.receive_review!(o,JSON.stringify(policy),value)) as SharedReviewImportOutcome;if(result.kind==='applied')core.#reviewRevision++;return result;},undefined,false,token);});},
-   close(){if(closed)return;if(applying)throw nativeRecoveryFailure('native_recovery_busy');for(const core of members)if(core.#nativeRecovery===token)core.#nativeRecovery=undefined;closed=true;members=[];chosen.clear();},
+   close(){if(closed)return;if(applying)throw nativeRecoveryFailure('native_recovery_busy');for(const core of members)if(core.#nativeRecovery===token)core.#nativeRecovery=undefined;relayWork.close();closed=true;members=[];chosen.clear();},
   });
   actualNativeReservations.set(reservation,selected=>{check();if(selected.length!==chosen.size||selected.some(core=>!chosen.has(core as object)))throw nativeRecoveryFailure('native_recovery_member');});
   // All closures and detached inputs exist before the common flag-only commit.

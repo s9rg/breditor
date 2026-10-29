@@ -1,3 +1,4 @@
+import {RelayWorkCustody} from './work_custody.js';
 import type {SharedRichEditor} from "../core.js";
 import type {SharedSelectionPolicy} from "../types.js";
 import type {SharedReviewWriterClock,SharedReviewBatchReceipt,SharedReviewPolicy} from "../review_types.js";
@@ -16,6 +17,7 @@ interface Waiter {target:string;resolve:()=>void;reject:(error:SharedRelayError)
 /** Optional metadata companion. Borrows the exact core/paired storage, does not submit document
  * edits, and never disposes owners, steals document leases, drops pending events or resets recovery. */
 export class SharedReviewRelaySync<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
+ readonly #work:RelayWorkCustody;
  readonly #core:SharedRichEditor<P>;readonly #identity:SharedReviewRelayIdentity;readonly #options:SharedReviewRelayOptions<P>;
  readonly #milliseconds:number;readonly #minimum:number;readonly #maximum:number;readonly #unsubscribe:(()=>void)[];
  #status:SharedRelayStatus="offline";#error:string|null=null;#acked:SharedReviewWriterClock|null=null;#receipt:SharedReviewBatchReceipt|null=null;#local:string;
@@ -35,11 +37,12 @@ export class SharedReviewRelaySync<P extends SharedSelectionPolicy=SharedSelecti
   if(this.#identity.reviewEditing==="read_only"&&own.through!=="0")throw new SharedRelayError("review_observer_authored");
   this.#progress=reviewProgress(options.storage.reviewRelayProgress(),stored);if(this.#progress.accepted)this.#checkClock(this.#progress.accepted,this.#identity.principal);
   this.#milliseconds=timeout(options.requestTimeoutMs);this.#minimum=options.reconnectMinimumMs??500;this.#maximum=options.reconnectMaximumMs??30000;if(!Number.isInteger(this.#minimum)||!Number.isInteger(this.#maximum)||this.#minimum<50||this.#minimum>this.#maximum||this.#maximum>30000)throw new SharedRelayError("reconnect_limits");
+  this.#work=new RelayWorkCustody(this.#core,()=>!this.#wanted&&(!this.#closed?this.#status==='offline':true),()=>new SharedRelayError('review_recovery_in_use'));
   this.#unsubscribe=[this.#core.subscribe(()=>this.#schedule()),this.#core.subscribeReview(()=>this.#schedule())];attached.add(this.#core);this.#wanted=options.autoConnect!==false;if(this.#wanted)queueMicrotask(()=>{if(this.#wanted&&!this.#closed)void this.connect().catch(()=>{});});
  }
  state():SharedReviewRelayState{return {status:this.#status,actor:this.#identity.actor,localThrough:this.#local,serverThrough:this.#acked?.through??null,cursor:this.#progress.cursor?{...this.#progress.cursor}:null,pending:this.#local!==(this.#acked?.through??"0"),error:this.#error,lastReceipt:this.#receipt?{...this.#receipt}:null};}
  #active(epoch:number):boolean{return !this.#closed&&this.#epoch===epoch;}
- #enqueue(work:()=>Promise<void>):Promise<void>{const task=this.#serial.then(work);this.#serial=task.catch(()=>{});return task;}
+ #enqueue(work:()=>Promise<void>):Promise<void>{const task=this.#work.run(()=>this.#serial.then(work));this.#serial=task.catch(()=>{});return task;}
  #notify():void{if(this.#notifyQueued)return;this.#notifyQueued=true;queueMicrotask(()=>{this.#notifyQueued=false;try{this.#options.onState?.(this.state());}catch{/* Reporting never mutates either owner. */}});}
  #report(error:SharedRelayError):void{if(this.#reported===error.code)return;this.#reported=error.code;queueMicrotask(()=>{try{this.#options.onError?.(error);}catch{/* Host reporting is isolated. */}});}
  #reject(error:SharedRelayError):void{for(const waiter of this.#waiters){clearTimeout(waiter.timer);waiter.reject(error);}this.#waiters.clear();}
@@ -55,7 +58,7 @@ export class SharedReviewRelaySync<P extends SharedSelectionPolicy=SharedSelecti
  async #verifyCursor(channel:RelayChannel):Promise<void>{const cursor=this.#progress.cursor;if(!cursor)return;const response=await channel.request({kind:"reviewCursorProof",cursor});if(response["kind"]!=="reviewCursorProof")throw new SharedRelayError("protocol_error");const proof=object(response["proof"]);if(JSON.stringify(reviewCursor(proof["cursor"],this.#identity.binding))!==JSON.stringify(cursor))throw new SharedRelayError("review_cursor_mismatch");const prefixes=proof["prefixes"];if(!Array.isArray(prefixes)||prefixes.length>1023)throw new SharedRelayError("protocol_error");const actors=new Set();for(const entry of prefixes){const item=object(entry),prefix=reviewClock(item["clock"]);if(actors.has(prefix.actor))throw new SharedRelayError("protocol_error");actors.add(prefix.actor);this.#checkClock(prefix,string(item["principal"],256));}}
  /** Explicit retry never discards local state. Fenced/denied writers are not automatically stolen back. */
  async connect():Promise<void>{
-  if(this.#closed)throw new SharedRelayError("closed");this.#wanted=true;clearTimeout(this.#retry);this.#retry=undefined;if(this.#connecting)return this.#connecting;if(this.#ready){this.#schedule();return;}
+  if(this.#closed)throw new SharedRelayError("closed");this.#work.checkAllowed();this.#wanted=true;clearTimeout(this.#retry);this.#retry=undefined;if(this.#connecting)return this.#connecting;if(this.#ready){this.#schedule();return;}
   this.#stop();const epoch=this.#epoch,abort=new AbortController();this.#abort=abort;this.#status="connecting";this.#error=null;this.#notify();
   const work=this.#enqueue(async()=>{
    try{await this.#options.storage.flush();}catch{throw new SharedRelayError("local_save_failed");}if(!this.#active(epoch))throw new SharedRelayError("disconnected");this.#progress=reviewProgress(this.#options.storage.reviewRelayProgress(),reviewStorageIdentity(this.#identity));
@@ -91,7 +94,13 @@ export class SharedReviewRelaySync<P extends SharedSelectionPolicy=SharedSelecti
  }
  /** Wait for this call's authored review end to be server durable and paired-local durable. */
  flush():Promise<void>{if(this.#closed)return Promise.reject(new SharedRelayError("closed"));if(this.#error&&!this.#wanted)return Promise.reject(new SharedRelayError(this.#error));const target=this.#core.localReviewClock().through;if(this.#acked&&BigInt(this.#acked.through)>=BigInt(target))return Promise.resolve();if(!this.#wanted)return Promise.reject(new SharedRelayError(this.#error??"offline"));if(this.#waiters.size>=16)return Promise.reject(new SharedRelayError("flush_budget"));return new Promise((resolve,reject)=>{const waiter:Waiter={target,resolve,reject,timer:setTimeout(()=>{this.#waiters.delete(waiter);reject(new SharedRelayError("sync_timeout"));},30000)};this.#waiters.add(waiter);this.#schedule();});}
+ /** Await real disconnected/disposed work without retrying persistence or
+  * treating imported native comments as an outgoing server acknowledgement. */
+ async waitForDisconnected():Promise<void>{
+  const epoch=this.#epoch,check=()=>{if(this.#wanted||epoch!==this.#epoch||!this.#closed&&this.#status!=='offline')throw new SharedRelayError('review_recovery_in_use');};
+  await this.#work.wait(check);
+ }
  disconnect():void{if(this.#closed)return;this.#wanted=false;clearTimeout(this.#retry);this.#retry=undefined;this.#stop();this.#status="offline";this.#error=null;this.#reject(new SharedRelayError("disconnected"));this.#notify();}
  /** Networking only; dispose this adapter before closing its borrowed paired session. */
- dispose():void{if(this.#closed)return;this.disconnect();this.#closed=true;this.#status="closed";for(const off of this.#unsubscribe)off();attached.delete(this.#core);this.#notify();}
+ dispose():void{if(this.#closed)return;this.disconnect();this.#closed=true;this.#status="closed";for(const off of this.#unsubscribe)off();this.#work.retire(()=>attached.delete(this.#core));this.#notify();}
 }
