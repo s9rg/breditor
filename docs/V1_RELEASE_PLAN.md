@@ -1,5 +1,21 @@
 # Breditor V1 release preparation
 
+The [native-held suggestion delivery contract](NATIVE_SUGGESTION_DELIVERY.md)
+now executes original queued packets and decisions through genuine author or
+permanent-observer transports while ordinary editing remains excluded. Its
+[qualification](qualification/2026-10-29-native-suggestion-delivery.json) passes
+871 direct checks and 299 independently installed checks. It covers all six
+bound source families, owned/unowned Undo, actual receipt failures, lost replies,
+observer lifetime and policy, and a prepared seven-family room that settles
+four suggestion queues and version catalogs while preserving pending revisions.
+Cold reopening retains future document and comment Undo/Redo for all seven.
+
+Native-held revision settlement, explicit metadata bindings for the three local
+lanes, complete provider/client/historical-copy/assets reconciliation and joint
+authenticated activation remain required. Full candidate profiles were not run;
+all thirteen V1/parity gates remain open. No package version, push, publication,
+tag or deployment changed.
+
 The [compound metadata preparation contract](HELD_METADATA_PREPARATION.md) now
 opens original version, suggestion and revision children inside real segmented
 and independent sources while native editing stays held. Preparation performs

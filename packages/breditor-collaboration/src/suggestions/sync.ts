@@ -1,3 +1,7 @@
+import {nativeSuggestionQueueView} from './native_queue.js';
+import type {SuggestionSyncQueue} from './sync_queue.js';
+import type {NativeRelayDeliveryPort} from '../relay/native_delivery.js';
+import {SharedRichEditor} from '../core.js';
 /** Automatic selected-queue sync borrowing an author or permanent observer connection and source.
  * This adapter owns neither. Live discovery is bounded metadata, not an implicitly persisted feed. */
 import {RelayWorkCustody} from '../relay/work_custody.js';
@@ -29,10 +33,10 @@ interface Waiter {targets:readonly {id:string;publish:boolean;decide:boolean}[];
 const attached=new WeakSet<object>();
 let drainRetired:(owner:SharedSuggestionSync)=>Promise<void>;
 export class SharedSuggestionSync<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
- readonly #work!:RelayWorkCustody;readonly #queue:SharedSuggestionQueue<P>;readonly #relay:SharedSuggestionTransport<P>;readonly #identity:SharedSuggestionQueueIdentity;readonly #options:SharedSuggestionSyncOptions;
+ readonly #work!:RelayWorkCustody;readonly #native:NativeRelayDeliveryPort|undefined;readonly #queue:SuggestionSyncQueue<P>;readonly #relay:SharedSuggestionTransport<P>;readonly #identity:SharedSuggestionQueueIdentity;readonly #options:SharedSuggestionSyncOptions;
  #status:SharedSuggestionSyncState["status"]="offline";#permissions:SharedSuggestionPermissions|null=null;#error:string|null=null;
  #entries=new Map<string,SuggestionEntry>();#conflicts=new Map<string,readonly SharedSuggestionConflictTarget[]>();#waiting=false;
- #epoch=0;#wanted:boolean;#closed=false;#serial=Promise.resolve();#queued:number|undefined;#dirty=false;#working=0;
+ #epoch=0;#intentEpoch=0;#wanted:boolean;#closed=false;#serial=Promise.resolve();#queued:number|undefined;#dirty=false;#working=0;
  #queueSignature="";#relaySignature="";#sourceSignature="";#notifying=false;
  #permissionRevision=-1;
  #listeners=new Set<()=>void>();#off:(()=>void)[]=[];#waiters=new Set<Waiter>();
@@ -41,12 +45,12 @@ export class SharedSuggestionSync<P extends SharedSelectionPolicy=SharedSelectio
 
  static{drainRetired=async owner=>{if(!owner||typeof owner!=="object"||!(#work in owner)||!owner.#closed)throw new SharedRelayError("suggestion_recovery_in_use");await owner.#work.wait(()=>{});};}
  constructor(queue:SharedSuggestionQueue<P>,relay:SharedSuggestionTransport<P>,options:SharedSuggestionSyncOptions={}){
-  checkSuggestionRecoveryIdle(queue);
+  this.#native=nativeSuggestionQueueView(queue);checkSuggestionRecoveryIdle(queue);
   if(attached.has(queue))throw new SharedRelayError("suggestion_sync_already_attached");
   const opening=registerSuggestionRecoveryParticipant(queue,()=>{throw new SharedRelayError("suggestion_recovery_in_use");});attached.add(queue);this.#queue=queue;this.#relay=relay;
-  try{this.#work=new RelayWorkCustody(queue.core,()=>this.#initialized&&!this.#wanted,()=>new SharedRelayError('suggestion_recovery_in_use'));this.#work.registerOwner(this);this.#identity=queue.identity();this.#options={...options};relay.checkSuggestionQueue(queue.core,this.#identity);this.#wanted=this.#options.autoStart!==false;
+  try{this.#work=new RelayWorkCustody(queue.core,()=>this.#initialized&&!this.#wanted,()=>new SharedRelayError('suggestion_recovery_in_use'),this.#native?.admission);this.#work.registerOwner(this);this.#identity=queue.identity();this.#options={...options};relay.checkSuggestionQueue(queue.core,this.#identity);this.#wanted=this.#options.autoStart!==false;
    this.#queueSignature=this.#outgoing();this.#sourceSignature=queue.core.view().causalVersion;
-   this.#off.push(registerSuggestionRecoveryParticipant(queue,()=>this.#recoveryIdle()));this.#off.push(queue.subscribe(()=>this.#queueChanged()));this.#off.push(relay.subscribe(()=>this.#relayChanged()));this.#off.push(queue.core.subscribe(()=>this.#sourceChanged()));this.#relayChanged();this.#initialized=true;opening();
+   this.#off.push(registerSuggestionRecoveryParticipant(queue,()=>this.#recoveryIdle()));this.#off.push(queue.subscribe(()=>this.#queueChanged()));this.#off.push(relay.subscribe(()=>this.#relayChanged()));this.#off.push(this.#native?nativeCoreSubscribe.call(queue.core,()=>this.#sourceChanged()):queue.core.subscribe(()=>this.#sourceChanged()));this.#relayChanged();this.#initialized=true;opening();
   }catch(error){this.#closed=true;this.#wanted=false;this.#epoch++;for(const off of [...this.#off].reverse())try{off();}catch{/* Closed callbacks can no longer start delivery. */}this.#off=[];this.#work?.retire(()=>attached.delete(queue));if(!this.#work)attached.delete(queue);opening();throw error;}
  }
  state():SharedSuggestionSyncState {
@@ -62,8 +66,8 @@ export class SharedSuggestionSync<P extends SharedSelectionPolicy=SharedSelectio
  #effectivePermissions(input:SharedSuggestionPermissions|null):SharedSuggestionPermissions|null;
  #effectivePermissions(input:SharedSuggestionPermissions|null):SharedSuggestionPermissions|null{return input&&this.#relay.suggestionDecisionMode==="observer"?{...input,canAccept:false}:input;}
  #notify():void{if(this.#notifying)return;this.#notifying=true;queueMicrotask(()=>{this.#notifying=false;try{this.#options.onState?.(this.state());}catch{/* Reporting cannot replace durable intent. */}for(const listener of [...this.#listeners])try{listener();}catch{/* Observers do not own this adapter. */}});}
- #active(epoch:number):boolean{return !this.#closed&&this.#wanted&&epoch===this.#epoch&&this.#relay.suggestionState().ready;}
- #check(epoch:number):void{if(!this.#active(epoch))throw new SharedRelayError("suggestion_offline");this.#relay.checkSuggestionQueue(this.#queue.core,this.#identity);}
+ #active(epoch:number):boolean{if(this.#closed||!this.#wanted||epoch!==this.#epoch)return false;try{this.#native?.check();return this.#relay.suggestionState().ready;}catch{return false;}}
+ #check(epoch:number):void{this.#native?.check();if(!this.#active(epoch))throw new SharedRelayError("suggestion_offline");this.#relay.checkSuggestionQueue(this.#queue.core,this.#identity);}
  #enqueue(work:()=>Promise<void>):Promise<void>{return this.#work.run(()=>{this.#tasks++;const task=this.#serial.then(work).finally(()=>{this.#tasks--;});this.#serial=task.catch(()=>{});return task;});}
  #recoveryIdle():void{if(this.#work.hasPendingWork()||this.#closed||this.#wanted||this.#tasks||this.#working||this.#connections.size||this.#refreshRun||this.#downloads.size)throw new SharedRelayError("suggestion_recovery_in_use");}
  /** Wait for this disconnected adapter only; the borrowed document transport is untouched. */
@@ -93,7 +97,7 @@ export class SharedSuggestionSync<P extends SharedSelectionPolicy=SharedSelectio
   this.#error=error.code;this.#status=error.code==="local_save_failed"?"local-save-failed":error.code==="permission_denied"?"denied":this.#relay.suggestionState().ready?"failed":"offline";
   // Networking/reconnect remains owned by the borrowed transport. A failed local cache requires
   // explicit retry; a lane protocol error must not silently resume after unrelated typing.
-  if(this.#relay.suggestionState().ready)this.#wanted=false;
+  if(this.#relay.suggestionState().ready){this.#wanted=false;this.#intentEpoch++;}
   this.#reject(error);this.#notify();try{this.#options.onError?.(error);}catch{/* Error reporting cannot acknowledge a save. */}
  }
  #schedule():void{
@@ -178,16 +182,19 @@ export class SharedSuggestionSync<P extends SharedSelectionPolicy=SharedSelectio
   this.#notify();
  }
  /** Explicit resume; automatic reconnect is owned by the borrowed transport. */
- async connect():Promise<void>{if(this.#closed)throw new SharedRelayError("closed");return this.#work.run(()=>this.#connect());}
- async #connect():Promise<void>{checkSuggestionRecoveryIdle(this.#queue);if(this.#closed)throw new SharedRelayError("closed");this.#wanted=true;this.#error=null;const epoch=this.#epoch,work=(async()=>{if(!this.#relay.suggestionState().ready)await this.#relay.connect();if(this.#closed||!this.#wanted||epoch!==this.#epoch)throw new SharedRelayError("suggestion_offline");await this.refresh();})();this.#connections.add(work);try{await work;}finally{this.#connections.delete(work);}}
- async refresh():Promise<void>{if(this.#closed)throw new SharedRelayError("closed");return this.#work.run(()=>this.#refresh());}
+ async connect():Promise<void>{this.#native?.check();if(this.#closed)throw new SharedRelayError("closed");return this.#work.run(()=>this.#connect());}
+ async #connect():Promise<void>{checkSuggestionRecoveryIdle(this.#queue);if(this.#closed)throw new SharedRelayError("closed");this.#wanted=true;this.#error=null;/** A compound observer publishes intermediate not-ready state while saving its
+  * verified zero prefix. Those hints invalidate transport tasks, not this
+  * caller's explicit Connect intent. Disconnect/failure still cancels it. */
+ const intent=this.#intentEpoch,work=(async()=>{if(!this.#relay.suggestionState().ready)await this.#relay.connect();if(this.#closed||!this.#wanted||intent!==this.#intentEpoch||!this.#relay.suggestionState().ready)throw new SharedRelayError("suggestion_offline");await this.refresh();})();this.#connections.add(work);try{await work;}finally{this.#connections.delete(work);}}
+ async refresh():Promise<void>{this.#native?.check();if(this.#closed)throw new SharedRelayError("closed");return this.#work.run(()=>this.#refresh());}
  async #refresh():Promise<void>{
   checkSuggestionRecoveryIdle(this.#queue);if(this.#closed)throw new SharedRelayError("closed");this.#wanted=true;this.#error=null;const epoch=this.#epoch;if(this.#refreshRun?.epoch===epoch)return this.#refreshRun.promise;
   const run={epoch,promise:Promise.resolve()};this.#refreshRun=run;
   run.promise=this.#enqueue(()=>this.#synchronize(epoch)).catch(error=>{const failure=this.#failure(error);this.#fail(failure,epoch);throw failure;}).finally(()=>{if(this.#refreshRun===run)this.#refreshRun=undefined;});return run.promise;
  }
  /** Lazy authenticated packet retrieval. Existing cached packets remain available offline. */
- async loadSuggestion(input:string):Promise<string>{return this.#work.run(()=>this.#loadSuggestion(input));}
+ async loadSuggestion(input:string):Promise<string>{this.#native?.check();return this.#work.run(()=>this.#loadSuggestion(input));}
  async #loadSuggestion(input:string):Promise<string>{
   checkSuggestionRecoveryIdle(this.#queue);const id=digest(input);if(this.#closed)throw new SharedRelayError("closed");
   try{const packet=this.#queue.packet(id);await this.#queue.flush();return packet;}catch(error){if(!(error instanceof SharedRelayError)||error.code!=="suggestion_unknown")throw error;}
@@ -198,7 +205,7 @@ export class SharedSuggestionSync<P extends SharedSelectionPolicy=SharedSelectio
  }
  /** Captured queued choices/publications only. An opposite final server winner still satisfies
   * finalization, but its original outcome remains explicit in queue.status(id).decision. */
- async flushShared():Promise<void>{if(this.#closed)throw new SharedRelayError("closed");return this.#work.run(()=>this.#flushShared());}
+ async flushShared():Promise<void>{this.#native?.check();if(this.#closed)throw new SharedRelayError("closed");return this.#work.run(()=>this.#flushShared());}
  async #flushShared():Promise<void>{
   checkSuggestionRecoveryIdle(this.#queue);if(this.#closed)throw new SharedRelayError("closed");const targets=this.#queue.proposals().flatMap(info=>{const row=this.#queue.status(info.id);return row.publish||row.intent?.retry?[{id:info.id,publish:row.publish,decide:!!row.intent?.retry}]:[];});
   await this.#queue.flush();if(!targets.length)return;if(!this.#wanted||!this.#relay.suggestionState().ready)throw new SharedRelayError(this.#error??"suggestion_offline");
@@ -207,11 +214,15 @@ export class SharedSuggestionSync<P extends SharedSelectionPolicy=SharedSelectio
   return new Promise((resolve,reject)=>{const waiter:Waiter={targets,resolve,reject,timer:setTimeout(()=>{this.#waiters.delete(waiter);reject(new SharedRelayError("suggestion_sync_timeout"));},30000)};this.#waiters.add(waiter);this.#settle();this.#schedule();});
  }
  /** Retry local persistence separately from network finalization. */
- async retryLocal():Promise<void>{if(this.#closed)throw new SharedRelayError("closed");return this.#work.run(()=>this.#retryLocal());}
+ async retryLocal():Promise<void>{this.#native?.check();if(this.#closed)throw new SharedRelayError("closed");return this.#work.run(()=>this.#retryLocal());}
  async #retryLocal():Promise<void>{checkSuggestionRecoveryIdle(this.#queue);if(this.#closed)throw new SharedRelayError("closed");await this.#queue.retry();this.#error=null;this.#status="offline";if(this.#wanted)this.#schedule();this.#notify();}
  /** Stops this metadata adapter only; ordinary document networking remains owned by its caller. */
- disconnect():void{if(this.#closed)return;this.#wanted=false;this.#epoch++;this.#queued=undefined;this.#status="offline";this.#permissions=null;this.#error=null;this.#reject(new SharedRelayError("disconnected"));this.#notify();}
+ disconnect():void{if(this.#closed)return;this.#wanted=false;this.#epoch++;this.#intentEpoch++;this.#queued=undefined;this.#status="offline";this.#permissions=null;this.#error=null;this.#reject(new SharedRelayError("disconnected"));this.#notify();}
  dispose():void{checkSuggestionRecoveryIdle(this.#queue);if(this.#closed)return;this.disconnect();this.#closed=true;for(const off of this.#off)off();this.#off=[];this.#work.retire(()=>attached.delete(this.#queue));this.#notify();queueMicrotask(()=>this.#listeners.clear());}
 }
 /** Internal retirement barrier; a copied/disconnected facade does not qualify. */
 export function waitForRetiredSuggestionSync<P extends SharedSelectionPolicy>(owner:SharedSuggestionSync<P>):Promise<void>{return drainRetired(owner as unknown as SharedSuggestionSync);}
+
+const nativeCoreSubscribe=SharedRichEditor.prototype.subscribe;
+/** Internal constructor bridge; the public constructor retains its actual queue type. */
+export function createNativeSuggestionSync<P extends SharedSelectionPolicy>(queue:SuggestionSyncQueue<P>,relay:SharedSuggestionTransport<P>,options:Omit<SharedSuggestionSyncOptions,'autoStart'>):SharedSuggestionSync<P>{if(!nativeSuggestionQueueView(queue))throw new SharedRelayError('native_suggestion_queue');return new SharedSuggestionSync(queue as SharedSuggestionQueue<P>,relay,{...options,autoStart:false});}

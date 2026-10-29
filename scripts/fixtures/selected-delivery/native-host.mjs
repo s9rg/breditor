@@ -6,10 +6,10 @@ import {readFileSync,writeFileSync,mkdtempSync,realpathSync} from 'node:fs';
 import {join,dirname,resolve} from 'node:path';
 import {pixel,secondPixel} from '../review-assets/pixels.mjs';
 const hex=value=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
-export async function selectedDeliveryNativeHost(root,{language=3,standard=true,atomic=true}={}){
+export async function selectedDeliveryNativeHost(root,{language=3,standard=true,atomic=true,suggestionGrants=false}={}){
  root=realpathSync(root);const directory=mkdtempSync(join(root,'target/selected-delivery-native-'));
  assert.equal(realpathSync(directory),directory);for(const[name,bytes]of[['seed-a.png',pixel],['seed-b.png',secondPixel]])writeFileSync(join(directory,name),bytes,{mode:0o600,flag:'wx'});
- const binary=join(root,'target/owned-history-relay-native/release/examples/selected_delivery_functional'),child=spawn(binary,[directory,String(language),standard?'1':'0',atomic?'1':'0'],{cwd:root,stdio:['pipe','pipe','pipe']});
+ const binary=join(root,'target/owned-history-relay-native/release/examples',suggestionGrants?'selected_suggestion_delivery_functional':'selected_delivery_functional'),child=spawn(binary,[directory,String(language),standard?'1':'0',atomic?'1':'0',...(suggestionGrants?['suggestion-grants-v1']:[])],{cwd:root,stdio:['pipe','pipe','pipe']});
  let buffer='',errors='',sequence=0,closed=false,stopping,initialResolve,initialReject;
  const observed=new WeakMap(),cuts=new Map(),pending=new Map(),operators=new Map(),secrets=new Set(),snapshots=[],initial=new Promise((a,b)=>{initialResolve=a;initialReject=b;});
  const exited=new Promise(done=>child.once('exit',(code,signal)=>done({code,signal})));let terminal;

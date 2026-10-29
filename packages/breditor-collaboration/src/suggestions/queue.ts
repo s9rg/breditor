@@ -1,3 +1,6 @@
+import {registerSuggestionNativeQueue,registerNativeSuggestionQueueView,type NativeSuggestionQueueLoan,type NativeSuggestionJob} from './native_queue.js';
+import type {SuggestionSyncQueue} from './sync_queue.js';
+import type {NativeRelayDeliveryPort} from '../relay/native_delivery.js';
 import {selectedHeldMetadataOpen,heldMetadataWork,type HeldMetadataOpen} from '../metadata/held_open.js';
 import {RelayWorkCustody} from '../relay/work_custody.js';
 /** Durable client intent, not a second document, current authority or optimistic accepted content. */
@@ -19,7 +22,7 @@ import {existingOperationalComponent} from "../participant_operation/existing_co
 import {operationFailure} from "../participant_operation/errors.js";
 import {queueIdentity,packetText,publication,decision,intent,same} from "./validation.js";
 import {checkSuggestionRecordSource,checkSuggestionSourcePolicy,admitSuggestionRecord,ownedSuggestionAcceptance} from "./record_admission.js";
-import {selectedRetainedStorePort,type RetainedStorePort} from "../delivery_ports/retained.js";
+import {selectedRetainedStorePort,retainedStoreOwner,retainedStoreCommitted,type RetainedStorePort} from "../delivery_ports/retained.js";
 import {checkSuggestionRecoveryIdle,registerSuggestionRecoveryParticipant,reserveSuggestionRecovery} from "./recovery_gate.js";
 import {reconcileRetainedSuggestions} from "./reconcile_retained.js";
 import {replaySuggestionRecord} from "../participant_replay/suggestion_record.js";
@@ -36,12 +39,14 @@ export class SharedSuggestionQueue<P extends SharedSelectionPolicy=SharedSelecti
  readonly #work:RelayWorkCustody;readonly #options:SharedSuggestionQueueOptions<P>;readonly #db:IDBDatabase|undefined;readonly #lease:SuggestionQueueLease;
  readonly #atomic:RetainedStorePort<"suggestions">|undefined;
  readonly #assertSource:()=>void;
- readonly #recordSource:object|undefined;
+ readonly #recordSource:object|undefined;#nativeLoan:object|undefined;
  #record:SharedSuggestionQueueRecord;#rows=new Map<string,{info:SharedDocumentSuggestionInfo;row:SharedRetainedSuggestion}>();#durable=new Map<string,string>();
  #pending:SharedSuggestionQueueRecord|undefined;#running:Promise<void>|undefined;#failure:unknown;#retiring=false;#closed=false;#closing:Promise<void>|undefined;#released:Promise<void>|undefined;
  #listeners=new Set<()=>void>();#notifying=false;#storageChanged=false;
  #restoreInsert=false;#restoreSignal:AbortSignal|undefined;
  private constructor(key:object,options:SharedSuggestionQueueOptions<P>,db:IDBDatabase|undefined,lease:SuggestionQueueLease,record:SharedSuggestionQueueRecord,assertSource:()=>void,atomic?:RetainedStorePort<"suggestions">,recordSource?:object,held?:HeldMetadataOpen){if(key!==constructionKey)throw new SharedEditorError('managed_source_construction','Use the actual suggestion queue open or recovery factory');this.#recordSource=recordSource;this.#atomic=atomic;this.#options=options;this.#db=db;this.#lease=lease;this.#assertSource=assertSource;this.#record=record;this.#rows=this.#admit(record);registerManagedSource(this,options.storage.core,()=>{this.#live();this.#assertSource();if(this.#retiring||this.#storageChanged)throw managedSourceUnavailable();});registerSuggestionRecoveryParticipant(this,()=>{this.#live();this.#assertSource();if(this.#retiring||this.#running||this.#work.hasPendingWork())throw new SharedRelayError("suggestion_recovery_in_use");});this.#work=heldMetadataWork(options.storage.core,()=>true,()=>new SharedRelayError('suggestion_recovery_in_use'),held);this.#work.registerOwner(this);
+ const core=options.storage.core,source=atomic?retainedStoreOwner(atomic,core):recordSource,reads={core,identity:SharedSuggestionQueue.prototype.identity.bind(this),state:SharedSuggestionQueue.prototype.state.bind(this),proposals:SharedSuggestionQueue.prototype.proposals.bind(this),packet:SharedSuggestionQueue.prototype.packet.bind(this),status:SharedSuggestionQueue.prototype.status.bind(this),subscribe:SharedSuggestionQueue.prototype.subscribe.bind(this)};
+ registerSuggestionNativeQueue(this,{core,source,open:port=>this.#lendNative(port,reads) as NativeSuggestionQueueLoan});
  if(db)db.onversionchange=()=>{this.#storageChanged=true;db.close();this.#failure=new SharedRelayError("suggestion_database_versionchange");this.#notify();};}
  static{readPersistent=async(owner,provided,signal)=>{
   const fail=(suffix:string)=>new SharedRelayError('suggestion_persistent_read_'+suffix);
@@ -93,12 +98,32 @@ export class SharedSuggestionQueue<P extends SharedSelectionPolicy=SharedSelecti
  #ownedAcceptance(received:SharedSuggestionDecision|null):SharedOwnedSuggestionAcceptance|null{
   return ownedSuggestionAcceptance(this.#options.identity,this.#options.ownedHistory,received);
  }
- #mark(record:SharedSuggestionQueueRecord):void{this.#work.runSync(()=>{const checked=checkQueueRecord(record,this.#options.identity,this.#options.ownedHistory),rows=this.#admit(checked);checkManagedCore(this.#options.storage.core);if(same(checked,this.#record)&&!this.#failure)return;this.#atomic?.stage(checked);this.#record=checked;this.#rows=rows;this.#pending=structuredClone(checked);this.#notify();this.#start();});}
+ #mark(record:SharedSuggestionQueueRecord,job?:NativeSuggestionJob):void{const stage=()=>{const checked=checkQueueRecord(record,this.#options.identity,this.#options.ownedHistory),rows=this.#admit(checked);checkManagedCore(this.#options.storage.core);if(same(checked,this.#record)&&!this.#failure)return;this.#atomic?.stage(checked);this.#record=checked;this.#rows=rows;this.#pending=structuredClone(checked);this.#notify();if(job)this.#startNative(job);else this.#start();};if(job){job.check();this.#work.runSyncAdmitted(job.port.admission,stage);}else this.#work.runSync(stage);}
  #replace(id:string,change:(row:SharedRetainedSuggestion)=>SharedRetainedSuggestion):void{const found=this.#rows.get(id);if(!found)throw new SharedRelayError("suggestion_unknown");this.#mark({...this.#record,retained:this.#record.retained.map(row=>row===found.row?change(row):row)});}
  #start():void{if(this.#running||!this.#pending||this.#failure||this.#closed)return;this.#running=this.#work.run(()=>this.#drain()).catch(error=>{this.#failure=error??new SharedRelayError("local_save_failed");this.#notify();}).finally(()=>{this.#running=undefined;this.#notify();if(!this.#failure)this.#start();});}
  async #drain():Promise<void>{while(this.#pending&&!this.#closed){this.#lease.assertLive();const next=this.#pending;this.#pending=undefined;try{this.#assertSource();checkRetainedStoreSignal(this.#restoreSignal);if(this.#atomic)await this.#atomic.write(next);else{this.#options.storage.save();await this.#options.storage.flush();this.#assertSource();
   if(this.#restoreInsert){await insertRetainedStoreRecord(this.#db!,"suggestions",queueKey(this.#options.identity),next,this.#restoreSignal);this.#restoreInsert=false;checkRetainedStoreSignal(this.#restoreSignal);this.#restoreSignal=undefined;}else await writeQueueRecord(this.#db!,this.#options.identity,next,this.#options.ownedHistory);}
   this.#assertSource();}catch(error){this.#pending??=next;throw error;}this.#durable=new Map(next.retained.map(row=>[this.#options.storage.core.readSuggestion(row.packet).id,JSON.stringify(row)]));this.#notify();}}
+ /** Facts about actual committed bytes precede post-await authority checks.
+  * Packet IDs are admitted before I/O, so disposal cannot replace this fact. */
+ async #drainNative(job:NativeSuggestionJob):Promise<void>{while(this.#pending&&!this.#closed){
+  job.check();this.#lease.assertLive();const next=this.#pending,rows=this.#admit(next),durable=new Map([...rows].map(([id,value])=>[id,JSON.stringify(value.row)]));this.#pending=undefined;
+  try{this.#assertSource();checkRetainedStoreSignal(this.#restoreSignal);if(this.#atomic)await this.#atomic.write(next);else{await job.persistSource();job.check();if(this.#restoreInsert){await insertRetainedStoreRecord(this.#db!,'suggestions',queueKey(this.#options.identity),next,this.#restoreSignal);this.#restoreInsert=false;this.#restoreSignal=undefined;}else await writeQueueRecord(this.#db!,this.#options.identity,next,this.#options.ownedHistory);}}
+  catch(error){this.#pending??=next;if(this.#atomic&&same(retainedStoreCommitted(this.#atomic,this.#options.storage.core),next)){this.#durable=durable;this.#notify();}throw error;}
+  this.#durable=durable;this.#notify();job.check();
+ }}
+ #startNative(job:NativeSuggestionJob):void{if(this.#running||!this.#pending||this.#failure||this.#closed)return;this.#running=this.#work.runAdmitted(job.port.admission,()=>Promise.resolve().then(()=>this.#drainNative(job))).catch(error=>{this.#failure=error??new SharedRelayError('local_save_failed');this.#notify();}).finally(()=>{this.#running=undefined;this.#notify();if(!this.#failure&&this.#pending)this.#startNative(job);});}
+ #lendNative(port:NativeRelayDeliveryPort,reads:Pick<SuggestionSyncQueue<P>,'core'|'identity'|'state'|'proposals'|'packet'|'status'|'subscribe'>):NativeSuggestionQueueLoan<P>{
+  if(this.#nativeLoan||this.#retiring||this.#closed||this.#running||this.#work.hasPendingWork())throw new SharedRelayError('native_suggestion_queue_in_use');
+  checkManagedSourceBindings(this);this.#live();const releaseGate=reserveSuggestionRecovery(this),key=Object.freeze({});this.#nativeLoan=key;let closed=false,ending:Promise<void>|undefined;const calls=new Set<Promise<void>>();
+  const current=()=>{if(closed||this.#nativeLoan!==key||this.#retiring||this.#storageChanged)throw new SharedRelayError('native_suggestion_queue_closed');checkManagedSourceBindings(this);this.#live();this.#assertSource();},check=()=>{port.check();current();port.check();},job:NativeSuggestionJob=Object.freeze({port,check,persistSource:()=>port.persistLocal()});
+  const close=()=>{closed=true;if(ending)return ending;const release=()=>{if(this.#nativeLoan===key)this.#nativeLoan=undefined;releaseGate();};if(!this.#running&&!calls.size){release();return Promise.resolve();}ending=(async()=>{while(this.#running||calls.size)await Promise.all([...calls,...(this.#running?[this.#running]:[])]);release();})().finally(()=>{ending=undefined;});return ending;};
+  const track=<T>(start:()=>Promise<T>):Promise<T>=>{if(closed||this.#nativeLoan!==key)return Promise.reject(new SharedRelayError('native_suggestion_queue_closed'));let resolve!:()=>void;const done=new Promise<void>(finish=>{resolve=finish;});calls.add(done);const finish=()=>{calls.delete(done);resolve();};try{return this.#work.runAdmitted(port.admission,()=>Promise.resolve().then(()=>{check();return start();})).then(value=>{finish();return value;},error=>{finish();throw error;});}catch(error){finish();return Promise.reject(error);}};
+  try{check();const flush=async()=>{check();if(this.#pending&&!this.#failure)this.#startNative(job);while(this.#running)await this.#running;if(this.#failure)throw this.#failure;check();};
+   const queue:SuggestionSyncQueue<P>=Object.freeze({...reads,flush:()=>track(flush),retry:()=>track(async()=>{check();if(this.#running)await this.#running;check();this.#failure=undefined;this.#pending=structuredClone(this.#record);this.#startNative(job);await flush();}),receiveVerifiedPublication:(id:string,input:SharedSuggestionPublication)=>track(async()=>{check();this.#mark(this.#publicationRecord(id,input),job);await flush();}),cacheVerifiedProposal:(input:string,metadata:SharedSuggestionPublication)=>track(async()=>{check();const next=this.#cachedRecord(input,metadata);this.#mark(next.record,job);await flush();return next.info;}),receiveVerifiedDecision:(id:string,input:SharedSuggestionDecision)=>track(async()=>{check();const next=this.#decisionRecord(id,input,port.adoptSuggestionHistory);if(next.kind==='waitingForDocument')return next.kind;this.#mark(next.record,job);await flush();return next.kind;})});
+   registerNativeSuggestionQueueView(queue,port);return Object.freeze({port,queue,close});
+  }catch(error){void close();throw error;}
+ }
  #notify():void{if(this.#notifying)return;this.#notifying=true;queueMicrotask(()=>{this.#notifying=false;for(const listener of [...this.#listeners])try{listener();}catch{/* Reporting cannot replace native or durable state. */}});}
  subscribe(listener:()=>void):()=>void{this.#live();this.#listeners.add(listener);return()=>this.#listeners.delete(listener);}
  state():{pending:boolean;failed:boolean;closed:boolean;retiring:boolean;retained:number;publications:number;decisions:number}{return {pending:!!this.#pending||!!this.#running,failed:this.#failure!==undefined,closed:this.#closed,retiring:this.#retiring,retained:this.#rows.size,publications:[...this.#rows.values()].filter(({row})=>row.publish).length,decisions:[...this.#rows.values()].filter(({row})=>row.intent?.retry).length};}
@@ -126,22 +151,23 @@ export class SharedSuggestionQueue<P extends SharedSelectionPolicy=SharedSelecti
  }
  stopRetryingPublication(id:string):void{this.#writable();this.#replace(id,row=>({...row,publish:false}));}
  stopRetryingDecision(id:string):void{this.#writable();this.#replace(id,row=>({...row,intent:row.intent?{...row.intent,retry:false}:null}));}
- /** Host-verified authenticated publication metadata; never infer authority from an arbitrary payload. */
- async receiveVerifiedPublication(id:string,input:SharedSuggestionPublication):Promise<void>{this.#writable();const received=publication(input),known=this.#rows.get(id);if(!known||received.suggestion.id!==id||!same(received.suggestion,known.info)||known.row.publication&&!same(known.row.publication,received))throw new SharedRelayError("suggestion_receipt_mismatch");this.#replace(id,row=>({...row,publish:false,publication:received}));await this.flush();}
- /** Cache a host-authenticated remote proposal without granting it local publication rights. */
- async cacheVerifiedProposal(input:string,metadata:SharedSuggestionPublication):Promise<SharedDocumentSuggestionInfo>{this.#writable();const packet=packetText(input),core=this.#options.storage.core,info=core.readSuggestion(packet),received=publication(metadata);core.verifySuggestionSource(packet);if(!same(received.suggestion,info))throw new SharedRelayError("suggestion_receipt_mismatch");const known=this.#rows.get(info.id);if(known){await this.receiveVerifiedPublication(info.id,received);return {...known.info};}this.#mark({...this.#record,retained:[...this.#record.retained,{packet,origin:"remote",publish:false,publication:received,intent:null,decision:null}]});await this.flush();return info;}
- /** Final receipt is never saved ahead of its actual native effect. Retry after document catchup;
-  * duplicate or opposing decisions still retain the original server winner and original intent. */
- async receiveVerifiedDecision(id:string,input:SharedSuggestionDecision):Promise<"waitingForDocument"|"retained">{
-  this.#writable();const received=decision(input,this.#options.identity),known=this.#rows.get(id);if(!known?.row.publication||received.suggestionId!==id||BigInt(received.sequence)<=BigInt(known.row.publication.sequence)||known.row.decision&&!same(known.row.decision,received))throw new SharedRelayError("suggestion_receipt_mismatch");
-  if(received.effect&&this.#options.storage.core.retainedWriterReceiptV2(received.effect.writerGroup).kind!=="verified")return "waitingForDocument";
-  if(received.effect&&this.#options.ownedHistory==="reviewed-v1"){
-   const core=this.#options.storage.core,proof=core.verifySuggestionEffect(known.row.packet,{suggestionId:id,writerGroup:received.effect.writerGroup,semanticFrom:received.effect.semanticFrom});
-   if(proof.kind==="pending")return "waitingForDocument";
-   try{const owned=this.#ownedAcceptance(received);if(owned)core.adoptSuggestionHistory(proof.proof,known.row.packet,owned);}finally{proof.proof.dispose();}
+ #publicationRecord(id:string,input:SharedSuggestionPublication):SharedSuggestionQueueRecord{const received=publication(input),known=this.#rows.get(id);if(!known||received.suggestion.id!==id||!same(received.suggestion,known.info)||known.row.publication&&!same(known.row.publication,received))throw new SharedRelayError('suggestion_receipt_mismatch');return {...this.#record,retained:this.#record.retained.map(row=>row===known.row?{...row,publish:false,publication:received}:row)};}
+ /** Host-verified authenticated metadata; the original packet/intent stay intact. */
+ async receiveVerifiedPublication(id:string,input:SharedSuggestionPublication):Promise<void>{this.#writable();this.#mark(this.#publicationRecord(id,input));await this.flush();}
+ #cachedRecord(input:string,metadata:SharedSuggestionPublication):{info:SharedDocumentSuggestionInfo;record:SharedSuggestionQueueRecord}{const packet=packetText(input),core=this.#options.storage.core,info=core.readSuggestion(packet),received=publication(metadata);core.verifySuggestionSource(packet);if(!same(received.suggestion,info))throw new SharedRelayError('suggestion_receipt_mismatch');if(this.#rows.has(info.id))return {info,record:this.#publicationRecord(info.id,received)};return {info,record:{...this.#record,retained:[...this.#record.retained,{packet,origin:'remote',publish:false,publication:received,intent:null,decision:null}]}};}
+ /** Authenticated remote cache never grants local publication rights. */
+ async cacheVerifiedProposal(input:string,metadata:SharedSuggestionPublication):Promise<SharedDocumentSuggestionInfo>{this.#writable();const next=this.#cachedRecord(input,metadata);this.#mark(next.record);await this.flush();return next.info;}
+ #decisionRecord(id:string,input:SharedSuggestionDecision,adopt?:NativeRelayDeliveryPort['adoptSuggestionHistory']):{kind:'waitingForDocument'}|{kind:'retained';record:SharedSuggestionQueueRecord}{
+  const received=decision(input,this.#options.identity),known=this.#rows.get(id);if(!known?.row.publication||received.suggestionId!==id||BigInt(received.sequence)<=BigInt(known.row.publication.sequence)||known.row.decision&&!same(known.row.decision,received))throw new SharedRelayError('suggestion_receipt_mismatch');
+  if(received.effect&&this.#options.storage.core.retainedWriterReceiptV2(received.effect.writerGroup).kind!=='verified')return {kind:'waitingForDocument'};
+  if(received.effect&&this.#options.ownedHistory==='reviewed-v1'){
+   const core=this.#options.storage.core,proof=core.verifySuggestionEffect(known.row.packet,{suggestionId:id,writerGroup:received.effect.writerGroup,semanticFrom:received.effect.semanticFrom});if(proof.kind==='pending')return {kind:'waitingForDocument'};
+   try{const owned=this.#ownedAcceptance(received);if(owned){if(adopt)adopt(proof.proof,known.row.packet,owned);else core.adoptSuggestionHistory(proof.proof,known.row.packet,owned);}}finally{proof.proof.dispose();}
   }
-  this.#replace(id,row=>({...row,decision:received,intent:row.intent?{...row.intent,retry:false}:null}));await this.flush();return "retained";
+  return {kind:'retained',record:{...this.#record,retained:this.#record.retained.map(row=>row===known.row?{...row,decision:received,intent:row.intent?{...row.intent,retry:false}:null}:row)}};
  }
+ /** Final receipt follows its actual native effect. Opposing winners stay exact. */
+ async receiveVerifiedDecision(id:string,input:SharedSuggestionDecision):Promise<'waitingForDocument'|'retained'>{this.#writable();const next=this.#decisionRecord(id,input);if(next.kind==='waitingForDocument')return next.kind;this.#mark(next.record);await this.flush();return next.kind;}
  forget(id:string):void{this.#writable();const row=this.#rows.get(id)?.row;if(!row)return;if(row.publish||row.intent?.retry)throw new SharedRelayError("suggestion_still_queued");this.#mark({...this.#record,retained:this.#record.retained.filter(value=>value!==row)});}
  async flush():Promise<void>{this.#live();while(this.#running){await this.#running;if(this.#failure)throw this.#failure;}if(this.#failure)throw this.#failure;}
  async retry():Promise<void>{return this.#work.run(()=>this.#retry());}

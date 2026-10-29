@@ -25,5 +25,5 @@ export function createSharedIndependentReviewRelaySync<P extends SharedSelection
 }
 export function createSharedIndependentSuggestionObserverRelay<P extends SharedSelectionPolicy>(session:SharedIndependentDeliverySession<P>,input:SharedIndependentSuggestionObserverOptions<P>):SharedSuggestionObserverRelay<P>{
  const port=independentDeliverySessionPort(session),core=port.core as SharedRichEditor<P>;for(const key of ['storage','persistLocal','selectionEditing'])if(key in input)throw new SharedRelayError('independent_delivery_factory_policy');
- const storage=Object.freeze({core,save:()=>port.save(),flush:()=>port.flush()}),observer=new SharedSuggestionObserverRelay<P>(withIndependentObserverPort({...input,storage},port));try{port.track(observer);return observer;}catch(error){observer.dispose();throw error;}
+ const storage=Object.freeze({core,save:()=>port.save(),flush:()=>port.flush()}),options=withIndependentObserverPort({...input,storage},port);forwardNativeRelayDelivery(input,options);const observer=new SharedSuggestionObserverRelay<P>(options);try{port.track(observer);return observer;}catch(error){observer.dispose();throw error;}
 }

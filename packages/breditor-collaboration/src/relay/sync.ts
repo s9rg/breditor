@@ -1,3 +1,5 @@
+import {registerNativeSuggestionTransport} from './native_suggestion_transport.js';
+import type {SharedSuggestionTransport} from '../suggestions/transport_port.js';
 import {selectedNativeRelayDelivery,checkSelectedLocalDocumentBinding,type NativeRelayDeliveryPort} from './native_delivery.js';
 import {RelayWorkCustody} from './work_custody.js';
 import {SharedRichEditor} from "../core.js";
@@ -80,6 +82,7 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
   try{const listener=()=>{try{const previous=this.#local;this.#refresh();if(previous!==this.#local)this.#schedulePump();}catch{this.#fail(new SharedRelayError("owner_unavailable"),this.#epoch);}};
    this.#unsubscribe=this.#nativeDelivery?nativeSubscribeIntrinsic.call(core,listener):core.subscribe(listener);attached.add(core);
    this.#nativeDelivery?.track(()=>nativeDisposeIntrinsic.call(this),()=>nativeDrainIntrinsic.call(this));
+   if(this.#nativeDelivery)registerNativeSuggestionTransport(this,this.#nativeDelivery,nativeSuggestionMethods(this));
   }catch(error){this.#unsubscribe();this.#presence?.dispose();this.#work.retire(()=>attached.delete(core));throw error;}
   this.#wanted=options.autoConnect!==false;
   if(this.#wanted)queueMicrotask(()=>{if(this.#wanted&&!this.#closed)void this.connect().catch(()=>{});});
@@ -316,3 +319,6 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
 export function createSharedDocumentRelaySync(core:SharedRichEditor<"document-v1">,options:SharedDocumentRelayOptions):SharedRelaySync<"document-v1">{return new SharedRelaySync(core,options);}
 
 const nativeSubscribeIntrinsic=SharedRichEditor.prototype.subscribe,nativeDisposeIntrinsic=SharedRelaySync.prototype.dispose,nativeDrainIntrinsic=SharedRelaySync.prototype.waitForDisconnected;
+
+const suggestionIntrinsics={state:SharedRelaySync.prototype.state,suggestionState:SharedRelaySync.prototype.suggestionState,subscribe:SharedRelaySync.prototype.subscribe,checkSuggestionQueue:SharedRelaySync.prototype.checkSuggestionQueue,connect:SharedRelaySync.prototype.connect,flush:SharedRelaySync.prototype.flush,refreshDocument:SharedRelaySync.prototype.refreshDocument,requestSuggestion:SharedRelaySync.prototype.requestSuggestion,checkSuggestionRevisions:SharedRelaySync.prototype.checkSuggestionRevisions,suggestionRevisionsReady:SharedRelaySync.prototype.suggestionRevisionsReady,requestSuggestionRevision:SharedRelaySync.prototype.requestSuggestionRevision};
+function nativeSuggestionMethods<P extends SharedSelectionPolicy>(owner:SharedRelaySync<P>):SharedSuggestionTransport<P>{const m=suggestionIntrinsics;return {state:()=>m.state.call(owner),suggestionState:()=>m.suggestionState.call(owner),subscribe:listener=>m.subscribe.call(owner,listener),checkSuggestionQueue:(core,identity)=>m.checkSuggestionQueue.call(owner,core,identity),connect:()=>m.connect.call(owner),flush:()=>m.flush.call(owner),refreshDocument:()=>m.refreshDocument.call(owner),requestSuggestion:request=>m.requestSuggestion.call(owner,request),checkSuggestionRevisions:(core,identity,binding)=>m.checkSuggestionRevisions.call(owner,core,identity,binding),suggestionRevisionsReady:()=>m.suggestionRevisionsReady.call(owner),requestSuggestionRevision:request=>m.requestSuggestionRevision.call(owner,request)};}

@@ -34,9 +34,11 @@ fn serve(
     tokio::spawn(async move { axum::serve(listener, router).await })
 }
 #[tokio::main(worker_threads = 2)]
-async fn main() -> Result {
+pub async fn main() -> Result {
     let args: Vec<_> = std::env::args().skip(1).collect();
-    let [parent, language, standard, atomic] = args.as_slice() else {
+    let suggestions = args.last().is_some_and(|value| value == "suggestion-grants-v1");
+    let selected = if suggestions { &args[..args.len() - 1] } else { args.as_slice() };
+    let [parent, language, standard, atomic] = selected else {
         return Err("expected private parent, language1/2/3, standard0/1, atomic0/1".into());
     };
     let flag = |value: &str| -> Result<bool> {
@@ -62,7 +64,11 @@ async fn main() -> Result {
     let retired = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
     let endpoint = format!("ws://{}/ws", clients.local_addr()?);
     let old_endpoint = format!("ws://{}/ws", retired.local_addr()?);
-    let ready = Box::pin(setup::prepare(&parent, spec, &images)).await?;
+    let ready = if suggestions {
+        Box::pin(setup::prepare_with_suggestion_grants(&parent, spec, &images)).await?
+    } else {
+        Box::pin(setup::prepare(&parent, spec, &images)).await?
+    };
     let mut tasks =
         vec![serve(ready.active.router(), clients), serve(ready.old_router.clone(), retired)];
     let mut controls = Vec::new();

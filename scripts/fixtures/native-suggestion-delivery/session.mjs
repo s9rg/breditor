@@ -1,0 +1,102 @@
+/** Genuine authenticated suggestion host and original source/queue owners.
+ * IndexedDB, Web Locks and delivery interruptions are controlled test fixtures.
+ * No server receipt, effect, authored clock or native history entry is invented. */
+import assert from 'node:assert/strict';
+import {readFileSync,writeFileSync,mkdtempSync} from 'node:fs';
+import {join} from 'node:path';
+import {tmpdir} from 'node:os';
+import {createHash,randomBytes} from 'node:crypto';
+import {IDBFactory,IDBDatabase} from 'fake-indexeddb';
+import {WebSocket as Socket} from 'undici';
+import * as api from '../../../packages/breditor-collaboration/dist/index.js';
+import * as native from '../../../packages/breditor-collaboration/dist/runtime/breditor_shared.js';
+import {reserveNativeRecovery} from '../../../packages/breditor-collaboration/dist/core.js';
+import {createNativeRelayDelivery,withNativeRelayDelivery} from '../../../packages/breditor-collaboration/dist/relay/native_delivery.js';
+import {createNativeSuggestionDelivery} from '../../../packages/breditor-collaboration/dist/suggestions/native_delivery.js';
+import {prepareCompoundMetadata} from '../../../packages/breditor-collaboration/dist/metadata/compound_preparation.js';
+import {readQueueRecord} from '../../../packages/breditor-collaboration/dist/suggestions/database.js';
+import {startReviewHost} from '../relay-host.mjs';
+import {ReviewWireFixture} from '../relay-wire.mjs';
+export const families=[{name:'original',kind:'original'},{name:'retained',kind:'retained',documentSegmented:true,reviewSegmented:false},...[false,true].flatMap(documentSegmented=>[false,true].map(reviewSegmented=>({name:'independent-'+Number(documentSegmented)+Number(reviewSegmented),kind:'independent',documentSegmented,reviewSegmented})))];
+const origin='http://127.0.0.1:49785',sha=b=>createHash('sha256').update(b).digest('hex');
+const strip=({credential,observerCredential,...binding})=>binding;
+const canonical=v=>Array.isArray(v)?v.map(canonical):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,canonical(v[k])])):v;
+let initialized;
+export async function nativeSuggestionSession({family=families[0],scope='original',natural=false,owned=false,observer=false,choice='accept',prepare=false}={},visit){
+ const bytes=readFileSync(new URL('../../../packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm',import.meta.url));
+ assert.equal(sha(bytes),'165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0');await(initialized??=native.default({module_or_path:bytes}));
+ const config=JSON.stringify({format:'breditor/shared-rich-profile',formatVersion:3,schema:{name:'example/native-suggestion-delivery',version:1},extensions:[]}),profile=native.SharedRichProfile.from_standard_configuration_json_v3(config),descriptor=JSON.parse(profile.descriptor_json());
+ const root=canonical(JSON.parse(readFileSync(new URL('../../../crates/breditor-core/tests/fixtures/rich-local-root.json',import.meta.url)))),document=JSON.stringify({format:'breditor/document',formatVersion:2,schema:descriptor.schema,schemaFingerprint:descriptor.schemaFingerprint,root});
+ const directory=mkdtempSync(join(tmpdir(),'breditor-suggestion-native-')),paths=['room.log','profile.json','document.json','auth.json'].map(n=>join(directory,n)),tokens=Object.fromEntries(['alice','bob','carol','functional-owner'].map(n=>[n,randomBytes(32).toString('hex')]));
+ for(const [p,value]of [[paths[1],config],[paths[2],document],[paths[3],JSON.stringify({format:'breditor/relay-auth',formatVersion:1,origins:[origin],accounts:Object.entries(tokens).map(([principal,token])=>({principal,tokenHash:[...createHash('sha256').update(token).digest()]}))})]])writeFileSync(p,value,{mode:0o600});
+ const globals=new Map(['indexedDB','navigator','WebSocket'].map(n=>[n,Object.getOwnPropertyDescriptor(globalThis,n)])),transaction=IDBDatabase.prototype.transaction,heldLocks=new Set(),requests=[],faults={};
+ const locks={request(name,_options,visit){return Promise.resolve().then(async()=>{if(heldLocks.has(name))return visit(null);heldLocks.add(name);try{return await visit({name});}finally{heldLocks.delete(name);}});}};
+ class Wire extends Socket{
+  constructor(url){super(url,{headers:{Origin:origin}});}
+  send(raw){const envelope=JSON.parse(raw);if(envelope.request.kind==='authenticate')this.account=envelope.request.principal;requests.push({...envelope.request,testPrincipal:this.account});assert.ok(requests.length<5000);return super.send(raw);}
+  addEventListener(kind,listener,options){if(kind!=='message')return super.addEventListener(kind,listener,options);return super.addEventListener(kind,event=>{const data=JSON.parse(event.data),deliver=()=>listener.call(this,event);if(faults.reply?.(data,deliver,this)===true)return;deliver();},options);}
+ }
+ for(const [name,value]of Object.entries({indexedDB:new IDBFactory(),navigator:{locks},WebSocket:Wire}))Object.defineProperty(globalThis,name,{value,configurable:true});
+ IDBDatabase.prototype.transaction=function(...args){const tx=transaction.apply(this,args);if(args[1]==='readwrite'){if(this.name===faults.abortDatabase){faults.abortDatabase=undefined;queueMicrotask(()=>{try{tx.abort();}catch{}});}faults.transaction?.(this.name,tx);}return tx;};
+ let server,wire,source,queue,hold,context,doc,suggestions,authorized=true,badToken=false,tokenCalls=0;
+ const principal=observer?'carol':'alice',database='native-suggestions-'+family.name+'-'+scope+'-'+natural+'-'+owned+'-'+observer,queueDatabase=database+'-queue',shadows=[];
+ const clearShadows=()=>{for(const [owner,name]of shadows.splice(0))delete owner[name];};
+ const shadow=(owner,names)=>{for(const name of names){Object.defineProperty(owner,name,{configurable:true,value(){throw Error('Public '+name+' must not impersonate native delivery');}});shadows.push([owner,name]);}};
+ try{
+  const executable=new URL('../../../target/owned-history-relay-native/release/examples/suggestions_functional',import.meta.url).pathname;
+  server=await startReviewHost(executable,[...paths,'127.0.0.1:0']);const endpoint='ws://'+server.address+'/ws';
+  wire=new ReviewWireFixture(endpoint);assert.equal((await wire.request({kind:'authenticate',principal:'functional-owner',token:tokens['functional-owner'],capabilities:['writerTransportV2','documentSuggestionsV1','reviewV1']})).kind,'authenticated');assert.equal((await wire.request({kind:'reviewGrant',principal,role:'comment'})).kind,'reviewGranted');wire.close();
+  wire=new ReviewWireFixture(endpoint);const auth=await wire.request({kind:'authenticate',principal,token:tokens[principal],capabilities:['writerTransportV2','documentSuggestionsV1','reviewV1']});assert.equal(auth.kind,'authenticated');wire.close();wire=undefined;
+  const common={endpoint,principal,room:'room',writerTransport:'atomic-v2',getToken:()=>tokens[principal],saveIdentity(){}},registration=observer?await api.registerSharedSuggestionObserver(common):await api.registerSharedRelayWriter(common),writer=observer?registration.identity.documentWriter:registration.identity.writer;
+  const comments=await api.registerSharedReviewWriter({...common,actor:'native-suggestion-comments',documentWriter:writer}),identity=observer?api.sharedSuggestionObserverQueueIdentity(registration.identity):{endpoint,principal,room:'room',documentWriter:writer,writerTransport:'atomic-v2',binding:auth.documentSuggestionsDescriptor.binding,effectWriter:auth.documentSuggestionsDescriptor.effectWriter};
+  const selection=scope==='document-v1'?'document-v1':'original',reviewed={binding:identity.binding,principal,effectWriter:identity.effectWriter};
+  // Fresh sources configure their declared policies before enforcing read-only.
+  // Compound factories enforce it themselves; original sources do so below.
+  const initialize=raw=>observer&&family.kind==='original'?api.initializeSharedReadOnly(raw,true):raw;
+  const restore=input=>initialize(owned?profile.restore_reviewed('room',input):scope==='document-v1'?(natural?profile.restore_document_typing('room',input):profile.restore_document('room',input)):scope==='general-v1'?(natural?profile.restore_general_typing('room',input):profile.restore_general('room',input)):(natural?profile.restore_typing('room',input):profile.restore('room',input)));
+  const flat={database,room:'room',writer,review:{actor:comments.identity.actor,principal,access:'comment'},relay:strip(comments.identity),richLanguage:3,history:natural?'typing-v1':'explicit',rangeEditing:scope==='original'?'original':'general-v1',selectionEditing:selection,create:()=>profile.join_frame('room',writer,comments.frame),restore,...(owned?{reviewedHistory:reviewed,restoreReviewed:restore}:{})};
+  const documentBinding=observer?{endpoint,principal,room:'room',writer,writerTransport:'atomic-v2'}:strip(registration.identity),retained={suggestions:{identity,ownedHistory:owned?'reviewed-v1':null},revisions:null,versions:null};
+  const base={...flat,searchHistory:null,reviewedHistory:owned?reviewed:null,readOnly:observer,binding:{document:documentBinding,review:strip(comments.identity)},initialGenerations:{root:'root',active:'one'},restoreSegmented:input=>initialize(profile.restore_segmented('room',input)),retained};
+  const settings=family.kind==='original'?flat:family.kind==='retained'?base:{...base,documentHistory:family.documentSegmented?{kind:'segmented-v1',initialGenerations:{root:'root',active:'one'},restoreSegmented:input=>initialize(profile.restore_segmented('room',input))}:{kind:'original',restoreOriginal:restore},reviewHistory:family.reviewSegmented?{kind:'segmented-v1',initialGenerations:{root:'root',active:'one'}}:{kind:'original'}};
+  const openSource=async()=>{const opened=await(family.kind==='original'?(owned?api.SharedReviewPersistentSession.openReviewed(settings):api.SharedReviewPersistentSession.open(settings)):family.kind==='retained'?api.SharedSegmentedRelaySession.openRetained(settings):api.SharedIndependentDeliverySession.open(settings));if(observer&&family.kind==='original')opened.core.setReadOnly(true);return opened;};
+  const openQueue=()=>family.kind==='original'?api.SharedSuggestionQueue.open({database:queueDatabase,storage:source,identity,...(owned?{ownedHistory:'reviewed-v1'}:{})}):source.openSuggestionQueue();
+  const recovery=()=>family.kind==='retained'?source.exportRetainedRecovery():source.exportRecovery();
+  source=await openSource();queue=await openQueue();
+  if(!observer)source.core.dispatch({commands:[{kind:'insert_text',data:{block:'p',offset:0,text:'Keep ordinary history '}}]});
+  source.core.dispatchReview({kind:'create_thread',data:{anchorJson:source.core.captureReviewAnchor({kind:'document'}),body:'Keep independent comment history'}});
+  if(observer&&family.documentSegmented){
+   // A zero-prefix observer cannot invent an authored event to seal. Import a
+   // real separately registered author's durable update into its current segment.
+   const peer=await api.registerSharedRelayWriter({...common,principal:'alice',getToken:()=>tokens.alice});const peerCore=new api.SharedRichEditor(profile.join_frame('room',peer.identity.writer,peer.frame));let peerRelay;
+   try{peerCore.dispatch({commands:[{kind:'insert_text',data:{block:'p',offset:0,text:'Foreign retained source '}}]});peerRelay=new api.SharedRelaySync(peerCore,{identity:peer.identity,getToken:()=>tokens.alice,autoConnect:false,persistLocal:async()=>{}});await peerRelay.connect();await peerRelay.flush();await source.core.receiveFrame(peerCore.updateFrame());}finally{peerRelay?.dispose();await peerRelay?.waitForDisconnected();peerCore.dispose();}
+  }
+  await source.flush();if(family.kind==='retained')await source[observer?'sealReadOnlyGeneration':'sealGeneration']('two');else if(family.kind==='independent'){if(family.documentSegmented)await source[observer?'sealReadOnlyDocumentGeneration':'sealDocumentGeneration']('two');if(family.reviewSegmented)await source.sealReviewGeneration('two');}
+  const info=queue.propose('Original pending suggestion 日本 🙂','1',{scope:'commands',edit:{kind:'commands',data:[{kind:'insert_text',data:{block:'p',offset:0,text:'Suggested once '}}]}}),packet=queue.packet(info.id);
+  if(choice){const prepared=choice==='accept'?source.core.prepareSuggestion(packet):undefined;if(prepared)assert.equal(prepared.kind,'ready');try{queue.queueDecision(info.id,choice,'2',prepared?.preview);}finally{prepared?.preview.dispose();}}
+  await queue.flush();const pending=queue.exportRecovery(),savedSource=recovery();if(family.kind==='original')await queue.close();await source.close();source=await openSource();assert.deepEqual(recovery(),savedSource);
+  if(!prepare||family.kind==='original')queue=await openQueue();
+  hold=reserveNativeRecovery([source.core]);
+  const makeContext=()=>createNativeRelayDelivery({native:hold,session:source,core:source.core,reviewCeiling:'comment',checkAuthority(){assert.equal(authorized,true,'Current native suggestion authority was revoked');}});context=makeContext();
+  if(prepare&&family.kind!=='original')queue=(await prepareCompoundMetadata(source,context)).suggestions;
+  assert.deepEqual(queue.exportRecovery(),pending);assert.equal(queue.packet(info.id),packet);
+  const currentToken=()=>{tokenCalls++;return faults.token?faults.token():badToken?'incorrect-authentication-token':tokens[principal];};
+  const attach=()=>{
+   const options=withNativeRelayDelivery({identity:registration.identity,getToken:currentToken,autoConnect:false,requestTimeoutMs:5000,reconnectMinimumMs:50,reconnectMaximumMs:200,...(observer&&family.kind==='original'?{storage:source}:{}),...(!observer?{suggestions:{binding:identity.binding,effectWriter:identity.effectWriter}}:{}),...(family.kind==='original'&&selection==='document-v1'&&!observer?{selectionEditing:'document-v1'}:{})},context);
+   doc=observer?(family.kind==='original'?new api.SharedSuggestionObserverRelay(options):family.kind==='retained'?api.createSharedSegmentedSuggestionObserverRelay(source,options):api.createSharedIndependentSuggestionObserverRelay(source,options)):(family.kind==='original'?(selection==='document-v1'?api.createSharedDocumentRelaySync(source.core,options):new api.SharedRelaySync(source.core,options)):family.kind==='retained'?api.createSharedSegmentedRelaySync(source,options):api.createSharedIndependentRelaySync(source,options));
+  };attach();
+  const f={api,profile,family,scope,natural,owned,observer,choice,identity,info,packet,pending,database,queueDatabase,faults,requests,get source(){return source;},get queue(){return queue;},get hold(){return hold;},get context(){return context;},get doc(){return doc;},get suggestions(){return suggestions;},set suggestions(v){suggestions=v;},get tokenCalls(){return tokenCalls;},authorize(v){authorized=v;},badToken(v){badToken=v;},recovery,shadow,clearShadows,
+   openNative:(options={})=>createNativeSuggestionDelivery(queue,doc,context,options),
+   async publishRemote(){const registration=await api.registerSharedRelayWriter({...common,principal:'alice',getToken:()=>tokens.alice}),peer=new api.SharedRichEditor(profile.join_frame('room',registration.identity.writer,registration.frame));let relay;try{const packet=peer.captureSuggestion('Actual remote immutable proposal','alice','3',{scope:'commands',edit:{kind:'commands',data:[{kind:'set_heading',data:{block:'p',level:2}}]}}),info=peer.readSuggestion(packet);relay=new api.SharedRelaySync(peer,{identity:registration.identity,suggestions:{binding:identity.binding,effectWriter:identity.effectWriter},getToken:()=>tokens.alice,autoConnect:false,persistLocal:async()=>{}});await relay.connect();await relay.flush();const admitted=await relay.requestSuggestion({kind:'suggestionPublish',packet});assert.equal(admitted.kind,'suggestionAdmission');assert.equal(admitted.admission.kind,'durable');return {info,packet,publication:admitted.admission.publication};}finally{relay?.dispose();await relay?.waitForDisconnected();peer.dispose();}},
+   async durableQueue(){if(family.kind!=='original')return source.retainedRecords().suggestions;const db=await new Promise((resolve,reject)=>{const request=indexedDB.open(queueDatabase);request.onupgradeneeded=()=>{request.transaction.abort();reject(Error('Existing original queue required'));};request.onerror=()=>reject(request.error);request.onsuccess=()=>resolve(request.result);});try{return await readQueueRecord(db,queue.identity(),owned?'reviewed-v1':undefined);}finally{db.close();}},
+   async renewNative(){await suggestions?.close();await context.close();hold.check();context=makeContext();attach();suggestions=undefined;hold.check();},
+   evidence(tag='complete'){const files=[];for(const [name,value]of [['source.recovery.json',recovery()],['queue.recovery.json',queue.exportRecovery()],['original.packet',packet]]){const data=Buffer.from(typeof value==='string'?value:JSON.stringify(value)+'\n');writeFileSync(join(directory,name),data,{mode:0o600});files.push({name,bytes:data.length,sha256:sha(data)});}console.log('NATIVE_SUGGESTION_EVIDENCE '+JSON.stringify({directory,family:family.name,scope,natural,owned,observer,choice,tag,files}));return files;},
+   async finishAndCold(){clearShadows();await suggestions?.close();await context.close();hold.close();hold=undefined;await source.flush();const saved=recovery(),record=queue.exportRecovery(),text=source.core.documentJson(),status=queue.status(info.id);if(family.kind==='original')await queue.close();await source.close();source=await openSource();queue=await openQueue();assert.deepEqual(recovery(),saved);assert.deepEqual(queue.exportRecovery(),record);assert.equal(queue.packet(info.id),packet);assert.equal(source.core.documentJson(),text);
+    if(observer){assert.equal(source.core.view().readOnly,true);assert.equal(source.core.writerClockV2(writer).through,'0');assert.equal(source.core.view().undoDepth,0);}
+    else{assert.equal(source.core.undo(),true);if(status.decision?.decision==='accept'&&owned){assert.ok(!source.core.documentJson().includes('Suggested once '));assert.match(source.core.documentJson(),/Keep ordinary history/);}else if(status.decision?.decision==='accept'){assert.match(source.core.documentJson(),/Suggested once/);assert.ok(!source.core.documentJson().includes('Keep ordinary history '));}assert.equal(source.core.redo(),true);assert.equal(source.core.documentJson(),text);}
+    assert.equal(source.core.undoReview().kind,'committed');assert.equal(source.core.redoReview().kind,'committed');return {saved,record,text};},
+  };
+  await visit(f);
+ }finally{
+  faults.abortDatabase=undefined;faults.transaction=undefined;faults.reply=undefined;clearShadows();await suggestions?.close();await context?.close();hold?.close();doc?.dispose();await doc?.waitForDisconnected?.().catch(()=>{});if(family.kind==='original')await queue?.discardAndClose();await source?.discardAndClose();wire?.close();await server?.stop();profile.free();IDBDatabase.prototype.transaction=transaction;for(const [name,value]of globals)if(value)Object.defineProperty(globalThis,name,value);else delete globalThis[name];assert.equal(heldLocks.size,0);
+ }
+}

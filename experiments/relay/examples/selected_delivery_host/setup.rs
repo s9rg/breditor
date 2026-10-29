@@ -7,7 +7,7 @@ use breditor_collab_relay::server::{
 };
 use breditor_collab_relay::{
     RecoveryRegistrationCredentials, Role, RoomRecoveryPolicy, ServerLogGenerationRoomBackup,
-    ServerLogGenerationRoomRecovery,
+    ServerLogGenerationRoomRecovery, SuggestionRole,
 };
 use serde_json::Value;
 use std::{
@@ -51,6 +51,23 @@ pub(super) async fn prepare(
     spec: source::Spec,
     rasters: &[Vec<u8>],
 ) -> Result<Ready> {
+    prepare_selected(parent, spec, rasters, false).await
+}
+/// Separate functional fixture policy. The original fixture keeps its exact
+/// absent suggestion grant; no saved permission is inferred or bypassed.
+pub(super) async fn prepare_with_suggestion_grants(
+    parent: &Path,
+    spec: source::Spec,
+    rasters: &[Vec<u8>],
+) -> Result<Ready> {
+    prepare_selected(parent, spec, rasters, true).await
+}
+async fn prepare_selected(
+    parent: &Path,
+    spec: source::Spec,
+    rasters: &[Vec<u8>],
+    suggestions: bool,
+) -> Result<Ready> {
     if rasters.len() != 2 {
         return Err("two private fixture rasters required".into());
     }
@@ -59,6 +76,12 @@ pub(super) async fn prepare(
     storage::directory(&root.join("snapshots"))?;
     let source::Source { profile, mut room, configuration } =
         source::create(&root, spec, Some(&asset_id(&rasters[0])))?;
+    if suggestions {
+        if !spec.atomic {
+            return Err("suggestion review fixture requires the atomic writer protocol".into());
+        }
+        room.grant_document_suggestions("owner", "alice", Some(SuggestionRole::Review))?;
+    }
     let clients::CapturedClients { records, protected, secrets } =
         clients::capture(&mut room, &profile, spec)?;
     if protected.documents.len() != 7 || protected.reviews.len() != 7 {

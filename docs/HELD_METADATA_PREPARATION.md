@@ -41,3 +41,8 @@ pending suggestion/revision packets, then cold-reopens all seven source families
 Suggestion/revision transport, metadata binding for the three local lanes,
 complete provider/client/historical-copy/assets reconciliation and authenticated
 joint activation remain required. All thirteen V1 gates remain open.
+
+The [native-held suggestion execution path](NATIVE_SUGGESTION_DELIVERY.md) now
+uses these original prepared queues with genuine author/observer transports.
+Revision-outbox delivery, the three local-lane bindings and full room activation
+remain separate required work. No V1 gate is closed by this addition.

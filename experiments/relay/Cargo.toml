@@ -129,3 +129,8 @@ required-features = ["server"]
 name = "selected_delivery_functional"
 path = "examples/selected_delivery_functional.rs"
 required-features = ["server"]
+
+[[example]]
+name = "selected_suggestion_delivery_functional"
+path = "examples/selected_suggestion_delivery_functional.rs"
+required-features = ["server"]

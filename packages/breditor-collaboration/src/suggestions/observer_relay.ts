@@ -1,3 +1,7 @@
+import {RelayWorkCustody} from '../relay/work_custody.js';
+import {selectedNativeRelayDelivery,type NativeRelayDeliveryPort} from '../relay/native_delivery.js';
+import {registerNativeSuggestionTransport} from '../relay/native_suggestion_transport.js';
+import {SharedRichEditor as Core} from '../core.js';
 /** Permanent observation-only connection. Publishes proposals/Reject, imports accepted content,
  * and never acquires a document-author lease, submits groups or executes Accept. */
 import type {SharedSelectionPolicy,SharedWriterClock} from "../types.js";
@@ -21,6 +25,7 @@ import type {DurableRelaySourcePort} from '../relay/durable_source_port.js';
 const attached=new WeakSet<object>(),transient=new Set(["connection_lost","connection_timeout","request_timeout","storage_unavailable","entropy_unavailable"]);
 interface Run {epoch:number;promise:Promise<void>}
 export class SharedSuggestionObserverRelay<P extends SharedSelectionPolicy=SharedSelectionPolicy> implements SharedSuggestionTransport<P> {
+ readonly #work:RelayWorkCustody;readonly #nativeDelivery:NativeRelayDeliveryPort|undefined;#initialized=false;
  readonly suggestionDecisionMode="observer" as const;
  readonly #core:SharedRichEditor<P>;readonly #identity:SharedSuggestionObserverIdentity;readonly #queueIdentity:SharedSuggestionQueueIdentity;readonly #options:SharedSuggestionObserverOptions<P>;
  readonly #milliseconds:number;readonly #minimum:number;readonly #maximum:number;readonly #off:()=>void;
@@ -32,6 +37,7 @@ export class SharedSuggestionObserverRelay<P extends SharedSelectionPolicy=Share
  #notifyQueued=false;#listeners=new Set<()=>void>();#reported:string|null=null;
  constructor(options:SharedSuggestionObserverOptions<P>){
   this.#identity=observerIdentity(options.identity);this.#queueIdentity=sharedSuggestionObserverQueueIdentity(this.#identity);this.#options={...options};this.#core=options.storage.core;
+  this.#nativeDelivery=selectedNativeRelayDelivery(options,this.#core);if(this.#nativeDelivery)this.#options={...this.#options,autoConnect:false};
   this.#durableSource=selectedObserverSource(options);
   if(attached.has(this.#core))throw new SharedRelayError("suggestion_observer_already_attached");
   if(!this.#core.supportsReadOnly()||!this.#core.supportsWriterTransportV2()||!this.#core.supportsDocumentSuggestions()||typeof options.storage.save!=="function"||typeof options.storage.flush!=="function")throw new SharedRelayError("suggestion_observer_unavailable");
@@ -41,11 +47,18 @@ export class SharedSuggestionObserverRelay<P extends SharedSelectionPolicy=Share
   const reviewed=this.#core.reviewedHistoryIdentity();if(reviewed&&(reviewed.principal!==this.#identity.principal||reviewed.binding!==this.#identity.binding||reviewed.effectWriter!==this.#identity.effectWriter))throw new SharedRelayError("suggestion_transport_identity");
   this.#milliseconds=timeout(options.requestTimeoutMs);this.#minimum=options.reconnectMinimumMs??500;this.#maximum=options.reconnectMaximumMs??30000;
   if(!Number.isInteger(this.#minimum)||!Number.isInteger(this.#maximum)||this.#minimum<50||this.#minimum>this.#maximum||this.#maximum>30000)throw new SharedRelayError("reconnect_limits");
-  if(!this.#durableSource)this.#core.setReadOnly(true);this.#off=this.#core.subscribe(()=>{try{this.#guard();}catch(error){this.#fail(this.#failure(error),this.#epoch);}});attached.add(this.#core);
-  this.#wanted=options.autoConnect!==false;if(this.#wanted)queueMicrotask(()=>{if(this.#wanted&&!this.#closed)void this.connect().catch(()=>{});});
+  if(this.#nativeDelivery&&this.#core.view().readOnly!==true)throw new SharedRelayError('suggestion_observer_writable');
+  this.#work=new RelayWorkCustody(this.#core,()=>this.#initialized&&!this.#wanted&&(this.#closed||this.#status==='offline'),()=>new SharedRelayError('suggestion_observer_recovery_in_use'),this.#nativeDelivery?.admission);this.#work.registerOwner(this);
+  let off=()=>{};try{if(!this.#durableSource&&!this.#nativeDelivery)this.#core.setReadOnly(true);/** Native publication invokes listeners while guarded ingress still owns its
+   * synchronous exclusion. Observe its finished state on the next microtask;
+   * checking the held grant inside publication would disconnect every import.
+   * No I/O starts here, and every actual operation checks current authority. */
+  const inspect=()=>{if(this.#closed)return;try{this.#guard();}catch(error){this.#fail(this.#failure(error),this.#epoch);}},listener=()=>{if(this.#nativeDelivery)queueMicrotask(inspect);else inspect();};off=this.#nativeDelivery?observerCoreSubscribe.call(this.#core,listener):this.#core.subscribe(listener);this.#off=off;attached.add(this.#core);this.#nativeDelivery?.track(()=>observerDispose.call(this),()=>observerDrain.call(this));if(this.#nativeDelivery)registerNativeSuggestionTransport(this,this.#nativeDelivery,observerSuggestionMethods(this));this.#initialized=true;}
+  catch(error){this.#closed=true;off();this.#work.retire(()=>attached.delete(this.#core));throw error;}
+  this.#wanted=this.#options.autoConnect!==false;if(this.#wanted)queueMicrotask(()=>{if(this.#wanted&&!this.#closed)void this.connect().catch(()=>{});});
  }
  #zeroPrefix():void{if(this.#core.writerClockV2(this.#identity.documentWriter).through!=="0")throw new SharedRelayError("suggestion_observer_authored");}
- #guard():void{if(this.#closed)throw new SharedRelayError("closed");this.#durableSource?.check();if(this.#options.storage.core!==this.#core)throw new SharedRelayError("suggestion_source_replaced");if(this.#core.view().readOnly!==true)throw new SharedRelayError("suggestion_observer_writable");this.#zeroPrefix();}
+ #guard():void{this.#nativeDelivery?.check();if(this.#closed)throw new SharedRelayError("closed");this.#durableSource?.check();if(this.#options.storage.core!==this.#core)throw new SharedRelayError("suggestion_source_replaced");if(this.#core.view().readOnly!==true)throw new SharedRelayError("suggestion_observer_writable");this.#zeroPrefix();}
  state():SharedRelayState{return {status:this.#status,writer:this.#identity.documentWriter,localThrough:"0",locallyDurableThrough:this.#clock?"0":null,serverThrough:this.#clock?.through??null,serverPrefixDigest:this.#clock?.prefixDigest??null,serverReceiptSequence:null,waitingFor:[],pending:false,error:this.#error};}
  suggestionState():SharedSuggestionRelayState{return {ready:this.#ready,revision:this.#revision,documentRevision:this.#documentRevision,permissions:this.#permissions?{...this.#permissions,canAccept:false}:null};}
  suggestionRevisionsReady():boolean{return this.#ready&&!!this.#options.suggestionRevisions;}
@@ -70,11 +83,12 @@ export class SharedSuggestionObserverRelay<P extends SharedSelectionPolicy=Share
    if(event["kind"]!=="catchup")throw new SharedRelayError("protocol_error");this.#latest=frame(event["frame"]);this.#documentRevision++;this.#notify();if(this.#ready||this.#hydrating)void this.#drainFrames(epoch).catch(()=>{});
   }catch(error){this.#fail(this.#failure(error),epoch);}
  }
- async #save(epoch:number):Promise<void>{this.#check(epoch);try{if(this.#durableSource)await this.#durableSource.flush();else{this.#options.storage.save();await this.#options.storage.flush();}}catch{throw new SharedRelayError("local_save_failed");}this.#check(epoch);}
+ async #save(epoch:number):Promise<void>{this.#check(epoch);try{if(this.#nativeDelivery)await this.#nativeDelivery.persistLocal();else if(this.#durableSource)await this.#durableSource.flush();else{this.#options.storage.save();await this.#options.storage.flush();}}catch{throw new SharedRelayError("local_save_failed");}this.#check(epoch);}
  async #saveClock(current:SharedWriterClock,epoch:number):Promise<void>{this.#check(epoch);try{await this.#durableSource!.persistDocument({accepted:current,receipt:null});}catch{throw new SharedRelayError("local_save_failed");}this.#check(epoch);}
  async #readClock(channel:RelayChannel,epoch:number):Promise<SharedWriterClock>{const response=await channel.request({kind:"clock",writer:this.#identity.documentWriter});this.#check(epoch);if(response["kind"]!=="clock")throw new SharedRelayError("protocol_error");const current=clock(response["clock"],this.#identity.documentWriter);if(current.through!=="0")throw new SharedRelayError("suggestion_observer_authored");checkClock(this.#core,current,2);return current;}
- async connect():Promise<void>{
-  if(this.#closed)throw new SharedRelayError("closed");this.#guard();this.#wanted=true;clearTimeout(this.#retry);this.#retry=undefined;if(this.#connecting)return this.#connecting;if(this.#ready){await this.flush();return;}
+ connect():Promise<void>{return this.#work.run(()=>this.#connect());}
+ async #connect():Promise<void>{
+  if(this.#closed)throw new SharedRelayError("closed");this.#guard();this.#wanted=true;clearTimeout(this.#retry);this.#retry=undefined;if(this.#connecting)return this.#connecting;if(this.#ready){await this.#flush();return;}
   this.#stop();const epoch=this.#epoch,abort=new AbortController();this.#abort=abort;this.#status="connecting";this.#error=null;this.#notify();
   const work=(async()=>{
    await this.#save(epoch);const token=await accountToken(this.#options.getToken,abort.signal,this.#milliseconds);this.#check(epoch);
@@ -87,20 +101,24 @@ export class SharedSuggestionObserverRelay<P extends SharedSelectionPolicy=Share
    const current=await this.#readClock(channel,epoch);this.#latest??=frame(auth["frame"]);if(this.#durableSource)this.#hydrating=true;else this.#ready=true;await this.#drainFrames(epoch);this.#check(epoch);if(this.#durableSource)await this.#saveClock(current,epoch);this.#clock=current;this.#hydrating=false;this.#ready=true;this.#status="ready";this.#error=null;this.#reported=null;this.#attempts=0;this.#notify();
   })().catch(error=>{const failure=this.#failure(error);this.#fail(failure,epoch);throw failure;});this.#connecting=work;try{await work;}finally{if(this.#connecting===work)this.#connecting=undefined;}
  }
- #drainFrames(epoch:number):Promise<void>{
+ #drainFrames(epoch:number):Promise<void>{return this.#work.run(()=>this.#performDrainFrames(epoch));}
+ #performDrainFrames(epoch:number):Promise<void>{
   if(this.#drain?.epoch===epoch)return this.#drain.promise;const run:Run={epoch,promise:Promise.resolve()};this.#drain=run;
-  run.promise=(async()=>{try{while(this.#active(epoch)&&(this.#ready||this.#hydrating)&&this.#latest!==undefined){this.#check(epoch);const next=this.#latest;this.#latest=undefined;await this.#core.receiveFrame(next,{signal:this.#abort!.signal});await this.#save(epoch);}}
+  run.promise=(async()=>{try{while(this.#active(epoch)&&(this.#ready||this.#hydrating)&&this.#latest!==undefined){this.#check(epoch);const next=this.#latest;this.#latest=undefined;if(this.#nativeDelivery)this.#nativeDelivery.receiveDocument(next);else await this.#core.receiveFrame(next,{signal:this.#abort!.signal});await this.#save(epoch);}}
    catch(error){this.#fail(this.#failure(error),epoch);throw error;}finally{if(this.#drain===run){this.#drain=undefined;this.#notify();}}})();return run.promise;
  }
- async refreshDocument():Promise<void>{
+ refreshDocument():Promise<void>{return this.#work.run(()=>this.#refreshDocument());}
+ async #refreshDocument():Promise<void>{
   const epoch=this.#epoch,channel=this.#channel;if(!this.#ready||!channel)throw new SharedRelayError("suggestion_offline");this.#check(epoch);if(this.#refresh?.epoch===epoch)return this.#refresh.promise;
   const run:Run={epoch,promise:Promise.resolve()};this.#refresh=run;
   run.promise=(async()=>{try{await this.#readClock(channel,epoch);const response=await channel.request({kind:"sync"});this.#check(epoch);if(response["kind"]!=="catchup")throw new SharedRelayError("protocol_error");const received=frame(response["frame"]);await this.#drainFrames(epoch);this.#check(epoch);this.#latest??=received;await this.#drainFrames(epoch);this.#check(epoch);}
    catch(error){const failure=this.#failure(error);this.#fail(failure,epoch);throw failure;}finally{if(this.#refresh===run)this.#refresh=undefined;}})();return run.promise;
  }
  /** No authored group is submitted. Durable source plus the permanent zero prefix is sufficient. */
- async flush():Promise<void>{const epoch=this.#epoch;if(!this.#ready)throw new SharedRelayError("suggestion_offline");try{await this.refreshDocument();await this.#save(epoch);}catch(error){this.#fail(this.#failure(error),epoch);throw error;}}
- async requestSuggestion(request:SharedSuggestionRelayRequest):Promise<Record<string,unknown>>{
+ flush():Promise<void>{return this.#work.run(()=>this.#flush());}
+ async #flush():Promise<void>{const epoch=this.#epoch;if(!this.#ready)throw new SharedRelayError("suggestion_offline");try{await this.#refreshDocument();await this.#save(epoch);}catch(error){this.#fail(this.#failure(error),epoch);throw error;}}
+ requestSuggestion(request:SharedSuggestionRelayRequest):Promise<Record<string,unknown>>{return this.#work.run(()=>this.#requestSuggestion(request));}
+ async #requestSuggestion(request:SharedSuggestionRelayRequest):Promise<Record<string,unknown>>{
   const epoch=this.#epoch,channel=this.#channel;if(!this.#ready||!channel)throw new SharedRelayError("suggestion_offline");this.#check(epoch);if(this.#requests>=2)throw new SharedRelayError("suggestion_request_budget");
   let payload:Record<string,unknown>;
   switch(request.kind){
@@ -113,12 +131,20 @@ export class SharedSuggestionObserverRelay<P extends SharedSelectionPolicy=Share
   this.#requests++;try{const response=await channel.request(payload);this.#check(epoch);return response;}catch(error){if(error instanceof SharedRelayError&&(error.code==="lease_rejected"||transient.has(error.code)))this.#fail(error,epoch);throw error;}finally{this.#requests--;}
  }
  /** Metadata-only revision publication; permanent observers retain their zero authored prefix. */
- async requestSuggestionRevision(request:SharedSuggestionRevisionRequest):Promise<Record<string,unknown>>{
+ requestSuggestionRevision(request:SharedSuggestionRevisionRequest):Promise<Record<string,unknown>>{return this.#work.run(()=>this.#requestSuggestionRevision(request));}
+ async #requestSuggestionRevision(request:SharedSuggestionRevisionRequest):Promise<Record<string,unknown>>{
   const epoch=this.#epoch,channel=this.#channel,binding=this.#options.suggestionRevisions;if(!this.suggestionRevisionsReady()||!channel||!binding)throw new SharedRelayError("suggestion_revision_offline");this.#check(epoch);
   if(this.#requests>=2)throw new SharedRelayError("suggestion_request_budget");const payload=revisionRequest(request,binding.binding);this.#requests++;
   try{const response=await channel.request(payload);this.#check(epoch);return response;}catch(error){if(error instanceof SharedRelayError&&(error.code==="lease_rejected"||transient.has(error.code)))this.#fail(error,epoch);throw error;}finally{this.#requests--;}
  }
+ /** Already-disconnected/disposed observer work must actually settle before
+  * another owner can reserve native recovery or the source may close. */
+ async waitForDisconnected():Promise<void>{const epoch=this.#epoch;await this.#work.wait(()=>{if(this.#wanted||this.#epoch!==epoch||!this.#closed&&this.#status!=='offline')throw new SharedRelayError('suggestion_observer_recovery_in_use');});}
  /** Networking only. Keep the source read-only and readable for offline proposals/recovery. */
  disconnect():void{if(this.#closed)return;this.#wanted=false;clearTimeout(this.#retry);this.#retry=undefined;this.#stop();this.#status="offline";this.#error=null;this.#notify();}
- dispose():void{if(this.#closed)return;this.disconnect();this.#closed=true;this.#status="closed";this.#off();attached.delete(this.#core);this.#notify();queueMicrotask(()=>this.#listeners.clear());}
+ dispose():void{if(this.#closed)return;this.disconnect();this.#closed=true;this.#status="closed";this.#off();this.#work.retire(()=>attached.delete(this.#core));this.#notify();queueMicrotask(()=>this.#listeners.clear());}
 }
+
+const observerCoreSubscribe=Core.prototype.subscribe,observerDispose=SharedSuggestionObserverRelay.prototype.dispose,observerDrain=SharedSuggestionObserverRelay.prototype.waitForDisconnected;
+const observerIntrinsics={state:SharedSuggestionObserverRelay.prototype.state,suggestionState:SharedSuggestionObserverRelay.prototype.suggestionState,subscribe:SharedSuggestionObserverRelay.prototype.subscribe,checkSuggestionQueue:SharedSuggestionObserverRelay.prototype.checkSuggestionQueue,connect:SharedSuggestionObserverRelay.prototype.connect,flush:SharedSuggestionObserverRelay.prototype.flush,refreshDocument:SharedSuggestionObserverRelay.prototype.refreshDocument,requestSuggestion:SharedSuggestionObserverRelay.prototype.requestSuggestion,checkSuggestionRevisions:SharedSuggestionObserverRelay.prototype.checkSuggestionRevisions,suggestionRevisionsReady:SharedSuggestionObserverRelay.prototype.suggestionRevisionsReady,requestSuggestionRevision:SharedSuggestionObserverRelay.prototype.requestSuggestionRevision};
+function observerSuggestionMethods<P extends SharedSelectionPolicy>(owner:SharedSuggestionObserverRelay<P>):SharedSuggestionTransport<P>{const m=observerIntrinsics;return {suggestionDecisionMode:'observer',state:()=>m.state.call(owner),suggestionState:()=>m.suggestionState.call(owner),subscribe:listener=>m.subscribe.call(owner,listener),checkSuggestionQueue:(core,identity)=>m.checkSuggestionQueue.call(owner,core,identity),connect:()=>m.connect.call(owner),flush:()=>m.flush.call(owner),refreshDocument:()=>m.refreshDocument.call(owner),requestSuggestion:request=>m.requestSuggestion.call(owner,request),checkSuggestionRevisions:(core,identity,binding)=>m.checkSuggestionRevisions.call(owner,core,identity,binding),suggestionRevisionsReady:()=>m.suggestionRevisionsReady.call(owner),requestSuggestionRevision:request=>m.requestSuggestionRevision.call(owner,request)};}
