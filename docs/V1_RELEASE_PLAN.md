@@ -1,5 +1,31 @@
 # Breditor V1 release preparation
 
+The [metadata work custody contract](METADATA_WORK_CUSTODY.md) now includes
+actual version/suggestion/revision transport callbacks and local cache writes
+in native recovery exclusion. Disconnecting or disposing an adapter cannot
+release its pending work or attachment. Compound shutdown names only genuine
+same-core metadata children, drains them, closes them and repeats the strict
+all-retired barrier before underlying source cleanup.
+
+The [qualification](qualification/2026-10-29-metadata-work-custody.json) passes
+488 direct checks, 32 nested independently installed checks, five source type
+stages and installed public types. Eight before-repair failures reproduce the
+missing adapter/store custody. Original authenticated version/owned-suggestion/
+revision matrices pass with 4/6/6 policies in source and fresh offline archives.
+The installed loader lost a directory URL slash; its recorded repair changes
+only the checker and preserves byte-identical production packages. Both actual
+full-storage workflows reopen seven cold native owners from 46 databases with
+offline work and verify all-seven future document/review Undo/Redo. Exact
+source, logs, archives and complete storage files have a read-back-verified index.
+
+This repairs ordinary metadata exclusion and cleanup. Native-held metadata
+delivery ports, owned-suggestion native ingress, receipt/outbox settlement,
+complete provider/client/assets reconciliation and authenticated joint activation
+remain required. The 575/273 Rust baseline is carried; no Rust source or normal
+Wasm changed. Full 622/630 candidate profiles were not executed. Physical
+durability and large-history cost remain unqualified; all thirteen V1 gates
+remain open.
+
 Breditor has an independently installable rich-editor candidate combining tables,
 images, offline collaboration, everyday formatting, structural editing and
 interchange under the same Rust owner. The everyday-editing functional goal is

@@ -1,3 +1,4 @@
+import {registerRelayWorkGroup} from '../relay/work_custody.js';
 import {VersionCatalogStore,captureOriginalVersionStoreRecords} from "./store.js";
 import {VersionCatalogSync} from "./sync.js";
 import {SharedRelayError} from "../relay/validation.js";
@@ -17,7 +18,7 @@ let readOriginalCatalog:(owner:SharedDocumentVersions,authority:()=>void,signal?
 export class SharedDocumentVersions<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
  readonly #store:VersionCatalogStore<P>;readonly #sync:VersionCatalogSync<P>;#retiring=false;#closed=false;#closing:Promise<void>|undefined;#released:Promise<void>|undefined;
  #recovering=false;
- private constructor(key:object,store:VersionCatalogStore<P>){if(key!==constructionKey)throw new SharedRelayError('managed_source_construction');this.#store=store;this.#sync=new VersionCatalogSync(store);const core=store.options.storage.core;registerManagedSource(this,core,()=>{this.#writable();checkManagedSource(store,core);},[store]);}
+ private constructor(key:object,store:VersionCatalogStore<P>){if(key!==constructionKey)throw new SharedRelayError('managed_source_construction');this.#store=store;this.#sync=new VersionCatalogSync(store);registerRelayWorkGroup(this,[store,this.#sync]);const core=store.options.storage.core;registerManagedSource(this,core,()=>{this.#writable();checkManagedSource(store,core);},[store]);}
  static{readOriginalCatalog=async(owner,provided,signal)=>{
   if(!owner||typeof owner!=='object'||!(#store in owner))throw new SharedRelayError('version_record_read_source');const authority=participantAuthority(provided);owner.#writable();checkManagedSourceBindings(owner);const releaseSync=owner.#sync.reserveLocalRead();owner.#recovering=true;let inner:OriginalRecordRead<OriginalVersionRecords>|undefined,result:OriginalRecordRead<OriginalVersionRecords>|undefined,released=false;
   const release=()=>{if(!released){released=true;inner?.dispose();owner.#recovering=false;releaseSync();}},current=()=>{if(released||owner.#closed||owner.#retiring||!owner.#recovering)throw new SharedRelayError('version_record_read_closed');checkManagedSourceBindings(owner);inner!.checkCurrent();};
@@ -68,9 +69,9 @@ export class SharedDocumentVersions<P extends SharedSelectionPolicy=SharedSelect
  async stopRetryingVersion(id:string):Promise<void>{this.#writable();this.#store.stopRetrying(id);await this.#store.flush();}
  async forgetCachedVersion(id:string):Promise<void>{this.#writable();if(this.#sync.busy(id))throw new SharedRelayError("version_in_flight");this.#store.forgetCachedPacket(id);await this.#store.flush();}
  /** Stops this adapter and releases its own cache lease only after a successful final save. */
- close():Promise<void>{if(this.#recovering)return Promise.reject(new SharedRelayError("version_recovery_in_use"));if(this.#closed)return this.#released??Promise.resolve();if(this.#closing)return this.#closing;this.#retiring=true;this.#sync.disconnect();this.#closing=Promise.resolve().then(async()=>{await this.#store.close();this.#sync.dispose();this.#closed=true;attached.delete(this.#store.options.storage.core);}).finally(()=>{this.#closing=undefined;});return this.#closing;}
+ close():Promise<void>{if(this.#recovering)return Promise.reject(new SharedRelayError("version_recovery_in_use"));if(this.#closed)return this.#released??Promise.resolve();if(this.#closing)return this.#closing;this.#retiring=true;this.#sync.disconnect();this.#closing=Promise.resolve().then(async()=>{await this.#sync.waitForDisconnected();await this.#store.close();this.#sync.dispose();await this.#sync.waitForRetired();this.#closed=true;attached.delete(this.#store.options.storage.core);}).finally(()=>{this.#closing=undefined;});return this.#closing;}
  /** Explicitly abandon unsaved cache state; the last committed record and native owners remain. */
- discardAndClose():Promise<void>{if(this.#recovering)return Promise.reject(new SharedRelayError("version_recovery_in_use"));if(this.#closed)return this.#released??Promise.resolve();this.#retiring=true;this.#closed=true;this.#sync.dispose();this.#released=this.#store.discardAndClose().finally(()=>attached.delete(this.#store.options.storage.core));return this.#released;}
+ discardAndClose():Promise<void>{if(this.#recovering)return Promise.reject(new SharedRelayError("version_recovery_in_use"));if(this.#closed)return this.#released??Promise.resolve();this.#retiring=true;this.#closed=true;this.#sync.dispose();this.#released=this.#sync.waitForRetired().then(()=>this.#store.discardAndClose()).finally(()=>attached.delete(this.#store.options.storage.core));return this.#released;}
 }
 /** Genuine offline adapter owns one synchronization reservation. Its read fence
  * deliberately does not call the writable guard while that reservation is held. */

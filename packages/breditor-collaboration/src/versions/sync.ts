@@ -1,4 +1,5 @@
 /** Automatic catalog synchronization borrows one native owner and never submits document operations. */
+import {RelayWorkCustody} from '../relay/work_custody.js';
 import {RelayChannel} from "../relay/channel.js";
 import {checkManagedCore} from "../managed_custody.js";
 import {accountToken} from "../relay/registration.js";
@@ -11,25 +12,27 @@ import type {SharedDocumentVersionsState,SharedDocumentVersionEntry} from "./typ
 const transient=new Set(["connection_lost","connection_timeout","request_timeout","storage_unavailable","version_transfer_failed","version_request_budget"]);
 interface Waiter {ids:readonly string[];resolve:()=>void;reject:(error:SharedRelayError)=>void;timer:ReturnType<typeof setTimeout>}
 export class VersionCatalogSync<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
- readonly #store:VersionCatalogStore<P>;readonly #http:VersionCatalogHttp;readonly #milliseconds:number;readonly #minimum:number;readonly #maximum:number;
+ readonly #work:RelayWorkCustody;readonly #store:VersionCatalogStore<P>;readonly #http:VersionCatalogHttp;readonly #milliseconds:number;readonly #minimum:number;readonly #maximum:number;
  #channel:RelayChannel|undefined;#abort:AbortController|undefined;#epoch=0;#ready=false;#wanted=false;#closed=false;#connecting:Promise<void>|undefined;#serial=Promise.resolve();
  #status:SharedDocumentVersionsState["status"]="offline";#error:string|null=null;#canPublish:boolean|null=null;#waitingForDocument=false;
  #queuedEpoch:number|undefined;#dirty=false;#latestDocument:string|undefined;#retry:ReturnType<typeof setTimeout>|undefined;#attempts=0;#reported:string|null=null;#localSignature="";#working=0;
- #listeners=new Set<()=>void>();#notifying=false;#unsubscribe:(()=>void)[];#waiters=new Set<Waiter>();#publishing=new Set<string>();#downloads=new Map<string,Promise<string>>();
- #tasks=0;#recovering=false;
+ #listeners=new Set<()=>void>();#notifying=false;#unsubscribe:(()=>void)[]=[];#waiters=new Set<Waiter>();#publishing=new Set<string>();#downloads=new Map<string,Promise<string>>();
+ #tasks=0;#recovering=false;#initialized=false;
  constructor(store:VersionCatalogStore<P>){
   this.#store=store;const options=store.options,identity=options.identity,core=options.storage.core;
   if(transportVersion(identity.writerTransport)===2?!core.supportsWriterTransportV2():!core.supportsWriterTransport())throw new SharedRelayError("writer_transport_unavailable");
   this.#http=new VersionCatalogHttp({...identity,getToken:options.getToken,...(options.requestTimeoutMs===undefined?{}:{requestTimeoutMs:options.requestTimeoutMs})});this.#milliseconds=timeout(options.requestTimeoutMs);this.#minimum=options.reconnectMinimumMs??500;this.#maximum=options.reconnectMaximumMs??30000;
   if(!Number.isInteger(this.#minimum)||!Number.isInteger(this.#maximum)||this.#minimum<50||this.#minimum>this.#maximum||this.#maximum>30000)throw new SharedRelayError("reconnect_limits");
-  this.#localSignature=store.queued().join(",");this.#unsubscribe=[core.subscribe(()=>this.#schedule()),store.subscribe(()=>this.#storeChanged())];this.#wanted=options.autoConnect!==false;if(this.#wanted)queueMicrotask(()=>{if(this.#wanted&&!this.#closed)void this.connect().catch(()=>{});});
+  this.#work=new RelayWorkCustody(core,()=>this.#initialized&&!this.#wanted&&(this.#closed||this.#status==='offline'||this.#status==='local-save-failed'),()=>new SharedRelayError('version_recovery_in_use'));this.#work.registerOwner(this);
+  try{this.#localSignature=store.queued().join(',');this.#unsubscribe.push(core.subscribe(()=>this.#schedule()));this.#unsubscribe.push(store.subscribe(()=>this.#storeChanged()));this.#wanted=options.autoConnect!==false;this.#initialized=true;if(this.#wanted)queueMicrotask(()=>{if(this.#wanted&&!this.#closed)void this.connect().catch(()=>{});});}
+  catch(error){this.#closed=true;this.#wanted=false;for(const off of this.#unsubscribe)try{off();}catch{}this.#work.retire(()=>{});throw error;}
  }
  state():SharedDocumentVersionsState{const local=this.#store.state();return {status:this.#closed?"closed":local.failed?"local-save-failed":this.#status,canPublish:this.#canPublish,queued:local.queued,catalogEntries:local.catalogEntries,cachedPackets:local.cachedPackets,localPending:local.pending||local.failed,waitingForDocument:this.#waitingForDocument,error:local.failed?"local_save_failed":this.#error};}
  subscribe(listener:()=>void):()=>void{this.#listeners.add(listener);return()=>this.#listeners.delete(listener);}
  busy(id:string):boolean{return this.#publishing.has(id)||this.#downloads.has(id);}
  #active(epoch:number):boolean{if(this.#closed||this.#epoch!==epoch)return false;try{checkManagedCore(this.#store.options.storage.core);return true;}catch{return false;}}
- #enqueue(work:()=>Promise<void>):Promise<void>{this.#tasks++;const task=this.#serial.then(work).finally(()=>{this.#tasks--;});this.#serial=task.catch(()=>{});return task;}
- #networkAllowed():void{if(this.#recovering)throw new SharedRelayError("version_recovery_in_use");checkManagedCore(this.#store.options.storage.core);}
+ #enqueue(work:()=>Promise<void>):Promise<void>{return this.#work.run(()=>{this.#tasks++;const task=this.#serial.then(work).finally(()=>{this.#tasks--;});this.#serial=task.catch(()=>{});return task;});}
+ #networkAllowed():void{if(this.#closed)throw new SharedRelayError('closed');this.#work.checkAllowed();if(this.#recovering)throw new SharedRelayError("version_recovery_in_use");checkManagedCore(this.#store.options.storage.core);}
  /** Disconnected status alone does not prove old asynchronous work has settled. */
  reserveLocalRecovery():()=>void{
   if(this.#closed)throw new SharedRelayError("closed");
@@ -105,7 +108,8 @@ export class VersionCatalogSync<P extends SharedSelectionPolicy=SharedSelectionP
   }finally{this.#working--;if(this.#active(epoch))this.#settle();}
  }
  async refresh():Promise<void>{this.#networkAllowed();if(this.#closed)throw new SharedRelayError("closed");if(!this.#ready)return this.connect();const epoch=this.#epoch;return this.#enqueue(()=>this.#synchronize(epoch)).catch(error=>{const failure=error instanceof SharedRelayError?error:new SharedRelayError("version_sync_failed");this.#fail(failure,epoch);throw failure;});}
- async loadVersion(id:string):Promise<string>{
+ async loadVersion(id:string):Promise<string>{return this.#work.run(()=>this.#loadVersion(id));}
+ async #loadVersion(id:string):Promise<string>{
   this.#networkAllowed();
   try{const packet=this.#store.packet(id);this.#store.options.storage.core.verifyVersionSource(packet);await this.#save();return packet;}catch(error){if(!(error instanceof SharedRelayError)||error.code!=="version_not_cached")throw error;}
   const pending=this.#downloads.get(id);if(pending)return pending;if(this.#downloads.size>=4)throw new SharedRelayError("version_request_budget");if(!this.#wanted)throw new SharedRelayError("version_offline_not_cached");
@@ -113,9 +117,12 @@ export class VersionCatalogSync<P extends SharedSelectionPolicy=SharedSelectionP
   this.#downloads.set(id,work);try{return await work;}finally{if(this.#downloads.get(id)===work)this.#downloads.delete(id);}
  }
  /** Captured queued IDs only; no later snapshots or merely local saves can satisfy this barrier. */
- async flushShared():Promise<void>{this.#networkAllowed();const ids=this.#store.queued();await this.#save();if(!ids.length||ids.every(id=>{const state=this.#store.versionStatus(id);return !!state.accepted&&state.localSaved;}))return;if(!this.#wanted)throw new SharedRelayError(this.#error??"offline");if(this.#canPublish===false)throw new SharedRelayError("permission_denied");if(this.#waiters.size>=16)throw new SharedRelayError("version_flush_budget");return new Promise((resolve,reject)=>{const waiter:Waiter={ids,resolve,reject,timer:setTimeout(()=>{this.#waiters.delete(waiter);reject(new SharedRelayError("version_sync_timeout"));},30000)};this.#waiters.add(waiter);this.#settle();this.#schedule();});}
+ async flushShared():Promise<void>{if(this.#closed)throw new SharedRelayError("closed");return this.#work.run(()=>this.#flushShared());}
+ async #flushShared():Promise<void>{this.#networkAllowed();const ids=this.#store.queued();await this.#save();if(!ids.length||ids.every(id=>{const state=this.#store.versionStatus(id);return !!state.accepted&&state.localSaved;}))return;if(!this.#wanted)throw new SharedRelayError(this.#error??"offline");if(this.#canPublish===false)throw new SharedRelayError("permission_denied");if(this.#waiters.size>=16)throw new SharedRelayError("version_flush_budget");return new Promise((resolve,reject)=>{const waiter:Waiter={ids,resolve,reject,timer:setTimeout(()=>{this.#waiters.delete(waiter);reject(new SharedRelayError("version_sync_timeout"));},30000)};this.#waiters.add(waiter);this.#settle();this.#schedule();});}
  /** Local retry is not a network barrier. A failed reconnect is reported through sync state. */
  recoverLocal():void{if(this.#error!=="local_save_failed")return;this.#error=null;this.#status="offline";if(this.#wanted)void this.connect().catch(()=>{});else this.#notify();}
  disconnect():void{if(this.#closed)return;this.#wanted=false;clearTimeout(this.#retry);this.#retry=undefined;this.#stop();this.#status="offline";this.#error=null;this.#reject(new SharedRelayError("disconnected"));this.#notify();}
- dispose():void{if(this.#closed)return;this.disconnect();this.#closed=true;this.#http.dispose();for(const off of this.#unsubscribe)off();this.#notify();this.#listeners.clear();}
+ dispose():void{if(this.#closed)return;this.disconnect();this.#closed=true;this.#http.dispose();for(const off of this.#unsubscribe)off();this.#notify();this.#listeners.clear();this.#work.retire(()=>{});}
+ /** SDK cleanup barrier: disposal does not detach actual late HTTP/storage work. */
+ async waitForRetired():Promise<void>{if(!this.#closed)throw new SharedRelayError("version_recovery_in_use");await this.#work.wait(()=>{if(!this.#closed||this.#wanted)throw new SharedRelayError("version_recovery_in_use");});}
 }
