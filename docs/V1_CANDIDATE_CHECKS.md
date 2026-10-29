@@ -1,5 +1,28 @@
 # V1 candidate checks
 
+The [native owned-suggestion ingress](NATIVE_OWNED_SUGGESTION_INGRESS.md) now
+adopts an original authenticated server decision into its accepting writer's
+history while the actual native owner remains exclusively held. Ordinary edits,
+public method substitutions, copied proofs and stale reservations stay excluded;
+the accepted command is never rerun. Source persistence and original queue receipt
+settlement remain separate. Authority loss after native commitment reports refusal
+while retaining the actual adopted history for fresh persistence and cold reopen.
+
+The [qualification](qualification/2026-10-29-native-owned-history.json) passes
+509 direct checks, 16 fresh offline-installed checks, six strict source type
+stages and installed types. All six original/general/document and explicit/typing
+policies use actual server Accept receipts, normal Wasm and cold future
+document/comment Undo/Redo. Existing native delivery/metadata regressions and
+original authenticated 4/6/6 metadata matrices pass. Before-source/log evidence,
+actual packages and final source/logs have a read-back-verified proof index.
+
+This primitive does not complete metadata networking. Constructor-owned metadata
+ports, per-call work admission, complete receipt/outbox settlement, provider/client/
+assets reconciliation and authenticated joint activation remain required. No Rust
+source, normal Wasm, public defaults or version changed; the 575/273 Rust baseline
+is carried. Full 626/634 candidate profiles were not executed. All thirteen V1
+gates remain open.
+
 The [metadata work custody contract](METADATA_WORK_CUSTODY.md) now includes
 actual version/suggestion/revision transport callbacks and local cache writes
 in native recovery exclusion. Disconnecting or disposing an adapter cannot

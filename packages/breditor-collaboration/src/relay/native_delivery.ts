@@ -2,13 +2,16 @@
  * This grants scheduling/guarded ingress only. Authentication, wire validation
  * and durable receipts remain the original adapters' responsibility. */
 import type {SharedRichEditor} from '../core.js';
+import type {SharedDocumentSuggestionEffectProof} from '../suggestion_effect_proof.js';
+import type {SharedOwnedSuggestionAcceptance} from '../reviewed_history_types.js';
+type SuggestionIngress=(proof:SharedDocumentSuggestionEffectProof,packet:string,acceptance:SharedOwnedSuggestionAcceptance)=>boolean;
 import {localReviewDeliveryIO,type LocalReviewIO} from '../selected_local_review_delivery/admission.js';
 import type {SharedSegmentedReviewReceipt} from '../segmented_relay/contract.js';
 import type {RetainedDeliveryClient} from '../complete_operation_cohort/retained_native_read.js';
 import type {SharedSelectionPolicy} from '../types.js';
 import type {SharedReviewAccess,SharedReviewPolicy,SharedReviewImportOutcome} from '../review_types.js';
 import type {NativeRecoveryReservation} from '../native_recovery/contract.js';
-import {nativeRecoveryWorkAdmission,nativeRecoverySetReviewAccess} from '../native_recovery/work_admission.js';
+import {nativeRecoveryWorkAdmission,nativeRecoverySetReviewAccess,nativeRecoveryAdoptSuggestionHistory} from '../native_recovery/work_admission.js';
 import {sessionDeliveryIO} from '../delivery_source/io.js';
 import {participantAuthority} from '../participant_backup/policy.js';
 import type {RelayWorkAdmission} from './work_custody.js';
@@ -22,15 +25,17 @@ export interface NativeRelayDelivery {check():void;close():Promise<void>}
 export interface NativeRelayDeliveryPort {
  readonly core:SharedRichEditor<SharedSelectionPolicy>;readonly admission:RelayWorkAdmission;
  check():void;receiveDocument(frame:string):boolean;receiveReview(frame:string,policy:SharedReviewPolicy):SharedReviewImportOutcome;
- setReviewAccess(access:SharedReviewAccess):boolean;persistLocal():Promise<void>;
+ setReviewAccess(access:SharedReviewAccess):boolean;
+ /** Original authenticated owned decision plus exact native proof; no accepted command rerun. */
+ readonly adoptSuggestionHistory:SuggestionIngress;persistLocal():Promise<void>;
  reviewStorage<P extends SharedSelectionPolicy>():SharedReviewRelayStorage<P>;
  persistReviewProgress(progress:SharedReviewRelayProgress,receipt?:SharedSegmentedReviewReceipt):Promise<void>;reviewReceipt():SharedSegmentedReviewReceipt|null;localReviewBinding():SharedReviewRelayStorageIdentity|null;
  track(stop:()=>void,wait:()=>Promise<void>):void;
 }
 const contexts=new WeakMap<NativeRelayDelivery,NativeRelayDeliveryPort>(),selections=new WeakMap<object,NativeRelayDeliveryPort>(),localReviews=new WeakMap<NativeRelayDelivery,LocalReviewIO>(),selectedOwners=new WeakMap<NativeRelayDelivery,SelectedNativeRecoveryScope>();
-interface GuardedIngress {receiveDocument(frame:string):boolean;receiveReview(frame:string,policy:SharedReviewPolicy):SharedReviewImportOutcome;setReviewAccess(access:SharedReviewAccess):boolean}
+interface GuardedIngress {receiveDocument(frame:string):boolean;receiveReview(frame:string,policy:SharedReviewPolicy):SharedReviewImportOutcome;setReviewAccess(access:SharedReviewAccess):boolean;adoptSuggestionHistory:SuggestionIngress}
 interface NativeDeliveryInput<P extends SharedSelectionPolicy>{native:NativeRecoveryReservation;session:object;core:SharedRichEditor<P>;reviewCeiling:SharedReviewAccess;checkAuthority:()=>void;signal?:AbortSignal}
-interface SelectedDeliveryScope {native:NativeRecoveryReservation;reads:SelectedNativeReconstructionScope['reads'];sources:()=>readonly RetainedDeliveryClient[];check():void;setReviewAccess(core:SharedRichEditor<SharedSelectionPolicy>,access:SharedReviewAccess):boolean;track(owner:NativeRelayDelivery):void}
+interface SelectedDeliveryScope {native:NativeRecoveryReservation;reads:SelectedNativeReconstructionScope['reads'];sources:()=>readonly RetainedDeliveryClient[];check():void;setReviewAccess(core:SharedRichEditor<SharedSelectionPolicy>,access:SharedReviewAccess):boolean;adoptSuggestionHistory(core:SharedRichEditor<SharedSelectionPolicy>,proof:SharedDocumentSuggestionEffectProof,packet:string,acceptance:SharedOwnedSuggestionAcceptance):boolean;track(owner:NativeRelayDelivery):void}
 const scopes=new WeakMap<SelectedNativeRecoveryScope,SelectedDeliveryScope>();
 const fail=()=>new SharedRelayError('native_delivery_closed');
 const rank:Readonly<Record<SharedReviewAccess,number>>={read_only:0,comment:1,moderate:2};
@@ -50,7 +55,8 @@ function composeDelivery<P extends SharedSelectionPolicy>(input:NativeDeliveryIn
  const port:NativeRelayDeliveryPort=Object.freeze({core:core as unknown as SharedRichEditor<SharedSelectionPolicy>,admission,check,
   receiveDocument(frame:string){check();const changed=ingress?ingress.receiveDocument(frame):native.receiveDocument(core,frame);check();return changed;},
   receiveReview(frame:string,policy:SharedReviewPolicy){check();const changed=ingress?ingress.receiveReview(frame,policy):native.receiveReview(core,frame,policy);check();return changed;},
-  setReviewAccess(access:SharedReviewAccess){check();if(!Object.hasOwn(rank,access))throw new SharedRelayError('native_delivery_policy');const clamped=rank[access]<=rank[reviewCeiling]?access:reviewCeiling;const changed=ingress?ingress.setReviewAccess(clamped):nativeRecoverySetReviewAccess(native,core,clamped);check();return changed;},persistLocal,
+  setReviewAccess(access:SharedReviewAccess){check();if(!Object.hasOwn(rank,access))throw new SharedRelayError('native_delivery_policy');const clamped=rank[access]<=rank[reviewCeiling]?access:reviewCeiling;const changed=ingress?ingress.setReviewAccess(clamped):nativeRecoverySetReviewAccess(native,core,clamped);check();return changed;},
+  adoptSuggestionHistory(proof:SharedDocumentSuggestionEffectProof,packet:string,acceptance:SharedOwnedSuggestionAcceptance){check();const changed=ingress?ingress.adoptSuggestionHistory(proof,packet,acceptance):nativeRecoveryAdoptSuggestionHistory(native,core,proof,packet,acceptance);check();return changed;},persistLocal,
   reviewStorage<Q extends SharedSelectionPolicy>():SharedReviewRelayStorage<Q>{check();const review=localReviews.get(owner)??io.review;if(!review)throw new SharedRelayError('native_delivery_review_unbound');return Object.freeze({core:core as unknown as SharedRichEditor<Q>,reviewRelayIdentity:()=>{check();return review.identity();},reviewRelayProgress:()=>{check();return review.progress();},persistReviewRelayProgress:async(progress:SharedReviewRelayProgress)=>{check();await port.persistReviewProgress(progress);check();},flush:persistLocal});},
   async persistReviewProgress(progress:SharedReviewRelayProgress,receipt?:SharedSegmentedReviewReceipt){check();const local=localReviews.get(owner);if(local)await local.persist(progress,receipt);else if(io.review)await io.review.persist(progress);else throw new SharedRelayError('native_delivery_review_unbound');check();},
   reviewReceipt(){check();return localReviews.get(owner)?.receipt()??null;},localReviewBinding(){check();return localReviews.get(owner)?.identity()??null;},
@@ -74,7 +80,7 @@ export function retainSelectedNativeDeliveryResource(scope:SelectedNativeRecover
 export function createSelectedNativeRelayDelivery(scope:SelectedNativeRecoveryScope,source:RetainedDeliverySource,reviewCeiling:SharedReviewAccess,checkPreparation?:()=>void):NativeRelayDelivery{
  const held=scopes.get(scope);if(!held)throw fail();held.check();if(!held.sources().some(row=>row.source===source)||!scope.clients.some(client=>client.core===source.core))throw new SharedRelayError('native_delivery_source');source.check();
  const parent=source.parent,session=parent.kind==='generation'?parent.source.session:parent.session,core=source.core;
- const owner=composeDelivery({native:held.native,session,core,reviewCeiling,checkAuthority:()=>{held.check();checkPreparation?.();held.check();},signal:scope.signal},{receiveDocument:frame=>scope.native.receiveDocument(core,frame),receiveReview:(frame,policy)=>scope.native.receiveReview(core,frame,policy),setReviewAccess:access=>held.setReviewAccess(core,access)});selectedOwners.set(owner,scope);held.track(owner);return owner;
+ const owner=composeDelivery({native:held.native,session,core,reviewCeiling,checkAuthority:()=>{held.check();checkPreparation?.();held.check();},signal:scope.signal},{receiveDocument:frame=>scope.native.receiveDocument(core,frame),receiveReview:(frame,policy)=>scope.native.receiveReview(core,frame,policy),setReviewAccess:access=>held.setReviewAccess(core,access),adoptSuggestionHistory:(proof,packet,acceptance)=>held.adoptSuggestionHistory(core,proof,packet,acceptance)});selectedOwners.set(owner,scope);held.track(owner);return owner;
 }
 /** No serializable selector or public boolean. Copies lose this selection. */
 export function withNativeRelayDelivery<T extends object>(input:T,owner:NativeRelayDelivery):T&{autoConnect:false}{const port=contexts.get(owner);if(!port)throw fail();port.check();const result={...input,autoConnect:false as const};selections.set(result,port);return result;}

@@ -1,0 +1,331 @@
+{
+  "format": "breditor/native-owned-history-qualification",
+  "formatVersion": 1,
+  "functionalPassed": true,
+  "releaseReady": false,
+  "v1GatesOpen": 13,
+  "v1GatesClosed": 0,
+  "baseCommit": "0b9fc17c933eb2e307f176773932a6df5764066b",
+  "qualifiedSource": {
+    "commit": "0b9fc17c933eb2e307f176773932a6df5764066b",
+    "dirty": true,
+    "sha256": "6341b0e7fa45435401a9bb1d8808c873499b6d45d0fc5ba9cc746ae14abc4b45",
+    "files": 7509,
+    "bytes": 56673659
+  },
+  "sourceUnchangedDuringQualification": true,
+  "logicAndTestsUnchangedAfterQualification": true,
+  "scope": "Actual original authenticated Accept receipts enter the same held native Core history without unlocking ordinary publications or rerunning accepted commands. Native opaque proof, source persistence, final original queue receipt and cold future document/comment Undo/Redo are genuine. Selected owner composition forwards through its attempt-marking/cancellation guard; full all-family native-held metadata transport remains required.",
+  "reproduced": {
+    "beforeFailures": 6,
+    "beforePasses": 0,
+    "noSkipsOrCancellations": true,
+    "policies": [
+      "original / explicit",
+      "original / typing-v1",
+      "general-v1 / explicit",
+      "general-v1 / typing-v1",
+      "document-v1 / explicit",
+      "document-v1 / typing-v1"
+    ],
+    "reason": "Ordinary adoption was correctly excluded, but the held recovery delivery port supplied no guarded native owned-history ingress.",
+    "exactBeforeSourcesAndLogRetained": true
+  },
+  "directTests": 509,
+  "nestedInstalledTests": 16,
+  "directBreakdown": {
+    "nativeOwnedIngressInputMembership": 16,
+    "existingNativeDeliveryAndMetadataRegressions": 106,
+    "generationOperatorSdkLaws": 109,
+    "candidatePlanVerifierAndStorageLaws": 278
+  },
+  "authenticatedSourceMetadataPolicies": {
+    "versions": 4,
+    "ownedSuggestions": 6,
+    "revisions": 6
+  },
+  "actualNativeOwnedHistoryPolicies": 6,
+  "actualPostCommitAuthorityRefusalCases": 1,
+  "strictSourceTypeStages": 6,
+  "strictInstalledTypeStages": 1,
+  "stages": [
+    {
+      "id": "selected-room-storage-private-types",
+      "status": "passed",
+      "startedAt": "2026-10-29T20:37:35.922Z",
+      "finishedAt": "2026-10-29T20:37:36.718Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-native-owned-history-fMXxft/qualified-5Vq6eh/selected-room-storage-private-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "local-review-delivery-private-types",
+      "status": "passed",
+      "startedAt": "2026-10-29T20:37:35.924Z",
+      "finishedAt": "2026-10-29T20:37:38.396Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-native-owned-history-fMXxft/qualified-5Vq6eh/local-review-delivery-private-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "delivery-journal-resume-private-types",
+      "status": "passed",
+      "startedAt": "2026-10-29T20:37:35.930Z",
+      "finishedAt": "2026-10-29T20:37:39.881Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-native-owned-history-fMXxft/qualified-5Vq6eh/delivery-journal-resume-private-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "native-owned-suggestion-private-types",
+      "status": "passed",
+      "startedAt": "2026-10-29T20:37:35.919Z",
+      "finishedAt": "2026-10-29T20:37:41.079Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-native-owned-history-fMXxft/qualified-5Vq6eh/native-owned-suggestion-private-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "local-review-restore-private-types",
+      "status": "passed",
+      "startedAt": "2026-10-29T20:37:35.923Z",
+      "finishedAt": "2026-10-29T20:37:42.090Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-native-owned-history-fMXxft/qualified-5Vq6eh/local-review-restore-private-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "strict-integrated-build-types",
+      "status": "passed",
+      "startedAt": "2026-10-29T20:37:35.931Z",
+      "finishedAt": "2026-10-29T20:37:42.831Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-native-owned-history-fMXxft/qualified-5Vq6eh/strict-integrated-build-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "native-owned-suggestion-functional",
+      "status": "passed",
+      "startedAt": "2026-10-29T20:37:35.917Z",
+      "finishedAt": "2026-10-29T20:37:43.575Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 3897,
+      "logPath": "/private/tmp/breditor-native-owned-history-fMXxft/qualified-5Vq6eh/native-owned-suggestion-functional.log",
+      "logSha256": "42cd4a5bf32cbaf40681a77f7d63e74e1e0e888bd8bf290d3c9c2b2e0da8f3c2",
+      "tests": 16
+    },
+    {
+      "id": "all-generation-operator-sdk-laws",
+      "status": "passed",
+      "startedAt": "2026-10-29T20:37:35.939Z",
+      "finishedAt": "2026-10-29T20:37:44.237Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 18167,
+      "logPath": "/private/tmp/breditor-native-owned-history-fMXxft/qualified-5Vq6eh/all-generation-operator-sdk-laws.log",
+      "logSha256": "1465e52202e5066af532c1c1868d7fc6c8b800aa68980611cf3b5e62dd048ba8",
+      "tests": 109
+    },
+    {
+      "id": "all-candidate-plan-verifier-and-native-storage-laws",
+      "status": "passed",
+      "startedAt": "2026-10-29T20:37:35.942Z",
+      "finishedAt": "2026-10-29T20:37:44.941Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 65702,
+      "logPath": "/private/tmp/breditor-native-owned-history-fMXxft/qualified-5Vq6eh/all-candidate-plan-verifier-and-native-storage-laws.log",
+      "logSha256": "fed7b2cae58bac8c5c9a6d82a398c0da669e4f7e5ce4a2635f07861b32e9de0c",
+      "tests": 278
+    },
+    {
+      "id": "metadata-version-source",
+      "status": "passed",
+      "startedAt": "2026-10-29T20:37:35.920Z",
+      "finishedAt": "2026-10-29T20:37:50.358Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 1367,
+      "logPath": "/private/tmp/breditor-native-owned-history-fMXxft/qualified-5Vq6eh/metadata-version-source.log",
+      "logSha256": "03299bf0bf6d963efef387904f4dbaf7c59ef25c9e2c45ab0ef793eb2d64e5ff",
+      "tests": 0
+    },
+    {
+      "id": "installed-native-owned-suggestion",
+      "status": "passed",
+      "startedAt": "2026-10-29T20:37:35.920Z",
+      "finishedAt": "2026-10-29T20:37:51.407Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 292,
+      "logPath": "/private/tmp/breditor-native-owned-history-fMXxft/qualified-5Vq6eh/installed-native-owned-suggestion.log",
+      "logSha256": "c3693ac4b6423bc825a26ede2a141c0ee76b3017bd0e623008756f75cf75b0ba",
+      "tests": 0
+    },
+    {
+      "id": "native-delivery-and-metadata-regressions",
+      "status": "passed",
+      "startedAt": "2026-10-29T20:37:35.935Z",
+      "finishedAt": "2026-10-29T20:37:58.416Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 31751,
+      "logPath": "/private/tmp/breditor-native-owned-history-fMXxft/qualified-5Vq6eh/native-delivery-and-metadata-regressions.log",
+      "logSha256": "7c98a327dd89754b0174f7833890a2dd86b020617745dc235c8cb7c0ec9c7956",
+      "tests": 106
+    },
+    {
+      "id": "metadata-owned-suggestions-source",
+      "status": "passed",
+      "startedAt": "2026-10-29T20:37:35.921Z",
+      "finishedAt": "2026-10-29T20:38:12.541Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 1779,
+      "logPath": "/private/tmp/breditor-native-owned-history-fMXxft/qualified-5Vq6eh/metadata-owned-suggestions-source.log",
+      "logSha256": "efc5c777619c3b5d86493610a026bb04766f1b0673c4913f657cca0ae777e4f7",
+      "tests": 0
+    },
+    {
+      "id": "metadata-revisions-source",
+      "status": "passed",
+      "startedAt": "2026-10-29T20:37:35.922Z",
+      "finishedAt": "2026-10-29T20:38:28.503Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 3510,
+      "logPath": "/private/tmp/breditor-native-owned-history-fMXxft/qualified-5Vq6eh/metadata-revisions-source.log",
+      "logSha256": "78af56fd281b2fa1a8fbac5644d094787a1628f41df7badb1a3ad88eab064bbe",
+      "tests": 0
+    }
+  ],
+  "installed": {
+    "resultPath": "/private/tmp/breditor-native-owned-installed-teoxW7/result.json",
+    "workspaceLinks": false,
+    "registryArtifacts": 45,
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/private/tmp/breditor-native-owned-installed-teoxW7/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/private/tmp/breditor-native-owned-installed-teoxW7/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/private/tmp/breditor-native-owned-installed-teoxW7/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "79ddbbe2be8c841230d2569386d0cc23edf4b931391ac71554d8743b67215573"
+      }
+    ],
+    "results": [
+      {
+        "id": "strict-installed-private-and-public-types",
+        "status": "passed",
+        "startedAt": "2026-10-29T20:37:47.598Z",
+        "finishedAt": "2026-10-29T20:37:48.005Z",
+        "exitCode": 0,
+        "signal": null,
+        "logBytes": 0,
+        "logPath": "/private/tmp/breditor-native-owned-installed-teoxW7/strict-installed-private-and-public-types.log",
+        "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "id": "native-owned-history",
+        "status": "passed",
+        "startedAt": "2026-10-29T20:37:47.596Z",
+        "finishedAt": "2026-10-29T20:37:50.899Z",
+        "exitCode": 0,
+        "signal": null,
+        "logBytes": 3894,
+        "logPath": "/private/tmp/breditor-native-owned-installed-teoxW7/native-owned-history.log",
+        "logSha256": "cd03760b0feb88e36900c47236091649b21341de8c84f8fc0c67b2b3dec5384c"
+      }
+    ],
+    "tests": 16
+  },
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/native-owned-history-qualified-proof-bHIgrl",
+    "indexSha256": "25db400addb86d2d2b2cfc0f27146c778dccfdd03d2296a12a641f9c417cdb55",
+    "files": 54,
+    "bytes": 7919405,
+    "allFilesReadBackVerified": true
+  },
+  "invariants": {
+    "actualHeldCoreMembershipRequired": true,
+    "actualOriginalNativeProofRequired": true,
+    "noTemporaryPublicUnlock": true,
+    "noAcceptedCommandRerun": true,
+    "ordinaryEditingRemainsExcluded": true,
+    "callbackReentrancyRemainsExcluded": true,
+    "publicMethodShadowsCannotImpersonateIngress": true,
+    "originalFieldsDetachedBeforeNativeLookup": true,
+    "receiptAccessorsAndToJsonNotExecuted": true,
+    "authorityRefusalBeforeCommitPreservesState": true,
+    "authorityRefusalAfterCommitRetainsActualFacts": true,
+    "sourcePersistenceAndReceiptSettlementSeparate": true,
+    "exactOnceContent": true,
+    "futureNativeUndoRedoAndIndependentCommentHistorySurviveColdReopen": true,
+    "originalPacketWireAndDefaultMeaningsPreserved": true
+  },
+  "nativeBaseline": {
+    "freshlyRerunRustSuites": false,
+    "rustSourceChanged": false,
+    "carriedFrom": "docs/qualification/2026-10-29-authenticated-path-owned-work.json",
+    "serverTests": 575,
+    "noServerTests": 273,
+    "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+    "normalWasmUnchanged": true,
+    "actualNativeHostSha256": {
+      "selected_delivery_functional": "c224c4d39d5f603dcb3815ebc58c1719b59b4d6db6fe554e675f91d4cab46ea7",
+      "review_functional": "de3e1cbaafb941ad5288b7615573495199ad59f96d3dfe70891fee92a99bc23a",
+      "suggestions_functional": "920b826c46f1512363bb487ce94aa204a65a6edf8a5b797e63c0cc24f828eb1e",
+      "suggestion_revisions_functional": "84adaf40936ba7ae35bfa76f94906cc2e37da8d6bd8c2410fab6f346e305aa4d",
+      "segmented_relay_functional": "693e4d465867518e34cfc248d5de2bea54d3babba188dd935d92c728e11fd67d"
+    }
+  },
+  "plans": {
+    "functional": 626,
+    "full": 634,
+    "entirePlansExecuted": false
+  },
+  "limitations": [
+    "Constructor-owned metadata ports and per-call work admission remain required before ordinary version/suggestion/revision adapters can run under native recovery.",
+    "Actual all-family native-held metadata receipt/outbox settlement and complete selected-room metadata networking are not qualified by this native primitive.",
+    "Complete provider/client/historical-copy/assets reconciliation and authenticated joint whole-room activation remain required.",
+    "The earlier seven-family full storage restoration evidence is carried from the separate metadata-work checkpoint, not freshly rerun here.",
+    "Node IndexedDB/WebLocks do not qualify physical browser durability or cross-device fencing.",
+    "Large complete-history materialization cost is unqualified; Undo/Redo and outstanding offline edits are not trimmed.",
+    "Historical intermittent WebKit fault is not confirmed fixed.",
+    "Full 626/634 candidate profiles are not executed; all thirteen V1/parity gates remain open."
+  ],
+  "actions": {
+    "pushed": false,
+    "published": false,
+    "tagged": false,
+    "deployed": false,
+    "packageVersionChanged": false
+  },
+  "finishedAt": "2026-10-29T20:38:28.998Z"
+}
