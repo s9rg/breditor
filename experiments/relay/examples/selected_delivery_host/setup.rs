@@ -29,6 +29,7 @@ pub(super) struct Ready {
     pub owner_token: String,
     pub alice_token: String,
     pub old_alice_token: String,
+    pub initial_snapshot: std::sync::OnceLock<Arc<ServerLogGenerationRoomBackup>>,
 }
 fn seed_assets(
     directory: &Path,
@@ -139,5 +140,6 @@ pub(super) async fn prepare(
         owner_token: target.owner,
         alice_token: target.alice,
         old_alice_token: old.alice,
+        initial_snapshot: std::sync::OnceLock::new(),
     })
 }

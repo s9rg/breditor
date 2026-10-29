@@ -28,14 +28,35 @@ pub(super) async fn capture(
     if native.identity() != selected {
         return Err("native changed during fixture capture".into());
     }
-    let provider: Arc<dyn ServerRecoveryAssetProvider> = Arc::new(ContentAddressedServerAssets);
-    let ServerLogGenerationRecoveryAssetCoverage::Verified(proof) = host
-        .verify_recovery_asset_availability(
+    let native = Arc::new(native);
+    // The first ACTUAL target serving cut B stays distinct from restore origin A.
+    // Every fresh capture must prove A <= B <= current C, even after real delivery.
+    if ready.initial_snapshot.get().is_none() {
+        let initial = breditor_collab_relay::ServerLogGenerationRoomBackup::from_owned_bytes(
+            current.to_bytes()?,
+        )?;
+        ready
+            .initial_snapshot
+            .set(Arc::new(initial))
+            .map_err(|_| "initial serving cut already pinned")?;
+    }
+    let previous = ready.initial_snapshot.get().ok_or("initial serving cut absent")?;
+    let continuation = host
+        .verify_delivery_continuation(
             "owner",
             &ready.owner_token,
-            Arc::new(native),
-            provider.clone(),
+            breditor_collab_relay::ServerLogGenerationRoomBackup::from_owned_bytes(
+                previous.to_bytes()?,
+            )?,
+            &previous.info()?.identity,
+            native.clone(),
         )
+        .await?;
+    continuation.check_live(&host, "owner", &ready.owner_token).await?;
+    let delivery_continuation = continuation.identity();
+    let provider: Arc<dyn ServerRecoveryAssetProvider> = Arc::new(ContentAddressedServerAssets);
+    let ServerLogGenerationRecoveryAssetCoverage::Verified(proof) = host
+        .verify_recovery_asset_availability("owner", &ready.owner_token, native, provider.clone())
         .await?
     else {
         return Err("actual native raster provider required".into());
@@ -55,7 +76,7 @@ pub(super) async fn capture(
     let fixture = json!({"format":"breditor/native-selected-delivery-fixture","formatVersion":1,
         "language":ready.spec.language,"standard":ready.spec.standard,"atomic":ready.spec.atomic,
         "configuration":ready.configuration,"inventoryJson":serde_json::to_string(&inventory.metadata().native)?,
-        "generationRecoveryState":selected,"clients":ready.records,
+        "generationRecoveryState":selected,"deliveryContinuation":delivery_continuation,"clients":ready.records,
         "clientEndpoint":client_endpoint,"retiredEndpoint":retired_endpoint,
         "registeredWriters":7,"registeredReviewActors":7,"protectedStreams":14}).to_string();
     let credentials: Vec<_> = ready
@@ -80,6 +101,6 @@ pub(super) async fn capture(
     })?;
     let public = json!({"path":path,"selection":control.identity(),"sequence":sequence,
         "clientEndpoint":client_endpoint,"retiredEndpoint":retired_endpoint,
-        "nativeProtectedStreamsVerified":true,"nativeProviderVerified":true});
+        "nativeProtectedStreamsVerified":true,"nativeProviderVerified":true,"nativeDeliveryContinuationVerified":true});
     Ok(Snapshot { public, operator_token, control, router })
 }

@@ -58,6 +58,8 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   stage("durable-native-activation-plan-contracts",node,["--test","scripts/durable-native-activation-candidate-plan.test.mjs"]),
   relayCargo("relay-durable-native-activation-native",["test","--features","server","--locked","--offline","--release","--lib","durable_native_activation","--","--nocapture"]),
   relayCargo("relay-durable-native-activation-public",["test","--features","server","--locked","--offline","--release","--test","log_generations","ten_durable_public_native","--","--nocapture"]),
+  stage('native-delivery-continuation-plan-contracts',node,['--test','scripts/delivery-continuation-candidate-plan.test.mjs']),
+  relayCargo('relay-delivery-continuation-native',['test','--features','server','--locked','--offline','--release','--lib','server::generation_recovery::tests::delivery_continuation','--','--nocapture']),
   relayCargo("relay-room-backups",["test","--features","server","--locked","--offline","--release","--test","room_backups"]),
   relayCargo("relay-asset-backups",["test","--features","server","--locked","--offline","--release","--test","asset_backups"]),
   relayCargo("relay-asset-owner-paths",["test","--features","server","--locked","--offline","--release","--test","asset_store_paths"]),

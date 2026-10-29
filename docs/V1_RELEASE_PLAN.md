@@ -13,6 +13,31 @@ the FCKeditor lineage. CKEditor 4 reached ordinary EOL in June 2023; its
 is not the modern feature baseline. Breditor remains an independent implementation:
 no ProseMirror, Tiptap or CKEditor document, operation or plugin protocol is adopted.
 
+## Complete server continuation after real delivery
+
+The [separate native contract](SERVER_DELIVERY_CONTINUATION.md) now proves full
+A <= B <= C byte ancestry: actual local restore origin, independently pinned
+previous serving cut and complete current native/raster/registration cut. It
+requires the same live host's genuine protected-stream proof, preserves both
+ancestry links and all original protocol meanings, and grants no client ACK,
+mutation, provider closure or activation. Cold hosts need fresh runtime proofs.
+
+The [qualification](qualification/2026-10-29-server-delivery-continuation.json)
+freshly passes 551 full server and 273 no-server Rust tests, including all forty
+new native server history/wire workflows, three refusal cases and two opaque
+compile-fail boundaries. Both all-target lint modes, strict Rustdoc, formatting
+and 75 candidate/plan laws pass. Real source, fresh archives and an executed
+minified SDK each pass all ten seven-author modes: 210 author workflows, exact
+cold reopens and complete previous-cut checks, plus 840 future native history
+steps. Normal Wasm and original wire/storage defaults remain unchanged.
+
+The SDK's old exact server reader intentionally still refuses changed pins.
+Authenticated advanced-cut control, receipt-backed partial/after journaling,
+fresh retry/reapproval, unbound-source adoption, metadata outboxes and joint
+provider/client/whole-room activation remain required. The isolated preparation
+prototype remains unmerged. No historical intermittent fault is declared fixed;
+all thirteen V1 gates remain open.
+
 ## Actual activated service and fresh package delivery
 
 The [native service contract](SELECTED_DELIVERY_NATIVE_SERVICE.md) now supplies

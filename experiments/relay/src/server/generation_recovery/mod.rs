@@ -21,6 +21,11 @@ pub use control::{
     ServerLogGenerationRecoveryControl, ServerLogGenerationRecoveryControlIdentity,
     prepare_log_generation_recovery_control,
 };
+mod delivery_continuation;
+pub use delivery_continuation::{
+    ServerLogGenerationDeliveryContinuationIdentity,
+    VerifiedServerLogGenerationDeliveryContinuation,
+};
 mod capture;
 pub use asset_state::ServerLogGenerationAssetRecoveryState;
 mod coordinator;

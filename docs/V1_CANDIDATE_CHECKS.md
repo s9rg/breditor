@@ -1,5 +1,15 @@
 # V1 candidate checks
 
+The [server delivery-continuation qualification](qualification/2026-10-29-server-delivery-continuation.json)
+freshly passes 551 server and 273 no-server Rust tests, both strict all-target
+lint modes, strict Rustdoc, format and 75 candidate/plan laws. It requires full
+native/raster ancestry from actual restore origin through the previous serving
+cut to the current server. Source, fresh packages and the executed minified SDK
+each run all ten seven-author modes and require that complete prior-cut check.
+This is not an advanced-cut SDK adoption, resumable delivery journal or whole-room
+activation qualification. The preparation prototype is unmerged, normal Wasm is
+unchanged, and all thirteen V1 gates stay open.
+
 The [real selected-delivery qualification](qualification/2026-10-29-native-selected-delivery.json)
 passes all ten original native grammar/wire modes from source, fresh actual
 package archives and an executed minified SDK: seven offline authors per mode,
