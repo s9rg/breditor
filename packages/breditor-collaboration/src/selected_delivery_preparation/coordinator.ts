@@ -1,4 +1,6 @@
 import {consumeDeliveryResumeAdmission,type DeliveryResumeAdmission} from '../selected_delivery_journal/resume_admission.js';
+import {consumeLocalReviewResumeAdmission,type LocalReviewResumeAdmission} from '../selected_local_review_delivery/resume_admission.js';
+import type {SelectedRoomCurrentSelection} from '../selected_room_current/contract.js';
 import type {PreparedDeliveryDriver} from './driver_contract.js';
 /** SDK-private real prepared-before-delivery boundary. Immutable bytes do not
  * confer an executable grant; the genuine scope and fresh approval are required.
@@ -17,7 +19,7 @@ import {fail} from './policy.js';
 import type {DeliveryPreparationChoice,DeliveryPreparationFile} from './contract.js';
 const methods={open:DeliveryPreparationResources.prototype.open,close:DeliveryPreparationResources.prototype.close},add=EventTarget.prototype.addEventListener,remove=EventTarget.prototype.removeEventListener;
 export interface PreparedSelectedNativeDelivery{readonly prepared:DeliveryPreparationFile;check():void;close():Promise<void>}
-const owners=new WeakMap<PreparedSelectedNativeDelivery,{scope:SelectedNativeRecoveryScope;check():void;legacy():void;available():void;track(owner:NativeRelayDelivery):void;claim():PreparedDeliveryDriver}>();
+const owners=new WeakMap<PreparedSelectedNativeDelivery,{scope:SelectedNativeRecoveryScope;anchor:SelectedRoomCurrentSelection;check():void;legacy():void;available():void;track(owner:NativeRelayDelivery):void;claim():PreparedDeliveryDriver}>();
 async function inspect(scope:SelectedNativeRecoveryScope,host:SharedServerLogGenerationRecoveryHost,database:string){checkSelectedNativeDeliveryScope(scope);const port=generationRecoveryHostPort(host),read=await scope.readGenerationReconciliation(host);requireExecutionOwnStreams(read);const current=await scope.retainCurrent();await compareExecutionCut(current.current,read,current.integrity);await port.check(scope.signal);checkSelectedNativeDeliveryScope(scope);return {choice:preparationChoice({format:'breditor/selected-native-delivery-preparation',formatVersion:1,database,server:port.selection,before:current.current.selection}),current};}
 /** Detached preview DATA; it cannot authenticate, open a writer or create a gate. */
 export async function previewSelectedNativeDeliveryPreparation(scope:SelectedNativeRecoveryScope,host:SharedServerLogGenerationRecoveryHost,database:string){const selected=await inspect(scope,host,database);return Object.freeze({choice:selected.choice,current:selected.current.current});}
@@ -48,8 +50,8 @@ function ownPreparedGate(scope:SelectedNativeRecoveryScope,resources:DeliveryPre
  const check=()=>{if(closing||closed)throw fail('delivery_preparation_closed');checkSelectedNativeDeliveryScope(scope);resources.check();extra();};
  const cleanup:NativeRelayDelivery=Object.freeze({check,close(){if(closed)return Promise.resolve();if(ending)return ending;closing=true;ending=(async()=>{const results=await Promise.allSettled([...contexts].map(owner=>owner.close()));if(results.some(row=>row.status==='rejected'))throw fail('delivery_preparation_storage');await methods.close.call(resources);closed=true;})().finally(()=>{ending=undefined;});return ending;}});
  retainSelectedNativeDeliveryResource(scope,cleanup);
- return Object.freeze({check,close:()=>cleanup.close(),finish(prepared:DeliveryPreparationFile):PreparedSelectedNativeDelivery{check();const gate:PreparedSelectedNativeDelivery=Object.freeze({prepared,check,close:()=>cleanup.close()});const newContext=()=>{if(quiescent)throw fail('delivery_preparation_busy');check();if(quiescent)throw fail('delivery_preparation_busy');},legacy=()=>{if(claimed)throw fail('delivery_preparation_busy');newContext();if(claimed)throw fail('delivery_preparation_busy');};
-  owners.set(gate,{scope,check,legacy,available(){if(claimed||quiescent)throw fail('delivery_preparation_busy');if(closing||closed)throw fail('delivery_preparation_closed');},track:owner=>{legacy();contexts.add(owner);},claim(){if(claimed||quiescent)throw fail('delivery_preparation_busy');claimed=true;try{check();}catch(error){void cleanup.close().catch(()=>{});throw error;}return Object.freeze({scope,prepared,check,
+ return Object.freeze({check,close:()=>cleanup.close(),finish(prepared:DeliveryPreparationFile,anchor:SelectedRoomCurrentSelection=prepared.choice.before):PreparedSelectedNativeDelivery{check();const gate:PreparedSelectedNativeDelivery=Object.freeze({prepared,check,close:()=>cleanup.close()});const newContext=()=>{if(quiescent)throw fail('delivery_preparation_busy');check();if(quiescent)throw fail('delivery_preparation_busy');},legacy=()=>{if(claimed)throw fail('delivery_preparation_busy');newContext();if(claimed)throw fail('delivery_preparation_busy');};
+  owners.set(gate,{scope,anchor,check,legacy,available(){if(claimed||quiescent)throw fail('delivery_preparation_busy');if(closing||closed)throw fail('delivery_preparation_closed');},track:owner=>{legacy();contexts.add(owner);},claim(){if(claimed||quiescent)throw fail('delivery_preparation_busy');claimed=true;try{check();}catch(error){void cleanup.close().catch(()=>{});throw error;}return Object.freeze({scope,prepared,check,
    create(source:RetainedDeliverySource,ceiling:SharedReviewAccess,restrict:()=>void){newContext();if(typeof restrict!=='function')throw fail('delivery_preparation_policy');const context=createSelectedNativeRelayDelivery(scope,source,ceiling,()=>{check();restrict();check();});contexts.add(context);newContext();return context;},
    async quiesce<T>(visit:()=>Promise<T>):Promise<T>{if(quiescent)throw fail('delivery_preparation_busy');quiescent=true;try{check();const results=await Promise.allSettled([...contexts].map(owner=>owner.close()));if(results.some(row=>row.status==='rejected'))throw fail('delivery_preparation_storage');contexts.clear();check();const value=await visit();check();return value;}catch(error){await cleanup.close();throw error;}finally{quiescent=false;}},
    close:()=>cleanup.close(),
@@ -65,3 +67,10 @@ export async function resumePreparedSelectedNativeDelivery(scope:SelectedNativeR
  try{held=ownPreparedGate(scope,selected.resources,selected.check);selected.check();const gate=held.finish(selected.prepared);complete=true;return gate;}
  finally{if(!complete){if(held)await held.close();else await methods.close.call(selected.resources);}}
 }
+
+/** Runtime admission anchor may differ from the immutable original before-file
+ * after a separately named fresh cold-resume protocol. It never rewrites it. */
+export function preparedSelectedNativeDeliveryAnchor(gate:PreparedSelectedNativeDelivery,scope:SelectedNativeRecoveryScope):SelectedRoomCurrentSelection{const held=owners.get(gate);if(!held||held.scope!==scope)throw fail('delivery_preparation_policy');held.available();return held.anchor;}
+/** Only the genuine local-review full-path verifier can transfer this one-shot
+ * admission. Cleanup owns EVERY callback after consumption, including refusal. */
+export async function resumePreparedSelectedLocalReviewDelivery(scope:SelectedNativeRecoveryScope,admission:LocalReviewResumeAdmission):Promise<PreparedSelectedNativeDelivery>{const selected=consumeLocalReviewResumeAdmission(admission,scope);let held:ReturnType<typeof ownPreparedGate>|undefined,complete=false;try{held=ownPreparedGate(scope,selected.resources,selected.check);selected.check();const gate=held.finish(selected.prepared,selected.anchor);complete=true;return gate;}finally{if(!complete){if(held)await held.close();else await methods.close.call(selected.resources);}}}

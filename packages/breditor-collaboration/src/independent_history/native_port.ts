@@ -9,6 +9,8 @@ export interface IndependentHistoryNativePort {
  readonly localOperation?:object;
  check():void;checkManaged():void;stamp():object;read():SharedIndependentHistoryRecovery;
  checkBorrowed(core:object):void;savedCompanion():string|null;
+ /** Exact committed pair, only when the current constructor-owned save has settled. */
+ persisted():SharedIndependentHistoryRecovery;
 }
 const sessions=new WeakMap<object,IndependentHistoryNativePort>(),cores=new WeakSet<object>();
 const unavailable=()=>Object.assign(new Error('Use the actual independently owned native session'),{code:'independent_history_source'});

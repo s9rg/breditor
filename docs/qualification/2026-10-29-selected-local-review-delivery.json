@@ -1,0 +1,229 @@
+{
+  "format": "breditor/selected-local-review-delivery-qualification",
+  "formatVersion": 1,
+  "functionalPassed": true,
+  "releaseReady": false,
+  "v1GatesOpen": 13,
+  "v1GatesClosed": 0,
+  "baseCommit": "231eea8b88762b32601d25a5fc0ee30d4d0f729e",
+  "qualifiedSource": {
+    "commit": "231eea8b88762b32601d25a5fc0ee30d4d0f729e",
+    "dirty": true,
+    "sha256": "e31d8f9d7358000ad15992db1d41f0794841948362b22446bbb7d92d224bf0c4",
+    "files": 7459,
+    "bytes": 56353402
+  },
+  "sourceUnchangedDuringQualification": true,
+  "logicAndTestsUnchangedAfterQualification": true,
+  "scope": "SDK-private authenticated review delivery for all three genuinely local families, durable complete source/receipt records, complete multipart room export and fresh full-native-path cold resume. Actual service, actual native receipts, seven fresh native owners with outstanding offline document/comment suffixes and future Undo/Redo; original local protocols remain unbound. No full provider/client reconciliation or activation claim.",
+  "directTests": 448,
+  "nestedInstalledTests": 16,
+  "stages": [
+    {
+      "id": "delivery-journal-resume-private-types",
+      "status": "passed",
+      "startedAt": "2026-10-29T16:48:29.394Z",
+      "finishedAt": "2026-10-29T16:48:30.137Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-local-review-delivery-zwzcEp/qualified-3WjS7L/delivery-journal-resume-private-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "local-review-delivery-private-types",
+      "status": "passed",
+      "startedAt": "2026-10-29T16:48:29.395Z",
+      "finishedAt": "2026-10-29T16:48:31.072Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-local-review-delivery-zwzcEp/qualified-3WjS7L/local-review-delivery-private-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "strict-integrated-build-types",
+      "status": "passed",
+      "startedAt": "2026-10-29T16:48:29.393Z",
+      "finishedAt": "2026-10-29T16:48:31.878Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-local-review-delivery-zwzcEp/qualified-3WjS7L/strict-integrated-build-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "all-generation-operator-sdk-laws",
+      "status": "passed",
+      "startedAt": "2026-10-29T16:48:29.395Z",
+      "finishedAt": "2026-10-29T16:48:32.528Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 18157,
+      "logPath": "/private/tmp/breditor-local-review-delivery-zwzcEp/qualified-3WjS7L/all-generation-operator-sdk-laws.log",
+      "logSha256": "74877fbc5aff4d487ff6096766fe18ba35f958966313b59bf55ecb00aefde543",
+      "tests": 109
+    },
+    {
+      "id": "all-candidate-plan-verifier-and-native-storage-laws",
+      "status": "passed",
+      "startedAt": "2026-10-29T16:48:29.396Z",
+      "finishedAt": "2026-10-29T16:48:49.174Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 85201,
+      "logPath": "/private/tmp/breditor-local-review-delivery-zwzcEp/qualified-3WjS7L/all-candidate-plan-verifier-and-native-storage-laws.log",
+      "logSha256": "c9dde617a414312f775f6ff825aa24843e8b9186672445bcf57a73979ad12df6",
+      "tests": 332
+    },
+    {
+      "id": "local-review-delivery-cold-native",
+      "status": "passed",
+      "startedAt": "2026-10-29T16:48:29.390Z",
+      "finishedAt": "2026-10-29T17:12:05.080Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 1382,
+      "logPath": "/private/tmp/breditor-local-review-delivery-zwzcEp/qualified-3WjS7L/local-review-delivery-cold-native.log",
+      "logSha256": "b124e439fad10a29358b363a2389a2ebc727ccf114b7d66d4105b630b1bc0980",
+      "tests": 1
+    },
+    {
+      "id": "installed-local-review-delivery",
+      "status": "passed",
+      "startedAt": "2026-10-29T16:48:29.392Z",
+      "finishedAt": "2026-10-29T17:12:08.766Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 378,
+      "logPath": "/private/tmp/breditor-local-review-delivery-zwzcEp/qualified-3WjS7L/installed-local-review-delivery.log",
+      "logSha256": "e66ff335ad37c28e06f75ea31a609901cd2a31d8228f4bbb39b80af5eca0769e",
+      "tests": 0
+    },
+    {
+      "id": "retained-delivery-owner",
+      "status": "passed",
+      "startedAt": "2026-10-29T17:12:09.379Z",
+      "finishedAt": "2026-10-29T17:16:00.796Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 1100,
+      "logPath": "/private/tmp/breditor-local-review-delivery-zwzcEp/qualified-3WjS7L/retained-delivery-owner.log",
+      "logSha256": "62b5567e059810fc62c6da81601952fa2fa4401d58ba46e88509fae9a11596e7",
+      "tests": 4
+    },
+    {
+      "id": "coupled-delivery-lifecycle",
+      "status": "passed",
+      "startedAt": "2026-10-29T17:12:07.406Z",
+      "finishedAt": "2026-10-29T17:20:53.280Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 428,
+      "logPath": "/private/tmp/breditor-local-review-delivery-zwzcEp/qualified-3WjS7L/coupled-delivery-lifecycle.log",
+      "logSha256": "059016b326a02ed2bbc1837bd0e867480fbd82b63c5b4e6bf93ae630e7b3f9cc",
+      "tests": 2
+    }
+  ],
+  "installed": {
+    "resultPath": "/private/tmp/breditor-local-review-delivery-installed-7DVBeU/result.json",
+    "sourceUnchanged": true,
+    "workspaceLinks": false,
+    "registryArtifacts": 45,
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/private/tmp/breditor-local-review-delivery-installed-7DVBeU/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/private/tmp/breditor-local-review-delivery-installed-7DVBeU/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/private/tmp/breditor-local-review-delivery-installed-7DVBeU/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "ec77ed86c4f24532f21cef2707cf1b9e3dca8e07bf09ceaab2f8e4da6b35600a"
+      }
+    ],
+    "actualWorkflow": {
+      "id": "installed-local-review-delivery",
+      "status": "passed",
+      "startedAt": "2026-10-29T16:48:35.801Z",
+      "finishedAt": "2026-10-29T17:12:08.262Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 4682,
+      "logPath": "/private/tmp/breditor-local-review-delivery-installed-7DVBeU/installed-local-review-delivery.log",
+      "logSha256": "6afa6ec5ba221edf91b5e53473ca3382918d5b1eb32c01f7b6901b4c74d018f2"
+    },
+    "tests": 16
+  },
+  "repair": {
+    "bug": "A complete export could commit newer metadata and then refuse during Close. Exact equality with an older valid portable bundle made later cold recovery fail even though the complete native histories were retained.",
+    "actualBeforeFailures": 1,
+    "beforeResult": "/private/tmp/breditor-local-review-delivery-zwzcEp/late-export-before-result.json",
+    "beforeLog": "/private/tmp/breditor-local-review-delivery-zwzcEp/late-export-before.log",
+    "beforeLogSha256": "9a2ac611715a271cbb9c4080e7ef4bf74b0fadc340762cdea548135308339701",
+    "afterResult": "/private/tmp/breditor-local-review-delivery-zwzcEp/late-export-after-result.json",
+    "afterLog": "/private/tmp/breditor-local-review-delivery-zwzcEp/late-export-after.log",
+    "afterLogSha256": "4bafa7d902086de93590bbde107e82c16a91b31ebe864179e5bbe73acd4e146d",
+    "unchangedAssertionsPassed": true,
+    "beforeReproduced": true,
+    "fix": "Require exact immutable before bytes, monotone review progress and complete native continuation from the portable snapshot to the newer committed state. Pin and recheck the actual stored revision, byte length and digest before and after fresh approval and gate transfer.",
+    "strengthenedRegression": "Actual held post-commit completion callback, actual Close drain, refused export, old valid bundle, fresh approval refusal/retry, stored head changed during approval refusal, renewed native receipts, all-seven future document/review Undo/Redo."
+  },
+  "data": {
+    "sourceFamilies": 7,
+    "authenticatedLocalReviewFamilies": 3,
+    "originalFamiliesRelabelled": false,
+    "completeSourceAndInstalledMultipartFilesRetained": true,
+    "savedPermissionRevived": false,
+    "newGateRequiresFreshApproval": true,
+    "allSevenFutureUndoRedoPreserved": true
+  },
+  "nativeBaseline": {
+    "freshlyRerunThisQualification": false,
+    "rustSourceChanged": false,
+    "carriedFrom": "docs/qualification/2026-10-29-authenticated-path-owned-work.json",
+    "serverTests": 575,
+    "noServerTests": 273,
+    "actualCurrentBinarySha256": "c224c4d39d5f603dcb3815ebc58c1719b59b4d6db6fe554e675f91d4cab46ea7",
+    "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+    "normalWasmUnchanged": true
+  },
+  "plans": {
+    "functional": 605,
+    "full": 613,
+    "executedFullPlans": false
+  },
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/local-review-delivery-qualified-proof-cEleC5",
+    "indexSha256": "e2a5d40f40b8bf618ebbc994363dba7b1433cec96fd8b0f70f55e8d1652181d2",
+    "files": 138,
+    "bytes": 54126525,
+    "sourceUnchanged": true,
+    "releaseReady": false
+  },
+  "limitations": [
+    "Private composition; public exports, package versions and defaults unchanged.",
+    "New receipt namespace cold resume is existing-only; absent-destination portable restoration and relocation remain unimplemented.",
+    "Controlled Node IndexedDB and locks are not physical crash durability or cross-device fencing evidence.",
+    "Native network workflow uses standard language 3 and atomic-v2; four native history modes are covered by committed-source storage tests, not all network/profile combinations.",
+    "Full retained-history materialization cost and large-session limits remain unqualified; no native history is trimmed.",
+    "Original reconciliation reports correctly keep local families unbound; complete metadata outbox settlement, provider/client/assets closure and authenticated joint whole-room activation remain required.",
+    "Historical intermittent WebKit fault is not confirmed fixed by this work."
+  ],
+  "actions": {
+    "pushed": false,
+    "published": false,
+    "tagged": false,
+    "deployed": false,
+    "packageVersionChanged": false
+  },
+  "finishedAt": "2026-10-29T17:20:55.804Z"
+}

@@ -1,4 +1,4 @@
-import {selectedNativeRelayDelivery,type NativeRelayDeliveryPort} from './native_delivery.js';
+import {selectedNativeRelayDelivery,checkSelectedLocalDocumentBinding,type NativeRelayDeliveryPort} from './native_delivery.js';
 import {RelayWorkCustody} from './work_custody.js';
 import {SharedRichEditor} from "../core.js";
 import type {SharedWriterClock,SharedSelectionPolicy} from "../types.js";
@@ -73,7 +73,7 @@ export class SharedRelaySync<P extends SharedSelectionPolicy="original"> {
   if(this.#transport===2?!core.supportsWriterTransportV2():!core.supportsWriterTransport())throw new SharedRelayError("writer_transport_unavailable");
   // The owner declares its local recovery family; transport/model bindings stay unchanged.
   if(this.#durableSource){this.#durableSource.check();const {credential:_credential,...binding}=this.#identity;if(core as object!==this.#durableSource.core as object||JSON.stringify(binding)!==JSON.stringify(this.#durableSource.binding.document))throw new SharedRelayError("segmented_relay_source");this.#durableFloor=this.#durableSource.durable().document.accepted;}
-  else checkSourceCheckpoint(core,this.#identity.room,this.#identity.writer);
+  else if(!checkSelectedLocalDocumentBinding(this.#nativeDelivery,this.#identity))checkSourceCheckpoint(core,this.#identity.room,this.#identity.writer);
   this.#local=this.#clock().through;
   if(options.presence)this.#presence=new RelayPresence(core,options.presence,this.#identity.writer,e=>this.#report(e));
   this.#work=new RelayWorkCustody(core,()=>!this.#wanted&&(!this.#closed?this.#status==='offline':true),()=>new SharedRelayError('relay_recovery_in_use'),this.#nativeDelivery?.admission);

@@ -13,6 +13,31 @@ the FCKeditor lineage. CKEditor 4 reached ordinary EOL in June 2023; its
 is not the modern feature baseline. Breditor remains an independent implementation:
 no ProseMirror, Tiptap or CKEditor document, operation or plugin protocol is adopted.
 
+## Authenticated local review delivery and complete cold recovery
+
+The [local review delivery contract](SELECTED_LOCAL_REVIEW_DELIVERY.md) now
+provides real authenticated delivery for independent-local, local-operation-snapshot
+and local-operation-flat sources through a separate private owner. Original
+family formats remain unbound. Complete export includes the original whole-room
+before-file, current seven-family native/packet/upload file and every new receipt
+record; the old current-file alone is not a backup of this new layer.
+
+The [qualification](qualification/2026-10-29-selected-local-review-delivery.json)
+passes 448 direct checks, 16 fresh offline-installed consumer checks and three
+strict type stages. Both source and actual archives exercise three native review
+streams, seven cold native owners, outstanding offline suffixes and future
+document/review Undo/Redo. A real committed-but-refused export recovery bug was
+reproduced, then repaired against unchanged assertions. The strengthened runs
+also refuse a stored head changed during fresh approval and drain actual late
+completion work before releasing custody.
+
+This is existing-only cold recovery, not absent-destination receipt restoration,
+metadata outbox settlement, full provider/client/assets closure or whole-room
+activation. Node storage/locks do not qualify physical crash durability. The
+normal Wasm and public defaults are unchanged; the prior 575/273 Rust baseline
+is carried, not freshly rerun. The 605/613 full candidate profiles were not
+executed. All thirteen V1 gates remain open.
+
 ## Integrated fresh-approved cold delivery resume
 
 The [private full-history resume contract](SELECTED_DELIVERY_JOURNAL_RESUME.md)
