@@ -1,0 +1,291 @@
+{
+  "format": "breditor/selected-room-storage-qualification",
+  "formatVersion": 1,
+  "functionalPassed": true,
+  "releaseReady": false,
+  "v1GatesOpen": 13,
+  "v1GatesClosed": 0,
+  "baseCommit": "e911fd1e992594b941dc88d769779d699f82a55a",
+  "qualifiedSource": {
+    "commit": "e911fd1e992594b941dc88d769779d699f82a55a",
+    "dirty": true,
+    "sha256": "e6836ad1a7e09f27dad29c6b1386b276f1d18325cc57bd17e8226f45d80e84c7",
+    "files": 7495,
+    "bytes": 56551624
+  },
+  "sourceUnchangedDuringQualification": true,
+  "logicAndTestsUnchangedAfterQualification": true,
+  "scope": "SDK-private portable complete selected-record data export/read/restore into entirely empty controlled IndexedDB storage. Actual source and fresh offline-installed archives restore 46 actual native/source/packet/upload/catalog/adoption/local-review databases, inject real partial-copy failure and refuse a stale retry, reopen seven genuinely new native owners with outstanding offline document/comment work, separately require fresh current approval, renew three actual authenticated local review streams and verify all-seven future document/review Undo/Redo. No saved permission, protocol relabeling or joint activation claim.",
+  "directTests": 471,
+  "nestedInstalledTests": 17,
+  "strictTypeStages": 5,
+  "stages": [
+    {
+      "id": "selected-room-storage-private-types",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:02:37.422Z",
+      "finishedAt": "2026-10-29T19:02:39.105Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-full-storage-vGbrhl/qualified-c7rHHm/selected-room-storage-private-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "local-review-delivery-private-types",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:02:37.426Z",
+      "finishedAt": "2026-10-29T19:02:41.474Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-full-storage-vGbrhl/qualified-c7rHHm/local-review-delivery-private-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "delivery-journal-resume-private-types",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:02:37.427Z",
+      "finishedAt": "2026-10-29T19:02:44.187Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-full-storage-vGbrhl/qualified-c7rHHm/delivery-journal-resume-private-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "local-review-restore-private-types",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:02:37.424Z",
+      "finishedAt": "2026-10-29T19:02:45.506Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-full-storage-vGbrhl/qualified-c7rHHm/local-review-restore-private-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "strict-integrated-build-types",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:02:37.429Z",
+      "finishedAt": "2026-10-29T19:02:46.721Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-full-storage-vGbrhl/qualified-c7rHHm/strict-integrated-build-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "all-generation-operator-sdk-laws",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:02:37.435Z",
+      "finishedAt": "2026-10-29T19:02:47.505Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 18177,
+      "logPath": "/private/tmp/breditor-full-storage-vGbrhl/qualified-c7rHHm/all-generation-operator-sdk-laws.log",
+      "logSha256": "1fa1ee7210a4a2ce6cc7bab249728e9f7a0a83c51c05e8c8f18ba410128476bd",
+      "tests": 109
+    },
+    {
+      "id": "all-candidate-plan-verifier-and-native-storage-laws",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:08:52.133Z",
+      "finishedAt": "2026-10-29T19:09:13.046Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 91730,
+      "logPath": "/private/tmp/breditor-full-storage-vGbrhl/qualification-fast-retry-0HT63Z/actual-tests.log",
+      "logSha256": "45b350c9a5624402c2b9cb68bc64181b831fc414248a71a202cdce82f8ef1e36",
+      "tests": 361
+    },
+    {
+      "id": "selected-room-storage-native",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:02:37.419Z",
+      "finishedAt": "2026-10-29T19:17:27.873Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 1375,
+      "logPath": "/private/tmp/breditor-full-storage-vGbrhl/qualified-c7rHHm/selected-room-storage-native.log",
+      "logSha256": "bd5479949c8574e519745437d7a5f6b429f3cf0002b035555465c1cd77e64e08",
+      "tests": 1
+    },
+    {
+      "id": "installed-selected-room-storage",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:02:37.421Z",
+      "finishedAt": "2026-10-29T19:17:30.078Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 378,
+      "logPath": "/private/tmp/breditor-full-storage-vGbrhl/qualified-c7rHHm/installed-selected-room-storage.log",
+      "logSha256": "460a498c360dbfee40da075210cf9ec0f6710e8a7649d609e9a709f1670a8bdb",
+      "tests": 0
+    }
+  ],
+  "stageRetry": {
+    "resultPath": "/private/tmp/breditor-full-storage-vGbrhl/qualified-c7rHHm/failed.json",
+    "resultSha256": "757486b1630d999fa2d6c506edc8f535a768615ef15408156952401eff00c768",
+    "stageFailure": {
+      "id": "all-candidate-plan-verifier-and-native-storage-laws",
+      "status": "failed",
+      "startedAt": "2026-10-29T19:02:37.436Z",
+      "finishedAt": "2026-10-29T19:03:01.552Z",
+      "exitCode": 1,
+      "signal": null,
+      "logBytes": 133138,
+      "logPath": "/private/tmp/breditor-full-storage-vGbrhl/qualified-c7rHHm/all-candidate-plan-verifier-and-native-storage-laws.log",
+      "logSha256": "641622181c5b110bfe19cd52619c2f8867fec352cdba4b50fdd8af5cc233d73e",
+      "tests": 361,
+      "reason": "Two regenerable cached native test executables had been removed during the user-requested space cleanup; Rust source and main native test host were unchanged."
+    },
+    "retryResultPath": "/private/tmp/breditor-full-storage-vGbrhl/qualification-fast-retry-0HT63Z/result.json",
+    "retryResultSha256": "664a3cf95ba713ea8f3d0ffe6975cbc4b913f22018bd07f6d2811cee73af9552",
+    "immutableSourceAndNormalRuntime": true
+  },
+  "codecRepair": {
+    "reproduced": true,
+    "beforeReproduction": "/private/tmp/breditor-full-storage-vGbrhl/value-metadata-before.json",
+    "beforeSource": {
+      "commit": "e911fd1e992594b941dc88d769779d699f82a55a",
+      "dirty": true,
+      "sha256": "6b612a27166f0c886e7ef10e012cd6515ac86c707e250d166e889664dd5b0b9f",
+      "files": 7495,
+      "bytes": 56548797
+    },
+    "beforeCodecSha256": "4d252862fd0f3ee68b2ead0e5f8387667c2cfd6d52e72105789cea91a8c02cc8",
+    "behavior": "Built-in custom own properties, custom native prototypes and resizable buffers are refused explicitly instead of silently discarded; ordinary graph properties and standard intrinsic values remain supported."
+  },
+  "installed": {
+    "resultPath": "/private/tmp/breditor-selected-room-storage-installed-Jh4yYu/result.json",
+    "sourceUnchanged": true,
+    "workspaceLinks": false,
+    "registryArtifacts": 45,
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/private/tmp/breditor-selected-room-storage-installed-Jh4yYu/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/private/tmp/breditor-selected-room-storage-installed-Jh4yYu/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/private/tmp/breditor-selected-room-storage-installed-Jh4yYu/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "4bc3c51a708ecfaaf57123c6fed975fbdcabddbb399832f3a5f243b2dae0990e"
+      }
+    ],
+    "actualWorkflow": {
+      "id": "installed-selected-room-storage",
+      "status": "passed",
+      "startedAt": "2026-10-29T19:02:50.282Z",
+      "finishedAt": "2026-10-29T19:17:29.231Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 4910,
+      "logPath": "/private/tmp/breditor-selected-room-storage-installed-Jh4yYu/installed-selected-room-storage.log",
+      "logSha256": "133d965be28a09f99e0eada0f2231562f6304b0c2868498bdd2af104595ee48f"
+    },
+    "tests": 17
+  },
+  "completeFiles": [
+    {
+      "case": "source",
+      "databases": 46,
+      "selection": {
+        "format": "breditor/selected-room-storage-selection",
+        "formatVersion": 1,
+        "bytes": 19511399,
+        "sha256": "f0bb4afc437b4aaaf14cd94a7e9c6e50dfbc2a07715b9cf0b7eada7e75a27247"
+      }
+    },
+    {
+      "case": "installed",
+      "databases": 46,
+      "selection": {
+        "format": "breditor/selected-room-storage-selection",
+        "formatVersion": 1,
+        "bytes": 19511115,
+        "sha256": "a8b4ec297d137f19cf60e394dc5eb474caea8bcecaf598599d107764846db053"
+      }
+    }
+  ],
+  "invariants": {
+    "originalNamesAndSourceProtocolsPreserved": true,
+    "actualRootDerivesSelectedStoragePlans": true,
+    "unrelatedDocumentRowsExcluded": true,
+    "typedBinaryGraphPreservesBytesAndMetadata": true,
+    "wholeFileAndEveryPieceIndependentlyVerified": true,
+    "noUnusedPiecesOrTailBytes": true,
+    "absentProbesCreateNoPlaceholders": true,
+    "conflictingSelectedRecordsNeverOverwritten": true,
+    "onlyMissingKeysAreAdded": true,
+    "partialCommitsRemainReadable": true,
+    "partialRetryRequiresNewObservedChoiceAndApproval": true,
+    "restoreNeverAuthenticatesOrCreatesGate": true,
+    "sevenNewActualColdNativeOwners": true,
+    "outstandingOfflineWorkRetained": true,
+    "separateNormalResumeRequiresFreshApproval": true,
+    "threeActualReviewStreamsRenewed": true,
+    "allSevenFutureUndoRedoPreserved": true,
+    "lateCallbacksRetainActualNamespaceCustody": true
+  },
+  "limits": {
+    "archiveBytes": 1073741824,
+    "graphBytes": 268435456,
+    "headerBytes": 16777216,
+    "autoIncrementAccepted": false,
+    "historyTrimmed": false
+  },
+  "nativeBaseline": {
+    "freshlyRerunThisQualification": false,
+    "rustSourceChanged": false,
+    "carriedFrom": "docs/qualification/2026-10-29-authenticated-path-owned-work.json",
+    "serverTests": 575,
+    "noServerTests": 273,
+    "actualCurrentBinarySha256": "c224c4d39d5f603dcb3815ebc58c1719b59b4d6db6fe554e675f91d4cab46ea7",
+    "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+    "normalWasmUnchanged": true
+  },
+  "plans": {
+    "functional": 615,
+    "full": 623,
+    "executedFullPlans": false
+  },
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/selected-room-storage-qualified-proof-Wnhgjg",
+    "indexSha256": "335489e4a50346d9211b3af9e3fcd2c8abfdca91f872b35e81097247d0e90411",
+    "files": 48,
+    "bytes": 47726327,
+    "sourceUnchanged": true,
+    "releaseReady": false
+  },
+  "limitations": [
+    "Database and server names/endpoints stay literal; explicit relocation is not implemented.",
+    "Metadata dependencies outside the declared selected root and optional local-review bundle still require complete ownership and settlement.",
+    "Proposal/revision/version transport custody, complete provider/client/historical-copy/assets reconciliation and authenticated joint whole-room activation remain required.",
+    "Each database addition is atomic; cross-database atomicity is not claimed, and partial commits require fresh approved retry.",
+    "SDK-private API: no new public exports, protocol/default/package-version changes.",
+    "Controlled Node IndexedDB/locks are not physical browser crash durability or cross-device fencing evidence.",
+    "Sustainable complete-history materialization cost remains unqualified; no native Undo/Redo or outstanding edits are trimmed.",
+    "The historical intermittent WebKit fault is not confirmed fixed.",
+    "Full candidate profiles and all thirteen V1/parity gates remain open."
+  ],
+  "actions": {
+    "pushed": false,
+    "published": false,
+    "tagged": false,
+    "deployed": false,
+    "packageVersionChanged": false
+  },
+  "finishedAt": "2026-10-29T19:17:42.082Z"
+}

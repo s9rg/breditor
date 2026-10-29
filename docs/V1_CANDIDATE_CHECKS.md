@@ -1,5 +1,33 @@
 # V1 candidate checks
 
+The [portable selected-storage contract](SELECTED_ROOM_STORAGE.md) now captures
+actual selected component records in a complete typed binary file and restores
+them into an entirely empty controlled origin at their original names. Plans
+derive from the genuine room root, catalog and asset adoption; unrelated shared
+document records stay outside the backup. Existing selected values must match
+exactly, and only missing keys are added. Per-database commits survive a later
+copy failure and require a newly observed, freshly approved retry.
+
+The [qualification](qualification/2026-10-29-selected-room-storage.json) passes
+471 direct checks, seventeen fresh offline-installed checks and five strict type
+stages. A reproduced codec defect silently dropped built-in custom metadata; the repaired
+codec refuses unsupported state before any asynchronous binary callback.
+Both actual workflows save/read the portable file, restore 46 databases,
+exercise a real partial-copy failure, reopen seven genuinely new native owners
+with offline work, separately obtain fresh approval and renewed authenticated
+receipts for three local review streams, then verify future document/review
+Undo/Redo for all seven families. Complete emitted files and actual package
+archives are retained with a read-back-verified proof index.
+
+Restoration supplies data only. Current native/source admission and authenticated
+delivery still use their separate normal policies; archived approval is never a
+new gate. Literal protocol meanings, public defaults and normal Wasm are unchanged.
+The prior 575/273 Rust baseline is carried, not rerun. The 615/623 full candidate
+profiles were not executed. Relocation, unowned metadata dependencies, packet
+transport custody, complete reconciliation, joint activation and sustainable
+large-history cost remain open. Node storage is not physical crash durability.
+All thirteen V1 gates remain open.
+
 The [new data-restore contract](SELECTED_LOCAL_REVIEW_RESTORE.md) now restores
 the original preparation and full local receipt records beside a genuine
 reconstructed seven-family owner. Both original namespaces are reserved and

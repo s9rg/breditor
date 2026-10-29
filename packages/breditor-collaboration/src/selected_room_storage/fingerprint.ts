@@ -1,0 +1,5 @@
+/** Hash the complete typed graph and every binary leaf, never Blob size/MIME
+ * or a checkpoint counter alone. Used outside IDB transactions. */
+import {prepareArchiveIntegrity} from '../archive_integrity/context.js';import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
+import {encodeStorageValue} from './value_graph.js';import {recordCutJson} from '../physical_room_record_cut/json.js';import {MAX_STORAGE_GRAPH_BYTES} from './policy.js';
+export async function storageFingerprint(value:unknown,options:SharedArchiveIntegrityOptions):Promise<string>{const context=prepareArchiveIntegrity(options),pieces:{bytes:number;sha256:string}[]=[],ids=new Map<string,number>();const graph=await encodeStorageValue(value,{async add(file){const sha256=await context.digest(file),key=JSON.stringify([file.size,sha256]),old=ids.get(key);if(old!==undefined)return old;const id=pieces.length;ids.set(key,id);pieces.push({bytes:file.size,sha256});return id;}});return context.digest(new Blob([recordCutJson({graph,pieces},MAX_STORAGE_GRAPH_BYTES)]));}
