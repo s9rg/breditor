@@ -21,6 +21,10 @@ pub(super) async fn capture(
     client_endpoint: &str,
     retired_endpoint: &str,
     predecessor: Option<&super::next::Previous>,
+    observed: &std::collections::BTreeMap<
+        u64,
+        Arc<breditor_collab_relay::ServerLogGenerationRoomBackup>,
+    >,
 ) -> Result<Snapshot> {
     let host = ready.active.recovery_host();
     let capture = host.capture_recovery_state("owner", &ready.owner_token).await?;
@@ -31,6 +35,7 @@ pub(super) async fn capture(
         return Err("native changed during fixture capture".into());
     }
     let native = Arc::new(native);
+    let delivery_path = super::full_path::verify(ready, &current, native.clone(), observed).await?;
     // The first ACTUAL target serving cut B stays distinct from restore origin A.
     // Every fresh capture must prove A <= B <= current C, even after real delivery.
     if ready.initial_snapshot.get().is_none() {
@@ -86,7 +91,7 @@ pub(super) async fn capture(
     let fixture = json!({"format":"breditor/native-selected-delivery-fixture","formatVersion":1,
         "language":ready.spec.language,"standard":ready.spec.standard,"atomic":ready.spec.atomic,
         "configuration":ready.configuration,"inventoryJson":serde_json::to_string(&inventory.metadata().native)?,
-        "generationRecoveryState":selected,"deliveryContinuation":delivery_continuation,"clients":ready.records,
+        "generationRecoveryState":selected,"deliveryContinuation":delivery_continuation,"deliveryPath":delivery_path,"clients":ready.records,
         "clientEndpoint":client_endpoint,"retiredEndpoint":retired_endpoint,
         "registeredWriters":7,"registeredReviewActors":7,"protectedStreams":14}).to_string();
     let credentials: Vec<_> = ready
@@ -111,6 +116,6 @@ pub(super) async fn capture(
     })?;
     let public = json!({"path":path,"selection":selected_current,"deliverySelection":selected_delivery,"sequence":sequence,"previousSequence":previous_sequence,
         "clientEndpoint":client_endpoint,"retiredEndpoint":retired_endpoint,
-        "nativeProtectedStreamsVerified":true,"nativeProviderVerified":true,"nativeDeliveryContinuationVerified":true});
+        "nativeProtectedStreamsVerified":true,"nativeProviderVerified":true,"nativeDeliveryContinuationVerified":true,"nativeDeliveryPathVerified":true});
     Ok(Snapshot { public, archive: Arc::new(current), operator_token, control, router })
 }

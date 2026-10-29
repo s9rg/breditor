@@ -9,6 +9,8 @@ mod authentication;
 mod clients;
 #[path = "selected_delivery_host/credentials.rs"]
 mod credentials;
+#[path = "selected_delivery_host/full_path.rs"]
+mod full_path;
 #[path = "selected_delivery_host/next.rs"]
 mod next;
 #[path = "selected_delivery_host/protocol.rs"]
@@ -75,6 +77,7 @@ async fn main() -> Result {
             &endpoint,
             &old_endpoint,
             previous.as_ref(),
+            &observed,
         ))
         .await?;
         observed.insert(sequence, snapshot.archive);

@@ -13,6 +13,34 @@ the FCKeditor lineage. CKEditor 4 reached ordinary EOL in June 2023; its
 is not the modern feature baseline. Breditor remains an independent implementation:
 no ProseMirror, Tiptap or CKEditor document, operation or plugin protocol is adopted.
 
+## Complete native delivery path and coupled journal
+
+The [separate native path contract](SERVER_DELIVERY_PATH.md) now verifies every
+complete A <= B <= C1 <= ... <= D link under actual native/raster custody.
+An actual raster-fork counterexample confirms that two snapshots independently
+retained by D need not retain each other. Saved counters or hash-chain labels
+do not supply this proof. Weak-host proofs require fresh renewal on a cold host.
+
+The [qualification](qualification/2026-10-29-ordered-delivery-path-coupled-journal.json)
+freshly passes 565 full server and 273 no-server Rust tests, strict all-target
+lint in both modes, Rustdoc, format, public types, 124 SDK contracts and all 203
+candidate-plan/verifier laws. Source, fresh installed packages and the executed
+minified bundle each pass all ten seven-author modes, now also requiring the
+complete native path. Original predecessor checks and normal Wasm stay unchanged.
+This does not execute every stage of the 584/592-stage candidate profiles.
+
+Separately, the [coupled journal development contract](SELECTED_DELIVERY_JOURNAL_DEVELOPMENT.md)
+passes 141 fresh tests, including all prior 136. It exclusively owns the genuine
+preparation gate and actual adapter drain, records complete immutable progress,
+and automatically stops delivery on recording failure. A genuinely committed
+but delayed receipt callback holds recording open; a post-commit policy refusal
+preserves facts but closes the real gate before further work. All seven native
+histories remain usable. The prototype is unmerged and not installed-qualified.
+
+Authenticated remote complete-path control, fresh cold resume/reapproval,
+unbound-source adoption, metadata transport custody and joint provider/client/
+whole-room activation remain required. All thirteen V1 gates stay open.
+
 ## Ordered intermediate cuts and factual delivery journal
 
 The [native service fixture](SELECTED_DELIVERY_NATIVE_SERVICE.md) now accepts a

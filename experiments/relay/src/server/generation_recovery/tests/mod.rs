@@ -15,3 +15,5 @@ mod durable_native_activation;
 mod delivery_continuation;
 
 mod delivery_control;
+
+mod delivery_path;

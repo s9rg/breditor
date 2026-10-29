@@ -1,0 +1,284 @@
+{
+  "format": "breditor/ordered-delivery-path-and-coupled-journal-qualification",
+  "formatVersion": 1,
+  "functionalPassed": true,
+  "releaseReady": false,
+  "v1GatesClosed": 0,
+  "v1GatesTotal": 13,
+  "baseCommit": "f60b9b3083a5d352619175a36074f7016e20e9c2",
+  "qualifiedSource": {
+    "commit": "f60b9b3083a5d352619175a36074f7016e20e9c2",
+    "dirty": true,
+    "sha256": "1c154f8c09ad5c7dad2dc6669d066c01bf1e92b865b3bf4cbc0dabb399eb0b92",
+    "files": 7358,
+    "bytes": 55788802
+  },
+  "sourceUnchangedDuringQualification": true,
+  "scope": "Complete ordered native predecessor verification, original native and control regressions, all candidate-plan contracts and unchanged source/installed/executed-bundle real-service workflows. Fixture JSON is data, not portable authorization. NOT authenticated remote complete-path control, cold editing resume, unbound adoption, metadata outbox or whole-room activation.",
+  "stages": [
+    {
+      "id": "sdk-build",
+      "status": "passed",
+      "startedAt": "2026-10-29T11:35:10.340Z",
+      "finishedAt": "2026-10-29T11:35:11.372Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-ordered-path-qualified-9QMBi3/sdk-build.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "sdk-control-contracts",
+      "status": "passed",
+      "startedAt": "2026-10-29T11:35:11.950Z",
+      "finishedAt": "2026-10-29T11:35:12.381Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 21909,
+      "logPath": "/private/tmp/breditor-ordered-path-qualified-9QMBi3/sdk-control-contracts.log",
+      "logSha256": "8bd4e66ab853f83e2b7e2fe1a39d6a3496f14657939da6acc99c8bc75e283fd1",
+      "tests": 124
+    },
+    {
+      "id": "strict-public-types",
+      "status": "passed",
+      "startedAt": "2026-10-29T11:35:13.139Z",
+      "finishedAt": "2026-10-29T11:35:13.909Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-ordered-path-qualified-9QMBi3/strict-public-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "format",
+      "status": "passed",
+      "startedAt": "2026-10-29T11:35:14.952Z",
+      "finishedAt": "2026-10-29T11:35:15.893Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-ordered-path-qualified-9QMBi3/format.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "strict-server-all-targets",
+      "status": "passed",
+      "startedAt": "2026-10-29T11:35:16.514Z",
+      "finishedAt": "2026-10-29T11:35:18.077Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 560,
+      "logPath": "/private/tmp/breditor-ordered-path-qualified-9QMBi3/strict-server-all-targets.log",
+      "logSha256": "edc9c2ce0200e9d7c9ef630396f9307eb69d44b22780b00ba8fd97bc2bcf7fe5"
+    },
+    {
+      "id": "strict-no-server-all-targets",
+      "status": "passed",
+      "startedAt": "2026-10-29T11:35:18.730Z",
+      "finishedAt": "2026-10-29T11:35:19.222Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 560,
+      "logPath": "/private/tmp/breditor-ordered-path-qualified-9QMBi3/strict-no-server-all-targets.log",
+      "logSha256": "601fb75ba6daafe3094782712b7bebac45629841fbf69bd52a5424180a27d761"
+    },
+    {
+      "id": "strict-docs",
+      "status": "passed",
+      "startedAt": "2026-10-29T11:35:20.304Z",
+      "finishedAt": "2026-10-29T11:35:34.288Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 729,
+      "logPath": "/private/tmp/breditor-ordered-path-qualified-9QMBi3/strict-docs.log",
+      "logSha256": "6a26f45a3b535135b2afedc28b5073e0fbafe16c6c03b7f95a0512c771fd2211"
+    },
+    {
+      "id": "real-native-host-build",
+      "status": "passed",
+      "startedAt": "2026-10-29T11:35:37.391Z",
+      "finishedAt": "2026-10-29T11:35:38.141Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 536,
+      "logPath": "/private/tmp/breditor-ordered-path-qualified-9QMBi3/real-native-host-build.log",
+      "logSha256": "e1733c4515838b474ca4aa314e66f2083b605846086297ee9969ddf3d007f784"
+    },
+    {
+      "id": "all-candidate-plan-and-verifier-contracts",
+      "status": "passed",
+      "startedAt": "2026-10-29T11:35:38.848Z",
+      "finishedAt": "2026-10-29T11:35:42.502Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 48423,
+      "logPath": "/private/tmp/breditor-ordered-path-qualified-9QMBi3/all-candidate-plan-and-verifier-contracts.log",
+      "logSha256": "1046e6122591f7991c43390074092be1e8559321579dd0bb294d846cc7fb286b",
+      "tests": 203
+    },
+    {
+      "id": "source-real-service-ten-modes",
+      "status": "passed",
+      "startedAt": "2026-10-29T11:35:43.309Z",
+      "finishedAt": "2026-10-29T11:38:22.960Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 2742,
+      "logPath": "/private/tmp/breditor-ordered-path-qualified-9QMBi3/source-real-service-ten-modes.log",
+      "logSha256": "3ce2b09d2f90068fab7af721bc1791a2688819fbe8a4c8dd6e0de225048e03c6",
+      "tests": 10
+    },
+    {
+      "id": "fresh-installed-and-executed-bundle",
+      "status": "passed",
+      "startedAt": "2026-10-29T11:38:25.397Z",
+      "finishedAt": "2026-10-29T11:43:04.952Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 14858,
+      "logPath": "/private/tmp/breditor-ordered-path-qualified-9QMBi3/fresh-installed-and-executed-bundle.log",
+      "logSha256": "2cc821d29a7c27f46f763f289d4719306d7d85691050472400c082c767c6233d"
+    },
+    {
+      "id": "full-server-native",
+      "status": "passed",
+      "startedAt": "2026-10-29T11:43:05.519Z",
+      "finishedAt": "2026-10-29T11:53:17.617Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 94781,
+      "logPath": "/private/tmp/breditor-ordered-path-qualified-9QMBi3/full-server-native.log",
+      "logSha256": "a3dcb7604ddcc0aa73416784ed1a53fa21d342fef9f7ae912b8f0d2384b8dda6",
+      "tests": 565
+    },
+    {
+      "id": "full-no-server-native",
+      "status": "passed",
+      "startedAt": "2026-10-29T11:53:19.335Z",
+      "finishedAt": "2026-10-29T11:58:25.826Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 38587,
+      "logPath": "/private/tmp/breditor-ordered-path-qualified-9QMBi3/full-no-server-native.log",
+      "logSha256": "312911d6d33d897a8a8f494a0bdaa1b2599d682341c503d529ebafa478e0262d",
+      "tests": 273
+    }
+  ],
+  "fresh": {
+    "fullRustServer": 565,
+    "fullRustNoServer": 273,
+    "newNativeTestFunctions": 4,
+    "newOpaqueCompileFailBoundaries": 2,
+    "newNativeHistoryModes": 40,
+    "actualNativeIdenticalRasterForkCounterexample": true,
+    "sdkControlContracts": 124,
+    "allCandidatePlanAndVerifierLaws": 203,
+    "strictBothRustAllTargets": true,
+    "strictRustdoc": true,
+    "format": true,
+    "strictPublicTypes": true,
+    "sourceModes": 10,
+    "installedModes": 10,
+    "executedMinifiedBundleModes": 10,
+    "authorsPerMatrix": 70,
+    "futureNativeHistoryStepsTotal": 840,
+    "exactColdPairedReopens": 210,
+    "completeOrderedNativePathRequiredInEveryCase": true,
+    "originalDefaultPredecessorChecksRetained": true,
+    "installedUnchangedWireLaws": {
+      "tests": 34,
+      "passed": 34,
+      "skipped": 0,
+      "unchangedAssertions": true,
+      "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-selected-delivery-installed-fMIaDg/consumer/generation-delivery-control.tap",
+      "sha256": "081163cc25e79701a008d1188c2b3cb35513faf533b0b5c344cd7a275a7ecc0e"
+    },
+    "workspaceLinks": false
+  },
+  "installed": {
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-selected-delivery-installed-fMIaDg/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-selected-delivery-installed-fMIaDg/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-selected-delivery-installed-fMIaDg/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "bf38e05fb230df1f98884bdc72c856dd7b2b6b8d75a9eba4a3d9a7cc89ffa7cc"
+      }
+    ],
+    "registryArtifacts": 45,
+    "executedProductionBundle": {
+      "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-selected-delivery-installed-fMIaDg/consumer/bundle/selected-delivery.mjs",
+      "sha256": "65cbda768dd468b493f7544cb6bd9e006bdb1ff6c67680be8ec769d59a4ab49b",
+      "modules": 101
+    },
+    "nativeHostSha256": "c1ef3e817ce2682552ce43ba10f1298798598f383a74fdb33db0b79be6661567",
+    "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0"
+  },
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/ordered-native-delivery-path-proof-fnLcLv",
+    "indexSha256": "17d71b702fcef35846690a58cf8d3cb97a1a34b921c45fa2e7073e22ff2c0ecf",
+    "files": 56,
+    "bytes": 14397940
+  },
+  "nativeContract": {
+    "family": "breditor/server-log-generation-delivery-path",
+    "formatVersion": 1,
+    "limits": {
+      "ancestors": 4096,
+      "completeEncodedArchiveBytes": 2147483648
+    },
+    "sameActualHostAndOwner": true,
+    "weakHostOwnership": true,
+    "everyAdjacentCompleteNativeAndRasterInclusionRequired": true,
+    "noMutationReceiptOrActivation": true,
+    "remoteControlAndFreshEditingResumeNotImplemented": true
+  },
+  "development": {
+    "notMerged": true,
+    "qualification": "/private/tmp/breditor-coupled-journal-qualified-v1hozb/result.json",
+    "proof": {
+      "directory": "/Users/s/code/breditor/target/coupled-delivery-journal-proof-wGCuR7",
+      "indexSha256": "a2c3279e4688fb920fa5cb55168fa9785e1a4decbc693c2fed691804cdcacbe4",
+      "files": 76,
+      "bytes": 1663504
+    },
+    "tests": 141,
+    "strictPrototypeAndPrivateTypes": true,
+    "scope": "Same actual retained-owner preparation, exclusive journal/delivery handoff, true native-work drain before recording, serialized bound-source progress, automatic stop on committed-but-refused recording and readable immutable facts without reopening permission. Includes all136 prior prototype tests and fresh strict private type fences. Synthetic Node IDB/locks; not physical durability, installed release qualification, fresh cold editing resume, unbound adoption, metadata settlement or whole-room activation.",
+    "newCoordinator": "packages/breditor-collaboration/src/selected_delivery_journal/coordinator.ts",
+    "exclusivePreparedGateClaim": true,
+    "actualWorkDrainedBeforeJournalCheckpoint": true,
+    "recordFailureAutomaticallyStopsActualGate": true,
+    "sourceConstructionSerializedWithRecording": true,
+    "callbackInputMutationCannotRetargetSelectedReaders": true,
+    "closeWaitsInitializationAndRecording": true,
+    "committedButRefusedFactsRemainDataOnly": true,
+    "actualFailureModel": "Two actual bound document/review source pairs delivered. The second complete journal append commits, then authority is revoked by the transaction completion callback. The coupled coordinator automatically closes the actual preparation/delivery gate before rejection; adapters close, further construction refuses and all three complete factual cuts remain readable. No manual gate-close or fresh editing grant is inferred.",
+    "actualHappyModel": "Four genuine bound families deliver serially through the same retained seven-family owner. Recording waits for a deliberately held committed original persistent review-receipt callback and keeps actual native recovery exclusion. Actual scope/client/provider/native cuts are rechecked before and after complete immutable append; all seven native cores retain future document and review Undo/Redo. Three local review lanes remain explicitly unbound.",
+    "allPrior136PrototypeTestsFresh": true,
+    "limitations": [
+      "Prototype is not merged, root-exported, installed-qualified or cold editing resume",
+      "Synthetic Node IndexedDB/locks; not physical process/browser durability",
+      "Full ArrayBuffer retention/comparison and complete native path retention still need size/performance qualification",
+      "Three local review lanes remain unbound; no new actors, ACKs or provider adoption are manufactured"
+    ]
+  },
+  "remaining": [
+    "Separate authenticated complete-path native/provider control and genuine private SDK composition before cold resume",
+    "Fresh re-admission of every saved journal/client/server/inventory cut, complete native path and source continuation; explicit fresh approval must create a new runtime gate",
+    "Actual unbound-source native/comment adoption without relabeling original file families",
+    "Constructor-owned suggestion/revision/version transport/token/endpoint custody and actual receipts",
+    "Complete assets/provider/client reconciliation and authenticated whole-room activation",
+    "Sustainable long-session qualification and all remaining parity/release gates; no historical intermittent fault is declared repaired"
+  ],
+  "noPushPublishTagVersionOrDeployment": true
+}

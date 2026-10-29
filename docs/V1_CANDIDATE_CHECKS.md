@@ -1,5 +1,17 @@
 # V1 candidate checks
 
+The [complete-path/coupled-journal qualification](qualification/2026-10-29-ordered-delivery-path-coupled-journal.json)
+freshly passes 565 server/273 no-server Rust tests, both strict all-target lint
+modes, Rustdoc, format, public types, 124 SDK contracts and all 203 candidate-plan/
+verifier laws. All thirty seven-author source/installed/executed-bundle cases
+require the actual complete ordered native path and original predecessor checks;
+34 unchanged installed wire laws also pass. Normal Wasm is unchanged. A separate
+141-test development qualification verifies actual quiescence, exclusive gate
+handoff and automatic stop on committed-but-refused recording, preserving facts
+without reopening permission. It is not merged, installed journal qualification,
+physical durability, authenticated remote path control or fresh cold editing
+resume. The complete 584/592-stage plans and all thirteen V1 gates remain open.
+
 The [intermediate-cut/journal qualification](qualification/2026-10-29-chained-delivery-journal.json)
 freshly passes ten native guard tests, strict Rust/SDK checks, 124 SDK contracts,
 79 candidate/plan laws and all ten seven-author source/installed/bundled modes.

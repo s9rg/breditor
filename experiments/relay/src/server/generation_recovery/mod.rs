@@ -31,6 +31,11 @@ pub use delivery_continuation::{
     ServerLogGenerationDeliveryContinuationIdentity,
     VerifiedServerLogGenerationDeliveryContinuation,
 };
+mod delivery_path;
+pub use delivery_path::{
+    MAX_DELIVERY_PATH_ANCESTORS, MAX_DELIVERY_PATH_ARCHIVE_BYTES,
+    ServerLogGenerationDeliveryPathIdentity, VerifiedServerLogGenerationDeliveryPath,
+};
 mod capture;
 pub use asset_state::ServerLogGenerationAssetRecoveryState;
 mod coordinator;

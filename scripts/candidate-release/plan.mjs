@@ -60,6 +60,8 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   relayCargo("relay-durable-native-activation-public",["test","--features","server","--locked","--offline","--release","--test","log_generations","ten_durable_public_native","--","--nocapture"]),
   stage('native-delivery-continuation-plan-contracts',node,['--test','scripts/delivery-continuation-candidate-plan.test.mjs']),
   relayCargo('relay-delivery-continuation-native',['test','--features','server','--locked','--offline','--release','--lib','server::generation_recovery::tests::delivery_continuation','--','--nocapture']),
+  stage('native-delivery-path-plan-contracts',node,['--test','scripts/delivery-path-candidate-plan.test.mjs']),
+  relayCargo('relay-delivery-path-native',['test','--features','server','--locked','--offline','--release','--lib','delivery_path','--','--nocapture']),
   stage('native-delivery-control-plan-contracts',node,['--test','scripts/delivery-control-candidate-plan.test.mjs']),
   relayCargo('relay-delivery-control-native',['test','--features','server','--locked','--offline','--release','--lib','server::generation_recovery::tests::delivery_control','--','--nocapture']),
   relayCargo("relay-room-backups",["test","--features","server","--locked","--offline","--release","--test","room_backups"]),
