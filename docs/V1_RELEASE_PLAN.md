@@ -13,6 +13,32 @@ the FCKeditor lineage. CKEditor 4 reached ordinary EOL in June 2023; its
 is not the modern feature baseline. Breditor remains an independent implementation:
 no ProseMirror, Tiptap or CKEditor document, operation or plugin protocol is adopted.
 
+## Ordered intermediate cuts and factual delivery journal
+
+The [native service fixture](SELECTED_DELIVERY_NATIVE_SERVICE.md) now accepts a
+separately named genuine observed intermediate predecessor. Ordinary snapshots
+still select the initial target serving cut. No editor, native control, source
+family or storage default changes. The [qualification](qualification/2026-10-29-chained-delivery-journal.json)
+passes ten focused native test functions, strict Rust checks, 124 SDK contracts,
+79 plan/verifier laws and source/installed/executed-bundle matrices: all thirty
+seven-author cases require actual C1 <= C2 as well as the original B <= C2 check.
+The unchanged full 559/273 Rust baseline is carried, not freshly rerun here.
+
+Separately, the retained-owner development prototype passes 136 fresh tests.
+Its distinct append-only factual journal stores complete client, server and
+inventory bytes, compares every retained byte inside the append transaction,
+and read-admits all nested families after commit. A real interrupted two-source
+delivery test preserves a committed-but-refused record, explicitly closes its
+preparation gate, reloads all cuts and keeps undelivered suffixes Pending.
+Same-length byte replacement refuses before append. Old execution stages and
+ACK meanings are not reused. The 4,096-event/2 GiB journal refuses exhaustion
+without trimming history; its full-byte memory cost is not yet size-qualified.
+
+This is not editing resume: coupling the journal and source/gate cleanup,
+fresh native complete-chain authorization, reapproval, unbound-source adoption,
+metadata outboxes and joint activation remain required. The development code
+is not merged or installed-qualified. All thirteen V1 gates remain open.
+
 ## Authenticated previous/current server recovery reads
 
 The [separate control contract](SERVER_DELIVERY_CONTROL.md) now composes the

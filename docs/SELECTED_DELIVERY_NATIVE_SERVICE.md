@@ -26,6 +26,28 @@ endpoints do not change. Earlier snapshot files are never overwritten. Offline
 client seeds in those files remain the original immutable seeds, not fabricated
 newly reconciled client state.
 
+## Explicit intermediate predecessors
+
+Ordinary snapshots continue to select the first actual target serving cut as
+previous B. The separately named refreshAfter(observedCase) requests a proof
+against that actual previously observed complete archive, not a caller path,
+mutated selection object, scalar counter or saved ready marker. The native host
+retains complete snapshot bytes in a private observed-sequence registry; both
+ancestry links are verified again using the existing public native API.
+
+The helper accepts only its own genuine observed case objects, copies their pins
+privately, checks the native echoed predecessor sequence, and checks every public
+snapshot against that independently selected complete cut. Old cases and files
+remain intact. Endpoints, editor protocols, history lanes and ordinary snapshot
+meaning do not change. This private fixture command is not an editing or public
+recovery endpoint.
+
+Every ten-mode source/installed/bundled workflow now captures C1 after the first
+actual author delivery, delivers the other six authors, then verifies C1 <= C2
+through an authenticated new control while retaining A/B and C1. It also retains
+the ordinary B <= C2 check and confirms those reads change no client recovery.
+This warm observed chain is not a cold complete-chain resume authorization.
+
 ## Private authentication
 
 The host generates distinct source/target account tokens, actual native writer

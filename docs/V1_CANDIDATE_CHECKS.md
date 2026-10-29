@@ -1,5 +1,16 @@
 # V1 candidate checks
 
+The [intermediate-cut/journal qualification](qualification/2026-10-29-chained-delivery-journal.json)
+freshly passes ten native guard tests, strict Rust/SDK checks, 124 SDK contracts,
+79 candidate/plan laws and all ten seven-author source/installed/bundled modes.
+Every case requires an actual intermediate predecessor while retaining the old
+initial-predecessor check. Production libraries and normal Wasm are unchanged;
+the full 559/273 Rust baseline is carried, not freshly rerun. A separate 136-test
+development qualification covers factual journal storage, interrupted native
+delivery, exact-byte CAS and all prior 112 retained-owner tests. It is unmerged,
+not fresh editing resume, not installed journal qualification and not physical
+durability. Whole-plan qualification and all thirteen V1 gates remain open.
+
 The [authenticated delivery-control qualification](qualification/2026-10-29-authenticated-delivery-control.json)
 passes 559 server/273 no-server Rust tests, both strict lint modes, Rustdoc,
 format, 124 SDK contracts and 77 plan/verifier laws. All ten seven-author modes

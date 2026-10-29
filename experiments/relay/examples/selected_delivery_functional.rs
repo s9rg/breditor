@@ -9,6 +9,8 @@ mod authentication;
 mod clients;
 #[path = "selected_delivery_host/credentials.rs"]
 mod credentials;
+#[path = "selected_delivery_host/next.rs"]
+mod next;
 #[path = "selected_delivery_host/protocol.rs"]
 mod protocol;
 #[path = "generation_complete_control/public_inputs.rs"]
@@ -64,9 +66,18 @@ async fn main() -> Result {
     let mut controls = Vec::new();
     let mut input = protocol::read();
     let mut sequence = 0_u64;
+    let mut previous = None;
+    let mut observed = std::collections::BTreeMap::new();
     loop {
-        let snapshot =
-            Box::pin(snapshot::capture(&ready, sequence, &endpoint, &old_endpoint)).await?;
+        let snapshot = Box::pin(snapshot::capture(
+            &ready,
+            sequence,
+            &endpoint,
+            &old_endpoint,
+            previous.as_ref(),
+        ))
+        .await?;
+        observed.insert(sequence, snapshot.archive);
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
         let mut public = snapshot.public;
         public["endpoint"] = serde_json::json!(format!(
@@ -83,25 +94,11 @@ async fn main() -> Result {
             &serde_json::json!({"kind":"snapshot","format":"breditor/native-selected-delivery-host", "formatVersion":1,
             "request":sequence,"case":public,"privateOperatorToken":snapshot.operator_token}),
         )?;
-        let next = loop {
-            tokio::select! {
-                result = tokio::signal::ctrl_c() => { result?; break None; }
-                command = input.recv() => match command {
-                    None => break None,
-                    Some(Err(error)) => return Err(error),
-                    Some(Ok(protocol::Request::Snapshot { request })) => break Some(request),
-                    Some(Ok(protocol::Request::Credentials { request, writer, actor, retired })) => {
-                        protocol::reply(&protocol::credentials(&ready, request, &writer, &actor, retired)?)?;
-                    }
-                }
-            }
-        };
-        let Some(request) = next else {
+        let Some((request, selected)) = next::read(&ready, &mut input, &observed, sequence).await?
+        else {
             break;
         };
-        if request <= sequence {
-            return Err("private snapshot sequence must increase".into());
-        }
+        previous = selected;
         sequence = request;
     }
     for control in controls {

@@ -1,0 +1,263 @@
+{
+  "format": "breditor/chained-native-delivery-and-factual-journal-qualification",
+  "formatVersion": 1,
+  "functionalPassed": true,
+  "releaseReady": false,
+  "v1GatesClosed": 0,
+  "v1GatesTotal": 13,
+  "baseCommit": "75a05899c2800b5bef38f5b38d23d71ea27816e5",
+  "qualifiedSource": {
+    "commit": "75a05899c2800b5bef38f5b38d23d71ea27816e5",
+    "dirty": true,
+    "sha256": "c19fa2c8b7e79e35689d09531b2a9825bd1074bdf89c335aef6d7a7e8edcca79",
+    "files": 7344,
+    "bytes": 55737091
+  },
+  "sourceUnchangedDuringQualification": true,
+  "scope": "Real selected intermediate complete predecessor and unchanged initial predecessor: warm native proof, SDK/authenticated reads, actual source/installed/bundled seven-author workflows in all ten modes. Production Rust library/SDK source unchanged. NOT cold complete-chain resume authorization, isolated journal implementation, full-plan or V1 readiness.",
+  "stages": [
+    {
+      "id": "sdk-build",
+      "status": "passed",
+      "startedAt": "2026-10-29T10:20:04.023Z",
+      "finishedAt": "2026-10-29T10:20:05.144Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-chained-delivery-qualified-tALrFs/sdk-build.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "sdk-control-contracts",
+      "status": "passed",
+      "startedAt": "2026-10-29T10:20:05.651Z",
+      "finishedAt": "2026-10-29T10:20:06.108Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 21921,
+      "logPath": "/private/tmp/breditor-chained-delivery-qualified-tALrFs/sdk-control-contracts.log",
+      "logSha256": "256437cea06cd1e317fc7bbb9f6afdcd0f07bccc588c11e9931b942ab4e25dd0"
+    },
+    {
+      "id": "strict-public-types",
+      "status": "passed",
+      "startedAt": "2026-10-29T10:20:06.585Z",
+      "finishedAt": "2026-10-29T10:20:06.840Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-chained-delivery-qualified-tALrFs/strict-public-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "format",
+      "status": "passed",
+      "startedAt": "2026-10-29T10:20:07.293Z",
+      "finishedAt": "2026-10-29T10:20:08.104Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-chained-delivery-qualified-tALrFs/format.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "strict-server-all-targets",
+      "status": "passed",
+      "startedAt": "2026-10-29T10:20:08.586Z",
+      "finishedAt": "2026-10-29T10:20:09.064Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 560,
+      "logPath": "/private/tmp/breditor-chained-delivery-qualified-tALrFs/strict-server-all-targets.log",
+      "logSha256": "b35545eda45c47d47c427b35b00f932cc06deed0d4786701d60696b3bb0d195a"
+    },
+    {
+      "id": "strict-no-server-all-targets",
+      "status": "passed",
+      "startedAt": "2026-10-29T10:20:09.552Z",
+      "finishedAt": "2026-10-29T10:20:09.868Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 560,
+      "logPath": "/private/tmp/breditor-chained-delivery-qualified-tALrFs/strict-no-server-all-targets.log",
+      "logSha256": "abcc1f5c2ade3c0a74c90aed7996bb2813f77e4aa693b8e6feda5fe24a6a1078"
+    },
+    {
+      "id": "strict-docs",
+      "status": "passed",
+      "startedAt": "2026-10-29T10:20:10.340Z",
+      "finishedAt": "2026-10-29T10:20:18.096Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 728,
+      "logPath": "/private/tmp/breditor-chained-delivery-qualified-tALrFs/strict-docs.log",
+      "logSha256": "184bd697ecfc0e72adc5890bfea624a7422e75349486de9bcd0b521511bdaf70"
+    },
+    {
+      "id": "complete-native-delivery-controls",
+      "status": "passed",
+      "startedAt": "2026-10-29T10:20:18.623Z",
+      "finishedAt": "2026-10-29T10:22:13.684Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 2686,
+      "logPath": "/private/tmp/breditor-chained-delivery-qualified-tALrFs/complete-native-delivery-controls.log",
+      "logSha256": "27f29b1d6611ddf5d18dfbc430c4b1b0210dbab1bd2dbe891fee7eeb2534c6ac"
+    },
+    {
+      "id": "real-native-host-build",
+      "status": "passed",
+      "startedAt": "2026-10-29T10:22:15.122Z",
+      "finishedAt": "2026-10-29T10:22:15.430Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 536,
+      "logPath": "/private/tmp/breditor-chained-delivery-qualified-tALrFs/real-native-host-build.log",
+      "logSha256": "ae6451976a28cc33a17a7082a228df9fe20c9561d1e13593467d1f63bcf8937c"
+    },
+    {
+      "id": "candidate-and-plan-contracts",
+      "status": "passed",
+      "startedAt": "2026-10-29T10:22:15.882Z",
+      "finishedAt": "2026-10-29T10:22:17.390Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 19210,
+      "logPath": "/private/tmp/breditor-chained-delivery-qualified-tALrFs/candidate-and-plan-contracts.log",
+      "logSha256": "a617ce14952fb24728ea98a8e175fd92c593101dc7b7bbda9fcb1b2fde156a6e"
+    },
+    {
+      "id": "source-real-service-ten-modes",
+      "status": "passed",
+      "startedAt": "2026-10-29T10:22:17.872Z",
+      "finishedAt": "2026-10-29T10:24:16.904Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 2745,
+      "logPath": "/private/tmp/breditor-chained-delivery-qualified-tALrFs/source-real-service-ten-modes.log",
+      "logSha256": "b856261c4d0ebf224f60fea6680246a8ae91f28a5a932a17d60d672b458812d1"
+    },
+    {
+      "id": "fresh-installed-and-executed-bundle",
+      "status": "passed",
+      "startedAt": "2026-10-29T10:24:17.390Z",
+      "finishedAt": "2026-10-29T10:28:39.058Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 14158,
+      "logPath": "/private/tmp/breditor-chained-delivery-qualified-tALrFs/fresh-installed-and-executed-bundle.log",
+      "logSha256": "7833f0365ed0b6ef08f8e11558450cad6e6b03362fd307e356182fe936c840e0"
+    }
+  ],
+  "fresh": {
+    "focusedNativeTestFunctions": 10,
+    "nativeHistoryModesInExistingGuards": 80,
+    "sdkControlContracts": 124,
+    "candidateAndPlanLaws": 79,
+    "strictBothRustAllTargets": true,
+    "strictRustdoc": true,
+    "format": true,
+    "strictPublicTypes": true,
+    "sourceModes": 10,
+    "installedModes": 10,
+    "executedMinifiedBundleModes": 10,
+    "authorsPerMatrix": 70,
+    "futureNativeHistoryStepsTotal": 840,
+    "exactColdPairedReopens": 210,
+    "genuineIntermediatePredecessorRequiredInEveryCase": true,
+    "originalDefaultPredecessorChecksRetained": true,
+    "installedUnchangedWireLaws": {
+      "tests": 34,
+      "passed": 34,
+      "skipped": 0,
+      "unchangedAssertions": true,
+      "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-selected-delivery-installed-Ow90r8/consumer/generation-delivery-control.tap",
+      "sha256": "401600ca370281c7575cdf3a1d326717753ffe3ae05103708394e43c0926f6bc"
+    },
+    "workspaceLinks": false
+  },
+  "carriedNotFresh": {
+    "server": 559,
+    "noServer": 273,
+    "report": "docs/qualification/2026-10-29-authenticated-delivery-control.json",
+    "fresh": false
+  },
+  "productionRustLibrariesAndSdkSourceUnchanged": true,
+  "installed": {
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-selected-delivery-installed-Ow90r8/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-selected-delivery-installed-Ow90r8/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-selected-delivery-installed-Ow90r8/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "bf38e05fb230df1f98884bdc72c856dd7b2b6b8d75a9eba4a3d9a7cc89ffa7cc"
+      }
+    ],
+    "registryArtifacts": 45,
+    "executedProductionBundle": {
+      "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-selected-delivery-installed-Ow90r8/consumer/bundle/selected-delivery.mjs",
+      "sha256": "11b55d88f86e466fa91df742bf79ba1813ca9400c16d73cdba9be94dfff5af0c",
+      "modules": 101
+    },
+    "nativeHostSha256": "eef2fdae282426ab26890295c4d3618372c0d67ce851f3a796a27d923430fb0f",
+    "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0"
+  },
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/chained-native-delivery-proof-YrIz27",
+    "indexSha256": "cb717b9d97af7e1e9e86d5dd65f31e81af639ae94169478dfc6574e20485a973",
+    "files": 42,
+    "bytes": 14217549
+  },
+  "development": {
+    "notMerged": true,
+    "qualification": "/private/tmp/breditor-delivery-journal-qualified-b6jWFB/result.json",
+    "proof": {
+      "directory": "/Users/s/code/breditor/target/factual-delivery-journal-proof-4Mke80",
+      "indexSha256": "e51b695e6ed3a4e58ad5caef1277f43b225502e1d105dfdcead2a5492cef730c",
+      "files": 63,
+      "bytes": 1618424
+    },
+    "tests": 136,
+    "scope": "Factual complete client/server/inventory journal with atomic absent-only start, exact-byte same-transaction compare-and-append and read-admission; actual two-bound-source interrupted native delivery, preservation of committed-but-refused cut on journal reopen, explicit pending suffixes and gate refusal;23 declaration/CAS laws and all112 prior prototype regressions. Synthetic Node IDB/locks, no physical durability claim. NOT a coupled journal/delivery coordinator, fresh approval/resume, cold native complete-chain authorization, unbound adoption, metadata settlement, installed qualification or V1 readiness.",
+    "newFolder": "packages/breditor-collaboration/src/selected_delivery_journal",
+    "newFiles": [
+      "contract.ts",
+      "policy.ts",
+      "identity.ts",
+      "rows.ts",
+      "admission.ts",
+      "store.ts",
+      "resources.ts"
+    ],
+    "actualFailureModel": "Two actual bound source pairs delivered and drained; second journal append commits then its authority callback refuses. Preparation gate is explicitly closed, further adapters refuse, fresh journal read retains all three complete original/current client-server-inventory cuts, remaining offline suffixes stay Pending. This is journal reopen, not fresh editing resume.",
+    "sameTransactionExactByteComparison": true,
+    "noOverwritesOrHistoryTrimming": true,
+    "limits": {
+      "events": 4096,
+      "totalBytes": 2147483648
+    },
+    "limitations": [
+      "Only factual data storage; not a coupled journal/delivery coordinator or fresh approval gate",
+      "Current complete native files are fully read-admitted, not reinterpreted as a portable native replay or permission proof",
+      "Full ArrayBuffer retention/comparison has a memory cost; size/performance qualification remains open",
+      "Synthetic Node IndexedDB/locks; no physical process/browser durability or installed SDK qualification"
+    ]
+  },
+  "remaining": [
+    "Couple journal ownership and failure cleanup to genuine preparation/delivery source resources so write admission cannot escape factual persistence or quiescence",
+    "Fresh native authorization over the complete saved predecessor chain, original baseline and current server before cold editing resume; saved metadata/proof labels must not grant it",
+    "Explicit fresh reapproval and current-client/provider reconciliation at every resume, preserving all originals and outstanding work",
+    "Three unbound local families still need explicit comment/native-author adoption",
+    "Actual suggestion/revision/version transport and token custody, complete assets/provider/client closure and authenticated whole-room activation",
+    "Historical WebKit/native parallel TCP faults are not repaired here; all thirteen V1 gates and full parity remain open"
+  ],
+  "noPushPublishTagVersionOrDeployment": true
+}

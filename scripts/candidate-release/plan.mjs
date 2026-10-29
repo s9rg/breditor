@@ -396,6 +396,7 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   script('relay-quiescence','check-relay-quiescence-sdk.mjs',[],[{path:'target/relay-quiescence-sdk.json',fresh:true}],1800000),
   script('installed-relay-quiescence','check-relay-quiescence-installed.mjs',[],[{path:'target/relay-quiescence-installed-consumer.json',fresh:true}],1800000),
   stage('selected-delivery-plan-contracts',node,['--test','scripts/selected-delivery-candidate-plan.test.mjs']),
+  stage('chained-delivery-plan-contracts',node,['--test','scripts/chained-delivery-candidate-plan.test.mjs']),
   stage('delivery-control-sdk-contracts',node,['--test','scripts/generation-delivery-control.test.mjs']),
   stage('delivery-control-public-types',node,['node_modules/typescript/bin/tsc','--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM','scripts/fixtures/editor-consumer/types-generation-delivery-recovery-control.ts']),
   relayCargo('selected-delivery-native-host',['build','--example','selected_delivery_functional','--features','server','--locked','--offline','--release'],[executablePath('selected_delivery_functional')]),

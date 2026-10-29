@@ -10,6 +10,7 @@ use std::sync::Arc;
 
 pub(super) struct Snapshot {
     pub public: Value,
+    pub archive: Arc<breditor_collab_relay::ServerLogGenerationRoomBackup>,
     pub operator_token: String,
     pub control: ServerLogGenerationDeliveryRecoveryControl,
     pub router: axum::Router,
@@ -19,6 +20,7 @@ pub(super) async fn capture(
     sequence: u64,
     client_endpoint: &str,
     retired_endpoint: &str,
+    predecessor: Option<&super::next::Previous>,
 ) -> Result<Snapshot> {
     let host = ready.active.recovery_host();
     let capture = host.capture_recovery_state("owner", &ready.owner_token).await?;
@@ -40,7 +42,11 @@ pub(super) async fn capture(
             .set(Arc::new(initial))
             .map_err(|_| "initial serving cut already pinned")?;
     }
-    let previous = ready.initial_snapshot.get().ok_or("initial serving cut absent")?;
+    let (previous_sequence, previous) = if let Some((sequence, archive)) = predecessor {
+        (*sequence, archive)
+    } else {
+        (0, ready.initial_snapshot.get().ok_or("initial serving cut absent")?)
+    };
     let continuation = host
         .verify_delivery_continuation(
             "owner",
@@ -103,8 +109,8 @@ pub(super) async fn capture(
         current: &current.to_bytes()?,
         credentials: &credentials,
     })?;
-    let public = json!({"path":path,"selection":selected_current,"deliverySelection":selected_delivery,"sequence":sequence,
+    let public = json!({"path":path,"selection":selected_current,"deliverySelection":selected_delivery,"sequence":sequence,"previousSequence":previous_sequence,
         "clientEndpoint":client_endpoint,"retiredEndpoint":retired_endpoint,
         "nativeProtectedStreamsVerified":true,"nativeProviderVerified":true,"nativeDeliveryContinuationVerified":true});
-    Ok(Snapshot { public, operator_token, control, router })
+    Ok(Snapshot { public, archive: Arc::new(current), operator_token, control, router })
 }
