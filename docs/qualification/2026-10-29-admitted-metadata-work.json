@@ -1,0 +1,326 @@
+{
+  "format": "breditor/metadata-admitted-work-qualification",
+  "formatVersion": 1,
+  "functionalPassed": true,
+  "releaseReady": false,
+  "v1GatesOpen": 13,
+  "v1GatesClosed": 0,
+  "baseCommit": "990d7be012bb49357f6ca2f72b906c793d883b7a",
+  "qualifiedSource": {
+    "commit": "990d7be012bb49357f6ca2f72b906c793d883b7a",
+    "dirty": true,
+    "sha256": "889a584f40cae00ba598a049ba92760bdd327a5449e7784013baeab132ffecc9",
+    "files": 7512,
+    "bytes": 56704568
+  },
+  "sourceUnchangedDuringQualification": true,
+  "logicAndTestsUnchangedAfterQualification": true,
+  "scope": "Explicit synchronous/asynchronous per-call work admission on an existing ordinary store work owner. A separate actual admitted witness and the original owner retain each real promise; ordinary entry permissions are unchanged. Throws/rejections, overlap, retirement and accidental async staging preserve native exclusion until actual settlement. This is a scheduling prerequisite for metadata ports, not complete metadata networking.",
+  "reproduced": {
+    "asynchronousStagingReturnReleasedWitness": true,
+    "beforeTests": 9,
+    "beforePasses": 8,
+    "beforeFailures": 1,
+    "noSkipsOrCancellations": true,
+    "exactBeforeSourcesAndLogRetained": true,
+    "repair": "Types refuse asynchronous staging; JavaScript misuse reports refusal but retains its real promise and work-owner retirement callback until settlement."
+  },
+  "directTests": 518,
+  "nestedInstalledTests": 25,
+  "directBreakdown": {
+    "nativeOwnedIngressAndPerCallWork": 25,
+    "existingNativeDeliveryAndMetadataRegressions": 106,
+    "generationOperatorSdkLaws": 109,
+    "candidatePlanVerifierAndStorageLaws": 278
+  },
+  "perCallWorkLaws": 9,
+  "nativeOwnedIngressInputMembershipLaws": 16,
+  "authenticatedSourceMetadataPolicies": {
+    "versions": 4,
+    "ownedSuggestions": 6,
+    "revisions": 6
+  },
+  "actualNativeOwnedHistoryPolicies": 6,
+  "actualPostCommitAuthorityRefusalCases": 1,
+  "strictSourceTypeStages": 6,
+  "strictInstalledTypeStages": 1,
+  "stages": [
+    {
+      "id": "delivery-journal-resume-private-types",
+      "status": "passed",
+      "startedAt": "2026-10-29T20:49:00.792Z",
+      "finishedAt": "2026-10-29T20:49:01.855Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-admitted-metadata-work-wmhgkO/qualified-YYEOMd/delivery-journal-resume-private-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "local-review-restore-private-types",
+      "status": "passed",
+      "startedAt": "2026-10-29T20:49:00.785Z",
+      "finishedAt": "2026-10-29T20:49:03.191Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-admitted-metadata-work-wmhgkO/qualified-YYEOMd/local-review-restore-private-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "selected-room-storage-private-types",
+      "status": "passed",
+      "startedAt": "2026-10-29T20:49:00.784Z",
+      "finishedAt": "2026-10-29T20:49:04.323Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-admitted-metadata-work-wmhgkO/qualified-YYEOMd/selected-room-storage-private-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "local-review-delivery-private-types",
+      "status": "passed",
+      "startedAt": "2026-10-29T20:49:00.786Z",
+      "finishedAt": "2026-10-29T20:49:05.066Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-admitted-metadata-work-wmhgkO/qualified-YYEOMd/local-review-delivery-private-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "native-owned-suggestion-private-types",
+      "status": "passed",
+      "startedAt": "2026-10-29T20:49:00.780Z",
+      "finishedAt": "2026-10-29T20:49:05.988Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-admitted-metadata-work-wmhgkO/qualified-YYEOMd/native-owned-suggestion-private-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "strict-integrated-build-types",
+      "status": "passed",
+      "startedAt": "2026-10-29T20:49:00.793Z",
+      "finishedAt": "2026-10-29T20:49:06.608Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-admitted-metadata-work-wmhgkO/qualified-YYEOMd/strict-integrated-build-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "native-owned-suggestion-functional",
+      "status": "passed",
+      "startedAt": "2026-10-29T20:49:00.779Z",
+      "finishedAt": "2026-10-29T20:49:07.246Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 5859,
+      "logPath": "/private/tmp/breditor-admitted-metadata-work-wmhgkO/qualified-YYEOMd/native-owned-suggestion-functional.log",
+      "logSha256": "684a1744dbcc4dce2d7db2cab908887c1cade397a26aa828034c5991b86846ef",
+      "tests": 25
+    },
+    {
+      "id": "all-generation-operator-sdk-laws",
+      "status": "passed",
+      "startedAt": "2026-10-29T20:49:00.794Z",
+      "finishedAt": "2026-10-29T20:49:07.889Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 18164,
+      "logPath": "/private/tmp/breditor-admitted-metadata-work-wmhgkO/qualified-YYEOMd/all-generation-operator-sdk-laws.log",
+      "logSha256": "946a6a7d51e927659ef7a08113787992bda3046245b193b018f8933938b9920c",
+      "tests": 109
+    },
+    {
+      "id": "all-candidate-plan-verifier-and-native-storage-laws",
+      "status": "passed",
+      "startedAt": "2026-10-29T20:49:00.794Z",
+      "finishedAt": "2026-10-29T20:49:08.613Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 65702,
+      "logPath": "/private/tmp/breditor-admitted-metadata-work-wmhgkO/qualified-YYEOMd/all-candidate-plan-verifier-and-native-storage-laws.log",
+      "logSha256": "d044975fea4f7b8ce95c449ee5571830dc07aaa5d30d950bb9c1611fca5fba8d",
+      "tests": 278
+    },
+    {
+      "id": "metadata-version-source",
+      "status": "passed",
+      "startedAt": "2026-10-29T20:49:00.782Z",
+      "finishedAt": "2026-10-29T20:49:13.120Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 1367,
+      "logPath": "/private/tmp/breditor-admitted-metadata-work-wmhgkO/qualified-YYEOMd/metadata-version-source.log",
+      "logSha256": "c1f4119d0f22fcf9b6b1ecf31bb935e241cfb6a723b8190f80432333cc80ab37",
+      "tests": 0
+    },
+    {
+      "id": "installed-native-owned-suggestion",
+      "status": "passed",
+      "startedAt": "2026-10-29T20:49:00.781Z",
+      "finishedAt": "2026-10-29T20:49:13.660Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 292,
+      "logPath": "/private/tmp/breditor-admitted-metadata-work-wmhgkO/qualified-YYEOMd/installed-native-owned-suggestion.log",
+      "logSha256": "21a8ca30087fbc40d8a4cd47a4761a172c20613b9f037fb4b5199101994cdd1a",
+      "tests": 0
+    },
+    {
+      "id": "native-delivery-and-metadata-regressions",
+      "status": "passed",
+      "startedAt": "2026-10-29T20:49:00.793Z",
+      "finishedAt": "2026-10-29T20:49:20.687Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 31747,
+      "logPath": "/private/tmp/breditor-admitted-metadata-work-wmhgkO/qualified-YYEOMd/native-delivery-and-metadata-regressions.log",
+      "logSha256": "809ffd23158d89edf979f71b71baa042def0520517b025196578aaf8c0560f97",
+      "tests": 106
+    },
+    {
+      "id": "metadata-owned-suggestions-source",
+      "status": "passed",
+      "startedAt": "2026-10-29T20:49:00.783Z",
+      "finishedAt": "2026-10-29T20:49:35.036Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 1779,
+      "logPath": "/private/tmp/breditor-admitted-metadata-work-wmhgkO/qualified-YYEOMd/metadata-owned-suggestions-source.log",
+      "logSha256": "55a91e8f8f1d08cba5f2ac9b044d8a096a2717fbaf8d77798a36430deae4f255",
+      "tests": 0
+    },
+    {
+      "id": "metadata-revisions-source",
+      "status": "passed",
+      "startedAt": "2026-10-29T20:49:00.784Z",
+      "finishedAt": "2026-10-29T20:49:50.048Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 3510,
+      "logPath": "/private/tmp/breditor-admitted-metadata-work-wmhgkO/qualified-YYEOMd/metadata-revisions-source.log",
+      "logSha256": "1b93fbc7b4654731a4e5a28cd735a38f90e276824059c5175cb479a0cc2b112e",
+      "tests": 0
+    }
+  ],
+  "installed": {
+    "resultPath": "/private/tmp/breditor-native-owned-installed-CYKwa2/result.json",
+    "workspaceLinks": false,
+    "registryArtifacts": 45,
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/private/tmp/breditor-native-owned-installed-CYKwa2/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/private/tmp/breditor-native-owned-installed-CYKwa2/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/private/tmp/breditor-native-owned-installed-CYKwa2/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "d9be07beb6c890bbaa2736dfd51a45f47d33415d6d636e44d2dd8a6e1b908ddc"
+      }
+    ],
+    "results": [
+      {
+        "id": "strict-installed-private-and-public-types",
+        "status": "passed",
+        "startedAt": "2026-10-29T20:49:09.705Z",
+        "finishedAt": "2026-10-29T20:49:10.036Z",
+        "exitCode": 0,
+        "signal": null,
+        "logBytes": 0,
+        "logPath": "/private/tmp/breditor-native-owned-installed-CYKwa2/strict-installed-private-and-public-types.log",
+        "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "id": "native-owned-history",
+        "status": "passed",
+        "startedAt": "2026-10-29T20:49:09.703Z",
+        "finishedAt": "2026-10-29T20:49:12.792Z",
+        "exitCode": 0,
+        "signal": null,
+        "logBytes": 5858,
+        "logPath": "/private/tmp/breditor-native-owned-installed-CYKwa2/native-owned-history.log",
+        "logSha256": "31edcdc132f3ef14e22f2a812aa9786d68257e19aff27e4a909fc0878ef74d21"
+      }
+    ],
+    "tests": 25
+  },
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/admitted-metadata-work-qualified-proof-eVgJLD",
+    "indexSha256": "3436d2303df8ff296790682927af485d426dd6bf21c90f782872305e865c8c74",
+    "files": 38,
+    "bytes": 7534728,
+    "allFilesReadBackVerified": true
+  },
+  "invariants": {
+    "exactGenuinePerCoreAdmission": true,
+    "ordinaryStoreEntryNeverPromoted": true,
+    "reentrantOrdinaryMethodsStillExcluded": true,
+    "eachActualJobRetainsNativeExclusion": true,
+    "originalWorkOwnerTracksTheSamePendingPromise": true,
+    "twoLateJobsBothMustSettle": true,
+    "retiredWorkDrainsWithoutEarlyDetachment": true,
+    "failureReleasesOnlyItsOwnJob": true,
+    "synchronousStagingIsTypedSynchronous": true,
+    "accidentalAsyncStagingRetainsActualPromise": true,
+    "staleOrCopiedAdmissionCannotReplay": true,
+    "noNativeStateOrStoredAcknowledgementManufactured": true,
+    "originalProtocolAndDefaultsPreserved": true
+  },
+  "nativeBaseline": {
+    "freshlyRerunRustSuites": false,
+    "rustSourceChanged": false,
+    "carriedFrom": "docs/qualification/2026-10-29-authenticated-path-owned-work.json",
+    "serverTests": 575,
+    "noServerTests": 273,
+    "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+    "normalWasmUnchanged": true,
+    "actualNativeHostSha256": {
+      "selected_delivery_functional": "c224c4d39d5f603dcb3815ebc58c1719b59b4d6db6fe554e675f91d4cab46ea7",
+      "review_functional": "de3e1cbaafb941ad5288b7615573495199ad59f96d3dfe70891fee92a99bc23a",
+      "suggestions_functional": "920b826c46f1512363bb487ce94aa204a65a6edf8a5b797e63c0cc24f828eb1e",
+      "suggestion_revisions_functional": "84adaf40936ba7ae35bfa76f94906cc2e37da8d6bd8c2410fab6f346e305aa4d",
+      "segmented_relay_functional": "693e4d465867518e34cfc248d5de2bea54d3babba188dd935d92c728e11fd67d"
+    }
+  },
+  "plans": {
+    "functional": 626,
+    "full": 634,
+    "entirePlansExecuted": false
+  },
+  "limitations": [
+    "New per-call scheduling laws use actual Core reservations and controlled promises/retirement callbacks, not complete metadata database/network jobs.",
+    "Constructor-owned version/suggestion/revision delivery ports must still connect explicit admission to actual private store operations, original source persistence and freshly authenticated network callbacks.",
+    "Actual all-family native-held metadata receipt/outbox settlement remains required.",
+    "Complete provider/client/historical-copy/assets reconciliation and authenticated joint whole-room activation remain required.",
+    "Earlier seven-family full-storage restoration evidence is carried from its separate checkpoint, not freshly rerun here.",
+    "Node IndexedDB/WebLocks do not qualify physical browser durability or cross-device fencing.",
+    "Large complete-history materialization cost remains unqualified; no Undo/Redo or outstanding offline edits are trimmed.",
+    "Historical intermittent WebKit fault is not confirmed fixed.",
+    "Full 626/634 candidate profiles are not executed; all thirteen V1/parity gates remain open."
+  ],
+  "actions": {
+    "pushed": false,
+    "published": false,
+    "tagged": false,
+    "deployed": false,
+    "packageVersionChanged": false
+  },
+  "finishedAt": "2026-10-29T20:49:50.546Z"
+}

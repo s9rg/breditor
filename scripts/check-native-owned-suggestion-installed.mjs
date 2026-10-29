@@ -37,7 +37,7 @@ function copyScript(path){
  fs.mkdirSync(dirname(target),{recursive:true});fs.writeFileSync(target,text);copied.push({path,sourceSha256:sha(Buffer.from(original)),installedSha256:sha(Buffer.from(text))});
  for(const hit of original.matchAll(/['"](\.[^'"]+\.mjs)['"]/g)){const dependency=resolve(dirname(join(root,path)),hit[1]);if(dependency.startsWith(root+'/scripts/')&&fs.existsSync(dependency))copyScript(relative(root,dependency));}
 }
-const tests=['native-owned-suggestion-history.test.mjs','native-owned-suggestion-input.test.mjs','native-owned-suggestion-membership.test.mjs'];
+const tests=['native-owned-suggestion-history.test.mjs','native-owned-suggestion-input.test.mjs','native-owned-suggestion-membership.test.mjs','metadata-admitted-work.test.mjs'];
 for(const name of tests)copyScript('scripts/'+name);
 const fixture='crates/breditor-core/tests/fixtures/rich-local-root.json';fs.mkdirSync(dirname(join(consumer,fixture)),{recursive:true});fs.copyFileSync(join(root,fixture),join(consumer,fixture));
 const typeFile='types-native-owned-suggestion.ts',typeSource=fs.readFileSync(join(root,'scripts/fixtures/editor-consumer',typeFile),'utf8');fs.writeFileSync(join(consumer,typeFile),rewrite(typeSource,join(consumer,typeFile)));
@@ -52,9 +52,9 @@ const checks=[
 ];
 const outcomes=await Promise.allSettled(checks.map(async check=>{
  const logPath=join(directory,check.id+'.log'),result=await executeCandidateStage(check,{root:consumer,logPath}),log=fs.readFileSync(logPath,'utf8'),row={...result,logPath,logSha256:sha(Buffer.from(log))};state.results.push(row);saveEvidence(directory+'/running.json',state);assert.equal(result.status,'passed');
- if(check.id==='native-owned-history')for(const [name,n]of [['tests',16],['pass',16],['fail',0],['skipped',0],['cancelled',0],['todo',0]])assert.match(log,new RegExp('^# '+name+' '+n+'$','m'));
+ if(check.id==='native-owned-history')for(const [name,n]of [['tests',25],['pass',25],['fail',0],['skipped',0],['cancelled',0],['todo',0]])assert.match(log,new RegExp('^# '+name+' '+n+'$','m'));
 }));
 for(const value of outcomes)if(value.status==='rejected'){saveEvidence(directory+'/failed.json',{...state,error:String(value.reason)});throw value.reason;}
 assert.deepEqual(sourceEvidence(root),source);assert.equal(sha(fs.readFileSync(nativeSource)),nativeHostSha256);
-Object.assign(state,{complete:true,sourceUnchanged:true,tests:16,actualAuthenticatedHistoryPolicies:6,actualAuthorityLossAfterCommitCases:1,releaseReady:false,v1GatesOpen:13,finishedAt:new Date().toISOString(),scope:'Guarded native adoption of original authenticated owned suggestion decisions without unlocking ordinary edits, with exact once-only content, real source persistence, original queue finalization and cold future document/comment Undo/Redo. Metadata transport custody, all-family metadata settlement, provider/client/assets reconciliation and joint activation remain required.'});
-saveEvidence(directory+'/result.json',state);saveEvidence(join(root,'target/native-owned-suggestion-installed-consumer.json'),state);console.log(JSON.stringify({passed:true,directory,tests:16,workspaceLinks:false,sourceUnchanged:true}));
+Object.assign(state,{complete:true,sourceUnchanged:true,tests:25,actualAuthenticatedHistoryPolicies:6,actualAuthorityLossAfterCommitCases:1,releaseReady:false,v1GatesOpen:13,finishedAt:new Date().toISOString(),scope:'Explicit per-call metadata jobs retain actual work without promoting ordinary stores. Guarded native adoption of original authenticated owned suggestion decisions without unlocking ordinary edits, with exact once-only content, real source persistence, original queue finalization and cold future document/comment Undo/Redo. Metadata transport custody, all-family metadata settlement, provider/client/assets reconciliation and joint activation remain required.'});
+saveEvidence(directory+'/result.json',state);saveEvidence(join(root,'target/native-owned-suggestion-installed-consumer.json'),state);console.log(JSON.stringify({passed:true,directory,tests:25,workspaceLinks:false,sourceUnchanged:true}));

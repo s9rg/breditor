@@ -433,7 +433,7 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   relayCargo('metadata-native-hosts',['build','--features','server','--locked','--offline','--release','--example','review_functional','--example','suggestions_functional','--example','suggestion_revisions_functional'],['review_functional','suggestions_functional','suggestion_revisions_functional'].map(executablePath)),
   stage('native-owned-suggestion-plan-contracts',node,['--test','scripts/native-owned-suggestion-candidate-plan.test.mjs']),
   stage('native-owned-suggestion-private-types',node,['node_modules/typescript/bin/tsc','--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM','scripts/fixtures/editor-consumer/types-native-owned-suggestion.ts']),
-  stage('native-owned-suggestion-functional',node,['--test','scripts/native-owned-suggestion-history.test.mjs','scripts/native-owned-suggestion-input.test.mjs','scripts/native-owned-suggestion-membership.test.mjs'],{},[],180000),
+  stage('native-owned-suggestion-functional',node,['--test','scripts/native-owned-suggestion-history.test.mjs','scripts/native-owned-suggestion-input.test.mjs','scripts/native-owned-suggestion-membership.test.mjs','scripts/metadata-admitted-work.test.mjs'],{},[],180000),
   script('installed-native-owned-suggestion','check-native-owned-suggestion-installed.mjs',[],[{path:'target/native-owned-suggestion-installed-consumer.json',fresh:true}],600000),
   stage('metadata-work-plan-contracts',node,['--test','scripts/metadata-work-candidate-plan.test.mjs']),
   stage('metadata-work-contracts',node,['--test','scripts/metadata-native-work.test.mjs']),

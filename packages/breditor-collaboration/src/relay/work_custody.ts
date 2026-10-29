@@ -39,6 +39,43 @@ export class RelayWorkCustody {
   this.checkAllowed();let finish!:()=>void;const done=new Promise<void>(resolve=>{finish=resolve;});this.#entry.work.add(done);
   try{return start();}finally{this.#entry.work.delete(done);finish();this.#finishRetirement();}
  }
+ /** Admit exactly THIS asynchronous job on an existing ordinary store. The
+  * ordinary entry never acquires the grant; reentrant public work still refuses.
+  * Both the original owner and a retired one-job admitted witness retain the
+  * actual promise, so source retirement and native release must await it. */
+ runAdmitted<T>(admission:RelayWorkAdmission,start:()=>Promise<T>):Promise<T>{
+  const finish=this.#admittedJob(admission);
+  try{return Promise.resolve(start()).then(value=>{finish();return value;},error=>{finish();throw error;});}
+  catch(error){finish();return Promise.reject(error);}
+ }
+ /** Explicit synchronous staging only. The later asynchronous write must carry
+  * its own actual admitted job; this call never leaves ambient permission. */
+ runSyncAdmitted<T>(admission:RelayWorkAdmission,start:(()=>T)&(T extends PromiseLike<unknown>?never:unknown)):T{
+  const finish=this.#admittedJob(admission);let deferred=false;
+  try{
+   const value=start();
+   if(value!==null&&(typeof value==='object'||typeof value==='function')){
+    const then=(value as {then?:unknown}).then;
+    if(typeof then==='function'){
+     // A JS caller can still return async work despite the type contract.
+     // Report misuse now, but never discard its ACTUAL pending witness.
+     deferred=true;void new Promise<unknown>((resolve,reject)=>{try{Reflect.apply(then,value,[resolve,reject]);}catch(error){reject(error);}}).then(finish,finish);
+     throw this.#fail();
+    }
+   }
+   return value;
+  }finally{if(!deferred)finish();}
+ }
+ #admittedJob(admission:RelayWorkAdmission):()=>void{
+  const grant=admissions.get(admission);
+  if(this.#entry.retired||!grant||grant.state!==this.#state||grant.token!==this.#state.token||this.#entry.admission!==undefined&&this.#entry.admission!==grant.token)throw this.#fail();
+  let resolve!:()=>void,finished=false;const done=new Promise<void>(finish=>{resolve=finish;});
+  // This child accepts no further work. Retired readers can drain it, but the
+  // native owner still sees its exact admission until actual completion.
+  const job:Entry={idle:()=>false,work:new Set([done]),retired:true,admission:grant.token};
+  this.#entry.work.add(done);this.#state.entries.add(job);
+  return()=>{if(finished)return;finished=true;job.work.delete(done);this.#state.entries.delete(job);this.#entry.work.delete(done);resolve();this.#finishRetirement();};
+ }
  /** Pure in-progress witness for read admission, including callback reentrancy
   * before a caller has assigned its externally visible running promise. */
  hasPendingWork():boolean{return this.#entry.work.size>0;}

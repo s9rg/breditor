@@ -1,5 +1,28 @@
 # V1 candidate checks
 
+The [per-call metadata work contract](METADATA_ADMITTED_WORK.md) now admits
+individual staging/write jobs through the actual held native reservation while
+ordinary store methods stay excluded. Each actual promise is tracked by both
+its original work owner and a separate one-job native witness. Disposal, another
+job's failure or a visible offline status cannot release a pending job.
+
+A reproduced staging lifetime trap returned a promise to a synchronous method
+and released its witness early. The repair rejects that call in strict types
+and reports JavaScript misuse while retaining its actual promise until settlement.
+The [qualification](qualification/2026-10-29-admitted-metadata-work.json) passes
+518 direct checks, 25 fresh offline-installed checks, six strict source type
+stages and installed types. Nine new work laws run beside the real owned-history
+receipt cases, existing native delivery/metadata regressions, original authenticated
+4/6/6 metadata matrices and all candidate-plan/storage/verifier laws. Exact
+before/after sources, logs and actual packages have a read-back-verified index.
+
+This is a scheduling prerequisite. Constructor-owned metadata ports still must
+connect it to actual source/record persistence and freshly authenticated transport.
+Complete all-family metadata settlement, provider/client/assets reconciliation and
+authenticated joint activation remain required. No protocol/default/version,
+Rust source or normal Wasm changed; the 575/273 Rust baseline is carried. Full
+626/634 candidate profiles were not executed. All thirteen V1 gates remain open.
+
 The [native owned-suggestion ingress](NATIVE_OWNED_SUGGESTION_INGRESS.md) now
 adopts an original authenticated server decision into its accepting writer's
 history while the actual native owner remains exclusively held. Ordinary edits,

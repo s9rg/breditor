@@ -14,3 +14,15 @@ publicApi.nativeRecoveryAdoptSuggestionHistory(held,core,proof,'packet',acceptan
 // @ts-expect-error A packet is not a held native reservation.
 nativeRecoveryAdoptSuggestionHistory('packet',core,proof,'packet',acceptance);
 void changed;void same;
+
+import {RelayWorkCustody} from '../../../packages/breditor-collaboration/dist/relay/work_custody.js';
+import type {RelayWorkAdmission} from '../../../packages/breditor-collaboration/dist/relay/work_custody.js';
+declare const work:RelayWorkCustody,grant:RelayWorkAdmission;
+const staged:number=work.runSyncAdmitted(grant,()=>1);
+const persisted:Promise<number>=work.runAdmitted(grant,async()=>2);
+// @ts-expect-error Copied data with alleged state is not a genuine work admission.
+work.runAdmitted({token:{}},async()=>2);
+void staged;void persisted;
+
+// @ts-expect-error Synchronous staging must not return asynchronous work.
+work.runSyncAdmitted(grant,async()=>2);
