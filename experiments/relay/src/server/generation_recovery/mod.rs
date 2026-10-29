@@ -21,6 +21,11 @@ pub use control::{
     ServerLogGenerationRecoveryControl, ServerLogGenerationRecoveryControlIdentity,
     prepare_log_generation_recovery_control,
 };
+mod delivery_control;
+pub use delivery_control::{
+    ServerLogGenerationDeliveryRecoveryControl, ServerLogGenerationDeliveryRecoveryControlIdentity,
+    prepare_log_generation_delivery_recovery_control,
+};
 mod delivery_continuation;
 pub use delivery_continuation::{
     ServerLogGenerationDeliveryContinuationIdentity,

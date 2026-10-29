@@ -11,7 +11,7 @@ use std::sync::{
 };
 use tokio::sync::Semaphore;
 
-pub(super) struct State {
+pub(in crate::server::generation_recovery) struct State {
     pub host: PreparedLogGenerationRecoveryHost,
     pub proof: Arc<VerifiedServerLogGenerationRecoveryAssets>,
     pub provider: Arc<dyn ServerRecoveryAssetProvider>,
@@ -55,7 +55,7 @@ impl State {
 /// let _: ServerLogGenerationRecoveryControl = serde_json::from_str("{}").unwrap();
 /// ```
 pub struct ServerLogGenerationRecoveryControl {
-    pub(super) state: Arc<State>,
+    pub(in crate::server::generation_recovery) state: Arc<State>,
 }
 impl ServerLogGenerationRecoveryControl {
     /// Detached independently selected control instance and origin/current/participants cut, never account authority.

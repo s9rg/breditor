@@ -1,9 +1,9 @@
 //! Fresh complete actual server/provider cuts; old snapshots are never overwritten.
 use super::{Result, authentication, credentials, public_inputs, setup::Ready, storage};
 use breditor_collab_relay::server::{
-    ContentAddressedServerAssets, ServerLogGenerationRecoveryAssetCoverage,
-    ServerLogGenerationRecoveryControl, ServerRecoveryAssetProvider,
-    prepare_log_generation_recovery_control,
+    ContentAddressedServerAssets, ServerLogGenerationDeliveryRecoveryControl,
+    ServerLogGenerationRecoveryAssetCoverage, ServerRecoveryAssetProvider,
+    prepare_log_generation_delivery_recovery_control, prepare_log_generation_recovery_control,
 };
 use serde_json::{Value, json};
 use std::sync::Arc;
@@ -11,7 +11,7 @@ use std::sync::Arc;
 pub(super) struct Snapshot {
     pub public: Value,
     pub operator_token: String,
-    pub control: ServerLogGenerationRecoveryControl,
+    pub control: ServerLogGenerationDeliveryRecoveryControl,
     pub router: axum::Router,
 }
 pub(super) async fn capture(
@@ -62,7 +62,7 @@ pub(super) async fn capture(
         return Err("actual native raster provider required".into());
     };
     let (operators, operator_token) = authentication::operator()?;
-    let (router, control) = prepare_log_generation_recovery_control(
+    let (_, control) = prepare_log_generation_recovery_control(
         host,
         Arc::new(proof),
         provider,
@@ -71,6 +71,10 @@ pub(super) async fn capture(
         operators,
     )
     .await?;
+    let selected_current = control.identity();
+    let (router, control) =
+        prepare_log_generation_delivery_recovery_control(control, Arc::new(continuation)).await?;
+    let selected_delivery = control.identity();
     let directory = ready.root.join("snapshots").join(format!("cut-{sequence}"));
     storage::directory(&directory)?;
     let fixture = json!({"format":"breditor/native-selected-delivery-fixture","formatVersion":1,
@@ -99,7 +103,7 @@ pub(super) async fn capture(
         current: &current.to_bytes()?,
         credentials: &credentials,
     })?;
-    let public = json!({"path":path,"selection":control.identity(),"sequence":sequence,
+    let public = json!({"path":path,"selection":selected_current,"deliverySelection":selected_delivery,"sequence":sequence,
         "clientEndpoint":client_endpoint,"retiredEndpoint":retired_endpoint,
         "nativeProtectedStreamsVerified":true,"nativeProviderVerified":true,"nativeDeliveryContinuationVerified":true});
     Ok(Snapshot { public, operator_token, control, router })

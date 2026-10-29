@@ -1,5 +1,15 @@
 # V1 candidate checks
 
+The [authenticated delivery-control qualification](qualification/2026-10-29-authenticated-delivery-control.json)
+passes 559 server/273 no-server Rust tests, both strict lint modes, Rustdoc,
+format, 124 SDK contracts and 77 plan/verifier laws. All ten seven-author modes
+run from source, fresh packages and an executed minified bundle with real
+authenticated advanced-cut reads. The unchanged 34 wire laws also run from
+installed modules. Both candidate profiles require the new native, SDK and
+public type fences while retaining old checks. This is not current-client
+adoption, partial-delivery resume, whole-plan or joint activation qualification.
+Normal Wasm is unchanged; all thirteen V1 gates stay open.
+
 The [server delivery-continuation qualification](qualification/2026-10-29-server-delivery-continuation.json)
 freshly passes 551 server and 273 no-server Rust tests, both strict all-target
 lint modes, strict Rustdoc, format and 75 candidate/plan laws. It requires full

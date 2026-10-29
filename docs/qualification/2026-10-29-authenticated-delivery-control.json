@@ -1,0 +1,286 @@
+{
+  "format": "breditor/authenticated-delivery-control-qualification",
+  "formatVersion": 1,
+  "functionalPassed": true,
+  "releaseReady": false,
+  "v1GatesClosed": 0,
+  "v1GatesTotal": 13,
+  "baseCommit": "b0dc1eb63158d23e6418dbe39d5da53c3898dcb7",
+  "qualifiedSource": {
+    "commit": "b0dc1eb63158d23e6418dbe39d5da53c3898dcb7",
+    "dirty": true,
+    "sha256": "8e9fba4de066e40c43e1757071658b0989fe229d9f6b5fb80580575a1a68f745",
+    "files": 7341,
+    "bytes": 55716113
+  },
+  "sourceUnchangedDuringQualification": true,
+  "scope": "Authenticated complete previous/current native/provider reads, complete native regressions, original control regressions and source/installed/executed-bundle service workflows. Not current client-inventory adoption, partial-delivery journal/resume, unbound adoption, metadata outbox or whole-room activation.",
+  "stages": [
+    {
+      "id": "sdk-build",
+      "status": "passed",
+      "startedAt": "2026-10-29T09:30:41.593Z",
+      "finishedAt": "2026-10-29T09:30:42.715Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-delivery-control-qualified-CBT7kW/sdk-build.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "sdk-control-contracts",
+      "status": "passed",
+      "startedAt": "2026-10-29T09:30:43.222Z",
+      "finishedAt": "2026-10-29T09:30:43.618Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 21927,
+      "logPath": "/private/tmp/breditor-delivery-control-qualified-CBT7kW/sdk-control-contracts.log",
+      "logSha256": "64d63eae02d4c324387ff9863fd4033654c78171898f18e486e7865a6240af85"
+    },
+    {
+      "id": "strict-public-types",
+      "status": "passed",
+      "startedAt": "2026-10-29T09:30:44.083Z",
+      "finishedAt": "2026-10-29T09:30:44.321Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-delivery-control-qualified-CBT7kW/strict-public-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "format",
+      "status": "passed",
+      "startedAt": "2026-10-29T09:30:44.774Z",
+      "finishedAt": "2026-10-29T09:30:45.686Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-delivery-control-qualified-CBT7kW/format.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "strict-server-all-targets",
+      "status": "passed",
+      "startedAt": "2026-10-29T09:30:46.168Z",
+      "finishedAt": "2026-10-29T09:30:56.528Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 646,
+      "logPath": "/private/tmp/breditor-delivery-control-qualified-CBT7kW/strict-server-all-targets.log",
+      "logSha256": "933853f7103e9bd81a875b3c61efec67d802fe4ee773be484447a37981e45f04"
+    },
+    {
+      "id": "strict-no-server-all-targets",
+      "status": "passed",
+      "startedAt": "2026-10-29T09:30:57.858Z",
+      "finishedAt": "2026-10-29T09:30:58.223Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 560,
+      "logPath": "/private/tmp/breditor-delivery-control-qualified-CBT7kW/strict-no-server-all-targets.log",
+      "logSha256": "2e118d01caa1abcb772cec7d812c281af108d1a7075428737cdad5ff01d0d475"
+    },
+    {
+      "id": "strict-docs",
+      "status": "passed",
+      "startedAt": "2026-10-29T09:30:58.672Z",
+      "finishedAt": "2026-10-29T09:31:05.933Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 728,
+      "logPath": "/private/tmp/breditor-delivery-control-qualified-CBT7kW/strict-docs.log",
+      "logSha256": "3b14d6f37504a23093cbc29a0b6f4dc255ea266fce03aac8f9a56134db8e49c2"
+    },
+    {
+      "id": "full-server-native",
+      "status": "passed",
+      "startedAt": "2026-10-29T09:31:06.459Z",
+      "finishedAt": "2026-10-29T09:41:00.920Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 92706,
+      "logPath": "/private/tmp/breditor-delivery-control-qualified-CBT7kW/full-server-native.log",
+      "logSha256": "3d3eaa69136ca987e926b99508e94ac37ed42724b7a9d5694e3dec333b3b631d"
+    },
+    {
+      "id": "full-no-server-native",
+      "status": "passed",
+      "startedAt": "2026-10-29T09:41:02.794Z",
+      "finishedAt": "2026-10-29T09:46:07.340Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 38587,
+      "logPath": "/private/tmp/breditor-delivery-control-qualified-CBT7kW/full-no-server-native.log",
+      "logSha256": "c734c9a6f77435084dc8f5542c073425d172f22fe35d8791ce0f1dc1656574ca"
+    },
+    {
+      "id": "real-native-host-build",
+      "status": "passed",
+      "startedAt": "2026-10-29T09:46:08.769Z",
+      "finishedAt": "2026-10-29T09:46:55.790Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 721,
+      "logPath": "/private/tmp/breditor-delivery-control-qualified-CBT7kW/real-native-host-build.log",
+      "logSha256": "3fa3be9086853cb720a3b8dc3a172e954c313394886b7e39caca775dbd94014e"
+    },
+    {
+      "id": "candidate-and-plan-contracts",
+      "status": "passed",
+      "startedAt": "2026-10-29T09:46:57.112Z",
+      "finishedAt": "2026-10-29T09:46:58.660Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 18799,
+      "logPath": "/private/tmp/breditor-delivery-control-qualified-CBT7kW/candidate-and-plan-contracts.log",
+      "logSha256": "c1130f605abe0924754dfac6bef31255c5c8577f3189e7faca872855cb2c7bbd"
+    },
+    {
+      "id": "source-real-service-ten-modes",
+      "status": "passed",
+      "startedAt": "2026-10-29T09:46:59.149Z",
+      "finishedAt": "2026-10-29T09:48:30.530Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 2732,
+      "logPath": "/private/tmp/breditor-delivery-control-qualified-CBT7kW/source-real-service-ten-modes.log",
+      "logSha256": "e01b49eb350a5bf9f42586ce03ea9ac87fab1a1e436d29727f799fca1d4878ae"
+    },
+    {
+      "id": "fresh-installed-and-executed-bundle",
+      "status": "passed",
+      "startedAt": "2026-10-29T09:48:31.020Z",
+      "finishedAt": "2026-10-29T09:51:49.307Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 13478,
+      "logPath": "/private/tmp/breditor-delivery-control-qualified-CBT7kW/fresh-installed-and-executed-bundle.log",
+      "logSha256": "71dcf1692a88c79d86cfee7732852d4497097acb6cead9c0b8f54aa080dddd81"
+    }
+  ],
+  "fresh": {
+    "serverNative": 559,
+    "noServerNative": 273,
+    "failed": 0,
+    "ignored": 0,
+    "actualServerHistoryModes": 40,
+    "newNativeTestFunctions": 6,
+    "newOpaqueCompileFailTests": 2,
+    "strictAllServerTargets": true,
+    "strictAllNoServerTargets": true,
+    "strictRustdoc": true,
+    "format": true,
+    "sdkControlContracts": 124,
+    "candidateAndPlanContracts": 77,
+    "sourceRealServiceModes": 10,
+    "sourceAuthors": 70,
+    "freshInstalledModes": 10,
+    "installedAuthors": 70,
+    "executedMinifiedBundleModes": 10,
+    "bundledAuthors": 70,
+    "exactColdPairedReopens": 210,
+    "futureDocumentAndReviewHistorySteps": 840,
+    "authenticatedAdvancedCutReadsInEveryPublicCase": true,
+    "strictPublicTypes": true,
+    "workspaceLinks": false,
+    "installedUnchangedWireLaws": {
+      "tests": 34,
+      "passed": 34,
+      "skipped": 0,
+      "unchangedAssertions": true,
+      "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-selected-delivery-installed-Jiz9Ud/consumer/generation-delivery-control.tap",
+      "sha256": "b098db69e4db234f93d41994cfd6fb88e290a0e700267f1044a8a8c9ed4f962b"
+    }
+  },
+  "installed": {
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-selected-delivery-installed-Jiz9Ud/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-selected-delivery-installed-Jiz9Ud/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-selected-delivery-installed-Jiz9Ud/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "bf38e05fb230df1f98884bdc72c856dd7b2b6b8d75a9eba4a3d9a7cc89ffa7cc"
+      }
+    ],
+    "registryArtifacts": 45,
+    "executedProductionBundle": {
+      "path": "/var/folders/sh/gpsn0jpx4hq4zg6tss579b280000gn/T/breditor-selected-delivery-installed-Jiz9Ud/consumer/bundle/selected-delivery.mjs",
+      "sha256": "06a22cbaad6f1304f612c9c8f0b0d8b505bf0ea4ab7dcc5d75a5adaa63c480bf",
+      "modules": 101
+    },
+    "nativeHostSha256": "c41a9bf15476554035832ad309ffdaf3bf89389e3dc34a85427081778e22555e",
+    "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0"
+  },
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/authenticated-delivery-control-proof-3SlOkJ",
+    "indexSha256": "536b0f158d7826dacb2cf092458d1444e4c61ea7e27a3f84aab3c49e2f868e2c",
+    "files": 68,
+    "bytes": 11227250,
+    "results": {
+      "full-server-native": {
+        "suites": 19,
+        "passed": 559,
+        "failed": 0,
+        "ignored": 0
+      },
+      "full-no-server-native": {
+        "suites": 18,
+        "passed": 273,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    "qualifiedSource": {
+      "commit": "b0dc1eb63158d23e6418dbe39d5da53c3898dcb7",
+      "dirty": true,
+      "sha256": "8e9fba4de066e40c43e1757071658b0989fe229d9f6b5fb80580575a1a68f745",
+      "files": 7341,
+      "bytes": 55716113
+    }
+  },
+  "developmentEvidence": {
+    "directory": "/Users/s/code/breditor/target/retained-current-inventory-proof-gxlzxQ",
+    "indexSha256": "b1565c4df9c8ff4cb1b6fec5ed68d665e5693e7755af3bb71a43c8217d7aba74",
+    "files": 59,
+    "bytes": 1581228,
+    "prototypeImplementationFiles": 35,
+    "tests": 112,
+    "qualification": "/private/tmp/breditor-delivery-current-qualified-2Vo8kr",
+    "notMerged": true,
+    "scope": "Separately passing112-test development-only current-inventory observation, after real bound-source delivery with the same seven retained owners; original catalog/native bytes unchanged, unbound lanes remain Pending. Not persisted adoption, partial-delivery resume, installed qualification or merged shipping code."
+  },
+  "contract": {
+    "distinctFamily": "breditor/server-log-generation-delivery-recovery-control",
+    "previousAndCurrentKeptLiteral": true,
+    "genuineNativeCurrentGuardAndSameHostContinuationRequired": true,
+    "originalRoutesAndDefaultsUnchanged": true,
+    "newEnvelopeBytes": 262144,
+    "sameActualTwoRequestQuota": true,
+    "idleBodiesRetainNoNativeCustody": true,
+    "actualNativeWorkersRetainCustodyUntilCompletion": true,
+    "genuineSdkCurrentPortRequired": true,
+    "noAckMutationImportBindingOrActivationGrant": true
+  },
+  "carriedNotFresh": [
+    "Earlier mixed seven-family source119-case reconstruction qualification is historical; the separate development112-case result below does not replace its installed matrix"
+  ],
+  "remaining": [
+    "Same retained-owner current-inventory/client adoption at the authenticated advanced cut, without replacing the immutable catalogue baseline",
+    "Actual receipt-backed partial/after delivery journal, complete current/server bytes, fresh resume/reapproval and native ancestry verification",
+    "Explicit adoption for the three unbound local families; real suggestion/revision/version transport/token custody",
+    "Joint provider/client/asset reconciliation and authenticated whole-room/browser activation",
+    "Historical WebKit fault and intermittent native parallel TCP assertion are not repaired by this contract; the latter passed on this run only",
+    "All thirteen V1 gates and the complete feature-parity objective remain open"
+  ],
+  "noPushPublishTagVersionOrDeployment": true
+}

@@ -57,9 +57,10 @@ substitute for runtime verification. Public fixture reports remain data only.
 ## Remaining integration
 
 The SDK's old exact generation reader still refuses a changed server selection.
-This primitive must be composed with a genuine separately authenticated advanced
-cut control, exact current inventory/native client reads and full provider/asset
-reconciliation before a resumable delivery coordinator can adopt C. The isolated
+The separate [authenticated delivery control](SERVER_DELIVERY_CONTROL.md) now
+composes this primitive with the genuine current native/provider checker. Exact
+current inventory/native client adoption and full provider/asset reconciliation
+remain required before a resumable delivery coordinator can adopt C. The isolated
 prepared-before-client-delivery gate, receipt-backed partial/after journaling,
 fresh retry/reapproval, explicit unbound source adoption and real metadata outbox
 transport custody still need joint integration. All thirteen V1 gates stay open.

@@ -13,6 +13,35 @@ the FCKeditor lineage. CKEditor 4 reached ordinary EOL in June 2023; its
 is not the modern feature baseline. Breditor remains an independent implementation:
 no ProseMirror, Tiptap or CKEditor document, operation or plugin protocol is adopted.
 
+## Authenticated previous/current server recovery reads
+
+The [separate control contract](SERVER_DELIVERY_CONTROL.md) now composes the
+genuine complete previous-cut proof with the exact current native/provider
+operator control. Both Rust guards and SDK hosts keep original protocols,
+authentication, routes and current pins literal. Idle bodies retain only the
+shared request permit; actual native work retains custody until it finishes.
+These reads do not import, bind comments, acknowledge suffixes or activate a room.
+
+The [qualification](qualification/2026-10-29-authenticated-delivery-control.json)
+passes 559 full server and 273 no-server Rust tests, both strict all-target lint
+modes, Rustdoc, formatting, 124 SDK contracts and 77 plan/verifier laws. The
+source, fresh installed packages and executed minified bundle each pass all ten
+seven-author modes with authenticated advanced-cut asset and accepted-payload
+reads, exact cold reopens and future native Undo/Redo. The same unchanged 34
+wire/refusal laws also execute against installed modules. Normal Wasm is unchanged.
+
+Separately, the isolated retained-owner prototype passes 112 fresh tests,
+including current-inventory/native/provider observations after real delivery
+using the same seven source owners. Its original catalog and native histories
+stay unchanged; three local review lanes remain unbound/Pending. That development
+code is not merged or installed-qualified and does not persist adoption.
+
+Current retained-client inventory adoption, actual partial/after delivery
+journaling and fresh resume/reapproval remain next. The separate selected-owner
+prototype is not merged; unbound sources, metadata transport custody, complete
+provider/client closure and joint activation remain required. All thirteen V1
+gates stay open. No historical intermittent fault is declared repaired.
+
 ## Complete server continuation after real delivery
 
 The [separate native contract](SERVER_DELIVERY_CONTINUATION.md) now proves full
