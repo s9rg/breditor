@@ -10,14 +10,18 @@ pub(super) fn capture(host: &Host, principal: &str) -> Result<ServerLogGeneratio
         return Err(Error::Contract("joined generation original custody must be retained"));
     }
     host.deployment.fenced(|lease| {
-        deployment_fence::transaction(Some(lease), || {
-            let mut room = host.room.lock().map_err(|_| Error::NeedsRecovery)?;
-            let assets =
-                host.assets.as_ref().ok_or(Error::Contract("generation source assets absent"))?;
-            let mut assets = assets.lock().map_err(|_| Error::NeedsRecovery)?;
-            ServerLogGenerationRoomBackup::capture(&mut room, &mut assets, principal)
-        })
+        deployment_fence::transaction(Some(lease), || capture_under_permit(host, principal))
     })
+}
+
+pub(super) fn capture_under_permit(
+    host: &Host,
+    principal: &str,
+) -> Result<ServerLogGenerationRoomBackup> {
+    let mut room = host.room.lock().map_err(|_| Error::NeedsRecovery)?;
+    let assets = host.assets.as_ref().ok_or(Error::Contract("generation source assets absent"))?;
+    let mut assets = assets.lock().map_err(|_| Error::NeedsRecovery)?;
+    ServerLogGenerationRoomBackup::capture(&mut room, &mut assets, principal)
 }
 
 impl LogGenerationServerBackupHandle {

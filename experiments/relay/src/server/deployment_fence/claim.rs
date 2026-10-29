@@ -30,6 +30,24 @@ impl RoomDeploymentAuthority {
         held: &mut Permit<'_>,
         expected: &RoomDeploymentSelection,
     ) -> Result<RoomDeploymentLease> {
+        self.claim_nonce_held(held, expected, None)
+    }
+    // Only the actual native source seal supplies a source-bound nonce. DATA
+    // cannot call this primitive or reconstruct the genuine returned lease.
+    pub(super) fn claim_handover_held(
+        &self,
+        held: &mut Permit<'_>,
+        expected: &RoomDeploymentSelection,
+        nonce: [u8; 32],
+    ) -> Result<RoomDeploymentLease> {
+        self.claim_nonce_held(held, expected, Some(nonce))
+    }
+    fn claim_nonce_held(
+        &self,
+        held: &mut Permit<'_>,
+        expected: &RoomDeploymentSelection,
+        planned: Option<[u8; 32]>,
+    ) -> Result<RoomDeploymentLease> {
         held.check_authority(&self.state)?;
         let current = self.state.selected(held.file()?)?;
         if &current.selection != expected {
@@ -39,8 +57,13 @@ impl RoomDeploymentAuthority {
             return Err(Error::Contract("deployment epoch budget"));
         }
         let generation = current.count + 1;
-        let mut nonce = [0; 32];
-        getrandom::fill(&mut nonce).map_err(|_| Error::Entropy)?;
+        let nonce = if let Some(nonce) = planned {
+            nonce
+        } else {
+            let mut nonce = [0; 32];
+            getrandom::fill(&mut nonce).map_err(|_| Error::Entropy)?;
+            nonce
+        };
         let bytes = journal::frame(&self.state.header_digest, generation, &nonce, &current.digest);
         self.state.check_file(held.file()?)?;
         let written = (|| {

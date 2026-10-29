@@ -93,10 +93,11 @@ lanes segmented, exact offline document/comment retries, both native Undo/Redo
 lanes, complete raster bytes and inactive restore. This selected public workflow
 is not a new exhaustive Cartesian proof of every history-family combination.
 
-Whole-room activation still needs durable source-cut/epoch decision storage,
+The separate [durable source intent](DURABLE_GENERATION_SOURCE_HANDOVER.md) now
+retains source DATA before a source-bound epoch append. Whole-room activation still needs
 complete current provider/client reconciliation, historical outbox settlement,
 explicit local-comment adoption, recovered-host original custody and an
-authenticated once-only replacement transition. An in-memory seal result does
+authenticated once-only replacement transition. The original in-memory seal keeps its original scope; its result alone does
 not solve a coordinator crash after fencing. No V1 gate closes on these APIs.
 The [main-tree qualification](qualification/2026-10-28-native-generation-continuity.json)
 records 509 server-feature tests (334 unit tests, every public integration

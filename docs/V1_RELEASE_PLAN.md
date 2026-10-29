@@ -13,6 +13,36 @@ the FCKeditor lineage. CKEditor 4 reached ordinary EOL in June 2023; its
 is not the modern feature baseline. Breditor remains an independent implementation:
 no ProseMirror, Tiptap or CKEditor document, operation or plugin protocol is adopted.
 
+## Durable generation source decisions
+
+The [durable source contract](DURABLE_GENERATION_SOURCE_HANDOVER.md) now saves and
+syncs the complete selected native/raster archive and immutable intent before a
+source-bound epoch append. Current owner authentication, full source equality,
+actual file custody and exact prior epoch are checked again under one exclusion.
+Cold status distinguishes preparation, that exact historical seal and an unrelated
+superseding claim. No saved metadata reconstructs a serving lease.
+
+The [functional qualification](qualification/2026-10-28-durable-generation-source-handover.json)
+passes 523 server-feature tests, including 346 unit tests and 30 doctests,
+and 273 no-server tests. Twelve focused native laws, four public laws and
+186 candidate-plan/verifier laws pass without skips. Public workflows cover ten
+grammar/transport choices with both native histories segmented, exact offline
+document/comment retries, future Undo/Redo and raster restoration. Real child
+exits before/after epoch sync and a cancelled actual worker preserve cold data.
+
+Two faults discovered during pre-release implementation were reproduced before
+repair: observed owner uncertainty could revive a warm intent, and concurrent
+read-only status calls raced cloned file cursors. Retirement now remains final;
+retained reads serialize. Twenty stress repeats complete 4,800 successful shared
+status reads. The original failing assertion logs and before-code files remain.
+
+Normal Wasm and recorded package implementation are unchanged; earlier 119-law
+source/installed/bundle results are historical evidence, not fresh JS executions.
+Complete provider/client reconciliation, historical outbox settlement, explicit
+local-comment adoption and authenticated once-only whole-room activation remain.
+Recovered-host original custody must not be discarded. All thirteen V1 gates
+stay open; no historical shutdown/WebKit repair or release approval is claimed.
+
 ## Native generation handover and epoch continuity
 
 The [integrated native contract](NATIVE_GENERATION_CONTINUITY.md) now seals the

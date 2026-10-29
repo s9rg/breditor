@@ -1,5 +1,16 @@
 # V1 candidate checks
 
+The [durable source qualification](qualification/2026-10-28-durable-generation-source-handover.json)
+passes 523 server-feature tests (346 unit tests, every public integration target
+and 30 doctests), 273 no-server tests and 186 candidate-plan/verifier laws.
+The selected native/public stages pass 12/4 laws, and twenty shared-read stress
+repeats complete 4,800 successful statuses. All runs have zero ignored/skipped
+tests. Strict all-target Clippy, formatting and Rustdoc pass. Both profiles require
+the new real process/fault stage and the public ten-mode durable workflow.
+This is not the whole candidate plan, portable consensus, hardware power-loss,
+complete provider/client closure or authenticated whole-room activation. All
+thirteen V1 gates remain open; the normal Wasm runtime is unchanged.
+
 The [integrated native continuity qualification](qualification/2026-10-28-native-generation-continuity.json)
 passes 509 server-feature tests (334 unit tests, all public integration
 targets and 29 doctests), 273 no-server tests and 184 candidate-plan/verifier

@@ -1,8 +1,13 @@
 //! Actual live generation source capability, separate from inactive recovery hosts.
 use super::Host;
 mod capture;
+pub(in crate::server) mod durable;
 mod handover;
 mod prepare;
+pub use durable::{
+    LogGenerationHandoverStatus, PreparedLogGenerationHandover,
+    PreparedLogGenerationHandoverIdentity,
+};
 pub use handover::SealedLogGenerationHandover;
 pub use prepare::router_with_log_generation_backups_and_deployment_lease;
 

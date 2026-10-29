@@ -1,9 +1,11 @@
 //! External consumer: only exported APIs, genuine source ownership and actual files.
 use super::{TestResult, insert, setup};
 use breditor_collab_relay::{
-    Role, RoomRecoveryPolicy, ServerLogGenerationRoomRecovery,
+    Role, RoomRecoveryPolicy, ServerLogGenerationRoomBackup, ServerLogGenerationRoomRecovery,
     server::{
-        Authentication, RoomDeploymentAuthority, RoomDeploymentSelection,
+        Authentication, LogGenerationHandoverStatus, LogGenerationServerBackupHandle,
+        PreparedLogGenerationHandover, PreparedLogGenerationHandoverIdentity,
+        RoomDeploymentAuthority, RoomDeploymentSelection,
         router_with_log_generation_backups_and_deployment_lease,
     },
 };
@@ -20,7 +22,7 @@ fn authentication() -> TestResult<(Authentication, String, String)> {
     let value = json!({"format":"breditor/relay-auth","formatVersion":1,"accounts":[{"principal":"owner","tokenHash":owner_hash},{"principal":"reader","tokenHash":reader_hash}],"origins":["http://127.0.0.1:4187"]});
     Ok((Authentication::from_json(&value.to_string())?, owner, reader))
 }
-async fn workflow(version: u32, standard: bool, atomic: bool) -> TestResult {
+async fn workflow(version: u32, standard: bool, atomic: bool, durable: bool) -> TestResult {
     let (files, profile, mut room) = setup(version, standard, atomic)?;
     let mut prepared =
         author::prepare(&mut room, &profile, &files.0.join("source-assets"), atomic)?;
@@ -45,25 +47,23 @@ async fn workflow(version: u32, standard: bool, atomic: bool) -> TestResult {
     author::comment(&prepared.author.document, &mut prepared.author.review, "offline comment")?;
     let document = prepared.author.document.checkpoint()?;
     let comments = prepared.author.review.checkpoint_json()?;
-    let sealed = handle.seal_for_handover("owner", &owner, source.info()?.identity).await?;
-    assert_eq!(sealed.previous_selection(), &previous);
-    assert_eq!(sealed.sealed_selection(), &authority.current_selection()?);
-    assert_eq!(sealed.backup().to_bytes()?, source.to_bytes()?);
+    let (sealed_source, sealed_selection) =
+        seal_source(&handle, &authority, &source, &previous, &files.0, &owner, durable).await?;
     assert!(lease.check().is_err());
     assert!(handle.capture("owner", &owner).await.is_err());
     assert_eq!(prepared.author.document.checkpoint()?, document);
     assert_eq!(prepared.author.review.checkpoint_json()?, comments);
     let pin: RoomDeploymentSelection =
-        serde_json::from_slice(&serde_json::to_vec(sealed.sealed_selection())?)?;
+        serde_json::from_slice(&serde_json::to_vec(&sealed_selection)?)?;
     let reopened = RoomDeploymentAuthority::open_at_least(&files.0.join("source-authority"), &pin)?;
     assert_eq!(reopened.current_selection()?, pin);
     let mut restored = ServerLogGenerationRoomRecovery::begin(
         &files.0.join("inactive-restored"),
-        sealed.backup(),
+        &sealed_source,
         &source.info()?.identity,
         RoomRecoveryPolicy::HostReacquired,
     )?
-    .finish(sealed.backup())?;
+    .finish(&sealed_source)?;
     assert_eq!(
         restored
             .room()
@@ -85,7 +85,60 @@ async fn all_ten_public_handover_modes_keep_both_offline_lanes_exact_retries_and
 -> TestResult {
     for (version, standard) in [(1, false), (2, false), (2, true), (3, false), (3, true)] {
         for atomic in [false, true] {
-            workflow(version, standard, atomic).await?;
+            workflow(version, standard, atomic, false).await?;
+        }
+    }
+    Ok(())
+}
+
+async fn seal_source(
+    handle: &LogGenerationServerBackupHandle,
+    authority: &RoomDeploymentAuthority,
+    source: &ServerLogGenerationRoomBackup,
+    previous: &RoomDeploymentSelection,
+    root: &std::path::Path,
+    owner: &str,
+    durable: bool,
+) -> TestResult<(ServerLogGenerationRoomBackup, RoomDeploymentSelection)> {
+    if durable {
+        let prepared = handle
+            .prepare_handover("owner", owner, &root.join("durable-intent"), source.info()?.identity)
+            .await?;
+        assert_eq!(prepared.status(authority)?, LogGenerationHandoverStatus::Prepared);
+        assert_eq!(authority.current_selection()?, *previous);
+        fs::write(root.join("outside-choice.json"), serde_json::to_vec(prepared.identity())?)?;
+        let path = prepared.root().to_owned();
+        drop(prepared);
+        let choice: PreparedLogGenerationHandoverIdentity =
+            serde_json::from_slice(&fs::read(root.join("outside-choice.json"))?)?;
+        let cold = PreparedLogGenerationHandover::open(&path, &choice)?;
+        let sealed = handle.seal_prepared_handover("owner", owner, cold, &choice).await?;
+        assert_eq!(sealed.status(authority)?, LogGenerationHandoverStatus::Sealed);
+        assert_eq!(authority.current_selection()?, *choice.planned_selection());
+        assert_eq!(sealed.source_backup().to_bytes()?, source.to_bytes()?);
+        drop(sealed);
+        let cold = PreparedLogGenerationHandover::open(&path, &choice)?;
+        assert_eq!(cold.status(authority)?, LogGenerationHandoverStatus::Sealed);
+        Ok((
+            ServerLogGenerationRoomBackup::from_owned_bytes(cold.source_backup().to_bytes()?)?,
+            choice.planned_selection().clone(),
+        ))
+    } else {
+        let sealed = handle.seal_for_handover("owner", owner, source.info()?.identity).await?;
+        assert_eq!(sealed.previous_selection(), previous);
+        assert_eq!(sealed.sealed_selection(), &authority.current_selection()?);
+        assert_eq!(sealed.backup().to_bytes()?, source.to_bytes()?);
+        let selection = sealed.sealed_selection().clone();
+        Ok((sealed.into_backup(), selection))
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn durable_source_decisions_keep_both_offline_lanes_exact_retries_and_rasters_in_all_ten_modes()
+-> TestResult {
+    for (version, standard) in [(1, false), (2, false), (2, true), (3, false), (3, true)] {
+        for atomic in [false, true] {
+            workflow(version, standard, atomic, true).await?;
         }
     }
     Ok(())

@@ -1,4 +1,6 @@
 //! Prototype source-capability/fencing tests use actual native storage and authority files.
+#[path = "durable/tests.rs"]
+mod durable_source_handover;
 mod fixture;
 mod network;
 mod network_cases;

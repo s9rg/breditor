@@ -50,6 +50,8 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   relayCargo("relay-serving-epochs-public",["test","--features","server","--locked","--offline","--release","--test","deployment_fence","--","--nocapture"]),
   stage("native-generation-continuity-plan-contracts",node,["--test","scripts/native-generation-continuity-candidate-plan.test.mjs"]),
   relayCargo("relay-generation-handover-public",["test","--features","server","--locked","--offline","--release","--test","log_generations","live_handover::"]),
+  stage("native-source-handover-durability-plan-contracts",node,["--test","scripts/native-source-handover-durability-candidate-plan.test.mjs"]),
+  relayCargo("relay-generation-source-durability-native",["test","--features","server","--locked","--offline","--release","--lib","durable_source_handover","--","--nocapture"]),
   relayCargo("relay-room-backups",["test","--features","server","--locked","--offline","--release","--test","room_backups"]),
   relayCargo("relay-asset-backups",["test","--features","server","--locked","--offline","--release","--test","asset_backups"]),
   relayCargo("relay-asset-owner-paths",["test","--features","server","--locked","--offline","--release","--test","asset_store_paths"]),

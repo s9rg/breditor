@@ -1,0 +1,643 @@
+{
+  "format": true,
+  "formatVersion": 1,
+  "functionalPassed": true,
+  "releaseReady": false,
+  "v1GatesClosed": 0,
+  "v1GatesTotal": 13,
+  "baseCommit": "e3e93007f8ac49dd9022989e092125a5f821fa50",
+  "qualifiedSource": {
+    "commit": "e3e93007f8ac49dd9022989e092125a5f821fa50",
+    "dirty": true,
+    "sha256": "8befc50535a7c761fbbede499a7a2920ce67a2f85b24d3f9addcc833a7d035c3",
+    "files": 7262,
+    "bytes": 55252493
+  },
+  "scope": "Opt-in durable source preparation before a source-bound epoch commit, with actual cold file re-admission and complete authority-lineage status. Preserves complete native/raster source and ordinary client/offline/history contracts. This is a source decision prerequisite, not provider/client closure or replacement activation.",
+  "server": {
+    "results": [
+      {
+        "passed": 346,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 23,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 9,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 34,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 8,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 41,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 30,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      }
+    ],
+    "unit": 346,
+    "doctests": 30,
+    "totalPassed": 523,
+    "failed": 0,
+    "ignored": 0,
+    "filtered": 0
+  },
+  "noServer": {
+    "results": [
+      {
+        "passed": 171,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 23,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 9,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 26,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 8,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      }
+    ],
+    "totalPassed": 273,
+    "failed": 0,
+    "ignored": 0,
+    "filtered": 0
+  },
+  "selectedDurableLaws": 12,
+  "selectedPublicLaws": 4,
+  "publicDomain": {
+    "profilesAndTransports": 10,
+    "bothNativeServerLanesSegmented": true,
+    "documentAndCommentOfflineRetry": true,
+    "bothFutureNativeUndoRedoLanes": true,
+    "exactDuplicateReceipts": true,
+    "rasterBytes": true,
+    "coldIntentReopen": true,
+    "inactiveNativeRestore": true,
+    "wholeHistoryCartesianDomain": false
+  },
+  "processScope": "Real child exits with synced outside choices immediately before and after epoch append; immutable intent and full archive re-admit from original files, with exact Prepared/Sealed interpretation. Not physical power-loss or hardware qualification.",
+  "sharedReadStress": {
+    "cases": 20,
+    "threadsPerCase": 8,
+    "statusesPerThread": 30,
+    "successfulStatuses": 4800
+  },
+  "preReleaseFaultsReproducedAndRepaired": [
+    {
+      "name": "namespace-retirement",
+      "actualCode": 101,
+      "failedLaws": 1,
+      "compileFailure": false,
+      "source": {
+        "commit": "e3e93007f8ac49dd9022989e092125a5f821fa50",
+        "dirty": true,
+        "sha256": "c3b7fe1366afc410338beadd84f140d5c64edb5aa0f8acacde1ee9ef80fdb383",
+        "files": 7260,
+        "bytes": 55241632
+      },
+      "observedStoreSha256": "7dd7ed432a3340ba82e41b667155ffa11c11c5d43c3383974e69954eacde072b",
+      "companionNote": "open-layout-companion.rs is reconstructed only to match recorded before-store fields; raw observed store, test and actual assertion log are retained."
+    },
+    {
+      "name": "shared-cursor",
+      "actualCode": 101,
+      "failedLaws": 1,
+      "compileFailure": false,
+      "source": {
+        "commit": "e3e93007f8ac49dd9022989e092125a5f821fa50",
+        "dirty": true,
+        "sha256": "fbc9c68588bdbed5655bcc03e2c05a58af41f69fcadbe3e7c41b1b226c45e81d",
+        "files": 7260,
+        "bytes": 55243613
+      },
+      "observedStoreSha256": "ad9d5118107716c8bdf11760c068665c58767f391461c8fd0ac4b3951badeb24",
+      "companionNote": "open-layout-companion.rs is reconstructed only to match recorded before-store fields; raw observed store, test and actual assertion log are retained."
+    }
+  ],
+  "candidatePlanTests": 186,
+  "strictClippy": {
+    "serverAllTargets": true,
+    "noServerAllTargets": true
+  },
+  "serverRustdocWarningsDenied": true,
+  "normalSharedWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "historicalPackageEvidence": {
+    "qualification": "docs/qualification/2026-10-28-generation-component-reconstruction.json",
+    "freshlyRerun": false,
+    "unchangedRecordedImplementationInputs": [
+      {
+        "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/archive.ts",
+        "bytes": 9231,
+        "sha256": "50de41298c0dcf963a7060668a99d830512992b01b8fc3a6baf083f111c10e9c"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/candidate.ts",
+        "bytes": 1688,
+        "sha256": "b9a843231985cac087ac203d1f7855a398fec42bf3d3fe1417fbb4743e54e62e"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/components.ts",
+        "bytes": 1351,
+        "sha256": "14161c1e46739c0ec270b9c7c3a3b787721335b0b6183bca17417f351eaf6c70"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/contract.ts",
+        "bytes": 3367,
+        "sha256": "e9f4498cc4440136acbb6ddeb58a3e9b8721ab86ba9cff183df4315f1a760352"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/coordinator.ts",
+        "bytes": 17764,
+        "sha256": "0d4302b1ffd1ba3adc1f0311981b39caa26642104ec18601b00ddc89f049f6e2"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/intent_store.ts",
+        "bytes": 7996,
+        "sha256": "2915bf9c86e9ef437e8739080ed49f34028a767b776519d317223cc0f4dce857"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/join.ts",
+        "bytes": 6952,
+        "sha256": "a71d3f83f08954a148dfa22eade1255802ba517d4aad152a854e04d7791dbe63"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/plan.ts",
+        "bytes": 4066,
+        "sha256": "550bbbcdff922e838796d1fb5ba9d0e05c2c98e147bb64b69b8722f646df27e2"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/policy.ts",
+        "bytes": 2681,
+        "sha256": "2113a10a893ddfcaba939b589d89b8339e636263dd4c0c588bdfb8f6d062bc92"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/resources.ts",
+        "bytes": 3344,
+        "sha256": "bab6f9d413b9312e67e9c8d09c44510c06bffc262ccebd088b6ef08da6d80850"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/snapshot.ts",
+        "bytes": 290,
+        "sha256": "59f767bbddbe687d7f4516cda2a743a3013f95e7bfd5cb41790160431aac081b"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/source_scope.ts",
+        "bytes": 3444,
+        "sha256": "ebd22f5f6c1d153597a96a04b9d4cc30aee6dd728f8ed09bd76761b581e9e50c"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/verify_history.ts",
+        "bytes": 4256,
+        "sha256": "1cff7b8df55ae49b306470fd6edaaf724c40a269b71219617de5404df333a080"
+      },
+      {
+        "path": "scripts/check-generation-component-reconstruction-installed.mjs",
+        "bytes": 17988,
+        "sha256": "0ec4dafecba276f7cf31d35eb5fb76b6897152b7122e9d98c52b7b245c569ab8"
+      },
+      {
+        "path": "scripts/check-generation-component-reconstruction-sdk.mjs",
+        "bytes": 3181,
+        "sha256": "6d13f96b4c937d2a11e8c87727825d927386860ddc60b51818c9afbe5a38f945"
+      },
+      {
+        "path": "scripts/fixtures/editor-consumer/types-generation-component-reconstruction.ts",
+        "bytes": 3065,
+        "sha256": "be2f7e26c17a77a446e53eea15fff81e4b9c7f7cbc192c60a057265b7035f061"
+      },
+      {
+        "path": "scripts/generation-component-reconstruction-candidate-plan.test.mjs",
+        "bytes": 2310,
+        "sha256": "11693a79396e51b76fefa2ab2209e04b495ecae177f27b473ab0f7d7af134e0a"
+      },
+      {
+        "path": "scripts/generation-component-reconstruction-candidate.test.mjs",
+        "bytes": 3229,
+        "sha256": "bec5d5b1dd74d5bf0898a0bbcea720942c4be839392e40b3954bceb57caaffc2"
+      },
+      {
+        "path": "scripts/generation-component-reconstruction-lifetime.test.mjs",
+        "bytes": 6373,
+        "sha256": "b16218408e3936ee7002a2980a633f496a47802862b6d5f2f3ec7d9c7439cffc"
+      },
+      {
+        "path": "scripts/generation-component-reconstruction-sdk.test.mjs",
+        "bytes": 19250,
+        "sha256": "ad374491af3241eb8b2fdd4be3275e72a8042abec8ad697e516669c8b537d5a5"
+      },
+      {
+        "path": "scripts/generation-component-reconstruction-workload.mjs",
+        "bytes": 1474,
+        "sha256": "5e974ce3fb8fc73e6d6811976112a84c5deb5dc85ed59332e732ae33388f612c"
+      }
+    ],
+    "changedCandidatePlan": "scripts/candidate-release/plan.mjs",
+    "source": 119,
+    "installed": 119,
+    "actualProductionBundle": 119
+  },
+  "knownHistoricalFaults": {
+    "parallelShutdown": {
+      "resolved": false,
+      "rootCauseConfirmed": false
+    },
+    "webkit": {
+      "resolved": false
+    }
+  },
+  "remaining": [
+    "Complete provider/client cross-cut reconciliation",
+    "Historical packet/outbox settlement",
+    "Explicit local-comment adoption",
+    "Authenticated once-only whole-room activation retaining recovered-host original custody",
+    "Portable deployment authority, sustainable history and complete V1/parity qualification"
+  ],
+  "evidence": {
+    "directory": "/Users/s/code/breditor/target/durable-generation-source-handover-proof-lSIqyD",
+    "indexSha256": "77138f4456b5ede1b751e3aeeb32aff3c049cfdb1e8e920c7068b63b6e81678c",
+    "indexedFiles": 614
+  },
+  "qualifiedImplementationAndContracts": [
+    {
+      "path": "docs/DURABLE_GENERATION_SOURCE_HANDOVER.md",
+      "bytes": 6945,
+      "sha256": "c5b980a101c2567de0b84ebbb0ab6b40e0c49406781898f65216f7f956f17f44",
+      "modifiedAtMs": 1793236041709.2964
+    },
+    {
+      "path": "docs/NATIVE_GENERATION_CONTINUITY.md",
+      "bytes": 6598,
+      "sha256": "f28adb4afe2d060800afa9cc3219d2612897070e5220a694de2b639696addece",
+      "modifiedAtMs": 1793236041720.9954
+    },
+    {
+      "path": "experiments/relay/src/server/deployment_fence/claim.rs",
+      "bytes": 3659,
+      "sha256": "e0f535db0bc76d5809aec58d0e3170c487de330b812ad174de71101d7c46c8dc",
+      "modifiedAtMs": 1793234630986.213
+    },
+    {
+      "path": "experiments/relay/src/server/deployment_fence/handover_epoch.rs",
+      "bytes": 2948,
+      "sha256": "73842b3cf30b3e56d5b7cc4829ebfd33f2f6ed8ad6e8cec73ccdd2857627c794",
+      "modifiedAtMs": 1793234906138.932
+    },
+    {
+      "path": "experiments/relay/src/server/deployment_fence/mod.rs",
+      "bytes": 1117,
+      "sha256": "5fbceb48ed51be7b946cb1d7f2a3fe051f444a8a4d8ca813684c1ed17d238822",
+      "modifiedAtMs": 1793234630989.721
+    },
+    {
+      "path": "experiments/relay/src/server/deployment_fence/seal_prepared_generation.rs",
+      "bytes": 2252,
+      "sha256": "3779fe8a595d971ae3a315653275403f8dd53ebe519bdee75f81d9f4df920941",
+      "modifiedAtMs": 1793234906152.898
+    },
+    {
+      "path": "experiments/relay/src/server/generation_backup.rs",
+      "bytes": 863,
+      "sha256": "2453245089d8675ac6066726b5aa48ceda15d5d3b65f8500f39d885ebb03511f",
+      "modifiedAtMs": 1793234631019.3687
+    },
+    {
+      "path": "experiments/relay/src/server/generation_backup/capture.rs",
+      "bytes": 1806,
+      "sha256": "aee1414ac62bf77dc59209bb95e91bbca71ad768ebf5e80d010433ee5c652d34",
+      "modifiedAtMs": 1793234631007.832
+    },
+    {
+      "path": "experiments/relay/src/server/generation_backup/durable/files.rs",
+      "bytes": 2790,
+      "sha256": "88a70e58a5ffbb3a9d08e514e01548bda3a618ebdbc2d1c0a00d56d42bb0ed3e",
+      "modifiedAtMs": 1793234631008.626
+    },
+    {
+      "path": "experiments/relay/src/server/generation_backup/durable/identity.rs",
+      "bytes": 4109,
+      "sha256": "a0bddbe62609b0ab4c6619b3ebaa11d1ee842388987547971208835167f8d3ae",
+      "modifiedAtMs": 1793234631009.1448
+    },
+    {
+      "path": "experiments/relay/src/server/generation_backup/durable/interruption.rs",
+      "bytes": 1402,
+      "sha256": "a1aeec66e4c01867e7b58efe1746e53f1f34c56e14b20ef9cef9b05424fe45fd",
+      "modifiedAtMs": 1793235877770.7168
+    },
+    {
+      "path": "experiments/relay/src/server/generation_backup/durable/mod.rs",
+      "bytes": 2883,
+      "sha256": "5d80c78a3b42338ecb4663b787872d5d3564045b0d2d33fcf606c1d68ca6c37b",
+      "modifiedAtMs": 1793235222769.5146
+    },
+    {
+      "path": "experiments/relay/src/server/generation_backup/durable/open.rs",
+      "bytes": 2476,
+      "sha256": "0e287c69b46df663266312994e9aa658ebf3bdd258af8d24d56790bffb4b5825",
+      "modifiedAtMs": 1793235872408.487
+    },
+    {
+      "path": "experiments/relay/src/server/generation_backup/durable/prepare.rs",
+      "bytes": 2434,
+      "sha256": "ea465507290d33a42e90327084965eeedaf2bd205583b978bb487e91263299e1",
+      "modifiedAtMs": 1793234764167.1323
+    },
+    {
+      "path": "experiments/relay/src/server/generation_backup/durable/process_laws.rs",
+      "bytes": 9040,
+      "sha256": "e56b9b3dc8406225d13e4f2ab0f61aaebcc40a2e8debfdb97dad32bbe29bda4b",
+      "modifiedAtMs": 1793236041670.7283
+    },
+    {
+      "path": "experiments/relay/src/server/generation_backup/durable/seal.rs",
+      "bytes": 1963,
+      "sha256": "b573f2e99668cac1ed4663e04757d541e61386c6f4a6dc9cdb3a551c3914bf74",
+      "modifiedAtMs": 1793234631011.1626
+    },
+    {
+      "path": "experiments/relay/src/server/generation_backup/durable/store.rs",
+      "bytes": 5162,
+      "sha256": "aae20cf006da162720e1594404bcf2b496920eb945a28203fd801f14b94be1dd",
+      "modifiedAtMs": 1793235872394.7935
+    },
+    {
+      "path": "experiments/relay/src/server/generation_backup/durable/tests.rs",
+      "bytes": 12363,
+      "sha256": "962fe9b8896ebcf2db355bd5eda659ae5eb8ddd7465148fefd2b9a14ba2c5ba1",
+      "modifiedAtMs": 1793235336848.2075
+    },
+    {
+      "path": "experiments/relay/src/server/generation_backup/tests.rs",
+      "bytes": 12685,
+      "sha256": "51a63a5a41fdd60e2c6058b5dcf33829388ce650347c35a1e200edf6fd0c8600",
+      "modifiedAtMs": 1793234764182.275
+    },
+    {
+      "path": "experiments/relay/src/server/mod.rs",
+      "bytes": 8831,
+      "sha256": "646a285c316e549a46a350fa62e0400b4d02a69600745c8cf0326104c68ab2a5",
+      "modifiedAtMs": 1793234631090.6482
+    },
+    {
+      "path": "experiments/relay/tests/log_generations/live_handover.rs",
+      "bytes": 8816,
+      "sha256": "c1db83cf3ed148b157b73a366c31d1c2a0116392d9eb411e456a9e487ac96e42",
+      "modifiedAtMs": 1793234910308.9167
+    },
+    {
+      "path": "scripts/candidate-release/plan.mjs",
+      "bytes": 122718,
+      "sha256": "0643451e7e289e4c0408ca2e1a8a1be0abc476a467493dadd34d081b99bebe44",
+      "modifiedAtMs": 1793236041683.8904
+    },
+    {
+      "path": "scripts/native-source-handover-durability-candidate-plan.test.mjs",
+      "bytes": 1112,
+      "sha256": "000f299ecf946282ec0a04f4352ff97529a77f4173ab3410fda5273108fe14cd",
+      "modifiedAtMs": 1793236041696.5833
+    }
+  ],
+  "metadataOnlyAfterQualification": [
+    "docs/DURABLE_GENERATION_SOURCE_HANDOVER.md",
+    "docs/V1_RELEASE_PLAN.md",
+    "docs/V1_CANDIDATE_CHECKS.md",
+    "docs/qualification/2026-10-28-durable-generation-source-handover.json"
+  ],
+  "limits": [
+    "Trusted cooperating Unix file-lock/fsync backend, not multi-machine consensus",
+    "Cold admission retains native payload bytes; no new memory/performance qualification",
+    "No detection if every independent witness is rolled back with the ledger",
+    "Real process exits tested, not hardware power-loss",
+    "Prepared after a pre-fence crash does not reconstruct an old lease or automatically overwrite/retry its intent"
+  ],
+  "completedAt": "2026-10-29T01:31:00.922Z"
+}

@@ -35,7 +35,8 @@ pub use deployment_fence::{
     router_with_assets_and_deployment_lease, router_with_deployment_lease,
 };
 pub use generation_backup::{
-    LogGenerationServerBackupHandle, SealedLogGenerationHandover,
+    LogGenerationHandoverStatus, LogGenerationServerBackupHandle, PreparedLogGenerationHandover,
+    PreparedLogGenerationHandoverIdentity, SealedLogGenerationHandover,
     router_with_log_generation_backups_and_deployment_lease,
 };
 pub use generation_recovery::{
