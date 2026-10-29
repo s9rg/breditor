@@ -1,5 +1,27 @@
 # V1 candidate checks
 
+The [compound metadata preparation contract](HELD_METADATA_PREPARATION.md) now
+opens original version, suggestion and revision children inside real segmented
+and independent sources while native editing stays held. Preparation performs
+no startup save or network work, uses exact original committed records, and
+grants no ordinary mutation permission. It drains actual late lock callbacks;
+partial preparation remains owned by the source for a later attempt.
+
+The [qualification](qualification/2026-10-29-held-metadata-preparation.json) passes
+676 direct checks, 106 independently installed checks, eight strict source type
+stages and two installed type stages. It includes 60 native preparation policies,
+20 lifetime cases, and actual seven-family room recovery that prepares and
+publishes versions for all four bound source families while retaining their
+pending proposal/revision records. Cold reopening preserves future document and
+comment Undo/Redo for all seven families. Exact source/metadata/packet bytes,
+complete room archives and packages have a read-back-verified proof index.
+
+Suggestion/revision transport, metadata bindings for the three local lanes,
+complete provider/client/historical-copy/assets reconciliation and authenticated
+joint activation remain required. Original protocols, defaults, public exports,
+package versions and normal Wasm remain unchanged. All thirteen V1 gates remain
+open; full candidate profiles have not been executed.
+
 The [native-held version delivery contract](NATIVE_VERSION_DELIVERY.md) now
 connects explicit work admission to actual original catalog records, source
 persistence and fresh authenticated transport. It preserves immutable version

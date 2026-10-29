@@ -15,6 +15,9 @@ export function selectedRetainedStorePort<K extends SegmentedRetainedKind>(input
 }
 
 /** The original atomic record driver knows its genuine enclosing source. */
-const retainedOwners=new WeakMap<object,Readonly<{source:object;core:object}>>();
-export function registerRetainedStoreOwner(port:object,source:object,core:object):void{if(retainedOwners.has(port))throw new SharedRelayError('delivery_source_ambiguous');retainedOwners.set(port,Object.freeze({source,core}));}
+const retainedOwners=new WeakMap<object,Readonly<{source:object;core:object;committed:()=>unknown}>>();
+export function registerRetainedStoreOwner(port:object,source:object,core:object,committed:()=>unknown):void{if(retainedOwners.has(port)||typeof committed!=='function')throw new SharedRelayError('delivery_source_ambiguous');retainedOwners.set(port,Object.freeze({source,core,committed}));}
 export function retainedStoreOwner(port:object,core:object):object|undefined{const owner=retainedOwners.get(port);if(owner&&owner.core!==core)throw new SharedRelayError('delivery_source_ambiguous');return owner?.source;}
+
+/** Exact original driver commitment, never a record supplied by the borrower. */
+export function retainedStoreCommitted(port:object,core:object):unknown{const owner=retainedOwners.get(port);if(!owner||owner.core!==core)throw new SharedRelayError('delivery_source_ambiguous');return owner.committed();}

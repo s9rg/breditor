@@ -14,14 +14,21 @@ export function registerRelayWorkGroup(owner:object,members:readonly object[]):v
  if(ownedGroups.has(owner)||!members.length||new Set(members).size!==members.length)throw Error("Actual metadata work ownership is required");const groups=members.map(member=>ownedGroups.get(member));if(groups.some(group=>!group)||groups.some(group=>group!.state!==groups[0]!.state))throw Error("Actual metadata work ownership is required");ownedGroups.set(owner,Object.freeze({state:groups[0]!.state,entries:new Set(groups.flatMap(group=>[...group!.entries]))}));
 }
 function state(core:object):CoreWork{let value=cores.get(core);if(!value){value={entries:new Set(),token:undefined};cores.set(core,value);}return value;}
+const heldOrdinaryKey=Symbol('constructor-only-held-ordinary-work');
+/** Refuse ordinary opens before a lease/storage callback, not after awaiting it. */
+export function checkOrdinaryRelayWork(core:object,fail:()=>Error):void{if(state(core).token!==undefined)throw fail();}
 export class RelayWorkCustody {
  readonly #state:CoreWork;readonly #entry:Entry;readonly #fail:()=>Error;
  #retired:(()=>void)|undefined;
- constructor(core:object,idle:()=>boolean,fail:()=>Error,admission?:RelayWorkAdmission){
+ constructor(core:object,idle:()=>boolean,fail:()=>Error,admission?:RelayWorkAdmission,ordinary?:typeof heldOrdinaryKey){
   this.#state=state(core);this.#fail=fail;const grant=admission?admissions.get(admission):undefined;
-  if(admission&&(!grant||grant.state!==this.#state||grant.token!==this.#state.token)||!admission&&this.#state.token)throw fail();
-  this.#entry={idle,work:new Set(),retired:false,admission:grant?.token};this.#state.entries.add(this.#entry);
+  if(ordinary!==undefined&&ordinary!==heldOrdinaryKey||ordinary===heldOrdinaryKey&&!admission||admission&&(!grant||grant.state!==this.#state||grant.token!==this.#state.token)||!admission&&this.#state.token)throw fail();
+  this.#entry={idle,work:new Set(),retired:false,admission:ordinary===heldOrdinaryKey?undefined:grant?.token};this.#state.entries.add(this.#entry);
  }
+ /** Construct an ORDINARY dormant owner during an exact held admission. Its
+  * entry receives no grant: all ordinary mutation remains excluded until the
+  * hold ends. The caller separately tracks the actual asynchronous opening. */
+ static ordinaryDuringRecovery(core:object,idle:()=>boolean,fail:()=>Error,admission:RelayWorkAdmission):RelayWorkCustody{return new RelayWorkCustody(core,idle,fail,admission,heldOrdinaryKey);}
  /** Register the actual private store/adapter with its constructor-owned work. */
  registerOwner(owner:object):void{if(ownedGroups.has(owner))throw this.#fail();ownedGroups.set(owner,Object.freeze({state:this.#state,entries:new Set([this.#entry])}));}
  checkAllowed():void{if(this.#entry.retired||(this.#entry.admission?this.#state.token!==this.#entry.admission:this.#state.token!==undefined))throw this.#fail();}

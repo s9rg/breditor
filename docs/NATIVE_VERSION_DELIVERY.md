@@ -33,8 +33,8 @@ and verifies future native document and comment Undo/Redo. The installed checker
 runs the complete same test files from fresh archives with locked dependencies
 and no workspace links.
 
-This is one part of full room recovery. Compound sources whose metadata child
-has not been opened still need an explicit constructor-owned preparation path.
+This is one part of full room recovery. The [compound metadata preparation path](HELD_METADATA_PREPARATION.md) now opens
+existing atomic children without saving, networking or granting ordinary mutations.
 Suggestion and revision delivery, all-family metadata settlement, fresh
 provider/client/assets reconciliation and authenticated joint activation remain
 required. No full V1 gate is closed by this contract.

@@ -1,3 +1,4 @@
+import {selectedHeldMetadataOpen,heldMetadataWork,type HeldMetadataOpen} from '../metadata/held_open.js';
 /** Durable immutable revision outbox borrowing the accepted source, base queue and connection.
  * Children enter the unchanged proposal queue only after authenticated revision commitment. */
 import {RelayWorkCustody} from '../relay/work_custody.js';
@@ -50,10 +51,10 @@ export class SharedSuggestionRevisions<P extends SharedSelectionPolicy=SharedSel
  #downloads=new Map<string,ReturnType<typeof loadRevision<P>>>();
  #restoreInsert=false;#restoreSignal:AbortSignal|undefined;
  #initialized=false;#tasks=0;#connections=new Set<Promise<void>>();#storageChanged=false;
- private constructor(key:object,options:SharedSuggestionRevisionsOptions<P>,db:IDBDatabase|undefined,record:SharedSuggestionRevisionsRecord,atomic?:RetainedStorePort<"revisions">,recordSource?:object){
+ private constructor(key:object,options:SharedSuggestionRevisionsOptions<P>,db:IDBDatabase|undefined,record:SharedSuggestionRevisionsRecord,atomic?:RetainedStorePort<"revisions">,recordSource?:object,held?:HeldMetadataOpen){
   if(key!==constructionKey)throw new SharedEditorError('managed_source_construction','Use the actual revision outbox open or recovery factory');
   this.#atomic=atomic;this.#recordSource=recordSource;
-  this.#options=options;this.#core=options.queue.core;this.#db=db;this.#record=record;this.#wanted=options.autoStart!==false;this.#admit(record);this.#work=new RelayWorkCustody(this.#core,()=>this.#initialized&&!this.#wanted,()=>new SharedRelayError('suggestion_recovery_in_use'));this.#work.registerOwner(this);
+  this.#options=options;this.#core=options.queue.core;this.#db=db;this.#record=record;this.#wanted=options.autoStart!==false;this.#admit(record);this.#work=heldMetadataWork(this.#core,()=>this.#initialized&&!this.#wanted,()=>new SharedRelayError('suggestion_recovery_in_use'),held);this.#work.registerOwner(this);
   registerManagedSource(this,this.#core,()=>{this.#localCheck();if(this.#closing||this.#storageChanged)throw managedSourceUnavailable();checkManagedSource(options.queue,this.#core);});
   if(db)db.onversionchange=()=>{this.#storageChanged=true;db.close();this.#failure=new SharedRelayError("suggestion_database_versionchange");this.#report(this.#failure);};
   this.#off.push(registerSuggestionRecoveryParticipant(options.queue,()=>this.#recoveryIdle()));
@@ -81,7 +82,7 @@ export class SharedSuggestionRevisions<P extends SharedSelectionPolicy=SharedSel
   if(source.core!==core||queue.core!==core)throw new SharedRelayError("suggestion_source_replaced");return SharedSuggestionRevisions.#open({...options,binding,autoStart:false},recovered,signal);
  }
  static async #open<Q extends SharedSelectionPolicy>(input:SharedSuggestionRevisionsOptions<Q>,recovered?:SharedSuggestionRevisionsRecord,signal?:AbortSignal):Promise<SharedSuggestionRevisions<Q>>{
-  const queue=input.queue;checkSuggestionRecoveryIdle(queue);const core=queue.core,binding=revisionsBinding({binding:input.binding}).binding,options={...input,binding},atomic=selectedRetainedStorePort(input,"revisions");
+  const queue=input.queue;checkSuggestionRecoveryIdle(queue);const core=queue.core,binding=revisionsBinding({binding:input.binding}).binding,options={...input,binding},atomic=selectedRetainedStorePort(input,"revisions"),held=selectedHeldMetadataOpen(input,core,atomic,()=>new SharedRelayError('suggestion_recovery_in_use'));
   checkManagedCore(core);
   if(attached.has(queue))throw new SharedRelayError("suggestion_revisions_already_attached");
   const opening=registerSuggestionRecoveryParticipant(queue,()=>{throw new SharedRelayError("suggestion_recovery_in_use");});attached.add(queue);let db:IDBDatabase|undefined,outbox:SharedSuggestionRevisions<Q>|undefined;
@@ -91,7 +92,7 @@ export class SharedSuggestionRevisions<P extends SharedSelectionPolicy=SharedSel
    if(recovered){if(await retainedStoreDestinationExists(db!,"revisions",revisionKey(queue.identity(),binding),signal))throw new SharedEditorError("backup_destination_exists","Retained restore destination already contains a record");saved=recovered;}else saved=atomic?checkRevisionRecord(atomic.read(),queue.identity(),binding):await readRevisionRecord(db!,queue.identity(),binding);
    if(retained&&(!saved||JSON.stringify(saved)!==JSON.stringify(retained.record)))throw operationFailure("operation_diverged");
    let recordSource:object|undefined;try{if(managedSourceCore(input.storage)===core)recordSource=input.storage;}catch{/* Old custom sources remain editable, but issue no managed record-read custody. */}
-   checkManagedCore(core);const create=()=>new SharedSuggestionRevisions(constructionKey,options,db,saved??{format:"breditor/shared-suggestion-revisions",formatVersion:1,identity:queue.identity(),binding,retained:[]},atomic,recordSource);outbox=recovered?retainedStoreNativeAdmission(create):create();checkManagedCore(core);retained?.assertCurrent();outbox.#restoreInsert=recovered!==undefined;outbox.#restoreSignal=signal;if(isCompletedOperationalComponent(input)){if(!retained||!saved||recovered||atomic)throw operationFailure('operation_diverged');outbox.#durable=JSON.stringify(outbox.#record);}else{outbox.#pending=structuredClone(outbox.#record);outbox.#startWrite();await outbox.flush();}outbox.#check();checkManagedCore(core);checkRetainedStoreSignal(signal);outbox.#changed();opening();return outbox;}
+   checkManagedCore(core);const create=()=>new SharedSuggestionRevisions(constructionKey,options,db,saved??{format:"breditor/shared-suggestion-revisions",formatVersion:1,identity:queue.identity(),binding,retained:[]},atomic,recordSource,held);outbox=recovered?retainedStoreNativeAdmission(create):create();checkManagedCore(core);retained?.assertCurrent();outbox.#restoreInsert=recovered!==undefined;outbox.#restoreSignal=signal;if(held){held.check();if(!saved||recovered||!atomic||options.autoStart!==false)throw new SharedRelayError('metadata_preparation_policy');outbox.#durable=JSON.stringify(outbox.#record);}else if(isCompletedOperationalComponent(input)){if(!retained||!saved||recovered||atomic)throw operationFailure('operation_diverged');outbox.#durable=JSON.stringify(outbox.#record);}else{outbox.#pending=structuredClone(outbox.#record);outbox.#startWrite();await outbox.flush();}held?.check();outbox.#check();checkManagedCore(core);checkRetainedStoreSignal(signal);outbox.#changed();opening();return outbox;}
   catch(error){opening();if(outbox)await outbox.discardAndClose();else{db?.close();attached.delete(queue);}throw error;}
  }
  #localCheck():void{if(this.#closed)throw new SharedRelayError("suggestion_revisions_closed");const o=this.#options;if(o.storage.core!==this.#core||o.queue.core!==this.#core)throw new SharedRelayError("suggestion_source_replaced");const state=o.queue.state();if(state.closed||state.retiring)throw new SharedRelayError("suggestion_queue_closed");this.#atomic?.check();}

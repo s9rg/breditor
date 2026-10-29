@@ -1,3 +1,4 @@
+import {takeHeldMetadataOwner,heldMetadataWork} from '../metadata/held_open.js';
 /** Automatic catalog synchronization borrows one native owner and never submits document operations. */
 import {RelayWorkCustody} from '../relay/work_custody.js';
 import {RelayChannel} from "../relay/channel.js";
@@ -25,7 +26,7 @@ export class VersionCatalogSync<P extends SharedSelectionPolicy=SharedSelectionP
   if(transportVersion(identity.writerTransport)===2?!core.supportsWriterTransportV2():!core.supportsWriterTransport())throw new SharedRelayError("writer_transport_unavailable");
   this.#http=new VersionCatalogHttp({...identity,getToken:options.getToken,...(options.requestTimeoutMs===undefined?{}:{requestTimeoutMs:options.requestTimeoutMs})});this.#milliseconds=timeout(options.requestTimeoutMs);this.#minimum=options.reconnectMinimumMs??500;this.#maximum=options.reconnectMaximumMs??30000;
   if(!Number.isInteger(this.#minimum)||!Number.isInteger(this.#maximum)||this.#minimum<50||this.#minimum>this.#maximum||this.#maximum>30000)throw new SharedRelayError("reconnect_limits");
-  this.#work=new RelayWorkCustody(core,()=>this.#initialized&&!this.#wanted&&(this.#closed||this.#status==='offline'||this.#status==='local-save-failed'),()=>new SharedRelayError('version_recovery_in_use'),this.#native?.admission);this.#work.registerOwner(this);
+  const idle=()=>this.#initialized&&!this.#wanted&&(this.#closed||this.#status==='offline'||this.#status==='local-save-failed'),failure=()=>new SharedRelayError('version_recovery_in_use');this.#work=this.#native?new RelayWorkCustody(core,idle,failure,this.#native.admission):heldMetadataWork(core,idle,failure,takeHeldMetadataOwner(store));this.#work.registerOwner(this);
   try{this.#localSignature=store.queued().join(',');this.#unsubscribe.push(core.subscribe(()=>this.#schedule()));this.#unsubscribe.push(store.subscribe(()=>this.#storeChanged()));this.#wanted=options.autoConnect!==false;this.#initialized=true;if(this.#wanted)queueMicrotask(()=>{if(this.#wanted&&!this.#closed)void this.connect().catch(()=>{});});}
   catch(error){this.#closed=true;this.#wanted=false;for(const off of this.#unsubscribe)try{off();}catch{}this.#work.retire(()=>{});throw error;}
  }
