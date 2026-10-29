@@ -1,3 +1,5 @@
+import {registerNativeVersionCatalog,composeNativeVersionDelivery} from './native_delivery.js';
+import {lendVersionNativeStore} from './native_store.js';
 import {registerRelayWorkGroup} from '../relay/work_custody.js';
 import {VersionCatalogStore,captureOriginalVersionStoreRecords} from "./store.js";
 import {VersionCatalogSync} from "./sync.js";
@@ -18,7 +20,15 @@ let readOriginalCatalog:(owner:SharedDocumentVersions,authority:()=>void,signal?
 export class SharedDocumentVersions<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
  readonly #store:VersionCatalogStore<P>;readonly #sync:VersionCatalogSync<P>;#retiring=false;#closed=false;#closing:Promise<void>|undefined;#released:Promise<void>|undefined;
  #recovering=false;
- private constructor(key:object,store:VersionCatalogStore<P>){if(key!==constructionKey)throw new SharedRelayError('managed_source_construction');this.#store=store;this.#sync=new VersionCatalogSync(store);registerRelayWorkGroup(this,[store,this.#sync]);const core=store.options.storage.core;registerManagedSource(this,core,()=>{this.#writable();checkManagedSource(store,core);},[store]);}
+ private constructor(key:object,store:VersionCatalogStore<P>){if(key!==constructionKey)throw new SharedRelayError('managed_source_construction');this.#store=store;this.#sync=new VersionCatalogSync(store);registerRelayWorkGroup(this,[store,this.#sync]);const core=store.options.storage.core;registerManagedSource(this,core,()=>{this.#writable();checkManagedSource(store,core);},[store]);
+  registerNativeVersionCatalog(this,(delivery,options)=>{
+   if(this.#closed||this.#retiring||this.#recovering)throw new SharedRelayError('version_native_delivery_in_use');checkManagedSourceBindings(this);
+   const releaseSync=this.#sync.reserveLocalRead();this.#recovering=true;let released=false;
+   const release=()=>{if(!released){released=true;this.#recovering=false;releaseSync();}};
+   try{const loan=lendVersionNativeStore<P>(this.#store,delivery,options);return composeNativeVersionDelivery(loan,release);}catch(error){release();throw error;}
+  });
+ }
+
  static{readOriginalCatalog=async(owner,provided,signal)=>{
   if(!owner||typeof owner!=='object'||!(#store in owner))throw new SharedRelayError('version_record_read_source');const authority=participantAuthority(provided);owner.#writable();checkManagedSourceBindings(owner);const releaseSync=owner.#sync.reserveLocalRead();owner.#recovering=true;let inner:OriginalRecordRead<OriginalVersionRecords>|undefined,result:OriginalRecordRead<OriginalVersionRecords>|undefined,released=false;
   const release=()=>{if(!released){released=true;inner?.dispose();owner.#recovering=false;releaseSync();}},current=()=>{if(released||owner.#closed||owner.#retiring||!owner.#recovering)throw new SharedRelayError('version_record_read_closed');checkManagedSourceBindings(owner);inner!.checkCurrent();};

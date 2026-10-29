@@ -13,3 +13,8 @@ export function withIndependentRetainedPort<T extends object,K extends Segmented
 export function selectedRetainedStorePort<K extends SegmentedRetainedKind>(input:object,kind:K):RetainedStorePort<K>|undefined{
  const old=segmentedRetainedPort(input,kind),current=selected.get(input);if(old&&current)throw new SharedRelayError('delivery_source_ambiguous');if(current&&current.kind!==kind)throw new SharedRelayError('independent_retained_kind');return(old??current) as RetainedStorePort<K>|undefined;
 }
+
+/** The original atomic record driver knows its genuine enclosing source. */
+const retainedOwners=new WeakMap<object,Readonly<{source:object;core:object}>>();
+export function registerRetainedStoreOwner(port:object,source:object,core:object):void{if(retainedOwners.has(port))throw new SharedRelayError('delivery_source_ambiguous');retainedOwners.set(port,Object.freeze({source,core}));}
+export function retainedStoreOwner(port:object,core:object):object|undefined{const owner=retainedOwners.get(port);if(owner&&owner.core!==core)throw new SharedRelayError('delivery_source_ambiguous');return owner?.source;}

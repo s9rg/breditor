@@ -1,5 +1,26 @@
 # V1 candidate checks
 
+The [native-held version delivery contract](NATIVE_VERSION_DELIVERY.md) now
+connects explicit work admission to actual original catalog records, source
+persistence and fresh authenticated transport. It preserves immutable version
+packets and separates server acceptance from actual local durability. Real
+storage aborts, authority loss after commit and lost replies retain exact retry
+state; closing drains actual work before native exclusion can release.
+
+The [qualification](qualification/2026-10-29-native-version-delivery.json) passes
+593 direct checks, 98 independently installed checks, seven strict source type
+stages and two installed type stages. It includes 48 direct native version
+policies, 24 real failure/retry cases and original catalog publication through
+prepared seven-family whole-room recovery, followed by cold future document and
+comment Undo/Redo. Actual source/catalog/packet bytes, complete room archives,
+package archives and logs have a read-back-verified index.
+
+Unopened compound metadata children, suggestion/revision transport, all-family
+metadata settlement, complete provider/client/assets reconciliation and joint
+authenticated activation remain required. Original protocols, defaults, public
+exports, package versions and normal Wasm remain unchanged. All thirteen V1
+parity gates stay open; full candidate profiles have not been executed.
+
 The [per-call metadata work contract](METADATA_ADMITTED_WORK.md) now admits
 individual staging/write jobs through the actual held native reservation while
 ordinary store methods stay excluded. Each actual promise is tracked by both

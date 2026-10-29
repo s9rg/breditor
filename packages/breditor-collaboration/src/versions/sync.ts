@@ -6,33 +6,37 @@ import {accountToken} from "../relay/registration.js";
 import {SharedRelayError,object,frame,descriptor,checkDescriptor,checkClock,clock,string,timeout,transportVersion} from "../relay/validation.js";
 import {versionDescriptor,catalogSnapshot} from "./validation.js";
 import {VersionCatalogHttp} from "./http.js";
-import type {VersionCatalogStore} from "./store.js";
+import type {VersionSyncStore} from './sync_store.js';
+import {nativeVersionView} from './native_store.js';
+import type {NativeRelayDeliveryPort} from '../relay/native_delivery.js';
 import type {SharedSelectionPolicy} from "../types.js";
 import type {SharedDocumentVersionsState,SharedDocumentVersionEntry} from "./types.js";
 const transient=new Set(["connection_lost","connection_timeout","request_timeout","storage_unavailable","version_transfer_failed","version_request_budget"]);
 interface Waiter {ids:readonly string[];resolve:()=>void;reject:(error:SharedRelayError)=>void;timer:ReturnType<typeof setTimeout>}
 export class VersionCatalogSync<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
- readonly #work:RelayWorkCustody;readonly #store:VersionCatalogStore<P>;readonly #http:VersionCatalogHttp;readonly #milliseconds:number;readonly #minimum:number;readonly #maximum:number;
+ readonly #native:NativeRelayDeliveryPort|undefined;readonly #work:RelayWorkCustody;readonly #store:VersionSyncStore<P>;readonly #http:VersionCatalogHttp;readonly #milliseconds:number;readonly #minimum:number;readonly #maximum:number;
  #channel:RelayChannel|undefined;#abort:AbortController|undefined;#epoch=0;#ready=false;#wanted=false;#closed=false;#connecting:Promise<void>|undefined;#serial=Promise.resolve();
  #status:SharedDocumentVersionsState["status"]="offline";#error:string|null=null;#canPublish:boolean|null=null;#waitingForDocument=false;
  #queuedEpoch:number|undefined;#dirty=false;#latestDocument:string|undefined;#retry:ReturnType<typeof setTimeout>|undefined;#attempts=0;#reported:string|null=null;#localSignature="";#working=0;
  #listeners=new Set<()=>void>();#notifying=false;#unsubscribe:(()=>void)[]=[];#waiters=new Set<Waiter>();#publishing=new Set<string>();#downloads=new Map<string,Promise<string>>();
  #tasks=0;#recovering=false;#initialized=false;
- constructor(store:VersionCatalogStore<P>){
-  this.#store=store;const options=store.options,identity=options.identity,core=options.storage.core;
+ constructor(store:VersionSyncStore<P>){
+  this.#store=store;this.#native=nativeVersionView(store);const options=store.options,identity=options.identity,core=options.storage.core;
   if(transportVersion(identity.writerTransport)===2?!core.supportsWriterTransportV2():!core.supportsWriterTransport())throw new SharedRelayError("writer_transport_unavailable");
   this.#http=new VersionCatalogHttp({...identity,getToken:options.getToken,...(options.requestTimeoutMs===undefined?{}:{requestTimeoutMs:options.requestTimeoutMs})});this.#milliseconds=timeout(options.requestTimeoutMs);this.#minimum=options.reconnectMinimumMs??500;this.#maximum=options.reconnectMaximumMs??30000;
   if(!Number.isInteger(this.#minimum)||!Number.isInteger(this.#maximum)||this.#minimum<50||this.#minimum>this.#maximum||this.#maximum>30000)throw new SharedRelayError("reconnect_limits");
-  this.#work=new RelayWorkCustody(core,()=>this.#initialized&&!this.#wanted&&(this.#closed||this.#status==='offline'||this.#status==='local-save-failed'),()=>new SharedRelayError('version_recovery_in_use'));this.#work.registerOwner(this);
+  this.#work=new RelayWorkCustody(core,()=>this.#initialized&&!this.#wanted&&(this.#closed||this.#status==='offline'||this.#status==='local-save-failed'),()=>new SharedRelayError('version_recovery_in_use'),this.#native?.admission);this.#work.registerOwner(this);
   try{this.#localSignature=store.queued().join(',');this.#unsubscribe.push(core.subscribe(()=>this.#schedule()));this.#unsubscribe.push(store.subscribe(()=>this.#storeChanged()));this.#wanted=options.autoConnect!==false;this.#initialized=true;if(this.#wanted)queueMicrotask(()=>{if(this.#wanted&&!this.#closed)void this.connect().catch(()=>{});});}
   catch(error){this.#closed=true;this.#wanted=false;for(const off of this.#unsubscribe)try{off();}catch{}this.#work.retire(()=>{});throw error;}
  }
+ /** Internal factory identity only; never exported at the public package root. */
+ nativeDeliveryPort():NativeRelayDeliveryPort|undefined{return this.#native;}
  state():SharedDocumentVersionsState{const local=this.#store.state();return {status:this.#closed?"closed":local.failed?"local-save-failed":this.#status,canPublish:this.#canPublish,queued:local.queued,catalogEntries:local.catalogEntries,cachedPackets:local.cachedPackets,localPending:local.pending||local.failed,waitingForDocument:this.#waitingForDocument,error:local.failed?"local_save_failed":this.#error};}
  subscribe(listener:()=>void):()=>void{this.#listeners.add(listener);return()=>this.#listeners.delete(listener);}
  busy(id:string):boolean{return this.#publishing.has(id)||this.#downloads.has(id);}
- #active(epoch:number):boolean{if(this.#closed||this.#epoch!==epoch)return false;try{checkManagedCore(this.#store.options.storage.core);return true;}catch{return false;}}
+ #active(epoch:number):boolean{if(this.#closed||this.#epoch!==epoch)return false;try{this.#native?.check();checkManagedCore(this.#store.options.storage.core);return true;}catch{return false;}}
  #enqueue(work:()=>Promise<void>):Promise<void>{return this.#work.run(()=>{this.#tasks++;const task=this.#serial.then(work).finally(()=>{this.#tasks--;});this.#serial=task.catch(()=>{});return task;});}
- #networkAllowed():void{if(this.#closed)throw new SharedRelayError('closed');this.#work.checkAllowed();if(this.#recovering)throw new SharedRelayError("version_recovery_in_use");checkManagedCore(this.#store.options.storage.core);}
+ #networkAllowed():void{if(this.#closed)throw new SharedRelayError('closed');this.#native?.check();this.#work.checkAllowed();if(this.#recovering)throw new SharedRelayError("version_recovery_in_use");checkManagedCore(this.#store.options.storage.core);}
  /** Disconnected status alone does not prove old asynchronous work has settled. */
  reserveLocalRecovery():()=>void{
   if(this.#closed)throw new SharedRelayError("closed");
@@ -75,7 +79,7 @@ export class VersionCatalogSync<P extends SharedSelectionPolicy=SharedSelectionP
   void this.#enqueue(async()=>{if(!this.#active(epoch)||!this.#ready)return;this.#dirty=false;await this.#synchronize(epoch);}).catch(error=>this.#fail(error instanceof SharedRelayError?error:new SharedRelayError("version_sync_failed"),epoch)).finally(()=>{if(this.#queuedEpoch===epoch)this.#queuedEpoch=undefined;if(this.#active(epoch)&&this.#dirty&&this.#ready)this.#schedule();});
  }
  async #save():Promise<void>{try{await this.#store.flush();}catch{throw new SharedRelayError("local_save_failed");}}
- async #document(channel:RelayChannel,input:string,epoch:number):Promise<void>{const options=this.#store.options,identity=options.identity,core=options.storage.core,response=await channel.request({kind:"clock",writer:identity.documentWriter});if(response["kind"]!=="clock")throw new SharedRelayError("version_protocol_error");checkClock(core,clock(response["clock"],identity.documentWriter),transportVersion(identity.writerTransport));if(!this.#active(epoch))throw new SharedRelayError("disconnected");await core.receiveFrame(input,{signal:this.#abort!.signal});}
+ async #document(channel:RelayChannel,input:string,epoch:number):Promise<void>{const options=this.#store.options,identity=options.identity,core=options.storage.core,response=await channel.request({kind:"clock",writer:identity.documentWriter});if(response["kind"]!=="clock")throw new SharedRelayError("version_protocol_error");checkClock(core,clock(response["clock"],identity.documentWriter),transportVersion(identity.writerTransport));if(!this.#active(epoch))throw new SharedRelayError("disconnected");if(this.#native)this.#native.receiveDocument(input);else await core.receiveFrame(input,{signal:this.#abort!.signal});}
  async #pull(epoch:number):Promise<void>{
   const entries:SharedDocumentVersionEntry[]=[];let cursor=null,more;
   do{if(!this.#active(epoch))throw new SharedRelayError("disconnected");const page=await this.#http.page(cursor,this.#abort!.signal);if(!this.#active(epoch))throw new SharedRelayError("disconnected");entries.push(...page.entries);if(entries.length>1024)throw new SharedRelayError("version_catalog_budget");cursor=page.cursor;more=page.more;}while(more);

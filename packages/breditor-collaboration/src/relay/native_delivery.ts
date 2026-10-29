@@ -32,6 +32,7 @@ export interface NativeRelayDeliveryPort {
  persistReviewProgress(progress:SharedReviewRelayProgress,receipt?:SharedSegmentedReviewReceipt):Promise<void>;reviewReceipt():SharedSegmentedReviewReceipt|null;localReviewBinding():SharedReviewRelayStorageIdentity|null;
  track(stop:()=>void,wait:()=>Promise<void>):void;
 }
+const sourceSessions=new WeakMap<NativeRelayDelivery,object>();
 const contexts=new WeakMap<NativeRelayDelivery,NativeRelayDeliveryPort>(),selections=new WeakMap<object,NativeRelayDeliveryPort>(),localReviews=new WeakMap<NativeRelayDelivery,LocalReviewIO>(),selectedOwners=new WeakMap<NativeRelayDelivery,SelectedNativeRecoveryScope>();
 interface GuardedIngress {receiveDocument(frame:string):boolean;receiveReview(frame:string,policy:SharedReviewPolicy):SharedReviewImportOutcome;setReviewAccess(access:SharedReviewAccess):boolean;adoptSuggestionHistory:SuggestionIngress}
 interface NativeDeliveryInput<P extends SharedSelectionPolicy>{native:NativeRecoveryReservation;session:object;core:SharedRichEditor<P>;reviewCeiling:SharedReviewAccess;checkAuthority:()=>void;signal?:AbortSignal}
@@ -66,7 +67,7 @@ function composeDelivery<P extends SharedSelectionPolicy>(input:NativeDeliveryIn
   // Stop every socket before awaiting any one callback. Failed cleanup retains
   // the exact handles and exclusion for a later close retry.
   ending=(async()=>{const errors:unknown[]=[];for(const entry of adapters)try{entry.stop();}catch(error){errors.push(error);}await Promise.all([...adapters].map(async entry=>{try{await entry.wait();}catch(error){errors.push(error);}}));if(errors.length)throw new AggregateError(errors,'Native delivery cleanup did not finish');adapters.clear();closed=true;})().finally(()=>{ending=undefined;});return ending;
- }});contexts.set(owner,port);return owner;
+ }});contexts.set(owner,port);sourceSessions.set(owner,session);return owner;
 }
 /** Genuine selected-owner #recover constructor only. Actual ingress still uses
  * that owner's wrapped imports, so attempted mutations cannot bypass its
@@ -103,4 +104,10 @@ export function selectedNativeDeliveryReads(scope:SelectedNativeRecoveryScope):S
  * this transport path. Authentication and native prefix checks remain unchanged. */
 export function checkSelectedLocalDocumentBinding(port:NativeRelayDeliveryPort|undefined,identity:SharedRelayIdentity):boolean{
  const b=port?.localReviewBinding();if(!b)return false;if(b.endpoint!==identity.endpoint||b.principal!==identity.principal||b.room!==identity.room||b.documentWriter!==identity.writer||b.writerTransport!==identity.writerTransport)throw new SharedRelayError('native_delivery_source');port!.check();return true;
+}
+
+/** Exact constructor-owned session and Core. Neither a copied context nor a
+ * same-shaped storage facade may lend persistence to a metadata adapter. */
+export function nativeRelayDeliveryForSource(owner:NativeRelayDelivery,session:object,core:object):NativeRelayDeliveryPort{
+ const port=contexts.get(owner);if(!port||sourceSessions.get(owner)!==session||port.core!==core)throw new SharedRelayError('native_delivery_source');port.check();return port;
 }
