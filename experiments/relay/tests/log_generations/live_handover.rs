@@ -12,7 +12,7 @@ use breditor_collab_relay::{
 use serde_json::json;
 use std::fs;
 #[path = "live_handover/author.rs"]
-mod author;
+pub(super) mod author;
 #[path = "live_handover/roundtrip.rs"]
 mod roundtrip;
 

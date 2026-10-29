@@ -119,3 +119,5 @@ of the actual recovered host's original archive and generation-operation custody
 and an authenticated once-only replacement transition. No bare native Room
 unwrapping, saved selection or prepared source status substitutes for that closure.
 All thirteen V1 gates and the full parity goal remain open.
+
+The next native-only transition is documented in [Native generation service activation](NATIVE_GENERATION_SERVICE_ACTIVATION.md). It retains actual original/source custody and can construct a fenced native Router after fresh target authentication; it is not the missing browser/provider whole-room closure.

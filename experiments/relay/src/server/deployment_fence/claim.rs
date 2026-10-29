@@ -30,7 +30,7 @@ impl RoomDeploymentAuthority {
         held: &mut Permit<'_>,
         expected: &RoomDeploymentSelection,
     ) -> Result<RoomDeploymentLease> {
-        self.claim_nonce_held(held, expected, None)
+        self.claim_nonce_held(held, expected, None, None)
     }
     // Only the actual native source seal supplies a source-bound nonce. DATA
     // cannot call this primitive or reconstruct the genuine returned lease.
@@ -40,13 +40,23 @@ impl RoomDeploymentAuthority {
         expected: &RoomDeploymentSelection,
         nonce: [u8; 32],
     ) -> Result<RoomDeploymentLease> {
-        self.claim_nonce_held(held, expected, Some(nonce))
+        self.claim_nonce_held(held, expected, Some(nonce), None)
+    }
+    pub(super) fn claim_activation_held(
+        &self,
+        held: &mut Permit<'_>,
+        expected: &RoomDeploymentSelection,
+        nonce: [u8; 32],
+        stop: &crate::server::generation_backup::durable::Interruption,
+    ) -> Result<RoomDeploymentLease> {
+        self.claim_nonce_held(held, expected, Some(nonce), Some(stop))
     }
     fn claim_nonce_held(
         &self,
         held: &mut Permit<'_>,
         expected: &RoomDeploymentSelection,
         planned: Option<[u8; 32]>,
+        stop: Option<&crate::server::generation_backup::durable::Interruption>,
     ) -> Result<RoomDeploymentLease> {
         held.check_authority(&self.state)?;
         let current = self.state.selected(held.file()?)?;
@@ -80,6 +90,9 @@ impl RoomDeploymentAuthority {
             return Err(error);
         }
         self.state.observe_committed(held.file()?, generation, &bytes)?;
+        if let Some(stop) = stop {
+            stop.after(crate::server::generation_backup::durable::Point::EpochWritten)?;
+        }
         let selection = RoomDeploymentSelection {
             identity: self.identity(),
             generation: generation.to_string(),

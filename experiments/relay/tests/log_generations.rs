@@ -23,6 +23,9 @@ mod joined_room;
 #[cfg(all(feature = "server", unix))]
 #[path = "log_generations/live_handover.rs"]
 mod live_handover;
+#[cfg(all(feature = "server", unix))]
+#[path = "log_generations/native_activation.rs"]
+mod native_activation;
 #[path = "log_generations/participants.rs"]
 mod participants;
 #[cfg(feature = "server")]

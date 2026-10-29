@@ -94,6 +94,7 @@ impl Store {
         self.identity.validate()?;
         self.directory.guard_witness(&self.identity.root)?;
         let mut names = fs::read_dir(&self.directory.path)?
+            .take(4)
             .map(|e| e.map(|e| e.file_name()))
             .collect::<std::io::Result<Vec<_>>>()?;
         names.sort();

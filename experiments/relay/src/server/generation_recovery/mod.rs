@@ -1,4 +1,10 @@
-//! Owner-authenticated complete generation recovery checks without a network activation path.
+//! Authenticated generation recovery and opt-in fenced native-service activation.
+mod activate_native;
+mod activation_identity;
+pub use activate_native::ActivatedNativeLogGenerationHost;
+pub(super) use activate_native::NativeGenerationServingCustody;
+pub use activation_identity::NativeLogGenerationActivationIdentity;
+pub(super) use selected::check_selected as check_generation_selected;
 mod asset_availability;
 mod asset_state;
 pub use asset_availability::{

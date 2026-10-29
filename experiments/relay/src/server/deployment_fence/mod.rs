@@ -1,5 +1,7 @@
 //! Separate host-owned serving epochs. No archive, receipt or editor token can
 //! construct a lease; room recovery/reconciliation remains a separate decision.
+mod activate_generation;
+pub(super) use activate_generation::activate_native_generation;
 mod authority;
 mod claim;
 mod close;

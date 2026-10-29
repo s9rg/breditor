@@ -2,12 +2,13 @@
 use super::super::Host;
 use crate::ServerLogGenerationRoomBackup;
 use std::sync::Arc;
-/// Inactive authenticated host over actual operational native/raster components and every
+/// Initially inactive authenticated host over actual operational native/raster components and every
 /// recovery directory lease. No router or public native-parts escape is exposed. Provider/client
-/// reconciliation, current deployment fencing and atomic whole-room activation remain separate.
+/// reconciliation and atomic whole-room activation remain separate. Native service activation
+/// attaches one shared serving epoch; every older handle observes that same decision.
 /// Retains the original admitted archive for exact physical-prefix and raster continuity checks.
 #[derive(Clone)]
 pub struct PreparedLogGenerationRecoveryHost {
-    pub(super) host: Host,
-    pub(super) original: Arc<ServerLogGenerationRoomBackup>,
+    pub(in crate::server) host: Host,
+    pub(in crate::server) original: Arc<ServerLogGenerationRoomBackup>,
 }

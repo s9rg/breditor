@@ -40,6 +40,7 @@ pub use generation_backup::{
     router_with_log_generation_backups_and_deployment_lease,
 };
 pub use generation_recovery::{
+    ActivatedNativeLogGenerationHost, NativeLogGenerationActivationIdentity,
     PhysicalRoomRecoveryControl, PhysicalRoomRecoveryControlIdentity,
     PhysicalServerAssetAvailabilityRead, PhysicalServerAssetRecoveryState,
     PhysicalServerRecoveryAssetCoverage, PhysicalServerRoomRecoveryCoverage,
@@ -72,6 +73,8 @@ pub(super) struct Host {
     version_operations: Arc<Semaphore>,
     suggestions_changed: watch::Sender<u64>,
     generation_custody: Option<Arc<crate::room::GenerationOperationCustody>>,
+    generation_serving:
+        Arc<std::sync::OnceLock<generation_recovery::NativeGenerationServingCustody>>,
     deployment: deployment_fence::HostDeployment,
 }
 impl Host {
@@ -83,12 +86,20 @@ impl Host {
         let custody = self.generation_custody.clone();
         let assets = self.assets.clone();
         let deployment = self.deployment.clone();
+        let serving = self.generation_serving.clone();
         tokio::task::spawn_blocking(move || {
             deployment.transaction(|| {
                 let _custody = custody;
+                if let Some(held) = serving.get() {
+                    held.check_retained()?;
+                }
                 let _assets = assets;
                 let mut room = room.lock().map_err(|_| Error::NeedsRecovery)?;
-                f(&mut room)
+                let result = f(&mut room);
+                if let Some(held) = serving.get() {
+                    held.check_retained()?;
+                }
+                result
             })
         })
         .await
@@ -165,6 +176,7 @@ fn create_host(
         version_operations: Arc::new(Semaphore::new(4)),
         suggestions_changed,
         generation_custody: None,
+        generation_serving: Arc::new(std::sync::OnceLock::new()),
         deployment: deployment_fence::HostDeployment::unfenced(),
     }
 }

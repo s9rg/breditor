@@ -1,7 +1,7 @@
 //! Re-admit actual native state and retained original files before checking protected credentials.
 use super::ServerLogGenerationRecoveryStateIdentity;
 use crate::{Error, Result, Room, ServerLogGenerationRoomBackup, assets::AssetStore};
-pub(super) fn check_selected(
+pub(in crate::server) fn check_selected(
     room: &mut Room,
     assets: &mut AssetStore,
     original: &ServerLogGenerationRoomBackup,

@@ -66,3 +66,33 @@ fn an_explicit_legacy_host_still_has_no_fenced_source_capability() {
     ));
     assert!(!touched);
 }
+
+#[test]
+fn an_uncertain_native_activation_without_a_returned_lease_retires_every_earlier_clone() {
+    let host = HostDeployment::unfenced();
+    let earlier = host.clone();
+    assert!(matches!(
+        host.activate(|slot| {
+            slot.begin_commit();
+            Err::<(), _>(Error::NeedsRecovery)
+        }),
+        Err(Error::NeedsRecovery)
+    ));
+    let mut touched = false;
+    assert!(matches!(
+        earlier.transaction(|| {
+            touched = true;
+            Ok(())
+        }),
+        Err(Error::NeedsRecovery)
+    ));
+    assert!(!touched);
+    assert!(matches!(
+        earlier.activate(|_| {
+            touched = true;
+            Ok(())
+        }),
+        Err(Error::NeedsRecovery)
+    ));
+    assert!(!touched);
+}

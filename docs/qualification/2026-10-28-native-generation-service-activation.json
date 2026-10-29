@@ -1,0 +1,711 @@
+{
+  "format": "breditor/native-generation-service-activation-qualification",
+  "formatVersion": 1,
+  "functionalPassed": true,
+  "releaseReady": false,
+  "v1GatesClosed": 0,
+  "v1GatesTotal": 13,
+  "baseCommit": "17cd2aeefb5d2920fb67bd156fa1bdaa4c06656a",
+  "qualifiedSource": {
+    "commit": "17cd2aeefb5d2920fb67bd156fa1bdaa4c06656a",
+    "dirty": true,
+    "sha256": "1a1a01e503e38ac3f1da8311ce2ed2ea91ca7ded103211ee5465d7d90d1ccad4",
+    "files": 7272,
+    "bytes": 55345760
+  },
+  "scope": "Opt-in authenticated native service activation from a genuine durable sealed source and actual inactive generation recovery host. Not complete provider/client closure or coordinated whole-room activation.",
+  "server": {
+    "results": [
+      {
+        "passed": 354,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 23,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 9,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 35,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 8,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 41,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 31,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      }
+    ],
+    "total": 533
+  },
+  "noServer": {
+    "results": [
+      {
+        "passed": 171,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 23,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 9,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 26,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 8,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      }
+    ],
+    "total": 273
+  },
+  "selectedNative": {
+    "results": [
+      {
+        "passed": 8,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 346
+      }
+    ],
+    "total": 8
+  },
+  "publicConsumer": {
+    "results": [
+      {
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 34
+      }
+    ],
+    "total": 1
+  },
+  "grammarTransportModes": 10,
+  "independentNativeHistoryModes": 40,
+  "candidatePlanAndVerifier": {
+    "passed": 188,
+    "failed": 0,
+    "skipped": 0
+  },
+  "formatCheck": true,
+  "serverAllTargetStrictClippy": true,
+  "noServerAllTargetStrictClippy": true,
+  "serverRustdoc": true,
+  "sourceUnchangedDuringQualification": true,
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "normalWasmUnchanged": true,
+  "wholeCandidatePlanExecuted": false,
+  "freshNpmInstalledOrBundledExecution": false,
+  "regression": {
+    "kind": "Synced activation append returned no lease while the target remained usable as unfenced",
+    "before": {
+      "source": {
+        "commit": "17cd2aeefb5d2920fb67bd156fa1bdaa4c06656a",
+        "dirty": true,
+        "sha256": "849532a544b00bb8b74f20e83c21b2c46e2ec832c4ff057c8b0dbfcd5172f1c7",
+        "files": 7272,
+        "bytes": 55343052
+      },
+      "after": {
+        "commit": "17cd2aeefb5d2920fb67bd156fa1bdaa4c06656a",
+        "dirty": true,
+        "sha256": "849532a544b00bb8b74f20e83c21b2c46e2ec832c4ff057c8b0dbfcd5172f1c7",
+        "files": 7272,
+        "bytes": 55343052
+      },
+      "args": [
+        "test",
+        "--manifest-path",
+        "experiments/relay/Cargo.toml",
+        "--target-dir",
+        "target/owned-history-relay-native",
+        "--locked",
+        "--offline",
+        "--release",
+        "--features",
+        "server",
+        "--lib",
+        "interruption_after_synced_activation_keeps_the_same_host_permanently_fenced",
+        "--",
+        "--nocapture"
+      ],
+      "code": 101,
+      "signal": null,
+      "sourceUnchanged": true,
+      "oneBehavioralFailure": true,
+      "logSha256": "90ddc05adf47c1419707ea2e3db9bcbe6c883d510b1bd0a657d8a8c46085f1f1"
+    },
+    "repair": "Retain actual original/source custody and shared retirement before append; only checked serving publication clears retirement. Earlier clones cannot fall back to None.",
+    "failedLog": "/Users/s/code/breditor/target/native-generation-activation-proof-BSL57k/unreturned-lease-red/actual.log"
+  },
+  "stages": [
+    {
+      "id": "format",
+      "command": "/Users/s/.cargo/bin/cargo",
+      "args": [
+        "fmt",
+        "--manifest-path",
+        "experiments/relay/Cargo.toml",
+        "--",
+        "--check"
+      ],
+      "environment": {
+        "CARGO_BUILD_JOBS": "2"
+      },
+      "pid": 60620,
+      "code": 0,
+      "signal": null,
+      "elapsedMs": 1649,
+      "log": "/private/tmp/breditor-native-service-activation-tcbR7c/qualified-ZfPaWO/format.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "candidate-plan-and-verifier",
+      "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node",
+      "args": [
+        "--test",
+        "scripts/verify-candidate.test.mjs",
+        "scripts/accepted-native-candidate-plan.test.mjs",
+        "scripts/bounded-operation-storage-candidate-plan.test.mjs",
+        "scripts/canonical-source-readers-candidate-plan.test.mjs",
+        "scripts/cold-room-execution-candidate-plan.test.mjs",
+        "scripts/cold-room-recovery-candidate-plan.test.mjs",
+        "scripts/complete-history-provider-candidate-plan.test.mjs",
+        "scripts/completed-room-inspection-candidate-plan.test.mjs",
+        "scripts/delivery-operation-cohort-candidate-plan.test.mjs",
+        "scripts/flat-local-participant-candidate-plan.test.mjs",
+        "scripts/fresh-delivery-history-candidate-plan.test.mjs",
+        "scripts/fresh-room-history-candidate-plan.test.mjs",
+        "scripts/generation-component-reconstruction-candidate-plan.test.mjs",
+        "scripts/generation-history-provider-candidate-plan.test.mjs",
+        "scripts/generation-native-execution-candidate-plan.test.mjs",
+        "scripts/generation-native-reconstruction-candidate-plan.test.mjs",
+        "scripts/generation-operational-record-read-candidate-plan.test.mjs",
+        "scripts/generation-record-read-candidate-plan.test.mjs",
+        "scripts/generation-record-references-candidate-plan.test.mjs",
+        "scripts/generation-recovery-control-candidate-plan.test.mjs",
+        "scripts/held-asset-reconciliation-candidate-plan.test.mjs",
+        "scripts/held-asset-restore-candidate-plan.test.mjs",
+        "scripts/independent-delivery-candidate-plan.test.mjs",
+        "scripts/independent-delivery-participant-candidate-plan.test.mjs",
+        "scripts/independent-delivery-recovery-candidate-plan.test.mjs",
+        "scripts/independent-history-candidate-plan.test.mjs",
+        "scripts/independent-inventory-candidate-plan.test.mjs",
+        "scripts/independent-local-native-origin-candidate-plan.test.mjs",
+        "scripts/independent-local-operation-journal-candidate-plan.test.mjs",
+        "scripts/independent-local-operation-participant-candidate-plan.test.mjs",
+        "scripts/independent-local-portable-candidate-plan.test.mjs",
+        "scripts/independent-operation-journal-candidate-plan.test.mjs",
+        "scripts/independent-operation-lineage-candidate-plan.test.mjs",
+        "scripts/independent-operation-native-origin-candidate-plan.test.mjs",
+        "scripts/independent-operation-participant-candidate-plan.test.mjs",
+        "scripts/independent-operation-portable-candidate-plan.test.mjs",
+        "scripts/independent-participant-candidate-plan.test.mjs",
+        "scripts/independent-recovery-candidate-plan.test.mjs",
+        "scripts/journal-source-opening-candidate-plan.test.mjs",
+        "scripts/local-operation-cohort-candidate-plan.test.mjs",
+        "scripts/native-actor-retirement-candidate-plan.test.mjs",
+        "scripts/native-actor-root-candidate-plan.test.mjs",
+        "scripts/native-actor-transfer-intrinsics-candidate-plan.test.mjs",
+        "scripts/native-execution-candidate-plan.test.mjs",
+        "scripts/native-generation-activation-candidate-plan.test.mjs",
+        "scripts/native-generation-continuity-candidate-plan.test.mjs",
+        "scripts/native-history-read-candidate-plan.test.mjs",
+        "scripts/native-import-input-candidate-plan.test.mjs",
+        "scripts/native-input-cohort-candidate-plan.test.mjs",
+        "scripts/native-input-incoming-source-candidate-plan.test.mjs",
+        "scripts/native-input-journal-candidate-plan.test.mjs",
+        "scripts/native-owner-lifetime-candidate-plan.test.mjs",
+        "scripts/native-reconstruction-candidate-plan.test.mjs",
+        "scripts/native-recovery-candidate-plan.test.mjs",
+        "scripts/native-room-actor-routes-candidate-plan.test.mjs",
+        "scripts/native-room-execution-candidate-plan.test.mjs",
+        "scripts/native-room-promotion-candidate-plan.test.mjs",
+        "scripts/native-room-run-candidate-plan.test.mjs",
+        "scripts/native-serving-epochs-candidate-plan.test.mjs",
+        "scripts/native-source-handover-durability-candidate-plan.test.mjs",
+        "scripts/operation-asset-custody-candidate-plan.test.mjs",
+        "scripts/operation-references-candidate-plan.test.mjs",
+        "scripts/operational-history-reference-candidate-plan.test.mjs",
+        "scripts/operational-native-read-candidate-plan.test.mjs",
+        "scripts/original-operational-record-read-candidate-plan.test.mjs",
+        "scripts/original-record-read-candidate-plan.test.mjs",
+        "scripts/original-record-references-candidate-plan.test.mjs",
+        "scripts/original-retained-record-read-candidate-plan.test.mjs",
+        "scripts/owned-core-cleanup-candidate-plan.test.mjs",
+        "scripts/physical-catalog-v2-candidate-plan.test.mjs",
+        "scripts/physical-catalog-v3-candidate-plan.test.mjs",
+        "scripts/physical-operation-v3-candidate-plan.test.mjs",
+        "scripts/physical-operation-v3-seven-room-candidate-plan.test.mjs",
+        "scripts/physical-recovery-assets-candidate-plan.test.mjs",
+        "scripts/physical-recovery-control-candidate-plan.test.mjs",
+        "scripts/physical-room-host-assets-candidate-plan.test.mjs",
+        "scripts/physical-room-host-candidate-plan.test.mjs",
+        "scripts/physical-room-operation-candidate-plan.test.mjs",
+        "scripts/physical-room-stage-candidate-plan.test.mjs",
+        "scripts/protected-history-group-candidate-plan.test.mjs",
+        "scripts/provider-callback-custody-candidate-plan.test.mjs",
+        "scripts/reader-runtime-candidate-plan.test.mjs",
+        "scripts/reconciled-asset-base-candidate-plan.test.mjs",
+        "scripts/restored-graph-candidate-plan.test.mjs",
+        "scripts/restored-local-journal-candidate-plan.test.mjs",
+        "scripts/restored-local-participant-candidate-plan.test.mjs",
+        "scripts/restored-operation-read-candidate-plan.test.mjs",
+        "scripts/restored-operation-source-candidate-plan.test.mjs",
+        "scripts/restored-participant-candidate-plan.test.mjs",
+        "scripts/retained-native-continuation-candidate-plan.test.mjs",
+        "scripts/room-asset-adoption-candidate-plan.test.mjs",
+        "scripts/room-asset-approval-candidate-plan.test.mjs",
+        "scripts/room-record-cut-candidate-plan.test.mjs",
+        "scripts/selected-generation-reconciliation-candidate-plan.test.mjs",
+        "scripts/selected-owner-candidate-plan.test.mjs",
+        "scripts/selected-reconciliation-candidate-plan.test.mjs",
+        "scripts/server-generation-assets-candidate-plan.test.mjs",
+        "scripts/writer-prefix-candidate-plan.test.mjs"
+      ],
+      "environment": {
+        "CARGO_BUILD_JOBS": "2"
+      },
+      "pid": 60644,
+      "code": 0,
+      "signal": null,
+      "elapsedMs": 2665,
+      "log": "/private/tmp/breditor-native-service-activation-tcbR7c/qualified-ZfPaWO/candidate-plan-and-verifier.log",
+      "logSha256": "9d436b388569b3d0f2e1256d36ac93f41735ab07731185dab05f0b22a82e4c47"
+    },
+    {
+      "id": "server-strict-clippy",
+      "command": "/Users/s/.cargo/bin/cargo",
+      "args": [
+        "clippy",
+        "--manifest-path",
+        "experiments/relay/Cargo.toml",
+        "--target-dir",
+        "target/owned-history-relay-native",
+        "--locked",
+        "--offline",
+        "--release",
+        "--features",
+        "server",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "environment": {
+        "CARGO_BUILD_JOBS": "2"
+      },
+      "pid": 60926,
+      "code": 0,
+      "signal": null,
+      "elapsedMs": 1012,
+      "log": "/private/tmp/breditor-native-service-activation-tcbR7c/qualified-ZfPaWO/server-strict-clippy.log",
+      "logSha256": "2d529ad874d577497ce588060fd2b0620f5f9c95a8015f6372eb5a0d80ec868f"
+    },
+    {
+      "id": "no-server-strict-clippy",
+      "command": "/Users/s/.cargo/bin/cargo",
+      "args": [
+        "clippy",
+        "--manifest-path",
+        "experiments/relay/Cargo.toml",
+        "--target-dir",
+        "target/owned-history-relay-native",
+        "--locked",
+        "--offline",
+        "--release",
+        "--no-default-features",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "environment": {
+        "CARGO_BUILD_JOBS": "2"
+      },
+      "pid": 60996,
+      "code": 0,
+      "signal": null,
+      "elapsedMs": 1447,
+      "log": "/private/tmp/breditor-native-service-activation-tcbR7c/qualified-ZfPaWO/no-server-strict-clippy.log",
+      "logSha256": "2d006b8aca2682965c8a497e8f5d4986c646f9daf95c8cc4050f89be177d3e35"
+    },
+    {
+      "id": "server-rustdoc",
+      "command": "/Users/s/.cargo/bin/cargo",
+      "args": [
+        "doc",
+        "--manifest-path",
+        "experiments/relay/Cargo.toml",
+        "--target-dir",
+        "target/owned-history-relay-native",
+        "--locked",
+        "--offline",
+        "--release",
+        "--features",
+        "server",
+        "--no-deps"
+      ],
+      "environment": {
+        "CARGO_BUILD_JOBS": "2",
+        "RUSTDOCFLAGS": "-D warnings"
+      },
+      "pid": 61039,
+      "code": 0,
+      "signal": null,
+      "elapsedMs": 7397,
+      "log": "/private/tmp/breditor-native-service-activation-tcbR7c/qualified-ZfPaWO/server-rustdoc.log",
+      "logSha256": "c934bf9607b8c8bc541b5d04f1f09b4d95a702305da701c942d2370a389bdc25"
+    },
+    {
+      "id": "selected-native-activation",
+      "command": "/Users/s/.cargo/bin/cargo",
+      "args": [
+        "test",
+        "--manifest-path",
+        "experiments/relay/Cargo.toml",
+        "--target-dir",
+        "target/owned-history-relay-native",
+        "--locked",
+        "--offline",
+        "--release",
+        "--features",
+        "server",
+        "--lib",
+        "native_activation",
+        "--",
+        "--nocapture"
+      ],
+      "environment": {
+        "CARGO_BUILD_JOBS": "2"
+      },
+      "pid": 61105,
+      "code": 0,
+      "signal": null,
+      "elapsedMs": 125015,
+      "log": "/private/tmp/breditor-native-service-activation-tcbR7c/qualified-ZfPaWO/selected-native-activation.log",
+      "logSha256": "99ffe98ad5c693067a55411cfe45c085e4520c3309dcd20e59657102b8a16146"
+    },
+    {
+      "id": "public-native-activation",
+      "command": "/Users/s/.cargo/bin/cargo",
+      "args": [
+        "test",
+        "--manifest-path",
+        "experiments/relay/Cargo.toml",
+        "--target-dir",
+        "target/owned-history-relay-native",
+        "--locked",
+        "--offline",
+        "--release",
+        "--features",
+        "server",
+        "--test",
+        "log_generations",
+        "native_activation::",
+        "--",
+        "--nocapture"
+      ],
+      "environment": {
+        "CARGO_BUILD_JOBS": "2"
+      },
+      "pid": 61315,
+      "code": 0,
+      "signal": null,
+      "elapsedMs": 69501,
+      "log": "/private/tmp/breditor-native-service-activation-tcbR7c/qualified-ZfPaWO/public-native-activation.log",
+      "logSha256": "0a60488b2a8071abeb2c667484c5c12f1957ca69a5a7c39807902ac35026f238"
+    },
+    {
+      "id": "full-server-native",
+      "command": "/Users/s/.cargo/bin/cargo",
+      "args": [
+        "test",
+        "--manifest-path",
+        "experiments/relay/Cargo.toml",
+        "--target-dir",
+        "target/owned-history-relay-native",
+        "--locked",
+        "--offline",
+        "--release",
+        "--features",
+        "server"
+      ],
+      "environment": {
+        "CARGO_BUILD_JOBS": "2"
+      },
+      "pid": 61682,
+      "code": 0,
+      "signal": null,
+      "elapsedMs": 647803,
+      "log": "/private/tmp/breditor-native-service-activation-tcbR7c/qualified-ZfPaWO/full-server-native.log",
+      "logSha256": "d6c723344184ea7e8eb922e0514ce0437b552d392f3e70ab67a9459914725d0d"
+    },
+    {
+      "id": "full-no-server-native",
+      "command": "/Users/s/.cargo/bin/cargo",
+      "args": [
+        "test",
+        "--manifest-path",
+        "experiments/relay/Cargo.toml",
+        "--target-dir",
+        "target/owned-history-relay-native",
+        "--locked",
+        "--offline",
+        "--release",
+        "--no-default-features"
+      ],
+      "environment": {
+        "CARGO_BUILD_JOBS": "2"
+      },
+      "pid": 63937,
+      "code": 0,
+      "signal": null,
+      "elapsedMs": 403368,
+      "log": "/private/tmp/breditor-native-service-activation-tcbR7c/qualified-ZfPaWO/full-no-server-native.log",
+      "logSha256": "59de8ceca6512da88a419c5a8c28eb041a19eec5fc7e47333ad69fe7f297f497"
+    }
+  ],
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/native-generation-activation-proof-BSL57k",
+    "indexSha256": "11f8c6b6b9a8f3b670021fe930653e214860aaeb50d6a7239756a663cf3113af",
+    "indexedFiles": 599,
+    "containsAnotherBuildCache": false
+  },
+  "remaining": [
+    "Complete current provider/client reconciliation and historical review/version packet/outbox settlement",
+    "Explicit adoption of unbound local comments",
+    "Durable coordinated browser-owner and whole-room activation",
+    "Authenticated cold/new-source continuation without discarding original custody",
+    "All thirteen V1 gates and remaining selected parity requirements",
+    "Historical WebKit and intermittent parallel TCP shutdown faults are not declared repaired"
+  ],
+  "completedAt": "2026-10-29T02:27:33.680Z"
+}

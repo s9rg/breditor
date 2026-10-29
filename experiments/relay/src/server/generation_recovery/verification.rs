@@ -124,7 +124,7 @@ impl VerifiedServerLogGenerationRecoveryState {
         handle.host.authentication.authenticate_digest(principal, digest)?;
         self.check_current(handle, principal).await
     }
-    async fn check_current(
+    pub(in crate::server) fn check_host(
         &self,
         handle: &PreparedLogGenerationRecoveryHost,
         principal: &str,
@@ -135,6 +135,14 @@ impl VerifiedServerLogGenerationRecoveryState {
         if !self.room.upgrade().is_some_and(|room| Arc::ptr_eq(&room, &handle.host.room)) {
             return Err(Error::Contract("generation verification belongs to a different host"));
         }
+        Ok(())
+    }
+    async fn check_current(
+        &self,
+        handle: &PreparedLogGenerationRecoveryHost,
+        principal: &str,
+    ) -> Result<()> {
+        self.check_host(handle, principal)?;
         let assets =
             handle.host.assets.clone().ok_or(Error::Contract("generation host assets absent"))?;
         let custody = handle

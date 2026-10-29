@@ -1,5 +1,16 @@
 # V1 candidate checks
 
+The [native service qualification](qualification/2026-10-28-native-generation-service-activation.json) passes
+533 full server-feature tests, 273 no-server tests and 188 plan/verifier
+laws without skips. Eight selected laws and a public ten-mode socket workflow
+cover genuine source/target activation, the reproduced synced-without-lease
+fallback, original offline document/comment retry receipts, future native history
+and exact rasters. Both profiles require these native and public activation
+stages; both strict all-target lint modes, formatting and Rustdoc pass.
+This is not the whole candidate plan, fresh npm qualification, cold reactivation
+or complete provider/client/whole-room closure. Normal Wasm is unchanged and all
+thirteen V1 gates remain open.
+
 The [durable source qualification](qualification/2026-10-28-durable-generation-source-handover.json)
 passes 523 server-feature tests (346 unit tests, every public integration target
 and 30 doctests), 273 no-server tests and 186 candidate-plan/verifier laws.

@@ -17,7 +17,7 @@ use breditor_collab_relay::{
 };
 use std::{io::Cursor, path::Path};
 
-pub(super) struct Author {
+pub(crate) struct Author {
     pub document: RichReplica,
     pub review: ReviewSession,
     pub document_registration: Registration,
@@ -25,13 +25,13 @@ pub(super) struct Author {
     pub document_through: String,
     pub review_through: u64,
 }
-pub(super) struct Prepared {
+pub(crate) struct Prepared {
     pub author: Author,
     pub assets: AssetStore,
     pub asset: String,
     pub png: Vec<u8>,
 }
-pub(super) fn comment(
+pub(crate) fn comment(
     document: &RichReplica,
     review: &mut ReviewSession,
     body: &str,
@@ -52,7 +52,7 @@ pub(super) fn comment(
     ));
     Ok(())
 }
-pub(super) fn prepare(
+pub(crate) fn prepare(
     room: &mut Room,
     profile: &SharedRichProfile,
     path: &Path,

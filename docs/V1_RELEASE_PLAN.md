@@ -13,6 +13,36 @@ the FCKeditor lineage. CKEditor 4 reached ordinary EOL in June 2023; its
 is not the modern feature baseline. Breditor remains an independent implementation:
 no ProseMirror, Tiptap or CKEditor document, operation or plugin protocol is adopted.
 
+## Authenticated native generation service activation
+
+The [native service contract](NATIVE_GENERATION_SERVICE_ACTIVATION.md) now connects
+a genuine recovered host to a fresh serving epoch after its exact source seal.
+It retains the original backup Arc and every actual operational/native/raster
+owner. Current target authentication, protected registrations and the complete
+source/target cuts are rechecked under real exclusion; no raw native parts or
+saved metadata construct a lease. Earlier clones observe the same one-time gate.
+
+The [qualification](qualification/2026-10-28-native-generation-service-activation.json) passes 533 full
+server-feature tests, 273 no-server tests and 188 plan/verifier laws,
+with no failures or skips. Eight focused native laws cover forty native
+profile/transport/history combinations and real cancellation at three commit
+stages. A public-only socket workflow covers ten modes with original offline
+document/comment retries, future Undo/Redo and exact raster bytes. Both strict
+all-target lint modes, formatting and Rustdoc pass.
+
+A new pre-release regression was reproduced before repair: a real synced epoch
+could return no lease and leave a recovered host usable as unfenced. Actual
+source custody and shared retirement now precede the append; only complete
+checked publication clears retirement. The original failed assertion and exact
+before-code are retained. No test was weakened or skipped to qualify this repair.
+
+This is native-service activation, not completed browser/provider whole-room
+closure. Current provider/client reconciliation, packet/outbox settlement,
+explicit local-comment adoption, authenticated cold/new-source continuation and
+coordinated browser-owner activation remain required. Normal Wasm is unchanged;
+prior package tests are historical, not fresh npm executions here. All thirteen
+V1 gates remain open. Nothing is pushed, published, tagged or deployed.
+
 ## Durable generation source decisions
 
 The [durable source contract](DURABLE_GENERATION_SOURCE_HANDOVER.md) now saves and

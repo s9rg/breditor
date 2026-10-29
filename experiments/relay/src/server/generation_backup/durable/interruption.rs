@@ -5,6 +5,7 @@ pub(in crate::server) enum Point {
     ArchiveSynced,
     IntentSynced,
     SourceChecked,
+    EpochWritten,
     EpochSynced,
 }
 #[derive(Default)]
