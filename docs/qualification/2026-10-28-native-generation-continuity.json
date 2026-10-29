@@ -1,0 +1,698 @@
+{
+  "format": true,
+  "formatVersion": 1,
+  "functionalPassed": true,
+  "releaseReady": false,
+  "v1GatesClosed": 0,
+  "v1GatesTotal": 13,
+  "baseCommit": "c4fad5237170c9c0ee2e4c34cbc22fd0cd42701c",
+  "qualifiedSource": {
+    "commit": "c4fad5237170c9c0ee2e4c34cbc22fd0cd42701c",
+    "dirty": true,
+    "sha256": "b2aeb446879d0ea66a5f187bb01b5f70ed1782ce7cbbd76e73b392d633509d2a",
+    "files": 7247,
+    "bytes": 55165474
+  },
+  "productionRustIntegrated": true,
+  "scope": "Exact main-tree native source capture/sealing for actual serving generation rooms, shared one-time clone fencing, witnessed epoch continuity and opt-in cold minimum selection. Genuine offline document/comment frames, receipts, future native history and rasters remain intact. No prepared recovered-host router activation or durable whole-room decision is provided.",
+  "server": {
+    "unit": 334,
+    "integrationAndDocResults": [
+      {
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 23,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 9,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 33,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 8,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 41,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 29,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      }
+    ],
+    "doctests": 29,
+    "totalPassed": 509,
+    "failed": 0,
+    "ignored": 0,
+    "filtered": 0
+  },
+  "noServer": {
+    "results": [
+      {
+        "passed": 171,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 23,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 9,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 26,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 8,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      }
+    ],
+    "totalPassed": 273,
+    "failed": 0,
+    "ignored": 0,
+    "filtered": 0
+  },
+  "candidatePlanTests": 184,
+  "strictClippy": {
+    "serverAllTargets": true,
+    "noServerAllTargets": true
+  },
+  "rustdoc": {
+    "server": true,
+    "warningsDenied": true
+  },
+  "publicHandover": {
+    "allTenProfileTransportModes": true,
+    "bothServerNativeHistoriesSegmented": true,
+    "documentAndCommentOfflineRetries": true,
+    "bothFutureNativeUndoRedoLanes": true,
+    "completeRasterBytes": true,
+    "inactiveRestoreOnly": true,
+    "newCompleteHistoryCartesianDomain": false
+  },
+  "repairs": {
+    "earlierInactiveCloneSharedEpochSlot": true,
+    "oldLeaseFirstRollback": true,
+    "observedRevocationPermanent": true,
+    "staleCasAndObservedPrefixForkRefused": true,
+    "coldOpenAtLeast": true,
+    "isolatedBeforeFailedLaws": 4,
+    "isolatedAfterPassedLaws": 4
+  },
+  "normalSharedWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "historicalPackageEvidence": {
+    "qualification": "docs/qualification/2026-10-28-generation-component-reconstruction.json",
+    "freshlyRerunInThisNativeQualification": false,
+    "unchangedRecordedImplementationInputs": [
+      {
+        "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/archive.ts",
+        "bytes": 9231,
+        "sha256": "50de41298c0dcf963a7060668a99d830512992b01b8fc3a6baf083f111c10e9c"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/candidate.ts",
+        "bytes": 1688,
+        "sha256": "b9a843231985cac087ac203d1f7855a398fec42bf3d3fe1417fbb4743e54e62e"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/components.ts",
+        "bytes": 1351,
+        "sha256": "14161c1e46739c0ec270b9c7c3a3b787721335b0b6183bca17417f351eaf6c70"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/contract.ts",
+        "bytes": 3367,
+        "sha256": "e9f4498cc4440136acbb6ddeb58a3e9b8721ab86ba9cff183df4315f1a760352"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/coordinator.ts",
+        "bytes": 17764,
+        "sha256": "0d4302b1ffd1ba3adc1f0311981b39caa26642104ec18601b00ddc89f049f6e2"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/intent_store.ts",
+        "bytes": 7996,
+        "sha256": "2915bf9c86e9ef437e8739080ed49f34028a767b776519d317223cc0f4dce857"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/join.ts",
+        "bytes": 6952,
+        "sha256": "a71d3f83f08954a148dfa22eade1255802ba517d4aad152a854e04d7791dbe63"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/plan.ts",
+        "bytes": 4066,
+        "sha256": "550bbbcdff922e838796d1fb5ba9d0e05c2c98e147bb64b69b8722f646df27e2"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/policy.ts",
+        "bytes": 2681,
+        "sha256": "2113a10a893ddfcaba939b589d89b8339e636263dd4c0c588bdfb8f6d062bc92"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/resources.ts",
+        "bytes": 3344,
+        "sha256": "bab6f9d413b9312e67e9c8d09c44510c06bffc262ccebd088b6ef08da6d80850"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/snapshot.ts",
+        "bytes": 290,
+        "sha256": "59f767bbddbe687d7f4516cda2a743a3013f95e7bfd5cb41790160431aac081b"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/source_scope.ts",
+        "bytes": 3444,
+        "sha256": "ebd22f5f6c1d153597a96a04b9d4cc30aee6dd728f8ed09bd76761b581e9e50c"
+      },
+      {
+        "path": "packages/breditor-collaboration/src/selected_generation_component_reconstruction/verify_history.ts",
+        "bytes": 4256,
+        "sha256": "1cff7b8df55ae49b306470fd6edaaf724c40a269b71219617de5404df333a080"
+      },
+      {
+        "path": "scripts/check-generation-component-reconstruction-installed.mjs",
+        "bytes": 17988,
+        "sha256": "0ec4dafecba276f7cf31d35eb5fb76b6897152b7122e9d98c52b7b245c569ab8"
+      },
+      {
+        "path": "scripts/check-generation-component-reconstruction-sdk.mjs",
+        "bytes": 3181,
+        "sha256": "6d13f96b4c937d2a11e8c87727825d927386860ddc60b51818c9afbe5a38f945"
+      },
+      {
+        "path": "scripts/fixtures/editor-consumer/types-generation-component-reconstruction.ts",
+        "bytes": 3065,
+        "sha256": "be2f7e26c17a77a446e53eea15fff81e4b9c7f7cbc192c60a057265b7035f061"
+      },
+      {
+        "path": "scripts/generation-component-reconstruction-candidate-plan.test.mjs",
+        "bytes": 2310,
+        "sha256": "11693a79396e51b76fefa2ab2209e04b495ecae177f27b473ab0f7d7af134e0a"
+      },
+      {
+        "path": "scripts/generation-component-reconstruction-candidate.test.mjs",
+        "bytes": 3229,
+        "sha256": "bec5d5b1dd74d5bf0898a0bbcea720942c4be839392e40b3954bceb57caaffc2"
+      },
+      {
+        "path": "scripts/generation-component-reconstruction-lifetime.test.mjs",
+        "bytes": 6373,
+        "sha256": "b16218408e3936ee7002a2980a633f496a47802862b6d5f2f3ec7d9c7439cffc"
+      },
+      {
+        "path": "scripts/generation-component-reconstruction-sdk.test.mjs",
+        "bytes": 19250,
+        "sha256": "ad374491af3241eb8b2fdd4be3275e72a8042abec8ad697e516669c8b537d5a5"
+      },
+      {
+        "path": "scripts/generation-component-reconstruction-workload.mjs",
+        "bytes": 1474,
+        "sha256": "5e974ce3fb8fc73e6d6811976112a84c5deb5dc85ed59332e732ae33388f612c"
+      }
+    ],
+    "deliberatelyChangedCandidatePlan": "scripts/candidate-release/plan.mjs",
+    "source": 119,
+    "installed": 119,
+    "actualProductionBundle": 119
+  },
+  "knownPriorParallelNativeShutdownFailure": {
+    "resolved": false,
+    "rootCauseConfirmed": false
+  },
+  "coldWitnessLimit": "No claim to detect omitted later history if every independent witness is rolled back with the ledger. Existing identity-only open remains unchanged.",
+  "remaining": [
+    "Authenticated durable whole-room activation",
+    "Complete cross-cut provider/client reconciliation",
+    "Historical packet/outbox settlement",
+    "Explicit local-comment adoption",
+    "Portable deployment authority and sustainable history",
+    "Full parity and release qualification"
+  ],
+  "evidence": {
+    "directory": "/Users/s/code/breditor/target/native-generation-continuity-main-proof-YkQb06",
+    "indexSha256": "e671d2046bad7e6a925c1322cdea8a886e9f7a2b170f020f4fb79e937d8ac08a",
+    "files": 574
+  },
+  "qualifiedImplementationAndContracts": [
+    {
+      "path": "docs/NATIVE_GENERATION_CONTINUITY.md",
+      "bytes": 6079,
+      "sha256": "9b625453b25127aabdd58c2a6246aa2cee06ab3a4055d8d32f0d9fa2bafb5375",
+      "modifiedAtMs": 1793232948686.854
+    },
+    {
+      "path": "docs/NATIVE_SERVING_EPOCHS.md",
+      "bytes": 9101,
+      "sha256": "4f699a3e34ca70ea697c84dbc97155ef27f692dbf2c76cad243b1f7f7bbb64f1",
+      "modifiedAtMs": 1793232948699.8303
+    },
+    {
+      "path": "docs/SERVER_HANDOVER_BARRIER.md",
+      "bytes": 7012,
+      "sha256": "9f9af18e17f51b376dd9a88a9ae51db529f82575b116d5887c6d8fd709bcca6f",
+      "modifiedAtMs": 1793232948713.4062
+    },
+    {
+      "path": "experiments/relay/src/server/deployment_fence/claim.rs",
+      "bytes": 2876,
+      "sha256": "b0f534772e61761d6882bf2bb6b8e6943c2359d965cf2f6ab339af84a52bea75",
+      "modifiedAtMs": 1793231223073.8918
+    },
+    {
+      "path": "experiments/relay/src/server/deployment_fence/create.rs",
+      "bytes": 2425,
+      "sha256": "c7cda60d5428326113354655bb61138ccc8ea50d82fd2efc4659302b5f9e203e",
+      "modifiedAtMs": 1793231223085.6294
+    },
+    {
+      "path": "experiments/relay/src/server/deployment_fence/identity.rs",
+      "bytes": 2592,
+      "sha256": "fb5cc4777210db245255ca4b48fd5c46a42fa061a4f846b90a933f9633a6eae7",
+      "modifiedAtMs": 1793231223096.6008
+    },
+    {
+      "path": "experiments/relay/src/server/deployment_fence/journal.rs",
+      "bytes": 5577,
+      "sha256": "b51fcbc843e1592395749f59064c36c5f29dac760504d6e09168f7c50dd42f5f",
+      "modifiedAtMs": 1793231223118.9019
+    },
+    {
+      "path": "experiments/relay/src/server/deployment_fence/journal/anchor.rs",
+      "bytes": 2028,
+      "sha256": "1ef8125bd92d5b8b098ea9b698164c7cd6b324f6e70ee4661e720ca8cc48459a",
+      "modifiedAtMs": 1793231223108.0916
+    },
+    {
+      "path": "experiments/relay/src/server/deployment_fence/lease.rs",
+      "bytes": 3897,
+      "sha256": "439a1c50d0e3e6d2e6481ddff1132fa20c1809a7aa1c11655a79b0ce6b99583e",
+      "modifiedAtMs": 1793231223131.8684
+    },
+    {
+      "path": "experiments/relay/src/server/deployment_fence/mod.rs",
+      "bytes": 932,
+      "sha256": "17dee5b746bc1e7cb026f86b15e2e5f42d8a4907011879e66ab3c40261cd1aba",
+      "modifiedAtMs": 1793231223142.6243
+    },
+    {
+      "path": "experiments/relay/src/server/deployment_fence/observation.rs",
+      "bytes": 3484,
+      "sha256": "ed130375c73f52f4f40acabe8852ef2b1445936cc304a8ef3a7596e6a458c7b8",
+      "modifiedAtMs": 1793231223153.3684
+    },
+    {
+      "path": "experiments/relay/src/server/deployment_fence/open.rs",
+      "bytes": 2306,
+      "sha256": "7c115b72d4890caa0f1182182acf753d852ea0291cb0f4efb1aaf265d625da3e",
+      "modifiedAtMs": 1793231223164.2617
+    },
+    {
+      "path": "experiments/relay/src/server/deployment_fence/open_selected.rs",
+      "bytes": 2051,
+      "sha256": "7d431d7f0e7e3d1e4fdd398dea94a628b7024d1afd092581c0fdb84c085fa1c3",
+      "modifiedAtMs": 1793231223174.781
+    },
+    {
+      "path": "experiments/relay/src/server/deployment_fence/read.rs",
+      "bytes": 739,
+      "sha256": "15cd9eb65ac03a0012639bbcda09a5b34ea78de7eeffa8f9d123a4095dd100e5",
+      "modifiedAtMs": 1793231223185.9226
+    },
+    {
+      "path": "experiments/relay/src/server/deployment_fence/seal.rs",
+      "bytes": 1860,
+      "sha256": "963b9707ce7acf3ac9313bc4d039d90887ea150a714d4a57d302e7ba99226c6b",
+      "modifiedAtMs": 1793231223196.9226
+    },
+    {
+      "path": "experiments/relay/src/server/deployment_fence/seal_generation.rs",
+      "bytes": 2054,
+      "sha256": "601bb0d3cd97a07020967d22fb4fbfb3e6d21c97a71f8991a6e268cb1042f8e0",
+      "modifiedAtMs": 1793231223207.8494
+    },
+    {
+      "path": "experiments/relay/src/server/deployment_fence/serving.rs",
+      "bytes": 2792,
+      "sha256": "159c710ee38099f95e2c55d74f380c31bdfcdc648044c6849aa6b5f8e974b478",
+      "modifiedAtMs": 1793231223218.8171
+    },
+    {
+      "path": "experiments/relay/src/server/deployment_fence/slot.rs",
+      "bytes": 2078,
+      "sha256": "0bddb79c74fc68f49e447f1fcbe8102b171a929423364ca6f8263656c1cba3bf",
+      "modifiedAtMs": 1793231223240.208
+    },
+    {
+      "path": "experiments/relay/src/server/deployment_fence/slot/tests.rs",
+      "bytes": 2227,
+      "sha256": "e002b65e4e8a913025b6957914f401c5a299bff58fb614f0944df88079f3a194",
+      "modifiedAtMs": 1793231223229.7893
+    },
+    {
+      "path": "experiments/relay/src/server/deployment_fence/state.rs",
+      "bytes": 1887,
+      "sha256": "4e90dba994e0ce0a91c72bfdb99f85115f12080af9fd5bbbb395532055e6beed",
+      "modifiedAtMs": 1793231223250.8127
+    },
+    {
+      "path": "experiments/relay/src/server/deployment_fence/tests/cold_selection.rs",
+      "bytes": 5932,
+      "sha256": "50f6684e1d82da7ac1e8c12a74af9724c574917aa66538aac2f7178cfc8d4a23",
+      "modifiedAtMs": 1793231223260.7275
+    },
+    {
+      "path": "experiments/relay/src/server/deployment_fence/tests/mod.rs",
+      "bytes": 190,
+      "sha256": "84ea60786dc10fc53652eed1930ecf5adc7e8b060aaa86b7c842084c1355a76b",
+      "modifiedAtMs": 1793231223271.084
+    },
+    {
+      "path": "experiments/relay/src/server/deployment_fence/tests/rollback.rs",
+      "bytes": 3685,
+      "sha256": "2ca86a9c8e556a4ddb51cae2454b8b96dd48c6a10166e390a4c4621f1bf48eb5",
+      "modifiedAtMs": 1793231223281.1638
+    },
+    {
+      "path": "experiments/relay/src/server/generation_backup.rs",
+      "bytes": 699,
+      "sha256": "1bca5626ad75da6b6906861750821b561cf40c634c041f74d9526dce25cd0e95",
+      "modifiedAtMs": 1793231223368.0476
+    },
+    {
+      "path": "experiments/relay/src/server/generation_backup/capture.rs",
+      "bytes": 1706,
+      "sha256": "0ca380f3ee7c2c6673dd3814fa771788fb1f47fd259c3e61003a58cb2c829f02",
+      "modifiedAtMs": 1793231223291.0913
+    },
+    {
+      "path": "experiments/relay/src/server/generation_backup/handover.rs",
+      "bytes": 3188,
+      "sha256": "cec69adf57991e25a48691bddd5a6d2be889eeef1e930ac48cef399181c5d919",
+      "modifiedAtMs": 1793231223300.5876
+    },
+    {
+      "path": "experiments/relay/src/server/generation_backup/prepare.rs",
+      "bytes": 1572,
+      "sha256": "0d076ff893fc366b8fcccb08de05bebdf178e62e000a9d1625b5d46eabadeb97",
+      "modifiedAtMs": 1793231223310.926
+    },
+    {
+      "path": "experiments/relay/src/server/generation_backup/tests.rs",
+      "bytes": 12627,
+      "sha256": "f33196240ce6c2f0026d111e5ea4589543e6862c5372816652291213aa7770fb",
+      "modifiedAtMs": 1793231223357.741
+    },
+    {
+      "path": "experiments/relay/src/server/generation_backup/tests/fixture.rs",
+      "bytes": 4275,
+      "sha256": "fa2e400c0e77b266dee64dc5cee88b9f73df39c97ccdbfd4865caed3832b5679",
+      "modifiedAtMs": 1793231223320.8628
+    },
+    {
+      "path": "experiments/relay/src/server/generation_backup/tests/network.rs",
+      "bytes": 9312,
+      "sha256": "874b6c03c1185f16ef1059568ab6be93943e7f18bc859a3ad7e01b7ecac9e089",
+      "modifiedAtMs": 1793231223333.4973
+    },
+    {
+      "path": "experiments/relay/src/server/generation_backup/tests/network_cases.rs",
+      "bytes": 10188,
+      "sha256": "b3d88128036940f9e6793dd72240729d83dd5fd44b342fd83f253d00377ecbec",
+      "modifiedAtMs": 1793231223346.9468
+    },
+    {
+      "path": "experiments/relay/src/server/generation_recovery/tests/epoch_attachment.rs",
+      "bytes": 4929,
+      "sha256": "7c1e2d941b650b7724754ab7f5bb6c4e48638f970cfab58febaeffaa37a284f8",
+      "modifiedAtMs": 1793231223378.9521
+    },
+    {
+      "path": "experiments/relay/src/server/generation_recovery/tests/mod.rs",
+      "bytes": 224,
+      "sha256": "e5df4ddd47b607b6d67817954ecda8e613a9a5ae677892b0cf085969af933f05",
+      "modifiedAtMs": 1793231223390.4165
+    },
+    {
+      "path": "experiments/relay/src/server/mod.rs",
+      "bytes": 8728,
+      "sha256": "972fc7ae0159ba96c27bd83fbf1d4715f6089760cace48438de3f5991003b40a",
+      "modifiedAtMs": 1793231223401.4912
+    },
+    {
+      "path": "experiments/relay/tests/log_generations.rs",
+      "bytes": 18901,
+      "sha256": "8aeb3755fed2609aecba6b713d9a249b01e41072c6085054c18fab6d6b2ef27b",
+      "modifiedAtMs": 1793231604858.359
+    },
+    {
+      "path": "experiments/relay/tests/log_generations/live_handover.rs",
+      "bytes": 6231,
+      "sha256": "77a9f2cb3fdf44576106b4829b2c0654f3647138b6c1f0f84a6406a7b733f660",
+      "modifiedAtMs": 1793231790289.6917
+    },
+    {
+      "path": "experiments/relay/tests/log_generations/live_handover/author.rs",
+      "bytes": 3897,
+      "sha256": "7e6cd0454da33525016c3634ad8ade06c438d907476166cf4d517fd088e1db03",
+      "modifiedAtMs": 1793231692344.2466
+    },
+    {
+      "path": "experiments/relay/tests/log_generations/live_handover/roundtrip.rs",
+      "bytes": 4059,
+      "sha256": "aecaf44e19ce21dce70b7213c79d14f405f78e78241babc5f67dccbb8276ecac",
+      "modifiedAtMs": 1793231692345.307
+    },
+    {
+      "path": "scripts/candidate-release/plan.mjs",
+      "bytes": 122395,
+      "sha256": "7d2d2ce605411d03aec45585329513e4e7af2cf134c7d43f3f6a7f933563bdc8",
+      "modifiedAtMs": 1793231604887.5508
+    },
+    {
+      "path": "scripts/native-generation-continuity-candidate-plan.test.mjs",
+      "bytes": 1325,
+      "sha256": "a098fe519ae9b9548c4bcf381e0a30ae726131c79a25b63733a61a03bcd35809",
+      "modifiedAtMs": 1793231604874.1826
+    }
+  ],
+  "metadataOnlyAfterQualification": [
+    "docs/NATIVE_GENERATION_CONTINUITY.md",
+    "docs/V1_RELEASE_PLAN.md",
+    "docs/V1_CANDIDATE_CHECKS.md",
+    "docs/qualification/2026-10-28-native-generation-continuity.json"
+  ],
+  "completedAt": "2026-10-29T00:36:13.707Z"
+}

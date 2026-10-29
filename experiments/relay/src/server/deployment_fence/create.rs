@@ -3,6 +3,7 @@ use super::{
     authority::{RoomDeploymentAuthority, options},
     identity::{RoomDeploymentIdentity, key},
     journal, location,
+    observation::EpochObservation,
     state::State,
 };
 use crate::{Error, Result, credentials};
@@ -55,6 +56,7 @@ impl RoomDeploymentAuthority {
                 identity,
                 header_digest: header.digest,
                 offset: header.offset,
+                observed: Mutex::new(EpochObservation::empty(header.digest)),
                 poisoned: AtomicBool::new(false),
                 closed: AtomicBool::new(false),
             }),

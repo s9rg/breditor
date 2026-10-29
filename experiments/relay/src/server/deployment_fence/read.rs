@@ -5,6 +5,7 @@ use super::{
 use crate::Result;
 impl RoomDeploymentAuthority {
     /// Re-admit the complete current ledger under actual shared file custody.
+    /// It must retain every epoch this live instance has already witnessed.
     /// # Errors
     /// Busy/changed/uncertain storage refuses; no incomplete prefix is selected.
     pub fn current_selection(&self) -> Result<RoomDeploymentSelection> {

@@ -1,5 +1,5 @@
 //! Actual authority-file custody, shared by clones without cloning lock descriptors.
-use super::{identity::RoomDeploymentIdentity, journal, location};
+use super::{identity::RoomDeploymentIdentity, journal, location, observation::EpochObservation};
 use crate::{Error, Result};
 use std::{
     fs::File,
@@ -16,6 +16,7 @@ pub(super) struct State {
     pub identity: RoomDeploymentIdentity,
     pub header_digest: [u8; 32],
     pub offset: u64,
+    pub observed: Mutex<EpochObservation>,
     pub poisoned: AtomicBool,
     pub closed: AtomicBool,
 }
@@ -38,15 +39,22 @@ impl State {
         result
     }
     pub fn selected(&self, file: &mut File) -> Result<journal::Current> {
-        self.check_file(file)?;
-        let (header, current) = journal::current(file)?;
-        if header.identity != self.identity
-            || header.digest != self.header_digest
-            || header.offset != self.offset
-        {
-            return Err(Error::Contract("deployment authority differs"));
+        let result = (|| {
+            self.check_file(file)?;
+            let (header, current) = journal::current(file)?;
+            if header.identity != self.identity
+                || header.digest != self.header_digest
+                || header.offset != self.offset
+            {
+                return Err(Error::Contract("deployment authority differs"));
+            }
+            self.observe_current(file, &current)?;
+            self.check_file(file)?;
+            Ok(current)
+        })();
+        if result.is_err() {
+            self.poisoned.store(true, Ordering::Release);
         }
-        self.check_file(file)?;
-        Ok(current)
+        result
     }
 }

@@ -1,6 +1,8 @@
 //! Bounded append-only epoch ledger. Incomplete tails are refused, never truncated.
+mod anchor;
 use super::identity::{RoomDeploymentIdentity, RoomDeploymentSelection};
 use crate::{Error, Result};
+pub(super) use anchor::{check_anchor, retains_selection};
 use sha2::{Digest, Sha256};
 use std::fmt::Write;
 use std::{

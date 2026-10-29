@@ -42,3 +42,21 @@ impl RoomDeploymentIdentity {
         key(&self.binding)
     }
 }
+impl RoomDeploymentSelection {
+    pub(super) fn validate_pin(&self) -> Result<u64> {
+        self.identity.validate()?;
+        let generation = self
+            .generation
+            .parse::<u64>()
+            .map_err(|_| Error::Contract("deployment selected generation"))?;
+        if generation.to_string() != self.generation || generation > super::journal::MAX_CLAIMS {
+            return Err(Error::Contract("deployment selected generation"));
+        }
+        match (generation, self.owner.as_deref()) {
+            (0, None) => {}
+            (0, Some(_)) | (_, None) => return Err(Error::Contract("deployment selected owner")),
+            (_, Some(owner)) => key(owner)?,
+        }
+        Ok(generation)
+    }
+}

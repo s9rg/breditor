@@ -56,6 +56,7 @@ impl RoomDeploymentAuthority {
             self.state.poisoned.store(true, Ordering::Release);
             return Err(error);
         }
+        self.state.observe_committed(held.file()?, generation, &bytes)?;
         let selection = RoomDeploymentSelection {
             identity: self.identity(),
             generation: generation.to_string(),

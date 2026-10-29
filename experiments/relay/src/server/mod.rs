@@ -6,6 +6,7 @@ mod authentication;
 mod backup;
 mod connection;
 mod deployment_fence;
+mod generation_backup;
 mod generation_recovery;
 mod http;
 mod versions;
@@ -32,6 +33,10 @@ pub use backup::{
 pub use deployment_fence::{
     RoomDeploymentAuthority, RoomDeploymentIdentity, RoomDeploymentLease, RoomDeploymentSelection,
     router_with_assets_and_deployment_lease, router_with_deployment_lease,
+};
+pub use generation_backup::{
+    LogGenerationServerBackupHandle, SealedLogGenerationHandover,
+    router_with_log_generation_backups_and_deployment_lease,
 };
 pub use generation_recovery::{
     PhysicalRoomRecoveryControl, PhysicalRoomRecoveryControlIdentity,
@@ -66,7 +71,7 @@ pub(super) struct Host {
     version_operations: Arc<Semaphore>,
     suggestions_changed: watch::Sender<u64>,
     generation_custody: Option<Arc<crate::room::GenerationOperationCustody>>,
-    deployment: Option<RoomDeploymentLease>,
+    deployment: deployment_fence::HostDeployment,
 }
 impl Host {
     pub async fn transaction<T: Send + 'static>(
@@ -78,7 +83,7 @@ impl Host {
         let assets = self.assets.clone();
         let deployment = self.deployment.clone();
         tokio::task::spawn_blocking(move || {
-            deployment_fence::transaction(deployment.as_ref(), || {
+            deployment.transaction(|| {
                 let _custody = custody;
                 let _assets = assets;
                 let mut room = room.lock().map_err(|_| Error::NeedsRecovery)?;
@@ -159,7 +164,7 @@ fn create_host(
         version_operations: Arc::new(Semaphore::new(4)),
         suggestions_changed,
         generation_custody: None,
-        deployment: None,
+        deployment: deployment_fence::HostDeployment::unfenced(),
     }
 }
 fn routes(host: Host) -> Router {

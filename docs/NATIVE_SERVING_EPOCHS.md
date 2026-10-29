@@ -22,7 +22,9 @@ through trusted host configuration, not through an incoming archive or browser
 account. Retain `RoomDeploymentIdentity` independently before later opens.
 
 `create` accepts only an absent directory. `open` admits existing complete bytes
-against the outside identity and grants no serving lease. Neither method repairs,
+against the outside identity and grants no serving lease. The additive
+`open_at_least` additionally requires an independently retained exact selection
+to remain in the current lineage; it also grants no lease. Neither method repairs,
 truncates or adopts an occupied path. The initial generation is zero and cannot
 serve. `claim` compares the exact selected identity, generation and nonce under
 an exclusive operating-system file lock, appends and syncs one new epoch, then
@@ -34,10 +36,12 @@ All participating hosts must select the same authority and use the fenced
 constructors. Ordinary constructors remain unfenced. This reference backend
 requires cooperating processes on a filesystem with working shared/exclusive
 file locks and durable fsync. Its inode checks currently support Unix only;
-unsupported backends refuse before creating or opening storage. Arbitrary
-privileged rollback of the entire authority is outside this trust boundary.
-In particular, restoring an authority with a room backup could re-enable an
-older epoch and is prohibited. A portable multi-machine consensus backend remains
+unsupported backends refuse before creating or opening storage. A live authority remembers its observed prefix; an observed replacement
+permanently retires its old lease. An independently retained cold selection can
+refuse a restored shorter or divergent prefix. Rolling back every independent
+witness with the authority remains outside this trust boundary. Restoring an
+authority with a room backup is prohibited; identity-only opening cannot know
+about omitted history for which it retained no independent witness. A portable multi-machine consensus backend remains
 release work; a copied ledger is not one.
 
 ## Transaction contract
@@ -111,12 +115,15 @@ complete bounded lineage. There are at most 1,048,576 claims; this is a takeover
 budget, not an editing-operation budget. Exhaustion refuses without rotating or
 resetting authority. Existing editor, journal and relay limits are unchanged.
 
-Hot serving checks read the fixed header, exact current length and leased tail
-record; they do not replay a growing takeover ledger on each keystroke. The
+Hot serving checks read the fixed header, exact current length, witnessed
+prefix anchor and leased tail record; they do not replay a growing takeover ledger on each keystroke. The
 backend assumes that only its cooperating operators append to its protected
 namespace. Full lineage replay remains at operator admission boundaries.
 Replaced directory/file inodes, incomplete tails, a shortened current epoch or a
-changed leased record refuse. No older complete prefix is silently selected.
+changed leased record refuse. No older complete prefix can erase a live authority's witnessed history.
+See [generation handover and continuity](NATIVE_GENERATION_CONTINUITY.md) for
+shared clone attachment, exact cold pins and the independently retained witness
+limit. A saved pin is not a recovered-room activation capability.
 
 An uncertain append, sync or unlock retires usable local authority. Retrying a
 claim through that poisoned instance cannot hide uncertainty. Reopen existing

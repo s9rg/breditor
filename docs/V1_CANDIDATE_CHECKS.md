@@ -1,5 +1,14 @@
 # V1 candidate checks
 
+The [integrated native continuity qualification](qualification/2026-10-28-native-generation-continuity.json)
+passes 509 server-feature tests (334 unit tests, all public integration
+targets and 29 doctests), 273 no-server tests and 184 candidate-plan/verifier
+laws without skips. Both all-target strict lint modes, formatting and Rustdoc pass.
+Both candidate profiles now explicitly require the public-only generation handover
+workflow as well as the unchanged complete native and epoch stages. This is not
+an execution of the whole candidate plan or a replacement-room activation grant.
+The normal Wasm runtime stays unchanged; all thirteen V1 gates remain open.
+
 The additive [mixed-component qualification](qualification/2026-10-28-generation-component-reconstruction.json)
 passes 119 source, 119 installed and 119 actual production-bundle laws, retaining
 all previous 107 assertions and adding twelve component laws per path. Sixty-nine

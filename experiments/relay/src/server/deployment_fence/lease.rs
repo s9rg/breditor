@@ -58,6 +58,7 @@ impl RoomDeploymentLease {
         if self.state.live.load(Ordering::Acquire) { Ok(()) } else { Err(Error::Lease) }
     }
     /// Check actual current epoch bytes, not just a local boolean or DTO.
+    /// Once a replacement is observed, this lease and its clones stay retired.
     /// # Errors
     /// Retired/superseded leases, busy/changed namespaces and uncertain storage refuse.
     pub fn check(&self) -> Result<()> {
@@ -79,6 +80,7 @@ impl RoomDeploymentLease {
     pub(super) fn check_held(&self, held: &mut Permit<'_>) -> Result<()> {
         let state = &self.state.authority;
         state.check_file(held.file()?)?;
+        state.check_observed(held.file()?)?;
         let current = journal::check_lease(
             held.file()?,
             &state.identity,
@@ -88,7 +90,14 @@ impl RoomDeploymentLease {
             &self.state.frame,
         );
         match &current {
-            Ok(()) | Err(Error::Lease) => {}
+            Ok(()) => {}
+            Err(Error::Lease) => {
+                // A witnessed replacement irreversibly retires this lease and
+                // every clone, even if older bytes later reappear in place.
+                self.state.live.store(false, Ordering::Release);
+                // Replay only on retirement, not on the editor's hot path.
+                state.selected(held.file()?)?;
+            }
             Err(_) => state.poisoned.store(true, Ordering::Release),
         }
         current?;

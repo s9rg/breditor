@@ -13,6 +13,30 @@ the FCKeditor lineage. CKEditor 4 reached ordinary EOL in June 2023; its
 is not the modern feature baseline. Breditor remains an independent implementation:
 no ProseMirror, Tiptap or CKEditor document, operation or plugin protocol is adopted.
 
+## Native generation handover and epoch continuity
+
+The [integrated native contract](NATIVE_GENERATION_CONTINUITY.md) now seals the
+actual serving generation source without returning a replacement lease. All
+Host clones share their one-time epoch attachment. Four real-ledger regressions
+that revived older leases/stale choices or lost an observed prefix are repaired;
+the separate cold pin requires the exact independently retained nonce.
+
+The [main-tree qualification](qualification/2026-10-28-native-generation-continuity.json)
+passes all 509 server-feature Rust tests, including 334 unit tests,
+29 doctests and every public integration target. All 273 no-server
+tests and 184 plan/verifier laws pass without skips. Both strict all-target
+Clippy modes, formatting and Rustdoc pass. The public handover workflow covers
+ten profile/transport modes, both segmented history lanes, offline exact retries,
+future document/comment Undo/Redo and raster restoration into an inactive room.
+
+The normal Wasm runtime and the recorded package implementation remain unchanged;
+the prior 119 source/installed/bundle laws are historical evidence, not fresh
+executions on this native checkpoint. The candidate plan deliberately changes.
+Durable source-cut/epoch decision storage, complete provider/client reconciliation,
+historical packet settlement, explicit local-comment adoption and authenticated
+whole-room activation remain required. A passing run does not resolve the older
+unclassified parallel shutdown failure. All thirteen V1 gates stay open.
+
 ## Mixed generation-source reconstruction
 
 The [mixed-component contract](GENERATION_COMPONENT_RECONSTRUCTION.md) now
@@ -25,9 +49,9 @@ the actual production bundle each execute 119 laws without skips.
 
 This is not arbitrary branch or inventory union. Cross-cut provider/client
 reconciliation, historical packet settlement, explicit local-comment adoption
-and authenticated durable whole-room activation remain. Live native serving
-and observed-epoch rollback repairs are being qualified separately; they are not
-part of this unchanged-native package checkpoint. All thirteen V1 gates stay open.
+and authenticated durable whole-room activation remain. The separate integrated
+native serving/observed-epoch repair is qualified above; it is not part of this
+unchanged-native package checkpoint. All thirteen V1 gates stay open.
 
 ## Generation recovery from older sources
 

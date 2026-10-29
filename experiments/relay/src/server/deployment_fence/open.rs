@@ -3,6 +3,7 @@ use super::{
     authority::{RoomDeploymentAuthority, options},
     identity::RoomDeploymentIdentity,
     journal, location,
+    observation::EpochObservation,
     state::State,
 };
 use crate::{Error, Result};
@@ -14,6 +15,9 @@ use std::{
 impl RoomDeploymentAuthority {
     /// Reopen exact existing complete bytes with an outside namespace pin. This
     /// returns authority custody, never a lease for a saved/current generation.
+    /// This legacy method pins the namespace identity, not a minimum history.
+    /// Use `Self::open_at_least` with an independently retained selection when
+    /// cold continuity must reject an older complete prefix or divergent branch.
     /// # Errors
     /// Missing/replaced files, unknown or incomplete records, wrong pins,
     /// unsupported identity backend, current lock contention and I/O refuse.
@@ -30,7 +34,7 @@ impl RoomDeploymentAuthority {
         let mut file = options().open(root.join("authority.log"))?;
         location::check(&root, &directory, &file)?;
         File::try_lock_shared(&file).map_err(super::permit::lock_error)?;
-        let (header, _) = journal::current(&mut file)?;
+        let (header, current) = journal::current(&mut file)?;
         if &header.identity != expected {
             return Err(Error::Contract("deployment namespace pin"));
         }
@@ -43,6 +47,7 @@ impl RoomDeploymentAuthority {
                 identity: expected.clone(),
                 header_digest: header.digest,
                 offset: header.offset,
+                observed: Mutex::new(EpochObservation::current(&current)),
                 poisoned: AtomicBool::new(false),
                 closed: AtomicBool::new(false),
             }),

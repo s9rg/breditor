@@ -20,6 +20,9 @@ mod generation_recovery;
 mod host;
 #[path = "log_generations/joined_room.rs"]
 mod joined_room;
+#[cfg(all(feature = "server", unix))]
+#[path = "log_generations/live_handover.rs"]
+mod live_handover;
 #[path = "log_generations/participants.rs"]
 mod participants;
 #[cfg(feature = "server")]

@@ -1,12 +1,18 @@
 //! Exact accepted native/raster capture and old-writer fencing share ONE exclusion.
-use super::{RoomDeploymentSelection, permit::Permit};
+use super::{RoomDeploymentLease, RoomDeploymentSelection, permit::Permit};
 use crate::{Error, Result, ServerRoomBackup, ServerRoomBackupIdentity, server::Host};
 
 pub(in crate::server) fn seal(
     host: &Host,
     expected: &ServerRoomBackupIdentity,
 ) -> Result<(ServerRoomBackup, RoomDeploymentSelection, RoomDeploymentSelection)> {
-    let lease = host.deployment.as_ref().ok_or(Error::Contract("fenced source host required"))?;
+    host.deployment.fenced(|lease| seal_current(host, lease, expected))
+}
+fn seal_current(
+    host: &Host,
+    lease: &RoomDeploymentLease,
+    expected: &ServerRoomBackupIdentity,
+) -> Result<(ServerRoomBackup, RoomDeploymentSelection, RoomDeploymentSelection)> {
     let authority = lease.authority();
     let mut held = Permit::try_acquire(&authority.state, true)?;
     lease.check_held(&mut held)?;

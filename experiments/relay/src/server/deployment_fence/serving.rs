@@ -15,9 +15,28 @@ pub(in crate::server) fn prepare_host(
         return Err(Error::Contract("deployment native binding"));
     }
     lease.check()?;
-    let mut host = create_host(room, authentication, assets);
-    host.deployment = Some(lease);
+    let host = create_host(room, authentication, assets);
+    attach_host(&host, lease)?;
     Ok(host)
+}
+
+/// Private shared attachment; whole-room activation still needs separate proof.
+/// Lock order: attachment -> real epoch -> room -> assets.
+pub(in crate::server) fn attach_host(host: &Host, lease: RoomDeploymentLease) -> Result<()> {
+    let expected = lease.selection().identity.binding;
+    host.deployment.attach(lease, || {
+        let room = host.room.lock().map_err(|_| Error::NeedsRecovery)?;
+        if room.deployment_binding()? != expected {
+            return Err(Error::Contract("deployment native binding"));
+        }
+        if let Some(assets) = &host.assets {
+            let assets = assets.lock().map_err(|_| Error::NeedsRecovery)?;
+            if assets.binding() != room.asset_binding() {
+                return Err(Error::Contract("deployment native binding"));
+            }
+        }
+        Ok(())
+    })
 }
 /// Serve an explicitly supplied native room behind a genuine deployment epoch.
 /// All participating hosts must use the same independent authority. This does

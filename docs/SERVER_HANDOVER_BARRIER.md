@@ -85,7 +85,10 @@ verifies the durable fence and exact recoverable original source bytes.
 
 This barrier covers the accepted original native log and actual server rasters
 for all ten existing profile/transport combinations. Independent server-log or
-comment generations retain their separate custody and archive contracts. A
+comment generations retain their separate custody and archive contracts. The
+[separate live generation handover](NATIVE_GENERATION_CONTINUITY.md) now supplies
+a whole-source seal for an actual serving generation room without adopting an
+inactive recovered host or discarding its original custody. A
 complete room activation still needs their lifecycle integration, authenticated
 current provider mappings, every registered and retained client/outbox source,
 historic asset dependencies, durable decisions and the approved cross-generation
