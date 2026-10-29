@@ -13,6 +13,31 @@ the FCKeditor lineage. CKEditor 4 reached ordinary EOL in June 2023; its
 is not the modern feature baseline. Breditor remains an independent implementation:
 no ProseMirror, Tiptap or CKEditor document, operation or plugin protocol is adopted.
 
+## Non-overwriting recovery data restoration
+
+The [new data-restore contract](SELECTED_LOCAL_REVIEW_RESTORE.md) now restores
+the original preparation and full local receipt records beside a genuine
+reconstructed seven-family owner. Both original namespaces are reserved and
+probed without placeholders. A fresh decision pins absent/identical destinations,
+complete bundle bytes, actual current native cut and authenticated full path.
+Conflicting data is refused. A real second-upgrade failure preserves the first
+commit and requires a newly observed, freshly approved partial retry.
+
+The [qualification](qualification/2026-10-29-selected-local-review-restore.json)
+passes 453 direct checks, ten fresh offline-installed checks and four strict
+type stages. Source and actual archives restore both metadata schemas, separately
+resume through the normal freshly approved path, renew all three local review
+streams and verify all-seven future document/review Undo/Redo with offline work.
+Restored data never revives an old gate or grants server/actor permission.
+
+Only these two metadata destinations were absent; underlying source/asset stores
+were genuinely cold-reopened. Entirely empty-room restoration, relocation, packet
+transport custody, complete reconciliation and authenticated joint activation
+remain open. Physical durability and large-history cost remain unqualified.
+The normal Wasm/public defaults are unchanged; the prior 575/273 Rust baseline
+is carried. The 610/618 complete candidate profiles were not executed.
+All thirteen V1 gates remain open.
+
 ## Authenticated local review delivery and complete cold recovery
 
 The [local review delivery contract](SELECTED_LOCAL_REVIEW_DELIVERY.md) now

@@ -1,0 +1,226 @@
+{
+  "format": "breditor/selected-local-review-restore-qualification",
+  "formatVersion": 1,
+  "functionalPassed": true,
+  "releaseReady": false,
+  "v1GatesOpen": 13,
+  "v1GatesClosed": 0,
+  "baseCommit": "d96f0c7f71d593c12142d3af1ef1c97671b006ac",
+  "qualifiedSource": {
+    "commit": "d96f0c7f71d593c12142d3af1ef1c97671b006ac",
+    "dirty": true,
+    "sha256": "e5b5aa8f3ea4fc56f9bf5d69d13d9a9acf82f903662424e9be898e1ac5cc349f",
+    "files": 7475,
+    "bytes": 56435460
+  },
+  "sourceUnchangedDuringQualification": true,
+  "logicAndTestsUnchangedAfterQualification": true,
+  "scope": "SDK-private complete DATA restoration of the original preparation and local receipt metadata namespaces, absent-or-identical exact admission and a fresh decision. Actual seven cold-reopened source/native owners retain offline suffixes. Actual second-database upgrade failure leaves the first literal commit for fresh partial retry; separate normal cold resume creates a new gate, renews three local review streams and preserves all-seven future Undo/Redo. Underlying source/asset databases were genuinely reopened, not absent.",
+  "directTests": 453,
+  "nestedInstalledTests": 10,
+  "strictTypeStages": 4,
+  "stages": [
+    {
+      "id": "local-review-restore-private-types",
+      "status": "passed",
+      "startedAt": "2026-10-29T17:36:55.336Z",
+      "finishedAt": "2026-10-29T17:36:55.936Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-local-review-restore-ep9rXW/qualified-VoGj4i/local-review-restore-private-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "delivery-journal-resume-private-types",
+      "status": "passed",
+      "startedAt": "2026-10-29T17:36:55.337Z",
+      "finishedAt": "2026-10-29T17:36:56.993Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-local-review-restore-ep9rXW/qualified-VoGj4i/delivery-journal-resume-private-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "local-review-delivery-private-types",
+      "status": "passed",
+      "startedAt": "2026-10-29T17:36:55.337Z",
+      "finishedAt": "2026-10-29T17:36:57.559Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-local-review-restore-ep9rXW/qualified-VoGj4i/local-review-delivery-private-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "strict-integrated-build-types",
+      "status": "passed",
+      "startedAt": "2026-10-29T17:36:55.338Z",
+      "finishedAt": "2026-10-29T17:36:58.140Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-local-review-restore-ep9rXW/qualified-VoGj4i/strict-integrated-build-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "all-generation-operator-sdk-laws",
+      "status": "passed",
+      "startedAt": "2026-10-29T17:36:55.338Z",
+      "finishedAt": "2026-10-29T17:36:58.826Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 18152,
+      "logPath": "/private/tmp/breditor-local-review-restore-ep9rXW/qualified-VoGj4i/all-generation-operator-sdk-laws.log",
+      "logSha256": "375b6c0ab1f07f16596b67389bec3a4fcb4fed0b7949b61f40695a20de09ac8b",
+      "tests": 109
+    },
+    {
+      "id": "all-candidate-plan-verifier-and-native-storage-laws",
+      "status": "passed",
+      "startedAt": "2026-10-29T17:36:55.339Z",
+      "finishedAt": "2026-10-29T17:37:13.961Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 87760,
+      "logPath": "/private/tmp/breditor-local-review-restore-ep9rXW/qualified-VoGj4i/all-candidate-plan-verifier-and-native-storage-laws.log",
+      "logSha256": "32ba88c8b39883dfe2f5fee70d5beab09195fd8631a5d7ff86e16d44cfd08a2c",
+      "tests": 343
+    },
+    {
+      "id": "local-review-restore-cold-native",
+      "status": "passed",
+      "startedAt": "2026-10-29T17:36:55.334Z",
+      "finishedAt": "2026-10-29T18:00:07.762Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 1351,
+      "logPath": "/private/tmp/breditor-local-review-restore-ep9rXW/qualified-VoGj4i/local-review-restore-cold-native.log",
+      "logSha256": "5f16d4160ffef2996aa48de4e175f9974a55542619a87af4e3066c190a0e70fc",
+      "tests": 1
+    },
+    {
+      "id": "installed-local-review-restore",
+      "status": "passed",
+      "startedAt": "2026-10-29T17:36:55.335Z",
+      "finishedAt": "2026-10-29T18:00:14.493Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 375,
+      "logPath": "/private/tmp/breditor-local-review-restore-ep9rXW/qualified-VoGj4i/installed-local-review-restore.log",
+      "logSha256": "5bb1f0d3f7c83605759519aa46413fa1c4f210da6432ea652b973e436a4202ce",
+      "tests": 0
+    }
+  ],
+  "installed": {
+    "resultPath": "/private/tmp/breditor-local-review-restore-installed-r5zSF9/result.json",
+    "sourceUnchanged": true,
+    "workspaceLinks": false,
+    "registryArtifacts": 45,
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/private/tmp/breditor-local-review-restore-installed-r5zSF9/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/private/tmp/breditor-local-review-restore-installed-r5zSF9/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/private/tmp/breditor-local-review-restore-installed-r5zSF9/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "2e2760b1fd7d61f01d45ce977f9bf6e7641447aad14673c34c5c9ffa65761718"
+      }
+    ],
+    "actualWorkflow": {
+      "id": "installed-local-review-restore",
+      "status": "passed",
+      "startedAt": "2026-10-29T17:37:01.039Z",
+      "finishedAt": "2026-10-29T18:00:14.062Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 3490,
+      "logPath": "/private/tmp/breditor-local-review-restore-installed-r5zSF9/installed-local-review-restore.log",
+      "logSha256": "87aa13d2a966088d23f7e95c4cd0e0274d8be2a88dc7ebd06e9222cfc23726d0"
+    },
+    "tests": 10
+  },
+  "developmentOnlyEmptyOriginProbe": {
+    "passed": true,
+    "merged": false,
+    "installedQualified": false,
+    "portableArchiveImplemented": false,
+    "resultPath": "/private/tmp/breditor-local-review-restore-ep9rXW/fresh-origin-result.json",
+    "scriptSha256": "3013fe02e6d81e1549a108a6ca1bdd8fdd30596054d1dca1bbae1fb243d6400f",
+    "logSha256": "e2ff73c6e9405a51f3b4caca197cd6dd72e114e48a545edb8ab4038593ae581c",
+    "databases": 46,
+    "freshFactoryStartedEmpty": true,
+    "sevenNewNativeOwners": true,
+    "futureUndoRedoPreserved": true,
+    "completeNativeSourceAndAssetContinuation": true,
+    "sourceUnchanged": true,
+    "meaning": "Feasibility probe using actual controlled raw database records in memory; not a durable portable archive, production admission path or V1 gate closure."
+  },
+  "invariants": {
+    "originalDatabaseNamesAndProtocolsPreserved": true,
+    "absentProbeCreatesNoPlaceholder": true,
+    "fullNativeAndAssetContinuationBeforeAndAfterApproval": true,
+    "conflictingExistingRecordsNeverOverwritten": true,
+    "partialCommitsRemainReadable": true,
+    "partialRetryRequiresNewObservedChoice": true,
+    "dataRestoreDoesNotCreateGate": true,
+    "normalResumeRequiresSeparateFreshApproval": true,
+    "outstandingOfflineSuffixesRetained": true,
+    "actualNativeReceiptsRenewed": true,
+    "allSevenFutureUndoRedoPreserved": true,
+    "lateNamespaceAndSuccessCallbacksRetainActualCustody": true
+  },
+  "nativeBaseline": {
+    "freshlyRerunThisQualification": false,
+    "rustSourceChanged": false,
+    "carriedFrom": "docs/qualification/2026-10-29-authenticated-path-owned-work.json",
+    "serverTests": 575,
+    "noServerTests": 273,
+    "actualCurrentBinarySha256": "c224c4d39d5f603dcb3815ebc58c1719b59b4d6db6fe554e675f91d4cab46ea7",
+    "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+    "normalWasmUnchanged": true
+  },
+  "plans": {
+    "functional": 610,
+    "full": 618,
+    "executedFullPlans": false
+  },
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/local-review-restore-qualified-proof-g9NDeZ",
+    "indexSha256": "e695b8b02ef3db0a5e21c376c9acce7361f476691fa5b6802423c9d1f3cbae56",
+    "files": 51,
+    "bytes": 53776211,
+    "sourceUnchanged": true,
+    "releaseReady": false
+  },
+  "limitations": [
+    "Only the two new metadata namespaces are restored into empty destinations. Complete underlying source/native/packet/upload restoration into an entirely empty room remains required.",
+    "Namespaces and endpoints remain literal; database/server relocation is not implemented.",
+    "Cross-database atomicity is not claimed; partial commits require a newly approved exact retry.",
+    "SDK-private API; original public exports, package versions and defaults unchanged.",
+    "Controlled Node IDB/locks do not qualify physical crash durability or cross-device fencing.",
+    "Sustainable large-history materialization cost remains unqualified; no native history is trimmed.",
+    "Metadata outbox custody, complete provider/client/assets closure, authenticated joint whole-room activation and V1/parity gates remain open.",
+    "The historical intermittent WebKit fault is not confirmed fixed."
+  ],
+  "actions": {
+    "pushed": false,
+    "published": false,
+    "tagged": false,
+    "deployed": false,
+    "packageVersionChanged": false
+  },
+  "finishedAt": "2026-10-29T18:00:14.986Z"
+}
