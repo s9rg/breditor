@@ -1,4 +1,5 @@
 import {retainNativeDeliverySource} from './delivery_retention.js';
+import {checkRetainedVersionCatalog} from '../versions/retained_source.js';
 import {checkManagedSource,managedSourceCore} from '../managed_custody.js';
 import type {RecoverySession} from '../participant_recovery/components.js';
 import type {SharedIndependentDeliverySession} from '../independent_delivery/session.js';
@@ -31,7 +32,7 @@ function source<P extends SharedSelectionPolicy>(core:SharedRichEditor<P>,captur
  }});
 }
 export function originalNativeRetention<P extends SharedSelectionPolicy>(input:SharedAssetReferenceCaptureOptions<P>,managed:()=>void,session:RecoverySession<P>):NativeRetentionSource{
- const core=input.core,check=()=>{managed();if(input.session&&input.session!==session||managedSourceCore(session)!==core)throw fail();checkManagedSource(session,core);for(const selected of[input.suggestions,input.revisions,input.versions])if(selected)checkManagedSource(selected,core);};
+ const core=input.core,check=()=>{managed();if(input.session&&input.session!==session||managedSourceCore(session)!==core)throw fail();checkManagedSource(session,core);for(const selected of[input.suggestions,input.revisions])if(selected)checkManagedSource(selected,core);if(input.versions)checkRetainedVersionCatalog(input.versions,core);};
  const native=source(core,()=>{managed();const capture=captureOriginal(input);return{value:recordsOriginal.call(capture),check(){managed();checkOriginal.call(capture);},dispose:()=>disposeOriginal.call(capture)};});
  const packets=Object.freeze({...(input.suggestions?{suggestions:input.suggestions}:{}),...(input.revisions?{revisions:input.revisions}:{}),...(input.versions?{versions:input.versions}:{})});
  // P is erased only inside the trusted common-parent implementation. Every

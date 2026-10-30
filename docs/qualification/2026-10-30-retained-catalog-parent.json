@@ -1,0 +1,36 @@
+{
+  "format": "breditor/retained-catalog-parent-qualification",
+  "formatVersion": 1,
+  "functionalPassed": true,
+  "releaseReady": false,
+  "v1GatesOpen": 13,
+  "baseCommit": "fd142786e276bc58bf8d910ac57387e656799a01",
+  "qualifiedSource": {
+    "commit": "fd142786e276bc58bf8d910ac57387e656799a01",
+    "dirty": true,
+    "sha256": "c6c0b3f24089fc209cb0839e5cae94bbe8c11cbb3da9dce470c440b4d163bad8",
+    "files": 7690,
+    "bytes": 57713536
+  },
+  "sourceMatchesExecutedStage": true,
+  "buildPassed": true,
+  "nativeChecks": 75,
+  "skipped": 0,
+  "cancelled": 0,
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "proof": {
+    "path": "target/retained-catalog-parent-qualified-proof-iNuxwj",
+    "indexSha256": "ae06f191dbc1fb67532a6b6a2612d33e54373c3d817187e31cb6ebd7629a6f0e",
+    "references": 240,
+    "uniqueFiles": 169,
+    "nativeArtifactReferences": 216,
+    "readBackVerified": true
+  },
+  "scope": "Constructor-owned original catalog and complete recovery-parent liveness during a genuine finite native version delivery loan. Ordinary editing/recovery exclusion, actual source/store/core/lease checks and cold retirement remain. Three child/parent/actual-seven-family-root regressions and72 existing real native publication/failure/cold-history cases pass.",
+  "remaining": [
+    "Complete provider/client/metadata reconciliation qualification remains in progress",
+    "Remote catalog/historical packet closure, authenticated whole-room restore/activation and independent comment/server-log generation qualification remain",
+    "All thirteen V1/parity gates remain open"
+  ],
+  "finishedAt": "2026-10-30T18:06:26.514Z"
+}

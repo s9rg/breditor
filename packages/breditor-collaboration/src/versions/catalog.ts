@@ -1,5 +1,6 @@
 import {registerNativeVersionCatalog,composeNativeVersionDelivery} from './native_delivery.js';
 import {lendVersionNativeStore} from './native_store.js';
+import {registerRetainedVersionCatalog} from './retained_source.js';
 import {registerRelayWorkGroup} from '../relay/work_custody.js';
 import {VersionCatalogStore,captureOriginalVersionStoreRecords} from "./store.js";
 import {VersionCatalogSync} from "./sync.js";
@@ -19,12 +20,17 @@ let readOriginalCatalog:(owner:SharedDocumentVersions,authority:()=>void,signal?
 /** Opt-in shared immutable versions: independent cache/intent durability, one borrowed native owner. */
 export class SharedDocumentVersions<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
  readonly #store:VersionCatalogStore<P>;readonly #sync:VersionCatalogSync<P>;#retiring=false;#closed=false;#closing:Promise<void>|undefined;#released:Promise<void>|undefined;
- #recovering=false;
+ #recovering=false;#nativeBorrow:object|undefined;
  private constructor(key:object,store:VersionCatalogStore<P>){if(key!==constructionKey)throw new SharedRelayError('managed_source_construction');this.#store=store;this.#sync=new VersionCatalogSync(store);registerRelayWorkGroup(this,[store,this.#sync]);const core=store.options.storage.core;registerManagedSource(this,core,()=>{this.#writable();checkManagedSource(store,core);},[store]);
+  registerRetainedVersionCatalog(this,core,()=>{
+   if(this.#closed)throw new SharedRelayError('version_cache_closed');if(this.#retiring)throw new SharedRelayError('version_cache_closing');
+   if(this.#recovering&&!this.#nativeBorrow)throw new SharedRelayError('version_recovery_in_use');
+   checkManagedSourceBindings(this);checkManagedSource(store,core);
+  });
   registerNativeVersionCatalog(this,(delivery,options)=>{
    if(this.#closed||this.#retiring||this.#recovering)throw new SharedRelayError('version_native_delivery_in_use');checkManagedSourceBindings(this);
-   const releaseSync=this.#sync.reserveLocalRead();this.#recovering=true;let released=false;
-   const release=()=>{if(!released){released=true;this.#recovering=false;releaseSync();}};
+   const releaseSync=this.#sync.reserveLocalRead();this.#recovering=true;this.#nativeBorrow=Object.freeze({});let released=false;
+   const release=()=>{if(!released){released=true;this.#nativeBorrow=undefined;this.#recovering=false;releaseSync();}};
    try{const loan=lendVersionNativeStore<P>(this.#store,delivery,options);return composeNativeVersionDelivery(loan,release);}catch(error){release();throw error;}
   });
  }
