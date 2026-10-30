@@ -38,9 +38,12 @@ import {checkRichAssetLimits,inspectRichRaster} from '@breditor/experimental-ric
 import {sharedRelayAssetReadPort,type SharedRelayAssets} from '../relay/assets.js';
 import type {LocalMetadataMaterializationOptions,LocalMetadataMaterializationOutcome,LocalMetadataRasterInfo} from './materialization_contract.js';
 import {encodeLocalMetadataRasters} from './raster_archive.js';
-import {inspectLocalMetadataMaterializedRasters} from './materialized_inspection.js';
+import {inspectLocalMetadataMaterializedRasters,inspectLocalMetadataRecoverableRasters} from './materialized_inspection.js';
 import type {LocalMetadataMaterializedBundle,LocalMetadataMaterializedInspection} from './materialization_contract.js';
 import {fail} from './error.js';
+import {localMetadataRecoverableRequirements} from './recoverable_requirements.js';
+import {encodeLocalMetadataRecoverableRasters} from './recoverable_raster_archive.js';
+import type {LocalMetadataRecoverableOutcome,LocalMetadataRecoverableBundle,LocalMetadataRecoverableInspection} from './recoverable_contract.js';
 const room={read:SelectedRoomCurrentArchive.read,current:SelectedRoomCurrentArchive.prototype.current,approval:SelectedRoomCurrentArchive.prototype.approval,dispose:SelectedRoomCurrentArchive.prototype.dispose};
 const cut={read:PhysicalRoomRecordCutArchive.read,root:PhysicalRoomRecordCutArchive.prototype.root,selection:PhysicalRoomRecordCutArchive.prototype.selection,history:PhysicalRoomRecordCutArchive.prototype.history,dispose:PhysicalRoomRecordCutArchive.prototype.dispose};
 const verifyOriginal=SharedRichEditor.prototype.verifyRecoveryOrigin,verifySegmented=SharedRichEditor.prototype.verifySegmentedRecoveryOrigin;
@@ -117,6 +120,29 @@ export class LocalMetadataReferenceWork {
   const port=localMetadataAvailabilityHost(host),fresh=await port.checkAssets({references:this.#finished.body.outcome.references,uploads:[...uploads.assets.keys()].sort()},this.#waits.signal);check();if(!equal(fresh,available.availability.provider))throw fail('local_metadata_assets_changed');
   return Object.freeze({kind:'ready',bundle:Object.freeze({format:'breditor/selected-local-metadata-materialized-bundle',formatVersion:1,references:available.references,rasters})});
  }
+ /** V2 recovery bytes may include durable local uploads still absent from the
+  * server. Preserve original provider Pending and queue state verbatim; only
+  * a complete Native/mapping/payload union can return this distinct bundle. */
+ async recoverAssets(host:LocalMetadataAssetAvailabilityHost,transport:SharedRelayAssets,options:LocalMetadataMaterializationOptions):Promise<LocalMetadataRecoverableOutcome>{
+  const network=sharedRelayAssetReadPort(transport),limits=checkRichAssetLimits(options.limits),available=await this.availability(host);this.#check();
+  if(!this.#room||!this.#cut||!this.#finished)throw fail('local_metadata_assets_closed');
+  const body=this.#finished.body,provider=available.availability.provider;
+  if(body.outcome.kind!=='ready'||provider===null)return frozen({kind:'pending',availability:available,missing:[{kind:'source-or-provider'}]});
+  const check=()=>{this.#check();for(const row of this.#allSources){const before=this.#availabilityStamps.get(row.source.core),now=coreReadStamp(row.source.core);if(!before||before.document!==now.document||before.review!==now.review)throw fail('local_metadata_assets_changed');}};
+  const uploads=await readLocalMetadataUploadInventory(this.#room,this.#cut,this.#options,check,true);check();
+  const union=localMetadataRecoverableRequirements(body.outcome.references,uploads.assets,provider);
+  if(union.unresolved.length)return frozen({kind:'pending',availability:available,missing:[{kind:'source-or-provider'}]});
+  if(union.unavailable.length)return frozen({kind:'pending',availability:available,missing:union.unavailable.map(asset=>({kind:'download' as const,asset}))});
+  const payloads:{info:LocalMetadataRasterInfo;blob:Blob}[]=[],missing:{kind:'download';asset:string}[]=[];let total=0;
+  for(const expected of union.payloads){check();let blob=uploads.payloads.get(expected.asset);
+   if(!blob){const downloaded=await network.read(expected.asset,this.#waits.signal);check();if(!downloaded){missing.push({kind:'download',asset:expected.asset});continue;}if(downloaded.asset!==expected.asset||downloaded.mime!==expected.mime||downloaded.bytes!==expected.bytes)throw fail('local_metadata_assets_state');blob=downloaded.blob;}
+   const raster=await inspectRichRaster(blob,{limits,signal:this.#waits.signal});check();if(raster.asset!==expected.asset||raster.mime!==expected.mime||raster.bytes!==expected.bytes||raster.width!==expected.width||raster.height!==expected.height)throw fail('local_metadata_assets_state');total+=raster.bytes;if(total>limits.maxStoredBytes)throw fail('local_metadata_assets_raster_budget');payloads.push({info:expected,blob:raster.blob});
+  }
+  if(missing.length)return frozen({kind:'pending',availability:available,missing});
+  const rasters=await encodeLocalMetadataRecoverableRasters({bytes:available.references.references.bytes,sha256:available.references.references.sha256},available.availability,payloads,this.#options,limits);check();
+  const fresh=await localMetadataAvailabilityHost(host).checkAssets({references:body.outcome.references,uploads:[...uploads.assets.keys()].sort()},this.#waits.signal);check();if(!equal(fresh,provider))throw fail('local_metadata_assets_changed');
+  return Object.freeze({kind:'ready',bundle:Object.freeze({format:'breditor/selected-local-metadata-recoverable-bundle',formatVersion:1,references:available.references,rasters})});
+ }
  /** Recompute an older portable current point on readonly native aliases.
   * Unlike finish(), no live core is substituted for an archived point. All
   * three exact cuts precede the actual source; no journal is written here. */
@@ -151,6 +177,13 @@ export class LocalMetadataReferenceWork {
   this.#check();if(!this.#ready||!this.#room||!this.#cut)throw fail('local_metadata_assets_closed');
   const check=()=>{this.#check();for(const row of this.#allSources){const before=this.#availabilityStamps.get(row.source.core),now=coreReadStamp(row.source.core);if(!before||before.document!==now.document||before.review!==now.review)throw fail('local_metadata_assets_changed');}};
   check();const result=await inspectLocalMetadataMaterializedRasters(bundle,body,this.#room,this.#cut,this.#options,checkRichAssetLimits(options.limits),check);check();return result;
+ }
+ /** Exact Native inspection plus the complete V2 local/provider payload set.
+  * Recorded server-missing entries remain missing and confer no upload ACK. */
+ async inspectRecoverable(bundle:LocalMetadataRecoverableBundle,body:LocalMetadataReferenceCut,options:LocalMetadataMaterializationOptions):Promise<LocalMetadataRecoverableInspection>{
+  this.#check();if(!this.#ready||!this.#room||!this.#cut)throw fail('local_metadata_assets_closed');
+  const check=()=>{this.#check();for(const row of this.#allSources){const before=this.#availabilityStamps.get(row.source.core),now=coreReadStamp(row.source.core);if(!before||before.document!==now.document||before.review!==now.review)throw fail('local_metadata_assets_changed');}};
+  check();const result=await inspectLocalMetadataRecoverableRasters(bundle,body,this.#room,this.#cut,this.#options,checkRichAssetLimits(options.limits),check);check();return result;
  }
  /** Cancels finite reads, disposes claimed aliases and observes/frees late
   * unclaimed raw restores through the original factory wait implementation. */

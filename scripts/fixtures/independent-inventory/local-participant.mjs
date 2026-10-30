@@ -13,7 +13,7 @@ export async function localParticipant(input){
   session=await api.SharedIndependentHistoryPersistentSession.restoreRecovery(options,recovery,'host-reacquired');
   assert.deepEqual(session.exportRecovery(),recovery);
   await session.retainVersion(session.core.captureVersion('Local retained native version',h.client.principal,'11'));
-  if(input.prepareLocalInput)await input.prepareLocalInput(session,options);
+  if(input.prepareLocalInput)await input.prepareLocalInput(session,options,h.uploads);
   const result=await api.captureSharedIndependentParticipant({participant:tag,principal:h.client.principal,source:{session},assets:h.uploads,checkAuthority(){}});assert.equal(result.kind,'ready');backup=result.backup;source=api.captureSharedIndependentSource({session});
   const value={...h,options,session,backup,source,async close(){value.source?.dispose();value.backup.dispose();await value.session.discardAndClose();await h.close();}};return value;
  }catch(error){source?.dispose();backup?.dispose();await session?.discardAndClose();await h.close();throw error;}

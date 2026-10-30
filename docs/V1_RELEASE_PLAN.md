@@ -1,5 +1,20 @@
 # Breditor V1 release preparation
 
+[Recoverable local/provider assets](RECOVERABLE_METADATA_ASSET_UNION.md) now
+preserve durably local image bytes while actual server uploads remain Pending.
+The separately framed V2 union retains all Native references and fourteen whole
+upload roles without ACK, queue mutation or storage references. The original V1
+provider-checked capture and its literal frame scope remain unchanged.
+
+The [qualification](qualification/2026-10-30-recoverable-metadata-union.json)
+passes 63 direct and 88 independently installed checks. Actual missing-server
+local PNG bytes, offline Native inspection, rehashed payload omission refusal
+and an exact older V1 byte fixture are verified with all original regressions.
+
+Actual current server/inventory byte coupling, complete provider/client/metadata
+reconciliation, authenticated joint activation and independent comment/server-log
+generation qualification remain. All thirteen V1/parity gates stay open.
+
 [Materialized metadata assets](LOCAL_METADATA_MATERIALIZED_ASSETS.md) now preserve
 complete provider-checked raster bytes with the literal Native/reference cut.
 Actual Native inspection re-admits older cuts offline, refuses rehashed omissions

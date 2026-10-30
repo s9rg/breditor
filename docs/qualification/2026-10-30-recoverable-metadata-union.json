@@ -1,0 +1,55 @@
+{
+  "format": "breditor/recoverable-metadata-union-qualification",
+  "formatVersion": 1,
+  "functionalPassed": true,
+  "releaseReady": false,
+  "v1GatesOpen": 13,
+  "v1GatesClosed": 0,
+  "baseCommit": "13423d300c2bb5ff9354f66ef4f2ace2636f26d9",
+  "qualifiedSource": {
+    "commit": "13423d300c2bb5ff9354f66ef4f2ace2636f26d9",
+    "dirty": true,
+    "sha256": "26e3512c1ad32b79aa7aa38954aa2a6465d65fa4b8c6df66e9012a235d9c5375",
+    "files": 7666,
+    "bytes": 57639243
+  },
+  "sourceUnchangedDuringInstalledQualification": true,
+  "sdkLogicAndTestsUnchangedAfterQualification": true,
+  "directChecks": 63,
+  "installedChecks": 88,
+  "stagedSupplementChecks": 11,
+  "strictSourceStages": 2,
+  "strictInstalledStages": 1,
+  "nativeParticipants": 7,
+  "metadataSources": 3,
+  "uploadArchivesPerCompletedRead": 14,
+  "scope": "Complete original recovery/reference/provider/V1 byte tests plus a separately framed V2 complete local/provider raster union. A third PNG is durably held in all three local-source upload archives and pending proposal/revision packets but absent from the actual server. Original provider availability and V1 materialized capture remain Pending. V2 preserves all three payloads, all fourteen whole-upload roles and every Native reference while retaining missing server-upload state, no ACK, no storage reference and no cache mutation. A genuine Native owner inspects older complete cuts offline with no journal writes and refuses rehashed omission of the local-only payload. Original V1 format/scope, public metadata literal type and actual historical captured bytes remain accepted unchanged. All original cold/restore/availability regressions also pass.",
+  "developmentEvidenceNotice": "The final unchanged installed archives and copied complete test source are authoritative. Only source comments moved after the staged V2 Native test loaded its compiled SDK; the comment correction did not change behavior. Later framing/golden/plan checks and integrated main build use final source.",
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "nativeHostSha256": "60427bb794f52c39a7084fac797f8f3150501238c45c78bad6195cd928a252ca",
+  "originalNativeHostSha256": "c224c4d39d5f603dcb3815ebc58c1719b59b4d6db6fe554e675f91d4cab46ea7",
+  "compatibilityFixture": {
+    "path": "scripts/fixtures/local-metadata/v1-materialized-rasters.archive",
+    "bytes": 18805,
+    "sha256": "d644ea5ac7a61061ec22cfb35058af449c34a33b32bc9913a73fcea0b94354df"
+  },
+  "proof": {
+    "path": "target/recoverable-metadata-union-qualified-proof-M8YcLM",
+    "indexSha256": "00d6f6a0e64c1866856308863a577e78119927401318297998c0e704c6858216",
+    "files": 286,
+    "logicalBytes": 314248168,
+    "deduplicatedBytes": 194077728,
+    "readBackVerified": true
+  },
+  "remaining": [
+    "Couple actual current server/inventory byte selections to client/metadata/asset recovery without trusting recorded control data as current authority",
+    "Complete provider/client accepted-head reconciliation, pending metadata and authenticated whole-room activation",
+    "Genuine opaque host-mapping Ready, independent comment/server-log generation qualification and all other V1/parity gates; full release profiles remain unrun"
+  ],
+  "unchanged": [
+    "Original protocol meanings/defaults, V1 capture/availability/frame families and literal metadata types",
+    "Actual Native histories, original packets/receipts and unacknowledged upload state",
+    "Package versions, normal Rust/Wasm and Native executables"
+  ],
+  "finishedAt": "2026-10-30T16:09:51.996Z"
+}

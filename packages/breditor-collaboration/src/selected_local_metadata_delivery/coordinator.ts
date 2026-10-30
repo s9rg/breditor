@@ -7,6 +7,8 @@ import {sharedRelayAssetReadPort,type SharedRelayAssets} from '../relay/assets.j
 import type {LocalMetadataMaterializationOptions,LocalMetadataMaterializationOutcome} from '../selected_local_metadata_assets/materialization_contract.js';
 import type {LocalMetadataMaterializedBundle,LocalMetadataMaterializedInspection} from '../selected_local_metadata_assets/materialization_contract.js';
 import {detachLocalMetadataMaterializedBundle,localMetadataMaterializationLimits} from '../selected_local_metadata_assets/materialized_bundle.js';
+import type {LocalMetadataRecoverableOutcome,LocalMetadataRecoverableBundle,LocalMetadataRecoverableInspection} from '../selected_local_metadata_assets/recoverable_contract.js';
+import {detachLocalMetadataRecoverableBundle} from '../selected_local_metadata_assets/recoverable_bundle.js';
 import {detachLocalMetadataBundle} from './bundle.js';
 import {readMetadataBundle,inspectMetadataResume} from './resume_inspection.js';
 import {metadataResumeChoice} from './resume_policy.js';
@@ -167,6 +169,12 @@ export class SelectedLocalMetadataDelivery{
   let options:LocalMetadataMaterializationOptions|undefined,result:LocalMetadataMaterializationOutcome|undefined;
   return this.#captureReferenceOperation(async work=>{result=await work.materialize(host,transport,options!);this.#current();},()=>{localMetadataAvailabilityHost(host);sharedRelayAssetReadPort(transport);options={limits:localMetadataMaterializationLimits(provided)};}).then(()=>{if(!result)throw fail();return result;});
  }
+ /** Complete recoverable V2 union. Server-missing local uploads remain
+  * unacknowledged; the original V1 capture and availability scopes are intact. */
+ captureRecoverableAssets(host:LocalMetadataAssetAvailabilityHost,transport:SharedRelayAssets,provided:LocalMetadataMaterializationOptions={}):Promise<LocalMetadataRecoverableOutcome>{
+  let options:LocalMetadataMaterializationOptions|undefined,result:LocalMetadataRecoverableOutcome|undefined;
+  return this.#captureReferenceOperation(async work=>{result=await work.recoverAssets(host,transport,options!);this.#current();},()=>{localMetadataAvailabilityHost(host);sharedRelayAssetReadPort(transport);options={limits:localMetadataMaterializationLimits(provided)};}).then(()=>{if(!result)throw fail();return result;});
+ }
  /** Native verification of the literal PORTABLE cuts, even if the actual
   * stored/live room is newer. This returns immutable dependency DATA only:
   * it neither proves current asset availability nor supplies serving rights.
@@ -181,6 +189,12 @@ export class SelectedLocalMetadataDelivery{
  inspectMaterializedAssets(provided:LocalMetadataMaterializedBundle,options:LocalMetadataMaterializationOptions={}):Promise<LocalMetadataMaterializedInspection>{
   let bundle!:LocalMetadataMaterializedBundle,limits!:LocalMetadataMaterializationOptions;
   return this.#inspectReferenceOperation(()=>bundle.references,async(work,actual)=>work.inspectMaterialized(bundle,actual,limits),()=>{bundle=detachLocalMetadataMaterializedBundle(provided);limits={limits:localMetadataMaterializationLimits(options)};});
+ }
+ /** Re-admit V2 bytes without upgrading recorded Pending uploads to success.
+  * No current provider grant or queue writer is returned. */
+ inspectRecoverableAssets(provided:LocalMetadataRecoverableBundle,options:LocalMetadataMaterializationOptions={}):Promise<LocalMetadataRecoverableInspection>{
+  let bundle!:LocalMetadataRecoverableBundle,limits!:LocalMetadataMaterializationOptions;
+  return this.#inspectReferenceOperation(()=>bundle.references,async(work,actual)=>work.inspectRecoverable(bundle,actual,limits),()=>{bundle=detachLocalMetadataRecoverableBundle(provided);limits={limits:localMetadataMaterializationLimits(options)};});
  }
  #inspectReferenceOperation<T>(selected:()=>LocalMetadataReferenceBundle,visit:(work:LocalMetadataReferenceWork,actual:LocalMetadataReferenceCut)=>Promise<T>,prepare:()=>void):Promise<T>{
   return this.#captureOperation(async()=>{
