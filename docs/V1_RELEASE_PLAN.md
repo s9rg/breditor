@@ -1,5 +1,19 @@
 # Breditor V1 release preparation
 
+The [local metadata asset-reference contract](LOCAL_METADATA_ASSET_REFERENCES.md)
+now discovers image dependencies from exact native history cuts and every retained
+metadata packet, including intermediate/deleted proposal and revision images.
+Its [qualification](qualification/2026-10-29-local-metadata-asset-records.json) passes
+164 direct checks and 15 independently installed native checks across all four
+document/comment history combinations with owned and unowned policies. Uncached
+versions and missing source clocks remain explicit Pending; both document and
+comment changes invalidate a read. This is dependency DATA, not byte availability.
+
+Coupling these reads to one genuine whole-room metadata reference decision, actual
+provider/client/packet/upload reconciliation and authenticated joint activation
+remain required. All thirteen V1/parity gates stay open. No package version, push,
+publication, tag or deployment changed.
+
 The [local native metadata contract](NATIVE_LOCAL_METADATA_DELIVERY.md) now binds
 all three local source families to their original version, suggestion and revision
 records under the genuine prepared parent. Coupled export, later committed-head
