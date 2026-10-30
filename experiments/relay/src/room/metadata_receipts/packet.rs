@@ -1,8 +1,8 @@
 //! Hash the original UTF-8 packet bytes, not reconstructed or escaped DTO text.
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct PacketFingerprint {
     pub id: String,
     pub bytes: usize,

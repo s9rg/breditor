@@ -225,3 +225,11 @@ export type {SharedServerLogGenerationDeliveryContinuationIdentity,SharedServerL
 export {SharedServerLogGenerationDeliveryPathRecoveryHost} from './generation_delivery_path_control/host.js';
 export {SharedServerLogGenerationDeliveryPathControlError,MAX_SERVER_GENERATION_DELIVERY_PATH_CONTROL_BYTES,MAX_SERVER_GENERATION_DELIVERY_PATH_ANCESTORS} from './generation_delivery_path_control/policy.js';
 export type {SharedServerLogGenerationDeliveryPathIdentity,SharedServerLogGenerationDeliveryPathRecoveryControlSelection,SharedServerLogGenerationDeliveryPathRecoveryHostOptions} from './generation_delivery_path_control/contract.js';
+
+/** Opt-in selected server metadata DATA; original document/review protocols stay unchanged. */
+export {captureSelectedServerMetadata} from './server_metadata_read/collect.js';
+export {ServerMetadataReadError} from './server_metadata_read/policy.js';
+export {MAX_SERVER_METADATA_PAGE_BYTES} from './server_metadata_read/contract.js';
+export {MAX_SERVER_METADATA_PACKET_BYTES,MAX_SERVER_METADATA_PACKET_RESPONSE_BYTES} from './server_metadata_read/packet_contract.js';
+export type {ServerMetadataFamily,OriginalMetadataCursor,OriginalMetadataLaneQuery,OriginalMetadataQuery,OriginalMetadataStartQuery,OriginalPacketFingerprint,OriginalSuggestionUpdate,OriginalSuggestionsDescriptor,OriginalRevisionsDescriptor,OriginalSuggestionsPage,OriginalRevisionsPage,OriginalMetadataLanePage,OriginalMetadataPage,SelectedServerMetadataRead,SelectedServerMetadataCatalog} from './server_metadata_read/contract.js';
+export type {OriginalMetadataPacketKind,OriginalMetadataPacketQuery,OriginalMetadataPacket,SelectedServerMetadataPacketRead} from './server_metadata_read/packet_contract.js';

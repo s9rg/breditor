@@ -3,6 +3,7 @@ mod accepted_native;
 mod asset_requirements;
 mod identity;
 mod lease;
+mod metadata_packet;
 mod metadata_receipts;
 mod original_review;
 mod prepare;

@@ -1,7 +1,7 @@
 //! Bounded exact-Origin operator read; no DTO can substitute for genuine native/provider owners.
 use super::{
     ServerLogGenerationRecoveryControlIdentity, accepted_native, asset_requirements, lease::State,
-    metadata_receipts, original_review,
+    metadata_packet, metadata_receipts, original_review,
 };
 use crate::{Error, Result, server::http};
 use axum::{
@@ -23,6 +23,7 @@ enum Kind {
     AcceptedNative,
     OriginalReview,
     Metadata,
+    MetadataPacket,
 }
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -38,6 +39,10 @@ pub(super) fn router(state: Weak<State>) -> Router {
         .route("/recovery/generations/v1/assets/check", post(check_assets).options(preflight))
         .route("/recovery/generations/v1/accepted/read", post(accepted).options(preflight))
         .route("/recovery/generations/v1/metadata/read", post(metadata).options(preflight))
+        .route(
+            "/recovery/generations/v1/metadata/packet/read",
+            post(metadata_packet_read).options(preflight),
+        )
         .route(
             "/recovery/generations/v1/review/authorizations/read",
             post(original_review_authorizations).options(preflight),
@@ -125,6 +130,9 @@ async fn accepted(Extract(weak): Extract<Weak<State>>, request: Request) -> Resp
 async fn metadata(Extract(weak): Extract<Weak<State>>, request: Request) -> Response {
     respond(weak, request, Kind::Metadata).await
 }
+async fn metadata_packet_read(Extract(weak): Extract<Weak<State>>, request: Request) -> Response {
+    respond(weak, request, Kind::MetadataPacket).await
+}
 async fn original_review_authorizations(
     Extract(weak): Extract<Weak<State>>,
     request: Request,
@@ -172,6 +180,7 @@ async fn respond(weak: Weak<State>, request: Request, kind: Kind) -> Response {
         Kind::AcceptedNative => accepted_native::MAX_REQUEST_BYTES,
         Kind::OriginalReview => original_review::MAX_REQUEST_BYTES,
         Kind::Metadata => metadata_receipts::MAX_REQUEST_BYTES,
+        Kind::MetadataPacket => metadata_packet::MAX_REQUEST_BYTES,
     };
     let Ok(body) = to_bytes(body, limit).await else {
         return http::cors(StatusCode::PAYLOAD_TOO_LARGE.into_response(), &origin);
@@ -186,6 +195,7 @@ async fn respond(weak: Weak<State>, request: Request, kind: Kind) -> Response {
             Kind::AcceptedNative => accepted_native::read(state, body).await,
             Kind::OriginalReview => original_review::read(state, body).await,
             Kind::Metadata => metadata_receipts::read(state, body).await,
+            Kind::MetadataPacket => metadata_packet::read(state, body).await,
         }
     })
     .await;

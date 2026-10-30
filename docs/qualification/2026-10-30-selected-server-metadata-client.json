@@ -1,0 +1,368 @@
+{
+  "format": "breditor/selected-server-metadata-client-qualification",
+  "formatVersion": 1,
+  "baseCommit": "61b127020addbd8dc14ba73999066508855fe5ec",
+  "rustSource": {
+    "files": 3178,
+    "bytes": 23954643,
+    "sha256": "53e7e7142cfeabdb3388a5c2ac57cb90587e1ad7adb3632dd428c319405ee939"
+  },
+  "rustFullLibraryTests": 409,
+  "rustFailed": 0,
+  "rustIgnored": 0,
+  "serverAndNoServerAllTargetReleaseLintPassed": true,
+  "sdkSourceTests": 21,
+  "installedTests": 21,
+  "strictInstalledPublicTypes": true,
+  "installedWorkspaceLinks": false,
+  "finalPlanAndBuildAllocationTests": 9,
+  "nativeBuildResult": "target/server-metadata-native-build.json",
+  "buildBudgetBytes": 3221225472,
+  "historicalNativePinsAndNormalWasmUnchanged": true,
+  "finalNativeBinaries": [
+    {
+      "path": "target/server-metadata-native/release/examples/selected_suggestion_delivery_functional",
+      "sha256": "3ff2019ccc49a3a54dc2834e7d9892e7078a328c118e69bd441fff77fdde557f"
+    },
+    {
+      "path": "target/server-metadata-native/release/examples/complete_cohort_control_functional",
+      "sha256": "69de301825637e96c47689cbf06ca0a94f5d89a8dd54c0c9261a8054232e457a"
+    }
+  ],
+  "installedResultSource": {
+    "commit": "61b127020addbd8dc14ba73999066508855fe5ec",
+    "dirty": true,
+    "sha256": "b2f279e66214f3929953e4a00a6678c117d8f0d681ec586815dac8470f62ec25",
+    "files": 7772,
+    "bytes": 58043632
+  },
+  "nativeBuildSource": {
+    "commit": "61b127020addbd8dc14ba73999066508855fe5ec",
+    "dirty": true,
+    "sha256": "f0a9d94d701275b1730279ae2fb4a7df43fd4e39e0afddcc5b36835a7fa37b1a",
+    "files": 7772,
+    "bytes": 58043784
+  },
+  "qualificationScopes": "Same Rust sources for the full library and both lint runs; source SDK and independent installed cases use genuine native publications. Final installed cases use the exact final main-built executable bytes. Later build-report/plan-only corrections are covered by a successful warm-cache build and the nine plan/allocation checks; SDK and Rust inputs remain byte-identical.",
+  "sourceFiles": [
+    {
+      "path": "packages/breditor-collaboration/src/generation_recovery_control/host.ts",
+      "bytes": 16137,
+      "sha256": "73fa3800143ead1c0ef49917de6b1ae1753c6df6c35618b2c7b939adebeb60ad"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/index.ts",
+      "bytes": 31454,
+      "sha256": "4d9c7479fcd2796d4c36ec143a86411659d01e2c928217102f3f86f3ea177d57"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/physical_recovery_control/host.ts",
+      "bytes": 15428,
+      "sha256": "3ec61016187db2811534b4edb22e2a0b6787a88ef96d3b17dd12f334f12cf96c"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/server_metadata_read/accumulator.ts",
+      "bytes": 4967,
+      "sha256": "545dce7e207c09afa7fd6948e4d1e99c42e99a94e950b95fbfffcc6d267754e8"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/server_metadata_read/collect.ts",
+      "bytes": 3155,
+      "sha256": "80d7341128e618179112ed41123a01857c9873672b5276312fc87007979325e8"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/server_metadata_read/collect_data.ts",
+      "bytes": 3355,
+      "sha256": "2692d8496a1494071b898f9b426db6c5568c024d869bd49f7b5e380aaee1af28"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/server_metadata_read/contract.ts",
+      "bytes": 3726,
+      "sha256": "3cc4f186e45c2e6f6b24c2f81eade065730a092a209d0238006d8ff39a018e22"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/server_metadata_read/fingerprints.ts",
+      "bytes": 790,
+      "sha256": "89f18cb251f6eca55664fe9176f2ebc6d935934e6e90115a4559e5184bb0072a"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/server_metadata_read/interval.ts",
+      "bytes": 1001,
+      "sha256": "29e002ed99ccea3e0bf36e92c4b5d47f0f2a7a53c3206592893b4c9465236ae0"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/server_metadata_read/packet_contract.ts",
+      "bytes": 1077,
+      "sha256": "a858417098d7376f454d606b63d0ce14cc82f8eb57755d366699b233872294af"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/server_metadata_read/packet_query.ts",
+      "bytes": 1393,
+      "sha256": "3b9f3d160c1f0aca99349055d899c7f9759d17a728344fa9d1f4932e2e0567c8"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/server_metadata_read/packet_request.ts",
+      "bytes": 1049,
+      "sha256": "e2ca5a7e92faa7bff84e36a887254f690af87526cb11277dc0a8f45f081d8b68"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/server_metadata_read/packet_response.ts",
+      "bytes": 2584,
+      "sha256": "b7beddb73532564bd1f9b3e5132992e22809d1813df7b1e43b20c707f4c5f6ee"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/server_metadata_read/page.ts",
+      "bytes": 4844,
+      "sha256": "66b3cc2168452bbebc809a075bae54147df7a37b30d3177b21cee20fb2f39835"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/server_metadata_read/policy.ts",
+      "bytes": 2309,
+      "sha256": "2d1480ad707bcef614d905213ae981c858f987163da3aa520f63c64f2c0f2a56"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/server_metadata_read/request.ts",
+      "bytes": 970,
+      "sha256": "938f35fe9833fbc2eaa1b2a896780aa00664750ea218cf2f357424038a6d68b0"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/server_metadata_read/response.ts",
+      "bytes": 1564,
+      "sha256": "d934e90fc0a5b0f02fe0e499e3a1333a907ce9329ceed5e3c7917e162e0c1c2e"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/suggestion_revisions/transport.ts",
+      "bytes": 3856,
+      "sha256": "faaef8e9fceb0042fe77e6d3bbe0a34fac61723ea8ec1a551d43daab67293dfe"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/suggestions/validation.ts",
+      "bytes": 4399,
+      "sha256": "0bf3a6035080296792996422f2280c5bc0d15992f1cc0e4a84127199818a996d"
+    },
+    {
+      "path": "experiments/relay/src/room/metadata_receipts/mod.rs",
+      "bytes": 559,
+      "sha256": "dadebdf47fe8e7bd9cfbca78f8c8debc4a8cfbaecdbc06e637579fd591e95aa4"
+    },
+    {
+      "path": "experiments/relay/src/room/metadata_receipts/packet.rs",
+      "bytes": 568,
+      "sha256": "dfd29ddae70be6b913c7ebdc719a3d683a53c93fa81297fa26acd74be27024d8"
+    },
+    {
+      "path": "experiments/relay/src/room/metadata_receipts/packet_read.rs",
+      "bytes": 2785,
+      "sha256": "24861c39bdbb5816a700214a88f86471e73cd2dfb1a70e537118c74701e4cfdc"
+    },
+    {
+      "path": "experiments/relay/src/room/metadata_receipts/packet_read_tests.rs",
+      "bytes": 7098,
+      "sha256": "ca9a48e4e99a227232a2bd7c6876d9fbad5bc4a1ad9728b3b1d9b698939967fd"
+    },
+    {
+      "path": "experiments/relay/src/room/metadata_receipts/test_fixture.rs",
+      "bytes": 3377,
+      "sha256": "aa33893f54224bb1164d2047ca10343795a61569bc5cc4a8129e934dd53c03ea"
+    },
+    {
+      "path": "experiments/relay/src/server/generation_recovery/control/metadata_packet.rs",
+      "bytes": 3152,
+      "sha256": "e94813088672f4aa7585ff45479c8c6d48b26942555165868187328453b1a5d6"
+    },
+    {
+      "path": "experiments/relay/src/server/generation_recovery/control/mod.rs",
+      "bytes": 1036,
+      "sha256": "86ffb4e826811b9847a0fac686dc76eb6ef9d113bfe2c7c8cd15b30863fbee42"
+    },
+    {
+      "path": "experiments/relay/src/server/generation_recovery/control/routes.rs",
+      "bytes": 8184,
+      "sha256": "9e12b09dc9661522dbe0c16c7321a0c332613de2b4158dd6d8e859106f79f4e2"
+    },
+    {
+      "path": "experiments/relay/src/server/generation_recovery/metadata_packet.rs",
+      "bytes": 1322,
+      "sha256": "94f293a9e77e3042303a86f11142cc025ab6806b49fb8099eb26995f9f2ba3cc"
+    },
+    {
+      "path": "experiments/relay/src/server/generation_recovery/mod.rs",
+      "bytes": 2906,
+      "sha256": "dad6563324a906fe8ef1a0ae219841f3c030448342f43229fcab5ffe542f4125"
+    },
+    {
+      "path": "experiments/relay/src/server/generation_recovery/physical/control/metadata_packet.rs",
+      "bytes": 3165,
+      "sha256": "368259edf8fc09a587dbc38e8ffcd7cea4cdce7abe1ebc09a83bbe9ca7936397"
+    },
+    {
+      "path": "experiments/relay/src/server/generation_recovery/physical/control/mod.rs",
+      "bytes": 783,
+      "sha256": "06faa5c4f840be2986a6bea82c4bb905acf6654ceeb53b74954e2af7e9de951c"
+    },
+    {
+      "path": "experiments/relay/src/server/generation_recovery/physical/control/routes.rs",
+      "bytes": 8126,
+      "sha256": "3a68cfe5f624ab642ca9cadce2c06dbfd4b99efe6c928f6ebbb19b8c9821fb8d"
+    },
+    {
+      "path": "experiments/relay/src/server/generation_recovery/tests/physical/asset_availability/control/accepted_native_final.rs",
+      "bytes": 7765,
+      "sha256": "b4dd4e1b007ff537e6b49ae039671f4b2e060c497a70e8bc44315260e9933eed"
+    },
+    {
+      "path": "experiments/relay/src/server/generation_recovery/tests/physical/asset_availability/control/metadata_packets.rs",
+      "bytes": 7316,
+      "sha256": "83e48addeaace27dd16e5b65b4af93b47391b3c0140004dcd3d964cec22dc832"
+    },
+    {
+      "path": "experiments/relay/src/server/generation_recovery/tests/physical/asset_availability/control/metadata_receipts.rs",
+      "bytes": 15162,
+      "sha256": "6a2e85616add809da2b454971f995ce3eb58391470226b2d81a8553bb0cac942"
+    },
+    {
+      "path": "experiments/relay/src/server/generation_recovery/tests/physical/asset_availability/control/mod.rs",
+      "bytes": 367,
+      "sha256": "dd17414031e838ed9c553ffdc77dbdb0def2362b15a16af548e2d40899e80b71"
+    },
+    {
+      "path": "experiments/relay/src/server/generation_recovery/tests/physical/asset_availability/generation_control/accepted_native_final.rs",
+      "bytes": 7800,
+      "sha256": "aab9aa1aa60bcec9961d473aa3cc421ffa19ccbfd8d597bf4edfe64d73dfee27"
+    },
+    {
+      "path": "experiments/relay/src/server/generation_recovery/tests/physical/asset_availability/generation_control/metadata_packets.rs",
+      "bytes": 7395,
+      "sha256": "0c558e5f05f5de82414934349020516fd58e2053c39783a5cc1e132db13eabd9"
+    },
+    {
+      "path": "experiments/relay/src/server/generation_recovery/tests/physical/asset_availability/generation_control/metadata_receipts.rs",
+      "bytes": 15050,
+      "sha256": "dc226bffdd9115099801964ecc0d144de1b5caf3a28abe672dd2d9df06739c4a"
+    },
+    {
+      "path": "experiments/relay/src/server/generation_recovery/tests/physical/asset_availability/generation_control/mod.rs",
+      "bytes": 333,
+      "sha256": "0cc8bd587edf397bcbacf843afa4287f8d086a1dfce42f90543460edfc54bd79"
+    },
+    {
+      "path": "scripts/build-server-metadata-native.mjs",
+      "bytes": 4090,
+      "sha256": "b1d59641d405f977e72d2f0469e98972c5dc43e10f920a6d3354c4f7bfa02069"
+    },
+    {
+      "path": "scripts/candidate-release/plan.mjs",
+      "bytes": 147713,
+      "sha256": "7096554a942c86664c197c5c2c7de9e6f2e7d1432cb222466a64ffdc49f3676c"
+    },
+    {
+      "path": "scripts/check-server-metadata-installed.mjs",
+      "bytes": 7654,
+      "sha256": "d81d82ae5df7d801a52abfafe5b4465a190e0c88ef17a9829fe53791c680b95d"
+    },
+    {
+      "path": "scripts/fixtures/editor-consumer/types-server-metadata.ts",
+      "bytes": 1626,
+      "sha256": "da9ca7c6125b69fada34245bb90f0c7ac3e20429e5a0be57a967b2a2acee9be0"
+    },
+    {
+      "path": "scripts/fixtures/server-metadata/native-root.mjs",
+      "bytes": 1017,
+      "sha256": "d43608dafba5bb0f398b54d72d35bd8e684b1bd718d367385ae3e4ac3a28e334"
+    },
+    {
+      "path": "scripts/server-metadata-candidate-plan.test.mjs",
+      "bytes": 2077,
+      "sha256": "2b06afdb3ac20619562507b5098df0531d2ead9c85ed3099d9e338263f2ee40e"
+    },
+    {
+      "path": "scripts/server-metadata-collection-native.test.mjs",
+      "bytes": 5628,
+      "sha256": "bcbf47336470813e8c2d8fbeecd53b1991e920b6d6452c3f332953de480c87af"
+    },
+    {
+      "path": "scripts/server-metadata-generation-native.test.mjs",
+      "bytes": 3734,
+      "sha256": "3d2c18b763ebc5abcc255ab85ef08d1fc1c6358b41f652bffef3e42b31089de8"
+    },
+    {
+      "path": "scripts/server-metadata-packet-contracts.test.mjs",
+      "bytes": 4538,
+      "sha256": "4cd5a73deaf60c54e18af9d9480d8dcc5b242e72d2b164a7e190e9c9f728a8ec"
+    },
+    {
+      "path": "scripts/server-metadata-packets-native.test.mjs",
+      "bytes": 12251,
+      "sha256": "2a1ea760e550799a54131f304fba90f71abef920f4ed47a46fe751690785b452"
+    },
+    {
+      "path": "scripts/server-metadata-page-contracts.test.mjs",
+      "bytes": 9540,
+      "sha256": "da3617c61c41183854cde9ded6dcc9b13e1f86cfbf58e40d6b3fc9090f2e593d"
+    },
+    {
+      "path": "scripts/server-metadata-physical-native.test.mjs",
+      "bytes": 2852,
+      "sha256": "c96a906745797ba6341e69f8ed21991c07f57b566b9dd1c78fc783a2c33a2611"
+    },
+    {
+      "path": "scripts/server-metadata-version-native.test.mjs",
+      "bytes": 4985,
+      "sha256": "92fae9e93f970d3690e5d8c4387f57321f8b2b38084c490970641980158c1b5a"
+    },
+    {
+      "path": "docs/SELECTED_SERVER_METADATA_CLIENT_READS.md",
+      "bytes": 5539,
+      "sha256": "344c184748daf58c2857ef3e4da631c92f70e82e6a10588b3c652ba598b7eda5"
+    },
+    {
+      "path": "scripts/candidate-release/build-artifact-bytes.mjs",
+      "bytes": 1131,
+      "sha256": "8cdda5e17ed1ce2ae3ca3f10956902c6fceff6ac81bc77c05b141664ceb5ae18"
+    },
+    {
+      "path": "scripts/build-artifact-bytes.test.mjs",
+      "bytes": 2462,
+      "sha256": "404ed13e3654ee4033ce125c50477dcab9c663509e1ae6a81f2875cb2e41422f"
+    }
+  ],
+  "proof": {
+    "path": "target/selected-server-metadata-client-qualified-proof-3a0u9fi0",
+    "indexSha256": "eb2b347eabeec1875849b97b3c8f8fc9890ab2051d0e3f80eff3472a40c44fac",
+    "references": 197,
+    "uniqueFiles": 168,
+    "encodedBytes": 36273543,
+    "readBackVerified": true
+  },
+  "scope": "Original current-cut complete metadata catalog collection and separately authenticated exact first accepted packet reads for both control families. Original Native duplicate receipts and byte-variant retries remain distinct. Server-reader permissions are DATA only. Client receipts/offline queues are never installed or acknowledged by these reads.",
+  "observedWorkflow": {
+    "versions": 65,
+    "committedRevisions": 65,
+    "originalPublications": 66,
+    "originalDecisions": 65,
+    "catalogRounds": 3,
+    "originalOfflineGroupDeliveredThroughNormalRelay": true,
+    "sourceAndInstalledObserved": true
+  },
+  "earlierFailuresRetained": [
+    "Test constructor required a borrowed Path.",
+    "Restricted sandbox refused loopback sockets; same cases rerun with sockets permitted.",
+    "The seeded physical test fixture retained its old Native proof; now retains the fresh post-publication cut.",
+    "An old test checkpoint could not extend its exclusive writer; the test now preserves the genuine saved checkpoint and normally delivers its original offline group.",
+    "All-target lint required clearer test names, borrowed comparison input and a read-kind enum.",
+    "Native build Cargo discovery and disappearing-temporary-file observation were corrected; the existing compiler was tracked to completion without restart, then the repaired build command passed."
+  ],
+  "releaseReady": false,
+  "v1GatesOpen": 13,
+  "completeLocalReceiptContainment": false,
+  "completeRemotePacketRetention": false,
+  "independentGenerationsComplete": false,
+  "wholeRoomActivated": false,
+  "remaining": [
+    "Compare every original local accepted receipt with the complete current server catalogs under actual source custody; missing or changed receipts must refuse/persist Pending.",
+    "Retain all first server packet bodies alongside valid differently encoded local retry bodies; retain full source/asset dependencies through reconstruction without republishing or settling unknown work.",
+    "Independent comment/server-log generations preserving original Undo/Redo and offline edits.",
+    "Authenticated coordinated whole-room activation and all thirteen V1/parity gates."
+  ],
+  "finishedAt": "2026-10-30T23:47:17.373431+00:00"
+}

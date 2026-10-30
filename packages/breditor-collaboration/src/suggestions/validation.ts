@@ -13,7 +13,7 @@ export function queueIdentity(input:SharedSuggestionQueueIdentity):SharedSuggest
 export function suggestionInfo(input:unknown):SharedDocumentSuggestionInfo{const value=object(input);keys(value,"author,createdAtMs,id,title");return {id:digest(value["id"]),title:label(value["title"],256),author:label(value["author"],128),createdAtMs:decimal(value["createdAtMs"])};}
 export function publication(input:unknown):SharedSuggestionPublication{const value=object(input);keys(value,"sequence,suggestion");const sequence=decimal(value["sequence"]);if(sequence==="0")throw new SharedRelayError("suggestion_sequence");return {sequence,suggestion:suggestionInfo(value["suggestion"])};}
 export function intent(input:unknown):SharedSuggestionDecisionIntent {const value=object(input);keys(value,"queuedAtMs,requested,retry");if((value["requested"]!=="accept"&&value["requested"]!=="reject")||typeof value["retry"]!=="boolean")throw new SharedRelayError("suggestion_intent");return {requested:value["requested"],queuedAtMs:decimal(value["queuedAtMs"]),retry:value["retry"]};}
-export function decision(input:unknown,identity:SharedSuggestionQueueIdentity):SharedSuggestionDecision {
+export function decision(input:unknown,identity:Pick<SharedSuggestionQueueIdentity,'effectWriter'>):SharedSuggestionDecision {
  const value=object(input);keys(value,value["acceptingWriter"]===undefined?"decision,effect,principal,sequence,suggestionId":"acceptingWriter,decision,effect,principal,sequence,suggestionId");
  const sequence=decimal(value["sequence"]),principal=label(value["principal"],128),suggestionId=digest(value["suggestionId"]);
  if(sequence==="0"||(value["decision"]!=="accept"&&value["decision"]!=="reject"))throw new SharedRelayError("suggestion_decision");

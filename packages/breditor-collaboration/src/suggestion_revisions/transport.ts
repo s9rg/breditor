@@ -18,7 +18,7 @@ export function revisionInfo(input:unknown):SharedSuggestionRevisionInfo {
  const value=object(input);keys(value,"id,previousSuggestionId,suggestion");const id=digest(value["id"]),previousSuggestionId=digest(value["previousSuggestionId"]),suggestion=suggestionInfo(value["suggestion"]);
  if(previousSuggestionId===suggestion.id||id===previousSuggestionId||id===suggestion.id)throw new SharedRelayError("suggestion_revision_identity");return {id,previousSuggestionId,suggestion};
 }
-export function revisionReceipt(input:unknown,identity:SharedSuggestionQueueIdentity):SharedSuggestionRevisionReceipt {
+export function revisionReceipt(input:unknown,identity:Pick<SharedSuggestionQueueIdentity,'effectWriter'>):SharedSuggestionRevisionReceipt {
  const value=object(input);keys(value,"previousDecision,publication,revision,rootSuggestionId");
  const rootSuggestionId=digest(value["rootSuggestionId"]),revision=revisionInfo(value["revision"]),previousDecision=decision(value["previousDecision"],identity),published=publication(value["publication"]);
  if(previousDecision.decision!=="reject"||previousDecision.suggestionId!==revision.previousSuggestionId||previousDecision.principal!==revision.suggestion.author||!same(published.suggestion,revision.suggestion)||BigInt(published.sequence)!==BigInt(previousDecision.sequence)+1n||rootSuggestionId===revision.suggestion.id)throw new SharedRelayError("suggestion_revision_receipt_mismatch");

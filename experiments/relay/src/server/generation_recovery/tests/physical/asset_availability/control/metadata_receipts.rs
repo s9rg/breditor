@@ -22,7 +22,11 @@ fn request(token: &str) -> Request<'_> {
     Request { path: "/recovery/physical/v1/metadata/read", ..Request::check(token) }
 }
 
-async fn seeded(profile: (u32, bool), atomic: bool, versions: usize) -> TestResult<Setup> {
+pub(super) async fn seeded(
+    profile: (u32, bool),
+    atomic: bool,
+    versions: usize,
+) -> TestResult<Setup> {
     let mut setup = Box::pin(Setup::new(profile, atomic)).await?;
     drop(setup.control.take());
     setup
@@ -56,7 +60,7 @@ async fn seeded(profile: (u32, bool), atomic: bool, versions: usize) -> TestResu
         .verify_recovery_asset_availability(
             "owner",
             &setup.fixture.owner,
-            native,
+            native.clone(),
             setup.provider.clone(),
         )
         .await?
@@ -64,6 +68,9 @@ async fn seeded(profile: (u32, bool), atomic: bool, versions: usize) -> TestResu
         return Err("fresh actual asset proof".into());
     };
     setup.proof = Arc::new(proof);
+    // A later provider recheck must use this newly seeded Native cut, never
+    // the pre-publication fixture proof retained by Setup::new.
+    setup.fixture.native = native;
 
     let (router, control) = prepare_physical_room_recovery_control(
         setup.fixture.host().clone(),

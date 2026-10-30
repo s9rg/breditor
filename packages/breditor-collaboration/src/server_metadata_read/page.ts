@@ -1,0 +1,24 @@
+/** Validate original page envelopes without replacing their native receipt bytes or fields. */
+import {archiveFields as fields} from '../archive_integrity/policy.js';
+import {versionDescriptor,versionEntry} from '../versions/validation.js';
+import {publication,decision} from '../suggestions/validation.js';
+import {suggestionDescriptor,suggestionPermissions} from '../suggestions/transport.js';
+import {revisionsDescriptor,revisionReceipt} from '../suggestion_revisions/transport.js';
+import {writer} from '../relay/validation.js';
+import type {SharedDocumentVersionsPage} from '../versions/types.js';
+import type {OriginalMetadataPage,OriginalMetadataLaneQuery,OriginalSuggestionsPage,OriginalRevisionsPage} from './contract.js';
+import {metadataBinding,metadataCursor,fail} from './policy.js';
+import {metadataInterval} from './interval.js';
+import {metadataFingerprints} from './fingerprints.js';
+function lane(input:unknown,query:OriginalMetadataLaneQuery){const r=fields(input,query.kind==='disabled'?'kind':'kind,catalog,packets');if(r['kind']!==(query.kind==='disabled'?'disabled':'page'))throw fail();return r;}
+function rows(input:unknown):readonly unknown[]{if(!Array.isArray(input)||input.length>64)throw fail();return input;}
+export function metadataPage(input:unknown,query:{versions:OriginalMetadataLaneQuery;suggestions:OriginalMetadataLaneQuery;revisions:OriginalMetadataLaneQuery},document:string):OriginalMetadataPage{
+ try{return readMetadataPage(input,query,document);}catch{throw fail('metadata_read_protocol');}
+}
+function readMetadataPage(input:unknown,query:{versions:OriginalMetadataLaneQuery;suggestions:OriginalMetadataLaneQuery;revisions:OriginalMetadataLaneQuery},document:string):OriginalMetadataPage{
+ const r=fields(input,'versions,suggestions,revisions'),v=lane(r['versions'],query.versions),s=lane(r['suggestions'],query.suggestions),x=lane(r['revisions'],query.revisions);
+ const versions=(()=>{if(query.versions.kind==='disabled')return{kind:'disabled' as const};const c=fields(v['catalog'],'descriptor,entries,cursor,more'),d=fields(c['descriptor'],'format,formatVersion,document,binding'),binding=metadataBinding(d['binding']);versionDescriptor(d,{room:document,binding});const entries=rows(c['entries']).map(versionEntry),cursor=metadataCursor(c['cursor']);if(cursor.binding!==binding)throw fail();metadataInterval(query.versions,cursor,entries.map(entry=>entry.sequence),c['more']);return{kind:'page' as const,catalog:c as unknown as SharedDocumentVersionsPage,packets:metadataFingerprints(v['packets'],entries.map(entry=>entry.version.id))};})();
+ const suggestions=(()=>{if(query.suggestions.kind==='disabled')return{kind:'disabled' as const};const c=fields(s['catalog'],'descriptor,updates,cursor,more,permissions'),d=fields(c['descriptor'],'format,formatVersion,document,binding,effectWriter'),binding=metadataBinding(d['binding']),effectWriter=writer(d['effectWriter']);suggestionDescriptor(d,{room:document,binding,effectWriter});suggestionPermissions(c['permissions']);const packets:string[]=[],sequences:string[]=[];for(const raw of rows(c['updates'])){const update=fields(raw,'kind,data');if(update['kind']==='published'){const row=publication(update['data']);packets.push(row.suggestion.id);sequences.push(row.sequence);}else if(update['kind']==='decided')sequences.push(decision(update['data'],{effectWriter}).sequence);else throw fail();}const cursor=metadataCursor(c['cursor']);if(cursor.binding!==binding)throw fail();metadataInterval(query.suggestions,cursor,sequences,c['more']);return{kind:'page' as const,catalog:c as unknown as OriginalSuggestionsPage,packets:metadataFingerprints(s['packets'],packets)};})();
+ const revisions=(()=>{if(query.revisions.kind==='disabled')return{kind:'disabled' as const};if(suggestions.kind!=='page')throw fail();const c=fields(x['catalog'],'descriptor,revisions,cursor,more,permissions'),d=fields(c['descriptor'],'format,formatVersion,document,binding,suggestionBinding'),binding=metadataBinding(d['binding']),parent=suggestions.catalog.descriptor;revisionsDescriptor(d,binding,{room:document,binding:parent.binding});suggestionPermissions(c['permissions']);const receipts=rows(c['revisions']).map(row=>revisionReceipt(row,{effectWriter:parent.effectWriter}));let previous=query.revisions.kind==='after'?query.revisions.cursor.after:'0';for(const row of receipts){if(BigInt(row.previousDecision.sequence)<=BigInt(previous))throw fail();previous=row.publication.sequence;}const cursor=metadataCursor(c['cursor']);if(cursor.binding!==binding)throw fail();metadataInterval(query.revisions,cursor,receipts.map(row=>row.publication.sequence),c['more']);return{kind:'page' as const,catalog:c as unknown as OriginalRevisionsPage,packets:metadataFingerprints(x['packets'],receipts.map(row=>row.revision.id))};})();
+ return{versions,suggestions,revisions};
+}

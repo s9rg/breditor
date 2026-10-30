@@ -22,7 +22,11 @@ fn request(token: &str) -> Request<'_> {
     Request { path: "/recovery/generations/v1/metadata/read", ..Request::check(token) }
 }
 
-async fn seeded(profile: (u32, bool), atomic: bool, versions: usize) -> TestResult<Setup> {
+pub(super) async fn seeded(
+    profile: (u32, bool),
+    atomic: bool,
+    versions: usize,
+) -> TestResult<Setup> {
     let mut setup = Box::pin(Setup::new(profile, atomic)).await?;
     drop(setup.control.take());
     setup

@@ -40,12 +40,21 @@ fn draft(text: &str) -> DocumentSuggestionDraft {
 }
 
 pub(crate) fn seed(room: &mut Room, versions: usize, commit_revision: bool) -> Result<()> {
+    seed_with_request(room, versions, commit_revision)?;
+    Ok(())
+}
+
+pub(crate) fn seed_with_request(
+    room: &mut Room,
+    versions: usize,
+    commit_revision: bool,
+) -> Result<Option<SuggestionRevisionRequest>> {
     room.enable_document_versions("owner")?;
     for index in 0..versions {
         publish_version(room, &format!("Version {index} 🙂 日本"))?;
     }
     if !room.atomic_transport_v2 {
-        return Ok(());
+        return Ok(None);
     }
     room.enable_document_suggestions("owner")?;
     let revisions = room.enable_document_suggestion_revisions("owner")?;
@@ -84,8 +93,8 @@ pub(crate) fn seed(room: &mut Room, versions: usize, commit_revision: bool) -> R
     } else {
         room.log.append(crate::log::Event::PrepareDocumentSuggestionRevisionV1 {
             principal: "owner".into(),
-            request,
+            request: request.clone(),
         })?;
     }
-    Ok(())
+    Ok(Some(request))
 }

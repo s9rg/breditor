@@ -1,3 +1,11 @@
+import {MAX_SERVER_METADATA_PACKET_RESPONSE_BYTES,type OriginalMetadataPacketQuery,type SelectedServerMetadataPacketRead} from '../server_metadata_read/packet_contract.js';
+import {metadataPacketQuery} from '../server_metadata_read/packet_query.js';
+import {prepareMetadataPacketRequest,metadataPacketEndpoint} from '../server_metadata_read/packet_request.js';
+import {readMetadataPacketResponse,verifyMetadataPacketBytes} from '../server_metadata_read/packet_response.js';
+import {MAX_SERVER_METADATA_PAGE_BYTES,type OriginalMetadataQuery,type SelectedServerMetadataRead} from '../server_metadata_read/contract.js';
+import {metadataQuery} from '../server_metadata_read/policy.js';
+import {prepareMetadataRequest,metadataEndpoint} from '../server_metadata_read/request.js';
+import {readMetadataResponse} from '../server_metadata_read/response.js';
 /** Genuine live operator checks, never a saved/returned verified flag or service activation. */
 import {participantAuthority} from '../participant_backup/policy.js';
 import {accountToken} from '../relay/registration.js';
@@ -18,13 +26,13 @@ import {readGenerationOriginalReviewResponse} from './original_review_response.j
 const key=Object.freeze({}),addListener=EventTarget.prototype.addEventListener,removeListener=EventTarget.prototype.removeEventListener,readAborted=Object.getOwnPropertyDescriptor(AbortSignal.prototype,'aborted')!.get!;
 function aborted(signal:AbortSignal|undefined):boolean{return signal?readAborted.call(signal):false;}
 interface State {readonly endpoint:string;readonly expected:SharedServerLogGenerationRecoveryControlSelection;readonly principal:string;readonly getToken:SharedServerLogGenerationRecoveryHostOptions['getToken'];readonly authority:()=>void;readonly signal:AbortSignal|undefined;readonly milliseconds:number;closed:boolean;active:AbortController|undefined}
-let port:(host:SharedServerLogGenerationRecoveryHost)=>Readonly<{selection:SharedServerLogGenerationRecoveryControlSelection;check:(signal?:AbortSignal)=>Promise<void>;checkAssets:(input:SharedServerLogGenerationRecoveryAssetRequirements,signal?:AbortSignal)=>Promise<SharedServerLogGenerationRecoveryAssetRead>;readAcceptedNative:(input:SharedServerLogGenerationRecoveryAcceptedRequest,signal?:AbortSignal)=>Promise<SharedServerLogGenerationRecoveryAcceptedRead>;readOriginalReview:(input:GenerationOriginalReviewQuery,signal?:AbortSignal)=>Promise<GenerationOriginalReviewRead>}>;
+let port:(host:SharedServerLogGenerationRecoveryHost)=>Readonly<{selection:SharedServerLogGenerationRecoveryControlSelection;check:(signal?:AbortSignal)=>Promise<void>;checkAssets:(input:SharedServerLogGenerationRecoveryAssetRequirements,signal?:AbortSignal)=>Promise<SharedServerLogGenerationRecoveryAssetRead>;readAcceptedNative:(input:SharedServerLogGenerationRecoveryAcceptedRequest,signal?:AbortSignal)=>Promise<SharedServerLogGenerationRecoveryAcceptedRead>;readMetadata:(input:OriginalMetadataQuery,signal?:AbortSignal)=>Promise<SelectedServerMetadataRead<SharedServerLogGenerationRecoveryControlSelection>>;readMetadataPacket:(input:OriginalMetadataPacketQuery,signal?:AbortSignal)=>Promise<SelectedServerMetadataPacketRead<SharedServerLogGenerationRecoveryControlSelection>>;readOriginalReview:(input:GenerationOriginalReviewQuery,signal?:AbortSignal)=>Promise<GenerationOriginalReviewRead>}>;
 /** Internal brand-checked native-check port; public prototype overrides cannot manufacture it. */
 export function generationRecoveryHostPort(host:SharedServerLogGenerationRecoveryHost){return port(host);}
 export class SharedServerLogGenerationRecoveryHost {
  readonly #state:State;
  private constructor(token:object,state:State){if(token!==key)throw fail('control_policy');this.#state=state;Object.freeze(this);}
- static{port=host=>{if(!host||typeof host!=='object'||!(#state in host))throw fail('control_policy');return Object.freeze({selection:host.#state.expected,check:(signal?:AbortSignal)=>host.#run(signal),checkAssets:(input:SharedServerLogGenerationRecoveryAssetRequirements,signal?:AbortSignal)=>host.#assets(input,signal),readAcceptedNative:(input:SharedServerLogGenerationRecoveryAcceptedRequest,signal?:AbortSignal)=>host.#accepted(input,signal),readOriginalReview:(input:GenerationOriginalReviewQuery,signal?:AbortSignal)=>host.#generationOriginalReview(input,signal)});};}
+ static{port=host=>{if(!host||typeof host!=='object'||!(#state in host))throw fail('control_policy');return Object.freeze({selection:host.#state.expected,check:(signal?:AbortSignal)=>host.#run(signal),checkAssets:(input:SharedServerLogGenerationRecoveryAssetRequirements,signal?:AbortSignal)=>host.#assets(input,signal),readAcceptedNative:(input:SharedServerLogGenerationRecoveryAcceptedRequest,signal?:AbortSignal)=>host.#accepted(input,signal),readMetadata:(input:OriginalMetadataQuery,signal?:AbortSignal)=>host.#metadata(input,signal),readMetadataPacket:(input:OriginalMetadataPacketQuery,signal?:AbortSignal)=>host.#metadataPacket(input,signal),readOriginalReview:(input:GenerationOriginalReviewQuery,signal?:AbortSignal)=>host.#generationOriginalReview(input,signal)});};}
  /** Independently selected caller endpoint/pins and fresh operator auth; no archive-selected policy. */
  static async open(supplied:SharedServerLogGenerationRecoveryHostOptions):Promise<SharedServerLogGenerationRecoveryHost>{
   let host:SharedServerLogGenerationRecoveryHost|undefined;
@@ -50,6 +58,13 @@ export class SharedServerLogGenerationRecoveryHost {
   * Does not apply them, acknowledge offline work, adopt comments or activate.
   * Returned reader roles must never replace a recipient's current permissions. */
  readAcceptedNative(input:SharedServerLogGenerationRecoveryAcceptedRequest,signal?:AbortSignal):Promise<SharedServerLogGenerationRecoveryAcceptedRead>{return this.#accepted(input,signal);}
+ /** Read original metadata receipts and first-packet fingerprints at this exact
+  * selected server cut. Reader permissions are descriptive server DATA only;
+  * this never installs client receipts or acknowledges an offline queue. */
+ readMetadata(input:OriginalMetadataQuery,signal?:AbortSignal):Promise<SelectedServerMetadataRead<SharedServerLogGenerationRecoveryControlSelection>>{return this.#metadata(input,signal);}
+ /** Transfer the first accepted literal packet under this exact selected cut.
+  * Byte verification does not acknowledge a local retry or replace recipient rights. */
+ readMetadataPacket(input:OriginalMetadataPacketQuery,signal?:AbortSignal):Promise<SelectedServerMetadataPacketRead<SharedServerLogGenerationRecoveryControlSelection>>{return this.#metadataPacket(input,signal);}
  /** SDK-private original historical rights. No public prototype override can replace this read. */
  #generationOriginalReview(input:GenerationOriginalReviewQuery,signal?:AbortSignal):Promise<GenerationOriginalReviewRead>{
   let query!:GenerationOriginalReviewQuery;
@@ -59,11 +74,29 @@ export class SharedServerLogGenerationRecoveryHost {
   let choices!:SharedServerLogGenerationRecoveryAcceptedRequest;
   return this.#request(signal,async()=>{const request=await prepareGenerationAcceptedRequest(this.#state.expected,choices);return{endpoint:generationAcceptedEndpoint(this.#state.endpoint),body:request.body,maximum:MAX_SERVER_GENERATION_RECOVERY_ACCEPTED_BYTES,admit:(text:string)=>readGenerationAcceptedNative(text,this.#state.expected,request.sha256,choices)};},()=>{choices=generationAcceptedChoices(input);});
  }
+ #metadata(input:OriginalMetadataQuery,signal?:AbortSignal):Promise<SelectedServerMetadataRead<SharedServerLogGenerationRecoveryControlSelection>>{
+  let query!:OriginalMetadataQuery;
+  return this.#request(signal,async()=>{
+   let request:Awaited<ReturnType<typeof prepareMetadataRequest>>;
+   try{request=await prepareMetadataRequest('server-log-generation-recovery',this.#state.expected,query);}catch{throw fail('control_policy');}
+   return{endpoint:metadataEndpoint(this.#state.endpoint),body:request.body,maximum:MAX_SERVER_METADATA_PAGE_BYTES,admit:(text:string)=>{try{return readMetadataResponse(text,'server-log-generation-recovery',this.#state.expected,request.sha256,query,this.#state.expected.source.server.native.source.document,generationControlSelection);}catch{throw fail('control_protocol');}}};
+  },()=>{try{query=metadataQuery(input);}catch{throw fail('control_policy');}});
+ }
+ #metadataPacket(input:OriginalMetadataPacketQuery,signal?:AbortSignal):Promise<SelectedServerMetadataPacketRead<SharedServerLogGenerationRecoveryControlSelection>>{
+  let query!:OriginalMetadataPacketQuery;
+  return this.#request(signal,async()=>{
+   let request:Awaited<ReturnType<typeof prepareMetadataPacketRequest>>;
+   try{request=await prepareMetadataPacketRequest('server-log-generation-recovery',this.#state.expected,query);}catch{throw fail('control_policy');}
+   return{endpoint:metadataPacketEndpoint(this.#state.endpoint),body:request.body,maximum:MAX_SERVER_METADATA_PACKET_RESPONSE_BYTES,
+    admit:(text:string)=>{try{return readMetadataPacketResponse(text,'server-log-generation-recovery',this.#state.expected,request.sha256,query,generationControlSelection);}catch{throw fail('control_protocol');}},
+    verify:async(value:SelectedServerMetadataPacketRead<SharedServerLogGenerationRecoveryControlSelection>)=>{try{await verifyMetadataPacketBytes(value);}catch{throw fail('control_protocol');}}};
+  },()=>{try{query=metadataPacketQuery(input);}catch{throw fail('control_policy');}});
+ }
  #assets(input:SharedServerLogGenerationRecoveryAssetRequirements,signal?:AbortSignal):Promise<SharedServerLogGenerationRecoveryAssetRead>{return this.#request(signal,async()=>{
   const request=await prepareGenerationAssetRequest(this.#state.expected,input);return{endpoint:generationAssetEndpoint(this.#state.endpoint),body:request.body,maximum:MAX_SERVER_GENERATION_RECOVERY_ASSET_BYTES,admit:(text:string)=>readGenerationAssetReceipt(text,this.#state.expected,request.sha256,request.requirements)};
  });}
  #run(signal?:AbortSignal):Promise<void>{return this.#request(signal,async()=>({endpoint:this.#state.endpoint,body:JSON.stringify(this.#state.expected),maximum:MAX_SERVER_GENERATION_RECOVERY_CONTROL_BYTES,admit:(text:string)=>checkGenerationControlReceipt(text,this.#state.expected)}));}
- async #request<T>(signal:AbortSignal|undefined,prepare:()=>Promise<{endpoint:string;body:string;maximum:number;admit:(text:string)=>T}>,detach?:()=>void):Promise<T>{
+ async #request<T>(signal:AbortSignal|undefined,prepare:()=>Promise<{endpoint:string;body:string;maximum:number;admit:(text:string)=>T;verify?:(value:T)=>Promise<void>}>,detach?:()=>void):Promise<T>{
   const s=this.#state;if(s.closed)throw fail('control_closed');if(s.active)throw fail('control_busy');
   const controller=new AbortController();s.active=controller;const abort=()=>controller.abort();
   // New accepted-transfer data snapshots run under the real request reservation,
@@ -78,7 +111,7 @@ export class SharedServerLogGenerationRecoveryHost {
    this.#guard(signal);const request=await prepare();this.#guard(signal);const token=await accountToken(s.getToken,controller.signal,s.milliseconds);this.#guard(signal);
    response=await fetch(request.endpoint,{method:'POST',headers:{'Authorization':`Bearer ${token}`,'X-Breditor-Principal':s.principal,'Content-Type':'application/json'},body:request.body,signal:controller.signal,credentials:'omit',redirect:'error',cache:'no-store'});this.#guard(signal);
    if(response.status!==200){await response.body?.cancel().catch(()=>{});throw fail(response.status===403?'control_permission':[429,503].includes(response.status)?'control_unavailable':'control_protocol');}
-   const text=await readGenerationControlResponse(response,request.maximum);this.#guard(signal);const result=request.admit(text);this.#guard(signal);return result;
+   const text=await readGenerationControlResponse(response,request.maximum);this.#guard(signal);const result=request.admit(text);if(request.verify)await request.verify(result);this.#guard(signal);return result;
   }catch(error){if(error instanceof SharedServerLogGenerationRecoveryControlError)throw error;try{this.#local(signal);}catch(local){if(local instanceof SharedServerLogGenerationRecoveryControlError)throw local;}throw fail('control_transfer');}
   finally{
    let cleanupFailed=false;

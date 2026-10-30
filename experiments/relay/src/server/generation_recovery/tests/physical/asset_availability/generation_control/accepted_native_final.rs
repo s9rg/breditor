@@ -57,8 +57,22 @@ fn component(setup: &Setup, raster: bool) -> TestResult<PathBuf> {
     }
     Ok(directory.join(if raster { "store.json" } else { ".head.json" }))
 }
-async fn last_callback(raster: bool, original_review: bool, metadata: bool) -> TestResult {
-    let mut setup = Box::pin(Setup::new((3, true), true)).await?;
+#[derive(Clone, Copy)]
+enum ReadKind {
+    AcceptedNative,
+    OriginalReview,
+    Metadata,
+    MetadataPacket,
+}
+async fn last_callback(raster: bool, kind: ReadKind) -> TestResult {
+    let original_review = matches!(kind, ReadKind::OriginalReview);
+    let metadata = matches!(kind, ReadKind::Metadata);
+    let packet = matches!(kind, ReadKind::MetadataPacket);
+    let mut setup = if packet {
+        Box::pin(super::metadata_receipts::seeded((3, true), true, 1)).await?
+    } else {
+        Box::pin(Setup::new((3, true), true)).await?
+    };
     let path = component(&setup, raster)?;
     let before = fs::read(&path)?;
     drop(setup.control.take());
@@ -98,6 +112,8 @@ async fn last_callback(raster: bool, original_review: bool, metadata: bool) -> T
     setup.control = Some(control);
     let original_body =
         if original_review { Some(super::original_review::body(&setup).await?) } else { None };
+    let packet_body =
+        if packet { Some(super::metadata_packets::version_body(&setup).await?) } else { None };
     guard.calls.store(0, Ordering::SeqCst);
     setup
         .proof
@@ -108,7 +124,9 @@ async fn last_callback(raster: bool, original_review: bool, metadata: bool) -> T
     guard.mutate_at.store(one * 2, Ordering::SeqCst);
     let server = Network::start(setup.router.clone()).await?;
     let request = Request {
-        path: if metadata {
+        path: if packet {
+            "/recovery/generations/v1/metadata/packet/read"
+        } else if metadata {
             "/recovery/generations/v1/metadata/read"
         } else if original_review {
             "/recovery/generations/v1/review/authorizations/read"
@@ -117,7 +135,9 @@ async fn last_callback(raster: bool, original_review: bool, metadata: bool) -> T
         },
         ..Request::check(&setup.token)
     };
-    let input = if metadata {
+    let input = if let Some(body) = packet_body {
+        serde_json::to_vec(&body)?
+    } else if metadata {
         serde_json::to_vec(
             &serde_json::json!({"format":"breditor/server-log-generation-recovery-metadata-request","formatVersion":1,"selection":setup.selection(),"metadata":{"versions":{"kind":"disabled"},"suggestions":{"kind":"disabled"},"revisions":{"kind":"disabled"}}}),
         )?
@@ -141,27 +161,36 @@ async fn last_callback(raster: bool, original_review: bool, metadata: bool) -> T
 }
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn last_provider_callback_changing_native_source_refuses_payload() -> TestResult {
-    last_callback(false, false, false).await
+    last_callback(false, ReadKind::AcceptedNative).await
 }
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn last_provider_callback_changing_raster_source_refuses_payload() -> TestResult {
-    last_callback(true, false, false).await
+    last_callback(true, ReadKind::AcceptedNative).await
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn last_provider_callback_changing_native_source_refuses_original_rights() -> TestResult {
-    last_callback(false, true, false).await
+    last_callback(false, ReadKind::OriginalReview).await
 }
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn last_provider_callback_changing_raster_source_refuses_original_rights() -> TestResult {
-    last_callback(true, true, false).await
+    last_callback(true, ReadKind::OriginalReview).await
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn last_provider_callback_changing_native_source_refuses_metadata_receipts() -> TestResult {
-    last_callback(false, false, true).await
+    last_callback(false, ReadKind::Metadata).await
 }
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn last_provider_callback_changing_raster_source_refuses_metadata_receipts() -> TestResult {
-    last_callback(true, false, true).await
+    last_callback(true, ReadKind::Metadata).await
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn metadata_packet_last_provider_callback_changing_native_source_refuses() -> TestResult {
+    last_callback(false, ReadKind::MetadataPacket).await
+}
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn metadata_packet_last_provider_callback_changing_raster_source_refuses() -> TestResult {
+    last_callback(true, ReadKind::MetadataPacket).await
 }

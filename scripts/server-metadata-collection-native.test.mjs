@@ -1,0 +1,28 @@
+import {join as evidenceJoin} from 'node:path';
+import {metadataNativeRoot} from './fixtures/server-metadata/native-root.mjs';
+/** Complete genuine Native multi-page collection, not a fabricated read capability. */
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync,writeFileSync,mkdtempSync} from 'node:fs';
+import {selectedDeliveryNativeHost} from './fixtures/selected-delivery/native-host.mjs';
+import {SharedServerLogGenerationRecoveryHost as Host} from '../packages/breditor-collaboration/dist/generation_recovery_control/host.js';
+import {captureSelectedServerMetadata,withCheckedServerMetadataCatalog} from '../packages/breditor-collaboration/dist/server_metadata_read/collect.js';
+import {SharedRichEditor} from '../packages/breditor-collaboration/dist/core.js';import {VersionCatalogHttp} from '../packages/breditor-collaboration/dist/versions/http.js';
+import * as wasm from '../packages/breditor-collaboration/dist/runtime/breditor_shared.js';
+const root=new URL('../',import.meta.url).pathname,query={versions:{kind:'start'},suggestions:{kind:'start'},revisions:{kind:'start'}};
+await wasm.default({module_or_path:readFileSync(new URL('../packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm',import.meta.url))});
+test('actual65-entry catalog preserves frozen empty-lane continuations, exact receipts, genuine capture provenance and fresh source checks',{timeout:180000},async()=>{
+ const fetchOriginal=globalThis.fetch;let native,reader,profile,core,http,discovery,allowed=true;
+ globalThis.fetch=(url,options={})=>{const headers=new Headers(options.headers);headers.set('Origin','http://127.0.0.1:4187');return fetchOriginal(url,{...options,headers});};
+ try{native=await selectedDeliveryNativeHost(metadataNativeRoot(root),{suggestionGrants:true});const initial=native.initial,fixture=native.fixture(initial),client=fixture.clients.find(row=>!row.observer),auth=await native.authentication(client),signal=new AbortController().signal;
+  profile=wasm.SharedRichProfile.from_standard_configuration_json_v3(fixture.configuration);core=new SharedRichEditor(profile.restore('room',client.baseCheckpoint),{richLanguage:3});discovery=new VersionCatalogHttp({endpoint:initial.clientEndpoint,principal:client.principal,room:'room',getToken:auth.getToken});const descriptor=await discovery.describe(signal);http=new VersionCatalogHttp({endpoint:initial.clientEndpoint,principal:client.principal,room:'room',binding:descriptor.descriptor.binding,getToken:auth.getToken});const receipts=[];
+  for(let i=0;i<65;i++){const packet=core.captureVersion('Native collected version '+i,client.principal,String(100+i)),receipt=await http.publish(packet,signal);assert.equal(receipt.kind,'durable');assert.equal(receipt.duplicate,false);receipts.push(receipt.entry);}
+  const selected=await native.refreshAfter(initial);reader=await Host.open({endpoint:selected.endpoint,expected:selected.selection,principal:'operator',getToken:()=>native.operatorToken(selected),checkAuthority(){if(!allowed)throw Error('Current operator authority revoked');}});
+  const original=Host.prototype.readMetadata;let catalog;try{Host.prototype.readMetadata=()=>Promise.resolve({forged:true});const first=captureSelectedServerMetadata(reader,query);await assert.rejects(captureSelectedServerMetadata(reader,query),error=>error.code==='metadata_read_busy');catalog=await first;}finally{Host.prototype.readMetadata=original;}
+  assert.equal(catalog.pages.length,2);assert.deepEqual(catalog.pages.map(page=>page.metadata.versions.catalog.entries.length),[64,1]);for(const name of ['suggestions','revisions']){assert.equal(catalog.pages[0].metadata[name].kind,'page');assert.equal(catalog.pages[1].metadata[name].kind,'page');assert.deepEqual(catalog.pages[1].metadata[name].catalog.cursor,catalog.pages[0].metadata[name].catalog.cursor);}assert.equal(catalog.terminal.versions.after,catalog.terminal.versions.through);assert.equal(catalog.pages[0].metadata.versions.catalog.cursor.through,catalog.terminal.versions.through);
+  const actual=await withCheckedServerMetadataCatalog(catalog,async index=>index.versions);assert.deepEqual(actual,receipts);assert.ok(Object.isFrozen(actual));await assert.rejects(withCheckedServerMetadataCatalog(structuredClone(catalog),async()=>true),error=>error.code==='metadata_read_policy');await assert.rejects(captureSelectedServerMetadata({...reader},query),error=>error.code==='metadata_read_policy');
+  await assert.rejects(captureSelectedServerMetadata(reader,{...query,versions:{kind:'after',cursor:catalog.terminal.versions}}),error=>error.code==='metadata_read_policy');allowed=false;let visits=0;await assert.rejects(withCheckedServerMetadataCatalog(catalog,async()=>{visits++;}),error=>error.code==='control_authority');assert.equal(visits,0);allowed=true;
+  await assert.rejects(withCheckedServerMetadataCatalog(catalog,async()=>{visits++;const packet=core.captureVersion('Metadata changed during live catalog use',client.principal,'999');assert.equal((await http.publish(packet,signal)).kind,'durable');return 'must not publish success';}));assert.equal(visits,1);
+  writeFileSync(evidenceJoin(evidence,'native-complete-metadata-catalog.json'),JSON.stringify({catalog,receipts,liveSourceChangeRefused:true,clonedDataRefused:true,publicPrototypeOverrideIgnored:true},null,2)+'\n',{flag:'wx'});
+ }finally{http?.dispose();discovery?.dispose();core?.dispose();profile?.free();reader?.close();globalThis.fetch=fetchOriginal;await native?.stop();}
+});
+
+const evidence=mkdtempSync(new URL('../target/metadata-native-collection-evidence-',import.meta.url).pathname);
