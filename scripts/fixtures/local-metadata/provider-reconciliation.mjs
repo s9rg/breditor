@@ -16,6 +16,7 @@ import {createNativeRevisionDelivery} from '../../../packages/breditor-collabora
 import {prepareCompoundMetadata} from '../../../packages/breditor-collaboration/dist/metadata/compound_preparation.js';
 import {independentHistoryNative} from '../../../packages/breditor-collaboration/dist/independent_history/native_port.js';
 import {controls} from '../selected-delivery/cold-continuation.mjs';
+import {testReconciledCold} from './reconciled-cold.mjs';
 
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 
@@ -96,7 +97,7 @@ export async function testProviderReconciliation(input) {
  const oldMetadata=bundle.references.parent,oldMetadataText=await oldMetadata.metadata.file.text();
  const uploads=await uploadPendingImage(input);
  await assert.rejects(session.host.check(),'The old server cut cannot bless actual upload changes');
- let result;
+ let result,retainedBundle;
  await held(session.owner,session.input(),async(scope,sources,check)=>{
   let review,metadata,fresh;
   try {
@@ -130,7 +131,7 @@ export async function testProviderReconciliation(input) {
    assert.ok(reconciled.reviews.every(row=>row.receiptVerified));
    const native=reconciled.legacy;
    assert.equal(native.kind,'pending','Original unbound-local diagnostics remain unchanged');
-   const saved=await metadata.capture();
+   const saved=retainedBundle=await metadata.capture();
    assert.equal(await oldMetadata.metadata.file.text(),oldMetadataText);
    const current=JSON.parse(await saved.metadata.file.text());
    assert.deepEqual(current.before,JSON.parse(oldMetadataText).before);
@@ -148,5 +149,6 @@ export async function testProviderReconciliation(input) {
    console.log('PROVIDER_RECONCILIATION_NATIVE '+JSON.stringify({directory:host.directory,files,nativeParticipants:7,metadataSources:3,actualManagedUploads:3,authenticatedDeliveryPasses:2,providerMissing:0,legacyNativeKind:native.kind,legacyUnboundReviewPreserved:true,wholeRoomActivated:false}));
   }finally{await metadata?.close();await review?.close();fresh?.close();}
  });
+ if(input.reconcileCold)await testReconciledCold({...input,bundle:retainedBundle,settle:deliverRoom});
  return result;
 }

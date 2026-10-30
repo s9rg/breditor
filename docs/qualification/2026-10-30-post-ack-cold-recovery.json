@@ -1,0 +1,69 @@
+{
+  "format": "breditor/post-ack-cold-recovery-qualification",
+  "formatVersion": 1,
+  "baseCommit": "69c5962aaea63408f79a3b595d6fd630c37cb0a8",
+  "qualifiedSource": {
+    "commit": "69c5962aaea63408f79a3b595d6fd630c37cb0a8",
+    "dirty": true,
+    "sha256": "65ffea6bb97ac779d4694023d37ebebf21b342fa958ae34ec59507fd592762b1",
+    "files": 7735,
+    "bytes": 57891944
+  },
+  "sourceAndAssertionsUnchangedDuringInstalledRun": true,
+  "documentationLinkedAfterQualification": true,
+  "sourceCold": {
+    "session": 63598,
+    "passed": true,
+    "sourceUnchanged": true,
+    "nativeUnchanged": true,
+    "heapRaised": false,
+    "inspectorUsed": false,
+    "heapSizeLimit": 4345298944,
+    "source": {
+      "files": 5082,
+      "bytes": 39762908,
+      "sha256": "9b8958db738d797c91b3644723a8247c7d47b2da885a4806d38c8d8ea812e5f4"
+    }
+  },
+  "installed": {
+    "session": 53913,
+    "passed": true,
+    "tests": 114,
+    "allOriginal113CasesRetained": true,
+    "workspaceLinks": false,
+    "strictPublicTypes": true,
+    "registryArtifacts": 45,
+    "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0"
+  },
+  "candidatePlanChecks": 4,
+  "nativeRecovery": {
+    "freshOwners": 7,
+    "exactOfflineLanes": 14,
+    "realUploadAcknowledgements": 3,
+    "authenticatedDeliveryPassesAfterRestart": 2,
+    "originalMetadataAndReceiptsUnchanged": true,
+    "futureDocumentAndReviewUndoRedoPreserved": true,
+    "providerMissing": 0,
+    "legacyUnboundLocalPendingMeaningUnchanged": true
+  },
+  "proof": {
+    "path": "target/post-ack-cold-recovery-qualified-proof-yi20rO",
+    "indexSha256": "520e7483bbc9081c80049009fe0f807707bfb8da719648432c8c347d6f4d9adf",
+    "references": 417,
+    "uniqueFiles": 297,
+    "encodedBytes": 44208269,
+    "decodedBytes": 177083618,
+    "readBackVerified": true,
+    "compressionDoesNotChangeOriginalBytes": true
+  },
+  "releaseReady": false,
+  "wholeRoomActivated": false,
+  "v1GatesOpen": 13,
+  "scope": "Complete client/source restart against the same live authenticated Native server, preserving seven native histories, offline edits, real upload receipts and original metadata. Controlled Node IDB/locks/image presentation. No heap increase, inspector or fake source/receipt authority.",
+  "remaining": [
+    "Complete current-server original metadata catalog collection, exact local receipt containment and preservation of first server packet bytes when a native-valid local retry uses different JSON bytes.",
+    "Independent comment/server-log generations and authenticated coordinated whole-room activation.",
+    "The earlier separate short Blob-read observation remains independently unexplained; this qualification does not assert a general browser repair or V1 readiness."
+  ],
+  "finishedAt": "2026-10-30T22:46:30.984Z"
+}
