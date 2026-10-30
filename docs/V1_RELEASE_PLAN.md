@@ -1,5 +1,21 @@
 # Breditor V1 release preparation
 
+The [local native metadata contract](NATIVE_LOCAL_METADATA_DELIVERY.md) now binds
+all three local source families to their original version, suggestion and revision
+records under the genuine prepared parent. Coupled export, later committed-head
+cold recovery and non-overwriting metadata DATA restore preserve original seeds,
+settled receipts and all seven native document/comment histories. Its
+[qualification](qualification/2026-10-29-native-local-metadata-delivery.json) passes
+142 direct contract/storage/plan checks and 39 independently installed checks,
+including the complete authenticated seven-owner cold/restore workflow and
+strict types. Restore returns data and needs a separate fresh resume decision.
+
+Complete provider/client/historical-copy and metadata-packet asset reconciliation
+and authenticated joint activation remain required. Four native history-policy
+combinations confirm that proposal/revision-only images must be included in that
+asset reconciliation. All thirteen V1/parity gates remain open. No package version,
+push, publication, tag or deployment changed.
+
 The [native-held revision delivery contract](NATIVE_REVISION_DELIVERY.md)
 now executes original outboxes through their genuine parent suggestion queue
 loan, retaining real supersession/conflict receipts and exact immutable packets.

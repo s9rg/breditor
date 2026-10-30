@@ -1,3 +1,4 @@
+import type {LocalReviewMetadataParent} from './metadata_parent.js';
 /** SDK-private, genuinely prepared local-review delivery. Constructor-owned
  * native/source persistence plus every new receipt store remain explicit.
  * Authentication is performed by the original real document/review adapters.
@@ -33,6 +34,10 @@ import {localChoice,localBinding,localSnapshot,localJson,emptyRelay,equal,fail,M
 import {verifyLocalReviewProgress} from './native_review.js';
 import type {LocalReviewBinding,LocalReviewDeliveryChoice,LocalReviewDeliveryState,LocalReviewDeliverySnapshot,LocalReviewRoomBundle} from './contract.js';
 const key=Object.freeze({});
+const metadataParents=new WeakMap<object,()=>LocalReviewMetadataParent>();
+/** Genuine same-parent composition only; matching fields never lend custody. */
+export function lendLocalReviewMetadata(parent:SelectedLocalReviewDelivery):LocalReviewMetadataParent{const open=metadataParents.get(parent);if(!open)throw fail('local_review_delivery_policy');return open();}
+interface MetadataChildSlot{readonly key:object;stop():void;wait():Promise<void>}
 const stored={open:LocalReviewDeliveryStore.prototype.open,read:LocalReviewDeliveryStore.prototype.readFresh,replace:LocalReviewDeliveryStore.prototype.replace,close:LocalReviewDeliveryStore.prototype.close};
 const createReview=SharedReviewRelaySync;
 interface ChoiceInput {readonly database:string;readonly bindings:readonly LocalReviewBinding[]}
@@ -48,11 +53,13 @@ export function previewSelectedLocalReviewDelivery(scope:SelectedNativeRecoveryS
 export class SelectedLocalReviewDelivery{
  readonly #scope;readonly #driver;readonly #prepared;readonly #sources;readonly #local;readonly #choice;readonly #authority;readonly #store;
  readonly #contexts=new Map<NativeRelayDelivery,RetainedDeliverySource>();readonly #ios=new Map<RetainedDeliverySource,LocalReviewIO>();readonly #closingListeners=new Set<()=>void>();
+ #metadataChild:MetadataChildSlot|undefined;#metadataBinding:string|undefined;
  #snapshot:LocalReviewDeliverySnapshot|undefined;#active=false;#failed=false;#busy=false;#checking=false;#closing=false;#closed=false;#opening:Promise<void>|undefined;#ending:Promise<void>|undefined;#captureWork:Promise<LocalReviewRoomBundle>|undefined;#serial=Promise.resolve();
  private constructor(token:object,scope:SelectedNativeRecoveryScope,driver:PreparedDeliveryDriver,sources:readonly RetainedDeliveryClient[],local:readonly RetainedDeliveryClient[],choice:LocalReviewDeliveryChoice,authority:()=>void,original?:LocalReviewRoomBundle){
   if(token!==key)throw fail('local_review_delivery_policy');this.#scope=scope;this.#driver=driver;this.#prepared=original?.prepared??driver.prepared;this.#sources=sources;this.#local=local;this.#choice=choice;this.#authority=authority;this.#store=new LocalReviewDeliveryStore(choice,this.#guard);
   registerLocalReviewDelivery(this,scope,source=>{this.#writer();const io=this.#ios.get(source);if(!io)throw fail('local_review_delivery_policy');return io;});
   for(const row of local){const selected=choice.lanes.find(value=>value.id===row.id)!;this.#ios.set(row.source,Object.freeze({identity:()=>{this.#writer();return selected.binding;},progress:()=>{this.#writer();return this.#lane(row.id).relay.review!;},receipt:()=>{this.#writer();return this.#lane(row.id).relay.reviewReceipt;},persist:(progress:SharedReviewRelayProgress,receipt?:SharedSegmentedReviewReceipt)=>this.#persist(row,progress,receipt)}));}
+  metadataParents.set(this,()=>this.#lendMetadata());
   Object.freeze(this);
  }
  #guard=()=>{if(this.#closing||this.#closed)throw fail('local_review_delivery_closed');if(this.#checking)throw fail('local_review_delivery_busy');this.#checking=true;try{this.#scope.check();this.#driver.check();this.#authority();for(const row of this.#local)row.source.check();this.#scope.check();if(this.#closing||this.#closed)throw fail('local_review_delivery_closed');}finally{this.#checking=false;}};
@@ -68,6 +75,24 @@ export class SelectedLocalReviewDelivery{
    const source=await this.#saved(row);verifyLocalReviewProgress(row.source.core,relay);const next:LocalReviewDeliveryState={...before.current,revision:before.current.revision+1,lanes:before.current.lanes.map(lane=>lane.id===row.id?{id:row.id,source,relay}:lane)};
    const saved=await stored.replace.call(this.#store,before,next);this.#guard();this.#snapshot=saved;
   }).catch(error=>{this.#failed=true;void this.#driver.close().catch(()=>{});throw error;});this.#serial=job.catch(()=>{});return job;
+ }
+ /** Publish the opening slot BEFORE invoking authority or application callbacks.
+  * Parent close drains even a child that has not finished construction yet. */
+ #lendMetadata():LocalReviewMetadataParent{
+  if(this.#metadataChild||this.#busy||this.#checking||this.#closing||this.#closed||this.#failed||!this.#active)throw fail('local_review_delivery_busy');
+  let stopped=false,released=false,installed:Pick<MetadataChildSlot,'stop'|'wait'>|undefined,finish!:()=>void;
+  const opening=new Promise<void>(resolve=>{finish=resolve;}),token=Object.freeze({});
+  const slot:MetadataChildSlot={key:token,stop(){stopped=true;installed?.stop();},async wait(){await opening;await installed?.wait();}};this.#metadataChild=slot;
+  const check=()=>{if(stopped||released||this.#metadataChild!==slot)throw fail('local_review_delivery_closed');this.#writer();if(stopped||released||this.#metadataChild!==slot)throw fail('local_review_delivery_closed');};
+  const release=()=>{if(released)return;released=true;finish();if(this.#metadataChild===slot)this.#metadataChild=undefined;};
+  try{check();return Object.freeze({scope:this.#scope,choice:this.#choice,sources:this.#sources,check,
+   bind:(binding:string)=>{check();if(!/^[a-f0-9]{64}$/.test(binding)||this.#metadataBinding!==undefined&&this.#metadataBinding!==binding)throw fail('local_review_delivery_policy');this.#metadataBinding=binding;},
+   admit:async(bundle:LocalReviewRoomBundle)=>{check();const chosen=detachLocalReviewBundle(bundle),text=localJson(this.#snapshot),file=new Blob([text]),actual=await this.#scope.retainCurrent(),integrity=prepareArchiveIntegrity({wasm:actual.integrity.wasm,checkAuthority:check,signal:this.#scope.signal}),stored={revision:this.#snapshot!.current.revision,bytes:file.size,sha256:await integrity.digest(file)};check();await this.#admitBundle(chosen,stored);check();},
+   saved:()=>{check();const job=this.#serial.then(async()=>{check();const lanes=[];for(const row of this.#local){const source=await this.#saved(row);check();const relay=structuredClone(this.#lane(row.id).relay);verifyLocalReviewProgress(row.source.core,relay);lanes.push({id:row.id,source,relay});}check();return lanes;});this.#serial=job.then(()=>{},()=>{});return job;},
+   createDelivery:(source:RetainedDeliverySource,ceiling:SharedReviewAccess)=>{check();return this.createDelivery(source,ceiling);},
+   capture:(visit:(bundle:LocalReviewRoomBundle)=>Promise<void>)=>{check();if(this.#metadataBinding===undefined||typeof visit!=='function')return Promise.reject(fail('local_review_delivery_policy'));return this.#capture(token,visit);},
+   install:(stop:()=>void,wait:()=>Promise<void>)=>{check();if(installed||typeof stop!=='function'||typeof wait!=='function')throw fail('local_review_delivery_policy');installed={stop,wait};finish();},release,
+  });}catch(error){release();throw error;}
  }
  /** Fresh full native path, all saved files and one explicit current decision
   * create a NEW gate. No old runtime permission is revived. */
@@ -108,16 +133,24 @@ export class SelectedLocalReviewDelivery{
  }
  /** Stops/drains ACTUAL adapters before taking a joint complete room/export.
   * All new receipt stores are mandatory; a caller cannot omit one local lane. */
- capture():Promise<LocalReviewRoomBundle>{
+ capture():Promise<LocalReviewRoomBundle>{return this.#capture();}
+ #capture(metadata?:object,visit?:(bundle:LocalReviewRoomBundle)=>Promise<void>):Promise<LocalReviewRoomBundle>{
+  // Once enlisted, an old review-only file cannot silently omit metadata.
+  if((this.#metadataChild||this.#metadataBinding!==undefined)&&(!this.#metadataChild||metadata!==this.#metadataChild.key))return Promise.reject(fail('local_review_delivery_policy'));
   if(this.#busy||this.#checking)return Promise.reject(fail('local_review_delivery_busy'));if(this.#closing||this.#closed||this.#failed||!this.#active)return Promise.reject(fail('local_review_delivery_closed'));this.#busy=true;
   // Publish the actual capture work before any authority/adapter callback.
   // Close must observe this promise too, not merely visible socket state.
   const job=Promise.resolve().then(()=>{this.#writer();return this.#driver.quiesce(async()=>{await this.#serial;this.#writer();let before=await stored.read.call(this.#store);const lanes=[];for(const row of this.#local){const old=before.current.lanes.find(lane=>lane.id===row.id)!;lanes.push({...old,source:await this.#saved(row)});}
    this.#snapshot=await stored.replace.call(this.#store,before,{...before.current,revision:before.current.revision+1,lanes});const actual=await this.#scope.retainExtendingAll([{file:this.#prepared.file,selection:this.#prepared.choice.before},{file:this.#driver.prepared.file,selection:this.#driver.prepared.choice.before}]),text=localJson(this.#snapshot),file=new Blob([text],{type:'application/vnd.breditor.selected-local-review-delivery+json'}),integrity=prepareArchiveIntegrity({wasm:actual.integrity.wasm,checkAuthority:this.#guard});
-   await this.#admitRoomSource(actual.current.file,actual.current.selection,this.#snapshot.current,true);this.#writer();return Object.freeze({format:'breditor/selected-local-review-room-bundle' as const,formatVersion:1 as const,prepared:this.#prepared,current:actual.current,delivery:Object.freeze({file,bytes:file.size,sha256:await integrity.digest(file)})});
+   await this.#admitRoomSource(actual.current.file,actual.current.selection,this.#snapshot.current,true);this.#writer();const bundle=Object.freeze({format:'breditor/selected-local-review-room-bundle' as const,formatVersion:1 as const,prepared:this.#prepared,current:actual.current,delivery:Object.freeze({file,bytes:file.size,sha256:await integrity.digest(file)})});await visit?.(bundle);this.#writer();return bundle;
   });}).catch(async error=>{this.#failed=true;await this.#driver.close();throw error;}).finally(()=>{this.#busy=false;this.#captureWork=undefined;});this.#captureWork=job;return job;
  }
  identity():LocalReviewDeliveryChoice{return this.#choice;}
  close():Promise<void>{return this.#close();}
- #close():Promise<void>{if(this.#closed)return Promise.resolve();if(this.#ending)return this.#ending;this.#closing=true;for(const cancel of this.#closingListeners)cancel();this.#closingListeners.clear();const stopped=this.#driver.close(),opening=this.#opening,serial=this.#serial,capture=this.#captureWork;this.#ending=(async()=>{await stopped;await opening?.catch(()=>{});await serial;await capture?.catch(()=>{});await stored.close.call(this.#store);this.#closed=true;})().finally(()=>{this.#ending=undefined;});return this.#ending;}
+ #close():Promise<void>{
+  if(this.#closed)return Promise.resolve();if(this.#ending)return this.#ending;this.#closing=true;
+  const errors:unknown[]=[];try{this.#metadataChild?.stop();}catch(error){errors.push(error);}for(const cancel of this.#closingListeners)try{cancel();}catch(error){errors.push(error);}this.#closingListeners.clear();
+  const child=this.#metadataChild,stopped=this.#driver.close(),opening=this.#opening,serial=this.#serial,capture=this.#captureWork;
+  this.#ending=(async()=>{await Promise.all([stopped,child?.wait()].map(async job=>{try{await job;}catch(error){errors.push(error);}}));await opening?.catch(()=>{});await serial;await capture?.catch(()=>{});if(errors.length)throw new AggregateError(errors,'Local metadata child cleanup did not finish');await stored.close.call(this.#store);this.#closed=true;})().finally(()=>{this.#ending=undefined;});return this.#ending;
+ }
 }

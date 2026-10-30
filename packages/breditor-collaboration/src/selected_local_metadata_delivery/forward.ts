@@ -1,0 +1,10 @@
+/** Retaining metadata cannot forget an original packet or a final authenticated
+ * receipt. These are necessary DATA laws; they do not verify a server grant. */
+import type {SegmentedRetainedRecords} from '../segmented_relay/retained_contract.js';
+import {equal} from './data.js';import {fail} from './error.js';
+export function requireMetadataRecordsForward(before:SegmentedRetainedRecords,after:SegmentedRetainedRecords):void{
+ for(const kind of ['suggestions','revisions','versions'] as const)if((before[kind]===null)!==(after[kind]===null))throw fail();
+ if(before.suggestions&&after.suggestions){const next=after.suggestions.retained;if(next.length<before.suggestions.retained.length)throw fail();for(const [i,old]of before.suggestions.retained.entries()){const now=next[i]!;if(old.packet!==now.packet||old.origin!==now.origin||!old.publish&&now.publish||old.publication&&!equal(old.publication,now.publication)||old.decision&&!equal(old.decision,now.decision)||old.intent&&(!now.intent||old.intent.requested!==now.intent.requested||old.intent.queuedAtMs!==now.intent.queuedAtMs||!old.intent.retry&&now.intent.retry))throw fail();}}
+ if(before.revisions&&after.revisions){const next=after.revisions.retained;if(next.length<before.revisions.retained.length)throw fail();for(const [i,old]of before.revisions.retained.entries()){const now=next[i]!;if(old.packet!==now.packet||old.previousPacket!==now.previousPacket||!old.retry&&now.retry||old.receipt&&!equal(old.receipt,now.receipt)||old.conflict&&!equal(old.conflict,now.conflict))throw fail();}}
+ if(before.versions&&after.versions){const next=after.versions.packets;if(next.length<before.versions.packets.length)throw fail();for(const [i,old]of before.versions.packets.entries()){const now=next[i]!;if(old.packet!==now.packet||old.origin!==now.origin||!old.publish&&now.publish||old.accepted&&!equal(old.accepted,now.accepted))throw fail();}if(before.versions.catalog){const prior=before.versions.catalog,current=after.versions.catalog;if(!current||BigInt(current.through)<BigInt(prior.through)||prior.entries.some(entry=>!current.entries.some(next=>equal(entry,next))))throw fail();}}
+}

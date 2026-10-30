@@ -1,0 +1,71 @@
+{
+  "format": "breditor/native-local-metadata-delivery-qualification",
+  "formatVersion": 1,
+  "functionalPassed": true,
+  "releaseReady": false,
+  "v1GatesOpen": 13,
+  "v1GatesClosed": 0,
+  "baseCommit": "73f2f4ff15a61406cb6073f6e5f7ca7cea1c913d",
+  "qualifiedSource": {
+    "commit": "73f2f4ff15a61406cb6073f6e5f7ca7cea1c913d",
+    "dirty": true,
+    "sha256": "0b43c950b6bc1eccd9823a7c22f0e1aa5e43ecd60091e99134076003ba5addd8",
+    "files": 7597,
+    "bytes": 57266210
+  },
+  "sourceUnchangedDuringInstalledQualification": true,
+  "logicAndTestsUnchangedAfterInstalledQualification": true,
+  "directContractStoragePlanTests": 142,
+  "independentlyInstalledTests": 39,
+  "strictSourceTypeStages": 2,
+  "strictInstalledTypeStages": 1,
+  "actualNativeParticipants": 7,
+  "localMetadataSources": 3,
+  "scope": "Genuine parent composition of original local version catalogs, suggestion queues and revision outboxes; exact seed/receipt retention, coupled complete export, actual committed-head recovery, fresh seven-owner offline histories, pairwise initial/current native admission, non-overwriting DATA restore and separate fresh reopening. Normal Wasm and original authenticated Rust relay protocols; controlled Node IndexedDB/WebLocks.",
+  "directNativeSupplement": {
+    "passed": true,
+    "tests": 1,
+    "note": "Exploratory direct run started before one negative-fixture canonicalization refinement. SDK logic was unchanged. The independent installed run executes the final current canonicalized test and is the final full native qualification."
+  },
+  "architecturalRiskEvidence": {
+    "cases": 4,
+    "packetOnlyAssets": [
+      "proposal-intermediate",
+      "proposal-final",
+      "revision-only"
+    ],
+    "meaning": "Genuine native dependency reads confirm that new metadata packet references must participate in the NEXT full asset-reconciliation step. This does not claim a verified complete-room asset-loss reproduction or completed asset reconciliation."
+  },
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "nativeHostSha256": "60427bb794f52c39a7084fac797f8f3150501238c45c78bad6195cd928a252ca",
+  "proof": {
+    "path": "target/native-local-metadata-qualified-proof-z9YhxG",
+    "indexSha256": "24a9c61720de5aa84438caa90091097d5aad6aefeb4357165e2d812fd2368150",
+    "files": 76,
+    "bytes": 34229257,
+    "readBackVerified": true
+  },
+  "installedResult": {
+    "path": "/private/tmp/breditor-local-metadata-installed-Qcqckk/result.json",
+    "sha256": "49c16c53c5100ba378048b4fa91a4de51e2d48259537d7caaff08120e2195ba6"
+  },
+  "remaining": [
+    "Complete provider/client/historical-copy reconciliation, including all new metadata packet assets and explicit unresolved dependencies",
+    "Authenticated whole-room activation with all native source ownership and original outboxes",
+    "Independent comment/server-log generation qualification and the rest of the full V1/parity ledger",
+    "Physical browser durability, release/package matrix, accessibility/input, performance/size, deployment isolation, final parity approval"
+  ],
+  "unchanged": [
+    "Original protocol meanings/defaults",
+    "Public package exports",
+    "Package versions",
+    "Normal Rust/Wasm runtime",
+    "User data and existing proof bundles"
+  ],
+  "notRun": [
+    "Full functional candidate profile",
+    "Full release candidate profile",
+    "Rust rebuild or Rust suite; unchanged runtime and native hosts are pinned"
+  ],
+  "finishedAt": "2026-10-30T03:25:41.801Z"
+}
