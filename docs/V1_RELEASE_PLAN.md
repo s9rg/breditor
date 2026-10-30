@@ -1,5 +1,15 @@
 # Breditor V1 release preparation
 
+[Selected server/inventory recovery bytes](COUPLED_SERVER_RECOVERY_BYTES.md)
+now stay coupled to the complete Native client, metadata and local/provider image
+bytes. The [qualification](qualification/2026-10-30-coupled-server-recovery.json)
+passes 69 focused and 94 independently installed checks, including actual later
+server publication, disk read-back, offline client replay and stale-file refusal.
+
+These recorded server files confer no current authority or activation. Complete
+provider/client/metadata reconciliation, authenticated whole-room activation and
+independent comment/server-log generations remain. All thirteen V1 gates stay open.
+
 [Recoverable local/provider assets](RECOVERABLE_METADATA_ASSET_UNION.md) now
 preserve durably local image bytes while actual server uploads remain Pending.
 The separately framed V2 union retains all Native references and fourteen whole

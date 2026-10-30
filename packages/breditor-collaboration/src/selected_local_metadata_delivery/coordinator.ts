@@ -9,6 +9,9 @@ import type {LocalMetadataMaterializedBundle,LocalMetadataMaterializedInspection
 import {detachLocalMetadataMaterializedBundle,localMetadataMaterializationLimits} from '../selected_local_metadata_assets/materialized_bundle.js';
 import type {LocalMetadataRecoverableOutcome,LocalMetadataRecoverableBundle,LocalMetadataRecoverableInspection} from '../selected_local_metadata_assets/recoverable_contract.js';
 import {detachLocalMetadataRecoverableBundle} from '../selected_local_metadata_assets/recoverable_bundle.js';
+import {prepareLocalMetadataRecoveryBytesInput} from '../selected_local_metadata_assets/recovery_bytes_input.js';
+import {detachLocalMetadataRecoveryBytesBundle} from '../selected_local_metadata_assets/recovery_bytes_bundle.js';
+import type {LocalMetadataRecoveryBytesInput,LocalMetadataRecoveryBytesOutcome,LocalMetadataRecoveryBytesBundle,LocalMetadataRecoveryBytesInspection} from '../selected_local_metadata_assets/recovery_bytes_contract.js';
 import {detachLocalMetadataBundle} from './bundle.js';
 import {readMetadataBundle,inspectMetadataResume} from './resume_inspection.js';
 import {metadataResumeChoice} from './resume_policy.js';
@@ -175,6 +178,12 @@ export class SelectedLocalMetadataDelivery{
   let options:LocalMetadataMaterializationOptions|undefined,result:LocalMetadataRecoverableOutcome|undefined;
   return this.#captureReferenceOperation(async work=>{result=await work.recoverAssets(host,transport,options!);this.#current();},()=>{localMetadataAvailabilityHost(host);sharedRelayAssetReadPort(transport);options={limits:localMetadataMaterializationLimits(provided)};}).then(()=>{if(!result)throw fail();return result;});
  }
+ /** One finite source-owned capture of V2 client/metadata/assets and the
+  * exact live-controller-selected server and participant inventory files. */
+ captureRecoveryBytes(provided:LocalMetadataRecoveryBytesInput):Promise<LocalMetadataRecoveryBytesOutcome>{
+  let input!:ReturnType<typeof prepareLocalMetadataRecoveryBytesInput>,result:LocalMetadataRecoveryBytesOutcome|undefined;
+  return this.#captureReferenceOperation(async work=>{result=await work.recoveryBytes(input.host,input.transport,input.selected,input.options);this.#current();},()=>{input=prepareLocalMetadataRecoveryBytesInput(provided);}).then(()=>{if(!result)throw fail();return result;});
+ }
  /** Native verification of the literal PORTABLE cuts, even if the actual
   * stored/live room is newer. This returns immutable dependency DATA only:
   * it neither proves current asset availability nor supplies serving rights.
@@ -195,6 +204,12 @@ export class SelectedLocalMetadataDelivery{
  inspectRecoverableAssets(provided:LocalMetadataRecoverableBundle,options:LocalMetadataMaterializationOptions={}):Promise<LocalMetadataRecoverableInspection>{
   let bundle!:LocalMetadataRecoverableBundle,limits!:LocalMetadataMaterializationOptions;
   return this.#inspectReferenceOperation(()=>bundle.references,async(work,actual)=>work.inspectRecoverable(bundle,actual,limits),()=>{bundle=detachLocalMetadataRecoverableBundle(provided);limits={limits:localMetadataMaterializationLimits(options)};});
+ }
+ /** Inspect exact archived server/inventory selections with the Native client
+  * cut. Old selected files never become a live controller or serving role. */
+ inspectRecoveryBytes(provided:LocalMetadataRecoveryBytesBundle,options:LocalMetadataMaterializationOptions={}):Promise<LocalMetadataRecoveryBytesInspection>{
+  let bundle!:LocalMetadataRecoveryBytesBundle,limits!:LocalMetadataMaterializationOptions;
+  return this.#inspectReferenceOperation(()=>bundle.recoverable.references,async(work,actual)=>work.inspectRecoveryBytes(bundle,actual,limits),()=>{bundle=detachLocalMetadataRecoveryBytesBundle(provided);limits={limits:localMetadataMaterializationLimits(options)};});
  }
  #inspectReferenceOperation<T>(selected:()=>LocalMetadataReferenceBundle,visit:(work:LocalMetadataReferenceWork,actual:LocalMetadataReferenceCut)=>Promise<T>,prepare:()=>void):Promise<T>{
   return this.#captureOperation(async()=>{

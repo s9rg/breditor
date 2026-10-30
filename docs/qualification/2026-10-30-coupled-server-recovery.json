@@ -1,0 +1,51 @@
+{
+  "format": "breditor/coupled-server-recovery-qualification",
+  "formatVersion": 1,
+  "functionalPassed": true,
+  "releaseReady": false,
+  "v1GatesOpen": 13,
+  "v1GatesClosed": 0,
+  "baseCommit": "e17b7bbf92d083d0aed6698d519d1ec839a6df4c",
+  "qualifiedSource": {
+    "commit": "e17b7bbf92d083d0aed6698d519d1ec839a6df4c",
+    "dirty": true,
+    "sha256": "f1824c562cf332efd8a8089492a799a2764f8503e1be2b6cfd3d2610169bac79",
+    "files": 7682,
+    "bytes": 57696289
+  },
+  "sourceUnchangedDuringInstalledQualification": true,
+  "directChecks": 69,
+  "installedChecks": 94,
+  "stagedSupplementChecks": 8,
+  "strictInstalledStages": 1,
+  "nativeParticipants": 7,
+  "metadataSources": 3,
+  "uploadArchivesPerCompletedRead": 14,
+  "scope": "Couple genuine selected server/inventory byte files to complete source-owned Native client/metadata/V2 raster recovery under the same actual parent quiescence. Same-server and actual later document-publication cases save and rebuild all eight Blob roles from disk before offline Native client inspection and server/inventory frame/hash admission. The later actual Native server advances from 46 to 50 records. Actual old selected files and structural copies refuse before metadata writes. All original V1/V2 recovery, cold/restore, transport and cancellation regressions pass.",
+  "limits": [
+    "Server byte selection is recorded DATA, not browser-side Native replay of the new server, current authority, credential recovery, accepted-head agreement or activation.",
+    "Rehashed slot corruption is component evidence after the Native client inspection; it is not an independent second Native replay."
+  ],
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "nativeHostSha256": "60427bb794f52c39a7084fac797f8f3150501238c45c78bad6195cd928a252ca",
+  "originalNativeHostSha256": "c224c4d39d5f603dcb3815ebc58c1719b59b4d6db6fe554e675f91d4cab46ea7",
+  "proof": {
+    "path": "target/coupled-server-recovery-qualified-proof-Uqi8LT",
+    "indexSha256": "43775bd4f9f4ac69b6ed3027e510ea955e3d6d6882be72e891a9a1892c86c732",
+    "files": 363,
+    "logicalBytes": 416715251,
+    "deduplicatedBytes": 275843667,
+    "readBackVerified": true
+  },
+  "remaining": [
+    "Complete provider/client accepted-head and metadata reconciliation, then authenticated whole-room restore/activation",
+    "Genuine opaque host-mapping Ready and independent comment/server-log generation qualification",
+    "All thirteen V1/parity gates and full release profiles remain open"
+  ],
+  "unchanged": [
+    "Original protocol meanings/defaults, V1/V2 scope families and metadata literals",
+    "Actual Native histories, packets, receipts and pending upload facts",
+    "Package versions and original Rust/Wasm/native executables"
+  ],
+  "finishedAt": "2026-10-30T16:59:57.638Z"
+}

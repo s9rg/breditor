@@ -44,6 +44,10 @@ import {fail} from './error.js';
 import {localMetadataRecoverableRequirements} from './recoverable_requirements.js';
 import {encodeLocalMetadataRecoverableRasters} from './recoverable_raster_archive.js';
 import type {LocalMetadataRecoverableOutcome,LocalMetadataRecoverableBundle,LocalMetadataRecoverableInspection} from './recoverable_contract.js';
+import {captureLocalMetadataRecoveryFiles} from './recovery_bytes_capture.js';
+import {inspectLocalMetadataRecoveryFiles} from './recovery_bytes_inspection.js';
+import type {PreparedRecoveryServerInputs} from './recovery_server_inputs.js';
+import type {LocalMetadataRecoveryBytesOutcome,LocalMetadataRecoveryBytesBundle,LocalMetadataRecoveryBytesInspection} from './recovery_bytes_contract.js';
 const room={read:SelectedRoomCurrentArchive.read,current:SelectedRoomCurrentArchive.prototype.current,approval:SelectedRoomCurrentArchive.prototype.approval,dispose:SelectedRoomCurrentArchive.prototype.dispose};
 const cut={read:PhysicalRoomRecordCutArchive.read,root:PhysicalRoomRecordCutArchive.prototype.root,selection:PhysicalRoomRecordCutArchive.prototype.selection,history:PhysicalRoomRecordCutArchive.prototype.history,dispose:PhysicalRoomRecordCutArchive.prototype.dispose};
 const verifyOriginal=SharedRichEditor.prototype.verifyRecoveryOrigin,verifySegmented=SharedRichEditor.prototype.verifySegmentedRecoveryOrigin;
@@ -143,6 +147,13 @@ export class LocalMetadataReferenceWork {
   const fresh=await localMetadataAvailabilityHost(host).checkAssets({references:body.outcome.references,uploads:[...uploads.assets.keys()].sort()},this.#waits.signal);check();if(!equal(fresh,provider))throw fail('local_metadata_assets_changed');
   return Object.freeze({kind:'ready',bundle:Object.freeze({format:'breditor/selected-local-metadata-recoverable-bundle',formatVersion:1,references:available.references,rasters})});
  }
+ /** Couple actual selected server/inventory files to the same complete V2
+  * Native/client/metadata capture. Readiness here describes bytes only. */
+ async recoveryBytes(host:LocalMetadataAssetAvailabilityHost,transport:SharedRelayAssets,selected:PreparedRecoveryServerInputs,options:LocalMetadataMaterializationOptions):Promise<LocalMetadataRecoveryBytesOutcome>{
+  selected.check();const materialized=await this.recoverAssets(host,transport,options);this.#check();if(materialized.kind==='pending')return materialized;
+  const check=()=>{this.#check();selected.check();for(const row of this.#allSources){const before=this.#availabilityStamps.get(row.source.core),now=coreReadStamp(row.source.core);if(!before||before.document!==now.document||before.review!==now.review)throw fail('local_metadata_assets_changed');}};
+  check();const port=localMetadataAvailabilityHost(host),bundle=await captureLocalMetadataRecoveryFiles(materialized.bundle,selected,this.#options,check,()=>port.check(this.#waits.signal));check();return Object.freeze({kind:'ready',bundle});
+ }
  /** Recompute an older portable current point on readonly native aliases.
   * Unlike finish(), no live core is substituted for an archived point. All
   * three exact cuts precede the actual source; no journal is written here. */
@@ -184,6 +195,13 @@ export class LocalMetadataReferenceWork {
   this.#check();if(!this.#ready||!this.#room||!this.#cut)throw fail('local_metadata_assets_closed');
   const check=()=>{this.#check();for(const row of this.#allSources){const before=this.#availabilityStamps.get(row.source.core),now=coreReadStamp(row.source.core);if(!before||before.document!==now.document||before.review!==now.review)throw fail('local_metadata_assets_changed');}};
   check();const result=await inspectLocalMetadataRecoverableRasters(bundle,body,this.#room,this.#cut,this.#options,checkRichAssetLimits(options.limits),check);check();return result;
+ }
+ /** Genuine Native client re-admission followed by selected server/inventory
+  * hash and frame admission; no current server or actor is reconstructed. */
+ async inspectRecoveryBytes(bundle:LocalMetadataRecoveryBytesBundle,body:LocalMetadataReferenceCut,options:LocalMetadataMaterializationOptions):Promise<LocalMetadataRecoveryBytesInspection>{
+  const recoverable=await this.inspectRecoverable(bundle.recoverable,body,options);
+  const check=()=>{this.#check();for(const row of this.#allSources){const before=this.#availabilityStamps.get(row.source.core),now=coreReadStamp(row.source.core);if(!before||before.document!==now.document||before.review!==now.review)throw fail('local_metadata_assets_changed');}};
+  check();const result=await inspectLocalMetadataRecoveryFiles(bundle,recoverable,this.#options,check);check();return result;
  }
  /** Cancels finite reads, disposes claimed aliases and observes/frees late
   * unclaimed raw restores through the original factory wait implementation. */
