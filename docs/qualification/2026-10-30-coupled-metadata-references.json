@@ -1,0 +1,59 @@
+{
+  "format": "breditor/coupled-metadata-references-qualification",
+  "formatVersion": 1,
+  "functionalPassed": true,
+  "releaseReady": false,
+  "v1GatesOpen": 13,
+  "v1GatesClosed": 0,
+  "baseCommit": "9532d53450579d5b5677d14805ef9a0009044655",
+  "qualifiedSource": {
+    "commit": "9532d53450579d5b5677d14805ef9a0009044655",
+    "dirty": true,
+    "sha256": "c95be5f437e936700c529aee62e0ab8c7a441c4329154edc982ea7cd975e87cb",
+    "files": 7616,
+    "bytes": 57373553
+  },
+  "sourceUnchangedDuringInstalledQualification": true,
+  "logicAndTestsUnchangedAfterInstalledQualification": true,
+  "directTests": 174,
+  "installedTests": 63,
+  "strictSourceStages": 2,
+  "strictInstalledStages": 1,
+  "nativeParticipants": 7,
+  "localMetadataSources": 3,
+  "scope": "Genuine metadata owner captures one closed reference bundle over complete base history and exact before/stored/current metadata cuts. Readonly native aliases verify older packet/receipt points and continuation; the actual held live core is stamped through source-first exact-head CAS. Real authenticated downloads clear original uncached catalogs; actual remote updates advance live cores beyond stored cuts without losing old references. Capture reentry is excluded before callbacks, actual hash work stays owned during close, later committed facts and all seven future document/comment histories survive. Original full native cold/restore regression also passes.",
+  "directNativeSupplement": {
+    "passed": true,
+    "tests": 1,
+    "notice": "Direct native workflow loaded before extra stored-state DATA validation and partial-constructor cleanup hardening. The final frozen installed workflow executes current code and is authoritative."
+  },
+  "providerGap": {
+    "passed": true,
+    "scope": "fresh-authenticated-server-with-explicit-declared-client-requirements",
+    "declaredReferences": 13,
+    "packetOnlyImageGenerations": 12,
+    "meaning": "A fresh authenticated native server reports every new proposal/revision image generation unmapped. Dependency Ready does not establish byte availability or continuation of the earlier completed room."
+  },
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "nativeHostSha256": "60427bb794f52c39a7084fac797f8f3150501238c45c78bad6195cd928a252ca",
+  "proof": {
+    "path": "target/coupled-metadata-references-qualified-proof-viBnKA",
+    "indexSha256": "6deedab383937c618563822737c01d924da2af31217328a22fbac636882b0197",
+    "files": 94,
+    "logicalBytes": 92760178,
+    "deduplicatedBytes": 27892326,
+    "readBackVerified": true
+  },
+  "remaining": [
+    "Fresh native re-admission of portable reference envelopes when using them for recovery",
+    "Actual provider/client/packet/upload byte reconciliation against current authenticated requirements",
+    "Authenticated joint activation and independent comment/server-log generation qualification",
+    "All other full V1/parity gates; full functional/release candidate profiles remain unrun"
+  ],
+  "unchanged": [
+    "Original protocol meanings/default data formats",
+    "Public exports and package versions",
+    "Normal Rust/Wasm and native fixture binaries"
+  ],
+  "finishedAt": "2026-10-30T05:09:10.387Z"
+}

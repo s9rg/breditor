@@ -1,3 +1,5 @@
+import {LocalMetadataReferenceWork} from '../selected_local_metadata_assets/room_work.js';
+import type {LocalMetadataReferenceBundle} from '../selected_local_metadata_assets/room_contract.js';
 import {detachLocalMetadataBundle} from './bundle.js';
 import {readMetadataBundle,inspectMetadataResume} from './resume_inspection.js';
 import {metadataResumeChoice} from './resume_policy.js';
@@ -59,7 +61,7 @@ export async function previewSelectedLocalMetadataResume(owner:SelectedLocalRevi
 export class SelectedLocalMetadataDelivery{
  readonly #parent;readonly #choice;readonly #authority;readonly #store;
  readonly #desired=new Map<string,SegmentedRetainedRecords>();readonly #children=new Map<string,Children>();readonly #contexts=new Map<NativeRelayDelivery,RetainedDeliverySource>();readonly #preparing=new Map<string,Promise<PreparedCompoundMetadata>>();readonly #cancels=new Set<()=>void>();
- #snapshot:LocalMetadataDeliverySnapshot|undefined;#opening:Promise<void>|undefined;#serial=Promise.resolve();#capturing:Promise<LocalMetadataRoomBundle>|undefined;#closing=false;#closed=false;#active=false;#busy=false;#ending:Promise<void>|undefined;
+ #snapshot:LocalMetadataDeliverySnapshot|undefined;#opening:Promise<void>|undefined;#serial=Promise.resolve();#capturing:Promise<unknown>|undefined;#referenceWork:LocalMetadataReferenceWork|undefined;#closing=false;#closed=false;#active=false;#busy=false;#ending:Promise<void>|undefined;
  private constructor(token:object,parent:LocalReviewMetadataParent,choice:LocalMetadataDeliveryChoice,authority:()=>void){if(token!==key)throw fail('local_metadata_delivery_policy');this.#parent=parent;this.#choice=choice;this.#authority=authority;this.#store=new LocalMetadataDeliveryStore(choice,this.#guard);Object.freeze(this);}
  #guard=()=>{if(this.#closing||this.#closed)throw fail('local_metadata_delivery_closed');this.#parent.check();this.#authority();this.#parent.check();if(this.#closing||this.#closed)throw fail('local_metadata_delivery_closed');};
  #current=()=>{this.#guard();if(!this.#active)throw fail('local_metadata_delivery_closed');};
@@ -106,7 +108,7 @@ export class SelectedLocalMetadataDelivery{
  }
  /** Every actual store write retains source first, then exact metadata records
   * in one full compare-and-swap transaction. The actual caller owns its work. */
- #persist():Promise<void>{this.#current();const desired=new Map([...this.#desired].map(([id,records])=>[id,structuredClone(records)]));const job=this.#serial.then(async()=>{this.#current();const saved=await this.#parent.saved();this.#current();const before=await this.#store.readFresh();this.#current();const lanes=saved.map(row=>{const records=desired.get(row.id);if(!records)throw fail();return{...row,records};});const next:LocalMetadataDeliveryState={...before.current,revision:before.current.revision+1,lanes};try{this.#snapshot=await this.#store.replace(before,next);}finally{this.#savedFact();}this.#current();});this.#serial=job.catch(()=>{});return job;}
+ #persist(expected?:LocalMetadataDeliverySnapshot):Promise<void>{this.#current();const desired=new Map([...this.#desired].map(([id,records])=>[id,structuredClone(records)]));const job=this.#serial.then(async()=>{this.#current();const saved=await this.#parent.saved();this.#current();const before=await this.#store.readFresh();this.#current();if(expected&&!equal(before,expected))throw fail('local_metadata_delivery_stale');const lanes=saved.map(row=>{const records=desired.get(row.id);if(!records)throw fail();return{...row,records};});const next:LocalMetadataDeliveryState={...before.current,revision:before.current.revision+1,lanes};try{this.#snapshot=await this.#store.replace(before,next);}finally{this.#savedFact();}this.#current();});this.#serial=job.catch(()=>{});return job;}
  prepare(source:RetainedDeliverySource,context:NativeRelayDelivery):Promise<PreparedCompoundMetadata>{
   this.#current();if(this.#busy)return Promise.reject(fail('local_metadata_delivery_busy'));if(this.#contexts.get(context)!==source||source.parent.kind!=='independent-local')return Promise.reject(fail('local_metadata_delivery_policy'));const selected=this.#choice.lanes.find(row=>this.#source(row.id)===source);if(!selected)return Promise.reject(fail());const pending=this.#preparing.get(selected.id);if(pending)return pending;
   const port=nativeRelayDeliveryForSource(context,source.parent.session,source.core),work=new RelayWorkCustody(source.core,()=>false,()=>fail('local_metadata_delivery_busy'),port.admission);let stopped=false;const check=()=>{if(stopped)throw fail('local_metadata_delivery_closed');this.#current();port.check();};
@@ -120,11 +122,27 @@ export class SelectedLocalMetadataDelivery{
  }
  /** Keep parent quiescence through BOTH journals and the metadata digest, so
   * no new context can advance a source between its native and metadata files. */
- capture():Promise<LocalMetadataRoomBundle>{
-  this.#current();if(this.#busy)return Promise.reject(fail('local_metadata_delivery_busy'));this.#busy=true;let result:LocalMetadataRoomBundle|undefined;
-  const job=Promise.resolve().then(async()=>{await this.#parent.capture(async parent=>{await this.#serial;this.#current();this.#savedFact();if(!this.#snapshot||[...this.#desired].some(([id,records])=>!equal(records,this.#lane(id).records)))throw fail('local_metadata_delivery_unsaved');await this.#persist();const text=metadataJson(this.#snapshot),file=new Blob([text],{type:'application/vnd.breditor.selected-local-metadata+json'});result=Object.freeze({format:'breditor/selected-local-metadata-room-bundle',formatVersion:1,parent,metadata:Object.freeze({file,bytes:file.size,sha256:await segmentedDigest(text)})});this.#current();});if(!result)throw fail();return result;}).finally(()=>{this.#busy=false;this.#capturing=undefined;});this.#capturing=job;return job;
+ /** Register actual work and exclude reentry BEFORE any host policy callback. */
+ #captureOperation<T>(work:()=>Promise<T>):Promise<T>{
+  if(this.#busy)return Promise.reject(fail('local_metadata_delivery_busy'));this.#busy=true;
+  const job=Promise.resolve().then(()=>{this.#current();return work();}).finally(()=>{this.#referenceWork?.close();this.#referenceWork=undefined;this.#busy=false;this.#capturing=undefined;});this.#capturing=job;return job;
  }
- #stop():void{this.#closing=true;for(const cancel of this.#cancels)cancel();this.#cancels.clear();for(const context of this.#contexts.keys())void context.close().catch(()=>{});}
+ capture():Promise<LocalMetadataRoomBundle>{return this.#captureOperation(async()=>{
+  let result:LocalMetadataRoomBundle|undefined;
+  await this.#parent.capture(async parent=>{await this.#serial;this.#current();this.#savedFact();if(!this.#snapshot||[...this.#desired].some(([id,records])=>!equal(records,this.#lane(id).records)))throw fail('local_metadata_delivery_unsaved');await this.#persist();const text=metadataJson(this.#snapshot),file=new Blob([text],{type:'application/vnd.breditor.selected-local-metadata+json'});result=Object.freeze({format:'breditor/selected-local-metadata-room-bundle',formatVersion:1,parent,metadata:Object.freeze({file,bytes:file.size,sha256:await segmentedDigest(text)})});this.#current();});if(!result)throw fail();return result;
+ });}
+ /** One finite reference decision under the parent's actual quiescence. The
+  * original capture format is unchanged. Older points are replayed before any
+  * new metadata write, and the observed stored head is pinned through CAS. */
+ captureReferences():Promise<LocalMetadataReferenceBundle>{return this.#captureOperation(async()=>{
+  let result:LocalMetadataReferenceBundle|undefined;
+  await this.#parent.capture(async(parent,integrity)=>{
+   await this.#serial;this.#current();const stored=await this.#store.readFresh();this.#savedFact();if([...this.#desired].some(([id,records])=>!equal(records,stored.current.lanes.find(row=>row.id===id)?.records)))throw fail('local_metadata_delivery_unsaved');
+   const work=new LocalMetadataReferenceWork(this.#parent.scope,integrity,this.#current);this.#referenceWork=work;await work.begin(parent,stored);this.#current();await this.#persist(stored);this.#current();if(!this.#snapshot)throw fail();
+   const text=metadataJson(this.#snapshot),file=new Blob([text],{type:'application/vnd.breditor.selected-local-metadata+json'}),bundle:LocalMetadataRoomBundle=Object.freeze({format:'breditor/selected-local-metadata-room-bundle',formatVersion:1,parent,metadata:Object.freeze({file,bytes:file.size,sha256:await segmentedDigest(text)})});this.#current();result=await work.finish(bundle,this.#snapshot);this.#current();
+  });if(!result)throw fail();return result;
+ });}
+ #stop():void{this.#closing=true;this.#referenceWork?.close();for(const cancel of this.#cancels)cancel();this.#cancels.clear();for(const context of this.#contexts.keys())void context.close().catch(()=>{});}
  /** Retire only temporary SDK children after actual work drains. The metadata
   * journal, initial intent, native histories and parent binding are retained. */
  close():Promise<void>{

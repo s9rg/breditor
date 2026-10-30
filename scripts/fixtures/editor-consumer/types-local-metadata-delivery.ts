@@ -45,3 +45,13 @@ void SelectedLocalMetadataDelivery.reopen(parent,{...resume,expected:restore.exp
 void SelectedLocalMetadataDelivery.reopen(parent,{...resume,expected:resume.expected.delivery});
 // @ts-expect-error A data copy cannot choose replacement storage or tokens.
 void restoreSelectedLocalMetadataData(parent,{...restore,getToken:()=>'',storage:{}});
+
+void owner.captureReferences().then(value=>{
+ const original:Awaited<ReturnType<typeof owner.capture>>=value.parent;
+ void original;
+ // @ts-expect-error Reference DATA is not the old metadata-room envelope.
+ const old:Awaited<ReturnType<typeof owner.capture>>=value;
+ void old;
+ // @ts-expect-error A reference bundle supplies no transfer, provider or serving capability.
+ value.activate();
+});

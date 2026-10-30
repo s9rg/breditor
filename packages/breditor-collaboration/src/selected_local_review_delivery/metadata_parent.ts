@@ -1,6 +1,7 @@
 /** Private child of a genuinely opened local-review delivery owner. It shares
  * that owner's one prepared gate and the exact original local source objects.
  * No saved choice, structural copy, callback or second gate supplies this port. */
+import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
 import type {SelectedNativeRecoveryScope} from '../selected_native_recovery/contract.js';
 import type {RetainedDeliverySource} from '../operation_read/delivery_retention.js';
 import type {RetainedDeliveryClient} from '../complete_operation_cohort/retained_native_read.js';
@@ -23,7 +24,7 @@ export interface LocalReviewMetadataParent {
  createDelivery(source:RetainedDeliverySource,ceiling:SharedReviewAccess):NativeRelayDelivery;
  /** Drain actual adapters and retain the parent's complete room/binding data.
   * Only the coupled child may call this while metadata is enlisted. */
- capture(visit:(bundle:LocalReviewRoomBundle)=>Promise<void>):Promise<LocalReviewRoomBundle>;
+ capture(visit:(bundle:LocalReviewRoomBundle,integrity:SharedArchiveIntegrityOptions)=>Promise<void>):Promise<LocalReviewRoomBundle>;
  install(stop:()=>void,wait:()=>Promise<void>):void;
  release():void;
 }

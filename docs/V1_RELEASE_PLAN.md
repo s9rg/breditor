@@ -1,5 +1,21 @@
 # Breditor V1 release preparation
 
+The [coupled metadata reference contract](COUPLED_METADATA_REFERENCES.md) now
+exports complete base history and exact before/stored/current metadata dependencies
+under the genuine parent's quiescence. Older cuts use native readonly aliases;
+actual stored bytes are pinned through CAS and current document/comment stamps
+stay fixed. Real catalog downloads, newer remote edits, reentry exclusion and
+cancelled hashing preserve all seven native histories and newer committed facts.
+Its [qualification](qualification/2026-10-30-coupled-metadata-references.json) passes
+174 direct checks and 63 independently installed checks, including both new
+reference and original complete cold/restore native workflows and strict types.
+
+A fresh authenticated provider check finds all twelve new proposal/revision image
+generations unmapped, confirming that dependency Ready does not prove bytes.
+Portable-reference re-admission, actual provider/client/upload byte reconciliation
+and joint authenticated activation remain required. All thirteen V1/parity gates
+remain open. No version, push, publication, tag or deployment changed.
+
 The [local metadata asset-reference contract](LOCAL_METADATA_ASSET_REFERENCES.md)
 now discovers image dependencies from exact native history cuts and every retained
 metadata packet, including intermediate/deleted proposal and revision images.
