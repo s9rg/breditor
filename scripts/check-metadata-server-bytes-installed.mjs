@@ -8,6 +8,7 @@ import {createHash} from 'node:crypto';
 import {join,dirname,resolve,relative} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {sourceEvidence,saveEvidence} from './candidate-release/evidence.mjs';
+import {saveMetadataRecoveryEvidence} from './metadata-recovery-artifacts.mjs';
 import {executeCandidateStage} from './candidate-release/process.mjs';
 import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
@@ -63,4 +64,4 @@ const outcomes=await Promise.allSettled(checks.map(async check=>{
 for(const outcome of outcomes)if(outcome.status==='rejected'){saveEvidence(directory+'/failed.json',{...state,error:String(outcome.reason)});throw outcome.reason;}
 assert.deepEqual(sourceEvidence(root),source);assert.equal(sha(fs.readFileSync(nativeSource)),nativeHostSha256);assert.equal(sha(fs.readFileSync(originalSource)),originalNativeHostSha256);assert.equal(sha(fs.readFileSync(compiler.path)),compiler.sha256);
 Object.assign(state,{complete:true,sourceUnchanged:true,tests:94,localMetadataSources:3,nativeParticipants:7,releaseReady:false,v1GatesOpen:13,finishedAt:new Date().toISOString(),scope:'Complete original Native metadata/cold/restore/reference/provider/V1/V2 byte tests plus source-owned selected server/inventory byte coupling. Real seven-participant cases preserve three locally complete raster payloads while server upload state remains Pending. One captures the original selected server; another actually publishes document changes, rejects stale old server/inventory for the new controller, and captures exact advanced files through genuine Native continuation. Every Blob role is saved and rebuilt from files before genuine Native client inspection offline. Copied readers fail before callbacks; component checks refuse rehashed slot corruption and ended reader lifetimes. Server byte/frame admission is historical DATA, not browser-side Native server replay, current authority, accepted-head agreement, protected credentials or a serving role. Full reconciliation, authenticated restoration/activation, opaque-host Ready, independent generations and thirteen V1/parity gates remain required.'});
-saveEvidence(directory+'/result.json',state);saveEvidence(join(root,'target/local-metadata-server-bytes-installed-consumer.json'),state);console.log(JSON.stringify({passed:true,directory,tests:94,workspaceLinks:false,sourceUnchanged:true}));
+saveEvidence(directory+'/result.json',state);saveMetadataRecoveryEvidence(root,'serverBytes',state);console.log(JSON.stringify({passed:true,directory,tests:94,workspaceLinks:false,sourceUnchanged:true}));

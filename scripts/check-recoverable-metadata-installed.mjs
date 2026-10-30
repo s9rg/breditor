@@ -8,6 +8,7 @@ import {createHash} from 'node:crypto';
 import {join,dirname,resolve,relative} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {sourceEvidence,saveEvidence} from './candidate-release/evidence.mjs';
+import {saveMetadataRecoveryEvidence} from './metadata-recovery-artifacts.mjs';
 import {executeCandidateStage} from './candidate-release/process.mjs';
 import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
@@ -63,4 +64,4 @@ const outcomes=await Promise.allSettled(checks.map(async check=>{
 for(const outcome of outcomes)if(outcome.status==='rejected'){saveEvidence(directory+'/failed.json',{...state,error:String(outcome.reason)});throw outcome.reason;}
 assert.deepEqual(sourceEvidence(root),source);assert.equal(sha(fs.readFileSync(nativeSource)),nativeHostSha256);assert.equal(sha(fs.readFileSync(originalSource)),originalNativeHostSha256);assert.equal(sha(fs.readFileSync(compiler.path)),compiler.sha256);
 Object.assign(state,{complete:true,sourceUnchanged:true,tests:88,localMetadataSources:3,nativeParticipants:7,releaseReady:false,v1GatesOpen:13,finishedAt:new Date().toISOString(),scope:'All original Native metadata/cold/restore/reference/provider and V1 materialization tests plus the separately framed V2 complete local/provider raster union. The real native server lacks a third PNG held durably in all three local-source upload archives and pending proposal/revision packets. Original provider availability and V1 materialization remain Pending. V2 preserves all three raster payloads, all fourteen whole-upload roles and every native reference while retaining missing server-upload state without ACK, cache writes or storage references. Genuine older-cut Native inspection works offline, preserves Pending, and refuses a rehashed archive omitting the local-only payload. Both original frame scope and strict public metadata type are unchanged. Controlled Node storage and exact PNG fixture decoders; no current serving or activation authority is granted. Actual current server/inventory coupling, fresh full reconciliation, opaque-host Ready, independent generations and thirteen V1/parity gates remain required.'});
-saveEvidence(directory+'/result.json',state);saveEvidence(join(root,'target/local-metadata-recoverable-union-installed-consumer.json'),state);console.log(JSON.stringify({passed:true,directory,tests:88,workspaceLinks:false,sourceUnchanged:true}));
+saveEvidence(directory+'/result.json',state);saveMetadataRecoveryEvidence(root,'recoverable',state);console.log(JSON.stringify({passed:true,directory,tests:88,workspaceLinks:false,sourceUnchanged:true}));

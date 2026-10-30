@@ -4,6 +4,7 @@ import {homedir} from "node:os";
 import {resolve,dirname} from "node:path";
 import {fileURLToPath} from "node:url";
 import {candidateRuntimePaths} from "../candidate-runtime-paths.mjs";
+import {metadataRecoveryArtifacts} from '../metadata-recovery-artifacts.mjs';
 export const repository=resolve(dirname(fileURLToPath(import.meta.url)),"../..");
 export const deferredFunctionalGates=Object.freeze([
  "default-package-release-matrix","installed-editor-browser-matrix",
@@ -469,15 +470,16 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   stage('local-metadata-materialization-native',node,['--test','scripts/metadata-materialization-opaque-native.test.mjs','scripts/metadata-materialization-content-addressed-native.test.mjs','scripts/metadata-materialization-remote-content-native.test.mjs','scripts/metadata-materialization-inspection-native.test.mjs','scripts/metadata-materialization-inspection-close-native.test.mjs'],{},[],7200000),
   script('installed-local-metadata-materialization','check-local-metadata-materialization-installed.mjs',[],[{path:'target/local-metadata-materialization-installed-consumer.json',fresh:true}],7800000),
   stage('recoverable-metadata-plan-contracts',node,['--test','scripts/recoverable-metadata-candidate-plan.test.mjs']),
+  stage('metadata-recovery-artifact-contracts',node,['--test','scripts/metadata-recovery-artifacts.test.mjs']),
   stage('recoverable-metadata-private-types',node,['node_modules/typescript/bin/tsc','--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM','scripts/fixtures/editor-consumer/types-recoverable-local-assets.ts']),
   stage('recoverable-metadata-frame-contracts',node,['--test','scripts/recoverable-local-assets.test.mjs','scripts/metadata-raster-archive.test.mjs']),
   stage('recoverable-metadata-local-only-native',node,['--test','scripts/metadata-materialization-local-only-native.test.mjs'],{},[],3600000),
-  script('installed-recoverable-metadata','check-recoverable-metadata-installed.mjs',[],[{path:'target/recoverable-metadata-installed-consumer.json',fresh:true}],7800000),
+  script('installed-recoverable-metadata','check-recoverable-metadata-installed.mjs',[],[{path:metadataRecoveryArtifacts.recoverable,fresh:true}],7800000),
   stage('metadata-server-bytes-plan-contracts',node,['--test','scripts/metadata-server-bytes-candidate-plan.test.mjs']),
   stage('metadata-server-bytes-private-types',node,['node_modules/typescript/bin/tsc','--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM','scripts/fixtures/editor-consumer/types-metadata-recovery-bytes.ts']),
   stage('metadata-server-bytes-component-contracts',node,['--test','scripts/recovery-server-bytes-contracts.test.mjs']),
   stage('metadata-server-bytes-native',node,['--test','scripts/metadata-recovery-bytes-same-server-native.test.mjs','scripts/metadata-recovery-bytes-advanced-server-native.test.mjs'],{},[],3600000),
-  script('installed-metadata-server-bytes','check-metadata-server-bytes-installed.mjs',[],[{path:'target/metadata-server-bytes-installed-consumer.json',fresh:true}],7800000),
+  script('installed-metadata-server-bytes','check-metadata-server-bytes-installed.mjs',[],[{path:metadataRecoveryArtifacts.serverBytes,fresh:true}],7800000),
   stage('native-version-delivery-plan-contracts',node,['--test','scripts/native-version-delivery-candidate-plan.test.mjs']),
   stage('native-version-delivery-private-types',node,['node_modules/typescript/bin/tsc','--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM','scripts/fixtures/editor-consumer/types-native-version-delivery.ts']),
   stage('native-version-delivery-functional',node,['--test','scripts/native-version-delivery.test.mjs','scripts/native-version-delivery-failures.test.mjs','scripts/native-version-selected-room.test.mjs'],{},[],1800000),

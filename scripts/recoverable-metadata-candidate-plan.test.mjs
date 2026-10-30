@@ -5,5 +5,5 @@ for(const profile of ['functional','full'])test(profile+': complete recoverable 
   assert.ok(rows.has(id),id);assert.notEqual(rows.get(id).required,false);for(const dependency of ['collaboration-build','rich-browser-build','native-suggestion-room-host'])assert.ok(rows.get(dependency).index<rows.get(id).index);
  }
  assert.ok(rows.has('installed-local-metadata-materialization'));assert.ok(rows.get('recoverable-metadata-local-only-native').index<rows.get('installed-recoverable-metadata').index);
- assert.deepEqual(rows.get('installed-recoverable-metadata').artifacts,[{path:'target/recoverable-metadata-installed-consumer.json',fresh:true}]);assert.ok(rows.get('installed-recoverable-metadata').timeoutMs>=7200000);assert.equal(plan.v1Ready,false);
+ assert.deepEqual(rows.get('installed-recoverable-metadata').artifacts,[{path:'target/local-metadata-recoverable-union-installed-consumer.json',fresh:true}]);assert.ok(rows.get('installed-recoverable-metadata').timeoutMs>=7200000);assert.equal(plan.v1Ready,false);
 });
