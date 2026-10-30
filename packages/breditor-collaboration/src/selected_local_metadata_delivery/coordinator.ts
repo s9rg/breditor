@@ -12,6 +12,8 @@ import {detachLocalMetadataRecoverableBundle} from '../selected_local_metadata_a
 import {prepareLocalMetadataRecoveryBytesInput} from '../selected_local_metadata_assets/recovery_bytes_input.js';
 import {detachLocalMetadataRecoveryBytesBundle} from '../selected_local_metadata_assets/recovery_bytes_bundle.js';
 import type {LocalMetadataRecoveryBytesInput,LocalMetadataRecoveryBytesOutcome,LocalMetadataRecoveryBytesBundle,LocalMetadataRecoveryBytesInspection} from '../selected_local_metadata_assets/recovery_bytes_contract.js';
+import {prepareLocalMetadataReconciliationInput} from '../selected_local_metadata_assets/reconciliation_input.js';
+import type {LocalMetadataReconciliationInput,LocalMetadataReconciliationRead} from '../selected_local_metadata_assets/reconciliation_contract.js';
 import {detachLocalMetadataBundle} from './bundle.js';
 import {readMetadataBundle,inspectMetadataResume} from './resume_inspection.js';
 import {metadataResumeChoice} from './resume_policy.js';
@@ -165,6 +167,12 @@ export class SelectedLocalMetadataDelivery{
  captureAssetAvailability(host:LocalMetadataAssetAvailabilityHost):Promise<LocalMetadataAssetAvailabilityBundle>{
   let result:LocalMetadataAssetAvailabilityBundle|undefined;
   return this.#captureReferenceOperation(async work=>{result=await work.availability(host);this.#current();},()=>{localMetadataAvailabilityHost(host);}).then(()=>{if(!result)throw fail();return result;});
+ }
+ /** Same-cut reconciliation reads actual local review affiliation and all
+  * source metadata queues. Original unbound diagnostics remain unchanged. */
+ captureReconciliation(provided:LocalMetadataReconciliationInput):Promise<LocalMetadataReconciliationRead>{
+  let input!:ReturnType<typeof prepareLocalMetadataReconciliationInput>,result:LocalMetadataReconciliationRead|undefined;
+  return this.#captureReferenceOperation(async work=>{this.#current();if(!this.#snapshot)throw fail();result=await work.reconcile(input,this.#snapshot);this.#current();},()=>{input=prepareLocalMetadataReconciliationInput(provided);}).then(()=>{if(!result)throw fail();return result;});
  }
  /** Source-owned immutable raster bytes for the complete Native/provider and
   * whole-upload union. Transport reads neither mutate caches nor ACK queues. */

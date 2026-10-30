@@ -6,7 +6,7 @@ import {join} from 'node:path';
 import {candidateReleasePlan} from './candidate-release/plan.mjs';
 import {fileEvidence} from './candidate-release/evidence.mjs';
 import {metadataRecoveryArtifacts,saveMetadataRecoveryEvidence} from './metadata-recovery-artifacts.mjs';
-for(const profile of ['functional','full'])for(const [kind,id]of [['recoverable','installed-recoverable-metadata'],['serverBytes','installed-metadata-server-bytes']])test(profile+': installed '+kind+' result is the exact fresh release artifact',()=>{
+for(const profile of ['functional','full'])for(const [kind,id]of [['recoverable','installed-recoverable-metadata'],['serverBytes','installed-metadata-server-bytes'],['reconciliation','installed-metadata-reconciliation']])test(profile+': installed '+kind+' result is the exact fresh release artifact',()=>{
  const root=mkdtempSync('/private/tmp/breditor-recovery-artifact-contract-');mkdirSync(join(root,'target'));
  try{const plan=candidateReleasePlan({profile}),row=plan.checks.find(row=>row.id===id),artifact=row.artifacts[0],value={complete:true,sourceUnchanged:true,producer:kind};
   assert.deepEqual(artifact,{path:metadataRecoveryArtifacts[kind],fresh:true});

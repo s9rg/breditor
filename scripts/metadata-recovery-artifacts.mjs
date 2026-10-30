@@ -5,6 +5,7 @@ import {saveEvidence} from './candidate-release/evidence.mjs';
 export const metadataRecoveryArtifacts=Object.freeze({
  recoverable:'target/local-metadata-recoverable-union-installed-consumer.json',
  serverBytes:'target/local-metadata-server-bytes-installed-consumer.json',
+ reconciliation:'target/local-metadata-reconciliation-installed-consumer.json',
 });
 export function saveMetadataRecoveryEvidence(root,kind,evidence){
  if(!Object.hasOwn(metadataRecoveryArtifacts,kind))throw Error('Choose a registered metadata recovery artifact');

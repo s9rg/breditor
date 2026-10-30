@@ -1,5 +1,19 @@
 # Breditor V1 release preparation
 
+[Same-owner Native/metadata/provider reconciliation](LOCAL_METADATA_RECONCILIATION.md)
+now passes 83 staged and 83 independently installed checks. Real managed image
+uploads, fresh authenticated resume and two delivery passes across all seven
+families produce a separately named checked result with no pending work. Original
+unbound-local diagnostics retain their Pending meaning. Ordinary editing remains
+excluded during genuine retained-catalog loans; its separate repair passes 75
+native tests. Exact executed sources, packages and actual records have verified
+read-back proof indexes.
+
+Post-ACK cold client/source recovery, complete remote metadata/historical packet
+retention, current recovery-byte closure, independent comment/server-log generation
+qualification and authenticated whole-room activation remain. All thirteen V1
+gates stay open; complete release profiles have not been run.
+
 [Selected server/inventory recovery bytes](COUPLED_SERVER_RECOVERY_BYTES.md)
 now stay coupled to the complete Native client, metadata and local/provider image
 bytes. The [qualification](qualification/2026-10-30-coupled-server-recovery.json)

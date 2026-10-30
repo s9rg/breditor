@@ -1,0 +1,58 @@
+{
+  "format": "breditor/local-metadata-reconciliation-qualification",
+  "formatVersion": 1,
+  "functionalPassed": true,
+  "releaseReady": false,
+  "v1GatesOpen": 13,
+  "v1GatesClosed": 0,
+  "baseCommit": "2561abe93b8ea29102e8139e4c383be3e26adf4f",
+  "qualifiedSource": {
+    "commit": "2561abe93b8ea29102e8139e4c383be3e26adf4f",
+    "dirty": true,
+    "sha256": "6f203aeb2a3e11342d509bf921b74360403dc6ef5e36a125c87dc9ad853ae27f",
+    "files": 7705,
+    "bytes": 57774753
+  },
+  "sourceUnchangedDuringInstalledQualification": true,
+  "sdkLogicAndTestsUnchangedAfterQualification": true,
+  "stagedNativeChecks": 83,
+  "mainFocusedChecks": 20,
+  "candidateRunnerChecks": 68,
+  "finalPlanChecks": 9,
+  "finalPlanChecksRepeatFocusedSubset": true,
+  "installedChecks": 83,
+  "strictInstalledStages": 1,
+  "nativeParticipants": 7,
+  "localMetadataSources": 3,
+  "actualManagedUploadAcksPerWorkflow": 3,
+  "authenticatedDeliveryPassesPerWorkflow": 2,
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "nativeHostSha256": "60427bb794f52c39a7084fac797f8f3150501238c45c78bad6195cd928a252ca",
+  "originalNativeHostSha256": "c224c4d39d5f603dcb3815ebc58c1719b59b4d6db6fe554e675f91d4cab46ea7",
+  "versionHostSha256": "693e4d465867518e34cfc248d5de2bea54d3babba188dd935d92c728e11fd67d",
+  "rootHostSha256": "95c046cc39eead5d13ffc1d6238078d2f73594446e4b8579de2b8c8de03f6f6a",
+  "scope": "Same held Native/source cut, genuine separately bound local review prefixes and receipts, every selected source outbound metadata queue, complete dependency and current provider availability. Actual image ACKs and fresh authenticated same-live-owner resume precede two delivery passes across all7families. Final separately named reconciliation is checked with no pending work; original unbound-local diagnostic remains Pending.",
+  "limits": [
+    "Current Native inventory declares metadata bindings, not exact current server catalog/receipt containment or complete remote historical-packet retention.",
+    "The same-live-owner ACK/resume workflow does not prove post-ACK client cold restart or backend activation.",
+    "Availability/reference DATA does not confer serving rights or install receipts."
+  ],
+  "proof": {
+    "path": "target/local-metadata-reconciliation-qualified-proof-GFy4On",
+    "indexSha256": "0d110ea2428a9b6dc88d4537c2d76125a90727e915c95bf2b2d78a835cabaea1",
+    "references": 614,
+    "uniqueFiles": 427,
+    "logicalBytes": 102867293,
+    "deduplicatedBytes": 55167245,
+    "nativeArtifactReferences": 432,
+    "providerWorkflows": 2,
+    "readBackVerified": true
+  },
+  "remaining": [
+    "Post-ACK client cold restart with all offline native lanes and durable metadata/upload facts",
+    "Complete remote metadata catalogs/historical packets and current recovery-byte closure",
+    "Independent comment/server-log generation qualification and authenticated coordinated whole-room restore/activation",
+    "All13 V1/parity gates and complete release profiles remain open"
+  ],
+  "finishedAt": "2026-10-30T18:45:30.578Z"
+}
