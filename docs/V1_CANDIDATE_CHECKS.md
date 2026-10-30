@@ -1,5 +1,22 @@
 # V1 candidate checks
 
+The [native-held revision delivery contract](NATIVE_REVISION_DELIVERY.md)
+now executes original outboxes through their genuine parent suggestion queue
+loan, retaining real supersession/conflict receipts and exact immutable packets.
+The [qualification](qualification/2026-10-29-native-revision-delivery.json) passes
+1,049 direct checks and 475 independently installed checks, including all six
+bound source families, owned/unowned child acceptance, permanent observers,
+receipt/bridge failures, lost replies, competing revisions and actual parent/child
+retirement. Two prepared seven-family room workflows settle all four bound
+version, suggestion and revision stores and cold-reopen future document/comment
+Undo/Redo. An accepted-predecessor history gap was reproduced in six families
+and repaired in both ordinary and native revision discovery.
+
+The three local-lane metadata bindings, complete provider/client/historical-copy
+and asset reconciliation, and joint authenticated activation remain required.
+Full candidate profiles were not run; all thirteen V1/parity gates remain open.
+No package version, push, publication, tag or deployment changed.
+
 The [native-held suggestion delivery contract](NATIVE_SUGGESTION_DELIVERY.md)
 now executes original queued packets and decisions through genuine author or
 permanent-observer transports while ordinary editing remains excluded. Its

@@ -58,8 +58,9 @@ and authenticated lazy packet caching. The same files run from fresh package
 archives with locked dependencies and no workspace links. Complete-room
 coverage also exercises prepared metadata while retaining pending revisions.
 
-All thirteen V1 gates remain open. Revision-outbox settlement under native
-custody, explicit metadata bindings for the three local source lanes,
+The [native revision path](NATIVE_REVISION_DELIVERY.md) now shares this exact
+queue loan and drains revision children before parent close. All thirteen V1
+gates remain open. Explicit metadata bindings for the three local source lanes,
 complete provider/client/historical-copy and asset reconciliation, and
 authenticated joint activation remain required. These checks do not qualify
 physical browser durability, accessibility, or the historical WebKit fault.

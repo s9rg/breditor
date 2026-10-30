@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {pixel,secondPixel,secondAsset} from '../review-assets/pixels.mjs';
 
 const offlineEndpoint='ws://127.0.0.1:1/ws';
-export async function generationParticipant({api,rich,profile,fixture,client,kind,tag,counts,edit=true,paired=true,principal=client.principal,documentCheckpoint=client.documentCheckpoint,reviewCheckpoint=client.reviewCheckpoint,readOnly,changeBinding,changeRetained,extraVersions=false,endpoint=offlineEndpoint}) {
+export async function generationParticipant({api,rich,profile,fixture,client,kind,tag,counts,edit=true,paired=true,principal=client.principal,documentCheckpoint=client.documentCheckpoint,reviewCheckpoint=client.reviewCheckpoint,readOnly,changeBinding,changeRetained,prepareGeneration,extraVersions=false,endpoint=offlineEndpoint}) {
  const metadata=JSON.parse(fixture.inventoryJson),room=metadata.room.document,writer=client.writer;
  readOnly??=client.observer||metadata.accounts.find(row=>row.principal===client.principal).documentRole===null;
  const review=paired?{actor:client.actor,principal,access:readOnly?'read_only':'comment'}:undefined;
@@ -23,8 +23,11 @@ export async function generationParticipant({api,rich,profile,fixture,client,kin
   if(kind==='retained'){
    const getToken=()=>{counts.networkCalls++;throw Error('No network for historical generation inventory');},request=async()=>getToken(),transport={checkSuggestionQueue(){},checkSuggestionRevisions(){},requestSuggestionRevision:request,requestSuggestion:request,refreshDocument:request,connect:request,flush:request,suggestionRevisionsReady:()=>false,subscribe:()=>()=>{},suggestionState:()=>({revision:'0',documentRevision:'0'}),state:()=>({status:'offline'})};
    const versions=await h.session.openVersionCatalog({getToken});versions.saveVersion('Retained published-version candidate','2');await versions.flush();
-   if(fixture.atomic){const queue=await h.session.openSuggestionQueue(),revisions=await h.session.openSuggestionRevisions({transport}),draft=text=>({scope:'commands',edit:{kind:'commands',data:[{kind:'insert_text',data:{block:'p',offset:0,text}}]}});const proposal=queue.propose('Pending generation proposal','3',draft('Proposal text '));revisions.revise({previousSuggestionId:proposal.id,title:'Pending immutable generation revision',createdAtMs:'4',draft:draft('Revision text ')});await revisions.flush();}
-  }
+   if(fixture.atomic){const queue=await h.session.openSuggestionQueue(),revisions=await h.session.openSuggestionRevisions({transport}),draft=text=>({scope:'commands',edit:{kind:'commands',data:[{kind:'insert_text',data:{block:'p',offset:0,text}}]}});const proposal=queue.propose('Pending generation proposal','3',draft('Proposal text '));revisions.revise({previousSuggestionId:proposal.id,title:'Pending immutable generation revision',createdAtMs:'4',draft:draft('Revision text ')});await revisions.flush();
+    // Explicit opt-in seed on this genuine retained source, before its backup.
+    await prepareGeneration?.({source:h.session,versions,suggestions:queue,revisions});
+   }else if(prepareGeneration)throw Error('Retained metadata preparation requires atomic suggestions');
+  }else if(prepareGeneration)throw Error('Retained metadata preparation requires a retained source');
   await h.session.flush();
   if(edit){if(!readOnly)await h.session.sealGeneration(tag+'-two');else if(client.observer)await h.session.sealObserverGeneration(tag+'-two');}
   h.uploads=await rich.RichAssetStore.open(tag+'-uploads');await h.uploads.ingest(new Blob([pixel],{type:'image/png'}));await h.uploads.ingest(new Blob([secondPixel],{type:'image/png'}));await h.uploads.cancel(secondAsset);

@@ -1,0 +1,594 @@
+{
+  "format": "breditor/native-revision-delivery-qualification",
+  "formatVersion": 1,
+  "functionalPassed": true,
+  "releaseReady": false,
+  "v1GatesOpen": 13,
+  "v1GatesClosed": 0,
+  "baseCommit": "fd057d4f95316d10fd033468f2430ac6dce935b9",
+  "qualifiedSource": {
+    "commit": "fd057d4f95316d10fd033468f2430ac6dce935b9",
+    "dirty": true,
+    "sha256": "53a509d319767e3a0a4359b2a1361c51251f2abd1130e0c0b2157f2fa2d77f17",
+    "files": 7569,
+    "bytes": 57088486
+  },
+  "sourceUnchangedDuringQualification": true,
+  "logicAndTestsUnchangedAfterQualification": true,
+  "scope": "Original immutable revision outboxes share their genuine parent suggestion queue loan and fresh authenticated transport while native recovery remains held. Successful supersession, original queue bridging, owned/unowned child acceptance, permanent observers, interrupted writes, competing winners, exact cold histories and parent/child lifetime are qualified. Revision conflict discovery now retains the real accepting predecessor in the original queue and native owned Undo before acknowledging the dependent conflict, even without a running base suggestion sync.",
+  "directTests": 1049,
+  "nestedInstalledTests": 475,
+  "directBreakdown": {
+    "newNativeRevisionCases": 176,
+    "nativeSuggestionRegression": 193,
+    "heldMetadataAndWholeRoom": 81,
+    "nativeVersionRegression": 73,
+    "nativeOwnedIngressAndPerCallWork": 25,
+    "existingNativeDeliveryAndMetadata": 106,
+    "generationOperatorLaws": 109,
+    "candidatePlanVerifierAndStorage": 286
+  },
+  "nativeRevisionAuthorPolicies": 72,
+  "nativeRevisionObserverPolicies": 36,
+  "actualFailureCases": 36,
+  "actualParentChildLifetimeCases": 24,
+  "acceptedPredecessorHistoryCases": 6,
+  "newCompleteRoomCases": 2,
+  "boundMetadataSourcesSettled": 4,
+  "strictSourceTypeStages": 10,
+  "strictInstalledTypeStages": 2,
+  "authenticatedOrdinaryMetadataPolicies": {
+    "versions": 4,
+    "ownedSuggestions": 6,
+    "revisions": 6,
+    "standaloneAcceptedPredecessorHistory": 6,
+    "observers": 6
+  },
+  "stages": [
+    {
+      "id": "native-version-delivery-private-types",
+      "status": "passed",
+      "startedAt": "2026-10-30T00:48:39.174Z",
+      "finishedAt": "2026-10-30T00:48:41.384Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-native-revisions-hJr7QG/qualified-MgxFyr/native-version-delivery-private-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "selected-room-storage-private-types",
+      "status": "passed",
+      "startedAt": "2026-10-30T00:48:39.201Z",
+      "finishedAt": "2026-10-30T00:48:43.967Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-native-revisions-hJr7QG/qualified-MgxFyr/selected-room-storage-private-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "delivery-journal-resume-private-types",
+      "status": "passed",
+      "startedAt": "2026-10-30T00:48:39.225Z",
+      "finishedAt": "2026-10-30T00:48:46.159Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-native-revisions-hJr7QG/qualified-MgxFyr/delivery-journal-resume-private-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "local-review-restore-private-types",
+      "status": "passed",
+      "startedAt": "2026-10-30T00:48:39.208Z",
+      "finishedAt": "2026-10-30T00:48:47.725Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-native-revisions-hJr7QG/qualified-MgxFyr/local-review-restore-private-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "native-revision-delivery-private-types",
+      "status": "passed",
+      "startedAt": "2026-10-30T00:48:39.178Z",
+      "finishedAt": "2026-10-30T00:48:49.200Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-native-revisions-hJr7QG/qualified-MgxFyr/native-revision-delivery-private-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "native-owned-suggestion-private-types",
+      "status": "passed",
+      "startedAt": "2026-10-30T00:48:39.175Z",
+      "finishedAt": "2026-10-30T00:48:51.441Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-native-revisions-hJr7QG/qualified-MgxFyr/native-owned-suggestion-private-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "local-review-delivery-private-types",
+      "status": "passed",
+      "startedAt": "2026-10-30T00:48:39.209Z",
+      "finishedAt": "2026-10-30T00:48:53.381Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-native-revisions-hJr7QG/qualified-MgxFyr/local-review-delivery-private-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "native-suggestion-delivery-private-types",
+      "status": "passed",
+      "startedAt": "2026-10-30T00:48:39.177Z",
+      "finishedAt": "2026-10-30T00:48:55.323Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-native-revisions-hJr7QG/qualified-MgxFyr/native-suggestion-delivery-private-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "held-metadata-private-types",
+      "status": "passed",
+      "startedAt": "2026-10-30T00:48:39.172Z",
+      "finishedAt": "2026-10-30T00:48:56.920Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-native-revisions-hJr7QG/qualified-MgxFyr/held-metadata-private-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "strict-integrated-build-types",
+      "status": "passed",
+      "startedAt": "2026-10-30T00:48:39.226Z",
+      "finishedAt": "2026-10-30T00:48:58.241Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-native-revisions-hJr7QG/qualified-MgxFyr/strict-integrated-build-types.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "native-fixture-format",
+      "status": "passed",
+      "startedAt": "2026-10-30T00:48:39.168Z",
+      "finishedAt": "2026-10-30T00:48:59.831Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 0,
+      "logPath": "/private/tmp/breditor-native-revisions-hJr7QG/qualified-MgxFyr/native-fixture-format.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests": 0
+    },
+    {
+      "id": "native-owned-suggestion-functional",
+      "status": "passed",
+      "startedAt": "2026-10-30T00:48:39.175Z",
+      "finishedAt": "2026-10-30T00:49:01.174Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 5861,
+      "logPath": "/private/tmp/breditor-native-revisions-hJr7QG/qualified-MgxFyr/native-owned-suggestion-functional.log",
+      "logSha256": "2e1aa88fd5f68c12051d1f3042d405f93d3e8424b20af1beacfdf23ccee51e2a",
+      "tests": 25
+    },
+    {
+      "id": "all-generation-operator-sdk-laws",
+      "status": "passed",
+      "startedAt": "2026-10-30T00:48:39.231Z",
+      "finishedAt": "2026-10-30T00:49:02.642Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 18167,
+      "logPath": "/private/tmp/breditor-native-revisions-hJr7QG/qualified-MgxFyr/all-generation-operator-sdk-laws.log",
+      "logSha256": "72594d3286d78ba631c6a38fb21ac574a6c9f9a598a2d873199b2cd8b425d0fa",
+      "tests": 109
+    },
+    {
+      "id": "all-candidate-plan-verifier-and-native-storage-laws",
+      "status": "passed",
+      "startedAt": "2026-10-30T00:48:39.242Z",
+      "finishedAt": "2026-10-30T00:49:04.082Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 68261,
+      "logPath": "/private/tmp/breditor-native-revisions-hJr7QG/qualified-MgxFyr/all-candidate-plan-verifier-and-native-storage-laws.log",
+      "logSha256": "0c085d0b548402945b5b037e265e98ec34115ffc12eebe80be87b25d512592c3",
+      "tests": 286
+    },
+    {
+      "id": "ordinary-observer-source",
+      "status": "passed",
+      "startedAt": "2026-10-30T00:48:39.171Z",
+      "finishedAt": "2026-10-30T00:49:09.465Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 1397,
+      "logPath": "/private/tmp/breditor-native-revisions-hJr7QG/qualified-MgxFyr/ordinary-observer-source.log",
+      "logSha256": "a950b8bd8e49aff3424cac8841f5117946fe9c11ca26efe19d326d15b21c3b4b",
+      "tests": 0
+    },
+    {
+      "id": "metadata-version-source",
+      "status": "passed",
+      "startedAt": "2026-10-30T00:48:39.192Z",
+      "finishedAt": "2026-10-30T00:49:21.458Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 1367,
+      "logPath": "/private/tmp/breditor-native-revisions-hJr7QG/qualified-MgxFyr/metadata-version-source.log",
+      "logSha256": "9037d239cd851f0de6ff466334aed28e31b6bc58ea86413ca7645e91d528803e",
+      "tests": 0
+    },
+    {
+      "id": "native-delivery-and-metadata-regressions",
+      "status": "passed",
+      "startedAt": "2026-10-30T00:48:39.227Z",
+      "finishedAt": "2026-10-30T00:49:46.436Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 31774,
+      "logPath": "/private/tmp/breditor-native-revisions-hJr7QG/qualified-MgxFyr/native-delivery-and-metadata-regressions.log",
+      "logSha256": "359d86f8f3e70b07d1b842d15598f0347cdb1eb76f6c692c5794e2d8708240ac",
+      "tests": 106
+    },
+    {
+      "id": "metadata-owned-suggestions-source",
+      "status": "passed",
+      "startedAt": "2026-10-30T00:48:39.196Z",
+      "finishedAt": "2026-10-30T00:50:24.848Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 1779,
+      "logPath": "/private/tmp/breditor-native-revisions-hJr7QG/qualified-MgxFyr/metadata-owned-suggestions-source.log",
+      "logSha256": "f9a73fe031db986acb13fedaec4c243b261c7a4465ce5aaec0a1d62482b9a9e3",
+      "tests": 0
+    },
+    {
+      "id": "metadata-revisions-source",
+      "status": "passed",
+      "startedAt": "2026-10-30T00:48:39.197Z",
+      "finishedAt": "2026-10-30T00:51:07.101Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 3544,
+      "logPath": "/private/tmp/breditor-native-revisions-hJr7QG/qualified-MgxFyr/metadata-revisions-source.log",
+      "logSha256": "a113cfdc5be62b2126498a6eb2acc1676ac4176cd79225ef3b7f72858d392e68",
+      "tests": 0
+    },
+    {
+      "id": "native-version-delivery-functional",
+      "status": "passed",
+      "startedAt": "2026-10-30T00:48:39.173Z",
+      "finishedAt": "2026-10-30T00:53:03.138Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 64777,
+      "logPath": "/private/tmp/breditor-native-revisions-hJr7QG/qualified-MgxFyr/native-version-delivery-functional.log",
+      "logSha256": "65568d39959b23b3355a644d1fc8fd63708ad4f162a1184d34f422444d5200ef",
+      "tests": 73
+    },
+    {
+      "id": "held-metadata-functional",
+      "status": "passed",
+      "startedAt": "2026-10-30T00:48:39.172Z",
+      "finishedAt": "2026-10-30T00:53:33.079Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 71715,
+      "logPath": "/private/tmp/breditor-native-revisions-hJr7QG/qualified-MgxFyr/held-metadata-functional.log",
+      "logSha256": "379f7ba389fd939b96e90b07d666217c54653c9459450caf7fb19ca2e1e8093f",
+      "tests": 81
+    },
+    {
+      "id": "native-suggestion-delivery-functional",
+      "status": "passed",
+      "startedAt": "2026-10-30T00:48:39.176Z",
+      "finishedAt": "2026-10-30T00:53:34.716Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 174385,
+      "logPath": "/private/tmp/breditor-native-revisions-hJr7QG/qualified-MgxFyr/native-suggestion-delivery-functional.log",
+      "logSha256": "a0241096dc5b6ed6d8b177b59ad52eed54690337d12ba6dea2af6b88e3e1b2f4",
+      "tests": 193
+    },
+    {
+      "id": "installed-held-metadata",
+      "status": "passed",
+      "startedAt": "2026-10-30T00:48:39.174Z",
+      "finishedAt": "2026-10-30T00:53:39.033Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 307,
+      "logPath": "/private/tmp/breditor-native-revisions-hJr7QG/qualified-MgxFyr/installed-held-metadata.log",
+      "logSha256": "f39b5077c43df2a448d5d8cea8e3d9ece1b8fd96877de40052a5b1c6f7531818",
+      "tests": 0
+    },
+    {
+      "id": "native-revision-delivery-functional",
+      "status": "passed",
+      "startedAt": "2026-10-30T00:48:39.178Z",
+      "finishedAt": "2026-10-30T00:57:36.932Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 222716,
+      "logPath": "/private/tmp/breditor-native-revisions-hJr7QG/qualified-MgxFyr/native-revision-delivery-functional.log",
+      "logSha256": "6835b60d829d8a1d8f738b3c9ba5e1f630aef0339a4894cb4d91fe6d79cdf7b3",
+      "tests": 176
+    },
+    {
+      "id": "installed-native-revision-delivery",
+      "status": "passed",
+      "startedAt": "2026-10-30T00:48:39.179Z",
+      "finishedAt": "2026-10-30T00:57:42.869Z",
+      "exitCode": 0,
+      "signal": null,
+      "logBytes": 300,
+      "logPath": "/private/tmp/breditor-native-revisions-hJr7QG/qualified-MgxFyr/installed-native-revision-delivery.log",
+      "logSha256": "33a46a751ac099b8b9317815794514e7bf5461a4d5ce705084e60f5b190dba80",
+      "tests": 0
+    }
+  ],
+  "installed": [
+    {
+      "resultPath": "/private/tmp/breditor-held-metadata-installed-M3Z4FT/result.json",
+      "workspaceLinks": false,
+      "registryArtifacts": 45,
+      "archives": [
+        {
+          "name": "@breditor/browser",
+          "path": "/private/tmp/breditor-held-metadata-installed-M3Z4FT/archives/breditor-browser-0.3.0-alpha.22.tgz",
+          "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+        },
+        {
+          "name": "@breditor/experimental-rich-content",
+          "path": "/private/tmp/breditor-held-metadata-installed-M3Z4FT/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+          "sha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15"
+        },
+        {
+          "name": "@breditor/collaboration",
+          "path": "/private/tmp/breditor-held-metadata-installed-M3Z4FT/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+          "sha256": "e42784b62670cbcddb60a7dc1b3d047d28a4d1832ed0524ee01237a4f4f95df5"
+        }
+      ],
+      "results": [
+        {
+          "id": "strict-installed-private-and-public-types",
+          "status": "passed",
+          "startedAt": "2026-10-30T00:49:06.931Z",
+          "finishedAt": "2026-10-30T00:49:07.805Z",
+          "exitCode": 0,
+          "signal": null,
+          "logBytes": 0,
+          "logPath": "/private/tmp/breditor-held-metadata-installed-M3Z4FT/strict-installed-private-and-public-types.log",
+          "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "id": "held-metadata",
+          "status": "passed",
+          "startedAt": "2026-10-30T00:49:06.927Z",
+          "finishedAt": "2026-10-30T00:53:38.513Z",
+          "exitCode": 0,
+          "signal": null,
+          "logBytes": 71739,
+          "logPath": "/private/tmp/breditor-held-metadata-installed-M3Z4FT/held-metadata.log",
+          "logSha256": "2bae831891fa7b2e6f7a747e134becb48d5ac77b0a72e0c920b9c7d3fcd2f6f7"
+        }
+      ],
+      "tests": 81
+    },
+    {
+      "resultPath": "/private/tmp/breditor-native-revision-installed-gxOpu0/result.json",
+      "workspaceLinks": false,
+      "registryArtifacts": 45,
+      "archives": [
+        {
+          "name": "@breditor/browser",
+          "path": "/private/tmp/breditor-native-revision-installed-gxOpu0/archives/breditor-browser-0.3.0-alpha.22.tgz",
+          "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+        },
+        {
+          "name": "@breditor/experimental-rich-content",
+          "path": "/private/tmp/breditor-native-revision-installed-gxOpu0/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+          "sha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15"
+        },
+        {
+          "name": "@breditor/collaboration",
+          "path": "/private/tmp/breditor-native-revision-installed-gxOpu0/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+          "sha256": "e42784b62670cbcddb60a7dc1b3d047d28a4d1832ed0524ee01237a4f4f95df5"
+        }
+      ],
+      "results": [
+        {
+          "id": "strict-installed-private-and-public-types",
+          "status": "passed",
+          "startedAt": "2026-10-30T00:49:08.002Z",
+          "finishedAt": "2026-10-30T00:49:09.371Z",
+          "exitCode": 0,
+          "signal": null,
+          "logBytes": 0,
+          "logPath": "/private/tmp/breditor-native-revision-installed-gxOpu0/strict-installed-private-and-public-types.log",
+          "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "id": "ordinary-installed-observer",
+          "status": "passed",
+          "startedAt": "2026-10-30T00:49:07.912Z",
+          "finishedAt": "2026-10-30T00:49:35.597Z",
+          "exitCode": 0,
+          "signal": null,
+          "logBytes": 1397,
+          "logPath": "/private/tmp/breditor-native-revision-installed-gxOpu0/ordinary-installed-observer.log",
+          "logSha256": "44b083a08d62995aecb9ce22ad7b715238b1b104c7a8368d347e75258bc66359"
+        },
+        {
+          "id": "ordinary-installed-revisions",
+          "status": "passed",
+          "startedAt": "2026-10-30T00:49:07.944Z",
+          "finishedAt": "2026-10-30T00:51:14.910Z",
+          "exitCode": 0,
+          "signal": null,
+          "logBytes": 3544,
+          "logPath": "/private/tmp/breditor-native-revision-installed-gxOpu0/ordinary-installed-revisions.log",
+          "logSha256": "a1d35ddb95a9501ba79e05ac3149722e6a130183576a7a99c6a54074ecf5708a"
+        },
+        {
+          "id": "native-owned-history",
+          "status": "passed",
+          "startedAt": "2026-10-30T00:49:07.896Z",
+          "finishedAt": "2026-10-30T00:57:41.789Z",
+          "exitCode": 0,
+          "signal": null,
+          "logBytes": 402911,
+          "logPath": "/private/tmp/breditor-native-revision-installed-gxOpu0/native-owned-history.log",
+          "logSha256": "e195c758afda4915de6f7d2513c7750fa372379e2907b16355eb12d9926e1c29"
+        }
+      ],
+      "tests": 394
+    }
+  ],
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/native-revision-delivery-qualified-proof-tsZ6bE",
+    "indexSha256": "93e9ffbf9e1377e54e209ad3e7c5155ea3149a140863b44344d5a7aa5a5697ca",
+    "files": 5103,
+    "bytes": 128910487,
+    "allFilesReadBackVerified": true
+  },
+  "actualRetainedEvidence": {
+    "source-revisions": {
+      "direct": 174,
+      "selected": 2
+    },
+    "installed-revisions": {
+      "direct": 174,
+      "selected": 2
+    },
+    "before-conflict-history": {
+      "direct": 6,
+      "selected": 0
+    },
+    "source-suggestions": {
+      "direct": 186,
+      "selected": 1
+    },
+    "installed-suggestions": {
+      "direct": 186,
+      "selected": 1
+    },
+    "source-held": {
+      "direct": 70,
+      "selected": 1
+    },
+    "installed-held": {
+      "direct": 70,
+      "selected": 1
+    },
+    "source-version-regression": {
+      "direct": 72,
+      "selected": 1
+    }
+  },
+  "conflictHistoryRepair": {
+    "beforeReproductions": 6,
+    "beforePass": 0,
+    "beforeFail": 6,
+    "beforeQueueDecisionsRetained": false,
+    "beforeOwnedHistoryRetained": false,
+    "beforeUndoDepth": 1,
+    "afterSourceReproductions": 6,
+    "afterQueueDecisionsRetained": true,
+    "afterOwnedHistoryRetained": true,
+    "afterUndoDepth": 2,
+    "afterColdFutureDocumentAndCommentUndoRedo": true,
+    "ordinaryPublicApiPolicies": 6,
+    "acceptedCommandsRerun": false
+  },
+  "invariants": {
+    "exactOriginalOutboxSourceQueueAndParent": true,
+    "noSecondQueueReservation": true,
+    "parentOpeningSlotsAreDrained": true,
+    "ordinaryEditorQueueAndOutboxRemainExcluded": true,
+    "oneSharedOrdinaryAndNativeRevisionAlgorithm": true,
+    "originalImmutablePredecessorRevisionAndChildPacketsPreserved": true,
+    "realAuthenticatedSupersessionBeforeChildCache": true,
+    "noIndependentChildPublicationFallback": true,
+    "originalSourceAndQueueBeforeSeparateRevisionReceipt": true,
+    "originalAtomicDriverPreserved": true,
+    "perCallStagingAndActualWriteCustody": true,
+    "committedFactsPrecedeAuthorityCheck": true,
+    "receiptFailureAndChildBridgeFailureRetryExactRecords": true,
+    "lostReplyUsesOriginalServerFeed": true,
+    "competingWinnersAndLosingDraftsStayExplicit": true,
+    "acceptedPredecessorHistoryRetainedBeforeConflictReceipt": true,
+    "ownedAndUnownedChildUndoPreserved": true,
+    "oldTransportCallbacksDormantDuringHold": true,
+    "permanentObserverZeroPrefixAndNoAccept": true,
+    "lazyProofDownloadsRemainAvailableWhileOutgoingLaneDisconnected": true,
+    "lazyProofsDeduplicateWithoutLocalDrafts": true,
+    "parentCloseWaitsForActualCommittedWriteCompletion": true,
+    "childDoesNotOwnBorrowedDocumentTransport": true,
+    "nativeContextCancelsLateTokenWithoutOldSocket": true,
+    "reentrantChildCloseLeaksNoLoan": true,
+    "actualFourBoundVersionSuggestionRevisionSettlements": true,
+    "allFourBoundConflictInputsSeededAndChecked": true,
+    "mixedOlderRevisionOutcomesPreserved": true,
+    "successAndFinalDecisionConflictWholeRoomWorkflows": true,
+    "allSevenFutureDocumentAndCommentHistoriesAfterColdOpen": true,
+    "wireFormatsRolesStartupDefaultsPublicExportsAndVersionsPreserved": true
+  },
+  "nativeBaseline": {
+    "freshlyRerunRustSuites": false,
+    "rustSourceChanged": false,
+    "carriedFrom": "docs/qualification/2026-10-29-authenticated-path-owned-work.json",
+    "serverTests": 575,
+    "noServerTests": 273,
+    "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+    "normalWasmUnchanged": true,
+    "actualNativeHostSha256": {
+      "selected_delivery_functional": "c224c4d39d5f603dcb3815ebc58c1719b59b4d6db6fe554e675f91d4cab46ea7",
+      "review_functional": "de3e1cbaafb941ad5288b7615573495199ad59f96d3dfe70891fee92a99bc23a",
+      "suggestions_functional": "920b826c46f1512363bb487ce94aa204a65a6edf8a5b797e63c0cc24f828eb1e",
+      "suggestion_revisions_functional": "84adaf40936ba7ae35bfa76f94906cc2e37da8d6bd8c2410fab6f346e305aa4d",
+      "segmented_relay_functional": "693e4d465867518e34cfc248d5de2bea54d3babba188dd935d92c728e11fd67d",
+      "selected_suggestion_delivery_functional": "60427bb794f52c39a7084fac797f8f3150501238c45c78bad6195cd928a252ca"
+    }
+  },
+  "plans": {
+    "functional": 643,
+    "full": 651,
+    "entirePlansExecuted": false
+  },
+  "limitations": [
+    "This private path executes existing outbox intent only. It does not capture a new revision, grant ordinary mutation, replace source/queue/transport, discard a saved draft or activate a room.",
+    "The three local source lanes still need explicit current metadata bindings; no binding or receipt is inferred from historical data.",
+    "Complete provider/client/historical-copy/assets reconciliation and authenticated joint activation remain required.",
+    "Controlled IndexedDB/WebLocks do not qualify physical browser durability, cross-device fencing, accessibility or performance.",
+    "The historical intermittent WebKit fault remains unconfirmed.",
+    "Complete candidate profiles were not executed; all thirteen V1/parity gates remain open."
+  ],
+  "actions": {
+    "pushed": false,
+    "published": false,
+    "tagged": false,
+    "deployed": false,
+    "packageVersionChanged": false
+  },
+  "finishedAt": "2026-10-30T00:57:43.467Z"
+}

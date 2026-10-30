@@ -36,7 +36,8 @@ and no workspace links.
 This is one part of full room recovery. The [compound metadata preparation path](HELD_METADATA_PREPARATION.md) now opens
 existing atomic children without saving, networking or granting ordinary mutations.
 The [suggestion delivery path](NATIVE_SUGGESTION_DELIVERY.md) now executes
-original queued decisions through held author/observer transports. Revision
-delivery, all-family metadata settlement, fresh provider/client/assets
+original queued decisions through held author/observer transports. The
+[native revision path](NATIVE_REVISION_DELIVERY.md) shares the same original
+queue loan. All-family metadata settlement, fresh provider/client/assets
 reconciliation and authenticated joint activation remain
 required. No full V1 gate is closed by this contract.

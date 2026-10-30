@@ -1,10 +1,13 @@
+import {registerNativeRevisionStore,type NativeRevisionStore,type NativeRevisionSettlement} from './native_store.js';
+import type {NativeSuggestionChild} from '../suggestions/native_child.js';
+import type {NativeSuggestionJob} from '../suggestions/native_queue.js';
 import {selectedHeldMetadataOpen,heldMetadataWork,type HeldMetadataOpen} from '../metadata/held_open.js';
 /** Durable immutable revision outbox borrowing the accepted source, base queue and connection.
  * Children enter the unchanged proposal queue only after authenticated revision commitment. */
 import {RelayWorkCustody} from '../relay/work_custody.js';
 import {SharedRelayError} from "../relay/validation.js";
 import {checkSourceCheckpoint} from "../persistence/source_checkpoint.js";
-import {selectedRetainedStorePort,type RetainedStorePort} from "../delivery_ports/retained.js";
+import {selectedRetainedStorePort,retainedStoreOwner,retainedStoreCommitted,type RetainedStorePort} from "../delivery_ports/retained.js";
 import {same} from "../suggestions/validation.js";
 import {SharedEditorError} from "../core.js";
 import {registerManagedSource,checkManagedCore,checkManagedSource,managedSourceUnavailable,managedSourceCore,checkManagedSourceBindings} from "../managed_custody.js";
@@ -26,10 +29,7 @@ import {revisionsBinding,revisionPacket} from "./transport.js";
 import {captureRevision} from "./capture.js";
 import {captureFormatRevision} from "./rebase_format.js";
 import {captureTextRevision} from "./rebase_text.js";
-import {readRevisionFeed,checkRevisionFeed} from "./feed.js";
-import {submitRevision} from "./submit.js";
-import {bridgeRevision} from "./bridge.js";
-import {ensureRevisionPrevious} from "./ensure_previous.js";
+import {synchronizeRevisions} from './synchronize.js';
 import {loadRevision} from "./load.js";
 import {admitRevisionRecord} from "./record_admission.js";
 import {checkSuggestionRecoveryIdle,registerSuggestionRecoveryParticipant,reserveSuggestionRecovery} from "../suggestions/recovery_gate.js";
@@ -43,7 +43,7 @@ let readOriginalRevision:(owner:SharedSuggestionRevisions,authority:()=>void,sig
 export class SharedSuggestionRevisions<P extends SharedSelectionPolicy=SharedSelectionPolicy> {
  readonly #work:RelayWorkCustody;readonly #options:SharedSuggestionRevisionsOptions<P>;readonly #core;readonly #db:IDBDatabase|undefined;
  readonly #atomic:RetainedStorePort<"revisions">|undefined;
- readonly #recordSource:object|undefined;
+ readonly #recordSource:object|undefined;#nativeLoan:object|undefined;
  #record:SharedSuggestionRevisionsRecord;#infos=new Map<string,SharedSuggestionRevisionInfo>();#feed=new Map<string,SharedSuggestionRevisionReceipt>();
  #pending:SharedSuggestionRevisionsRecord|undefined;#writing:Promise<void>|undefined;#failure:unknown;#durable="";
  #closed=false;#closing:Promise<void>|undefined;#listeners=new Set<()=>void>();#off:(()=>void)[]=[];#notifyQueued=false;
@@ -54,7 +54,7 @@ export class SharedSuggestionRevisions<P extends SharedSelectionPolicy=SharedSel
  private constructor(key:object,options:SharedSuggestionRevisionsOptions<P>,db:IDBDatabase|undefined,record:SharedSuggestionRevisionsRecord,atomic?:RetainedStorePort<"revisions">,recordSource?:object,held?:HeldMetadataOpen){
   if(key!==constructionKey)throw new SharedEditorError('managed_source_construction','Use the actual revision outbox open or recovery factory');
   this.#atomic=atomic;this.#recordSource=recordSource;
-  this.#options=options;this.#core=options.queue.core;this.#db=db;this.#record=record;this.#wanted=options.autoStart!==false;this.#admit(record);this.#work=heldMetadataWork(this.#core,()=>this.#initialized&&!this.#wanted,()=>new SharedRelayError('suggestion_recovery_in_use'),held);this.#work.registerOwner(this);
+  this.#options=options;this.#core=options.queue.core;this.#db=db;this.#record=record;this.#wanted=options.autoStart!==false;this.#admit(record);this.#work=heldMetadataWork(this.#core,()=>this.#initialized&&!this.#wanted,()=>new SharedRelayError('suggestion_recovery_in_use'),held);this.#work.registerOwner(this);registerNativeRevisionStore(this,{core:this.#core,source:atomic?retainedStoreOwner(atomic,this.#core):recordSource,queue:options.queue,open:child=>this.#lendNative(child as unknown as NativeSuggestionChild<P>) as NativeRevisionStore});
   registerManagedSource(this,this.#core,()=>{this.#localCheck();if(this.#closing||this.#storageChanged)throw managedSourceUnavailable();checkManagedSource(options.queue,this.#core);});
   if(db)db.onversionchange=()=>{this.#storageChanged=true;db.close();this.#failure=new SharedRelayError("suggestion_database_versionchange");this.#report(this.#failure);};
   this.#off.push(registerSuggestionRecoveryParticipant(options.queue,()=>this.#recoveryIdle()));
@@ -105,9 +105,10 @@ export class SharedSuggestionRevisions<P extends SharedSelectionPolicy=SharedSel
  #admit(record:SharedSuggestionRevisionsRecord):void{
   this.#infos=admitRevisionRecord(this.#core,record);
  }
- #mark(record:SharedSuggestionRevisionsRecord):void{const checked=checkRevisionRecord(record,this.#record.identity,this.#record.binding),infos=admitRevisionRecord(this.#core,checked);checkManagedCore(this.#core);if(same(checked,this.#record)&&!this.#failure)return;this.#atomic?.stage(checked);this.#infos=infos;this.#record=checked;this.#pending=structuredClone(checked);this.#startWrite();this.#notify();this.#schedule();}
+ #mark(record:SharedSuggestionRevisionsRecord,job?:NativeSuggestionJob):void{const stage=()=>{const checked=checkRevisionRecord(record,this.#record.identity,this.#record.binding),infos=admitRevisionRecord(this.#core,checked);checkManagedCore(this.#core);if(same(checked,this.#record)&&!this.#failure)return;this.#atomic?.stage(checked);this.#infos=infos;this.#record=checked;this.#pending=structuredClone(checked);if(job)this.#startNativeWrite(job);else this.#startWrite();this.#notify();if(!job)this.#schedule();};if(job){job.check();this.#work.runSyncAdmitted(job.port.admission,stage);}else this.#work.runSync(stage);}
+
  #row(id:string):SharedSuggestionRevisionRow{const index=[...this.#infos.keys()].indexOf(id);if(index<0)throw new SharedRelayError("suggestion_revision_unknown");return this.#record.retained[index]!;}
- #replace(id:string,change:(row:SharedSuggestionRevisionRow)=>SharedSuggestionRevisionRow):void{const row=this.#row(id);this.#mark({...this.#record,retained:this.#record.retained.map(value=>value===row?change(value):value)});}
+ #replace(id:string,change:(row:SharedSuggestionRevisionRow)=>SharedSuggestionRevisionRow,job?:NativeSuggestionJob):void{const row=this.#row(id);this.#mark({...this.#record,retained:this.#record.retained.map(value=>value===row?change(value):value)},job);}
  /** Pure capture plus local durable intent, not supersession, rejection or accepted document edits. */
  revise(input:SharedSuggestionRevisionDraft):SharedSuggestionRevisionInfo{this.#writable();const captured=captureRevision(this.#options.queue,input);return this.queueRevision(captured.previousPacket,captured.packet);}
  /** Native formatting-only revision. Non-ready outcomes queue nothing; retry keeps exact bytes. */
@@ -150,10 +151,33 @@ export class SharedSuggestionRevisions<P extends SharedSelectionPolicy=SharedSel
  async #drain():Promise<void>{while(this.#pending&&!this.#closed){const next=this.#pending;this.#pending=undefined;try{if(this.#atomic){this.#localCheck();await this.#options.queue.flush();this.#localCheck();await this.#atomic.write(next);this.#localCheck();}else{this.#check();checkRetainedStoreSignal(this.#restoreSignal);this.#options.storage.save();await this.#options.storage.flush();this.#check();await this.#options.queue.flush();this.#check();
   if(this.#restoreInsert){await insertRetainedStoreRecord(this.#db!,"revisions",revisionKey(next.identity,next.binding),next,this.#restoreSignal);this.#restoreInsert=false;checkRetainedStoreSignal(this.#restoreSignal);this.#restoreSignal=undefined;}else await writeRevisionRecord(this.#db!,next);
   this.#check();}this.#durable=JSON.stringify(next);}catch(error){this.#pending??=next;throw error;}}}
+ /** Actual committed bytes remain facts even when current authority disappears
+  * in a transaction-complete callback. Original pending records survive retry. */
+ async #drainNative(job:NativeSuggestionJob,queue:NativeSuggestionChild<P>['queue']):Promise<void>{while(this.#pending&&!this.#closed){
+  job.check();const next=this.#pending,durable=JSON.stringify(next);this.#pending=undefined;
+  try{this.#localCheck();checkRetainedStoreSignal(this.#restoreSignal);if(this.#atomic){await queue.flush();job.check();await this.#atomic.write(next);}else{await job.persistSource();job.check();await queue.flush();job.check();if(this.#restoreInsert){await insertRetainedStoreRecord(this.#db!,'revisions',revisionKey(next.identity,next.binding),next,this.#restoreSignal);this.#restoreInsert=false;this.#restoreSignal=undefined;}else await writeRevisionRecord(this.#db!,next);}}
+  catch(error){this.#pending??=next;if(this.#atomic&&same(retainedStoreCommitted(this.#atomic,this.#core),next)){this.#durable=durable;this.#notify();}throw error;}
+  this.#durable=durable;this.#notify();job.check();
+ }}
+ #startNativeWrite(job:NativeSuggestionJob):void{const queue=this.#nativeQueue;if(!queue||this.#writing||!this.#pending||this.#failure||this.#closed)return;this.#writing=this.#work.runAdmitted(job.port.admission,()=>Promise.resolve().then(()=>this.#drainNative(job,queue))).catch(error=>{this.#failure=error??new SharedRelayError('local_save_failed');this.#notify();}).finally(()=>{this.#writing=undefined;this.#notify();if(!this.#failure&&this.#pending)this.#startNativeWrite(job);});}
+ #nativeQueue:NativeSuggestionChild<P>['queue']|undefined;
+ #lendNative(child:NativeSuggestionChild<P>):NativeRevisionStore<P>{
+  this.#recoveryIdle();this.#localCheck();checkManagedSourceBindings(this);if(this.#nativeLoan)throw new SharedRelayError('native_revision_outbox_in_use');
+  const key=Object.freeze({});this.#nativeLoan=key;this.#nativeQueue=child.queue;let closed=false,ending:Promise<void>|undefined;const calls=new Set<Promise<void>>();
+  const check=()=>{child.check();if(closed||this.#nativeLoan!==key||this.#closed||this.#closing||this.#storageChanged)throw new SharedRelayError('native_revision_outbox_closed');this.#localCheck();checkManagedSourceBindings(this);child.check();};
+  const job:NativeSuggestionJob=Object.freeze({port:child.port,check,persistSource:()=>child.port.persistLocal()});
+  const close=()=>{closed=true;if(ending)return ending;const release=()=>{if(this.#nativeLoan===key){this.#nativeLoan=undefined;this.#nativeQueue=undefined;}};if(!this.#writing&&!calls.size){release();return Promise.resolve();}ending=(async()=>{while(this.#writing||calls.size)await Promise.all([...calls,...(this.#writing?[this.#writing]:[])]);release();})().finally(()=>{ending=undefined;});return ending;};
+  const track=<T>(start:()=>Promise<T>):Promise<T>=>{if(closed||this.#nativeLoan!==key)return Promise.reject(new SharedRelayError('native_revision_outbox_closed'));let resolve!:()=>void;const done=new Promise<void>(finish=>{resolve=finish;});calls.add(done);const finish=()=>{calls.delete(done);resolve();};try{return this.#work.runAdmitted(child.port.admission,()=>Promise.resolve().then(()=>{check();return start();})).then(value=>{finish();return value;},error=>{finish();throw error;});}catch(error){finish();return Promise.reject(error);}};
+  try{
+   check();const flush=async()=>{check();if(this.#pending&&!this.#failure)this.#startNativeWrite(job);while(this.#writing)await this.#writing;if(this.#failure)throw this.#failure;check();};
+   return Object.freeze({core:this.#core,identity:structuredClone(this.#record.identity),binding:this.#record.binding,record:()=>structuredClone(this.#record),infos:()=>structuredClone([...this.#infos.values()]),row:(id:string)=>structuredClone(this.#row(id)),state:()=>({pending:!!this.#writing||!!this.#pending,failed:this.#failure!==undefined,localSaved:this.#durable===JSON.stringify(this.#record)}),subscribe:(listener:()=>void)=>{check();this.#listeners.add(listener);return()=>{this.#listeners.delete(listener);};},settle:(id:string,value:NativeRevisionSettlement)=>{check();if(!value||typeof value!=='object'||Object.keys(value).sort().join(',')!=='conflict,receipt,retry')throw new SharedRelayError('native_revision_settlement');this.#replace(id,row=>({...row,...value}),job);},flush:()=>track(flush),retry:()=>track(async()=>{check();if(this.#writing)await this.#writing;check();this.#failure=undefined;this.#pending=structuredClone(this.#record);this.#startNativeWrite(job);await flush();}),close});
+  }catch(error){void close();throw error;}
+ }
+
  async flush():Promise<void>{if(this.#closed)throw new SharedRelayError("suggestion_revisions_closed");while(this.#writing)await this.#writing;if(this.#failure)throw this.#failure;}
  async retry():Promise<void>{if(this.#closed)throw new SharedRelayError("suggestion_revisions_closed");return this.#work.run(()=>this.#retry());}
  async #retry():Promise<void>{checkSuggestionRecoveryIdle(this.#options.queue);if(this.#atomic)this.#localCheck();else this.#check();if(this.#writing)await this.#writing;checkSuggestionRecoveryIdle(this.#options.queue);this.#failure=undefined;this.#error=null;this.#pending=structuredClone(this.#record);this.#startWrite();await this.flush();this.#schedule();}
- #changed():void{if(this.#closed)return;try{this.#check();const t=this.#options.transport,s=t.suggestionState(),q=this.#options.queue;const signature=JSON.stringify([t.suggestionRevisionsReady!(),s.revision,s.documentRevision,this.#core.view().causalVersion,q.proposals().map(info=>{const r=q.status(info.id);return [info.id,r.publish,r.publication,r.decision];})]);if(signature!==this.#signature){this.#signature=signature;this.#schedule();}this.#notify();}catch(error){this.#epoch++;this.#report(error);}}
+ #changed():void{if(this.#closed)return;try{this.#work.checkAllowed();}catch{return;}try{this.#check();const t=this.#options.transport,s=t.suggestionState(),q=this.#options.queue;const signature=JSON.stringify([t.suggestionRevisionsReady!(),s.revision,s.documentRevision,this.#core.view().causalVersion,q.proposals().map(info=>{const r=q.status(info.id);return [info.id,r.publish,r.publication,r.decision];})]);if(signature!==this.#signature){this.#signature=signature;this.#schedule();}this.#notify();}catch(error){this.#epoch++;this.#report(error);}}
  #schedule():void{this.#dirty=true;if(this.#scheduled||this.#closed||!this.#wanted||!this.#options.transport.suggestionRevisionsReady?.()||this.#failure)return;this.#scheduled=true;const epoch=this.#epoch;
   const task=this.#enqueue(async()=>{if(!this.#active(epoch))return;this.#dirty=false;await this.#synchronize(epoch);});this.#serial=task.catch(error=>{if(this.#active(epoch))this.#report(error);}).finally(()=>{this.#scheduled=false;if(this.#dirty&&this.#active(epoch))this.#schedule();});
  }
@@ -162,15 +186,7 @@ export class SharedSuggestionRevisions<P extends SharedSelectionPolicy=SharedSel
  async #request(input:SharedSuggestionRevisionRequest,epoch:number):Promise<Record<string,unknown>>{this.#syncCheck(epoch);const result=await this.#options.transport.requestSuggestionRevision!(input);this.#syncCheck(epoch);return result;}
  async #synchronize(epoch:number):Promise<void>{
   this.#syncCheck(epoch);this.#working=true;this.#notify();const check=()=>this.#syncCheck(epoch),o=this.#options;
-  try{await this.flush();await o.transport.refreshDocument();check();const feed=await readRevisionFeed(input=>this.#request(input,epoch),this.#record.identity,o.binding);check();checkRevisionFeed([...this.#feed.values(),...this.#record.retained.flatMap(row=>row.receipt?[row.receipt]:[])],feed.revisions);this.#feed=feed.revisions;
-   for(const info of [...this.#infos.values()]){let row=this.#row(info.id);const discovered=feed.revisions.get(info.id);if(discovered&&!row.receipt){if(!same(discovered.revision,info))throw new SharedRelayError("suggestion_revision_receipt_mismatch");this.#replace(info.id,value=>({...value,receipt:discovered,retry:false,conflict:null}));await this.flush();row=this.#row(info.id);}
-    if(row.retry&&feed.permissions.canPropose){await o.transport.flush();check();o.storage.save();await o.storage.flush();await this.flush();check();if(!this.#row(info.id).retry)continue;
-     if(!await ensureRevisionPrevious(o.queue,o.transport,row.previousPacket,check))continue;const result=await submitRevision(input=>this.#request(input,epoch),this.#record.identity,o.binding,row,info);check();if(result){
-      const effect=result.conflict?.decision.effect;if(effect&&this.#core.retainedWriterReceiptV2(effect.writerGroup).kind!=="verified"){await o.transport.refreshDocument();check();if(this.#core.retainedWriterReceiptV2(effect.writerGroup).kind!=="verified")continue;}
-      this.#replace(info.id,value=>({...value,...result,retry:false}));await this.flush();row=this.#row(info.id);if(row.receipt)this.#feed.set(info.id,row.receipt);}
-    }
-    if(row.receipt){await bridgeRevision(o.queue,o.transport,row.previousPacket,row.packet,row.receipt,check);}
-   }this.#error=null;
+  try{await synchronizeRevisions({core:this.#core,queue:o.queue,transport:o.transport,identity:this.#record.identity,binding:o.binding,check,flush:()=>this.flush(),persistSource:async()=>{o.storage.save();await o.storage.flush();},record:()=>this.#record,infos:()=>[...this.#infos.values()],row:id=>this.#row(id),replace:(id,change)=>this.#replace(id,change),feed:()=>this.#feed,setFeed:feed=>{this.#feed=feed;},request:input=>this.#request(input,epoch)});this.#error=null;
   }finally{this.#working=false;this.#notify();}
  }
  /** Single explicit discovery/submission pass. Pending/conflict is observable, never success. */
