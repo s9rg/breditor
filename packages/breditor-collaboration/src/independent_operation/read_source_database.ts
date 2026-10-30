@@ -6,6 +6,7 @@ import type {IndependentHistoryHead,IndependentHistoryFile,IndependentHistorySto
 import {readOperationCut} from './cut_codec.js';
 import {operationJournalFailure as fail} from './journal_failure.js';
 import {readBoundedStore} from '../persistence/read_bounded_store.js';
+import {settleOwnedTransaction} from '../persistence/settle_owned_transaction.js';
 export async function readOperationSourceDatabase(name:string,key:readonly[string,string],readHead:(head:string)=>IndependentHistoryHead,check:()=>void):Promise<IndependentHistoryStoredCut|null>{
  return readDedicatedOperationSourceDatabase(name,key,readHead,check,'operation-v1');
 }
@@ -27,8 +28,8 @@ export async function readDedicatedOperationSourceDatabase(name:string,key:reado
     if(expected.length!==files.keys.length)throw fail('independent_operation_source_diverged');for(const[i,k]of files.keys.entries()){const raw=files.values[i];if(typeof raw!=='string'||new TextEncoder().encode(raw).length>32*1024*1024+8192)throw fail();const file=JSON.parse(raw) as IndependentHistoryFile;if(JSON.stringify(file)!==raw||JSON.stringify(k)!==JSON.stringify([...key,file.lane,file.generation]))throw fail();map.set(JSON.stringify(k),file);}
     if(map.size!==expected.length||expected.some(k=>!map.has(k)))throw fail('independent_operation_source_diverged');value={head:heads.values[0],files:expected.map(k=>map.get(k)!)};
    }catch(error){abort(error);}};
-   tx.oncomplete=()=>resolve(value);tx.onabort=()=>reject(reason??tx.error??fail());
+   settleOwnedTransaction(tx,()=>value,()=>reason??tx.error??fail(),resolve,reject);
    try{for(const name of [filesName,headsName]){const s=tx.objectStore(name);if(s.keyPath!==null||s.autoIncrement||s.indexNames.length)throw fail();readBoundedStore(s,name===headsName?1:126,row=>{rows.set(name,row);ready();},abort,()=>fail('independent_operation_source_diverged'));}}catch(error){abort(error);}
   });current();if(stored===null)return null;const cut=await readOperationCut(stored,readHead);current();return cut;
- }finally{db.close();}
+ }finally{db.onversionchange=null;db.close();}
 }

@@ -237,6 +237,8 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   script('installed-fresh-delivery-history','check-fresh-delivery-history-installed.mjs',[],[{path:'target/fresh-delivery-history-installed-consumer.json',fresh:true}],1800000),
   stage('native-owner-lifetime-contracts',node,['--test','scripts/native-owner-lifetime.test.mjs','scripts/native-owner-lifetime-candidate-plan.test.mjs']),
   stage('bounded-operation-storage-contracts',node,['--test','scripts/bounded-store-read.test.mjs','scripts/bounded-operation-storage.test.mjs','scripts/bounded-operation-storage-candidate-plan.test.mjs']),
+  stage('storage-terminal-lifecycle-contracts',node,['--test','scripts/storage-terminal-lifecycle.test.mjs','scripts/native-storage-lifecycle.test.mjs','scripts/storage-terminal-lifecycle-candidate-plan.test.mjs']),
+  script('installed-storage-terminal-lifecycle','check-storage-lifecycle-installed.mjs',[],[{path:'target/storage-terminal-lifecycle-installed-consumer.json',fresh:true}]),
   stage('held-asset-restore-contracts',node,['--test','scripts/held-asset-restore.test.mjs','scripts/held-asset-restore-candidate-plan.test.mjs','scripts/asset-backups.test.mjs','scripts/asset-source-backups.test.mjs','scripts/asset-reconciliation.test.mjs','scripts/asset-custody.test.mjs']),
   stage('held-asset-restore-type-fence',node,['node_modules/typescript/bin/tsc','--noEmit','--strict','--exactOptionalPropertyTypes','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM,ESNext.Disposable','scripts/fixtures/editor-consumer/types-held-asset-restore.ts']),
   script('installed-held-asset-restore','check-held-asset-restore-installed.mjs',[],[{path:'target/held-asset-restore-installed-consumer.json',fresh:true}]),

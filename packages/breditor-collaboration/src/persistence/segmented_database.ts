@@ -1,3 +1,4 @@
+import {settleOwnedTransaction} from "./settle_owned_transaction.js";
 /** Separate schema. Immutable root/sealed files and the latest complete native pair commit together. */
 import {SharedEditorError} from "../core.js";
 import {readSegmentedHead} from "./segmented_head.js";
@@ -22,7 +23,7 @@ export async function readSegmentedCut(db:IDBDatabase,key:readonly[string,string
   const tx=db.transaction(["generation_files","generation_heads"],"readonly"),r=tx.objectStore("generation_heads").get([...key]);let result:{head:string;files:SegmentedFile[]}|null=null,failure:unknown;
   const abort=(error:unknown)=>{failure=error;tx.abort();};
   r.onsuccess=()=>{try{if(r.result===undefined)return;if(typeof r.result!=="string")throw fail("Unknown generation head");const h=readHead(r.result);if(h.identity.room!==key[0]||h.identity.writer!==key[1])throw fail("Generation head belongs to a different writer");const files:SegmentedFile[]=[];result={head:r.result,files};for(const ref of [h.root,...h.sealed]){const q=tx.objectStore("generation_files").get([...key,ref.generation]);q.onsuccess=()=>{try{if(typeof q.result!=="string")throw fail("Referenced generation file is absent");const f=JSON.parse(q.result) as SegmentedFile;if(JSON.stringify(f)!==q.result||Object.keys(f).sort().join(",")!=="generation,json,kind,sha256"||f.generation!==ref.generation||f.sha256!==ref.sha256||typeof f.json!=="string")throw fail("Referenced generation file differs");files.push(f);}catch(error){abort(error);}};}}catch(error){abort(error);}};
-  tx.oncomplete=()=>resolve(result);tx.onabort=()=>reject(failure??tx.error??fail("Generation read aborted"));
+  settleOwnedTransaction(tx,()=>result,()=>failure??tx.error??fail("Generation read aborted"),resolve,reject);
  });
  if(!stored)return null;const h=readHead(stored.head),byId=new Map(stored.files.map(f=>[f.generation,f]));
  const root=byId.get(h.root.generation)!;if(root.kind!=="root")throw fail("Original generation file role differs");

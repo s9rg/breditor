@@ -1,3 +1,4 @@
+import {settleOwnedTransaction} from "../persistence/settle_owned_transaction.js";
 /** Separate IndexedDB family. Both lane files and their exact paired head commit in one transaction. */
 import {SharedEditorError} from '../core.js';
 import {readIndependentHistoryHead,joinIndependentHistoryLane,makeIndependentHistoryCut} from './cut.js';
@@ -33,7 +34,7 @@ export async function readIndependentHistoryCut(db:IDBDatabase,key:readonly[stri
   const tx=db.transaction([filesName,headsName],'readonly'),request=tx.objectStore(headsName).get([...key]);let result:{head:string;files:IndependentHistoryFile[]}|null=null,failure:unknown;
   const abort=(error:unknown)=>{failure=error;tx.abort();};
   request.onsuccess=()=>{try{if(request.result===undefined)return;const head=readHead(request.result);if(head.identity.native.room!==key[0]||head.identity.native.writer!==key[1])throw fail('Stored paired head belongs to another writer');const files:IndependentHistoryFile[]=[];result={head:request.result,files};for(const reference of references(head)){const file=tx.objectStore(filesName).get([...key,reference.lane,reference.generation]);file.onsuccess=()=>{try{if(typeof file.result!=='string')throw fail('Referenced native history file is absent');const decoded=JSON.parse(file.result) as IndependentHistoryFile;if(!decoded||Object.keys(decoded).sort().join(',')!=='generation,json,kind,lane,sha256'||JSON.stringify(decoded)!==file.result||decoded.lane!==reference.lane||decoded.generation!==reference.generation||decoded.sha256!==reference.sha256||decoded.kind!==reference.kind||typeof decoded.json!=='string')throw fail('Referenced native file identity differs');files.push(decoded);}catch(error){abort(error);}};}}catch(error){abort(error);}};
-  tx.oncomplete=()=>resolve(result);tx.onabort=()=>reject(failure??tx.error??fail('Paired-history read aborted'));
+  settleOwnedTransaction(tx,()=>result,()=>failure??tx.error??fail('Paired-history read aborted'),resolve,reject);
  });
  if(!stored)return null;const record=readHead(stored.head),documentCheckpoint=joinIndependentHistoryLane(record,'document',stored.files),reviewCheckpoint=joinIndependentHistoryLane(record,'review',stored.files),checked=await makeIndependentHistoryCut(documentCheckpoint,reviewCheckpoint,record.identity,record.versions);
  if(checked.head!==(profile?JSON.stringify(record):stored.head))throw fail('Native paired envelope differs');const byKey=new Map(stored.files.map(file=>[JSON.stringify([file.lane,file.generation]),file]));if(checked.files.length!==stored.files.length||checked.files.some(file=>JSON.stringify(file)!==JSON.stringify(byKey.get(JSON.stringify([file.lane,file.generation])))))throw fail('Native history file hashes or exact bytes differ');

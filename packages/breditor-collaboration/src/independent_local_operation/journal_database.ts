@@ -1,3 +1,4 @@
+import {settleOwnedTransaction} from "../persistence/settle_owned_transaction.js";
 /** Three-store local intent/original/two-cut schema. Count before value cloning;
  * each transition is exact CAS, and cancellation aborts the actual transaction. */
 import type {IndependentHistoryCut} from '../independent_history/contract.js';
@@ -27,7 +28,7 @@ export function createLocalJournalDatabase(factory:IDBFactory,name:string,record
 }
 export async function existingLocalJournalDatabase(name:string,guard:()=>void):Promise<IDBDatabase>{guard();const db=await existingDatabase(name);try{guard();if(!db)throw fail('independent_local_operation_missing');schema(db);return db;}catch(error){db?.close();throw error;}}
 export function readLocalJournalDatabase(db:IDBDatabase,id:LocalOperationJournalIdentity,guard:()=>void):Promise<LocalJournalStored>{
- guard();schema(db);return new Promise((resolve,reject)=>{const tx=db.transaction(names,'readonly');let value:LocalJournalStored,reason:unknown;const abort=(error:unknown)=>{reason=error;try{tx.abort();}catch{/* Keep the terminal read outcome. */}};tx.oncomplete=()=>resolve(value);tx.onabort=()=>reject(reason??tx.error??fail());readInside(tx,id,row=>{value=row;},abort,guard);});
+ guard();schema(db);return new Promise((resolve,reject)=>{const tx=db.transaction(names,'readonly');let value:LocalJournalStored,reason:unknown;const abort=(error:unknown)=>{reason=error;try{tx.abort();}catch{/* Keep the terminal read outcome. */}};settleOwnedTransaction(tx,()=>value,()=>reason??tx.error??fail(),resolve,reject);readInside(tx,id,row=>{value=row;},abort,guard);});
 }
 export function writeLocalJournalDatabase(db:IDBDatabase,id:LocalOperationJournalIdentity,before:LocalJournalChecked,next:LocalOperationCutIntent,candidate:Readonly<{id:string;cut:IndependentHistoryCut}>|undefined,guard:()=>void,signal?:AbortSignal):Promise<void>{
  guard();schema(db);checkLocalOperationTransition(before.record,next,id);return new Promise((resolve,reject)=>{let tx:IDBTransaction|undefined,reason:unknown,off=()=>{};const abort=(error:unknown)=>{reason??=error;try{tx?.abort();}catch{/* A completed commit is retained for exact readback. */}};

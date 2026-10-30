@@ -1,4 +1,5 @@
 /** Atomic intent/original/two-cut storage. No source database or old schema is migrated. */
+import {settleOwnedTransaction} from '../persistence/settle_owned_transaction.js';
 import {existingDatabase} from '../participant_recovery/journal.js';
 import type {IndependentHistoryCut} from '../independent_history/contract.js';
 import {copyOperationCut,sameOperationCut} from './cut_codec.js';
@@ -35,7 +36,7 @@ export async function existingOperationJournalDatabase(name:string):Promise<IDBD
 export function readOperationJournalDatabase(db:IDBDatabase,id:IndependentOperationJournalIdentity):Promise<OperationJournalStored>{
  schema(db);return new Promise((resolve,reject)=>{const tx=db.transaction(names,'readonly');let value:OperationJournalStored,reason:unknown;
   const abort=(error:unknown)=>{reason=error;try{tx.abort();}catch{/* Preserve the terminal transaction result. */}};
-  tx.oncomplete=()=>resolve(value);tx.onabort=()=>reject(reason??tx.error??fail());readInside(tx,id,result=>{value=result;},abort);
+  settleOwnedTransaction(tx,()=>value,()=>reason??tx.error??fail(),resolve,reject);readInside(tx,id,result=>{value=result;},abort);
  });
 }
 /** Prepare or acknowledge atomically. An exact lost-ack retry is resolved by the caller's readback. */

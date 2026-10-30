@@ -1,3 +1,4 @@
+import {settleOwnedTransaction} from "../persistence/settle_owned_transaction.js";
 /** Distinct flat-local intent/incoming/two-cut schema. Count before value cloning;
  * each transition is exact CAS, and cancellation aborts the actual transaction. */
 import type {IndependentHistoryCut} from '../independent_history/contract.js';
@@ -34,10 +35,10 @@ export async function existingFlatLocalJournalDatabase(name:string,guard:()=>voi
 /** Read the literal incoming file before deriving its selected plan. This is a
  * bounded read, not permission to reconstruct missing acknowledged inputs. */
 export function readFlatLocalJournalInput(db:IDBDatabase,guard:()=>void):Promise<Blob>{
- guard();schema(db);return new Promise((resolve,reject)=>{const tx=db.transaction(original,'readonly');let file:Blob,reason:unknown;const abort=(error:unknown)=>{reason=error;try{tx.abort();}catch{/* Preserve terminal outcome. */}};tx.oncomplete=()=>{try{guard();resolve(file);}catch(error){reject(error);}};tx.onabort=()=>reject(reason??tx.error??fail());try{const store=tx.objectStore(original);if(store.keyPath!==null||store.autoIncrement||store.indexNames.length)throw fail();readBoundedStore(store,1,row=>{try{guard();if(row.keys.length!==1||row.keys[0]!==fileKey||!(row.values[0] instanceof Blob))throw fail();file=literal(row.values[0]);}catch(error){abort(error);}},abort,()=>fail());}catch(error){abort(error);}});
+ guard();schema(db);return new Promise((resolve,reject)=>{const tx=db.transaction(original,'readonly');let file:Blob,reason:unknown;const abort=(error:unknown)=>{reason=error;try{tx.abort();}catch{/* Preserve terminal outcome. */}};settleOwnedTransaction(tx,()=>{guard();return file;},()=>reason??tx.error??fail(),resolve,reject);try{const store=tx.objectStore(original);if(store.keyPath!==null||store.autoIncrement||store.indexNames.length)throw fail();readBoundedStore(store,1,row=>{try{guard();if(row.keys.length!==1||row.keys[0]!==fileKey||!(row.values[0] instanceof Blob))throw fail();file=literal(row.values[0]);}catch(error){abort(error);}},abort,()=>fail());}catch(error){abort(error);}});
 }
 export function readFlatLocalJournalDatabase(db:IDBDatabase,id:FlatLocalIdentity,guard:()=>void):Promise<FlatLocalJournalStored>{
- guard();schema(db);return new Promise((resolve,reject)=>{const tx=db.transaction(names,'readonly');let value:FlatLocalJournalStored,reason:unknown;const abort=(error:unknown)=>{reason=error;try{tx.abort();}catch{/* Keep the terminal read outcome. */}};tx.oncomplete=()=>resolve(value);tx.onabort=()=>reject(reason??tx.error??fail());readInside(tx,id,row=>{value=row;},abort,guard);});
+ guard();schema(db);return new Promise((resolve,reject)=>{const tx=db.transaction(names,'readonly');let value:FlatLocalJournalStored,reason:unknown;const abort=(error:unknown)=>{reason=error;try{tx.abort();}catch{/* Keep the terminal read outcome. */}};settleOwnedTransaction(tx,()=>value,()=>reason??tx.error??fail(),resolve,reject);readInside(tx,id,row=>{value=row;},abort,guard);});
 }
 export function writeFlatLocalJournalDatabase(db:IDBDatabase,id:FlatLocalIdentity,before:FlatLocalJournalChecked,next:FlatLocalCutIntent,candidate:Readonly<{id:string;cut:IndependentHistoryCut}>|undefined,guard:()=>void,signal?:AbortSignal):Promise<void>{
  guard();schema(db);checkFlatLocalTransition(before.record,next,id);return new Promise((resolve,reject)=>{let tx:IDBTransaction|undefined,reason:unknown,off=()=>{};const abort=(error:unknown)=>{reason??=error;try{tx?.abort();}catch{/* A completed commit is retained for exact readback. */}};

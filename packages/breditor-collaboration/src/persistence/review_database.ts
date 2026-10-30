@@ -1,3 +1,4 @@
+import {settleOwnedTransaction} from "./settle_owned_transaction.js";
 /** Explicit atomic document/review recovery record. Old readers reject it; native Rust proves replay. */
 import {SharedEditorError} from "../core.js";
 import type {SharedHistoryPolicy,SharedRangePolicy,SharedSelectionPolicy} from "../types.js";
@@ -31,7 +32,7 @@ export function readReviewRecord(db:IDBDatabase,key:readonly[string,string]):Pro
  return new Promise((resolve,reject)=>{
   const tx=db.transaction("journals","readonly"),request=tx.objectStore("journals").get([...key]);let result:ReviewCheckpointRecord|null=null,failure:unknown;
   request.onsuccess=()=>{try{if(request.result!==undefined){checkReviewRecord(request.result,key);result=request.result;}}catch(error){failure=error;tx.abort();}};
-  tx.oncomplete=()=>resolve(result);tx.onabort=()=>reject(failure??tx.error??new SharedEditorError("review_record_read","Paired recovery read failed"));
+  settleOwnedTransaction(tx,()=>result,()=>failure??tx.error??new SharedEditorError("review_record_read","Paired recovery read failed"),resolve,reject);
  });
 }
 /** One committed transaction contains both exact journals and the immutable named-version catalog. */

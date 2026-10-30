@@ -72,7 +72,9 @@ test('a changed valid-looking head is a conflict, not permission to overwrite th
 test('the original 32-version ceiling and retirement refuse before changing the local catalog',async t=>{
  const h=await setup(t);for(let i=0;i<32;i++)h.session.saveVersion('version '+i,String(1792450000000+i));await h.session.flush();const before=h.session.exportRecovery();assert.equal(before.versions.length,32);
  assert.throws(()=>h.session.saveVersion('overflow','1792450000100'),/budget is full/);assert.deepEqual(h.session.exportRecovery(),before);assert.equal((await readSegmentedCut(h.db,key)).record.versions.length,32);
- fault='abort';insert(h.session.core,'last edit ');await assert.rejects(h.session.close());assert.throws(()=>h.session.retainVersion(before.versions[0]),/after retirement/);assert.deepEqual(h.session.exportRecovery().versions,before.versions);
+ const durable=await readSegmentedCut(h.db,key);fault='abort';insert(h.session.core,'last edit ');await assert.rejects(h.session.close());
+ const readable=h.session.exportRecovery();assert.throws(()=>h.session.retainVersion(before.versions[0]),error=>error?.code==='retired');
+ assert.deepEqual(h.session.exportRecovery(),readable);assert.deepEqual(readable.versions,before.versions);assert.equal((await readSegmentedCut(h.db,key)).head,durable.head);
 });
 test('partial or future native capability sets never enable segmentation or break original editing',async t=>{
  const h=await setup(t,{paired:false});

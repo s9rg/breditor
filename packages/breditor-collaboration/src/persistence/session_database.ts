@@ -1,3 +1,4 @@
+import {settleOwnedTransaction} from "./settle_owned_transaction.js";
 import {SharedEditorError} from "../core.js";
 import type {SharedHistoryPolicy,SharedRangePolicy} from "../types.js";
 export const MAX_CHECKPOINT_BYTES=16*1024*1024;
@@ -69,7 +70,7 @@ function readStoredSessionCheckpoint(db:IDBDatabase,key:readonly[string,string],
    if(Object.keys(record).sort().join(",")!=="checkpointJson,format,formatVersion"||record["format"]!=="breditor/shared-typing-checkpoint-record"||record["formatVersion"]!==1||typeof record["checkpointJson"]!=="string")throw new SharedEditorError("session_read","Unknown stored shared history record");
    result={history:"typing-v1",json:record["checkpointJson"]};
   }catch(error){failure=error;tx.abort();}};
-  tx.oncomplete=()=>resolve(result);tx.onabort=()=>reject(failure??tx.error??new SharedEditorError("session_read","Cannot read the exact shared journal"));
+  settleOwnedTransaction(tx,()=>result,()=>failure??tx.error??new SharedEditorError("session_read","Cannot read the exact shared journal"),resolve,reject);
  });
 }
 /** Commit only a closed document-family record after validating its declared storage identity. */
@@ -95,7 +96,7 @@ export function readCheckpoint(db:IDBDatabase,key:readonly[string,string]):Promi
  return new Promise((resolve,reject)=>{
   const tx=db.transaction("journals","readonly"),request=tx.objectStore("journals").get([...key]);let result:string|null=null;
   request.onsuccess=()=>{if(request.result!==undefined&&typeof request.result!=="string"){tx.abort();return;}result=request.result??null;};
-  tx.oncomplete=()=>resolve(result);tx.onabort=()=>reject(tx.error??new SharedEditorError("session_read","Cannot read the exact shared journal"));
+  settleOwnedTransaction(tx,()=>result,()=>tx.error??new SharedEditorError("session_read","Cannot read the exact shared journal"),resolve,reject);
  });
 }
 export function writeCheckpoint(db:IDBDatabase,key:readonly[string,string],value:string):Promise<void>{

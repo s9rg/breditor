@@ -1,0 +1,77 @@
+{
+  "format": "breditor/storage-terminal-lifecycle-qualification",
+  "formatVersion": 1,
+  "baseCommit": "de99c046986bdba5d1e5eb53117b4219afec8821",
+  "sdkSourceFiles": 16,
+  "distinctBroaderCasesVerifiedAcrossRuns": 174,
+  "broaderRuns": {
+    "original": {
+      "session": 83335,
+      "exitCode": 1,
+      "tests": 174,
+      "passed": 173,
+      "failed": 1
+    },
+    "onlyFailure": "Stale prose retirement assertion independently reproduced on prior SDK. Stable retired code and unchanged readable recovery/durable head now asserted.",
+    "completeSegmentedRerun": {
+      "session": 21682,
+      "terminal": true,
+      "exitCode": 0,
+      "tests": 12,
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "log": "/private/tmp/breditor-storage-handler-retention-vlsbs9fx/segmented-retirement-repaired.log",
+      "originalAssertIndependentlyFailedOnUnchangedSdk": true,
+      "stableRetiredCodeVerified": true,
+      "readableRecoveryAndExactDurableHeadUnchanged": true,
+      "runtimeChangedForAssertionRepair": false
+    },
+    "runtimeRepairRequired": false,
+    "other173AssertionsUnchanged": true
+  },
+  "newLifecycleChecks": 7,
+  "independentlyInstalledLifecycleChecks": 7,
+  "candidatePlanChecks": 3,
+  "typescriptBuildPassed": true,
+  "strictInstalledPublicTypes": true,
+  "workspaceLinks": false,
+  "nativeSourceProbe": {
+    "reads": 120,
+    "storedCutBytes": 179827,
+    "baselineRetainedHeapBytes": 16917768,
+    "fixedRetainedHeapBytes": 450712,
+    "completeHandlers": 0,
+    "abortHandlers": 0,
+    "temporaryVersionChangeHandlers": 0,
+    "storedBytesUnchanged": true,
+    "futureDocumentAndReviewUndoRedoPreserved": true,
+    "privateDatabaseInternalsMutated": false,
+    "node": "v22.14.0",
+    "gcForMeasurementOnly": true
+  },
+  "fullColdWorkflow": {
+    "session": 63598,
+    "stage": "/private/tmp/breditor-reconciliation-storage-cleanup-bewk9jsb",
+    "qualified": false,
+    "normalHeap": true,
+    "inspectorUsed": false
+  },
+  "releaseReady": false,
+  "v1GatesOpen": 13,
+  "proof": {
+    "path": "target/storage-terminal-lifecycle-qualified-proof-34Nm91",
+    "indexSha256": "730ac4b0d28346d062725ca2fd179a5880b59091bd306c93f7cab0cd1275e11d",
+    "references": 75,
+    "uniqueFiles": 63,
+    "bytes": 7872575,
+    "readBackVerified": true
+  },
+  "scope": "Release own terminal transaction closures and temporary source watches, preserve current owner watches and exact records/native history, and retain committed metadata facts before late authority refusal. No protocol/schema/record pruning or synthetic database-internal cleanup. The failed original test run is retained explicitly and is not reported as a passing run; current case coverage combines173unchanged passing cases with a full segmented rerun after independently reproducing and strengthening the only stale assertion. Component measurements do not establish a full-room memory bound or V1 closure.",
+  "remaining": [
+    "Complete seven-owner/fourteen-offline-lane post-ACK cold qualification without raising heap or weakening assertions.",
+    "Explain the earlier separate short Blob-read observation if it recurs.",
+    "Complete SDK selected-server metadata collection, exact local receipt containment, independent generations and authenticated whole-room activation."
+  ],
+  "finishedAt": "2026-10-30T22:03:09.351Z"
+}
