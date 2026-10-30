@@ -3,6 +3,12 @@ export interface SharedRelayAssetInfo {
  readonly asset:string;readonly mime:"image/png"|"image/jpeg"|"image/webp";
  readonly bytes:number;readonly width:number;readonly height:number;
 }
+/** Hashed transport bytes. Raster decoding and current provider/source
+ * admission remain the consuming capture's responsibility. No cache write. */
+export interface SharedRelayAssetBytes {
+ readonly asset:string;readonly mime:'image/png'|'image/jpeg'|'image/webp';
+ readonly bytes:number;readonly blob:Blob;
+}
 export interface SharedRelayAssetCache {
  resolve:(asset:string)=>Promise<string|undefined>;
  cacheRemote:(asset:string,blob:Blob,storageRef:string)=>Promise<SharedRelayAssetInfo>;

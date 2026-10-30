@@ -1,6 +1,6 @@
 import {accountToken} from "./registration.js";
 import {SharedRelayError,digest,endpoint,object,timeout} from "./validation.js";
-import type {SharedRelayAssetInfo,SharedRelayAssetsOptions} from "./asset_types.js";
+import type {SharedRelayAssetInfo,SharedRelayAssetsOptions,SharedRelayAssetBytes} from "./asset_types.js";
 
 const MAX_BYTES=10*1024*1024;
 const mimes=new Set(["image/png","image/jpeg","image/webp"]);
@@ -13,6 +13,10 @@ async function body(response:Response,maximum:number):Promise<ArrayBuffer>{
   const out=new Uint8Array(size);let at=0;for(const chunk of chunks){out.set(chunk,at);at+=chunk.byteLength;}return out.buffer;
  }finally{if(!complete)await reader.cancel().catch(()=>{});reader.releaseLock();}
 }
+let readPort:(owner:SharedRelayAssets)=>Readonly<{read(asset:string,signal?:AbortSignal):Promise<SharedRelayAssetBytes|undefined>}>;
+/** Private actual-instance access for a held recovery. No incoming method,
+ * copied transport options or serialized record can manufacture this port. */
+export function sharedRelayAssetReadPort(owner:SharedRelayAssets){return readPort(owner);}
 /** Opt-in cross-host raster transport. Local bytes are durable before document insertion;
  * server bytes have a separate receipt. Downloads are re-decoded/rehashed by the host cache,
  * never treated as local uploads. This class does not mutate an editor or own its cache. */
@@ -20,6 +24,7 @@ export class SharedRelayAssets {
  #options:SharedRelayAssetsOptions;#base:URL;#milliseconds:number;#closed=false;#online=true;
  #active=new Set<AbortController>();#downloads=new Map<string,Promise<string|undefined>>();
  #running=0;#waiting:{signal:AbortSignal;start:()=>void;cancel:()=>void}[]=[];
+ static{readPort=owner=>{if(!owner||typeof owner!=='object'||!(#options in owner))throw new SharedRelayError('asset_provider_invalid');return Object.freeze({read:(asset:string,signal?:AbortSignal)=>owner.#readBytes(asset,signal)});};}
  constructor(options:SharedRelayAssetsOptions){
   const url=new URL(endpoint(options.endpoint));url.protocol=url.protocol==="wss:"?"https:":"http:";url.pathname=url.pathname.replace(/\/[^/]*$/,"/assets/");
   if(!options.principal||options.principal.length>128||new TextEncoder().encode(options.principal).length>128||/[\x00-\x1f\x7f]/.test(options.principal))throw new SharedRelayError("identity_invalid");
@@ -60,6 +65,23 @@ export class SharedRelayAssets {
    return storageRef(info.asset);
   });
  };
+ /** Download immutable content bytes without resolving URLs, mutating a cache,
+  * or acknowledging uploads. Exact SHA-256 bytes are checked before return. */
+ async #readBytes(asset:string,signal?:AbortSignal):Promise<SharedRelayAssetBytes|undefined>{
+  const url=this.#url(asset);
+  return this.#request(signal,async(headers,abort)=>{
+   const response=await fetch(url,{headers,signal:abort,credentials:'omit',redirect:'error',cache:'no-store'});
+   if(response.status===404){await response.body?.cancel().catch(()=>{});return undefined;}
+   if(!response.ok){await response.body?.cancel().catch(()=>{});throw new SharedRelayError(response.status===403?'permission_denied':'asset_download_rejected');}
+   const mime=response.headers.get('content-type');if(!mime||!mimes.has(mime)){await response.body?.cancel().catch(()=>{});throw new SharedRelayError('asset_mime_rejected');}
+   const bytes=await body(response,MAX_BYTES);if(bytes.byteLength<1)throw new SharedRelayError('asset_empty_response');
+   if(abort.aborted)throw new SharedRelayError('asset_cancelled');
+   const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),actual='sha256:'+Array.from(digest,byte=>byte.toString(16).padStart(2,'0')).join('');
+   if(abort.aborted)throw new SharedRelayError('asset_cancelled');if(actual!==asset)throw new SharedRelayError('asset_digest_mismatch');
+   const blob=new Blob([bytes],{type:mime});return Object.freeze({asset,mime:mime as SharedRelayAssetBytes['mime'],bytes:bytes.byteLength,blob});
+  });
+ }
+ readBytes(asset:string,signal?:AbortSignal):Promise<SharedRelayAssetBytes|undefined>{return this.#readBytes(asset,signal);}
  /** Local-first. A missing server asset is not permanently cached: retry on an availability hint.
   * Custom non-content-addressed asset schemes remain the surrounding host's responsibility. */
  async resolve(asset:string):Promise<string|undefined>{

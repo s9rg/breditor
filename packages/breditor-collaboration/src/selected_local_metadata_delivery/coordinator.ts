@@ -3,6 +3,10 @@ import type {LocalMetadataReferenceBundle,LocalMetadataReferenceCut} from '../se
 import {detachLocalMetadataReferenceBundle,readLocalMetadataReferenceClaims} from '../selected_local_metadata_assets/portable_bundle.js';
 import type {LocalMetadataAssetAvailabilityBundle} from '../selected_local_metadata_assets/availability_contract.js';
 import {localMetadataAvailabilityHost,type LocalMetadataAssetAvailabilityHost} from '../selected_local_metadata_assets/availability_host.js';
+import {sharedRelayAssetReadPort,type SharedRelayAssets} from '../relay/assets.js';
+import type {LocalMetadataMaterializationOptions,LocalMetadataMaterializationOutcome} from '../selected_local_metadata_assets/materialization_contract.js';
+import type {LocalMetadataMaterializedBundle,LocalMetadataMaterializedInspection} from '../selected_local_metadata_assets/materialization_contract.js';
+import {detachLocalMetadataMaterializedBundle,localMetadataMaterializationLimits} from '../selected_local_metadata_assets/materialized_bundle.js';
 import {detachLocalMetadataBundle} from './bundle.js';
 import {readMetadataBundle,inspectMetadataResume} from './resume_inspection.js';
 import {metadataResumeChoice} from './resume_policy.js';
@@ -157,14 +161,30 @@ export class SelectedLocalMetadataDelivery{
   let result:LocalMetadataAssetAvailabilityBundle|undefined;
   return this.#captureReferenceOperation(async work=>{result=await work.availability(host);this.#current();},()=>{localMetadataAvailabilityHost(host);}).then(()=>{if(!result)throw fail();return result;});
  }
+ /** Source-owned immutable raster bytes for the complete Native/provider and
+  * whole-upload union. Transport reads neither mutate caches nor ACK queues. */
+ captureMaterializedAssets(host:LocalMetadataAssetAvailabilityHost,transport:SharedRelayAssets,provided:LocalMetadataMaterializationOptions={}):Promise<LocalMetadataMaterializationOutcome>{
+  let options:LocalMetadataMaterializationOptions|undefined,result:LocalMetadataMaterializationOutcome|undefined;
+  return this.#captureReferenceOperation(async work=>{result=await work.materialize(host,transport,options!);this.#current();},()=>{localMetadataAvailabilityHost(host);sharedRelayAssetReadPort(transport);options={limits:localMetadataMaterializationLimits(provided)};}).then(()=>{if(!result)throw fail();return result;});
+ }
  /** Native verification of the literal PORTABLE cuts, even if the actual
   * stored/live room is newer. This returns immutable dependency DATA only:
   * it neither proves current asset availability nor supplies serving rights.
   * A hash or caller-edited Ready bit cannot replace native recomputation. */
  inspectReferences(provided:LocalMetadataReferenceBundle):Promise<LocalMetadataReferenceCut>{
   let bundle!:LocalMetadataReferenceBundle;
+  return this.#inspectReferenceOperation(()=>bundle,async(_,actual)=>actual,()=>{bundle=detachLocalMetadataReferenceBundle(provided);});
+ }
+ /** Re-admit literal history, exact metadata dependencies, both whole-upload
+  * roles and all raster bytes offline without writing either journal. The
+  * historical provider observation does not grant fresh mapping/serve rights. */
+ inspectMaterializedAssets(provided:LocalMetadataMaterializedBundle,options:LocalMetadataMaterializationOptions={}):Promise<LocalMetadataMaterializedInspection>{
+  let bundle!:LocalMetadataMaterializedBundle,limits!:LocalMetadataMaterializationOptions;
+  return this.#inspectReferenceOperation(()=>bundle.references,async(work,actual)=>work.inspectMaterialized(bundle,actual,limits),()=>{bundle=detachLocalMetadataMaterializedBundle(provided);limits={limits:localMetadataMaterializationLimits(options)};});
+ }
+ #inspectReferenceOperation<T>(selected:()=>LocalMetadataReferenceBundle,visit:(work:LocalMetadataReferenceWork,actual:LocalMetadataReferenceCut)=>Promise<T>,prepare:()=>void):Promise<T>{
   return this.#captureOperation(async()=>{
-   let result:LocalMetadataReferenceCut|undefined;
+   let result:{value:T}|undefined;const bundle=selected();
    await this.#parent.inspect(async integrity=>{
     await this.#serial;this.#current();const stored=await this.#store.readFresh();this.#current();
     const options={wasm:integrity.wasm,checkAuthority:this.#current,signal:this.#parent.scope.signal};
@@ -174,9 +194,10 @@ export class SelectedLocalMetadataDelivery{
     const middle=await metadataSnapshot({before:portable.before,current:claims.stored},this.#choice);this.#current();
     const work=new LocalMetadataReferenceWork(this.#parent.scope,options,this.#current);this.#referenceWork=work;await work.begin(bundle.parent.parent,middle);this.#current();
     const actual=await work.readPortable(bundle.parent,portable);this.#current();
-    if(metadataJson(actual)!==claims.text||!equal(await this.#store.readFresh(),stored))throw fail('local_metadata_delivery_stale');this.#current();result=actual;
-   });if(!result)throw fail();return result;
-  },()=>{bundle=detachLocalMetadataReferenceBundle(provided);});
+    if(metadataJson(actual)!==claims.text)throw fail('local_metadata_delivery_stale');this.#current();const value=await visit(work,actual);this.#current();
+    if(!equal(await this.#store.readFresh(),stored))throw fail('local_metadata_delivery_stale');this.#current();result={value};
+   });if(!result)throw fail();return result.value;
+  },prepare);
  }
  #stop():void{this.#closing=true;this.#referenceWork?.close();for(const cancel of this.#cancels)cancel();this.#cancels.clear();for(const context of this.#contexts.keys())void context.close().catch(()=>{});}
  /** Retire only temporary SDK children after actual work drains. The metadata

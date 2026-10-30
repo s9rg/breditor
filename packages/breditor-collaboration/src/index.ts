@@ -127,7 +127,7 @@ export {SharedReviewRelaySync} from "./relay/review_sync.js";
 export {registerSharedReviewWriter,registerSharedReviewObserver} from "./relay/review_registration.js";
 export type * from "./relay/review_types.js";
 export {SharedRelayAssets} from "./relay/assets.js";
-export type {SharedRelayAssetInfo,SharedRelayAssetCache,SharedRelayAssetsOptions} from "./relay/asset_types.js";
+export type {SharedRelayAssetInfo,SharedRelayAssetBytes,SharedRelayAssetCache,SharedRelayAssetsOptions} from "./relay/asset_types.js";
 export {registerSharedRelayWriter} from "./relay/registration.js";
 export {SharedRelayError} from "./relay/validation.js";
 export type {SharedSegmentedRetainedBinding,SharedSegmentedRetainedSessionOptions,SharedSegmentedRetainedRecovery,SharedSegmentedRetainedRecoveryOptions,SegmentedRetainedRecords} from "./segmented_relay/retained_contract.js";

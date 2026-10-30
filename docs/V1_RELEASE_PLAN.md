@@ -1,5 +1,20 @@
 # Breditor V1 release preparation
 
+[Materialized metadata assets](LOCAL_METADATA_MATERIALIZED_ASSETS.md) now preserve
+complete provider-checked raster bytes with the literal Native/reference cut.
+Actual Native inspection re-admits older cuts offline, refuses rehashed omissions
+and drains actual raster-hash IO on parent close without journal writes.
+
+The [qualification](qualification/2026-10-30-materialized-metadata.json) passes
+83 independently installed checks, including a real remote-only image download,
+missing-download Pending and all original cold/restore/availability workflows.
+
+Server-missing but locally durable uploads remain a reproduced V1 capture gap;
+a separately framed V2 local/provider union is under development. Actual current
+server/inventory recovery, complete provider/client/metadata reconciliation,
+authenticated joint activation and independent comment/server-log generation
+qualification remain required. All thirteen V1/parity gates stay open.
+
 [Complete metadata asset availability](LOCAL_METADATA_ASSET_AVAILABILITY.md)
 now keeps Native base/metadata references, both whole upload-archive roles and
 authenticated provider checks within the actual parent's quiescence. All seven

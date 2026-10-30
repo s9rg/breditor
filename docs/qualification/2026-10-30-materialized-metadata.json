@@ -1,0 +1,49 @@
+{
+  "format": "breditor/materialized-metadata-qualification",
+  "formatVersion": 1,
+  "functionalPassed": true,
+  "releaseReady": false,
+  "v1GatesOpen": 13,
+  "v1GatesClosed": 0,
+  "baseCommit": "14129173163728d0cf05147b32e4776a5a53859a",
+  "qualifiedSource": {
+    "commit": "14129173163728d0cf05147b32e4776a5a53859a",
+    "dirty": true,
+    "sha256": "5c6134bce75b776a938a6b2d0887bb108c07b85d1901e22bdc029232c52f6bdf",
+    "files": 7652,
+    "bytes": 57570012
+  },
+  "sourceUnchangedDuringInstalledQualification": true,
+  "sdkLogicAndTestsUnchangedAfterQualification": true,
+  "focusedDevelopmentChecks": 61,
+  "installedChecks": 83,
+  "strictSourceStages": 2,
+  "strictInstalledStages": 1,
+  "nativeParticipants": 7,
+  "metadataSources": 3,
+  "uploadArchivesPerCompletedRead": 14,
+  "scope": "V1 complete materialized capture requires a source-owned complete Native cut and a checked current provider. It preserves all provider raster bytes and original/selected upload files, uses actual authenticated content download without cache mutation or upload ACK, rechecks the entire provider union, and admits exact raster frames. Actual Native owner inspection recomputes older portable cuts without network or journal writes and refuses rehashed missing upload roles, hidden metadata mappings, payloads and Native references. Parent close drains actual raster hash IO and preserves committed facts. A real remote-only uploaded third PNG absent from all fourteen client archives is downloaded; missing GET yields Pending without a partial bundle. All original cold/restore/reference/availability regressions pass.",
+  "developmentEvidenceNotice": "The final unchanged installed archives and their copied complete test source are authoritative. Staged development tests loaded before some test-only helper extensions; the parent-close test loaded before the early-end race guard. These fixture edits did not change SDK behavior.",
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "nativeHostSha256": "60427bb794f52c39a7084fac797f8f3150501238c45c78bad6195cd928a252ca",
+  "originalNativeHostSha256": "c224c4d39d5f603dcb3815ebc58c1719b59b4d6db6fe554e675f91d4cab46ea7",
+  "proof": {
+    "path": "target/materialized-metadata-qualified-proof-rj2EOj",
+    "indexSha256": "2b5a5c3c63e1c7181497432aacb454fbdd0d0dbf8de09670e31eea36cda582c8",
+    "files": 267,
+    "logicalBytes": 283684892,
+    "deduplicatedBytes": 170468688,
+    "readBackVerified": true
+  },
+  "remaining": [
+    "Locally complete but server-missing uploads: a separate real seven-participant test reproduces V1 Pending despite durable local bytes; V2 union implementation is being tested separately",
+    "Actual current server/inventory byte coupling, complete provider/client/metadata reconciliation and authenticated joint activation",
+    "Genuine opaque host-mapping Ready integration, independent comment/server-log generations and every other V1/parity gate; full release profiles remain unrun"
+  ],
+  "unchanged": [
+    "Existing protocol meanings/defaults and original capture/reference/availability families",
+    "Original Native histories, receipts and metadata records",
+    "Package versions, normal Rust/Wasm and Native binaries"
+  ],
+  "finishedAt": "2026-10-30T15:16:06.519Z"
+}
