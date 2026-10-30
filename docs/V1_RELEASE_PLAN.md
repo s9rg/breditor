@@ -1,5 +1,17 @@
 # Breditor V1 release preparation
 
+[Owned retained snapshot byte reuse](RETAINED_SNAPSHOT_CAPTURE.md) passes
+113 independently installed checks with strict types, 30 Native storage checks,
+75 Native publication/ownership/history checks and 77 plan/runner checks. Exact
+serialized DATA is reused while fresh parent relay bytes and private records
+remain unchanged; current ownership, cancellation and Native checks still run.
+The serialization-only benchmark is not whole-room performance qualification.
+
+Cold post-ACK recovery remains unqualified: default-heap exhaustion and a later
+short Blob read are retained as separate failures. Current server metadata
+receipt/catalog containment, independent generations, coordinated activation
+and all thirteen V1/parity gates remain open.
+
 [Same-owner Native/metadata/provider reconciliation](LOCAL_METADATA_RECONCILIATION.md)
 now passes 83 staged and 83 independently installed checks. Real managed image
 uploads, fresh authenticated resume and two delivery passes across all seven

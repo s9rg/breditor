@@ -1,0 +1,60 @@
+{
+  "format": "breditor/retained-snapshot-cache-qualification",
+  "formatVersion": 1,
+  "baseCommit": "8777f9815d40b16afaece6a0945b4ebe8fa4867e",
+  "qualifiedSource": {
+    "commit": "8777f9815d40b16afaece6a0945b4ebe8fa4867e",
+    "dirty": true,
+    "sha256": "5ff7d9bdd9d90cb429761294389696508e3bc6702ecf14605d3c4ae24add4f22",
+    "files": 7706,
+    "bytes": 57783079
+  },
+  "sourceUnchangedDuringInstalledQualification": true,
+  "installedChecks": 113,
+  "strictInstalledStages": 1,
+  "nativeStorageChecks": 30,
+  "nativePublicationOwnershipHistoryChecks": 75,
+  "planAndRunnerChecks": 77,
+  "scope": "Reuse exact serialized DATA when freshly captured parent relay bytes and privately owned normalized record identity are unchanged. No custody, cancellation, Native admission, policy or live source verdict is cached.",
+  "benchmark": {
+    "scope": "serialization-only-verified-native-records-not-whole-room-performance-qualification",
+    "captureBytes": 22780,
+    "captureSha256": "a8dbe42ba753f227581491788388922d09a58c3340a01054ab09c9cb225add4c",
+    "callsPerRound": 1000,
+    "rounds": 3,
+    "originalMs": [
+      64.22995900000001,
+      62.54183400000002,
+      62.98287500000001
+    ],
+    "cachedMs": [
+      1.4418750000000102,
+      1.2700419999999895,
+      1.3755419999999958
+    ],
+    "medianSpeedup": 45.78767860232563,
+    "exactBytesEqual": true,
+    "permissionConstructed": false
+  },
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "nativeHostSha256": "60427bb794f52c39a7084fac797f8f3150501238c45c78bad6195cd928a252ca",
+  "releaseReady": false,
+  "coldRestartQualified": false,
+  "v1GatesOpen": 13,
+  "proof": {
+    "path": "target/retained-snapshot-cache-qualified-proof-uhejXC",
+    "indexSha256": "0a509b301afa177a61c8ea00bf9a4016fecbe70858874938e0bd405d5d47fcec",
+    "references": 357,
+    "uniqueFiles": 254,
+    "deduplicatedBytes": 31633491,
+    "providerWorkflows": 1,
+    "nativeArtifactReferences": 216,
+    "readBackVerified": true
+  },
+  "remaining": [
+    "Cold post-ACK recovery: earlier default-heap OOM and subsequent short Blob read are not confirmed repaired; opt-in diagnosis remains separate.",
+    "Exact current server metadata receipt/catalog/packet containment; SDK complete collector and genuine Native read foundation under development.",
+    "Independent comment/server-log generations, authenticated whole-room activation, complete release profiles and all13V1/parity gates."
+  ],
+  "finishedAt": "2026-10-30T20:35:09.656Z"
+}

@@ -1,3 +1,4 @@
+import {SegmentedRetainedCompanion} from '../packages/breditor-collaboration/dist/segmented_relay/retained_companion.js';
 /** Actual native packets/owners, atomic IDB fixtures and explicit new-family boundaries. */
 import test,{before,after} from 'node:test';
 import assert from 'node:assert/strict';
@@ -88,4 +89,26 @@ test('retained native version packets preserve writers beyond JavaScript safe in
 });
 test('a temporarily reserved component can refuse discard without permanently poisoning parent release',async t=>{
  const h=await setup(t);await pending(h);const recovery=h.session.exportRetainedRecovery(),release=reserveSuggestionRecovery(h.queue);try{await assert.rejects(h.session.discardAndClose(),e=>e.code==='suggestion_recovery_in_use');assert.deepEqual(h.session.exportRetainedRecovery(),recovery);}finally{release();}await h.session.discardAndClose();assert.equal(h.session.state().status,'closed');
+});
+
+test('retained snapshot bytes track actual native packet changes, old commit confirmation, load and release',async t=>{
+ const h=await setup(t);await pending(h);const c=new SegmentedRetainedCompanion(h.options);c.admit(h.session.core);
+ const empty=c.capture(),records=h.session.retainedRecords();
+ for(const kind of ['suggestions','revisions','versions'])c.proposeRecord(kind,records[kind]);
+ const first=c.capture(),stamp=c.sourceStamp();assert.notEqual(first,empty);
+ for(let i=0;i<100;i++){assert.equal(c.capture(),first);assert.equal(c.sourceStamp(),stamp);}
+ const later=h.versions.saveVersion('Later actual native version','9');await h.versions.flush();
+ c.proposeRecord('versions',h.session.retainedRecords().versions);const current=c.capture();assert.notEqual(current,first);assert.notEqual(c.sourceStamp(),stamp);
+ c.confirm(first);assert.equal(c.capture(),current);assert.deepEqual(c.durableRecords(),records);
+ assert.ok(JSON.parse(current).retained.versions.packets.some(row=>h.session.core.readVersion(row.packet).id===later.id));
+ const nativeHead=JSON.parse(await head(h)).source.source,wrapped=c.wrap(nativeHead,current),restored=new SegmentedRetainedCompanion(h.options);
+ assert.equal(restored.capture(),empty);restored.load(wrapped);assert.equal(restored.capture(),current);
+ c.releaseRecords();assert.deepEqual(JSON.parse(c.capture()).retained,{suggestions:null,revisions:null,versions:null});assert.throws(()=>c.proposeRecord('versions',records.versions));
+});
+test('retained snapshot ownership is independent of mutable caller records and exported clones',async t=>{
+ const h=await setup(t);await pending(h);const records=h.session.retainedRecords(),initial={relay:h.session.relayProgress(),retainedBinding:new SegmentedRetainedCompanion(h.options).retainedBinding,retained:records};
+ const c=new SegmentedRetainedCompanion(h.options,initial),before=c.capture();c.admit(h.session.core);
+ records.suggestions.retained.length=0;records.revisions.retained.length=0;records.versions.packets.length=0;
+ assert.equal(c.capture(),before);const exported=c.records();exported.versions.packets.length=0;assert.equal(c.capture(),before);
+ const next=h.session.retainedRecords().versions;c.proposeRecord('versions',next);const proposed=c.capture();next.packets.length=0;assert.equal(c.capture(),proposed);
 });

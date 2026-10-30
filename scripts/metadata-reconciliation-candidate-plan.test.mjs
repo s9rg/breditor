@@ -12,5 +12,6 @@ for(const profile of ['functional','full'])test(profile+': release requires genu
  const types=rows.get('metadata-reconciliation-private-types');for(const flag of ['--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess'])assert.ok(types.args.includes(flag));
  assert.ok(types.args.includes('scripts/fixtures/editor-consumer/types-local-metadata-reconciliation.ts'));
  assert.deepEqual(rows.get('installed-metadata-reconciliation').artifacts,[{path:metadataRecoveryArtifacts.reconciliation,fresh:true}]);assert.ok(rows.get('installed-metadata-reconciliation').timeoutMs>=7200000);
+ assert.ok(rows.get('segmented-retained-storage-contracts').index<rows.get('installed-metadata-reconciliation').index);
  assert.ok(rows.has('installed-metadata-server-bytes'));assert.ok(rows.has('installed-recoverable-metadata'));assert.equal(plan.v1Ready,false);
 });
