@@ -55,7 +55,7 @@ export class SelectedLocalReviewDelivery{
  readonly #scope;readonly #driver;readonly #prepared;readonly #sources;readonly #local;readonly #choice;readonly #authority;readonly #store;
  readonly #contexts=new Map<NativeRelayDelivery,RetainedDeliverySource>();readonly #ios=new Map<RetainedDeliverySource,LocalReviewIO>();readonly #closingListeners=new Set<()=>void>();
  #metadataChild:MetadataChildSlot|undefined;#metadataBinding:string|undefined;
- #snapshot:LocalReviewDeliverySnapshot|undefined;#active=false;#failed=false;#busy=false;#checking=false;#closing=false;#closed=false;#opening:Promise<void>|undefined;#ending:Promise<void>|undefined;#captureWork:Promise<LocalReviewRoomBundle>|undefined;#serial=Promise.resolve();
+ #snapshot:LocalReviewDeliverySnapshot|undefined;#active=false;#failed=false;#busy=false;#checking=false;#closing=false;#closed=false;#opening:Promise<void>|undefined;#ending:Promise<void>|undefined;#captureWork:Promise<LocalReviewRoomBundle>|undefined;#readWork:Promise<void>|undefined;#serial=Promise.resolve();
  private constructor(token:object,scope:SelectedNativeRecoveryScope,driver:PreparedDeliveryDriver,sources:readonly RetainedDeliveryClient[],local:readonly RetainedDeliveryClient[],choice:LocalReviewDeliveryChoice,authority:()=>void,original?:LocalReviewRoomBundle){
   if(token!==key)throw fail('local_review_delivery_policy');this.#scope=scope;this.#driver=driver;this.#prepared=original?.prepared??driver.prepared;this.#sources=sources;this.#local=local;this.#choice=choice;this.#authority=authority;this.#store=new LocalReviewDeliveryStore(choice,this.#guard);
   registerLocalReviewDelivery(this,scope,source=>{this.#writer();const io=this.#ios.get(source);if(!io)throw fail('local_review_delivery_policy');return io;});
@@ -92,6 +92,7 @@ export class SelectedLocalReviewDelivery{
    saved:()=>{check();const job=this.#serial.then(async()=>{check();const lanes=[];for(const row of this.#local){const source=await this.#saved(row);check();const relay=structuredClone(this.#lane(row.id).relay);verifyLocalReviewProgress(row.source.core,relay);lanes.push({id:row.id,source,relay});}check();return lanes;});this.#serial=job.then(()=>{},()=>{});return job;},
    createDelivery:(source:RetainedDeliverySource,ceiling:SharedReviewAccess)=>{check();return this.createDelivery(source,ceiling);},
    capture:(visit:(bundle:LocalReviewRoomBundle,integrity:SharedArchiveIntegrityOptions)=>Promise<void>)=>{check();if(this.#metadataBinding===undefined||typeof visit!=='function')return Promise.reject(fail('local_review_delivery_policy'));return this.#capture(token,visit);},
+   inspect:(visit:(integrity:SharedArchiveIntegrityOptions)=>Promise<void>)=>{check();if(this.#metadataBinding===undefined||typeof visit!=='function')return Promise.reject(fail('local_review_delivery_policy'));return this.#inspectMetadata(token,visit);},
    install:(stop:()=>void,wait:()=>Promise<void>)=>{check();if(installed||typeof stop!=='function'||typeof wait!=='function')throw fail('local_review_delivery_policy');installed={stop,wait};finish();},release,
   });}catch(error){release();throw error;}
  }
@@ -147,11 +148,23 @@ export class SelectedLocalReviewDelivery{
   });}).catch(async error=>{this.#failed=true;await this.#driver.close();throw error;}).finally(()=>{this.#busy=false;this.#captureWork=undefined;});this.#captureWork=job;return job;
  }
  identity():LocalReviewDeliveryChoice{return this.#choice;}
+ /** Private read under the actual child slot. Publish its lifetime before any
+  * policy callback. Portable-data refusals leave the genuine owner usable;
+  * failures to quiesce still follow the original driver's close semantics. */
+ #inspectMetadata(token:object,visit:(integrity:SharedArchiveIntegrityOptions)=>Promise<void>):Promise<void>{
+  if(this.#metadataChild?.key!==token)return Promise.reject(fail('local_review_delivery_policy'));
+  if(this.#busy||this.#checking)return Promise.reject(fail('local_review_delivery_busy'));
+  if(this.#closing||this.#closed||this.#failed||!this.#active)return Promise.reject(fail('local_review_delivery_closed'));this.#busy=true;
+  const job=Promise.resolve().then(()=>{this.#writer();return this.#driver.quiesce(async()=>{
+   await this.#serial;this.#writer();const actual=await this.#scope.retainCurrent();this.#writer();
+   try{await visit(actual.integrity);return{ok:true} as const;}catch(error){return{ok:false,error} as const;}
+  });}).then(result=>{this.#writer();if(!result.ok)throw result.error;}).finally(()=>{this.#busy=false;this.#readWork=undefined;});this.#readWork=job;return job;
+ }
  close():Promise<void>{return this.#close();}
  #close():Promise<void>{
   if(this.#closed)return Promise.resolve();if(this.#ending)return this.#ending;this.#closing=true;
   const errors:unknown[]=[];try{this.#metadataChild?.stop();}catch(error){errors.push(error);}for(const cancel of this.#closingListeners)try{cancel();}catch(error){errors.push(error);}this.#closingListeners.clear();
-  const child=this.#metadataChild,stopped=this.#driver.close(),opening=this.#opening,serial=this.#serial,capture=this.#captureWork;
-  this.#ending=(async()=>{await Promise.all([stopped,child?.wait()].map(async job=>{try{await job;}catch(error){errors.push(error);}}));await opening?.catch(()=>{});await serial;await capture?.catch(()=>{});if(errors.length)throw new AggregateError(errors,'Local metadata child cleanup did not finish');await stored.close.call(this.#store);this.#closed=true;})().finally(()=>{this.#ending=undefined;});return this.#ending;
+  const child=this.#metadataChild,stopped=this.#driver.close(),opening=this.#opening,serial=this.#serial,capture=this.#captureWork,read=this.#readWork;
+  this.#ending=(async()=>{await Promise.all([stopped,child?.wait()].map(async job=>{try{await job;}catch(error){errors.push(error);}}));await opening?.catch(()=>{});await serial;await capture?.catch(()=>{});await read?.catch(()=>{});if(errors.length)throw new AggregateError(errors,'Local metadata child cleanup did not finish');await stored.close.call(this.#store);this.#closed=true;})().finally(()=>{this.#ending=undefined;});return this.#ending;
  }
 }

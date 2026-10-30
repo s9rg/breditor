@@ -25,6 +25,9 @@ export interface LocalReviewMetadataParent {
  /** Drain actual adapters and retain the parent's complete room/binding data.
   * Only the coupled child may call this while metadata is enlisted. */
  capture(visit:(bundle:LocalReviewRoomBundle,integrity:SharedArchiveIntegrityOptions)=>Promise<void>):Promise<LocalReviewRoomBundle>;
+ /** Quiesce the genuine adapters for a finite read without advancing review
+  * or metadata journals. A refused portable claim does not retire the parent. */
+ inspect(visit:(integrity:SharedArchiveIntegrityOptions)=>Promise<void>):Promise<void>;
  install(stop:()=>void,wait:()=>Promise<void>):void;
  release():void;
 }

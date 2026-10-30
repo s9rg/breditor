@@ -20,3 +20,14 @@ if(body.outcome.kind==='pending'){
 }
 // @ts-expect-error The literal old parent cannot be replaced by reference DATA.
 const old:LocalMetadataRoomBundle=bundle;void old;
+void owner.inspectReferences(bundle).then(value=>{
+ const checked:LocalMetadataReferenceCut=value;void checked;
+ // @ts-expect-error Native-inspected dependency DATA supplies no provider/actor grant.
+ value.activate();
+ // @ts-expect-error No metadata source can be replaced through a read result.
+ value.stored.revision=0;
+});
+// @ts-expect-error A plain old metadata bundle has no complete reference file.
+void owner.inspectReferences(bundle.parent);
+// @ts-expect-error Callers cannot omit original cuts or skip native verification.
+void owner.inspectReferences(bundle,{verifyNative:false});

@@ -54,3 +54,36 @@ reconciliation under current authenticated requirements, and joint activation.
 No parsed reference file, digest or dependency decision creates an actor or
 provider capability. All thirteen full V1/parity gates remain open. Rust/Wasm,
 package versions, protocol meanings and default data formats are unchanged.
+
+
+## Portable native inspection
+
+`SelectedLocalMetadataDelivery.inspectReferences(bundle)` admits the literal
+portable reference bundle under the genuine metadata child and its parent's
+adapter quiescence. It returns immutable dependency data for the archived cuts.
+The live native histories and durable metadata journal may have advanced.
+
+The reader snapshots the closed multipart slots, verifies raw Blob length and
+hash before decoding, requires canonical JSON, and admits the unchanged metadata
+and review envelopes against the current stored owner. It reconstructs the
+initial, recorded intermediate and portable-current states on readonly native
+aliases. Original native continuation, retained packet membership and review
+receipts are checked at those points. The actual live source must extend them.
+The complete base contribution, every lane, packet identity, pending reason,
+state selection and resulting reference set are recomputed. The complete
+canonical body must equal the incoming body. Matching hashes alone do not admit
+caller-edited references, packet rows or a Ready marker.
+
+A newer downloaded version cache does not change an older archived Pending cut.
+An older Ready cut is not a statement about newer live requirements. Inspection
+changes neither review nor metadata journal. The full observed current metadata
+head is compared again before return. Invalid incoming data leaves the current
+owner usable. Failure to drain actual adapters retains the original driver's
+close behavior.
+
+The parent's private read slot is published before host callbacks. Parent and
+child close wait for the actual read promise, including a pending digest. Native
+aliases and late unclaimed factory results retain the existing cleanup rules.
+Inspection does not return an upload owner, provider grant, actor, or activation
+capability. Current provider/client/upload-byte reconciliation and authenticated
+whole-room activation remain separate work.

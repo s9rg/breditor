@@ -1,5 +1,6 @@
 import {LocalMetadataReferenceWork} from '../selected_local_metadata_assets/room_work.js';
-import type {LocalMetadataReferenceBundle} from '../selected_local_metadata_assets/room_contract.js';
+import type {LocalMetadataReferenceBundle,LocalMetadataReferenceCut} from '../selected_local_metadata_assets/room_contract.js';
+import {detachLocalMetadataReferenceBundle,readLocalMetadataReferenceClaims} from '../selected_local_metadata_assets/portable_bundle.js';
 import {detachLocalMetadataBundle} from './bundle.js';
 import {readMetadataBundle,inspectMetadataResume} from './resume_inspection.js';
 import {metadataResumeChoice} from './resume_policy.js';
@@ -26,7 +27,7 @@ import type {PreparedCompoundMetadata} from '../metadata/compound_preparation.js
 import type {SegmentedRetainedKind,SegmentedRetainedRecords} from '../segmented_relay/retained_contract.js';
 import type {SharedReviewAccess} from '../review_types.js';
 import {LocalMetadataDeliveryStore} from './store.js';
-import {metadataChoice,metadataBinding,initialMetadataRecords,metadataRecordsDigest,metadataJson,equal,fail} from './policy.js';
+import {metadataChoice,metadataBinding,initialMetadataRecords,metadataRecordsDigest,metadataSnapshot,metadataJson,equal,fail} from './policy.js';
 import {metadataData} from './data.js';
 import {requireMetadataRecordsForward} from './forward.js';
 import type {LocalMetadataInitialLane,LocalMetadataDeliveryChoice,LocalMetadataDeliveryState,LocalMetadataDeliverySnapshot,LocalMetadataRoomBundle} from './contract.js';
@@ -123,9 +124,13 @@ export class SelectedLocalMetadataDelivery{
  /** Keep parent quiescence through BOTH journals and the metadata digest, so
   * no new context can advance a source between its native and metadata files. */
  /** Register actual work and exclude reentry BEFORE any host policy callback. */
- #captureOperation<T>(work:()=>Promise<T>):Promise<T>{
+ #captureOperation<T>(work:()=>Promise<T>,prepare?:()=>void):Promise<T>{
   if(this.#busy)return Promise.reject(fail('local_metadata_delivery_busy'));this.#busy=true;
-  const job=Promise.resolve().then(()=>{this.#current();return work();}).finally(()=>{this.#referenceWork?.close();this.#referenceWork=undefined;this.#busy=false;this.#capturing=undefined;});this.#capturing=job;return job;
+  let preparationError:{error:unknown}|undefined;
+  const job=Promise.resolve().then(()=>{if(preparationError)throw preparationError.error;this.#current();return work();}).finally(()=>{this.#referenceWork?.close();this.#referenceWork=undefined;this.#busy=false;this.#capturing=undefined;});this.#capturing=job;
+  // Blob detachment can invoke an application subclass's type getter. Publish
+  // both the busy gate and actual promise before any such synchronous hook.
+  try{prepare?.();}catch(error){preparationError={error};}return job;
  }
  capture():Promise<LocalMetadataRoomBundle>{return this.#captureOperation(async()=>{
   let result:LocalMetadataRoomBundle|undefined;
@@ -142,6 +147,27 @@ export class SelectedLocalMetadataDelivery{
    const text=metadataJson(this.#snapshot),file=new Blob([text],{type:'application/vnd.breditor.selected-local-metadata+json'}),bundle:LocalMetadataRoomBundle=Object.freeze({format:'breditor/selected-local-metadata-room-bundle',formatVersion:1,parent,metadata:Object.freeze({file,bytes:file.size,sha256:await segmentedDigest(text)})});this.#current();result=await work.finish(bundle,this.#snapshot);this.#current();
   });if(!result)throw fail();return result;
  });}
+ /** Native verification of the literal PORTABLE cuts, even if the actual
+  * stored/live room is newer. This returns immutable dependency DATA only:
+  * it neither proves current asset availability nor supplies serving rights.
+  * A hash or caller-edited Ready bit cannot replace native recomputation. */
+ inspectReferences(provided:LocalMetadataReferenceBundle):Promise<LocalMetadataReferenceCut>{
+  let bundle!:LocalMetadataReferenceBundle;
+  return this.#captureOperation(async()=>{
+   let result:LocalMetadataReferenceCut|undefined;
+   await this.#parent.inspect(async integrity=>{
+    await this.#serial;this.#current();const stored=await this.#store.readFresh();this.#current();
+    const options={wasm:integrity.wasm,checkAuthority:this.#current,signal:this.#parent.scope.signal};
+    const claims=await readLocalMetadataReferenceClaims(bundle,options,this.#current);this.#current();
+    const portable=await readMetadataBundle(this.#parent,bundle.parent,this.#choice,this.#current,options);this.#current();
+    await inspectMetadataResume(this.#parent,bundle.parent,portable,stored,this.#current);this.#current();
+    const middle=await metadataSnapshot({before:portable.before,current:claims.stored},this.#choice);this.#current();
+    const work=new LocalMetadataReferenceWork(this.#parent.scope,options,this.#current);this.#referenceWork=work;await work.begin(bundle.parent.parent,middle);this.#current();
+    const actual=await work.readPortable(bundle.parent,portable);this.#current();
+    if(metadataJson(actual)!==claims.text||!equal(await this.#store.readFresh(),stored))throw fail('local_metadata_delivery_stale');this.#current();result=actual;
+   });if(!result)throw fail();return result;
+  },()=>{bundle=detachLocalMetadataReferenceBundle(provided);});
+ }
  #stop():void{this.#closing=true;this.#referenceWork?.close();for(const cancel of this.#cancels)cancel();this.#cancels.clear();for(const context of this.#contexts.keys())void context.close().catch(()=>{});}
  /** Retire only temporary SDK children after actual work drains. The metadata
   * journal, initial intent, native histories and parent binding are retained. */

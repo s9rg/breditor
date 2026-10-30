@@ -1,19 +1,21 @@
 # Breditor V1 release preparation
 
-The [coupled metadata reference contract](COUPLED_METADATA_REFERENCES.md) now
-exports complete base history and exact before/stored/current metadata dependencies
-under the genuine parent's quiescence. Older cuts use native readonly aliases;
-actual stored bytes are pinned through CAS and current document/comment stamps
-stay fixed. Real catalog downloads, newer remote edits, reentry exclusion and
-cancelled hashing preserve all seven native histories and newer committed facts.
-Its [qualification](qualification/2026-10-30-coupled-metadata-references.json) passes
-174 direct checks and 63 independently installed checks, including both new
-reference and original complete cold/restore native workflows and strict types.
+The [coupled metadata reference owner](COUPLED_METADATA_REFERENCES.md) now
+re-admits a portable reference bundle through a freshly opened metadata owner.
+It reconstructs exact archived native cuts even when live sources and stored
+metadata are newer, preserves older Pending results, and refuses rehashed
+incomplete reference or packet claims without changing journals. Parent close
+tracks the actual read/hash work and all seven document/comment histories survive.
 
-A fresh authenticated provider check finds all twelve new proposal/revision image
-generations unmapped, confirming that dependency Ready does not prove bytes.
-Portable-reference re-admission, actual provider/client/upload byte reconciliation
-and joint authenticated activation remain required. All thirteen V1/parity gates
+Its [qualification](qualification/2026-10-30-portable-metadata-references.json)
+passes 66 direct checks and 67 independently installed checks, including the
+complete original cold/restore workflow. A targeted installed followup corrects
+a generated evidence filename and verifies every emitted file against the exact
+unchanged SDK archives. Original protocol meanings/defaults remain intact.
+
+Complete provider/client/metadata/upload byte reconciliation, payload-preserving
+recovery and authenticated joint activation remain required. Independent
+comment/server-log generation qualification and all thirteen V1/parity gates
 remain open. No version, push, publication, tag or deployment changed.
 
 The [local metadata asset-reference contract](LOCAL_METADATA_ASSET_REFERENCES.md)

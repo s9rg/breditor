@@ -457,6 +457,7 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   stage('local-metadata-room-references-private-types',node,['node_modules/typescript/bin/tsc','--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM','scripts/fixtures/editor-consumer/types-local-metadata-room-references.ts']),
   stage('local-metadata-room-references-contracts',node,['--test','scripts/local-metadata-room-references-contracts.test.mjs']),
   stage('local-metadata-room-references-native',node,['--test','scripts/local-metadata-room-references-native.test.mjs'],{},[],3600000),
+  stage('local-metadata-reference-read-close-native',node,['--test','scripts/local-metadata-portable-reference-close-native.test.mjs'],{},[],3600000),
   script('installed-local-metadata-room-references','check-local-metadata-room-references-installed.mjs',[],[{path:'target/local-metadata-room-references-installed-consumer.json',fresh:true}],4800000),
   stage('native-version-delivery-plan-contracts',node,['--test','scripts/native-version-delivery-candidate-plan.test.mjs']),
   stage('native-version-delivery-private-types',node,['node_modules/typescript/bin/tsc','--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM','scripts/fixtures/editor-consumer/types-native-version-delivery.ts']),

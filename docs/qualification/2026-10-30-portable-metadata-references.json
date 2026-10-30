@@ -1,0 +1,67 @@
+{
+  "format": "breditor/portable-metadata-reference-qualification",
+  "formatVersion": 1,
+  "functionalPassed": true,
+  "releaseReady": false,
+  "v1GatesOpen": 13,
+  "v1GatesClosed": 0,
+  "baseCommit": "e3f831c825f1e5996bde4040ed12b35980acd978",
+  "fullQualifiedSource": {
+    "commit": "e3f831c825f1e5996bde4040ed12b35980acd978",
+    "dirty": true,
+    "sha256": "d44d865c69f325bec0cceefa88ca1f63127e91d292471303a810adce78ab4f0b",
+    "files": 7619,
+    "bytes": 57412259
+  },
+  "currentQualifiedSource": {
+    "commit": "e3f831c825f1e5996bde4040ed12b35980acd978",
+    "dirty": true,
+    "sha256": "05aee6f09fd64c7af8cf4041e7607dcca206946d3759e055c77712a54625c1c2",
+    "files": 7619,
+    "bytes": 57412410
+  },
+  "sdkImplementationUnchangedAfterFullQualification": true,
+  "sourceUnchangedDuringFullInstalledQualification": true,
+  "directChecks": 66,
+  "fullInstalledChecks": 67,
+  "correctedEvidenceInstalledFollowupChecks": 1,
+  "strictSourceStages": 2,
+  "strictInstalledStages": 1,
+  "nativeParticipants": 7,
+  "localMetadataSources": 3,
+  "scope": "A genuine freshly opened metadata owner re-admits complete portable metadata references against exact native before/stored/current aliases while actual stored/live sources are newer. It recomputes base contributions, all state selections, packet identities, Pending reasons and complete Ready dependencies. Raw byte hashes precede decoding and canonical complete comparison. Rehashed missing references and packet claims refuse without disabling the owner or changing journals. Native source continuation, capture/inspection reentry exclusion, Blob subclass callback registration, actual hash-close ownership, original complete cold/restore and all seven future document/comment histories are exercised.",
+  "fixtureEvidenceCorrection": {
+    "afterFullQualification": true,
+    "sdkCodeChanged": false,
+    "change": "The close fixture wrote unchanged-metadata.json but named it later-committed-metadata.json in the emitted list. Corrected only the list name and added byte-length/SHA read-back of every emitted file. The exact installed SDK archives then independently reran this genuine native close case and verified all six files.",
+    "fullSuiteTestSourceStayedUnchanged": false,
+    "currentFixtureSha256": "a232ef79d92c124b7f0d9e021bcf5fff75c3e1d33462ad627f497bff904e11a1",
+    "followupLogSha256": "2e53fe10637bc6afbdf3e431a0455d330df250de5debbfd08a8124b3d273a25e"
+  },
+  "stagedNativeSupplement": {
+    "tests": 1,
+    "passed": true,
+    "notice": "Loaded before the additional synchronous Blob-detachment registration guard. The full final installed run and targeted corrected-evidence followup execute the unchanged current SDK and are authoritative."
+  },
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "nativeHostSha256": "60427bb794f52c39a7084fac797f8f3150501238c45c78bad6195cd928a252ca",
+  "proof": {
+    "path": "target/portable-metadata-reference-qualified-proof-iJyYkp",
+    "indexSha256": "fee0f199cee5ba817f16899ac131572bc767ee4341ded53c997674cbbb1e475c",
+    "files": 107,
+    "logicalBytes": 103966412,
+    "deduplicatedBytes": 32872391,
+    "readBackVerified": true
+  },
+  "remaining": [
+    "Actual complete provider/client/metadata/upload byte reconciliation and payload-preserving recovery",
+    "Authenticated joint activation with current server/client decisions",
+    "Independent comment/server-log generation qualification and all other V1/parity gates; full release profiles remain unrun"
+  ],
+  "unchanged": [
+    "Original protocols/defaults, durable metadata and Native records",
+    "Public exports and package versions",
+    "Normal Rust/Wasm and native fixture binaries"
+  ],
+  "finishedAt": "2026-10-30T06:00:24.091Z"
+}

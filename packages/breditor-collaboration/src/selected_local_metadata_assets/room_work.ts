@@ -7,7 +7,7 @@ import type {SelectedNativeRecoveryScope} from '../selected_native_recovery/cont
 import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
 import type {LocalReviewRoomBundle} from '../selected_local_review_delivery/contract.js';
 import type {LocalMetadataDeliverySnapshot,LocalMetadataRoomBundle} from '../selected_local_metadata_delivery/contract.js';
-import type {LocalMetadataReferenceBundle,LocalMetadataReferencePoint} from './room_contract.js';
+import type {LocalMetadataReferenceBundle,LocalMetadataReferencePoint,LocalMetadataReferenceCut} from './room_contract.js';
 import type {SharedIndependentParticipantSelection} from '../independent_participant/contract.js';
 import type {SharedIndependentRecoveryFactory} from '../independent_recovery/contract.js';
 import {selectedNativeDeliverySources,selectedNativeDeliveryReads} from '../relay/native_delivery.js';
@@ -70,6 +70,33 @@ export class LocalMetadataReferenceWork {
   const rows=[];for(const lane of snapshot.current.lanes){const actual=this.#sources.find(row=>row.id===lane.id);if(!actual||actual.source.parent.kind!=='independent-local')throw fail('local_metadata_assets_state');const stamp=coreReadStamp(actual.source.core),before=this.#liveStamps.get(actual.source.core);if(!before||stamp.document!==before.document||stamp.review!==before.review)throw fail('local_metadata_assets_changed');const port=independentHistoryNative(actual.source.parent.session);if(port.companion||port.core!==actual.source.core||!equal(port.persisted(),lane.source))throw fail('local_metadata_assets_state');rows.push(await readLocalMetadataRecordAssetReferences(actual.source.core,snapshot.current,lane.id,this.#check));this.#check();if(!equal(port.persisted(),lane.source))throw fail('local_metadata_assets_changed');}
   const point=await localMetadataReferencePoint('current',snapshot.current,rows);this.#check();const body=await composeLocalMetadataReferenceCut(bundle,snapshot,this.#stored.current,cut.history.call(this.#cut),[...this.#points,point]);this.#check();const text=metadataJson(body),file=new Blob([text],{type:'application/vnd.breditor.local-metadata-reference-cut+json'}),sha256=await segmentedDigest(text);this.#check();
   return Object.freeze({format:'breditor/selected-local-metadata-reference-bundle',formatVersion:1,parent:bundle,references:Object.freeze({file,bytes:file.size,sha256})});
+ }
+ /** Recompute an older portable current point on readonly native aliases.
+  * Unlike finish(), no live core is substituted for an archived point. All
+  * three exact cuts precede the actual source; no journal is written here. */
+ async readPortable(bundle:LocalMetadataRoomBundle,provided:LocalMetadataDeliverySnapshot):Promise<LocalMetadataReferenceCut>{
+  this.#check();if(!this.#ready||!this.#stored||!this.#parent||!this.#cut)throw fail('local_metadata_assets_closed');
+  const snapshot=await metadataSnapshot(metadataData(provided),this.#stored.current.choice);this.#check();requireMetadataSnapshotForward(this.#stored,snapshot);
+  if(!equal(bundle.parent.prepared.choice,this.#parent.prepared.choice)||!equal(bundle.parent.current.selection,this.#parent.current.selection)||bundle.parent.delivery.bytes!==this.#parent.delivery.bytes||bundle.parent.delivery.sha256!==this.#parent.delivery.sha256)throw fail('local_metadata_assets_state');
+  const catalog=parsePhysicalCatalogV3Manifest(cut.root.call(this.#cut).source.manifest),rows=[];
+  for(const [index,lane]of snapshot.current.lanes.entries()){
+   this.#check();const stored=this.#stored.current.lanes[index]!,actual=this.#sources.find(row=>row.id===lane.id),entry=catalog.participants.find(row=>row.id===lane.id),factory=this.#factories?.reads.find(row=>row.id===lane.id)?.read as {session:SharedIndependentRecoveryFactory<SharedSelectionPolicy>}|undefined;
+   if(!actual||actual.source.parent.kind!=='independent-local'||!entry||entry.family!==actual.family||!factory||!['independent-local','local-operation-snapshot','local-operation-flat'].includes(entry.family))throw fail('local_metadata_assets_state');
+   const selected=(entry.family==='independent-local'?entry.selection:(entry as {selection:{original:SharedIndependentParticipantSelection}}).selection.original) as SharedIndependentParticipantSelection;
+   let older:LocalPortableReplay|undefined,newer:LocalPortableReplay|undefined;
+   try{
+    older=await replayLocalOperationRecovery(selected,factory.session,stored.source,this.#check);this.#aliases.add(older);this.#check();verifyLocalReviewProgress(older.core,stored.relay);
+    if(equal(stored.source,lane.source))newer=older;else{newer=await replayLocalOperationRecovery(selected,factory.session,lane.source,this.#check);this.#aliases.add(newer);this.#check();verifyLocalOperationContinuation(newer,older);}
+    forwardProgress(stored.relay,lane.relay);verifyLocalReviewProgress(newer.core,lane.relay);
+    const port=independentHistoryNative(actual.source.parent.session),live=port.persisted();if(port.companion||port.core!==actual.source.core||live.versions.length<lane.source.versions.length||lane.source.versions.some((packet,i)=>live.versions[i]!==packet))throw fail('local_metadata_assets_state');
+    (lane.source.identity.documentHistory==='original'?verifyOriginal:verifySegmented).call(actual.source.core,newer.core);this.#check();
+    rows.push(await readLocalMetadataRecordAssetReferences(newer.core,snapshot.current,lane.id,this.#check));this.#check();
+   }finally{if(newer){newer.dispose();this.#aliases.delete(newer);}if(older){older.dispose();this.#aliases.delete(older);}}
+  }
+  const point=await localMetadataReferencePoint('current',snapshot.current,rows);this.#check();
+  const body=await composeLocalMetadataReferenceCut(bundle,snapshot,this.#stored.current,cut.history.call(this.#cut),[...this.#points,point]);this.#check();
+  for(const actual of this.#sources){const before=this.#liveStamps.get(actual.source.core),now=coreReadStamp(actual.source.core);if(!before||before.document!==now.document||before.review!==now.review)throw fail('local_metadata_assets_changed');}
+  return body;
  }
  /** Cancels finite reads, disposes claimed aliases and observes/frees late
   * unclaimed raw restores through the original factory wait implementation. */
