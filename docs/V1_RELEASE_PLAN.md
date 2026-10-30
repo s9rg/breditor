@@ -1,5 +1,23 @@
 # Breditor V1 release preparation
 
+[Complete metadata asset availability](LOCAL_METADATA_ASSET_AVAILABILITY.md)
+now keeps Native base/metadata references, both whole upload-archive roles and
+authenticated provider checks within the actual parent's quiescence. All seven
+document/comment stamps stay fixed. A newer server requires genuine Native
+continuation from the archived source; a stale old controller is rejected.
+
+Its [qualification](qualification/2026-10-30-metadata-asset-availability.json)
+passes 68 direct checks and 71 independently installed checks. Actual PNG bytes,
+all fourteen upload archives, opaque-mapping Pending, uncached catalog Pending,
+account-wait cancellation and the original full cold/restore/reader workflows
+are verified. Later committed facts and all future Native histories survive.
+
+This is availability data. Newly resolved payload-byte preservation, complete
+provider/upload reconciliation, accepted-head agreement, fresh authenticated
+whole-room activation and independent comment/server-log generations remain.
+All thirteen V1/parity gates stay open. No version, push, publication, tag or
+deployment changed.
+
 The [coupled metadata reference owner](COUPLED_METADATA_REFERENCES.md) now
 re-admits a portable reference bundle through a freshly opened metadata owner.
 It reconstructs exact archived native cuts even when live sources and stored

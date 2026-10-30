@@ -1,6 +1,8 @@
 import {LocalMetadataReferenceWork} from '../selected_local_metadata_assets/room_work.js';
 import type {LocalMetadataReferenceBundle,LocalMetadataReferenceCut} from '../selected_local_metadata_assets/room_contract.js';
 import {detachLocalMetadataReferenceBundle,readLocalMetadataReferenceClaims} from '../selected_local_metadata_assets/portable_bundle.js';
+import type {LocalMetadataAssetAvailabilityBundle} from '../selected_local_metadata_assets/availability_contract.js';
+import {localMetadataAvailabilityHost,type LocalMetadataAssetAvailabilityHost} from '../selected_local_metadata_assets/availability_host.js';
 import {detachLocalMetadataBundle} from './bundle.js';
 import {readMetadataBundle,inspectMetadataResume} from './resume_inspection.js';
 import {metadataResumeChoice} from './resume_policy.js';
@@ -139,14 +141,22 @@ export class SelectedLocalMetadataDelivery{
  /** One finite reference decision under the parent's actual quiescence. The
   * original capture format is unchanged. Older points are replayed before any
   * new metadata write, and the observed stored head is pinned through CAS. */
- captureReferences():Promise<LocalMetadataReferenceBundle>{return this.#captureOperation(async()=>{
+ captureReferences():Promise<LocalMetadataReferenceBundle>{return this.#captureReferenceOperation();}
+ #captureReferenceOperation(visit?:(work:LocalMetadataReferenceWork)=>Promise<void>,prepare?:()=>void):Promise<LocalMetadataReferenceBundle>{return this.#captureOperation(async()=>{
   let result:LocalMetadataReferenceBundle|undefined;
   await this.#parent.capture(async(parent,integrity)=>{
    await this.#serial;this.#current();const stored=await this.#store.readFresh();this.#savedFact();if([...this.#desired].some(([id,records])=>!equal(records,stored.current.lanes.find(row=>row.id===id)?.records)))throw fail('local_metadata_delivery_unsaved');
    const work=new LocalMetadataReferenceWork(this.#parent.scope,integrity,this.#current);this.#referenceWork=work;await work.begin(parent,stored);this.#current();await this.#persist(stored);this.#current();if(!this.#snapshot)throw fail();
-   const text=metadataJson(this.#snapshot),file=new Blob([text],{type:'application/vnd.breditor.selected-local-metadata+json'}),bundle:LocalMetadataRoomBundle=Object.freeze({format:'breditor/selected-local-metadata-room-bundle',formatVersion:1,parent,metadata:Object.freeze({file,bytes:file.size,sha256:await segmentedDigest(text)})});this.#current();result=await work.finish(bundle,this.#snapshot);this.#current();
+   const text=metadataJson(this.#snapshot),file=new Blob([text],{type:'application/vnd.breditor.selected-local-metadata+json'}),bundle:LocalMetadataRoomBundle=Object.freeze({format:'breditor/selected-local-metadata-room-bundle',formatVersion:1,parent,metadata:Object.freeze({file,bytes:file.size,sha256:await segmentedDigest(text)})});this.#current();result=await work.finish(bundle,this.#snapshot);this.#current();await visit?.(work);this.#current();
   });if(!result)throw fail();return result;
- });}
+ },prepare);}
+ /** One source-owned current cut, both complete upload roles, and a genuine
+  * authenticated generation controller. Missing requirements stay Pending;
+  * this never manufactures an upload receipt or permission to serve. */
+ captureAssetAvailability(host:LocalMetadataAssetAvailabilityHost):Promise<LocalMetadataAssetAvailabilityBundle>{
+  let result:LocalMetadataAssetAvailabilityBundle|undefined;
+  return this.#captureReferenceOperation(async work=>{result=await work.availability(host);this.#current();},()=>{localMetadataAvailabilityHost(host);}).then(()=>{if(!result)throw fail();return result;});
+ }
  /** Native verification of the literal PORTABLE cuts, even if the actual
   * stored/live room is newer. This returns immutable dependency DATA only:
   * it neither proves current asset availability nor supplies serving rights.

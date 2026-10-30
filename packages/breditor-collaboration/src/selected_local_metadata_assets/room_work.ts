@@ -29,18 +29,23 @@ import {localMetadataReferencePoint,composeLocalMetadataReferenceCut} from './ro
 import {prepareArchiveIntegrity} from '../archive_integrity/context.js';
 import {segmentedDigest} from '../persistence/segmented_checkpoint.js';
 import {coreReadStamp,type CoreReadStamp} from '../core_read_stamp.js';
+import {localMetadataAvailabilityHost,type LocalMetadataAssetAvailabilityHost} from './availability_host.js';
+import type {SharedServerLogGenerationRecoveryAssetRead} from '../generation_recovery_control/asset_contract.js';
+import type {LocalMetadataAssetAvailabilityBundle} from './availability_contract.js';
+import {readLocalMetadataUploadInventory,localMetadataAssetInfo} from './upload_inventory.js';
+import {frozen} from '../room_participant_inventory/policy.js';
 import {fail} from './error.js';
-const room={read:SelectedRoomCurrentArchive.read,current:SelectedRoomCurrentArchive.prototype.current,dispose:SelectedRoomCurrentArchive.prototype.dispose};
-const cut={read:PhysicalRoomRecordCutArchive.read,root:PhysicalRoomRecordCutArchive.prototype.root,history:PhysicalRoomRecordCutArchive.prototype.history,dispose:PhysicalRoomRecordCutArchive.prototype.dispose};
+const room={read:SelectedRoomCurrentArchive.read,current:SelectedRoomCurrentArchive.prototype.current,approval:SelectedRoomCurrentArchive.prototype.approval,dispose:SelectedRoomCurrentArchive.prototype.dispose};
+const cut={read:PhysicalRoomRecordCutArchive.read,root:PhysicalRoomRecordCutArchive.prototype.root,selection:PhysicalRoomRecordCutArchive.prototype.selection,history:PhysicalRoomRecordCutArchive.prototype.history,dispose:PhysicalRoomRecordCutArchive.prototype.dispose};
 const verifyOriginal=SharedRichEditor.prototype.verifyRecoveryOrigin,verifySegmented=SharedRichEditor.prototype.verifySegmentedRecoveryOrigin;
 export class LocalMetadataReferenceWork {
- readonly #sources;readonly #waits;readonly #factories:NativeReconstructionFactoryScope<SharedSelectionPolicy>|undefined;readonly #options;readonly #aliases=new Set<LocalPortableReplay>();readonly #liveStamps=new Map<object,CoreReadStamp>();
- #room:SelectedRoomCurrentArchive|undefined;#cut:PhysicalRoomRecordCutArchive|undefined;#parent:LocalReviewRoomBundle|undefined;#stored:LocalMetadataDeliverySnapshot|undefined;#points:LocalMetadataReferencePoint[]=[];#closed=false;#started=false;#ready=false;
+ readonly #sources;readonly #allSources;readonly #waits;readonly #factories:NativeReconstructionFactoryScope<SharedSelectionPolicy>|undefined;readonly #options;readonly #aliases=new Set<LocalPortableReplay>();readonly #liveStamps=new Map<object,CoreReadStamp>();readonly #availabilityStamps=new Map<object,CoreReadStamp>();
+ #room:SelectedRoomCurrentArchive|undefined;#cut:PhysicalRoomRecordCutArchive|undefined;#parent:LocalReviewRoomBundle|undefined;#stored:LocalMetadataDeliverySnapshot|undefined;#points:LocalMetadataReferencePoint[]=[];#finished:{bundle:LocalMetadataReferenceBundle;body:LocalMetadataReferenceCut}|undefined;#closed=false;#started=false;#ready=false;
  constructor(scope:SelectedNativeRecoveryScope,options:SharedArchiveIntegrityOptions,check:()=>void){
   // These original readers admit the genuine scope before callback/IO work.
-  this.#sources=selectedNativeDeliverySources(scope).filter(row=>row.source.parent.kind==='independent-local');const reads=selectedNativeDeliveryReads(scope);
+  this.#allSources=selectedNativeDeliverySources(scope);this.#sources=this.#allSources.filter(row=>row.source.parent.kind==='independent-local');const reads=selectedNativeDeliveryReads(scope);
   this.#waits=new NativeReconstructionWaits(check,[scope.signal]);
-  try{this.#factories=new NativeReconstructionFactoryScope(reads);this.#factories.bind(scope,this.#waits.signal);this.#options={wasm:options.wasm,checkAuthority:this.#check,signal:this.#waits.signal};this.#check();Object.freeze(this);}catch(error){this.close();throw error;}
+  try{this.#factories=new NativeReconstructionFactoryScope(reads);this.#factories.bind(scope,this.#waits.signal);this.#options={wasm:options.wasm,checkAuthority:this.#check,signal:this.#waits.signal};this.#check();for(const row of this.#allSources)this.#availabilityStamps.set(row.source.core,coreReadStamp(row.source.core));Object.freeze(this);}catch(error){this.close();throw error;}
  }
  #check=()=>{if(this.#closed)throw fail('local_metadata_assets_closed');this.#waits.check();if(this.#closed)throw fail('local_metadata_assets_closed');};
  async begin(providedParent:LocalReviewRoomBundle,providedStored:LocalMetadataDeliverySnapshot):Promise<void>{
@@ -69,7 +74,21 @@ export class LocalMetadataReferenceWork {
   const review=JSON.parse(await Blob.prototype.text.call(bundle.parent.delivery.file));this.#check();if(!equal(review.current.lanes,snapshot.current.lanes.map(({id,source,relay})=>({id,source,relay}))))throw fail('local_metadata_assets_state');
   const rows=[];for(const lane of snapshot.current.lanes){const actual=this.#sources.find(row=>row.id===lane.id);if(!actual||actual.source.parent.kind!=='independent-local')throw fail('local_metadata_assets_state');const stamp=coreReadStamp(actual.source.core),before=this.#liveStamps.get(actual.source.core);if(!before||stamp.document!==before.document||stamp.review!==before.review)throw fail('local_metadata_assets_changed');const port=independentHistoryNative(actual.source.parent.session);if(port.companion||port.core!==actual.source.core||!equal(port.persisted(),lane.source))throw fail('local_metadata_assets_state');rows.push(await readLocalMetadataRecordAssetReferences(actual.source.core,snapshot.current,lane.id,this.#check));this.#check();if(!equal(port.persisted(),lane.source))throw fail('local_metadata_assets_changed');}
   const point=await localMetadataReferencePoint('current',snapshot.current,rows);this.#check();const body=await composeLocalMetadataReferenceCut(bundle,snapshot,this.#stored.current,cut.history.call(this.#cut),[...this.#points,point]);this.#check();const text=metadataJson(body),file=new Blob([text],{type:'application/vnd.breditor.local-metadata-reference-cut+json'}),sha256=await segmentedDigest(text);this.#check();
-  return Object.freeze({format:'breditor/selected-local-metadata-reference-bundle',formatVersion:1,parent:bundle,references:Object.freeze({file,bytes:file.size,sha256})});
+  const result=Object.freeze({format:'breditor/selected-local-metadata-reference-bundle' as const,formatVersion:1 as const,parent:bundle,references:Object.freeze({file,bytes:file.size,sha256})});this.#finished={bundle:result,body};return result;
+ }
+ /** Only a freshly captured native/current cut can request this union. A
+  * portable old cut cannot stand in for newer live metadata requirements. */
+ async availability(host:LocalMetadataAssetAvailabilityHost):Promise<LocalMetadataAssetAvailabilityBundle>{
+  const port=localMetadataAvailabilityHost(host);this.#check();if(!this.#finished||!this.#room||!this.#cut)throw fail('local_metadata_assets_closed');
+  const finished=this.#finished,root=cut.root.call(this.#cut),catalog=parsePhysicalCatalogV3Manifest(root.source.manifest);port.admit(catalog);
+  const check=()=>{this.#check();for(const actual of this.#allSources){const before=this.#availabilityStamps.get(actual.source.core),now=coreReadStamp(actual.source.core);if(!before||before.document!==now.document||before.review!==now.review)throw fail('local_metadata_assets_changed');}};check();
+  const uploads=await readLocalMetadataUploadInventory(this.#room,this.#cut,this.#options,check);check();
+  let provider:SharedServerLogGenerationRecoveryAssetRead|null=null;
+  if(finished.body.outcome.kind==='pending'){await port.check(this.#waits.signal);check();}
+  else{provider=await port.checkAssets({references:finished.body.outcome.references,uploads:[...uploads.assets.keys()].sort()},this.#waits.signal);check();for(const actual of provider.assets){const local=uploads.assets.get(actual.asset);if(local&&localMetadataAssetInfo(local)!==localMetadataAssetInfo(actual))throw fail('local_metadata_assets_state');}}
+  const selected={format:'breditor/local-metadata-asset-availability-read' as const,formatVersion:1 as const,scope:'complete-base-and-metadata-references-and-origin-selected-upload-bytes' as const,references:{bytes:finished.bundle.references.bytes,sha256:finished.bundle.references.sha256},control:port.control,approval:room.approval.call(this.#room).selection,current:cut.selection.call(this.#cut),uploads:uploads.pins};
+  const availability=provider!==null&&!provider.missing.length?frozen({...selected,kind:'checked' as const,provider}):frozen({...selected,kind:'pending' as const,provider});check();
+  return Object.freeze({format:'breditor/selected-local-metadata-asset-availability-bundle',formatVersion:1,references:finished.bundle,availability});
  }
  /** Recompute an older portable current point on readonly native aliases.
   * Unlike finish(), no live core is substituted for an archived point. All
@@ -100,5 +119,5 @@ export class LocalMetadataReferenceWork {
  }
  /** Cancels finite reads, disposes claimed aliases and observes/frees late
   * unclaimed raw restores through the original factory wait implementation. */
- close():void{if(this.#closed)return;this.#closed=true;try{this.#factories?.close();}finally{this.#waits.close();for(const alias of this.#aliases)alias.dispose();this.#aliases.clear();this.#liveStamps.clear();if(this.#cut)cut.dispose.call(this.#cut);if(this.#room)room.dispose.call(this.#room);this.#cut=undefined;this.#room=undefined;this.#stored=undefined;this.#parent=undefined;this.#points=[];}}
+ close():void{if(this.#closed)return;this.#closed=true;try{this.#factories?.close();}finally{this.#waits.close();for(const alias of this.#aliases)alias.dispose();this.#aliases.clear();this.#liveStamps.clear();this.#availabilityStamps.clear();if(this.#cut)cut.dispose.call(this.#cut);if(this.#room)room.dispose.call(this.#room);this.#cut=undefined;this.#room=undefined;this.#stored=undefined;this.#parent=undefined;this.#points=[];this.#finished=undefined;}}
 }

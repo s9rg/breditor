@@ -1,0 +1,53 @@
+{
+  "format": "breditor/metadata-asset-availability-qualification",
+  "formatVersion": 1,
+  "functionalPassed": true,
+  "releaseReady": false,
+  "v1GatesOpen": 13,
+  "v1GatesClosed": 0,
+  "baseCommit": "47343dd1935537315fbd7f48b31657d7aa67e9b5",
+  "qualifiedSource": {
+    "commit": "47343dd1935537315fbd7f48b31657d7aa67e9b5",
+    "dirty": true,
+    "sha256": "584c9e881be34427bff0b53835384483199a27b0e635a5735b516b4a612a1c2c",
+    "files": 7632,
+    "bytes": 57468917
+  },
+  "sourceUnchangedDuringInstalledQualification": true,
+  "sdkLogicAndTestsUnchangedAfterQualification": true,
+  "directChecks": 68,
+  "installedChecks": 71,
+  "strictSourceStages": 2,
+  "strictInstalledStages": 1,
+  "nativeParticipants": 7,
+  "metadataSources": 3,
+  "uploadArchivesPerCompletedRead": 14,
+  "scope": "Actual source-owned capture pins complete base and before/stored/current metadata dependencies with both complete origin/selected upload archives through authenticated current provider reads. Genuine source controllers match the archive source; newer controllers must prove exact Native predecessor continuation. A real stale controller after metadata publication is rejected. Real PNG bytes yield checked; all twelve unmapped opaque packet references remain Pending; genuinely uncached published catalogs stay Pending without a partial metadata request. Cancellation during a real account wait retains later committed facts and prevents late HTTP. Original complete cold/restore, portable reference and actual close workflows also pass; all seven future document/comment histories survive.",
+  "stagedSupplement": {
+    "passed": true,
+    "tests": 4,
+    "notice": "First three staged cases loaded before the helper adds the fourth style; those branches and SDK behavior are unchanged. Final full installed qualification executes the complete current helper and is authoritative."
+  },
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "nativeHostSha256": "60427bb794f52c39a7084fac797f8f3150501238c45c78bad6195cd928a252ca",
+  "proof": {
+    "path": "target/metadata-asset-availability-qualified-proof-mK6bnk",
+    "indexSha256": "f662863f114002c0c148e2ac7314be08abb85c056a71f74f7aab3ba058b15bd1",
+    "files": 143,
+    "logicalBytes": 141201716,
+    "deduplicatedBytes": 62008922,
+    "readBackVerified": true
+  },
+  "remaining": [
+    "Payload-materialized recovery of newly resolved assets and complete upload/provider reconciliation",
+    "Genuine opaque host-mapping Ready integration, beyond honest unresolved Pending",
+    "Accepted source-head agreement and authenticated whole-room activation",
+    "Independent comment/server-log generation qualification and all other V1/parity gates; full release profiles remain unrun"
+  ],
+  "unchanged": [
+    "Original protocol meanings/defaults and existing capture/reference formats",
+    "Original Native histories, receipts and metadata records",
+    "Public exports, package versions, normal Rust/Wasm and native binaries"
+  ],
+  "finishedAt": "2026-10-30T13:56:09.609Z"
+}
