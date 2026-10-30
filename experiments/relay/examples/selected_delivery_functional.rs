@@ -33,6 +33,9 @@ fn serve(
 ) -> tokio::task::JoinHandle<std::io::Result<()>> {
     tokio::spawn(async move { axum::serve(listener, router).await })
 }
+/// Serve actual selected-delivery sources and snapshots through private fixture IPC.
+/// # Errors
+/// Rejects invalid profile flags, failed native preparation, storage or IPC errors.
 #[tokio::main(worker_threads = 2)]
 pub async fn main() -> Result {
     let args: Vec<_> = std::env::args().skip(1).collect();

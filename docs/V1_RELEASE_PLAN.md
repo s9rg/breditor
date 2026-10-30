@@ -1,5 +1,15 @@
 # Breditor V1 release preparation
 
+[Selected server metadata receipt pages](SELECTED_SERVER_METADATA_RECEIPTS.md)
+now read original catalog receipts and exact first-packet fingerprints under
+genuine current server/provider custody. Metadata-only server changes invalidate
+the selection; uncommitted revision preparations stay outside committed receipts.
+The final source passes 11 focused and 95 broader tests (96 distinct checks),
+plus server/no-server all-target release lint. Original protocol meanings and
+normal Wasm remain unchanged. SDK collection, exact local/server containment,
+full installed qualification and coordinated activation remain required. All
+thirteen V1/parity gates remain open.
+
 [Owned retained snapshot byte reuse](RETAINED_SNAPSHOT_CAPTURE.md) passes
 113 independently installed checks with strict types, 30 Native storage checks,
 75 Native publication/ownership/history checks and 77 plan/runner checks. Exact

@@ -1,0 +1,43 @@
+{
+  "format": "breditor/selected-server-metadata-receipts-qualification",
+  "formatVersion": 1,
+  "baseCommit": "fe0f66d5d083a7c5185f75cf59d3f62993f75b0d",
+  "qualifiedSource": {
+    "files": 3171,
+    "bytes": 23918309,
+    "sha256": "057f9703ecd19f9a411b0bbd0ef2c2ff2e47417c13f8384cda5d749c6d053646"
+  },
+  "mainSourceFilesMatchQualifiedStage": true,
+  "rustSourceFiles": 27,
+  "metadataNativeChecks": 11,
+  "broaderNativeRecoveryChecks": 95,
+  "overlappingChecks": 10,
+  "distinctNativeChecks": 96,
+  "serverReleaseLintPassed": true,
+  "noServerReleaseLintPassed": true,
+  "sourceUnchangedDuringEachRun": true,
+  "sourceQualifiedAcrossSameRevision": true,
+  "buildBudgetBytes": 3221225472,
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "pinnedSuggestionHostSha256": "60427bb794f52c39a7084fac797f8f3150501238c45c78bad6195cd928a252ca",
+  "scope": "Separately authenticated owner/source-bound original versions, proposals/decisions and committed revision catalog pages with exact first-packet byte fingerprints. Explicit enabled/disabled lanes, original frozen cursors, metadata-only source staleness and final provider/native/raster mutation refusals. Original metadata, transport, receipt and permission meanings unchanged.",
+  "releaseReady": false,
+  "sdkConsumerQualified": false,
+  "completeRemoteCatalogClosure": false,
+  "wholeRoomActivated": false,
+  "v1GatesOpen": 13,
+  "proof": {
+    "path": "target/selected-server-metadata-receipts-qualified-proof-3QqjSc",
+    "indexSha256": "c04d8607da35cb5c9f76f32fbc75d3ac52a5c02bca4d18a21435547b6fa9112a",
+    "references": 47,
+    "uniqueFiles": 47,
+    "deduplicatedBytes": 32562878,
+    "readBackVerified": true
+  },
+  "remaining": [
+    "Genuine SDK host method, complete current-cut collector and exact local receipt/server containment checks, preserving original native duplicate semantics.",
+    "Native missing-receipt/metadata-only rollback fixtures, full installed consumer qualification and complete remote packet/provider closure.",
+    "Cold recovery allocation failure, independent generations, authenticated coordinated whole-room activation and all13V1/parity gates."
+  ],
+  "finishedAt": "2026-10-30T20:54:03.765Z"
+}

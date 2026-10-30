@@ -37,6 +37,8 @@ pub use log_generations::{
 pub use log_generations::{
     RecoveredLogGenerationRoom, ServerLogGenerationRecovery, ServerLogGenerationRecoveryProgress,
 };
+#[cfg(feature = "server")]
+pub(crate) mod metadata_receipts;
 mod native_history;
 mod observers;
 mod participant_inventory;

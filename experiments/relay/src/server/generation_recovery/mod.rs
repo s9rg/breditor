@@ -18,6 +18,7 @@ pub use asset_availability::{
 };
 mod control;
 mod control_work;
+mod metadata_page;
 pub use control::{
     ServerLogGenerationRecoveryControl, ServerLogGenerationRecoveryControlIdentity,
     prepare_log_generation_recovery_control,

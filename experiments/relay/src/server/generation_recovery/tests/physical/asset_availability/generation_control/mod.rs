@@ -5,6 +5,7 @@ mod admission;
 mod body_custody;
 mod fixture;
 mod inflight;
+mod metadata_receipts;
 mod network;
 mod original_review;
 mod requirements;

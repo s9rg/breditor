@@ -51,7 +51,7 @@ pub(super) async fn prepare(
     spec: source::Spec,
     rasters: &[Vec<u8>],
 ) -> Result<Ready> {
-    prepare_selected(parent, spec, rasters, false).await
+    Box::pin(prepare_selected(parent, spec, rasters, false)).await
 }
 /// Separate functional fixture policy. The original fixture keeps its exact
 /// absent suggestion grant; no saved permission is inferred or bypassed.
@@ -60,7 +60,7 @@ pub(super) async fn prepare_with_suggestion_grants(
     spec: source::Spec,
     rasters: &[Vec<u8>],
 ) -> Result<Ready> {
-    prepare_selected(parent, spec, rasters, true).await
+    Box::pin(prepare_selected(parent, spec, rasters, true)).await
 }
 async fn prepare_selected(
     parent: &Path,
