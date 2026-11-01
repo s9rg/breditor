@@ -1,0 +1,705 @@
+{
+  "format": "breditor/independent-current-reconciliation-qualification",
+  "formatVersion": 1,
+  "recordedAt": "2026-11-01T15:57:49.697873+00:00",
+  "qualificationMode": "complete-real-native-execution-with-explicit-evidence-postprocessor-repair",
+  "executedNativeSource": {
+    "commit": "cf8cde54db4d487e578f46f7adc1df8bb07627f7",
+    "dirty": true,
+    "sha256": "d651ea957859cc72f205964912cb4514b91164125a0f10aebf28716325575f34",
+    "files": 7948,
+    "bytes": 65904904
+  },
+  "correctedEvidenceSource": {
+    "commit": "cf8cde54db4d487e578f46f7adc1df8bb07627f7",
+    "dirty": true,
+    "sha256": "eff07ad17070ade7fde4d91edd244e2e16cdb7950f88ba9fac24758042a656b9",
+    "files": 7950,
+    "bytes": 65926448
+  },
+  "executedSourceArchive": {
+    "path": "/private/tmp/breditor-independent-current-hf4f74re/executed-source.tar.gz",
+    "sha256": "afcfcfb3dddb9de43ecbdf86eb3115c3cf94fbbe287a35eb28374068d67f946a",
+    "bytes": 20288444,
+    "verifiedFiles": 7948
+  },
+  "actualNativeCases": {
+    "source": 3,
+    "installed": 3,
+    "failures": 0,
+    "skipped": 0
+  },
+  "originalQualificationRunnersPassed": false,
+  "originalFailure": "The evidence postprocessor compared a complete future audit row, including id/hashes/history flags, with a two-field policy pair. Every real Native case had already passed. Both failed original runner records and their exact logs remain preserved.",
+  "repair": "Project only document/review from the expected audit row; retain every Native assertion and all policy/hash/history/cache/provider evidence checks. Seven DATA regression laws cover the exact fault and omissions/mutations.",
+  "evidenceRevalidation": {
+    "format": "breditor/independent-current-evidence-revalidation",
+    "formatVersion": 1,
+    "complete": true,
+    "passed": true,
+    "scope": "Six complete real Native cases passed under the exact frozen original source. Both original qualification runners then failed only in the policy-pair evidence comparator. The repaired comparator is tested with seven DATA laws and accepts both original logs. Every Native case input, compiled SDK, Native tool and copied installed assertion remains byte-identical; fresh strict public types pass in both locations. No original failed result is overwritten and no fresh Native execution or fresh full runner success is inferred.",
+    "executedSource": {
+      "commit": "cf8cde54db4d487e578f46f7adc1df8bb07627f7",
+      "dirty": true,
+      "sha256": "d651ea957859cc72f205964912cb4514b91164125a0f10aebf28716325575f34",
+      "files": 7948,
+      "bytes": 65904904
+    },
+    "currentEvidenceSource": {
+      "commit": "cf8cde54db4d487e578f46f7adc1df8bb07627f7",
+      "dirty": true,
+      "sha256": "eff07ad17070ade7fde4d91edd244e2e16cdb7950f88ba9fac24758042a656b9",
+      "files": 7950,
+      "bytes": 65926448
+    },
+    "allowedEvidenceOnlyDelta": [
+      {
+        "path": "scripts/candidate-release/plan.mjs",
+        "before": {
+          "path": "scripts/candidate-release/plan.mjs",
+          "bytes": 152042,
+          "sha256": "df1616a1c22c9e5896c87fc9563c85c693b777be43b2461dfefd6e795513361b"
+        },
+        "after": {
+          "bytes": 152105,
+          "sha256": "f95fda83a513765014bba034621ef1d33257b83798d276f209498b86f11bc594"
+        }
+      },
+      {
+        "path": "scripts/fixtures/local-metadata/independent-current-evidence.json",
+        "before": null,
+        "after": {
+          "bytes": 18798,
+          "sha256": "aca62ac8dafeafa9be68f09e04655c6c2a398072c87c63e4f240dc2d415f050c"
+        }
+      },
+      {
+        "path": "scripts/independent-current-reconciliation-evidence.mjs",
+        "before": {
+          "path": "scripts/independent-current-reconciliation-evidence.mjs",
+          "bytes": 2765,
+          "sha256": "00799904f8be5b0fa07727c5b1c73a7bd082bed47105cba1d2bd87bfdafb4078"
+        },
+        "after": {
+          "bytes": 2806,
+          "sha256": "8403d8d3762a8afe8ca017e3b096cfb0fabe418030f92cef977df626b9a0fef8"
+        }
+      },
+      {
+        "path": "scripts/independent-current-reconciliation-evidence.test.mjs",
+        "before": null,
+        "after": {
+          "bytes": 2642,
+          "sha256": "5ae68f9be9dd4ff01a8570902004f8a750549b81ecd85ea79026c302ff22b25a"
+        }
+      }
+    ],
+    "results": [
+      {
+        "name": "source",
+        "tests": 3,
+        "actualNativeCasesPassed": true,
+        "correctedEvidenceValidatorPassed": true,
+        "freshStrictTypesPassed": true,
+        "originalRunnerPassed": false,
+        "freshNativeExecution": false,
+        "logSha256": "f8effe10eae76aeff398deca624496e7eb832f669e865d4ff6ef3a264c775819"
+      },
+      {
+        "name": "installed",
+        "tests": 3,
+        "actualNativeCasesPassed": true,
+        "correctedEvidenceValidatorPassed": true,
+        "freshStrictTypesPassed": true,
+        "originalRunnerPassed": false,
+        "freshNativeExecution": false,
+        "logSha256": "caffa35ca0fb7f10bd50b55ab79a2a4c38057f23d9a0addab6d0c7a24d79db09"
+      }
+    ],
+    "releaseContracts": 99,
+    "wholeRoomActivated": false,
+    "v1Ready": false,
+    "v1GatesOpen": 13
+  },
+  "freshFullRunnerExecutionAfterRepair": false,
+  "strictPublicTypesRevalidatedBothEnvironments": true,
+  "workspaceLinks": false,
+  "scope": [
+    "Seven real clients and three original metadata lanes complete actual managed uploads and two authenticated protocol passes in each independent document/comment pair.",
+    "Original/original, original/segmented and segmented/original independent histories remain literal; fixed original and generation participants keep their own policies.",
+    "Complete current Native/source/provider discovery downloads no packet or raster bodies, preserves original Pending/cache/queue facts and records the actual guarded cache counter.",
+    "Every client restores exact future document content and complete comment view/history depths after real Undo/Redo, with unchanged Native policies.",
+    "Actual current reference/provider DATA, public Native records, six Native tools, exact executed source, independent packages and logs have verified read-back proof."
+  ],
+  "observations": [
+    {
+      "qualification": "source",
+      "file": "/Users/s/code/breditor/target/server-packet-inspection-fixture-i6RvRH/target/selected-delivery-native-TwI3WK/independent-current-reconciliation-observation.json",
+      "sha256": "8c78f8565a4743df212773682f8e569beac49df68cb6f1c87204c3cd9149f596",
+      "selected": {
+        "document": "original",
+        "review": "original"
+      },
+      "participants": 7,
+      "exactFutureUndoRedo": true
+    },
+    {
+      "qualification": "source",
+      "file": "/Users/s/code/breditor/target/server-packet-inspection-fixture-eFfmr3/target/selected-delivery-native-lfz0tY/independent-current-reconciliation-observation.json",
+      "sha256": "c64a011de612ed62c858d34578ea6c43a429321895fd0594471776f82cc63e27",
+      "selected": {
+        "document": "original",
+        "review": "segmented-v1"
+      },
+      "participants": 7,
+      "exactFutureUndoRedo": true
+    },
+    {
+      "qualification": "source",
+      "file": "/Users/s/code/breditor/target/server-packet-inspection-fixture-G9ISn9/target/selected-delivery-native-ZLxuVD/independent-current-reconciliation-observation.json",
+      "sha256": "fcacbf94770ab19760233a42ecb5186d9efffe25fedbc8e4a35366107a8c1d5d",
+      "selected": {
+        "document": "segmented-v1",
+        "review": "original"
+      },
+      "participants": 7,
+      "exactFutureUndoRedo": true
+    },
+    {
+      "qualification": "installed",
+      "file": "/private/tmp/breditor-independent-current-reconciliation-installed-qsZVji/consumer/target/server-packet-inspection-fixture-1rR39j/target/selected-delivery-native-RTRMD7/independent-current-reconciliation-observation.json",
+      "sha256": "27799862b229f71e8d0237af66fcd09e6f0a4649da17630a5378ac69cfad41bb",
+      "selected": {
+        "document": "original",
+        "review": "original"
+      },
+      "participants": 7,
+      "exactFutureUndoRedo": true
+    },
+    {
+      "qualification": "installed",
+      "file": "/private/tmp/breditor-independent-current-reconciliation-installed-qsZVji/consumer/target/server-packet-inspection-fixture-JG1KQ1/target/selected-delivery-native-2Ne1pX/independent-current-reconciliation-observation.json",
+      "sha256": "c1cd614e125a1d7dce22ec68199e2f1741a548ba1a56a356d522c3d58aa6cb55",
+      "selected": {
+        "document": "original",
+        "review": "segmented-v1"
+      },
+      "participants": 7,
+      "exactFutureUndoRedo": true
+    },
+    {
+      "qualification": "installed",
+      "file": "/private/tmp/breditor-independent-current-reconciliation-installed-qsZVji/consumer/target/server-packet-inspection-fixture-Y2woDd/target/selected-delivery-native-31LqnJ/independent-current-reconciliation-observation.json",
+      "sha256": "9a2132730cc06448393bf506545a6372052ff75ae18ef7be5efdbf33aba94614",
+      "selected": {
+        "document": "segmented-v1",
+        "review": "original"
+      },
+      "participants": 7,
+      "exactFutureUndoRedo": true
+    }
+  ],
+  "futureHistories": [
+    {
+      "qualification": "source",
+      "exactFutureHistories": [
+        {
+          "participants": 7,
+          "rows": [
+            {
+              "id": "generation",
+              "document": "segmented-v1",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "independent-delivery",
+              "document": "original",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "independent-local",
+              "document": "original",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "local-operation-flat",
+              "document": "original",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "local-operation-snapshot",
+              "document": "original",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "original",
+              "document": "original",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "restored-graph",
+              "document": "original",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            }
+          ]
+        },
+        {
+          "participants": 7,
+          "rows": [
+            {
+              "id": "generation",
+              "document": "segmented-v1",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "independent-delivery",
+              "document": "original",
+              "review": "segmented-v1",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "independent-local",
+              "document": "original",
+              "review": "segmented-v1",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "local-operation-flat",
+              "document": "original",
+              "review": "segmented-v1",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "local-operation-snapshot",
+              "document": "original",
+              "review": "segmented-v1",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "original",
+              "document": "original",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "restored-graph",
+              "document": "original",
+              "review": "segmented-v1",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            }
+          ]
+        },
+        {
+          "participants": 7,
+          "rows": [
+            {
+              "id": "generation",
+              "document": "segmented-v1",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "independent-delivery",
+              "document": "segmented-v1",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "independent-local",
+              "document": "segmented-v1",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "local-operation-flat",
+              "document": "segmented-v1",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "local-operation-snapshot",
+              "document": "segmented-v1",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "original",
+              "document": "original",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "restored-graph",
+              "document": "segmented-v1",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "qualification": "installed",
+      "exactFutureHistories": [
+        {
+          "participants": 7,
+          "rows": [
+            {
+              "id": "generation",
+              "document": "segmented-v1",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "independent-delivery",
+              "document": "original",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "independent-local",
+              "document": "original",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "local-operation-flat",
+              "document": "original",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "local-operation-snapshot",
+              "document": "original",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "original",
+              "document": "original",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "restored-graph",
+              "document": "original",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            }
+          ]
+        },
+        {
+          "participants": 7,
+          "rows": [
+            {
+              "id": "generation",
+              "document": "segmented-v1",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "independent-delivery",
+              "document": "original",
+              "review": "segmented-v1",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "independent-local",
+              "document": "original",
+              "review": "segmented-v1",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "local-operation-flat",
+              "document": "original",
+              "review": "segmented-v1",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "local-operation-snapshot",
+              "document": "original",
+              "review": "segmented-v1",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "original",
+              "document": "original",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "restored-graph",
+              "document": "original",
+              "review": "segmented-v1",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            }
+          ]
+        },
+        {
+          "participants": 7,
+          "rows": [
+            {
+              "id": "generation",
+              "document": "segmented-v1",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "independent-delivery",
+              "document": "segmented-v1",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "independent-local",
+              "document": "segmented-v1",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "local-operation-flat",
+              "document": "segmented-v1",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "local-operation-snapshot",
+              "document": "segmented-v1",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "original",
+              "document": "original",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "restored-graph",
+              "document": "segmented-v1",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "releaseContracts": {
+    "passed": 99,
+    "failed": 0,
+    "skipped": 0,
+    "log": "/private/tmp/breditor-independent-current-hf4f74re/repaired-release-contracts.log",
+    "sha256": "8edf28fb7862989fc6c41a07ed75899fe618f34a51cdc7c1bd04eaf2e6f01620"
+  },
+  "compiledPackageComparison": {
+    "packages": [
+      {
+        "name": "@breditor/browser",
+        "compiledFiles": 188,
+        "archiveSha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+        "allCompiledFilesMatch": true
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "compiledFiles": 180,
+        "archiveSha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15",
+        "allCompiledFilesMatch": true
+      },
+      {
+        "name": "@breditor/collaboration",
+        "compiledFiles": 2373,
+        "archiveSha256": "ad26b4e62a1660369079e6517f9a273792dd4bb0520f185ce144bc710bea8356",
+        "allCompiledFilesMatch": true
+      }
+    ],
+    "compiledFiles": 2741,
+    "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0"
+  },
+  "nativeExecutables": {
+    "target/server-metadata-native/release/examples/selected_suggestion_delivery_functional": "3ff2019ccc49a3a54dc2834e7d9892e7078a328c118e69bd441fff77fdde557f",
+    "target/server-metadata-native/release/examples/complete_cohort_control_functional": "69de301825637e96c47689cbf06ca0a94f5d89a8dd54c0c9261a8054232e457a",
+    "target/server-native-dependencies-native/release/examples/selected_suggestion_delivery_functional": "020df02bb8399f4388a05e0b67e3dc74f7c1473a5350b1b60d665f05ec45011c",
+    "target/server-native-dependencies-native/release/examples/complete_cohort_control_functional": "efbdce5f865d99ad0659f19d4a941aca066482af5e3049991567e4a485ca1e1d",
+    "target/server-packet-inspection-native/release/examples/selected_suggestion_delivery_functional": "61c35699efcd333680ffca06a5ee6c1f2f22dc73722c065d4fca3610e696a3e7",
+    "target/server-packet-inspection-native/release/examples/complete_cohort_control_functional": "d8ad3caf94470ba22bc74c2f62803dc96c8170c868340e7d5b324c6c6d6133dc"
+  },
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "proof": {
+    "proof": "/Users/s/code/breditor/target/independent-current-reconciliation-qualified-proof-34m0u4uc",
+    "indexSha256": "5406640a87df490695be1a572236b0b13ae12031056d3c184f374b7dc1cd38ba",
+    "references": 195,
+    "uniqueObjects": 150,
+    "gzipBytes": 81820722,
+    "readBackVerified": true,
+    "source": {
+      "commit": "cf8cde54db4d487e578f46f7adc1df8bb07627f7",
+      "dirty": true,
+      "sha256": "d651ea957859cc72f205964912cb4514b91164125a0f10aebf28716325575f34",
+      "files": 7948,
+      "bytes": 65904904
+    },
+    "sourceCases": 3,
+    "installedCases": 3,
+    "compiledFiles": 2741,
+    "wholeRoomActivated": false,
+    "v1Ready": false,
+    "v1GatesOpen": 13
+  },
+  "productImplementationUnchanged": true,
+  "rustSourceUnchanged": true,
+  "fullRustSuiteRerun": false,
+  "packageVersionsUnchanged": true,
+  "originalProtocolsAndDefaultsUnchanged": true,
+  "candidateProfilesRequire": [
+    "independent-current-reconciliation-plan-contracts",
+    "independent-current-reconciliation-native",
+    "installed-independent-current-reconciliation"
+  ],
+  "coldClientOrNativeEpochRestartQualified": false,
+  "wholeRoomActivated": false,
+  "fullCandidateProfilesRun": false,
+  "v1Ready": false,
+  "v1GatesOpen": 13,
+  "remaining": [
+    "Fresh full source/installed runner execution on the final candidate after the evidence repair.",
+    "Cold client/source/provider integration with actual server epoch transitions.",
+    "Authenticated whole-room activation and complete durable client/provider custody.",
+    "Remaining full V1 feature parity and all release gates."
+  ],
+  "postQualificationChanges": "Following the four explicitly recorded evidence-only repair files, only this record and its linked contract/V1-plan documents change. Native test code and product/SDK implementation remain byte-identical to the frozen actual execution."
+}

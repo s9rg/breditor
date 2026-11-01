@@ -1,5 +1,26 @@
 # Breditor V1 release preparation
 
+[Independent current document/comment histories](INDEPENDENT_CURRENT_RECONCILIATION.md)
+now complete three real Native cases from source and three from independently
+installed packages. Every case retains seven clients, real managed upload ACKs,
+two authenticated protocol passes, uncached historical catalogs and the complete
+current reference/provider read. Exact future document content, complete comment
+views/history depths and the independently selected policies survive Undo/Redo.
+
+The original runners failed afterward because their evidence comparator compared
+a complete audit row with a two-field policy pair. The repair retains every
+Native assertion; seven DATA regression laws and both original logs pass the
+corrected checker. Fresh strict public types pass in both environments, all
+2,741 compiled SDK files match independent archives, and 99 release contracts
+pass. The [qualification record](qualification/2026-11-01-independent-current-reconciliation.json)
+preserves both failures, the exact execution and the explicit evidence-only
+revalidation. This does not claim fresh full runner success after the repair.
+
+Actual cold client/server epoch integration, complete durable client/provider
+custody, authenticated whole-room activation and complete candidate profiles
+remain required. Product code, Rust, normal Wasm and original protocols/defaults
+are unchanged in this checkpoint. All thirteen V1/parity gates remain open.
+
 [Current packet-source/provider reconciliation](CURRENT_SERVER_PACKET_RECONCILIATION.md)
 now passes eight source and eight independently installed checks with strict
 public types. Seven genuine clients complete actual managed uploads and both

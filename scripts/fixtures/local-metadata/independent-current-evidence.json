@@ -1,0 +1,500 @@
+{
+  "format": "breditor/independent-current-evidence-unit-fixture",
+  "formatVersion": 1,
+  "sourceLogSha256": "f8effe10eae76aeff398deca624496e7eb832f669e865d4ff6ef3a264c775819",
+  "scope": "Public marker DATA from three actual Native cases, with filesystem locations replaced. Not a new Native execution or live permission.",
+  "records": [
+    {
+      "marker": "INDEPENDENT_CURRENT_RECONCILIATION_NATIVE",
+      "value": {
+        "file": "fixture://public-record",
+        "sha256": "8c78f8565a4743df212773682f8e569beac49df68cb6f1c87204c3cd9149f596",
+        "format": "breditor/independent-current-reconciliation-observation",
+        "formatVersion": 1,
+        "selected": {
+          "document": "original",
+          "review": "original"
+        },
+        "participants": 7,
+        "actualNativePolicies": [
+          {
+            "id": "generation",
+            "document": "segmented-v1",
+            "review": "original"
+          },
+          {
+            "id": "independent-delivery",
+            "document": "original",
+            "review": "original"
+          },
+          {
+            "id": "independent-local",
+            "document": "original",
+            "review": "original"
+          },
+          {
+            "id": "local-operation-flat",
+            "document": "original",
+            "review": "original"
+          },
+          {
+            "id": "local-operation-snapshot",
+            "document": "original",
+            "review": "original"
+          },
+          {
+            "id": "original",
+            "document": "original",
+            "review": "original"
+          },
+          {
+            "id": "restored-graph",
+            "document": "original",
+            "review": "original"
+          }
+        ],
+        "policiesUnchanged": true,
+        "originalPendingPreserved": true,
+        "forbiddenBodyDownloads": 0,
+        "providerAssets": 3,
+        "uploadRoles": 14,
+        "baseObservation": {
+          "file": "fixture://public-record",
+          "sha256": "31700328e1ddb29fc176c0e37b342f60e8157b8fd7f5de8ba042579c2cd27b94"
+        },
+        "wholeRoomActivated": false,
+        "futureDocumentAndReviewUndoRedo": true
+      }
+    },
+    {
+      "marker": "INDEPENDENT_CURRENT_RECONCILIATION_NATIVE",
+      "value": {
+        "file": "fixture://public-record",
+        "sha256": "c64a011de612ed62c858d34578ea6c43a429321895fd0594471776f82cc63e27",
+        "format": "breditor/independent-current-reconciliation-observation",
+        "formatVersion": 1,
+        "selected": {
+          "document": "original",
+          "review": "segmented-v1"
+        },
+        "participants": 7,
+        "actualNativePolicies": [
+          {
+            "id": "generation",
+            "document": "segmented-v1",
+            "review": "original"
+          },
+          {
+            "id": "independent-delivery",
+            "document": "original",
+            "review": "segmented-v1"
+          },
+          {
+            "id": "independent-local",
+            "document": "original",
+            "review": "segmented-v1"
+          },
+          {
+            "id": "local-operation-flat",
+            "document": "original",
+            "review": "segmented-v1"
+          },
+          {
+            "id": "local-operation-snapshot",
+            "document": "original",
+            "review": "segmented-v1"
+          },
+          {
+            "id": "original",
+            "document": "original",
+            "review": "original"
+          },
+          {
+            "id": "restored-graph",
+            "document": "original",
+            "review": "segmented-v1"
+          }
+        ],
+        "policiesUnchanged": true,
+        "originalPendingPreserved": true,
+        "forbiddenBodyDownloads": 0,
+        "providerAssets": 3,
+        "uploadRoles": 14,
+        "baseObservation": {
+          "file": "fixture://public-record",
+          "sha256": "4867e0e0e4b4bf7896a6c9abc81020ab7a4c8a643f207dbdce83d8b53e1d6b56"
+        },
+        "wholeRoomActivated": false,
+        "futureDocumentAndReviewUndoRedo": true
+      }
+    },
+    {
+      "marker": "INDEPENDENT_CURRENT_RECONCILIATION_NATIVE",
+      "value": {
+        "file": "fixture://public-record",
+        "sha256": "fcacbf94770ab19760233a42ecb5186d9efffe25fedbc8e4a35366107a8c1d5d",
+        "format": "breditor/independent-current-reconciliation-observation",
+        "formatVersion": 1,
+        "selected": {
+          "document": "segmented-v1",
+          "review": "original"
+        },
+        "participants": 7,
+        "actualNativePolicies": [
+          {
+            "id": "generation",
+            "document": "segmented-v1",
+            "review": "original"
+          },
+          {
+            "id": "independent-delivery",
+            "document": "segmented-v1",
+            "review": "original"
+          },
+          {
+            "id": "independent-local",
+            "document": "segmented-v1",
+            "review": "original"
+          },
+          {
+            "id": "local-operation-flat",
+            "document": "segmented-v1",
+            "review": "original"
+          },
+          {
+            "id": "local-operation-snapshot",
+            "document": "segmented-v1",
+            "review": "original"
+          },
+          {
+            "id": "original",
+            "document": "original",
+            "review": "original"
+          },
+          {
+            "id": "restored-graph",
+            "document": "segmented-v1",
+            "review": "original"
+          }
+        ],
+        "policiesUnchanged": true,
+        "originalPendingPreserved": true,
+        "forbiddenBodyDownloads": 0,
+        "providerAssets": 3,
+        "uploadRoles": 14,
+        "baseObservation": {
+          "file": "fixture://public-record",
+          "sha256": "7555e1fb36ad4450a1675210dc2c4b8c4fe325086e52f035d0ed7df02b04b5d1"
+        },
+        "wholeRoomActivated": false,
+        "futureDocumentAndReviewUndoRedo": true
+      }
+    },
+    {
+      "marker": "INDEPENDENT_FUTURE_NATIVE_HISTORIES",
+      "value": {
+        "participants": 7,
+        "rows": [
+          {
+            "id": "generation",
+            "document": "segmented-v1",
+            "review": "original",
+            "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+            "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+            "exactFutureDocumentRestored": true,
+            "exactFutureCommentViewRestored": true
+          },
+          {
+            "id": "independent-delivery",
+            "document": "original",
+            "review": "original",
+            "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+            "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+            "exactFutureDocumentRestored": true,
+            "exactFutureCommentViewRestored": true
+          },
+          {
+            "id": "independent-local",
+            "document": "original",
+            "review": "original",
+            "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+            "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+            "exactFutureDocumentRestored": true,
+            "exactFutureCommentViewRestored": true
+          },
+          {
+            "id": "local-operation-flat",
+            "document": "original",
+            "review": "original",
+            "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+            "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+            "exactFutureDocumentRestored": true,
+            "exactFutureCommentViewRestored": true
+          },
+          {
+            "id": "local-operation-snapshot",
+            "document": "original",
+            "review": "original",
+            "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+            "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+            "exactFutureDocumentRestored": true,
+            "exactFutureCommentViewRestored": true
+          },
+          {
+            "id": "original",
+            "document": "original",
+            "review": "original",
+            "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+            "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+            "exactFutureDocumentRestored": true,
+            "exactFutureCommentViewRestored": true
+          },
+          {
+            "id": "restored-graph",
+            "document": "original",
+            "review": "original",
+            "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+            "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+            "exactFutureDocumentRestored": true,
+            "exactFutureCommentViewRestored": true
+          }
+        ]
+      }
+    },
+    {
+      "marker": "INDEPENDENT_FUTURE_NATIVE_HISTORIES",
+      "value": {
+        "participants": 7,
+        "rows": [
+          {
+            "id": "generation",
+            "document": "segmented-v1",
+            "review": "original",
+            "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+            "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+            "exactFutureDocumentRestored": true,
+            "exactFutureCommentViewRestored": true
+          },
+          {
+            "id": "independent-delivery",
+            "document": "original",
+            "review": "segmented-v1",
+            "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+            "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+            "exactFutureDocumentRestored": true,
+            "exactFutureCommentViewRestored": true
+          },
+          {
+            "id": "independent-local",
+            "document": "original",
+            "review": "segmented-v1",
+            "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+            "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+            "exactFutureDocumentRestored": true,
+            "exactFutureCommentViewRestored": true
+          },
+          {
+            "id": "local-operation-flat",
+            "document": "original",
+            "review": "segmented-v1",
+            "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+            "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+            "exactFutureDocumentRestored": true,
+            "exactFutureCommentViewRestored": true
+          },
+          {
+            "id": "local-operation-snapshot",
+            "document": "original",
+            "review": "segmented-v1",
+            "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+            "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+            "exactFutureDocumentRestored": true,
+            "exactFutureCommentViewRestored": true
+          },
+          {
+            "id": "original",
+            "document": "original",
+            "review": "original",
+            "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+            "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+            "exactFutureDocumentRestored": true,
+            "exactFutureCommentViewRestored": true
+          },
+          {
+            "id": "restored-graph",
+            "document": "original",
+            "review": "segmented-v1",
+            "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+            "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+            "exactFutureDocumentRestored": true,
+            "exactFutureCommentViewRestored": true
+          }
+        ]
+      }
+    },
+    {
+      "marker": "INDEPENDENT_FUTURE_NATIVE_HISTORIES",
+      "value": {
+        "participants": 7,
+        "rows": [
+          {
+            "id": "generation",
+            "document": "segmented-v1",
+            "review": "original",
+            "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+            "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+            "exactFutureDocumentRestored": true,
+            "exactFutureCommentViewRestored": true
+          },
+          {
+            "id": "independent-delivery",
+            "document": "segmented-v1",
+            "review": "original",
+            "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+            "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+            "exactFutureDocumentRestored": true,
+            "exactFutureCommentViewRestored": true
+          },
+          {
+            "id": "independent-local",
+            "document": "segmented-v1",
+            "review": "original",
+            "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+            "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+            "exactFutureDocumentRestored": true,
+            "exactFutureCommentViewRestored": true
+          },
+          {
+            "id": "local-operation-flat",
+            "document": "segmented-v1",
+            "review": "original",
+            "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+            "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+            "exactFutureDocumentRestored": true,
+            "exactFutureCommentViewRestored": true
+          },
+          {
+            "id": "local-operation-snapshot",
+            "document": "segmented-v1",
+            "review": "original",
+            "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+            "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+            "exactFutureDocumentRestored": true,
+            "exactFutureCommentViewRestored": true
+          },
+          {
+            "id": "original",
+            "document": "original",
+            "review": "original",
+            "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+            "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+            "exactFutureDocumentRestored": true,
+            "exactFutureCommentViewRestored": true
+          },
+          {
+            "id": "restored-graph",
+            "document": "segmented-v1",
+            "review": "original",
+            "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+            "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+            "exactFutureDocumentRestored": true,
+            "exactFutureCommentViewRestored": true
+          }
+        ]
+      }
+    },
+    {
+      "marker": "LAZY_VERSION_RECONCILIATION_NATIVE",
+      "value": {
+        "file": "fixture://public-record",
+        "sha256": "31700328e1ddb29fc176c0e37b342f60e8157b8fd7f5de8ba042579c2cd27b94",
+        "format": "breditor/lazy-version-current-reconciliation-observation",
+        "formatVersion": 1,
+        "participants": 7,
+        "originalKind": "pending",
+        "currentKind": "checked",
+        "originalPendingKinds": [
+          "references",
+          "provider"
+        ],
+        "sourceCoveredOccurrences": 48,
+        "fullCurrentReferences": 13,
+        "currentProviderAssets": 3,
+        "currentProviderMissing": 0,
+        "allNativeStampsUnchanged": true,
+        "metadataQueuesAndCacheFlagsUnchanged": true,
+        "oldMetadataBytesUnchanged": true,
+        "cacheCalls": 0,
+        "currentData": {
+          "file": "fixture://public-record",
+          "bytes": 95924,
+          "sha256": "ec5720eccb630d93fd72016c97dc42519a4cb9caf7ae0ee8ae0da687671c611b"
+        },
+        "forbiddenBodyDownloads": 0,
+        "wholeRoomActivated": false
+      }
+    },
+    {
+      "marker": "LAZY_VERSION_RECONCILIATION_NATIVE",
+      "value": {
+        "file": "fixture://public-record",
+        "sha256": "4867e0e0e4b4bf7896a6c9abc81020ab7a4c8a643f207dbdce83d8b53e1d6b56",
+        "format": "breditor/lazy-version-current-reconciliation-observation",
+        "formatVersion": 1,
+        "participants": 7,
+        "originalKind": "pending",
+        "currentKind": "checked",
+        "originalPendingKinds": [
+          "references",
+          "provider"
+        ],
+        "sourceCoveredOccurrences": 48,
+        "fullCurrentReferences": 13,
+        "currentProviderAssets": 3,
+        "currentProviderMissing": 0,
+        "allNativeStampsUnchanged": true,
+        "metadataQueuesAndCacheFlagsUnchanged": true,
+        "oldMetadataBytesUnchanged": true,
+        "cacheCalls": 0,
+        "currentData": {
+          "file": "fixture://public-record",
+          "bytes": 95927,
+          "sha256": "fddc2bafe27f0b6f9fc399c79aeb1c76725f515fe161dd706c0d460cd5e6210a"
+        },
+        "forbiddenBodyDownloads": 0,
+        "wholeRoomActivated": false
+      }
+    },
+    {
+      "marker": "LAZY_VERSION_RECONCILIATION_NATIVE",
+      "value": {
+        "file": "fixture://public-record",
+        "sha256": "7555e1fb36ad4450a1675210dc2c4b8c4fe325086e52f035d0ed7df02b04b5d1",
+        "format": "breditor/lazy-version-current-reconciliation-observation",
+        "formatVersion": 1,
+        "participants": 7,
+        "originalKind": "pending",
+        "currentKind": "checked",
+        "originalPendingKinds": [
+          "references",
+          "provider"
+        ],
+        "sourceCoveredOccurrences": 48,
+        "fullCurrentReferences": 13,
+        "currentProviderAssets": 3,
+        "currentProviderMissing": 0,
+        "allNativeStampsUnchanged": true,
+        "metadataQueuesAndCacheFlagsUnchanged": true,
+        "oldMetadataBytesUnchanged": true,
+        "cacheCalls": 0,
+        "currentData": {
+          "file": "fixture://public-record",
+          "bytes": 95919,
+          "sha256": "ca929ffbfb8a08d80e48907572ffab6438bbe42abc23dfd67e2fa3f03290b63a"
+        },
+        "forbiddenBodyDownloads": 0,
+        "wholeRoomActivated": false
+      }
+    }
+  ]
+}
