@@ -1,7 +1,7 @@
 //! Bounded exact-Origin operator read; no DTO can substitute for genuine native/provider owners.
 use super::{
     PhysicalRoomRecoveryControlIdentity, accepted_native, asset_requirements, lease::State,
-    metadata_packet, metadata_receipts, original_review,
+    metadata_packet, metadata_receipts, native_dependencies, original_review,
 };
 use crate::{Error, Result, server::http};
 use axum::{
@@ -24,6 +24,7 @@ enum Kind {
     OriginalReview,
     Metadata,
     MetadataPacket,
+    NativeDependencies,
 }
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -42,6 +43,10 @@ pub(super) fn router(state: Weak<State>) -> Router {
         .route(
             "/recovery/physical/v1/metadata/packet/read",
             post(metadata_packet_read).options(preflight),
+        )
+        .route(
+            "/recovery/physical/v1/native-dependencies/read",
+            post(native_dependencies_read).options(preflight),
         )
         .route(
             "/recovery/physical/v1/review/authorizations/read",
@@ -133,6 +138,12 @@ async fn metadata(Extract(weak): Extract<Weak<State>>, request: Request) -> Resp
 async fn metadata_packet_read(Extract(weak): Extract<Weak<State>>, request: Request) -> Response {
     respond(weak, request, Kind::MetadataPacket).await
 }
+async fn native_dependencies_read(
+    Extract(weak): Extract<Weak<State>>,
+    request: Request,
+) -> Response {
+    respond(weak, request, Kind::NativeDependencies).await
+}
 async fn original_review_authorizations(
     Extract(weak): Extract<Weak<State>>,
     request: Request,
@@ -181,6 +192,7 @@ async fn respond(weak: Weak<State>, request: Request, kind: Kind) -> Response {
         Kind::OriginalReview => original_review::MAX_REQUEST_BYTES,
         Kind::Metadata => metadata_receipts::MAX_REQUEST_BYTES,
         Kind::MetadataPacket => metadata_packet::MAX_REQUEST_BYTES,
+        Kind::NativeDependencies => native_dependencies::MAX_REQUEST_BYTES,
     };
     let Ok(body) = to_bytes(body, limit).await else {
         return http::cors(StatusCode::PAYLOAD_TOO_LARGE.into_response(), &origin);
@@ -196,6 +208,7 @@ async fn respond(weak: Weak<State>, request: Request, kind: Kind) -> Response {
             Kind::OriginalReview => original_review::read(state, body).await,
             Kind::Metadata => metadata_receipts::read(state, body).await,
             Kind::MetadataPacket => metadata_packet::read(state, body).await,
+            Kind::NativeDependencies => native_dependencies::read(state, body).await,
         }
     })
     .await;

@@ -63,12 +63,37 @@ enum ReadKind {
     OriginalReview,
     Metadata,
     MetadataPacket,
+    NativeDependencies,
+}
+impl ReadKind {
+    fn path(self) -> &'static str {
+        match self {
+            Self::NativeDependencies => "/recovery/generations/v1/native-dependencies/read",
+            Self::MetadataPacket => "/recovery/generations/v1/metadata/packet/read",
+            Self::Metadata => "/recovery/generations/v1/metadata/read",
+            Self::OriginalReview => "/recovery/generations/v1/review/authorizations/read",
+            Self::AcceptedNative => "/recovery/generations/v1/accepted/read",
+        }
+    }
+    async fn body(self, setup: &Setup) -> TestResult<Vec<u8>> {
+        let input = match self {
+            Self::NativeDependencies => {
+                serde_json::json!({"format":"breditor/server-log-generation-recovery-native-dependencies-request","formatVersion":1,"selection":setup.selection()})
+            }
+            Self::MetadataPacket => super::metadata_packets::version_body(setup).await?,
+            Self::Metadata => {
+                serde_json::json!({"format":"breditor/server-log-generation-recovery-metadata-request","formatVersion":1,"selection":setup.selection(),"metadata":{"versions":{"kind":"disabled"},"suggestions":{"kind":"disabled"},"revisions":{"kind":"disabled"}}})
+            }
+            Self::OriginalReview => super::original_review::body(setup).await?,
+            Self::AcceptedNative => {
+                serde_json::json!({"format":"breditor/server-log-generation-recovery-accepted-native-request","formatVersion":1,"selection":setup.selection(),"document":"include","review":{"kind":"start"}})
+            }
+        };
+        Ok(serde_json::to_vec(&input)?)
+    }
 }
 async fn last_callback(raster: bool, kind: ReadKind) -> TestResult {
-    let original_review = matches!(kind, ReadKind::OriginalReview);
-    let metadata = matches!(kind, ReadKind::Metadata);
-    let packet = matches!(kind, ReadKind::MetadataPacket);
-    let mut setup = if packet {
+    let mut setup = if matches!(kind, ReadKind::MetadataPacket) {
         Box::pin(super::metadata_receipts::seeded((3, true), true, 1)).await?
     } else {
         Box::pin(Setup::new((3, true), true)).await?
@@ -110,10 +135,7 @@ async fn last_callback(raster: bool, kind: ReadKind) -> TestResult {
     setup.router = router;
     setup.provider = provider;
     setup.control = Some(control);
-    let original_body =
-        if original_review { Some(super::original_review::body(&setup).await?) } else { None };
-    let packet_body =
-        if packet { Some(super::metadata_packets::version_body(&setup).await?) } else { None };
+    let input = kind.body(&setup).await?;
     guard.calls.store(0, Ordering::SeqCst);
     setup
         .proof
@@ -123,31 +145,7 @@ async fn last_callback(raster: bool, kind: ReadKind) -> TestResult {
     assert!(one > 0);
     guard.mutate_at.store(one * 2, Ordering::SeqCst);
     let server = Network::start(setup.router.clone()).await?;
-    let request = Request {
-        path: if packet {
-            "/recovery/generations/v1/metadata/packet/read"
-        } else if metadata {
-            "/recovery/generations/v1/metadata/read"
-        } else if original_review {
-            "/recovery/generations/v1/review/authorizations/read"
-        } else {
-            "/recovery/generations/v1/accepted/read"
-        },
-        ..Request::check(&setup.token)
-    };
-    let input = if let Some(body) = packet_body {
-        serde_json::to_vec(&body)?
-    } else if metadata {
-        serde_json::to_vec(
-            &serde_json::json!({"format":"breditor/server-log-generation-recovery-metadata-request","formatVersion":1,"selection":setup.selection(),"metadata":{"versions":{"kind":"disabled"},"suggestions":{"kind":"disabled"},"revisions":{"kind":"disabled"}}}),
-        )?
-    } else if let Some(body) = original_body {
-        serde_json::to_vec(&body)?
-    } else {
-        serde_json::to_vec(
-            &serde_json::json!({"format":"breditor/server-log-generation-recovery-accepted-native-request","formatVersion":1,"selection":setup.selection(),"document":"include","review":{"kind":"start"}}),
-        )?
-    };
+    let request = Request { path: kind.path(), ..Request::check(&setup.token) };
     let response = server.request(&request, &input).await?;
     assert!(guard.mutated.load(Ordering::SeqCst));
     assert!(
@@ -193,4 +191,13 @@ async fn metadata_packet_last_provider_callback_changing_native_source_refuses()
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn metadata_packet_last_provider_callback_changing_raster_source_refuses() -> TestResult {
     last_callback(true, ReadKind::MetadataPacket).await
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn native_dependencies_final_callback_changing_native_source_refuses() -> TestResult {
+    last_callback(false, ReadKind::NativeDependencies).await
+}
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn native_dependencies_final_callback_changing_raster_source_refuses() -> TestResult {
+    last_callback(true, ReadKind::NativeDependencies).await
 }

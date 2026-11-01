@@ -237,3 +237,7 @@ export type {OriginalMetadataPacketKind,OriginalMetadataPacketQuery,OriginalMeta
 export type {LocalMetadataReceiptContainmentInput,LocalMetadataReceiptContainmentRead,OriginalReceiptKind,OriginalReceiptRequirement,OriginalReceiptPoint} from './metadata_receipt_containment/contract.js';
 
 export type {MetadataPacketFile,MetadataPacketBody,MetadataPacketLocalOccurrence,MetadataPacketServerOccurrence,MetadataPacketArchiveHeader,MetadataPacketArchiveFiles,MetadataPacketRequirements,LocalMetadataPacketRetentionInput,LocalMetadataPacketRetentionBundle,MetadataPacketAssetHeader,MetadataPacketAssetFiles,MetadataPacketAssetOutcome,LocalMetadataPacketRecoveryInput,LocalMetadataPacketRecoveryBundle,LocalMetadataPacketRecoveryOutcome} from './metadata_packet_retention/contract.js';
+
+export {captureSelectedServerNativeDependencies} from './server_native_dependencies/collect.js';
+export {ServerNativeDependencyError} from './server_native_dependencies/policy.js';
+export type {ServerNativePacketSource,ServerNativeDependencyInventory,SelectedServerNativeDependencies} from './server_native_dependencies/contract.js';

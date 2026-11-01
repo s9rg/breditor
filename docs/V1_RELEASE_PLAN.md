@@ -1,5 +1,14 @@
 # Breditor V1 release preparation
 
+The new [selected server Native dependency read](SELECTED_SERVER_NATIVE_DEPENDENCIES.md)
+resolves the reproduced server-source knowledge gap while seven saved Native
+readers stay Pending and unchanged. Source and independent installed checks pass
+30/30 with strict types; the Rust server suite passes 417 cases, followed by
+24 affected cases and both all-target lint modes after a test-helper split. This
+does not yet integrate complete physical server packet recovery or portable
+Native reconstruction. Provider/client reconciliation, independent generations,
+authenticated whole-room activation and all thirteen V1/parity gates remain open.
+
 The additional [original packet and asset recovery capture](ORIGINAL_METADATA_PACKET_RECOVERY.md) retains first-server packet strings separately from exact local variants, resolves declared packet images through actual Native readers and preserves the independently selected server/inventory files. A source-owned portable inspector, Native server reconstruction and source closure for unseen server heads, independent generations and authenticated whole-room activation remain required. This is a component checkpoint; all thirteen V1/parity gates remain open.
 
 The latest [original local receipt containment qualification](qualification/2026-10-31-original-receipt-containment.json) adds a separately named check over actual held client stores, saved cuts, original backups and restored input targets. Both complete Native workflows and 23 independently installed checks pass, including twelve focused comparisons and a valid-frame omitted-receipt scenario. The original outbox reconciliation can remain checked while the new containment result correctly becomes Pending. Original packet/receipt/retry facts, all seven Native histories and subsequent document/review Undo/Redo are preserved.

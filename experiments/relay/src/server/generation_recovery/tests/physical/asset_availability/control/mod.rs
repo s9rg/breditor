@@ -16,3 +16,5 @@ mod waiter;
 mod waiter_provider;
 
 mod metadata_packets;
+
+mod native_dependencies;

@@ -13,3 +13,5 @@ mod staleness;
 mod workflows;
 
 mod metadata_packets;
+
+mod native_dependencies;

@@ -19,6 +19,7 @@ pub use asset_availability::{
 mod control;
 mod control_work;
 mod metadata_packet;
+mod native_dependencies;
 mod metadata_page;
 pub use control::{
     ServerLogGenerationRecoveryControl, ServerLogGenerationRecoveryControlIdentity,

@@ -1,0 +1,274 @@
+{
+  "format": "breditor/selected-server-native-dependencies-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-11-01T05:43:11.815Z",
+  "releaseReady": false,
+  "v1GatesOpen": 13,
+  "checkpointScope": "Authenticated complete server-only Native source/dependency read over original physical packets, separate from original committed catalogs and unchanged client Pending diagnostics.",
+  "source": {
+    "commit": "f87c52a83cc0de2c912409948090cc87b9961389",
+    "dirty": true,
+    "sha256": "6b52358a5c5047e6f84e15581242ab3c3ae0ecbd14ff1341fd0408e581028617",
+    "files": 7835,
+    "bytes": 58357635
+  },
+  "snapshot": {
+    "complete": true,
+    "source": {
+      "commit": "f87c52a83cc0de2c912409948090cc87b9961389",
+      "dirty": true,
+      "sha256": "6b52358a5c5047e6f84e15581242ab3c3ae0ecbd14ff1341fd0408e581028617",
+      "files": 7835,
+      "bytes": 58357635
+    },
+    "archive": "/private/tmp/breditor-unseen-source-20261101/final/executed-source.tar.gz",
+    "archiveBytes": 13297119,
+    "archiveSha256": "e0c3d1710aba926133ff963ae3bbc4f11c3694f53923bf4b66354eb780e203d5",
+    "verifiedSourceFiles": 7835
+  },
+  "sourceCases": {
+    "tests": 30,
+    "strictPublicTypes": true,
+    "sourceUnchanged": true,
+    "log": "/private/tmp/breditor-unseen-source-20261101/final/sdk-source-native.log",
+    "logSha256": "43544e815d838100d6a608dfabdb092c82cc1233984eb5f4d1051e6898ee09e0"
+  },
+  "independentlyInstalled": {
+    "directory": "/private/tmp/breditor-server-native-dependencies-installed-aAN2kP",
+    "tests": 30,
+    "strictPublicTypes": true,
+    "workspaceLinks": false,
+    "sourceUnchanged": true,
+    "log": "/private/tmp/breditor-server-native-dependencies-installed-aAN2kP/contracts.log",
+    "logSha256": "992143da5191fb20e6a98baf6d2f949659ddbb88ddfc0ca6f44265cfb6a8d59f",
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/private/tmp/breditor-server-native-dependencies-installed-aAN2kP/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/private/tmp/breditor-server-native-dependencies-installed-aAN2kP/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/private/tmp/breditor-server-native-dependencies-installed-aAN2kP/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "1c526269bf249d784a1ef4713fa0a144838370108acd66665d6991b7cff614cd"
+      }
+    ],
+    "native": [
+      {
+        "path": "target/server-metadata-native/release/examples/selected_suggestion_delivery_functional",
+        "sha256": "3ff2019ccc49a3a54dc2834e7d9892e7078a328c118e69bd441fff77fdde557f"
+      },
+      {
+        "path": "target/server-metadata-native/release/examples/complete_cohort_control_functional",
+        "sha256": "69de301825637e96c47689cbf06ca0a94f5d89a8dd54c0c9261a8054232e457a"
+      },
+      {
+        "path": "target/server-native-dependencies-native/release/examples/selected_suggestion_delivery_functional",
+        "sha256": "020df02bb8399f4388a05e0b67e3dc74f7c1473a5350b1b60d665f05ec45011c"
+      },
+      {
+        "path": "target/server-native-dependencies-native/release/examples/complete_cohort_control_functional",
+        "sha256": "efbdce5f865d99ad0659f19d4a941aca066482af5e3049991567e4a485ca1e1d"
+      }
+    ],
+    "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0"
+  },
+  "rust": {
+    "fullServerLibBeforeTestHelperSplit": {
+      "tests": 417,
+      "log": "/private/tmp/breditor-unseen-source-20261101/full-server-lib.log",
+      "logSha256": "df8e47a95c6a62d84d9df660a76a2622d1b4cc40d7ca0f80717a62b882ddabb2"
+    },
+    "onlyLaterRustChanges": [
+      "experiments/relay/src/server/generation_recovery/tests/physical/asset_availability/control/accepted_native_final.rs",
+      "experiments/relay/src/server/generation_recovery/tests/physical/asset_availability/generation_control/accepted_native_final.rs"
+    ],
+    "productionRustUnchangedAfterFullSuite": true,
+    "finalAffectedCases": 24,
+    "finalPhases": [
+      {
+        "name": "server-all-target-lint",
+        "command": [
+          "cargo",
+          "clippy",
+          "--manifest-path",
+          "experiments/relay/Cargo.toml",
+          "--release",
+          "--locked",
+          "--offline",
+          "--features",
+          "server",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "log": "/private/tmp/breditor-unseen-source-20261101/final/server-all-target-lint.log",
+        "logSha256": "e3c74bf60c8952ac4c908a7865168167b050528f7376b9cbebcde406bb216863",
+        "outcome": {
+          "code": 0,
+          "signal": null
+        },
+        "exceeded": false,
+        "timedOut": false,
+        "RustSourceUnchanged": true
+      },
+      {
+        "name": "native-dependencies",
+        "command": [
+          "cargo",
+          "test",
+          "--manifest-path",
+          "experiments/relay/Cargo.toml",
+          "--release",
+          "--locked",
+          "--offline",
+          "--features",
+          "server",
+          "--lib",
+          "native_dependencies",
+          "--",
+          "--test-threads=2"
+        ],
+        "log": "/private/tmp/breditor-unseen-source-20261101/final/native-dependencies.log",
+        "logSha256": "eb5d27b40471ae75556062142d1714e07bd802ae89e90e49bfdf177d0b56a4db",
+        "outcome": {
+          "code": 0,
+          "signal": null
+        },
+        "exceeded": false,
+        "timedOut": false,
+        "RustSourceUnchanged": true
+      },
+      {
+        "name": "last-provider-callback",
+        "command": [
+          "cargo",
+          "test",
+          "--manifest-path",
+          "experiments/relay/Cargo.toml",
+          "--release",
+          "--locked",
+          "--offline",
+          "--features",
+          "server",
+          "--lib",
+          "last_provider_callback",
+          "--",
+          "--test-threads=2"
+        ],
+        "log": "/private/tmp/breditor-unseen-source-20261101/final/last-provider-callback.log",
+        "logSha256": "e2b68b91175cbc9437644c199bec441f51a1c59ff76b512e74b8e2e526c35e7b",
+        "outcome": {
+          "code": 0,
+          "signal": null
+        },
+        "exceeded": false,
+        "timedOut": false,
+        "RustSourceUnchanged": true
+      },
+      {
+        "name": "no-server-all-target-lint",
+        "command": [
+          "cargo",
+          "clippy",
+          "--manifest-path",
+          "experiments/relay/Cargo.toml",
+          "--release",
+          "--locked",
+          "--offline",
+          "--no-default-features",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "log": "/private/tmp/breditor-unseen-source-20261101/final/no-server-all-target-lint.log",
+        "logSha256": "af35affec55aaa5b9e9a7e5c826285d876f52e489b3c3e525050170af5b85892",
+        "outcome": {
+          "code": 0,
+          "signal": null
+        },
+        "exceeded": false,
+        "timedOut": false,
+        "RustSourceUnchanged": true
+      }
+    ],
+    "artifactBudgetBytes": 3221225472,
+    "artifactTarget": "/Users/s/code/breditor/target/server-native-dependencies-native"
+  },
+  "plans": {
+    "tests": 9,
+    "log": "/private/tmp/breditor-unseen-source-20261101/plan-tests.log",
+    "logSha256": "83a432d0795592036107b8aa2b042eeeb0c3f4ed71be694c0fb4bf46a810ae31",
+    "bothProfilesRequireNewBuildNativeAndInstalled": true,
+    "completeFunctionalProfileExecuted": false,
+    "completeFullProfileExecuted": false
+  },
+  "proof": {
+    "complete": true,
+    "proof": "/Users/s/code/breditor/target/server-native-dependencies-qualified-proof-x2r5da3b",
+    "indexSha256": "9ddc4d719ace9f135fe370bf1614ddce84369193e7976f84e58bee11dc8d4b30",
+    "references": 5213,
+    "uniqueObjects": 3298,
+    "encodedBytes": 75797992,
+    "decodedBytes": 214232736,
+    "sourceNativeRoots": [
+      "/Users/s/code/breditor/target/server-metadata-fixture-FXiSgR",
+      "/Users/s/code/breditor/target/server-metadata-fixture-9d5nlr",
+      "/Users/s/code/breditor/target/server-metadata-fixture-RjK8yR",
+      "/Users/s/code/breditor/target/server-metadata-fixture-wu9zlG",
+      "/Users/s/code/breditor/target/server-metadata-fixture-oP61vE",
+      "/Users/s/code/breditor/target/server-metadata-fixture-Tvudo6",
+      "/Users/s/code/breditor/target/server-metadata-fixture-tETbct",
+      "/Users/s/code/breditor/target/server-metadata-fixture-yqr7fp",
+      "/Users/s/code/breditor/target/server-metadata-fixture-wGg2ts",
+      "/Users/s/code/breditor/target/server-metadata-fixture-ayb514",
+      "/Users/s/code/breditor/target/server-native-dependencies-fixture-vAKc2B",
+      "/Users/s/code/breditor/target/server-native-dependencies-fixture-janrwP",
+      "/Users/s/code/breditor/target/server-native-dependencies-fixture-Ezj5AT",
+      "/Users/s/code/breditor/target/server-native-dependencies-fixture-OnLkMd",
+      "/Users/s/code/breditor/target/server-native-dependencies-physical-evidence-5qaIE2",
+      "/Users/s/code/breditor/target/server-native-dependencies-physical-evidence-cyj1gI"
+    ],
+    "postQualificationChanges": [
+      "docs/SELECTED_SERVER_NATIVE_DEPENDENCIES.md",
+      "docs/V1_RELEASE_PLAN.md"
+    ],
+    "allObjectsReadBackAndHashed": true,
+    "source": {
+      "commit": "f87c52a83cc0de2c912409948090cc87b9961389",
+      "dirty": true,
+      "sha256": "6b52358a5c5047e6f84e15581242ab3c3ae0ecbd14ff1341fd0408e581028617",
+      "files": 7835,
+      "bytes": 58357635
+    }
+  },
+  "verifiedBehavior": [
+    "Seven actual saved Native readers remain Pending and unchanged at a newer acknowledged proposal source; no accepted frames are imported into them.",
+    "The genuine current server read is Ready and includes the proposal and its intermediate-only image generation.",
+    "Generation, physical and continuation hosts use private live read/check ports; public prototype shadows and detached DATA cannot create checked source provenance.",
+    "Both Native endpoint families preserve all ten original profile/transport combinations.",
+    "Source/metadata/raster changes during final provider callbacks refuse stale payloads; original source is restored only by test fixture cleanup.",
+    "Original three-lane catalogs, first accepted packet strings/fingerprints, differently encoded Native-valid duplicates and 65-version/65-revision traversal retain their meaning."
+  ],
+  "limitsAndNonClaims": [
+    "Server Native source inventory retains its existing 8 MiB/100000-item complete-result limits; wrapper is 16 MiB and request 64 KiB.",
+    "This does not make original client Pending become Ready, update outboxes or install acknowledgements.",
+    "Inert preparations are Native source rows, not committed publications; the original accepted-packet transfer contract is unchanged.",
+    "Saved Native readers used in the source-gap test are diagnostic real cores, not fabricated operational owners.",
+    "Portable server Native reconstruction, complete provider/client reconciliation, independent comment/server-log generations and authenticated whole-room activation remain.",
+    "No push, publication, tag, deployment or V1/parity completion."
+  ],
+  "postQualificationChanges": [
+    "docs/SELECTED_SERVER_NATIVE_DEPENDENCIES.md",
+    "docs/V1_RELEASE_PLAN.md",
+    "docs/qualification/2026-11-01-server-native-dependencies.json"
+  ],
+  "qualificationRecordIncludedInProof": false
+}

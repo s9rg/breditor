@@ -1,3 +1,6 @@
+import {prepareNativeDependencyRequest,nativeDependencyEndpoint} from '../server_native_dependencies/request.js';
+import {readNativeDependencyResponse} from '../server_native_dependencies/response.js';
+import {MAX_SERVER_NATIVE_DEPENDENCY_RESPONSE_BYTES,type SelectedServerNativeDependencies} from '../server_native_dependencies/contract.js';
 import {MAX_SERVER_METADATA_PACKET_RESPONSE_BYTES,type OriginalMetadataPacketQuery,type SelectedServerMetadataPacketRead} from '../server_metadata_read/packet_contract.js';
 import {metadataPacketQuery} from '../server_metadata_read/packet_query.js';
 import {prepareMetadataPacketRequest,metadataPacketEndpoint} from '../server_metadata_read/packet_request.js';
@@ -26,13 +29,13 @@ import {readOriginalReviewResponse} from '../original_review_authorizations/resp
 const key=Object.freeze({}),addListener=EventTarget.prototype.addEventListener,removeListener=EventTarget.prototype.removeEventListener,readAborted=Object.getOwnPropertyDescriptor(AbortSignal.prototype,'aborted')!.get!;
 function aborted(signal:AbortSignal|undefined):boolean{return signal?readAborted.call(signal):false;}
 interface State {readonly endpoint:string;readonly expected:SharedPhysicalRecoveryControlSelection;readonly principal:string;readonly getToken:SharedPhysicalRecoveryHostOptions['getToken'];readonly authority:()=>void;readonly signal:AbortSignal|undefined;readonly milliseconds:number;closed:boolean;active:AbortController|undefined}
-let port:(host:SharedPhysicalRoomRecoveryHost)=>Readonly<{selection:SharedPhysicalRecoveryControlSelection;check:(signal?:AbortSignal)=>Promise<void>;checkAssets:(input:SharedPhysicalRecoveryAssetRequirements,signal?:AbortSignal)=>Promise<SharedPhysicalRecoveryAssetRead>;readAcceptedNative:(input:SharedPhysicalRecoveryAcceptedRequest,signal?:AbortSignal)=>Promise<SharedPhysicalRecoveryAcceptedRead>;readMetadata:(input:OriginalMetadataQuery,signal?:AbortSignal)=>Promise<SelectedServerMetadataRead<SharedPhysicalRecoveryControlSelection>>;readMetadataPacket:(input:OriginalMetadataPacketQuery,signal?:AbortSignal)=>Promise<SelectedServerMetadataPacketRead<SharedPhysicalRecoveryControlSelection>>;readOriginalReview:(input:OriginalReviewQuery,signal?:AbortSignal)=>Promise<OriginalReviewRead>}>;
+let port:(host:SharedPhysicalRoomRecoveryHost)=>Readonly<{selection:SharedPhysicalRecoveryControlSelection;check:(signal?:AbortSignal)=>Promise<void>;checkAssets:(input:SharedPhysicalRecoveryAssetRequirements,signal?:AbortSignal)=>Promise<SharedPhysicalRecoveryAssetRead>;readAcceptedNative:(input:SharedPhysicalRecoveryAcceptedRequest,signal?:AbortSignal)=>Promise<SharedPhysicalRecoveryAcceptedRead>;readMetadata:(input:OriginalMetadataQuery,signal?:AbortSignal)=>Promise<SelectedServerMetadataRead<SharedPhysicalRecoveryControlSelection>>;readMetadataPacket:(input:OriginalMetadataPacketQuery,signal?:AbortSignal)=>Promise<SelectedServerMetadataPacketRead<SharedPhysicalRecoveryControlSelection>>;readNativeDependencies:(signal?:AbortSignal)=>Promise<SelectedServerNativeDependencies<SharedPhysicalRecoveryControlSelection>>;readOriginalReview:(input:OriginalReviewQuery,signal?:AbortSignal)=>Promise<OriginalReviewRead>}>;
 /** Internal brand-checked native-check port; public prototype overrides cannot manufacture it. */
 export function physicalRecoveryHostPort(host:SharedPhysicalRoomRecoveryHost){return port(host);}
 export class SharedPhysicalRoomRecoveryHost {
  readonly #state:State;
  private constructor(token:object,state:State){if(token!==key)throw fail('control_policy');this.#state=state;Object.freeze(this);}
- static{port=host=>{if(!host||typeof host!=='object'||!(#state in host))throw fail('control_policy');return Object.freeze({selection:host.#state.expected,check:(signal?:AbortSignal)=>host.#run(signal),checkAssets:(input:SharedPhysicalRecoveryAssetRequirements,signal?:AbortSignal)=>host.#assets(input,signal),readAcceptedNative:(input:SharedPhysicalRecoveryAcceptedRequest,signal?:AbortSignal)=>host.#accepted(input,signal),readMetadata:(input:OriginalMetadataQuery,signal?:AbortSignal)=>host.#metadata(input,signal),readMetadataPacket:(input:OriginalMetadataPacketQuery,signal?:AbortSignal)=>host.#metadataPacket(input,signal),readOriginalReview:(input:OriginalReviewQuery,signal?:AbortSignal)=>host.#originalReview(input,signal)});};}
+ static{port=host=>{if(!host||typeof host!=='object'||!(#state in host))throw fail('control_policy');return Object.freeze({selection:host.#state.expected,check:(signal?:AbortSignal)=>host.#run(signal),checkAssets:(input:SharedPhysicalRecoveryAssetRequirements,signal?:AbortSignal)=>host.#assets(input,signal),readAcceptedNative:(input:SharedPhysicalRecoveryAcceptedRequest,signal?:AbortSignal)=>host.#accepted(input,signal),readMetadata:(input:OriginalMetadataQuery,signal?:AbortSignal)=>host.#metadata(input,signal),readMetadataPacket:(input:OriginalMetadataPacketQuery,signal?:AbortSignal)=>host.#metadataPacket(input,signal),readNativeDependencies:(signal?:AbortSignal)=>host.#nativeDependencies(signal),readOriginalReview:(input:OriginalReviewQuery,signal?:AbortSignal)=>host.#originalReview(input,signal)});};}
  /** Independently selected caller endpoint/pins and fresh operator auth; no archive-selected policy. */
  static async open(supplied:SharedPhysicalRecoveryHostOptions):Promise<SharedPhysicalRoomRecoveryHost>{
   let host:SharedPhysicalRoomRecoveryHost|undefined;
@@ -73,6 +76,14 @@ export class SharedPhysicalRoomRecoveryHost {
  #accepted(input:SharedPhysicalRecoveryAcceptedRequest,signal?:AbortSignal):Promise<SharedPhysicalRecoveryAcceptedRead>{
   let choices!:SharedPhysicalRecoveryAcceptedRequest;
   return this.#request(signal,async()=>{const request=await preparePhysicalAcceptedRequest(this.#state.expected,choices);return{endpoint:physicalAcceptedEndpoint(this.#state.endpoint),body:request.body,maximum:MAX_PHYSICAL_RECOVERY_ACCEPTED_BYTES,admit:(text:string)=>readPhysicalAcceptedNative(text,this.#state.expected,request.sha256,choices)};},()=>{choices=physicalAcceptedChoices(input);});
+ }
+ /** Complete server Native dependency DATA. Current client heads, queues,
+  * account permissions and serving/activation rights remain separate. */
+ readNativeDependencies(signal?:AbortSignal):Promise<SelectedServerNativeDependencies<SharedPhysicalRecoveryControlSelection>>{return this.#nativeDependencies(signal);}
+ #nativeDependencies(signal?:AbortSignal):Promise<SelectedServerNativeDependencies<SharedPhysicalRecoveryControlSelection>>{
+  return this.#request(signal,async()=>{let request:Awaited<ReturnType<typeof prepareNativeDependencyRequest>>;try{request=await prepareNativeDependencyRequest('physical-room-recovery',this.#state.expected);}catch{throw fail('control_policy');}
+   return{endpoint:nativeDependencyEndpoint(this.#state.endpoint),body:request.body,maximum:MAX_SERVER_NATIVE_DEPENDENCY_RESPONSE_BYTES,admit:(text:string)=>{try{return readNativeDependencyResponse(text,'physical-room-recovery',this.#state.expected,this.#state.expected.source.server.native,request.sha256,physicalControlSelection);}catch{throw fail('control_protocol');}}};
+  });
  }
  #metadata(input:OriginalMetadataQuery,signal?:AbortSignal):Promise<SelectedServerMetadataRead<SharedPhysicalRecoveryControlSelection>>{
   let query!:OriginalMetadataQuery;

@@ -152,3 +152,10 @@ wrong requests/expectations/accounts/origins, stale source and last-callback
 Native/raster mutations. Installed checks repeat all SDK cases from npm archives
 with strict public types and no workspace package links. These are component
 qualifications; the thirteen V1/parity gates remain open.
+
+## Complete server Native dependencies
+
+The separately named [server Native dependency read](SELECTED_SERVER_NATIVE_DEPENDENCIES.md)
+includes complete physical packet sources, including inert revision preparations.
+It does not broaden this committed-catalog/first-accepted-packet contract or turn
+a client Pending result into Ready.

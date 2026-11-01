@@ -4,6 +4,7 @@ mod asset_requirements;
 mod identity;
 mod lease;
 mod metadata_packet;
+mod native_dependencies;
 mod metadata_receipts;
 mod original_review;
 mod prepare;
