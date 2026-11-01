@@ -1,5 +1,15 @@
 # Breditor V1 release preparation
 
+The new [client/server packet recovery capture](CLIENT_SERVER_PACKET_RECOVERY.md)
+passes 33 source and 33 independently installed cases, including complete genuine
+seven-family delivery, packet/raster/server-file capture, exact disk readback and
+subsequent document/comment Undo/Redo. Both saved server archives also reproduce
+their complete 13-source/15-reference Native inventories in inactive diagnostic
+replays. Original client Pending and outbox meanings remain intact. Production
+portable inspection, base-Pending source resolution, independent generations,
+complete reconciliation, authenticated activation and all thirteen V1/parity
+gates remain open.
+
 The new [selected server Native dependency read](SELECTED_SERVER_NATIVE_DEPENDENCIES.md)
 resolves the reproduced server-source knowledge gap while seven saved Native
 readers stay Pending and unchanged. Source and independent installed checks pass

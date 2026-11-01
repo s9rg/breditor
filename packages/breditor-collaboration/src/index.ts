@@ -241,3 +241,5 @@ export type {MetadataPacketFile,MetadataPacketBody,MetadataPacketLocalOccurrence
 export {captureSelectedServerNativeDependencies} from './server_native_dependencies/collect.js';
 export {ServerNativeDependencyError} from './server_native_dependencies/policy.js';
 export type {ServerNativePacketSource,ServerNativeDependencyInventory,SelectedServerNativeDependencies} from './server_native_dependencies/contract.js';
+
+export type {ServerPacketRecoveryInput,ServerPacketRecoveryOutcome,ServerPacketRecoveryBundle,ServerPacketClosure,ServerPacketCoverage,ServerPacketAssetHeader,ServerPacketAssetOutcome} from './server_packet_recovery/contract.js';

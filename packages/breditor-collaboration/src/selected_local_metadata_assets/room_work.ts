@@ -1,3 +1,5 @@
+import {captureClientServerPacketRecovery} from '../server_packet_recovery/capture.js';
+import type {ServerPacketRecoveryOutcome} from '../server_packet_recovery/contract.js';
 import {captureOriginalMetadataPacketTexts} from '../metadata_packet_retention/capture.js';
 import type {LocalMetadataPacketRetentionBundle,LocalMetadataPacketRecoveryOutcome} from '../metadata_packet_retention/contract.js';
 import type {PreparedMetadataPacketRecoveryInput} from '../metadata_packet_retention/recovery_input.js';
@@ -151,6 +153,13 @@ export class LocalMetadataReferenceWork {
   const assets=await captureMetadataPacketAssets(packets,this.#finished.body,uploads,input.reconciliation,input.transport,this.#options,input.options,check);check();await input.reconciliation.port.check(this.#waits.signal);check();
   const bundle=Object.freeze({format:'breditor/selected-local-metadata-packet-recovery-bundle' as const,formatVersion:1 as const,scope:'client-metadata-first-server-packets-and-selected-recovery-files' as const,packets,assets,...files});
   return Object.freeze({kind:assets.kind==='retained'?'retained':'pending',bundle});
+ }
+ /** Complete selected server Native references, original client diagnostics and
+  * exact server/inventory files under the same finite genuine cohort capture. */
+ async serverPacketRecovery(input:PreparedMetadataPacketRecoveryInput,snapshot:LocalMetadataDeliverySnapshot):Promise<ServerPacketRecoveryOutcome>{
+  const check=()=>{this.#check();input.selected.check();input.reconciliation.check();for(const row of this.#allSources){const before=this.#availabilityStamps.get(row.source.core),now=coreReadStamp(row.source.core);if(!before||before.document!==now.document||before.review!==now.review)throw fail('local_metadata_assets_changed');}};
+  check();const packets=await this.retainPackets(input.reconciliation,snapshot);check();if(!this.#room||!this.#cut||!this.#finished)throw fail('local_metadata_assets_closed');
+  return captureClientServerPacketRecovery(packets,this.#finished.body,input,()=>readLocalMetadataUploadInventory(this.#room!,this.#cut!,this.#options,check,true),this.#options,check);
  }
  /** Preserve actual immutable content for every provider requirement and
   * whole-upload ID. Read from admitted local archives first; missing content

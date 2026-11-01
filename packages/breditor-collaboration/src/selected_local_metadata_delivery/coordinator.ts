@@ -1,3 +1,4 @@
+import type {ServerPacketRecoveryInput,ServerPacketRecoveryOutcome} from '../server_packet_recovery/contract.js';
 import {prepareMetadataPacketRecoveryInput} from '../metadata_packet_retention/recovery_input.js';
 import type {LocalMetadataPacketRecoveryInput,LocalMetadataPacketRecoveryOutcome,LocalMetadataPacketRetentionInput,LocalMetadataPacketRetentionBundle} from '../metadata_packet_retention/contract.js';
 import type {LocalMetadataReceiptContainmentInput,LocalMetadataReceiptContainmentRead} from '../metadata_receipt_containment/contract.js';
@@ -195,6 +196,12 @@ export class SelectedLocalMetadataDelivery{
  capturePacketRecovery(provided:LocalMetadataPacketRecoveryInput):Promise<LocalMetadataPacketRecoveryOutcome>{
   let input!:ReturnType<typeof prepareMetadataPacketRecoveryInput>,result:LocalMetadataPacketRecoveryOutcome|undefined;
   return this.#captureReferenceOperation(async work=>{this.#current();if(!this.#snapshot)throw fail();result=await work.packetRecovery(input,this.#snapshot);this.#current();},()=>{input=prepareMetadataPacketRecoveryInput(provided);}).then(()=>{if(!result)throw fail();return result;});
+ }
+ /** Additional complete server Native knowledge, preserving the original
+  * client-only Pending diagnostics. No client heads, queues or ACKs advance. */
+ captureServerPacketRecovery(provided:ServerPacketRecoveryInput):Promise<ServerPacketRecoveryOutcome>{
+  let input!:ReturnType<typeof prepareMetadataPacketRecoveryInput>,result:ServerPacketRecoveryOutcome|undefined;
+  return this.#captureReferenceOperation(async work=>{this.#current();if(!this.#snapshot)throw fail();result=await work.serverPacketRecovery(input,this.#snapshot);this.#current();},()=>{input=prepareMetadataPacketRecoveryInput(provided);}).then(()=>{if(!result)throw fail();return result;});
  }
  /** Source-owned immutable raster bytes for the complete Native/provider and
   * whole-upload union. Transport reads neither mutate caches nor ACK queues. */
