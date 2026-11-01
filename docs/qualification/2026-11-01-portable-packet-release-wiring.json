@@ -1,0 +1,279 @@
+{
+  "format": "breditor/portable-packet-release-wiring-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-11-01T09:53:07.304429+00:00",
+  "releaseReady": false,
+  "v1GatesOpen": 13,
+  "source": {
+    "commit": "0b08b701c6f65da0c6d344ee04aa276e83977e7e",
+    "dirty": true,
+    "sha256": "20bda333af6c96720f3596e07575dabcba9dae7382581a5b5d81cdc08629e542",
+    "files": 7895,
+    "bytes": 62462386
+  },
+  "changedExecutableSource": [
+    {
+      "path": "scripts/candidate-release/plan.mjs",
+      "sha256": "1b6a85c17247e9afddd8143d229fbf16082c2c38f26989317d4dbb874b5575c8"
+    },
+    {
+      "path": "scripts/server-packet-recovery-candidate-plan.test.mjs",
+      "sha256": "d08a7c4d0fc648d2356b010177d562bfa7a5d8102eaf58824090394ea3f5ab84"
+    }
+  ],
+  "planAndRunnerChecks": [
+    {
+      "log": "/private/tmp/breditor-portable-packet-inspection-20261101-__8ly_p6/release-plan-tests.log",
+      "sha256": "973ad97b5deedb897112fcfcefb03dded5a9875c1c46f3f865d17b7a0bb42c1c",
+      "tests": 20,
+      "pass": 20
+    },
+    {
+      "log": "/private/tmp/breditor-portable-packet-inspection-20261101-__8ly_p6/release-runner-tests.log",
+      "sha256": "84d339f99e02d55c76a9b59e551c00465c6503d2263256964f32b7d5fe3f123e",
+      "tests": 80,
+      "pass": 80
+    }
+  ],
+  "profiles": [
+    {
+      "profile": "functional",
+      "checks": 704,
+      "v1Ready": false,
+      "selected": [
+        {
+          "id": "server-native-dependencies-host",
+          "index": 459,
+          "args": [
+            "scripts/build-server-native-dependencies-native.mjs"
+          ],
+          "artifacts": [
+            {
+              "path": "target/server-native-dependencies-native-build.json",
+              "fresh": true
+            },
+            {
+              "path": "target/server-native-dependencies-native/release/examples/selected_suggestion_delivery_functional"
+            },
+            {
+              "path": "target/server-native-dependencies-native/release/examples/complete_cohort_control_functional"
+            }
+          ],
+          "required": true
+        },
+        {
+          "id": "server-packet-inspection-native-host",
+          "index": 470,
+          "args": [
+            "scripts/build-server-packet-inspection-native.mjs"
+          ],
+          "artifacts": [
+            {
+              "path": "target/server-packet-inspection-native-build.json",
+              "fresh": true
+            },
+            {
+              "path": "target/server-packet-inspection-native/release/examples/selected_suggestion_delivery_functional"
+            },
+            {
+              "path": "target/server-packet-inspection-native/release/examples/complete_cohort_control_functional"
+            }
+          ],
+          "required": true
+        },
+        {
+          "id": "server-packet-recovery-native",
+          "index": 471,
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "scripts/server-packet-closure-contracts.test.mjs",
+            "scripts/server-packet-source-native.test.mjs",
+            "scripts/server-packet-inspection-native.test.mjs",
+            "scripts/server-packet-inspection-cohort-native.test.mjs",
+            "scripts/saved-packet-native-replay.test.mjs",
+            "scripts/server-packet-inspection-disabled-native.test.mjs"
+          ],
+          "artifacts": [],
+          "required": true
+        },
+        {
+          "id": "installed-server-packet-recovery",
+          "index": 472,
+          "args": [
+            "scripts/check-server-packet-inspection-installed.mjs"
+          ],
+          "artifacts": [
+            {
+              "path": "target/server-packet-inspection-installed-consumer.json",
+              "fresh": true
+            }
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "profile": "full",
+      "checks": 712,
+      "v1Ready": false,
+      "selected": [
+        {
+          "id": "server-native-dependencies-host",
+          "index": 459,
+          "args": [
+            "scripts/build-server-native-dependencies-native.mjs"
+          ],
+          "artifacts": [
+            {
+              "path": "target/server-native-dependencies-native-build.json",
+              "fresh": true
+            },
+            {
+              "path": "target/server-native-dependencies-native/release/examples/selected_suggestion_delivery_functional"
+            },
+            {
+              "path": "target/server-native-dependencies-native/release/examples/complete_cohort_control_functional"
+            }
+          ],
+          "required": true
+        },
+        {
+          "id": "server-packet-inspection-native-host",
+          "index": 470,
+          "args": [
+            "scripts/build-server-packet-inspection-native.mjs"
+          ],
+          "artifacts": [
+            {
+              "path": "target/server-packet-inspection-native-build.json",
+              "fresh": true
+            },
+            {
+              "path": "target/server-packet-inspection-native/release/examples/selected_suggestion_delivery_functional"
+            },
+            {
+              "path": "target/server-packet-inspection-native/release/examples/complete_cohort_control_functional"
+            }
+          ],
+          "required": true
+        },
+        {
+          "id": "server-packet-recovery-native",
+          "index": 471,
+          "args": [
+            "--test",
+            "--test-concurrency=1",
+            "scripts/server-packet-closure-contracts.test.mjs",
+            "scripts/server-packet-source-native.test.mjs",
+            "scripts/server-packet-inspection-native.test.mjs",
+            "scripts/server-packet-inspection-cohort-native.test.mjs",
+            "scripts/saved-packet-native-replay.test.mjs",
+            "scripts/server-packet-inspection-disabled-native.test.mjs"
+          ],
+          "artifacts": [],
+          "required": true
+        },
+        {
+          "id": "installed-server-packet-recovery",
+          "index": 472,
+          "args": [
+            "scripts/check-server-packet-inspection-installed.mjs"
+          ],
+          "artifacts": [
+            {
+              "path": "target/server-packet-inspection-installed-consumer.json",
+              "fresh": true
+            }
+          ],
+          "required": true
+        }
+      ]
+    }
+  ],
+  "fullCandidateProfilesExecuted": false,
+  "nativeBuild": {
+    "result": "/Users/s/code/breditor/target/server-packet-inspection-native-build-AbreHj/result.json",
+    "resultSha256": "3dfcd9a94a8290cc98b12b7eb237a4927af494af5b5e8e1aece523cf625d853a",
+    "log": "/Users/s/code/breditor/target/server-packet-inspection-native-build-AbreHj/build.log",
+    "logSha256": "908750df9bc1f187bd0931017c1e562f58884d0fa8a17f541e9c7739813a3cee",
+    "sourceUnchanged": true,
+    "budgetBytes": 3221225472,
+    "exceeded": false,
+    "binaries": [
+      {
+        "path": "/Users/s/code/breditor/target/server-packet-inspection-native/release/examples/selected_suggestion_delivery_functional",
+        "bytes": 23309856,
+        "sha256": "61c35699efcd333680ffca06a5ee6c1f2f22dc73722c065d4fca3610e696a3e7"
+      },
+      {
+        "path": "/Users/s/code/breditor/target/server-packet-inspection-native/release/examples/complete_cohort_control_functional",
+        "bytes": 19965504,
+        "sha256": "d8ad3caf94470ba22bc74c2f62803dc96c8170c868340e7d5b324c6c6d6133dc"
+      }
+    ],
+    "builderSourceUnchanged": true
+  },
+  "qualifiedSdkByteComparison": {
+    "complete": true,
+    "NativeBuildPassed": true,
+    "NativeBuildResult": "/Users/s/code/breditor/target/server-packet-inspection-native-build.json",
+    "allSixNativeExecutablesIdentical": true,
+    "normalWasmIdentical": true,
+    "compiledSdkFilesComparedWithQualifiedArchives": 2713,
+    "executables": [
+      {
+        "path": "target/server-metadata-native/release/examples/selected_suggestion_delivery_functional",
+        "before": "3ff2019ccc49a3a54dc2834e7d9892e7078a328c118e69bd441fff77fdde557f",
+        "after": "3ff2019ccc49a3a54dc2834e7d9892e7078a328c118e69bd441fff77fdde557f",
+        "identical": true
+      },
+      {
+        "path": "target/server-metadata-native/release/examples/complete_cohort_control_functional",
+        "before": "69de301825637e96c47689cbf06ca0a94f5d89a8dd54c0c9261a8054232e457a",
+        "after": "69de301825637e96c47689cbf06ca0a94f5d89a8dd54c0c9261a8054232e457a",
+        "identical": true
+      },
+      {
+        "path": "target/server-native-dependencies-native/release/examples/selected_suggestion_delivery_functional",
+        "before": "020df02bb8399f4388a05e0b67e3dc74f7c1473a5350b1b60d665f05ec45011c",
+        "after": "020df02bb8399f4388a05e0b67e3dc74f7c1473a5350b1b60d665f05ec45011c",
+        "identical": true
+      },
+      {
+        "path": "target/server-native-dependencies-native/release/examples/complete_cohort_control_functional",
+        "before": "efbdce5f865d99ad0659f19d4a941aca066482af5e3049991567e4a485ca1e1d",
+        "after": "efbdce5f865d99ad0659f19d4a941aca066482af5e3049991567e4a485ca1e1d",
+        "identical": true
+      },
+      {
+        "path": "target/server-packet-inspection-native/release/examples/selected_suggestion_delivery_functional",
+        "before": "61c35699efcd333680ffca06a5ee6c1f2f22dc73722c065d4fca3610e696a3e7",
+        "after": "61c35699efcd333680ffca06a5ee6c1f2f22dc73722c065d4fca3610e696a3e7",
+        "identical": true
+      },
+      {
+        "path": "target/server-packet-inspection-native/release/examples/complete_cohort_control_functional",
+        "before": "d8ad3caf94470ba22bc74c2f62803dc96c8170c868340e7d5b324c6c6d6133dc",
+        "after": "d8ad3caf94470ba22bc74c2f62803dc96c8170c868340e7d5b324c6c6d6133dc",
+        "identical": true
+      }
+    ]
+  },
+  "priorSdkQualification": "docs/qualification/2026-11-01-portable-server-packet-inspection.json",
+  "proof": {
+    "complete": true,
+    "proof": "/Users/s/code/breditor/target/portable-packet-release-wiring-proof-stofnox_",
+    "indexSha256": "c81d3caa981730f8e1a90626a00deba6c7f85fdfe8375bb3c1e39ecf54cafeae",
+    "references": 14,
+    "uniqueObjects": 14,
+    "encodedBytes": 33039,
+    "allObjectsReadBackAndHashed": true
+  },
+  "remaining": [
+    "Base-Pending source resolution while preserving literal diagnostics and outstanding client work.",
+    "Independent comment/server-log generations, complete current provider/client reconciliation and authenticated whole-room activation.",
+    "All thirteen V1/parity gates and complete fresh release profiles."
+  ],
+  "pushed": false
+}

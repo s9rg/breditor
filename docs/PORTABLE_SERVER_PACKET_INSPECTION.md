@@ -123,8 +123,16 @@ node scripts/check-server-packet-inspection-installed.mjs
 
 The [qualification record](qualification/2026-11-01-portable-server-packet-inspection.json)
 records the actual 36/36 source and installed results and their exact executed
-source. The Native builder is unchanged from the earlier server-inspection
-checkpoint; candidate-plan integration is a separate following change. The
+source. Both candidate profiles now require the existing bounded Native builder,
+then run the stronger source and installed checks under the original recovery
+verification groups. The new owner workflow calls the complete original recovery
+workflow before inspection. Earlier verification groups remain required; the older
+standalone runner retains its narrower historical scope.
+
+The [release-plan qualification](qualification/2026-11-01-portable-packet-release-wiring.json)
+passes 100 plan/runner checks and a real Native build. Its executable outputs and
+all compiled SDK files match the already qualified bytes. Complete functional/full
+release profiles and the remaining V1 gates are separate requirements. The
 installed runner creates independent offline npm packages, copies the fixed
 public Native fixture and actual Native host executables, compiles strict types,
 and runs the same 36 cases. It verifies the executed source did not change.

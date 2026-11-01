@@ -9,10 +9,15 @@ Omission/reentry refusals and subsequent original document/review Undo/Redo pass
 The [qualification](qualification/2026-11-01-portable-server-packet-inspection.json)
 retains the exact executed source, independent packages and actual recovery DATA
 in a fully read-back-verified proof. Normal Wasm and Rust source are unchanged.
+Both candidate profiles now require the existing bounded Native build and the
+stronger source/installed inspection checks. This [release-plan qualification](qualification/2026-11-01-portable-packet-release-wiring.json)
+passes 100 plan/runner checks; an actual Native rebuild reproduces the exact
+qualified binaries and all 2,713 compiled SDK files match the qualified archives.
+Complete release profiles were not run.
 
 Base-Pending source resolution, independent generations, fresh complete
-reconciliation, authenticated whole-room activation, candidate-plan wiring and
-all thirteen V1/parity gates remain open. This supersedes earlier statements below
+reconciliation, authenticated whole-room activation, complete release profiles
+and all thirteen V1/parity gates remain open. This supersedes earlier statements below
 that the complete portable inspector was unfinished; historical checkpoints keep
 their original narrower qualification scope.
 
