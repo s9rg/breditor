@@ -1,5 +1,9 @@
 # Breditor V1 release preparation
 
+The latest [original local receipt containment qualification](qualification/2026-10-31-original-receipt-containment.json) adds a separately named check over actual held client stores, saved cuts, original backups and restored input targets. Both complete Native workflows and 23 independently installed checks pass, including twelve focused comparisons and a valid-frame omitted-receipt scenario. The original outbox reconciliation can remain checked while the new containment result correctly becomes Pending. Original packet/receipt/retry facts, all seven Native histories and subsequent document/review Undo/Redo are preserved.
+
+Complete remote packet/source/asset closure, independent comment/server-log generations, full provider/client reconciliation and authenticated whole-room activation remain required. All thirteen V1/parity gates remain open. The entries below are historical checkpoints; their unfinished-work statements describe the state at that checkpoint. The later server-metadata SDK and post-ACK cold-recovery qualifications supersede the corresponding earlier component failures.
+
 [Selected server metadata receipt pages](SELECTED_SERVER_METADATA_RECEIPTS.md)
 now read original catalog receipts and exact first-packet fingerprints under
 genuine current server/provider custody. Metadata-only server changes invalidate

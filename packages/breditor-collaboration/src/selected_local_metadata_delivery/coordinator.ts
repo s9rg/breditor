@@ -1,3 +1,4 @@
+import type {LocalMetadataReceiptContainmentInput,LocalMetadataReceiptContainmentRead} from '../metadata_receipt_containment/contract.js';
 import {LocalMetadataReferenceWork} from '../selected_local_metadata_assets/room_work.js';
 import type {LocalMetadataReferenceBundle,LocalMetadataReferenceCut} from '../selected_local_metadata_assets/room_contract.js';
 import {detachLocalMetadataReferenceBundle,readLocalMetadataReferenceClaims} from '../selected_local_metadata_assets/portable_bundle.js';
@@ -173,6 +174,12 @@ export class SelectedLocalMetadataDelivery{
  captureReconciliation(provided:LocalMetadataReconciliationInput):Promise<LocalMetadataReconciliationRead>{
   let input!:ReturnType<typeof prepareLocalMetadataReconciliationInput>,result:LocalMetadataReconciliationRead|undefined;
   return this.#captureReferenceOperation(async work=>{this.#current();if(!this.#snapshot)throw fail();result=await work.reconcile(input,this.#snapshot);this.#current();},()=>{input=prepareLocalMetadataReconciliationInput(provided);}).then(()=>{if(!result)throw fail();return result;});
+ }
+ /** Read all original accepted metadata facts against the genuine current server.
+  * This cannot install ACKs, settle offline intent, change roles or activate. */
+ captureReceiptContainment(provided:LocalMetadataReceiptContainmentInput):Promise<LocalMetadataReceiptContainmentRead>{
+  let input!:ReturnType<typeof prepareLocalMetadataReconciliationInput>,result:LocalMetadataReceiptContainmentRead|undefined;
+  return this.#captureReferenceOperation(async work=>{this.#current();if(!this.#snapshot)throw fail();result=await work.containReceipts(input,this.#snapshot);this.#current();},()=>{input=prepareLocalMetadataReconciliationInput(provided);}).then(()=>{if(!result)throw fail();return result;});
  }
  /** Source-owned immutable raster bytes for the complete Native/provider and
   * whole-upload union. Transport reads neither mutate caches nor ACK queues. */

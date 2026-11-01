@@ -233,3 +233,5 @@ export {MAX_SERVER_METADATA_PAGE_BYTES} from './server_metadata_read/contract.js
 export {MAX_SERVER_METADATA_PACKET_BYTES,MAX_SERVER_METADATA_PACKET_RESPONSE_BYTES} from './server_metadata_read/packet_contract.js';
 export type {ServerMetadataFamily,OriginalMetadataCursor,OriginalMetadataLaneQuery,OriginalMetadataQuery,OriginalMetadataStartQuery,OriginalPacketFingerprint,OriginalSuggestionUpdate,OriginalSuggestionsDescriptor,OriginalRevisionsDescriptor,OriginalSuggestionsPage,OriginalRevisionsPage,OriginalMetadataLanePage,OriginalMetadataPage,SelectedServerMetadataRead,SelectedServerMetadataCatalog} from './server_metadata_read/contract.js';
 export type {OriginalMetadataPacketKind,OriginalMetadataPacketQuery,OriginalMetadataPacket,SelectedServerMetadataPacketRead} from './server_metadata_read/packet_contract.js';
+
+export type {LocalMetadataReceiptContainmentInput,LocalMetadataReceiptContainmentRead,OriginalReceiptKind,OriginalReceiptRequirement,OriginalReceiptPoint} from './metadata_receipt_containment/contract.js';

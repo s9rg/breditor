@@ -1,0 +1,595 @@
+{
+  "format": "breditor/original-local-receipt-containment-qualification",
+  "formatVersion": 1,
+  "baseCommit": "921249b67ae18264680d17f405e29f249bbc7dde",
+  "executedSource": {
+    "commit": "921249b67ae18264680d17f405e29f249bbc7dde",
+    "dirty": true,
+    "sha256": "0e5843a817c7d0561e4d042621c435bd3184dd8d1f37be2b142eb816a132bd14",
+    "files": 7788,
+    "bytes": 58124996
+  },
+  "scope": "Separately named original local receipt containment under the actual metadata owner and current authenticated server; comparison DATA never installs ACKs, clears retries, changes roles or activates a room.",
+  "sourceFunctionalTests": 2,
+  "installedTests": 23,
+  "strictInstalledTypes": true,
+  "installedWorkspaceLinks": false,
+  "originalMetadataRegressions": 21,
+  "purePlanAndContractChecks": 28,
+  "focusedComparisonCases": 12,
+  "validHttpOmissionNativeChecked": true,
+  "nativeParticipantsPerFullWorkflow": 7,
+  "originalStateCoverage": "Original committed/pending/live stores and participant backup; generation committed/attempted/pending/live and both backups; independent/restored current/pending/retained/live, source backups and restored input targets; separately bound local before/current metadata. Actual full workflow exercises admitted retained/current/origin points; optional phase interpretation reuses original validated readers.",
+  "observedPoints": [
+    {
+      "points": [
+        {
+          "participant": "generation",
+          "point": "committed",
+          "examined": 12,
+          "matched": 12
+        },
+        {
+          "participant": "generation",
+          "point": "live",
+          "examined": 12,
+          "matched": 12
+        },
+        {
+          "participant": "generation",
+          "point": "recovery-origin",
+          "examined": 0,
+          "matched": 0
+        },
+        {
+          "participant": "generation",
+          "point": "operation-origin",
+          "examined": 0,
+          "matched": 0
+        },
+        {
+          "participant": "independent-delivery",
+          "point": "current",
+          "examined": 8,
+          "matched": 8
+        },
+        {
+          "participant": "independent-delivery",
+          "point": "retained:1aebdec00dbde19e68c3b83e497b45a5b5dbefd68a2364e8716a4175d392990a",
+          "examined": 8,
+          "matched": 8
+        },
+        {
+          "participant": "independent-delivery",
+          "point": "live",
+          "examined": 8,
+          "matched": 8
+        },
+        {
+          "participant": "independent-delivery",
+          "point": "source-origin",
+          "examined": 0,
+          "matched": 0
+        },
+        {
+          "participant": "independent-local",
+          "point": "unbound-native-source",
+          "examined": 0,
+          "matched": 0
+        },
+        {
+          "participant": "independent-local",
+          "point": "local-before",
+          "examined": 0,
+          "matched": 0
+        },
+        {
+          "participant": "independent-local",
+          "point": "local-current",
+          "examined": 12,
+          "matched": 12
+        },
+        {
+          "participant": "local-operation-flat",
+          "point": "unbound-native-source",
+          "examined": 0,
+          "matched": 0
+        },
+        {
+          "participant": "local-operation-flat",
+          "point": "local-before",
+          "examined": 0,
+          "matched": 0
+        },
+        {
+          "participant": "local-operation-flat",
+          "point": "local-current",
+          "examined": 12,
+          "matched": 12
+        },
+        {
+          "participant": "local-operation-snapshot",
+          "point": "unbound-native-source",
+          "examined": 0,
+          "matched": 0
+        },
+        {
+          "participant": "local-operation-snapshot",
+          "point": "local-before",
+          "examined": 0,
+          "matched": 0
+        },
+        {
+          "participant": "local-operation-snapshot",
+          "point": "local-current",
+          "examined": 12,
+          "matched": 12
+        },
+        {
+          "participant": "original",
+          "point": "versions:committed",
+          "examined": 8,
+          "matched": 8
+        },
+        {
+          "participant": "original",
+          "point": "versions:live",
+          "examined": 8,
+          "matched": 8
+        },
+        {
+          "participant": "original",
+          "point": "suggestions:committed",
+          "examined": 0,
+          "matched": 0
+        },
+        {
+          "participant": "original",
+          "point": "suggestions:live",
+          "examined": 0,
+          "matched": 0
+        },
+        {
+          "participant": "original",
+          "point": "revisions:committed",
+          "examined": 0,
+          "matched": 0
+        },
+        {
+          "participant": "original",
+          "point": "revisions:live",
+          "examined": 0,
+          "matched": 0
+        },
+        {
+          "participant": "original",
+          "point": "operation-origin",
+          "examined": 0,
+          "matched": 0
+        },
+        {
+          "participant": "restored-graph",
+          "point": "current",
+          "examined": 8,
+          "matched": 8
+        },
+        {
+          "participant": "restored-graph",
+          "point": "retained:20beb8841401529925d4b08de30c4473401adac3e557e29b6743fab5682df003",
+          "examined": 8,
+          "matched": 8
+        },
+        {
+          "participant": "restored-graph",
+          "point": "live",
+          "examined": 8,
+          "matched": 8
+        },
+        {
+          "participant": "restored-graph",
+          "point": "source-origin",
+          "examined": 0,
+          "matched": 0
+        },
+        {
+          "participant": "restored-graph",
+          "point": "parent-input:0",
+          "examined": 0,
+          "matched": 0
+        }
+      ],
+      "examined": 124,
+      "missingRequirementsAfterControlledOmission": 26
+    },
+    {
+      "points": [
+        {
+          "participant": "generation",
+          "point": "committed",
+          "examined": 12,
+          "matched": 12
+        },
+        {
+          "participant": "generation",
+          "point": "live",
+          "examined": 12,
+          "matched": 12
+        },
+        {
+          "participant": "generation",
+          "point": "recovery-origin",
+          "examined": 0,
+          "matched": 0
+        },
+        {
+          "participant": "generation",
+          "point": "operation-origin",
+          "examined": 0,
+          "matched": 0
+        },
+        {
+          "participant": "independent-delivery",
+          "point": "current",
+          "examined": 8,
+          "matched": 8
+        },
+        {
+          "participant": "independent-delivery",
+          "point": "retained:8e557ca3c5a18990fc05acf7f623d087fc9a4ad136fcb4d2e5b81f07933a5840",
+          "examined": 8,
+          "matched": 8
+        },
+        {
+          "participant": "independent-delivery",
+          "point": "live",
+          "examined": 8,
+          "matched": 8
+        },
+        {
+          "participant": "independent-delivery",
+          "point": "source-origin",
+          "examined": 0,
+          "matched": 0
+        },
+        {
+          "participant": "independent-local",
+          "point": "unbound-native-source",
+          "examined": 0,
+          "matched": 0
+        },
+        {
+          "participant": "independent-local",
+          "point": "local-before",
+          "examined": 0,
+          "matched": 0
+        },
+        {
+          "participant": "independent-local",
+          "point": "local-current",
+          "examined": 12,
+          "matched": 12
+        },
+        {
+          "participant": "local-operation-flat",
+          "point": "unbound-native-source",
+          "examined": 0,
+          "matched": 0
+        },
+        {
+          "participant": "local-operation-flat",
+          "point": "local-before",
+          "examined": 0,
+          "matched": 0
+        },
+        {
+          "participant": "local-operation-flat",
+          "point": "local-current",
+          "examined": 12,
+          "matched": 12
+        },
+        {
+          "participant": "local-operation-snapshot",
+          "point": "unbound-native-source",
+          "examined": 0,
+          "matched": 0
+        },
+        {
+          "participant": "local-operation-snapshot",
+          "point": "local-before",
+          "examined": 0,
+          "matched": 0
+        },
+        {
+          "participant": "local-operation-snapshot",
+          "point": "local-current",
+          "examined": 12,
+          "matched": 12
+        },
+        {
+          "participant": "original",
+          "point": "versions:committed",
+          "examined": 8,
+          "matched": 8
+        },
+        {
+          "participant": "original",
+          "point": "versions:live",
+          "examined": 8,
+          "matched": 8
+        },
+        {
+          "participant": "original",
+          "point": "suggestions:committed",
+          "examined": 0,
+          "matched": 0
+        },
+        {
+          "participant": "original",
+          "point": "suggestions:live",
+          "examined": 0,
+          "matched": 0
+        },
+        {
+          "participant": "original",
+          "point": "revisions:committed",
+          "examined": 0,
+          "matched": 0
+        },
+        {
+          "participant": "original",
+          "point": "revisions:live",
+          "examined": 0,
+          "matched": 0
+        },
+        {
+          "participant": "original",
+          "point": "operation-origin",
+          "examined": 0,
+          "matched": 0
+        },
+        {
+          "participant": "restored-graph",
+          "point": "current",
+          "examined": 8,
+          "matched": 8
+        },
+        {
+          "participant": "restored-graph",
+          "point": "retained:73ebec873e9a9abbb02971ebd24d90ae9e333edf775f9d74120838ba2d784159",
+          "examined": 8,
+          "matched": 8
+        },
+        {
+          "participant": "restored-graph",
+          "point": "live",
+          "examined": 8,
+          "matched": 8
+        },
+        {
+          "participant": "restored-graph",
+          "point": "source-origin",
+          "examined": 0,
+          "matched": 0
+        },
+        {
+          "participant": "restored-graph",
+          "point": "parent-input:0",
+          "examined": 0,
+          "matched": 0
+        }
+      ],
+      "examined": 124,
+      "missingRequirementsAfterControlledOmission": 26
+    }
+  ],
+  "legacyUnboundDiagnosticsUnchanged": true,
+  "originalNativePacketVariantAcceptedByIdentity": true,
+  "originalReceiptsRetryFactsAndPacketBytesUnchanged": true,
+  "futureDocumentAndReviewUndoRedoAfterFullWorkflowPassed": true,
+  "historicalRuntimePinsAndNormalWasmUnchanged": true,
+  "protectedRuntimeDigests": [
+    {
+      "path": "/Users/s/code/breditor/packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+      "sha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0"
+    },
+    {
+      "path": "/Users/s/code/breditor/target/owned-history-relay-native/release/examples/selected_delivery_functional",
+      "sha256": "c224c4d39d5f603dcb3815ebc58c1719b59b4d6db6fe554e675f91d4cab46ea7"
+    },
+    {
+      "path": "/Users/s/code/breditor/target/owned-history-relay-native/release/examples/selected_suggestion_delivery_functional",
+      "sha256": "60427bb794f52c39a7084fac797f8f3150501238c45c78bad6195cd928a252ca"
+    },
+    {
+      "path": "/Users/s/code/breditor/target/owned-history-relay-native/release/examples/segmented_relay_functional",
+      "sha256": "693e4d465867518e34cfc248d5de2bea54d3babba188dd935d92c728e11fd67d"
+    },
+    {
+      "path": "/Users/s/code/breditor/target/owned-history-relay-native/release/examples/generation_complete_control_functional",
+      "sha256": "95c046cc39eead5d13ffc1d6238078d2f73594446e4b8579de2b8c8de03f6f6a"
+    },
+    {
+      "path": "/Users/s/code/breditor/target/owned-history-relay-native/release/examples/complete_cohort_control_functional",
+      "sha256": "3a52eea28153ff72fda020ff6b1bb8165ee899bba32f7ec063ea84a03d2dd616"
+    },
+    {
+      "path": "/Users/s/code/breditor/target/server-metadata-native/release/examples/selected_suggestion_delivery_functional",
+      "sha256": "3ff2019ccc49a3a54dc2834e7d9892e7078a328c118e69bd441fff77fdde557f"
+    },
+    {
+      "path": "/Users/s/code/breditor/target/server-metadata-native/release/examples/complete_cohort_control_functional",
+      "sha256": "69de301825637e96c47689cbf06ca0a94f5d89a8dd54c0c9261a8054232e457a"
+    }
+  ],
+  "nativeBinaries": [
+    {
+      "path": "target/server-metadata-native/release/examples/selected_suggestion_delivery_functional",
+      "sha256": "3ff2019ccc49a3a54dc2834e7d9892e7078a328c118e69bd441fff77fdde557f"
+    },
+    {
+      "path": "target/server-metadata-native/release/examples/complete_cohort_control_functional",
+      "sha256": "69de301825637e96c47689cbf06ca0a94f5d89a8dd54c0c9261a8054232e457a"
+    }
+  ],
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "rustBaseline": {
+    "qualification": "docs/qualification/2026-10-30-selected-server-metadata-client.json",
+    "fullLibraryChecks": 409,
+    "serverAndNoServerAllTargetLint": true,
+    "newRustChanges": false,
+    "rerunForThisTypescriptOnlyCheckpoint": false
+  },
+  "proof": {
+    "path": "target/original-receipt-containment-qualified-proof-ob31dnn5",
+    "indexSha256": "c6f0ad8bc3673388cceb11f99d8a4cca61e267af9089d9fef04abf7a2644e209",
+    "references": 269,
+    "uniqueFiles": 216,
+    "encodedBytes": 30185442,
+    "readBackVerified": true
+  },
+  "sourceInputs": [
+    {
+      "path": "docs/SELECTED_SERVER_METADATA_CLIENT_READS.md",
+      "bytes": 9182,
+      "sha256": "1f335e9a6ed7f105c936af81b340aebf587d133c58523e163234cab2fb22a874"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/generation_delivery_control/host.ts",
+      "bytes": 11055,
+      "sha256": "d9d3f1c474fca4f007c6f037dc7276917607665560ac015a324cca04b7e7d40f"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/index.ts",
+      "bytes": 31661,
+      "sha256": "7ef43606bd820b2c0bea6282ab2dfdac14578ddb40287635c9e136ca370155ad"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/metadata_receipt_containment/capture.ts",
+      "bytes": 3698,
+      "sha256": "e940ddae25097f49fbe92640ffeb4f302262f34b98b652c1a9d1d7e0dbd9652b"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/metadata_receipt_containment/compare.ts",
+      "bytes": 5752,
+      "sha256": "63de8070223c7c853828263e580cc02d9e91c11771216f3b96289a9d42cbcebf"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/metadata_receipt_containment/contract.ts",
+      "bytes": 1570,
+      "sha256": "e6efe6ab80de71c157e324d44e6931624230a0ac1e7b559f61f28ac9586f2b10"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/metadata_receipt_containment/native_packets.ts",
+      "bytes": 613,
+      "sha256": "b6437f30f9bcfb7cc0c5595b05d710a46971f8f2db28b4616479df5e454469a0"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/metadata_receipt_containment/origins.ts",
+      "bytes": 4960,
+      "sha256": "a9176aed2b03b3459e342901f3d7a8e9706abf66745c487d47dd60af0b0c6509"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/metadata_receipt_containment/policy.ts",
+      "bytes": 663,
+      "sha256": "e7e5bb5b8053e884c7c50f5b8b0187a530d199c1f1ce34e43df1e65c7bd642e5"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/metadata_receipt_containment/record_points.ts",
+      "bytes": 5099,
+      "sha256": "054e4c1b672bef6a7704aa0df299fb447611c7c03128d93b2c209fcffb3b1ecc"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_local_metadata_assets/room_work.ts",
+      "bytes": 32618,
+      "sha256": "6fe66add93d648854e77bfe1f407051e40ccb6200e27d9a8e8e12a7f15ed8beb"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_local_metadata_delivery/coordinator.ts",
+      "bytes": 33600,
+      "sha256": "3615d35da8fc68f8ba84392465268d2ba4310f464d13837ba157e34ceb23c1a2"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/server_metadata_read/collect.ts",
+      "bytes": 3910,
+      "sha256": "f3c9f9f32b14851048b9721bb7cea5025738ee145dd1540bca1fd244df3efa11"
+    },
+    {
+      "path": "scripts/candidate-release/plan.mjs",
+      "bytes": 148286,
+      "sha256": "e66160978f3ae89b4055c4b25cf7ea15786a3972f01034fae9b562f83c43a5ac"
+    },
+    {
+      "path": "scripts/check-local-metadata-receipt-containment-installed.mjs",
+      "bytes": 8613,
+      "sha256": "31b94ae276af35f3ed5fd7338eb2260bc94ae97f00c4f3e6c68dcce75dd9c498"
+    },
+    {
+      "path": "scripts/fixtures/editor-consumer/types-local-metadata-receipt-containment.ts",
+      "bytes": 2091,
+      "sha256": "873b12bc30f6cd96383db8f3dfdbee8810a518ed44559b5a95ef924b75ed1349"
+    },
+    {
+      "path": "scripts/fixtures/local-metadata/materialization.mjs",
+      "bytes": 31429,
+      "sha256": "86807185ea2be2813578c7fbe061b97f6cdaeeb4ebe8eac42385f16e23b0f985"
+    },
+    {
+      "path": "scripts/fixtures/local-metadata/provider-reconciliation.mjs",
+      "bytes": 11620,
+      "sha256": "bd8908bf9f0115a11a919e64cfb6214b518804686280591cd76df4c3e341fff7"
+    },
+    {
+      "path": "scripts/fixtures/local-metadata/receipt-comparison.mjs",
+      "bytes": 5977,
+      "sha256": "7953b1c7e189334bd0c4a6cc014654460ec6ee7c9fcc46f93acb5ef059d880e3"
+    },
+    {
+      "path": "scripts/fixtures/local-metadata/receipt-containment.mjs",
+      "bytes": 6082,
+      "sha256": "79d63cdf7ab835d017907e55cacaec04f595dc8d16041b9b9fd41942b599ab4d"
+    },
+    {
+      "path": "scripts/fixtures/local-metadata/receipt-omission.mjs",
+      "bytes": 727,
+      "sha256": "5c41248984dd0266f4396db22dc4e466e9388f0118857c4d6e485ea29df305a0"
+    },
+    {
+      "path": "scripts/local-metadata-receipt-containment-candidate-plan.test.mjs",
+      "bytes": 2109,
+      "sha256": "afe41a9cb5fb5eeccb9c938f96cd2c15a726628e091ba665cb2d6607803daff5"
+    },
+    {
+      "path": "scripts/local-metadata-receipt-containment-native.test.mjs",
+      "bytes": 600,
+      "sha256": "a8bb4c16e1e2a1f0c30e5defe7d47b731ae9b74eec6a12b6a66f225f790b4a6c"
+    },
+    {
+      "path": "scripts/metadata-receipt-comparison-native.test.mjs",
+      "bytes": 8214,
+      "sha256": "961c9c447e3e6e8d50e9f104297f561410a157a086a997a0e585b4d1a9f155bc"
+    }
+  ],
+  "postQualificationDocumentation": [
+    "docs/SELECTED_SERVER_METADATA_CLIENT_READS.md",
+    "docs/V1_RELEASE_PLAN.md",
+    "docs/qualification/2026-10-31-original-receipt-containment.json"
+  ],
+  "earlierTestSetupFailuresRetained": [
+    "An immutable controller must be shadowed through its public prototype in the test.",
+    "The existing operational coordinator remains internal; public DATA contracts are checked through the package root.",
+    "Original-only reviewCheckpoint cannot read segmented review history; genuine family-aware Native mutation stamps now verify no mutation.",
+    "The controlled omitted-version body initially retained old Content-Length. The SDK correctly refused the invalid frame; a shared UTF-8-length-correct helper now passes actual Native HTTP/canonical-page/receipt comparison. Production response framing remains strict."
+  ],
+  "releaseReady": false,
+  "v1GatesOpen": 13,
+  "completeRemotePacketRetention": false,
+  "independentGenerationsQualified": false,
+  "wholeRoomActivated": false,
+  "remaining": [
+    "Retain every first server packet body alongside valid local byte variants, with full Native source and asset dependency closure through reconstruction.",
+    "Independent comment/server-log generations that preserve original Undo/Redo and outstanding offline work.",
+    "Complete provider/client reconciliation and authenticated coordinated whole-room activation.",
+    "All thirteen original V1/parity gates and complete release profiles."
+  ],
+  "finishedAt": "2026-11-01T02:59:52.525Z"
+}

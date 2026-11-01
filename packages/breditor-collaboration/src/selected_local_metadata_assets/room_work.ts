@@ -1,3 +1,5 @@
+import {captureOriginalReceiptContainment} from '../metadata_receipt_containment/capture.js';
+import type {LocalMetadataReceiptContainmentRead} from '../metadata_receipt_containment/contract.js';
 /** Source-owned finite replay/reference work. Exact older cuts use readonly
  * aliases; the freshly saved current point uses the actual held native core.
  * Late unclaimed restore results follow the existing native factory lifetime. */
@@ -115,6 +117,14 @@ export class LocalMetadataReferenceWork {
   const result=await captureLocalMetadataReconciliation(this.#scope,this.#allSources,snapshot,this.#cut,input,available,check);check();
   const fresh=await this.availability(input.host);check();if(!equal(available.availability,fresh.availability))throw fail('local_metadata_assets_changed');
   return result;
+ }
+ /** Separate original-receipt containment. Existing reconciliation remains literal. */
+ async containReceipts(input:PreparedLocalMetadataReconciliation,snapshot:LocalMetadataDeliverySnapshot):Promise<LocalMetadataReceiptContainmentRead>{
+  const check=()=>{this.#check();input.check();for(const row of this.#allSources){const before=this.#availabilityStamps.get(row.source.core),now=coreReadStamp(row.source.core);if(!before||before.document!==now.document||before.review!==now.review)throw fail('local_metadata_assets_changed');}};
+  check();if(!this.#cut||!this.#finished||!this.#factories)throw fail('local_metadata_assets_closed');
+  const reconciliation=await this.reconcile(input,snapshot);check();
+  const result=await captureOriginalReceiptContainment(this.#scope,this.#allSources,snapshot,this.#cut,input,reconciliation,this.#factories.reads,check);check();
+  const fresh=await this.availability(input.host);check();if(!equal(reconciliation.assets.availability,fresh.availability))throw fail('local_metadata_assets_changed');return result;
  }
  /** Preserve actual immutable content for every provider requirement and
   * whole-upload ID. Read from admitted local archives first; missing content

@@ -131,6 +131,7 @@ export async function testProviderReconciliation(input) {
    assert.ok(reconciled.reviews.every(row=>row.receiptVerified));
    const native=reconciled.legacy;
    assert.equal(native.kind,'pending','Original unbound-local diagnostics remain unchanged');
+   await input.onReconciled?.({scope,sources,metadata,fresh,host,oldMetadata,oldMetadataText,check});
    const saved=retainedBundle=await metadata.capture();
    assert.equal(await oldMetadata.metadata.file.text(),oldMetadataText);
    const current=JSON.parse(await saved.metadata.file.text());

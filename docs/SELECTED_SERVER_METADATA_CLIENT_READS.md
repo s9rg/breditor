@@ -70,11 +70,70 @@ server body and local retry body separately; it must not normalize either body,
 republish a proposal, accept twice, rewrite receipt sequences, or silently settle
 an offline queue by assuming the two byte digests are equal.
 
-This component does not yet implement complete local receipt containment,
-retention of every remote packet through room reconstruction, independent
-comment/server-log generation recovery, or authenticated whole-room activation.
+The separately named local containment read below compares original retained
+client receipts with these catalogs. Retention of every remote packet through
+room reconstruction, independent comment/server-log generation recovery, and
+authenticated whole-room activation remain separate work.
 Those are still required for V1. No catalog or packet response is a ready flag,
 recipient grant, local ACK installation, or whole-room activation capability.
+
+## Held original local receipt containment
+
+The genuine continuation host also exposes `readMetadata`. It uses the current
+server reader's original protocol, with the real previous/current continuation
+checked before and after each request. The catalog collector accepts this
+branded host as well as the two original host families. Public method shadows
+and copied controller data do not supply a live port.
+
+`SelectedLocalMetadataDelivery.captureReceiptContainment({host, inventory})`
+is a separate, opt-in candidate-owner read. That operational owner remains an
+internal candidate module; the package root exports the additional immutable
+containment DATA types. The existing metadata owner holds all selected actual
+Native sources from the seven supported families and its original reference-capture reservation. It first runs
+the original `captureReconciliation` checks, then compares every original local
+server receipt with complete current-cut server catalogs. It checks:
+
+- Original stores' committed, pending and live records, plus the literal
+  operation-origin participant backup.
+- Generation committed, attempted, pending and live records, plus both original
+  recovery and operation backups.
+- Independent delivery and restored-graph current, pending, retained and live
+  cuts, their original participant backups, and every restored parent-input
+  target.
+- The three separately bound local metadata lanes' before/current snapshots.
+  Their original unbound Native-source diagnostics keep their old meaning.
+
+Versions include cached catalog entries, accepted packet receipts and the
+original catalog cursor. Suggestions include original publications and final
+decisions. Revisions include their committed receipt and any recorded final
+conflict decision/committed successor. Receipt fields, sequence numbers, server
+bindings, effect writer and packet Native identities must agree. A cached
+version cursor ahead of the current server is reported as server-behind.
+
+The returned data has format
+`breditor/selected-local-metadata-receipt-containment`, version 1, and scope
+`same-held-native-original-local-receipts-in-current-server-catalogs`.
+Its kind is `contained` only when the original reconciliation is checked and
+every original receipt is present unchanged. Otherwise its kind is `pending`;
+the original reconciliation remains nested unchanged. Diagnostics name the
+participant, retained point, original receipt kind and ID, with relation
+missing, different or server-behind. Malformed original records, a changed
+binding, a stale source, authority loss or cancellation refuses the read.
+More than 100,000 unsatisfied receipt requirements refuses rather than truncates.
+
+Native packet identities are read through captured Rust facade methods. A
+valid local packet whose JSON formatting differs from the first accepted body
+still compares against the actual original receipt by Native ID and metadata.
+The read neither rewrites either packet body nor treats a byte difference as
+an absent receipt. It installs no ACK, clears no retry, drains no queue and
+changes no role. The original metadata capture may persist its normal capture
+checkpoint; original receipt, retry and packet facts remain unchanged.
+
+The actual Native source heads, current server cut and provider requirement
+inventory are checked around the comparison. This result is evidence about one
+held cut. It does not yet retain every remote packet and asset dependency in a
+reconstructable successor, prove independent generation recovery, or activate a
+whole room. A later restore must reauthenticate and recheck its actual sources.
 
 ## Qualification
 
