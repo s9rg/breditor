@@ -1,0 +1,226 @@
+{
+  "format": "breditor/server-packet-source-inspection-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-11-01T07:47:10.273Z",
+  "releaseReady": false,
+  "v1GatesOpen": 13,
+  "scope": "Actual absent-only Rust Native server replay into a freshly authenticated inactive host; SDK file/complete Native inventory/original catalog/first-packet/Native identity comparison stages. Complete owner-held portable client inspection remains unfinished.",
+  "source": {
+    "commit": "6dca27851dd8b2befd3b3e82d6d57ece572d49ad",
+    "dirty": true,
+    "sha256": "446bfc4786baa72a8946264e97c392182a154b8054964816bcd8f5f38d1859b0",
+    "files": 7867,
+    "bytes": 58532718
+  },
+  "snapshot": {
+    "source": {
+      "commit": "6dca27851dd8b2befd3b3e82d6d57ece572d49ad",
+      "dirty": true,
+      "sha256": "446bfc4786baa72a8946264e97c392182a154b8054964816bcd8f5f38d1859b0",
+      "files": 7867,
+      "bytes": 58532718
+    },
+    "filesVerified": 7867,
+    "archive": "/private/tmp/breditor-packet-inspection-20261101/executed-source.tar.gz",
+    "bytes": 13219007,
+    "sha256": "127304cacb828c1372ddc33722ee6c2770d73c66dcdd86d321c85bafad6f6e03",
+    "readBackEveryFile": true
+  },
+  "sourceCases": {
+    "tests": 34,
+    "strictPublicTypes": true,
+    "sourceUnchanged": true,
+    "log": "/private/tmp/breditor-packet-inspection-20261101/sdk-full.log",
+    "logSha256": "eea760fc85559f569aad3c22e381371132851e5e02d4cf942e1316bf843cf062"
+  },
+  "independentlyInstalled": {
+    "directory": "/private/tmp/breditor-server-packet-inspection-installed-nSb5aK",
+    "tests": 34,
+    "strictPublicTypes": true,
+    "sourceUnchanged": true,
+    "workspaceLinks": false,
+    "log": "/private/tmp/breditor-server-packet-inspection-installed-nSb5aK/contracts.log",
+    "logSha256": "59e08f1d4ab0ca6a355d35d76d4a81b5df5a25bb352745fc5989c6469a57c2b1",
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/private/tmp/breditor-server-packet-inspection-installed-nSb5aK/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/private/tmp/breditor-server-packet-inspection-installed-nSb5aK/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/private/tmp/breditor-server-packet-inspection-installed-nSb5aK/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "759aea9e56f0c69e047bd9f5ce6a831f53d511bd972264201a11bfca97f0e7c1"
+      }
+    ],
+    "native": [
+      {
+        "path": "target/server-metadata-native/release/examples/selected_suggestion_delivery_functional",
+        "sha256": "3ff2019ccc49a3a54dc2834e7d9892e7078a328c118e69bd441fff77fdde557f"
+      },
+      {
+        "path": "target/server-metadata-native/release/examples/complete_cohort_control_functional",
+        "sha256": "69de301825637e96c47689cbf06ca0a94f5d89a8dd54c0c9261a8054232e457a"
+      },
+      {
+        "path": "target/server-native-dependencies-native/release/examples/selected_suggestion_delivery_functional",
+        "sha256": "020df02bb8399f4388a05e0b67e3dc74f7c1473a5350b1b60d665f05ec45011c"
+      },
+      {
+        "path": "target/server-native-dependencies-native/release/examples/complete_cohort_control_functional",
+        "sha256": "efbdce5f865d99ad0659f19d4a941aca066482af5e3049991567e4a485ca1e1d"
+      },
+      {
+        "path": "target/server-packet-inspection-native/release/examples/selected_suggestion_delivery_functional",
+        "sha256": "61c35699efcd333680ffca06a5ee6c1f2f22dc73722c065d4fca3610e696a3e7"
+      },
+      {
+        "path": "target/server-packet-inspection-native/release/examples/complete_cohort_control_functional",
+        "sha256": "d8ad3caf94470ba22bc74c2f62803dc96c8170c868340e7d5b324c6c6d6133dc"
+      }
+    ],
+    "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0"
+  },
+  "rust": {
+    "fullSuite": {
+      "tests": 421,
+      "log": "/private/tmp/breditor-packet-inspection-20261101/full-server-lib.log",
+      "logSha256": "50bae84e2e9f8730136ab740651924179a73ee871077dfd7cb81c74bbe83ab18",
+      "sourceSha256": "6b6a1f22f21166e62878b25e57718808f2d1b866aa8b3ab898ac701d8aaaa004"
+    },
+    "finalSourceSha256": "e3c07a41f65e8078ca6f87b22c765f54e8eb20c63dc1b8332aa0d8af001c2d96",
+    "changesAfterFullSuite": [
+      "experiments/relay/examples/selected_delivery_host/inspection.rs",
+      "experiments/relay/examples/selected_delivery_host/next.rs",
+      "experiments/relay/src/server/generation_recovery/reconstruct.rs"
+    ],
+    "changeScope": "Box the nested production preparation future to bound stack size; fix the test fixture to retain one actual provider Arc; box the fixture preparation wait. No original protocol/algorithm/default change.",
+    "affectedFinalTests": {
+      "tests": 4,
+      "allFortyNativeModes": true,
+      "log": "/private/tmp/breditor-packet-inspection-20261101/final-rust/affected-reconstruction-tests.log",
+      "logSha256": "6f49865d5bc721854f93b84adb36f76a95311b3ccb9c76c40ce1556d3cede009"
+    },
+    "releaseAllTargetLintModes": [
+      "server",
+      "no-default-features"
+    ],
+    "finalSourceUnchangedDuringChecks": true,
+    "binaries": [
+      {
+        "path": "/Users/s/code/breditor/target/server-packet-inspection-native/release/examples/selected_suggestion_delivery_functional",
+        "sha256": "61c35699efcd333680ffca06a5ee6c1f2f22dc73722c065d4fca3610e696a3e7"
+      },
+      {
+        "path": "/Users/s/code/breditor/target/server-packet-inspection-native/release/examples/complete_cohort_control_functional",
+        "sha256": "d8ad3caf94470ba22bc74c2f62803dc96c8170c868340e7d5b324c6c6d6133dc"
+      }
+    ],
+    "protectedPins": [
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+        "sha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0"
+      },
+      {
+        "path": "target/server-metadata-native/release/examples/selected_suggestion_delivery_functional",
+        "sha256": "3ff2019ccc49a3a54dc2834e7d9892e7078a328c118e69bd441fff77fdde557f"
+      },
+      {
+        "path": "target/server-metadata-native/release/examples/complete_cohort_control_functional",
+        "sha256": "69de301825637e96c47689cbf06ca0a94f5d89a8dd54c0c9261a8054232e457a"
+      },
+      {
+        "path": "target/server-native-dependencies-native/release/examples/selected_suggestion_delivery_functional",
+        "sha256": "020df02bb8399f4388a05e0b67e3dc74f7c1473a5350b1b60d665f05ec45011c"
+      },
+      {
+        "path": "target/server-native-dependencies-native/release/examples/complete_cohort_control_functional",
+        "sha256": "efbdce5f865d99ad0659f19d4a941aca066482af5e3049991567e4a485ca1e1d"
+      },
+      {
+        "path": "target/owned-history-relay-native/release/examples/selected_delivery_functional",
+        "sha256": "c224c4d39d5f603dcb3815ebc58c1719b59b4d6db6fe554e675f91d4cab46ea7"
+      },
+      {
+        "path": "target/owned-history-relay-native/release/examples/selected_suggestion_delivery_functional",
+        "sha256": "60427bb794f52c39a7084fac797f8f3150501238c45c78bad6195cd928a252ca"
+      },
+      {
+        "path": "target/owned-history-relay-native/release/examples/segmented_relay_functional",
+        "sha256": "693e4d465867518e34cfc248d5de2bea54d3babba188dd935d92c728e11fd67d"
+      },
+      {
+        "path": "target/owned-history-relay-native/release/examples/generation_complete_control_functional",
+        "sha256": "95c046cc39eead5d13ffc1d6238078d2f73594446e4b8579de2b8c8de03f6f6a"
+      },
+      {
+        "path": "target/owned-history-relay-native/release/examples/complete_cohort_control_functional",
+        "sha256": "3a52eea28153ff72fda020ff6b1bb8165ee899bba32f7ec063ea84a03d2dd616"
+      }
+    ]
+  },
+  "observed": {
+    "participants": 7,
+    "serverNativeSources": 13,
+    "serverNativeReferences": 15,
+    "serverPacketBodies": 17,
+    "localOccurrences": 82,
+    "rasters": 4,
+    "allNativeAndMetadataStampsUnchanged": true,
+    "subsequentDocumentAndReviewUndoRedo": true,
+    "oldCredentialsRefused": true,
+    "editorRouteAbsent": true,
+    "rehashedSourceAndReferenceOmissionRefused": true,
+    "finalClientAuthorityAndCloseChecked": true,
+    "originalLaterEditsDoNotEnterRestoredCopy": true,
+    "originalPendingAndAckMeaningsPreserved": true
+  },
+  "proof": {
+    "complete": true,
+    "proof": "/Users/s/code/breditor/target/server-packet-inspection-qualified-proof-0mc3b6qy",
+    "indexSha256": "befa411575038bd5f27c618e4cdd1ef3c2a5a4be1bfb4a4cca0b3519c18aa44c",
+    "references": 943,
+    "uniqueObjects": 712,
+    "encodedBytes": 76878760,
+    "decodedBytes": 267236597,
+    "sourceNativeRoots": [
+      "/Users/s/code/breditor/target/server-metadata-fixture-Tj4QgP",
+      "/Users/s/code/breditor/target/server-metadata-fixture-8Spp50",
+      "/Users/s/code/breditor/target/server-metadata-fixture-tSI92u",
+      "/Users/s/code/breditor/target/server-metadata-fixture-4lMtDY",
+      "/Users/s/code/breditor/target/server-metadata-fixture-2cmUbK",
+      "/Users/s/code/breditor/target/server-metadata-fixture-OOADFk",
+      "/Users/s/code/breditor/target/server-metadata-fixture-Bzx8M3",
+      "/Users/s/code/breditor/target/server-native-dependencies-fixture-Adbt9c",
+      "/Users/s/code/breditor/target/server-packet-inspection-fixture-rTkhdL",
+      "/Users/s/code/breditor/target/server-packet-inspection-fixture-jYqBik",
+      "/Users/s/code/breditor/target/metadata-native-generation-evidence-p6Ttbf",
+      "/Users/s/code/breditor/target/metadata-native-version-evidence-ggKvr5",
+      "/Users/s/code/breditor/target/metadata-native-collection-evidence-lUJ0Zj",
+      "/Users/s/code/breditor/target/metadata-native-physical-evidence-fCsxH4",
+      "/Users/s/code/breditor/target/metadata-packet-evidence-al22Dg"
+    ],
+    "allObjectsReadBackAndHashed": true,
+    "source": {
+      "commit": "6dca27851dd8b2befd3b3e82d6d57ece572d49ad",
+      "dirty": true,
+      "sha256": "446bfc4786baa72a8946264e97c392182a154b8054964816bcd8f5f38d1859b0",
+      "files": 7867,
+      "bytes": 58532718
+    }
+  },
+  "completePortableClientInspection": false,
+  "wholeRoomActivated": false,
+  "remaining": [
+    "Integrate the complete source-owned portable client inspector: exact archived Native replay, local record/receipt traversal and complete upload/raster comparison.",
+    "Resolve valid base-Pending sources without changing the original diagnostic meaning.",
+    "Independent comment and server-log generations.",
+    "Complete fresh provider/client reconciliation and authenticated whole-room activation.",
+    "All thirteen full V1/parity gates; complete release profiles have not been run."
+  ]
+}

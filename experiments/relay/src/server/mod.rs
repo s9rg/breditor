@@ -62,7 +62,7 @@ pub use generation_recovery::{
     prepare_log_generation_delivery_path_recovery_control,
     prepare_log_generation_delivery_recovery_control, prepare_log_generation_recovery_control,
     prepare_log_generation_recovery_host, prepare_physical_room_recovery_control,
-    prepare_physical_room_recovery_host,
+    prepare_physical_room_recovery_host, reconstruct_log_generation_recovery_host,
 };
 use std::sync::{Arc, Mutex};
 use tokio::sync::{Semaphore, watch};

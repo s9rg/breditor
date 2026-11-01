@@ -11,6 +11,8 @@ mod clients;
 mod credentials;
 #[path = "selected_delivery_host/full_path.rs"]
 mod full_path;
+#[path = "selected_delivery_host/inspection.rs"]
+mod inspection;
 #[path = "selected_delivery_host/next.rs"]
 mod next;
 #[path = "selected_delivery_host/protocol.rs"]
@@ -75,6 +77,7 @@ pub async fn main() -> Result {
     let mut tasks =
         vec![serve(ready.active.router(), clients), serve(ready.old_router.clone(), retired)];
     let mut controls = Vec::new();
+    let mut inspections = Vec::new();
     let mut input = protocol::read();
     let mut sequence = 0_u64;
     let mut previous = None;
@@ -110,12 +113,16 @@ pub async fn main() -> Result {
             &serde_json::json!({"kind":"snapshot","format":"breditor/native-selected-delivery-host", "formatVersion":1,
             "request":sequence,"case":public,"privateOperatorToken":snapshot.operator_token}),
         )?;
-        let Some((request, selected)) = next::read(&ready, &mut input, &observed, sequence).await?
+        let Some((request, selected)) =
+            next::read(&ready, &mut input, &observed, sequence, &mut inspections).await?
         else {
             break;
         };
         previous = selected;
         sequence = request;
+    }
+    for inspection in inspections {
+        inspection.close().await;
     }
     for control in controls {
         control.close();

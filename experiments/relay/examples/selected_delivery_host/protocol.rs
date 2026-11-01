@@ -9,6 +9,7 @@ use std::io::{Read, Write};
 pub(super) enum Request {
     Snapshot { request: u64 },
     SnapshotAfter { request: u64, previous: u64 },
+    Inspect { request: u64, source: u64 },
     Credentials { request: u64, writer: String, actor: String, retired: bool },
 }
 pub(super) fn read() -> tokio::sync::mpsc::Receiver<Result<Request>> {

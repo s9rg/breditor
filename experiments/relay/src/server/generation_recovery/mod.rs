@@ -19,8 +19,8 @@ pub use asset_availability::{
 mod control;
 mod control_work;
 mod metadata_packet;
-mod native_dependencies;
 mod metadata_page;
+mod native_dependencies;
 pub use control::{
     ServerLogGenerationRecoveryControl, ServerLogGenerationRecoveryControlIdentity,
     prepare_log_generation_recovery_control,
@@ -60,6 +60,8 @@ pub use physical::{
     prepare_physical_room_recovery_host,
 };
 mod prepare;
+mod reconstruct;
+pub use reconstruct::reconstruct_log_generation_recovery_host;
 mod selected;
 mod state;
 #[cfg(test)]

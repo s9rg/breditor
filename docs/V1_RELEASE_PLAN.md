@@ -1,5 +1,7 @@
 # Breditor V1 release preparation
 
+The new [selected server replay and packet inspection stages](SERVER_PACKET_SOURCE_INSPECTION.md) pass 34 source and 34 independently installed cases with strict types. Actual inactive Rust replay, complete Native inventory comparison, original catalogs and all 17 first-server packet strings run inside the genuine seven-family workflow, followed by original document/review Undo/Redo. The Rust suite passes 421 cases, followed by all four affected tests and both all-target lint modes after the final future/provider fixes. Complete owner-held portable client inspection, base-Pending source resolution, independent generations, fresh reconciliation, authenticated activation and all thirteen V1/parity gates remain open.
+
 The new [client/server packet recovery capture](CLIENT_SERVER_PACKET_RECOVERY.md)
 passes 33 source and 33 independently installed cases, including complete genuine
 seven-family delivery, packet/raster/server-file capture, exact disk readback and

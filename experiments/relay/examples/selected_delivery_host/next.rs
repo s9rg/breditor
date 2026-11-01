@@ -8,6 +8,7 @@ pub(super) async fn read(
     input: &mut tokio::sync::mpsc::Receiver<Result<protocol::Request>>,
     observed: &BTreeMap<u64, Arc<ServerLogGenerationRoomBackup>>,
     sequence: u64,
+    inspections: &mut Vec<super::inspection::Inspection>,
 ) -> Result<Option<(u64, Option<Previous>)>> {
     let next = loop {
         tokio::select! {
@@ -18,6 +19,11 @@ pub(super) async fn read(
           Some(Ok(protocol::Request::SnapshotAfter{request,previous}))=>{
            let archive=observed.get(&previous).ok_or("select an actual complete observed predecessor")?;
            break(request,Some((previous,archive.clone())));
+          }
+          Some(Ok(protocol::Request::Inspect{request,source}))=>{
+           let archive=observed.get(&source).ok_or("select actual observed inspection source")?;
+           let(inspection,reply)=Box::pin(super::inspection::prepare(ready,request,source,archive)).await?;
+           inspections.push(inspection);protocol::reply(&reply)?;
           }
           Some(Ok(protocol::Request::Credentials{request,writer,actor,retired}))=>{
            protocol::reply(&protocol::credentials(ready,request,&writer,&actor,retired)?)?;

@@ -15,13 +15,13 @@ const token=Object.freeze({}),slice=Blob.prototype.slice;
 function file(input:unknown,maximum:number):MetadataPacketFile{const r=fields(input,['file','bytes','sha256']),bytes=integer(r['bytes'],maximum,1),sha256=hash(r['sha256']),file=archiveBlob(r['file'] as Blob,maximum);if(file.size!==bytes)throw fail();return Object.freeze({file,bytes,sha256});}
 export function packetArchiveFiles(input:unknown):MetadataPacketArchiveFiles{const r=fields(input,['manifest','chunks']);return Object.freeze({manifest:file(r['manifest'],MAX_METADATA_PACKET_MANIFEST_BYTES),chunks:Object.freeze(rows(r['chunks'],MAX_METADATA_PACKET_BODIES).map(value=>file(value,MAX_METADATA_PACKET_CHUNK_BYTES)))});}
 export class MetadataPacketArchive {
- #state:Readonly<{header:MetadataPacketArchiveHeader;files:MetadataPacketArchiveFiles;options:SharedArchiveIntegrityOptions}>|undefined;
- private constructor(key:object,header:MetadataPacketArchiveHeader,files:MetadataPacketArchiveFiles,options:SharedArchiveIntegrityOptions){if(key!==token)throw fail();this.#state={header,files,options};Object.freeze(this);}
+ #state:Readonly<{header:MetadataPacketArchiveHeader;bodies:ReadonlyMap<string,MetadataPacketArchiveHeader['bodies'][number]>;files:MetadataPacketArchiveFiles;options:SharedArchiveIntegrityOptions}>|undefined;
+ private constructor(key:object,header:MetadataPacketArchiveHeader,files:MetadataPacketArchiveFiles,options:SharedArchiveIntegrityOptions){if(key!==token)throw fail();this.#state={header,bodies:new Map(header.bodies.map(row=>[row.key,row])),files,options};Object.freeze(this);}
  header():MetadataPacketArchiveHeader{return this.#open().header;}
  files():MetadataPacketArchiveFiles{return this.#open().files;}
  #open(){if(!this.#state)throw fail('metadata_packet_retention_closed');return this.#state;}
  async body(key:string):Promise<MetadataPacketBodyRead>{
-  const state=this.#open(),files=state.files,row=state.header.bodies.find(value=>value.key===key);if(!row)throw fail();const integrity=prepareArchiveIntegrity(state.options);integrity.guard();
+  const state=this.#open(),files=state.files,row=state.bodies.get(key);if(!row)throw fail();const integrity=prepareArchiveIntegrity(state.options);integrity.guard();
   const part=slice.call(files.chunks[row.chunk]!.file,row.offset,row.offset+row.encodedBytes);if(await integrity.digest(part)!==row.encodedSha256)throw fail();
   const data=await recordCutBytes(part,0,part.size,integrity);let encoded:string;try{encoded=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(data);}catch{throw fail();}
   let text:unknown;try{text=JSON.parse(encoded);}catch{throw fail();}if(typeof text!=='string'||JSON.stringify(text)!==encoded||textBytes(text)!==row.fingerprint.bytes||'sha256:'+await integrity.digest(new Blob([text]))!==row.fingerprint.sha256)throw fail();
