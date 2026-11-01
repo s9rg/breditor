@@ -1,5 +1,21 @@
 # Breditor V1 release preparation
 
+[Portable client/server packet inspection](PORTABLE_SERVER_PACKET_INSPECTION.md)
+now passes 36 source and 36 independently installed cases with strict public
+types. The actual metadata owner reconstructs all seven saved Native histories,
+reproduces original packet/Pending facts and receipt points, verifies the complete
+server source and four-raster union, and retains all fourteen upload roles.
+Omission/reentry refusals and subsequent original document/review Undo/Redo pass.
+The [qualification](qualification/2026-11-01-portable-server-packet-inspection.json)
+retains the exact executed source, independent packages and actual recovery DATA
+in a fully read-back-verified proof. Normal Wasm and Rust source are unchanged.
+
+Base-Pending source resolution, independent generations, fresh complete
+reconciliation, authenticated whole-room activation, candidate-plan wiring and
+all thirteen V1/parity gates remain open. This supersedes earlier statements below
+that the complete portable inspector was unfinished; historical checkpoints keep
+their original narrower qualification scope.
+
 The new [selected server replay and packet inspection stages](SERVER_PACKET_SOURCE_INSPECTION.md) pass 34 source and 34 independently installed cases with strict types. Actual inactive Rust replay, complete Native inventory comparison, original catalogs and all 17 first-server packet strings run inside the genuine seven-family workflow, followed by original document/review Undo/Redo. The Rust suite passes 421 cases, followed by all four affected tests and both all-target lint modes after the final future/provider fixes. Complete owner-held portable client inspection, base-Pending source resolution, independent generations, fresh reconciliation, authenticated activation and all thirteen V1/parity gates remain open.
 
 The new [client/server packet recovery capture](CLIENT_SERVER_PACKET_RECOVERY.md)

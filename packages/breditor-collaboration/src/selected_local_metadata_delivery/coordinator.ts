@@ -1,4 +1,7 @@
-import type {ServerPacketRecoveryInput,ServerPacketRecoveryOutcome} from '../server_packet_recovery/contract.js';
+import {detachServerPacketRecoveryBundle} from '../server_packet_recovery/inspection_bundle.js';
+import type {ServerPacketRecoveryInspection} from '../server_packet_recovery/inspection_contract.js';
+import {generationRecoveryHostPort,type SharedServerLogGenerationRecoveryHost} from '../generation_recovery_control/host.js';
+import type {ServerPacketRecoveryInput,ServerPacketRecoveryOutcome,ServerPacketRecoveryBundle} from '../server_packet_recovery/contract.js';
 import {prepareMetadataPacketRecoveryInput} from '../metadata_packet_retention/recovery_input.js';
 import type {LocalMetadataPacketRecoveryInput,LocalMetadataPacketRecoveryOutcome,LocalMetadataPacketRetentionInput,LocalMetadataPacketRetentionBundle} from '../metadata_packet_retention/contract.js';
 import type {LocalMetadataReceiptContainmentInput,LocalMetadataReceiptContainmentRead} from '../metadata_receipt_containment/contract.js';
@@ -248,7 +251,14 @@ export class SelectedLocalMetadataDelivery{
   let bundle!:LocalMetadataRecoveryBytesBundle,limits!:LocalMetadataMaterializationOptions;
   return this.#inspectReferenceOperation(()=>bundle.recoverable.references,async(work,actual)=>work.inspectRecoveryBytes(bundle,actual,limits),()=>{bundle=detachLocalMetadataRecoveryBytesBundle(provided);limits={limits:localMetadataMaterializationLimits(options)};});
  }
- #inspectReferenceOperation<T>(selected:()=>LocalMetadataReferenceBundle,visit:(work:LocalMetadataReferenceWork,actual:LocalMetadataReferenceCut)=>Promise<T>,prepare:()=>void):Promise<T>{
+ /** Verify saved Native sources and exact packet/raster bytes while the actual
+  * metadata owner remains held. Historical reports stay DATA; no saved token,
+  * permission, pending receipt or ACK becomes current authority. */
+ inspectServerPacketRecovery(provided:ServerPacketRecoveryBundle,host:SharedServerLogGenerationRecoveryHost,options:LocalMetadataMaterializationOptions={}):Promise<ServerPacketRecoveryInspection>{
+  let bundle!:ServerPacketRecoveryBundle,limits!:LocalMetadataMaterializationOptions;
+  return this.#inspectReferenceOperation(()=>bundle.packets.references,async(work,actual,portable)=>work.inspectServerPacketRecovery(bundle,actual,portable,host,limits),()=>{generationRecoveryHostPort(host);bundle=detachServerPacketRecoveryBundle(provided);limits={limits:localMetadataMaterializationLimits(options)};});
+ }
+ #inspectReferenceOperation<T>(selected:()=>LocalMetadataReferenceBundle,visit:(work:LocalMetadataReferenceWork,actual:LocalMetadataReferenceCut,portable:LocalMetadataDeliverySnapshot)=>Promise<T>,prepare:()=>void):Promise<T>{
   return this.#captureOperation(async()=>{
    let result:{value:T}|undefined;const bundle=selected();
    await this.#parent.inspect(async integrity=>{
@@ -260,7 +270,7 @@ export class SelectedLocalMetadataDelivery{
     const middle=await metadataSnapshot({before:portable.before,current:claims.stored},this.#choice);this.#current();
     const work=new LocalMetadataReferenceWork(this.#parent.scope,options,this.#current);this.#referenceWork=work;await work.begin(bundle.parent.parent,middle);this.#current();
     const actual=await work.readPortable(bundle.parent,portable);this.#current();
-    if(metadataJson(actual)!==claims.text)throw fail('local_metadata_delivery_stale');this.#current();const value=await visit(work,actual);this.#current();
+    if(metadataJson(actual)!==claims.text)throw fail('local_metadata_delivery_stale');this.#current();const value=await visit(work,actual,portable);this.#current();
     if(!equal(await this.#store.readFresh(),stored))throw fail('local_metadata_delivery_stale');this.#current();result={value};
    });if(!result)throw fail();return result.value;
   },prepare);

@@ -1,3 +1,8 @@
+import {inspectClientServerPacketRecovery} from '../server_packet_recovery/inspect.js';
+import type {ServerPacketRecoveryBundle} from '../server_packet_recovery/contract.js';
+import type {ServerPacketRecoveryInspection} from '../server_packet_recovery/inspection_contract.js';
+import type {SharedServerLogGenerationRecoveryHost} from '../generation_recovery_control/host.js';
+import {sourceNativeRecoveryRead} from '../source_native_read.js';
 import {captureClientServerPacketRecovery} from '../server_packet_recovery/capture.js';
 import type {ServerPacketRecoveryOutcome} from '../server_packet_recovery/contract.js';
 import {captureOriginalMetadataPacketTexts} from '../metadata_packet_retention/capture.js';
@@ -260,6 +265,15 @@ export class LocalMetadataReferenceWork {
   const recoverable=await this.inspectRecoverable(bundle.recoverable,body,options);
   const check=()=>{this.#check();for(const row of this.#allSources){const before=this.#availabilityStamps.get(row.source.core),now=coreReadStamp(row.source.core);if(!before||before.document!==now.document||before.review!==now.review)throw fail('local_metadata_assets_changed');}};
   check();const result=await inspectLocalMetadataRecoveryFiles(bundle,recoverable,this.#options,check);check();return result;
+ }
+ /** Recompute all saved-source packet and raster facts with constructor-bound
+  * readonly factories. The current cores provide only current liveness/schema,
+  * never a replacement checkpoint for the archived Native histories. */
+ async inspectServerPacketRecovery(bundle:ServerPacketRecoveryBundle,body:LocalMetadataReferenceCut,snapshot:LocalMetadataDeliverySnapshot,host:SharedServerLogGenerationRecoveryHost,provided:LocalMetadataMaterializationOptions):Promise<ServerPacketRecoveryInspection>{
+  this.#check();if(!this.#ready||!this.#room||!this.#cut||!this.#factories)throw fail('local_metadata_assets_closed');
+  const check=()=>{this.#check();for(const row of this.#allSources){const before=this.#availabilityStamps.get(row.source.core),now=coreReadStamp(row.source.core);if(!before||before.document!==now.document||before.review!==now.review)throw fail('local_metadata_assets_changed');}};
+  const reads=this.#allSources.map(row=>{const selected=this.#factories!.reads.find(value=>value.id===row.id);if(!selected)throw fail('local_metadata_assets_state');return{id:row.id,read:selected.read,descriptor:JSON.stringify(sourceNativeRecoveryRead(row.source.core).descriptor())};});check();
+  const result=await inspectClientServerPacketRecovery(bundle,body,snapshot,this.#room,this.#cut,reads,host,{...this.#options,checkAuthority:check},checkRichAssetLimits(provided.limits),check);check();return result;
  }
  /** Cancels finite reads, disposes claimed aliases and observes/frees late
   * unclaimed raw restores through the original factory wait implementation. */

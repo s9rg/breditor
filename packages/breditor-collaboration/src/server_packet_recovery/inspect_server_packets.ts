@@ -11,7 +11,11 @@ export async function inspectOriginalServerPacketCatalog(archive:MetadataPacketA
  check();const recorded=header.call(archive),port=generationRecoveryHostPort(host),selection=port.selection;
  if(!same(recorded.catalog.selection.source.server,selection.source.server)||!same(recorded.catalog.selection.source.participants,selection.source.participants)||!same(selection.source.origin,selection.source.server))throw fail();
  const index=await admitRecordedMetadataCatalog(recorded.catalog,recorded.catalog.selection,selection.source.server.native.source.document,check);check();
- const fresh=await captureSelectedServerMetadata(host,{versions:{kind:'start'},suggestions:{kind:'start'},revisions:{kind:'start'}},signal);check();
+ const first=recorded.catalog.pages[0];if(!first)throw fail();
+ const lane=(kind:'disabled'|'page')=>({kind:kind==='disabled'?'disabled' as const:'start' as const}),query={versions:lane(first.metadata.versions.kind),suggestions:lane(first.metadata.suggestions.kind),revisions:lane(first.metadata.revisions.kind)};
+ // The genuine server refuses Disabled for an enabled lane, and Start for a
+ // disabled lane. Recorded DATA cannot hide an actual configured catalog.
+ const fresh=await captureSelectedServerMetadata(host,query,signal);check();
  const result=await withCheckedServerMetadataCatalog(fresh,async current=>{
   if(!same(current,index)||!same(fresh.terminal,recorded.catalog.terminal)||!same(fresh.pages.map(row=>row.metadata),recorded.catalog.pages.map(row=>row.metadata)))throw fail();
   for(const occurrence of recorded.server){

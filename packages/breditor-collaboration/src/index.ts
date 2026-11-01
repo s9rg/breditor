@@ -243,3 +243,5 @@ export {ServerNativeDependencyError} from './server_native_dependencies/policy.j
 export type {ServerNativePacketSource,ServerNativeDependencyInventory,SelectedServerNativeDependencies} from './server_native_dependencies/contract.js';
 
 export type {ServerPacketRecoveryInput,ServerPacketRecoveryOutcome,ServerPacketRecoveryBundle,ServerPacketClosure,ServerPacketCoverage,ServerPacketAssetHeader,ServerPacketAssetOutcome} from './server_packet_recovery/contract.js';
+
+export type {ServerPacketRecoveryInspection} from './server_packet_recovery/inspection_contract.js';
