@@ -1,5 +1,28 @@
 # Breditor V1 release preparation
 
+[Current packet-source/provider reconciliation](CURRENT_SERVER_PACKET_RECONCILIATION.md)
+now passes eight source and eight independently installed checks with strict
+public types. Seven genuine clients complete actual managed uploads and both
+original metadata protocol passes without eagerly caching every catalog packet.
+The new current read derives the full Native/source reference union and checks
+the actual provider without downloading historical packet or raster bodies.
+Original Pending/cache/queue meanings and Native histories remain intact;
+subsequent document/review Undo/Redo passes for all seven clients.
+
+A distinct genuine case keeps twelve missing provider mappings and twelve real
+unpublished metadata operations Pending. Saved Native checks also omit an actual
+server-only packet string while retaining its image references through complete
+Native server knowledge. [Verified qualification evidence](qualification/2026-11-01-current-server-packet-reconciliation.json)
+retains the exact executed source, public Native records, tools, independent
+packages and logs. All 2,741 compiled SDK files match the installed archives;
+89 release-plan/runner/CI/allocation contracts pass. Rust source, normal Wasm,
+original protocols/defaults and package versions are unchanged.
+
+Independent generation integration, complete offline/client/provider custody,
+authenticated whole-room activation and complete candidate profiles remain
+required. This reference/provider read grants no acknowledgements or serving
+authority. All thirteen V1/parity gates remain open.
+
 [Available packet-source recovery](SERVER_PACKET_SOURCE_RESOLUTION.md) now passes
 42 source and 42 independently installed checks with strict public types. The
 actual seven-family owner retains and inspects two uncached versions and their

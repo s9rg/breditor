@@ -1,3 +1,4 @@
+import type {ServerPacketReconciliationRead} from '../server_packet_reconciliation/contract.js';
 import {detachResolvedServerPacketRecoveryBundle} from '../server_packet_source_resolution/bundle.js';
 import type {ResolvedServerPacketRecoveryBundle,ResolvedServerPacketRecoveryOutcome,ResolvedServerPacketRecoveryInspection} from '../server_packet_source_resolution/contract.js';
 import {detachServerPacketRecoveryBundle} from '../server_packet_recovery/inspection_bundle.js';
@@ -213,6 +214,12 @@ export class SelectedLocalMetadataDelivery{
  captureResolvedServerPacketRecovery(provided:ServerPacketRecoveryInput):Promise<ResolvedServerPacketRecoveryOutcome>{
   let input!:ReturnType<typeof prepareMetadataPacketRecoveryInput>,result:ResolvedServerPacketRecoveryOutcome|undefined;
   return this.#captureReferenceOperation(async work=>{this.#current();if(!this.#snapshot)throw fail();result=await work.resolvedServerPacketRecovery(input,this.#snapshot);this.#current();},()=>{input=prepareMetadataPacketRecoveryInput(provided);}).then(()=>{if(!result)throw fail();return result;});
+ }
+ /** Fresh complete reference/provider requirements join current Native and
+  * original outbox facts; archived/local byte retention never supplies ACKs. */
+ captureServerPacketReconciliation(provided:LocalMetadataReconciliationInput):Promise<ServerPacketReconciliationRead>{
+  let input!:ReturnType<typeof prepareLocalMetadataReconciliationInput>,result:ServerPacketReconciliationRead|undefined;
+  return this.#captureReferenceOperation(async work=>{this.#current();if(!this.#snapshot)throw fail();result=await work.serverPacketReconciliation(input,this.#snapshot);this.#current();},()=>{input=prepareLocalMetadataReconciliationInput(provided);}).then(()=>{if(!result)throw fail();return result;});
  }
  /** Source-owned immutable raster bytes for the complete Native/provider and
   * whole-upload union. Transport reads neither mutate caches nor ACK queues. */

@@ -42,7 +42,7 @@ async function uploadPendingImage({session,assetTransport,remoteAsset}) {
 
 /** Connect each family's original adapters through the genuine metadata-owned
  * native context. A second pass obtains authors accepted later in pass one. */
-async function deliverRoom({scope,sources,metadata,review,host,fixture,deliveryChoice,adapters,contexts}) {
+async function deliverRoom({scope,sources,metadata,review,host,fixture,deliveryChoice,adapters,contexts,cacheCatalogPackets=true}) {
  const delivered=[];
  for(let pass=0;pass<2;pass++)for(const row of sources) {
   const parent=row.source.parent,storage=parent.kind==='generation'?parent.source.session:parent.session;
@@ -82,7 +82,7 @@ async function deliverRoom({scope,sources,metadata,review,host,fixture,deliveryC
    // A catalog can contain other authors' versions. Cache their actual packets
    // before asking a complete dependency reader to cover the entire catalog.
    await versions.refresh();
-   for(const version of children.versions.versions())await versions.loadVersion(version.id);
+   if(cacheCatalogPackets)for(const version of children.versions.versions())await versions.loadVersion(version.id);
   }
   await context.close();row.source.save();await row.source.flush();scope.check();
   delivered.push({pass,id:row.id});
@@ -119,19 +119,19 @@ export async function testProviderReconciliation(input) {
    assert.equal(pending.reviews.length,3);
    assert.ok(pending.pending.some(row=>row.kind==='metadata'));
    assert.equal(pending.legacy.native.participants.filter(row=>row.review.kind==='unbound').length,3);
-   const delivered=await deliverRoom({scope,sources,metadata,review,host,fixture,deliveryChoice,adapters,contexts});
+   const delivered=await deliverRoom({scope,sources,metadata,review,host,fixture,deliveryChoice,adapters,contexts,cacheCatalogPackets:input.cacheCatalogPackets});
    fresh.close();fresh=await controls(host,first,scope);
    const after=await metadata.captureAssetAvailability(fresh.previous);
-   assert.equal(after.availability.kind,'checked');
-   assert.equal(after.availability.provider.assets.length,3);
+   assert.equal(after.availability.kind,input.cacheCatalogPackets===false?'pending':'checked');
+   if(input.cacheCatalogPackets!==false)assert.equal(after.availability.provider.assets.length,3);
    const reconciled=await metadata.captureReconciliation({host:fresh.previous,inventory:fresh.inventory});
-   assert.equal(reconciled.kind,'checked',JSON.stringify(reconciled.pending));
-   assert.deepEqual(reconciled.pending,[]);
+   assert.equal(reconciled.kind,input.cacheCatalogPackets===false?'pending':'checked',JSON.stringify(reconciled.pending));
+   if(input.cacheCatalogPackets===false)assert.ok(reconciled.pending.some(row=>row.kind==='references'));else assert.deepEqual(reconciled.pending,[]);
    assert.equal(reconciled.reviews.length,3);
    assert.ok(reconciled.reviews.every(row=>row.receiptVerified));
    const native=reconciled.legacy;
    assert.equal(native.kind,'pending','Original unbound-local diagnostics remain unchanged');
-   await input.onReconciled?.({scope,sources,metadata,fresh,host,oldMetadata,oldMetadataText,check});
+   await input.onReconciled?.({scope,sources,metadata,fresh,host,oldMetadata,oldMetadataText,check,reconciled,availability:after.availability});
    const saved=retainedBundle=await metadata.capture();
    assert.equal(await oldMetadata.metadata.file.text(),oldMetadataText);
    const current=JSON.parse(await saved.metadata.file.text());

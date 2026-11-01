@@ -1,3 +1,6 @@
+import {readCurrentLocalPacketReferences} from '../server_packet_reconciliation/local_references.js';
+import {captureCurrentServerPacketReconciliation} from '../server_packet_reconciliation/capture.js';
+import type {ServerPacketReconciliationRead} from '../server_packet_reconciliation/contract.js';
 import {captureResolvedClientServerPacketRecovery} from '../server_packet_source_resolution/capture.js';
 import {inspectResolvedClientServerPacketRecovery} from '../server_packet_source_resolution/inspect.js';
 import {readNativeSourceVersions} from '../server_packet_source_resolution/native_versions.js';
@@ -179,6 +182,16 @@ export class LocalMetadataReferenceWork {
   return captureResolvedClientServerPacketRecovery(packets,this.#finished.body,input,()=>readLocalMetadataUploadInventory(this.#room!,this.#cut!,this.#options,check,true),async()=>{
    const source=await LoadedPacketSource.read(packets.references.parent.parent.current,this.#options);try{check();return await readNativeSourceVersions(source,reads,{limits:checkRichAssetLimits(input.options.limits),signal:this.#waits.signal},check);}finally{source.dispose();}
   },this.#options,check);
+ }
+ /** Available immutable version sources do not require eager cache downloads.
+  * Actual unacknowledged operations, Native heads and provider loss still block. */
+ async serverPacketReconciliation(input:PreparedLocalMetadataReconciliation,snapshot:LocalMetadataDeliverySnapshot):Promise<ServerPacketReconciliationRead>{
+  const check=()=>{this.#check();input.check();for(const row of this.#allSources){const before=this.#availabilityStamps.get(row.source.core),now=coreReadStamp(row.source.core);if(!before||before.document!==now.document||before.review!==now.review)throw fail('local_metadata_assets_changed');}};
+  check();const original=await this.reconcile(input,snapshot);check();if(!this.#room||!this.#cut||!this.#finished||!this.#stored||!this.#factories)throw fail('local_metadata_assets_closed');const reads=this.#packetNativeReads(),selected=this.#finished;
+  return captureCurrentServerPacketReconciliation(original,selected.body,input,
+   ()=>readCurrentLocalPacketReferences(this.#scope,this.#allSources,snapshot,this.#stored!.current,this.#cut!,this.#factories!.reads,this.#options,check),
+   async()=>{const source=await LoadedPacketSource.read(selected.bundle.parent.parent.current,this.#options);try{check();return await readNativeSourceVersions(source,reads,{signal:this.#waits.signal},check);}finally{source.dispose();}},
+   ()=>readLocalMetadataUploadInventory(this.#room!,this.#cut!,this.#options,check),this.#options,check);
  }
  /** Preserve actual immutable content for every provider requirement and
   * whole-upload ID. Read from admitted local archives first; missing content

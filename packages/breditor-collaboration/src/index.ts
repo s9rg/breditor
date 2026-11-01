@@ -247,3 +247,5 @@ export type {ServerPacketRecoveryInput,ServerPacketRecoveryOutcome,ServerPacketR
 export type {ServerPacketRecoveryInspection} from './server_packet_recovery/inspection_contract.js';
 
 export type * from './server_packet_source_resolution/contract.js';
+
+export type * from './server_packet_reconciliation/contract.js';

@@ -1,0 +1,315 @@
+{
+  "format": "breditor/current-server-packet-reconciliation-qualification",
+  "formatVersion": 1,
+  "recordedAt": "2026-11-01T14:13:02.634890+00:00",
+  "basedOnCommit": "c9dd98817c3f6797cb8ec33bd79ca2ca62d726d6",
+  "executedSource": {
+    "commit": "c9dd98817c3f6797cb8ec33bd79ca2ca62d726d6",
+    "dirty": true,
+    "sha256": "da6db67dd618916e882bdf154771f8835e10d2a83a29b260a54de1ff54e7d09f",
+    "files": 7938,
+    "bytes": 65862941
+  },
+  "executedSourceArchive": {
+    "path": "/private/tmp/breditor-current-reconciliation-20261101/executed-source.tar.gz",
+    "sha256": "979ca6a9699f2f7bd64495aa26849d0ec4a17dd4a0de78f55a7390b896ec6641",
+    "bytes": 20163382,
+    "verifiedFiles": 7938
+  },
+  "sourceQualification": {
+    "directory": "/Users/s/code/breditor/target/current-server-packet-reconciliation-source-qualification-cnBlLl",
+    "tests": 8,
+    "passed": true,
+    "sourceUnchanged": true,
+    "strictPublicTypes": true,
+    "log": "/Users/s/code/breditor/target/current-server-packet-reconciliation-source-qualification-cnBlLl/contracts.log",
+    "logSha256": "b758ddd3ccc13e48a62997434a4d0ef963035d627deb01a66cb754a1bed6592b"
+  },
+  "installedQualification": {
+    "directory": "/private/tmp/breditor-current-server-reconciliation-installed-RncAMI",
+    "tests": 8,
+    "passed": true,
+    "sourceUnchanged": true,
+    "strictPublicTypes": true,
+    "workspaceLinks": false,
+    "log": "/private/tmp/breditor-current-server-reconciliation-installed-RncAMI/contracts.log",
+    "logSha256": "23e07a4c15b18322866a6aea27e8a72e11dfdc7fbb724ddba3dd705c2821e84e",
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/private/tmp/breditor-current-server-reconciliation-installed-RncAMI/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/private/tmp/breditor-current-server-reconciliation-installed-RncAMI/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/private/tmp/breditor-current-server-reconciliation-installed-RncAMI/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "ad26b4e62a1660369079e6517f9a273792dd4bb0520f185ce144bc710bea8356"
+      }
+    ]
+  },
+  "functionalScope": [
+    "Genuine seven-family source-owned current Native/local-packet/source-version/complete-server references and full provider read without historical packet or raster downloads.",
+    "Original current Pending, cache flags, metadata queues and older metadata bytes stay literal while available immutable source knowledge can separately establish complete current references.",
+    "Two original protocol passes and actual managed upload acknowledgements precede the checked real provider case; original document/review Undo and Redo run afterward for all seven clients.",
+    "A distinct genuine missing-provider case preserves twelve missing mappings and twelve real unpublished metadata operations, with all fourteen upload roles and unchanged Native/metadata state.",
+    "Saved all-seven Native DATA cases use thirteen-reference Pending and fifteen-reference Ready fixtures; Ready omits one actual server-only packet string while complete Native server knowledge retains its image references.",
+    "DATA laws preserve actual Native/outbox blockers and current provider loss; unresolved sources never trigger a partial provider query."
+  ],
+  "observations": [
+    {
+      "qualification": "source",
+      "marker": "LAZY_VERSION_RECONCILIATION_NATIVE",
+      "file": "/Users/s/code/breditor/target/server-packet-inspection-fixture-LbM1pu/target/selected-delivery-native-hZmKao/lazy-version-current-reconciliation-observation.json",
+      "sha256": "d7b0f21c54799764ad8e9977d8fead4726b68e05477eea202f32fc7e33d5e460",
+      "result": {
+        "format": "breditor/lazy-version-current-reconciliation-observation",
+        "formatVersion": 1,
+        "participants": 7,
+        "originalKind": "pending",
+        "currentKind": "checked",
+        "originalPendingKinds": [
+          "references",
+          "provider"
+        ],
+        "sourceCoveredOccurrences": 48,
+        "fullCurrentReferences": 13,
+        "currentProviderAssets": 3,
+        "currentProviderMissing": 0,
+        "allNativeStampsUnchanged": true,
+        "metadataQueuesAndCacheFlagsUnchanged": true,
+        "oldMetadataBytesUnchanged": true,
+        "cacheCalls": 0,
+        "forbiddenBodyDownloads": 0,
+        "wholeRoomActivated": false
+      }
+    },
+    {
+      "qualification": "source",
+      "marker": "CURRENT_PROVIDER_MISSING_NATIVE",
+      "file": "/Users/s/code/breditor/target/server-packet-inspection-fixture-brXXQc/target/selected-delivery-native-Oskacu/current-provider-missing-native-observation.json",
+      "sha256": "b90f6e4da9fbc4bb3fcc8e234624b0d4ea0c418c748d55be2e27a8156a206bae",
+      "result": {
+        "format": "breditor/current-provider-missing-native-observation",
+        "formatVersion": 1,
+        "participants": 7,
+        "sourceKnowledge": "ready",
+        "overall": "pending",
+        "missingMappings": 12,
+        "preservedMetadataOperations": 12,
+        "uploadRoles": 14,
+        "forbiddenDownloads": 0,
+        "nativeAndMetadataUnchanged": true,
+        "wholeRoomActivated": false
+      }
+    },
+    {
+      "qualification": "installed",
+      "marker": "LAZY_VERSION_RECONCILIATION_NATIVE",
+      "file": "/private/tmp/breditor-current-server-reconciliation-installed-RncAMI/consumer/target/server-packet-inspection-fixture-mrRwuH/target/selected-delivery-native-cNy2qd/lazy-version-current-reconciliation-observation.json",
+      "sha256": "d7b0f21c54799764ad8e9977d8fead4726b68e05477eea202f32fc7e33d5e460",
+      "result": {
+        "format": "breditor/lazy-version-current-reconciliation-observation",
+        "formatVersion": 1,
+        "participants": 7,
+        "originalKind": "pending",
+        "currentKind": "checked",
+        "originalPendingKinds": [
+          "references",
+          "provider"
+        ],
+        "sourceCoveredOccurrences": 48,
+        "fullCurrentReferences": 13,
+        "currentProviderAssets": 3,
+        "currentProviderMissing": 0,
+        "allNativeStampsUnchanged": true,
+        "metadataQueuesAndCacheFlagsUnchanged": true,
+        "oldMetadataBytesUnchanged": true,
+        "cacheCalls": 0,
+        "forbiddenBodyDownloads": 0,
+        "wholeRoomActivated": false
+      }
+    },
+    {
+      "qualification": "installed",
+      "marker": "CURRENT_PROVIDER_MISSING_NATIVE",
+      "file": "/private/tmp/breditor-current-server-reconciliation-installed-RncAMI/consumer/target/server-packet-inspection-fixture-MCptJO/target/selected-delivery-native-1M9hNg/current-provider-missing-native-observation.json",
+      "sha256": "b90f6e4da9fbc4bb3fcc8e234624b0d4ea0c418c748d55be2e27a8156a206bae",
+      "result": {
+        "format": "breditor/current-provider-missing-native-observation",
+        "formatVersion": 1,
+        "participants": 7,
+        "sourceKnowledge": "ready",
+        "overall": "pending",
+        "missingMappings": 12,
+        "preservedMetadataOperations": 12,
+        "uploadRoles": 14,
+        "forbiddenDownloads": 0,
+        "nativeAndMetadataUnchanged": true,
+        "wholeRoomActivated": false
+      }
+    }
+  ],
+  "savedNativeReads": [
+    {
+      "qualification": "source",
+      "reads": [
+        {
+          "format": "breditor/current-reference-native-data-observation",
+          "mode": "pending",
+          "participants": 7,
+          "localBodies": 15,
+          "completeArchivedBodies": 15,
+          "firstServerOnlyStringsOmitted": true,
+          "covered": 6,
+          "actualLocalOrServerNativeKnowledge": true,
+          "references": 13,
+          "originalPendingUnchanged": true,
+          "unknownSourceAndCompleteServerPendingPreserved": true,
+          "storageCalls": 0,
+          "oldNetworkCalls": 0,
+          "operationalOwnerCreated": false
+        },
+        {
+          "format": "breditor/current-reference-native-data-observation",
+          "mode": "ready",
+          "participants": 7,
+          "localBodies": 16,
+          "completeArchivedBodies": 17,
+          "firstServerOnlyStringsOmitted": true,
+          "covered": 0,
+          "actualLocalOrServerNativeKnowledge": true,
+          "references": 15,
+          "originalPendingUnchanged": true,
+          "unknownSourceAndCompleteServerPendingPreserved": true,
+          "storageCalls": 0,
+          "oldNetworkCalls": 0,
+          "operationalOwnerCreated": false
+        }
+      ]
+    },
+    {
+      "qualification": "installed",
+      "reads": [
+        {
+          "format": "breditor/current-reference-native-data-observation",
+          "mode": "pending",
+          "participants": 7,
+          "localBodies": 15,
+          "completeArchivedBodies": 15,
+          "firstServerOnlyStringsOmitted": true,
+          "covered": 6,
+          "actualLocalOrServerNativeKnowledge": true,
+          "references": 13,
+          "originalPendingUnchanged": true,
+          "unknownSourceAndCompleteServerPendingPreserved": true,
+          "storageCalls": 0,
+          "oldNetworkCalls": 0,
+          "operationalOwnerCreated": false
+        },
+        {
+          "format": "breditor/current-reference-native-data-observation",
+          "mode": "ready",
+          "participants": 7,
+          "localBodies": 16,
+          "completeArchivedBodies": 17,
+          "firstServerOnlyStringsOmitted": true,
+          "covered": 0,
+          "actualLocalOrServerNativeKnowledge": true,
+          "references": 15,
+          "originalPendingUnchanged": true,
+          "unknownSourceAndCompleteServerPendingPreserved": true,
+          "storageCalls": 0,
+          "oldNetworkCalls": 0,
+          "operationalOwnerCreated": false
+        }
+      ]
+    }
+  ],
+  "releasePlanContracts": {
+    "passed": 89,
+    "failed": 0,
+    "skipped": 0,
+    "log": "/private/tmp/breditor-current-reconciliation-20261101/release-contracts.log",
+    "sha256": "fdc1beb197d3f9eac7cc271a69ee9914c4546b2591cb5953812cb2ccd969d87e"
+  },
+  "candidateProfilesRequire": [
+    "current-server-packet-reconciliation-native",
+    "installed-current-server-packet-reconciliation"
+  ],
+  "compiledPackageComparison": {
+    "packages": [
+      {
+        "name": "@breditor/browser",
+        "compiledFiles": 188,
+        "archiveSha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+        "allCompiledFilesMatch": true
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "compiledFiles": 180,
+        "archiveSha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15",
+        "allCompiledFilesMatch": true
+      },
+      {
+        "name": "@breditor/collaboration",
+        "compiledFiles": 2373,
+        "archiveSha256": "ad26b4e62a1660369079e6517f9a273792dd4bb0520f185ce144bc710bea8356",
+        "allCompiledFilesMatch": true
+      }
+    ],
+    "compiledFiles": 2741,
+    "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0"
+  },
+  "nativeExecutables": {
+    "target/server-metadata-native/release/examples/selected_suggestion_delivery_functional": "3ff2019ccc49a3a54dc2834e7d9892e7078a328c118e69bd441fff77fdde557f",
+    "target/server-metadata-native/release/examples/complete_cohort_control_functional": "69de301825637e96c47689cbf06ca0a94f5d89a8dd54c0c9261a8054232e457a",
+    "target/server-native-dependencies-native/release/examples/selected_suggestion_delivery_functional": "020df02bb8399f4388a05e0b67e3dc74f7c1473a5350b1b60d665f05ec45011c",
+    "target/server-native-dependencies-native/release/examples/complete_cohort_control_functional": "efbdce5f865d99ad0659f19d4a941aca066482af5e3049991567e4a485ca1e1d",
+    "target/server-packet-inspection-native/release/examples/selected_suggestion_delivery_functional": "61c35699efcd333680ffca06a5ee6c1f2f22dc73722c065d4fca3610e696a3e7",
+    "target/server-packet-inspection-native/release/examples/complete_cohort_control_functional": "d8ad3caf94470ba22bc74c2f62803dc96c8170c868340e7d5b324c6c6d6133dc"
+  },
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "proof": {
+    "proof": "/Users/s/code/breditor/target/current-server-reconciliation-qualified-proof-vnwvwave",
+    "indexSha256": "af8f118ce2b6c9c9f433592a90af180c5e560185a1f906d5c5aadf823d6f9d10",
+    "references": 92,
+    "uniqueObjects": 68,
+    "gzipBytes": 74092626,
+    "readBackVerified": true,
+    "source": {
+      "commit": "c9dd98817c3f6797cb8ec33bd79ca2ca62d726d6",
+      "dirty": true,
+      "sha256": "da6db67dd618916e882bdf154771f8835e10d2a83a29b260a54de1ff54e7d09f",
+      "files": 7938,
+      "bytes": 65862941
+    },
+    "sourceCases": 8,
+    "installedCases": 8,
+    "compiledFiles": 2741,
+    "wholeRoomActivated": false,
+    "v1Ready": false,
+    "v1GatesOpen": 13
+  },
+  "rustSourceUnchanged": true,
+  "freshFullRustSuiteRun": false,
+  "normalWasmUnchanged": true,
+  "originalProtocolsAndDefaultsUnchanged": true,
+  "packageVersionsUnchanged": true,
+  "previousCompleteRecoveryCasesRerun": false,
+  "wholeRoomActivated": false,
+  "fullCandidateProfilesRun": false,
+  "v1Ready": false,
+  "v1GatesOpen": 13,
+  "remaining": [
+    "Complete independent document/comment/server-log generation integration and qualification.",
+    "Outstanding offline/client/provider boundaries and full current custody coordination.",
+    "Freshly authenticated durable whole-room activation and cold recovery.",
+    "The complete V1 feature-parity and release gates."
+  ],
+  "postQualificationChanges": "Only this qualification record and the two linked contract/release-plan documents change after the executed source freeze; implementation and assertions remain unchanged."
+}
