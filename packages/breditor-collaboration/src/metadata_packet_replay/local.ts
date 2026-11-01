@@ -38,6 +38,6 @@ export async function visitLocalPacketNative<T>(source:Loaded,provided:Readonly<
   // unknown LIVE wrapper field while constructing a supposedly exact backup.
   if(JSON.stringify(live.recovery)!==JSON.stringify(data['live']))throw fail('native_reconstruction_integrity');
   const originalRecovery=backup.recovery.call(original);for(const recovery of[originalRecovery,...await Promise.all([...cuts.values()].map(cut=>localPortableCutRecovery(identity,cut)))]){check();const previous=await replayLocalOperationRecovery(entry.selection,factory,recovery,check);try{verifyLocalOperationContinuation(live,previous);previous.check();live.check();}finally{previous.dispose();}}
-  const selected=live;return await visitPacketNativeAlias(id,selected.core,()=>{check();selected.check();},visit);
+  const selected=live;return await visitPacketNativeAlias(id,selected.core,()=>{check();selected.check();},visit,selected.recovery.versions);
  }finally{try{live?.dispose();if(originFile)backup.dispose.call(originFile);if(original)backup.dispose.call(original);}finally{work.close();}}
 }

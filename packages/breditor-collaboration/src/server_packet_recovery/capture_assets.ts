@@ -1,3 +1,4 @@
+import type {ServerPacketAssetRequirements} from './asset_scope.js';
 /** Full Native union plus all original/selected upload roles. Downloads do
  * not mutate held caches or ACK queues. Provider changes refuse completion. */
 import {checkRichAssetLimits,inspectRichRaster} from '@breditor/experimental-rich-content';
@@ -8,11 +9,11 @@ import {sharedRelayAssetReadPort,type SharedRelayAssets} from '../relay/assets.j
 import {localMetadataRecoverableRequirements} from '../selected_local_metadata_assets/recoverable_requirements.js';
 import type {PreparedLocalMetadataReconciliation} from '../selected_local_metadata_assets/reconciliation_input.js';
 import type {MetadataPacketFile,LocalMetadataPacketRetentionBundle} from '../metadata_packet_retention/contract.js';
-import type {ServerPacketClosure,ServerPacketAssetOutcome} from './contract.js';
+import type {ServerPacketAssetOutcome} from './contract.js';
 import {encodeServerPacketAssets} from './asset_archive.js';
 import {fail,same} from '../metadata_packet_retention/policy.js';
 import {frozen} from '../room_participant_inventory/policy.js';
-export async function captureServerPacketAssets(packet:LocalMetadataPacketRetentionBundle,dependencies:MetadataPacketFile,closure:ServerPacketClosure,uploads:Awaited<ReturnType<typeof readLocalMetadataUploadInventory>>,input:PreparedLocalMetadataReconciliation,transport:SharedRelayAssets,options:SharedArchiveIntegrityOptions&{readonly signal:AbortSignal},provided:LocalMetadataMaterializationOptions,check:()=>void):Promise<ServerPacketAssetOutcome>{
+export async function captureServerPacketAssets(packet:LocalMetadataPacketRetentionBundle,dependencies:MetadataPacketFile,closure:ServerPacketAssetRequirements,uploads:Awaited<ReturnType<typeof readLocalMetadataUploadInventory>>,input:PreparedLocalMetadataReconciliation,transport:SharedRelayAssets,options:SharedArchiveIntegrityOptions&{readonly signal:AbortSignal},provided:LocalMetadataMaterializationOptions,check:()=>void):Promise<ServerPacketAssetOutcome>{
  check();if(closure.outcome.kind!=='ready')return frozen({kind:'pending',missing:[{kind:'native-source' as const}]});
  const network=sharedRelayAssetReadPort(transport),limits=checkRichAssetLimits(provided.limits),references=closure.outcome.references,uploadIds=[...uploads.assets.keys()].sort(),provider=await input.port.checkAssets({references,uploads:uploadIds},options.signal);check();input.check();
  const union=localMetadataRecoverableRequirements(references,uploads.assets,provider);if(union.unresolved.length)return frozen({kind:'pending',missing:[{kind:'opaque-mapping' as const}]});if(union.unavailable.length)return frozen({kind:'pending',missing:union.unavailable.map(asset=>({kind:'bytes' as const,asset}))});

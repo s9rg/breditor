@@ -1,3 +1,8 @@
+import {captureResolvedClientServerPacketRecovery} from '../server_packet_source_resolution/capture.js';
+import {inspectResolvedClientServerPacketRecovery} from '../server_packet_source_resolution/inspect.js';
+import {readNativeSourceVersions} from '../server_packet_source_resolution/native_versions.js';
+import type {ResolvedServerPacketRecoveryBundle,ResolvedServerPacketRecoveryOutcome,ResolvedServerPacketRecoveryInspection} from '../server_packet_source_resolution/contract.js';
+import {LoadedNativeReconstructionCurrent as LoadedPacketSource} from '../selected_native_reconstruction/loaded_current.js';
 import {inspectClientServerPacketRecovery} from '../server_packet_recovery/inspect.js';
 import type {ServerPacketRecoveryBundle} from '../server_packet_recovery/contract.js';
 import type {ServerPacketRecoveryInspection} from '../server_packet_recovery/inspection_contract.js';
@@ -166,6 +171,15 @@ export class LocalMetadataReferenceWork {
   check();const packets=await this.retainPackets(input.reconciliation,snapshot);check();if(!this.#room||!this.#cut||!this.#finished)throw fail('local_metadata_assets_closed');
   return captureClientServerPacketRecovery(packets,this.#finished.body,input,()=>readLocalMetadataUploadInventory(this.#room!,this.#cut!,this.#options,check,true),this.#options,check);
  }
+ /** Keep the original recovery literal while separately resolving available
+  * immutable sources. No cache insert, download flag, receipt or ACK is changed. */
+ async resolvedServerPacketRecovery(input:PreparedMetadataPacketRecoveryInput,snapshot:LocalMetadataDeliverySnapshot):Promise<ResolvedServerPacketRecoveryOutcome>{
+  const check=()=>{this.#check();input.selected.check();input.reconciliation.check();for(const row of this.#allSources){const before=this.#availabilityStamps.get(row.source.core),now=coreReadStamp(row.source.core);if(!before||before.document!==now.document||before.review!==now.review)throw fail('local_metadata_assets_changed');}};
+  check();const packets=await this.retainPackets(input.reconciliation,snapshot);check();if(!this.#room||!this.#cut||!this.#finished)throw fail('local_metadata_assets_closed');const reads=this.#packetNativeReads();
+  return captureResolvedClientServerPacketRecovery(packets,this.#finished.body,input,()=>readLocalMetadataUploadInventory(this.#room!,this.#cut!,this.#options,check,true),async()=>{
+   const source=await LoadedPacketSource.read(packets.references.parent.parent.current,this.#options);try{check();return await readNativeSourceVersions(source,reads,{limits:checkRichAssetLimits(input.options.limits),signal:this.#waits.signal},check);}finally{source.dispose();}
+  },this.#options,check);
+ }
  /** Preserve actual immutable content for every provider requirement and
   * whole-upload ID. Read from admitted local archives first; missing content
   * uses a genuine account transport without mutating held cache state. */
@@ -272,8 +286,17 @@ export class LocalMetadataReferenceWork {
  async inspectServerPacketRecovery(bundle:ServerPacketRecoveryBundle,body:LocalMetadataReferenceCut,snapshot:LocalMetadataDeliverySnapshot,host:SharedServerLogGenerationRecoveryHost,provided:LocalMetadataMaterializationOptions):Promise<ServerPacketRecoveryInspection>{
   this.#check();if(!this.#ready||!this.#room||!this.#cut||!this.#factories)throw fail('local_metadata_assets_closed');
   const check=()=>{this.#check();for(const row of this.#allSources){const before=this.#availabilityStamps.get(row.source.core),now=coreReadStamp(row.source.core);if(!before||before.document!==now.document||before.review!==now.review)throw fail('local_metadata_assets_changed');}};
-  const reads=this.#allSources.map(row=>{const selected=this.#factories!.reads.find(value=>value.id===row.id);if(!selected)throw fail('local_metadata_assets_state');return{id:row.id,read:selected.read,descriptor:JSON.stringify(sourceNativeRecoveryRead(row.source.core).descriptor())};});check();
+  const reads=this.#packetNativeReads();check();
   const result=await inspectClientServerPacketRecovery(bundle,body,snapshot,this.#room,this.#cut,reads,host,{...this.#options,checkAuthority:check},checkRichAssetLimits(provided.limits),check);check();return result;
+ }
+ /** Recheck the complete old result, then independently verify the separate
+  * resolution file and all new raster requirements under current host custody. */
+ async inspectResolvedServerPacketRecovery(bundle:ResolvedServerPacketRecoveryBundle,body:LocalMetadataReferenceCut,snapshot:LocalMetadataDeliverySnapshot,host:SharedServerLogGenerationRecoveryHost,provided:LocalMetadataMaterializationOptions):Promise<ResolvedServerPacketRecoveryInspection>{
+  this.#check();if(!this.#ready||!this.#room||!this.#cut)throw fail('local_metadata_assets_closed');const check=()=>{this.#check();for(const row of this.#allSources){const before=this.#availabilityStamps.get(row.source.core),now=coreReadStamp(row.source.core);if(!before||before.document!==now.document||before.review!==now.review)throw fail('local_metadata_assets_changed');}};
+  const reads=this.#packetNativeReads();check();const result=await inspectResolvedClientServerPacketRecovery(bundle,body,snapshot,this.#room,this.#cut,reads,host,{...this.#options,checkAuthority:check},checkRichAssetLimits(provided.limits),check);check();return result;
+ }
+ #packetNativeReads(){
+  this.#check();if(!this.#factories)throw fail('local_metadata_assets_closed');return this.#allSources.map(row=>{const selected=this.#factories!.reads.find(value=>value.id===row.id);if(!selected)throw fail('local_metadata_assets_state');return{id:row.id,read:selected.read,descriptor:JSON.stringify(sourceNativeRecoveryRead(row.source.core).descriptor())};});
  }
  /** Cancels finite reads, disposes claimed aliases and observes/frees late
   * unclaimed raw restores through the original factory wait implementation. */

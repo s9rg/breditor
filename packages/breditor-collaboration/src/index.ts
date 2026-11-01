@@ -245,3 +245,5 @@ export type {ServerNativePacketSource,ServerNativeDependencyInventory,SelectedSe
 export type {ServerPacketRecoveryInput,ServerPacketRecoveryOutcome,ServerPacketRecoveryBundle,ServerPacketClosure,ServerPacketCoverage,ServerPacketAssetHeader,ServerPacketAssetOutcome} from './server_packet_recovery/contract.js';
 
 export type {ServerPacketRecoveryInspection} from './server_packet_recovery/inspection_contract.js';
+
+export type * from './server_packet_source_resolution/contract.js';

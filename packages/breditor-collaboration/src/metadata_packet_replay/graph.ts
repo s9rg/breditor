@@ -38,6 +38,6 @@ export async function visitGraphPacketNative<T>(source:Loaded,provided:Readonly<
    }finally{if(!kept)next.dispose();}
    check();
   }
-  if(!live)throw fail();const selected=live;return await visitPacketNativeAlias(id,selected.core,()=>{check();selected.check();},visit);
+  if(!live||!before)throw fail();const selected=live;return await visitPacketNativeAlias(id,selected.core,()=>{check();selected.check();},visit,before.source.versions);
  }finally{try{live?.dispose();admitted?.close();}finally{work.close();}}
 }

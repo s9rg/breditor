@@ -1,0 +1,710 @@
+{
+  "format": "breditor/selected-server-packet-source-resolution-qualification",
+  "formatVersion": 1,
+  "complete": true,
+  "completedAt": "2026-11-01T13:15:45.691981+00:00",
+  "scope": "Additional same-owner source/raster retention and portable inspection, preserving original Pending/cache/receipt/queue semantics. Not current complete provider/client reconciliation, whole-room activation or V1 parity approval.",
+  "source": {
+    "commit": "61d8b6f435cdbb70c19cac307aa7f8cdc9975901",
+    "dirty": true,
+    "sha256": "bd1a0b7f9a0e679ddfdeaadbdd5e1f8ea86708f3e08cb49dc3b8fba2b336a40c",
+    "files": 7920,
+    "bytes": 65760462
+  },
+  "executedSourceArchive": {
+    "bytes": 20137332,
+    "sha256": "f8b7783872b545dfe78f222c28e0bd0077f5fecbb16f20881a6a4aa745302241"
+  },
+  "sourceQualification": {
+    "format": "breditor/pending-source-resolution-source-qualification",
+    "formatVersion": 1,
+    "complete": true,
+    "source": {
+      "commit": "61d8b6f435cdbb70c19cac307aa7f8cdc9975901",
+      "dirty": true,
+      "sha256": "bd1a0b7f9a0e679ddfdeaadbdd5e1f8ea86708f3e08cb49dc3b8fba2b336a40c",
+      "files": 7920,
+      "bytes": 65760462
+    },
+    "directory": "/Users/s/code/breditor/target/pending-source-resolution-source-qualification-rsN4hV",
+    "tests": 42,
+    "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+    "compilerSha256": "2219f428a7e55aaf1f7ad85b9b0f0cf5078aeb76ccc9a7c6036c92d48f492ffd",
+    "releaseReady": false,
+    "v1GatesOpen": 13,
+    "passed": true,
+    "sourceUnchanged": true,
+    "strictPublicTypes": true,
+    "log": "/Users/s/code/breditor/target/pending-source-resolution-source-qualification-rsN4hV/contracts.log",
+    "logSha256": "8323b14b4f1540fc1c1e880121d4a428678fceac33287e42b727d6f1984043ff"
+  },
+  "independentInstalledQualification": {
+    "format": "breditor/pending-source-resolution-installed-consumer",
+    "formatVersion": 1,
+    "complete": true,
+    "source": {
+      "commit": "61d8b6f435cdbb70c19cac307aa7f8cdc9975901",
+      "dirty": true,
+      "sha256": "bd1a0b7f9a0e679ddfdeaadbdd5e1f8ea86708f3e08cb49dc3b8fba2b336a40c",
+      "files": 7920,
+      "bytes": 65760462
+    },
+    "sourceRoot": "/Users/s/code/breditor",
+    "directory": "/private/tmp/breditor-pending-source-resolution-installed-HfuYPj",
+    "consumer": "/private/tmp/breditor-pending-source-resolution-installed-HfuYPj/consumer",
+    "workspaceLinks": false,
+    "registryArtifacts": 45,
+    "copied": [
+      {
+        "path": "scripts/saved-packet-native-replay.test.mjs",
+        "sourceSha256": "1345dd008baffb597f3f456347e46340f2b17f8b532747a84d38cc9e9004a537",
+        "installedSha256": "87fe2fd8720a71a12127480a5035861cf266f44be41162ba4158509150cd1a44",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/local-metadata/saved-packet-read-disposal.mjs",
+        "sourceSha256": "347d526c35fd141dad20082dd196dda9e7fabf80572f44d83d94b80e3c184344",
+        "installedSha256": "6a24b2ce0e67b29811aedcf0177f41035bb643fe93650acad768380ec8cd284c",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/local-metadata/complete-inspection-cases.mjs",
+        "sourceSha256": "e9f70d78c5740a29ba6e12299897381815d9dc75a9bfa97a0bb04b5546c579e1",
+        "installedSha256": "72d10d08082979340b14d2e8da451e30d231a41d7d5d28fcb6360b5efeca6a50",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/local-metadata/saved-packet-replay.mjs",
+        "sourceSha256": "bb66e600c7f5e5376c1d6760faf75164ff5f297aa23fd55947062026a2bac264",
+        "installedSha256": "bb66e600c7f5e5376c1d6760faf75164ff5f297aa23fd55947062026a2bac264",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/local-metadata/packet-raster.mjs",
+        "sourceSha256": "e4f241530ea18d9fa450c49a5e1f748f2e304681850bf55368858470da8333e2",
+        "installedSha256": "e4f241530ea18d9fa450c49a5e1f748f2e304681850bf55368858470da8333e2",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/review-assets/pixels.mjs",
+        "sourceSha256": "a3fe0b8c13d63705d7c2c2ccf7379ab424cc42b1d7f55ca895f95d53d6749b71",
+        "installedSha256": "a3fe0b8c13d63705d7c2c2ccf7379ab424cc42b1d7f55ca895f95d53d6749b71",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/interchange-consumer/pixel.mjs",
+        "sourceSha256": "9ad4c906fb69b3749dd0bda943520326fffe7311c033a6891f6d43a67041c15c",
+        "installedSha256": "9ad4c906fb69b3749dd0bda943520326fffe7311c033a6891f6d43a67041c15c",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/local-metadata/remote-raster.mjs",
+        "sourceSha256": "29bb1f502035e9a019c17f29a16d82884f55444866b72f441e38ed2e049ef56e",
+        "installedSha256": "29bb1f502035e9a019c17f29a16d82884f55444866b72f441e38ed2e049ef56e",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/server-packet-inspection-disabled-native.test.mjs",
+        "sourceSha256": "68f0a1bc13cbda1267f9a148d5e56420a0e64a5a8f6a30900c4ea5dc11af2618",
+        "installedSha256": "c4200b1c0c21ce3d32af52bc52aba9504069318e674105fc44fdb94e8efdb829",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/selected-delivery/native-host.mjs",
+        "sourceSha256": "f07f87f08ea1149bf624c9a25561930c7179fcedb76a6d48ffb50fcff54b2a72",
+        "installedSha256": "5f44912c387c4a1c369fe7a865a1879576f786dfd3c696a9ca68d7f4b74f25a6",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/server-packet-closure-contracts.test.mjs",
+        "sourceSha256": "7e80980af36bcd285ab905d34980567dcc6f35acc9b1563d4ea1b17712ec0b4e",
+        "installedSha256": "751bb5b65bd60b0722f3cc4ca7e9bad33e3035014574411cf96672c162860bf6",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/server-packet-source-native.test.mjs",
+        "sourceSha256": "3c83c2044292716363a0f2235113951383c4b2482011b3b519c8a840d278f509",
+        "installedSha256": "245e9ef2106afd7334ee75a7ea8bd72ef51987ad9794dd22fc2018b5d7c96c0b",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/local-metadata/server-packet-source.mjs",
+        "sourceSha256": "d61bf3b030fc3633d7d32165bc55a17661196bd76dc7392fba956afbab660597",
+        "installedSha256": "d8665d704d652a83011c869f30b857b15df35930ef6628066bc2c28c3fac5fa2",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/server-native-dependencies/native-root.mjs",
+        "sourceSha256": "e533ed31c5f3d1808d6124cfd5094faa816459e9b91ff6ec754b8cbabc16de19",
+        "installedSha256": "5434efbaf67b3b3768f8856f2537b555f25d4a7bd55f20eada3e02855c6886f8",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/metadata-receipt-comparison-native.test.mjs",
+        "sourceSha256": "961c9c447e3e6e8d50e9f104297f561410a157a086a997a0e585b4d1a9f155bc",
+        "installedSha256": "da20c3b09e57a64db1fe2ff82fc1d144f3310b30635e73f84936315e94fb2c1f",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/server-metadata/native-root.mjs",
+        "sourceSha256": "d43608dafba5bb0f398b54d72d35bd8e684b1bd718d367385ae3e4ac3a28e334",
+        "installedSha256": "53ca2741dd6b988eb6ed8709a8c0257ea77410d5f3b424e46f0377458e091179",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/local-metadata/receipt-comparison.mjs",
+        "sourceSha256": "7953b1c7e189334bd0c4a6cc014654460ec6ee7c9fcc46f93acb5ef059d880e3",
+        "installedSha256": "bd88b3ef0ad526414119a16faa7145b42a44b8cfc6963dbe93dfaf11b7b4231f",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/local-metadata/receipt-omission.mjs",
+        "sourceSha256": "5c41248984dd0266f4396db22dc4e466e9388f0118857c4d6e485ea29df305a0",
+        "installedSha256": "5c41248984dd0266f4396db22dc4e466e9388f0118857c4d6e485ea29df305a0",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/metadata-packet-archive-native.test.mjs",
+        "sourceSha256": "90ea9d1f7d7c0651100c3a9438f04994d30f158818bc51a5ddd1b7c69cae6492",
+        "installedSha256": "71b3509a67ff1f58576cd25e99f7d81e1e0d184406c4274cd7a0b77189bf9c90",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/local-metadata/packet-archive-component.mjs",
+        "sourceSha256": "05137f22cf9c6e85a11a97545b3df7ffd117ea7f951af8fe55ebbdf91b2b8d27",
+        "installedSha256": "7d3899eb1a195d2484b326aabd85be0cde729caf2338d62e7a837ac8c97d7ab2",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/local-metadata/packet-assets-component.mjs",
+        "sourceSha256": "6ad894a285fb9cf6fa9ac624ff117eb425da9440391018dbcdcf9b306938110d",
+        "installedSha256": "18126a9738051bb53c5825411d264f0d6a9f28c36413da52147a33ed3fceb963",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/server-packet-inspection-native.test.mjs",
+        "sourceSha256": "68a3db101ee392ddc7d6e5bf93df820f26dd6d97cd390dcd488f1f412e69df54",
+        "installedSha256": "7f92bdc7b927e8b9df718814355cfff0792fe31de07190ab160dcb6b36cfa788",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/server-packet-inspection/native-root.mjs",
+        "sourceSha256": "df05dfc33e25379b35dfc429f419576e37fb6b7ddc1369ccbc0af8d4e729dd47",
+        "installedSha256": "d88b1447f54db5325679a49d07815f9130798c7894cf003249936725cd17165a",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/server-packet-inspection/packets.mjs",
+        "sourceSha256": "53b30d6b31cc0bffc85e5f1c873eade5ca350decca909cb84db07e5518b1cfe3",
+        "installedSha256": "4674a8da926de4057591ef0381f3b650a8c67590622232ed348504d0814cd339",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/server-packet-inspection-cohort-native.test.mjs",
+        "sourceSha256": "f08753333693026c05a4f9035a3ef372666908d0f85e58772a492a994b95c5db",
+        "installedSha256": "f08753333693026c05a4f9035a3ef372666908d0f85e58772a492a994b95c5db",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/local-metadata/materialization.mjs",
+        "sourceSha256": "86807185ea2be2813578c7fbe061b97f6cdaeeb4ebe8eac42385f16e23b0f985",
+        "installedSha256": "afff7e441e8c46283f7bf4c9fb02d117893deb0bfa30b003ad14d07250c27bcb",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/local-metadata/recoverable-inspection.mjs",
+        "sourceSha256": "54056fa2422350ffe16b0b5c6a3f9040275448105ad16ff82b16c665e3249331",
+        "installedSha256": "33183281257c9dcd8f8464e4f1ab35233755cb96516bf65f0ea208fdf8ff0de6",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/local-metadata/recovery-bytes.mjs",
+        "sourceSha256": "3a187aae5935fbafec951339ce7ae746fedc99452e105358dcb428b597938e23",
+        "installedSha256": "98036c5bf26bb86909e7b073f03aee0b0e54514d467ae5d33e6f46974601421c",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/local-metadata/recovery-bytes-files.mjs",
+        "sourceSha256": "4fb76f2839d2a18396f0a582f69a266309e75006ca31cb353e97585b4d6f4470",
+        "installedSha256": "4fb76f2839d2a18396f0a582f69a266309e75006ca31cb353e97585b4d6f4470",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/local-metadata/provider-reconciliation.mjs",
+        "sourceSha256": "bd8908bf9f0115a11a919e64cfb6214b518804686280591cd76df4c3e341fff7",
+        "installedSha256": "70c3ec2ee5bd813c8bc402ee7f375e4c5ea60e9ec0694c1da02bbb06e41a02f5",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/selected-delivery/cold-continuation.mjs",
+        "sourceSha256": "de39b37adcd0a96d31dfe014cf5f7496a44840432570f99200a20f2ccc1b83f2",
+        "installedSha256": "e2e0d513de4d89a58c7fa6064030b49e7959bba7265379531a1c420e8d4fdbd0",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/local-metadata/reconciled-cold.mjs",
+        "sourceSha256": "c764846f78e2ec92fc6682eac81bf78fce0c11a5d440201e74cf44bbc368d374",
+        "installedSha256": "1096eaca5681fb2fba5f1601a0255a45c36ce040899a92406ccf484522445af8",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/local-metadata/materialized-inspection.mjs",
+        "sourceSha256": "e218da06c61b7fecc6b54de5a2d940a0f3691e46435b4549b4b4bee21b6941aa",
+        "installedSha256": "e218da06c61b7fecc6b54de5a2d940a0f3691e46435b4549b4b4bee21b6941aa",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/selected-delivery/local-review-evidence.mjs",
+        "sourceSha256": "0bd7cffac451d13c4446c6c6f894cff79027b595f52776e785f6e84ca19f56a8",
+        "installedSha256": "0bd7cffac451d13c4446c6c6f894cff79027b595f52776e785f6e84ca19f56a8",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/selected-generation-reconciliation/session.mjs",
+        "sourceSha256": "fb0c45de47dd8e139d445a9569db90e9b9233e606d5c9a0e347fc75fc99035b2",
+        "installedSha256": "78561f4f008f91388af24530f7660005352030613a82d50d5d482f84e97a7505",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/operation-read/history-session.mjs",
+        "sourceSha256": "c2ef3e43a192784595f8868719a8f830198d3257f7a84865237d430f1038565f",
+        "installedSha256": "9b113d53cfdddcf7c97218805a7aad0c6f3b57c6075b24e85d21f8137ba63b81",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/physical-operation-v3/seven-room.mjs",
+        "sourceSha256": "41b7fbfad6d483ca2d6b5dc2bc45282a16f3c1d7ebd0e15f931152e18894785a",
+        "installedSha256": "459e4273cd3681cb29e588944118ad8ac56823e8b57a8db357bf96ac122db353",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/room-participant-inventory/environment.mjs",
+        "sourceSha256": "19bd5d61d0797dc0965174db44cd2ec4706512e70ca18f1ec31de0b582cd4c09",
+        "installedSha256": "19bd5d61d0797dc0965174db44cd2ec4706512e70ca18f1ec31de0b582cd4c09",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/physical-catalog-v2/fixture.mjs",
+        "sourceSha256": "19dc5711e764ccb99b2f032ec38ba49d417a50343dd183a00107e94ec6b5a418",
+        "installedSha256": "19dc5711e764ccb99b2f032ec38ba49d417a50343dd183a00107e94ec6b5a418",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/room-participant-inventory/participant.mjs",
+        "sourceSha256": "02e05ca6d47653c7e8f218bcb85177db6b70f2d097100ea5f399fa2147eea9a5",
+        "installedSha256": "02e05ca6d47653c7e8f218bcb85177db6b70f2d097100ea5f399fa2147eea9a5",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/room-participant-inventory/generation-participant.mjs",
+        "sourceSha256": "a0828be2572faaacdc5b271dc83fe67675787386987edddffa02f48e03800087",
+        "installedSha256": "a0828be2572faaacdc5b271dc83fe67675787386987edddffa02f48e03800087",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/independent-inventory/independent-participant.mjs",
+        "sourceSha256": "73026008993ca187d5a5bf7e1a890fde9a894e1978f0d078d17f019d78b8cc5f",
+        "installedSha256": "d9a50b69fed840f2b17b8ef69068332a2a7d4c13ba024ccf93a5d2ea23bd78c5",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/independent-inventory/local-participant.mjs",
+        "sourceSha256": "dd885c1db02c648fec4f49b1035a86b46b611f85a608596005e28ad966f4d4a9",
+        "installedSha256": "dd885c1db02c648fec4f49b1035a86b46b611f85a608596005e28ad966f4d4a9",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/independent-inventory/restored-participant.mjs",
+        "sourceSha256": "121fa5c6d2e66c7a0ec3562b502dcf56f174cb60fab8d527868e68d5bf751394",
+        "installedSha256": "51711c2597e44416a17c885a60d634ddee3008d7f31198e787b38245f59fe996",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/independent-delivery-recovery/session.mjs",
+        "sourceSha256": "500dad0ff9d055774466e6dd674ecbf505bc1af8641398ba71641329b54b81fc",
+        "installedSha256": "500dad0ff9d055774466e6dd674ecbf505bc1af8641398ba71641329b54b81fc",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/physical-catalog-v3/local-participant.mjs",
+        "sourceSha256": "98fbc9ebca73d9ad509d591d5133532fa10c5c1b06c2718b4eb0ee16e1d520d4",
+        "installedSha256": "37b735c7d72d46a1cc41261ca51946b64f240a1e8d2208bcc288f53d6f56ec17",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/independent-recovery/session.mjs",
+        "sourceSha256": "fae9bd1dc38025d4f66c0707390804778b4b131e96090f03ce6ec697aa5e06fd",
+        "installedSha256": "fae9bd1dc38025d4f66c0707390804778b4b131e96090f03ce6ec697aa5e06fd",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/owned-core-cleanup/session.mjs",
+        "sourceSha256": "06cdb0e4e85ff62e35278f947265bfcd345dbdd5c47e101d6bb5dc832de1456c",
+        "installedSha256": "06cdb0e4e85ff62e35278f947265bfcd345dbdd5c47e101d6bb5dc832de1456c",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/room-asset-adoption/bases.mjs",
+        "sourceSha256": "282fdc23ca48ed944ac4fd27d544e9c854389b74c189cfd1bc4715fa48769559",
+        "installedSha256": "5e321d287139a8825fb8ed6761d93202cfdc1055e3f89730814c6d9b9eafbf05",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/local-metadata/server-packet-inspection.mjs",
+        "sourceSha256": "45dc081e9cd81d8419ffdd602f98137408d56ee761fb19002a2b0df2660ce040",
+        "installedSha256": "9a67f99b1954fb6e316334949f31a443f3f7ebfcf3f956f47efcdbef601c9742",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/local-metadata/server-packet-recovery.mjs",
+        "sourceSha256": "7806930a410f5465e7b592a2141d6d0a020cd605de3374c559fc47866446eda2",
+        "installedSha256": "376051e06c714fd300d30cc121cdb6307b99b507a17d285f7ff4a66a67e06abe",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/local-metadata/packet-recovery.mjs",
+        "sourceSha256": "17b1d45963f78b7e2dd71edf50a75e9d26254425247b66e512c064605df513e2",
+        "installedSha256": "4aceb8fc883a73a2940a16009e57ec5bcec93d06581985361b2bb126944cb426",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/local-metadata/receipt-containment.mjs",
+        "sourceSha256": "79d63cdf7ab835d017907e55cacaec04f595dc8d16041b9b9fd41942b599ab4d",
+        "installedSha256": "0caed81f72296c05e473f79c0d505a583a62e2344671b63caac9f520e2f68cf2",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/local-metadata/packet-recovery-disk.mjs",
+        "sourceSha256": "2a7f8dba2e6b7bd20365b96840c31d4157639e1a20a6851c9fbc3cddf29548d8",
+        "installedSha256": "2a7f8dba2e6b7bd20365b96840c31d4157639e1a20a6851c9fbc3cddf29548d8",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/server-metadata-page-contracts.test.mjs",
+        "sourceSha256": "da3617c61c41183854cde9ded6dcc9b13e1f86cfbf58e40d6b3fc9090f2e593d",
+        "installedSha256": "5c0588f2626a97149876bd67110d037a0a514f51026beaaf75017e7364ed641b",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/server-metadata-packet-contracts.test.mjs",
+        "sourceSha256": "4cd5a73deaf60c54e18af9d9480d8dcc5b242e72d2b164a7e190e9c9f728a8ec",
+        "installedSha256": "ad568c98683390f8a5a6fa342374486f596a9546a1ac6258833cac61f9cd887e",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/server-metadata-generation-native.test.mjs",
+        "sourceSha256": "3d2c18b763ebc5abcc255ab85ef08d1fc1c6358b41f652bffef3e42b31089de8",
+        "installedSha256": "92712f5926b8ea1a236a6e19ea9b4d6a771ae489dd51748c8178313d92a0d1a5",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/server-metadata-version-native.test.mjs",
+        "sourceSha256": "92fae9e93f970d3690e5d8c4387f57321f8b2b38084c490970641980158c1b5a",
+        "installedSha256": "96b8e6ca0da854852d589bc71902dd5ac68e291e4db73b180009537ab13c1078",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/server-metadata-physical-native.test.mjs",
+        "sourceSha256": "c96a906745797ba6341e69f8ed21991c07f57b566b9dd1c78fc783a2c33a2611",
+        "installedSha256": "7c7bbfa218128bb9dde55a29ed2071bb80eb137962099c89cf8536bb761e94b6",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/physical-recovery-control/complete-fixtures.mjs",
+        "sourceSha256": "59c90e744ae6709a17159c0ac7af255ecc9330e46c8fcdf4cfd96146fe2c402f",
+        "installedSha256": "59c90e744ae6709a17159c0ac7af255ecc9330e46c8fcdf4cfd96146fe2c402f",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/native-runtime/normal-shared-identity.mjs",
+        "sourceSha256": "cc1a9a9bfbc7a7234136ebe781b29549482e49433ee1e60da5b14381db2f60c6",
+        "installedSha256": "cc1a9a9bfbc7a7234136ebe781b29549482e49433ee1e60da5b14381db2f60c6",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/physical-recovery-control/complete-native-host.mjs",
+        "sourceSha256": "75c07ad7dabd3f601f542d0d1c52b05c1ddf08bf9ced9e4cb18704d2b566f619",
+        "installedSha256": "75c07ad7dabd3f601f542d0d1c52b05c1ddf08bf9ced9e4cb18704d2b566f619",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/candidate-release/evidence.mjs",
+        "sourceSha256": "64554e906a09591e442556fc07e75b6e00d220b9debf0e5e8dd6e3054dc29ddb",
+        "installedSha256": "64554e906a09591e442556fc07e75b6e00d220b9debf0e5e8dd6e3054dc29ddb",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/server-metadata-collection-native.test.mjs",
+        "sourceSha256": "bcbf47336470813e8c2d8fbeecd53b1991e920b6d6452c3f332953de480c87af",
+        "installedSha256": "1519013262b95966119a5685374bc4da5d72b64f56dbc4406d79dd85a5fa37a6",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/server-metadata-packets-native.test.mjs",
+        "sourceSha256": "2a1ea760e550799a54131f304fba90f71abef920f4ed47a46fe751690785b452",
+        "installedSha256": "47adcebaad550d3b4edda8e5831b71f46bfe43094fa41894b14acc3707249646",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/pending-source-resolution-contracts.test.mjs",
+        "sourceSha256": "5cdc834aa2090576ccb2641a86e554f03540e0104c6101f7fd94b4a8ad2247b7",
+        "installedSha256": "24dac857904ab54660d54d6053c74d1bfa8f6d1daebfb5033bde3afae5c75db4",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/local-metadata/pending-source-replay.mjs",
+        "sourceSha256": "ebcba76fa6da168b2a53386f7d1095eca7543b0f102f83d19160dfb6374a6a0f",
+        "installedSha256": "ebcba76fa6da168b2a53386f7d1095eca7543b0f102f83d19160dfb6374a6a0f",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/pending-source-resolution-native-read.test.mjs",
+        "sourceSha256": "111c9c3c1c0af812d9104e8275af3eba3e6f783651ed6c0cec066a37adb54ea1",
+        "installedSha256": "ec5e6ed560d29ff9cd4f78c29fde3e464c03ae8c9e434a4b13cfd4e23e1ed776",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/local-metadata/readonly-packet-sources.mjs",
+        "sourceSha256": "4f5d51fce5e13eb468133bef7d18537b7a714dbf06a8b58ce9272fba4db973b7",
+        "installedSha256": "f812a96c7880ed011f616f5c473d0b6b0413a13f1e8804c8bdf15701976770ba",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/pending-source-resolution-cohort-native.test.mjs",
+        "sourceSha256": "2821695faa165ac741c9e90831997b39af547bc9de087a6ce9171b6b89086b66",
+        "installedSha256": "2821695faa165ac741c9e90831997b39af547bc9de087a6ce9171b6b89086b66",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/local-metadata/asset-availability.mjs",
+        "sourceSha256": "f32c09e12d5dff3e42b7c2d437a68d7224f0a103785217bcc894a82d5f5cac29",
+        "installedSha256": "2faf913b9e6d811991d3747555aecd15d262d3c828d752695cac966350adc76e",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/local-metadata/pending-source-resolution.mjs",
+        "sourceSha256": "975e99366bc6988dbf7ee9f73b53c9332b9247a720d904fa8479d11c15e22aae",
+        "installedSha256": "98e4b76db8097be520a10c089fbd4e64e8eda9bb11fcafcdf170a80de8df5147",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/local-metadata/pending-source-resolution-cases.mjs",
+        "sourceSha256": "3b39cc1ef27552fb4240a6e3c3c1b48bbb81663244a80b8a18aa39699632f264",
+        "installedSha256": "330c3bf744273c835a30be7f67e0e7eb59c2436a737d504af5ff85b22446457f",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/editor-consumer/types-server-metadata.ts",
+        "sourceSha256": "da9ca7c6125b69fada34245bb90f0c7ac3e20429e5a0be57a967b2a2acee9be0",
+        "installedSha256": "da9ca7c6125b69fada34245bb90f0c7ac3e20429e5a0be57a967b2a2acee9be0",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/editor-consumer/types-local-metadata-receipt-containment.ts",
+        "sourceSha256": "873b12bc30f6cd96383db8f3dfdbee8810a518ed44559b5a95ef924b75ed1349",
+        "installedSha256": "a691e57dbd30f1f70ccfe3ebafed67c4d077604a0311222cdcc82e1be7191829",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/editor-consumer/types-local-metadata-packet-recovery.ts",
+        "sourceSha256": "69697be9e7bbb3ee934523df4e52939c27be7a95b21537268eea00a4b98bedb4",
+        "installedSha256": "e5250fd67508f027b32fb33abd31d8582eb1d279a586e9714924160f19d7792d",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/editor-consumer/types-server-packet-recovery.ts",
+        "sourceSha256": "33d5e4aca08d9d98c1b32c671cb153a682e8142194cb2c032d70148cef227dca",
+        "installedSha256": "5a60569e02dfc8e55045001c6902f90cd125b523454e7ed8a5ddae665b21c6ab",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/editor-consumer/types-server-packet-inspection.ts",
+        "sourceSha256": "d3406560e8d9ffbd223a8c0ec481683323328ece66331d8f2156070722829487",
+        "installedSha256": "bfba38f2c2f741192e7356bbead143ad65fc30b2c27bc3bf453cf3753e07694f",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/editor-consumer/types-pending-source-resolution.ts",
+        "sourceSha256": "f1ece4f5f6a7db9ad19e02da2d25fca0c0fd59f4477b831e868cfc5a74f9a09c",
+        "installedSha256": "2b1164be6ba64a8993c156d05f2867fbf54cb016fffaae31b2cc88ef990bfd14",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "crates/breditor-core/tests/fixtures/rich-local-root.json",
+        "sourceSha256": "761ce4641bafcca82c10081d79e318a9dab5bf33aa11919c0c69909dbc8f2eca",
+        "installedSha256": "761ce4641bafcca82c10081d79e318a9dab5bf33aa11919c0c69909dbc8f2eca"
+      },
+      {
+        "path": "scripts/fixtures/local-metadata/v1-materialized-rasters.archive",
+        "sourceSha256": "d644ea5ac7a61061ec22cfb35058af449c34a33b32bc9913a73fcea0b94354df",
+        "installedSha256": "d644ea5ac7a61061ec22cfb35058af449c34a33b32bc9913a73fcea0b94354df"
+      },
+      {
+        "path": "scripts/fixtures/local-metadata/seven-family-packet-recovery.archive",
+        "sourceSha256": "652339b7f700ee3483db93ba18398640608d84fc6c6e065398c723466cd41ecf",
+        "installedSha256": "652339b7f700ee3483db93ba18398640608d84fc6c6e065398c723466cd41ecf"
+      },
+      {
+        "path": "scripts/fixtures/local-metadata/pending-source-packet-recovery.archive",
+        "sourceSha256": "f49c7ed524d513b34c214fc41b7d7452eaa8cd1100d4b2817cb5afb79883ff99",
+        "installedSha256": "f49c7ed524d513b34c214fc41b7d7452eaa8cd1100d4b2817cb5afb79883ff99"
+      }
+    ],
+    "native": [
+      {
+        "path": "target/server-metadata-native/release/examples/selected_suggestion_delivery_functional",
+        "sha256": "3ff2019ccc49a3a54dc2834e7d9892e7078a328c118e69bd441fff77fdde557f"
+      },
+      {
+        "path": "target/server-metadata-native/release/examples/complete_cohort_control_functional",
+        "sha256": "69de301825637e96c47689cbf06ca0a94f5d89a8dd54c0c9261a8054232e457a"
+      },
+      {
+        "path": "target/server-native-dependencies-native/release/examples/selected_suggestion_delivery_functional",
+        "sha256": "020df02bb8399f4388a05e0b67e3dc74f7c1473a5350b1b60d665f05ec45011c"
+      },
+      {
+        "path": "target/server-native-dependencies-native/release/examples/complete_cohort_control_functional",
+        "sha256": "efbdce5f865d99ad0659f19d4a941aca066482af5e3049991567e4a485ca1e1d"
+      },
+      {
+        "path": "target/server-packet-inspection-native/release/examples/selected_suggestion_delivery_functional",
+        "sha256": "61c35699efcd333680ffca06a5ee6c1f2f22dc73722c065d4fca3610e696a3e7"
+      },
+      {
+        "path": "target/server-packet-inspection-native/release/examples/complete_cohort_control_functional",
+        "sha256": "d8ad3caf94470ba22bc74c2f62803dc96c8170c868340e7d5b324c6c6d6133dc"
+      }
+    ],
+    "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+    "compilerSha256": "2219f428a7e55aaf1f7ad85b9b0f0cf5078aeb76ccc9a7c6036c92d48f492ffd",
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/private/tmp/breditor-pending-source-resolution-installed-HfuYPj/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/private/tmp/breditor-pending-source-resolution-installed-HfuYPj/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/private/tmp/breditor-pending-source-resolution-installed-HfuYPj/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "d6cb1a8abfbffd2b25fc6d3248babea3830be773abc0270c9609a1090085dbab"
+      }
+    ],
+    "releaseReady": false,
+    "v1GatesOpen": 13,
+    "passed": true,
+    "tests": 42,
+    "sourceUnchanged": true,
+    "strictPublicTypes": true,
+    "log": "/private/tmp/breditor-pending-source-resolution-installed-HfuYPj/contracts.log",
+    "logSha256": "af94bca8716aa13b6c33ef70b701d843c6d123ec7cb7cf44ae62776770390983",
+    "scope": "The source-Pending repair additionally captures and inspects an actual seven-family uncached-version case with original Pending/download/receipt metadata preserved, all required source and raster data independently recomputed, fourteen upload roles, fresh current authentication and original document/review Undo and Redo. Readonly saved-Native cases preserve all literal packet outcomes, unknown sources, unreconciled clients and the complete original seven-reader Pending attempt matrix. Additional actual inactive Native server replay with newly provisioned operator authentication, complete Native inventory comparison including rehashed source/reference omissions, exact original catalog and first-server packet comparison, final client authority checks after server IO and independent original later-edit isolation. The actual metadata owner additionally reconstructs all seven saved Native histories, reproduces original packet/Pending outcomes, all local packet occurrences and receipt points, and verifies the whole raster union and fourteen upload roles. Valid-frame omitted raster/occurrence/receipt claims, forged host, changed requirements and duplicate nested file bytes refuse; getter reentry is excluded. No whole-room activation is inferred. Complete client/server Native packet and raster union, actual seven lagged Native readers with original Pending preserved while the genuine server supplies the missing source, all original first-server/lossless local strings, full original seven-family packet/asset/server-file workflow followed by the additional owner capture and exact disk readback. Original managed asset ACKs and all-seven-family original protocol delivery; held original receipt comparison over live, saved, original and restored-input states; omission remains Pending despite checked outboxes. Twelve focused original-fact comparison cases include a Native-valid packet byte variant, cached catalog, changed/missing receipts, server rollback, bindings and actual conflict successor. All twenty-one earlier original catalog/packet checks are also mandatory. No receipt installation, queue settlement, writer grant or whole-room activation claim."
+  },
+  "releasePlanContracts": {
+    "selected": 4,
+    "broaderRunnerCIAllocation": 82,
+    "logSha256": "7db988e0b7ae0192ab985fdda9a7c788f2707c274e05548984e119c87e573229",
+    "selectedLogSha256": "a91e8daf357352c24e74a4f4f3928fda6acba2a31d2e74951bf425fde829b6f1"
+  },
+  "proof": {
+    "proof": "/Users/s/code/breditor/target/pending-source-resolution-qualified-proof-079h_zqk",
+    "indexSha256": "35fab74050c210fa3a64f7d7f93419ddac96140059315b80cf1b7f737d1e0264",
+    "references": 61,
+    "uniqueObjects": 55,
+    "gzipBytes": 73509705,
+    "readBackVerified": true,
+    "source": {
+      "commit": "61d8b6f435cdbb70c19cac307aa7f8cdc9975901",
+      "dirty": true,
+      "sha256": "bd1a0b7f9a0e679ddfdeaadbdd5e1f8ea86708f3e08cb49dc3b8fba2b336a40c",
+      "files": 7920,
+      "bytes": 65760462
+    },
+    "sourceCases": 42,
+    "installedCases": 42,
+    "compiledFiles": 2731,
+    "wholeRoomActivated": false,
+    "v1Ready": false,
+    "v1GatesOpen": 13
+  },
+  "installedByteComparison": {
+    "packages": [
+      {
+        "name": "@breditor/browser",
+        "compiledFiles": 188,
+        "archiveSha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f",
+        "allCompiledFilesMatch": true
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "compiledFiles": 180,
+        "archiveSha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15",
+        "allCompiledFilesMatch": true
+      },
+      {
+        "name": "@breditor/collaboration",
+        "compiledFiles": 2363,
+        "archiveSha256": "d6cb1a8abfbffd2b25fc6d3248babea3830be773abc0270c9609a1090085dbab",
+        "allCompiledFilesMatch": true
+      }
+    ],
+    "compiledFiles": 2731,
+    "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+    "nativeExecutablesUnchanged": true
+  },
+  "nativeExecutableSha256": {
+    "target/server-metadata-native/release/examples/selected_suggestion_delivery_functional": "3ff2019ccc49a3a54dc2834e7d9892e7078a328c118e69bd441fff77fdde557f",
+    "target/server-metadata-native/release/examples/complete_cohort_control_functional": "69de301825637e96c47689cbf06ca0a94f5d89a8dd54c0c9261a8054232e457a",
+    "target/server-native-dependencies-native/release/examples/selected_suggestion_delivery_functional": "020df02bb8399f4388a05e0b67e3dc74f7c1473a5350b1b60d665f05ec45011c",
+    "target/server-native-dependencies-native/release/examples/complete_cohort_control_functional": "efbdce5f865d99ad0659f19d4a941aca066482af5e3049991567e4a485ca1e1d",
+    "target/server-packet-inspection-native/release/examples/selected_suggestion_delivery_functional": "61c35699efcd333680ffca06a5ee6c1f2f22dc73722c065d4fca3610e696a3e7",
+    "target/server-packet-inspection-native/release/examples/complete_cohort_control_functional": "d8ad3caf94470ba22bc74c2f62803dc96c8170c868340e7d5b324c6c6d6133dc"
+  },
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "rustSourceChanged": false,
+  "rustSuiteRerun": false,
+  "packageVersionsChanged": false,
+  "sourceCases": 42,
+  "installedCases": 42,
+  "strictPublicTypes": true,
+  "workspaceLinks": false,
+  "actualSevenFamilyWorkflow": {
+    "uncachedVersions": 2,
+    "coveredOriginalOccurrences": 6,
+    "completeReferences": 13,
+    "rasterPayloads": 2,
+    "uploadRoles": 14,
+    "originalBasePendingPreserved": true,
+    "originalRasterPendingPreserved": true,
+    "allNativeDocumentReviewStampsUnchanged": true,
+    "allMetadataQueueAndCacheFieldsUnchanged": true,
+    "cacheInsertions": 0,
+    "diskReadback": true,
+    "freshAuthenticatedInactiveServerReconstruction": true,
+    "all8OwnerRefusals": true,
+    "futureOriginalDocumentAndReviewUndoRedo": true
+  },
+  "savedNativeReadChecks": {
+    "actualAllSevenFamilies": true,
+    "oldReadyAndPendingReproduced": true,
+    "actualPrivateUnavailablePacketPreservesAllSevenOriginalAttempts": true,
+    "unknownSourcesAndUnreconciledClientsRemainPending": true
+  },
+  "wholeRoomActivated": false,
+  "releaseProfilesRun": false,
+  "v1Ready": false,
+  "v1ParityGoalComplete": false,
+  "v1GatesOpen": 13,
+  "remaining": [
+    "Current complete provider/client and outbox reconciliation",
+    "Independent comment/server-log generation integration",
+    "Authenticated whole-room activation",
+    "Complete release profiles and all agreed parity gates"
+  ],
+  "nextDraftExcluded": "The private current-reconciliation/independent-generation experiments are outside this main-tree qualification and commit."
+}

@@ -32,6 +32,6 @@ export async function visitLocalInputPacketNative<T>(source:Loaded,provided:Read
     next.check();live?.dispose();live=next;kept=true;
    }finally{if(!kept)next.dispose();}check();
   }
-  if(!live)throw fail();const selected=live;return await visitPacketNativeAlias(id,selected.core,()=>{check();selected.check();},visit);
+  if(!live)throw fail();const selected=live;return await visitPacketNativeAlias(id,selected.core,()=>{check();selected.check();},visit,selected.recovery.versions);
  }finally{try{live?.dispose();admitted?.close();}finally{work.close();}}
 }

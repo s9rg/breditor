@@ -34,6 +34,6 @@ export async function visitGenerationPacketNative<T>(source:Loaded,provided:Read
    }finally{if(!keep)next.dispose();}
   }
   const last=admitted.states.at(-1);if(!live||last?.slot!=='live')throw fail();
-  const selected=live;return await visitPacketNativeAlias(id,selected.core,()=>{check();selected.check();},visit);
+  const selected=live;return await visitPacketNativeAlias(id,selected.core,()=>{check();selected.check();},visit,selected.source.versions);
  }finally{try{live?.dispose();if(original)backup.dispose.call(original);}finally{work.close();}}
 }

@@ -1,5 +1,27 @@
 # Breditor V1 release preparation
 
+[Available packet-source recovery](SERVER_PACKET_SOURCE_RESOLUTION.md) now passes
+42 source and 42 independently installed checks with strict public types. The
+actual seven-family owner retains and inspects two uncached versions and their
+complete raster union while all six original Pending occurrences, cache flags,
+receipts and Native document/review histories remain intact. Valid rehashed
+source/reference/raster omissions, older servers and getter reentry refuse;
+subsequent original document/review Undo/Redo passes. The older complete
+four-raster/17-packet workflow also passes in both environments.
+
+The [qualification](qualification/2026-11-01-server-packet-source-resolution.json)
+retains the exact executed source, actual public recovery DATA, Native tools,
+independent packages and verified read-back proof. Both release profiles require
+the new checks; 86 release-plan/runner/CI/allocation contracts pass. Compiled SDK
+files match the installed archives. Rust source, normal Wasm, original protocol
+meanings/defaults and package versions are unchanged.
+
+Current complete provider/client reconciliation, independent generation
+integration, authenticated whole-room activation and complete release profiles
+remain required. All thirteen V1/parity gates stay open. The earlier entries
+below retain their narrower historical scope; this new source-availability result
+never acknowledges missing client downloads or settles an outbox.
+
 [Portable client/server packet inspection](PORTABLE_SERVER_PACKET_INSPECTION.md)
 now passes 36 source and 36 independently installed cases with strict public
 types. The actual metadata owner reconstructs all seven saved Native histories,

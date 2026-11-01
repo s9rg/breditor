@@ -1,3 +1,4 @@
+import type {ServerPacketAssetRequirements} from './asset_scope.js';
 /** Re-admit every retained raster against exact Native requirements and both
  * whole upload roles. A newly authenticated selected server checks its own
  * provider; recorded provider JSON never chooses current mappings or rights. */
@@ -9,11 +10,11 @@ import {generationRecoveryHostPort,type SharedServerLogGenerationRecoveryHost} f
 import {readLocalMetadataUploadInventory,localMetadataAssetInfo} from '../selected_local_metadata_assets/upload_inventory.js';
 import {localMetadataRecoverableRequirements} from '../selected_local_metadata_assets/recoverable_requirements.js';
 import {ServerPacketAssetArchive} from './asset_archive.js';
-import type {ServerPacketRecoveryBundle,ServerPacketClosure} from './contract.js';
+import type {ServerPacketRecoveryBundle} from './contract.js';
 import type {ServerPacketRecoveryInspection} from './inspection_contract.js';
 import {fail,same} from '../metadata_packet_retention/policy.js';
 const meaning=(read:import('../generation_recovery_control/asset_contract.js').SharedServerLogGenerationRecoveryAssetRead)=>({resolutions:read.resolutions,assets:read.assets,missing:read.missing});
-export async function inspectServerPacketRasters(bundle:ServerPacketRecoveryBundle,closure:ServerPacketClosure,room:SelectedRoomCurrentArchive,cut:PhysicalRoomRecordCutArchive,host:SharedServerLogGenerationRecoveryHost,options:SharedArchiveIntegrityOptions,limits:Readonly<AssetLimits>,check:()=>void):Promise<ServerPacketRecoveryInspection['rasters']>{
+export async function inspectServerPacketRasters(bundle:ServerPacketRecoveryBundle,closure:ServerPacketAssetRequirements,room:SelectedRoomCurrentArchive,cut:PhysicalRoomRecordCutArchive,host:SharedServerLogGenerationRecoveryHost,options:SharedArchiveIntegrityOptions,limits:Readonly<AssetLimits>,check:()=>void):Promise<ServerPacketRecoveryInspection['rasters']>{
  check();const port=generationRecoveryHostPort(host);if(!same(port.selection.source.origin,bundle.server.identity)||!same(port.selection.source.server,bundle.server.identity)||!same(port.selection.source.participants,bundle.inventory.identity))throw fail();
  if(bundle.assets.kind==='pending'){
   if(closure.outcome.kind==='pending'&&!same(bundle.assets.missing,[{kind:'native-source'}])||closure.outcome.kind==='ready'&&bundle.assets.missing.some(row=>row.kind==='native-source'))throw fail();

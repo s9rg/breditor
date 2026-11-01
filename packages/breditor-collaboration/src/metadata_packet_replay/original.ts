@@ -20,6 +20,6 @@ export async function visitOriginalPacketNative<T>(source:Loaded,provided:Readon
   const read={...chosen,restore:work.restore(chosen.restore,chosen)};
   original=await backup.read.call(Backup,source.participantFile(id),entry.selection,options);check();await admitOriginalReconstructionParent(source,id,original,read,options,check);check();
   selected=await admitOriginalReconstructionNative(source,id,original,read,raw['descriptor']);check();const native=selected.native;
-  return await visitPacketNativeAlias(id,native.core,()=>{check();native.check();},visit);
+  return await visitPacketNativeAlias(id,native.core,()=>{check();native.check();},visit,native.state.paired?.versions??[]);
  }finally{try{selected?.close();if(original)backup.dispose.call(original);}finally{work.close();}}
 }

@@ -100,12 +100,15 @@ historical DATA, including original Pending meanings; it is not fresh complete
 client/outbox reconciliation. Types do not offer activation, queue settlement or
 writable Native access.
 
-Base-Pending source resolution remains required: a genuinely unknown original
-base source still keeps the combined closure Pending. Independent comment and
-server-log generations, fresh complete provider/client reconciliation and
-authenticated whole-room activation also remain required. This is an inspection
-contract, not a V1 or feature-parity completion claim. All thirteen V1 gates
-remain open.
+The original scope keeps its literal base-Pending meaning. The separately named
+[available source resolution](SERVER_PACKET_SOURCE_RESOLUTION.md) now retains and
+inspects independently available Native/server packet sources and their raster
+union while preserving this entire original result. A genuinely unknown source
+or unreconciled client still keeps the new source scope Pending. Independent
+comment/server-log generation integration, fresh complete provider/client
+reconciliation and authenticated whole-room activation remain required. These
+are inspection contracts, not V1 or feature-parity completion claims. All
+thirteen V1 gates remain open.
 
 ## Reproducible checks
 

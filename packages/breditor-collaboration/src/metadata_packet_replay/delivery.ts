@@ -65,6 +65,6 @@ export async function visitDeliveryPacketNative<T>(source:Loaded,provided:Readon
     previous.check();live.check();
    }finally{previous.dispose();}
   }
-  const selected=live;return await visitPacketNativeAlias(id,selected.core,()=>{check();selected.check();},visit);
+  const selected=live;return await visitPacketNativeAlias(id,selected.core,()=>{check();selected.check();},visit,liveData.source.versions);
  }finally{try{live?.dispose();if(literal)backup.dispose.call(literal);if(original)backup.dispose.call(original);}finally{work.close();}}
 }

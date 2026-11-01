@@ -1,3 +1,5 @@
+import {detachResolvedServerPacketRecoveryBundle} from '../server_packet_source_resolution/bundle.js';
+import type {ResolvedServerPacketRecoveryBundle,ResolvedServerPacketRecoveryOutcome,ResolvedServerPacketRecoveryInspection} from '../server_packet_source_resolution/contract.js';
 import {detachServerPacketRecoveryBundle} from '../server_packet_recovery/inspection_bundle.js';
 import type {ServerPacketRecoveryInspection} from '../server_packet_recovery/inspection_contract.js';
 import {generationRecoveryHostPort,type SharedServerLogGenerationRecoveryHost} from '../generation_recovery_control/host.js';
@@ -206,6 +208,12 @@ export class SelectedLocalMetadataDelivery{
   let input!:ReturnType<typeof prepareMetadataPacketRecoveryInput>,result:ServerPacketRecoveryOutcome|undefined;
   return this.#captureReferenceOperation(async work=>{this.#current();if(!this.#snapshot)throw fail();result=await work.serverPacketRecovery(input,this.#snapshot);this.#current();},()=>{input=prepareMetadataPacketRecoveryInput(provided);}).then(()=>{if(!result)throw fail();return result;});
  }
+ /** Separately retain verified available sources while preserving every literal
+  * original Pending/download/receipt fact. The task is reserved before inputs. */
+ captureResolvedServerPacketRecovery(provided:ServerPacketRecoveryInput):Promise<ResolvedServerPacketRecoveryOutcome>{
+  let input!:ReturnType<typeof prepareMetadataPacketRecoveryInput>,result:ResolvedServerPacketRecoveryOutcome|undefined;
+  return this.#captureReferenceOperation(async work=>{this.#current();if(!this.#snapshot)throw fail();result=await work.resolvedServerPacketRecovery(input,this.#snapshot);this.#current();},()=>{input=prepareMetadataPacketRecoveryInput(provided);}).then(()=>{if(!result)throw fail();return result;});
+ }
  /** Source-owned immutable raster bytes for the complete Native/provider and
   * whole-upload union. Transport reads neither mutate caches nor ACK queues. */
  captureMaterializedAssets(host:LocalMetadataAssetAvailabilityHost,transport:SharedRelayAssets,provided:LocalMetadataMaterializationOptions={}):Promise<LocalMetadataMaterializationOutcome>{
@@ -257,6 +265,12 @@ export class SelectedLocalMetadataDelivery{
  inspectServerPacketRecovery(provided:ServerPacketRecoveryBundle,host:SharedServerLogGenerationRecoveryHost,options:LocalMetadataMaterializationOptions={}):Promise<ServerPacketRecoveryInspection>{
   let bundle!:ServerPacketRecoveryBundle,limits!:LocalMetadataMaterializationOptions;
   return this.#inspectReferenceOperation(()=>bundle.packets.references,async(work,actual,portable)=>work.inspectServerPacketRecovery(bundle,actual,portable,host,limits),()=>{generationRecoveryHostPort(host);bundle=detachServerPacketRecoveryBundle(provided);limits={limits:localMetadataMaterializationLimits(options)};});
+ }
+ /** The original envelope and new resolution are both recomputed. Historical
+  * availability never becomes current client or outbox reconciliation. */
+ inspectResolvedServerPacketRecovery(provided:ResolvedServerPacketRecoveryBundle,host:SharedServerLogGenerationRecoveryHost,options:LocalMetadataMaterializationOptions={}):Promise<ResolvedServerPacketRecoveryInspection>{
+  let bundle!:ResolvedServerPacketRecoveryBundle,limits!:LocalMetadataMaterializationOptions;
+  return this.#inspectReferenceOperation(()=>bundle.original.packets.references,async(work,actual,portable)=>work.inspectResolvedServerPacketRecovery(bundle,actual,portable,host,limits),()=>{generationRecoveryHostPort(host);bundle=detachResolvedServerPacketRecoveryBundle(provided);limits={limits:localMetadataMaterializationLimits(options)};});
  }
  #inspectReferenceOperation<T>(selected:()=>LocalMetadataReferenceBundle,visit:(work:LocalMetadataReferenceWork,actual:LocalMetadataReferenceCut,portable:LocalMetadataDeliverySnapshot)=>Promise<T>,prepare:()=>void):Promise<T>{
   return this.#captureOperation(async()=>{
