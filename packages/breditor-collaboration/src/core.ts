@@ -27,6 +27,7 @@ import {SharedSearchResults,nativeSearchResults} from "./search_results.js";
 import {parseSegmentedHistoryInfo,type SharedSegmentedHistoryInfo} from "./segmented_history.js";
 import {registerManagedCore} from "./managed_custody.js";
 import {registerCoreReadStamp} from './core_read_stamp.js';
+import {registerCoreReadState,type CoreReadState} from './core_read_state.js';
 import type {SharedReviewHistoryPolicy} from "./review_generations.js";
 import {SharedEditorError} from './shared_editor_error.js';
 import {claimSharedRustOwner} from './raw_owner_lifetime.js';
@@ -59,6 +60,7 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  readonly #assetReferences=new RichRetainedAssetReferenceRegistry();
  readonly #packetAssetReferences=new SharedPacketAssetReferenceRegistry();
  #raw:SharedRustOwner|undefined;#observation:ReturnType<SharedRustOwner["observe"]>|undefined;#view="";#descriptor="";
+ #readState:CoreReadState|undefined;
  #disposedRevisions:{documentRevision:string;reviewRevision:string}|undefined;
  #documentReadStamp:object=Object.freeze({});#reviewReadStamp:object=Object.freeze({});
  #listeners=new Set<(event:SharedPublication<P>)=>void>();#queue:Pending[]=[];#bytes=0;#holds=0;#publishing=false;#draining=false;#retired=false;
@@ -158,14 +160,18 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
    if(view.rangeEditing!==undefined&&(view.rangeEditing!=="general-v1"||!this.supportsGeneralRanges()))throw new SharedEditorError("general_range_unavailable","Use a complete matching native general-range owner");
    registerManagedCore(this,()=>{this.#live();if(this.#retired)throw new SharedEditorError("retired","The shared writer no longer has live managed custody");},()=>this.#retainedRevisions());
    registerCoreReadStamp(this,()=>{this.#live();return{document:this.#documentReadStamp,review:this.#reviewReadStamp};});
+   registerCoreReadState(this,()=>{this.#live();return this.#publicationState();});
   }
   catch(error){try{this.#observation?.free();}finally{this.#raw=undefined;raw.free();}throw error;}
  }
  #live():SharedRustOwner{if(!this.#raw)throw new SharedEditorError("disposed","The shared editor is disposed");return this.#raw;}
  #nativeRecoveryAccess(token?:object):void{if(token!==undefined&&this.#nativeRecovery!==token)throw nativeRecoveryFailure('native_recovery_closed');if(this.#nativeRecovery!==undefined&&this.#nativeRecovery!==token)throw nativeRecoveryFailure('native_recovery_busy');}
- #retainedRevisions():{documentRevision:string;reviewRevision:string}{return this.#disposedRevisions??{documentRevision:(JSON.parse(this.#view) as SharedEditorView<P>).revision,reviewRevision:this.#reviewRevision.toString()};}
+ /** Cache only immutable scalars from our own exact native view string. Each
+  * changed publication invalidates this cache before any subscriber can run. */
+ #publicationState():CoreReadState{if(!this.#readState){const view=JSON.parse(this.#view) as SharedEditorView<P>;this.#readState=Object.freeze({documentRevision:view.revision,readOnly:view.readOnly===true});}return this.#readState;}
+ #retainedRevisions():{documentRevision:string;reviewRevision:string}{return this.#disposedRevisions??{documentRevision:this.#publicationState().documentRevision,reviewRevision:this.#reviewRevision.toString()};}
  #observe(raw:SharedRustOwner):ReturnType<SharedRustOwner["observe"]>{return this.#selectionPolicy==="document-v1"?raw.observe_document!():raw.observe();}
- #check(revision?:string):void{this.#live();if(revision!==undefined&&revision!==this.view().revision)throw new SharedEditorError("stale_observation","The request was prepared from an older shared publication");}
+ #check(revision?:string):void{this.#live();if(revision!==undefined&&revision!==this.#publicationState().documentRevision)throw new SharedEditorError("stale_observation","The request was prepared from an older shared publication");}
  /** Native pure reads remain available in read-only mode and never publish to subscribers. */
  supportsPlaceholder():boolean{const raw=this.#live();return raw.placeholder_version?.()==="1"&&typeof raw.placeholder_empty==="function";}
  supportsRetainedAssetReferences():boolean{const raw=this.#live();return raw.retained_asset_references_version?.()==="1"&&typeof raw.retained_asset_references_json==="function";}
@@ -254,9 +260,9 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  #run<T>(source:"local"|"remote",work:(raw:SharedRustOwner,observation:unknown)=>T,revision?:string,write=true,recovery?:object):T{
   this.#nativeRecoveryAccess(recovery);
   this.#check(revision);if(this.#retired)throw new SharedEditorError("retired","The shared writer is retired for durable closure");if(this.#publishing)throw new SharedEditorError("reentrant_publication","Publication callbacks cannot publish reentrantly");
-  if(write&&this.view().readOnly===true)throw new SharedEditorError("read_only","The shared editor is read-only");
+  if(write&&this.#publicationState().readOnly===true)throw new SharedEditorError("read_only","The shared editor is read-only");
   const raw=this.#live(),before=this.#view,reviewBefore=this.#reviewRevision;this.#publishing=true;
-  try{const result=work(raw,this.#observation);const next=this.#observe(raw),view=next.view_json();this.#observation?.free();this.#observation=next;this.#view=view;if(before!==view)this.#documentReadStamp=Object.freeze({});if(reviewBefore!==this.#reviewRevision)this.#reviewReadStamp=Object.freeze({});if(before!==view)this.#notify(source);else if(reviewBefore!==this.#reviewRevision)this.#notifyReview();return result;}
+  try{const result=work(raw,this.#observation);const next=this.#observe(raw),view=next.view_json();this.#observation?.free();this.#observation=next;this.#view=view;if(before!==view){this.#readState=undefined;this.#documentReadStamp=Object.freeze({});}if(reviewBefore!==this.#reviewRevision)this.#reviewReadStamp=Object.freeze({});if(before!==view)this.#notify(source);else if(reviewBefore!==this.#reviewRevision)this.#notifyReview();return result;}
   finally{this.#publishing=false;if(!this.#draining)this.#flush();}
  }
  view():SharedEditorView<P>{this.#live();return JSON.parse(this.#view) as SharedEditorView<P>;}

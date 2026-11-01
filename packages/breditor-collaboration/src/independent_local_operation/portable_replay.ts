@@ -1,3 +1,4 @@
+import {coreReadState} from '../core_read_state.js';
 /** Exact local-only native replay. No delivery companion, persistent store or
  * author lease is created, and a native history is never reconstructed from AST. */
 import {SharedRichEditor,createSharedDocumentEditor} from '../core.js';
@@ -38,7 +39,7 @@ export async function replayLocalOperationRecovery<P extends SharedSelectionPoli
    * No checkpoint encoding or host authority callback. This is not byte
    * admission: full check() stays unchanged and must fence actual data reads,
    * lineage verification and publication. The kernel never exposes its anchor. */
-  const current=()=>{if(closed)throw fail('independent_local_operation_read_closed');const actual=coreReadStamp(owned);if(actual.document!==stamp.document||actual.review!==stamp.review||native.view.call(owned).readOnly!==true)throw fail('independent_local_operation_read_changed');};
+  const current=()=>{if(closed)throw fail('independent_local_operation_read_closed');const actual=coreReadStamp(owned);if(actual.document!==stamp.document||actual.review!==stamp.review||coreReadState(owned).readOnly!==true)throw fail('independent_local_operation_read_changed');};
   current();return Object.freeze({core:owned,recovery,check:live,checkCurrent:current,dispose:()=>{if(closed)return;closed=true;dispose.call(owned);}});
  }catch(error){if(core)dispose.call(core);if(raw)freeUnclaimedSharedRustOwner(raw);throw error;}
 }

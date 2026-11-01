@@ -1,0 +1,5 @@
+/** Exact functional scope for private scalar reads and existing Native lifetimes. */
+export const publicationStateTests=Object.freeze(['native-publication-state.test.mjs','native-history-read.test.mjs','native-origin-current.test.mjs','independent-local-portable-replay-lifetime.test.mjs','independent-local-native-origin.test.mjs','independent-operation-native-origin.test.mjs','owned-core-cleanup.test.mjs']);
+export const publicationStateTypes=Object.freeze(['scripts/fixtures/editor-consumer/types-native-history-read.ts','scripts/fixtures/editor-consumer/types-independent-local-native-origin.ts','scripts/fixtures/editor-consumer/types-independent-operation-native-origin.ts']);
+export const publicationStateCount=150;
+export function checkPublicationStateEvidence(log){for(const [key,value]of [['tests',publicationStateCount],['pass',publicationStateCount],['fail',0],['cancelled',0],['skipped',0],['todo',0]])if(!new RegExp('^# '+key+' '+value+'$','m').test(log))throw Error('Missing exact complete publication-state result: '+key);}

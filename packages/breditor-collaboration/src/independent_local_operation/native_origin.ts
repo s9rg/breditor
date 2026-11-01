@@ -1,3 +1,4 @@
+import {coreReadState} from '../core_read_state.js';
 /** Genuine local-only native ancestry. The retained archive is borrowed for the
  * origin lifetime; no relay binding, delivery receipt or author lease is made.
  * This is not a durable operation journal or whole-room activation authority. */
@@ -59,7 +60,7 @@ export class IndependentLocalNativeOperationOrigin{
   * independent host's write grant or cancellation scope ends. */
  checkReadable():void{readableCurrent.call(this);if(file.call(this.#backup)!==this.#file||native.view.call(this.#core).readOnly!==true||native.checkpointJson.call(this.#core)!==this.#document||(this.#identity.reviewHistory==='original'?native.reviewCheckpoint.call(this.#core):native.reviewSegmentedCheckpoint.call(this.#core))!==this.#review)throw fail();readableCurrent.call(this);}
  /** Private held-readonly sentinel, not incoming native proof or permission. */
- checkReadableCurrent():void{if(this.#closed)throw closed();const stamp=coreReadStamp(this.#core);if(stamp.document!==this.#stamp.document||stamp.review!==this.#stamp.review||file.call(this.#backup)!==this.#file||native.view.call(this.#core).readOnly!==true)throw fail();}
+ checkReadableCurrent():void{if(this.#closed)throw closed();const stamp=coreReadStamp(this.#core);if(stamp.document!==this.#stamp.document||stamp.review!==this.#stamp.review||file.call(this.#backup)!==this.#file||coreReadState(this.#core).readOnly!==true)throw fail();}
  verifyCore(core:SharedRichEditor<SharedSelectionPolicy>,versions:readonly string[]):void{this.#verify(core,versions,()=>check.call(this));}
  verifyReadableCore(core:SharedRichEditor<SharedSelectionPolicy>,versions:readonly string[]):void{this.#verify(core,versions,()=>readable.call(this));}
  #verify(core:SharedRichEditor<SharedSelectionPolicy>,versions:readonly string[],guard:()=>void):void{

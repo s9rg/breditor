@@ -1,5 +1,22 @@
 # Breditor V1 release preparation
 
+[Current native publication scalars](NATIVE_PUBLICATION_STATE.md) remove a
+reproduced source of repeated full editor-view parsing in held-origin and
+portable-replay guards. Both the fixed source and fresh independently installed
+matrix pass all 150 Native checks with strict public types; all 2,743 compiled
+SDK files match the installed archives. Eight preceding-implementation cases
+reproduce the parse-budget failure, and 73 release-plan/runner checks pass.
+
+The [qualification](qualification/2026-11-01-native-publication-state.json)
+retains exact executed source, archives, logs and read-back-verified proof.
+Liveness, full native record admission, disposal, readonly mutation, actual
+publication callbacks and future Undo/Redo remain checked. Rust, normal Wasm,
+original protocols/defaults and package versions are unchanged. The earlier
+combined cold-recovery timeout and diagnostic harness failure are not claimed
+fixed by this component optimization. End-to-end recovery performance,
+authenticated whole-room activation, complete candidate profiles and all
+thirteen V1/parity gates remain open.
+
 [Independent current document/comment histories](INDEPENDENT_CURRENT_RECONCILIATION.md)
 now complete three real Native cases from source and three from independently
 installed packages. Every case retains seven clients, real managed upload ACKs,

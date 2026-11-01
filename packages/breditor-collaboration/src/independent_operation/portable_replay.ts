@@ -1,3 +1,4 @@
+import {coreReadState} from '../core_read_state.js';
 /** A temporary exact read-only native replay. It never acquires an author lease or opens storage. */
 import {SharedRichEditor,createSharedDocumentEditor} from '../core.js';
 import {initializeSharedReadOnly} from '../initialize_read_only.js';
@@ -35,7 +36,7 @@ export async function replayPortableRecovery<P extends SharedSelectionPolicy>(op
   /** Private held-readonly currentness, not incoming byte/native admission.
    * Full check() fences actual reads and lineage verification. No host policy
    * or checkpoint serialization runs during a hashing/lifetime sentinel. */
-  const current=()=>{if(closed)throw fail('independent_operation_read_closed');const actual=coreReadStamp(selected);if(actual.document!==stamp.document||actual.review!==stamp.review||native.view.call(selected).readOnly!==true)throw fail('independent_operation_read_changed');};
+  const current=()=>{if(closed)throw fail('independent_operation_read_closed');const actual=coreReadStamp(selected);if(actual.document!==stamp.document||actual.review!==stamp.review||coreReadState(selected).readOnly!==true)throw fail('independent_operation_read_changed');};
   current();return Object.freeze({core:selected,check:live,checkCurrent:current,dispose:()=>{if(closed)return;closed=true;dispose.call(selected);}});
  }catch(error){if(core)dispose.call(core);if(raw)freeUnclaimedSharedRustOwner(raw);throw error;}
 }

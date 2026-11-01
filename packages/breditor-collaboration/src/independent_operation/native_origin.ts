@@ -1,3 +1,4 @@
+import {coreReadState} from '../core_read_state.js';
 /** A genuine read-only replay of the selected complete participant's two native lanes.
  * This proves native continuation, not retained-outbox conservation, upload custody,
  * current server permission or whole-room activation. No author lease is acquired. */
@@ -68,7 +69,7 @@ export class IndependentNativeOperationOrigin {
  }
  /** Private held-readonly liveness only, never byte/native admission or a
   * renewed host grant. Full checks fence persisted reads and native ancestry. */
- checkReadableCurrent():void{if(this.#closed)throw closed();const stamp=coreReadStamp(this.#core);if(stamp.document!==this.#stamp.document||stamp.review!==this.#stamp.review||readFile.call(this.#backup)!==this.#file||native.view.call(this.#core).readOnly!==true)throw invalid();}
+ checkReadableCurrent():void{if(this.#closed)throw closed();const stamp=coreReadStamp(this.#core);if(stamp.document!==this.#stamp.document||stamp.review!==this.#stamp.review||readFile.call(this.#backup)!==this.#file||coreReadState(this.#core).readOnly!==true)throw invalid();}
  /** Both original/segmented native lanes must descend from the genuine replay.
   * The current local version set may grow, but cannot lose any selected packet. */
  verifyCore(core:SharedRichEditor<SharedSelectionPolicy>,versions:readonly string[]):void{this.#verify(core,versions,()=>checkOrigin.call(this));}

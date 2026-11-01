@@ -1,0 +1,274 @@
+{
+  "format": "breditor/native-publication-state-qualification",
+  "formatVersion": 1,
+  "scope": "Private cached native publication scalars and preserved original currentness/lifetime/admission laws; not complete room recovery",
+  "source": {
+    "format": "breditor/native-publication-state-source",
+    "formatVersion": 1,
+    "complete": true,
+    "source": {
+      "commit": "0cca2fadfdbf559b3a21fbb6cf8de464b914e331",
+      "dirty": true,
+      "sha256": "cfcc78cbcd189711049612f5aa71b5e8693e7516eb25cfebd7f82ae364ace5e5",
+      "files": 7958,
+      "bytes": 65984142
+    },
+    "compiled": {
+      "files": 2743,
+      "bytes": 34247026,
+      "sha256": "dd7b70222c8a713df8cf100bbbab823e195a1a5c95aff1d8ac4e56de8db2c3bd"
+    },
+    "directory": "/Users/s/code/breditor/target/publication-state-source-vMnEwh",
+    "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+    "releaseReady": false,
+    "v1GatesOpen": 13,
+    "passed": true,
+    "tests": 150,
+    "strictPublicTypes": true,
+    "sourceUnchanged": true,
+    "log": "/Users/s/code/breditor/target/publication-state-source-vMnEwh/contracts.log",
+    "logSha256": "4fc2f0e6cd0491bbaecdd089ba845eb4a0dc8fe02cb58dc553ef8942822a63ab"
+  },
+  "installed": {
+    "format": "breditor/native-publication-state-installed-consumer",
+    "formatVersion": 1,
+    "complete": true,
+    "source": {
+      "commit": "0cca2fadfdbf559b3a21fbb6cf8de464b914e331",
+      "dirty": true,
+      "sha256": "cfcc78cbcd189711049612f5aa71b5e8693e7516eb25cfebd7f82ae364ace5e5",
+      "files": 7958,
+      "bytes": 65984142
+    },
+    "sourceRoot": "/Users/s/code/breditor",
+    "directory": "/private/tmp/breditor-publication-state-installed-MT8diu",
+    "consumer": "/private/tmp/breditor-publication-state-installed-MT8diu/consumer",
+    "workspaceLinks": false,
+    "registryArtifacts": 45,
+    "copied": [
+      {
+        "path": "scripts/native-publication-state.test.mjs",
+        "sourceSha256": "e288f4117bd6a15e97e0f802512f3533cd4d8eade3e42f3d782e2da068f6084d",
+        "installedSha256": "35184ce5fe472634532aeb486f70fd7242aee10dc7842701a7986d5f96a1cb2b",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/owned-core-cleanup/environment.mjs",
+        "sourceSha256": "c5e730d96096b9d562d4eb58c3884ce3f82b8e16eb16b4dd06e14612cf8efde8",
+        "installedSha256": "c5e730d96096b9d562d4eb58c3884ce3f82b8e16eb16b4dd06e14612cf8efde8",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/owned-core-cleanup/session.mjs",
+        "sourceSha256": "06cdb0e4e85ff62e35278f947265bfcd345dbdd5c47e101d6bb5dc832de1456c",
+        "installedSha256": "06cdb0e4e85ff62e35278f947265bfcd345dbdd5c47e101d6bb5dc832de1456c",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/native-history-read.test.mjs",
+        "sourceSha256": "af489b21e7e4b6216b015e8968350af0be6687ca453aa3748d2c75cd0d142058",
+        "installedSha256": "198c031e96f5e3de6e2ecabb380b8f25eb81849ef7c4c53603b808d423c81e62",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/native-history-read/capture.mjs",
+        "sourceSha256": "572ae2eb747d7e8c5e81907bcd5d07fd34fbd9c7c2340696f6f41c59a40fe4e5",
+        "installedSha256": "572ae2eb747d7e8c5e81907bcd5d07fd34fbd9c7c2340696f6f41c59a40fe4e5",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/native-origin-current.test.mjs",
+        "sourceSha256": "3da44006f583b009c88c41731c65ebef2e45560c498cdc82f793b5b6f534daba",
+        "installedSha256": "f16f33cbfa75a38fbb35db42204cced5a7daa9609cbe4ce0c151dea40d02f4e7",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/independent-delivery-participant/session.mjs",
+        "sourceSha256": "14930fad867948d8e4e26d31238cec26e81d7bd7fe64de20a100c7c79a52c9be",
+        "installedSha256": "14930fad867948d8e4e26d31238cec26e81d7bd7fe64de20a100c7c79a52c9be",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/independent-delivery/session.mjs",
+        "sourceSha256": "508c07b2b465bf54f64478c99dda369004a94aa494925ac510c6c064a5773450",
+        "installedSha256": "508c07b2b465bf54f64478c99dda369004a94aa494925ac510c6c064a5773450",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/review-assets/pixels.mjs",
+        "sourceSha256": "a3fe0b8c13d63705d7c2c2ccf7379ab424cc42b1d7f55ca895f95d53d6749b71",
+        "installedSha256": "a3fe0b8c13d63705d7c2c2ccf7379ab424cc42b1d7f55ca895f95d53d6749b71",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/interchange-consumer/pixel.mjs",
+        "sourceSha256": "9ad4c906fb69b3749dd0bda943520326fffe7311c033a6891f6d43a67041c15c",
+        "installedSha256": "9ad4c906fb69b3749dd0bda943520326fffe7311c033a6891f6d43a67041c15c",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/independent-delivery-recovery/session.mjs",
+        "sourceSha256": "500dad0ff9d055774466e6dd674ecbf505bc1af8641398ba71641329b54b81fc",
+        "installedSha256": "500dad0ff9d055774466e6dd674ecbf505bc1af8641398ba71641329b54b81fc",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/room-participant-inventory/environment.mjs",
+        "sourceSha256": "19bd5d61d0797dc0965174db44cd2ec4706512e70ca18f1ec31de0b582cd4c09",
+        "installedSha256": "19bd5d61d0797dc0965174db44cd2ec4706512e70ca18f1ec31de0b582cd4c09",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/independent-recovery/unit.mjs",
+        "sourceSha256": "7959932168315da10a19065cbc34df2601065b12ac81210195fc1de0f5f72246",
+        "installedSha256": "7959932168315da10a19065cbc34df2601065b12ac81210195fc1de0f5f72246",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/independent-recovery/session.mjs",
+        "sourceSha256": "fae9bd1dc38025d4f66c0707390804778b4b131e96090f03ce6ec697aa5e06fd",
+        "installedSha256": "fae9bd1dc38025d4f66c0707390804778b4b131e96090f03ce6ec697aa5e06fd",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/independent-local-portable-replay-lifetime.test.mjs",
+        "sourceSha256": "3bcb71195af20481b3d513876a0775342dd51774086853649b75900e156d03b0",
+        "installedSha256": "738e3ad069fbdee1d7b1efe64ce48c7aefcd52d5193b0c0998a3c74f15d98ec0",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/independent-local-native-origin.test.mjs",
+        "sourceSha256": "ec1f118a0b0bd69c419a6a7a113d896841168b96d3a4a5648c4065916ef09dcf",
+        "installedSha256": "56b66e5ced77d3283153e36dea0cebe434bd0b8eb3721c1622debc38c9aff440",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/independent-local-operation/origin.mjs",
+        "sourceSha256": "657571a430030dee5e2418d533df42e383cfc16e75e8380ae5ca0c100f598c9d",
+        "installedSha256": "657571a430030dee5e2418d533df42e383cfc16e75e8380ae5ca0c100f598c9d",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/independent-delivery-recovery/storage.mjs",
+        "sourceSha256": "2479c12c68891e0fb7a5a8a5556fc1e2abdf93199154700da8c540ed9ee47251",
+        "installedSha256": "2479c12c68891e0fb7a5a8a5556fc1e2abdf93199154700da8c540ed9ee47251",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/independent-operation-native-origin.test.mjs",
+        "sourceSha256": "81785e622a352af9317e40506b6ae2b1262010bd53d10f145d0f1a276abfb931",
+        "installedSha256": "d0ca7d87e863c6ae07aac1cf8df3d992f57df1d150f5d890c6267291299f84df",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/owned-core-cleanup.test.mjs",
+        "sourceSha256": "76cd55720073c6547a90c0cca8c9d6a43d09e1bd3db09ef63d0f8ced8e02c185",
+        "installedSha256": "f13abe511756e4476c487326b47a1f94a5d2135f99a519ba0b0ab16d8085e629",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/owned-core-cleanup/transaction_barrier.mjs",
+        "sourceSha256": "28359c88a62a8f3d4959aa9c7871a1739ad299d5d7abe5724eb9857d59669db8",
+        "installedSha256": "28359c88a62a8f3d4959aa9c7871a1739ad299d5d7abe5724eb9857d59669db8",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/editor-consumer/types-native-history-read.ts",
+        "sourceSha256": "965720d18af3489ccd548c39eac5a0ca0fc3f2acba967ec13d71decc8de21969",
+        "installedSha256": "965720d18af3489ccd548c39eac5a0ca0fc3f2acba967ec13d71decc8de21969",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/editor-consumer/types-independent-local-native-origin.ts",
+        "sourceSha256": "1b24ce4dfb2e667a88cbc676a3fb461059c8721f144298482b4c88ddf837cc17",
+        "installedSha256": "1b24ce4dfb2e667a88cbc676a3fb461059c8721f144298482b4c88ddf837cc17",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "scripts/fixtures/editor-consumer/types-independent-operation-native-origin.ts",
+        "sourceSha256": "55417a235afcc18c417907443bde128d8679003f3775af0dc7fcaa3a5ff0e29d",
+        "installedSha256": "55417a235afcc18c417907443bde128d8679003f3775af0dc7fcaa3a5ff0e29d",
+        "reversibleModuleLocationsOnly": true
+      },
+      {
+        "path": "crates/breditor-core/tests/fixtures/rich-local-root.json",
+        "sourceSha256": "761ce4641bafcca82c10081d79e318a9dab5bf33aa11919c0c69909dbc8f2eca",
+        "installedSha256": "761ce4641bafcca82c10081d79e318a9dab5bf33aa11919c0c69909dbc8f2eca"
+      }
+    ],
+    "compiled": {
+      "files": 2743,
+      "bytes": 34247026,
+      "sha256": "dd7b70222c8a713df8cf100bbbab823e195a1a5c95aff1d8ac4e56de8db2c3bd"
+    },
+    "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+    "compilerSha256": "2219f428a7e55aaf1f7ad85b9b0f0cf5078aeb76ccc9a7c6036c92d48f492ffd",
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/private/tmp/breditor-publication-state-installed-MT8diu/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/private/tmp/breditor-publication-state-installed-MT8diu/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/private/tmp/breditor-publication-state-installed-MT8diu/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "8f5687f3b493ab9494f8df91c0c4fc5cd455d2fe5cef649be41871f669d91cf3"
+      }
+    ],
+    "releaseReady": false,
+    "v1GatesOpen": 13,
+    "passed": true,
+    "tests": 150,
+    "sourceUnchanged": true,
+    "strictPublicTypes": true,
+    "log": "/private/tmp/breditor-publication-state-installed-MT8diu/contracts.log",
+    "logSha256": "694f89b0c9b5b13ae30f5e6bccbbf0de241dad5efb948b49b022dee6c5e88821",
+    "scope": "Actual normal Native document/comment histories, publication scalar invalidation, original full record admission, readonly mutation/disposal refusal, exact future Undo/Redo and independent installed package/types. Controlled IDB/locks/raster presentation. No whole-room activation, full recovery performance or V1 approval."
+  },
+  "releasePlanTests": 73,
+  "precedingImplementation": {
+    "commit": "0cca2fadfdbf559b3a21fbb6cf8de464b914e331",
+    "tests": 8,
+    "failures": 8,
+    "observedFullViewParsesPer1000HeldCurrentChecks": 1000,
+    "log": "/private/tmp/breditor-live-read-state-r7njr5pp/baseline-origin-current-retry.log"
+  },
+  "executedSourceArchive": {
+    "files": 7958,
+    "bytes": 65984142,
+    "archive": "/private/tmp/breditor-live-read-state-r7njr5pp/executed-source.tar.gz",
+    "archiveBytes": 20301660,
+    "archiveSha256": "9e47423142b95bc516f8f29b8313ff1b546d34ebc795f2451c68e5981015f136",
+    "readBackVerified": true,
+    "baseCommit": "0cca2fadfdbf559b3a21fbb6cf8de464b914e331"
+  },
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/publication-state-qualified-proof-fb1x51hq",
+    "indexSha256": "8744eedf62c6f50689638ecd2ec8d443ab60390c072405fc37c5b5892bbe8e52",
+    "references": 29,
+    "objects": 25,
+    "gzipBytes": 29058116,
+    "allReadBackVerified": true
+  },
+  "postQualificationFiles": [
+    "docs/NATIVE_PUBLICATION_STATE.md",
+    "docs/qualification/2026-11-01-native-publication-state.json",
+    "docs/V1_RELEASE_PLAN.md"
+  ],
+  "originalDiagnosticFunctionalPass": false,
+  "fullRecoveryPerformanceQualified": false,
+  "wholeRoomActivated": false,
+  "releaseReady": false,
+  "v1GatesOpen": 13,
+  "rustSourceChanged": false,
+  "normalWasmChanged": false,
+  "publicProtocolsAndDefaultsChanged": false,
+  "packageVersionsChanged": false,
+  "pushed": false,
+  "published": false
+}
