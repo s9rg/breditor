@@ -1,3 +1,5 @@
+import {prepareMetadataPacketRecoveryInput} from '../metadata_packet_retention/recovery_input.js';
+import type {LocalMetadataPacketRecoveryInput,LocalMetadataPacketRecoveryOutcome,LocalMetadataPacketRetentionInput,LocalMetadataPacketRetentionBundle} from '../metadata_packet_retention/contract.js';
 import type {LocalMetadataReceiptContainmentInput,LocalMetadataReceiptContainmentRead} from '../metadata_receipt_containment/contract.js';
 import {LocalMetadataReferenceWork} from '../selected_local_metadata_assets/room_work.js';
 import type {LocalMetadataReferenceBundle,LocalMetadataReferenceCut} from '../selected_local_metadata_assets/room_contract.js';
@@ -180,6 +182,19 @@ export class SelectedLocalMetadataDelivery{
  captureReceiptContainment(provided:LocalMetadataReceiptContainmentInput):Promise<LocalMetadataReceiptContainmentRead>{
   let input!:ReturnType<typeof prepareLocalMetadataReconciliationInput>,result:LocalMetadataReceiptContainmentRead|undefined;
   return this.#captureReferenceOperation(async work=>{this.#current();if(!this.#snapshot)throw fail();result=await work.containReceipts(input,this.#snapshot);this.#current();},()=>{input=prepareLocalMetadataReconciliationInput(provided);}).then(()=>{if(!result)throw fail();return result;});
+ }
+ /** Preserve all first server bodies and exact local metadata variants at the
+  * same held cut. Expanded Native source/provider closure remains explicit. */
+ capturePacketRetention(provided:LocalMetadataPacketRetentionInput):Promise<LocalMetadataPacketRetentionBundle>{
+  let input!:ReturnType<typeof prepareLocalMetadataReconciliationInput>,result:LocalMetadataPacketRetentionBundle|undefined;
+  return this.#captureReferenceOperation(async work=>{this.#current();if(!this.#snapshot)throw fail();result=await work.retainPackets(input,this.#snapshot);this.#current();},()=>{input=prepareLocalMetadataReconciliationInput(provided);}).then(()=>{if(!result)throw fail();return result;});
+ }
+ /** Additional exact first-server/local packet bodies and complete resolved
+  * raster bytes, with genuine selected Native server/inventory files. This
+  * preserves Pending work and never installs ACKs or a serving role. */
+ capturePacketRecovery(provided:LocalMetadataPacketRecoveryInput):Promise<LocalMetadataPacketRecoveryOutcome>{
+  let input!:ReturnType<typeof prepareMetadataPacketRecoveryInput>,result:LocalMetadataPacketRecoveryOutcome|undefined;
+  return this.#captureReferenceOperation(async work=>{this.#current();if(!this.#snapshot)throw fail();result=await work.packetRecovery(input,this.#snapshot);this.#current();},()=>{input=prepareMetadataPacketRecoveryInput(provided);}).then(()=>{if(!result)throw fail();return result;});
  }
  /** Source-owned immutable raster bytes for the complete Native/provider and
   * whole-upload union. Transport reads neither mutate caches nor ACK queues. */

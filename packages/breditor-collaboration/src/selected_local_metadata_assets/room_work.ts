@@ -1,3 +1,7 @@
+import {captureOriginalMetadataPacketTexts} from '../metadata_packet_retention/capture.js';
+import type {LocalMetadataPacketRetentionBundle,LocalMetadataPacketRecoveryOutcome} from '../metadata_packet_retention/contract.js';
+import type {PreparedMetadataPacketRecoveryInput} from '../metadata_packet_retention/recovery_input.js';
+import {captureMetadataPacketAssets} from '../metadata_packet_retention/capture_assets.js';
 import {captureOriginalReceiptContainment} from '../metadata_receipt_containment/capture.js';
 import type {LocalMetadataReceiptContainmentRead} from '../metadata_receipt_containment/contract.js';
 /** Source-owned finite replay/reference work. Exact older cuts use readonly
@@ -46,7 +50,7 @@ import {fail} from './error.js';
 import {localMetadataRecoverableRequirements} from './recoverable_requirements.js';
 import {encodeLocalMetadataRecoverableRasters} from './recoverable_raster_archive.js';
 import type {LocalMetadataRecoverableOutcome,LocalMetadataRecoverableBundle,LocalMetadataRecoverableInspection} from './recoverable_contract.js';
-import {captureLocalMetadataRecoveryFiles} from './recovery_bytes_capture.js';
+import {captureLocalMetadataSelectedServerFiles,captureLocalMetadataRecoveryFiles} from './recovery_bytes_capture.js';
 import {inspectLocalMetadataRecoveryFiles} from './recovery_bytes_inspection.js';
 import type {PreparedRecoveryServerInputs} from './recovery_server_inputs.js';
 import type {LocalMetadataRecoveryBytesOutcome,LocalMetadataRecoveryBytesBundle,LocalMetadataRecoveryBytesInspection} from './recovery_bytes_contract.js';
@@ -125,6 +129,28 @@ export class LocalMetadataReferenceWork {
   const reconciliation=await this.reconcile(input,snapshot);check();
   const result=await captureOriginalReceiptContainment(this.#scope,this.#allSources,snapshot,this.#cut,input,reconciliation,this.#factories.reads,check);check();
   const fresh=await this.availability(input.host);check();if(!equal(reconciliation.assets.availability,fresh.availability))throw fail('local_metadata_assets_changed');return result;
+ }
+ /** Exact additional packet bytes, preserving original records and Native source
+  * Pending. This read does not claim the expanded provider-byte union yet. */
+ async retainPackets(input:PreparedLocalMetadataReconciliation,snapshot:LocalMetadataDeliverySnapshot):Promise<LocalMetadataPacketRetentionBundle>{
+  const check=()=>{this.#check();input.check();for(const row of this.#allSources){const before=this.#availabilityStamps.get(row.source.core),now=coreReadStamp(row.source.core);if(!before||before.document!==now.document||before.review!==now.review)throw fail('local_metadata_assets_changed');}};
+  check();if(!this.#cut||!this.#finished||!this.#factories)throw fail('local_metadata_assets_closed');
+  const containment=await this.containReceipts(input,snapshot);check();const references=this.#finished.bundle;
+  const read=await captureOriginalMetadataPacketTexts(this.#scope,this.#allSources,snapshot,this.#cut,this.#factories.reads,input,containment,{bytes:references.references.bytes,sha256:references.references.sha256},this.#options,check);check();
+  const fresh=await this.availability(input.host);check();if(!equal(containment.reconciliation.assets.availability,fresh.availability))throw fail('local_metadata_assets_changed');
+  return Object.freeze({format:'breditor/selected-local-metadata-packet-retention-bundle',formatVersion:1,scope:'held-original-packet-bytes-and-native-dependency-read',references,containment,packets:read.files,requirements:read.requirements});
+ }
+ /** Retain additional packet bytes and their expanded raster union together
+  * with the exact original Native server/inventory files. Unresolved Native
+  * dependencies keep a Pending result without discarding the retained bytes. */
+ async packetRecovery(input:PreparedMetadataPacketRecoveryInput,snapshot:LocalMetadataDeliverySnapshot):Promise<LocalMetadataPacketRecoveryOutcome>{
+  const check=()=>{this.#check();input.selected.check();input.reconciliation.check();for(const row of this.#allSources){const before=this.#availabilityStamps.get(row.source.core),now=coreReadStamp(row.source.core);if(!before||before.document!==now.document||before.review!==now.review)throw fail('local_metadata_assets_changed');}};
+  check();const packets=await this.retainPackets(input.reconciliation,snapshot);check();if(!this.#room||!this.#cut||!this.#finished)throw fail('local_metadata_assets_closed');
+  const files=await captureLocalMetadataSelectedServerFiles(input.selected,this.#options,check,()=>input.reconciliation.port.check(this.#waits.signal));check();
+  const uploads=await readLocalMetadataUploadInventory(this.#room,this.#cut,this.#options,check,true);check();
+  const assets=await captureMetadataPacketAssets(packets,this.#finished.body,uploads,input.reconciliation,input.transport,this.#options,input.options,check);check();await input.reconciliation.port.check(this.#waits.signal);check();
+  const bundle=Object.freeze({format:'breditor/selected-local-metadata-packet-recovery-bundle' as const,formatVersion:1 as const,scope:'client-metadata-first-server-packets-and-selected-recovery-files' as const,packets,assets,...files});
+  return Object.freeze({kind:assets.kind==='retained'?'retained':'pending',bundle});
  }
  /** Preserve actual immutable content for every provider requirement and
   * whole-upload ID. Read from admitted local archives first; missing content

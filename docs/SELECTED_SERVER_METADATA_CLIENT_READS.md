@@ -71,7 +71,7 @@ republish a proposal, accept twice, rewrite receipt sequences, or silently settl
 an offline queue by assuming the two byte digests are equal.
 
 The separately named local containment read below compares original retained
-client receipts with these catalogs. Retention of every remote packet through
+client receipts with these catalogs. The [additional packet/asset capture](ORIGINAL_METADATA_PACKET_RECOVERY.md) now preserves literal committed-catalog bodies and local variants with selected server files. Complete Native source closure through
 room reconstruction, independent comment/server-log generation recovery, and
 authenticated whole-room activation remain separate work.
 Those are still required for V1. No catalog or packet response is a ready flag,
@@ -131,7 +131,7 @@ checkpoint; original receipt, retry and packet facts remain unchanged.
 
 The actual Native source heads, current server cut and provider requirement
 inventory are checked around the comparison. This result is evidence about one
-held cut. It does not yet retain every remote packet and asset dependency in a
+held cut. It does not itself retain every remote packet and asset dependency in a
 reconstructable successor, prove independent generation recovery, or activate a
 whole room. A later restore must reauthenticate and recheck its actual sources.
 
