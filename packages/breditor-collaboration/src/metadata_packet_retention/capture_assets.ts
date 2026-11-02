@@ -5,16 +5,16 @@ import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.
 import type {LocalMetadataReferenceCut} from '../selected_local_metadata_assets/room_contract.js';
 import type {LocalMetadataMaterializationOptions,LocalMetadataRasterInfo} from '../selected_local_metadata_assets/materialization_contract.js';
 import type {readLocalMetadataUploadInventory} from '../selected_local_metadata_assets/upload_inventory.js';
-import {sharedRelayAssetReadPort,type SharedRelayAssets} from '../relay/assets.js';
+import {localMetadataRecoveryRasterPort,type LocalMetadataRecoveryRasterTransport} from '../selected_local_metadata_assets/raster_transport.js';
 import {localMetadataRecoverableRequirements} from '../selected_local_metadata_assets/recoverable_requirements.js';
 import type {PreparedLocalMetadataReconciliation} from '../selected_local_metadata_assets/reconciliation_input.js';
 import type {LocalMetadataPacketRetentionBundle,MetadataPacketAssetOutcome} from './contract.js';
 import {encodeMetadataPacketAssets} from './asset_archive.js';
 import {fail,same} from './policy.js';
 import {frozen} from '../room_participant_inventory/policy.js';
-export async function captureMetadataPacketAssets(packet:LocalMetadataPacketRetentionBundle,base:LocalMetadataReferenceCut,uploads:Awaited<ReturnType<typeof readLocalMetadataUploadInventory>>,input:PreparedLocalMetadataReconciliation,transport:SharedRelayAssets,options:SharedArchiveIntegrityOptions&{readonly signal:AbortSignal},provided:LocalMetadataMaterializationOptions,check:()=>void):Promise<MetadataPacketAssetOutcome>{
+export async function captureMetadataPacketAssets(packet:LocalMetadataPacketRetentionBundle,base:LocalMetadataReferenceCut,uploads:Awaited<ReturnType<typeof readLocalMetadataUploadInventory>>,input:PreparedLocalMetadataReconciliation,transport:LocalMetadataRecoveryRasterTransport,options:SharedArchiveIntegrityOptions&{readonly signal:AbortSignal},provided:LocalMetadataMaterializationOptions,check:()=>void):Promise<MetadataPacketAssetOutcome>{
  check();if(base.outcome.kind!=='ready'||packet.requirements.pending.length)return frozen({kind:'pending',missing:[{kind:'native-source' as const}]});
- const network=sharedRelayAssetReadPort(transport),limits=checkRichAssetLimits(provided.limits),map=new Map([...base.outcome.references,...packet.requirements.references].map(row=>[JSON.stringify([row.asset,row.generation]),row]));
+ const network=localMetadataRecoveryRasterPort(transport,input.port.selection.current),limits=checkRichAssetLimits(provided.limits),map=new Map([...base.outcome.references,...packet.requirements.references].map(row=>[JSON.stringify([row.asset,row.generation]),row]));
  const references=[...map.values()].sort((a,b)=>a.asset<b.asset?-1:a.asset>b.asset?1:a.generation<b.generation?-1:a.generation>b.generation?1:0),uploadIds=[...uploads.assets.keys()].sort(),provider=await input.port.checkAssets({references,uploads:uploadIds},options.signal);check();input.check();
  const union=localMetadataRecoverableRequirements(references,uploads.assets,provider);if(union.unresolved.length)return frozen({kind:'pending',missing:[{kind:'opaque-mapping' as const}]});if(union.unavailable.length)return frozen({kind:'pending',missing:union.unavailable.map(asset=>({kind:'bytes' as const,asset}))});
  const payloads:{info:LocalMetadataRasterInfo;blob:Blob}[]=[],missing:{kind:'bytes';asset:string}[]=[];let total=0;

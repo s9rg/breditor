@@ -5,7 +5,7 @@ import {checkRichAssetLimits,inspectRichRaster} from '@breditor/experimental-ric
 import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
 import type {LocalMetadataMaterializationOptions,LocalMetadataRasterInfo} from '../selected_local_metadata_assets/materialization_contract.js';
 import type {readLocalMetadataUploadInventory} from '../selected_local_metadata_assets/upload_inventory.js';
-import {sharedRelayAssetReadPort,type SharedRelayAssets} from '../relay/assets.js';
+import {localMetadataRecoveryRasterPort,type LocalMetadataRecoveryRasterTransport} from '../selected_local_metadata_assets/raster_transport.js';
 import {localMetadataRecoverableRequirements} from '../selected_local_metadata_assets/recoverable_requirements.js';
 import type {PreparedLocalMetadataReconciliation} from '../selected_local_metadata_assets/reconciliation_input.js';
 import type {MetadataPacketFile,LocalMetadataPacketRetentionBundle} from '../metadata_packet_retention/contract.js';
@@ -13,9 +13,9 @@ import type {ServerPacketAssetOutcome} from './contract.js';
 import {encodeServerPacketAssets} from './asset_archive.js';
 import {fail,same} from '../metadata_packet_retention/policy.js';
 import {frozen} from '../room_participant_inventory/policy.js';
-export async function captureServerPacketAssets(packet:LocalMetadataPacketRetentionBundle,dependencies:MetadataPacketFile,closure:ServerPacketAssetRequirements,uploads:Awaited<ReturnType<typeof readLocalMetadataUploadInventory>>,input:PreparedLocalMetadataReconciliation,transport:SharedRelayAssets,options:SharedArchiveIntegrityOptions&{readonly signal:AbortSignal},provided:LocalMetadataMaterializationOptions,check:()=>void):Promise<ServerPacketAssetOutcome>{
+export async function captureServerPacketAssets(packet:LocalMetadataPacketRetentionBundle,dependencies:MetadataPacketFile,closure:ServerPacketAssetRequirements,uploads:Awaited<ReturnType<typeof readLocalMetadataUploadInventory>>,input:PreparedLocalMetadataReconciliation,transport:LocalMetadataRecoveryRasterTransport,options:SharedArchiveIntegrityOptions&{readonly signal:AbortSignal},provided:LocalMetadataMaterializationOptions,check:()=>void):Promise<ServerPacketAssetOutcome>{
  check();if(closure.outcome.kind!=='ready')return frozen({kind:'pending',missing:[{kind:'native-source' as const}]});
- const network=sharedRelayAssetReadPort(transport),limits=checkRichAssetLimits(provided.limits),references=closure.outcome.references,uploadIds=[...uploads.assets.keys()].sort(),provider=await input.port.checkAssets({references,uploads:uploadIds},options.signal);check();input.check();
+ const network=localMetadataRecoveryRasterPort(transport,input.port.selection.current),limits=checkRichAssetLimits(provided.limits),references=closure.outcome.references,uploadIds=[...uploads.assets.keys()].sort(),provider=await input.port.checkAssets({references,uploads:uploadIds},options.signal);check();input.check();
  const union=localMetadataRecoverableRequirements(references,uploads.assets,provider);if(union.unresolved.length)return frozen({kind:'pending',missing:[{kind:'opaque-mapping' as const}]});if(union.unavailable.length)return frozen({kind:'pending',missing:union.unavailable.map(asset=>({kind:'bytes' as const,asset}))});
  const payloads:{info:LocalMetadataRasterInfo;blob:Blob}[]=[],missing:{kind:'bytes';asset:string}[]=[];let total=0;
  for(const expected of union.payloads){check();let blob=uploads.payloads.get(expected.asset);if(!blob){const remote=await network.read(expected.asset,options.signal);check();if(!remote){missing.push({kind:'bytes',asset:expected.asset});continue;}if(remote.asset!==expected.asset||remote.mime!==expected.mime||remote.bytes!==expected.bytes)throw fail();blob=remote.blob;}

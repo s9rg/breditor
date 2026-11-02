@@ -7,7 +7,7 @@ import {assetReferenceKey,generationAssetReference,generationAssetContent,compar
 import {MAX_SERVER_GENERATION_RECOVERY_ASSET_REQUIREMENTS as maximum,type SharedServerLogGenerationRecoveryAssetRequirements,type SharedServerLogGenerationRecoveryAssetInfo,type SharedServerLogGenerationRecoveryAssetMissing,type SharedServerLogGenerationRecoveryAssetResolution,type SharedServerLogGenerationRecoveryAssetRead} from './asset_contract.js';
 import type {SharedServerLogGenerationRecoveryControlSelection} from './contract.js';
 function array(value:unknown):unknown[]{if(!Array.isArray(value)||value.length>maximum)throw fail();return value;}
-function info(value:unknown):SharedServerLogGenerationRecoveryAssetInfo{
+export function recoveryAssetInfo(value:unknown):SharedServerLogGenerationRecoveryAssetInfo{
  const r=object(value,'asset,mime,bytes,width,height'),mime=r['mime'];if(mime!=='image/png'&&mime!=='image/jpeg'&&mime!=='image/webp')throw fail();
  const width=integer(r['width'],1,16384),height=integer(r['height'],1,16384);if(width*height>32000000)throw fail();return{asset:generationAssetContent(r['asset']),mime,bytes:integer(r['bytes'],1,10*1024*1024),width,height};
 }
@@ -32,7 +32,7 @@ export function readGenerationAssetReceipt(text:string,expected:SharedServerLogG
  try{
   const r=object(JSON.parse(text),'format,formatVersion,selection,requestSha256,scope,resolutions,assets,missing');if(r['format']!=='breditor/server-log-generation-recovery-asset-read'||r['formatVersion']!==1||r['scope']!=='server-and-declared-client-binding-and-upload-bytes'||r['requestSha256']!==sha256)throw fail();
   const selection=generationControlSelection(r['selection']);if(JSON.stringify(selection)!==JSON.stringify(expected))throw fail();
-  const resolutions=array(r['resolutions']).map(value=>{const row=object(value,'reference,contentAsset');return{reference:generationAssetReference(row['reference']),contentAsset:generationAssetContent(row['contentAsset'])};}),assets=array(r['assets']).map(info),absent=array(r['missing']).map(missing);
+  const resolutions=array(r['resolutions']).map(value=>{const row=object(value,'reference,contentAsset');return{reference:generationAssetReference(row['reference']),contentAsset:generationAssetContent(row['contentAsset'])};}),assets=array(r['assets']).map(recoveryAssetInfo),absent=array(r['missing']).map(missing);
   for(let i=1;i<resolutions.length;i++)if(compareAssetReference(resolutions[i-1]!.reference,resolutions[i]!.reference)>=0)throw fail();
   for(let i=1;i<assets.length;i++)if(compareAssetText(assets[i-1]!.asset,assets[i]!.asset)>=0)throw fail();
   if(assets.length>selection.source.server.assets.assets||assets.reduce((sum,row)=>sum+row.bytes,0)>selection.source.server.assets.bytes)throw fail();complete(resolutions,assets,absent,request);

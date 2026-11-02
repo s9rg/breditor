@@ -1,7 +1,7 @@
 /** Portable client/native/metadata/asset and actual selected server files.
  * Complete bytes are DATA, not accepted-head agreement or activation rights. */
 import type {LocalMetadataAssetAvailabilityHost} from './availability_host.js';
-import type {SharedRelayAssets} from '../relay/assets.js';
+import type {LocalMetadataRecoveryRasterTransport} from './raster_transport.js';
 import type {SharedServerLogGenerationRoomArchive} from '../server_generation_archive/read.js';
 import type {SharedServerLogGenerationParticipantInventory} from '../server_generation_inventory/read.js';
 import type {SharedServerLogGenerationRoomBackupIdentity} from '../server_generation_archive/contract.js';
@@ -9,7 +9,7 @@ import type {SharedServerLogGenerationParticipantIdentity} from '../server_gener
 import type {LocalMetadataMaterializationOptions} from './materialization_contract.js';
 import type {LocalMetadataRecoverableBundle,LocalMetadataRecoverableInspection,LocalMetadataRecoverableOutcome} from './recoverable_contract.js';
 export interface LocalMetadataRecoveryBytesInput extends LocalMetadataMaterializationOptions {
- readonly host:LocalMetadataAssetAvailabilityHost;readonly transport:SharedRelayAssets;
+ readonly host:LocalMetadataAssetAvailabilityHost;readonly transport:LocalMetadataRecoveryRasterTransport;
  readonly server:SharedServerLogGenerationRoomArchive;
  readonly inventory:SharedServerLogGenerationParticipantInventory;
 }

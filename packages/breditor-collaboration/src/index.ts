@@ -257,3 +257,6 @@ export type {RoomActivationIntentChoice,RoomActivationIntentState,RoomActivation
 export type {PrepareRoomNativeActivationInput,CommitRoomNativeActivationInput} from './room_native_activation_intent/coordinator_contract.js';
 export type {RoomActivationCommitResult} from './room_native_activation_intent/commit.js';
 export {RoomActivationIntentError,MAX_ROOM_ACTIVATION_INTENT_BYTES,MAX_ROOM_ACTIVATION_GRAPH_BYTES} from './room_native_activation_intent/policy.js';
+
+export {MAX_SERVER_GENERATION_RECOVERY_RASTER_REQUEST_BYTES,MAX_SERVER_GENERATION_RECOVERY_RASTER_RESPONSE_BYTES,MAX_SERVER_GENERATION_RECOVERY_RASTER_BYTES} from './generation_recovery_control/raster_contract.js';
+export type {SharedServerLogGenerationRecoveryRasterRead} from './generation_recovery_control/raster_contract.js';

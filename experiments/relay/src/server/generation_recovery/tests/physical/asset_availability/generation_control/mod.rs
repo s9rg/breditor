@@ -15,3 +15,5 @@ mod workflows;
 mod metadata_packets;
 
 mod native_dependencies;
+
+mod raster_bytes;

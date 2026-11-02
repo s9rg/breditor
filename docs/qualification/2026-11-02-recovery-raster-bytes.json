@@ -1,0 +1,83 @@
+{
+  "format": "breditor/recovery-raster-bytes-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-02",
+  "baselineCommit": "324538d28a1d6b5d3a194b3376c2e59935f67fec",
+  "executedSource": {
+    "commit": "324538d28a1d6b5d3a194b3376c2e59935f67fec",
+    "dirty": true,
+    "sha256": "c2313691cdf44579ce73da11b75aeb523fdd75d36b17bbc2ef0c375f213c6fb3",
+    "files": 8081,
+    "bytes": 66504396
+  },
+  "qualificationPrecedesFinalDocumentation": true,
+  "source": {
+    "tests": 23,
+    "directory": "/Users/s/code/breditor/target/recovery-raster-source-qualification-6N4uIL",
+    "logSha256": "c2ad8696388835a5afe4adad12f39cc0e0679c10273a265fdba771d95e243005",
+    "sourceUnchanged": true
+  },
+  "installed": {
+    "tests": 23,
+    "directory": "/private/tmp/breditor-recovery-raster-installed-Y5GPjQ",
+    "logSha256": "0d5debccd4b3a696bacda176d1ab414264a85aab91e9fa5a5f16b0250defb785",
+    "workspaceLinks": false,
+    "sourceUnchanged": true
+  },
+  "nativeGenerationControlTests": 47,
+  "strictDeclarationFiles": 7,
+  "touchedRustFormatFiles": 11,
+  "strictRustLibraryTestsAndExampleLintPassed": true,
+  "noServerBuildPassed": true,
+  "freshSdkEmittedFilesMatched": 2408,
+  "allInstalledPackageArtifactFilesMatched": 2804,
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/recovery-raster-qualified-proof-vuatbkcx",
+    "indexSha256": "c2c787dc9e675cd1b8605937f51a457a8d6992060c07161f1200bc21b51c4a8e",
+    "references": 249,
+    "objects": 156,
+    "gzipBytes": 45726966,
+    "readBackVerified": true,
+    "sourceCases": 23,
+    "installedCases": 23,
+    "nativeGenerationControlCases": 47
+  },
+  "nativeBinary": [
+    {
+      "path": "/Users/s/code/breditor/target/reconciled-packet-native/release/examples/inactive_recovery_raster_functional",
+      "bytes": 23817584,
+      "sha256": "450785c86cf72461561fc9698fd5cc5931ac1391ebf1b348eaa13ae381b23b68"
+    }
+  ],
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "observed": {
+    "participants": 7,
+    "uploadArchiveRoles": 14,
+    "payloads": 3,
+    "serverOnlyRasterRequired": true,
+    "recoveryRasterRequestsPerWorkflow": 3,
+    "normalServingRequestsAfterRetirement": 0,
+    "actualCommitRequestsPerWorkflow": 1,
+    "nativeInspectionWhileInactive": true,
+    "exactFutureDocumentAndCommentUndoRedo": true,
+    "nativeStampsAndMetadataLanesUnchanged": true
+  },
+  "limitations": {
+    "localStorageLocksAndRasterPresentationControlled": true,
+    "nativeServicesSameProcess": true,
+    "fullSdkHistoryPolicyMatrixRun": false,
+    "physicalProcessAndStorageCrashQualified": false,
+    "productionWholeRoomHandoffComplete": false,
+    "fullCandidateProfilesRun": false,
+    "allCandidateProfilesIncludeComponentCommands": false,
+    "historicalArchiveReadFailureRepairVerified": false,
+    "historicalWebKitFaultRepairVerified": false,
+    "v1Ready": false,
+    "v1GatesOpen": 13
+  },
+  "commands": [
+    "node scripts/build-recovery-raster.mjs",
+    "node scripts/check-recovery-raster-source.mjs",
+    "node scripts/check-recovery-raster-installed.mjs"
+  ]
+}

@@ -8,6 +8,7 @@ mod metadata_receipts;
 mod native_dependencies;
 mod original_review;
 mod prepare;
+mod raster_bytes;
 mod routes;
 pub use identity::ServerLogGenerationRecoveryControlIdentity;
 pub use lease::ServerLogGenerationRecoveryControl;

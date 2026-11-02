@@ -1,3 +1,4 @@
+import {localMetadataRecoveryRasterPort,type LocalMetadataRecoveryRasterTransport} from './raster_transport.js';
 import {composeReconciledServerPacketRecovery} from '../reconciled_server_packet_recovery/compose.js';
 import type {ReconciledServerPacketRecoveryCapture} from '../reconciled_server_packet_recovery/contract.js';
 import {readCurrentLocalPacketReferences} from '../server_packet_reconciliation/local_references.js';
@@ -235,8 +236,8 @@ export class LocalMetadataReferenceWork {
  /** V2 recovery bytes may include durable local uploads still absent from the
   * server. Preserve original provider Pending and queue state verbatim; only
   * a complete Native/mapping/payload union can return this distinct bundle. */
- async recoverAssets(host:LocalMetadataAssetAvailabilityHost,transport:SharedRelayAssets,options:LocalMetadataMaterializationOptions):Promise<LocalMetadataRecoverableOutcome>{
-  const network=sharedRelayAssetReadPort(transport),limits=checkRichAssetLimits(options.limits),available=await this.availability(host);this.#check();
+ async recoverAssets(host:LocalMetadataAssetAvailabilityHost,transport:LocalMetadataRecoveryRasterTransport,options:LocalMetadataMaterializationOptions):Promise<LocalMetadataRecoverableOutcome>{
+  const control=localMetadataAvailabilityHost(host).control,network=localMetadataRecoveryRasterPort(transport,control.kind==='source'?control.selection:control.selection.current),limits=checkRichAssetLimits(options.limits),available=await this.availability(host);this.#check();
   if(!this.#room||!this.#cut||!this.#finished)throw fail('local_metadata_assets_closed');
   const body=this.#finished.body,provider=available.availability.provider;
   if(body.outcome.kind!=='ready'||provider===null)return frozen({kind:'pending',availability:available,missing:[{kind:'source-or-provider'}]});
@@ -257,7 +258,7 @@ export class LocalMetadataReferenceWork {
  }
  /** Couple actual selected server/inventory files to the same complete V2
   * Native/client/metadata capture. Readiness here describes bytes only. */
- async recoveryBytes(host:LocalMetadataAssetAvailabilityHost,transport:SharedRelayAssets,selected:PreparedRecoveryServerInputs,options:LocalMetadataMaterializationOptions):Promise<LocalMetadataRecoveryBytesOutcome>{
+ async recoveryBytes(host:LocalMetadataAssetAvailabilityHost,transport:LocalMetadataRecoveryRasterTransport,selected:PreparedRecoveryServerInputs,options:LocalMetadataMaterializationOptions):Promise<LocalMetadataRecoveryBytesOutcome>{
   selected.check();const materialized=await this.recoverAssets(host,transport,options);this.#check();if(materialized.kind==='pending')return materialized;
   const check=()=>{this.#check();selected.check();for(const row of this.#allSources){const before=this.#availabilityStamps.get(row.source.core),now=coreReadStamp(row.source.core);if(!before||before.document!==now.document||before.review!==now.review)throw fail('local_metadata_assets_changed');}};
   check();const port=localMetadataAvailabilityHost(host),bundle=await captureLocalMetadataRecoveryFiles(materialized.bundle,selected,this.#options,check,()=>port.check(this.#waits.signal));check();return Object.freeze({kind:'ready',bundle});

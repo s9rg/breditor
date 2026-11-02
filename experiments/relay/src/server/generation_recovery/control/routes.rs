@@ -1,7 +1,7 @@
 //! Bounded exact-Origin operator read; no DTO can substitute for genuine native/provider owners.
 use super::{
     ServerLogGenerationRecoveryControlIdentity, accepted_native, asset_requirements, lease::State,
-    metadata_packet, metadata_receipts, native_dependencies, original_review,
+    metadata_packet, metadata_receipts, native_dependencies, original_review, raster_bytes,
 };
 use crate::{Error, Result, server::http};
 use axum::{
@@ -25,6 +25,7 @@ enum Kind {
     Metadata,
     MetadataPacket,
     NativeDependencies,
+    RasterBytes,
 }
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -38,6 +39,10 @@ pub(super) fn router(state: Weak<State>) -> Router {
     Router::new()
         .route("/recovery/generations/v1/check", post(check).options(preflight))
         .route("/recovery/generations/v1/assets/check", post(check_assets).options(preflight))
+        .route(
+            "/recovery/generations/v1/assets/bytes/read",
+            post(raster_bytes_read).options(preflight),
+        )
         .route("/recovery/generations/v1/accepted/read", post(accepted).options(preflight))
         .route("/recovery/generations/v1/metadata/read", post(metadata).options(preflight))
         .route(
@@ -135,6 +140,9 @@ async fn accepted(Extract(weak): Extract<Weak<State>>, request: Request) -> Resp
 async fn metadata(Extract(weak): Extract<Weak<State>>, request: Request) -> Response {
     respond(weak, request, Kind::Metadata).await
 }
+async fn raster_bytes_read(Extract(weak): Extract<Weak<State>>, request: Request) -> Response {
+    respond(weak, request, Kind::RasterBytes).await
+}
 async fn metadata_packet_read(Extract(weak): Extract<Weak<State>>, request: Request) -> Response {
     respond(weak, request, Kind::MetadataPacket).await
 }
@@ -193,6 +201,7 @@ async fn respond(weak: Weak<State>, request: Request, kind: Kind) -> Response {
         Kind::Metadata => metadata_receipts::MAX_REQUEST_BYTES,
         Kind::MetadataPacket => metadata_packet::MAX_REQUEST_BYTES,
         Kind::NativeDependencies => native_dependencies::MAX_REQUEST_BYTES,
+        Kind::RasterBytes => raster_bytes::MAX_REQUEST_BYTES,
     };
     let Ok(body) = to_bytes(body, limit).await else {
         return http::cors(StatusCode::PAYLOAD_TOO_LARGE.into_response(), &origin);
@@ -209,6 +218,7 @@ async fn respond(weak: Weak<State>, request: Request, kind: Kind) -> Response {
             Kind::Metadata => metadata_receipts::read(state, body).await,
             Kind::MetadataPacket => metadata_packet::read(state, body).await,
             Kind::NativeDependencies => native_dependencies::read(state, body).await,
+            Kind::RasterBytes => raster_bytes::read(state, body).await,
         }
     })
     .await;

@@ -1,5 +1,35 @@
 # Breditor V1 release preparation
 
+[Raster reads before native activation](RECOVERY_RASTER_BYTES.md) close the
+ordering gap where recovery needed image bytes from a normal editing service
+that had not yet been activated. A separate bounded operator endpoint reads
+actual selected PNG/JPEG/WebP files while the native owner is inactive. Genuine
+SDK source and continuation controls expose immutable, hashed Blob data through
+private branded ports. Complete recovery and packet capture can use these
+controls; existing normal account transports and all queue/ACK meanings stay intact.
+
+The [qualification](qualification/2026-11-02-recovery-raster-bytes.json) passes
+23 source cases and the same 23 cases from fresh independently installed packages.
+The genuine seven-family workflow stops normal serving routes, recovers three
+rasters including server-only content absent from all fourteen upload archive
+roles, captures complete client and packet data, performs inactive Native
+inspection, then makes one actual SDK-triggered native activation. Future
+document/comment Undo/Redo remains exact for all seven clients. All 47 affected
+Rust generation-control cases pass, as do strict library/test/example lint, the
+no-server build, seven declaration files and eleven touched Rust format checks.
+Independent compilation matches 2,408 emitted SDK files; all 2,804 installed
+package artifacts match their producer and archives. Exact executed source,
+binary, packages, actual public Native/client/raster files and development failures
+are retained in a compressed, read-back-verified proof.
+
+This qualifies controlled service retirement/reacquisition within one Rust
+process. Physical host-process crash/reopen, real browser-storage durability,
+production whole-room handoff, the full SDK history-policy matrix and complete
+candidate profiles remain open. The dedicated component commands are available;
+they are not yet wired into every candidate profile. Normal Wasm and versions
+are unchanged. Neither historical archive-read/WebKit fault is declared repaired;
+all thirteen V1/parity gates remain open.
+
 [SDK coordination of durable native activation](SDK_NATIVE_ACTIVATION.md) now
 passes 45 focused cases plus the complete genuine Native workflow from source,
 and the same 46 cases from fresh independently installed packages. Seven cold

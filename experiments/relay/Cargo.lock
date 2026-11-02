@@ -185,6 +185,7 @@ name = "breditor-collab-relay"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "base64",
  "breditor-collab-feasibility",
  "getrandom 0.4.3",
  "image",

@@ -30,7 +30,7 @@ import {createNativeSuggestionDelivery} from '../../../packages/breditor-collabo
 import {createNativeRevisionDelivery} from '../../../packages/breditor-collaboration/dist/suggestion_revisions/native_delivery.js';
 const originalPut=IDBObjectStore.prototype.put;
 const sha=b=>createHash('sha256').update(b).digest('hex');
-export async function testMetadataMaterialization(style,{inspect=false,inspectClose=false,serverBytes,reconcileAssets=false,reconcileCold=false,nativeHostRoot=root=>root,nativeHostFactory=selectedDeliveryNativeHost,onReconciled,onBeforeReconciledClose,onRetainedReconciliation,cacheCatalogPackets=true,documentSegmented=true,reviewSegmented=true,verifyFutureHistories=false}={}){
+export async function testMetadataMaterialization(style,{inspect=false,inspectClose=false,serverBytes,reconcileAssets=false,reconcileCold=false,nativeHostRoot=root=>root,nativeHostFactory=selectedDeliveryNativeHost,onReconciled,onBeforeReconciledClose,onRetainedReconciliation,onRecoverable,cacheCatalogPackets=true,documentSegmented=true,reviewSegmented=true,verifyFutureHistories=false}={}){
  assert.ok(!reconcileCold||reconcileAssets,'Cold acknowledgement recovery needs the actual provider reconciliation first');
  assert.ok(['opaque','content-addressed','remote-content','local-only-content','pending-catalog','cancelled-token'].includes(style));
  const LocalMetadataRasterArchive=style==='local-only-content'?LocalMetadataRecoverableRasterArchive:OriginalRasterArchive;
@@ -127,6 +127,7 @@ export async function testMetadataMaterialization(style,{inspect=false,inspectCl
    if(style==='local-only-content'&&!serverBytes&&!reconcileAssets)await testRecoverableInspection({metadata,bundle:materializedBundle,check,fetchOriginal,native,localAsset:remoteAsset});
    if(serverBytes)await testRecoveryBytes({kind:serverBytes,metadata,scope,sources,fixture,host,initial:first,initialHost:availabilityHost,transport:assetTransport,check,native,fetchOriginal,adapters,contexts,extraHosts,referenceBundles});
    if(inspect){assert.ok(materializedBundle);await testMaterializedInspection({metadata,bundle:materializedBundle,check,fetchOriginal});}
+   if(onRecoverable)await onRecoverable({metadata,scope,sources,fixture,host,first,availabilityHost,transport:assetTransport,check,native,fetchOriginal,requests,cacheCalls:()=>cacheCalls});
    const saved=metadata.recovery();if(inspectClose){assert.ok(materializedBundle);await testMaterializedInspectionClose({metadata,parent:review,bundle:materializedBundle});}else{await metadata.close();await review.close();}const raw=await localReviewRaw(choice.database);storedSnapshot={before:JSON.parse(raw.before),current:JSON.parse(raw.current)};assert.deepEqual(storedSnapshot,saved);assert.deepEqual(storedSnapshot.before,JSON.parse(await initial.parent.metadata.file.text()).before);check();
   });
   if(reconcileAssets)await testProviderReconciliation({session,host,first,fixture,bundle:materializedBundle,availabilityRead,deliveryChoice,parentChoice,assetTransport,remoteAsset,adapters,contexts,requests,reconcileCold,onReconciled,onBeforeReconciledClose,onRetainedReconciliation,cacheCatalogPackets,readCacheCalls:()=>cacheCalls});
