@@ -76,19 +76,40 @@ let withNativeRetirement:typeof withNativeRecovery;
 let withActorRetirement:typeof withNativeRecovery;
 let reserveActorExecution:(owner:RetainedSelectedAssetOwner)=>SelectedActorExecutionReservation;
 let releaseActorExecution:(owner:RetainedSelectedAssetOwner,token:object)=>void;
-let reservationState:(reservation:SelectedActorExecutionReservation)=>Readonly<{owner:RetainedSelectedAssetOwner;token:object}>;
+let reservationState:(reservation:SelectedActorExecutionReservation)=>Readonly<{owner:RetainedSelectedAssetOwner;token:object;preparation:string|undefined}>;
 let makeActorExecution:(owner:RetainedSelectedAssetOwner,token:object)=>SelectedActorExecutionReservation;
+let setReservationReleased:(reservation:SelectedActorExecutionReservation,released:boolean)=>void;
+let pinReservationPreparation:(reservation:SelectedActorExecutionReservation,preparation:string)=>void;
+const actorRetirementScopes=new WeakMap<SelectedNativeRecoveryScope,Readonly<{owner:RetainedSelectedAssetOwner;reservation:SelectedActorExecutionReservation;token:object;recovery:object}>>();
+let pinActorRetirementPreparation:(scope:SelectedNativeRecoveryScope,preparation:string)=>void;
+/** Only complete same-scope recipe admission records this private binding.
+ * Serialized preparation DATA alone still cannot provide actual custody. */
+export const pinReservedSelectedActorPreparation=(scope:SelectedNativeRecoveryScope,preparation:string)=>pinActorRetirementPreparation(scope,preparation);
+export interface PreparedSelectedActorExecutionTransfer {
+ readonly reservation:SelectedActorExecutionReservation;
+ readonly preparation:string;
+ /** Commit only after the replacement attempt is fully constructed. */
+ commit():void;
+ /** Constructor failure restores the same original reservation and actors. */
+ rollback():void;
+}
+let prepareActorExecutionTransfer:(owner:RetainedSelectedAssetOwner,reservation:SelectedActorExecutionReservation)=>PreparedSelectedActorExecutionTransfer;
+/** Actual stopped-owner custody only. Saved retirement DATA cannot enter this
+ * synchronous transfer; no callback or await splits token replacement. */
+export const prepareSelectedActorExecutionTransfer=(owner:RetainedSelectedAssetOwner,reservation:SelectedActorExecutionReservation)=>prepareActorExecutionTransfer(owner,reservation);
 let reservedRetirement:<P extends SharedSelectionPolicy,T>(owner:RetainedSelectedAssetOwner,reservation:SelectedActorExecutionReservation,input:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:SelectedNativeRecoveryScope)=>Promise<T>)=>Promise<T>;
 let reservedCleanup:(reservation:SelectedActorExecutionReservation)=>Promise<void>;
 let reservedTake:(reservation:SelectedActorExecutionReservation)=>StoppedActorCohort;
 /** One actual old-owner reservation, not a stage/identity map. Other attempts,
  * ordinary retirement and ordinary Close cannot consume it concurrently. */
 export class SelectedActorExecutionReservation {
- readonly #owner:RetainedSelectedAssetOwner;readonly #token:object;#released=false;
+ readonly #owner:RetainedSelectedAssetOwner;readonly #token:object;#released=false;#preparation:string|undefined;
  private constructor(owner:RetainedSelectedAssetOwner,token:object){this.#owner=owner;this.#token=token;Object.freeze(this);}
  release():void{if(this.#released)return;releaseActorExecution(this.#owner,this.#token);this.#released=true;}
  static{makeActorExecution=(owner,token)=>new SelectedActorExecutionReservation(owner,token);
-  reservationState=value=>{if(!value||typeof value!=='object'||!(#owner in value)||value.#released)throw fail('asset_adoption_policy');return{owner:value.#owner,token:value.#token};};
+  setReservationReleased=(value,released)=>{if(!value||typeof value!=='object'||!(#owner in value))throw fail('asset_adoption_policy');value.#released=released;};
+  pinReservationPreparation=(value,preparation)=>{const before=reservationState(value).preparation;if(typeof preparation!=='string'||!preparation||before!==undefined&&before!==preparation)throw fail('asset_adoption_policy');value.#preparation=preparation;};
+  reservationState=value=>{if(!value||typeof value!=='object'||!(#owner in value)||value.#released)throw fail('asset_adoption_policy');return{owner:value.#owner,token:value.#token,preparation:value.#preparation};};
  }
 }
 const releaseExecution=SelectedActorExecutionReservation.prototype.release;
@@ -273,8 +294,23 @@ export class RetainedSelectedAssetOwner{
  discardSelected=owner=>{if(!owner||typeof owner!=='object'||!(#root in owner))return Promise.reject(fail('asset_adoption_policy'));return owner.#close(true);};
  reserveActorExecution=owner=>{if(!owner||typeof owner!=='object'||!(#root in owner)||owner.#actorExecution||owner.#busy||owner.#checking)throw fail('asset_adoption_busy');
   owner.#current();const token=Object.freeze({});owner.#actorExecution=token;return makeActorExecution(owner,token);};
+ prepareActorExecutionTransfer=(owner,reservation)=>{
+  const original=reservationState(reservation);
+  if(owner!==original.owner||owner.#actorExecution!==original.token||!owner.#closed||owner.#busy||owner.#checking||!retainedPhysicalHasActors(owner.#root)||original.preparation===undefined)throw fail('asset_adoption_policy');
+  const token=Object.freeze({}),next=makeActorExecution(owner,token);pinReservationPreparation(next,original.preparation);let state:'prepared'|'committed'|'rolled-back'='prepared';
+  // Revoke the old reference before caller-input reflection can run. All
+  // actual actor resources stay in the same closed root until the new attempt
+  // takes them; constructing an invalid attempt cannot hide a moved cohort.
+  owner.#actorExecution=token;setReservationReleased(reservation,true);
+  const current=()=>{if(owner.#actorExecution!==token||owner.#busy||owner.#checking||!owner.#closed||!retainedPhysicalHasActors(owner.#root))throw fail('asset_adoption_policy');};
+  return Object.freeze({reservation:next,preparation:original.preparation,
+   commit(){if(state==='committed')return;if(state!=='prepared')throw fail('asset_adoption_policy');current();state='committed';},
+   rollback(){if(state!=='prepared')return;current();owner.#actorExecution=original.token;setReservationReleased(next,true);setReservationReleased(reservation,false);state='rolled-back';},
+  });
+ };
  releaseActorExecution=(owner,token)=>{if(owner.#actorExecution!==token||owner.#busy||retainedPhysicalHasActors(owner.#root))throw fail('asset_adoption_busy');owner.#actorExecution=undefined;};
- reservedRetirement=(owner,reservation,input,visit)=>{const held=reservationState(reservation);if(owner!==held.owner||owner.#actorExecution!==held.token)return Promise.reject(fail('asset_adoption_policy'));return owner.#recover(input,visit,false,true,true,held.token);};
+ reservedRetirement=(owner,reservation,input,visit)=>{const held=reservationState(reservation);if(owner!==held.owner||owner.#actorExecution!==held.token)return Promise.reject(fail('asset_adoption_policy'));return owner.#recover(input,async scope=>{actorRetirementScopes.set(scope,{owner,reservation,token:held.token,recovery:owner.#nativeRecoveryToken!});return visit(scope);},false,true,true,held.token);};
+ pinActorRetirementPreparation=(scope,preparation)=>{const held=actorRetirementScopes.get(scope);if(!held)return;const owner=held.owner,current=reservationState(held.reservation);if(current.owner!==owner||current.token!==held.token||owner.#actorExecution!==held.token||owner.#nativeRecoveryToken!==held.recovery||!owner.#busy)throw fail('asset_adoption_policy');scope.check();pinReservationPreparation(held.reservation,preparation);};
  reservedCleanup=reservation=>{const{owner,token}=reservationState(reservation);if(owner.#actorExecution!==token||!retainedPhysicalHasActors(owner.#root))return Promise.reject(fail('asset_adoption_policy'));return owner.#close(true,undefined,token);};
  reservedTake=reservation=>{const{owner,token}=reservationState(reservation);if(owner.#actorExecution!==token||!owner.#closed)throw fail('asset_adoption_closed');return takeRetainedPhysicalActors(owner.#root);};
  withActorRetirement=(owner,input,visit)=>{if(!owner||typeof owner!=='object'||!(#root in owner))return Promise.reject(fail('asset_adoption_policy'));return owner.#recover(input,visit,false,true,true);};

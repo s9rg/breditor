@@ -2,7 +2,7 @@
  * performs no I/O/retirement. The caller owns this attempt BEFORE run can move
  * any author resources. Ready targets remain private until a separate complete
  * admission/promotion barrier; local readiness never activates serving. */
-import {RetainedSelectedAssetOwner,selectedOwnerHasRetiredActors,reserveSelectedActorExecution,releaseSelectedActorExecution,retryReservedSelectedActorCleanup,takeReservedSelectedActors,type SelectedActorExecutionReservation} from '../physical_room_asset_successor/owner.js';
+import {RetainedSelectedAssetOwner,selectedOwnerHasRetiredActors,reserveSelectedActorExecution,releaseSelectedActorExecution,retryReservedSelectedActorCleanup,takeReservedSelectedActors,prepareSelectedActorExecutionTransfer,type SelectedActorExecutionReservation} from '../physical_room_asset_successor/owner.js';
 import {readRoomExecution} from '../native_room_execution/coordinator.js';
 import {RoomExecutionArchive} from '../native_room_execution/archive.js';
 import {RoomExecutionReadScope} from '../native_room_execution/read_scope.js';
@@ -33,16 +33,19 @@ export class RoomExecutionAttempt {
  #scope:RoomExecutionReadScope|undefined;#journal:RoomRunJournalResources|undefined;#snapshot:RoomRunSnapshot|undefined;
  #actors:StoppedActorCohort|undefined;#openingAttempted=false;#journalOpened=false;#taking=false;#closing=false;#closed=false;#unwatch=()=>{};
  #running:Promise<unknown>|undefined;#cleanup:Promise<void>|undefined;
- private constructor(token:object,owner:RetainedSelectedAssetOwner,provided:RoomRunReadOptions,options:RoomRunOptions,create:boolean){
+ private constructor(token:object,owner:RetainedSelectedAssetOwner,provided:RoomRunReadOptions,options:RoomRunOptions,create:boolean,retired?:SelectedActorExecutionReservation){
   if(token!==key)throw fail('room_execution_policy');selectedOwnerHasRetiredActors(owner);
-  const raw=fields(options,['expected','participants']),expected=roomRunIdentity(raw['expected']);
+  const transfer=retired===undefined?undefined:prepareSelectedActorExecutionTransfer(owner,retired);
+  try{const raw=fields(options,['expected','participants']),expected=roomRunIdentity(raw['expected']);
+  if(transfer&&JSON.stringify(expected.execution.plan.preparation)!==transfer.preparation)throw fail('room_execution_policy');
   const participants=snapshotPhysicalOperationV3Policy(raw['participants'] as RoomRunOptions['participants']);
   const reads=fields(provided,['wasm','reads','checkAuthority'],['signal','assets']);
   const fresh=snapshotPhysicalHistoryReadOptions({reads:reads['reads'] as RoomRunReadOptions['reads'],checkAuthority:reads['checkAuthority'] as ()=>void,...(reads['signal']!==undefined?{signal:reads['signal'] as AbortSignal}:{})});
   const assets=reads['assets']===undefined?undefined:fields(reads['assets'],[],['limits','signal']);
   const limits=checkRichAssetLimits(assets?.['limits'] as Parameters<typeof checkRichAssetLimits>[0]);
   this.#provided={...fresh,wasm:reads['wasm'] as RoomRunReadOptions['wasm'],...(assets?{assets:{limits,...(assets['signal']!==undefined?{signal:assets['signal'] as AbortSignal}:{})}}:{})};
-  this.#old=owner;this.#options=Object.freeze({expected,participants});this.#create=create;this.#reservation=reserveSelectedActorExecution(owner);Object.freeze(this);
+  this.#old=owner;this.#options=Object.freeze({expected,participants});this.#create=create;this.#reservation=transfer?.reservation??reserveSelectedActorExecution(owner);Object.freeze(this);transfer?.commit();
+  }catch(error){transfer?.rollback();throw error;}
  }
  /** No asynchronous constructor can reject after secretly taking actors. */
  static begin(owner:RetainedSelectedAssetOwner,provided:RoomRunReadOptions,options:RoomRunOptions):RoomExecutionAttempt{return new RoomExecutionAttempt(key,owner,provided,options,true);}
@@ -50,6 +53,13 @@ export class RoomExecutionAttempt {
   * After retirement, retry run on the SAME reserved attempt. This is not actor
   * acquisition after a full process restart. */
  static resume(owner:RetainedSelectedAssetOwner,provided:RoomRunReadOptions,options:RoomRunOptions):RoomExecutionAttempt{return new RoomExecutionAttempt(key,owner,provided,options,false);}
+ /** Continue after same-scope retirement without reacquiring any writer. The
+  * actual old reservation is revoked before reflecting on caller options; a
+  * constructor refusal restores it synchronously. No actors move until run on
+  * this already-returned attempt. Saved phase/receipt DATA supplies no custody. */
+ static beginRetired(owner:RetainedSelectedAssetOwner,reservation:SelectedActorExecutionReservation,provided:RoomRunReadOptions,options:RoomRunOptions):RoomExecutionAttempt{return new RoomExecutionAttempt(key,owner,provided,options,true,reservation);}
+ /** Existing journal admission still runs against the complete actual inputs. */
+ static resumeRetired(owner:RetainedSelectedAssetOwner,reservation:SelectedActorExecutionReservation,provided:RoomRunReadOptions,options:RoomRunOptions):RoomExecutionAttempt{return new RoomExecutionAttempt(key,owner,provided,options,false,reservation);}
  #check=()=>{if(this.#closing||this.#closed||this.#stop.signal.aborted)throw fail('room_execution_closed');this.#scope?.check();};
  #readOptions(){const scope=this.#scope!;return{wasm:scope.integrity.wasm,reads:scope.reads,checkAuthority:scope.check,signal:scope.signal,...(scope.assets?{assets:scope.assets}:{})};}
  async #openJournal(){

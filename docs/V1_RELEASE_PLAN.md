@@ -1,5 +1,32 @@
 # Breditor V1 release preparation
 
+[Retired actor custody transfer](RETIRED_ACTOR_HANDOFF.md) now continues
+same-scope retirement into a synchronously returned replacement executor. The
+old reservation is revoked before caller-input reflection; invalid construction
+restores it. Transfer requires the exact freshly verified preparation and the
+actual closed owner with all fourteen actor locks retained. Saved phase or
+receipt data cannot provide that custody, and ordinary writer acquisition is
+never used for the handoff.
+
+Two final source cases and the same two cases from fresh independently installed
+archives pass through all seven concrete replacement families, local promotion
+and exact future document/comment Undo/Redo. Eight unchanged regressions per
+environment also pass in the earlier worksets. Those combined ten-case runs
+retained one test setup failure: their last typing assertion restored a range
+without placing a caret. Only that setup changed; all runtime source and 2,793
+distribution files remain byte-identical. The final two cases were rerun; the
+combined ten-case wrapper was not rerun. Strict source/installed types and
+compressed proof are retained in the
+[qualification](qualification/2026-11-02-retired-actor-handoff.json).
+
+This supplies actual retirement-to-executor ownership. A persistent joint attempt
+must still retain source exclusion through uncertain Native commits and
+coordinate normal route publication with local replacement. Physical storage,
+the complete SDK policy matrix, complete candidate profiles, remaining parity
+and all thirteen V1 gates remain open. Rust, normal Wasm, versions and original
+protocols/defaults are unchanged; neither historical archive-read/WebKit fault
+is declared repaired.
+
 [Actual native process loss and SDK recovery](NATIVE_PROCESS_RECOVERY.md) now
 passes 27 source cases and the same 27 cases from fresh independently installed
 packages. Both prepared and committed checkpoints survive actual child

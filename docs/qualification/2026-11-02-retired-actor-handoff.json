@@ -1,0 +1,59 @@
+{
+  "format": "breditor/retired-actor-handoff-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-02",
+  "executedSource": {
+    "commit": "b143d54ac82c7bd7c635706e7290ff9450a9e2b6",
+    "dirty": true,
+    "sha256": "5198fedf1d4fb0a598ed61caf93d552d0c420f1d1c57680c3f77c7735e7f30ec",
+    "files": 8091,
+    "bytes": 66550835
+  },
+  "freshSourceNewCases": 2,
+  "freshInstalledNewCases": 2,
+  "freshSourceLog": "/private/tmp/breditor-whole-room-custody-20261102/target/retired-custody-final-source.log",
+  "freshInstalledDirectory": "/private/tmp/breditor-retired-custody-final-installed-9imWHf",
+  "earlierUnchangedRegressionCasesPerEnvironment": 8,
+  "earlierCombinedWorksets": {
+    "cases": 10,
+    "passed": 9,
+    "failed": 1,
+    "sourceLog": "/private/tmp/breditor-whole-room-custody-20261102/target/retired-custody-source.log",
+    "installedDirectory": "/private/tmp/breditor-retired-custody-installed-9r9Cz6",
+    "onlyFailure": "Final typing assertion used the restored range instead of placing a collapsed caret."
+  },
+  "combinedTenCaseWrapperRerunAfterCaretCorrection": false,
+  "allRuntimeSourceAndDistributionBytesUnchangedAcrossCorrection": true,
+  "onlyTestCorrection": "Place the caret before asserting post-promotion typing.",
+  "strictSourceAndInstalledTypes": true,
+  "matchingPackageDistFiles": 2793,
+  "actualSourceFamilies": 7,
+  "actualActorLocks": 14,
+  "ordinaryWriterReacquisitions": 0,
+  "exactPreparationBinding": true,
+  "constructorRollbackAndOldReservationRevocationQualified": true,
+  "exactFutureDocumentAndCommentHistories": true,
+  "originalSourceBytesUnchanged": true,
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/retired-custody-proof-65k43hxp",
+    "indexSha256": "5020eaeca3742cc98cf463076380f362be5fbdc3e982839d29aa606a6b68695d",
+    "references": 7052,
+    "objects": 4355,
+    "gzipBytes": 67511381,
+    "readBackVerified": true,
+    "matchingPackageDistFiles": 2793
+  },
+  "limits": {
+    "controlledIndexedDbAndLocks": true,
+    "physicalBrowserStorageDurabilityQualified": false,
+    "fullSdkPolicyMatrixRun": false,
+    "persistentJointActivationAttemptComplete": false,
+    "normalServingRoutePublicationComplete": false,
+    "fullCandidateProfilesRun": false,
+    "historicalArchiveReadRepairVerified": false,
+    "historicalWebKitRepairVerified": false,
+    "v1Ready": false,
+    "v1GatesOpen": 13
+  },
+  "originalRustWasmVersionsProtocolsDefaultsAndPublicRootExportsUnchanged": true
+}
