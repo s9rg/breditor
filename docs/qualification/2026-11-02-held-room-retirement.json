@@ -1,0 +1,62 @@
+{
+  "format": "breditor/held-room-retirement-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-02",
+  "source": {
+    "commit": "8d5e19251cf73a42f6107bc620a299330c8de330",
+    "dirty": true,
+    "sha256": "5adb27edd9492ed0eb29e4395f6886cc9bc741bd60fdbd024209221a85c0a390",
+    "files": 8088,
+    "bytes": 66531360
+  },
+  "sourceNewCases": 4,
+  "sourceExistingRetirementCases": 4,
+  "installedNewCases": 4,
+  "sourceAndInstalledStrictTypes": true,
+  "matchingPackageDistFiles": 2793,
+  "sourceUnchangedDuringQualification": true,
+  "sourceArchive": {
+    "source": {
+      "commit": "8d5e19251cf73a42f6107bc620a299330c8de330",
+      "dirty": true,
+      "sha256": "5adb27edd9492ed0eb29e4395f6886cc9bc741bd60fdbd024209221a85c0a390",
+      "files": 8088,
+      "bytes": 66531360
+    },
+    "archive": "/private/tmp/breditor-native-process-20261102/held-retirement-executed-source.tar.gz",
+    "bytes": 19948826,
+    "sha256": "8096ac9979a9d8850803a1f1e3468ac0826c95d163ca4a37a3d4a7567406b98a",
+    "readBackVerified": true
+  },
+  "proof": {
+    "directory": "/private/tmp/breditor-whole-room-custody-20261102/target/held-retirement-proof-6i7f8z6z",
+    "indexSha256": "eb8452396b8a751de331cb0034e25ca51320929b4c064c1fc118c2f721082f4a",
+    "references": 2003,
+    "objects": 1286,
+    "gzipBytes": 40571520,
+    "readBackVerified": true,
+    "matchingPackageDistFiles": 2793
+  },
+  "sourceLog": "/private/tmp/breditor-whole-room-custody-20261102/target/held-retirement-source.log",
+  "legacySourceLog": "/private/tmp/breditor-whole-room-custody-20261102/target/held-retirement-legacy-source.log",
+  "installedResult": "/private/tmp/breditor-held-retirement-installed-HDlc5f/result.json",
+  "actualSourcesPerFunctionalCase": 7,
+  "actualActorLocksPerFunctionalCase": 14,
+  "existingStandalonePoliciesCovered": 4,
+  "installedNewPoliciesCovered": [
+    "segmented-document/original-comment",
+    "original-document/segmented-comment"
+  ],
+  "lateOuterCaptureCancellationQualified": false,
+  "jointActivationAttemptComplete": false,
+  "normalServingPublicationComplete": false,
+  "physicalBrowserStorageDurabilityQualified": false,
+  "originalRustAndWasmUnchanged": true,
+  "versionsUnchanged": true,
+  "originalProtocolsAndDefaultsUnchanged": true,
+  "fullCandidateProfilesRun": false,
+  "historicalArchiveReadRepairVerified": false,
+  "historicalWebKitRepairVerified": false,
+  "v1Ready": false,
+  "v1GatesOpen": 13
+}
