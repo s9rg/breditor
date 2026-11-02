@@ -85,11 +85,29 @@ The startup fixture also refuses a genuinely missing executable promptly. Failed
 spawn emits `error` without `exit`; cleanup must observe that actual lifecycle
 rather than wait forever for an exit that cannot occur.
 
+## Actual uncertain commit and cold recovery
+
+`npm run test:collaboration:native-joint-source:unknown` runs both metadata lifetime
+regressions and a genuine Rust commit whose reply is lost. The source reservation
+survives the failed command; a separate command still reads the original unknown
+intent. Explicit suspension checkpoints the real metadata and source stores while
+all fourteen actors remain held. Explicit Close releases them before cold reopen.
+The intent stays `request-started` with no invented receipt, pending metadata stays
+literal, and all seven clients retain exact native checkpoints and future
+Undo/Redo. This case uses cold reopening of original namespaces, not replacement
+metadata relocation or a production joint publication API.
+
+`npm run test:collaboration:native-joint-source:unknown:installed` executes the same
+three-case workset from independent packages. The [qualification](qualification/2026-11-02-persistent-source-native-unknown.json)
+retains exact source, complete intent data, Native observations and packages.
+The existing `native_activation_sdk_functional` executable is additionally required.
+The SDK/Rust implementation is unchanged from the preceding 60-case component;
+its full wrappers were not rerun for the added test/runner workset.
+
 ## Remaining scope
 
-A complete production joint activation API, genuine lost-commit-response testing
-through this persistent session, relocation/rebinding of the three local metadata
-journals, authenticated normal route publication, the complete SDK policy matrix,
+A complete production joint activation API, relocation/rebinding of the three
+local metadata journals, authenticated normal route publication, the complete SDK policy matrix,
 physical storage qualification and the full candidate profiles remain required.
 The historical archive-read and WebKit faults remain unconfirmed. This component
 is not public V1 distribution, feature parity or release approval. All thirteen

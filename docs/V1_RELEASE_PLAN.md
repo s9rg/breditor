@@ -1,5 +1,34 @@
 # Breditor V1 release preparation
 
+[Genuine Native uncertainty across persistent source commands](NATIVE_ACTIVATION_SOURCE_SESSION.md)
+now passes the complete three-case source workset and the same three cases from
+fresh independently installed packages. One actual Rust commit loses its reply;
+the SDK command fails while the real source exclusion stays held. A separate
+command, explicit durable suspension and cold reopening retain the original
+`request-started` intent with no fabricated receipt. Pending metadata records
+remain literal, and all seven clients retain exact native checkpoints and future
+document/comment Undo/Redo. All fourteen actor locks stay held through suspension;
+this cold-reopen case releases them explicitly before reopening original writers.
+
+Both open/closed metadata regressions pass again. All 2,803 installed distribution
+files match their producer, strict private declarations pass and copied tests
+reject references to the producer checkout. The exact source, complete actual
+activation intent objects, Native observations, packages and logs are retained
+in a read-back-verified compressed
+[qualification](qualification/2026-11-02-persistent-source-native-unknown.json).
+The prior source60/installed60 component qualification remains separate; its full
+wrappers were not rerun for these test/runner changes. SDK/Rust implementation,
+normal Wasm, versions, original protocols/defaults and public-root exports are
+unchanged.
+
+This qualifies uncertainty ownership and explicit cold preservation. Combining
+real Native commit with uninterrupted actor transfer into replacement roots,
+metadata namespace continuation and authenticated production publication remains
+required. The fixture's real Rust router return uses test IPC, not a new production
+publication API. Physical storage, full policy matrices/candidate profiles,
+remaining parity and all thirteen V1 gates stay open. Neither historical fault
+is declared repaired.
+
 [Persistent native activation source ownership](NATIVE_ACTIVATION_SOURCE_SESSION.md)
 now retains the actual source reservation across failed commands and caller
 cancellation. Explicit suspension checkpoints enlisted review/metadata owners,

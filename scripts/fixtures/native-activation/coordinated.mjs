@@ -11,7 +11,7 @@ import {controls} from '../selected-delivery/cold-continuation.mjs';
 import {saveActualActivationIntent} from './intent-evidence.mjs';
 import {PacketRasterFixtureImage} from '../local-metadata/packet-raster.mjs';
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
-export async function testCoordinatedNativeActivation({scope,sources,metadata,host,check,pending}){
+export async function testCoordinatedNativeActivation({scope,sources,metadata,host,check,pending,onUnknown}){
  const first=host.initial,fixture=host.fixture(first),stamps=new Map(sources.map(row=>[row.id,coreReadStamp(row.source.core)])),before=metadata.recovery().current.lanes;
  const unchanged=()=>{scope.check();check();assert.deepEqual(metadata.recovery().current.lanes,before);for(const row of sources)assert.deepEqual(coreReadStamp(row.source.core),stamps.get(row.id));};
  const image=Object.getOwnPropertyDescriptor(globalThis,'Image');Object.defineProperty(globalThis,'Image',{configurable:true,value:PacketRasterFixtureImage});
@@ -43,6 +43,7 @@ export async function testCoordinatedNativeActivation({scope,sources,metadata,ho
   await assert.rejects(metadata.commitNativeActivation({expected:choice,activation,inspection:reader,approve(){approvalCalls++;return true;}}),e=>e.code==='activation_outcome_unknown');unchanged();assert.equal(commitRequests,1);
   const unknown=await metadata.readNativeActivationIntent(choice);unchanged();assert.equal(unknown.state.phase,'request-started');assert.equal(unknown.state.receipt,null);
   console.log('SDK_NATIVE_ACTIVATION_STEP actual-native-commit-lost-reply-remains-unknown');
+  if(onUnknown)await onUnknown({choice,unknown,offer,commitRequests,approvalCalls});
   const result=await metadata.commitNativeActivation({expected:choice,activation,inspection:reader,approve(actual){approvalCalls++;assert.deepEqual(actual,choice);return true;}});unchanged();assert.equal(commitRequests,2);assert.equal(approvalCalls,3);assert.deepEqual(result.receipt,lostReceipt);
   assert.equal(result.scope,'held-client-metadata-upload-cut-and-actual-native-service');assert.deepEqual(result.receipt.selection,choice.activation);
   const observed=await metadata.readNativeActivationIntent(choice);unchanged();assert.equal(observed.state.phase,'receipt-observed');assert.deepEqual(observed.state.receipt,result.receipt);

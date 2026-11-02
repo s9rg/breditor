@@ -2,12 +2,13 @@
 import assert from 'node:assert/strict';
 import {mkdtempSync,mkdirSync,symlinkSync,realpathSync,statSync} from 'node:fs';
 import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
 export function nativeActivationRoot(root){
  root=realpathSync(root);const examples=join(root,'target/reconciled-packet-native/release/examples');
  assert.ok(statSync(join(examples,'native_activation_sdk_functional')).isFile());
  const directory=mkdtempSync(join(root,'target/sdk-native-activation-fixture-'));
  mkdirSync(join(directory,'target/reconciled-packet-native/release'),{recursive:true});
  symlinkSync(examples,join(directory,'target/reconciled-packet-native/release/examples'),'dir');
- symlinkSync(realpathSync(join(root,'packages/breditor-collaboration/dist/runtime')),join(directory,'target/promoted-shared-web'),'dir');
+ symlinkSync(realpathSync(fileURLToPath(new URL('../../../packages/breditor-collaboration/dist/runtime/',import.meta.url))),join(directory,'target/promoted-shared-web'),'dir');
  return directory;
 }

@@ -33,6 +33,8 @@
     "verify:candidate:functional": "node scripts/verify-candidate.mjs --functional",
     "test:collaboration:native-joint-source": "node --test --test-concurrency=1 scripts/native-actor-durable-close.test.mjs scripts/native-actor-escrow.test.mjs scripts/native-actor-construction.test.mjs scripts/native-actor-cohort.test.mjs scripts/native-actor-retirement.test.mjs scripts/native-actor-transfer-intrinsics.test.mjs scripts/independent-source-release-retry.test.mjs scripts/native-joint-source-session.test.mjs scripts/native-joint-source-retry.test.mjs scripts/native-joint-source-metadata.test.mjs scripts/selected-delivery-startup-failure.test.mjs",
     "test:collaboration:native-joint-source:installed": "node scripts/check-native-joint-source-installed.mjs",
+    "test:collaboration:native-joint-source:unknown": "node --test --test-concurrency=1 scripts/native-joint-source-metadata.test.mjs scripts/native-joint-source-unknown-native.test.mjs",
+    "test:collaboration:native-joint-source:unknown:installed": "node scripts/check-native-joint-source-installed.mjs --native-unknown",
     "audit:v1": "node scripts/check-v1-readiness.mjs",
     "check:v1": "node scripts/check-v1-readiness.mjs --require-ready",
     "clean": "npm run clean --workspaces --if-present",
