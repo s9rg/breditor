@@ -1,5 +1,42 @@
 # V1 candidate checks
 
+[Actual native process loss and SDK recovery](NATIVE_PROCESS_RECOVERY.md) now
+passes 27 source cases and the same 27 cases from fresh independently installed
+packages. Both prepared and committed checkpoints survive actual child
+`SIGKILL` and fresh-process target reacquisition. Fresh account tokens are
+required, old tokens and stale controls refuse, and original protected writer/
+comment credentials remain unchanged.
+
+The complete seven-family cold workflow retains fourteen actual offline
+document/comment suffixes and three real upload ACKs. A real native commit
+response is lost after its process is killed; the old intent remains
+`request-started` with no fabricated receipt. The new process stays inactive,
+retains and inspects a separately selected complete intent, rejects the old
+activation choice and commits the next epoch only after fresh approval.
+Original protocol delivery then converges all fourteen lanes, and future
+document/comment Undo/Redo remains exact for every client. The previous
+inactive-raster baseline also passes in both environments.
+
+A reproduced failed-boot cleanup bug is repaired: corrupt checkpoints still
+refuse, while cleanup preserves that original error instead of masking it with
+normal-shutdown assertions about an already killed process. The regression
+preserves corrupt evidence, leaves actual durable authority files unchanged,
+keeps the old owner closed and checks repeat cleanup. Startup is split into
+eight documented Rust files; strict native-example lint, all eight formatting
+checks and seven declaration files pass. All 2,804 package artifact files
+match their producer, archives and independent installed copies. The
+[qualification](qualification/2026-11-02-native-process-recovery.json) retains
+exact executed source, binaries, complete old/new intent data, public Native/
+client/raster files, the earlier development/lint failures and compressed proof.
+
+This is actual Rust process-loss evidence over controlled Node IndexedDB, locks
+and raster presentation. Physical browser storage, the full SDK history-policy
+matrix, production whole-room actor handoff and route publication, full candidate
+profiles and remaining parity still require work. Dedicated component commands
+are not yet in every candidate profile. Normal Wasm, versions, public production
+APIs and original protocols/defaults stay unchanged. Neither historical archive-
+read/WebKit fault is declared repaired; all thirteen V1/parity gates remain open.
+
 [Raster reads before native activation](RECOVERY_RASTER_BYTES.md) close the
 ordering gap where recovery needed image bytes from a normal editing service
 that had not yet been activated. A separate bounded operator endpoint reads

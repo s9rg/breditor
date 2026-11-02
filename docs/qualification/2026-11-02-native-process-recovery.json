@@ -1,0 +1,82 @@
+{
+  "format": "breditor/native-process-recovery-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-02",
+  "baselineCommit": "8d5e19251cf73a42f6107bc620a299330c8de330",
+  "executedSource": {
+    "commit": "8d5e19251cf73a42f6107bc620a299330c8de330",
+    "dirty": true,
+    "sha256": "ca8c29584e7d135195d2e7db96469a93071495c5c13865bc513a4c26f1c46bba",
+    "files": 8102,
+    "bytes": 66585244
+  },
+  "qualificationPrecedesFinalDocumentation": true,
+  "source": {
+    "tests": 27,
+    "directory": "/Users/s/code/breditor/target/native-process-recovery-source-qualification-zumbbS",
+    "logSha256": "d77d962d01fe3452905cb4788aa5b994dc9029a83b4e26df852f95fb0d3e83ec",
+    "sourceUnchanged": true
+  },
+  "installed": {
+    "tests": 27,
+    "directory": "/private/tmp/breditor-native-process-recovery-installed-LtM4iJ",
+    "logSha256": "ec6af63ecab3b691b2a0fcbc7ec16fc9f992e48f22bee8ab0ec64d6659e42610",
+    "workspaceLinks": false,
+    "sourceUnchanged": true
+  },
+  "strictNativeExampleLintPassed": true,
+  "strictDeclarationFiles": 7,
+  "touchedRustFormatFiles": 8,
+  "allPackageArtifactFilesMatched": 2804,
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "nativeBinary": [
+    {
+      "path": "/Users/s/code/breditor/target/reconciled-packet-native/release/examples/native_process_recovery_functional",
+      "bytes": 24079056,
+      "sha256": "a1a432c44fa64b6a86d80fbe5f87a1415fd18032a22002ad347045f8fd61a4c0"
+    }
+  ],
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/native-process-qualified-proof-uafcn4q9",
+    "indexSha256": "316d1ffdfb6af6df659fda82b0468b49b9e20f9a4134d1a1240519550177e085",
+    "references": 623,
+    "objects": 354,
+    "gzipBytes": 92229139,
+    "readBackVerified": true,
+    "sourceCases": 27,
+    "installedCases": 27
+  },
+  "reproducedCleanupFailureFixed": true,
+  "observed": {
+    "directPreparedAndCommittedProcessRecovery": true,
+    "participants": 7,
+    "retainedOfflineLanes": 14,
+    "retainedRealUploadAcks": 3,
+    "actualOldProcessExitSignal": "SIGKILL",
+    "freshNativeAccountAuthentication": true,
+    "oldAccountRefused": true,
+    "originalRegistrationCredentialsPreserved": true,
+    "oldIntentRemainsUnknownAndUnchanged": true,
+    "separatelyApprovedFreshNativeEpoch": true,
+    "originalProtocolDeliveryAndExactFutureHistories": true,
+    "failedBootPreservesAuthorityAndCorruptBytes": true
+  },
+  "limits": {
+    "controlledIndexedDbLocksAndRasterPresentation": true,
+    "physicalBrowserStorageCrashQualified": false,
+    "fullSdkHistoryPolicyMatrixRun": false,
+    "productionWholeRoomHandoffComplete": false,
+    "generalHostDeploymentManagerImplemented": false,
+    "fullCandidateProfilesRun": false,
+    "allCandidateProfilesIncludeNewCommands": false,
+    "historicalArchiveReadFailureRepairVerified": false,
+    "historicalWebKitFaultRepairVerified": false,
+    "v1Ready": false,
+    "v1GatesOpen": 13
+  },
+  "commands": [
+    "node scripts/build-native-process-recovery.mjs",
+    "node scripts/check-native-process-recovery-source.mjs",
+    "node scripts/check-native-process-recovery-installed.mjs"
+  ]
+}

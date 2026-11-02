@@ -1,0 +1,46 @@
+/** A real Rust process dies after committing. A new process must reacquire
+ * actual target custody and authenticate before a separately approved epoch. */
+import assert from 'node:assert/strict';import {readFileSync,writeFileSync} from 'node:fs';import {join} from 'node:path';import {createHash} from 'node:crypto';
+import {SharedDurableNativeActivationHost as Activation,SharedServerLogGenerationRecoveryHost as Inspection} from '../../../packages/breditor-collaboration/dist/index.js';
+import {coreReadStamp} from '../../../packages/breditor-collaboration/dist/core_read_stamp.js';
+import {controls} from '../selected-delivery/cold-continuation.mjs';
+import {saveActualActivationIntent} from '../native-activation/intent-evidence.mjs';
+import {PacketRasterFixtureImage} from '../local-metadata/packet-raster.mjs';
+const sha=b=>createHash('sha256').update(b).digest('hex');
+export async function testProcessNativeActivation({scope,sources,metadata,host,check,pending}){
+ const stamps=new Map(sources.map(row=>[row.id,coreReadStamp(row.source.core)])),before=metadata.recovery().current.lanes;
+ const unchanged=()=>{scope.check();check();assert.deepEqual(metadata.recovery().current.lanes,before);for(const row of sources)assert.deepEqual(coreReadStamp(row.source.core),stamps.get(row.id));};
+ assert.equal(pending.pending.filter(row=>row.kind==='original'&&row.requirement.kind==='head').length,14);
+ const savedFetch=globalThis.fetch,image=Object.getOwnPropertyDescriptor(globalThis,'Image');Object.defineProperty(globalThis,'Image',{configurable:true,value:PacketRasterFixtureImage});
+ let current,reader,activation,offer,capsule,reopened,oldChoice,newChoice,oldDisk,newDisk,lostReceipt;let successfulCommits=0,deniedOldSelections=0,approvals=0,lose=true;
+ try{
+  current=await controls(host,host.initial,scope);
+  console.log('PROCESS_RECOVERY_STEP retain-original-complete-intent-before-commit');
+  oldChoice=await metadata.prepareNativeActivation({database:'actual-process-before-crash',recovery:{host:current.previous,transport:current.previous,server:current.server,inventory:current.inventory},async selectActivation(source){offer=await host.prepareActivation(source);activation=Activation.configure({endpoint:offer.endpoint,expected:offer.selection,principal:'operator',getToken:()=>host.activationToken(offer),checkAuthority:unchanged,signal:scope.signal});return activation;},retainChoice(value){oldChoice=value;}});unchanged();
+  const replay=await host.reconstruct(offer.case);reader=await Inspection.open({endpoint:replay.endpoint,expected:replay.selection,principal:'operator',getToken:()=>host.operatorToken(replay),checkAuthority:unchanged,signal:scope.signal});
+  capsule=await host.prepareProcessRecovery(offer);unchanged();
+  globalThis.fetch=async(url,options)=>{const isCommit=String(url).endsWith('/native-activation/v1/commit');const response=await savedFetch(url,options);if(isCommit&&response.status===200)successfulCommits++;if(isCommit&&response.status!==200)deniedOldSelections++;if(isCommit&&lose){lose=false;assert.equal(response.status,200);lostReceipt=JSON.parse(await response.text());reopened=await host.crashAndReopen(capsule);throw Error('Actual Native process killed after commit and before SDK receipt publication');}return response;};
+  await assert.rejects(metadata.commitNativeActivation({expected:oldChoice,activation,inspection:reader,approve(){approvals++;return true;}}),e=>e.code==='activation_outcome_unknown');unchanged();
+  const unknown=await metadata.readNativeActivationIntent(oldChoice);assert.equal(unknown.state.phase,'request-started');assert.equal(unknown.state.receipt,null);assert.equal(successfulCommits,1);
+  const crash=host.processRecoveryObservation();assert.equal(crash.actualOldProcessExited,true);assert.equal(crash.signal,'SIGKILL');assert.notEqual(crash.processId,crash.reopenedProcessId);
+  assert.notEqual(reopened.selection.instance,offer.selection.instance);assert.deepEqual(reopened.selection.previous,oldChoice.activation.planned);assert.equal(BigInt(reopened.selection.planned.generation),BigInt(oldChoice.activation.planned.generation)+1n);
+  await assert.rejects(current.previous.check());await assert.rejects(reader.check());await assert.rejects(host.finishActivation(reopened),/actual-native-service-not-committed/);
+  const oldState=JSON.stringify(unknown.state);oldDisk=await saveActualActivationIntent(join(host.directory,'process-old-unknown-intent'),oldChoice);
+  console.log('PROCESS_RECOVERY_STEP actual-old-process-exited-fresh-owner-inactive-old-intent-unknown');
+  reader.close();reader=undefined;activation.close();activation=undefined;current.close();current=await controls(host,host.initial,scope);unchanged();
+  const wrong=Activation.configure({endpoint:reopened.endpoint,expected:oldChoice.activation,principal:'operator',getToken:()=>host.activationToken(reopened),checkAuthority:unchanged,signal:scope.signal});
+  try{await assert.rejects(wrong.commit(),e=>e.code==='activation_outcome_unknown');assert.equal(deniedOldSelections,1);}finally{wrong.close();}
+  newChoice=await metadata.prepareNativeActivation({database:'actual-process-fresh-owner',recovery:{host:current.previous,transport:current.previous,server:current.server,inventory:current.inventory},selectActivation(source){assert.deepEqual(source,reopened.selection.current);activation=Activation.configure({endpoint:reopened.endpoint,expected:reopened.selection,principal:'operator',getToken:()=>host.activationToken(reopened),checkAuthority:unchanged,signal:scope.signal});return activation;},retainChoice(value){newChoice=value;}});unchanged();
+  assert.notDeepEqual(newChoice.activation,oldChoice.activation);assert.notEqual(newChoice.database,oldChoice.database);assert.equal(JSON.stringify((await metadata.readNativeActivationIntent(oldChoice)).state),oldState);
+  const freshReplay=await host.reconstruct(current.actual);reader=await Inspection.open({endpoint:freshReplay.endpoint,expected:freshReplay.selection,principal:'operator',getToken:()=>host.operatorToken(freshReplay),checkAuthority:unchanged,signal:scope.signal});
+  const committed=await metadata.commitNativeActivation({expected:newChoice,activation,inspection:reader,approve(choice){approvals++;assert.deepEqual(choice,newChoice);return true;}});unchanged();assert.equal(successfulCommits,2);assert.equal(approvals,2);assert.deepEqual(committed.receipt.selection,reopened.selection);
+  const stillUnknown=await metadata.readNativeActivationIntent(oldChoice);assert.equal(JSON.stringify(stillUnknown.state),oldState,'A later fresh activation must not rewrite or manufacture the old missing receipt');
+  newDisk=await saveActualActivationIntent(join(host.directory,'process-new-observed-intent'),newChoice);
+  const served=await host.finishActivation(reopened);unchanged();assert.deepEqual(served.selection.source,reopened.selection.current);
+  const nativeRoot=join(host.directory,'language-3-standard-true-atomic-true'),reopenFile=join(nativeRoot,'native-process-reopen-'+reopened.case.sequence+'.json'),reopenBytes=readFileSync(reopenFile),reopenObservation=JSON.parse(reopenBytes);
+  assert.equal(reopenObservation.previousCheckpointStatus,'committed');assert.equal(reopenObservation.processId,crash.reopenedProcessId);assert.equal(reopenObservation.actualSameTargetReacquired,true);assert.equal(reopenObservation.freshAccountAuthentication,true);assert.equal(reopenObservation.allProtectedRegistrationsVerified,true);assert.equal(reopenObservation.nativeServiceStillInactive,true);assert.deepEqual(reopenObservation.freshSelection,reopened.selection);
+  const commitFile=join(nativeRoot,'sdk-native-activation-'+reopened.case.sequence+'-committed.json'),commitBytes=readFileSync(commitFile),commitObservation=JSON.parse(commitBytes);assert.deepEqual(commitObservation.actualDeployment,reopened.selection.planned);assert.equal(commitObservation.actualNativeServiceRouterReturned,true);
+  const report={format:'breditor/native-process-sdk-recovery-observation',formatVersion:1,participants:7,retainedOfflineLanes:14,crash,oldIntentPhase:'request-started',oldReceiptRemainsNull:true,oldIntentUnchangedByNewCommit:true,freshNativeInstance:true,successfulCommits,deniedOldSelections,separateFreshApprovals:approvals,oldDisk,newDisk,oldPlanned:oldChoice.activation.planned,newPlanned:newChoice.activation.planned,completeByteRecoveryBeforeFreshActivation:true,nativeStampsUnchanged:true,metadataLanesUnchanged:true,actualFreshServiceResumed:true,wholeRoomActivated:false,nativeReopen:{file:reopenFile,bytes:reopenBytes.length,sha256:sha(reopenBytes)},nativeCommit:{file:commitFile,bytes:commitBytes.length,sha256:sha(commitBytes)},lostReceiptSha256:sha(JSON.stringify(lostReceipt))};
+  const file=join(host.directory,'native-process-sdk-recovery.json'),bytes=Buffer.from(JSON.stringify(report,null,2)+'\n');writeFileSync(file,bytes,{mode:0o600,flag:'wx'});assert.deepEqual(readFileSync(file),bytes);console.log('NATIVE_PROCESS_RECOVERY_NATIVE '+JSON.stringify({file,sha256:sha(bytes),...report}));
+ }finally{globalThis.fetch=savedFetch;reader?.close();activation?.close();current?.close();if(image)Object.defineProperty(globalThis,'Image',image);else delete globalThis.Image;}
+}
