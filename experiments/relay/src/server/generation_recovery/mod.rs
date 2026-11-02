@@ -1,8 +1,13 @@
 //! Authenticated generation recovery and opt-in fenced native-service activation.
 pub(in crate::server) mod durable_activation;
+mod durable_activation_control;
 pub use durable_activation::{
     NativeGenerationActivationCheckpointStatus, NativeGenerationActivationPrepareOptions,
     PreparedNativeGenerationActivation, PreparedNativeGenerationActivationIdentity,
+};
+pub use durable_activation_control::{
+    DurableNativeActivationControl, DurableNativeActivationControlIdentity,
+    prepare_durable_native_activation_control,
 };
 mod activate_native;
 mod activation_identity;

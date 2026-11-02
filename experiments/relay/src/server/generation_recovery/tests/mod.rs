@@ -21,3 +21,7 @@ mod delivery_path;
 mod delivery_path_control;
 
 mod reconstruct;
+
+mod durable_native_activation_control;
+
+mod operator_network;

@@ -1,5 +1,31 @@
 # Breditor V1 release preparation
 
+[Authenticated durable native activation control](DURABLE_NATIVE_ACTIVATION_CONTROL.md)
+now supplies a separate opt-in operator POST endpoint for an independently selected
+prepared checkpoint. Its genuine control retains the actual service across lost
+responses; repeat requests append no new epoch, while failed commit attempts stay
+terminal. Actual workers retain source/target custody and request quota through
+waiter cancellation. Checkpoint and service-router file checks run off async I/O
+workers. Network choices carry a checkpoint digest and safe current/epoch pins,
+keeping native 64-bit inode witnesses out of JavaScript JSON round trips.
+
+The [qualification](qualification/2026-11-02-native-activation-control.json) records 30 passing affected
+Native activation/delivery-control tests, including six new control cases and all
+four independent document/comment history policy pairs. Strict library/test lint,
+the public ownership doctest and touched-file formatting pass. An earlier broad
+run stopped at its actual 20-minute bound after 172 passing cases remains incomplete;
+full-crate formatting still detects eight pre-existing unchanged example files.
+Exact final source, executable, records and incomplete attempts are preserved in a
+read-back-verified proof. Existing candidate Native activation stages include these
+tests; complete candidate profiles were not executed.
+
+This is the native network connection point. The SDK commit client, durable
+coordination intent and live/cold whole-room handoff still require implementation.
+Outstanding offline work must retain its original Pending and ACK meanings.
+Normal Wasm, original native checkpoint formats, old read-only controls, defaults
+and package versions are unchanged. Neither historical archive-read/WebKit fault
+is declared repaired. All thirteen V1/parity gates remain open.
+
 [Same-reservation recovery bytes and current reconciliation](RECONCILED_PACKET_RECOVERY.md) now pass twenty source cases and the same twenty cases from fresh independently installed packages. The actual seven-family captures retain complete packet/server/raster bytes, replay them through genuine inactive Native inspection, and bind them to current client/provider state under one held parent reservation. Original Pending, queue, cache and acknowledgement meanings remain literal. The existing reference-only current read still passes without historical body downloads.
 
 The checked path uses actual managed uploads and original protocol delivery, then checks exact future document/comment Undo/Redo. A separate final-result disposal assertion refuses and retires the failed capture owner while preserving Native stamps and persisted metadata lanes. Its earlier fixture teardown-order error and deliberately interrupted runs remain retained. Strict SDK declaration checks and twenty focused association/diagnostic/plan contracts pass; all 2,749 compiled SDK files match the installed archives. The private recovery declaration checks use SDK dist files and do not qualify public-root exports. The optional numerical archive error observation is also exported from the public root.

@@ -1,0 +1,270 @@
+{
+  "format": {
+    "changedFilesPassed": true,
+    "changedRustFiles": 11,
+    "fullCratePassed": false,
+    "fullCrateExitCode": 1,
+    "fullCrateDifferencesAllByteIdenticalToHead": true,
+    "baselineFiles": [
+      "/Users/s/code/breditor/experiments/relay/examples/coordinated_native_restart_functional.rs",
+      "/Users/s/code/breditor/experiments/relay/examples/joint_restart_host/activate.rs",
+      "/Users/s/code/breditor/experiments/relay/examples/joint_restart_host/begin.rs",
+      "/Users/s/code/breditor/experiments/relay/examples/joint_restart_host/next.rs",
+      "/Users/s/code/breditor/experiments/relay/examples/joint_restart_host/protocol.rs",
+      "/Users/s/code/breditor/experiments/relay/examples/joint_restart_host/restart.rs",
+      "/Users/s/code/breditor/experiments/relay/examples/joint_restart_host/seed.rs",
+      "/Users/s/code/breditor/experiments/relay/examples/joint_restart_host/setup.rs"
+    ]
+  },
+  "formatVersion": 1,
+  "qualifiedAtUtc": "2026-11-02T15:11:09.910647+00:00",
+  "qualifiedSource": {
+    "commit": "78da185c821b299dfce2cbbf9accca409c18f0c5",
+    "dirty": true,
+    "sha256": "4fd9a7d57162aad6359aac190e65227c59644ff9ede3fb431c350ee789f79ee5",
+    "files": 8018,
+    "bytes": 66254290
+  },
+  "sourceArchive": {
+    "path": "/private/tmp/breditor-native-activation-control-20261102/final-source/executed-source.tar.gz",
+    "bytes": 20367280,
+    "sha256": "df664b0eeac1a1a27a20d40eadd80aaeb8a3da812ed7872ef8f8e28dcc27b190",
+    "files": 8018,
+    "readbackVerified": true
+  },
+  "nativeCases": 30,
+  "newControlCases": 6,
+  "documentCommentHistoryPairs": 4,
+  "strictLibraryAndTestLint": {
+    "mode": "lint",
+    "source": {
+      "commit": "78da185c821b299dfce2cbbf9accca409c18f0c5",
+      "dirty": true,
+      "sha256": "4fd9a7d57162aad6359aac190e65227c59644ff9ede3fb431c350ee789f79ee5",
+      "files": 8018,
+      "bytes": 66254290
+    },
+    "command": [
+      "cargo",
+      "clippy",
+      "--manifest-path",
+      "experiments/relay/Cargo.toml",
+      "--features",
+      "server",
+      "--release",
+      "--locked",
+      "--offline",
+      "--lib",
+      "--tests",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "log": "/private/tmp/breditor-native-activation-control-20261102/lint-1793631653553.log",
+    "target": "/Users/s/code/breditor/target/reconciled-packet-native",
+    "budget": 3221225472,
+    "protectedFiles": [
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+        "sha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0"
+      },
+      {
+        "path": "target/reconciled-packet-native/release/examples/selected_suggestion_delivery_functional",
+        "sha256": "61c35699efcd333680ffca06a5ee6c1f2f22dc73722c065d4fca3610e696a3e7"
+      },
+      {
+        "path": "target/reconciled-packet-native/release/examples/complete_cohort_control_functional",
+        "sha256": "d8ad3caf94470ba22bc74c2f62803dc96c8170c868340e7d5b324c6c6d6133dc"
+      }
+    ],
+    "pid": 54012,
+    "complete": true,
+    "exitCode": 0,
+    "exceeded": false,
+    "timedOut": false,
+    "sourceUnchanged": true,
+    "protectedFilesUnchanged": true
+  },
+  "nativeTestRun": {
+    "mode": "critical-regressions",
+    "source": {
+      "commit": "78da185c821b299dfce2cbbf9accca409c18f0c5",
+      "dirty": true,
+      "sha256": "4fd9a7d57162aad6359aac190e65227c59644ff9ede3fb431c350ee789f79ee5",
+      "files": 8018,
+      "bytes": 66254290
+    },
+    "command": [
+      "cargo",
+      "test",
+      "--manifest-path",
+      "experiments/relay/Cargo.toml",
+      "--features",
+      "server",
+      "--release",
+      "--locked",
+      "--offline",
+      "--lib",
+      "--",
+      "native_activation",
+      "delivery_control",
+      "--test-threads=1"
+    ],
+    "log": "/private/tmp/breditor-native-activation-control-20261102/critical-regressions-1793631697400.log",
+    "target": "/Users/s/code/breditor/target/reconciled-packet-native",
+    "budget": 3221225472,
+    "protectedFiles": [
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+        "sha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0"
+      },
+      {
+        "path": "target/reconciled-packet-native/release/examples/selected_suggestion_delivery_functional",
+        "sha256": "61c35699efcd333680ffca06a5ee6c1f2f22dc73722c065d4fca3610e696a3e7"
+      },
+      {
+        "path": "target/reconciled-packet-native/release/examples/complete_cohort_control_functional",
+        "sha256": "d8ad3caf94470ba22bc74c2f62803dc96c8170c868340e7d5b324c6c6d6133dc"
+      }
+    ],
+    "pid": 54851,
+    "complete": true,
+    "exitCode": 0,
+    "exceeded": false,
+    "timedOut": false,
+    "sourceUnchanged": true,
+    "protectedFilesUnchanged": true
+  },
+  "publicControlCompileFailDoctest": {
+    "mode": "docs",
+    "source": {
+      "commit": "78da185c821b299dfce2cbbf9accca409c18f0c5",
+      "dirty": true,
+      "sha256": "4fd9a7d57162aad6359aac190e65227c59644ff9ede3fb431c350ee789f79ee5",
+      "files": 8018,
+      "bytes": 66254290
+    },
+    "command": [
+      "cargo",
+      "test",
+      "--manifest-path",
+      "experiments/relay/Cargo.toml",
+      "--features",
+      "server",
+      "--release",
+      "--locked",
+      "--offline",
+      "--doc",
+      "DurableNativeActivationControl"
+    ],
+    "log": "/private/tmp/breditor-native-activation-control-20261102/docs-1793632044968.log",
+    "target": "/Users/s/code/breditor/target/reconciled-packet-native",
+    "budget": 3221225472,
+    "protectedFiles": [
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+        "sha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0"
+      },
+      {
+        "path": "target/reconciled-packet-native/release/examples/selected_suggestion_delivery_functional",
+        "sha256": "61c35699efcd333680ffca06a5ee6c1f2f22dc73722c065d4fca3610e696a3e7"
+      },
+      {
+        "path": "target/reconciled-packet-native/release/examples/complete_cohort_control_functional",
+        "sha256": "d8ad3caf94470ba22bc74c2f62803dc96c8170c868340e7d5b324c6c6d6133dc"
+      }
+    ],
+    "pid": 57311,
+    "complete": true,
+    "exitCode": 0,
+    "exceeded": false,
+    "timedOut": false,
+    "sourceUnchanged": true,
+    "protectedFilesUnchanged": true
+  },
+  "earlierBroadRun": {
+    "completeQualification": false,
+    "completedCases": 172,
+    "assertionFailuresObserved": 0,
+    "terminatedByActual20MinuteWatchdog": true,
+    "record": {
+      "mode": "recovery-regressions",
+      "source": {
+        "commit": "78da185c821b299dfce2cbbf9accca409c18f0c5",
+        "dirty": true,
+        "sha256": "81105ed3960825d195f1316ecaa2a784196239f08bbb1b49b070fe0a124645af",
+        "files": 8018,
+        "bytes": 66253699
+      },
+      "command": [
+        "cargo",
+        "test",
+        "--manifest-path",
+        "experiments/relay/Cargo.toml",
+        "--features",
+        "server",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "server::generation_recovery::tests",
+        "--",
+        "--test-threads=1"
+      ],
+      "log": "/private/tmp/breditor-native-activation-control-20261102/recovery-regressions-1793602079135.log",
+      "target": "/Users/s/code/breditor/target/reconciled-packet-native",
+      "budget": 3221225472,
+      "protectedFiles": [
+        {
+          "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+          "sha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0"
+        },
+        {
+          "path": "target/reconciled-packet-native/release/examples/selected_suggestion_delivery_functional",
+          "sha256": "61c35699efcd333680ffca06a5ee6c1f2f22dc73722c065d4fca3610e696a3e7"
+        },
+        {
+          "path": "target/reconciled-packet-native/release/examples/complete_cohort_control_functional",
+          "sha256": "d8ad3caf94470ba22bc74c2f62803dc96c8170c868340e7d5b324c6c6d6133dc"
+        }
+      ],
+      "pid": 3048,
+      "complete": true,
+      "exitCode": "SIGTERM",
+      "exceeded": false,
+      "timedOut": true,
+      "sourceUnchanged": true,
+      "protectedFilesUnchanged": true
+    }
+  },
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/durable-native-activation-control-proof-6yhva11o",
+    "indexSha256": "70d7a54d21d0201640374f4f9f9794feff6fb74c58b523fe83ceaecffefbeb63",
+    "references": 32,
+    "objects": 32,
+    "gzipBytes": 52375410,
+    "readbackVerified": true,
+    "nativeTests": 30,
+    "newControlTests": 6
+  },
+  "actualNativeEpochCommitOverHttp": true,
+  "duplicateRequestsReuseActualLiveServiceOnly": true,
+  "actualCancelledWaiterRetainsQuotaAndService": true,
+  "nativeFileChecksOffAsyncIoWorkers": true,
+  "nativeCheckpointFormatUnchanged": true,
+  "networkCarriesCheckpointDigestInsteadOfU64InodeWitnesses": true,
+  "existingReadOnlyControlsAndDefaultRoutesUnchanged": true,
+  "sdkCommitClientImplemented": false,
+  "sdkInstalledQualificationPerformed": false,
+  "durableWholeRoomCoordinationImplemented": false,
+  "wholeRoomActivated": false,
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "packageVersionsUnchanged": true,
+  "fullCandidateProfilesRun": false,
+  "v1Ready": false,
+  "v1GatesOpen": 13,
+  "historicalArchiveReadFailureRepairVerified": false,
+  "historicalWebKitFaultRepairVerified": false,
+  "pushed": false,
+  "published": false
+}
