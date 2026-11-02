@@ -1,3 +1,4 @@
+import {participantAuthority} from '../participant_backup/policy.js';
 /** Fresh seven-family history plus exact whole-upload read custody. Every real
  * parent is reserved synchronously; legacy upload locks precede read grants.
  * Newer families keep their existing custody. No ownership is transferred. */
@@ -15,8 +16,12 @@ import {prepareFinalNativeCut} from './final_native_cut.js';
 import {sourceCoreMethods} from '../source_native_read.js';
 const capture=RichAssetStore.prototype.captureBackup,fail=()=>new SharedEditorError('complete_history_uploads_policy','Hold genuine whole-upload and protected-history readers until verification and cleanup finish');
 export function reserveCompleteHistoryUploads<P extends SharedSelectionPolicy>(input:readonly CompleteHistoryParticipant<P>[],authority:()=>void,signal?:AbortSignal,mode?:OperationalRecordReadMode,inherited?:OperationalAssetCustody){
- const held=reserveCompleteHistoryWithUploads(input,authority,signal,mode),read=held.read;let assets:OperationalAssetCustody|undefined,loanedAssets:OperationalAssetCustody|undefined,loaned=false,finalRetained=false,prepared=false,working=false,closing=false,closed=false,cleanup:Promise<void>|undefined;
- const current=()=>{if(closing||closed)throw fail();(assets??loanedAssets)?.check();read.checkCurrent();},work=async<T>(run:()=>Promise<T>):Promise<T>=>{if(working||closing||closed)throw fail();working=true;try{return await run();}finally{working=false;}};
+ const grant=participantAuthority(authority);let assets:OperationalAssetCustody|undefined,loanedAssets:OperationalAssetCustody|undefined,loaned=false,finalRetained=false,prepared=false,working=false,closing=false,closed=false,cleanup:Promise<void>|undefined;
+ // Parent permission must remain fenced by this wrapper's actual upload custody
+ // even when the physical coordinator supplies its root-only parent grant.
+ const parentCurrent=()=>{if(closing||closed)throw fail();(assets??loanedAssets)?.check();};
+ const held=reserveCompleteHistoryWithUploads(input,()=>{parentCurrent();grant();parentCurrent();},signal,mode),read=held.read;
+ const current=()=>{parentCurrent();read.checkCurrent();},work=async<T>(run:()=>Promise<T>):Promise<T>=>{if(working||closing||closed)throw fail();working=true;try{return await run();}finally{working=false;}};
  const close=():Promise<void>=>{if(closed)return Promise.resolve();if(cleanup)return cleanup;if(working)return Promise.reject(fail());closing=true;cleanup=(async()=>{if(!inherited)await assets?.close();read.close();closed=true;})().finally(()=>{cleanup=undefined;});return cleanup;};
  return Object.freeze({metadata:()=>read.metadata(),checkCurrent:current,check:()=>{current();read.check();current();},
   prepare:()=>work(async()=>{if(prepared||assets)throw fail();const stores=held.legacyUploads();if(inherited){checkOperationalAssetStores(inherited,stores);assets=inherited;}else assets=await holdOperationalAssets(stores);current();await read.prepare();prepared=true;current();}),

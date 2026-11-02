@@ -1,0 +1,190 @@
+{
+  "format": "breditor/history-read-grant-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-11-01",
+  "qualifiedSource": {
+    "commit": "e3c738dfd94b7360cbf26e8fcdc7142ad3222703",
+    "dirty": true,
+    "sha256": "b73429209503b3936cca7c4d1155f55ca65211d77cc3353960157cc3ad749078",
+    "files": 7964,
+    "bytes": 66013627
+  },
+  "executedSourceArchive": {
+    "path": "/private/tmp/breditor-history-grant-83ckedbc/main-executed-source.tar.gz",
+    "bytes": 20307980,
+    "sha256": "f2d374fd752089dc2febf6fa1d6ab9c2dce8dd712f5b826757ae20df174f0d05",
+    "files": 7964,
+    "readBackVerified": true
+  },
+  "source": {
+    "directory": "/Users/s/code/breditor/target/fresh-room-history-sdk-I1vRWx",
+    "passed": 1249,
+    "failed": 0,
+    "skipped": 0,
+    "sourceUnchanged": true
+  },
+  "independentlyInstalled": {
+    "directory": "/private/tmp/breditor-fresh-room-history-installed-tSMXNJ",
+    "passed": 1249,
+    "failed": 0,
+    "skipped": 0,
+    "workspaceLinks": false,
+    "registryArtifacts": 45,
+    "strictTypes": [
+      "types-persistent-suggestion-read-development.ts",
+      "types-persistent-paired-read-development.ts",
+      "types-persistent-generation-read-development.ts",
+      "types-original-retained-record-read.ts",
+      "types-generation-record-references.ts",
+      "types-original-record-references.ts",
+      "types-original-operational-record-read.ts",
+      "types-generation-operational-record-read.ts",
+      "types-operational-history-reference.ts",
+      "types-protected-history-group.ts",
+      "types-fresh-delivery-history.ts",
+      "types-complete-history-read.ts"
+    ],
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/private/tmp/breditor-fresh-room-history-installed-tSMXNJ/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/private/tmp/breditor-fresh-room-history-installed-tSMXNJ/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/private/tmp/breditor-fresh-room-history-installed-tSMXNJ/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "01df78380920430acd5c84b1001da52ef4a89e1826ad9d9c79fba3865e57ead1"
+      }
+    ]
+  },
+  "actualProductionBundle": {
+    "passed": 1249,
+    "failed": 0,
+    "skipped": 0,
+    "modules": 797,
+    "sha256": "506b9d93ccf394b4a8f853a6be891b1f98e162fae0b95617be2993c85a10c4e1"
+  },
+  "compiledSdkFilesMatched": 2743,
+  "compiledSdk": {
+    "files": 2743,
+    "bytes": 34247831,
+    "sha256": "ca5a522dd977ae9d0ea0394e12395e64101dd2f46b6e96761758209137fde554"
+  },
+  "baselineRegression": {
+    "commit": "e3c738dfd94b7360cbf26e8fcdc7142ad3222703",
+    "passed": 0,
+    "failed": 2,
+    "ownershipInspections": {
+      "readHistory": 13792333,
+      "captureRecordCut": 19623644
+    }
+  },
+  "actualNativeCounterWorkload": {
+    "baseline": [
+      {
+        "mode": "readHistory",
+        "descriptors": 13970770,
+        "grants": 4014,
+        "elapsedMs": 2972.388750000002,
+        "cpuMicroseconds": {
+          "user": 3207365,
+          "system": 64751
+        },
+        "oldWriterGrantsUnchanged": true,
+        "allStorageUnchanged": true
+      },
+      {
+        "mode": "captureRecordCut",
+        "descriptors": 19859837,
+        "grants": 5282,
+        "elapsedMs": 4424.6679589999985,
+        "cpuMicroseconds": {
+          "user": 4317052,
+          "system": 103921
+        },
+        "oldWriterGrantsUnchanged": true,
+        "allStorageUnchanged": true
+      }
+    ],
+    "repaired": [
+      {
+        "mode": "readHistory",
+        "descriptors": 5154774,
+        "grants": 4014,
+        "elapsedMs": 2292.361041000002,
+        "cpuMicroseconds": {
+          "user": 2431340,
+          "system": 70106
+        },
+        "oldWriterGrantsUnchanged": true,
+        "allStorageUnchanged": true
+      },
+      {
+        "mode": "captureRecordCut",
+        "descriptors": 8424803,
+        "grants": 5282,
+        "elapsedMs": 3321.0752500000017,
+        "cpuMicroseconds": {
+          "user": 2993035,
+          "system": 83196
+        },
+        "oldWriterGrantsUnchanged": true,
+        "allStorageUnchanged": true
+      }
+    ],
+    "productionLatencyQualified": false
+  },
+  "releasePlanContracts": 91,
+  "retainedStorageLaws": 30,
+  "existingSnapshotLawsAddedIn": "fe0f66d5",
+  "freshRoomLaws": 17,
+  "largerDescendantWorkloadsFullyRun": false,
+  "nativeInputs": {
+    "profiles": 10,
+    "publicFiles": 50,
+    "actualProducer": "scripts/check-complete-cohort-native.mjs",
+    "producerSha256": "e64fe384053c9d221be1c07f221d802660e33df7ae29344ad094b1e2182eb7ba",
+    "sourceMatched": true,
+    "maximumBuildAllocatedBytes": 866512896,
+    "buildLimitBytes": 3221225472
+  },
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/history-grant-qualified-proof-9gm9fhlb",
+    "indexSha256": "dfcb10bb2dcf8f45cfd7e3c7e14cd96cfa6647a0d90f59a1d3b635d6099f9b9d",
+    "references": 92,
+    "objects": 88,
+    "gzipBytes": 42162367,
+    "readBackVerified": true,
+    "compiledFilesMatchedInstalledArchives": 2743
+  },
+  "priorControlledColdDrill": {
+    "sourceFunctionalPass": true,
+    "independentInstalledWholePathQualified": false,
+    "clients": 7,
+    "offlineDocumentAndCommentSuffixes": 14,
+    "exactFutureDocumentAndCommentHistories": true,
+    "proofDirectory": "/Users/s/code/breditor/target/controlled-native-sdk-cold-proof-nvwgd2dc",
+    "proofIndexSha256": "fd890797a67962d04a390cba7c1252f8d6ab943b4d83a625c8ae0b36973a0bfe",
+    "wholeRoomActivated": false
+  },
+  "postQualificationDocumentation": [
+    "docs/HISTORY_READ_GRANTS.md",
+    "docs/qualification/2026-11-01-history-read-grants.json",
+    "docs/V1_RELEASE_PLAN.md"
+  ],
+  "protocolsAndDefaultsUnchanged": true,
+  "rustImplementationUnchanged": true,
+  "packageVersionsUnchanged": true,
+  "fullCandidateProfilesRun": false,
+  "wholeRoomActivated": false,
+  "v1Ready": false,
+  "v1GatesOpen": 13,
+  "pushed": false,
+  "published": false
+}

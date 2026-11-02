@@ -1,5 +1,32 @@
 # Breditor V1 release preparation
 
+[Whole-room history read grants](HISTORY_READ_GRANTS.md) eliminate a reproduced
+duplicate traversal between the physical root, complete child readers and upload
+custody. Root, all seven participant readers and real upload custody retain their
+own currentness fences around fresh permission. Both permanent regressions fail
+on the preceding implementation and pass on the repair. Source, independent
+installed packages and an actual production bundle each pass all 1,249 cases with
+strict public types; 91 release-plan/count contracts pass. All 2,743 compiled SDK
+files match the independent archives. Ten real Native profile/wire fixtures are
+fresh for the exact executed source; the bounded rebuild peaks below 1 GiB.
+
+The [qualification](qualification/2026-11-01-history-read-grants.json) retains
+exact source, old fixed-count failures, new regressions, packages, bundle and a
+read-back-verified proof. Descendant counts now derive from their full parent
+domains, retaining the two existing snapshot laws. Larger descendant workloads
+and complete candidate profiles are not claimed executed by this qualification.
+Rust implementation, normal Wasm, original protocols/defaults and versions remain
+unchanged. All thirteen V1/parity gates remain open.
+
+The separate controlled Native/SDK restart drill has now passed one complete
+source path: seven new client owners preserve fourteen offline document/comment
+suffixes, real upload ACKs and exact future Undo/Redo while the real Native service
+reacquires its operational directory and commits a fresh epoch. Original metadata
+and Pending/cache meanings remain literal. Its retained proof is recorded in the
+qualification above. Portable fixture integration, independent installed whole-path
+qualification and authenticated production whole-room activation remain required.
+Earlier timeout and diagnostic failures remain preserved with their original scope.
+
 [Current native publication scalars](NATIVE_PUBLICATION_STATE.md) remove a
 reproduced source of repeated full editor-view parsing in held-origin and
 portable-replay guards. Both the fixed source and fresh independently installed

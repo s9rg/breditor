@@ -1,3 +1,4 @@
+import {retainedStorageRegressionLaws} from './retained-storage-regression-count.mjs';
 import {NORMAL_SHARED_WASM_SHA256} from "./fixtures/native-runtime/normal-shared-identity.mjs";
 /** Fixed read-runtime regression domain on the unchanged normal Wasm binary.
  * No author restoration, relay activation, platform or full V1 qualification. */
@@ -18,5 +19,5 @@ assert.equal(normalWasmSha256,NORMAL_SHARED_WASM_SHA256);
 let output;try{output=execFileSync(process.execPath,['--test',...tests.map(name=>'scripts/'+name)],{cwd:root,encoding:'utf8',timeout:600000,maxBuffer:8*1024*1024});writeFileSync(join(directory,'contracts.log'),output);}catch(error){writeFileSync(join(directory,'contracts.log'),String(error.stdout??'')+'\n'+String(error.stderr??''));throw error;}
 for(const pattern of [new RegExp('^# pass '+assertions+'$','m'),/^# fail 0$/m,/^# skipped 0$/m])assert.match(output,pattern);
 assert.deepEqual(sourceEvidence(root),source);
-const result={format:'breditor/operational-history-reference-sdk',formatVersion:1,passed:true,directory,source,sourceUnchanged:true,assertions,newHistoricalParentReferenceLaws:131,generationParentRecordReadLaws:97,priorOriginalParentRecordReadLaws:52,priorOriginalReferenceReadLaws:146,priorGenerationReferenceReadLaws:268,originalRetainedRecordReadLaws:197,priorRecordReadLaws:262,compoundStorageRegressionLaws:28,normalWasmSha256,scope};
+const result={format:'breditor/operational-history-reference-sdk',formatVersion:1,passed:true,directory,source,sourceUnchanged:true,assertions,newHistoricalParentReferenceLaws:131,generationParentRecordReadLaws:97,priorOriginalParentRecordReadLaws:52,priorOriginalReferenceReadLaws:146,priorGenerationReferenceReadLaws:268,originalRetainedRecordReadLaws:197,priorRecordReadLaws:262,compoundStorageRegressionLaws:retainedStorageRegressionLaws,normalWasmSha256,scope};
 saveEvidence(join(directory,'result.json'),result);saveEvidence(join(root,'target/operational-history-reference-sdk.json'),result);console.log(JSON.stringify(result));

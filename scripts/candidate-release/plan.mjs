@@ -29,6 +29,7 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
  const relayCargo=(id,[command,...args],artifacts=[])=>stage(id,cargo,[command,"--manifest-path","experiments/relay/Cargo.toml",...args],{CARGO_TARGET_DIR:relay},artifacts);
  const checks=[
   stage("candidate-runner-contracts",node,["--test","scripts/verify-candidate.test.mjs"]),
+  stage("history-workload-count-contracts",node,["--test","scripts/history-workload-counts.test.mjs"]),
   stage("rust-toolchain",cargo,["--version","--verbose"]),
   stage("native-history-consumer-contracts",node,["--test","scripts/canonical-native-history-dependencies.test.mjs"]),
   stage("workspace-format",cargo,["fmt","--all","--","--check"]),
