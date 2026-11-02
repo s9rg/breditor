@@ -1,5 +1,31 @@
 # Breditor V1 release preparation
 
+[Portable Native/SDK cold recovery](NATIVE_COLD_RECOVERY.md) now passes the
+complete five-case source matrix and the same five cases from fresh independent
+packages. All four literal document/comment history policy pairs preserve seven
+new Native client owners, fourteen offline edit/comment suffixes, actual managed
+upload ACKs, original metadata/cache/Pending meanings and exact future document
+and comment Undo/Redo. Real protocol delivery is required before offline heads
+become current. The separate authentication case performs two further real Native
+service restarts, rejects prior account tokens and preserves registered authors.
+
+The dedicated Native examples build in an isolated, monitored 3 GiB target while
+previous executables and normal Wasm stay protected. Strict public types and
+103 plan/evidence checks pass; all 2,743 compiled SDK files match installed
+archives. Both candidate profiles require the complete build/source/installed
+matrix. The [qualification](qualification/2026-11-01-native-cold-recovery.json)
+retains exact source, binaries, packages, actual Native public cuts, complete
+client/metadata/raster data and a read-back-verified proof.
+
+These are controlled service restarts within one Rust process and genuinely new
+client owners over controlled local storage/locks/raster presentation. Physical
+process crashes, real browser storage, cross-device fencing, authenticated
+production whole-room activation, complete candidate profiles and all thirteen
+V1/parity gates remain open. Original production APIs, wire meanings/defaults,
+normal Wasm and package versions are unchanged. The earlier single-path private
+source drill is superseded by this portable source/installed matrix; its original
+proof and narrower failures remain retained.
+
 [Whole-room history read grants](HISTORY_READ_GRANTS.md) eliminate a reproduced
 duplicate traversal between the physical root, complete child readers and upload
 custody. Root, all seven participant readers and real upload custody retain their

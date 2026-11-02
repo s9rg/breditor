@@ -134,3 +134,8 @@ required-features = ["server"]
 name = "selected_suggestion_delivery_functional"
 path = "examples/selected_suggestion_delivery_functional.rs"
 required-features = ["server"]
+
+[[example]]
+name = "coordinated_native_restart_functional"
+path = "examples/coordinated_native_restart_functional.rs"
+required-features = ["server"]

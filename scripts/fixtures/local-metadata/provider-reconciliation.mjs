@@ -151,5 +151,6 @@ export async function testProviderReconciliation(input) {
   }finally{await metadata?.close();await review?.close();fresh?.close();}
  });
  if(input.reconcileCold)await testReconciledCold({...input,bundle:retainedBundle,settle:deliverRoom});
+ await input.onRetainedReconciliation?.({...input,bundle:retainedBundle,settle:deliverRoom});
  return result;
 }

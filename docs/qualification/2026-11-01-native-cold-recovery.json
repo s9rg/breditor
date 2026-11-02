@@ -1,0 +1,200 @@
+{
+  "format": "breditor/native-cold-recovery-qualification",
+  "formatVersion": 1,
+  "qualifiedAt": "2026-11-01",
+  "qualifiedSource": {
+    "commit": "be932c2710ff42d6487ca4b34988e2ef4ef62321",
+    "dirty": true,
+    "sha256": "6657385a434c283e819c635e77d66daceed1a86cea2940749ed3c5fd986faead",
+    "files": 7987,
+    "bytes": 66112042
+  },
+  "sourceArchive": {
+    "path": "/private/tmp/breditor-history-grant-83ckedbc/portable-cold-qualification/executed-source.tar.gz",
+    "bytes": 20336280,
+    "sha256": "e19532d5ce85f8b09019b640398ad602c9810b6e040d7a120fc679da9eeec8ce",
+    "files": 7987,
+    "readBackVerified": true
+  },
+  "source": {
+    "directory": "/Users/s/code/breditor/target/native-cold-restart-source-qualification-1M2o99",
+    "cases": 5,
+    "passed": true,
+    "strictPublicTypes": true,
+    "sourceUnchanged": true
+  },
+  "independentInstalled": {
+    "directory": "/private/tmp/breditor-native-cold-restart-installed-zMgr3U",
+    "cases": 5,
+    "passed": true,
+    "strictPublicTypes": true,
+    "workspaceLinks": false,
+    "registryArtifacts": 45,
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/private/tmp/breditor-native-cold-restart-installed-zMgr3U/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/private/tmp/breditor-native-cold-restart-installed-zMgr3U/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/private/tmp/breditor-native-cold-restart-installed-zMgr3U/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "01df78380920430acd5c84b1001da52ef4a89e1826ad9d9c79fba3865e57ead1"
+      }
+    ]
+  },
+  "nativeBuild": {
+    "directory": "/Users/s/code/breditor/target/native-cold-restart-native-build-p3DhX9",
+    "sourceMatched": true,
+    "complete": true,
+    "exitCode": 0,
+    "budgetBytes": 3221225472,
+    "exceeded": false,
+    "binaries": [
+      {
+        "path": "/Users/s/code/breditor/target/native-cold-restart-native/release/examples/coordinated_native_restart_functional",
+        "bytes": 23500080,
+        "sha256": "6f3112c31db50582e69c2e3d0206fca17202c738c86ba8db3f7b5037a04225d6"
+      },
+      {
+        "path": "/Users/s/code/breditor/target/native-cold-restart-native/release/examples/complete_cohort_control_functional",
+        "bytes": 19965504,
+        "sha256": "d8ad3caf94470ba22bc74c2f62803dc96c8170c868340e7d5b324c6c6d6133dc"
+      }
+    ],
+    "protectedFiles": [
+      {
+        "path": "target/server-native-dependencies-native/release/examples/selected_suggestion_delivery_functional",
+        "sha256": "020df02bb8399f4388a05e0b67e3dc74f7c1473a5350b1b60d665f05ec45011c"
+      },
+      {
+        "path": "target/server-native-dependencies-native/release/examples/complete_cohort_control_functional",
+        "sha256": "efbdce5f865d99ad0659f19d4a941aca066482af5e3049991567e4a485ca1e1d"
+      },
+      {
+        "path": "target/server-metadata-native/release/examples/selected_suggestion_delivery_functional",
+        "sha256": "3ff2019ccc49a3a54dc2834e7d9892e7078a328c118e69bd441fff77fdde557f"
+      },
+      {
+        "path": "target/server-metadata-native/release/examples/complete_cohort_control_functional",
+        "sha256": "69de301825637e96c47689cbf06ca0a94f5d89a8dd54c0c9261a8054232e457a"
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+        "sha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0"
+      },
+      {
+        "path": "target/owned-history-relay-native/release/examples/selected_delivery_functional",
+        "sha256": "c224c4d39d5f603dcb3815ebc58c1719b59b4d6db6fe554e675f91d4cab46ea7"
+      },
+      {
+        "path": "target/owned-history-relay-native/release/examples/selected_suggestion_delivery_functional",
+        "sha256": "60427bb794f52c39a7084fac797f8f3150501238c45c78bad6195cd928a252ca"
+      },
+      {
+        "path": "target/owned-history-relay-native/release/examples/segmented_relay_functional",
+        "sha256": "693e4d465867518e34cfc248d5de2bea54d3babba188dd935d92c728e11fd67d"
+      },
+      {
+        "path": "target/owned-history-relay-native/release/examples/generation_complete_control_functional",
+        "sha256": "95c046cc39eead5d13ffc1d6238078d2f73594446e4b8579de2b8c8de03f6f6a"
+      },
+      {
+        "path": "target/owned-history-relay-native/release/examples/complete_cohort_control_functional",
+        "sha256": "3a52eea28153ff72fda020ff6b1bb8165ee899bba32f7ec063ea84a03d2dd616"
+      }
+    ]
+  },
+  "rustFixtureLint": {
+    "files": [
+      {
+        "path": "experiments/relay/examples/coordinated_native_restart_functional.rs",
+        "sha256": "62dc5737db89f2b26eb37c628221d096d696be2665d66ea84436149c70fb273f"
+      },
+      {
+        "path": "experiments/relay/examples/joint_restart_host/activate.rs",
+        "sha256": "ddd74eeb2502ef33b5db8846533baa9f2a62f3e01fb923bfcb1559b176619284"
+      },
+      {
+        "path": "experiments/relay/examples/joint_restart_host/begin.rs",
+        "sha256": "ca83f15df367f0b9345d7a61cd6c22e92e1ca7346347b1657222b04e2f21af99"
+      },
+      {
+        "path": "experiments/relay/examples/joint_restart_host/next.rs",
+        "sha256": "ae42cf3dfc959f557f6a8387da29d4ee613634ade21116a9dab4c6dbc8dbf88d"
+      },
+      {
+        "path": "experiments/relay/examples/joint_restart_host/protocol.rs",
+        "sha256": "80857e2f5431c5fb7652fddbaf3b17381b2f8ca92abcf230d2eb9e8b2ab32a0e"
+      },
+      {
+        "path": "experiments/relay/examples/joint_restart_host/restart.rs",
+        "sha256": "87aa0b9ef2e4f34d21e6c6b6eb7d8c64386a2ced9d71562acbe7711937ca55de"
+      },
+      {
+        "path": "experiments/relay/examples/joint_restart_host/seed.rs",
+        "sha256": "18d1c2502649d61a5cacc2ea789daa82202a12aede297473048b9289caed4616"
+      },
+      {
+        "path": "experiments/relay/examples/joint_restart_host/service.rs",
+        "sha256": "30ec2cbe7366ea47f592802dc89aa6568edde479326fac300e38c6a18490a324"
+      },
+      {
+        "path": "experiments/relay/examples/joint_restart_host/setup.rs",
+        "sha256": "f54a9d89755f69ba37a1ba540aeffa80c2f21fbda2573b55b7c9c7aea674a491"
+      }
+    ],
+    "exactPreviouslyLintedSource": true,
+    "strictClippyLog": "/private/tmp/breditor-history-grant-83ckedbc/native-cold-overlay-clippy-final.log"
+  },
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "historyPolicyPairs": [
+    "original/original",
+    "original/segmented-v1",
+    "segmented-v1/original",
+    "segmented-v1/segmented-v1"
+  ],
+  "richLanguage": 3,
+  "standardSchema": true,
+  "atomicWriterTransport": true,
+  "clientsPerHistoryCase": 7,
+  "offlineDocumentAndCommentSuffixesPerHistoryCase": 14,
+  "realManagedUploadAcksPerHistoryCase": 3,
+  "wholeUploadRolesPerHistoryCase": 14,
+  "controlledServiceRestartsPerEnvironment": 6,
+  "exactFutureDocumentAndCommentHistories": true,
+  "originalMetadataPendingAndCachesPreserved": true,
+  "compiledSdkFilesMatchedInstalled": 2743,
+  "releasePlanAndEvidenceContracts": 103,
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/native-cold-restart-qualified-proof-55obwmcm",
+    "indexSha256": "8b439dd31a2a717e9e2765dcf75c4c0bc58152122ef4c11d741e63a2fa83b6db",
+    "references": 916,
+    "objects": 510,
+    "gzipBytes": 82544213,
+    "readBackVerified": true,
+    "compiledSdkFilesMatched": 2743
+  },
+  "controlledServiceRestartWithinOneRustProcess": true,
+  "localIdbLocksAndRasterPresentationControlled": true,
+  "physicalProcessCrashQualified": false,
+  "productionSdkAndRustApisUnchanged": true,
+  "originalProtocolsAndDefaultsUnchanged": true,
+  "packageVersionsUnchanged": true,
+  "postQualificationDocumentation": [
+    "docs/NATIVE_COLD_RECOVERY.md",
+    "docs/qualification/2026-11-01-native-cold-recovery.json",
+    "docs/V1_RELEASE_PLAN.md"
+  ],
+  "wholeRoomActivated": false,
+  "fullCandidateProfilesRun": false,
+  "v1Ready": false,
+  "v1GatesOpen": 13,
+  "pushed": false,
+  "published": false
+}
