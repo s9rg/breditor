@@ -10,3 +10,12 @@ export interface SharedArchiveIntegrityOptions {
  readonly signal?:AbortSignal;
 }
 export interface SharedArchiveFileDigest {readonly bytes:number;readonly sha256:string}
+
+/** Numerical transport facts only. Never includes archive bytes, names or paths. */
+export interface SharedArchiveReadLengthFailure {
+ readonly kind:'read-length';
+ readonly offset:number;
+ readonly expectedBytes:number;
+ readonly observedBeforeAuthorityBytes:number;
+ readonly actualBytes:number;
+}

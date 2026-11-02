@@ -1,3 +1,4 @@
+import type {ReconciledServerPacketRecoveryCapture} from '../reconciled_server_packet_recovery/contract.js';
 import type {ServerPacketReconciliationRead} from '../server_packet_reconciliation/contract.js';
 import {detachResolvedServerPacketRecoveryBundle} from '../server_packet_source_resolution/bundle.js';
 import type {ResolvedServerPacketRecoveryBundle,ResolvedServerPacketRecoveryOutcome,ResolvedServerPacketRecoveryInspection} from '../server_packet_source_resolution/contract.js';
@@ -214,6 +215,13 @@ export class SelectedLocalMetadataDelivery{
  captureResolvedServerPacketRecovery(provided:ServerPacketRecoveryInput):Promise<ResolvedServerPacketRecoveryOutcome>{
   let input!:ReturnType<typeof prepareMetadataPacketRecoveryInput>,result:ResolvedServerPacketRecoveryOutcome|undefined;
   return this.#captureReferenceOperation(async work=>{this.#current();if(!this.#snapshot)throw fail();result=await work.resolvedServerPacketRecovery(input,this.#snapshot);this.#current();},()=>{input=prepareMetadataPacketRecoveryInput(provided);}).then(()=>{if(!result)throw fail();return result;});
+ }
+ /** Retain complete packet/server/raster bytes and current reconciliation in
+  * one genuine reservation. Byte and current Pending meanings stay separate;
+  * this never returns a writer, acknowledgement or activation capability. */
+ captureReconciledServerPacketRecovery(provided:ServerPacketRecoveryInput):Promise<ReconciledServerPacketRecoveryCapture>{
+  let input!:ReturnType<typeof prepareMetadataPacketRecoveryInput>,result:ReconciledServerPacketRecoveryCapture|undefined;
+  return this.#captureReferenceOperation(async work=>{this.#current();if(!this.#snapshot)throw fail();result=await work.reconciledServerPacketRecovery(input,this.#snapshot);this.#current();},()=>{input=prepareMetadataPacketRecoveryInput(provided);}).then(()=>{if(!result)throw fail();return result;});
  }
  /** Fresh complete reference/provider requirements join current Native and
   * original outbox facts; archived/local byte retention never supplies ACKs. */

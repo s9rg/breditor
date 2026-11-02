@@ -1,3 +1,5 @@
+import {composeReconciledServerPacketRecovery} from '../reconciled_server_packet_recovery/compose.js';
+import type {ReconciledServerPacketRecoveryCapture} from '../reconciled_server_packet_recovery/contract.js';
 import {readCurrentLocalPacketReferences} from '../server_packet_reconciliation/local_references.js';
 import {captureCurrentServerPacketReconciliation} from '../server_packet_reconciliation/capture.js';
 import type {ServerPacketReconciliationRead} from '../server_packet_reconciliation/contract.js';
@@ -183,11 +185,25 @@ export class LocalMetadataReferenceWork {
    const source=await LoadedPacketSource.read(packets.references.parent.parent.current,this.#options);try{check();return await readNativeSourceVersions(source,reads,{limits:checkRichAssetLimits(input.options.limits),signal:this.#waits.signal},check);}finally{source.dispose();}
   },this.#options,check);
  }
+ /** Both results stay under the same parent/native/upload reservation. Reuse
+  * the actual contained original read from this same cut, not a saved DTO. */
+ async reconciledServerPacketRecovery(input:PreparedMetadataPacketRecoveryInput,snapshot:LocalMetadataDeliverySnapshot):Promise<ReconciledServerPacketRecoveryCapture>{
+  const check=()=>{this.#check();input.selected.check();input.reconciliation.check();for(const row of this.#allSources){const before=this.#availabilityStamps.get(row.source.core),now=coreReadStamp(row.source.core);if(!before||before.document!==now.document||before.review!==now.review)throw fail('local_metadata_assets_changed');}};
+  check();const recovery=await this.resolvedServerPacketRecovery(input,snapshot);check();
+  const reconciliation=await this.#currentServerPacketReconciliation(input.reconciliation,snapshot,recovery.bundle.original.packets.containment.reconciliation);check();
+  const result=composeReconciledServerPacketRecovery(recovery,reconciliation);check();return result;
+ }
  /** Available immutable version sources do not require eager cache downloads.
   * Actual unacknowledged operations, Native heads and provider loss still block. */
  async serverPacketReconciliation(input:PreparedLocalMetadataReconciliation,snapshot:LocalMetadataDeliverySnapshot):Promise<ServerPacketReconciliationRead>{
   const check=()=>{this.#check();input.check();for(const row of this.#allSources){const before=this.#availabilityStamps.get(row.source.core),now=coreReadStamp(row.source.core);if(!before||before.document!==now.document||before.review!==now.review)throw fail('local_metadata_assets_changed');}};
-  check();const original=await this.reconcile(input,snapshot);check();if(!this.#room||!this.#cut||!this.#finished||!this.#stored||!this.#factories)throw fail('local_metadata_assets_closed');const reads=this.#packetNativeReads(),selected=this.#finished;
+  check();const original=await this.reconcile(input,snapshot);check();return this.#currentServerPacketReconciliation(input,snapshot,original);
+ }
+ /** Internal continuation of a genuinely captured original read. The caller
+  * keeps the same work, current cut and all source stamps alive across IO. */
+ async #currentServerPacketReconciliation(input:PreparedLocalMetadataReconciliation,snapshot:LocalMetadataDeliverySnapshot,original:LocalMetadataReconciliationRead):Promise<ServerPacketReconciliationRead>{
+  const check=()=>{this.#check();input.check();for(const row of this.#allSources){const before=this.#availabilityStamps.get(row.source.core),now=coreReadStamp(row.source.core);if(!before||before.document!==now.document||before.review!==now.review)throw fail('local_metadata_assets_changed');}};
+  check();if(!this.#room||!this.#cut||!this.#finished||!this.#stored||!this.#factories)throw fail('local_metadata_assets_closed');const reads=this.#packetNativeReads(),selected=this.#finished;
   return captureCurrentServerPacketReconciliation(original,selected.body,input,
    ()=>readCurrentLocalPacketReferences(this.#scope,this.#allSources,snapshot,this.#stored!.current,this.#cut!,this.#factories!.reads,this.#options,check),
    async()=>{const source=await LoadedPacketSource.read(selected.bundle.parent.parent.current,this.#options);try{check();return await readNativeSourceVersions(source,reads,{signal:this.#waits.signal},check);}finally{source.dispose();}},

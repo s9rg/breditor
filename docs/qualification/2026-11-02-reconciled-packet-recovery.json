@@ -1,0 +1,692 @@
+{
+  "format": "breditor/reconciled-packet-recovery-qualification",
+  "formatVersion": 1,
+  "qualifiedAtUtc": "2026-11-02T06:23:19.023107+00:00",
+  "qualifiedSource": {
+    "commit": "a841df14a73d4fbdf0960ba04cfd5d843238b44f",
+    "dirty": true,
+    "sha256": "e1d88448748bb5b91a44e67d89e4732711d2818a5f067a0b31d4fc8b572b275a",
+    "files": 8008,
+    "bytes": 66180603
+  },
+  "sourceArchive": {
+    "path": "/private/tmp/breditor-reconciled-recovery-20261102/length-diagnostics/executed-source.tar.gz",
+    "bytes": 20236964,
+    "sha256": "b47a3bd48e837260980ef7306e30af75bb23e15d0fbade17630b51ecd4cf59dd",
+    "files": 8008,
+    "readbackVerified": true
+  },
+  "source": {
+    "directory": "/Users/s/code/breditor/target/reconciled-packet-recovery-source-qualification-sz7iHL",
+    "cases": 20,
+    "passed": true,
+    "sourceUnchanged": true,
+    "strictSdkDeclarations": true
+  },
+  "independentInstalled": {
+    "directory": "/private/tmp/breditor-reconciled-packet-recovery-installed-NJDFnc",
+    "cases": 20,
+    "passed": true,
+    "sourceUnchanged": true,
+    "strictSdkDeclarations": true,
+    "workspaceLinks": false,
+    "registryArtifacts": 45,
+    "archives": [
+      {
+        "name": "@breditor/browser",
+        "path": "/private/tmp/breditor-reconciled-packet-recovery-installed-NJDFnc/archives/breditor-browser-0.3.0-alpha.22.tgz",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "path": "/private/tmp/breditor-reconciled-packet-recovery-installed-NJDFnc/archives/breditor-experimental-rich-content-0.3.0-alpha.22.tgz",
+        "sha256": "2afe18d628feb31b3c1a7bcdfffa0bdff12bc9d569d9a287d669a27518213a15"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "path": "/private/tmp/breditor-reconciled-packet-recovery-installed-NJDFnc/archives/breditor-collaboration-0.3.0-alpha.22.tgz",
+        "sha256": "3e2d5685919981c7e55ae3e2dbf01e48d29001c2bc9244fb40e1bb1928bfb62f"
+      }
+    ]
+  },
+  "typeChecksUseSdkDistDeclarations": true,
+  "publicRootExportQualification": false,
+  "nativeBuild": {
+    "format": "breditor/reconciled-packet-native-build",
+    "formatVersion": 1,
+    "complete": true,
+    "source": {
+      "commit": "a841df14a73d4fbdf0960ba04cfd5d843238b44f",
+      "dirty": true,
+      "sha256": "e1d88448748bb5b91a44e67d89e4732711d2818a5f067a0b31d4fc8b572b275a",
+      "files": 8008,
+      "bytes": 66180603
+    },
+    "target": "/Users/s/code/breditor/target/reconciled-packet-native",
+    "budgetBytes": 3221225472,
+    "directory": "/Users/s/code/breditor/target/reconciled-packet-native-build-NLtDle",
+    "log": "/Users/s/code/breditor/target/reconciled-packet-native-build-NLtDle/build.log",
+    "command": [
+      "cargo",
+      "build",
+      "--manifest-path",
+      "experiments/relay/Cargo.toml",
+      "--features",
+      "server",
+      "--release",
+      "--locked",
+      "--offline",
+      "--example",
+      "selected_suggestion_delivery_functional",
+      "--example",
+      "complete_cohort_control_functional"
+    ],
+    "protectedFiles": [
+      {
+        "path": "target/server-native-dependencies-native/release/examples/selected_suggestion_delivery_functional",
+        "sha256": "020df02bb8399f4388a05e0b67e3dc74f7c1473a5350b1b60d665f05ec45011c"
+      },
+      {
+        "path": "target/server-native-dependencies-native/release/examples/complete_cohort_control_functional",
+        "sha256": "efbdce5f865d99ad0659f19d4a941aca066482af5e3049991567e4a485ca1e1d"
+      },
+      {
+        "path": "target/server-metadata-native/release/examples/selected_suggestion_delivery_functional",
+        "sha256": "3ff2019ccc49a3a54dc2834e7d9892e7078a328c118e69bd441fff77fdde557f"
+      },
+      {
+        "path": "target/server-metadata-native/release/examples/complete_cohort_control_functional",
+        "sha256": "69de301825637e96c47689cbf06ca0a94f5d89a8dd54c0c9261a8054232e457a"
+      },
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+        "sha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0"
+      },
+      {
+        "path": "target/owned-history-relay-native/release/examples/selected_delivery_functional",
+        "sha256": "c224c4d39d5f603dcb3815ebc58c1719b59b4d6db6fe554e675f91d4cab46ea7"
+      },
+      {
+        "path": "target/owned-history-relay-native/release/examples/selected_suggestion_delivery_functional",
+        "sha256": "60427bb794f52c39a7084fac797f8f3150501238c45c78bad6195cd928a252ca"
+      },
+      {
+        "path": "target/owned-history-relay-native/release/examples/segmented_relay_functional",
+        "sha256": "693e4d465867518e34cfc248d5de2bea54d3babba188dd935d92c728e11fd67d"
+      },
+      {
+        "path": "target/owned-history-relay-native/release/examples/generation_complete_control_functional",
+        "sha256": "95c046cc39eead5d13ffc1d6238078d2f73594446e4b8579de2b8c8de03f6f6a"
+      },
+      {
+        "path": "target/owned-history-relay-native/release/examples/complete_cohort_control_functional",
+        "sha256": "3a52eea28153ff72fda020ff6b1bb8165ee899bba32f7ec063ea84a03d2dd616"
+      }
+    ],
+    "exitCode": 0,
+    "exceeded": false,
+    "timedOut": false,
+    "sourceUnchanged": true,
+    "binaries": [
+      {
+        "path": "/Users/s/code/breditor/target/reconciled-packet-native/release/examples/selected_suggestion_delivery_functional",
+        "bytes": 23309856,
+        "sha256": "61c35699efcd333680ffca06a5ee6c1f2f22dc73722c065d4fca3610e696a3e7"
+      },
+      {
+        "path": "/Users/s/code/breditor/target/reconciled-packet-native/release/examples/complete_cohort_control_functional",
+        "bytes": 19965504,
+        "sha256": "d8ad3caf94470ba22bc74c2f62803dc96c8170c868340e7d5b324c6c6d6133dc"
+      }
+    ]
+  },
+  "nativeWorkflowsPerEnvironment": 3,
+  "completePairedCapturesPerEnvironment": 2,
+  "originalReferenceOnlyCompatibilityPerEnvironment": 1,
+  "destructiveFinalDisposalRefusalsPerEnvironment": 1,
+  "participantsPerNativeWorkflow": 7,
+  "wholeUploadRolesPerPairedCapture": 14,
+  "byteAndCurrentOutcomesRemainSeparate": true,
+  "originalPendingMetadataQueuesAndCachesPreserved": true,
+  "exactFutureDocumentAndCommentHistories": true,
+  "compiledSdk": {
+    "files": 2749,
+    "bytes": 34256842,
+    "sha256": "f9b028dea26e8ceba6f0134be5ee0bed5568affd34d2fab9addfb7d8e68582a7",
+    "installedConsumer": "/private/tmp/breditor-reconciled-packet-recovery-installed-NJDFnc/consumer",
+    "allBytesEqual": true
+  },
+  "focusedAssociationDiagnosticAndPlanContracts": 20,
+  "simulatedTransportDiagnosticCasesPerEnvironment": 6,
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/reconciled-packet-diagnostic-qualified-proof-sc2ksb40",
+    "indexSha256": "cb6fc816e0d29ff57539dc225ceeced7b999ac6eb2b8f4eb7b4ccc694729f1a8",
+    "references": 531,
+    "objects": 334,
+    "gzipBytes": 61787474,
+    "readBackVerified": true,
+    "compiledSdkFilesMatched": 2749
+  },
+  "observations": {
+    "source": {
+      "paired": [
+        {
+          "file": "/Users/s/code/breditor/target/reconciled-packet-fixture-eY9RNj/target/selected-delivery-native-w606Nv/reconciled-recovery-observation.json",
+          "sha256": "beadf4d8b6327e90f2df33fd98430528de0d34d8b760782067716c18fc575add",
+          "format": "breditor/reconciled-server-packet-recovery-observation",
+          "formatVersion": 1,
+          "participants": 7,
+          "bytesKind": "retained",
+          "currentKind": "pending",
+          "originalKind": "pending",
+          "binding": {
+            "references": {
+              "bytes": 551958,
+              "sha256": "669749e5424d6474b42a6ceb5eca4c8d260a315d8c0852f54ccb6f348065cd57"
+            },
+            "packets": {
+              "bytes": 34162,
+              "sha256": "88ce5eae62f6ca2720e2e9f78d7c355c6bac3810d5702cd5049419c43d328858"
+            },
+            "dependencies": {
+              "bytes": 7481,
+              "sha256": "28cae536c9dfc50a7d780590563ca94fcdaf7a7de6a7a338b6f557e63f1cd133"
+            },
+            "resolution": {
+              "bytes": 5711,
+              "sha256": "6d19f65f42cc16ee5ebda6506698c2abae9db4e05e3f53e9c74cb3b164d0e5fb"
+            }
+          },
+          "currentData": {
+            "file": "/Users/s/code/breditor/target/reconciled-packet-fixture-eY9RNj/target/selected-delivery-native-w606Nv/reconciled-current-read.json",
+            "bytes": 158405,
+            "sha256": "091b224ff8984aa5352554a4043664acf21283dab5a402038cdd5feb4ef928f9"
+          },
+          "originalMetadataLanesUnchanged": true,
+          "allNativeStampsUnchanged": true,
+          "cacheCalls": 0,
+          "disk": {
+            "index": "/Users/s/code/breditor/target/reconciled-packet-fixture-eY9RNj/target/selected-delivery-native-w606Nv/reconciled-recovery/bundle.json",
+            "indexSha256": "daa1ffa35b285df283394d08fb5a347878f7733dea985cdc7e430a64367ad85c",
+            "logicalBytes": 24353781,
+            "blobOccurrences": 18,
+            "uniqueObjects": 13
+          },
+          "diskNativeInspection": true,
+          "uploadRoles": 14,
+          "wholeRoomActivated": false
+        },
+        {
+          "file": "/Users/s/code/breditor/target/reconciled-packet-fixture-32gByj/target/selected-delivery-native-rdPBD5/reconciled-recovery-observation.json",
+          "sha256": "f6e54c1c454c83509eef47d0d2b1937fbc02362aa4e8fd4e012e46f88366fa7e",
+          "format": "breditor/reconciled-server-packet-recovery-observation",
+          "formatVersion": 1,
+          "participants": 7,
+          "bytesKind": "retained",
+          "currentKind": "checked",
+          "originalKind": "pending",
+          "binding": {
+            "references": {
+              "bytes": 711451,
+              "sha256": "93d1f7aac08f1e3d4f1b2b10678dddaac111089c93f244932ad4ab1ceacb24f2"
+            },
+            "packets": {
+              "bytes": 38175,
+              "sha256": "680443daff67a87754dcc74bf88b4f4fe2ada4a331f0e788817e1906206bf440"
+            },
+            "dependencies": {
+              "bytes": 8046,
+              "sha256": "84721557c35aab8b472a59f6cc7e9f8c245f0624a8b1813be8040816838e3a1f"
+            },
+            "resolution": {
+              "bytes": 21255,
+              "sha256": "d7b7d3d29d5abedc23eec3627c81c56f09bd3923f59ec587a984f5a3e5d6a0a0"
+            }
+          },
+          "currentData": {
+            "file": "/Users/s/code/breditor/target/reconciled-packet-fixture-32gByj/target/selected-delivery-native-rdPBD5/reconciled-current-read.json",
+            "bytes": 150026,
+            "sha256": "76f420f0053c584b1ba242b1291e4805d40674ccb332476e938b71e83f0da4bc"
+          },
+          "originalMetadataLanesUnchanged": true,
+          "allNativeStampsUnchanged": true,
+          "cacheCalls": 0,
+          "disk": {
+            "index": "/Users/s/code/breditor/target/reconciled-packet-fixture-32gByj/target/selected-delivery-native-rdPBD5/reconciled-recovery/bundle.json",
+            "indexSha256": "670f11b64fd7d32591ab6252a593aa39c49838f5919e3cbfac4935e2f937b1ea",
+            "logicalBytes": 29987022,
+            "blobOccurrences": 18,
+            "uniqueObjects": 13
+          },
+          "diskNativeInspection": true,
+          "uploadRoles": 14,
+          "wholeRoomActivated": false
+        }
+      ],
+      "originalCurrentRead": [
+        {
+          "file": "/Users/s/code/breditor/target/reconciled-packet-fixture-68l776/target/selected-delivery-native-hGv9kS/lazy-version-current-reconciliation-observation.json",
+          "sha256": "cc874d6f10eeaa00e562334f9381def1f5fcf8748f90007ba3c9fa0cb09edeab",
+          "format": "breditor/lazy-version-current-reconciliation-observation",
+          "formatVersion": 1,
+          "participants": 7,
+          "originalKind": "pending",
+          "currentKind": "checked",
+          "originalPendingKinds": [
+            "references",
+            "provider"
+          ],
+          "sourceCoveredOccurrences": 48,
+          "fullCurrentReferences": 13,
+          "currentProviderAssets": 3,
+          "currentProviderMissing": 0,
+          "allNativeStampsUnchanged": true,
+          "metadataQueuesAndCacheFlagsUnchanged": true,
+          "oldMetadataBytesUnchanged": true,
+          "cacheCalls": 0,
+          "currentData": {
+            "file": "/Users/s/code/breditor/target/reconciled-packet-fixture-68l776/target/selected-delivery-native-hGv9kS/current-reference-provider-observation.json",
+            "bytes": 95936,
+            "sha256": "7f632e8ab493d690e9b2d47bba8be6478fac665fe1d4fe2de1fcc75b8dd72f41"
+          },
+          "forbiddenBodyDownloads": 0,
+          "wholeRoomActivated": false
+        }
+      ],
+      "finalRefusal": [
+        {
+          "file": "/Users/s/code/breditor/target/reconciled-packet-fixture-32gByj/target/selected-delivery-native-rdPBD5/reconciled-recovery-final-refusal.json",
+          "sha256": "98c4d8cec52ff882d3f9fdbb94d12e2fc0d79a0538725e18c1c2e654ebff9ef6",
+          "format": "breditor/reconciled-recovery-final-refusal",
+          "formatVersion": 1,
+          "triggeredAtFinalResult": true,
+          "refused": true,
+          "metadataOwnerRetired": true,
+          "metadataLanesUnchanged": true,
+          "nativeStampsUnchanged": true,
+          "nativeParticipants": 7,
+          "cacheCalls": 0,
+          "wholeRoomActivated": false
+        }
+      ],
+      "futureHistories": [
+        {
+          "participants": 7,
+          "rows": [
+            {
+              "id": "generation",
+              "document": "segmented-v1",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "independent-delivery",
+              "document": "segmented-v1",
+              "review": "segmented-v1",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "independent-local",
+              "document": "segmented-v1",
+              "review": "segmented-v1",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "local-operation-flat",
+              "document": "segmented-v1",
+              "review": "segmented-v1",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "local-operation-snapshot",
+              "document": "segmented-v1",
+              "review": "segmented-v1",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "original",
+              "document": "original",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "restored-graph",
+              "document": "segmented-v1",
+              "review": "segmented-v1",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            }
+          ]
+        }
+      ]
+    },
+    "installed": {
+      "paired": [
+        {
+          "file": "/private/tmp/breditor-reconciled-packet-recovery-installed-NJDFnc/consumer/target/reconciled-packet-fixture-HYJDAz/target/selected-delivery-native-x5ldex/reconciled-recovery-observation.json",
+          "sha256": "ba450bb435dc9517afceb7c25cd34ef493a15539347f92fbb90c3f6df5617d46",
+          "format": "breditor/reconciled-server-packet-recovery-observation",
+          "formatVersion": 1,
+          "participants": 7,
+          "bytesKind": "retained",
+          "currentKind": "pending",
+          "originalKind": "pending",
+          "binding": {
+            "references": {
+              "bytes": 551928,
+              "sha256": "5d9ced6c82565fffb7b31331ca945f86fd3086dcc79e225fcc8bffd812015a58"
+            },
+            "packets": {
+              "bytes": 34128,
+              "sha256": "43f8aaa2368b14203748d07739800f4b46fdc6bed07d78b835199a0cd7893c8c"
+            },
+            "dependencies": {
+              "bytes": 7454,
+              "sha256": "374417e8e6bc40815617a768ba7151f0cdaef93f63b99356d4de03a8bb6ba685"
+            },
+            "resolution": {
+              "bytes": 5711,
+              "sha256": "430ba3b2014aa7429d3cca344fa59c1e74de7f7e9d1d3b96a9e0a4ed86494006"
+            }
+          },
+          "currentData": {
+            "file": "/private/tmp/breditor-reconciled-packet-recovery-installed-NJDFnc/consumer/target/reconciled-packet-fixture-HYJDAz/target/selected-delivery-native-x5ldex/reconciled-current-read.json",
+            "bytes": 158183,
+            "sha256": "3fc2ee0bfb443bbf1f684d770dc444fb4310930e5a56491eb3316d83abf3ba09"
+          },
+          "originalMetadataLanesUnchanged": true,
+          "allNativeStampsUnchanged": true,
+          "cacheCalls": 0,
+          "disk": {
+            "index": "/private/tmp/breditor-reconciled-packet-recovery-installed-NJDFnc/consumer/target/reconciled-packet-fixture-HYJDAz/target/selected-delivery-native-x5ldex/reconciled-recovery/bundle.json",
+            "indexSha256": "4de99799dcd5d8cbb37227c2bcbd4d8c074fa79c6b69d5c507f7e680304190ac",
+            "logicalBytes": 24353297,
+            "blobOccurrences": 18,
+            "uniqueObjects": 13
+          },
+          "diskNativeInspection": true,
+          "uploadRoles": 14,
+          "wholeRoomActivated": false
+        },
+        {
+          "file": "/private/tmp/breditor-reconciled-packet-recovery-installed-NJDFnc/consumer/target/reconciled-packet-fixture-3Daah8/target/selected-delivery-native-M3gnhQ/reconciled-recovery-observation.json",
+          "sha256": "f539a0d7bddf7fa89085c5e496318639d7c7f1d97dea2c5634f2ebacfa7c1a5a",
+          "format": "breditor/reconciled-server-packet-recovery-observation",
+          "formatVersion": 1,
+          "participants": 7,
+          "bytesKind": "retained",
+          "currentKind": "checked",
+          "originalKind": "pending",
+          "binding": {
+            "references": {
+              "bytes": 711466,
+              "sha256": "9c688877b8774c5518fc7eaf67c309c1f01771e744f3df6af126d093829dfb55"
+            },
+            "packets": {
+              "bytes": 38167,
+              "sha256": "f243b227f92dc79d53201fdd62905cf6141111b7a7b782f1c9ec0a83381c1f2c"
+            },
+            "dependencies": {
+              "bytes": 8048,
+              "sha256": "cf3d7b813fff6c0dc79fcd39d0dcdaaf69326a6704b993714e4fdcadd7814c5b"
+            },
+            "resolution": {
+              "bytes": 21255,
+              "sha256": "10b936917b3e53671bf277f46510176b34422870efa331f484b88021be6f168b"
+            }
+          },
+          "currentData": {
+            "file": "/private/tmp/breditor-reconciled-packet-recovery-installed-NJDFnc/consumer/target/reconciled-packet-fixture-3Daah8/target/selected-delivery-native-M3gnhQ/reconciled-current-read.json",
+            "bytes": 150051,
+            "sha256": "02f0c020f80d6504c68c79dd95b92ab970a0817b4990791c2539f23c38ce3213"
+          },
+          "originalMetadataLanesUnchanged": true,
+          "allNativeStampsUnchanged": true,
+          "cacheCalls": 0,
+          "disk": {
+            "index": "/private/tmp/breditor-reconciled-packet-recovery-installed-NJDFnc/consumer/target/reconciled-packet-fixture-3Daah8/target/selected-delivery-native-M3gnhQ/reconciled-recovery/bundle.json",
+            "indexSha256": "14938bea6e72cfddd7561b06d7ea9e16bea2c6155a78135da6e37c772d7633fd",
+            "logicalBytes": 29986331,
+            "blobOccurrences": 18,
+            "uniqueObjects": 13
+          },
+          "diskNativeInspection": true,
+          "uploadRoles": 14,
+          "wholeRoomActivated": false
+        }
+      ],
+      "originalCurrentRead": [
+        {
+          "file": "/private/tmp/breditor-reconciled-packet-recovery-installed-NJDFnc/consumer/target/reconciled-packet-fixture-jieo2R/target/selected-delivery-native-JuTxF1/lazy-version-current-reconciliation-observation.json",
+          "sha256": "be0642e6d79ec94d606382c670997a593b9856f0ec17abc8c9019cf99106c0ef",
+          "format": "breditor/lazy-version-current-reconciliation-observation",
+          "formatVersion": 1,
+          "participants": 7,
+          "originalKind": "pending",
+          "currentKind": "checked",
+          "originalPendingKinds": [
+            "references",
+            "provider"
+          ],
+          "sourceCoveredOccurrences": 48,
+          "fullCurrentReferences": 13,
+          "currentProviderAssets": 3,
+          "currentProviderMissing": 0,
+          "allNativeStampsUnchanged": true,
+          "metadataQueuesAndCacheFlagsUnchanged": true,
+          "oldMetadataBytesUnchanged": true,
+          "cacheCalls": 0,
+          "currentData": {
+            "file": "/private/tmp/breditor-reconciled-packet-recovery-installed-NJDFnc/consumer/target/reconciled-packet-fixture-jieo2R/target/selected-delivery-native-JuTxF1/current-reference-provider-observation.json",
+            "bytes": 95914,
+            "sha256": "f646726df0dcd04161866862a1e52579236159dfcd63119d7bb001f26fbe14e1"
+          },
+          "forbiddenBodyDownloads": 0,
+          "wholeRoomActivated": false
+        }
+      ],
+      "finalRefusal": [
+        {
+          "file": "/private/tmp/breditor-reconciled-packet-recovery-installed-NJDFnc/consumer/target/reconciled-packet-fixture-3Daah8/target/selected-delivery-native-M3gnhQ/reconciled-recovery-final-refusal.json",
+          "sha256": "98c4d8cec52ff882d3f9fdbb94d12e2fc0d79a0538725e18c1c2e654ebff9ef6",
+          "format": "breditor/reconciled-recovery-final-refusal",
+          "formatVersion": 1,
+          "triggeredAtFinalResult": true,
+          "refused": true,
+          "metadataOwnerRetired": true,
+          "metadataLanesUnchanged": true,
+          "nativeStampsUnchanged": true,
+          "nativeParticipants": 7,
+          "cacheCalls": 0,
+          "wholeRoomActivated": false
+        }
+      ],
+      "futureHistories": [
+        {
+          "participants": 7,
+          "rows": [
+            {
+              "id": "generation",
+              "document": "segmented-v1",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "independent-delivery",
+              "document": "segmented-v1",
+              "review": "segmented-v1",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "independent-local",
+              "document": "segmented-v1",
+              "review": "segmented-v1",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "local-operation-flat",
+              "document": "segmented-v1",
+              "review": "segmented-v1",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "local-operation-snapshot",
+              "document": "segmented-v1",
+              "review": "segmented-v1",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "original",
+              "document": "original",
+              "review": "original",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            },
+            {
+              "id": "restored-graph",
+              "document": "segmented-v1",
+              "review": "segmented-v1",
+              "documentSha256": "22ef9678e668fc5fb85afa1a0d028f8dfa91070fd208d5be307178842c45b72d",
+              "reviewViewSha256": "79dcfdad1ae30d51fe59b84617850fe845e7af874d38cd90a69ec8c86ca524ba",
+              "exactFutureDocumentRestored": true,
+              "exactFutureCommentViewRestored": true
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "interruptedEarlierQualification": {
+    "reason": "New final-disposal test calls metadata.recovery and the provider fixture calls metadata.capture after the same parent was deliberately retired on capture failure. Move destructive assertion into an explicit final fixture hook. These runs are interrupted, not acceptance passes.",
+    "processes": [
+      {
+        "pid": 31604,
+        "ppid": 65713,
+        "pgid": 31604,
+        "command": "node scripts/check-reconciled-packet-recovery-installed.mjs"
+      },
+      {
+        "pid": 31838,
+        "ppid": 65713,
+        "pgid": 31838,
+        "command": "node scripts/check-reconciled-packet-recovery-source.mjs"
+      },
+      {
+        "pid": 32069,
+        "ppid": 31838,
+        "pgid": 31838,
+        "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node --test --test-concurrency=1 scripts/reconciled-packet-recovery-contracts.test.mjs scripts/reconciled-packet-recovery-native.test.mjs scripts/reconciled-packet-current-compat.test.mjs"
+      },
+      {
+        "pid": 32083,
+        "ppid": 31604,
+        "pgid": 31604,
+        "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node --test --test-concurrency=1 scripts/reconciled-packet-recovery-contracts.test.mjs scripts/reconciled-packet-recovery-native.test.mjs scripts/reconciled-packet-current-compat.test.mjs"
+      },
+      {
+        "pid": 36374,
+        "ppid": 32069,
+        "pgid": 31838,
+        "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node --test-concurrency=1 scripts/reconciled-packet-recovery-native.test.mjs"
+      },
+      {
+        "pid": 36376,
+        "ppid": 36374,
+        "pgid": 31838,
+        "command": "/Users/s/code/breditor/target/reconciled-packet-fixture-ysQMgR/target/owned-history-relay-native/release/examples/selected_suggestion_delivery_functional /Users/s/code/breditor/target/reconciled-packet-fixture-ysQMgR/target/selected-delivery-native-21WiSz 3 1 1 suggestion-grants-v1"
+      },
+      {
+        "pid": 36404,
+        "ppid": 32083,
+        "pgid": 31604,
+        "command": "/Users/s/.nvm/versions/node/v22.14.0/bin/node --test-concurrency=1 scripts/reconciled-packet-recovery-native.test.mjs"
+      },
+      {
+        "pid": 36409,
+        "ppid": 36404,
+        "pgid": 31604,
+        "command": "/private/tmp/breditor-reconciled-packet-recovery-installed-vaKN62/consumer/target/reconciled-packet-fixture-Bz0FcI/target/owned-history-relay-native/release/examples/selected_suggestion_delivery_functional /private/tmp/breditor-reconciled-packet-recovery-installed-vaKN62/consumer/target/reconciled-packet-fixture-Bz0FcI/target/selected-delivery-native-RMi4o9 3 1 1 suggestion-grants-v1"
+      }
+    ],
+    "signal": "SIGTERM",
+    "atUnix": 1793592053.641381
+  },
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "rustProductionApisUnchanged": true,
+  "sdkChange": "additive private recovery coordinator and public optional numerical archive-read observations",
+  "knownEarlierReadFailure": {
+    "originalQualification": "/private/tmp/breditor-reconciled-recovery-20261102/qualification-outcome-before-read-repair.json",
+    "failureProof": {
+      "directory": "/Users/s/code/breditor/target/reconciled-packet-read-failure-proof-w3rmx7f0",
+      "indexSha256": "70710b21dd34904968fccbef32f11714cb3e42c8ecf5bdf9b8c4c2a514ee2b36",
+      "references": 474,
+      "objects": 301,
+      "gzipBytes": 80694408,
+      "readBackVerified": true,
+      "compiledSdkFilesMatched": 2747
+    },
+    "rootCauseIdentified": false,
+    "repairVerified": false,
+    "changeScope": "Add immutable numerical error observations and explicit test reporting, keeping wrong-length reads refused. New six fault-injection laws are simulated; they do not reproduce the original occurrence.",
+    "requiredFullSourceAndInstalledCases": 20,
+    "newTypeFixtureCount": 9,
+    "v1GatesOpen": 13
+  },
+  "knownEarlierReadFailureRepairVerified": false,
+  "priorFailureProof": {
+    "directory": "/Users/s/code/breditor/target/reconciled-packet-read-failure-proof-w3rmx7f0",
+    "indexSha256": "70710b21dd34904968fccbef32f11714cb3e42c8ecf5bdf9b8c4c2a514ee2b36",
+    "references": 474,
+    "objects": 301,
+    "gzipBytes": 80694408,
+    "readBackVerified": true,
+    "compiledSdkFilesMatched": 2747
+  },
+  "originalProtocolsAndDefaultsUnchanged": true,
+  "packageVersionsUnchanged": true,
+  "localIdbLocksAndRasterPresentationControlled": true,
+  "physicalProcessCrashQualified": false,
+  "wholeRoomActivated": false,
+  "fullCandidateProfilesRun": false,
+  "v1Ready": false,
+  "v1GatesOpen": 13,
+  "pushed": false,
+  "published": false
+}

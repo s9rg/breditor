@@ -1,8 +1,11 @@
+import type {SharedArchiveReadLengthFailure} from './contract.js';
 /** Hash-component ceilings only. Individual file/storage readers impose their own limits. */
 import {participantAuthority} from "../participant_backup/policy.js";
 export const MAX_SHARED_ARCHIVE_DIGEST_BYTES=1024*1024*1024;
 export const MAX_SHARED_ARCHIVE_DIGEST_CHUNK_BYTES=1024*1024;
 export class SharedArchiveIntegrityError extends Error {
+ /** Present only for a measured, exact-length read refusal. */
+ declare readonly readFailure?:SharedArchiveReadLengthFailure;
  constructor(readonly code:"archive_policy"|"archive_budget"|"archive_integrity"|"archive_closed"|"archive_aborted"|"archive_authority"|"archive_capability"|"archive_io",message:string){super(message);this.name="SharedArchiveIntegrityError";}
 }
 export function archiveFailure(code:SharedArchiveIntegrityError["code"]="archive_integrity"):SharedArchiveIntegrityError{return new SharedArchiveIntegrityError(code,{

@@ -148,6 +148,9 @@ export async function testProviderReconciliation(input) {
     const actual=readFileSync(join(host.directory,name));assert.deepEqual(actual,bytes);files.push({name,bytes:bytes.length,sha256:sha(bytes)});
    }
    console.log('PROVIDER_RECONCILIATION_NATIVE '+JSON.stringify({directory:host.directory,files,nativeParticipants:7,metadataSources:3,actualManagedUploads:3,authenticatedDeliveryPasses:2,providerMissing:0,legacyNativeKind:native.kind,legacyUnboundReviewPreserved:true,wholeRoomActivated:false}));
+   // Destructive fault checks run only after the complete successful capture.
+   // This hook must not be followed by another use of the retired metadata owner.
+   await input.onBeforeReconciledClose?.({scope,sources,metadata,host,first,fixture,check});
   }finally{await metadata?.close();await review?.close();fresh?.close();}
  });
  if(input.reconcileCold)await testReconciledCold({...input,bundle:retainedBundle,settle:deliverRoom});
