@@ -1,3 +1,13 @@
+import {NativeReconstructionWaits} from '../selected_native_reconstruction/read_waits.js';
+import {prepareHeldRoomActivation,type RoomActivationPreparationPolicy} from '../room_native_activation_intent/prepare.js';
+import {commitHeldRoomActivation,readHeldRoomActivation,type RoomActivationCommitResult} from '../room_native_activation_intent/commit.js';
+import {roomActivationIntentChoice,roomActivationDatabase} from '../room_native_activation_intent/identity.js';
+import {fail as activationIntentFailure} from '../room_native_activation_intent/policy.js';
+import type {RoomActivationIntentChoice,RoomActivationRetainedIntent} from '../room_native_activation_intent/contract.js';
+import type {PrepareRoomNativeActivationInput,CommitRoomNativeActivationInput} from '../room_native_activation_intent/coordinator_contract.js';
+import {nativeActivationHostPort} from '../native_activation_control/host.js';
+import {coreReadStamp} from '../core_read_stamp.js';
+import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
 import type {ReconciledServerPacketRecoveryCapture} from '../reconciled_server_packet_recovery/contract.js';
 import type {ServerPacketReconciliationRead} from '../server_packet_reconciliation/contract.js';
 import {detachResolvedServerPacketRecoveryBundle} from '../server_packet_source_resolution/bundle.js';
@@ -290,20 +300,49 @@ export class SelectedLocalMetadataDelivery{
  #inspectReferenceOperation<T>(selected:()=>LocalMetadataReferenceBundle,visit:(work:LocalMetadataReferenceWork,actual:LocalMetadataReferenceCut,portable:LocalMetadataDeliverySnapshot)=>Promise<T>,prepare:()=>void):Promise<T>{
   return this.#captureOperation(async()=>{
    let result:{value:T}|undefined;const bundle=selected();
-   await this.#parent.inspect(async integrity=>{
+   await this.#parent.inspect(async integrity=>{result={value:await this.#withReferenceInspection(bundle,integrity,visit)};
+   });if(!result)throw fail();return result.value;
+  },prepare);
+ }
+ #activationSourceGuard():()=>void {
+  this.#current();const sources=this.#parent.sources,stamps=new Map(sources.map(row=>[row.source.core,coreReadStamp(row.source.core)]));
+  return()=>{this.#current();for(const row of sources){const before=stamps.get(row.source.core)!,now=coreReadStamp(row.source.core);if(before.document!==now.document||before.review!==now.review)throw activationIntentFailure('activation_intent_stale');}};
+ }
+ /** Capture/retain under one genuine reservation. Host provisioning and choice
+  * persistence happen before the absent-only intent write; no commit occurs. */
+ prepareNativeActivation(provided:PrepareRoomNativeActivationInput):Promise<RoomActivationIntentChoice>{
+  let input!:ReturnType<typeof prepareMetadataPacketRecoveryInput>,policy!:RoomActivationPreparationPolicy,result:RoomActivationIntentChoice|undefined;
+  return this.#captureReferenceOperation(async work=>{const check=this.#activationSourceGuard();if(!this.#snapshot)throw fail();const capture=await work.reconciledServerPacketRecovery(input,this.#snapshot);check();const integrity=work.integrityOptions();result=await prepareHeldRoomActivation(capture,policy,{wasm:integrity.wasm,checkAuthority:check,...(integrity.signal?{signal:integrity.signal}:{})},check);check();},()=>{const r=fields(provided,['database','recovery','selectActivation','retainChoice']);if(typeof r['database']!=='string'||typeof r['selectActivation']!=='function'||typeof r['retainChoice']!=='function')throw activationIntentFailure('activation_intent_policy');roomActivationDatabase(r['database']);input=prepareMetadataPacketRecoveryInput(r['recovery'] as ServerPacketRecoveryInput);policy={database:roomActivationDatabase(r['database']),selectActivation:r['selectActivation'] as RoomActivationPreparationPolicy['selectActivation'],retainChoice:r['retainChoice'] as RoomActivationPreparationPolicy['retainChoice']};}).then(()=>{if(!result)throw fail();return result;});
+ }
+ /** Existing-only DATA read under a fresh genuine owner. A saved receipt is
+  * never a serving grant and this method makes no activation request. */
+ readNativeActivationIntent(provided:RoomActivationIntentChoice):Promise<RoomActivationRetainedIntent>{
+  let expected!:RoomActivationIntentChoice;return this.#captureOperation(async()=>{let result:RoomActivationRetainedIntent|undefined;await this.#parent.inspect(async integrity=>{const check=this.#activationSourceGuard(),options={wasm:integrity.wasm,checkAuthority:check,signal:this.#parent.scope.signal};const retained=await readHeldRoomActivation(expected,options);check();await this.#withReferenceInspection(retained.capture.recovery.bundle.original.packets.references,options,async()=>{result=retained;});check();});if(!result)throw fail();return result;},()=>{expected=roomActivationIntentChoice(provided);});
+ }
+ /** Reopen full intent, re-inspect real Native dependencies and exact current
+  * source, then record uncertainty BEFORE the separately authenticated commit. */
+ commitNativeActivation(provided:CommitRoomNativeActivationInput):Promise<RoomActivationCommitResult>{
+  let input!:CommitRoomNativeActivationInput;return this.#captureOperation(async()=>{let result:RoomActivationCommitResult|undefined;const waits=new NativeReconstructionWaits(this.#current,[this.#parent.scope.signal]),cancel=()=>waits.close();this.#cancels.add(cancel);try{await this.#parent.inspect(async integrity=>{
+   const check=this.#activationSourceGuard(),options={wasm:integrity.wasm,checkAuthority:check,signal:waits.signal};
+   const inspect=async(capture:ReconciledServerPacketRecoveryCapture)=>{check();const bundle=capture.recovery.bundle,metadata=bundle.original.packets.references.parent;const portable=await readMetadataBundle(this.#parent,metadata,this.#choice,check,options);check();const fresh=await this.#store.readFresh();check();if(metadataJson(fresh)!==metadataJson(portable))throw activationIntentFailure('activation_intent_stale');await this.#parent.assertExact(metadata.parent);check();
+    await this.#withReferenceInspection(bundle.original.packets.references,options,async(work,actual,point)=>{const inspected=await work.inspectResolvedServerPacketRecovery(bundle,actual,point,input.inspection,input.limits?{limits:input.limits}:{});check();if(inspected.rasters.kind!=='retained'||inspected.resolution.outcome.kind!=='ready')throw activationIntentFailure('activation_intent_incomplete');});check();
+   };
+   result=await commitHeldRoomActivation(input,options,check,inspect);check();
+  });if(!result)throw fail();return result;}finally{this.#cancels.delete(cancel);waits.close();}},()=>{const r=fields(provided,['expected','activation','inspection','approve'],['limits']);const expected=roomActivationIntentChoice(r['expected']);nativeActivationHostPort(r['activation'] as CommitRoomNativeActivationInput['activation']);generationRecoveryHostPort(r['inspection'] as SharedServerLogGenerationRecoveryHost);if(typeof r['approve']!=='function')throw activationIntentFailure('activation_intent_policy');input={expected,activation:r['activation'] as CommitRoomNativeActivationInput['activation'],inspection:r['inspection'] as SharedServerLogGenerationRecoveryHost,approve:r['approve'] as CommitRoomNativeActivationInput['approve'],limits:localMetadataMaterializationLimits(r['limits']===undefined?{}:{limits:r['limits'] as NonNullable<CommitRoomNativeActivationInput['limits']>})};});
+ }
+ #withReferenceInspection<T>(bundle:LocalMetadataReferenceBundle,integrity:SharedArchiveIntegrityOptions,visit:(work:LocalMetadataReferenceWork,actual:LocalMetadataReferenceCut,portable:LocalMetadataDeliverySnapshot)=>Promise<T>):Promise<T>{return(async()=>{
     await this.#serial;this.#current();const stored=await this.#store.readFresh();this.#current();
     const options={wasm:integrity.wasm,checkAuthority:this.#current,signal:this.#parent.scope.signal};
     const claims=await readLocalMetadataReferenceClaims(bundle,options,this.#current);this.#current();
     const portable=await readMetadataBundle(this.#parent,bundle.parent,this.#choice,this.#current,options);this.#current();
     await inspectMetadataResume(this.#parent,bundle.parent,portable,stored,this.#current);this.#current();
     const middle=await metadataSnapshot({before:portable.before,current:claims.stored},this.#choice);this.#current();
-    const work=new LocalMetadataReferenceWork(this.#parent.scope,options,this.#current);this.#referenceWork=work;await work.begin(bundle.parent.parent,middle);this.#current();
+    const work=new LocalMetadataReferenceWork(this.#parent.scope,options,this.#current);this.#referenceWork=work;try{await work.begin(bundle.parent.parent,middle);this.#current();
     const actual=await work.readPortable(bundle.parent,portable);this.#current();
     if(metadataJson(actual)!==claims.text)throw fail('local_metadata_delivery_stale');this.#current();const value=await visit(work,actual,portable);this.#current();
-    if(!equal(await this.#store.readFresh(),stored))throw fail('local_metadata_delivery_stale');this.#current();result={value};
-   });if(!result)throw fail();return result.value;
-  },prepare);
- }
+    if(!equal(await this.#store.readFresh(),stored))throw fail('local_metadata_delivery_stale');this.#current();return value;
+    }finally{work.close();if(this.#referenceWork===work)this.#referenceWork=undefined;}
+ })();}
  #stop():void{this.#closing=true;this.#referenceWork?.close();for(const cancel of this.#cancels)cancel();this.#cancels.clear();for(const context of this.#contexts.keys())void context.close().catch(()=>{});}
  /** Retire only temporary SDK children after actual work drains. The metadata
   * journal, initial intent, native histories and parent binding are retained. */

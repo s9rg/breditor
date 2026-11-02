@@ -1,0 +1,90 @@
+{
+  "format": "breditor/sdk-native-activation-qualification",
+  "formatVersion": 1,
+  "reviewedAt": "2026-11-02",
+  "source": {
+    "commit": "50624be3e5ae5387f2679fc47007d4e2e12a035e",
+    "dirty": true,
+    "sha256": "9749edbe535f1adfd6a8839ff23b6a968959a63258dd63a27f3db47234ad5a39",
+    "files": 8058,
+    "bytes": 66421789
+  },
+  "sourceExecution": {
+    "focusedCases": 45,
+    "genuineNativeCases": 1,
+    "separateExecutionJobs": true,
+    "canonicalCombinedSourceRunnerExecuted": false,
+    "unitLogSha256": "bd9a9cbe32b5b1615aef8267157f947bff669fef2d69ea78eb85f3a8c5aa6f31",
+    "nativeLogSha256": "694f99580a11723f392949be3bab37230fdc698dc7cb696fc0eb260d2da522e9"
+  },
+  "installedExecution": {
+    "cases": 46,
+    "wrapperExecuted": true,
+    "workspaceLinks": false,
+    "sourceUnchanged": true,
+    "strictDeclarationFiles": 7,
+    "record": "/private/tmp/breditor-sdk-native-activation-installed-ZLsCVT/result.json",
+    "logSha256": "b91e39b5688e347c1694fdd8ba5d16c25f36a409ee5730bd4e8935b7f2692569"
+  },
+  "existingRecoveryRegressions": 20,
+  "freshSdkCompiledFilesMatched": 2400,
+  "allPackageArtifactFilesMatched": 2777,
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "nativeBinaries": [
+    {
+      "path": "/Users/s/code/breditor/target/reconciled-packet-native/release/examples/native_activation_sdk_functional",
+      "bytes": 23812464,
+      "sha256": "0ba47f1f3b9b5d1bc65476ad7747cbb06a9b30d67420f11cd414534935cd742b"
+    }
+  ],
+  "proof": {
+    "directory": "target/sdk-native-activation-qualified-proof-cbe2wgtm",
+    "indexSha256": "c59b26cc0b08d66c4130838219f896e6eb7121ee9da69cad7ba8bc1a016e61b1",
+    "references": 406,
+    "objects": 266,
+    "gzipBytes": 55433036,
+    "readBackVerified": true,
+    "sourceCases": 46,
+    "installedCases": 46,
+    "priorRecoveryRegressions": 20
+  },
+  "sourceArchive": {
+    "path": "/private/tmp/breditor-sdk-native-activation-20261102/executed-source.tar.gz",
+    "bytes": 20409003,
+    "sha256": "14e4e8d5080b78e2c14f20713907558a5486cf458b5206a0795ab892efaf3703",
+    "files": 8058,
+    "readbackVerified": true
+  },
+  "nativeExampleStrictLintPassed": true,
+  "changedRustFormatFilesPassed": 9,
+  "fullCrateFormattingClaimed": false,
+  "actualWorkflow": {
+    "families": 7,
+    "freshNativeOwners": 7,
+    "retainedOfflineDocumentAndCommentSuffixes": 14,
+    "retainedActualUploadAcknowledgements": 3,
+    "completeIntentBytes": 15806161,
+    "deduplicatedIntentObjects": 13,
+    "nativeCommitRequests": 3,
+    "lostRealReplyReportedUnknown": true,
+    "repeatReceiptUnchanged": true,
+    "actualNativeEpochAdvance": 1,
+    "normalProtocolDeliveryPassesAfterActivation": 2,
+    "exactFutureDocumentAndCommentUndoRedo": true,
+    "literalOriginalPendingAndCachesPreserved": true
+  },
+  "limitations": {
+    "sdkCompleteIndependentHistoryPolicyCrossProductQualified": false,
+    "physicalProcessAndStorageCrashQualified": false,
+    "productionWholeRoomHandoffComplete": false,
+    "fullCandidateProfileWiringAndExecutionComplete": false,
+    "performanceQualified": false,
+    "historicalArchiveReadFailureRepairVerified": false,
+    "historicalWebKitFaultRepairVerified": false,
+    "wholeRoomActivated": false,
+    "v1Ready": false,
+    "v1GatesOpen": 13
+  },
+  "versionsChanged": false,
+  "pushPublishTagOrDeploymentPerformed": false
+}

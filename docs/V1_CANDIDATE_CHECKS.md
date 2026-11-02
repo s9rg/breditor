@@ -1,5 +1,32 @@
 # V1 candidate checks
 
+[SDK coordination of durable native activation](SDK_NATIVE_ACTIVATION.md) now
+passes 45 focused cases plus the complete genuine Native workflow from source,
+and the same 46 cases from fresh independently installed packages. Seven cold
+client owners retain fourteen offline document/comment suffixes and three actual
+upload ACKs. A complete 15.8 MB intent is saved before any commit request. Losing
+the real Rust response stays explicitly uncertain; separately approved retries
+return the same receipt, and the actual durable authority advances one epoch.
+Original protocol delivery then converges all seven clients and preserves exact
+future document/comment Undo/Redo. Original Pending and cache meanings remain literal.
+
+Twenty existing recovery/current-read regressions also pass. Strict declarations,
+dedicated Native-example lint and nine touched Rust formatting checks pass. A
+fresh SDK compile matches all 2,400 emitted files, and all 2,777 package artifact
+files match independent archives. The [qualification](qualification/2026-11-02-sdk-native-activation.json)
+retains exact source, binaries, complete intent/server/packet/raster data, the
+earlier fixture assertion failure and a read-back-verified compressed proof.
+Source cases ran in two separate jobs; the canonical combined source wrapper was
+not executed. The installed wrapper completed its complete 46-case workset.
+
+This is a qualified experimental SDK/native-service bridge. Public production
+whole-room handoff, the complete SDK history-policy cross-product, physical
+process/storage crash qualification, performance and complete candidate profiles
+remain open. The new dedicated commands are not yet wired into every candidate
+profile. Normal Wasm, original protocols/defaults and versions are unchanged;
+neither historical archive-read/WebKit fault is declared repaired. All thirteen
+V1/parity gates remain open.
+
 The [native-held revision delivery contract](NATIVE_REVISION_DELIVERY.md)
 now executes original outboxes through their genuine parent suggestion queue
 loan, retaining real supersession/conflict receipts and exact immutable packets.

@@ -77,6 +77,7 @@ export async function testColdCurrentReconciliation(input){
    if(pending.sources.outcome.kind==='pending')assert.equal(pending.currentProvider,null);
    assert.equal(requests.filter(kind=>kind==='suggestionRevisionPublish').length,originalRevisionSubmits);
    console.log('COLD_CURRENT_RECONCILIATION_STEP fresh-read-keeps-all-fourteen-real-offline-heads-pending-without-acks');
+   await input.onPending?.({scope,sources,metadata,host,check,pending});
    const delivered=await settle({scope,sources,metadata,review,host,fixture,deliveryChoice,adapters,contexts,cacheCatalogPackets:false});assert.equal(delivered.length,14);
    assert.equal(requests.filter(kind=>kind==='suggestionRevisionPublish').length,originalRevisionSubmits,'Already committed revisions are not republished on cold recovery');
    fresh.close();fresh=await controls(host,first,scope);

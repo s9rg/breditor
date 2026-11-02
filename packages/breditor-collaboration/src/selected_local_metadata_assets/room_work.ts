@@ -87,6 +87,8 @@ export class LocalMetadataReferenceWork {
   try{this.#factories=new NativeReconstructionFactoryScope(reads);this.#factories.bind(scope,this.#waits.signal);this.#options={wasm:options.wasm,checkAuthority:this.#check,signal:this.#waits.signal};this.#check();for(const row of this.#allSources)this.#availabilityStamps.set(row.source.core,coreReadStamp(row.source.core));Object.freeze(this);}catch(error){this.close();throw error;}
  }
  #check=()=>{if(this.#closed)throw fail('local_metadata_assets_closed');this.#waits.check();if(this.#closed)throw fail('local_metadata_assets_closed');};
+ /** Finite owned hash/read context; it expires with this actual work item. */
+ integrityOptions():SharedArchiveIntegrityOptions{this.#check();return this.#options;}
  async begin(providedParent:LocalReviewRoomBundle,providedStored:LocalMetadataDeliverySnapshot):Promise<void>{
   this.#check();if(this.#started)throw fail('local_metadata_assets_busy');this.#started=true;const parent=detachLocalReviewBundle(providedParent),data=metadataData(providedStored) as LocalMetadataDeliverySnapshot,choice=data.current.choice,stored=await metadataSnapshot(data,choice);this.#check();
   if(this.#sources.length!==stored.current.lanes.length||!equal(parent.prepared.choice.before,choice.parent.before))throw fail('local_metadata_assets_state');

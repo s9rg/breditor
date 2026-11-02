@@ -249,3 +249,11 @@ export type {ServerPacketRecoveryInspection} from './server_packet_recovery/insp
 export type * from './server_packet_source_resolution/contract.js';
 
 export type * from './server_packet_reconciliation/contract.js';
+
+export {SharedDurableNativeActivationHost} from './native_activation_control/host.js';
+export {SharedNativeActivationError,MAX_SHARED_NATIVE_ACTIVATION_CONTROL_BYTES} from './native_activation_control/policy.js';
+export type {SharedDeploymentSelection,SharedDurableNativeActivationSelection,SharedDurableNativeActivationReceipt,SharedDurableNativeActivationHostOptions} from './native_activation_control/contract.js';
+export type {RoomActivationIntentChoice,RoomActivationIntentState,RoomActivationRetainedIntent} from './room_native_activation_intent/contract.js';
+export type {PrepareRoomNativeActivationInput,CommitRoomNativeActivationInput} from './room_native_activation_intent/coordinator_contract.js';
+export type {RoomActivationCommitResult} from './room_native_activation_intent/commit.js';
+export {RoomActivationIntentError,MAX_ROOM_ACTIVATION_INTENT_BYTES,MAX_ROOM_ACTIVATION_GRAPH_BYTES} from './room_native_activation_intent/policy.js';

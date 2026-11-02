@@ -19,6 +19,8 @@ export interface LocalReviewMetadataParent {
  /** Admit a literal parent bundle against this owner's actual stored review
   * head and full native continuation. This grants no new gate or actor. */
  admit(bundle:LocalReviewRoomBundle):Promise<void>;
+ /** Activation-only exact current root and receipt file, without advancing journals. */
+ assertExact(bundle:LocalReviewRoomBundle):Promise<void>;
  /** Actual serial source saves plus the parent's genuine review receipts. */
  saved():Promise<LocalReviewDeliveryState['lanes']>;
  createDelivery(source:RetainedDeliverySource,ceiling:SharedReviewAccess):NativeRelayDelivery;

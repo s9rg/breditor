@@ -5,14 +5,15 @@ import {spawn} from 'node:child_process';
 import {readFileSync,writeFileSync,mkdtempSync,realpathSync} from 'node:fs';
 import {join,dirname,resolve} from 'node:path';
 import {pixel,secondPixel} from '../review-assets/pixels.mjs';
+import {nativeActivationSelection} from '../../../packages/breditor-collaboration/dist/native_activation_control/identity.js';
 import {generationControlSelection} from '../../../packages/breditor-collaboration/dist/generation_recovery_control/identity.js';
 const hex=value=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
-export async function selectedDeliveryNativeHost(root,{language=3,standard=true,atomic=true,suggestionGrants=false}={}){
+export async function selectedDeliveryNativeHost(root,{language=3,standard=true,atomic=true,suggestionGrants=false,nativeActivation=false}={}){
  root=realpathSync(root);const directory=mkdtempSync(join(root,'target/selected-delivery-native-'));
  assert.equal(realpathSync(directory),directory);for(const[name,bytes]of[['seed-a.png',pixel],['seed-b.png',secondPixel]])writeFileSync(join(directory,name),bytes,{mode:0o600,flag:'wx'});
- const binary=join(root,'target/owned-history-relay-native/release/examples',suggestionGrants?'selected_suggestion_delivery_functional':'selected_delivery_functional'),child=spawn(binary,[directory,String(language),standard?'1':'0',atomic?'1':'0',...(suggestionGrants?['suggestion-grants-v1']:[])],{cwd:root,stdio:['pipe','pipe','pipe']});
+ const binary=nativeActivation?join(root,'target/reconciled-packet-native/release/examples/native_activation_sdk_functional'):join(root,'target/owned-history-relay-native/release/examples',suggestionGrants?'selected_suggestion_delivery_functional':'selected_delivery_functional'),child=spawn(binary,[directory,String(language),standard?'1':'0',atomic?'1':'0',...(suggestionGrants?['suggestion-grants-v1']:[])],{cwd:root,stdio:['pipe','pipe','pipe']});
  let buffer='',errors='',sequence=0,closed=false,stopping,initialResolve,initialReject;
- const observed=new WeakMap(),cuts=new Map(),pending=new Map(),operators=new Map(),secrets=new Set(),snapshots=[],initial=new Promise((a,b)=>{initialResolve=a;initialReject=b;});
+ const observed=new WeakMap(),cuts=new Map(),pending=new Map(),operators=new Map(),secrets=new Set(),offers=new WeakMap(),snapshots=[],initial=new Promise((a,b)=>{initialResolve=a;initialReject=b;});
  const exited=new Promise(done=>child.once('exit',(code,signal)=>done({code,signal})));let terminal;
  exited.then(result=>{terminal=result;const error=Error('Native selected-delivery process ended before its pending operation: '+errors.replace(/[a-f0-9]{64}/g,'[redacted]'));initialReject(error);for(const row of pending.values()){clearTimeout(row.timer);row.reject(error);}pending.clear();});
  child.once('error',()=>initialReject(Error('Native selected-delivery process could not start')));
@@ -34,6 +35,15 @@ export async function selectedDeliveryNativeHost(root,{language=3,standard=true,
   const publicCase=Object.freeze({path:selected.path,selection:selected.selection,sequence:selected.sequence,previousSequence:selected.previousSequence,clientEndpoint:selected.clientEndpoint,retiredEndpoint:selected.retiredEndpoint,endpoint:selected.endpoint,deliveryEndpoint:selected.deliveryEndpoint,deliverySelection:selected.deliverySelection,deliveryPathSelection:selected.deliveryPathSelection,deliveryPathEndpoint:selected.deliveryPathEndpoint,nativeProtectedStreamsVerified:true,nativeProviderVerified:true,nativeDeliveryContinuationVerified:true,nativeDeliveryPathVerified:true});verifyFiles(publicCase);snapshots.push(publicCase);const pinned=structuredClone(publicCase);observed.set(publicCase,pinned);cuts.set(publicCase.sequence,pinned);
   writeFileSync(join(dirname(selected.path),'public-case.json'),JSON.stringify(publicCase,null,2),{mode:0o600,flag:'wx'});return publicCase;
  }
+ /** Only a genuine prepared Native control can supply a live private token. */
+ function activation(message,row){
+  assert.equal(nativeActivation,true);assert.equal(row?.kind,'prepareActivation');
+  assert.ok(hex(message.privateActivationToken));secrets.add(message.privateActivationToken);
+  const item=snapshot(message),selection=nativeActivationSelection(message.activationSelection);
+  assert.deepEqual(selection.current,row.source);assert.deepEqual(selection.current,item.selection.source);
+  const endpoint=new URL(message.activationEndpoint);assert.equal(endpoint.protocol,'http:');assert.equal(endpoint.hostname,'127.0.0.1');assert.ok(endpoint.port);assert.equal(endpoint.pathname,'/recovery/native-activation/v1/commit');assert.equal(endpoint.search,'');assert.equal(endpoint.hash,'');assert.equal(endpoint.username,'');assert.equal(endpoint.password,'');
+  const offer=Object.freeze({case:item,selection,endpoint:endpoint.href});offers.set(offer,message.privateActivationToken);return offer;
+ }
  function inspection(message,row){
   assert.equal(row?.kind,'inspect');assert.equal(message.source,row.source);assert.ok(hex(message.privateOperatorToken));
   assert.deepEqual(Object.keys(message).sort(),['endpoint','kind','privateOperatorToken','request','selection','source']);
@@ -46,15 +56,20 @@ export async function selectedDeliveryNativeHost(root,{language=3,standard=true,
  child.stdout.on('data',bytes=>{
   buffer+=bytes.toString('utf8');if(Buffer.byteLength(buffer)>1024*1024){const error=Error('Native private IPC response budget');initialReject(error);for(const row of pending.values())row.reject(error);return;}
   let newline;while((newline=buffer.indexOf('\n'))>=0){const raw=buffer.slice(0,newline);buffer=buffer.slice(newline+1);try{const value=JSON.parse(raw),row=pending.get(value.request);if(value.kind==='snapshot'){const result=snapshot(value);if(value.request===0)initialResolve(result);else if(row){clearTimeout(row.timer);pending.delete(value.request);row.resolve(result);}else throw Error('Unrequested native snapshot');}
+    else if(value.kind==='activationPrepared'&&row){const result=activation(value,row);clearTimeout(row.timer);pending.delete(value.request);row.resolve(result);}
+    else if(value.kind==='activationRefused'&&row&&nativeActivation){assert.deepEqual(Object.keys(value).sort(),['kind','reason','request']);assert.equal(typeof value.reason,'string');clearTimeout(row.timer);pending.delete(value.request);row.reject(Error('Native activation fixture refused: '+value.reason));}
     else if(value.kind==='inspection'&&row){const result=inspection(value,row);clearTimeout(row.timer);pending.delete(value.request);row.resolve(result);}
     else if(value.kind==='credentials'&&row){for(const key of['privateAccountToken','privateDocumentCredential','privateReviewCredential']){if(!hex(value[key]))throw Error('Invalid private fixture credential shape');secrets.add(value[key]);}clearTimeout(row.timer);pending.delete(value.request);row.resolve(value);}
     else throw Error('Unexpected native fixture response');
    }catch{const error=Error('Native selected-delivery IPC admission failed');initialReject(error);for(const row of pending.values()){clearTimeout(row.timer);row.reject(error);}pending.clear();}
   }
  });
- function request(kind,data={}){if(closed||terminal)return Promise.reject(Error('Native fixture is closed'));if(pending.size>=2)return Promise.reject(Error('Native fixture request budget'));const id=++sequence;return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{pending.delete(id);reject(Error('Native fixture request did not complete within its budget'));},60000);pending.set(id,{resolve,reject,timer,kind,...data});child.stdin.write(JSON.stringify({kind,request:id,...data})+'\n',error=>{if(error){clearTimeout(timer);pending.delete(id);reject(Error('Native fixture command write failed'));}});});}
+ function request(kind,data={},local={}){if(closed||terminal)return Promise.reject(Error('Native fixture is closed'));if(pending.size>=2)return Promise.reject(Error('Native fixture request budget'));const id=++sequence;return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{pending.delete(id);reject(Error('Native fixture request did not complete within its budget'));},60000);pending.set(id,{resolve,reject,timer,kind,...data,...local});child.stdin.write(JSON.stringify({kind,request:id,...data})+'\n',error=>{if(error){clearTimeout(timer);pending.delete(id);reject(Error('Native fixture command write failed'));}});});}
  let timer;try{const first=await Promise.race([initial,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Native fixture did not prepare: '+errors)),120000);})]);clearTimeout(timer);
   return{directory,binary,initial:first,snapshots,fixture:verifyFiles,operatorToken:item=>{const value=operators.get(item.path);if(!value)throw Error('Choose the actual observed native cut');return value;},async refresh(){return request('snapshot');},async refreshAfter(previous){const selected=observed.get(previous);if(!selected)throw Error('Select an actual observed complete predecessor');return request('snapshotAfter',{previous:selected.sequence});},
+   async prepareActivation(source){if(!nativeActivation)throw Error('Native activation fixture mode required');const previous=snapshots.at(-1).sequence;return request('prepareActivation',{source},{previous});},
+   activationToken(offer){const token=offers.get(offer);if(!token)throw Error('Select the actual prepared Native offer');return token;},
+   async finishActivation(offer){if(!offers.has(offer))throw Error('Select the actual prepared Native offer');return request('finishActivation',{},{previous:offer.case.sequence});},
    async reconstruct(item){const selected=observed.get(item);if(!selected)throw Error('Select an actual observed Native source for inactive reconstruction');return request('inspect',{source:selected.sequence});},
    async authentication(client,{retired=false}={}){const original=verifyFiles(first).clients.find(row=>row.writer===client.writer&&row.actor===client.actor&&row.principal===client.principal);if(!original)throw Error('Choose one actual native registration');const value=await request('credentials',{writer:client.writer,actor:client.actor,retired});if(value.writer!==client.writer||value.actor!==client.actor||value.principal!==client.principal)throw Error('Native fixture registration differs');for(const item of snapshots)verifyFiles(item);const fixture=verifyFiles(first),metadata=JSON.parse(fixture.inventoryJson),endpoint=retired?first.retiredEndpoint:first.clientEndpoint,transport=fixture.atomic?{writerTransport:'atomic-v2'}:{};
     return Object.freeze({getToken:()=>value.privateAccountToken,document:Object.freeze({endpoint,principal:value.principal,room:metadata.room.document,writer:value.writer,credential:value.privateDocumentCredential,...transport}),review:Object.freeze({endpoint,principal:value.principal,room:metadata.room.document,actor:value.actor,binding:metadata.review.binding,documentWriter:value.writer,...transport,credential:value.privateReviewCredential})});},

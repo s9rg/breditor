@@ -139,3 +139,8 @@ required-features = ["server"]
 name = "coordinated_native_restart_functional"
 path = "examples/coordinated_native_restart_functional.rs"
 required-features = ["server"]
+
+[[example]]
+name = "native_activation_sdk_functional"
+path = "examples/native_activation_sdk_functional.rs"
+required-features = ["server"]
