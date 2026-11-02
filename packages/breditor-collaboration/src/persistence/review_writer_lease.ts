@@ -24,12 +24,29 @@ export const checkReviewWriterLeaseEscrowClose=(owner:ReviewWriterLeaseEscrow):v
 export const closeReviewWriterLeaseEscrow=(owner:ReviewWriterLeaseEscrow):Promise<void>=>closeEscrow(owner);
 /** Pair creation pre-admits both actual handles before moving either owner. */
 export const checkReviewWriterLeaseForEscrow=(owner:ReviewWriterLease,room:string,id:string):void=>checkNormal(owner,room,id);
+/** Deferred transfer selected by genuine durable shutdown. Until actual Close,
+ * the original source keeps a live lease and can finish its ordinary save. */
+let installCloseRetention:(owner:ReviewWriterLease,room:string,id:string,plan:ReviewWriterLeaseCloseRetention)=>void;
+let cancelCloseRetention:(owner:ReviewWriterLease,plan:ReviewWriterLeaseCloseRetention)=>void;
+let moveCloseRetention:(owner:ReviewWriterLease,room:string,id:string,plan:ReviewWriterLeaseCloseRetention)=>ReviewWriterLeaseEscrow;
+let captureCloseRetention:(plan:ReviewWriterLeaseCloseRetention,owner:ReviewWriterLease)=>void;
+let prepareCloseRetention:(owner:ReviewWriterLease,room:string,id:string)=>ReviewWriterLeaseCloseRetention;
+let checkCapturedRetention:(plan:ReviewWriterLeaseCloseRetention)=>void;
+let takeCapturedRetention:(plan:ReviewWriterLeaseCloseRetention)=>ReviewWriterLeaseEscrow;
+let cancelPendingRetention:(plan:ReviewWriterLeaseCloseRetention)=>void;
+export const prepareReviewWriterLeaseCloseRetention=(owner:ReviewWriterLease,room:string,id:string):ReviewWriterLeaseCloseRetention=>prepareCloseRetention(owner,room,id);
+export const checkReviewWriterLeaseCloseRetention=(plan:ReviewWriterLeaseCloseRetention):void=>checkCapturedRetention(plan);
+export const takeReviewWriterLeaseCloseRetention=(plan:ReviewWriterLeaseCloseRetention):ReviewWriterLeaseEscrow=>takeCapturedRetention(plan);
+export const cancelReviewWriterLeaseCloseRetention=(plan:ReviewWriterLeaseCloseRetention):void=>cancelPendingRetention(plan);
 export class ReviewWriterLease {
- #live=true;#moved=false;readonly #room:string;readonly #actor:string;#release:()=>void;#finished:Promise<void>;#loan:ReviewWriterLeaseEscrow|undefined;
+ #live=true;#moved=false;#closeRetention:ReviewWriterLeaseCloseRetention|undefined;readonly #room:string;readonly #actor:string;#release:()=>void;#finished:Promise<void>;#loan:ReviewWriterLeaseEscrow|undefined;
  private constructor(room:string,id:string,release:()=>void,finished:Promise<void>,key:object){if(key!==actorLeaseConstructionKey)throw new SharedEditorError('review_lease_source','Use the actual acquired actor lease');this.#room=room;this.#actor=id;this.#release=release;this.#finished=finished;}
  static{
   const real=(owner:ReviewWriterLease)=>{if(!owner||typeof owner!=='object'||!(#room in owner))throw new SharedEditorError('review_lease_source','Use the actual acquired actor lease');};
-  checkNormal=(owner,room,id)=>{real(owner);if(!owner.#live)throw new SharedEditorError('review_lease_closed','This handle no longer owns its actor lease');if(owner.#room!==room||owner.#actor!==id)throw new SharedEditorError('review_lease_identity','The actual actor binding differs');if(owner.#loan)throw new SharedEditorError('review_lease_borrowed','A staged borrower cannot create another recovery custodian');};
+  checkNormal=(owner,room,id)=>{real(owner);if(!owner.#live)throw new SharedEditorError('review_lease_closed','This handle no longer owns its actor lease');if(owner.#room!==room||owner.#actor!==id)throw new SharedEditorError('review_lease_identity','The actual actor binding differs');if(owner.#loan)throw new SharedEditorError('review_lease_borrowed','A staged borrower cannot create another recovery custodian');if(owner.#closeRetention)throw new SharedEditorError('review_lease_retaining','The actual durable close already retains this actor');};
+  installCloseRetention=(owner,room,id,plan)=>{checkNormal(owner,room,id);owner.#closeRetention=plan;};
+  cancelCloseRetention=(owner,plan)=>{real(owner);if(owner.#closeRetention!==plan||!owner.#live)throw new SharedEditorError('review_retention_state','Only the actual pending close retention can be cancelled');owner.#closeRetention=undefined;};
+  moveCloseRetention=(owner,room,id,plan)=>{real(owner);if(owner.#closeRetention!==plan)throw new SharedEditorError('review_retention_state','Only the actual lease Close can capture this actor');owner.#closeRetention=undefined;try{return createEscrow(owner,room,id);}catch(error){owner.#closeRetention=plan;throw error;}};
   createEscrow=(owner,room,id)=>{checkNormal(owner,room,id);const custodian=new ReviewWriterLease(owner.#room,owner.#actor,owner.#release,owner.#finished,actorLeaseConstructionKey),escrow=makeEscrow(custodian,room,id);owner.#moved=true;owner.#live=false;return escrow;};
   makeLoan=(custodian,escrow)=>{checkNormal(custodian,custodian.#room,custodian.#actor);const loan=new ReviewWriterLease(custodian.#room,custodian.#actor,()=>returnLoan(escrow,loan),Promise.resolve(),actorLeaseConstructionKey);loan.#loan=escrow;return loan;};
   checkLoan=(escrow,custodian,loan)=>{checkNormal(custodian,custodian.#room,custodian.#actor);real(loan);if(!loan.#live||loan.#loan!==escrow||loan.#room!==custodian.#room||loan.#actor!==custodian.#actor)throw new SharedEditorError('review_escrow_borrower','The actual staged borrower is no longer available');};
@@ -49,7 +66,7 @@ export class ReviewWriterLease {
   void finished.catch(reject);return ready;
  }
  assertLive():void{if(!this.#live)throw new SharedEditorError("review_lease_closed","The review writer lease is closed");}
- async close():Promise<void>{if(this.#moved)return;if(this.#live){this.#live=false;this.#release();}await this.#finished;}
+ async close():Promise<void>{if(this.#moved)return;if(this.#live&&this.#closeRetention){captureCloseRetention(this.#closeRetention,this);return;}if(this.#live){this.#live=false;this.#release();}await this.#finished;}
 }
 
 const closeActualReviewWriterLease=ReviewWriterLease.prototype.close;
@@ -73,4 +90,21 @@ export class ReviewWriterLeaseEscrow{
  borrow(room:string,id:string):ReviewWriterLease{return borrowEscrow(this,room,id);}
  commit(room:string,id:string):void{commitEscrow(this,room,id);}
  close():Promise<void>{return closeEscrow(this);}
+}
+
+/** Opaque one-shot plan, never a saved closed flag or replacement writer. Its
+ * escrow is captured only by the original actual lease Close after source I/O.
+ * A failed sibling close leaves this real lock held for whole-cohort retry. */
+export class ReviewWriterLeaseCloseRetention{
+ readonly #owner:ReviewWriterLease;readonly #room:string;readonly #id:string;
+ #state:'pending'|'captured'|'cancelled'|'consumed'='pending';#escrow:ReviewWriterLeaseEscrow|undefined;
+ private constructor(owner:ReviewWriterLease,room:string,id:string,key:object){if(key!==actorLeaseConstructionKey)throw new SharedEditorError('review_retention_source','Use actual durable-close actor retention');this.#owner=owner;this.#room=room;this.#id=id;Object.freeze(this);}
+ static{
+  const real=(plan:ReviewWriterLeaseCloseRetention)=>{if(!plan||typeof plan!=='object'||!(#owner in plan))throw new SharedEditorError('review_retention_source','Use actual durable-close actor retention');};
+  prepareCloseRetention=(owner,room,id)=>{const plan=new ReviewWriterLeaseCloseRetention(owner,room,id,actorLeaseConstructionKey);installCloseRetention(owner,room,id,plan);return plan;};
+  captureCloseRetention=(plan,owner)=>{real(plan);if(plan.#owner!==owner||plan.#state!=='pending')throw new SharedEditorError('review_retention_state','Capture requires the actual pending lease Close');const escrow=moveCloseRetention(owner,plan.#room,plan.#id,plan);plan.#escrow=escrow;plan.#state='captured';};
+  checkCapturedRetention=plan=>{real(plan);if(plan.#state!=='captured'||!plan.#escrow)throw new SharedEditorError('review_retention_incomplete','Wait for every actual durable source Close');checkEscrow(plan.#escrow,plan.#room,plan.#id,'idle');};
+  takeCapturedRetention=plan=>{checkCapturedRetention(plan);const escrow=plan.#escrow!;plan.#escrow=undefined;plan.#state='consumed';return escrow;};
+  cancelPendingRetention=plan=>{real(plan);if(plan.#state!=='pending')throw new SharedEditorError('review_retention_state','Captured or consumed actor custody cannot be cancelled');cancelCloseRetention(plan.#owner,plan);plan.#state='cancelled';};
+ }
 }

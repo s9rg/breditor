@@ -45,6 +45,7 @@ import {lendLocalReviewMetadata,type SelectedLocalReviewDelivery} from '../selec
 import type {LocalReviewMetadataParent} from '../selected_local_review_delivery/metadata_parent.js';
 import type {RetainedDeliverySource} from '../operation_read/delivery_retention.js';
 import {nativeRelayDeliveryForSource,type NativeRelayDelivery,type NativeRelayDeliveryPort} from '../relay/native_delivery.js';
+import {registerSelectedNativeCheckpoint} from '../relay/native_delivery.js';
 import {RelayWorkCustody} from '../relay/work_custody.js';
 import {participantAuthority} from '../participant_backup/policy.js';
 import {decideFreshAssetChoice} from '../physical_room_asset_approval/decision.js';
@@ -96,8 +97,8 @@ export async function previewSelectedLocalMetadataResume(owner:SelectedLocalRevi
 export class SelectedLocalMetadataDelivery{
  readonly #parent;readonly #choice;readonly #authority;readonly #store;
  readonly #desired=new Map<string,SegmentedRetainedRecords>();readonly #children=new Map<string,Children>();readonly #contexts=new Map<NativeRelayDelivery,RetainedDeliverySource>();readonly #preparing=new Map<string,Promise<PreparedCompoundMetadata>>();readonly #cancels=new Set<()=>void>();
- #snapshot:LocalMetadataDeliverySnapshot|undefined;#opening:Promise<void>|undefined;#serial=Promise.resolve();#capturing:Promise<unknown>|undefined;#referenceWork:LocalMetadataReferenceWork|undefined;#closing=false;#closed=false;#active=false;#busy=false;#ending:Promise<void>|undefined;
- private constructor(token:object,parent:LocalReviewMetadataParent,choice:LocalMetadataDeliveryChoice,authority:()=>void){if(token!==key)throw fail('local_metadata_delivery_policy');this.#parent=parent;this.#choice=choice;this.#authority=authority;this.#store=new LocalMetadataDeliveryStore(choice,this.#guard);Object.freeze(this);}
+ #shutdownCheckpointed=false;#snapshot:LocalMetadataDeliverySnapshot|undefined;#opening:Promise<void>|undefined;#serial=Promise.resolve();#capturing:Promise<unknown>|undefined;#referenceWork:LocalMetadataReferenceWork|undefined;#closing=false;#closed=false;#active=false;#busy=false;#ending:Promise<void>|undefined;
+ private constructor(token:object,parent:LocalReviewMetadataParent,choice:LocalMetadataDeliveryChoice,authority:()=>void){if(token!==key)throw fail('local_metadata_delivery_policy');this.#parent=parent;this.#choice=choice;this.#authority=authority;this.#store=new LocalMetadataDeliveryStore(choice,this.#guard);registerSelectedNativeCheckpoint(parent.scope,()=>this.#checkpointAndStop());Object.freeze(this);}
  #guard=()=>{if(this.#closing||this.#closed)throw fail('local_metadata_delivery_closed');this.#parent.check();this.#authority();this.#parent.check();if(this.#closing||this.#closed)throw fail('local_metadata_delivery_closed');};
  #current=()=>{this.#guard();if(!this.#active)throw fail('local_metadata_delivery_closed');};
  #lane(id:string){const lane=this.#snapshot?.current.lanes.find(row=>row.id===id);if(!lane)throw fail();return lane;}
@@ -166,9 +167,11 @@ export class SelectedLocalMetadataDelivery{
   // both the busy gate and actual promise before any such synchronous hook.
   try{prepare?.();}catch(error){preparationError={error};}return job;
  }
- capture():Promise<LocalMetadataRoomBundle>{return this.#captureOperation(async()=>{
+ capture():Promise<LocalMetadataRoomBundle>{return this.#capture();}
+ async #checkpointAndStop():Promise<void>{await this.#opening?.catch(()=>{});if(this.#closed||this.#shutdownCheckpointed)return;await this.#capture(true);}
+ #capture(stop=false):Promise<LocalMetadataRoomBundle>{return this.#captureOperation(async()=>{
   let result:LocalMetadataRoomBundle|undefined;
-  await this.#parent.capture(async parent=>{await this.#serial;this.#current();this.#savedFact();if(!this.#snapshot||[...this.#desired].some(([id,records])=>!equal(records,this.#lane(id).records)))throw fail('local_metadata_delivery_unsaved');await this.#persist();const text=metadataJson(this.#snapshot),file=new Blob([text],{type:'application/vnd.breditor.selected-local-metadata+json'});result=Object.freeze({format:'breditor/selected-local-metadata-room-bundle',formatVersion:1,parent,metadata:Object.freeze({file,bytes:file.size,sha256:await segmentedDigest(text)})});this.#current();});if(!result)throw fail();return result;
+  await this.#parent.capture(async parent=>{await this.#serial;this.#current();this.#savedFact();if(!this.#snapshot||[...this.#desired].some(([id,records])=>!equal(records,this.#lane(id).records)))throw fail('local_metadata_delivery_unsaved');await this.#persist();const text=metadataJson(this.#snapshot),file=new Blob([text],{type:'application/vnd.breditor.selected-local-metadata+json'});result=Object.freeze({format:'breditor/selected-local-metadata-room-bundle',formatVersion:1,parent,metadata:Object.freeze({file,bytes:file.size,sha256:await segmentedDigest(text)})});this.#current();});if(!result)throw fail();if(stop){this.#shutdownCheckpointed=true;this.#stop();}return result;
  });}
  /** One finite reference decision under the parent's actual quiescence. The
   * original capture format is unchanged. Older points are replayed before any

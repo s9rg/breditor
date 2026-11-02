@@ -3,12 +3,15 @@
 import {SharedWriterLease,SharedWriterLeaseEscrow,createSharedWriterLeaseEscrow,checkSharedWriterLeaseForEscrow,checkSharedWriterLeaseEscrow,borrowSharedWriterLeaseEscrow,commitSharedWriterLeaseEscrow,checkSharedWriterLeaseEscrowClose,closeSharedWriterLeaseEscrow}from'./writer_lease.js';
 import {ReviewWriterLease,ReviewWriterLeaseEscrow,createReviewWriterLeaseEscrow,checkReviewWriterLeaseForEscrow,checkReviewWriterLeaseEscrow,borrowReviewWriterLeaseEscrow,commitReviewWriterLeaseEscrow,checkReviewWriterLeaseEscrowClose,closeReviewWriterLeaseEscrow}from'./review_writer_lease.js';
 import {SharedEditorError}from'../core.js';
+let pairHeld:(document:SharedWriterLeaseEscrow,review:ReviewWriterLeaseEscrow,room:string,writer:string,actor:string)=>ActorLeaseEscrow;
+export const pairHeldActorLeases=(document:SharedWriterLeaseEscrow,review:ReviewWriterLeaseEscrow,room:string,writer:string,actor:string):ActorLeaseEscrow=>pairHeld(document,review,room,writer,actor);
 const actorPairConstructionKey=Object.freeze({});
 export interface StagedActorLeases{readonly document:SharedWriterLease;readonly review:ReviewWriterLease}
 export class ActorLeaseEscrow{
  readonly #document:SharedWriterLeaseEscrow;readonly #review:ReviewWriterLeaseEscrow;
  readonly #room:string;readonly #writer:string;readonly #actor:string;
  private constructor(document:SharedWriterLeaseEscrow,review:ReviewWriterLeaseEscrow,room:string,writer:string,actor:string,key:object){if(key!==actorPairConstructionKey)throw new SharedEditorError('actor_escrow_source','Use actual paired actor custody');this.#document=document;this.#review=review;this.#room=room;this.#writer=writer;this.#actor=actor;}
+ static{pairHeld=(document,review,room,writer,actor)=>{checkSharedWriterLeaseEscrow(document,room,writer,'idle');checkReviewWriterLeaseEscrow(review,room,actor,'idle');return new ActorLeaseEscrow(document,review,room,writer,actor,actorPairConstructionKey);};}
  static create(document:SharedWriterLease,review:ReviewWriterLease,room:string,writer:string,actor:string):ActorLeaseEscrow{
   checkSharedWriterLeaseForEscrow(document,room,writer);checkReviewWriterLeaseForEscrow(review,room,actor);
   return new ActorLeaseEscrow(createSharedWriterLeaseEscrow(document,room,writer),createReviewWriterLeaseEscrow(review,room,actor),room,writer,actor,actorPairConstructionKey);

@@ -20,7 +20,9 @@ export async function selectedDeliveryNativeHost(root,{language=3,standard=true,
  let buffer='',errors='',sequence=resumed?.bootstrap.nextSequence??0,closed=false,stopping,initialResolve,initialReject,initialOffer;
  const observed=new WeakMap(),cuts=new Map(),pending=new Map(),operators=new Map(),secrets=new Set(),offers=new WeakMap(),snapshots=resumed?[...resumed.snapshots]:[],initial=new Promise((a,b)=>{initialResolve=a;initialReject=b;});
  for(const item of snapshots){const pin=structuredClone(item);cuts.set(item.sequence,pin);observed.set(item,pin);}
- const exited=new Promise(done=>child.once('exit',(code,signal)=>done({code,signal})));let terminal;
+ // Failed spawn emits error/close without exit. Settle this actual lifecycle
+ // too, so startup cleanup preserves its refusal instead of waiting forever.
+ const exited=new Promise(done=>{child.once('exit',(code,signal)=>done({code,signal}));child.once('error',()=>done({code:null,signal:null,startFailed:true}));});let terminal;
  exited.then(result=>{terminal=result;const error=Error('Native selected-delivery process ended before its pending operation: '+errors.replace(/[a-f0-9]{64}/g,'[redacted]'));initialReject(error);for(const row of pending.values()){clearTimeout(row.timer);row.reject(error);}pending.clear();});
  child.once('error',()=>initialReject(Error('Native selected-delivery process could not start')));
  child.stderr.on('data',bytes=>{errors=(errors+bytes.toString('utf8')).slice(-4096);});

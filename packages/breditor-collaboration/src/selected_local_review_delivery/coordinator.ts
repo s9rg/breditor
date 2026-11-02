@@ -12,7 +12,7 @@ import type {RetainedDeliveryClient} from '../complete_operation_cohort/retained
 import {independentHistoryNative} from '../independent_history/native_port.js';
 import {claimPreparedSelectedDelivery,assertPreparedSelectedDeliveryPair,preparedSelectedNativeDeliveryAnchor,resumePreparedSelectedLocalReviewDelivery,type PreparedSelectedNativeDelivery} from '../selected_delivery_preparation/coordinator.js';
 import type {PreparedDeliveryDriver} from '../selected_delivery_preparation/driver_contract.js';
-import {selectedNativeDeliverySources,attachSelectedLocalReviewDelivery,retainSelectedNativeDeliveryResource,withNativeRelayDelivery,type NativeRelayDelivery} from '../relay/native_delivery.js';
+import {registerSelectedNativeCheckpoint,selectedNativeDeliverySources,attachSelectedLocalReviewDelivery,retainSelectedNativeDeliveryResource,withNativeRelayDelivery,type NativeRelayDelivery} from '../relay/native_delivery.js';
 import {registerLocalReviewDelivery,type LocalReviewIO} from './admission.js';
 import {SharedReviewRelaySync} from '../relay/review_sync.js';
 import type {SharedReviewRelayOptions,SharedReviewRelayProgress} from '../relay/review_types.js';
@@ -55,15 +55,16 @@ export class SelectedLocalReviewDelivery{
  readonly #scope;readonly #driver;readonly #prepared;readonly #sources;readonly #local;readonly #choice;readonly #authority;readonly #store;
  readonly #contexts=new Map<NativeRelayDelivery,RetainedDeliverySource>();readonly #ios=new Map<RetainedDeliverySource,LocalReviewIO>();readonly #closingListeners=new Set<()=>void>();
  #metadataChild:MetadataChildSlot|undefined;#metadataBinding:string|undefined;
- #snapshot:LocalReviewDeliverySnapshot|undefined;#active=false;#failed=false;#busy=false;#checking=false;#closing=false;#closed=false;#opening:Promise<void>|undefined;#ending:Promise<void>|undefined;#captureWork:Promise<LocalReviewRoomBundle>|undefined;#readWork:Promise<void>|undefined;#serial=Promise.resolve();
+ #shutdownCheckpointed=false;#shutdownStopped=false;#snapshot:LocalReviewDeliverySnapshot|undefined;#active=false;#failed=false;#busy=false;#checking=false;#closing=false;#closed=false;#opening:Promise<void>|undefined;#ending:Promise<void>|undefined;#captureWork:Promise<LocalReviewRoomBundle>|undefined;#readWork:Promise<void>|undefined;#serial=Promise.resolve();
  private constructor(token:object,scope:SelectedNativeRecoveryScope,driver:PreparedDeliveryDriver,sources:readonly RetainedDeliveryClient[],local:readonly RetainedDeliveryClient[],choice:LocalReviewDeliveryChoice,authority:()=>void,original?:LocalReviewRoomBundle){
   if(token!==key)throw fail('local_review_delivery_policy');this.#scope=scope;this.#driver=driver;this.#prepared=original?.prepared??driver.prepared;this.#sources=sources;this.#local=local;this.#choice=choice;this.#authority=authority;this.#store=new LocalReviewDeliveryStore(choice,this.#guard);
   registerLocalReviewDelivery(this,scope,source=>{this.#writer();const io=this.#ios.get(source);if(!io)throw fail('local_review_delivery_policy');return io;});
   for(const row of local){const selected=choice.lanes.find(value=>value.id===row.id)!;this.#ios.set(row.source,Object.freeze({identity:()=>{this.#writer();return selected.binding;},progress:()=>{this.#writer();return this.#lane(row.id).relay.review!;},receipt:()=>{this.#writer();return this.#lane(row.id).relay.reviewReceipt;},persist:(progress:SharedReviewRelayProgress,receipt?:SharedSegmentedReviewReceipt)=>this.#persist(row,progress,receipt)}));}
   metadataParents.set(this,()=>this.#lendMetadata());
+  registerSelectedNativeCheckpoint(scope,()=>this.#checkpointAndStop());
   Object.freeze(this);
  }
- #guard=()=>{if(this.#closing||this.#closed)throw fail('local_review_delivery_closed');if(this.#checking)throw fail('local_review_delivery_busy');this.#checking=true;try{this.#scope.check();this.#driver.check();this.#authority();for(const row of this.#local)row.source.check();this.#scope.check();if(this.#closing||this.#closed)throw fail('local_review_delivery_closed');}finally{this.#checking=false;}};
+ #guard=()=>{if(this.#shutdownStopped||this.#closing||this.#closed)throw fail('local_review_delivery_closed');if(this.#checking)throw fail('local_review_delivery_busy');this.#checking=true;try{this.#scope.check();this.#driver.check();this.#authority();for(const row of this.#local)row.source.check();this.#scope.check();if(this.#closing||this.#closed)throw fail('local_review_delivery_closed');}finally{this.#checking=false;}};
  #writer(){this.#guard();if(!this.#active||this.#failed)throw fail('local_review_delivery_closed');}
  #lane(id:string){const lane=this.#snapshot?.current.lanes.find(row=>row.id===id);if(!lane)throw fail();return lane;}
  #source(row:RetainedDeliveryClient){if(row.source.parent.kind!=='independent-local')throw fail('local_review_delivery_policy');const port=independentHistoryNative(row.source.parent.session);if(port.core!==row.source.core||port.companion)throw fail();return port;}
@@ -137,7 +138,16 @@ export class SelectedLocalReviewDelivery{
  /** Stops/drains ACTUAL adapters before taking a joint complete room/export.
   * All new receipt stores are mandatory; a caller cannot omit one local lane. */
  capture():Promise<LocalReviewRoomBundle>{return this.#capture();}
- #capture(metadata?:object,visit?:(bundle:LocalReviewRoomBundle,integrity:SharedArchiveIntegrityOptions)=>Promise<void>):Promise<LocalReviewRoomBundle>{
+ async #checkpointAndStop():Promise<void>{
+  await this.#opening?.catch(()=>{});if(this.#closed||this.#shutdownCheckpointed||this.#metadataChild)return;
+  // An explicitly closed metadata child already drained its original journal.
+  // Its bound parent must not manufacture a new review-only portable capture.
+  // Canonical parent Close drains remaining receipt work under the same source
+  // reservation; the source session still saves/flushed all actual native stores.
+  if(this.#metadataBinding!==undefined){await this.#close();this.#shutdownCheckpointed=true;return;}
+  await this.#capture(undefined,undefined,true);
+ }
+ #capture(metadata?:object,visit?:(bundle:LocalReviewRoomBundle,integrity:SharedArchiveIntegrityOptions)=>Promise<void>,stop=false):Promise<LocalReviewRoomBundle>{
   // Once enlisted, an old review-only file cannot silently omit metadata.
   if((this.#metadataChild||this.#metadataBinding!==undefined)&&(!this.#metadataChild||metadata!==this.#metadataChild.key))return Promise.reject(fail('local_review_delivery_policy'));
   if(this.#busy||this.#checking)return Promise.reject(fail('local_review_delivery_busy'));if(this.#closing||this.#closed||this.#failed||!this.#active)return Promise.reject(fail('local_review_delivery_closed'));this.#busy=true;
@@ -145,7 +155,7 @@ export class SelectedLocalReviewDelivery{
   // Close must observe this promise too, not merely visible socket state.
   const job=Promise.resolve().then(()=>{this.#writer();return this.#driver.quiesce(async()=>{await this.#serial;this.#writer();let before=await stored.read.call(this.#store);const lanes=[];for(const row of this.#local){const old=before.current.lanes.find(lane=>lane.id===row.id)!;lanes.push({...old,source:await this.#saved(row)});}
    this.#snapshot=await stored.replace.call(this.#store,before,{...before.current,revision:before.current.revision+1,lanes});const actual=await this.#scope.retainExtendingAll([{file:this.#prepared.file,selection:this.#prepared.choice.before},{file:this.#driver.prepared.file,selection:this.#driver.prepared.choice.before}]),text=localJson(this.#snapshot),file=new Blob([text],{type:'application/vnd.breditor.selected-local-review-delivery+json'}),integrity=prepareArchiveIntegrity({wasm:actual.integrity.wasm,checkAuthority:this.#guard});
-   await this.#admitRoomSource(actual.current.file,actual.current.selection,this.#snapshot.current,true);this.#writer();const bundle=Object.freeze({format:'breditor/selected-local-review-room-bundle' as const,formatVersion:1 as const,prepared:this.#prepared,current:actual.current,delivery:Object.freeze({file,bytes:file.size,sha256:await integrity.digest(file)})});await visit?.(bundle,actual.integrity);this.#writer();return bundle;
+   await this.#admitRoomSource(actual.current.file,actual.current.selection,this.#snapshot.current,true);this.#writer();const bundle=Object.freeze({format:'breditor/selected-local-review-room-bundle' as const,formatVersion:1 as const,prepared:this.#prepared,current:actual.current,delivery:Object.freeze({file,bytes:file.size,sha256:await integrity.digest(file)})});await visit?.(bundle,actual.integrity);this.#writer();if(stop){this.#shutdownCheckpointed=true;this.#shutdownStopped=true;}return bundle;
   });}).catch(async error=>{this.#failed=true;await this.#driver.close();throw error;}).finally(()=>{this.#busy=false;this.#captureWork=undefined;});this.#captureWork=job;return job;
  }
  identity():LocalReviewDeliveryChoice{return this.#choice;}

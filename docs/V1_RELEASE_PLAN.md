@@ -1,5 +1,34 @@
 # Breditor V1 release preparation
 
+[Persistent native activation source ownership](NATIVE_ACTIVATION_SOURCE_SESSION.md)
+now retains the actual source reservation across failed commands and caller
+cancellation. Explicit suspension checkpoints enlisted review/metadata owners,
+drains dependent work and durably closes original sources before releasing or
+transferring their actors. The repair preserves live-lease save assertions: each
+actual final lease Close captures custody only after normal save/flush, and a
+partial shutdown retains mixed original/captured ownership for canonical retry.
+
+The complete 60-case source workset and the same 60 cases from fresh independently
+installed packages pass. They include all seven source/replacement families,
+all fourteen actor locks, exact future document/comment Undo/Redo, zero ordinary
+writer acquisition during replacement, and actual version/suggestion/revision
+children in three local metadata lanes. Both open and explicitly closed metadata
+child lifetimes preserve pending packets without invented acknowledgements.
+Strict private declarations pass; an independent compile matches 2,426 emitted
+collaboration files and all 2,803 installed SDK distribution files match their
+producer. The original failures and exact executed source are retained in a
+compressed, read-back-verified
+[qualification](qualification/2026-11-02-native-activation-source-session.json).
+
+This is private component ownership, not completed authenticated whole-room
+activation. A separate genuine lost-response workflow is still being tested;
+metadata namespace relocation, normal route publication, the full SDK policy
+matrix, physical storage, full candidate profiles, remaining parity and all
+thirteen V1 gates remain open. Dedicated component commands are available but
+are not yet part of every candidate profile. Rust, normal Wasm, original
+protocols/defaults, public-root exports and versions are unchanged. Neither
+historical archive-read/WebKit fault is declared repaired.
+
 [Retired actor custody transfer](RETIRED_ACTOR_HANDOFF.md) now continues
 same-scope retirement into a synchronously returned replacement executor. The
 old reservation is revoked before caller-input reflection; invalid construction

@@ -4,6 +4,7 @@
  * must durably choose every namespace and independently admit its whole root.
  */
 import {SharedEditorError} from '../core.js';
+import {takeClosedNativeActors,type NativeActorCloseRetention} from './native_actor_close.js';
 import {prepareAcquiredRoomActors,type RoomActorAcquisition} from './room_actor_acquisition.js';
 import {checkStoppedSharedSourceActors,takeStoppedSharedSourceActors} from './shared_session.js';
 import {checkStoppedReviewSourceActors,takeStoppedReviewSourceActors} from './review_session.js';
@@ -31,6 +32,9 @@ const adapters:Readonly<Record<StoppedActorFamily,Adapter>>={
  'independent-delivery':{check:checkStoppedIndependentDeliveryActors,take:takeStoppedIndependentDeliveryActors,factory:'independent'},
 };
 interface HeldMember{readonly id:string;readonly factory:FactoryFamily;readonly binding:StoppedActorBinding;readonly custody:StoppedActorCustody}
+let takeClosed:(owner:NativeActorCloseRetention)=>StoppedActorCohort;
+/** Genuine deferred-close resources only, never already closed source DATA. */
+export const takeClosedNativeActorCohort=(owner:NativeActorCloseRetention)=>takeClosed(owner);
 let takeAcquired:(owner:RoomActorAcquisition)=>StoppedActorCohort;
 /** Separate fresh-resource path, never a saved stopped flag or an option that
  * bypasses source retirement. All real normal handles are checked before move. */
@@ -66,7 +70,7 @@ export class StoppedActorCohort{
  readonly #members:readonly HeldMember[];readonly #routes=new Map<string,DeferredActorLeaseInput>();
  #committed=false;#closing=false;#closed=false;#closeTask:Promise<void>|undefined;
  private constructor(token:object,members:readonly HeldMember[]){if(token!==key)throw fail();this.#members=members;Object.freeze(this);}
- static{takeAcquired=owner=>{const prepared=prepareAcquiredRoomActors(owner);try{
+ static{takeClosed=owner=>new StoppedActorCohort(key,takeClosedNativeActors(owner));takeAcquired=owner=>{const prepared=prepareAcquiredRoomActors(owner);try{
   // Canonical acquisition preflights the complete real set. There are no
   // callbacks or awaits between the first escrow creation and final consumption.
   const members=prepared.members.map(row=>Object.freeze({id:row.id,factory:row.factory,binding:Object.freeze({room:row.room,writer:row.writer,actor:row.actor}),custody:row.actor===null?createSharedWriterLeaseEscrow(row.document,row.room,row.writer):createPair.call(ActorLeaseEscrow,row.document,row.review!,row.room,row.writer,row.actor)}));

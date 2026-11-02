@@ -36,8 +36,18 @@ const sourceSessions=new WeakMap<NativeRelayDelivery,object>();
 const contexts=new WeakMap<NativeRelayDelivery,NativeRelayDeliveryPort>(),selections=new WeakMap<object,NativeRelayDeliveryPort>(),localReviews=new WeakMap<NativeRelayDelivery,LocalReviewIO>(),selectedOwners=new WeakMap<NativeRelayDelivery,SelectedNativeRecoveryScope>();
 interface GuardedIngress {receiveDocument(frame:string):boolean;receiveReview(frame:string,policy:SharedReviewPolicy):SharedReviewImportOutcome;setReviewAccess(access:SharedReviewAccess):boolean;adoptSuggestionHistory:SuggestionIngress}
 interface NativeDeliveryInput<P extends SharedSelectionPolicy>{native:NativeRecoveryReservation;session:object;core:SharedRichEditor<P>;reviewCeiling:SharedReviewAccess;checkAuthority:()=>void;signal?:AbortSignal}
-interface SelectedDeliveryScope {native:NativeRecoveryReservation;reads:SelectedNativeReconstructionScope['reads'];sources:()=>readonly RetainedDeliveryClient[];check():void;setReviewAccess(core:SharedRichEditor<SharedSelectionPolicy>,access:SharedReviewAccess):boolean;adoptSuggestionHistory(core:SharedRichEditor<SharedSelectionPolicy>,proof:SharedDocumentSuggestionEffectProof,packet:string,acceptance:SharedOwnedSuggestionAcceptance):boolean;track(owner:NativeRelayDelivery):void}
+interface SelectedDeliveryScope {native:NativeRecoveryReservation;reads:SelectedNativeReconstructionScope['reads'];sources:()=>readonly RetainedDeliveryClient[];check():void;admit():void;freeze():void;armStop():void;settle():Promise<void>;resetRetirement():Promise<void>;setReviewAccess(core:SharedRichEditor<SharedSelectionPolicy>,access:SharedReviewAccess):boolean;adoptSuggestionHistory(core:SharedRichEditor<SharedSelectionPolicy>,proof:SharedDocumentSuggestionEffectProof,packet:string,acceptance:SharedOwnedSuggestionAcceptance):boolean;track(owner:NativeRelayDelivery):void}
 const scopes=new WeakMap<SelectedNativeRecoveryScope,SelectedDeliveryScope>();
+/** Actual dependent SDK checkpoints, distinct from source/actor authority. */
+const checkpoints=new WeakMap<SelectedNativeRecoveryScope,Set<()=>Promise<void>>>();
+export function registerSelectedNativeCheckpoint(scope:SelectedNativeRecoveryScope,checkpoint:()=>Promise<void>):void{const held=scopes.get(scope);if(!held||typeof checkpoint!=='function')throw fail();held.admit();let set=checkpoints.get(scope);if(!set){set=new Set();checkpoints.set(scope,set);}set.add(checkpoint);}
+/** Freeze ingress first. Each dependent owner persists and stops itself before
+ * its callback resolves; cleanup errors leave this actual scope held for retry. */
+export async function checkpointSelectedNativeResources(scope:SelectedNativeRecoveryScope):Promise<void>{const held=scopes.get(scope);if(!held)throw fail();held.freeze();held.check();for(const checkpoint of checkpoints.get(scope)??[]){await checkpoint();held.check();}}
+export function settleSelectedNativeResources(scope:SelectedNativeRecoveryScope):Promise<void>{const held=scopes.get(scope);if(!held)return Promise.reject(fail());held.freeze();return held.settle();}
+export function resetSelectedNativeRetirement(scope:SelectedNativeRecoveryScope):Promise<void>{const held=scopes.get(scope);if(!held)return Promise.reject(fail());return held.resetRetirement();}
+export function armSelectedNativeDurableStop(scope:SelectedNativeRecoveryScope):void{const held=scopes.get(scope);if(!held)throw fail();held.armStop();}
+
 const fail=()=>new SharedRelayError('native_delivery_closed');
 const rank:Readonly<Record<SharedReviewAccess,number>>={read_only:0,comment:1,moderate:2};
 /** Requires fresh host policy, not the historical role in a saved packet.

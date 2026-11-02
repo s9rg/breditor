@@ -1,0 +1,70 @@
+{
+  "format": "breditor/native-activation-source-session-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-02",
+  "executedSource": {
+    "commit": "fc0150ad923cd4c7e1de2aa10fb25740f86f8d38",
+    "dirty": true,
+    "sha256": "215efaefb6ea99f7afc3d531b0aefec08a88efb504c06628032d5f7750629e65",
+    "files": 8127,
+    "bytes": 66721553,
+    "archiveSha256": "32b9acefa904218ce7e9e10c6527c70d1feb80fe29aa61472f55a6444acaf8f3"
+  },
+  "freshSourceCases": 60,
+  "freshInstalledCases": 60,
+  "sourceLog": "/private/tmp/breditor-whole-room-custody-20261102/target/joint-source-final-source.log",
+  "installedDirectory": "/private/tmp/breditor-joint-source-installed-39SWCa",
+  "strictPrivateSourceAndInstalledTypes": true,
+  "freshCompilationMatchingCollaborationFiles": 2426,
+  "matchingPackageDistFiles": 2803,
+  "actualSourceFamilies": 7,
+  "actualActorLocks": 14,
+  "ordinaryWriterReacquisitionsDuringReplacement": 0,
+  "commandFailureAndCallerAbortRetainNativeExclusion": true,
+  "actualPartialDurableCloseRetryQualified": true,
+  "actualLocalMetadataLanes": 3,
+  "actualVersionSuggestionRevisionChildren": true,
+  "openAndExplicitlyClosedMetadataLifetimesQualified": true,
+  "pendingPacketsPreservedWithoutInventedAcknowledgements": true,
+  "exactFutureDocumentAndCommentHistories": true,
+  "originalSourceBytesUnchanged": true,
+  "reproducedInitialBug": {
+    "cases": 3,
+    "passed": 1,
+    "failed": 2,
+    "error": "writer_lease_closed",
+    "cause": "Actor leases moved before ordinary durable source Close performed its final save.",
+    "repair": "Defer genuine lease transfer until its actual final Close after save/flush, retaining actual plans/escrows through partial parent cleanup.",
+    "liveLeaseAssertionsPreserved": true
+  },
+  "fixtureRepairs": [
+    "A genuinely missing Native executable now settles error cleanup instead of waiting for an exit event that failed spawn never emits.",
+    "Optional persistent-source fixture cleanup settles the actual borrowed owner before freeing read profiles and preserves the original setup error."
+  ],
+  "developmentFailuresRetained": true,
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/joint-source-qualified-proof-1sl9zys2",
+    "indexSha256": "775cb72c80d87b697a79b19963c42ec2116c749ec47e86121b6784e5228c3f4a",
+    "references": 289,
+    "objects": 225,
+    "compressedBytes": 68699959,
+    "readBackVerified": true
+  },
+  "limits": {
+    "controlledIndexedDbLocksAndRasterPresentation": true,
+    "physicalBrowserStorageDurabilityQualified": false,
+    "fullSdkPolicyMatrixRun": false,
+    "genuineUnknownCommitThroughThisSessionQualified": false,
+    "persistentJointProductionActivationComplete": false,
+    "localMetadataNamespaceRelocationComplete": false,
+    "normalServingRoutePublicationComplete": false,
+    "fullCandidateProfilesRun": false,
+    "historicalArchiveReadRepairVerified": false,
+    "historicalWebKitRepairVerified": false,
+    "v1Ready": false,
+    "v1GatesOpen": 13
+  },
+  "originalRustWasmVersionsProtocolsDefaultsAndPublicRootExportsUnchanged": true,
+  "postQualificationChangesAreDocumentationOnly": true,
+  "unchangedQualifiedInputFiles": 8124
+}
