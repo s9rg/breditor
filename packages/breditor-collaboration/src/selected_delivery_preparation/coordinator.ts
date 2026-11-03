@@ -1,3 +1,5 @@
+import {generationDeliveryRecoveryHostPort,type SharedServerLogGenerationDeliveryRecoveryHost} from '../generation_delivery_control/host.js';
+import {SharedServerLogGenerationParticipantInventory as DeliveryInventory} from '../server_generation_inventory/read.js';
 import {consumeDeliveryResumeAdmission,type DeliveryResumeAdmission} from '../selected_delivery_journal/resume_admission.js';
 import {consumeLocalReviewResumeAdmission,type LocalReviewResumeAdmission} from '../selected_local_review_delivery/resume_admission.js';
 import type {SelectedRoomCurrentSelection} from '../selected_room_current/contract.js';
@@ -74,3 +76,18 @@ export function preparedSelectedNativeDeliveryAnchor(gate:PreparedSelectedNative
 /** Only the genuine local-review full-path verifier can transfer this one-shot
  * admission. Cleanup owns EVERY callback after consumption, including refusal. */
 export async function resumePreparedSelectedLocalReviewDelivery(scope:SelectedNativeRecoveryScope,admission:LocalReviewResumeAdmission):Promise<PreparedSelectedNativeDelivery>{const selected=consumeLocalReviewResumeAdmission(admission,scope);let held:ReturnType<typeof ownPreparedGate>|undefined,complete=false;try{held=ownPreparedGate(scope,selected.resources,selected.check);selected.check();const gate=held.finish(selected.prepared,selected.anchor);complete=true;return gate;}finally{if(!complete){if(held)await held.close();else await methods.close.call(selected.resources);}}}
+
+
+const deliveryInventoryFile=DeliveryInventory.prototype.file,deliveryInventoryIdentity=DeliveryInventory.prototype.identity;
+async function inspectMetadataContinuationSource(scope:SelectedNativeRecoveryScope,host:SharedServerLogGenerationDeliveryRecoveryHost,inventory:DeliveryInventory,database:string){
+ checkSelectedNativeDeliveryScope(scope);const port=generationDeliveryRecoveryHostPort(host),file=deliveryInventoryFile.call(inventory),identity=deliveryInventoryIdentity.call(inventory),checkInventory=()=>{if(deliveryInventoryFile.call(inventory)!==file||deliveryInventoryIdentity.call(inventory)!==identity)throw fail('delivery_preparation_closed');};
+ checkInventory();const read=await scope.readDeliveryReconciliation(host,inventory);requireExecutionOwnStreams(read);const current=await scope.retainCurrent();await compareExecutionCut(current.current,read,current.integrity);await port.check(scope.signal);checkInventory();checkSelectedNativeDeliveryScope(scope);
+ return{choice:preparationChoice({format:'breditor/selected-native-delivery-preparation',formatVersion:1,database,server:port.selection.current,before:current.current.selection}),current,checkInventory};
+}
+/** Explicit advanced-inventory preparation. Original exact-cut preparation keeps
+ * its old meaning; this route uses genuine previous/current Native admission. */
+export async function previewMetadataContinuationPreparation(scope:SelectedNativeRecoveryScope,host:SharedServerLogGenerationDeliveryRecoveryHost,inventory:DeliveryInventory,database:string){const read=await inspectMetadataContinuationSource(scope,host,inventory,database);return Object.freeze({choice:read.choice,current:read.current.current});}
+export async function prepareMetadataContinuationDelivery(scope:SelectedNativeRecoveryScope,host:SharedServerLogGenerationDeliveryRecoveryHost,inventory:DeliveryInventory,expected:DeliveryPreparationChoice,existing=false):Promise<PreparedSelectedNativeDelivery>{
+ const chosen=preparationChoice(expected),selected=await inspectMetadataContinuationSource(scope,host,inventory,chosen.database);if(JSON.stringify(chosen)!==JSON.stringify(selected.choice))throw fail();const resources=new DeliveryPreparationResources(),held=ownPreparedGate(scope,resources,selected.checkInventory);
+ try{const prepared=await methods.open.call(resources,chosen,selected.current.integrity,existing?undefined:selected.current.current.file);if(JSON.stringify((await scope.retainCurrent()).current.selection)!==JSON.stringify(chosen.before))throw fail();await generationDeliveryRecoveryHostPort(host).check(scope.signal);held.check();return held.finish(prepared);}catch(error){await held.close();throw error;}
+}

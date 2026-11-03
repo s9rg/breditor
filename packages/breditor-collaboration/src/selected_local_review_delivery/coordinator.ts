@@ -1,3 +1,4 @@
+import {consumeVerifiedReviewFacts,type VerifiedMetadataContinuationFacts} from '../selected_local_metadata_continuation/native_origin.js';
 import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
 import type {LocalReviewMetadataParent} from './metadata_parent.js';
 /** SDK-private, genuinely prepared local-review delivery. Constructor-owned
@@ -34,6 +35,9 @@ import type {LocalReviewResumeInput,LocalReviewStoredSelection} from './resume_c
 import {localChoice,localBinding,localSnapshot,localJson,emptyRelay,equal,fail,MAX_LOCAL_REVIEW_BYTES} from './policy.js';
 import {verifyLocalReviewProgress} from './native_review.js';
 import type {LocalReviewBinding,LocalReviewDeliveryChoice,LocalReviewDeliveryState,LocalReviewDeliverySnapshot,LocalReviewRoomBundle} from './contract.js';
+let continueFacts:(owner:SelectedLocalReviewDelivery,facts:VerifiedMetadataContinuationFacts)=>Promise<void>;
+/** Only a genuine full native continuation proof may install original facts. */
+export const continueVerifiedLocalReviewFacts=(owner:SelectedLocalReviewDelivery,facts:VerifiedMetadataContinuationFacts)=>continueFacts(owner,facts);
 const key=Object.freeze({});
 const metadataParents=new WeakMap<object,()=>LocalReviewMetadataParent>();
 /** Genuine same-parent composition only; matching fields never lend custody. */
@@ -157,6 +161,12 @@ export class SelectedLocalReviewDelivery{
    this.#snapshot=await stored.replace.call(this.#store,before,{...before.current,revision:before.current.revision+1,lanes});const actual=await this.#scope.retainExtendingAll([{file:this.#prepared.file,selection:this.#prepared.choice.before},{file:this.#driver.prepared.file,selection:this.#driver.prepared.choice.before}]),text=localJson(this.#snapshot),file=new Blob([text],{type:'application/vnd.breditor.selected-local-review-delivery+json'}),integrity=prepareArchiveIntegrity({wasm:actual.integrity.wasm,checkAuthority:this.#guard});
    await this.#admitRoomSource(actual.current.file,actual.current.selection,this.#snapshot.current,true);this.#writer();const bundle=Object.freeze({format:'breditor/selected-local-review-room-bundle' as const,formatVersion:1 as const,prepared:this.#prepared,current:actual.current,delivery:Object.freeze({file,bytes:file.size,sha256:await integrity.digest(file)})});await visit?.(bundle,actual.integrity);this.#writer();if(stop){this.#shutdownCheckpointed=true;this.#shutdownStopped=true;}return bundle;
   });}).catch(async error=>{this.#failed=true;await this.#driver.close();throw error;}).finally(()=>{this.#busy=false;this.#captureWork=undefined;});this.#captureWork=job;return job;
+ }
+ static{continueFacts=(owner,token)=>{if(!owner||typeof owner!=='object'||!(#scope in owner))return Promise.reject(fail('local_review_delivery_policy'));return owner.#continueFacts(token);};}
+ #continueFacts(token:VerifiedMetadataContinuationFacts):Promise<void>{
+  if(this.#busy||this.#checking||this.#metadataChild)return Promise.reject(fail('local_review_delivery_busy'));this.#busy=true;
+  const job=Promise.resolve().then(async()=>{this.#writer();const facts=consumeVerifiedReviewFacts(token,this.#scope,this.#choice);for(const fact of facts){const row=this.#local.find(row=>row.id===fact.id);if(!row||!fact.relay.review)throw fail();await this.#persist(row,fact.relay.review,fact.relay.reviewReceipt??undefined);this.#writer();}});this.#readWork=job;
+  return job.finally(()=>{this.#busy=false;if(this.#readWork===job)this.#readWork=undefined;});
  }
  identity():LocalReviewDeliveryChoice{return this.#choice;}
  /** Private read under the actual child slot. Publish its lifetime before any

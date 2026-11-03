@@ -35,6 +35,8 @@
     "test:collaboration:native-joint-source:installed": "node scripts/check-native-joint-source-installed.mjs",
     "test:collaboration:native-joint-source:unknown": "node --test --test-concurrency=1 scripts/native-joint-source-metadata.test.mjs scripts/native-joint-source-unknown-native.test.mjs",
     "test:collaboration:native-joint-source:unknown:installed": "node scripts/check-native-joint-source-installed.mjs --native-unknown",
+    "test:collaboration:metadata-continuation": "node scripts/check-metadata-continuation-source.mjs",
+    "test:collaboration:metadata-continuation:installed": "node scripts/check-metadata-continuation-installed.mjs",
     "audit:v1": "node scripts/check-v1-readiness.mjs",
     "check:v1": "node scripts/check-v1-readiness.mjs --require-ready",
     "clean": "npm run clean --workspaces --if-present",

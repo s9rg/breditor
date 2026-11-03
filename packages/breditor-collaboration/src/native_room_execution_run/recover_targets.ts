@@ -1,3 +1,6 @@
+import {withSelectedNativeDeliverySources} from '../physical_room_asset_successor/owner.js';
+import type {PhysicalOperationV3HistoryReadOptions} from '../physical_room_operation_v3/history_read_contract.js';
+import type {SelectedNativeRecoveryScope} from '../selected_native_recovery/contract.js';
 /** Actual seven-family target/store ownership. Every handle is retained in
  * this already-reachable owner BEFORE another await or check can reject. */
 import {RoomExecutionArchive} from '../native_room_execution/archive.js';
@@ -88,6 +91,8 @@ export class RoomRunTargets {
   const owner=recipientApi.owner.call(this.#recipient),approval=selectedApproval.call(owner);
   return Object.freeze({format:'breditor/native-room-run-promotion-result',formatVersion:1,choice:expected,approval:approval.selection,scope:'local-native-packet-selected-asset-and-actor-ownership'});
  }
+ /** SDK-only visit while the actual recipient still owns the promoted root. */
+ visitMetadataTarget<T>(reads:PhysicalOperationV3HistoryReadOptions,visit:(scope:SelectedNativeRecoveryScope)=>Promise<T>):Promise<T>{return withSelectedNativeDeliverySources(recipientApi.owner.call(this.#recipient),reads,scope=>visit(scope));}
  takeOwner():RetainedSelectedAssetOwner{const owner=recipientApi.take.call(this.#recipient);this.#root=undefined;this.#assets=undefined;this.#catalog=undefined;this.#names=[];this.#factory=undefined;return owner;}
  /** Never release actor escrow until all actual native borrowers have closed.
   * A rejected cleanup keeps the same handles for the next close attempt. */

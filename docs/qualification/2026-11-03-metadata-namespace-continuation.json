@@ -1,0 +1,114 @@
+{
+  "format": "breditor/metadata-namespace-continuation-functional-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-03",
+  "scope": "Private actual replacement and metadata namespace continuation; functional qualification with an unresolved historical archive read, not joint production activation",
+  "executedSource": {
+    "commit": "47338b778b0b4614945622063a95810bb62fc4d9",
+    "dirty": true,
+    "sha256": "f7af6f0029a6058ea717c1fe7343e40f42865ec08a0ae97fdccfc6f911550402",
+    "files": 8144,
+    "bytes": 66845596,
+    "archiveSha256": "526fc85cae58319b4e0609fa7bb843c8c6c17542d9e7e3a9403039a8a7a9bb97"
+  },
+  "freshSourceCases": 16,
+  "freshInstalledCases": 16,
+  "actualNativeFamilies": 7,
+  "actualLocalMetadataLanes": 3,
+  "completeSourceAndInstalledWorksetsPassed": true,
+  "matchingPackageDistFiles": 2815,
+  "strictPrivateSourceAndInstalledTypes": true,
+  "workspaceLinks": false,
+  "producerCheckoutReferencesRejected": true,
+  "actualOriginalVersionAndRevisionReceiptsPreserved": true,
+  "originalPendingPacketsRemainPending": true,
+  "interruptedMetadataWriteExplicitlyResumed": true,
+  "exactFutureDocumentAndCommentUndoRedo": true,
+  "oldNamespaceBytesUnchanged": true,
+  "immutableOriginalFourBlobIntentBeforeDestinations": true,
+  "nineActualStorageLawsPerEnvironment": true,
+  "sourceDirectory": "/private/tmp/breditor-whole-room-custody-20261102/target/metadata-continuation-source-dfrEjO",
+  "installedDirectory": "/private/tmp/breditor-metadata-continuation-installed-OdRtyF",
+  "priorRegression": {
+    "sameDistributionFiles": 2446,
+    "changed": [
+      {
+        "path": "selected_local_metadata_continuation/intent.js",
+        "before": "8bd9b452e358ca9ed6e7ca16e1dd0f752f6bc500ef6cc40ab9546f284652165c",
+        "after": "d1919aaa1a0b1bbce78f0d6f6c3a49a0a8cdc16ae4f7ab872413ca48b55326f0"
+      }
+    ],
+    "earlierRegressionCasesPerEnvironment": 60,
+    "earlierSourceHash": "46d0e0b6da45cd74adf21dada5c6d15447bc4284f67da9b7728df5ea29320552",
+    "constructorRepairMustPassExpandedWorksets": true
+  },
+  "priorFull60WrappersRerunAfterConstructorRepair": false,
+  "sourceArchiveReadFailure": {
+    "earlierSourcePassed": 15,
+    "earlierSourceCases": 16,
+    "earlierDirectory": "/private/tmp/breditor-whole-room-custody-20261102/target/metadata-continuation-source-p5jJe5",
+    "expectedBytes": 1048576,
+    "observedBeforeAuthorityBytes": 0,
+    "actualBytes": 0,
+    "rootCauseIdentified": false,
+    "repairVerified": false,
+    "laterUnmodifiedSourceCasesPassed": 16,
+    "blobTraceNativeCasesPassed": 10,
+    "debuggerOnlyNativeCasesPassed": 10,
+    "naturalFaultsCapturedDuringThoseDiagnosticRuns": 0,
+    "originalFailureAndDiagnosticsRetainedInProof": true,
+    "passingRerunDoesNotEstablishRepair": true
+  },
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/metadata-continuation-proof-a80phfa2",
+    "indexSha256": "d87814a338f41d2e495e1abc2eabd38ae1ba36d60dccae7a8a9c9605b87795d0",
+    "references": 182,
+    "objects": 148,
+    "compressedBytes": 124513163,
+    "readBackVerified": true
+  },
+  "unchangedPublicBaseline": {
+    "unchanged": [
+      {
+        "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+        "sha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+        "mainMatches": true
+      },
+      {
+        "path": "packages/breditor-collaboration/src/index.ts",
+        "sha256": "1436a2a86663bdd2f4221e9ef052ba6c49675f2a64838909b69a172d350933f4",
+        "mainMatches": true
+      },
+      {
+        "path": "packages/breditor-browser/package.json",
+        "sha256": "f1cc4d0d0007708d3a8b423ebb2c1011d938e976fa518b91b1c572849831bf68",
+        "mainMatches": true
+      },
+      {
+        "path": "packages/breditor-experimental-rich-content/package.json",
+        "sha256": "da1f39f6bdc26761ba5e1568cd02f03151ffcbc14ca00703c3b2927eaae4fdc8",
+        "mainMatches": true
+      },
+      {
+        "path": "packages/breditor-collaboration/package.json",
+        "sha256": "bc695a1baa4e457835206e0dfee894ea272bfbf68ddf7fe0cf430e02c086c846",
+        "mainMatches": true
+      }
+    ],
+    "versionsUnchanged": true,
+    "noRustEdits": true
+  },
+  "limits": {
+    "controlledIndexedDbLocksAndRasterPresentation": true,
+    "physicalBrowserStorageDurabilityQualified": false,
+    "fullSdkPolicyMatrixRun": false,
+    "originMetadataPinsBoundToActualActivationCapture": false,
+    "jointGenuineNativeCommitUninterruptedTransferAndMetadataCompleted": false,
+    "authenticatedProductionWholeRoomPublicationComplete": false,
+    "fullCandidateProfilesRun": false,
+    "historicalWebKitRepairVerified": false,
+    "v1Ready": false,
+    "v1GatesOpen": 13
+  },
+  "codeMatchesExecutedSource": "Only qualification/report documentation was added after the executed frozen source. Runtime and tests remain identical."
+}

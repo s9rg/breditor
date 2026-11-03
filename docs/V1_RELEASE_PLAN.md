@@ -1,5 +1,32 @@
 # Breditor V1 release preparation
 
+[Metadata namespace continuation](METADATA_NAMESPACE_CONTINUATION.md) now passes
+the complete sixteen-case source workset and the same sixteen cases from fresh
+independently installed packages. The actual seven-family replacement preserves
+three local metadata lanes, original version/revision acknowledgements, pending
+packets and exact future document/comment Undo/Redo. Its immutable four-Blob
+intent precedes destination creation; nine storage laws and interrupted-write
+resumption pass in both environments. All 2,815 installed distribution files
+match their producer and strict private declarations pass.
+
+The [functional qualification](qualification/2026-11-03-metadata-namespace-continuation.json)
+retains exact source, packages, public Native/client/metadata files and earlier
+failures in a compressed, read-back-verified proof. One earlier ordinary source
+run failed an exact 1 MiB archive read that returned zero bytes before authority
+callbacks. The later unchanged ordinary source run passes, as do two diagnostic
+Native runs; these do not identify or repair that intermittent fault. The prior
+source60/installed60 regression wrappers preceded only the new Intent constructor
+repair; 2,446 other distribution files remain byte-identical. Do not count those
+wrappers as a final-source full60 rerun.
+
+This is private component functionality. Binding original metadata pins to the
+actual retained activation capture and composing genuine Native commit,
+uninterrupted actor transfer and authenticated whole-room publication remain
+required. Physical storage, full policy/candidate matrices, remaining parity and
+all thirteen V1 gates remain open. Rust, normal Wasm, versions, original protocols/
+defaults and public-root exports are unchanged; neither historical fault is
+claimed repaired.
+
 [Genuine Native uncertainty across persistent source commands](NATIVE_ACTIVATION_SOURCE_SESSION.md)
 now passes the complete three-case source workset and the same three cases from
 fresh independently installed packages. One actual Rust commit loses its reply;

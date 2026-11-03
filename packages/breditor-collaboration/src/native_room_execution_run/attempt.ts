@@ -1,3 +1,6 @@
+import type {PhysicalRoomRecordCutSelection} from '../physical_room_record_cut/contract.js';
+import type {SelectedNativeRecoveryScope} from '../selected_native_recovery/contract.js';
+import type {PhysicalOperationV3HistoryReadOptions} from '../physical_room_operation_v3/history_read_contract.js';
 /** SDK-private warm whole-room executor. Construction is synchronous and
  * performs no I/O/retirement. The caller owns this attempt BEFORE run can move
  * any author resources. Ready targets remain private until a separate complete
@@ -20,18 +23,27 @@ import {RoomRunTargets} from './recover_targets.js';
 import {checkRoomRunInputs} from './prepare_inputs.js';
 import {roomRunIdentity,roomRunApproval} from './identity.js';
 import {roomRunPromotionChoice} from './promotion_choice.js';
-import type {RoomRunOptions,RoomRunReadOptions,RoomRunSnapshot,RoomRunStage,RoomRunApproval,RoomRunResult,RoomRunPromotionChoice,RoomRunPromotionOptions,RoomRunPromotionResult} from './contract.js';
+import type {RoomRunIdentity,RoomRunOptions,RoomRunReadOptions,RoomRunSnapshot,RoomRunStage,RoomRunApproval,RoomRunResult,RoomRunPromotionChoice,RoomRunPromotionOptions,RoomRunPromotionResult} from './contract.js';
 import {RoomPreparationArchive} from '../native_room_preparation/archive.js';
 const archiveApi={read:RoomExecutionArchive.read,preparation:RoomExecutionArchive.prototype.preparation,dispose:RoomExecutionArchive.prototype.dispose};
 const prepApi={read:RoomPreparationArchive.read,retained:RoomPreparationArchive.prototype.retained,dispose:RoomPreparationArchive.prototype.dispose};
 const journals={open:RoomRunJournalResources.prototype.open,read:RoomRunJournalResources.prototype.read,append:RoomRunJournalResources.prototype.append,close:RoomRunJournalResources.prototype.close};
-const targetsApi={recover:RoomRunTargets.prototype.recover,preview:RoomRunTargets.prototype.preview,promote:RoomRunTargets.prototype.promote,take:RoomRunTargets.prototype.takeOwner,ready:RoomRunTargets.prototype.hasSuccessor,close:RoomRunTargets.prototype.close},bindings=StoppedActorCohort.prototype.bindings,closeActors=StoppedActorCohort.prototype.close;
+const targetsApi={metadata:RoomRunTargets.prototype.visitMetadataTarget,recover:RoomRunTargets.prototype.recover,preview:RoomRunTargets.prototype.preview,promote:RoomRunTargets.prototype.promote,take:RoomRunTargets.prototype.takeOwner,ready:RoomRunTargets.prototype.hasSuccessor,close:RoomRunTargets.prototype.close},bindings=StoppedActorCohort.prototype.bindings,closeActors=StoppedActorCohort.prototype.close;
 const scopeClose=RoomExecutionReadScope.prototype.close,add=EventTarget.prototype.addEventListener,remove=EventTarget.prototype.removeEventListener;
+/** Actual same-visit target witness. Saved execution DATA cannot create it. */
+declare const metadataWitnessBrand:unique symbol;
+export interface RoomMetadataTargetWitness{readonly [metadataWitnessBrand]:true}
+const metadataTargets=new WeakMap<RoomMetadataTargetWitness,{scope:SelectedNativeRecoveryScope;identity:RoomRunIdentity;approved:PhysicalRoomRecordCutSelection;check():void}>();
+export function roomMetadataTargetIdentity(witness:RoomMetadataTargetWitness,scope:SelectedNativeRecoveryScope):RoomRunIdentity{const row=metadataTargets.get(witness);if(!row||row.scope!==scope)throw fail('room_execution_policy');row.check();return row.identity;}
+export function roomMetadataTargetApprovedCut(witness:RoomMetadataTargetWitness,scope:SelectedNativeRecoveryScope):PhysicalRoomRecordCutSelection{const row=metadataTargets.get(witness);if(!row||row.scope!==scope)throw fail('room_execution_policy');row.check();return row.approved;}
+let visitMetadata:<T>(owner:RoomExecutionAttempt,reads:PhysicalOperationV3HistoryReadOptions,visit:(scope:SelectedNativeRecoveryScope,witness:RoomMetadataTargetWitness)=>Promise<T>)=>Promise<T>;
+/** Trusted SDK composition, never a callback-based application permission. */
+export const withRoomExecutionMetadataTarget=<T>(owner:RoomExecutionAttempt,reads:PhysicalOperationV3HistoryReadOptions,visit:(scope:SelectedNativeRecoveryScope,witness:RoomMetadataTargetWitness)=>Promise<T>):Promise<T>=>visitMetadata(owner,reads,visit);
 const key=Object.freeze({});
 export class RoomExecutionAttempt {
  readonly #old;readonly #reservation:SelectedActorExecutionReservation;readonly #options;readonly #provided;readonly #create;readonly #targets=new RoomRunTargets();readonly #stop=new AbortController();
  #scope:RoomExecutionReadScope|undefined;#journal:RoomRunJournalResources|undefined;#snapshot:RoomRunSnapshot|undefined;
- #actors:StoppedActorCohort|undefined;#openingAttempted=false;#journalOpened=false;#taking=false;#closing=false;#closed=false;#unwatch=()=>{};
+ #approvedMetadataTarget:PhysicalRoomRecordCutSelection|undefined;#actors:StoppedActorCohort|undefined;#openingAttempted=false;#journalOpened=false;#taking=false;#closing=false;#closed=false;#unwatch=()=>{};
  #running:Promise<unknown>|undefined;#cleanup:Promise<void>|undefined;
  private constructor(token:object,owner:RetainedSelectedAssetOwner,provided:RoomRunReadOptions,options:RoomRunOptions,create:boolean,retired?:SelectedActorExecutionReservation){
   if(token!==key)throw fail('room_execution_policy');selectedOwnerHasRetiredActors(owner);
@@ -130,15 +142,25 @@ export class RoomExecutionAttempt {
    this.#check();const scope=this.#scope!;await readRoomExecution(input.expected.identity.execution,this.#readOptions());scope.check();await this.#openJournal();scope.check();
    if(JSON.stringify(this.#snapshot!.head)!==JSON.stringify(input.expected.head))throw fail();
    const actual=await targetsApi.preview.call(this.#targets,this.#options.expected,this.#snapshot!.head,scope);scope.check();if(JSON.stringify(actual)!==JSON.stringify(input.expected))throw fail();
-   return targetsApi.promote.call(this.#targets,this.#actors!,scope,input,async()=>{
+   const promoted=await targetsApi.promote.call(this.#targets,this.#actors!,scope,input,async()=>{
     // Finish actual journal cleanup and release only the old closed owner's
     // reservation BEFORE the final root/actor barrier. A failed callback leaves
     // the same attempt holding its real actors and all staged target handles.
     const current=await journals.read.call(this.#journal!);scope.check();if(JSON.stringify(current.head)!==JSON.stringify(input.expected.head))throw fail();
     this.#journalOpened=false;await journals.close.call(this.#journal!);this.#journal=undefined;scope.check();releaseSelectedActorExecution(this.#reservation);scope.check();
-   });
+   });this.#approvedMetadataTarget=promoted.choice.approval.cut;return promoted;
   });this.#running=task;return task.finally(()=>{this.#running=undefined;});
  }
+ /** The promoted successor stays private in this attempt through the entire
+  * source visit. Reflection is reserved before any caller hook can reenter take. */
+ #visitMetadata<T>(provided:PhysicalOperationV3HistoryReadOptions,visit:(scope:SelectedNativeRecoveryScope,witness:RoomMetadataTargetWitness)=>Promise<T>):Promise<T>{
+  try{if(this.#running||this.#taking)throw fail('room_execution_busy');if(this.#closing||this.#closed||!targetsApi.ready.call(this.#targets)||!this.#approvedMetadataTarget||typeof visit!=='function')throw fail('room_execution_closed');}catch(error){return Promise.reject(error);}
+  let reads:PhysicalOperationV3HistoryReadOptions|undefined,error:unknown;const controller=new AbortController(),unwatch:(()=>void)[]=[];
+  const task=Promise.resolve().then(async()=>{if(!reads)throw error;this.#check();return targetsApi.metadata.call(this.#targets,reads,async scope=>{const witness=Object.freeze({}) as RoomMetadataTargetWitness;metadataTargets.set(witness,{scope,identity:this.#options.expected,approved:this.#approvedMetadataTarget!,check:()=>{this.#check();scope.check();}});try{return await visit(scope,witness);}finally{metadataTargets.delete(witness);}}) as Promise<T>;});this.#running=task;
+  try{const chosen=snapshotPhysicalHistoryReadOptions(provided);for(const signal of[this.#stop.signal,chosen.signal])if(signal){const abort=()=>controller.abort();if(signal.aborted)abort();else{add.call(signal,'abort',abort,{once:true});unwatch.push(()=>remove.call(signal,'abort',abort));}}reads={...chosen,signal:controller.signal,checkAuthority:()=>{this.#check();chosen.checkAuthority();this.#check();}};}catch(reason){error=reason;}
+  return task.finally(()=>{for(const stop of unwatch)stop();controller.abort();if(this.#running===task)this.#running=undefined;});
+ }
+ static{visitMetadata=(owner,reads,visit)=>{if(!owner||typeof owner!=='object'||!(#targets in owner))return Promise.reject(fail('room_execution_policy'));return owner.#visitMetadata(reads,visit);};}
  /** Synchronous one-shot take. Finish the old read job while the already-live
   * successor is still reachable in its recipient; cleanup cannot hide it. */
  takeOwner():RetainedSelectedAssetOwner{

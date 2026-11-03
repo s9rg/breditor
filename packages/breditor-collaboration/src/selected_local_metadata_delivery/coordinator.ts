@@ -1,3 +1,4 @@
+import {consumeVerifiedMetadataFacts,type VerifiedMetadataContinuationFacts} from '../selected_local_metadata_continuation/native_origin.js';
 import {NativeReconstructionWaits} from '../selected_native_reconstruction/read_waits.js';
 import {prepareHeldRoomActivation,type RoomActivationPreparationPolicy} from '../room_native_activation_intent/prepare.js';
 import {commitHeldRoomActivation,readHeldRoomActivation,type RoomActivationCommitResult} from '../room_native_activation_intent/commit.js';
@@ -69,6 +70,8 @@ import type {LocalMetadataInitialLane,LocalMetadataDeliveryChoice,LocalMetadataD
 const key=Object.freeze({});
 interface MetadataInput {readonly database:string;readonly lanes:readonly LocalMetadataInitialLane[]}
 interface MetadataOpeningInput {readonly expected:LocalMetadataDeliveryChoice;readonly lanes:readonly LocalMetadataInitialLane[];readonly approve:(choice:LocalMetadataDeliveryChoice)=>boolean|Promise<boolean>;readonly checkAuthority:()=>void}
+let continueFacts:(owner:SelectedLocalMetadataDelivery,facts:VerifiedMetadataContinuationFacts)=>Promise<void>;
+export const continueVerifiedLocalMetadataFacts=(owner:SelectedLocalMetadataDelivery,facts:VerifiedMetadataContinuationFacts)=>continueFacts(owner,facts);
 interface Children {versions:SharedDocumentVersions|null;suggestions:SharedSuggestionQueue|null;revisions:SharedSuggestionRevisions|null}
 async function choose(parent:LocalReviewMetadataParent,provided:MetadataInput){
  parent.check();const r=fields(provided,['database','lanes']),input=rows(r['lanes'],1024);if(input.length!==parent.choice.lanes.length)throw fail('local_metadata_delivery_policy');
@@ -132,6 +135,12 @@ export class SelectedLocalMetadataDelivery{
  }
  identity():LocalMetadataDeliveryChoice{return this.#choice;}
  /** Exact durable data only; this does not turn a staged update into success. */
+ static{continueFacts=(owner,token)=>{if(!owner||typeof owner!=='object'||!(#parent in owner))return Promise.reject(fail('local_metadata_delivery_policy'));return owner.#continueFacts(token);};}
+ #continueFacts(token:VerifiedMetadataContinuationFacts):Promise<void>{return this.#captureOperation(async()=>{
+  const rows=consumeVerifiedMetadataFacts(token,this.#parent.scope,this.#choice),saved=await this.#parent.saved(),next=new Map<string,SegmentedRetainedRecords>();this.#current();
+  for(const row of rows){const old=this.#desired.get(row.id),parent=saved.find(lane=>lane.id===row.id);if(!old||!parent||!equal(parent.relay,row.relay))throw fail();const binding=this.#choice.lanes.find(lane=>lane.id===row.id)!.binding,records=deliveryRetainedRecords(row.records,binding);requireMetadataRecordsForward(old,records);admitDeliveryRetainedRecords(this.#source(row.id).core,binding,records);next.set(row.id,records);}
+  if(next.size!==this.#choice.lanes.length)throw fail();for(const[id,records]of next)this.#desired.set(id,records);await this.#persist();this.#current();
+ });}
  recovery():LocalMetadataDeliverySnapshot{this.#current();this.#savedFact();if(!this.#snapshot)throw fail();return structuredClone(this.#snapshot);}
  createDelivery(source:RetainedDeliverySource,ceiling:SharedReviewAccess):NativeRelayDelivery{
   this.#current();if(this.#busy)throw fail('local_metadata_delivery_busy');let context:NativeRelayDelivery|undefined;
