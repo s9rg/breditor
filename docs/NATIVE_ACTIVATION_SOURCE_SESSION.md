@@ -60,6 +60,37 @@ original release behavior.
 
 ## Implementation and verification
 
+### Retrying an approved partial retirement
+
+A later integration reproduced a separate retry defect: after the third actual
+comment Close refused, all fourteen actor locks remained held, but every later
+`retirePrepared` awaited the same rejected visitor Promise and returned its old error. Repairing
+the underlying Close could not advance that same session into replacements.
+
+Retry now finishes canonical durable cleanup under the same actual reservation.
+Its expected preparation must match the original complete approved recipe; it
+does not run new approval hooks or accept a different recipe after retirement
+starts. An unprepared suspension cannot gain a preparation by presenting saved
+data. Explicit terminal Close joins any in-flight retirement before consuming or
+releasing actor custody, including reentry during input reflection.
+
+The exact unchanged reproducer passes after repair. Three new source scenarios,
+four existing source-session cases and both metadata lifetime regressions pass.
+The seven retirement/source-session cases also pass from independently installed
+packages, with strict private declarations and 2,835 matching distribution files.
+They cover repeated actual Close failures, changed-recipe refusal, constructor
+rollback, reentrant Close, all seven concrete replacement families, zero ordinary
+writer acquisitions and exact future document/comment Undo/Redo. The original
+source bytes remain unchanged. A test setup initially used an accessor as its
+reentry trigger; strict parsing correctly refused it. The final scenario uses a
+Proxy reflection trap and leaves accessor refusal intact.
+
+The [qualification](qualification/2026-11-03-approved-retirement-retry.json)
+retains failed/repaired runs, exact source, independent packages, Native fixtures
+and public observations in a compressed read-back-verified proof. These checks
+are scoped to retirement cleanup. The earlier full 60-case wrappers were not
+rerun, and complete joint activation and all thirteen V1 gates remain open.
+
 - `native_room_joint_activation/source_session.ts`: persistent actual source
   lifetime, command admission, explicit suspension and executor continuation.
 - `persistence/native_actor_readiness.ts`: complete genuine-source preflight.

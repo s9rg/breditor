@@ -1,5 +1,22 @@
 # V1 candidate checks
 
+[Approved retirement retry](NATIVE_ACTIVATION_SOURCE_SESSION.md#retrying-an-approved-partial-retirement)
+repairs a reproduced failure where a partial durable source close left all fourteen
+actors held but could never continue into replacements. The exact unchanged
+reproducer, three new source cases, four existing source-session cases and both
+metadata lifetime regressions pass. The seven retirement/source-session cases
+also pass from independent packages. Repeated close failures, foreign recipe
+refusal, reentrant terminal Close and seven exact future native histories retain
+the same actor custody with zero ordinary writer acquisition. Strict private
+types and all 2,835 installed distribution files match their producer.
+
+The [qualification](qualification/2026-11-03-approved-retirement-retry.json)
+preserves the original failure and the final evidence. This is a local ownership
+repair; the full joint coordinator, complete candidate profiles, physical storage,
+remaining parity and all thirteen V1 gates remain open. The earlier full 60-case
+wrappers were not rerun. Original protocols/defaults, Rust, normal Wasm, versions
+and public-root exports are unchanged; neither historical fault is declared fixed.
+
 [Metadata namespace continuation](METADATA_NAMESPACE_CONTINUATION.md) now passes
 the complete sixteen-case source workset and the same sixteen cases from fresh
 independently installed packages. The actual seven-family replacement preserves

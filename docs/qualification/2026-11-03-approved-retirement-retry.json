@@ -1,0 +1,71 @@
+{
+  "format": "breditor/approved-retirement-retry-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-03",
+  "executedSource": {
+    "commit": "33e40d16abc33d233ca5e807717980c89b3d31d1",
+    "dirty": true,
+    "sha256": "4f30641a08297b1597eef70d221bc122f8c29257c497c770ce2139666022df9a",
+    "files": 8185,
+    "bytes": 67022904,
+    "archiveSha256": "595959a44035b5820ff4a2c6afe1c53477d6b1266db9a382cd091974675e826f"
+  },
+  "checkpointCode": [
+    "packages/breditor-collaboration/src/native_room_joint_activation/source_session.ts",
+    "scripts/native-joint-source-retirement-retry.test.mjs"
+  ],
+  "exactUnchangedReproducerPassed": true,
+  "sourceExistingCases": 4,
+  "sourceNewCases": 3,
+  "sourceMetadataLifetimeCases": 2,
+  "independentInstalledCases": 7,
+  "installedDirectory": "/private/tmp/breditor-joint-source-installed-CC6J07",
+  "strictPrivateSourceAndInstalledTypes": true,
+  "matchingPackageDistFiles": 2835,
+  "actualSourceFamilies": 7,
+  "actualActorLocks": 14,
+  "ordinaryWriterReacquisitions": 0,
+  "exactFutureDocumentAndCommentHistories": true,
+  "originalSourceBytesUnchanged": true,
+  "reproducedBug": {
+    "originalFailure": "After a real third comment Close refusal, the second retirePrepared awaited the already rejected source visitor Promise even when the actual Close was repaired.",
+    "repair": "Complete the same actual durable cleanup under the same reservation. Require the original admitted preparation, retain mixed actual actor custody through further failures and join in-flight retirement before terminal Close consumes actors.",
+    "originalApprovalNotReplacedByCleanupRetry": true,
+    "unpreparedSuspensionCannotGainPreparation": true,
+    "foreignRecipeRefused": true,
+    "reentrantTerminalCloseQualified": true,
+    "constructorRollbackQualified": true
+  },
+  "developmentFailuresRetained": [
+    "Original exact failing retirement reproducer.",
+    "Expanded reentry fixture initially used an accessor, correctly refused by strict fields; final fixture uses actual Proxy reflection."
+  ],
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/retirement-retry-proof-ChCoAf",
+    "indexSha256": "b2058c91aa159b698aa7d667487b59f2d4a4f9f945e90e2621e9511f1edf003e",
+    "references": 51,
+    "objects": 47,
+    "compressedBytes": 46644642,
+    "readBackVerified": true
+  },
+  "checkpointCodeMatchesExecutedSource": true,
+  "checkpointDistributionMatchesInstalled": true,
+  "limits": {
+    "workingPackagesAlsoContainSeparatePendingPrivateIntegrationComponents": true,
+    "onlyListedCheckpointCodeIncludedHere": true,
+    "priorFull60WrappersRerun": false,
+    "physicalStorageQualified": false,
+    "fullSdkPolicyMatrixRun": false,
+    "wholeRoomJointActivationComplete": false,
+    "fullCandidateProfilesRun": false,
+    "historicalArchiveReadRepairVerified": false,
+    "historicalWebKitRepairVerified": false,
+    "v1Ready": false,
+    "v1GatesOpen": 13
+  },
+  "originalRustWasmVersionsProtocolsDefaultsAndPublicRootExportsUnchanged": true,
+  "matchingCheckpointDistributionFiles": 2,
+  "mainCheckoutCases": 3,
+  "mainCheckoutLogSha256": "9edd0cdacb0eca6ca4030fdec53f65dfb33ffbaa69d089bc7cdc956c982155cc",
+  "mainVerificationIndexSha256": "8eea6fb1c59d8b419d0cd9fa4796af3c2b9b7bfc0a81896f0fd93dc64c8318a1"
+}

@@ -10,6 +10,8 @@ import type {PhysicalOperationV3HistoryReadOptions} from '../physical_room_opera
 import {PhysicalOperationV3Cancellation} from '../physical_room_operation_v3/storage_cancellation.js';
 import type {PreparedRoomRetirementOptions} from '../native_room_retirement/coordinator.js';
 import {verifyHeldPreparedRoomRetirement,type HeldPreparedRoomRetirementInspection} from '../native_room_retirement/held_scope.js';
+import {roomPreparationChoice} from '../native_room_preparation/plan.js';
+import {fields as preparationFields} from '../native_room_preparation/policy.js';
 import {RoomExecutionAttempt} from '../native_room_execution_run/attempt.js';
 import type {RoomRunReadOptions,RoomRunOptions} from '../native_room_execution_run/contract.js';
 import {StoppedActorCohort} from '../persistence/stopped_actor_cohort.js';
@@ -74,11 +76,30 @@ export class NativeActivationSourceSession {
   for(const row of this.#sources){row.source.check();row.source.save();await row.source.flush();scope.check();}
   await resetSelectedNativeRetirement(scope);scope.check();
  }
- #end(preparation?:PreparedRoomRetirementOptions):Promise<void>{
+ async #finishStop():Promise<void>{
+  try{await this.#host;}catch(error){
+   // The visitor is terminal, but its actual durable close may have captured
+   // only part of the cohort. Finish that same close under the same reservation;
+   // do not replay the rejected visitor or acquire any ordinary writer.
+   if(!this.#finishStarted||!selectedOwnerHasRetiredActors(this.#old))throw error;
+   await retryReservedSelectedDurableCleanup(this.#reservation);
+   this.#retired=true;this.#hostError=undefined;
+  }
+ }
+ #end(preparation?:PreparedRoomRetirementOptions,cleanup=false):Promise<void>{
   if(this.#closed||this.#taken)return Promise.reject(fail('joint_source_closed'));if(this.#ending)return this.#ending as Promise<void>;
+  if(this.#cleanup&&!cleanup)return Promise.reject(fail('joint_source_busy'));
   this.#closing=true;
   const task=Promise.resolve().then(async()=>{
-   await this.#command?.catch(()=>{});await this.#ready.promise;if(this.#finishStarted){await this.#host;return;}
+   await this.#command?.catch(()=>{});await this.#ready.promise;if(this.#finishStarted){
+    if(preparation){
+     // Retrying cleanup cannot choose a new preparation after sources have
+     // stopped. Only the previously admitted exact recipe remains eligible.
+     const raw=preparationFields(preparation,['expected','retained','approve'],['assets']);
+     if(!this.#prepared||JSON.stringify(roomPreparationChoice(raw['expected']))!==JSON.stringify(this.#prepared.preparation))throw fail();
+    }
+    await this.#finishStop();return;
+   }
    this.#check();await this.#checkpoint();this.#check();
    if(preparation)this.#prepared=await verifyHeldPreparedRoomRetirement(this.#scope!,preparation);
    else this.#current=await this.#scope!.retainRetirementCurrent();
@@ -91,7 +112,9 @@ export class NativeActivationSourceSession {
   * activation intent keeps its original Prepared/Unknown/receipt meanings. */
  suspend():Promise<void>{if(this.#retired)return Promise.resolve();return this.#end();}
  /** The exact preparation is pinned by genuine full recipe admission. Actual
-  * actors stay in the closed root until an already-returned executor takes them. */
+  * actors stay in the closed root until an already-returned executor takes them.
+  * A partial-close retry completes the same approved recipe; new caller DATA
+  * and approval hooks cannot replace the recipe after retirement has started. */
  retirePrepared(options:PreparedRoomRetirementOptions):Promise<void>{if(this.#retired)return Promise.reject(fail());return this.#end(options);}
  intoExecution(reads:RoomRunReadOptions,options:RoomRunOptions,resume=false):RoomExecutionAttempt{
   if(this.#taking||this.#command||this.#ending||this.#cleanup)throw fail('joint_source_busy');if(!this.#retired||!this.#prepared||this.#closed||this.#taken)throw fail();
@@ -107,7 +130,10 @@ export class NativeActivationSourceSession {
   // Publish cleanup before any abort listener, source callback or actor close.
   const task=Promise.resolve().then(async()=>{
    if(this.#closed||this.#taken)return;
-   if(!this.#finishStarted&&!this.#startupEnded){try{await this.suspend();}catch(error){if(!this.#startupEnded)throw error;}}
+   // An explicit close joins any in-flight retirement before moving actors.
+   // A reentrant close cannot race the retry into a hidden released cohort.
+   await this.#ending?.catch(()=>{});
+   if(!this.#finishStarted&&!this.#startupEnded){try{await this.#end(undefined,true);}catch(error){if(!this.#startupEnded)throw error;}}
    await this.#host.catch(()=>{});
    if(!this.#actors&&selectedOwnerHasRetiredActors(this.#old)){await retryReservedSelectedDurableCleanup(this.#reservation);this.#actors=takeReservedSelectedActors(this.#reservation);}
    if(this.#actors){await closeActors.call(this.#actors);this.#actors=undefined;}
