@@ -1,3 +1,4 @@
+import {withColdRoomExecutionTarget,type ColdRoomExecutionAttempt} from '../cold_room_execution/attempt.js';
 import type {PhysicalRoomRecordCutSelection} from '../physical_room_record_cut/contract.js';
 import type {SelectedNativeRecoveryScope} from '../selected_native_recovery/contract.js';
 import type {PhysicalOperationV3HistoryReadOptions} from '../physical_room_operation_v3/history_read_contract.js';
@@ -39,6 +40,17 @@ export function roomMetadataTargetApprovedCut(witness:RoomMetadataTargetWitness,
 let visitMetadata:<T>(owner:RoomExecutionAttempt,reads:PhysicalOperationV3HistoryReadOptions,visit:(scope:SelectedNativeRecoveryScope,witness:RoomMetadataTargetWitness)=>Promise<T>)=>Promise<T>;
 /** Trusted SDK composition, never a callback-based application permission. */
 export const withRoomExecutionMetadataTarget=<T>(owner:RoomExecutionAttempt,reads:PhysicalOperationV3HistoryReadOptions,visit:(scope:SelectedNativeRecoveryScope,witness:RoomMetadataTargetWitness)=>Promise<T>):Promise<T>=>visitMetadata(owner,reads,visit);
+/** Same witness contract for an actually promoted cold recipient. The
+ * registered identity/cut come from its private runtime, never caller DATA.
+ * Ending this finite visit revokes the witness before any owner can be taken. */
+export function withColdRoomExecutionMetadataTarget<T>(owner:ColdRoomExecutionAttempt,reads:PhysicalOperationV3HistoryReadOptions,visit:(scope:SelectedNativeRecoveryScope,witness:RoomMetadataTargetWitness)=>Promise<T>):Promise<T>{
+ if(typeof visit!=='function')return Promise.reject(fail('room_execution_policy'));
+ return withColdRoomExecutionTarget(owner,reads,async work=>{
+  const witness=Object.freeze({}) as RoomMetadataTargetWitness;
+  metadataTargets.set(witness,{scope:work.scope,identity:work.identity,approved:work.approved,check:work.check});
+  try{work.check();const result=await visit(work.scope,witness);work.check();return result;}finally{metadataTargets.delete(witness);}
+ });
+}
 const key=Object.freeze({});
 export class RoomExecutionAttempt {
  readonly #old;readonly #reservation:SelectedActorExecutionReservation;readonly #options;readonly #provided;readonly #create;readonly #targets=new RoomRunTargets();readonly #stop=new AbortController();

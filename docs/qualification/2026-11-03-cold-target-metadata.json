@@ -1,0 +1,58 @@
+{
+  "format": "breditor/cold-target-metadata-qualification",
+  "formatVersion": 1,
+  "source": {
+    "commit": "dbeedc86b723192c05027ae26f727a18d71e6c6a",
+    "dirty": true,
+    "sha256": "8ee71b6530ca38f7f6333329735c079031ef31e2a222bc8e89459b7af9386da2",
+    "files": 8197,
+    "bytes": 67112706
+  },
+  "sourceQualification": "/Users/s/code/breditor/target/cold-target-metadata-source-osE4VG/result.json",
+  "installedQualification": "/private/tmp/breditor-cold-target-installed-eYWFux/result.json",
+  "sourceCases": 12,
+  "installedCases": 12,
+  "newCasesPerEnvironment": 4,
+  "existingColdCasesPerEnvironment": 6,
+  "existingSourceMetadataCasesPerEnvironment": 2,
+  "strictPrivateSourceAndInstalledTypes": true,
+  "matchingPackageDistFiles": 2827,
+  "workspaceLinks": false,
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "nativeBinarySha256": "3a52eea28153ff72fda020ff6b1bb8165ee899bba32f7ec063ea84a03d2dd616",
+  "nativeRebuilt": false,
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/cold-target-metadata-proof-_9a9kty0",
+    "indexSha256": "441e18a072ba9099e5bb88262ed066eb512379fd0bcda2d23fd0cadc4896f01c",
+    "references": 76,
+    "objects": 74,
+    "compressedBytes": 25685782,
+    "readBackVerified": true,
+    "sourceArchive": {
+      "name": "/Users/s/code/breditor/target/cold-target-metadata-proof-_9a9kty0/executed-source.tar.gz",
+      "bytes": 20080130,
+      "sha256": "9e16e6261cbd485a4561012a0d6d5ab9d631828c58e4bf179357f376d73f85bd"
+    }
+  },
+  "reproducedBug": "Actual promoted Cold targets remain usable after construction reader cancellation, but fresh metadata inspection incorrectly checked the completed construction lifetime and failed room_execution_closed.",
+  "repair": "Separate target lifetime; genuine promoted recipient and completed original cleanup required. Fresh authority and command cancellation are checked. Terminal Close cancels both lifetimes and joins actual work before releasing actors.",
+  "unchangedReproducerSha256": "69ede98ab6bf2ef53fbf148605bd4423f84c69a54bd769bc633f79a87fe0078a",
+  "scope": "Genuine interrupted seven-family recovery, fourteen actor locks, scoped witness revocation, fresh authority refusal, reflection reentry, command cancellation, terminal Close draining and exact future document/comment UndoRedo; controlled browser storage/locks.",
+  "unchanged": [
+    "Original wire/record formats and defaults",
+    "Rust and normal Wasm",
+    "Public package root exports",
+    "Package versions"
+  ],
+  "notQualified": [
+    "Complete joint Native activation and publication",
+    "Cold joint-owner reconstruction and fresh Native association after process restart",
+    "Independent warm target lifetime repair",
+    "Physical database crash durability",
+    "Historical archive-read or WebKit fault repair",
+    "Full V1 feature parity and release gates"
+  ],
+  "wholeRoomActivated": false,
+  "v1Ready": false,
+  "v1GatesOpen": 13
+}

@@ -5798,3 +5798,28 @@ failures and three existing opt-in browser tests skipped because their explicit
 environment flags were not enabled. The new readiness command exits with status
 1 as intended: feature gaps and release gates remain open. The 651-run editor
 matrix above was not rerun for this documentation/tooling change.
+
+
+### November 3, 2026 — recovered cold target lifetime
+
+A genuinely promoted cold executor now supports a finite private metadata visit
+with the same scoped witness contract as warm execution. Admission requires the
+actual promoted target and completed original cleanup; saved phase/receipt data
+provides no ownership. Actor locks remain held through reflection, cancellation,
+visitor cleanup and terminal Close.
+
+The actual bug was reproduced: cancelling the completed construction reader
+caused a fresh target visit to fail `room_execution_closed` while all seven
+recovered editors remained usable. Target lifetime is now independent, with fresh
+per-visit authority and command cancellation. The exact original reproducer
+passes; source and independently installed component commands each pass all
+twelve mandatory cases (four new, six existing cold, two source metadata).
+Strict private types pass and all 2,827 installed distribution files match.
+See `COLD_TARGET_METADATA.md` and
+`qualification/2026-11-03-cold-target-metadata.json` for retained source/proof pins.
+
+This checkpoint does not complete joint Native publication, cold joint-owner
+reconstruction, the independent warm lifetime repair, physical storage durability
+or the historical WebKit/archive-read investigations. Remaining feature parity
+and all thirteen V1 release gates stay open. No push, tag, publication, deployment
+or package version promotion is made.
