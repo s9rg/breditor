@@ -6,6 +6,11 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Verify original review/metadata journals under actual cold target custody.
+  Preserve retained packets, receipts and future Native histories across the
+  canonical shutdown checkpoint. Real journal invalidation now revokes the
+  inspection before new continuation input is read. Source and independently
+  installed packages each pass seven cases; full joint publication remains open.
 - Preserve exact selection affinity across repeated reads of an unchanged DOM
   range while keeping programmatic-echo suppression one-use. This fixes typing
   undo groups splitting at interior list carets. Real movement, changed render,

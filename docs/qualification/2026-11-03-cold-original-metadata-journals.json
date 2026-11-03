@@ -1,0 +1,76 @@
+{
+  "format": "breditor/cold-original-metadata-journals-qualification",
+  "formatVersion": 1,
+  "source": {
+    "commit": "813282bd0fa2ad2c1c45e6b93d05ce6917081be4",
+    "dirty": true,
+    "sha256": "916040c4397254a34d7792001b331ccd29fbd129770141a6b72acbe1beeae3d8",
+    "files": 8217,
+    "bytes": 67207294
+  },
+  "sourceQualification": "/Users/s/code/breditor/target/cold-original-journals-source-8pD88X/result.json",
+  "installedQualification": "/private/tmp/breditor-cold-original-journals-installed-dGtWlN/result.json",
+  "sourceCases": 7,
+  "installedCases": 7,
+  "newActualNativeCasesPerEnvironment": 1,
+  "existingContractCasesPerEnvironment": 6,
+  "strictPrivateSourceAndInstalledTypes": true,
+  "matchingPackageDistFiles": 2831,
+  "workspaceLinks": false,
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "nativeBinarySha256": "60427bb794f52c39a7084fac797f8f3150501238c45c78bad6195cd928a252ca",
+  "nativeRebuilt": false,
+  "actualFamilies": 7,
+  "actualLocalMetadataLanes": 3,
+  "actualJournalInvalidationsPerEnvironment": 2,
+  "originalVersionAndRevisionReceiptsAndPendingPacketsPreserved": true,
+  "exactFutureDocumentAndCommentHistories": true,
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/cold-original-journals-proof-j2j5c2kv",
+    "indexSha256": "4d70b252410ff4f778911a79e123f02c86a5f0fe3e37000100c732bd2e83a6b9",
+    "references": 99,
+    "objects": 93,
+    "compressedBytes": 56488561,
+    "readBackVerified": true,
+    "sourceArchive": {
+      "name": "/Users/s/code/breditor/target/cold-original-journals-proof-j2j5c2kv/executed-source.tar.gz",
+      "bytes": 20099088,
+      "sha256": "41fb9916fcda800f2cc69815ca84c4020b5514123cefbb880c030fdaa5e9bb4a"
+    }
+  },
+  "reproducedBug": "A genuine cold target inspection outlived invalidation of an original metadata journal. The journal had closed after actual IndexedDB deletion/versionchange, but its inspection check omitted both actual store.checkCurrent guards and reached new choice admission before a later readFresh refusal.",
+  "unchangedFailedReproducerSha256": "7627dfc8f392ca121ac22ff68d0c448421b77f637a80b2fce5af6aa0cc029922",
+  "unchangedReproducerBefore": {
+    "cases": 1,
+    "passed": 0,
+    "failed": 1
+  },
+  "unchangedReproducerAfter": {
+    "cases": 1,
+    "passed": 1,
+    "failed": 0
+  },
+  "repair": "Keep both actual existing journal leases with the inspected target, check both real stores on each proof guard, compare fresh snapshots before release and expire the inspection before either lease closes. Actual journal invalidation refuses before new choice reflection.",
+  "scope": "One actual interrupted warm reconstruction, fresh promoted cold seven-family recipient and original-journal verification, using actual Rust HTTP/Wasm with controlled browser storage/locks. The permanent Native case invalidates both original journals and restores only its isolated fixture rows. Four literal input files and their pins are retained.",
+  "unchanged": [
+    "Original durable and wire meanings/defaults",
+    "Original source records and Native histories",
+    "Rust and normal Wasm",
+    "Public package-root exports",
+    "Package versions"
+  ],
+  "notQualified": [
+    "Complete joint Native activation/metadata/publication workflow",
+    "Fresh Native process reassociation",
+    "All document/comment history policy combinations",
+    "Physical browser crash durability",
+    "Historical archive-read or WebKit fault repair",
+    "Full V1 feature parity and all release gates"
+  ],
+  "wholeRoomActivated": false,
+  "completeColdJointQualified": false,
+  "physicalDurabilityQualified": false,
+  "historicalFaultsRepaired": false,
+  "v1Ready": false,
+  "v1GatesOpen": 13
+}

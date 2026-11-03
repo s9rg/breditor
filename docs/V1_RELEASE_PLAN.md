@@ -5869,3 +5869,28 @@ Complete joint-owner callback cancellation and provisioning lifetime remain
 separate qualification. Combined activation/publication, cold reconstruction,
 physical durability, historical faults, remaining parity and all thirteen V1
 release gates remain open. No version, push, tag, publication or deployment is made.
+
+
+### November 3, 2026 — original journals at a cold target
+
+[Original-journal verification](COLD_ORIGINAL_METADATA_JOURNALS.md) now passes
+seven source cases and the same seven from independently installed packages,
+with strict private declarations and all 2,831 distribution files matching.
+One actual interrupted warm execution and fresh seven-family cold target retain
+three local metadata lanes, real acknowledgements, outstanding packets and exact
+future document/comment Undo/Redo. Four literal original inputs are retained.
+
+The initial candidate passed its seven ordinary cases but omitted immediate
+journal-lifetime revocation. A separate actual IndexedDB deletion/versionchange
+reproducer failed. The unchanged reproducer now passes; the permanent case also
+invalidates each original journal and checks refusal before new choice reflection.
+Both real store guards remain part of every inspection check until expiry.
+
+The [qualification](qualification/2026-11-03-cold-original-metadata-journals.json)
+retains exact source, packages, actual Native fixture/public inputs and original
+failure in a bounded, read-back-verified compressed proof. This is a private
+verification component. Complete joint Native/metadata/publication, fresh Native
+process association, full policy/candidate matrices, physical durability, remaining
+parity and all thirteen V1 gates remain open. Historical archive-read and WebKit
+faults remain unresolved. Versions, original protocols/defaults, Rust, normal
+Wasm and public-root exports are unchanged; no remote promotion is performed.
