@@ -1,0 +1,83 @@
+{
+  "format": "breditor/test-lineage-payload-fixture",
+  "formatVersion": 1,
+  "sourceArchiveSha256": "563d159107512b930e5abfab7d805c8a8d04b5d67901b26d5931816cd48f5b95",
+  "bytes": 153327,
+  "sha256": "939d9af741bc90374dcf6e1037b59f375e99011c43e061816158d9a674e7a6e8",
+  "gzipSha256": "0735103686cb29e310e75c3ebc877447c5995023e09bb2f801f84d3367914ce4",
+  "selection": {
+    "original": {
+      "identity": {
+        "participant": "native-local-reference-restored-graph",
+        "principal": "alice",
+        "source": {
+          "history": {
+            "native": {
+              "room": "room",
+              "writer": "6",
+              "richLanguage": 3,
+              "history": "explicit",
+              "rangeEditing": "original",
+              "selectionEditing": "original",
+              "searchHistory": null,
+              "reviewedHistory": null
+            },
+            "documentHistory": "segmented-v1",
+            "reviewHistory": "segmented-v1",
+            "review": {
+              "actor": "alice.cohort.4",
+              "principal": "alice"
+            }
+          },
+          "binding": {
+            "document": {
+              "endpoint": "ws://127.0.0.1:50708/ws",
+              "principal": "alice",
+              "room": "room",
+              "writer": "6",
+              "writerTransport": "atomic-v2"
+            },
+            "review": {
+              "endpoint": "ws://127.0.0.1:50708/ws",
+              "principal": "alice",
+              "room": "room",
+              "actor": "alice.cohort.4",
+              "binding": "f5340ac31b8be33fe07de6bb89dfe29b6561b15b1d2d5032095e94449fc25e78",
+              "documentWriter": "6",
+              "writerTransport": "atomic-v2"
+            }
+          },
+          "retained": {
+            "suggestions": {
+              "identity": {
+                "endpoint": "ws://127.0.0.1:50708/ws",
+                "principal": "alice",
+                "room": "room",
+                "binding": "3b62c727151fa8b8c1f0574dc787db8c962d5ffad6682f861883f2d0addb98ef",
+                "documentWriter": "6",
+                "effectWriter": "18446744073709551614",
+                "writerTransport": "atomic-v2"
+              },
+              "ownedHistory": null
+            },
+            "revisions": {
+              "binding": "be2ee574db69109ed7365402abd8323d4d6924c1b0237569d9f37f8d5250d519"
+            },
+            "versions": {
+              "endpoint": "ws://127.0.0.1:50708/ws",
+              "principal": "alice",
+              "room": "room",
+              "binding": "dd666b883beba1e5b2ae77c59d08c450fa00a190a813829329e1844fbd34d5b7",
+              "documentWriter": "6",
+              "writerTransport": "atomic-v2"
+            }
+          }
+        },
+        "assets": "whole-store"
+      },
+      "sha256": "d3660d298e27ec8b3a3b80308795091795eed0bdb095398537acdc32b1349076"
+    },
+    "manifestSha256": "03b0a6552ff2fa12e5ae4420dc7c2c9db634933ad7849af580b660c2bd63534c"
+  },
+  "scope": "Literal public fixture graph; DATA only, no Native/source/actor admission"
+}

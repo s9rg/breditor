@@ -2,12 +2,13 @@
  * No source factory, grant or native-history admission is selected by this codec. */
 import {generationFields} from '../generation_source/identity.js';
 import {assetBytesDigest,assetBytesUtf8} from '../asset_bytes/format.js';
-import {independentDeliveryParticipantDigest as digest,MAX_INDEPENDENT_DELIVERY_PARTICIPANT_BYTES} from '../independent_delivery_participant/codec.js';
+import {MAX_INDEPENDENT_DELIVERY_PARTICIPANT_BYTES} from '../independent_delivery_participant/codec.js';
 import {operationPortableHash as hash} from '../independent_operation/portable_identity.js';
 import {MAX_OPERATION_BACKUP_HEADER_BYTES} from '../independent_operation/portable_codec.js';
 import {MAX_OPERATION_LINEAGE_BYTES,MAX_OPERATION_LINEAGE_NODES,MAX_OPERATION_LINEAGE_PARTS,lineageNodeDigest,lineageReference} from '../independent_operation/lineage_codec.js';
 import type {OperationLineageNode,OperationLineageNodeBody,OperationLineagePart} from '../independent_operation/lineage_contract.js';
 import {operationJournalFailure as fail} from '../independent_operation/journal_failure.js';
+import {ownedLineagePayload} from '../independent_operation/payload_blob.js';
 export type GraphReference=Readonly<{kind:'snapshot-v1'|'lineage-v1'|'lineage-v2';manifestSha256:string}>;
 export interface GraphState{readonly kind:'snapshot-v1'|'state-v2';readonly manifestSha256:string;readonly header:string}
 export interface GraphNodeBody{readonly format:'breditor/shared-restored-operation-lineage-node';readonly formatVersion:2;readonly previous:GraphReference;readonly state:string}
@@ -35,6 +36,6 @@ export async function readGraphHeader(raw:unknown,bytes:number,root:string,check
  if(offset!==bytes)throw fail('restored_graph_integrity');const header:GraphHeader={format:'breditor/shared-restored-operation-lineage-backup',formatVersion:2,root,states,nodes,parts};graphChain(header);check();return header;
 }
 export async function encodeGraph(root:string,states:readonly GraphState[],nodes:readonly GraphNodeRow[],payloads:ReadonlyMap<string,Blob>,check:()=>void){
- check();if(payloads.size>MAX_OPERATION_LINEAGE_PARTS||nodes.length>MAX_OPERATION_LINEAGE_NODES||states.length>MAX_OPERATION_LINEAGE_NODES+1)throw fail('restored_graph_budget');let offset=0;const parts:OperationLineagePart[]=[],blobs:Blob[]=[];for(const[sha256,blob]of [...payloads].sort(([a],[b])=>a<b?-1:a>b?1:0)){if(await digest(blob)!==sha256)throw fail('restored_graph_integrity');check();parts.push({sha256,bytes:blob.size,offset});blobs.push(blob);offset+=blob.size;if(offset>MAX_OPERATION_LINEAGE_BYTES)throw fail('restored_graph_budget');}
+ check();if(payloads.size>MAX_OPERATION_LINEAGE_PARTS||nodes.length>MAX_OPERATION_LINEAGE_NODES||states.length>MAX_OPERATION_LINEAGE_NODES+1)throw fail('restored_graph_budget');let offset=0;const parts:OperationLineagePart[]=[],blobs:Blob[]=[];for(const[sha256,input]of [...payloads].sort(([a],[b])=>a<b?-1:a>b?1:0)){const blob=await ownedLineagePayload(input,sha256,check,()=>fail('restored_graph_integrity'));parts.push({sha256,bytes:blob.size,offset});blobs.push(blob);offset+=blob.size;if(offset>MAX_OPERATION_LINEAGE_BYTES)throw fail('restored_graph_budget');}
  const header=await readGraphHeader({format:'breditor/shared-restored-operation-lineage-backup',formatVersion:2,root,states:[...states].sort((a,b)=>key(a.kind,a.manifestSha256)<key(b.kind,b.manifestSha256)?-1:1),nodes:[...nodes].sort((a,b)=>key(a.kind,a.node.manifestSha256)<key(b.kind,b.node.manifestSha256)?-1:1),parts},offset,root,check),json=assetBytesUtf8(JSON.stringify(header),MAX_OPERATION_BACKUP_HEADER_BYTES),prefix=new Uint8Array(GRAPH_PREFIX);prefix.set(GRAPH_MAGIC);new DataView(prefix.buffer).setUint32(GRAPH_MAGIC.length,json.length);const file=new Blob([prefix,json,...blobs],{type:GRAPH_MIME});if(file.size>MAX_OPERATION_LINEAGE_BYTES)throw fail('restored_graph_budget');check();return{file,header};
 }

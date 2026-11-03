@@ -1,0 +1,77 @@
+{
+  "format": "breditor/lineage-payload-storage-qualification",
+  "formatVersion": 1,
+  "source": {
+    "commit": "ca63b5a04abd58373dd48ae24c59d1029baef6f4",
+    "dirty": true,
+    "sha256": "1bc8747aa2ad16d5b1e1e4191b4d87a0ece2eb32c97895ef07c3785f3167448f",
+    "files": 8225,
+    "bytes": 67259224
+  },
+  "isolatedCheckpoint": "e907483",
+  "sourceQualification": "/private/tmp/breditor-risk-reader-20261103-o_m7v9ek/target/lineage-payload-source-I36bgJ/result.json",
+  "installedQualification": "/private/tmp/breditor-lineage-payload-installed-QXo4PK/result.json",
+  "sourceCases": 64,
+  "installedCases": 64,
+  "newRegressionCasesPerEnvironment": 7,
+  "existingCodecRecoveryLifetimeCasesPerEnvironment": 57,
+  "matchingIsolatedInstalledDistFiles": 2833,
+  "matchingPatchedMainInstalledDistFiles": 6,
+  "mainRegressionCases": 7,
+  "strictTypesPassed": true,
+  "workspaceLinks": false,
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "nativeRebuilt": false,
+  "reproducedBug": "Repeated canonical lineage encodes reused Blob slices that retained earlier composite Blob storage trees. The logical graph and its153327bytes stayed fixed while physical view nesting grew. Node22.14 throws an uncaught RangeError in its Blob reader.",
+  "plainPlatformReproduction": {
+    "failedCycle": 492,
+    "declaredBytes": 153327,
+    "elapsedMs": 8963,
+    "rustOrWasmRequired": false,
+    "small32RoundControlPassed": true
+  },
+  "unchangedProductionProbeSha256": "cd594836355cb9667d1a2461d23433ffd4ebbab21ee7c1417b92db705b235f1d",
+  "unchangedProductionProbe": {
+    "before": "Stack overflow with and without debugger",
+    "afterPassed": true,
+    "cycles": 512,
+    "payloadChecks": 8704,
+    "fileBytes": 153327,
+    "fileSha256": "939d9af741bc90374dcf6e1037b59f375e99011c43e061816158d9a674e7a6e8"
+  },
+  "repair": "Both lineage encoders capture each output payload into fresh byte-backed Blob chunks, then verify that owned payload against the requested original checksum. Copy ranges are at most1MiB and retain currentness checks. Short reads refuse without retry. Neither encoder retains an earlier composite Blob as its output payload storage.",
+  "resourceCost": "Output payloads now own fresh Blob byte storage. Copy reads are chunked; the existing checksum still reads a whole part under its original budget. Peak retained Blob storage can increase until earlier inputs are released. Large-archive resource behavior remains unqualified.",
+  "scope": "DATA serialization repair plus actual native lineage/graph recovery, assets, identity, lifetime and future document/comment Undo/Redo in four history combinations. Controlled Node storage; no editor/source/actor authority comes from these Blob helpers. Main copied the eight verified changed files and its six affected compiled modules match the independent consumer.",
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/lineage-payload-proof-4wr304zo",
+    "indexSha256": "d55e1c79a894ca5f3bdcd0496f85e3625a1fee3a2fdf46aea2c37c8b7ee5b6f5",
+    "references": 68,
+    "objects": 65,
+    "compressedBytes": 11535103,
+    "readBackVerified": true,
+    "sourceArchive": {
+      "name": "/Users/s/code/breditor/target/lineage-payload-proof-4wr304zo/executed-source.tar.gz",
+      "bytes": 20131977,
+      "sha256": "94492aef53b9c99ee84bdc066db36465dedc34b3c47c1315b43ad0064bfea38d"
+    }
+  },
+  "unchanged": [
+    "Canonical lineage-v1/lineage-v2 framing and byte hashes",
+    "Original source inputs and packet/history meanings",
+    "Existing size/count limits",
+    "Public package-root exports and package versions",
+    "Rust and normal Wasm"
+  ],
+  "notQualified": [
+    "Identity of the older intermittent archive-read fault",
+    "Historical WebKit/startup fault repair",
+    "Complete joint activation/metadata/publication workflows",
+    "Fresh Native process reassociation",
+    "Physical browser storage durability and large-archive memory",
+    "Full V1 parity and release gates"
+  ],
+  "historicalIntermittentReadFaultIdentified": false,
+  "historicalWebKitFaultRepaired": false,
+  "v1Ready": false,
+  "v1GatesOpen": 13
+}

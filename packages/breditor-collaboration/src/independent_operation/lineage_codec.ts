@@ -3,11 +3,11 @@
 import {assetBytesDigest,assetBytesUtf8} from '../asset_bytes/format.js';
 import {generationFields} from '../generation_source/identity.js';
 import {MAX_INDEPENDENT_DELIVERY_PARTICIPANT_BYTES} from '../independent_delivery_participant/codec.js';
-import {independentDeliveryParticipantDigest} from '../independent_delivery_participant/codec.js';
 import {MAX_OPERATION_BACKUP_HEADER_BYTES} from './portable_codec.js';
 import {operationPortableHash} from './portable_identity.js';
 import type {OperationLineageHeader,OperationLineageNodeBody,OperationLineageNode,OperationLineageReference,OperationLineageState,OperationLineagePart} from './lineage_contract.js';
 import {operationJournalFailure as fail} from './journal_failure.js';
+import {ownedLineagePayload} from './payload_blob.js';
 export const OPERATION_LINEAGE_MAGIC=new TextEncoder().encode('BREDITOR-INDEPENDENT-OPERATION-LINEAGE1\n');
 export const OPERATION_LINEAGE_PREFIX_BYTES=OPERATION_LINEAGE_MAGIC.length+4;
 export const OPERATION_LINEAGE_MIME='application/vnd.breditor.independent-operation-lineage-backup';
@@ -35,6 +35,6 @@ export async function readLineageHeader(raw:unknown,bytes:number,root:string,che
 }
 /** Each literal digest is checked before encoding; no whole 16 GiB aggregate array is made. */
 export async function encodeOperationLineage(root:string,states:readonly OperationLineageState[],nodes:readonly OperationLineageNode[],payloads:ReadonlyMap<string,Blob>,check:()=>void){
- check();if(payloads.size>MAX_OPERATION_LINEAGE_PARTS||nodes.length>MAX_OPERATION_LINEAGE_NODES||states.length>MAX_OPERATION_LINEAGE_NODES+1)throw fail('independent_operation_lineage_budget');let offset=0;const parts:OperationLineagePart[]=[],blobs:Blob[]=[];for(const[sha256,blob]of [...payloads].sort(([a],[b])=>a<b?-1:a>b?1:0)){if(await independentDeliveryParticipantDigest(blob)!==sha256)throw fail('independent_operation_lineage_integrity');check();parts.push({sha256,bytes:blob.size,offset});blobs.push(blob);offset+=blob.size;if(offset>MAX_OPERATION_LINEAGE_BYTES)throw fail('independent_operation_lineage_budget');}
+ check();if(payloads.size>MAX_OPERATION_LINEAGE_PARTS||nodes.length>MAX_OPERATION_LINEAGE_NODES||states.length>MAX_OPERATION_LINEAGE_NODES+1)throw fail('independent_operation_lineage_budget');let offset=0;const parts:OperationLineagePart[]=[],blobs:Blob[]=[];for(const[sha256,input]of [...payloads].sort(([a],[b])=>a<b?-1:a>b?1:0)){const blob=await ownedLineagePayload(input,sha256,check,()=>fail('independent_operation_lineage_integrity'));parts.push({sha256,bytes:blob.size,offset});blobs.push(blob);offset+=blob.size;if(offset>MAX_OPERATION_LINEAGE_BYTES)throw fail('independent_operation_lineage_budget');}
  const header=await readLineageHeader({format:'breditor/shared-independent-operation-lineage-backup',formatVersion:1,root,states:[...states].sort((a,b)=>a.manifestSha256<b.manifestSha256?-1:1),nodes:[...nodes].sort((a,b)=>a.manifestSha256<b.manifestSha256?-1:1),parts},offset,root,check);check();const json=assetBytesUtf8(JSON.stringify(header),MAX_OPERATION_BACKUP_HEADER_BYTES),prefix=new Uint8Array(OPERATION_LINEAGE_PREFIX_BYTES);prefix.set(OPERATION_LINEAGE_MAGIC);new DataView(prefix.buffer).setUint32(OPERATION_LINEAGE_MAGIC.length,json.length);const file=new Blob([prefix,json,...blobs],{type:OPERATION_LINEAGE_MIME});if(file.size>MAX_OPERATION_LINEAGE_BYTES)throw fail('independent_operation_lineage_budget');check();return{file,header};
 }
