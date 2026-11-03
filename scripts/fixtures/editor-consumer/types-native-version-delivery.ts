@@ -6,6 +6,7 @@ declare const catalog:publicApi.SharedDocumentVersions,context:NativeRelayDelive
 const options:NativeVersionDeliveryOptions={getToken:async()=>'current token',flushDocument:async()=>{},requestTimeoutMs:5000};
 const delivery:NativeVersionDelivery=createNativeVersionDelivery(catalog,context,options);
 const state:publicApi.SharedDocumentVersionsState=delivery.state();const packet:Promise<string>=delivery.loadVersion('original version id');
+const materialized:Promise<string>=delivery.materializeVersion('sha256:known-original-entry');
 const saved:Promise<void>=delivery.retryLocal();const drained:Promise<void>=delivery.close();
 // @ts-expect-error Identity is the original catalog binding, never selected by this delivery call.
 createNativeVersionDelivery(catalog,context,{...options,identity:{}});
@@ -21,4 +22,4 @@ delivery.saveVersion('new version','1');
 delivery.release();
 // @ts-expect-error The public package root does not issue private recovery authority.
 publicApi.createNativeVersionDelivery(catalog,context,options);
-void state;void packet;void saved;void drained;
+void state;void packet;void materialized;void saved;void drained;

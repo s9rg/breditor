@@ -1,5 +1,23 @@
 # Breditor V1 release preparation
 
+[Dependency-only version materialization](NATIVE_VERSION_MATERIALIZATION.md)
+repairs a concrete reconstruction dependency: an accepted catalog entry can
+exist without its immutable body being cached. The explicit Native-loan action
+fetches the known original packet and persists it through the actual source
+cache without submitting queued document/comment/version work. Both checked-in
+commands pass 83 cases each, including 11 new laws, 48 existing delivery policies
+and 24 durable failure/retry cases. Strict declarations and all 2,827 independent
+package distribution files match; actual Rust HTTP and normal Wasm execute with
+controlled browser storage/locks. Complete source/packages/logs/actual test data
+are retained in a bounded read-back-verified compressed proof.
+
+This is a private component checkpoint. The separate full joint owner is still
+being tested with real version bodies before its final reconstruction cut.
+Complete joint/cold reconstruction, physical durability, remaining parity and
+all thirteen V1 gates stay open. Neither historical archive-read nor WebKit
+fault is declared repaired. Original protocols/defaults, Rust, normal Wasm,
+public-root exports and package versions remain unchanged.
+
 [SDK Native publication](NATIVE_ROOM_PUBLICATION.md#repeatable-sdk-component-checks)
 now passes both checked-in 22-case commands on one unchanged source snapshot,
 including strict private declarations and 2,825 byte-matching independently

@@ -41,3 +41,13 @@ original queued decisions through held author/observer transports. The
 queue loan. All-family metadata settlement, fresh provider/client/assets
 reconciliation and authenticated joint activation remain
 required. No full V1 gate is closed by this contract.
+
+## Explicit dependency-only downloads
+
+[Known-version materialization](NATIVE_VERSION_MATERIALIZATION.md) adds a separate
+Native-loan action for a catalog entry whose immutable body is not cached. It
+uses the original authenticated packet GET and actual durable cache writer,
+without connecting discovery or submitting queued versions/document/comment
+work. Both 83-case source and installed commands pass. Complete joint recovery
+remains separate; the existing selected-room and broader candidate wrappers
+were not rerun as part of this component.

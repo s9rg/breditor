@@ -1,0 +1,54 @@
+{
+  "format": "breditor/native-version-materialization-qualification",
+  "formatVersion": 1,
+  "source": {
+    "commit": "1d44d792c81f2bf0e2e2aa5948011ed4d9c481bb",
+    "dirty": true,
+    "sha256": "0e1a7ed7f79569a560b9efa53149b937274d1bc87a8abee748b2f72bceee10c4",
+    "files": 8191,
+    "bytes": 67077201
+  },
+  "sourceQualification": "/Users/s/code/breditor/target/native-version-materialization-source-qualification.json",
+  "installedQualification": "/Users/s/code/breditor/target/native-version-materialization-installed-consumer.json",
+  "sourceCases": 83,
+  "installedCases": 83,
+  "newMaterializationCasesPerEnvironment": 11,
+  "existingPolicyCasesPerEnvironment": 48,
+  "existingFailureCasesPerEnvironment": 24,
+  "strictPrivateSourceAndInstalledTypes": true,
+  "independentPackageDistFilesMatched": 2827,
+  "workspaceLinks": false,
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "actualNativeBinarySha256": "693e4d465867518e34cfc248d5de2bea54d3babba188dd935d92c728e11fd67d",
+  "nativeRebuiltForThisComponent": false,
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/version-materialization-proof-g8ss3280",
+    "indexSha256": "51b5055a248241be69ad78a25c41d7b385315a192fe2912d0ca28806a7e3504e",
+    "references": 488,
+    "objects": 329,
+    "compressedBytes": 43589339,
+    "readBackVerified": true,
+    "sourceArchive": {
+      "name": "/Users/s/code/breditor/target/version-materialization-proof-g8ss3280/executed-source.tar.gz",
+      "bytes": 20568320,
+      "sha256": "b11fccffbcf83d52cf89e892d06f99c2ebee5cc9b4d2280415027bc4b70f1927"
+    }
+  },
+  "scope": "Explicit authenticated materialization of already-known version packet bodies through the actual Native store loan; actual durable caching, deduplication, authority refusal, delayed-close draining, persistence failure and retry, future cold document/comment Undo/Redo. Existing version publication policies remain unchanged.",
+  "unchanged": [
+    "Original wire/record formats and defaults",
+    "Rust and normal Wasm",
+    "Public package root exports",
+    "Package versions"
+  ],
+  "notQualified": [
+    "Complete joint owner and authenticated whole-room activation",
+    "Cold joint-owner reconstruction",
+    "Physical database crash durability",
+    "Historical archive-read or WebKit fault repair",
+    "Full V1 feature parity and release gates"
+  ],
+  "wholeRoomActivated": false,
+  "v1Ready": false,
+  "v1GatesOpen": 13
+}
