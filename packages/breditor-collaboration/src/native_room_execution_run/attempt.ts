@@ -53,7 +53,7 @@ export function withColdRoomExecutionMetadataTarget<T>(owner:ColdRoomExecutionAt
 }
 const key=Object.freeze({});
 export class RoomExecutionAttempt {
- readonly #old;readonly #reservation:SelectedActorExecutionReservation;readonly #options;readonly #provided;readonly #create;readonly #targets=new RoomRunTargets();readonly #stop=new AbortController();
+ readonly #old;readonly #reservation:SelectedActorExecutionReservation;readonly #options;readonly #provided;readonly #create;readonly #targets=new RoomRunTargets();readonly #stop=new AbortController();readonly #targetStop=new AbortController();
  #scope:RoomExecutionReadScope|undefined;#journal:RoomRunJournalResources|undefined;#snapshot:RoomRunSnapshot|undefined;
  #approvedMetadataTarget:PhysicalRoomRecordCutSelection|undefined;#actors:StoppedActorCohort|undefined;#openingAttempted=false;#journalOpened=false;#taking=false;#closing=false;#closed=false;#unwatch=()=>{};
  #running:Promise<unknown>|undefined;#cleanup:Promise<void>|undefined;
@@ -163,13 +163,19 @@ export class RoomExecutionAttempt {
    });this.#approvedMetadataTarget=promoted.choice.approval.cut;return promoted;
   });this.#running=task;return task.finally(()=>{this.#running=undefined;});
  }
+ /** Construction authority ends at promotion. Fresh target visits check
+  * the actual recipient and their own supplied authority/lifetime. Cancelling
+  * the finished construction reader does not revoke the genuine successor. */
+ #checkMetadataTarget=()=>{
+  if(this.#closing||this.#closed||this.#targetStop.signal.aborted||!targetsApi.ready.call(this.#targets)||!this.#approvedMetadataTarget)throw fail('room_execution_closed');
+ };
  /** The promoted successor stays private in this attempt through the entire
   * source visit. Reflection is reserved before any caller hook can reenter take. */
  #visitMetadata<T>(provided:PhysicalOperationV3HistoryReadOptions,visit:(scope:SelectedNativeRecoveryScope,witness:RoomMetadataTargetWitness)=>Promise<T>):Promise<T>{
   try{if(this.#running||this.#taking)throw fail('room_execution_busy');if(this.#closing||this.#closed||!targetsApi.ready.call(this.#targets)||!this.#approvedMetadataTarget||typeof visit!=='function')throw fail('room_execution_closed');}catch(error){return Promise.reject(error);}
   let reads:PhysicalOperationV3HistoryReadOptions|undefined,error:unknown;const controller=new AbortController(),unwatch:(()=>void)[]=[];
-  const task=Promise.resolve().then(async()=>{if(!reads)throw error;this.#check();return targetsApi.metadata.call(this.#targets,reads,async scope=>{const witness=Object.freeze({}) as RoomMetadataTargetWitness;metadataTargets.set(witness,{scope,identity:this.#options.expected,approved:this.#approvedMetadataTarget!,check:()=>{this.#check();scope.check();}});try{return await visit(scope,witness);}finally{metadataTargets.delete(witness);}}) as Promise<T>;});this.#running=task;
-  try{const chosen=snapshotPhysicalHistoryReadOptions(provided);for(const signal of[this.#stop.signal,chosen.signal])if(signal){const abort=()=>controller.abort();if(signal.aborted)abort();else{add.call(signal,'abort',abort,{once:true});unwatch.push(()=>remove.call(signal,'abort',abort));}}reads={...chosen,signal:controller.signal,checkAuthority:()=>{this.#check();chosen.checkAuthority();this.#check();}};}catch(reason){error=reason;}
+  const task=Promise.resolve().then(async()=>{if(!reads)throw error;this.#checkMetadataTarget();return targetsApi.metadata.call(this.#targets,reads,async scope=>{const witness=Object.freeze({}) as RoomMetadataTargetWitness;metadataTargets.set(witness,{scope,identity:this.#options.expected,approved:this.#approvedMetadataTarget!,check:()=>{this.#checkMetadataTarget();scope.check();}});try{return await visit(scope,witness);}finally{metadataTargets.delete(witness);}}) as Promise<T>;});this.#running=task;
+  try{const chosen=snapshotPhysicalHistoryReadOptions(provided);for(const signal of[this.#targetStop.signal,chosen.signal])if(signal){const abort=()=>controller.abort();if(signal.aborted)abort();else{add.call(signal,'abort',abort,{once:true});unwatch.push(()=>remove.call(signal,'abort',abort));}}reads={...chosen,signal:controller.signal,checkAuthority:()=>{this.#checkMetadataTarget();chosen.checkAuthority();this.#checkMetadataTarget();}};}catch(reason){error=reason;}
   return task.finally(()=>{for(const stop of unwatch)stop();controller.abort();if(this.#running===task)this.#running=undefined;});
  }
  static{visitMetadata=(owner,reads,visit)=>{if(!owner||typeof owner!=='object'||!(#targets in owner))return Promise.reject(fail('room_execution_policy'));return owner.#visitMetadata(reads,visit);};}
@@ -193,6 +199,6 @@ export class RoomExecutionAttempt {
    if(this.#actors){await closeActors.call(this.#actors);this.#actors=undefined;}
    if(this.#journal){await journals.close.call(this.#journal);this.#journal=undefined;}
    releaseSelectedActorExecution(this.#reservation);this.#unwatch();if(stopFailed)throw stopError;this.#closed=true;
-  }).finally(()=>{this.#cleanup=undefined;});try{this.#stop.abort();if(this.#scope)scopeClose.call(this.#scope);}catch(error){stopFailed=true;stopError=error;}finally{start();}return this.#cleanup;
+  }).finally(()=>{this.#cleanup=undefined;});try{for(const stop of [()=>this.#targetStop.abort(),()=>this.#stop.abort(),()=>this.#scope&&scopeClose.call(this.#scope)])try{stop();}catch(error){if(!stopFailed){stopFailed=true;stopError=error;}}}finally{start();}return this.#cleanup;
  }
 }

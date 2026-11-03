@@ -1,0 +1,60 @@
+{
+  "format": "breditor/warm-target-metadata-qualification",
+  "formatVersion": 1,
+  "source": {
+    "commit": "6370dd53942b44ddcaa3032581d73672ecec3425",
+    "dirty": true,
+    "sha256": "4bc62f1f8522dd63fb1b5dd4f17b6e8c02ffaed23e114175ebdc3a44484431b2",
+    "files": 8203,
+    "bytes": 67141254
+  },
+  "sourceQualification": "/Users/s/code/breditor/target/warm-target-metadata-source-5ve16N/result.json",
+  "installedQualification": "/private/tmp/breditor-warm-target-installed-o2zA1Y/result.json",
+  "sourceCases": 15,
+  "installedCases": 15,
+  "newCasesPerEnvironment": 3,
+  "existingWarmCasesPerEnvironment": 4,
+  "existingPrivateMetadataCasesPerEnvironment": 6,
+  "existingSourceMetadataCasesPerEnvironment": 2,
+  "strictPrivateSourceAndInstalledTypes": true,
+  "matchingPackageDistFiles": 2827,
+  "workspaceLinks": false,
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "nativeBinarySha256": "3a52eea28153ff72fda020ff6b1bb8165ee899bba32f7ec063ea84a03d2dd616",
+  "nativeRebuilt": false,
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/warm-target-metadata-proof-e13e58ic",
+    "indexSha256": "c91a6b38a238f39561c46c8e32bac80bbd56c77ce766264c81bfaeafc2ffc4c5",
+    "references": 77,
+    "objects": 76,
+    "compressedBytes": 25693528,
+    "readBackVerified": true,
+    "sourceArchive": {
+      "name": "/Users/s/code/breditor/target/warm-target-metadata-proof-e13e58ic/executed-source.tar.gz",
+      "bytes": 20086801,
+      "sha256": "4494b279372bf2651c809cc22a1bb03facab4e13823f44c275602b3eb45b4882"
+    }
+  },
+  "reproducedBug": "After actual Warm promotion and construction-reader cancellation, seven recovered editors remained usable but fresh metadata inspection incorrectly failed room_execution_closed.",
+  "repair": "Independent promoted-target lifetime, actual target/cut admission, fresh supplied authority, scoped witnesses, command cancellation and terminal draining before actor release.",
+  "unchangedOriginalReproducerSha256": "3101601b3ba7ab5a9252c4e9529a614c50ba2f8d4314544b78c442c459710c5f",
+  "closeCompatibility": "The first patch bypassed the existing observable AbortController dispatch and failed the unchanged close-reentry regression. Keep that dispatch while stopping both lifetimes independently; original regression passes and a new real target abort event verifies identical reentrant cleanup promises.",
+  "scope": "Genuine promoted seven-family Warm recipients, fourteen actor locks, authority refusal, reflection reentry, scoped witness revocation, command cancellation, real abort reentry, terminal Close draining and exact future document/comment histories with controlled browser storage/locks.",
+  "unchanged": [
+    "Original wire/record formats and defaults",
+    "Rust and normal Wasm",
+    "Public package root exports",
+    "Package versions"
+  ],
+  "notQualified": [
+    "Complete joint Native activation/publication and source-stop semantic verification",
+    "Cold joint-owner reconstruction and fresh Native process association",
+    "Separate inert DATA-retention callback fix",
+    "Physical database crash durability",
+    "Historical archive-read or WebKit fault repair",
+    "Full V1 feature parity and release gates"
+  ],
+  "wholeRoomActivated": false,
+  "v1Ready": false,
+  "v1GatesOpen": 13
+}

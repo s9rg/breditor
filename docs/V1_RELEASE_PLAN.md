@@ -5823,3 +5823,25 @@ reconstruction, the independent warm lifetime repair, physical storage durabilit
 or the historical WebKit/archive-read investigations. Remaining feature parity
 and all thirteen V1 release gates stay open. No push, tag, publication, deployment
 or package version promotion is made.
+
+
+### November 3, 2026 — recovered warm target lifetime
+
+The corresponding Warm construction-reader cancellation defect is now reproduced
+and repaired with a separate target lifetime. A genuine promoted target requires
+fresh per-visit authority, its actual approved Native cut and a scoped witness;
+terminal Close stops both lifetimes and drains actual work before releasing
+actors. Source and independently installed commands each pass all fifteen
+mandatory cases, including the unchanged original close-reentry regression and
+an actual target abort-event check of the same cleanup promise. Strict private
+types pass; all 2,827 installed distribution files match without workspace links.
+See `WARM_TARGET_METADATA.md` and
+`qualification/2026-11-03-warm-target-metadata.json` for exact executed source,
+original failures and read-back-verified proof.
+
+Complete joint activation/publication remains unqualified: the combined workflow
+currently exposes a source-journal checkpoint comparison failure during retirement,
+which requires semantic verification. The separate inert DATA-retention callback
+repair, cold joint-owner reconstruction, physical durability, historical faults,
+remaining parity and all thirteen V1 release gates stay open. No version, push,
+tag, publication or deployment is made.
