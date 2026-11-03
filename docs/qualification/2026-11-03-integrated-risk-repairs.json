@@ -1,0 +1,64 @@
+{
+  "format": "breditor/integrated-risk-repair-qualification",
+  "formatVersion": 1,
+  "testedSource": {
+    "commit": "bc1c688abc83b08f95d08a89d07d3f072004f8df",
+    "dirty": false,
+    "sha256": "ddd98dee7031a74e8a0930053738ab01030967aea648a26df0783e345ccb68fc",
+    "files": 8237,
+    "bytes": 67304294
+  },
+  "repairCommits": [
+    "36d6a8d79b9851d8080d292a8ec706bd1d269bda",
+    "bc1c688abc83b08f95d08a89d07d3f072004f8df"
+  ],
+  "mainSourceCases": 92,
+  "mainSourceWorksets": [
+    {
+      "name": "metadata-handoff",
+      "cases": 28,
+      "directory": "target/metadata-handoff-source-d7pvGd",
+      "logSha256": "db545c87c50b5ac7f58ae5429fbdc0bb27fcb184ddd059d194362d09abcda8c5"
+    },
+    {
+      "name": "lineage-payload",
+      "cases": 64,
+      "directory": "target/lineage-payload-source-Phw3W7",
+      "logSha256": "e9c80073553ec4742393567ddcba1057b3022ac1cb0f333773073ce77f39b97b"
+    }
+  ],
+  "mainInstalledMetadataCases": 28,
+  "mainInstalledDirectory": "/private/tmp/breditor-metadata-handoff-installed-Qj9cr5",
+  "mainInstalledLogSha256": "2de53564f82fe124cfeb2e99f3e6329a6be82a853e7a208dcf3134c0fed2ab0b",
+  "matchingMainInstalledDistFiles": 2837,
+  "workspaceLinks": false,
+  "isolatedInstalledLineageCases": 64,
+  "isolatedLineageQualification": "2026-11-03-lineage-payload-storage.json",
+  "strictTypesPassed": true,
+  "sourceUnchangedDuringTests": true,
+  "skipped": 0,
+  "cancelled": 0,
+  "nativeRebuilt": false,
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "proof": {
+    "directory": "target/integrated-risk-proof-9ujc9lxm",
+    "indexSha256": "053b2037f1d902874eecef7961fd1ad104ccdf7213a8b339e5be7a1faefdd52d",
+    "references": 86,
+    "objects": 83,
+    "compressedBytes": 30265000,
+    "readBackVerified": true,
+    "sourceArchive": {
+      "name": "executed-source.tar.gz",
+      "bytes": 20148795,
+      "sha256": "529119ef6d4eaf254ff4140a38df0b058d38736cfbe71602919e90714275433c"
+    }
+  },
+  "scope": "The two isolated repairs integrated on main. Complete native metadata replacement, interrupted-write recovery, original packets/receipts and future document/comment histories; lineage byte identity, repeated graph reconstruction, recovery, assets, integrity and lifetime. Controlled Node storage/locks. The broader joint coordinator remains isolated.",
+  "wireFormatsChanged": false,
+  "historicalIntermittentReadFaultIdentified": false,
+  "historicalWebKitFaultRepaired": false,
+  "completeJointPublicationQualified": false,
+  "physicalDurabilityQualified": false,
+  "v1Ready": false,
+  "v1GatesOpen": 13
+}
