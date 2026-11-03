@@ -6,8 +6,10 @@ pub use durable_activation::{
     PreparedNativeGenerationActivation, PreparedNativeGenerationActivationIdentity,
 };
 pub use durable_activation_control::{
-    DurableNativeActivationControl, DurableNativeActivationControlIdentity,
-    prepare_durable_native_activation_control,
+    DurableNativeActivationControl, DurableNativeActivationControlIdentity, NativeRoomPublication,
+    NativeRoomPublicationBinding, NativeRoomPublicationIdentity, NativeRoomPublicationReceipt,
+    NativeRoomPublicationRequest, prepare_durable_native_activation_control,
+    prepare_native_room_publication,
 };
 mod activate_native;
 mod activation_identity;

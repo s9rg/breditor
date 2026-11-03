@@ -37,7 +37,7 @@ async fn prepare_selected_control(
     )
     .await?)
 }
-async fn control(
+pub(super) async fn control(
     setup: &Setup,
 ) -> TestResult<(axum::Router, DurableNativeActivationControl, String)> {
     let proof = Arc::new(setup.proof().await?);

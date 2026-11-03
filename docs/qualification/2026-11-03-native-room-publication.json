@@ -1,0 +1,75 @@
+{
+  "format": "breditor/native-room-publication-functional-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-03",
+  "scope": "Opt-in Rust Native service publication with an actual bound socket, original protocol histories and actual connection cleanup; SDK whole-room coordination remains unfinished",
+  "executedSource": {
+    "commit": "ac6501967368a0eb64006e44ac68c04bbc92bc63",
+    "dirty": true,
+    "sha256": "955f0f443971fe0b38285d96af8b2b818eac272e76c3894be18fca1dfd473c8d",
+    "files": 8143,
+    "bytes": 66813318,
+    "archiveSha256": "6e2a6c1dc2608432183de7dbe9b093033332ce1f072db6fd456071ad9d0b4511"
+  },
+  "testBinarySha256": "8d2e6e6b92175e88eed97e6947a0c3f3c48be876bc41a63577ce27b78e3d15c3",
+  "actualFocusedCases": 10,
+  "completeGenerationRecoveryCases": 191,
+  "publicOwnershipDoctests": 42,
+  "cancelledHttpWaiterRepetitions": 30,
+  "candidatePlanCases": 4,
+  "touchedRustFormattingFiles": 19,
+  "strictLibraryAndTestLint": true,
+  "noServerBuild": true,
+  "allFourIndependentDocumentCommentHistoryPolicies": true,
+  "originalOfflineDocumentCommentDeliveryAndFutureUndoRedo": true,
+  "actualBoundListenerAndNativeCommittedServiceRequired": true,
+  "independentOperatorAuthExactOriginAndBoundedBody": true,
+  "repeatedPublicationPreservesReceiptAndNativeEpoch": true,
+  "pendingBodyRetainsQuotaOnly": true,
+  "cancelledWaiterRetainsActualWorkerAndQuota": true,
+  "closeAwaitsActualUpgradedConnectionNativeCleanup": true,
+  "abortedOrFailedNativeCleanupStaysUncertain": true,
+  "cancelledCloseKeepsSameTaskAndCleanup": true,
+  "reproducedRepairs": {
+    "deadPreparationRuntime": {
+      "before": "Actual publication returned HTTP200 after preparation runtime shut down, then original-protocol connection refused.",
+      "after": "Hold a real standard socket independently of preparation runtime; register the same bound socket on the actual publication worker reactor before consuming original. The original failure case now delivers offline document/comments and future UndoRedo on another runtime.",
+      "failedWorksetPassed": 9,
+      "failedWorksetCases": 10,
+      "retainedSource": "83c8bc9991b3d4efe5eba8dcb2a02bb014efa24a6daf274d3a081f96b7a50154"
+    },
+    "intrusiveTestObserver": {
+      "before": "Broader workset passed189/190. Cancellation observer competed for production try_lock mutex, reproducing actual HTTP503 on fourth focused repetition.",
+      "after": "Test-only event records actual Native deployment-barrier entry without acquiring the production mutex; cancelled waiter passes30 consecutive runs and complete191 suite.",
+      "productionRefusalPolicyChanged": false,
+      "timeoutIncreased": false
+    }
+  },
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "budgetBytes": 3221225472,
+  "maximumReportedCompilerBytes": 1121165312,
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/native-publication-proof-2vsoslg5",
+    "indexSha256": "339e648c0efc40afab44aa0c8c41715d3e86f466cbbc1f26931421e9cb5a2054",
+    "references": 94,
+    "objects": 77,
+    "compressedBytes": 129234496,
+    "readBackVerified": true
+  },
+  "limits": {
+    "jointDescriptorPinIsAssociationNotClientReadiness": true,
+    "sourceQuiescenceAndIndependentlyHeldNativeWorkersNotCertifiedByPublicationClose": true,
+    "sdkMetadataCaptureAssociationComplete": false,
+    "jointGenuineNativeCommitUninterruptedTransferMetadataAndPublicationComplete": false,
+    "installedSevenFamilySdkPublicationQualified": false,
+    "physicalStorageAndFullSdkPolicyMatrixQualified": false,
+    "fullCandidateProfilesRun": false,
+    "publicTlsIdentityTenantDeploymentQualified": false,
+    "historicalArchiveReadRepairVerified": false,
+    "historicalWebKitRepairVerified": false,
+    "v1Ready": false,
+    "v1GatesOpen": 13
+  },
+  "compatibility": "New opt-in Rust API and separate publication transport; normal Wasm, versions, original wire formats and default router lifecycle stay unchanged.",
+  "postExecutionChanges": "Qualification/report documentation only; runtime and tests match executed955f source."
+}

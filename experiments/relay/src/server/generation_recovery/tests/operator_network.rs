@@ -105,9 +105,15 @@ impl Network {
         Ok(Self { address, stop: Some(stop), task: Some(task) })
     }
     pub async fn request(&self, request: &Request<'_>, body: &[u8]) -> TestResult<Response> {
-        let head = request.head(self.address, body.len());
+        Self::request_at(self.address, request, body).await
+    }
+    pub async fn request_at(
+        address: SocketAddr,
+        request: &Request<'_>,
+        body: &[u8],
+    ) -> TestResult<Response> {
+        let head = request.head(address, body.len());
         let bytes = body.to_vec();
-        let address = self.address;
         let bytes = tokio::task::spawn_blocking(move || -> std::io::Result<Vec<u8>> {
             let mut stream = TcpStream::connect_timeout(&address, Duration::from_secs(10))?;
             stream.set_read_timeout(Some(Duration::from_secs(10)))?;

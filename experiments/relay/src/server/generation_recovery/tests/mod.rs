@@ -24,4 +24,7 @@ mod reconstruct;
 
 mod durable_native_activation_control;
 
+mod native_room_publication;
 mod operator_network;
+mod publication_history;
+mod publication_socket;

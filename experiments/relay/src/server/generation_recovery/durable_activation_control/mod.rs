@@ -1,11 +1,22 @@
 //! Explicit operator transport for an already durable native activation choice.
 mod commit;
 mod prepare;
+mod publication;
 mod routes;
 mod state;
 
 pub use prepare::prepare_durable_native_activation_control;
+pub use publication::{
+    NativeRoomPublication, NativeRoomPublicationBinding, NativeRoomPublicationIdentity,
+    NativeRoomPublicationReceipt, NativeRoomPublicationRequest, prepare_native_room_publication,
+};
 pub use state::DurableNativeActivationControl;
+
+#[cfg(test)]
+pub(super) use publication::{
+    publication_block_for_test, publication_closed_for_test, publication_observation_for_test,
+    publication_request_for_test,
+};
 
 use super::ServerLogGenerationRecoveryStateIdentity;
 use crate::server::RoomDeploymentSelection;

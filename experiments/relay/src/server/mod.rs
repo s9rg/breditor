@@ -9,6 +9,7 @@ mod deployment_fence;
 mod generation_backup;
 mod generation_recovery;
 mod http;
+mod publication_connections;
 mod versions;
 mod wire;
 use crate::{Error, Result, Room};
@@ -44,15 +45,16 @@ pub use generation_recovery::{
     DurableNativeActivationControlIdentity, MAX_DELIVERY_PATH_ANCESTORS,
     MAX_DELIVERY_PATH_ARCHIVE_BYTES, NativeGenerationActivationCheckpointStatus,
     NativeGenerationActivationPrepareOptions, NativeLogGenerationActivationIdentity,
-    PhysicalRoomRecoveryControl, PhysicalRoomRecoveryControlIdentity,
-    PhysicalServerAssetAvailabilityRead, PhysicalServerAssetRecoveryState,
-    PhysicalServerRecoveryAssetCoverage, PhysicalServerRoomRecoveryCoverage,
-    PhysicalServerRoomRecoveryState, PhysicalServerRoomRecoveryStateIdentity,
-    PreparedLogGenerationRecoveryHost, PreparedNativeGenerationActivation,
-    PreparedNativeGenerationActivationIdentity, PreparedPhysicalRoomRecoveryHost,
-    ServerLogGenerationAssetAvailabilityRead, ServerLogGenerationAssetRecoveryState,
-    ServerLogGenerationDeliveryContinuationIdentity, ServerLogGenerationDeliveryPathIdentity,
-    ServerLogGenerationDeliveryPathRecoveryControl,
+    NativeRoomPublication, NativeRoomPublicationBinding, NativeRoomPublicationIdentity,
+    NativeRoomPublicationReceipt, NativeRoomPublicationRequest, PhysicalRoomRecoveryControl,
+    PhysicalRoomRecoveryControlIdentity, PhysicalServerAssetAvailabilityRead,
+    PhysicalServerAssetRecoveryState, PhysicalServerRecoveryAssetCoverage,
+    PhysicalServerRoomRecoveryCoverage, PhysicalServerRoomRecoveryState,
+    PhysicalServerRoomRecoveryStateIdentity, PreparedLogGenerationRecoveryHost,
+    PreparedNativeGenerationActivation, PreparedNativeGenerationActivationIdentity,
+    PreparedPhysicalRoomRecoveryHost, ServerLogGenerationAssetAvailabilityRead,
+    ServerLogGenerationAssetRecoveryState, ServerLogGenerationDeliveryContinuationIdentity,
+    ServerLogGenerationDeliveryPathIdentity, ServerLogGenerationDeliveryPathRecoveryControl,
     ServerLogGenerationDeliveryPathRecoveryControlIdentity,
     ServerLogGenerationDeliveryRecoveryControl, ServerLogGenerationDeliveryRecoveryControlIdentity,
     ServerLogGenerationRecoveryAssetCoverage, ServerLogGenerationRecoveryControl,
@@ -64,8 +66,9 @@ pub use generation_recovery::{
     prepare_durable_native_activation_control,
     prepare_log_generation_delivery_path_recovery_control,
     prepare_log_generation_delivery_recovery_control, prepare_log_generation_recovery_control,
-    prepare_log_generation_recovery_host, prepare_physical_room_recovery_control,
-    prepare_physical_room_recovery_host, reconstruct_log_generation_recovery_host,
+    prepare_log_generation_recovery_host, prepare_native_room_publication,
+    prepare_physical_room_recovery_control, prepare_physical_room_recovery_host,
+    reconstruct_log_generation_recovery_host,
 };
 use std::sync::{Arc, Mutex};
 use tokio::sync::{Semaphore, watch};
@@ -87,6 +90,7 @@ pub(super) struct Host {
     generation_custody: Option<Arc<crate::room::GenerationOperationCustody>>,
     generation_serving:
         Arc<std::sync::OnceLock<generation_recovery::NativeGenerationServingCustody>>,
+    publication_connections: Option<Arc<publication_connections::Connections>>,
     deployment: deployment_fence::HostDeployment,
 }
 impl Host {
@@ -189,6 +193,7 @@ fn create_host(
         suggestions_changed,
         generation_custody: None,
         generation_serving: Arc::new(std::sync::OnceLock::new()),
+        publication_connections: None,
         deployment: deployment_fence::HostDeployment::unfenced(),
     }
 }
@@ -229,9 +234,27 @@ async fn upgrade(State(host): State<Host>, headers: HeaderMap, ws: WebSocketUpgr
     let Ok(permit) = host.connections.clone().try_acquire_owned() else {
         return StatusCode::SERVICE_UNAVAILABLE.into_response();
     };
+    let connection = match &host.publication_connections {
+        Some(owner) => match owner.enter() {
+            Ok(connection) => Some(connection),
+            Err(_) => return StatusCode::SERVICE_UNAVAILABLE.into_response(),
+        },
+        None => None,
+    };
     ws.max_message_size(wire::MAX_MESSAGE)
         .max_frame_size(wire::MAX_MESSAGE)
         .write_buffer_size(64 * 1024)
         .max_write_buffer_size(wire::MAX_MESSAGE + 64 * 1024)
-        .on_upgrade(move |socket| connection::run(host, socket, permit))
+        .on_upgrade(move |socket| async move {
+            let mut actual_connection = connection;
+            if let Some(actual) = &mut actual_connection {
+                actual.start();
+            }
+            let cleanup = connection::run(host, socket, permit).await;
+            if cleanup.is_ok()
+                && let Some(actual) = &mut actual_connection
+            {
+                actual.finish();
+            }
+        })
 }

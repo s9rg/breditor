@@ -256,9 +256,11 @@ async fn grant(
 }
 
 async fn handshake(host: &Host, socket: &mut WebSocket) -> Option<(String, bool, ConnectionState)> {
-    let Ok(Some(Ok(Message::Text(input)))) =
-        tokio::time::timeout(Duration::from_secs(5), socket.recv()).await
-    else {
+    let incoming = tokio::select! {
+        () = super::publication_connections::stopped(host.publication_connections.as_deref()) => return None,
+        incoming = tokio::time::timeout(Duration::from_secs(5), socket.recv()) => incoming,
+    };
+    let Ok(Some(Ok(Message::Text(input)))) = incoming else {
         return None;
     };
     if input.len() > 2048 {
@@ -333,7 +335,11 @@ async fn handshake(host: &Host, socket: &mut WebSocket) -> Option<(String, bool,
         },
     ))
 }
-pub(super) async fn run(host: Host, mut socket: WebSocket, _permit: OwnedSemaphorePermit) {
+pub(super) async fn run(
+    host: Host,
+    mut socket: WebSocket,
+    _permit: OwnedSemaphorePermit,
+) -> Result<()> {
     let mut changed = host.changed.subscribe();
     let mut assets_changed = host.assets_changed.subscribe();
     let mut presence_changed = host.presence_changed.subscribe();
@@ -343,10 +349,14 @@ pub(super) async fn run(host: Host, mut socket: WebSocket, _permit: OwnedSemapho
     let mut heartbeat = tokio::time::interval(Duration::from_secs(5));
     heartbeat.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     let Some((principal, assets_enabled, mut state)) = handshake(&host, &mut socket).await else {
-        return;
+        return Ok(());
     };
     loop {
+        if host.publication_connections.as_ref().is_some_and(|owner| owner.is_stopped()) {
+            break;
+        }
         tokio::select! {
+            () = super::publication_connections::stopped(host.publication_connections.as_deref()) => break,
             message = socket.recv() => {
                 match message {
                     Some(Ok(Message::Text(input))) => {
@@ -419,11 +429,11 @@ pub(super) async fn run(host: Host, mut socket: WebSocket, _permit: OwnedSemapho
             }
         }
     }
-    release_connection(&host, state).await;
+    release_connection(&host, state).await
 }
-async fn release_connection(host: &Host, state: ConnectionState) {
+async fn release_connection(host: &Host, state: ConnectionState) -> Result<()> {
     if state.lease.is_some() || state.review_lease.is_some() {
-        let _ = host
+        let cleanup = host
             .transaction(move |room| {
                 if let Some(lease) = state.lease {
                     room.release(&lease);
@@ -435,7 +445,9 @@ async fn release_connection(host: &Host, state: ConnectionState) {
             })
             .await;
         host.notify_presence();
+        cleanup?;
     }
+    Ok(())
 }
 async fn send_versions_changed(
     host: &Host,

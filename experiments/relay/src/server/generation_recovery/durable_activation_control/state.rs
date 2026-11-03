@@ -75,6 +75,26 @@ impl DurableNativeActivationControl {
     }
 }
 impl State {
+    /// Trusted Rust composition only: install the actual normal service while
+    /// its real Native deployment transaction still holds the current lease.
+    pub(super) fn with_serving_router<T>(
+        &self,
+        connections: Arc<crate::server::publication_connections::Connections>,
+        visit: impl FnOnce(axum::Router) -> Result<T>,
+    ) -> Result<T> {
+        self.local()?;
+        let held = self.commit.try_lock().map_err(|_| Error::Locked)?;
+        let Commit::Active(active) = &*held else {
+            return Err(Error::NeedsRecovery);
+        };
+        self.prepared.guard()?;
+        active.recovery_host().host.deployment.transaction(|| {
+            self.local()?;
+            let mut host = active.recovery_host().host;
+            host.publication_connections = Some(connections);
+            visit(crate::server::routes(host))
+        })
+    }
     fn service_router(&self) -> Result<axum::Router> {
         self.local()?;
         let held = self.commit.try_lock().map_err(|_| Error::Locked)?;

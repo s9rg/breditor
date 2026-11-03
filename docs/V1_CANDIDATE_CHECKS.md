@@ -56,6 +56,34 @@ publication API. Physical storage, full policy matrices/candidate profiles,
 remaining parity and all thirteen V1 gates stay open. Neither historical fault
 is declared repaired.
 
+[Actual Native room publication](NATIVE_ROOM_PUBLICATION.md) adds a separate
+operator control that owns the actual committed service and bound socket. Socket
+custody is independent of the preparation runtime; only the authenticated worker
+registers that same socket on its current live reactor. The new opt-in router
+tracks actual upgraded connections through document/comment lease cleanup.
+Cancelled waiters retain their worker/quota; cancelled close retains the same
+server task, while failed or aborted cleanup stays explicitly uncertain.
+
+The [functional qualification](qualification/2026-11-03-native-room-publication.json)
+passes all ten focused cases, the complete 191-case generation-recovery suite,
+42 ownership doctests and thirty consecutive cancelled-waiter runs. Strict library/
+test lint, the no-server build, nineteen touched Rust formatting checks and four
+candidate-plan cases pass. Actual publication survives preparation-runtime shutdown
+and serves original offline document/comment work and future Undo/Redo under all
+four history policy pairs. Two reproduced development defects and their exact
+source/binaries remain in a compressed, read-back-verified proof: false HTTP200
+when serving was spawned onto a dead preparation reactor, and an intrusive test
+observer that provoked the production mutex refusal it was trying to observe.
+The repair changes neither that refusal policy nor test timeouts.
+
+Both candidate profiles require the new Native publication stage; complete profiles
+were not run. The joint pin is association data, not certification of local editor
+readiness. Combining this control with actual source/activation metadata pins,
+uninterrupted actor transfer and seven-family installed SDK convergence remains
+required. Physical storage, full policy matrices, remaining parity and all thirteen
+V1 gates stay open. Normal Wasm, versions and original wire/default meanings are
+unchanged. Neither historical archive-read nor WebKit fault is declared repaired.
+
 [Persistent native activation source ownership](NATIVE_ACTIVATION_SOURCE_SESSION.md)
 now retains the actual source reservation across failed commands and caller
 cancellation. Explicit suspension checkpoints enlisted review/metadata owners,
