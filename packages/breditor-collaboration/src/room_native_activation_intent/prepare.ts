@@ -1,3 +1,4 @@
+import {retainActivationChoice} from './retain_choice.js';
 /** Retain complete source data and an independent choice before any commit request. */
 import {nativeActivationHostPort,type SharedDurableNativeActivationHost} from '../native_activation_control/host.js';
 import type {SharedServerLogGenerationRecoveryIdentity} from '../generation_recovery_control/contract.js';
@@ -19,7 +20,7 @@ export async function prepareHeldRoomActivation(capture:ReconciledServerPacketRe
  const source=capture.reconciliation.sources.native.selection.source,activation=await policy.selectActivation(source);check();const port=nativeActivationHostPort(activation);port.check();check();
  if(JSON.stringify(port.selection.current)!==JSON.stringify(source))throw fail('activation_intent_stale');
  const encoded=await encodeRoomActivationIntent(policy.database,port.selection,capture,options);check();
- await policy.retainChoice(encoded.choice);port.check();check();
+ await retainActivationChoice(encoded.choice,policy.retainChoice,check,[options.signal]);port.check();check();
  const store=new RoomActivationIntentStore(encoded.choice,options);
  try{const retained=await store.open(encoded);check();if(retained.state.phase!=='prepared')throw fail();return encoded.choice;}finally{await store.close();}
 }

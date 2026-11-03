@@ -1,0 +1,62 @@
+{
+  "format": "breditor/activation-choice-retention-qualification",
+  "formatVersion": 1,
+  "source": {
+    "commit": "fd1b6a91d4489fc97737de4159260a434f8012dd",
+    "dirty": true,
+    "sha256": "9724352b1a36d0fba4e10e25e16bd6cdeb9fcc598c96e31ae729a70be2d81154",
+    "files": 8211,
+    "bytes": 67169553
+  },
+  "sourceQualification": "/Users/s/code/breditor/target/activation-retention-source-TDvViY/result.json",
+  "installedQualification": "/private/tmp/breditor-activation-retention-installed-dvMlQ9/result.json",
+  "sourceCases": 14,
+  "installedCases": 14,
+  "newCasesPerEnvironment": 3,
+  "existingIntentCasesPerEnvironment": 11,
+  "strictPrivateSourceAndInstalledTypes": true,
+  "matchingPackageDistFiles": 2829,
+  "workspaceLinks": false,
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "nativeRebuilt": false,
+  "retainedActualInputIndexSha256": "572671293d3afd4c2134c69774e8e0bacc0d180e9f652dbf8d64a4354a510518",
+  "retainedActualInputObjects": 13,
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/activation-retention-proof-2x9sou2_",
+    "indexSha256": "1bb414b693c2f85c1faca1c54d2d3262e0c49736917bcb98d159c423f99bbbbd",
+    "references": 59,
+    "objects": 58,
+    "compressedBytes": 16084074,
+    "readBackVerified": true,
+    "sourceArchive": {
+      "name": "/Users/s/code/breditor/target/activation-retention-proof-2x9sou2_/executed-source.tar.gz",
+      "bytes": 20090850,
+      "sha256": "f3d92b5a37f2b71786ae781878b48bb93a0ffc40e844d41ecfe40e1a3ffe5789"
+    }
+  },
+  "reproducedBug": "An inert retainChoice callback awaited owner shutdown while preparation awaited that callback and shutdown awaited preparation. Original actual-corpus reproducer failed; unchanged reproducer passes after repair.",
+  "unchangedFailedReproducerSha256": "a6db4ab960f9c67701c6af610556784cae363614bbbd018328ccccda8b7644ef",
+  "repair": "Only the DATA-hook wait observes the supplied owner lifetime and can end on cancellation. Both late outcomes stay observed; cancellation creates no intent. Successful retention still precedes absent-only intent creation, fresh source/Native checks and any actual commit.",
+  "scope": "Actual retained corpus decoded/encoded with normal Rust hashing; three callback lifetime/ordering cases, eleven existing intent storage/encoding laws, controlled browser storage/locks.",
+  "unchanged": [
+    "HTTP and transaction ownership/draining",
+    "Actual Native unknown-outcome handling",
+    "Original wire/record formats and defaults",
+    "Rust and normal Wasm",
+    "Public package root exports",
+    "Package versions"
+  ],
+  "notQualified": [
+    "Complete joint-owner callback cancellation",
+    "Host provisioning callback lifetime",
+    "Complete joint Native activation/publication and cold reconstruction",
+    "Physical database crash durability",
+    "Historical archive-read or WebKit fault repair",
+    "Full V1 feature parity and release gates"
+  ],
+  "nativeRequestsIssued": 0,
+  "fullJointCallbackCloseQualified": false,
+  "wholeRoomActivated": false,
+  "v1Ready": false,
+  "v1GatesOpen": 13
+}

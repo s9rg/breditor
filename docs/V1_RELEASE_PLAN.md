@@ -5845,3 +5845,27 @@ which requires semantic verification. The separate inert DATA-retention callback
 repair, cold joint-owner reconstruction, physical durability, historical faults,
 remaining parity and all thirteen V1 release gates stay open. No version, push,
 tag, publication or deployment is made.
+
+
+### November 3, 2026 — inert activation choice retention
+
+A host DATA-retention callback could await owner shutdown while shutdown awaited
+the preparation containing that same callback. The original actual-corpus
+reproducer fails before the repair and passes unchanged afterward. The private
+retention action now observes the supplied owner lifetime and both late callback
+outcomes. Cancellation writes no intent; successful retention still precedes the
+absent-only durable intent and fresh source/Native checks. HTTP, transactions,
+resource borrowers and unknown Native outcomes keep their existing draining rules.
+
+Source and independently installed packages each pass fourteen mandatory cases
+(three new lifetime/ordering cases, eleven existing intent laws). Strict private
+types pass; all 2,829 installed distribution files match without workspace links.
+See `ACTIVATION_CHOICE_RETENTION.md` and
+`qualification/2026-11-03-activation-choice-retention.json` for exact source/proof
+and retained actual corpus pins. These are DATA preparation tests; no Native
+commit or publication is inferred.
+
+Complete joint-owner callback cancellation and provisioning lifetime remain
+separate qualification. Combined activation/publication, cold reconstruction,
+physical durability, historical faults, remaining parity and all thirteen V1
+release gates remain open. No version, push, tag, publication or deployment is made.
