@@ -1,0 +1,78 @@
+{
+  "format": "breditor/metadata-handoff-request-qualification",
+  "formatVersion": 1,
+  "source": {
+    "commit": "ca63b5a04abd58373dd48ae24c59d1029baef6f4",
+    "dirty": true,
+    "sha256": "2ba8563395c6b5701181cd11fc8afccc73bc43db72673e14b1d075535dbae9ec",
+    "files": 8227,
+    "bytes": 67249378
+  },
+  "isolatedCheckpoint": "de2a96e",
+  "mainCopiedSourceBeforeDocumentation": {
+    "commit": "60eba9ad1ef2d87b6e4bb62d852804839afd066c",
+    "dirty": true,
+    "sha256": "2ba8563395c6b5701181cd11fc8afccc73bc43db72673e14b1d075535dbae9ec",
+    "files": 8227,
+    "bytes": 67249378
+  },
+  "sourceQualification": "/private/tmp/breditor-risk-handoff-20261103-qe4xcv30/target/metadata-handoff-source-eC1Amc/result.json",
+  "installedQualification": "/private/tmp/breditor-metadata-handoff-installed-cFwwa7/result.json",
+  "sourceCases": 28,
+  "installedCases": 28,
+  "fastContractCasesPerEnvironment": 18,
+  "actualNativeParentCasesPerEnvironment": 1,
+  "nestedNativeStorageCasesPerEnvironment": 9,
+  "mainFocusedCases": 18,
+  "strictPrivateSourceAndInstalledTypes": true,
+  "matchingMainInstalledDistributionFiles": 2835,
+  "workspaceLinks": false,
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "nativeBinarySha256": "60427bb794f52c39a7084fac797f8f3150501238c45c78bad6195cd928a252ca",
+  "nativeRebuilt": false,
+  "actualFamilies": 7,
+  "actualLocalMetadataLanes": 3,
+  "originalVersionAndRevisionReceiptsAndPendingPacketsPreserved": true,
+  "interruptedMetadataWriteResumed": true,
+  "exactFutureDocumentAndCommentHistories": true,
+  "reproducedBug": "Joint coordinators spread composite metadata/publication inputs into closed metadata receivers. Preview rejected the metadata approval and publication approval fields; a publication continuation also leaked the final publication hook into its run request.",
+  "unchangedFailedReproducerSha256": "ab2ccca9441c904f3b7a4a20ddd4d06bf3fbfb9c01449c8b16fdeb58d495d35c",
+  "reproducerBefore": {
+    "cases": 5,
+    "passed": 2,
+    "failed": 3
+  },
+  "reproducerAfter": {
+    "cases": 5,
+    "passed": 5,
+    "failed": 0
+  },
+  "repair": "Private explicit preview/run request projection, with exact seed-key admission. Preview carries no approvals; continuation carries only its metadata approval and expected choice. Final publication stays with the owning coordinator. The receiving parser body and actual witness-first admission remain unchanged.",
+  "scope": "Isolated component integrated by exact full-source identity into main, compiled distribution byte-equal to the independently installed packages. Genuine seven-family metadata continuation uses the projectors with a final publication hook that throws if invoked. No complete joint/publication or physical-browser claim.",
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/metadata-handoff-proof-jhga87kw",
+    "indexSha256": "15b078220fdf819f40fb90e6eccae9ec239b0b85b237cd6aea2857723321fb0d",
+    "references": 92,
+    "objects": 89,
+    "compressedBytes": 30286024,
+    "readBackVerified": true,
+    "sourceArchive": {
+      "name": "/Users/s/code/breditor/target/metadata-handoff-proof-jhga87kw/executed-source.tar.gz",
+      "bytes": 20114627,
+      "sha256": "0981bf4706e9aca92757c19f2c3b0868ae0508afd712da193986a494d4d0791e"
+    }
+  },
+  "notQualified": [
+    "Complete Warm or Cold joint Native activation/metadata/publication workflows",
+    "Fresh Native process reassociation",
+    "Full policy combinations and physical browser crash durability",
+    "Historical archive-read or WebKit fault repair",
+    "Full V1 feature parity and release gates"
+  ],
+  "wholeRoomActivated": false,
+  "completeJointPublicationQualified": false,
+  "physicalDurabilityQualified": false,
+  "historicalFaultsRepaired": false,
+  "v1Ready": false,
+  "v1GatesOpen": 13
+}

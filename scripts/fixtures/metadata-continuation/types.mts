@@ -17,3 +17,18 @@ void withRoomExecutionMetadataTarget(attempt,reads,async(scope:SelectedNativeRec
 // @ts-expect-error A persisted description cannot manufacture a real visit witness.
 const copied:RoomMetadataTargetWitness={};
 void copied;
+
+import {metadataContinuationPreviewRequest,metadataContinuationRunRequest} from '../../../packages/breditor-collaboration/dist/selected_local_metadata_continuation/requests.js';
+const publicationSeed={...input,approvePublication:(_choice:{readonly publication:string})=>true};
+const {expected:priorChoice,...previewSeed}=publicationSeed;
+const previewRequest=metadataContinuationPreviewRequest(previewSeed);
+const runRequest=metadataContinuationRunRequest(publicationSeed);
+const projectedPreview:typeof inspection=previewRequest;
+const projectedRun:MetadataContinuationInput=runRequest;
+void[priorChoice,projectedPreview,projectedRun];
+// @ts-expect-error A read-only request has no metadata approval callback.
+previewRequest.approve;
+// @ts-expect-error Final publication approval stays with the owning coordinator.
+runRequest.approvePublication;
+// @ts-expect-error Continuation requires its expected choice.
+metadataContinuationRunRequest(previewSeed);

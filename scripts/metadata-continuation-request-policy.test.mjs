@@ -1,0 +1,13 @@
+/** Request-shape policy only. These intentionally unadmitted seeds grant no
+ * target, source, Native service, journal acknowledgement or writer. */
+import test from 'node:test';import assert from 'node:assert/strict';
+import * as publicApi from '../packages/breditor-collaboration/dist/index.js';
+import {metadataContinuationPreviewRequest as preview,metadataContinuationRunRequest as run} from '../packages/breditor-collaboration/dist/selected_local_metadata_continuation/requests.js';
+const seed=()=>({database:'intent',preparationDatabase:'prepared',reviewDatabase:'review',metadataDatabase:'metadata',origin:{inert:true},host:{inert:true},inventory:{inert:true},checkAuthority(){},approve:()=>true});
+test('projection refuses unrelated state fields instead of silently stripping them',()=>{for(const key of ['ready','receipt','execution','takeOwner']){assert.throws(()=>preview({...seed(),[key]:true}));assert.throws(()=>run({...seed(),expected:{},[key]:true}));}});
+test('preview cannot accept a stored expected choice as fresh approval',()=>{assert.throws(()=>preview({...seed(),expected:{}}));});
+test('publication approval cannot substitute for missing metadata approval',()=>{const input={...seed(),approvePublication:()=>true};delete input.approve;assert.throws(()=>preview(input));assert.throws(()=>run({...input,expected:{}}));});
+test('accessor decisions and expected values refuse without invoking getters',()=>{for(const key of ['approve','expected']){let calls=0;const input={...seed(),expected:{}};Object.defineProperty(input,key,{enumerable:true,get(){calls++;throw Error('No accessor execution');}});assert.throws(()=>run(input));assert.equal(calls,0);}});
+test('builders invoke no origin, authority, approval, publication or JSON hooks',()=>{let calls=0;const input={...seed(),origin:new Proxy({},{get(){calls++;throw Error('No body parsing');}}),checkAuthority(){calls++;},approve(){calls++;return true;},approvePublication(){calls++;return true;}};preview(input);run({...input,expected:{}});assert.equal(calls,0);assert.throws(()=>preview({...input,toJSON(){calls++;}}));assert.equal(calls,0);});
+test('each frozen request retains the selected callback rather than a later seed mutation',()=>{const input=seed(),approve=input.approve,expected=Object.freeze({inert:true}),result=run({...input,expected});input.approve=()=>false;assert.equal(result.approve,approve);assert.equal(result.expected,expected);assert.equal(Object.isFrozen(result),true);});
+test('private request builders add no public package-root capability',()=>{assert.equal('metadataContinuationPreviewRequest'in publicApi,false);assert.equal('metadataContinuationRunRequest'in publicApi,false);});
