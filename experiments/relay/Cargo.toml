@@ -145,3 +145,8 @@ required-features = ["server"]
 name = "native_activation_sdk_functional"
 path = "examples/native_activation_sdk_functional.rs"
 required-features = ["server"]
+
+[[example]]
+name = "native_publication_sdk_functional"
+path = "examples/native_publication_sdk_functional.rs"
+required-features = ["server"]

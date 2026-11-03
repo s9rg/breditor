@@ -1,6 +1,7 @@
 //! Authenticated publication owns a real listener and actual committed Native
 //! service. The joint descriptor pin is association DATA, never local readiness.
 mod identity;
+mod observe;
 mod prepare;
 mod publish;
 mod routes;

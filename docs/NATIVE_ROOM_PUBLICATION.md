@@ -127,3 +127,71 @@ admission; no timeout or production refusal policy was relaxed.
 This qualifies the Native component. Complete joint SDK activation/publication,
 independent installed seven-family publication, physical storage, remaining parity
 and all thirteen V1 gates remain open. Historical faults remain unverified.
+
+## Private SDK requester and actual observation
+
+`SharedNativeRoomPublicationHost` is a private SDK component configured with an
+independently selected endpoint, exact Native publication choice, operator token
+provider and current host authority check. Construction performs no request.
+Descriptions are detached without invoking accessors. A request reserves its
+actual requester before caller reflection, then rechecks host and held-source
+authority after asynchronous token work and response reads.
+
+`publish` submits an already-retained joint descriptor pin. It does not capture
+that descriptor or own the browser clients. Every incomplete outcome after a
+request may have started remains `publication_outcome_unknown`; there is no
+automatic retry or implied rollback. An explicit retry against the same actual
+Native owner must return the same receipt without advancing the epoch. A joint
+coordinator must retain actual local custody through these outcomes. A receipt's
+scope remains `actual-held-native-service-and-bound-listener; joint-association-only`.
+No source, replacement editor, metadata acknowledgement or whole-room readiness
+can be created from that receipt.
+
+Rust's host-only `NativeRoomPublication::observe` reads the actual held serving
+state while checking the current deployment transaction. It never starts serving.
+Unpublished, closed or superseded owners refuse observation. The dedicated SDK
+fixture provisions controls through private IPC and starts normal serving only
+through authenticated HTTP; its IPC protocol has no FinishActivation action.
+Subsequent IPC observes that actual Rust publication rather than returning a
+fabricated readiness marker.
+
+## Repeatable SDK component checks
+
+After compiling the collaboration package, run these in order on the same source
+snapshot:
+
+```sh
+npm run build:collaboration:native-publication:fixture
+npm run test:collaboration:native-publication
+npm run test:collaboration:native-publication:installed
+```
+
+The fixture builder uses a separate development-profile Native binary with
+debug information and incremental compilation disabled, two Cargo jobs and a
+3 GiB artifact ceiling in `target/sdk-native-publication-native`. It preserves
+normal Wasm and existing fixture executables. The new target also leaves the
+previous development binary available to any already-running diagnostic.
+
+Both checkers require all 22 cases and strict private declarations. The real
+workflow cold-reopens seven client families, retains fourteen unsent original
+document/comment suffixes and three actual upload acknowledgements, then loses
+one actual activation reply and one actual publication reply. Explicit retries
+use the same real owner and one Native epoch. Original protocol delivery and
+future document/comment Undo/Redo must remain exact for every client. The
+artifact checker verifies the complete saved intent, Native receipt and
+descriptor pins as well as the original pending/checked observations. Matching
+green test counts alone do not suffice.
+
+The installed checker packs three SDK archives, installs without workspace links
+using the pinned registry lock, compares every distribution file, and only rewrites
+fixture module locations reversibly. It rejects source drift and changed Native,
+Wasm or compiler artifacts. Both commands qualify this component, not complete
+joint local actor transfer and metadata continuation. Physical storage, the full
+policy matrix, complete candidate profiles and all thirteen V1 gates stay open.
+
+The [2026-11-03 SDK qualification](qualification/2026-11-03-sdk-native-publication.json)
+passes both complete 22-case commands on the unchanged source, with all 2,825
+installed distribution files matching. It retains the actual Native binary,
+complete public workflow artifacts and exact packages in a read-back-verified
+proof. This component does not complete the joint replacement/metadata owner
+or close any V1 release gate.

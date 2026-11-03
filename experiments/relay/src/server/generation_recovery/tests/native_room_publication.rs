@@ -121,6 +121,7 @@ async fn native_publication_serves_original_document_and_comment_protocol_for_al
     for document in [false, true] {
         for review in [false, true] {
             let fixture = Box::pin(Fixture::new((document, review))).await?;
+            assert!(fixture.publication.observe().await.is_err());
             let before = fixture.setup.ledger()?;
             assert_eq!(
                 fixture
@@ -132,8 +133,10 @@ async fn native_publication_serves_original_document_and_comment_protocol_for_al
             );
             assert_eq!(fixture.setup.ledger()?, before);
             fixture.commit().await?;
+            assert!(fixture.publication.observe().await.is_err());
             let committed = fixture.setup.ledger()?;
             let receipt = fixture.publish().await?;
+            assert_eq!(serde_json::to_vec(&fixture.publication.observe().await?)?, receipt);
             assert_eq!(fixture.publish().await?, receipt);
             assert_eq!(fixture.setup.ledger()?, committed);
             let active = fixture.resumed().await?;
@@ -147,6 +150,7 @@ async fn native_publication_serves_original_document_and_comment_protocol_for_al
             // completing axum's HTTP server alone does not prove that.
             assert_eq!(publication_observation_for_test(&fixture.publication).2, 1);
             fixture.publication.close().await?;
+            assert!(fixture.publication.observe().await.is_err());
             assert_eq!(publication_observation_for_test(&fixture.publication).2, 0);
             assert_eq!(fixture.setup.ledger()?, committed);
             fixture
@@ -393,6 +397,7 @@ async fn native_publication_repeat_rechecks_current_epoch_and_never_revives_supe
     fixture.publish().await?;
     let selected = fixture.setup.authority.current_selection()?;
     fixture.setup.authority.claim(&selected)?.close();
+    assert!(fixture.publication.observe().await.is_err());
     let before = fixture.setup.ledger()?;
     assert_ne!(
         fixture

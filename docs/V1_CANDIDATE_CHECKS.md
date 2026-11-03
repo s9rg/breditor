@@ -1,5 +1,28 @@
 # V1 candidate checks
 
+[SDK Native publication](NATIVE_ROOM_PUBLICATION.md#repeatable-sdk-component-checks)
+now passes both checked-in 22-case commands on one unchanged source snapshot,
+including strict private declarations and 2,825 byte-matching independently
+installed distribution files. Actual Rust HTTP controls commit and publish one
+Native epoch while seven cold client families retain fourteen original offline
+document/comment suffixes, three real image upload acknowledgements and exact
+future native histories. Separate lost commit/publication replies require
+explicit retries against the same actual owner; IPC only provisions and observes.
+The artifact checker verifies complete retained intent bytes, descriptor pins,
+actual receipts and the subsequent original-protocol delivery.
+
+The [qualification](qualification/2026-11-03-sdk-native-publication.json) retains
+source, independent packages, the exact Native binary, public workflow artifacts,
+logs and earlier development failures in a compressed, read-back-verified proof.
+The 192-case Native generation regression and strict lint preceded the new
+JavaScript runners; all 3,158 Native build input files match the final source.
+This is a private component checkpoint. The complete joint owner is being tested
+separately; actor transfer plus metadata continuation, physical durability, full
+policy/candidate matrices, remaining parity and all thirteen V1 gates remain
+open. Neither historical archive-read nor WebKit fault is declared repaired.
+Original protocols/defaults, versions, normal Wasm and public-root exports stay
+unchanged.
+
 [Approved retirement retry](NATIVE_ACTIVATION_SOURCE_SESSION.md#retrying-an-approved-partial-retirement)
 repairs a reproduced failure where a partial durable source close left all fourteen
 actors held but could never continue into replacements. The exact unchanged
