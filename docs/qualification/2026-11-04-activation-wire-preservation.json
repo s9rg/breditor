@@ -1,0 +1,109 @@
+{
+  "format": "breditor/activation-wire-preservation-qualification",
+  "formatVersion": 1,
+  "qualifiedSource": {
+    "commit": "cdd74dd1feae6bc15a61537d580bddb8588c0ea2",
+    "dirty": false,
+    "sha256": "abd3ed0bef33c6fcc7ed33cd1bda584f96ea80c2660baef48bda24975e5d5720",
+    "files": 8327,
+    "bytes": 67784928
+  },
+  "originSource": {
+    "commit": "74476ffaf4d1f8ed68f47798bd8d25d8bdd6240e",
+    "sha256": "93635350fd0871c9eb58addf0e275881dd7b4c14b7010623cae2ae1c745995f0"
+  },
+  "reproducedDefects": [
+    "Admitted wire graph/object/property order loses its selected byte identity when canonical re-encoding is used for reassociation.",
+    "A mutable input graph can change after its genuine Native hash and before parsing.",
+    "Absent-only creation can persist a later caller graph instead of the validated original."
+  ],
+  "checks": [
+    {
+      "name": "wire and original intent laws",
+      "environment": "source",
+      "cases": 20,
+      "passed": true,
+      "logSha256": "7331442e26dbfb9430f35aecfb42f5538ad6f5deee3a9b8688771e6dc573f7f8"
+    },
+    {
+      "name": "wire and original intent laws",
+      "environment": "independently installed",
+      "cases": 20,
+      "passed": true,
+      "logSha256": "161f28399404aae738d59821930ff81c2acae49ae6ba62b5b58cd7adfbff16fe"
+    },
+    {
+      "name": "retention and original intent laws with actual saved capture",
+      "environment": "source",
+      "cases": 15,
+      "passed": true,
+      "strictPrivateTypes": true,
+      "logSha256": "573764d5566f24e457b51a9b2fed85e2c5fd10577e3ba80af470d1e5c42c1b86"
+    },
+    {
+      "name": "retention and original intent laws with actual saved capture",
+      "environment": "independently installed",
+      "cases": 15,
+      "passed": true,
+      "strictPrivateTypes": true,
+      "logSha256": "a7f5a5f6b1618f595fba94a0d807ad4db476ba1c2b0ab7e8469b9934df18a1c0"
+    }
+  ],
+  "overlap": "Both worksets include the same twelve original intent cases. There are twenty-three distinct cases per environment, not thirty-five.",
+  "generatedOutput": {
+    "format": "breditor/generated-package-output",
+    "formatVersion": 1,
+    "passed": true,
+    "packages": [
+      {
+        "package": "breditor-browser",
+        "output": "dist",
+        "generatedFiles": 188,
+        "generatedTreeSha256": "6cda250d971b5933b4dd94cc224d61876d4598cb107ee448c3d54d3033df70ba",
+        "externalInputs": []
+      },
+      {
+        "package": "breditor-experimental-rich-content",
+        "output": "dist/browser",
+        "generatedFiles": 172,
+        "generatedTreeSha256": "f03b0cee45a4ee35bfbe03fe4dc0283fd3369bccc99b20734587968121c60f64",
+        "externalInputs": []
+      },
+      {
+        "package": "breditor-collaboration",
+        "output": "dist",
+        "generatedFiles": 2510,
+        "generatedTreeSha256": "2d1f215594d352afb4fc67f67249080aa0fc02c69842ab2a373aebc5742ad6c5",
+        "externalInputs": [
+          {
+            "directory": "runtime",
+            "files": 7,
+            "treeSha256": "d1c557100fbf63c6d62b298d909ae1656d5ab2f8ed26e420aed2ab47b2691cdc"
+          }
+        ]
+      }
+    ],
+    "scope": "Exact TypeScript output names and bytes; separately qualified Wasm/glue inputs held unchanged. Not a new Wasm build or functional qualification."
+  },
+  "matchingInstalledDistFiles": 2885,
+  "matchingIntegratedMainDistFiles": 2885,
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "jointNativeSha256": "70d9e8becba4421be4fdfb33b5d08b7ba2efc7d36c5ca521c287104e4ebc8347",
+  "proof": {
+    "directory": "target/activation-wire-integration-proof-wujbepxi",
+    "indexSha256": "ecfa673514a2db406d6f9393817b27cb31525422f6d455a59b0cdc6ab72a11fc",
+    "compressedBytes": 67881837,
+    "readBackVerified": true,
+    "sourceFiles": 8327,
+    "references": 70,
+    "nestedComponentReferences": 141
+  },
+  "scope": "Small Main capture byte-identity and snapshot repair, using real Rust hashing and controlled Node IndexedDB. Exact qualified source checkpoint cdd74dd1 was fast-forwarded into Main; all 2885 Main dist files match the qualified output. Documentation and this evidence record follow that tested checkpoint. The explicit rebind action remains private and its larger coordinator wiring is separately frozen under full process/installed qualification.",
+  "wholeRoomActivated": false,
+  "physicalCrashQualified": false,
+  "historicalArchiveReadFaultRepaired": false,
+  "historicalWebKitFaultRepaired": false,
+  "v1Ready": false,
+  "v1GatesOpen": 13,
+  "remotePromotion": false
+}

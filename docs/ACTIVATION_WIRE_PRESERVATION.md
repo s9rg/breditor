@@ -50,8 +50,22 @@ and digest cleanup on abort. The independent checker packs and installs the same
 assertions, verifies exact emitted output/package bytes and checks private types.
 Independent results must accompany integration; the command is not itself a pass.
 
-The explicit rebinding action is still isolated. The separately running full
-restart workflows use their original frozen implementations. Wiring this action
-into their capture/preparation steps and qualifying that composed change remain
-required. These DATA checks do not repair the historical archive-read/WebKit
-faults or qualify physical durability, whole-room activation or V1.
+The small decoder/storage repair and private rebinding action are integrated in
+Main. The exact Main-based source checkpoint passes both the 20-case wire workset
+and the 15-case existing capture/lifetime workset, from source and independently
+installed packages. These share twelve original intent laws: twenty-three distinct
+cases per environment. Strict private declarations pass, and all 2,885 Main and
+installed distribution files match the qualified output.
+
+The [qualification](qualification/2026-11-04-activation-wire-preservation.json)
+retains both exact source snapshots, original failures and passing replays, complete
+saved captures, installed packages/locks/assertions and logs in a compressed,
+read-back-verified proof. Original wire formats, canonical fresh encoding, Native
+and Wasm runtime inputs, versions and public-root exports remain unchanged.
+
+The larger restart coordinator remains in a separate frozen checkout. Its capture
+and interrupted-preparation actions now use explicit byte-preserving rebinding;
+complete Native restart and independently installed repeated-restart tests must
+finish before that composed change is integrated. The focused DATA checks above
+do not repair the historical archive-read/WebKit faults or qualify physical
+durability, whole-room activation or V1. All thirteen V1 gates remain open.

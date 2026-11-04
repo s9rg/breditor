@@ -1,5 +1,19 @@
 # Breditor V1 release preparation
 
+[Activation capture wire preservation](ACTIVATION_WIRE_PRESERVATION.md) now repairs
+three reproduced data-integrity failures: reassociation changing admitted graph
+bytes, decoding a caller graph changed after hashing, and creation persisting
+later unverified caller bytes. The small repair is integrated from an isolated,
+Main-based checkpoint. Wire20 and existing capture/lifetime15 worksets pass from
+source and independently installed packages (twelve cases overlap). Strict private
+types and all 2,885 generated/installed/Main distribution files match.
+
+The larger client restart coordinator remains separately frozen under full
+process and installed repeated-restart qualification. The focused repair does
+not close that integration boundary, historical faults or any V1 gate. See the
+[retained qualification](qualification/2026-11-04-activation-wire-preservation.json)
+for exact source, proof and scope. No version or remote promotion is made.
+
 [Immutable cold capture replay](IMMUTABLE_ACTIVATION_CAPTURE.md) repairs a decoder
 root that could not be re-encoded for a new Native association. Main source and
 independently installed retention worksets pass 15 cases each, including durable
