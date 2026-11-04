@@ -191,3 +191,46 @@ output and strict private types. Run it separately with
 This separate one-case workset does not change or qualify the default 17-case
 Native workset. Full pending/repeated reconstruction must still run on a fresh
 frozen snapshot; no product or archive-fault repair is claimed by this fixture fix.
+
+## Immutable cold capture repair
+
+The clean committed-process source run at `5878e67e` restored all fourteen actors
+and seven private targets after a real committed Native process death, then
+refused before the intended descriptor-write interruption. The test's generic
+rejection assertion concealed that earlier error. Its original terminal log is
+retained (SHA-256
+`f9296a49df38f7bedd95b6b1dc964312ffebb3af647f77d388f27608b124d5cb`).
+
+The saved complete intent independently reproduces a mandatory failure in the
+next path: the decoder's `fields()` call created a new, unfrozen top-level
+projection, and the encoder correctly refuses unfrozen capture data. All nested
+tagged values were already immutable. Freezing the detached root restores that
+contract; no graph fields, objects, identities, limits or encoder validation are
+changed. The actual saved 13-object, 15,927,052-byte capture now re-encodes with
+identical graph/payload pins under its real reopened Native selection.
+
+The focused regression fails before the fix. The corrected intent suite passes
+12 cases, including both direct and durable cold-store decode/re-encode; the
+retention source/independently installed worksets pass 15 cases. The broader
+association/admission/retention/intent source workset passes 27 cases. A separate
+bounded ten-process diagnostic sample passes the same 15 checks each time.
+An earlier final-source run had one unexpected archive-integrity refusal in an
+existing occupied-data case. That original failure remains retained; the later
+passes do not repair the intermittent archive-read fault. Unexpected refusal
+logging now preserves its finite read diagnostics, and interruption assertions
+rethrow the actual earlier failure if the intended write was never reached.
+
+The frozen pending run at `b09c2aa7` was deliberately stopped after this mandatory
+decode/encode refusal was reproduced; its original observations and stop record
+remain intact. Complete corrected committed and pending/repeated workflows still
+need qualification before the client owner can be integrated.
+
+## Explicit saved DATA replay
+
+`probe-selected-current-data.mjs` reads an explicitly selected saved archive
+using only the bounded native digest capability. It exposes no actor factory,
+storage writer or external requester. Selection JSON and runtime directory are
+separate inputs; `--fixture-raster` explicitly selects the controlled test raster
+decoder. The retained 8,261,282-byte input passes with all seven participant
+payloads and nine original input files readable. This checks the saved bytes,
+not the physical Blob construction or a live room.
