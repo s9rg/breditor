@@ -84,3 +84,27 @@ change either original failed result or supply ordinary qualification.
 No upstream Node cause, connection to the historical WebKit fault, or repair is
 established. The already qualified Main capture/snapshot fixes remain valid;
 these failures do not qualify the larger coordinator or close any V1 gate.
+
+
+## Archive errors hidden by assertions
+
+Node's failed `assert.rejects` validator retains the original error in its
+`actual` property, but ordinary TAP output can omit that error's stack and
+numerical read observations. A separate forensic run reached this case while
+expecting an uncertain activation response. It failed with an archive error
+inside the assertion and retained no incomplete Blob witness. That outcome is
+not established to be the same zero-byte failure as the two ordinary runs.
+
+`scripts/diagnostics/archive-error-chain.mjs` now provides bounded post-error
+reporting through `actual`, `cause` and aggregate members. It reads owned data
+properties, skips application getters, supports Node's native lazy stack getter,
+and rethrows the exact original error. It changes no reader or SDK command and
+performs no retry. Reports include validated measurements, error codes and up
+to eight stack frames, omitting the message line.
+
+The [six focused checks](qualification/2026-11-04-archive-error-chain-observer.json)
+cover a real failed Node assertion, cycles/duplicates, getters, logger failure,
+successful results, malformed observations and the original archive stack.
+An additional ordinary full attempt uses this reporting around the unchanged
+functional workflow; its host read methods remain unchanged. That attempt and
+the separate Native callback trace are incomplete. Neither constitutes a repair.
