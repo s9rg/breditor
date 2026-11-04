@@ -14,6 +14,8 @@ const sha=data=>createHash('sha256').update(data).digest('hex');
 const tests=['scripts/native-uncertainty-read-evidence.test.mjs','scripts/native-activation-transport.test.mjs','scripts/native-publication-transport.test.mjs','scripts/room-native-activation-intent.test.mjs','scripts/diagnostics/archive-error-chain.test.mjs'];
 const types=['scripts/fixtures/metadata-continuation/types.mts','scripts/fixtures/native-joint-reassociation/types.mts','scripts/fixtures/activation-wire/types.mts','scripts/fixtures/editor-consumer/types-room-record-cut.ts'];
 const expectedCases=81,folders=['breditor-browser','breditor-experimental-rich-content','breditor-collaboration'];
+const resource='scripts/fixtures/local-metadata/pending-source-packet-recovery.archive',resourceBytes=fs.readFileSync(join(root,resource));
+assert.equal(sha(resourceBytes),'f49c7ed524d513b34c214fc41b7d7452eaa8cd1100d4b2817cb5afb79883ff99');
 const mapping=new Map(folders.map(folder=>[folder,JSON.parse(fs.readFileSync(join(root,'packages',folder,'package.json'))).name]));
 const generatedOutput=JSON.parse(execFileSync(process.execPath,['scripts/check-generated-package-output.mjs'],{cwd:root,encoding:'utf8',maxBuffer:4*1024*1024}));assert.equal(generatedOutput.passed,true);
 const directory=fs.mkdtempSync('/private/tmp/breditor-native-uncertainty-'+mode.slice(2)+'-');
@@ -45,6 +47,7 @@ if(mode==='--installed'){
   }
  }
  for(const path of [...tests,...types])copyScript(path);
+ fs.mkdirSync(dirname(join(consumer,resource)),{recursive:true});fs.writeFileSync(join(consumer,resource),resourceBytes);
  for(const pack of packs){const path=join(archiveDirectory,pack.filename);archives.push({name:pack.name,path,sha256:sha(fs.readFileSync(path))});}
 }
 
@@ -61,7 +64,7 @@ function packageManifest(){
 const before=packageManifest();assert.equal(before.length,2917);
 const normalWasmSha256=before.find(row=>row.package==='@breditor/collaboration'&&row.path==='runtime/breditor_shared_bg.wasm').sha256;
 assert.equal(normalWasmSha256,'165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0');
-const state={format:'breditor/native-uncertainty-read-evidence',formatVersion:1,mode,source,directory,consumer,generatedOutput,copied,archives,registryArtifacts,workspaceSdkLinks:mode==='--source'?null:false,matchingPackageDistFiles:before.length,packageManifestSha256:sha(JSON.stringify(before)),normalWasmSha256,complete:false,releaseReady:false,physicalReadFaultRepaired:false};
+const state={format:'breditor/native-uncertainty-read-evidence',formatVersion:1,mode,source,directory,consumer,generatedOutput,copied,archives,registryArtifacts,literalResources:[{path:resource,bytes:resourceBytes.length,sha256:sha(resourceBytes)}],workspaceSdkLinks:mode==='--source'?null:false,matchingPackageDistFiles:before.length,packageManifestSha256:sha(JSON.stringify(before)),normalWasmSha256,complete:false,releaseReady:false,physicalReadFaultRepaired:false};
 saveEvidence(join(directory,'running.json'),state);
 const prefix=join(root,'target/native-uncertainty-evidence-'+mode.slice(2));saveEvidence(prefix+'-running.json',{directory,consumer});
 try{
@@ -72,7 +75,7 @@ try{
  try{execution=await new Promise((done,fail)=>{child.once('error',fail);child.once('exit',(code,signal)=>done({pid:child.pid,code,signal}));});}finally{clearTimeout(timer);}
  saveEvidence(join(directory,'exit.json'),execution);assert.equal(execution.code,0,'Read '+path);assert.equal(execution.signal,null);
  const log=fs.readFileSync(path,'utf8');for(const[key,n]of[['tests',expectedCases],['pass',expectedCases],['fail',0],['skipped',0],['cancelled',0],['todo',0]])assert.match(log,new RegExp('^# '+key+' '+n+'$','m'));
- assert.deepEqual(sourceEvidence(root),source);assert.deepEqual(packageManifest(),before);
+ assert.deepEqual(sourceEvidence(root),source);assert.deepEqual(packageManifest(),before);assert.equal(sha(fs.readFileSync(join(consumer,resource))),sha(resourceBytes));
  Object.assign(state,{complete:true,passed:true,cases:expectedCases,strictPrivateTypeContracts:4,sourceUnchanged:true,packageBytesUnchanged:true,log:path,logSha256:sha(log),scope:'Failure-observation mappings and existing transport/intent/diagnostic laws only. No actual Native server restart, physical short-read repair, public production or V1 qualification.'});
  saveEvidence(join(directory,'result.json'),state);saveEvidence(prefix+'-result.json',state);
  console.log(JSON.stringify({directory,passed:true,cases:expectedCases,matchingPackageDistFiles:before.length}));
