@@ -108,3 +108,26 @@ successful results, malformed observations and the original archive stack.
 An additional ordinary full attempt uses this reporting around the unchanged
 functional workflow; its host read methods remain unchanged. That attempt and
 the separate Native callback trace are incomplete. Neither constitutes a repair.
+
+
+## November 4: a separate lineage payload read also returns zero
+
+The original-host-method workflow with bounded error-chain reporting fails at a
+408-byte lineage payload copy: the returned buffer is already empty before its
+post-read authority callback, and remains empty afterward. The error is
+`restored_graph_integrity`, from `ownedLineagePayload` during `encodeGraph` and
+cold graph-envelope reconstruction. This is a distinct caller of Blob slice/read,
+before that copy's digest validation. An archive-integrity-context-only explanation
+is therefore insufficient; an upstream cause is still unproven.
+
+The case exits with one failure after 1,848,625.55 ms, without a timeout. Its source,
+fixed runtimes and four explicit reporting inputs are unchanged. The complete
+prior DATA archive and the exact failure/reporting inputs are retained with the
+[request-snapshot qualification proof](qualification/2026-11-04-record-cut-request-snapshot.json).
+The physical failed Blob is not retained. The separate Native callback trace is
+still in progress when this record is written. No reader is retried or relaxed.
+
+The separately reproduced [room-cut request mutation](RECORD_CUT_REQUEST_SNAPSHOT.md)
+has a qualified repair. It does not explain or repair this zero-byte read, either
+of the earlier larger zero-byte records, or the historical WebKit observation.
+The larger restart coordinator remains isolated and all 13 V1 gates remain open.

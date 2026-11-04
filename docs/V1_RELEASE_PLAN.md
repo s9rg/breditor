@@ -1,5 +1,13 @@
 # Breditor V1 release preparation
 
+November 4 isolated integrity checkpoint: [complete room-cut request snapshots](RECORD_CUT_REQUEST_SNAPSHOT.md)
+are now integrated after 82 source and 82 independent installed checks. All 2,887
+compiled SDK files match the tested packages; protected runtimes remain unchanged.
+This fixes a reproduced private encoder input-lifetime defect. A separate ordinary
+408-byte lineage read returned zero and remains unresolved. The larger restart
+coordinator is still isolated. All 13 V1 gates remain open.
+
+
 The combined client restart coordinator remains isolated. Its 57 source checks
 pass, but new ordinary source and independently installed full workflows each
 reproduce an empty Blob read before the restart association is reached. Exact
