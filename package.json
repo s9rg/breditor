@@ -73,7 +73,7 @@
     "test:collaboration:joint-reassociation:pending-repeated": "node --test --test-concurrency=1 scripts/joint-reassociation-pending-repeated-native.test.mjs",
     "test:collaboration:joint-reassociation:pending-repeated:installed": "node scripts/check-joint-reassociation-installed.mjs --pending-repeated",
     "test:collaboration:prepared-cold-start": "node --test --test-concurrency=1 scripts/cold-room-prepared-start.test.mjs",
-    "test:collaboration:prepared-cold-start:installed": "node scripts/check-joint-reassociation-installed.mjs --prepared-start"
+    "test:collaboration:prepared-cold-start:installed": "node scripts/check-cold-prepared-start-installed.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
