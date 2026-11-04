@@ -95,3 +95,31 @@ Main integration separately passed the four focused native tests and the full
 144-configuration compatibility probe. All six integrated code/test files match
 the independently qualified source byte-for-byte. The default Wasm and both
 protected Native fixtures retain their original hashes.
+
+## Larger actual Wasm workloads
+
+The separate reproducible workload compares two explicitly selected normal Wasm
+modules. It admits 64 or 256 native inserts per segment, and refuses an unbounded
+workload, the same module directory, or wrappers resolving to the same module
+file. A reproduced probe-only alias defect could otherwise report two input
+hashes while reusing the first initialized wrapper. The corrected probe refuses
+that case before runtime initialization.
+
+```sh
+node scripts/segmented-checkpoint-workload.mjs PREVIOUS_RUNTIME CANDIDATE_RUNTIME 256
+```
+
+Both isolated sizes pass with 285,496-byte and 1,125,360-byte checkpoints. The
+workload includes document selection, typing, reviewed and search histories,
+sealed/active generations and a retained redo tail. Exact bytes survive cold
+restore in both directions, a real peer update, four successful future local
+Undo/Redo actions that preserve peer text, and another seal. The larger case
+also passes after integrating the script into Main. Seven CLI refusal cases pass.
+
+Five alternating-order samples retain the actual timings and exact input hashes
+in the [workload record](qualification/2026-11-04-segmented-checkpoint-workload.json).
+These busy-host measurements include byte comparisons; they are not full recovery
+performance or a supported document-size limit. The candidate Wasm is still
+separate, and the packaged runtime and Native fixtures retain their original
+hashes. These results do not qualify the archive-read fault or complete room
+recovery.

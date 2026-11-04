@@ -1,0 +1,298 @@
+{
+  "format": "breditor/segmented-checkpoint-workload-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-04",
+  "scope": "Repeatable workload qualification only. No runtime promotion, supported-size promise, historical-fault repair or full recovery/V1 claim.",
+  "isolatedCommit": "9671bdc0b004705e53e1e57e653ddede1d2aa428",
+  "mainBaseCommit": "9fb433d459e5910173fa1fe81131fe4d4f087c22",
+  "script": {
+    "path": "scripts/segmented-checkpoint-workload.mjs",
+    "bytes": 7287,
+    "sha256": "4432670a90c07ff120cf896264e2878e536364aa166d1a6a33ce9546a2d3abc5",
+    "mainExact": true
+  },
+  "fixture": {
+    "path": "crates/breditor-core/tests/fixtures/rich-local-root.json",
+    "sha256": "761ce4641bafcca82c10081d79e318a9dab5bf33aa11919c0c69909dbc8f2eca"
+  },
+  "admission": {
+    "reportSha256": "542cbdedcd35565b75d8e094145fcc270d465d00fb7b4b1744d93b5c5316bdb9",
+    "passed": true,
+    "cases": 7,
+    "scope": "Rejects omitted/unbounded choices, identical directories and distinct directories aliasing the same wrapper before initializing Wasm."
+  },
+  "runs": [
+    {
+      "name": "isolated-64",
+      "reportSha256": "56e47ee06c2759fff0e6af10003ca1c74387191f473881c244fb4b165b13dd95",
+      "stderrBytes": 0,
+      "processExitCode": 0,
+      "report": {
+        "format": "breditor/segmented-checkpoint-workload",
+        "formatVersion": 1,
+        "passed": true,
+        "node": "v22.14.0",
+        "platform": "darwin",
+        "architecture": "arm64",
+        "previousWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+        "candidateWasmSha256": "f81efb2e8103b3dfa9d79f5c2d55dff8e3d639e8394f3e6725c2f8864f3b440e",
+        "actionsPerSegment": 64,
+        "nativeTextInsertions": 129,
+        "configuration": {
+          "language": 3,
+          "standard": true,
+          "documentSelection": true,
+          "typing": true,
+          "reviewed": true,
+          "search": true
+        },
+        "checkpointBytes": 285496,
+        "checkpointSha256": "28f7601c07d12e6570eac045d9a431b79f6bd2efed3eb3fe7ccf58639240074f",
+        "samples": [
+          {
+            "previous": 8.133792000000085,
+            "candidate": 4.780957999999828
+          },
+          {
+            "candidate": 4.961375000000089,
+            "previous": 7.831834000000072
+          },
+          {
+            "previous": 7.849875000000111,
+            "candidate": 5.136749999999893
+          },
+          {
+            "candidate": 4.562584000000015,
+            "previous": 8.36220900000012
+          },
+          {
+            "previous": 7.653249999999844,
+            "candidate": 4.752332999999908
+          }
+        ],
+        "encodesPerSample": 3,
+        "timedCheckpointComparisons": 30,
+        "previousMedianMs": 7.849875000000111,
+        "candidateMedianMs": 4.780957999999828,
+        "medianReductionFraction": 0.39095106609980923,
+        "exactComparisons": 8,
+        "futureHistory": [
+          {
+            "method": "redo_observed",
+            "result": true
+          },
+          {
+            "method": "undo_observed",
+            "result": true
+          },
+          {
+            "method": "redo_observed",
+            "result": true
+          },
+          {
+            "method": "undo_observed",
+            "result": true
+          }
+        ],
+        "bidirectionalColdRestores": 2,
+        "realPeerDeliveries": 2,
+        "runtimeInputsUnchanged": true,
+        "runtimePromoted": false,
+        "scope": "Two actual normal Wasm modules, bounded native segmented actions, exact checkpoints, genuine peer updates and usable future selective Undo/Redo. Busy-host timing includes byte comparisons; no complete recovery performance, supported-limit or V1 qualification."
+      }
+    },
+    {
+      "name": "isolated-256",
+      "reportSha256": "ddf8965f145fa9f5bc151032ecc41146a8585d4e8535fd037a25cee7513477ee",
+      "stderrBytes": 0,
+      "processExitCode": 0,
+      "report": {
+        "format": "breditor/segmented-checkpoint-workload",
+        "formatVersion": 1,
+        "passed": true,
+        "node": "v22.14.0",
+        "platform": "darwin",
+        "architecture": "arm64",
+        "previousWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+        "candidateWasmSha256": "f81efb2e8103b3dfa9d79f5c2d55dff8e3d639e8394f3e6725c2f8864f3b440e",
+        "actionsPerSegment": 256,
+        "nativeTextInsertions": 513,
+        "configuration": {
+          "language": 3,
+          "standard": true,
+          "documentSelection": true,
+          "typing": true,
+          "reviewed": true,
+          "search": true
+        },
+        "checkpointBytes": 1125360,
+        "checkpointSha256": "ea81fe4528d63995599e5f07261feb950acd09aa93b53344b664960e271a4b2b",
+        "samples": [
+          {
+            "previous": 36.48370799999975,
+            "candidate": 18.407999999999447
+          },
+          {
+            "candidate": 18.208582999999635,
+            "previous": 31.949000000000524
+          },
+          {
+            "previous": 31.645791999999346,
+            "candidate": 18.455957999998645
+          },
+          {
+            "candidate": 18.166957999999795,
+            "previous": 32.238916000000245
+          },
+          {
+            "previous": 32.5875419999993,
+            "candidate": 18.39416600000004
+          }
+        ],
+        "encodesPerSample": 3,
+        "timedCheckpointComparisons": 30,
+        "previousMedianMs": 32.238916000000245,
+        "candidateMedianMs": 18.39416600000004,
+        "medianReductionFraction": 0.42944216858904616,
+        "exactComparisons": 8,
+        "futureHistory": [
+          {
+            "method": "redo_observed",
+            "result": true
+          },
+          {
+            "method": "undo_observed",
+            "result": true
+          },
+          {
+            "method": "redo_observed",
+            "result": true
+          },
+          {
+            "method": "undo_observed",
+            "result": true
+          }
+        ],
+        "bidirectionalColdRestores": 2,
+        "realPeerDeliveries": 2,
+        "runtimeInputsUnchanged": true,
+        "runtimePromoted": false,
+        "scope": "Two actual normal Wasm modules, bounded native segmented actions, exact checkpoints, genuine peer updates and usable future selective Undo/Redo. Busy-host timing includes byte comparisons; no complete recovery performance, supported-limit or V1 qualification."
+      }
+    },
+    {
+      "name": "main-256",
+      "reportSha256": "6ffa69cbd2c095fb422e4050765fc5a31da2eb9aa0d4852a3e23c012ed7e8d18",
+      "stderrBytes": 0,
+      "processExitCode": 0,
+      "report": {
+        "format": "breditor/segmented-checkpoint-workload",
+        "formatVersion": 1,
+        "passed": true,
+        "node": "v22.14.0",
+        "platform": "darwin",
+        "architecture": "arm64",
+        "previousWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+        "candidateWasmSha256": "f81efb2e8103b3dfa9d79f5c2d55dff8e3d639e8394f3e6725c2f8864f3b440e",
+        "actionsPerSegment": 256,
+        "nativeTextInsertions": 513,
+        "configuration": {
+          "language": 3,
+          "standard": true,
+          "documentSelection": true,
+          "typing": true,
+          "reviewed": true,
+          "search": true
+        },
+        "checkpointBytes": 1125360,
+        "checkpointSha256": "ea81fe4528d63995599e5f07261feb950acd09aa93b53344b664960e271a4b2b",
+        "samples": [
+          {
+            "previous": 34.71904100000029,
+            "candidate": 19.225875000000087
+          },
+          {
+            "candidate": 18.92212499999914,
+            "previous": 33.1244999999999
+          },
+          {
+            "previous": 32.6919999999991,
+            "candidate": 18.745042000000467
+          },
+          {
+            "candidate": 18.62366699999984,
+            "previous": 33.520416999999725
+          },
+          {
+            "previous": 32.26912500000071,
+            "candidate": 18.296000000000276
+          }
+        ],
+        "encodesPerSample": 3,
+        "timedCheckpointComparisons": 30,
+        "previousMedianMs": 33.1244999999999,
+        "candidateMedianMs": 18.745042000000467,
+        "medianReductionFraction": 0.4341033977871206,
+        "exactComparisons": 8,
+        "futureHistory": [
+          {
+            "method": "redo_observed",
+            "result": true
+          },
+          {
+            "method": "undo_observed",
+            "result": true
+          },
+          {
+            "method": "redo_observed",
+            "result": true
+          },
+          {
+            "method": "undo_observed",
+            "result": true
+          }
+        ],
+        "bidirectionalColdRestores": 2,
+        "realPeerDeliveries": 2,
+        "runtimeInputsUnchanged": true,
+        "runtimePromoted": false,
+        "scope": "Two actual normal Wasm modules, bounded native segmented actions, exact checkpoints, genuine peer updates and usable future selective Undo/Redo. Busy-host timing includes byte comparisons; no complete recovery performance, supported-limit or V1 qualification."
+      }
+    }
+  ],
+  "protectedInputs": [
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+      "sha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0"
+    },
+    {
+      "path": "target/native-joint-process-native/debug/examples/native_joint_process_recovery_functional",
+      "sha256": "70d9e8becba4421be4fdfb33b5d08b7ba2efc7d36c5ca521c287104e4ebc8347"
+    },
+    {
+      "path": "target/sdk-native-publication-native/debug/examples/native_publication_sdk_functional",
+      "sha256": "c1730608caeebea1094727c346149f15bf95d42b41efc98b30133fd17b6c628d"
+    }
+  ],
+  "limitations": [
+    "Busy-host Node timings include checkpoint byte comparisons and are not an end-to-end recovery measurement.",
+    "One language/profile/history configuration at two sizes supplements the earlier 144-configuration and 216-installed-configuration probes; it does not replace them.",
+    "Default packaged Wasm and protected Native fixtures remain unchanged."
+  ],
+  "aliasRegression": {
+    "format": "breditor/shared-wrapper-workload-regression",
+    "formatVersion": 1,
+    "reproduced": true,
+    "originalScriptCommit": "3b8b0d214c28387514c6733c4b8130283ead6018",
+    "originalExit": 0,
+    "originalReportedPassed": true,
+    "oldRuntimeReported": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+    "candidateRuntimeReported": "f81efb2e8103b3dfa9d79f5c2d55dff8e3d639e8394f3e6725c2f8864f3b440e",
+    "originalStdoutSha256": "c24b471b0f439b5026ed6deed56a5b78be96c1d16e60fa3cc026dceea5a64cb1",
+    "originalStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "fixedExit": 1,
+    "fixedRefusesBeforeRuntimeInitialization": true,
+    "scope": "A verifier alias defect, not a product serialization failure: two distinct directories shared one generated JS module cache entry, so the original probe could report different inputs while reusing the first initialized module.",
+    "sharedWrapperSha256": "fe2a8e430beaa0ad690e251efbdd79fd6f1f50314f8efb95f62c7f9ed214626c"
+  }
+}
