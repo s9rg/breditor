@@ -1,0 +1,74 @@
+{
+  "format": "breditor/prepared-cold-start-qualification",
+  "formatVersion": 1,
+  "mainBefore": "6cbd641d031919be1da76d7b45f7f1dfa23ffa9c",
+  "isolatedCommit": "5878e67e107544d13b90f8cb92f25e41416f8515",
+  "isolatedSourceCases": 1,
+  "isolatedInstalledCases": 1,
+  "mainSourceCases": 1,
+  "mainInstalledCases": 1,
+  "allCasesPassed": true,
+  "mainExecutionSource": {
+    "commit": "6cbd641d031919be1da76d7b45f7f1dfa23ffa9c",
+    "dirty": true,
+    "sha256": "bba6a56fd3ab883749ccb127aa333a7f9c6f8a6d8613978994da022e2b49da7b",
+    "files": 8306,
+    "bytes": 67682208
+  },
+  "mainInstalledSourceUnchanged": true,
+  "strictPrivateTypes": true,
+  "sourceAndIsolatedCorrespondence": [
+    {
+      "path": "packages/breditor-collaboration/src/cold_room_execution/attempt.ts",
+      "bytes": 22284,
+      "sha256": "5a2ff9537dd654344f3d00c9770eecf0ea0be0e918abd41186716b52905feced"
+    },
+    {
+      "path": "scripts/cold-room-prepared-start.test.mjs",
+      "bytes": 5120,
+      "sha256": "1624dc79a93a193c69b4cc590f3a340c66d6f41b91d3ffa6ea88cd393456aba1"
+    }
+  ],
+  "originalMissingJournalRefusalPreserved": true,
+  "preparedStartAbsentOnly": true,
+  "actualNativeFamilies": 7,
+  "exactOriginalCheckpointsAndFutureDocumentCommentHistories": true,
+  "mainSourceLogSha256": "d7a18ecdabdb7de4bfa63e85a956a9503dfe9dca053cb26b828177e0b171d2e3",
+  "mainInstalledLogSha256": "6328fe9624f9d8bf80a1a11798936ed7b9f97c7163c874174c62495adff776bb",
+  "isolatedInstalledLogSha256": "433c136c11082856b8cb72d7a2d68714c7e8f83aaf33b06235f8938a99956a75",
+  "matchingMainPackageDistFiles": 2879,
+  "installedWorkspaceLinks": false,
+  "generatedOutputExact": true,
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/prepared-cold-start-proof-33d8fdc9d71a",
+    "indexSha256": "33d8fdc9d71a220a032db12be6f0f71597b6771b7a8db82b3e01df8461c431d7",
+    "references": 111,
+    "objects": 66,
+    "compressedBytes": 69164465,
+    "sourceArchive": {
+      "file": "executed-main-source.tar.gz",
+      "bytes": 20278443,
+      "sha256": "b1d6c16e6ec4597fc38b7fc9e90014c010e219b70d762228a38483b9e078a59d",
+      "files": 8306,
+      "allSourceFileContentsReadBackVerified": true
+    },
+    "readBackVerified": true
+  },
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "scope": "Generic cold prepared execution only: genuine seven-family recovery, occupied namespace preservation, declined execution, original exact checkpoints and future document/comment Undo/Redo.",
+  "limitations": [
+    "The case retains executable source, package/runtime artifacts and test results. Original in-memory client IDB snapshots and physical Blob construction were not retained.",
+    "Full Native service-restart/client reassociation remains isolated. Its first independently installed 17-case workset has 16 passes and one actual short payload-read refusal before the full handoff.",
+    "An earlier source qualification was invalidated by an agent profiler-cleanup error. Its artifacts are retained separately and it is not counted here. A clean complete-source run is active."
+  ],
+  "originalFormatsAndDefaultsChanged": false,
+  "publicRootExportsChanged": false,
+  "versionsChanged": false,
+  "wholeRoomRestartAssociationQualified": false,
+  "physicalBrowserDurabilityQualified": false,
+  "historicalWebKitFaultRepaired": false,
+  "historicalArchiveShortReadFaultRepaired": false,
+  "v1Ready": false,
+  "v1GatesOpen": 13,
+  "remoteActions": []
+}

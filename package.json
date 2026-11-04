@@ -68,7 +68,9 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "check:generated-sdk": "node scripts/check-generated-package-output.mjs",
     "test:collaboration:metadata-evidence": "node --test --test-concurrency=1 scripts/metadata-continuation-evidence-admission.test.mjs scripts/metadata-continuation-evidence-native.test.mjs",
-    "test:collaboration:metadata-evidence:installed": "node scripts/check-metadata-evidence-installed.mjs"
+    "test:collaboration:metadata-evidence:installed": "node scripts/check-metadata-evidence-installed.mjs",
+    "test:collaboration:prepared-cold-start": "node --test --test-concurrency=1 scripts/cold-room-prepared-start.test.mjs",
+    "test:collaboration:prepared-cold-start:installed": "node scripts/check-cold-prepared-start-installed.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",

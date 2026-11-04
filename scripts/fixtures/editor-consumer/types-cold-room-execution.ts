@@ -7,6 +7,7 @@ import type {RoomRunPromotionChoice} from '../../../packages/breditor-collaborat
 import type {RetainedSelectedAssetOwner} from '../../../packages/breditor-collaboration/dist/physical_room_asset_successor/owner.js';
 declare const options:ColdRoomExecutionOptions,choice:ColdRoomExecutionChoice,promotion:RoomRunPromotionChoice;
 const attempt:ColdRoomExecutionAttempt=ColdRoomExecutionAttempt.resume(options);
+const prepared:ColdRoomExecutionAttempt=ColdRoomExecutionAttempt.beginPrepared(options);void prepared;
 void attempt.preview();void attempt.run({expected:choice,approve:current=>current.format==='breditor/cold-room-execution-choice'});
 void attempt.repairOriginal((repair:ColdRoomOriginalRepairChoice)=>repair.scope==='repair-existing-original-only');
 void attempt.previewPromotion();void attempt.promote({expected:promotion,approve:()=>true,checkAssetAuthority(){}});void attempt.complete();
@@ -33,3 +34,6 @@ attempt.repairOriginal(true);
 const repaired:Promise<RetainedSelectedAssetOwner>=attempt.repairOriginal(()=>true);void repaired;
 
 export type {Private};
+
+// @ts-expect-error Prepared startup accepts selected DATA, never a surviving owner.
+ColdRoomExecutionAttempt.beginPrepared({...options,owner:selected});
