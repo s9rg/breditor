@@ -41,3 +41,14 @@ test('the explicit preload records a real child failure while preserving its exi
   assert.equal(report.qualification,false);assert.equal(report.expectedBytes,1);assert.equal(report.actualBytes,0);assert.equal(report.failures,1);assert.equal(report.probe.original.actualBytes,0);assert.ok(report.probe.rows.every(row=>row.actualBytes===1));
  }finally{fs.rmSync(directory,{recursive:true,force:true});}
 });
+test('the actual Node test runner preserves its failing assertion and writes the separate witness',()=>{
+ const directory=fs.mkdtempSync('/private/tmp/breditor-blob-witness-runner-law-');
+ try{
+  const patch=join(directory,'inject.mjs'),fixture=join(directory,'failing.test.mjs');fs.writeFileSync(patch,"Blob.prototype.arrayBuffer=async function(){return new ArrayBuffer(0);};");
+  fs.writeFileSync(fixture,"import test from 'node:test';import assert from 'node:assert/strict';test('original fault',async()=>assert.equal((await new Blob(['x']).arrayBuffer()).byteLength,1));");
+  const env={...process.env};delete env.NODE_TEST_CONTEXT;
+  const child=spawnSync(process.execPath,['--import',pathToFileURL(patch).href,'--import',new URL('./fixtures/preload-blob-read-witness.mjs',import.meta.url).href,'--test',fixture],{cwd:directory,env,encoding:'utf8',timeout:15000});
+  assert.equal(child.error,undefined);assert.equal(child.status,1);assert.equal(child.signal,null);assert.match(child.stdout,/not ok 1 - original fault/);assert.match(child.stdout,/# fail 1/);
+  const files=fs.readdirSync(join(directory,'target'));assert.equal(files.length,1);const report=JSON.parse(fs.readFileSync(join(directory,'target',files[0]),'utf8'));assert.equal(report.actualBytes,0);assert.equal(report.qualification,false);assert.ok(report.probe.rows.every(row=>row.actualBytes===1));
+ }finally{fs.rmSync(directory,{recursive:true,force:true});}
+});
