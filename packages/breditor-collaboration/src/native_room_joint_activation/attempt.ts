@@ -113,7 +113,7 @@ export class JointRoomActivationAttempt {
     const check=()=>{this.#check();scope.check();input.checkAuthority();scope.check();store.check();this.#check();};
     await decideFreshAssetChoice(this.#choice!,input.approvePublication!,{check,signal:scope.signal,watchClosing:cancel=>{add.call(scope.signal,'abort',cancel,{once:true});return()=>remove.call(scope.signal,'abort',cancel);}});check();await store.read();check();
     if(!equal((await scope.retainCurrent()).current.selection,continued.choice.target))throw fail('joint_activation_intent_stale');check();let begun=false;
-    try{begun=true;await store.markPublicationStarted();check();const receipt=await port.publish(jointRoomPublicationBinding(this.#choice!),check,scope.signal);check();await store.markPublicationObserved(receipt);check();this.#continued=continued;return receipt;}catch(error){if(begun)throw publicationFailure('publication_outcome_unknown');throw error;}
+    try{begun=true;await store.markPublicationStarted();check();const receipt=await port.publish(jointRoomPublicationBinding(this.#choice!),check,scope.signal);check();await store.markPublicationObserved(receipt);check();this.#continued=continued;return receipt;}catch(error){if(begun)throw publicationFailure('publication_outcome_unknown',error);throw error;}
    });
   }).then(receipt=>{this.#check();this.#publicationReceipt=receipt;return receipt;});
  });}

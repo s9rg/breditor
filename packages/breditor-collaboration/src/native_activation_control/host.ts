@@ -45,7 +45,7 @@ export class SharedDurableNativeActivationHost {
    response=await fetch(s.endpoint,{method:'POST',headers:{Authorization:`Bearer ${token}`,'X-Breditor-Principal':s.principal,'Content-Type':'application/json'},body,signal:controller.signal,credentials:'omit',redirect:'error',cache:'no-store'});
    this.#guard(heldCheck);if(response.status!==200)throw fail('activation_outcome_unknown');
    const text=await readGenerationControlResponse(response,MAX_SHARED_NATIVE_ACTIVATION_CONTROL_BYTES);this.#guard(heldCheck);const receipt=nativeActivationReceipt(text,s.expected);this.#guard(heldCheck);return receipt;
-  }catch(error){if(begun)throw fail('activation_outcome_unknown');try{this.#guard(heldCheck);}catch(current){throw current;}if(error instanceof SharedNativeActivationError)throw error;throw fail('activation_transfer');}
+  }catch(error){if(begun)throw fail('activation_outcome_unknown',error);try{this.#guard(heldCheck);}catch(current){throw current;}if(error instanceof SharedNativeActivationError)throw error;throw fail('activation_transfer');}
   finally{
    let refused=false;
    if(timer!==undefined)clearTimeout(timer);

@@ -78,7 +78,7 @@ export class ColdJointRoomActivationAttempt {
   const receipt=await this.#target(async(scope,origin)=>{
    const check=()=>{this.#check();origin.check();port.check();};check();await inspectColdJointNativeCapture(scope,origin,input);check();
    await this.#decide(scope,this.#choice.plan.activation,input.approve,check);check();await inspectColdJointNativeCapture(scope,origin,input);check();let started=false;
-   try{started=true;await origin.observeNativeStarted();check();const result=await port.commit(check,scope.signal);check();await origin.observeNativeReceipt(result);check();return result;}catch(error){if(started)throw activationFailure('activation_outcome_unknown');throw error;}
+   try{started=true;await origin.observeNativeStarted();check();const result=await port.commit(check,scope.signal);check();await origin.observeNativeReceipt(result);check();return result;}catch(error){if(started)throw activationFailure('activation_outcome_unknown',error);throw error;}
   });this.#check();this.#native=receipt;return Object.freeze({format:'breditor/coordinated-native-activation-result',formatVersion:1,scope:'held-client-metadata-upload-cut-and-actual-native-service',intent:this.#choice.plan.activation,receipt});
  });}
  #metadataInput(provided:JointRoomMetadataInput,publication=false){const r=fields(provided,['host','inventory','checkAuthority','approve',...(publication?['approvePublication']:[])]);if(typeof r['approve']!=='function'||publication&&typeof r['approvePublication']!=='function')throw fail();return{...this.#choice.plan.destinations,host:r['host'] as JointRoomMetadataInput['host'],inventory:r['inventory'] as JointRoomMetadataInput['inventory'],checkAuthority:participantAuthority(r['checkAuthority'] as ()=>void),approve:r['approve'] as JointRoomMetadataInput['approve'],...(publication?{approvePublication:r['approvePublication'] as JointRoomPublicationInput['approvePublication']}:{})};}
@@ -97,7 +97,7 @@ export class ColdJointRoomActivationAttempt {
    const continued=await continueHeldRoomMetadata(scope,witness,metadataContinuationRunRequest({...supplied,expected}),true);origin.check();
    const check=()=>{this.#check();origin.check();input.checkAuthority();origin.check();port.check();};
    await this.#decide(scope,this.#choice,input.approvePublication!,check);check();if(!equal((await scope.retainCurrent()).current.selection,continued.choice.target))throw fail('joint_activation_intent_stale');check();let started=false;
-   try{started=true;await origin.observePublicationStarted();check();const result=await port.publish(jointRoomPublicationBinding(this.#choice),check,scope.signal);check();await origin.observePublicationReceipt(result);check();this.#continued=continued;return result;}catch(error){if(started)throw publicationFailure('publication_outcome_unknown');throw error;}
+   try{started=true;await origin.observePublicationStarted();check();const result=await port.publish(jointRoomPublicationBinding(this.#choice),check,scope.signal);check();await origin.observePublicationReceipt(result);check();this.#continued=continued;return result;}catch(error){if(started)throw publicationFailure('publication_outcome_unknown',error);throw error;}
   });this.#check();this.#published=receipt;return receipt;
  });}
  /** Metadata DATA captured by the last completed publication. Publication

@@ -75,7 +75,9 @@
     "test:collaboration:joint-reassociation:installed": "node scripts/check-joint-reassociation-installed.mjs",
     "test:collaboration:joint-reassociation:repeated": "node --test --test-concurrency=1 scripts/joint-reassociation-repeated-native.test.mjs",
     "test:collaboration:joint-reassociation:pending-repeated": "node --test --test-concurrency=1 scripts/joint-reassociation-pending-repeated-native.test.mjs",
-    "test:collaboration:joint-reassociation:pending-repeated:installed": "node scripts/check-joint-reassociation-installed.mjs --pending-repeated"
+    "test:collaboration:joint-reassociation:pending-repeated:installed": "node scripts/check-joint-reassociation-installed.mjs --pending-repeated",
+    "test:collaboration:native-uncertainty-evidence": "node scripts/check-native-uncertainty-read-evidence.mjs --source",
+    "test:collaboration:native-uncertainty-evidence:installed": "node scripts/check-native-uncertainty-read-evidence.mjs --installed"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",

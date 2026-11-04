@@ -23,6 +23,6 @@ export async function publishReassociatedRoom(context:ReassociationActionContext
   const continued=await continueHeldRoomMetadata(scope,context.witness,metadataContinuationRunRequest({...input,expected}),true);held.check();context.check();
   const check=()=>{context.check();held.check();input.checkAuthority();held.check();port.check();};
   await decideFreshAssetChoice(choice,approvePublication,{check,signal:scope.signal,watchClosing:cancel=>{add.call(scope.signal,'abort',cancel,{once:true});return()=>remove.call(scope.signal,'abort',cancel);}});check();if(!equal((await scope.retainCurrent()).current.selection,continued.choice.target))throw fail('joint_activation_intent_stale');check();let started=false;
-  try{started=true;await held.observePublicationStarted();check();const receipt=await port.publish(jointReassociationPublicationBinding(choice),check,scope.signal);check();await held.observePublicationReceipt(receipt);check();return Object.freeze({receipt,continued});}catch(error){if(started)throw publicationFailure('publication_outcome_unknown');throw error;}
+  try{started=true;await held.observePublicationStarted();check();const receipt=await port.publish(jointReassociationPublicationBinding(choice),check,scope.signal);check();await held.observePublicationReceipt(receipt);check();return Object.freeze({receipt,continued});}catch(error){if(started)throw publicationFailure('publication_outcome_unknown',error);throw error;}
  });
 }

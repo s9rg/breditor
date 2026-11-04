@@ -19,6 +19,6 @@ export async function commitReassociatedNative(context:ReassociationActionContex
  const receipt=await withHeldReassociationIntents(scope,origin,choice,context.options,async held=>{
   const check=()=>{context.check();held.check();port.check();};check();await inspectColdJointNativeCapture(scope,origin,input);check();
   await decideFreshAssetChoice(choice,input.approve,{check,signal:scope.signal,watchClosing:cancel=>{add.call(scope.signal,'abort',cancel,{once:true});return()=>remove.call(scope.signal,'abort',cancel);}});check();await inspectColdJointNativeCapture(scope,origin,input);check();let started=false;
-  try{started=true;await held.observeNativeStarted();check();const result=await port.commit(check,scope.signal);check();await held.observeNativeReceipt(result);check();return result;}catch(error){if(started)throw activationFailure('activation_outcome_unknown');throw error;}
+  try{started=true;await held.observeNativeStarted();check();const result=await port.commit(check,scope.signal);check();await held.observeNativeReceipt(result);check();return result;}catch(error){if(started)throw activationFailure('activation_outcome_unknown',error);throw error;}
  });context.check();return Object.freeze({format:'breditor/reassociated-native-activation-result',formatVersion:1,choice,receipt,scope:'actual-private-client-target-and-reassociated-native-service'});
 }

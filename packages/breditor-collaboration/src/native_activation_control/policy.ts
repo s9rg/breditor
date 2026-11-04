@@ -1,10 +1,11 @@
 /** Mutation-specific outcomes. An uncertain commit must retain its durable intent. */
+import {preserveReadObservations} from '../archive_integrity/preserve_read_observations.js';
 export const MAX_SHARED_NATIVE_ACTIVATION_CONTROL_BYTES=64*1024;
 export class SharedNativeActivationError extends Error {
  constructor(readonly code:'activation_policy'|'activation_protocol'|'activation_closed'|'activation_busy'|'activation_authority'|'activation_cancelled'|'activation_transfer'|'activation_outcome_unknown',message:string){super(message);this.name='SharedNativeActivationError';}
 }
-export function activationFailure(code:SharedNativeActivationError['code']='activation_protocol'):SharedNativeActivationError {
- return new SharedNativeActivationError(code,{
+export function activationFailure(code:SharedNativeActivationError['code']='activation_protocol',reported?:unknown):SharedNativeActivationError {
+ const outcome=new SharedNativeActivationError(code,{
   activation_policy:'Select the separate native activation endpoint, checkpoint and current operator policy',
   activation_protocol:'The complete activation receipt differs from the independently selected checkpoint',
   activation_closed:'This native activation client is closed or was not constructed by this SDK',
@@ -13,7 +14,7 @@ export function activationFailure(code:SharedNativeActivationError['code']='acti
   activation_cancelled:'Native activation was cancelled before submission',
   activation_transfer:'Native activation did not begin its HTTP request',
   activation_outcome_unknown:'Native activation may have committed; retain all recovery data and resolve through the actual native control'
- }[code]);
+ }[code]);return code==='activation_outcome_unknown'?preserveReadObservations(outcome,reported):outcome;
 }
 export function activationEndpoint(value:unknown):string {
  try{if(typeof value!=='string'||value.length>2048)throw 0;const url=new URL(value);

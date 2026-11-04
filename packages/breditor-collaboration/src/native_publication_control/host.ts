@@ -40,7 +40,7 @@ export class SharedNativeRoomPublicationHost {
    const token=await accountToken(s.getToken,controller.signal,s.milliseconds);this.#guard(heldCheck);const body=JSON.stringify(request);this.#guard(heldCheck);begun=true;
    response=await fetch(s.endpoint,{method:'POST',headers:{Authorization:`Bearer ${token}`,'X-Breditor-Principal':s.principal,'Content-Type':'application/json'},body,signal:controller.signal,credentials:'omit',redirect:'error',cache:'no-store'});
    this.#guard(heldCheck);if(response.status!==200)throw fail('publication_outcome_unknown');const text=await readGenerationControlResponse(response,MAX_SHARED_NATIVE_PUBLICATION_CONTROL_BYTES);this.#guard(heldCheck);const receipt=nativePublicationReceipt(text,request);this.#guard(heldCheck);return receipt;
-  }catch(error){if(begun)throw fail('publication_outcome_unknown');try{this.#guard(heldCheck);}catch(current){throw current;}if(error instanceof SharedNativePublicationError)throw error;throw fail('publication_transfer');}
+  }catch(error){if(begun)throw fail('publication_outcome_unknown',error);try{this.#guard(heldCheck);}catch(current){throw current;}if(error instanceof SharedNativePublicationError)throw error;throw fail('publication_transfer');}
   finally{let refused=false;if(timer!==undefined)clearTimeout(timer);for(const signal of watched)try{remove.call(signal,'abort',cancel);}catch{refused=true;}try{abort.call(controller);}catch{refused=true;}try{if(response?.body&&!response.bodyUsed)await response.body.cancel();}catch{refused=true;}if(refused)throw fail(begun?'publication_outcome_unknown':'publication_transfer');}
  }
  /** Stops this requester. An already admitted Native worker may still publish. */

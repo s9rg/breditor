@@ -35,7 +35,7 @@ export async function commitHeldRoomActivation(policy:RoomActivationCommitPolicy
   result=Object.freeze({format:'breditor/coordinated-native-activation-result',formatVersion:1,scope:'held-client-metadata-upload-cut-and-actual-native-service',intent:policy.expected,receipt});heldCheck();
  }catch(cause){failed=true;error=cause;}
  try{await store.close();}catch(cause){if(!failed)error=cause;failed=true;}
- if(failed)throw started?activationFailure('activation_outcome_unknown'):error;
+ if(failed)throw started?activationFailure('activation_outcome_unknown',error):error;
  if(!result)throw fail();return result;
 }
 /** Cold read is DATA only. Native inspection and actual source equality are
