@@ -39,13 +39,22 @@ npm run test:collaboration:native-uncertainty-evidence
 npm run test:collaboration:native-uncertainty-evidence:installed
 ```
 
-Both require the complete 81-case workset and four strict private type contracts.
+Both require the complete 82-case workset and four strict private type contracts.
 Eight focused cases cover actual requesters, repeated mapping, redaction,
 immutability, accessors, malformed data and diagnostic failure. The remaining
 cases exercise the existing activation/publication transports, activation intent
 and bounded error-chain reporter. The installed command packs all three SDKs
 offline, checks every distribution file, rejects workspace links and changes
 only reversible test import locations.
+
+An additional intent test injects one empty read result after approval, before
+the request-started journal can be written. The actual bounded reader measures
+the refusal; the real coordinator reports the same numeric observation with
+`activation_outcome_unknown`, sends zero HTTP requests and performs zero intent
+writes. A separate exact reopen verifies the original prepared state and capture.
+The same test against the previous SDK fails because the observation is missing.
+The injected result establishes the error path, not the cause of the historical
+intermittent physical read failure.
 
 Normal Wasm, Rust, defaults, public-root exports and versions are unchanged.
 These checks do not replace full process-restart qualification. The older
