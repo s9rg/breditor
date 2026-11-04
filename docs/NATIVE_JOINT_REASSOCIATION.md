@@ -98,3 +98,26 @@ lineage entry, namespace-custody and archive limits can refuse further work.
 The implementation keeps earlier facts instead of deleting them to pass a
 budget. Compaction/storage-resource qualification and all V1 release gates
 remain open. No historical WebKit or archive short-read repair is claimed here.
+
+## Reproducing the worksets
+
+Use the pinned Node/dependency lock and the separately built
+`native_joint_process_recovery_functional` fixture with its recorded build
+report. The ordinary Wasm remains the independently qualified input; these
+commands never rebuild or substitute it.
+
+- `npm run check:generated-sdk` re-emits TypeScript to disposable directories.
+  It requires exact emitted file names/bytes and leaves runtime inputs intact.
+  Stale output files cause refusal before a new installed qualification.
+- `npm run test:collaboration:joint-reassociation` runs all 17 reader,
+  descriptor-storage, admission and complete committed-restart cases.
+- `npm run test:collaboration:joint-reassociation:installed` packs the three
+  packages, installs them offline without workspace links, checks declarations
+  and replays those exact assertions with reversible module-location changes.
+  Its watchdog owns only its detached test child's process group.
+
+The complete owner test currently selects an already committed Native checkpoint
+with no earlier metadata destinations. The reader separately checks existing
+metadata prefix stages and descriptor tests separately check pending/repeated
+lineages. A combined pending checkpoint, existing-metadata ownership cycle and
+repeated complete service restart still need their own functional qualification.
