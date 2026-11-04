@@ -1,0 +1,21 @@
+{
+  "format": "breditor/test-metadata-pins-fixture",
+  "formatVersion": 1,
+  "sourceCommit": "0cf9f756c41ff5dfa26da6a26ec3eedc915d40bd",
+  "sourceWorkflow": "Completed actual Native metadata continuation evidence component; controlled Node storage, not serving permission.",
+  "actualFamilies": 7,
+  "actualMetadataLanes": 3,
+  "phases": [
+    "absent",
+    "intent",
+    "prepared",
+    "review",
+    "metadata",
+    "metadata"
+  ],
+  "bytes": 6182457,
+  "sha256": "957c6c90c9ac9d73b26ce8d101842cff0d58783279581eb1239aae6b97205eef",
+  "compressedBytes": 322111,
+  "compressedSha256": "249dfff5db4e351e386043f544abecb70c3badffe6eb8c99a7245ee97c7e7754",
+  "scope": "Saved DATA only. It cannot substitute for a current scope, target witness, journal lease, Native receipt or authentication."
+}
