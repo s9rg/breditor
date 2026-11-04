@@ -12,8 +12,9 @@ import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const pendingRepeated=process.argv.length===3&&process.argv[2]==='--pending-repeated';
 const preparedStart=process.argv.length===3&&process.argv[2]==='--prepared-start';
-if(process.argv.length!==2&&!pendingRepeated&&!preparedStart)throw Error('Run the full workset, --pending-repeated, or --prepared-start');
-const tests=preparedStart?['scripts/cold-room-prepared-start.test.mjs']:pendingRepeated?['scripts/joint-reassociation-pending-repeated-native.test.mjs']:[
+const inputRetention=process.argv.length===3&&process.argv[2]==='--input-retention';
+if(process.argv.length!==2&&!pendingRepeated&&!preparedStart&&!inputRetention)throw Error('Run the full workset, --pending-repeated, --prepared-start, or --input-retention');
+const tests=inputRetention?['scripts/joint-preparation-input-retention.test.mjs']:preparedStart?['scripts/cold-room-prepared-start.test.mjs']:pendingRepeated?['scripts/joint-reassociation-pending-repeated-native.test.mjs']:[
  'scripts/metadata-continuation-evidence-admission.test.mjs',
  'scripts/metadata-continuation-evidence-native.test.mjs',
  'scripts/joint-reassociation-intent-storage.test.mjs',
@@ -21,8 +22,8 @@ const tests=preparedStart?['scripts/cold-room-prepared-start.test.mjs']:pendingR
  'scripts/joint-reassociation-complete-native.test.mjs',
 ];
 const types=['scripts/fixtures/metadata-continuation/types.mts','scripts/fixtures/native-joint-reassociation/types.mts'];
-const expectedCases=pendingRepeated||preparedStart?1:17,sha=data=>createHash('sha256').update(data).digest('hex');
-const workset=preparedStart?'prepared-cold-start-installed':pendingRepeated?'joint-reassociation-pending-repeated-installed':'joint-reassociation-installed';
+const expectedCases=pendingRepeated||preparedStart||inputRetention?1:17,sha=data=>createHash('sha256').update(data).digest('hex');
+const workset=inputRetention?'joint-preparation-input-retention-installed':preparedStart?'prepared-cold-start-installed':pendingRepeated?'joint-reassociation-pending-repeated-installed':'joint-reassociation-installed';
 const source=sourceEvidence(root),directory=fs.mkdtempSync('/private/tmp/breditor-'+workset+'-');
 const archives=join(directory,'archives'),consumer=join(directory,'consumer');
 fs.mkdirSync(archives);fs.mkdirSync(consumer);
@@ -111,21 +112,22 @@ try{
  // Own only this detached test child's process group, never our caller's group.
  stop=signal=>{if(child.exitCode===null&&child.signalCode===null)try{process.kill(-child.pid,signal);}catch(error){if(error.code!=='ESRCH')throw error;}};
  let timedOut=false;
- timer=setTimeout(()=>{timedOut=true;stop('SIGTERM');killTimer=setTimeout(()=>stop('SIGKILL'),10000);},(preparedStart?1:pendingRepeated?7:5)*60*60*1000);
+ timer=setTimeout(()=>{timedOut=true;stop('SIGTERM');killTimer=setTimeout(()=>stop('SIGKILL'),10000);},inputRetention?120000:(preparedStart?1:pendingRepeated?7:5)*60*60*1000);
  const execution=await new Promise((done,fail)=>{child.once('error',fail);child.once('exit',(code,signal)=>done({pid:child.pid,code,signal}));});
  clearTimeout(timer);clearTimeout(killTimer);saveEvidence(join(directory,'exit.json'),execution);
  assert.equal(timedOut,false);assert.equal(execution.code,0,'Read '+logPath);assert.equal(execution.signal,null);
  assert.ok(fs.statSync(logPath).size<=8*1024*1024);
  const log=fs.readFileSync(logPath,'utf8');
  for(const[key,n]of[['tests',expectedCases],['pass',expectedCases],['fail',0],['skipped',0],['cancelled',0],['todo',0]])assert.match(log,new RegExp('^# '+key+' '+n+'$','m'));
- if(preparedStart){assert.match(log,/PREPARED_COLD_BASELINE_MISSING_RUN /);assert.match(log,/PREPARED_COLD_START_COMPLETE /);}
+ if(inputRetention){assert.match(log,/JOINT_PREPARATION_INPUT_RETAINED /);}
+ else if(preparedStart){assert.match(log,/PREPARED_COLD_BASELINE_MISSING_RUN /);assert.match(log,/PREPARED_COLD_START_COMPLETE /);}
  else assert.match(log,/REASSOCIATION_COMPLETE_NATIVE /);
  if(pendingRepeated){assert.match(log,/REASSOCIATION_PENDING_STEP original-native-intent-prepared-without-commit/);assert.match(log,/REASSOCIATION_REPEATED_STEP second-actual-process-death-and-complete-prior-metadata-retained/);}
- else if(preparedStart){/* Separate start workset does not claim metadata-reader qualification. */}
+ else if(preparedStart||inputRetention){/* Separate fixture/start worksets do not claim metadata-reader qualification. */}
  else assert.match(log,/CONTINUATION_EVIDENCE_PHASE metadata/);
  assert.deepEqual(sourceEvidence(root),source);
  for(const row of runtime)assert.equal(sha(fs.readFileSync(join(root,row.path))),row.sha256);
- const scope=preparedStart?'Explicit absent-only cold start from a real seven-family prepared execution. Original missing-journal resume refusal, namespace exclusion, declined execution, complete recovery and future document/comment histories. Not Native process death, physical storage durability, the full restart composition or V1.':pendingRepeated?'Actual pending Native process death, then a second committed death after complete metadata continuation. Two fresh cold owners preserve seven families/fourteen offline lanes and earlier complete metadata through fresh confirmation/publication and final original-protocol delivery/future histories. Separate from the default 17-case workset; not physical browser durability or V1.':'Actual committed Native process death, seven cold clients/fourteen offline lanes, interrupted association writes, fresh authenticated confirmation/publication, real metadata and original delivery with future histories. Prior metadata prefix reader and association DATA laws also run. Pending/existing-metadata/repeated complete ownership cycles, physical browser durability and V1 remain separate.';
+ const scope=inputRetention?'Preparation fixture boundary only: direct SelectedRoomCurrentFile retained with exact read-back bytes before its downstream archive reader. Reader intentionally stops; no Native process recovery, whole-room activation or V1 qualification.':preparedStart?'Explicit absent-only cold start from a real seven-family prepared execution. Original missing-journal resume refusal, namespace exclusion, declined execution, complete recovery and future document/comment histories. Not Native process death, physical storage durability, the full restart composition or V1.':pendingRepeated?'Actual pending Native process death, then a second committed death after complete metadata continuation. Two fresh cold owners preserve seven families/fourteen offline lanes and earlier complete metadata through fresh confirmation/publication and final original-protocol delivery/future histories. Separate from the default 17-case workset; not physical browser durability or V1.':'Actual committed Native process death, seven cold clients/fourteen offline lanes, interrupted association writes, fresh authenticated confirmation/publication, real metadata and original delivery with future histories. Prior metadata prefix reader and association DATA laws also run. Pending/existing-metadata/repeated complete ownership cycles, physical browser durability and V1 remain separate.';
  Object.assign(state,{complete:true,passed:true,cases:expectedCases,sourceUnchanged:true,strictPrivateTypes:true,log:logPath,logSha256:sha(log),scope});
  saveEvidence(join(directory,'result.json'),state);saveEvidence(join(root,'target/'+workset+'-result.json'),state);
  console.log(JSON.stringify({directory,passed:true,cases:expectedCases,matchingPackageDistFiles}));

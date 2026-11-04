@@ -19,7 +19,9 @@ export async function prepareJointExecution({session,host,assetTransport,native}
   return{asset:reference.asset,generation:reference.generation,identity:'content-addressed',blob:value.blob,check(){assert.equal(bytes.get(reference.asset),value);}};
  };
  try{
-  await retainJointPreparationInput(host.directory,retained.current);
+  // session.retain() already returns SelectedRoomCurrentFile; only the
+  // distinct scope.retainCurrent() API adds a {current, integrity} wrapper.
+  await retainJointPreparationInput(host.directory,retained);
   loaded=await Loaded.read(retained,integrity);const sourceNamespaces=[loaded.nativeCut().root().database,loaded.nativeCut().root().source.catalogDatabase,...loaded.nativeCut().root().participants.flatMap(row=>row.namespaces.map(ns=>ns.database)),loaded.approval().choice.adoption.database,...loaded.approval().choice.adoption.participants.map(row=>row.targetDatabase)];
   const participants=loaded.nativeCut().root().participants.map(row=>({id:row.id,sourceFamily:row.family,family:row.family==='local-operation-snapshot'?'local-operation-flat':row.family,namespaces:row.namespaces.map(ns=>({role:ns.role,database:tag+'-replacement-'+row.id+'-'+ns.role}))})),input={retained,database:tag+'-preparation',participants};
   const missing=await inspectRoomPreparation(session.owner,session.input(),input);

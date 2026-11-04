@@ -169,3 +169,25 @@ exact hash/size/read-back checks. A real 7,956,095-byte prior Native fixture
 archive passes the retention smoke. These filesystem copies flatten physical
 Blob construction and cannot alone reproduce that runtime condition. The
 currently running frozen worksets are unchanged by these additional diagnostics.
+
+## Preparation evidence fixture boundary
+
+The pending/repeated source run at `1eadf3cb` stopped after retaining the genuine
+8,261,282-byte after-version-materialization archive. Its next evidence helper
+mistakenly received `retained.current`: `session.retain()` already returns the
+`SelectedRoomCurrentFile` directly, whereas the separate scope `retainCurrent()`
+API adds a `{current, integrity}` wrapper. This is a test-instrumentation error;
+the case did not reach a pending Native restart or demonstrate a short read.
+Its terminal log SHA-256 is
+`e6d0f2e1ac192156a94239a8a2ab8c17ffe2b7c1266cc3924f287a4e70d1524b`.
+
+The preparation fixture now passes the direct file. A focused regression invokes
+that actual preparation entrypoint, checks exact persisted evidence bytes, then
+intentionally stops at the downstream archive-reader boundary. It fails with
+the original TypeError before this correction and passes afterward. The same
+case passes through fresh independently installed packages, exact generated
+output and strict private types. Run it separately with
+`node scripts/check-joint-reassociation-installed.mjs --input-retention`.
+This separate one-case workset does not change or qualify the default 17-case
+Native workset. Full pending/repeated reconstruction must still run on a fresh
+frozen snapshot; no product or archive-fault repair is claimed by this fixture fix.
