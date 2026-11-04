@@ -112,7 +112,7 @@ export async function runJointReassociation({repeatAfterMetadata=false,initialNa
   crashes.push(crash);
   let loaded;let catalogDatabase;try{loaded=await Loaded.read(run.f.retained,{wasm:native,checkAuthority(){}});catalogDatabase=loaded.nativeCut().root().source.catalogDatabase;}finally{loaded?.dispose();}
   const {signal,checkAuthority,...original}=input.session.f.options;
-  joint=Reassociation.begin({original:plan,execution:{original:{...original,catalogDatabase,checkAuthority(){}},run:run.options,reads:run.reads,sourceIntentDatabase:'actual-joint-cold-source-custody'}});noTake();
+  joint=(initialNativeStage==='pending'?Reassociation.beginPrepared:Reassociation.begin)({original:plan,execution:{original:{...original,catalogDatabase,checkAuthority(){}},run:run.options,reads:run.reads,sourceIntentDatabase:'actual-joint-cold-source-custody'}});noTake();
   await joint.recoverReplacement({approveExecution:()=>true,approvePromotion:()=>true,checkAssetAuthority(){}});noTake();await held();await assertSourceBytesUnchanged(oldBytes);
   console.log('COLD_JOINT_COMPLETE_STEP fresh-fourteen-actors-and-seven-private-targets-from-existing-intent');
   activation=Activation.configure({endpoint:offer.endpoint,expected:offer.selection,principal:'operator',getToken:()=>input.host.activationToken(offer),checkAuthority(){}});

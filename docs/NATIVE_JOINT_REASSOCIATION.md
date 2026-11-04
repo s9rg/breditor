@@ -144,3 +144,15 @@ child rule. Final assertions require two actual deaths, four unchanged earlier
 metadata destinations, all fourteen deliveries and exact future histories. This
 case remains unqualified until both worksets finish. The default installed
 workset still always runs its original seventeen cases.
+
+A focused reproduction identified the absent local run journal before the first
+Native commit. The new explicit `beginPrepared` route is documented in
+[COLD_PREPARED_EXECUTION.md](COLD_PREPARED_EXECUTION.md). Its seven-family local
+recovery/future-history source case passes; the full pending Native workflow
+still needs composed qualification. The old pre-fix pending workload was
+intentionally stopped after the focused reproduction established its missing
+start path. Its partial log/result remain retained and are not a passing
+functional result. The initial independent full workset also observed an actual
+short Blob read in `ownedLineagePayload` during graph reconstruction before
+Native preparation. That refusal remains unresolved and cannot be counted as a
+successful client association.

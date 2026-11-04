@@ -35,17 +35,21 @@ export class JointRoomReassociationAttempt {
  readonly #original;#choice:JointReassociationChoice|undefined;#prepared=false;readonly #cold:Cold;readonly #reads:RoomExecutionReadScope;readonly #stop=new AbortController();readonly #unwatch:(()=>void)[]=[];
  #recovered=false;#promoted=false;#native:SharedDurableNativeActivationReceipt|undefined;#continued:MetadataContinuationResult|undefined;#published:SharedNativeRoomPublicationReceipt|undefined;
  #running:Promise<unknown>|undefined;#cleanup:Promise<void>|undefined;#closing=false;#closed=false;#taken=false;#taking=false;
- private constructor(token:object,provided:JointReassociationBeginOptions|JointReassociationResumeOptions,resume:boolean){
+ private constructor(token:object,provided:JointReassociationBeginOptions|JointReassociationResumeOptions,resume:boolean,preparedStart=false){
   if(token!==key)throw fail();const row=fields(provided,[resume?'expected':'original','execution']);if(resume){this.#choice=jointReassociationChoice(row['expected']);this.#original=this.#choice.plan.original;}else this.#original=jointRoomActivationIntentChoice(row['original']);
   const execution=row['execution'] as JointReassociationBeginOptions['execution'];
   let opened:RoomExecutionReadScope|undefined;try{
    const signal=execution.reads.signal;if(signal){const cancel=()=>this.#stop.abort();if(signal.aborted)cancel();else{add.call(signal,'abort',cancel,{once:true});this.#unwatch.push(()=>remove.call(signal,'abort',cancel));}}
    this.#reads=opened=new RoomExecutionReadScope({...execution.reads,signal:this.#stop.signal});
-   this.#cold=Cold.resume({...execution,reads:this.#readOptions()});if(!equal(execution.run.expected,this.#original.plan.execution))throw fail('joint_activation_intent_stale');
+   const input={...execution,reads:this.#readOptions()};this.#cold=preparedStart?Cold.beginPrepared(input):Cold.resume(input);if(!equal(execution.run.expected,this.#original.plan.execution))throw fail('joint_activation_intent_stale');
   }catch(error){opened?.close();for(const stop of this.#unwatch)stop();throw error;}Object.freeze(this);
  }
  /** Construction creates no database, acquires no actor and sends no request. */
  static begin(provided:JointReassociationBeginOptions):JointRoomReassociationAttempt{return new JointRoomReassociationAttempt(key,provided,false);}
+ /** A selected Native checkpoint may still be pending before any local run
+  * event. Explicitly start its prepared execution, absent only. All Native,
+  * metadata and publication barriers remain independent and unchanged. */
+ static beginPrepared(provided:JointReassociationBeginOptions):JointRoomReassociationAttempt{return new JointRoomReassociationAttempt(key,provided,false,true);}
  static resume(provided:JointReassociationResumeOptions):JointRoomReassociationAttempt{return new JointRoomReassociationAttempt(key,provided,true);}
  #check=()=>{if(this.#closing||this.#closed||this.#taken||this.#stop.signal.aborted)throw fail('joint_activation_closed');this.#reads.check();};
  #run<T>(visit:()=>Promise<T>):Promise<T>{try{this.#check();if(this.#running||this.#taking)throw fail('joint_activation_busy');}catch(error){return Promise.reject(error);}const task=Promise.resolve().then(()=>{this.#check();return visit();});this.#running=task;return task.finally(()=>{if(this.#running===task)this.#running=undefined;});}

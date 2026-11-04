@@ -5,6 +5,7 @@ import type {JointReassociationChoice} from '../../../packages/breditor-collabor
 import type {SharedNativeRoomPublicationHost} from '../../../packages/breditor-collaboration/dist/native_publication_control/host.js';
 declare const begin:JointReassociationBeginOptions,resume:JointReassociationResumeOptions,prepare:JointReassociationPreparationInput,finish:JointReassociationPreparationResumeInput,commit:JointReassociationCommitInput,metadata:JointReassociationMetadataInput,publish:JointReassociationPublicationInput,host:SharedNativeRoomPublicationHost;
 const owner=Attempt.begin(begin),cold=Attempt.resume(resume);
+const prepared=Attempt.beginPrepared(begin);void prepared;
 const selected:Promise<JointReassociationChoice>=owner.prepare(prepare);
 const completed:Promise<JointReassociationChoice>=cold.resumePreparation(finish);
 void selected;void completed;void owner.confirmNative(commit);void owner.continueMetadata(metadata);void cold.resumeMetadata(metadata);void owner.publish(host,publish);
@@ -12,6 +13,9 @@ void withPublishedReassociatedRoomSources(owner,async(scope,sources)=>{scope.che
 // A retained descriptor is not an execution owner.
 // @ts-expect-error
 Attempt.begin(resume);
+// A retained association does not select a new absent-only prepared execution.
+// @ts-expect-error
+Attempt.beginPrepared(resume);
 // @ts-expect-error
 Attempt.resume(begin);
 // DATA-only completion deliberately accepts no retired Native requester.
