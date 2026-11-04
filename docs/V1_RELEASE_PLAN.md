@@ -1,5 +1,13 @@
 # Breditor V1 release preparation
 
+November 4 diagnostic checkpoint: [scoped Native reader associations](BLOB_READ_WITNESS.md#scoped-native-reader-associations)
+fix a reproduced stale-label error in the optional Node observer. Eight laws and
+twelve instrumented SDK smoke cases pass. The earlier complete trace passed its
+functional case but had ambiguous version-1 reader totals; it does not repair the
+ordinary zero-byte failures. The combined candidate's ordinary full restart runs
+remain separate. SDK source/runtimes and all 13 open V1 gates are unchanged.
+
+
 November 4 isolated integrity checkpoint: [complete room-cut request snapshots](RECORD_CUT_REQUEST_SNAPSHOT.md)
 are now integrated after 82 source and 82 independent installed checks. All 2,887
 compiled SDK files match the tested packages; protected runtimes remain unchanged.

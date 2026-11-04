@@ -1,0 +1,62 @@
+{
+  "format": "breditor/native-blob-boundary-attribution-qualification",
+  "formatVersion": 1,
+  "codeCommit": "a0238b490aa73071f1af08a3f5c99dbecf39cff0",
+  "diagnosticReportVersion": 2,
+  "diagnosticCases": 8,
+  "instrumentedSdkSmokeCases": 12,
+  "sdkSmokeCounts": {
+    "publicArrayBufferCalls": 634,
+    "associatedReaders": 634,
+    "completedReaders": 634,
+    "observationErrors": 0,
+    "firstIncomplete": null
+  },
+  "originalReproduction": {
+    "arrayBufferCalls": 1,
+    "completedAfterText": 2,
+    "completedAfterStream": 3,
+    "duplicateIds": [
+      1,
+      1,
+      1
+    ],
+    "assertionPassed": false
+  },
+  "fixedReproduction": {
+    "arrayBufferCalls": 1,
+    "completedAfterText": 1,
+    "completedAfterStream": 1,
+    "ids": [
+      1
+    ],
+    "assertionPassed": true
+  },
+  "completedOriginalTrace": {
+    "sourceCommit": "1db6247b1b55b04bf973153d819098cd1f31b789",
+    "reportVersion": 1,
+    "functionalCasePassed": true,
+    "qualification": false,
+    "durationMs": 6968593.604834,
+    "publicArrayBufferCalls": 1878104,
+    "completedTaggedReaders": 1888879,
+    "oneToOneCoverageProven": false,
+    "firstIncomplete": null,
+    "logSha256": "9dfaf8302a4c24677ef915de6ee3c67d9ef466d40494d7225982b2fe25dac345",
+    "reportSha256": "a8ce53993a5968bf692e2d6895eecef2924a2252eb7b64a218f79c7511f0ab0e"
+  },
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/native-boundary-attribution-proof-95l9n11_",
+    "indexSha256": "730a0cdfe8e25b341165d0a6cddb379012304239730da54bf8c01b0800d43351",
+    "refs": 22,
+    "compressedBytes": 742054,
+    "readBackVerified": true
+  },
+  "sdkSourceChanged": false,
+  "sdkRuntimeChanged": false,
+  "ordinaryCombinedWorkflowsCompleted": false,
+  "historicalZeroByteFaultRepaired": false,
+  "all13V1GatesRemainOpen": true,
+  "v1Ready": false,
+  "scope": "Scripts-only diagnostic label repair. Complete old instrumented workflow passed, but version-1 labels could attach to later internal readers; it supplies no one-to-one completion proof or repair of earlier ordinary failures. New version-2 counts/lifetimes/Promise identity are covered by eight focused laws and twelve instrumented SDK smoke cases. Ordinary combined source/installed restart workflows remain separate and live."
+}
