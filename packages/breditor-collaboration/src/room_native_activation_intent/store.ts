@@ -10,6 +10,7 @@ import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.
 import {nativeActivationReceipt} from '../native_activation_control/identity.js';
 import type {SharedDurableNativeActivationReceipt} from '../native_activation_control/contract.js';
 import {decodeRoomActivationIntent} from './decode.js';
+import {snapshotRoomActivationEncodedCapture} from './snapshot_encoded.js';
 import {roomActivationIntentChoice,roomActivationIntentState} from './identity.js';
 import type {RoomActivationEncodedCapture,RoomActivationIntentChoice,RoomActivationIntentState,RoomActivationRetainedIntent} from './contract.js';
 import {fail,MAX_ROOM_ACTIVATION_GRAPH_BYTES,MAX_ROOM_ACTIVATION_REVISIONS} from './policy.js';
@@ -26,12 +27,13 @@ export class RoomActivationIntentStore {
  #schema(db:IDBDatabase){if(db.version!==1||JSON.stringify([...db.objectStoreNames])!==JSON.stringify(tables))throw fail();const tx=db.transaction(tables,'readonly'),s=tx.objectStore('activation');if(s.keyPath!==null||s.autoIncrement||s.indexNames.length)throw fail();}
  open(initial?:RoomActivationEncodedCapture):Promise<RoomActivationRetainedIntent>{return this.#run(async()=>{
   if(this.#db||this.#opening)throw fail('activation_intent_busy');
-  if(initial){if(JSON.stringify(initial.choice)!==JSON.stringify(this.#choice))throw fail();await decodeRoomActivationIntent(initial,this.#options);this.check();}
+  const proposed=initial?snapshotRoomActivationEncodedCapture(initial):undefined;
+  if(proposed){if(JSON.stringify(proposed.choice)!==JSON.stringify(this.#choice)||JSON.stringify(initial!.choice)!==JSON.stringify(this.#choice))throw fail();await decodeRoomActivationIntent(proposed,this.#options);this.check();}
   this.#opening=await RecoveryOpeningCustody.reserve(this.#factory,[this.#choice.database],()=>this.#close(),{policy:()=>fail('activation_intent_policy'),busy:()=>fail('activation_intent_busy'),storage:()=>fail('activation_intent_storage')});this.check();this.#lease=await RecoveryLease.acquire(JSON.stringify(this.#choice.database));this.check();
   await new Promise<void>((resolve,reject)=>{const q=this.#factory.open(this.#choice.database,1);let created=false,refused=false,reason:unknown,unwatch=()=>{};this.#pending=true;this.#request=q;this.#reject=reject;
    const abort=(error:unknown)=>{refused=true;reason=error;if(q.transaction){try{q.transaction.abort();}catch{}}else reject(error);},done=()=>{this.#pending=false;this.#request=undefined;this.#reject=undefined;unwatch();};try{unwatch=this.#cancel.watch(()=>abort(fail('activation_intent_closed')));}catch(error){abort(error);}
-   q.onupgradeneeded=event=>{this.#attach(q.result);try{this.check();if(event.oldVersion!==0||refused)throw fail('activation_intent_exists');if(!initial)throw fail('activation_intent_missing');const store=q.result.createObjectStore('activation');store.add(JSON.stringify(this.#choice),'choice');store.add(initial.graph,'graph');store.add(JSON.stringify(initialState),'state');for(let i=0;i<initial.objects.length;i++)store.add(initial.objects[i]!,'blob:'+this.#choice.objects[i]!.sha256);created=true;this.check();}catch(error){abort(error);}};
-   q.onblocked=()=>{refused=true;reason=fail('activation_intent_busy');reject(reason);};q.onerror=()=>{done();reject(refused?reason:fail('activation_intent_storage'));};q.onsuccess=()=>{this.#attach(q.result);done();if(created)this.#committed=initialState;try{this.check();if(refused)throw reason;if(initial&&!created)throw fail('activation_intent_exists');this.#schema(q.result);resolve();}catch(error){reject(error);}};
+   q.onupgradeneeded=event=>{this.#attach(q.result);try{this.check();if(event.oldVersion!==0||refused)throw fail('activation_intent_exists');if(!proposed)throw fail('activation_intent_missing');const store=q.result.createObjectStore('activation');store.add(JSON.stringify(this.#choice),'choice');store.add(proposed.graph,'graph');store.add(JSON.stringify(initialState),'state');for(let i=0;i<proposed.objects.length;i++)store.add(proposed.objects[i]!,'blob:'+this.#choice.objects[i]!.sha256);created=true;this.check();}catch(error){abort(error);}};
+   q.onblocked=()=>{refused=true;reason=fail('activation_intent_busy');reject(reason);};q.onerror=()=>{done();reject(refused?reason:fail('activation_intent_storage'));};q.onsuccess=()=>{this.#attach(q.result);done();if(created)this.#committed=initialState;try{this.check();if(refused)throw reason;if(proposed&&!created)throw fail('activation_intent_exists');this.#schema(q.result);resolve();}catch(error){reject(error);}};
   });return this.#load();
  });}
  #transaction<T>(mode:IDBTransactionMode,visit:(rows:ReadonlyMap<string,unknown>,tx:IDBTransaction)=>T,committed?:()=>void):Promise<T>{
