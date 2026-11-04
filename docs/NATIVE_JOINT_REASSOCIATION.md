@@ -132,3 +132,15 @@ delivery. This additional case is not yet qualified. The original complete
 workload assertions were extracted unchanged into a shared test helper before
 adding this explicit variant; the currently running frozen worksets remain
 untouched.
+
+The explicit pending-then-committed variant uses
+`npm run test:collaboration:joint-reassociation:pending-repeated` and its separate
+`:installed` command. Its first crash occurs with the genuine original Native
+intent still prepared and no activation request sent. Explicit terminal cleanup
+checkpoints/closes the actual source owner; a pending reopen must retain the
+exact planned epoch and checkpoint bytes with fresh controls. The later crash
+occurs after complete metadata continuation and requires the committed direct
+child rule. Final assertions require two actual deaths, four unchanged earlier
+metadata destinations, all fourteen deliveries and exact future histories. This
+case remains unqualified until both worksets finish. The default installed
+workset still always runs its original seventeen cases.

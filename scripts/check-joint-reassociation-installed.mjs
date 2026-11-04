@@ -10,8 +10,9 @@ import {sourceEvidence,saveEvidence} from './candidate-release/evidence.mjs';
 import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
-if(process.argv.length!==2)throw Error('Run all restart-association cases without filters');
-const tests=[
+const pendingRepeated=process.argv.length===3&&process.argv[2]==='--pending-repeated';
+if(process.argv.length!==2&&!pendingRepeated)throw Error('Run the full workset, or the separately named --pending-repeated workset');
+const tests=pendingRepeated?['scripts/joint-reassociation-pending-repeated-native.test.mjs']:[
  'scripts/metadata-continuation-evidence-admission.test.mjs',
  'scripts/metadata-continuation-evidence-native.test.mjs',
  'scripts/joint-reassociation-intent-storage.test.mjs',
@@ -19,8 +20,9 @@ const tests=[
  'scripts/joint-reassociation-complete-native.test.mjs',
 ];
 const types=['scripts/fixtures/metadata-continuation/types.mts','scripts/fixtures/native-joint-reassociation/types.mts'];
-const expectedCases=17,sha=data=>createHash('sha256').update(data).digest('hex');
-const source=sourceEvidence(root),directory=fs.mkdtempSync('/private/tmp/breditor-joint-reassociation-installed-');
+const expectedCases=pendingRepeated?1:17,sha=data=>createHash('sha256').update(data).digest('hex');
+const workset=pendingRepeated?'joint-reassociation-pending-repeated-installed':'joint-reassociation-installed';
+const source=sourceEvidence(root),directory=fs.mkdtempSync('/private/tmp/breditor-'+workset+'-');
 const archives=join(directory,'archives'),consumer=join(directory,'consumer');
 fs.mkdirSync(archives);fs.mkdirSync(consumer);
 const generatedOutput=JSON.parse(execFileSync(process.execPath,['scripts/check-generated-package-output.mjs'],{cwd:root,encoding:'utf8',maxBuffer:4*1024*1024}));
@@ -93,9 +95,9 @@ for(const[folder,name]of mapping){
  }
  compare('dist');
 }
-const state={format:'breditor/joint-reassociation-installed',formatVersion:1,source,directory,consumer,generatedOutput,registryArtifacts,workspaceLinks:false,copied,runtime,normalWasmSha256,matchingPackageDistFiles,archives:packs.map(pack=>({name:pack.name,path:join(archives,pack.filename),sha256:sha(fs.readFileSync(join(archives,pack.filename)))})),complete:false,releaseReady:false};
+const state={format:'breditor/'+workset,formatVersion:1,source,directory,consumer,generatedOutput,registryArtifacts,workspaceLinks:false,copied,runtime,normalWasmSha256,matchingPackageDistFiles,archives:packs.map(pack=>({name:pack.name,path:join(archives,pack.filename),sha256:sha(fs.readFileSync(join(archives,pack.filename)))})),complete:false,releaseReady:false};
 saveEvidence(join(directory,'running.json'),state);
-saveEvidence(join(root,'target/joint-reassociation-installed-running.json'),{directory,consumer});
+saveEvidence(join(root,'target/'+workset+'-running.json'),{directory,consumer});
 console.log(JSON.stringify({directory,phase:'strict-types-and-complete-restart-association'}));
 let child,timer,killTimer,stop;
 const interrupted=()=>{stop?.('SIGTERM');killTimer??=setTimeout(()=>stop?.('SIGKILL'),10000);};
@@ -108,18 +110,21 @@ try{
  // Own only this detached test child's process group, never our caller's group.
  stop=signal=>{if(child.exitCode===null&&child.signalCode===null)try{process.kill(-child.pid,signal);}catch(error){if(error.code!=='ESRCH')throw error;}};
  let timedOut=false;
- timer=setTimeout(()=>{timedOut=true;stop('SIGTERM');killTimer=setTimeout(()=>stop('SIGKILL'),10000);},5*60*60*1000);
+ timer=setTimeout(()=>{timedOut=true;stop('SIGTERM');killTimer=setTimeout(()=>stop('SIGKILL'),10000);},(pendingRepeated?7:5)*60*60*1000);
  const execution=await new Promise((done,fail)=>{child.once('error',fail);child.once('exit',(code,signal)=>done({pid:child.pid,code,signal}));});
  clearTimeout(timer);clearTimeout(killTimer);saveEvidence(join(directory,'exit.json'),execution);
  assert.equal(timedOut,false);assert.equal(execution.code,0,'Read '+logPath);assert.equal(execution.signal,null);
  assert.ok(fs.statSync(logPath).size<=8*1024*1024);
  const log=fs.readFileSync(logPath,'utf8');
  for(const[key,n]of[['tests',expectedCases],['pass',expectedCases],['fail',0],['skipped',0],['cancelled',0],['todo',0]])assert.match(log,new RegExp('^# '+key+' '+n+'$','m'));
- assert.match(log,/REASSOCIATION_COMPLETE_NATIVE /);assert.match(log,/CONTINUATION_EVIDENCE_PHASE metadata/);
+ assert.match(log,/REASSOCIATION_COMPLETE_NATIVE /);
+ if(pendingRepeated){assert.match(log,/REASSOCIATION_PENDING_STEP original-native-intent-prepared-without-commit/);assert.match(log,/REASSOCIATION_REPEATED_STEP second-actual-process-death-and-complete-prior-metadata-retained/);}
+ else assert.match(log,/CONTINUATION_EVIDENCE_PHASE metadata/);
  assert.deepEqual(sourceEvidence(root),source);
  for(const row of runtime)assert.equal(sha(fs.readFileSync(join(root,row.path))),row.sha256);
- Object.assign(state,{complete:true,passed:true,cases:expectedCases,sourceUnchanged:true,strictPrivateTypes:true,log:logPath,logSha256:sha(log),scope:'Actual committed Native process death, seven cold clients/fourteen offline lanes, interrupted association writes, fresh authenticated confirmation/publication, real metadata and original delivery with future histories. Prior metadata prefix reader and association DATA laws also run. Pending/existing-metadata/repeated complete ownership cycles, physical browser durability and V1 remain separate.'});
- saveEvidence(join(directory,'result.json'),state);saveEvidence(join(root,'target/joint-reassociation-installed-result.json'),state);
+ const scope=pendingRepeated?'Actual pending Native process death, then a second committed death after complete metadata continuation. Two fresh cold owners preserve seven families/fourteen offline lanes and earlier complete metadata through fresh confirmation/publication and final original-protocol delivery/future histories. Separate from the default 17-case workset; not physical browser durability or V1.':'Actual committed Native process death, seven cold clients/fourteen offline lanes, interrupted association writes, fresh authenticated confirmation/publication, real metadata and original delivery with future histories. Prior metadata prefix reader and association DATA laws also run. Pending/existing-metadata/repeated complete ownership cycles, physical browser durability and V1 remain separate.';
+ Object.assign(state,{complete:true,passed:true,cases:expectedCases,sourceUnchanged:true,strictPrivateTypes:true,log:logPath,logSha256:sha(log),scope});
+ saveEvidence(join(directory,'result.json'),state);saveEvidence(join(root,'target/'+workset+'-result.json'),state);
  console.log(JSON.stringify({directory,passed:true,cases:expectedCases,matchingPackageDistFiles}));
 }catch(error){
  saveEvidence(join(directory,'failed.json'),{...state,complete:true,passed:false,error:String(error)});throw error;
