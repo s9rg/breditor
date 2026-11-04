@@ -65,7 +65,10 @@
     "test:clipboard:stress": "npm run build && playwright test -c playwright.clipboard-stress.config.ts --project=webkit",
     "typecheck:browser": "tsc -p tests/browser/tsconfig.json --noEmit",
     "typecheck:demo": "tsc -p tests/demo/tsconfig.json --noEmit",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "check:generated-sdk": "node scripts/check-generated-package-output.mjs",
+    "test:collaboration:metadata-evidence": "node --test --test-concurrency=1 scripts/metadata-continuation-evidence-admission.test.mjs scripts/metadata-continuation-evidence-native.test.mjs",
+    "test:collaboration:metadata-evidence:installed": "node scripts/check-metadata-evidence-installed.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",

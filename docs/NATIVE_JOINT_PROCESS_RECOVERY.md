@@ -89,3 +89,7 @@ selection. Client reassociation therefore needs an explicit new descriptor and
 continuation destinations, complete original-source inspection, fresh decisions,
 and functional local-history/offline/metadata tests before exposure to a caller.
 Do not relax the exact-selection guard or retarget an old host to bypass this.
+
+The independently verified [held metadata evidence readers](METADATA_CONTINUATION_EVIDENCE.md)
+are now integrated as the read-only precursor to this new association. They do
+not relax the exact-control guard or prove the complete client handoff.

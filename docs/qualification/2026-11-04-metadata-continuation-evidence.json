@@ -1,0 +1,114 @@
+{
+  "format": "breditor/metadata-continuation-evidence-qualification",
+  "formatVersion": 1,
+  "mainBefore": "53f9fa4063f6865823af8937a314f9ae89269aee",
+  "isolatedCommit": "827f172dfdfba98c07d87f1474151559c42ec6b0",
+  "qualificationSource": {
+    "commit": "827f172dfdfba98c07d87f1474151559c42ec6b0",
+    "dirty": false,
+    "sha256": "e8f62fb24661d425babc1d45101a7f239430576b908f432e97451a1cc56d5246",
+    "files": 8302,
+    "bytes": 67664922
+  },
+  "sourceCases": 2,
+  "installedCases": 2,
+  "sourceLogSha256": "2e94db5a0b9d94cb377edbc31949b5346b6c97cbe41edf79aac5b15643c94cfe",
+  "installedLogSha256": "1eecbf6993ef57eb87470b8b68eabf30b297d5c995fcbc18da1dc8496f5583cd",
+  "sourceUnchanged": true,
+  "installedWorkspaceLinks": false,
+  "executedSourceCorrespondence": [
+    {
+      "path": "packages/breditor-collaboration/src/selected_local_metadata_continuation/destination.ts",
+      "bytes": 4117,
+      "sha256": "844331c768fda42ac4c2549393aa9c2c2a3646241f2bccf1cb42485f558e2380"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_local_metadata_continuation/destination_facts.ts",
+      "bytes": 1961,
+      "sha256": "b72b542154d14b1d0aae43237059d8728825f391b962aeba315a1702b8b2a5b3"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_local_metadata_continuation/evidence_contract.ts",
+      "bytes": 1091,
+      "sha256": "5de057555e624c9ecb6b56471a40ef9c745270d684bf0e72518a7fa6982d3f17"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_local_metadata_continuation/held_absence.ts",
+      "bytes": 4101,
+      "sha256": "6031440ffcf0def639910d4142bbc834f46a95e405408becc51cae734150f8cc"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_local_metadata_continuation/held_evidence.ts",
+      "bytes": 7700,
+      "sha256": "9500ac8a0d0d26664ecba17240afe0dd4aee109d46ee1a68dea5dc1d849d38d6"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_local_metadata_continuation/intent.ts",
+      "bytes": 8361,
+      "sha256": "ceea825ba763690cb97a374f1ffb4f254b64df5adc973a12aaf7f542f03a24e3"
+    },
+    {
+      "path": "packages/breditor-collaboration/src/selected_local_metadata_continuation/original_journals.ts",
+      "bytes": 4907,
+      "sha256": "34b453caf40afe0156e3750408e07a89016c5274b7f883d1d8e1af896a967d7d"
+    },
+    {
+      "path": "scripts/metadata-continuation-evidence-admission.test.mjs",
+      "bytes": 1039,
+      "sha256": "717f26fbffe49af4640097558b245c1044aa75cf1803aa76fd079308d0aa1ee2"
+    },
+    {
+      "path": "scripts/metadata-continuation-evidence-native.test.mjs",
+      "bytes": 15467,
+      "sha256": "ced0901efc9c25952740ee68a06d44442d827834e60adddf4ec6217fcf52266a"
+    }
+  ],
+  "mainIntegration": {
+    "tests": 7,
+    "passed": true,
+    "indexSha256": "c490c17ad64693068c49ae6ebdc6dd967587114bbac57913baefa648bb9a7fdd",
+    "files": [
+      {
+        "file": "metadata-evidence-main-contracts.log",
+        "bytes": 1639,
+        "sha256": "f57e737a0eb5dd46e16ad03385e6288854d1f08d71a1e06df43abf8ceb930c2e"
+      },
+      {
+        "file": "metadata-evidence-generated-output.json",
+        "bytes": 1159,
+        "sha256": "3dfdc5fd9b34890387282adedd2ab46346290851dff065a225a9a4299a878f84"
+      }
+    ]
+  },
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/metadata-evidence-proof-a88db39bff07",
+    "indexSha256": "a88db39bff07febefa915cbcf6b7635753fbef5944ba12703038ef80d4cc9191",
+    "references": 221,
+    "objects": 169,
+    "compressedBytes": 47010740,
+    "sourceArchive": {
+      "file": "executed-source.tar.gz",
+      "bytes": 20245300,
+      "sha256": "a5abb4af6ece90a4ad7b51cb055b253b0ab55f54cfbf0959bc8d43522dda298a",
+      "files": 8302
+    },
+    "readBackVerified": true
+  },
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "scope": "Read-only held earlier metadata/absence evidence under genuine target/original journals; seven real families, three metadata lanes, real ACKs, all destination prefix stages, unchanged original journals and future document/comment Undo/Redo.",
+  "limitations": [
+    "Original four client multipart input Blobs were not retained by these reader tests. Native fixture outputs and canonical journal observations are retained with exact executable source.",
+    "The historical installed archives include six unused stale generated output paths. These exact old archives remain retained as executed; they do not prove full current-source package provenance. Current main generated output has a separate exact names/bytes check.",
+    "Complete Native client association remains isolated and is not qualified by these reader cases."
+  ],
+  "originalFormatsAndDefaultsChanged": false,
+  "publicRootExportsChanged": false,
+  "versionsChanged": false,
+  "clientJointProcessReassociationQualified": false,
+  "physicalBrowserDurabilityQualified": false,
+  "historicalWebKitFaultRepaired": false,
+  "historicalArchiveShortReadFaultRepaired": false,
+  "v1Ready": false,
+  "v1GatesOpen": 13,
+  "remoteActions": []
+}
