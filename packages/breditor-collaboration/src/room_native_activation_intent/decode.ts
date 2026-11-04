@@ -31,5 +31,8 @@ export async function decodeRoomActivationIntent(input:RoomActivationEncodedCapt
  const recovery=fields(restored['recovery'],['kind','bundle']);if(recovery['kind']!=='retained'&&recovery['kind']!=='pending')throw fail();
  // This parser detaches the full original formats. Genuine Native inspection
  // and exact live source checks remain mandatory before any commit.
- detachResolvedServerPacketRecoveryBundle(recovery['bundle']);assertRoomActivationCapture(choice.activation,restored as unknown as ReconciledServerPacketRecoveryCapture);integrity.guard();return restored as unknown as ReconciledServerPacketRecoveryCapture;
+ detachResolvedServerPacketRecoveryBundle(recovery['bundle']);assertRoomActivationCapture(choice.activation,restored as unknown as ReconciledServerPacketRecoveryCapture);integrity.guard();
+ // fields() returns a detached closed projection; freeze that new root too.
+ // Its descendants already came from the immutable tagged graph reader.
+ return Object.freeze(restored) as unknown as ReconciledServerPacketRecoveryCapture;
 }

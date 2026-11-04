@@ -1,5 +1,12 @@
 # Breditor V1 release preparation
 
+[Immutable cold capture replay](IMMUTABLE_ACTIVATION_CAPTURE.md) repairs a decoder
+root that could not be re-encoded for a new Native association. Main source and
+independently installed retention worksets pass 15 cases each, including durable
+cold-store replay; the actual saved 13-object capture preserves all byte pins.
+The complete client restart workflows remain separately isolated, and the
+intermittent archive-read and historical WebKit faults remain open.
+
 [Native restart during joint activation](NATIVE_JOINT_PROCESS_RECOVERY.md) now
 passes nine source and nine independently installed cases, covering 28 actual
 child-process deaths. Prepared, committed and published crashes preserve exact

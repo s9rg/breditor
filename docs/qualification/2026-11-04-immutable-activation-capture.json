@@ -1,0 +1,157 @@
+{
+  "format": "breditor/immutable-activation-capture-qualification",
+  "formatVersion": 1,
+  "mainBefore": "edf57d2feb750a77cbc81ab63602bf288ddee5c7",
+  "executionSource": {
+    "commit": "edf57d2feb750a77cbc81ab63602bf288ddee5c7",
+    "dirty": true,
+    "sha256": "8d0453edbec9f05699a1324c699d5b4858cb23624ce3d9aa12d40eb1149370ef",
+    "files": 8311,
+    "bytes": 67713127
+  },
+  "sourceCorrespondence": [
+    {
+      "path": "packages/breditor-collaboration/src/room_native_activation_intent/decode.ts",
+      "bytes": 4443,
+      "sha256": "fab403206d78eba31b2c11bb0b7ba6eace68dc5c262407e999348dcb418d1d75"
+    },
+    {
+      "path": "scripts/room-native-activation-intent.test.mjs",
+      "bytes": 11236,
+      "sha256": "853b7d8fee25e0d3915b9c81a5342b325c5af6f9b9ddb97980c6d822b63afd4c"
+    },
+    {
+      "path": "scripts/check-activation-retention-source.mjs",
+      "bytes": 3187,
+      "sha256": "65b51951c0441c4e9dd78e8b327724a9374111dcd0a5624cd05fc1c1580ecf27"
+    },
+    {
+      "path": "scripts/check-activation-retention-installed.mjs",
+      "bytes": 7847,
+      "sha256": "0a82875da4e882bfbdb021237c9e993a461f348aefd81b080c7054e76827f08c"
+    },
+    {
+      "path": "scripts/sdk-native-activation-plan.mjs",
+      "bytes": 832,
+      "sha256": "9ab1f3deefb2eb7855a7c899abd88bc4469667d45b3620e6e61b2628de3a9b36"
+    }
+  ],
+  "redRootImmutabilityRegressionReproduced": true,
+  "intentCasesPassed": 12,
+  "currentSourceCasesPassed": 15,
+  "currentInstalledCasesPassed": 15,
+  "strictPrivateTypes": true,
+  "installedWorkspaceLinks": false,
+  "matchingPackageDistFiles": 2879,
+  "exactGeneratedPackageOutput": true,
+  "sourceUnchanged": true,
+  "actualNativeDataReplay": {
+    "passed": true,
+    "objects": 13,
+    "totalBytes": 15927052,
+    "graph": {
+      "bytes": 416511,
+      "sha256": "e6a95463f2a59a914c90f9104ecadcdf19f2526a2a0282747dd8f0953bd57ffc"
+    },
+    "graphAndObjectPinsUnchanged": true,
+    "usesActualReopenedNativeSelection": true,
+    "actorFactoryProvided": false,
+    "authenticatedCommitPerformed": false
+  },
+  "diagnosticFreshProcessSample": {
+    "runs": 10,
+    "casesEach": 15,
+    "passedRuns": 10,
+    "faultRepaired": false
+  },
+  "earlierUnexpectedArchiveRefusal": {
+    "retained": true,
+    "repaired": false,
+    "logSha256": "eb777fef7e7c93c1d2aa0a983fd0a949e07561cd3551376f7f2ea725f1e5dbb1",
+    "originalReadDiagnosticsUnavailableInDefaultReporter": true
+  },
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/immutable-capture-proof-d06520c8f3dd",
+    "indexSha256": "d06520c8f3ddcd8d0e56b2225f23aa05a71e4d19e335d85b0ed962a72ea6c18b",
+    "references": 123,
+    "objects": 109,
+    "compressedBytes": 34880843,
+    "sourceArchiveFiles": 8311,
+    "sourceArchiveSha256": "7977d697adc5cfbebd9a96e9c490f6980c483fa4fa8911f11fb84284a10c5476",
+    "allSourceContentsReadBackVerified": true,
+    "readBackVerified": true
+  },
+  "mainIntegrationVerified": true,
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "broaderSdkActivationExpectedCases": 47,
+  "broaderSdkActivationRerun": false,
+  "originalFormatsDefaultsLimitsOrVersionsChanged": false,
+  "wholeRoomRestartAssociationQualified": false,
+  "historicalArchiveReadFaultRepaired": false,
+  "historicalWebKitFaultRepaired": false,
+  "physicalStorageDurabilityQualified": false,
+  "v1Ready": false,
+  "v1GatesOpen": 13,
+  "remoteActions": [],
+  "scope": "Immutable decoded activation capture root and exact direct/durable cold decode-re-encode, including actual saved Native intent. Full client restart/metadata/publication remains separate.",
+  "isolatedCommit": "d58dd701c7c42853690f2f2e37c40034d7421a9d",
+  "mainExecutionSource": {
+    "commit": "edf57d2feb750a77cbc81ab63602bf288ddee5c7",
+    "dirty": true,
+    "sha256": "67b2dda8b5c339105ed9350afd0432b1b073419195972889115553a059bcd3eb",
+    "files": 8313,
+    "bytes": 67720580
+  },
+  "mainSourceCasesPassed": 15,
+  "mainInstalledCasesPassed": 15,
+  "mainMatchingPackageDistFiles": 2879,
+  "mainActualNativeDataReplayPassed": true,
+  "mainProtectedArtifactsUnchanged": true,
+  "mainIntegrationProof": {
+    "directory": "/Users/s/code/breditor/target/immutable-capture-integration-proof-4e5c3fb5650a",
+    "indexSha256": "4e5c3fb5650ab1548494168df58c22f57103e3fde2c451f06015c17b2d16e7ee",
+    "readBackVerified": true,
+    "references": [
+      {
+        "path": "target/immutable-capture-main-source.log",
+        "bytes": 281,
+        "sha256": "34f9c8685715022530245c381787d2c6663451292661810f0b892cf9bd83537f"
+      },
+      {
+        "path": "target/immutable-capture-main-installed.log",
+        "bytes": 285,
+        "sha256": "a2cc27c4ad2eb396c333384b20d937ac6544db7ce21ba027d961bae854223468"
+      },
+      {
+        "path": "target/immutable-capture-main-generated-output.json",
+        "bytes": 1159,
+        "sha256": "5678ec35bf2825c8cc9e007ea4914783c89ea79fb79d6b60ef0c68b597b9ead9"
+      },
+      {
+        "path": "target/immutable-capture-main-protected.json",
+        "bytes": 564,
+        "sha256": "602017309ee6c3c1a0a2a1f5881d3cdc271ffcfd7abce92bda26547c3f62f436"
+      },
+      {
+        "path": "target/immutable-capture-main-actual-replay.log",
+        "bytes": 184,
+        "sha256": "2d06cf51038165b69e761e046172e29ae13114a2578bb27ef4eb38540557bb38"
+      },
+      {
+        "path": "target/native-reassociation-capture-data-replay.json",
+        "bytes": 3719,
+        "sha256": "4397683ff0d34ecf1e49e02c94638b844e0c21971e4dd1d2517509ebf4ba37d5"
+      },
+      {
+        "path": "target/activation-retention-source-qualification.json",
+        "bytes": 839,
+        "sha256": "f80d58a8d6b690c1dae9ac2e3633fedcc08b32ef09969ee44b682608ba6de9cf"
+      },
+      {
+        "path": "target/activation-retention-installed-result.json",
+        "bytes": 9322,
+        "sha256": "8926fb705adc1ce468fbf1098306af41446a61fcbcf2243c285aa4dbf4e008a4"
+      }
+    ]
+  }
+}
