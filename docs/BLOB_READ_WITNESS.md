@@ -66,3 +66,36 @@ for the exact tested script hashes and retained logs. These results qualify the
 diagnostic, not an archive-reader repair. A separate full run is being used to
 compare Native callback counts with any subsequent SDK length refusal. Neither
 complete callback counts nor an incomplete EOF alone identifies the root cause.
+
+## Scoped Native reader associations
+
+The first complete Native callback trace finished with one passing functional
+workflow, including actual process restart, fresh actors, authenticated
+publication, fourteen original-protocol deliveries, asset fields and future
+Native document/comment histories. It remained an instrumented diagnostic.
+Its version 1 observer reported 1,878,104 public `arrayBuffer()` calls and
+1,888,879 completed tagged readers, with zero observer errors and no recorded
+incomplete Native EOF. These counts are not a one-to-one completion ledger.
+
+A small reproduction explains the attribution defect: after one observed
+`arrayBuffer()` call, later `text()` and `stream()` readers on the same Blob
+inherited its old label. All three completed under invocation ID 1. This does
+not establish an incomplete read or explain the earlier ordinary zero-byte
+failures; it limits interpretation of the old report. That report is retained
+unchanged.
+
+Version 2 consumes the label when the selected Node implementation synchronously
+creates its reader. A `finally` block expires any unconsumed label on original
+method return or throw. Completed readers leave the active reader registry.
+`associatedReaders` is reported separately from public calls and completed
+readers. Calls whose original method does not create a reader are not falsely
+credited with a completion. The exact original Promise, result and error remain
+unchanged; no Promise continuation, Blob payload retention or read retry is added.
+
+Eight focused checks cover the original four laws, later `text`/`bytes`/`stream`
+reads, overlapping reads, throwing/readerless methods and another pull after EOF.
+Twelve explicitly instrumented SDK smoke cases pass; their version 2 report has
+634 calls, 634 associated readers, 634 completions, zero observer errors and no
+incomplete EOF. Those checks qualify the diagnostic correction, not full recovery
+or a repair of the historical archive/WebKit faults. Existing SDKs, protocols,
+runtimes and ordinary restart tests are unchanged by this scripts-only repair.
