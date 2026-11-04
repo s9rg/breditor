@@ -1,0 +1,125 @@
+{
+  "format": "breditor/native-joint-reassociation-composition-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-04",
+  "functionalSource": {
+    "commit": "0cf9f756c41ff5dfa26da6a26ec3eedc915d40bd",
+    "dirty": false,
+    "sha256": "522aa4725d1f15231a8387e542123e572501d395ed5142e1491e9fc4fa4ea75e",
+    "files": 8370,
+    "bytes": 68015848
+  },
+  "fullNativeWorkflowBaseline": "97e337c3f376a81123e19ecb8c27ba1f2035889e",
+  "separateFailureObservationCode": "89c4ef8aeac0f768183f7e6e3f789571aa8b1651",
+  "finalCodeSource": {
+    "commit": "89c4ef8aeac0f768183f7e6e3f789571aa8b1651",
+    "dirty": false,
+    "sha256": "390a32dbb8cedc8ad1f81ed3483f6ce5a11ea60d487407de320ed56116826c26",
+    "files": 8376,
+    "bytes": 68051679
+  },
+  "componentCases": {
+    "source": 129,
+    "independentlyInstalled": 129
+  },
+  "fullWorkflows": [
+    {
+      "mode": "ordinary-source-committed-restart",
+      "cases": 1,
+      "passed": true,
+      "durationMs": 7414673.279041,
+      "realNativeProcessDeaths": 1,
+      "families": 7,
+      "freshColdActors": 14,
+      "offlineLanes": 14,
+      "metadataLanes": 3,
+      "priorCompleteMetadataDestinations": 0,
+      "originalProtocolDeliveries": 14,
+      "selectedAssetStates": 9,
+      "exactFutureDocumentAndCommentHistories": true,
+      "logSha256": "1d0601383606cfb809b7812385c8e63d77a2f32af879e757ddbafe4a223d0043"
+    },
+    {
+      "mode": "independently-installed-pending-then-committed-restarts",
+      "cases": 1,
+      "passed": true,
+      "durationMs": 8046439.53675,
+      "realNativeProcessDeaths": 2,
+      "families": 7,
+      "freshColdActors": 14,
+      "offlineLanes": 14,
+      "metadataLanes": 3,
+      "priorCompleteMetadataDestinations": 4,
+      "originalProtocolDeliveries": 14,
+      "selectedAssetStates": 9,
+      "exactFutureDocumentAndCommentHistories": true,
+      "logSha256": "2d771588e098879e2bfc8ca5657a4d57d1a4983b0ff6accc4b91fafc83137ed1"
+    }
+  ],
+  "hostReaderInstrumentation": false,
+  "sourceAndProtectedInputsUnchanged": true,
+  "fullWorkflowInstalledDistFiles": 2915,
+  "separateFailureObservationComponentCases": {
+    "source": 82,
+    "independentlyInstalled": 82
+  },
+  "actualInjectedIntentReadRefusal": {
+    "httpRequests": 0,
+    "intentWrites": 0,
+    "numericObservationsPreserved": true,
+    "originalPreparedStateAndCapturePreserved": true,
+    "physicalFaultReproduction": false
+  },
+  "fullNativeWorkflowsRerunForFailureMetadataPatch": false,
+  "finalMatchingInstalledDistFiles": 2917,
+  "mainGeneratedOutputsVerified": true,
+  "mainStrictPrivateTypeContracts": 4,
+  "installedFullStrictPrivateTypeContracts": 2,
+  "runtimePins": [
+    {
+      "path": "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm",
+      "sha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0"
+    },
+    {
+      "path": "target/native-joint-process-native/debug/examples/native_joint_process_recovery_functional",
+      "sha256": "70d9e8becba4421be4fdfb33b5d08b7ba2efc7d36c5ca521c287104e4ebc8347"
+    },
+    {
+      "path": "target/owned-history-relay-native/release/examples/complete_cohort_control_functional",
+      "sha256": "3a52eea28153ff72fda020ff6b1bb8165ee899bba32f7ec063ea84a03d2dd616"
+    },
+    {
+      "path": "target/owned-history-relay-native/release/examples/selected_suggestion_delivery_functional",
+      "sha256": "60427bb794f52c39a7084fac797f8f3150501238c45c78bad6195cd928a252ca"
+    }
+  ],
+  "runtimeBytesChanged": false,
+  "rustChangedInThisIntegration": false,
+  "publicRootExportsChanged": false,
+  "versionsChanged": false,
+  "originalProtocolsAndDefaultsUnchanged": true,
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/reassociation-main-integration-proof-_k31q9m2",
+    "indexSha256": "259814285b5e5fec47e59ab3b2f30fbb19ef111ba0b9e588d1b2e14c389d9af3",
+    "refs": 15,
+    "compressedBytes": 20803,
+    "readBackVerified": true,
+    "mainIntegrated": true,
+    "source": {
+      "commit": "89c4ef8aeac0f768183f7e6e3f789571aa8b1651",
+      "dirty": false,
+      "sha256": "390a32dbb8cedc8ad1f81ed3483f6ce5a11ea60d487407de320ed56116826c26",
+      "files": 8376,
+      "bytes": 68051679
+    },
+    "matchingFinalDistFiles": 2917
+  },
+  "mainIntegrated": true,
+  "physicalBrowserDurabilityQualified": false,
+  "genericColdClientBootstrapQualified": false,
+  "historicalZeroByteReadRepaired": false,
+  "historicalWebKitFaultRepaired": false,
+  "all13V1GatesRemainOpen": true,
+  "v1Ready": false,
+  "scope": "Controlled SDK functionality with actual Rust child deaths, fresh authorization/publication and source/metadata/history preservation. Full Native workflows qualify the97 baseline. The separately integrated failure-observation delta has its own82+82 component qualification and actual injected retained-intent refusal. This is not physical browser, supported-environment, generic cold bootstrap, historical fault, full parity or V1 release qualification. No push, tag, publish or deployment."
+}

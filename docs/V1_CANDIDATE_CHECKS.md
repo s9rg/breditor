@@ -1,5 +1,35 @@
 # V1 candidate checks
 
+## November 4 completed integration
+
+The [completed restart composition](qualification/2026-11-04-native-joint-reassociation-composition.json)
+is now integrated locally. Its 129 source and 129 installed component cases pass,
+as do the ordinary committed source workflow and an independently installed
+pending-then-committed repeated restart. Actual Rust child deaths, fresh
+authenticated confirmation/publication, seven source families, fourteen offline
+lanes, three metadata lanes, exact asset states and future document/comment
+Undo/Redo are checked. The repeated run preserves four earlier complete metadata
+destinations. All 2,915 full-workflow installed files match the tested SDK.
+
+The separate [bounded uncertainty observations](NATIVE_UNCERTAINTY_READ_OBSERVATIONS.md)
+repair is also integrated after 82 source and 82 independent installed cases.
+An injected real intent-reader refusal retains its numbers, sends no HTTP request
+and performs no intent write. Final Main has 2,917 byte-matching SDK files, fresh
+generated-output verification and four strict type contracts. The Native full
+workflows qualify the preceding coordinator baseline; they were not rerun for
+this failure-metadata-only patch.
+
+These are controlled Node storage workflows with actual Rust processes. Physical
+browser durability, generic cold client bootstrap, complete supported profiles,
+the historical archive-read/WebKit faults, remaining parity and all thirteen V1
+release gates remain open. Original protocols/defaults, normal Wasm, versions
+and public-root exports are unchanged. Nothing is pushed, tagged or published.
+
+## Earlier checkpoints
+
+The following entries retain their earlier qualification scopes and failures.
+The current integrated composition is described above.
+
 [SDK Native publication](NATIVE_ROOM_PUBLICATION.md#repeatable-sdk-component-checks)
 now passes both checked-in 22-case commands on one unchanged source snapshot,
 including strict private declarations and 2,825 byte-matching independently

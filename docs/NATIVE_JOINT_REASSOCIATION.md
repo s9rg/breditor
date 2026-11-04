@@ -6,10 +6,33 @@ intent, source histories and metadata journals immutable. Its own descriptor,
 Native intent and metadata destinations use new, distinct namespaces. Ordinary
 protocol formats, public-root exports and normal Wasm remain unchanged.
 
-The implementation is isolated in `native_room_joint_reassociation/`. It is not
-a V1 readiness claim. Full functional and independently installed qualification
-must accompany integration; constructor/type checks and stored phases cannot
-prove a complete handoff.
+The implementation is in `native_room_joint_reassociation/`. The controlled
+composition is integrated locally after full source and independently installed
+qualification. Constructor/type checks and stored phases alone cannot prove a
+complete handoff; this is not a V1 readiness claim.
+
+## November 4 controlled functional qualification
+
+The [qualification record](qualification/2026-11-04-native-joint-reassociation-composition.json)
+retains the exact source, packages, runtimes, logs and read-back-verified proof.
+The ordinary source workflow passes one committed Native process death. The
+independently installed workflow passes a pending death, complete metadata
+continuation and another committed death while preserving four earlier metadata
+stores. Both confirm lost replies against fresh actual controls, deliver all
+fourteen original lanes, preserve nine selected asset states and exercise future
+document/comment Undo/Redo for all seven source families. The component workset
+also passes 129 cases in each environment.
+
+The separate uncertainty-observation patch has 82 source and 82 installed cases,
+including an injected measured read failure inside the actual retained-intent
+coordinator. It does not change publication or readiness decisions. Its component
+qualification is distinct from the preceding full Native workflow baseline.
+
+Final Main generated outputs, four strict type contracts and all 2,917 installed
+SDK bytes match. Normal Wasm and Native runtime pins remain unchanged. Controlled
+Node storage is not physical browser durability or generic client-process
+bootstrap qualification. The older intermittent archive-read and WebKit faults
+remain unresolved, and all thirteen V1 gates remain open.
 
 ## Contract and boundaries
 
