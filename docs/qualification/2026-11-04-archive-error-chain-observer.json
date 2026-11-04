@@ -1,0 +1,31 @@
+{
+  "format": "breditor/archive-error-chain-diagnostic-qualification",
+  "formatVersion": 1,
+  "lawCases": 6,
+  "passed": true,
+  "observerSha256": "ce70bfbe207ca8a5ed76af7900dc8382dd4c7e8a5a44a3a41d19d17b6bc15f81",
+  "testSha256": "0974ae9d8ad939d417619864c57aea86af40d5edf8fa353753611ac8298a3870",
+  "logSha256": "6027e6b42377264c91d596444c0b1dfdff85804181c6d1e9ebfbef520b408ebd",
+  "bounds": {
+    "errors": 8,
+    "aggregateMembersPerError": 4,
+    "stackFrames": 8,
+    "stackCharacters": 3072
+  },
+  "scope": "Test error reporting only. Actual Node assertion wrapping is reproduced; the same original assertion/error is rethrown. Native lazy stack access is supported without invoking application accessors. A real separate forensic run failed through AssertionError.actual and retained no incomplete Blob, so its original archive details are unavailable from TAP. New error-chain-observed ordinary run is separate and incomplete; no original failure is repaired.",
+  "originalErrorIdentityPreserved": true,
+  "applicationAccessorsInvoked": false,
+  "hostReaderChanged": false,
+  "sdkChanged": false,
+  "readRetried": false,
+  "proof": {
+    "directory": "target/archive-error-chain-proof-q34_73hq",
+    "indexSha256": "96517ee04d297830b2fbb4069e2941a5f85971aae9e1b68b674a53d4405a7bca",
+    "references": 9,
+    "compressedBytes": 13473,
+    "readBackVerified": true
+  },
+  "historicalFaultRepaired": false,
+  "rootCauseIdentified": false,
+  "v1Ready": false
+}

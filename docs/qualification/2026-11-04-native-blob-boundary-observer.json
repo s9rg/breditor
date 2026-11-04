@@ -1,0 +1,45 @@
+{
+  "format": "breditor/native-blob-boundary-observer-proof",
+  "formatVersion": 1,
+  "baseCommit": "d8d9b7a00d12a00407cddbf143064136af5411e2",
+  "node": "v22.14.0",
+  "qualifiedObserverFiles": [
+    {
+      "path": "scripts/diagnostics/node22-blob-boundary/observer.mjs",
+      "sha256": "64821078303f21e87b4759b10eae0008231115ca7d04ee9ecc47e9f59ef50d96"
+    },
+    {
+      "path": "scripts/diagnostics/node22-blob-boundary/preload.mjs",
+      "sha256": "7bfbd48f05cc2dabd601b6b904a8f73cc8ccc263437dd8e8668cd1cfe9fb9350"
+    },
+    {
+      "path": "scripts/diagnostics/node22-blob-boundary/observer.test.mjs",
+      "sha256": "0f4810e548f25eeb4f347f411ebb3a534281c6e38738c1425554ec8e83b77e19"
+    }
+  ],
+  "lawCases": 4,
+  "lawCasesPassed": true,
+  "instrumentedSdkCases": 12,
+  "instrumentedSdkCasesPassed": true,
+  "nativeReads": 634,
+  "nativeReadLengthMismatches": 0,
+  "scope": "Qualification of an opt-in diagnostic observer only. Original Promise identity, rejection identity, owned-method restoration, positive/empty Native callbacks and a test-owned incomplete callback are checked. SDK smoke uses instrumentation, hence is not ordinary product qualification. Two ordinary historical read failures remain uncorrected; the two full diagnostic runs are separate and incomplete.",
+  "proof": {
+    "directory": "target/native-blob-boundary-observer-proof-urgrnz8i",
+    "indexSha256": "23db0ae7a7f6deceb099c6aec79445322c29209bdad50c8dbac93ed1d906f716",
+    "references": 12,
+    "compressedBytes": 13419,
+    "readBackVerified": true
+  },
+  "originalPromiseReturned": true,
+  "blobHeldInObservationRecords": false,
+  "nativeHandleHeldInObservationRecords": false,
+  "resultBufferHeldInObservationRecords": false,
+  "nativeCallbackCountsObserved": true,
+  "defaultRunnerChanged": false,
+  "productModuleChanged": false,
+  "historicalFaultRepaired": false,
+  "rootCauseIdentified": false,
+  "wholeRoomQualified": false,
+  "v1Ready": false
+}

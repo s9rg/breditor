@@ -1,0 +1,83 @@
+{
+  "format": "breditor/record-cut-request-snapshot-qualification",
+  "formatVersion": 1,
+  "source": {
+    "commit": "ccb017030c37097e80271f07d8678188433a9de7",
+    "dirty": false,
+    "sha256": "0bf32a5c8a54122414192b24c45473370268838a82c6d06de82e0ce4d381d929",
+    "files": 8340,
+    "bytes": 67839867
+  },
+  "sourceCases": 82,
+  "installedCases": 82,
+  "newSnapshotCasesPerEnvironment": 17,
+  "matchingPackageDistFiles": 2887,
+  "strictInstalledTypes": true,
+  "generatedPackagesVerified": true,
+  "installedConsumer": "/private/tmp/breditor-record-cut-snapshot-installed-hP9c2T/consumer",
+  "sourceLogSha256": "75ba9b0d743f0bea45c743a1ed15d693f41e6942e3197d2b2936bb66bf3124fb",
+  "installedLogSha256": "7d12a76c63d21960ace30b349adf424ca3ea8498e1858f9f54ced97b7b4974cb",
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/record-cut-snapshot-proof-nombbgyt",
+    "indexSha256": "9df03ef587d4c9f7f0bad58feff819e4fd00fcce7449624e218347854fe0b221",
+    "refs": 56,
+    "compressedBytes": 32818779,
+    "readBackVerified": true
+  },
+  "integration": {
+    "format": "breditor/record-cut-snapshot-main-integration",
+    "formatVersion": 1,
+    "commit": "ccb017030c37097e80271f07d8678188433a9de7",
+    "matchingPackageDistFiles": 2887,
+    "packages": {
+      "breditor-browser": 188,
+      "breditor-experimental-rich-content": 180,
+      "breditor-collaboration": 2519
+    },
+    "protectedRuntimePins": {
+      "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+      "target/native-joint-process-native/debug/examples/native_joint_process_recovery_functional": "70d9e8becba4421be4fdfb33b5d08b7ba2efc7d36c5ca521c287104e4ebc8347"
+    },
+    "passed": true,
+    "fullRestartQualified": false,
+    "v1Ready": false
+  },
+  "originalReproduction": {
+    "passed": false,
+    "readerAcceptedChangedCheckpoint": true,
+    "expectedBytes": 5911674,
+    "actualBytes": 5911675
+  },
+  "fixedReproduction": {
+    "passed": true,
+    "originalBytesAndSha256Preserved": true
+  },
+  "separateOrdinaryFailure": {
+    "logSha256": "5d402712df09733884a2abdb4256f16b733e0f7e4d83559a22c652f7ac2bd641",
+    "passed": false,
+    "expectedBytes": 408,
+    "observedBeforeAuthorityBytes": 0,
+    "actualBytes": 0,
+    "code": "restored_graph_integrity",
+    "hostReaderInstrumentation": false,
+    "sourceUnchanged": true,
+    "protectedUnchanged": true,
+    "extraInputsUnchanged": true,
+    "rootCauseEstablished": false
+  },
+  "publicProtocolOrVersionChanged": false,
+  "wholeRestartCoordinatorIntegrated": false,
+  "all13V1GatesRemainOpen": true,
+  "v1Ready": false,
+  "scope": "Qualified immutable complete DATA request preparation only. The private encoder reproduction establishes an input-lifetime defect, not corrupted live-owner publication or the cause of intermittent zero-byte reads. No full restart, physical crash, browser or V1 qualification.",
+  "mainSmoke": {
+    "cases": 17,
+    "passed": true,
+    "logSha256": "f3a1b74cfb4a1ebd3178c16b2dce88b0035c7a1bb720d0af890e9948b8ec785e"
+  },
+  "integrationProof": {
+    "directory": "/Users/s/code/breditor/target/record-cut-snapshot-integration-eibyoy02",
+    "indexSha256": "cb29267c63ecf448434da56b142ecdc7347dfb8aa27fb40528640eeb2b052954",
+    "readBackVerified": true
+  }
+}

@@ -1,5 +1,22 @@
 # Breditor V1 release preparation
 
+November 4 isolated integrity checkpoint: [complete room-cut request snapshots](RECORD_CUT_REQUEST_SNAPSHOT.md)
+are now integrated after 82 source and 82 independent installed checks. All 2,887
+compiled SDK files match the tested packages; protected runtimes remain unchanged.
+This fixes a reproduced private encoder input-lifetime defect. A separate ordinary
+408-byte lineage read returned zero and remains unresolved. The larger restart
+coordinator is still isolated. All 13 V1 gates remain open.
+
+
+The combined client restart coordinator remains isolated. Its 57 source checks
+pass, but new ordinary source and independently installed full workflows each
+reproduce an empty Blob read before the restart association is reached. Exact
+saved-data and rebuilt-DAG replays have not reproduced that physical read fault.
+See [the paired failure investigation](ARCHIVE_READ_FAILURES.md#november-4-ordinary-source-and-installed-failures)
+for retained evidence and the separate first-failing-Blob diagnostic. No complete
+coordinator, historical fault, or V1 qualification is inferred from component
+passes.
+
 [Activation capture wire preservation](ACTIVATION_WIRE_PRESERVATION.md) now repairs
 three reproduced data-integrity failures: reassociation changing admitted graph
 bytes, decoding a caller graph changed after hashing, and creation persisting

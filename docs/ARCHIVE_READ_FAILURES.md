@@ -51,3 +51,83 @@ numerical diagnostics and Native cleanup; a separate simulated short read verifi
 the debugger observer. Those injected faults do not reproduce the original bug.
 This change adds observability. It does not establish a repair of the recorded
 intermittent failure or close any V1 release gate.
+
+
+## November 4: ordinary source and installed failures
+
+The frozen combined reassociation candidate passes 57 source/component cases,
+but two complete ordinary workflows fail in an existing archive read before the
+new restart association is reached. The committed-source case receives zero
+bytes for a requested 158,571-byte JSON record. The independently installed
+pending/repeated case receives zero for 672,377 bytes. In both, the buffer was
+already empty before the post-read authority callback. Both exit with failure;
+source and fixed runtime inputs remain unchanged. The larger coordinator has
+not been integrated into Main.
+
+The exact prior complete archives still pass direct digest-only DATA replay.
+Rebuilt framing tests make 840 exact target reads across 30 recipes, including
+nested/empty/chunked Blob parts and wrap depths up to 128, without reproducing
+it. A separate uninstrumented SDK loop performs 64 selected-current read/encode
+round trips with exact byte pins and 117,696 authority checks, also without the
+fault. These are negative observations: their Blob graphs differ from the
+original failed physical objects. Matching-length entries in the prior archives
+do not by themselves identify those failed objects.
+
+The [investigation record](qualification/2026-11-04-paired-archive-read-failures.json)
+retains both actual failures, complete prior data, independently packed modules,
+fixed source/runtime inputs, and the bounded replay scripts/results in a
+read-back-verified compressed proof. The existing
+[separate Blob witness](BLOB_READ_WITNESS.md) is being used in an instrumented
+process to retain the first incomplete physical Blob. That diagnostic cannot
+change either original failed result or supply ordinary qualification.
+
+No upstream Node cause, connection to the historical WebKit fault, or repair is
+established. The already qualified Main capture/snapshot fixes remain valid;
+these failures do not qualify the larger coordinator or close any V1 gate.
+
+
+## Archive errors hidden by assertions
+
+Node's failed `assert.rejects` validator retains the original error in its
+`actual` property, but ordinary TAP output can omit that error's stack and
+numerical read observations. A separate forensic run reached this case while
+expecting an uncertain activation response. It failed with an archive error
+inside the assertion and retained no incomplete Blob witness. That outcome is
+not established to be the same zero-byte failure as the two ordinary runs.
+
+`scripts/diagnostics/archive-error-chain.mjs` now provides bounded post-error
+reporting through `actual`, `cause` and aggregate members. It reads owned data
+properties, skips application getters, supports Node's native lazy stack getter,
+and rethrows the exact original error. It changes no reader or SDK command and
+performs no retry. Reports include validated measurements, error codes and up
+to eight stack frames, omitting the message line.
+
+The [six focused checks](qualification/2026-11-04-archive-error-chain-observer.json)
+cover a real failed Node assertion, cycles/duplicates, getters, logger failure,
+successful results, malformed observations and the original archive stack.
+An additional ordinary full attempt uses this reporting around the unchanged
+functional workflow; its host read methods remain unchanged. That attempt and
+the separate Native callback trace are incomplete. Neither constitutes a repair.
+
+
+## November 4: a separate lineage payload read also returns zero
+
+The original-host-method workflow with bounded error-chain reporting fails at a
+408-byte lineage payload copy: the returned buffer is already empty before its
+post-read authority callback, and remains empty afterward. The error is
+`restored_graph_integrity`, from `ownedLineagePayload` during `encodeGraph` and
+cold graph-envelope reconstruction. This is a distinct caller of Blob slice/read,
+before that copy's digest validation. An archive-integrity-context-only explanation
+is therefore insufficient; an upstream cause is still unproven.
+
+The case exits with one failure after 1,848,625.55 ms, without a timeout. Its source,
+fixed runtimes and four explicit reporting inputs are unchanged. The complete
+prior DATA archive and the exact failure/reporting inputs are retained with the
+[request-snapshot qualification proof](qualification/2026-11-04-record-cut-request-snapshot.json).
+The physical failed Blob is not retained. The separate Native callback trace is
+still in progress when this record is written. No reader is retried or relaxed.
+
+The separately reproduced [room-cut request mutation](RECORD_CUT_REQUEST_SNAPSHOT.md)
+has a qualified repair. It does not explain or repair this zero-byte read, either
+of the earlier larger zero-byte records, or the historical WebKit observation.
+The larger restart coordinator remains isolated and all 13 V1 gates remain open.

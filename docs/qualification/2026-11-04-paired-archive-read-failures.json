@@ -1,0 +1,96 @@
+{
+  "format": "breditor/archive-read-paired-failure-investigation",
+  "formatVersion": 1,
+  "source": {
+    "commit": "1db6247b1b55b04bf973153d819098cd1f31b789",
+    "dirty": false,
+    "sha256": "2df59557e418810dc70f2559b687f1c9228b1c69d29f1ca9df00214de9dd1068",
+    "files": 8356,
+    "bytes": 67955724
+  },
+  "sourceComponentCases": 57,
+  "sourceComponentPassed": true,
+  "ordinaryFailures": [
+    {
+      "case": "committed source process workflow",
+      "code": "archive_integrity",
+      "expectedBytes": 158571,
+      "offset": 0,
+      "observedBeforeAuthorityBytes": 0,
+      "actualBytes": 0,
+      "exit": 1,
+      "timedOut": false,
+      "sourceUnchanged": true,
+      "protectedUnchanged": true,
+      "logSha256": "12fde2b58580bb63f5e339aab0dad100b0a219b286054cd24a398409be547844"
+    },
+    {
+      "case": "independently installed pending/repeated workflow",
+      "code": "archive_integrity",
+      "expectedBytes": 672377,
+      "offset": 0,
+      "observedBeforeAuthorityBytes": 0,
+      "actualBytes": 0,
+      "exit": 1,
+      "timedOut": false,
+      "sourceUnchanged": true,
+      "protectedUnchanged": true,
+      "caseLogSha256": "c5a590348a4d6c596ab5a4ca3b71352c2f1f14ea6e6ae9075af238e751529d6c",
+      "driverLogSha256": "399a53f808850340b497f5be60e59f93c2aa37c5dcbcaa7094099fd63e33b6e6"
+    }
+  ],
+  "failureBoundary": "Existing selected-current/record-cut JSON reader, before the new Native restart/reassociation actions. Both buffers were already empty before the synchronous post-read authority callback. No injected read or changed host method was used in either ordinary failure.",
+  "negativeEvidence": [
+    {
+      "case": "direct prior saved complete DATA replay",
+      "passed": true,
+      "physicalOriginalBlobRetained": false,
+      "actorFactoryProvided": false
+    },
+    {
+      "case": "rebuilt actual framing at wrap depths 0/1/4/16",
+      "recipes": 24,
+      "targetReads": 672,
+      "reproduced": false
+    },
+    {
+      "case": "rebuilt actual framing at wrap depths 32/64/128",
+      "recipes": 6,
+      "targetReads": 168,
+      "reproduced": false
+    },
+    {
+      "case": "original SDK selected-current read/encode round trips",
+      "completed": 64,
+      "exactBytesAndPins": true,
+      "authorityChecks": 117696,
+      "instrumented": false,
+      "elapsedMs": 24313.746333,
+      "reproduced": false
+    }
+  ],
+  "limitations": "Saved byte copies and rebuilt Blob graphs are not the failed physical object. Matching-size records in saved data are diagnostic candidates, not identities established for the later failing Blob. Negative replays do not repair the failure. Inspecting matching Node 22.14 source did not establish an upstream cause.",
+  "separateDiagnostic": {
+    "instrumented": true,
+    "qualification": false,
+    "statusAtCheckpoint": "running",
+    "purpose": "Retain the first actually incomplete Blob handle and, after preserving the original outcome, read it in a separate bounded worker.",
+    "runner": "scripts/fixtures/preload-blob-read-witness.mjs"
+  },
+  "proof": {
+    "directory": "target/archive-read-paired-failure-proof-nfpmzlie",
+    "indexSha256": "c4275db373be011742ec2e7fadfcaa83d65b2b99447a7da2cbba6d563c449b9b",
+    "compressedBytes": 68106325,
+    "references": 48,
+    "nestedSourceReferences": 25,
+    "readBackVerified": true
+  },
+  "coordinatorIntegrationQualified": false,
+  "rootCauseIdentified": false,
+  "upstreamBugProven": false,
+  "repaired": false,
+  "historicalWebKitLinkProven": false,
+  "v1Ready": false,
+  "v1GatesOpen": 13,
+  "scope": "Retained ordinary failures and bounded isolation evidence, not a product repair or a waiver of end-to-end qualification. Main keeps its already verified small capture/snapshot repair; the larger coordinator remains isolated."
+}
