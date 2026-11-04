@@ -1,0 +1,124 @@
+# Joint Native activation and local recovery
+
+The controlled functional checkpoint is qualified below. Release readiness
+remains separate. See [the retained qualification](qualification/2026-11-03-joint-native-activation.json).
+
+The private joint owner connects four previously separate operations: retain the
+original activation intent, commit the Native service, reconstruct the clients
+with their actor custody, and continue metadata before publishing the service.
+The replacement stays private until the last operation succeeds.
+
+`JointRoomActivationAttempt` owns the warm operation. Its separate
+`ColdJointRoomActivationAttempt` recipient reconstructs an interrupted local
+operation from existing complete intent data and fresh actors. A saved phase or
+receipt never substitutes for a new authenticated confirmation. The cold action
+currently requires the same independently selected Native controls; reassociation
+after a Native process restart remains separate work.
+
+## Ownership and ordering
+
+1. `prepare` reads the actual source, metadata and retained execution, then
+   retains an immutable joint descriptor before any Native commit request.
+2. `commitNative` can lose its reply without releasing the original actors. An
+   explicit retry queries the same actual Native owner. A negative decision
+   sends no commit request.
+3. `recoverReplacement` checkpoints original journals before closing them and
+   transferring actor custody. A failed promotion leaves the target private.
+   The cold recipient instead reacquires its own actors from the retained data.
+4. `continueMetadata` verifies the original complete histories and creates or
+   resumes distinct destination namespaces. Pending packets and acknowledged
+   facts retain their original meaning.
+5. `publish` performs a fresh target and metadata visit plus separate metadata
+   and publication decisions. A lost publication reply remains uncertain until
+   an explicit same-control retry succeeds and its observation is durably saved.
+6. `publishedMetadata` returns the metadata data captured by that completed
+   publication. Delivery must reopen it under a fresh target visit.
+   `takeOwner` transfers the replacement once after this publication barrier.
+
+`close` stops the held operation and drains its work before releasing custody.
+Source and target visitors expire with their actual lifetimes. Existing ordinary
+metadata APIs retain their strict field and family checks; held-target and
+cross-family inspection are separate, explicitly admitted composition paths.
+The new owners have no package-root export.
+
+## Reproduced integration defects
+
+An activation preparation can refer to the latest observed Native predecessor
+while the retained client catalogue requires an earlier predecessor. Matching
+current inventory does not make those predecessors interchangeable. The strict
+inventory admission correctly refuses this mismatch. The private Rust fixture
+now has a separately named `prepareJointActivationAfter` action that proves the
+selected observed predecessor's ancestry before closing old control services.
+It provisions new authenticated controls without changing the legacy action's
+meaning or allowing a snapshot during pending publication.
+
+A successful metadata resume can advance journal revisions while preserving
+the metadata choice. Publication resumes metadata internally, so a caller's
+earlier `continueMetadata` capture becomes stale. Reopening that old capture
+correctly failed `local_review_delivery_integrity`. The completed publication
+now exposes its own capture through `publishedMetadata`; the exact snapshot
+check remains strict. The generic regression also performs a second successful
+resume, refuses the earlier capture, and reopens the later capture.
+
+These changes join the separately qualified request projection and Blob payload
+storage repairs. Blob reconstruction now copies verified payload bytes into
+independent storage rather than accumulating recursive Node Blob views. This is
+a reproduced Node failure and does not establish a repair of the historical
+intermittent WebKit or archive short-read faults.
+
+## Verification scope
+
+The complete warm source workset passes all 39 cases and the independently
+installed interrupted-recovery workset passes all 44 cases. The separate focused
+source workset passes 42 cases, Native compatibility passes 22 cases, and the
+installed dependency/registry workset passes five. There are no failed, skipped
+or canceled cases in these passing worksets. Earlier canceled runs remain
+recorded separately.
+
+Main rebuilds with strict declarations and passes its 42 focused integration
+cases. All 2,873 distribution files match both the qualified producer and the
+independent consumer. All 4,515 non-vendor TypeScript/Rust product inputs and
+3,186 Native build inputs correspond to the qualified sources. The exact tested
+Native fixture is copied without its compiler cache; normal Wasm is unchanged.
+
+The final cold test report removes an unused, uninstrumented acquisition
+counter. Only the warm test measures zero ordinary writer acquisition. This
+report-only correction changes no assertion, workflow call or runtime input;
+its exact before/after hashes are retained with the qualification.
+
+One additional main regression passes with seven genuine cold targets, three
+metadata lanes and both original journals invalidated separately. It confirms
+portable reads across the snapshot-to-flat family transition, immediate
+inspection revocation before input reflection, preserved source bytes and exact
+future histories. Its actual inputs and log are retained in the main proof.
+
+The functional tests use actual Rust HTTP activation/publication controls and
+the normal Wasm runtime with controlled IndexedDB, locks and image admission.
+Warm transfer and interrupted local cold recovery retain seven client families,
+fourteen offline document/comment lanes, three local metadata lanes, real image
+acknowledgements, packet dependencies and exact future document/comment Undo/Redo.
+Lost commit and publication replies are deliberate failures followed by explicit
+authenticated retries. Original source data is compared before and after the
+one permitted canonical shutdown checkpoint, then stays byte-identical.
+
+Reproduce after compiling collaboration declarations and building the explicit
+Native publication fixture with `node scripts/build-sdk-native-publication.mjs`:
+
+```sh
+node --test --test-concurrency=1 scripts/joint-activation-complete-native.test.mjs
+node --test --test-concurrency=1 scripts/cold-joint-activation-complete-native.test.mjs
+node --test --test-concurrency=1 scripts/joint-metadata-pending-control-native.test.mjs
+node --test --test-concurrency=1 scripts/metadata-continuation-replacement-native.test.mjs
+```
+
+The complete source/installed worksets, exact sources, package archives, runtime
+pins, actual Native observations and prior stale-capture failures are retained
+in the associated qualification record. Installation changes only module
+locations in the test copies and checks distribution bytes against the producer.
+
+This checkpoint covers controlled functional recovery. Physical storage
+durability, Native process restart reassociation, the full policy/candidate
+matrix, large-archive resource measurements and the historical faults remain
+unqualified. All thirteen V1 release gates remain open. Versions, normal Wasm,
+original protocols/defaults and public-root exports are unchanged. No push, tag,
+publication or deployment is implied.

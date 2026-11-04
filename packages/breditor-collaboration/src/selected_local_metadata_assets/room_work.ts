@@ -1,3 +1,5 @@
+import {verifiedMetadataTargetFamilies} from '../selected_local_metadata_continuation/native_origin.js';
+import type {PhysicalOperationV3Family} from '../physical_room_operation_v3/contract.js';
 import {localMetadataRecoveryRasterPort,type LocalMetadataRecoveryRasterTransport} from './raster_transport.js';
 import {composeReconciledServerPacketRecovery} from '../reconciled_server_packet_recovery/compose.js';
 import type {ReconciledServerPacketRecoveryCapture} from '../reconciled_server_packet_recovery/contract.js';
@@ -79,6 +81,7 @@ const room={read:SelectedRoomCurrentArchive.read,current:SelectedRoomCurrentArch
 const cut={read:PhysicalRoomRecordCutArchive.read,root:PhysicalRoomRecordCutArchive.prototype.root,selection:PhysicalRoomRecordCutArchive.prototype.selection,history:PhysicalRoomRecordCutArchive.prototype.history,dispose:PhysicalRoomRecordCutArchive.prototype.dispose};
 const verifyOriginal=SharedRichEditor.prototype.verifyRecoveryOrigin,verifySegmented=SharedRichEditor.prototype.verifySegmentedRecoveryOrigin;
 export class LocalMetadataReferenceWork {
+ #sourceFamilies:ReturnType<typeof verifiedMetadataTargetFamilies>['participants']|undefined;
  readonly #sources;readonly #allSources;readonly #scope;readonly #waits;readonly #factories:NativeReconstructionFactoryScope<SharedSelectionPolicy>|undefined;readonly #options;readonly #aliases=new Set<LocalPortableReplay>();readonly #liveStamps=new Map<object,CoreReadStamp>();readonly #availabilityStamps=new Map<object,CoreReadStamp>();
  #room:SelectedRoomCurrentArchive|undefined;#cut:PhysicalRoomRecordCutArchive|undefined;#parent:LocalReviewRoomBundle|undefined;#stored:LocalMetadataDeliverySnapshot|undefined;#points:LocalMetadataReferencePoint[]=[];#finished:{bundle:LocalMetadataReferenceBundle;body:LocalMetadataReferenceCut}|undefined;#closed=false;#started=false;#ready=false;
  constructor(scope:SelectedNativeRecoveryScope,options:SharedArchiveIntegrityOptions,check:()=>void){
@@ -88,6 +91,15 @@ export class LocalMetadataReferenceWork {
   try{this.#factories=new NativeReconstructionFactoryScope(reads);this.#factories.bind(scope,this.#waits.signal);this.#options={wasm:options.wasm,checkAuthority:this.#check,signal:this.#waits.signal};this.#check();for(const row of this.#allSources)this.#availabilityStamps.set(row.source.core,coreReadStamp(row.source.core));Object.freeze(this);}catch(error){this.close();throw error;}
  }
  #check=()=>{if(this.#closed)throw fail('local_metadata_assets_closed');this.#waits.check();if(this.#closed)throw fail('local_metadata_assets_closed');};
+ /** Explicit replacement-only reader. The ordinary constructor keeps its
+  * same-family source contract. Full same-visit Native proof must admit each
+  * original/target pair before this separate mode can read an older family. */
+ static forVerifiedMetadataTarget(scope:SelectedNativeRecoveryScope,options:SharedArchiveIntegrityOptions,check:()=>void,origin:Parameters<typeof verifiedMetadataTargetFamilies>[0]):LocalMetadataReferenceWork{
+  const basis=verifiedMetadataTargetFamilies(origin,scope),work=new LocalMetadataReferenceWork(scope,options,()=>{basis.check();check();basis.check();});work.#sourceFamilies=basis.participants;return work;
+ }
+ #originalFamily(id:string,current:PhysicalOperationV3Family):PhysicalOperationV3Family{
+  if(!this.#sourceFamilies)return current;const row=this.#sourceFamilies.find(row=>row.id===id);if(!row||row.family!==current)throw fail('local_metadata_assets_state');return row.sourceFamily;
+ }
  /** Finite owned hash/read context; it expires with this actual work item. */
  integrityOptions():SharedArchiveIntegrityOptions{this.#check();return this.#options;}
  async begin(providedParent:LocalReviewRoomBundle,providedStored:LocalMetadataDeliverySnapshot):Promise<void>{
@@ -98,7 +110,7 @@ export class LocalMetadataReferenceWork {
   const catalog=parsePhysicalCatalogV3Manifest(cut.root.call(this.#cut).source.manifest),before=[],current=[];
   for(const [index,lane]of stored.current.lanes.entries()){
    this.#check();const original=stored.before.lanes[index]!,actual=this.#sources.find(row=>row.id===lane.id),entry=catalog.participants.find(row=>row.id===lane.id),factory=this.#factories?.reads.find(row=>row.id===lane.id)?.read as {session:SharedIndependentRecoveryFactory<SharedSelectionPolicy>}|undefined;
-   if(!actual||actual.source.parent.kind!=='independent-local'||!entry||entry.family!==actual.family||!factory||!['independent-local','local-operation-snapshot','local-operation-flat'].includes(entry.family)||choice.parent.lanes[index]!.family!==actual.family)throw fail('local_metadata_assets_state');
+   if(!actual||actual.source.parent.kind!=='independent-local'||!entry||entry.family!==this.#originalFamily(lane.id,actual.family)||!factory||!['independent-local','local-operation-snapshot','local-operation-flat'].includes(entry.family)||choice.parent.lanes[index]!.family!==entry.family)throw fail('local_metadata_assets_state');
    const selected=(entry.family==='independent-local'?entry.selection:(entry as {selection:{original:SharedIndependentParticipantSelection}}).selection.original) as SharedIndependentParticipantSelection;
    let older:LocalPortableReplay|undefined,newer:LocalPortableReplay|undefined;
    try{
@@ -273,7 +285,7 @@ export class LocalMetadataReferenceWork {
   const catalog=parsePhysicalCatalogV3Manifest(cut.root.call(this.#cut).source.manifest),rows=[];
   for(const [index,lane]of snapshot.current.lanes.entries()){
    this.#check();const stored=this.#stored.current.lanes[index]!,actual=this.#sources.find(row=>row.id===lane.id),entry=catalog.participants.find(row=>row.id===lane.id),factory=this.#factories?.reads.find(row=>row.id===lane.id)?.read as {session:SharedIndependentRecoveryFactory<SharedSelectionPolicy>}|undefined;
-   if(!actual||actual.source.parent.kind!=='independent-local'||!entry||entry.family!==actual.family||!factory||!['independent-local','local-operation-snapshot','local-operation-flat'].includes(entry.family))throw fail('local_metadata_assets_state');
+   if(!actual||actual.source.parent.kind!=='independent-local'||!entry||entry.family!==this.#originalFamily(lane.id,actual.family)||!factory||!['independent-local','local-operation-snapshot','local-operation-flat'].includes(entry.family))throw fail('local_metadata_assets_state');
    const selected=(entry.family==='independent-local'?entry.selection:(entry as {selection:{original:SharedIndependentParticipantSelection}}).selection.original) as SharedIndependentParticipantSelection;
    let older:LocalPortableReplay|undefined,newer:LocalPortableReplay|undefined;
    try{

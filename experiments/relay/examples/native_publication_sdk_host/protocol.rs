@@ -18,6 +18,11 @@ pub(super) enum Request {
         request: u64,
         source: Box<breditor_collab_relay::server::ServerLogGenerationRecoveryStateIdentity>,
     },
+    PrepareJointActivationAfter {
+        request: u64,
+        source: Box<breditor_collab_relay::server::ServerLogGenerationRecoveryStateIdentity>,
+        previous: u64,
+    },
     ObservePublication {
         request: u64,
     },

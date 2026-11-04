@@ -1,0 +1,4 @@
+/** A genuine active target witness precedes host option reflection. */
+import test from 'node:test';import assert from 'node:assert/strict';
+import {previewHeldRoomMetadataContinuation,continueHeldRoomMetadata} from '../packages/breditor-collaboration/dist/selected_local_metadata_continuation/coordinator.js';
+for(const [name,action]of [['preview',previewHeldRoomMetadataContinuation],['create',(scope,witness,input)=>continueHeldRoomMetadata(scope,witness,input,false)],['resume',(scope,witness,input)=>continueHeldRoomMetadata(scope,witness,input,true)]])test('held metadata '+name+' rejects copied witnesses before host input',async()=>{let reflected=0;const input=new Proxy({},{ownKeys(){reflected++;throw Error('No host input before genuine target proof');}});for(const scope of[{},Object.create(null)])await assert.rejects(action(scope,Object.freeze({}),input),error=>error.code==='room_execution_policy');assert.equal(reflected,0);});

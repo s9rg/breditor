@@ -42,6 +42,8 @@ type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error + Send + 
 mod observe_publication_action;
 #[path = "native_activation_sdk_host/prepare_action.rs"]
 mod prepare_action;
+#[path = "native_publication_sdk_host/prepare_after_action.rs"]
+mod prepare_after_action;
 #[path = "native_publication_sdk_host/prepare_publication_action.rs"]
 mod prepare_publication_action;
 #[path = "native_publication_sdk_host/state.rs"]
@@ -83,6 +85,9 @@ pub async fn main() -> Result {
                 }
                 next::Action::PrepareJointActivation { request, source } => {
                     prepare_publication_action::apply(&mut state, request, &source).await?
+                }
+                next::Action::PrepareJointActivationAfter { request, source, previous } => {
+                    prepare_after_action::apply(&mut state, request, &source, previous).await?
                 }
                 next::Action::ObservePublication { request } => {
                     observe_publication_action::apply(&mut state, request).await?

@@ -16,6 +16,11 @@ pub(super) enum Action {
         request: u64,
         source: Box<breditor_collab_relay::server::ServerLogGenerationRecoveryStateIdentity>,
     },
+    PrepareJointActivationAfter {
+        request: u64,
+        source: Box<breditor_collab_relay::server::ServerLogGenerationRecoveryStateIdentity>,
+        previous: u64,
+    },
     ObservePublication {
         request: u64,
     },
@@ -39,6 +44,7 @@ pub(super) async fn read(
                 }
                 Some(Ok(protocol::Request::PrepareActivation{request,source}))=>break Action::PrepareActivation{request,source},
                 Some(Ok(protocol::Request::PrepareJointActivation{request,source}))=>break Action::PrepareJointActivation{request,source},
+                Some(Ok(protocol::Request::PrepareJointActivationAfter{request,source,previous}))=>break Action::PrepareJointActivationAfter{request,source,previous},
                 Some(Ok(protocol::Request::ObservePublication{request}))=>break Action::ObservePublication{request},
                 Some(Ok(protocol::Request::Inspect{request,source}))=>{
                     let archive=observed.get(&source).ok_or("select actual observed inspection source")?;
@@ -55,6 +61,7 @@ pub(super) async fn read(
         Action::Snapshot { request, .. }
         | Action::PrepareActivation { request, .. }
         | Action::PrepareJointActivation { request, .. }
+        | Action::PrepareJointActivationAfter { request, .. }
         | Action::ObservePublication { request } => *request,
     };
     if request <= sequence {

@@ -65,3 +65,14 @@ export function issueVerifiedMetadataContinuationFacts(origin:Inspection,reviewI
 }
 export function consumeVerifiedReviewFacts(token:VerifiedMetadataContinuationFacts,scope:SelectedNativeRecoveryScope,choice:LocalReviewDeliveryChoice){const held=facts.get(token);if(!held||held.scope!==scope||held.reviewUsed||!equal(choice,held.review))throw fail();held.reviewUsed=true;held.check();return held.origin.snapshot.current.lanes.map(row=>({id:row.id,relay:row.relay}));}
 export function consumeVerifiedMetadataFacts(token:VerifiedMetadataContinuationFacts,scope:SelectedNativeRecoveryScope,choice:LocalMetadataDeliveryChoice){const held=facts.get(token);if(!held||held.scope!==scope||!held.reviewUsed||held.metadataUsed||!equal(choice,held.metadata))throw fail();held.metadataUsed=true;held.check();return held.origin.snapshot.current.lanes.map(row=>({id:row.id,records:row.records,relay:row.relay}));}
+
+
+/** Same-visit original/target family facts from the full Native inspection.
+ * A descriptor copy cannot authorize a reader to reinterpret an older family.
+ * The original journal guard and actual target witness stay live together. */
+export function verifiedMetadataTargetFamilies(origin:Inspection,scope:SelectedNativeRecoveryScope){
+ const held=verifiedInspections.get(origin);if(!held||held.scope!==scope)throw fail();
+ const check=()=>{held.check();roomMetadataTargetIdentity(held.witness,scope);};check();
+ const participants=Object.freeze(origin.execution.execution.plan.preparation.plan.participants.map(({id,sourceFamily,family})=>Object.freeze({id,sourceFamily,family})));check();
+ return Object.freeze({participants,check});
+}

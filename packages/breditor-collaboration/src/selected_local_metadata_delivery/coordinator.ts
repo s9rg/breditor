@@ -5,6 +5,7 @@ import {commitHeldRoomActivation,readHeldRoomActivation,type RoomActivationCommi
 import {roomActivationIntentChoice,roomActivationDatabase} from '../room_native_activation_intent/identity.js';
 import {fail as activationIntentFailure} from '../room_native_activation_intent/policy.js';
 import type {RoomActivationIntentChoice,RoomActivationRetainedIntent} from '../room_native_activation_intent/contract.js';
+import type {SelectedNativeRecoveryScope} from '../selected_native_recovery/contract.js';
 import type {PrepareRoomNativeActivationInput,CommitRoomNativeActivationInput} from '../room_native_activation_intent/coordinator_contract.js';
 import {nativeActivationHostPort} from '../native_activation_control/host.js';
 import {coreReadStamp} from '../core_read_stamp.js';
@@ -72,6 +73,10 @@ interface MetadataInput {readonly database:string;readonly lanes:readonly LocalM
 interface MetadataOpeningInput {readonly expected:LocalMetadataDeliveryChoice;readonly lanes:readonly LocalMetadataInitialLane[];readonly approve:(choice:LocalMetadataDeliveryChoice)=>boolean|Promise<boolean>;readonly checkAuthority:()=>void}
 let continueFacts:(owner:SelectedLocalMetadataDelivery,facts:VerifiedMetadataContinuationFacts)=>Promise<void>;
 export const continueVerifiedLocalMetadataFacts=(owner:SelectedLocalMetadataDelivery,facts:VerifiedMetadataContinuationFacts)=>continueFacts(owner,facts);
+let readActivationInScope:(owner:SelectedLocalMetadataDelivery,scope:SelectedNativeRecoveryScope,choice:RoomActivationIntentChoice)=>Promise<RoomActivationRetainedIntent>;
+/** Trusted composition only. The genuine metadata parent must belong to this
+ * exact held source visitor; matching namespaces or saved DATA are insufficient. */
+export const readLocalMetadataActivationInScope=(owner:SelectedLocalMetadataDelivery,scope:SelectedNativeRecoveryScope,choice:RoomActivationIntentChoice)=>readActivationInScope(owner,scope,choice);
 interface Children {versions:SharedDocumentVersions|null;suggestions:SharedSuggestionQueue|null;revisions:SharedSuggestionRevisions|null}
 async function choose(parent:LocalReviewMetadataParent,provided:MetadataInput){
  parent.check();const r=fields(provided,['database','lanes']),input=rows(r['lanes'],1024);if(input.length!==parent.choice.lanes.length)throw fail('local_metadata_delivery_policy');
@@ -135,7 +140,14 @@ export class SelectedLocalMetadataDelivery{
  }
  identity():LocalMetadataDeliveryChoice{return this.#choice;}
  /** Exact durable data only; this does not turn a staged update into success. */
- static{continueFacts=(owner,token)=>{if(!owner||typeof owner!=='object'||!(#parent in owner))return Promise.reject(fail('local_metadata_delivery_policy'));return owner.#continueFacts(token);};}
+ static{
+  continueFacts=(owner,token)=>{if(!owner||typeof owner!=='object'||!(#parent in owner))return Promise.reject(fail('local_metadata_delivery_policy'));return owner.#continueFacts(token);};
+  const read=SelectedLocalMetadataDelivery.prototype.readNativeActivationIntent;
+  readActivationInScope=(owner,scope,choice)=>{
+   if(!owner||typeof owner!=='object'||!(#parent in owner)||owner.#parent.scope!==scope)return Promise.reject(activationIntentFailure('activation_intent_policy'));
+   return read.call(owner,choice);
+  };
+ }
  #continueFacts(token:VerifiedMetadataContinuationFacts):Promise<void>{return this.#captureOperation(async()=>{
   const rows=consumeVerifiedMetadataFacts(token,this.#parent.scope,this.#choice),saved=await this.#parent.saved(),next=new Map<string,SegmentedRetainedRecords>();this.#current();
   for(const row of rows){const old=this.#desired.get(row.id),parent=saved.find(lane=>lane.id===row.id);if(!old||!parent||!equal(parent.relay,row.relay))throw fail();const binding=this.#choice.lanes.find(lane=>lane.id===row.id)!.binding,records=deliveryRetainedRecords(row.records,binding);requireMetadataRecordsForward(old,records);admitDeliveryRetainedRecords(this.#source(row.id).core,binding,records);next.set(row.id,records);}

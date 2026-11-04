@@ -1,5 +1,19 @@
 # Breditor V1 release preparation
 
+[Joint Native activation and recovery](JOINT_ACTIVATION_INTEGRATION.md) now passes
+the complete warm source39 and independently installed interrupted-recovery44
+worksets. Actual Rust controls preserve fourteen offline lanes, original source
+facts, selected asset states and future document/comment Undo/Redo through lost
+commit and publication replies. Main strict types and 42 focused cases pass;
+all 2,873 installed distribution files match its rebuild. The separate
+[Node test-storage memory repair](TEST_STORAGE_MEMORY.md) is also integrated.
+
+This qualifies controlled same-Native-control functionality. Native process
+restart reassociation during this joint transition, physical browser durability,
+full policy/candidate matrices, historical faults, remaining parity and all
+thirteen V1 gates remain open. Original protocols/defaults, normal Wasm, versions
+and public-root exports are unchanged.
+
 [Dependency-only version materialization](NATIVE_VERSION_MATERIALIZATION.md)
 repairs a concrete reconstruction dependency: an accepted catalog entry can
 exist without its immutable body being cached. The explicit Native-loan action

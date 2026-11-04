@@ -1,0 +1,149 @@
+{
+  "format": "breditor/joint-native-activation-qualification",
+  "formatVersion": 1,
+  "executedSource": {
+    "commit": "a26b0e9c6e2208253c90e2000a0ef2274f93157e",
+    "dirty": false,
+    "sha256": "654c58880d3820c714e3641cec0647903cae4ee988b39977be6eff89d10cf6ef",
+    "files": 8276,
+    "bytes": 67529430
+  },
+  "sourceWorkset": {
+    "cases": 39,
+    "logSha256": "12b5deca3a97104e9df42e21d3e72c72c1584db1d7fa584f84e2d42da0cd876c",
+    "passed": true,
+    "sourceUnchanged": true
+  },
+  "installedWorkset": {
+    "cases": 44,
+    "logSha256": "bbf8bf8f182ab60304438c544f67143d5652120fdf3011ee2edd4ac3e957d4e8",
+    "passed": true,
+    "sourceUnchanged": true,
+    "workspaceLinks": false,
+    "matchingDistributionFiles": 2873
+  },
+  "additionalWorksets": {
+    "sourceFocused": 42,
+    "sourceNativeCompatibility": 22,
+    "installedFocused": 5,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0
+  },
+  "priorGenericMetadataEvidence": {
+    "executedSourceSha256": "a812c9cb1184722a23d00512d1349e3535d6db0a7589b54740fc1ddcd5cf6e9c",
+    "sourceCases": 30,
+    "installedCases": 30,
+    "testBackend": "6.2.5",
+    "scope": "Separate pre-dependency-patch metadata stale/current capture regression; not a final-backend complete-workflow rerun."
+  },
+  "actualFunctionalCoverage": {
+    "participantFamilies": 7,
+    "offlineDocumentAndCommentLanes": 14,
+    "localMetadataLanes": 3,
+    "warmTransferredActors": 14,
+    "warmMeasuredOrdinaryWriterAcquisitions": 0,
+    "coldFreshActors": 14,
+    "coldPrivateTargets": 7,
+    "warmNativeRequests": 2,
+    "coldNativeRequests": 4,
+    "publicationRequestsPerWorkflow": 2,
+    "lostCommitRepliesConfirmed": true,
+    "lostPublicationRepliesConfirmed": true,
+    "originalSourceCheckpointFactsPreserved": true,
+    "originalSourceBytesImmutableAfterCheckpoint": true,
+    "finalAssetStateFieldsVerified": true,
+    "exactFutureDocumentAndCommentHistories": true,
+    "sameNativeControlColdWorkflowQualified": true
+  },
+  "testBackend": "6.2.6",
+  "mainBefore": "50fb4463c07bb524ae40f1628ecd6c9b9821664d",
+  "mainIntegration": {
+    "appliedFiles": 47,
+    "focusedCases": 42,
+    "strictPrivateTypes": true,
+    "rustFormatting": true,
+    "logs": [
+      {
+        "path": "/Users/s/code/breditor/target/joint-activation-proof-42dfe6784599/joint-main-integration-contracts.log.gz",
+        "bytes": 9779,
+        "sha256": "deb7b3659f89ac4ff94548d7e3e20d2618e7917b1ab26f36519abe15e6827433",
+        "compressedSha256": "d20bcdb97ff7b436606e6732de8b1705633de3b3b2e1854eaf755637cbc8f5d8"
+      },
+      {
+        "path": "/Users/s/code/breditor/target/joint-activation-proof-42dfe6784599/joint-integration-types.log.gz",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "compressedSha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+      }
+    ],
+    "matchingMainCandidateInstalledDistributionFiles": 2873,
+    "matchingNonVendorTsRustProductFiles": 4515,
+    "matchingNativeBuildInputFiles": 3186,
+    "nativeBuildInputManifestSha256": "4e813bb75dc1a0447a95a6a9ecd209c1b6e5580a12427279235185e31d21bdd4",
+    "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+    "exactTestedNativeBinarySha256": "c1730608caeebea1094727c346149f15bf95d42b41efc98b30133fd17b6c628d",
+    "testReportOnlyCorrectionVerified": true,
+    "runtimeImplementationIdenticalToQualifiedCandidate": true,
+    "additionalColdFamilyRegression": {
+      "cases": 1,
+      "passed": true,
+      "actualFamilies": 7,
+      "actualLocalMetadataLanes": 3,
+      "originalJournalInvalidations": 2,
+      "proofDirectory": "/Users/s/code/breditor/target/joint-activation-proof-42dfe6784599/main-family-regression",
+      "indexSha256": "8cdcff347cd2b4f26960424f751c56d367956981f06fee7338ce9c9e57818e23",
+      "logSha256": "bad1fe52ffc4b451c43438fdc94de696f9b3f76c6ccfbfee6677949899ba11b9"
+    },
+    "readinessAudit": {
+      "ledgerComplete": false,
+      "openGates": 13,
+      "counts": {
+        "implemented": 10,
+        "partial": 27,
+        "missing": 9
+      },
+      "scope": "Grouped prior ledger, not exhaustive; tests are recorded separately."
+    }
+  },
+  "testReportOnlyCorrection": {
+    "format": "breditor/test-report-only-correction",
+    "formatVersion": 1,
+    "path": "scripts/cold-joint-activation-complete-native.test.mjs",
+    "qualifiedSha256": "179d010d7d8787cc014ab9e1bc151a5416b9b45080f5dac53f75716c780af4ea",
+    "correctedSha256": "ce455f71f3b1c401eb3fbd29a62d8326b876ff32052ad357810978e9c8316095",
+    "removedUnusedDeclaration": "normalAcquisitions=0,",
+    "removedUnmeasuredReportField": "warmNormalWriterAcquisitions:normalAcquisitions,",
+    "runtimeImplementationChanged": false,
+    "assertionsOrWorkflowCallsChanged": false,
+    "rationale": "This cold case does not instrument an acquisition counter. Only the separate warm workflow measures zero ordinary acquisitions. Keep the cold report restricted to observed facts."
+  },
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/joint-activation-proof-42dfe6784599",
+    "indexSha256": "42dfe67845999673791426334d606953af8f903b197f4ad856a74a92eb543619",
+    "references": 283,
+    "objects": 201,
+    "compressedBytes": 49194033,
+    "totalRetainedBytes": 69389590,
+    "readBackVerified": true,
+    "sourceArchive": {
+      "name": "executed-source.tar.gz",
+      "bytes": 20195557,
+      "sha256": "e31a19e7d02083086bd28e11781bb31d9f8b3613e1117bf532f4e6c24349b01d"
+    }
+  },
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "testedNativeBinarySha256": "c1730608caeebea1094727c346149f15bf95d42b41efc98b30133fd17b6c628d",
+  "scope": "Actual Rust HTTP activation/publication and normal Wasm with controlled Node IndexedDB, locks and image admission; private SDK composition, original protocol meanings retained. Runtime implementation matches the qualified candidate. A final observer-only correction removes an unmeasured cold report field.",
+  "nativeProcessRestartAssociationQualified": false,
+  "completePolicyMatrixQualified": false,
+  "physicalBrowserDurabilityQualified": false,
+  "largeArchiveResourceGuaranteesQualified": false,
+  "historicalArchiveShortReadFaultRepaired": false,
+  "historicalWebKitFaultRepaired": false,
+  "publicRootExportsChanged": false,
+  "versionsChanged": false,
+  "v1Ready": false,
+  "v1GatesOpen": 13,
+  "remoteActions": []
+}

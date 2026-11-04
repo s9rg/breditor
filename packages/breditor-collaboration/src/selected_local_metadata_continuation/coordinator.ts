@@ -1,7 +1,7 @@
 /** Actual replacement-only metadata handoff. The existing executor owns the
  * successor throughout inspection, approval, retention and destination binding.
  * This action never publishes a room or interprets a saved phase as permission. */
-import {withRoomExecutionMetadataTarget,type RoomExecutionAttempt,type RoomMetadataTargetWitness} from '../native_room_execution_run/attempt.js';
+import {roomMetadataTargetIdentity,withRoomExecutionMetadataTarget,type RoomExecutionAttempt,type RoomMetadataTargetWitness} from '../native_room_execution_run/attempt.js';
 import type {PhysicalOperationV3HistoryReadOptions} from '../physical_room_operation_v3/history_read_contract.js';
 import type {SelectedNativeRecoveryScope} from '../selected_native_recovery/contract.js';
 import {generationDeliveryRecoveryHostPort,type SharedServerLogGenerationDeliveryRecoveryHost} from '../generation_delivery_control/host.js';
@@ -42,11 +42,14 @@ async function inspect(scope:SelectedNativeRecoveryScope,witness:RoomMetadataTar
  return{choice,original,facts:issueVerifiedMetadataContinuationFacts(original,review,metadata),initial:original.snapshot.before.lanes.map(row=>({id:row.id,binding:metadata.lanes.find(lane=>lane.id===row.id)!.binding,records:row.records}))};
 }
 /** Whole-room actual source inspection only. No destination is created. */
-export function previewRoomMetadataContinuation(attempt:RoomExecutionAttempt,reads:PhysicalOperationV3HistoryReadOptions,provided:MetadataContinuationInspectionInput):Promise<MetadataContinuationChoice>{return withRoomExecutionMetadataTarget(attempt,reads,async(scope,witness)=>{const input=inputs(provided,false),check=()=>{scope.check();input.authority();scope.check();};return(await inspect(scope,witness,input,check)).choice;});}
+export function previewRoomMetadataContinuation(attempt:RoomExecutionAttempt,reads:PhysicalOperationV3HistoryReadOptions,provided:MetadataContinuationInspectionInput):Promise<MetadataContinuationChoice>{return withRoomExecutionMetadataTarget(attempt,reads,(scope,witness)=>previewHeldRoomMetadataContinuation(scope,witness,provided));}
+/** Trusted composition under an already admitted actual target visitor. The
+ * witness is checked by the same full original inspection as the ordinary API. */
+export async function previewHeldRoomMetadataContinuation(scope:SelectedNativeRecoveryScope,witness:RoomMetadataTargetWitness,provided:MetadataContinuationInspectionInput):Promise<MetadataContinuationChoice>{roomMetadataTargetIdentity(witness,scope);const input=inputs(provided,false),check=()=>{scope.check();input.authority();scope.check();};return(await inspect(scope,witness,input,check)).choice;}
 /** Original facts are applied only with a fresh complete same-visit proof. The
  * original pair is retained literally before fresh baselines are constructed. */
-function operate(attempt:RoomExecutionAttempt,reads:PhysicalOperationV3HistoryReadOptions,provided:MetadataContinuationInput,resume:boolean):Promise<MetadataContinuationResult>{return withRoomExecutionMetadataTarget(attempt,reads,async(scope,witness)=>{
- const input=inputs(provided,true),check=()=>{scope.check();input.authority();scope.check();};let gate:PreparedSelectedNativeDelivery|undefined,review:Review|undefined,metadata:Metadata|undefined,intent:MetadataContinuationIntent|undefined,primary:unknown,failed=false;
+export async function continueHeldRoomMetadata(scope:SelectedNativeRecoveryScope,witness:RoomMetadataTargetWitness,provided:MetadataContinuationInput,resume:boolean):Promise<MetadataContinuationResult>{
+ roomMetadataTargetIdentity(witness,scope);const input=inputs(provided,true),check=()=>{scope.check();input.authority();scope.check();};let gate:PreparedSelectedNativeDelivery|undefined,review:Review|undefined,metadata:Metadata|undefined,intent:MetadataContinuationIntent|undefined,primary:unknown,failed=false;
  try{const before=await inspect(scope,witness,input,check);if(!equal(before.choice,input.expected))throw fail('metadata_continuation_stale');for(const name of(resume?[]:[input.database,input.preparationDatabase,input.reviewDatabase,input.metadataDatabase]))if(await physicalOperationV3Present(name,check))throw fail('metadata_continuation_exists');
   await decideFreshAssetChoice(before.choice,input.approve,{check,signal:scope.signal,watchClosing:cancel=>{add.call(scope.signal,'abort',cancel,{once:true});return()=>remove.call(scope.signal,'abort',cancel);}});check();const selected=await inspect(scope,witness,input,check);if(!equal(selected.choice,before.choice))throw fail('metadata_continuation_stale');
   const current=await scope.retainCurrent();intent=new MetadataContinuationIntent(selected.choice,{wasm:current.integrity.wasm,checkAuthority:check,signal:scope.signal});const held=intent;retainSelectedNativeDeliveryResource(scope,{check,close:()=>intentApi.close.call(held)});await(resume?intentApi.reopen.call(intent,selected.original.bundle):intentApi.open.call(intent,selected.original.bundle));check();
@@ -60,10 +63,10 @@ function operate(attempt:RoomExecutionAttempt,reads:PhysicalOperationV3HistoryRe
   await continueVerifiedLocalMetadataFacts(metadata,selected.facts);const captured=await metadataApi.capture.call(metadata);check();
   if(!equal((await scope.retainCurrent()).current.selection,selected.choice.target))throw fail('metadata_continuation_target_changed');return Object.freeze({format:'breditor/selected-local-metadata-continued',formatVersion:1,choice:selected.choice,origin:selected.original.bundle,current:captured});
  }catch(e){primary=e;failed=true;throw e;}finally{const errors:unknown[]=[];for(const action of[()=>metadata&&metadataApi.close.call(metadata),()=>review&&reviewApi.close.call(review),()=>gate?.close(),()=>intent&&intentApi.close.call(intent)])try{await action();}catch(e){errors.push(e);}if(errors.length)throw new AggregateError(failed?[primary,...errors]:errors,'Metadata continuation cleanup did not finish');}
- });}
+ }
 
 /** First destination creation remains absent-only. */
-export function continueRoomMetadata(attempt:RoomExecutionAttempt,reads:PhysicalOperationV3HistoryReadOptions,input:MetadataContinuationInput):Promise<MetadataContinuationResult>{return operate(attempt,reads,input,false);}
+export function continueRoomMetadata(attempt:RoomExecutionAttempt,reads:PhysicalOperationV3HistoryReadOptions,input:MetadataContinuationInput):Promise<MetadataContinuationResult>{return withRoomExecutionMetadataTarget(attempt,reads,(scope,witness)=>continueHeldRoomMetadata(scope,witness,input,false));}
 /** Retry requires a complete existing immutable intent, current actual targets,
  * exact partial destination facts and a new affirmative decision. */
-export function resumeRoomMetadataContinuation(attempt:RoomExecutionAttempt,reads:PhysicalOperationV3HistoryReadOptions,input:MetadataContinuationInput):Promise<MetadataContinuationResult>{return operate(attempt,reads,input,true);}
+export function resumeRoomMetadataContinuation(attempt:RoomExecutionAttempt,reads:PhysicalOperationV3HistoryReadOptions,input:MetadataContinuationInput):Promise<MetadataContinuationResult>{return withRoomExecutionMetadataTarget(attempt,reads,(scope,witness)=>continueHeldRoomMetadata(scope,witness,input,true));}
