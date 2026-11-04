@@ -6,26 +6,32 @@ use std::io::{self, Write};
 
 pub(super) const MAX_GENERATIONS: usize = 64;
 pub(super) const MAX_ARCHIVE_BYTES: usize = 64 * 1024 * 1024;
-struct Counter {
-    bytes: usize,
+struct BoundedOutput {
+    bytes: Vec<u8>,
     limit: usize,
 }
-impl Write for Counter {
+impl Write for BoundedOutput {
     fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
-        if bytes.len() > self.limit - self.bytes {
+        self.write_all(bytes)?;
+        Ok(bytes.len())
+    }
+    fn write_all(&mut self, bytes: &[u8]) -> io::Result<()> {
+        if bytes.len() > self.limit - self.bytes.len() {
             return Err(io::Error::other("segmented history byte budget"));
         }
-        self.bytes += bytes.len();
-        Ok(bytes.len())
+        self.bytes.extend_from_slice(bytes);
+        Ok(())
     }
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
 }
 pub(super) fn encode(value: &impl Serialize, limit: usize) -> Result<String, Error> {
-    serde_json::to_writer(&mut Counter { bytes: 0, limit }, value)
+    let mut output = BoundedOutput { bytes: Vec::new(), limit };
+    serde_json::to_writer(&mut output, value)
         .map_err(|_| Error::Limit("segmented history bytes"))?;
-    Ok(serde_json::to_string(value)?)
+    String::from_utf8(output.bytes)
+        .map_err(|_| Error::Contract("segmented JSON encoding is not UTF-8"))
 }
 pub(super) fn digest(bytes: &str) -> String {
     let hash = Sha256::digest(bytes.as_bytes());

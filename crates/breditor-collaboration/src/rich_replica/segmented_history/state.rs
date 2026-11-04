@@ -2,7 +2,7 @@
 use super::super::{
     RichReplica,
     general_history::ReplayCapabilities,
-    session::{Journal, MAX_ENTRIES, publication},
+    session::{Entry, Journal, MAX_ENTRIES, publication},
     ui_state::UiState,
 };
 use super::{
@@ -154,7 +154,10 @@ impl SegmentedHistory {
         }
         Ok(())
     }
-    pub(super) fn active(&self, owner: &RichReplica) -> Result<Segment, Error> {
+    pub(super) fn active_ref<'a>(
+        &self,
+        owner: &'a RichReplica,
+    ) -> Result<Segment<&'a [Entry]>, Error> {
         self.validate_journal(
             &owner.journal,
             owner.typing.as_ref().map(|h| h.joins.as_slice()),
@@ -169,7 +172,7 @@ impl SegmentedHistory {
             parent_generation: parent.into(),
             parent_sha256: hash.into(),
             start: u32::try_from(start).map_err(|_| Error::Limit("segmented entry coordinate"))?,
-            entries: owner.journal.entries[start..].to_vec(),
+            entries: &owner.journal.entries[start..],
             joins: owner.typing.as_ref().map_or_else(Vec::new, |h| {
                 h.joins
                     .iter()
@@ -179,6 +182,21 @@ impl SegmentedHistory {
             }),
             ui: owner.journal.ui.clone(),
             publication: owner.journal.publication.clone(),
+        })
+    }
+    pub(super) fn active(&self, owner: &RichReplica) -> Result<Segment, Error> {
+        let record = self.active_ref(owner)?;
+        Ok(Segment {
+            format: record.format,
+            format_version: record.format_version,
+            generation: record.generation,
+            parent_generation: record.parent_generation,
+            parent_sha256: record.parent_sha256,
+            start: record.start,
+            entries: record.entries.to_vec(),
+            joins: record.joins,
+            ui: record.ui,
+            publication: record.publication,
         })
     }
     pub(super) fn seal(&self, owner: &RichReplica, next: String) -> Result<Self, Error> {

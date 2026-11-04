@@ -1,6 +1,6 @@
 //! Explicit native segmented checkpoint: exact original root and every sealed/active input record.
-use super::super::RichReplica;
-use super::{archive, segment::Sealed};
+use super::super::{RichReplica, session::MAX_JOURNAL_BYTES};
+use super::{archive, encoding::encode};
 use crate::Error;
 impl RichReplica {
     /// Save the separately selected bounded segmented-history/v1 family, retaining old native IDs.
@@ -18,8 +18,10 @@ impl RichReplica {
         if let Some(reviewed) = &self.reviewed_history {
             reviewed.validate(self)?;
         }
-        let active = Sealed::from_record(state.active(self)?)?;
-        archive::checkpoint(state, &active.json)
+        // A read needs the canonical active bytes, not a sealed record/hash.
+        // Borrow entries while retaining every original prefix/family check.
+        let active = encode(&state.active_ref(self)?, MAX_JOURNAL_BYTES)?;
+        archive::checkpoint(state, &active)
     }
     pub(in crate::rich_replica) fn require_unsegmented_checkpoint(&self) -> Result<(), Error> {
         if self.segmented.is_some() {

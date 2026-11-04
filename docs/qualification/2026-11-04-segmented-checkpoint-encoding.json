@@ -1,0 +1,172 @@
+{
+  "format": "breditor/segmented-checkpoint-encoding-qualification",
+  "formatVersion": 1,
+  "mainBefore": "e0294591194416c7a11294ba29918bf7c6d4ec39",
+  "isolatedCheckout": "/private/tmp/breditor-segmented-encoding-20261104",
+  "executionSource": {
+    "commit": "e0294591194416c7a11294ba29918bf7c6d4ec39",
+    "dirty": true,
+    "sha256": "05329ce874b63b9bde823cb5c04f9b85e54fc49d995fa698423baea001ae3b3a",
+    "files": 8309,
+    "bytes": 67698614
+  },
+  "buildSource": {
+    "commit": "e0294591194416c7a11294ba29918bf7c6d4ec39",
+    "dirty": true,
+    "sha256": "f9726cebecec438ac7207017657109688a5904e11c1d53964ba4a1821652ed80",
+    "files": 8308,
+    "bytes": 67692866
+  },
+  "sourceCorrespondence": [
+    {
+      "path": "crates/breditor-collaboration/src/rich_replica/segmented_history/checkpoint_segmented_history.rs",
+      "bytes": 1754,
+      "sha256": "9018a318c549b31ee9799c49cebb3d86c22dff70f96c71144c0953ef5c83dc3b"
+    },
+    {
+      "path": "crates/breditor-collaboration/src/rich_replica/segmented_history/encoding.rs",
+      "bytes": 1483,
+      "sha256": "bb2b1e45baad1cd6ef72328241d82d025c7d201e6a6b5529d912969c6d9f9270"
+    },
+    {
+      "path": "crates/breditor-collaboration/src/rich_replica/segmented_history/encoding_tests.rs",
+      "bytes": 5183,
+      "sha256": "87b8d6375548d496d7766c17db042c3dc9b5b01bb4a899fd171af3118fcec0f0"
+    },
+    {
+      "path": "crates/breditor-collaboration/src/rich_replica/segmented_history/mod.rs",
+      "bytes": 801,
+      "sha256": "f5c993aa128e5728f964ca4d4803804a5eb587fe618640a4012dc4aadd323222"
+    },
+    {
+      "path": "crates/breditor-collaboration/src/rich_replica/segmented_history/state.rs",
+      "bytes": 8904,
+      "sha256": "694646a44ad87c6e9872be18673516a819616bba4ac4c558c23a0ebf2f6c2dde"
+    },
+    {
+      "path": "scripts/segmented-runtime-byte-compatibility.mjs",
+      "bytes": 5746,
+      "sha256": "c5f1f716d51bb4d5a27db0e504d952b0921b61822b0098976ed55ec93a48104c"
+    }
+  ],
+  "redRegressionReproduced": true,
+  "nativeFullSuite": {
+    "passed": 145,
+    "failed": 0,
+    "ignored": 1,
+    "seconds": 325.6,
+    "sourceMatchesCapturedBuildCut": true
+  },
+  "nativeFocused": {
+    "passed": 4,
+    "failed": 0,
+    "includesOptionalTiming": true,
+    "seconds": 1.68
+  },
+  "strictOwnedClippyPassed": true,
+  "existingVendorUnusedImportWarningUnchanged": true,
+  "normalWasmBuildPassed": true,
+  "compatibility": {
+    "format": "breditor/segmented-runtime-byte-compatibility",
+    "passed": true,
+    "previousWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+    "candidateWasmSha256": "f81efb2e8103b3dfa9d79f5c2d55dff8e3d639e8394f3e6725c2f8864f3b440e",
+    "cases": 144,
+    "exactComparisons": 1296,
+    "legacyToCandidateRestores": 144,
+    "candidateToLegacyRestores": 144,
+    "futureHistoryPairs": 576,
+    "peerDeliveries": 288,
+    "scope": "Two independently initialized normal Wasm modules; exact legacy/candidate segmented bytes, original feature identities, bidirectional cold restore, real peer work and future Undo/Redo. No physical storage, browser or whole-room activation qualification."
+  },
+  "installed": {
+    "passed": true,
+    "sourceUnchanged": true,
+    "strictPublicTypes": true,
+    "workspaceLinks": false,
+    "registryArtifacts": 45,
+    "acceptance": {
+      "format": "breditor/segmented-history-sdk-probe",
+      "passed": true,
+      "smoke": false,
+      "sharedWasmSha256": "f81efb2e8103b3dfa9d79f5c2d55dff8e3d639e8394f3e6725c2f8864f3b440e",
+      "cases": 216,
+      "pairedCases": 144,
+      "exactColdRestores": 1296,
+      "exactFuturePairs": 864,
+      "oldFamilyRefusals": 432,
+      "readonlyReopens": 216,
+      "retainedVersions": 144,
+      "scope": "Actual native generation Wasm/SDK with synthetic storage/locks only; not physical durability, relay activation or unlimited comment-history generations."
+    },
+    "productionModuleCount": 69
+  },
+  "exactGeneratedPackageOutput": true,
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/segmented-encoding-proof-bcb8cf2d7b0f",
+    "indexSha256": "bcb8cf2d7b0fb144abe055d1f37715380e315932f654f9c3ecdd2f00c01bcd1d",
+    "references": 37,
+    "objects": 36,
+    "compressedBytes": 47735499,
+    "sourceArchiveSha256": "f4c16a52c55f053cc95dc5e9773d0f6674ef1e45367bcd48de836ad819b151a9",
+    "sourceArchiveFiles": 8309,
+    "sourceArchiveReadBackVerified": true,
+    "buildSourceReconstructedExactly": true
+  },
+  "mainIntegrationVerified": true,
+  "defaultPackagedRuntimeChanged": false,
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "separatelyQualifiedCandidateWasmSha256": "f81efb2e8103b3dfa9d79f5c2d55dff8e3d639e8394f3e6725c2f8864f3b440e",
+  "originalFormatsDefaultsLimitsOrVersionsChanged": false,
+  "wholeRoomRestartAssociationQualified": false,
+  "historicalArchiveShortReadFaultRepaired": false,
+  "historicalWebKitFaultRepaired": false,
+  "physicalStorageDurabilityQualified": false,
+  "v1Ready": false,
+  "v1GatesOpen": 13,
+  "remoteActions": [],
+  "scope": "Bounded segmented serializer and byte-identical borrowed checkpoint reads. Main packaged runtime and active recovery fixtures unchanged.",
+  "mainFocusedNativePassed": 4,
+  "mainCompatibility": {
+    "format": "breditor/segmented-runtime-byte-compatibility",
+    "passed": true,
+    "previousWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+    "candidateWasmSha256": "f81efb2e8103b3dfa9d79f5c2d55dff8e3d639e8394f3e6725c2f8864f3b440e",
+    "cases": 144,
+    "exactComparisons": 1296,
+    "legacyToCandidateRestores": 144,
+    "candidateToLegacyRestores": 144,
+    "futureHistoryPairs": 576,
+    "peerDeliveries": 288,
+    "scope": "Two independently initialized normal Wasm modules; exact legacy/candidate segmented bytes, original feature identities, bidirectional cold restore, real peer work and future Undo/Redo. No physical storage, browser or whole-room activation qualification."
+  },
+  "mainProtectedArtifactsUnchanged": true,
+  "isolatedCommit": "b39df807",
+  "mainIntegrationProof": {
+    "directory": "/Users/s/code/breditor/target/segmented-encoding-integration-proof-89960e715046",
+    "indexSha256": "89960e715046bb8103c49157aac290333caa77366e921479a64fe1017d6c2de5",
+    "readBackVerified": true,
+    "references": [
+      {
+        "path": "target/segmented-encoding-main-native.log",
+        "bytes": 1735,
+        "sha256": "262b76ddb75a3d9ce4614ad9d49eb566ddeadc32b32b507a650de9171e86fef4"
+      },
+      {
+        "path": "target/segmented-encoding-main-compatibility.json",
+        "bytes": 705,
+        "sha256": "abb95e39cb771bb4bee93eb64a1279ac62f2c308e977028e77cf6d3464ede2d7"
+      },
+      {
+        "path": "target/segmented-encoding-main-compatibility.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "target/segmented-encoding-main-protected.json",
+        "bytes": 564,
+        "sha256": "602017309ee6c3c1a0a2a1f5881d3cdc271ffcfd7abce92bda26547c3f62f436"
+      }
+    ]
+  }
+}

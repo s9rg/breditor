@@ -7,6 +7,8 @@ mod enable_read_only_segmented_history;
 mod enable_segmented_history;
 mod encoding;
 #[cfg(test)]
+mod encoding_tests;
+#[cfg(test)]
 mod fork_contract_tests;
 mod info;
 #[cfg(test)]
