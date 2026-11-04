@@ -68,7 +68,8 @@
     "test:clipboard:stress": "npm run build && playwright test -c playwright.clipboard-stress.config.ts --project=webkit",
     "typecheck:browser": "tsc -p tests/browser/tsconfig.json --noEmit",
     "typecheck:demo": "tsc -p tests/demo/tsconfig.json --noEmit",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test:collaboration:joint-reassociation:repeated": "node --test --test-concurrency=1 scripts/joint-reassociation-repeated-native.test.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",

@@ -121,3 +121,14 @@ with no earlier metadata destinations. The reader separately checks existing
 metadata prefix stages and descriptor tests separately check pending/repeated
 lineages. A combined pending checkpoint, existing-metadata ownership cycle and
 repeated complete service restart still need their own functional qualification.
+
+A separate repeated-restart case is staged with
+`npm run test:collaboration:joint-reassociation:repeated`. It closes the first
+private owner after complete metadata continuation, kills the actual service
+again, constructs another fresh cold owner, pins the prior association and all
+four earlier metadata destinations, then requires new confirmation/continuation
+and final publication/delivery. It checks earlier metadata bytes through final
+delivery. This additional case is not yet qualified. The original complete
+workload assertions were extracted unchanged into a shared test helper before
+adding this explicit variant; the currently running frozen worksets remain
+untouched.
