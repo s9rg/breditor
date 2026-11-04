@@ -1,4 +1,6 @@
 import {assertRoomActivationCapture} from './capture_binding.js';
+import {rememberDecodedActivationWire} from './decoded_wire.js';
+import {snapshotRoomActivationEncodedCapture} from './snapshot_encoded.js';
 /** Rehash every retained object before restoring inert capture DATA. No report becomes a grant. */
 import {fields} from '../physical_room_record_cut/policy.js';
 import {archiveBlob} from '../archive_integrity/policy.js';
@@ -10,11 +12,11 @@ import type {RoomActivationEncodedCapture} from './contract.js';
 import {roomActivationIntentChoice} from './identity.js';
 import {fail,MAX_ROOM_ACTIVATION_INTENT_BYTES,MAX_ROOM_ACTIVATION_GRAPH_NODES} from './policy.js';
 export async function decodeRoomActivationIntent(input:RoomActivationEncodedCapture,options:SharedArchiveIntegrityOptions):Promise<ReconciledServerPacketRecoveryCapture>{
- const choice=roomActivationIntentChoice(input.choice),integrity=prepareArchiveIntegrity(options);integrity.guard();
- if(typeof input.graph!=='string'||input.objects.length!==choice.objects.length)throw fail();const graphFile=new Blob([input.graph]);
+ const selected=snapshotRoomActivationEncodedCapture(input),choice=roomActivationIntentChoice(selected.choice),graph=selected.graph,integrity=prepareArchiveIntegrity(options);integrity.guard();
+ if(selected.objects.length!==choice.objects.length)throw fail();const graphFile=new Blob([graph]);
  if(graphFile.size!==choice.graph.bytes||await integrity.digest(graphFile)!==choice.graph.sha256)throw fail();integrity.guard();
- const files:Blob[]=[];for(let i=0;i<choice.objects.length;i++){const pin=choice.objects[i]!,file=archiveBlob(input.objects[i]!,MAX_ROOM_ACTIVATION_INTENT_BYTES);if(file.size!==pin.bytes||await integrity.digest(file)!==pin.sha256)throw fail();integrity.guard();files.push(file);}
- const raw=fields(JSON.parse(input.graph),['format','formatVersion','body']);if(raw['format']!=='breditor/room-native-activation-capture-graph'||raw['formatVersion']!==1||JSON.stringify(raw)!==input.graph)throw fail();let nodes=0;const used=new Set<number>();
+ const files:Blob[]=[];for(let i=0;i<choice.objects.length;i++){const pin=choice.objects[i]!,file=archiveBlob(selected.objects[i]!,MAX_ROOM_ACTIVATION_INTENT_BYTES);if(file.size!==pin.bytes||await integrity.digest(file)!==pin.sha256)throw fail();integrity.guard();files.push(file);}
+ const raw=fields(JSON.parse(graph),['format','formatVersion','body']);if(raw['format']!=='breditor/room-native-activation-capture-graph'||raw['formatVersion']!==1||JSON.stringify(raw)!==graph)throw fail();let nodes=0;const used=new Set<number>();
  function visit(value:unknown,depth:number):unknown{
   if(++nodes>MAX_ROOM_ACTIVATION_GRAPH_NODES||depth>128)throw fail();
   if(value===null||typeof value==='string'||typeof value==='boolean')return value;
@@ -34,5 +36,6 @@ export async function decodeRoomActivationIntent(input:RoomActivationEncodedCapt
  detachResolvedServerPacketRecoveryBundle(recovery['bundle']);assertRoomActivationCapture(choice.activation,restored as unknown as ReconciledServerPacketRecoveryCapture);integrity.guard();
  // fields() returns a detached closed projection; freeze that new root too.
  // Its descendants already came from the immutable tagged graph reader.
- return Object.freeze(restored) as unknown as ReconciledServerPacketRecoveryCapture;
+ const capture=Object.freeze(restored) as unknown as ReconciledServerPacketRecoveryCapture;
+ rememberDecodedActivationWire(capture,{choice,graph,objects:files});return capture;
 }

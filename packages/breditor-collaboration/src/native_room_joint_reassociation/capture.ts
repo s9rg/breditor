@@ -5,7 +5,7 @@ import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.
 import {prepareArchiveIntegrity} from '../archive_integrity/context.js';
 import {nativeActivationHostPort,type SharedDurableNativeActivationHost} from '../native_activation_control/host.js';
 import {nativePublicationHostPort,type SharedNativeRoomPublicationHost} from '../native_publication_control/host.js';
-import {encodeRoomActivationIntent} from '../room_native_activation_intent/encode.js';
+import {rebindDecodedRoomActivationIntent} from '../room_native_activation_intent/rebind.js';
 import type {RoomActivationEncodedCapture} from '../room_native_activation_intent/contract.js';
 import {checkColdJointActivationOrigin,type ColdJointActivationOriginWork} from '../native_room_joint_activation/cold_origin.js';
 import type {MetadataContinuationChoice,MetadataContinuationDestinations} from '../selected_local_metadata_continuation/contract.js';
@@ -41,7 +41,7 @@ export async function captureJointReassociation(scope:SelectedNativeRecoveryScop
   if(previous){const{format:_format,formatVersion:_version,original:_original,predecessors:_predecessors,...record}=previous.plan;entries.push({...record,bytes:previous.bytes,sha256:previous.sha256});}
   const draft={...origin.retained.choice,database:nativeName,activation:activation.selection};
   const before=jointReassociationPlan({format:'breditor/joint-native-room-reassociation-plan',formatVersion:1,database:name,original:origin.choice,predecessors:entries,activation:draft,publication:publication.selection,destinations,prior:evidence});held();
-  const encoded=await encodeRoomActivationIntent(nativeName,activation.selection,origin.retained.capture,{...options,checkAuthority:held,signal:scope.signal});held();
+  const encoded=await rebindDecodedRoomActivationIntent(nativeName,activation.selection,origin.retained.capture,{...options,checkAuthority:held,signal:scope.signal});held();
   if(!equal(encoded.choice,before.activation))throw fail('joint_activation_intent_stale');
   const file=new Blob([JSON.stringify(before)],{type:'application/json'}),integrity=prepareArchiveIntegrity({...options,checkAuthority:held,signal:scope.signal}),choice=jointReassociationChoice({format:'breditor/joint-native-room-reassociation-intent',formatVersion:1,plan:before,bytes:file.size,sha256:await integrity.digest(file)});held();
   return Object.freeze({choice,native:encoded});

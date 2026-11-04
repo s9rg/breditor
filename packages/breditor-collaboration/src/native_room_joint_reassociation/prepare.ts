@@ -5,7 +5,7 @@ import type {SelectedNativeRecoveryScope} from '../selected_native_recovery/cont
 import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
 import {checkColdJointActivationOrigin,type ColdJointActivationOriginWork} from '../native_room_joint_activation/cold_origin.js';
 import {RoomActivationIntentStore} from '../room_native_activation_intent/store.js';
-import {encodeRoomActivationIntent} from '../room_native_activation_intent/encode.js';
+import {rebindDecodedRoomActivationIntent} from '../room_native_activation_intent/rebind.js';
 import type {RoomActivationEncodedCapture} from '../room_native_activation_intent/contract.js';
 import {retainActivationChoice} from '../room_native_activation_intent/retain_choice.js';
 import {physicalOperationV3Present} from '../physical_room_operation_v3/child.js';
@@ -29,7 +29,7 @@ export async function resumeJointReassociationPreparation(scope:SelectedNativeRe
  checkColdJointActivationOrigin(origin,scope);const choice=jointReassociationChoice(provided);if(typeof retain!=='function'||!equal(choice.plan.original,origin.choice))throw fail();
  const run=async(parentCheck:()=>void)=>withExactPriorMetadata(scope,origin,[choice.plan.prior],async priorCheck=>{
   const check=()=>{origin.check();parentCheck();priorCheck();origin.check();};check();
-  const encoded=await encodeRoomActivationIntent(choice.plan.activation.database,choice.plan.activation.activation,origin.retained.capture,{...options,checkAuthority:check,signal:scope.signal});check();if(!equal(encoded.choice,choice.plan.activation))throw fail('joint_activation_intent_stale');
+  const encoded=await rebindDecodedRoomActivationIntent(choice.plan.activation.database,choice.plan.activation.activation,origin.retained.capture,{...options,checkAuthority:check,signal:scope.signal});check();if(!equal(encoded.choice,choice.plan.activation))throw fail('joint_activation_intent_stale');
   await retainActivationChoice(choice,retain,check,[scope.signal,options.signal]);check();
   return persist(scope,origin,choice,encoded,options,true);
  });
