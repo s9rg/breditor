@@ -12,6 +12,12 @@ import {inspectOriginalMetadata} from './native_origin.js';
 import {equal,fail} from './policy.js';
 const reviewApi={open:LocalReviewDeliveryStore.prototype.open,read:LocalReviewDeliveryStore.prototype.readFresh,close:LocalReviewDeliveryStore.prototype.close},metadataApi={open:LocalMetadataDeliveryStore.prototype.open,read:LocalMetadataDeliveryStore.prototype.readFresh,close:LocalMetadataDeliveryStore.prototype.close};
 type Inspection=Awaited<ReturnType<typeof inspectOriginalMetadata>>;
+const heldInspections=new WeakMap<object,{readonly scope:SelectedNativeRecoveryScope;check():void}>();
+/** Admission before reading new inputs. Only this actual finite visitor holds
+ * both original journal leases and its privately owned target together. */
+export function checkHeldOriginalMetadataJournals(scope:SelectedNativeRecoveryScope,inspection:Inspection):void{
+ const held=heldInspections.get(inspection);if(!held||held.scope!==scope)throw fail('metadata_continuation_closed');held.check();
+}
 export interface OriginalMetadataJournalObservation {
  readonly review:Readonly<{database:string;retainedRevision:number;actualRevision:number}>;
  readonly metadata:Readonly<{database:string;retainedRevision:number;actualRevision:number}>;
@@ -32,6 +38,7 @@ export async function withOriginalMetadataJournals<T>(scope:SelectedNativeRecove
   const parent=await reviewApi.open.call(review);check();sameFacts(original.review,parent);
   const saved=await metadataApi.open.call(metadata);check();sameFacts(original.snapshot,saved);
   const observation=Object.freeze({review:Object.freeze({database:original.choice.parent.database,retainedRevision:original.review.current.revision,actualRevision:parent.current.revision}),metadata:Object.freeze({database:original.choice.database,retainedRevision:original.snapshot.current.revision,actualRevision:saved.current.revision})});
+  heldInspections.set(original,{scope,check});
   const result=await visit(original,observation);check();
   if(!equal(await reviewApi.read.call(review),parent)||!equal(await metadataApi.read.call(metadata),saved))throw fail('metadata_continuation_original_journal_changed');check();return result;
  }catch(error){primary=error;failed=true;throw error;}finally{

@@ -23,6 +23,8 @@ export class MetadataContinuationIntent{
  constructor(choice:MetadataContinuationChoice,options:SharedArchiveIntegrityOptions){this.#choice=continuationChoice(choice);this.#authority=participantAuthority(options.checkAuthority);this.#cancel=new PhysicalOperationV3Cancellation(options.signal);try{this.#integrity=prepareArchiveIntegrity({...options,checkAuthority:this.#check});}catch(error){this.#cancel.close();throw error;}Object.freeze(this);}
  #current=()=>{if(this.#closing||this.#closed||this.#changed||globalThis.indexedDB!==this.#factory||globalThis.navigator?.locks!==this.#locks)throw fail('metadata_continuation_closed');if(this.#lease)checkRecoveryLeasesHeld([this.#lease]);try{this.#cancel.check();}catch{throw fail('metadata_continuation_closed');}};
  #check=()=>{this.#current();this.#authority();this.#current();};
+ /** Actual finite-reader guard. A copied descriptor supplies no live journal. */
+ check():void{this.#check();}
  #run<T>(work:()=>Promise<T>):Promise<T>{if(this.#running)return Promise.reject(fail('metadata_continuation_busy'));const job=Promise.resolve().then(()=>{this.#check();return work();});this.#running=job;return job.finally(()=>{this.#running=undefined;});}
  async #verify(input:unknown):Promise<LocalMetadataRoomBundle>{
   const r=fields(input,['format','formatVersion','choice','origin']);if(r['format']!=='breditor/selected-local-metadata-continuation-intent'||r['formatVersion']!==1||!equal(continuationChoice(r['choice']),this.#choice))throw fail();const origin=detachLocalMetadataBundle(r['origin']),pins=this.#choice.origin;
