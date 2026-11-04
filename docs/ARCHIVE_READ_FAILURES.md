@@ -51,3 +51,36 @@ numerical diagnostics and Native cleanup; a separate simulated short read verifi
 the debugger observer. Those injected faults do not reproduce the original bug.
 This change adds observability. It does not establish a repair of the recorded
 intermittent failure or close any V1 release gate.
+
+
+## November 4: ordinary source and installed failures
+
+The frozen combined reassociation candidate passes 57 source/component cases,
+but two complete ordinary workflows fail in an existing archive read before the
+new restart association is reached. The committed-source case receives zero
+bytes for a requested 158,571-byte JSON record. The independently installed
+pending/repeated case receives zero for 672,377 bytes. In both, the buffer was
+already empty before the post-read authority callback. Both exit with failure;
+source and fixed runtime inputs remain unchanged. The larger coordinator has
+not been integrated into Main.
+
+The exact prior complete archives still pass direct digest-only DATA replay.
+Rebuilt framing tests make 840 exact target reads across 30 recipes, including
+nested/empty/chunked Blob parts and wrap depths up to 128, without reproducing
+it. A separate uninstrumented SDK loop performs 64 selected-current read/encode
+round trips with exact byte pins and 117,696 authority checks, also without the
+fault. These are negative observations: their Blob graphs differ from the
+original failed physical objects. Matching-length entries in the prior archives
+do not by themselves identify those failed objects.
+
+The [investigation record](qualification/2026-11-04-paired-archive-read-failures.json)
+retains both actual failures, complete prior data, independently packed modules,
+fixed source/runtime inputs, and the bounded replay scripts/results in a
+read-back-verified compressed proof. The existing
+[separate Blob witness](BLOB_READ_WITNESS.md) is being used in an instrumented
+process to retain the first incomplete physical Blob. That diagnostic cannot
+change either original failed result or supply ordinary qualification.
+
+No upstream Node cause, connection to the historical WebKit fault, or repair is
+established. The already qualified Main capture/snapshot fixes remain valid;
+these failures do not qualify the larger coordinator or close any V1 gate.

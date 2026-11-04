@@ -1,5 +1,14 @@
 # Breditor V1 release preparation
 
+The combined client restart coordinator remains isolated. Its 57 source checks
+pass, but new ordinary source and independently installed full workflows each
+reproduce an empty Blob read before the restart association is reached. Exact
+saved-data and rebuilt-DAG replays have not reproduced that physical read fault.
+See [the paired failure investigation](ARCHIVE_READ_FAILURES.md#november-4-ordinary-source-and-installed-failures)
+for retained evidence and the separate first-failing-Blob diagnostic. No complete
+coordinator, historical fault, or V1 qualification is inferred from component
+passes.
+
 [Activation capture wire preservation](ACTIVATION_WIRE_PRESERVATION.md) now repairs
 three reproduced data-integrity failures: reassociation changing admitted graph
 bytes, decoding a caller graph changed after hashing, and creation persisting
