@@ -67,7 +67,17 @@ pub(super) struct Bootstrap {
     pub client_address: SocketAddr,
     pub retired_address: SocketAddr,
 }
+#[allow(dead_code, reason = "shared with the separately compiled joint fixture")]
 pub(super) fn read() -> Result<Bootstrap> {
+    read_selected("breditor/private-native-process-recovery", false)
+}
+/// Separate joint-publication bootstrap. Repeated reopen may select the child
+/// checkpoint created by a committed restart; legacy bootstrap meanings stay exact.
+#[allow(dead_code, reason = "shared with the separately compiled legacy fixture")]
+pub(super) fn read_joint() -> Result<Bootstrap> {
+    read_selected("breditor/private-native-joint-process-recovery", true)
+}
+fn read_selected(format: &str, allow_process_checkpoint: bool) -> Result<Bootstrap> {
     const MAX: usize = 16 * 1024 * 1024;
     let stdin = std::io::stdin();
     let mut input = stdin.lock().take((MAX + 1) as u64);
@@ -77,7 +87,7 @@ pub(super) fn read() -> Result<Bootstrap> {
         return Err("private recovery bootstrap byte budget or truncation".into());
     }
     let value: Bootstrap = serde_json::from_slice(&bytes)?;
-    if value.format != "breditor/private-native-process-recovery"
+    if value.format != format
         || value.format_version != 1
         || value.observed.is_empty()
         || value.observed.len() > 128
@@ -94,6 +104,11 @@ pub(super) fn read() -> Result<Bootstrap> {
     let n = value
         .checkpoint_name
         .strip_prefix("native-checkpoint-restart-")
+        .or_else(|| {
+            allow_process_checkpoint
+                .then(|| value.checkpoint_name.strip_prefix("process-native-checkpoint-"))
+                .flatten()
+        })
         .ok_or("selected checkpoint namespace")?;
     if n.is_empty()
         || !n.bytes().all(|b| b.is_ascii_digit())

@@ -16,6 +16,12 @@ pub(super) async fn apply(
     if !prepare_action::apply(state, request, source).await? {
         return Ok(false);
     }
+    provision(state, request).await
+}
+/// Bind publication to the actual already-provisioned activation owner. A
+/// process reopen uses this after fresh custody/authentication, without preparing
+/// another checkpoint or committing through private IPC.
+pub(super) async fn provision(state: &mut State, request: u64) -> Result<bool> {
     let actual = state.ready()?.active.actual_control()?;
     let normal = tokio::net::TcpListener::bind(state.client_address).await?.into_std()?;
     let (router, owner) = prepare_native_room_publication(actual, normal)?;

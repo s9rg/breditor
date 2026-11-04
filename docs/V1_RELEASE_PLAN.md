@@ -1,5 +1,19 @@
 # Breditor V1 release preparation
 
+[Native restart during joint activation](NATIVE_JOINT_PROCESS_RECOVERY.md) now
+passes nine source and nine independently installed cases, covering 28 actual
+child-process deaths. Prepared, committed and published crashes preserve exact
+Native backup/checkpoint bytes and the selected complete predecessor. Fresh
+controls/authentication, all fourteen protected registrations, pending-service
+barriers, lost replies and damaged-checkpoint refusal are checked; strict
+Clippy passes for all three Native examples. A separate opt-in fixture keeps
+the original publication/process workflows intact.
+
+This qualifies the Native process boundary. The client joint coordinator still
+requires an explicit new association and metadata continuation after restart;
+its existing exact-control guard remains strict. Local history/offline metadata
+integration for that association and all thirteen V1 gates stay open.
+
 [Joint Native activation and recovery](JOINT_ACTIVATION_INTEGRATION.md) now passes
 the complete warm source39 and independently installed interrupted-recovery44
 worksets. Actual Rust controls preserve fourteen offline lanes, original source

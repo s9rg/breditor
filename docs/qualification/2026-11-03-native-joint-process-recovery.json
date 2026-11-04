@@ -1,0 +1,86 @@
+{
+  "format": "breditor/native-joint-process-recovery-qualification",
+  "formatVersion": 1,
+  "executedSource": {
+    "commit": "5dbe0fd0400b87b844613a108867df53bbf764a0",
+    "dirty": true,
+    "sha256": "a63313cc161f64a1709ed0165b525f17ede068ddb4b790d3c293c2c1d3d89695",
+    "files": 8292,
+    "bytes": 67606412
+  },
+  "isolatedCommit": "4cbbc2e6a060bc10e6eb66b0673d8cebc4dce490",
+  "sourceCases": 9,
+  "installedCases": 9,
+  "actualProcessDeathsAcrossWorksets": 28,
+  "sourceLogSha256": "442bdf7c299ffab987ce037f78a77bc664cb3f1e0f8a58e464269b9ea89671aa",
+  "installedLogSha256": "492845da2d96617ae20de71fce5a87aa812f141c888ea6f5276e93db62cea95b",
+  "sourceUnchangedDuringQualification": true,
+  "installedWorkspaceLinks": false,
+  "strictClippy": {
+    "examples": 3,
+    "passed": true,
+    "warningsDenied": true,
+    "logSha256": "d406e142732b80b69659dc7c1e4e7640bc7a71bdbe32c60de752c44e9cc311ea"
+  },
+  "mainBefore": "5dbe0fd0400b87b844613a108867df53bbf764a0",
+  "integration": {
+    "copiedPaths": 13,
+    "matchingExecutedSourceFilesBeforeDocumentation": 8292,
+    "matchingInstalledDistributionFiles": 2873,
+    "normalWasmAndHistoricalPublicationBinaryUnchanged": true,
+    "mainSmoke": {
+      "cases": 1,
+      "passed": true,
+      "actualProcessDeaths": 3,
+      "logSha256": "2801fc7bef7ff88c62b2565d2eb4edc5593d0245daa18aee73bfe4111f58db3d",
+      "proofDirectory": "/Users/s/code/breditor/target/native-joint-process-proof-fb15c26a8134/main-integration",
+      "proofIndexSha256": "028c4e60a5a663fd54a945532499761035e162a585aa6bdc7da5d0e24087ed45",
+      "readBackVerified": true
+    },
+    "rustFormattingPassed": true,
+    "sourcePathsIdenticalToIsolatedCommit": true
+  },
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/native-joint-process-proof-fb15c26a8134",
+    "indexSha256": "fb15c26a81345292dac041b1097a79262e21faf3dedcb7fe97bc4f7684c2f804",
+    "references": 1563,
+    "objects": 928,
+    "compressedBytes": 82865791,
+    "sourceArchive": {
+      "file": "executed-source.tar.gz",
+      "bytes": 20214247,
+      "sha256": "c871c040fa8000b04be444d89bdb2cbc01a03e628a54c78771f16250edb1a7ce",
+      "files": 8292
+    },
+    "readBackVerified": true
+  },
+  "binaries": [
+    {
+      "name": "native_joint_process_recovery_functional",
+      "bytes": 93474376,
+      "sha256": "70d9e8becba4421be4fdfb33b5d08b7ba2efc7d36c5ca521c287104e4ebc8347"
+    },
+    {
+      "name": "native_publication_sdk_functional",
+      "bytes": 92765856,
+      "sha256": "264d8f9f5d1c36181751c2af163257eda23061a23431a54467574f85dd87a79e"
+    },
+    {
+      "name": "native_process_recovery_functional",
+      "bytes": 91851760,
+      "sha256": "142632143d91f74579f455b2280fa48879f778c319af7f4dca1145476130dc0a"
+    }
+  ],
+  "normalWasmSha256": "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0",
+  "scope": "Actual Native service death/reopen and authenticated SDK transports. Separate opt-in fixture. No new client association implementation or local offline Undo/metadata claim.",
+  "nativeJointProcessBoundaryQualified": true,
+  "clientJointProcessReassociationQualified": false,
+  "physicalBrowserDurabilityQualified": false,
+  "historicalWebKitFaultRepaired": false,
+  "historicalArchiveShortReadFaultRepaired": false,
+  "v1Ready": false,
+  "v1GatesOpen": 13,
+  "versionsChanged": false,
+  "publicRootExportsChanged": false,
+  "remoteActions": []
+}
