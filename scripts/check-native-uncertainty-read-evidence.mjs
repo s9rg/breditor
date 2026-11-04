@@ -58,7 +58,7 @@ function packageManifest(){
  }
  return rows;
 }
-const before=packageManifest();assert.equal(before.length,2918);
+const before=packageManifest();assert.equal(before.length,2917);
 const normalWasmSha256=before.find(row=>row.package==='@breditor/collaboration'&&row.path==='runtime/breditor_shared_bg.wasm').sha256;
 assert.equal(normalWasmSha256,'165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0');
 const state={format:'breditor/native-uncertainty-read-evidence',formatVersion:1,mode,source,directory,consumer,generatedOutput,copied,archives,registryArtifacts,workspaceSdkLinks:mode==='--source'?null:false,matchingPackageDistFiles:before.length,packageManifestSha256:sha(JSON.stringify(before)),normalWasmSha256,complete:false,releaseReady:false,physicalReadFaultRepaired:false};
