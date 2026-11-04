@@ -156,3 +156,16 @@ functional result. The initial independent full workset also observed an actual
 short Blob read in `ownedLineagePayload` during graph reconstruction before
 Native preparation. That refusal remains unresolved and cannot be counted as a
 successful client association.
+
+Follow-up diagnostics preserve the original short-read refusal and attach only
+immutable numerical observations: requested offset/length and buffer length
+before/after authority checks. They never retry or accept a short read; even a
+frozen original error remains the original error. Nine payload storage cases
+pass, including short-read injection, authority detachment and frozen errors.
+This is diagnostic qualification, not a repair of the observed intermittent
+fault. Future worksets retain the complete selected archive after known-version
+materialization and after a successful current capture before preparation, with
+exact hash/size/read-back checks. A real 7,956,095-byte prior Native fixture
+archive passes the retention smoke. These filesystem copies flatten physical
+Blob construction and cannot alone reproduce that runtime condition. The
+currently running frozen worksets are unchanged by these additional diagnostics.
