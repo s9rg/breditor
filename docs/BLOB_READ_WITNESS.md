@@ -33,3 +33,36 @@ proving a cause or repair. A killed process may not reach the orderly-exit hook.
 reads, exact error identity, single-read behavior, host descriptor restoration,
 other patch ownership, the independent worker and the unchanged failing child
 exit status. Injected faults qualify this diagnostic only, not a product repair.
+
+
+## Separate Native callback boundary on Node 22.14.0
+
+A complementary observer is available at
+`scripts/diagnostics/node22-blob-boundary/`. It records the byte counts delivered
+by Node's Native Blob reader before JavaScript assembles the final ArrayBuffer.
+It returns the exact original `arrayBuffer()` Promise, adds no Promise
+continuation, and keeps no Blob, Native handle or result buffer in its records.
+This provides a different timing/retention tradeoff from the first-Blob witness.
+
+It explicitly requires Node 22.14.0 because it observes private implementation
+methods of that version. It is opt-in; product modules and default runners do
+not import it. The original callbacks, values and errors still reach their
+callers. No alternate reader, clipping or retry is introduced. At orderly exit
+it writes `target/native-blob-boundary-PID.json`, with counts and up to 32 recent
+completed reads. `firstIncomplete` records an EOF before/after the declared byte
+count; an empty Blob whose declared size is zero is valid.
+
+```sh
+node --test scripts/diagnostics/node22-blob-boundary/observer.test.mjs
+node --import ./scripts/diagnostics/node22-blob-boundary/preload.mjs \
+  --test scripts/room-native-activation-intent.test.mjs
+```
+
+The four observer laws pass, including a deliberately incomplete test callback
+that remains incomplete. The instrumented SDK smoke passes twelve cases and
+records 634 complete Native reads. See the
+[observer qualification](qualification/2026-11-04-native-blob-boundary-observer.json)
+for the exact tested script hashes and retained logs. These results qualify the
+diagnostic, not an archive-reader repair. A separate full run is being used to
+compare Native callback counts with any subsequent SDK length refusal. Neither
+complete callback counts nor an incomplete EOF alone identifies the root cause.

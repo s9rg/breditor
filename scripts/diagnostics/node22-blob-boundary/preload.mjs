@@ -1,0 +1,3 @@
+/** Node22-only forensic preload. Native callback counts, not qualification. */
+import fs from'node:fs';import{watchNativeBlobBoundary}from'./observer.mjs';
+const observe=watchNativeBlobBoundary();process.once('beforeExit',()=>{const report={...observe.summary(),pid:process.pid};observe.uninstall();try{fs.mkdirSync('target',{recursive:true});const file='target/native-blob-boundary-'+process.pid+'.json';fs.writeFileSync(file,JSON.stringify(report,null,2)+'\n',{flag:'wx',mode:0o600});console.error('NATIVE_BLOB_BOUNDARY '+file);}catch(error){console.error('NATIVE_BLOB_BOUNDARY_OUTPUT_FAILED '+String(error));}});
