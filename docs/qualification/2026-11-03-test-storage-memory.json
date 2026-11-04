@@ -1,0 +1,58 @@
+{
+  "format": "breditor/test-storage-memory-qualification",
+  "formatVersion": 1,
+  "isolatedSource": {
+    "commit": "a26b0e9c6e2208253c90e2000a0ef2274f93157e",
+    "sha256": "654c58880d3820c714e3641cec0647903cae4ee988b39977be6eff89d10cf6ef"
+  },
+  "testBackendBefore": "6.2.5",
+  "testBackendAfter": "6.2.6",
+  "upstream": "https://github.com/dumbmatter/fakeIndexedDB/pull/171",
+  "sourceFocusedCases": 42,
+  "sourceNativeCompatibilityCases": 22,
+  "installedFocusedCases": 5,
+  "memoryCasesPerEnvironment": 2,
+  "measuredRetainedBytesBefore": {
+    "commit": 38490104,
+    "abort": 25919928
+  },
+  "measuredRetainedBytesAfter": {
+    "commit": 398968,
+    "abort": 276032
+  },
+  "storedRows": 1,
+  "iterations": 96,
+  "heapLimitMiB": 128,
+  "retainedBudgetMiB": 4,
+  "mainBefore": "d98f5a1e933c28b51cdc2d9648de994e05109d3a",
+  "mainPostIntegrationChecksPending": false,
+  "proof": {
+    "directory": "/Users/s/code/breditor/target/test-storage-memory-proof-75ef0bc23acd",
+    "indexSha256": "75ef0bc23acd5b8e295539ce42655e6243048cb535df76178801ec4570a42ebb",
+    "references": 21,
+    "objects": 21,
+    "compressedBytes": 182556,
+    "readBackVerified": true
+  },
+  "scope": "Node test-storage dependency and exact consumer pins only; application runtime distributions unchanged.",
+  "completeJointWorkflowQualified": false,
+  "physicalStorageQualified": false,
+  "historicalWebKitFaultRepaired": false,
+  "v1Ready": false,
+  "v1GatesOpen": 13,
+  "mainVerification": {
+    "cases": 5,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0,
+    "actualInstalledBackend": "6.2.6",
+    "matchingIsolatedInputFiles": 7,
+    "sdkAndRustSourceChanged": false,
+    "npmChangedPackages": 1,
+    "log": {
+      "path": "/Users/s/code/breditor/target/test-storage-memory-proof-75ef0bc23acd/main-integration.log.gz",
+      "sha256": "823c091b43ebc1d3104ab2aac62d160ef4347f775c1795f6cf30b85f0f4469f7",
+      "compressedSha256": "219fcd2d116c1f28d914216319e74ed7cc469723bc1a206aaf7433fb54df9920"
+    }
+  }
+}

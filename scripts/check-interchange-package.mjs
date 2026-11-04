@@ -12,7 +12,7 @@ const run=(command,args,cwd=root)=>execFileSync(command,args,{cwd,stdio:"inherit
 for(const name of ["breditor-experimental-rich-content","breditor-collaboration","breditor-editor","breditor-interchange"])run(process.execPath,["node_modules/typescript/bin/tsc","-p",`packages/${name}/tsconfig.json`]);
 mkdirSync(archives);cpSync(join(root,"scripts/fixtures/interchange-consumer"),consumer,{recursive:true});
 const names=["@breditor/browser","@breditor/experimental-rich-content","@breditor/collaboration","@breditor/editor","@breditor/interchange"],packs=JSON.parse(execFileSync("npm",["pack","--ignore-scripts","--json","--pack-destination",archives,...names.flatMap(name=>["--workspace",name])],{cwd:root,encoding:"utf8"})),paths=packs.map(p=>join(archives,p.filename));
-run("npm",["install","--offline","--ignore-scripts","--no-audit","--no-fund","--package-lock=false",...paths,"react@19.2.8","react-dom@19.2.8","@types/react@19.2.18","jsdom@29.1.1","fake-indexeddb@6.2.5"],consumer);
+run("npm",["install","--offline","--ignore-scripts","--no-audit","--no-fund","--package-lock=false",...paths,"react@19.2.8","react-dom@19.2.8","@types/react@19.2.18","jsdom@29.1.1","fake-indexeddb@6.2.6"],consumer);
 for(const name of names){const installed=realpathSync(join(consumer,"node_modules",name));assert.ok(installed.startsWith(`${realpathSync(consumer)}/node_modules/`),`Workspace link escaped installed proof: ${name}`);}
 run(process.execPath,[join(root,"node_modules/typescript/bin/tsc"),"--noEmit","--strict","--exactOptionalPropertyTypes","--target","ES2022","--module","NodeNext","--lib","ES2022,DOM","--types","react","types.ts"],consumer);
 // These are generated test artifacts, not modified product source. Only import/resource paths change.

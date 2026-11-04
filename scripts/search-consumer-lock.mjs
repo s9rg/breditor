@@ -1,7 +1,7 @@
 /** Seed independent npm resolution from the producer's exact registry lock, never workspace links. */
 export function searchConsumerLock(producer,archives){
  if(producer?.lockfileVersion!==3||!producer.packages||typeof producer.packages!=="object")throw Error("Expected producer npm lock v3");
- const external={react:"19.2.8","react-dom":"19.2.8","@types/react":"19.2.18",jsdom:"29.1.1","fake-indexeddb":"6.2.5"};
+ const external={react:"19.2.8","react-dom":"19.2.8","@types/react":"19.2.18",jsdom:"29.1.1","fake-indexeddb":"6.2.6"};
  for(const [name,version]of Object.entries(external))if(producer.packages[`node_modules/${name}`]?.version!==version)throw Error(`Consumer fixture version differs from producer lock: ${name}`);
  const dependencies={...external};for(const {name,path}of archives){if(typeof name!=="string"||!name.startsWith("@breditor/")||typeof path!=="string"||!path.endsWith(".tgz")||Object.hasOwn(dependencies,name))throw Error("Expected distinct candidate archives");dependencies[name]=`file:${path}`;}
  const manifest={name:"breditor-search-installed-proof",version:"0.0.0",private:true,type:"module",dependencies};
