@@ -23,13 +23,19 @@ test('closure while an asynchronous copy is pending refuses before returning a p
 function isolatedCopy(mode){
  const module=new URL('../packages/breditor-collaboration/dist/independent_operation/payload_blob.js',import.meta.url).href;
  const code=`import assert from 'node:assert/strict';import {createHash} from 'node:crypto';
- const original=Blob.prototype.arrayBuffer,reads=[],mode=process.argv[1];
- Blob.prototype.arrayBuffer=async function(){const bytes=await original.call(this);if(this.type===''){reads.push(this.size);if(mode==='short'&&reads.length===1)return bytes.slice(0,bytes.byteLength-1);}return bytes;};
+ const original=Blob.prototype.arrayBuffer,reads=[],mode=process.argv[1];let latest;
+ Blob.prototype.arrayBuffer=async function(){const bytes=await original.call(this);if(this.type===''){reads.push(this.size);if(mode.startsWith('short')&&reads.length===1)return bytes.slice(0,bytes.byteLength-1);if(mode==='detach')latest=bytes;}return bytes;};
  try{const {ownedLineagePayload,LINEAGE_PAYLOAD_COPY_CHUNK_BYTES}=await import(${JSON.stringify(module)}),data=Buffer.alloc(3*1024*1024+17,47),input=new Blob([data],{type:'application/x-breditor-bounded-copy'}),sha=value=>createHash('sha256').update(value).digest('hex');
- if(mode==='short'){await assert.rejects(ownedLineagePayload(input,sha(data),()=>{},()=>Error('short-refused')),/short-refused/);assert.equal(reads.length,1);}
+ if(mode.startsWith('short')||mode==='detach'){
+ const error=mode==='short-frozen'?Object.freeze(Error('short-refused')):Error('short-refused'),check=()=>{if(mode==='detach'&&latest?.byteLength)structuredClone(latest,{transfer:[latest]});};
+ await assert.rejects(ownedLineagePayload(input,sha(data),check,()=>error),actual=>{assert.equal(actual,error);if(mode==='short-frozen')assert.equal(Object.hasOwn(actual,'payloadReadFailure'),false);else{assert.deepEqual(actual.payloadReadFailure,{kind:'lineage-payload-read-length',fileBytes:data.length,offset:0,expectedBytes:LINEAGE_PAYLOAD_COPY_CHUNK_BYTES,observedBeforeAuthorityBytes:mode==='detach'?LINEAGE_PAYLOAD_COPY_CHUNK_BYTES:LINEAGE_PAYLOAD_COPY_CHUNK_BYTES-1,actualBytes:mode==='detach'?0:LINEAGE_PAYLOAD_COPY_CHUNK_BYTES-1});assert.ok(Object.isFrozen(actual.payloadReadFailure));assert.equal(Object.getOwnPropertyDescriptor(actual,'payloadReadFailure').writable,false);}return true;});assert.equal(reads.length,1);
+ }
  else{const output=await ownedLineagePayload(input,sha(data),()=>{},()=>Error('integrity'));assert.deepEqual(Buffer.from(await original.call(output)),data);assert.ok(reads.length>=2);assert.ok(reads.every(bytes=>bytes<=LINEAGE_PAYLOAD_COPY_CHUNK_BYTES));}
  assert.deepEqual(Buffer.from(await original.call(input)),data);console.log(JSON.stringify({mode,reads,unchangedInput:true}));}finally{Blob.prototype.arrayBuffer=original;}`;
  return JSON.parse(execFileSync(process.execPath,['--input-type=module','-e',code,mode],{encoding:'utf8',timeout:20000,maxBuffer:1024*1024}));
 }
 test('copy uses bounded reads for a large payload',()=>{const result=isolatedCopy('bounded');assert.equal(result.unchangedInput,true);});
 test('an actual short copy read refuses immediately without retry or input changes',()=>{const result=isolatedCopy('short');assert.equal(result.reads.length,1);});
+
+test('authority detachment is distinguished from an already short payload read',()=>{assert.equal(isolatedCopy('detach').reads.length,1);});
+test('a frozen original integrity error is retained without diagnostic substitution',()=>{assert.equal(isolatedCopy('short-frozen').reads.length,1);});

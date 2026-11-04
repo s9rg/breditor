@@ -70,7 +70,12 @@
     "test:collaboration:metadata-evidence": "node --test --test-concurrency=1 scripts/metadata-continuation-evidence-admission.test.mjs scripts/metadata-continuation-evidence-native.test.mjs",
     "test:collaboration:metadata-evidence:installed": "node scripts/check-metadata-evidence-installed.mjs",
     "test:collaboration:prepared-cold-start": "node --test --test-concurrency=1 scripts/cold-room-prepared-start.test.mjs",
-    "test:collaboration:prepared-cold-start:installed": "node scripts/check-cold-prepared-start-installed.mjs"
+    "test:collaboration:prepared-cold-start:installed": "node scripts/check-cold-prepared-start-installed.mjs",
+    "test:collaboration:joint-reassociation": "node --test --test-concurrency=1 scripts/metadata-continuation-evidence-admission.test.mjs scripts/metadata-continuation-evidence-native.test.mjs scripts/joint-reassociation-intent-storage.test.mjs scripts/joint-reassociation-admission.test.mjs scripts/joint-reassociation-complete-native.test.mjs",
+    "test:collaboration:joint-reassociation:installed": "node scripts/check-joint-reassociation-installed.mjs",
+    "test:collaboration:joint-reassociation:repeated": "node --test --test-concurrency=1 scripts/joint-reassociation-repeated-native.test.mjs",
+    "test:collaboration:joint-reassociation:pending-repeated": "node --test --test-concurrency=1 scripts/joint-reassociation-pending-repeated-native.test.mjs",
+    "test:collaboration:joint-reassociation:pending-repeated:installed": "node scripts/check-joint-reassociation-installed.mjs --pending-repeated"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
