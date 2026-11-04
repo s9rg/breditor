@@ -234,3 +234,17 @@ separate inputs; `--fixture-raster` explicitly selects the controlled test raste
 decoder. The retained 8,261,282-byte input passes with all seven participant
 payloads and nine original input files readable. This checks the saved bytes,
 not the physical Blob construction or a live room.
+
+## Complete archive-read diagnostics
+
+The corrected committed source workset at `8051153d` stopped after 291,925 ms
+with an actual `archiveReadLengthFailure` during provider/source reconciliation,
+before the cold association phase. Its unchanged-source terminal log SHA-256 is
+`cddc8f8d97902472e091ab36dc1f0cacb2579f18fa7753c15eaee1884c93f855`.
+The default reporter omitted its attached scalar observations; the earlier
+fixture wrapper recognized only lineage-payload diagnostics. The wrapper now
+prints both existing exact-length observation families, with an explicit finite
+field list and no payload values. Three reporter cases preserve actual/frozen
+error identity, reject extra diagnostic payload fields and retain successful
+return values. No read is retried, clipped or accepted. This is observability,
+not an archive-fault repair or a full Native workflow pass.
