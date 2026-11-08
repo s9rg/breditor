@@ -3,7 +3,6 @@
  * successful read never supplies a live journal, custody or serving permission. */
 import {prepareArchiveIntegrity,type ArchiveIntegrityContext} from '../archive_integrity/context.js';
 import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
-import {MAX_SHARED_ARCHIVE_DIGEST_CHUNK_BYTES} from '../archive_integrity/policy.js';
 import type {MetadataContinuationEvidence} from '../selected_local_metadata_continuation/evidence_contract.js';
 import {metadataContinuationEvidencePins} from './identity.js';
 import {prepareMetadataPinArchive} from './prepare_archive.js';
@@ -12,9 +11,9 @@ import {metadataPinsFailure as fail} from './policy.js';
 import type {MetadataContinuationEvidencePins,MetadataSnapshotPin} from './contract.js';
 async function read(file:Blob|null,pin:MetadataSnapshotPin|null,integrity:ArchiveIntegrityContext):Promise<string|null>{
  if(file===null||pin===null){if(file!==null||pin!==null)throw fail();return null;}
- if(await integrity.digest(file)!==pin.sha256)throw fail('metadata_pins_stale');integrity.guard();
- const bytes=new Uint8Array(file.size);
- for(let offset=0;offset<file.size;offset+=MAX_SHARED_ARCHIVE_DIGEST_CHUNK_BYTES){bytes.set(await integrity.read(file,offset,Math.min(MAX_SHARED_ARCHIVE_DIGEST_CHUNK_BYTES,file.size-offset)),offset);integrity.guard();}
+ const {bytes,sha256}=await integrity.readAndDigest(file,pin.bytes);
+ integrity.guard();
+ if(bytes.byteLength!==pin.bytes||sha256!==pin.sha256)throw fail('metadata_pins_stale');
  try{return new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(bytes);}catch{throw fail();}
 }
 export async function readMetadataContinuationPinArchive(provided:unknown,expected:MetadataContinuationEvidencePins,options:SharedArchiveIntegrityOptions):Promise<MetadataContinuationEvidence>{

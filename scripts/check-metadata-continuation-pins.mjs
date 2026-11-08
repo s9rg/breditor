@@ -13,7 +13,7 @@ const root=resolve(new URL('../',import.meta.url).pathname),source=sourceEvidenc
 const sha=data=>createHash('sha256').update(data).digest('hex');
 const tests=['scripts/metadata-continuation-pins.test.mjs','scripts/metadata-continuation-pin-archives.test.mjs','scripts/metadata-continuation-pins-native.test.mjs'];
 const types=['scripts/fixtures/metadata-pins/types.mts','scripts/fixtures/metadata-continuation/types.mts'];
-const expectedCases=31,folders=['breditor-browser','breditor-experimental-rich-content','breditor-collaboration'];
+const expectedCases=32,folders=['breditor-browser','breditor-experimental-rich-content','breditor-collaboration'];
 // Literal resources are copied explicitly; imports alone cannot discover these.
 const paths=['scripts/fixtures/metadata-pins/actual-evidence.json.gz','scripts/fixtures/metadata-pins/provenance.json','crates/breditor-core/tests/fixtures/rich-local-root.json',
  'target/owned-history-relay-native/release/examples/complete_cohort_control_functional',

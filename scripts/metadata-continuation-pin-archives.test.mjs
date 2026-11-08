@@ -62,3 +62,29 @@ test('cancelled archive admission returns no reconstructed evidence',async()=>{
  const stop=new AbortController();let calls=0;
  await assert.rejects(read(complete,complete.pins,{wasm:native,signal:stop.signal,checkAuthority(){if(++calls===4)stop.abort();}}),error=>error.code==='archive_aborted');assert.equal(calls,4);
 });
+
+test('the bytes used to verify the snapshot are the bytes decoded into evidence', async () => {
+ const original = fixture.evidence.at(-1).metadata;
+ const changed = JSON.parse(original);
+ const revision = changed.current.revision;
+ changed.current.revision++;
+ const substituted = new TextEncoder().encode(JSON.stringify(changed));
+ assert.equal(substituted.byteLength, complete.pins.metadata.bytes);
+ assert.notEqual(sha(substituted), complete.pins.metadata.sha256);
+ assert.ok(substituted.byteLength <= 1024 * 1024);
+ const readBuffer = Blob.prototype.arrayBuffer;
+ let reads = 0;
+ try {
+  // An I/O fault returns a valid but different snapshot on the second read.
+  // The first read still matches the independently selected digest.
+  Blob.prototype.arrayBuffer = function () {
+   if (this.size === substituted.byteLength && ++reads === 2) return Promise.resolve(substituted.buffer.slice(0));
+   return readBuffer.call(this);
+  };
+  const restored = await read(complete, complete.pins, options());
+  assert.equal(JSON.parse(restored.metadata).current.revision, revision);
+  assert.equal(reads, 1);
+ } finally {
+  Blob.prototype.arrayBuffer = readBuffer;
+ }
+});
