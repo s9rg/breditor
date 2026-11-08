@@ -12,9 +12,16 @@ export async function verifyNativeInputIncomingLiteral(actual:Blob,expected:Blob
  if(!Number.isSafeInteger(length)||length<1||length!==size.call(expected)||type.call(actual)!==type.call(expected))throw fail();
  check();
  for(let offset=0;offset<length;offset+=CHUNK_BYTES){
-  const a=new Uint8Array(await arrayBuffer.call(slice.call(actual,offset,offset+CHUNK_BYTES)));check();
-  const b=new Uint8Array(await arrayBuffer.call(slice.call(expected,offset,offset+CHUNK_BYTES)));check();
-  if(a.length!==b.length)throw fail();for(let index=0;index<a.length;index++)if(a[index]!==b[index])throw fail();
+  const end=Math.min(offset+CHUNK_BYTES,length);
+  const count=end-offset;
+  const a=new Uint8Array(await arrayBuffer.call(slice.call(actual,offset,end)));
+  check();
+  if(a.byteLength!==count)throw fail();
+  const b=new Uint8Array(await arrayBuffer.call(slice.call(expected,offset,end)));
+  check();
+  // The authority check can invalidate either buffer before comparison.
+  if(a.byteLength!==count||b.byteLength!==count)throw fail();
+  for(let index=0;index<count;index++)if(a[index]!==b[index])throw fail();
  }
  check();
 }
