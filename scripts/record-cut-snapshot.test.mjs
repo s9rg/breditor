@@ -125,3 +125,47 @@ test('later participant records must still match the admitted entry pin', async 
   admitted?.dispose();
  }
 });
+
+test('participant input routing comes from the header included in the whole-file digest', async () => {
+ const file=new Blob([bytes]);
+ const {text,offset}=await recordCutHeader(file,context);
+ const manifest=readRecordCutManifest(text);
+ const original=manifest.participants.find(row=>row.family==='original');
+ const independent=manifest.participants.find(row=>row.family==='independent-local');
+ const first=original.files[0],second=independent.files[0];
+ assert.notEqual(manifest.entries[first.entry].sha256,manifest.entries[second.entry].sha256);
+ [first.entry,second.entry]=[second.entry,first.entry];
+ const replacement=new TextEncoder().encode(JSON.stringify(manifest));
+ assert.equal(replacement.byteLength,new TextEncoder().encode(text).byteLength);
+ const originalFile=archive.inputs(original.id)[0].file;
+ const nativeRead=Blob.prototype.arrayBuffer;
+ let mode='separate',separateReads=0,alteredDigestRead=false;
+ let admitted;
+ try{
+  Blob.prototype.arrayBuffer=async function(){
+   if(mode==='separate'&&this.size===replacement.byteLength){
+    separateReads++;
+    return replacement.buffer.slice(0);
+   }
+   const raw=await nativeRead.call(this);
+   if(mode==='digest'&&this.size===1024*1024){
+    const view=new Uint8Array(raw);
+    if(Buffer.from(view.subarray(0,offset)).equals(bytes.subarray(0,offset))){
+     view.set(replacement,offset-replacement.byteLength);
+     alteredDigestRead=true;
+    }
+   }
+   return raw;
+  };
+  admitted=await Archive.read(file,selection,options);
+  assert.equal(admitted.inputs(original.id)[0].file.size,originalFile.size);
+  assert.deepEqual(await admitted.inputs(original.id)[0].file.arrayBuffer(),await originalFile.arrayBuffer());
+  assert.equal(separateReads,0);
+  mode='digest';
+  await assert.rejects(Archive.read(file,selection,options),{code:'record_cut_integrity'});
+  assert.equal(alteredDigestRead,true);
+ }finally{
+  Blob.prototype.arrayBuffer=nativeRead;
+  admitted?.dispose();
+ }
+});

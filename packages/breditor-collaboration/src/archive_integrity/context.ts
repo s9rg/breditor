@@ -1,5 +1,5 @@
 import {archiveReadLengthFailure} from './read_length_failure.js';
-/** Bounded native hashing and byte reads. Never reads or allocates a whole large file buffer. */
+/** Chunked Native hashing with explicit buffering limits for decoded bytes. */
 import {archiveBlob,archiveFailure,archiveGuard,SharedArchiveIntegrityError,MAX_SHARED_ARCHIVE_DIGEST_BYTES,MAX_SHARED_ARCHIVE_DIGEST_CHUNK_BYTES} from "./policy.js";
 import type {SharedArchiveIntegrityOptions,SharedArchiveDigestModule,SharedRustArchiveDigest} from "./contract.js";
 interface DigestedArchiveBytes {
@@ -13,6 +13,8 @@ export interface ArchiveIntegrityContext {
  readonly digest:(file:Blob)=>Promise<string>;
  /** A buffered read requires the caller to pass its archive family byte limit. */
  readonly readAndDigest:(file:Blob,maximumBytes:number)=>Promise<DigestedArchiveBytes>;
+ /** Keep only the requested prefix while verifying the entire selected file. */
+ readonly readPrefixAndDigest:(file:Blob,prefixBytes:number)=>Promise<DigestedArchiveBytes>;
 }
 export function prepareArchiveIntegrity(options:SharedArchiveIntegrityOptions):ArchiveIntegrityContext {
  const guard=archiveGuard(options.checkAuthority,options.signal);guard();
@@ -31,10 +33,17 @@ export function prepareArchiveIntegrity(options:SharedArchiveIntegrityOptions):A
     const count=Math.min(MAX_SHARED_ARCHIVE_DIGEST_CHUNK_BYTES,file.size-offset);
     const input=await read(file,offset,count);
     let bytes=input;
-    if(output){
-     // The digest covers the same owned bytes that a caller will decode.
-     bytes=output.subarray(offset,offset+count);
-     bytes.set(input);
+    if(output&&offset<output.byteLength){
+     const kept=Math.min(count,output.byteLength-offset);
+     const target=output.subarray(offset,offset+kept);
+     if(kept===count){
+      target.set(input);
+      bytes=target;
+     }else{
+      // Own the boundary chunk before authority or Native callbacks run.
+      bytes=input.slice();
+      target.set(bytes.subarray(0,kept));
+     }
     }
     guard();
     if(update.call(owner,bytes)!==undefined)throw archiveFailure("archive_capability");
@@ -48,15 +57,24 @@ export function prepareArchiveIntegrity(options:SharedArchiveIntegrityOptions):A
   guard();
   return digestFile(archiveBlob(input,MAX_SHARED_ARCHIVE_DIGEST_BYTES));
  };
- const readAndDigest=async(input:Blob,maximumBytes:number):Promise<DigestedArchiveBytes>=>{
-  guard();
-  if(!Number.isSafeInteger(maximumBytes)||maximumBytes<0||maximumBytes>MAX_SHARED_ARCHIVE_DIGEST_BYTES)throw archiveFailure("archive_budget");
-  const file=archiveBlob(input,maximumBytes);
-  const bytes=new Uint8Array(file.size);
+ const readBuffered=async(file:Blob,count:number):Promise<DigestedArchiveBytes>=>{
+  const bytes=new Uint8Array(count);
   const sha256=await digestFile(file,bytes);
   guard();
   return {bytes,sha256};
  };
+ const readAndDigest=async(input:Blob,maximumBytes:number):Promise<DigestedArchiveBytes>=>{
+  guard();
+  if(!Number.isSafeInteger(maximumBytes)||maximumBytes<0||maximumBytes>MAX_SHARED_ARCHIVE_DIGEST_BYTES)throw archiveFailure("archive_budget");
+  const file=archiveBlob(input,maximumBytes);
+  return readBuffered(file,file.size);
+ };
+ const readPrefixAndDigest=async(input:Blob,prefixBytes:number):Promise<DigestedArchiveBytes>=>{
+  guard();
+  const file=archiveBlob(input,MAX_SHARED_ARCHIVE_DIGEST_BYTES);
+  if(!Number.isSafeInteger(prefixBytes)||prefixBytes<0||prefixBytes>file.size)throw archiveFailure("archive_budget");
+  return readBuffered(file,prefixBytes);
+ };
  const wasm=Object.freeze({SharedArchiveDigest:Object.freeze({version:()=>"1",maximum_bytes:()=>String(MAX_SHARED_ARCHIVE_DIGEST_BYTES),maximum_chunk_bytes:()=>String(MAX_SHARED_ARCHIVE_DIGEST_CHUNK_BYTES),create})});
- return Object.freeze({wasm,guard,read,digest,readAndDigest});
+ return Object.freeze({wasm,guard,read,digest,readAndDigest,readPrefixAndDigest});
 }
