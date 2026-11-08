@@ -2,7 +2,6 @@ import {archiveReadLengthFailure} from './read_length_failure.js';
 /** Bounded native hashing and byte reads. Never reads or allocates a whole large file buffer. */
 import {archiveBlob,archiveFailure,archiveGuard,SharedArchiveIntegrityError,MAX_SHARED_ARCHIVE_DIGEST_BYTES,MAX_SHARED_ARCHIVE_DIGEST_CHUNK_BYTES} from "./policy.js";
 import type {SharedArchiveIntegrityOptions,SharedArchiveDigestModule,SharedRustArchiveDigest} from "./contract.js";
-const MAX_BUFFERED_ARCHIVE_BYTES=32*1024*1024;
 interface DigestedArchiveBytes {
  readonly bytes:Uint8Array<ArrayBuffer>;
  readonly sha256:string;
@@ -12,6 +11,7 @@ export interface ArchiveIntegrityContext {
  readonly guard:()=>void;
  readonly read:(file:Blob,offset:number,bytes:number)=>Promise<Uint8Array<ArrayBuffer>>;
  readonly digest:(file:Blob)=>Promise<string>;
+ /** A buffered read requires the caller to pass its archive family byte limit. */
  readonly readAndDigest:(file:Blob,maximumBytes:number)=>Promise<DigestedArchiveBytes>;
 }
 export function prepareArchiveIntegrity(options:SharedArchiveIntegrityOptions):ArchiveIntegrityContext {
@@ -50,7 +50,7 @@ export function prepareArchiveIntegrity(options:SharedArchiveIntegrityOptions):A
  };
  const readAndDigest=async(input:Blob,maximumBytes:number):Promise<DigestedArchiveBytes>=>{
   guard();
-  if(!Number.isSafeInteger(maximumBytes)||maximumBytes<0||maximumBytes>MAX_BUFFERED_ARCHIVE_BYTES)throw archiveFailure("archive_budget");
+  if(!Number.isSafeInteger(maximumBytes)||maximumBytes<0||maximumBytes>MAX_SHARED_ARCHIVE_DIGEST_BYTES)throw archiveFailure("archive_budget");
   const file=archiveBlob(input,maximumBytes);
   const bytes=new Uint8Array(file.size);
   const sha256=await digestFile(file,bytes);

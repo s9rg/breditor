@@ -12,6 +12,8 @@ import * as native from '../packages/breditor-collaboration/dist/runtime/bredito
 import {PhysicalRoomRecordCutArchive as Archive} from '../packages/breditor-collaboration/dist/physical_room_record_cut/archive.js';
 import {encodePhysicalRoomRecordCut as encode} from '../packages/breditor-collaboration/dist/physical_room_record_cut/capture.js';
 import {prepareArchiveIntegrity} from '../packages/breditor-collaboration/dist/archive_integrity/context.js';
+import {recordCutHeader} from '../packages/breditor-collaboration/dist/physical_room_record_cut/framing.js';
+import {readRecordCutManifest} from '../packages/breditor-collaboration/dist/physical_room_record_cut/manifest.js';
 const fixture=process.env.BREDITOR_RECORD_CUT_SNAPSHOT_FIXTURE??new URL('../target/record-cut-snapshot-fixture/',import.meta.url).pathname;
 let bytes,selection,archive,template,context,options;
 before(async()=>{
@@ -68,4 +70,58 @@ test('accessors and sparse/oversized descriptor arrays refuse before callbacks',
 });
 test('the prepared request is private and returns no mutable source/owner capability',()=>{
  for(const name of ['prepareRecordCutCapture','encodePhysicalRoomRecordCut'])assert.equal(name in api,false);
+});
+
+test('later participant records must still match the admitted entry pin', async () => {
+ const row=template.participants.find(row=>row.family==='original');
+ const original=row.payload.state;
+ const alternate=structuredClone(original);
+ alternate.parent.format='x'+original.parent.format.slice(1);
+ const raw=new TextEncoder().encode(JSON.stringify(original));
+ const replacement=new TextEncoder().encode(JSON.stringify(alternate));
+ assert.equal(raw.byteLength,replacement.byteLength);
+ assert.ok(raw.byteLength<=1024*1024);
+ assert.notDeepEqual(raw,replacement);
+
+ const header=await recordCutHeader(new Blob([bytes]),context);
+ const manifest=readRecordCutManifest(header.text);
+ const entry=manifest.participants.find(participant=>participant.id===row.id).records;
+ const offset=manifest.entries.slice(0,entry).reduce((start,part)=>start+part.bytes,header.offset);
+ const modified=Buffer.from(bytes);
+ assert.deepEqual(modified.subarray(offset,offset+raw.byteLength),Buffer.from(raw));
+ modified.set(replacement,offset);
+ const modifiedSelection={...selection,sha256:createHash('sha256').update(modified).digest('hex')};
+ await assert.rejects(Archive.read(new Blob([modified]),modifiedSelection,options),{code:'record_cut_integrity'});
+
+ const readBuffer=Blob.prototype.arrayBuffer;
+ let armed=false,injected=0,readable=true,disposeOnRead=false;
+ let admitted;
+ try {
+  Blob.prototype.arrayBuffer=function(){
+   if(disposeOnRead&&this.size===replacement.byteLength)admitted.dispose();
+   if(armed&&this.size===replacement.byteLength){
+    injected++;
+    return Promise.resolve(replacement.buffer.slice(0));
+   }
+   return readBuffer.call(this);
+  };
+  const {PhysicalRoomRecordCutArchive:MeasuredArchive}=await import(
+   '../packages/breditor-collaboration/dist/physical_room_record_cut/archive.js?record-reread'
+  );
+  admitted=await MeasuredArchive.read(new Blob([bytes]),selection,{
+   ...options,checkAuthority(){assert.ok(readable);},
+  });
+  readable=false;
+  assert.deepEqual(await admitted.records(row.id),original);
+  armed=true;
+  await assert.rejects(admitted.records(row.id),{code:'record_cut_integrity'});
+  assert.equal(injected,1);
+  armed=false;
+  assert.deepEqual(await admitted.records(row.id),original);
+  disposeOnRead=true;
+  await assert.rejects(admitted.records(row.id),{code:'record_cut_closed'});
+ }finally{
+  Blob.prototype.arrayBuffer=readBuffer;
+  admitted?.dispose();
+ }
 });
