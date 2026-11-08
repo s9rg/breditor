@@ -16,5 +16,5 @@ test('both profiles require original native and dependent actual rows through so
   assert.equal(plan.v1Ready,false);
  }
  const installed=readFileSync(join(repository,'scripts/check-original-retained-record-read-installed.mjs'),'utf8');
- for(const text of ['--offline','--ignore-scripts','verifySearchConsumerRegistry','Only reversible locations may change','^# pass 487$','^# fail 0$','^# skipped 0$','workspaceLinks:false','sourceUnchanged:true','persistence/original_record_read.js','persistence/shared_session.js','versions/catalog.js','versions/store.js','versions/sync.js','suggestion_revisions/outbox.js'])assert.ok(installed.includes(text),text);
+ for(const text of ['--offline','--ignore-scripts','verifySearchConsumerRegistry','Only reversible locations may change','const expectedAssertions=197+262+retainedStorageRegressionLaws;',"new RegExp('^# pass '+expectedAssertions+'$','m')",'^# fail 0$','^# skipped 0$','workspaceLinks:false','sourceUnchanged:true','persistence/original_record_read.js','persistence/shared_session.js','versions/catalog.js','versions/store.js','versions/sync.js','suggestion_revisions/outbox.js'])assert.ok(installed.includes(text),text);
 });

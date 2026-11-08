@@ -17,5 +17,5 @@ test('both profiles require atomic generation records through actual packages an
   assert.equal(plan.v1Ready,false);
  }
  const installed=readFileSync(join(repository,'scripts/check-generation-record-read-installed.mjs'),'utf8');
- for(const text of ['--offline','--ignore-scripts','verifySearchConsumerRegistry','Only reversible locations may change','^# pass 290$','^# fail 0$','^# skipped 0$','workspaceLinks:false','sourceUnchanged:true','persistence/generation_record_read.js','persistence/segmented_session.js','segmented_relay/session.js'])assert.ok(installed.includes(text),text);
+ for(const text of ['--offline','--ignore-scripts','verifySearchConsumerRegistry','Only reversible locations may change','const expectedAssertions=262+retainedStorageRegressionLaws;',"new RegExp('^# pass '+expectedAssertions+'$','m')",'^# fail 0$','^# skipped 0$','workspaceLinks:false','sourceUnchanged:true','persistence/generation_record_read.js','persistence/segmented_session.js','segmented_relay/session.js'])assert.ok(installed.includes(text),text);
 });

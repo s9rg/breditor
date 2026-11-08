@@ -17,5 +17,5 @@ test('both profiles require actual original rows in source, fresh packages and b
   assert.equal(plan.v1Ready,false);
  }
  const installed=readFileSync(join(repository,'scripts/check-original-record-read-installed.mjs'),'utf8');
- for(const text of ['--offline','--ignore-scripts','verifySearchConsumerRegistry','Only reversible locations may change','^# pass 102$','^# fail 0$','^# skipped 0$','workspaceLinks:false','sourceUnchanged:true'])assert.ok(installed.includes(text),text);
+ for(const text of ['--offline','--ignore-scripts','verifySearchConsumerRegistry','Only reversible locations may change','const expectedAssertions=74+retainedStorageRegressionLaws;',"new RegExp('^# pass '+expectedAssertions+'$','m')",'^# fail 0$','^# skipped 0$','workspaceLinks:false','sourceUnchanged:true'])assert.ok(installed.includes(text),text);
 });
