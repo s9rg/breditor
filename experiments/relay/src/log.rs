@@ -7,6 +7,7 @@ use std::{
     io::{Seek, SeekFrom, Write},
     path::Path,
 };
+mod append_pair;
 #[cfg(test)]
 mod continuation_tests;
 mod decoder;
@@ -277,29 +278,40 @@ impl Log {
     }
     pub fn append(&mut self, event: Event) -> Result<u64> {
         self.ready()?;
-        if self.generations.is_none() && self.next >= MAX_RECORDS {
-            return Err(Error::Contract("log record budget"));
-        }
-        let sequence = self.next;
-        let encoded = frame::encode(event, self.family, sequence, self.previous)?;
+        let encoded = frame::encode(event, self.family, self.next, self.previous)?;
+        self.append_encoded(&encoded)
+    }
+    fn check_append_capacity(&self, records: u64, bytes: u64) -> Result<bool> {
         if let Some(state) = &self.generations {
-            if self.next >= MAX_RECORDS * generations::MAX_PHYSICAL_GENERATIONS as u64
-                || state
-                    .closed_bytes()
-                    .checked_add(self.bytes)
-                    .and_then(|bytes| bytes.checked_add(encoded.bytes))
-                    .is_none_or(|bytes| bytes > generations::MAX_PHYSICAL_LOG_BYTES)
+            if self.next.checked_add(records).is_none_or(|next| {
+                next > MAX_RECORDS * generations::MAX_PHYSICAL_GENERATIONS as u64
+            }) || state
+                .closed_bytes()
+                .checked_add(self.bytes)
+                .and_then(|used| used.checked_add(bytes))
+                .is_none_or(|bytes| bytes > generations::MAX_PHYSICAL_LOG_BYTES)
             {
                 return Err(Error::Contract("physical log retained lifetime budget"));
             }
-            if self.next - state.active_first() >= MAX_RECORDS
-                || self.bytes + encoded.bytes > MAX_LOG
-            {
-                self.auto_rotate_generations()?;
+            let rotate = self.next - state.active_first() + records > MAX_RECORDS
+                || self.bytes + bytes > MAX_LOG;
+            if rotate && !state.has_rotation_slot() {
+                return Err(Error::Contract("physical rotation generation or capacity"));
             }
+            return Ok(rotate);
         }
-        if self.bytes + encoded.bytes > MAX_LOG {
+        if self.next + records > MAX_RECORDS {
+            return Err(Error::Contract("log record budget"));
+        }
+        if self.bytes + bytes > MAX_LOG {
             return Err(Error::Contract("log byte budget"));
+        }
+        Ok(false)
+    }
+    fn append_encoded(&mut self, encoded: &frame::Encoded) -> Result<u64> {
+        let sequence = self.next;
+        if self.check_append_capacity(1, encoded.bytes)? {
+            self.auto_rotate_generations()?;
         }
         // Once any write can start, failure is uncertain: no subsequent read, write or ack may
         // treat this process's memory as the authority. Recovery replays complete records.

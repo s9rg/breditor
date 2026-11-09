@@ -55,6 +55,70 @@ fn parent_pending(room: &Room, request: &SuggestionRevisionRequest) -> TestResul
     Ok(())
 }
 #[test]
+fn revision_capacity_refusal_leaves_last_original_record_available() -> TestResult {
+    let files = Files::new()?;
+    let (mut room, choice) = start(&files)?;
+    let request = input(&mut room, &choice)?;
+    let (first, _) = room.log.snapshot_cut()?;
+    fill_with_grants(&mut room, first..4095)?;
+    let before = fs::read(&files.path)?;
+
+    assert!(matches!(
+        room.revise_document_suggestion("alice", &request),
+        Err(Error::Contract("log record budget"))
+    ));
+    assert!(fs::read(&files.path)? == before, "Capacity refusal changed the original log");
+    parent_pending(&room, &request)?;
+    room.grant("owner", "last-reader", Some(Role::Reader))?;
+    assert_eq!(room.log.snapshot_cut()?.0, 4096);
+    drop(room);
+    let (room, _) = Room::open(&files.path)?;
+    parent_pending(&room, &request)?;
+    Ok(())
+}
+
+#[test]
+fn revision_capacity_refusal_leaves_last_generation_record_available() -> TestResult {
+    let files = Files::new()?;
+    let options = ServerLogGenerationOptions { root: "root".into(), active: "first".into() };
+    let (mut room, choice) = start_with_storage(&files, Some(&options))?;
+    let request = input(&mut room, &choice)?;
+    for index in 0..62 {
+        room.grant("owner", "rotation-reader", Some(Role::Reader))?;
+        room.rotate_log_generation("owner", &format!("revision-{index}"))?;
+    }
+    fill_with_grants(&mut room, 0..4095)?;
+    let before = room.export_log_generation_backup("owner")?.info();
+
+    assert!(matches!(
+        room.revise_document_suggestion("alice", &request),
+        Err(Error::Contract("physical rotation generation or capacity"))
+    ));
+    assert_eq!(room.export_log_generation_backup("owner")?.info(), before);
+    parent_pending(&room, &request)?;
+    room.grant("owner", "last-reader", Some(Role::Reader))?;
+    let after = room.log_generation_descriptor("owner")?;
+    assert_eq!(after.sealed, 62);
+    assert_eq!(after.active, "revision-61");
+    drop(room);
+    let (room, _) = Room::open_log_generations(&files.path)?;
+    assert_eq!(room.log_generation_descriptor("owner")?, after);
+    parent_pending(&room, &request)?;
+    Ok(())
+}
+
+fn fill_with_grants(room: &mut Room, slots: std::ops::Range<u64>) -> TestResult {
+    for index in slots {
+        room.grant(
+            "owner",
+            "reader",
+            Some(if index % 2 == 0 { Role::Reader } else { Role::Editor }),
+        )?;
+    }
+    Ok(())
+}
+
+#[test]
 fn complete_uncommitted_preparation_is_inert_and_a_later_retry_can_commit() -> TestResult {
     let files = Files::new()?;
     let (mut room, choice) = start(&files)?;

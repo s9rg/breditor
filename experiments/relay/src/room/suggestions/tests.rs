@@ -2,7 +2,7 @@
 use super::decide::DecisionPreparation;
 use super::*;
 use crate::{
-    AtomicTransportProfile, Role,
+    AtomicTransportProfile, Role, ServerLogGenerationOptions,
     log::{Event, Log},
 };
 use breditor_collab_feasibility::{
@@ -36,24 +36,41 @@ impl Files {
 }
 impl Drop for Files {
     fn drop(&mut self) {
-        let _ = fs::remove_file(&self.path);
-        let _ = fs::remove_dir(&self.directory);
+        let _ = fs::remove_dir_all(&self.directory);
     }
 }
 fn start(files: &Files) -> TestResult<(Room, SuggestionDecisionRequest)> {
+    start_with_storage(files, None)
+}
+fn start_with_storage(
+    files: &Files,
+    generations: Option<&ServerLogGenerationOptions>,
+) -> TestResult<(Room, SuggestionDecisionRequest)> {
     let configuration = json!({"format":"breditor/shared-rich-profile","formatVersion":3,"schema":{"name":"example/suggestion-replay","version":1},"extensions":[]}).to_string();
     let profile = SharedRichProfile::from_standard_configuration_json_v3(&configuration)?;
     let tree: Value = serde_json::from_str(include_str!(
         "../../../../../crates/breditor-core/tests/fixtures/rich-local-root.json"
     ))?;
     let document = json!({"format":"breditor/document","formatVersion":2,"schema":{"name":"example/suggestion-replay","version":1},"schemaFingerprint":profile.schema().fingerprint().to_string(),"root":tree}).to_string();
-    let mut room = Room::create_atomic_transport_v2(
-        &files.path,
-        &configuration,
-        &document,
-        "owner",
-        AtomicTransportProfile::LayoutV3 { standard_inline_v1: true },
-    )?;
+    let transport = AtomicTransportProfile::LayoutV3 { standard_inline_v1: true };
+    let mut room = if let Some(options) = generations {
+        Room::create_atomic_log_generations_v2(
+            &files.path,
+            &configuration,
+            &document,
+            "owner",
+            transport,
+            options,
+        )?
+    } else {
+        Room::create_atomic_transport_v2(
+            &files.path,
+            &configuration,
+            &document,
+            "owner",
+            transport,
+        )?
+    };
     let descriptor = room.enable_document_suggestions("owner")?;
     room.grant("owner", "alice", Some(Role::Editor))?;
     room.grant_document_suggestions("owner", "alice", Some(SuggestionRole::Propose))?;

@@ -64,7 +64,8 @@ impl Room {
     /// revision wins in server order; this method never reopens final decisions.
     /// # Errors
     /// Disabled/wrong binding, wrong author, revoked rights, native source/cuts/budgets or storage
-    /// failures reject. Any uncertain second append fences the room until exact replay.
+    /// failures reject. Capacity is checked for both records before any append.
+    /// Any uncertain second append fences the room until exact replay.
     pub fn revise_document_suggestion(
         &mut self,
         principal: &str,
@@ -80,20 +81,16 @@ impl Room {
                 return Ok(SuggestionRevisionAdmission::Conflict { previous, successor });
             }
             RevisionPreparation::New(prepared) => {
-                let first = self.log.append(Event::PrepareDocumentSuggestionRevisionV1 {
-                    principal: principal.into(),
-                    request: request.clone(),
-                })?;
-                let second = match self.log.append(Event::CommitDocumentSuggestionRevisionV1 {
-                    prepared_at: first.to_string(),
-                    revision_id: prepared.info.id.clone(),
-                }) {
-                    Ok(sequence) => sequence,
-                    Err(error) => {
-                        self.log.invalidate();
-                        return Err(error);
-                    }
-                };
+                let (first, second) = self.log.append_pair(
+                    Event::PrepareDocumentSuggestionRevisionV1 {
+                        principal: principal.into(),
+                        request: request.clone(),
+                    },
+                    |first| Event::CommitDocumentSuggestionRevisionV1 {
+                        prepared_at: first.to_string(),
+                        revision_id: prepared.info.id.clone(),
+                    },
+                )?;
                 let result = self.publish_suggestion_revision(*prepared, first, second);
                 if result.is_err() {
                     self.log.invalidate();

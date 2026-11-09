@@ -67,6 +67,10 @@ file seals without appending a semantic event. Exact lifetime-ID retries return
 their original physical receipt even after later heads and cold recovery.
 Full active files rotate automatically through the same path. A two-record
 suggestion revision remains globally adjacent across the physical boundary.
+The relay checks capacity for both records before writing either one. When
+the remaining log space cannot fit the pair, the original suggestion stays
+pending and the log remains available for an operation that fits. An actual
+write failure after the first append still requires recovery.
 
 Rotation syncs an owned empty continuation and a durable intent before linking
 its final name, publishing the immutable manifest, and replacing the head. The

@@ -297,7 +297,7 @@ impl Log {
             return Ok(receipt);
         }
         if state.current().value.contains(next)
-            || state.current().value.sealed.len() + 3 > format::MAX_GENERATIONS
+            || !state.has_rotation_slot()
             || self.next == state.active_first()
         {
             return Err(Error::Contract("physical rotation generation or capacity"));

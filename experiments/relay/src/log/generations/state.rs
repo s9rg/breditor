@@ -58,6 +58,9 @@ impl Generations {
     pub(in crate::log) fn closed_bytes(&self) -> u64 {
         self.current().value.closed_bytes()
     }
+    pub(in crate::log) fn has_rotation_slot(&self) -> bool {
+        self.current().value.sealed.len() + 3 <= super::format::MAX_GENERATIONS
+    }
     pub(in crate::log) fn guard(&self, active: &File, bytes: u64) -> Result<()> {
         if self.fenced.load(Ordering::Acquire) {
             return Err(Error::NeedsRecovery);
