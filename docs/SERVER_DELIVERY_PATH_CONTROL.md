@@ -30,6 +30,11 @@ from actual A through the literal path to current D. Duplicate/no-op cuts remain
 literal. Native path limits remain 4,096 predecessors and 2 GiB of complete
 encoded predecessor archives; no history is trimmed to meet a limit.
 
+The three generation check routes serialize the detached selection response
+before running one fresh native and provider proof per request. The proof
+rechecks provider mappings and completes the actual native custody checks
+before the response leaves the owner.
+
 Authentication, Origin and content-type checks precede body admission. Idle
 unfinished bodies retain only the existing quota permit, not the native host or
 provider. Routers hold weak references. Already-started native/provider work

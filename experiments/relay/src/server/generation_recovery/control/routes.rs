@@ -106,7 +106,6 @@ async fn read(state: Arc<State>, body: Bytes) -> Result<Vec<u8>> {
             "operator selected control instance or generation source differs",
         ));
     }
-    state.check().await?;
     let held = state.clone();
     let bytes = tokio::task::spawn_blocking(move || {
         held.local()?;
@@ -124,7 +123,8 @@ async fn read(state: Arc<State>, body: Bytes) -> Result<Vec<u8>> {
     })
     .await
     .map_err(|_| Error::NeedsRecovery)??;
-    // No provider/user callback or serialization await follows this final complete native check.
+    // Serialize detached selection data first. Run the complete live proof
+    // once, immediately before releasing the response.
     state.check().await?;
     Ok(bytes)
 }

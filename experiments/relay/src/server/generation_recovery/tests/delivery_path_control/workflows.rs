@@ -5,6 +5,40 @@ use super::{
     network::{Network, Request},
 };
 use std::sync::atomic::Ordering;
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn each_check_revalidates_the_actual_provider_once_per_request() -> TestResult {
+    let setup = Box::pin(Setup::new((3, true), true, true, true)).await?;
+    let server = Network::start(setup.router.clone()).await?;
+    let selected = setup.selection();
+    let controls = [
+        ("/recovery/generations/v1/check", serde_json::to_vec(&selected.current.current)?),
+        ("/recovery/generation-delivery/v1/check", serde_json::to_vec(&selected.current)?),
+        ("/recovery/generation-delivery-path/v1/check", serde_json::to_vec(&selected)?),
+    ];
+    let mut calls_by_route = Vec::new();
+    for (path, body) in controls {
+        let mut request = Request::check(&setup.token);
+        request.path = path;
+        let before = setup.provider.calls.load(Ordering::Acquire);
+        let first = server.request(&request, &body).await?;
+        assert_eq!(first.status, 200, "{path}");
+        let between = setup.provider.calls.load(Ordering::Acquire);
+        let second = server.request(&request, &body).await?;
+        assert_eq!(second.status, 200, "{path}");
+        assert_eq!(second.body, first.body, "{path}");
+        let after = setup.provider.calls.load(Ordering::Acquire);
+        calls_by_route.push((path, between - before, after - between));
+    }
+    server.stop().await?;
+    // The single opaque asset is resolved twice inside one proof to verify
+    // that its mapping stays stable throughout the provider read.
+    for (path, first, second) in calls_by_route {
+        assert_eq!((first, second), (2, 2), "{path}");
+    }
+    Ok(())
+}
+
 async fn workflow(profile: (u32, bool), atomic: bool, document: bool, review: bool) -> TestResult {
     let setup = Box::pin(Setup::new(profile, atomic, document, review)).await?;
     let selected = setup.selection();

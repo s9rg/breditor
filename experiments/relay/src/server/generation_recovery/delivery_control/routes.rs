@@ -72,7 +72,6 @@ async fn read(state: Arc<State>, body: Bytes) -> Result<Vec<u8>> {
     if selected != state.selection {
         return Err(Error::Contract("delivery operator previous/current selection differs"));
     }
-    state.check().await?;
     let held = state.clone();
     let bytes = tokio::task::spawn_blocking(move || {
         held.local()?;
@@ -89,6 +88,7 @@ async fn read(state: Arc<State>, body: Bytes) -> Result<Vec<u8>> {
     })
     .await
     .map_err(|_| Error::NeedsRecovery)??;
+    // This proof already brackets provider callbacks with native checks.
     state.check().await?;
     Ok(bytes)
 }
