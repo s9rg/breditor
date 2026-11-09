@@ -35,7 +35,53 @@ for(const changed of['cut','base','target','source','native','catalog'])test('in
 test('approval is bound to actual unreferenced upload bytes, not just the current visible document',async()=>{const s=await setup('approval-upload-change',{subset:['original']}),{f,job,selected}=s;let alias;try{const expected=await job.approvalChoice(input(f)),source=selected.captured.participants[0];alias=await RichAssetStore.openRetained(source.sourceDatabase);const old=await alias.get(secondAsset);if(old.status==='cancelled')await alias.retry(secondAsset);else await alias.cancel(secondAsset);let calls=0;await assert.rejects(job.retainApprovedSelection('approval-upload-change-evidence',{...input(f),expected,approve(){calls++;return true;}}));assert.equal(calls,0);assert.equal(await exists('approval-upload-change-evidence'),false);}finally{alias?.close();await s.close();}});
 test('a partial catalog remains explicitly unreconciled in approved evidence, never a complete activation',async()=>{const s=await setup('approval-partial',{subset:['original']}),{f,job}=s;let archive;try{const expected=await job.approvalChoice(input(f));assert.equal(expected.adoption.unreconciledParticipants.length,6);const saved=await job.retainApprovedSelection('approval-partial-evidence',{...input(f),expected,approve:()=>true});archive=await read('approval-partial-evidence',saved.selection,{wasm:fixtures.native,checkAuthority(){}});assert.deepEqual(archive.choice().adoption.unreconciledParticipants,expected.adoption.unreconciledParticipants);assert.equal('activate'in archive,false);}finally{archive?.dispose();await s.close();}});
 test('cold approval re-admits exact stage/native data but still requires a fresh independent decision',async()=>{const s=await setup('approval-cold',{subset:['original','generation']}),{f}=s;let job=s.job,archive;try{const expected=await job.approvalChoice(input(f)),saved=await job.retainApprovedSelection('approval-cold-evidence',{...input(f),expected,approve:()=>true});await job.close();await f.cold();job=await Adoption.resume(f.owner,{database:'approval-cold-stage',checkAuthority(){}});assert.equal((await job.finish()).phase,'ready');assert.deepEqual(await job.approvalChoice(input(f)),expected);let decisions=0;await assert.rejects(job.retainApprovedSelection('approval-cold-evidence',{...input(f),expected,approve(){decisions++;return false;}}));assert.equal(decisions,1);archive=await read('approval-cold-evidence',saved.selection,{wasm:fixtures.native,checkAuthority(){}});assert.deepEqual(archive.choice(),expected);}finally{archive?.dispose();await job.close();await s.close();}});
-test('changed approved evidence, malformed framing and a wrong outside pin never return a cold archive',async()=>{const s=await setup('approval-corrupt',{subset:['original']}),{f,job}=s;try{const expected=await job.approvalChoice(input(f)),saved=await job.retainApprovedSelection('approval-corrupt-evidence',{...input(f),expected,approve:()=>true}),bytes=Buffer.from(await saved.file.arrayBuffer());for(const mode of['pin','header','tail','base','truncate']){const b=Buffer.from(bytes);let file;if(mode==='tail')file=new Blob([b,new Uint8Array([0])]);else if(mode==='truncate')file=new Blob([b.subarray(0,-1)]);else{b[mode==='header'?0:b.length-1]^=1;file=new Blob([b]);}const selection={...saved.selection,bytes:file.size,sha256:mode==='pin'?saved.selection.sha256:await fileHash(file)};await assert.rejects(Archive.read(file,selection,{wasm:fixtures.native,checkAuthority(){}}),mode);}await assert.rejects(read('approval-corrupt-evidence',{...saved.selection,sha256:'a'.repeat(64)},{wasm:fixtures.native,checkAuthority(){}}));}finally{await s.close();}});
+test('changed approved evidence or a substituted destination never changes the cold archive',async()=>{
+ const s=await setup('approval-corrupt',{subset:['original']}),{f,job}=s;
+ const options={wasm:fixtures.native,checkAuthority(){}};
+ let archive;
+ try{
+  const expected=await job.approvalChoice(input(f));
+  const saved=await job.retainApprovedSelection('approval-corrupt-evidence',{...input(f),expected,approve:()=>true});
+  const bytes=Buffer.from(await saved.file.arrayBuffer());
+  for(const mode of ['pin','header','tail','base','truncate']){
+   const b=Buffer.from(bytes);
+   let file;
+   if(mode==='tail')file=new Blob([b,new Uint8Array([0])]);
+   else if(mode==='truncate')file=new Blob([b.subarray(0,-1)]);
+   else{
+    b[mode==='header'?0:b.length-1]^=1;
+    file=new Blob([b]);
+   }
+   const selection={...saved.selection,bytes:file.size,sha256:mode==='pin'?saved.selection.sha256:await fileHash(file)};
+   await assert.rejects(Archive.read(file,selection,options),mode);
+  }
+  await assert.rejects(read('approval-corrupt-evidence',{...saved.selection,sha256:'a'.repeat(64)},options));
+
+  const prefixBytes=bytes.indexOf(10)+5;
+  const count=bytes.readUInt32LE(prefixBytes-4);
+  const altered=JSON.parse(bytes.subarray(prefixBytes,prefixBytes+count).toString('utf8'));
+  const destination=altered.adoption.participants[0].targetDatabase;
+  altered.adoption.participants[0].targetDatabase=(destination.startsWith('x')?'y':'x')+destination.slice(1);
+  const replacement=new TextEncoder().encode(JSON.stringify(altered));
+  assert.equal(replacement.byteLength,count);
+  const originalRead=Blob.prototype.arrayBuffer;
+  const stores=await snapshotReadDatabases();
+  let standaloneReads=0;
+  try{
+   Blob.prototype.arrayBuffer=function(){
+    if(this.size===count){
+     standaloneReads++;
+     return Promise.resolve(replacement.buffer.slice(0));
+    }
+    return originalRead.call(this);
+   };
+   archive=await Archive.read(saved.file,saved.selection,options);
+   assert.equal(archive.choice().adoption.participants[0].targetDatabase,destination);
+   assert.equal(standaloneReads,0);
+  }finally{Blob.prototype.arrayBuffer=originalRead;}
+  assert.deepEqual(await snapshotReadDatabases(),stores);
+ }finally{archive?.dispose();await s.close();}
+});
 test('missing and aliased retention destinations reject without creating a placeholder or granting approval',async()=>{const s=await setup('approval-alias',{subset:['original']}),{f,job}=s;let calls=0;try{const expected=await job.approvalChoice(input(f)),names=[undefined,null,'',f.options.database,'approval-alias-catalog','approval-alias-stage',expected.adoption.participants[0].sourceDatabase,expected.adoption.participants[0].targetDatabase],before=await snapshotReadDatabases();for(const name of names)await assert.rejects(job.retainApprovedSelection(name,{...input(f),expected,approve(){calls++;return true;}}));assert.equal(calls,0);assert.deepEqual(await snapshotReadDatabases(),before);await assert.rejects(read('approval-absent',{format:'breditor/room-asset-approval-selection',formatVersion:1,bytes:1,sha256:'a'.repeat(64)},{wasm:fixtures.native,checkAuthority(){}}));assert.equal(await exists('approval-absent'),false);}finally{await s.close();}});
 test('selection inputs are detached before the first await and public root facades cannot manufacture a cut',async()=>{const s=await setup('approval-snapshot',{subset:['original']}),{f,job}=s;try{const expected=structuredClone(await job.approvalChoice(input(f))),reads=f.reads.map(row=>({id:row.id,read:{...row.read}})),method=Object.getPrototypeOf(f.owner).captureRecordCut;Object.getPrototypeOf(f.owner).captureRecordCut=()=>{throw Error('replaceable public facade');};try{const work=job.retainApprovedSelection('approval-snapshot-evidence',{reads,checkAuthority(){},expected,approve:()=>true});expected.cut.sha256='a'.repeat(64);reads[0].read.restore=()=>{throw Error('late read substitution');};const saved=await work;assert.notEqual(saved.choice.cut.sha256,expected.cut.sha256);}finally{Object.getPrototypeOf(f.owner).captureRecordCut=method;}}finally{await s.close();}});
 for(const how of['signal','root-close','stage-close'])test('genuine '+how+' retires a pending decision before a late affirmative result can write',async()=>{const s=await setup('approval-pending-'+how,{subset:['original']}),{f,job}=s,controller=new AbortController();let finish,entered,closing,work;const decided=new Promise(resolve=>{entered=resolve;}),pending=new Promise(resolve=>{finish=resolve;});try{const expected=await job.approvalChoice(input(f));work=job.retainApprovedSelection('approval-pending-'+how+'-evidence',{...input(f),expected,signal:controller.signal,approve(){entered();return pending;}});const refused=assert.rejects(work);await decided;if(how==='signal')controller.abort();else if(how==='root-close')closing=f.owner.discardAndClose();else closing=job.close();await refused;await closing;finish(true);await new Promise(resolve=>setImmediate(resolve));assert.equal(await exists('approval-pending-'+how+'-evidence'),false);if(how!=='stage-close')await job.close();if(how==='root-close')await f.cold();else await f.owner.check();}finally{finish?.(true);await work?.catch(()=>{});await closing;await s.close();}});

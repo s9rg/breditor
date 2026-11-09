@@ -1,6 +1,7 @@
 /** A bounded manifest followed by exact contiguous immutable entry bytes.
  * Whole-file and per-entry hashes are checked; no gaps, aliases or tail bytes. */
 import type {ArchiveIntegrityContext} from '../archive_integrity/context.js';
+import {readVerifiedArchiveHeader} from '../archive_integrity/verified_header.js';
 import {MAX_SHARED_ARCHIVE_DIGEST_CHUNK_BYTES} from '../archive_integrity/policy.js';
 import {fail,integer,MAX_ROOM_RECORD_CUT_HEADER_BYTES,MAX_ROOM_RECORD_CUT_JSON_BYTES} from './policy.js';
 export const ROOM_RECORD_CUT_MAGIC='BREDITOR-ROOM-RECORDS1\n';
@@ -31,11 +32,9 @@ export async function recordCutHeader(file:Blob,context:ArchiveIntegrityContext)
 }
 /** The small probe only selects a bounded byte count. Parse the actual header
  * from the same byte stream that matched the independently retained digest. */
-export async function readVerifiedRecordCutHeader(file:Blob,expectedSha256:string,context:ArchiveIntegrityContext):Promise<{text:string;offset:number}>{
- const count=await probeHeaderLength(file,context);
- const offset=ROOM_RECORD_CUT_PREFIX_BYTES+count;
- const {bytes,sha256}=await context.readPrefixAndDigest(file,offset);
- if(sha256!==expectedSha256||bytes.byteLength!==offset)throw fail('record_cut_integrity');
- if(headerLength(bytes.subarray(0,ROOM_RECORD_CUT_PREFIX_BYTES),file.size)!==count)throw fail('record_cut_integrity');
- return decodeHeader(bytes.subarray(ROOM_RECORD_CUT_PREFIX_BYTES),offset);
+export function readVerifiedRecordCutHeader(file:Blob,expectedSha256:string,context:ArchiveIntegrityContext):Promise<{text:string;offset:number}>{
+ return readVerifiedArchiveHeader(file,expectedSha256,context,{
+  magic:ROOM_RECORD_CUT_MAGIC,maximumHeaderBytes:MAX_ROOM_RECORD_CUT_HEADER_BYTES,
+  invalid:()=>fail(),diverged:()=>fail('record_cut_integrity'),budget:()=>fail('record_cut_budget'),
+ });
 }

@@ -7,6 +7,7 @@ import {withOriginalMetadataJournals} from '../packages/breditor-collaboration/d
 import {withHeldMetadataContinuationEvidence} from '../packages/breditor-collaboration/dist/selected_local_metadata_continuation/held_evidence.js';
 import {RecoveryLease} from '../packages/breditor-collaboration/dist/participant_recovery/lease.js';
 import {databaseByteSnapshot} from './fixtures/native-actor-custody/storage_bytes.mjs';
+import {withPayloadReadDiagnostics} from './fixtures/native-publication/payload-read-diagnostics.mjs';
 /** Genuine seven-family replacement and three local metadata runtimes. Original
  * journals stay immutable; review receipts are obtained from the actual service. */
 import {IDBObjectStore} from 'fake-indexeddb';
@@ -47,7 +48,7 @@ test('compact pins re-admit every actual interrupted metadata phase without writ
   const latest=await f.host.refreshAfter(f.first);currentHost=await Host.open({endpoint:latest.endpoint,expected:latest.selection,principal:'operator',getToken:()=>f.host.operatorToken(latest),checkAuthority(){}});host=await DeliveryHost.open({endpoint:latest.deliveryEndpoint,expected:latest.deliverySelection,current:currentHost,principal:'operator',getToken:()=>f.host.operatorToken(latest),checkAuthority(){}});inventory=await Inventory.read(new Blob([readFileSync(join(dirname(latest.path),'inventory.json'))]),latest.selection.source.participants);
   const input={database:tag+'-metadata-intent',preparationDatabase:tag+'-new-prepared',reviewDatabase:tag+'-new-review',metadataDatabase:tag+'-new-metadata',origin:bundle,host,inventory,checkAuthority(){}};
   let result;const observations=[],pinObservations=[];
-  await withRoomExecutionMetadataTarget(attempt,f.session.input(),async(scope,witness)=>{
+  await withPayloadReadDiagnostics(()=>withRoomExecutionMetadataTarget(attempt,f.session.input(),async(scope,witness)=>{
    await withOriginalMetadataJournals(scope,witness,bundle,async originalInspection=>{
     const expected=await previewHeldRoomMetadataContinuation(scope,witness,input);
     const names=[input.database,input.preparationDatabase,input.reviewDatabase,input.metadataDatabase];
@@ -86,7 +87,18 @@ test('compact pins re-admit every actual interrupted metadata phase without writ
     const interrupt=async(name,key,occurrence=1,first=false)=>{
      const add=IDBObjectStore.prototype.add,put=IDBObjectStore.prototype.put;let seen=0,aborted=false;
      const apply=function(method,args){const request=method.apply(this,args);if(this.transaction.db.name===name&&(key===null||args[1]===key)&&++seen===occurrence){aborted=true;this.transaction.abort();}return request;};
-     try{IDBObjectStore.prototype.add=function(...args){return apply.call(this,add,args);};IDBObjectStore.prototype.put=function(...args){return apply.call(this,put,args);};await assert.rejects(continueHeldRoomMetadata(scope,witness,runRequest({...input,expected,approve:()=>true}),!first));assert.equal(aborted,true);}finally{IDBObjectStore.prototype.add=add;IDBObjectStore.prototype.put=put;}
+     try{
+      IDBObjectStore.prototype.add=function(...args){return apply.call(this,add,args);};
+      IDBObjectStore.prototype.put=function(...args){return apply.call(this,put,args);};
+      await assert.rejects(
+       continueHeldRoomMetadata(scope,witness,runRequest({...input,expected,approve:()=>true}),!first),
+       error=>{
+        if(aborted)return true;
+        console.error('METADATA_INTERRUPTION_NOT_REACHED',JSON.stringify({name,key,occurrence,seen}));
+        throw error;
+       },
+      );
+     }finally{IDBObjectStore.prototype.add=add;IDBObjectStore.prototype.put=put;}
     };
     await interrupt(input.preparationDatabase,null,1,true);await evidence('intent');await assert.rejects(withHeldAbsentMetadataContinuation(scope,originalInspection,absenceNames,async()=>{throw Error('Existing intent cannot be called absent');}),error=>error.code==='metadata_continuation_exists');
     await interrupt(input.reviewDatabase,null);await evidence('prepared');
@@ -96,7 +108,7 @@ test('compact pins re-admit every actual interrupted metadata phase without writ
     result=await continueHeldRoomMetadata(scope,witness,runRequest({...input,expected,approve:()=>true}),true);await evidence('metadata');
     assert.deepEqual(result.choice,expected);await assertSourceBytesUnchanged(oldBytes);
    });
-  });
+  }));
   saveEvidence(f.host.directory+'/metadata-continuation-pins-evidence.json',{passed:true,phases:observations.map(row=>row.phase),pinObservations,evidence:observations,actualFamilies:7,actualLocalMetadataLanes:3,noDestinationWritesDuringEvidence:true,allNamespaceLeasesHeld:true,partialReviewFactsPreserved:true,metadataAcknowledgementsPreserved:true,wholeRoomActivated:false});
   owner=attempt.takeOwner();assert.equal(owner.clients.length,7);for(const row of owner.clients){const old=prepared.f.clients.find(old=>old.id===row.id);assert.deepEqual(nativePair(row.core),old.pair);const doc=row.core.documentJson(),comments=row.core.reviewSnapshot().view;assert.equal(row.core.undo(),true);assert.equal(row.core.redo(),true);assert.equal(row.core.documentJson(),doc);assert.equal(row.core.undoReview().kind,'committed');assert.equal(row.core.redoReview().kind,'committed');assert.deepEqual(row.core.reviewSnapshot().view,comments);}await assertSourceBytesUnchanged(oldBytes);
   await assertSourceBytesUnchanged(oldBytes);console.log('CONTINUATION_PINS_NATIVE '+JSON.stringify({phases:observations.map(row=>row.phase),actualFamilies:7,actualLocalMetadataLanes:3,noDestinationWritesDuringEvidence:true,allNamespaceLeasesHeld:true,exactFutureDocumentAndCommentHistories:true,wholeRoomActivated:false}));
