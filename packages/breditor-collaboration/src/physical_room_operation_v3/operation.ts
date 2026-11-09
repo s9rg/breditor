@@ -31,7 +31,7 @@ import {readPhysicalOperationV3History,snapshotPhysicalHistoryReadOptions} from 
 import type {PhysicalOperationV3HistoryReadOptions,PhysicalOperationV3HistoryRead} from './history_read_contract.js';
 import type {SharedSelectionPolicy} from '../types.js';
 import {readPhysicalOperationV3Assets} from './asset_read.js';
-import type {PhysicalAssetReadOptions,PhysicalAssetReadScope} from './asset_read_contract.js';
+import type {PhysicalAssetReadOptions,PhysicalAssetSelectionScope} from './asset_read_contract.js';
 import {readPhysicalOperationV3HistoryAssets} from './history_assets.js';
 import {prepareServerGenerationHistoryAssets} from './generation_history_assets.js';
 import type {ServerGenerationOperationHistoryAssetsRead} from './generation_history_assets_contract.js';
@@ -80,7 +80,7 @@ export const transferPhysicalOperationV3RetainedRoot=<P extends SharedSelectionP
 /** Explicit internal promotion route; ordinary retained-root transfers retain
  * their established no-actor-promotion behavior. No caller option selects it. */
 export const transferPhysicalOperationV3RetainedRootWithActors=<P extends SharedSelectionPolicy,T>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,prepare:(scope:PhysicalRecordCutVisit,root:RetainedPhysicalRoot,clients:RetainedNativeReadBorrow['clients'])=>Promise<PhysicalRetainedRootProposal<T>>,actors:StoppedActorCohort,prelude?:RetainedRootPrelude):Promise<T>=>transferRetained(owner,options,prepare,prelude,actors);
-let withAssets:<T>(owner:PhysicalRoomClientOperationV3,options:PhysicalAssetReadOptions,visit:(scope:PhysicalAssetReadScope)=>Promise<T>)=>Promise<T>;
+let withAssets:<T>(owner:PhysicalRoomClientOperationV3,options:PhysicalAssetReadOptions,visit:(scope:PhysicalAssetSelectionScope)=>Promise<T>)=>Promise<T>;
 let withFreshRetained:<P extends SharedSelectionPolicy,T>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit,borrow:RetainedNativeReadBorrow)=>Promise<T>,prelude?:RetainedRootPrelude)=>Promise<T>;
 let captureInherited:<P extends SharedSelectionPolicy>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,assets:OperationalAssetCustody)=>Promise<PhysicalRoomRecordCutFile>;
 /** SDK-only read under inherited ACTUAL origin-store exclusion. The full reader
@@ -93,7 +93,7 @@ let withRecords:<P extends SharedSelectionPolicy,T>(owner:PhysicalRoomClientOper
 /** Internal brand-checked composition, not a public/replaceable root method. */
 export const withPhysicalOperationV3RecordCut=<P extends SharedSelectionPolicy,T>(owner:PhysicalRoomClientOperationV3,options:PhysicalOperationV3HistoryReadOptions<P>,visit:(scope:PhysicalRecordCutVisit)=>Promise<T>):Promise<T>=>withRecords(owner,options,visit);
 /** Internal actual-root borrow. A report/DTO cannot manufacture this scope. */
-export const withPhysicalOperationV3Assets=<T>(owner:PhysicalRoomClientOperationV3,options:PhysicalAssetReadOptions,visit:(scope:PhysicalAssetReadScope)=>Promise<T>):Promise<T>=>withAssets(owner,options,visit);
+export const withPhysicalOperationV3Assets=<T>(owner:PhysicalRoomClientOperationV3,options:PhysicalAssetReadOptions,visit:(scope:PhysicalAssetSelectionScope)=>Promise<T>):Promise<T>=>withAssets(owner,options,visit);
 /** Opaque wasm/catalog handles stay genuine; every ordinary policy value is
  * detached synchronously, before callbacks can alter a later client choice. */
 function options(input:PhysicalOperationV3BeginOptions|PhysicalOperationV3ResumeOptions,begin:boolean){

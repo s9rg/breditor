@@ -12,6 +12,40 @@ import {pixelAsset,secondAsset} from './fixtures/review-assets/pixels.mjs';
 const root=new URL('../',import.meta.url).pathname;let fixtures;
 before(async()=>{fixtures=await completeImageNativeFixtures(root);});after(async()=>{await fixtures?.close();});
 const present=async name=>(await indexedDB.databases()).some(row=>row.name===name);
+test('asset adoption retains only the verified bytes and leaves a rejected selection retryable',async()=>{
+ const tag='adoption-exact-retention',f=await completeHistoryFixture({fixtures,tag,subset:['original']});
+ const database=tag+'-selection',slice=Blob.prototype.slice,read=Blob.prototype.arrayBuffer,slices=new WeakSet();
+ let job;
+ try{
+  const {participants}=await roomAssetChoices(f.owner,tag),chosen=participants[0],literal=new Uint8Array(await read.call(chosen.base.file));
+  const options={database,participants,checkAuthority(){}};
+  let phase='selection',hits=0;
+  try{
+   Blob.prototype.slice=function(...args){const part=slice.apply(this,args);slices.add(part);return part;};
+   Blob.prototype.arrayBuffer=async function(){
+    const buffer=await read.call(this);
+    if(hits||buffer.byteLength!==literal.byteLength||(phase==='selection')!==slices.has(this))return buffer;
+    const bytes=new Uint8Array(buffer);
+    if(!literal.every((byte,index)=>byte===bytes[index]))return buffer;
+    hits++;bytes[0]^=1;return buffer;
+   };
+   await assert.rejects(Adoption.begin(f.owner,options),error=>error.code==='asset_adoption_diverged');
+   assert.equal(hits,1);
+   assert.equal(await present(database),false);
+   assert.equal(await present(chosen.targetDatabase),false);
+   phase='retention';hits=0;
+   try{job=await Adoption.begin(f.owner,options);}
+   catch(error){
+    assert.equal(await present(database),false,'the selection database was created before the retained bytes were verified');
+    throw error;
+   }
+  }finally{Blob.prototype.arrayBuffer=read;Blob.prototype.slice=slice;}
+  assert.equal(hits,0,'the accepted selection must never fetch a separate raw buffer for storage');
+  assert.equal(await fileHash(await job.baseFile(chosen.id)),chosen.base.sha256);
+  assert.equal((await job.check()).phase,'prepared');
+  assert.equal(await present(chosen.targetDatabase),false);
+ }finally{await job?.close();await f.close();}
+});
 for(const[documentSegmented,reviewSegmented]of[[false,false],[false,true],[true,false],[true,true]])test('room-bound selected assets stage and cold-resume all seven native families '+documentSegmented+'/'+reviewSegmented,async()=>{
  const tag='room-adopt-'+Number(documentSegmented)+Number(reviewSegmented),f=await completeHistoryFixture({fixtures,tag,documentSegmented,reviewSegmented});let job,alias,parts;const options={database:tag+'-selection',checkAuthority(){}};
  try{const selected=await roomAssetChoices(f.owner,tag),oldInputs=new Map(await Promise.all(f.f.rows.map(async row=>[row.id,await fileHash(row.file)])));job=await Adoption.begin(f.owner,{...options,participants:selected.participants});assert.equal((await job.check()).phase,'prepared');for(const row of selected.participants)assert.equal(await present(row.targetDatabase),false);const ready=await job.finish();assert.equal(ready.phase,'ready');assert.equal(ready.participants.length,7);assert.equal(ready.participants.every(row=>row.state==='complete'),true);assert.deepEqual(ready.source,selected.captured.source);assert.ok(Object.isFrozen(ready.participants[0].native.document));assert.equal('intoParts'in job,false);assert.equal('activate'in job,false);

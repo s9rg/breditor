@@ -3,6 +3,7 @@
 import type {AssetLimits} from '@breditor/experimental-rich-content';
 import type {PhysicalOperationV3Family} from './contract.js';
 import type {PhysicalRoomCatalogV3Selection} from '../physical_room_catalog_v3/contract.js';
+import type {ArchiveIntegrityContext} from '../archive_integrity/context.js';
 export interface PhysicalAssetSourcePin {
  readonly operationDatabase:string;readonly catalogDatabase:string;
  readonly catalog:PhysicalRoomCatalogV3Selection;readonly intentSha256:string;
@@ -22,5 +23,9 @@ export interface PhysicalAssetReadScope {
  readonly unreconciledParticipants:readonly string[];
  check():void;
  digest(file:Blob):Promise<string>;
+}
+/** Initial selections can retain the exact owned buffer that matched their pin. */
+export interface PhysicalAssetSelectionScope extends PhysicalAssetReadScope {
+ readonly readAndDigest:ArchiveIntegrityContext['readAndDigest'];
 }
 export interface PhysicalAssetReadOptions {readonly checkAuthority:()=>void;readonly signal?:AbortSignal}

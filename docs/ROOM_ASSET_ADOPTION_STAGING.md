@@ -44,7 +44,10 @@ references rather than treating this staged pin as whole-room reconciliation.
 The independent `breditor/physical-room-asset-adoption` version-one record uses a
 new absent-only IndexedDB schema. Its initial transaction stores the complete
 selection and every exact reconciled-base byte before any selected clone is
-created. Each base retains both losing whole inputs and its selected union. No
+created. Before opening the intent, the coordinator hashes each base in bounded
+chunks, admits the same owned bytes against the current upload cut, and uses that
+buffer for the transaction. A mismatch at this step leaves the intent namespace
+available for retry. Each base retains both losing whole inputs and its selected union. No
 old catalog, asset archive, reconciliation ledger or native protocol changes.
 
 The coordinator owns a real recovery lease for its intent and each selected
