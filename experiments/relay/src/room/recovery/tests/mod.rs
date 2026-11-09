@@ -10,6 +10,7 @@ use serde_json::{Value, json};
 use std::{collections::BTreeMap, fs, io::Cursor, path::PathBuf};
 mod admission;
 mod filesystem;
+mod generation_migration;
 mod interruptions;
 mod operational;
 mod operational_faults;

@@ -13,6 +13,7 @@ mod inventory;
 mod manifest;
 mod open;
 mod options;
+mod prepare_original_root;
 mod publication;
 mod publish_ready;
 mod receipt;
@@ -39,6 +40,7 @@ pub(crate) use held_file::FileStamp as GenerationFileStamp;
 #[cfg(test)]
 pub(crate) use interruption::RotationPoint;
 pub use options::ServerLogGenerationOptions;
+pub(crate) use prepare_original_root::prepare_original_root;
 pub use receipt::{ServerLogGenerationDescriptor, ServerLogGenerationReceipt};
 pub(super) use state::Generations;
 #[cfg(any(feature = "server", test))]

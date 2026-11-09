@@ -38,7 +38,7 @@ impl CaptureFile<'_> {
         }
     }
 }
-fn backing_buffer(total: u64) -> Result<Vec<u8>> {
+pub(super) fn backing_buffer(total: u64) -> Result<Vec<u8>> {
     if total > MAX_GENERATION_BODY_BYTES {
         return Err(Error::Contract("generation capture memory budget"));
     }

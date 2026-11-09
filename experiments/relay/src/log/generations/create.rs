@@ -4,7 +4,7 @@ use super::{
     directory::Directory,
     format,
     held_file::{self, FileIdentity, FileStamp},
-    manifest::{ActiveFile, ClosedFile, Manifest, Ready},
+    manifest::{ActiveFile, ClosedFile, Manifest, Ready, SEEDED_ROOT_VERSION},
     state::{Generations, HeldManifest, HeldWal},
 };
 use crate::{
@@ -76,7 +76,7 @@ impl Creation {
         let root = self.root(&log)?;
         let value = Manifest {
             format: "breditor/relay-log-generations".into(),
-            format_version: 1,
+            format_version: SEEDED_ROOT_VERSION,
             parent: None,
             root,
             sealed: Vec::new(),

@@ -10,6 +10,7 @@ mod capture;
 mod files;
 mod format;
 mod operation;
+mod prepare_generation_migration;
 mod restore_begin;
 mod restore_finish;
 mod restore_log;

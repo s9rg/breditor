@@ -1,8 +1,11 @@
 //! Canonical immutable layout lineage. Logical event cuts remain absolute across physical files.
 use super::{format, options::generation};
-use crate::{Error, Result};
+use crate::{Error, Result, log::frame};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
+
+pub(super) const SEEDED_ROOT_VERSION: u32 = 1;
+pub(super) const ORIGINAL_ROOT_VERSION: u32 = 2;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -52,7 +55,7 @@ pub(super) struct Manifest {
 impl Manifest {
     pub fn validate(&self) -> Result<()> {
         if self.format != "breditor/relay-log-generations"
-            || self.format_version != 1
+            || !matches!(self.format_version, SEEDED_ROOT_VERSION | ORIGINAL_ROOT_VERSION)
             || self.sealed.len() + 2 > format::MAX_GENERATIONS
             || self.parent.is_some() == self.sealed.is_empty()
             || self.root.first != 0
@@ -86,6 +89,7 @@ impl Manifest {
     pub fn follows(&self, parent: &Self, hash: [u8; 32]) -> Result<()> {
         self.validate()?;
         if self.parent != Some(hash)
+            || self.format_version != parent.format_version
             || self.root != parent.root
             || self.sealed.len() != parent.sealed.len() + 1
             || !self.sealed.starts_with(&parent.sealed)
@@ -100,6 +104,16 @@ impl Manifest {
             return Err(Error::Contract("log physical seal differs from parent"));
         }
         Ok(())
+    }
+    /// Only the imported root uses original framing. Every later WAL remains a continuation.
+    pub(super) fn closed_files(&self) -> impl Iterator<Item = (&ClosedFile, frame::Family)> {
+        let root = if self.format_version == ORIGINAL_ROOT_VERSION {
+            frame::Family::Original
+        } else {
+            frame::Family::Continuation
+        };
+        std::iter::once((&self.root, root))
+            .chain(self.sealed.iter().map(|file| (file, frame::Family::Continuation)))
     }
     pub fn closed_bytes(&self) -> u64 {
         self.root.bytes + self.sealed.iter().map(|file| file.bytes).sum::<u64>()

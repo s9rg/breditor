@@ -6,6 +6,7 @@ mod ancestry;
 mod ancestry_tests;
 mod archive;
 mod capture;
+mod compose;
 mod format;
 mod identity;
 #[cfg(test)]

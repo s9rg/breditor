@@ -1,9 +1,9 @@
 # Server log generations
 
 Breditor's reference host has a separate, opt-in Unix storage layout for retained
-server log files. Physical rotation and separate complete-file archive/restore
-preserve global event positions and native histories. They do not compact
-history, migrate an existing live room or qualify production deployment.
+server log files. Physical rotation, archive/restore and offline migration
+preserve global event positions and native histories. Rotation retains all
+files within the layout's capacity bounds.
 
 ## Explicit selection and bounds
 
@@ -12,11 +12,10 @@ history, migrate an existing live room or qualify production deployment.
 requires the exact original native compiler and two distinct generation IDs.
 Native validation precedes creating an absent private directory.
 `Room::open_log_generations` is its only room reader. Original constructors,
-framing and backup formats keep their meanings and limits. Every new generation
-file, including the sequence-zero seed, uses explicitly selected continuation
-framing. The original reader rejects these bytes even when a root is copied
-outside its directory. No path-based heuristic or rewrite of an existing
-original room log provides this separation.
+framing and backup formats keep their meanings and limits. In a newly created
+room every WAL, including the sequence-zero seed, uses continuation framing.
+In an offline migration only the sealed legacy root retains original framing.
+The manifest version selects the layout.
 
 This layout retains at most 64 WAL files including its seed root and current
 active file, and 512 MiB of WAL bytes in total. Each file retains the original
@@ -24,6 +23,36 @@ active file, and 512 MiB of WAL bytes in total. Each file retains the original
 are canonical, versioned JSON, at most 128 KiB each and 8 MiB for the immutable
 manifest lineage. These are finite retained-lifetime bounds, not a pruning policy
 or a change to the separate native Undo-item and journal limits.
+
+## Move a saved original room into generation storage
+
+Persist the original backup and retain its exact selected identity in trusted
+host recovery configuration. Choose fresh root and continuation IDs. Pass those
+values to `RoomBackup::prepare_generation_migration` for the native log or to
+`ServerRoomBackup::prepare_generation_migration` for the log and raster store.
+The joined operation consumes the in-memory backup so it can move the raster
+archive intact without another full raster allocation.
+
+Preparation writes no storage. It retains the exact original WAL as the sealed
+root in manifest version 2. The empty continuation starts at the original
+record count and terminal digest. Every later WAL uses continuation framing.
+Rotation preserves the root and its manifest version. Existing manifest
+version 1 continues to select continuation framing for its root. A reader
+that supports only version 1 refuses a migrated manifest.
+
+Save the resulting archive and its selection, then call
+`ServerLogGenerationRecovery::begin` or
+`ServerLogGenerationRoomRecovery::begin` with an absent destination. Call
+`finish` to replay the original room and verify the trusted identity before
+publishing readiness. After interruption, call the corresponding `resume` with
+the same archive and selection. Existing durable receipts retain their original
+positions and the ordinary client reconnect path admits outstanding edits
+under fresh leases. The joined archive retains every raster, including
+unreferenced files.
+
+The host supplies the deployment fence and reacquires current account
+authority. Client journals, upload queues, provider reconciliation and
+whole-room activation retain their own contracts.
 
 ## Physical ownership and rotation
 

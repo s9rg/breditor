@@ -69,7 +69,7 @@ fn closed(
     identities: &mut BTreeSet<FileIdentity>,
 ) -> Result<Vec<HeldWal>> {
     let mut closed = Vec::new();
-    for item in std::iter::once(&current.root).chain(&current.sealed) {
+    for (item, family) in current.closed_files() {
         let file = held_file::open(&directory.path.join(format::wal_name(&item.generation)))?;
         let stamp = FileStamp::of(&file)?;
         let bytes = held_file::read(&file, super::super::MAX_LOG)?;
@@ -79,7 +79,7 @@ fn closed(
         let parsed = decoder::read_records_from(
             &mut bytes.as_slice(),
             item.bytes,
-            frame::Family::Continuation,
+            family,
             item.first,
             item.previous,
         )?;

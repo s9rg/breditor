@@ -2,7 +2,11 @@ use super::*;
 use crate::{Admission, Role};
 use breditor_collab_feasibility::rich_replica::{Command, RichReplica, actions::InsertText};
 
-fn groups(owner: &RichReplica, after: &str, atomic: bool) -> TestResult<(String, Vec<String>)> {
+pub(super) fn groups(
+    owner: &RichReplica,
+    after: &str,
+    atomic: bool,
+) -> TestResult<(String, Vec<String>)> {
     let packet: Value = serde_json::from_str(&if atomic {
         owner.writer_groups_v2_guarded(&owner.observe()?, after)?
     } else {
@@ -19,7 +23,7 @@ fn groups(owner: &RichReplica, after: &str, atomic: bool) -> TestResult<(String,
     ))
 }
 
-fn flush_client(
+pub(super) fn flush_client(
     room: &mut Room,
     client: &RichReplica,
     lease: &crate::Lease,
@@ -35,7 +39,7 @@ fn flush_client(
     Ok(next)
 }
 
-fn accepted_peer(
+pub(super) fn accepted_peer(
     profile: &SharedRichProfile,
     room: &mut Room,
     registration: &crate::Registration,

@@ -6,6 +6,7 @@ use serde_json::{Value, json};
 use std::{fs, path::PathBuf};
 mod filesystem;
 mod format;
+mod generation_migration;
 mod identity;
 mod revisions;
 mod roundtrip;
@@ -32,14 +33,8 @@ impl Directory {
 }
 impl Drop for Directory {
     fn drop(&mut self) {
-        if let Ok(entries) = fs::read_dir(&self.0) {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                // This one newly created test directory never holds user files or nested trees.
-                let _ = fs::remove_file(&path).or_else(|_| fs::remove_dir(&path));
-            }
-        }
-        let _ = fs::remove_dir(&self.0);
+        // Only this newly created private test directory, including generation recovery files.
+        let _ = fs::remove_dir_all(&self.0);
     }
 }
 

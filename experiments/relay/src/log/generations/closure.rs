@@ -105,7 +105,7 @@ pub(crate) fn visit_generation_records(
     let selected = &history.last().ok_or(Error::Contract("generation archive head absent"))?.1;
     let mut names = BTreeSet::from([".head.json".to_owned(), ".ready.json".into()]);
     names.extend(history.iter().map(|(hash, _)| format::manifest_name(hash)));
-    for item in std::iter::once(&selected.root).chain(&selected.sealed) {
+    for (item, family) in selected.closed_files() {
         let name = format::wal_name(&item.generation);
         let bytes = file(files, &name)?;
         if bytes.len() as u64 != item.bytes || format::sha(bytes) != item.sha256 {
@@ -115,7 +115,7 @@ pub(crate) fn visit_generation_records(
         let cut = scan::visit_records_from(
             &mut reader,
             item.bytes,
-            frame::Family::Continuation,
+            family,
             item.first,
             item.previous,
             &mut visit,
