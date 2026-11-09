@@ -3,6 +3,8 @@
 mod capture;
 #[path = "complete_cohort_fixture/clients.rs"]
 mod clients;
+#[path = "generation_complete_control/migrated_origin.rs"]
+mod migrated_origin;
 #[path = "generation_complete_control/protected_streams.rs"]
 mod protected_streams;
 #[path = "generation_complete_control/public_inputs.rs"]
@@ -16,8 +18,10 @@ type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 #[tokio::main(worker_threads = 2)]
 async fn main() -> Result {
     let args: Vec<_> = std::env::args_os().skip(1).collect();
-    let [parent] = args.as_slice() else {
-        return Err("expected private fixture parent".into());
+    let (parent, migrated) = match args.as_slice() {
+        [parent] => (parent, false),
+        [parent, mode] if mode == "--migrated-origin" => (parent, true),
+        _ => return Err("expected private fixture parent and optional --migrated-origin".into()),
     };
     let parent = std::fs::canonicalize(parent)?;
     if !parent.is_dir() {
@@ -30,10 +34,14 @@ async fn main() -> Result {
     let mut tasks = Vec::new();
     for (language, standard) in [(1, false), (2, false), (2, true), (3, false), (3, true)] {
         for atomic in [false, true] {
+            if migrated && (language, standard, atomic) != (3, true, true) {
+                continue;
+            }
             let running = Box::pin(capture::generate(
                 &parent,
                 source::Spec { language, standard, atomic },
                 Some(&images),
+                migrated,
             ))
             .await?;
             let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;

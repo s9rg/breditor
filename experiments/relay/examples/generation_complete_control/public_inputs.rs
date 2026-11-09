@@ -1,5 +1,5 @@
 //! Publish only complete credential-free fixture inputs, never private control IPC.
-use super::{Result, storage};
+use super::{Result, migrated_origin::LegacyInputs, storage};
 use std::path::{Path, PathBuf};
 
 pub struct PublicInputs<'a> {
@@ -9,17 +9,22 @@ pub struct PublicInputs<'a> {
     pub origin: &'a [u8],
     pub older: &'a [u8],
     pub current: &'a [u8],
+    pub legacy: Option<&'a LegacyInputs>,
     pub credentials: &'a [&'a str],
 }
 pub fn write(input: &PublicInputs<'_>) -> Result<PathBuf> {
-    let files = [
+    let mut files = Vec::from([
         ("fixture.json", input.fixture.as_bytes()),
         ("inventory.json", input.inventory.as_bytes()),
         ("inventory-after.json", input.inventory.as_bytes()),
         ("server.backup", input.origin),
         ("older-server.backup", input.older),
         ("server-after.backup", input.current),
-    ];
+    ]);
+    if let Some(legacy) = input.legacy {
+        files.push(("legacy-server.backup", &legacy.archive));
+        files.push(("legacy-native.wal", &legacy.wal));
+    }
     for credential in input.credentials {
         if credential.is_empty()
             || files.iter().any(|(_, bytes)| {

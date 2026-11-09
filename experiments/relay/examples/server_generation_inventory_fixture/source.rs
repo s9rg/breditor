@@ -22,6 +22,35 @@ impl Spec {
     }
 }
 pub fn create(directory: &Path, spec: Spec, asset: Option<&str>) -> Result<Source> {
+    create_with(spec, asset, |configuration, document, transport| {
+        let options = ServerLogGenerationOptions { root: "root".into(), active: "one".into() };
+        let path = directory.join("source-native");
+        Ok(if spec.atomic {
+            Room::create_atomic_log_generations_v2(
+                &path,
+                configuration,
+                document,
+                "owner",
+                transport,
+                &options,
+            )?
+        } else {
+            Room::create_log_generations(
+                &path,
+                configuration,
+                document,
+                "owner",
+                transport,
+                &options,
+            )?
+        })
+    })
+}
+pub fn create_with(
+    spec: Spec,
+    asset: Option<&str>,
+    make_room: impl FnOnce(&str, &str, AtomicTransportProfile) -> Result<Room>,
+) -> Result<Source> {
     let configuration=json!({"format":"breditor/shared-rich-profile","formatVersion":spec.language,"schema":{"name":"example/native-inventory-sdk","version":1},"extensions":[]}).to_string();
     let profile = match (spec.language, spec.standard) {
         (1, false) => SharedRichProfile::from_configuration_json(&configuration)?,
@@ -49,27 +78,7 @@ pub fn create(directory: &Path, spec: Spec, asset: Option<&str>) -> Result<Sourc
         2 => AtomicTransportProfile::StructuralV2 { standard_inline_v1: spec.standard },
         _ => AtomicTransportProfile::LayoutV3 { standard_inline_v1: spec.standard },
     };
-    let options = ServerLogGenerationOptions { root: "root".into(), active: "one".into() };
-    let path = directory.join("source-native");
-    let mut room = if spec.atomic {
-        Room::create_atomic_log_generations_v2(
-            &path,
-            &configuration,
-            &document,
-            "owner",
-            transport,
-            &options,
-        )?
-    } else {
-        Room::create_log_generations(
-            &path,
-            &configuration,
-            &document,
-            "owner",
-            transport,
-            &options,
-        )?
-    };
+    let mut room = make_room(&configuration, &document, transport)?;
     room.enable_review("owner")?;
     room.enable_document_versions("owner")?;
     room.enable_document_history_generations(

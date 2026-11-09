@@ -76,6 +76,16 @@ result. No mutable core, credential or writer lease escapes in a report.
 
 ## Functional qualification and remaining work
 
+The migration workset starts all seven registered writers and review actors on
+an original layout-3 atomic relay room, then restores its migrated archive
+through the actual generation recovery host. It compares the exact legacy WAL
+and raster bytes at the migrated origin and later cuts. Authenticated reads
+verify all fourteen registered streams and both referenced and unreferenced
+rasters. Separate cold recovery cases exercise all seven client families across
+the four document/comment history combinations and preserve the outstanding
+work and future Undo/Redo. These cases run in the source and installed
+reconciliation worksets below.
+
 The reproducible workload includes forty independent grammar, writer-transport
 and document/comment history combinations across all seven families, cold
 recovery and future native Undo/Redo. It also exercises all-author forks,

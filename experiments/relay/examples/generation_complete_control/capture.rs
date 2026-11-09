@@ -1,5 +1,5 @@
 //! Seven actual image-bearing native authors under genuine standalone origin/current custody.
-use super::{Result, clients, source, storage};
+use super::{Result, clients, migrated_origin, source, storage};
 use breditor_collab_relay::{
     Role, RoomRecoveryPolicy, ServerLogGenerationRoomBackup, ServerLogGenerationRoomRecovery,
     assets::{AssetStore, asset_id, prepare_asset},
@@ -60,11 +60,12 @@ pub async fn generate(
     parent: &Path,
     spec: source::Spec,
     bytes: Option<&[Vec<u8>]>,
+    migrated: bool,
 ) -> Result<Running> {
     if bytes.is_some_and(|rasters| rasters.len() != 2) {
         return Err("exactly two private seed rasters are required".into());
     }
-    Box::pin(generate_selected(parent, spec, bytes.unwrap_or(&[]))).await
+    Box::pin(generate_selected(parent, spec, bytes.unwrap_or(&[]), migrated)).await
 }
 fn seed_assets(
     directory: &Path,
@@ -81,16 +82,48 @@ fn seed_assets(
     }
     Ok(assets)
 }
+fn capture_source_cuts(
+    directory: &Path,
+    mut room: breditor_collab_relay::Room,
+    mut assets: AssetStore,
+    migrated: bool,
+) -> Result<migrated_origin::Cuts> {
+    room.seal_document_history_generation("owner", "document-two".into())?;
+    if !migrated {
+        room.rotate_log_generation("owner", "two")?;
+    }
+    room.seal_review_history_generation("owner", "review-two".into())?;
+    if !migrated {
+        room.rotate_log_generation("owner", "three")?;
+    }
+    room.grant("owner", "boundary-reader", Some(Role::Reader))?;
+    // All seven current writers stay enabled; the old long-cut fixture is separate.
+    if migrated {
+        migrated_origin::capture(directory, room, assets)
+    } else {
+        let older = ServerLogGenerationRoomBackup::capture(&mut room, &mut assets, "owner")?;
+        room.grant("owner", "control-local-reader", Some(Role::Reader))?;
+        room.rotate_log_generation("owner", "control-local-origin")?;
+        let local = ServerLogGenerationRoomBackup::capture(&mut room, &mut assets, "owner")?;
+        drop(room);
+        drop(assets);
+        Ok(migrated_origin::Cuts { older, local, legacy: None })
+    }
+}
 async fn generate_selected(
     parent: &Path,
     spec: source::Spec,
     rasters: &[Vec<u8>],
+    migrated: bool,
 ) -> Result<Running> {
     let root = parent.join(spec.name());
     storage::directory(&root)?;
     let asset = rasters.first().map(|first| asset_id(first));
-    let source::Source { profile, mut room, configuration } =
-        source::create(&root, spec, asset.as_deref())?;
+    let source::Source { profile, mut room, configuration } = if migrated {
+        migrated_origin::create(&root, spec, asset.as_deref())?
+    } else {
+        source::create(&root, spec, asset.as_deref())?
+    };
     let clients::CapturedClients { records, protected, secrets } =
         clients::capture(&mut room, &profile, spec)?;
     if records.as_array().map(Vec::len) != Some(7)
@@ -99,19 +132,9 @@ async fn generate_selected(
     {
         return Err("seven actual image-bearing registrations are required".into());
     }
-    let mut assets = seed_assets(&root, &mut room, rasters)?;
-    room.seal_document_history_generation("owner", "document-two".into())?;
-    room.rotate_log_generation("owner", "two")?;
-    room.seal_review_history_generation("owner", "review-two".into())?;
-    room.rotate_log_generation("owner", "three")?;
-    room.grant("owner", "boundary-reader", Some(Role::Reader))?;
-    // All seven current writers stay enabled; the old long-cut fixture is separate.
-    let ancestor = ServerLogGenerationRoomBackup::capture(&mut room, &mut assets, "owner")?;
-    room.grant("owner", "control-local-reader", Some(Role::Reader))?;
-    room.rotate_log_generation("owner", "control-local-origin")?;
-    let local = ServerLogGenerationRoomBackup::capture(&mut room, &mut assets, "owner")?;
-    drop(room);
-    drop(assets);
+    let assets = seed_assets(&root, &mut room, rasters)?;
+    let migrated_origin::Cuts { older: ancestor, local, legacy } =
+        capture_source_cuts(&root, room, assets, migrated)?;
     let mut operation = ServerLogGenerationRoomRecovery::begin(
         &root.join("restored"),
         &local,
@@ -156,7 +179,10 @@ async fn generate_selected(
     )
     .await?;
     let (router, control, operator_token) = prepare_control(host, native, &native_token).await?;
-    let fixture=json!({"format":"breditor/native-generation-complete-control-fixture","formatVersion":1,"language":spec.language,"standard":spec.standard,"atomic":spec.atomic,"configuration":configuration,"inventoryJson":serde_json::to_string(&inventory.metadata().native)?,"generationRecoveryState":selected,"clients":records,"registeredWriters":7,"registeredReviewActors":7,"protectedStreams":14}).to_string();
+    let mut fixture = json!({"format":"breditor/native-generation-complete-control-fixture","formatVersion":1,"language":spec.language,"standard":spec.standard,"atomic":spec.atomic,"configuration":configuration,"inventoryJson":serde_json::to_string(&inventory.metadata().native)?,"generationRecoveryState":selected,"clients":records,"registeredWriters":7,"registeredReviewActors":7,"protectedStreams":14});
+    if let Some(legacy) = &legacy {
+        fixture["legacyMigration"] = serde_json::to_value(&legacy.selection)?;
+    }
     let credentials: Vec<_> = secrets
         .iter()
         .map(String::as_str)
@@ -164,11 +190,12 @@ async fn generate_selected(
         .collect();
     let path = super::public_inputs::write(&super::public_inputs::PublicInputs {
         directory: &root,
-        fixture: &fixture,
+        fixture: &fixture.to_string(),
         inventory: inventory.to_json(),
         origin: &local.to_bytes()?,
         older: &ancestor.to_bytes()?,
         current: &current.to_bytes()?,
+        legacy: legacy.as_ref(),
         credentials: &credentials,
     })?;
     Ok(Running { path, router, control, operator_token })
