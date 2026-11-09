@@ -108,6 +108,13 @@ actual production bundles run the same assertions with location-only fixture
 rewrites. Node storage, locks and raster presentation are controlled fixtures,
 not physical crash durability or browser certification.
 
+The execution workset also starts from a real legacy room migrated to generation
+storage. It checks that the authenticated import brings seven client families up
+to the accepted server frontier, preserves local operation frontiers and raster
+availability, and records both attempts in the same journal. After a clean cold
+reopen, fresh approval replays the retained pages while preserving a later
+offline edit and future document and comment Undo/Redo.
+
 ## Qualification checkpoint
 
 The [functional qualification](qualification/2026-10-28-generation-native-execution.json)
