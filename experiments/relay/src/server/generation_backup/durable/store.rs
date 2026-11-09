@@ -27,7 +27,7 @@ pub(in crate::server) struct Store {
     pub(super) intent_stamp: GenerationFileStamp,
 }
 impl Store {
-    pub(super) fn create(
+    pub(in crate::server) fn create(
         root: &Path,
         backup: ServerLogGenerationRoomBackup,
         previous: RoomDeploymentSelection,

@@ -2,6 +2,25 @@
 use super::ServerLogGenerationRoomBackup;
 use crate::{Error, Result, Room, assets::AssetStore};
 impl ServerLogGenerationRoomBackup {
+    /// Recheck the original live cut after exact deterministic migration equality.
+    #[cfg(feature = "server")]
+    pub(crate) fn check_live_migration_source(
+        &self,
+        room: &mut Room,
+        assets: &AssetStore,
+        principal: &str,
+    ) -> Result<()> {
+        room.recovery_inventory_owner(principal)?;
+        if room.backup_identity()? != self.identity.native.source
+            || room.asset_binding() != assets.binding()
+        {
+            return Err(Error::Contract("original migration source cut changed"));
+        }
+        // The snapshot validates the actual original WAL against the complete held cut.
+        room.export_backup()?;
+        assets.check_exported_backup(&self.assets)
+    }
+
     /// Recheck the exact actual native/raster source under current owner access, without another
     /// complete native or raster buffer. This is not provider/client coverage or activation.
     /// # Errors

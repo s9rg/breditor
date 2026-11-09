@@ -65,6 +65,14 @@ fn setup(
     standard: bool,
     atomic: bool,
 ) -> TestResult<(Files, SharedRichProfile, Room)> {
+    setup_with_storage(version, standard, atomic, true)
+}
+fn setup_with_storage(
+    version: u32,
+    standard: bool,
+    atomic: bool,
+    generations: bool,
+) -> TestResult<(Files, SharedRichProfile, Room)> {
     let files = Files::new()?;
     let configuration = json!({"format":"breditor/shared-rich-profile","formatVersion":version,
         "schema":{"name":"example/log-generations","version":1},"extensions":[]})
@@ -87,7 +95,19 @@ fn setup(
         _ => AtomicTransportProfile::LayoutV3 { standard_inline_v1: standard },
     };
     let options = ServerLogGenerationOptions { root: "root".into(), active: "one".into() };
-    let room = if atomic {
+    let room = if !generations {
+        if atomic {
+            Room::create_atomic_transport_v2(
+                &files.room(),
+                &configuration,
+                &document,
+                "owner",
+                kind,
+            )?
+        } else {
+            Room::create(&files.room(), &configuration, &document, "owner")?
+        }
+    } else if atomic {
         Room::create_atomic_log_generations_v2(
             &files.room(),
             &configuration,

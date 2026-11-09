@@ -81,9 +81,27 @@ impl Network {
         token: &str,
         bytes: &[u8],
     ) -> TestResult<(u16, Vec<u8>)> {
+        self.request(method, path, token, "image/png", bytes).await
+    }
+    pub async fn post_json(
+        &self,
+        path: &str,
+        token: &str,
+        bytes: &[u8],
+    ) -> TestResult<(u16, Vec<u8>)> {
+        self.request("POST", path, token, "application/json", bytes).await
+    }
+    async fn request(
+        &self,
+        method: &str,
+        path: &str,
+        token: &str,
+        content_type: &str,
+        bytes: &[u8],
+    ) -> TestResult<(u16, Vec<u8>)> {
         let address = self.address;
         let head = format!(
-            "{method} {path} HTTP/1.1\r\nHost: {address}\r\nOrigin: {ORIGIN}\r\nX-Breditor-Principal: owner\r\nAuthorization: Bearer {token}\r\nContent-Type: image/png\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+            "{method} {path} HTTP/1.1\r\nHost: {address}\r\nOrigin: {ORIGIN}\r\nX-Breditor-Principal: owner\r\nAuthorization: Bearer {token}\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
             bytes.len()
         );
         let bytes = bytes.to_vec();

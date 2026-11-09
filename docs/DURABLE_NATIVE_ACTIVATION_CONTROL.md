@@ -26,6 +26,32 @@ its original filesystem witnesses. The network identity does not serialize those
 them exactly. Digest entries are bytes and epoch generations retain their existing
 canonical decimal-string form. The native checkpoint format remains unchanged.
 
+## Handoff from original WAL storage
+
+An original WAL service using `router_with_server_backups_and_deployment_lease`
+can prepare a migration without pausing editing. Select its complete original
+backup identity, explicit root and first continuation IDs, and an absent private
+intent directory. `ServerBackupHandle::prepare_generation_migration_handover`
+authenticates the native owner, captures the whole selected WAL and rasters under
+the serving lease, and syncs the deterministic migrated generation archive and
+intent. Keep the returned identity and generation choices in independent host
+configuration.
+
+`ServerBackupHandle::seal_prepared_generation_migration_handover` uses that
+intent, the same generation choices and fresh owner authentication. It rechecks
+the complete live source against the retained migrated bytes under the exclusive
+deployment permit. A changed cut or generation choice leaves the old epoch
+current. A successful seal appends the source-bound epoch and closes its lease.
+The old host then refuses serving. Keep the original WAL and raster files and
+use the actual authority and reopened intent to resolve any uncertain outcome.
+
+Restore the retained migration in a separate generation destination and verify
+the protected registrations. The existing durable activation checkpoint and
+operator POST select that recovered owner and the sealed authority. A successful
+operator response establishes the native service. Document and comment writers
+resume their existing registrations and send pending work through ordinary
+protocol messages. Their normal receipts settle that work.
+
 ## Commit and response loss
 
 POST the exact independently selected control identity as JSON to

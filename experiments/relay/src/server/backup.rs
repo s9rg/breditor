@@ -6,6 +6,7 @@ mod asset_availability;
 mod deployment;
 mod handover;
 pub use handover::SealedServerHandover;
+mod migrated_handover;
 mod recovery_check;
 mod recovery_inventory;
 pub use asset_availability::{

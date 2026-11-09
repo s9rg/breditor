@@ -15,6 +15,8 @@ use serde_json::json;
 use std::fs;
 #[path = "native_activation/durable.rs"]
 mod durable;
+#[path = "native_activation/migrated.rs"]
+mod migrated;
 #[path = "native_activation/traffic.rs"]
 mod traffic;
 // Reuse the exact bounded TCP/WebSocket test driver; it has no private relay API.
