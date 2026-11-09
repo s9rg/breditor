@@ -1,21 +1,28 @@
 //! Exact joined migration keeps rasters and independent comment receipts through a cold recovery.
 use super::*;
 use crate::{
-    ReviewAdmission, ReviewRole, Role, ServerLogGenerationOptions, ServerLogGenerationRoomBackup,
-    ServerLogGenerationRoomRecovery,
+    DurableReviewReceipt, ReviewAdmission, ReviewRegistration, ReviewRole, Role,
+    ServerLogGenerationOptions, ServerLogGenerationRoomBackup, ServerLogGenerationRoomRecovery,
 };
 use breditor_collab_feasibility::{
     review::{
         ReviewAccess, ReviewActorId, ReviewActorPolicy, ReviewOutcome, ReviewPrincipalId,
+        ReviewSession,
         actions::{CreateReviewThread, ReviewAction},
     },
-    rich_replica::ReviewAnchorTarget,
+    rich_replica::{ReviewAnchorTarget, RichReplica},
 };
 
-#[test]
-fn joined_migration_keeps_exact_rasters_and_pending_independent_comment_history() -> TestResult {
-    let directory = Directory::new()?;
-    let (mut original, mut assets) = source(&directory, 3, true, true)?;
+struct ReviewFixture {
+    client: RichReplica,
+    comments: ReviewSession,
+    policy: ReviewActorPolicy,
+    registration: ReviewRegistration,
+    accepted: String,
+    before: DurableReviewReceipt,
+}
+
+fn first_review_generation(original: &mut Room) -> TestResult<ReviewFixture> {
     original.enable_review("owner")?;
     original.grant("owner", "alice", Some(Role::Editor))?;
     original.grant_review("owner", "alice", Some(ReviewRole::Comment))?;
@@ -59,6 +66,15 @@ fn joined_migration_keeps_exact_rasters_and_pending_independent_comment_history(
         return Err("review receipt".into());
     };
     original.seal_review_history_generation("owner", "comments-2".into())?;
+    Ok(ReviewFixture { client, comments, policy, registration, accepted, before })
+}
+
+#[test]
+fn joined_migration_keeps_exact_rasters_and_pending_independent_comment_history() -> TestResult {
+    let directory = Directory::new()?;
+    let (mut original, mut assets) = source(&directory, 3, true, true)?;
+    let ReviewFixture { client, mut comments, policy, registration, accepted, before } =
+        first_review_generation(&mut original)?;
     let view = comments.view()?;
     let observed = comments.observe();
     assert!(matches!(

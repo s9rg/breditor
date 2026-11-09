@@ -21,6 +21,16 @@ fn component(destination: &Path) -> TestResult<PathBuf> {
     Ok(destination.join(value["directory"].as_str().ok_or("component directory")?))
 }
 
+fn exact_legacy_wal(directory: &Path, expected: &[u8]) -> TestResult<PathBuf> {
+    fs::read_dir(directory)?
+        .filter_map(|entry| entry.ok().map(|entry| entry.path()))
+        .find(|path| {
+            path.extension().is_some_and(|ext| ext == "wal")
+                && fs::read(path).is_ok_and(|bytes| bytes == expected)
+        })
+        .ok_or_else(|| "exact original root".into())
+}
+
 #[test]
 fn original_room_migration_preserves_offline_replay_and_redo_across_two_physical_rotations()
 -> TestResult {
@@ -75,13 +85,7 @@ fn original_room_migration_preserves_offline_replay_and_redo_across_two_physical
                 ServerLogGenerationRecovery::resume(&destination, &migrated, &selected, POLICY)?
                     .finish(&migrated)?;
             let inner = component(&destination)?;
-            let root = fs::read_dir(&inner)?
-                .filter_map(|entry| entry.ok().map(|entry| entry.path()))
-                .find(|path| {
-                    path.extension().is_some_and(|ext| ext == "wal")
-                        && fs::read(path).is_ok_and(|bytes| bytes == source_bytes)
-                })
-                .ok_or("exact original root")?;
+            let legacy_wal = exact_legacy_wal(&inner, &source_bytes)?;
             let room = recovered.room_mut();
             let descriptor = room.log_generation_descriptor("owner")?;
             assert_eq!(descriptor.next_sequence, identity.records.to_string());
@@ -121,7 +125,7 @@ fn original_room_migration_preserves_offline_replay_and_redo_across_two_physical
             assert!(client.redo()?);
             flush_client(&mut room, &client, &lease, &through, atomic)?;
             assert_eq!(room.replica.document_json(), edited);
-            assert_eq!(fs::read(root)?, source_bytes);
+            assert_eq!(fs::read(legacy_wal)?, source_bytes);
             assert_eq!(fs::read(directory.path("source.log"))?, source_bytes);
         }
     }
