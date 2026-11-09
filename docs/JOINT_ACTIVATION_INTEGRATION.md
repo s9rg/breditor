@@ -111,6 +111,10 @@ node --test --test-concurrency=1 scripts/joint-metadata-pending-control-native.t
 node --test --test-concurrency=1 scripts/metadata-continuation-replacement-native.test.mjs
 ```
 
+Use `node scripts/build-sdk-native-publication.mjs --release` for an optimized
+fixture. The publication source and offline-installed suites both select the
+binary from the build report and verify its digest.
+
 The complete source/installed worksets, exact sources, package archives, runtime
 pins, actual Native observations and prior stale-capture failures are retained
 in the associated qualification record. Installation changes only module
