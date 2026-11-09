@@ -5,6 +5,8 @@ import assert from 'node:assert/strict';
 import {generationCompleteControlFixtures} from './fixtures/generation-recovery-control/complete-fixtures.mjs';
 import {acceptedControlTransport} from './fixtures/selected-generation-reconciliation/accepted-transport.mjs';
 import {generationNativeExecutionSession} from './fixtures/generation-native-execution/session.mjs';
+import {assertPinnedAcceptedPage} from './fixtures/native-accepted-page/pinned-read.mjs';
+import {SelectedGenerationNativeImportArchive as ImportArchive} from '../packages/breditor-collaboration/dist/selected_generation_import/archive.js';
 import {selectedNativePairs} from './fixtures/selected-generation-reconciliation/session.mjs';
 import {
  previewGenerationNativeExecution as preview,executeGenerationNativeExecution as execute,
@@ -31,6 +33,9 @@ test('a migrated legacy room imports accepted history and cold-replays without l
  const offlineText='Offline work after migrated accepted history. ';
  let journal;
  try{
+  const held=input.file(),archive=await ImportArchive.read(held.file,held.selection,options);
+  try{await assertPinnedAcceptedPage(archive,options,'generation_native_import_integrity');}
+  finally{archive.dispose();}
   const before=await s.read();
   assert.equal(new Set(s.owner.clients.map(row=>row.family)).size,7);
   for(const lane of ['document','review'])assert.ok(before.heads.some(row=>row.lane===lane&&row.relation==='server-ahead'));

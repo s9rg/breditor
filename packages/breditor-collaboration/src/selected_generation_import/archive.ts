@@ -1,7 +1,8 @@
 /** Complete framed before-file and original accepted pages. Every page is
  * request/selection bound and the cursor chain must terminate. Read admission
  * proves data integrity, not historic authentication or permission to import. */
-import {prepareArchiveIntegrity} from '../archive_integrity/context.js';
+import {prepareArchiveIntegrity,type ArchiveIntegrityContext} from '../archive_integrity/context.js';
+import {readVerifiedArchiveText} from '../archive_integrity/verified_text.js';
 import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
 import {archiveBlob} from '../archive_integrity/policy.js';
 import {participantAuthority} from '../participant_backup/policy.js';
@@ -20,7 +21,14 @@ import type {SelectedGenerationNativeImportSelection,SelectedGenerationNativeImp
 const prefixBytes=magic.length+4,key=Object.freeze({}),slice=Blob.prototype.slice;
 const before={read:SelectedRoomCurrentArchive.read,current:SelectedRoomCurrentArchive.prototype.current,dispose:SelectedRoomCurrentArchive.prototype.dispose},cut={read:PhysicalRoomRecordCutArchive.read,root:PhysicalRoomRecordCutArchive.prototype.root,dispose:PhysicalRoomRecordCutArchive.prototype.dispose};
 function policy(options:SharedArchiveIntegrityOptions){const r=fields(options,['wasm','checkAuthority'],['signal']),authority=participantAuthority(r['checkAuthority'] as ()=>void),observation=new OperationalReadCancellation(r['signal'] as AbortSignal|undefined),check=()=>{observation.check(()=>fail('generation_native_import_aborted'));authority();observation.check(()=>fail('generation_native_import_aborted'));};try{const context=prepareArchiveIntegrity({wasm:r['wasm'] as SharedArchiveIntegrityOptions['wasm'],checkAuthority:check});return{context,check,close:()=>observation.close()};}catch(error){observation.close();throw error;}}
-async function page(file:Blob,manifest:SelectedGenerationNativeImportManifest,index:number,context:ReturnType<typeof prepareArchiveIntegrity>):Promise<SharedServerLogGenerationRecoveryAcceptedRead>{const selected=manifest.pages[index];if(!selected||file.size!==selected.bytes||await context.digest(file)!==selected.sha256)throw fail();let text:string;try{text=new TextDecoder('utf-8',{fatal:true}).decode(await recordCutBytes(file,0,file.size,context));}catch{throw fail();}const request=await prepareGenerationAcceptedRequest(manifest.server,selected.request);context.guard();return readGenerationAcceptedNative(text,manifest.server,request.sha256,selected.request);}
+async function page(file:Blob,manifest:SelectedGenerationNativeImportManifest,index:number,context:ArchiveIntegrityContext):Promise<SharedServerLogGenerationRecoveryAcceptedRead>{
+ const selected=manifest.pages[index];
+ if(!selected)throw fail();
+ const text=await readVerifiedArchiveText(file,selected,MAX_SERVER_GENERATION_RECOVERY_ACCEPTED_BYTES,context,fail);
+ const request=await prepareGenerationAcceptedRequest(manifest.server,selected.request);
+ context.guard();
+ return readGenerationAcceptedNative(text,manifest.server,request.sha256,selected.request);
+}
 export async function encodeSelectedGenerationNativeImport(input:SelectedGenerationNativeImportInput,options:SharedArchiveIntegrityOptions):Promise<SelectedGenerationNativeImportFile>{
  const r=fields(input,['server','before','pages']),b=fields(r['before'],['selection','file']),beforeFile=archiveBlob(b['file'] as Blob,MAX_GENERATION_NATIVE_IMPORT_BYTES),pages=rows(r['pages'],MAX_GENERATION_NATIVE_IMPORT_PAGES).map(value=>{const row=fields(value,['request','file']);return{request:generationAcceptedChoices(row['request']),file:archiveBlob(row['file'] as Blob,MAX_SERVER_GENERATION_RECOVERY_ACCEPTED_BYTES)};});if(!pages.length||beforeFile.size+pages.reduce((n,row)=>n+row.file.size,0)>MAX_GENERATION_NATIVE_IMPORT_BYTES)throw fail('generation_native_import_budget');const p=policy(options);let admitted:SelectedGenerationNativeImportArchive|undefined;
  try{const entries=[];for(const row of pages)entries.push({request:row.request,bytes:row.file.size,sha256:await p.context.digest(row.file)});const manifest=generationNativeImportManifest({format:'breditor/selected-generation-native-import-input',formatVersion:1,server:r['server'],before:b['selection'],pages:entries}),text=recordCutJson(manifest,MAX_GENERATION_NATIVE_IMPORT_HEADER_BYTES),header=new TextEncoder().encode(text),prefix=new Uint8Array(prefixBytes);prefix.set(new TextEncoder().encode(magic));new DataView(prefix.buffer).setUint32(magic.length,header.length,true);const file=new Blob([prefix,header,beforeFile,...pages.map(row=>row.file)],{type:mime});if(file.size>MAX_GENERATION_NATIVE_IMPORT_BYTES)throw fail('generation_native_import_budget');const selection=generationNativeImportSelection({format:'breditor/selected-generation-native-import-selection',formatVersion:1,bytes:file.size,sha256:await p.context.digest(file)});admitted=await readArchive.call(SelectedGenerationNativeImportArchive,file,selection,{wasm:p.context.wasm,checkAuthority:p.check});p.check();return Object.freeze({file,selection});}finally{admitted?.dispose();p.close();}

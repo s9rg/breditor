@@ -27,6 +27,8 @@ cross-selection responses and trailing bytes refuse admission.
 
 Pages are admitted one at a time rather than retained as one large parsed
 object graph. An admitted archive can read a page again with a fresh read grant.
+Each read verifies its page pin and decodes that same owned byte buffer. Both
+the physical and generation import paths enforce this on admission and replay.
 Disposal during that read prevents successful return. This data admission does
 not authenticate a saved response or make its reader role a recipient permission.
 
