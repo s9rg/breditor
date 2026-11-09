@@ -1,6 +1,7 @@
 import {archiveReadLengthFailure} from './read_length_failure.js';
+import {withArchiveDigest} from './digest_owner.js';
 /** Chunked Native hashing with explicit buffering limits for decoded bytes. */
-import {archiveBlob,archiveFailure,archiveGuard,SharedArchiveIntegrityError,MAX_SHARED_ARCHIVE_DIGEST_BYTES,MAX_SHARED_ARCHIVE_DIGEST_CHUNK_BYTES} from "./policy.js";
+import {archiveBlob,archiveFailure,archiveGuard,MAX_SHARED_ARCHIVE_DIGEST_BYTES,MAX_SHARED_ARCHIVE_DIGEST_CHUNK_BYTES} from "./policy.js";
 import type {SharedArchiveIntegrityOptions,SharedArchiveDigestModule,SharedRustArchiveDigest} from "./contract.js";
 interface DigestedArchiveBytes {
  readonly bytes:Uint8Array<ArrayBuffer>;
@@ -25,10 +26,8 @@ export function prepareArchiveIntegrity(options:SharedArchiveIntegrityOptions):A
   guard();if(!Number.isSafeInteger(offset)||offset<0||!Number.isSafeInteger(bytes)||bytes<0||bytes>MAX_SHARED_ARCHIVE_DIGEST_CHUNK_BYTES||offset+bytes>file.size)throw archiveFailure("archive_budget");
   let result:ArrayBuffer;try{result=await arrayBuffer.call(slice.call(file,offset,offset+bytes));}catch{guard();throw archiveFailure("archive_io");}const observedBeforeAuthorityBytes=result.byteLength;guard();const actualBytes=result.byteLength;if(actualBytes!==bytes)throw archiveReadLengthFailure(offset,bytes,observedBeforeAuthorityBytes,actualBytes);return new Uint8Array(result);
  };
- const digestFile=async(file:Blob,output?:Uint8Array<ArrayBuffer>):Promise<string>=>{
-  let owner:SharedRustArchiveDigest|undefined,release:(()=>void)|undefined;
-  try{
-   owner=create(String(file.size));const free=owner.free,update=owner.update,finish=owner.finish;if(typeof free==="function")release=free.bind(owner);if(!release||typeof update!=="function"||typeof finish!=="function")throw archiveFailure("archive_capability");
+ const digestFile=(file:Blob,output?:Uint8Array<ArrayBuffer>):Promise<string>=>
+  withArchiveDigest(create,file.size,guard,async update=>{
    for(let offset=0;offset<file.size;offset+=MAX_SHARED_ARCHIVE_DIGEST_CHUNK_BYTES){
     const count=Math.min(MAX_SHARED_ARCHIVE_DIGEST_CHUNK_BYTES,file.size-offset);
     const input=await read(file,offset,count);
@@ -45,14 +44,9 @@ export function prepareArchiveIntegrity(options:SharedArchiveIntegrityOptions):A
       target.set(bytes.subarray(0,kept));
      }
     }
-    guard();
-    if(update.call(owner,bytes)!==undefined)throw archiveFailure("archive_capability");
-    guard();
+    update(bytes);
    }
-   guard();const result=finish.call(owner);guard();if(typeof result!=="string"||!/^[a-f0-9]{64}$/.test(result))throw archiveFailure("archive_integrity");return result;
-  }catch(error){if(error instanceof SharedArchiveIntegrityError)throw error;throw archiveFailure("archive_integrity");}
-  finally{if(release)try{release();}catch{throw archiveFailure("archive_integrity");}}
- };
+  });
  const digest=async(input:Blob):Promise<string>=>{
   guard();
   return digestFile(archiveBlob(input,MAX_SHARED_ARCHIVE_DIGEST_BYTES));

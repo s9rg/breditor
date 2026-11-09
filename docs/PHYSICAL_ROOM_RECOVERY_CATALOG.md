@@ -43,7 +43,11 @@ objects; cached metadata and detached caller Blob snapshots remain usable.
 `readSharedServerLogGenerationRoomArchive` reads the existing native joined
 transport as opaque native/raster sections. It checks closed canonical framing,
 gap-free lengths, each selected section digest, the header digest, and the
-independently selected complete archive digest. It does not replay native WALs,
+independently selected complete archive digest. A small framing probe bounds
+the header read. The reader verifies and parses those owned header bytes, then
+feeds the same framing and section bytes into the whole-file digest. A section
+chunk is read once and shared between the whole-file and current section digest
+owners. Both owners release on failure or cancellation. It does not replay native WALs,
 decode raster images, authenticate protected streams or create a native owner.
 
 The normal application Wasm exports a separate `SharedArchiveDigest` owner. It

@@ -18,12 +18,44 @@ test('large files never use whole-file ArrayBuffer reads and native working memo
 test('abort and source-authority changes after a native update release the actual native owner',async()=>{for(const reason of ['abort','authority']){const controller=new AbortController();let live=true;const{audit,module}=audited(()=>{if(reason==='abort')controller.abort();else live=false;});await assert.rejects(hashSharedArchive(new Blob([new Uint8Array(CHUNK+1)]),options({wasm:module,signal:controller.signal,checkAuthority(){if(!live)throw Error('PRIVATE-AUTHORITY');}})),code(reason==='abort'?'archive_aborted':'archive_authority'));assert.equal(audit.created,1);assert.equal(audit.released,1);assert.equal(audit.active,0);}});
 test('unavailable/old factories and asynchronous authority have no fallback to one-shot hashing',async()=>{for(const value of [{},{SharedArchiveDigest:{}},{SharedArchiveDigest:{...wasm.SharedArchiveDigest,version:()=> '0'}}])await assert.rejects(hashSharedArchive(new Blob(),options({wasm:value})),code('archive_capability'));await assert.rejects(hashSharedArchive(new Blob(),options({checkAuthority:async()=>{}})),code('archive_authority'));});
 test('read failures are sanitized and free the live native owner',async()=>{const saved=Blob.prototype.arrayBuffer,{audit,module}=audited();try{Blob.prototype.arrayBuffer=async()=>{throw Error('PRIVATE-BYTES');};await assert.rejects(hashSharedArchive(new Blob(['x']),options({wasm:module})),code('archive_io'));assert.equal(audit.active,0);assert.equal(audit.released,1);}finally{Blob.prototype.arrayBuffer=saved;}});
-test('complete outer transport retains all pins and supports disposal without activation',async()=>{const{file,expected}=transportFixture(),{audit,module}=audited(),reader=await read(file,expected,options({wasm:module}));assert.deepEqual(reader.identity(),expected);assert.equal(reader.metadata().bytes,file.size);assert.equal(reader.metadata().nativeBytes,3);assert.ok(Object.isFrozen(reader.identity().native.source));assert.equal(audit.active,0);assert.equal(audit.maximumActive,1);assert.equal(audit.created,4);for(const name of ['activate','verifyCredentials','router'])assert.equal(typeof reader[name],'undefined');reader.dispose();assert.deepEqual(reader.identity(),expected);assert.throws(()=>reader.file(),code('archive_closed'));assert.throws(()=>new Reader({},file,{}),code('archive_closed'));});
+test('complete outer transport retains all pins and supports disposal without activation',async()=>{const{file,expected}=transportFixture(),{audit,module}=audited(),reader=await read(file,expected,options({wasm:module}));assert.deepEqual(reader.identity(),expected);assert.equal(reader.metadata().bytes,file.size);assert.equal(reader.metadata().nativeBytes,3);assert.ok(Object.isFrozen(reader.identity().native.source));assert.equal(audit.active,0);assert.equal(audit.maximumActive,2);assert.equal(audit.created,4);for(const name of ['activate','verifyCredentials','router'])assert.equal(typeof reader[name],'undefined');reader.dispose();assert.deepEqual(reader.identity(),expected);assert.throws(()=>reader.file(),code('archive_closed'));assert.throws(()=>new Reader({},file,{}),code('archive_closed'));});
 test('archive admission snapshots the independent complete selection before the first await',async()=>{const{file,expected}=transportFixture(),selected=structuredClone(expected),pending=read(file,expected,options());expected.native.manifest[0]^=1;expected.assets.archiveSha256[0]^=1;expected.archiveSha256[0]^=1;const reader=await pending;try{assert.deepEqual(reader.identity(),selected);}finally{reader.dispose();}});
 for(const[name,change]of [['family',h=>{h.format='breditor/server-room-backup';}],['revision',h=>{h.formatVersion=2;}],['extra field',h=>{h.private='PRIVATE';}],['gap',h=>{h.rasters.offset++;}],['overlap',h=>{h.rasters.offset--;}],['zero section',h=>{h.log.bytes=0;}],['native component checksum',h=>{h.log.sha256[0]^=1;}],['raster component checksum',h=>{h.rasters.sha256[0]^=1;}],['foreign raster binding',h=>{h.assets.binding='sha256:'+'b'.repeat(64);}]] )test(`fresh outer checksums cannot admit inconsistent ${name}`,async()=>{const{file,expected}=transportFixture({change});await assert.rejects(read(file,expected,options()),error=>['archive_integrity','archive_policy'].includes(error?.code)&&!String(error).includes('PRIVATE'));});
 test('independently selected wrong manifest or whole digest refuses even when document counters agree',async()=>{const{file,expected}=transportFixture();expected.native.manifest[0]^=1;await assert.rejects(read(file,expected,options()),code('archive_integrity'));const other=transportFixture();other.expected.archiveSha256[0]^=1;await assert.rejects(read(other.file,other.expected,options()),code('archive_integrity'));});
 test('canonical header bytes cannot be replaced with pretty, reordered or BOM text',async()=>{for(const encode of [v=>JSON.stringify(v,null,2),v=>JSON.stringify(Object.fromEntries(Object.entries(v).reverse())),v=>'\ufeff'+JSON.stringify(v)]){const{file,expected}=transportFixture({encode});await assert.rejects(read(file,expected,options()),code('archive_integrity'));}});
 test('header size is refused before any unbounded header buffer can be read',async()=>{const{bytes,expected}=transportFixture(),changed=Uint8Array.from(bytes);new DataView(changed.buffer).setUint32(magic.length,128*1024+1);const file=new Blob([changed]);await assert.rejects(read(file,expected,options()),code('archive_budget'));});
 test('truncation, trailing bytes and corrupt body data produce no partial archive',async()=>{for(const mutate of [v=>v.subarray(0,v.length-1),v=>Buffer.concat([v,Uint8Array.of(0)]),v=>{const copy=Buffer.from(v);copy[copy.length-1]^=1;return copy;}]){const{bytes,expected}=transportFixture();await assert.rejects(read(new Blob([mutate(bytes)]),expected,options()),code('archive_integrity'));}});
+test('independent section pins and the whole archive digest must describe the same transport bytes',async()=>{
+ const {bytes,prefix,encoded,header,expected}=transportFixture();
+ const body=prefix.length+encoded.length;
+ const ranges=[[prefix.length,body],[body,body+header.log.bytes],[body+header.rasters.offset,bytes.length]];
+ const slice=Blob.prototype.slice;
+ for(const [start,end] of ranges){
+  const changed=Buffer.from(bytes);
+  changed[start]^=1;
+  const selected={...expected,archiveSha256:digest(changed)};
+  const originalRange=new Blob([bytes.subarray(start,end)]);
+  Blob.prototype.slice=function(from,to){
+   if(this.size===changed.length&&from===start&&(to??this.size)===end)return originalRange;
+   return slice.call(this,from,to);
+  };
+  try{
+   await assert.rejects(async()=>{
+    const admitted=await read(new Blob([changed]),selected,options());
+    admitted.dispose();
+   },code('archive_integrity'),`section starting at ${start}`);
+  }finally{Blob.prototype.slice=slice;}
+ }
+});
+test('cancelling a transport section releases both active native digest owners',async()=>{
+ const {file,expected}=transportFixture();
+ const controller=new AbortController();
+ const {audit,module}=audited(()=>{if(audit.active===2)controller.abort();});
+ await assert.rejects(read(file,expected,options({wasm:module,signal:controller.signal})),code('archive_aborted'));
+ assert.equal(audit.maximumActive,2);
+ assert.equal(audit.created,3);
+ assert.equal(audit.released,audit.created);
+ assert.equal(audit.active,0);
+});
 test('a false public Blob size does not let a partial snapshot stand in for selected bytes',async()=>{class FalseSize extends Blob{get size(){return 1;}}const{bytes,expected}=transportFixture();await assert.rejects(read(new FalseSize([bytes]),expected,options()),code('archive_integrity'));});
-test('large opaque transport sections use only bounded actual native hashing',async()=>{const{file,expected}=transportFixture({nativeBytes:new Uint8Array(3*CHUNK+17).fill(37),rasters:new Uint8Array(2*CHUNK+9).fill(41)}),saved=Blob.prototype.arrayBuffer,{audit,module}=audited();let maximum=0;try{Blob.prototype.arrayBuffer=function(){maximum=Math.max(maximum,this.size);assert.ok(this.size<=CHUNK);return saved.call(this);};const reader=await read(file,expected,options({wasm:module}));try{assert.deepEqual(reader.identity(),expected);assert.equal(audit.active,0);assert.equal(maximum,CHUNK);assert.equal(audit.maximumChunk,CHUNK);}finally{reader.dispose();}}finally{Blob.prototype.arrayBuffer=saved;}});
+test('large opaque transport sections use only bounded actual native hashing',async()=>{const{file,expected,prefix}=transportFixture({nativeBytes:new Uint8Array(3*CHUNK+17).fill(37),rasters:new Uint8Array(2*CHUNK+9).fill(41)}),saved=Blob.prototype.arrayBuffer,{audit,module}=audited();let maximum=0,total=0;try{Blob.prototype.arrayBuffer=function(){maximum=Math.max(maximum,this.size);total+=this.size;assert.ok(this.size<=CHUNK);return saved.call(this);};const reader=await read(file,expected,options({wasm:module}));try{assert.deepEqual(reader.identity(),expected);assert.equal(audit.active,0);assert.equal(maximum,CHUNK);assert.equal(total,file.size+prefix.length);assert.equal(audit.maximumChunk,CHUNK);}finally{reader.dispose();}}finally{Blob.prototype.arrayBuffer=saved;}});
