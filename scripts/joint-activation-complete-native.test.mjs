@@ -7,6 +7,7 @@ import test from 'node:test';import assert from 'node:assert/strict';
 import {readFileSync,writeFileSync} from 'node:fs';import {join,dirname} from 'node:path';import {createHash} from 'node:crypto';
 import * as native from '../packages/breditor-collaboration/dist/runtime/breditor_shared.js';
 import {testMetadataMaterialization} from './fixtures/local-metadata/materialization.mjs';
+import {withFixtureCleanup} from './fixtures/fixture-cleanup.mjs';
 import {prepareColdJointSources} from './fixtures/local-metadata/cold-joint-sources.mjs';
 import {nativePublicationPredecessorRoot} from './fixtures/native-publication/predecessor-root.mjs';
 import {selectedDeliveryNativeHost} from './fixtures/selected-delivery/native-host.mjs';
@@ -39,7 +40,7 @@ test('actual joint activation retains actors and metadata until authenticated pu
  Object.defineProperty(globalThis,'Image',{configurable:true,value:PacketRasterFixtureImage});
  const held=async()=>{const descriptor=JSON.parse(input.fixture.inventoryJson);for(const client of input.fixture.clients){await assert.rejects(acquireDocument.call(SharedWriterLease,descriptor.room.document,client.writer),e=>e.code==='writer_in_use');await assert.rejects(acquireReview.call(ReviewWriterLease,descriptor.room.document,client.actor),e=>e.code==='review_writer_in_use');}};
  const noTake=()=>{assert.throws(()=>joint.takeOwner(),e=>e.code==='joint_activation_state'||e.code==='joint_activation_busy');assert.throws(()=>joint.publishedMetadata(),e=>e.code==='joint_activation_state'||e.code==='joint_activation_busy');};
- try{
+ return withFixtureCleanup(async()=>{
   globalThis.fetch=async(url,options)=>{const address=String(url),commit=address.endsWith('/recovery/native-activation/v1/commit'),publish=address.endsWith('/recovery/native-publication/v1/publish');if(commit)commitRequests++;if(publish)publicationRequests++;const response=await fetch(url,options);if(commit&&loseCommit){loseCommit=false;assert.equal(response.status,200);lostCommit=JSON.parse(await response.text());throw Error('Test-owned lost actual joint Native commit reply');}if(publish&&losePublication){losePublication=false;assert.equal(response.status,200);lostPublication=JSON.parse(await response.text());throw Error('Test-owned lost actual joint publication reply');}return response;};
   stage=await prepareColdJointSources({...input,async materializeDependencies({scope,sources,metadata,check}){
    const before=await scope.retainCurrent(),bytes=Buffer.from(await before.current.file.arrayBuffer()),file=join(input.host.directory,'joint-before-version-materialization.archive');writeFileSync(file,bytes,{flag:'wx',mode:0o600});assert.deepEqual(readFileSync(file),bytes);const wire=input.requests.length;
@@ -109,5 +110,17 @@ test('actual joint activation retains actors and metadata until authenticated pu
   // original closure still cleans only its retired sources. No owner is faked.
   const close=input.session.close;Object.defineProperty(input.session,'owner',{configurable:true,get:()=>replacement});input.session.close=async()=>{await replacement?.discardAndClose();await close();};handedBack=true;
   const report={format:'breditor/joint-complete-native-observation',formatVersion:1,actualNativeParticipants:7,actualTransferredActors:14,retainedOfflineLanes:14,actualLocalMetadataLanes:3,actualNativeRequests:commitRequests,actualPublicationRequests:publicationRequests,normalWriterAcquisitions:normalAcquisitions,lostNativeReplyConfirmedBySameOwner:true,lostPublicationReplyConfirmedBySameOwner:true,independentPlanBeforeAllRequests:true,metadataContinuedBeforePublication:true,originalSourceContentPreserved:true,originalSourcesImmutableAfterCheckpoint:true,finalSelectedAssetStatesVerified:finalAssetStates.length,originalProtocolDeliveries:14,exactFutureDocumentAndCommentHistories:true,nativeEvidence,plan:{bytes:plan.bytes,sha256:plan.sha256},warmJointWorkflow:true,physicalDurabilityQualified:false,coldJointOwnerReconstructionQualified:false};console.log('JOINT_COMPLETE_NATIVE '+JSON.stringify(save(input.host.directory,'actual-joint-complete-observation.json',report)));
- }finally{SharedWriterLease.acquire=acquireDocument;ReviewWriterLease.acquire=acquireReview;globalThis.fetch=fetch;inspection?.close();delivery?.close();current?.close();activation?.close();publication?.close();transport?.dispose();stage?.fresh?.close();if(replacement&&!handedBack)await replacement.discardAndClose();await joint?.close();await run?.close();if(image)Object.defineProperty(globalThis,'Image',image);else delete globalThis.Image;}
+ },
+ ()=>{SharedWriterLease.acquire=acquireDocument;ReviewWriterLease.acquire=acquireReview;globalThis.fetch=fetch;},
+ ()=>inspection?.close(),
+ ()=>delivery?.close(),
+ ()=>current?.close(),
+ ()=>activation?.close(),
+ ()=>publication?.close(),
+ ()=>transport?.dispose(),
+ ()=>stage?.fresh?.close(),
+ ()=>!handedBack&&replacement?.discardAndClose(),
+ ()=>joint?.close(),
+ ()=>run?.close(),
+ ()=>{if(image)Object.defineProperty(globalThis,'Image',image);else delete globalThis.Image;});
 }}));
