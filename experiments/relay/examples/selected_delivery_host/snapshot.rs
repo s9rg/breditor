@@ -118,6 +118,7 @@ pub(super) async fn capture(
         origin: &ready.original.to_bytes()?,
         older: &ready.older.to_bytes()?,
         current: &current.to_bytes()?,
+        legacy: None,
         credentials: &credentials,
     })?;
     let public = json!({"path":path,"selection":selected_current,"deliverySelection":selected_delivery,"deliveryPathSelection":selected_path,"sequence":sequence,"previousSequence":previous_sequence,

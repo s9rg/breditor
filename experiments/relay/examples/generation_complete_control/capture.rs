@@ -195,7 +195,10 @@ async fn generate_selected(
         origin: &local.to_bytes()?,
         older: &ancestor.to_bytes()?,
         current: &current.to_bytes()?,
-        legacy: legacy.as_ref(),
+        legacy: legacy.as_ref().map(|legacy| super::public_inputs::LegacyFiles {
+            archive: &legacy.archive,
+            wal: &legacy.wal,
+        }),
         credentials: &credentials,
     })?;
     Ok(Running { path, router, control, operator_token })
