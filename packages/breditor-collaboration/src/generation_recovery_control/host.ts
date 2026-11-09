@@ -1,3 +1,4 @@
+import {controlCancellationReason,expireGenerationControl} from './cancellation.js';
 import {MAX_SERVER_GENERATION_RECOVERY_RASTER_RESPONSE_BYTES,type SharedServerLogGenerationRecoveryRasterRead} from './raster_contract.js';
 import {recoveryRasterAsset,prepareRecoveryRasterRequest,recoveryRasterEndpoint} from './raster_request.js';
 import {readRecoveryRasterResponse,verifyRecoveryRasterBytes} from './raster_response.js';
@@ -52,7 +53,7 @@ export class SharedServerLogGenerationRecoveryHost {
  }
  /** Detached metadata survives close; it grants no current native/provider authority. */
  selection():SharedServerLogGenerationRecoveryControlSelection{return this.#state.expected;}
- #local(signal?:AbortSignal):void {const s=this.#state;if(s.closed)throw fail('control_closed');if(aborted(s.signal)||aborted(signal)||aborted(s.active?.signal))throw fail('control_cancelled');}
+ #local(signal?:AbortSignal):void {const s=this.#state;if(s.closed)throw fail('control_closed');const reason=controlCancellationReason(s.active?.signal)??controlCancellationReason(s.signal)??controlCancellationReason(signal);if(reason)throw fail('control_cancelled',reason);}
  #guard(signal?:AbortSignal):void {this.#local(signal);try{this.#state.authority();}catch{throw fail('control_authority');}this.#local(signal);}
  /** Reauthenticate the separately configured operator and recheck actual native/provider owners.
   * This is a point-in-time server-scope check, not client/outbox closure or an activation grant. */
@@ -128,7 +129,7 @@ export class SharedServerLogGenerationRecoveryHost {
    // Use genuine event methods, not mutable methods/getters on an application signal.
    // Setup itself is fallible and therefore belongs inside the reserved lifetime.
    for(const selected of [s.signal,signal])if(selected){watched.push(selected);addListener.call(selected,'abort',abort,{once:true});}
-   if(aborted(s.signal)||aborted(signal))abort();timer=setTimeout(abort,s.milliseconds);
+   if(aborted(s.signal)||aborted(signal))abort();timer=setTimeout(()=>expireGenerationControl(controller),s.milliseconds);
    this.#guard(signal);const request=await prepare();this.#guard(signal);const token=await accountToken(s.getToken,controller.signal,s.milliseconds);this.#guard(signal);
    response=await fetch(request.endpoint,{method:'POST',headers:{'Authorization':`Bearer ${token}`,'X-Breditor-Principal':s.principal,'Content-Type':'application/json'},body:request.body,signal:controller.signal,credentials:'omit',redirect:'error',cache:'no-store'});this.#guard(signal);
    if(response.status!==200){await response.body?.cancel().catch(()=>{});throw fail(response.status===403?'control_permission':[429,503].includes(response.status)?'control_unavailable':'control_protocol');}

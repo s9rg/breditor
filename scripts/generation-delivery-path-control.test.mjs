@@ -11,7 +11,7 @@ function selection(){const origin=structuredClone(transportFixture().expected),p
 const json=(body,status=200,headers={})=>new Response(body,{status,headers:{'content-type':'application/json',...headers}});
 const receipt=expected=>JSON.stringify({format:'breditor/server-log-generation-delivery-path-recovery-control-read',formatVersion:1,selection:select(expected),scope:'complete-ordered-native-server-path-and-current-provider'});
 function oldReceipt(url,expected){return url===originalEndpoint?JSON.stringify({format:'breditor/server-log-generation-recovery-control-read',formatVersion:1,selection:originalSelect(expected.current.current),scope:'native-server-generation-and-server-provider'}):JSON.stringify({format:'breditor/server-log-generation-delivery-recovery-control-read',formatVersion:1,selection:currentSelect(expected.current),scope:'complete-previous-native-server-cut-and-current-provider'});}
-async function using(run,override){const before=globalThis.fetch,expected=selection(),calls=[];let original,current;globalThis.fetch=async(url,options)=>{calls.push({url,options});if(override){const result=await override(url,options,expected,calls);if(result!==undefined)return result;}return json(url===endpoint?receipt(expected):oldReceipt(url,expected));};try{original=await Original.open({endpoint:originalEndpoint,expected:expected.current.current,principal:'operator',getToken:()=>token,checkAuthority(){}});current=await Current.open({endpoint:currentEndpoint,expected:expected.current,current:original,principal:'operator',getToken:()=>token,checkAuthority(){}});return await run({expected,calls,original,current,options:{endpoint,expected:structuredClone(expected),current,principal:'operator',getToken:()=>token,checkAuthority(){}}});}finally{current?.close();original?.close();globalThis.fetch=before;}}
+async function using(run,override,timeouts={}){const before=globalThis.fetch,expected=selection(),calls=[];let original,current;globalThis.fetch=async(url,options)=>{calls.push({url,options});if(override){const result=await override(url,options,expected,calls);if(result!==undefined)return result;}return json(url===endpoint?receipt(expected):oldReceipt(url,expected));};try{original=await Original.open({endpoint:originalEndpoint,expected:expected.current.current,...timeouts.original,principal:'operator',getToken:()=>token,checkAuthority(){}});current=await Current.open({endpoint:currentEndpoint,expected:expected.current,current:original,...timeouts.delivery,principal:'operator',getToken:()=>token,checkAuthority(){}});return await run({expected,calls,original,current,options:{endpoint,expected:structuredClone(expected),current,principal:'operator',getToken:()=>token,checkAuthority(){}}});}finally{current?.close();original?.close();globalThis.fetch=before;}}
 test('ordered path keeps actual original/current and old prior literal and detached',()=>{const input=selection(),out=select(input);input.path.ancestors[0].native.manifest[0]^=8;assert.equal(out.path.ancestors.length,2);assert.deepEqual(out.path.current,out.current.continuation.current);assert.deepEqual(out.path.ancestors[0],out.current.continuation.previous);assert.notDeepEqual(out.path.ancestors[1],out.current.continuation.previous);assert.notDeepEqual(out.path.current.origin,out.path.ancestors[0]);assert.ok(Object.isFrozen(out.path.ancestors));assert.ok(Object.isFrozen(out.path.current.server.native.source.profile));});
 test('duplicate/no-op cuts are preserved, never silently deduplicated',()=>{const input=selection();input.path.ancestors.splice(1,0,structuredClone(input.path.ancestors[0]));assert.equal(select(input).path.ancestors.length,3);});
 for(const [name,mutate]of[
@@ -27,7 +27,50 @@ for(const [name,encode]of[
 test('MIME, declared/streamed bounds, UTF8 and truncation are complete refusals',async()=>{for(const response of [json('x',200,{'content-length':String(MAX+1)}),json('x'.repeat(MAX+1)),json('{}',200,{'content-length':'99'}),new Response(Uint8Array.of(255),{headers:{'content-type':'application/json'}}),new Response('{}',{headers:{'content-type':'text/html'}}),json('PRIVATE{')])await using(({options})=>assert.rejects(Host.open(options),e=>['path_control_protocol','path_control_transfer'].includes(e.code)&&!String(e).includes('PRIVATE')),(url)=>url===endpoint?response:undefined);});
 test('inner control lifetime is still necessary even when the whole-path route responds',()=>using(async({options,current})=>{const host=await Host.open(options);current.close();await assert.rejects(host.check(),code('path_control_closed'));host.close();}));
 test('busy ownership precedes both policy and token callbacks',async()=>{for(const mode of ['authority','token'])await using(async({options})=>{let host,armed=false,count=0;const pending=[],check=()=>{if(armed){armed=false;count++;pending.push(assert.rejects(host.check(),code('path_control_busy')));}};host=await Host.open({...options,checkAuthority(){if(mode==='authority')check();},getToken(){if(mode==='token')check();return token;}});armed=true;await host.check();await Promise.all(pending);assert.equal(count,1);host.close();});});
-test('ignored token cancellation and later authority loss cannot publish stale checks',async()=>{await using(async({options})=>{const stop=new AbortController(),pending=Host.open({...options,signal:stop.signal,getToken:()=>new Promise(()=>{})});stop.abort();await assert.rejects(pending,code('path_control_cancelled'));});await using(async({options})=>{let allowed=true;await assert.rejects(Host.open({...options,checkAuthority(){if(!allowed)throw Error('PRIVATE');},getToken(){allowed=false;return token;}}),code('path_control_authority'));});});
+test('a deadline identifies the expired nested control while caller abort keeps the original cancellation code',async context=>{
+ context.mock.timers.enable({apis:['setTimeout']});
+ const expectCancellation=reason=>error=>{
+  assert.equal(error.code,'path_control_cancelled');
+  assert.equal(error.cancellationReason,reason);
+  return true;
+ };
+ for(const [layer,route] of [['original',originalEndpoint],['delivery',currentEndpoint],['path',endpoint]]){
+  let signal,stall=false;
+  let enter;
+  const entered=new Promise(resolve=>{enter=resolve;});
+  const timeout=50;
+  await using(async({options})=>{
+   const host=await Host.open({...options,...(layer==='path'?{requestTimeoutMs:timeout}:{})});
+   try{
+    stall=true;
+    const refusal=assert.rejects(host.check(),expectCancellation('deadline'));
+    await entered;
+    context.mock.timers.tick(timeout);
+    await refusal;
+    assert.equal(signal.aborted,true);
+    stall=false;
+    await host.check();
+   }finally{host.close();}
+  },(url,request)=>{
+   if(!stall||url!==route)return;
+   signal=request.signal;
+   enter();
+   return new Promise((_,reject)=>signal.addEventListener('abort',()=>reject(new Error('PRIVATE expired')),{once:true}));
+  },{[layer]:{requestTimeoutMs:timeout}});
+ }
+ await using(async({options})=>{
+  const stop=new AbortController();
+  const pending=Host.open({...options,signal:stop.signal,getToken:()=>new Promise(()=>{})});
+  const refusal=assert.rejects(pending,expectCancellation('signal'));
+  stop.abort(new Error('PRIVATE caller cancellation'));
+  context.mock.timers.tick(15000);
+  await refusal;
+ });
+ await using(async({options})=>{
+  let allowed=true;
+  await assert.rejects(Host.open({...options,checkAuthority(){if(!allowed)throw Error('PRIVATE');},getToken(){allowed=false;return token;}}),code('path_control_authority'));
+ });
+});
 test('unread bodies are cancelled after header or policy refusal',async()=>{for(const mode of ['mime','length','authority']){let cancelled=0,allowed=true;await using(({options})=>assert.rejects(Host.open({...options,checkAuthority(){if(!allowed)throw Error('PRIVATE');}}),code(mode==='authority'?'path_control_authority':'path_control_protocol')),(url)=>{if(url!==endpoint)return;if(mode==='authority')allowed=false;return new Response(new ReadableStream({cancel(){cancelled++;}}),{headers:{'content-type':mode==='mime'?'text/html':'application/json',...(mode==='length'?{'content-length':String(MAX+1)}:{})}});});assert.equal(cancelled,1);}});
 test('accepted choices detach before callback mutation and the first await',()=>{let armed=false,input,observed;return using(async({options})=>{const host=await Host.open({...options,getToken(){if(armed){armed=false;input.document='omit';}return token;}});input={document:'include',review:{kind:'start'}};armed=true;await assert.rejects(host.readAcceptedNative(input),code('path_control_protocol'));assert.equal(observed,'include');host.close();},(url,init)=>{if(url.endsWith('/accepted/read')){observed=JSON.parse(init.body).document;return json('PRIVATE',400);}});});
 test('private ports ignore public shadows and copies supply no path/current brand',()=>using(async({options,calls})=>{const host=await Host.open(options),a=Original.prototype.check,b=Current.prototype.check,c=Host.prototype.check,d=Host.prototype.selection;try{Original.prototype.check=()=>Promise.resolve();Current.prototype.check=()=>Promise.resolve();Host.prototype.check=()=>Promise.resolve();Host.prototype.selection=()=>selection();const before=calls.length,actual=port(host);await actual.check();assert.equal(calls.length,before+5);assert.deepEqual(actual.selection,select(options.expected));assert.throws(()=>port(Object.create(Host.prototype)),code('path_control_policy'));}finally{Original.prototype.check=a;Current.prototype.check=b;Host.prototype.check=c;Host.prototype.selection=d;host.close();}}));

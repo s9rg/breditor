@@ -74,6 +74,13 @@ checks complete bounded UTF-8 JSON and reserves requests before callbacks.
 Cancellation and cleanup failures release that reservation without publishing
 a successful result. Responses cannot manufacture an authenticated host.
 
+The recovery, delivery and ordered-path controls retain their existing
+cancellation codes. A cancelled error can include `cancellationReason`.
+`deadline` records an expired SDK deadline, including one from a delegated
+control. `signal` records a caller or host abort that stopped the request first.
+The SDK retains its configured budgets and keeps caller-provided signal reasons
+private.
+
 The SDK-private port uses the actual class brand, so replacing public selection,
 check or read methods cannot provide a forged server check. It supports all four
 native requests, including original comment rights. The physical-family SDK
