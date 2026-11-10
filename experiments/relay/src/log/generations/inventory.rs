@@ -4,7 +4,7 @@ use crate::{Error, Result, credentials};
 use std::{collections::BTreeSet, fs};
 
 impl Generations {
-    pub(super) fn verify_inventory(&self) -> Result<()> {
+    pub(super) fn verify_inventory(&self) -> Result<usize> {
         self.directory.guard()?;
         let mut known: BTreeSet<String> =
             [".owner", ".head.json", self.ready_name].into_iter().map(String::from).collect();
@@ -66,6 +66,7 @@ impl Generations {
             // A bounded private stage is never admitted as history, overwritten or removed here.
             // Only the synced intent's saved inode can complete an interrupted publication.
         }
-        self.directory.guard()
+        self.directory.guard()?;
+        Ok(stages)
     }
 }

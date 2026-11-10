@@ -20,7 +20,9 @@ impl Log {
         // Two bounded records fit in an empty WAL. Check retained capacity and
         // whether a continuation is available, then let each append rotate at
         // the usual frame boundary so the durable sequence stays unchanged.
-        self.check_append_capacity(2, prepare.bytes + commit.bytes)?;
+        if self.check_append_capacity(2, prepare.bytes + commit.bytes)? {
+            self.check_rotation_staging_capacity()?;
+        }
         self.append_encoded(&prepare)?;
         let result = self.ready().and_then(|()| self.append_encoded(&commit));
         if result.is_err() {

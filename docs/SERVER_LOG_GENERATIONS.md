@@ -79,6 +79,13 @@ occupied continuation, even if it is empty. Normal cleanup removes only the
 intent's exact owned aliases. Bounded unpublished stages are retained, never
 silently admitted as history or scavenged. Unknown directory contents refuse.
 
+A new rotation requires space for its continuation and one staged metadata
+file. This preflight also runs before either record of a suggestion revision
+that needs rotation. A staging-capacity refusal leaves the selected room usable
+for operations that still fit its active WAL. Pending rotation recovery checks
+for a free staging slot before publishing any missing metadata. If no slot is
+available, it preserves the pending intent and every existing file.
+
 Live guards check held inodes, path custody, lengths, controls and filesystem
 change witnesses. A detected change permanently fences that owner until cold
 recovery. Change witnesses are not portable identities or cryptographic proof;

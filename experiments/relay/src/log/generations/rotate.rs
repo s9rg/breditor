@@ -107,7 +107,6 @@ impl Generations {
         })
     }
     fn prepare(&self, log: &mut Log, next: &str) -> Result<()> {
-        self.verify_inventory()?;
         self.directory.absent(".rotation.json")?;
         self.directory.absent(&format::wal_name(next))?;
         self.verify_retained()?;
@@ -175,6 +174,9 @@ impl Generations {
             Err(error) => return Err(error.into()),
             Ok(_) => {}
         }
+        // Inventory reads the marker under its own short lock. Count stages
+        // before taking the marker's lock for recovery.
+        let stages = self.verify_inventory()?;
         let marker = held_file::open(&path)?;
         let marker_bytes = held_file::read(&marker, format::MAX_CONTROL)?;
         let intent: Intent = format::decode(&marker_bytes)?;
@@ -196,6 +198,11 @@ impl Generations {
             self.clean_intent(&intent, &marker, &marker_bytes, &log.file)?;
             self.refresh_active(&log.file)?;
             return Self::receipt(self.current(), true).map(Some);
+        }
+        // Manifest and head publication each need one stage while the owned
+        // continuation may still be present. These stages are used in turn.
+        if stages >= format::MAX_GENERATIONS {
+            return Err(Error::Contract("physical rotation staging capacity"));
         }
         if self.current().hash != intent.before || self.active_cut(log)? != intent.sealed {
             return Err(Error::Contract("physical rotation prior cut differs"));
@@ -288,6 +295,25 @@ impl Generations {
     }
 }
 impl Log {
+    pub(in crate::log) fn check_rotation_staging_capacity(&mut self) -> Result<()> {
+        let state =
+            self.generations.as_ref().ok_or(Error::Contract("original log does not rotate"))?;
+        let inventory = state.verify_inventory().and_then(|stages| {
+            state.directory.absent(".rotation.json")?;
+            Ok(stages)
+        });
+        match inventory {
+            // The empty continuation can coexist with one staged control.
+            // Every stage already has its own byte ceiling.
+            Ok(stages) if stages + 2 <= format::MAX_GENERATIONS => Ok(()),
+            Ok(_) => Err(Error::Contract("physical rotation staging capacity")),
+            Err(error) => {
+                self.poisoned = true;
+                Err(error)
+            }
+        }
+    }
+
     pub(crate) fn rotate_generations(&mut self, next: &str) -> Result<ServerLogGenerationReceipt> {
         self.ready()?;
         generation(next)?;
@@ -302,6 +328,7 @@ impl Log {
         {
             return Err(Error::Contract("physical rotation generation or capacity"));
         }
+        self.check_rotation_staging_capacity()?;
         self.poisoned = true;
         let mut state = self.generations.take().ok_or(Error::NeedsRecovery)?;
         let result = state
