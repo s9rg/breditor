@@ -34,6 +34,19 @@ test('late token work cannot submit after actual source authority is revoked',as
 });
 test('before-submit cancellation differs from uncertain cancellation after fetch begins',async()=>{
  const early=new AbortController();early.abort();const host=Host.configure(options({signal:early.signal}));await assert.rejects(host.publish(joint()),code('publication_cancelled'));host.close();
+ const queued=new AbortController();let scheduled=false,tokenCalls=0,requests=0;
+ const pendingToken=Host.configure(options({
+  signal:queued.signal,
+  checkAuthority(){if(!scheduled){scheduled=true;queueMicrotask(()=>queued.abort());}},
+  getToken(){tokenCalls++;return token;}
+ }));
+ try{
+  await using(async()=>{requests++;throw Error('Cancelled publication must not fetch');},async()=>{
+   await assert.rejects(pendingToken.publish(joint()),code('publication_cancelled'));
+   assert.equal(requests,0);
+   assert.equal(tokenCalls,0,'Cancellation before token invocation must skip the host callback');
+  });
+ }finally{pendingToken.close();}
  const controller=new AbortController(),entered=deferred();const late=Host.configure(options({signal:controller.signal}));await using(async(_url,init)=>{entered.resolve();return new Promise((_resolve,reject)=>init.signal.addEventListener('abort',()=>reject(Error('TEST_PRIVATE disconnected')),{once:true}));},async()=>{const pending=late.publish(joint());await entered.promise;controller.abort();await assert.rejects(pending,code('publication_outcome_unknown'));});late.close();
 });
 test('one actual requester owns in-flight work and closing cannot imply rollback',async()=>{

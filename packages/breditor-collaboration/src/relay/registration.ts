@@ -9,7 +9,14 @@ export function accountToken(getToken:(signal:AbortSignal)=>string|Promise<strin
   const timer=setTimeout(()=>finish(new SharedRelayError("token_unavailable")),milliseconds);
   function finish(error?:SharedRelayError,value?:string):void{clearTimeout(timer);signal.removeEventListener("abort",stop);if(error)reject(error);else resolve(value!);}
   signal.addEventListener("abort",stop,{once:true});if(signal.aborted){stop();return;}
-  Promise.resolve().then(()=>getToken(signal)).then(value=>{try{finish(undefined,secret(value));}catch{finish(new SharedRelayError("token_unavailable"));}},()=>finish(new SharedRelayError("token_unavailable")));
+  void Promise.resolve().then(async()=>{
+   if(signal.aborted){stop();return;}
+   try{
+    const value=await getToken(signal);
+    if(signal.aborted){stop();return;}
+    finish(undefined,secret(value));
+   }catch{finish(new SharedRelayError("token_unavailable"));}
+  });
  });
 }
 
