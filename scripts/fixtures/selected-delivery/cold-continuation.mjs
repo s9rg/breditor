@@ -22,7 +22,7 @@ export async function controls(host,previous,scope){
   return {actual,baseline:base,previous:latest,path,server,inventory,close(){inventory.dispose();server.dispose();for(const item of hosts.toReversed())item.close();}};
  }catch(error){inventory?.dispose();server?.dispose();for(const item of hosts.toReversed())item.close();throw error;}
 }
-async function handoverControls(host,actual,scope){
+export async function handoverControls(host,actual,scope){
  const hosts=[];
  let server,inventory;
  const auth={principal:'operator',getToken:()=>host.operatorToken(actual),checkAuthority:()=>scope.check()};
@@ -36,7 +36,7 @@ async function handoverControls(host,actual,scope){
   const root=dirname(actual.path);
   server=await api.SharedServerLogGenerationRoomArchive.read(new Blob([readFileSync(join(root,'server-after.backup'))]),actual.selection.source.server,{wasm:native,checkAuthority:scope.check});
   inventory=await api.SharedServerLogGenerationParticipantInventory.read(new Blob([readFileSync(join(root,'inventory.json'))]),actual.selection.source.participants);
-  return {actual,path,server,inventory,close(){inventory.dispose();server.dispose();for(const item of hosts.toReversed())item.close();}};
+  return {actual,path,delivery,server,inventory,close(){inventory.dispose();server.dispose();for(const item of hosts.toReversed())item.close();}};
  }catch(error){inventory?.dispose();server?.dispose();for(const item of hosts.toReversed())item.close();throw error;}
 }
 export async function continueAfterRealColdOpen({session,host,fixture,previous,head,identity,adapters,contexts,oldGate,handover=false}){

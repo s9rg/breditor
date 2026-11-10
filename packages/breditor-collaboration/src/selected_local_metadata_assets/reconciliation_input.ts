@@ -1,3 +1,4 @@
+import type {MetadataHandover} from './handover_reconciliation.js';
 /** Actual reader/controller identities and lifetimes, before capture IO.
  * Never call public shadows or accept matching structural reader methods. */
 import {fields} from '../physical_room_record_cut/policy.js';
@@ -12,6 +13,6 @@ export function prepareLocalMetadataReconciliationInput(provided:LocalMetadataRe
  const port=generationDeliveryRecoveryHostPort(host),held=file.call(reader),selected=identity.call(reader),value=metadata.call(reader),current=port.selection.continuation.current;
  if(!equal(selected,current.participants)||!equal(selected.source,current.server.native)||!equal(value.source,current.server.native))throw fail('local_metadata_assets_state');
  const check=()=>{if(file.call(reader)!==held||identity.call(reader)!==selected||metadata.call(reader)!==value)throw fail('local_metadata_assets_changed');};
- check();return Object.freeze({host,reader,port,metadata:value.native,check});
+ check();return Object.freeze({host,reader,port,metadata:value.native,check,handover:undefined as MetadataHandover|undefined});
 }
 export type PreparedLocalMetadataReconciliation=ReturnType<typeof prepareLocalMetadataReconciliationInput>;

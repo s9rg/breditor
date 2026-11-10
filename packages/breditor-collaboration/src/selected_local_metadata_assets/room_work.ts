@@ -1,3 +1,4 @@
+import {admitMetadataHandoverCatalog,type MetadataHandover} from './handover_reconciliation.js';
 import {verifiedMetadataTargetFamilies} from '../selected_local_metadata_continuation/native_origin.js';
 import type {PhysicalOperationV3Family} from '../physical_room_operation_v3/contract.js';
 import {localMetadataRecoveryRasterPort,type LocalMetadataRecoveryRasterTransport} from './raster_transport.js';
@@ -132,9 +133,9 @@ export class LocalMetadataReferenceWork {
  }
  /** Only a freshly captured native/current cut can request this union. A
   * portable old cut cannot stand in for newer live metadata requirements. */
- async availability(host:LocalMetadataAssetAvailabilityHost):Promise<LocalMetadataAssetAvailabilityBundle>{
+ async availability(host:LocalMetadataAssetAvailabilityHost,handover?:MetadataHandover):Promise<LocalMetadataAssetAvailabilityBundle>{
   const port=localMetadataAvailabilityHost(host);this.#check();if(!this.#finished||!this.#room||!this.#cut)throw fail('local_metadata_assets_closed');
-  const finished=this.#finished,root=cut.root.call(this.#cut),catalog=parsePhysicalCatalogV3Manifest(root.source.manifest);port.admit(catalog);
+  const finished=this.#finished,root=cut.root.call(this.#cut),catalog=parsePhysicalCatalogV3Manifest(root.source.manifest);if(handover)admitMetadataHandoverCatalog(handover,catalog);else port.admit(catalog);
   const check=()=>{this.#check();for(const actual of this.#allSources){const before=this.#availabilityStamps.get(actual.source.core),now=coreReadStamp(actual.source.core);if(!before||before.document!==now.document||before.review!==now.review)throw fail('local_metadata_assets_changed');}};check();
   const uploads=await readLocalMetadataUploadInventory(this.#room,this.#cut,this.#options,check);check();
   let provider:SharedServerLogGenerationRecoveryAssetRead|null=null;
@@ -149,10 +150,12 @@ export class LocalMetadataReferenceWork {
  async reconcile(input:PreparedLocalMetadataReconciliation,snapshot:LocalMetadataDeliverySnapshot):Promise<LocalMetadataReconciliationRead>{
   const check=()=>{this.#check();input.check();for(const row of this.#allSources){const before=this.#availabilityStamps.get(row.source.core),now=coreReadStamp(row.source.core);if(!before||before.document!==now.document||before.review!==now.review)throw fail('local_metadata_assets_changed');}};
   check();if(!this.#cut||!this.#finished)throw fail('local_metadata_assets_closed');
-  const available=await this.availability(input.host);check();
+  if(input.handover)await input.handover.port.check(this.#waits.signal);
+  const available=await this.availability(input.host,input.handover);check();
   const result=await captureLocalMetadataReconciliation(this.#scope,this.#allSources,snapshot,this.#cut,input,available,check);check();
-  const fresh=await this.availability(input.host);check();if(!equal(available.availability,fresh.availability))throw fail('local_metadata_assets_changed');
-  return result;
+  const fresh=await this.availability(input.host,input.handover);check();if(!equal(available.availability,fresh.availability))throw fail('local_metadata_assets_changed');
+  if(input.handover)await input.handover.port.check(this.#waits.signal);
+  check();return result;
  }
  /** Separate original-receipt containment. Existing reconciliation remains literal. */
  async containReceipts(input:PreparedLocalMetadataReconciliation,snapshot:LocalMetadataDeliverySnapshot):Promise<LocalMetadataReceiptContainmentRead>{
@@ -160,7 +163,7 @@ export class LocalMetadataReferenceWork {
   check();if(!this.#cut||!this.#finished||!this.#factories)throw fail('local_metadata_assets_closed');
   const reconciliation=await this.reconcile(input,snapshot);check();
   const result=await captureOriginalReceiptContainment(this.#scope,this.#allSources,snapshot,this.#cut,input,reconciliation,this.#factories.reads,check);check();
-  const fresh=await this.availability(input.host);check();if(!equal(reconciliation.assets.availability,fresh.availability))throw fail('local_metadata_assets_changed');return result;
+  const fresh=await this.availability(input.host,input.handover);check();if(!equal(reconciliation.assets.availability,fresh.availability))throw fail('local_metadata_assets_changed');return result;
  }
  /** Exact additional packet bytes, preserving original records and Native source
   * Pending. This read does not claim the expanded provider-byte union yet. */
@@ -169,7 +172,7 @@ export class LocalMetadataReferenceWork {
   check();if(!this.#cut||!this.#finished||!this.#factories)throw fail('local_metadata_assets_closed');
   const containment=await this.containReceipts(input,snapshot);check();const references=this.#finished.bundle;
   const read=await captureOriginalMetadataPacketTexts(this.#scope,this.#allSources,snapshot,this.#cut,this.#factories.reads,input,containment,{bytes:references.references.bytes,sha256:references.references.sha256},this.#options,check);check();
-  const fresh=await this.availability(input.host);check();if(!equal(containment.reconciliation.assets.availability,fresh.availability))throw fail('local_metadata_assets_changed');
+  const fresh=await this.availability(input.host,input.handover);check();if(!equal(containment.reconciliation.assets.availability,fresh.availability))throw fail('local_metadata_assets_changed');
   return Object.freeze({format:'breditor/selected-local-metadata-packet-retention-bundle',formatVersion:1,scope:'held-original-packet-bytes-and-native-dependency-read',references,containment,packets:read.files,requirements:read.requirements});
  }
  /** Retain additional packet bytes and their expanded raster union together
@@ -212,7 +215,10 @@ export class LocalMetadataReferenceWork {
   * Actual unacknowledged operations, Native heads and provider loss still block. */
  async serverPacketReconciliation(input:PreparedLocalMetadataReconciliation,snapshot:LocalMetadataDeliverySnapshot):Promise<ServerPacketReconciliationRead>{
   const check=()=>{this.#check();input.check();for(const row of this.#allSources){const before=this.#availabilityStamps.get(row.source.core),now=coreReadStamp(row.source.core);if(!before||before.document!==now.document||before.review!==now.review)throw fail('local_metadata_assets_changed');}};
-  check();const original=await this.reconcile(input,snapshot);check();return this.#currentServerPacketReconciliation(input,snapshot,original);
+  check();const original=await this.reconcile(input,snapshot);check();
+  const result=await this.#currentServerPacketReconciliation(input,snapshot,original);check();
+  if(input.handover)await input.handover.port.check(this.#waits.signal);
+  check();return result;
  }
  /** Internal continuation of a genuinely captured original read. The caller
   * keeps the same work, current cut and all source stamps alive across IO. */

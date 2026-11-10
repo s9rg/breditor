@@ -30,7 +30,8 @@ import {detachLocalReviewBundle} from './bundle.js';
 import {admitLocalReviewRoomSource} from './bundle_native.js';
 import {verifyLocalReviewSnapshotContinuation} from './continuation.js';
 import {localReviewStoredSelection} from './resume_identity.js';
-import {authorizeSelectedLocalReviewResume} from './resume_admission.js';
+import {authorizeSelectedLocalReviewResume,authorizeSelectedLocalReviewHandover} from './resume_admission.js';
+import type {LocalReviewHandoverResumeInput} from './handover_contract.js';
 import type {LocalReviewResumeInput,LocalReviewStoredSelection} from './resume_contract.js';
 import {localChoice,localBinding,localSnapshot,localJson,emptyRelay,equal,fail,MAX_LOCAL_REVIEW_BYTES} from './policy.js';
 import {verifyLocalReviewProgress} from './native_review.js';
@@ -105,6 +106,13 @@ export class SelectedLocalReviewDelivery{
  /** Fresh full native path, all saved files and one explicit current decision
   * create a NEW gate. No old runtime permission is revived. */
  static async resume(scope:SelectedNativeRecoveryScope,input:LocalReviewResumeInput):Promise<SelectedLocalReviewDelivery>{const selected=await authorizeSelectedLocalReviewResume(scope,input),gate=await resumePreparedSelectedLocalReviewDelivery(scope,selected.admission);try{return await this.#begin(scope,gate,{expected:selected.choice,approve:()=>true,checkAuthority:selected.authority},selected.bundle,selected.stored);}catch(error){await gate.close();throw error;}}
+ /** Reopen the original review facts under a freshly authenticated sealed handover. */
+ static async resumeAcrossHandover(scope:SelectedNativeRecoveryScope,input:LocalReviewHandoverResumeInput):Promise<SelectedLocalReviewDelivery>{
+  const selected=await authorizeSelectedLocalReviewHandover(scope,input);
+  const gate=await resumePreparedSelectedLocalReviewDelivery(scope,selected.admission);
+  try{return await this.#begin(scope,gate,{expected:selected.choice,approve:()=>true,checkAuthority:selected.authority},selected.bundle,selected.stored);}
+  catch(error){await gate.close();throw error;}
+ }
  static async open(scope:SelectedNativeRecoveryScope,gate:PreparedSelectedNativeDelivery,input:OpeningInput):Promise<SelectedLocalReviewDelivery>{return this.#begin(scope,gate,input);}
  /** Existing-only cold admission: a new genuine prepared gate, literal full
   * bundle, actual source continuation and a fresh host decision are required. */

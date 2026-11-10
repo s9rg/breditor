@@ -1,3 +1,4 @@
+import {prepareHandoverMetadataReconciliation,type LocalMetadataHandoverReconciliationInput,type HandoverServerPacketReconciliationRead} from '../selected_local_metadata_assets/handover_reconciliation.js';
 import {consumeVerifiedMetadataFacts,type VerifiedMetadataContinuationFacts} from '../selected_local_metadata_continuation/native_origin.js';
 import {NativeReconstructionWaits} from '../selected_native_reconstruction/read_waits.js';
 import {prepareHeldRoomActivation,type RoomActivationPreparationPolicy} from '../room_native_activation_intent/prepare.js';
@@ -262,6 +263,16 @@ export class SelectedLocalMetadataDelivery{
  captureServerPacketReconciliation(provided:LocalMetadataReconciliationInput):Promise<ServerPacketReconciliationRead>{
   let input!:ReturnType<typeof prepareLocalMetadataReconciliationInput>,result:ServerPacketReconciliationRead|undefined;
   return this.#captureReferenceOperation(async work=>{this.#current();if(!this.#snapshot)throw fail();result=await work.serverPacketReconciliation(input,this.#snapshot);this.#current();},()=>{input=prepareLocalMetadataReconciliationInput(provided);}).then(()=>{if(!result)throw fail();return result;});
+ }
+ /** Current metadata and provider closure through a separately selected sealed handover. */
+ captureServerPacketReconciliationAcrossHandover(provided:LocalMetadataHandoverReconciliationInput):Promise<HandoverServerPacketReconciliationRead>{
+  let input!:ReturnType<typeof prepareHandoverMetadataReconciliation>,result:HandoverServerPacketReconciliationRead|undefined;
+  return this.#captureReferenceOperation(async work=>{
+   this.#current();if(!this.#snapshot)throw fail();
+   const read=await work.serverPacketReconciliation(input,this.#snapshot);
+   this.#current();
+   result=Object.freeze({format:'breditor/selected-local-handover-server-packet-reconciliation-read',formatVersion:1,handover:input.handover.port.handover!,read});
+  },()=>{input=prepareHandoverMetadataReconciliation(provided);}).then(()=>{if(!result)throw fail();return result;});
  }
  /** Source-owned immutable raster bytes for the complete Native/provider and
   * whole-upload union. Transport reads neither mutate caches nor ACK queues. */

@@ -20,7 +20,7 @@ import {MAX_SELECTED_GENERATION_HEAD_REQUIREMENTS} from '../selected_room_reconc
 const readRecords=PhysicalRoomRecordCutArchive.prototype.records;
 export async function captureLocalMetadataReconciliation(scope:SelectedNativeRecoveryScope,sources:readonly RetainedDeliveryClient[],snapshot:LocalMetadataDeliverySnapshot,cut:PhysicalRoomRecordCutArchive,input:PreparedLocalMetadataReconciliation,assets:LocalMetadataAssetAvailabilityBundle,check:()=>void):Promise<LocalMetadataReconciliationRead>{
  check();input.check();
- const legacy=await scope.readDeliveryReconciliation(input.host,input.reader);check();input.check();
+ const legacy=input.handover?await scope.readHandoverDeliveryReconciliation(input.handover.host,input.reader):await scope.readDeliveryReconciliation(input.host,input.reader);check();input.check();
  if(!equal(assets.availability.control,{kind:'native-continuation',selection:legacy.native.control})||!equal(assets.availability.current,legacy.provider.current)||!equal(assets.availability.approval,legacy.provider.approval)||!equal(assets.availability.uploads,legacy.provider.uploads))throw fail('local_metadata_assets_state');
  const local=localMetadataReconciledReviews(sources,snapshot,input,check);
  const pending:LocalMetadataReconciliationPending[]=[];
