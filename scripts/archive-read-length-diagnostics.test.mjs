@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {readFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
 import {hashSharedArchive,SharedArchiveIntegrityError} from '../packages/breditor-collaboration/dist/index.js';
 import {prepareArchiveIntegrity} from '../packages/breditor-collaboration/dist/archive_integrity/context.js';
 import * as native from '../packages/breditor-collaboration/dist/runtime/breditor_shared.js';
@@ -13,6 +14,23 @@ function failure(expected){return error=>{assert.ok(error instanceof SharedArchi
 test('correct bounded reads retain exact bytes and ordinary errors keep their old shape',async()=>{
  const context=prepareArchiveIntegrity(options);assert.deepEqual(await context.read(new Blob(['abc']),1,2),Uint8Array.of(98,99));
  const error=new SharedArchiveIntegrityError('archive_io','existing message');assert.equal('readFailure'in error,false);assert.equal(error.code,'archive_io');assert.equal(error.message,'existing message');
+});
+test('an already bounded whole Blob is read directly without slicing it again',async()=>{
+ const base=new Blob([new Uint8Array(1542).fill(19)]);
+ const bytes=base.slice(31,785),slice=Blob.prototype.slice;
+ let extraSlices=0;
+ try{
+  Blob.prototype.slice=function(start,end,...args){
+   if(this.size===754&&start===0&&end===754){extraSlices++;return new Blob();}
+   return slice.call(this,start,end,...args);
+  };
+  const context=prepareArchiveIntegrity(options);
+  const result=await context.readAndDigest(bytes,754);
+  assert.equal(result.bytes.byteLength,754);
+  assert.ok(result.bytes.every(byte=>byte===19));
+  assert.equal(result.sha256,createHash('sha256').update(new Uint8Array(754).fill(19)).digest('hex'));
+  assert.equal(extraSlices,0);
+ }finally{Blob.prototype.slice=slice;}
 });
 test('short transport results report exact lengths and release the genuine Native digest owner',async()=>{
  const file=new Blob(['PRIVATE-INPUT']),audit=audited();

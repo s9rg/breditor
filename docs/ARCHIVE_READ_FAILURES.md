@@ -131,3 +131,15 @@ The separately reproduced [room-cut request mutation](RECORD_CUT_REQUEST_SNAPSHO
 has a qualified repair. It does not explain or repair this zero-byte read, either
 of the earlier larger zero-byte records, or the historical WebKit observation.
 The larger restart coordinator remains isolated and all 13 V1 gates remain open.
+
+## Complete entry reads
+
+The room-record reader hashes each opaque entry against its manifest. For an
+entry that fits within the bounded digest chunk, the integrity reader reads
+the entire selected Blob directly. Partial ranges still use a bounded slice.
+Every read must return exactly the requested number of bytes before hashing.
+
+A selected-delivery handover qualification recorded a request for 754 bytes
+that returned zero while hashing a room-record entry inside an asset approval
+archive. The controlled regression isolates the extra full-range slice.
+The observed runtime failure still requires end-to-end qualification.
