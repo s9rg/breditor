@@ -91,12 +91,12 @@ that fail before returning a staged child, and native owners whose initial
 discard fails. The same private runtime scope retains those actual owners until
 cleanup succeeds; no saved progress value can reconstruct that custody.
 
-The internal [common custody barrier](OPERATIONAL_COHORT_CUSTODY.md) reserves
-original and generation children together and consumes them only after one
-final cut and liveness sweep. The durable V2 operational parent still needs to
-use it; committing the two families separately remains unsupported. Explicit historic-copy
-dispositions, complete client/provider reference closure, independent
-comment/server-log generations and authenticated activation remain work.
+The [durable V2 operational parent](MIXED_ROOM_OPERATIONAL_RECOVERY.md) uses
+the [common custody barrier](OPERATIONAL_COHORT_CUSTODY.md) to reserve original
+and generation children together. Its `intoParts()` hands over both families
+after one final cut and liveness sweep. Explicit historic-copy dispositions,
+complete client/provider reference closure, independent comment/server-log
+generations and authenticated activation remain work.
 
 ## Required functional checks
 

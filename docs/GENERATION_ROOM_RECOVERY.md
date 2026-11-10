@@ -75,10 +75,10 @@ decoding are controlled fixtures; this does not qualify browser crash durability
 
 The V2 catalog retains the selected native server bundle, inventory and every
 supplied participant file using a separate closed manifest and durable inactive
-staging records. A common mixed-family handoff now exists internally; explicit
-dispositions for other copies and durable mixed-family operational intent still
-need integration. Neither may reinterpret an original
-journal or silently reset Undo.
+staging records. The [durable V2 operational parent](MIXED_ROOM_OPERATIONAL_RECOVERY.md)
+records the mixed-family recovery intent, supports cold resume and transfers
+both families together with their original journals and Undo histories.
+Explicit dispositions for other retained copies remain open.
 
 Independent comment/server-log generations, complete client/provider reference
 closure and current authenticated whole-room activation remain separate required
