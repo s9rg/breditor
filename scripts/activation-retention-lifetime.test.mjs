@@ -1,8 +1,10 @@
-/** Cancellable retention of inert activation DATA, actual corpus and normal Rust hashing. */
+/** Cancellable activation callbacks with actual retained DATA and normal Rust hashing. */
 import test,{before,after} from 'node:test';import assert from 'node:assert/strict';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
 import {retainedActivationData} from './fixtures/activation-retention/actual-intent.mjs';
 import {prepareHeldRoomActivation as prepare} from '../packages/breditor-collaboration/dist/room_native_activation_intent/prepare.js';
+import {commitHeldRoomActivation as commit} from '../packages/breditor-collaboration/dist/room_native_activation_intent/commit.js';
+import {RoomActivationIntentStore as Store} from '../packages/breditor-collaboration/dist/room_native_activation_intent/store.js';
 import {SharedDurableNativeActivationHost as Host} from '../packages/breditor-collaboration/dist/native_activation_control/host.js';
 let native,capture,choice,reset;before(async()=>{({native,capture,choice}=await retainedActivationData());reset=environment();});after(()=>reset?.());
 test('DATA retention callback can await owner shutdown without trapping the preparation lifetime',{timeout:30000},async()=>{
@@ -35,8 +37,57 @@ test('successful DATA retention completes before the absent-only intent and reta
  try{
   operation=prepare(capture,{database:'successful-data-retainer-intent',selectActivation:()=>host,retainChoice(selected){seen=selected;enter();return gate;}},{wasm:native,checkAuthority:check},check);const observed=operation.then(value=>({ok:true,value}),error=>({ok:false,error}));await Promise.race([entered,observed.then(result=>{throw result.error??Error('Retainer not called');})]);
   assert.equal(seen.objects.length,13);assert.deepEqual(seen.objects,choice.objects);assert.deepEqual(await indexedDB.databases(),[]);release();const result=await observed;if(!result.ok)throw result.error;assert.deepEqual(result.value,seen);
-  const {RoomActivationIntentStore:Store}=await import('../packages/breditor-collaboration/dist/room_native_activation_intent/store.js'),store=new Store(result.value,{wasm:native,checkAuthority:check});
+  const store=new Store(result.value,{wasm:native,checkAuthority:check});
   try{const saved=await store.open();assert.equal(saved.state.phase,'prepared');assert.deepEqual(saved.choice,seen);assert.equal(saved.capture.recovery.kind,'retained');assert.equal(saved.capture.recovery.bundle.assets.kind,'retained');}finally{await store.close();}
   assert.deepEqual((await indexedDB.databases()).map(row=>row.name),['successful-data-retainer-intent']);
  }finally{release();await operation?.catch(()=>{});host.close();}
+});
+
+test('cancelled activation approval leaves the prepared intent retryable even if approval arrives late',{timeout:30000},async()=>{
+ const controller=new AbortController(),check=()=>controller.signal.throwIfAborted();
+ const durableOptions={wasm:native,checkAuthority(){}};
+ let releaseApproval,enteredApproval,timer,operation,inspections=0,tokens=0;
+ const approval=new Promise(resolve=>{releaseApproval=resolve;});
+ const entered=new Promise(resolve=>{enteredApproval=resolve;});
+ const host=Host.configure({
+  endpoint:'http://127.0.0.1:1/recovery/native-activation/v1/commit',
+  expected:choice.activation,
+  principal:'operator',
+  getToken(){tokens++;throw Error('Cancelled approval must not authorize a Native request');},
+  checkAuthority(){}
+ });
+ try{
+  const expected=await prepare(capture,{
+   database:'cancelled-approval-keeps-prepared',
+   selectActivation:()=>host,
+   retainChoice(){}
+  },durableOptions,durableOptions.checkAuthority);
+  operation=commit({
+   expected,activation:host,
+   approve(selected){assert.deepEqual(selected,expected);enteredApproval();return approval;}
+  },{...durableOptions,signal:controller.signal},check,async()=>{inspections++;});
+  const stopped=operation.then(()=>({ok:true}),error=>({ok:false,error}));
+  await Promise.race([entered,stopped.then(result=>{throw result.error??Error('Approval was bypassed');})]);
+  controller.abort();
+  const result=await Promise.race([
+   stopped,
+   new Promise(resolve=>{timer=setTimeout(()=>resolve('still waiting for approval'),500);})
+  ]);
+  assert.notEqual(result,'still waiting for approval');
+  assert.equal(result.ok,false);
+  assert.equal(result.error.code,'native_reconstruction_aborted');
+  assert.equal(inspections,1);
+  const reopened=new Store(expected,durableOptions);
+  try{assert.equal((await reopened.open()).state.phase,'prepared');}finally{await reopened.close();}
+  releaseApproval(true);
+  await tick();
+  assert.equal(inspections,1);
+  assert.equal(tokens,0);
+ }finally{
+  clearTimeout(timer);
+  controller.abort();
+  releaseApproval(false);
+  await operation?.catch(()=>{});
+  host.close();
+ }
 });

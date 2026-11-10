@@ -4,6 +4,7 @@ import {activationFailure} from '../native_activation_control/policy.js';
 import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
 import type {SharedDurableNativeActivationReceipt} from '../native_activation_control/contract.js';
 import type {ReconciledServerPacketRecoveryCapture} from '../reconciled_server_packet_recovery/contract.js';
+import {NativeReconstructionWaits} from '../selected_native_reconstruction/read_waits.js';
 import type {RoomActivationIntentChoice,RoomActivationRetainedIntent} from './contract.js';
 import {RoomActivationIntentStore} from './store.js';
 import {fail} from './policy.js';
@@ -24,7 +25,13 @@ export async function commitHeldRoomActivation(policy:RoomActivationCommitPolicy
  const store=new RoomActivationIntentStore(policy.expected,options);let started=false,failed=false,result:RoomActivationCommitResult|undefined,error:unknown;
  try{
   const retained=await store.open();check();await inspectExact(retained.capture);check();
-  if(await policy.approve(policy.expected)!==true)throw fail('activation_intent_policy');port.check();check();
+  // Approval only borrows the immutable choice. Closing the owner can end
+  // this wait while the callback settles independently.
+  const approval=new NativeReconstructionWaits(check,[options.signal]);
+  try{
+   if(await approval.call(()=>policy.approve(policy.expected))!==true)throw fail('activation_intent_policy');
+  }finally{approval.close();}
+  port.check();check();
   // Approval can run application code. Re-admit exact Native/metadata/upload
   // state after it, before recording the possibly irreversible attempt.
   await inspectExact(retained.capture);check();started=true;
