@@ -41,6 +41,11 @@ metadata APIs retain their strict field and family checks; held-target and
 cross-family inspection are separate, explicitly admitted composition paths.
 The new owners have no package-root export.
 
+A cancelled IndexedDB open keeps its namespace reserved until the actual
+request settles. If the caller has already closed the attempt, the settlement
+finishes the retained cleanup. A fresh attempt can then acquire the namespace
+under its own authority and follow the usual absent-only or existing-only path.
+
 ## Reproduced integration defects
 
 An activation preparation can refer to the latest observed Native predecessor

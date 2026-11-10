@@ -22,7 +22,7 @@ const tests=inputRetention?['scripts/joint-preparation-input-retention.test.mjs'
  'scripts/joint-reassociation-complete-native.test.mjs',
 ];
 const types=['scripts/fixtures/metadata-continuation/types.mts','scripts/fixtures/native-joint-reassociation/types.mts'];
-const expectedCases=pendingRepeated||preparedStart||inputRetention?1:17,sha=data=>createHash('sha256').update(data).digest('hex');
+const expectedCases=pendingRepeated||preparedStart||inputRetention?1:18,sha=data=>createHash('sha256').update(data).digest('hex');
 const workset=inputRetention?'joint-preparation-input-retention-installed':preparedStart?'prepared-cold-start-installed':pendingRepeated?'joint-reassociation-pending-repeated-installed':'joint-reassociation-installed';
 const source=sourceEvidence(root),directory=fs.mkdtempSync('/private/tmp/breditor-'+workset+'-');
 const archives=join(directory,'archives'),consumer=join(directory,'consumer');

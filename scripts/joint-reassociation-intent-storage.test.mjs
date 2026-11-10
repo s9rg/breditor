@@ -3,6 +3,7 @@
 import test,{before,after} from 'node:test';import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';import {IDBObjectStore} from 'fake-indexeddb';
 import {completeControlFixtures} from './fixtures/physical-recovery-control/complete-fixtures.mjs';
+import {assertActivationReopensAfterLateClose} from './fixtures/late-activation-intent-open.mjs';
 import {acceptedControlTransport} from './fixtures/physical-recovery-control/accepted-transport.mjs';
 import {preparedRoomRun} from './fixtures/native-room-run/session.mjs';
 import {selection as publication,receipt} from './fixtures/native-publication/transport.mjs';
@@ -75,4 +76,15 @@ test('same-namespace competition cannot steal a held association lease',async()=
 });
 test('versionchange revokes the actual reader and preserves later schema data',async()=>{
  const selected=next(),store=new Store(selected,options());let db;try{await store.open(true);db=await new Promise((resolve,reject)=>{const q=indexedDB.open(selected.plan.database,2);q.onupgradeneeded=()=>q.result.createObjectStore('later').add('keep','value');q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error);});assert.throws(()=>store.check(),code('joint_activation_intent_closed'));await assert.rejects(store.read());}finally{db?.close();await store.close();}
+});
+
+test('a late cancelled reassociation intent open permits a new owner after the request settles',()=>{
+ const selected=next();
+ return assertActivationReopensAfterLateClose({
+  database:selected.plan.database,
+  createStore:signal=>new Store(selected,signal?{...options(),signal}:options()),
+  create:store=>store.open(true),
+  busyCode:'joint_activation_intent_busy',
+  closedCode:'joint_activation_intent_closed',
+ });
 });

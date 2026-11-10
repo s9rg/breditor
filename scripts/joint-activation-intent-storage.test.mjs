@@ -4,6 +4,7 @@
 import test,{before,after} from 'node:test';import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';import {IDBObjectStore} from 'fake-indexeddb';
 import {completeControlFixtures} from './fixtures/physical-recovery-control/complete-fixtures.mjs';
+import {assertActivationReopensAfterLateClose} from './fixtures/late-activation-intent-open.mjs';
 import {acceptedControlTransport} from './fixtures/physical-recovery-control/accepted-transport.mjs';
 import {preparedRoomRun} from './fixtures/native-room-run/session.mjs';
 import {selection as publication,receipt} from './fixtures/native-publication/transport.mjs';
@@ -75,4 +76,15 @@ test('an uncertain committed creation retains the original descriptor and resolv
 });
 test('unexpected durable rows and malformed publication state refuse on exact existing reopen',async()=>{
  for(const malformed of [s=>s.add('extra','foreign'),s=>s.put('{"phase":"receipt-observed"}','state')]){const selected=choice(),a=new Store(selected,options());try{await a.open(true);}finally{await a.close();}await raw(selected.plan.database,malformed);const b=new Store(selected,options());try{await assert.rejects(b.open(),code('joint_activation_intent_integrity'));}finally{await b.close();}}
+});
+
+test('a late cancelled activation intent open permits a new owner after the request settles',()=>{
+ const selected=choice();
+ return assertActivationReopensAfterLateClose({
+  database:selected.plan.database,
+  createStore:signal=>new Store(selected,signal?{...options(),signal}:options()),
+  create:store=>store.open(true),
+  busyCode:'joint_activation_intent_busy',
+  closedCode:'joint_activation_intent_closed',
+ });
 });

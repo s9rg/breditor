@@ -60,7 +60,12 @@ export class JointReassociationIntentStore {
   this.#opening=await RecoveryOpeningCustody.reserve(this.#factory,[this.#choice.plan.database],()=>this.#close(),{policy:()=>fail(),busy:()=>fail('joint_activation_intent_busy'),storage:()=>fail('joint_activation_intent_storage')});this.check();this.#lease=await RecoveryLease.acquire(JSON.stringify(this.#choice.plan.database));this.check();
   await new Promise<void>((resolve,reject)=>{
    const q=this.#factory.open(this.#choice.plan.database,1);let created=false,refused=false,reason:unknown,unwatch=()=>{};this.#pending=true;this.#request=q;this.#reject=reject;
-   const abort=(error:unknown)=>{refused=true;reason=error;if(q.transaction){try{q.transaction.abort();}catch{}}else reject(error);},done=()=>{this.#pending=false;this.#request=undefined;this.#reject=undefined;unwatch();};
+   const abort=(error:unknown)=>{refused=true;reason=error;if(q.transaction){try{q.transaction.abort();}catch{}}else reject(error);},done=()=>{
+    this.#pending=false;this.#request=undefined;this.#reject=undefined;unwatch();
+    // A caller may have stopped waiting before IndexedDB settled the open.
+    // The retained rollback can now release custody without that caller.
+    if(this.#closing)void this.#opening?.rollback().catch(()=>{});
+   };
    try{unwatch=this.#cancel.watch(()=>abort(fail('joint_activation_intent_closed')));}catch(error){abort(error);}
    q.onupgradeneeded=event=>{this.#attach(q.result);try{this.check();if(refused)throw reason;if(event.oldVersion!==0)throw fail('joint_activation_intent_exists');if(!create)throw fail('joint_activation_intent_missing');const store=q.result.createObjectStore('reassociation');store.add(JSON.stringify(this.#choice),'choice');store.add(JSON.stringify(initial),'state');created=true;this.check();}catch(error){abort(error);}};
    q.onblocked=()=>{refused=true;reason=fail('joint_activation_intent_busy');reject(reason);};q.onerror=()=>{done();reject(refused?reason:fail('joint_activation_intent_storage'));};q.onsuccess=()=>{this.#attach(q.result);done();try{this.check();if(refused)throw reason;if(create&&!created)throw fail('joint_activation_intent_exists');if(q.result.version!==1||!equal([...q.result.objectStoreNames],tables))throw fail('joint_activation_intent_integrity');resolve();}catch(error){reject(error);}};
