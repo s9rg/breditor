@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
+import {IDBDatabase} from 'fake-indexeddb';
 import * as api from '../packages/breditor-collaboration/dist/index.js';
 import * as rich from '@breditor/experimental-rich-content';
 import {fixture as fiveFixture} from './delivery-operation-cohort.test.mjs';
@@ -10,7 +11,11 @@ import {originalOperation} from './fixtures/operation-cohort/original-participan
 import {generationParticipant} from './fixtures/room-participant-inventory/generation-participant.mjs';
 import {insertCleanupText} from './fixtures/owned-core-cleanup/session.mjs';
 import {prepareCompleteOperationParticipants as prepare} from '../packages/breditor-collaboration/dist/complete_operation_cohort/cohort.js';
-const manifest=JSON.parse(readFileSync('/Users/s/code/breditor/target/room-participant-inventory-native.json')),fixtures=JSON.parse(readFileSync(manifest.manifest)),seed=JSON.parse(readFileSync(fixtures.cases[0].path));let sequence=0;
+import {RecoveryLease} from '../packages/breditor-collaboration/dist/participant_recovery/lease.js';
+const report=JSON.parse(readFileSync(new URL('../target/room-participant-inventory-native.json',import.meta.url)));
+assert.equal(report.passed,true);
+const fixtures=JSON.parse(readFileSync(report.manifest)),seed=JSON.parse(readFileSync(fixtures.cases[0].path));
+let sequence=0;
 async function complete({policy=()=>{},oldPolicy=()=>{}}={}){
  let f,original,generation,profile;const counts={networkCalls:0,restoredParticipants:0,restoredComponents:0};
  try{
@@ -30,6 +35,45 @@ test('seven genuine families cross one barrier with exact native and upload stat
   for(const row of parts.participants.filter(r=>r.family!=='original'&&r.family!=='generation')){const before=h.f.rows.find(r=>r.id===row.id);assert.deepEqual(Buffer.from(await(await row.parts.uploads.exportBackup()).arrayBuffer()),before.uploads);}
   for(const[owner,before]of [[h.original,expected[0]],[h.generation,expected[1]]]){await owner.coldOperation();owner.takeParts(await owner.operation.intoParts());assert.deepEqual(owner.exportRecovery(),before);}
  }finally{capsule?.abandon();if(parts)for(const row of parts.participants.filter(r=>r.family!=='original'&&r.family!=='generation')){await row.parts.source.session.discardAndClose();row.parts.uploads.close();}await h.close();}
+});
+test('a seven-family database close refusal fences released owners without consuming any client',async()=>{
+ const h=await complete(),closeDatabase=IDBDatabase.prototype.close;
+ let database,lease,capsule,released=false,closeRefused=false;
+ try{
+  const previous=[h.original.exportRecovery(),h.generation.exportRecovery()];
+  database=await new Promise((resolve,reject)=>{
+   const request=indexedDB.open('seven-family-close-refusal',1);
+   request.onsuccess=()=>resolve(request.result);
+   request.onerror=()=>reject(request.error);
+  });
+  lease=await RecoveryLease.acquire(JSON.stringify(database.name));
+  const refusal=new Error('Injected parent database close refusal');
+  try{
+   IDBDatabase.prototype.close=function(){
+    if(this===database&&!closeRefused){closeRefused=true;throw refusal;}
+    return closeDatabase.call(this);
+   };
+   await assert.rejects(async()=>{
+    capsule=await prepare(h.rows(),[database],[lease],async()=>{},()=>{},()=>{released=true;});
+   },error=>error===refusal);
+  }finally{IDBDatabase.prototype.close=closeDatabase;}
+  assert.equal(closeRefused,true);
+  assert.equal(released,true);
+  await assert.rejects(h.original.operation.check(),{code:'operation_closed'});
+  await assert.rejects(h.generation.operation.check(),{code:'generation_operation_closed'});
+  await h.f.retryable();
+  for(const row of h.f.rows)assert.deepEqual(row.parent.readableSource(),row.before);
+  for(const[owner,before]of [[h.original,previous[0]],[h.generation,previous[1]]]){
+   await owner.coldOperation();
+   owner.takeParts(await owner.operation.intoParts());
+   assert.deepEqual(owner.exportRecovery(),before);
+  }
+ }finally{
+  capsule?.abandon();
+  database?.close();
+  await lease?.close();
+  await h.close();
+ }
 });
 test('a last local callback cannot consume an earlier original native owner after retirement',async()=>{
  let armed=false,changed=false,last=0,h;const freeze=Object.freeze;
