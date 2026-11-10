@@ -51,45 +51,51 @@ export async function prepareColdJointSources(input){
  for(const row of uploads)assert.deepEqual(await session.owner.assets(row.id).get(remoteAsset),row.info);
  console.log('COLD_CURRENT_RECONCILIATION_STEP seven-new-owners-retain-fourteen-offline-suffixes-and-real-upload-acks');
 
- const image=Object.getOwnPropertyDescriptor(globalThis,'Image');Object.defineProperty(globalThis,'Image',{configurable:true,value:PacketRasterFixtureImage});
- let finalReport,retainedPending;
- // Dependency caching is an explicit real read/write phase before the final
- // reconstruction cut and before any irreversible Native activation request.
- if(input.materializeDependencies)await held(session.owner,session.input(),async(scope,sources,check)=>{
-  let fresh,review,metadata;
-  try{fresh=await controls(host,first,scope);const parentInput={choice:parentChoice,bundle:bundle.parent,baseline:fresh.baseline,path:fresh.path,server:fresh.server,inventory:fresh.inventory,checkAuthority:check},expected=await previewSelectedLocalReviewResume(scope,parentInput);review=await Review.resume(scope,{...parentInput,expected,approve:()=>true});const metadataInput={choice:deliveryChoice,bundle,checkAuthority:check},selected=await previewSelectedLocalMetadataResume(review,metadataInput);metadata=await Metadata.reopen(review,{...metadataInput,expected:selected,approve:()=>true});
-   await input.materializeDependencies({scope,sources,metadata,host,check});check();bundle=await metadata.capture();check();metadataText=await bundle.metadata.file.text();stored=JSON.parse(metadataText);
-  }finally{await metadata?.close();await review?.close();fresh?.close();}
- });
- await input.prepareReplacement();
- try{await input.borrow(session.owner,session.input(),async(scope,sources,check)=>{
-  let fresh,review,metadata;
-  try{
-   fresh=await controls(host,first,scope);
-   const parentInput={choice:parentChoice,bundle:bundle.parent,baseline:fresh.baseline,path:fresh.path,server:fresh.server,inventory:fresh.inventory,checkAuthority:check};
-   const expected=await previewSelectedLocalReviewResume(scope,parentInput);review=await Review.resume(scope,{...parentInput,expected,approve:()=>true});
-   const metadataInput={choice:deliveryChoice,bundle,checkAuthority:check},metadataExpected=await previewSelectedLocalMetadataResume(review,metadataInput);
-   metadata=await Metadata.reopen(review,{...metadataInput,expected:metadataExpected,approve:()=>true});assert.deepEqual(metadata.recovery(),stored);
-   const current=async()=>{
-    const parentStoredBefore=await localReviewRaw(parentChoice.database),parentCurrentBefore=JSON.parse(parentStoredBefore.current);
-    const lanes=metadata.recovery().current.lanes.map(lane=>{const row=sources.find(value=>value.id===lane.id);assert.ok(row);const parentLane=parentCurrentBefore.lanes.find(value=>value.id===lane.id);assert.ok(parentLane);return {...lane,relay:parentLane.relay,source:{...lane.source,documentCheckpoint:row.source.core.checkpointJson(),reviewCheckpoint:reviewCheckpoint(row.source.core)}};}),stamps=new Map(sources.map(row=>[row.id,coreReadStamp(row.source.core)]));
-    const originalFetch=globalThis.fetch;let forbiddenDownloads=0;
-    globalThis.fetch=(url,options)=>{const address=String(url);if(!address.startsWith('blob:')){const path=new URL(address).pathname;if(path.endsWith('/metadata/packet/read')||path.includes('/document-versions/v1/packets/')||path.includes('/assets/')&&!path.endsWith('/assets/check')){forbiddenDownloads++;throw Error('Cold current reference discovery must not download a packet/raster body');}}return originalFetch(url,options);};
-    try{
-     const result=await timed('current-native-source-provider-reconciliation',()=>metadata.captureServerPacketReconciliation({host:fresh.previous,inventory:fresh.inventory}));
-     check();scope.check();assert.deepEqual(metadata.recovery().current.lanes,lanes);const parentStoredAfter=await localReviewRaw(parentChoice.database),parentCurrentAfter=JSON.parse(parentStoredAfter.current);assert.equal(parentStoredAfter.before,parentStoredBefore.before);assert.equal(parentCurrentAfter.revision,parentCurrentBefore.revision+1);assert.deepEqual(parentCurrentAfter.lanes.map(({id,relay})=>({id,relay})),parentCurrentBefore.lanes.map(({id,relay})=>({id,relay})));for(const row of sources)assert.deepEqual(coreReadStamp(row.source.core),stamps.get(row.id));
-     assert.equal(readCacheCalls(),0);assert.equal(forbiddenDownloads,0);assert.equal(await bundle.metadata.file.text(),metadataText);return result;
-    }finally{globalThis.fetch=originalFetch;}
-   };
-   const pending=await current();assert.equal(pending.kind,'pending');
-   for(const row of sources)for(const lane of ['document','review'])assert.ok(pending.original.pending.some(value=>value.kind==='head'&&value.requirement.participant===row.id&&value.requirement.lane===lane&&value.requirement.relation==='local-ahead'),row.id+' '+lane+' offline suffix');
-   assert.equal(pending.pending.filter(row=>row.kind==='original'&&row.requirement.kind==='head').length,14);
-   if(pending.sources.outcome.kind==='pending')assert.equal(pending.currentProvider,null);
-   assert.equal(requests.filter(kind=>kind==='suggestionRevisionPublish').length,originalRevisionSubmits);
-   console.log('COLD_CURRENT_RECONCILIATION_STEP fresh-read-keeps-all-fourteen-real-offline-heads-pending-without-acks');
-   await input.onPending?.({scope,sources,metadata,host,check,pending});
-   retainedPending={scope,sources,metadata,review,fresh,host,check,pending,fixture,session,deliveryChoice,adapters,contexts,settle};return;
-  }finally{if(!retainedPending){await metadata?.close();await review?.close();fresh?.close();}}
- });}finally{if(image)Object.defineProperty(globalThis,'Image',image);else delete globalThis.Image;}
+ const image=Object.getOwnPropertyDescriptor(globalThis,'Image');
+ let retainedPending;
+ try{
+  Object.defineProperty(globalThis,'Image',{configurable:true,value:PacketRasterFixtureImage});
+  // Dependency caching is an explicit real read/write phase before the final
+  // reconstruction cut and before any irreversible Native activation request.
+  if(input.materializeDependencies)await held(session.owner,session.input(),async(scope,sources,check)=>{
+   let fresh,review,metadata;
+   try{fresh=await controls(host,first,scope);const parentInput={choice:parentChoice,bundle:bundle.parent,baseline:fresh.baseline,path:fresh.path,server:fresh.server,inventory:fresh.inventory,checkAuthority:check},expected=await previewSelectedLocalReviewResume(scope,parentInput);review=await Review.resume(scope,{...parentInput,expected,approve:()=>true});const metadataInput={choice:deliveryChoice,bundle,checkAuthority:check},selected=await previewSelectedLocalMetadataResume(review,metadataInput);metadata=await Metadata.reopen(review,{...metadataInput,expected:selected,approve:()=>true});
+    await input.materializeDependencies({scope,sources,metadata,host,check});check();bundle=await metadata.capture();check();metadataText=await bundle.metadata.file.text();stored=JSON.parse(metadataText);
+   }finally{await metadata?.close();await review?.close();fresh?.close();}
+  });
+  await input.prepareReplacement();
+  await input.borrow(session.owner,session.input(),async(scope,sources,check)=>{
+   let fresh,review,metadata;
+   try{
+    fresh=await controls(host,first,scope);
+    const parentInput={choice:parentChoice,bundle:bundle.parent,baseline:fresh.baseline,path:fresh.path,server:fresh.server,inventory:fresh.inventory,checkAuthority:check};
+    const expected=await previewSelectedLocalReviewResume(scope,parentInput);review=await Review.resume(scope,{...parentInput,expected,approve:()=>true});
+    const metadataInput={choice:deliveryChoice,bundle,checkAuthority:check},metadataExpected=await previewSelectedLocalMetadataResume(review,metadataInput);
+    metadata=await Metadata.reopen(review,{...metadataInput,expected:metadataExpected,approve:()=>true});assert.deepEqual(metadata.recovery(),stored);
+    const current=async()=>{
+     const parentStoredBefore=await localReviewRaw(parentChoice.database),parentCurrentBefore=JSON.parse(parentStoredBefore.current);
+     const lanes=metadata.recovery().current.lanes.map(lane=>{const row=sources.find(value=>value.id===lane.id);assert.ok(row);const parentLane=parentCurrentBefore.lanes.find(value=>value.id===lane.id);assert.ok(parentLane);return {...lane,relay:parentLane.relay,source:{...lane.source,documentCheckpoint:row.source.core.checkpointJson(),reviewCheckpoint:reviewCheckpoint(row.source.core)}};}),stamps=new Map(sources.map(row=>[row.id,coreReadStamp(row.source.core)]));
+     const originalFetch=globalThis.fetch;let forbiddenDownloads=0;
+     globalThis.fetch=(url,options)=>{const address=String(url);if(!address.startsWith('blob:')){const path=new URL(address).pathname;if(path.endsWith('/metadata/packet/read')||path.includes('/document-versions/v1/packets/')||path.includes('/assets/')&&!path.endsWith('/assets/check')){forbiddenDownloads++;throw Error('Cold current reference discovery must not download a packet/raster body');}}return originalFetch(url,options);};
+     try{
+      const result=await timed('current-native-source-provider-reconciliation',()=>metadata.captureServerPacketReconciliation({host:fresh.previous,inventory:fresh.inventory}));
+      check();scope.check();assert.deepEqual(metadata.recovery().current.lanes,lanes);const parentStoredAfter=await localReviewRaw(parentChoice.database),parentCurrentAfter=JSON.parse(parentStoredAfter.current);assert.equal(parentStoredAfter.before,parentStoredBefore.before);assert.equal(parentCurrentAfter.revision,parentCurrentBefore.revision+1);assert.deepEqual(parentCurrentAfter.lanes.map(({id,relay})=>({id,relay})),parentCurrentBefore.lanes.map(({id,relay})=>({id,relay})));for(const row of sources)assert.deepEqual(coreReadStamp(row.source.core),stamps.get(row.id));
+      assert.equal(readCacheCalls(),0);assert.equal(forbiddenDownloads,0);assert.equal(await bundle.metadata.file.text(),metadataText);return result;
+     }finally{globalThis.fetch=originalFetch;}
+    };
+    const pending=await current();assert.equal(pending.kind,'pending');
+    for(const row of sources)for(const lane of ['document','review'])assert.ok(pending.original.pending.some(value=>value.kind==='head'&&value.requirement.participant===row.id&&value.requirement.lane===lane&&value.requirement.relation==='local-ahead'),row.id+' '+lane+' offline suffix');
+    assert.equal(pending.pending.filter(row=>row.kind==='original'&&row.requirement.kind==='head').length,14);
+    if(pending.sources.outcome.kind==='pending')assert.equal(pending.currentProvider,null);
+    assert.equal(requests.filter(kind=>kind==='suggestionRevisionPublish').length,originalRevisionSubmits);
+    console.log('COLD_CURRENT_RECONCILIATION_STEP fresh-read-keeps-all-fourteen-real-offline-heads-pending-without-acks');
+    await input.onPending?.({scope,sources,metadata,host,check,pending});
+    retainedPending={scope,sources,metadata,review,fresh,host,check,pending,fixture,session,deliveryChoice,adapters,contexts,settle};return;
+   }finally{if(!retainedPending){await metadata?.close();await review?.close();fresh?.close();}}
+  });
+ }finally{
+  if(image)Object.defineProperty(globalThis,'Image',image);
+  else delete globalThis.Image;
+ }
  if(!retainedPending)throw Error('Actual joint pending metadata was not retained');return retainedPending;
 }

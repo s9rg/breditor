@@ -6,6 +6,7 @@ import test from 'node:test';
 import {withFixtureCleanup} from './fixtures/fixture-cleanup.mjs';
 import {startNativeGenerationCompleteControls} from './fixtures/generation-recovery-control/complete-native-host.mjs';
 import {startNativeGenerationControls} from './fixtures/generation-recovery-control/native-host.mjs';
+import {prepareColdJointSources} from './fixtures/local-metadata/cold-joint-sources.mjs';
 import {testMetadataMaterialization} from './fixtures/local-metadata/materialization.mjs';
 import {startNativeCompleteControls} from './fixtures/physical-recovery-control/complete-native-host.mjs';
 import {startNativePhysicalControls} from './fixtures/physical-recovery-control/native-host.mjs';
@@ -89,4 +90,55 @@ test('failed metadata fixture setup restores the process globals and stops the h
  for (const [name, descriptor] of descriptors) {
   assert.deepEqual(Object.getOwnPropertyDescriptor(globalThis, name), descriptor);
  }
+});
+
+
+test('failed joint replacement preparation restores the prior image decoder', async t => {
+ const original = Object.getOwnPropertyDescriptor(globalThis, 'Image');
+ t.after(() => {
+  if (original) Object.defineProperty(globalThis, 'Image', original);
+  else delete globalThis.Image;
+ });
+ const before = {configurable: true, enumerable: true, writable: true, value: class PriorFixtureImage {}};
+ Object.defineProperty(globalThis, 'Image', before);
+ const replacement = Error('Fixture replacement preparation failed');
+ const clients = () => Array.from({length: 7}, (_, id) => ({
+  id,
+  core: {
+   select() {},
+   type() {},
+   dispatchReview() {},
+   captureReviewAnchor: () => '{}',
+   checkpointJson: () => 'offline document ' + id,
+   documentJson: () => 'document ' + id,
+   reviewHistoryPolicy: () => 'original',
+   reviewCheckpoint: () => 'offline review ' + id,
+   segmentedHistoryPolicy: () => undefined,
+  },
+ }));
+ const session = {
+  f: {oldCalls: 0},
+  owner: {
+   clients: clients(),
+   assets(id) {
+    return {async get() { return id < 3 ? {status: 'uploaded', storageRef: 'fixture-receipt-' + id} : undefined; }};
+   },
+  },
+  async cold(_current, {checkAuthority}) {
+   checkAuthority();
+   this.owner.clients = clients();
+  },
+ };
+ await assert.rejects(prepareColdJointSources({
+  session,
+  bundle: {metadata: {file: new Blob(['{}'])}, parent: {current: {}}},
+  requests: [],
+  readCacheCalls: () => 0,
+  async prepareReplacement() {
+   assert.notEqual(globalThis.Image, before.value);
+   throw replacement;
+  },
+  borrow() { assert.fail('Preparation failed before the room could be borrowed'); },
+ }), error => error === replacement);
+ assert.deepEqual(Object.getOwnPropertyDescriptor(globalThis, 'Image'), before);
 });
