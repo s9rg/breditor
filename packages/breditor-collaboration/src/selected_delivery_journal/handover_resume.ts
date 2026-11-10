@@ -70,12 +70,11 @@ export function handoverResumeInputs(supplied:DeliveryJournalHandoverInspectionI
 }
 export type HandoverResumeInputs=ReturnType<typeof handoverResumeInputs>;
 
-export async function inspectHandoverResume(
- scope:SelectedNativeRecoveryScope,journal:DeliveryJournalResources,
+export async function inspectHandoverCut(
+ scope:SelectedNativeRecoveryScope,snapshot:DeliveryJournalSnapshot,
  input:ReturnType<typeof handoverRecordingInputs>,identity:DeliveryJournalIdentity,guard:()=>void,
 ){
  checkSelectedNativeDeliveryScope(scope);guard();input.native.check();
- const snapshot=await read.call(journal);
  const pins=input.handover.path.successor.current;
  if(!equal(snapshot.identity,identity)||!equal(snapshot.entries[0]!.event.current,identity.prepared.before)||
   !equal(input.native.source,pins.server)||!equal(input.native.participants,pins.participants)||
@@ -84,6 +83,16 @@ export async function inspectHandoverResume(
  const current=await scope.retainExtendingAll(snapshot.entries.map(row=>row.current));
  await scope.readHandoverDeliveryReconciliation(input.host,input.native.reader);
  input.native.check();guard();await input.path.check(scope.signal);
+ return current;
+}
+
+export async function inspectHandoverResume(
+ scope:SelectedNativeRecoveryScope,journal:DeliveryJournalResources,
+ input:ReturnType<typeof handoverRecordingInputs>,identity:DeliveryJournalIdentity,guard:()=>void,
+){
+ checkSelectedNativeDeliveryScope(scope);guard();
+ const snapshot=await read.call(journal);
+ const current=await inspectHandoverCut(scope,snapshot,input,identity,guard);
  const after=await read.call(journal);
  if(!equal(after.head,snapshot.head)||!equal(after.entries.map(row=>row.sha256),snapshot.entries.map(row=>row.sha256))||
   !equal((await scope.retainCurrent()).current.selection,current.current.selection))throw fail();

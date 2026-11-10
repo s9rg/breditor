@@ -49,7 +49,8 @@ export function prepareArchiveIntegrity(options:SharedArchiveIntegrityOptions):A
   });
  const digest=async(input:Blob):Promise<string>=>{
   guard();
-  return digestFile(archiveBlob(input,MAX_SHARED_ARCHIVE_DIGEST_BYTES));
+  // Keep the consuming archive operation in async refusal diagnostics.
+  return await digestFile(archiveBlob(input,MAX_SHARED_ARCHIVE_DIGEST_BYTES));
  };
  const readBuffered=async(file:Blob,count:number):Promise<DigestedArchiveBytes>=>{
   const bytes=new Uint8Array(count);
@@ -61,13 +62,13 @@ export function prepareArchiveIntegrity(options:SharedArchiveIntegrityOptions):A
   guard();
   if(!Number.isSafeInteger(maximumBytes)||maximumBytes<0||maximumBytes>MAX_SHARED_ARCHIVE_DIGEST_BYTES)throw archiveFailure("archive_budget");
   const file=archiveBlob(input,maximumBytes);
-  return readBuffered(file,file.size);
+  return await readBuffered(file,file.size);
  };
  const readPrefixAndDigest=async(input:Blob,prefixBytes:number):Promise<DigestedArchiveBytes>=>{
   guard();
   const file=archiveBlob(input,MAX_SHARED_ARCHIVE_DIGEST_BYTES);
   if(!Number.isSafeInteger(prefixBytes)||prefixBytes<0||prefixBytes>file.size)throw archiveFailure("archive_budget");
-  return readBuffered(file,prefixBytes);
+  return await readBuffered(file,prefixBytes);
  };
  const wasm=Object.freeze({SharedArchiveDigest:Object.freeze({version:()=>"1",maximum_bytes:()=>String(MAX_SHARED_ARCHIVE_DIGEST_BYTES),maximum_chunk_bytes:()=>String(MAX_SHARED_ARCHIVE_DIGEST_CHUNK_BYTES),create})});
  return Object.freeze({wasm,guard,read,digest,readAndDigest,readPrefixAndDigest});

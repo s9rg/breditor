@@ -57,9 +57,10 @@ The preview binds the literal journal head and current client selection to the
 sealed handover. A fresh decision and a complete recheck admit a new delivery
 owner. It appends a distinct handover event and preserves the earlier events
 and files byte for byte. Record later delivery cuts with
-`recordAcrossHandover` and a freshly provisioned path. Normal document and
-comment adapters still submit operations and receive acknowledgements through
-their existing protocols.
+`recordAcrossHandover` and a freshly provisioned path. The append transaction
+compares every old row and byte against the inspected snapshot before writing.
+Normal document and comment adapters still submit operations and receive
+acknowledgements through their existing protocols.
 
 ## Cancellation and failure
 

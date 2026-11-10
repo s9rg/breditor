@@ -1,6 +1,6 @@
 import {retainInternalFailureCause} from '../internal_failure_cause.js';
 import {deliveryResumeInputs,authorizeDeliveryResume,type DeliveryResumeInputs} from './resume_admission.js';
-import {handoverResumeInputs,handoverRecordingInputs,inspectHandoverResume,type DeliveryJournalHandoverResumeInput,type DeliveryJournalHandoverRecordingInput,type HandoverResumeInputs} from './handover_resume.js';
+import {handoverResumeInputs,handoverRecordingInputs,inspectHandoverCut,type DeliveryJournalHandoverResumeInput,type DeliveryJournalHandoverRecordingInput,type HandoverResumeInputs} from './handover_resume.js';
 import type {DeliveryJournalResumeInput} from './resume_contract.js';
 import {checkSelectedNativeDeliveryScope} from '../relay/native_delivery.js';
 /** One real gate, actual adapter work and factual journal lifecycle. Cold resume
@@ -98,13 +98,16 @@ export class SelectedNativeDeliveryJournal{
   let chosen!:ReturnType<typeof handoverRecordingInputs>;
   return this.#run(()=>this.#delivery().quiesce(async()=>{
    if(!this.#dirty)throw fail('delivery_journal_policy');
-   const before=await inspectHandoverResume(this.#scope,this.#resources,chosen,this.#identity,this.#guard);
-   const after=await resources.append.call(this.#resources,before.snapshot,{
-    control:{kind:'handover',selection:chosen.handover},current:before.current.current,
+   const before=await resources.read.call(this.#resources);
+   const current=await inspectHandoverCut(this.#scope,before,chosen,this.#identity,this.#guard);
+   if(!equal((await this.#scope.retainCurrent()).current.selection,current.current.selection))throw fail();
+   // The write transaction compares every old row and byte against this witness.
+   const after=await resources.append.call(this.#resources,before,{
+    control:{kind:'handover',selection:chosen.handover},current:current.current,
     server:chosen.native.server,inventory:chosen.native.inventory,
    });
    chosen.native.check();await chosen.path.check(this.#scope.signal);
-   if(!equal((await this.#scope.retainCurrent()).current.selection,before.current.current.selection))throw fail();
+   if(!equal((await this.#scope.retainCurrent()).current.selection,current.current.selection))throw fail();
    this.#guard();this.#dirty=false;return after;
   }),true,()=>{const input={...supplied};fields(input,['path','server','inventory']);chosen=handoverRecordingInputs(input);});
  }
