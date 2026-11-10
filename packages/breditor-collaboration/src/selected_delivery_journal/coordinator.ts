@@ -1,3 +1,4 @@
+import {retainInternalFailureCause} from '../internal_failure_cause.js';
 import {deliveryResumeInputs,authorizeDeliveryResume,type DeliveryResumeInputs} from './resume_admission.js';
 import {handoverResumeInputs,handoverRecordingInputs,inspectHandoverResume,type DeliveryJournalHandoverResumeInput,type DeliveryJournalHandoverRecordingInput,type HandoverResumeInputs} from './handover_resume.js';
 import type {DeliveryJournalResumeInput} from './resume_contract.js';
@@ -23,7 +24,7 @@ import type {DeliveryJournalSnapshot,DeliveryJournalIdentity,DeliveryJournalCont
 import type {DeliveryJournalOpeningInput,DeliveryJournalRecordingInput} from './coordinator_contract.js';
 const key=Object.freeze({}),resources={open:DeliveryJournalResources.prototype.open,read:DeliveryJournalResources.prototype.readFresh,append:DeliveryJournalResources.prototype.append,close:DeliveryJournalResources.prototype.close};
 const equal=(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b);
-function publicError(error:unknown){return error instanceof DeliveryJournalError?error:fail('delivery_journal_integrity');}
+function publicError(error:unknown){return error instanceof DeliveryJournalError?error:retainInternalFailureCause(fail('delivery_journal_integrity'),error);}
 export class SelectedNativeDeliveryJournal{
  readonly #scope;#driver:PreparedDeliveryDriver|undefined;readonly #resources;readonly #identity;readonly #authority;
  #active=false;#failed=false;#busy=false;#dirty=false;#closing=false;#closed=false;#running:Promise<unknown>|undefined;#ending:Promise<void>|undefined;

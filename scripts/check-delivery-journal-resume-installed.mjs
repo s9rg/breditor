@@ -48,6 +48,7 @@ function copyScript(path){const target=join(consumer,path),original=readFileSync
 }
 function fixtures(path){for(const entry of readdirSync(join(root,path),{withFileTypes:true})){const next=join(path,entry.name);if(entry.isDirectory())fixtures(next);else if(entry.isFile()&&entry.name.endsWith('.mjs'))copyScript(next);}}
 fixtures('scripts/fixtures');for(const name of ['probe-coupled-delivery.mjs',...tests])copyScript('scripts/'+name);
+copyScript('scripts/diagnostics/archive-error-chain.mjs');
 const nativeRelative='target/owned-history-relay-native/release/examples/selected_delivery_functional',nativeSource=join(root,nativeRelative),nativeTarget=join(consumer,nativeRelative),nativeSha256=sha(readFileSync(nativeSource));mkdirSync(dirname(nativeTarget),{recursive:true});cpSync(nativeSource,nativeTarget);assert.equal(sha(readFileSync(nativeTarget)),nativeSha256);
 const wasm=join(consumer,'node_modules/@breditor/collaboration/dist/runtime/breditor_shared_bg.wasm'),normalWasmSha256=sha(readFileSync(wasm));assert.equal(normalWasmSha256,'165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0');
 const state={format:'breditor/installed-cold-delivery-resume-development',version:1,complete:false,sourceRoot:root,producer,consumer,directory,sourceInputs:before,copied,workspaceLinks:false,registryArtifacts,matchingPackageDistFiles,nativeSha256,normalWasmSha256,archives:packs.map(row=>({name:row.name,path:join(archives,row.filename),sha256:sha(readFileSync(join(archives,row.filename)))})),startedAt:new Date().toISOString()};
