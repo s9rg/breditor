@@ -9,7 +9,19 @@ export const assetBaseParts=Object.freeze(['current','original','selected'] as c
 export const MAX_ASSET_BASE_BYTES=prefixBytes+MAX_ASSET_BACKUP_HEADER_BYTES+3*MAX_ASSET_BACKUP_BYTES;
 const invalid=()=>new RichAssetBaseError('asset_base_format','Expected the complete canonical reconciled asset base V1');
 export const checkAssetBaseSignal=(signal?:AbortSignal):void=>{if(signal?.aborted)throw new RichAssetBaseError('asset_base_aborted','Retained asset base admission was cancelled');};
-export async function assetBaseDigest(file:Blob,check:()=>void):Promise<string>{check();const bytes=await file.arrayBuffer();check();const hash=await crypto.subtle.digest('SHA-256',bytes);check();return [...new Uint8Array(hash)].map(x=>x.toString(16).padStart(2,'0')).join('');}
+/** Refuse incomplete transport before interpreting framing or hashing a pin. */
+function checkLength(actual:number,expected:number):void{
+ if(actual!==expected)throw new RichAssetBaseError('asset_base_integrity','Retained asset base read returned a different byte count');
+}
+export async function assetBaseDigest(file:Blob,check:()=>void):Promise<string>{
+ check();
+ const expected=file.size,bytes=await file.arrayBuffer();
+ check();
+ checkLength(bytes.byteLength,expected);
+ const hash=await crypto.subtle.digest('SHA-256',bytes);
+ check();
+ return [...new Uint8Array(hash)].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
 function keys(value:unknown,names:string):boolean{return !!value&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).sort().join(',')===names;}
 function metadata(value:unknown):RichAssetBaseMetadata {
  if(!keys(value,'choices,files,format,formatVersion,limits,sha256,sourceDatabase'))throw invalid();
@@ -30,9 +42,9 @@ export async function encodeAssetBase(sourceDatabase:string,limits:RichAssetBase
 }
 export async function readAssetBaseFrame(file:Blob,check:()=>void):Promise<{metadata:RichAssetBaseMetadata;files:Readonly<Record<RichAssetBasePart,Blob>>}>{
  check();if(!(file instanceof Blob)||file.size<prefixBytes||file.size>MAX_ASSET_BASE_BYTES)throw new RichAssetBaseError('asset_base_budget','Retained asset base exceeds its framed byte budget');
- const prefix=new Uint8Array(await file.slice(0,prefixBytes).arrayBuffer());check();if(magic.some((v,i)=>prefix[i]!==v))throw invalid();
+ const prefix=new Uint8Array(await file.slice(0,prefixBytes).arrayBuffer());check();checkLength(prefix.byteLength,prefixBytes);if(magic.some((v,i)=>prefix[i]!==v))throw invalid();
  const length=new DataView(prefix.buffer,prefix.byteOffset,prefix.byteLength).getUint32(magic.length);if(length<1||length>MAX_ASSET_BACKUP_HEADER_BYTES||prefixBytes+length>file.size)throw new RichAssetBaseError('asset_base_budget','Retained asset base header exceeds its byte budget');
- const bytes=new Uint8Array(await file.slice(prefixBytes,prefixBytes+length).arrayBuffer());check();let value:unknown;try{value=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));}catch{throw invalid();}
+ const bytes=new Uint8Array(await file.slice(prefixBytes,prefixBytes+length).arrayBuffer());check();checkLength(bytes.byteLength,length);let value:unknown;try{value=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));}catch{throw invalid();}
  const m=metadata(value),canonical=new TextEncoder().encode(JSON.stringify(m));if(canonical.length!==bytes.length||canonical.some((v,i)=>v!==bytes[i]))throw invalid();
  const{sha256,...body}=m;if(await assetBaseDigest(new Blob([JSON.stringify(body)]),check)!==sha256)throw new RichAssetBaseError('asset_base_integrity','Retained asset base metadata changed');
  const files={} as Record<RichAssetBasePart,Blob>;let offset=prefixBytes+length;

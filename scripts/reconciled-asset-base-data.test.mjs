@@ -3,6 +3,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {IDBFactory} from 'fake-indexeddb';
 import {RichAssetStore,RichAssetReconciledBase as LegacyBase} from '@breditor/experimental-rich-content';
 import {RichAssetReconciledBase as Base} from '../packages/breditor-experimental-rich-content/dist/browser/assets/retained_base/read.js';
+import {assetBaseDigest} from '../packages/breditor-experimental-rich-content/dist/browser/assets/retained_base/framing.js';
 import {pixel,secondPixel,ReviewFixtureImage} from './fixtures/review-assets/pixels.mjs';
 import {assetLockHost} from './fixtures/asset-custody/locks.mjs';
 const originals=new Map(['Image','indexedDB','navigator','fetch'].map(name=>[name,Object.getOwnPropertyDescriptor(globalThis,name)])),localFetch=globalThis.fetch.bind(globalThis);let sequence=0,networkCalls=0;
@@ -20,7 +21,46 @@ test('pure planning and building never open storage, acquire a lock or fetch aft
 test('unreferenced whole-queue rows survive a no-conflict union without native document projection',async()=>{const source=await pair({different:true});let built;try{const preview=await Base.preview(source.currentFile,source.originalFile);assert.equal(preview.conflicts.length,0);assert.equal(preview.unionAssets,2);built=await Base.build(source.currentFile,source.originalFile,{sourceDatabase:'future-union',choices:[]});assert.equal(built.entries().length,2);assert.deepEqual(built.entries().map(row=>row.storageRef).sort(),['provider/current','provider/original']);assert.deepEqual(await bytes(built.file('original')),await bytes(source.originalFile));}finally{built?.dispose();source.close();}});
 test('every conflicting queue state needs one explicit exact choice',async()=>{const source=await pair();try{const before=await indexedDB.databases();await assert.rejects(Base.build(source.currentFile,source.originalFile,{sourceDatabase:'never-created',choices:[]}),error=>error?.code==='asset_reconciliation_choices');assert.deepEqual(await indexedDB.databases(),before);await assert.rejects(Base.build(source.currentFile,source.originalFile,{sourceDatabase:'',choices:[]}),error=>error?.code==='asset_base_format');}finally{source.close();}});
 test('ordinary choices are snapshotted before asynchronous data admission',async()=>{const source=await pair();let built;try{const preview=await Base.preview(source.currentFile,source.originalFile),choices=preview.conflicts.map(({asset})=>({asset,keep:'original'})),pending=Base.build(source.currentFile,source.originalFile,{sourceDatabase:'future-choice',choices});choices[0].keep='current';built=await pending;assert.equal(built.entries()[0].storageRef,'provider/original');}finally{built?.dispose();source.close();}});
-test('corrupted archive bytes refuse without creating a destination',async()=>{const source=await pair();try{const changed=await bytes(source.originalFile);changed[changed.length-1]^=1;const before=await indexedDB.databases();await assert.rejects(Base.preview(source.currentFile,new Blob([changed])));assert.deepEqual(await indexedDB.databases(),before);}finally{source.close();}});
+test('corrupt archive bytes and incomplete base reads refuse without creating a destination', async () => {
+ const source=await pair();
+ const original=Blob.prototype.arrayBuffer;
+ const integrity=error=>error?.code==='asset_base_integrity';
+ let built;
+ try {
+  const changed=await bytes(source.originalFile);
+  changed[changed.length-1]^=1;
+  const before=await indexedDB.databases();
+  await assert.rejects(Base.preview(source.currentFile,new Blob([changed])));
+  const preview=await Base.preview(source.currentFile,source.originalFile);
+  const choices=preview.conflicts.map(({asset})=>({asset,keep:'original'}));
+  built=await Base.build(source.currentFile,source.originalFile,{sourceDatabase:source.name,choices});
+  const complete=built.backup(),prefixBytes=new TextEncoder().encode('BREDITOR-ASSET-BASE1\n').length+4;
+  const headerBytes=new DataView(await original.call(complete.slice(0,prefixBytes))).getUint32(prefixBytes-4);
+  for(const [size,received] of [[prefixBytes,prefixBytes-1],[headerBytes,0],[headerBytes,headerBytes+1]]){
+   Blob.prototype.arrayBuffer=async function(){
+    if(this.size!==size)return original.call(this);
+    if(received>size)return new ArrayBuffer(received);
+    return (await original.call(this)).slice(0,received);
+   };
+   await assert.rejects(Base.read(complete),integrity);
+  }
+  const input=new Blob(['whole raster archive']);
+  for(const received of [0,input.size+1]){
+   Blob.prototype.arrayBuffer=async function(){
+    return this===input?new ArrayBuffer(received):original.call(this);
+   };
+   await assert.rejects(assetBaseDigest(input,()=>{}),integrity);
+  }
+  Blob.prototype.arrayBuffer=original;
+  const reopened=await Base.read(complete);
+  try{assert.deepEqual(reopened.metadata(),built.metadata());}finally{reopened.dispose();}
+  assert.deepEqual(await indexedDB.databases(),before);
+ } finally {
+  Blob.prototype.arrayBuffer=original;
+  built?.dispose();
+  source.close();
+ }
+});
 test('pre-aborted data planning invokes no decoder and opens no destination',async()=>{const source=await pair();let decodes=0;class Never extends ReviewFixtureImage{async decode(){decodes++;throw Error('No decoder');}}try{Object.defineProperty(globalThis,'Image',{configurable:true,value:Never});const controller=new AbortController();controller.abort();const before=await indexedDB.databases();await assert.rejects(Base.preview(source.currentFile,source.originalFile,{signal:controller.signal}),error=>error?.code==='asset_base_aborted');assert.equal(decodes,0);assert.deepEqual(await indexedDB.databases(),before);}finally{source.close();}});
 test('a held raster admission cancels before its decoder completes',async()=>{const source=await pair();let enter,resolve,called=false;const entered=new Promise(done=>enter=done),gate=new Promise(done=>resolve=done);class Held extends ReviewFixtureImage{async decode(){await super.decode();if(!called){called=true;enter();await gate;}}}let pending;try{Object.defineProperty(globalThis,'Image',{configurable:true,value:Held});const controller=new AbortController();pending=Base.preview(source.currentFile,source.originalFile,{signal:controller.signal});void pending.catch(()=>{});await entered;controller.abort();let timer;try{const value=await Promise.race([pending.then(()=>({kind:'ready'}),error=>({kind:'rejected',error})),new Promise(done=>{timer=setTimeout(()=>done({kind:'still-waiting'}),300);})]);assert.equal(value.kind,'rejected');assert.equal(value.error.code,'asset_backup_aborted');}finally{clearTimeout(timer);}resolve();await pending.catch(()=>{});}finally{resolve();await pending?.catch(()=>{});source.close();}});
 for(const state of ['pending','failed','cancelled'])test('unreferenced '+state+' queue state retains its actual epoch, attempts and bytes',async()=>{
