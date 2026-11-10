@@ -26,11 +26,14 @@ export async function commitHeldRoomActivation(policy:RoomActivationCommitPolicy
  const heldCheck=()=>{store.check();check();};
  try{
   const retained=await store.open();heldCheck();await inspectExact(retained.capture);heldCheck();
-  // Approval only borrows the immutable choice. Closing the owner can end
-  // this wait while the callback settles independently.
-  const approval=new NativeReconstructionWaits(heldCheck,[options.signal]);
+  // Approval only borrows the immutable choice. Owner cancellation or loss
+  // of the database can end this wait while the callback settles independently.
+  const approval=new NativeReconstructionWaits(heldCheck,[options.signal,store.revoked]);
   try{
    if(await approval.call(()=>policy.approve(policy.expected))!==true)throw fail('activation_intent_policy');
+  }catch(error){
+   if(store.revoked.aborted)store.check();
+   throw error;
   }finally{approval.close();}
   port.check();heldCheck();
   // Approval can run application code. Re-admit exact Native/metadata/upload

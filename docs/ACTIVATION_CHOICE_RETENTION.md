@@ -19,15 +19,20 @@ and after its own approval. The commit checks custody of the retained intent
 throughout these steps. Revocation during approval reports intent closure before
 the second inspection or recording a request attempt.
 
+An IndexedDB version change or unexpected connection close also ends a pending
+approval. The commit releases its intent lease while the approval callback can
+still settle independently. A fresh owner can reopen the exact stored intent
+and run a new approval and inspection.
+
 HTTP operations, transactions, resource borrowers and unknown Native outcomes
 retain their existing ownership and draining rules. This change does not detach
 those operations. Provisioning hooks and full joint-owner cancellation require
 separate qualification.
 
 The mandatory commands are `node scripts/check-activation-retention-source.mjs`
-and `node scripts/check-activation-retention-installed.mjs`. Each runs five
+and `node scripts/check-activation-retention-installed.mjs`. Each runs six
 callback lifetime and ordering cases using a retained actual Native-intent corpus
-and twelve intent encoding and storage cases, with normal Rust hashing and
+and thirteen intent encoding and storage cases, with normal Rust hashing and
 controlled browser storage/locks. The corpus is independently copied into the
 consumer and grants no runtime authority. Rust, normal Wasm, original formats,
 wire meanings, public root exports and package versions remain unchanged.

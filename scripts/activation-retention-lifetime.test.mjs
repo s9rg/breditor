@@ -1,5 +1,6 @@
 /** Cancellable activation callbacks with actual retained DATA and normal Rust hashing. */
 import test,{before,after} from 'node:test';import assert from 'node:assert/strict';
+import {forceCloseDatabase,IDBFactory} from 'fake-indexeddb';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
 import {retainedActivationData} from './fixtures/activation-retention/actual-intent.mjs';
 import {prepareHeldRoomActivation as prepare} from '../packages/breditor-collaboration/dist/room_native_activation_intent/prepare.js';
@@ -95,7 +96,7 @@ test('cancelled activation approval leaves the prepared intent retryable even if
 test('activation refuses a revoked intent before a second recovery inspection or request',{timeout:30000},async()=>{
  const options={wasm:native,checkAuthority(){}};
  const host=hostFor();
- let upgraded,inspections=0;
+ let upgrade,upgraded,inspections=0;
  try{
   const expected=await prepare(capture,{
    database:'approval-versionchange-keeps-prepared',
@@ -105,15 +106,17 @@ test('activation refuses a revoked intent before a second recovery inspection or
   await assert.rejects(commit({
    expected,activation:host,
    async approve(){
-    upgraded=await new Promise((resolve,reject)=>{
+    upgrade=new Promise((resolve,reject)=>{
      const request=indexedDB.open(expected.database,2);
      request.onsuccess=()=>resolve(request.result);
      request.onerror=()=>reject(request.error);
     });
+    upgraded=await upgrade;
     return true;
    }
   },options,options.checkAuthority,async()=>{inspections++;}),{code:'activation_intent_closed'});
   assert.equal(inspections,1);
+  upgraded=await upgrade;
   const retainedState=await new Promise((resolve,reject)=>{
    const request=upgraded.transaction('activation').objectStore('activation').get('state');
    request.onsuccess=()=>resolve(JSON.parse(request.result));
@@ -122,7 +125,66 @@ test('activation refuses a revoked intent before a second recovery inspection or
   assert.equal(retainedState.phase,'prepared');
   assert.equal(retainedState.revision,0);
  }finally{
-  upgraded?.close();
+  (upgraded??await upgrade?.catch(()=>{}))?.close();
+  host.close();
+ }
+});
+
+test('an unexpected database close ends pending approval and preserves the exact intent for retry',{timeout:30000},async()=>{
+ const options={wasm:native,checkAuthority(){}};
+ const host=hostFor(),originalOpen=IDBFactory.prototype.open;
+ let releaseApproval,enterApproval,connection,operation,timer,inspections=0;
+ const approval=new Promise(resolve=>{releaseApproval=resolve;});
+ const entered=new Promise(resolve=>{enterApproval=resolve;});
+ try{
+  const expected=await prepare(capture,{
+   database:'forced-close-keeps-prepared',
+   selectActivation:()=>host,
+   retainChoice(){}
+  },options,options.checkAuthority);
+  IDBFactory.prototype.open=function(name,...args){
+   const request=originalOpen.call(this,name,...args);
+   if(name===expected.database)request.addEventListener('success',()=>{connection=request.result;},{once:true});
+   return request;
+  };
+  operation=commit({expected,activation:host,approve(){enterApproval();return approval;}},options,options.checkAuthority,async()=>{inspections++;});
+  const stopped=operation.then(()=>({ok:true}),error=>({ok:false,error}));
+  await Promise.race([entered,stopped.then(result=>{throw result.error??Error('Approval was bypassed');})]);
+  IDBFactory.prototype.open=originalOpen;
+  assert.ok(connection);
+  forceCloseDatabase(connection);
+  const result=await Promise.race([
+   stopped,
+   new Promise(resolve=>{timer=setTimeout(()=>resolve('approval still holds the intent'),500);})
+  ]);
+  assert.notEqual(result,'approval still holds the intent');
+  assert.equal(result.ok,false);
+  assert.equal(result.error.code,'activation_intent_closed');
+  assert.equal(inspections,1);
+
+  const fresh=new Store(expected,options);
+  try{
+   const saved=await fresh.open();
+   assert.deepEqual(saved.choice,expected);
+   assert.equal(saved.state.phase,'prepared');
+   assert.equal(saved.state.revision,0);
+  }finally{await fresh.close();}
+  releaseApproval(true);
+  await tick();
+  assert.equal(inspections,1);
+  let retryInspections=0,retryApprovals=0;
+  await assert.rejects(commit({expected,activation:host,approve(selected){
+   assert.deepEqual(selected,expected);
+   retryApprovals++;
+   return false;
+  }},options,options.checkAuthority,async()=>{retryInspections++;}),{code:'activation_intent_policy'});
+  assert.equal(retryInspections,1);
+  assert.equal(retryApprovals,1);
+ }finally{
+  clearTimeout(timer);
+  IDBFactory.prototype.open=originalOpen;
+  releaseApproval(false);
+  await operation?.catch(()=>{});
   host.close();
  }
 });

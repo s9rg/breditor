@@ -17,13 +17,20 @@ import {fail,MAX_ROOM_ACTIVATION_GRAPH_BYTES,MAX_ROOM_ACTIVATION_REVISIONS} from
 const tables=['activation'],initialState:RoomActivationIntentState=Object.freeze({format:'breditor/room-native-activation-intent-state',formatVersion:1,revision:0,phase:'prepared',receipt:null});
 export class RoomActivationIntentStore {
  readonly #factory=recoveryOpeningContext();readonly #locks=navigator.locks;readonly #choice;readonly #options;readonly #integrity;readonly #cancel;
+ readonly #revoked=new AbortController();
  #opening:RecoveryOpeningCustody|undefined;#lease:RecoveryLease|undefined;#db:IDBDatabase|undefined;
- #pending=false;#changed=false;#closing=false;#closed=false;#request:IDBOpenDBRequest|undefined;#reject:((error:unknown)=>void)|undefined;#running:Promise<unknown>|undefined;#cleanup:Promise<void>|undefined;
+ #pending=false;#closing=false;#closed=false;#request:IDBOpenDBRequest|undefined;#reject:((error:unknown)=>void)|undefined;#running:Promise<unknown>|undefined;#cleanup:Promise<void>|undefined;
  #committed:RoomActivationIntentState|undefined;
  constructor(choice:RoomActivationIntentChoice,options:SharedArchiveIntegrityOptions){this.#choice=roomActivationIntentChoice(choice);this.#options=options;this.#integrity=prepareArchiveIntegrity(options);this.#cancel=new PhysicalOperationV3Cancellation(options.signal);Object.freeze(this);}
- check=()=>{if(this.#closing||this.#closed||this.#changed||globalThis.indexedDB!==this.#factory||globalThis.navigator?.locks!==this.#locks)throw fail('activation_intent_closed');if(this.#lease)checkRecoveryLeasesHeld([this.#lease]);try{this.#cancel.check();}catch{throw fail('activation_intent_closed');}this.#integrity.guard();try{this.#cancel.check();}catch{throw fail('activation_intent_closed');}if(this.#closing||this.#closed||this.#changed)throw fail('activation_intent_closed');};
+ /** Database revocation ends an inert approval wait. Storage and Native work still drain normally. */
+ get revoked():AbortSignal{return this.#revoked.signal;}
+ check=()=>{if(this.#closing||this.#closed||this.#revoked.signal.aborted||globalThis.indexedDB!==this.#factory||globalThis.navigator?.locks!==this.#locks)throw fail('activation_intent_closed');if(this.#lease)checkRecoveryLeasesHeld([this.#lease]);try{this.#cancel.check();}catch{throw fail('activation_intent_closed');}this.#integrity.guard();try{this.#cancel.check();}catch{throw fail('activation_intent_closed');}if(this.#closing||this.#closed||this.#revoked.signal.aborted)throw fail('activation_intent_closed');};
  #run<T>(work:()=>Promise<T>):Promise<T>{if(this.#running)return Promise.reject(fail('activation_intent_busy'));const job=Promise.resolve().then(()=>{this.check();return work();});this.#running=job;return job.finally(()=>{this.#running=undefined;});}
- #attach(db:IDBDatabase){this.#db=db;db.onversionchange=()=>{this.#changed=true;db.close();};}
+ #attach(db:IDBDatabase){
+  this.#db=db;
+  db.onclose=()=>this.#revoked.abort();
+  db.onversionchange=()=>{this.#revoked.abort();db.close();};
+ }
  #schema(db:IDBDatabase){if(db.version!==1||JSON.stringify([...db.objectStoreNames])!==JSON.stringify(tables))throw fail();const tx=db.transaction(tables,'readonly'),s=tx.objectStore('activation');if(s.keyPath!==null||s.autoIncrement||s.indexNames.length)throw fail();}
  open(initial?:RoomActivationEncodedCapture):Promise<RoomActivationRetainedIntent>{return this.#run(async()=>{
   if(this.#db||this.#opening)throw fail('activation_intent_busy');
@@ -81,5 +88,5 @@ export class RoomActivationIntentStore {
    throw error;
   });
  }
- #close():Promise<void>{if(this.#closed)return Promise.resolve();if(this.#cleanup)return this.#cleanup;this.#closing=true;this.#cleanup=(async()=>{await this.#running?.catch(()=>{});if(this.#pending)throw fail('activation_intent_busy');if(this.#db){this.#db.onversionchange=null;this.#db.close();}await this.#lease?.close();this.#db=undefined;this.#lease=undefined;this.#cancel.close();this.#closed=true;})().finally(()=>{this.#cleanup=undefined;});return this.#cleanup;}
+ #close():Promise<void>{if(this.#closed)return Promise.resolve();if(this.#cleanup)return this.#cleanup;this.#closing=true;this.#cleanup=(async()=>{await this.#running?.catch(()=>{});if(this.#pending)throw fail('activation_intent_busy');if(this.#db){this.#db.onclose=null;this.#db.onversionchange=null;this.#db.close();}await this.#lease?.close();this.#db=undefined;this.#lease=undefined;this.#cancel.close();this.#closed=true;})().finally(()=>{this.#cleanup=undefined;});return this.#cleanup;}
 }
