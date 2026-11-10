@@ -23,20 +23,20 @@ export async function commitHeldRoomActivation(policy:RoomActivationCommitPolicy
  const port=nativeActivationHostPort(policy.activation);check();port.check();check();
  if(JSON.stringify(port.selection)!==JSON.stringify(policy.expected.activation))throw fail('activation_intent_stale');
  const store=new RoomActivationIntentStore(policy.expected,options);let started=false,failed=false,result:RoomActivationCommitResult|undefined,error:unknown;
+ const heldCheck=()=>{store.check();check();};
  try{
-  const retained=await store.open();check();await inspectExact(retained.capture);check();
+  const retained=await store.open();heldCheck();await inspectExact(retained.capture);heldCheck();
   // Approval only borrows the immutable choice. Closing the owner can end
   // this wait while the callback settles independently.
-  const approval=new NativeReconstructionWaits(check,[options.signal]);
+  const approval=new NativeReconstructionWaits(heldCheck,[options.signal]);
   try{
    if(await approval.call(()=>policy.approve(policy.expected))!==true)throw fail('activation_intent_policy');
   }finally{approval.close();}
-  port.check();check();
+  port.check();heldCheck();
   // Approval can run application code. Re-admit exact Native/metadata/upload
   // state after it, before recording the possibly irreversible attempt.
-  await inspectExact(retained.capture);check();started=true;
-  await store.markRequestStarted();check();
-  const heldCheck=()=>{store.check();check();};
+  await inspectExact(retained.capture);heldCheck();started=true;
+  await store.markRequestStarted();heldCheck();
   const receipt=await port.commit(heldCheck,options.signal);heldCheck();
   await store.markReceiptObserved(receipt);heldCheck();
   result=Object.freeze({format:'breditor/coordinated-native-activation-result',formatVersion:1,scope:'held-client-metadata-upload-cut-and-actual-native-service',intent:policy.expected,receipt});heldCheck();

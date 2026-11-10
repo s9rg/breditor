@@ -15,7 +15,9 @@ Commit approval also receives the immutable choice. If the owner closes
 while approval is pending, the commit releases the intent with its phase
 still `prepared`. A late approval cannot start the request. A later commit
 can reopen the intent and must inspect the current recovery state before
-and after its own approval.
+and after its own approval. The commit checks custody of the retained intent
+throughout these steps. Revocation during approval reports intent closure before
+the second inspection or recording a request attempt.
 
 HTTP operations, transactions, resource borrowers and unknown Native outcomes
 retain their existing ownership and draining rules. This change does not detach
@@ -23,7 +25,7 @@ those operations. Provisioning hooks and full joint-owner cancellation require
 separate qualification.
 
 The mandatory commands are `node scripts/check-activation-retention-source.mjs`
-and `node scripts/check-activation-retention-installed.mjs`. Each runs four
+and `node scripts/check-activation-retention-installed.mjs`. Each runs five
 callback lifetime and ordering cases using a retained actual Native-intent corpus
 and twelve intent encoding and storage cases, with normal Rust hashing and
 controlled browser storage/locks. The corpus is independently copied into the

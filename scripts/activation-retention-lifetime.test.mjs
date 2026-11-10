@@ -91,3 +91,38 @@ test('cancelled activation approval leaves the prepared intent retryable even if
   host.close();
  }
 });
+
+test('activation refuses a revoked intent before a second recovery inspection or request',{timeout:30000},async()=>{
+ const options={wasm:native,checkAuthority(){}};
+ const host=hostFor();
+ let upgraded,inspections=0;
+ try{
+  const expected=await prepare(capture,{
+   database:'approval-versionchange-keeps-prepared',
+   selectActivation:()=>host,
+   retainChoice(){}
+  },options,options.checkAuthority);
+  await assert.rejects(commit({
+   expected,activation:host,
+   async approve(){
+    upgraded=await new Promise((resolve,reject)=>{
+     const request=indexedDB.open(expected.database,2);
+     request.onsuccess=()=>resolve(request.result);
+     request.onerror=()=>reject(request.error);
+    });
+    return true;
+   }
+  },options,options.checkAuthority,async()=>{inspections++;}),{code:'activation_intent_closed'});
+  assert.equal(inspections,1);
+  const retainedState=await new Promise((resolve,reject)=>{
+   const request=upgraded.transaction('activation').objectStore('activation').get('state');
+   request.onsuccess=()=>resolve(JSON.parse(request.result));
+   request.onerror=()=>reject(request.error);
+  });
+  assert.equal(retainedState.phase,'prepared');
+  assert.equal(retainedState.revision,0);
+ }finally{
+  upgraded?.close();
+  host.close();
+ }
+});
