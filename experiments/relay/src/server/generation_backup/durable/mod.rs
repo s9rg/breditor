@@ -16,6 +16,7 @@ pub(in crate::server) use interruption::Barrier;
 pub(in crate::server) use interruption::{Interruption, Point};
 #[cfg(test)]
 pub(in crate::server) use prepare::prepare as prepare_with_interruption;
+pub(in crate::server) use prepare::prepare_source;
 use std::path::Path;
 pub(in crate::server) use store::Store;
 

@@ -28,20 +28,23 @@ pub(in crate::server) fn seal_prepared_source(
     prepared: &PreparedLogGenerationHandover,
     stop: &Interruption,
     capture: impl FnOnce(&mut Room, &mut AssetStore) -> Result<ServerLogGenerationRoomBackup>,
-    check: impl FnOnce(&ServerLogGenerationRoomBackup, &mut Room, &AssetStore) -> Result<()>,
+    check: impl FnOnce(&ServerLogGenerationRoomBackup, &mut Room, &mut AssetStore) -> Result<()>,
 ) -> Result<()> {
     if host.generation_custody.is_some() {
         return Err(Error::Contract("joined generation original custody must be retained"));
     }
-    host.deployment.fenced(|lease| seal_current(host, lease, prepared, stop, capture, check))
+    host.deployment
+        .fenced(|lease| seal_prepared_for_lease(host, lease, prepared, stop, capture, check))
 }
-fn seal_current(
+/// Call while holding the host's actual attachment. Acquire the exclusive epoch
+/// permit and compare the complete source before appending the prepared seal.
+pub(in crate::server) fn seal_prepared_for_lease(
     host: &Host,
     lease: &RoomDeploymentLease,
     prepared: &PreparedLogGenerationHandover,
     stop: &Interruption,
     capture: impl FnOnce(&mut Room, &mut AssetStore) -> Result<ServerLogGenerationRoomBackup>,
-    check: impl FnOnce(&ServerLogGenerationRoomBackup, &mut Room, &AssetStore) -> Result<()>,
+    check: impl FnOnce(&ServerLogGenerationRoomBackup, &mut Room, &mut AssetStore) -> Result<()>,
 ) -> Result<()> {
     let authority = lease.authority();
     let mut held = Permit::try_acquire(&authority.state, true)?;
@@ -62,7 +65,7 @@ fn seal_current(
     prepared.store.guard()?;
     stop.after(Point::SourceChecked)?;
     prepared.store.guard()?;
-    check(&backup, &mut room, &assets)?;
+    check(&backup, &mut room, &mut assets)?;
     lease.check_held(&mut held)?;
     let sealed = authority.claim_handover_held(&mut held, &identity.previous, identity.nonce()?)?;
     sealed.close();

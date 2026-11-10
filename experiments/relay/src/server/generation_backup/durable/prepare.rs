@@ -3,7 +3,7 @@ use super::{Interruption, PreparedLogGenerationHandover, Store};
 use crate::{
     Error, Result, ServerLogGenerationRoomBackupIdentity,
     server::{
-        Host, deployment_fence,
+        Host, RoomDeploymentLease, deployment_fence,
         generation_backup::{LogGenerationServerBackupHandle, capture},
     },
 };
@@ -18,9 +18,20 @@ pub(in crate::server) fn prepare(
     if host.generation_custody.is_some() {
         return Err(Error::Contract("joined generation original custody must be retained"));
     }
+    prepare_source(host, root, expected, stop, |_| capture::capture_under_permit(host, principal))
+}
+
+/// Capture under the actual current lease, then persist outside its serving permit.
+pub(in crate::server) fn prepare_source(
+    host: &Host,
+    root: &Path,
+    expected: &ServerLogGenerationRoomBackupIdentity,
+    stop: &Interruption,
+    capture: impl FnOnce(&RoomDeploymentLease) -> Result<crate::ServerLogGenerationRoomBackup>,
+) -> Result<PreparedLogGenerationHandover> {
     let (backup, previous) = host.deployment.fenced(|lease| {
         deployment_fence::transaction(Some(lease), || {
-            let backup = capture::capture_under_permit(host, principal)?;
+            let backup = capture(lease)?;
             if &backup.info()?.identity != expected {
                 return Err(Error::Contract("prepared handover source cut changed"));
             }

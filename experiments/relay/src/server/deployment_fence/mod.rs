@@ -35,7 +35,9 @@ pub use identity::{RoomDeploymentIdentity, RoomDeploymentSelection};
 pub use lease::RoomDeploymentLease;
 pub(super) use seal::seal;
 pub(super) use seal_generation::seal_log_generation;
-pub(super) use seal_prepared_generation::{seal_prepared, seal_prepared_source};
+pub(super) use seal_prepared_generation::{
+    seal_prepared, seal_prepared_for_lease, seal_prepared_source,
+};
 #[cfg(test)]
 pub(super) use serving::attach_host;
 pub(super) use serving::prepare_host;

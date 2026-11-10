@@ -51,6 +51,23 @@ permission, provider closure, client ACK or delivery decision. Old participating
 native writers and final upload publication remain fenced by their old epoch.
 Stale source choices append nothing and preserve newer accepted work.
 
+## Hand over from an activated recovery host
+
+An `ActivatedNativeLogGenerationHost` can prepare its next handover with
+`prepare_next_handover`. Obtain the expected current native and raster
+identity from its recovery handle. Preparation requires the actual current
+serving epoch, the retained original recovery directory, the preceding source
+intent and any durable activation checkpoint. It writes the next intent to an
+absent private directory while the current host can continue serving.
+
+Retain the new intent identity independently and call `seal_next_handover`
+with the same activated host and prepared intent. The seal compares the complete
+current cut again under the exclusive epoch permit. A changed cut leaves the
+current host serving. A successful seal fences earlier handles and leaves the
+prepared archive available to restore and verify a fresh successor. The same
+native activation steps apply to that successor. Its client and provider
+reconciliation remains a separate step.
+
 ## Cold reopen and status
 
 `PreparedLogGenerationHandover::open` requires the independently retained intent
