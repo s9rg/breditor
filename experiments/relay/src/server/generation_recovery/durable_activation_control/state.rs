@@ -56,6 +56,21 @@ impl DurableNativeActivationControl {
     pub fn identity(&self) -> DurableNativeActivationControlIdentity {
         self.state.selection.clone()
     }
+    /// Admit local handover work against the actual host retained by the HTTP
+    /// commit. Capture custody before releasing the control's commit lock.
+    pub(super) fn active_for_handover(&self) -> Result<ActivatedNativeLogGenerationHost> {
+        let state = &self.state;
+        state.local()?;
+        let held = state.commit.try_lock().map_err(|_| Error::Locked)?;
+        let Commit::Active(active) = &*held else {
+            return Err(Error::NeedsRecovery);
+        };
+        state.local()?;
+        Ok(ActivatedNativeLogGenerationHost {
+            host: active.recovery_host(),
+            selection: active.selection().clone(),
+        })
+    }
     /// Obtain routes from the actual retained successful service, including
     /// after a lost response. Never reconstructs a lease from checkpoint status.
     /// Does not bind sockets or certify client/provider readiness.

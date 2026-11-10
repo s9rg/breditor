@@ -1,8 +1,10 @@
 //! Explicit operator transport for an already durable native activation choice.
 mod commit;
 mod prepare;
+mod prepare_next_handover;
 mod publication;
 mod routes;
+mod seal_next_handover;
 mod state;
 
 pub use prepare::prepare_durable_native_activation_control;

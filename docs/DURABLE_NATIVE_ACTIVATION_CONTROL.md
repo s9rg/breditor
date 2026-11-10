@@ -91,6 +91,23 @@ committing. Existing service routes retain their real shared serving custody and
 remain fenced by their actual deployment epoch. Saved identities cannot create
 the control owner or its service handle.
 
+## Hand over an HTTP-activated service again
+
+Trusted Rust code that retains a live committed control can call
+`control.prepare_next_handover` and `control.seal_next_handover` on its actual
+serving host. Both require current native owner credentials. The operator
+receipt and the operator account alone supply no native owner authority.
+Preparation retains the complete current cut in an absent private directory.
+It leaves the service available. The caller retains the returned identity
+independently before sealing. A stale cut keeps the old epoch current. A
+successful seal fences the old routes and allows cold restoration and a fresh
+authenticated activation control. Closing the control blocks new handover
+admissions. Already admitted work can finish and its intent resolves ambiguity.
+See [durable generation source handover](DURABLE_GENERATION_SOURCE_HANDOVER.md).
+
+The successor uses the sealed archive as its restore origin. Whole-room SDK
+reconciliation across that origin change requires a separate continuity proof.
+
 ## Functional checks and remaining integration
 
 The native checks exercise real loopback HTTP and all four independent document/
@@ -100,6 +117,11 @@ and instances, unknown fields, Origin/body bounds, stale-target terminal refusal
 incomplete-body quota, control drop and cancellation of a real HTTP handler while
 its worker is blocked on actual native target exclusion. Existing recovery
 networking uses one shared bounded wire helper.
+
+The repeated-control test commits two genuine activation controls over loopback
+HTTP. It checks an unchanged epoch on stale sealing, cold source intent reopen,
+original registration and raster availability, and original offline document
+and comment work with subsequent Undo/Redo through the successor's socket.
 
 Reproduce the relevant native suite with `cargo test --manifest-path
 experiments/relay/Cargo.toml --features server --release --locked --offline --lib

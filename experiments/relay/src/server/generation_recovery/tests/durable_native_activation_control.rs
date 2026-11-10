@@ -10,6 +10,8 @@ use crate::server::{
 use network::{Network, Request};
 use std::sync::Arc;
 
+mod next_handover;
+
 fn operators(token: &str) -> TestResult<Authentication> {
     Ok(Authentication::from_json(
         &serde_json::json!({
@@ -120,7 +122,20 @@ async fn native_activation_control_commits_once_over_http_for_all_history_policy
             assert_eq!(network.request(&request(&token), &bytes).await?.status, 503);
             assert!(control.service_router().await.is_err());
             // Closing operator control does not revoke the actual native host.
-            setup.handle.capture_recovery_state("owner", &setup.owner).await?;
+            let current = setup.handle.capture_recovery_state("owner", &setup.owner).await?;
+            let absent = setup.source.directory.0.join("closed-control-handover");
+            assert!(matches!(
+                control
+                    .prepare_next_handover(
+                        "owner",
+                        &setup.owner,
+                        &absent,
+                        current.identity()?.server
+                    )
+                    .await,
+                Err(crate::Error::NeedsRecovery)
+            ));
+            assert!(!absent.exists());
             network.stop().await?;
         }
     }
