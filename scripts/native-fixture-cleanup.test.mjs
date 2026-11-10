@@ -1,8 +1,31 @@
 import assert from 'node:assert/strict';
+import {mkdtemp, rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import test from 'node:test';
 import {withFixtureCleanup} from './fixtures/fixture-cleanup.mjs';
+import {startNativeGenerationCompleteControls} from './fixtures/generation-recovery-control/complete-native-host.mjs';
+import {startNativeGenerationControls} from './fixtures/generation-recovery-control/native-host.mjs';
 import {testMetadataMaterialization} from './fixtures/local-metadata/materialization.mjs';
+import {startNativeCompleteControls} from './fixtures/physical-recovery-control/complete-native-host.mjs';
+import {startNativePhysicalControls} from './fixtures/physical-recovery-control/native-host.mjs';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
+
+for (const [name, start] of Object.entries({
+ 'physical': startNativePhysicalControls,
+ 'complete physical': startNativeCompleteControls,
+ 'generation': startNativeGenerationControls,
+ 'complete generation': startNativeGenerationCompleteControls,
+})) {
+ test(`missing executable rejects ${name} fixture startup`, {timeout: 3000}, async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'breditor-missing-native-fixture-'));
+  t.after(() => rm(directory, {recursive: true, force: true}));
+  await assert.rejects(
+   start(directory, join(directory, 'missing-fixture'), directory),
+   /Native (physical|generation(?:-complete)?)-control fixture did not prepare/,
+  );
+ });
+}
 
 test('a failed native fixture retains the operation and lock errors and still stops the host', async () => {
  const descriptors = ['indexedDB', 'navigator', 'Image'].map(name => [name, Object.getOwnPropertyDescriptor(globalThis, name)]);
