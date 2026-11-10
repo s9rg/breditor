@@ -10,12 +10,12 @@ for(const profile of ['full','functional'])test(profile+' checks approved histor
 
 // Descendants retain the complete reader domain and derive totals from it.
 const descendants=[
- ['complete-history-provider-workload.mjs','completeHistoryProviderWorkload',1425],
- ['room-record-cut-workload.mjs','roomRecordCutWorkload',1486],
- ['room-asset-approval-workload.mjs','roomAssetApprovalWorkload',1558],
- ['retained-native-continuation-workload.mjs','retainedNativeContinuationWorkload',1576],
- ['selected-owner-workload.mjs','selectedOwnerWorkload',1962],
- ['selected-reconciliation-workload.mjs','selectedReconciliationWorkload',1989],
+ ['complete-history-provider-workload.mjs','completeHistoryProviderWorkload',1426],
+ ['room-record-cut-workload.mjs','roomRecordCutWorkload',1487],
+ ['room-asset-approval-workload.mjs','roomAssetApprovalWorkload',1559],
+ ['retained-native-continuation-workload.mjs','retainedNativeContinuationWorkload',1577],
+ ['selected-owner-workload.mjs','selectedOwnerWorkload',1963],
+ ['selected-reconciliation-workload.mjs','selectedReconciliationWorkload',1990],
 ];
 for(const [file,key,total] of descendants)test('complete inherited history count '+file,async()=>{
  const workload=(await import('./'+file))[key];
