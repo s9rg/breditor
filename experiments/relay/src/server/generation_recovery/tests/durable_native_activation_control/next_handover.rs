@@ -1,6 +1,7 @@
 //! The actual host retained by one HTTP activation can provision the next.
 use super::{Network, Setup, TestResult, control, operators, request};
 use crate::server::generation_recovery::tests::{
+    native_activation::advance_target,
     publication_history::continue_original_history,
     publication_socket::Socket,
     source::{POLICY, authentication},
@@ -17,6 +18,7 @@ use crate::{
 use breditor_collab_feasibility::rich_replica::VersionAssetReference;
 use serde_json::json;
 use std::{io::Cursor, sync::Arc};
+mod paths;
 
 struct SourceRasterProvider(String);
 
@@ -75,6 +77,10 @@ async fn http_activated_host_seals_the_next_cut_and_fresh_control_resumes_offlin
             )
             .await?,
     );
+    advance_target(&setup, true).await?;
+    let earlier = setup.handle.capture_recovery_state("owner", &setup.owner).await?.into_parts().0;
+    assert_eq!(earlier.info()?.identity.native, stale.identity().source().native);
+    assert_ne!(earlier.info()?.identity, *stale.identity().source());
     setup
         .handle
         .host
@@ -97,6 +103,16 @@ async fn http_activated_host_seals_the_next_cut_and_fresh_control_resumes_offlin
                 "owner",
                 &setup.owner,
                 &root.join("next-source"),
+                selected.server.clone(),
+            )
+            .await?,
+    );
+    let competing = Arc::new(
+        first
+            .prepare_next_handover(
+                "owner",
+                &setup.owner,
+                &root.join("same-cut-unsealed"),
                 selected.server.clone(),
             )
             .await?,
@@ -149,6 +165,16 @@ async fn http_activated_host_seals_the_next_cut_and_fresh_control_resumes_offlin
         return Err("successor is missing original registrations".into());
     };
     let proof = Arc::new(proof);
+    let spanning = Box::pin(paths::check(
+        &setup,
+        &successor,
+        &token,
+        proof.clone(),
+        &earlier,
+        source.clone(),
+        competing,
+    ))
+    .await?;
     let mut png = Cursor::new(Vec::new());
     image::DynamicImage::new_rgb8(2, 3).write_to(&mut png, image::ImageFormat::Png)?;
     let provider = Arc::new(SourceRasterProvider(crate::assets::asset_id(png.get_ref())));
@@ -175,7 +201,7 @@ async fn http_activated_host_seals_the_next_cut_and_fresh_control_resumes_offlin
     );
     let (operator, _) = Authentication::issue_token()?;
     let (router, second) = prepare_durable_native_activation_control(
-        successor,
+        successor.clone(),
         proof,
         prepared,
         setup.authority.clone(),
@@ -188,6 +214,7 @@ async fn http_activated_host_seals_the_next_cut_and_fresh_control_resumes_offlin
     let body = serde_json::to_vec(&second.identity())?;
     assert_eq!(network.request(&request(&operator), &body).await?.status, 200);
     assert_eq!(setup.ledger()?.len(), before.len() + 312);
+    spanning.check_live(&successor, "owner", &token).await?;
     let serving = Network::start(second.service_router().await?).await?;
     let socket = Socket::open(serving.address).await?;
     let (socket, auth) = socket.request("auth", json!({
@@ -203,6 +230,7 @@ async fn http_activated_host_seals_the_next_cut_and_fresh_control_resumes_offlin
     })).await?;
     assert_eq!(review["kind"], "reviewResumed");
     drop(continue_original_history(socket, &setup).await?);
+    assert!(spanning.check_live(&successor, "owner", &token).await.is_err());
     serving.stop().await?;
     network.stop().await?;
     Ok(())

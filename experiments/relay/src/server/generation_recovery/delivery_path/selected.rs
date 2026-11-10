@@ -8,7 +8,7 @@ use std::sync::Arc;
 pub(super) fn check_inputs(
     ancestors: &[Arc<ServerLogGenerationRoomBackup>],
     expected: &[ServerLogGenerationRoomBackupIdentity],
-) -> Result<()> {
+) -> Result<u64> {
     super::limits::check(ancestors.len(), 0)?;
     if ancestors.len() != expected.len() {
         return Err(Error::Contract("delivery path count differs or exceeds budget"));
@@ -25,7 +25,7 @@ pub(super) fn check_inputs(
             return Err(Error::Contract("delivery path archive budget"));
         }
     }
-    Ok(())
+    Ok(bytes)
 }
 pub(super) fn check_selected(
     room: &mut Room,

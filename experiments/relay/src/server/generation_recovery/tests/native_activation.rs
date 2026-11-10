@@ -381,7 +381,7 @@ async fn interruption_after_synced_activation_keeps_the_same_host_permanently_fe
     Ok(())
 }
 
-async fn advance_target(setup: &Setup, raster: bool) -> TestResult {
+pub(super) async fn advance_target(setup: &Setup, raster: bool) -> TestResult {
     if raster {
         let assets = setup.handle.host.assets.clone().ok_or("assets")?;
         setup

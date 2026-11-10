@@ -68,6 +68,28 @@ prepared archive available to restore and verify a fresh successor. The same
 native activation steps apply to that successor. Its client and provider
 reconciliation remains a separate step.
 
+## Verify client cuts from before the handover
+
+The successor's ordinary `verify_delivery_path` still starts at its actual
+restore origin. For client journals that selected earlier cuts, first verify
+that ordinary successor-local path, then call
+`verify_handover_delivery_path` with the earlier complete archives and their
+independent ordered pins. Supply the actual retained source intent, its
+independently saved choice and the deployment authority that recorded the seal.
+
+The verifier checks each earlier native and raster archive against its next
+cut, then checks that the final earlier cut is fully present in the sealed
+origin. The successor-local proof continues from that origin through the
+current protected registrations and complete native and raster cut. Both path
+segments share the 4,096-cut and 2 GiB input budget. An unsealed copy with the
+same bytes or a reversed raster-only cut cannot establish continuity.
+
+The result rechecks the actual seal and live successor on use. Its detached
+identity includes the sealed epoch and both sets of path pins. It carries no
+private file witnesses, acknowledgements or serving grant. This native proof
+provides the ancestry prerequisite for SDK reconciliation. The existing
+delivery-path format still covers only the successor-local segment.
+
 ## Cold reopen and status
 
 `PreparedLogGenerationHandover::open` requires the independently retained intent

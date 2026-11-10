@@ -52,7 +52,9 @@ pub use delivery_continuation::{
 mod delivery_path;
 pub use delivery_path::{
     MAX_DELIVERY_PATH_ANCESTORS, MAX_DELIVERY_PATH_ARCHIVE_BYTES,
-    ServerLogGenerationDeliveryPathIdentity, VerifiedServerLogGenerationDeliveryPath,
+    ServerLogGenerationDeliveryPathIdentity, ServerLogGenerationHandoverDeliveryPathIdentity,
+    ServerLogGenerationHandoverDeliveryPathOptions, VerifiedServerLogGenerationDeliveryPath,
+    VerifiedServerLogGenerationHandoverDeliveryPath,
 };
 mod capture;
 pub use asset_state::ServerLogGenerationAssetRecoveryState;
