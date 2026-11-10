@@ -33,7 +33,43 @@ test('partial room cannot send a subset as complete provider availability',async
  const s=await selectedProviderSession(fixtures,tag(),{subset:['original','local-operation-flat'],documentSegmented:false,reviewSegmented:false});try{const native=selectedNativePairs(s.owner,false),db=await snapshotReadDatabases(),start=transport.requests.length,report=await read(s);assert.equal(report.kind,'pending');assert.equal(report.native.kind,'pending');assert.equal(report.native.participants.length,2);assert.ok(report.native.ownStreams.unreconciledParticipants.length>0);assert.equal(report.provider.provider,null);assert.ok(transport.requests.length>start);assert.equal(transport.requests.slice(start).some(row=>row.assets),false);assert.deepEqual(selectedNativePairs(s.owner,false),native);assert.deepEqual(await snapshotReadDatabases(),db);}finally{await s.close();}
 });
 test('cold selected owner keeps later offline edits, comments and unreferenced receipts without claiming global coverage',async()=>{
- const s=await selectedProviderSession(fixtures,tag(),{documentSegmented:true,reviewSegmented:true});try{const basis=await s.retain();for(const row of s.owner.clients){selectStart(row.core);row.core.type('later offline reconciliation work ');assert.equal(row.core.redoReview().kind,'committed');}Object.defineProperty(globalThis,'Image',{value:UnavailableUploadImage,configurable:true});const id=s.owner.clients.at(-1).id;await s.owner.assets(id).ingest(new Blob([unavailableUpload],{type:'image/png'}));await s.owner.assets(id).flush(async()=> 'earned-offline-reconciliation-not-provider-proof');const native=selectedNativePairs(s.owner,true);await s.cold(basis);const db=await snapshotReadDatabases(),report=await read(s);assert.equal(report.kind,'pending');assert.equal(report.provider.kind,'pending');assert.ok(report.provider.provider.missing.some(row=>row.kind==='uploadBytes'&&row.contentAsset===unavailableAsset));assert.equal((await s.owner.assets(id).get(unavailableAsset)).storageRef,'earned-offline-reconciliation-not-provider-proof');assert.deepEqual(selectedNativePairs(s.owner,true),native);assert.deepEqual(await snapshotReadDatabases(),db);for(const row of s.owner.clients){const document=row.core.documentJson();assert.equal(row.core.undo(),true);assert.doesNotMatch(row.core.documentJson(),/later offline reconciliation work/);assert.equal(row.core.redo(),true);assert.equal(row.core.documentJson(),document);assert.equal(row.core.undoReview().kind,'committed');assert.equal(row.core.redoReview().kind,'committed');}}finally{await s.close();}
+ const s=await selectedProviderSession(fixtures,tag(),{documentSegmented:true,reviewSegmented:true});
+ try{
+  const basis=await s.retain();
+  const oldCores=new Set(s.owner.clients.map(row=>row.core));
+  assert.equal(oldCores.size,7);
+  for(const row of s.owner.clients){
+   selectStart(row.core);
+   row.core.type('later offline reconciliation work ');
+   assert.equal(row.core.redoReview().kind,'committed');
+  }
+  Object.defineProperty(globalThis,'Image',{value:UnavailableUploadImage,configurable:true});
+  const id=s.owner.clients.at(-1).id;
+  await s.owner.assets(id).ingest(new Blob([unavailableUpload],{type:'image/png'}));
+  await s.owner.assets(id).flush(async()=> 'earned-offline-reconciliation-not-provider-proof');
+  const native=selectedNativePairs(s.owner,true),oldAuthorityCalls=s.f.oldCalls;
+  let freshAuthorityCalls=0;
+  await s.cold(basis,{checkAuthority(){freshAuthorityCalls++;}});
+  assert.ok(freshAuthorityCalls>0);
+  assert.equal(s.f.oldCalls,oldAuthorityCalls);
+  assert.ok(s.owner.clients.every(row=>!oldCores.has(row.core)));
+  const db=await snapshotReadDatabases(),report=await read(s);
+  assert.equal(report.kind,'pending');
+  assert.equal(report.provider.kind,'pending');
+  assert.ok(report.provider.provider.missing.some(row=>row.kind==='uploadBytes'&&row.contentAsset===unavailableAsset));
+  assert.equal((await s.owner.assets(id).get(unavailableAsset)).storageRef,'earned-offline-reconciliation-not-provider-proof');
+  assert.deepEqual(selectedNativePairs(s.owner,true),native);
+  assert.deepEqual(await snapshotReadDatabases(),db);
+  for(const row of s.owner.clients){
+   const document=row.core.documentJson();
+   assert.equal(row.core.undo(),true);
+   assert.doesNotMatch(row.core.documentJson(),/later offline reconciliation work/);
+   assert.equal(row.core.redo(),true);
+   assert.equal(row.core.documentJson(),document);
+   assert.equal(row.core.undoReview().kind,'committed');
+   assert.equal(row.core.redoReview().kind,'committed');
+  }
+ }finally{await s.close();}
 });
 test('fresh denied operator, abort and close during authentication cannot publish the combined report',async()=>{
  const s=await selectedProviderSession(fixtures,tag(),{subset:['original','local-operation-flat'],documentSegmented:false,reviewSegmented:false});let closing;try{const db=await snapshotReadDatabases(),native=selectedNativePairs(s.owner,false);s.allowToken(false);await assert.rejects(read(s));s.allowToken(true);assert.deepEqual(await snapshotReadDatabases(),db);const controller=new AbortController();s.onToken(()=>controller.abort());await assert.rejects(read(s,{signal:controller.signal}));assert.deepEqual(selectedNativePairs(s.owner,false),native);assert.deepEqual(await snapshotReadDatabases(),db);assert.equal((await read(s)).kind,'pending');s.onToken(()=>{closing=s.owner.close();});await assert.rejects(read(s));await closing;assert.deepEqual(await snapshotReadDatabases(),db);}finally{await closing;await s.close();}
