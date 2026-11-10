@@ -8,7 +8,7 @@ import {pathToFileURL} from 'node:url';
 const root=resolve(new URL('../',import.meta.url).pathname);
 const {sourceEvidence,saveEvidence}=await import(pathToFileURL(join(root,'scripts/candidate-release/evidence.mjs')));
 const {searchConsumerLock,verifySearchConsumerRegistry}=await import(pathToFileURL(join(root,'scripts/search-consumer-lock.mjs')));
-if(process.argv.length!==2)throw Error('All activation-retention metadata cases and existing lifetime regressions are mandatory');const expectedCases=17;
+if(process.argv.length!==2)throw Error('All activation-retention metadata cases and existing lifetime regressions are mandatory');const expectedCases=18;
 const tests=['scripts/activation-retention-lifetime.test.mjs','scripts/room-native-activation-intent.test.mjs'];
 const source=sourceEvidence(root),directory=fs.mkdtempSync('/private/tmp/breditor-activation-retention-installed-'),archives=join(directory,'archives'),consumer=join(directory,'consumer'),sha=data=>createHash('sha256').update(data).digest('hex');fs.mkdirSync(archives);fs.mkdirSync(consumer);
 const folders=['breditor-browser','breditor-experimental-rich-content','breditor-collaboration'],mapping=new Map(folders.map(name=>[name,JSON.parse(fs.readFileSync(join(root,'packages',name,'package.json'))).name]));

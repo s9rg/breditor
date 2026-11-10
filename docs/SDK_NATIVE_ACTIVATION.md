@@ -78,8 +78,16 @@ bytes. Native control request/response bodies remain bounded to 64 KiB.
 A cancelled queued database open retains namespace custody until its actual
 request drains. The late upgrade is aborted, and no missing database is silently
 created. Close refuses to claim cleanup completion while a raw request still
-owns that lifetime. Original room data, histories, upload queues and metadata
-stores are not overwritten by intent storage.
+owns that lifetime. If closing a settled intent database fails, a fresh open
+retries the original cleanup before acquiring the namespace. This also applies
+to joint activation and restart reassociation intents. The retry reads the
+existing observation and preserves the original room data, histories, upload
+queues and metadata stores.
+
+Run the three intent storage suites with
+`node --test --test-concurrency=1 scripts/room-native-activation-intent.test.mjs scripts/joint-activation-intent-storage.test.mjs scripts/joint-reassociation-intent-storage.test.mjs`.
+Run the same assertions against fresh offline packages with
+`node scripts/check-joint-reassociation-installed.mjs --intent-storage`.
 
 ## Qualification scope
 

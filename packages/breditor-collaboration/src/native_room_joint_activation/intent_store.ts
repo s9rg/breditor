@@ -78,6 +78,14 @@ export class JointRoomActivationIntentStore {
  });}
  markPublicationStarted():Promise<JointRoomPublicationState>{return this.#advance(undefined);}
  markPublicationObserved(receipt:SharedNativeRoomPublicationReceipt):Promise<JointRoomPublicationState>{return this.#advance(receipt);}
- close():Promise<void>{this.#closing=true;if(this.#pending){this.#reject?.(fail('joint_activation_intent_closed'));try{this.#request?.transaction?.abort();}catch{}}return this.#close().then(()=>this.#opening?.rollback());}
+ close():Promise<void>{
+  this.#closing=true;
+  if(this.#pending){this.#reject?.(fail('joint_activation_intent_closed'));try{this.#request?.transaction?.abort();}catch{}}
+  return this.#close().then(()=>this.#opening?.rollback(),error=>{
+   // Queued opens keep their reservation until the request settles.
+   if(!this.#pending)this.#opening?.retainFailedCleanup();
+   throw error;
+  });
+ }
  #close():Promise<void>{if(this.#closed)return Promise.resolve();if(this.#cleanup)return this.#cleanup;this.#closing=true;const task=Promise.resolve().then(async()=>{await this.#running?.catch(()=>{});if(this.#pending)throw fail('joint_activation_intent_busy');if(this.#db){this.#db.onversionchange=null;this.#db.close();}await this.#lease?.close();this.#db=undefined;this.#lease=undefined;this.#cancel.close();this.#closed=true;});this.#cleanup=task.finally(()=>{this.#cleanup=undefined;});return this.#cleanup;}
 }

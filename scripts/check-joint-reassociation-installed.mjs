@@ -13,8 +13,14 @@ const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const pendingRepeated=process.argv.length===3&&process.argv[2]==='--pending-repeated';
 const preparedStart=process.argv.length===3&&process.argv[2]==='--prepared-start';
 const inputRetention=process.argv.length===3&&process.argv[2]==='--input-retention';
-if(process.argv.length!==2&&!pendingRepeated&&!preparedStart&&!inputRetention)throw Error('Run the full workset, --pending-repeated, --prepared-start, or --input-retention');
-const tests=inputRetention?['scripts/joint-preparation-input-retention.test.mjs']:preparedStart?['scripts/cold-room-prepared-start.test.mjs']:pendingRepeated?['scripts/joint-reassociation-pending-repeated-native.test.mjs']:[
+const intentStorage=process.argv.length===3&&process.argv[2]==='--intent-storage';
+if(process.argv.length!==2&&!pendingRepeated&&!preparedStart&&!inputRetention&&!intentStorage)throw Error('Run the full workset, --pending-repeated, --prepared-start, --input-retention or --intent-storage');
+const intentStorageTests=[
+ 'scripts/room-native-activation-intent.test.mjs',
+ 'scripts/joint-activation-intent-storage.test.mjs',
+ 'scripts/joint-reassociation-intent-storage.test.mjs',
+];
+const tests=intentStorage?intentStorageTests:inputRetention?['scripts/joint-preparation-input-retention.test.mjs']:preparedStart?['scripts/cold-room-prepared-start.test.mjs']:pendingRepeated?['scripts/joint-reassociation-pending-repeated-native.test.mjs']:[
  'scripts/metadata-continuation-evidence-admission.test.mjs',
  'scripts/metadata-continuation-evidence-native.test.mjs',
  'scripts/joint-reassociation-intent-storage.test.mjs',
@@ -22,8 +28,8 @@ const tests=inputRetention?['scripts/joint-preparation-input-retention.test.mjs'
  'scripts/joint-reassociation-complete-native.test.mjs',
 ];
 const types=['scripts/fixtures/metadata-continuation/types.mts','scripts/fixtures/native-joint-reassociation/types.mts'];
-const expectedCases=pendingRepeated||preparedStart||inputRetention?1:18,sha=data=>createHash('sha256').update(data).digest('hex');
-const workset=inputRetention?'joint-preparation-input-retention-installed':preparedStart?'prepared-cold-start-installed':pendingRepeated?'joint-reassociation-pending-repeated-installed':'joint-reassociation-installed';
+const expectedCases=intentStorage?41:pendingRepeated||preparedStart||inputRetention?1:19,sha=data=>createHash('sha256').update(data).digest('hex');
+const workset=intentStorage?'activation-intent-storage-installed':inputRetention?'joint-preparation-input-retention-installed':preparedStart?'prepared-cold-start-installed':pendingRepeated?'joint-reassociation-pending-repeated-installed':'joint-reassociation-installed';
 const source=sourceEvidence(root),directory=fs.mkdtempSync('/private/tmp/breditor-'+workset+'-');
 const archives=join(directory,'archives'),consumer=join(directory,'consumer');
 fs.mkdirSync(archives);fs.mkdirSync(consumer);
@@ -67,11 +73,13 @@ function copyScript(path){
 }
 for(const path of [...tests,...types])copyScript(path);
 const runtime=[];
+const processFixture='target/native-joint-process-native/debug/examples/native_joint_process_recovery_functional';
+const processReport='target/native-joint-process-native-build.json';
 for(const path of [
  'target/owned-history-relay-native/release/examples/complete_cohort_control_functional',
- 'target/owned-history-relay-native/release/examples/selected_suggestion_delivery_functional',
- 'target/native-joint-process-native/debug/examples/native_joint_process_recovery_functional',
- 'target/native-joint-process-native-build.json',
+ ...(intentStorage?['scripts/fixtures/local-metadata/pending-source-packet-recovery.archive']:[
+  'target/owned-history-relay-native/release/examples/selected_suggestion_delivery_functional',processFixture,processReport,
+ ]),
  ...fs.readdirSync(join(root,'target/promoted-shared-web')).map(name=>'target/promoted-shared-web/'+name),
  'crates/breditor-core/tests/fixtures/rich-local-root.json',
 ]){
@@ -79,11 +87,12 @@ for(const path of [
  fs.mkdirSync(dirname(to),{recursive:true});fs.writeFileSync(to,bytes,{mode:fs.statSync(from).mode});
  assert.equal(sha(fs.readFileSync(to)),sha(bytes));runtime.push({path,bytes:bytes.length,sha256:sha(bytes)});
 }
-const build=JSON.parse(fs.readFileSync(join(consumer,'target/native-joint-process-native-build.json')));
-assert.equal(build.complete,true);assert.equal(build.exitCode,0);assert.equal(build.sourceUnchanged,true);
-const executable='target/native-joint-process-native/debug/examples/native_joint_process_recovery_functional';
-const nativePin=build.binaries.find(row=>row.path.endsWith('/native_joint_process_recovery_functional'));
-assert.ok(nativePin);assert.equal(sha(fs.readFileSync(join(consumer,executable))),nativePin.sha256);
+if(!intentStorage){
+ const build=JSON.parse(fs.readFileSync(join(consumer,processReport)));
+ assert.equal(build.complete,true);assert.equal(build.exitCode,0);assert.equal(build.sourceUnchanged,true);
+ const nativePin=build.binaries.find(row=>row.path.endsWith('/native_joint_process_recovery_functional'));
+ assert.ok(nativePin);assert.equal(sha(fs.readFileSync(join(consumer,processFixture))),nativePin.sha256);
+}
 const normalWasmSha256=sha(fs.readFileSync(join(consumer,'node_modules/@breditor/collaboration/dist/runtime/breditor_shared_bg.wasm')));
 assert.equal(normalWasmSha256,'165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0');
 let matchingPackageDistFiles=0;
@@ -100,7 +109,7 @@ for(const[folder,name]of mapping){
 const state={format:'breditor/'+workset,formatVersion:1,source,directory,consumer,generatedOutput,registryArtifacts,workspaceLinks:false,copied,runtime,normalWasmSha256,matchingPackageDistFiles,archives:packs.map(pack=>({name:pack.name,path:join(archives,pack.filename),sha256:sha(fs.readFileSync(join(archives,pack.filename)))})),complete:false,releaseReady:false};
 saveEvidence(join(directory,'running.json'),state);
 saveEvidence(join(root,'target/'+workset+'-running.json'),{directory,consumer});
-console.log(JSON.stringify({directory,phase:'strict-types-and-complete-restart-association'}));
+console.log(JSON.stringify({directory,phase:intentStorage?'strict-types-and-intent-storage':'strict-types-and-complete-restart-association'}));
 let child,timer,killTimer,stop;
 const interrupted=()=>{stop?.('SIGTERM');killTimer??=setTimeout(()=>stop?.('SIGKILL'),10000);};
 process.once('SIGTERM',interrupted);process.once('SIGINT',interrupted);
@@ -112,22 +121,24 @@ try{
  // Own only this detached test child's process group, never our caller's group.
  stop=signal=>{if(child.exitCode===null&&child.signalCode===null)try{process.kill(-child.pid,signal);}catch(error){if(error.code!=='ESRCH')throw error;}};
  let timedOut=false;
- timer=setTimeout(()=>{timedOut=true;stop('SIGTERM');killTimer=setTimeout(()=>stop('SIGKILL'),10000);},inputRetention?120000:(preparedStart?1:pendingRepeated?7:5)*60*60*1000);
+ const timeoutMs=intentStorage?600000:inputRetention?120000:(preparedStart?1:pendingRepeated?7:5)*60*60*1000;
+ timer=setTimeout(()=>{timedOut=true;stop('SIGTERM');killTimer=setTimeout(()=>stop('SIGKILL'),10000);},timeoutMs);
  const execution=await new Promise((done,fail)=>{child.once('error',fail);child.once('exit',(code,signal)=>done({pid:child.pid,code,signal}));});
  clearTimeout(timer);clearTimeout(killTimer);saveEvidence(join(directory,'exit.json'),execution);
  assert.equal(timedOut,false);assert.equal(execution.code,0,'Read '+logPath);assert.equal(execution.signal,null);
  assert.ok(fs.statSync(logPath).size<=8*1024*1024);
  const log=fs.readFileSync(logPath,'utf8');
  for(const[key,n]of[['tests',expectedCases],['pass',expectedCases],['fail',0],['skipped',0],['cancelled',0],['todo',0]])assert.match(log,new RegExp('^# '+key+' '+n+'$','m'));
- if(inputRetention){assert.match(log,/JOINT_PREPARATION_INPUT_RETAINED /);}
+ if(intentStorage){assert.equal([...log.matchAll(/^ok \d+ - a fresh .* intent owner drains a failed database close/gm)].length,3);}
+ else if(inputRetention){assert.match(log,/JOINT_PREPARATION_INPUT_RETAINED /);}
  else if(preparedStart){assert.match(log,/PREPARED_COLD_BASELINE_MISSING_RUN /);assert.match(log,/PREPARED_COLD_START_COMPLETE /);}
  else assert.match(log,/REASSOCIATION_COMPLETE_NATIVE /);
  if(pendingRepeated){assert.match(log,/REASSOCIATION_PENDING_STEP original-native-intent-prepared-without-commit/);assert.match(log,/REASSOCIATION_REPEATED_STEP second-actual-process-death-and-complete-prior-metadata-retained/);}
- else if(preparedStart||inputRetention){/* Separate fixture/start worksets do not claim metadata-reader qualification. */}
+ else if(preparedStart||inputRetention||intentStorage){/* Separate component worksets do not claim metadata-reader qualification. */}
  else assert.match(log,/CONTINUATION_EVIDENCE_PHASE metadata/);
  assert.deepEqual(sourceEvidence(root),source);
  for(const row of runtime)assert.equal(sha(fs.readFileSync(join(root,row.path))),row.sha256);
- const scope=inputRetention?'Preparation fixture boundary only: direct SelectedRoomCurrentFile retained with exact read-back bytes before its downstream archive reader. Reader intentionally stops; no Native process recovery, whole-room activation or V1 qualification.':preparedStart?'Explicit absent-only cold start from a real seven-family prepared execution. Original missing-journal resume refusal, namespace exclusion, declined execution, complete recovery and future document/comment histories. Not Native process death, physical storage durability, the full restart composition or V1.':pendingRepeated?'Actual pending Native process death, then a second committed death after complete metadata continuation. Two fresh cold owners preserve seven families/fourteen offline lanes and earlier complete metadata through fresh confirmation/publication and final original-protocol delivery/future histories. Separate from the default 17-case workset; not physical browser durability or V1.':'Actual committed Native process death, seven cold clients/fourteen offline lanes, interrupted association writes, fresh authenticated confirmation/publication, real metadata and original delivery with future histories. Prior metadata prefix reader and association DATA laws also run. Pending/existing-metadata/repeated complete ownership cycles, physical browser durability and V1 remain separate.';
+ const scope=intentStorage?'Controlled storage laws for the original, joint and reassociation intents. Fresh owners retain exact observations after injected close failures. Serving, restart composition and browser durability require separate qualification.':inputRetention?'Preparation fixture boundary only: direct SelectedRoomCurrentFile retained with exact read-back bytes before its downstream archive reader. Reader intentionally stops; no Native process recovery, whole-room activation or V1 qualification.':preparedStart?'Explicit absent-only cold start from a real seven-family prepared execution. Original missing-journal resume refusal, namespace exclusion, declined execution, complete recovery and future document/comment histories. Not Native process death, physical storage durability, the full restart composition or V1.':pendingRepeated?'Actual pending Native process death, then a second committed death after complete metadata continuation. Two fresh cold owners preserve seven families/fourteen offline lanes and earlier complete metadata through fresh confirmation/publication and final original-protocol delivery/future histories. Separate from the default workset; not physical browser durability or V1.':'Actual committed Native process death, seven cold clients/fourteen offline lanes, interrupted association writes, fresh authenticated confirmation/publication, real metadata and original delivery with future histories. Prior metadata prefix reader and association DATA laws also run. Pending/existing-metadata/repeated complete ownership cycles, physical browser durability and V1 remain separate.';
  Object.assign(state,{complete:true,passed:true,cases:expectedCases,sourceUnchanged:true,strictPrivateTypes:true,log:logPath,logSha256:sha(log),scope});
  saveEvidence(join(directory,'result.json'),state);saveEvidence(join(root,'target/'+workset+'-result.json'),state);
  console.log(JSON.stringify({directory,passed:true,cases:expectedCases,matchingPackageDistFiles}));

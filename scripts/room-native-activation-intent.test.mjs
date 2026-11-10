@@ -2,7 +2,7 @@
 import test,{before,beforeEach,afterEach} from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
 import {IDBObjectStore} from 'fake-indexeddb';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
-import {assertActivationReopensAfterLateClose} from './fixtures/late-activation-intent-open.mjs';
+import {assertActivationReopensAfterFailedClose,assertActivationReopensAfterLateClose} from './fixtures/late-activation-intent-open.mjs';
 import * as native from '../packages/breditor-collaboration/dist/runtime/breditor_shared.js';
 import {encodeRoomActivationIntent as encode} from '../packages/breditor-collaboration/dist/room_native_activation_intent/encode.js';
 import {decodeRoomActivationIntent as decode} from '../packages/breditor-collaboration/dist/room_native_activation_intent/decode.js';
@@ -55,4 +55,11 @@ test('a late cancelled Native intent open permits a new owner after the request 
  create:store=>store.open(base),
  busyCode:'activation_intent_busy',
  closedCode:'activation_intent_closed',
+}));
+test('a fresh Native intent owner drains a failed database close and reads the exact prior observation',()=>assertActivationReopensAfterFailedClose({
+ database:base.choice.database,
+ createStore:()=>new Store(base.choice,options),
+ create:store=>store.open(base),
+ advance:store=>store.markRequestStarted(),
+ stateOf:result=>result.state,
 }));

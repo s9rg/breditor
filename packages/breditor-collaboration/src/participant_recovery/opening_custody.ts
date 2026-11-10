@@ -38,5 +38,7 @@ export class RecoveryOpeningCustody {
   const scope=new RecoveryCleanupScope(errors.storage),entry:OpeningEntry={names:chosen,ticket:scope.retain(cleanup),state:"opening"};entries.add(entry);return new RecoveryOpeningCustody(key,entries,entry,errors);
  }
  complete():void{if(!this.#entries.has(this.#entry)||this.#entry.state!=="opening")throw this.#errors.busy();this.#entry.ticket.complete();this.#entries.delete(this.#entry);}
- rollback():Promise<void>{if(!this.#entries.has(this.#entry))return Promise.resolve();this.#entry.state="failed";return retry(this.#entries,this.#entry);}
+ /** A settled close failed. Let the next owner of this namespace retry cleanup. */
+ retainFailedCleanup():void{if(this.#entries.has(this.#entry))this.#entry.state="failed";}
+ rollback():Promise<void>{this.retainFailedCleanup();return retry(this.#entries,this.#entry);}
 }

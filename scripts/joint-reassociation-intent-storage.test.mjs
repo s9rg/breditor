@@ -3,7 +3,7 @@
 import test,{before,after} from 'node:test';import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';import {IDBObjectStore} from 'fake-indexeddb';
 import {completeControlFixtures} from './fixtures/physical-recovery-control/complete-fixtures.mjs';
-import {assertActivationReopensAfterLateClose} from './fixtures/late-activation-intent-open.mjs';
+import {assertActivationReopensAfterFailedClose,assertActivationReopensAfterLateClose} from './fixtures/late-activation-intent-open.mjs';
 import {acceptedControlTransport} from './fixtures/physical-recovery-control/accepted-transport.mjs';
 import {preparedRoomRun} from './fixtures/native-room-run/session.mjs';
 import {selection as publication,receipt} from './fixtures/native-publication/transport.mjs';
@@ -86,5 +86,14 @@ test('a late cancelled reassociation intent open permits a new owner after the r
   create:store=>store.open(true),
   busyCode:'joint_activation_intent_busy',
   closedCode:'joint_activation_intent_closed',
+ });
+});
+test('a fresh reassociation intent owner drains a failed database close and reads the exact prior observation',()=>{
+ const selected=next();
+ return assertActivationReopensAfterFailedClose({
+  database:selected.plan.database,
+  createStore:()=>new Store(selected,options()),
+  create:store=>store.open(true),
+  advance:store=>store.markPublicationStarted(),
  });
 });

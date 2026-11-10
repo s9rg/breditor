@@ -1,6 +1,29 @@
 /** Exercise an actual queued IndexedDB open whose original caller stops waiting. */
 import assert from 'node:assert/strict';
-import {IDBFactory} from 'fake-indexeddb';
+import {IDBDatabase,IDBFactory} from 'fake-indexeddb';
+
+export async function assertActivationReopensAfterFailedClose({database,createStore,create,advance,stateOf=value=>value}) {
+ const originalClose=IDBDatabase.prototype.close,old=createStore(),fresh=createStore();
+ const failure=new Error('Injected database close failure');
+ let closes=0;
+ try {
+  await create(old);
+  const retained=stateOf(await advance(old));
+  assert.equal(retained.phase,'request-started');
+  IDBDatabase.prototype.close=function(){
+   if(this.name===database&&++closes===1)throw failure;
+   return originalClose.call(this);
+  };
+  await assert.rejects(old.close(),error=>error===failure);
+  // A coordinator that used a temporary store no longer has the old handle.
+  assert.deepEqual(stateOf(await fresh.open()),retained);
+  assert.equal(closes,2);
+ } finally {
+  IDBDatabase.prototype.close=originalClose;
+  await fresh.close();
+  await old.close();
+ }
+}
 
 export async function assertActivationReopensAfterLateClose({database,createStore,create,busyCode,closedCode}) {
  const factory=indexedDB,stop=new AbortController(),store=createStore(stop.signal);

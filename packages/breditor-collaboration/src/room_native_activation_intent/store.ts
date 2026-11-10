@@ -72,6 +72,14 @@ export class RoomActivationIntentStore {
  markReceiptObserved(receipt:SharedDurableNativeActivationReceipt):Promise<RoomActivationRetainedIntent>{return this.#advance(receipt);}
  /** Last COMMITTED observation survives authority loss; it grants no service or writer. */
  committed():RoomActivationIntentState|undefined{return this.#committed;}
- close():Promise<void>{this.#closing=true;if(this.#pending){this.#reject?.(fail('activation_intent_closed'));try{this.#request?.transaction?.abort();}catch{}}return this.#close().then(()=>this.#opening?.rollback());}
+ close():Promise<void>{
+  this.#closing=true;
+  if(this.#pending){this.#reject?.(fail('activation_intent_closed'));try{this.#request?.transaction?.abort();}catch{}}
+  return this.#close().then(()=>this.#opening?.rollback(),error=>{
+   // Queued opens keep their reservation until the request settles.
+   if(!this.#pending)this.#opening?.retainFailedCleanup();
+   throw error;
+  });
+ }
  #close():Promise<void>{if(this.#closed)return Promise.resolve();if(this.#cleanup)return this.#cleanup;this.#closing=true;this.#cleanup=(async()=>{await this.#running?.catch(()=>{});if(this.#pending)throw fail('activation_intent_busy');if(this.#db){this.#db.onversionchange=null;this.#db.close();}await this.#lease?.close();this.#db=undefined;this.#lease=undefined;this.#cancel.close();this.#closed=true;})().finally(()=>{this.#cleanup=undefined;});return this.#cleanup;}
 }

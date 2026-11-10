@@ -13,7 +13,7 @@ const root=resolve(new URL('../',import.meta.url).pathname),source=sourceEvidenc
 const sha=data=>createHash('sha256').update(data).digest('hex');
 const tests=['scripts/native-uncertainty-read-evidence.test.mjs','scripts/native-activation-read-refusal.test.mjs','scripts/native-activation-transport.test.mjs','scripts/native-publication-transport.test.mjs','scripts/room-native-activation-intent.test.mjs','scripts/diagnostics/archive-error-chain.test.mjs'];
 const types=['scripts/fixtures/metadata-continuation/types.mts','scripts/fixtures/native-joint-reassociation/types.mts','scripts/fixtures/activation-wire/types.mts','scripts/fixtures/editor-consumer/types-room-record-cut.ts'];
-const expectedCases=82,folders=['breditor-browser','breditor-experimental-rich-content','breditor-collaboration'];
+const expectedCases=83,folders=['breditor-browser','breditor-experimental-rich-content','breditor-collaboration'];
 const resource='scripts/fixtures/local-metadata/pending-source-packet-recovery.archive',resourceBytes=fs.readFileSync(join(root,resource));
 assert.equal(sha(resourceBytes),'f49c7ed524d513b34c214fc41b7d7452eaa8cd1100d4b2817cb5afb79883ff99');
 const mapping=new Map(folders.map(folder=>[folder,JSON.parse(fs.readFileSync(join(root,'packages',folder,'package.json'))).name]));
