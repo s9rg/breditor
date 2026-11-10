@@ -16,13 +16,16 @@ import {fields,fail} from './policy.js';
 import {participantAuthority} from '../participant_backup/policy.js';
 import {decideFreshAssetChoice} from '../physical_room_asset_approval/decision.js';
 import type {DeliveryJournalResumeInspectionInput,DeliveryJournalResumeInput} from './resume_contract.js';
+import {inspectHandoverResume,type HandoverResumeInputs} from './handover_resume.js';
+import {containsOrderedDeliveryCuts} from '../generation_delivery_path_control/retained_cuts.js';
 const read=DeliveryJournalResources.prototype.readFresh,openPrepared=DeliveryPreparationResources.prototype.open,closePrepared=DeliveryPreparationResources.prototype.close,add=EventTarget.prototype.addEventListener,remove=EventTarget.prototype.removeEventListener;
 const equal=(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b);
 export function deliveryResumeInputs(supplied:DeliveryJournalResumeInspectionInput|DeliveryJournalResumeInput,resume:boolean){
  const r={...supplied};fields(r,['identity','baseline','previous','path','server','inventory','checkAuthority',...(resume?['expected','approve']:[])]);
  const identity=journalIdentity(r.identity),baseline=generationDeliveryRecoveryHostPort(r.baseline),previous=generationDeliveryRecoveryHostPort(r.previous),path=generationDeliveryPathRecoveryHostPort(r.path),native=journalNativeInputs(r.server,r.inventory),authority=participantAuthority(r.checkAuthority),provided=r as DeliveryJournalResumeInput,expected=resume?deliveryJournalResumeChoice(provided.expected):undefined,approve=resume?provided.approve:undefined;
  if(resume&&(typeof approve!=='function'||!equal(expected!.journal,identity)))throw fail('delivery_journal_policy');
- return Object.freeze({identity,host:r.baseline,baseline,previous,path,native,authority,expected,approve});
+ const decide=approve&&expected?()=>approve(expected):undefined;
+ return Object.freeze({identity,host:r.baseline,baseline,previous,path,native,authority,expected,decide});
 }
 export type DeliveryResumeInputs=ReturnType<typeof deliveryResumeInputs>;
 export async function inspectDeliveryResume(scope:SelectedNativeRecoveryScope,journal:DeliveryJournalResources,input:DeliveryResumeInputs,guard:()=>void){
@@ -30,7 +33,7 @@ export async function inspectDeliveryResume(scope:SelectedNativeRecoveryScope,jo
  if(!equal(snapshot.identity,input.identity)||!equal(snapshot.entries[0]!.event.current,input.identity.prepared.before)||!equal(base.previous,input.identity.prepared.server.source.server)||!equal(previous.previous,last.event.server.identity)||!equal(base.current,previous.current)||!equal(path.current,input.baseline.selection)||!equal(base.current.origin,input.identity.prepared.server.source.origin)||!equal(input.native.source,base.current.server)||!equal(input.native.participants,base.current.participants))throw fail();
  // A genuine path may contain extra observed cuts. Every saved cut must occur
  // in literal order, with multiplicity: never deduplicate no-op checkpoints.
- let at=0;for(const entry of snapshot.entries){while(at<path.path.ancestors.length&&!equal(path.path.ancestors[at],entry.event.server.identity))at++;if(at===path.path.ancestors.length)throw fail();at++;}
+ if(!containsOrderedDeliveryCuts(path.path.ancestors,snapshot.entries.map(row=>row.event.server.identity)))throw fail();
  await input.path.check(scope.signal);await input.previous.check(scope.signal);guard();
  const current=await scope.retainExtendingAll(snapshot.entries.map(row=>row.current));
  await scope.readDeliveryReconciliation(input.host,input.native.reader);input.native.check();guard();
@@ -46,13 +49,14 @@ const admissions=new WeakMap<DeliveryResumeAdmission,Held>();
 export function consumeDeliveryResumeAdmission(value:DeliveryResumeAdmission,scope:SelectedNativeRecoveryScope):Held{const held=admissions.get(value);if(!held||held.scope!==scope)throw fail('delivery_journal_policy');admissions.delete(value);return held;}
 /** Existing-only preparation verification plus full reinspection on both sides
  * of THIS decision. Failure closes its actual pending resource lifetime. */
-export async function authorizeDeliveryResume(scope:SelectedNativeRecoveryScope,journal:DeliveryJournalResources,input:DeliveryResumeInputs,guard:()=>void){
- checkSelectedNativeDeliveryScope(scope);if(!input.expected||typeof input.approve!=='function')throw fail('delivery_journal_policy');const preparedResources=new DeliveryPreparationResources(),check=()=>{checkSelectedNativeDeliveryScope(scope);guard();preparedResources.check();};let success=false;
+export async function authorizeDeliveryResume(scope:SelectedNativeRecoveryScope,journal:DeliveryJournalResources,input:DeliveryResumeInputs|HandoverResumeInputs,guard:()=>void){
+ checkSelectedNativeDeliveryScope(scope);if(!input.expected||!input.decide)throw fail('delivery_journal_policy');const preparedResources=new DeliveryPreparationResources(),check=()=>{checkSelectedNativeDeliveryScope(scope);guard();preparedResources.check();};let success=false;
  retainSelectedNativeDeliveryResource(scope,Object.freeze({check,close:()=>closePrepared.call(preparedResources)}));
- try{const actual=await scope.retainCurrent(),prepared=await openPrepared.call(preparedResources,input.identity.prepared,{wasm:actual.integrity.wasm,checkAuthority:check,signal:scope.signal}),before=await inspectDeliveryResume(scope,journal,input,check);
+ const inspect=()=> 'handover' in input?inspectHandoverResume(scope,journal,input,input.identity,check):inspectDeliveryResume(scope,journal,input,check);
+ try{const actual=await scope.retainCurrent(),prepared=await openPrepared.call(preparedResources,input.identity.prepared,{wasm:actual.integrity.wasm,checkAuthority:check,signal:scope.signal}),before=await inspect();
   if(!equal(before.choice,input.expected))throw fail();
-  await decideFreshAssetChoice(input.expected,input.approve,{check,signal:scope.signal,watchClosing:cancel=>{add.call(scope.signal,'abort',cancel,{once:true});return()=>remove.call(scope.signal,'abort',cancel);}});
-  const after=await inspectDeliveryResume(scope,journal,input,check);if(!equal(after.choice,input.expected))throw fail();check();
+  await decideFreshAssetChoice(input.expected,input.decide,{check,signal:scope.signal,watchClosing:cancel=>{add.call(scope.signal,'abort',cancel,{once:true});return()=>remove.call(scope.signal,'abort',cancel);}});
+  const after=await inspect();if(!equal(after.choice,input.expected))throw fail();check();
   const admission=Object.freeze({}) as DeliveryResumeAdmission;admissions.set(admission,{scope,resources:preparedResources,prepared,check});success=true;return Object.freeze({admission,...after});
  }finally{if(!success)await closePrepared.call(preparedResources);}
 }

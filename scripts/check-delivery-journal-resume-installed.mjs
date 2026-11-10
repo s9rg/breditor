@@ -21,17 +21,37 @@ locked.manifest.dependencies.undici=producerLock.packages['node_modules/undici']
 writeFileSync(join(consumer,'package.json'),JSON.stringify(locked.manifest));writeFileSync(join(consumer,'package-lock.json'),JSON.stringify(locked.lock));execFileSync('npm',['install','--offline','--ignore-scripts','--no-audit','--no-fund'],{cwd:consumer,stdio:'inherit'});
 const registryArtifacts=verifySearchConsumerRegistry(producerLock,JSON.parse(readFileSync(join(consumer,'package-lock.json'))));
 for(const pack of packs)assert.ok(realpathSync(join(consumer,'node_modules',pack.name)).startsWith(realpathSync(consumer)+'/node_modules/'));
+let matchingPackageDistFiles=0;
+for(const pack of packs){
+ const from=join(packages.find(path=>JSON.parse(readFileSync(join(path,'package.json'))).name===pack.name),'dist');
+ const to=join(consumer,'node_modules',pack.name,'dist');
+ function compare(path){
+  const entries=readdirSync(join(from,path),{withFileTypes:true});
+  assert.deepEqual(entries.map(entry=>entry.name).sort(),readdirSync(join(to,path)).sort());
+  for(const entry of entries){
+   const next=join(path,entry.name);
+   if(entry.isDirectory())compare(next);
+   else if(entry.isFile()){
+    assert.equal(sha(readFileSync(join(to,next))),sha(readFileSync(join(from,next))),next);
+    matchingPackageDistFiles++;
+   }
+  }
+ }
+ compare('');
+}
+const tests=['coupled-delivery-cold.test.mjs','coupled-delivery-handover.test.mjs','coupled-delivery-contracts.test.mjs','delivery-journal-resume-contracts.test.mjs','delivery-resume-admission-cleanup.test.mjs'];
+const expectedCases=9;
 const copied=[],mapping=new Map(packages.map(path=>{const row=JSON.parse(readFileSync(join(path,'package.json')));return[path.split('/').at(-1),row.name];}));
 function copyScript(path){const target=join(consumer,path),original=readFileSync(join(root,path),'utf8');let text=original;
  text=text.replace(/(['"])((?:\.\.\/)+)packages\/(breditor-[^/]+)\/([^'"]+)\1/g,(match,quote,prefix,folder,tail)=>{const name=mapping.get(folder);if(!name)return match;let selected=relative(dirname(target),join(consumer,'node_modules',name,tail));if(!selected.startsWith('.'))selected='./'+selected;return quote+selected+quote;});
  assert.equal(text.includes('/Users/s/'),false,'No development path may enter installed test source');assert.equal(/(?:\.\.\/)+packages\/breditor-collaboration\//.test(text),false,'No workspace SDK import');mkdirSync(dirname(target),{recursive:true});writeFileSync(target,text);copied.push({path,sourceSha256:sha(Buffer.from(original)),installedSha256:sha(Buffer.from(text))});
 }
 function fixtures(path){for(const entry of readdirSync(join(root,path),{withFileTypes:true})){const next=join(path,entry.name);if(entry.isDirectory())fixtures(next);else if(entry.isFile()&&entry.name.endsWith('.mjs'))copyScript(next);}}
-fixtures('scripts/fixtures');for(const name of ['probe-coupled-delivery.mjs','coupled-delivery-cold.test.mjs','coupled-delivery-contracts.test.mjs','delivery-journal-resume-contracts.test.mjs','delivery-resume-admission-cleanup.test.mjs'])copyScript('scripts/'+name);
+fixtures('scripts/fixtures');for(const name of ['probe-coupled-delivery.mjs',...tests])copyScript('scripts/'+name);
 const nativeRelative='target/owned-history-relay-native/release/examples/selected_delivery_functional',nativeSource=join(root,nativeRelative),nativeTarget=join(consumer,nativeRelative),nativeSha256=sha(readFileSync(nativeSource));mkdirSync(dirname(nativeTarget),{recursive:true});cpSync(nativeSource,nativeTarget);assert.equal(sha(readFileSync(nativeTarget)),nativeSha256);
 const wasm=join(consumer,'node_modules/@breditor/collaboration/dist/runtime/breditor_shared_bg.wasm'),normalWasmSha256=sha(readFileSync(wasm));assert.equal(normalWasmSha256,'165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0');
-const state={format:'breditor/installed-cold-delivery-resume-development',version:1,complete:false,sourceRoot:root,producer,consumer,directory,sourceInputs:before,copied,workspaceLinks:false,registryArtifacts,nativeSha256,normalWasmSha256,archives:packs.map(row=>({name:row.name,path:join(archives,row.filename),sha256:sha(readFileSync(join(archives,row.filename)))})),startedAt:new Date().toISOString()};
+const state={format:'breditor/installed-cold-delivery-resume-development',version:1,complete:false,sourceRoot:root,producer,consumer,directory,sourceInputs:before,copied,workspaceLinks:false,registryArtifacts,matchingPackageDistFiles,nativeSha256,normalWasmSha256,archives:packs.map(row=>({name:row.name,path:join(archives,row.filename),sha256:sha(readFileSync(join(archives,row.filename)))})),startedAt:new Date().toISOString()};
 writeFileSync(join(directory,'running.json'),JSON.stringify(state,null,2));console.log(JSON.stringify({directory,consumer,phase:'execute-actual-cold-owner-workflow'}));
-const logPath=join(directory,'installed-cold-resume.log'),result=await executeCandidateStage({id:'installed-cold-resume',command:process.execPath,args:['--test','scripts/coupled-delivery-cold.test.mjs','scripts/coupled-delivery-contracts.test.mjs','scripts/delivery-journal-resume-contracts.test.mjs','scripts/delivery-resume-admission-cleanup.test.mjs'],env:{},timeoutMs:2400000},{root:consumer,logPath});
-const log=readFileSync(logPath,'utf8');state.result={...result,logPath,logSha256:sha(Buffer.from(log))};writeFileSync(join(directory,'running.json'),JSON.stringify(state,null,2));assert.equal(result.status,'passed');for(const [name,value] of [['tests',8],['pass',8],['fail',0],['cancelled',0],['skipped',0]])assert.match(log,new RegExp('^# '+name+' '+value+'$','m'));
-assert.deepEqual(inputs(),before);assert.equal(sha(readFileSync(nativeSource)),nativeSha256);state.complete=true;state.sourceUnchanged=true;state.releaseReady=false;state.v1GatesOpen=13;state.finishedAt=new Date().toISOString();state.scope='Actual seven-family client cold reopen, preserved complete factual history, fresh full native path and explicit approval, new checkpoint, and remaining two bound source pairs from actual installed archives. Native authentication/receipts/Undo/Redo are real; Node IDB/locks are controlled fixtures. Private SDK composition, not a public release, unbound comment adoption, provider settlement, whole-room activation or physical crash-durability qualification.';writeFileSync(join(directory,'result.json'),JSON.stringify(state,null,2));writeFileSync(join(root,'target/delivery-journal-resume-installed-consumer.json'),JSON.stringify(state,null,2));console.log(JSON.stringify({passed:true,tests:8,directory,sourceUnchanged:true,workspaceLinks:false}));
+const logPath=join(directory,'installed-cold-resume.log'),result=await executeCandidateStage({id:'installed-cold-resume',command:process.execPath,args:['--test',...tests.map(name=>'scripts/'+name)],env:{},timeoutMs:2400000},{root:consumer,logPath});
+const log=readFileSync(logPath,'utf8');state.result={...result,logPath,logSha256:sha(Buffer.from(log))};writeFileSync(join(directory,'running.json'),JSON.stringify(state,null,2));assert.equal(result.status,'passed');for(const [name,value] of [['tests',expectedCases],['pass',expectedCases],['fail',0],['cancelled',0],['skipped',0]])assert.match(log,new RegExp('^# '+name+' '+value+'$','m'));
+assert.deepEqual(inputs(),before);assert.equal(sha(readFileSync(nativeSource)),nativeSha256);state.complete=true;state.sourceUnchanged=true;state.releaseReady=false;state.v1GatesOpen=13;state.finishedAt=new Date().toISOString();state.scope='Actual seven-family client cold reopen within one origin and across a sealed handover, preserved factual history, fresh full native path and explicit approval, new checkpoint, and remaining two bound source pairs from actual installed archives. Native authentication/receipts/Undo/Redo are real; Node IDB/locks are controlled fixtures. Private SDK composition, not a public release, unbound comment adoption, provider settlement, whole-room activation or physical crash-durability qualification.';writeFileSync(join(directory,'result.json'),JSON.stringify(state,null,2));writeFileSync(join(root,'target/delivery-journal-resume-installed-consumer.json'),JSON.stringify(state,null,2));console.log(JSON.stringify({passed:true,tests:expectedCases,directory,sourceUnchanged:true,workspaceLinks:false}));

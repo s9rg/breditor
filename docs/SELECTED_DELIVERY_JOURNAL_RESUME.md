@@ -42,6 +42,25 @@ admitted, a new factual checkpoint records the actual cold-opened current owner.
 All prior events/files stay literal. Subsequent delivery remains one source per
 successful checkpoint and uses real authenticated document/comment adapters.
 
+## Resume across a sealed handover
+
+A changed restore origin requires
+`previewSelectedNativeDeliveryJournalHandover` and
+`SelectedNativeDeliveryJournal.resumeAcrossHandover`. Use a fresh
+`SharedServerLogGenerationDeliveryPathRecoveryHost.openHandover` checker and
+readers for the actual successor archive and participant inventory. The
+authenticated path must include the original catalog cuts and every saved
+server cut in order, including repeated observations. A successor-local
+checker alone cannot reopen the earlier journal.
+
+The preview binds the literal journal head and current client selection to the
+sealed handover. A fresh decision and a complete recheck admit a new delivery
+owner. It appends a distinct handover event and preserves the earlier events
+and files byte for byte. Record later delivery cuts with
+`recordAcrossHandover` and a freshly provisioned path. Normal document and
+comment adapters still submit operations and receive acknowledgements through
+their existing protocols.
+
 ## Cancellation and failure
 
 Initialization and cleanup are registered with the genuine parent before their
@@ -67,8 +86,10 @@ large/long-lived session performance remains unqualified.
 
 ## Qualification and remaining scope
 
-Reproducible source test: node --test scripts/coupled-delivery-cold.test.mjs.
-Independent offline package test: node scripts/check-delivery-journal-resume-installed.mjs.
+The source checks run with
+`node --test scripts/coupled-delivery-cold.test.mjs scripts/coupled-delivery-handover.test.mjs`.
+Run the same workflows in an independent offline package install with
+`node scripts/check-delivery-journal-resume-installed.mjs`.
 Both candidate profiles require the new source, lifecycle, contract/type and
 installed-consumer stages. Synthetic Node IDB/locks do not prove physical browser
 durability. The tests retain the three genuinely unbound local comment lanes as

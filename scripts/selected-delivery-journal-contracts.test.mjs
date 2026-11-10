@@ -12,3 +12,19 @@ for(const[name,edit]of[
 ])test('closed journal declaration refuses '+name,()=>{const f=fixture();edit(f);assert.throws(()=>decodeRows(f.raw,journalIdentity(f.identity)));});
 test('same-transaction compare includes every prior current, server and inventory byte',()=>{const f=fixture(),left=decodeRows(f.raw,journalIdentity(f.identity));for(const name of ['current','servers','inventories'])for(const index of [0,1]){const right=structuredClone(f.raw);new Uint8Array(right[name].values[index])[0]^=1;const changed=decodeRows(right,journalIdentity(f.identity));assert.equal(changed.signature,left.signature);assert.equal(sameRows(left,changed),false,name+index);}assert.equal(sameRows(left,decodeRows(structuredClone(f.raw),journalIdentity(f.identity))),true);});
 test('metadata changes cannot match the append witness',()=>{const f=fixture(),left=decodeRows(f.raw,journalIdentity(f.identity));f.raw.events.values[1].sha256='a'.repeat(64);assert.equal(sameRows(left,decodeRows(f.raw,journalIdentity(f.identity))),false);});
+
+test('handover path must cover literal saved cuts in order and with multiplicity',async()=>{
+ const {containsOrderedDeliveryCuts,handoverDeliveryCuts}=await import('../packages/breditor-collaboration/dist/generation_delivery_path_control/retained_cuts.js');
+ const {identity,raw}=fixture();
+ const origin=identity.prepared.server.source.origin;
+ const [first,second]=raw.events.values.map(row=>row.event.server.identity);
+ const successor=structuredClone(second);
+ successor.native.source.records++;
+ successor.archiveSha256[0]^=1;
+ const path=handoverDeliveryCuts({earlier:[origin,first],successor:{ancestors:[second,successor]}});
+ assert.equal(containsOrderedDeliveryCuts(path,[first,second]),true);
+ assert.equal(containsOrderedDeliveryCuts(path,[first,first,second]),false);
+ assert.equal(containsOrderedDeliveryCuts(path,[second,first]),false);
+ assert.equal(containsOrderedDeliveryCuts(path.slice(2),[first,second]),false);
+ assert.equal(containsOrderedDeliveryCuts(path,[first,second,successor]),true);
+});

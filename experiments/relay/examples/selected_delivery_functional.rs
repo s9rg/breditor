@@ -11,6 +11,8 @@ mod clients;
 mod credentials;
 #[path = "selected_delivery_host/full_path.rs"]
 mod full_path;
+#[path = "selected_delivery_host/handover.rs"]
+mod handover;
 #[path = "selected_delivery_host/inspection.rs"]
 mod inspection;
 #[path = "selected_delivery_host/next.rs"]
@@ -69,7 +71,7 @@ pub async fn main() -> Result {
     let retired = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
     let endpoint = format!("ws://{}/ws", clients.local_addr()?);
     let old_endpoint = format!("ws://{}/ws", retired.local_addr()?);
-    let ready = if suggestions {
+    let mut ready = if suggestions {
         Box::pin(setup::prepare_with_suggestion_grants(&parent, spec, &images)).await?
     } else {
         Box::pin(setup::prepare(&parent, spec, &images)).await?
@@ -82,16 +84,30 @@ pub async fn main() -> Result {
     let mut sequence = 0_u64;
     let mut previous = None;
     let mut observed = std::collections::BTreeMap::new();
+    let mut handover = None;
     loop {
-        let snapshot = Box::pin(snapshot::capture(
-            &ready,
-            sequence,
-            &endpoint,
-            &old_endpoint,
-            previous.as_ref(),
-            &observed,
-        ))
-        .await?;
+        let snapshot = if let Some(prefix) = &handover {
+            Box::pin(snapshot::capture_with_handover(
+                &ready,
+                sequence,
+                &endpoint,
+                &old_endpoint,
+                previous.as_ref(),
+                &observed,
+                Some(prefix),
+            ))
+            .await?
+        } else {
+            Box::pin(snapshot::capture(
+                &ready,
+                sequence,
+                &endpoint,
+                &old_endpoint,
+                previous.as_ref(),
+                &observed,
+            ))
+            .await?
+        };
         observed.insert(sequence, snapshot.archive);
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
         let mut public = snapshot.public;
@@ -107,17 +123,43 @@ pub async fn main() -> Result {
             "http://{}/recovery/generation-delivery-path/v1/check",
             listener.local_addr()?
         ));
+        if handover.is_some() {
+            public["handoverEndpoint"] = serde_json::json!(format!(
+                "http://{}/recovery/generation-handover-delivery-path/v1/check",
+                listener.local_addr()?
+            ));
+        }
         controls.push(snapshot.control);
         tasks.push(serve(snapshot.router, listener));
         protocol::reply(
             &serde_json::json!({"kind":"snapshot","format":"breditor/native-selected-delivery-host", "formatVersion":1,
             "request":sequence,"case":public,"privateOperatorToken":snapshot.operator_token}),
         )?;
-        let Some((request, selected)) =
+        let Some((request, selected, rollover)) =
             next::read(&ready, &mut input, &observed, sequence, &mut inspections).await?
         else {
             break;
         };
+        if rollover {
+            if handover.is_some() {
+                return Err("fixture permits one explicit source handover".into());
+            }
+            let address: std::net::SocketAddr = endpoint
+                .strip_prefix("ws://")
+                .ok_or("client endpoint")?
+                .strip_suffix("/ws")
+                .ok_or("client endpoint")?
+                .parse()?;
+            handover = Some(Box::pin(handover::apply(&mut ready, &observed, request)).await?);
+            observed.clear();
+            let old = tasks.remove(0);
+            old.abort();
+            let _ = old.await;
+            tasks.insert(
+                0,
+                serve(ready.active.router(), tokio::net::TcpListener::bind(address).await?),
+            );
+        }
         previous = selected;
         sequence = request;
     }

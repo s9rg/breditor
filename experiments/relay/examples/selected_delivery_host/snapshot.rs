@@ -1,10 +1,14 @@
 //! Fresh complete actual server/provider cuts; old snapshots are never overwritten.
 use super::{Result, authentication, credentials, public_inputs, setup::Ready, storage};
+use breditor_collab_relay::ServerLogGenerationRoomBackup;
 use breditor_collab_relay::server::{
-    ContentAddressedServerAssets, ServerLogGenerationDeliveryPathRecoveryControl,
+    ContentAddressedServerAssets, PreparedLogGenerationHandover, RoomDeploymentAuthority,
+    ServerLogGenerationDeliveryPathRecoveryControl, ServerLogGenerationHandoverDeliveryPathOptions,
     ServerLogGenerationRecoveryAssetCoverage, ServerRecoveryAssetProvider,
     prepare_log_generation_delivery_path_recovery_control,
-    prepare_log_generation_delivery_recovery_control, prepare_log_generation_recovery_control,
+    prepare_log_generation_delivery_recovery_control,
+    prepare_log_generation_handover_delivery_path_recovery_control,
+    prepare_log_generation_recovery_control,
 };
 use serde_json::{Value, json};
 use std::sync::Arc;
@@ -15,6 +19,12 @@ pub(super) struct Snapshot {
     pub operator_token: String,
     pub control: ServerLogGenerationDeliveryPathRecoveryControl,
     pub router: axum::Router,
+}
+pub(super) struct HandoverPrefix {
+    pub sequence: u64,
+    pub earlier: Vec<Arc<ServerLogGenerationRoomBackup>>,
+    pub intent: Arc<PreparedLogGenerationHandover>,
+    pub authority: RoomDeploymentAuthority,
 }
 pub(super) async fn capture(
     ready: &Ready,
@@ -27,6 +37,26 @@ pub(super) async fn capture(
         Arc<breditor_collab_relay::ServerLogGenerationRoomBackup>,
     >,
 ) -> Result<Snapshot> {
+    Box::pin(capture_with_handover(
+        ready,
+        sequence,
+        client_endpoint,
+        retired_endpoint,
+        predecessor,
+        observed,
+        None,
+    ))
+    .await
+}
+pub(super) async fn capture_with_handover(
+    ready: &Ready,
+    sequence: u64,
+    client_endpoint: &str,
+    retired_endpoint: &str,
+    predecessor: Option<&super::next::Previous>,
+    observed: &std::collections::BTreeMap<u64, Arc<ServerLogGenerationRoomBackup>>,
+    handover: Option<&HandoverPrefix>,
+) -> Result<Snapshot> {
     let host = ready.active.recovery_host();
     let capture = host.capture_recovery_state("owner", &ready.owner_token).await?;
     let selected = capture.identity()?;
@@ -36,8 +66,34 @@ pub(super) async fn capture(
         return Err("native changed during fixture capture".into());
     }
     let native = Arc::new(native);
-    let path_proof = super::full_path::verify(ready, &current, native.clone(), observed).await?;
+    let path_proof =
+        Arc::new(super::full_path::verify(ready, &current, native.clone(), observed).await?);
     let delivery_path = path_proof.identity();
+    let spanning = if let Some(prefix) = handover {
+        let mut earlier = Vec::new();
+        let mut pins = Vec::new();
+        for cut in &prefix.earlier {
+            earlier.push(ServerLogGenerationRoomBackup::from_owned_bytes(cut.to_bytes()?)?);
+            pins.push(cut.info()?.identity);
+        }
+        Some(Arc::new(
+            host.verify_handover_delivery_path(
+                "owner",
+                &ready.owner_token,
+                path_proof.clone(),
+                ServerLogGenerationHandoverDeliveryPathOptions {
+                    handover: prefix.intent.clone(),
+                    expected_handover: prefix.intent.identity().clone(),
+                    authority: prefix.authority.clone(),
+                    earlier,
+                    expected_earlier: pins,
+                },
+            )
+            .await?,
+        ))
+    } else {
+        None
+    };
     // The first ACTUAL target serving cut B stays distinct from restore origin A.
     // Every fresh capture must prove A <= B <= current C, even after real delivery.
     if ready.initial_snapshot.get().is_none() {
@@ -52,7 +108,10 @@ pub(super) async fn capture(
     let (previous_sequence, previous) = if let Some((sequence, archive)) = predecessor {
         (*sequence, archive)
     } else {
-        (0, ready.initial_snapshot.get().ok_or("initial serving cut absent")?)
+        (
+            handover.map_or(0, |prefix| prefix.sequence),
+            ready.initial_snapshot.get().ok_or("initial serving cut absent")?,
+        )
     };
     let continuation = host
         .verify_delivery_continuation(
@@ -88,9 +147,11 @@ pub(super) async fn capture(
     let (_, control) =
         prepare_log_generation_delivery_recovery_control(control, Arc::new(continuation)).await?;
     let selected_delivery = control.identity();
-    let (router, control) =
-        prepare_log_generation_delivery_path_recovery_control(control, Arc::new(path_proof))
-            .await?;
+    let (router, control) = if let Some(proof) = spanning {
+        prepare_log_generation_handover_delivery_path_recovery_control(control, proof).await?
+    } else {
+        prepare_log_generation_delivery_path_recovery_control(control, path_proof).await?
+    };
     let selected_path = control.identity();
     let directory = ready.root.join("snapshots").join(format!("cut-{sequence}"));
     storage::directory(&directory)?;
@@ -121,8 +182,11 @@ pub(super) async fn capture(
         legacy: None,
         credentials: &credentials,
     })?;
-    let public = json!({"path":path,"selection":selected_current,"deliverySelection":selected_delivery,"deliveryPathSelection":selected_path,"sequence":sequence,"previousSequence":previous_sequence,
+    let mut public = json!({"path":path,"selection":selected_current,"deliverySelection":selected_delivery,"deliveryPathSelection":selected_path,"sequence":sequence,"previousSequence":previous_sequence,
         "clientEndpoint":client_endpoint,"retiredEndpoint":retired_endpoint,
         "nativeProtectedStreamsVerified":true,"nativeProviderVerified":true,"nativeDeliveryContinuationVerified":true,"nativeDeliveryPathVerified":true});
+    if let Some(selected) = control.handover_identity() {
+        public["handoverSelection"] = serde_json::to_value(selected)?;
+    }
     Ok(Snapshot { public, archive: Arc::new(current), operator_token, control, router })
 }

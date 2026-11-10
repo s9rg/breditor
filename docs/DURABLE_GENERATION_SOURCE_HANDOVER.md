@@ -104,8 +104,9 @@ pins via `handoverSelection()` for reconciliation.
 `node scripts/check-handover-path-sdk.mjs` runs the same actual two-relay
 workflow with the built SDK and with an independent offline package install.
 The fixture checks provider reads and rejection after the successor accepts
-new work. Resuming persisted whole-room journals across the origin change
-still needs dedicated SDK admission using this read.
+new work. The [selected delivery journal](SELECTED_DELIVERY_JOURNAL_RESUME.md)
+uses this read to resume across a changed origin. Whole-room activation
+and metadata settlement still have separate admission requirements.
 
 ## Cold reopen and status
 

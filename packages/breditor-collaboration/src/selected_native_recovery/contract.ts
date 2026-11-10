@@ -30,6 +30,7 @@ export interface SelectedNativeRecoveryScope{
  readReconciliation(host:SharedPhysicalRoomRecoveryHost):Promise<SelectedRoomReconciliationRead>;
  readGenerationReconciliation(host:SharedServerLogGenerationRecoveryHost):Promise<SelectedGenerationReconciliationRead>;
  readDeliveryReconciliation(host:import('../generation_delivery_control/host.js').SharedServerLogGenerationDeliveryRecoveryHost,inventory:import('../server_generation_inventory/read.js').SharedServerLogGenerationParticipantInventory):Promise<import('../selected_delivery_reconciliation/contract.js').SelectedDeliveryReconciliationRead>;
+ readHandoverDeliveryReconciliation(host:import('../generation_delivery_path_control/host.js').SharedServerLogGenerationDeliveryPathRecoveryHost,inventory:import('../server_generation_inventory/read.js').SharedServerLogGenerationParticipantInventory):Promise<import('../selected_delivery_reconciliation/contract.js').SelectedDeliveryReconciliationRead>;
 }
 
 /** Private reconstruction composition. Factories are detached only after the

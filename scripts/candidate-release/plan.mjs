@@ -428,6 +428,7 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   stage('coupled-delivery-lifecycle',node,['--test','scripts/coupled-delivery-happy.test.mjs','scripts/coupled-delivery-fault.test.mjs'],{},[],2400000),
   stage('delivery-resume-admission-cleanup-native',node,['--test','scripts/delivery-resume-admission-cleanup.test.mjs'],{},[],1800000),
   stage('delivery-journal-cold-resume-native',node,['--test','scripts/coupled-delivery-cold.test.mjs'],{},[],3000000),
+  stage('delivery-journal-handover-native',node,['--test','scripts/coupled-delivery-handover.test.mjs'],{},[],3000000),
   script('installed-delivery-journal-cold-resume','check-delivery-journal-resume-installed.mjs',[],[{path:'target/delivery-journal-resume-installed-consumer.json',fresh:true}],3600000),
   stage('local-review-delivery-plan-contracts',node,['--test','scripts/local-review-delivery-candidate-plan.test.mjs']),
   stage('local-review-delivery-private-types',node,['node_modules/typescript/bin/tsc','--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM','scripts/fixtures/editor-consumer/types-local-review-delivery.ts']),
