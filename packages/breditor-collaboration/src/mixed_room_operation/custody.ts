@@ -63,7 +63,7 @@ export async function prepareMixedRoomWithDelivery<P extends SharedSelectionPoli
    let oi=0,gi=0;
    const parts=combine(Object.freeze({participants:Object.freeze(values.map(value=>value.family==="original"?Object.freeze({id:value.id,family:"original" as const,parts:originals[oi++]!}):Object.freeze({id:value.id,family:"generation" as const,parts:generations[gi++]!})))}) as unknown as MixedRoomOperationParts<P>,delivery?.states??[]);
    const states=[...original.states,...generation.states];
-   await releaseRoomCustody([...databases,...states.flatMap(s=>[s.db,s.recoveryDb])],[...leases,...states.flatMap(s=>s.leases)]);markReleased();released();return parts;
+   await releaseRoomCustody([...databases,...states.flatMap(s=>[s.db,s.recoveryDb])],[...leases,...states.flatMap(s=>s.leases)],()=>{markReleased();released();});return parts;
   },()=>{
    afterRelease();
    for(const s of original.states){s.p.guard();s.origin.verify(managedSourceCore(s.owners.session!) as SharedRichEditor<SharedSelectionPolicy>);}

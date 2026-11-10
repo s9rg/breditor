@@ -5,7 +5,7 @@ import {checkPreparedCurrentPolicy} from './prepared-policy.mjs';
 import {checkOperationOpeningCleanup} from './operation-opening.mjs';
 import {checkResumedOperationOpening} from './operation-resume-opening.mjs';
 import {checkHeldReadyOperationRetry} from './operation-held-retry.mjs';
-import {IDBObjectStore} from 'fake-indexeddb';
+import {IDBDatabase,IDBObjectStore} from 'fake-indexeddb';
 import {SharedRoomOperationalRecoveryV2 as Parent} from '../../../packages/breditor-collaboration/dist/index.js';
 import {RecoveryLease} from '../../../packages/breditor-collaboration/dist/participant_recovery/lease.js';
 import {V2_OPERATION_STORE as marker,V2_OPERATION_FILES as files} from '../../../packages/breditor-collaboration/dist/room_operation_v2/record.js';
@@ -43,9 +43,33 @@ export async function v2OperationFaults(h){
  for(const index of [0,1]){let deny=false;await run('child-ack-'+index,async ctx=>{const restore=mark(ctx,(db,_store,value)=>db===ctx.targets[index].operationDatabase&&value.phase==='operational',()=>{deny=true;});try{await assert.rejects(ctx.owner.finish());}finally{restore();}assert.equal((await ctx.owner.progress()).participants[index].state,'started');await ctx.owner.finish();await ctx.owner.check();await ctx.checkFiles();counts.childLostAcknowledgements++;},{guard(){if(deny){deny=false;throw Error('PRIVATE CHILD ACK');}}});}
  for(const state of ['started','complete','operational']){let deny=false;await run('parent-ack-'+state,async ctx=>{const restore=mark(ctx,(db,store,value)=>db===ctx.database&&store===marker&&(state==='operational'?value.phase==='operational':value.participants[0].state===state),()=>{deny=true;});try{await assert.rejects(ctx.owner.finish());}finally{restore();}const saved=await ctx.owner.progress();assert.equal(state==='operational'?saved.phase:saved.participants[0].state,state);await ctx.owner.finish();counts.parentLostAcknowledgementsAfterMarkers++;},{guard(){if(deny){deny=false;throw Error('PRIVATE PARENT ACK');}}});}
  await run('release-retry',async ctx=>{await ctx.owner.finish();const close=RecoveryLease.prototype.close;let fired=false;try{RecoveryLease.prototype.close=async function(...args){if(!fired){fired=true;throw Error('PRIVATE RELEASE');}return close.apply(this,args);};await assert.rejects(ctx.owner.intoParts(),e=>e.code==='room_v2_storage');}finally{RecoveryLease.prototype.close=close;}assert.equal(fired,true);await ctx.owner.check();await ctx.take();counts.releaseRetries++;});
+ await run('database-close',async ctx=>{
+  await ctx.owner.finish();
+  const close=IDBDatabase.prototype.close;
+  let refused=false;
+  try{
+   IDBDatabase.prototype.close=function(){
+    if(this.name===ctx.database&&!refused){refused=true;throw Error('PRIVATE DATABASE CLOSE');}
+    return close.call(this);
+   };
+   await assert.rejects(ctx.owner.intoParts(),{code:'room_v2_admission'});
+  }finally{IDBDatabase.prototype.close=close;}
+  assert.equal(refused,true);
+  await assert.rejects(ctx.owner.progress(),{code:'room_v2_closed'});
+  await assert.rejects(ctx.owner.intoParts(),{code:'room_v2_closed'});
+  await ctx.cold();await ctx.checkFiles();await ctx.take();
+  for(const row of ctx.parts.participants){
+   const core=row.family==='original'?row.parts.session.core:row.parts.source.session.core;
+   const expected=h.before.get(row.id);
+   assert.equal(core.checkpointJson(),expected.document);
+   assert.equal(core.reviewCheckpoint(),expected.review);
+   assert.deepEqual(await (await row.parts.uploads.exportBackup()).arrayBuffer(),await expected.uploads.arrayBuffer());
+  }
+  counts.databaseCloseRefusals=1;
+ });
  for(const fault of ['authority','abort']){const controller=new AbortController();let allowed=true;await run('late-'+fault,async ctx=>{await ctx.owner.finish();const close=RecoveryLease.prototype.close;let fired=false;try{RecoveryLease.prototype.close=async function(...args){await close.apply(this,args);if(!fired){fired=true;if(fault==='authority')allowed=false;else controller.abort();}};await assert.rejects(ctx.owner.intoParts(),e=>e.code===(fault==='authority'?'room_v2_authority':'room_v2_aborted'));}finally{RecoveryLease.prototype.close=close;}assert.equal(fired,true);allowed=true;await assert.rejects(ctx.owner.intoParts(),e=>e.code===(fault==='authority'?'room_v2_closed':'room_v2_aborted'));await ctx.cold();await ctx.checkFiles();await ctx.take();counts[fault==='authority'?'lateAuthorityRefusals':'lateAbortRefusals']++;},{signal:controller.signal,guard(){if(!allowed)throw Error('PRIVATE LATE AUTHORITY');}});}
  await run('missing-complete',async ctx=>{await ctx.owner.finish();await ctx.owner.close();ctx.owner=undefined;await new Promise((resolve,reject)=>{const r=indexedDB.deleteDatabase(ctx.targets[0].operationDatabase);r.onsuccess=resolve;r.onerror=()=>reject(r.error);r.onblocked=()=>reject(Error('Blocked controlled removal'));});ctx.owner=await Parent.resume(ctx.resume);await assert.rejects(ctx.owner.finish(),e=>e.code==='room_v2_missing');assert.equal(await missing(ctx.targets[0].operationDatabase),true);counts.missingCompleteRefusals++;});
  await run('changed-file',async ctx=>{await ctx.owner.close();ctx.owner=undefined;const db=await new Promise((resolve,reject)=>{const r=indexedDB.open(ctx.database);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});try{await new Promise((resolve,reject)=>{const tx=db.transaction(files,'readwrite');tx.objectStore(files).put(new Blob(['changed historic bytes']),'participant:generation-0');tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);});}finally{db.close();}const before=await dump(ctx.database);await assert.rejects(Parent.resume(ctx.resume),e=>e.code==='room_v2_admission');assert.deepEqual(await dump(ctx.database),before);counts.changedFileRefusals++;});
  const appendStop=new AbortController();await run('prepared-append',async ctx=>{const restore=mark(ctx,(db,store,value)=>db===ctx.database&&store===marker&&value.participants[0].state==='complete',()=>appendStop.abort());try{await assert.rejects(ctx.owner.finish(),e=>e.code==='room_v2_aborted');}finally{restore();}await ctx.owner.close();ctx.owner=undefined;const row=ctx.requests[0],{backup:_backup,database:recoveryDatabase,...historical}=ctx.policies[0].value.options,current=await api.OperationalSharedParticipant.resume({...historical,database:ctx.targets[0].operationDatabase,recoveryDatabase,currentPolicy:{documentReadOnly:false,reviewAccess:'comment'},checkAuthority(){}});let parts;try{parts=await current.intoParts();const core=parts.session.core;core.select({kind:'text',anchor:{block:'p',offset:'0',affinity:'after'},focus:{block:'p',offset:'0',affinity:'after'}});core.type('Unpublished native append');await parts.session.flush();}finally{if(parts)await closeParts({participants:[{family:'original',parts}]});await current.discardAndClose();}const before=await dump(row.recovery.destinations.document);ctx.owner=await Parent.resume(ctx.resume);await assert.rejects(ctx.owner.finish());assert.deepEqual(await dump(row.recovery.destinations.document),before);counts.preparedAppendRefusals++;},{signal:appendStop.signal});
- for(const[k,v]of Object.entries({parentAbortRetries:1,parentLostAcknowledgements:1,sourceCloseRefusals:1,sourceReentrancyRefusals:1,childLostAcknowledgements:2,parentLostAcknowledgementsAfterMarkers:3,releaseRetries:1,lateAuthorityRefusals:1,lateAbortRefusals:1,missingCompleteRefusals:1,changedFileRefusals:1,preparedAppendRefusals:1,returnedReadOnlyParticipants:10,coldResumedParents:4,coldResumedParticipants:8,retainedFiles:18}))assert.equal(counts[k],v,k);return counts;
+ for(const[k,v]of Object.entries({parentAbortRetries:1,parentLostAcknowledgements:1,sourceCloseRefusals:1,sourceReentrancyRefusals:1,childLostAcknowledgements:2,parentLostAcknowledgementsAfterMarkers:3,releaseRetries:1,databaseCloseRefusals:1,lateAuthorityRefusals:1,lateAbortRefusals:1,missingCompleteRefusals:1,changedFileRefusals:1,preparedAppendRefusals:1,returnedReadOnlyParticipants:12,coldResumedParents:5,coldResumedParticipants:10,retainedFiles:21}))assert.equal(counts[k],v,k);return counts;
 }

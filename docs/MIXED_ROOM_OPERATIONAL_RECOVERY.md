@@ -67,8 +67,9 @@ refuse an unpublished append and leave that actual current work untouched.
 
 `intoParts()` uses the [common cohort barrier](OPERATIONAL_COHORT_CUSTODY.md).
 Every selected original/generation owner transfers together or none is returned.
-Release failure permits retry. A late refusal after release leaves cleanup-only
-owners and retained files for explicit close and fresh cold resume. Returned
+Cooperative lease release failure permits retry. Once all those leases release,
+the parent and children become cleanup-only if a database close or a later
+check fails. Explicit close and fresh cold resume preserve the retained files. Returned
 parts keep their family tags; generation history is never flattened into an
 original session. Transports remain disconnected until the host explicitly acts.
 
