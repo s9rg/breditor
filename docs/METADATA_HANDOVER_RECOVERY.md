@@ -36,3 +36,22 @@ The independent package check is
 built `selected_suggestion_delivery_functional` fixture. Controlled Node storage,
 locks and image decoding support these checks. Whole-room publication and
 physical browser durability have further qualification requirements.
+
+## Capture complete recovery bytes
+
+`captureReconciledServerPacketRecoveryAcrossHandover` retains the selected
+server and inventory, original packet bodies, verified source resolution and
+raster bytes under the same source reservation. Its separate envelope records
+the authenticated handover selection alongside the complete capture. It checks
+the path before and after capture.
+
+Use the live selected delivery host as the raster transport to read from the
+current operator service. The server and inventory readers must select that
+same current cut. The capture retains each original pending, cache and receipt
+fact alongside the current reconciliation result.
+
+Run `node --test scripts/native-metadata-handover-bytes.test.mjs` for the
+complete source workflow and
+`node scripts/check-handover-recovery-bytes-installed.mjs` for its independent
+package workflow. The tests preserve original native state and metadata packet
+records while capturing recovery bytes after delivery.

@@ -106,6 +106,7 @@ export async function testColdCurrentReconciliation(input){
    assert.equal(requests.filter(kind=>kind==='suggestionRevisionPublish').length,originalRevisionSubmits,'Already committed revisions are not republished on cold recovery');
    fresh.close();fresh=sealed?await handoverControls(host,await host.refresh(),scope):await controls(host,first,scope);
    const reconciled=await current();assert.equal(reconciled.kind,'checked',JSON.stringify(reconciled.pending));assert.equal(reconciled.original.kind,'pending');assert.ok(reconciled.original.pending.some(row=>row.kind==='references'));assert.deepEqual(reconciled.pending,[]);assert.equal(reconciled.currentProvider.read.assets.length,3);assert.equal(reconciled.currentProvider.uploads.length,14);assert.equal(reconciled.currentProvider.read.missing.length,0);
+   await input.onReconciled?.({scope,sources,metadata,review,host,fresh,check,reconciled});
    const saved=await metadata.capture(),snapshot=JSON.parse(await saved.metadata.file.text());assert.deepEqual(snapshot.before,stored.before);
    for(const lane of snapshot.current.lanes){const prior=stored.current.lanes.find(row=>row.id===lane.id);assert.ok(prior);for(const old of prior.records.revisions.retained){const found=lane.records.revisions.retained.find(row=>row.packet===old.packet);assert.ok(found);assert.equal(found.previousPacket,old.previousPacket);assert.deepEqual(found.receipt,old.receipt);}}
    const files=[];

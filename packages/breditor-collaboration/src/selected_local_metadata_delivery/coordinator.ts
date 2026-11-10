@@ -1,3 +1,4 @@
+import {prepareHandoverPacketRecoveryInput,type HandoverServerPacketRecoveryInput,type HandoverReconciledServerPacketRecoveryCapture} from '../metadata_packet_retention/handover_input.js';
 import {prepareHandoverMetadataReconciliation,type LocalMetadataHandoverReconciliationInput,type HandoverServerPacketReconciliationRead} from '../selected_local_metadata_assets/handover_reconciliation.js';
 import {consumeVerifiedMetadataFacts,type VerifiedMetadataContinuationFacts} from '../selected_local_metadata_continuation/native_origin.js';
 import {NativeReconstructionWaits} from '../selected_native_reconstruction/read_waits.js';
@@ -257,6 +258,18 @@ export class SelectedLocalMetadataDelivery{
  captureReconciledServerPacketRecovery(provided:ServerPacketRecoveryInput):Promise<ReconciledServerPacketRecoveryCapture>{
   let input!:ReturnType<typeof prepareMetadataPacketRecoveryInput>,result:ReconciledServerPacketRecoveryCapture|undefined;
   return this.#captureReferenceOperation(async work=>{this.#current();if(!this.#snapshot)throw fail();result=await work.reconciledServerPacketRecovery(input,this.#snapshot);this.#current();},()=>{input=prepareMetadataPacketRecoveryInput(provided);}).then(()=>{if(!result)throw fail();return result;});
+ }
+ /** Retain packet, server and asset bytes under the selected handover and current source reservation. */
+ captureReconciledServerPacketRecoveryAcrossHandover(provided:HandoverServerPacketRecoveryInput):Promise<HandoverReconciledServerPacketRecoveryCapture>{
+  let input!:ReturnType<typeof prepareHandoverPacketRecoveryInput>,result:HandoverReconciledServerPacketRecoveryCapture|undefined;
+  return this.#captureReferenceOperation(async work=>{
+   this.#current();if(!this.#snapshot)throw fail();
+   const path=input.reconciliation.handover.port;
+   await path.check(this.#parent.scope.signal);this.#current();
+   const capture=await work.reconciledServerPacketRecovery(input,this.#snapshot);
+   this.#current();await path.check(this.#parent.scope.signal);this.#current();
+   result=Object.freeze({format:'breditor/handover-reconciled-server-packet-recovery',formatVersion:1,handover:path.handover!,capture});
+  },()=>{input=prepareHandoverPacketRecoveryInput(provided);}).then(()=>{if(!result)throw fail();return result;});
  }
  /** Fresh complete reference/provider requirements join current Native and
   * original outbox facts; archived/local byte retention never supplies ACKs. */
