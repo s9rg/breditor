@@ -17,7 +17,8 @@ pub struct VerifiedServerLogGenerationHandoverDeliveryPath {
     pub(super) identity: ServerLogGenerationHandoverDeliveryPathIdentity,
     pub(super) handover: Arc<PreparedLogGenerationHandover>,
     pub(super) authority: RoomDeploymentAuthority,
-    pub(super) successor: Arc<VerifiedServerLogGenerationDeliveryPath>,
+    pub(in crate::server::generation_recovery) successor:
+        Arc<VerifiedServerLogGenerationDeliveryPath>,
 }
 
 impl VerifiedServerLogGenerationHandoverDeliveryPath {
@@ -40,6 +41,26 @@ impl VerifiedServerLogGenerationHandoverDeliveryPath {
         token: &str,
     ) -> Result<()> {
         host.host.authentication.authenticate(principal, token)?;
+        self.check_seal(host, principal).await?;
+        self.successor.check_live(host, principal, token).await
+    }
+
+    pub(in crate::server::generation_recovery) async fn check_live_digest(
+        &self,
+        host: &PreparedLogGenerationRecoveryHost,
+        principal: &str,
+        digest: &[u8; 32],
+    ) -> Result<()> {
+        host.host.authentication.authenticate_digest(principal, digest)?;
+        self.check_seal(host, principal).await?;
+        self.successor.check_live_digest(host, principal, digest).await
+    }
+
+    async fn check_seal(
+        &self,
+        host: &PreparedLogGenerationRecoveryHost,
+        principal: &str,
+    ) -> Result<()> {
         self.successor.current.check_host(host, principal)?;
         let handover = self.handover.clone();
         let authority = self.authority.clone();
@@ -50,7 +71,6 @@ impl VerifiedServerLogGenerationHandoverDeliveryPath {
             Ok(())
         })
         .await
-        .map_err(|_| Error::NeedsRecovery)??;
-        self.successor.check_live(host, principal, token).await
+        .map_err(|_| Error::NeedsRecovery)?
     }
 }

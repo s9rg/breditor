@@ -19,6 +19,7 @@ use breditor_collab_feasibility::rich_replica::VersionAssetReference;
 use serde_json::json;
 use std::{io::Cursor, sync::Arc};
 mod paths;
+mod reader;
 
 struct SourceRasterProvider(String);
 
@@ -184,7 +185,29 @@ async fn http_activated_host_seals_the_next_cut_and_fresh_control_resumes_offlin
     else {
         return Err("successor is missing retained rasters".into());
     };
-    assets.check_live(&successor, "owner", &token, provider).await?;
+    assets.check_live(&successor, "owner", &token, provider.clone()).await?;
+    let continuity = Arc::new(
+        successor
+            .verify_delivery_continuation(
+                "owner",
+                &token,
+                ServerLogGenerationRoomBackup::from_owned_bytes(
+                    source.source_backup().to_bytes()?,
+                )?,
+                source.identity().source(),
+                proof.clone(),
+            )
+            .await?,
+    );
+    let reader = Box::pin(reader::operator_read(
+        &successor,
+        &token,
+        provider,
+        Arc::new(assets),
+        continuity,
+        Arc::new(spanning),
+    ))
+    .await?;
     let prepared = Arc::new(
         successor
             .prepare_durable_native_activation(
@@ -214,7 +237,7 @@ async fn http_activated_host_seals_the_next_cut_and_fresh_control_resumes_offlin
     let body = serde_json::to_vec(&second.identity())?;
     assert_eq!(network.request(&request(&operator), &body).await?.status, 200);
     assert_eq!(setup.ledger()?.len(), before.len() + 312);
-    spanning.check_live(&successor, "owner", &token).await?;
+    reader.check().await?;
     let serving = Network::start(second.service_router().await?).await?;
     let socket = Socket::open(serving.address).await?;
     let (socket, auth) = socket.request("auth", json!({
@@ -230,7 +253,7 @@ async fn http_activated_host_seals_the_next_cut_and_fresh_control_resumes_offlin
     })).await?;
     assert_eq!(review["kind"], "reviewResumed");
     drop(continue_original_history(socket, &setup).await?);
-    assert!(spanning.check_live(&successor, "owner", &token).await.is_err());
+    reader.stale().await?;
     serving.stop().await?;
     network.stop().await?;
     Ok(())

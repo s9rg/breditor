@@ -42,7 +42,9 @@ mod delivery_path_control;
 pub use delivery_path_control::{
     ServerLogGenerationDeliveryPathRecoveryControl,
     ServerLogGenerationDeliveryPathRecoveryControlIdentity,
+    ServerLogGenerationHandoverDeliveryPathRecoveryControlIdentity,
     prepare_log_generation_delivery_path_recovery_control,
+    prepare_log_generation_handover_delivery_path_recovery_control,
 };
 mod delivery_continuation;
 pub use delivery_continuation::{

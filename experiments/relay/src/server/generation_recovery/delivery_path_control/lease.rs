@@ -3,6 +3,7 @@ use super::super::{
     ServerLogGenerationDeliveryRecoveryControl, VerifiedServerLogGenerationDeliveryPath,
 };
 use super::ServerLogGenerationDeliveryPathRecoveryControlIdentity;
+use super::handover::{Handover, ServerLogGenerationHandoverDeliveryPathRecoveryControlIdentity};
 use crate::{Error, Result};
 use std::sync::{
     Arc,
@@ -12,6 +13,7 @@ pub(super) struct State {
     pub current: ServerLogGenerationDeliveryRecoveryControl,
     pub path: Arc<VerifiedServerLogGenerationDeliveryPath>,
     pub selection: ServerLogGenerationDeliveryPathRecoveryControlIdentity,
+    pub handover: Option<Handover>,
     pub live: AtomicBool,
 }
 impl State {
@@ -21,17 +23,25 @@ impl State {
         }
         self.current.state.local()
     }
-    pub async fn check(&self) -> Result<()> {
-        self.local()?;
+    async fn check_path(&self, handover: bool) -> Result<()> {
         let native = &self.current.state.current.state;
-        self.path
-            .check_live_digest(&native.host, &native.owner, &native.native_token_digest)
-            .await?;
+        if handover {
+            return self
+                .handover
+                .as_ref()
+                .ok_or(Error::NeedsRecovery)?
+                .proof
+                .check_live_digest(&native.host, &native.owner, &native.native_token_digest)
+                .await;
+        }
+        self.path.check_live_digest(&native.host, &native.owner, &native.native_token_digest).await
+    }
+    pub async fn check(&self, handover: bool) -> Result<()> {
+        self.local()?;
+        self.check_path(handover).await?;
         self.current.state.check().await?;
         // Actual provider callbacks may not stale even an intermediate/native/raster selection.
-        self.path
-            .check_live_digest(&native.host, &native.owner, &native.native_token_digest)
-            .await?;
+        self.check_path(handover).await?;
         self.local()
     }
 }
@@ -55,6 +65,13 @@ impl ServerLogGenerationDeliveryPathRecoveryControl {
     #[must_use]
     pub fn identity(&self) -> ServerLogGenerationDeliveryPathRecoveryControlIdentity {
         self.state.selection.clone()
+    }
+    /// Detached handover selection when the host explicitly provisioned this read.
+    #[must_use]
+    pub fn handover_identity(
+        &self,
+    ) -> Option<ServerLogGenerationHandoverDeliveryPathRecoveryControlIdentity> {
+        self.state.handover.as_ref().map(|handover| handover.selection.clone())
     }
     /// Stop new/in-flight operator checks without editing data or prematurely releasing native work.
     pub fn close(&self) {

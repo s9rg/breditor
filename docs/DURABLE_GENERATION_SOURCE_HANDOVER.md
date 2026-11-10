@@ -90,6 +90,23 @@ private file witnesses, acknowledgements or serving grant. This native proof
 provides the ancestry prerequisite for SDK reconciliation. The existing
 delivery-path format still covers only the successor-local segment.
 
+An operator can provision the optional
+`/recovery/generation-handover-delivery-path/v1/check` read with
+`prepare_log_generation_handover_delivery_path_recovery_control`. Retain
+`handover_identity()` independently and open the SDK checker with
+`SharedServerLogGenerationDeliveryPathRecoveryHost.openHandover`. The distinct
+canonical JSON envelope binds the seal and earlier cuts to the existing
+successor path and provider selector. It shares the same operator credentials,
+origin rules and request quota as the successor-local routes. The SDK rechecks
+the handover on both sides of current provider reads. It exposes the earlier
+pins via `handoverSelection()` for reconciliation.
+
+`node scripts/check-handover-path-sdk.mjs` runs the same actual two-relay
+workflow with the built SDK and with an independent offline package install.
+The fixture checks provider reads and rejection after the successor accepts
+new work. Resuming persisted whole-room journals across the origin change
+still needs dedicated SDK admission using this read.
+
 ## Cold reopen and status
 
 `PreparedLogGenerationHandover::open` requires the independently retained intent

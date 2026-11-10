@@ -1,8 +1,13 @@
 //! Authenticated complete ordered native path, composed with unchanged live operator controls.
+mod handover;
 mod identity;
 mod lease;
 mod prepare;
 mod routes;
+pub use handover::{
+    ServerLogGenerationHandoverDeliveryPathRecoveryControlIdentity,
+    prepare_log_generation_handover_delivery_path_recovery_control,
+};
 pub use identity::ServerLogGenerationDeliveryPathRecoveryControlIdentity;
 pub use lease::ServerLogGenerationDeliveryPathRecoveryControl;
 pub use prepare::prepare_log_generation_delivery_path_recovery_control;

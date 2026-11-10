@@ -12,7 +12,7 @@ use axum::{
 use serde::Serialize;
 use std::sync::{Arc, Weak};
 // Explicit whole-path envelope; old current/single-prior bounds are never widened.
-const MAX_BYTES: usize = 16 * 1024 * 1024;
+pub(super) const MAX_BYTES: usize = 16 * 1024 * 1024;
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct Read<'a> {
@@ -35,10 +35,16 @@ pub(super) fn check_envelope(
     }
     Ok(())
 }
-pub(super) fn router(state: Weak<State>) -> Router {
-    Router::new()
-        .route("/recovery/generation-delivery-path/v1/check", post(check).options(preflight))
-        .with_state(state)
+pub(super) fn router(state: Weak<State>, handover: bool) -> Router {
+    let mut router = Router::new()
+        .route("/recovery/generation-delivery-path/v1/check", post(check).options(preflight));
+    if handover {
+        router = router.route(
+            "/recovery/generation-handover-delivery-path/v1/check",
+            post(check_handover).options(preflight),
+        );
+    }
+    router.with_state(state)
 }
 async fn preflight(Extract(weak): Extract<Weak<State>>, headers: HeaderMap) -> Response {
     let Some(state) = weak.upgrade().filter(|state| state.local().is_ok()) else {
@@ -79,16 +85,25 @@ async fn preflight(Extract(weak): Extract<Weak<State>>, headers: HeaderMap) -> R
         origin,
     )
 }
-async fn read(state: Arc<State>, body: Bytes) -> Result<Vec<u8>> {
+async fn read(state: Arc<State>, body: Bytes, handover: bool) -> Result<Vec<u8>> {
     state.local()?;
-    let selected: ServerLogGenerationDeliveryPathRecoveryControlIdentity =
-        serde_json::from_slice(&body)?;
-    if selected != state.selection {
-        return Err(Error::Contract("delivery path operator previous/current selection differs"));
-    }
     let held = state.clone();
     let bytes = tokio::task::spawn_blocking(move || {
         held.local()?;
+        if handover {
+            let selected = held.handover.as_ref().ok_or(Error::NeedsRecovery)?;
+            if serde_json::to_vec(&selected.selection)?.as_slice() != body.as_ref() {
+                return Err(Error::Contract("delivery handover operator selection differs"));
+            }
+            return selected.receipt(MAX_BYTES);
+        }
+        let selected: ServerLogGenerationDeliveryPathRecoveryControlIdentity =
+            serde_json::from_slice(&body)?;
+        if selected != held.selection {
+            return Err(Error::Contract(
+                "delivery path operator previous/current selection differs",
+            ));
+        }
         let bytes = serde_json::to_vec(&Read {
             format: "breditor/server-log-generation-delivery-path-recovery-control-read",
             format_version: 1,
@@ -103,10 +118,16 @@ async fn read(state: Arc<State>, body: Bytes) -> Result<Vec<u8>> {
     .await
     .map_err(|_| Error::NeedsRecovery)??;
     // This proof already brackets provider callbacks with full path checks.
-    state.check().await?;
+    state.check(handover).await?;
     Ok(bytes)
 }
 pub(super) async fn check(Extract(weak): Extract<Weak<State>>, request: Request) -> Response {
+    check_request(weak, request, false).await
+}
+async fn check_handover(Extract(weak): Extract<Weak<State>>, request: Request) -> Response {
+    check_request(weak, request, true).await
+}
+async fn check_request(weak: Weak<State>, request: Request, handover: bool) -> Response {
     let (parts, body) = request.into_parts();
     let headers = parts.headers;
     let Some(state) = weak.upgrade().filter(|state| state.local().is_ok()) else {
@@ -145,7 +166,11 @@ pub(super) async fn check(Extract(weak): Extract<Weak<State>>, request: Request)
         return http::cors(StatusCode::SERVICE_UNAVAILABLE.into_response(), &origin);
     };
     http::cors(
-        match crate::server::generation_recovery::control_work::run(permit, read(state, body)).await
+        match crate::server::generation_recovery::control_work::run(
+            permit,
+            read(state, body, handover),
+        )
+        .await
         {
             Ok(bytes) => ([("content-type", "application/json")], bytes).into_response(),
             Err(error) => http::failure(&error),

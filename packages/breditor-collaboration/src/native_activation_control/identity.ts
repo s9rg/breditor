@@ -4,7 +4,7 @@ import {decimal,digestBytes,frozen,hex} from '../room_participant_inventory/poli
 import {generationServerRecoveryIdentity} from '../generation_recovery_control/identity.js';
 import type {SharedDeploymentSelection,SharedDurableNativeActivationSelection,SharedDurableNativeActivationReceipt} from './contract.js';
 import {activationFailure as fail,MAX_SHARED_NATIVE_ACTIVATION_CONTROL_BYTES} from './policy.js';
-function deployment(value:unknown):SharedDeploymentSelection {
+export function deployment(value:unknown):SharedDeploymentSelection {
  const r=fields(value,'identity,generation,owner'),i=fields(r['identity'],'format,formatVersion,authority,binding');
  if(i['format']!=='breditor/room-deployment-authority'||i['formatVersion']!==1)throw fail();
  const generation=decimal(r['generation'],1048576n),owner=r['owner']===null?null:hex(r['owner']);
