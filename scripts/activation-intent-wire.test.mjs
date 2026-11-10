@@ -42,6 +42,12 @@ test('canonical capture rebinding retains the same graph and rejects a different
  await assert.rejects(rebind('wire-other',other,restored,options),error=>error.code==='activation_intent_stale');
 });
 function swappingModule(mutate){let changed=false;return{SharedArchiveDigest:{version:()=>native.SharedArchiveDigest.version(),maximum_bytes:()=>native.SharedArchiveDigest.maximum_bytes(),maximum_chunk_bytes:()=>native.SharedArchiveDigest.maximum_chunk_bytes(),create(bytes){const owner=native.SharedArchiveDigest.create(bytes);return{update:value=>owner.update(value),finish(){const digest=owner.finish();if(!changed){changed=true;mutate();}return digest;},free:()=>owner.free()};}}};}
+test('decoder keeps the initial integrity context through final capture admission',async()=>{
+ let lateChecks=0,originalChecks=0;
+ const supplied={wasm:undefined,checkAuthority(){originalChecks++;}};
+ supplied.wasm=swappingModule(()=>{supplied.checkAuthority=()=>{lateChecks++;throw Error('Do not reselect integrity options after hashing');};});
+ const restored=await decode(base,supplied);assert.equal(restored.reconciliation.sources.local.samples.marker,'selected-marker');assert.ok(originalChecks>0);assert.equal(lateChecks,0);
+});
 test('decoder returns only the graph whose Native hash it checked when a caller changes its DTO',async()=>{
  const input={...base},replacement=base.graph.replace('selected-marker','replaced-marker');assert.notEqual(replacement,base.graph);
  const restored=await decode(input,{...options,wasm:swappingModule(()=>{input.graph=replacement;})});assert.equal(input.graph,replacement);assert.equal(restored.reconciliation.sources.local.samples.marker,'selected-marker');

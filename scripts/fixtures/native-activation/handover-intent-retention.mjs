@@ -17,7 +17,8 @@ export async function retainActualHandoverActivationData({scope,sources,metadata
  const capture=await metadata.captureReconciledServerPacketRecoveryAcrossHandover({host:fresh.delivery,path:fresh.path,server:fresh.server,inventory:fresh.inventory,transport:fresh.delivery});unchanged();
  assert.deepEqual(capture.handover,fresh.path.handoverSelection());assert.equal(capture.capture.reconciliation.kind,'checked');assert.equal(capture.capture.recovery.kind,'retained');assert.equal(capture.capture.recovery.bundle.assets.kind,'retained');
  const activation=selection(capture.capture.reconciliation.sources.native.selection.source);
- const options={wasm:native,checkAuthority:unchanged,signal:scope.signal};
+ const held=()=>{check();scope.check();for(let i=0;i<sources.length;i++){const now=coreReadStamp(sources[i].source.core);assert.equal(now.document,stamps[i].document);assert.equal(now.review,stamps[i].review);}};
+ const options={wasm:native,checkAuthority:held,signal:scope.signal};
  const encoded=await encode('actual-handover-activation-data-intent',activation,capture.handover,capture,options);unchanged();
  const a=new Store(encoded.choice,options);
  try{const warm=await a.open(encoded);assert.deepEqual(warm.capture.handover,capture.handover);assert.equal(warm.state.phase,'prepared');}finally{await a.close();}

@@ -8,7 +8,7 @@ import {pathToFileURL} from 'node:url';
 const root=resolve(new URL('../',import.meta.url).pathname);
 const {sourceEvidence,saveEvidence}=await import(pathToFileURL(join(root,'scripts/candidate-release/evidence.mjs')));
 const {searchConsumerLock,verifySearchConsumerRegistry}=await import(pathToFileURL(join(root,'scripts/search-consumer-lock.mjs')));
-if(process.argv.length!==2)throw Error('All wire preservation and original intent cases are mandatory');const expectedCases=21;
+if(process.argv.length!==2)throw Error('All wire preservation and original intent cases are mandatory');const expectedCases=22;
 const tests=['scripts/activation-intent-wire.test.mjs','scripts/room-native-activation-intent.test.mjs'];
 const generatedOutput=JSON.parse(execFileSync(process.execPath,['scripts/check-generated-package-output.mjs'],{cwd:root,encoding:'utf8',maxBuffer:4*1024*1024}));assert.equal(generatedOutput.passed,true);
 const source=sourceEvidence(root),directory=fs.mkdtempSync('/private/tmp/breditor-activation-wire-installed-'),archives=join(directory,'archives'),consumer=join(directory,'consumer'),sha=data=>createHash('sha256').update(data).digest('hex');fs.mkdirSync(archives);fs.mkdirSync(consumer);

@@ -81,6 +81,11 @@ test('graph and object corruption refuse before absent-only creation and do not 
  await raw(choice.database,s=>s.put(encoded.graph+' ','graph'));
  const b=new Store(choice,options());try{await assert.rejects(b.open());}finally{await b.close();}
 });
+test('handover decoder keeps its original integrity context through final lineage admission',async()=>{
+ let swapped=false,lateChecks=0;const supplied={wasm:undefined,checkAuthority(){}};
+ supplied.wasm={SharedArchiveDigest:{version:()=>native.SharedArchiveDigest.version(),maximum_bytes:()=>native.SharedArchiveDigest.maximum_bytes(),maximum_chunk_bytes:()=>native.SharedArchiveDigest.maximum_chunk_bytes(),create(bytes){const owner=native.SharedArchiveDigest.create(bytes);return{update:value=>owner.update(value),finish(){const result=owner.finish();if(!swapped){swapped=true;supplied.checkAuthority=()=>{lateChecks++;throw Error('Do not recapture options after hashing');};}return result;},free:()=>owner.free()};}}};
+ const result=await decode(encoded,supplied);assert.deepEqual(result.handover,capture.handover);assert.equal(swapped,true);assert.equal(lateChecks,0);
+});
 test('interrupted creation rolls back atomically; a lost committed completion remains recoverable',async()=>{
  const add=IDBObjectStore.prototype.add;
  for(const committed of [false,true]){

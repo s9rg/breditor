@@ -25,7 +25,9 @@ An existing namespace is never converted or overwritten.
 The graph codec and custody engine are shared. The original encoder keeps its
 tag traversal, graph header, object order, byte pins and original binding checks.
 The original decoder continues retaining exact admitted wire provenance for
-restart reassociation. Both families use the existing explicit byte, object,
+restart reassociation. Final binding admission retains the integrity context
+selected before hashing; mutating caller options cannot select a different
+policy afterward. Both families use the existing explicit byte, object,
 node, nesting and state-revision bounds.
 
 These are retained DATA contracts. A declaration, stored `request-started`
@@ -45,7 +47,7 @@ activation target is explicitly synthetic DATA and no activation is requested.
 Controlled Node IndexedDB, locks and image decoding support these checks.
 
 Run `node scripts/check-handover-activation-intent-installed.mjs` for the same
-native data workflow, eleven handover storage cases and twenty-seven original
+native data workflow, twelve handover storage cases and twenty-eight original
 intent/cancellation/wire cases against independent offline package archives.
 The functional and full candidate profiles retain separate types, storage,
 native and installed gates after complete handover-byte recovery.
