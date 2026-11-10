@@ -64,7 +64,7 @@ export async function testColdCurrentReconciliation(input){
    fresh=sealed?await handoverControls(host,sealed,scope):await controls(host,first,scope);
    const parentInput={choice:parentChoice,bundle:bundle.parent,...(sealed?{}:{baseline:fresh.baseline}),path:fresh.path,server:fresh.server,inventory:fresh.inventory,checkAuthority:check};
    const preview=sealed?previewSelectedLocalReviewHandover:previewSelectedLocalReviewResume;
-   const resume=sealed?Review.resumeAcrossHandover:Review.resume;
+   const resume=(scope,input)=>sealed?Review.resumeAcrossHandover(scope,input):Review.resume(scope,input);
    let decisions=0;
    if(sealed){
     await assert.rejects(preview({...scope},parentInput));
