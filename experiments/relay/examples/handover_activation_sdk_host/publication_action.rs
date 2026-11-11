@@ -10,7 +10,7 @@ pub(super) struct Offer {
 }
 
 pub(super) async fn prepare(state: &mut State, request: u64) -> Result<bool> {
-    if !handover_action::apply(state, request).await? {
+    if !Box::pin(handover_action::apply(state, request)).await? {
         return Ok(false);
     }
     provision(state).await?;

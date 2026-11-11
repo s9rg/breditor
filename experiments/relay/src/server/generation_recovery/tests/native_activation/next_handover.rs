@@ -30,6 +30,10 @@ async fn durable_recovered_serving_host_can_handover_again_and_preserve_original
     Box::pin(handover(true)).await
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "Keep both handovers and the final client history in one fixture"
+)]
 async fn handover(durable: bool) -> TestResult {
     let setup = Box::pin(Setup::new((3, true), true, (true, true), true)).await?;
     let proof = setup.proof().await?;
@@ -206,10 +210,10 @@ async fn handover(durable: bool) -> TestResult {
         &token,
     )
     .await?;
-    let state = successor.capture_recovery_state("owner", &token).await?;
-    let identity = state.identity()?;
+    let successor_cut = successor.capture_recovery_state("owner", &token).await?;
+    let identity = successor_cut.identity()?;
     assert_eq!(identity.server, current_identity.server);
-    let (_, inventory) = state.into_parts();
+    let (_, inventory) = successor_cut.into_parts();
     let mut registrations = setup.source.protected_records();
     registrations.documents.push(RecoveryDocumentCredential {
         principal: "owner".into(),

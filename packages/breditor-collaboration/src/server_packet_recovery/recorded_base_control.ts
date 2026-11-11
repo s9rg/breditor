@@ -6,7 +6,7 @@ import {deliveryControlSelection} from '../generation_delivery_control/identity.
 import type {SharedServerLogGenerationDeliveryRecoveryControlSelection} from '../generation_delivery_control/contract.js';
 import {generationDeliveryPathRecoveryHostPort,type SharedServerLogGenerationDeliveryPathRecoveryHost} from '../generation_delivery_path_control/host.js';
 import {handoverDeliveryPathSelection,type SharedServerLogGenerationHandoverDeliveryPathRecoveryControlSelection} from '../generation_delivery_path_control/handover.js';
-import {containsOrderedDeliveryCuts,continuesSealedDeliveryPath,handoverDeliveryCuts} from '../generation_delivery_path_control/retained_cuts.js';
+import {containsOrderedDeliveryCuts,continuesSealedDeliverySelection,handoverDeliveryCuts} from '../generation_delivery_path_control/retained_cuts.js';
 import type {PhysicalRoomCatalogV3Metadata} from '../physical_room_catalog_v3/contract.js';
 import {fail,same} from '../metadata_packet_retention/policy.js';
 declare const brand:unique symbol;
@@ -19,7 +19,7 @@ const visits=new WeakMap<RecordedBaseHandoverInspection,{
 /** The proof expires with this finite visit. Detached path JSON and copied
  * proofs cannot admit a changed restore origin or grant a provider read.
  * A retained capture can name its original controller when a fresh process
- * proves the same sealed lineage and exact delivery continuation. */
+ * proves the same sealed lineage and retains the exact recorded predecessor. */
 export async function withRecordedBaseHandoverInspection<T>(
  host:SharedServerLogGenerationDeliveryPathRecoveryHost,
  signal:AbortSignal|undefined,
@@ -30,7 +30,7 @@ export async function withRecordedBaseHandoverInspection<T>(
  const port=generationDeliveryPathRecoveryHostPort(host),live=port.handover;if(!live)throw fail();
  const guard=()=>{check();port.guard(signal);check();};guard();
  const recorded=recordedPath===undefined?live:handoverDeliveryPathSelection(recordedPath);
- if(!continuesSealedDeliveryPath(recorded.path,live.path)||!same(recorded.current.current.continuation,live.current.current.continuation))throw fail();
+ if(!continuesSealedDeliverySelection(recorded,live))throw fail();
  await port.check(signal);guard();
  const proof=Object.freeze({}) as RecordedBaseHandoverInspection;
  visits.set(proof,{path:live.path,recorded:recorded.current.current,check:guard});

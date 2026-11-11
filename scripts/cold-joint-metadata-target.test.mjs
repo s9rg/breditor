@@ -41,7 +41,18 @@ test('cold promoted visit retains all fourteen actors, revokes its witness and a
  try{
   const read=s.f.f.s.input();let reentry;
   const reflected=new Proxy(read,{ownKeys(target){try{s.cold.takeOwner();}catch(error){reentry=error.code;}return Reflect.ownKeys(target);}});
-  await visit(s.cold,reflected,async(actual,proof)=>{assert.equal(reentry,'room_execution_busy');scope=actual;witness=proof;assert.deepEqual(identity(proof,actual),s.f.options.expected);assert.deepEqual(cut(proof,actual),s.promotion.choice.approval.cut);assert.equal(selectedNativeDeliverySources(actual).length,7);actual.check();});
+  await visit(s.cold,reflected,async(actual,proof)=>{
+   assert.equal(reentry,'room_execution_busy');
+   scope=actual;
+   witness=proof;
+   const admitted=identity(proof,actual);
+   assert.deepEqual(admitted,s.f.options.expected);
+   assert.strictEqual(identity(proof,actual),admitted);
+   assert.equal(Object.isFrozen(admitted.execution.plan.preparation.plan.participants),true);
+   assert.deepEqual(cut(proof,actual),s.promotion.choice.approval.cut);
+   assert.equal(selectedNativeDeliverySources(actual).length,7);
+   actual.check();
+  });
   assert.throws(()=>identity(witness,scope),e=>e.code==='room_execution_policy');assert.throws(()=>scope.check());
   const controller=new AbortController();pending=visit(s.cold,{...read,signal:controller.signal},async(actual,proof)=>{scope=actual;witness=proof;assert.equal(selectedNativeDeliverySources(actual).length,7);entered();await gate;actual.check();});const refused=assert.rejects(pending);
   await started;assert.throws(()=>s.cold.takeOwner(),e=>e.code==='room_execution_busy');await held(s.rows);controller.abort();await tick();assert.throws(()=>s.cold.takeOwner(),e=>e.code==='room_execution_busy');release();await refused;pending=undefined;

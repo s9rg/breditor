@@ -13,6 +13,7 @@ import {withExactPriorMetadata} from './prior_metadata.js';
 import type {JointReassociationChoice} from './contract.js';
 export interface HeldReassociationIntents {
  readonly choice:JointReassociationChoice;
+ readonly revocations:readonly AbortSignal[];
  check():void;
  observeNativeStarted():Promise<void>;
  observeNativeReceipt(receipt:SharedDurableNativeActivationReceipt):Promise<void>;
@@ -36,7 +37,8 @@ export async function withHeldReassociationIntents<T>(scope:SelectedNativeRecove
   const current=opened.at(-1)!;
   return await withExactPriorMetadata(scope,origin,rows.map(row=>row.plan.prior),async priorCheck=>{
    const heldCheck=()=>{check();priorCheck();check();};
-   const held:HeldReassociationIntents=Object.freeze({choice,check:heldCheck,
+   const revocations=Object.freeze(opened.flatMap(row=>[row.native.revoked,row.joint.revoked]));
+   const held:HeldReassociationIntents=Object.freeze({choice,revocations,check:heldCheck,
     async observeNativeStarted(){heldCheck();current.nativeState=(await current.native.markRequestStarted()).state;heldCheck();},
     async observeNativeReceipt(receipt:SharedDurableNativeActivationReceipt){heldCheck();current.nativeState=(await current.native.markReceiptObserved(receipt)).state;heldCheck();},
     async observePublicationStarted(){heldCheck();current.publication=await current.joint.markPublicationStarted();heldCheck();},

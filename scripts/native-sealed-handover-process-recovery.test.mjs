@@ -19,7 +19,7 @@ const selectActivation=(host,offer)=>Activation.configure({
 });
 
 for(const committed of [false,true]){
- test('a fresh process reopens the sealed '+(committed?'committed':'prepared')+' checkpoint and publishes through fresh controls',{timeout:600000},async()=>{
+ test('two fresh processes reopen sealed '+(committed?'committed':'prepared')+' checkpoints before authenticated publication',{timeout:600000},async()=>{
   await native.default({module_or_path:readFileSync(new URL('../packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm',import.meta.url))});
   const root=nativeHandoverActivationRoot(new URL('../',import.meta.url).pathname);
   const request=globalThis.fetch;
@@ -32,44 +32,50 @@ for(const committed of [false,true]){
   try{
    host=await selectedDeliveryNativeHost(root,{nativeActivation:true,nativeHandoverActivation:true,nativeHandoverPublication:true,sealedProcessRecovery:true,suggestionGrants:true});
    const client=host.fixture(host.initial).clients[0];
-   const oldAuth=await host.authentication(client);
    await host.handover();
-   const original=host.handoverActivationOffer();
-   const selected=await host.refresh();
-   await assertHandoverPublicationWaiting(host,original);
-   if(committed){
-    activation=selectActivation(host,original);
-    assert.deepEqual((await activation.commit()).selection,original.selection);
-    activation.close();
-    activation=undefined;
+   let offer=host.handoverActivationOffer();
+   const originalCut=await host.refresh(),processIds=new Set([host.processId]);
+   let selected=originalCut;
+   for(let restart=0;restart<2;restart++){
+    const previous=offer,oldAuth=await host.authentication(client);
+    await assertHandoverPublicationWaiting(host,previous);
+    if(committed){
+     activation=selectActivation(host,previous);
+     assert.deepEqual((await activation.commit()).selection,previous.selection);
+     activation.close();
+     activation=undefined;
+    }
+    const capsule=await host.prepareProcessRecovery(previous);
+    const exitedProcess=await host.crashForRecovery(capsule);
+    exited=true;
+    assert.equal(exitedProcess.signal,'SIGKILL');
+    assert.ok(processIds.has(exitedProcess.processId));
+    host=await reopenSelectedDeliverySealedNativeHost(root,capsule);
+    exited=false;
+    assert.equal(processIds.has(host.processId),false);
+    processIds.add(host.processId);
+    offer=host.reopenedOffer;
+    assert.equal(offer,host.handoverActivationOffer());
+    assert.deepEqual(offer.selection.current,previous.selection.current);
+    assert.notEqual(offer.selection.instance,previous.selection.instance);
+    assert.notEqual(offer.publication.selection.instance,previous.publication.selection.instance);
+    assert.equal(offer.publication.selection.listener,previous.publication.selection.listener);
+    assert.notEqual(offer.case.handoverSelection.current.instance,selected.handoverSelection.current.instance);
+    assertHandoverPathContinuation(selected.handoverSelection,offer.case.handoverSelection);
+    if(committed){
+     assert.deepEqual(offer.selection.previous,previous.selection.planned);
+     assert.equal(BigInt(offer.selection.planned.generation),BigInt(previous.selection.planned.generation)+1n);
+     assert.notDeepEqual(offer.selection.checkpointSha256,previous.selection.checkpointSha256);
+    }else{
+     assert.deepEqual(offer.selection.previous,previous.selection.previous);
+     assert.deepEqual(offer.selection.planned,previous.selection.planned);
+     assert.deepEqual(offer.selection.checkpointSha256,previous.selection.checkpointSha256);
+    }
+    const freshAuth=await host.authentication(client);
+    assert.ok(freshAuth.getToken()!==oldAuth.getToken(),'The reopened process issues a fresh account token');
+    assert.equal(offer.case.nativeProtectedStreamsVerified,true);
+    selected=offer.case;
    }
-   const capsule=await host.prepareProcessRecovery(original);
-   const exitedProcess=await host.crashForRecovery(capsule);
-   exited=true;
-   assert.equal(exitedProcess.signal,'SIGKILL');
-   host=await reopenSelectedDeliverySealedNativeHost(root,capsule);
-   exited=false;
-   const offer=host.reopenedOffer;
-   assert.notEqual(host.processId,exitedProcess.processId);
-   assert.equal(offer,host.handoverActivationOffer());
-   assert.deepEqual(offer.selection.current,original.selection.current);
-   assert.notEqual(offer.selection.instance,original.selection.instance);
-   assert.notEqual(offer.publication.selection.instance,original.publication.selection.instance);
-   assert.equal(offer.publication.selection.listener,original.publication.selection.listener);
-   assert.notEqual(offer.case.handoverSelection.current.instance,selected.handoverSelection.current.instance);
-   assertHandoverPathContinuation(selected.handoverSelection,offer.case.handoverSelection);
-   if(committed){
-    assert.deepEqual(offer.selection.previous,original.selection.planned);
-    assert.equal(BigInt(offer.selection.planned.generation),BigInt(original.selection.planned.generation)+1n);
-    assert.notDeepEqual(offer.selection.checkpointSha256,original.selection.checkpointSha256);
-   }else{
-    assert.deepEqual(offer.selection.previous,original.selection.previous);
-    assert.deepEqual(offer.selection.planned,original.selection.planned);
-    assert.deepEqual(offer.selection.checkpointSha256,original.selection.checkpointSha256);
-   }
-   const freshAuth=await host.authentication(client);
-   assert.ok(freshAuth.getToken()!==oldAuth.getToken(),'The reopened process issues a fresh account token');
-   assert.equal(offer.case.nativeProtectedStreamsVerified,true);
    await assertHandoverPublicationWaiting(host,offer);
    readers=await handoverControls(host,offer.case,{check(){}});
    await readers.path.check();
@@ -79,10 +85,10 @@ for(const committed of [false,true]){
    assert.deepEqual(receipt.selection,offer.selection);
    const association=retainHandoverPublicationAssociation(host,offer,offer.case.handoverSelection);
    const published=await publishHandoverService(host,offer,publication,association,()=>{});
-   assertHandoverPathContinuation(selected.handoverSelection,published.served.handoverSelection);
+   assertHandoverPathContinuation(originalCut.handoverSelection,published.served.handoverSelection);
    assert.deepEqual(await activation.commit(),receipt);
    console.log('SEALED_PROCESS_RECOVERY '+JSON.stringify({
-    checkpointWasCommitted:committed,protectedStreams:14,pid:host.processId,
+    checkpointWasCommitted:committed,protectedStreams:14,pid:host.processId,processIds:[...processIds],
     publication:published.nativeObservation,wholeRoomActivated:false,
    }));
   }finally{

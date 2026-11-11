@@ -18,7 +18,7 @@ import {executionNames} from '../native_room_execution/plan.js';
 import {physicalOperationV3Present} from '../physical_room_operation_v3/child.js';
 import {inspectOriginalMetadata,issueVerifiedMetadataContinuationFacts} from './native_origin.js';
 import {MetadataContinuationIntent,HandoverMetadataContinuationIntent} from './intent.js';
-import {NativeReconstructionWaits} from '../selected_native_reconstruction/read_waits.js';
+import {holdMetadataContinuation} from './lifetime.js';
 import {handoverMetadataContinuationChoice} from './handover_choice.js';
 import type {HandoverMetadataContinuationChoice,HandoverMetadataContinuationInspectionInput,HandoverMetadataContinuationInput,HandoverMetadataContinuationResult} from './handover_contract.js';
 import {readContinuedReview,readContinuedMetadata,continuedReviewBundle,continuedMetadataBundle} from './destination.js';
@@ -71,20 +71,29 @@ async function inspect(scope:SelectedNativeRecoveryScope,witness:RoomMetadataTar
 export function previewRoomMetadataContinuation(attempt:RoomExecutionAttempt,reads:PhysicalOperationV3HistoryReadOptions,provided:MetadataContinuationInspectionInput):Promise<MetadataContinuationChoice>{return withRoomExecutionMetadataTarget(attempt,reads,(scope,witness)=>previewHeldRoomMetadataContinuation(scope,witness,provided));}
 /** Trusted composition under an already admitted actual target visitor. The
  * witness is checked by the same full original inspection as the ordinary API. */
-export async function previewHeldRoomMetadataContinuation(scope:SelectedNativeRecoveryScope,witness:RoomMetadataTargetWitness,provided:MetadataContinuationInspectionInput):Promise<MetadataContinuationChoice>{
+export async function previewHeldRoomMetadataContinuation(
+ scope:SelectedNativeRecoveryScope,witness:RoomMetadataTargetWitness,provided:MetadataContinuationInspectionInput,parentSignal?:AbortSignal,
+):Promise<MetadataContinuationChoice>{
  roomMetadataTargetIdentity(witness,scope);
- const input=inputs(provided,false),check=()=>{scope.check();input.authority();scope.check();};
- return (await inspect(scope,witness,input,ordinaryPreparation(scope,input),check)).choice;
+ const input=inputs(provided,false),lifetime=holdMetadataContinuation(scope,generationDeliveryRecoveryHostPort(input.host),input.authority,parentSignal);
+ try{return (await inspect(scope,witness,input,ordinaryPreparation(scope,input),lifetime.check)).choice;}
+ finally{lifetime.close();}
 }
 
 /** Original facts are applied only with a fresh complete same-visit proof. The
  * original pair is retained literally before fresh baselines are constructed. */
-export async function continueHeldRoomMetadata(scope:SelectedNativeRecoveryScope,witness:RoomMetadataTargetWitness,provided:MetadataContinuationInput,resume:boolean):Promise<MetadataContinuationResult>{
+export async function continueHeldRoomMetadata(
+ scope:SelectedNativeRecoveryScope,witness:RoomMetadataTargetWitness,provided:MetadataContinuationInput,resume:boolean,parentSignal?:AbortSignal,
+):Promise<MetadataContinuationResult>{
  roomMetadataTargetIdentity(witness,scope);
- const input=inputs(provided,true),check=()=>{scope.check();input.authority();scope.check();};
+ const input=inputs(provided,true);
  if(!input.expected)throw fail();
- const result=await continueMetadata(scope,witness,input,ordinaryPreparation(scope,input),input.expected,input.approve,choice=>choice,resume,check,scope.signal);
- return Object.freeze({format:'breditor/selected-local-metadata-continued',formatVersion:1,...result});
+ const lifetime=holdMetadataContinuation(scope,generationDeliveryRecoveryHostPort(input.host),input.authority,parentSignal);
+ try{
+  const result=await continueMetadata(scope,witness,input,ordinaryPreparation(scope,input),input.expected,input.approve,
+   choice=>choice,resume,lifetime.check,lifetime.signal);
+  return Object.freeze({format:'breditor/selected-local-metadata-continued',formatVersion:1,...result});
+ }finally{lifetime.close();}
 }
 
 async function continueMetadata<Choice extends ContinuationChoice>(
@@ -144,21 +153,12 @@ function bindHandover(choice:MetadataContinuationChoice,input:ReturnType<typeof 
  });
 }
 
-function holdHandover(scope:SelectedNativeRecoveryScope,input:ReturnType<typeof handoverInputs>){
- return new NativeReconstructionWaits(()=>{
-  scope.check();
-  input.authority();
-  input.port.guard(scope.signal);
-  scope.check();
- },[scope.signal,...input.port.signals]);
-}
-
 /** Preview the real promoted target and exact sealed lineage together. */
 export async function previewHeldRoomMetadataContinuationAcrossHandover(
- scope:SelectedNativeRecoveryScope,witness:RoomMetadataTargetWitness,provided:HandoverMetadataContinuationInspectionInput,
+ scope:SelectedNativeRecoveryScope,witness:RoomMetadataTargetWitness,provided:HandoverMetadataContinuationInspectionInput,parentSignal?:AbortSignal,
 ):Promise<HandoverMetadataContinuationChoice>{
  roomMetadataTargetIdentity(witness,scope);
- const input=handoverInputs(provided,false),lifetime=holdHandover(scope,input);
+ const input=handoverInputs(provided,false),lifetime=holdMetadataContinuation(scope,input.port,input.authority,parentSignal);
  try{
   const prepared=await inspect(scope,witness,input,handoverPreparation(scope,input),lifetime.check);
   return bindHandover(prepared.choice,input);
@@ -168,12 +168,12 @@ export async function previewHeldRoomMetadataContinuationAcrossHandover(
 /** Retain the exact handover family and continue the three journals on the
  * privately owned replacement. An explicit resume rechecks the same choice. */
 export async function continueHeldRoomMetadataAcrossHandover(
- scope:SelectedNativeRecoveryScope,witness:RoomMetadataTargetWitness,provided:HandoverMetadataContinuationInput,resume:boolean,
+ scope:SelectedNativeRecoveryScope,witness:RoomMetadataTargetWitness,provided:HandoverMetadataContinuationInput,resume:boolean,parentSignal?:AbortSignal,
 ):Promise<HandoverMetadataContinuationResult>{
  roomMetadataTargetIdentity(witness,scope);
  const input=handoverInputs(provided,true);
  if(!input.expected)throw fail();
- const lifetime=holdHandover(scope,input);
+ const lifetime=holdMetadataContinuation(scope,input.port,input.authority,parentSignal);
  try{
   const result=await continueMetadata(scope,witness,input,handoverPreparation(scope,input),input.expected,input.approve,
    choice=>bindHandover(choice,input),resume,lifetime.check,lifetime.signal);

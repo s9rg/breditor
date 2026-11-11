@@ -13,6 +13,7 @@ import {RecoveryOpeningCustody} from '../packages/breditor-collaboration/dist/pa
 import {independentHistoryNative} from '../packages/breditor-collaboration/dist/independent_history/native_port.js';
 import {localMetadataFixture,mutateMetadata} from './fixtures/local-metadata/session.mjs';
 import {insertCleanupText} from './fixtures/owned-core-cleanup/session.mjs';
+import {openAndForceCloseJournal} from './fixtures/local-metadata/unexpected-close.mjs';
 await native.default({module_or_path:readFileSync(new URL('../packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm',import.meta.url))});
 
 async function fixture(){
@@ -33,7 +34,14 @@ async function raw(name){
 }
 test('absent probe leaves no placeholder; restore preserves distinct initial/current rows and opens through the actual metadata store',async()=>{
  const f=await fixture(),r=f.resources();let store;
- try{await r.reserve();assert.equal(await r.inspect(),'absent');assert.equal((await indexedDB.databases()).some(row=>row.name===f.choice.database),false);await r.restore('absent');assert.equal(await r.inspect(),'identical');await r.close();const saved=await raw(f.choice.database);assert.deepEqual(saved.keys,['before','current']);assert.deepEqual(saved.values,[metadataJson(f.snapshot.before),metadataJson(f.snapshot.current)]);assert.notDeepEqual(f.snapshot.before,f.snapshot.current);store=new Store(f.choice,()=>{});assert.deepEqual(await store.open(),f.snapshot);const text=f.core.documentJson();assert.equal(f.core.undo(),true);assert.equal(f.core.redo(),true);assert.equal(f.core.documentJson(),text);assert.equal(f.core.undoReview().kind,'committed');assert.equal(f.core.redoReview().kind,'committed');}finally{await store?.close();await r.close();await f.close();}
+ try{await r.reserve();assert.equal(await r.inspect(),'absent');assert.equal((await indexedDB.databases()).some(row=>row.name===f.choice.database),false);await r.restore('absent');assert.equal(await r.inspect(),'identical');await r.close();const saved=await raw(f.choice.database);assert.deepEqual(saved.keys,['before','current']);assert.deepEqual(saved.values,[metadataJson(f.snapshot.before),metadataJson(f.snapshot.current)]);assert.notDeepEqual(f.snapshot.before,f.snapshot.current);store=new Store(f.choice,()=>{});
+ assert.deepEqual(await openAndForceCloseJournal(store,f.choice.database),f.snapshot);
+ assert.throws(store.checkCurrent,error=>error.code==='local_metadata_delivery_closed');
+ assert.equal(store.revoked.aborted,true);
+ await store.close();
+ store=new Store(f.choice,()=>{});
+ assert.deepEqual(await store.open(),f.snapshot);
+ const text=f.core.documentJson();assert.equal(f.core.undo(),true);assert.equal(f.core.redo(),true);assert.equal(f.core.documentJson(),text);assert.equal(f.core.undoReview().kind,'committed');assert.equal(f.core.redoReview().kind,'committed');}finally{await store?.close();await r.close();await f.close();}
 });
 test('identical retry makes no writes and never resets advanced records',async()=>{
  const f=await fixture();let r=f.resources();const add=IDBObjectStore.prototype.add,put=IDBObjectStore.prototype.put;let writes=0;

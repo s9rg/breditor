@@ -3,7 +3,7 @@
 import {fields} from '../physical_room_record_cut/policy.js';
 import {assertRoomActivationCapture} from '../room_native_activation_intent/capture_binding.js';
 import {handoverDeliveryPathSelection} from '../generation_delivery_path_control/handover.js';
-import {continuesSealedDeliveryPath} from '../generation_delivery_path_control/retained_cuts.js';
+import {continuesSealedDeliveryPath,continuesSealedDeliverySelection} from '../generation_delivery_path_control/retained_cuts.js';
 import {detachResolvedServerPacketRecoveryBundle} from '../server_packet_source_resolution/bundle.js';
 import {fail} from '../room_native_activation_intent/policy.js';
 import type {SharedDurableNativeActivationSelection} from '../native_activation_control/contract.js';
@@ -25,5 +25,5 @@ export function assertHandoverActivationCapture(activation:SharedDurableNativeAc
  if(normal.recovery.kind!=='retained'||normal.recovery.bundle.assets.kind!=='retained')throw fail('activation_intent_incomplete');
  assertRoomActivationCapture(activation,normal);
  if(!same(original.current.path.current,activation.current)||!same(current.current.path.current,activation.current))throw fail('activation_intent_stale');
- assertHandoverPathContinuation(original,current);
+ if(!continuesSealedDeliverySelection(original,current))throw fail('activation_intent_stale');
 }

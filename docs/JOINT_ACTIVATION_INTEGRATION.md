@@ -76,6 +76,13 @@ original room capture before and after a fresh decision. Only the selected
 restart journal records the request and the authenticated response. A saved
 receipt remains advisory on later confirmation attempts.
 
+Closing the activation requester, inspection control, or a held original
+review, metadata or activation journal ends a pending cold confirmation. Closing the publication
+requester ends a pending decision during metadata replay or publication. A late approval cannot start
+a request. Before the request-started record, cancellation preserves the
+existing observation. Once the SDK starts recording the request, an interrupted
+operation requires fresh approval and an authenticated retry.
+
 The cold owner continues metadata through the path chosen by that confirmation.
 Publication reopens that continuation, obtains a fresh decision and sends the
 complete restart descriptor's digest to the selected publication controller.
@@ -224,14 +231,17 @@ keeps the replacement owner private until it verifies the matching publication
 receipt.
 
 Restart inspection keeps the recorded provider selection in the saved capture.
-It checks the fresh controller against the exact saved delivery continuation
-and the sealed lineage, including the earlier cuts in order. That live proof
-allows the original provider receipt and bytes to be checked with newly
-authenticated controls. A different seal, cut, or continuation fails admission.
+The fresh controller must prove the same seal and current cut, preserve the
+ordered history, and include the exact recorded predecessor. It can select a
+later predecessor if the recorded cut still appears in the verified path. The
+SDK applies this rule before retaining a new intent and again before checking
+the original provider receipt and bytes with newly authenticated controls.
 
-The Native process fixture exercises both prepared and committed checkpoints.
-It exits the old process, reopens the pinned checkpoint and archives, verifies
-fourteen protected streams and serves fresh controls on the original listener.
+The Native process fixture exits twice in each of the prepared and committed
+cases. Each restart reopens the pinned archives, verifies fourteen protected
+streams, and offers fresh controls for the original listener. The prepared
+case retains the original checkpoint. The committed case prepares a direct
+child of the last committed checkpoint after each exit.
 The whole-room fixture then exercises the SDK with seven replacement owners,
 fourteen offline lanes, metadata continuation, a revoked approval and lost
 replies before final delivery.
@@ -245,3 +255,9 @@ node scripts/check-handover-native-activation-installed.mjs --sealed-process
 npm run test:collaboration:sealed-joint-process-recovery
 npm run test:collaboration:sealed-joint-process-recovery:installed
 ```
+
+Both candidate profiles run the checkpoint cases and the full source and
+installed restart workflows before the readiness audit. The installed workflow
+requires a fresh report from the same source tree and pins the relay executable
+used by the consumer. The report records the distinct process IDs, the matched
+publication plan and the fourteen delivered lanes.

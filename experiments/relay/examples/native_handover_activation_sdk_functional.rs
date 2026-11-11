@@ -81,7 +81,7 @@ pub async fn main() -> Result {
                     true
                 }
                 next::Action::Handover { request } => {
-                    handover_action::apply(&mut state, request).await?
+                    Box::pin(handover_action::apply(&mut state, request)).await?
                 }
                 next::Action::HandoverForPublication { request } => {
                     publication_action::prepare(&mut state, request).await?

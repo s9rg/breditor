@@ -10,13 +10,15 @@ use super::{
     storage,
 };
 use breditor_collab_relay::{
-    OperationalLogGenerationServerRoom, RoomRecoveryPolicy, ServerLogGenerationRoomBackup,
+    OperationalLogGenerationServerRoom, RecoveryRegistrationCredentials, RoomRecoveryPolicy,
+    ServerLogGenerationRoomBackup,
     assets::asset_id,
     server::{
         LogGenerationHandoverStatus, NativeGenerationActivationCheckpointStatus as Status,
         NativeGenerationActivationPrepareOptions, PreparedLogGenerationHandover,
-        PreparedNativeGenerationActivation, PreparedNativeGenerationActivationIdentity,
-        RoomDeploymentAuthority, prepare_durable_native_activation_control,
+        PreparedLogGenerationRecoveryHost, PreparedNativeGenerationActivation,
+        PreparedNativeGenerationActivationIdentity, RoomDeploymentAuthority,
+        VerifiedServerLogGenerationRecoveryState, prepare_durable_native_activation_control,
         prepare_log_generation_recovery_host,
     },
 };
@@ -103,7 +105,7 @@ fn read_backup(path: &Path, digest: &str) -> Result<Arc<ServerLogGenerationRoomB
     Ok(Arc::new(ServerLogGenerationRoomBackup::from_owned_bytes(read_pinned(path, digest)?)?))
 }
 
-pub(super) async fn start() -> Result<State> {
+fn read_bootstrap() -> Result<Bootstrap> {
     let input: Bootstrap = input::read()?;
     if input.format != "breditor/private-native-sealed-process-recovery"
         || input.format_version != 1
@@ -124,6 +126,18 @@ pub(super) async fn start() -> Result<State> {
     {
         return Err("private sealed restart bootstrap selection".into());
     }
+    Ok(input)
+}
+
+struct SelectedCheckpoint {
+    root: PathBuf,
+    checkpoint: Arc<PreparedNativeGenerationActivation>,
+    handover: Arc<PreparedLogGenerationHandover>,
+    authority: RoomDeploymentAuthority,
+    status: Status,
+}
+
+fn open_checkpoint(input: &Bootstrap) -> Result<SelectedCheckpoint> {
     let sealed = input.root.join("sdk-handover");
     let checkpoint_root = sealed.join(&input.checkpoint_name);
     let raw = read_pinned(&checkpoint_root.join("activation.json"), &input.checkpoint_digest)?;
@@ -150,11 +164,25 @@ pub(super) async fn start() -> Result<State> {
     {
         return Err("selected sealed restart authority differs".into());
     }
-    let original =
-        ServerLogGenerationRoomBackup::from_owned_bytes(handover.source_backup().to_bytes()?)?;
+    Ok(SelectedCheckpoint { root: sealed, checkpoint, handover, authority, status })
+}
+
+struct ReopenedTarget {
+    original: ServerLogGenerationRoomBackup,
+    host: PreparedLogGenerationRecoveryHost,
+    protected: RecoveryRegistrationCredentials,
+    proof: VerifiedServerLogGenerationRecoveryState,
+    owner_token: String,
+    alice_token: String,
+}
+
+async fn reopen_target(input: &Bootstrap, selected: &SelectedCheckpoint) -> Result<ReopenedTarget> {
+    let original = ServerLogGenerationRoomBackup::from_owned_bytes(
+        selected.handover.source_backup().to_bytes()?,
+    )?;
     let origin_identity = original.info()?.identity;
     let operation = OperationalLogGenerationServerRoom::resume(
-        &sealed.join("target"),
+        &selected.root.join("target"),
         &original,
         &origin_identity,
         RoomRecoveryPolicy::HostReacquired,
@@ -175,26 +203,30 @@ pub(super) async fn start() -> Result<State> {
     .await?;
     let protected = input.protected.admit()?;
     let proof = credentials::verify(&host, &accounts.owner, &protected).await?;
-    if proof.identity() != *identity.current() {
+    if proof.identity() != *selected.checkpoint.identity().current() {
         return Err("reopened sealed operation differs from the selected checkpoint".into());
     }
-    let checkpoint = if status == Status::Committed {
-        Arc::new(
-            host.prepare_durable_native_restart(
-                "owner",
-                &accounts.owner,
-                checkpoint,
-                &proof,
-                NativeGenerationActivationPrepareOptions {
-                    root: sealed.join(format!("restart-checkpoint-{}", input.next_sequence)),
-                    authority: authority.clone(),
-                },
-            )
-            .await?,
-        )
-    } else {
-        checkpoint
-    };
+    Ok(ReopenedTarget {
+        original,
+        host,
+        protected,
+        proof,
+        owner_token: accounts.owner,
+        alice_token: accounts.alice,
+    })
+}
+
+struct RetainedCuts {
+    spec: source::Spec,
+    fixture: Value,
+    successor: BTreeMap<u64, Arc<ServerLogGenerationRoomBackup>>,
+    earlier: Vec<Arc<ServerLogGenerationRoomBackup>>,
+    initial_snapshot: OnceLock<Arc<ServerLogGenerationRoomBackup>>,
+    previous: Arc<ServerLogGenerationRoomBackup>,
+    older: ServerLogGenerationRoomBackup,
+}
+
+fn read_observed_cuts(input: &Bootstrap) -> Result<RetainedCuts> {
     let snapshots = input.root.join("snapshots");
     let first = snapshots.join("cut-0");
     let fixture: Value = serde_json::from_slice(&fs::read(first.join("fixture.json"))?)?;
@@ -209,7 +241,7 @@ pub(super) async fn start() -> Result<State> {
         atomic: fixture["atomic"].as_bool().ok_or("atomic")?,
     };
     let mut observed = BTreeMap::new();
-    for cut in input.cuts {
+    for cut in &input.cuts {
         let archive = read_backup(
             &snapshots.join(format!("cut-{}", cut.sequence)).join("server-after.backup"),
             &cut.digest,
@@ -228,14 +260,41 @@ pub(super) async fn start() -> Result<State> {
         &first.join("older-server.backup"),
         &input.older_digest,
     )?)?;
+    Ok(RetainedCuts { spec, fixture, successor, earlier, initial_snapshot, previous, older })
+}
+
+pub(super) async fn start() -> Result<State> {
+    let input = read_bootstrap()?;
+    let selected = open_checkpoint(&input)?;
+    let ReopenedTarget { original, host, protected, proof, owner_token, alice_token } =
+        Box::pin(reopen_target(&input, &selected)).await?;
+    let checkpoint = if selected.status == Status::Committed {
+        Arc::new(
+            host.prepare_durable_native_restart(
+                "owner",
+                &owner_token,
+                selected.checkpoint,
+                &proof,
+                NativeGenerationActivationPrepareOptions {
+                    root: selected.root.join(format!("restart-checkpoint-{}", input.next_sequence)),
+                    authority: selected.authority.clone(),
+                },
+            )
+            .await?,
+        )
+    } else {
+        selected.checkpoint
+    };
+    let RetainedCuts { spec, fixture, successor, earlier, initial_snapshot, previous, older } =
+        read_observed_cuts(&input)?;
     let (operators, token) = authentication::operator()?;
     let (router, control) = prepare_durable_native_activation_control(
         host.clone(),
         Arc::new(proof),
         checkpoint.clone(),
-        authority.clone(),
+        selected.authority.clone(),
         "owner",
-        &accounts.owner,
+        &owner_token,
         operators,
     )
     .await?;
@@ -262,8 +321,8 @@ pub(super) async fn start() -> Result<State> {
         active: NativeService::controlled(host, control),
         checkpoint,
         old_router: axum::Router::new().fallback(|| async { axum::http::StatusCode::GONE }),
-        owner_token: accounts.owner,
-        alice_token: accounts.alice,
+        owner_token,
+        alice_token,
         old_alice_token: input.old_alice_token,
         initial_snapshot,
     };
@@ -284,8 +343,8 @@ pub(super) async fn start() -> Result<State> {
         handover: Some(HandoverPrefix {
             sequence: input.handover_sequence,
             earlier,
-            intent: handover,
-            authority,
+            intent: selected.handover,
+            authority: selected.authority,
         }),
     };
     publication_action::provision(&mut state).await?;

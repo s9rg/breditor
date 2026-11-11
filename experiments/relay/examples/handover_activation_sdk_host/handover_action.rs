@@ -5,14 +5,30 @@ use super::{
     snapshot::HandoverPrefix, state::Offer, state::State, storage,
 };
 use breditor_collab_relay::{
-    RoomRecoveryPolicy, ServerLogGenerationRoomBackup, ServerLogGenerationRoomRecovery,
+    RoomRecoveryPolicy, ServerLogGenerationRoomBackup, ServerLogGenerationRoomBackupIdentity,
+    ServerLogGenerationRoomRecovery,
     server::{
-        NativeGenerationActivationPrepareOptions, PreparedLogGenerationHandover,
-        RoomDeploymentAuthority, prepare_durable_native_activation_control,
-        prepare_log_generation_recovery_host,
+        ActivatedNativeLogGenerationHost, NativeGenerationActivationPrepareOptions,
+        PreparedLogGenerationHandover, RoomDeploymentAuthority,
+        prepare_durable_native_activation_control, prepare_log_generation_recovery_host,
     },
 };
-use std::sync::Arc;
+use std::{path::Path, sync::Arc};
+
+async fn seal_source(
+    active: &ActivatedNativeLogGenerationHost,
+    token: &str,
+    root: &Path,
+    expected: ServerLogGenerationRoomBackupIdentity,
+) -> Result<Arc<PreparedLogGenerationHandover>> {
+    let path = root.join("intent");
+    let intent = Arc::new(active.prepare_next_handover("owner", token, &path, expected).await?);
+    let selected = intent.identity().clone();
+    storage::write_new(&root.join("source-choice.json"), &serde_json::to_vec(&selected)?)?;
+    active.seal_next_handover("owner", token, &intent, &selected).await?;
+    drop(intent);
+    Ok(Arc::new(PreparedLogGenerationHandover::open(&path, &selected)?))
+}
 
 pub(super) async fn apply(state: &mut State, request: u64) -> Result<bool> {
     if !state.serving || state.handover.is_some() {
@@ -29,21 +45,7 @@ pub(super) async fn apply(state: &mut State, request: u64) -> Result<bool> {
         RoomDeploymentAuthority::open_at_least(&ready.root.join("authority"), active.selection())?;
     let root = ready.root.join("sdk-handover");
     storage::directory(&root)?;
-    let intent = Arc::new(
-        active
-            .prepare_next_handover(
-                "owner",
-                &ready.owner_token,
-                &root.join("intent"),
-                expected.clone(),
-            )
-            .await?,
-    );
-    let selected = intent.identity().clone();
-    storage::write_new(&root.join("source-choice.json"), &serde_json::to_vec(&selected)?)?;
-    active.seal_next_handover("owner", &ready.owner_token, &intent, &selected).await?;
-    drop(intent);
-    let intent = Arc::new(PreparedLogGenerationHandover::open(&root.join("intent"), &selected)?);
+    let intent = seal_source(active, &ready.owner_token, &root, expected.clone()).await?;
     let archive = intent.source_backup();
     let policy = RoomRecoveryPolicy::HostReacquired;
     let operation =

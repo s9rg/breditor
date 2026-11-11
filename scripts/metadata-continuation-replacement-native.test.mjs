@@ -9,7 +9,7 @@ import {preparedRoomRun} from './fixtures/native-room-run/session.mjs';
 import {nativePair} from './fixtures/native-room-retirement/session.mjs';
 import {sourceByteSnapshots,assertSourceBytesUnchanged} from './fixtures/native-actor-custody/storage_bytes.mjs';
 import {RoomExecutionAttempt,withRoomExecutionMetadataTarget} from '../packages/breditor-collaboration/dist/native_room_execution_run/attempt.js';
-import {previewRoomMetadataContinuation,continueRoomMetadata,resumeRoomMetadataContinuation} from '../packages/breditor-collaboration/dist/selected_local_metadata_continuation/coordinator.js';
+import {previewRoomMetadataContinuation,continueRoomMetadata,resumeRoomMetadataContinuation,continueHeldRoomMetadata} from '../packages/breditor-collaboration/dist/selected_local_metadata_continuation/coordinator.js';
 import {metadataContinuationPreviewRequest as previewRequest,metadataContinuationRunRequest as runRequest} from '../packages/breditor-collaboration/dist/selected_local_metadata_continuation/requests.js';
 import {SelectedLocalReviewDelivery as Review} from '../packages/breditor-collaboration/dist/selected_local_review_delivery/coordinator.js';
 import {SelectedLocalMetadataDelivery as Metadata,previewSelectedLocalMetadataResume} from '../packages/breditor-collaboration/dist/selected_local_metadata_delivery/coordinator.js';
@@ -35,6 +35,22 @@ test('actual replacement retains original three-lane receipts and pending metada
   let calls=0;await assert.rejects(previewRoomMetadataContinuation({},f.session.input(),input));await assert.rejects(previewRoomMetadataContinuation(attempt,f.session.input(),{...input,database:tag+'-intent'}),e=>e.code==='metadata_continuation_namespace_collision');await assertSourceBytesUnchanged(oldBytes);const publicationHook=()=>{throw Error('Metadata handoff must not invoke final publication approval');},expected=await previewRoomMetadataContinuation(attempt,f.session.input(),previewRequest({...input,approve:()=>{throw Error('Preview must not approve');},approvePublication:publicationHook}));console.log('METADATA_CONTINUATION_STEP full-origin-preview');
   saveEvidence(f.host.directory+'/metadata-continuation-storage-input.json',{format:'breditor/test-metadata-continuation-input',formatVersion:1,choice:expected,files:await retainBundle(f.host.directory,'original',bundle),origin:{prepared:bundle.parent.prepared.choice,current:bundle.parent.current.selection,delivery:{bytes:bundle.parent.delivery.bytes,sha256:bundle.parent.delivery.sha256},metadata:{bytes:bundle.metadata.bytes,sha256:bundle.metadata.sha256}}});
   await testMetadataContinuationIntent(t,expected,bundle,native);console.log('METADATA_CONTINUATION_STEP original-intent-storage-laws');
+  const publisher=new AbortController(),late=Promise.withResolvers();
+  let approvalCalls=0,approvalDeadline;
+  try{
+   await assert.rejects(withRoomExecutionMetadataTarget(attempt,f.session.input(),(scope,witness)=>
+    continueHeldRoomMetadata(scope,witness,{...input,expected,approve(){
+     approvalCalls++;
+     publisher.abort();
+     approvalDeadline=setTimeout(()=>late.resolve(true),2000);
+     return late.promise;
+    }},false,publisher.signal)),{code:'asset_adoption_aborted'});
+   assert.equal(approvalCalls,1);
+  }finally{clearTimeout(approvalDeadline);late.resolve(true);}
+  const destinations=new Set([input.database,input.preparationDatabase,input.reviewDatabase,input.metadataDatabase]);
+  assert.equal((await indexedDB.databases()).some(row=>destinations.has(row.name)),false);
+  await assertSourceBytesUnchanged(oldBytes);
+  console.log('METADATA_CONTINUATION_STEP publication-lifetime-ended-before-any-destination-write');
   await assert.rejects(continueRoomMetadata(attempt,f.session.input(),runRequest({...input,expected,approvePublication:publicationHook,approve(){calls++;return false;}})));assert.equal(calls,1);assert.equal((await indexedDB.databases()).some(row=>row.name===input.metadataDatabase),false);
   const put=IDBObjectStore.prototype.put;let aborted=false;
   try{IDBObjectStore.prototype.put=function(...args){const request=put.apply(this,args);if(!aborted&&this.transaction.db.name===input.metadataDatabase&&args[1]==='current'){aborted=true;this.transaction.abort();}return request;};await assert.rejects(continueRoomMetadata(attempt,f.session.input(),runRequest({...input,expected,approvePublication:publicationHook,approve(){calls++;assert.throws(()=>attempt.takeOwner(),e=>e.code==='room_execution_busy');return true;}})));assert.equal(aborted,true);assert.equal(calls,2);}finally{IDBObjectStore.prototype.put=put;}

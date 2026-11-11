@@ -2,7 +2,7 @@
 import type {SharedServerLogGenerationHandoverDeliveryPathRecoveryControlSelection as Handover} from '../generation_delivery_path_control/handover.js';
 import type {SharedDurableNativeActivationSelection} from '../native_activation_control/contract.js';
 import {fail} from '../room_native_activation_intent/policy.js';
-import {assertHandoverPathContinuation} from './capture_binding.js';
+import {continuesSealedDeliverySelection} from '../generation_delivery_path_control/retained_cuts.js';
 import type {RoomHandoverActivationIntentChoice} from './contract.js';
 import {roomHandoverActivationIntentChoice} from './identity.js';
 
@@ -17,6 +17,6 @@ export function handoverActivationReassociationChoice(
  const sameCheckpoint=equal(activation.previous,old.previous)&&equal(activation.planned,old.planned)&&equal(activation.checkpointSha256,old.checkpointSha256);
  const childCheckpoint=equal(activation.previous,old.planned)&&!equal(activation.checkpointSha256,old.checkpointSha256);
  if(!sameCheckpoint&&!childCheckpoint)throw fail('activation_intent_stale');
- assertHandoverPathContinuation(previous.handover,handover);
+ if(!continuesSealedDeliverySelection(previous.handover,handover))throw fail('activation_intent_stale');
  return roomHandoverActivationIntentChoice({...previous,database,activation,handover});
 }

@@ -12,7 +12,7 @@ import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.
 import type {LocalMetadataRoomBundle} from '../selected_local_metadata_delivery/contract.js';
 import type {SharedDurableNativeActivationReceipt} from '../native_activation_control/contract.js';
 import type {SharedNativeRoomPublicationReceipt} from '../native_publication_control/contract.js';
-import {withOriginalMetadataJournals,type OriginalMetadataJournalObservation} from '../selected_local_metadata_continuation/original_journals.js';
+import {checkHeldOriginalMetadataJournals,withOriginalMetadataJournals,type OriginalMetadataJournalObservation} from '../selected_local_metadata_continuation/original_journals.js';
 import {JointRoomActivationIntentStore,type JointRoomPublicationState} from './intent_store.js';
 import {jointRoomActivationIntentChoice,jointHandoverActivationIntentChoice} from './intent_identity.js';
 import type {JointRoomActivationIntentChoice} from './intent_contract.js';
@@ -77,7 +77,13 @@ async function withColdOrigin<Choice extends ColdChoice,Intent extends Retained,
  const choice=reader.parse(provided);
  if(!equal(actual,choice.plan.execution)||typeof visit!=='function')throw fail('joint_activation_intent_stale');
  let active=true,joint:JointRoomActivationIntentStore|undefined,native:NativeIntentStore<Intent>|undefined,primary:unknown,failed=false;
- const check=()=>{if(!active)throw fail('joint_activation_closed');scope.check();if(!equal(roomMetadataTargetIdentity(witness,scope),choice.plan.execution))throw fail('joint_activation_intent_stale');};
+ // The admitted private witness holds one immutable execution identity for
+ // this visit. Recheck its live custody without serializing the complete plan.
+ const check=()=>{
+  if(!active)throw fail('joint_activation_closed');
+  scope.check();
+  if(roomMetadataTargetIdentity(witness,scope)!==actual)throw fail('joint_activation_intent_stale');
+ };
  try{
   check();const current=await scope.retainCurrent();check();const options={wasm:current.integrity.wasm,checkAuthority:check,signal:scope.signal};
   joint=reader.joint(choice,options);let publication=await joint.open();check();
@@ -85,11 +91,11 @@ async function withColdOrigin<Choice extends ColdChoice,Intent extends Retained,
   const bundle=reader.original(retained),selected=choice.plan.origin.selection;
   if(!equal(retained.choice,selected.activation)||!equal(bundle.parent.prepared.choice,selected.prepared)||!equal(bundle.parent.current.selection,selected.current)||!equal({bytes:bundle.parent.delivery.bytes,sha256:bundle.parent.delivery.sha256},selected.review)||!equal({bytes:bundle.metadata.bytes,sha256:bundle.metadata.sha256},selected.metadata))throw fail('joint_activation_intent_stale');
   const nativeStore=native,jointStore=joint;
-  const result=await withOriginalMetadataJournals(scope,witness,bundle,async(original,journals)=>{
+  const result=await withOriginalMetadataJournals(scope,witness,bundle,async(original,journals,journalRevocations)=>{
    if(original.choice.parent.database!==choice.plan.origin.reviewDatabase||original.choice.database!==choice.plan.origin.metadataDatabase)throw fail('joint_activation_intent_stale');
-   let visiting=true;const heldCheck=()=>{if(!visiting)throw fail('joint_activation_closed');check();nativeStore.check();jointStore.check();};heldCheck();
+   let visiting=true;const heldCheck=()=>{if(!visiting)throw fail('joint_activation_closed');check();nativeStore.check();jointStore.check();checkHeldOriginalMetadataJournals(scope,original);};heldCheck();
    try{
-   const work:ColdJointActivationOriginWork<Choice,Intent>=Object.freeze({choice,retained,publication,original,journals,check:heldCheck,revocations:Object.freeze([nativeStore.revoked,jointStore.revoked]),
+   const work:ColdJointActivationOriginWork<Choice,Intent>=Object.freeze({choice,retained,publication,original,journals,check:heldCheck,revocations:Object.freeze([nativeStore.revoked,jointStore.revoked,...journalRevocations]),
     async observeNativeStarted(){heldCheck();nativeState=(await nativeStore.markRequestStarted()).state;heldCheck();},
     async observeNativeReceipt(receipt:SharedDurableNativeActivationReceipt){heldCheck();nativeState=(await nativeStore.markReceiptObserved(receipt)).state;heldCheck();},
     async observePublicationStarted(){heldCheck();publication=await jointStore.markPublicationStarted();heldCheck();},

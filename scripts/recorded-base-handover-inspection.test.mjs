@@ -5,6 +5,8 @@ import assert from 'node:assert/strict';
 import {transportFixture} from './fixtures/server-generation-archive/transport.mjs';
 import {withHandoverActivationControls as using} from './fixtures/native-activation/handover-controls.mjs';
 import {withRecordedBaseHandoverInspection as held,recordedBaseProviderSelection as admit} from '../packages/breditor-collaboration/dist/server_packet_recovery/recorded_base_control.js';
+import {roomHandoverActivationIntentChoice as choose} from '../packages/breditor-collaboration/dist/room_native_handover_activation_intent/identity.js';
+import {handoverActivationReassociationChoice as reassociate} from '../packages/breditor-collaboration/dist/room_native_handover_activation_intent/reassociate_choice.js';
 function fixture(){
  const earlier=transportFixture().expected,next=structuredClone(earlier);next.native.source.records++;next.native.manifest[0]^=1;
  const source={origin:next,server:next,participants:{source:next.native,sha256:Array(32).fill(4)}},native={format:'breditor/server-log-generation-recovery-control',formatVersion:1,instance:'b'.repeat(64),source};
@@ -23,6 +25,26 @@ function restarted(f){
  live.current.current.current.instance='5'.repeat(64);
  live.path.successor.ancestors.push(f.next);
  return live;
+}
+function advancingPredecessor(){
+ const f=fixture();
+ const advance=count=>{
+  const cut=structuredClone(f.next);
+  cut.native.source.records+=count;
+  cut.native.manifest[0]^=count;
+  cut.archiveSha256[0]^=count;
+  return cut;
+ };
+ const previous=advance(1),fresh=advance(2),current=advance(3);
+ f.activation.current.server=current;
+ f.activation.current.participants.source=current.native;
+ f.control.selection.continuation.previous=previous;
+ const recorded=f.capture.handover,live=restarted(f);
+ live.current.current.continuation.previous=fresh;
+ live.path.successor.ancestors.push(fresh);
+ const original=choose({format:'breditor/room-native-handover-activation-intent',formatVersion:1,database:'original-handover',
+  activation:f.activation,handover:recorded,graph:{bytes:1,sha256:'a'.repeat(64)},objects:[],totalBytes:1});
+ return {f,recorded,live,previous,original,restartedActivation:{...f.activation,instance:'7'.repeat(64)}};
 }
 test('ordinary base inspection preserves its exact original restore-origin rule',()=>run(async(f)=>{
  assert.deepEqual(admit(f.control,f.ordinary),f.control.selection.current);assert.throws(()=>admit(f.control,f.catalog));
@@ -52,12 +74,11 @@ test('fresh sealed controls recheck the original recorded provider without rewri
   assert.equal(c.requests.length,0);
  });
 });
-test('a new controller cannot substitute a different seal, prior cut or recorded continuation',async()=>{
+test('a new controller cannot substitute a different seal or omit a recorded cut',async()=>{
  const f=fixture(),recorded=f.capture.handover;
  const changes=[
   live=>{live.path.seal.owner='6'.repeat(64);},
   live=>{live.path.successor.ancestors=live.path.successor.ancestors.map(cut=>({...cut,archiveSha256:Array(32).fill(6)}));},
-  live=>{live.current.current.continuation.previous={...f.next,archiveSha256:Array(32).fill(6)};},
  ];
  for(const change of changes){
   const live=restarted(f);change(live);
@@ -67,6 +88,28 @@ test('a new controller cannot substitute a different seal, prior cut or recorded
    assert.equal(visits,0);
   });
  }
+});
+test('an advanced predecessor admits the saved provider when the live path includes the original predecessor',async()=>{
+ const {f,recorded,live,previous,original,restartedActivation}=advancingPredecessor();
+ live.path.successor.ancestors.splice(-1,0,previous);
+ const choice=reassociate(original,'complete-restart',restartedActivation,live);
+ assert.deepEqual(choice.graph,original.graph);
+ await using({handover:live},restartedActivation,async c=>{
+  await held(c.path,undefined,()=>{},async proof=>{
+   assert.deepEqual(admit(f.control,f.catalog,proof),f.control.selection.current);
+  },recorded);
+  assert.equal(c.requests.length,0);
+ });
+});
+test('a replacement with an unproved original predecessor is refused before retaining a restart choice',async()=>{
+ const {f,recorded,live,original,restartedActivation}=advancingPredecessor();
+ assert.throws(()=>reassociate(original,'incomplete-restart',restartedActivation,live),{code:'activation_intent_stale'});
+ await using({handover:live},restartedActivation,async c=>{
+  let visits=0;
+  await assert.rejects(held(c.path,undefined,()=>{},async()=>{visits++;},recorded),{code:'metadata_packet_retention_state'});
+  assert.equal(visits,0);
+  assert.equal(c.requests.length,0);
+ });
 });
 test('ending a nested controller revokes the same-visit handover admission',()=>run(async(f,c)=>{
  await assert.rejects(held(c.path,undefined,()=>{},async proof=>{c.close('native');assert.throws(()=>admit(f.control,f.catalog,proof));}));assert.equal(c.requests.length,0);

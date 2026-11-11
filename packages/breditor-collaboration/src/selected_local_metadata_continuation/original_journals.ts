@@ -29,7 +29,7 @@ function sameFacts<T extends {readonly before:unknown;readonly current:{readonly
 }
 /** Trusted SDK-only callback. The actual inspection and old journal leases
  * remain live together; caller DATA cannot issue or extend this proof. */
-export async function withOriginalMetadataJournals<T>(scope:SelectedNativeRecoveryScope,witness:RoomMetadataTargetWitness,input:LocalMetadataRoomBundle,visit:(inspection:Inspection,observation:OriginalMetadataJournalObservation)=>Promise<T>):Promise<T>{
+export async function withOriginalMetadataJournals<T>(scope:SelectedNativeRecoveryScope,witness:RoomMetadataTargetWitness,input:LocalMetadataRoomBundle,visit:(inspection:Inspection,observation:OriginalMetadataJournalObservation,revocations:readonly AbortSignal[])=>Promise<T>):Promise<T>{
  roomMetadataTargetIdentity(witness,scope);if(typeof visit!=='function')throw fail();let active=true,review:LocalReviewDeliveryStore|undefined,metadata:LocalMetadataDeliveryStore|undefined,primary:unknown,failed=false;
  const check=()=>{if(!active)throw fail('metadata_continuation_closed');roomMetadataTargetIdentity(witness,scope);scope.check();review?.checkCurrent();metadata?.checkCurrent();};
  try{
@@ -39,7 +39,7 @@ export async function withOriginalMetadataJournals<T>(scope:SelectedNativeRecove
   const saved=await metadataApi.open.call(metadata);check();sameFacts(original.snapshot,saved);
   const observation=Object.freeze({review:Object.freeze({database:original.choice.parent.database,retainedRevision:original.review.current.revision,actualRevision:parent.current.revision}),metadata:Object.freeze({database:original.choice.database,retainedRevision:original.snapshot.current.revision,actualRevision:saved.current.revision})});
   heldInspections.set(original,{scope,check});
-  const result=await visit(original,observation);check();
+  const result=await visit(original,observation,Object.freeze([review.revoked,metadata.revoked]));check();
   if(!equal(await reviewApi.read.call(review),parent)||!equal(await metadataApi.read.call(metadata),saved))throw fail('metadata_continuation_original_journal_changed');check();return result;
  }catch(error){primary=error;failed=true;throw error;}finally{
   active=false;const errors:unknown[]=[];for(const close of[()=>metadata&&metadataApi.close.call(metadata),()=>review&&reviewApi.close.call(review)])try{await close();}catch(error){errors.push(error);}if(errors.length)throw new AggregateError(failed?[primary,...errors]:errors,'Original metadata journal reads did not drain');
