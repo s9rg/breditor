@@ -5,6 +5,7 @@ pub(super) use activate_durable_generation::activate_durable_native_generation;
 mod activate_generation;
 pub(super) use activate_generation::activate_native_generation;
 mod authority;
+mod checkpoint_epoch;
 mod claim;
 mod close;
 mod create;

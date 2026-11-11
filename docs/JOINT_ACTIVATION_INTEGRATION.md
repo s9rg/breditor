@@ -223,6 +223,29 @@ publication or deployment is implied.
 
 ## Sealed relay restart
 
+Use `open_sealed_native_restart_host` to reopen the existing operational
+target and verify the retained selection in one call. It opens only a committed
+operational handoff and preserves any staged marker alias. An interrupted
+handoff requires explicit operational resume. A Pending result releases the
+room and raster custody so the host can retry after obtaining the missing
+registration records.
+
+A Rust host can use `PreparedLogGenerationRecoveryHost::verify_sealed_native_restart`
+after reopening the operational room. Supply the independently retained
+checkpoint, expected epoch and exact current server and participant identity
+with fresh host authentication and the protected registration records. For a
+prepared epoch the current state must equal the checkpoint. For a committed
+epoch a retained descendant can carry later accepted work. The verifier checks
+the actual operational owner, the complete ancestor archive, the sealed source
+and the exact authority epoch. Missing registration records return Pending.
+
+After verification, a committed restart prepares a new child checkpoint with
+`prepare_durable_native_restart`. The selected deployment epoch is held during
+the durable write and readback. If another claim advanced the epoch during
+capture, preparation refuses before creating the checkpoint directory. After
+the write releases the epoch, the host can provision fresh activation and
+publication controls. Each operation rechecks current authority and custody.
+
 The cold SDK retains the original activation intent and prepares a separate
 restart intent for the selected authenticated lineage. Its publication journal
 and Native activation journal use fresh storage. If either write is interrupted,
@@ -250,6 +273,16 @@ cases. Each restart reopens the pinned archives, verifies fourteen protected
 streams, and offers fresh controls for the original listener. The prepared
 case retains the original checkpoint. The committed case prepares a direct
 child of the last committed checkpoint after each exit.
+A separate published-room case submits a document edit, a comment and a
+raster through the ordinary authenticated service, then retains the
+acknowledged server cut before terminating the relay. Recovery selects that
+exact cut, rechecks all fourteen protected streams and uses the existing
+Native ancestry check to prepare a child of the committed checkpoint. The
+raster is readable through the fresh inactive recovery control. After fresh
+activation and publication, a second client receives the edits and the author
+can Undo and Redo both changes without losing peer work. The original
+exact-checkpoint action still refuses a later cut.
+
 The whole-room fixture then exercises the SDK with seven replacement owners,
 fourteen offline lanes, metadata continuation, a revoked approval and lost
 replies before final delivery.
@@ -258,7 +291,7 @@ Build the packages and run `node scripts/build-handover-native-activation.mjs`
 to produce the exact Native fixture. Run the following from the repository root.
 
 ```sh
-node --test scripts/native-sealed-handover-process-recovery.test.mjs
+node --test scripts/native-sealed-handover-process-recovery.test.mjs scripts/native-sealed-published-process-recovery.test.mjs
 node scripts/check-handover-native-activation-installed.mjs --sealed-process
 npm run test:collaboration:sealed-joint-process-recovery
 npm run test:collaboration:sealed-joint-process-recovery:installed

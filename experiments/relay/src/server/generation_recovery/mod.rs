@@ -71,8 +71,11 @@ pub use physical::{
     VerifiedPhysicalServerRoomRecoveryState, prepare_physical_room_recovery_control,
     prepare_physical_room_recovery_host,
 };
+mod open_sealed_restart;
+pub use open_sealed_restart::{SealedNativeRestartHostCoverage, open_sealed_native_restart_host};
 mod prepare;
 mod reconstruct;
+mod sealed_restart;
 pub use reconstruct::reconstruct_log_generation_recovery_host;
 mod selected;
 mod state;
@@ -81,6 +84,7 @@ mod tests;
 mod verification;
 pub use coordinator::PreparedLogGenerationRecoveryHost;
 pub use prepare::prepare_log_generation_recovery_host;
+pub use sealed_restart::SealedNativeRestartSelection;
 pub use state::{ServerLogGenerationRecoveryState, ServerLogGenerationRecoveryStateIdentity};
 pub use verification::{
     ServerLogGenerationRecoveryCoverage, VerifiedServerLogGenerationRecoveryState,

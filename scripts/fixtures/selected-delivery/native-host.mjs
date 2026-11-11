@@ -30,7 +30,7 @@ export async function selectedDeliveryNativeHost(root,{language=3,standard=true,
  const child=spawn(binary,args,{cwd:root,stdio:['pipe','pipe','pipe']});
  let handoverSequence=resumed?.bootstrap.handoverSequence;
  let buffer='',errors='',sequence=resumed?.bootstrap.nextSequence??0,closed=false,stopping,initialResolve,initialReject,initialOffer,handoverOffer;
- const observed=new WeakMap(),cuts=new Map(),pending=new Map(),operators=new Map(),secrets=new Set(),offers=new WeakMap(),publicationTokens=new WeakMap(),snapshots=resumed?[...resumed.snapshots]:[],initial=new Promise((a,b)=>{initialResolve=a;initialReject=b;});
+ const observed=new WeakMap(),cuts=new Map(),pending=new Map(),operators=new Map(),secrets=new Set(),offers=new WeakMap(),publicationTokens=new WeakMap(),publishedOffers=new WeakSet(),snapshots=resumed?[...resumed.snapshots]:[],initial=new Promise((a,b)=>{initialResolve=a;initialReject=b;});
  for(const item of snapshots){const pin=structuredClone(item);cuts.set(item.sequence,pin);observed.set(item,pin);}
  // Failed spawn emits error/close without exit. Settle this actual lifecycle
  // too, so startup cleanup preserves its refusal instead of waiting forever.
@@ -117,32 +117,22 @@ export async function selectedDeliveryNativeHost(root,{language=3,standard=true,
  function request(kind,data={},local={}){if(closed||terminal)return Promise.reject(Error('Native fixture is closed'));if(pending.size>=2)return Promise.reject(Error('Native fixture request budget'));const id=++sequence;return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{pending.delete(id);reject(Error('Native fixture request did not complete within its budget'));},60000);pending.set(id,{resolve,reject,timer,kind,...data,...local});child.stdin.write(JSON.stringify({kind,request:id,...data})+'\n',error=>{if(error){clearTimeout(timer);pending.delete(id);reject(Error('Native fixture command write failed'));}});});}
  if(resumed){const bytes=JSON.stringify(resumed.bootstrap)+'\n';if(Buffer.byteLength(bytes)>16*1024*1024)throw Error('Private process bootstrap byte budget');child.stdin.write(bytes);}
  let timer;try{const publishedFirst=await Promise.race([initial,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Native fixture did not prepare: '+errors)),120000);})]);clearTimeout(timer);const first=resumed?snapshots[0]:publishedFirst;
-  return{directory,binary,initial:first,reopenedOffer:initialOffer,processId:child.pid,snapshots,fixture:verifyFiles,operatorToken:item=>{const value=operators.get(item.path);if(!value)throw Error('Choose the actual observed native cut');return value;},async refresh(){return request('snapshot');},async handover(){if(nativeActivation&&!nativeHandoverActivation||nativePublication||handoverSequence!==undefined)throw Error('Choose one actual fixture handover');return request(nativeHandoverPublication?'handoverForPublication':'handover');},async refreshAfter(previous){const selected=observed.get(previous);if(!selected)throw Error('Select an actual observed complete predecessor');return request('snapshotAfter',{previous:selected.sequence});},
-   handoverActivationOffer(){if(!nativeHandoverActivation||!handoverOffer||!offers.has(handoverOffer))throw Error('Select an actual prepared inactive handover');return handoverOffer;},
-   async prepareActivation(source){if(nativeHandoverActivation)throw Error('Select the already prepared handover activation offer');if(nativePublication)throw Error('Select prepareJointActivation for the separate publication fixture');if(!nativeActivation)throw Error('Native activation fixture mode required');const previous=snapshots.at(-1).sequence;return request('prepareActivation',{source},{previous});},
-   async prepareJointActivation(source){if(!nativePublication)throw Error('Separate publication fixture mode required');return request('prepareJointActivation',{source},{previous:snapshots.at(-1).sequence});},
-   /** Select a genuine complete predecessor while provisioning new controls.
-    * The original prepare action keeps its latest-observed-cut meaning. */
-   async prepareJointActivationAfter(source,previous){if(!nativePublication)throw Error('Separate Native publication fixture mode required');const selected=observed.get(previous);if(!selected)throw Error('Select an actual observed complete predecessor');return request('prepareJointActivationAfter',{source,previous:selected.sequence},{previous:selected.sequence});},
-   publicationToken(publication){const token=publicationTokens.get(publication);if(!token)throw Error('Select the actual provisioned publication control');return token;},
-   async observePublication(offer){
-    if(!(nativePublication||nativeHandoverPublication)||!offers.has(offer)||!offer.publication)throw Error('Select the actual provisioned joint offer');
-    const previous=nativeHandoverPublication?snapshots.at(-1).sequence:offer.case.sequence;
-    return request('observePublication',{},{previous});
-   },
-   activationToken(offer){const token=offers.get(offer);if(!token)throw Error('Select the actual prepared Native offer');return token;},
-   async finishActivation(offer){if(nativePublication)throw Error('Normal publication requires authenticated HTTP; no finish IPC');if(!offers.has(offer))throw Error('Select the actual prepared Native offer');return request('finishActivation',{},{previous:inactiveRasters||nativeHandoverActivation?snapshots.at(-1).sequence:offer.case.sequence});},
-   async reconstruct(item){const selected=observed.get(item);if(!selected)throw Error('Select an actual observed Native source for inactive reconstruction');return request('inspect',{source:selected.sequence});},
-   async authentication(client,{retired=false}={}){const original=verifyFiles(first).clients.find(row=>row.writer===client.writer&&row.actor===client.actor&&row.principal===client.principal);if(!original)throw Error('Choose one actual native registration');const value=await request('credentials',{writer:client.writer,actor:client.actor,retired});if(value.writer!==client.writer||value.actor!==client.actor||value.principal!==client.principal)throw Error('Native fixture registration differs');for(const item of snapshots)verifyFiles(item);const fixture=verifyFiles(first),metadata=JSON.parse(fixture.inventoryJson),endpoint=retired?first.retiredEndpoint:first.clientEndpoint,transport=fixture.atomic?{writerTransport:'atomic-v2'}:{};
-    return Object.freeze({getToken:()=>value.privateAccountToken,document:Object.freeze({endpoint,principal:value.principal,room:metadata.room.document,writer:value.writer,credential:value.privateDocumentCredential,...transport}),review:Object.freeze({endpoint,principal:value.principal,room:metadata.room.document,actor:value.actor,binding:metadata.review.binding,documentWriter:value.writer,...transport,credential:value.privateReviewCredential})});},
-   async prepareProcessRecovery(offer){
+  async function retainProcessRecovery(offer,publishedCut){
     if(!(sealedProcessRecovery||jointProcessRecovery||processRecovery&&!resumed)||!offers.has(offer)||pending.size)throw Error('Actual warm process offer required');
+    const published=publishedCut!==undefined;
+    if(published)assert.ok(sealedProcessRecovery&&publishedOffers.has(offer),'Observe actual authenticated publication first');
     const clients=verifyFiles(first).clients,documents=[],reviews=[];let oldAliceToken;
     for(const client of clients){const credentials=await request('credentials',{writer:client.writer,actor:client.actor,retired:false});assert.equal(credentials.principal,client.principal);assert.equal(credentials.writer,client.writer);assert.equal(credentials.actor,client.actor);documents.push([client.principal,client.writer,credentials.privateDocumentCredential]);reviews.push([client.principal,client.actor,credentials.privateReviewCredential]);oldAliceToken=credentials.privateAccountToken;}
-    const nativeRoot=join(directory,'language-'+language+'-standard-'+standard+'-atomic-'+atomic),last=snapshots.at(-1);
+    const nativeRoot=join(directory,'language-'+language+'-standard-'+standard+'-atomic-'+atomic),latest=snapshots.at(-1);
+    if(published){
+     assert.equal(publishedCut,latest,'Select the exact latest observed cut after publication');
+     verifyFiles(publishedCut);
+    }
+    const last=published?observed.get(publishedCut):latest;
     if(sealedProcessRecovery){
      assert.equal(offer,handoverOffer);
-     assert.deepEqual(offer.selection.current,last.selection.source);
+     if(published)assert.notDeepEqual(offer.selection.current,last.selection.source,'The published cut must advance beyond the checkpoint');
+     else assert.deepEqual(offer.selection.current,last.selection.source);
      const sealed=join(nativeRoot,'sdk-handover');
      const reference=JSON.parse(readFileSync(join(sealed,'selected-checkpoint-'+offer.case.sequence+'.json'),'utf8'));
      assert.deepEqual(Object.keys(reference).sort(),['bytes','checkpointName','format','formatVersion','sha256']);
@@ -154,13 +144,14 @@ export async function selectedDeliveryNativeHost(root,{language=3,standard=true,
      assert.equal(raw.length,reference.bytes);assert.equal(checkpointDigest,reference.sha256);
      assert.deepEqual([...createHash('sha256').update(raw).digest()],offer.selection.checkpointSha256);
      const cutDigest=(cut,name)=>assetDigest(readFileSync(join(dirname(cut.path),name)));
-     const bootstrap={format:'breditor/private-native-sealed-process-recovery',formatVersion:1,root:nativeRoot,
+     const bootstrap={format:published?'breditor/private-native-sealed-published-process-recovery':'breditor/private-native-sealed-process-recovery',formatVersion:1,root:nativeRoot,
+      ...(published?{expectedPublished:last.selection.source}:{}),
       checkpointName:reference.checkpointName,checkpointDigest,originDigest:cutDigest(first,'server.backup'),olderDigest:cutDigest(first,'older-server.backup'),
       handoverSequence,nextSequence:sequence+1,previousSequence:last.sequence,
       cuts:snapshots.map(cut=>({sequence:cut.sequence,digest:cutDigest(cut,'server-after.backup')})),
       protected:{documents,reviews},oldAliceToken,clientAddress:new URL(first.clientEndpoint).host,retiredAddress:new URL(first.retiredEndpoint).host};
      const capsule=Object.freeze({});
-     processCapsules.set(capsule,{root,directory,bootstrap,sealedProcessRecovery,source:offer.selection.current,snapshots:[...snapshots],issuedSequence:sequence,processId:child.pid,crashed:false,used:false});
+     processCapsules.set(capsule,{root,directory,bootstrap,sealedProcessRecovery,source:last.selection.source,snapshots:[...snapshots],issuedSequence:sequence,processId:child.pid,crashed:false,used:false});
      return capsule;
     }
     if(jointProcessRecovery)assert.equal(last,offer.case,'Select the actual latest joint activation offer');
@@ -171,6 +162,31 @@ export async function selectedDeliveryNativeHost(root,{language=3,standard=true,
 
     const bootstrap={format:jointProcessRecovery?'breditor/private-native-joint-process-recovery':'breditor/private-native-process-recovery',formatVersion:1,root:nativeRoot,checkpointName,checkpointJson,checkpointSha256:'sha256:'+createHash('sha256').update(checkpointJson).digest('hex'),initialSequence:first.sequence,nextSequence:sequence+1,previousSequence:jointProcessRecovery?offer.case.previousSequence:last.sequence,observed:snapshots.map(row=>({sequence:row.sequence,identity:row.selection.source.server})),protected:{documents,reviews},oldAliceToken,clientAddress:new URL(first.clientEndpoint).host,retiredAddress:new URL(first.retiredEndpoint).host};
     assert.ok(Buffer.byteLength(JSON.stringify(bootstrap))<16*1024*1024);const capsule=Object.freeze({});processCapsules.set(capsule,{root,directory,jointProcessRecovery,bootstrap,source:last.selection.source,snapshots:[...snapshots],issuedSequence:sequence,processId:child.pid,crashed:false,used:false});return capsule;
+   }
+  return{directory,binary,initial:first,reopenedOffer:initialOffer,processId:child.pid,snapshots,fixture:verifyFiles,operatorToken:item=>{const value=operators.get(item.path);if(!value)throw Error('Choose the actual observed native cut');return value;},async refresh(){return request('snapshot');},async handover(){if(nativeActivation&&!nativeHandoverActivation||nativePublication||handoverSequence!==undefined)throw Error('Choose one actual fixture handover');return request(nativeHandoverPublication?'handoverForPublication':'handover');},async refreshAfter(previous){const selected=observed.get(previous);if(!selected)throw Error('Select an actual observed complete predecessor');return request('snapshotAfter',{previous:selected.sequence});},
+   handoverActivationOffer(){if(!nativeHandoverActivation||!handoverOffer||!offers.has(handoverOffer))throw Error('Select an actual prepared inactive handover');return handoverOffer;},
+   async prepareActivation(source){if(nativeHandoverActivation)throw Error('Select the already prepared handover activation offer');if(nativePublication)throw Error('Select prepareJointActivation for the separate publication fixture');if(!nativeActivation)throw Error('Native activation fixture mode required');const previous=snapshots.at(-1).sequence;return request('prepareActivation',{source},{previous});},
+   async prepareJointActivation(source){if(!nativePublication)throw Error('Separate publication fixture mode required');return request('prepareJointActivation',{source},{previous:snapshots.at(-1).sequence});},
+   /** Select a genuine complete predecessor while provisioning new controls.
+    * The original prepare action keeps its latest-observed-cut meaning. */
+   async prepareJointActivationAfter(source,previous){if(!nativePublication)throw Error('Separate Native publication fixture mode required');const selected=observed.get(previous);if(!selected)throw Error('Select an actual observed complete predecessor');return request('prepareJointActivationAfter',{source,previous:selected.sequence},{previous:selected.sequence});},
+   publicationToken(publication){const token=publicationTokens.get(publication);if(!token)throw Error('Select the actual provisioned publication control');return token;},
+   async observePublication(offer){
+    if(!(nativePublication||nativeHandoverPublication)||!offers.has(offer)||!offer.publication)throw Error('Select the actual provisioned joint offer');
+    const previous=nativeHandoverPublication?snapshots.at(-1).sequence:offer.case.sequence;
+    const observedCut=await request('observePublication',{},{previous});
+    if(sealedProcessRecovery)publishedOffers.add(offer);
+    return observedCut;
+   },
+   activationToken(offer){const token=offers.get(offer);if(!token)throw Error('Select the actual prepared Native offer');return token;},
+   async finishActivation(offer){if(nativePublication)throw Error('Normal publication requires authenticated HTTP; no finish IPC');if(!offers.has(offer))throw Error('Select the actual prepared Native offer');return request('finishActivation',{},{previous:inactiveRasters||nativeHandoverActivation?snapshots.at(-1).sequence:offer.case.sequence});},
+   async reconstruct(item){const selected=observed.get(item);if(!selected)throw Error('Select an actual observed Native source for inactive reconstruction');return request('inspect',{source:selected.sequence});},
+   async authentication(client,{retired=false}={}){const original=verifyFiles(first).clients.find(row=>row.writer===client.writer&&row.actor===client.actor&&row.principal===client.principal);if(!original)throw Error('Choose one actual native registration');const value=await request('credentials',{writer:client.writer,actor:client.actor,retired});if(value.writer!==client.writer||value.actor!==client.actor||value.principal!==client.principal)throw Error('Native fixture registration differs');for(const item of snapshots)verifyFiles(item);const fixture=verifyFiles(first),metadata=JSON.parse(fixture.inventoryJson),endpoint=retired?first.retiredEndpoint:first.clientEndpoint,transport=fixture.atomic?{writerTransport:'atomic-v2'}:{};
+    return Object.freeze({getToken:()=>value.privateAccountToken,document:Object.freeze({endpoint,principal:value.principal,room:metadata.room.document,writer:value.writer,credential:value.privateDocumentCredential,...transport}),review:Object.freeze({endpoint,principal:value.principal,room:metadata.room.document,actor:value.actor,binding:metadata.review.binding,documentWriter:value.writer,...transport,credential:value.privateReviewCredential})});},
+   prepareProcessRecovery(offer){return retainProcessRecovery(offer);},
+   preparePublishedProcessRecovery(offer,cut){
+    if(cut===undefined)return Promise.reject(Error('Select an independently observed published cut'));
+    return retainProcessRecovery(offer,cut);
    },
    async crashForRecovery(capsule){const value=processCapsules.get(capsule);if(!value||value.processId!==child.pid||value.issuedSequence!==sequence||pending.size||closed||terminal)throw Error('Actual current process capsule required before crash');closed=true;assert.equal(child.kill('SIGKILL'),true);const result=await exited;assert.equal(result.signal,'SIGKILL');assert.equal(result.code,null);value.crashed=true;operators.clear();secrets.clear();return{processId:child.pid,signal:result.signal};},
    stop(){if(stopping)return stopping;closed=true;stopping=(async()=>{child.stdin.end();const result=await Promise.race([exited,new Promise((_,reject)=>{const timer=setTimeout(()=>reject(Error('Native fixture shutdown still pending')),30000);timer.unref();})]);assert.equal(result.code,0,'Native selected-delivery shutdown: '+errors.replace(/[a-f0-9]{64}/g,'[redacted]'));buffer='';operators.clear();secrets.clear();})().finally(()=>{stopping=undefined;});return stopping;},

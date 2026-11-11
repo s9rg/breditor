@@ -356,6 +356,49 @@ fn complete_native_replay_must_refuse_a_real_pending_rotation_without_finishing_
 }
 
 #[test]
+fn existing_committed_reopen_preserves_partial_and_committed_phase_markers() -> TestResult {
+    for point in [Point::IntentSelected, Point::DataSynced, Point::MarkerLinked] {
+        let (files, backup, recovered) = restored()?;
+        let document = recovered.room().catchup("owner")?;
+        let identity = backup.info()?.identity;
+        let root = files.recovery();
+        assert!(
+            recovered
+                .handoff(&backup, &identity, POLICY, "owner", &Interruption { point: Some(point) })
+                .is_err()
+        );
+        let before = snapshot(&root)?;
+        let stage = before
+            .keys()
+            .find(|name| name.starts_with(".operation-data-"))
+            .ok_or("owned staged marker")?;
+        let committed = point == Point::MarkerLinked;
+        assert_eq!(before.contains_key(".operational.json"), committed);
+        let opened = OperationalLogGenerationServerRoom::open_committed(
+            &root, &backup, &identity, POLICY, "owner",
+        );
+        if committed {
+            let operational = opened?;
+            assert_eq!(operational.room().catchup("owner")?, document);
+            assert_eq!(operational.assets().count(), 3);
+        } else {
+            assert!(matches!(
+                opened,
+                Err(Error::Contract("existing committed operational marker required"))
+            ));
+        }
+        assert_eq!(snapshot(&root)?, before);
+        let repaired = reopen(&root, &backup)?;
+        assert_eq!(repaired.room().catchup("owner")?, document);
+        drop(repaired);
+        let after = snapshot(&root)?;
+        assert!(!after.contains_key(stage));
+        assert!(after.contains_key(".operational.json"));
+    }
+    Ok(())
+}
+
+#[test]
 fn only_a_committed_operational_marker_can_adopt_later_complete_native_appends() -> TestResult {
     for committed in [false, true] {
         let (files, backup, recovered) = restored()?;

@@ -36,6 +36,15 @@ backend. Ordinary router defaults are unchanged. This is not complete recovery
 activation: the final accepted cut, all retained clients and providers still need
 coordinated reconciliation before a recovered host can serve.
 
+## Sealed operational restart
+
+Use `open_sealed_native_restart_host` to reopen an already committed
+operational room and verify its sealed restart against an independently
+retained checkpoint and exact current server and participant identity. A
+committed checkpoint can carry forward a verified descendant with later
+accepted edits, comments, or uploads. The [sealed restart contract](../../docs/JOINT_ACTIVATION_INTEGRATION.md#sealed-relay-restart)
+describes the separate checkpoint, activation, and publication steps.
+
 ## Server room archives
 
 The Rust host also supports `Room::export_backup()`, independent

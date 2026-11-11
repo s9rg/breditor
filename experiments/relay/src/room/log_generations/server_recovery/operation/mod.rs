@@ -8,6 +8,7 @@ pub(crate) use host_custody::GenerationOperationCustody;
 mod coordinator;
 mod interruption;
 mod marker;
+mod open_committed;
 mod publish;
 mod resume;
 #[cfg(test)]
