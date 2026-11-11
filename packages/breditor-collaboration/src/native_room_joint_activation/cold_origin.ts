@@ -77,7 +77,13 @@ async function withColdOrigin<Choice extends ColdChoice,Intent extends Retained,
  const choice=reader.parse(provided);
  if(!equal(actual,choice.plan.execution)||typeof visit!=='function')throw fail('joint_activation_intent_stale');
  let active=true,joint:JointRoomActivationIntentStore|undefined,native:NativeIntentStore<Intent>|undefined,primary:unknown,failed=false;
- const check=()=>{if(!active)throw fail('joint_activation_closed');scope.check();if(!equal(roomMetadataTargetIdentity(witness,scope),choice.plan.execution))throw fail('joint_activation_intent_stale');};
+ // The admitted private witness holds one immutable execution identity for
+ // this visit. Recheck its live custody without serializing the complete plan.
+ const check=()=>{
+  if(!active)throw fail('joint_activation_closed');
+  scope.check();
+  if(roomMetadataTargetIdentity(witness,scope)!==actual)throw fail('joint_activation_intent_stale');
+ };
  try{
   check();const current=await scope.retainCurrent();check();const options={wasm:current.integrity.wasm,checkAuthority:check,signal:scope.signal};
   joint=reader.joint(choice,options);let publication=await joint.open();check();
