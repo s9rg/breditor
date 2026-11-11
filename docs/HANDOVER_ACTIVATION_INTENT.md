@@ -47,7 +47,7 @@ activation target is explicitly synthetic DATA and no activation is requested.
 Controlled Node IndexedDB, locks and image decoding support these checks.
 
 Run `node scripts/check-handover-activation-intent-installed.mjs` for the same
-native data workflow, twelve handover storage cases and twenty-eight original
+native data workflow, twelve handover storage cases and thirty original
 intent/cancellation/wire cases against independent offline package archives.
 The functional and full candidate profiles retain separate types, storage,
 native and installed gates after complete handover-byte recovery.

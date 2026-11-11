@@ -12,7 +12,7 @@ if(process.argv.length!==2)throw Error('All activation-retention and existing li
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),source=sourceEvidence(root),directory=fs.mkdtempSync(join(root,'target/activation-retention-source-')),sha=value=>createHash('sha256').update(value).digest('hex');
 prepareActivationRetentionFixture(root);
 const tests=['activation-retention-lifetime.test.mjs','room-native-activation-intent.test.mjs'];
-const expectedCases=19;
+const expectedCases=21;
 const runtime=join(root,'packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm'),normalWasmSha256=sha(fs.readFileSync(runtime));
 assert.equal(normalWasmSha256,'165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0');
 const state={format:'breditor/activation-retention-source-qualification',formatVersion:1,complete:false,source,directory,normalWasmSha256,cases:expectedCases,v1Ready:false,wholeRoomActivated:false,v1GatesOpen:13};

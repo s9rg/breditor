@@ -28,7 +28,7 @@ export async function commitHeldRoomActivation(policy:RoomActivationCommitPolicy
   const retained=await store.open();heldCheck();await inspectExact(retained.capture);heldCheck();
   // Approval only borrows the immutable choice. Owner cancellation or loss
   // of the database can end this wait while the callback settles independently.
-  const approval=new NativeReconstructionWaits(heldCheck,[options.signal,store.revoked]);
+  const approval=new NativeReconstructionWaits(heldCheck,[options.signal,store.revoked,...port.signals]);
   try{
    if(await approval.call(()=>policy.approve(policy.expected))!==true)throw fail('activation_intent_policy');
   }catch(error){

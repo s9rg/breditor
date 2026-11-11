@@ -1,3 +1,9 @@
+import {prepareHeldHandoverRoomActivation,type RoomHandoverActivationPreparationPolicy} from '../room_native_handover_activation_intent/prepare.js';
+import {commitHeldHandoverRoomActivation,readHeldHandoverRoomActivation,type RoomHandoverActivationCommitResult} from '../room_native_handover_activation_intent/commit.js';
+import {roomHandoverActivationIntentChoice} from '../room_native_handover_activation_intent/identity.js';
+import {heldHandoverActivationPath} from '../room_native_handover_activation_intent/path.js';
+import type {RoomHandoverActivationIntentChoice,RoomHandoverActivationRetainedIntent} from '../room_native_handover_activation_intent/contract.js';
+import type {PrepareHandoverRoomNativeActivationInput,CommitHandoverRoomNativeActivationInput} from '../room_native_handover_activation_intent/coordinator_contract.js';
 import {prepareHandoverPacketRecoveryInput,type HandoverServerPacketRecoveryInput,type HandoverReconciledServerPacketRecoveryCapture} from '../metadata_packet_retention/handover_input.js';
 import {prepareHandoverMetadataReconciliation,type LocalMetadataHandoverReconciliationInput,type HandoverServerPacketReconciliationRead} from '../selected_local_metadata_assets/handover_reconciliation.js';
 import {consumeVerifiedMetadataFacts,type VerifiedMetadataContinuationFacts} from '../selected_local_metadata_continuation/native_origin.js';
@@ -377,6 +383,67 @@ export class SelectedLocalMetadataDelivery{
    };
    result=await commitHeldRoomActivation(input,options,check,inspect);check();
   });if(!result)throw fail();return result;}finally{this.#cancels.delete(cancel);waits.close();}},()=>{const r=fields(provided,['expected','activation','inspection','approve'],['limits']);const expected=roomActivationIntentChoice(r['expected']);nativeActivationHostPort(r['activation'] as CommitRoomNativeActivationInput['activation']);generationRecoveryHostPort(r['inspection'] as SharedServerLogGenerationRecoveryHost);if(typeof r['approve']!=='function')throw activationIntentFailure('activation_intent_policy');input={expected,activation:r['activation'] as CommitRoomNativeActivationInput['activation'],inspection:r['inspection'] as SharedServerLogGenerationRecoveryHost,approve:r['approve'] as CommitRoomNativeActivationInput['approve'],limits:localMetadataMaterializationLimits(r['limits']===undefined?{}:{limits:r['limits'] as NonNullable<CommitRoomNativeActivationInput['limits']>})};});
+ }
+ /** Capture and retain one complete sealed path and matching inactive Native
+  * target under the genuine room reservation. Provisioning happens beforehand. */
+ prepareNativeActivationAcrossHandover(provided:PrepareHandoverRoomNativeActivationInput):Promise<RoomHandoverActivationIntentChoice>{
+  let input!:ReturnType<typeof prepareHandoverPacketRecoveryInput>,policy!:RoomHandoverActivationPreparationPolicy,result:RoomHandoverActivationIntentChoice|undefined;
+  return this.#captureReferenceOperation(async work=>{
+   const check=this.#activationSourceGuard();if(!this.#snapshot)throw fail();
+   const path=input.reconciliation.handover.port;await path.check(this.#parent.scope.signal);check();
+   const capture=await work.reconciledServerPacketRecovery(input,this.#snapshot);check();
+   const envelope=Object.freeze({format:'breditor/handover-reconciled-server-packet-recovery' as const,formatVersion:1 as const,handover:path.handover!,capture});
+   const integrity=work.integrityOptions();
+   result=await prepareHeldHandoverRoomActivation(envelope,policy,{wasm:integrity.wasm,checkAuthority:check,...(integrity.signal?{signal:integrity.signal}:{})},check);check();
+  },()=>{
+   const r=fields(provided,['database','recovery','activation','retainChoice']);if(typeof r['retainChoice']!=='function')throw activationIntentFailure('activation_intent_policy');
+   const database=roomActivationDatabase(r['database']);input=prepareHandoverPacketRecoveryInput(r['recovery'] as HandoverServerPacketRecoveryInput);
+   const activation=r['activation'] as PrepareHandoverRoomNativeActivationInput['activation'],port=nativeActivationHostPort(activation);
+   if(!equal(port.selection.current,input.reconciliation.handover.port.handover!.current.path.current))throw activationIntentFailure('activation_intent_stale');
+   policy={database,activation,path:input.reconciliation.handover.host,retainChoice:r['retainChoice'] as RoomHandoverActivationPreparationPolicy['retainChoice']};
+  }).then(()=>{if(!result)throw fail();return result;});
+ }
+ /** Exact existing-only handover intent read. It sends no activation request. */
+ readNativeHandoverActivationIntent(provided:RoomHandoverActivationIntentChoice):Promise<RoomHandoverActivationRetainedIntent>{
+  let expected!:RoomHandoverActivationIntentChoice;
+  return this.#captureOperation(async()=>{
+   let result:RoomHandoverActivationRetainedIntent|undefined;
+   await this.#parent.inspect(async integrity=>{
+    const check=this.#activationSourceGuard(),options={wasm:integrity.wasm,checkAuthority:check,signal:this.#parent.scope.signal};
+    const retained=await readHeldHandoverRoomActivation(expected,options);check();
+    await this.#withReferenceInspection(retained.capture.capture.recovery.bundle.original.packets.references,options,async()=>{result=retained;});check();
+   });if(!result)throw fail();return result;
+  },()=>{expected=roomHandoverActivationIntentChoice(provided);});
+ }
+ /** Fresh authenticated path, exact original client/metadata inspection and a
+  * new approval precede each real Native request, including explicit retry. */
+ commitNativeActivationAcrossHandover(provided:CommitHandoverRoomNativeActivationInput):Promise<RoomHandoverActivationCommitResult>{
+  let input!:CommitHandoverRoomNativeActivationInput;
+  return this.#captureOperation(async()=>{
+   let result:RoomHandoverActivationCommitResult|undefined;
+   const waits=new NativeReconstructionWaits(this.#current,[this.#parent.scope.signal]),cancel=()=>waits.close();this.#cancels.add(cancel);
+   try{await this.#parent.inspect(async integrity=>{
+    const check=this.#activationSourceGuard(),options={wasm:integrity.wasm,checkAuthority:check,signal:waits.signal};
+    const inspect=async(envelope:HandoverReconciledServerPacketRecoveryCapture)=>{
+     check();const bundle=envelope.capture.recovery.bundle,metadata=bundle.original.packets.references.parent;
+     const portable=await readMetadataBundle(this.#parent,metadata,this.#choice,check,options);check();
+     const fresh=await this.#store.readFresh();check();if(metadataJson(fresh)!==metadataJson(portable))throw activationIntentFailure('activation_intent_stale');
+     await this.#parent.assertExact(metadata.parent);check();
+     await this.#withReferenceInspection(bundle.original.packets.references,options,async(work,actual,point)=>{
+      const inspected=await work.inspectResolvedServerPacketRecovery(bundle,actual,point,input.inspection,input.limits?{limits:input.limits}:{});check();
+      if(inspected.rasters.kind!=='retained'||inspected.resolution.outcome.kind!=='ready')throw activationIntentFailure('activation_intent_incomplete');
+     });check();
+    };
+    result=await commitHeldHandoverRoomActivation(input,options,check,inspect);check();
+   });if(!result)throw fail();return result;
+   }finally{this.#cancels.delete(cancel);waits.close();}
+  },()=>{
+   const r=fields(provided,['expected','activation','path','inspection','approve'],['limits']),expected=roomHandoverActivationIntentChoice(r['expected']);
+   const activation=r['activation'] as CommitHandoverRoomNativeActivationInput['activation'],path=r['path'] as CommitHandoverRoomNativeActivationInput['path'];
+   nativeActivationHostPort(activation);heldHandoverActivationPath(path,expected.handover);generationRecoveryHostPort(r['inspection'] as SharedServerLogGenerationRecoveryHost);
+   if(typeof r['approve']!=='function')throw activationIntentFailure('activation_intent_policy');
+   input={expected,activation,path,inspection:r['inspection'] as SharedServerLogGenerationRecoveryHost,approve:r['approve'] as CommitHandoverRoomNativeActivationInput['approve'],limits:localMetadataMaterializationLimits(r['limits']===undefined?{}:{limits:r['limits'] as NonNullable<CommitHandoverRoomNativeActivationInput['limits']>})};
+  });
  }
  #withReferenceInspection<T>(bundle:LocalMetadataReferenceBundle,integrity:SharedArchiveIntegrityOptions,visit:(work:LocalMetadataReferenceWork,actual:LocalMetadataReferenceCut,portable:LocalMetadataDeliverySnapshot)=>Promise<T>):Promise<T>{return(async()=>{
     await this.#serial;this.#current();const stored=await this.#store.readFresh();this.#current();

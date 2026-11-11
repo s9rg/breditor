@@ -9,13 +9,13 @@ import type {SharedDurableNativeActivationSelection,SharedDurableNativeActivatio
 const key=Object.freeze({}),add=EventTarget.prototype.addEventListener,remove=EventTarget.prototype.removeEventListener;
 const isAborted=Object.getOwnPropertyDescriptor(AbortSignal.prototype,'aborted')!.get!,abort=AbortController.prototype.abort;
 interface State {readonly endpoint:string;readonly expected:SharedDurableNativeActivationSelection;readonly principal:string;readonly getToken:SharedDurableNativeActivationHostOptions['getToken'];readonly authority:()=>void;readonly signal:AbortSignal|undefined;readonly milliseconds:number;closed:boolean;active:AbortController|undefined}
-let port:(host:SharedDurableNativeActivationHost)=>Readonly<{selection:SharedDurableNativeActivationSelection;commit:(heldCheck?:()=>void,heldSignal?:AbortSignal)=>Promise<SharedDurableNativeActivationReceipt>;check:()=>void}>;
+let port:(host:SharedDurableNativeActivationHost)=>Readonly<{signals:readonly AbortSignal[];selection:SharedDurableNativeActivationSelection;commit:(heldCheck?:()=>void,heldSignal?:AbortSignal)=>Promise<SharedDurableNativeActivationReceipt>;check:()=>void}>;
 /** Private brand check for the later held-room coordinator. Copied values never supply this port. */
 export function nativeActivationHostPort(host:SharedDurableNativeActivationHost){return port(host);}
 export class SharedDurableNativeActivationHost {
- readonly #state:State;
+ readonly #state:State;readonly #ended=new AbortController();
  private constructor(token:object,state:State){if(token!==key)throw fail('activation_policy');this.#state=state;Object.freeze(this);}
- static{port=host=>{if(!host||typeof host!=='object'||!(#state in host))throw fail('activation_policy');return Object.freeze({selection:host.#state.expected,commit:(heldCheck?:()=>void,heldSignal?:AbortSignal)=>host.#commit(heldCheck,heldSignal),check:()=>host.#guard()});};}
+ static{port=host=>{if(!host||typeof host!=='object'||!(#state in host))throw fail('activation_policy');return Object.freeze({signals:Object.freeze([host.#ended.signal,...(host.#state.signal?[host.#state.signal]:[])]),selection:host.#state.expected,commit:(heldCheck?:()=>void,heldSignal?:AbortSignal)=>host.#commit(heldCheck,heldSignal),check:()=>host.#guard()});};}
  /** Select a real endpoint and independent Native choice. Does not contact or activate it. */
  static configure(provided:SharedDurableNativeActivationHostOptions):SharedDurableNativeActivationHost {
   try{const r=fields(provided,['endpoint','expected','principal','getToken','checkAuthority'],['signal','requestTimeoutMs']),endpoint=activationEndpoint(r['endpoint']),expected=nativeActivationSelection(r['expected']),principal=r['principal'],getToken=r['getToken'],milliseconds=r['requestTimeoutMs']??15000;
@@ -56,5 +56,5 @@ export class SharedDurableNativeActivationHost {
   }
  }
  /** Stop this SDK requester. The actual server worker may still commit. */
- close():void{this.#state.closed=true;if(this.#state.active)abort.call(this.#state.active);}
+ close():void{this.#state.closed=true;abort.call(this.#ended);if(this.#state.active)abort.call(this.#state.active);}
 }

@@ -188,3 +188,25 @@ test('an unexpected database close ends pending approval and preserves the exact
   host.close();
  }
 });
+
+test('closing the selected activation controller ends DATA retention without creating an intent',async()=>{
+ const host=hostFor(),options={wasm:native,checkAuthority(){}},before=await indexedDB.databases();let enter,release,job,timer;
+ const entered=new Promise(resolve=>enter=resolve),pending=new Promise(resolve=>release=resolve);
+ try{
+  job=prepare(capture,{database:'closed-controller-data-retention',selectActivation:()=>host,retainChoice(){enter();return pending;}},options,options.checkAuthority);
+  const observed=job.then(value=>({value}),error=>({error}));await Promise.race([entered,observed.then(result=>{throw result.error??Error('DATA hook was bypassed');})]);
+  host.close();const result=await Promise.race([observed,new Promise(resolve=>timer=setTimeout(()=>resolve('still waiting'),500))]);clearTimeout(timer);assert.notEqual(result,'still waiting');assert.ok(result.error);assert.deepEqual(await indexedDB.databases(),before);release();await tick();assert.deepEqual(await indexedDB.databases(),before);
+ }finally{clearTimeout(timer);release();await job?.catch(()=>{});host.close();}
+});
+test('closing the selected activation controller ends approval and preserves its prepared intent',async()=>{
+ const host=hostFor(),options={wasm:native,checkAuthority(){}};let enter,release,job,timer,inspections=0;
+ const entered=new Promise(resolve=>enter=resolve),pending=new Promise(resolve=>release=resolve);
+ try{
+  const expected=await prepare(capture,{database:'closed-controller-approval',selectActivation:()=>host,retainChoice(){}},options,options.checkAuthority);
+  job=commit({expected,activation:host,approve(){enter();return pending;}},options,options.checkAuthority,async()=>{inspections++;});
+  const observed=job.then(value=>({value}),error=>({error}));await Promise.race([entered,observed.then(result=>{throw result.error??Error('Approval was bypassed');})]);
+  host.close();const result=await Promise.race([observed,new Promise(resolve=>timer=setTimeout(()=>resolve('still waiting'),500))]);clearTimeout(timer);assert.notEqual(result,'still waiting');assert.ok(result.error);assert.equal(inspections,1);
+  const store=new Store(expected,options);try{assert.equal((await store.open()).state.phase,'prepared');}finally{await store.close();}
+  release(true);await tick();assert.equal(inspections,1);
+ }finally{clearTimeout(timer);release(false);await job?.catch(()=>{});host.close();}
+});
