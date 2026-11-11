@@ -1,4 +1,5 @@
 import {IDBObjectStore} from 'fake-indexeddb';
+import {RecoveryLease} from '../packages/breditor-collaboration/dist/participant_recovery/lease.js';
 import {JointRoomReassociationAttempt as Reassociation,withPublishedReassociatedRoomSources} from '../packages/breditor-collaboration/dist/native_room_joint_reassociation/attempt.js';
 import {LoadedNativeReconstructionCurrent as Loaded} from '../packages/breditor-collaboration/dist/selected_native_reconstruction/loaded_current.js';
 import {originalJointSourceBytes,assertOriginalSourceRetirement} from './fixtures/native-joint-source/source_checkpoint_bytes.mjs';
@@ -38,6 +39,15 @@ import {SharedWriterLease} from '../packages/breditor-collaboration/dist/persist
 import {ReviewWriterLease} from '../packages/breditor-collaboration/dist/persistence/review_writer_lease.js';
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 const save=(directory,name,value)=>{const bytes=Buffer.from(JSON.stringify(value,null,2)+'\n'),file=join(directory,name);writeFileSync(file,bytes,{flag:'wx',mode:0o600});assert.deepEqual(readFileSync(file),bytes);return{file,bytes:bytes.length,sha256:sha(bytes)};};
+async function assertRetainedDestinationsHeld(destinations){
+ for(const name of Object.values(destinations)){
+  let unexpected;
+  try{
+   await assert.rejects(async()=>{unexpected=await RecoveryLease.acquire(JSON.stringify(name));},
+    {code:'recovery_in_use'});
+  }finally{await unexpected?.close();}
+ }
+}
 export async function runJointReassociation({repeatAfterMetadata=false,initialNativeStage='committed'}={}) {
  assert.ok(['pending','committed'].includes(initialNativeStage));
  const originalCommitRequests=initialNativeStage==='pending'?0:2,firstAssociationRequests=originalCommitRequests+2;
@@ -119,11 +129,11 @@ export async function runJointReassociation({repeatAfterMetadata=false,initialNa
   console.log('COLD_JOINT_COMPLETE_STEP fresh-fourteen-actors-and-seven-private-targets-from-existing-intent');
   activation=Activation.configure({endpoint:offer.endpoint,expected:offer.selection,principal:'operator',getToken:()=>input.host.activationToken(offer),checkAuthority(){}});
   inspection=await Host.open({endpoint:replayOffer.endpoint,expected:replayOffer.selection,principal:'operator',getToken:()=>input.host.operatorToken(replayOffer),checkAuthority(){}});
-  const reassociationInput={database:'actual-reassociation-complete-intent',nativeIntentDatabase:'actual-reassociation-complete-native',activation,publication,destinations:{database:'actual-reassociation-complete-continuation',preparationDatabase:'actual-reassociation-complete-prepared',reviewDatabase:'actual-reassociation-complete-review',metadataDatabase:'actual-reassociation-complete-metadata'},previous:null,prior:null,retainChoice(value){assert.equal(commitRequests,originalCommitRequests);assert.equal(publicationRequests,0);save(input.host.directory,'actual-reassociation-independent-choice.json',value);}};
+  const reassociationInput={database:'actual-reassociation-complete-intent',nativeIntentDatabase:'actual-reassociation-complete-native',activation,publication,destinations:{database:'actual-reassociation-complete-continuation',preparationDatabase:'actual-reassociation-complete-prepared',reviewDatabase:'actual-reassociation-complete-review',metadataDatabase:'actual-reassociation-complete-metadata'},previous:null,prior:null,async retainChoice(value){await assertRetainedDestinationsHeld(plan.plan.destinations);assert.equal(commitRequests,originalCommitRequests);assert.equal(publicationRequests,0);save(input.host.directory,'actual-reassociation-independent-choice.json',value);}};
   const nativeAdd=IDBObjectStore.prototype.add;let interruptedAssociation=0;
   try{IDBObjectStore.prototype.add=function(...args){const q=nativeAdd.apply(this,args);if(!interruptedAssociation&&this.transaction.db.name===reassociationInput.database){interruptedAssociation++;this.transaction.abort();}return q;};await assert.rejects(joint.prepare(reassociationInput),error=>{if(!interruptedAssociation)throw error;return true;});assert.equal(interruptedAssociation,1);}finally{IDBObjectStore.prototype.add=nativeAdd;}
   reassociationChoice=joint.independentChoice();assert.equal(commitRequests,originalCommitRequests);assert.equal(publicationRequests,0);noTake();assert.equal((await indexedDB.databases()).some(row=>row.name===reassociationInput.nativeIntentDatabase),true);assert.equal((await indexedDB.databases()).some(row=>row.name===reassociationInput.database),false);
-  const resumedChoice=await joint.resumePreparation({retainChoice(value){assert.deepEqual(value,reassociationChoice);assert.equal(commitRequests,originalCommitRequests);assert.equal(publicationRequests,0);save(input.host.directory,'actual-reassociation-resumed-choice.json',value);}});assert.deepEqual(resumedChoice,reassociationChoice);noTake();await held();await assertSourceBytesUnchanged(oldBytes);assert.deepEqual(reassociationChoice.plan.original,plan);assert.equal(reassociationChoice.plan.prior.format,'breditor/metadata-continuation-absence');
+  const resumedChoice=await joint.resumePreparation({async retainChoice(value){await assertRetainedDestinationsHeld(plan.plan.destinations);assert.deepEqual(value,reassociationChoice);assert.equal(commitRequests,originalCommitRequests);assert.equal(publicationRequests,0);save(input.host.directory,'actual-reassociation-resumed-choice.json',value);}});assert.deepEqual(resumedChoice,reassociationChoice);noTake();await held();await assertSourceBytesUnchanged(oldBytes);assert.deepEqual(reassociationChoice.plan.original,plan);assert.equal(reassociationChoice.plan.prior.format,'breditor/metadata-continuation-absence');
   console.log('REASSOCIATION_COMPLETE_STEP complete-fresh-association-retained-with-original-intents-immutable');
   await assert.rejects(joint.confirmNative({activation,inspection,approve:()=>false}));assert.equal(commitRequests,originalCommitRequests);noTake();
   loseCommit=true;await assert.rejects(joint.confirmNative({activation,inspection,approve:()=>true}),e=>e.code==='activation_outcome_unknown');assert.equal(commitRequests,originalCommitRequests+1);noTake();await held();
@@ -152,7 +162,7 @@ export async function runJointReassociation({repeatAfterMetadata=false,initialNa
    await joint.recoverReplacement({approveExecution:()=>true,approvePromotion:()=>true,checkAssetAuthority(){}});noTake();await held();await assertSourceBytesUnchanged(oldBytes);await assertSourceBytesUnchanged(earlierMetadata);
    activation=Activation.configure({endpoint:offer.endpoint,expected:offer.selection,principal:'operator',getToken:()=>input.host.activationToken(offer),checkAuthority(){}});
    inspection=await Host.open({endpoint:replayOffer.endpoint,expected:replayOffer.selection,principal:'operator',getToken:()=>input.host.operatorToken(replayOffer),checkAuthority(){}});
-   reassociationChoice=await joint.prepare({database:'actual-reassociation-second-intent',nativeIntentDatabase:'actual-reassociation-second-native',activation,publication,destinations:{database:'actual-reassociation-second-continuation',preparationDatabase:'actual-reassociation-second-prepared',reviewDatabase:'actual-reassociation-second-review',metadataDatabase:'actual-reassociation-second-metadata'},previous:priorChoice,prior:priorContinuation.choice,retainChoice(value){assert.equal(commitRequests,firstAssociationRequests);assert.equal(publicationRequests,0);save(input.host.directory,'actual-reassociation-second-independent-choice.json',value);}});
+   reassociationChoice=await joint.prepare({database:'actual-reassociation-second-intent',nativeIntentDatabase:'actual-reassociation-second-native',activation,publication,destinations:{database:'actual-reassociation-second-continuation',preparationDatabase:'actual-reassociation-second-prepared',reviewDatabase:'actual-reassociation-second-review',metadataDatabase:'actual-reassociation-second-metadata'},previous:priorChoice,prior:priorContinuation.choice,async retainChoice(value){await assertRetainedDestinationsHeld(priorChoice.plan.destinations);assert.equal(commitRequests,firstAssociationRequests);assert.equal(publicationRequests,0);save(input.host.directory,'actual-reassociation-second-independent-choice.json',value);}});
    assert.equal(reassociationChoice.plan.predecessors.length,1);assert.deepEqual(reassociationChoice.plan.prior.choice,priorContinuation.choice);assert.equal(reassociationChoice.plan.prior.phase,'metadata');noTake();await assertSourceBytesUnchanged(earlierMetadata);
    await assert.rejects(joint.confirmNative({activation,inspection,approve:()=>false}));assert.equal(commitRequests,firstAssociationRequests);noTake();
    loseCommit=true;await assert.rejects(joint.confirmNative({activation,inspection,approve:()=>true}),e=>e.code==='activation_outcome_unknown');assert.equal(commitRequests,firstAssociationRequests+1);noTake();await held();

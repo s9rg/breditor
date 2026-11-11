@@ -35,9 +35,9 @@ export async function withHeldReassociationIntents<T>(scope:SelectedNativeRecove
    opened.push({native,joint,nativeState:retained.state,publication});check();
   }
   const current=opened.at(-1)!;
-  return await withExactPriorMetadata(scope,origin,rows.map(row=>row.plan.prior),async priorCheck=>{
+  return await withExactPriorMetadata(scope,origin,rows.map(row=>row.plan.prior),async(priorCheck,priorRevocations)=>{
    const heldCheck=()=>{check();priorCheck();check();};
-   const revocations=Object.freeze(opened.flatMap(row=>[row.native.revoked,row.joint.revoked]));
+   const revocations=Object.freeze([...opened.flatMap(row=>[row.native.revoked,row.joint.revoked]),...priorRevocations]);
    const held:HeldReassociationIntents=Object.freeze({choice,revocations,check:heldCheck,
     async observeNativeStarted(){heldCheck();current.nativeState=(await current.native.markRequestStarted()).state;heldCheck();},
     async observeNativeReceipt(receipt:SharedDurableNativeActivationReceipt){heldCheck();current.nativeState=(await current.native.markReceiptObserved(receipt)).state;heldCheck();},

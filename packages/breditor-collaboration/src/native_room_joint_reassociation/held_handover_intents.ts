@@ -66,11 +66,11 @@ export async function withHeldHandoverReassociationIntents<T>(
     if(!equal((await native.read()).state,savedNative)||!equal(await joint.read(),savedJoint))throw fail('joint_activation_intent_stale');
    });
   }
-  return await withExactHandoverPriors(scope,origin,selections.map(row=>row.plan.prior),async priorCheck=>{
+  return await withExactHandoverPriors(scope,origin,selections.map(row=>row.plan.prior),async(priorCheck,priorRevocations)=>{
    const heldCheck=()=>{check();priorCheck();check();};
    heldCheck();
    const result=await visit(Object.freeze({
-    native:last!,revocations:Object.freeze(revocations),check:heldCheck,
+    native:last!,revocations:Object.freeze([...revocations,...priorRevocations]),check:heldCheck,
     async observeNativeStarted(){heldCheck();await current!.observeStarted();heldCheck();},
     async observeNativeReceipt(receipt:SharedDurableNativeActivationReceipt){heldCheck();await current!.observeReceipt(receipt);heldCheck();},
     requireNativeReceipt(receipt:SharedDurableNativeActivationReceipt){heldCheck();current!.requireReceipt(receipt);},

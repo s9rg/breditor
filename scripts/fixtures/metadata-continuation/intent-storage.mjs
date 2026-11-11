@@ -2,6 +2,7 @@
  * Controlled IndexedDB is not physical crash/durability or activation proof. */
 import assert from 'node:assert/strict';
 import {getEventListeners} from 'node:events';
+import {openAndForceCloseJournal} from '../local-metadata/unexpected-close.mjs';
 import {IDBFactory,IDBObjectStore} from 'fake-indexeddb';
 import {MetadataContinuationIntent as Store} from '../../../packages/breditor-collaboration/dist/selected_local_metadata_continuation/intent.js';
 import {continuationChoice} from '../../../packages/breditor-collaboration/dist/selected_local_metadata_continuation/policy.js';
@@ -18,7 +19,14 @@ async function assertBundleBytes(actual,expected){
 export async function testMetadataContinuationIntent(t,choice,origin,wasm){
  let sequence=0;const next=()=>continuationChoice({...choice,database:choice.database+'-storage-law-'+sequence++}),options={wasm,checkAuthority(){}};
  await t.test('intent eager guards observe initialized cancellation and refused constructors detach signal observers',async()=>{const id=next(),stop=new AbortController(),before=getEventListeners(stop.signal,'abort').length;let calls=0;const s=new Store(id,{...options,signal:stop.signal,checkAuthority(){calls++;}});assert.equal(calls,1);assert.ok(getEventListeners(stop.signal,'abort').length>before);await s.close();await Promise.resolve();assert.equal(getEventListeners(stop.signal,'abort').length,before);for(const checkAuthority of[()=>{throw Error('Refused constructor');},async()=>{throw Error('Asynchronous authority is invalid');}]){assert.throws(()=>new Store(id,{...options,signal:stop.signal,checkAuthority}));await Promise.resolve();await Promise.resolve();assert.equal(getEventListeners(stop.signal,'abort').length,before);}assert.equal((await indexedDB.databases()).some(row=>row.name===id.database),false);});
- await t.test('intent first creation and existing-only replay preserve every original Blob byte',async()=>{const id=next(),s=new Store(id,options);let b;try{const saved=await s.open(origin);await assertBundleBytes(saved,origin);await s.close();b=new Store(id,options);const before=await databaseByteSnapshot(id.database),restored=await b.reopen(origin);await assertBundleBytes(restored,origin);assert.deepEqual(await databaseByteSnapshot(id.database),before);}finally{await b?.close();await s.close();}});
+ await t.test('intent first creation and existing-only replay preserve every original Blob byte',async()=>{const id=next(),s=new Store(id,options);let b;try{const saved=await s.open(origin);await assertBundleBytes(saved,origin);await s.close();b=new Store(id,options);const before=await databaseByteSnapshot(id.database),restored=await b.reopen(origin);await assertBundleBytes(restored,origin);
+  await b.close();
+  b=new Store(id,options);
+  const closed=await openAndForceCloseJournal(b,id.database,()=>b.reopen(origin));
+  assert.equal(b.revoked.aborted,true);
+  assert.throws(()=>b.check(),code('metadata_continuation_closed'));
+  await assertBundleBytes(closed,origin);
+  assert.deepEqual(await databaseByteSnapshot(id.database),before);}finally{await b?.close();await s.close();}});
  await t.test('intent occupied first creation refuses without writes',async()=>{const id=next(),s=new Store(id,options);let b;const add=IDBObjectStore.prototype.add,put=IDBObjectStore.prototype.put;try{await s.open(origin);await s.close();const before=await databaseByteSnapshot(id.database);b=new Store(id,options);let writes=0;IDBObjectStore.prototype.add=IDBObjectStore.prototype.put=function(...args){if(this.transaction.db.name===id.database){writes++;throw Error('No replacement writes');}return put.apply(this,args);};await assert.rejects(b.open(origin),code('metadata_continuation_exists'));assert.equal(writes,0);assert.deepEqual(await databaseByteSnapshot(id.database),before);}finally{IDBObjectStore.prototype.add=add;IDBObjectStore.prototype.put=put;await b?.close();await s.close();}});
  await t.test('intent missing existing-only replay leaves no placeholder database',async()=>{const id=next(),s=new Store(id,options);try{await assert.rejects(s.reopen(origin),code('metadata_continuation_missing'));assert.equal((await indexedDB.databases()).some(row=>row.name===id.database),false);}finally{await s.close();}});
  await t.test('intent foreign schema stays literal and cannot be initialized',async()=>{const id=next(),db=await raw(id.database,db=>db.createObjectStore('foreign').add('keep','original')),s=new Store(id,options);try{const before=await databaseByteSnapshot(id.database);await assert.rejects(s.reopen(origin),code('metadata_continuation_schema'));assert.deepEqual(await databaseByteSnapshot(id.database),before);}finally{db.close();await s.close();}});
