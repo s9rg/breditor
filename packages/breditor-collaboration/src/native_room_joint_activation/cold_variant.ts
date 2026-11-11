@@ -78,6 +78,16 @@ export async function confirmHeldColdNative(
  }catch(error){if(started)throw activationFailure('activation_outcome_unknown',error);throw error;}
  finally{waits.close();}
 }
+/** Ordinary cold confirmation holds the inspected server and its journals
+ * across both inspections, the decision, and any authenticated submission. */
+export function confirmOrdinaryColdNative(
+ scope:Pick<SelectedNativeRecoveryScope,'signal'>,held:HeldNativeObservation,
+ port:ReturnType<typeof nativeActivationHostPort>,inspection:ReturnType<typeof generationRecoveryHostPort>,
+ approve:()=>boolean|Promise<boolean>,checkOwner:()=>void,inspect:(signal:AbortSignal)=>Promise<void>,
+):Promise<SharedDurableNativeActivationReceipt>{
+ return confirmHeldColdNative(scope,{...held,revocations:[...held.revocations,...inspection.signals]},port,approve,
+  ()=>{checkOwner();inspection.guard(scope.signal);},inspect);
+}
 export const coldOrdinaryActivation:ColdActivationVariant<ColdOrdinaryActivation>=Object.freeze({
  parseChoice:jointRoomActivationIntentChoice,withOrigin:withColdJointActivationOrigin,
  store:ordinaryJointActivation.store,target:ordinaryJointActivation.target,cut:ordinaryJointActivation.cut,
@@ -86,9 +96,9 @@ export const coldOrdinaryActivation:ColdActivationVariant<ColdOrdinaryActivation
   const r=fields(provided,['activation','inspection','approve'],['limits']);
   const input=r as unknown as ColdOrdinaryActivation['commit'];
   const port=nativeActivationHostPort(input.activation),expected=origin.choice.plan.activation;
-  generationRecoveryHostPort(input.inspection);
+  const inspection=generationRecoveryHostPort(input.inspection);
   if(typeof input.approve!=='function'||!equal(port.selection,expected.activation))throw fail('joint_activation_intent_stale');
-  const receipt=await confirmHeldColdNative(scope,origin,port,()=>input.approve(expected),check,()=>inspectColdJointNativeCapture(scope,origin,input));
+  const receipt=await confirmOrdinaryColdNative(scope,origin,port,inspection,()=>input.approve(expected),check,signal=>inspectColdJointNativeCapture(scope,origin,input,signal));
   return Object.freeze({format:'breditor/coordinated-native-activation-result',formatVersion:1,scope:'held-client-metadata-upload-cut-and-actual-native-service',intent:expected,receipt});
  },
 } satisfies ColdActivationVariant<ColdOrdinaryActivation>);
@@ -100,10 +110,11 @@ export const coldHandoverActivation:ColdActivationVariant<ColdHandoverActivation
   const r=fields(provided,['activation','inspection','path','approve'],['limits']);
   const input=r as unknown as ColdHandoverActivation['commit'];
   const port=nativeActivationHostPort(input.activation),expected=origin.choice.plan.activation;
-  generationRecoveryHostPort(input.inspection);
+  const inspection=generationRecoveryHostPort(input.inspection);
   const path=heldHandoverActivationPath(input.path,expected.handover);
   if(typeof input.approve!=='function'||!equal(port.selection,expected.activation))throw fail('joint_activation_intent_stale');
-  const receipt=await confirmHeldColdNative(scope,origin,port,()=>input.approve(expected),check,signal=>inspectColdJointHandoverCapture(scope,origin,input,signal),path);
+  const receipt=await confirmHeldColdNative(scope,{...origin,revocations:[...origin.revocations,...inspection.signals]},port,
+   ()=>input.approve(expected),()=>{check();inspection.guard(scope.signal);},signal=>inspectColdJointHandoverCapture(scope,origin,input,signal),path);
   return Object.freeze({
    format:'breditor/coordinated-handover-native-activation-result',formatVersion:1,
    scope:'held-client-metadata-upload-cut-sealed-handover-and-actual-native-service',intent:expected,receipt,

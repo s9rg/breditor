@@ -31,11 +31,11 @@ async function inspect(
  }finally{work.close();}
 }
 export async function inspectColdJointNativeCapture(
- scope:SelectedNativeRecoveryScope,origin:ColdJointActivationOriginWork,input:Pick<CommitRoomNativeActivationInput,'inspection'|'limits'>,
+ scope:SelectedNativeRecoveryScope,origin:ColdJointActivationOriginWork,input:Pick<CommitRoomNativeActivationInput,'inspection'|'limits'>,signal:AbortSignal,
 ):Promise<void>{
  checkColdJointActivationOrigin(origin,scope);
  const bundle=origin.retained.capture.recovery.bundle;
- await inspect(scope,origin,bundle,scope.signal,(work,actual,snapshot)=>work.inspectResolvedServerPacketRecovery(bundle,actual,snapshot,input.inspection,input.limits?{limits:input.limits}:{}));
+ await inspect(scope,origin,bundle,signal,(work,actual,snapshot)=>work.inspectResolvedServerPacketRecovery(bundle,actual,snapshot,input.inspection,input.limits?{limits:input.limits}:{}));
 }
 export async function inspectColdJointHandoverCapture(
  scope:SelectedNativeRecoveryScope,origin:ColdJointHandoverOriginWork,input:Pick<CommitHandoverRoomNativeActivationInput,'inspection'|'limits'|'path'>,signal:AbortSignal,

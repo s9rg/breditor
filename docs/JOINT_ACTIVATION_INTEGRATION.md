@@ -76,6 +76,13 @@ original room capture before and after a fresh decision. Only the selected
 restart journal records the request and the authenticated response. A saved
 receipt remains advisory on later confirmation attempts.
 
+Closing the activation requester or inspection control, or losing a held
+activation journal, ends a pending cold confirmation. Closing the publication
+requester also ends a pending publication decision. A late approval cannot start
+a request. Before the request-started record, cancellation preserves the
+existing observation. Once the SDK starts recording the request, an interrupted
+operation requires fresh approval and an authenticated retry.
+
 The cold owner continues metadata through the path chosen by that confirmation.
 Publication reopens that continuation, obtains a fresh decision and sends the
 complete restart descriptor's digest to the selected publication controller.
