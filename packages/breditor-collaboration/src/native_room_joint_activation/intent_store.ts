@@ -28,8 +28,9 @@ const handoverKey=Symbol('handover intent');
 export function jointRoomPublicationBinding(choice:JointRoomActivationIntentChoice|JointHandoverActivationIntentChoice){return frozen({bytes:choice.bytes,sha256:Array.from({length:32},(_,i)=>Number.parseInt(choice.sha256.slice(i*2,i*2+2),16))});}
 export class JointRoomActivationIntentStore {
  readonly #factory=recoveryOpeningContext();readonly #locks=navigator.locks;readonly #choice;readonly #integrity;readonly #cancel;
+ readonly #revoked=new AbortController();
  #opening:RecoveryOpeningCustody|undefined;#lease:RecoveryLease|undefined;#db:IDBDatabase|undefined;
- #pending=false;#changed=false;#closing=false;#closed=false;#request:IDBOpenDBRequest|undefined;#reject:((error:unknown)=>void)|undefined;#running:Promise<unknown>|undefined;#cleanup:Promise<void>|undefined;
+ #pending=false;#closing=false;#closed=false;#request:IDBOpenDBRequest|undefined;#reject:((error:unknown)=>void)|undefined;#running:Promise<unknown>|undefined;#cleanup:Promise<void>|undefined;
  constructor(choice:JointRoomActivationIntentChoice,options:SharedArchiveIntegrityOptions);
  constructor(choice:JointHandoverActivationIntentChoice,options:SharedArchiveIntegrityOptions,key:typeof handoverKey);
  constructor(choice:unknown,options:SharedArchiveIntegrityOptions,key?:typeof handoverKey){
@@ -42,10 +43,16 @@ export class JointRoomActivationIntentStore {
  static acrossHandover(choice:JointHandoverActivationIntentChoice,options:SharedArchiveIntegrityOptions):JointRoomActivationIntentStore{
   return new JointRoomActivationIntentStore(choice,options,handoverKey);
  }
- #current=()=>{if(this.#closing||this.#closed||this.#changed||globalThis.indexedDB!==this.#factory||globalThis.navigator?.locks!==this.#locks)throw fail('joint_activation_intent_closed');if(this.#lease)checkRecoveryLeasesHeld([this.#lease]);try{this.#cancel.check();}catch{throw fail('joint_activation_intent_closed');}};
+ /** A lost database connection ends any decision waiting on this intent. */
+ get revoked():AbortSignal{return this.#revoked.signal;}
+ #current=()=>{if(this.#closing||this.#closed||this.#revoked.signal.aborted||globalThis.indexedDB!==this.#factory||globalThis.navigator?.locks!==this.#locks)throw fail('joint_activation_intent_closed');if(this.#lease)checkRecoveryLeasesHeld([this.#lease]);try{this.#cancel.check();}catch{throw fail('joint_activation_intent_closed');}};
  check=()=>{this.#current();this.#integrity.guard();this.#current();};
  #run<T>(work:()=>Promise<T>):Promise<T>{if(this.#running)return Promise.reject(fail('joint_activation_intent_busy'));const job=Promise.resolve().then(()=>{this.check();return work();});this.#running=job;return job.finally(()=>{if(this.#running===job)this.#running=undefined;});}
- #attach(db:IDBDatabase){this.#db=db;db.onversionchange=()=>{this.#changed=true;db.close();};}
+ #attach(db:IDBDatabase){
+  this.#db=db;
+  db.onclose=()=>this.#revoked.abort();
+  db.onversionchange=()=>{this.#revoked.abort();db.close();};
+ }
  async #verifyChoice():Promise<void>{const file=new Blob([JSON.stringify(this.#choice.plan)]);if(file.size!==this.#choice.bytes||await this.#integrity.digest(file)!==this.#choice.sha256)throw fail('joint_activation_intent_integrity');this.check();}
  #state(input:unknown):JointRoomPublicationState{
   const r=fields(input,['format','formatVersion','revision','phase','receipt']),revision=integer(r['revision'],4096),phase=r['phase'];
@@ -100,5 +107,5 @@ export class JointRoomActivationIntentStore {
    throw error;
   });
  }
- #close():Promise<void>{if(this.#closed)return Promise.resolve();if(this.#cleanup)return this.#cleanup;this.#closing=true;const task=Promise.resolve().then(async()=>{await this.#running?.catch(()=>{});if(this.#pending)throw fail('joint_activation_intent_busy');if(this.#db){this.#db.onversionchange=null;this.#db.close();}await this.#lease?.close();this.#db=undefined;this.#lease=undefined;this.#cancel.close();this.#closed=true;});this.#cleanup=task.finally(()=>{this.#cleanup=undefined;});return this.#cleanup;}
+ #close():Promise<void>{if(this.#closed)return Promise.resolve();if(this.#cleanup)return this.#cleanup;this.#closing=true;const task=Promise.resolve().then(async()=>{await this.#running?.catch(()=>{});if(this.#pending)throw fail('joint_activation_intent_busy');if(this.#db){this.#db.onclose=null;this.#db.onversionchange=null;this.#db.close();}await this.#lease?.close();this.#db=undefined;this.#lease=undefined;this.#cancel.close();this.#closed=true;});this.#cleanup=task.finally(()=>{this.#cleanup=undefined;});return this.#cleanup;}
 }

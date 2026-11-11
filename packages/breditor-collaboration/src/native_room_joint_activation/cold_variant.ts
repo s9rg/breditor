@@ -51,7 +51,7 @@ async function confirm(
  checkOwner:()=>void,inspect:(signal:AbortSignal)=>Promise<void>,path?:ReturnType<typeof heldHandoverActivationPath>,
 ):Promise<SharedDurableNativeActivationReceipt>{
  const check=()=>{checkOwner();origin.check();port.check();path?.guard(scope.signal);};
- const waits=new NativeReconstructionWaits(check,[scope.signal,origin.revoked,...port.signals,...(path?.signals??[])]);
+ const waits=new NativeReconstructionWaits(check,[scope.signal,...origin.revocations,...port.signals,...(path?.signals??[])]);
  let started=false;
  try{
   await path?.check(waits.signal);waits.check();

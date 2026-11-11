@@ -8,6 +8,12 @@ original activation intent, commit the Native service, reconstruct the clients
 with their actor custody, and continue metadata before publishing the service.
 The replacement stays private until the last operation succeeds.
 
+An unexpected closure of the joint intent database ends a pending publication
+decision. The replacement remains private. A fresh attempt can reopen the exact
+descriptor and its last durable publication observation.
+Run the installed intent and origin checks with
+`node scripts/check-metadata-continuation-installed.mjs --joint-intent-contracts`.
+
 `JointRoomActivationAttempt` owns the warm operation. Its separate
 `ColdJointRoomActivationAttempt` recipient reconstructs an interrupted local
 operation from existing complete intent data and fresh actors. A saved phase or

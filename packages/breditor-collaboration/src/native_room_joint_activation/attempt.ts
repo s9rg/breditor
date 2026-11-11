@@ -19,6 +19,7 @@ import {nativePublicationHostPort,type SharedNativeRoomPublicationHost} from '..
 import {publicationFailure} from '../native_publication_control/policy.js';
 import type {SharedNativeRoomPublicationReceipt} from '../native_publication_control/contract.js';
 import {decideFreshAssetChoice} from '../physical_room_asset_approval/decision.js';
+import {NativeReconstructionWaits} from '../selected_native_reconstruction/read_waits.js';
 import {selectedNativeDeliverySources} from '../relay/native_delivery.js';
 import {NativeActivationSourceSession,withNativeActivationSources,type JointSourceWork} from './source_session.js';
 import {jointActivationMetadataBundle,type JointActivationMetadataOrigin} from './metadata_origin.js';
@@ -124,16 +125,19 @@ export class JointRoomActivationAttempt<F extends JointActivationFamily=Ordinary
     if(!equal(expected,this.#continued!.choice))throw fail('joint_activation_intent_stale');
     const continued=await target.run(expected,true);target.check();this.#check();
     return await this.#withStore(target.check,async store=>{
-     const check=()=>{this.#check();target.check();store.check();this.#check();};
-     await decideFreshAssetChoice(this.#choice!,target.approvePublication!,{check,signal,watchClosing:cancel=>{add.call(signal,'abort',cancel,{once:true});return()=>remove.call(signal,'abort',cancel);}});
-     check();await store.read();check();
-     if(!equal((await scope.retainCurrent()).current.selection,this.#variant.cut(continued)))throw fail('joint_activation_intent_stale');
-     await target.verify();check();
+     const waits=new NativeReconstructionWaits(()=>{this.#check();target.check();store.check();this.#check();},[signal,store.revoked]);
+     const check=waits.check,publicationSignal=waits.signal;
      try{
-      await store.markPublicationStarted();check();
-      const receipt=await port.publish(jointRoomPublicationBinding(this.#choice!),check,signal);check();
-      await store.markPublicationObserved(receipt);check();this.#continued=continued;return receipt;
-     }catch(error){throw publicationFailure('publication_outcome_unknown',error);}
+      await decideFreshAssetChoice(this.#choice!,target.approvePublication!,{check,signal:publicationSignal,watchClosing:cancel=>{add.call(publicationSignal,'abort',cancel,{once:true});return()=>remove.call(publicationSignal,'abort',cancel);}});
+      check();await store.read();check();
+      if(!equal((await scope.retainCurrent()).current.selection,this.#variant.cut(continued)))throw fail('joint_activation_intent_stale');
+      await target.verify(publicationSignal);check();
+      try{
+       await store.markPublicationStarted();check();
+       const receipt=await port.publish(jointRoomPublicationBinding(this.#choice!),check,publicationSignal);check();
+       await store.markPublicationObserved(receipt);check();this.#continued=continued;return receipt;
+      }catch(error){throw publicationFailure('publication_outcome_unknown',error);}
+     }finally{waits.close();}
     },false,signal);
    }finally{target.close();}
   }).then(receipt=>{this.#check();this.#publicationReceipt=receipt;return receipt;});

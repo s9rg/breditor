@@ -50,7 +50,7 @@ interface MetadataVisit<Intent,Result extends JointActivationFamily['continued']
  readonly signal:AbortSignal;
  readonly check:()=>void;
  readonly close:()=>void;
- readonly verify:()=>void|Promise<void>;
+ readonly verify:(signal:AbortSignal)=>void|Promise<void>;
  readonly approvePublication:Decision<Intent>|undefined;
  preview():Promise<Result['choice']>;
  run(expected:Result['choice'],resume:boolean):Promise<Result>;
@@ -106,7 +106,7 @@ export const handoverJointActivation:JointActivationVariant<HandoverJointActivat
   const path=heldHandoverActivationPath(host,choice.plan.activation.handover);
   const waits=new NativeReconstructionWaits(()=>{check();path.guard(scope.signal);},[scope.signal,...path.signals]);
   const request={...choice.plan.destinations,origin,path:host,inventory:r['inventory'] as JointHandoverMetadataInput['inventory'],checkAuthority:waits.check};
-  return {signal:waits.signal,check:waits.check,close:()=>waits.close(),verify:()=>path.check(waits.signal),approvePublication,
+  return {signal:waits.signal,check:waits.check,close:()=>waits.close(),verify:signal=>path.check(signal),approvePublication,
    preview:()=>previewHeldRoomMetadataContinuationAcrossHandover(scope,witness,request),
    run:(expected,resume)=>continueHeldRoomMetadataAcrossHandover(scope,witness,{...request,expected,approve},resume)};
  },

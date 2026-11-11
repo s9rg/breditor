@@ -4,6 +4,7 @@ import {gzipSync} from 'node:zlib';
  * publication controls. Seven real cold clients retain fourteen unsent lanes,
  * real image ACKs and future native histories. Browser storage is controlled. */
 import assert from 'node:assert/strict';
+import {IDBFactory,forceCloseDatabase} from 'fake-indexeddb';
 import {readFileSync,writeFileSync} from 'node:fs';import {join,dirname} from 'node:path';import {createHash} from 'node:crypto';
 import * as native from '../../../packages/breditor-collaboration/dist/runtime/breditor_shared.js';
 import {testMetadataMaterialization} from '../local-metadata/materialization.mjs';
@@ -39,6 +40,29 @@ import {SharedWriterLease} from '../../../packages/breditor-collaboration/dist/p
 import {ReviewWriterLease} from '../../../packages/breditor-collaboration/dist/persistence/review_writer_lease.js';
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 const save=(directory,name,value)=>{const bytes=Buffer.from(JSON.stringify(value,null,2)+'\n'),file=join(directory,name);writeFileSync(file,bytes,{flag:'wx',mode:0o600});assert.deepEqual(readFileSync(file),bytes);return{file,bytes:bytes.length,sha256:sha(bytes)};};
+async function revokePublicationDecision(publish,input,database){
+ const open=IDBFactory.prototype.open;
+ const late=Promise.withResolvers();
+ let connection,deadline,approvalCalls=0;
+ IDBFactory.prototype.open=function(name,...args){
+  const request=open.call(this,name,...args);
+  if(name===database)request.addEventListener('success',()=>{connection=request.result;},{once:true});
+  return request;
+ };
+ try{
+  await assert.rejects(publish({...input,approvePublication(){
+   approvalCalls++;
+   assert.ok(connection);
+   forceCloseDatabase(connection);
+   // A regression must fail promptly rather than pin the live test forever.
+   deadline=setTimeout(()=>late.resolve(true),5000);
+   return late.promise;
+  }}),{code:'asset_adoption_aborted'});
+  assert.equal(approvalCalls,1);
+ }finally{
+  clearTimeout(deadline);late.resolve(true);IDBFactory.prototype.open=open;
+ }
+}
 export function testCompleteJointActivation(handover=false,cold=false){
  const nativeHostRoot=handover?nativeHandoverActivationRoot:nativePublicationPredecessorRoot;
  const mode=handover?{nativeHandoverActivation:true,nativeHandoverPublication:true}:{nativePublication:true};
@@ -190,6 +214,12 @@ export function testCompleteJointActivation(handover=false,cold=false){
   const publish=provided=>cold?joint.publish(publication,provided):joint.publish(provided);
   const visitPublished=visit=>cold?withPublishedColdJointRoomSources(joint,(scope,sources)=>visit({scope,sources,check:scope.check})):publishedWork(joint,visit);
   await assert.rejects(publish({...metadataInput,approvePublication:()=>false}));assert.equal(publicationRequests,0);noTake();
+  if(sealed){
+   await revokePublicationDecision(publish,metadataInput,plan.plan.database);
+   assert.equal(publicationRequests,0);noTake();
+   assert.equal((await readPublication()).phase,'prepared');
+   console.log('JOINT_COMPLETE_STEP revoked-publication-decision-cannot-send-or-advance-intent');
+  }
   await assert.rejects(publish({...metadataInput,approvePublication:()=>true}),e=>e.code==='publication_outcome_unknown');assert.equal(publicationRequests,1);noTake();await held();
   assert.equal((await readPublication()).phase,'request-started');
   await assert.rejects(visitPublished(async()=>{}),{code:'joint_activation_state'});
@@ -250,7 +280,7 @@ export function testCompleteJointActivation(handover=false,cold=false){
   const report={format:'breditor/joint-complete-native-observation',formatVersion:1,actualNativeParticipants:7,
    ...(cold?{actualFreshColdActors:14}:{actualTransferredActors:14,normalWriterAcquisitions:normalAcquisitions}),
    retainedOfflineLanes:14,actualLocalMetadataLanes:3,actualNativeRequests:commitRequests,actualPublicationRequests:publicationRequests,lostNativeReplyConfirmedBySameOwner:true,lostPublicationReplyConfirmedBySameOwner:true,independentPlanBeforeAllRequests:true,metadataContinuedBeforePublication:true,originalSourceContentPreserved:true,originalSourcesImmutableAfterCheckpoint:true,finalSelectedAssetStatesVerified:finalAssetStates.length,originalProtocolDeliveries:14,exactFutureDocumentAndCommentHistories:true,nativeEvidence,plan:{bytes:plan.bytes,sha256:plan.sha256},warmJointWorkflow:!cold,physicalDurabilityQualified:false,coldJointOwnerReconstructionQualified:cold,
-   ...(sealed?{sealedHandover:true,finalProviderReconciled:true}:{}),
+   ...(sealed?{sealedHandover:true,finalProviderReconciled:true,revokedPublicationApproval:true}:{}),
   };
   console.log('JOINT_COMPLETE_NATIVE '+JSON.stringify(save(input.host.directory,'actual-joint-complete-observation.json',report)));
  },

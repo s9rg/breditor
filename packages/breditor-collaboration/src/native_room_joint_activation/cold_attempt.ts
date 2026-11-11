@@ -97,11 +97,11 @@ export class ColdJointRoomActivationAttempt<F extends ColdActivationFamily=ColdO
     const expected=await target.preview();origin.check();
     if(!equal(expected,this.#continued!.choice))throw fail('joint_activation_intent_stale');
     const continued=await target.run(expected,true);origin.check();
-    waits=new NativeReconstructionWaits(()=>{this.#check();origin.check();target.check();origin.check();port.check();},[target.signal,origin.revoked]);
+    waits=new NativeReconstructionWaits(()=>{this.#check();origin.check();target.check();origin.check();port.check();},[target.signal,...origin.revocations]);
     const check=waits.check;
     await decideColdActivation(this.#choice,target.approvePublication!,waits);check();
     if(!equal((await scope.retainCurrent()).current.selection,this.#variant.cut(continued)))throw fail('joint_activation_intent_stale');
-    await target.verify();check();
+    await target.verify(waits.signal);check();
     started=true;await origin.observePublicationStarted();check();
     const result=await port.publish(jointRoomPublicationBinding(this.#choice),check,waits.signal);check();
     await origin.observePublicationReceipt(result);check();this.#continued=continued;return result;

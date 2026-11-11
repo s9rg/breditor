@@ -30,7 +30,7 @@ export interface ColdJointActivationOriginWork<Choice extends ColdChoice=JointRo
  readonly publication:JointRoomPublicationState;
  readonly original:Inspection;
  readonly journals:OriginalMetadataJournalObservation;
- readonly revoked:AbortSignal;
+ readonly revocations:readonly AbortSignal[];
  check():void;
  /** Observations only; callers must obtain actual replies independently. */
  observeNativeStarted():Promise<void>;
@@ -76,7 +76,7 @@ async function withColdOrigin<Choice extends ColdChoice,Intent extends Retained,
    if(original.choice.parent.database!==choice.plan.origin.reviewDatabase||original.choice.database!==choice.plan.origin.metadataDatabase)throw fail('joint_activation_intent_stale');
    let visiting=true;const heldCheck=()=>{if(!visiting)throw fail('joint_activation_closed');check();nativeStore.check();jointStore.check();};heldCheck();
    try{
-   const work:ColdJointActivationOriginWork<Choice,Intent>=Object.freeze({choice,retained,publication,original,journals,check:heldCheck,revoked:nativeStore.revoked,
+   const work:ColdJointActivationOriginWork<Choice,Intent>=Object.freeze({choice,retained,publication,original,journals,check:heldCheck,revocations:Object.freeze([nativeStore.revoked,jointStore.revoked]),
     async observeNativeStarted(){heldCheck();nativeState=(await nativeStore.markRequestStarted()).state;heldCheck();},
     async observeNativeReceipt(receipt:SharedDurableNativeActivationReceipt){heldCheck();nativeState=(await nativeStore.markReceiptObserved(receipt)).state;heldCheck();},
     async observePublicationStarted(){heldCheck();publication=await jointStore.markPublicationStarted();heldCheck();},
