@@ -25,6 +25,7 @@ pub(crate) use repair_tail::NativeTailRepairInterruption;
 #[cfg(all(feature = "server", test))]
 pub(crate) use repair_tail::NativeTailRepairPoint;
 mod rotate;
+mod rotation_recovery_stages;
 mod state;
 mod verify;
 mod verify_archive;
