@@ -5,6 +5,7 @@ import {PhysicalOperationV3Cancellation} from '../physical_room_operation_v3/sto
 import {RecoveryOpeningCustody,recoveryOpeningContext} from '../participant_recovery/opening_custody.js';
 import {RecoveryLease,checkRecoveryLeasesHeld} from '../participant_recovery/lease.js';
 import {settleOwnedTransaction} from '../persistence/settle_owned_transaction.js';
+import {watchIntentObservation,type IntentObservationGuard} from '../persistence/intent_observation_guard.js';
 import {prepareArchiveIntegrity} from '../archive_integrity/context.js';
 import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
 import {nativeActivationReceipt} from '../native_activation_control/identity.js';
@@ -57,14 +58,15 @@ export class ActivationIntentStore<Choice extends ActivationStoredChoice,Capture
    q.onblocked=()=>{refused=true;reason=fail('activation_intent_busy');reject(reason);};q.onerror=()=>{done();reject(refused?reason:fail('activation_intent_storage'));};q.onsuccess=()=>{this.#attach(q.result);done();if(created)this.#committed=this.#codec.initial;try{this.check();if(refused)throw reason;if(proposed&&!created)throw fail('activation_intent_exists');this.#schema(q.result);resolve();}catch(error){reject(error);}};
   });
  }
- #transaction<T>(mode:IDBTransactionMode,visit:(rows:ReadonlyMap<string,unknown>,tx:IDBTransaction)=>T,committed?:()=>void):Promise<T>{
-  this.check();if(!this.#db)throw fail('activation_intent_closed');return new Promise((resolve,reject)=>{
+ #transaction<T>(mode:IDBTransactionMode,visit:(rows:ReadonlyMap<string,unknown>,tx:IDBTransaction)=>T,guard?:IntentObservationGuard,committed?:()=>void):Promise<T>{
+  const check=()=>{this.check();guard?.check();};
+  check();if(!this.#db)throw fail('activation_intent_closed');return new Promise((resolve,reject)=>{
    const tx=this.#db!.transaction(tables,mode),store=tx.objectStore('activation');let reason:unknown,failed=false,ready=false,result:T,unwatch=()=>{};
    const abort=(error:unknown)=>{failed=true;reason=error;try{tx.abort();}catch{}};tx.onerror=()=>{};
-   try{unwatch=this.#cancel.watch(()=>abort(fail('activation_intent_closed')));}catch(error){abort(error);}
-   settleOwnedTransaction(tx,()=>{unwatch();committed?.();this.check();if(!ready)throw fail();return result;},()=>{unwatch();return failed?reason:fail('activation_intent_storage');},resolve,reject);
-   const count=store.count();count.onsuccess=()=>{try{this.check();const wanted=this.#choice.objects.length+3;if(count.result!==wanted)throw fail();const keys=store.getAllKeys(undefined,wanted+1),data=store.getAll(undefined,wanted+1);let received=0;
-    const take=()=>{if(++received!==2)return;try{this.check();if(keys.result.length!==wanted||data.result.length!==wanted||keys.result.some(k=>typeof k!=='string'))throw fail();const rows=new Map(keys.result.map((key,i)=>[key as string,data.result[i]]));if(rows.size!==wanted||rows.get('choice')!==JSON.stringify(this.#choice)||!rows.has('graph')||!rows.has('state')||this.#choice.objects.some(p=>!rows.has('blob:'+p.sha256)))throw fail();result=visit(rows,tx);ready=true;}catch(error){abort(error);}};keys.onsuccess=take;data.onsuccess=take;
+   try{unwatch=watchIntentObservation(this.#cancel,guard,()=>abort(fail('activation_intent_closed')));}catch(error){abort(error);}
+   settleOwnedTransaction(tx,()=>{unwatch();committed?.();check();if(!ready)throw fail();return result;},()=>{unwatch();return failed?reason:fail('activation_intent_storage');},resolve,reject);
+   const count=store.count();count.onsuccess=()=>{try{check();const wanted=this.#choice.objects.length+3;if(count.result!==wanted)throw fail();const keys=store.getAllKeys(undefined,wanted+1),data=store.getAll(undefined,wanted+1);let received=0;
+    const take=()=>{if(++received!==2)return;try{check();if(keys.result.length!==wanted||data.result.length!==wanted||keys.result.some(k=>typeof k!=='string'))throw fail();const rows=new Map(keys.result.map((key,i)=>[key as string,data.result[i]]));if(rows.size!==wanted||rows.get('choice')!==JSON.stringify(this.#choice)||!rows.has('graph')||!rows.has('state')||this.#choice.objects.some(p=>!rows.has('blob:'+p.sha256)))throw fail();result=visit(rows,tx);ready=true;}catch(error){abort(error);}};keys.onsuccess=take;data.onsuccess=take;
    }catch(error){abort(error);}};
   });
  }
@@ -79,17 +81,18 @@ export class ActivationIntentStore<Choice extends ActivationStoredChoice,Capture
  }
  async #load():Promise<ActivationStoredIntent<Choice,Capture,State>>{return (await this.#loadWithEncoding()).intent;}
  read():Promise<ActivationStoredIntent<Choice,Capture,State>>{return this.#run(()=>this.#load());}
- #advance(receipt:SharedDurableNativeActivationReceipt|undefined):Promise<ActivationStoredIntent<Choice,Capture,State>>{return this.#run(async()=>{
-  const before=await this.#load();this.check();
+ #advance(receipt:SharedDurableNativeActivationReceipt|undefined,guard?:IntentObservationGuard):Promise<ActivationStoredIntent<Choice,Capture,State>>{return this.#run(async()=>{
+  guard?.check();
+  const before=await this.#load();this.check();guard?.check();
   const chosen=receipt===undefined?null:nativeActivationReceipt(JSON.stringify(receipt),this.#choice.activation);
   if(before.state.phase==='receipt-observed'){if(chosen&&JSON.stringify(chosen)!==JSON.stringify(before.state.receipt))throw fail();return before;}
   if(before.state.revision>=MAX_ROOM_ACTIVATION_REVISIONS)throw fail('activation_intent_policy');
   const next=this.#codec.state({format:this.#codec.initial.format,formatVersion:1,revision:before.state.revision+1,phase:chosen?'receipt-observed':'request-started',receipt:chosen},this.#choice),old=JSON.stringify(before.state),text=JSON.stringify(next);
-  await this.#transaction('readwrite',(rows,tx)=>{if(rows.get('state')!==old)throw fail('activation_intent_stale');tx.objectStore('activation').put(text,'state');},()=>{this.#committed=next;});
-  const after=await this.#load();if(JSON.stringify(after.state)!==text)throw fail('activation_intent_stale');return after;
+  await this.#transaction('readwrite',(rows,tx)=>{if(rows.get('state')!==old)throw fail('activation_intent_stale');tx.objectStore('activation').put(text,'state');},guard,()=>{this.#committed=next;});
+  const after=await this.#load();guard?.check();if(JSON.stringify(after.state)!==text)throw fail('activation_intent_stale');return after;
  });}
- markRequestStarted():Promise<ActivationStoredIntent<Choice,Capture,State>>{return this.#advance(undefined);}
- markReceiptObserved(receipt:SharedDurableNativeActivationReceipt):Promise<ActivationStoredIntent<Choice,Capture,State>>{return this.#advance(receipt);}
+ markRequestStarted(guard?:IntentObservationGuard):Promise<ActivationStoredIntent<Choice,Capture,State>>{return this.#advance(undefined,guard);}
+ markReceiptObserved(receipt:SharedDurableNativeActivationReceipt,guard?:IntentObservationGuard):Promise<ActivationStoredIntent<Choice,Capture,State>>{return this.#advance(receipt,guard);}
  /** Last COMMITTED observation survives authority loss; it grants no service or writer. */
  committed():State|undefined{return this.#committed;}
  close():Promise<void>{

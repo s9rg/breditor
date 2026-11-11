@@ -41,11 +41,11 @@ export async function commitHeldHandoverRoomActivation(policy:RoomHandoverActiva
   catch(cause){if(store.revoked.aborted)store.check();throw cause;}finally{approval.close();}
   await path.check(lifetime.signal);heldCheck();await inspectExact(retained.capture);heldCheck();
   // From here every failure conservatively retains the attempted outcome.
-  started=true;await store.markRequestStarted();heldCheck();
+  started=true;await store.markRequestStarted(lifetime);heldCheck();
   await path.check(lifetime.signal);heldCheck();
   const receipt=await activation.commit(heldCheck,lifetime.signal);heldCheck();
   await path.check(lifetime.signal);heldCheck();
-  await store.markReceiptObserved(receipt);heldCheck();
+  await store.markReceiptObserved(receipt,lifetime);heldCheck();
   result=Object.freeze({format:'breditor/coordinated-handover-native-activation-result',formatVersion:1,scope:'held-client-metadata-upload-cut-sealed-handover-and-actual-native-service',intent:policy.expected,receipt});heldCheck();
  }catch(cause){failed=true;error=cause;}
  try{await store?.close();}catch(cause){if(!failed)error=cause;failed=true;}finally{lifetime.close();}

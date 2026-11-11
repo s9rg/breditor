@@ -81,11 +81,11 @@ export async function publishHandoverReassociation(
     await target.verify(waits.signal);
     check();
     started=true;
-    await held.observePublicationStarted();
+    await held.observePublicationStarted(waits);
     check();
     const receipt=await port.publish(jointReassociationPublicationBinding(choice),check,waits.signal);
     check();
-    await held.observePublicationReceipt(receipt);
+    await held.observePublicationReceipt(receipt,waits);
     check();
     return Object.freeze({continued,receipt});
    }finally{waits?.close();target.close();}

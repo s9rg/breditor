@@ -6,6 +6,7 @@ import {RecoveryLease,checkRecoveryLeasesHeld} from '../participant_recovery/lea
 import {PhysicalOperationV3Cancellation} from '../physical_room_operation_v3/storage_cancellation.js';
 import {participantAuthority} from '../participant_backup/policy.js';
 import {settleOwnedTransaction} from '../persistence/settle_owned_transaction.js';
+import {watchIntentObservation,type IntentObservationGuard} from '../persistence/intent_observation_guard.js';
 import {prepareArchiveIntegrity} from '../archive_integrity/context.js';
 import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
 import {fields,integer} from '../physical_room_record_cut/policy.js';
@@ -78,26 +79,28 @@ export class JointRoomActivationIntentStore {
    q.onblocked=()=>{refused=true;reason=fail('joint_activation_intent_busy');reject(reason);};q.onerror=()=>{done();reject(refused?reason:fail('joint_activation_intent_storage'));};q.onsuccess=()=>{this.#attach(q.result);done();try{this.check();if(refused)throw reason;if(create&&!created)throw fail('joint_activation_intent_exists');if(q.result.version!==1||!equal([...q.result.objectStoreNames],tables))throw fail('joint_activation_intent_integrity');resolve();}catch(error){reject(error);}};
   });return this.#read();
  });}
- #transaction<T>(mode:IDBTransactionMode,visit:(rows:ReadonlyMap<string,unknown>,tx:IDBTransaction)=>T):Promise<T>{
-  this.check();if(!this.#db)throw fail('joint_activation_intent_closed');return new Promise((resolve,reject)=>{
+ #transaction<T>(mode:IDBTransactionMode,visit:(rows:ReadonlyMap<string,unknown>,tx:IDBTransaction)=>T,guard?:IntentObservationGuard):Promise<T>{
+  const check=()=>{this.check();guard?.check();};
+  check();if(!this.#db)throw fail('joint_activation_intent_closed');return new Promise((resolve,reject)=>{
    const tx=this.#db!.transaction(tables,mode),store=tx.objectStore('joint');let reason:unknown,failed=false,ready=false,result:T,unwatch=()=>{};const abort=(error:unknown)=>{failed=true;reason=error;try{tx.abort();}catch{}};tx.onerror=()=>{};
-   try{unwatch=this.#cancel.watch(()=>abort(fail('joint_activation_intent_closed')));}catch(error){abort(error);}
-   settleOwnedTransaction(tx,()=>{unwatch();this.check();if(!ready)throw fail('joint_activation_intent_integrity');return result;},()=>{unwatch();return failed?reason:fail('joint_activation_intent_storage');},resolve,reject);
+   try{unwatch=watchIntentObservation(this.#cancel,guard,()=>abort(fail('joint_activation_intent_closed')));}catch(error){abort(error);}
+   settleOwnedTransaction(tx,()=>{unwatch();check();if(!ready)throw fail('joint_activation_intent_integrity');return result;},()=>{unwatch();return failed?reason:fail('joint_activation_intent_storage');},resolve,reject);
    if(store.keyPath!==null||store.autoIncrement||store.indexNames.length){abort(fail('joint_activation_intent_integrity'));return;}
-   const count=store.count();count.onsuccess=()=>{try{this.check();if(count.result!==2)throw fail('joint_activation_intent_integrity');const keys=store.getAllKeys(undefined,3),data=store.getAll(undefined,3);let received=0;const take=()=>{if(++received!==2)return;try{this.check();if(!equal(keys.result,['choice','state'])||data.result.length!==2)throw fail('joint_activation_intent_integrity');const rows=new Map(keys.result.map((key,i)=>[key as string,data.result[i]]));if(rows.get('choice')!==JSON.stringify(this.#choice))throw fail('joint_activation_intent_integrity');result=visit(rows,tx);ready=true;}catch(error){abort(error);}};keys.onsuccess=take;data.onsuccess=take;}catch(error){abort(error);}};
+   const count=store.count();count.onsuccess=()=>{try{check();if(count.result!==2)throw fail('joint_activation_intent_integrity');const keys=store.getAllKeys(undefined,3),data=store.getAll(undefined,3);let received=0;const take=()=>{if(++received!==2)return;try{check();if(!equal(keys.result,['choice','state'])||data.result.length!==2)throw fail('joint_activation_intent_integrity');const rows=new Map(keys.result.map((key,i)=>[key as string,data.result[i]]));if(rows.get('choice')!==JSON.stringify(this.#choice))throw fail('joint_activation_intent_integrity');result=visit(rows,tx);ready=true;}catch(error){abort(error);}};keys.onsuccess=take;data.onsuccess=take;}catch(error){abort(error);}};
   });
  }
  async #read():Promise<JointRoomPublicationState>{await this.#verifyChoice();const text=await this.#transaction('readonly',rows=>rows.get('state'));if(typeof text!=='string'||new TextEncoder().encode(text).length>128*1024)throw fail('joint_activation_intent_integrity');let state:JointRoomPublicationState;try{state=this.#state(JSON.parse(text));}catch{throw fail('joint_activation_intent_integrity');}if(JSON.stringify(state)!==text)throw fail('joint_activation_intent_integrity');return state;}
  read():Promise<JointRoomPublicationState>{return this.#run(()=>this.#read());}
- #advance(receipt:SharedNativeRoomPublicationReceipt|undefined):Promise<JointRoomPublicationState>{return this.#run(async()=>{
-  const before=await this.#read();this.check();const chosen=receipt===undefined?null:nativePublicationReceipt(JSON.stringify(receipt),nativePublicationRequest(this.#choice.plan.publication,jointRoomPublicationBinding(this.#choice)));
+ #advance(receipt:SharedNativeRoomPublicationReceipt|undefined,guard?:IntentObservationGuard):Promise<JointRoomPublicationState>{return this.#run(async()=>{
+  guard?.check();
+  const before=await this.#read();this.check();guard?.check();const chosen=receipt===undefined?null:nativePublicationReceipt(JSON.stringify(receipt),nativePublicationRequest(this.#choice.plan.publication,jointRoomPublicationBinding(this.#choice)));
   if(before.phase==='receipt-observed'){if(chosen&&!equal(chosen,before.receipt))throw fail('joint_activation_intent_integrity');return before;}
   if(before.revision>=4096||chosen&&before.phase!=='request-started')throw fail();const next=this.#state({format:initial.format,formatVersion:1,revision:before.revision+1,phase:chosen?'receipt-observed':'request-started',receipt:chosen}),old=JSON.stringify(before),text=JSON.stringify(next);
-  await this.#transaction('readwrite',(rows,tx)=>{if(rows.get('state')!==old)throw fail('joint_activation_intent_stale');tx.objectStore('joint').put(text,'state');});
-  const after=await this.#read();if(!equal(after,next))throw fail('joint_activation_intent_stale');return after;
+  await this.#transaction('readwrite',(rows,tx)=>{if(rows.get('state')!==old)throw fail('joint_activation_intent_stale');tx.objectStore('joint').put(text,'state');},guard);
+  const after=await this.#read();guard?.check();if(!equal(after,next))throw fail('joint_activation_intent_stale');return after;
  });}
- markPublicationStarted():Promise<JointRoomPublicationState>{return this.#advance(undefined);}
- markPublicationObserved(receipt:SharedNativeRoomPublicationReceipt):Promise<JointRoomPublicationState>{return this.#advance(receipt);}
+ markPublicationStarted(guard?:IntentObservationGuard):Promise<JointRoomPublicationState>{return this.#advance(undefined,guard);}
+ markPublicationObserved(receipt:SharedNativeRoomPublicationReceipt,guard?:IntentObservationGuard):Promise<JointRoomPublicationState>{return this.#advance(receipt,guard);}
  close():Promise<void>{
   this.#closing=true;
   if(this.#pending){this.#reject?.(fail('joint_activation_intent_closed'));try{this.#request?.transaction?.abort();}catch{}}

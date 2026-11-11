@@ -132,9 +132,9 @@ export class JointRoomActivationAttempt<F extends JointActivationFamily=Ordinary
       if(!equal((await scope.retainCurrent()).current.selection,this.#variant.cut(continued)))throw fail('joint_activation_intent_stale');
       await target.verify(publicationSignal);check();
       try{
-       await store.markPublicationStarted();check();
+       await store.markPublicationStarted(waits);check();
        const receipt=await port.publish(jointRoomPublicationBinding(this.#choice!),check,publicationSignal);check();
-       await store.markPublicationObserved(receipt);check();this.#continued=continued;return receipt;
+       await store.markPublicationObserved(receipt,waits);check();this.#continued=continued;return receipt;
       }catch(error){throw publicationFailure('publication_outcome_unknown',error);}
      }finally{waits.close();}
     },false,signal);
