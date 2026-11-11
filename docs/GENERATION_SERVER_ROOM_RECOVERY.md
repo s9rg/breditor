@@ -149,6 +149,25 @@ content. The type does not launch services or establish provider mappings,
 client journal/outbox coverage, asset availability beyond stored bytes, or fencing
 of another host. Original-only operational APIs keep their original meanings.
 
+## Inspect an incomplete native frame
+
+An authenticated host can call
+`OperationalLogGenerationServerRoom::inspect_committed_native_tail` with the
+original independently retained source, its identity, and the latest complete
+archive the host independently retained. If the active write-ahead log ends
+inside a frame, inspection checks the committed marker and component custody,
+replays the complete frames, and verifies that both supplied archives are
+ancestors of the surviving cut. It exports that cut and all retained raster
+bytes. The result includes the byte count and SHA-256 of the incomplete suffix,
+which remains in the original log.
+
+A malformed complete frame, missing retained work, pending rotation, or
+incomplete raster upload makes inspection fail. A complete active log uses the
+ordinary committed open. An operator can use the detached archive with
+`ServerLogGenerationRoomRecovery::begin` to restore into a separate location
+and verify the complete work. Serving a recovered room still requires the
+normal provider, client and deployment controls.
+
 ## Prepared authenticated host
 
 The SDK's [physical participant reader](SERVER_GENERATION_PARTICIPANT_INVENTORY.md)

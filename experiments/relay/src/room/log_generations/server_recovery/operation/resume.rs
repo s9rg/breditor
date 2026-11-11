@@ -19,6 +19,7 @@ use std::path::Path;
 pub(super) enum OpenMode {
     Resume,
     Committed,
+    InspectTornTail,
 }
 impl OperationalLogGenerationServerRoom {
     /// Reacquire this actual joined recovery and its selected native/raster owners. A committed
@@ -58,7 +59,7 @@ impl OperationalLogGenerationServerRoom {
             return Err(Error::Contract("continuing joined recovery source differs"));
         }
         let context = Context::read(&directory, &marker)?;
-        if matches!(mode, OpenMode::Committed) && !context.committed {
+        if !matches!(mode, OpenMode::Resume) && !context.committed {
             return Err(Error::Contract("existing committed operational marker required"));
         }
         let attempt = ServerLogGenerationRoomRecovery {
@@ -92,6 +93,7 @@ impl OperationalLogGenerationServerRoom {
             backup.native(),
             &native_selection.witness,
             context.marker.selection.native_controls,
+            matches!(mode, OpenMode::InspectTornTail),
         )?;
         let native_controls = native.recovery_control_seal()?;
         let raster_directory = RasterDirectory::open(

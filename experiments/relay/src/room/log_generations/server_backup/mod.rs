@@ -1,6 +1,5 @@
 //! Distinct joined native log/raster archive; old component families stay closed and unchanged.
 mod admission;
-#[cfg(any(feature = "server", test))]
 mod ancestry;
 #[cfg(test)]
 mod ancestry_tests;

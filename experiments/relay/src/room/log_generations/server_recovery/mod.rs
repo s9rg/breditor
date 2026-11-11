@@ -19,5 +19,5 @@ pub(super) use super::recovery::files;
 pub use coordinator::{RecoveredLogGenerationServerRoom, ServerLogGenerationRoomRecovery};
 #[cfg(feature = "server")]
 pub(crate) use operation::GenerationOperationCustody;
-pub use operation::OperationalLogGenerationServerRoom;
+pub use operation::{InspectedNativeGenerationTail, OperationalLogGenerationServerRoom};
 pub use progress::ServerLogGenerationRoomRecoveryProgress;

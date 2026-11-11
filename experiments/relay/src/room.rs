@@ -19,6 +19,7 @@ mod layout_v3;
 mod log_generations;
 #[cfg(feature = "server")]
 pub(crate) use log_generations::GenerationOperationCustody;
+pub use log_generations::InspectedNativeGenerationTail;
 pub use log_generations::{
     GenerationRecoveryRegistrationCoverage, MAX_GENERATION_PARTICIPANT_INVENTORY_BYTES,
     ServerLogGenerationParticipantIdentity, ServerLogGenerationParticipantInventory,
@@ -318,14 +319,25 @@ impl Room {
     }
     fn replay_loaded(
         log: Log,
-        mut records: Vec<Record>,
+        records: Vec<Record>,
         recovery: Recovery,
         truncate_tail: bool,
     ) -> Result<(Self, Recovery)> {
         if !truncate_tail && recovery.truncated_bytes != 0 {
             return Err(Error::Contract("operational log has an incomplete tail"));
         }
-        let seed = records.remove(0);
+        let mut room = Self::replay_records(log, records)?;
+        if truncate_tail {
+            room.log.finish_recovery(recovery)?;
+        } else {
+            room.log.finish_complete_recovery(recovery)?;
+        }
+        Ok((room, recovery))
+    }
+
+    fn replay_records(log: Log, records: Vec<Record>) -> Result<Self> {
+        let mut records = records.into_iter();
+        let seed = records.next().ok_or(Error::Contract("log has no complete seed"))?;
         let (configuration, room, owner, journal, profile_seed, atomic_transport_v2) = match seed
             .event
         {
@@ -400,12 +412,7 @@ impl Room {
             result.replay(record)?;
         }
         result.abandon_suggestion_revision_preparation();
-        if truncate_tail {
-            result.log.finish_recovery(recovery)?;
-        } else {
-            result.log.finish_complete_recovery(recovery)?;
-        }
-        Ok((result, recovery))
+        Ok(result)
     }
 
     fn replay(&mut self, record: Record) -> Result<()> {

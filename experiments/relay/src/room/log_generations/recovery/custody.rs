@@ -31,6 +31,7 @@ impl RecoveredLogGenerationRoom {
         backup: &super::super::ServerLogGenerationBackup,
         expected: &GenerationDirectoryWitness,
         controls: [u8; 32],
+        inspect_tail: bool,
     ) -> Result<Self> {
         use super::{files, types::Marker};
         use crate::{Error, Room, credentials, log::Log};
@@ -64,8 +65,16 @@ impl RecoveredLogGenerationRoom {
             return Err(Error::Contract("continuing native recovery controls differ"));
         }
         let inner = attempt.open_component(&component)?;
-        let (log, records, recovery) = Log::open_complete_owned_generations(inner)?;
-        let (room, _) = Room::replay_loaded(log, records, recovery, false)?;
+        let room = if inspect_tail {
+            let (log, records, recovery) = Log::open_generation_prefix(inner)?;
+            if recovery.truncated_bytes == 0 {
+                return Err(Error::Contract("no incomplete native tail to inspect"));
+            }
+            Room::replay_records(log, records)?
+        } else {
+            let (log, records, recovery) = Log::open_complete_owned_generations(inner)?;
+            Room::replay_loaded(log, records, recovery, false)?.0
+        };
         seal.check(&attempt.directory)?;
         attempt.directory.guard_witness(expected)?;
         Ok(Self { room, directory: attempt.directory })

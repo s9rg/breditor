@@ -19,6 +19,7 @@ use std::{
     os::unix::fs::OpenOptionsExt,
     path::Path,
 };
+mod inspect_torn_tail;
 type TestResult<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 const POLICY: RoomRecoveryPolicy = RoomRecoveryPolicy::HostReacquired;
 fn accepted_insert(
@@ -276,6 +277,19 @@ fn cold_provenance_refuses_torn_tail_and_pending_rotation_without_trimming_or_co
         drop(live);
         let before = snapshot(&files.recovery())?;
         assert!(reopen(&files.recovery(), &backup).is_err(), "pending={pending}");
+        if pending {
+            assert!(
+                OperationalLogGenerationServerRoom::inspect_committed_native_tail(
+                    &files.recovery(),
+                    &backup,
+                    &backup.info()?.identity,
+                    &backup,
+                    POLICY,
+                    "owner",
+                )
+                .is_err()
+            );
+        }
         assert_eq!(snapshot(&files.recovery())?, before, "pending={pending}");
     }
     Ok(())
