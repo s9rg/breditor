@@ -4,6 +4,15 @@ use crate::{Error, Result, log::Log};
 use std::io::{Read, Seek, SeekFrom};
 
 impl Log {
+    pub(crate) fn has_incomplete_generation_tail(&self) -> Result<bool> {
+        self.ready()?;
+        Ok(self
+            .generations
+            .as_ref()
+            .and_then(|state| state.opening_length)
+            .is_some_and(|length| length > self.bytes))
+    }
+
     pub(crate) fn capture_inspected_generation_prefix(
         &mut self,
     ) -> Result<(GenerationFiles, Vec<u8>)> {

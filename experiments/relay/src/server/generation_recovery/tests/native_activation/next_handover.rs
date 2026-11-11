@@ -250,7 +250,7 @@ async fn handover(durable: bool) -> TestResult {
     assert_eq!(response["kind"], "resumed");
     let (socket, response) = socket.request("comments", json!({"kind":"reviewResume","actor":setup.source.reviewer.lease.actor,"credential":setup.source.reviewer.credential})).await?;
     assert_eq!(response["kind"], "reviewResumed");
-    drop(continue_original_history(socket, &setup).await?);
+    drop(continue_original_history(socket, &setup.source).await?);
     let frame = successor.host.transaction(|room| room.catchup("owner")).await?;
     let reader = setup.source.profile.join_frame("room".into(), "901".into(), &frame)?;
     assert!(reader.document_json().contains("First recovered host accepted "));

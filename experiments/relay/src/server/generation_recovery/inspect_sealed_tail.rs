@@ -50,13 +50,14 @@ pub async fn inspect_sealed_native_tail(
         selection.check_checkpoint()?;
         let minimum = selection.inspection_minimum(minimum.as_ref())?;
         let origin = source.source_backup().info()?.identity;
-        OperationalLogGenerationServerRoom::with_committed_native_tail(
+        OperationalLogGenerationServerRoom::with_committed_native_prefix(
             &operating_directory,
             source.source_backup(),
             &origin,
             minimum,
             &principal,
-            |captured| {
+            false,
+            |_, captured| {
                 let state = ServerLogGenerationRecoveryState {
                     origin: origin.clone(),
                     server: captured.inspected.backup,

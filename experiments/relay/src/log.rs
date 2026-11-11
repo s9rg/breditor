@@ -25,6 +25,8 @@ const MAX_RECORD: u64 = 20 * 1024 * 1024;
 pub(crate) const MAX_LOG: u64 = 256 * 1024 * 1024;
 const MAX_RECORDS: u64 = 4096;
 const HEADER: u64 = 72;
+#[cfg(feature = "server")]
+pub(crate) const MAX_GENERATION_INCOMPLETE_FRAME_BYTES: u64 = HEADER + MAX_RECORD - 1;
 
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]

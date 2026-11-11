@@ -84,6 +84,10 @@ pub use reopen_sealed_restart::{
     ReopenedSealedNativeRestartHost, SealedNativeRestartBootstrap,
     SealedNativeRestartBootstrapCoverage, reopen_sealed_native_restart_host,
 };
+mod repair_sealed_tail;
+pub use repair_sealed_tail::{
+    SealedNativeTailRepairFiles, SealedNativeTailRepairOutcome, repair_sealed_native_tail,
+};
 mod sealed_restart;
 pub use reconstruct::reconstruct_log_generation_recovery_host;
 mod selected;

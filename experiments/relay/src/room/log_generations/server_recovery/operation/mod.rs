@@ -11,6 +11,8 @@ mod interruption;
 mod marker;
 mod open_committed;
 mod publish;
+#[cfg(feature = "server")]
+mod repair_native_prefix;
 mod resume;
 #[cfg(test)]
 mod tests;
