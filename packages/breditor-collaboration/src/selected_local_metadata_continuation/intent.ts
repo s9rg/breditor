@@ -40,7 +40,7 @@ class MetadataContinuationJournal{
   if(!equal(origin.parent.prepared.choice,pins.prepared)||!equal(origin.parent.current.selection,pins.current)||origin.parent.delivery.bytes!==pins.review.bytes||origin.parent.delivery.sha256!==pins.review.sha256||origin.metadata.bytes!==pins.metadata.bytes||origin.metadata.sha256!==pins.metadata.sha256)throw fail();
   for(const[file,pin]of[[origin.parent.prepared.file,pins.prepared.before],[origin.parent.current.file,pins.current],[origin.parent.delivery.file,pins.review],[origin.metadata.file,pins.metadata]] as const){if(file.size!==pin.bytes||await this.#integrity.digest(file)!==pin.sha256)throw fail();this.#check();}return origin;
  }
- #attach(db:IDBDatabase){this.#db=db;db.onversionchange=()=>{this.#changed=true;db.close();};}
+ #attach(db:IDBDatabase){this.#db=db;db.onclose=()=>{this.#changed=true;};db.onversionchange=()=>{this.#changed=true;db.close();};}
  open(origin:LocalMetadataRoomBundle):Promise<LocalMetadataRoomBundle>{return this.#open(origin,true);}
  /** A missing existing-only journal cannot create a placeholder namespace. */
  reopen(origin:LocalMetadataRoomBundle):Promise<LocalMetadataRoomBundle>{return this.#open(origin,false);}
@@ -64,7 +64,7 @@ class MetadataContinuationJournal{
   });return this.#verify(value);
  });}
  close():Promise<void>{this.#closing=true;this.#reject?.(fail('metadata_continuation_closed'));try{this.#request?.transaction?.abort();}catch{}return this.#close().then(()=>this.#opening?.rollback());}
- #close():Promise<void>{if(this.#closed)return Promise.resolve();if(this.#ending)return this.#ending;this.#closing=true;this.#ending=(async()=>{await this.#running?.catch(()=>{});if(this.#pending)throw fail('metadata_continuation_busy');if(this.#db){this.#db.onversionchange=null;this.#db.close();}await this.#lease?.close();this.#db=undefined;this.#lease=undefined;this.#cancel.close();this.#closed=true;})().finally(()=>{this.#ending=undefined;});return this.#ending;}
+ #close():Promise<void>{if(this.#closed)return Promise.resolve();if(this.#ending)return this.#ending;this.#closing=true;this.#ending=(async()=>{await this.#running?.catch(()=>{});if(this.#pending)throw fail('metadata_continuation_busy');if(this.#db){this.#db.onclose=null;this.#db.onversionchange=null;this.#db.close();}await this.#lease?.close();this.#db=undefined;this.#lease=undefined;this.#cancel.close();this.#closed=true;})().finally(()=>{this.#ending=undefined;});return this.#ending;}
 }
 
 export class MetadataContinuationIntent extends MetadataContinuationJournal {

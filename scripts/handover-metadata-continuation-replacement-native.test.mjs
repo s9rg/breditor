@@ -14,6 +14,8 @@ import {
  continueHeldRoomMetadataAcrossHandover,
 } from '../packages/breditor-collaboration/dist/selected_local_metadata_continuation/coordinator.js';
 import {MetadataContinuationIntent} from '../packages/breditor-collaboration/dist/selected_local_metadata_continuation/intent.js';
+import {withHeldMetadataContinuationEvidence,withHeldHandoverMetadataContinuationEvidence} from '../packages/breditor-collaboration/dist/selected_local_metadata_continuation/held_evidence.js';
+import {withOriginalMetadataJournals} from '../packages/breditor-collaboration/dist/selected_local_metadata_continuation/original_journals.js';
 import {prepareHandoverMetadataContinuationDelivery} from '../packages/breditor-collaboration/dist/selected_delivery_preparation/coordinator.js';
 import {SelectedLocalReviewDelivery as Review} from '../packages/breditor-collaboration/dist/selected_local_review_delivery/coordinator.js';
 import {SelectedLocalMetadataDelivery as Metadata,previewSelectedLocalMetadataResume} from '../packages/breditor-collaboration/dist/selected_local_metadata_delivery/coordinator.js';
@@ -23,7 +25,7 @@ import {nativeHandoverActivationRoot} from './fixtures/native-activation/handove
 import {handoverControls} from './fixtures/selected-delivery/cold-continuation.mjs';
 import {assertHandoverPublicationWaiting} from './fixtures/native-publication/sealed-handover.mjs';
 import {preparedRoomRun} from './fixtures/native-room-run/session.mjs';
-import {sourceByteSnapshots,assertSourceBytesUnchanged} from './fixtures/native-actor-custody/storage_bytes.mjs';
+import {databaseByteSnapshot,sourceByteSnapshots,assertSourceBytesUnchanged} from './fixtures/native-actor-custody/storage_bytes.mjs';
 import {checkFutureNativeHistories} from './fixtures/local-metadata/future-native-histories.mjs';
 import {saveEvidence} from './candidate-release/evidence.mjs';
 
@@ -80,6 +82,37 @@ test('the private replacement continues acknowledged and pending metadata across
   assert.equal(approvals,1);
   const destinations=[input.database,input.preparationDatabase,input.reviewDatabase,input.metadataDatabase];
   assert.equal((await indexedDB.databases()).some(row=>destinations.includes(row.name)),false);
+  await visit((scope,witness)=>withOriginalMetadataJournals(scope,witness,bundle,async origin=>{
+   await assert.rejects(withHeldHandoverMetadataContinuationEvidence(scope,origin,expected,async()=>{throw Error('Absent intent reached visitor');}),{code:'metadata_continuation_missing'});
+  }));
+  assert.equal((await indexedDB.databases()).some(row=>destinations.includes(row.name)),false);
+
+  const observe=async(verifyForeign=false)=>{
+   const saved=new Map(await Promise.all(destinations.map(async name=>[name,await databaseByteSnapshot(name)])));
+   let expired,observation;
+   const request=globalThis.fetch;
+   globalThis.fetch=()=>{throw Error('Prior sealed metadata evidence must not access HTTP');};
+   try{
+    await visit((scope,witness)=>withOriginalMetadataJournals(scope,witness,bundle,async origin=>{
+     if(verifyForeign){
+      const other=structuredClone(expected);
+      other.handover.current.instance='f'.repeat(64);
+      assert.notEqual(other.handover.current.instance,expected.handover.current.instance);
+      await assert.rejects(withHeldHandoverMetadataContinuationEvidence(scope,origin,other,async()=>{throw Error('Foreign path reached visitor');}),error=>error.code?.startsWith('metadata_continuation_'));
+      await assert.rejects(withHeldMetadataContinuationEvidence(scope,origin,expected.continuation,async()=>{throw Error('Ordinary family reached sealed evidence');}),error=>error.code?.startsWith('metadata_continuation_'));
+     }
+     await withHeldHandoverMetadataContinuationEvidence(scope,origin,expected,async held=>{
+      held.check();expired=held.check;observation=held.evidence;
+      assert.equal(observation.format,'breditor/handover-metadata-continuation-evidence');
+      assert.deepEqual(observation.choice,expected);
+      assert.equal(observation.phase,'metadata');
+     });
+     assert.throws(expired,{code:'metadata_continuation_closed'});
+    }));
+   }finally{globalThis.fetch=request;}
+   await assertSourceBytesUnchanged(saved);
+   return observation;
+  };
 
   const originalPut=IDBObjectStore.prototype.put;
   let interrupted=false;
@@ -100,6 +133,9 @@ test('the private replacement continues acknowledged and pending metadata across
   try{await assert.rejects(ordinary.reopen(bundle));}finally{await ordinary.close();}
   await assertSourceBytesUnchanged(oldBytes);
   console.log('HANDOVER_METADATA_CONTINUATION_STEP interrupted-destination-retains-handover-intent');
+  const interruptedEvidence=await observe();
+  const interruptedRecords=JSON.parse(interruptedEvidence.metadata);
+  assert.deepEqual(interruptedRecords.current.lanes.map(row=>row.records),interruptedRecords.before.lanes.map(row=>row.records));
 
   const result=await run(choice=>{approvals++;assert.deepEqual(choice,expected);return true;},true);
   assert.equal(approvals,3);
@@ -120,11 +156,17 @@ test('the private replacement continues acknowledged and pending metadata across
    }finally{await reopened?.close();await review?.close();await gate?.close();}
   });
   await assertHandoverPublicationWaiting(fixture.host,offer);
+  controls.close();
+  controls=undefined;
+  const completedEvidence=await observe(true);
+  assert.deepEqual(facts(JSON.parse(completedEvidence.metadata).current),facts(original));
+  assert.notEqual(completedEvidence.metadata,interruptedEvidence.metadata);
+  console.log('HANDOVER_METADATA_CONTINUATION_STEP prior-destination-evidence-verified-without-http');
   owner=attempt.takeOwner();
   assert.equal(owner.clients.length,7);
   checkFutureNativeHistories(owner.clients);
   await assertSourceBytesUnchanged(oldBytes);
-  const evidence={passed:true,actualFamilies:7,metadataLanes:3,exactSealedLineage:true,originalIntentFamilyRefused:true,interruptedWriteResumed:true,acknowledgedAndPendingFactsPreserved:true,sourceNamespacesUnchanged:true,exactFutureDocumentAndCommentHistories:true,listenerStillPrivate:true};
+  const evidence={passed:true,actualFamilies:7,metadataLanes:3,exactSealedLineage:true,originalIntentFamilyRefused:true,interruptedWriteResumed:true,acknowledgedAndPendingFactsPreserved:true,sourceNamespacesUnchanged:true,exactFutureDocumentAndCommentHistories:true,listenerStillPrivate:true,priorEvidenceWithoutHttp:true,priorDestinationBytesUnchanged:true,foreignEvidenceRefused:true};
   saveEvidence(join(fixture.host.directory,'handover-metadata-continuation-choice.json'),result.choice);
   saveEvidence(join(fixture.host.directory,'handover-metadata-continuation.json'),evidence);
   console.log('HANDOVER_METADATA_CONTINUATION_NATIVE '+JSON.stringify({directory:fixture.host.directory,...evidence}));

@@ -124,11 +124,20 @@ The path and target checks apply during approval, durable preparation and the
 replacement journal writes. The continued metadata stays with the private
 replacement until the whole-room owner can publish it.
 
+When the earlier path controller has retired, the private target can reopen
+the selected continuation for read-only evidence. This holds the original
+journals and all four destination namespaces during the visit. It verifies the
+stored sealed choice and original file pins, then returns the exact review
+and metadata journal observations. The proof expires at the end of the visit.
+Absent destinations use the separate absence check.
+
 Run `node --test scripts/handover-metadata-continuation-replacement-native.test.mjs`
 with the built handover fixture. The test activates an actual sealed successor,
 interrupts a destination write and resumes it while the Native listener awaits
 publication. The metadata continuation source and installed runners include this
 workflow alongside the original same-origin workset.
+Run `node scripts/check-metadata-evidence-installed.mjs --sealed` for the
+installed-package check of the sealed evidence.
 
 ## Native process exit during a sealed handover
 
