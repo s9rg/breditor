@@ -346,3 +346,4 @@ fn roundtrip(id: &Identity) -> TestResult<Identity> {
 mod faults;
 #[path = "durable_native_activation/process.rs"]
 mod process;
+mod sealed_restart;

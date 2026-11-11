@@ -223,6 +223,20 @@ publication or deployment is implied.
 
 ## Sealed relay restart
 
+A Rust host can use `PreparedLogGenerationRecoveryHost::verify_sealed_native_restart`
+after reopening the operational room. Supply the independently retained
+checkpoint, expected epoch and exact current server and participant identity
+with fresh host authentication and the protected registration records. For a
+prepared epoch the current state must equal the checkpoint. For a committed
+epoch a retained descendant can carry later accepted work. The verifier checks
+the actual operational owner, the complete ancestor archive, the sealed source
+and the exact authority epoch. Missing registration records return Pending.
+
+After verification, a committed restart prepares a new child checkpoint with
+`prepare_durable_native_restart`. The host can then provision fresh activation
+and publication controls. These operations recheck current authority and
+custody at their own boundaries.
+
 The cold SDK retains the original activation intent and prepares a separate
 restart intent for the selected authenticated lineage. Its publication journal
 and Native activation journal use fresh storage. If either write is interrupted,

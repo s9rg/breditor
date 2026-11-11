@@ -145,6 +145,7 @@ export async function selectedDeliveryNativeHost(root,{language=3,standard=true,
      assert.deepEqual([...createHash('sha256').update(raw).digest()],offer.selection.checkpointSha256);
      const cutDigest=(cut,name)=>assetDigest(readFileSync(join(dirname(cut.path),name)));
      const bootstrap={format:published?'breditor/private-native-sealed-published-process-recovery':'breditor/private-native-sealed-process-recovery',formatVersion:1,root:nativeRoot,
+      ...(published?{expectedPublished:last.selection.source}:{}),
       checkpointName:reference.checkpointName,checkpointDigest,originDigest:cutDigest(first,'server.backup'),olderDigest:cutDigest(first,'older-server.backup'),
       handoverSequence,nextSequence:sequence+1,previousSequence:last.sequence,
       cuts:snapshots.map(cut=>({sequence:cut.sequence,digest:cutDigest(cut,'server-after.backup')})),

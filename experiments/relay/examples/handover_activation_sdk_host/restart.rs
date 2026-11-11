@@ -18,8 +18,9 @@ use breditor_collab_relay::{
         NativeGenerationActivationPrepareOptions, PreparedLogGenerationHandover,
         PreparedLogGenerationRecoveryHost, PreparedNativeGenerationActivation,
         PreparedNativeGenerationActivationIdentity, RoomDeploymentAuthority,
-        VerifiedServerLogGenerationRecoveryState, prepare_durable_native_activation_control,
-        prepare_log_generation_recovery_host,
+        SealedNativeRestartSelection, ServerLogGenerationRecoveryCoverage,
+        ServerLogGenerationRecoveryStateIdentity, VerifiedServerLogGenerationRecoveryState,
+        prepare_durable_native_activation_control, prepare_log_generation_recovery_host,
     },
 };
 use serde::Deserialize;
@@ -57,6 +58,8 @@ struct Bootstrap {
     previous_sequence: u64,
     cuts: Vec<Cut>,
     protected: input::Protected,
+    #[serde(default)]
+    expected_published: Option<ServerLogGenerationRecoveryStateIdentity>,
     old_alice_token: String,
     client_address: SocketAddr,
     retired_address: SocketAddr,
@@ -115,6 +118,7 @@ fn read_bootstrap() -> Result<Bootstrap> {
     let input: Bootstrap = input::read()?;
     if (!input.published() && input.format != "breditor/private-native-sealed-process-recovery")
         || input.format_version != 1
+        || input.published() != input.expected_published.is_some()
         || input.root.canonicalize()? != input.root
         || !checkpoint_name(&input.checkpoint_name)
         || input.handover_sequence == 0
@@ -212,22 +216,35 @@ async fn reopen_target(
     )
     .await?;
     let protected = input.protected.admit()?;
-    let proof = credentials::verify(&host, &accounts.owner, &protected).await?;
-    let current = proof.identity();
     let checkpoint = selected.checkpoint.identity().current();
-    if input.published() {
-        // The durable restart still proves ancestry and the same owner before
-        // creating a successor of the independently selected checkpoint.
-        if selected.status != Status::Committed
-            || current.origin != checkpoint.origin
-            || current.server == checkpoint.server
-            || current.server != retained.info()?.identity
-        {
-            return Err("reopened sealed operation differs from the retained published cut".into());
+    let expected = match &input.expected_published {
+        Some(expected) => {
+            if selected.status != Status::Committed
+                || expected.server == checkpoint.server
+                || expected.server != retained.info()?.identity
+            {
+                return Err("retained published cut differs".into());
+            }
+            expected.clone()
         }
-    } else if current != *checkpoint {
-        return Err("reopened sealed operation differs from the selected checkpoint".into());
-    }
+        None => checkpoint.clone(),
+    };
+    let ServerLogGenerationRecoveryCoverage::Verified(proof) = host
+        .verify_sealed_native_restart(
+            "owner",
+            &accounts.owner,
+            SealedNativeRestartSelection {
+                checkpoint: selected.checkpoint.clone(),
+                authority: selected.authority.clone(),
+                status: selected.status,
+                expected,
+            },
+            credentials::proof_inputs(&protected),
+        )
+        .await?
+    else {
+        return Err("complete original registrations required".into());
+    };
     Ok(ReopenedTarget {
         original,
         host,
