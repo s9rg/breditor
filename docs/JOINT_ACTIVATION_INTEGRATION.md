@@ -224,10 +224,11 @@ keeps the replacement owner private until it verifies the matching publication
 receipt.
 
 Restart inspection keeps the recorded provider selection in the saved capture.
-It checks the fresh controller against the exact saved delivery continuation
-and the sealed lineage, including the earlier cuts in order. That live proof
-allows the original provider receipt and bytes to be checked with newly
-authenticated controls. A different seal, cut, or continuation fails admission.
+The fresh controller must prove the same seal and current cut, preserve the
+ordered history, and include the exact recorded predecessor. It can select a
+later predecessor if the recorded cut still appears in the verified path. The
+SDK applies this rule before retaining a new intent and again before checking
+the original provider receipt and bytes with newly authenticated controls.
 
 The Native process fixture exercises both prepared and committed checkpoints.
 It exits the old process, reopens the pinned checkpoint and archives, verifies
