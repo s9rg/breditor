@@ -1,7 +1,7 @@
 //! Rollback beyond the original source, and cancellation through actual commit ownership.
 use super::*;
 use std::{path::PathBuf, time::Duration};
-fn captured_files(root: &Path) -> TestResult<Vec<(PathBuf, Vec<u8>)>> {
+pub(super) fn captured_files(root: &Path) -> TestResult<Vec<(PathBuf, Vec<u8>)>> {
     let mut rows = Vec::new();
     for entry in fs::read_dir(root)? {
         let entry = entry?;

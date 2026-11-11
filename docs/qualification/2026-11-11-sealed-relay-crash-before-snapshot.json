@@ -1,0 +1,145 @@
+{
+  "format": "breditor/sealed-relay-crash-before-snapshot-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-11",
+  "integratedCommit": "2f02a2b4a3a25e9919a1a3618ff272d482edd4a8",
+  "testedSource": {
+    "commit": "2b1ef3a6e51e204e0125fbdd8475aa75607c3469",
+    "dirty": false,
+    "sha256": "bc85c186cb9b2e130e93646cbac15bf81a92c4bac0ac4541646f5dd992182812",
+    "files": 8550,
+    "bytes": 73117786
+  },
+  "testedTree": "51e29ffc0b67b8bceef109c6b34575c3bb93827e",
+  "relayExecutable": {
+    "bytes": 25078464,
+    "sha256": "493a01f39fbefb603de3b4bf4e9e99524294e95e02a27ebae75adb88e42b4ba4"
+  },
+  "focusedVerification": {
+    "source": {
+      "cases": 4,
+      "logSha256": "72a9ef6e25064ab261c6439dedd36163c86356d4e7bcf9d6387bff60ff89e6f3",
+      "afterExit": {
+        "oldPid": 60585,
+        "inspectionPid": 60620,
+        "newPid": 60621,
+        "exitSignal": "SIGKILL",
+        "protectedStreams": 14,
+        "acknowledgedUpload": "sha256:593e7699f759e2ce2ca1055e2461543083869ca9a9573277f58679b5314bcee9",
+        "archiveSha256": "e4b16a1fab838a38b22cb7fdf7b54332bd47c601e28914157a55d1fb7c828a3c",
+        "freshPublication": true,
+        "documentAndCommentReceiptsPreserved": true,
+        "peerCatchUp": true,
+        "localUndoRedo": true,
+        "currentCutSelectedAfterProcessExit": true,
+        "predecessorSequence": 5
+      }
+    },
+    "independentlyInstalled": {
+      "cases": 4,
+      "logSha256": "9f0d3f1896c1028c40962e6a1b1f837c941fadbe8901e9bab738597c23d9ae55",
+      "afterExit": {
+        "oldPid": 60632,
+        "inspectionPid": 61714,
+        "newPid": 61716,
+        "exitSignal": "SIGKILL",
+        "protectedStreams": 14,
+        "acknowledgedUpload": "sha256:593e7699f759e2ce2ca1055e2461543083869ca9a9573277f58679b5314bcee9",
+        "archiveSha256": "8553cf7e2fd4d8c3422efd02e5dc57b0e363652edd44a4a4a9b8af83937cfc0f",
+        "freshPublication": true,
+        "documentAndCommentReceiptsPreserved": true,
+        "peerCatchUp": true,
+        "localUndoRedo": true,
+        "currentCutSelectedAfterProcessExit": true,
+        "predecessorSequence": 5
+      }
+    },
+    "evidenceSha256": "bf2499e8dbf11cf58510e95bd17a68f5e2225c2e30c561a59b960bd5dac73f44"
+  },
+  "compatibilityVerification": {
+    "source": {
+      "cases": 50,
+      "logSha256": "acc877518a18db8a9519abfbc14f719e08a2c1a1ecf4d5f15f89f35c85689ebb"
+    },
+    "independentlyInstalled": {
+      "cases": 50,
+      "logSha256": "1624509e28a2f6a439badd5c021f92ad65888726669c53f51d216a78b40aaa37"
+    },
+    "evidenceSha256": "3bed0c692aef762288a3309a09bcf7bb8249b2a2248823cca714a667f49cc693"
+  },
+  "fullActivationIntent": {
+    "source": {
+      "cases": 22,
+      "logSha256": "e7f9fefe02175d9f2660010d0f9cfb1f431344e078b4f50a683b4c1cea311762",
+      "observationSha256": "c0845bae9c2d2bfc57aca9e2d375c4b3739005d9c86c213cc0b3c0a2fbde99ae",
+      "actualNativeParticipants": 7,
+      "actualFreshColdActors": 14,
+      "retainedOfflineLanes": 14,
+      "actualLocalMetadataLanes": 3,
+      "originalProtocolDeliveries": 14,
+      "finalSelectedAssetStatesVerified": 9,
+      "lostNativeReplyConfirmedBySameOwner": true,
+      "lostPublicationReplyConfirmedBySameOwner": true,
+      "metadataContinuedBeforePublication": true,
+      "originalSourcesImmutableAfterCheckpoint": true,
+      "exactFutureDocumentAndCommentHistories": true,
+      "finalProviderReconciled": true,
+      "revokedPublicationApproval": true,
+      "restartPlan": {
+        "bytes": 127435,
+        "sha256": "19d1e0cb904f3d05ee82d8708167edc19db604cc2057d6416905e0f33d0cccb4"
+      }
+    },
+    "independentlyInstalled": {
+      "cases": 22,
+      "logSha256": "130129ddf50e29bdd4b922382aa7425b34fdc00810c5c4addfa5d2d902b959a1",
+      "observationSha256": "58b0d6be40bd4bce8812fed0292b7b3bf389bcddfc1f3e40e04ef4831777fc66",
+      "actualNativeParticipants": 7,
+      "actualFreshColdActors": 14,
+      "retainedOfflineLanes": 14,
+      "actualLocalMetadataLanes": 3,
+      "originalProtocolDeliveries": 14,
+      "finalSelectedAssetStatesVerified": 9,
+      "lostNativeReplyConfirmedBySameOwner": true,
+      "lostPublicationReplyConfirmedBySameOwner": true,
+      "metadataContinuedBeforePublication": true,
+      "originalSourcesImmutableAfterCheckpoint": true,
+      "exactFutureDocumentAndCommentHistories": true,
+      "finalProviderReconciled": true,
+      "revokedPublicationApproval": true,
+      "restartPlan": {
+        "bytes": 128646,
+        "sha256": "15fd879d2d0b5e0abe0e7dee5792054da1b78033564c864ff65b5817f86c4a71"
+      }
+    },
+    "evidenceSha256": "c48973943ae86d3e62f92928007363fce46c252fc44c3a0827154bcbf3e020ec",
+    "matchingPackageDistFiles": 3033,
+    "packages": [
+      {
+        "name": "@breditor/browser",
+        "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+      },
+      {
+        "name": "@breditor/experimental-rich-content",
+        "sha256": "06fc9770ef5b26cd5f4c10d7d55d9b1d91e352392a599f277cee25d431d6f4b7"
+      },
+      {
+        "name": "@breditor/collaboration",
+        "sha256": "31dc701f12b4b7d26faa3a353513d1b5d8e842ab2aa280db7feb38519a64ac8a"
+      }
+    ]
+  },
+  "retainedCutRollbackRegression": {
+    "commit": "9cde081970da2290fa7f1aab31dc4607e04b78ac",
+    "tree": "96bf65a021bc67e0c64e2980884ee0d68fa30ba6",
+    "relayTestBinarySha256": "b3409316a7c35ad6710a8a65f65339bea5884c19ecffc4ba6744dda9d88d1204",
+    "totalDistinctTestsPassed": 460,
+    "initialPassed": 331,
+    "initialLocalSocketPermissionDenials": 129,
+    "initialLogSha256": "66c8f4f6a2e595bb325883191eb080fca83090622adb7f206b26ff0e6e10e099",
+    "loopbackRetryPassed": 129,
+    "loopbackRetryLogSha256": "cff605dc742df5a0d636a9e6a55b239ad6c39f90e094ae8e9945cbce72e78ec1"
+  },
+  "physicalPowerLossQualified": false,
+  "v1Ready": false
+}

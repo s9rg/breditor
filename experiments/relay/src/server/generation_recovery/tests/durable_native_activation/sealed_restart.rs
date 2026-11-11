@@ -1,15 +1,19 @@
 //! Production sealed restart verification preserves both the selected room and its epoch.
-use super::{prepare, reopen};
+use super::{faults::captured_files, prepare, reopen};
 use crate::{
-    Error, RecoveryRegistrationCredentials, Role,
+    Error, RecoveryRegistrationCredentials, Role, ServerLogGenerationRoomBackup,
     server::{
-        NativeGenerationActivationCheckpointStatus as Status, SealedNativeRestartHostCoverage,
-        SealedNativeRestartSelection, ServerLogGenerationRecoveryCoverage as Coverage,
+        NativeGenerationActivationCheckpointStatus as Status, SealedNativeRestartBootstrap,
+        SealedNativeRestartHostCoverage, SealedNativeRestartSelection,
+        ServerLogGenerationRecoveryCoverage as Coverage,
         generation_recovery::tests::{native_activation::Setup, source::TestResult},
-        open_sealed_native_restart_host,
+        inspect_sealed_native_restart, open_sealed_native_restart_host,
     },
 };
-use std::fs;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn prepared_sealed_restart_requires_the_exact_cut_and_all_protected_credentials() -> TestResult
@@ -307,12 +311,18 @@ async fn cold_bootstrap_releases_every_opened_owner_on_pending_and_refuses_super
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn sealed_inspection_returns_unpinned_accepted_descendant_and_requires_retained_floor()
 -> TestResult {
-    use crate::server::{SealedNativeRestartBootstrap, inspect_sealed_native_restart};
     let setup = Box::pin(Setup::new((3, true), true, (true, true), true)).await?;
     let proof = setup.proof().await?;
     let checkpoint = prepare(&setup, "sealed-inspection", &proof).await?;
     let expected_checkpoint = checkpoint.identity().clone();
     let checkpoint_cut = expected_checkpoint.current().clone();
+    let operational_root = setup.source.directory.0.join("target");
+    let native_marker: serde_json::Value =
+        serde_json::from_slice(&fs::read(operational_root.join(".native.json"))?)?;
+    let native_root = operational_root
+        .join(native_marker["directory"].as_str().ok_or("actual operational native directory")?);
+    let mut checkpoint_files = captured_files(&native_root)?;
+    checkpoint_files.sort();
     let active = setup
         .handle
         .activate_durable_native_service(
@@ -334,7 +344,6 @@ async fn sealed_inspection_returns_unpinned_accepted_descendant_and_requires_ret
     let source_root = setup.intent.root().to_owned();
     let checkpoint_root = checkpoint.root().to_owned();
     let authority_root = setup.source.directory.0.join("authority");
-    let operational_root = setup.source.directory.0.join("target");
     let ledger = setup.ledger()?;
     let intent_bytes = fs::read(checkpoint_root.join("activation.json"))?;
     let target_bytes = fs::read(operational_root.join(".operational.json"))?;
@@ -352,7 +361,7 @@ async fn sealed_inspection_returns_unpinned_accepted_descendant_and_requires_ret
     };
     let (auth, owner, _) = super::authentication()?;
     let observed = Box::pin(inspect_sealed_native_restart(
-        bootstrap(checkpoint_cut),
+        bootstrap(checkpoint_cut.clone()),
         None,
         auth,
         "owner",
@@ -383,8 +392,47 @@ async fn sealed_inspection_returns_unpinned_accepted_descendant_and_requires_ret
     ))
     .await?;
     assert_eq!(observed.identity()?, actual);
+    let (later_archive, _) = observed.into_parts();
+
+    assert_retained_floor_refuses_rollback(
+        bootstrap(actual),
+        bootstrap(checkpoint_cut),
+        later_archive,
+        &native_root,
+        &checkpoint_files,
+    )
+    .await?;
     assert_eq!(fs::read(authority_root.join("authority.log"))?, ledger);
     assert_eq!(fs::read(checkpoint_root.join("activation.json"))?, intent_bytes);
     assert_eq!(fs::read(operational_root.join(".operational.json"))?, target_bytes);
+    Ok(())
+}
+
+async fn assert_retained_floor_refuses_rollback(
+    newer: SealedNativeRestartBootstrap,
+    older: SealedNativeRestartBootstrap,
+    later_archive: ServerLogGenerationRoomBackup,
+    native_root: &Path,
+    checkpoint_files: &[(PathBuf, Vec<u8>)],
+) -> TestResult {
+    // Reproduce a complete earlier log in the same closed operational
+    // directory. The retained later archive must expose the lost append.
+    for (path, bytes) in checkpoint_files {
+        fs::write(path, bytes)?;
+    }
+    let (auth, owner, _) = super::authentication()?;
+    assert!(matches!(
+        Box::pin(inspect_sealed_native_restart(newer, Some(later_archive), auth, "owner", &owner,))
+            .await,
+        Err(Error::Contract("archive ancestor is not in local physical lineage"))
+    ));
+    let (auth, owner, _) = super::authentication()?;
+    let checkpoint_cut = older.expected_current.clone();
+    let older_cut =
+        Box::pin(inspect_sealed_native_restart(older, None, auth, "owner", &owner)).await?;
+    assert_eq!(older_cut.identity()?, checkpoint_cut);
+    let mut actual_files = captured_files(native_root)?;
+    actual_files.sort();
+    assert_eq!(actual_files.as_slice(), checkpoint_files);
     Ok(())
 }
