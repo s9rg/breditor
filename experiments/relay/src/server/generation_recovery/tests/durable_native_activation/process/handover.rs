@@ -99,11 +99,12 @@ async fn verify_path(
     Ok(verified)
 }
 
-pub(super) async fn crash_after_sealed_handover(parent: &Path, point: Point) -> TestResult {
-    let setup = Box::pin(Setup::new((3, true), true, (true, true), true)).await?;
+async fn seal_initial_target(
+    setup: &Setup,
+) -> TestResult<(Arc<PreparedLogGenerationHandover>, ServerLogGenerationRoomBackup)> {
     let root = &setup.source.directory.0;
     let initial = setup.proof().await?;
-    let first = prepare(&setup, "first-checkpoint", &initial).await?;
+    let first = prepare(setup, "first-checkpoint", &initial).await?;
     let first_choice = first.identity().clone();
     let active = setup
         .handle
@@ -116,7 +117,7 @@ pub(super) async fn crash_after_sealed_handover(parent: &Path, point: Point) -> 
             first_choice,
         )
         .await?;
-    advance_target(&setup, true).await?;
+    advance_target(setup, true).await?;
     let earlier = setup.handle.capture_recovery_state("owner", &setup.owner).await?.into_parts().0;
     setup
         .handle
@@ -138,21 +139,29 @@ pub(super) async fn crash_after_sealed_handover(parent: &Path, point: Point) -> 
             .await?,
     );
     active.seal_next_handover("owner", &setup.owner, &handover, handover.identity()).await?;
+    Ok((handover, earlier))
+}
+
+pub(super) async fn crash_after_sealed_handover(parent: &Path, point: Point) -> TestResult {
+    let setup = Box::pin(Setup::new((3, true), true, (true, true), true)).await?;
+    let root = &setup.source.directory.0;
+    let (handover, earlier) = Box::pin(seal_initial_target(&setup)).await?;
     let origin = handover.source_backup();
+    let selected = handover.identity().source();
     let operation = ServerLogGenerationRoomRecovery::begin(
         &root.join("sealed-target"),
         origin,
-        &selected.server,
+        selected,
         POLICY,
     )?
     .finish(origin)?
-    .begin_operation(origin, &selected.server, POLICY, "owner")?;
+    .begin_operation(origin, selected, POLICY, "owner")?;
     let (auth, owner, _) = authentication()?;
     let host = prepare_log_generation_recovery_host(
         operation,
         auth,
         copy(origin)?,
-        &selected.server,
+        selected,
         "owner",
         &owner,
     )
@@ -280,32 +289,9 @@ async fn recover(root: &Path, committed: bool) -> TestResult {
     .await?;
     assert_eq!(serde_json::to_value(verified.identity())?, retained.path);
 
-    let resumed = if committed {
-        Arc::new(
-            host.prepare_durable_native_restart(
-                "owner",
-                &owner,
-                checkpoint,
-                &proof,
-                NativeGenerationActivationPrepareOptions {
-                    root: root.join("fresh-sealed-checkpoint"),
-                    authority: authority.clone(),
-                },
-            )
-            .await?,
-        )
-    } else {
-        checkpoint
-    };
-    if committed {
-        assert_eq!(resumed.identity().previous_selection(), floor);
-        assert_eq!(
-            resumed.identity().planned_selection().generation.parse::<u64>()?,
-            floor.generation.parse::<u64>()? + 1
-        );
-    } else {
-        assert_eq!(resumed.identity(), &retained.checkpoint);
-    }
+    let resumed =
+        resume_selected_checkpoint(root, &host, &owner, &authority, &proof, checkpoint, committed)
+            .await?;
     let planned = resumed.identity().planned_selection().clone();
     Box::pin(confirm_and_publish(
         &host,
@@ -320,6 +306,39 @@ async fn recover(root: &Path, committed: bool) -> TestResult {
     assert_eq!(authority.current_selection()?, planned);
     assert_eq!(handover.status(&authority)?, LogGenerationHandoverStatus::Sealed);
     Ok(())
+}
+
+async fn resume_selected_checkpoint(
+    root: &Path,
+    host: &PreparedLogGenerationRecoveryHost,
+    owner: &str,
+    authority: &RoomDeploymentAuthority,
+    proof: &VerifiedServerLogGenerationRecoveryState,
+    checkpoint: Arc<PreparedNativeGenerationActivation>,
+    committed: bool,
+) -> TestResult<Arc<PreparedNativeGenerationActivation>> {
+    if !committed {
+        return Ok(checkpoint);
+    }
+    let previous = checkpoint.identity().planned_selection().clone();
+    let resumed = host
+        .prepare_durable_native_restart(
+            "owner",
+            owner,
+            checkpoint,
+            proof,
+            NativeGenerationActivationPrepareOptions {
+                root: root.join("fresh-sealed-checkpoint"),
+                authority: authority.clone(),
+            },
+        )
+        .await?;
+    assert_eq!(resumed.identity().previous_selection(), &previous);
+    assert_eq!(
+        resumed.identity().planned_selection().generation.parse::<u64>()?,
+        previous.generation.parse::<u64>()? + 1
+    );
+    Ok(Arc::new(resumed))
 }
 
 async fn confirm_and_publish(
