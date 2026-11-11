@@ -3,6 +3,7 @@ import test from 'node:test';import assert from 'node:assert/strict';
 import {SharedNativeRoomPublicationHost as Host,nativePublicationHostPort} from '../packages/breditor-collaboration/dist/native_publication_control/host.js';
 import {nativePublicationRequest} from '../packages/breditor-collaboration/dist/native_publication_control/identity.js';
 import {options,selection,joint,token,endpoint,receipt,json,code,using} from './fixtures/native-publication/transport.mjs';
+import {decideColdActivation,nativePublicationWaits} from '../packages/breditor-collaboration/dist/native_room_joint_activation/cold_variant.js';
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return{promise,resolve,reject};};
 test('configuration makes no request or policy callback and snapshots independent Native choices',async()=>{
  let callbacks=0,calls=0;const expected=selection();const host=Host.configure(options({expected,getToken(){callbacks++;return token;},checkAuthority(){callbacks++;}}));expected.activation.checkpointSha256[0]=99;expected.listener='forged';assert.equal(host.selection().listener,'127.0.0.1:4190');assert.equal(Object.isFrozen(host.selection().activation.checkpointSha256),true);await using(()=>{calls++;throw Error('no IO');},async()=>{assert.equal(callbacks,0);assert.equal(calls,0);});host.close();
@@ -58,4 +59,38 @@ test('held coordinator signal and policy are checked by the genuine private requ
 
 test('nested Native choice and digest accessors are inert policy refusals',async()=>{
  let calls=0;const expected=selection();Object.defineProperty(expected.activation,'current',{enumerable:true,get(){calls++;throw Error('TEST_PRIVATE getter');}});assert.throws(()=>Host.configure(options({expected})),code('publication_policy'));const host=Host.configure(options()),digest=joint();Object.defineProperty(digest.sha256,'0',{enumerable:true,get(){calls++;return 1;}});await assert.rejects(host.publish(digest),code('publication_policy'));assert.equal(calls,0);host.close();
+});
+
+test('revoked publication requesters release a pending approval before any request starts',{timeout:5000},async()=>{
+ for(const revoke of ['close','abort']){
+  const parent=new AbortController();
+  const host=Host.configure(options({signal:parent.signal}));
+  const port=nativePublicationHostPort(host);
+  const waits=nativePublicationWaits(port,()=>{},[]);
+  const entered=deferred(),late=deferred();
+  let requests=0,approved=0,timer;
+  try{
+   await using(async()=>{requests++;throw Error('Unexpected publication request');},async()=>{
+    const result=decideColdActivation(joint(),()=>{
+     entered.resolve();
+     return late.promise;
+    },waits).then(async()=>{
+     approved++;
+     await port.publish(joint(),waits.check,waits.signal);
+    });
+    const cancelled=assert.rejects(result,code('asset_adoption_aborted'));
+    await entered.promise;
+    if(revoke==='close')host.close();else parent.abort();
+    try{
+     await Promise.race([cancelled,new Promise((_resolve,reject)=>{
+      timer=setTimeout(()=>reject(Error('Revoked requester kept the decision pending')),1000);
+     })]);
+    }finally{clearTimeout(timer);}
+    if(revoke==='close')late.resolve(true);else late.reject(Error('Late approval rejection'));
+    await new Promise(resolve=>setImmediate(resolve));
+    assert.equal(approved,0);
+    assert.equal(requests,0);
+   });
+  }finally{late.resolve(true);waits.close();host.close();}
+ }
 });

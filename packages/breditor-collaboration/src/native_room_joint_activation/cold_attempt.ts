@@ -15,12 +15,12 @@ import type {SharedDurableNativeActivationReceipt} from '../native_activation_co
 import {nativePublicationHostPort,type SharedNativeRoomPublicationHost} from '../native_publication_control/host.js';
 import {publicationFailure} from '../native_publication_control/policy.js';
 import type {SharedNativeRoomPublicationReceipt} from '../native_publication_control/contract.js';
-import {NativeReconstructionWaits} from '../selected_native_reconstruction/read_waits.js';
+import type {NativeReconstructionWaits} from '../selected_native_reconstruction/read_waits.js';
 import {jointRoomPublicationBinding} from './intent_store.js';
 import {jointTargetHistoryReads} from './target_reads.js';
 import {jointEqual as equal,jointIntentFailure as fail} from './intent_policy.js';
 import type {ColdJointRoomActivationOptions,ColdJointHandoverActivationOptions,ColdJointRoomReplacementInput} from './cold_contract.js';
-import {coldOrdinaryActivation,coldHandoverActivation,decideColdActivation,type ColdActivationFamily,type ColdActivationVariant,type ColdOrdinaryActivation,type ColdHandoverActivation} from './cold_variant.js';
+import {coldOrdinaryActivation,coldHandoverActivation,decideColdActivation,nativePublicationWaits,type ColdActivationFamily,type ColdActivationVariant,type ColdOrdinaryActivation,type ColdHandoverActivation} from './cold_variant.js';
 import {prepareJointHandoverReassociation,resumeJointHandoverReassociationPreparation,type HandoverReassociationPreparationInput} from '../native_room_joint_reassociation/handover_prepare.js';
 import {confirmJointHandoverReassociation,type HandoverReassociationConfirmation,type HandoverReassociationConfirmationInput} from '../native_room_joint_reassociation/handover_confirm.js';
 import type {JointHandoverReassociationChoice} from '../native_room_joint_reassociation/handover_contract.js';
@@ -187,7 +187,7 @@ export class ColdJointRoomActivationAttempt<F extends ColdActivationFamily=ColdO
     const expected=await target.preview();origin.check();
     if(!equal(expected,this.#continued!.choice))throw fail('joint_activation_intent_stale');
     const continued=await target.run(expected,true);origin.check();
-    waits=new NativeReconstructionWaits(()=>{this.#check();origin.check();target.check();origin.check();port.check();},[target.signal,...origin.revocations]);
+    waits=nativePublicationWaits(port,()=>{this.#check();origin.check();target.check();origin.check();},[target.signal,...origin.revocations]);
     const check=waits.check;
     await decideColdActivation(this.#choice,target.approvePublication!,waits);check();
     if(!equal((await scope.retainCurrent()).current.selection,this.#variant.cut(continued)))throw fail('joint_activation_intent_stale');

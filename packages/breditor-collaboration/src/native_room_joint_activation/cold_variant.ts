@@ -4,6 +4,7 @@ import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.
 import {generationRecoveryHostPort} from '../generation_recovery_control/host.js';
 import {nativeActivationHostPort} from '../native_activation_control/host.js';
 import {activationFailure} from '../native_activation_control/policy.js';
+import type {nativePublicationHostPort} from '../native_publication_control/host.js';
 import type {SharedDurableNativeActivationReceipt} from '../native_activation_control/contract.js';
 import type {RoomMetadataTargetWitness} from '../native_room_execution_run/attempt.js';
 import {fields} from '../physical_room_record_cut/policy.js';
@@ -44,6 +45,12 @@ export function decideColdActivation<T>(choice:T,approve:(choice:T)=>boolean|Pro
  return decideFreshAssetChoice(choice,approve,{check:waits.check,signal,watchClosing:cancel=>{
   add.call(signal,'abort',cancel,{once:true});return()=>remove.call(signal,'abort',cancel);
  }});
+}
+/** Hold the actual publication requester together with the selected room inputs. */
+export function nativePublicationWaits(
+ port:ReturnType<typeof nativePublicationHostPort>,check:()=>void,signals:readonly(AbortSignal|undefined)[],
+):NativeReconstructionWaits{
+ return new NativeReconstructionWaits(()=>{check();port.check();check();},[...signals,...port.signals]);
 }
 type HeldNativeObservation=Pick<ColdJointActivationOriginWork,'check'|'revocations'|'observeNativeStarted'|'observeNativeReceipt'>;
 /** Apply the same authenticated request sequence to an already admitted journal. */

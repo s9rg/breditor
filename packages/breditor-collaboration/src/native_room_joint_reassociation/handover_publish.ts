@@ -6,11 +6,11 @@ import type {HandoverMetadataContinuationResult} from '../selected_local_metadat
 import type {JointHandoverMetadataInput} from '../native_room_joint_activation/handover_contract.js';
 import {checkColdJointActivationOrigin,type ColdJointHandoverOriginWork} from '../native_room_joint_activation/cold_origin.js';
 import {handoverMetadataVisit} from '../native_room_joint_activation/attempt_variant.js';
-import {decideColdActivation} from '../native_room_joint_activation/cold_variant.js';
+import {decideColdActivation,nativePublicationWaits} from '../native_room_joint_activation/cold_variant.js';
 import {jointEqual as equal,jointIntentFailure as fail} from '../native_room_joint_activation/intent_policy.js';
 import {nativePublicationHostPort,type SharedNativeRoomPublicationHost} from '../native_publication_control/host.js';
 import {publicationFailure} from '../native_publication_control/policy.js';
-import {NativeReconstructionWaits} from '../selected_native_reconstruction/read_waits.js';
+import type {NativeReconstructionWaits} from '../selected_native_reconstruction/read_waits.js';
 import {checkHandoverReassociationConfirmation,type HandoverReassociationConfirmation} from './handover_confirm.js';
 import {withHeldHandoverReassociationIntents} from './held_handover_intents.js';
 import {jointReassociationPublicationBinding} from './intent_store.js';
@@ -74,7 +74,7 @@ export async function publishHandoverReassociation(
     if(!equal(expected,previous.choice))throw fail('joint_activation_intent_stale');
     const continued=await target.run(expected,true);
     target.check();
-    waits=new NativeReconstructionWaits(()=>{target.check();port.check();},[target.signal,...custody.signals]);
+    waits=nativePublicationWaits(port,target.check,[target.signal,...custody.signals]);
     const check=waits.check;
     await decideColdActivation(choice,target.approvePublication!,waits);
     if(!equal((await scope.retainCurrent()).current.selection,continued.choice.continuation.target))throw fail('joint_activation_intent_stale');
