@@ -60,9 +60,10 @@ test('the private replacement continues acknowledged and pending metadata across
   controls=await handoverControls(fixture.host,await fixture.host.refresh(),{check(){}});
   const reads=fixture.session.input();
   const visit=work=>withRoomExecutionMetadataTarget(attempt,reads,work);
-  const common={database:tag+'-intent',preparationDatabase:tag+'-prepared-replacement',reviewDatabase:tag+'-review-replacement',metadataDatabase:tag+'-metadata-replacement',origin:bundle,inventory:controls.inventory,checkAuthority(){}};
+  const common={database:tag+'-metadata-intent',preparationDatabase:tag+'-prepared-replacement',reviewDatabase:tag+'-review-replacement',metadataDatabase:tag+'-metadata-replacement',origin:bundle,inventory:controls.inventory,checkAuthority(){}};
   const input={...common,path:controls.path};
-  await assert.rejects(visit((scope,witness)=>previewHeldRoomMetadataContinuation(scope,witness,{...common,host:controls.delivery})));
+  await assert.rejects(visit((scope,witness)=>previewHeldRoomMetadataContinuationAcrossHandover(scope,witness,{...input,database:tag+'-intent'})),{code:'metadata_continuation_namespace_collision'});
+  await assert.rejects(visit((scope,witness)=>previewHeldRoomMetadataContinuation(scope,witness,{...common,host:controls.delivery})),{code:'inventory_source'});
   const expected=await visit((scope,witness)=>previewHeldRoomMetadataContinuationAcrossHandover(scope,witness,input));
   assert.deepEqual(expected.handover,controls.path.handoverSelection());
   assert.equal(expected.continuation.origin.metadata.sha256,bundle.metadata.sha256);
