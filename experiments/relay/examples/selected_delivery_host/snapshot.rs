@@ -2,9 +2,11 @@
 use super::{Result, authentication, credentials, public_inputs, setup::Ready, storage};
 use breditor_collab_relay::ServerLogGenerationRoomBackup;
 use breditor_collab_relay::server::{
-    ContentAddressedServerAssets, PreparedLogGenerationHandover, RoomDeploymentAuthority,
-    ServerLogGenerationDeliveryPathRecoveryControl, ServerLogGenerationHandoverDeliveryPathOptions,
-    ServerLogGenerationRecoveryAssetCoverage, ServerRecoveryAssetProvider,
+    ContentAddressedServerAssets, PreparedLogGenerationHandover, PreparedLogGenerationRecoveryHost,
+    RoomDeploymentAuthority, ServerLogGenerationDeliveryPathRecoveryControl,
+    ServerLogGenerationHandoverDeliveryPathOptions, ServerLogGenerationRecoveryAssetCoverage,
+    ServerRecoveryAssetProvider, VerifiedServerLogGenerationDeliveryPath,
+    VerifiedServerLogGenerationHandoverDeliveryPath,
     prepare_log_generation_delivery_path_recovery_control,
     prepare_log_generation_delivery_recovery_control,
     prepare_log_generation_handover_delivery_path_recovery_control,
@@ -48,6 +50,60 @@ pub(super) async fn capture(
     ))
     .await
 }
+
+async fn verify_sealed_path(
+    host: &PreparedLogGenerationRecoveryHost,
+    token: &str,
+    successor: Arc<VerifiedServerLogGenerationDeliveryPath>,
+    prefix: &HandoverPrefix,
+) -> Result<Arc<VerifiedServerLogGenerationHandoverDeliveryPath>> {
+    let mut earlier = Vec::new();
+    let mut pins = Vec::new();
+    for cut in &prefix.earlier {
+        earlier.push(ServerLogGenerationRoomBackup::from_owned_bytes(cut.to_bytes()?)?);
+        pins.push(cut.info()?.identity);
+    }
+    Ok(Arc::new(
+        host.verify_handover_delivery_path(
+            "owner",
+            token,
+            successor,
+            ServerLogGenerationHandoverDeliveryPathOptions {
+                handover: prefix.intent.clone(),
+                expected_handover: prefix.intent.identity().clone(),
+                authority: prefix.authority.clone(),
+                earlier,
+                expected_earlier: pins,
+            },
+        )
+        .await?,
+    ))
+}
+
+// Pin the first actual serving cut separately from the restore origin. Use it
+// as the predecessor unless the caller selected an already observed cut.
+fn snapshot_predecessor<'a>(
+    ready: &'a Ready,
+    current: &ServerLogGenerationRoomBackup,
+    predecessor: Option<&'a super::next::Previous>,
+    handover: Option<&HandoverPrefix>,
+) -> Result<(u64, &'a Arc<ServerLogGenerationRoomBackup>)> {
+    if ready.initial_snapshot.get().is_none() {
+        let initial = ServerLogGenerationRoomBackup::from_owned_bytes(current.to_bytes()?)?;
+        ready
+            .initial_snapshot
+            .set(Arc::new(initial))
+            .map_err(|_| "initial serving cut already pinned")?;
+    }
+    if let Some((sequence, archive)) = predecessor {
+        return Ok((*sequence, archive));
+    }
+    Ok((
+        handover.map_or(0, |prefix| prefix.sequence),
+        ready.initial_snapshot.get().ok_or("initial serving cut absent")?,
+    ))
+}
+
 pub(super) async fn capture_with_handover(
     ready: &Ready,
     sequence: u64,
@@ -70,49 +126,12 @@ pub(super) async fn capture_with_handover(
         Arc::new(super::full_path::verify(ready, &current, native.clone(), observed).await?);
     let delivery_path = path_proof.identity();
     let spanning = if let Some(prefix) = handover {
-        let mut earlier = Vec::new();
-        let mut pins = Vec::new();
-        for cut in &prefix.earlier {
-            earlier.push(ServerLogGenerationRoomBackup::from_owned_bytes(cut.to_bytes()?)?);
-            pins.push(cut.info()?.identity);
-        }
-        Some(Arc::new(
-            host.verify_handover_delivery_path(
-                "owner",
-                &ready.owner_token,
-                path_proof.clone(),
-                ServerLogGenerationHandoverDeliveryPathOptions {
-                    handover: prefix.intent.clone(),
-                    expected_handover: prefix.intent.identity().clone(),
-                    authority: prefix.authority.clone(),
-                    earlier,
-                    expected_earlier: pins,
-                },
-            )
-            .await?,
-        ))
+        Some(verify_sealed_path(&host, &ready.owner_token, path_proof.clone(), prefix).await?)
     } else {
         None
     };
-    // The first ACTUAL target serving cut B stays distinct from restore origin A.
-    // Every fresh capture must prove A <= B <= current C, even after real delivery.
-    if ready.initial_snapshot.get().is_none() {
-        let initial = breditor_collab_relay::ServerLogGenerationRoomBackup::from_owned_bytes(
-            current.to_bytes()?,
-        )?;
-        ready
-            .initial_snapshot
-            .set(Arc::new(initial))
-            .map_err(|_| "initial serving cut already pinned")?;
-    }
-    let (previous_sequence, previous) = if let Some((sequence, archive)) = predecessor {
-        (*sequence, archive)
-    } else {
-        (
-            handover.map_or(0, |prefix| prefix.sequence),
-            ready.initial_snapshot.get().ok_or("initial serving cut absent")?,
-        )
-    };
+    let (previous_sequence, previous) =
+        snapshot_predecessor(ready, &current, predecessor, handover)?;
     let continuation = host
         .verify_delivery_continuation(
             "owner",

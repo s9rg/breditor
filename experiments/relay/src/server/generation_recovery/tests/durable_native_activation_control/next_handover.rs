@@ -35,6 +35,10 @@ impl ServerRecoveryAssetProvider for SourceRasterProvider {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[expect(
+    clippy::too_many_lines,
+    reason = "The scenario follows one set of real controls through both serving epochs"
+)]
 async fn http_activated_host_seals_the_next_cut_and_fresh_control_resumes_offline_history()
 -> TestResult {
     let setup = Box::pin(Setup::new((3, true), true, (true, true), true)).await?;

@@ -19,17 +19,17 @@ impl ActivatedNativeLogGenerationHost {
         &self,
         principal: &str,
         token: &str,
-        root: &Path,
+        destination: &Path,
         expected: ServerLogGenerationRoomBackupIdentity,
     ) -> Result<PreparedLogGenerationHandover> {
         self.host.host.authentication.authenticate(principal, token)?;
         let owner = self.host.clone();
         let selection = self.selection.clone();
         let principal = principal.to_owned();
-        let root = root.to_owned();
+        let destination = destination.to_owned();
         tokio::task::spawn_blocking(move || {
             let host = &owner.host;
-            prepare_source(host, &root, &expected, &Interruption::default(), |lease| {
+            prepare_source(host, &destination, &expected, &Interruption::default(), |lease| {
                 if lease.selection() != selection {
                     return Err(Error::Lease);
                 }

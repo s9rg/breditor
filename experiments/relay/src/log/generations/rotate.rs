@@ -167,6 +167,28 @@ impl Generations {
         self.interrupt(super::RotationPoint::IntentRetired)?;
         Ok(())
     }
+    // A durable head can outlive the process that wrote it. Revalidate the
+    // published continuation before retiring its marker and refreshing custody.
+    fn finish_published_rotation(
+        &mut self,
+        log: &Log,
+        intent: &Intent,
+        marker: &fs::File,
+        marker_bytes: &[u8],
+    ) -> Result<ServerLogGenerationReceipt> {
+        let parent =
+            self.history.iter().rev().nth(1).ok_or(Error::Contract("rotation parent absent"))?;
+        let child = Self::child_from_parent(parent, intent)?;
+        if child != self.current().value || log.next != child.active.first || log.bytes != 0 {
+            return Err(Error::Contract("completed physical rotation cut differs"));
+        }
+        intent
+            .identity
+            .guard(&log.file, &self.directory.path.join(format::wal_name(&intent.next)))?;
+        self.clean_intent(intent, marker, marker_bytes, &log.file)?;
+        self.refresh_active(&log.file)?;
+        Self::receipt(self.current(), true)
+    }
     fn resume(&mut self, log: &mut Log) -> Result<Option<ServerLogGenerationReceipt>> {
         let path = self.directory.path.join(".rotation.json");
         match fs::symlink_metadata(&path) {
@@ -182,22 +204,7 @@ impl Generations {
         let intent: Intent = format::decode(&marker_bytes)?;
         intent.validate()?;
         if self.current().hash == intent.after {
-            let parent = self
-                .history
-                .iter()
-                .rev()
-                .nth(1)
-                .ok_or(Error::Contract("rotation parent absent"))?;
-            let child = Self::child_from_parent(parent, &intent)?;
-            if child != self.current().value || log.next != child.active.first || log.bytes != 0 {
-                return Err(Error::Contract("completed physical rotation cut differs"));
-            }
-            intent
-                .identity
-                .guard(&log.file, &self.directory.path.join(format::wal_name(&intent.next)))?;
-            self.clean_intent(&intent, &marker, &marker_bytes, &log.file)?;
-            self.refresh_active(&log.file)?;
-            return Self::receipt(self.current(), true).map(Some);
+            return self.finish_published_rotation(log, &intent, &marker, &marker_bytes).map(Some);
         }
         // Manifest and head publication each need one stage while the owned
         // continuation may still be present. These stages are used in turn.
