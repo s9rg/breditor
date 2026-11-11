@@ -32,3 +32,22 @@ previewRequest.approve;
 runRequest.approvePublication;
 // @ts-expect-error Continuation requires its expected choice.
 metadataContinuationRunRequest(previewSeed);
+
+import type {
+ HandoverMetadataContinuationChoice,HandoverMetadataContinuationInput,HandoverMetadataContinuationResult,
+} from '../../../packages/breditor-collaboration/dist/selected_local_metadata_continuation/handover_contract.js';
+import {
+ previewHeldRoomMetadataContinuationAcrossHandover,continueHeldRoomMetadataAcrossHandover,
+} from '../../../packages/breditor-collaboration/dist/selected_local_metadata_continuation/coordinator.js';
+declare const handoverInput:HandoverMetadataContinuationInput;
+const {expected:handoverChoice,approve:handoverApproval,...handoverInspection}=handoverInput;
+void [handoverChoice,handoverApproval];
+void withRoomExecutionMetadataTarget(attempt,reads,async(scope,witness)=>{
+ const preview:Promise<HandoverMetadataContinuationChoice>=previewHeldRoomMetadataContinuationAcrossHandover(scope,witness,handoverInspection);
+ const result:Promise<HandoverMetadataContinuationResult>=continueHeldRoomMetadataAcrossHandover(scope,witness,handoverInput,true);
+ void [preview,result];
+ // @ts-expect-error An ordinary continuation choice cannot replace sealed lineage.
+ continueHeldRoomMetadataAcrossHandover(scope,witness,{...handoverInput,expected},true);
+ // @ts-expect-error A detached seal cannot supply a genuine path controller.
+ previewHeldRoomMetadataContinuationAcrossHandover(scope,witness,{...handoverInspection,path:handoverChoice.handover});
+});

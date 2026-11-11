@@ -1,3 +1,4 @@
+import {generationDeliveryPathRecoveryHostPort,type SharedServerLogGenerationDeliveryPathRecoveryHost} from '../generation_delivery_path_control/host.js';
 import {generationDeliveryRecoveryHostPort,type SharedServerLogGenerationDeliveryRecoveryHost} from '../generation_delivery_control/host.js';
 import {SharedServerLogGenerationParticipantInventory as DeliveryInventory} from '../server_generation_inventory/read.js';
 import {consumeDeliveryResumeAdmission,type DeliveryResumeAdmission} from '../selected_delivery_journal/resume_admission.js';
@@ -18,6 +19,7 @@ import {compareExecutionCut,requireExecutionOwnStreams} from '../selected_genera
 import {DeliveryPreparationResources} from './resources.js';
 import {preparationChoice} from './identity.js';
 import {fail} from './policy.js';
+import {handoverDeliveryPathSelection,type SharedServerLogGenerationHandoverDeliveryPathRecoveryControlSelection} from '../generation_delivery_path_control/handover.js';
 import type {DeliveryPreparationChoice,DeliveryPreparationFile} from './contract.js';
 const methods={open:DeliveryPreparationResources.prototype.open,close:DeliveryPreparationResources.prototype.close},add=EventTarget.prototype.addEventListener,remove=EventTarget.prototype.removeEventListener;
 export interface PreparedSelectedNativeDelivery{readonly prepared:DeliveryPreparationFile;check():void;close():Promise<void>}
@@ -88,6 +90,80 @@ async function inspectMetadataContinuationSource(scope:SelectedNativeRecoverySco
  * its old meaning; this route uses genuine previous/current Native admission. */
 export async function previewMetadataContinuationPreparation(scope:SelectedNativeRecoveryScope,host:SharedServerLogGenerationDeliveryRecoveryHost,inventory:DeliveryInventory,database:string){const read=await inspectMetadataContinuationSource(scope,host,inventory,database);return Object.freeze({choice:read.choice,current:read.current.current});}
 export async function prepareMetadataContinuationDelivery(scope:SelectedNativeRecoveryScope,host:SharedServerLogGenerationDeliveryRecoveryHost,inventory:DeliveryInventory,expected:DeliveryPreparationChoice,existing=false):Promise<PreparedSelectedNativeDelivery>{
- const chosen=preparationChoice(expected),selected=await inspectMetadataContinuationSource(scope,host,inventory,chosen.database);if(JSON.stringify(chosen)!==JSON.stringify(selected.choice))throw fail();const resources=new DeliveryPreparationResources(),held=ownPreparedGate(scope,resources,selected.checkInventory);
- try{const prepared=await methods.open.call(resources,chosen,selected.current.integrity,existing?undefined:selected.current.current.file);if(JSON.stringify((await scope.retainCurrent()).current.selection)!==JSON.stringify(chosen.before))throw fail();await generationDeliveryRecoveryHostPort(host).check(scope.signal);held.check();return held.finish(prepared);}catch(error){await held.close();throw error;}
+ const chosen=preparationChoice(expected),selected=await inspectMetadataContinuationSource(scope,host,inventory,chosen.database);
+ return openMetadataContinuationGate(scope,chosen,selected,existing,()=>generationDeliveryRecoveryHostPort(host).check(scope.signal));
+}
+
+/** Re-read the real sealed path and the held replacement's own streams before
+ * opening its preparation namespace. The caller retains the full path in the
+ * handover continuation intent and supplies that exact choice on every retry. */
+async function inspectHandoverMetadataPreparation(
+ scope:SelectedNativeRecoveryScope,path:SharedServerLogGenerationDeliveryPathRecoveryHost,
+ inventory:DeliveryInventory,database:string,
+){
+ checkSelectedNativeDeliveryScope(scope);
+ const port=generationDeliveryPathRecoveryHostPort(path);
+ const handover=port.handover;
+ if(!handover)throw fail('delivery_preparation_policy');
+ const file=deliveryInventoryFile.call(inventory),identity=deliveryInventoryIdentity.call(inventory);
+ const checkInventory=()=>{
+  port.guard(scope.signal);
+  if(deliveryInventoryFile.call(inventory)!==file||deliveryInventoryIdentity.call(inventory)!==identity){
+   throw fail('delivery_preparation_closed');
+  }
+ };
+ checkInventory();
+ const read=await scope.readHandoverDeliveryReconciliation(path,inventory);
+ requireExecutionOwnStreams(read);
+ const current=await scope.retainCurrent();
+ await compareExecutionCut(current.current,read,current.integrity);
+ await port.check(scope.signal);
+ checkInventory();
+ checkSelectedNativeDeliveryScope(scope);
+ const delivery=handover.current.current;
+ const choice=preparationChoice({format:'breditor/selected-native-delivery-preparation',formatVersion:1,database,server:delivery.current,before:current.current.selection});
+ const integrity={...current.integrity,checkAuthority(){current.integrity.checkAuthority();checkInventory();}};
+ return {choice,current:{...current,integrity},checkInventory,handover,delivery};
+}
+
+export async function previewHandoverMetadataContinuationPreparation(
+ scope:SelectedNativeRecoveryScope,path:SharedServerLogGenerationDeliveryPathRecoveryHost,
+ inventory:DeliveryInventory,database:string,
+){
+ const read=await inspectHandoverMetadataPreparation(scope,path,inventory,database);
+ return Object.freeze({choice:read.choice,current:read.current.current,handover:read.handover,delivery:read.delivery});
+}
+
+export async function prepareHandoverMetadataContinuationDelivery(
+ scope:SelectedNativeRecoveryScope,path:SharedServerLogGenerationDeliveryPathRecoveryHost,
+ inventory:DeliveryInventory,expected:DeliveryPreparationChoice,
+ handover:SharedServerLogGenerationHandoverDeliveryPathRecoveryControlSelection,existing=false,
+):Promise<PreparedSelectedNativeDelivery>{
+ checkSelectedNativeDeliveryScope(scope);
+ const port=generationDeliveryPathRecoveryHostPort(path);
+ if(!port.handover||JSON.stringify(handoverDeliveryPathSelection(handover))!==JSON.stringify(port.handover)){
+  throw fail('delivery_preparation_policy');
+ }
+ const chosen=preparationChoice(expected);
+ const selected=await inspectHandoverMetadataPreparation(scope,path,inventory,chosen.database);
+ return openMetadataContinuationGate(scope,chosen,selected,existing,()=>generationDeliveryPathRecoveryHostPort(path).check(scope.signal));
+}
+
+async function openMetadataContinuationGate(
+ scope:SelectedNativeRecoveryScope,chosen:DeliveryPreparationChoice,
+ selected:Awaited<ReturnType<typeof inspectMetadataContinuationSource>>,existing:boolean,verify:()=>Promise<void>,
+):Promise<PreparedSelectedNativeDelivery>{
+ if(JSON.stringify(chosen)!==JSON.stringify(selected.choice))throw fail();
+ const resources=new DeliveryPreparationResources();
+ const held=ownPreparedGate(scope,resources,selected.checkInventory);
+ try{
+  const prepared=await methods.open.call(resources,chosen,selected.current.integrity,existing?undefined:selected.current.current.file);
+  if(JSON.stringify((await scope.retainCurrent()).current.selection)!==JSON.stringify(chosen.before))throw fail();
+  await verify();
+  held.check();
+  return held.finish(prepared);
+ }catch(error){
+  await held.close();
+  throw error;
+ }
 }

@@ -13,21 +13,30 @@ import type {LocalMetadataRoomBundle} from '../selected_local_metadata_delivery/
 import {fields} from '../physical_room_record_cut/policy.js';
 import {continuationChoice,equal,fail} from './policy.js';
 import type {MetadataContinuationChoice} from './contract.js';
+import {handoverMetadataContinuationChoice} from './handover_choice.js';
+import type {HandoverMetadataContinuationChoice} from './handover_contract.js';
 const tables=['intent'];
-export class MetadataContinuationIntent{
- readonly #factory=recoveryOpeningContext();readonly #locks=navigator.locks;readonly #choice;readonly #integrity;readonly #authority;readonly #cancel;
+const journalKey=Object.freeze({});
+interface IntentWire {
+ readonly format:string;
+ readonly choice:MetadataContinuationChoice|HandoverMetadataContinuationChoice;
+ readChoice(input:unknown):MetadataContinuationChoice|HandoverMetadataContinuationChoice;
+}
+
+class MetadataContinuationJournal{
+ readonly #factory=recoveryOpeningContext();readonly #locks=navigator.locks;readonly #choice;readonly #wire:IntentWire;readonly #integrity;readonly #authority;readonly #cancel;
  #opening:RecoveryOpeningCustody|undefined;#lease:RecoveryLease|undefined;#db:IDBDatabase|undefined;
  #changed=false;#closing=false;#closed=false;#pending=false;#request:IDBOpenDBRequest|undefined;#reject:((e:unknown)=>void)|undefined;#running:Promise<unknown>|undefined;#ending:Promise<void>|undefined;
  // Archive setup invokes its guard immediately. Install cancellation first,
  // and retire its observers if any constructor admission refuses.
- constructor(choice:MetadataContinuationChoice,options:SharedArchiveIntegrityOptions){this.#choice=continuationChoice(choice);this.#authority=participantAuthority(options.checkAuthority);this.#cancel=new PhysicalOperationV3Cancellation(options.signal);try{this.#integrity=prepareArchiveIntegrity({...options,checkAuthority:this.#check});}catch(error){this.#cancel.close();throw error;}Object.freeze(this);}
+ constructor(token:object,choice:MetadataContinuationChoice,wire:IntentWire,options:SharedArchiveIntegrityOptions){if(token!==journalKey)throw fail();this.#choice=choice;this.#wire=wire;this.#authority=participantAuthority(options.checkAuthority);this.#cancel=new PhysicalOperationV3Cancellation(options.signal);try{this.#integrity=prepareArchiveIntegrity({...options,checkAuthority:this.#check});}catch(error){this.#cancel.close();throw error;}Object.freeze(this);}
  #current=()=>{if(this.#closing||this.#closed||this.#changed||globalThis.indexedDB!==this.#factory||globalThis.navigator?.locks!==this.#locks)throw fail('metadata_continuation_closed');if(this.#lease)checkRecoveryLeasesHeld([this.#lease]);try{this.#cancel.check();}catch{throw fail('metadata_continuation_closed');}};
  #check=()=>{this.#current();this.#authority();this.#current();};
  /** Actual finite-reader guard. A copied descriptor supplies no live journal. */
  check():void{this.#check();}
  #run<T>(work:()=>Promise<T>):Promise<T>{if(this.#running)return Promise.reject(fail('metadata_continuation_busy'));const job=Promise.resolve().then(()=>{this.#check();return work();});this.#running=job;return job.finally(()=>{this.#running=undefined;});}
  async #verify(input:unknown):Promise<LocalMetadataRoomBundle>{
-  const r=fields(input,['format','formatVersion','choice','origin']);if(r['format']!=='breditor/selected-local-metadata-continuation-intent'||r['formatVersion']!==1||!equal(continuationChoice(r['choice']),this.#choice))throw fail();const origin=detachLocalMetadataBundle(r['origin']),pins=this.#choice.origin;
+  const r=fields(input,['format','formatVersion','choice','origin']);if(r['format']!==this.#wire.format||r['formatVersion']!==1||!equal(this.#wire.readChoice(r['choice']),this.#wire.choice))throw fail();const origin=detachLocalMetadataBundle(r['origin']),pins=this.#choice.origin;
   if(!equal(origin.parent.prepared.choice,pins.prepared)||!equal(origin.parent.current.selection,pins.current)||origin.parent.delivery.bytes!==pins.review.bytes||origin.parent.delivery.sha256!==pins.review.sha256||origin.metadata.bytes!==pins.metadata.bytes||origin.metadata.sha256!==pins.metadata.sha256)throw fail();
   for(const[file,pin]of[[origin.parent.prepared.file,pins.prepared.before],[origin.parent.current.file,pins.current],[origin.parent.delivery.file,pins.review],[origin.metadata.file,pins.metadata]] as const){if(file.size!==pin.bytes||await this.#integrity.digest(file)!==pin.sha256)throw fail();this.#check();}return origin;
  }
@@ -36,7 +45,7 @@ export class MetadataContinuationIntent{
  /** A missing existing-only journal cannot create a placeholder namespace. */
  reopen(origin:LocalMetadataRoomBundle):Promise<LocalMetadataRoomBundle>{return this.#open(origin,false);}
  #open(origin:LocalMetadataRoomBundle,create:boolean):Promise<LocalMetadataRoomBundle>{return this.#run(async()=>{
-  if(this.#db||this.#opening)throw fail('metadata_continuation_busy');const record={format:'breditor/selected-local-metadata-continuation-intent',formatVersion:1,choice:this.#choice,origin:detachLocalMetadataBundle(origin)};await this.#verify(record);
+  if(this.#db||this.#opening)throw fail('metadata_continuation_busy');const record={format:this.#wire.format,formatVersion:1,choice:this.#wire.choice,origin:detachLocalMetadataBundle(origin)};await this.#verify(record);
   this.#opening=await RecoveryOpeningCustody.reserve(this.#factory,[this.#choice.database],()=>this.#close(),{policy:()=>fail(),busy:()=>fail('metadata_continuation_busy'),storage:()=>fail('metadata_continuation_storage')});this.#check();this.#lease=await RecoveryLease.acquire(JSON.stringify(this.#choice.database));this.#check();
   await new Promise<void>((resolve,reject)=>{
    const q=this.#factory.open(this.#choice.database,1);let created=false,refused=false,reason:unknown,unwatch=()=>{};this.#pending=true;this.#request=q;this.#reject=reject;
@@ -56,4 +65,22 @@ export class MetadataContinuationIntent{
  });}
  close():Promise<void>{this.#closing=true;this.#reject?.(fail('metadata_continuation_closed'));try{this.#request?.transaction?.abort();}catch{}return this.#close().then(()=>this.#opening?.rollback());}
  #close():Promise<void>{if(this.#closed)return Promise.resolve();if(this.#ending)return this.#ending;this.#closing=true;this.#ending=(async()=>{await this.#running?.catch(()=>{});if(this.#pending)throw fail('metadata_continuation_busy');if(this.#db){this.#db.onversionchange=null;this.#db.close();}await this.#lease?.close();this.#db=undefined;this.#lease=undefined;this.#cancel.close();this.#closed=true;})().finally(()=>{this.#ending=undefined;});return this.#ending;}
+}
+
+export class MetadataContinuationIntent extends MetadataContinuationJournal {
+ constructor(choice:MetadataContinuationChoice,options:SharedArchiveIntegrityOptions){
+  const selected=continuationChoice(choice);
+  super(journalKey,selected,{format:'breditor/selected-local-metadata-continuation-intent',choice:selected,readChoice:continuationChoice},options);
+ }
+}
+
+export class HandoverMetadataContinuationIntent extends MetadataContinuationJournal {
+ constructor(choice:HandoverMetadataContinuationChoice,options:SharedArchiveIntegrityOptions){
+  const selected=handoverMetadataContinuationChoice(choice);
+  super(journalKey,selected.continuation,{
+   format:'breditor/selected-local-metadata-continuation-intent-across-handover',
+   choice:selected,
+   readChoice:handoverMetadataContinuationChoice,
+  },options);
+ }
 }

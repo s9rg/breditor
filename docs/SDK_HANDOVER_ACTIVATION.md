@@ -76,6 +76,28 @@ and the controller and intent checks from independent offline package archives.
 
 These fixtures use controlled Node IndexedDB, locks and image decoding. The
 publication association binds the actual Native service and listener to the
-retained choice. Whole-room activation still needs replacement owner promotion
-and metadata continuation before that publication request. Process-crash
+retained choice. The whole-room coordinator still needs to sequence replacement
+owner promotion and metadata continuation before publication. Process-crash
 recovery, the remaining policy combinations and V1 release checks remain open.
+
+## Metadata continuation on a private replacement
+
+`previewHeldRoomMetadataContinuationAcrossHandover` requires the actual promoted
+room target and a live sealed path controller. It replays the original metadata
+journals, checks the target's native streams against the successor's current
+inventory and pins the full path alongside the existing continuation facts.
+The path includes the seal, earlier cuts, successor ancestry and current provider.
+
+`continueHeldRoomMetadataAcrossHandover` takes a fresh decision on that choice
+before retaining the four original files and creating any destination journal.
+An interrupted run can resume from the same intent with fresh inspection and
+approval. An existing intent from the ordinary continuation family is refused.
+The path and target checks apply during approval, durable preparation and the
+replacement journal writes. The continued metadata stays with the private
+replacement until the whole-room owner can publish it.
+
+Run `node --test scripts/handover-metadata-continuation-replacement-native.test.mjs`
+with the built handover fixture. The test activates an actual sealed successor,
+interrupts a destination write and resumes it while the Native listener awaits
+publication. The metadata continuation source and installed runners include this
+workflow alongside the original same-origin workset.
