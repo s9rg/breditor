@@ -6,6 +6,7 @@ mod format;
 mod identity;
 mod migrate_original;
 mod selected_files;
+mod stage_reclamation;
 mod verify_live;
 mod visit_records;
 pub use format::MAX_SERVER_LOG_GENERATION_BACKUP_BYTES;

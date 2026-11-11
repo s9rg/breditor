@@ -377,6 +377,23 @@ role entries. The stricter existing rich owner budgets also apply, including
 1,000 journal entries and bounded causal state. These are explicit rejection
 limits, not a rolling compaction implementation or throughput/SLA promise.
 
+### Recovering exhausted rotation staging
+
+When interrupted rotations fill the staging allowance and the room still admits
+a complete joined backup, retain that backup and its independently recorded
+identity. Open a working copy and call
+`ServerLogGenerationRoomBackup::prepare_offline_stage_reclamation`. It
+creates a new archive identity while preserving every selected WAL, control,
+manifest and raster byte. The original backup still contains the unpublished
+stage bytes and remains the evidence for previously selected cuts.
+
+Use `verify_offline_stage_reclamation` against that retained original before
+selecting the new identity. Restore into an absent inactive directory with
+`ServerLogGenerationRoomRecovery`. The restored room can rotate if its active
+WAL and continuation-file allowance permit it. The source directory is untouched.
+Normal operational handoff, host fencing, client and provider reconciliation,
+and publication checks still apply.
+
 Remaining release work: import-worker isolation, TLS/deployment qualification,
 promotion of the optional Rust/Wasm distribution and a real pilot. The combined
 network demo now integrates the functional editor, server, images and presence.
