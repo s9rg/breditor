@@ -32,7 +32,7 @@ export function retainHandoverPublicationAssociation(host,offer,selected){
   selected,
   publication:offer.publication.selection,
  }));
- const file=join(host.directory,'sdk-sealed-handover-publication-association.json');
+ const file=join(host.directory,'sdk-sealed-handover-publication-association-'+offer.case.sequence+'.json');
  writeFileSync(file,bytes,{flag:'wx',mode:0o600});
  assert.ok(readFileSync(file).equals(bytes));
  const sha256=digest(bytes);

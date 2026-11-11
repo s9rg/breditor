@@ -62,6 +62,12 @@ struct Bootstrap {
     retired_address: SocketAddr,
 }
 
+impl Bootstrap {
+    fn published(&self) -> bool {
+        self.format == "breditor/private-native-sealed-published-process-recovery"
+    }
+}
+
 fn checkpoint_name(name: &str) -> bool {
     name == "native-checkpoint"
         || name.strip_prefix("restart-checkpoint-").is_some_and(|suffix| {
@@ -107,7 +113,7 @@ fn read_backup(path: &Path, digest: &str) -> Result<Arc<ServerLogGenerationRoomB
 
 fn read_bootstrap() -> Result<Bootstrap> {
     let input: Bootstrap = input::read()?;
-    if input.format != "breditor/private-native-sealed-process-recovery"
+    if (!input.published() && input.format != "breditor/private-native-sealed-process-recovery")
         || input.format_version != 1
         || input.root.canonicalize()? != input.root
         || !checkpoint_name(&input.checkpoint_name)
@@ -176,7 +182,11 @@ struct ReopenedTarget {
     alice_token: String,
 }
 
-async fn reopen_target(input: &Bootstrap, selected: &SelectedCheckpoint) -> Result<ReopenedTarget> {
+async fn reopen_target(
+    input: &Bootstrap,
+    selected: &SelectedCheckpoint,
+    retained: &ServerLogGenerationRoomBackup,
+) -> Result<ReopenedTarget> {
     let original = ServerLogGenerationRoomBackup::from_owned_bytes(
         selected.handover.source_backup().to_bytes()?,
     )?;
@@ -203,7 +213,19 @@ async fn reopen_target(input: &Bootstrap, selected: &SelectedCheckpoint) -> Resu
     .await?;
     let protected = input.protected.admit()?;
     let proof = credentials::verify(&host, &accounts.owner, &protected).await?;
-    if proof.identity() != *selected.checkpoint.identity().current() {
+    let current = proof.identity();
+    let checkpoint = selected.checkpoint.identity().current();
+    if input.published() {
+        // The durable restart still proves ancestry and the same owner before
+        // creating a successor of the independently selected checkpoint.
+        if selected.status != Status::Committed
+            || current.origin != checkpoint.origin
+            || current.server == checkpoint.server
+            || current.server != retained.info()?.identity
+        {
+            return Err("reopened sealed operation differs from the retained published cut".into());
+        }
+    } else if current != *checkpoint {
         return Err("reopened sealed operation differs from the selected checkpoint".into());
     }
     Ok(ReopenedTarget {
@@ -266,8 +288,9 @@ fn read_observed_cuts(input: &Bootstrap) -> Result<RetainedCuts> {
 pub(super) async fn start() -> Result<State> {
     let input = read_bootstrap()?;
     let selected = open_checkpoint(&input)?;
+    let retained = read_observed_cuts(&input)?;
     let ReopenedTarget { original, host, protected, proof, owner_token, alice_token } =
-        Box::pin(reopen_target(&input, &selected)).await?;
+        Box::pin(reopen_target(&input, &selected, &retained.previous)).await?;
     let checkpoint = if selected.status == Status::Committed {
         Arc::new(
             host.prepare_durable_native_restart(
@@ -286,7 +309,7 @@ pub(super) async fn start() -> Result<State> {
         selected.checkpoint
     };
     let RetainedCuts { spec, fixture, successor, earlier, initial_snapshot, previous, older } =
-        read_observed_cuts(&input)?;
+        retained;
     let (operators, token) = authentication::operator()?;
     let (router, control) = prepare_durable_native_activation_control(
         host.clone(),
