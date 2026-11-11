@@ -241,6 +241,15 @@ history and raster bytes, then returns the surviving archive and registration
 inventory and releases the reopened locks. Retain that observed selection
 before reopening with all protected registrations for explicit activation.
 
+When the active log ends inside a frame, use `inspect_sealed_native_tail`.
+It applies the same host authentication, deployment epoch, retained archive
+floor and original operational ownership checks. It returns the complete
+surviving archive, the registration inventory at that cut, and the original
+incomplete suffix with its length and SHA-256. Retain these separately from
+the operating directory. Inspection leaves the active log and seal in place.
+The archive can restore into a separate location. The ordinary restart
+continues to require a complete active log before it can admit the room.
+
 If the source seal, checkpoint and authority are already open, use
 `open_sealed_native_restart_host` to reopen the existing operational target
 and verify the retained selection. It opens only a committed

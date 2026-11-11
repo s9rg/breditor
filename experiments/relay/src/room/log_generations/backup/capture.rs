@@ -24,10 +24,10 @@ impl Room {
     pub(in crate::room::log_generations) fn export_inspected_log_generation_prefix(
         &mut self,
         principal: &str,
-    ) -> Result<(ServerLogGenerationBackup, u64, [u8; 32])> {
+    ) -> Result<(ServerLogGenerationBackup, Vec<u8>)> {
         self.recovery_inventory_owner(principal)?;
-        let (files, tail_bytes, tail_sha256) = self.log.capture_inspected_generation_prefix()?;
-        Ok((self.generation_backup_from_files(files)?, tail_bytes, tail_sha256))
+        let (files, suffix) = self.log.capture_inspected_generation_prefix()?;
+        Ok((self.generation_backup_from_files(files)?, suffix))
     }
 
     fn generation_backup_from_files(

@@ -17,6 +17,12 @@ pub(super) struct Context {
     pub committed: bool,
 }
 impl Context {
+    #[cfg(feature = "server")]
+    pub(super) fn activation_owner_digest(&self) -> Result<[u8; 32]> {
+        use sha2::{Digest, Sha256};
+        Ok(Sha256::digest(serde_json::to_vec(&self.marker)?).into())
+    }
+
     pub fn read(directory: &GenerationDirectory, recovery: &RecoveryMarker) -> Result<Self> {
         directory.guard()?;
         let path = directory.path.join(".operation-intent.json");
