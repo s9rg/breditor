@@ -246,3 +246,9 @@ node scripts/check-handover-native-activation-installed.mjs --sealed-process
 npm run test:collaboration:sealed-joint-process-recovery
 npm run test:collaboration:sealed-joint-process-recovery:installed
 ```
+
+Both candidate profiles run the checkpoint cases and the full source and
+installed restart workflows before the readiness audit. The installed workflow
+requires a fresh report from the same source tree and pins the relay executable
+used by the consumer. The report records the distinct process IDs, the matched
+publication plan and the fourteen delivered lanes.
