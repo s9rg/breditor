@@ -1,6 +1,8 @@
 import {ColdRoomExecutionAttempt as Cold} from '../packages/breditor-collaboration/dist/cold_room_execution/attempt.js';
 import {withColdRoomExecutionMetadataTarget} from '../packages/breditor-collaboration/dist/native_room_execution_run/attempt.js';
-import {withOriginalMetadataJournals} from '../packages/breditor-collaboration/dist/selected_local_metadata_continuation/original_journals.js';
+import {withOriginalMetadataJournals,checkHeldOriginalMetadataJournals} from '../packages/breditor-collaboration/dist/selected_local_metadata_continuation/original_journals.js';
+import {NativeReconstructionWaits} from '../packages/breditor-collaboration/dist/selected_native_reconstruction/read_waits.js';
+import {decideColdActivation} from '../packages/breditor-collaboration/dist/native_room_joint_activation/cold_variant.js';
 import {issueVerifiedMetadataContinuationFacts} from '../packages/breditor-collaboration/dist/selected_local_metadata_continuation/native_origin.js';
 import {LocalReviewDeliveryStore} from '../packages/breditor-collaboration/dist/selected_local_review_delivery/store.js';
 import {LocalMetadataDeliveryStore} from '../packages/breditor-collaboration/dist/selected_local_metadata_delivery/store.js';
@@ -71,8 +73,22 @@ test('cold target verifies actual original journals and rejects advanced sources
    for(const [name,closedCode]of [[metadataName,'local_metadata_delivery_closed'],[reviewName,'local_review_delivery_closed']]){
     const originalRaw=await localReviewRaw(name);let reflected=0;
     try{
-     await assert.rejects(withOriginalMetadataJournals(scope,witness,bundle,async inspection=>{
-      await new Promise((resolve,reject)=>{const q=indexedDB.deleteDatabase(name);q.onsuccess=resolve;q.onerror=()=>reject(q.error);q.onblocked=()=>reject(Error('Actual original journal did not close for versionchange'));});
+     await assert.rejects(withOriginalMetadataJournals(scope,witness,bundle,async(inspection,_observation,revocations)=>{
+      const waits=new NativeReconstructionWaits(()=>checkHeldOriginalMetadataJournals(scope,inspection),[scope.signal,...revocations]);
+      const late=Promise.withResolvers();
+      let invoked=0,deadline;
+      const declined=assert.rejects(decideColdActivation(undefined,()=>{
+       invoked++;
+       return late.promise;
+      },waits),{code:'asset_adoption_aborted'});
+      try{
+       assert.equal(invoked,1);
+       await new Promise((resolve,reject)=>{const q=indexedDB.deleteDatabase(name);q.onsuccess=resolve;q.onerror=()=>reject(q.error);q.onblocked=()=>reject(Error('Actual original journal did not close for versionchange'));});
+       assert.equal(revocations.filter(signal=>signal.aborted).length,1);
+       await Promise.race([declined,new Promise((_resolve,reject)=>{
+        deadline=setTimeout(()=>reject(Error('Original journal revocation did not cancel approval')),2000);
+       })]);
+      }finally{clearTimeout(deadline);late.resolve(true);waits.close();await declined;}
       assert.equal((await indexedDB.databases()).some(row=>row.name===name),false);
       const poison=new Proxy({},{ownKeys(){reflected++;throw Error('Invalidated journal reflected a new continuation choice');}});
       assert.throws(()=>issueVerifiedMetadataContinuationFacts(inspection,poison,poison),error=>error.code===closedCode);assert.equal(reflected,0);
@@ -83,6 +99,7 @@ test('cold target verifies actual original journals and rejects advanced sources
     assert.equal(reflected,0);invalidatedOriginals++;
    }
    assert.equal(invalidatedOriginals,2);scope.check();
+   console.log('COLD_ORIGINAL_JOURNALS_STEP either-journal-revocation-ended-pending-approval');
   });
   owner=cold.takeOwner();assert.equal(owner.clients.length,7);for(const row of owner.clients){const previous=prepared.f.clients.find(old=>old.id===row.id);assert.deepEqual(nativePair(row.core),previous.pair);const document=row.core.documentJson(),review=row.core.reviewSnapshot().view;assert.equal(row.core.undo(),true);assert.equal(row.core.redo(),true);assert.equal(row.core.documentJson(),document);assert.equal(row.core.undoReview().kind,'committed');assert.equal(row.core.redoReview().kind,'committed');assert.deepEqual(row.core.reviewSnapshot().view,review);}await assertSourceBytesUnchanged(oldBytes);
   saveEvidence(f.host.directory+'/cold-original-journals.json',{actualFamilies:7,actualLocalMetadataLanes:3,actualInterruptedWarmExecution:true,actualFreshColdTarget:true,originalFactsAndPendingPreserved:true,originalNamespacesUnchanged:true,expiredInspectionRefused:true,advancedOriginalRefused:true,exactFutureDocumentAndCommentHistories:true,observations,originalInvalidatedJournalsRefused:invalidatedOriginals,invalidatedJournalInputReflection:0,files,wholeRoomActivated:false});console.log('COLD_ORIGINAL_JOURNALS_STEP original-facts-and-future-histories-preserved');

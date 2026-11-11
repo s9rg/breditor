@@ -14,14 +14,20 @@ export class LocalMetadataDeliveryStore{
  readonly #factory=recoveryOpeningContext();readonly #locks=navigator.locks;readonly #checkAuthority;readonly #choice;
  #opening:RecoveryOpeningCustody|undefined;#lease:RecoveryLease|undefined;#db:IDBDatabase|undefined;
  #committed:LocalMetadataDeliverySnapshot|undefined;
- #changed=false;#closing=false;#closed=false;#pending=false;#request:IDBOpenDBRequest|undefined;#reject:((reason:unknown)=>void)|undefined;#running:Promise<unknown>|undefined;#cleanup:Promise<void>|undefined;
+ readonly #revoked=new AbortController();
+ #closing=false;#closed=false;#pending=false;#request:IDBOpenDBRequest|undefined;#reject:((reason:unknown)=>void)|undefined;#running:Promise<unknown>|undefined;#cleanup:Promise<void>|undefined;
  readonly #witnesses=new WeakMap<LocalMetadataDeliverySnapshot,readonly string[]>();
  constructor(choice:LocalMetadataDeliveryChoice,check:()=>void){this.#choice=choice;this.#checkAuthority=check;Object.freeze(this);}
- checkCurrent=()=>{if(this.#closing||this.#closed||this.#changed||globalThis.indexedDB!==this.#factory||globalThis.navigator?.locks!==this.#locks)throw fail('local_metadata_delivery_closed');if(this.#lease)checkRecoveryLeasesHeld([this.#lease]);};
+ get revoked():AbortSignal{return this.#revoked.signal;}
+ checkCurrent=()=>{if(this.#closing||this.#closed||this.#revoked.signal.aborted||globalThis.indexedDB!==this.#factory||globalThis.navigator?.locks!==this.#locks)throw fail('local_metadata_delivery_closed');if(this.#lease)checkRecoveryLeasesHeld([this.#lease]);};
  #check=()=>{this.checkCurrent();this.#checkAuthority();this.checkCurrent();};
  #run<T>(work:()=>Promise<T>):Promise<T>{this.checkCurrent();if(this.#running)throw fail('local_metadata_delivery_busy');const job=Promise.resolve().then(work);this.#running=job;return job.finally(()=>{this.#running=undefined;});}
  #schema(db:IDBDatabase){if(db.version!==1||JSON.stringify([...db.objectStoreNames])!==JSON.stringify(tables))throw fail();const tx=db.transaction(tables,'readonly'),s=tx.objectStore('state');if(s.keyPath!==null||s.autoIncrement||s.indexNames.length)throw fail();}
- #attach(db:IDBDatabase){this.#db=db;db.onversionchange=()=>{this.#changed=true;db.close();};}
+ #attach(db:IDBDatabase){
+  this.#db=db;
+  db.onclose=()=>this.#revoked.abort();
+  db.onversionchange=()=>{this.#revoked.abort();db.close();};
+ }
  open(initial?:LocalMetadataDeliveryState):Promise<LocalMetadataDeliverySnapshot>{return this.#run(async()=>{this.#check();if(this.#opening||this.#db)throw fail('local_metadata_delivery_busy');const initialText=initial===undefined?undefined:metadataJson(initial),initialSnapshot=initial===undefined?undefined:await metadataSnapshot({before:initial,current:initial},this.#choice);
   this.#opening=await RecoveryOpeningCustody.reserve(this.#factory,[this.#choice.database],()=>this.#close(),{policy:()=>fail('local_metadata_delivery_policy'),busy:()=>fail('local_metadata_delivery_busy'),storage:()=>fail('local_metadata_delivery_storage')});this.#check();this.#lease=await RecoveryLease.acquire(JSON.stringify(this.#choice.database));this.#check();
   await new Promise<void>((resolve,reject)=>{const q=this.#factory.open(this.#choice.database,1);let created=false,refused=false,reason:unknown;this.#pending=true;this.#request=q;this.#reject=reject;const abort=(error:unknown)=>{refused=true;reason=error;try{q.transaction?.abort();}catch{}};const done=()=>{this.#pending=false;this.#request=undefined;this.#reject=undefined;};
@@ -38,6 +44,6 @@ export class LocalMetadataDeliveryStore{
  /** Last known COMMITTED data remains observable after authority loss. This
   * is never writer permission, pending success or a substitute for fresh read. */
  committed():LocalMetadataDeliverySnapshot|undefined{return this.#committed===undefined?undefined:structuredClone(this.#committed);}
- close():Promise<void>{this.#closing=true;if(this.#pending){this.#reject?.(fail('local_metadata_delivery_closed'));try{this.#request?.transaction?.abort();}catch{}}return this.#opening?this.#opening.rollback():this.#close();}
- #close():Promise<void>{if(this.#closed)return Promise.resolve();if(this.#cleanup)return this.#cleanup;this.#closing=true;this.#cleanup=(async()=>{await this.#running?.catch(()=>{});if(this.#pending)throw fail('local_metadata_delivery_busy');if(this.#db){this.#db.onversionchange=null;this.#db.close();}await this.#lease?.close();this.#db=undefined;this.#lease=undefined;this.#closed=true;})().finally(()=>{this.#cleanup=undefined;});return this.#cleanup;}
+ close():Promise<void>{this.#closing=true;this.#revoked.abort();if(this.#pending){this.#reject?.(fail('local_metadata_delivery_closed'));try{this.#request?.transaction?.abort();}catch{}}return this.#opening?this.#opening.rollback():this.#close();}
+ #close():Promise<void>{if(this.#closed)return Promise.resolve();if(this.#cleanup)return this.#cleanup;this.#closing=true;this.#revoked.abort();this.#cleanup=(async()=>{await this.#running?.catch(()=>{});if(this.#pending)throw fail('local_metadata_delivery_busy');if(this.#db){this.#db.onclose=null;this.#db.onversionchange=null;this.#db.close();}await this.#lease?.close();this.#db=undefined;this.#lease=undefined;this.#closed=true;})().finally(()=>{this.#cleanup=undefined;});return this.#cleanup;}
 }

@@ -170,7 +170,9 @@ export class ColdJointRoomActivationAttempt<F extends ColdActivationFamily=ColdO
  continueMetadata(provided:F['metadata'],resume=false):Promise<F['continued']>{return this.#run(async()=>{
   if(this.#restart||!this.#promoted||!this.#native||this.#published)throw fail('joint_activation_state');
   const result=await this.#target(async(scope,origin,witness)=>{
-   const target=this.#variant.target(scope,witness,origin.original.bundle,this.#choice,provided,false);
+   const target=this.#variant.target(scope,witness,origin.original.bundle,this.#choice,provided,false,{
+    check:origin.check,signals:origin.revocations,
+   });
    try{const expected=await target.preview();origin.check();return await target.run(expected,resume);}
    finally{target.close();}
   });this.#check();this.#continued=result;return result;
