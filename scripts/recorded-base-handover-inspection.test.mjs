@@ -16,6 +16,14 @@ function fixture(){
  return {capture:{handover},activation,control:{kind:'native-continuation',selection:delivery},catalog:{origin:{identity:earlier},current:{server:{identity:earlier}}},ordinary:{origin:{identity:next},current:{server:{identity:next}}},next};
 }
 async function run(visit){const f=fixture();return using(f.capture,f.activation,c=>visit(f,c));}
+function restarted(f){
+ const live=structuredClone(f.capture.handover);
+ live.current.instance='3'.repeat(64);
+ live.current.current.instance='4'.repeat(64);
+ live.current.current.current.instance='5'.repeat(64);
+ live.path.successor.ancestors.push(f.next);
+ return live;
+}
 test('ordinary base inspection preserves its exact original restore-origin rule',()=>run(async(f)=>{
  assert.deepEqual(admit(f.control,f.ordinary),f.control.selection.current);assert.throws(()=>admit(f.control,f.catalog));
 }));
@@ -33,6 +41,33 @@ test('handover admission refuses a changed provider instance or an omitted catal
   assert.throws(()=>admit(f.control,{...f.catalog,current:{server:{identity:absent}}},proof));
  });
 }));
+test('fresh sealed controls recheck the original recorded provider without rewriting its selection',async()=>{
+ const f=fixture(),live=restarted(f),recorded=f.capture.handover;
+ await using({handover:live},f.activation,async c=>{
+  await held(c.path,undefined,()=>{},async proof=>assert.throws(()=>admit(f.control,f.catalog,proof)));
+  await held(c.path,undefined,()=>{},async proof=>{
+   assert.deepEqual(admit(f.control,f.catalog,proof),f.control.selection.current);
+   assert.throws(()=>admit({...f.control,selection:live.current.current},f.catalog,proof));
+  },recorded);
+  assert.equal(c.requests.length,0);
+ });
+});
+test('a new controller cannot substitute a different seal, prior cut or recorded continuation',async()=>{
+ const f=fixture(),recorded=f.capture.handover;
+ const changes=[
+  live=>{live.path.seal.owner='6'.repeat(64);},
+  live=>{live.path.successor.ancestors=live.path.successor.ancestors.map(cut=>({...cut,archiveSha256:Array(32).fill(6)}));},
+  live=>{live.current.current.continuation.previous={...f.next,archiveSha256:Array(32).fill(6)};},
+ ];
+ for(const change of changes){
+  const live=restarted(f);change(live);
+  await using({handover:live},f.activation,async c=>{
+   let visits=0;
+   await assert.rejects(held(c.path,undefined,()=>{},async()=>{visits++;},recorded),{code:'metadata_packet_retention_state'});
+   assert.equal(visits,0);
+  });
+ }
+});
 test('ending a nested controller revokes the same-visit handover admission',()=>run(async(f,c)=>{
  await assert.rejects(held(c.path,undefined,()=>{},async proof=>{c.close('native');assert.throws(()=>admit(f.control,f.catalog,proof));}));assert.equal(c.requests.length,0);
 }));

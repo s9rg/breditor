@@ -3,7 +3,7 @@
 import {fields} from '../physical_room_record_cut/policy.js';
 import {assertRoomActivationCapture} from '../room_native_activation_intent/capture_binding.js';
 import {handoverDeliveryPathSelection} from '../generation_delivery_path_control/handover.js';
-import {containsOrderedDeliveryCuts} from '../generation_delivery_path_control/retained_cuts.js';
+import {continuesSealedDeliveryPath} from '../generation_delivery_path_control/retained_cuts.js';
 import {detachResolvedServerPacketRecoveryBundle} from '../server_packet_source_resolution/bundle.js';
 import {fail} from '../room_native_activation_intent/policy.js';
 import type {SharedDurableNativeActivationSelection} from '../native_activation_control/contract.js';
@@ -12,9 +12,7 @@ import type {HandoverReconciledServerPacketRecoveryCapture as Capture} from '../
 import type {ReconciledServerPacketRecoveryCapture} from '../reconciled_server_packet_recovery/contract.js';
 const same=(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b);
 export function assertHandoverPathContinuation(previous:Handover,current:Handover):void{
- if(!same(previous.path.seal,current.path.seal)||!same(previous.path.earlier,current.path.earlier)||
-  !same(previous.path.successor.current,current.path.successor.current)||
-  !containsOrderedDeliveryCuts(current.path.successor.ancestors,previous.path.successor.ancestors))throw fail('activation_intent_stale');
+ if(!continuesSealedDeliveryPath(previous.path,current.path))throw fail('activation_intent_stale');
 }
 export function assertHandoverActivationCapture(activation:SharedDurableNativeActivationSelection,handover:Handover,capture:Capture):void{
  const outer=fields(capture,['format','formatVersion','handover','capture']);

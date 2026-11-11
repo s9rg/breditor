@@ -3,19 +3,37 @@
 import {fields} from '../physical_room_record_cut/policy.js';
 import {generationControlSelection} from '../generation_recovery_control/identity.js';
 import {deliveryControlSelection} from '../generation_delivery_control/identity.js';
+import type {SharedServerLogGenerationDeliveryRecoveryControlSelection} from '../generation_delivery_control/contract.js';
 import {generationDeliveryPathRecoveryHostPort,type SharedServerLogGenerationDeliveryPathRecoveryHost} from '../generation_delivery_path_control/host.js';
-import {containsOrderedDeliveryCuts,handoverDeliveryCuts} from '../generation_delivery_path_control/retained_cuts.js';
+import {handoverDeliveryPathSelection,type SharedServerLogGenerationHandoverDeliveryPathRecoveryControlSelection} from '../generation_delivery_path_control/handover.js';
+import {containsOrderedDeliveryCuts,continuesSealedDeliveryPath,handoverDeliveryCuts} from '../generation_delivery_path_control/retained_cuts.js';
 import type {PhysicalRoomCatalogV3Metadata} from '../physical_room_catalog_v3/contract.js';
 import {fail,same} from '../metadata_packet_retention/policy.js';
 declare const brand:unique symbol;
 export interface RecordedBaseHandoverInspection {readonly [brand]:true}
-const visits=new WeakMap<RecordedBaseHandoverInspection,{port:ReturnType<typeof generationDeliveryPathRecoveryHostPort>;check:()=>void}>();
+const visits=new WeakMap<RecordedBaseHandoverInspection,{
+ path:SharedServerLogGenerationHandoverDeliveryPathRecoveryControlSelection['path'];
+ recorded:SharedServerLogGenerationDeliveryRecoveryControlSelection;
+ check:()=>void;
+}>();
 /** The proof expires with this finite visit. Detached path JSON and copied
- * proofs cannot admit a changed restore origin or grant a provider read. */
-export async function withRecordedBaseHandoverInspection<T>(host:SharedServerLogGenerationDeliveryPathRecoveryHost,signal:AbortSignal|undefined,check:()=>void,visit:(proof:RecordedBaseHandoverInspection)=>Promise<T>):Promise<T>{
- const port=generationDeliveryPathRecoveryHostPort(host);if(!port.handover)throw fail();
- const guard=()=>{check();port.guard(signal);check();};guard();await port.check(signal);guard();
- const proof=Object.freeze({}) as RecordedBaseHandoverInspection;visits.set(proof,{port,check:guard});
+ * proofs cannot admit a changed restore origin or grant a provider read.
+ * A retained capture can name its original controller when a fresh process
+ * proves the same sealed lineage and exact delivery continuation. */
+export async function withRecordedBaseHandoverInspection<T>(
+ host:SharedServerLogGenerationDeliveryPathRecoveryHost,
+ signal:AbortSignal|undefined,
+ check:()=>void,
+ visit:(proof:RecordedBaseHandoverInspection)=>Promise<T>,
+ recordedPath?:SharedServerLogGenerationHandoverDeliveryPathRecoveryControlSelection,
+):Promise<T>{
+ const port=generationDeliveryPathRecoveryHostPort(host),live=port.handover;if(!live)throw fail();
+ const guard=()=>{check();port.guard(signal);check();};guard();
+ const recorded=recordedPath===undefined?live:handoverDeliveryPathSelection(recordedPath);
+ if(!continuesSealedDeliveryPath(recorded.path,live.path)||!same(recorded.current.current.continuation,live.current.current.continuation))throw fail();
+ await port.check(signal);guard();
+ const proof=Object.freeze({}) as RecordedBaseHandoverInspection;
+ visits.set(proof,{path:live.path,recorded:recorded.current.current,check:guard});
  try{const result=await visit(proof);guard();await port.check(signal);guard();return result;}
  finally{visits.delete(proof);}
 }
@@ -33,9 +51,9 @@ export function recordedBaseProviderSelection(input:unknown,catalog:PhysicalRoom
  const selected=deliveryControlSelection(control['selection']);
  if(handover){
   const held=visits.get(handover);if(!held)throw fail();held.check();
-  const selectedPath=held.port.handover;if(!selectedPath||!same(selected,selectedPath.current.current))throw fail();
+  if(!same(selected,held.recorded))throw fail();
   const origin=catalog.origin.identity,current=catalog.current.server.identity;
-  if(!containsOrderedDeliveryCuts(handoverDeliveryCuts(selectedPath.path),same(origin,current)?[origin]:[origin,current]))throw fail();
+  if(!containsOrderedDeliveryCuts(handoverDeliveryCuts(held.path),same(origin,current)?[origin]:[origin,current]))throw fail();
   held.check();
  }else if(!same(selected.continuation.previous,catalog.current.server.identity)||!same(selected.continuation.current.origin,catalog.origin.identity))throw fail();
  return selected.current;

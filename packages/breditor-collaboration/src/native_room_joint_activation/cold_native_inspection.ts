@@ -41,6 +41,6 @@ export async function inspectColdJointHandoverCapture(
  scope:SelectedNativeRecoveryScope,origin:ColdJointHandoverOriginWork,input:Pick<CommitHandoverRoomNativeActivationInput,'inspection'|'limits'|'path'>,signal:AbortSignal,
 ):Promise<void>{
  checkColdJointActivationOrigin(origin,scope);
- const bundle=origin.retained.capture.capture.recovery.bundle;
- await inspect(scope,origin,bundle,signal,(work,actual,snapshot)=>work.inspectResolvedServerPacketRecoveryAcrossHandover(bundle,actual,snapshot,input.inspection,input.path,input.limits?{limits:input.limits}:{}));
+ const {handover,capture}=origin.retained.capture,bundle=capture.recovery.bundle;
+ await inspect(scope,origin,bundle,signal,(work,actual,snapshot)=>work.inspectResolvedServerPacketRecoveryAcrossHandover(bundle,actual,snapshot,input.inspection,input.path,input.limits?{limits:input.limits}:{},handover));
 }

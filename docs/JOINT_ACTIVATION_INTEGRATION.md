@@ -223,6 +223,12 @@ authority. The confirmed restart can continue metadata and publish. The SDK
 keeps the replacement owner private until it verifies the matching publication
 receipt.
 
+Restart inspection keeps the recorded provider selection in the saved capture.
+It checks the fresh controller against the exact saved delivery continuation
+and the sealed lineage, including the earlier cuts in order. That live proof
+allows the original provider receipt and bytes to be checked with newly
+authenticated controls. A different seal, cut, or continuation fails admission.
+
 The Native process fixture exercises both prepared and committed checkpoints.
 It exits the old process, reopens the pinned checkpoint and archives, verifies
 fourteen protected streams and serves fresh controls on the original listener.
