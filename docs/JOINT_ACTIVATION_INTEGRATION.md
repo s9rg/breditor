@@ -240,9 +240,11 @@ the actual operational owner, the complete ancestor archive, the sealed source
 and the exact authority epoch. Missing registration records return Pending.
 
 After verification, a committed restart prepares a new child checkpoint with
-`prepare_durable_native_restart`. The host can then provision fresh activation
-and publication controls. These operations recheck current authority and
-custody at their own boundaries.
+`prepare_durable_native_restart`. The selected deployment epoch is held during
+the durable write and readback. If another claim advanced the epoch during
+capture, preparation refuses before creating the checkpoint directory. After
+the write releases the epoch, the host can provision fresh activation and
+publication controls. Each operation rechecks current authority and custody.
 
 The cold SDK retains the original activation intent and prepares a separate
 restart intent for the selected authenticated lineage. Its publication journal

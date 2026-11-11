@@ -342,6 +342,7 @@ fn roundtrip(id: &Identity) -> TestResult<Identity> {
     Ok(serde_json::from_slice(&serde_json::to_vec(id)?)?)
 }
 
+mod checkpoint_epoch;
 #[path = "durable_native_activation/faults.rs"]
 mod faults;
 #[path = "durable_native_activation/process.rs"]
