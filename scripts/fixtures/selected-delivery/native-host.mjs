@@ -12,18 +12,23 @@ import {handoverDeliveryPathSelection} from '../../../packages/breditor-collabor
 import {generationControlSelection} from '../../../packages/breditor-collaboration/dist/generation_recovery_control/identity.js';
 const processCapsules=new WeakMap();
 const hex=value=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
-export async function selectedDeliveryNativeHost(root,{language=3,standard=true,atomic=true,suggestionGrants=false,nativeActivation=false,nativeHandoverActivation=false,nativeHandoverPublication=false,nativePublication=false,inactiveRasters=false,processRecovery=false,jointProcessRecovery=false,resume}={}){
- root=realpathSync(root);const resumed=resume?processCapsules.get(resume):undefined;if(resume&&(!resumed||!resumed.crashed||resumed.used||resumed.root!==root))throw Error('Actual terminated process and independently retained private bootstrap required');if(resumed){assert.equal(resumed.jointProcessRecovery??false,jointProcessRecovery);resumed.used=true;}
+const assetDigest=bytes=>'sha256:'+createHash('sha256').update(bytes).digest('hex');
+export async function selectedDeliveryNativeHost(root,{language=3,standard=true,atomic=true,suggestionGrants=false,nativeActivation=false,nativeHandoverActivation=false,nativeHandoverPublication=false,nativePublication=false,inactiveRasters=false,processRecovery=false,jointProcessRecovery=false,sealedProcessRecovery=false,resume}={}){
+ root=realpathSync(root);const resumed=resume?processCapsules.get(resume):undefined;if(resume&&(!resumed||!resumed.crashed||resumed.used||resumed.root!==root))throw Error('Actual terminated process and independently retained private bootstrap required');if(resumed){assert.equal(resumed.jointProcessRecovery??false,jointProcessRecovery);assert.equal(resumed.sealedProcessRecovery??false,sealedProcessRecovery);resumed.used=true;}
  const directory=resumed?.directory??mkdtempSync(join(root,'target/selected-delivery-native-'));
  assert.equal(realpathSync(directory),directory);if(!resumed)for(const[name,bytes]of[['seed-a.png',pixel],['seed-b.png',secondPixel]])writeFileSync(join(directory,name),bytes,{mode:0o600,flag:'wx'});
  if(nativeHandoverPublication&&!nativeHandoverActivation)throw Error('Select the sealed handover fixture for publication');
- if(nativeHandoverActivation&&(!nativeActivation||nativePublication||inactiveRasters||processRecovery||jointProcessRecovery||resume))throw Error('Separate inactive handover activation fixture mode required');
+ if(sealedProcessRecovery&&!nativeHandoverPublication)throw Error('Sealed process recovery requires the actual handover publication fixture');
+ if(nativeHandoverActivation&&(!nativeActivation||nativePublication||inactiveRasters||processRecovery||jointProcessRecovery||resume&&!sealedProcessRecovery))throw Error('Separate inactive handover activation fixture mode required');
  if(jointProcessRecovery&&(!nativePublication||!nativeActivation||inactiveRasters||processRecovery))throw Error('Separate joint process recovery fixture mode required');
  if(nativePublication&&(!nativeActivation||inactiveRasters||processRecovery))throw Error('Separate Native publication fixture mode required');
  if(inactiveRasters&&!nativeActivation)throw Error('Inactive recovery requires the actual Native activation fixture');
  if(processRecovery&&(!inactiveRasters||!nativeActivation))throw Error('Process recovery requires actual inactive Native controls');
- const binary=nativeHandoverActivation?join(root,'target/handover-activation-native/release/examples/native_handover_activation_sdk_functional'):jointProcessRecovery?join(root,'target/native-joint-process-native/debug/examples/native_joint_process_recovery_functional'):nativePublication?join(root,'target/joint-publication-native/debug/examples/native_publication_sdk_functional'):processRecovery?join(root,'target/reconciled-packet-native/release/examples/native_process_recovery_functional'):inactiveRasters?join(root,'target/reconciled-packet-native/release/examples/inactive_recovery_raster_functional'):nativeActivation?join(root,'target/reconciled-packet-native/release/examples/native_activation_sdk_functional'):join(root,'target/owned-history-relay-native/release/examples',suggestionGrants?'selected_suggestion_delivery_functional':'selected_delivery_functional'),child=spawn(binary,resumed?[jointProcessRecovery?'--reopen-joint':'--reopen']:[directory,String(language),standard?'1':'0',atomic?'1':'0',...(suggestionGrants?['suggestion-grants-v1']:[])],{cwd:root,stdio:['pipe','pipe','pipe']});
- let handoverSequence;
+ const binary=nativeHandoverActivation?join(root,'target/handover-activation-native/release/examples/native_handover_activation_sdk_functional'):jointProcessRecovery?join(root,'target/native-joint-process-native/debug/examples/native_joint_process_recovery_functional'):nativePublication?join(root,'target/joint-publication-native/debug/examples/native_publication_sdk_functional'):processRecovery?join(root,'target/reconciled-packet-native/release/examples/native_process_recovery_functional'):inactiveRasters?join(root,'target/reconciled-packet-native/release/examples/inactive_recovery_raster_functional'):nativeActivation?join(root,'target/reconciled-packet-native/release/examples/native_activation_sdk_functional'):join(root,'target/owned-history-relay-native/release/examples',suggestionGrants?'selected_suggestion_delivery_functional':'selected_delivery_functional');
+ const args=resumed?[sealedProcessRecovery?'--reopen-sealed':jointProcessRecovery?'--reopen-joint':'--reopen']
+  :[directory,String(language),standard?'1':'0',atomic?'1':'0',...(suggestionGrants?['suggestion-grants-v1']:[])];
+ const child=spawn(binary,args,{cwd:root,stdio:['pipe','pipe','pipe']});
+ let handoverSequence=resumed?.bootstrap.handoverSequence;
  let buffer='',errors='',sequence=resumed?.bootstrap.nextSequence??0,closed=false,stopping,initialResolve,initialReject,initialOffer,handoverOffer;
  const observed=new WeakMap(),cuts=new Map(),pending=new Map(),operators=new Map(),secrets=new Set(),offers=new WeakMap(),publicationTokens=new WeakMap(),snapshots=resumed?[...resumed.snapshots]:[],initial=new Promise((a,b)=>{initialResolve=a;initialReject=b;});
  for(const item of snapshots){const pin=structuredClone(item);cuts.set(item.sequence,pin);observed.set(item,pin);}
@@ -62,7 +67,8 @@ export async function selectedDeliveryNativeHost(root,{language=3,standard=true,
    assert.equal(handover.search+handover.hash+handover.username+handover.password,'');
    handoverDeliveryPathSelection(selected.handoverSelection);
   }
-  const expectedPrevious=command?.previous??handoverSequence??(resumed&&message.request===resumed.bootstrap.nextSequence?resumed.bootstrap.previousSequence:0);
+  const reopened=resumed&&message.request===resumed.bootstrap.nextSequence;
+  const expectedPrevious=command?.previous??(reopened?resumed.bootstrap.previousSequence:handoverSequence??0);
   if(selected.previousSequence!==expectedPrevious||selected.sequence!==0&&selected.sequence!==handoverSequence&&!cuts.has(expectedPrevious))throw Error('Actual predecessor selection differs');
   secrets.add(message.privateOperatorToken);operators.set(selected.path,message.privateOperatorToken);
   const publicCase=Object.freeze({path:selected.path,selection:selected.selection,sequence:selected.sequence,previousSequence:selected.previousSequence,clientEndpoint:selected.clientEndpoint,retiredEndpoint:selected.retiredEndpoint,endpoint:selected.endpoint,deliveryEndpoint:selected.deliveryEndpoint,deliverySelection:selected.deliverySelection,deliveryPathSelection:selected.deliveryPathSelection,deliveryPathEndpoint:selected.deliveryPathEndpoint,...(selected.handoverSelection?{handoverSelection:selected.handoverSelection,handoverEndpoint:selected.handoverEndpoint}:{}),nativeProtectedStreamsVerified:true,nativeProviderVerified:true,nativeDeliveryContinuationVerified:true,nativeDeliveryPathVerified:true});verifyFiles(publicCase);snapshots.push(publicCase);const pinned=structuredClone(publicCase);observed.set(publicCase,pinned);cuts.set(publicCase.sequence,pinned);
@@ -95,7 +101,11 @@ export async function selectedDeliveryNativeHost(root,{language=3,standard=true,
  child.stdout.on('data',bytes=>{
   buffer+=bytes.toString('utf8');if(Buffer.byteLength(buffer)>1024*1024){const error=Error('Native private IPC response budget');initialReject(error);for(const row of pending.values())row.reject(error);return;}
   let newline;while((newline=buffer.indexOf('\n'))>=0){const raw=buffer.slice(0,newline);buffer=buffer.slice(newline+1);try{const value=JSON.parse(raw),row=pending.get(value.request);if(value.kind==='snapshot'){const result=snapshot(value);if(value.request===0)initialResolve(result);else if(row){clearTimeout(row.timer);pending.delete(value.request);row.resolve(result);}else throw Error('Unrequested native snapshot');}
-    else if((jointProcessRecovery?value.kind==='jointActivationPrepared':value.kind==='activationPrepared')&&resumed&&value.request===resumed.bootstrap.nextSequence&&!row){initialOffer=activation(value,{kind:jointProcessRecovery?'prepareJointActivation':'prepareActivation',source:resumed.source});initialResolve(initialOffer.case);}
+    else if((jointProcessRecovery||sealedProcessRecovery?value.kind==='jointActivationPrepared':value.kind==='activationPrepared')&&resumed&&value.request===resumed.bootstrap.nextSequence&&!row){
+     initialOffer=activation(value,{kind:sealedProcessRecovery?'handoverForPublication':jointProcessRecovery?'prepareJointActivation':'prepareActivation',source:resumed.source});
+     if(sealedProcessRecovery){handoverOffer=initialOffer;assert.deepEqual(initialOffer.selection.current,resumed.source);}
+     initialResolve(initialOffer.case);
+    }
     else if((value.kind==='activationPrepared'||(nativePublication||nativeHandoverPublication)&&value.kind==='jointActivationPrepared')&&row){const result=activation(value,row);clearTimeout(row.timer);pending.delete(value.request);if(nativeHandoverActivation){handoverOffer=result;row.resolve(result.case);}else row.resolve(result);}
     else if(value.kind==='activationRefused'&&row&&nativeActivation){assert.deepEqual(Object.keys(value).sort(),['kind','reason','request']);assert.equal(typeof value.reason,'string');clearTimeout(row.timer);pending.delete(value.request);row.reject(Error('Native activation fixture refused: '+value.reason));}
     else if(value.kind==='inspection'&&row){const result=inspection(value,row);clearTimeout(row.timer);pending.delete(value.request);row.resolve(result);}
@@ -126,10 +136,33 @@ export async function selectedDeliveryNativeHost(root,{language=3,standard=true,
    async authentication(client,{retired=false}={}){const original=verifyFiles(first).clients.find(row=>row.writer===client.writer&&row.actor===client.actor&&row.principal===client.principal);if(!original)throw Error('Choose one actual native registration');const value=await request('credentials',{writer:client.writer,actor:client.actor,retired});if(value.writer!==client.writer||value.actor!==client.actor||value.principal!==client.principal)throw Error('Native fixture registration differs');for(const item of snapshots)verifyFiles(item);const fixture=verifyFiles(first),metadata=JSON.parse(fixture.inventoryJson),endpoint=retired?first.retiredEndpoint:first.clientEndpoint,transport=fixture.atomic?{writerTransport:'atomic-v2'}:{};
     return Object.freeze({getToken:()=>value.privateAccountToken,document:Object.freeze({endpoint,principal:value.principal,room:metadata.room.document,writer:value.writer,credential:value.privateDocumentCredential,...transport}),review:Object.freeze({endpoint,principal:value.principal,room:metadata.room.document,actor:value.actor,binding:metadata.review.binding,documentWriter:value.writer,...transport,credential:value.privateReviewCredential})});},
    async prepareProcessRecovery(offer){
-    if(!(jointProcessRecovery||processRecovery&&!resumed)||!offers.has(offer)||pending.size)throw Error('Actual warm process offer required');
+    if(!(sealedProcessRecovery||jointProcessRecovery||processRecovery&&!resumed)||!offers.has(offer)||pending.size)throw Error('Actual warm process offer required');
     const clients=verifyFiles(first).clients,documents=[],reviews=[];let oldAliceToken;
     for(const client of clients){const credentials=await request('credentials',{writer:client.writer,actor:client.actor,retired:false});assert.equal(credentials.principal,client.principal);assert.equal(credentials.writer,client.writer);assert.equal(credentials.actor,client.actor);documents.push([client.principal,client.writer,credentials.privateDocumentCredential]);reviews.push([client.principal,client.actor,credentials.privateReviewCredential]);oldAliceToken=credentials.privateAccountToken;}
     const nativeRoot=join(directory,'language-'+language+'-standard-'+standard+'-atomic-'+atomic),last=snapshots.at(-1);
+    if(sealedProcessRecovery){
+     assert.equal(offer,handoverOffer);
+     assert.deepEqual(offer.selection.current,last.selection.source);
+     const sealed=join(nativeRoot,'sdk-handover');
+     const reference=JSON.parse(readFileSync(join(sealed,'selected-checkpoint-'+offer.case.sequence+'.json'),'utf8'));
+     assert.deepEqual(Object.keys(reference).sort(),['bytes','checkpointName','format','formatVersion','sha256']);
+     assert.equal(reference.format,'breditor/test-sealed-checkpoint-reference');assert.equal(reference.formatVersion,1);
+     assert.match(reference.checkpointName,/^(native-checkpoint|restart-checkpoint-[1-9][0-9]*)$/);
+     const checkpointFile=join(sealed,reference.checkpointName,'activation.json');
+     assert.equal(realpathSync(checkpointFile),checkpointFile);
+     const raw=readFileSync(checkpointFile),checkpointDigest=assetDigest(raw);
+     assert.equal(raw.length,reference.bytes);assert.equal(checkpointDigest,reference.sha256);
+     assert.deepEqual([...createHash('sha256').update(raw).digest()],offer.selection.checkpointSha256);
+     const cutDigest=(cut,name)=>assetDigest(readFileSync(join(dirname(cut.path),name)));
+     const bootstrap={format:'breditor/private-native-sealed-process-recovery',formatVersion:1,root:nativeRoot,
+      checkpointName:reference.checkpointName,checkpointDigest,originDigest:cutDigest(first,'server.backup'),olderDigest:cutDigest(first,'older-server.backup'),
+      handoverSequence,nextSequence:sequence+1,previousSequence:last.sequence,
+      cuts:snapshots.map(cut=>({sequence:cut.sequence,digest:cutDigest(cut,'server-after.backup')})),
+      protected:{documents,reviews},oldAliceToken,clientAddress:new URL(first.clientEndpoint).host,retiredAddress:new URL(first.retiredEndpoint).host};
+     const capsule=Object.freeze({});
+     processCapsules.set(capsule,{root,directory,bootstrap,sealedProcessRecovery,source:offer.selection.current,snapshots:[...snapshots],issuedSequence:sequence,processId:child.pid,crashed:false,used:false});
+     return capsule;
+    }
     if(jointProcessRecovery)assert.equal(last,offer.case,'Select the actual latest joint activation offer');
     const reference=jointProcessRecovery?JSON.parse(readFileSync(join(nativeRoot,'native-joint-selected-checkpoint-'+offer.case.sequence+'.json'),'utf8')):undefined;
     if(reference){assert.deepEqual(Object.keys(reference).sort(),['bytes','checkpointName','format','formatVersion','sha256']);assert.equal(reference.format,'breditor/test-native-joint-checkpoint-reference');assert.equal(reference.formatVersion,1);assert.match(reference.checkpointName,/^(native-checkpoint-restart-|process-native-checkpoint-)[1-9][0-9]*$/);}
@@ -150,3 +183,7 @@ export function reopenSelectedDeliveryNativeHost(root,capsule){return selectedDe
 
 /** Separate repeated process recovery for joint activation/publication tests. */
 export function reopenSelectedDeliveryJointNativeHost(root,capsule){return selectedDeliveryNativeHost(root,{nativeActivation:true,nativePublication:true,jointProcessRecovery:true,resume:capsule});}
+
+export function reopenSelectedDeliverySealedNativeHost(root,capsule){
+ return selectedDeliveryNativeHost(root,{nativeActivation:true,nativeHandoverActivation:true,nativeHandoverPublication:true,sealedProcessRecovery:true,resume:capsule});
+}

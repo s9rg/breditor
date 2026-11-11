@@ -17,9 +17,9 @@ Run the installed intent and origin checks with
 `JointRoomActivationAttempt` owns the warm operation. Its separate
 `ColdJointRoomActivationAttempt` recipient reconstructs an interrupted local
 operation from existing complete intent data and fresh actors. A saved phase or
-receipt never substitutes for a new authenticated confirmation. The cold action
-currently requires the same independently selected Native controls; reassociation
-after a Native process restart remains separate work.
+receipt never substitutes for a new authenticated confirmation. The original
+cold action retains its selected Native controls. The sealed restart mode
+binds a new set of controls and uses the separate association described below.
 
 ## Ownership and ordering
 
@@ -48,6 +48,40 @@ cross-family inspection are separate, explicitly admitted composition paths.
 The new owners have no package-root export.
 
 ## Sealed handover
+
+The sealed restart descriptor binds the original whole-room choice, the
+selected checkpoint and sealed path, the fresh publication controller and
+all prior metadata destinations. Each earlier descriptor keeps its own
+namespace and byte pin. The separate journal starts prepared and retains
+only advisory observations from the selected publication controller.
+
+The descriptor checks use the output directory from the actual sealed
+whole-room fixture. Set `BREDITOR_SEALED_RESTART_CHOICES` to the directory
+containing `actual-joint-complete-independent-plan.json` and
+`actual-joint-complete-continued-choice.json` and the
+`actual-joint-prepared-native-intent-evidence` directory. Run
+`node --test scripts/sealed-joint-reassociation-choice.test.mjs` for source and
+`node scripts/check-handover-activation-intent-installed.mjs --sealed-joint-choice`
+for independent package archives. These checks use controlled storage.
+
+Preparation retains the complete selected descriptor before writing the new
+Native capture and then the restart journal. It holds the original and
+predecessor journals during both writes. If the second write fails, an exact
+resume can finish it from the retained choice and literal capture bytes.
+The cold restart target has separate entry points for an interrupted local
+execution and for an untouched prepared execution. Both keep the target
+private while the fresh association is retained.
+Confirmation reopens the complete restart association and verifies the
+original room capture before and after a fresh decision. Only the selected
+restart journal records the request and the authenticated response. A saved
+receipt remains advisory on later confirmation attempts.
+
+The cold owner continues metadata through the path chosen by that confirmation.
+Publication reopens that continuation, obtains a fresh decision and sends the
+complete restart descriptor's digest to the selected publication controller.
+Only an authenticated response, followed by verification of the held journals,
+lets the SDK release the recovered owner. A failed or uncertain request leaves
+the owner private and can be retried with the same selection.
 
 `JointRoomActivationAttempt.beginAcrossHandover` reserves the actual original
 owners and uses a distinct joint intent format. Its descriptor binds the complete
@@ -177,3 +211,37 @@ matrix, large-archive resource measurements and the historical faults remain
 unqualified. All thirteen V1 release gates remain open. Versions, normal Wasm,
 original protocols/defaults and public-root exports are unchanged. No push, tag,
 publication or deployment is implied.
+
+## Sealed relay restart
+
+The cold SDK retains the original activation intent and prepares a separate
+restart intent for the selected authenticated lineage. Its publication journal
+and Native activation journal use fresh storage. If either write is interrupted,
+resume checks the independently retained restart choice before completing the
+pair. Confirmation requests the receipt from the reopened relay under fresh
+authority. The confirmed restart can continue metadata and publish. The SDK
+keeps the replacement owner private until it verifies the matching publication
+receipt.
+
+Restart inspection keeps the recorded provider selection in the saved capture.
+It checks the fresh controller against the exact saved delivery continuation
+and the sealed lineage, including the earlier cuts in order. That live proof
+allows the original provider receipt and bytes to be checked with newly
+authenticated controls. A different seal, cut, or continuation fails admission.
+
+The Native process fixture exercises both prepared and committed checkpoints.
+It exits the old process, reopens the pinned checkpoint and archives, verifies
+fourteen protected streams and serves fresh controls on the original listener.
+The whole-room fixture then exercises the SDK with seven replacement owners,
+fourteen offline lanes, metadata continuation, a revoked approval and lost
+replies before final delivery.
+
+Build the packages and run `node scripts/build-handover-native-activation.mjs`
+to produce the exact Native fixture. Run the following from the repository root.
+
+```sh
+node --test scripts/native-sealed-handover-process-recovery.test.mjs
+node scripts/check-handover-native-activation-installed.mjs --sealed-process
+npm run test:collaboration:sealed-joint-process-recovery
+npm run test:collaboration:sealed-joint-process-recovery:installed
+```

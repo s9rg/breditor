@@ -13,6 +13,11 @@ pub(super) async fn prepare(state: &mut State, request: u64) -> Result<bool> {
     if !handover_action::apply(state, request).await? {
         return Ok(false);
     }
+    provision(state).await?;
+    Ok(true)
+}
+
+pub(super) async fn provision(state: &mut State) -> Result {
     let activation = state.ready()?.active.activation_control()?;
     let normal = tokio::net::TcpListener::bind(state.client_address).await?.into_std()?;
     let (router, publication) = prepare_native_room_publication(activation, normal)?;
@@ -27,5 +32,5 @@ pub(super) async fn prepare(state: &mut State, request: u64) -> Result<bool> {
     });
     state.publications.push(publication);
     state.tasks.push(service::start(router, operator));
-    Ok(true)
+    Ok(())
 }

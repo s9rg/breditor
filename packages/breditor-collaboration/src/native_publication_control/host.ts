@@ -9,13 +9,13 @@ import type {SharedNativeRoomPublicationSelection,SharedNativeRoomPublicationReq
 const key=Object.freeze({}),add=EventTarget.prototype.addEventListener,remove=EventTarget.prototype.removeEventListener;
 const isAborted=Object.getOwnPropertyDescriptor(AbortSignal.prototype,'aborted')!.get!,abort=AbortController.prototype.abort;
 interface State {readonly endpoint:string;readonly expected:SharedNativeRoomPublicationSelection;readonly principal:string;readonly getToken:SharedNativeRoomPublicationHostOptions['getToken'];readonly authority:()=>void;readonly signal:AbortSignal|undefined;readonly milliseconds:number;closed:boolean;active:AbortController|undefined}
-let port:(host:SharedNativeRoomPublicationHost)=>Readonly<{selection:SharedNativeRoomPublicationSelection;publish:(joint:SharedNativeRoomPublicationBinding,heldCheck?:()=>void,heldSignal?:AbortSignal)=>Promise<SharedNativeRoomPublicationReceipt>;check:()=>void}>;
+let port:(host:SharedNativeRoomPublicationHost)=>Readonly<{signals:readonly AbortSignal[];selection:SharedNativeRoomPublicationSelection;publish:(joint:SharedNativeRoomPublicationBinding,heldCheck?:()=>void,heldSignal?:AbortSignal)=>Promise<SharedNativeRoomPublicationReceipt>;check:()=>void}>;
 /** SDK-private actual requester port. Copied selections cannot supply this brand. */
 export function nativePublicationHostPort(host:SharedNativeRoomPublicationHost){return port(host);}
 export class SharedNativeRoomPublicationHost {
- readonly #state:State;
+ readonly #state:State;readonly #ended=new AbortController();
  private constructor(token:object,state:State){if(token!==key)throw fail('publication_policy');this.#state=state;Object.freeze(this);}
- static{port=host=>{if(!host||typeof host!=='object'||!(#state in host))throw fail('publication_policy');return Object.freeze({selection:host.#state.expected,publish:(joint:SharedNativeRoomPublicationBinding,check?:()=>void,signal?:AbortSignal)=>host.#publish(joint,check,signal),check:()=>host.#guard()});};}
+ static{port=host=>{if(!host||typeof host!=='object'||!(#state in host))throw fail('publication_policy');return Object.freeze({signals:Object.freeze([host.#ended.signal,...(host.#state.signal?[host.#state.signal]:[])]),selection:host.#state.expected,publish:(joint:SharedNativeRoomPublicationBinding,check?:()=>void,signal?:AbortSignal)=>host.#publish(joint,check,signal),check:()=>host.#guard()});};}
  static configure(provided:SharedNativeRoomPublicationHostOptions):SharedNativeRoomPublicationHost {
   try{const r=fields(provided,['endpoint','expected','principal','getToken','checkAuthority'],['signal','requestTimeoutMs']),endpoint=publicationEndpoint(r['endpoint']),expected=nativePublicationSelection(r['expected']),principal=r['principal'],getToken=r['getToken'],milliseconds=r['requestTimeoutMs']??15000;
    if(typeof principal!=='string'||!principal||principal.length>128||!/^[\x20-\x7e]+$/.test(principal)||typeof getToken!=='function'||typeof milliseconds!=='number'||!Number.isSafeInteger(milliseconds)||milliseconds<1||milliseconds>60000)throw fail('publication_policy');
@@ -44,5 +44,5 @@ export class SharedNativeRoomPublicationHost {
   finally{let refused=false;if(timer!==undefined)clearTimeout(timer);for(const signal of watched)try{remove.call(signal,'abort',cancel);}catch{refused=true;}try{abort.call(controller);}catch{refused=true;}try{if(response?.body&&!response.bodyUsed)await response.body.cancel();}catch{refused=true;}if(refused)throw fail(begun?'publication_outcome_unknown':'publication_transfer');}
  }
  /** Stops this requester. An already admitted Native worker may still publish. */
- close():void{this.#state.closed=true;if(this.#state.active)abort.call(this.#state.active);}
+ close():void{this.#state.closed=true;abort.call(this.#ended);if(this.#state.active)abort.call(this.#state.active);}
 }

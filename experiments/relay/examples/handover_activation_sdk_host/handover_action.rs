@@ -114,6 +114,6 @@ pub(super) async fn apply(state: &mut State, request: u64) -> Result<bool> {
     state.previous = None;
     state.sequence = request;
     state.serving = false;
-    state.offer = Some(Offer { selection, endpoint, token });
+    state.offer = Some(Offer { sequence: request, selection, endpoint, token });
     Ok(true)
 }

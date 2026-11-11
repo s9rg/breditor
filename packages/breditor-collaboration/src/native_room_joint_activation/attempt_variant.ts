@@ -2,6 +2,7 @@
  * The joint owner keeps source custody and the publication barrier in one place. */
 import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
 import {heldHandoverActivationPath} from '../room_native_handover_activation_intent/path.js';
+import type {RoomHandoverActivationIntentChoice} from '../room_native_handover_activation_intent/contract.js';
 import type {RoomExecutionReadOptions} from '../native_room_execution/contract.js';
 import type {RoomMetadataTargetWitness} from '../native_room_execution_run/attempt.js';
 import {participantAuthority} from '../participant_backup/policy.js';
@@ -76,6 +77,24 @@ function targetPolicy<Choice,Intent>(
  return {r,check,approve:approve as Decision<Choice>,approvePublication:approvePublication as Decision<Intent>|undefined};
 }
 
+/** Read and continue the private target using the exact selected sealed path. */
+export function handoverMetadataVisit<Intent>(
+ scope:SelectedNativeRecoveryScope,witness:RoomMetadataTargetWitness,origin:LocalMetadataRoomBundle,
+ destinations:MetadataContinuationDestinations,expectedPath:RoomHandoverActivationIntentChoice['handover'],
+ input:unknown,publishing:boolean,
+ custody?:Readonly<{check:()=>void;signals:readonly AbortSignal[]}>,
+):MetadataVisit<Intent,HandoverMetadataContinuationResult>{
+ const {r,check,approve,approvePublication}=targetPolicy<HandoverMetadataContinuationResult['choice'],Intent>(scope,input,'path',publishing);
+ const host=r['path'] as JointHandoverMetadataInput['path'];
+ const path=heldHandoverActivationPath(host,expectedPath);
+ const waits=new NativeReconstructionWaits(()=>{check();custody?.check();path.guard(scope.signal);},
+  [scope.signal,...path.signals,...(custody?.signals??[])]);
+ const request={...destinations,origin,path:host,inventory:r['inventory'] as JointHandoverMetadataInput['inventory'],checkAuthority:waits.check};
+ return {signal:waits.signal,check:waits.check,close:()=>waits.close(),verify:signal=>path.check(signal),approvePublication,
+  preview:()=>previewHeldRoomMetadataContinuationAcrossHandover(scope,witness,request),
+  run:(expected,resume)=>continueHeldRoomMetadataAcrossHandover(scope,witness,{...request,expected,approve},resume)};
+}
+
 export const ordinaryJointActivation:JointActivationVariant<OrdinaryJointActivation>=Object.freeze({
  capture:captureJointRoomActivationIntent,
  store:(choice,options)=>new JointRoomActivationIntentStore(choice,options),
@@ -101,14 +120,7 @@ export const handoverJointActivation:JointActivationVariant<HandoverJointActivat
   return handoverCommit.call(metadata,{...r,expected:expected.plan.activation} as Parameters<typeof handoverCommit>[0]);
  },
  target(scope,witness,origin,choice,input,publishing){
-  const {r,check,approve,approvePublication}=targetPolicy<HandoverMetadataContinuationResult['choice'],JointHandoverActivationIntentChoice>(scope,input,'path',publishing);
-  const host=r['path'] as JointHandoverMetadataInput['path'];
-  const path=heldHandoverActivationPath(host,choice.plan.activation.handover);
-  const waits=new NativeReconstructionWaits(()=>{check();path.guard(scope.signal);},[scope.signal,...path.signals]);
-  const request={...choice.plan.destinations,origin,path:host,inventory:r['inventory'] as JointHandoverMetadataInput['inventory'],checkAuthority:waits.check};
-  return {signal:waits.signal,check:waits.check,close:()=>waits.close(),verify:signal=>path.check(signal),approvePublication,
-   preview:()=>previewHeldRoomMetadataContinuationAcrossHandover(scope,witness,request),
-   run:(expected,resume)=>continueHeldRoomMetadataAcrossHandover(scope,witness,{...request,expected,approve},resume)};
+  return handoverMetadataVisit<JointHandoverActivationIntentChoice>(scope,witness,origin,choice.plan.destinations,choice.plan.activation.handover,input,publishing);
  },
  cut:result=>result.choice.continuation.target,
 } satisfies JointActivationVariant<HandoverJointActivation>);

@@ -1,53 +1,15 @@
 //! Bounded private operator bootstrap. Raw native identities never pass through JS numbers.
 use super::Result;
-use breditor_collab_relay::{
-    RecoveryDocumentCredential, RecoveryRegistrationCredentials, RecoveryReviewCredential,
-    ServerLogGenerationRoomBackupIdentity,
-};
+use breditor_collab_relay::ServerLogGenerationRoomBackupIdentity;
 use serde::Deserialize;
-use std::{
-    io::{BufRead, Read},
-    net::SocketAddr,
-    path::PathBuf,
-};
+use std::{net::SocketAddr, path::PathBuf};
+#[path = "input.rs"]
+mod input;
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(super) struct Observed {
     pub sequence: u64,
     pub identity: ServerLogGenerationRoomBackupIdentity,
-}
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub(super) struct Protected {
-    documents: Vec<(String, String, String)>,
-    reviews: Vec<(String, String, String)>,
-}
-impl Protected {
-    pub fn admit(&self) -> Result<RecoveryRegistrationCredentials> {
-        if self.documents.len() != 7 || self.reviews.len() != 7 {
-            return Err("exact actual protected cohort required".into());
-        }
-        Ok(RecoveryRegistrationCredentials {
-            documents: self
-                .documents
-                .iter()
-                .map(|(principal, writer, credential)| RecoveryDocumentCredential {
-                    principal: principal.clone(),
-                    writer: writer.clone(),
-                    credential: credential.clone(),
-                })
-                .collect(),
-            reviews: self
-                .reviews
-                .iter()
-                .map(|(principal, actor, credential)| RecoveryReviewCredential {
-                    principal: principal.clone(),
-                    actor: actor.clone(),
-                    credential: credential.clone(),
-                })
-                .collect(),
-        })
-    }
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -62,7 +24,7 @@ pub(super) struct Bootstrap {
     pub next_sequence: u64,
     pub previous_sequence: u64,
     pub observed: Vec<Observed>,
-    pub protected: Protected,
+    pub protected: input::Protected,
     pub old_alice_token: String,
     pub client_address: SocketAddr,
     pub retired_address: SocketAddr,
@@ -78,15 +40,7 @@ pub(super) fn read_joint() -> Result<Bootstrap> {
     read_selected("breditor/private-native-joint-process-recovery", true)
 }
 fn read_selected(format: &str, allow_process_checkpoint: bool) -> Result<Bootstrap> {
-    const MAX: usize = 16 * 1024 * 1024;
-    let stdin = std::io::stdin();
-    let mut input = stdin.lock().take((MAX + 1) as u64);
-    let mut bytes = Vec::new();
-    input.read_until(b'\n', &mut bytes)?;
-    if bytes.len() > MAX || bytes.last() != Some(&b'\n') {
-        return Err("private recovery bootstrap byte budget or truncation".into());
-    }
-    let value: Bootstrap = serde_json::from_slice(&bytes)?;
+    let value: Bootstrap = input::read()?;
     if value.format != format
         || value.format_version != 1
         || value.observed.is_empty()

@@ -20,6 +20,7 @@ import type {JointHandoverActivationIntentChoice} from './handover_contract.js';
 import {jointEqual as equal,jointIntentFailure as fail} from './intent_policy.js';
 type Inspection=Parameters<Parameters<typeof withOriginalMetadataJournals>[3]>[0];
 const visits=new WeakMap<object,{scope:SelectedNativeRecoveryScope;check():void}>();
+const handoverIntents=new WeakMap<object,RoomHandoverActivationIntentStore>();
 /** Actual same-visit brand admission, before reflecting on any inspection input. */
 export function checkColdJointActivationOrigin(work:object,scope:SelectedNativeRecoveryScope):void{const held=visits.get(work);if(!held||held.scope!==scope)throw fail('joint_activation_state');held.check();}
 type ColdChoice=JointRoomActivationIntentChoice|JointHandoverActivationIntentChoice;
@@ -39,6 +40,18 @@ export interface ColdJointActivationOriginWork<Choice extends ColdChoice=JointRo
  observePublicationReceipt(receipt:SharedNativeRoomPublicationReceipt):Promise<void>;
 }
 export type ColdJointHandoverOriginWork=ColdJointActivationOriginWork<JointHandoverActivationIntentChoice,RoomHandoverActivationRetainedIntent>;
+/** Reuse the actual held intent inside this cold target visit. */
+export async function withColdHandoverActivationIntent<T>(
+ scope:SelectedNativeRecoveryScope,origin:ColdJointHandoverOriginWork,
+ visit:(store:RoomHandoverActivationIntentStore)=>Promise<T>,
+):Promise<T>{
+ checkColdJointActivationOrigin(origin,scope);
+ const store=handoverIntents.get(origin);
+ if(!store||typeof visit!=='function')throw fail('joint_activation_state');
+ const result=await visit(store);
+ checkColdJointActivationOrigin(origin,scope);
+ return result;
+}
 interface NativeIntentStore<Intent extends Retained> {
  readonly revoked:AbortSignal;
  check():void;
@@ -82,7 +95,9 @@ async function withColdOrigin<Choice extends ColdChoice,Intent extends Retained,
     async observePublicationStarted(){heldCheck();publication=await jointStore.markPublicationStarted();heldCheck();},
     async observePublicationReceipt(receipt:SharedNativeRoomPublicationReceipt){heldCheck();publication=await jointStore.markPublicationObserved(receipt);heldCheck();}
    });
-   visits.set(work,{scope,check:heldCheck});const value=await visit(work);heldCheck();
+   visits.set(work,{scope,check:heldCheck});
+   if(nativeStore instanceof RoomHandoverActivationIntentStore)handoverIntents.set(work,nativeStore);
+   const value=await visit(work);heldCheck();
    if(!equal((await nativeStore.read()).state,nativeState)||!equal(await jointStore.read(),publication))throw fail('joint_activation_intent_stale');heldCheck();return value;
    }finally{visiting=false;}
   });check();return result;

@@ -9,7 +9,8 @@ import {prepareActivationRetentionFixture} from './fixtures/activation-retention
 import {sourceEvidence} from './candidate-release/evidence.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 prepareActivationRetentionFixture(root);
-if(process.argv.length!==2)throw Error('The complete handover intent workset is required');
+const sealedProcess=process.argv.length===3&&process.argv[2]==='--sealed-process';
+if(process.argv.length!==2&&!sealedProcess)throw Error('Expected no arguments or --sealed-process');
 const producer=root;
 const {searchConsumerLock,verifySearchConsumerRegistry}=await import(new URL('./scripts/search-consumer-lock.mjs','file://'+producer+'/'));
 const {executeCandidateStage}=await import(new URL('./scripts/candidate-release/process.mjs','file://'+producer+'/'));
@@ -40,8 +41,9 @@ for(const pack of packs){
  }
  compare('');
 }
-const tests=['native-handover-activation-coordinated.test.mjs','native-handover-activation-host.test.mjs','native-handover-publication-host.test.mjs','handover-activation-coordination.test.mjs','recorded-base-handover-inspection.test.mjs','generation-recovery-control.test.mjs','generation-delivery-control.test.mjs','generation-delivery-path-control.test.mjs','generation-control-request-lifetime.test.mjs','native-activation-transport.test.mjs','handover-activation-intent-storage.test.mjs','activation-retention-lifetime.test.mjs','room-native-activation-intent.test.mjs','activation-intent-wire.test.mjs'];
-const expectedCases=211;
+const tests=sealedProcess?['native-sealed-handover-process-recovery.test.mjs']
+ :['native-handover-activation-coordinated.test.mjs','native-handover-activation-host.test.mjs','native-handover-publication-host.test.mjs','native-sealed-handover-process-recovery.test.mjs','handover-activation-coordination.test.mjs','recorded-base-handover-inspection.test.mjs','generation-recovery-control.test.mjs','generation-delivery-control.test.mjs','generation-delivery-path-control.test.mjs','generation-control-request-lifetime.test.mjs','native-activation-transport.test.mjs','handover-activation-intent-storage.test.mjs','activation-retention-lifetime.test.mjs','room-native-activation-intent.test.mjs','activation-intent-wire.test.mjs'];
+const expectedCases=sealedProcess?2:213;
 const copied=[],mapping=new Map(packages.map(path=>{const row=JSON.parse(readFileSync(join(path,'package.json')));return[path.split('/').at(-1),row.name];}));
 function copyScript(path){const target=join(consumer,path),original=readFileSync(join(root,path),'utf8');let text=original;
  text=text.replace(/(['"])((?:\.\.\/)+)packages\/(breditor-[^/]+)\/([^'"]+)\1/g,(match,quote,prefix,folder,tail)=>{const name=mapping.get(folder);if(!name)return match;let selected=relative(dirname(target),join(consumer,'node_modules',name,tail));if(!selected.startsWith('.'))selected='./'+selected;return quote+selected+quote;});
@@ -69,4 +71,9 @@ const state={format:'breditor/installed-handover-native-activation-development',
 writeFileSync(join(directory,'running.json'),JSON.stringify(state,null,2));console.log(JSON.stringify({directory,consumer,phase:'execute-actual-handover-native-activation'}));
 const logPath=join(directory,'installed-handover-native-activation.log'),result=await executeCandidateStage({id:'installed-handover-native-activation',command:process.execPath,args:['--test',...tests.map(name=>'scripts/'+name)],env:{BREDITOR_ACTIVATION_RETENTION_FIXTURE:join(consumer,retained)},timeoutMs:7800000},{root:consumer,logPath});
 const log=readFileSync(logPath,'utf8');state.result={...result,logPath,logSha256:sha(Buffer.from(log))};writeFileSync(join(directory,'running.json'),JSON.stringify(state,null,2));assert.equal(result.status,'passed');for(const [name,value] of [['tests',expectedCases],['pass',expectedCases],['fail',0],['cancelled',0],['skipped',0]])assert.match(log,new RegExp('^# '+name+' '+value+'$','m'));
-assert.deepEqual(inputs(),before);assert.equal(sha(readFileSync(nativeSource)),nativeSha256);state.complete=true;state.sourceUnchanged=true;state.releaseReady=false;state.v1GatesOpen=13;state.finishedAt=new Date().toISOString();state.scope='Actual inactive sealed successor activated by genuine SDK metadata coordination and authenticated Rust HTTP. Seven cold owners, fourteen offline lanes, original metadata, complete intent retention, explicit lost-response retry, one actual Native epoch, authenticated Native listener publication with an explicit lost-reply retry, normal delivery, provider reconciliation and future histories. Controller/storage laws use additional controlled wire fixtures. Node storage, locks and image decoding are controlled. Whole-room local-owner publication and physical durability remain separate.';writeFileSync(join(directory,'result.json'),JSON.stringify(state,null,2));writeFileSync(join(root,'target/handover-native-activation-installed-consumer.json'),JSON.stringify(state,null,2));console.log(JSON.stringify({passed:true,tests:expectedCases,directory,sourceUnchanged:true,workspaceLinks:false}));
+assert.deepEqual(inputs(),before);assert.equal(sha(readFileSync(nativeSource)),nativeSha256);state.complete=true;state.sourceUnchanged=true;state.releaseReady=false;state.v1GatesOpen=13;state.finishedAt=new Date().toISOString();
+state.scope=sealedProcess
+ ?'Actual Native sealed process exits and fresh protected-stream authentication, checkpoint and publication controls. Whole-room SDK owner recovery is separate.'
+ :'Actual inactive sealed successor activated by genuine SDK metadata coordination and authenticated Rust HTTP. Seven cold owners, fourteen offline lanes, original metadata, complete intent retention, explicit lost-response retry, one actual Native epoch, authenticated Native listener publication with an explicit lost-reply retry, normal delivery, provider reconciliation and future histories. Includes sealed Native process exits and fresh authenticated publication. Controller/storage laws use additional controlled wire fixtures. Node storage, locks and image decoding are controlled. Whole-room local-owner publication and physical durability remain separate.';
+const report=sealedProcess?'sealed-native-process-installed-consumer.json':'handover-native-activation-installed-consumer.json';
+writeFileSync(join(directory,'result.json'),JSON.stringify(state,null,2));writeFileSync(join(root,'target',report),JSON.stringify(state,null,2));console.log(JSON.stringify({passed:true,tests:expectedCases,directory,sourceUnchanged:true,workspaceLinks:false}));

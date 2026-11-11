@@ -10,9 +10,11 @@ import {snapshotJointActivationData,MAX_JOINT_ACTIVATION_PLAN_BYTES,jointEqual a
 import {continuationChoice} from '../selected_local_metadata_continuation/policy.js';
 import {executionNames} from '../native_room_execution/plan.js';
 import type {MetadataContinuationDestinations} from '../selected_local_metadata_continuation/contract.js';
+import type {JointRoomActivationPlan} from '../native_room_joint_activation/intent_contract.js';
+import type {JointHandoverActivationPlan} from '../native_room_joint_activation/handover_contract.js';
 import type {JointReassociationChoice,JointReassociationPlan,JointReassociationRecord,JointReassociationPredecessor,JointReassociationPriorMetadata} from './contract.js';
 const pin=(r:Record<string,unknown>)=>({bytes:integer(r['bytes'],MAX_JOINT_ACTIVATION_PLAN_BYTES,1),sha256:hash(r['sha256'])});
-function destinations(input:unknown):MetadataContinuationDestinations{
+export function reassociationDestinations(input:unknown):MetadataContinuationDestinations{
  const r=fields(input,['database','preparationDatabase','reviewDatabase','metadataDatabase']);return{database:database(r['database']),preparationDatabase:database(r['preparationDatabase']),reviewDatabase:database(r['reviewDatabase']),metadataDatabase:database(r['metadataDatabase'])};
 }
 export function reassociationPriorDestinations(input:JointReassociationPriorMetadata):MetadataContinuationDestinations{
@@ -22,7 +24,7 @@ export function reassociationPriorDestinations(input:JointReassociationPriorMeta
 function prior(input:unknown):JointReassociationPriorMetadata{
  const value=input as {format?:unknown};
  if(value?.format==='breditor/metadata-continuation-absence'){
-  const r=fields(input,['format','formatVersion','destinations']);if(r['formatVersion']!==1)throw fail();return{format:'breditor/metadata-continuation-absence',formatVersion:1,destinations:destinations(r['destinations'])};
+  const r=fields(input,['format','formatVersion','destinations']);if(r['formatVersion']!==1)throw fail();return{format:'breditor/metadata-continuation-absence',formatVersion:1,destinations:reassociationDestinations(r['destinations'])};
  }
  const r=fields(input,['format','formatVersion','choice','phase','review','metadata']);if(r['format']!=='breditor/metadata-continuation-evidence'||r['formatVersion']!==1)throw fail();
  const phase=r['phase'];if(!['absent','intent','prepared','review','metadata'].includes(phase as string))throw fail();
@@ -37,7 +39,10 @@ export function jointReassociationPriorMetadataList(input:unknown):readonly Join
 }
 function record(input:unknown,predecessor=false):JointReassociationRecord|JointReassociationPredecessor{
  const r=fields(input,['database','activation','publication','destinations','prior',...(predecessor?['bytes','sha256']:[])]);
- return{database:database(r['database']),activation:roomActivationIntentChoice(r['activation']),publication:nativePublicationSelection(r['publication']),destinations:destinations(r['destinations']),prior:prior(r['prior']),...(predecessor?pin(r):{})};
+ return{database:database(r['database']),activation:roomActivationIntentChoice(r['activation']),publication:nativePublicationSelection(r['publication']),destinations:reassociationDestinations(r['destinations']),prior:prior(r['prior']),...(predecessor?pin(r):{})};
+}
+export function reassociationOriginalNamespaces(old:JointRoomActivationPlan|JointHandoverActivationPlan):Set<string>{
+ return new Set([old.database,old.activation.database,old.origin.selection.prepared.database,old.origin.reviewDatabase,old.origin.metadataDatabase,...old.sourceNamespaces,...Object.values(old.destinations),old.execution.database,...executionNames(old.execution.execution.plan.layout),old.execution.execution.plan.preparation.plan.database,...old.execution.execution.plan.preparation.plan.participants.flatMap(row=>row.namespaces.map(ns=>ns.database))]);
 }
 /** Reconstruct exactly the plan pinned by an earlier linear entry. */
 export function reassociationPredecessorChoice(plan:JointReassociationPlan,index:number):JointReassociationChoice{
@@ -48,7 +53,7 @@ export function jointReassociationPlan(input:unknown):JointReassociationPlan{
  try{
   const r=fields(snapshotJointActivationData(input),['format','formatVersion','database','original','predecessors','activation','publication','destinations','prior']);if(r['format']!=='breditor/joint-native-room-reassociation-plan'||r['formatVersion']!==1)throw fail();
   const original=jointRoomActivationIntentChoice(r['original']),predecessors=rows(r['predecessors'],4096).map(row=>record(row,true) as JointReassociationPredecessor),current=record(Object.fromEntries(['database','activation','publication','destinations','prior'].map(key=>[key,r[key]]))),old=original.plan;
-  const occupied=new Set([old.database,old.activation.database,old.origin.selection.prepared.database,old.origin.reviewDatabase,old.origin.metadataDatabase,...old.sourceNamespaces,...Object.values(old.destinations),old.execution.database,...executionNames(old.execution.execution.plan.layout),old.execution.execution.plan.preparation.plan.database,...old.execution.execution.plan.preparation.plan.participants.flatMap(row=>row.namespaces.map(ns=>ns.database))]);
+  const occupied=reassociationOriginalNamespaces(old);
   let previous=old.activation.activation,publication=old.publication,destination=old.destinations;
   for(const row of [...predecessors,current]){
    const next=row.activation.activation,selected=row.publication;
