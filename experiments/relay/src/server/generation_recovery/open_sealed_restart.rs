@@ -60,18 +60,18 @@ pub async fn open_sealed_native_restart_host(
             RoomRecoveryPolicy::HostReacquired,
             &owner,
         )?;
-        Ok::<_, Error>((operational, original, origin, selection))
+        Ok::<_, Error>((Box::new(operational), original, origin, selection))
     })
     .await
     .map_err(|_| Error::NeedsRecovery)??;
-    let host = prepare_log_generation_recovery_host(
-        operational,
+    let host = Box::pin(prepare_log_generation_recovery_host(
+        *operational,
         authentication,
         original,
         &origin,
         principal,
         token,
-    )
+    ))
     .await?;
     let coverage = host.verify_sealed_native_restart(principal, token, selection, supplied).await?;
     Ok(match coverage {

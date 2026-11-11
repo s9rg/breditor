@@ -15,6 +15,7 @@ use crate::{
 };
 use std::path::Path;
 
+#[derive(Clone, Copy)]
 pub(super) enum OpenMode {
     Resume,
     Committed,

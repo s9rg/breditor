@@ -378,9 +378,9 @@ fn existing_committed_reopen_preserves_partial_and_committed_phase_markers() -> 
             &root, &backup, &identity, POLICY, "owner",
         );
         if committed {
-            let room = opened?;
-            assert_eq!(room.room().catchup("owner")?, document);
-            assert_eq!(room.assets().count(), 3);
+            let operational = opened?;
+            assert_eq!(operational.room().catchup("owner")?, document);
+            assert_eq!(operational.assets().count(), 3);
         } else {
             assert!(matches!(
                 opened,
