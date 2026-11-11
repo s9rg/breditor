@@ -38,7 +38,8 @@ coordinated reconciliation before a recovered host can serve.
 
 ## Sealed operational restart
 
-The Rust recovery host verifies a sealed restart against an independently
+Use `open_sealed_native_restart_host` to reopen an already committed
+operational room and verify its sealed restart against an independently
 retained checkpoint and exact current server and participant identity. A
 committed checkpoint can carry forward a verified descendant with later
 accepted edits, comments, or uploads. The [sealed restart contract](../../docs/JOINT_ACTIVATION_INTEGRATION.md#sealed-relay-restart)

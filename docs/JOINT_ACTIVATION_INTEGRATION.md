@@ -223,6 +223,13 @@ publication or deployment is implied.
 
 ## Sealed relay restart
 
+Use `open_sealed_native_restart_host` to reopen the existing operational
+target and verify the retained selection in one call. It opens only a committed
+operational handoff and preserves any staged marker alias. An interrupted
+handoff requires explicit operational resume. A Pending result releases the
+room and raster custody so the host can retry after obtaining the missing
+registration records.
+
 A Rust host can use `PreparedLogGenerationRecoveryHost::verify_sealed_native_restart`
 after reopening the operational room. Supply the independently retained
 checkpoint, expected epoch and exact current server and participant identity

@@ -3,9 +3,10 @@ use super::{prepare, reopen};
 use crate::{
     Error, RecoveryRegistrationCredentials, Role,
     server::{
-        NativeGenerationActivationCheckpointStatus as Status, SealedNativeRestartSelection,
-        ServerLogGenerationRecoveryCoverage as Coverage,
+        NativeGenerationActivationCheckpointStatus as Status, SealedNativeRestartHostCoverage,
+        SealedNativeRestartSelection, ServerLogGenerationRecoveryCoverage as Coverage,
         generation_recovery::tests::{native_activation::Setup, source::TestResult},
+        open_sealed_native_restart_host,
     },
 };
 use std::fs;
@@ -156,5 +157,52 @@ async fn committed_sealed_restart_checks_advanced_current_state_and_same_operati
     ));
     assert_eq!(fs::read(intent_file)?, intent_bytes);
     assert_eq!(fs::read(setup.source.directory.0.join("authority/authority.log"))?, before);
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn sealed_restart_open_releases_custody_when_protected_inputs_are_pending() -> TestResult {
+    let setup = Box::pin(Setup::new((3, true), true, (true, true), true)).await?;
+    let original = setup.proof().await?;
+    let checkpoint = prepare(&setup, "sealed-open", &original).await?;
+    let root = setup.source.directory.0.join("target");
+    let marker = fs::read(root.join(".operational.json"))?;
+    drop(setup.handle);
+    let selected = || SealedNativeRestartSelection {
+        checkpoint: checkpoint.clone(),
+        authority: setup.authority.clone(),
+        status: Status::Prepared,
+        expected: original.identity(),
+    };
+    let (auth, owner, _) = super::authentication()?;
+    let pending = open_sealed_native_restart_host(
+        &root,
+        auth,
+        "owner",
+        &owner,
+        selected(),
+        RecoveryRegistrationCredentials::default(),
+    )
+    .await?;
+    assert!(
+        matches!(pending, SealedNativeRestartHostCoverage::Pending { missing } if !missing.is_empty())
+    );
+    let (auth, owner, _) = super::authentication()?;
+    let opened = open_sealed_native_restart_host(
+        &root,
+        auth,
+        "owner",
+        &owner,
+        selected(),
+        setup.source.protected_records(),
+    )
+    .await?;
+    let SealedNativeRestartHostCoverage::Verified { host, proof } = opened else {
+        return Err("all protected records supplied".into());
+    };
+    assert_eq!(proof.identity(), original.identity());
+    proof.check_live(&host, "owner", &owner).await?;
+    assert_eq!(fs::read(root.join(".operational.json"))?, marker);
+    assert_eq!(checkpoint.status(&setup.authority)?, Status::Prepared);
     Ok(())
 }

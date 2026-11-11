@@ -6,7 +6,7 @@ use super::{
 };
 use crate::{
     Error, RecoveryRegistrationCredentials, Result,
-    server::{LogGenerationHandoverStatus, RoomDeploymentAuthority},
+    server::{LogGenerationHandoverStatus, RoomDeploymentAuthority, RoomDeploymentSelection},
 };
 use std::sync::Arc;
 
@@ -20,6 +20,33 @@ pub struct SealedNativeRestartSelection {
     pub status: Status,
     /// Exact independently retained current server and protected-stream identity.
     pub expected: ServerLogGenerationRecoveryStateIdentity,
+}
+
+impl SealedNativeRestartSelection {
+    fn floor(&self) -> Result<&RoomDeploymentSelection> {
+        let original = self.checkpoint.identity().current();
+        match self.status {
+            Status::Prepared if &self.expected == original => {
+                Ok(self.checkpoint.identity().previous_selection())
+            }
+            Status::Committed if self.expected.origin == original.origin => {
+                Ok(self.checkpoint.identity().planned_selection())
+            }
+            _ => Err(Error::Contract("sealed restart selected state differs")),
+        }
+    }
+
+    pub(super) fn check_checkpoint(&self) -> Result<()> {
+        let floor = self.floor()?;
+        if self.checkpoint.status(&self.authority)? != self.status
+            || self.authority.current_selection()? != *floor
+            || self.checkpoint.source.status(&self.authority)?
+                != LogGenerationHandoverStatus::Sealed
+        {
+            return Err(Error::Lease);
+        }
+        Ok(())
+    }
 }
 
 impl PreparedLogGenerationRecoveryHost {
@@ -41,37 +68,28 @@ impl PreparedLogGenerationRecoveryHost {
         supplied: RecoveryRegistrationCredentials,
     ) -> Result<ServerLogGenerationRecoveryCoverage> {
         self.host.authentication.authenticate(principal, token)?;
-        let SealedNativeRestartSelection { checkpoint, authority, status, expected } = selection;
-        let original = checkpoint.identity().current();
-        let floor = match status {
-            Status::Prepared if &expected == original => checkpoint.identity().previous_selection(),
-            Status::Committed if expected.origin == original.origin => {
-                checkpoint.identity().planned_selection()
-            }
-            _ => return Err(Error::Contract("sealed restart selected state differs")),
-        }
-        .clone();
-
+        selection.floor()?;
         let capture = self.capture_recovery_state(principal, token).await?;
-        if capture.identity()? != expected {
+        if capture.identity()? != selection.expected {
             return Err(Error::Contract("sealed restart current cut differs"));
         }
         let (archive, inventory) = capture.into_parts();
         let proof = self
-            .verify_selected_recovery_state(principal, token, expected, inventory, supplied)
+            .verify_selected_recovery_state(
+                principal,
+                token,
+                selection.expected.clone(),
+                inventory,
+                supplied,
+            )
             .await?;
         let custody = self.host.generation_custody.clone().ok_or(Error::NeedsRecovery)?;
         tokio::task::spawn_blocking(move || {
-            if custody.activation_owner_digest()? != checkpoint.identity().operation() {
+            if custody.activation_owner_digest()? != selection.checkpoint.identity().operation() {
                 return Err(Error::Contract("sealed restart operational owner differs"));
             }
-            archive.check_archive_ancestor(checkpoint.checkpoint())?;
-            if checkpoint.status(&authority)? != status
-                || authority.current_selection()? != floor
-                || checkpoint.source.status(&authority)? != LogGenerationHandoverStatus::Sealed
-            {
-                return Err(Error::Lease);
-            }
+            archive.check_archive_ancestor(selection.checkpoint.checkpoint())?;
+            selection.check_checkpoint()?;
             Ok(proof)
         })
         .await

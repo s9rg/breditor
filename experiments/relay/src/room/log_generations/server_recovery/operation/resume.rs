@@ -14,6 +14,11 @@ use crate::{
     Error, Result, RoomRecoveryPolicy, credentials, log::generations::GenerationDirectory,
 };
 use std::path::Path;
+
+pub(super) enum OpenMode {
+    Resume,
+    Committed,
+}
 impl OperationalLogGenerationServerRoom {
     /// Reacquire this actual joined recovery and its selected native/raster owners. A committed
     /// handoff admits genuine complete descendants; a partial marker requires the exact source.
@@ -30,6 +35,17 @@ impl OperationalLogGenerationServerRoom {
         policy: RoomRecoveryPolicy,
         principal: &str,
     ) -> Result<Self> {
+        Self::open_operational(root, backup, expected, policy, principal, OpenMode::Resume)
+    }
+
+    pub(super) fn open_operational(
+        root: &Path,
+        backup: &ServerLogGenerationRoomBackup,
+        expected: &ServerLogGenerationRoomBackupIdentity,
+        policy: RoomRecoveryPolicy,
+        principal: &str,
+        mode: OpenMode,
+    ) -> Result<Self> {
         selected(backup, expected, policy)?;
         let directory = GenerationDirectory::open(root)?;
         let marker: Marker = files::read(&directory.path.join(".recovery.json"))?;
@@ -41,6 +57,9 @@ impl OperationalLogGenerationServerRoom {
             return Err(Error::Contract("continuing joined recovery source differs"));
         }
         let context = Context::read(&directory, &marker)?;
+        if matches!(mode, OpenMode::Committed) && !context.committed {
+            return Err(Error::Contract("existing committed operational marker required"));
+        }
         let attempt = ServerLogGenerationRoomRecovery {
             directory,
             marker,
@@ -90,8 +109,10 @@ impl OperationalLogGenerationServerRoom {
         };
         let mut recovered = RecoveredLogGenerationServerRoom { custody, room: authority, assets };
         recovered.check_source(backup, principal, !context.committed, &context.extra)?;
-        context.publish(&recovered.custody.directory, &Interruption::default())?;
-        recovered.check_source(backup, principal, !context.committed, &context.extra)?;
+        if matches!(mode, OpenMode::Resume) {
+            context.publish(&recovered.custody.directory, &Interruption::default())?;
+            recovered.check_source(backup, principal, !context.committed, &context.extra)?;
+        }
         let value = Self { recovered, context };
         if !value.context.guard(&value.recovered.custody.directory)? {
             return Err(Error::Contract("continuing generation marker not committed"));
