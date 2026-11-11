@@ -156,15 +156,42 @@ impl Generations {
         let path = self.directory.path.join(".rotation.json");
         #[cfg(test)]
         self.interrupt(super::RotationPoint::StageRetired)?;
-        self.directory.guard()?;
-        FileIdentity::of(marker)?.guard(marker, &path)?;
-        if held_file::read(marker, format::MAX_CONTROL)? != marker_bytes {
-            return Err(Error::Contract("physical log rotation marker changed"));
-        }
+        self.guard_intent(marker, marker_bytes)?;
         fs::remove_file(path)?;
         self.directory.sync()?;
         #[cfg(test)]
         self.interrupt(super::RotationPoint::IntentRetired)?;
+        Ok(())
+    }
+    fn guard_intent(&self, marker: &fs::File, marker_bytes: &[u8]) -> Result<()> {
+        self.directory.guard()?;
+        FileIdentity::of(marker)?.guard(marker, &self.directory.path.join(".rotation.json"))?;
+        if held_file::read(marker, format::MAX_CONTROL)? != marker_bytes {
+            return Err(Error::Contract("physical log rotation marker changed"));
+        }
+        Ok(())
+    }
+    fn retire_linked_continuation_for_recovery(
+        &self,
+        intent: &Intent,
+        marker: &fs::File,
+        marker_bytes: &[u8],
+        next: &fs::File,
+    ) -> Result<()> {
+        // A cold retry can open the continuation through its final name. Make that
+        // name durable before unlinking the intent's alias to free one metadata slot.
+        self.directory.sync()?;
+        self.guard_intent(marker, marker_bytes)?;
+        intent.identity.guard(next, &self.directory.path.join(format::wal_name(&intent.next)))?;
+        let stage = self.directory.path.join(&intent.stage);
+        intent.identity.guard(next, &stage)?;
+        if next.metadata()?.len() != 0 {
+            return Err(Error::Contract("unpublished continuation is not empty"));
+        }
+        fs::remove_file(stage)?;
+        self.directory.sync()?;
+        #[cfg(test)]
+        self.interrupt(super::RotationPoint::FullStageRetired)?;
         Ok(())
     }
     // A durable head can outlive the process that wrote it. Revalidate the
@@ -206,11 +233,7 @@ impl Generations {
         if self.current().hash == intent.after {
             return self.finish_published_rotation(log, &intent, &marker, &marker_bytes).map(Some);
         }
-        // Manifest and head publication each need one stage while the owned
-        // continuation may still be present. These stages are used in turn.
-        if stages >= format::MAX_GENERATIONS {
-            return Err(Error::Contract("physical rotation staging capacity"));
-        }
+        let staging_full = stages >= format::MAX_GENERATIONS;
         if self.current().hash != intent.before || self.active_cut(log)? != intent.sealed {
             return Err(Error::Contract("physical rotation prior cut differs"));
         }
@@ -223,6 +246,9 @@ impl Generations {
         let final_path = self.directory.path.join(format::wal_name(&intent.next));
         let source = match fs::symlink_metadata(&stage) {
             Ok(_) => &stage,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound && staging_full => {
+                return Err(Error::Contract("physical rotation staging capacity"));
+            }
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => &final_path,
             Err(error) => return Err(error.into()),
         };
@@ -242,6 +268,9 @@ impl Generations {
         }
         #[cfg(test)]
         self.interrupt(super::RotationPoint::ContinuationPublished)?;
+        if staging_full {
+            self.retire_linked_continuation_for_recovery(&intent, &marker, &marker_bytes, &next)?;
+        }
         let file = self.directory.immutable(&format::manifest_name(&intent.after), &bytes)?;
         #[cfg(test)]
         self.interrupt(super::RotationPoint::ManifestSynced)?;

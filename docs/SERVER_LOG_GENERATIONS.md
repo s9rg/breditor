@@ -83,8 +83,12 @@ A new rotation requires space for its continuation and one staged metadata
 file. This preflight also runs before either record of a suggestion revision
 that needs rotation. A staging-capacity refusal leaves the selected room usable
 for operations that still fit its active WAL. Pending rotation recovery checks
-for a free staging slot before publishing any missing metadata. If no slot is
-available, it preserves the pending intent and every existing file.
+for a free staging slot before publishing any missing metadata. At capacity
+it can finish linking the exact continuation selected by the durable intent,
+sync its final WAL name, then retire that intent's temporary alias to free
+one slot. A cold retry after that unlink opens the same inode through its
+final name. Every unrelated stage stays in place. If the owned alias is already
+absent and no slot is available, recovery preserves the pending intent and files.
 
 Live guards check held inodes, path custody, lengths, controls and filesystem
 change witnesses. A detected change permanently fences that owner until cold
