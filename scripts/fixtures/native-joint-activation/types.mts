@@ -3,6 +3,8 @@ import * as api from '@breditor/collaboration';
 import {JointRoomActivationAttempt,withJointRoomActivationSources,withPublishedJointRoomSources} from '../../../packages/breditor-collaboration/dist/native_room_joint_activation/attempt.js';
 import type {JointRoomActivationIntentChoice} from '../../../packages/breditor-collaboration/dist/native_room_joint_activation/intent_contract.js';
 import type {JointRoomActivationPreparationInput,JointRoomNativeCommitInput,JointRoomReplacementInput,JointRoomMetadataInput,JointRoomPublicationInput} from '../../../packages/breditor-collaboration/dist/native_room_joint_activation/attempt_contract.js';
+import type {JointHandoverActivationIntentChoice,JointHandoverActivationPreparationInput,JointHandoverNativeCommitInput,JointHandoverMetadataInput,JointHandoverPublicationInput} from '../../../packages/breditor-collaboration/dist/native_room_joint_activation/handover_contract.js';
+import type {HandoverMetadataContinuationResult} from '../../../packages/breditor-collaboration/dist/selected_local_metadata_continuation/handover_contract.js';
 import type {RetainedSelectedAssetOwner} from '../../../packages/breditor-collaboration/dist/physical_room_asset_successor/owner.js';
 import type {PhysicalOperationV3HistoryReadOptions} from '../../../packages/breditor-collaboration/dist/physical_room_operation_v3/history_read_contract.js';
 import type {MetadataContinuationResult} from '../../../packages/breditor-collaboration/dist/selected_local_metadata_continuation/contract.js';
@@ -39,3 +41,23 @@ void saved.publish(publication);
 // @ts-expect-error Experimental joint custody is not a public package-root capability.
 void api.JointRoomActivationAttempt;
 void prepared;void served;void owner;
+
+declare const handoverPreparation:JointHandoverActivationPreparationInput,handoverCommit:JointHandoverNativeCommitInput;
+declare const handoverMetadata:JointHandoverMetadataInput,handoverPublication:JointHandoverPublicationInput;
+const handover=JointRoomActivationAttempt.beginAcrossHandover(original,reads);
+const handoverChoice:Promise<JointHandoverActivationIntentChoice>=handover.prepare(handoverPreparation);
+void handover.commitNative(handoverCommit);
+void handover.continueMetadata(handoverMetadata,true);
+void handover.publish(handoverPublication);
+const handoverResult:HandoverMetadataContinuationResult=handover.publishedMetadata();
+void handoverChoice;void handoverResult;
+void withJointRoomActivationSources(handover,async work=>work.sources.length);
+void withPublishedJointRoomSources(handover,async work=>work.sources.length);
+// @ts-expect-error A same-origin preparation cannot substitute for sealed lineage.
+void handover.prepare(preparation);
+// @ts-expect-error A same-origin activation commit carries no genuine handover path.
+void handover.commitNative(commit);
+// @ts-expect-error A same-origin delivery control cannot substitute for a handover path.
+void handover.continueMetadata(metadata);
+// @ts-expect-error Handover publication binds a distinct intent and metadata policy.
+void attempt.publish(handoverPublication);

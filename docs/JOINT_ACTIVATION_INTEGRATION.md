@@ -41,6 +41,31 @@ metadata APIs retain their strict field and family checks; held-target and
 cross-family inspection are separate, explicitly admitted composition paths.
 The new owners have no package-root export.
 
+## Sealed handover
+
+`JointRoomActivationAttempt.beginAcrossHandover` reserves the actual original
+owners and uses a distinct joint intent format. Its descriptor binds the complete
+sealed path, the original metadata pins, the selected replacement execution and
+the authenticated Native publication control. The publication request associates
+its receipt with the exact serialized descriptor.
+
+The original metadata owner must belong to the held source visit. After a
+confirmed Native commit, the coordinator retires that source and transfers its
+actors to the replacement. Metadata continuation and publication require a
+genuine promoted target and the exact selected handover path. Publication
+requires a fresh metadata replay and a separate approval. If the reply is
+lost, the replacement remains private until an explicit retry confirms the same
+receipt and the coordinator records it. Cold owner reconstruction across a
+sealed handover is a separate recovery path.
+
+Build the collaboration package and the Native fixture with
+`node scripts/build-handover-native-activation.mjs`. Run
+`npm run test:collaboration:joint-handover` against source and
+`npm run test:collaboration:joint-handover:installed` against independently
+installed package archives. The Native test uses controlled Node storage,
+actual Rust HTTP controls, seven clients, fourteen offline streams and real
+asset acknowledgements.
+
 A cancelled IndexedDB open keeps its namespace reserved until the actual
 request settles. If the caller has already closed the attempt, the settlement
 finishes the retained cleanup. A fresh attempt can then acquire the namespace
