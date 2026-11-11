@@ -8,6 +8,9 @@ mod capture;
 mod compose;
 mod format;
 mod identity;
+mod stage_reclamation;
+#[cfg(test)]
+mod stage_reclamation_tests;
 #[cfg(test)]
 mod tests;
 mod verify_components;
