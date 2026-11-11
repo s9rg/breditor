@@ -3,6 +3,7 @@ use super::{AssetStore, Manifest, private_options, sync_directory};
 use crate::assets::AssetInfo;
 use std::{fs::File, path::PathBuf};
 mod admission;
+mod capacity;
 mod export;
 mod format;
 mod restore;

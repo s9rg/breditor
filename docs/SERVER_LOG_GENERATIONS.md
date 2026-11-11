@@ -93,6 +93,26 @@ cold opening verifies exact closed-file digests and all framing, then replays
 the native room before completing an intent or trimming an incomplete active
 tail. Rotation additionally rehashes the retained closed files and manifests.
 
+## Read storage capacity before a room reaches its limits
+
+The host can use `Room::storage_capacity` with the bound raster store and the
+authenticated room owner. The live generation host also exposes
+`LogGenerationServerBackupHandle::storage_capacity`. It holds the selected
+deployment lease and both storage owners during the read.
+
+The snapshot reports framed bytes and record headroom in the active WAL, total
+retained headroom, available continuation file slots, and unpublished stages.
+Sealing a partially used file spends a slot and gives up that file's unused
+record capacity. A full staging inventory can prevent rotation while edits
+that fit the active WAL remain available. Single-file logs report the same
+headroom for active and retained records and have no rotation capacity.
+
+Raster headroom counts unique complete assets and their encoded payload bytes.
+The report checks the admitted inventory and room binding without reading all
+raster payloads. Limits are independent and the snapshot reserves no space.
+Filesystem free space, Native Undo and journal limits, and per-operation
+admission still require their own checks.
+
 ## Complete file archives
 
 `Room::export_log_generation_backup` requires current owner access and captures

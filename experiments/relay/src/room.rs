@@ -46,6 +46,8 @@ mod participant_inventory;
 mod recovery;
 mod review;
 mod source_boundaries;
+mod storage_capacity;
+pub use storage_capacity::{ServerRasterStorageCapacity, ServerRoomStorageCapacity};
 mod suggestions;
 mod versions;
 pub use asset_references::{

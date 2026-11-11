@@ -19,6 +19,7 @@ pub use access::Role;
 pub use log::generations::{
     ServerLogGenerationDescriptor, ServerLogGenerationOptions, ServerLogGenerationReceipt,
 };
+pub use log::{ServerLogAllowance, ServerLogRotationCapacity, ServerLogStorageCapacity};
 pub use presence::PresencePeer;
 pub use protocol::{Admission, DurableReceipt, Lease, Receipt, Recovery, Registration};
 pub use room::AtomicTransportProfile;
@@ -87,6 +88,7 @@ pub use room::{
     ServerNativeHistoryBoundary, ServerNativeHistoryDescriptor, ServerNativeHistoryFamily,
     ServerNativeHistoryLane, ServerNativeHistoryReceipt,
 };
+pub use room::{ServerRasterStorageCapacity, ServerRoomStorageCapacity};
 
 /// Explicit service rejection. An I/O failure may have reached storage without an acknowledgement;
 /// reopen and retry the exact group instead of assuming that the write was lost.

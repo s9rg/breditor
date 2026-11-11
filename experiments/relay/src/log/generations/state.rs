@@ -59,7 +59,10 @@ impl Generations {
         self.current().value.closed_bytes()
     }
     pub(in crate::log) fn has_rotation_slot(&self) -> bool {
-        self.current().value.sealed.len() + 3 <= super::format::MAX_GENERATIONS
+        self.remaining_rotation_slots() != 0
+    }
+    pub(in crate::log) fn remaining_rotation_slots(&self) -> usize {
+        super::format::MAX_GENERATIONS - (self.current().value.sealed.len() + 2)
     }
     pub(in crate::log) fn guard(&self, active: &File, bytes: u64) -> Result<()> {
         if self.fenced.load(Ordering::Acquire) {
