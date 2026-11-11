@@ -29,6 +29,36 @@ impl Log {
         self.file.sync_all()?;
         Ok(())
     }
+    pub(crate) fn append_interrupted_grant_for_test(
+        &self,
+        complete_corruption: bool,
+    ) -> Result<Vec<u8>> {
+        use super::super::{Event, frame};
+        use crate::Role;
+        use std::io::Write;
+
+        let frame = frame::encode(
+            Event::Grant {
+                actor: "owner".into(),
+                principal: "interrupted-reader".into(),
+                role: Some(Role::Reader),
+            },
+            self.family,
+            self.next,
+            self.previous,
+        )?;
+        let mut bytes = frame.header.to_vec();
+        if complete_corruption {
+            bytes.extend(frame.payload);
+            bytes[frame.header.len()] ^= 1;
+        } else {
+            bytes.extend(&frame.payload[..frame.payload.len() / 2]);
+        }
+        self.file.try_clone()?.write_all(&bytes)?;
+        self.file.sync_all()?;
+        Ok(bytes)
+    }
+
     pub(crate) fn interrupt_rotation_for_test(&mut self, point: RotationPoint) -> Result<()> {
         self.ready()?;
         self.generations

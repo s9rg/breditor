@@ -18,6 +18,22 @@ impl Room {
     ) -> Result<ServerLogGenerationBackup> {
         self.recovery_inventory_owner(principal)?;
         let files = self.log.capture_generation_files()?;
+        self.generation_backup_from_files(files)
+    }
+
+    pub(in crate::room::log_generations) fn export_inspected_log_generation_prefix(
+        &mut self,
+        principal: &str,
+    ) -> Result<(ServerLogGenerationBackup, u64, [u8; 32])> {
+        self.recovery_inventory_owner(principal)?;
+        let (files, tail_bytes, tail_sha256) = self.log.capture_inspected_generation_prefix()?;
+        Ok((self.generation_backup_from_files(files)?, tail_bytes, tail_sha256))
+    }
+
+    fn generation_backup_from_files(
+        &self,
+        files: crate::log::generations::GenerationFiles,
+    ) -> Result<ServerLogGenerationBackup> {
         let source = self.native_identity_at(files.cut.records, files.cut.previous);
         let header = Header {
             format: "breditor/relay-log-generation-backup".into(),

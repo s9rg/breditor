@@ -73,13 +73,14 @@ impl Generations {
                 })
         }
     }
-    fn capture_files(&self, active: &File) -> Result<GenerationFiles> {
+    fn capture_files(&self, active: &File, active_prefix: Option<u64>) -> Result<GenerationFiles> {
         if self.ready_name != ".ready.json" {
             return Err(Error::Contract("generation source is not published"));
         }
         self.verify_inventory()?;
         self.directory.absent(".rotation.json")?;
         self.verify_retained()?;
+        let active_name = format::wal_name(&self.current().value.active.generation);
         let mut entries = BTreeMap::new();
         let mut total = 0_u64;
         for entry in fs::read_dir(&self.directory.path)? {
@@ -105,22 +106,26 @@ impl Generations {
             let identity = FileIdentity::of(file)?;
             identity.guard(file, &entry.path())?;
             let length = file.metadata()?.len();
-            total = total.checked_add(length).ok_or(Error::Contract("generation capture bytes"))?;
+            let bytes = if name == active_name { active_prefix.unwrap_or(length) } else { length };
+            if bytes > length {
+                return Err(Error::Contract("generation capture prefix exceeds source file"));
+            }
+            total = total.checked_add(bytes).ok_or(Error::Contract("generation capture bytes"))?;
             if total > MAX_GENERATION_BODY_BYTES {
                 return Err(Error::Contract("generation capture byte budget"));
             }
             let stamp = FileStamp::of(file)?;
-            entries.insert(name, (handle, identity, stamp, length));
+            entries.insert(name, (handle, identity, stamp, length, bytes));
         }
         // Reserve one bounded envelope prefix so the room codec can insert its header in place.
         let mut body = backing_buffer(total)?;
         let mut sections = Vec::new();
-        for (name, (handle, identity, stamp, length)) in &mut entries {
+        for (name, (handle, identity, stamp, _, bytes)) in &mut entries {
             let mut file = handle.file();
             let offset = body.len() as u64;
             file.seek(SeekFrom::Start(0))?;
-            let copied = file.by_ref().take(*length).read_to_end(&mut body)?;
-            if copied as u64 != *length {
+            let copied = file.by_ref().take(*bytes).read_to_end(&mut body)?;
+            if copied as u64 != *bytes {
                 return Err(Error::Contract("generation capture incomplete file"));
             }
             identity.guard(file, &self.directory.path.join(name))?;
@@ -128,7 +133,7 @@ impl Generations {
             sections.push(GenerationFileSection {
                 name: name.clone(),
                 offset,
-                bytes: *length,
+                bytes: *bytes,
                 sha256: format::sha(
                     &body[usize::try_from(offset)
                         .map_err(|_| Error::Contract("capture offset"))?..],
@@ -146,7 +151,7 @@ impl Generations {
             })
             .collect::<Result<BTreeMap<_, _>>>()?;
         let cut = closure::verify_generation_files(&slices)?;
-        for (name, (handle, identity, stamp, length)) in &entries {
+        for (name, (handle, identity, stamp, length, _)) in &entries {
             let file = handle.file();
             identity.guard(file, &self.directory.path.join(name))?;
             stamp.guard(file)?;
@@ -173,12 +178,19 @@ impl Generations {
 }
 impl Log {
     pub(crate) fn capture_generation_files(&mut self) -> Result<GenerationFiles> {
+        self.capture_generation_files_with_prefix(None)
+    }
+
+    pub(super) fn capture_generation_files_with_prefix(
+        &mut self,
+        active_prefix: Option<u64>,
+    ) -> Result<GenerationFiles> {
         self.ready()?;
         let state = self
             .generations
             .as_ref()
             .ok_or(Error::Contract("original log has no generation archive"))?;
-        let result = state.capture_files(&self.file).and_then(|files| {
+        let result = state.capture_files(&self.file, active_prefix).and_then(|files| {
             self.ready()?;
             if files.cut.records != self.next
                 || files.cut.previous != self.previous

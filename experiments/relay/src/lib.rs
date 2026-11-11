@@ -22,6 +22,7 @@ pub use log::generations::{
 pub use presence::PresencePeer;
 pub use protocol::{Admission, DurableReceipt, Lease, Receipt, Recovery, Registration};
 pub use room::AtomicTransportProfile;
+pub use room::InspectedNativeGenerationTail;
 pub use room::Room;
 pub use room::{
     DocumentSuggestionAdmission, DocumentSuggestionDecisionAdmission, DocumentSuggestionEntry,

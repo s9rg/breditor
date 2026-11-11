@@ -7,6 +7,7 @@ mod directory;
 mod format;
 mod guard_directory;
 mod held_file;
+mod inspect_tail;
 #[cfg(test)]
 mod interruption;
 mod inventory;
@@ -21,9 +22,8 @@ mod rotate;
 mod state;
 mod verify;
 mod verify_archive;
-#[cfg(any(feature = "server", test))]
 mod verify_archive_ancestor;
-pub(crate) use capture::GenerationFileSection;
+pub(crate) use capture::{GenerationFileSection, GenerationFiles};
 pub(crate) use closure::{
     MAX_GENERATION_BODY_BYTES, MAX_GENERATION_FILES, verify_generation_files,
     visit_generation_records,
@@ -43,5 +43,4 @@ pub use options::ServerLogGenerationOptions;
 pub(crate) use prepare_original_root::prepare_original_root;
 pub use receipt::{ServerLogGenerationDescriptor, ServerLogGenerationReceipt};
 pub(super) use state::Generations;
-#[cfg(any(feature = "server", test))]
 pub(crate) use verify_archive_ancestor::verify_archive_ancestor;

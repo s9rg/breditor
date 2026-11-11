@@ -12,8 +12,9 @@ pub use server_backup::{
 #[cfg(feature = "server")]
 pub(crate) use server_recovery::GenerationOperationCustody;
 pub use server_recovery::{
-    OperationalLogGenerationServerRoom, RecoveredLogGenerationServerRoom,
-    ServerLogGenerationRoomRecovery, ServerLogGenerationRoomRecoveryProgress,
+    InspectedNativeGenerationTail, OperationalLogGenerationServerRoom,
+    RecoveredLogGenerationServerRoom, ServerLogGenerationRoomRecovery,
+    ServerLogGenerationRoomRecoveryProgress,
 };
 mod participants;
 pub use participants::{

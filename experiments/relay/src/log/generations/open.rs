@@ -120,11 +120,19 @@ impl Log {
     pub(crate) fn open_complete_owned_generations(
         directory: Directory,
     ) -> Result<(Self, Vec<Record>, Recovery)> {
-        directory.absent(".rotation.json")?;
-        let (log, records, recovery) = Self::open_owned_generations(directory)?;
+        let (log, records, recovery) = Self::open_generation_prefix(directory)?;
         if recovery.truncated_bytes != 0 {
             return Err(Error::Contract("operational generation log has an incomplete tail"));
         }
+        Ok((log, records, recovery))
+    }
+
+    /// Inspect a prefix without completing a pending rotation or changing the active WAL.
+    pub(crate) fn open_generation_prefix(
+        directory: Directory,
+    ) -> Result<(Self, Vec<Record>, Recovery)> {
+        directory.absent(".rotation.json")?;
+        let (log, records, recovery) = Self::open_owned_generations(directory)?;
         log.generations
             .as_ref()
             .ok_or(Error::Contract("operational generation owner absent"))?
