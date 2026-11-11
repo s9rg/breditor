@@ -7,6 +7,7 @@ use super::{
     options::generation,
     publication,
     receipt::ServerLogGenerationReceipt,
+    rotation_recovery_stages::{Control, RecoveryStages},
     state::{Generations, HeldManifest, HeldWal},
 };
 use crate::{
@@ -30,10 +31,13 @@ pub(super) fn pending_names(directory: &Directory) -> Result<BTreeSet<String>> {
     let file = held_file::open(&path)?;
     let intent: Intent = format::decode(&held_file::read(&file, format::MAX_CONTROL)?)?;
     intent.validate()?;
+    let recovery = RecoveryStages::new(intent.stage_nonce()?);
     Ok([
         ".rotation.json".into(),
         format::wal_name(&intent.next),
         format::manifest_name(&intent.after),
+        recovery.manifest,
+        recovery.head,
     ]
     .into_iter()
     .collect())
@@ -57,10 +61,12 @@ impl Intent {
             return Err(Error::Contract("physical log rotation intent family"));
         }
         generation(&self.next)?;
-        let nonce =
-            self.stage.strip_prefix(".stage-").ok_or(Error::Contract("rotation stage name"))?;
-        credentials::hash(nonce)?;
+        credentials::hash(self.stage_nonce()?)?;
         Ok(())
+    }
+
+    fn stage_nonce(&self) -> Result<&str> {
+        self.stage.strip_prefix(".stage-").ok_or(Error::Contract("rotation stage name"))
     }
 }
 impl Generations {
@@ -216,42 +222,51 @@ impl Generations {
         self.refresh_active(&log.file)?;
         Self::receipt(self.current(), true)
     }
-    fn resume(&mut self, log: &mut Log) -> Result<Option<ServerLogGenerationReceipt>> {
-        let path = self.directory.path.join(".rotation.json");
-        match fs::symlink_metadata(&path) {
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-            Err(error) => return Err(error.into()),
-            Ok(_) => {}
-        }
-        // Inventory reads the marker under its own short lock. Count stages
-        // before taking the marker's lock for recovery.
-        let stages = self.verify_inventory()?;
-        let marker = held_file::open(&path)?;
-        let marker_bytes = held_file::read(&marker, format::MAX_CONTROL)?;
-        let intent: Intent = format::decode(&marker_bytes)?;
-        intent.validate()?;
-        if self.current().hash == intent.after {
-            return self.finish_published_rotation(log, &intent, &marker, &marker_bytes).map(Some);
-        }
-        let staging_full = stages >= format::MAX_GENERATIONS;
-        if self.current().hash != intent.before || self.active_cut(log)? != intent.sealed {
-            return Err(Error::Contract("physical rotation prior cut differs"));
-        }
-        let child = self.child(&intent.next, intent.sealed.clone())?;
-        let bytes = format::encode(&child)?;
-        if format::sha(&bytes) != intent.after {
-            return Err(Error::Contract("physical rotation after hash differs"));
-        }
+    fn publish_rotation_controls(
+        &self,
+        after: [u8; 32],
+        bytes: &[u8],
+        head_bytes: &[u8],
+        recovery: Option<(&RecoveryStages, Option<Control>)>,
+    ) -> Result<(fs::File, FileIdentity, fs::File)> {
+        let manifest = match recovery {
+            Some((stages, existing)) => stages.publish_manifest(self, &after, bytes, existing)?,
+            None => self.directory.immutable(&format::manifest_name(&after), bytes)?,
+        };
+        #[cfg(test)]
+        self.interrupt(super::RotationPoint::ManifestSynced)?;
+        let identity = FileIdentity::of(&manifest)?;
+        let head = match recovery {
+            Some((stages, _)) => stages.publish_head(self, head_bytes)?,
+            None => publication::replace_head(
+                &self.directory,
+                &self.head,
+                &self.head_bytes,
+                head_bytes,
+            )?,
+        };
+        #[cfg(test)]
+        self.interrupt(super::RotationPoint::HeadSynced)?;
+        Ok((manifest, identity, head))
+    }
+    fn link_pending_continuation(
+        &self,
+        intent: &Intent,
+        staged_control: Option<Control>,
+    ) -> Result<(fs::File, bool)> {
         let stage = self.directory.path.join(&intent.stage);
         let final_path = self.directory.path.join(format::wal_name(&intent.next));
         let source = match fs::symlink_metadata(&stage) {
             Ok(_) => &stage,
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound && staging_full => {
-                return Err(Error::Contract("physical rotation staging capacity"));
-            }
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => &final_path,
             Err(error) => return Err(error.into()),
         };
+        let alias_present = source == &stage;
+        if staged_control.is_some() && alias_present {
+            return Err(Error::Contract(
+                "rotation recovery control before continuation retirement",
+            ));
+        }
         let next = held_file::open(source)?;
         intent.identity.guard(&next, source)?;
         if next.metadata()?.len() != 0 {
@@ -266,20 +281,56 @@ impl Generations {
             }
             Err(error) => return Err(error.into()),
         }
+        Ok((next, alias_present))
+    }
+    fn resume(&mut self, log: &mut Log) -> Result<Option<ServerLogGenerationReceipt>> {
+        let path = self.directory.path.join(".rotation.json");
+        match fs::symlink_metadata(&path) {
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+            Err(error) => return Err(error.into()),
+            Ok(_) => {}
+        }
+        // Inventory reads the marker under its own short lock. Count stages
+        // before taking the marker's lock for recovery.
+        let stages = self.verify_inventory()?;
+        let marker = held_file::open(&path)?;
+        let marker_bytes = held_file::read(&marker, format::MAX_CONTROL)?;
+        let intent: Intent = format::decode(&marker_bytes)?;
+        intent.validate()?;
+        let recovery = RecoveryStages::new(intent.stage_nonce()?);
+        let staged_control = recovery.existing(&self.directory)?;
+        if self.current().hash == intent.after {
+            if staged_control.is_some() {
+                return Err(Error::Contract("completed rotation has a recovery stage"));
+            }
+            return self.finish_published_rotation(log, &intent, &marker, &marker_bytes).map(Some);
+        }
+        let staging_full = stages >= format::MAX_GENERATIONS;
+        if self.current().hash != intent.before || self.active_cut(log)? != intent.sealed {
+            return Err(Error::Contract("physical rotation prior cut differs"));
+        }
+        let child = self.child(&intent.next, intent.sealed.clone())?;
+        let bytes = format::encode(&child)?;
+        if format::sha(&bytes) != intent.after {
+            return Err(Error::Contract("physical rotation after hash differs"));
+        }
+        let (next, alias_present) = self.link_pending_continuation(&intent, staged_control)?;
         #[cfg(test)]
         self.interrupt(super::RotationPoint::ContinuationPublished)?;
-        if staging_full {
+        if staging_full && alias_present {
             self.retire_linked_continuation_for_recovery(&intent, &marker, &marker_bytes, &next)?;
         }
-        let file = self.directory.immutable(&format::manifest_name(&intent.after), &bytes)?;
-        #[cfg(test)]
-        self.interrupt(super::RotationPoint::ManifestSynced)?;
-        let identity = FileIdentity::of(&file)?;
+        let use_recovery_stages = staged_control.is_some() || (staging_full && !alias_present);
+        if use_recovery_stages {
+            self.guard_intent(&marker, &marker_bytes)?;
+        }
         let head_bytes = Self::head_bytes(intent.after)?;
-        let head =
-            publication::replace_head(&self.directory, &self.head, &self.head_bytes, &head_bytes)?;
-        #[cfg(test)]
-        self.interrupt(super::RotationPoint::HeadSynced)?;
+        let (file, identity, head) = self.publish_rotation_controls(
+            intent.after,
+            &bytes,
+            &head_bytes,
+            use_recovery_stages.then_some((&recovery, staged_control)),
+        )?;
         self.clean_intent(&intent, &marker, &marker_bytes, &next)?;
         let old = std::mem::replace(&mut log.file, next);
         let old_stamp = FileStamp::of(&old)?;

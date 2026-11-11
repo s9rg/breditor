@@ -87,8 +87,13 @@ for a free staging slot before publishing any missing metadata. At capacity
 it can finish linking the exact continuation selected by the durable intent,
 sync its final WAL name, then retire that intent's temporary alias to free
 one slot. A cold retry after that unlink opens the same inode through its
-final name. Every unrelated stage stays in place. If the owned alias is already
-absent and no slot is available, recovery preserves the pending intent and files.
+final name. If another interruption fills the reclaimed slot, the existing
+intent's nonce reserves one private control stage at a time, first for the
+manifest and then for the head. Retry checks the exact expected byte prefix
+before appending the remainder and syncing it. Every unrelated stage stays in
+place. Divergent bytes, unexpected links, and invalid publication order refuse.
+These temporary names require a relay that supports the recovery path while the
+rotation is pending. A completed rotation uses the existing archive format.
 
 Live guards check held inodes, path custody, lengths, controls and filesystem
 change witnesses. A detected change permanently fences that owner until cold

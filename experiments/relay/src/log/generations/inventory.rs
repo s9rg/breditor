@@ -47,6 +47,11 @@ impl Generations {
             let file = fs::File::open(entry.path())?;
             FileIdentity::of(&file)?.guard(&file, &entry.path())?;
             if known.contains(&name) {
+                if name.starts_with(super::rotation_recovery_stages::PREFIX)
+                    && metadata.len() > format::MAX_CONTROL
+                {
+                    return Err(Error::Contract("rotation recovery stage byte budget"));
+                }
                 continue;
             }
             let nonce = name

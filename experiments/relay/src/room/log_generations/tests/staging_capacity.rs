@@ -154,40 +154,94 @@ fn full_pending_rotation_recovers_using_only_its_own_continuation_alias() -> Tes
     Ok(())
 }
 
-#[test]
-fn full_pending_rotation_resumes_after_retiring_its_alias_and_refuses_when_that_slot_is_lost()
--> TestResult {
-    let (files, mut room, _) = setup()?;
-    room.grant("owner", "reader", Some(Role::Reader))?;
-    let expected = room.catchup("owner")?;
-    let room = retain_interrupted_stages(&files.room(), room, 62)?;
-    let owned = fill_pending_rotation(&files, room)?;
-    let mut stages = retained_stages(&files)?;
-    stages.remove(&owned).ok_or("owned continuation before interruption")?;
+fn interrupt_pending(files: &super::Files, point: RotationPoint) -> TestResult {
     let (mut log, records, recovery) = crate::log::Log::open_generations(&files.room())?;
-    log.interrupt_rotation_for_test(RotationPoint::FullStageRetired)?;
+    log.interrupt_rotation_for_test(point)?;
     assert!(matches!(
         Room::replay_loaded(log, records, recovery, true),
         Err(Error::Contract("test interruption after durable physical prefix"))
     ));
+    Ok(())
+}
+
+fn consume_freed_slot(files: &super::Files, room: Room) -> TestResult<String> {
+    let room = retain_interrupted_stages(&files.room(), room, 62)?;
+    let owned = fill_pending_rotation(files, room)?;
+    let mut stages = retained_stages(files)?;
+    stages.remove(&owned).ok_or("owned continuation before interruption")?;
+    interrupt_pending(files, RotationPoint::FullStageRetired)?;
     assert!(files.room().join(".rotation.json").is_file());
-    assert_eq!(retained_stages(&files)?, stages);
+    assert_eq!(retained_stages(files)?, stages);
 
-    // A subsequent unowned stage must not be overwritten or removed to force a retry.
+    // A second interruption left an unowned control stage in the freed slot.
     let unrelated = files.room().join(format!(".stage-{}", crate::credentials::issue()?));
-    fs::copy(files.room().join(".head.json"), &unrelated)?;
-    let before = snapshot(&files)?;
-    assert!(matches!(
-        Room::open_log_generations(&files.room()),
-        Err(Error::Contract("physical rotation staging capacity"))
-    ));
-    assert_eq!(snapshot(&files)?, before);
-    fs::rename(unrelated, files.recovery())?;
+    fs::copy(files.room().join(".head.json"), unrelated)?;
+    Ok(owned.strip_prefix(".stage-").ok_or("stage nonce")?.to_owned())
+}
 
+#[test]
+fn full_pending_rotation_resumes_control_prefixes_through_repeated_interruptions() -> TestResult {
+    let (files, mut room, _) = setup()?;
+    room.grant("owner", "reader", Some(Role::Reader))?;
+    let expected = room.catchup("owner")?;
+    let nonce = consume_freed_slot(&files, room)?;
+    let stages = retained_stages(&files)?;
+    assert_eq!(stages.len(), 64);
+    let manifest_stage = files.room().join(format!(".rotation-recovery-manifest-{nonce}"));
+    let head_stage = files.room().join(format!(".rotation-recovery-head-{nonce}"));
+    let prior_head = fs::read(files.room().join(".head.json"))?;
+    for (point, selected, absent) in [
+        (RotationPoint::RecoveryManifestPrefix, &manifest_stage, &head_stage),
+        (RotationPoint::RecoveryManifestLinked, &manifest_stage, &head_stage),
+        (RotationPoint::RecoveryHeadPrefix, &head_stage, &manifest_stage),
+        (RotationPoint::RecoveryHeadPrefix, &head_stage, &manifest_stage),
+    ] {
+        interrupt_pending(&files, point)?;
+        assert!(!fs::read(selected)?.is_empty());
+        assert!(!absent.exists());
+        assert_eq!(fs::read(files.room().join(".head.json"))?, prior_head);
+        assert_eq!(retained_stages(&files)?, stages);
+    }
     let (mut room, _) = Room::open_log_generations(&files.room())?;
     assert_eq!(room.catchup("owner")?, expected);
     assert!(room.rotate_log_generation("owner", "pending")?.duplicate);
     assert_eq!(retained_stages(&files)?, stages);
+    assert!(!manifest_stage.exists());
+    assert!(!head_stage.exists());
+    assert!(!files.room().join(".rotation.json").exists());
+    drop(room);
+    assert_eq!(Room::open_log_generations(&files.room())?.0.catchup("owner")?, expected);
+    Ok(())
+}
+
+#[test]
+fn full_pending_rotation_preserves_divergent_and_externally_linked_control_stages() -> TestResult {
+    let (files, mut room, _) = setup()?;
+    room.grant("owner", "reader", Some(Role::Reader))?;
+    let nonce = consume_freed_slot(&files, room)?;
+    let stage = files.room().join(format!(".rotation-recovery-manifest-{nonce}"));
+    let head = files.room().join(".head.json");
+    fs::copy(&head, &stage)?;
+    let before = snapshot(&files)?;
+    assert!(matches!(
+        Room::open_log_generations(&files.room()),
+        Err(Error::Contract("rotation recovery stage differs from expected prefix"))
+    ));
+    assert_eq!(snapshot(&files)?, before);
+
+    fs::remove_file(&stage)?;
+    let empty = retained_stages(&files)?
+        .into_iter()
+        .find(|(_, bytes)| bytes.is_empty())
+        .ok_or("empty unrelated stage")?
+        .0;
+    fs::hard_link(files.room().join(empty), stage)?;
+    let before = snapshot(&files)?;
+    assert!(matches!(
+        Room::open_log_generations(&files.room()),
+        Err(Error::Contract("rotation recovery stage has unrelated links"))
+    ));
+    assert_eq!(snapshot(&files)?, before);
     Ok(())
 }
 
