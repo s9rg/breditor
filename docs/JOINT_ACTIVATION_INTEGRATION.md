@@ -66,7 +66,9 @@ for independent package archives. These checks use controlled storage.
 
 Preparation retains the complete selected descriptor before writing the new
 Native capture and then the restart journal. It holds the original and
-predecessor journals during both writes. If the second write fails, an exact
+predecessor journals while the host retains the choice and during both writes.
+An earlier metadata journal closing ends pending preparation or approval. If
+the second write fails, an exact
 resume can finish it from the retained choice and literal capture bytes.
 The cold restart target has separate entry points for an interrupted local
 execution and for an untouched prepared execution. Both keep the target

@@ -65,12 +65,12 @@ export async function prepareJointHandoverReassociation(
  const {wasm,signal}=options,authority=archiveGuard(options.checkAuthority,signal);
  const heldOptions={wasm,checkAuthority:authority,...(signal?{signal}:{})};
  const selected=handoverActivationReassociationChoice(old.activation,nativeName,activation.selection,path.selection);
- return withPrevious(scope,origin,previous,heldOptions,(native,parentCheck,revocations)=>withSelectedHandoverPrior(scope,origin,old.destinations,prior,async(evidence,priorCheck)=>{
+ return withPrevious(scope,origin,previous,heldOptions,(native,parentCheck,revocations)=>withSelectedHandoverPrior(scope,origin,old.destinations,prior,async(evidence,priorCheck,priorRevocations)=>{
   const waits=new NativeReconstructionWaits(()=>{
    authority();origin.check();parentCheck();priorCheck();
    activation.check();path.guard(scope.signal);publication.check();
    origin.check();
-  },[scope.signal,signal,...origin.revocations,...revocations,...activation.signals,...path.signals,...publication.signals]);
+  },[scope.signal,signal,...origin.revocations,...revocations,...priorRevocations,...activation.signals,...path.signals,...publication.signals]);
   try{
    const predecessors=[...(previous?.plan.predecessors??[])];
    if(previous){
@@ -104,9 +104,9 @@ export async function resumeJointHandoverReassociationPreparation(
  const old=previous?.plan??origin.choice.plan;
  const {wasm,signal}=options,authority=archiveGuard(options.checkAuthority,signal);
  const heldOptions={wasm,checkAuthority:authority,...(signal?{signal}:{})};
- return withPrevious(scope,origin,previous,heldOptions,(native,parentCheck,revocations)=>withExactHandoverPriors(scope,origin,[choice.plan.prior],async priorCheck=>{
+ return withPrevious(scope,origin,previous,heldOptions,(native,parentCheck,revocations)=>withExactHandoverPriors(scope,origin,[choice.plan.prior],async(priorCheck,priorRevocations)=>{
   const waits=new NativeReconstructionWaits(()=>{authority();origin.check();parentCheck();priorCheck();origin.check();},
-   [scope.signal,signal,...origin.revocations,...revocations]);
+   [scope.signal,signal,...origin.revocations,...revocations,...priorRevocations]);
   try{
    const guarded={wasm,signal:waits.signal,checkAuthority:waits.check};
    return await persistHandoverReassociation(choice,guarded,true,async()=>{

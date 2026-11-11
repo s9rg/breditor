@@ -17,6 +17,7 @@ export interface MetadataContinuationEvidence {
 }
 export interface HeldMetadataContinuationEvidence {
  readonly evidence:MetadataContinuationEvidence;
+ readonly revocations:readonly AbortSignal[];
  /** Expires before any destination lease is released. */
  check():void;
 }
@@ -27,6 +28,7 @@ export interface HandoverMetadataContinuationEvidence extends Omit<MetadataConti
 }
 export interface HeldHandoverMetadataContinuationEvidence {
  readonly evidence:HandoverMetadataContinuationEvidence;
+ readonly revocations:readonly AbortSignal[];
  /** Expires before any destination lease is released. */
  check():void;
 }

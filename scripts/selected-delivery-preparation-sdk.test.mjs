@@ -5,6 +5,7 @@ import*as api from'../packages/breditor-collaboration/dist/index.js';import*as n
 import{selectedDeliveryNativeHost}from'./fixtures/selected-delivery/native-host.mjs';import{generationSelectedSession}from'./fixtures/selected-generation-reconciliation/session.mjs';
 import{withSelectedNativeDeliverySources}from'../packages/breditor-collaboration/dist/physical_room_asset_successor/owner.js';import{withNativeRelayDelivery}from'../packages/breditor-collaboration/dist/relay/native_delivery.js';
 import{previewSelectedNativeDeliveryPreparation,prepareSelectedNativeDelivery,createPreparedSelectedNativeRelayDelivery}from'../packages/breditor-collaboration/dist/selected_delivery_preparation/coordinator.js';
+import {openAndForceCloseJournal} from './fixtures/local-metadata/unexpected-close.mjs';
 import{DeliveryPreparationIntentStore}from'../packages/breditor-collaboration/dist/selected_delivery_preparation/intent_store.js';
 import{DeliveryPreparationResources}from'../packages/breditor-collaboration/dist/selected_delivery_preparation/resources.js';
 await native.default({module_or_path:readFileSync(new URL('../packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm',import.meta.url))});
@@ -23,6 +24,15 @@ test('durable complete before-cut and readback precede actual retained-owner aut
    const firstSource=sources.find(row=>row.id==='original').source;assert.throws(()=>createPreparedSelectedNativeRelayDelivery({...prepared},scope,firstSource,'comment'),error=>error.code==='delivery_preparation_policy');
    const integrity={wasm:native,checkAuthority:()=>scope.check(),signal:scope.signal},missing={...preview.choice,database:'real-selected-owner-prepared-missing'},absent=new DeliveryPreparationIntentStore(indexedDB,missing,integrity);try{await assert.rejects(absent.open(),error=>error.code==='delivery_preparation_missing');}finally{await absent.close();}assert.equal((await indexedDB.databases()).some(row=>row.name===missing.database),false);
    const duplicate=new DeliveryPreparationIntentStore(indexedDB,preview.choice,integrity);try{await assert.rejects(duplicate.open(preview.current.file),error=>error.code==='delivery_preparation_exists');}finally{await duplicate.close();}assert.equal(tokens,0);
+
+   const retained={...preview.choice,database:'real-selected-owner-prepared-revocation'};
+   const revoked=new DeliveryPreparationIntentStore(indexedDB,retained,integrity);
+   try{
+    const saved=await openAndForceCloseJournal(revoked,retained.database,()=>revoked.open(preview.current.file));
+    assert.equal(revoked.revoked.aborted,true);
+    assert.throws(revoked.checkCurrent,{code:'delivery_preparation_closed'});
+    assert.deepEqual(Buffer.from(await saved.file.arrayBuffer()),Buffer.from(await preview.current.file.arrayBuffer()));
+   }finally{await revoked.close();}
 
    for(const row of sources){const parent=row.source.parent,source=parent.kind==='generation'?parent.source.session:parent.session,isBound=parent.kind==='original'||parent.kind==='independent-delivery'||parent.kind==='generation'&&parent.source.kind!=='local';assert.throws(()=>row.source.core.select(null),error=>error.code==='native_recovery_busy');if(!isBound){unbound.push(row.id);continue;}
     const client=fixture.clients.find(value=>value.writer===row.source.core.writerClockV2(source.reviewRelayIdentity().documentWriter).writer),auth=await host.authentication(client),context=createPreparedSelectedNativeRelayDelivery(prepared,scope,row.source,'comment');contexts.push(context);const common={getToken:()=>{prepared.check();tokens++;return auth.getToken();},autoConnect:false,requestTimeoutMs:5000};let doc,review;

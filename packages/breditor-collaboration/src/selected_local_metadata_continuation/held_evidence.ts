@@ -56,7 +56,7 @@ export async function withHeldHandoverMetadataContinuationEvidence<T>(
 async function withHeldEvidence<T,E>(
  scope:SelectedNativeRecoveryScope,original:OriginalInspection,choice:MetadataContinuationChoice,
  openIntent:(options:SharedArchiveIntegrityOptions)=>MetadataContinuationIntent|HandoverMetadataContinuationIntent,
- evidenceFor:(observed:Observation)=>E,visit:(held:Readonly<{evidence:E;check():void}>)=>Promise<T>,
+ evidenceFor:(observed:Observation)=>E,visit:(held:Readonly<{evidence:E;revocations:readonly AbortSignal[];check():void}>)=>Promise<T>,
 ):Promise<T>{
  const execution=original.execution;
  if(typeof visit!=='function'||!equal(choice.execution,execution)||!equal(choice.target,original.target)||!equal(choice.origin,{choice:original.choice,prepared:original.bundle.parent.prepared.choice,current:original.bundle.parent.current.selection,review:{bytes:original.bundle.parent.delivery.bytes,sha256:original.bundle.parent.delivery.sha256},metadata:{bytes:original.bundle.metadata.bytes,sha256:original.bundle.metadata.sha256}}))throw fail('metadata_continuation_stale');
@@ -91,7 +91,8 @@ async function withHeldEvidence<T,E>(
   if(present[3]){if(!reviewSnapshot)throw fail();metadata=new LocalMetadataDeliveryStore(choice.metadata,base);metadataSnapshot=await metadata.open();check();verifyContinuedMetadataFacts(original.snapshot,reviewSnapshot,metadataSnapshot);}
   const phase=(['absent','intent','prepared','review','metadata'] as const)[present.filter(Boolean).length]!;
   const evidence=evidenceFor({phase,review:reviewSnapshot?localJson(reviewSnapshot):null,metadata:metadataSnapshot?metadataJson(metadataSnapshot):null});
-  check();const result=await visit(Object.freeze({evidence,check}));check();
+  const revocations=Object.freeze([intent,preparation,review,metadata].flatMap(store=>store?[store.revoked]:[]));
+  check();const result=await visit(Object.freeze({evidence,check,revocations}));check();
   if(review&&!equal(await review.readFresh(),reviewSnapshot)||metadata&&!equal(await metadata.readFresh(),metadataSnapshot))throw fail('metadata_continuation_stale');
   if(preparation){const after=await preparation.read();check();if(!prepared||!equal(after.choice,prepared.choice)||after.file.size!==prepared.file.size)throw fail('metadata_continuation_stale');}
   check();return result;

@@ -26,11 +26,13 @@ interface IntentWire {
 class MetadataContinuationJournal{
  readonly #factory=recoveryOpeningContext();readonly #locks=navigator.locks;readonly #choice;readonly #wire:IntentWire;readonly #integrity;readonly #authority;readonly #cancel;
  #opening:RecoveryOpeningCustody|undefined;#lease:RecoveryLease|undefined;#db:IDBDatabase|undefined;
- #changed=false;#closing=false;#closed=false;#pending=false;#request:IDBOpenDBRequest|undefined;#reject:((e:unknown)=>void)|undefined;#running:Promise<unknown>|undefined;#ending:Promise<void>|undefined;
+ #closing=false;#closed=false;#pending=false;#request:IDBOpenDBRequest|undefined;#reject:((e:unknown)=>void)|undefined;#running:Promise<unknown>|undefined;#ending:Promise<void>|undefined;
  // Archive setup invokes its guard immediately. Install cancellation first,
  // and retire its observers if any constructor admission refuses.
  constructor(token:object,choice:MetadataContinuationChoice,wire:IntentWire,options:SharedArchiveIntegrityOptions){if(token!==journalKey)throw fail();this.#choice=choice;this.#wire=wire;this.#authority=participantAuthority(options.checkAuthority);this.#cancel=new PhysicalOperationV3Cancellation(options.signal);try{this.#integrity=prepareArchiveIntegrity({...options,checkAuthority:this.#check});}catch(error){this.#cancel.close();throw error;}Object.freeze(this);}
- #current=()=>{if(this.#closing||this.#closed||this.#changed||globalThis.indexedDB!==this.#factory||globalThis.navigator?.locks!==this.#locks)throw fail('metadata_continuation_closed');if(this.#lease)checkRecoveryLeasesHeld([this.#lease]);try{this.#cancel.check();}catch{throw fail('metadata_continuation_closed');}};
+ readonly #revoked=new AbortController();
+ get revoked():AbortSignal{return this.#revoked.signal;}
+ #current=()=>{if(this.#closing||this.#closed||this.#revoked.signal.aborted||globalThis.indexedDB!==this.#factory||globalThis.navigator?.locks!==this.#locks)throw fail('metadata_continuation_closed');if(this.#lease)checkRecoveryLeasesHeld([this.#lease]);try{this.#cancel.check();}catch{throw fail('metadata_continuation_closed');}};
  #check=()=>{this.#current();this.#authority();this.#current();};
  /** Actual finite-reader guard. A copied descriptor supplies no live journal. */
  check():void{this.#check();}
@@ -40,7 +42,10 @@ class MetadataContinuationJournal{
   if(!equal(origin.parent.prepared.choice,pins.prepared)||!equal(origin.parent.current.selection,pins.current)||origin.parent.delivery.bytes!==pins.review.bytes||origin.parent.delivery.sha256!==pins.review.sha256||origin.metadata.bytes!==pins.metadata.bytes||origin.metadata.sha256!==pins.metadata.sha256)throw fail();
   for(const[file,pin]of[[origin.parent.prepared.file,pins.prepared.before],[origin.parent.current.file,pins.current],[origin.parent.delivery.file,pins.review],[origin.metadata.file,pins.metadata]] as const){if(file.size!==pin.bytes||await this.#integrity.digest(file)!==pin.sha256)throw fail();this.#check();}return origin;
  }
- #attach(db:IDBDatabase){this.#db=db;db.onclose=()=>{this.#changed=true;};db.onversionchange=()=>{this.#changed=true;db.close();};}
+ #attach(db:IDBDatabase){this.#db=db;
+  db.onclose=()=>this.#revoked.abort();
+  db.onversionchange=()=>{this.#revoked.abort();db.close();};
+ }
  open(origin:LocalMetadataRoomBundle):Promise<LocalMetadataRoomBundle>{return this.#open(origin,true);}
  /** A missing existing-only journal cannot create a placeholder namespace. */
  reopen(origin:LocalMetadataRoomBundle):Promise<LocalMetadataRoomBundle>{return this.#open(origin,false);}
@@ -63,8 +68,8 @@ class MetadataContinuationJournal{
    const count=store.count();count.onsuccess=()=>{try{this.#check();if(count.result!==1)throw fail();const keys=store.getAllKeys(undefined,2),read=store.get('record');let received=0;const done=()=>{if(++received!==2)return;try{this.#check();if(!equal(keys.result,['record']))throw fail();result=read.result;ready=true;}catch(error){abort(error);}};keys.onsuccess=done;read.onsuccess=done;}catch(error){abort(error);}};
   });return this.#verify(value);
  });}
- close():Promise<void>{this.#closing=true;this.#reject?.(fail('metadata_continuation_closed'));try{this.#request?.transaction?.abort();}catch{}return this.#close().then(()=>this.#opening?.rollback());}
- #close():Promise<void>{if(this.#closed)return Promise.resolve();if(this.#ending)return this.#ending;this.#closing=true;this.#ending=(async()=>{await this.#running?.catch(()=>{});if(this.#pending)throw fail('metadata_continuation_busy');if(this.#db){this.#db.onclose=null;this.#db.onversionchange=null;this.#db.close();}await this.#lease?.close();this.#db=undefined;this.#lease=undefined;this.#cancel.close();this.#closed=true;})().finally(()=>{this.#ending=undefined;});return this.#ending;}
+ close():Promise<void>{this.#closing=true;this.#revoked.abort();this.#reject?.(fail('metadata_continuation_closed'));try{this.#request?.transaction?.abort();}catch{}return this.#close().then(()=>this.#opening?.rollback());}
+ #close():Promise<void>{if(this.#closed)return Promise.resolve();if(this.#ending)return this.#ending;this.#closing=true;this.#revoked.abort();this.#ending=(async()=>{await this.#running?.catch(()=>{});if(this.#pending)throw fail('metadata_continuation_busy');if(this.#db){this.#db.onclose=null;this.#db.onversionchange=null;this.#db.close();}await this.#lease?.close();this.#db=undefined;this.#lease=undefined;this.#cancel.close();this.#closed=true;})().finally(()=>{this.#ending=undefined;});return this.#ending;}
 }
 
 export class MetadataContinuationIntent extends MetadataContinuationJournal {
