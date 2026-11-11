@@ -1,8 +1,9 @@
-//! One-shot cold inspection using only the older checkpoint pin.
+//! One-shot cold inspection from the checkpoint or a later known predecessor.
 use super::{Result, authentication, checkpoint_name, input, read_pinned};
+use breditor_collab_relay::ServerLogGenerationRoomBackup;
 use breditor_collab_relay::server::{
     PreparedNativeGenerationActivationIdentity, SealedNativeRestartBootstrap,
-    inspect_sealed_native_restart,
+    ServerLogGenerationRecoveryStateIdentity, inspect_sealed_native_restart,
 };
 use serde::Deserialize;
 use serde_json::json;
@@ -16,6 +17,16 @@ struct Input {
     root: PathBuf,
     checkpoint_name: String,
     checkpoint_digest: String,
+    #[serde(default)]
+    minimum: Option<MinimumCut>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct MinimumCut {
+    sequence: u64,
+    digest: String,
+    selection: ServerLogGenerationRecoveryStateIdentity,
 }
 
 pub(crate) async fn inspect() -> Result {
@@ -32,7 +43,23 @@ pub(crate) async fn inspect() -> Result {
     let raw = read_pinned(&checkpoint_root.join("activation.json"), &input.checkpoint_digest)?;
     let expected_checkpoint: PreparedNativeGenerationActivationIdentity =
         serde_json::from_slice(&raw)?;
-    let expected_current = expected_checkpoint.current().clone();
+    let (expected_current, minimum) = if let Some(minimum) = input.minimum {
+        if minimum.sequence == 0 || minimum.sequence > 9_007_199_254_740_991 {
+            return Err("private sealed inspection predecessor selection".into());
+        }
+        let bytes = read_pinned(
+            &input
+                .root
+                .join("snapshots")
+                .join(format!("cut-{}", minimum.sequence))
+                .join("server-after.backup"),
+            &minimum.digest,
+        )?;
+        let archive = ServerLogGenerationRoomBackup::from_owned_bytes(bytes)?;
+        (minimum.selection, Some(archive))
+    } else {
+        (expected_checkpoint.current().clone(), None)
+    };
     let accounts = authentication::accounts()?;
     let observed = Box::pin(inspect_sealed_native_restart(
         SealedNativeRestartBootstrap {
@@ -43,7 +70,7 @@ pub(crate) async fn inspect() -> Result {
             expected_checkpoint,
             expected_current,
         },
-        None,
+        minimum,
         accounts.authentication,
         "owner",
         &accounts.owner,

@@ -69,6 +69,10 @@ impl Bootstrap {
     fn published(&self) -> bool {
         self.format == "breditor/private-native-sealed-published-process-recovery"
     }
+
+    fn inspected(&self) -> bool {
+        self.format == "breditor/private-native-sealed-inspected-process-recovery"
+    }
 }
 
 fn checkpoint_name(name: &str) -> bool {
@@ -116,9 +120,10 @@ fn read_backup(path: &Path, digest: &str) -> Result<Arc<ServerLogGenerationRoomB
 
 fn read_bootstrap() -> Result<Bootstrap> {
     let input: Bootstrap = input::read()?;
-    if (!input.published() && input.format != "breditor/private-native-sealed-process-recovery")
+    let published = input.published() || input.inspected();
+    if (!published && input.format != "breditor/private-native-sealed-process-recovery")
         || input.format_version != 1
-        || input.published() != input.expected_published.is_some()
+        || published != input.expected_published.is_some()
         || input.root.canonicalize()? != input.root
         || !checkpoint_name(&input.checkpoint_name)
         || input.handover_sequence == 0
@@ -164,8 +169,17 @@ async fn reopen_target(
     let checkpoint = expected_checkpoint.current();
     let expected_current = match &input.expected_published {
         Some(expected) => {
-            if expected.server == checkpoint.server || expected.server != retained.info()?.identity
-            {
+            let previous = retained.info()?.identity;
+            if expected.server == checkpoint.server {
+                return Err("selected published cut must advance beyond its checkpoint".into());
+            }
+            if input.inspected() {
+                if expected.server == previous {
+                    return Err(
+                        "cold inspection must advance beyond its retained predecessor".into()
+                    );
+                }
+            } else if expected.server != previous {
                 return Err("retained published cut differs".into());
             }
             expected.clone()

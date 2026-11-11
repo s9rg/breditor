@@ -302,6 +302,13 @@ activation and publication, a second client receives the edits and the author
 can Undo and Redo both changes without losing peer work. The original
 exact-checkpoint action still refuses a later cut.
 
+A second published-room case ends the relay before it captures a snapshot of
+the acknowledged work. A separate inspection process reads the surviving cut
+against the last retained predecessor. The host saves that observation as the
+exact restart selection. The replacement continues from the retained
+predecessor, republishes the inspected bytes, and verifies the original
+document and comment receipts, raster, peer catch-up and Undo/Redo.
+
 The whole-room fixture then exercises the SDK with seven replacement owners,
 fourteen offline lanes, metadata continuation, a revoked approval and lost
 replies before final delivery.

@@ -13,7 +13,10 @@ import {
  SharedServerLogGenerationRecoveryHost as Inspection,
 } from '../packages/breditor-collaboration/dist/index.js';
 import {assertHandoverPathContinuation} from '../packages/breditor-collaboration/dist/room_native_handover_activation_intent/capture_binding.js';
-import {inspectSelectedDeliverySealedNativeHost,selectedDeliveryNativeHost,reopenSelectedDeliverySealedNativeHost} from './fixtures/selected-delivery/native-host.mjs';
+import {
+ inspectSelectedDeliverySealedNativeHost,reopenInspectedPublishedSealedNativeHost,
+ reopenSelectedDeliverySealedNativeHost,selectedDeliveryNativeHost,
+} from './fixtures/selected-delivery/native-host.mjs';
 import {nativeHandoverActivationRoot} from './fixtures/native-activation/handover-root.mjs';
 import {thirdAsset,thirdPixel} from './fixtures/review-assets/participant-pixels.mjs';
 import {
@@ -43,7 +46,7 @@ function assetClient(endpoint,client,authentication){
  });
 }
 
-test('a published sealed room restarts from the exact cut with later acknowledged edits and upload',{timeout:600000},async()=>{
+async function recoverPublishedRoom(inspectAfterCrash){
  const root=nativeHandoverActivationRoot(new URL('../',import.meta.url).pathname),request=globalThis.fetch;
  const socket=Object.getOwnPropertyDescriptor(globalThis,'WebSocket'),origin='http://127.0.0.1:4187';
  await native.default({module_or_path:readFileSync(new URL('../packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm',import.meta.url))});
@@ -78,39 +81,57 @@ test('a published sealed room restarts from the exact cut with later acknowledge
   transport.dispose();
   transport=undefined;
 
-  const advanced=await host.refreshAfter(published.served);
-  const retained=archive(advanced),activationCut=archive(offer.case);
-  assert.notDeepEqual(advanced.selection.source,offer.selection.current);
-  assert.notDeepEqual(retained,activationCut);
-  await assert.rejects(host.prepareProcessRecovery(offer),{name:'AssertionError'});
-  console.log('SEALED_PUBLISHED_STEP exact-checkpoint-reopen-refuses-acknowledged-advance');
-  await assert.rejects(host.preparePublishedProcessRecovery(offer,published.served),/exact latest observed cut/);
-  await assert.rejects(host.preparePublishedProcessRecovery(offer,{...advanced}),/exact latest observed cut/);
+  const activationCut=archive(offer.case);
+  let predecessor=published.served,archivedBeforeCrash,capsule;
+  if(inspectAfterCrash){
+   assert.equal(host.snapshots.at(-1),predecessor);
+   capsule=await host.prepareUnobservedPublishedProcessRecovery(offer);
+   assert.equal(host.snapshots.at(-1),predecessor);
+  }else{
+   predecessor=await host.refreshAfter(published.served);
+   archivedBeforeCrash=archive(predecessor);
+   assert.notDeepEqual(predecessor.selection.source,offer.selection.current);
+   assert.notDeepEqual(archivedBeforeCrash,activationCut);
+   await assert.rejects(host.prepareProcessRecovery(offer),{name:'AssertionError'});
+   console.log('SEALED_PUBLISHED_STEP exact-checkpoint-reopen-refuses-acknowledged-advance');
+   await assert.rejects(host.preparePublishedProcessRecovery(offer,published.served),/exact latest observed cut/);
+   await assert.rejects(host.preparePublishedProcessRecovery(offer,{...predecessor}),/exact latest observed cut/);
+   capsule=await host.preparePublishedProcessRecovery(offer,predecessor);
+  }
   const sealed=join(host.directory,'language-3-standard-true-atomic-true','sdk-handover');
   const reference=JSON.parse(readFileSync(join(sealed,'selected-checkpoint-'+offer.case.sequence+'.json'),'utf8'));
   const originalCheckpoint=['activation.json','target.backup'].map(name=>{
    const file=join(sealed,reference.checkpointName,name);
    return {file,bytes:readFileSync(file)};
   });
-  const capsule=await host.preparePublishedProcessRecovery(offer,advanced);
   const exited=await host.crashForRecovery(capsule);
   processExited=true;
   assert.deepEqual(exited,{processId:originalPid,signal:'SIGKILL'});
+  if(inspectAfterCrash){
+   await assert.rejects(reopenSelectedDeliverySealedNativeHost(root,capsule),/Retain the inspected current cut/);
+  }
   const observed=inspectSelectedDeliverySealedNativeHost(root,capsule);
-  assert.deepEqual(observed.selection,advanced.selection.source);
-  assert.equal(Buffer.from(observed.selection.server.archiveSha256).toString('hex'),digest(retained));
   for(const {file,bytes} of originalCheckpoint)assert.deepEqual(readFileSync(file),bytes);
-  host=await reopenSelectedDeliverySealedNativeHost(root,capsule);
+  if(inspectAfterCrash){
+   assert.notDeepEqual(observed.selection,predecessor.selection.source);
+   assert.throws(()=>reopenInspectedPublishedSealedNativeHost(root,capsule,{...observed}),/actual cold inspection/);
+   host=await reopenInspectedPublishedSealedNativeHost(root,capsule,observed);
+  }else{
+   assert.deepEqual(observed.selection,predecessor.selection.source);
+   host=await reopenSelectedDeliverySealedNativeHost(root,capsule);
+  }
   processExited=false;
-  const fresh=host.reopenedOffer;
+  const fresh=host.reopenedOffer,retained=archive(fresh.case);
+  assert.equal(Buffer.from(observed.selection.server.archiveSha256).toString('hex'),digest(retained));
+  if(archivedBeforeCrash)assert.deepEqual(retained,archivedBeforeCrash);
+  assert.notDeepEqual(retained,activationCut);
   assert.notEqual(host.processId,originalPid);
-  assert.deepEqual(fresh.selection.current,advanced.selection.source);
+  assert.deepEqual(fresh.selection.current,observed.selection);
   assert.deepEqual(fresh.selection.previous,offer.selection.planned);
   assert.notDeepEqual(fresh.selection.checkpointSha256,offer.selection.checkpointSha256);
-  assert.equal(fresh.case.previousSequence,advanced.sequence);
+  assert.equal(fresh.case.previousSequence,predecessor.sequence);
   assert.equal(fresh.case.nativeProtectedStreamsVerified,true);
-  assertHandoverPathContinuation(advanced.handoverSelection,fresh.case.handoverSelection);
-  assert.deepEqual(archive(fresh.case),retained);
+  assertHandoverPathContinuation(predecessor.handoverSelection,fresh.case.handoverSelection);
   assert.deepEqual(archive(offer.case),activationCut);
   for(const {file,bytes} of originalCheckpoint)assert.deepEqual(readFileSync(file),bytes);
   await assertHandoverPublicationWaiting(host,fresh);
@@ -170,6 +191,7 @@ test('a published sealed room restarts from the exact cut with later acknowledge
    oldPid:originalPid,inspectionPid:observed.processId,newPid:host.processId,exitSignal:exited.signal,protectedStreams:14,
    acknowledgedUpload:thirdAsset,archiveSha256:digest(retained),freshPublication:true,
    documentAndCommentReceiptsPreserved:true,peerCatchUp:true,localUndoRedo:true,
+   currentCutSelectedAfterProcessExit:inspectAfterCrash,predecessorSequence:predecessor.sequence,
   }));
  }finally{
   reader?.close();
@@ -178,4 +200,9 @@ test('a published sealed room restarts from the exact cut with later acknowledge
   if(socket)Object.defineProperty(globalThis,'WebSocket',socket);else delete globalThis.WebSocket;
   if(!processExited)await host?.stop();
  }
-});
+}
+
+test('a published sealed room restarts from the exact cut with later acknowledged edits and upload',
+ {timeout:600000},()=>recoverPublishedRoom(false));
+test('a published sealed room inspects acknowledged work after exit and restarts from the newly selected cut',
+ {timeout:600000},()=>recoverPublishedRoom(true));
