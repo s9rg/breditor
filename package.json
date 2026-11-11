@@ -39,6 +39,8 @@
     "test:collaboration:metadata-continuation:installed": "node scripts/check-metadata-continuation-installed.mjs",
     "test:collaboration:joint-handover": "node --test --test-concurrency=1 scripts/joint-activation-intent-storage.test.mjs scripts/joint-activation-metadata-origin-contracts.test.mjs scripts/joint-handover-activation-complete-native.test.mjs",
     "test:collaboration:joint-handover:installed": "node scripts/check-metadata-continuation-installed.mjs --joint-handover",
+    "test:collaboration:cold-joint-handover": "node --test --test-concurrency=1 scripts/joint-activation-intent-storage.test.mjs scripts/joint-activation-metadata-origin-contracts.test.mjs scripts/cold-joint-handover-activation-complete-native.test.mjs",
+    "test:collaboration:cold-joint-handover:installed": "node scripts/check-metadata-continuation-installed.mjs --cold-joint-handover",
     "build:collaboration:native-publication:fixture": "node scripts/build-sdk-native-publication.mjs",
     "test:collaboration:native-publication": "node scripts/check-sdk-native-publication-source.mjs",
     "test:collaboration:native-publication:installed": "node scripts/check-sdk-native-publication-installed.mjs",

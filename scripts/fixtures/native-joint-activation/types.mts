@@ -5,6 +5,8 @@ import type {JointRoomActivationIntentChoice} from '../../../packages/breditor-c
 import type {JointRoomActivationPreparationInput,JointRoomNativeCommitInput,JointRoomReplacementInput,JointRoomMetadataInput,JointRoomPublicationInput} from '../../../packages/breditor-collaboration/dist/native_room_joint_activation/attempt_contract.js';
 import type {JointHandoverActivationIntentChoice,JointHandoverActivationPreparationInput,JointHandoverNativeCommitInput,JointHandoverMetadataInput,JointHandoverPublicationInput} from '../../../packages/breditor-collaboration/dist/native_room_joint_activation/handover_contract.js';
 import type {HandoverMetadataContinuationResult} from '../../../packages/breditor-collaboration/dist/selected_local_metadata_continuation/handover_contract.js';
+import {ColdJointRoomActivationAttempt,withPublishedColdJointRoomSources} from '../../../packages/breditor-collaboration/dist/native_room_joint_activation/cold_attempt.js';
+import type {ColdJointHandoverActivationOptions,ColdJointRoomActivationOptions} from '../../../packages/breditor-collaboration/dist/native_room_joint_activation/cold_contract.js';
 import type {RetainedSelectedAssetOwner} from '../../../packages/breditor-collaboration/dist/physical_room_asset_successor/owner.js';
 import type {PhysicalOperationV3HistoryReadOptions} from '../../../packages/breditor-collaboration/dist/physical_room_operation_v3/history_read_contract.js';
 import type {MetadataContinuationResult} from '../../../packages/breditor-collaboration/dist/selected_local_metadata_continuation/contract.js';
@@ -61,3 +63,17 @@ void handover.commitNative(commit);
 void handover.continueMetadata(metadata);
 // @ts-expect-error Handover publication binds a distinct intent and metadata policy.
 void attempt.publish(handoverPublication);
+
+declare const coldOptions:ColdJointHandoverActivationOptions,ordinaryColdOptions:ColdJointRoomActivationOptions;
+const cold=ColdJointRoomActivationAttempt.resumeAcrossHandover(coldOptions);
+void cold.confirmNative(handoverCommit);
+void cold.continueMetadata(handoverMetadata,true);
+declare const publishControl:Parameters<typeof cold.publish>[0];
+void cold.publish(publishControl,handoverPublication);
+void withPublishedColdJointRoomSources(cold,async(scope,sources)=>{scope.check();return sources.length;});
+// @ts-expect-error An ordinary cold plan cannot admit sealed handover actors.
+ColdJointRoomActivationAttempt.resumeAcrossHandover(ordinaryColdOptions);
+// @ts-expect-error A handover plan does not belong to the original cold protocol.
+ColdJointRoomActivationAttempt.resume(coldOptions);
+// @ts-expect-error A cold handover must reauthenticate its exact path on confirmation.
+void cold.confirmNative(commit);

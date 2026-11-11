@@ -21,6 +21,8 @@ import {nativeHandoverActivationRoot} from '../native-activation/handover-root.m
 import {handoverControls} from '../selected-delivery/cold-continuation.mjs';
 import {assertHandoverPublicationWaiting,handoverPublicationRequester} from './sealed-handover.mjs';
 import {JointRoomActivationAttempt as Joint,withJointRoomActivationSources as sourceWork,withPublishedJointRoomSources as publishedWork} from '../../../packages/breditor-collaboration/dist/native_room_joint_activation/attempt.js';
+import {withPublishedColdJointRoomSources} from '../../../packages/breditor-collaboration/dist/native_room_joint_activation/cold_attempt.js';
+import {reopenJointHandoverReplacement} from './cold-handover-replacement.mjs';
 import {JointRoomActivationIntentStore as IntentStore} from '../../../packages/breditor-collaboration/dist/native_room_joint_activation/intent_store.js';
 import {materializeSelectedSourceVersions} from '../../../packages/breditor-collaboration/dist/native_room_joint_activation/materialize_versions.js';
 import {SharedDurableNativeActivationHost as Activation} from '../../../packages/breditor-collaboration/dist/native_activation_control/host.js';
@@ -37,14 +39,14 @@ import {SharedWriterLease} from '../../../packages/breditor-collaboration/dist/p
 import {ReviewWriterLease} from '../../../packages/breditor-collaboration/dist/persistence/review_writer_lease.js';
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 const save=(directory,name,value)=>{const bytes=Buffer.from(JSON.stringify(value,null,2)+'\n'),file=join(directory,name);writeFileSync(file,bytes,{flag:'wx',mode:0o600});assert.deepEqual(readFileSync(file),bytes);return{file,bytes:bytes.length,sha256:sha(bytes)};};
-export function testCompleteJointActivation(handover=false){
+export function testCompleteJointActivation(handover=false,cold=false){
  const nativeHostRoot=handover?nativeHandoverActivationRoot:nativePublicationPredecessorRoot;
  const mode=handover?{nativeHandoverActivation:true,nativeHandoverPublication:true}:{nativePublication:true};
  return testMetadataMaterialization('local-only-content',{
   reconcileAssets:true,cacheCatalogPackets:false,verifyFutureHistories:true,nativeHostRoot,
   nativeHostFactory:(root,options)=>selectedDeliveryNativeHost(root,{...options,nativeActivation:true,...mode}),
   onRetainedReconciliation:async input=>{
- let joint,run,stage,activation,publication,transport,inspection,current,delivery,inventory,sealed,offer,metadataCase,activationChoice,continued,replacement,plan;
+ let joint,run,stage,activation,publication,transport,inspection,current,delivery,inventory,sealed,offer,metadataCase,inspectionCase,activationChoice,continued,replacement,plan;
  let commitRequests=0,publicationRequests=0,normalAcquisitions=0,lostCommit,lostPublication,loseCommit=true,losePublication=true,handedBack=false;
  const fetch=globalThis.fetch,image=Object.getOwnPropertyDescriptor(globalThis,'Image'),acquireDocument=SharedWriterLease.acquire,acquireReview=ReviewWriterLease.acquire;
  Object.defineProperty(globalThis,'Image',{configurable:true,value:PacketRasterFixtureImage});
@@ -89,8 +91,8 @@ export function testCompleteJointActivation(handover=false){
     // supplies its fresh target check/signal after old sources have retired.
     publication=Publication.configure({endpoint:offer.publication.endpoint,expected:offer.publication.selection,principal:'operator',getToken:()=>input.host.publicationToken(offer.publication),checkAuthority(){}});return activation;},retainChoice});
    }
-   const replay=await input.host.reconstruct(sealed?.actual??offer.case);
-   inspection=await Host.open({endpoint:replay.endpoint,expected:replay.selection,principal:'operator',getToken:()=>input.host.operatorToken(replay),checkAuthority:check,signal:scope.signal});
+   inspectionCase=await input.host.reconstruct(sealed?.actual??offer.case);
+   inspection=await Host.open({endpoint:inspectionCase.endpoint,expected:inspectionCase.selection,principal:'operator',getToken:()=>input.host.operatorToken(inspectionCase),checkAuthority:check,signal:scope.signal});
   });
   // Preserve the complete real prepared graph before local descriptor
   // validation, so a refusal remains reproducible without another room run.
@@ -130,10 +132,38 @@ export function testCompleteJointActivation(handover=false){
   const checkpointFiles=[];for(const[name,rows]of [['before',beforeStop],['after',oldBytes]]){const bytes=Buffer.from(JSON.stringify([...rows]));assert.ok(bytes.length<=128*1024*1024);const encoded=gzipSync(bytes,{level:6}),path=join(input.host.directory,'joint-original-source-checkpoint-'+name+'.json.gz');writeFileSync(path,encoded,{flag:'wx',mode:0o600});assert.deepEqual(readFileSync(path),encoded);checkpointFiles.push({name,file:path,bytes:encoded.length,sha256:sha(encoded)});}
   save(input.host.directory,'joint-original-source-checkpoint.json',{format:'breditor/test-joint-source-checkpoint',formatVersion:1,checkpoints:stopped.checkpoints,sourceNamespaces:[...oldBytes.keys()],files:checkpointFiles,allOriginalContentAndFactsPreserved:true,allOtherOriginalBytesExact:true});
   console.log('JOINT_COMPLETE_STEP actual-source-checkpoint-preserves-all-content-and-facts');
-  SharedWriterLease.acquire=async()=>{normalAcquisitions++;throw Error('No ordinary document writer acquisition during joint handoff');};ReviewWriterLease.acquire=async()=>{normalAcquisitions++;throw Error('No ordinary comment writer acquisition during joint handoff');};
-  await assert.rejects(joint.recoverReplacement({...recover,approvePromotion:()=>false}));noTake();await joint.recoverReplacement(recover);noTake();assert.equal(normalAcquisitions,0);
-  SharedWriterLease.acquire=acquireDocument;ReviewWriterLease.acquire=acquireReview;await held();await assertSourceBytesUnchanged(oldBytes);
-  console.log('JOINT_COMPLETE_STEP all-fourteen-actors-transferred-without-reacquisition-target-private');
+  if(cold){
+   assert.ok(sealed);
+   joint=await reopenJointHandoverReplacement({joint,plan,run,session:input.session,recover,native});
+   noTake();await assertSourceBytesUnchanged(oldBytes);
+   const observed=sealed.actual;
+   sealed.close();activation.close();publication.close();inspection.close();
+   sealed=await handoverControls(input.host,observed,{check(){}});
+   assert.deepEqual(sealed.path.handoverSelection(),plan.plan.activation.handover);
+   activation=Activation.configure({endpoint:offer.endpoint,expected:offer.selection,principal:'operator',getToken:()=>input.host.activationToken(offer),checkAuthority(){}});
+   publication=handoverPublicationRequester(input.host,offer,()=>{});
+   inspection=await Host.open({endpoint:inspectionCase.endpoint,expected:inspectionCase.selection,principal:'operator',getToken:()=>input.host.operatorToken(inspectionCase),checkAuthority(){}});
+   await joint.recoverReplacement({approveExecution:recover.approveExecution,approvePromotion:recover.approvePromotion,checkAssetAuthority:recover.checkAssetAuthority});
+   noTake();await held();await assertSourceBytesUnchanged(oldBytes);
+   console.log('COLD_HANDOVER_COMPLETE_STEP fresh-fourteen-actors-and-seven-private-targets-from-existing-intent');
+   const freshCommit={activation,inspection,path:sealed.path};
+   await assert.rejects(joint.confirmNative({...freshCommit,approve:()=>false}));
+   assert.equal(commitRequests,2);noTake();
+   loseCommit=true;
+   await assert.rejects(joint.confirmNative({...freshCommit,approve:()=>true}),{code:'activation_outcome_unknown'});
+   assert.equal(commitRequests,3);noTake();await held();
+   const confirmed=await joint.confirmNative({...freshCommit,approve:()=>true});
+   assert.equal(commitRequests,4);assert.deepEqual(confirmed.receipt,nativeResult.receipt);noTake();
+   console.log('COLD_HANDOVER_COMPLETE_STEP saved-receipt-did-not-bypass-fresh-confirmation');
+  }else{
+   SharedWriterLease.acquire=async()=>{normalAcquisitions++;throw Error('No ordinary document writer acquisition during joint handoff');};
+   ReviewWriterLease.acquire=async()=>{normalAcquisitions++;throw Error('No ordinary comment writer acquisition during joint handoff');};
+   await assert.rejects(joint.recoverReplacement({...recover,approvePromotion:()=>false}));noTake();
+   await joint.recoverReplacement(recover);noTake();assert.equal(normalAcquisitions,0);
+   SharedWriterLease.acquire=acquireDocument;ReviewWriterLease.acquire=acquireReview;
+   await held();await assertSourceBytesUnchanged(oldBytes);
+   console.log('JOINT_COMPLETE_STEP all-fourteen-actors-transferred-without-reacquisition-target-private');
+  }
   // Provision new controls for the catalogue predecessor during Native
   // preparation. Old services close and new snapshots remain frozen. Reopen
   // authenticated wrappers here; the retained selection grants no authority.
@@ -157,11 +187,13 @@ export function testCompleteJointActivation(handover=false){
   if(sealed)assert.deepEqual(continued.choice.handover,plan.plan.activation.handover);
   save(input.host.directory,'actual-joint-complete-continued-choice.json',continued.choice);
   console.log('JOINT_COMPLETE_STEP original-metadata-continued-before-normal-service-publication');
-  await assert.rejects(joint.publish({...metadataInput,approvePublication:()=>false}));assert.equal(publicationRequests,0);noTake();
-  await assert.rejects(joint.publish({...metadataInput,approvePublication:()=>true}),e=>e.code==='publication_outcome_unknown');assert.equal(publicationRequests,1);noTake();await held();
+  const publish=provided=>cold?joint.publish(publication,provided):joint.publish(provided);
+  const visitPublished=visit=>cold?withPublishedColdJointRoomSources(joint,(scope,sources)=>visit({scope,sources,check:scope.check})):publishedWork(joint,visit);
+  await assert.rejects(publish({...metadataInput,approvePublication:()=>false}));assert.equal(publicationRequests,0);noTake();
+  await assert.rejects(publish({...metadataInput,approvePublication:()=>true}),e=>e.code==='publication_outcome_unknown');assert.equal(publicationRequests,1);noTake();await held();
   assert.equal((await readPublication()).phase,'request-started');
-  await assert.rejects(publishedWork(joint,async()=>{}),{code:'joint_activation_state'});
-  const published=await joint.publish({...metadataInput,approvePublication:()=>true});
+  await assert.rejects(visitPublished(async()=>{}),{code:'joint_activation_state'});
+  const published=await publish({...metadataInput,approvePublication:()=>true});
   assert.equal(publicationRequests,2);assert.deepEqual(published,lostPublication);
   assert.deepEqual((await readPublication()).receipt,published);
   assert.deepEqual(published.joint,{bytes:plan.bytes,sha256:[...Buffer.from(plan.sha256,'hex')]});
@@ -170,7 +202,7 @@ export function testCompleteJointActivation(handover=false){
   await assertSourceBytesUnchanged(oldBytes);
   console.log('JOINT_COMPLETE_STEP actual-publication-confirmed-after-real-lost-reply');
   const prior=continued;continued=joint.publishedMetadata();assert.deepEqual(continued.choice,prior.choice);assert.notEqual(await continued.current.parent.delivery.file.text(),await prior.current.parent.delivery.file.text());
-  await publishedWork(joint,async({scope,sources,check})=>{
+  await visitPublished(async({scope,sources,check})=>{
    let gate,review,metadata,finalProvider;
    try{
     for(const row of sources){
@@ -215,7 +247,9 @@ export function testCompleteJointActivation(handover=false){
   // The surrounding fixture now observes the actual returned replacement; its
   // original closure still cleans only its retired sources. No owner is faked.
   const close=input.session.close;Object.defineProperty(input.session,'owner',{configurable:true,get:()=>replacement});input.session.close=async()=>{await replacement?.discardAndClose();await close();};handedBack=true;
-  const report={format:'breditor/joint-complete-native-observation',formatVersion:1,actualNativeParticipants:7,actualTransferredActors:14,retainedOfflineLanes:14,actualLocalMetadataLanes:3,actualNativeRequests:commitRequests,actualPublicationRequests:publicationRequests,normalWriterAcquisitions:normalAcquisitions,lostNativeReplyConfirmedBySameOwner:true,lostPublicationReplyConfirmedBySameOwner:true,independentPlanBeforeAllRequests:true,metadataContinuedBeforePublication:true,originalSourceContentPreserved:true,originalSourcesImmutableAfterCheckpoint:true,finalSelectedAssetStatesVerified:finalAssetStates.length,originalProtocolDeliveries:14,exactFutureDocumentAndCommentHistories:true,nativeEvidence,plan:{bytes:plan.bytes,sha256:plan.sha256},warmJointWorkflow:true,physicalDurabilityQualified:false,coldJointOwnerReconstructionQualified:false,
+  const report={format:'breditor/joint-complete-native-observation',formatVersion:1,actualNativeParticipants:7,
+   ...(cold?{actualFreshColdActors:14}:{actualTransferredActors:14,normalWriterAcquisitions:normalAcquisitions}),
+   retainedOfflineLanes:14,actualLocalMetadataLanes:3,actualNativeRequests:commitRequests,actualPublicationRequests:publicationRequests,lostNativeReplyConfirmedBySameOwner:true,lostPublicationReplyConfirmedBySameOwner:true,independentPlanBeforeAllRequests:true,metadataContinuedBeforePublication:true,originalSourceContentPreserved:true,originalSourcesImmutableAfterCheckpoint:true,finalSelectedAssetStatesVerified:finalAssetStates.length,originalProtocolDeliveries:14,exactFutureDocumentAndCommentHistories:true,nativeEvidence,plan:{bytes:plan.bytes,sha256:plan.sha256},warmJointWorkflow:!cold,physicalDurabilityQualified:false,coldJointOwnerReconstructionQualified:cold,
    ...(sealed?{sealedHandover:true,finalProviderReconciled:true}:{}),
   };
   console.log('JOINT_COMPLETE_NATIVE '+JSON.stringify(save(input.host.directory,'actual-joint-complete-observation.json',report)));

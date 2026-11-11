@@ -9,12 +9,13 @@ import {pathToFileURL} from 'node:url';
 const root=resolve(new URL('../',import.meta.url).pathname);
 const {sourceEvidence,saveEvidence}=await import(pathToFileURL(join(root,'scripts/candidate-release/evidence.mjs')));
 const {searchConsumerLock,verifySearchConsumerRegistry}=await import(pathToFileURL(join(root,'scripts/search-consumer-lock.mjs')));
-const joint=process.argv.length===3&&process.argv[2]==='--joint-handover';
+const cold=process.argv.length===3&&process.argv[2]==='--cold-joint-handover';
+const joint=cold||process.argv.length===3&&process.argv[2]==='--joint-handover';
 if(process.argv.length!==2&&!joint)throw Error('Select a complete recovery workset without filters');
 const expectedCases=joint?21:17;
-const name=joint?'joint-handover-activation':'metadata-continuation';
+const name=cold?'cold-joint-handover-activation':joint?'joint-handover-activation':'metadata-continuation';
 const tests=joint
- ?['scripts/joint-activation-intent-storage.test.mjs','scripts/joint-activation-metadata-origin-contracts.test.mjs','scripts/joint-handover-activation-complete-native.test.mjs']
+ ?['scripts/joint-activation-intent-storage.test.mjs','scripts/joint-activation-metadata-origin-contracts.test.mjs',cold?'scripts/cold-joint-handover-activation-complete-native.test.mjs':'scripts/joint-handover-activation-complete-native.test.mjs']
  :['scripts/metadata-continuation-contracts.test.mjs','scripts/metadata-continuation-replacement-native.test.mjs','scripts/handover-metadata-continuation-replacement-native.test.mjs'];
 const types=joint?'scripts/fixtures/native-joint-activation/types.mts':'scripts/fixtures/metadata-continuation/types.mts';
 const source=sourceEvidence(root),directory=fs.mkdtempSync('/private/tmp/breditor-'+name+'-installed-'),archives=join(directory,'archives'),consumer=join(directory,'consumer'),sha=data=>createHash('sha256').update(data).digest('hex');fs.mkdirSync(archives);fs.mkdirSync(consumer);
@@ -51,6 +52,7 @@ if(joint){
  assert.equal(bytes.length,pin.bytes);assert.equal(sha(bytes),pin.sha256);
  const observed=JSON.parse(bytes);
  assert.equal(observed.sealedHandover,true);assert.equal(observed.finalProviderReconciled,true);
+ assert.equal(observed.coldJointOwnerReconstructionQualified,cold);
  assert.equal(observed.originalProtocolDeliveries,14);
  Object.assign(state,{wholeRoomActivated:true,observation:pin});
 }

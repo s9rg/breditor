@@ -55,14 +55,24 @@ actors to the replacement. Metadata continuation and publication require a
 genuine promoted target and the exact selected handover path. Publication
 requires a fresh metadata replay and a separate approval. If the reply is
 lost, the replacement remains private until an explicit retry confirms the same
-receipt and the coordinator records it. Cold owner reconstruction across a
-sealed handover is a separate recovery path.
+receipt and the coordinator records it.
+
+`ColdJointRoomActivationAttempt.resumeAcrossHandover` reconstructs private
+clients from the existing descriptor and fresh actors after an interruption.
+It reopens the original review and metadata journals under the promoted target
+visit and reauthenticates the selected sealed path for each Native
+confirmation. A previous receipt does not grant client custody or publication.
+Reassociation with a different Native process remains a separate operation.
 
 Build the collaboration package and the Native fixture with
 `node scripts/build-handover-native-activation.mjs`. Run
 `npm run test:collaboration:joint-handover` against source and
 `npm run test:collaboration:joint-handover:installed` against independently
-installed package archives. The Native test uses controlled Node storage,
+installed package archives. The cold checks are
+`npm run test:collaboration:cold-joint-handover` and
+`npm run test:collaboration:cold-joint-handover:installed`. They interrupt a
+target transaction, close the first owner and open fresh genuine controllers.
+The Native tests use controlled Node storage,
 actual Rust HTTP controls, seven clients, fourteen offline streams and real
 asset acknowledgements.
 

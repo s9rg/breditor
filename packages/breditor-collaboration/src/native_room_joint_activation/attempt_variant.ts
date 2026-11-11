@@ -46,14 +46,14 @@ export interface HandoverJointActivation {
 }
 export type JointActivationFamily=OrdinaryJointActivation|HandoverJointActivation;
 type Decision<T>=(choice:T)=>boolean|Promise<boolean>;
-interface MetadataVisit<F extends JointActivationFamily> {
+interface MetadataVisit<Intent,Result extends JointActivationFamily['continued']> {
  readonly signal:AbortSignal;
  readonly check:()=>void;
  readonly close:()=>void;
  readonly verify:()=>void|Promise<void>;
- readonly approvePublication:Decision<F['choice']>|undefined;
- preview():Promise<F['continued']['choice']>;
- run(expected:F['continued']['choice'],resume:boolean):Promise<F['continued']>;
+ readonly approvePublication:Decision<Intent>|undefined;
+ preview():Promise<Result['choice']>;
+ run(expected:Result['choice'],resume:boolean):Promise<Result>;
 }
 export interface JointActivationVariant<F extends JointActivationFamily> {
  capture(scope:SelectedNativeRecoveryScope,reads:RoomExecutionReadOptions,input:F['prepare']):Promise<{
@@ -62,7 +62,7 @@ export interface JointActivationVariant<F extends JointActivationFamily> {
  store(choice:F['choice'],options:SharedArchiveIntegrityOptions):JointRoomActivationIntentStore;
  commit(metadata:Metadata,expected:F['choice'],input:F['commit']):Promise<F['committed']>;
  target(scope:SelectedNativeRecoveryScope,witness:RoomMetadataTargetWitness,origin:LocalMetadataRoomBundle,choice:F['choice'],
-  input:F['metadata']|F['publication'],publishing:boolean):MetadataVisit<F>;
+  input:F['metadata']|F['publication'],publishing:boolean):MetadataVisit<F['choice'],F['continued']>;
  cut(result:F['continued']):MetadataContinuationResult['choice']['target'];
 }
 function targetPolicy<Choice,Intent>(
