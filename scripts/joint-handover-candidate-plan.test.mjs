@@ -16,17 +16,23 @@ for(const profile of ['functional','full'])test(profile+' requires source and in
   'native-handover-activation-host-build','installed-handover-native-activation',
   'native-suggestion-room-host','joint-handover-cohort-host','joint-handover-types',
  ];
- for(const prefix of ['joint-handover','cold-joint-handover']){
-  const source=at(prefix+'-native'),installed=at('installed-'+prefix);
+ const workflows=[
+  {name:'joint-handover',test:'joint-handover-activation-complete-native',mode:'joint-handover',report:'joint-handover-activation'},
+  {name:'cold-joint-handover',test:'cold-joint-handover-activation-complete-native',mode:'cold-joint-handover',report:'cold-joint-handover-activation'},
+  {name:'sealed-joint-process-recovery',test:'sealed-joint-process-recovery-complete-native',mode:'sealed-process-recovery',report:'sealed-joint-process-recovery'},
+ ];
+ for(const {name,test,mode,report} of workflows){
+  const source=at(name+'-native'),installed=at('installed-'+name);
   for(const predecessor of beforeNative)assert.ok(at(predecessor)<source,predecessor);
-  assert.ok(source<installed&&installed<readiness,prefix);
-  const task='test:collaboration:'+prefix;
+  assert.ok(source<installed&&installed<readiness,name);
+  const task='test:collaboration:'+name;
   assert.equal(plan.checks[source].command,'npm-for-candidate');
   assert.deepEqual(plan.checks[source].args,['run',task]);
-  assert.ok(manifest.scripts[task].split(' ').includes('scripts/'+prefix+'-activation-complete-native.test.mjs'));
-  assert.deepEqual(plan.checks[installed].args,['scripts/check-metadata-continuation-installed.mjs','--'+prefix]);
-  assert.deepEqual(plan.checks[installed].artifacts,[{path:'target/'+prefix+'-activation-installed-result.json',fresh:true}]);
+  assert.ok(manifest.scripts[task].split(' ').includes('scripts/'+test+'.test.mjs'));
+  assert.deepEqual(plan.checks[installed].args,['scripts/check-metadata-continuation-installed.mjs','--'+mode]);
+  assert.deepEqual(plan.checks[installed].artifacts,[{path:'target/'+report+'-installed-result.json',fresh:true}]);
  }
  assert.ok(at('installed-joint-handover')<at('cold-joint-handover-native'));
+ assert.ok(at('installed-cold-joint-handover')<at('sealed-joint-process-recovery-native'));
  assert.equal(plan.v1Ready,false);
 });
