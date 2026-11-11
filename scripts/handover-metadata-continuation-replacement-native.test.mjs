@@ -114,8 +114,8 @@ test('the private replacement continues acknowledged and pending metadata across
     gate=await prepareHandoverMetadataContinuationDelivery(scope,controls.path,controls.inventory,choice.prepared,expected.handover,true);
     review=await Review.reopen(scope,gate,result.current.parent,{expected:choice.review,approve:()=>true,checkAuthority:scope.check});
     const selected={choice:choice.metadata,bundle:result.current,checkAuthority:scope.check};
-    const expected=await previewSelectedLocalMetadataResume(review,selected);
-    reopened=await Metadata.reopen(review,{...selected,expected,approve:()=>true});
+    const resumeChoice=await previewSelectedLocalMetadataResume(review,selected);
+    reopened=await Metadata.reopen(review,{...selected,expected:resumeChoice,approve:()=>true});
     assert.deepEqual(facts(reopened.recovery().current),facts(original));
    }finally{await reopened?.close();await review?.close();await gate?.close();}
   });
