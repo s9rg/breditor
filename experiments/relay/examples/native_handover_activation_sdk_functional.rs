@@ -54,6 +54,9 @@ mod state;
 /// Invalid input, stale cuts, missing custody, storage and service faults refuse.
 #[tokio::main(worker_threads = 2)]
 pub async fn main() -> Result {
+    if std::env::args().skip(1).eq(["--inspect-sealed"]) {
+        return Box::pin(restart::inspect()).await;
+    }
     let mut state = if std::env::args().skip(1).eq(["--reopen-sealed"]) {
         Box::pin(restart::start()).await?
     } else {

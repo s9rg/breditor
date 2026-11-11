@@ -1,7 +1,7 @@
 /** Dedicated real native serving/recovery fixture. Private IPC replies are
  * consumed here and never persisted, logged, or included in public manifests. */
 import assert from 'node:assert/strict';
-import {spawn} from 'node:child_process';
+import {execFileSync,spawn} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {readFileSync,writeFileSync,mkdtempSync,realpathSync} from 'node:fs';
 import {join,dirname,resolve} from 'node:path';
@@ -11,10 +11,16 @@ import {nativePublicationSelection} from '../../../packages/breditor-collaborati
 import {handoverDeliveryPathSelection} from '../../../packages/breditor-collaboration/dist/generation_delivery_path_control/handover.js';
 import {generationControlSelection} from '../../../packages/breditor-collaboration/dist/generation_recovery_control/identity.js';
 const processCapsules=new WeakMap();
+const inspectedRestartFormat='breditor/private-native-sealed-inspected-process-recovery';
 const hex=value=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
 const assetDigest=bytes=>'sha256:'+createHash('sha256').update(bytes).digest('hex');
 export async function selectedDeliveryNativeHost(root,{language=3,standard=true,atomic=true,suggestionGrants=false,nativeActivation=false,nativeHandoverActivation=false,nativeHandoverPublication=false,nativePublication=false,inactiveRasters=false,processRecovery=false,jointProcessRecovery=false,sealedProcessRecovery=false,resume}={}){
- root=realpathSync(root);const resumed=resume?processCapsules.get(resume):undefined;if(resume&&(!resumed||!resumed.crashed||resumed.used||resumed.root!==root))throw Error('Actual terminated process and independently retained private bootstrap required');if(resumed){assert.equal(resumed.jointProcessRecovery??false,jointProcessRecovery);assert.equal(resumed.sealedProcessRecovery??false,sealedProcessRecovery);resumed.used=true;}
+ root=realpathSync(root);const resumed=resume?processCapsules.get(resume):undefined;if(resume&&(!resumed||!resumed.crashed||resumed.used||resumed.root!==root))throw Error('Actual terminated process and independently retained private bootstrap required');if(resumed){
+  assert.equal(resumed.jointProcessRecovery??false,jointProcessRecovery);
+  assert.equal(resumed.sealedProcessRecovery??false,sealedProcessRecovery);
+  if(resumed.bootstrap.format===inspectedRestartFormat&&!resumed.bootstrap.expectedPublished)throw Error('Retain the inspected current cut before reopening');
+  resumed.used=true;
+ }
  const directory=resumed?.directory??mkdtempSync(join(root,'target/selected-delivery-native-'));
  assert.equal(realpathSync(directory),directory);if(!resumed)for(const[name,bytes]of[['seed-a.png',pixel],['seed-b.png',secondPixel]])writeFileSync(join(directory,name),bytes,{mode:0o600,flag:'wx'});
  if(nativeHandoverPublication&&!nativeHandoverActivation)throw Error('Select the sealed handover fixture for publication');
@@ -117,7 +123,7 @@ export async function selectedDeliveryNativeHost(root,{language=3,standard=true,
  function request(kind,data={},local={}){if(closed||terminal)return Promise.reject(Error('Native fixture is closed'));if(pending.size>=2)return Promise.reject(Error('Native fixture request budget'));const id=++sequence;return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{pending.delete(id);reject(Error('Native fixture request did not complete within its budget'));},60000);pending.set(id,{resolve,reject,timer,kind,...data,...local});child.stdin.write(JSON.stringify({kind,request:id,...data})+'\n',error=>{if(error){clearTimeout(timer);pending.delete(id);reject(Error('Native fixture command write failed'));}});});}
  if(resumed){const bytes=JSON.stringify(resumed.bootstrap)+'\n';if(Buffer.byteLength(bytes)>16*1024*1024)throw Error('Private process bootstrap byte budget');child.stdin.write(bytes);}
  let timer;try{const publishedFirst=await Promise.race([initial,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Native fixture did not prepare: '+errors)),120000);})]);clearTimeout(timer);const first=resumed?snapshots[0]:publishedFirst;
-  async function retainProcessRecovery(offer,publishedCut){
+  async function retainProcessRecovery(offer,publishedCut,inspectAfterCrash=false){
     if(!(sealedProcessRecovery||jointProcessRecovery||processRecovery&&!resumed)||!offers.has(offer)||pending.size)throw Error('Actual warm process offer required');
     const published=publishedCut!==undefined;
     if(published)assert.ok(sealedProcessRecovery&&publishedOffers.has(offer),'Observe actual authenticated publication first');
@@ -131,8 +137,9 @@ export async function selectedDeliveryNativeHost(root,{language=3,standard=true,
     const last=published?observed.get(publishedCut):latest;
     if(sealedProcessRecovery){
      assert.equal(offer,handoverOffer);
-     if(published)assert.notDeepEqual(offer.selection.current,last.selection.source,'The published cut must advance beyond the checkpoint');
-     else assert.deepEqual(offer.selection.current,last.selection.source);
+     if(published){
+      if(!inspectAfterCrash)assert.notDeepEqual(offer.selection.current,last.selection.source,'The published cut must advance beyond the checkpoint');
+     }else assert.deepEqual(offer.selection.current,last.selection.source);
      const sealed=join(nativeRoot,'sdk-handover');
      const reference=JSON.parse(readFileSync(join(sealed,'selected-checkpoint-'+offer.case.sequence+'.json'),'utf8'));
      assert.deepEqual(Object.keys(reference).sort(),['bytes','checkpointName','format','formatVersion','sha256']);
@@ -144,8 +151,8 @@ export async function selectedDeliveryNativeHost(root,{language=3,standard=true,
      assert.equal(raw.length,reference.bytes);assert.equal(checkpointDigest,reference.sha256);
      assert.deepEqual([...createHash('sha256').update(raw).digest()],offer.selection.checkpointSha256);
      const cutDigest=(cut,name)=>assetDigest(readFileSync(join(dirname(cut.path),name)));
-     const bootstrap={format:published?'breditor/private-native-sealed-published-process-recovery':'breditor/private-native-sealed-process-recovery',formatVersion:1,root:nativeRoot,
-      ...(published?{expectedPublished:last.selection.source}:{}),
+     const bootstrap={format:inspectAfterCrash?inspectedRestartFormat:published?'breditor/private-native-sealed-published-process-recovery':'breditor/private-native-sealed-process-recovery',formatVersion:1,root:nativeRoot,
+      ...(published&&!inspectAfterCrash?{expectedPublished:last.selection.source}:{}),
       checkpointName:reference.checkpointName,checkpointDigest,originDigest:cutDigest(first,'server.backup'),olderDigest:cutDigest(first,'older-server.backup'),
       handoverSequence,nextSequence:sequence+1,previousSequence:last.sequence,
       cuts:snapshots.map(cut=>({sequence:cut.sequence,digest:cutDigest(cut,'server-after.backup')})),
@@ -188,6 +195,9 @@ export async function selectedDeliveryNativeHost(root,{language=3,standard=true,
     if(cut===undefined)return Promise.reject(Error('Select an independently observed published cut'));
     return retainProcessRecovery(offer,cut);
    },
+   prepareUnobservedPublishedProcessRecovery(offer){
+    return retainProcessRecovery(offer,snapshots.at(-1),true);
+   },
    async crashForRecovery(capsule){const value=processCapsules.get(capsule);if(!value||value.processId!==child.pid||value.issuedSequence!==sequence||pending.size||closed||terminal)throw Error('Actual current process capsule required before crash');closed=true;assert.equal(child.kill('SIGKILL'),true);const result=await exited;assert.equal(result.signal,'SIGKILL');assert.equal(result.code,null);value.crashed=true;operators.clear();secrets.clear();return{processId:child.pid,signal:result.signal};},
    stop(){if(stopping)return stopping;closed=true;stopping=(async()=>{child.stdin.end();const result=await Promise.race([exited,new Promise((_,reject)=>{const timer=setTimeout(()=>reject(Error('Native fixture shutdown still pending')),30000);timer.unref();})]);assert.equal(result.code,0,'Native selected-delivery shutdown: '+errors.replace(/[a-f0-9]{64}/g,'[redacted]'));buffer='';operators.clear();secrets.clear();})().finally(()=>{stopping=undefined;});return stopping;},
   };
@@ -199,6 +209,46 @@ export function reopenSelectedDeliveryNativeHost(root,capsule){return selectedDe
 
 /** Separate repeated process recovery for joint activation/publication tests. */
 export function reopenSelectedDeliveryJointNativeHost(root,capsule){return selectedDeliveryNativeHost(root,{nativeActivation:true,nativePublication:true,jointProcessRecovery:true,resume:capsule});}
+
+/** Read the surviving cut in a fresh process using only the older checkpoint pin. */
+export function inspectSelectedDeliverySealedNativeHost(root,capsule){
+ root=realpathSync(root);
+ const saved=processCapsules.get(capsule);
+ if(!saved?.crashed||saved.used||!saved.sealedProcessRecovery||saved.root!==root)throw Error('Actual terminated sealed process capsule required');
+ const {root:operationalRoot,checkpointName,checkpointDigest}=saved.bootstrap;
+ const input={format:'breditor/test-sealed-restart-inspection',formatVersion:1,root:operationalRoot,checkpointName,checkpointDigest};
+ if(saved.bootstrap.format===inspectedRestartFormat){
+  const previous=saved.bootstrap.cuts.at(-1);
+  input.minimum={sequence:previous.sequence,digest:previous.digest,selection:saved.source};
+ }
+ const binary=join(root,'target/handover-activation-native/release/examples/native_handover_activation_sdk_functional');
+ const observed=JSON.parse(execFileSync(binary,['--inspect-sealed'],{cwd:root,input:JSON.stringify(input)+'\n',encoding:'utf8',timeout:60_000,maxBuffer:1024*1024}));
+ assert.deepEqual(Object.keys(observed).sort(),['format','formatVersion','processId','selection']);
+ assert.equal(observed.format,input.format);
+ assert.equal(observed.formatVersion,1);
+ assert.ok(Number.isSafeInteger(observed.processId)&&observed.processId>0);
+ assert.notEqual(observed.processId,saved.processId);
+ if(saved.bootstrap.format===inspectedRestartFormat){
+  saved.inspection={observed,selection:structuredClone(observed.selection)};
+ }
+ return observed;
+}
+
+export function reopenInspectedPublishedSealedNativeHost(root,capsule,observation){
+ root=realpathSync(root);
+ const saved=processCapsules.get(capsule);
+ if(!saved?.crashed||saved.used||saved.root!==root||saved.bootstrap.format!==inspectedRestartFormat||saved.inspection?.observed!==observation){
+  throw Error('Select the actual cold inspection from this terminated relay');
+ }
+ const path=join(saved.directory,'sealed-inspected-current-'+saved.bootstrap.nextSequence+'.json');
+ const bytes=Buffer.from(JSON.stringify(saved.inspection.selection));
+ writeFileSync(path,bytes,{mode:0o600,flag:'wx',flush:true});
+ const retained=readFileSync(path);
+ assert.deepEqual(retained,bytes);
+ saved.bootstrap.expectedPublished=JSON.parse(retained);
+ saved.source=saved.bootstrap.expectedPublished;
+ return reopenSelectedDeliverySealedNativeHost(root,capsule);
+}
 
 export function reopenSelectedDeliverySealedNativeHost(root,capsule){
  return selectedDeliveryNativeHost(root,{nativeActivation:true,nativeHandoverActivation:true,nativeHandoverPublication:true,sealedProcessRecovery:true,resume:capsule});

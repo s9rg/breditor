@@ -13,13 +13,11 @@ use breditor_collab_relay::{
     RecoveryRegistrationCredentials, ServerLogGenerationRoomBackup,
     assets::asset_id,
     server::{
-        LogGenerationHandoverStatus, NativeGenerationActivationCheckpointStatus as Status,
-        NativeGenerationActivationPrepareOptions, PreparedLogGenerationHandover,
-        PreparedLogGenerationRecoveryHost, PreparedNativeGenerationActivation,
-        PreparedNativeGenerationActivationIdentity, RoomDeploymentAuthority,
-        SealedNativeRestartHostCoverage, SealedNativeRestartSelection,
-        ServerLogGenerationRecoveryStateIdentity, VerifiedServerLogGenerationRecoveryState,
-        open_sealed_native_restart_host, prepare_durable_native_activation_control,
+        NativeGenerationActivationCheckpointStatus as Status,
+        NativeGenerationActivationPrepareOptions, PreparedNativeGenerationActivationIdentity,
+        ReopenedSealedNativeRestartHost, SealedNativeRestartBootstrap,
+        SealedNativeRestartBootstrapCoverage, ServerLogGenerationRecoveryStateIdentity,
+        prepare_durable_native_activation_control, reopen_sealed_native_restart_host,
     },
 };
 use serde::Deserialize;
@@ -34,6 +32,9 @@ use std::{
 
 #[path = "../native_process_recovery_host/input.rs"]
 mod input;
+#[path = "restart_inspection.rs"]
+mod inspection;
+pub(super) use inspection::inspect;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -67,6 +68,10 @@ struct Bootstrap {
 impl Bootstrap {
     fn published(&self) -> bool {
         self.format == "breditor/private-native-sealed-published-process-recovery"
+    }
+
+    fn inspected(&self) -> bool {
+        self.format == "breditor/private-native-sealed-inspected-process-recovery"
     }
 }
 
@@ -115,9 +120,10 @@ fn read_backup(path: &Path, digest: &str) -> Result<Arc<ServerLogGenerationRoomB
 
 fn read_bootstrap() -> Result<Bootstrap> {
     let input: Bootstrap = input::read()?;
-    if (!input.published() && input.format != "breditor/private-native-sealed-process-recovery")
+    let published = input.published() || input.inspected();
+    if (!published && input.format != "breditor/private-native-sealed-process-recovery")
         || input.format_version != 1
-        || input.published() != input.expected_published.is_some()
+        || published != input.expected_published.is_some()
         || input.root.canonicalize()? != input.root
         || !checkpoint_name(&input.checkpoint_name)
         || input.handover_sequence == 0
@@ -138,102 +144,74 @@ fn read_bootstrap() -> Result<Bootstrap> {
     Ok(input)
 }
 
-struct SelectedCheckpoint {
-    root: PathBuf,
-    checkpoint: Arc<PreparedNativeGenerationActivation>,
-    handover: Arc<PreparedLogGenerationHandover>,
-    authority: RoomDeploymentAuthority,
-    status: Status,
-}
-
-fn open_checkpoint(input: &Bootstrap) -> Result<SelectedCheckpoint> {
-    let sealed = input.root.join("sdk-handover");
-    let checkpoint_root = sealed.join(&input.checkpoint_name);
-    let raw = read_pinned(&checkpoint_root.join("activation.json"), &input.checkpoint_digest)?;
-    let identity: PreparedNativeGenerationActivationIdentity = serde_json::from_slice(&raw)?;
-    let handover =
-        Arc::new(PreparedLogGenerationHandover::open(&sealed.join("intent"), identity.source())?);
-    let checkpoint = Arc::new(PreparedNativeGenerationActivation::open(
-        &checkpoint_root,
-        &identity,
-        handover.clone(),
-    )?);
-    let authority = RoomDeploymentAuthority::open_at_least(
-        &input.root.join("authority"),
-        identity.previous_selection(),
-    )?;
-    let status = checkpoint.status(&authority)?;
-    let floor = match status {
-        Status::Prepared => identity.previous_selection(),
-        Status::Committed => identity.planned_selection(),
-        Status::Superseded => return Err("select the latest sealed checkpoint".into()),
-    };
-    if &authority.current_selection()? != floor
-        || handover.status(&authority)? != LogGenerationHandoverStatus::Sealed
-    {
-        return Err("selected sealed restart authority differs".into());
-    }
-    Ok(SelectedCheckpoint { root: sealed, checkpoint, handover, authority, status })
-}
-
 struct ReopenedTarget {
     original: ServerLogGenerationRoomBackup,
-    host: PreparedLogGenerationRecoveryHost,
+    recovered: ReopenedSealedNativeRestartHost,
     protected: RecoveryRegistrationCredentials,
-    proof: VerifiedServerLogGenerationRecoveryState,
     owner_token: String,
     alice_token: String,
 }
 
 async fn reopen_target(
     input: &Bootstrap,
-    selected: &SelectedCheckpoint,
+    sealed: &Path,
     retained: &ServerLogGenerationRoomBackup,
 ) -> Result<ReopenedTarget> {
-    let original = ServerLogGenerationRoomBackup::from_owned_bytes(
-        selected.handover.source_backup().to_bytes()?,
-    )?;
+    let checkpoint_root = sealed.join(&input.checkpoint_name);
+    let raw = read_pinned(&checkpoint_root.join("activation.json"), &input.checkpoint_digest)?;
+    let expected_checkpoint: PreparedNativeGenerationActivationIdentity =
+        serde_json::from_slice(&raw)?;
     let accounts = authentication::accounts()?;
     if accounts.alice == input.old_alice_token {
         return Err("sealed restart requires fresh accounts".into());
     }
     let protected = input.protected.admit()?;
-    let checkpoint = selected.checkpoint.identity().current();
-    let expected = match &input.expected_published {
+    let checkpoint = expected_checkpoint.current();
+    let expected_current = match &input.expected_published {
         Some(expected) => {
-            if selected.status != Status::Committed
-                || expected.server == checkpoint.server
-                || expected.server != retained.info()?.identity
-            {
+            let previous = retained.info()?.identity;
+            if expected.server == checkpoint.server {
+                return Err("selected published cut must advance beyond its checkpoint".into());
+            }
+            if input.inspected() {
+                if expected.server == previous {
+                    return Err(
+                        "cold inspection must advance beyond its retained predecessor".into()
+                    );
+                }
+            } else if expected.server != previous {
                 return Err("retained published cut differs".into());
             }
             expected.clone()
         }
         None => checkpoint.clone(),
     };
-    let SealedNativeRestartHostCoverage::Verified { host, proof } =
-        open_sealed_native_restart_host(
-            &selected.root.join("target"),
+    let SealedNativeRestartBootstrapCoverage::Verified(recovered) =
+        Box::pin(reopen_sealed_native_restart_host(
+            SealedNativeRestartBootstrap {
+                source_root: sealed.join("intent"),
+                checkpoint_root,
+                authority_root: input.root.join("authority"),
+                operational_root: sealed.join("target"),
+                expected_checkpoint,
+                expected_current,
+            },
             accounts.authentication,
             "owner",
             &accounts.owner,
-            SealedNativeRestartSelection {
-                checkpoint: selected.checkpoint.clone(),
-                authority: selected.authority.clone(),
-                status: selected.status,
-                expected,
-            },
             credentials::proof_inputs(&protected),
-        )
+        ))
         .await?
     else {
         return Err("complete original registrations required".into());
     };
+    let original = ServerLogGenerationRoomBackup::from_owned_bytes(
+        recovered.source.source_backup().to_bytes()?,
+    )?;
     Ok(ReopenedTarget {
         original,
-        host,
+        recovered,
         protected,
-        proof,
         owner_token: accounts.owner,
         alice_token: accounts.alice,
     })
@@ -288,26 +266,28 @@ fn read_observed_cuts(input: &Bootstrap) -> Result<RetainedCuts> {
 
 pub(super) async fn start() -> Result<State> {
     let input = read_bootstrap()?;
-    let selected = open_checkpoint(&input)?;
+    let sealed = input.root.join("sdk-handover");
     let retained = read_observed_cuts(&input)?;
-    let ReopenedTarget { original, host, protected, proof, owner_token, alice_token } =
-        Box::pin(reopen_target(&input, &selected, &retained.previous)).await?;
-    let checkpoint = if selected.status == Status::Committed {
+    let ReopenedTarget { original, recovered, protected, owner_token, alice_token } =
+        Box::pin(reopen_target(&input, &sealed, &retained.previous)).await?;
+    let ReopenedSealedNativeRestartHost { host, proof, source, checkpoint, authority, status } =
+        recovered;
+    let checkpoint = if status == Status::Committed {
         Arc::new(
             host.prepare_durable_native_restart(
                 "owner",
                 &owner_token,
-                selected.checkpoint,
+                checkpoint,
                 &proof,
                 NativeGenerationActivationPrepareOptions {
-                    root: selected.root.join(format!("restart-checkpoint-{}", input.next_sequence)),
-                    authority: selected.authority.clone(),
+                    root: sealed.join(format!("restart-checkpoint-{}", input.next_sequence)),
+                    authority: authority.clone(),
                 },
             )
             .await?,
         )
     } else {
-        selected.checkpoint
+        checkpoint
     };
     let RetainedCuts { spec, fixture, successor, earlier, initial_snapshot, previous, older } =
         retained;
@@ -316,7 +296,7 @@ pub(super) async fn start() -> Result<State> {
         host.clone(),
         Arc::new(proof),
         checkpoint.clone(),
-        selected.authority.clone(),
+        authority.clone(),
         "owner",
         &owner_token,
         operators,
@@ -367,8 +347,8 @@ pub(super) async fn start() -> Result<State> {
         handover: Some(HandoverPrefix {
             sequence: input.handover_sequence,
             earlier,
-            intent: selected.handover,
-            authority: selected.authority,
+            intent: source,
+            authority,
         }),
     };
     publication_action::provision(&mut state).await?;

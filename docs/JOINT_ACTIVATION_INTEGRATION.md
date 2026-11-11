@@ -223,8 +223,27 @@ publication or deployment is implied.
 
 ## Sealed relay restart
 
-Use `open_sealed_native_restart_host` to reopen the existing operational
-target and verify the retained selection in one call. It opens only a committed
+Use `reopen_sealed_native_restart_host` when no live handles remain. Supply the
+host-selected locations for the source seal, activation checkpoint, deployment
+ledger and operational room. Retain the checkpoint identity and exact current
+room selection independently of those locations. The deployment ledger resolves
+whether the selected checkpoint committed, including after a lost response. A
+verified result holds the inactive room, its proof, the source seal, the
+checkpoint and the authority for the next explicit recovery action. Missing
+registrations release all of the reopened custody for retry.
+
+If the relay crashed after acknowledging newer work and before the host
+retained its exact identity, use `inspect_sealed_native_restart`. The
+independently retained checkpoint is the minimum accepted archive. When
+the host already retained a newer cut, provide that exact archive as the
+minimum. Inspection checks the same operational owner, complete Native
+history and raster bytes, then returns the surviving archive and registration
+inventory and releases the reopened locks. Retain that observed selection
+before reopening with all protected registrations for explicit activation.
+
+If the source seal, checkpoint and authority are already open, use
+`open_sealed_native_restart_host` to reopen the existing operational target
+and verify the retained selection. It opens only a committed
 operational handoff and preserves any staged marker alias. An interrupted
 handoff requires explicit operational resume. A Pending result releases the
 room and raster custody so the host can retry after obtaining the missing
@@ -282,6 +301,13 @@ raster is readable through the fresh inactive recovery control. After fresh
 activation and publication, a second client receives the edits and the author
 can Undo and Redo both changes without losing peer work. The original
 exact-checkpoint action still refuses a later cut.
+
+A second published-room case ends the relay before it captures a snapshot of
+the acknowledged work. A separate inspection process reads the surviving cut
+against the last retained predecessor. The host saves that observation as the
+exact restart selection. The replacement continues from the retained
+predecessor, republishes the inspected bytes, and verifies the original
+document and comment receipts, raster, peer catch-up and Undo/Redo.
 
 The whole-room fixture then exercises the SDK with seven replacement owners,
 fourteen offline lanes, metadata continuation, a revoked approval and lost

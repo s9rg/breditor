@@ -38,12 +38,16 @@ coordinated reconciliation before a recovered host can serve.
 
 ## Sealed operational restart
 
-Use `open_sealed_native_restart_host` to reopen an already committed
-operational room and verify its sealed restart against an independently
-retained checkpoint and exact current server and participant identity. A
-committed checkpoint can carry forward a verified descendant with later
-accepted edits, comments, or uploads. The [sealed restart contract](../../docs/JOINT_ACTIVATION_INTEGRATION.md#sealed-relay-restart)
-describes the separate checkpoint, activation, and publication steps.
+Use `reopen_sealed_native_restart_host` to start from existing host-selected
+directories after a process exit. It checks the independently retained
+checkpoint and current server and participant identities. A committed
+checkpoint can carry forward a verified descendant with later accepted edits,
+comments, or uploads. Use `inspect_sealed_native_restart` to capture the
+surviving cut when only an older trusted cut is available. Reopening the
+newly selected cut keeps the room inactive and returns the custody needed
+for explicit activation and publication. The [sealed restart
+contract](../../docs/JOINT_ACTIVATION_INTEGRATION.md#sealed-relay-restart)
+describes these separate steps.
 
 ## Server room archives
 

@@ -206,3 +206,185 @@ async fn sealed_restart_open_releases_custody_when_protected_inputs_are_pending(
     assert_eq!(checkpoint.status(&setup.authority)?, Status::Prepared);
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn cold_bootstrap_releases_every_opened_owner_on_pending_and_refuses_superseded_epochs()
+-> TestResult {
+    use crate::server::{
+        SealedNativeRestartBootstrap, SealedNativeRestartBootstrapCoverage as BootstrapCoverage,
+        reopen_sealed_native_restart_host,
+    };
+    let setup = Box::pin(Setup::new((3, true), true, (true, true), true)).await?;
+    let verified = setup.proof().await?;
+    let checkpoint = prepare(&setup, "sealed-bootstrap", &verified).await?;
+    let source_root = setup.intent.root().to_owned();
+    let checkpoint_root = checkpoint.root().to_owned();
+    let authority_root = setup.source.directory.0.join("authority");
+    let operational_root = setup.source.directory.0.join("target");
+    let expected_checkpoint = checkpoint.identity().clone();
+    let expected_current = verified.identity();
+    let checkpoint_bytes = fs::read(checkpoint_root.join("activation.json"))?;
+    let target_bytes = fs::read(operational_root.join(".operational.json"))?;
+    let epoch = setup.authority.current_selection()?;
+    let ledger = setup.ledger()?;
+    drop(checkpoint);
+    drop(setup.intent);
+    drop(setup.handle);
+    let bootstrap = || SealedNativeRestartBootstrap {
+        source_root: source_root.clone(),
+        checkpoint_root: checkpoint_root.clone(),
+        authority_root: authority_root.clone(),
+        operational_root: operational_root.clone(),
+        expected_checkpoint: expected_checkpoint.clone(),
+        expected_current: expected_current.clone(),
+    };
+    let (auth, _, reader) = super::authentication()?;
+    let mut missing_path = bootstrap();
+    missing_path.source_root = source_root.join("absent");
+    assert!(matches!(
+        Box::pin(reopen_sealed_native_restart_host(
+            missing_path,
+            auth,
+            "owner",
+            &reader,
+            setup.source.protected_records(),
+        ))
+        .await,
+        Err(Error::Permission)
+    ));
+    let (auth, owner, _) = super::authentication()?;
+    let pending = Box::pin(reopen_sealed_native_restart_host(
+        bootstrap(),
+        auth,
+        "owner",
+        &owner,
+        RecoveryRegistrationCredentials::default(),
+    ))
+    .await?;
+    assert!(matches!(pending, BootstrapCoverage::Pending { missing } if !missing.is_empty()));
+    let (auth, owner, _) = super::authentication()?;
+    let opened = Box::pin(reopen_sealed_native_restart_host(
+        bootstrap(),
+        auth,
+        "owner",
+        &owner,
+        setup.source.protected_records(),
+    ))
+    .await?;
+    let BootstrapCoverage::Verified(opened) = opened else {
+        return Err("exact pinned bootstrap remains pending".into());
+    };
+    assert_eq!(opened.status, Status::Prepared);
+    assert_eq!(opened.checkpoint.identity(), &expected_checkpoint);
+    assert_eq!(opened.source.identity(), expected_checkpoint.source());
+    assert_eq!(opened.authority.current_selection()?, epoch);
+    assert_eq!(opened.proof.identity(), expected_current);
+    opened.proof.check_live(&opened.host, "owner", &owner).await?;
+    assert_eq!(fs::read(authority_root.join("authority.log"))?, ledger);
+    assert_eq!(fs::read(checkpoint_root.join("activation.json"))?, checkpoint_bytes);
+    assert_eq!(fs::read(operational_root.join(".operational.json"))?, target_bytes);
+    drop(opened);
+    let _contender = setup.authority.claim(&epoch)?;
+    let changed = fs::read(authority_root.join("authority.log"))?;
+    let (auth, owner, _) = super::authentication()?;
+    assert!(matches!(
+        Box::pin(reopen_sealed_native_restart_host(
+            bootstrap(),
+            auth,
+            "owner",
+            &owner,
+            setup.source.protected_records(),
+        ))
+        .await,
+        Err(Error::Lease)
+    ));
+    assert_eq!(fs::read(authority_root.join("authority.log"))?, changed);
+    assert_eq!(fs::read(checkpoint_root.join("activation.json"))?, checkpoint_bytes);
+    assert_eq!(fs::read(operational_root.join(".operational.json"))?, target_bytes);
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn sealed_inspection_returns_unpinned_accepted_descendant_and_requires_retained_floor()
+-> TestResult {
+    use crate::server::{SealedNativeRestartBootstrap, inspect_sealed_native_restart};
+    let setup = Box::pin(Setup::new((3, true), true, (true, true), true)).await?;
+    let proof = setup.proof().await?;
+    let checkpoint = prepare(&setup, "sealed-inspection", &proof).await?;
+    let expected_checkpoint = checkpoint.identity().clone();
+    let checkpoint_cut = expected_checkpoint.current().clone();
+    let active = setup
+        .handle
+        .activate_durable_native_service(
+            "owner",
+            &setup.owner,
+            setup.authority.clone(),
+            checkpoint.clone(),
+            proof,
+            expected_checkpoint.clone(),
+        )
+        .await?;
+    active
+        .recovery_host()
+        .host
+        .transaction(|room| room.grant("owner", "accepted-before-lost-pin", Some(Role::Reader)))
+        .await?;
+    let actual = setup.handle.capture_recovery_state("owner", &setup.owner).await?.identity()?;
+    assert_ne!(actual, checkpoint_cut);
+    let source_root = setup.intent.root().to_owned();
+    let checkpoint_root = checkpoint.root().to_owned();
+    let authority_root = setup.source.directory.0.join("authority");
+    let operational_root = setup.source.directory.0.join("target");
+    let ledger = setup.ledger()?;
+    let intent_bytes = fs::read(checkpoint_root.join("activation.json"))?;
+    let target_bytes = fs::read(operational_root.join(".operational.json"))?;
+    drop(active);
+    drop(setup.handle);
+    drop(checkpoint);
+    drop(setup.intent);
+    let bootstrap = |expected_current| SealedNativeRestartBootstrap {
+        source_root: source_root.clone(),
+        checkpoint_root: checkpoint_root.clone(),
+        authority_root: authority_root.clone(),
+        operational_root: operational_root.clone(),
+        expected_checkpoint: expected_checkpoint.clone(),
+        expected_current,
+    };
+    let (auth, owner, _) = super::authentication()?;
+    let observed = Box::pin(inspect_sealed_native_restart(
+        bootstrap(checkpoint_cut),
+        None,
+        auth,
+        "owner",
+        &owner,
+    ))
+    .await?;
+    assert_eq!(observed.identity()?, actual);
+    let (archive, _) = observed.into_parts();
+    let (auth, owner, _) = super::authentication()?;
+    assert!(matches!(
+        Box::pin(inspect_sealed_native_restart(
+            bootstrap(actual.clone()),
+            None,
+            auth,
+            "owner",
+            &owner,
+        ))
+        .await,
+        Err(Error::Contract("sealed inspection minimum archive differs"))
+    ));
+    let (auth, owner, _) = super::authentication()?;
+    let observed = Box::pin(inspect_sealed_native_restart(
+        bootstrap(actual.clone()),
+        Some(archive),
+        auth,
+        "owner",
+        &owner,
+    ))
+    .await?;
+    assert_eq!(observed.identity()?, actual);
+    assert_eq!(fs::read(authority_root.join("authority.log"))?, ledger);
+    assert_eq!(fs::read(checkpoint_root.join("activation.json"))?, intent_bytes);
+    assert_eq!(fs::read(operational_root.join(".operational.json"))?, target_bytes);
+    Ok(())
+}
