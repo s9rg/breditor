@@ -17,9 +17,9 @@ Run the installed intent and origin checks with
 `JointRoomActivationAttempt` owns the warm operation. Its separate
 `ColdJointRoomActivationAttempt` recipient reconstructs an interrupted local
 operation from existing complete intent data and fresh actors. A saved phase or
-receipt never substitutes for a new authenticated confirmation. The cold action
-currently requires the same independently selected Native controls; reassociation
-after a Native process restart remains separate work.
+receipt never substitutes for a new authenticated confirmation. The original
+cold action retains its selected Native controls. The sealed restart mode
+binds a new set of controls and uses the separate association described below.
 
 ## Ownership and ordering
 
@@ -75,6 +75,13 @@ Confirmation reopens the complete restart association and verifies the
 original room capture before and after a fresh decision. Only the selected
 restart journal records the request and the authenticated response. A saved
 receipt remains advisory on later confirmation attempts.
+
+The cold owner continues metadata through the path chosen by that confirmation.
+Publication reopens that continuation, obtains a fresh decision and sends the
+complete restart descriptor's digest to the selected publication controller.
+Only an authenticated response, followed by verification of the held journals,
+lets the SDK release the recovered owner. A failed or uncertain request leaves
+the owner private and can be retried with the same selection.
 
 `JointRoomActivationAttempt.beginAcrossHandover` reserves the actual original
 owners and uses a distinct joint intent format. Its descriptor binds the complete

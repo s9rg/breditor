@@ -10,6 +10,7 @@ import {JointHandoverReassociationIntentStore} from './intent_store.js';
 import {withExactHandoverPriors} from './handover_prior.js';
 import type {JointHandoverReassociationChoice} from './handover_contract.js';
 import type {SharedDurableNativeActivationReceipt} from '../native_activation_control/contract.js';
+import type {SharedNativeRoomPublicationReceipt} from '../native_publication_control/contract.js';
 
 export interface HeldHandoverReassociationIntents {
  readonly native:RoomHandoverActivationIntentStore;
@@ -17,6 +18,9 @@ export interface HeldHandoverReassociationIntents {
  check():void;
  observeNativeStarted():Promise<void>;
  observeNativeReceipt(receipt:SharedDurableNativeActivationReceipt):Promise<void>;
+ requireNativeReceipt(receipt:SharedDurableNativeActivationReceipt):void;
+ observePublicationStarted():Promise<void>;
+ observePublicationReceipt(receipt:SharedNativeRoomPublicationReceipt):Promise<void>;
 }
 
 export async function withHeldHandoverReassociationIntents<T>(
@@ -30,7 +34,13 @@ export async function withHeldHandoverReassociationIntents<T>(
  const cleanup:(()=>Promise<void>)[]=[],checks:(()=>void)[]=[],revocations:AbortSignal[]=[];
  const states:(()=>Promise<void>)[]=[];
  let active=true,last:RoomHandoverActivationIntentStore|undefined,primary:unknown,failed=false;
- let observeStarted:(()=>Promise<void>)|undefined,observeReceipt:((receipt:SharedDurableNativeActivationReceipt)=>Promise<void>)|undefined;
+ let current:{
+  observeStarted():Promise<void>;
+  observeReceipt(receipt:SharedDurableNativeActivationReceipt):Promise<void>;
+  requireReceipt(receipt:SharedDurableNativeActivationReceipt):void;
+  observePublicationStarted():Promise<void>;
+  observePublicationReceipt(receipt:SharedNativeRoomPublicationReceipt):Promise<void>;
+ }|undefined;
  const base=()=>{if(!active)throw fail('joint_activation_closed');origin.check();options.checkAuthority();origin.check();};
  const check=()=>{base();for(const held of checks)held();base();};
  try{
@@ -43,10 +53,15 @@ export async function withHeldHandoverReassociationIntents<T>(
    last=native;check();
    const joint=new JointHandoverReassociationIntentStore(selected,{...options,checkAuthority:base});
    cleanup.push(()=>joint.close());
-   const savedJoint=await joint.open();
+   let savedJoint=await joint.open();
    checks.push(joint.check);revocations.push(joint.revoked);
-   observeStarted=async()=>{savedNative=(await native.markRequestStarted()).state;};
-   observeReceipt=async(receipt)=>{savedNative=(await native.markReceiptObserved(receipt)).state;};
+   current={
+    async observeStarted(){savedNative=(await native.markRequestStarted()).state;},
+    async observeReceipt(receipt){savedNative=(await native.markReceiptObserved(receipt)).state;},
+    requireReceipt(receipt){if(savedNative.phase!=='receipt-observed'||!equal(savedNative.receipt,receipt))throw fail('joint_activation_intent_stale');},
+    async observePublicationStarted(){savedJoint=await joint.markPublicationStarted();},
+    async observePublicationReceipt(receipt){savedJoint=await joint.markPublicationObserved(receipt);},
+   };
    states.push(async()=>{
     if(!equal((await native.read()).state,savedNative)||!equal(await joint.read(),savedJoint))throw fail('joint_activation_intent_stale');
    });
@@ -56,8 +71,11 @@ export async function withHeldHandoverReassociationIntents<T>(
    heldCheck();
    const result=await visit(Object.freeze({
     native:last!,revocations:Object.freeze(revocations),check:heldCheck,
-    async observeNativeStarted(){heldCheck();await observeStarted!();heldCheck();},
-    async observeNativeReceipt(receipt:SharedDurableNativeActivationReceipt){heldCheck();await observeReceipt!(receipt);heldCheck();},
+    async observeNativeStarted(){heldCheck();await current!.observeStarted();heldCheck();},
+    async observeNativeReceipt(receipt:SharedDurableNativeActivationReceipt){heldCheck();await current!.observeReceipt(receipt);heldCheck();},
+    requireNativeReceipt(receipt:SharedDurableNativeActivationReceipt){heldCheck();current!.requireReceipt(receipt);},
+    async observePublicationStarted(){heldCheck();await current!.observePublicationStarted();heldCheck();},
+    async observePublicationReceipt(receipt:SharedNativeRoomPublicationReceipt){heldCheck();await current!.observePublicationReceipt(receipt);heldCheck();},
    }));
    heldCheck();
    for(const unchanged of states)await unchanged();

@@ -23,6 +23,10 @@ export interface HandoverReassociationConfirmation {
  readonly choice:JointHandoverReassociationChoice;
  readonly receipt:SharedDurableNativeActivationReceipt;
 }
+const liveConfirmations=new WeakSet<HandoverReassociationConfirmation>();
+export function checkHandoverReassociationConfirmation(confirmation:HandoverReassociationConfirmation):void{
+ if(!liveConfirmations.has(confirmation))throw fail('joint_activation_state');
+}
 
 export async function confirmJointHandoverReassociation(
  scope:SelectedNativeRecoveryScope,origin:ColdJointHandoverOriginWork,expected:JointHandoverReassociationChoice,
@@ -38,7 +42,7 @@ export async function confirmJointHandoverReassociation(
  if(typeof approve!=='function'||!equal(activation.selection,choice.plan.activation.activation))throw fail('joint_activation_intent_stale');
  let receipt:SharedDurableNativeActivationReceipt|undefined;
  try{
-  return await withHeldHandoverReassociationIntents(scope,origin,choice,options,async held=>{
+  const confirmation=await withHeldHandoverReassociationIntents(scope,origin,choice,options,async held=>{
    const observation={
     check:held.check,revocations:[...origin.revocations,...held.revocations,...inspection.signals],
     observeNativeStarted:held.observeNativeStarted,observeNativeReceipt:held.observeNativeReceipt,
@@ -48,6 +52,8 @@ export async function confirmJointHandoverReassociation(
     signal=>inspectColdJointHandoverCapture(scope,origin,input,signal),path);
    return Object.freeze({choice,receipt});
   });
+  liveConfirmations.add(confirmation);
+  return confirmation;
  }catch(error){
   if(receipt)throw activationFailure('activation_outcome_unknown',error);
   throw error;

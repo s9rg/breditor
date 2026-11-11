@@ -11,9 +11,10 @@ import {jointHandoverReassociationPlan,jointHandoverReassociationChoice,handover
 import {JointHandoverReassociationIntentStore as Store,JointReassociationIntentStore as Ordinary,jointReassociationPublicationBinding as binding} from '../packages/breditor-collaboration/dist/native_room_joint_reassociation/intent_store.js';
 import {persistHandoverReassociation} from '../packages/breditor-collaboration/dist/native_room_joint_reassociation/handover_persist.js';
 import {prepareJointHandoverReassociation,resumeJointHandoverReassociationPreparation} from '../packages/breditor-collaboration/dist/native_room_joint_reassociation/handover_prepare.js';
-import {ColdJointRoomActivationAttempt,prepareColdJointHandoverRestart,resumeColdJointHandoverRestartPreparation,confirmColdJointHandoverRestart} from '../packages/breditor-collaboration/dist/native_room_joint_activation/cold_attempt.js';
+import {ColdJointRoomActivationAttempt,prepareColdJointHandoverRestart,resumeColdJointHandoverRestartPreparation,confirmColdJointHandoverRestart,continueColdJointHandoverRestartMetadata,publishColdJointHandoverRestart} from '../packages/breditor-collaboration/dist/native_room_joint_activation/cold_attempt.js';
 import {confirmHeldColdNative} from '../packages/breditor-collaboration/dist/native_room_joint_activation/cold_variant.js';
-import {confirmJointHandoverReassociation} from '../packages/breditor-collaboration/dist/native_room_joint_reassociation/handover_confirm.js';
+import {confirmJointHandoverReassociation,checkHandoverReassociationConfirmation} from '../packages/breditor-collaboration/dist/native_room_joint_reassociation/handover_confirm.js';
+import {continueHandoverReassociationMetadata,publishHandoverReassociation} from '../packages/breditor-collaboration/dist/native_room_joint_reassociation/handover_publish.js';
 import {RoomHandoverActivationIntentStore as NativeStore} from '../packages/breditor-collaboration/dist/room_native_handover_activation_intent/store.js';
 import {heldHandoverActivationPath} from '../packages/breditor-collaboration/dist/room_native_handover_activation_intent/path.js';
 import {nativeActivationHostPort} from '../packages/breditor-collaboration/dist/native_activation_control/host.js';
@@ -256,10 +257,17 @@ test('a forged cold origin cannot prepare or confirm a sealed restart before act
  await assert.rejects(prepareJointHandoverReassociation({},forged,poison,poison),code('joint_activation_state'));
  await assert.rejects(resumeJointHandoverReassociationPreparation({},forged,poison,poison,()=>{reflections++;}),code('joint_activation_state'));
  await assert.rejects(confirmJointHandoverReassociation({},forged,poison,poison,poison),code('joint_activation_state'));
+ const saved=Object.freeze({choice:select(draft('saved-only')),receipt:poison});
+ assert.throws(()=>checkHandoverReassociationConfirmation(saved),code('joint_activation_state'));
+ const context={scope:{},origin:forged,confirmation:saved};
+ await assert.rejects(continueHandoverReassociationMetadata(context,poison,true),code('joint_activation_state'));
+ await assert.rejects(publishHandoverReassociation(context,poison,poison,poison),code('joint_activation_state'));
  const copied=Object.create(ColdJointRoomActivationAttempt.prototype);
  await assert.rejects(prepareColdJointHandoverRestart(copied,poison),policy);
  await assert.rejects(resumeColdJointHandoverRestartPreparation(copied,poison,()=>{reflections++;}),policy);
  await assert.rejects(confirmColdJointHandoverRestart(copied,poison,poison),policy);
+ await assert.rejects(continueColdJointHandoverRestartMetadata(copied,poison),policy);
+ await assert.rejects(publishColdJointHandoverRestart(copied,poison,poison),policy);
  assert.equal(reflections,0);
 });
 

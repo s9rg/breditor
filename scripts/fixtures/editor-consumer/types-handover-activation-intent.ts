@@ -7,6 +7,12 @@ import type {SharedArchiveIntegrityOptions} from '../../../packages/breditor-col
 import {JointHandoverReassociationIntentStore,JointReassociationIntentStore} from '../../../packages/breditor-collaboration/dist/native_room_joint_reassociation/intent_store.js';
 import type {JointHandoverReassociationChoice} from '../../../packages/breditor-collaboration/dist/native_room_joint_reassociation/handover_contract.js';
 import type {JointReassociationChoice} from '../../../packages/breditor-collaboration/dist/native_room_joint_reassociation/contract.js';
+import {ColdJointRoomActivationAttempt,confirmColdJointHandoverRestart,continueColdJointHandoverRestartMetadata,publishColdJointHandoverRestart} from '../../../packages/breditor-collaboration/dist/native_room_joint_activation/cold_attempt.js';
+import type {ColdJointHandoverActivationOptions} from '../../../packages/breditor-collaboration/dist/native_room_joint_activation/cold_contract.js';
+import type {HandoverReassociationConfirmationInput} from '../../../packages/breditor-collaboration/dist/native_room_joint_reassociation/handover_confirm.js';
+import type {HandoverReassociationPublicationInput} from '../../../packages/breditor-collaboration/dist/native_room_joint_reassociation/handover_publish.js';
+import type {SharedNativeRoomPublicationHost} from '../../../packages/breditor-collaboration/dist/native_publication_control/host.js';
+import type {HandoverMetadataContinuationResult} from '../../../packages/breditor-collaboration/dist/selected_local_metadata_continuation/handover_contract.js';
 declare const old:RoomActivationIntentChoice,legacy:RoomActivationEncodedCapture,next:RoomHandoverActivationIntentChoice,store:RoomHandoverActivationIntentStore,encoded:RoomHandoverActivationEncodedCapture;
 const retained:Promise<RoomHandoverActivationRetainedIntent>=store.open(encoded);
 void retained;void next.handover.path.seal;
@@ -37,3 +43,14 @@ void joint.open().then(state=>{
 new JointHandoverReassociationIntentStore(jointOrdinary,options);
 // @ts-expect-error The ordinary restart journal cannot take a sealed choice.
 new JointReassociationIntentStore(jointHandover,options);
+
+declare const cold:ColdJointHandoverActivationOptions,confirm:HandoverReassociationConfirmationInput;
+declare const publication:SharedNativeRoomPublicationHost,publicationInput:HandoverReassociationPublicationInput;
+const restart=ColdJointRoomActivationAttempt.resumeSealedRestart(cold);
+void confirmColdJointHandoverRestart(restart,jointHandover,confirm);
+const {approvePublication,...metadataInput}=publicationInput;
+const continuation:Promise<HandoverMetadataContinuationResult>=continueColdJointHandoverRestartMetadata(restart,metadataInput);
+void continuation;
+void publishColdJointHandoverRestart(restart,publication,{...metadataInput,approvePublication});
+// @ts-expect-error The live confirmation must use the selected sealed restart descriptor.
+confirmColdJointHandoverRestart(restart,jointOrdinary,confirm);
