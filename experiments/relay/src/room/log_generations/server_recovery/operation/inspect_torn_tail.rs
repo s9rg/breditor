@@ -1,7 +1,7 @@
 //! Export the surviving complete room prefix without repairing the committed operation.
 use super::{OperationalLogGenerationServerRoom, resume::OpenMode};
 use crate::{
-    Result, RoomRecoveryPolicy, ServerLogGenerationRoomBackup,
+    Error, Result, RoomRecoveryPolicy, ServerLogGenerationRoomBackup,
     ServerLogGenerationRoomBackupIdentity,
 };
 use sha2::{Digest, Sha256};
@@ -18,7 +18,7 @@ pub struct InspectedNativeGenerationTail {
 }
 
 #[cfg(feature = "server")]
-pub(crate) struct CommittedNativeTailCapture {
+pub(crate) struct CommittedNativePrefixCapture {
     pub(crate) inspected: InspectedNativeGenerationTail,
     pub(crate) participants: crate::ServerLogGenerationParticipantInventory,
     pub(crate) operation: [u8; 32],
@@ -49,21 +49,23 @@ impl OperationalLogGenerationServerRoom {
             expected,
             policy,
             principal,
-            OpenMode::InspectTornTail,
+            OpenMode::InspectNativePrefix,
         )?;
-        let (inspected, _) = operational.capture_native_tail(original, minimum, principal)?;
+        let (inspected, _) =
+            operational.capture_native_prefix(original, minimum, principal, false)?;
         operational.check_live_source(original, principal)?;
         Ok(inspected)
     }
 
     #[cfg(feature = "server")]
-    pub(crate) fn with_committed_native_tail<T>(
+    pub(crate) fn with_committed_native_prefix<T>(
         operating_directory: &Path,
         original: &ServerLogGenerationRoomBackup,
         expected: &ServerLogGenerationRoomBackupIdentity,
         minimum: &ServerLogGenerationRoomBackup,
         principal: &str,
-        verify: impl FnOnce(CommittedNativeTailCapture) -> Result<T>,
+        allow_complete: bool,
+        verify: impl FnOnce(&mut Self, CommittedNativePrefixCapture) -> Result<T>,
     ) -> Result<T> {
         let mut operational = Self::open_operational(
             operating_directory,
@@ -71,28 +73,39 @@ impl OperationalLogGenerationServerRoom {
             expected,
             RoomRecoveryPolicy::HostReacquired,
             principal,
-            OpenMode::InspectTornTail,
+            OpenMode::InspectNativePrefix,
         )?;
-        let (inspected, suffix) = operational.capture_native_tail(original, minimum, principal)?;
+        let (inspected, suffix) =
+            operational.capture_native_prefix(original, minimum, principal, allow_complete)?;
         let participants = operational
             .room()
             .capture_generation_inventory_at(principal, inspected.backup.info()?.identity.native)?;
         operational.check_live_source(original, principal)?;
         let operation = operational.context.activation_owner_digest()?;
-        verify(CommittedNativeTailCapture { inspected, participants, operation, suffix })
+        verify(
+            &mut operational,
+            CommittedNativePrefixCapture { inspected, participants, operation, suffix },
+        )
     }
 
-    fn capture_native_tail(
+    fn capture_native_prefix(
         &mut self,
         original: &ServerLogGenerationRoomBackup,
         minimum: &ServerLogGenerationRoomBackup,
         principal: &str,
+        allow_complete: bool,
     ) -> Result<(InspectedNativeGenerationTail, Vec<u8>)> {
         let (room, assets) = self.components_mut();
-        let (native, suffix) = room.export_inspected_log_generation_prefix(principal)?;
-        let rasters = assets.export_backup()?;
-        assets.check_exported_backup(&rasters)?;
-        let backup = ServerLogGenerationRoomBackup::from_components(native, rasters)?;
+        let (backup, suffix) = if room.log.has_incomplete_generation_tail()? {
+            let (native, suffix) = room.export_inspected_log_generation_prefix(principal)?;
+            let rasters = assets.export_backup()?;
+            assets.check_exported_backup(&rasters)?;
+            (ServerLogGenerationRoomBackup::from_components(native, rasters)?, suffix)
+        } else if allow_complete {
+            (ServerLogGenerationRoomBackup::capture(room, assets, principal)?, Vec::new())
+        } else {
+            return Err(Error::Contract("no incomplete native tail to inspect"));
+        };
         backup.check_archive_ancestor(original)?;
         if minimum.info()?.identity != *self.origin() {
             backup.check_archive_ancestor(minimum)?;

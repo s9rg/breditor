@@ -23,7 +23,7 @@ pub struct SealedNativeRestartSelection {
 }
 
 impl SealedNativeRestartSelection {
-    fn floor(&self) -> Result<&RoomDeploymentSelection> {
+    pub(super) fn floor(&self) -> Result<&RoomDeploymentSelection> {
         let original = self.checkpoint.identity().current();
         match self.status {
             Status::Prepared if &self.expected == original => {

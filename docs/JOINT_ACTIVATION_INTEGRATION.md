@@ -247,8 +247,22 @@ floor and original operational ownership checks. It returns the complete
 surviving archive, the registration inventory at that cut, and the original
 incomplete suffix with its length and SHA-256. Retain these separately from
 the operating directory. Inspection leaves the active log and seal in place.
-The archive can restore into a separate location. The ordinary restart
-continues to require a complete active log before it can admit the room.
+The archive can restore into a separate location.
+
+To repair the original operating directory, retain the complete archive and
+the exact suffix in separate private regular files outside that directory.
+Retain the inspected state identity and suffix length and hash independently.
+Call `repair_sealed_native_tail` with those files and a bootstrap that selects
+the inspected state. The relay reacquires the original operational custody,
+replays the selected prefix, verifies the complete archive and suffix, and
+synchronizes the retained files. It removes only the incomplete suffix while
+holding the deployment epoch, then synchronizes and verifies the same WAL
+inode. A retry using the same retained evidence synchronizes an already
+complete cut and reports `AlreadyComplete`.
+
+After repair, use `reopen_sealed_native_restart_host` with the exact repaired
+cut and all protected registrations. Preparing a new checkpoint, activating
+and publishing still use the existing authenticated steps.
 
 If the source seal, checkpoint and authority are already open, use
 `open_sealed_native_restart_host` to reopen the existing operational target

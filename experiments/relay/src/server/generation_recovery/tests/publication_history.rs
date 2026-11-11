@@ -1,8 +1,7 @@
 //! Original offline journals and future Undo/Redo through the published socket.
 use super::{
-    native_activation::Setup,
     publication_socket::Socket,
-    source::{TestResult, review_policy},
+    source::{Source, TestResult, review_policy},
 };
 use breditor_collab_feasibility::{review::ReviewOutcome, rich_replica::RichReplica};
 use serde_json::{Value, json};
@@ -28,15 +27,15 @@ async fn document_groups(
 
 pub(super) async fn continue_original_history(
     mut socket: Socket,
-    setup: &Setup,
+    source: &Source,
 ) -> TestResult<Socket> {
-    let mut document = setup.source.profile.restore("room", &setup.source.offline)?;
+    let mut document = source.profile.restore("room", &source.offline)?;
     let mut comments = document
-        .restore_review_session(review_policy("owner.comments")?, &setup.source.review_offline)?;
-    let (next, through) = document_groups(socket, &document, &setup.source.through).await?;
+        .restore_review_session(review_policy("owner.comments")?, &source.review_offline)?;
+    let (next, through) = document_groups(socket, &document, &source.through).await?;
     socket = next;
     let mut document_through = through;
-    let frame = comments.export_frame(setup.source.review_through)?;
+    let frame = comments.export_frame(source.review_through)?;
     let (next, response) =
         socket.request("comments-submit", json!({"kind":"reviewSubmit","frame":frame})).await?;
     assert_eq!(response["kind"], "reviewAdmission");
@@ -74,7 +73,7 @@ pub(super) async fn continue_original_history(
         let (next, actual_clock) = next
             .request(
                 "actual-comment-clock",
-                json!({"kind":"reviewClock","actor":setup.source.reviewer.lease.actor}),
+                json!({"kind":"reviewClock","actor":source.reviewer.lease.actor}),
             )
             .await?;
         assert_eq!(actual_clock["kind"], "reviewClock");

@@ -18,6 +18,8 @@ mod prepare_original_root;
 mod publication;
 mod publish_ready;
 mod receipt;
+#[cfg(feature = "server")]
+mod repair_tail;
 mod rotate;
 mod state;
 mod verify;

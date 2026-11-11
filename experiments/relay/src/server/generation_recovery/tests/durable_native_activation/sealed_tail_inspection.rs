@@ -22,6 +22,8 @@ fn append_partial_frame(path: &Path, suffix: &[u8]) -> TestResult {
     Ok(())
 }
 
+mod repair;
+
 const SUFFIX: [u8; 8] = [0, 0, 0, 0, 0, 0, 0, 120];
 
 struct ClosedTailFixture {

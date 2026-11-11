@@ -142,7 +142,7 @@ async fn native_publication_serves_original_document_and_comment_protocol_for_al
             let active = fixture.resumed().await?;
             let socket = super::publication_history::continue_original_history(
                 active.socket,
-                &fixture.setup,
+                &fixture.setup.source,
             )
             .await?;
             assert_eq!(fixture.publish().await?, receipt);
@@ -479,9 +479,11 @@ fn native_publication_survives_preparation_runtime_shutdown_without_false_servin
         let before = fixture.setup.ledger()?;
         fixture.publish().await?;
         let active = fixture.resumed().await?;
-        let socket =
-            super::publication_history::continue_original_history(active.socket, &fixture.setup)
-                .await?;
+        let socket = super::publication_history::continue_original_history(
+            active.socket,
+            &fixture.setup.source,
+        )
+        .await?;
         fixture.publish().await?;
         fixture.publication.close().await?;
         assert_eq!(fixture.setup.ledger()?, before);

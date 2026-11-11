@@ -256,7 +256,7 @@ async fn http_activated_host_seals_the_next_cut_and_fresh_control_resumes_offlin
         "kind":"reviewResume","actor":setup.source.reviewer.lease.actor,"credential":setup.source.reviewer.credential,
     })).await?;
     assert_eq!(review["kind"], "reviewResumed");
-    drop(continue_original_history(socket, &setup).await?);
+    drop(continue_original_history(socket, &setup.source).await?);
     reader.stale().await?;
     serving.stop().await?;
     network.stop().await?;

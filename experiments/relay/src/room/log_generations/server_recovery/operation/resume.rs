@@ -19,7 +19,7 @@ use std::path::Path;
 pub(super) enum OpenMode {
     Resume,
     Committed,
-    InspectTornTail,
+    InspectNativePrefix,
 }
 impl OperationalLogGenerationServerRoom {
     /// Reacquire this actual joined recovery and its selected native/raster owners. A committed
@@ -93,7 +93,7 @@ impl OperationalLogGenerationServerRoom {
             backup.native(),
             &native_selection.witness,
             context.marker.selection.native_controls,
-            matches!(mode, OpenMode::InspectTornTail),
+            matches!(mode, OpenMode::InspectNativePrefix),
         )?;
         let native_controls = native.recovery_control_seal()?;
         let raster_directory = RasterDirectory::open(

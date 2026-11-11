@@ -55,6 +55,7 @@ pub use generation_recovery::{
     PreparedPhysicalRoomRecoveryHost, ReopenedSealedNativeRestartHost,
     SealedNativeRestartBootstrap, SealedNativeRestartBootstrapCoverage,
     SealedNativeRestartHostCoverage, SealedNativeRestartSelection, SealedNativeTailInspection,
+    SealedNativeTailRepairFiles, SealedNativeTailRepairOutcome,
     ServerLogGenerationAssetAvailabilityRead, ServerLogGenerationAssetRecoveryState,
     ServerLogGenerationDeliveryContinuationIdentity, ServerLogGenerationDeliveryPathIdentity,
     ServerLogGenerationDeliveryPathRecoveryControl,
@@ -78,7 +79,7 @@ pub use generation_recovery::{
     prepare_log_generation_recovery_control, prepare_log_generation_recovery_host,
     prepare_native_room_publication, prepare_physical_room_recovery_control,
     prepare_physical_room_recovery_host, reconstruct_log_generation_recovery_host,
-    reopen_sealed_native_restart_host,
+    reopen_sealed_native_restart_host, repair_sealed_native_tail,
 };
 use std::sync::{Arc, Mutex};
 use tokio::sync::{Semaphore, watch};
