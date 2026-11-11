@@ -76,6 +76,11 @@ The Native tests use controlled Node storage,
 actual Rust HTTP controls, seven clients, fourteen offline streams and real
 asset acknowledgements.
 
+Both candidate profiles run the source and independent-package checks for warm
+and interrupted handovers before checking the readiness inventory. Each
+installed check emits its own fresh report with the verified publication and
+final delivery result.
+
 A cancelled IndexedDB open keeps its namespace reserved until the actual
 request settles. If the caller has already closed the attempt, the settlement
 finishes the retained cleanup. A fresh attempt can then acquire the namespace
