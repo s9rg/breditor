@@ -230,9 +230,11 @@ later predecessor if the recorded cut still appears in the verified path. The
 SDK applies this rule before retaining a new intent and again before checking
 the original provider receipt and bytes with newly authenticated controls.
 
-The Native process fixture exercises both prepared and committed checkpoints.
-It exits the old process, reopens the pinned checkpoint and archives, verifies
-fourteen protected streams and serves fresh controls on the original listener.
+The Native process fixture exits twice in each of the prepared and committed
+cases. Each restart reopens the pinned archives, verifies fourteen protected
+streams, and offers fresh controls for the original listener. The prepared
+case retains the original checkpoint. The committed case prepares a direct
+child of the last committed checkpoint after each exit.
 The whole-room fixture then exercises the SDK with seven replacement owners,
 fourteen offline lanes, metadata continuation, a revoked approval and lost
 replies before final delivery.
