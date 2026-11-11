@@ -6,6 +6,7 @@ import {createHash} from 'node:crypto';
 import {join,dirname,resolve,relative} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {prepareActivationRetentionFixture} from './fixtures/activation-retention/prepare.mjs';
+import {sourceEvidence} from './candidate-release/evidence.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 prepareActivationRetentionFixture(root);
 if(process.argv.length!==2)throw Error('The complete handover intent workset is required');
@@ -62,7 +63,7 @@ mkdirSync(dirname(join(consumer,staticPath)),{recursive:true});writeFileSync(joi
 execFileSync(join(root,'node_modules/.bin/tsc'),['--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM','scripts/fixtures/editor-consumer/types-handover-activation-coordination.ts'],{cwd:consumer,stdio:'inherit',timeout:120000});
 
 const nativeRelative='target/handover-activation-native/release/examples/native_handover_activation_sdk_functional',nativeSource=join(root,nativeRelative),nativeTarget=join(consumer,nativeRelative),nativeSha256=sha(readFileSync(nativeSource));mkdirSync(dirname(nativeTarget),{recursive:true});cpSync(nativeSource,nativeTarget);assert.equal(sha(readFileSync(nativeTarget)),nativeSha256);
-const nativeBuild=JSON.parse(readFileSync(join(root,'target/handover-native-activation-native-build.json')));assert.equal(nativeBuild.exitCode,0);assert.equal(nativeBuild.sourceUnchanged,true);assert.equal(nativeBuild.binaries[0].sha256,nativeSha256);
+const nativeBuild=JSON.parse(readFileSync(join(root,'target/handover-native-activation-native-build.json')));assert.equal(nativeBuild.complete,true);assert.equal(nativeBuild.exitCode,0);assert.equal(nativeBuild.sourceUnchanged,true);assert.equal(nativeBuild.exceeded,false);assert.equal(nativeBuild.timedOut,false);assert.equal(nativeBuild.monitorError,undefined);assert.deepEqual(nativeBuild.source,sourceEvidence(root));assert.equal(nativeBuild.binaries[0].sha256,nativeSha256);
 const wasm=join(consumer,'node_modules/@breditor/collaboration/dist/runtime/breditor_shared_bg.wasm'),normalWasmSha256=sha(readFileSync(wasm));assert.equal(normalWasmSha256,'165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0');
 const state={format:'breditor/installed-handover-native-activation-development',version:1,complete:false,sourceRoot:root,producer,consumer,directory,sourceInputs:before,copied,runtimeInputs,workspaceLinks:false,registryArtifacts,matchingPackageDistFiles,nativeSha256,nativeBuild,normalWasmSha256,archives:packs.map(row=>({name:row.name,path:join(archives,row.filename),sha256:sha(readFileSync(join(archives,row.filename)))})),startedAt:new Date().toISOString()};
 writeFileSync(join(directory,'running.json'),JSON.stringify(state,null,2));console.log(JSON.stringify({directory,consumer,phase:'execute-actual-handover-native-activation'}));
