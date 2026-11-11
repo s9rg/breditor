@@ -29,7 +29,15 @@ export class ActivationIntentStore<Choice extends ActivationStoredChoice,Capture
   db.onversionchange=()=>{this.#revoked.abort();db.close();};
  }
  #schema(db:IDBDatabase){if(db.version!==1||JSON.stringify([...db.objectStoreNames])!==JSON.stringify(tables))throw fail();const tx=db.transaction(tables,'readonly'),s=tx.objectStore('activation');if(s.keyPath!==null||s.autoIncrement||s.indexNames.length)throw fail();}
- open(initial?:ActivationStoredEncoding<Choice>):Promise<ActivationStoredIntent<Choice,Capture,State>>{return this.#run(async()=>{
+ open(initial?:ActivationStoredEncoding<Choice>):Promise<ActivationStoredIntent<Choice,Capture,State>>{
+  return this.#run(async()=>{await this.#open(initial);return this.#load();});
+ }
+ /** Read literal committed wire bytes and their decoded data in one held visit.
+  * Reconstructing a Blob graph cannot preserve every admitted wire order. */
+ protected openWithEncoding(){
+  return this.#run(async()=>{await this.#open();return this.#loadWithEncoding();});
+ }
+ async #open(initial?:ActivationStoredEncoding<Choice>):Promise<void>{
   if(this.#db||this.#opening)throw fail('activation_intent_busy');
   const proposed=initial?this.#codec.snapshot(initial):undefined;
   if(proposed){if(JSON.stringify(proposed.choice)!==JSON.stringify(this.#choice)||JSON.stringify(initial!.choice)!==JSON.stringify(this.#choice))throw fail();await this.#codec.decode(proposed,this.#options);this.check();}
@@ -43,8 +51,8 @@ export class ActivationIntentStore<Choice extends ActivationStoredChoice,Capture
    };try{unwatch=this.#cancel.watch(()=>abort(fail('activation_intent_closed')));}catch(error){abort(error);}
    q.onupgradeneeded=event=>{this.#attach(q.result);try{this.check();if(event.oldVersion!==0||refused)throw fail('activation_intent_exists');if(!proposed)throw fail('activation_intent_missing');const store=q.result.createObjectStore('activation');store.add(JSON.stringify(this.#choice),'choice');store.add(proposed.graph,'graph');store.add(JSON.stringify(this.#codec.initial),'state');for(let i=0;i<proposed.objects.length;i++)store.add(proposed.objects[i]!,'blob:'+this.#choice.objects[i]!.sha256);created=true;this.check();}catch(error){abort(error);}};
    q.onblocked=()=>{refused=true;reason=fail('activation_intent_busy');reject(reason);};q.onerror=()=>{done();reject(refused?reason:fail('activation_intent_storage'));};q.onsuccess=()=>{this.#attach(q.result);done();if(created)this.#committed=this.#codec.initial;try{this.check();if(refused)throw reason;if(proposed&&!created)throw fail('activation_intent_exists');this.#schema(q.result);resolve();}catch(error){reject(error);}};
-  });return this.#load();
- });}
+  });
+ }
  #transaction<T>(mode:IDBTransactionMode,visit:(rows:ReadonlyMap<string,unknown>,tx:IDBTransaction)=>T,committed?:()=>void):Promise<T>{
   this.check();if(!this.#db)throw fail('activation_intent_closed');return new Promise((resolve,reject)=>{
    const tx=this.#db!.transaction(tables,mode),store=tx.objectStore('activation');let reason:unknown,failed=false,ready=false,result:T,unwatch=()=>{};
@@ -56,12 +64,16 @@ export class ActivationIntentStore<Choice extends ActivationStoredChoice,Capture
    }catch(error){abort(error);}};
   });
  }
- async #load():Promise<ActivationStoredIntent<Choice,Capture,State>>{
+ async #loadWithEncoding(){
   const rows=await this.#transaction('readonly',r=>r),text=rows.get('graph'),stateText=rows.get('state');
   if(typeof text!=='string'||new TextEncoder().encode(text).length>MAX_ROOM_ACTIVATION_GRAPH_BYTES||typeof stateText!=='string'||new TextEncoder().encode(stateText).length>128*1024)throw fail();
   const state=this.#codec.state(JSON.parse(stateText),this.#choice);if(JSON.stringify(state)!==stateText)throw fail();
-  const capture=await this.#codec.decode({choice:this.#choice,graph:text,objects:this.#choice.objects.map(p=>rows.get('blob:'+p.sha256) as Blob)},this.#options);this.check();this.#committed=state;return Object.freeze({choice:this.#choice,capture,state});
+  const encoding=Object.freeze({choice:this.#choice,graph:text,objects:Object.freeze(this.#choice.objects.map(p=>rows.get('blob:'+p.sha256) as Blob))});
+  const capture=await this.#codec.decode(encoding,this.#options);
+  this.check();this.#committed=state;
+  return Object.freeze({intent:Object.freeze({choice:this.#choice,capture,state}),encoding});
  }
+ async #load():Promise<ActivationStoredIntent<Choice,Capture,State>>{return (await this.#loadWithEncoding()).intent;}
  read():Promise<ActivationStoredIntent<Choice,Capture,State>>{return this.#run(()=>this.#load());}
  #advance(receipt:SharedDurableNativeActivationReceipt|undefined):Promise<ActivationStoredIntent<Choice,Capture,State>>{return this.#run(async()=>{
   const before=await this.#load();this.check();

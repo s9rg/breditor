@@ -454,7 +454,7 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   stage('handover-recovery-bytes-types',node,['node_modules/typescript/bin/tsc','--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM','scripts/fixtures/editor-consumer/types-handover-recovery-bytes.ts']),
   stage('handover-recovery-bytes-native',node,['--test','scripts/native-metadata-handover-bytes.test.mjs'],{},[],7800000),
   script('installed-handover-recovery-bytes','check-handover-recovery-bytes-installed.mjs',[],[{path:'target/handover-recovery-bytes-installed-consumer.json',fresh:true}],8400000),
-  stage('handover-activation-intent-contracts',node,['--test','scripts/handover-activation-intent-storage.test.mjs','scripts/handover-activation-intent-candidate-plan.test.mjs']),
+  stage('handover-activation-intent-contracts',node,['--test','scripts/handover-activation-intent-storage.test.mjs','scripts/handover-activation-reassociation.test.mjs','scripts/handover-activation-intent-candidate-plan.test.mjs']),
   stage('handover-activation-intent-types',node,['node_modules/typescript/bin/tsc','--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM','scripts/fixtures/editor-consumer/types-handover-activation-intent.ts']),
   stage('handover-activation-intent-native',node,['--test','scripts/native-handover-activation-intent-data.test.mjs'],{},[],7800000),
   script('installed-handover-activation-intent','check-handover-activation-intent-installed.mjs',[],[{path:'target/handover-activation-intent-installed-consumer.json',fresh:true}],8400000),

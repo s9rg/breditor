@@ -11,6 +11,11 @@ import type {SharedServerLogGenerationHandoverDeliveryPathRecoveryControlSelecti
 import type {HandoverReconciledServerPacketRecoveryCapture as Capture} from '../metadata_packet_retention/handover_input.js';
 import type {ReconciledServerPacketRecoveryCapture} from '../reconciled_server_packet_recovery/contract.js';
 const same=(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b);
+export function assertHandoverPathContinuation(previous:Handover,current:Handover):void{
+ if(!same(previous.path.seal,current.path.seal)||!same(previous.path.earlier,current.path.earlier)||
+  !same(previous.path.successor.current,current.path.successor.current)||
+  !containsOrderedDeliveryCuts(current.path.successor.ancestors,previous.path.successor.ancestors))throw fail('activation_intent_stale');
+}
 export function assertHandoverActivationCapture(activation:SharedDurableNativeActivationSelection,handover:Handover,capture:Capture):void{
  const outer=fields(capture,['format','formatVersion','handover','capture']);
  if(outer['format']!=='breditor/handover-reconciled-server-packet-recovery'||outer['formatVersion']!==1)throw fail();
@@ -21,8 +26,6 @@ export function assertHandoverActivationCapture(activation:SharedDurableNativeAc
  detachResolvedServerPacketRecoveryBundle(normal.recovery.bundle);
  if(normal.recovery.kind!=='retained'||normal.recovery.bundle.assets.kind!=='retained')throw fail('activation_intent_incomplete');
  assertRoomActivationCapture(activation,normal);
- if(!same(original.current.path.current,activation.current)||!same(current.current.path.current,activation.current)||
-  !same(original.path.seal,current.path.seal)||!same(original.path.earlier,current.path.earlier)||
-  !same(original.path.successor.current,current.path.successor.current)||
-  !containsOrderedDeliveryCuts(current.path.successor.ancestors,original.path.successor.ancestors))throw fail('activation_intent_stale');
+ if(!same(original.current.path.current,activation.current)||!same(current.current.path.current,activation.current))throw fail('activation_intent_stale');
+ assertHandoverPathContinuation(original,current);
 }

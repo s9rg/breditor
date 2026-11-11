@@ -50,6 +50,30 @@ and approval. The retained Native control returns the same receipt and actual
 epoch on repeated commit. Original Pending/cache facts, offline operations,
 metadata packets, receipts and Undo/Redo stay separate from activation.
 
+## Reassociating retained data after a Native restart
+
+The internal `prepareHandoverActivationReassociation` action takes the
+independently selected prior intent and fresh authenticated activation and path
+controllers. They must identify the original source and sealed path, including
+every previously admitted cut in order. The checkpoint must be the original
+pending checkpoint or the direct next checkpoint following the original planned
+epoch. The action retains a new choice independently before creating a separate
+namespace with the exact original graph and ordered Blob bytes.
+
+The new intent starts prepared. The original namespace keeps its last
+observation, including an observed receipt. If the new choice was retained
+before a storage interruption, `resumeHandoverActivationReassociation` can finish
+the local write or reopen the exact committed result with that choice. It needs
+no live HTTP controllers for the local write. Native requests and publication
+still require their own live controllers and approval.
+
+Run `node --test scripts/handover-activation-reassociation.test.mjs` after
+building the collaboration package. The installed counterpart is
+`node scripts/check-handover-activation-intent-installed.mjs --reassociation-contracts`.
+These checks use a pinned recovery corpus and controlled HTTP and storage.
+
+## Native activation verification
+
 Run `node scripts/build-handover-native-activation.mjs` to build the separate
 `native_handover_activation_sdk_functional` fixture. It uses real public Rust
 handover, recovery, provider and activation APIs. Its private IPC prepares and

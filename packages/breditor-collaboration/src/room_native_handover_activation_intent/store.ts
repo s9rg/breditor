@@ -12,4 +12,6 @@ const codec=Object.freeze({
 });
 export class RoomHandoverActivationIntentStore extends ActivationIntentStore<RoomHandoverActivationIntentChoice,RoomHandoverActivationRetainedIntent['capture'],RoomHandoverActivationIntentState>{
  constructor(choice:RoomHandoverActivationIntentChoice,options:SharedArchiveIntegrityOptions){super(choice,options,codec);}
+ /** Existing-only exact bytes for a separately selected restart association. */
+ openRetainedEncoding(){return this.openWithEncoding();}
 }
