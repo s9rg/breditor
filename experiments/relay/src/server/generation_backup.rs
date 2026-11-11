@@ -4,6 +4,7 @@ mod capture;
 pub(in crate::server) mod durable;
 mod handover;
 mod prepare;
+mod storage_capacity;
 pub use durable::{
     LogGenerationHandoverStatus, PreparedLogGenerationHandover,
     PreparedLogGenerationHandoverIdentity,

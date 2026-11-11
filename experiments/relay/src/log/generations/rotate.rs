@@ -301,18 +301,26 @@ impl Generations {
         Ok(child)
     }
 }
+impl Generations {
+    pub(in crate::log) fn rotation_stage_count(&self) -> Result<usize> {
+        let stages = self.verify_inventory()?;
+        self.directory.absent(".rotation.json")?;
+        Ok(stages)
+    }
+
+    pub(in crate::log) fn can_stage_rotation(stages: usize) -> bool {
+        // The empty continuation can coexist with one staged control.
+        // Every stage already has its own byte ceiling.
+        stages + 2 <= format::MAX_GENERATIONS
+    }
+}
+
 impl Log {
     pub(in crate::log) fn check_rotation_staging_capacity(&mut self) -> Result<()> {
         let state =
             self.generations.as_ref().ok_or(Error::Contract("original log does not rotate"))?;
-        let inventory = state.verify_inventory().and_then(|stages| {
-            state.directory.absent(".rotation.json")?;
-            Ok(stages)
-        });
-        match inventory {
-            // The empty continuation can coexist with one staged control.
-            // Every stage already has its own byte ceiling.
-            Ok(stages) if stages + 2 <= format::MAX_GENERATIONS => Ok(()),
+        match state.rotation_stage_count() {
+            Ok(stages) if Generations::can_stage_rotation(stages) => Ok(()),
             Ok(_) => Err(Error::Contract("physical rotation staging capacity")),
             Err(error) => {
                 self.poisoned = true;

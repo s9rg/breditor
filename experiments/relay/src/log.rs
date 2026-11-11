@@ -19,7 +19,11 @@ mod scan;
 #[cfg(test)]
 mod scan_tests;
 mod snapshot;
+mod storage_capacity;
 pub(crate) use snapshot::LogSnapshot;
+pub use storage_capacity::{
+    ServerLogAllowance, ServerLogRotationCapacity, ServerLogStorageCapacity,
+};
 
 const MAX_RECORD: u64 = 20 * 1024 * 1024;
 pub(crate) const MAX_LOG: u64 = 256 * 1024 * 1024;

@@ -9,14 +9,14 @@ use crate::{
 };
 use std::{collections::BTreeSet, fs, io::Read};
 
-fn manifest(store: &AssetStore) -> Result<Vec<u8>> {
+pub(super) fn manifest(store: &AssetStore) -> Result<Vec<u8>> {
     let mut bytes = Vec::new();
     fs::File::open(store.root.join("store.json"))?.take(4097).read_to_end(&mut bytes)?;
     admission::admit_manifest(&bytes, &store.binding)?;
     Ok(bytes)
 }
 
-fn files(store: &AssetStore) -> Result<BTreeSet<String>> {
+pub(super) fn files(store: &AssetStore) -> Result<BTreeSet<String>> {
     let mut names = BTreeSet::new();
     for entry in fs::read_dir(&store.root)? {
         let entry = entry?;

@@ -89,9 +89,25 @@ async fn physical_rotation_and_unreferenced_rasters_stale_selection_at_unchanged
         &owner,
     )
     .await?;
+    let capacity = handle.storage_capacity("owner", &owner).await?;
+    assert!(matches!(handle.storage_capacity("owner", &reader).await, Err(Error::Permission)));
+    assert!(matches!(handle.storage_capacity("reader", &reader).await, Err(Error::Permission)));
+    let slots = capacity.log.rotation.ok_or("selected rotation capacity")?;
+    assert!(slots.can_rotate);
     let selected = handle.capture("owner", &owner).await?;
     let ledger = fs::read(d.authority().join("authority.log"))?;
     handle.host.transaction(|room| room.rotate_log_generation("owner", "next")).await?;
+    let after_rotation = handle.storage_capacity("owner", &owner).await?;
+    let remaining = after_rotation.log.rotation.ok_or("rotated capacity")?;
+    assert_eq!(remaining.continuation_files_remaining + 1, slots.continuation_files_remaining);
+    assert!(!remaining.can_rotate);
+    assert_eq!(after_rotation.log.next_sequence, capacity.log.next_sequence);
+    assert_eq!(after_rotation.log.terminal_digest, capacity.log.terminal_digest);
+    assert!(after_rotation.log.active.records_remaining > capacity.log.active.records_remaining);
+    assert_eq!(
+        after_rotation.log.retained.framed_bytes_remaining,
+        capacity.log.retained.framed_bytes_remaining
+    );
     let rotated = handle.capture("owner", &owner).await?;
     assert_eq!(selected.info()?.identity.native.source, rotated.info()?.identity.native.source);
     assert_ne!(selected.info()?.identity, rotated.info()?.identity);
@@ -103,6 +119,7 @@ async fn physical_rotation_and_unreferenced_rasters_stale_selection_at_unchanged
     let mut encoded = Cursor::new(Vec::new());
     image::DynamicImage::new_rgb8(2, 3).write_to(&mut encoded, image::ImageFormat::Png)?;
     let bytes = encoded.into_inner();
+    let asset_bytes = bytes.len() as u64;
     let prepared = prepare_asset(&asset_id(&bytes), "image/png", bytes)?;
     let store = handle.host.assets.clone().ok_or("assets")?;
     handle
@@ -112,6 +129,13 @@ async fn physical_rotation_and_unreferenced_rasters_stale_selection_at_unchanged
             room.put_asset("owner", &mut assets, prepared)
         })
         .await?;
+    let after_upload = handle.storage_capacity("owner", &owner).await?;
+    assert_eq!(after_upload.log, after_rotation.log);
+    assert_eq!(after_upload.rasters.assets_remaining + 1, after_rotation.rasters.assets_remaining);
+    assert_eq!(
+        after_upload.rasters.payload_bytes_remaining + asset_bytes,
+        after_rotation.rasters.payload_bytes_remaining
+    );
     let raster = handle.capture("owner", &owner).await?;
     assert_eq!(rotated.info()?.identity.native, raster.info()?.identity.native);
     assert_ne!(rotated.info()?.identity.assets, raster.info()?.identity.assets);
@@ -122,6 +146,7 @@ async fn physical_rotation_and_unreferenced_rasters_stale_selection_at_unchanged
     assert_eq!(fs::read(d.authority().join("authority.log"))?, ledger);
     let sealed = handle.seal_for_handover("owner", &owner, raster.info()?.identity).await?;
     assert_eq!(sealed.backup().to_bytes()?, raster.to_bytes()?);
+    assert!(matches!(handle.storage_capacity("owner", &owner).await, Err(Error::Lease)));
     Ok(())
 }
 
@@ -132,6 +157,19 @@ async fn original_family_cannot_mint_the_live_generation_handle_or_advance_the_e
     let (room, _) = source(&d, 3, true, true, false)?;
     let native = fs::read(d.0.join("original.log"))?;
     let assets = AssetStore::open(&d.0.join("assets"), room.asset_binding())?;
+    let capacity = room.storage_capacity(&assets, "owner")?;
+    assert_eq!(capacity.log.rotation, None);
+    assert_eq!(capacity.log.active, capacity.log.retained);
+    assert_eq!(
+        capacity.log.active.framed_bytes_remaining + native.len() as u64,
+        crate::log::MAX_LOG
+    );
+    assert_eq!(capacity.rasters.assets_remaining, crate::assets::MAX_ASSETS);
+    let unselected = d.0.join("assets/unselected");
+    fs::write(&unselected, b"unselected fixture bytes")?;
+    assert!(room.storage_capacity(&assets, "owner").is_err());
+    assert_eq!(fs::read(&unselected)?, b"unselected fixture bytes");
+    fs::remove_file(unselected)?;
     let authority = RoomDeploymentAuthority::create(&d.authority(), &room.deployment_binding()?)?;
     let lease = authority.claim(&authority.current_selection()?)?;
     let selected = lease.selection();
