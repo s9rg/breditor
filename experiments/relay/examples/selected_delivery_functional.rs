@@ -71,13 +71,22 @@ pub async fn main() -> Result {
     let retired = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
     let endpoint = format!("ws://{}/ws", clients.local_addr()?);
     let old_endpoint = format!("ws://{}/ws", retired.local_addr()?);
-    let mut ready = if suggestions {
+    let ready = if suggestions {
         Box::pin(setup::prepare_with_suggestion_grants(&parent, spec, &images)).await?
     } else {
         Box::pin(setup::prepare(&parent, spec, &images)).await?
     };
-    let mut tasks =
+    let tasks =
         vec![serve(ready.active.router(), clients), serve(ready.old_router.clone(), retired)];
+    Box::pin(run(ready, tasks, &endpoint, &old_endpoint)).await
+}
+
+async fn run(
+    mut ready: setup::Ready,
+    mut tasks: Vec<tokio::task::JoinHandle<std::io::Result<()>>>,
+    endpoint: &str,
+    old_endpoint: &str,
+) -> Result {
     let mut controls = Vec::new();
     let mut inspections = Vec::new();
     let mut input = protocol::read();
@@ -90,8 +99,8 @@ pub async fn main() -> Result {
             Box::pin(snapshot::capture_with_handover(
                 &ready,
                 sequence,
-                &endpoint,
-                &old_endpoint,
+                endpoint,
+                old_endpoint,
                 previous.as_ref(),
                 &observed,
                 Some(prefix),
@@ -101,8 +110,8 @@ pub async fn main() -> Result {
             Box::pin(snapshot::capture(
                 &ready,
                 sequence,
-                &endpoint,
-                &old_endpoint,
+                endpoint,
+                old_endpoint,
                 previous.as_ref(),
                 &observed,
             ))
