@@ -24,8 +24,16 @@ export async function retainActualHandoverActivationData({scope,sources,metadata
  try{const warm=await a.open(encoded);assert.deepEqual(warm.capture.handover,capture.handover);assert.equal(warm.state.phase,'prepared');}finally{await a.close();}
  unchanged();
  const b=new Store(encoded.choice,options);let retained;
- try{retained=await b.open();assert.deepEqual(retained.choice,encoded.choice);assert.deepEqual(retained.capture.handover,capture.handover);assert.deepEqual(retained.capture.capture.reconciliation.original,capture.capture.reconciliation.original);assert.equal(retained.state.phase,'prepared');}finally{await b.close();}
+ try{retained=await b.open();assert.deepEqual(retained.choice,encoded.choice);assert.deepEqual(retained.capture.handover,capture.handover);assert.equal(retained.state.phase,'prepared');}finally{await b.close();}
  unchanged();
+ // The graph is the wire contract, including every literal fact and Blob MIME
+ // tag. Node's own Blob constructor/species properties are implementation data.
+ const cold=await encode(encoded.choice.database,encoded.choice.activation,encoded.choice.handover,retained.capture,options);unchanged();
+ assert.deepEqual(cold.choice,encoded.choice);assert.ok(cold.graph===encoded.graph,'Cold intent changed the literal tagged graph or Blob MIME tags');
+ for(let i=0;i<cold.objects.length;i++){
+  const actual=Buffer.from(await cold.objects[i].arrayBuffer()),expected=Buffer.from(await encoded.objects[i].arrayBuffer());unchanged();
+  assert.ok(actual.equals(expected),'Cold intent changed object bytes at index '+i);
+ }
  const directory=join(host.directory,'actual-handover-activation-data-intent');mkdirSync(directory,{mode:0o700});
  const files=[],save=(name,data)=>{writeFileSync(join(directory,name),data,{flag:'wx',mode:0o600});assert.deepEqual(readFileSync(join(directory,name)),data);files.push({name,bytes:data.length,sha256:sha(data)});};
  save('choice.json',Buffer.from(JSON.stringify(encoded.choice)));save('graph.json',Buffer.from(encoded.graph));save('state.json',Buffer.from(JSON.stringify(retained.state)));
