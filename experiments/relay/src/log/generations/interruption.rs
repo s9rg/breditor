@@ -7,6 +7,7 @@ pub(crate) enum RotationPoint {
     ContinuationReady,
     IntentSynced,
     ContinuationPublished,
+    FullStageRetired,
     ManifestSynced,
     HeadSynced,
     StageRetired,
