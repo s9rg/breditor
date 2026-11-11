@@ -125,3 +125,16 @@ with the built handover fixture. The test activates an actual sealed successor,
 interrupts a destination write and resumes it while the Native listener awaits
 publication. The metadata continuation source and installed runners include this
 workflow alongside the original same-origin workset.
+
+## Native process exit during a sealed handover
+
+The relay test exits the child process before the successor commits and again
+after the commit reaches disk. A fresh process reopens the selected operational
+target, verifies the same historical seal and ordered archive path, and
+reauthenticates the original protected registrations. The prepared case keeps
+its selected epoch. The committed case prepares a child epoch.
+
+Both cases require a fresh authenticated activation and publication request
+before the normal listener serves the original document and comment protocols.
+Repeat requests return the same receipts. Run the test with
+`cargo test --manifest-path experiments/relay/Cargo.toml --features server --locked --offline --release --lib durable_native_activation::process::`.

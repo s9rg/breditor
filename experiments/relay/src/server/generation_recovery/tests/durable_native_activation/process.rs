@@ -10,6 +10,8 @@ use std::{
     process::{Command, Stdio},
     time::{Duration, Instant},
 };
+#[path = "process/handover.rs"]
+mod handover;
 #[derive(Serialize, Deserialize)]
 struct TestProtected {
     documents: Vec<(String, String, String)>,
@@ -86,14 +88,22 @@ fn crashed_durable_native_activation_worker() -> TestResult {
     };
     let parent = PathBuf::from(parent);
     owned_root(&parent)?;
-    let point = match std::env::var("BREDITOR_NATIVE_ACTIVATION_TEST_PHASE")?.as_str() {
-        "before" => crate::server::generation_backup::durable::Point::SourceChecked,
+    let phase = std::env::var("BREDITOR_NATIVE_ACTIVATION_TEST_PHASE")?;
+    let point = match phase.as_str() {
+        "before" | "handover-before" => {
+            crate::server::generation_backup::durable::Point::SourceChecked
+        }
         "written" => crate::server::generation_backup::durable::Point::EpochWritten,
-        "published" => crate::server::generation_backup::durable::Point::EpochSynced,
+        "published" | "handover-committed" => {
+            crate::server::generation_backup::durable::Point::EpochSynced
+        }
         _ => return Err("explicit native crash point".into()),
     };
     tokio::runtime::Builder::new_multi_thread().worker_threads(2).enable_all().build()?.block_on(
         async {
+            if phase.starts_with("handover-") {
+                return Box::pin(handover::crash_after_sealed_handover(&parent, point)).await;
+            }
             let setup = Box::pin(Setup::new((3, true), true, (true, true), true)).await?;
             setup
                 .handle
@@ -140,25 +150,7 @@ fn crashed_durable_native_activation_worker() -> TestResult {
 fn real_process_exits_have_exact_cold_status_and_fresh_authenticated_native_continuation()
 -> TestResult {
     for (phase, committed) in [("before", false), ("written", true), ("published", true)] {
-        let parent = super::super::source::Directory::new()?;
-        let log = fs::File::create(parent.0.join("child.log"))?;
-        let mut child=Command::new(std::env::current_exe()?).args(["--exact","server::generation_recovery::tests::durable_native_activation::process::crashed_durable_native_activation_worker","--nocapture","--test-threads=1"]).env("BREDITOR_NATIVE_ACTIVATION_TEST_ROOT",&parent.0).env("BREDITOR_NATIVE_ACTIVATION_TEST_PHASE",phase).stdout(Stdio::from(log.try_clone()?)).stderr(Stdio::from(log)).spawn()?;
-        let deadline = Instant::now() + Duration::from_secs(45);
-        let status = loop {
-            if let Some(status) = child.try_wait()? {
-                break status;
-            }
-            if Instant::now() >= deadline {
-                child.kill()?;
-                child.wait()?;
-                return Err("native crash worker deadline".into());
-            }
-            std::thread::sleep(Duration::from_millis(10));
-        };
-        assert_eq!(status.code(), Some(77), "{}", fs::read_to_string(parent.0.join("child.log"))?);
-        let root: PathBuf = serde_json::from_slice(&fs::read(parent.0.join("child-root.json"))?)?;
-        owned_root(&root)?;
-        let owned = super::super::source::Directory(root);
+        let owned = crashed_root(phase)?;
         tokio::runtime::Builder::new_multi_thread()
             .worker_threads(2)
             .enable_all()
@@ -166,6 +158,38 @@ fn real_process_exits_have_exact_cold_status_and_fresh_authenticated_native_cont
             .block_on(continue_after_crash(&owned.0, committed))?;
     }
     Ok(())
+}
+fn crashed_root(phase: &str) -> TestResult<super::super::source::Directory> {
+    let parent = super::super::source::Directory::new()?;
+    let log = fs::File::create(parent.0.join("child.log"))?;
+    let mut child = Command::new(std::env::current_exe()?)
+        .args([
+            "--exact",
+            "server::generation_recovery::tests::durable_native_activation::process::crashed_durable_native_activation_worker",
+            "--nocapture",
+            "--test-threads=1",
+        ])
+        .env("BREDITOR_NATIVE_ACTIVATION_TEST_ROOT", &parent.0)
+        .env("BREDITOR_NATIVE_ACTIVATION_TEST_PHASE", phase)
+        .stdout(Stdio::from(log.try_clone()?))
+        .stderr(Stdio::from(log))
+        .spawn()?;
+    let deadline = Instant::now() + Duration::from_secs(45);
+    let status = loop {
+        if let Some(status) = child.try_wait()? {
+            break status;
+        }
+        if Instant::now() >= deadline {
+            child.kill()?;
+            child.wait()?;
+            return Err("native crash worker deadline".into());
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    };
+    assert_eq!(status.code(), Some(77), "{}", fs::read_to_string(parent.0.join("child.log"))?);
+    let root: PathBuf = serde_json::from_slice(&fs::read(parent.0.join("child-root.json"))?)?;
+    owned_root(&root)?;
+    Ok(super::super::source::Directory(root))
 }
 async fn continue_after_crash(root: &Path, committed: bool) -> TestResult {
     let id: Identity = serde_json::from_slice(&fs::read(root.join("outside-target.json"))?)?;

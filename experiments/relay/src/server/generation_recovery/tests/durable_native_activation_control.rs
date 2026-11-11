@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 mod next_handover;
 
-fn operators(token: &str) -> TestResult<Authentication> {
+pub(super) fn operators(token: &str) -> TestResult<Authentication> {
     Ok(Authentication::from_json(
         &serde_json::json!({
             "format":"breditor/relay-auth","formatVersion":1,"origins":[ORIGIN],
