@@ -5,7 +5,10 @@ use super::{
     SealedNativeRestartBootstrap, ServerLogGenerationRecoveryStateIdentity,
     reopen_sealed_restart::reopen_retained_seal,
 };
-use crate::{Error, OperationalLogGenerationServerRoom, Result, server::Authentication};
+use crate::{
+    Error, OperationalLogGenerationServerRoom, Result,
+    log::generations::NativeTailRepairInterruption, server::Authentication,
+};
 use evidence::RetainedEvidence;
 use std::path::PathBuf;
 
@@ -51,6 +54,25 @@ pub async fn repair_sealed_native_tail(
     principal: &str,
     token: &str,
 ) -> Result<SealedNativeTailRepairOutcome> {
+    repair_sealed_native_tail_with_interruption(
+        bootstrap,
+        retained,
+        authentication,
+        principal,
+        token,
+        NativeTailRepairInterruption::default(),
+    )
+    .await
+}
+
+pub(in crate::server) async fn repair_sealed_native_tail_with_interruption(
+    bootstrap: SealedNativeRestartBootstrap,
+    retained: SealedNativeTailRepairFiles,
+    authentication: Authentication,
+    principal: &str,
+    token: &str,
+    interruption: NativeTailRepairInterruption,
+) -> Result<SealedNativeTailRepairOutcome> {
     authentication.authenticate(principal, token)?;
     let principal = principal.to_owned();
     tokio::task::spawn_blocking(move || {
@@ -92,6 +114,7 @@ pub async fn repair_sealed_native_tail(
                             &captured.inspected.backup,
                             &principal,
                             captured.inspected.incomplete_bytes,
+                            interruption,
                         )?;
                         evidence.guard()?;
                         selection.checkpoint.guard()?;

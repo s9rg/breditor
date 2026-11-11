@@ -20,6 +20,10 @@ mod publish_ready;
 mod receipt;
 #[cfg(feature = "server")]
 mod repair_tail;
+#[cfg(feature = "server")]
+pub(crate) use repair_tail::NativeTailRepairInterruption;
+#[cfg(all(feature = "server", test))]
+pub(crate) use repair_tail::NativeTailRepairPoint;
 mod rotate;
 mod state;
 mod verify;

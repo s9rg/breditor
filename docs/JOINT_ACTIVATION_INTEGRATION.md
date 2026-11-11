@@ -260,6 +260,12 @@ holding the deployment epoch, then synchronizes and verifies the same WAL
 inode. A retry using the same retained evidence synchronizes an already
 complete cut and reports `AlreadyComplete`.
 
+The process tests kill a repair worker before truncation, immediately after
+truncation, and after WAL sync. Each retry uses the same retained files and
+original epoch, then completes a fresh authenticated Native restart. These
+tests cover abrupt process death on a running filesystem. Hardware power-loss
+durability remains a separate release check.
+
 After repair, use `reopen_sealed_native_restart_host` with the exact repaired
 cut and all protected registrations. Preparing a new checkpoint, activating
 and publishing still use the existing authenticated steps.

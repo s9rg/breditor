@@ -57,7 +57,7 @@ impl TestProtected {
         }
     }
 }
-fn persist(root: &Path, name: &str, bytes: &[u8]) -> TestResult {
+pub(super) fn persist(root: &Path, name: &str, bytes: &[u8]) -> TestResult {
     use std::os::unix::fs::OpenOptionsExt;
     let mut file =
         fs::OpenOptions::new().create_new(true).write(true).mode(0o600).open(root.join(name))?;
@@ -66,7 +66,7 @@ fn persist(root: &Path, name: &str, bytes: &[u8]) -> TestResult {
     fs::File::open(root)?.sync_all()?;
     Ok(())
 }
-fn owned_root(root: &Path) -> TestResult {
+pub(super) fn owned_root(root: &Path) -> TestResult {
     if root.parent().ok_or("test root parent")?.canonicalize()?
         != std::env::temp_dir().canonicalize()?
         || !fs::symlink_metadata(root)?.is_dir()
