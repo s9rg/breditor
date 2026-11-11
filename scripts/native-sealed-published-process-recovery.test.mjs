@@ -18,6 +18,7 @@ import {
  reopenSelectedDeliverySealedNativeHost,selectedDeliveryNativeHost,
 } from './fixtures/selected-delivery/native-host.mjs';
 import {nativeHandoverActivationRoot} from './fixtures/native-activation/handover-root.mjs';
+import {handoverControls} from './fixtures/selected-delivery/cold-continuation.mjs';
 import {thirdAsset,thirdPixel} from './fixtures/review-assets/participant-pixels.mjs';
 import {
  assertHandoverPublicationWaiting,handoverPublicationRequester,
@@ -131,7 +132,22 @@ async function recoverPublishedRoom(inspectAfterCrash){
   assert.notDeepEqual(fresh.selection.checkpointSha256,offer.selection.checkpointSha256);
   assert.equal(fresh.case.previousSequence,predecessor.sequence);
   assert.equal(fresh.case.nativeProtectedStreamsVerified,true);
-  assertHandoverPathContinuation(predecessor.handoverSelection,fresh.case.handoverSelection);
+  if(inspectAfterCrash){
+   const earlierPath=predecessor.handoverSelection.path,currentPath=fresh.case.handoverSelection.path;
+   assert.deepEqual(currentPath.seal,earlierPath.seal);
+   assert.deepEqual(currentPath.earlier,earlierPath.earlier);
+   assert.deepEqual(currentPath.successor.ancestors,[
+    ...earlierPath.successor.ancestors,earlierPath.successor.current.server,
+   ]);
+   assert.deepEqual(currentPath.successor.current,observed.selection);
+   assert.deepEqual(fresh.case.deliverySelection.continuation.previous,earlierPath.successor.current.server);
+   const controls=await handoverControls(host,fresh.case,{check(){}});
+   try{
+    assert.deepEqual(controls.path.handoverSelection(),fresh.case.handoverSelection);
+   }finally{controls.close();}
+  }else{
+   assertHandoverPathContinuation(predecessor.handoverSelection,fresh.case.handoverSelection);
+  }
   assert.deepEqual(archive(offer.case),activationCut);
   for(const {file,bytes} of originalCheckpoint)assert.deepEqual(readFileSync(file),bytes);
   await assertHandoverPublicationWaiting(host,fresh);
