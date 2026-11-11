@@ -39,6 +39,8 @@ import type {
 import {
  previewHeldRoomMetadataContinuationAcrossHandover,continueHeldRoomMetadataAcrossHandover,
 } from '../../../packages/breditor-collaboration/dist/selected_local_metadata_continuation/coordinator.js';
+import {withHeldHandoverMetadataContinuationEvidence} from '../../../packages/breditor-collaboration/dist/selected_local_metadata_continuation/held_evidence.js';
+import {withOriginalMetadataJournals} from '../../../packages/breditor-collaboration/dist/selected_local_metadata_continuation/original_journals.js';
 declare const handoverInput:HandoverMetadataContinuationInput;
 const {expected:handoverChoice,approve:handoverApproval,...handoverInspection}=handoverInput;
 void [handoverChoice,handoverApproval];
@@ -50,4 +52,13 @@ void withRoomExecutionMetadataTarget(attempt,reads,async(scope,witness)=>{
  continueHeldRoomMetadataAcrossHandover(scope,witness,{...handoverInput,expected},true);
  // @ts-expect-error A detached seal cannot supply a genuine path controller.
  previewHeldRoomMetadataContinuationAcrossHandover(scope,witness,{...handoverInspection,path:handoverChoice.handover});
+ return withOriginalMetadataJournals(scope,witness,handoverInput.origin,async origin=>{
+  await withHeldHandoverMetadataContinuationEvidence(scope,origin,handoverChoice,async held=>{
+   held.check();
+   const phase:'intent'|'prepared'|'review'|'metadata'=held.evidence.phase;
+   void phase;
+  });
+  // @ts-expect-error The held evidence requires the retained sealed choice.
+  await withHeldHandoverMetadataContinuationEvidence(scope,origin,expected,async()=>{});
+ });
 });
