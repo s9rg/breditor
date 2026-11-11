@@ -1,7 +1,7 @@
 /** Dedicated real native serving/recovery fixture. Private IPC replies are
  * consumed here and never persisted, logged, or included in public manifests. */
 import assert from 'node:assert/strict';
-import {spawn} from 'node:child_process';
+import {execFileSync,spawn} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {readFileSync,writeFileSync,mkdtempSync,realpathSync} from 'node:fs';
 import {join,dirname,resolve} from 'node:path';
@@ -199,6 +199,23 @@ export function reopenSelectedDeliveryNativeHost(root,capsule){return selectedDe
 
 /** Separate repeated process recovery for joint activation/publication tests. */
 export function reopenSelectedDeliveryJointNativeHost(root,capsule){return selectedDeliveryNativeHost(root,{nativeActivation:true,nativePublication:true,jointProcessRecovery:true,resume:capsule});}
+
+/** Read the surviving cut in a fresh process using only the older checkpoint pin. */
+export function inspectSelectedDeliverySealedNativeHost(root,capsule){
+ root=realpathSync(root);
+ const saved=processCapsules.get(capsule);
+ if(!saved?.crashed||saved.used||!saved.sealedProcessRecovery||saved.root!==root)throw Error('Actual terminated sealed process capsule required');
+ const {root:operationalRoot,checkpointName,checkpointDigest}=saved.bootstrap;
+ const input={format:'breditor/test-sealed-restart-inspection',formatVersion:1,root:operationalRoot,checkpointName,checkpointDigest};
+ const binary=join(root,'target/handover-activation-native/release/examples/native_handover_activation_sdk_functional');
+ const observed=JSON.parse(execFileSync(binary,['--inspect-sealed'],{cwd:root,input:JSON.stringify(input)+'\n',encoding:'utf8',timeout:60_000,maxBuffer:1024*1024}));
+ assert.deepEqual(Object.keys(observed).sort(),['format','formatVersion','processId','selection']);
+ assert.equal(observed.format,input.format);
+ assert.equal(observed.formatVersion,1);
+ assert.ok(Number.isSafeInteger(observed.processId)&&observed.processId>0);
+ assert.notEqual(observed.processId,saved.processId);
+ return observed;
+}
 
 export function reopenSelectedDeliverySealedNativeHost(root,capsule){
  return selectedDeliveryNativeHost(root,{nativeActivation:true,nativeHandoverActivation:true,nativeHandoverPublication:true,sealedProcessRecovery:true,resume:capsule});

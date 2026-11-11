@@ -5,7 +5,7 @@ use super::{
     ServerLogGenerationRecoveryStateIdentity,
 };
 use crate::{
-    Error, RecoveryRegistrationCredentials, Result,
+    Error, RecoveryRegistrationCredentials, Result, ServerLogGenerationRoomBackup,
     server::{LogGenerationHandoverStatus, RoomDeploymentAuthority, RoomDeploymentSelection},
 };
 use std::sync::Arc;
@@ -47,6 +47,18 @@ impl SealedNativeRestartSelection {
         }
         Ok(())
     }
+
+    pub(super) fn check_archive(
+        &self,
+        custody: &crate::room::GenerationOperationCustody,
+        archive: &ServerLogGenerationRoomBackup,
+    ) -> Result<()> {
+        if custody.activation_owner_digest()? != self.checkpoint.identity().operation() {
+            return Err(Error::Contract("sealed restart operational owner differs"));
+        }
+        archive.check_archive_ancestor(self.checkpoint.checkpoint())?;
+        self.check_checkpoint()
+    }
 }
 
 impl PreparedLogGenerationRecoveryHost {
@@ -85,11 +97,7 @@ impl PreparedLogGenerationRecoveryHost {
             .await?;
         let custody = self.host.generation_custody.clone().ok_or(Error::NeedsRecovery)?;
         tokio::task::spawn_blocking(move || {
-            if custody.activation_owner_digest()? != selection.checkpoint.identity().operation() {
-                return Err(Error::Contract("sealed restart operational owner differs"));
-            }
-            archive.check_archive_ancestor(selection.checkpoint.checkpoint())?;
-            selection.check_checkpoint()?;
+            selection.check_archive(&custody, &archive)?;
             Ok(proof)
         })
         .await

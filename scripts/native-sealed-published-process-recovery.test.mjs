@@ -13,7 +13,7 @@ import {
  SharedServerLogGenerationRecoveryHost as Inspection,
 } from '../packages/breditor-collaboration/dist/index.js';
 import {assertHandoverPathContinuation} from '../packages/breditor-collaboration/dist/room_native_handover_activation_intent/capture_binding.js';
-import {selectedDeliveryNativeHost,reopenSelectedDeliverySealedNativeHost} from './fixtures/selected-delivery/native-host.mjs';
+import {inspectSelectedDeliverySealedNativeHost,selectedDeliveryNativeHost,reopenSelectedDeliverySealedNativeHost} from './fixtures/selected-delivery/native-host.mjs';
 import {nativeHandoverActivationRoot} from './fixtures/native-activation/handover-root.mjs';
 import {thirdAsset,thirdPixel} from './fixtures/review-assets/participant-pixels.mjs';
 import {
@@ -96,6 +96,10 @@ test('a published sealed room restarts from the exact cut with later acknowledge
   const exited=await host.crashForRecovery(capsule);
   processExited=true;
   assert.deepEqual(exited,{processId:originalPid,signal:'SIGKILL'});
+  const observed=inspectSelectedDeliverySealedNativeHost(root,capsule);
+  assert.deepEqual(observed.selection,advanced.selection.source);
+  assert.equal(Buffer.from(observed.selection.server.archiveSha256).toString('hex'),digest(retained));
+  for(const {file,bytes} of originalCheckpoint)assert.deepEqual(readFileSync(file),bytes);
   host=await reopenSelectedDeliverySealedNativeHost(root,capsule);
   processExited=false;
   const fresh=host.reopenedOffer;
@@ -163,7 +167,7 @@ test('a published sealed room restarts from the exact cut with later acknowledge
    assert.deepEqual(visible(),reviewAfter);
   },accepted);
   console.log('SEALED_PUBLISHED_PROCESS_RECOVERY '+JSON.stringify({
-   oldPid:originalPid,newPid:host.processId,exitSignal:exited.signal,protectedStreams:14,
+   oldPid:originalPid,inspectionPid:observed.processId,newPid:host.processId,exitSignal:exited.signal,protectedStreams:14,
    acknowledgedUpload:thirdAsset,archiveSha256:digest(retained),freshPublication:true,
    documentAndCommentReceiptsPreserved:true,peerCatchUp:true,localUndoRedo:true,
   }));

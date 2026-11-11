@@ -32,6 +32,9 @@ use std::{
 
 #[path = "../native_process_recovery_host/input.rs"]
 mod input;
+#[path = "restart_inspection.rs"]
+mod inspection;
+pub(super) use inspection::inspect;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]

@@ -24,7 +24,8 @@ pub struct SealedNativeRestartBootstrap {
     pub operational_root: PathBuf,
     /// Exact checkpoint identity retained independently of its local files.
     pub expected_checkpoint: PreparedNativeGenerationActivationIdentity,
-    /// Exact current room and protected-stream selection retained separately.
+    /// Independently retained room and protected-stream selection. Restart
+    /// requires this exact cut. Inspection uses it as the minimum cut.
     pub expected_current: ServerLogGenerationRecoveryStateIdentity,
 }
 
@@ -72,35 +73,10 @@ pub async fn reopen_sealed_native_restart_host(
     supplied: RecoveryRegistrationCredentials,
 ) -> Result<SealedNativeRestartBootstrapCoverage> {
     authentication.authenticate(principal, token)?;
-    let (source, selection, operational_root) = tokio::task::spawn_blocking(move || {
-        let expected = bootstrap.expected_checkpoint;
-        let authority = RoomDeploymentAuthority::open_at_least(
-            &bootstrap.authority_root,
-            expected.previous_selection(),
-        )?;
-        let source = Arc::new(PreparedLogGenerationHandover::open(
-            &bootstrap.source_root,
-            expected.source(),
-        )?);
-        let checkpoint = Arc::new(PreparedNativeGenerationActivation::open(
-            &bootstrap.checkpoint_root,
-            &expected,
-            source.clone(),
-        )?);
-        let status = checkpoint.status(&authority)?;
-        if status == Status::Superseded {
-            return Err(Error::Lease);
-        }
-        let selection = SealedNativeRestartSelection {
-            checkpoint,
-            authority,
-            status,
-            expected: bootstrap.expected_current,
-        };
-        Ok((source, selection, bootstrap.operational_root))
-    })
-    .await
-    .map_err(|_| Error::NeedsRecovery)??;
+    let (source, selection, operational_root) =
+        tokio::task::spawn_blocking(move || reopen_retained_seal(bootstrap))
+            .await
+            .map_err(|_| Error::NeedsRecovery)??;
     let checkpoint = selection.checkpoint.clone();
     let authority = selection.authority.clone();
     let status = selection.status;
@@ -128,4 +104,32 @@ pub async fn reopen_sealed_native_restart_host(
             SealedNativeRestartBootstrapCoverage::Pending { missing }
         }
     })
+}
+
+pub(super) fn reopen_retained_seal(
+    bootstrap: SealedNativeRestartBootstrap,
+) -> Result<(Arc<PreparedLogGenerationHandover>, SealedNativeRestartSelection, PathBuf)> {
+    let expected = bootstrap.expected_checkpoint;
+    let authority = RoomDeploymentAuthority::open_at_least(
+        &bootstrap.authority_root,
+        expected.previous_selection(),
+    )?;
+    let source =
+        Arc::new(PreparedLogGenerationHandover::open(&bootstrap.source_root, expected.source())?);
+    let checkpoint = Arc::new(PreparedNativeGenerationActivation::open(
+        &bootstrap.checkpoint_root,
+        &expected,
+        source.clone(),
+    )?);
+    let status = checkpoint.status(&authority)?;
+    if status == Status::Superseded {
+        return Err(Error::Lease);
+    }
+    let selection = SealedNativeRestartSelection {
+        checkpoint,
+        authority,
+        status,
+        expected: bootstrap.expected_current,
+    };
+    Ok((source, selection, bootstrap.operational_root))
 }

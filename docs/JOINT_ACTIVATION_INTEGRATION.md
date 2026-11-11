@@ -232,6 +232,15 @@ verified result holds the inactive room, its proof, the source seal, the
 checkpoint and the authority for the next explicit recovery action. Missing
 registrations release all of the reopened custody for retry.
 
+If the relay crashed after acknowledging newer work and before the host
+retained its exact identity, use `inspect_sealed_native_restart`. The
+independently retained checkpoint is the minimum accepted archive. When
+the host already retained a newer cut, provide that exact archive as the
+minimum. Inspection checks the same operational owner, complete Native
+history and raster bytes, then returns the surviving archive and registration
+inventory and releases the reopened locks. Retain that observed selection
+before reopening with all protected registrations for explicit activation.
+
 If the source seal, checkpoint and authority are already open, use
 `open_sealed_native_restart_host` to reopen the existing operational target
 and verify the retained selection. It opens only a committed

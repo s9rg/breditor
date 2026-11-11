@@ -44,6 +44,32 @@ pub async fn open_sealed_native_restart_host(
     selection: SealedNativeRestartSelection,
     supplied: RecoveryRegistrationCredentials,
 ) -> Result<SealedNativeRestartHostCoverage> {
+    let (host, selection) = Box::pin(open_sealed_native_restart_target(
+        root,
+        authentication,
+        principal,
+        token,
+        selection,
+    ))
+    .await?;
+    let coverage = host.verify_sealed_native_restart(principal, token, selection, supplied).await?;
+    Ok(match coverage {
+        ServerLogGenerationRecoveryCoverage::Verified(proof) => {
+            SealedNativeRestartHostCoverage::Verified { host, proof }
+        }
+        ServerLogGenerationRecoveryCoverage::Pending { missing } => {
+            SealedNativeRestartHostCoverage::Pending { missing }
+        }
+    })
+}
+
+pub(super) async fn open_sealed_native_restart_target(
+    root: &Path,
+    authentication: Authentication,
+    principal: &str,
+    token: &str,
+    selection: SealedNativeRestartSelection,
+) -> Result<(PreparedLogGenerationRecoveryHost, SealedNativeRestartSelection)> {
     authentication.authenticate(principal, token)?;
     let root = root.to_owned();
     let owner = principal.to_owned();
@@ -73,13 +99,5 @@ pub async fn open_sealed_native_restart_host(
         token,
     ))
     .await?;
-    let coverage = host.verify_sealed_native_restart(principal, token, selection, supplied).await?;
-    Ok(match coverage {
-        ServerLogGenerationRecoveryCoverage::Verified(proof) => {
-            SealedNativeRestartHostCoverage::Verified { host, proof }
-        }
-        ServerLogGenerationRecoveryCoverage::Pending { missing } => {
-            SealedNativeRestartHostCoverage::Pending { missing }
-        }
-    })
+    Ok((host, selection))
 }
