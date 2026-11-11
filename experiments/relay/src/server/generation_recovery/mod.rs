@@ -75,6 +75,11 @@ mod open_sealed_restart;
 pub use open_sealed_restart::{SealedNativeRestartHostCoverage, open_sealed_native_restart_host};
 mod prepare;
 mod reconstruct;
+mod reopen_sealed_restart;
+pub use reopen_sealed_restart::{
+    ReopenedSealedNativeRestartHost, SealedNativeRestartBootstrap,
+    SealedNativeRestartBootstrapCoverage, reopen_sealed_native_restart_host,
+};
 mod sealed_restart;
 pub use reconstruct::reconstruct_log_generation_recovery_host;
 mod selected;

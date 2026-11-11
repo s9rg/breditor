@@ -52,10 +52,12 @@ pub use generation_recovery::{
     PhysicalServerRoomRecoveryCoverage, PhysicalServerRoomRecoveryState,
     PhysicalServerRoomRecoveryStateIdentity, PreparedLogGenerationRecoveryHost,
     PreparedNativeGenerationActivation, PreparedNativeGenerationActivationIdentity,
-    PreparedPhysicalRoomRecoveryHost, SealedNativeRestartHostCoverage,
-    SealedNativeRestartSelection, ServerLogGenerationAssetAvailabilityRead,
-    ServerLogGenerationAssetRecoveryState, ServerLogGenerationDeliveryContinuationIdentity,
-    ServerLogGenerationDeliveryPathIdentity, ServerLogGenerationDeliveryPathRecoveryControl,
+    PreparedPhysicalRoomRecoveryHost, ReopenedSealedNativeRestartHost,
+    SealedNativeRestartBootstrap, SealedNativeRestartBootstrapCoverage,
+    SealedNativeRestartHostCoverage, SealedNativeRestartSelection,
+    ServerLogGenerationAssetAvailabilityRead, ServerLogGenerationAssetRecoveryState,
+    ServerLogGenerationDeliveryContinuationIdentity, ServerLogGenerationDeliveryPathIdentity,
+    ServerLogGenerationDeliveryPathRecoveryControl,
     ServerLogGenerationDeliveryPathRecoveryControlIdentity,
     ServerLogGenerationDeliveryRecoveryControl, ServerLogGenerationDeliveryRecoveryControlIdentity,
     ServerLogGenerationHandoverDeliveryPathIdentity,
@@ -75,6 +77,7 @@ pub use generation_recovery::{
     prepare_log_generation_recovery_control, prepare_log_generation_recovery_host,
     prepare_native_room_publication, prepare_physical_room_recovery_control,
     prepare_physical_room_recovery_host, reconstruct_log_generation_recovery_host,
+    reopen_sealed_native_restart_host,
 };
 use std::sync::{Arc, Mutex};
 use tokio::sync::{Semaphore, watch};

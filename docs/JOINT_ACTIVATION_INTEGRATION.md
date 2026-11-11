@@ -223,8 +223,18 @@ publication or deployment is implied.
 
 ## Sealed relay restart
 
-Use `open_sealed_native_restart_host` to reopen the existing operational
-target and verify the retained selection in one call. It opens only a committed
+Use `reopen_sealed_native_restart_host` when no live handles remain. Supply the
+host-selected locations for the source seal, activation checkpoint, deployment
+ledger and operational room. Retain the checkpoint identity and exact current
+room selection independently of those locations. The deployment ledger resolves
+whether the selected checkpoint committed, including after a lost response. A
+verified result holds the inactive room, its proof, the source seal, the
+checkpoint and the authority for the next explicit recovery action. Missing
+registrations release all of the reopened custody for retry.
+
+If the source seal, checkpoint and authority are already open, use
+`open_sealed_native_restart_host` to reopen the existing operational target
+and verify the retained selection. It opens only a committed
 operational handoff and preserves any staged marker alias. An interrupted
 handoff requires explicit operational resume. A Pending result releases the
 room and raster custody so the host can retry after obtaining the missing
