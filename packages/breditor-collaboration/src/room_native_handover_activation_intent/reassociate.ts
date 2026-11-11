@@ -51,12 +51,15 @@ async function withOriginalEncoding<T>(
  previous:RoomHandoverActivationIntentChoice,wasm:SharedArchiveIntegrityOptions['wasm'],
  guard:()=>void,signals:readonly (AbortSignal|undefined)[],
  visit:(old:Awaited<ReturnType<RoomHandoverActivationIntentStore['openRetainedEncoding']>>,held:SharedArchiveIntegrityOptions,signal:AbortSignal)=>Promise<T>,
+ opened?:RoomHandoverActivationIntentStore,
 ):Promise<T>{
  const lifetime=new NativeReconstructionWaits(guard,signals);
  let store:RoomHandoverActivationIntentStore|undefined;
  try{
-  store=new RoomHandoverActivationIntentStore(previous,{wasm,checkAuthority:lifetime.check,signal:lifetime.signal});
-  const old=await store.openRetainedEncoding(),original=store;
+  if(!opened)store=new RoomHandoverActivationIntentStore(previous,{wasm,checkAuthority:lifetime.check,signal:lifetime.signal});
+  const original=opened??store!;
+  const old=opened?await RoomHandoverActivationIntentStore.readHeldEncoding(opened):await original.openRetainedEncoding();
+  if(!equal(previous,old.intent.choice))throw fail('activation_intent_stale');
   const held=new NativeReconstructionWaits(()=>{lifetime.check();original.check();},[lifetime.signal,original.revoked]);
   try{
    const result=await visit(old,{wasm,checkAuthority:held.check,signal:held.signal},held.signal);
@@ -84,8 +87,22 @@ async function save(encoding:RoomHandoverActivationEncodedCapture,options:Shared
 
 /** Authenticate the new sealed path and retain an independent choice before
  * creating a separate destination. The previous state remains untouched. */
-export async function prepareHandoverActivationReassociation(
+export function prepareHandoverActivationReassociation(
  provided:PrepareHandoverActivationReassociationInput,options:SharedArchiveIntegrityOptions,
+):Promise<RoomHandoverActivationIntentChoice>{
+ return prepare(provided,options);
+}
+
+/** Use the caller's existing source reservation and leave it held. */
+export function prepareHeldHandoverActivationReassociation(
+ original:RoomHandoverActivationIntentStore,
+ provided:PrepareHandoverActivationReassociationInput,options:SharedArchiveIntegrityOptions,
+):Promise<RoomHandoverActivationIntentChoice>{
+ return prepare(provided,options,original);
+}
+
+async function prepare(
+ provided:PrepareHandoverActivationReassociationInput,options:SharedArchiveIntegrityOptions,opened?:RoomHandoverActivationIntentStore,
 ):Promise<RoomHandoverActivationIntentChoice>{
  const input=fields(provided,['previous','database','activation','path','retainChoice']);
  const previous=roomHandoverActivationIntentChoice(input['previous']),database=roomActivationDatabase(input['database']);
@@ -104,18 +121,32 @@ export async function prepareHandoverActivationReassociation(
   await path.check(heldSignal);
   held.checkAuthority();
   return save(encoding,held,false);
- });
+ },opened);
 }
 
 /** Complete a previously retained DATA write, including an uncertain committed
  * create. No old HTTP controller is required and no observation is reset. */
-export async function resumeHandoverActivationReassociation(
+export function resumeHandoverActivationReassociation(
  provided:ResumeHandoverActivationReassociationInput,options:SharedArchiveIntegrityOptions,
+):Promise<RoomHandoverActivationIntentChoice>{
+ return resume(provided,options);
+}
+
+/** Resume the destination write under the caller's original source reservation. */
+export function resumeHeldHandoverActivationReassociation(
+ original:RoomHandoverActivationIntentStore,
+ provided:ResumeHandoverActivationReassociationInput,options:SharedArchiveIntegrityOptions,
+):Promise<RoomHandoverActivationIntentChoice>{
+ return resume(provided,options,original);
+}
+
+async function resume(
+ provided:ResumeHandoverActivationReassociationInput,options:SharedArchiveIntegrityOptions,opened?:RoomHandoverActivationIntentStore,
 ):Promise<RoomHandoverActivationIntentChoice>{
  const input=fields(provided,['previous','expected']);
  const previous=roomHandoverActivationIntentChoice(input['previous']),expected=roomHandoverActivationIntentChoice(input['expected']);
  const selected=restartedChoice(previous,expected.database,expected.activation,expected.handover);
  if(!equal(expected,selected))throw fail('activation_intent_stale');
  const {wasm,signal}=options,check=archiveGuard(options.checkAuthority,signal);
- return withOriginalEncoding(previous,wasm,check,[signal],(old,held)=>save(bind(old,selected),held,true));
+ return withOriginalEncoding(previous,wasm,check,[signal],(old,held)=>save(bind(old,selected),held,true),opened);
 }

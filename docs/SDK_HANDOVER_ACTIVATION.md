@@ -67,6 +67,10 @@ the local write or reopen the exact committed result with that choice. It needs
 no live HTTP controllers for the local write. Native requests and publication
 still require their own live controllers and approval.
 
+Whole-room recovery can use the held variants while it already owns the source
+intent reservation. They check that exact selected source, leave its lease with
+the caller and end pending retention when the database revokes the reservation.
+
 Run `node --test scripts/handover-activation-reassociation.test.mjs` after
 building the collaboration package. The installed counterpart is
 `node scripts/check-handover-activation-intent-installed.mjs --reassociation-contracts`.

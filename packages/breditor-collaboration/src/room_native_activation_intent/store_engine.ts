@@ -37,6 +37,10 @@ export class ActivationIntentStore<Choice extends ActivationStoredChoice,Capture
  protected openWithEncoding(){
   return this.#run(async()=>{await this.#open();return this.#loadWithEncoding();});
  }
+ /** Read exact wire bytes through the already-held namespace. */
+ protected readWithEncoding(){
+  return this.#run(()=>this.#loadWithEncoding());
+ }
  async #open(initial?:ActivationStoredEncoding<Choice>):Promise<void>{
   if(this.#db||this.#opening)throw fail('activation_intent_busy');
   const proposed=initial?this.#codec.snapshot(initial):undefined;

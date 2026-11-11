@@ -3,7 +3,7 @@
 import test,{before,beforeEach,afterEach} from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {IDBObjectStore} from 'fake-indexeddb';
+import {forceCloseDatabase,IDBFactory,IDBObjectStore} from 'fake-indexeddb';
 import {retainedActivationData} from './fixtures/activation-retention/actual-intent.mjs';
 import {handoverCaptureData} from './fixtures/native-activation/handover-data.mjs';
 import {withHandoverActivationControls as controls} from './fixtures/native-activation/handover-controls.mjs';
@@ -11,7 +11,7 @@ import {environment} from './fixtures/room-participant-inventory/environment.mjs
 import {encodeRoomHandoverActivationIntent as encode} from '../packages/breditor-collaboration/dist/room_native_handover_activation_intent/encode.js';
 import {roomHandoverActivationIntentChoice as choose} from '../packages/breditor-collaboration/dist/room_native_handover_activation_intent/identity.js';
 import {RoomHandoverActivationIntentStore as Store} from '../packages/breditor-collaboration/dist/room_native_handover_activation_intent/store.js';
-import {prepareHandoverActivationReassociation as prepare,resumeHandoverActivationReassociation as resume} from '../packages/breditor-collaboration/dist/room_native_handover_activation_intent/reassociate.js';
+import {prepareHandoverActivationReassociation as prepare,resumeHandoverActivationReassociation as resume,prepareHeldHandoverActivationReassociation as prepareHeld,resumeHeldHandoverActivationReassociation as resumeHeld} from '../packages/breditor-collaboration/dist/room_native_handover_activation_intent/reassociate.js';
 
 const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
 let native,activation,capture,original,reset;
@@ -190,5 +190,61 @@ test('closing the selected path ends a pending retention callback without creati
   }finally{late.resolve();await job.catch(()=>{});}
   assert.equal(actual.requests.length,0);
  });
+ assert.deepEqual(await exact(previous.choice),previous.state);
+});
+
+test('whole-room reassociation uses the existing source reservation across prepare and resume',async()=>{
+ const previous=await storeOriginal({phase:'receipt-observed'}),source=new Store(previous.choice,options());
+ const database='reassociated-held-original';
+ let expected;
+ try{
+  await source.open();
+  await withFresh(child(),async actual=>{
+   // A competing reader cannot obtain the same namespace while its owner holds it.
+   await assert.rejects(prepare(input(actual,previous.choice,database),options()));
+   await assert.rejects(prepareHeld(source,input(actual,previous.choice,database,choice=>{
+    expected=choice;
+    throw Error('Interrupted after whole-room choice retention');
+   }),options()),/Interrupted after whole-room choice retention/);
+   assert.equal(actual.requests.length,0);
+  });
+  assert.equal(await exists(database),false);
+  assert.deepEqual(await resumeHeld(source,{previous:previous.choice,expected},options()),expected);
+  assert.deepEqual((await source.read()).state,previous.state);
+  assert.equal((await exact(expected)).phase,'prepared');
+ }finally{await source.close();}
+ assert.deepEqual(await exact(previous.choice),previous.state);
+});
+
+test('a held source must identify the exact selected intent and its revocation cancels retention',{timeout:30000},async()=>{
+ const previous=await storeOriginal(),source=new Store(previous.choice,options());
+ const database='reassociated-revoked-held-original';
+ const open=IDBFactory.prototype.open;
+ let connection;
+ try{
+  IDBFactory.prototype.open=function(...args){
+   const request=open.apply(this,args);
+   if(args[0]===previous.choice.database)request.addEventListener('success',()=>{connection=request.result;},{once:true});
+   return request;
+  };
+  try{await source.open();}finally{IDBFactory.prototype.open=open;}
+  assert.ok(connection);
+  await withFresh(pending(),async actual=>{
+   let retains=0;
+   const wrong={...previous.choice,database:'other-original'};
+   await assert.rejects(prepareHeld(source,input(actual,wrong,database,()=>{retains++;}),options()),{code:'activation_intent_stale'});
+   assert.equal(retains,0);
+   const entered=Promise.withResolvers(),late=Promise.withResolvers();
+   const job=prepareHeld(source,input(actual,previous.choice,database,()=>{entered.resolve();return late.promise;}),options());
+   try{
+    await Promise.race([entered.promise,job]);
+    forceCloseDatabase(connection);
+    await assert.rejects(job);
+    assert.equal(source.revoked.aborted,true);
+   }finally{late.resolve();await job.catch(()=>{});}
+   assert.equal(actual.requests.length,0);
+  });
+ }finally{await source.close();}
+ assert.equal(await exists(database),false);
  assert.deepEqual(await exact(previous.choice),previous.state);
 });

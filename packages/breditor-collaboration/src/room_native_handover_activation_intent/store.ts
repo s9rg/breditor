@@ -14,4 +14,7 @@ export class RoomHandoverActivationIntentStore extends ActivationIntentStore<Roo
  constructor(choice:RoomHandoverActivationIntentChoice,options:SharedArchiveIntegrityOptions){super(choice,options,codec);}
  /** Existing-only exact bytes for a separately selected restart association. */
  openRetainedEncoding(){return this.openWithEncoding();}
+ /** A whole-room visitor can keep its original reservation through reassociation. */
+ static readHeldEncoding(store:RoomHandoverActivationIntentStore){return store.#readHeldEncoding();}
+ #readHeldEncoding(){return this.readWithEncoding();}
 }
