@@ -5,10 +5,16 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {createHash} from 'node:crypto';
-import {IDBFactory,forceCloseDatabase} from 'fake-indexeddb';
+import {IDBFactory,IDBObjectStore,forceCloseDatabase} from 'fake-indexeddb';
 import * as native from '../packages/breditor-collaboration/dist/runtime/breditor_shared.js';
 import {jointHandoverReassociationPlan,jointHandoverReassociationChoice,handoverReassociationPredecessorChoice} from '../packages/breditor-collaboration/dist/native_room_joint_reassociation/handover_identity.js';
 import {JointHandoverReassociationIntentStore as Store,JointReassociationIntentStore as Ordinary,jointReassociationPublicationBinding as binding} from '../packages/breditor-collaboration/dist/native_room_joint_reassociation/intent_store.js';
+import {persistHandoverReassociation} from '../packages/breditor-collaboration/dist/native_room_joint_reassociation/handover_persist.js';
+import {prepareJointHandoverReassociation,resumeJointHandoverReassociationPreparation} from '../packages/breditor-collaboration/dist/native_room_joint_reassociation/handover_prepare.js';
+import {ColdJointRoomActivationAttempt,prepareColdJointHandoverRestart,resumeColdJointHandoverRestartPreparation} from '../packages/breditor-collaboration/dist/native_room_joint_activation/cold_attempt.js';
+import {RoomHandoverActivationIntentStore as NativeStore} from '../packages/breditor-collaboration/dist/room_native_handover_activation_intent/store.js';
+import {prepareHeldHandoverActivationReassociation,resumeHeldHandoverActivationReassociation} from '../packages/breditor-collaboration/dist/room_native_handover_activation_intent/reassociate.js';
+import {withHandoverActivationControls} from './fixtures/native-activation/handover-controls.mjs';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
 import {databaseByteSnapshot} from './fixtures/native-actor-custody/storage_bytes.mjs';
 
@@ -18,10 +24,10 @@ const code=expected=>error=>error?.code===expected;
 const policy=code('joint_activation_intent_policy');
 const integrity=code('joint_activation_intent_integrity');
 const namespace=name=>indexedDB.databases().then(rows=>rows.some(row=>row.name===name));
-let root,continued,reset;
+let root,continued,directory,reset;
 before(async()=>{
  await native.default({module_or_path:readFileSync(new URL('../packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm',import.meta.url))});
- const directory=process.env.BREDITOR_SEALED_RESTART_CHOICES;
+ directory=process.env.BREDITOR_SEALED_RESTART_CHOICES;
  assert.ok(directory,'Select the output directory of the actual sealed whole-room fixture');
  const read=suffix=>JSON.parse(readFileSync(join(directory,'actual-joint-complete-'+suffix+'.json'),'utf8'));
  root=read('independent-plan');
@@ -65,6 +71,21 @@ const open=async(choice,create=false)=>{
  const store=new Store(choice,options());
  try{return await store.open(create);}finally{await store.close();}
 };
+
+function originalEncoding(){
+ const base=join(directory,'actual-joint-prepared-native-intent-evidence');
+ const choice=root.plan.activation;
+ assert.deepEqual(JSON.parse(readFileSync(join(base,'choice.json'),'utf8')),choice);
+ const read=(name,pin)=>{
+  const bytes=readFileSync(join(base,name));
+  assert.equal(bytes.length,pin.bytes);
+  assert.equal(digest(bytes),pin.sha256);
+  return bytes;
+ };
+ const graph=read('graph.json',choice.graph).toString('utf8');
+ const objects=choice.objects.map(pin=>new Blob([read(pin.sha256+'.bin',pin)]));
+ return {choice,graph,objects};
+}
 
 test('the real original choice binds fresh sealed controllers and a linear direct-child checkpoint',async()=>{
  const first=select(draft('first',{evidence:true}));
@@ -163,4 +184,75 @@ test('revoking the selected connection ends its journal guard and leaves the exa
   await store.close();
  }
  assert.equal((await open(choice)).phase,'prepared');
+});
+
+test('an interrupted paired write retains exact Native bytes and resumes the missing journal without controllers',async()=>{
+ const choice=select(draft('paired-retry',{child:true,evidence:true}));
+ const encoding=originalEncoding(),source=new NativeStore(encoding.choice,options());
+ try{
+  await source.open(encoding);
+  const original=await databaseByteSnapshot(encoding.choice.database);
+  let retained,interrupted=false;
+  const add=IDBObjectStore.prototype.add;
+  try{
+   IDBObjectStore.prototype.add=function(...args){
+    const result=add.apply(this,args);
+    if(!interrupted&&this.transaction.db.name===choice.plan.database){
+     interrupted=true;
+     this.transaction.abort();
+    }
+    return result;
+   };
+   await withHandoverActivationControls({handover:choice.plan.activation.handover},choice.plan.activation.activation,async controllers=>{
+    await assert.rejects(persistHandoverReassociation(choice,options(),false,async()=>{
+     await prepareHeldHandoverActivationReassociation(source,{
+      previous:encoding.choice,database:choice.plan.activation.database,activation:controllers.activation,path:controllers.path,
+      async retainChoice(actual){
+       assert.deepEqual(actual,choice.plan.activation);
+       assert.equal(await namespace(actual.database),false);
+       assert.equal(await namespace(choice.plan.database),false);
+       retained=choice;
+      },
+     },options());
+    }),()=>interrupted);
+    assert.equal(controllers.requests.length,0);
+   });
+  }finally{IDBObjectStore.prototype.add=add;}
+  assert.equal(interrupted,true);
+  assert.deepEqual(retained,choice);
+  assert.equal(await namespace(choice.plan.database),false);
+  const exactNative=await databaseByteSnapshot(choice.plan.activation.database);
+  const retry=()=>persistHandoverReassociation(retained,options(),true,async()=>{
+   await resumeHeldHandoverActivationReassociation(source,{previous:encoding.choice,expected:retained.plan.activation},options());
+  });
+  assert.deepEqual(await retry(),retained);
+  assert.deepEqual(await retry(),retained);
+  assert.equal((await open(choice)).phase,'prepared');
+  assert.deepEqual(await databaseByteSnapshot(choice.plan.activation.database),exactNative);
+  assert.deepEqual(await databaseByteSnapshot(encoding.choice.database),original);
+ }finally{await source.close();}
+});
+
+test('an invalid complete pin or an orphaned journal cannot write the Native destination',async()=>{
+ const choice=select(draft('pair-refusal'));
+ let writes=0;
+ const write=async()=>{writes++;};
+ await assert.rejects(persistHandoverReassociation({...choice,sha256:digest('tampered pair pin')},options(),true,write),integrity);
+ assert.equal(await namespace(choice.plan.database),false);
+ await open(choice,true);
+ await assert.rejects(persistHandoverReassociation(choice,options(),true,write),code('joint_activation_intent_exists'));
+ assert.equal(await namespace(choice.plan.activation.database),false);
+ assert.equal(writes,0);
+});
+
+test('a forged cold origin cannot select or retry a sealed restart before actual admission',async()=>{
+ let reflections=0;
+ const poison=new Proxy({},{ownKeys(){reflections++;throw Error('Unexpected input reflection');}});
+ const forged=Object.freeze({choice:root,check(){reflections++;}});
+ await assert.rejects(prepareJointHandoverReassociation({},forged,poison,poison),code('joint_activation_state'));
+ await assert.rejects(resumeJointHandoverReassociationPreparation({},forged,poison,poison,()=>{reflections++;}),code('joint_activation_state'));
+ const copied=Object.create(ColdJointRoomActivationAttempt.prototype);
+ await assert.rejects(prepareColdJointHandoverRestart(copied,poison),policy);
+ await assert.rejects(resumeColdJointHandoverRestartPreparation(copied,poison,()=>{reflections++;}),policy);
+ assert.equal(reflections,0);
 });

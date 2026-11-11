@@ -58,10 +58,19 @@ only advisory observations from the selected publication controller.
 The descriptor checks use the output directory from the actual sealed
 whole-room fixture. Set `BREDITOR_SEALED_RESTART_CHOICES` to the directory
 containing `actual-joint-complete-independent-plan.json` and
-`actual-joint-complete-continued-choice.json`. Run
+`actual-joint-complete-continued-choice.json` and the
+`actual-joint-prepared-native-intent-evidence` directory. Run
 `node --test scripts/sealed-joint-reassociation-choice.test.mjs` for source and
 `node scripts/check-handover-activation-intent-installed.mjs --sealed-joint-choice`
 for independent package archives. These checks use controlled storage.
+
+Preparation retains the complete selected descriptor before writing the new
+Native capture and then the restart journal. It holds the original and
+predecessor journals during both writes. If the second write fails, an exact
+resume can finish it from the retained choice and literal capture bytes.
+The cold restart target has separate entry points for an interrupted local
+execution and for an untouched prepared execution. Both keep the target
+private while the fresh association is retained.
 
 `JointRoomActivationAttempt.beginAcrossHandover` reserves the actual original
 owners and uses a distinct joint intent format. Its descriptor binds the complete

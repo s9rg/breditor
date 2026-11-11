@@ -45,7 +45,7 @@ const tests=jointChoice
  ?['handover-activation-reassociation.test.mjs','sealed-joint-reassociation-choice.test.mjs']
  :['handover-activation-reassociation.test.mjs','handover-activation-intent-storage.test.mjs','activation-retention-lifetime.test.mjs','room-native-activation-intent.test.mjs','activation-intent-wire.test.mjs'];
 if(!reassociationOnly&&!jointChoice)tests.unshift('native-handover-activation-intent-data.test.mjs');
-const expectedCases=jointChoice?13:reassociationOnly?50:51;
+const expectedCases=jointChoice?16:reassociationOnly?50:51;
 const copied=[],mapping=new Map(packages.map(path=>{const row=JSON.parse(readFileSync(join(path,'package.json')));return[path.split('/').at(-1),row.name];}));
 function copyScript(path){const target=join(consumer,path),original=readFileSync(join(root,path),'utf8');let text=original;
  text=text.replace(/(['"])((?:\.\.\/)+)packages\/(breditor-[^/]+)\/([^'"]+)\1/g,(match,quote,prefix,folder,tail)=>{const name=mapping.get(folder);if(!name)return match;let selected=relative(dirname(target),join(consumer,'node_modules',name,tail));if(!selected.startsWith('.'))selected='./'+selected;return quote+selected+quote;});
@@ -69,12 +69,24 @@ if(jointChoice){
  assert.ok(provided,'Select the output directory of the actual sealed whole-room fixture');
  const selected=join(consumer,'target','sealed-restart-choices');
  mkdirSync(selected,{recursive:true});
- for(const suffix of ['independent-plan','continued-choice']){
-  const name='actual-joint-complete-'+suffix+'.json',from=join(resolve(provided),name),to=join(selected,name),bytes=readFileSync(from),sha256=sha(bytes);
+ const copyChoiceInput=name=>{
+  const from=join(resolve(provided),name),to=join(selected,name),bytes=readFileSync(from),sha256=sha(bytes);
+  mkdirSync(dirname(to),{recursive:true});
   writeFileSync(to,bytes);
   assert.equal(sha(readFileSync(to)),sha256);
   runtimeInputs.push({path:relative(consumer,to),bytes:bytes.length,sha256});
   originalInputs.push({path:from,sha256});
+  return bytes;
+ };
+ for(const suffix of ['independent-plan','continued-choice'])copyChoiceInput('actual-joint-complete-'+suffix+'.json');
+ const intent='actual-joint-prepared-native-intent-evidence';
+ const choice=JSON.parse(copyChoiceInput(join(intent,'choice.json')));
+ const graph=copyChoiceInput(join(intent,'graph.json'));
+ assert.equal(graph.length,choice.graph.bytes);assert.equal(sha(graph),choice.graph.sha256);
+ for(const pin of choice.objects){
+  assert.match(pin.sha256,/^[a-f0-9]{64}$/);
+  const bytes=copyChoiceInput(join(intent,pin.sha256+'.bin'));
+  assert.equal(bytes.length,pin.bytes);assert.equal(sha(bytes),pin.sha256);
  }
  env.BREDITOR_SEALED_RESTART_CHOICES=selected;
 }

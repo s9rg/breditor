@@ -35,6 +35,7 @@ export function jointReassociationPublicationBinding(choice:ReassociationChoice)
 class ReassociationIntentJournal<Format extends StateFormat> {
  readonly #factory=recoveryOpeningContext();readonly #locks=navigator.locks;readonly #choice;readonly #integrity;readonly #cancel;
  readonly #initial:PublicationState<Format>;readonly #predecessor:(index:number)=>ReassociationChoice;
+ readonly #revoked=new AbortController();
  #opening:RecoveryOpeningCustody|undefined;#lease:RecoveryLease|undefined;#db:IDBDatabase|undefined;
  #pending=false;#changed=false;#closing=false;#closed=false;#request:IDBOpenDBRequest|undefined;#reject:((error:unknown)=>void)|undefined;#running:Promise<unknown>|undefined;#cleanup:Promise<void>|undefined;
  constructor(key:object,choice:ReassociationChoice,format:Format,predecessor:(index:number)=>ReassociationChoice,options:SharedArchiveIntegrityOptions){
@@ -47,8 +48,14 @@ class ReassociationIntentJournal<Format extends StateFormat> {
  }
  #current=()=>{if(this.#closing||this.#closed||this.#changed||globalThis.indexedDB!==this.#factory||globalThis.navigator?.locks!==this.#locks)throw fail('joint_activation_intent_closed');if(this.#lease)checkRecoveryLeasesHeld([this.#lease]);try{this.#cancel.check();}catch{throw fail('joint_activation_intent_closed');}};
  check=()=>{this.#current();this.#integrity.guard();this.#current();};
+ get revoked():AbortSignal{return this.#revoked.signal;}
  #run<T>(work:()=>Promise<T>):Promise<T>{if(this.#running)return Promise.reject(fail('joint_activation_intent_busy'));const job=Promise.resolve().then(()=>{this.check();return work();});this.#running=job;return job.finally(()=>{if(this.#running===job)this.#running=undefined;});}
- #attach(db:IDBDatabase){this.#db=db;db.onclose=()=>{this.#changed=true;};db.onversionchange=()=>{this.#changed=true;db.close();};}
+ #attach(db:IDBDatabase){
+  this.#db=db;
+  const revoke=()=>{this.#changed=true;this.#revoked.abort();};
+  db.onclose=revoke;
+  db.onversionchange=()=>{revoke();db.close();};
+ }
  async #verifyChoice():Promise<void>{
   const original=this.#choice.plan.original,root=new Blob([JSON.stringify(original.plan)]);if(root.size!==original.bytes||await this.#integrity.digest(root)!==original.sha256)throw fail('joint_activation_intent_integrity');this.check();
   for(const selected of [...this.#choice.plan.predecessors.map((_row,i)=>this.#predecessor(i)),this.#choice]){
@@ -62,6 +69,8 @@ class ReassociationIntentJournal<Format extends StateFormat> {
   }
  }
  #parse(text:string):unknown{try{return JSON.parse(text);}catch{throw fail('joint_activation_intent_integrity');}}
+ /** Check every plan and journal pin before another namespace is written. */
+ verifyChoice():Promise<void>{return this.#run(()=>this.#verifyChoice());}
  #state(input:unknown):PublicationState<Format>{
   const r=fields(input,['format','formatVersion','revision','phase','receipt']),revision=integer(r['revision'],4096),phase=r['phase'];
   if(r['format']!==this.#initial.format||r['formatVersion']!==1||!['prepared','request-started','receipt-observed'].includes(phase as string)||(phase==='prepared')!==(revision===0))throw fail('joint_activation_intent_integrity');
