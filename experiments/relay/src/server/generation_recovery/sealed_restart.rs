@@ -2,7 +2,7 @@
 use super::{
     NativeGenerationActivationCheckpointStatus as Status, PreparedLogGenerationRecoveryHost,
     PreparedNativeGenerationActivation, ServerLogGenerationRecoveryCoverage,
-    ServerLogGenerationRecoveryStateIdentity,
+    ServerLogGenerationRecoveryState, ServerLogGenerationRecoveryStateIdentity,
 };
 use crate::{
     Error, RecoveryRegistrationCredentials, Result, ServerLogGenerationRoomBackup,
@@ -53,11 +53,47 @@ impl SealedNativeRestartSelection {
         custody: &crate::room::GenerationOperationCustody,
         archive: &ServerLogGenerationRoomBackup,
     ) -> Result<()> {
-        if custody.activation_owner_digest()? != self.checkpoint.identity().operation() {
+        self.check_operational_archive(custody.activation_owner_digest()?, archive)
+    }
+
+    pub(super) fn check_operational_archive(
+        &self,
+        operation: [u8; 32],
+        archive: &ServerLogGenerationRoomBackup,
+    ) -> Result<()> {
+        if operation != self.checkpoint.identity().operation() {
             return Err(Error::Contract("sealed restart operational owner differs"));
         }
         archive.check_archive_ancestor(self.checkpoint.checkpoint())?;
         self.check_checkpoint()
+    }
+
+    pub(super) fn inspection_minimum<'a>(
+        &'a self,
+        minimum: Option<&'a ServerLogGenerationRoomBackup>,
+    ) -> Result<&'a ServerLogGenerationRoomBackup> {
+        if self.expected.participants.source != self.expected.server.native {
+            return Err(Error::Contract("sealed inspection minimum inventory differs"));
+        }
+        match minimum {
+            Some(archive) if archive.info()?.identity == self.expected.server => Ok(archive),
+            None if &self.expected == self.checkpoint.identity().current() => {
+                Ok(self.checkpoint.checkpoint())
+            }
+            _ => Err(Error::Contract("sealed inspection minimum archive differs")),
+        }
+    }
+
+    pub(super) fn check_inspected_current(
+        &self,
+        captured: &ServerLogGenerationRecoveryState,
+    ) -> Result<()> {
+        if captured.origin != self.expected.origin
+            || self.status == Status::Prepared && captured.identity()? != self.expected
+        {
+            return Err(Error::Contract("sealed inspection current cut differs"));
+        }
+        Ok(())
     }
 }
 

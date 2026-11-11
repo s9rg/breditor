@@ -1,7 +1,7 @@
 //! Inspect surviving committed Native data before selecting it for activation.
 use super::{
-    NativeGenerationActivationCheckpointStatus as Status, SealedNativeRestartBootstrap,
-    ServerLogGenerationRecoveryState, open_sealed_restart::open_sealed_native_restart_target,
+    SealedNativeRestartBootstrap, ServerLogGenerationRecoveryState,
+    open_sealed_restart::open_sealed_native_restart_target,
     reopen_sealed_restart::reopen_retained_seal,
 };
 use crate::{Error, Result, ServerLogGenerationRoomBackup, server::Authentication};
@@ -29,15 +29,7 @@ pub async fn inspect_sealed_native_restart(
     let (_, selection, root) = tokio::task::spawn_blocking(move || reopen_retained_seal(bootstrap))
         .await
         .map_err(|_| Error::NeedsRecovery)??;
-    let expected = &selection.expected;
-    if expected.participants.source != expected.server.native {
-        return Err(Error::Contract("sealed inspection minimum inventory differs"));
-    }
-    match &minimum {
-        Some(archive) if archive.info()?.identity == expected.server => {}
-        None if expected == selection.checkpoint.identity().current() => {}
-        _ => return Err(Error::Contract("sealed inspection minimum archive differs")),
-    }
+    selection.inspection_minimum(minimum.as_ref())?;
     let (host, selection) = Box::pin(open_sealed_native_restart_target(
         &root,
         authentication,
@@ -49,11 +41,7 @@ pub async fn inspect_sealed_native_restart(
     let captured = host.capture_recovery_state(principal, token).await?;
     let custody = host.host.generation_custody.clone().ok_or(Error::NeedsRecovery)?;
     tokio::task::spawn_blocking(move || {
-        if captured.origin != selection.expected.origin
-            || selection.status == Status::Prepared && captured.identity()? != selection.expected
-        {
-            return Err(Error::Contract("sealed inspection current cut differs"));
-        }
+        selection.check_inspected_current(&captured)?;
         if let Some(archive) = minimum {
             captured.server.check_archive_ancestor(&archive)?;
         }

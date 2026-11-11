@@ -1,6 +1,6 @@
 //! Complete actual held source capture surrounds native metadata; no old-reader fallback.
 use super::{ServerLogGenerationParticipantInventory, ServerLogGenerationParticipantMetadata};
-use crate::{Error, Result, Room};
+use crate::{Error, Result, Room, ServerLogGenerationBackupIdentity};
 impl Room {
     /// Capture every native account, author and registered document/review stream at an exact
     /// complete physical archive cut, including observers and revoked accounts. No history,
@@ -15,17 +15,27 @@ impl Room {
     ) -> Result<ServerLogGenerationParticipantInventory> {
         self.recovery_inventory_owner(principal)?;
         let source = self.export_log_generation_backup(principal)?.info().identity;
-        let native = self.capture_participant_inventory_at(principal, source.source.clone())?;
-        let metadata = ServerLogGenerationParticipantMetadata {
-            format: "breditor/server-log-generation-participants".into(),
-            format_version: 1,
-            source: source.clone(),
-            native: native.metadata(),
-        };
+        let inventory = self.capture_generation_inventory_at(principal, source.clone())?;
         if self.export_log_generation_backup(principal)?.info().identity != source {
             return Err(Error::Contract("generation participant source changed"));
         }
-        ServerLogGenerationParticipantInventory::encode(&metadata)
+        Ok(inventory)
+    }
+
+    /// Encode the inventory against a cut captured from this held room. The caller must
+    /// keep the same Native owner and verify the cut before returning detached data.
+    pub(in crate::room::log_generations) fn capture_generation_inventory_at(
+        &self,
+        principal: &str,
+        source: ServerLogGenerationBackupIdentity,
+    ) -> Result<ServerLogGenerationParticipantInventory> {
+        let native = self.capture_participant_inventory_at(principal, source.source.clone())?;
+        ServerLogGenerationParticipantInventory::encode(&ServerLogGenerationParticipantMetadata {
+            format: "breditor/server-log-generation-participants".into(),
+            format_version: 1,
+            source,
+            native: native.metadata(),
+        })
     }
 }
 impl ServerLogGenerationParticipantInventory {
