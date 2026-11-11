@@ -461,7 +461,7 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   script('native-handover-activation-host-build','build-handover-native-activation.mjs',[],[{path:'target/handover-native-activation-native-build.json',fresh:true}],2100000),
   stage('handover-native-activation-contracts',node,['--test','scripts/handover-activation-coordination.test.mjs','scripts/recorded-base-handover-inspection.test.mjs','scripts/handover-native-activation-candidate-plan.test.mjs']),
   stage('handover-native-activation-types',node,['node_modules/typescript/bin/tsc','--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM','scripts/fixtures/editor-consumer/types-handover-activation-coordination.ts']),
-  stage('handover-native-activation-host',node,['--test','scripts/native-handover-activation-host.test.mjs'],{},[],240000),
+  stage('handover-native-activation-host',node,['--test','scripts/native-handover-activation-host.test.mjs','scripts/native-handover-publication-host.test.mjs'],{},[],240000),
   stage('handover-native-activation-native',node,['--test','scripts/native-handover-activation-coordinated.test.mjs'],{},[],7800000),
   script('installed-handover-native-activation','check-handover-native-activation-installed.mjs',[],[{path:'target/handover-native-activation-installed-consumer.json',fresh:true}],8400000),
   stage('native-suggestion-delivery-plan-contracts',node,['--test','scripts/native-suggestion-delivery-candidate-plan.test.mjs']),

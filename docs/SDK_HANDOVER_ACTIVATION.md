@@ -56,16 +56,26 @@ handover, recovery, provider and activation APIs. Its private IPC prepares and
 observes controls; it cannot commit the target. A pre-commit service request
 refuses. Only authenticated HTTP obtains the real active router.
 
-Run `node --test scripts/native-handover-activation-host.test.mjs` for that
-Native boundary. Run `node --test scripts/native-handover-activation-coordinated.test.mjs`
-for seven real cold SDK owners, fourteen retained offline document/comment
-suffixes, complete handover intent bytes, actual lost-response/retry behavior,
-normal protocol delivery, final provider reconciliation and future Undo/Redo.
-Run `node scripts/check-handover-native-activation-installed.mjs` for the same
-actual workflows plus controller and original/new intent laws from independent
-offline package archives.
+The publication fixture selects an explicit handover mode that holds the normal
+listener in the existing Rust publication owner. Native activation installs the
+epoch, then the separately authenticated publication request starts the normal
+routes. The test reads the normal health route before observing publication via
+fixture IPC. It retains the complete handover choice and publication selection
+as an association, drops the first successful reply, retries the same pin and
+checks the actual durable deployment. A different pin is refused.
 
-These fixtures use controlled Node IndexedDB, locks and image decoding. Native
-service activation is one part of whole-room activation. Local owner promotion,
-publication, process-crash recovery, the remaining policy combinations and V1
-release qualification require further integration and checks.
+Run `node --test scripts/native-handover-activation-host.test.mjs` for the Native
+activation boundary and `node --test scripts/native-handover-publication-host.test.mjs`
+for the authenticated listener boundary. Run
+`node --test scripts/native-handover-activation-coordinated.test.mjs` for seven
+cold SDK owners, fourteen retained offline document and comment lanes, complete
+handover intent bytes, lost activation and publication replies, normal protocol
+delivery, provider reconciliation and future Undo/Redo.
+`node scripts/check-handover-native-activation-installed.mjs` runs these workflows
+and the controller and intent checks from independent offline package archives.
+
+These fixtures use controlled Node IndexedDB, locks and image decoding. The
+publication association binds the actual Native service and listener to the
+retained choice. Whole-room activation still needs replacement owner promotion
+and metadata continuation before that publication request. Process-crash
+recovery, the remaining policy combinations and V1 release checks remain open.

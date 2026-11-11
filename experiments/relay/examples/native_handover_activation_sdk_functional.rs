@@ -41,6 +41,10 @@ type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error + Send + 
 mod finish_action;
 #[path = "handover_activation_sdk_host/handover_action.rs"]
 mod handover_action;
+#[path = "native_publication_sdk_host/observe_publication_action.rs"]
+mod observe_publication_action;
+#[path = "handover_activation_sdk_host/publication_action.rs"]
+mod publication_action;
 #[path = "handover_activation_sdk_host/state.rs"]
 mod state;
 /// Run actual native histories and a separately SDK-committed serving epoch.
@@ -73,8 +77,19 @@ pub async fn main() -> Result {
                 next::Action::Handover { request } => {
                     handover_action::apply(&mut state, request).await?
                 }
+                next::Action::HandoverForPublication { request } => {
+                    publication_action::prepare(&mut state, request).await?
+                }
+                next::Action::ObservePublication { request } => {
+                    observe_publication_action::apply(&mut state, request).await?
+                }
                 next::Action::FinishActivation { request } => {
-                    finish_action::apply(&mut state, request).await?
+                    if state.publications.is_empty() {
+                        finish_action::apply(&mut state, request).await?
+                    } else {
+                        protocol::refuse(request, "authenticated-publication-required")?;
+                        false
+                    }
                 }
             };
             if advanced {

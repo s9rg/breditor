@@ -9,6 +9,8 @@ use std::io::{Read, Write};
 pub(super) enum Request {
     Snapshot { request: u64 },
     Handover { request: u64 },
+    HandoverForPublication { request: u64 },
+    ObservePublication { request: u64 },
     FinishActivation { request: u64 },
     SnapshotAfter { request: u64, previous: u64 },
     Inspect { request: u64, source: u64 },

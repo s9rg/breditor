@@ -5,9 +5,11 @@ use breditor_collab_relay::server::{
     PreparedLogGenerationRecoveryHost,
 };
 
+use std::sync::Arc;
+
 enum Owner {
     Native(Box<ActivatedNativeLogGenerationHost>),
-    Controlled(DurableNativeActivationControl),
+    Controlled(Arc<DurableNativeActivationControl>),
 }
 pub(super) struct NativeService {
     host: PreparedLogGenerationRecoveryHost,
@@ -21,7 +23,7 @@ impl NativeService {
         host: PreparedLogGenerationRecoveryHost,
         control: DurableNativeActivationControl,
     ) -> Self {
-        Self { host, owner: Owner::Controlled(control) }
+        Self { host, owner: Owner::Controlled(Arc::new(control)) }
     }
     pub fn actual_native(&self) -> Result<&ActivatedNativeLogGenerationHost> {
         match &self.owner {
@@ -29,6 +31,12 @@ impl NativeService {
             Owner::Controlled(_) => {
                 Err("select the initial actual Native owner before handover".into())
             }
+        }
+    }
+    pub fn activation_control(&self) -> Result<Arc<DurableNativeActivationControl>> {
+        match &self.owner {
+            Owner::Controlled(control) => Ok(control.clone()),
+            Owner::Native(_) => Err("select the prepared handover activation control".into()),
         }
     }
     pub fn recovery_host(&self) -> PreparedLogGenerationRecoveryHost {

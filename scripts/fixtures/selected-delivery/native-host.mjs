@@ -12,10 +12,11 @@ import {handoverDeliveryPathSelection} from '../../../packages/breditor-collabor
 import {generationControlSelection} from '../../../packages/breditor-collaboration/dist/generation_recovery_control/identity.js';
 const processCapsules=new WeakMap();
 const hex=value=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
-export async function selectedDeliveryNativeHost(root,{language=3,standard=true,atomic=true,suggestionGrants=false,nativeActivation=false,nativeHandoverActivation=false,nativePublication=false,inactiveRasters=false,processRecovery=false,jointProcessRecovery=false,resume}={}){
+export async function selectedDeliveryNativeHost(root,{language=3,standard=true,atomic=true,suggestionGrants=false,nativeActivation=false,nativeHandoverActivation=false,nativeHandoverPublication=false,nativePublication=false,inactiveRasters=false,processRecovery=false,jointProcessRecovery=false,resume}={}){
  root=realpathSync(root);const resumed=resume?processCapsules.get(resume):undefined;if(resume&&(!resumed||!resumed.crashed||resumed.used||resumed.root!==root))throw Error('Actual terminated process and independently retained private bootstrap required');if(resumed){assert.equal(resumed.jointProcessRecovery??false,jointProcessRecovery);resumed.used=true;}
  const directory=resumed?.directory??mkdtempSync(join(root,'target/selected-delivery-native-'));
  assert.equal(realpathSync(directory),directory);if(!resumed)for(const[name,bytes]of[['seed-a.png',pixel],['seed-b.png',secondPixel]])writeFileSync(join(directory,name),bytes,{mode:0o600,flag:'wx'});
+ if(nativeHandoverPublication&&!nativeHandoverActivation)throw Error('Select the sealed handover fixture for publication');
  if(nativeHandoverActivation&&(!nativeActivation||nativePublication||inactiveRasters||processRecovery||jointProcessRecovery||resume))throw Error('Separate inactive handover activation fixture mode required');
  if(jointProcessRecovery&&(!nativePublication||!nativeActivation||inactiveRasters||processRecovery))throw Error('Separate joint process recovery fixture mode required');
  if(nativePublication&&(!nativeActivation||inactiveRasters||processRecovery))throw Error('Separate Native publication fixture mode required');
@@ -52,7 +53,7 @@ export async function selectedDeliveryNativeHost(root,{language=3,standard=true,
   const selected=message.case;if(!selected||selected.nativeProtectedStreamsVerified!==true||selected.nativeProviderVerified!==true||selected.nativeDeliveryContinuationVerified!==true||selected.nativeDeliveryPathVerified!==true||!Number.isSafeInteger(selected.sequence)||selected.sequence!==message.request)throw Error('Invalid complete selected-delivery cut');
   if(snapshots.length&&(selected.clientEndpoint!==snapshots[0].clientEndpoint||selected.retiredEndpoint!==snapshots[0].retiredEndpoint))throw Error('Native endpoint changed after source binding');
   const command=pending.get(message.request);
-  if(command?.kind==='handover'){assert.equal(handoverSequence,undefined);handoverSequence=message.request;}
+  if(command?.kind==='handover'||command?.kind==='handoverForPublication'){assert.equal(handoverSequence,undefined);handoverSequence=message.request;}
   assert.equal(Boolean(selected.handoverSelection),handoverSequence!==undefined);
   if(selected.handoverSelection){
    const handover=new URL(selected.handoverEndpoint),current=new URL(selected.endpoint);
@@ -69,13 +70,13 @@ export async function selectedDeliveryNativeHost(root,{language=3,standard=true,
  }
  /** Only a genuine prepared Native control can supply a live private token. */
  function activation(message,row){
-  assert.equal(nativeActivation,true);if(nativePublication)assert.ok(['prepareJointActivation','prepareJointActivationAfter'].includes(row?.kind));else if(nativeHandoverActivation)assert.equal(row?.kind,'handover');else assert.equal(row?.kind,'prepareActivation');
+  assert.equal(nativeActivation,true);if(nativePublication)assert.ok(['prepareJointActivation','prepareJointActivationAfter'].includes(row?.kind));else if(nativeHandoverActivation)assert.equal(row?.kind,nativeHandoverPublication?'handoverForPublication':'handover');else assert.equal(row?.kind,'prepareActivation');
   assert.ok(hex(message.privateActivationToken));secrets.add(message.privateActivationToken);
   const item=snapshot(message),selection=nativeActivationSelection(message.activationSelection);
   if(nativeHandoverActivation)assert.ok(item.handoverSelection);else assert.deepEqual(selection.current,row.source);assert.deepEqual(selection.current,item.selection.source);
   const endpoint=new URL(message.activationEndpoint);assert.equal(endpoint.protocol,'http:');assert.equal(endpoint.hostname,'127.0.0.1');assert.ok(endpoint.port);assert.equal(endpoint.pathname,'/recovery/native-activation/v1/commit');assert.equal(endpoint.search,'');assert.equal(endpoint.hash,'');assert.equal(endpoint.username,'');assert.equal(endpoint.password,'');
   let publication;
-  if(nativePublication){
+  if(nativePublication||nativeHandoverPublication){
    assert.equal(message.kind,'jointActivationPrepared');const selected=nativePublicationSelection(message.publicationSelection);assert.deepEqual(selected.activation,selection);assert.equal(selected.listener,new URL(item.clientEndpoint).host);
    const address=new URL(message.publicationEndpoint);assert.equal(address.protocol,'http:');assert.equal(address.hostname,'127.0.0.1');assert.ok(address.port);assert.equal(address.pathname,'/recovery/native-publication/v1/publish');assert.equal(address.search,'');assert.equal(address.hash,'');assert.equal(address.username,'');assert.equal(address.password,'');
    publication=Object.freeze({selection:selected,endpoint:address.href});publicationTokens.set(publication,message.privateActivationToken);
@@ -95,7 +96,7 @@ export async function selectedDeliveryNativeHost(root,{language=3,standard=true,
   buffer+=bytes.toString('utf8');if(Buffer.byteLength(buffer)>1024*1024){const error=Error('Native private IPC response budget');initialReject(error);for(const row of pending.values())row.reject(error);return;}
   let newline;while((newline=buffer.indexOf('\n'))>=0){const raw=buffer.slice(0,newline);buffer=buffer.slice(newline+1);try{const value=JSON.parse(raw),row=pending.get(value.request);if(value.kind==='snapshot'){const result=snapshot(value);if(value.request===0)initialResolve(result);else if(row){clearTimeout(row.timer);pending.delete(value.request);row.resolve(result);}else throw Error('Unrequested native snapshot');}
     else if((jointProcessRecovery?value.kind==='jointActivationPrepared':value.kind==='activationPrepared')&&resumed&&value.request===resumed.bootstrap.nextSequence&&!row){initialOffer=activation(value,{kind:jointProcessRecovery?'prepareJointActivation':'prepareActivation',source:resumed.source});initialResolve(initialOffer.case);}
-    else if((value.kind==='activationPrepared'||nativePublication&&value.kind==='jointActivationPrepared')&&row){const result=activation(value,row);clearTimeout(row.timer);pending.delete(value.request);if(nativeHandoverActivation){handoverOffer=result;row.resolve(result.case);}else row.resolve(result);}
+    else if((value.kind==='activationPrepared'||(nativePublication||nativeHandoverPublication)&&value.kind==='jointActivationPrepared')&&row){const result=activation(value,row);clearTimeout(row.timer);pending.delete(value.request);if(nativeHandoverActivation){handoverOffer=result;row.resolve(result.case);}else row.resolve(result);}
     else if(value.kind==='activationRefused'&&row&&nativeActivation){assert.deepEqual(Object.keys(value).sort(),['kind','reason','request']);assert.equal(typeof value.reason,'string');clearTimeout(row.timer);pending.delete(value.request);row.reject(Error('Native activation fixture refused: '+value.reason));}
     else if(value.kind==='inspection'&&row){const result=inspection(value,row);clearTimeout(row.timer);pending.delete(value.request);row.resolve(result);}
     else if(value.kind==='credentials'&&row){for(const key of['privateAccountToken','privateDocumentCredential','privateReviewCredential']){if(!hex(value[key]))throw Error('Invalid private fixture credential shape');secrets.add(value[key]);}clearTimeout(row.timer);pending.delete(value.request);row.resolve(value);}
@@ -106,7 +107,7 @@ export async function selectedDeliveryNativeHost(root,{language=3,standard=true,
  function request(kind,data={},local={}){if(closed||terminal)return Promise.reject(Error('Native fixture is closed'));if(pending.size>=2)return Promise.reject(Error('Native fixture request budget'));const id=++sequence;return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{pending.delete(id);reject(Error('Native fixture request did not complete within its budget'));},60000);pending.set(id,{resolve,reject,timer,kind,...data,...local});child.stdin.write(JSON.stringify({kind,request:id,...data})+'\n',error=>{if(error){clearTimeout(timer);pending.delete(id);reject(Error('Native fixture command write failed'));}});});}
  if(resumed){const bytes=JSON.stringify(resumed.bootstrap)+'\n';if(Buffer.byteLength(bytes)>16*1024*1024)throw Error('Private process bootstrap byte budget');child.stdin.write(bytes);}
  let timer;try{const publishedFirst=await Promise.race([initial,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Native fixture did not prepare: '+errors)),120000);})]);clearTimeout(timer);const first=resumed?snapshots[0]:publishedFirst;
-  return{directory,binary,initial:first,reopenedOffer:initialOffer,processId:child.pid,snapshots,fixture:verifyFiles,operatorToken:item=>{const value=operators.get(item.path);if(!value)throw Error('Choose the actual observed native cut');return value;},async refresh(){return request('snapshot');},async handover(){if(nativeActivation&&!nativeHandoverActivation||nativePublication||handoverSequence!==undefined)throw Error('Choose one actual fixture handover');return request('handover');},async refreshAfter(previous){const selected=observed.get(previous);if(!selected)throw Error('Select an actual observed complete predecessor');return request('snapshotAfter',{previous:selected.sequence});},
+  return{directory,binary,initial:first,reopenedOffer:initialOffer,processId:child.pid,snapshots,fixture:verifyFiles,operatorToken:item=>{const value=operators.get(item.path);if(!value)throw Error('Choose the actual observed native cut');return value;},async refresh(){return request('snapshot');},async handover(){if(nativeActivation&&!nativeHandoverActivation||nativePublication||handoverSequence!==undefined)throw Error('Choose one actual fixture handover');return request(nativeHandoverPublication?'handoverForPublication':'handover');},async refreshAfter(previous){const selected=observed.get(previous);if(!selected)throw Error('Select an actual observed complete predecessor');return request('snapshotAfter',{previous:selected.sequence});},
    handoverActivationOffer(){if(!nativeHandoverActivation||!handoverOffer||!offers.has(handoverOffer))throw Error('Select an actual prepared inactive handover');return handoverOffer;},
    async prepareActivation(source){if(nativeHandoverActivation)throw Error('Select the already prepared handover activation offer');if(nativePublication)throw Error('Select prepareJointActivation for the separate publication fixture');if(!nativeActivation)throw Error('Native activation fixture mode required');const previous=snapshots.at(-1).sequence;return request('prepareActivation',{source},{previous});},
    async prepareJointActivation(source){if(!nativePublication)throw Error('Separate publication fixture mode required');return request('prepareJointActivation',{source},{previous:snapshots.at(-1).sequence});},
@@ -114,7 +115,11 @@ export async function selectedDeliveryNativeHost(root,{language=3,standard=true,
     * The original prepare action keeps its latest-observed-cut meaning. */
    async prepareJointActivationAfter(source,previous){if(!nativePublication)throw Error('Separate Native publication fixture mode required');const selected=observed.get(previous);if(!selected)throw Error('Select an actual observed complete predecessor');return request('prepareJointActivationAfter',{source,previous:selected.sequence},{previous:selected.sequence});},
    publicationToken(publication){const token=publicationTokens.get(publication);if(!token)throw Error('Select the actual provisioned publication control');return token;},
-   async observePublication(offer){if(!nativePublication||!offers.has(offer)||!offer.publication)throw Error('Select the actual provisioned joint offer');return request('observePublication',{},{previous:offer.case.sequence});},
+   async observePublication(offer){
+    if(!(nativePublication||nativeHandoverPublication)||!offers.has(offer)||!offer.publication)throw Error('Select the actual provisioned joint offer');
+    const previous=nativeHandoverPublication?snapshots.at(-1).sequence:offer.case.sequence;
+    return request('observePublication',{},{previous});
+   },
    activationToken(offer){const token=offers.get(offer);if(!token)throw Error('Select the actual prepared Native offer');return token;},
    async finishActivation(offer){if(nativePublication)throw Error('Normal publication requires authenticated HTTP; no finish IPC');if(!offers.has(offer))throw Error('Select the actual prepared Native offer');return request('finishActivation',{},{previous:inactiveRasters||nativeHandoverActivation?snapshots.at(-1).sequence:offer.case.sequence});},
    async reconstruct(item){const selected=observed.get(item);if(!selected)throw Error('Select an actual observed Native source for inactive reconstruction');return request('inspect',{source:selected.sequence});},

@@ -6,6 +6,8 @@ pub(super) type Previous = (u64, Arc<ServerLogGenerationRoomBackup>);
 pub(super) enum Action {
     Snapshot { request: u64, previous: Option<Previous> },
     Handover { request: u64 },
+    HandoverForPublication { request: u64 },
+    ObservePublication { request: u64 },
     FinishActivation { request: u64 },
 }
 pub(super) async fn read(
@@ -26,6 +28,8 @@ pub(super) async fn read(
                     break Action::Snapshot{request,previous:Some((previous,archive.clone()))};
                 }
                 Some(Ok(protocol::Request::Handover{request}))=>break Action::Handover{request},
+                Some(Ok(protocol::Request::HandoverForPublication{request}))=>break Action::HandoverForPublication{request},
+                Some(Ok(protocol::Request::ObservePublication{request}))=>break Action::ObservePublication{request},
                 Some(Ok(protocol::Request::FinishActivation{request}))=>break Action::FinishActivation{request},
                 Some(Ok(protocol::Request::Inspect{request,source}))=>{
                     let archive=observed.get(&source).ok_or("select actual observed inspection source")?;
@@ -41,6 +45,8 @@ pub(super) async fn read(
     let request = match &next {
         Action::Snapshot { request, .. }
         | Action::Handover { request }
+        | Action::HandoverForPublication { request }
+        | Action::ObservePublication { request }
         | Action::FinishActivation { request } => *request,
     };
     if request <= sequence {

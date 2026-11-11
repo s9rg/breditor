@@ -1,7 +1,8 @@
 //! Real running fixture state. Native and HTTP owners remain explicit.
-use super::{Result, begin, inspection, protocol, service, setup, snapshot};
+use super::{Result, begin, inspection, protocol, publication_action, service, setup, snapshot};
 use breditor_collab_relay::{
-    ServerLogGenerationRoomBackup, server::ServerLogGenerationDeliveryPathRecoveryControl,
+    ServerLogGenerationRoomBackup,
+    server::{NativeRoomPublication, ServerLogGenerationDeliveryPathRecoveryControl},
 };
 use std::{collections::BTreeMap, net::SocketAddr, sync::Arc};
 
@@ -22,6 +23,8 @@ pub(super) struct State {
     pub previous: Option<super::next::Previous>,
     pub serving: bool,
     pub offer: Option<Offer>,
+    pub publication_offer: Option<publication_action::Offer>,
+    pub publications: Vec<NativeRoomPublication>,
     pub handover: Option<snapshot::HandoverPrefix>,
 }
 impl State {
@@ -45,6 +48,8 @@ impl State {
             previous: None,
             serving: true,
             offer: None,
+            publication_offer: None,
+            publications: Vec::new(),
             handover: None,
         })
     }
@@ -58,6 +63,9 @@ impl State {
         ))
     }
     pub async fn stop_services(&mut self) -> Result {
+        for publication in self.publications.drain(..) {
+            publication.close().await?;
+        }
         for inspection in self.inspections.drain(..) {
             inspection.close().await;
         }
@@ -117,6 +125,11 @@ impl State {
             reply["activationSelection"] = offer.selection.clone();
             reply["activationEndpoint"] = serde_json::json!(offer.endpoint);
             reply["privateActivationToken"] = serde_json::json!(offer.token);
+            if let Some(publication) = &self.publication_offer {
+                reply["kind"] = serde_json::json!("jointActivationPrepared");
+                reply["publicationSelection"] = serde_json::to_value(&publication.selection)?;
+                reply["publicationEndpoint"] = serde_json::json!(publication.endpoint);
+            }
         }
         protocol::reply(&reply)
     }
