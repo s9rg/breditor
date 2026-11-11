@@ -8,6 +8,7 @@ import {RoomActivationIntentStore} from '../room_native_activation_intent/store.
 import type {RoomActivationRetainedIntent} from '../room_native_activation_intent/contract.js';
 import {RoomHandoverActivationIntentStore} from '../room_native_handover_activation_intent/store.js';
 import type {RoomHandoverActivationRetainedIntent} from '../room_native_handover_activation_intent/contract.js';
+import type {IntentObservationGuard} from '../persistence/intent_observation_guard.js';
 import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
 import type {LocalMetadataRoomBundle} from '../selected_local_metadata_delivery/contract.js';
 import type {SharedDurableNativeActivationReceipt} from '../native_activation_control/contract.js';
@@ -34,10 +35,10 @@ export interface ColdJointActivationOriginWork<Choice extends ColdChoice=JointRo
  readonly revocations:readonly AbortSignal[];
  check():void;
  /** Observations only; callers must obtain actual replies independently. */
- observeNativeStarted():Promise<void>;
- observeNativeReceipt(receipt:SharedDurableNativeActivationReceipt):Promise<void>;
- observePublicationStarted():Promise<void>;
- observePublicationReceipt(receipt:SharedNativeRoomPublicationReceipt):Promise<void>;
+ observeNativeStarted(guard:IntentObservationGuard):Promise<void>;
+ observeNativeReceipt(receipt:SharedDurableNativeActivationReceipt,guard:IntentObservationGuard):Promise<void>;
+ observePublicationStarted(guard:IntentObservationGuard):Promise<void>;
+ observePublicationReceipt(receipt:SharedNativeRoomPublicationReceipt,guard:IntentObservationGuard):Promise<void>;
 }
 export type ColdJointHandoverOriginWork=ColdJointActivationOriginWork<JointHandoverActivationIntentChoice,RoomHandoverActivationRetainedIntent>;
 /** Reuse the actual held intent inside this cold target visit. */
@@ -57,8 +58,8 @@ interface NativeIntentStore<Intent extends Retained> {
  check():void;
  open():Promise<Intent>;
  read():Promise<Intent>;
- markRequestStarted():Promise<Intent>;
- markReceiptObserved(receipt:SharedDurableNativeActivationReceipt):Promise<Intent>;
+ markRequestStarted(guard:IntentObservationGuard):Promise<Intent>;
+ markReceiptObserved(receipt:SharedDurableNativeActivationReceipt,guard:IntentObservationGuard):Promise<Intent>;
  close():Promise<void>;
 }
 interface OriginReader<Choice extends ColdChoice,Intent extends Retained> {
@@ -96,10 +97,10 @@ async function withColdOrigin<Choice extends ColdChoice,Intent extends Retained,
    let visiting=true;const heldCheck=()=>{if(!visiting)throw fail('joint_activation_closed');check();nativeStore.check();jointStore.check();checkHeldOriginalMetadataJournals(scope,original);};heldCheck();
    try{
    const work:ColdJointActivationOriginWork<Choice,Intent>=Object.freeze({choice,retained,publication,original,journals,check:heldCheck,revocations:Object.freeze([nativeStore.revoked,jointStore.revoked,...journalRevocations]),
-    async observeNativeStarted(){heldCheck();nativeState=(await nativeStore.markRequestStarted()).state;heldCheck();},
-    async observeNativeReceipt(receipt:SharedDurableNativeActivationReceipt){heldCheck();nativeState=(await nativeStore.markReceiptObserved(receipt)).state;heldCheck();},
-    async observePublicationStarted(){heldCheck();publication=await jointStore.markPublicationStarted();heldCheck();},
-    async observePublicationReceipt(receipt:SharedNativeRoomPublicationReceipt){heldCheck();publication=await jointStore.markPublicationObserved(receipt);heldCheck();}
+    async observeNativeStarted(guard:IntentObservationGuard){heldCheck();nativeState=(await nativeStore.markRequestStarted(guard)).state;heldCheck();},
+    async observeNativeReceipt(receipt:SharedDurableNativeActivationReceipt,guard:IntentObservationGuard){heldCheck();nativeState=(await nativeStore.markReceiptObserved(receipt,guard)).state;heldCheck();},
+    async observePublicationStarted(guard:IntentObservationGuard){heldCheck();publication=await jointStore.markPublicationStarted(guard);heldCheck();},
+    async observePublicationReceipt(receipt:SharedNativeRoomPublicationReceipt,guard:IntentObservationGuard){heldCheck();publication=await jointStore.markPublicationObserved(receipt,guard);heldCheck();}
    });
    visits.set(work,{scope,check:heldCheck});
    if(nativeStore instanceof RoomHandoverActivationIntentStore)handoverIntents.set(work,nativeStore);

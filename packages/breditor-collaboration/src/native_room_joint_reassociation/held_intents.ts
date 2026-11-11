@@ -1,6 +1,7 @@
 /** Existing-only complete lineage admission. Every original protocol intent
  * keeps its own namespace and meaning; saved observations remain advisory. */
 import type {SelectedNativeRecoveryScope} from '../selected_native_recovery/contract.js';
+import type {IntentObservationGuard} from '../persistence/intent_observation_guard.js';
 import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
 import type {SharedDurableNativeActivationReceipt} from '../native_activation_control/contract.js';
 import type {SharedNativeRoomPublicationReceipt} from '../native_publication_control/contract.js';
@@ -15,10 +16,10 @@ export interface HeldReassociationIntents {
  readonly choice:JointReassociationChoice;
  readonly revocations:readonly AbortSignal[];
  check():void;
- observeNativeStarted():Promise<void>;
- observeNativeReceipt(receipt:SharedDurableNativeActivationReceipt):Promise<void>;
- observePublicationStarted():Promise<void>;
- observePublicationReceipt(receipt:SharedNativeRoomPublicationReceipt):Promise<void>;
+ observeNativeStarted(guard:IntentObservationGuard):Promise<void>;
+ observeNativeReceipt(receipt:SharedDurableNativeActivationReceipt,guard:IntentObservationGuard):Promise<void>;
+ observePublicationStarted(guard:IntentObservationGuard):Promise<void>;
+ observePublicationReceipt(receipt:SharedNativeRoomPublicationReceipt,guard:IntentObservationGuard):Promise<void>;
 }
 export async function withHeldReassociationIntents<T>(scope:SelectedNativeRecoveryScope,origin:ColdJointActivationOriginWork,provided:JointReassociationChoice,options:SharedArchiveIntegrityOptions,visit:(held:HeldReassociationIntents)=>Promise<T>):Promise<T>{
  checkColdJointActivationOrigin(origin,scope);const choice=jointReassociationChoice(provided);if(!equal(choice.plan.original,origin.choice))throw fail('joint_activation_intent_stale');
@@ -39,10 +40,10 @@ export async function withHeldReassociationIntents<T>(scope:SelectedNativeRecove
    const heldCheck=()=>{check();priorCheck();check();};
    const revocations=Object.freeze([...opened.flatMap(row=>[row.native.revoked,row.joint.revoked]),...priorRevocations]);
    const held:HeldReassociationIntents=Object.freeze({choice,revocations,check:heldCheck,
-    async observeNativeStarted(){heldCheck();current.nativeState=(await current.native.markRequestStarted()).state;heldCheck();},
-    async observeNativeReceipt(receipt:SharedDurableNativeActivationReceipt){heldCheck();current.nativeState=(await current.native.markReceiptObserved(receipt)).state;heldCheck();},
-    async observePublicationStarted(){heldCheck();current.publication=await current.joint.markPublicationStarted();heldCheck();},
-    async observePublicationReceipt(receipt:SharedNativeRoomPublicationReceipt){heldCheck();current.publication=await current.joint.markPublicationObserved(receipt);heldCheck();},
+    async observeNativeStarted(guard:IntentObservationGuard){heldCheck();current.nativeState=(await current.native.markRequestStarted(guard)).state;heldCheck();},
+    async observeNativeReceipt(receipt:SharedDurableNativeActivationReceipt,guard:IntentObservationGuard){heldCheck();current.nativeState=(await current.native.markReceiptObserved(receipt,guard)).state;heldCheck();},
+    async observePublicationStarted(guard:IntentObservationGuard){heldCheck();current.publication=await current.joint.markPublicationStarted(guard);heldCheck();},
+    async observePublicationReceipt(receipt:SharedNativeRoomPublicationReceipt,guard:IntentObservationGuard){heldCheck();current.publication=await current.joint.markPublicationObserved(receipt,guard);heldCheck();},
    });
    const result=await visit(held);heldCheck();
    for(const row of opened)if(!equal((await row.native.read()).state,row.nativeState)||!equal(await row.joint.read(),row.publication))throw fail('joint_activation_intent_stale');heldCheck();return result;

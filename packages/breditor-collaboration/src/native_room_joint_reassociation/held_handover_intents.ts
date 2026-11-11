@@ -1,6 +1,7 @@
 /** Hold the sealed predecessor chain and its earlier metadata before the
  * latest association can create anything or consult new Native controls. */
 import type {SelectedNativeRecoveryScope} from '../selected_native_recovery/contract.js';
+import type {IntentObservationGuard} from '../persistence/intent_observation_guard.js';
 import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
 import {checkColdJointActivationOrigin,type ColdJointHandoverOriginWork} from '../native_room_joint_activation/cold_origin.js';
 import {RoomHandoverActivationIntentStore} from '../room_native_handover_activation_intent/store.js';
@@ -16,11 +17,11 @@ export interface HeldHandoverReassociationIntents {
  readonly native:RoomHandoverActivationIntentStore;
  readonly revocations:readonly AbortSignal[];
  check():void;
- observeNativeStarted():Promise<void>;
- observeNativeReceipt(receipt:SharedDurableNativeActivationReceipt):Promise<void>;
+ observeNativeStarted(guard:IntentObservationGuard):Promise<void>;
+ observeNativeReceipt(receipt:SharedDurableNativeActivationReceipt,guard:IntentObservationGuard):Promise<void>;
  requireNativeReceipt(receipt:SharedDurableNativeActivationReceipt):void;
- observePublicationStarted():Promise<void>;
- observePublicationReceipt(receipt:SharedNativeRoomPublicationReceipt):Promise<void>;
+ observePublicationStarted(guard:IntentObservationGuard):Promise<void>;
+ observePublicationReceipt(receipt:SharedNativeRoomPublicationReceipt,guard:IntentObservationGuard):Promise<void>;
 }
 
 export async function withHeldHandoverReassociationIntents<T>(
@@ -35,11 +36,11 @@ export async function withHeldHandoverReassociationIntents<T>(
  const states:(()=>Promise<void>)[]=[];
  let active=true,last:RoomHandoverActivationIntentStore|undefined,primary:unknown,failed=false;
  let current:{
-  observeStarted():Promise<void>;
-  observeReceipt(receipt:SharedDurableNativeActivationReceipt):Promise<void>;
+  observeStarted(guard:IntentObservationGuard):Promise<void>;
+  observeReceipt(receipt:SharedDurableNativeActivationReceipt,guard:IntentObservationGuard):Promise<void>;
   requireReceipt(receipt:SharedDurableNativeActivationReceipt):void;
-  observePublicationStarted():Promise<void>;
-  observePublicationReceipt(receipt:SharedNativeRoomPublicationReceipt):Promise<void>;
+  observePublicationStarted(guard:IntentObservationGuard):Promise<void>;
+  observePublicationReceipt(receipt:SharedNativeRoomPublicationReceipt,guard:IntentObservationGuard):Promise<void>;
  }|undefined;
  const base=()=>{if(!active)throw fail('joint_activation_closed');origin.check();options.checkAuthority();origin.check();};
  const check=()=>{base();for(const held of checks)held();base();};
@@ -56,11 +57,11 @@ export async function withHeldHandoverReassociationIntents<T>(
    let savedJoint=await joint.open();
    checks.push(joint.check);revocations.push(joint.revoked);
    current={
-    async observeStarted(){savedNative=(await native.markRequestStarted()).state;},
-    async observeReceipt(receipt){savedNative=(await native.markReceiptObserved(receipt)).state;},
+    async observeStarted(guard:IntentObservationGuard){savedNative=(await native.markRequestStarted(guard)).state;},
+    async observeReceipt(receipt,guard){savedNative=(await native.markReceiptObserved(receipt,guard)).state;},
     requireReceipt(receipt){if(savedNative.phase!=='receipt-observed'||!equal(savedNative.receipt,receipt))throw fail('joint_activation_intent_stale');},
-    async observePublicationStarted(){savedJoint=await joint.markPublicationStarted();},
-    async observePublicationReceipt(receipt){savedJoint=await joint.markPublicationObserved(receipt);},
+    async observePublicationStarted(guard:IntentObservationGuard){savedJoint=await joint.markPublicationStarted(guard);},
+    async observePublicationReceipt(receipt,guard){savedJoint=await joint.markPublicationObserved(receipt,guard);},
    };
    states.push(async()=>{
     if(!equal((await native.read()).state,savedNative)||!equal(await joint.read(),savedJoint))throw fail('joint_activation_intent_stale');
@@ -71,11 +72,11 @@ export async function withHeldHandoverReassociationIntents<T>(
    heldCheck();
    const result=await visit(Object.freeze({
     native:last!,revocations:Object.freeze([...revocations,...priorRevocations]),check:heldCheck,
-    async observeNativeStarted(){heldCheck();await current!.observeStarted();heldCheck();},
-    async observeNativeReceipt(receipt:SharedDurableNativeActivationReceipt){heldCheck();await current!.observeReceipt(receipt);heldCheck();},
+    async observeNativeStarted(guard:IntentObservationGuard){heldCheck();await current!.observeStarted(guard);heldCheck();},
+    async observeNativeReceipt(receipt:SharedDurableNativeActivationReceipt,guard:IntentObservationGuard){heldCheck();await current!.observeReceipt(receipt,guard);heldCheck();},
     requireNativeReceipt(receipt:SharedDurableNativeActivationReceipt){heldCheck();current!.requireReceipt(receipt);},
-    async observePublicationStarted(){heldCheck();await current!.observePublicationStarted();heldCheck();},
-    async observePublicationReceipt(receipt:SharedNativeRoomPublicationReceipt){heldCheck();await current!.observePublicationReceipt(receipt);heldCheck();},
+    async observePublicationStarted(guard:IntentObservationGuard){heldCheck();await current!.observePublicationStarted(guard);heldCheck();},
+    async observePublicationReceipt(receipt:SharedNativeRoomPublicationReceipt,guard:IntentObservationGuard){heldCheck();await current!.observePublicationReceipt(receipt,guard);heldCheck();},
    }));
    heldCheck();
    for(const unchanged of states)await unchanged();

@@ -12,6 +12,7 @@ import {JointHandoverReassociationIntentStore as Store,JointReassociationIntentS
 import {persistHandoverReassociation} from '../packages/breditor-collaboration/dist/native_room_joint_reassociation/handover_persist.js';
 import {prepareJointHandoverReassociation,resumeJointHandoverReassociationPreparation} from '../packages/breditor-collaboration/dist/native_room_joint_reassociation/handover_prepare.js';
 import {ColdJointRoomActivationAttempt,prepareColdJointHandoverRestart,resumeColdJointHandoverRestartPreparation,confirmColdJointHandoverRestart,continueColdJointHandoverRestartMetadata,publishColdJointHandoverRestart} from '../packages/breditor-collaboration/dist/native_room_joint_activation/cold_attempt.js';
+import {JointRoomActivationIntentStore as OriginalJointStore,jointRoomPublicationBinding as originalBinding} from '../packages/breditor-collaboration/dist/native_room_joint_activation/intent_store.js';
 import {confirmHeldColdNative} from '../packages/breditor-collaboration/dist/native_room_joint_activation/cold_variant.js';
 import {confirmJointHandoverReassociation,checkHandoverReassociationConfirmation} from '../packages/breditor-collaboration/dist/native_room_joint_reassociation/handover_confirm.js';
 import {continueHandoverReassociationMetadata,publishHandoverReassociation} from '../packages/breditor-collaboration/dist/native_room_joint_reassociation/handover_publish.js';
@@ -169,6 +170,54 @@ test('a sealed publication observation is exact and a cold retry cannot reset or
  assert.deepEqual(await databaseByteSnapshot(choice.plan.database),original);
 });
 
+for(const family of ['native','original publication','restart publication']){
+ test(family+' aborts an observation when custody ends before the transaction commits',async()=>{
+  const choice=select(draft('observation-revoked'));
+  const nativeFamily=family==='native',originalFamily=family==='original publication';
+  const store=nativeFamily?new NativeStore(choice.plan.activation,options()):originalFamily?OriginalJointStore.acrossHandover(root,options()):new Store(choice,options());
+  const namespace=nativeFamily?choice.plan.activation.database:originalFamily?root.plan.database:choice.plan.database;
+  const selected=originalFamily?root:choice;
+  const receipt=nativeFamily
+   ?{format:'breditor/durable-native-activation-control-receipt',formatVersion:1,selection:choice.plan.activation.activation,scope:'actual-held-native-service-only'}
+   :{format:'breditor/native-room-publication-receipt',formatVersion:1,selection:selected.plan.publication,
+    joint:originalFamily?originalBinding(root):binding(choice),scope:'actual-held-native-service-and-bound-listener; joint-association-only'};
+  const start=guard=>nativeFamily?store.markRequestStarted(guard):store.markPublicationStarted(guard);
+  const record=guard=>nativeFamily?store.markReceiptObserved(receipt,guard):store.markPublicationObserved(receipt,guard);
+  const state=async()=>{const read=await store.read();return nativeFamily?read.state:read;};
+  const put=IDBObjectStore.prototype.put;
+  async function revokeBeforeCommit(mark,phase){
+   const before=await databaseByteSnapshot(namespace);
+   const custody=new AbortController();
+   let writes=0,error;
+   try{
+    IDBObjectStore.prototype.put=function(value,key){
+     const request=put.call(this,value,key);
+     if(this.transaction.db.name===namespace&&key==='state'){writes++;custody.abort();}
+     return request;
+    };
+    try{await mark({check:()=>custody.signal.throwIfAborted(),signal:custody.signal});}
+    catch(cause){error=cause;}
+   }finally{IDBObjectStore.prototype.put=put;}
+   assert.equal(writes,1,'Revocation must happen after a state write is queued');
+   assert.equal((await state()).phase,phase,'The aborted observation must leave the previous durable state');
+   assert.deepEqual(await databaseByteSnapshot(namespace),before);
+   assert.ok(error,'The revoked operation must refuse');
+  }
+  try{
+   if(nativeFamily)await store.open({...originalEncoding(),choice:choice.plan.activation});
+   else await store.open(true);
+   await revokeBeforeCommit(start,'prepared');
+   const live=new AbortController(),guard={check:()=>live.signal.throwIfAborted(),signal:live.signal};
+   await start(guard);
+   assert.equal((await state()).revision,1);
+   await revokeBeforeCommit(record,'request-started');
+   await record(guard);
+   assert.deepEqual((await state()).receipt,receipt);
+   assert.equal((await state()).revision,2);
+  }finally{await store.close();}
+ });
+}
+
 test('revoking the selected connection ends its journal guard and leaves the exact sealed choice retryable',async()=>{
  const choice=select(draft('revoked')),store=new Store(choice,options());
  const openDatabase=IDBFactory.prototype.open;
@@ -280,18 +329,34 @@ test('sealed confirmation requires a fresh decision and authenticated reply even
   await target.open({...encoding,choice:choice.plan.activation});
   await withHandoverActivationControls({handover:choice.plan.activation.handover},choice.plan.activation.activation,async controllers=>{
    const path=heldHandoverActivationPath(controllers.path,choice.plan.activation.handover);
-   const activation=nativeActivationHostPort(controllers.activation),scope=new AbortController();
+   const activation=nativeActivationHostPort(controllers.activation);
+   let scope=new AbortController();
    let inspections=0,phase='prepared';
    const journal={
     check:target.check,revocations:[target.revoked],
-    async observeNativeStarted(){phase=(await target.markRequestStarted()).state.phase;},
-    async observeNativeReceipt(receipt){phase=(await target.markReceiptObserved(receipt)).state.phase;},
+    async observeNativeStarted(guard){phase=(await target.markRequestStarted(guard)).state.phase;},
+    async observeNativeReceipt(receipt,guard){phase=(await target.markReceiptObserved(receipt,guard)).state.phase;},
    };
    const confirm=approve=>confirmHeldColdNative(scope,journal,activation,approve,original.check,async()=>{inspections++;},path);
    await assert.rejects(confirm(()=>false),code('asset_adoption_policy'));
    assert.equal(inspections,1);
    assert.equal(controllers.requests.length,0);
    assert.equal((await target.read()).state.phase,'prepared');
+
+   const put=IDBObjectStore.prototype.put;
+   let cancelled=0;
+   try{
+    IDBObjectStore.prototype.put=function(value,key){
+     const request=put.call(this,value,key);
+     if(this.transaction.db.name===choice.plan.activation.database&&key==='state'){cancelled++;scope.abort();}
+     return request;
+    };
+    await assert.rejects(confirm(()=>true),code('activation_outcome_unknown'));
+   }finally{IDBObjectStore.prototype.put=put;}
+   assert.equal(cancelled,1);
+   assert.equal((await target.read()).state.phase,'prepared');
+   assert.equal(controllers.requests.length,0);
+   scope=new AbortController();
 
    controllers.respond(()=>{
     assert.equal(phase,'request-started');
@@ -310,7 +375,7 @@ test('sealed confirmation requires a fresh decision and authenticated reply even
    assert.equal(controllers.requests.length,2);
    assert.deepEqual(await confirm(()=>true),receipt);
    assert.equal(controllers.requests.length,3);
-   assert.equal(inspections,8);
+   assert.equal(inspections,10);
   });
   assert.deepEqual(await databaseByteSnapshot(encoding.choice.database),saved);
  }finally{await target.close();await original.close();}

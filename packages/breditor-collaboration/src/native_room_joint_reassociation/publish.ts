@@ -36,11 +36,11 @@ export async function publishReassociatedRoom(context:ReassociationActionContext
    if(!equal((await scope.retainCurrent()).current.selection,continued.choice.target))throw fail('joint_activation_intent_stale');
    check();
    started=true;
-   await held.observePublicationStarted();
+   await held.observePublicationStarted(waits);
    check();
    const receipt=await port.publish(jointReassociationPublicationBinding(choice),check,waits.signal);
    check();
-   await held.observePublicationReceipt(receipt);
+   await held.observePublicationReceipt(receipt,waits);
    check();
    return Object.freeze({receipt,continued});
   }catch(error){

@@ -239,6 +239,12 @@ later predecessor if the recorded cut still appears in the verified path. The
 SDK applies this rule before retaining a new intent and again before checking
 the original provider receipt and bytes with newly authenticated controls.
 
+Native activation and publication observations hold the same live approval
+and custody through the IndexedDB state transaction. Losing that authority
+before commit aborts the queued state write. If the write or the Native
+operation already committed, the exact retained intent can be checked again
+with a fresh authenticated request. The journal alone never grants authority.
+
 The Native process fixture exits twice in each of the prepared and committed
 cases. Each restart reopens the pinned archives, verifies fourteen protected
 streams, and offers fresh controls for the original listener. The prepared

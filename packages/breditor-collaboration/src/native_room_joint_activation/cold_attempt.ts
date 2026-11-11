@@ -196,9 +196,9 @@ export class ColdJointRoomActivationAttempt<F extends ColdActivationFamily=ColdO
     await decideColdActivation(this.#choice,target.approvePublication!,waits);check();
     if(!equal((await scope.retainCurrent()).current.selection,this.#variant.cut(continued)))throw fail('joint_activation_intent_stale');
     await target.verify(waits.signal);check();
-    started=true;await origin.observePublicationStarted();check();
+    started=true;await origin.observePublicationStarted(waits);check();
     const result=await port.publish(jointRoomPublicationBinding(this.#choice),check,waits.signal);check();
-    await origin.observePublicationReceipt(result);check();this.#continued=continued;return result;
+    await origin.observePublicationReceipt(result,waits);check();this.#continued=continued;return result;
    }catch(error){if(started)throw publicationFailure('publication_outcome_unknown',error);throw error;}
    finally{waits?.close();target.close();}
   });this.#check();this.#published=receipt;return receipt;

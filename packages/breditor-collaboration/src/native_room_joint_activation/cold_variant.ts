@@ -69,11 +69,11 @@ export async function confirmHeldColdNative(
   await path?.check(waits.signal);waits.check();
   await inspect(waits.signal);waits.check();
   started=true;
-  await origin.observeNativeStarted();waits.check();
+  await origin.observeNativeStarted(waits);waits.check();
   await path?.check(waits.signal);waits.check();
   const receipt=await port.commit(waits.check,waits.signal);waits.check();
   await path?.check(waits.signal);waits.check();
-  await origin.observeNativeReceipt(receipt);waits.check();
+  await origin.observeNativeReceipt(receipt,waits);waits.check();
   return receipt;
  }catch(error){if(started)throw activationFailure('activation_outcome_unknown',error);throw error;}
  finally{waits.close();}
