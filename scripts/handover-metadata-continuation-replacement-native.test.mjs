@@ -91,7 +91,12 @@ test('the private replacement continues acknowledged and pending metadata across
    const saved=new Map(await Promise.all(destinations.map(async name=>[name,await databaseByteSnapshot(name)])));
    let expired,observation;
    const request=globalThis.fetch;
-   globalThis.fetch=()=>{throw Error('Prior sealed metadata evidence must not access HTTP');};
+   globalThis.fetch=(value,...args)=>{
+    const url=new URL(value instanceof Request?value.url:String(value));
+    // The fixture decodes verified local raster bytes through object URLs.
+    assert.equal(url.protocol,'blob:','Prior sealed metadata evidence must not access HTTP');
+    return request(value,...args);
+   };
    try{
     await visit((scope,witness)=>withOriginalMetadataJournals(scope,witness,bundle,async origin=>{
      if(verifyForeign){
