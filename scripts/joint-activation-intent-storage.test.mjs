@@ -2,7 +2,7 @@
  * used only to test the new descriptor/store. No test asserts Native serving,
  * actor transfer or whole-room readiness from these records. */
 import test,{before,after} from 'node:test';import assert from 'node:assert/strict';
-import {createHash} from 'node:crypto';import {IDBObjectStore} from 'fake-indexeddb';
+import {createHash} from 'node:crypto';import {IDBFactory,IDBObjectStore,forceCloseDatabase} from 'fake-indexeddb';
 import {completeControlFixtures} from './fixtures/physical-recovery-control/complete-fixtures.mjs';
 import {assertActivationReopensAfterFailedClose,assertActivationReopensAfterLateClose} from './fixtures/late-activation-intent-open.mjs';
 import {acceptedControlTransport} from './fixtures/physical-recovery-control/accepted-transport.mjs';
@@ -58,6 +58,29 @@ test('publication observations survive cold exact reopen while exposing no owner
  try{await a.open(true);await assert.rejects(a.markPublicationObserved(expected));assert.equal((await a.markPublicationStarted()).phase,'request-started');const result=await a.markPublicationObserved(expected);assert.equal(result.phase,'receipt-observed');assert.deepEqual(result.receipt,expected);assert.deepEqual(await a.markPublicationStarted(),result);await a.close();
   const b=new Store(selected,options());try{assert.deepEqual(await b.open(),result);assert.equal('takeOwner'in b,false);assert.equal('activate'in b,false);assert.equal('approve'in b,false);const wrong=structuredClone(expected);wrong.joint.sha256[0]^=1;await assert.rejects(b.markPublicationObserved(wrong));assert.deepEqual(await b.read(),result);}finally{await b.close();}
  }finally{await a.close();}
+});
+test('an unexpected close revokes the joint intent guard and keeps its exact prepared rows reopenable',async()=>{
+ const selected=choice(),original=IDBFactory.prototype.open;
+ let connection;
+ IDBFactory.prototype.open=function(name,...args){
+  const request=original.call(this,name,...args);
+  if(name===selected.plan.database)request.addEventListener('success',()=>{connection=request.result;},{once:true});
+  return request;
+ };
+ const store=new Store(selected,options());
+ try{
+  const prepared=await store.open(true);
+  assert.ok(connection);
+  const closed=new Promise(resolve=>connection.addEventListener('close',resolve,{once:true}));
+  forceCloseDatabase(connection);
+  await closed;
+  assert.throws(()=>store.check(),code('joint_activation_intent_closed'));
+  assert.equal(store.revoked.aborted,true);
+  await assert.rejects(store.markPublicationStarted(),code('joint_activation_intent_closed'));
+  await store.close();
+  const next=new Store(selected,options());
+  try{assert.deepEqual(await next.open(),prepared);}finally{await next.close();}
+ }finally{IDBFactory.prototype.open=original;await store.close();}
 });
 test('descriptor-pin mismatch and exact stored corruption refuse without repairing or replacing data',async()=>{
  const selected=choice(),changed={...selected,sha256:'0'.repeat(64)},a=new Store(changed,options());try{await assert.rejects(a.open(true),code('joint_activation_intent_integrity'));}finally{await a.close();}assert.equal((await indexedDB.databases()).some(row=>row.name===selected.plan.database),false);

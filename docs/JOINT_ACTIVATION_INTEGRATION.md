@@ -8,6 +8,12 @@ original activation intent, commit the Native service, reconstruct the clients
 with their actor custody, and continue metadata before publishing the service.
 The replacement stays private until the last operation succeeds.
 
+An unexpected closure of the joint intent database ends a pending publication
+decision. The replacement remains private. A fresh attempt can reopen the exact
+descriptor and its last durable publication observation.
+Run the installed intent and origin checks with
+`node scripts/check-metadata-continuation-installed.mjs --joint-intent-contracts`.
+
 `JointRoomActivationAttempt` owns the warm operation. Its separate
 `ColdJointRoomActivationAttempt` recipient reconstructs an interrupted local
 operation from existing complete intent data and fresh actors. A saved phase or
@@ -40,6 +46,46 @@ Source and target visitors expire with their actual lifetimes. Existing ordinary
 metadata APIs retain their strict field and family checks; held-target and
 cross-family inspection are separate, explicitly admitted composition paths.
 The new owners have no package-root export.
+
+## Sealed handover
+
+`JointRoomActivationAttempt.beginAcrossHandover` reserves the actual original
+owners and uses a distinct joint intent format. Its descriptor binds the complete
+sealed path, the original metadata pins, the selected replacement execution and
+the authenticated Native publication control. The publication request associates
+its receipt with the exact serialized descriptor.
+
+The original metadata owner must belong to the held source visit. After a
+confirmed Native commit, the coordinator retires that source and transfers its
+actors to the replacement. Metadata continuation and publication require a
+genuine promoted target and the exact selected handover path. Publication
+requires a fresh metadata replay and a separate approval. If the reply is
+lost, the replacement remains private until an explicit retry confirms the same
+receipt and the coordinator records it.
+
+`ColdJointRoomActivationAttempt.resumeAcrossHandover` reconstructs private
+clients from the existing descriptor and fresh actors after an interruption.
+It reopens the original review and metadata journals under the promoted target
+visit and reauthenticates the selected sealed path for each Native
+confirmation. A previous receipt does not grant client custody or publication.
+Reassociation with a different Native process remains a separate operation.
+
+Build the collaboration package and the Native fixture with
+`node scripts/build-handover-native-activation.mjs`. Run
+`npm run test:collaboration:joint-handover` against source and
+`npm run test:collaboration:joint-handover:installed` against independently
+installed package archives. The cold checks are
+`npm run test:collaboration:cold-joint-handover` and
+`npm run test:collaboration:cold-joint-handover:installed`. They interrupt a
+target transaction, close the first owner and open fresh genuine controllers.
+The Native tests use controlled Node storage,
+actual Rust HTTP controls, seven clients, fourteen offline streams and real
+asset acknowledgements.
+
+Both candidate profiles run the source and independent-package checks for warm
+and interrupted handovers before checking the readiness inventory. Each
+installed check emits its own fresh report with the verified publication and
+final delivery result.
 
 A cancelled IndexedDB open keeps its namespace reserved until the actual
 request settles. If the caller has already closed the attempt, the settlement

@@ -1,4 +1,4 @@
-/** Independent archives execute the complete metadata-continuation workset.
+/** Independent archives execute the selected complete recovery workset.
  * Module locations alone change; real Native and source assertions stay literal. */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -9,10 +9,17 @@ import {pathToFileURL} from 'node:url';
 const root=resolve(new URL('../',import.meta.url).pathname);
 const {sourceEvidence,saveEvidence}=await import(pathToFileURL(join(root,'scripts/candidate-release/evidence.mjs')));
 const {searchConsumerLock,verifySearchConsumerRegistry}=await import(pathToFileURL(join(root,'scripts/search-consumer-lock.mjs')));
-if(process.argv.length!==2)throw Error('Run all metadata continuation cases without filters');
-const expectedCases=17;
-const tests=['scripts/metadata-continuation-contracts.test.mjs','scripts/metadata-continuation-replacement-native.test.mjs','scripts/handover-metadata-continuation-replacement-native.test.mjs'];
-const source=sourceEvidence(root),directory=fs.mkdtempSync('/private/tmp/breditor-metadata-continuation-installed-'),archives=join(directory,'archives'),consumer=join(directory,'consumer'),sha=data=>createHash('sha256').update(data).digest('hex');fs.mkdirSync(archives);fs.mkdirSync(consumer);
+const cold=process.argv.length===3&&process.argv[2]==='--cold-joint-handover';
+const contracts=process.argv.length===3&&process.argv[2]==='--joint-intent-contracts';
+const joint=cold||contracts||process.argv.length===3&&process.argv[2]==='--joint-handover';
+if(process.argv.length!==2&&!joint)throw Error('Select a complete recovery workset without filters');
+const expectedCases=joint?(contracts?21:22):17;
+const name=contracts?'joint-intent-contracts':cold?'cold-joint-handover-activation':joint?'joint-handover-activation':'metadata-continuation';
+const tests=joint
+ ?['scripts/joint-activation-intent-storage.test.mjs','scripts/joint-activation-metadata-origin-contracts.test.mjs',...(contracts?[]:[cold?'scripts/cold-joint-handover-activation-complete-native.test.mjs':'scripts/joint-handover-activation-complete-native.test.mjs'])]
+ :['scripts/metadata-continuation-contracts.test.mjs','scripts/metadata-continuation-replacement-native.test.mjs','scripts/handover-metadata-continuation-replacement-native.test.mjs'];
+const types=joint?'scripts/fixtures/native-joint-activation/types.mts':'scripts/fixtures/metadata-continuation/types.mts';
+const source=sourceEvidence(root),directory=fs.mkdtempSync('/private/tmp/breditor-'+name+'-installed-'),archives=join(directory,'archives'),consumer=join(directory,'consumer'),sha=data=>createHash('sha256').update(data).digest('hex');fs.mkdirSync(archives);fs.mkdirSync(consumer);
 const folders=['breditor-browser','breditor-experimental-rich-content','breditor-collaboration'],mapping=new Map(folders.map(name=>[name,JSON.parse(fs.readFileSync(join(root,'packages',name,'package.json'))).name]));
 const packs=JSON.parse(execFileSync('npm',['pack','--offline','--ignore-scripts','--json','--pack-destination',archives,...folders.map(name=>join(root,'packages',name))],{cwd:root,encoding:'utf8',maxBuffer:8*1024*1024}));
 const producer=JSON.parse(fs.readFileSync(join(root,'package-lock.json'))),locked=searchConsumerLock(producer,packs.map(pack=>({name:pack.name,path:join(archives,pack.filename)})));locked.manifest.dependencies.undici=producer.packages['node_modules/undici'].version;
@@ -20,10 +27,38 @@ fs.writeFileSync(join(consumer,'package.json'),JSON.stringify(locked.manifest));
 const registryArtifacts=verifySearchConsumerRegistry(producer,JSON.parse(fs.readFileSync(join(consumer,'package-lock.json'))));for(const name of mapping.values())assert.ok(fs.realpathSync(join(consumer,'node_modules',name)).startsWith(consumer+'/node_modules/'));
 const copied=[],seen=new Set();
 function copyScript(path){if(seen.has(path))return;seen.add(path);const original=fs.readFileSync(join(root,path),'utf8'),target=join(consumer,path),rewrites=[];const text=original.replace(/(['"])((?:\.\.\/)+)packages\/(breditor-[^/]+)\/([^'"]+)\1/g,(from,quote,_prefix,folder,tail)=>{const name=mapping.get(folder);assert.ok(name,folder);let location=relative(dirname(target),join(consumer,'node_modules',name,tail));if(!location.startsWith('.'))location='./'+location;if(tail.endsWith('/')&&!location.endsWith('/'))location+='/';const to=quote+location+quote;rewrites.push([from,to]);return to;});let reversed=text;for(const[from,to]of rewrites.toReversed())reversed=reversed.replaceAll(to,from);assert.equal(reversed,original);assert.equal(text.includes('/Users/s/'),false);assert.equal(text.includes(root),false,'Independent test cannot refer to its producer checkout');assert.equal(/(?:\.\.\/)+packages\/breditor-/.test(text),false);fs.mkdirSync(dirname(target),{recursive:true});fs.writeFileSync(target,text);copied.push({path,sourceSha256:sha(original),installedSha256:sha(text),reversibleModuleLocationsOnly:true});for(const hit of original.matchAll(/['"](\.[^'"]+\.mjs)['"]/g)){const dependency=resolve(dirname(join(root,path)),hit[1]);if(dependency.startsWith(root+'/scripts/')&&fs.existsSync(dependency))copyScript(relative(root,dependency));}}
-for(const path of tests)copyScript(path);copyScript('scripts/fixtures/metadata-continuation/types.mts');
+for(const path of tests)copyScript(path);copyScript(types);
 const runtime=[];for(const path of['target/owned-history-relay-native/release/examples/complete_cohort_control_functional','target/owned-history-relay-native/release/examples/selected_suggestion_delivery_functional','target/handover-activation-native/release/examples/native_handover_activation_sdk_functional',...fs.readdirSync(join(root,'target/promoted-shared-web')).map(name=>'target/promoted-shared-web/'+name),'crates/breditor-core/tests/fixtures/rich-local-root.json']){const from=join(root,path),to=join(consumer,path);fs.mkdirSync(dirname(to),{recursive:true});fs.copyFileSync(from,to);assert.equal(sha(fs.readFileSync(from)),sha(fs.readFileSync(to)));runtime.push({path,sha256:sha(fs.readFileSync(from)),bytes:fs.statSync(from).size});}
 let files=0;for(const[folder,name]of mapping){const from=join(root,'packages',folder),to=join(consumer,'node_modules',name);function compare(path){for(const child of fs.readdirSync(join(from,path),{withFileTypes:true})){const next=join(path,child.name);if(child.isDirectory())compare(next);else if(child.isFile()){assert.equal(sha(fs.readFileSync(join(from,next))),sha(fs.readFileSync(join(to,next))),next);files++;}}}compare('dist');}
 assert.ok(runtime.some(row=>row.path.endsWith('breditor_shared_bg.wasm')&&row.sha256==='165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0'));
-execFileSync(join(root,'node_modules/.bin/tsc'),['--noEmit','--strict','--target','es2022','--module','nodenext','--moduleResolution','nodenext','--lib','es2022,dom,dom.iterable','--skipLibCheck','false','scripts/fixtures/metadata-continuation/types.mts'],{cwd:consumer,stdio:'inherit'});
-const state={format:'breditor/metadata-continuation-installed',formatVersion:1,source,directory,consumer,registryArtifacts,workspaceLinks:false,copied,runtime,matchingPackageDistFiles:files,archives:packs.map(pack=>({name:pack.name,path:join(archives,pack.filename),sha256:sha(fs.readFileSync(join(archives,pack.filename)))})),complete:false,wholeRoomActivated:false,v1Ready:false};saveEvidence(join(directory,'running.json'),state);saveEvidence(join(root,'target/metadata-continuation-installed-running.json'),{directory,consumer});console.log(JSON.stringify({directory,phase:'actual-seven-family-native-metadata-continuation'}));
-const path=join(directory,'contracts.log'),fd=fs.openSync(path,'wx'),child=spawn(process.execPath,['--test','--test-concurrency=1',...tests],{cwd:consumer,stdio:['ignore',fd,fd]});fs.closeSync(fd);const actual=await new Promise((resolve,reject)=>{child.once('error',reject);child.once('exit',(code,signal)=>resolve({pid:child.pid,code,signal}));});saveEvidence(join(directory,'exit.json'),actual);assert.equal(actual.code,0,'Read '+path);assert.equal(actual.signal,null);const log=fs.readFileSync(path,'utf8');for(const[key,n]of[['tests',expectedCases],['pass',expectedCases],['fail',0],['skipped',0],['cancelled',0]])assert.match(log,new RegExp('^# '+key+' '+n+'$','m'));assert.deepEqual(sourceEvidence(root),source);Object.assign(state,{complete:true,passed:true,cases:expectedCases,sourceUnchanged:true,logSha256:sha(log)});saveEvidence(join(directory,'result.json'),state);saveEvidence(join(root,'target/metadata-continuation-installed-result.json'),state);console.log(JSON.stringify({directory,passed:true,cases:expectedCases,matchingPackageDistFiles:files}));
+execFileSync(join(root,'node_modules/.bin/tsc'),['--noEmit','--strict','--target','es2022','--module','nodenext','--moduleResolution','nodenext','--lib','es2022,dom,dom.iterable','--skipLibCheck','false',types],{cwd:consumer,stdio:'inherit'});
+const state={format:'breditor/'+name+'-installed',formatVersion:1,source,directory,consumer,registryArtifacts,workspaceLinks:false,copied,runtime,matchingPackageDistFiles:files,archives:packs.map(pack=>({name:pack.name,path:join(archives,pack.filename),sha256:sha(fs.readFileSync(join(archives,pack.filename)))})),complete:false,wholeRoomActivated:false,v1Ready:false};
+saveEvidence(join(directory,'running.json'),state);
+saveEvidence(join(root,'target/'+name+'-installed-running.json'),{directory,consumer});
+console.log(JSON.stringify({directory,phase:contracts?name:joint?'sealed-whole-room-activation':'actual-seven-family-native-metadata-continuation'}));
+const path=join(directory,'contracts.log'),fd=fs.openSync(path,'wx'),child=spawn(process.execPath,['--test','--test-concurrency=1',...tests],{cwd:consumer,stdio:['ignore',fd,fd]});
+fs.closeSync(fd);
+const actual=await new Promise((resolve,reject)=>{child.once('error',reject);child.once('exit',(code,signal)=>resolve({pid:child.pid,code,signal}));});
+saveEvidence(join(directory,'exit.json'),actual);
+assert.equal(actual.code,0,'Read '+path);assert.equal(actual.signal,null);
+const log=fs.readFileSync(path,'utf8');
+for(const[key,n]of[['tests',expectedCases],['pass',expectedCases],['fail',0],['skipped',0],['cancelled',0]])assert.match(log,new RegExp('^# '+key+' '+n+'$','m'));
+assert.deepEqual(sourceEvidence(root),source);
+if(joint&&!contracts){
+ const marker='JOINT_COMPLETE_NATIVE ';
+ const observations=log.split('\n').filter(line=>line.startsWith('# '+marker));
+ assert.equal(observations.length,1);
+ const pin=JSON.parse(observations[0].slice(2+marker.length)),bytes=fs.readFileSync(pin.file);
+ assert.ok(relative(consumer,pin.file).startsWith('target/'));
+ assert.equal(bytes.length,pin.bytes);assert.equal(sha(bytes),pin.sha256);
+ const observed=JSON.parse(bytes);
+ assert.equal(observed.sealedHandover,true);assert.equal(observed.finalProviderReconciled,true);
+ assert.equal(observed.revokedPublicationApproval,true);
+ assert.equal(observed.coldJointOwnerReconstructionQualified,cold);
+ assert.equal(observed.originalProtocolDeliveries,14);
+ Object.assign(state,{wholeRoomActivated:true,observation:pin});
+}
+Object.assign(state,{complete:true,passed:true,cases:expectedCases,sourceUnchanged:true,logSha256:sha(log)});
+saveEvidence(join(directory,'result.json'),state);
+saveEvidence(join(root,'target/'+name+'-installed-result.json'),state);
+console.log(JSON.stringify({directory,passed:true,cases:expectedCases,matchingPackageDistFiles:files}));

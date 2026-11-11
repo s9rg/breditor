@@ -85,6 +85,8 @@ let readActivationInScope:(owner:SelectedLocalMetadataDelivery,scope:SelectedNat
 /** Trusted composition only. The genuine metadata parent must belong to this
  * exact held source visitor; matching namespaces or saved DATA are insufficient. */
 export const readLocalMetadataActivationInScope=(owner:SelectedLocalMetadataDelivery,scope:SelectedNativeRecoveryScope,choice:RoomActivationIntentChoice)=>readActivationInScope(owner,scope,choice);
+let readHandoverActivationInScope:(owner:SelectedLocalMetadataDelivery,scope:SelectedNativeRecoveryScope,choice:RoomHandoverActivationIntentChoice)=>Promise<RoomHandoverActivationRetainedIntent>;
+export const readLocalMetadataHandoverActivationInScope=(owner:SelectedLocalMetadataDelivery,scope:SelectedNativeRecoveryScope,choice:RoomHandoverActivationIntentChoice)=>readHandoverActivationInScope(owner,scope,choice);
 interface Children {versions:SharedDocumentVersions|null;suggestions:SharedSuggestionQueue|null;revisions:SharedSuggestionRevisions|null}
 async function choose(parent:LocalReviewMetadataParent,provided:MetadataInput){
  parent.check();const r=fields(provided,['database','lanes']),input=rows(r['lanes'],1024);if(input.length!==parent.choice.lanes.length)throw fail('local_metadata_delivery_policy');
@@ -154,6 +156,11 @@ export class SelectedLocalMetadataDelivery{
   readActivationInScope=(owner,scope,choice)=>{
    if(!owner||typeof owner!=='object'||!(#parent in owner)||owner.#parent.scope!==scope)return Promise.reject(activationIntentFailure('activation_intent_policy'));
    return read.call(owner,choice);
+  };
+  const readHandover=SelectedLocalMetadataDelivery.prototype.readNativeHandoverActivationIntent;
+  readHandoverActivationInScope=(owner,scope,choice)=>{
+   if(!owner||typeof owner!=='object'||!(#parent in owner)||owner.#parent.scope!==scope)return Promise.reject(activationIntentFailure('activation_intent_policy'));
+   return readHandover.call(owner,choice);
   };
  }
  #continueFacts(token:VerifiedMetadataContinuationFacts):Promise<void>{return this.#captureOperation(async()=>{
