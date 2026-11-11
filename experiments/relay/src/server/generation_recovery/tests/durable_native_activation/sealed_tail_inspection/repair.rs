@@ -27,6 +27,8 @@ use std::{
     sync::Arc,
 };
 
+mod process;
+
 struct SavedFiles {
     archive: PathBuf,
     suffix: PathBuf,

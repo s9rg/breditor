@@ -1,8 +1,15 @@
 //! Synchronize the selected active prefix without publishing a rotation or replacing its inode.
+mod interruption;
+pub(crate) use interruption::{NativeTailRepairInterruption, NativeTailRepairPoint};
+
 use crate::{Error, Recovery, Result, log::Log};
 
 impl Log {
-    pub(crate) fn complete_inspected_generation_prefix(&mut self, suffix_bytes: u64) -> Result<()> {
+    pub(crate) fn complete_inspected_generation_prefix(
+        &mut self,
+        suffix_bytes: u64,
+        interruption: NativeTailRepairInterruption,
+    ) -> Result<()> {
         self.ready()?;
         let state = self
             .generations
@@ -22,10 +29,13 @@ impl Log {
         }
         self.ready()?;
         if suffix_bytes != 0 {
+            interruption.reached(NativeTailRepairPoint::BeforeTruncate);
             self.file.set_len(self.bytes)?;
+            interruption.reached(NativeTailRepairPoint::Truncated);
         }
         // A retry after an ambiguous sync also synchronizes the selected already-complete cut.
         self.file.sync_all()?;
+        interruption.reached(NativeTailRepairPoint::Synced);
         let state = self.generations.as_mut().ok_or(Error::NeedsRecovery)?;
         state.refresh_active(&self.file)?;
         state.opening_length = None;
