@@ -1,4 +1,6 @@
 //! Physical rotation: verify -> sync intent -> link exact owned inode -> sync head -> publish.
+#[cfg(feature = "server")]
+pub(super) mod inspection;
 use super::{
     directory::Directory,
     format,
@@ -82,10 +84,10 @@ impl Generations {
         child.follows(&self.current().value, self.current().hash)?;
         Ok(child)
     }
-    fn active_cut(&self, log: &mut Log) -> Result<ClosedFile> {
+    fn active_cut(&self, log: &Log) -> Result<ClosedFile> {
         self.guard(&log.file, log.bytes)?;
         let bytes = held_file::read(&log.file, super::super::MAX_LOG)?;
-        log.file.seek(SeekFrom::Start(log.bytes))?;
+        (&log.file).seek(SeekFrom::Start(log.bytes))?;
         self.guard(&log.file, log.bytes)?;
         let active = &self.current().value.active;
         let parsed = scan::verify_records_from(

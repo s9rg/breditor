@@ -11,7 +11,8 @@ use super::{
     context::Context, coordinator::OperationalLogGenerationServerRoom, interruption::Interruption,
 };
 use crate::{
-    Error, Result, RoomRecoveryPolicy, credentials, log::generations::GenerationDirectory,
+    Error, Result, Room, RoomRecoveryPolicy, credentials,
+    log::{Log, generations::GenerationDirectory},
 };
 use std::path::Path;
 
@@ -20,6 +21,35 @@ pub(super) enum OpenMode {
     Resume,
     Committed,
     InspectNativePrefix,
+    #[cfg(feature = "server")]
+    InspectPendingRotation,
+}
+
+fn read_operating_log(directory: GenerationDirectory, mode: OpenMode) -> Result<Room> {
+    match mode {
+        #[cfg(feature = "server")]
+        OpenMode::InspectPendingRotation => {
+            let (log, records, recovery) = Log::open_owned_generations(directory)?;
+            if recovery.truncated_bytes != 0 {
+                return Err(Error::Contract(
+                    "pending rotation inspection requires a complete active log",
+                ));
+            }
+            Room::replay_records(log, records)
+        }
+        OpenMode::InspectNativePrefix => {
+            let (log, records, recovery) = Log::open_generation_prefix(directory)?;
+            if recovery.truncated_bytes == 0 {
+                Ok(Room::replay_loaded(log, records, recovery, false)?.0)
+            } else {
+                Room::replay_records(log, records)
+            }
+        }
+        OpenMode::Resume | OpenMode::Committed => {
+            let (log, records, recovery) = Log::open_complete_owned_generations(directory)?;
+            Ok(Room::replay_loaded(log, records, recovery, false)?.0)
+        }
+    }
 }
 impl OperationalLogGenerationServerRoom {
     /// Reacquire this actual joined recovery and its selected native/raster owners. A committed
@@ -93,7 +123,7 @@ impl OperationalLogGenerationServerRoom {
             backup.native(),
             &native_selection.witness,
             context.marker.selection.native_controls,
-            matches!(mode, OpenMode::InspectNativePrefix),
+            |directory| read_operating_log(directory, mode),
         )?;
         let native_controls = native.recovery_control_seal()?;
         let raster_directory = RasterDirectory::open(
@@ -111,7 +141,13 @@ impl OperationalLogGenerationServerRoom {
             raster,
         };
         let mut recovered = RecoveredLogGenerationServerRoom { custody, room: authority, assets };
-        recovered.check_source(backup, principal, !context.committed, &context.extra)?;
+        match mode {
+            // This mode is used only by the dedicated inspection, which checks the captured
+            // physical ancestry under the same retained component custody.
+            #[cfg(feature = "server")]
+            OpenMode::InspectPendingRotation => {}
+            _ => recovered.check_source(backup, principal, !context.committed, &context.extra)?,
+        }
         if matches!(mode, OpenMode::Resume) {
             context.publish(&recovered.custody.directory, &Interruption::default())?;
             recovered.check_source(backup, principal, !context.committed, &context.extra)?;

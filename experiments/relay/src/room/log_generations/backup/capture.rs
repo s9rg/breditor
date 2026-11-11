@@ -30,6 +30,17 @@ impl Room {
         Ok((self.generation_backup_from_files(files)?, suffix))
     }
 
+    #[cfg(feature = "server")]
+    pub(in crate::room::log_generations) fn export_inspected_pending_generation_rotation(
+        &mut self,
+        principal: &str,
+    ) -> Result<(ServerLogGenerationBackup, crate::log::generations::PendingNativeLogRotation)>
+    {
+        self.recovery_inventory_owner(principal)?;
+        let (files, rotation) = self.log.capture_pending_generation_rotation()?;
+        Ok((self.generation_backup_from_files(files)?, rotation))
+    }
+
     fn generation_backup_from_files(
         &self,
         files: crate::log::generations::GenerationFiles,

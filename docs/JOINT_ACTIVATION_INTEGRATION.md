@@ -241,6 +241,16 @@ history and raster bytes, then returns the surviving archive and registration
 inventory and releases the reopened locks. Retain that observed selection
 before reopening with all protected registrations for explicit activation.
 
+When the room still has a pending physical rotation, use
+`inspect_sealed_native_rotation`. It checks fresh authentication, the sealed
+checkpoint, the original operational owner, the retained archive floor and the
+current deployment epoch. It returns the complete archive and protected
+registration inventory at the head that is actually selected. Retain
+`rotation.evidence_bytes()` and its SHA-256 separately from the archive. These
+bytes cover the selected manifest, exact pending intent and transient files.
+Ordinary retained stages stay in the archive. Inspection leaves the original
+rotation in place, and the selected archive can restore into a separate location.
+
 When the active log ends inside a frame, use `inspect_sealed_native_tail`.
 It applies the same host authentication, deployment epoch, retained archive
 floor and original operational ownership checks. It returns the complete

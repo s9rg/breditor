@@ -12,6 +12,7 @@ mod http;
 mod publication_connections;
 mod versions;
 mod wire;
+pub use crate::log::generations::PendingNativeLogRotation;
 use crate::{Error, Result, Room};
 pub use authentication::Authentication;
 use axum::{
@@ -54,8 +55,8 @@ pub use generation_recovery::{
     PreparedNativeGenerationActivation, PreparedNativeGenerationActivationIdentity,
     PreparedPhysicalRoomRecoveryHost, ReopenedSealedNativeRestartHost,
     SealedNativeRestartBootstrap, SealedNativeRestartBootstrapCoverage,
-    SealedNativeRestartHostCoverage, SealedNativeRestartSelection, SealedNativeTailInspection,
-    SealedNativeTailRepairFiles, SealedNativeTailRepairOutcome,
+    SealedNativeRestartHostCoverage, SealedNativeRestartSelection, SealedNativeRotationInspection,
+    SealedNativeTailInspection, SealedNativeTailRepairFiles, SealedNativeTailRepairOutcome,
     ServerLogGenerationAssetAvailabilityRead, ServerLogGenerationAssetRecoveryState,
     ServerLogGenerationDeliveryContinuationIdentity, ServerLogGenerationDeliveryPathIdentity,
     ServerLogGenerationDeliveryPathRecoveryControl,
@@ -71,7 +72,7 @@ pub use generation_recovery::{
     VerifiedServerLogGenerationDeliveryContinuation, VerifiedServerLogGenerationDeliveryPath,
     VerifiedServerLogGenerationHandoverDeliveryPath, VerifiedServerLogGenerationRecoveryAssets,
     VerifiedServerLogGenerationRecoveryState, inspect_sealed_native_restart,
-    inspect_sealed_native_tail, open_sealed_native_restart_host,
+    inspect_sealed_native_rotation, inspect_sealed_native_tail, open_sealed_native_restart_host,
     prepare_durable_native_activation_control,
     prepare_log_generation_delivery_path_recovery_control,
     prepare_log_generation_delivery_recovery_control,
