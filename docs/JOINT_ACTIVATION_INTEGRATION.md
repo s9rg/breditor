@@ -49,6 +49,20 @@ The new owners have no package-root export.
 
 ## Sealed handover
 
+The sealed restart descriptor binds the original whole-room choice, the
+selected checkpoint and sealed path, the fresh publication controller and
+all prior metadata destinations. Each earlier descriptor keeps its own
+namespace and byte pin. The separate journal starts prepared and retains
+only advisory observations from the selected publication controller.
+
+The descriptor checks use the output directory from the actual sealed
+whole-room fixture. Set `BREDITOR_SEALED_RESTART_CHOICES` to the directory
+containing `actual-joint-complete-independent-plan.json` and
+`actual-joint-complete-continued-choice.json`. Run
+`node --test scripts/sealed-joint-reassociation-choice.test.mjs` for source and
+`node scripts/check-handover-activation-intent-installed.mjs --sealed-joint-choice`
+for independent package archives. These checks use controlled storage.
+
 `JointRoomActivationAttempt.beginAcrossHandover` reserves the actual original
 owners and uses a distinct joint intent format. Its descriptor binds the complete
 sealed path, the original metadata pins, the selected replacement execution and

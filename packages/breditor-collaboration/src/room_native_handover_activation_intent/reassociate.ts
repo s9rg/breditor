@@ -2,8 +2,6 @@
  * controllers. This action cannot request activation or carry forward a receipt. */
 import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
 import {archiveGuard} from '../archive_integrity/policy.js';
-import type {SharedServerLogGenerationHandoverDeliveryPathRecoveryControlSelection as Handover} from '../generation_delivery_path_control/handover.js';
-import type {SharedDurableNativeActivationSelection} from '../native_activation_control/contract.js';
 import {nativeActivationHostPort} from '../native_activation_control/host.js';
 import {existingDatabase} from '../participant_recovery/journal.js';
 import {fields} from '../physical_room_record_cut/policy.js';
@@ -11,12 +9,13 @@ import {roomActivationDatabase} from '../room_native_activation_intent/identity.
 import {fail} from '../room_native_activation_intent/policy.js';
 import {retainActivationChoice} from '../room_native_activation_intent/retain_choice.js';
 import {NativeReconstructionWaits} from '../selected_native_reconstruction/read_waits.js';
-import {assertHandoverActivationCapture,assertHandoverPathContinuation} from './capture_binding.js';
+import {assertHandoverActivationCapture} from './capture_binding.js';
 import type {RoomHandoverActivationEncodedCapture,RoomHandoverActivationIntentChoice,RoomHandoverActivationRetainedIntent} from './contract.js';
 import {roomHandoverActivationIntentChoice} from './identity.js';
 import {heldHandoverActivationPath} from './path.js';
 import type {RoomHandoverActivationPreparationPolicy} from './prepare.js';
 import {RoomHandoverActivationIntentStore} from './store.js';
+import {handoverActivationReassociationChoice} from './reassociate_choice.js';
 
 export interface PrepareHandoverActivationReassociationInput extends RoomHandoverActivationPreparationPolicy {
  readonly previous:RoomHandoverActivationIntentChoice;
@@ -27,17 +26,6 @@ export interface ResumeHandoverActivationReassociationInput {
 }
 
 const equal=(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b);
-function restartedChoice(previous:RoomHandoverActivationIntentChoice,database:string,activation:SharedDurableNativeActivationSelection,handover:Handover){
- if(database===previous.database)throw fail('activation_intent_policy');
- const old=previous.activation;
- if(activation.instance===old.instance||handover.current.instance===previous.handover.current.instance||
-    !equal(activation.current,old.current)||!equal(activation.previous.identity,old.previous.identity))throw fail('activation_intent_stale');
- const sameCheckpoint=equal(activation.previous,old.previous)&&equal(activation.planned,old.planned)&&equal(activation.checkpointSha256,old.checkpointSha256);
- const childCheckpoint=equal(activation.previous,old.planned)&&!equal(activation.checkpointSha256,old.checkpointSha256);
- if(!sameCheckpoint&&!childCheckpoint)throw fail('activation_intent_stale');
- assertHandoverPathContinuation(previous.handover,handover);
- return roomHandoverActivationIntentChoice({...previous,database,activation,handover});
-}
 
 function bind(
  old:Readonly<{intent:RoomHandoverActivationRetainedIntent;encoding:RoomHandoverActivationEncodedCapture}>,
@@ -110,7 +98,7 @@ async function prepare(
  if(typeof retain!=='function')throw fail('activation_intent_policy');
  const activation=nativeActivationHostPort(input['activation'] as PrepareHandoverActivationReassociationInput['activation']);
  const path=heldHandoverActivationPath(input['path'] as PrepareHandoverActivationReassociationInput['path']);
- const selected=restartedChoice(previous,database,activation.selection,path.selection);
+ const selected=handoverActivationReassociationChoice(previous,database,activation.selection,path.selection);
  const {wasm,signal}=options,check=archiveGuard(options.checkAuthority,signal);
  const guard=()=>{check();activation.check();path.guard(signal);check();};
  return withOriginalEncoding(previous,wasm,guard,[signal,...activation.signals,...path.signals],async(old,held,heldSignal)=>{
@@ -145,7 +133,7 @@ async function resume(
 ):Promise<RoomHandoverActivationIntentChoice>{
  const input=fields(provided,['previous','expected']);
  const previous=roomHandoverActivationIntentChoice(input['previous']),expected=roomHandoverActivationIntentChoice(input['expected']);
- const selected=restartedChoice(previous,expected.database,expected.activation,expected.handover);
+ const selected=handoverActivationReassociationChoice(previous,expected.database,expected.activation,expected.handover);
  if(!equal(expected,selected))throw fail('activation_intent_stale');
  const {wasm,signal}=options,check=archiveGuard(options.checkAuthority,signal);
  return withOriginalEncoding(previous,wasm,check,[signal],(old,held)=>save(bind(old,selected),held,true),opened);

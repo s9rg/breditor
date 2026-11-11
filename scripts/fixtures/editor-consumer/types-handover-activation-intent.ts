@@ -4,6 +4,9 @@ import type {RoomHandoverActivationIntentStore} from '../../../packages/breditor
 import {prepareHandoverActivationReassociation,resumeHandoverActivationReassociation} from '../../../packages/breditor-collaboration/dist/room_native_handover_activation_intent/reassociate.js';
 import type {PrepareHandoverActivationReassociationInput} from '../../../packages/breditor-collaboration/dist/room_native_handover_activation_intent/reassociate.js';
 import type {SharedArchiveIntegrityOptions} from '../../../packages/breditor-collaboration/dist/archive_integrity/contract.js';
+import {JointHandoverReassociationIntentStore,JointReassociationIntentStore} from '../../../packages/breditor-collaboration/dist/native_room_joint_reassociation/intent_store.js';
+import type {JointHandoverReassociationChoice} from '../../../packages/breditor-collaboration/dist/native_room_joint_reassociation/handover_contract.js';
+import type {JointReassociationChoice} from '../../../packages/breditor-collaboration/dist/native_room_joint_reassociation/contract.js';
 declare const old:RoomActivationIntentChoice,legacy:RoomActivationEncodedCapture,next:RoomHandoverActivationIntentChoice,store:RoomHandoverActivationIntentStore,encoded:RoomHandoverActivationEncodedCapture;
 const retained:Promise<RoomHandoverActivationRetainedIntent>=store.open(encoded);
 void retained;void next.handover.path.seal;
@@ -23,3 +26,14 @@ resumeHandoverActivationReassociation({previous:old,expected:next},options);
 prepareHandoverActivationReassociation({...preparation,encoded},options);
 // @ts-expect-error A caller cannot carry a receipt or readiness into a new selection.
 resumeHandoverActivationReassociation({previous:next,expected:next,receipt:null},options);
+
+declare const jointHandover:JointHandoverReassociationChoice,jointOrdinary:JointReassociationChoice;
+const joint=new JointHandoverReassociationIntentStore(jointHandover,options);
+void joint.open().then(state=>{
+ const format:'breditor/joint-native-handover-reassociation-state'=state.format;
+ return format;
+});
+// @ts-expect-error The sealed journal must use a separately selected restart choice.
+new JointHandoverReassociationIntentStore(jointOrdinary,options);
+// @ts-expect-error The ordinary restart journal cannot take a sealed choice.
+new JointReassociationIntentStore(jointHandover,options);
