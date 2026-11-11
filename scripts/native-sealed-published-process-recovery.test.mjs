@@ -4,6 +4,9 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {dirname,join} from 'node:path';
+import {WebSocket as Socket} from 'undici';
+import * as native from '../packages/breditor-collaboration/dist/runtime/breditor_shared.js';
+import {acknowledgePublishedEdits,publishedCommentText,publishedDocumentText,withPublishedEditor} from './fixtures/native-publication/published-edits.mjs';
 import {
  SharedDurableNativeActivationHost as Activation,
  SharedRelayAssets,
@@ -40,12 +43,17 @@ function assetClient(endpoint,client,authentication){
  });
 }
 
-test('a published sealed room restarts from the exact cut with a later acknowledged upload',{timeout:600000},async()=>{
+test('a published sealed room restarts from the exact cut with later acknowledged edits and upload',{timeout:600000},async()=>{
  const root=nativeHandoverActivationRoot(new URL('../',import.meta.url).pathname),request=globalThis.fetch;
+ const socket=Object.getOwnPropertyDescriptor(globalThis,'WebSocket'),origin='http://127.0.0.1:4187';
+ await native.default({module_or_path:readFileSync(new URL('../packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm',import.meta.url))});
+ Object.defineProperty(globalThis,'WebSocket',{configurable:true,value:class extends Socket{
+  constructor(url){super(url,{headers:{Origin:origin}});}
+ }});
  let host,transport,reader,processExited=false;
  globalThis.fetch=(url,options={})=>{
   const headers=new Headers(options.headers);
-  headers.set('Origin','http://127.0.0.1:4187');
+  headers.set('Origin',origin);
   return request(url,{...options,headers});
  };
  try{
@@ -53,7 +61,7 @@ test('a published sealed room restarts from the exact cut with a later acknowled
    nativeActivation:true,nativeHandoverActivation:true,nativeHandoverPublication:true,
    sealedProcessRecovery:true,suggestionGrants:true,
   });
-  const clients=host.fixture(host.initial).clients;
+  const fixture=host.fixture(host.initial),clients=fixture.clients;
   const client=clients.find(row=>row.principal==='alice'&&!row.observer);
   assert.ok(client);
   await host.handover();
@@ -61,6 +69,7 @@ test('a published sealed room restarts from the exact cut with a later acknowled
   await assert.rejects(host.preparePublishedProcessRecovery(offer,offer.case),/Observe actual authenticated publication first/);
   const oldAuth=await host.authentication(client);
   const published=await publish(host,offer);
+  const accepted=await acknowledgePublishedEdits(fixture,client,oldAuth);
   transport=assetClient(offer.case.clientEndpoint,client,oldAuth);
   assert.equal(await transport.readBytes(thirdAsset),undefined);
   const info={asset:thirdAsset,mime:'image/png',bytes:thirdPixel.length,width:1,height:1};
@@ -125,14 +134,44 @@ test('a published sealed room restarts from the exact cut with a later acknowled
   const stale=assetClient(fresh.case.clientEndpoint,client,oldAuth);
   try{await assert.rejects(stale.readBytes(thirdAsset));}
   finally{stale.dispose();}
+  const peer=clients.find(row=>row!==client&&row.principal==='alice'&&!row.observer);
+  assert.ok(peer);
+  await withPublishedEditor(fixture,peer,await host.authentication(peer),async({core})=>{
+   assert.ok(core.documentJson().includes(publishedDocumentText),'A different protected writer receives the recovered document edit');
+   assert.ok(JSON.stringify(core.reviewSnapshot().view).includes(publishedCommentText),'A different protected actor receives the recovered comment');
+  });
+  await withPublishedEditor(fixture,client,auth,async({core,document,commentProgress,disconnect})=>{
+   assert.equal(document.state().serverThrough,accepted.documentClock);
+   assert.equal(document.state().serverPrefixDigest,accepted.documentPrefix);
+   assert.deepEqual(commentProgress().accepted,accepted.commentClock);
+   disconnect();
+   const documentAfter=core.documentJson(),withoutEdit=JSON.parse(documentAfter);
+   const paragraph=withoutEdit.root.children.find(row=>row.properties?.['breditor/block-id']==='p');
+   const run=paragraph.children.find(row=>row.kind==='text'&&row.text.includes(publishedDocumentText));
+   assert.ok(run);
+   run.text=run.text.replace(publishedDocumentText,'');
+   const visible=()=>core.reviewSnapshot().view.threads.map(row=>row.thread).filter(thread=>!thread.hidden);
+   const reviewAfter=visible(),own=reviewAfter.find(thread=>JSON.stringify(thread).includes(publishedCommentText));
+   assert.ok(own);
+   assert.equal(core.undo(),true);
+   assert.deepEqual(JSON.parse(core.documentJson()),withoutEdit);
+   assert.equal(core.redo(),true);
+   assert.equal(core.documentJson(),documentAfter);
+   assert.equal(core.undoReview().kind,'committed');
+   assert.deepEqual(visible(),reviewAfter.filter(thread=>thread.id!==own.id));
+   assert.equal(core.redoReview().kind,'committed');
+   assert.deepEqual(visible(),reviewAfter);
+  },accepted);
   console.log('SEALED_PUBLISHED_PROCESS_RECOVERY '+JSON.stringify({
    oldPid:originalPid,newPid:host.processId,exitSignal:exited.signal,protectedStreams:14,
    acknowledgedUpload:thirdAsset,archiveSha256:digest(retained),freshPublication:true,
+   documentAndCommentReceiptsPreserved:true,peerCatchUp:true,localUndoRedo:true,
   }));
  }finally{
   reader?.close();
   transport?.dispose();
   globalThis.fetch=request;
+  if(socket)Object.defineProperty(globalThis,'WebSocket',socket);else delete globalThis.WebSocket;
   if(!processExited)await host?.stop();
  }
 });

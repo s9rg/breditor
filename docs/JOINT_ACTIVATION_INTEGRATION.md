@@ -250,13 +250,15 @@ cases. Each restart reopens the pinned archives, verifies fourteen protected
 streams, and offers fresh controls for the original listener. The prepared
 case retains the original checkpoint. The committed case prepares a direct
 child of the last committed checkpoint after each exit.
-A separate published-room case uploads a new raster through the ordinary
-authenticated service and retains the later server cut before terminating the
-relay. Recovery selects that exact cut, rechecks all fourteen protected streams,
-and uses the existing Native ancestry check to prepare a child of the committed
-checkpoint. The upload is readable through the fresh inactive recovery control
-and through normal delivery after fresh activation and publication. The
-original exact-checkpoint action still refuses a later cut.
+A separate published-room case submits a document edit, a comment and a
+raster through the ordinary authenticated service, then retains the
+acknowledged server cut before terminating the relay. Recovery selects that
+exact cut, rechecks all fourteen protected streams and uses the existing
+Native ancestry check to prepare a child of the committed checkpoint. The
+raster is readable through the fresh inactive recovery control. After fresh
+activation and publication, a second client receives the edits and the author
+can Undo and Redo both changes without losing peer work. The original
+exact-checkpoint action still refuses a later cut.
 
 The whole-room fixture then exercises the SDK with seven replacement owners,
 fourteen offline lanes, metadata continuation, a revoked approval and lost
