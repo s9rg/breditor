@@ -45,6 +45,8 @@ mod handover_action;
 mod observe_publication_action;
 #[path = "handover_activation_sdk_host/publication_action.rs"]
 mod publication_action;
+#[path = "handover_activation_sdk_host/restart.rs"]
+mod restart;
 #[path = "handover_activation_sdk_host/state.rs"]
 mod state;
 /// Run actual native histories and a separately SDK-committed serving epoch.
@@ -52,7 +54,11 @@ mod state;
 /// Invalid input, stale cuts, missing custody, storage and service faults refuse.
 #[tokio::main(worker_threads = 2)]
 pub async fn main() -> Result {
-    let mut state = state::State::start().await?;
+    let mut state = if std::env::args().skip(1).eq(["--reopen-sealed"]) {
+        Box::pin(restart::start()).await?
+    } else {
+        state::State::start().await?
+    };
     let mut input = protocol::read();
     'main: loop {
         state.publish().await?;

@@ -211,3 +211,31 @@ matrix, large-archive resource measurements and the historical faults remain
 unqualified. All thirteen V1 release gates remain open. Versions, normal Wasm,
 original protocols/defaults and public-root exports are unchanged. No push, tag,
 publication or deployment is implied.
+
+## Sealed relay restart
+
+The cold SDK retains the original activation intent and prepares a separate
+restart intent for the selected authenticated lineage. Its publication journal
+and Native activation journal use fresh storage. If either write is interrupted,
+resume checks the independently retained restart choice before completing the
+pair. Confirmation requests the receipt from the reopened relay under fresh
+authority. The confirmed restart can continue metadata and publish. The SDK
+keeps the replacement owner private until it verifies the matching publication
+receipt.
+
+The Native process fixture exercises both prepared and committed checkpoints.
+It exits the old process, reopens the pinned checkpoint and archives, verifies
+fourteen protected streams and serves fresh controls on the original listener.
+The whole-room fixture then exercises the SDK with seven replacement owners,
+fourteen offline lanes, metadata continuation, a revoked approval and lost
+replies before final delivery.
+
+Build the packages and run `node scripts/build-handover-native-activation.mjs`
+to produce the exact Native fixture. Run the following from the repository root.
+
+```sh
+node --test scripts/native-sealed-handover-process-recovery.test.mjs
+node scripts/check-handover-native-activation-installed.mjs --sealed-process
+npm run test:collaboration:sealed-joint-process-recovery
+npm run test:collaboration:sealed-joint-process-recovery:installed
+```

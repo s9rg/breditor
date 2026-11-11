@@ -4,7 +4,7 @@ import {IDBObjectStore} from 'fake-indexeddb';
 import {ColdJointRoomActivationAttempt as Cold} from '../../../packages/breditor-collaboration/dist/native_room_joint_activation/cold_attempt.js';
 import {LoadedNativeReconstructionCurrent as Loaded} from '../../../packages/breditor-collaboration/dist/selected_native_reconstruction/loaded_current.js';
 
-export async function reopenJointHandoverReplacement({joint,plan,run,session,recover,native}){
+export async function reopenJointHandoverReplacement({joint,plan,run,session,recover,native,restart=false}){
  const add=IDBObjectStore.prototype.add,put=IDBObjectStore.prototype.put;
  const originalDocument=run.options.expected.execution.plan.preparation.plan.participants
   .find(row=>row.id==='original').namespaces.find(ns=>ns.role==='document').database;
@@ -32,9 +32,10 @@ export async function reopenJointHandoverReplacement({joint,plan,run,session,rec
  try{
   const catalogDatabase=loaded.nativeCut().root().source.catalogDatabase;
   const {signal,checkAuthority,...original}=session.f.options;
-  return Cold.resumeAcrossHandover({expected:plan,execution:{
+  const request={expected:plan,execution:{
    original:{...original,catalogDatabase,checkAuthority(){}},
    run:run.options,reads:run.reads,sourceIntentDatabase:'actual-joint-cold-source-custody',
-  }});
+  }};
+  return restart?Cold.resumeSealedRestart(request):Cold.resumeAcrossHandover(request);
  }finally{loaded.dispose();}
 }

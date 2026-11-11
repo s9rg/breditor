@@ -21,8 +21,11 @@ import {saveActualActivationIntent} from '../native-activation/intent-evidence.m
 import {nativeHandoverActivationRoot} from '../native-activation/handover-root.mjs';
 import {handoverControls} from '../selected-delivery/cold-continuation.mjs';
 import {assertHandoverPublicationWaiting,handoverPublicationRequester} from './sealed-handover.mjs';
+import {nativeSealedProcessHost} from './process-host.mjs';
 import {JointRoomActivationAttempt as Joint,withJointRoomActivationSources as sourceWork,withPublishedJointRoomSources as publishedWork} from '../../../packages/breditor-collaboration/dist/native_room_joint_activation/attempt.js';
-import {withPublishedColdJointRoomSources} from '../../../packages/breditor-collaboration/dist/native_room_joint_activation/cold_attempt.js';
+import {withPublishedColdJointRoomSources,prepareColdJointHandoverRestart,confirmColdJointHandoverRestart,continueColdJointHandoverRestartMetadata,publishColdJointHandoverRestart} from '../../../packages/breditor-collaboration/dist/native_room_joint_activation/cold_attempt.js';
+import {JointHandoverReassociationIntentStore} from '../../../packages/breditor-collaboration/dist/native_room_joint_reassociation/intent_store.js';
+import {assertHandoverPathContinuation} from '../../../packages/breditor-collaboration/dist/room_native_handover_activation_intent/capture_binding.js';
 import {reopenJointHandoverReplacement} from './cold-handover-replacement.mjs';
 import {JointRoomActivationIntentStore as IntentStore} from '../../../packages/breditor-collaboration/dist/native_room_joint_activation/intent_store.js';
 import {materializeSelectedSourceVersions} from '../../../packages/breditor-collaboration/dist/native_room_joint_activation/materialize_versions.js';
@@ -63,14 +66,15 @@ async function revokePublicationDecision(publish,input,database){
   clearTimeout(deadline);late.resolve(true);IDBFactory.prototype.open=open;
  }
 }
-export function testCompleteJointActivation(handover=false,cold=false){
+export function testCompleteJointActivation(handover=false,cold=false,sealedRestart=false){
+ assert.ok(!sealedRestart||handover&&cold);
  const nativeHostRoot=handover?nativeHandoverActivationRoot:nativePublicationPredecessorRoot;
  const mode=handover?{nativeHandoverActivation:true,nativeHandoverPublication:true}:{nativePublication:true};
  return testMetadataMaterialization('local-only-content',{
   reconcileAssets:true,cacheCatalogPackets:false,verifyFutureHistories:true,nativeHostRoot,
-  nativeHostFactory:(root,options)=>selectedDeliveryNativeHost(root,{...options,nativeActivation:true,...mode}),
+  nativeHostFactory:sealedRestart?nativeSealedProcessHost:(root,options)=>selectedDeliveryNativeHost(root,{...options,nativeActivation:true,...mode}),
   onRetainedReconciliation:async input=>{
- let joint,run,stage,activation,publication,transport,inspection,current,delivery,inventory,sealed,offer,metadataCase,inspectionCase,activationChoice,continued,replacement,plan;
+ let joint,run,stage,activation,publication,transport,inspection,current,delivery,inventory,sealed,offer,metadataCase,inspectionCase,activationChoice,continued,replacement,plan,restartChoice,restartEvidence;
  let commitRequests=0,publicationRequests=0,normalAcquisitions=0,lostCommit,lostPublication,loseCommit=true,losePublication=true,handedBack=false;
  const fetch=globalThis.fetch,image=Object.getOwnPropertyDescriptor(globalThis,'Image'),acquireDocument=SharedWriterLease.acquire,acquireReview=ReviewWriterLease.acquire;
  Object.defineProperty(globalThis,'Image',{configurable:true,value:PacketRasterFixtureImage});
@@ -130,7 +134,7 @@ export function testCompleteJointActivation(handover=false,cold=false){
    assert.throws(()=>new IntentStore(plan,storeOptions),{code:'joint_activation_intent_policy'});
   }
   const readPublication=async()=>{
-   const store=sealed?IntentStore.acrossHandover(plan,storeOptions):new IntentStore(plan,storeOptions);
+   const store=restartChoice?new JointHandoverReassociationIntentStore(restartChoice,storeOptions):sealed?IntentStore.acrossHandover(plan,storeOptions):new IntentStore(plan,storeOptions);
    try{return await store.open();}finally{await store.close();}
   };
   assert.equal((await readPublication()).phase,'prepared');
@@ -158,12 +162,27 @@ export function testCompleteJointActivation(handover=false,cold=false){
   console.log('JOINT_COMPLETE_STEP actual-source-checkpoint-preserves-all-content-and-facts');
   if(cold){
    assert.ok(sealed);
-   joint=await reopenJointHandoverReplacement({joint,plan,run,session:input.session,recover,native});
+   joint=await reopenJointHandoverReplacement({joint,plan,run,session:input.session,recover,native,restart:sealedRestart});
    noTake();await assertSourceBytesUnchanged(oldBytes);
    const observed=sealed.actual;
    sealed.close();activation.close();publication.close();inspection.close();
-   sealed=await handoverControls(input.host,observed,{check(){}});
-   assert.deepEqual(sealed.path.handoverSelection(),plan.plan.activation.handover);
+   if(sealedRestart){
+    const originalOffer=offer,capsule=await input.host.prepareProcessRecovery(offer);
+    offer=await input.host.crashAndReopen(capsule);
+    restartEvidence=input.host.processRecoveryObservation();
+    assert.equal(restartEvidence.actualOldProcessExited,true);
+    assert.notEqual(restartEvidence.reopenedProcessId,restartEvidence.processId);
+    assert.deepEqual(offer.selection.previous,originalOffer.selection.planned);
+    assert.deepEqual(offer.selection.current,originalOffer.selection.current);
+    assert.notEqual(offer.selection.instance,originalOffer.selection.instance);
+    inspectionCase=await input.host.reconstruct(observed);
+    sealed=await handoverControls(input.host,offer.case,{check(){}});
+    assertHandoverPathContinuation(plan.plan.activation.handover,sealed.path.handoverSelection());
+    console.log('COLD_HANDOVER_RESTART_STEP old-process-exited-and-sealed-controls-reopened');
+   }else{
+    sealed=await handoverControls(input.host,observed,{check(){}});
+    assert.deepEqual(sealed.path.handoverSelection(),plan.plan.activation.handover);
+   }
    activation=Activation.configure({endpoint:offer.endpoint,expected:offer.selection,principal:'operator',getToken:()=>input.host.activationToken(offer),checkAuthority(){}});
    publication=handoverPublicationRequester(input.host,offer,()=>{});
    inspection=await Host.open({endpoint:inspectionCase.endpoint,expected:inspectionCase.selection,principal:'operator',getToken:()=>input.host.operatorToken(inspectionCase),checkAuthority(){}});
@@ -171,13 +190,31 @@ export function testCompleteJointActivation(handover=false,cold=false){
    noTake();await held();await assertSourceBytesUnchanged(oldBytes);
    console.log('COLD_HANDOVER_COMPLETE_STEP fresh-fourteen-actors-and-seven-private-targets-from-existing-intent');
    const freshCommit={activation,inspection,path:sealed.path};
-   await assert.rejects(joint.confirmNative({...freshCommit,approve:()=>false}));
+   if(sealedRestart){
+    restartChoice=await prepareColdJointHandoverRestart(joint,{
+     database:'actual-restarted-joint-intent',nativeIntentDatabase:'actual-restarted-joint-native-intent',
+     activation,path:sealed.path,publication,previous:null,prior:null,
+     destinations:{database:'actual-restarted-continuation',preparationDatabase:'actual-restarted-preparation',reviewDatabase:'actual-restarted-review',metadataDatabase:'actual-restarted-metadata'},
+     retainChoice(value){
+      assert.equal(commitRequests,2);assert.equal(publicationRequests,0);noTake();
+      assert.deepEqual(value.plan.original,plan);
+      save(input.host.directory,'actual-restarted-joint-independent-plan.json',value);
+     },
+    });
+    assert.equal((await readPublication()).phase,'prepared');noTake();
+   }
+   const confirm=approve=>sealedRestart?confirmColdJointHandoverRestart(joint,restartChoice,{...freshCommit,approve}):joint.confirmNative({...freshCommit,approve});
+   await assert.rejects(confirm(()=>false));
    assert.equal(commitRequests,2);noTake();
    loseCommit=true;
-   await assert.rejects(joint.confirmNative({...freshCommit,approve:()=>true}),{code:'activation_outcome_unknown'});
+   await assert.rejects(confirm(()=>true),{code:'activation_outcome_unknown'});
    assert.equal(commitRequests,3);noTake();await held();
-   const confirmed=await joint.confirmNative({...freshCommit,approve:()=>true});
-   assert.equal(commitRequests,4);assert.deepEqual(confirmed.receipt,nativeResult.receipt);noTake();
+   const confirmed=await confirm(()=>true);
+   assert.equal(commitRequests,4);assert.deepEqual(confirmed.receipt,lostCommit);noTake();
+   if(sealedRestart){
+    assert.deepEqual(confirmed.receipt.selection,offer.selection);
+    await saveActualActivationIntent(join(input.host.directory,'actual-restarted-joint-native-intent-evidence'),restartChoice.plan.activation);
+   }else assert.deepEqual(confirmed.receipt,nativeResult.receipt);
    console.log('COLD_HANDOVER_COMPLETE_STEP saved-receipt-did-not-bypass-fresh-confirmation');
   }else{
    SharedWriterLease.acquire=async()=>{normalAcquisitions++;throw Error('No ordinary document writer acquisition during joint handoff');};
@@ -195,7 +232,8 @@ export function testCompleteJointActivation(handover=false,cold=false){
    await assertHandoverPublicationWaiting(input.host,offer);
    inventory=sealed.inventory;
    let approvals=0;
-   await assert.rejects(joint.continueMetadata({path:{},inventory,checkAuthority(){},approve(){approvals++;return true;}}));
+   const invalid={path:{},inventory,checkAuthority(){},approve(){approvals++;return true;}};
+   await assert.rejects(sealedRestart?continueColdJointHandoverRestartMetadata(joint,invalid):joint.continueMetadata(invalid));
    assert.equal(approvals,0);
   }else{
    const actual=metadataCase;assert.ok(actual);
@@ -204,18 +242,18 @@ export function testCompleteJointActivation(handover=false,cold=false){
    inventory=await Inventory.read(new Blob([readFileSync(join(dirname(actual.path),'inventory.json'))]),actual.selection.source.participants);
   }
   const metadataInput={...(sealed?{path:sealed.path}:{host:delivery}),inventory,checkAuthority(){},approve:()=>true};
-  continued=await joint.continueMetadata(metadataInput);noTake();await held();await assertSourceBytesUnchanged(oldBytes);
+  continued=await(sealedRestart?continueColdJointHandoverRestartMetadata(joint,metadataInput):joint.continueMetadata(metadataInput));noTake();await held();await assertSourceBytesUnchanged(oldBytes);
   const continuation=sealed?continued.choice.continuation:continued.choice;
   assert.deepEqual(plan.plan.origin.selection.current,continuation.origin.current);
   assert.equal(continuation.execution.database,plan.plan.execution.database);
-  if(sealed)assert.deepEqual(continued.choice.handover,plan.plan.activation.handover);
+  if(sealed)assert.deepEqual(continued.choice.handover,(restartChoice??plan).plan.activation.handover);
   save(input.host.directory,'actual-joint-complete-continued-choice.json',continued.choice);
   console.log('JOINT_COMPLETE_STEP original-metadata-continued-before-normal-service-publication');
-  const publish=provided=>cold?joint.publish(publication,provided):joint.publish(provided);
+  const publish=provided=>sealedRestart?publishColdJointHandoverRestart(joint,publication,provided):cold?joint.publish(publication,provided):joint.publish(provided);
   const visitPublished=visit=>cold?withPublishedColdJointRoomSources(joint,(scope,sources)=>visit({scope,sources,check:scope.check})):publishedWork(joint,visit);
   await assert.rejects(publish({...metadataInput,approvePublication:()=>false}));assert.equal(publicationRequests,0);noTake();
   if(sealed){
-   await revokePublicationDecision(publish,metadataInput,plan.plan.database);
+   await revokePublicationDecision(publish,metadataInput,(restartChoice??plan).plan.database);
    assert.equal(publicationRequests,0);noTake();
    assert.equal((await readPublication()).phase,'prepared');
    console.log('JOINT_COMPLETE_STEP revoked-publication-decision-cannot-send-or-advance-intent');
@@ -226,7 +264,8 @@ export function testCompleteJointActivation(handover=false,cold=false){
   const published=await publish({...metadataInput,approvePublication:()=>true});
   assert.equal(publicationRequests,2);assert.deepEqual(published,lostPublication);
   assert.deepEqual((await readPublication()).receipt,published);
-  assert.deepEqual(published.joint,{bytes:plan.bytes,sha256:[...Buffer.from(plan.sha256,'hex')]});
+  const publishedChoice=restartChoice??plan;
+  assert.deepEqual(published.joint,{bytes:publishedChoice.bytes,sha256:[...Buffer.from(publishedChoice.sha256,'hex')]});
   const observed=await input.host.observePublication(offer);
   assert.deepEqual(observed.selection.source,offer.selection.current);
   await assertSourceBytesUnchanged(oldBytes);
@@ -281,6 +320,11 @@ export function testCompleteJointActivation(handover=false,cold=false){
    ...(cold?{actualFreshColdActors:14}:{actualTransferredActors:14,normalWriterAcquisitions:normalAcquisitions}),
    retainedOfflineLanes:14,actualLocalMetadataLanes:3,actualNativeRequests:commitRequests,actualPublicationRequests:publicationRequests,lostNativeReplyConfirmedBySameOwner:true,lostPublicationReplyConfirmedBySameOwner:true,independentPlanBeforeAllRequests:true,metadataContinuedBeforePublication:true,originalSourceContentPreserved:true,originalSourcesImmutableAfterCheckpoint:true,finalSelectedAssetStatesVerified:finalAssetStates.length,originalProtocolDeliveries:14,exactFutureDocumentAndCommentHistories:true,nativeEvidence,plan:{bytes:plan.bytes,sha256:plan.sha256},warmJointWorkflow:!cold,physicalDurabilityQualified:false,coldJointOwnerReconstructionQualified:cold,
    ...(sealed?{sealedHandover:true,finalProviderReconciled:true,revokedPublicationApproval:true}:{}),
+   ...(sealedRestart?{
+    sealedProcessRecovery:restartEvidence,
+    restartPlan:{bytes:restartChoice.bytes,sha256:restartChoice.sha256},
+    nativePublicationPlan:{bytes:published.joint.bytes,sha256:Buffer.from(published.joint.sha256).toString('hex')},
+   }:{}),
   };
   console.log('JOINT_COMPLETE_NATIVE '+JSON.stringify(save(input.host.directory,'actual-joint-complete-observation.json',report)));
  },

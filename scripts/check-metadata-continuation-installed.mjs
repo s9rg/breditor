@@ -9,14 +9,16 @@ import {pathToFileURL} from 'node:url';
 const root=resolve(new URL('../',import.meta.url).pathname);
 const {sourceEvidence,saveEvidence}=await import(pathToFileURL(join(root,'scripts/candidate-release/evidence.mjs')));
 const {searchConsumerLock,verifySearchConsumerRegistry}=await import(pathToFileURL(join(root,'scripts/search-consumer-lock.mjs')));
-const cold=process.argv.length===3&&process.argv[2]==='--cold-joint-handover';
+const restarted=process.argv.length===3&&process.argv[2]==='--sealed-process-recovery';
+const cold=restarted||process.argv.length===3&&process.argv[2]==='--cold-joint-handover';
 const contracts=process.argv.length===3&&process.argv[2]==='--joint-intent-contracts';
 const joint=cold||contracts||process.argv.length===3&&process.argv[2]==='--joint-handover';
 if(process.argv.length!==2&&!joint)throw Error('Select a complete recovery workset without filters');
 const expectedCases=joint?(contracts?21:22):17;
-const name=contracts?'joint-intent-contracts':cold?'cold-joint-handover-activation':joint?'joint-handover-activation':'metadata-continuation';
+const name=contracts?'joint-intent-contracts':restarted?'sealed-joint-process-recovery':cold?'cold-joint-handover-activation':joint?'joint-handover-activation':'metadata-continuation';
+const liveTest=restarted?'scripts/sealed-joint-process-recovery-complete-native.test.mjs':cold?'scripts/cold-joint-handover-activation-complete-native.test.mjs':'scripts/joint-handover-activation-complete-native.test.mjs';
 const tests=joint
- ?['scripts/joint-activation-intent-storage.test.mjs','scripts/joint-activation-metadata-origin-contracts.test.mjs',...(contracts?[]:[cold?'scripts/cold-joint-handover-activation-complete-native.test.mjs':'scripts/joint-handover-activation-complete-native.test.mjs'])]
+ ?['scripts/joint-activation-intent-storage.test.mjs','scripts/joint-activation-metadata-origin-contracts.test.mjs',...(contracts?[]:[liveTest])]
  :['scripts/metadata-continuation-contracts.test.mjs','scripts/metadata-continuation-replacement-native.test.mjs','scripts/handover-metadata-continuation-replacement-native.test.mjs'];
 const types=joint?'scripts/fixtures/native-joint-activation/types.mts':'scripts/fixtures/metadata-continuation/types.mts';
 const source=sourceEvidence(root),directory=fs.mkdtempSync('/private/tmp/breditor-'+name+'-installed-'),archives=join(directory,'archives'),consumer=join(directory,'consumer'),sha=data=>createHash('sha256').update(data).digest('hex');fs.mkdirSync(archives);fs.mkdirSync(consumer);
@@ -31,6 +33,15 @@ for(const path of tests)copyScript(path);copyScript(types);
 const runtime=[];for(const path of['target/owned-history-relay-native/release/examples/complete_cohort_control_functional','target/owned-history-relay-native/release/examples/selected_suggestion_delivery_functional','target/handover-activation-native/release/examples/native_handover_activation_sdk_functional',...fs.readdirSync(join(root,'target/promoted-shared-web')).map(name=>'target/promoted-shared-web/'+name),'crates/breditor-core/tests/fixtures/rich-local-root.json']){const from=join(root,path),to=join(consumer,path);fs.mkdirSync(dirname(to),{recursive:true});fs.copyFileSync(from,to);assert.equal(sha(fs.readFileSync(from)),sha(fs.readFileSync(to)));runtime.push({path,sha256:sha(fs.readFileSync(from)),bytes:fs.statSync(from).size});}
 let files=0;for(const[folder,name]of mapping){const from=join(root,'packages',folder),to=join(consumer,'node_modules',name);function compare(path){for(const child of fs.readdirSync(join(from,path),{withFileTypes:true})){const next=join(path,child.name);if(child.isDirectory())compare(next);else if(child.isFile()){assert.equal(sha(fs.readFileSync(join(from,next))),sha(fs.readFileSync(join(to,next))),next);files++;}}}compare('dist');}
 assert.ok(runtime.some(row=>row.path.endsWith('breditor_shared_bg.wasm')&&row.sha256==='165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0'));
+if(restarted){
+ const build=JSON.parse(fs.readFileSync(join(root,'target/handover-native-activation-native-build.json')));
+ assert.equal(build.complete&&build.sourceUnchanged,true);
+ assert.equal(build.exitCode,0);
+ assert.deepEqual(build.source,source);
+ const binary=runtime.find(row=>row.path.endsWith('/native_handover_activation_sdk_functional'));
+ assert.equal(build.binaries[0].sha256,binary.sha256);
+ assert.equal(build.binaries[0].bytes,binary.bytes);
+}
 execFileSync(join(root,'node_modules/.bin/tsc'),['--noEmit','--strict','--target','es2022','--module','nodenext','--moduleResolution','nodenext','--lib','es2022,dom,dom.iterable','--skipLibCheck','false',types],{cwd:consumer,stdio:'inherit'});
 const state={format:'breditor/'+name+'-installed',formatVersion:1,source,directory,consumer,registryArtifacts,workspaceLinks:false,copied,runtime,matchingPackageDistFiles:files,archives:packs.map(pack=>({name:pack.name,path:join(archives,pack.filename),sha256:sha(fs.readFileSync(join(archives,pack.filename)))})),complete:false,wholeRoomActivated:false,v1Ready:false};
 saveEvidence(join(directory,'running.json'),state);
@@ -56,6 +67,16 @@ if(joint&&!contracts){
  assert.equal(observed.revokedPublicationApproval,true);
  assert.equal(observed.coldJointOwnerReconstructionQualified,cold);
  assert.equal(observed.originalProtocolDeliveries,14);
+ if(restarted){
+  const recovery=observed.sealedProcessRecovery;
+  assert.equal(recovery.actualOldProcessExited,true);
+  assert.ok(Number.isSafeInteger(recovery.processId)&&Number.isSafeInteger(recovery.reopenedProcessId));
+  assert.notEqual(recovery.reopenedProcessId,recovery.processId);
+  assert.equal(observed.actualFreshColdActors,14);
+  assert.equal(observed.actualNativeRequests,4);
+  assert.deepEqual(observed.nativePublicationPlan,observed.restartPlan);
+  assert.notEqual(observed.restartPlan.sha256,observed.plan.sha256);
+ }
  Object.assign(state,{wholeRoomActivated:true,observation:pin});
 }
 Object.assign(state,{complete:true,passed:true,cases:expectedCases,sourceUnchanged:true,logSha256:sha(log)});

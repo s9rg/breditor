@@ -7,6 +7,7 @@ use breditor_collab_relay::{
 use std::{collections::BTreeMap, net::SocketAddr, sync::Arc};
 
 pub(super) struct Offer {
+    pub sequence: u64,
     pub selection: serde_json::Value,
     pub endpoint: String,
     pub token: String,
@@ -119,13 +120,13 @@ impl State {
         self.controls.push(snapshot.control);
         self.tasks.push(service::start(snapshot.router, listener));
         let mut reply = serde_json::json!({"kind":"snapshot","format":"breditor/native-selected-delivery-host","formatVersion":1,"request":self.sequence,"case":public,"privateOperatorToken":snapshot.operator_token});
-        if self.handover.as_ref().is_some_and(|prefix| prefix.sequence == self.sequence) {
-            let offer = self.offer.as_ref().ok_or("actual handover activation offer missing")?;
+        if let Some(offer) = self.offer.as_ref().filter(|offer| offer.sequence == self.sequence) {
             reply["kind"] = serde_json::json!("activationPrepared");
             reply["activationSelection"] = offer.selection.clone();
             reply["activationEndpoint"] = serde_json::json!(offer.endpoint);
             reply["privateActivationToken"] = serde_json::json!(offer.token);
             if let Some(publication) = &self.publication_offer {
+                super::restart::retain_checkpoint(self.ready()?, self.sequence)?;
                 reply["kind"] = serde_json::json!("jointActivationPrepared");
                 reply["publicationSelection"] = serde_json::to_value(&publication.selection)?;
                 reply["publicationEndpoint"] = serde_json::json!(publication.endpoint);
