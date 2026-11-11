@@ -1,3 +1,4 @@
+import type {RecordedBaseHandoverInspection} from '../server_packet_recovery/recorded_base_control.js';
 /** Complete additional packet scope inside the metadata owner's held read.
  * Every source is restored readonly from the saved cut. Current source heads,
  * cached reports and copied ownership/permission objects never replace it. */
@@ -22,14 +23,14 @@ import type {ServerPacketRecoveryBundle} from './contract.js';
 import type {ServerPacketRecoveryInspection} from './inspection_contract.js';
 import {frozen} from '../room_participant_inventory/policy.js';
 import {fail,same} from '../metadata_packet_retention/policy.js';
-export async function inspectClientServerPacketRecovery(bundle:ServerPacketRecoveryBundle,references:LocalMetadataReferenceCut,snapshot:LocalMetadataDeliverySnapshot,current:SelectedRoomCurrentArchive,cut:PhysicalRoomRecordCutArchive,reads:Parameters<typeof replayRetainedMetadataPacketReferences>[2],host:SharedServerLogGenerationRecoveryHost,options:SharedArchiveIntegrityOptions,limits:Readonly<AssetLimits>,check:()=>void):Promise<ServerPacketRecoveryInspection>{
+export async function inspectClientServerPacketRecovery(bundle:ServerPacketRecoveryBundle,references:LocalMetadataReferenceCut,snapshot:LocalMetadataDeliverySnapshot,current:SelectedRoomCurrentArchive,cut:PhysicalRoomRecordCutArchive,reads:Parameters<typeof replayRetainedMetadataPacketReferences>[2],host:SharedServerLogGenerationRecoveryHost,options:SharedArchiveIntegrityOptions,limits:Readonly<AssetLimits>,check:()=>void,handover?:RecordedBaseHandoverInspection):Promise<ServerPacketRecoveryInspection>{
  check();const parent={bytes:bundle.packets.references.references.bytes,sha256:bundle.packets.references.references.sha256};let archive:MetadataPacketArchive|undefined,source:Loaded|undefined;
  try{
   await inspectRecordedReferenceCopy(bundle.packets.references,bundle.packets.containment.reconciliation.assets.references,options,check);check();
   archive=await MetadataPacketArchive.read(bundle.packets.packets,parent,options);check();const packets=archive,recorded=packets.header();
   return await withInspectedServerPacketSource({server:bundle.server,inventory:bundle.inventory,dependencies:bundle.dependencies},recorded.catalog.selection,host,options,async facts=>{
    check();const catalog=await inspectOriginalServerPacketCatalog(packets,host,options.signal,check);check();
-   await inspectRecordedBaseAvailability(bundle,references,current,cut,host,options,check);check();
+   await inspectRecordedBaseAvailability(bundle,references,current,cut,host,options,check,handover);check();
    source=await Loaded.read(bundle.packets.references.parent.parent.current,options);check();
    const assets={limits,...(options.signal?{signal:options.signal}:{})},requirements=await replayRetainedMetadataPacketReferences(source,packets,reads,assets,check);check();if(!same(requirements,bundle.packets.requirements))throw fail();
    const receipts=await inspectArchivedMetadataPacketOccurrences(source,packets,snapshot,reads,bundle.packets.containment,options,assets,check);check();

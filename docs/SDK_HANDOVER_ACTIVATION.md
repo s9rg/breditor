@@ -35,6 +35,14 @@ observed. The actual request receives the same cancellation signal and drains
 under its existing rules. Closing a checker does not retire the Native service
 or acknowledge any client queue.
 
+Commit-time inspection uses an explicit handover admission. The ordinary
+inspector retains its exact restore-origin rule. A genuine authenticated path
+must contain the original catalog origin and current cut in order, and its
+selected current provider must equal the recorded provider. This admission is
+valid only during that finite inspection; detached or copied values and expired
+visits cannot reuse it. Native packet, metadata, raster and provider inspection
+still run in full.
+
 Every failure after the recorded attempt conservatively remains
 `activation_outcome_unknown`. There is no automatic retry or rollback. Explicit
 retry reopens all bytes and requires fresh path authentication, actual inspection

@@ -430,7 +430,7 @@ export class SelectedLocalMetadataDelivery{
      const fresh=await this.#store.readFresh();check();if(metadataJson(fresh)!==metadataJson(portable))throw activationIntentFailure('activation_intent_stale');
      await this.#parent.assertExact(metadata.parent);check();
      await this.#withReferenceInspection(bundle.original.packets.references,options,async(work,actual,point)=>{
-      const inspected=await work.inspectResolvedServerPacketRecovery(bundle,actual,point,input.inspection,input.limits?{limits:input.limits}:{});check();
+      const inspected=await work.inspectResolvedServerPacketRecoveryAcrossHandover(bundle,actual,point,input.inspection,input.path,input.limits?{limits:input.limits}:{});check();
       if(inspected.rasters.kind!=='retained'||inspected.resolution.outcome.kind!=='ready')throw activationIntentFailure('activation_intent_incomplete');
      });check();
     };

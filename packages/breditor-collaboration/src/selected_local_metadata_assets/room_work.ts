@@ -1,3 +1,5 @@
+import {withRecordedBaseHandoverInspection} from '../server_packet_recovery/recorded_base_control.js';
+import type {SharedServerLogGenerationDeliveryPathRecoveryHost} from '../generation_delivery_path_control/host.js';
 import {admitMetadataHandoverCatalog,type MetadataHandover} from './handover_reconciliation.js';
 import {verifiedMetadataTargetFamilies} from '../selected_local_metadata_continuation/native_origin.js';
 import type {PhysicalOperationV3Family} from '../physical_room_operation_v3/contract.js';
@@ -344,6 +346,12 @@ export class LocalMetadataReferenceWork {
  async inspectResolvedServerPacketRecovery(bundle:ResolvedServerPacketRecoveryBundle,body:LocalMetadataReferenceCut,snapshot:LocalMetadataDeliverySnapshot,host:SharedServerLogGenerationRecoveryHost,provided:LocalMetadataMaterializationOptions):Promise<ResolvedServerPacketRecoveryInspection>{
   this.#check();if(!this.#ready||!this.#room||!this.#cut)throw fail('local_metadata_assets_closed');const check=()=>{this.#check();for(const row of this.#allSources){const before=this.#availabilityStamps.get(row.source.core),now=coreReadStamp(row.source.core);if(!before||before.document!==now.document||before.review!==now.review)throw fail('local_metadata_assets_changed');}};
   const reads=this.#packetNativeReads();check();const result=await inspectResolvedClientServerPacketRecovery(bundle,body,snapshot,this.#room,this.#cut,reads,host,{...this.#options,checkAuthority:check},checkRichAssetLimits(provided.limits),check);check();return result;
+ }
+ /** Explicit handover admission authenticates the whole sealed path around
+  * the unchanged Native packet, original metadata and raster inspections. */
+ async inspectResolvedServerPacketRecoveryAcrossHandover(bundle:ResolvedServerPacketRecoveryBundle,body:LocalMetadataReferenceCut,snapshot:LocalMetadataDeliverySnapshot,host:SharedServerLogGenerationRecoveryHost,path:SharedServerLogGenerationDeliveryPathRecoveryHost,provided:LocalMetadataMaterializationOptions):Promise<ResolvedServerPacketRecoveryInspection>{
+  this.#check();if(!this.#ready||!this.#room||!this.#cut)throw fail('local_metadata_assets_closed');const check=()=>{this.#check();for(const row of this.#allSources){const before=this.#availabilityStamps.get(row.source.core),now=coreReadStamp(row.source.core);if(!before||before.document!==now.document||before.review!==now.review)throw fail('local_metadata_assets_changed');}};
+  const reads=this.#packetNativeReads();check();const result=await withRecordedBaseHandoverInspection(path,this.#options.signal,check,proof=>inspectResolvedClientServerPacketRecovery(bundle,body,snapshot,this.#room!,this.#cut!,reads,host,{...this.#options,checkAuthority:check},checkRichAssetLimits(provided.limits),check,proof));check();return result;
  }
  #packetNativeReads(){
   this.#check();if(!this.#factories)throw fail('local_metadata_assets_closed');return this.#allSources.map(row=>{const selected=this.#factories!.reads.find(value=>value.id===row.id);if(!selected)throw fail('local_metadata_assets_state');return{id:row.id,read:selected.read,descriptor:JSON.stringify(sourceNativeRecoveryRead(row.source.core).descriptor())};});

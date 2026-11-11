@@ -13,6 +13,7 @@ export async function testCoordinatedHandoverNativeActivation({scope,sources,met
  const stamps=sources.map(row=>coreReadStamp(row.source.core)),before=metadata.recovery().current.lanes;
  const unchanged=()=>{check();scope.check();assert.deepEqual(metadata.recovery().current.lanes,before);assert.deepEqual(sources.map(row=>coreReadStamp(row.source.core)),stamps);};
  const fetch=globalThis.fetch;let current,activation,inspection,expected,lostReceipt,requests=0,approvals=0;let lose=true;
+ const rejection=code=>error=>{if(error.code!==code)console.error('SDK_HANDOVER_ACTIVATION_UNEXPECTED '+JSON.stringify({expected:code,actual:error.code,stack:error.stack}));return error.code===code;};
  try{
   current=await handoverControls(host,await host.refresh(),scope);unchanged();
   const offer=host.handoverActivationOffer();assert.deepEqual(offer.selection.current,current.actual.selection.source);
@@ -39,12 +40,13 @@ export async function testCoordinatedHandoverNativeActivation({scope,sources,met
   assert.equal(pending.pending.filter(row=>row.kind==='original'&&row.requirement.kind==='head').length,14);
   assert.equal(retained.capture.capture.reconciliation.pending.filter(row=>row.kind==='original'&&row.requirement.kind==='head').length,14);
   assert.equal(requests,0);await assert.rejects(host.finishActivation(offer),/actual-native-service-not-committed/);
+  console.log('SDK_HANDOVER_ACTIVATION_STEP complete-intent-cold-readback-before-approval');
   const historical=await host.reconstruct(current.actual);
   inspection=await Inspection.open({endpoint:historical.endpoint,expected:historical.selection,principal:'operator',getToken:()=>host.operatorToken(historical),checkAuthority:()=>{scope.check();check();},signal:scope.signal});
   const input={expected,activation,path:current.path,inspection};
-  await assert.rejects(metadata.commitNativeActivationAcrossHandover({...input,approve(){approvals++;return false;}}),error=>error.code==='activation_intent_policy');unchanged();assert.equal(requests,0);assert.equal(approvals,1);
+  await assert.rejects(metadata.commitNativeActivationAcrossHandover({...input,approve(){approvals++;return false;}}),rejection('activation_intent_policy'));unchanged();assert.equal(requests,0);assert.equal(approvals,1);
   console.log('SDK_HANDOVER_ACTIVATION_STEP fresh-native-inspection-then-authenticated-sdk-request');
-  await assert.rejects(metadata.commitNativeActivationAcrossHandover({...input,approve(){approvals++;return true;}}),error=>error.code==='activation_outcome_unknown');unchanged();assert.equal(requests,1);
+  await assert.rejects(metadata.commitNativeActivationAcrossHandover({...input,approve(){approvals++;return true;}}),rejection('activation_outcome_unknown'));unchanged();assert.equal(requests,1);
   const unknown=await metadata.readNativeHandoverActivationIntent(expected);unchanged();assert.equal(unknown.state.phase,'request-started');assert.equal(unknown.state.receipt,null);
   console.log('SDK_HANDOVER_ACTIVATION_STEP committed-native-reply-lost-original-intent-stays-unknown');
   const result=await metadata.commitNativeActivationAcrossHandover({...input,approve(choice){approvals++;assert.deepEqual(choice,expected);return true;}});unchanged();
@@ -58,5 +60,8 @@ export async function testCoordinatedHandoverNativeActivation({scope,sources,met
   const report={format:'breditor/sdk-handover-native-activation-observation',formatVersion:1,directory:host.directory,participants:7,retainedOfflineLanes:14,metadataSources:3,actualInactiveTargetBeforeIntent:true,preparedBeforeRequests:true,fullIntentReadback:true,disk,approvalRefusalWithoutRequest:true,lostActualCommitReplyRemainedUnknown:true,actualCommitRequests:requests,exactNativeReceipt:true,repeatReceiptUnchanged:true,actualNativeServiceResumed:true,actualDurableEpochObserved:true,nativeStampsUnchanged:true,metadataUnchanged:true,handoverPreserved:true,nativeObservation:{file:nativeFile,bytes:nativeBytes.length,sha256:sha(nativeBytes)},wholeRoomActivated:false};
   const file=join(host.directory,'sdk-handover-native-activation-observation.json'),bytes=Buffer.from(JSON.stringify(report,null,2)+'\n');writeFileSync(file,bytes,{flag:'wx',mode:0o600});assert.ok(readFileSync(file).equals(bytes));
   console.log('SDK_HANDOVER_ACTIVATION_NATIVE '+JSON.stringify({file,sha256:sha(bytes),...report}));
+ }catch(error){
+  if(expected)try{const disk=await saveActualActivationIntent(join(host.directory,'sdk-handover-activation-failed-intent'),expected);console.error('SDK_HANDOVER_ACTIVATION_FAILED_INTENT '+JSON.stringify(disk));}catch(cause){console.error('SDK_HANDOVER_ACTIVATION_FAILED_INTENT_UNAVAILABLE '+JSON.stringify({code:cause.code,name:cause.name}));}
+  throw error;
  }finally{globalThis.fetch=fetch;inspection?.close();activation?.close();current?.close();}
 }

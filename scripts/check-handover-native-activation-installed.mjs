@@ -40,8 +40,8 @@ for(const pack of packs){
  }
  compare('');
 }
-const tests=['native-handover-activation-coordinated.test.mjs','native-handover-activation-host.test.mjs','handover-activation-coordination.test.mjs','generation-recovery-control.test.mjs','generation-delivery-control.test.mjs','generation-delivery-path-control.test.mjs','generation-control-request-lifetime.test.mjs','native-activation-transport.test.mjs','handover-activation-intent-storage.test.mjs','activation-retention-lifetime.test.mjs','room-native-activation-intent.test.mjs','activation-intent-wire.test.mjs'];
-const expectedCases=204;
+const tests=['native-handover-activation-coordinated.test.mjs','native-handover-activation-host.test.mjs','handover-activation-coordination.test.mjs','recorded-base-handover-inspection.test.mjs','generation-recovery-control.test.mjs','generation-delivery-control.test.mjs','generation-delivery-path-control.test.mjs','generation-control-request-lifetime.test.mjs','native-activation-transport.test.mjs','handover-activation-intent-storage.test.mjs','activation-retention-lifetime.test.mjs','room-native-activation-intent.test.mjs','activation-intent-wire.test.mjs'];
+const expectedCases=210;
 const copied=[],mapping=new Map(packages.map(path=>{const row=JSON.parse(readFileSync(join(path,'package.json')));return[path.split('/').at(-1),row.name];}));
 function copyScript(path){const target=join(consumer,path),original=readFileSync(join(root,path),'utf8');let text=original;
  text=text.replace(/(['"])((?:\.\.\/)+)packages\/(breditor-[^/]+)\/([^'"]+)\1/g,(match,quote,prefix,folder,tail)=>{const name=mapping.get(folder);if(!name)return match;let selected=relative(dirname(target),join(consumer,'node_modules',name,tail));if(!selected.startsWith('.'))selected='./'+selected;return quote+selected+quote;});

@@ -459,7 +459,7 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   stage('handover-activation-intent-native',node,['--test','scripts/native-handover-activation-intent-data.test.mjs'],{},[],7800000),
   script('installed-handover-activation-intent','check-handover-activation-intent-installed.mjs',[],[{path:'target/handover-activation-intent-installed-consumer.json',fresh:true}],8400000),
   script('native-handover-activation-host-build','build-handover-native-activation.mjs',[],[{path:'target/handover-native-activation-native-build.json',fresh:true}],2100000),
-  stage('handover-native-activation-contracts',node,['--test','scripts/handover-activation-coordination.test.mjs','scripts/handover-native-activation-candidate-plan.test.mjs']),
+  stage('handover-native-activation-contracts',node,['--test','scripts/handover-activation-coordination.test.mjs','scripts/recorded-base-handover-inspection.test.mjs','scripts/handover-native-activation-candidate-plan.test.mjs']),
   stage('handover-native-activation-types',node,['node_modules/typescript/bin/tsc','--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM','scripts/fixtures/editor-consumer/types-handover-activation-coordination.ts']),
   stage('handover-native-activation-host',node,['--test','scripts/native-handover-activation-host.test.mjs'],{},[],240000),
   stage('handover-native-activation-native',node,['--test','scripts/native-handover-activation-coordinated.test.mjs'],{},[],7800000),
