@@ -328,3 +328,9 @@ installed restart workflows before the readiness audit. The installed workflow
 requires a fresh report from the same source tree and pins the relay executable
 used by the consumer. The report records the distinct process IDs, the matched
 publication plan and the fourteen delivered lanes.
+
+Four process tests per environment cover crash recovery. One verifies that
+inspection finds acknowledged work after a crash before the host selects a new
+cut. The complete activation-intent suite passed all twenty-two cases in each
+environment. The record includes the integrated tree, relay executable hash and
+independent package archives. [November 11 qualification](qualification/2026-11-11-sealed-relay-crash-before-snapshot.json)
