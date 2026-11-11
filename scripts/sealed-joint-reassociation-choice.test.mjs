@@ -11,8 +11,12 @@ import {jointHandoverReassociationPlan,jointHandoverReassociationChoice,handover
 import {JointHandoverReassociationIntentStore as Store,JointReassociationIntentStore as Ordinary,jointReassociationPublicationBinding as binding} from '../packages/breditor-collaboration/dist/native_room_joint_reassociation/intent_store.js';
 import {persistHandoverReassociation} from '../packages/breditor-collaboration/dist/native_room_joint_reassociation/handover_persist.js';
 import {prepareJointHandoverReassociation,resumeJointHandoverReassociationPreparation} from '../packages/breditor-collaboration/dist/native_room_joint_reassociation/handover_prepare.js';
-import {ColdJointRoomActivationAttempt,prepareColdJointHandoverRestart,resumeColdJointHandoverRestartPreparation} from '../packages/breditor-collaboration/dist/native_room_joint_activation/cold_attempt.js';
+import {ColdJointRoomActivationAttempt,prepareColdJointHandoverRestart,resumeColdJointHandoverRestartPreparation,confirmColdJointHandoverRestart} from '../packages/breditor-collaboration/dist/native_room_joint_activation/cold_attempt.js';
+import {confirmHeldColdNative} from '../packages/breditor-collaboration/dist/native_room_joint_activation/cold_variant.js';
+import {confirmJointHandoverReassociation} from '../packages/breditor-collaboration/dist/native_room_joint_reassociation/handover_confirm.js';
 import {RoomHandoverActivationIntentStore as NativeStore} from '../packages/breditor-collaboration/dist/room_native_handover_activation_intent/store.js';
+import {heldHandoverActivationPath} from '../packages/breditor-collaboration/dist/room_native_handover_activation_intent/path.js';
+import {nativeActivationHostPort} from '../packages/breditor-collaboration/dist/native_activation_control/host.js';
 import {prepareHeldHandoverActivationReassociation,resumeHeldHandoverActivationReassociation} from '../packages/breditor-collaboration/dist/room_native_handover_activation_intent/reassociate.js';
 import {withHandoverActivationControls} from './fixtures/native-activation/handover-controls.mjs';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
@@ -245,14 +249,61 @@ test('an invalid complete pin or an orphaned journal cannot write the Native des
  assert.equal(writes,0);
 });
 
-test('a forged cold origin cannot select or retry a sealed restart before actual admission',async()=>{
+test('a forged cold origin cannot prepare or confirm a sealed restart before actual admission',async()=>{
  let reflections=0;
  const poison=new Proxy({},{ownKeys(){reflections++;throw Error('Unexpected input reflection');}});
  const forged=Object.freeze({choice:root,check(){reflections++;}});
  await assert.rejects(prepareJointHandoverReassociation({},forged,poison,poison),code('joint_activation_state'));
  await assert.rejects(resumeJointHandoverReassociationPreparation({},forged,poison,poison,()=>{reflections++;}),code('joint_activation_state'));
+ await assert.rejects(confirmJointHandoverReassociation({},forged,poison,poison,poison),code('joint_activation_state'));
  const copied=Object.create(ColdJointRoomActivationAttempt.prototype);
  await assert.rejects(prepareColdJointHandoverRestart(copied,poison),policy);
  await assert.rejects(resumeColdJointHandoverRestartPreparation(copied,poison,()=>{reflections++;}),policy);
+ await assert.rejects(confirmColdJointHandoverRestart(copied,poison,poison),policy);
  assert.equal(reflections,0);
+});
+
+test('sealed confirmation requires a fresh decision and authenticated reply even after an observed receipt',async()=>{
+ const choice=select(draft('fresh-confirmation',{child:true})),encoding=originalEncoding();
+ const original=new NativeStore(encoding.choice,options()),target=new NativeStore(choice.plan.activation,options());
+ try{
+  await original.open(encoding);
+  const saved=await databaseByteSnapshot(encoding.choice.database);
+  await target.open({...encoding,choice:choice.plan.activation});
+  await withHandoverActivationControls({handover:choice.plan.activation.handover},choice.plan.activation.activation,async controllers=>{
+   const path=heldHandoverActivationPath(controllers.path,choice.plan.activation.handover);
+   const activation=nativeActivationHostPort(controllers.activation),scope=new AbortController();
+   let inspections=0,phase='prepared';
+   const journal={
+    check:target.check,revocations:[target.revoked],
+    async observeNativeStarted(){phase=(await target.markRequestStarted()).state.phase;},
+    async observeNativeReceipt(receipt){phase=(await target.markReceiptObserved(receipt)).state.phase;},
+   };
+   const confirm=approve=>confirmHeldColdNative(scope,journal,activation,approve,original.check,async()=>{inspections++;},path);
+   await assert.rejects(confirm(()=>false),code('asset_adoption_policy'));
+   assert.equal(inspections,1);
+   assert.equal(controllers.requests.length,0);
+   assert.equal((await target.read()).state.phase,'prepared');
+
+   controllers.respond(()=>{
+    assert.equal(phase,'request-started');
+    throw Error('Test-owned lost activation reply');
+   });
+   await assert.rejects(confirm(()=>true),code('activation_outcome_unknown'));
+   assert.equal((await target.read()).state.phase,'request-started');
+   assert.equal(controllers.requests.length,1);
+
+   const receipt={format:'breditor/durable-native-activation-control-receipt',formatVersion:1,
+    selection:choice.plan.activation.activation,scope:'actual-held-native-service-only'};
+   controllers.respond(()=>new Response(JSON.stringify(receipt),{headers:{'content-type':'application/json'}}));
+   assert.deepEqual(await confirm(()=>true),receipt);
+   assert.equal((await target.read()).state.phase,'receipt-observed');
+   await assert.rejects(confirm(()=>false),code('asset_adoption_policy'));
+   assert.equal(controllers.requests.length,2);
+   assert.deepEqual(await confirm(()=>true),receipt);
+   assert.equal(controllers.requests.length,3);
+   assert.equal(inspections,8);
+  });
+  assert.deepEqual(await databaseByteSnapshot(encoding.choice.database),saved);
+ }finally{await target.close();await original.close();}
 });

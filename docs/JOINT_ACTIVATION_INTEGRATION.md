@@ -71,6 +71,10 @@ resume can finish it from the retained choice and literal capture bytes.
 The cold restart target has separate entry points for an interrupted local
 execution and for an untouched prepared execution. Both keep the target
 private while the fresh association is retained.
+Confirmation reopens the complete restart association and verifies the
+original room capture before and after a fresh decision. Only the selected
+restart journal records the request and the authenticated response. A saved
+receipt remains advisory on later confirmation attempts.
 
 `JointRoomActivationAttempt.beginAcrossHandover` reserves the actual original
 owners and uses a distinct joint intent format. Its descriptor binds the complete

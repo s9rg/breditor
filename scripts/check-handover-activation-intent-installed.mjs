@@ -45,7 +45,7 @@ const tests=jointChoice
  ?['handover-activation-reassociation.test.mjs','sealed-joint-reassociation-choice.test.mjs']
  :['handover-activation-reassociation.test.mjs','handover-activation-intent-storage.test.mjs','activation-retention-lifetime.test.mjs','room-native-activation-intent.test.mjs','activation-intent-wire.test.mjs'];
 if(!reassociationOnly&&!jointChoice)tests.unshift('native-handover-activation-intent-data.test.mjs');
-const expectedCases=jointChoice?16:reassociationOnly?50:51;
+const expectedCases=jointChoice?17:reassociationOnly?50:51;
 const copied=[],mapping=new Map(packages.map(path=>{const row=JSON.parse(readFileSync(join(path,'package.json')));return[path.split('/').at(-1),row.name];}));
 function copyScript(path){const target=join(consumer,path),original=readFileSync(join(root,path),'utf8');let text=original;
  text=text.replace(/(['"])((?:\.\.\/)+)packages\/(breditor-[^/]+)\/([^'"]+)\1/g,(match,quote,prefix,folder,tail)=>{const name=mapping.get(folder);if(!name)return match;let selected=relative(dirname(target),join(consumer,'node_modules',name,tail));if(!selected.startsWith('.'))selected='./'+selected;return quote+selected+quote;});
@@ -107,7 +107,7 @@ if(nativeSha256)assert.equal(sha(readFileSync(nativeSource)),nativeSha256);
 for(const input of originalInputs)assert.equal(sha(readFileSync(input.path)),input.sha256);
 state.complete=true;state.sourceUnchanged=true;state.releaseReady=false;state.v1GatesOpen=13;state.finishedAt=new Date().toISOString();
 state.scope=jointChoice
- ? 'Complete sealed reassociation descriptor, checkpoint, path and metadata pins using real retained choices and controlled storage. No actual activation or publication.'
+ ? 'Sealed reassociation and confirmation using real retained choices and controlled storage and Native responses. No live relay activation or publication.'
  : reassociationOnly
  ? 'Exact sealed activation reassociation, original intent storage, cancellation and wire laws with a pinned recovery corpus and controlled Node storage, locks and HTTP. No actual relay restart or activation.'
  : 'Actual sealed successor, seven cold clients and preserved offline/metadata facts; complete recovery capture retained through the separate handover intent and exact cold/disk readback. Exact reassociation, original intent storage, cancellation and wire laws remain checked. Activation declarations in storage tests are synthetic inert DATA; no actual activation is requested. Node storage, locks and image decoding are controlled fixtures. Full authenticated activation/publication and physical durability remain open.';

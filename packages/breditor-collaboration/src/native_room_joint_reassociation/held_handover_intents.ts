@@ -9,11 +9,14 @@ import {handoverReassociationPredecessorChoice,jointHandoverReassociationChoice}
 import {JointHandoverReassociationIntentStore} from './intent_store.js';
 import {withExactHandoverPriors} from './handover_prior.js';
 import type {JointHandoverReassociationChoice} from './handover_contract.js';
+import type {SharedDurableNativeActivationReceipt} from '../native_activation_control/contract.js';
 
 export interface HeldHandoverReassociationIntents {
  readonly native:RoomHandoverActivationIntentStore;
  readonly revocations:readonly AbortSignal[];
  check():void;
+ observeNativeStarted():Promise<void>;
+ observeNativeReceipt(receipt:SharedDurableNativeActivationReceipt):Promise<void>;
 }
 
 export async function withHeldHandoverReassociationIntents<T>(
@@ -27,6 +30,7 @@ export async function withHeldHandoverReassociationIntents<T>(
  const cleanup:(()=>Promise<void>)[]=[],checks:(()=>void)[]=[],revocations:AbortSignal[]=[];
  const states:(()=>Promise<void>)[]=[];
  let active=true,last:RoomHandoverActivationIntentStore|undefined,primary:unknown,failed=false;
+ let observeStarted:(()=>Promise<void>)|undefined,observeReceipt:((receipt:SharedDurableNativeActivationReceipt)=>Promise<void>)|undefined;
  const base=()=>{if(!active)throw fail('joint_activation_closed');origin.check();options.checkAuthority();origin.check();};
  const check=()=>{base();for(const held of checks)held();base();};
  try{
@@ -34,13 +38,15 @@ export async function withHeldHandoverReassociationIntents<T>(
    check();
    const native=new RoomHandoverActivationIntentStore(selected.plan.activation,{...options,checkAuthority:base});
    cleanup.push(()=>native.close());
-   const savedNative=(await native.open()).state;
+   let savedNative=(await native.open()).state;
    checks.push(native.check);revocations.push(native.revoked);
    last=native;check();
    const joint=new JointHandoverReassociationIntentStore(selected,{...options,checkAuthority:base});
    cleanup.push(()=>joint.close());
    const savedJoint=await joint.open();
    checks.push(joint.check);revocations.push(joint.revoked);
+   observeStarted=async()=>{savedNative=(await native.markRequestStarted()).state;};
+   observeReceipt=async(receipt)=>{savedNative=(await native.markReceiptObserved(receipt)).state;};
    states.push(async()=>{
     if(!equal((await native.read()).state,savedNative)||!equal(await joint.read(),savedJoint))throw fail('joint_activation_intent_stale');
    });
@@ -48,7 +54,11 @@ export async function withHeldHandoverReassociationIntents<T>(
   return await withExactHandoverPriors(scope,origin,selections.map(row=>row.plan.prior),async priorCheck=>{
    const heldCheck=()=>{check();priorCheck();check();};
    heldCheck();
-   const result=await visit(Object.freeze({native:last!,revocations:Object.freeze(revocations),check:heldCheck}));
+   const result=await visit(Object.freeze({
+    native:last!,revocations:Object.freeze(revocations),check:heldCheck,
+    async observeNativeStarted(){heldCheck();await observeStarted!();heldCheck();},
+    async observeNativeReceipt(receipt:SharedDurableNativeActivationReceipt){heldCheck();await observeReceipt!(receipt);heldCheck();},
+   }));
    heldCheck();
    for(const unchanged of states)await unchanged();
    heldCheck();

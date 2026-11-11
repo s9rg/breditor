@@ -22,8 +22,10 @@ import {jointEqual as equal,jointIntentFailure as fail} from './intent_policy.js
 import type {ColdJointRoomActivationOptions,ColdJointHandoverActivationOptions,ColdJointRoomReplacementInput} from './cold_contract.js';
 import {coldOrdinaryActivation,coldHandoverActivation,decideColdActivation,type ColdActivationFamily,type ColdActivationVariant,type ColdOrdinaryActivation,type ColdHandoverActivation} from './cold_variant.js';
 import {prepareJointHandoverReassociation,resumeJointHandoverReassociationPreparation,type HandoverReassociationPreparationInput} from '../native_room_joint_reassociation/handover_prepare.js';
+import {confirmJointHandoverReassociation,type HandoverReassociationConfirmation,type HandoverReassociationConfirmationInput} from '../native_room_joint_reassociation/handover_confirm.js';
 import type {JointHandoverReassociationChoice} from '../native_room_joint_reassociation/handover_contract.js';
 import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
+import {activationFailure} from '../native_activation_control/policy.js';
 const key=Object.freeze({}),add=EventTarget.prototype.addEventListener,remove=EventTarget.prototype.removeEventListener;
 let visitPublished:<T,F extends ColdActivationFamily=ColdOrdinaryActivation>(owner:ColdJointRoomActivationAttempt<F>,visit:(scope:SelectedNativeRecoveryScope)=>Promise<T>)=>Promise<T>;
 let visitRestart:<T>(owner:ColdJointRoomActivationAttempt<ColdHandoverActivation>,visit:(scope:SelectedNativeRecoveryScope,origin:ColdHandoverActivation['origin'],options:SharedArchiveIntegrityOptions)=>Promise<T>)=>Promise<T>;
@@ -39,6 +41,23 @@ export function resumeColdJointHandoverRestartPreparation(
  retain:(choice:JointHandoverReassociationChoice)=>void|Promise<void>,
 ):Promise<JointHandoverReassociationChoice>{
  return visitRestart(owner,(scope,origin,options)=>resumeJointHandoverReassociationPreparation(scope,origin,expected,options,retain));
+}
+/** An independently retained receipt cannot replace this live confirmation. */
+export async function confirmColdJointHandoverRestart(
+ owner:ColdJointRoomActivationAttempt<ColdHandoverActivation>,expected:JointHandoverReassociationChoice,
+ input:HandoverReassociationConfirmationInput,
+):Promise<HandoverReassociationConfirmation>{
+ let confirmed=false;
+ try{
+  return await visitRestart(owner,async(scope,origin,options)=>{
+   const result=await confirmJointHandoverReassociation(scope,origin,expected,input,options);
+   confirmed=true;
+   return result;
+  });
+ }catch(error){
+  if(confirmed)throw activationFailure('activation_outcome_unknown',error);
+  throw error;
+ }
 }
 export class ColdJointRoomActivationAttempt<F extends ColdActivationFamily=ColdOrdinaryActivation> {
  readonly #choice:F['choice'];readonly #variant:ColdActivationVariant<F>;readonly #cold:Cold;readonly #reads:RoomExecutionReadScope;readonly #stop=new AbortController();readonly #unwatch:(()=>void)[]=[];
