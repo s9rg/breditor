@@ -181,7 +181,9 @@ export class ColdJointRoomActivationAttempt<F extends ColdActivationFamily=ColdO
   if(this.#restart||!this.#promoted||!this.#native||!this.#continued)throw fail('joint_activation_state');
   const port=nativePublicationHostPort(publication);if(!equal(port.selection,this.#choice.plan.publication))throw fail('joint_activation_intent_stale');
   const receipt=await this.#target(async(scope,origin,witness)=>{
-   const target=this.#variant.target(scope,witness,origin.original.bundle,this.#choice,provided,true);
+   const target=this.#variant.target(scope,witness,origin.original.bundle,this.#choice,provided,true,{
+    check:()=>{origin.check();port.check();},signals:[...origin.revocations,...port.signals],
+   });
    let waits:NativeReconstructionWaits|undefined,started=false;
    try{
     const expected=await target.preview();origin.check();

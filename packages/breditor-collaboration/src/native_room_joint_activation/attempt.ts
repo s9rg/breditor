@@ -118,7 +118,7 @@ export class JointRoomActivationAttempt<F extends JointActivationFamily=Ordinary
   const port=nativePublicationHostPort(this.#publication!);if(!equal(port.selection,this.#choice!.plan.publication))throw fail();
   return withRoomExecutionMetadataTarget(this.#execution,this.#targetReadOptions(),async(scope,witness)=>{
    const origin=jointActivationMetadataBundle(this.#origin!,witness,scope);
-   const target=this.#variant.target(scope,witness,origin,this.#choice!,provided,true),signal=target.signal;
+   const target=this.#variant.target(scope,witness,origin,this.#choice!,provided,true,port),signal=target.signal;
    try{
     const expected=await target.preview();target.check();this.#check();
     if(!equal(expected,this.#continued!.choice))throw fail('joint_activation_intent_stale');

@@ -4,6 +4,7 @@ import {SharedNativeRoomPublicationHost as Host,nativePublicationHostPort} from 
 import {nativePublicationRequest} from '../packages/breditor-collaboration/dist/native_publication_control/identity.js';
 import {options,selection,joint,token,endpoint,receipt,json,code,using} from './fixtures/native-publication/transport.mjs';
 import {decideColdActivation,nativePublicationWaits} from '../packages/breditor-collaboration/dist/native_room_joint_activation/cold_variant.js';
+import {holdMetadataContinuation} from '../packages/breditor-collaboration/dist/selected_local_metadata_continuation/lifetime.js';
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return{promise,resolve,reject};};
 test('configuration makes no request or policy callback and snapshots independent Native choices',async()=>{
  let callbacks=0,calls=0;const expected=selection();const host=Host.configure(options({expected,getToken(){callbacks++;return token;},checkAuthority(){callbacks++;}}));expected.activation.checkpointSha256[0]=99;expected.listener='forged';assert.equal(host.selection().listener,'127.0.0.1:4190');assert.equal(Object.isFrozen(host.selection().activation.checkpointSha256),true);await using(()=>{calls++;throw Error('no IO');},async()=>{assert.equal(callbacks,0);assert.equal(calls,0);});host.close();
@@ -93,4 +94,34 @@ test('revoked publication requesters release a pending approval before any reque
    });
   }finally{late.resolve(true);waits.close();host.close();}
  }
+});
+
+test('publication revocation also cancels approval during metadata replay',{timeout:5000},async()=>{
+ const host=Host.configure(options()),port=nativePublicationHostPort(host);
+ const owner=new AbortController(),delivery=new AbortController();
+ const parent=nativePublicationWaits(port,()=>{},[owner.signal]);
+ const lifetime=holdMetadataContinuation({signal:owner.signal,check(){}},{
+  signals:[delivery.signal],guard(){assert.equal(delivery.signal.aborted,false);},
+ },parent.check,parent.signal);
+ const entered=deferred(),late=deferred();
+ let writes=0,timer;
+ try{
+  const pending=decideColdActivation(joint(),()=>{
+   entered.resolve();
+   return late.promise;
+  },lifetime).then(()=>{writes++;});
+  const cancelled=assert.rejects(pending,code('asset_adoption_aborted'));
+  await Promise.race([entered.promise,cancelled]);
+  host.close();
+  try{
+   await Promise.race([cancelled,new Promise((_resolve,reject)=>{
+    timer=setTimeout(()=>reject(Error('Publication revocation kept metadata approval pending')),750);
+   })]);
+  }finally{clearTimeout(timer);}
+  late.resolve(true);
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(owner.signal.aborted,false);
+  assert.equal(delivery.signal.aborted,false);
+  assert.equal(writes,0);
+ }finally{late.resolve(false);lifetime.close();parent.close();host.close();}
 });

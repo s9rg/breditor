@@ -6,6 +6,7 @@ import type {RoomHandoverActivationIntentChoice} from '../room_native_handover_a
 import type {RoomExecutionReadOptions} from '../native_room_execution/contract.js';
 import type {RoomMetadataTargetWitness} from '../native_room_execution_run/attempt.js';
 import {participantAuthority} from '../participant_backup/policy.js';
+import {generationDeliveryRecoveryHostPort} from '../generation_delivery_control/host.js';
 import {fields} from '../physical_room_record_cut/policy.js';
 import type {SelectedNativeRecoveryScope} from '../selected_native_recovery/contract.js';
 import {NativeReconstructionWaits} from '../selected_native_reconstruction/read_waits.js';
@@ -46,6 +47,7 @@ export interface HandoverJointActivation {
  readonly continued:HandoverMetadataContinuationResult;
 }
 export type JointActivationFamily=OrdinaryJointActivation|HandoverJointActivation;
+type MetadataCustody=Readonly<{check:()=>void;signals:readonly AbortSignal[]}>;
 type Decision<T>=(choice:T)=>boolean|Promise<boolean>;
 interface MetadataVisit<Intent,Result extends JointActivationFamily['continued']> {
  readonly signal:AbortSignal;
@@ -63,7 +65,7 @@ export interface JointActivationVariant<F extends JointActivationFamily> {
  store(choice:F['choice'],options:SharedArchiveIntegrityOptions):JointRoomActivationIntentStore;
  commit(metadata:Metadata,expected:F['choice'],input:F['commit']):Promise<F['committed']>;
  target(scope:SelectedNativeRecoveryScope,witness:RoomMetadataTargetWitness,origin:LocalMetadataRoomBundle,choice:F['choice'],
-  input:F['metadata']|F['publication'],publishing:boolean):MetadataVisit<F['choice'],F['continued']>;
+  input:F['metadata']|F['publication'],publishing:boolean,custody?:MetadataCustody):MetadataVisit<F['choice'],F['continued']>;
  cut(result:F['continued']):MetadataContinuationResult['choice']['target'];
 }
 function targetPolicy<Choice,Intent>(
@@ -82,7 +84,7 @@ export function handoverMetadataVisit<Intent>(
  scope:SelectedNativeRecoveryScope,witness:RoomMetadataTargetWitness,origin:LocalMetadataRoomBundle,
  destinations:MetadataContinuationDestinations,expectedPath:RoomHandoverActivationIntentChoice['handover'],
  input:unknown,publishing:boolean,
- custody?:Readonly<{check:()=>void;signals:readonly AbortSignal[]}>,
+ custody?:MetadataCustody,
 ):MetadataVisit<Intent,HandoverMetadataContinuationResult>{
  const {r,check,approve,approvePublication}=targetPolicy<HandoverMetadataContinuationResult['choice'],Intent>(scope,input,'path',publishing);
  const host=r['path'] as JointHandoverMetadataInput['path'];
@@ -91,8 +93,8 @@ export function handoverMetadataVisit<Intent>(
   [scope.signal,...path.signals,...(custody?.signals??[])]);
  const request={...destinations,origin,path:host,inventory:r['inventory'] as JointHandoverMetadataInput['inventory'],checkAuthority:waits.check};
  return {signal:waits.signal,check:waits.check,close:()=>waits.close(),verify:signal=>path.check(signal),approvePublication,
-  preview:()=>previewHeldRoomMetadataContinuationAcrossHandover(scope,witness,request),
-  run:(expected,resume)=>continueHeldRoomMetadataAcrossHandover(scope,witness,{...request,expected,approve},resume)};
+  preview:()=>previewHeldRoomMetadataContinuationAcrossHandover(scope,witness,request,waits.signal),
+  run:(expected,resume)=>continueHeldRoomMetadataAcrossHandover(scope,witness,{...request,expected,approve},resume,waits.signal)};
 }
 
 export const ordinaryJointActivation:JointActivationVariant<OrdinaryJointActivation>=Object.freeze({
@@ -102,12 +104,15 @@ export const ordinaryJointActivation:JointActivationVariant<OrdinaryJointActivat
   const r=fields(provided,['activation','inspection','approve'],['limits']);
   return ordinaryCommit.call(metadata,{...r,expected:expected.plan.activation} as Parameters<typeof ordinaryCommit>[0]);
  },
- target(scope,witness,origin,choice,input,publishing){
+ target(scope,witness,origin,choice,input,publishing,custody){
   const {r,check,approve,approvePublication}=targetPolicy<MetadataContinuationResult['choice'],JointRoomActivationIntentChoice>(scope,input,'host',publishing);
-  const request={...choice.plan.destinations,origin,host:r['host'] as JointRoomMetadataInput['host'],inventory:r['inventory'] as JointRoomMetadataInput['inventory'],checkAuthority:check};
-  return {signal:scope.signal,check,close(){},verify:check,approvePublication,
-   preview:()=>previewHeldRoomMetadataContinuation(scope,witness,request),
-   run:(expected,resume)=>continueHeldRoomMetadata(scope,witness,{...request,expected,approve},resume)};
+  const host=r['host'] as JointRoomMetadataInput['host'],port=generationDeliveryRecoveryHostPort(host);
+  const waits=new NativeReconstructionWaits(()=>{check();custody?.check();port.guard(scope.signal);},
+   [scope.signal,...port.signals,...(custody?.signals??[])]);
+  const request={...choice.plan.destinations,origin,host,inventory:r['inventory'] as JointRoomMetadataInput['inventory'],checkAuthority:waits.check};
+  return {signal:waits.signal,check:waits.check,close:()=>waits.close(),verify:waits.check,approvePublication,
+   preview:()=>previewHeldRoomMetadataContinuation(scope,witness,request,waits.signal),
+   run:(expected,resume)=>continueHeldRoomMetadata(scope,witness,{...request,expected,approve},resume,waits.signal)};
  },
  cut:result=>result.choice.target,
 } satisfies JointActivationVariant<OrdinaryJointActivation>);
@@ -119,8 +124,8 @@ export const handoverJointActivation:JointActivationVariant<HandoverJointActivat
   const r=fields(provided,['activation','path','inspection','approve'],['limits']);
   return handoverCommit.call(metadata,{...r,expected:expected.plan.activation} as Parameters<typeof handoverCommit>[0]);
  },
- target(scope,witness,origin,choice,input,publishing){
-  return handoverMetadataVisit<JointHandoverActivationIntentChoice>(scope,witness,origin,choice.plan.destinations,choice.plan.activation.handover,input,publishing);
+ target(scope,witness,origin,choice,input,publishing,custody){
+  return handoverMetadataVisit<JointHandoverActivationIntentChoice>(scope,witness,origin,choice.plan.destinations,choice.plan.activation.handover,input,publishing,custody);
  },
  cut:result=>result.choice.continuation.target,
 } satisfies JointActivationVariant<HandoverJointActivation>);

@@ -78,7 +78,7 @@ receipt remains advisory on later confirmation attempts.
 
 Closing the activation requester or inspection control, or losing a held
 activation journal, ends a pending cold confirmation. Closing the publication
-requester also ends a pending publication decision. A late approval cannot start
+requester ends a pending decision during metadata replay or publication. A late approval cannot start
 a request. Before the request-started record, cancellation preserves the
 existing observation. Once the SDK starts recording the request, an interrupted
 operation requires fresh approval and an authenticated retry.
