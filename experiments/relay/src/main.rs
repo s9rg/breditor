@@ -59,7 +59,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ["inspect-sealed-room", request, auth, output] => {
             sealed_inspection::run(Path::new(request), Path::new(auth), Path::new(output)).await?;
         }
-        _ => return Err("usage: breditor-collab-relay token | init|init-v2|init-standard-v2|init-v3|init-standard-v3 LOG PROFILE_JSON DOCUMENT_JSON OWNER | serve LOG AUTH_JSON LOOPBACK_ADDRESS | inspect-sealed-room REQUEST_JSON AUTH_JSON NEW_EVIDENCE_DIR".into()),
+        ["repair-sealed-room", request, auth, evidence, selection_sha256, output] => {
+            sealed_inspection::repair(
+                Path::new(request), Path::new(auth), Path::new(evidence),
+                selection_sha256, Path::new(output),
+            ).await?;
+        }
+        _ => return Err("usage: breditor-collab-relay token | init|init-v2|init-standard-v2|init-v3|init-standard-v3 LOG PROFILE_JSON DOCUMENT_JSON OWNER | serve LOG AUTH_JSON LOOPBACK_ADDRESS | inspect-sealed-room REQUEST_JSON AUTH_JSON NEW_EVIDENCE_DIR | repair-sealed-room REQUEST_JSON AUTH_JSON EVIDENCE_DIR SELECTION_SHA256 NEW_EVIDENCE_DIR".into()),
     }
     Ok(())
 }

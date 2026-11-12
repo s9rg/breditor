@@ -1,6 +1,6 @@
 //! Write and read back an exclusive evidence directory with a completion record published last.
 use super::Result;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
     fs::{self, DirBuilder, File, OpenOptions},
@@ -18,12 +18,55 @@ pub(super) struct EvidenceDirectory {
     directory: File,
 }
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(super) struct FilePin {
-    file: &'static str,
-    bytes: u64,
-    sha256: [u8; 32],
+    file: String,
+    pub(super) bytes: u64,
+    pub(super) sha256: [u8; 32],
+}
+
+impl FilePin {
+    pub(super) fn verify(&self, directory: &Path, name: &str, limit: u64) -> Result<PathBuf> {
+        if self.file != name || self.bytes > limit {
+            return Err("retained evidence name or byte budget differs".into());
+        }
+        let path = directory.join(name);
+        let mut file = open_regular(&path)?;
+        verify_bytes(&mut file, self.bytes, self.sha256)?;
+        Ok(path)
+    }
+}
+
+pub(super) fn open_regular(path: &Path) -> Result<File> {
+    if !fs::symlink_metadata(path)?.is_file() {
+        return Err("retained evidence must be a regular file".into());
+    }
+    let file = File::open(path)?;
+    if !file.metadata()?.is_file() {
+        return Err("retained evidence file type changed".into());
+    }
+    Ok(file)
+}
+
+fn verify_bytes(file: &mut File, bytes: u64, sha256: [u8; 32]) -> Result {
+    if file.metadata()?.len() != bytes {
+        return Err("retained evidence length differs".into());
+    }
+    file.seek(SeekFrom::Start(0))?;
+    let mut hash = Sha256::new();
+    let mut remaining = bytes;
+    let mut buffer = [0_u8; 8192];
+    while remaining != 0 {
+        let count = usize::try_from(remaining.min(buffer.len() as u64))?;
+        file.read_exact(&mut buffer[..count])?;
+        hash.update(&buffer[..count]);
+        remaining -= count as u64;
+    }
+    if file.read(&mut buffer[..1])? != 0 || <[u8; 32]>::from(hash.finalize()) != sha256 {
+        return Err("retained evidence readback differs".into());
+    }
+    Ok(())
 }
 
 fn guard_directory(file: &File, path: &Path) -> Result {
@@ -124,21 +167,9 @@ impl EvidenceDirectory {
         let mut file = options.open(&path)?;
         write(&mut file)?;
         file.sync_all()?;
-        file.seek(SeekFrom::Start(0))?;
-        let mut hash = Sha256::new();
-        let mut remaining = bytes;
-        let mut buffer = [0_u8; 8192];
-        while remaining != 0 {
-            let count = usize::try_from(remaining.min(buffer.len() as u64))?;
-            file.read_exact(&mut buffer[..count])?;
-            hash.update(&buffer[..count]);
-            remaining -= count as u64;
-        }
-        if file.read(&mut buffer[..1])? != 0 || <[u8; 32]>::from(hash.finalize()) != sha256 {
-            return Err("retained evidence readback differs".into());
-        }
+        verify_bytes(&mut file, bytes, sha256)?;
         self.guard()?;
-        Ok(FilePin { file: name, bytes, sha256 })
+        Ok(FilePin { file: name.into(), bytes, sha256 })
     }
 
     pub(super) fn finish(&self, selection: &[u8]) -> Result {

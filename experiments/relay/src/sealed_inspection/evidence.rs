@@ -3,6 +3,7 @@ use super::{
     Result,
     destination::{Destination, EvidenceDirectory, FilePin},
     request::Mode,
+    selection::{PendingWrites, RasterPin, RotationPin, Selection},
 };
 use breditor_collab_relay::{
     ServerLogGenerationRoomBackup,
@@ -12,13 +13,11 @@ use breditor_collab_relay::{
         SealedNativeRestartBootstrap, SealedNativeRotationAndRasterInspection,
         SealedNativeRotationInspection, SealedNativeTailAndRasterInspection,
         SealedNativeTailInspection, ServerLogGenerationRecoveryState,
-        ServerLogGenerationRecoveryStateIdentity, inspect_sealed_native_raster_upload,
-        inspect_sealed_native_restart, inspect_sealed_native_rotation,
-        inspect_sealed_native_rotation_and_raster, inspect_sealed_native_tail,
-        inspect_sealed_native_tail_and_raster,
+        inspect_sealed_native_raster_upload, inspect_sealed_native_restart,
+        inspect_sealed_native_rotation, inspect_sealed_native_rotation_and_raster,
+        inspect_sealed_native_tail, inspect_sealed_native_tail_and_raster,
     },
 };
-use serde::Serialize;
 
 pub(super) enum Observation {
     Complete(ServerLogGenerationRecoveryState),
@@ -27,45 +26,6 @@ pub(super) enum Observation {
     Rotation(SealedNativeRotationInspection),
     NativeTailAndRaster(SealedNativeTailAndRasterInspection),
     RotationAndRaster(SealedNativeRotationAndRasterInspection),
-}
-
-#[derive(Default, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct PendingWrites {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    wal_suffix: Option<FilePin>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    rotation: Option<RotationPin>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    raster_stage: Option<RasterPin>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct RotationPin {
-    evidence: FilePin,
-    planned_manifest: [u8; 32],
-    head_published: bool,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct RasterPin {
-    evidence: FilePin,
-    selection_sha256: [u8; 32],
-    published_asset: Option<String>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct Selection {
-    format: &'static str,
-    format_version: u32,
-    mode: Mode,
-    current: ServerLogGenerationRecoveryStateIdentity,
-    archive: FilePin,
-    participants: FilePin,
-    pending: PendingWrites,
 }
 
 impl Observation {
@@ -150,7 +110,7 @@ impl Observation {
         let participants =
             output.write_bytes("participants.json", participants.to_json().as_bytes())?;
         output.finish(&serde_json::to_vec(&Selection {
-            format: "breditor/sealed-room-inspection",
+            format: "breditor/sealed-room-inspection".into(),
             format_version: 1,
             mode,
             current,

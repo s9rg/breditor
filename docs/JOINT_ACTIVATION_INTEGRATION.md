@@ -269,9 +269,29 @@ directories. It synchronizes and reads back the files before publishing
 If the command stops before publishing the selection, retain the partial
 directory and retry with a fresh destination.
 
-The retained selection is detached from the relay. Use it with the
-appropriate repair or exact restart API and supply the independently held
-protected-stream credentials when reopening.
+### Apply an approved repair
+
+Review the retained `selection.json` and record its exact SHA-256
+independently of the evidence directory. Prepare a request with the same
+mode and set `expectedCurrent` to the approved selection's `current`.
+Omit `minimumArchive` because repair reads the pinned archive in the
+evidence directory.
+
+```sh
+breditor-collab-relay repair-sealed-room REQUEST_JSON AUTH_JSON EVIDENCE_DIR SELECTION_SHA256 NEW_EVIDENCE_DIR < OWNER_TOKEN_FILE
+```
+
+The command checks the approved selection and each referenced file before
+applying the corresponding authenticated repair. It keeps the original
+evidence and writes a fresh complete bundle. A finished rotation can
+advance the selected manifest while preserving the accepted Native
+history. If repair stops before the new selection is written, inspect the
+surviving state before choosing the next action. A tail-only repair can
+retry from the same evidence and a fresh destination.
+
+The complete selection is detached from the relay. Supply the
+independently held protected-stream credentials when reopening through
+the exact restart API. Activation remains an explicit host action.
 
 When the room still has a pending physical rotation, use
 `inspect_sealed_native_rotation`. It checks fresh authentication, the sealed
