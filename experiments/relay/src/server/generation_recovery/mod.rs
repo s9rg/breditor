@@ -71,6 +71,10 @@ pub use physical::{
     VerifiedPhysicalServerRoomRecoveryState, prepare_physical_room_recovery_control,
     prepare_physical_room_recovery_host,
 };
+mod inspect_sealed_raster_upload;
+pub use inspect_sealed_raster_upload::{
+    SealedNativeRasterUploadInspection, inspect_sealed_native_raster_upload,
+};
 mod inspect_sealed_restart;
 pub use inspect_sealed_restart::inspect_sealed_native_restart;
 mod inspect_sealed_rotation;
@@ -94,6 +98,10 @@ pub use reopen_sealed_restart::{
 mod repair_sealed_tail;
 pub use repair_sealed_tail::{
     SealedNativeTailRepairFiles, SealedNativeTailRepairOutcome, repair_sealed_native_tail,
+};
+mod retire_sealed_raster_upload;
+pub use retire_sealed_raster_upload::{
+    SealedNativeRasterUploadRecoveryFiles, retire_sealed_native_raster_upload,
 };
 mod sealed_restart;
 pub use reconstruct::reconstruct_log_generation_recovery_host;

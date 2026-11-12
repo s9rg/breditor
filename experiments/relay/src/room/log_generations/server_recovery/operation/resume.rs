@@ -4,14 +4,19 @@ use super::super::super::{
     ServerLogGenerationRoomBackupIdentity, control_seal::RecoveryControlSeal,
 };
 use super::super::{
-    RecoveredLogGenerationServerRoom, ServerLogGenerationRoomRecovery, begin::selected, files,
-    raster_directory::RasterDirectory, selection::Marker,
+    RecoveredLogGenerationServerRoom, ServerLogGenerationRoomRecovery,
+    begin::selected,
+    files,
+    raster_directory::{RasterCustody, RasterDirectory},
+    selection::Marker,
 };
 use super::{
     context::Context, coordinator::OperationalLogGenerationServerRoom, interruption::Interruption,
 };
 use crate::{
-    Error, Result, Room, RoomRecoveryPolicy, credentials,
+    Error, Result, Room, RoomRecoveryPolicy,
+    assets::AssetStore,
+    credentials,
     log::{Log, generations::GenerationDirectory},
 };
 use std::path::Path;
@@ -23,6 +28,8 @@ pub(super) enum OpenMode {
     InspectNativePrefix,
     #[cfg(feature = "server")]
     InspectPendingRotation,
+    #[cfg(feature = "server")]
+    InspectPendingRaster,
 }
 
 fn read_operating_log(directory: GenerationDirectory, mode: OpenMode) -> Result<Room> {
@@ -45,10 +52,28 @@ fn read_operating_log(directory: GenerationDirectory, mode: OpenMode) -> Result<
                 Room::replay_records(log, records)
             }
         }
-        OpenMode::Resume | OpenMode::Committed => {
-            let (log, records, recovery) = Log::open_complete_owned_generations(directory)?;
-            Ok(Room::replay_loaded(log, records, recovery, false)?.0)
+        OpenMode::Resume | OpenMode::Committed => read_complete_log(directory),
+        #[cfg(feature = "server")]
+        OpenMode::InspectPendingRaster => read_complete_log(directory),
+    }
+}
+
+fn read_complete_log(directory: GenerationDirectory) -> Result<Room> {
+    let (log, records, recovery) = Log::open_complete_owned_generations(directory)?;
+    Ok(Room::replay_loaded(log, records, recovery, false)?.0)
+}
+
+impl OpenMode {
+    fn raster_store(
+        self,
+        directory: RasterDirectory,
+        binding: &str,
+    ) -> Result<(AssetStore, RasterCustody)> {
+        #[cfg(feature = "server")]
+        if matches!(self, Self::InspectPendingRaster) {
+            return directory.into_store_for_upload_inspection(binding);
         }
+        directory.into_store(binding)
     }
 }
 impl OperationalLogGenerationServerRoom {
@@ -130,7 +155,8 @@ impl OperationalLogGenerationServerRoom {
             &attempt.directory.path.join(&raster_selection.directory),
             &raster_selection.witness,
         )?;
-        let (assets, raster) = raster_directory.into_store(native.room().asset_binding())?;
+        let (assets, raster) =
+            mode.raster_store(raster_directory, native.room().asset_binding())?;
         let (authority, native_directory) = native.into_joined_parts();
         let custody = super::super::custody::JoinedRecoveryCustody {
             directory: attempt.directory,
@@ -145,7 +171,7 @@ impl OperationalLogGenerationServerRoom {
             // This mode is used only by the dedicated inspection, which checks the captured
             // physical ancestry under the same retained component custody.
             #[cfg(feature = "server")]
-            OpenMode::InspectPendingRotation => {}
+            OpenMode::InspectPendingRotation | OpenMode::InspectPendingRaster => {}
             _ => recovered.check_source(backup, principal, !context.committed, &context.extra)?,
         }
         if matches!(mode, OpenMode::Resume) {

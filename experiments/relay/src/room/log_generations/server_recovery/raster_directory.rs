@@ -109,9 +109,23 @@ impl RasterDirectory {
         self.root.sync_all().map_err(Into::into)
     }
     pub fn into_store(self, binding: &str) -> Result<(AssetStore, RasterCustody)> {
+        self.into_store_with(binding, AssetStore::open_recovered_with_lock)
+    }
+    #[cfg(feature = "server")]
+    pub fn into_store_for_upload_inspection(
+        self,
+        binding: &str,
+    ) -> Result<(AssetStore, RasterCustody)> {
+        self.into_store_with(binding, AssetStore::open_recovered_for_upload_inspection)
+    }
+    fn into_store_with(
+        self,
+        binding: &str,
+        load: fn(PathBuf, File, &str) -> Result<AssetStore>,
+    ) -> Result<(AssetStore, RasterCustody)> {
         self.guard()?;
         let Self { path, root, lock, witness } = self;
-        let assets = AssetStore::open_recovered_with_lock(path.clone(), lock, binding)?;
+        let assets = load(path.clone(), lock, binding)?;
         let custody = RasterCustody { path, root, witness };
         custody.guard(&assets)?;
         Ok((assets, custody))

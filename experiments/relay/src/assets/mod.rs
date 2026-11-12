@@ -6,6 +6,8 @@ mod store;
 mod types;
 pub use prepare::{PreparedAsset, asset_id, prepare_asset};
 pub use store::AssetStore;
+#[cfg(feature = "server")]
+pub use store::PendingRasterUpload;
 pub use store::{
     AssetBackupIdentity, AssetBackupInfo, AssetRecoveryPolicy, AssetRestore, AssetRestoreProgress,
     AssetStoreBackup, MAX_SERVER_ASSET_BACKUP_BYTES,

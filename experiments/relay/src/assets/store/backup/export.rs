@@ -17,6 +17,10 @@ pub(super) fn manifest(store: &AssetStore) -> Result<Vec<u8>> {
 }
 
 pub(super) fn files(store: &AssetStore) -> Result<BTreeSet<String>> {
+    files_with_pending(store, None)
+}
+
+fn files_with_pending(store: &AssetStore, pending: Option<&str>) -> Result<BTreeSet<String>> {
     let mut names = BTreeSet::new();
     for entry in fs::read_dir(&store.root)? {
         let entry = entry?;
@@ -27,7 +31,7 @@ pub(super) fn files(store: &AssetStore) -> Result<BTreeSet<String>> {
             .file_name()
             .into_string()
             .map_err(|_| Error::Contract("asset backup source name"))?;
-        if !names.insert(name) || names.len() > MAX_ASSETS + 2 {
+        if !names.insert(name) || names.len() > MAX_ASSETS + 2 + usize::from(pending.is_some()) {
             return Err(Error::Contract("asset backup source inventory"));
         }
     }
@@ -36,6 +40,7 @@ pub(super) fn files(store: &AssetStore) -> Result<BTreeSet<String>> {
         .keys()
         .map(|id| format!("{}.asset", &id[7..]))
         .chain([".lock".into(), "store.json".into()])
+        .chain(pending.map(str::to_owned))
         .collect::<BTreeSet<_>>();
     if names != expected {
         return Err(Error::Contract("asset backup incomplete source inventory"));
@@ -48,9 +53,16 @@ impl AssetStore {
     /// # Errors
     /// Rejects poisoned/changed/incomplete storage, original budgets or native raster admission.
     pub fn export_backup(&mut self) -> Result<AssetStoreBackup> {
+        self.export_backup_with_pending(None)
+    }
+
+    pub(in crate::assets::store) fn export_backup_with_pending(
+        &mut self,
+        pending: Option<&str>,
+    ) -> Result<AssetStoreBackup> {
         self.ready()?;
         super::restore_files::guard_lock(&self.root, &self.lock)?;
-        let inventory = files(self)?;
+        let inventory = files_with_pending(self, pending)?;
         let manifest = manifest(self)?;
         let mut offset = manifest.len() as u64;
         let mut records = Vec::new();
@@ -66,7 +78,10 @@ impl AssetStore {
             records.push(admission::admit_record(encoded, info)?);
             entries.push(Entry { info: info.clone(), record: section });
         }
-        if bytes != self.bytes || files(self)? != inventory || self::manifest(self)? != manifest {
+        if bytes != self.bytes
+            || files_with_pending(self, pending)? != inventory
+            || self::manifest(self)? != manifest
+        {
             return Err(Error::Contract("asset backup live source changed"));
         }
         super::restore_files::guard_lock(&self.root, &self.lock)?;

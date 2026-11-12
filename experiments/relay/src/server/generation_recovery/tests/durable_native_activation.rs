@@ -347,6 +347,7 @@ mod checkpoint_epoch;
 mod faults;
 #[path = "durable_native_activation/process.rs"]
 mod process;
+mod sealed_raster_recovery;
 mod sealed_restart;
 mod sealed_rotation_inspection;
 mod sealed_tail_inspection;
