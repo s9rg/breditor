@@ -34,3 +34,12 @@ This does not yet establish authenticated whole-room activation, outstanding
 offline/client/provider custody across activation or complete V1/parity readiness.
 The existing current/complete-byte recovery gates remain required. All thirteen
 V1 gates remain open.
+
+## Running current-build qualification
+
+Build the shared runtime with `node scripts/build-collaboration-runtime.mjs --candidate-receipt`
+as part of the candidate build. The source and independently installed checks for
+pending packet sources, current reconciliation and independent document/comment
+policies verify that build receipt against the tested source. Installed tests
+receive the same receipt and compare it with the Wasm in the packed package.
+The candidate plan supplies the expected receipt digest to each workset.

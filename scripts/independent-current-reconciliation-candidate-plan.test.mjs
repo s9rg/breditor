@@ -9,7 +9,16 @@ for(const profile of ['functional','full'])test(profile+': independent history c
  assert.ok(current.index>build.index);assert.ok(source.index>current.index);assert.ok(installed.index>source.index);
  assert.deepEqual(source.args,['scripts/check-independent-current-reconciliation-source.mjs']);assert.deepEqual(installed.args,['scripts/check-independent-current-reconciliation-installed.mjs']);
  assert.deepEqual(source.artifacts,[{path:'target/independent-current-reconciliation-source-qualification.json',fresh:true}]);assert.deepEqual(installed.artifacts,[{path:'target/independent-current-reconciliation-installed-consumer.json',fresh:true}]);
- for(const id of ['server-packet-recovery-native','installed-server-packet-recovery','current-server-packet-reconciliation-native','metadata-reconciliation-native','installed-metadata-reconciliation'])assert.ok(rows.has(id),id);
+ for(const id of [
+  'server-packet-recovery-native','installed-server-packet-recovery',
+  'current-server-packet-reconciliation-native','installed-current-server-packet-reconciliation',
+  'independent-current-reconciliation-native','installed-independent-current-reconciliation',
+ ]){
+  const row=rows.get(id);
+  assert.equal(row?.requiresSharedRuntime,true,id);
+  assert.ok(rows.get('paired-shared-runtime').index<row.index,id);
+ }
+ for(const id of ['metadata-reconciliation-native','installed-metadata-reconciliation'])assert.ok(rows.has(id),id);
  assert.equal(plan.v1Ready,false);
 });
 test('independent qualification requires all three explicit policy combinations through the real fixture and existing strict public types',()=>{
