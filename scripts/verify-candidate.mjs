@@ -6,6 +6,8 @@ import {candidateReleasePlan,repository} from "./candidate-release/plan.mjs";
 import {fileEvidence,sourceEvidence,saveEvidence} from "./candidate-release/evidence.mjs";
 import {executeCandidateStage} from "./candidate-release/process.mjs";
 import {retainCandidateActivationEvidence} from "./candidate-release/activation-evidence.mjs";
+import {activationRuntimeStageIds} from "./candidate-release/activation-shards.mjs";
+import {sharedRuntimeForActivation} from "./candidate-release/shared-runtime-evidence.mjs";
 
 export async function runCandidateChecks(plan,{root=repository,signal,report=console.log,execute=executeCandidateStage,snapshot=sourceEvidence,activationEvidence}={}){
  if(!["full","functional"].includes(plan.profile)||!Array.isArray(plan.checks)||!plan.checks.length||new Set(plan.checks.map(check=>check.id)).size!==plan.checks.length||plan.checks.some(check=>!/^[a-z][a-z0-9-]*$/.test(check.id)||typeof check.command!=="string"||!check.command||!Array.isArray(check.args)||check.args.some(arg=>typeof arg!=="string")||!Array.isArray(check.artifacts)||!Number.isSafeInteger(check.timeoutMs)||check.timeoutMs<=0))throw Error("Invalid candidate check plan");
@@ -24,7 +26,14 @@ export async function runCandidateChecks(plan,{root=repository,signal,report=con
    const retained=activation?.entry(check);
    if(retained)Object.assign(entry,retained);
    else{
-    const outcome=await execute(check,{root,logPath,signal});Object.assign(entry,outcome);
+    let execution=check;
+    if(activationRuntimeStageIds.includes(check.id)){
+     const runtime=sharedRuntimeForActivation(root,source);
+     entry.env={...check.env,...runtime.environment};
+     execution={...check,env:entry.env};
+     saveEvidence(manifest,result);
+    }
+    const outcome=await execute(execution,{root,logPath,signal});Object.assign(entry,outcome);
     entry.log=fileEvidence(root,relative(root,logPath));
     if(entry.status==="passed")entry.artifacts=check.artifacts.map(artifact=>{const evidence=fileEvidence(root,artifact.path);if(artifact.fresh&&evidence.modifiedAtMs<Date.parse(entry.startedAt))throw Error(`Stale stage report: ${artifact.path}`);return evidence;});
    }

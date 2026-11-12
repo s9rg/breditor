@@ -1,6 +1,8 @@
 /** Independent archives execute the selected complete recovery workset.
  * Module locations alone change; real Native and source assertions stay literal. */
 import {tmpdir} from 'node:os';
+import {copySharedRuntimeForActivation} from './candidate-release/shared-runtime-evidence.mjs';
+import {NORMAL_SHARED_WASM_SHA256} from './fixtures/native-runtime/normal-shared-identity.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {execFileSync,spawn} from 'node:child_process';
@@ -23,6 +25,7 @@ const tests=joint
  :['scripts/metadata-continuation-contracts.test.mjs','scripts/metadata-continuation-replacement-native.test.mjs','scripts/handover-metadata-continuation-replacement-native.test.mjs'];
 const types=joint?'scripts/fixtures/native-joint-activation/types.mts':'scripts/fixtures/metadata-continuation/types.mts';
 const source=sourceEvidence(root),directory=fs.mkdtempSync(join(fs.realpathSync(tmpdir()),'breditor-'+name+'-installed-')),archives=join(directory,'archives'),consumer=join(directory,'consumer'),sha=data=>createHash('sha256').update(data).digest('hex');fs.mkdirSync(archives);fs.mkdirSync(consumer);
+const sharedRuntime=copySharedRuntimeForActivation(root,consumer,source);
 const folders=['breditor-browser','breditor-experimental-rich-content','breditor-collaboration'],mapping=new Map(folders.map(name=>[name,JSON.parse(fs.readFileSync(join(root,'packages',name,'package.json'))).name]));
 const packs=JSON.parse(execFileSync('npm',['pack','--offline','--ignore-scripts','--json','--pack-destination',archives,...folders.map(name=>join(root,'packages',name))],{cwd:root,encoding:'utf8',maxBuffer:8*1024*1024}));
 const producer=JSON.parse(fs.readFileSync(join(root,'package-lock.json'))),locked=searchConsumerLock(producer,packs.map(pack=>({name:pack.name,path:join(archives,pack.filename)})));locked.manifest.dependencies.undici=producer.packages['node_modules/undici'].version;
@@ -33,7 +36,7 @@ function copyScript(path){if(seen.has(path))return;seen.add(path);const original
 for(const path of tests)copyScript(path);copyScript(types);
 const runtime=[];for(const path of['target/owned-history-relay-native/release/examples/complete_cohort_control_functional','target/owned-history-relay-native/release/examples/selected_suggestion_delivery_functional','target/handover-activation-native/release/examples/native_handover_activation_sdk_functional',...fs.readdirSync(join(root,'target/promoted-shared-web')).map(name=>'target/promoted-shared-web/'+name),'crates/breditor-core/tests/fixtures/rich-local-root.json']){const from=join(root,path),to=join(consumer,path);fs.mkdirSync(dirname(to),{recursive:true});fs.copyFileSync(from,to);assert.equal(sha(fs.readFileSync(from)),sha(fs.readFileSync(to)));runtime.push({path,sha256:sha(fs.readFileSync(from)),bytes:fs.statSync(from).size});}
 let files=0;for(const[folder,name]of mapping){const from=join(root,'packages',folder),to=join(consumer,'node_modules',name);function compare(path){for(const child of fs.readdirSync(join(from,path),{withFileTypes:true})){const next=join(path,child.name);if(child.isDirectory())compare(next);else if(child.isFile()){assert.equal(sha(fs.readFileSync(join(from,next))),sha(fs.readFileSync(join(to,next))),next);files++;}}}compare('dist');}
-assert.ok(runtime.some(row=>row.path.endsWith('breditor_shared_bg.wasm')&&row.sha256==='165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0'));
+assert.ok(runtime.some(row=>row.path.endsWith('breditor_shared_bg.wasm')&&row.sha256===(sharedRuntime?.wasmSha256??NORMAL_SHARED_WASM_SHA256)));
 if(restarted){
  const build=JSON.parse(fs.readFileSync(join(root,'target/handover-native-activation-native-build.json')));
  assert.equal(build.complete&&build.sourceUnchanged,true);
@@ -44,11 +47,11 @@ if(restarted){
  assert.equal(build.binaries[0].bytes,binary.bytes);
 }
 execFileSync(join(root,'node_modules/.bin/tsc'),['--noEmit','--strict','--target','es2022','--module','nodenext','--moduleResolution','nodenext','--lib','es2022,dom,dom.iterable','--skipLibCheck','false',types],{cwd:consumer,stdio:'inherit'});
-const state={format:'breditor/'+name+'-installed',formatVersion:1,source,directory,consumer,registryArtifacts,workspaceLinks:false,copied,runtime,matchingPackageDistFiles:files,archives:packs.map(pack=>({name:pack.name,path:join(archives,pack.filename),sha256:sha(fs.readFileSync(join(archives,pack.filename)))})),complete:false,wholeRoomActivated:false,v1Ready:false};
+const state={format:'breditor/'+name+'-installed',formatVersion:1,source,directory,consumer,registryArtifacts,workspaceLinks:false,sharedRuntimeReceiptSha256:sharedRuntime?.sha256??null,copied,runtime,matchingPackageDistFiles:files,archives:packs.map(pack=>({name:pack.name,path:join(archives,pack.filename),sha256:sha(fs.readFileSync(join(archives,pack.filename)))})),complete:false,wholeRoomActivated:false,v1Ready:false};
 saveEvidence(join(directory,'running.json'),state);
 saveEvidence(join(root,'target/'+name+'-installed-running.json'),{directory,consumer});
 console.log(JSON.stringify({directory,phase:contracts?name:joint?'sealed-whole-room-activation':'actual-seven-family-native-metadata-continuation'}));
-const path=join(directory,'contracts.log'),fd=fs.openSync(path,'wx'),child=spawn(process.execPath,['--test','--test-concurrency=1',...tests],{cwd:consumer,stdio:['ignore',fd,fd]});
+const path=join(directory,'contracts.log'),fd=fs.openSync(path,'wx'),child=spawn(process.execPath,['--test','--test-concurrency=1',...tests],{cwd:consumer,env:{...process.env,...sharedRuntime?.environment},stdio:['ignore',fd,fd]});
 fs.closeSync(fd);
 const actual=await new Promise((resolve,reject)=>{child.once('error',reject);child.once('exit',(code,signal)=>resolve({pid:child.pid,code,signal}));});
 saveEvidence(join(directory,'exit.json'),actual);

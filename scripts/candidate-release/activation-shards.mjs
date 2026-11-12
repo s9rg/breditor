@@ -11,6 +11,13 @@ export const activationStageIds = Object.freeze([
  "installed-sealed-joint-process-recovery",
 ]);
 
+export const activationRuntimeStageIds = Object.freeze([
+ ...activationStageIds,
+ "handover-native-activation-host",
+ "handover-native-activation-native",
+ "installed-handover-native-activation",
+]);
+
 const buildStageIds = [
  "default-typescript-build",
  "paired-local-runtime",
