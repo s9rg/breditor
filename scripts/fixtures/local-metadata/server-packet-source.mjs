@@ -13,10 +13,10 @@ import {prepareLocalMetadataReconciliationInput} from '../../../packages/bredito
 import {SharedRelayAssets} from '../../../packages/breditor-collaboration/dist/relay/assets.js';
 import {composeServerPacketClosure} from '../../../packages/breditor-collaboration/dist/server_packet_recovery/closure.js';
 import {captureServerPacketAssets} from '../../../packages/breditor-collaboration/dist/server_packet_recovery/capture_assets.js';
-import {ServerPacketAssetArchive} from '../../../packages/breditor-collaboration/dist/server_packet_recovery/asset_archive.js';
+import {ServerPacketAssetArchive,encodeServerPacketAssets} from '../../../packages/breditor-collaboration/dist/server_packet_recovery/asset_archive.js';
 import {PacketRasterFixtureImage} from './packet-raster.mjs';
 import {countPacketReads} from './count-packet-reads.mjs';
-import {checkPacketAssetSelection} from './packet-asset-selection.mjs';
+import {checkPacketAssetSelection,checkPacketAssetWriter} from './packet-asset-selection.mjs';
 export async function testUnseenServerPacketSource({host,selected,wrapper,native,author,readers,wasm,unchanged}){
  return withCheckedServerNativeDependencies(native,async()=>{
   const signal=new AbortController().signal,options={wasm,signal,checkAuthority:unchanged},integrity=prepareArchiveIntegrity(options),store=new MetadataPacketBodyStore(integrity,unchanged),query={versions:{kind:'start'},suggestions:{kind:'start'},revisions:{kind:'start'}},catalog=await captureSelectedServerMetadata(wrapper,query,signal),index=await withCheckedServerMetadataCatalog(catalog,async value=>value),texts=new Map(),server=[],parents=new Map();
@@ -33,6 +33,7 @@ export async function testUnseenServerPacketSource({host,selected,wrapper,native
    const opened=await countPacketReads(result.files.manifest.file,()=>ServerPacketAssetArchive.read(result.files,pins,options));
    assets=opened.value;assert.equal(opened.reads,1,"Decode the server raster manifest from its verified bytes");
   await checkPacketAssetSelection(ServerPacketAssetArchive,result.files,pins,options);
+  await checkPacketAssetWriter(encodeServerPacketAssets,assets,result.files,options);
   assert.ok(assets.header().requirements.references.some(row=>row.generation==='remote-packet-only-intermediate-g'));assert.deepEqual(assets.header().requirements.references,closure.outcome.references);for(const row of assets.header().payloads)assert.ok(assets.payload(row.asset));
    await assert.rejects(MetadataPacketAssetArchive.read(result.files,{references:parent,packets:pins.packets},options));await assert.rejects(ServerPacketAssetArchive.read(result.files,{...pins,dependencies:{...pins.dependencies,sha256:'0'.repeat(64)}},options));
    packetArchive=await MetadataPacketArchive.read(files,parent,options);assert.ok(packetArchive.header().server.length>0);assert.equal(requirements.pending.length,closure.covered.length);unchanged();

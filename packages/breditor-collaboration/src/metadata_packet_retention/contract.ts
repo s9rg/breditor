@@ -6,6 +6,7 @@ import type {SharedServerLogGenerationRecoveryControlSelection} from '../generat
 import type {SharedPacketAssetIdentity} from '../packet_asset_references.js';
 export const MAX_METADATA_PACKET_CHUNK_BYTES=64*1024*1024;
 export const MAX_METADATA_PACKET_MANIFEST_BYTES=256*1024*1024;
+export const MAX_METADATA_PACKET_ASSET_MANIFEST_BYTES=16*1024*1024;
 export const MAX_METADATA_PACKET_BODIES=100000;
 export const MAX_METADATA_PACKET_OCCURRENCES=100000;
 export interface MetadataPacketFile {readonly file:Blob;readonly bytes:number;readonly sha256:string}

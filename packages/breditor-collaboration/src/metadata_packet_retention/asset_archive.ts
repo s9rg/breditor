@@ -8,10 +8,11 @@ import {fields,integer,hash,rows} from '../physical_room_record_cut/policy.js';
 import type {LocalMetadataRasterInfo} from '../selected_local_metadata_assets/materialization_contract.js';
 import {metadataData} from '../selected_local_metadata_delivery/data.js';
 import {metadataPacketAssetHeader} from './asset_header.js';
-import {MAX_METADATA_PACKET_CHUNK_BYTES,type MetadataPacketAssetFiles,type MetadataPacketAssetHeader,type MetadataPacketFile} from './contract.js';
+import {MAX_METADATA_PACKET_CHUNK_BYTES,MAX_METADATA_PACKET_ASSET_MANIFEST_BYTES as headerMaximum,type MetadataPacketAssetFiles,type MetadataPacketAssetHeader,type MetadataPacketFile} from './contract.js';
 import {fail,packetIntegrityOptions,same} from './policy.js';
 import {readVerifiedPacketText} from './read_verified_text.js';
-const token=Object.freeze({}),slice=Blob.prototype.slice,maximum=1024*1024*1024,headerMaximum=16*1024*1024;
+import {encodePacketAssetArchive} from './asset_write.js';
+const token=Object.freeze({}),slice=Blob.prototype.slice;
 function selected(input:unknown,max:number):MetadataPacketFile{const r=fields(input,['file','bytes','sha256']),bytes=integer(r['bytes'],max,1),sha256=hash(r['sha256']),file=archiveBlob(r['file'] as Blob,max);if(file.size!==bytes)throw fail();return Object.freeze({file,bytes,sha256});}
 export function packetAssetFiles(input:unknown):MetadataPacketAssetFiles{const r=fields(input,['manifest','chunks']);return Object.freeze({manifest:selected(r['manifest'],headerMaximum),chunks:Object.freeze(rows(r['chunks'],1024).map(row=>selected(row,MAX_METADATA_PACKET_CHUNK_BYTES)))});}
 function range(chunks:readonly MetadataPacketFile[],offset:number,bytes:number,mime:string):Blob{const parts:Blob[]=[];let position=0,remaining=bytes;
@@ -37,8 +38,9 @@ export class MetadataPacketAssetArchive {
  }
 }
 export async function encodeMetadataPacketAssets(input:Omit<MetadataPacketAssetHeader,'payloads'|'chunks'>,payloads:readonly Readonly<{info:LocalMetadataRasterInfo;blob:Blob}>[],options:SharedArchiveIntegrityOptions,providedLimits:Partial<AssetLimits>={}):Promise<MetadataPacketAssetFiles>{
- const integrity=prepareArchiveIntegrity(options),limits=checkRichAssetLimits(providedLimits);integrity.guard();const body=new Blob(payloads.map(row=>archiveBlob(row.blob,limits.maxFileBytes)));if(body.size>limits.maxStoredBytes||body.size>maximum)throw fail('metadata_packet_retention_budget');
- const chunks:MetadataPacketFile[]=[];for(let offset=0;offset<body.size;offset+=MAX_METADATA_PACKET_CHUNK_BYTES){const file=slice.call(body,offset,offset+MAX_METADATA_PACKET_CHUNK_BYTES),sha256=await integrity.digest(file);integrity.guard();chunks.push(Object.freeze({file,bytes:file.size,sha256}));}
- let offset=0;const header=await metadataPacketAssetHeader({...input,payloads:payloads.map(({info})=>{const row={...info,offset};offset+=info.bytes;return row;}),chunks:chunks.map(({bytes,sha256})=>({bytes,sha256}))},limits,integrity.guard),file=new Blob([JSON.stringify(header)],{type:'application/vnd.breditor.metadata-packet-assets+json'});if(file.size>headerMaximum)throw fail('metadata_packet_retention_budget');
- const files=Object.freeze({manifest:Object.freeze({file,bytes:file.size,sha256:await integrity.digest(file)}),chunks:Object.freeze(chunks)});integrity.guard();const read=await MetadataPacketAssetArchive.read(files,header.parent,options,limits);read.dispose();integrity.guard();return files;
+ return encodePacketAssetArchive(input,payloads,options,providedLimits,{
+  mime:'application/vnd.breditor.metadata-packet-assets+json',
+  header:metadataPacketAssetHeader,
+  read:MetadataPacketAssetArchive.read,
+ });
 }
