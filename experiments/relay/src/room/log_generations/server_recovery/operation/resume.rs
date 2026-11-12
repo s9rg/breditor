@@ -30,6 +30,8 @@ pub(super) enum OpenMode {
     InspectPendingRotation,
     #[cfg(feature = "server")]
     InspectPendingRaster,
+    #[cfg(feature = "server")]
+    InspectNativePrefixAndRaster,
 }
 
 fn read_operating_log(directory: GenerationDirectory, mode: OpenMode) -> Result<Room> {
@@ -44,23 +46,27 @@ fn read_operating_log(directory: GenerationDirectory, mode: OpenMode) -> Result<
             }
             Room::replay_records(log, records)
         }
-        OpenMode::InspectNativePrefix => {
-            let (log, records, recovery) = Log::open_generation_prefix(directory)?;
-            if recovery.truncated_bytes == 0 {
-                Ok(Room::replay_loaded(log, records, recovery, false)?.0)
-            } else {
-                Room::replay_records(log, records)
-            }
-        }
+        OpenMode::InspectNativePrefix => read_log_prefix(directory),
         OpenMode::Resume | OpenMode::Committed => read_complete_log(directory),
         #[cfg(feature = "server")]
         OpenMode::InspectPendingRaster => read_complete_log(directory),
+        #[cfg(feature = "server")]
+        OpenMode::InspectNativePrefixAndRaster => read_log_prefix(directory),
     }
 }
 
 fn read_complete_log(directory: GenerationDirectory) -> Result<Room> {
     let (log, records, recovery) = Log::open_complete_owned_generations(directory)?;
     Ok(Room::replay_loaded(log, records, recovery, false)?.0)
+}
+
+fn read_log_prefix(directory: GenerationDirectory) -> Result<Room> {
+    let (log, records, recovery) = Log::open_generation_prefix(directory)?;
+    if recovery.truncated_bytes == 0 {
+        Ok(Room::replay_loaded(log, records, recovery, false)?.0)
+    } else {
+        Room::replay_records(log, records)
+    }
 }
 
 impl OpenMode {
@@ -70,7 +76,7 @@ impl OpenMode {
         binding: &str,
     ) -> Result<(AssetStore, RasterCustody)> {
         #[cfg(feature = "server")]
-        if matches!(self, Self::InspectPendingRaster) {
+        if matches!(self, Self::InspectPendingRaster | Self::InspectNativePrefixAndRaster) {
             return directory.into_store_for_upload_inspection(binding);
         }
         directory.into_store(binding)
@@ -171,7 +177,9 @@ impl OperationalLogGenerationServerRoom {
             // This mode is used only by the dedicated inspection, which checks the captured
             // physical ancestry under the same retained component custody.
             #[cfg(feature = "server")]
-            OpenMode::InspectPendingRotation | OpenMode::InspectPendingRaster => {}
+            OpenMode::InspectPendingRotation
+            | OpenMode::InspectPendingRaster
+            | OpenMode::InspectNativePrefixAndRaster => {}
             _ => recovered.check_source(backup, principal, !context.committed, &context.extra)?,
         }
         if matches!(mode, OpenMode::Resume) {

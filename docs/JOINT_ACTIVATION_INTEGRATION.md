@@ -275,8 +275,19 @@ retiring the staging name under the held epoch. An already published
 asset keeps its final name and inode. Unpublished bytes stay in the
 evidence file, and the client can retry the upload through the ordinary
 asset API. The returned cut can reopen with the protected registrations.
-Multiple pending files, unrelated hard links, and incomplete native
-history require separate recovery.
+Multiple pending files and unrelated hard links require separate recovery.
+
+If both an incomplete WAL frame and an interrupted raster upload remain,
+use `inspect_sealed_native_tail_and_raster` to capture one surviving room
+cut and both sets of evidence. Retain the room archive, exact WAL suffix,
+and exact raster stage separately outside the operating directory, along
+with the selected cut and evidence pins. For a committed checkpoint,
+`repair_sealed_native_tail_and_raster` checks and synchronizes all three
+files before it trims the incomplete frame and retires the staging name.
+It holds the original component locks and deployment epoch through both
+actions. If the WAL sync completes while the raster stage remains, retry
+with the same evidence. Once the stage is gone, select the exact complete
+cut through ordinary sealed restart inspection.
 
 When the active log ends inside a frame, use `inspect_sealed_native_tail`.
 It applies the same host authentication, deployment epoch, retained archive

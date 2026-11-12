@@ -59,9 +59,7 @@ pub async fn inspect_sealed_native_raster_upload(
                     source.identity().planned_selection(),
                     || {
                         selection.checkpoint.guard()?;
-                        operational
-                            .assets()
-                            .recheck_pending_upload(capture.upload.selection_sha256)?;
+                        operational.recheck_pending_raster(capture.upload.selection_sha256)?;
                         Ok(SealedNativeRasterUploadInspection { state, upload: capture.upload })
                     },
                 )
