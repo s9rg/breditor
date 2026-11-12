@@ -29,6 +29,21 @@ export async function testPacketArchiveComponents({host,selected,reader,core,rec
   for(const[i,row]of records.revisions.retained.entries()){const previous=await store.retain('suggestion',row.previousPacket,core),body=await store.retain('revision',row.packet,core,row.previousPacket);parents.set(body.key,previous.key);local.push({participant:'actual-comparison-client',point:'actual-original-receipt-data',store:'revisions',index:i,body:body.key,previousBody:previous.key});}
   const requirements=await readRetainedMetadataPacketReferences([{participant:'actual-comparison-client',core,check(){}}],store,parents,()=>{});assert.deepEqual(requirements.pending,[]);assert.ok(requirements.references.length>0);cases.push('genuine-Native-reference-reads-cover-all-original-and-local-bodies');
   const parentFile=new Blob([JSON.stringify({records,localStrings:[variant,original,odd]})]),parent={bytes:parentFile.size,sha256:await integrity.digest(parentFile)},chunks=await store.finish(),header={format:'breditor/original-metadata-packet-retention',formatVersion:1,scope:'exact-first-server-and-original-local-metadata-packet-strings',parent,catalog,bodies:store.bodies(),server,local,chunks:chunks.map(({bytes,sha256})=>({bytes,sha256}))},files=await encodeMetadataPacketArchive(header,chunks,options);
+  const selectedHeader={...header,parent:{...parent}},selectedChunks=chunks.map(row=>({...row}));
+  const captured=await encodeMetadataPacketArchive(selectedHeader,selectedChunks,{...options,checkAuthority(){
+   options.checkAuthority();
+   selectedHeader.parent.sha256='0'.repeat(64);
+   selectedChunks.length=0;
+  }});
+  assert.equal(captured.manifest.sha256,files.manifest.sha256,'Keep the selected packet parent and chunks through reentry');
+  assert.deepEqual(captured.chunks.map(({bytes,sha256})=>({bytes,sha256})),header.chunks);
+  const mutableOptions={...options,checkAuthority(){
+   options.checkAuthority();
+   mutableOptions.wasm=undefined;
+   mutableOptions.checkAuthority=()=>{throw Error('Replaced archive authority');};
+  }};
+  const readmitted=await encodeMetadataPacketArchive(header,chunks,mutableOptions);
+  assert.equal(readmitted.manifest.sha256,files.manifest.sha256);
   const opened=await countPacketReads(files.manifest.file,()=>MetadataPacketArchive.read(files,parent,options)),archive=opened.value;
   try{
    const body=header.bodies.find(row=>row.key===server[0].body);

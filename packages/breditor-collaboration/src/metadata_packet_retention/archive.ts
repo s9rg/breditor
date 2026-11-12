@@ -9,11 +9,14 @@ import {metadataPacketHeader} from './header.js';
 import {admitRecordedMetadataCatalog} from './catalog_data.js';
 import {generationControlSelection} from '../generation_recovery_control/identity.js';
 import {checkMetadataPacketCoverage} from './coverage.js';
-import {fail,same,textBytes} from './policy.js';
+import {fail,packetIntegrityOptions,same,textBytes} from './policy.js';
 import {readVerifiedPacketText} from './read_verified_text.js';
 const token=Object.freeze({}),slice=Blob.prototype.slice;
 function file(input:unknown,maximum:number):MetadataPacketFile{const r=fields(input,['file','bytes','sha256']),bytes=integer(r['bytes'],maximum,1),sha256=hash(r['sha256']),file=archiveBlob(r['file'] as Blob,maximum);if(file.size!==bytes)throw fail();return Object.freeze({file,bytes,sha256});}
-export function packetArchiveFiles(input:unknown):MetadataPacketArchiveFiles{const r=fields(input,['manifest','chunks']);return Object.freeze({manifest:file(r['manifest'],MAX_METADATA_PACKET_MANIFEST_BYTES),chunks:Object.freeze(rows(r['chunks'],MAX_METADATA_PACKET_BODIES).map(value=>file(value,MAX_METADATA_PACKET_CHUNK_BYTES)))});}
+function packetChunks(input:unknown):readonly MetadataPacketFile[]{
+ return Object.freeze(rows(input,MAX_METADATA_PACKET_BODIES).map(value=>file(value,MAX_METADATA_PACKET_CHUNK_BYTES)));
+}
+export function packetArchiveFiles(input:unknown):MetadataPacketArchiveFiles{const r=fields(input,['manifest','chunks']);return Object.freeze({manifest:file(r['manifest'],MAX_METADATA_PACKET_MANIFEST_BYTES),chunks:packetChunks(r['chunks'])});}
 export class MetadataPacketArchive {
  #state:Readonly<{header:MetadataPacketArchiveHeader;bodies:ReadonlyMap<string,MetadataPacketArchiveHeader['bodies'][number]>;files:MetadataPacketArchiveFiles;options:SharedArchiveIntegrityOptions}>|undefined;
  private constructor(key:object,header:MetadataPacketArchiveHeader,files:MetadataPacketArchiveFiles,options:SharedArchiveIntegrityOptions){if(key!==token)throw fail();this.#state={header,bodies:new Map(header.bodies.map(row=>[row.key,row])),files,options};Object.freeze(this);}
@@ -29,7 +32,7 @@ export class MetadataPacketArchive {
  }
  dispose():void{this.#state=undefined;}
  static async read(provided:MetadataPacketArchiveFiles,expectedParent:Readonly<{bytes:number;sha256:string}>,options:SharedArchiveIntegrityOptions):Promise<MetadataPacketArchive>{
-  const files=packetArchiveFiles(provided),parent=fields(expectedParent,['bytes','sha256']),integrity=prepareArchiveIntegrity(options);integrity.guard();
+  const files=packetArchiveFiles(provided),parent=fields(expectedParent,['bytes','sha256']),integrity=prepareArchiveIntegrity(packetIntegrityOptions(options));integrity.guard();
   const text=await readVerifiedPacketText(files.manifest.file,files.manifest.sha256,MAX_METADATA_PACKET_MANIFEST_BYTES,integrity);
   const header=metadataPacketHeader(JSON.parse(text));if(JSON.stringify(header)!==text||!same(header.parent,{bytes:integer(parent['bytes'],1024*1024*1024,1),sha256:hash(parent['sha256'])})||!same(header.chunks,files.chunks.map(({bytes,sha256})=>({bytes,sha256}))))throw fail();
   const selection=generationControlSelection(header.catalog.selection),index=await admitRecordedMetadataCatalog(header.catalog,selection,selection.source.server.native.source.document,integrity.guard);checkMetadataPacketCoverage(header,index);
@@ -39,6 +42,13 @@ export class MetadataPacketArchive {
 }
 /** Round-trip the exact storage reader before publishing new immutable files. */
 export async function encodeMetadataPacketArchive(header:MetadataPacketArchiveHeader,chunks:readonly MetadataPacketFile[],options:SharedArchiveIntegrityOptions):Promise<MetadataPacketArchiveFiles>{
- const integrity=prepareArchiveIntegrity(options);integrity.guard();const normalized=metadataPacketHeader(header),text=JSON.stringify(normalized),file=new Blob([text],{type:'application/vnd.breditor.metadata-packet-retention+json'});if(file.size>MAX_METADATA_PACKET_MANIFEST_BYTES)throw fail('metadata_packet_retention_budget');
- const files=Object.freeze({manifest:Object.freeze({file,bytes:file.size,sha256:await integrity.digest(file)}),chunks:Object.freeze([...chunks])});integrity.guard();const read=await MetadataPacketArchive.read(files,header.parent,options);read.dispose();integrity.guard();return files;
+ const selectedOptions=packetIntegrityOptions(options),normalized=metadataPacketHeader(header),retained=packetChunks(chunks);
+ const file=new Blob([JSON.stringify(normalized)],{type:'application/vnd.breditor.metadata-packet-retention+json'});
+ if(file.size>MAX_METADATA_PACKET_MANIFEST_BYTES)throw fail('metadata_packet_retention_budget');
+ const integrity=prepareArchiveIntegrity(selectedOptions);
+ const files=Object.freeze({manifest:Object.freeze({file,bytes:file.size,sha256:await integrity.digest(file)}),chunks:retained});
+ const read=await MetadataPacketArchive.read(files,normalized.parent,{wasm:integrity.wasm,checkAuthority:integrity.guard});
+ read.dispose();
+ integrity.guard();
+ return files;
 }
