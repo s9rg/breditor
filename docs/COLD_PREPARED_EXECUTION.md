@@ -34,6 +34,22 @@ ordinary `begin`/`resume` paths retain their existing-only execution semantics.
 Complete original Native/provider/packet/raster checks and independent Native,
 metadata and publication barriers remain required.
 
+## Inspect a run after interruption
+
+`observeRoomRunJournal` takes the independently retained run identity and
+current storage authority. It reserves the journal namespace, validates the
+exact identity and full event chain, and releases the reservation before
+returning DATA. An absent probe aborts the version-zero transaction. Existing
+rows, source stores, target stores and actor locks remain outside this action.
+
+After interruption during the first preview, an existing journal reports the
+durable START event even when the original client never recorded the result.
+Use an explicit existing-only resume with fresh approval in this case. An
+absence observation supplies current evidence for considering an explicit
+prepared start. Busy, corrupt, foreign and unavailable storage fail the
+observation. A competing change can make either observation stale, so the next
+operation still performs its ordinary admission checks.
+
 ## Qualification
 
 `scripts/cold-room-prepared-start.test.mjs` checks the original missing-journal

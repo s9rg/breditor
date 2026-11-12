@@ -29,27 +29,42 @@ export class RoomRunJournalStore {
  #run<T>(work:()=>Promise<T>):Promise<T>{this.checkCurrent();if(this.#running)throw fail('room_execution_busy');const task=Promise.resolve().then(work);this.#running=task;return task.finally(()=>{this.#running=undefined;});}
  #attach(db:IDBDatabase){this.#db=db;db.onversionchange=()=>{this.#changed=true;db.close();};}
  open(create:boolean):Promise<RoomRunSnapshot>{return this.#run(async()=>{
+  await this.#open(create);
+  return this.#load();
+ });}
+ /** Observe a complete existing journal or an aborted absent-only probe. */
+ observe():Promise<RoomRunSnapshot|null>{return this.#run(async()=>{
+  const present=await this.#open(false,true);
+  return present?this.#load():null;
+ });}
+ async #open(create:boolean,allowAbsent=false):Promise<boolean>{
   this.#check();if(typeof create!=='boolean'||this.#pending||this.#db)throw fail('room_execution_busy');
   const context=this.#context(),execution=await context.digest(new Blob([JSON.stringify(this.#identity)]));
   const event=roomRunEvent({format:'breditor/native-room-run-event',formatVersion:1,execution,sequence:0,previous:null,stage:'start'});
   const row:RoomRunStoredEvent={event,sha256:await context.digest(new Blob([JSON.stringify(event)]))};this.#check();
-  await new Promise<void>((resolve,reject)=>{
-   const q=this.#factory.open(this.#identity.database,1);let created=false,blocked=false,failed=false,reason:unknown,unwatch=()=>{};
+  return new Promise<boolean>((resolve,reject)=>{
+   const q=this.#factory.open(this.#identity.database,1);let created=false,absent=false,blocked=false,failed=false,reason:unknown,unwatch=()=>{};
    this.#pending=true;this.#request=q;this.#reject=reject;
    const abort=(error:unknown)=>{failed=true;reason=error;if(q.transaction){try{q.transaction.abort();}catch{}}else reject(error);};
    const done=()=>{this.#pending=false;this.#request=undefined;this.#reject=undefined;unwatch();};
    try{unwatch=this.#cancel.watch(()=>abort(fail('room_execution_aborted')));}catch(error){abort(error);}
    q.onupgradeneeded=event=>{this.#attach(q.result);try{
     this.#check();if(blocked||failed)throw fail('room_execution_busy');
-    if(event.oldVersion!==0)throw fail('room_execution_exists');if(!create)throw fail('room_execution_missing');
+    if(event.oldVersion!==0)throw fail('room_execution_exists');
+    if(!create){absent=allowAbsent;throw fail('room_execution_missing');}
     for(const table of roomRunTables)q.result.createObjectStore(table);
     q.transaction!.objectStore('intent').add(this.#identity,'record');q.transaction!.objectStore('events').add(row,0);created=true;this.#check();
    }catch(error){abort(error);}};
    q.onblocked=()=>{blocked=true;unwatch();reject(fail('room_execution_busy'));};
-   q.onerror=()=>{done();reject(failed?reason:fail('room_execution_storage'));};
-   q.onsuccess=()=>{this.#attach(q.result);done();try{this.#check();if(blocked||failed)throw fail('room_execution_busy');if(create&&!created)throw fail('room_execution_exists');schema(q.result);resolve();}catch(error){reject(error);}};
-  });return this.#load();
- });}
+   q.onerror=()=>{
+    done();
+    if(absent){
+     try{this.#check();resolve(false);}catch(error){reject(error);}
+    }else reject(failed?reason:fail('room_execution_storage'));
+   };
+   q.onsuccess=()=>{this.#attach(q.result);done();try{this.#check();if(blocked||failed)throw fail('room_execution_busy');if(create&&!created)throw fail('room_execution_exists');schema(q.result);resolve(true);}catch(error){reject(error);}};
+  });
+ }
  /** Count every table before bounded reads in the same transaction. */
  #requests(tx:IDBTransaction,done:(raw:RoomRunRaw)=>void,abort:(error:unknown)=>void) {
   const counts:Partial<Record<RoomRunTable,number>>={},result:Partial<Record<RoomRunTable,{keys:IDBValidKey[];values:unknown[]}>>={};let counted=0,read=0;

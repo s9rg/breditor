@@ -16,6 +16,12 @@ export interface RoomRunSnapshot {
  readonly identity:RoomRunIdentity;readonly execution:string;
  readonly head:Readonly<{sequence:number;sha256:string}>;readonly events:readonly RoomRunStoredEvent[];
 }
+/** Read-only bootstrap data. The caller must still choose and approve a fresh
+ * start or resume against current storage. */
+export type RoomRunJournalObservation=
+ |Readonly<{kind:'absent';identity:RoomRunIdentity}>
+ |Readonly<{kind:'existing';snapshot:RoomRunSnapshot}>;
+
 export interface RoomRunApproval {
  readonly format:'breditor/native-room-run-approval';readonly formatVersion:1;
  readonly identity:RoomRunIdentity;readonly head:RoomRunSnapshot['head'];
