@@ -241,6 +241,38 @@ history and raster bytes, then returns the surviving archive and registration
 inventory and releases the reopened locks. Retain that observed selection
 before reopening with all protected registrations for explicit activation.
 
+### Retain a cold inspection from the relay command line
+
+Stop the relay and run the reference binary built with the `server` feature.
+Choose a new destination in an existing directory under operator custody.
+
+```sh
+breditor-collab-relay inspect-sealed-room REQUEST_JSON AUTH_JSON NEW_EVIDENCE_DIR < OWNER_TOKEN_FILE
+```
+
+The request has format `breditor/sealed-room-inspection-request` and
+`formatVersion` 1. Supply `principal`, `sourceRoot`, `checkpointRoot`,
+`authorityRoot`, `operationalRoot`, `expectedCheckpoint`, and
+`expectedCurrent` from the independently retained host configuration.
+Use `minimumArchive` for the exact retained archive if the selected floor
+is later than the checkpoint. Paths resolve relative to the command's
+working directory. `AUTH_JSON` is the relay's usual authentication
+configuration. Stdin takes one owner token followed by EOF.
+
+Select `mode` as `complete`, `native-tail`, `raster-upload`, `rotation`,
+`native-tail-and-raster`, or `rotation-and-raster` according to the
+interruption being investigated. The command writes `room.backup`,
+`participants.json`, and any applicable `wal-suffix.bin`, `rotation.json`,
+or `raster-stage.bin` into the new private directory outside the relay
+directories. It synchronizes and reads back the files before publishing
+`selection.json`, which records the selected cut, byte counts and digests.
+If the command stops before publishing the selection, retain the partial
+directory and retry with a fresh destination.
+
+The retained selection is detached from the relay. Use it with the
+appropriate repair or exact restart API and supply the independently held
+protected-stream credentials when reopening.
+
 When the room still has a pending physical rotation, use
 `inspect_sealed_native_rotation`. It checks fresh authentication, the sealed
 checkpoint, the original operational owner, the retained archive floor and the

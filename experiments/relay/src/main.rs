@@ -7,6 +7,8 @@ use breditor_collab_relay::{
 use serde_json::json;
 use std::{fs::File, io::Read, net::SocketAddr, path::Path};
 
+mod sealed_inspection;
+
 fn bounded(path: &str, max: u64) -> Result<String, Box<dyn std::error::Error>> {
     let mut value = String::new();
     File::open(path)?.take(max + 1).read_to_string(&mut value)?;
@@ -54,7 +56,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("{}", json!({"kind":"listening","address":listener.local_addr()?.to_string(),"recovery":recovery}));
             axum::serve(listener, router).with_graceful_shutdown(async { let _ = tokio::signal::ctrl_c().await; }).await?;
         }
-        _ => return Err("usage: breditor-collab-relay token | init|init-v2|init-standard-v2|init-v3|init-standard-v3 LOG PROFILE_JSON DOCUMENT_JSON OWNER | serve LOG AUTH_JSON LOOPBACK_ADDRESS".into()),
+        ["inspect-sealed-room", request, auth, output] => {
+            sealed_inspection::run(Path::new(request), Path::new(auth), Path::new(output)).await?;
+        }
+        _ => return Err("usage: breditor-collab-relay token | init|init-v2|init-standard-v2|init-v3|init-standard-v3 LOG PROFILE_JSON DOCUMENT_JSON OWNER | serve LOG AUTH_JSON LOOPBACK_ADDRESS | inspect-sealed-room REQUEST_JSON AUTH_JSON NEW_EVIDENCE_DIR".into()),
     }
     Ok(())
 }
