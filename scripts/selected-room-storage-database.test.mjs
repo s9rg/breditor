@@ -13,3 +13,106 @@ test('same size/MIME conflicting Blob bytes are refused and existing selected co
 test('missing probes create no placeholder; lost post-commit permission leaves exact facts',async()=>{const reset=environment(),add=IDBObjectStore.prototype.add;let job,allowed=true;try{const record=await source();Object.defineProperty(globalThis,'indexedDB',{value:new IDBFactory(),configurable:true});job=new Job({...options,checkAuthority(){if(!allowed)throw Error('Revoked');}});await job.reserve([plan.database]);const before=await job.observe(plan,record);assert.equal(before.kind,'absent');assert.deepEqual(await indexedDB.databases(),[]);let armed=true;IDBObjectStore.prototype.add=function(...args){if(armed&&this.transaction.db.name===plan.database){armed=false;this.transaction.addEventListener('complete',()=>{allowed=false;},{once:true});}return add.apply(this,args);};await assert.rejects(job.restore(plan,record,before));assert.equal(armed,false);await job.close();IDBObjectStore.prototype.add=add;allowed=true;job=new Job(options);await job.reserve([plan.database]);assert.equal((await job.observe(plan,record)).kind,'identical');}finally{allowed=true;IDBObjectStore.prototype.add=add;await job?.close();reset();}});
 test('Close drains late reservations across more than sixteen namespaces without losing custody entries',async()=>{const reset=environment(),reserve=RecoveryOpeningCustody.reserve,names=Array.from({length:33},(_,i)=>'full-room-'+String(i).padStart(2,'0'));let job=new Job(options),release,notify;const entered=new Promise(resolve=>{notify=resolve;});try{let count=0;RecoveryOpeningCustody.reserve=async function(...args){const value=await reserve.apply(this,args);if(++count===2){notify();await new Promise(resolve=>{release=resolve;});}return value;};const pending=job.reserve(names),observed=pending.then(()=>({}),error=>({error}));await entered;let closed=false;const closing=job.close().then(()=>{closed=true;});await new Promise(resolve=>setImmediate(resolve));assert.equal(closed,false);release();await closing;assert.ok((await observed).error);RecoveryOpeningCustody.reserve=reserve;job=new Job(options);await job.reserve(names);}finally{release?.();RecoveryOpeningCustody.reserve=reserve;await job.close();reset();}});
 test('late success keeps real namespace custody until the request callback can drain',async()=>{const reset=environment(),open=IDBFactory.prototype.open;let job,release,notify;const entered=new Promise(resolve=>{notify=resolve;});try{await source();job=new Job(options);await job.reserve([plan.database]);let armed=true;IDBFactory.prototype.open=function(name,...args){const q=open.call(this,name,...args);if(name===plan.database)q.addEventListener('success',event=>{if(!armed)return;armed=false;event.stopImmediatePropagation();const fn=q.onsuccess;q.onsuccess=null;release=()=>fn.call(q,event);notify();});return q;};const reading=job.capture(plan),observed=reading.then(()=>({}),error=>({error}));await entered;await assert.rejects(job.close());const blocked=new Job(options);try{await assert.rejects(blocked.reserve([plan.database]));}finally{await blocked.close();}release();release=undefined;await observed;await job.close();IDBFactory.prototype.open=open;job=new Job(options);await job.reserve([plan.database]);}finally{release?.();IDBFactory.prototype.open=open;await job?.close();reset();}});
+
+function inlineRecord(databaseName, value) {
+  const selection = { database: databaseName, stores: ['records'], selection: { kind: 'whole' } };
+  const content = {
+    database: databaseName,
+    version: 1,
+    stores: [{
+      name: 'records',
+      keyPath: 'id',
+      autoIncrement: false,
+      indexes: [],
+      keys: ['wanted'],
+      values: [value],
+    }],
+  };
+  return { selection, content };
+}
+
+for (const existing of [false, true]) {
+  test('an inline key mismatch rolls back the ' + (existing ? 'existing store' : 'new database'), async () => {
+    const reset = environment();
+    const { selection, content } = inlineRecord('inline-storage', { id: 'different', text: 'Selected' });
+    content.stores[0].keys.unshift('sibling');
+    content.stores[0].values.unshift({ id: 'sibling', text: 'Valid addition' });
+    const job = new Job(options);
+    try {
+      if (existing) {
+        const db = await database(selection.database, db => {
+          db.createObjectStore('records', { keyPath: 'id' }).add({ id: 'keep', text: 'Earlier record' });
+        });
+        db.close();
+        content.stores[0].keys.push('keep');
+        content.stores[0].values.push({ id: 'keep', text: 'Earlier record' });
+      }
+      await job.reserve([selection.database]);
+      const choice = await job.observe(selection, content);
+      assert.equal(choice.kind, existing ? 'partial' : 'absent');
+      await assert.rejects(job.restore(selection, content, choice));
+
+      if (existing) {
+        assert.equal(await read(selection.database, 'records', 'different'), undefined);
+        assert.equal(await read(selection.database, 'records', 'sibling'), undefined);
+        assert.deepEqual(await read(selection.database, 'records', 'keep'), { id: 'keep', text: 'Earlier record' });
+      } else {
+        assert.deepEqual(await indexedDB.databases(), []);
+      }
+    } finally {
+      await job.close();
+      reset();
+    }
+  });
+}
+
+test('a replacement store with a different key path receives no records', async () => {
+  const reset = environment();
+  const { selection, content } = inlineRecord('replaced-storage', {
+    id: 'wanted',
+    replacementId: 'unexpected',
+    text: 'Selected',
+  });
+  const open = IDBFactory.prototype.open;
+  const job = new Job(options);
+  let replacement;
+  try {
+    const db = await database(selection.database, db => db.createObjectStore('records', { keyPath: 'id' }));
+    db.close();
+    await job.reserve([selection.database]);
+    const choice = await job.observe(selection, content);
+    assert.equal(choice.kind, 'missing');
+
+    let openings = 0;
+    IDBFactory.prototype.open = function (name, version) {
+      if (name === selection.database && ++openings === 2) {
+        // Queue an external replacement just before the writer opens this name.
+        replacement = new Promise((resolve, reject) => {
+          const deletion = this.deleteDatabase(name);
+          deletion.onerror = () => reject(deletion.error);
+          const request = open.call(this, name, version);
+          request.onupgradeneeded = () => {
+            request.result.createObjectStore('records', { keyPath: 'replacementId' }).add({ replacementId: 'keep' });
+          };
+          request.onsuccess = () => {
+            request.result.close();
+            resolve();
+          };
+          request.onerror = () => reject(request.error);
+        });
+      }
+      return open.call(this, name, version);
+    };
+
+    await assert.rejects(job.restore(selection, content, choice), { code: 'room_storage_schema' });
+    assert.ok(replacement);
+    await replacement;
+    IDBFactory.prototype.open = open;
+    assert.equal(await read(selection.database, 'records', 'unexpected'), undefined);
+    assert.deepEqual(await read(selection.database, 'records', 'keep'), { replacementId: 'keep' });
+  } finally {
+    IDBFactory.prototype.open = open;
+    await job.close();
+    reset();
+  }
+});

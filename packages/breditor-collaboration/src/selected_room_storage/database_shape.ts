@@ -5,4 +5,15 @@ import type {StorageDatabase,StorageDatabasePlan,StorageIndex,StorageStore} from
 function name(v:unknown):string{if(typeof v!=='string'||!v||v.length>4096||/[\u0000-\u001f]/.test(v))throw fail();return v;}
 function keyPath(v:unknown,nullable:boolean):string|readonly string[]|null{if(v===null&&nullable)return null;if(typeof v==='string')return v;const list=rows(v,64);if(!list.length||list.some(x=>typeof x!=='string'))throw fail();return list as string[];}
 export function storageDatabase(input:unknown,plan:StorageDatabasePlan):StorageDatabase{const r=fields(input,['database','version','stores']);if(r['database']!==plan.database||r['version']!==1)throw fail();const stores=rows(r['stores'],32).map((value,i):StorageStore=>{const s=fields(value,['name','keyPath','autoIncrement','indexes','keys','values']);if(s['name']!==plan.stores[i]||s['autoIncrement']!==false)throw fail('room_storage_schema');const indices=rows(s['indexes'],64).map((value):StorageIndex=>{const r=fields(value,['name','keyPath','unique','multiEntry']);if(typeof r['unique']!=='boolean'||typeof r['multiEntry']!=='boolean')throw fail();return{name:name(r['name']),keyPath:keyPath(r['keyPath'],false)!,unique:r['unique'],multiEntry:r['multiEntry']};});if(new Set(indices.map(x=>x.name)).size!==indices.length||indices.some((x,i)=>i>0&&indices[i-1]!.name>=x.name))throw fail();const keys=rows(s['keys'],MAX_STORAGE_RECORDS) as IDBValidKey[],values=rows(s['values'],MAX_STORAGE_RECORDS);if(keys.length!==values.length||new Set(keys.map(x=>storageKey(x))).size!==keys.length||keys.some(key=>!selectedStorageKey(key,plan.selection)))throw fail();return{name:name(s['name']),keyPath:keyPath(s['keyPath'],true),autoIncrement:false,indexes:indices,keys,values};});if(stores.length!==plan.stores.length)throw fail();return{database:plan.database,version:1,stores};}
-export function sameStorageSchema(a:StorageStore,b:StorageStore):boolean{return equal({name:a.name,keyPath:a.keyPath,autoIncrement:a.autoIncrement,indexes:a.indexes},{name:b.name,keyPath:b.keyPath,autoIncrement:b.autoIncrement,indexes:b.indexes});}
+type StorageSchema = Pick<StorageStore, 'name' | 'keyPath' | 'autoIncrement' | 'indexes'>;
+
+export function readStorageSchema(store: IDBObjectStore): StorageSchema {
+  if (store.autoIncrement) throw fail('room_storage_key_generator');
+  const indexes = [...store.indexNames].map(name => {
+    const index = store.index(name);
+    return { name, keyPath: index.keyPath, unique: index.unique, multiEntry: index.multiEntry };
+  });
+  return { name: store.name, keyPath: store.keyPath, autoIncrement: false, indexes };
+}
+
+export function sameStorageSchema(a:StorageSchema,b:StorageSchema):boolean{return equal({name:a.name,keyPath:a.keyPath,autoIncrement:a.autoIncrement,indexes:a.indexes},{name:b.name,keyPath:b.keyPath,autoIncrement:b.autoIncrement,indexes:b.indexes});}
