@@ -75,7 +75,12 @@ mod inspect_sealed_restart;
 pub use inspect_sealed_restart::inspect_sealed_native_restart;
 mod inspect_sealed_rotation;
 pub use inspect_sealed_rotation::{SealedNativeRotationInspection, inspect_sealed_native_rotation};
+mod complete_sealed_rotation;
+pub use complete_sealed_rotation::{
+    SealedNativeRotationCompletionFiles, complete_sealed_native_rotation,
+};
 mod inspect_sealed_tail;
+mod repair_evidence_file;
 pub use inspect_sealed_tail::{SealedNativeTailInspection, inspect_sealed_native_tail};
 mod open_sealed_restart;
 pub use open_sealed_restart::{SealedNativeRestartHostCoverage, open_sealed_native_restart_host};

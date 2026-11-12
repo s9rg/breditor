@@ -1,5 +1,7 @@
 //! Durable storage-phase handoff; account/provider/client activation remains separate.
 mod begin;
+#[cfg(feature = "server")]
+mod complete_pending_rotation;
 mod context;
 #[cfg(feature = "server")]
 mod host_custody;
