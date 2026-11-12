@@ -1,5 +1,6 @@
 /** Independent archives execute the held metadata evidence workset.
  * Module locations alone change; real Native and source assertions stay literal. */
+import {tmpdir} from 'node:os';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {execFileSync,spawn} from 'node:child_process';
@@ -14,7 +15,7 @@ if(process.argv.length!==2&&!sealed)throw Error('Expected no arguments or --seal
 const expectedCases=2;
 const tests=['scripts/metadata-continuation-evidence-admission.test.mjs',sealed?'scripts/handover-metadata-continuation-replacement-native.test.mjs':'scripts/metadata-continuation-evidence-native.test.mjs'];
 const name=sealed?'sealed-metadata-evidence':'metadata-evidence';
-const source=sourceEvidence(root),directory=fs.mkdtempSync('/private/tmp/breditor-'+name+'-installed-'),archives=join(directory,'archives'),consumer=join(directory,'consumer'),sha=data=>createHash('sha256').update(data).digest('hex');fs.mkdirSync(archives);fs.mkdirSync(consumer);
+const source=sourceEvidence(root),directory=fs.mkdtempSync(join(fs.realpathSync(tmpdir()),'breditor-'+name+'-installed-')),archives=join(directory,'archives'),consumer=join(directory,'consumer'),sha=data=>createHash('sha256').update(data).digest('hex');fs.mkdirSync(archives);fs.mkdirSync(consumer);
 const folders=['breditor-browser','breditor-experimental-rich-content','breditor-collaboration'],mapping=new Map(folders.map(name=>[name,JSON.parse(fs.readFileSync(join(root,'packages',name,'package.json'))).name]));
 const packs=JSON.parse(execFileSync('npm',['pack','--offline','--ignore-scripts','--json','--pack-destination',archives,...folders.map(name=>join(root,'packages',name))],{cwd:root,encoding:'utf8',maxBuffer:8*1024*1024}));
 const producer=JSON.parse(fs.readFileSync(join(root,'package-lock.json'))),locked=searchConsumerLock(producer,packs.map(pack=>({name:pack.name,path:join(archives,pack.filename)})));locked.manifest.dependencies.undici=producer.packages['node_modules/undici'].version;

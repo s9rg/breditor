@@ -1,5 +1,6 @@
 /** Exact source or independently installed uncertainty/read-observation workset.
  * Synthetic transport failures and controlled IDB are component evidence only. */
+import {tmpdir} from 'node:os';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {execFileSync,spawn} from 'node:child_process';
@@ -18,7 +19,7 @@ const resource='scripts/fixtures/local-metadata/pending-source-packet-recovery.a
 assert.equal(sha(resourceBytes),'f49c7ed524d513b34c214fc41b7d7452eaa8cd1100d4b2817cb5afb79883ff99');
 const mapping=new Map(folders.map(folder=>[folder,JSON.parse(fs.readFileSync(join(root,'packages',folder,'package.json'))).name]));
 const generatedOutput=JSON.parse(execFileSync(process.execPath,['scripts/check-generated-package-output.mjs'],{cwd:root,encoding:'utf8',maxBuffer:4*1024*1024}));assert.equal(generatedOutput.passed,true);
-const directory=fs.mkdtempSync('/private/tmp/breditor-native-uncertainty-'+mode.slice(2)+'-');
+const directory=fs.mkdtempSync(join(fs.realpathSync(tmpdir()),'breditor-native-uncertainty-'+mode.slice(2)+'-'));
 const consumer=mode==='--source'?root:join(directory,'consumer'),copied=[],archives=[];let registryArtifacts=0;
 
 if(mode==='--installed'){

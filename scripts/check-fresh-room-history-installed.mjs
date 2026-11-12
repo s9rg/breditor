@@ -1,3 +1,4 @@
+import {tmpdir} from 'node:os';
 import {NORMAL_SHARED_WASM_SHA256} from "./fixtures/native-runtime/normal-shared-identity.mjs";
 /** Unchanged functional laws against fresh offline archives and a real bundle.
  * Only reversible import/fixture locations change. No implementation substitution. */
@@ -12,7 +13,7 @@ import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer
 import {freshRoomHistoryWorkload as workload} from './fresh-room-history-workload.mjs';
 const {tests,types,assertions,scope}=workload;
 if(process.argv.length!==2)throw Error('No substituted source, runtime or reduced assertions accepted');
-const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),source=sourceEvidence(root),directory=mkdtempSync('/private/tmp/breditor-fresh-room-history-installed-'),consumer=join(directory,'consumer'),archives=join(directory,'archives'),npm=process.env.BREDITOR_NPM??process.env.NPM_BIN??'npm',sha=b=>createHash('sha256').update(b).digest('hex');mkdirSync(consumer);mkdirSync(archives);
+const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),source=sourceEvidence(root),directory=mkdtempSync(join(realpathSync(tmpdir()),'breditor-fresh-room-history-installed-')),consumer=join(directory,'consumer'),archives=join(directory,'archives'),npm=process.env.BREDITOR_NPM??process.env.NPM_BIN??'npm',sha=b=>createHash('sha256').update(b).digest('hex');mkdirSync(consumer);mkdirSync(archives);
 const nativePath=join(root,'target/complete-cohort-native.json'),native=JSON.parse(readFileSync(nativePath));assert.equal(native.format,'breditor/native-complete-cohort-check');assert.equal(native.passed,true);assert.deepEqual(native.source,source,'Generate native seven-author evidence for this exact source');assert.equal(native.registeredWritersPerRoom,7);assert.equal(native.reviewActorsPerRoom,7);assert.equal(native.protectedStreamsPerRoom,14);assert.equal(native.files.length,50);for(const row of native.files){const bytes=readFileSync(join(root,row.path));assert.equal(bytes.length,row.bytes);assert.equal(sha(bytes),row.sha256);}assert.equal(sha(readFileSync(native.manifest)),native.manifestEvidence.sha256);
 const nativeLocations=[["new URL('../../../target/promoted-shared-web/',import.meta.url)","new URL('../../node_modules/@breditor/collaboration/dist/runtime/',import.meta.url)"],["new URL('../../../target/complete-cohort-native.json',import.meta.url)",'new URL('+JSON.stringify(pathToFileURL(nativePath).href)+',import.meta.url)'],["resolve(new URL('../../../',import.meta.url).pathname)",'resolve('+JSON.stringify(root)+')']];
 const modules=new Set(),fixtures=new Set(),copied=[],fixtureRoot=join(root,'scripts/fixtures');

@@ -1,5 +1,6 @@
 /** Independent archives execute the complete metadata-continuation workset.
  * Module locations alone change; real Native and source assertions stay literal. */
+import {tmpdir} from 'node:os';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {execFileSync,spawn} from 'node:child_process';
@@ -12,7 +13,7 @@ const {searchConsumerLock,verifySearchConsumerRegistry}=await import(pathToFileU
 if(process.argv.length!==2)throw Error('Run all metadata continuation cases without filters');
 const expectedCases=64;
 const tests=['scripts/lineage-payload-storage.test.mjs','scripts/independent-operation-lineage.test.mjs','scripts/restored-graph-roundtrip.test.mjs','scripts/restored-graph-identity.test.mjs','scripts/restored-graph-assets.test.mjs','scripts/restored-graph-recovery.test.mjs','scripts/restored-graph-lifetime.test.mjs','scripts/restored-graph-contracts.test.mjs'];
-const source=sourceEvidence(root),directory=fs.mkdtempSync('/private/tmp/breditor-lineage-payload-installed-'),archives=join(directory,'archives'),consumer=join(directory,'consumer'),sha=data=>createHash('sha256').update(data).digest('hex');fs.mkdirSync(archives);fs.mkdirSync(consumer);
+const source=sourceEvidence(root),directory=fs.mkdtempSync(join(fs.realpathSync(tmpdir()),'breditor-lineage-payload-installed-')),archives=join(directory,'archives'),consumer=join(directory,'consumer'),sha=data=>createHash('sha256').update(data).digest('hex');fs.mkdirSync(archives);fs.mkdirSync(consumer);
 const folders=['breditor-browser','breditor-experimental-rich-content','breditor-collaboration'],mapping=new Map(folders.map(name=>[name,JSON.parse(fs.readFileSync(join(root,'packages',name,'package.json'))).name]));
 const packs=JSON.parse(execFileSync('npm',['pack','--offline','--ignore-scripts','--json','--pack-destination',archives,...folders.map(name=>join(root,'packages',name))],{cwd:root,encoding:'utf8',maxBuffer:8*1024*1024}));
 const producer=JSON.parse(fs.readFileSync(join(root,'package-lock.json'))),locked=searchConsumerLock(producer,packs.map(pack=>({name:pack.name,path:join(archives,pack.filename)})));locked.manifest.dependencies.undici=producer.packages['node_modules/undici'].version;

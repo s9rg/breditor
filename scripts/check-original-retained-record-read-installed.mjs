@@ -1,4 +1,5 @@
 const expectedAssertions=197+262+retainedStorageRegressionLaws;
+import {tmpdir} from 'node:os';
 import {retainedStorageRegressionLaws} from './retained-storage-regression-count.mjs';
 import {NORMAL_SHARED_WASM_SHA256} from "./fixtures/native-runtime/normal-shared-identity.mjs";
 /** Unchanged functional laws against fresh offline archives and a real bundle.
@@ -12,7 +13,7 @@ import {createHash} from 'node:crypto';
 import {sourceEvidence,saveEvidence} from './candidate-release/evidence.mjs';
 import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
 if(process.argv.length!==2)throw Error('No substituted source, runtime or reduced assertions accepted');
-const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),source=sourceEvidence(root),directory=mkdtempSync('/private/tmp/breditor-original-retained-record-read-installed-'),consumer=join(directory,'consumer'),archives=join(directory,'archives'),npm=process.env.BREDITOR_NPM??process.env.NPM_BIN??'npm',sha=b=>createHash('sha256').update(b).digest('hex');mkdirSync(consumer);mkdirSync(archives);
+const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),source=sourceEvidence(root),directory=mkdtempSync(join(realpathSync(tmpdir()),'breditor-original-retained-record-read-installed-')),consumer=join(directory,'consumer'),archives=join(directory,'archives'),npm=process.env.BREDITOR_NPM??process.env.NPM_BIN??'npm',sha=b=>createHash('sha256').update(b).digest('hex');mkdirSync(consumer);mkdirSync(archives);
 const tests=["original-native-record-read.test.mjs","original-version-record-read.test.mjs","original-revision-record-read.test.mjs","original-record-read-isolation.test.mjs","original-record-read-disposal.test.mjs","persistent-generation-read-development.test.mjs","persistent-generation-read-disposal.test.mjs","persistent-paired-read-development.test.mjs","persistent-paired-read-disposal.test.mjs","persistent-suggestion-read-development.test.mjs","persistent-suggestion-read-disposal.test.mjs","segmented-retained-storage.test.mjs"],types=['types-persistent-suggestion-read-development.ts','types-persistent-paired-read-development.ts','types-persistent-generation-read-development.ts','types-original-retained-record-read.ts'],modules=new Set(),fixtures=new Set(),copied=[],fixtureRoot=join(root,'scripts/fixtures');
 const phase=id=>{saveEvidence(join(directory,'status.json'),{phase:id,source,at:new Date().toISOString()});console.log('PHASE',id,directory);};
 function run(id,command,args){phase(id);try{const log=execFileSync(command,args,{cwd:consumer,encoding:'utf8',timeout:600000,maxBuffer:8*1024*1024});writeFileSync(join(directory,id+'.log'),log);return log;}catch(error){writeFileSync(join(directory,id+'.log'),String(error.stdout??'')+'\n'+String(error.stderr??''));throw error;}}

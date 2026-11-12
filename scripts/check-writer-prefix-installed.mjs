@@ -1,5 +1,6 @@
 /** Actual offline archives and public paired runtime; no workspace SDK import.
  * Builds/tests no browser UI and grants no V1, activation or publication approval. */
+import {tmpdir} from 'node:os';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {mkdtempSync,mkdirSync,readFileSync,writeFileSync,copyFileSync,realpathSync} from 'node:fs';
@@ -8,7 +9,7 @@ import {sourceEvidence,saveEvidence} from './candidate-release/evidence.mjs';
 import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
 import {checkApplicationRuntime} from './check-collaboration-runtime-surface.mjs';
 if(process.argv.length!==2)throw Error('Usage: node scripts/check-writer-prefix-installed.mjs; requires freshly built canonical runtimes; never publishes');
-const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),source=sourceEvidence(root),directory=mkdtempSync('/private/tmp/breditor-writer-prefix-installed-'),archives=join(directory,'archives'),consumer=join(directory,'consumer');
+const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),source=sourceEvidence(root),directory=mkdtempSync(join(realpathSync(tmpdir()),'breditor-writer-prefix-installed-')),archives=join(directory,'archives'),consumer=join(directory,'consumer');
 const npm=process.env.BREDITOR_NPM??process.env.NPM_BIN??'npm',sha=bytes=>createHash('sha256').update(bytes).digest('hex');mkdirSync(archives);mkdirSync(consumer);
 const put=(name,text)=>writeFileSync(join(consumer,name),text),run=(name,command,args,cwd=consumer)=>{const output=execFileSync(command,args,{cwd,encoding:'utf8',maxBuffer:8*1024*1024});writeFileSync(join(directory,name+'.log'),output);return output;};
 try{

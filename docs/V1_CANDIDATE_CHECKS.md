@@ -1,5 +1,13 @@
 # V1 candidate checks
 
+## Temporary directories for independent installs
+
+The installed-consumer checks create fresh fixtures under the system temporary
+directory. On Unix, set `TMPDIR` to an existing directory to choose the volume
+for package archives, consumer installs, and fixture logs. The checks resolve
+the directory before creating the fixture so the installation, custody checks,
+and reported paths agree when the directory is reached through a symlink.
+
 ## November 4 completed integration
 
 The [completed restart composition](qualification/2026-11-04-native-joint-reassociation-composition.json)

@@ -1,4 +1,5 @@
 /** Independently installed component check; source fixture assertions are unchanged. */
+import {tmpdir} from 'node:os';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {execFileSync,spawn} from 'node:child_process';
@@ -11,7 +12,7 @@ const {searchConsumerLock,verifySearchConsumerRegistry}=await import(pathToFileU
 const args=process.argv.slice(2);assert.ok(args.length===0||args.length===1&&args[0]==='--native-unknown','Select the default complete component or the explicit genuine unknown workset');const unknown=args.length===1,expectedCases=unknown?3:60;
 const componentTests=['scripts/native-actor-durable-close.test.mjs','scripts/native-actor-escrow.test.mjs','scripts/native-actor-construction.test.mjs','scripts/native-actor-cohort.test.mjs','scripts/native-actor-retirement.test.mjs','scripts/native-actor-transfer-intrinsics.test.mjs','scripts/independent-source-release-retry.test.mjs','scripts/native-joint-source-session.test.mjs','scripts/native-joint-source-retry.test.mjs','scripts/native-joint-source-metadata.test.mjs','scripts/selected-delivery-startup-failure.test.mjs'];
 const tests=unknown?['scripts/native-joint-source-metadata.test.mjs','scripts/native-joint-source-unknown-native.test.mjs']:componentTests;
-const source=sourceEvidence(root),directory=fs.mkdtempSync('/private/tmp/breditor-joint-source-installed-'),archives=join(directory,'archives'),consumer=join(directory,'consumer'),sha=data=>createHash('sha256').update(data).digest('hex');fs.mkdirSync(archives);fs.mkdirSync(consumer);
+const source=sourceEvidence(root),directory=fs.mkdtempSync(join(fs.realpathSync(tmpdir()),'breditor-joint-source-installed-')),archives=join(directory,'archives'),consumer=join(directory,'consumer'),sha=data=>createHash('sha256').update(data).digest('hex');fs.mkdirSync(archives);fs.mkdirSync(consumer);
 const folders=['breditor-browser','breditor-experimental-rich-content','breditor-collaboration'],mapping=new Map(folders.map(name=>[name,JSON.parse(fs.readFileSync(join(root,'packages',name,'package.json'))).name]));
 const packs=JSON.parse(execFileSync('npm',['pack','--offline','--ignore-scripts','--json','--pack-destination',archives,...folders.map(name=>join(root,'packages',name))],{cwd:root,encoding:'utf8',maxBuffer:8*1024*1024}));
 const producer=JSON.parse(fs.readFileSync(join(root,'package-lock.json'))),locked=searchConsumerLock(producer,packs.map(pack=>({name:pack.name,path:join(archives,pack.filename)})));locked.manifest.dependencies.undici=producer.packages['node_modules/undici'].version;

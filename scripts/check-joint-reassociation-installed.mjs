@@ -1,5 +1,6 @@
 /** Independently pack/install the isolated restart-association workset. Module
  * and resource locations alone change; all functional assertions stay literal. */
+import {tmpdir} from 'node:os';
 import assert from 'node:assert/strict';
 import {execFileSync,spawn} from 'node:child_process';
 import {createHash} from 'node:crypto';
@@ -30,7 +31,7 @@ const tests=intentStorage?intentStorageTests:inputRetention?['scripts/joint-prep
 const types=['scripts/fixtures/metadata-continuation/types.mts','scripts/fixtures/native-joint-reassociation/types.mts'];
 const expectedCases=intentStorage?41:pendingRepeated||preparedStart||inputRetention?1:19,sha=data=>createHash('sha256').update(data).digest('hex');
 const workset=intentStorage?'activation-intent-storage-installed':inputRetention?'joint-preparation-input-retention-installed':preparedStart?'prepared-cold-start-installed':pendingRepeated?'joint-reassociation-pending-repeated-installed':'joint-reassociation-installed';
-const source=sourceEvidence(root),directory=fs.mkdtempSync('/private/tmp/breditor-'+workset+'-');
+const source=sourceEvidence(root),directory=fs.mkdtempSync(join(fs.realpathSync(tmpdir()),'breditor-'+workset+'-'));
 const archives=join(directory,'archives'),consumer=join(directory,'consumer');
 fs.mkdirSync(archives);fs.mkdirSync(consumer);
 const generatedOutput=JSON.parse(execFileSync(process.execPath,['scripts/check-generated-package-output.mjs'],{cwd:root,encoding:'utf8',maxBuffer:4*1024*1024}));

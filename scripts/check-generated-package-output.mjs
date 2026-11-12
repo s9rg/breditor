@@ -1,6 +1,7 @@
 /** Re-emit the three SDK TypeScript packages into disposable directories and
  * require exact file names and bytes before packing. Normal Wasm/glue is a
  * separately qualified input: this check snapshots it, never rebuilds it. */
+import {tmpdir} from 'node:os';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
@@ -30,7 +31,7 @@ function inventory(directory,excluded=[]){
  }
  walk(directory);return rows;
 }
-const temporary=fs.mkdtempSync('/private/tmp/breditor-generated-package-check-'),results=[];
+const temporary=fs.mkdtempSync(join(fs.realpathSync(tmpdir()),'breditor-generated-package-check-')),results=[];
 try{
  for(const specification of packages){
   const base=join(root,'packages',specification.name),output=join(base,specification.output);

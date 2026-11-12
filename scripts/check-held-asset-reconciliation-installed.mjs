@@ -1,3 +1,4 @@
+import {tmpdir} from 'node:os';
 import {NORMAL_SHARED_WASM_SHA256} from "./fixtures/native-runtime/normal-shared-identity.mjs";
 /** Identical mutations/cold recovery from offline archives and one real bundle.
  * Only reversible fixture/module locations change; implementation is never copied in. */
@@ -11,7 +12,7 @@ import {sourceEvidence,saveEvidence,fileEvidence} from './candidate-release/evid
 import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
 import {heldAssetReconciliationWorkload as workload} from './held-asset-reconciliation-workload.mjs';
 if(process.argv.length!==2)throw Error('No substituted source, native data or reduced mutation laws');
-const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),source=sourceEvidence(root),directory=mkdtempSync('/private/tmp/breditor-held-asset-reconciliation-installed-'),consumer=join(directory,'consumer'),archives=join(directory,'archives'),npm=process.env.BREDITOR_NPM??process.env.NPM_BIN??'npm',sha=bytes=>createHash('sha256').update(bytes).digest('hex');mkdirSync(consumer);mkdirSync(archives);
+const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),source=sourceEvidence(root),directory=mkdtempSync(join(realpathSync(tmpdir()),'breditor-held-asset-reconciliation-installed-')),consumer=join(directory,'consumer'),archives=join(directory,'archives'),npm=process.env.BREDITOR_NPM??process.env.NPM_BIN??'npm',sha=bytes=>createHash('sha256').update(bytes).digest('hex');mkdirSync(consumer);mkdirSync(archives);
 const nativePath=join(root,'target/complete-image-cohort-native.json'),native=JSON.parse(readFileSync(nativePath));assert.equal(native.format,'breditor/native-complete-image-cohort-check');assert.equal(native.passed,true);assert.equal(native.controlsStopped,true);assert.deepEqual(native.source,source);assert.equal(native.files.length,50);for(const row of native.files)assert.deepEqual(fileEvidence(root,row.path),row);assert.equal(sha(readFileSync(native.manifest)),native.manifestSha256);
 const modules=new Set(['index.js']),richModules=new Set(),fixtures=new Set(),copied=[],fixtureRoot=join(root,'scripts/fixtures');
 const phase=name=>{saveEvidence(join(directory,'status.json'),{phase:name,source,at:new Date().toISOString()});console.log('PHASE',name,directory);};
