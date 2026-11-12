@@ -36,17 +36,19 @@ Portable replay checks also perform no repeated full-view parses and reject a
 real transition out of read-only state. Disposal, host revocation, out-of-band
 native mutation and original full admission retain their existing refusal laws.
 
-Run the fixed complete matrix with:
+Build the shared runtime receipt for the current checkout, then run the fixed matrix.
 
 ```sh
+node scripts/build-collaboration-runtime.mjs --candidate-receipt
 node scripts/check-publication-state-sdk.mjs
 node scripts/check-publication-state-installed.mjs
 ```
 
+Both launchers bind the normal shared runtime to the candidate’s build receipt.
 Each runs the same 150 checks and strict public type compilation. The installed
 run packs fresh offline archives, verifies registry lock identities and reversible
-module-location-only test rewrites, rejects workspace links, and compares all
-2,743 compiled SDK files with the producer. Both full and functional candidate
+module-location-only test rewrites, rejects workspace links, and compares its
+compiled SDK files with the producer. Both full and functional candidate
 plans require these qualifications. The qualification record is
 [2026-11-01-native-publication-state.json](qualification/2026-11-01-native-publication-state.json).
 

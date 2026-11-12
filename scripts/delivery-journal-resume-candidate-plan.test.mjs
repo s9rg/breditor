@@ -9,6 +9,8 @@ for(const profile of ['functional','full'])test(profile+' keeps actual retained-
  assert.deepEqual(find('delivery-journal-cold-resume-native').args,['--test','scripts/coupled-delivery-cold.test.mjs']);
  assert.deepEqual(find('delivery-journal-handover-native').args,['--test','scripts/coupled-delivery-handover.test.mjs']);
  assert.ok(position('delivery-journal-handover-native')<position('installed-delivery-journal-cold-resume'));
+ for(const id of ['retained-delivery-work-contracts','installed-delivery-journal-cold-resume'])assert.ok(position('paired-shared-runtime')<position(id));
+ assert.ok(position('segmented-relay-native-host')<position('retained-delivery-work-contracts'));
  const installed=find('installed-delivery-journal-cold-resume');assert.deepEqual(installed.args,['scripts/check-delivery-journal-resume-installed.mjs']);assert.deepEqual(installed.artifacts,[{path:'target/delivery-journal-resume-installed-consumer.json',fresh:true}]);
  assert.ok(position('delivery-journal-cold-resume-native')<position('installed-delivery-journal-cold-resume'));assert.ok(find('delivery-journal-resume-private-types').args.includes('scripts/fixtures/editor-consumer/types-delivery-journal-resume.ts'));assert.equal(plan.v1Ready,false);
 });

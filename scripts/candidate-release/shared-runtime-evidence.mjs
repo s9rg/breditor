@@ -53,13 +53,21 @@ export function sharedRuntimeForActivation(root, source) {
  return {sha256, wasmSha256, environment:{[sharedRuntimeReceiptVariable]:sha256}};
 }
 
-/** The consumer receives a local receipt, and the launcher supplies its independent digest. */
-export function copySharedRuntimeForActivation(root, consumer, source) {
+/** Current fixtures verify their build receipt. Historical fixtures may omit it. */
+export function selectSharedRuntimeBuild(root, source) {
  const path = join(root, sharedRuntimeBuildReport);
  const expected = process.env[sharedRuntimeReceiptVariable];
  if (expected === undefined && !existsSync(path)) return undefined;
  const runtime = sharedRuntimeForActivation(root, source);
- if (expected !== undefined) assert.equal(runtime.sha256, expected, "Activation launcher received a different runtime receipt");
+ if (expected !== undefined) assert.equal(runtime.sha256, expected, "Fixture launcher received a different runtime receipt");
+ return runtime;
+}
+
+/** The consumer receives a local receipt, and the launcher supplies its independent digest. */
+export function copySharedRuntimeForActivation(root, consumer, source) {
+ const runtime = selectSharedRuntimeBuild(root, source);
+ if (!runtime) return undefined;
+ const path = join(root, sharedRuntimeBuildReport);
  const destination = join(consumer, sharedRuntimeBuildReport);
  mkdirSync(dirname(destination), {recursive:true});
  copyFileSync(path, destination, constants.COPYFILE_EXCL);
