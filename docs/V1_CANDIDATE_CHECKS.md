@@ -23,6 +23,11 @@ with the binaries and check the paired bytes before starting. The activation
 launcher pins the receipt digest for its source fixtures and transfers a copy
 into an independent consumer before running its tests. Direct historical runs
 with their retained runtime can still use the historical Wasm pin.
+The Native suggestion relay has a separate build receipt. It records the
+executable Cargo selected for the current source and platform. Metadata checks
+verify the receipt before using the relay, and installed checks compare their
+copied executable with the verified build. Archived metadata checks keep their
+original fixture pins.
 This produces whole-room activation evidence. The full V1 qualification and
 reviewed release gates are separate and still required.
 

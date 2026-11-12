@@ -13,6 +13,8 @@ import {
  activationBuildReports, checkActivationBundle, restoreActivationInputs, sealActivationInputs, verifyActivationInputs,
 } from "./candidate-release/activation-inputs.mjs";
 import {copySharedRuntimeForActivation, retainSharedRuntimeBuild, sharedRuntimeBuildReport, verifySharedRuntimeBuild} from "./candidate-release/shared-runtime-evidence.mjs";
+import {nativeSuggestionBuildReport, nativeSuggestionExecutable, retainNativeSuggestionBuild, verifyNativeSuggestionBuild} from "./candidate-release/native-suggestion-build-evidence.mjs";
+import {metadataFixtureEvidence, metadataFixtureStageIds} from "./candidate-release/metadata-fixture-evidence.mjs";
 import {sharedRuntimeReceiptVariable} from "./fixtures/native-runtime/shared-runtime-receipt.mjs";
 import {activationReportName, retainActivationShard, verifyActivationShards} from "./candidate-release/activation-results.mjs";
 import {fileEvidence, saveEvidence, sourceEvidence} from "./candidate-release/evidence.mjs";
@@ -24,7 +26,7 @@ const wasm = "target/promoted-shared-web/breditor_shared_bg.wasm";
 const hostInputs = [
  handoverHost,
  "target/owned-history-relay-native/release/examples/complete_cohort_control_functional",
- "target/owned-history-relay-native/release/examples/selected_suggestion_delivery_functional",
+ nativeSuggestionExecutable,
 ];
 const packageNames = ["@breditor/browser", "@breditor/collaboration", "@breditor/experimental-rich-content"];
 const write = (root, name, bytes) => {
@@ -56,13 +58,17 @@ function fixture(t) {
   write(root, "packages/breditor-collaboration/dist/runtime/" + name, bytes);
  }
  write(root, "target/promoted-shared-web/breditor_dependency_inventory.json", "{}");
- for (const path of hostInputs) write(root, path, path);
+ for (const path of hostInputs) {
+  write(root, path, path);
+  chmodSync(join(root, path), 0o755);
+ }
  saveEvidence(join(root, handoverReport), {
   format:"breditor/handover-native-activation-native-build",
   source:sourceEvidence(root), complete:true, sourceUnchanged:true, exitCode:0,
   binaries:[fileEvidence(root, handoverHost)],
  });
  retainSharedRuntimeBuild(root, sourceEvidence(root));
+ retainNativeSuggestionBuild(root, sourceEvidence(root), join(root, nativeSuggestionExecutable));
  return {root, worker, directory, bundleDirectory};
 }
 
@@ -101,6 +107,7 @@ test("same-source restore checks bytes, restores executable bits and refuses exi
  const bundle = sealActivationInputs(root, bundleDirectory);
  // Artifact transfer retains bytes but may reset permissions.
  chmodSync(join(bundleDirectory, handoverHost), 0o644);
+ chmodSync(join(bundleDirectory, nativeSuggestionExecutable), 0o644);
  assert.throws(() => restoreActivationInputs(worker, bundleDirectory, "0".repeat(64)), /producer's receipt/);
  assert.equal(existsSync(join(worker, "target")), false);
  assert.deepEqual(restoreActivationInputs(worker, bundleDirectory, bundle.sha256), bundle);
@@ -136,6 +143,39 @@ test("shared runtime build evidence binds the generated and packaged bytes to th
  assert.throws(() => sealActivationInputs(root, bundleDirectory), /Packaged shared runtime differs/);
  assert.equal(existsSync(bundleDirectory), false);
  assert.equal(existsSync(join(worker, "target")), false);
+});
+
+test("both candidate profiles place the Native receipt build before metadata consumers", () => {
+ for (const profile of ["functional", "full"]) {
+  const {checks} = candidateReleasePlan({profile});
+  const host = checks.findIndex(stage => stage.id === "native-suggestion-room-host");
+  assert.ok(host > 0);
+  assert.deepEqual(checks[host].args, ["scripts/build-native-suggestion-room-host.mjs", "selected_suggestion_delivery_functional"]);
+  assert.ok(checks[host].artifacts.some(artifact => artifact.path === nativeSuggestionBuildReport && artifact.fresh));
+  for (const stage of metadataFixtureStageIds) assert.ok(checks.findIndex(check => check.id === stage) > host, stage);
+ }
+});
+
+test("metadata fixtures refuse a stale Native receipt, a replaced binary and a partial receipt pair", t => {
+ const {root, directory} = fixture(t);
+ const source = sourceEvidence(root);
+ const native = verifyNativeSuggestionBuild(root, source);
+ const receipt = join(root, nativeSuggestionBuildReport);
+ const original = JSON.parse(readFileSync(receipt));
+ const consumer = join(directory, "metadata-consumer");
+ mkdirSync(consumer);
+ const evidence = metadataFixtureEvidence(root, source, consumer);
+ assert.equal(evidence.nativeHostSha256, native.binary.sha256);
+ assert.equal(evidence.nativeHostBuildReceiptSha256, native.sha256);
+ saveEvidence(receipt, {...original, source:{...source, commit:"0".repeat(40)}});
+ assert.throws(() => metadataFixtureEvidence(root, source), /another candidate/);
+ saveEvidence(receipt, original);
+ const binary = join(root, nativeSuggestionExecutable);
+ writeFileSync(binary, "another executable");
+ assert.throws(() => metadataFixtureEvidence(root, source), /executable differs/);
+ writeFileSync(binary, nativeSuggestionExecutable);
+ rmSync(receipt);
+ assert.throws(() => metadataFixtureEvidence(root, source), /ENOENT/);
 });
 
 test("an independent fixture uses only the copied receipt pinned by its launcher", t => {
@@ -181,6 +221,7 @@ test("aggregation requires six matching results and checks retained logs and pac
      source:bundle.source, complete:true, passed:true, sourceUnchanged:true, wholeRoomActivated:true,
      workspaceLinks:false, cases:22, logSha256:"c".repeat(64), runtime:installedRuntime,
      sharedRuntimeReceiptSha256:check.env[sharedRuntimeReceiptVariable],
+     nativeHostBuildReceiptSha256:verifyNativeSuggestionBuild(root, bundle.source).sha256,
      archives:selectedArchives,
     });
     return {status:"passed", exitCode:0, signal:null};

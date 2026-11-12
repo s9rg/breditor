@@ -6,6 +6,7 @@ import {fileURLToPath} from "node:url";
 import {candidateRuntimePaths} from "../candidate-runtime-paths.mjs";
 import {metadataRecoveryArtifacts} from '../metadata-recovery-artifacts.mjs';
 import {sharedRuntimeBuildReport} from "./shared-runtime-evidence.mjs";
+import {nativeSuggestionBuildReport, nativeSuggestionExample, nativeSuggestionExecutable} from "./native-suggestion-build-evidence.mjs";
 export const repository=resolve(dirname(fileURLToPath(import.meta.url)),"../..");
 export const deferredFunctionalGates=Object.freeze([
  "default-package-release-matrix","installed-editor-browser-matrix",
@@ -449,7 +450,7 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   stage('native-owned-suggestion-private-types',node,['node_modules/typescript/bin/tsc','--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM','scripts/fixtures/editor-consumer/types-native-owned-suggestion.ts']),
   stage('native-owned-suggestion-functional',node,['--test','scripts/native-owned-suggestion-history.test.mjs','scripts/native-owned-suggestion-input.test.mjs','scripts/native-owned-suggestion-membership.test.mjs','scripts/metadata-admitted-work.test.mjs'],{},[],180000),
   script('installed-native-owned-suggestion','check-native-owned-suggestion-installed.mjs',[],[{path:'target/native-owned-suggestion-installed-consumer.json',fresh:true}],600000),
-  relayCargo('native-suggestion-room-host',['build','--features','server','--locked','--offline','--release','--example','selected_suggestion_delivery_functional'],[executablePath('selected_suggestion_delivery_functional')]),
+  script('native-suggestion-room-host','build-native-suggestion-room-host.mjs',[nativeSuggestionExample],[nativeSuggestionExecutable,{path:nativeSuggestionBuildReport,fresh:true}]),
   stage('metadata-handover-contracts',node,['--test','scripts/metadata-handover-contracts.test.mjs','scripts/metadata-handover-candidate-plan.test.mjs']),
   stage('metadata-handover-types',node,['node_modules/typescript/bin/tsc','--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM','scripts/fixtures/editor-consumer/types-metadata-handover.ts']),
   stage('metadata-handover-native',node,['--test','scripts/native-metadata-handover.test.mjs'],{},[],7800000),

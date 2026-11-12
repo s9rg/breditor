@@ -6,6 +6,7 @@ import {fileEvidence, saveEvidence} from "./evidence.mjs";
 import {activationPlan, activationStageIds} from "./activation-shards.mjs";
 import {activationBuildReports} from "./activation-inputs.mjs";
 import {sharedRuntimeBuildReport, sharedRuntimeReceiptVariable} from "../fixtures/native-runtime/shared-runtime-receipt.mjs";
+import {nativeSuggestionBuildReport} from "./native-suggestion-build-evidence.mjs";
 
 const format = "breditor/activation-qualification-shard";
 const sha256Pattern = /^[a-f0-9]{64}$/;
@@ -33,6 +34,9 @@ function verifyFiles(directory, stage, bundle) {
  const runtimeReceipt = bundle.files.find(file => file.path === sharedRuntimeBuildReport);
  assert.ok(runtimeReceipt);
  assert.equal(entry.env[sharedRuntimeReceiptVariable], runtimeReceipt.sha256, "Activation worker used a different shared runtime receipt");
+ const nativeReceipt = bundle.files.find(file => file.path === nativeSuggestionBuildReport);
+ assert.ok(nativeReceipt);
+ assert.equal(entry.nativeHostBuildReceiptSha256, nativeReceipt.sha256, "Activation worker used a different Native host receipt");
  const log = logName(stage);
  const logSha256 = digest(directory, log);
  assert.equal(logSha256, entry.log.sha256, "Activation shard log changed");
@@ -54,6 +58,7 @@ function verifyFiles(directory, stage, bundle) {
  assert.equal(installed.workspaceLinks, false);
  assert.equal(installed.cases, 22);
  assert.equal(installed.sharedRuntimeReceiptSha256, runtimeReceipt.sha256);
+ assert.equal(installed.nativeHostBuildReceiptSha256, nativeReceipt.sha256);
  assert.match(installed.logSha256, sha256Pattern);
  const expected = new Map(bundle.files.map(file => [file.path, file]));
  const runtime = new Map(installed.runtime.map(file => [file.path, file]));

@@ -8,6 +8,8 @@ import {executeCandidateStage} from "./candidate-release/process.mjs";
 import {retainCandidateActivationEvidence} from "./candidate-release/activation-evidence.mjs";
 import {activationRuntimeStageIds} from "./candidate-release/activation-shards.mjs";
 import {sharedRuntimeForActivation} from "./candidate-release/shared-runtime-evidence.mjs";
+import {metadataFixtureStageIds} from "./candidate-release/metadata-fixture-evidence.mjs";
+import {verifyNativeSuggestionBuild} from "./candidate-release/native-suggestion-build-evidence.mjs";
 
 export async function runCandidateChecks(plan,{root=repository,signal,report=console.log,execute=executeCandidateStage,snapshot=sourceEvidence,activationEvidence}={}){
  if(!["full","functional"].includes(plan.profile)||!Array.isArray(plan.checks)||!plan.checks.length||new Set(plan.checks.map(check=>check.id)).size!==plan.checks.length||plan.checks.some(check=>!/^[a-z][a-z0-9-]*$/.test(check.id)||typeof check.command!=="string"||!check.command||!Array.isArray(check.args)||check.args.some(arg=>typeof arg!=="string")||!Array.isArray(check.artifacts)||!Number.isSafeInteger(check.timeoutMs)||check.timeoutMs<=0))throw Error("Invalid candidate check plan");
@@ -27,14 +29,19 @@ export async function runCandidateChecks(plan,{root=repository,signal,report=con
    if(retained)Object.assign(entry,retained);
    else{
     let execution=check;
-    if(activationRuntimeStageIds.includes(check.id)){
+    if(activationRuntimeStageIds.includes(check.id)||metadataFixtureStageIds.includes(check.id)){
      const runtime=sharedRuntimeForActivation(root,source);
+     entry.nativeHostBuildReceiptSha256=verifyNativeSuggestionBuild(root,source).sha256;
      entry.env={...check.env,...runtime.environment};
      execution={...check,env:entry.env};
      saveEvidence(manifest,result);
     }
     const outcome=await execute(execution,{root,logPath,signal});Object.assign(entry,outcome);
     entry.log=fileEvidence(root,relative(root,logPath));
+    if(entry.status==="passed"&&entry.nativeHostBuildReceiptSha256){
+     const native=verifyNativeSuggestionBuild(root,source),runtime=sharedRuntimeForActivation(root,source);
+     if(native.sha256!==entry.nativeHostBuildReceiptSha256||Object.entries(runtime.environment).some(([key,value])=>entry.env[key]!==value))throw Error("Metadata or activation runtime build receipt changed during qualification");
+    }
     if(entry.status==="passed")entry.artifacts=check.artifacts.map(artifact=>{const evidence=fileEvidence(root,artifact.path);if(artifact.fresh&&evidence.modifiedAtMs<Date.parse(entry.startedAt))throw Error(`Stale stage report: ${artifact.path}`);return evidence;});
    }
    checkSource();

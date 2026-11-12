@@ -1,3 +1,4 @@
+import {NORMAL_SHARED_WASM_SHA256} from '../native-runtime/normal-shared-identity.mjs';
 import {readCatalogRecord} from '../../../packages/breditor-collaboration/dist/versions/database.js';
 /** Real native server, current credentials and original version packets.
  * Only browser storage/locks are controlled; no receipt or writer clock is faked. */
@@ -11,7 +12,7 @@ export const families=[{name:'original',kind:'original'},{name:'retained',kind:'
 const origin='http://127.0.0.1:49785',sha=b=>createHash('sha256').update(b).digest('hex'),strip=({credential,observerCredential,...binding})=>binding,canonical=v=>Array.isArray(v)?v.map(canonical):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,canonical(v[k])])):v;
 let initialized;
 export async function nativeVersionSession({family=families[0],scope='original',natural=false,wire=2,skipInitialCold=false}={},run){
- const normal=readFileSync(new URL('../../../packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm',import.meta.url));assert.equal(sha(normal),'165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0');await(initialized??=native.default({module_or_path:normal}));
+ const normal=readFileSync(new URL('../../../packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm',import.meta.url));assert.equal(sha(normal),NORMAL_SHARED_WASM_SHA256);await(initialized??=native.default({module_or_path:normal}));
  const config=JSON.stringify({format:'breditor/shared-rich-profile',formatVersion:3,schema:{name:'example/native-version-delivery',version:1},extensions:[]}),profile=native.SharedRichProfile.from_standard_configuration_json_v3(config),descriptor=JSON.parse(profile.descriptor_json()),root=canonical(JSON.parse(readFileSync(new URL('../../../crates/breditor-core/tests/fixtures/rich-local-root.json',import.meta.url))));
  const document=JSON.stringify({format:'breditor/document',formatVersion:2,schema:descriptor.schema,schemaFingerprint:descriptor.schemaFingerprint,root}),directory=mkdtempSync(join(tmpdir(),'breditor-version-native-')),paths=['room.log','profile.json','document.json','auth.json'].map(n=>join(directory,n)),tokens=Object.fromEntries(['alice','bob','functional-owner'].map(n=>[n,randomBytes(32).toString('hex')]));
  for(const [path,value]of [[paths[1],config],[paths[2],document],[paths[3],JSON.stringify({format:'breditor/relay-auth',formatVersion:1,origins:[origin],accounts:Object.entries(tokens).map(([principal,token])=>({principal,tokenHash:[...createHash('sha256').update(token).digest()]}))})]])writeFileSync(path,value,{mode:0o600});

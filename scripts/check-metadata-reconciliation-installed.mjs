@@ -12,11 +12,13 @@ import {fileURLToPath} from 'node:url';
 import {sourceEvidence,saveEvidence} from './candidate-release/evidence.mjs';
 import {saveMetadataRecoveryEvidence} from './metadata-recovery-artifacts.mjs';
 import {executeCandidateStage} from './candidate-release/process.mjs';
+import {metadataFixtureEvidence} from './candidate-release/metadata-fixture-evidence.mjs';
 import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 if(process.argv.length!==2)throw Error('No reduced Native reconciliation qualification mode');
 const source=sourceEvidence(root),directory=fs.mkdtempSync(join(fs.realpathSync(tmpdir()),'breditor-metadata-reconciliation-installed-')),archives=join(directory,'archives'),consumer=join(directory,'consumer');
 fs.mkdirSync(archives);fs.mkdirSync(consumer);
+const fixtureEvidence=metadataFixtureEvidence(root,source,consumer);
 const sha=b=>createHash('sha256').update(b).digest('hex'),packages=['breditor-browser','breditor-experimental-rich-content','breditor-collaboration'];
 const mapping=new Map(packages.map(folder=>[folder,JSON.parse(fs.readFileSync(join(root,'packages',folder,'package.json'))).name]));
 const version=JSON.parse(fs.readFileSync(join(root,'packages/breditor-collaboration/package.json'))).version;
@@ -56,12 +58,12 @@ const originalRelative='target/owned-history-relay-native/release/examples/selec
 const versionRelative='target/owned-history-relay-native/release/examples/segmented_relay_functional',versionSource=join(root,versionRelative),versionTarget=join(consumer,versionRelative),versionHostSha256=sha(fs.readFileSync(versionSource));fs.copyFileSync(versionSource,versionTarget);assert.equal(sha(fs.readFileSync(versionTarget)),versionHostSha256);
 const rootRelative='target/owned-history-relay-native/release/examples/generation_complete_control_functional',rootSource=join(root,rootRelative),rootTarget=join(consumer,rootRelative),rootHostSha256=sha(fs.readFileSync(rootSource));fs.copyFileSync(rootSource,rootTarget);assert.equal(sha(fs.readFileSync(rootTarget)),rootHostSha256);
 const nativeHostSha256=sha(fs.readFileSync(nativeSource));assert.equal(sha(fs.readFileSync(nativeTarget)),nativeHostSha256);
-assert.equal(nativeHostSha256,'60427bb794f52c39a7084fac797f8f3150501238c45c78bad6195cd928a252ca');
-const normalWasmSha256=sha(fs.readFileSync(join(consumer,'node_modules/@breditor/collaboration/dist/runtime/breditor_shared_bg.wasm')));assert.equal(normalWasmSha256,'165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0');
-const state={format:'breditor/installed-metadata-reconciliation-qualification',version:1,complete:false,source,sourceRoot:root,directory,consumer,workspaceLinks:false,registryArtifacts,compiler,copied,nativeHostSha256,originalNativeHostSha256,versionHostSha256,rootHostSha256,normalWasmSha256,archives:packed.map(pack=>({name:pack.name,path:join(archives,pack.filename),sha256:sha(fs.readFileSync(join(archives,pack.filename)))})),results:[],startedAt:new Date().toISOString()};
+assert.equal(nativeHostSha256,fixtureEvidence.nativeHostSha256);
+const normalWasmSha256=sha(fs.readFileSync(join(consumer,'node_modules/@breditor/collaboration/dist/runtime/breditor_shared_bg.wasm')));assert.equal(normalWasmSha256,fixtureEvidence.normalWasmSha256);
+const state={format:'breditor/installed-metadata-reconciliation-qualification',version:1,complete:false,source,sourceRoot:root,directory,consumer,workspaceLinks:false,registryArtifacts,compiler,copied,nativeHostSha256,originalNativeHostSha256,versionHostSha256,rootHostSha256,normalWasmSha256,nativeHostBuildReceiptSha256:fixtureEvidence.nativeHostBuildReceiptSha256,sharedRuntimeReceiptSha256:fixtureEvidence.sharedRuntimeReceiptSha256,archives:packed.map(pack=>({name:pack.name,path:join(archives,pack.filename),sha256:sha(fs.readFileSync(join(archives,pack.filename)))})),results:[],startedAt:new Date().toISOString()};
 saveEvidence(directory+'/running.json',state);console.log(JSON.stringify({directory,phase:'execute-actual-managed-uploads-native-resume-and-same-owner-reconciliation'}));
 const checks=[
- {id:'installed-metadata-native-reconciliation',command:process.execPath,args:['--test',...tests.map(name=>'scripts/'+name)],env:{},timeoutMs:7200000},
+ {id:'installed-metadata-native-reconciliation',command:process.execPath,args:['--test',...tests.map(name=>'scripts/'+name)],env:fixtureEvidence.environment,timeoutMs:7200000},
  {id:'strict-installed-metadata-reconciliation-types',command:process.execPath,args:[compiler.path,'--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM',...typeFiles],env:{},timeoutMs:120000},
 ];
 const outcomes=await Promise.allSettled(checks.map(async check=>{

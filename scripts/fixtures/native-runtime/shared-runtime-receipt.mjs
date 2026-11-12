@@ -7,6 +7,7 @@ import {join} from "node:path";
 export const sharedRuntimeBuildReport = "target/normal-shared-runtime-build.json";
 export const sharedRuntimeBuildFormat = "breditor/normal-shared-runtime-build";
 export const sharedRuntimeReceiptVariable = "BREDITOR_SHARED_RUNTIME_RECEIPT_SHA256";
+export const historicalSharedWasmSha256 = "165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0";
 
 export function pinnedSharedRuntimeReceipt(root, expectedSha256) {
  assert.match(expectedSha256, /^[a-f0-9]{64}$/);

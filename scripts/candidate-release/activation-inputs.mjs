@@ -8,6 +8,7 @@ import {createHash} from "node:crypto";
 import {dirname, join} from "node:path";
 import {fileEvidence, saveEvidence, sourceEvidence} from "./evidence.mjs";
 import {sharedRuntimeBuildReport, verifySharedRuntimeBuild} from "./shared-runtime-evidence.mjs";
+import {nativeSuggestionBuildReport, nativeSuggestionExecutable, verifyNativeSuggestionBuild} from "./native-suggestion-build-evidence.mjs";
 
 const runtimeDirectories = [
  "packages/breditor-browser/dist",
@@ -19,10 +20,10 @@ const handoverHost = "target/handover-activation-native/release/examples/native_
 const nativeExecutables = [
  handoverHost,
  "target/owned-history-relay-native/release/examples/complete_cohort_control_functional",
- "target/owned-history-relay-native/release/examples/selected_suggestion_delivery_functional",
+ nativeSuggestionExecutable,
 ];
 const handoverReport = "target/handover-native-activation-native-build.json";
-export const activationBuildReports = Object.freeze([handoverReport, sharedRuntimeBuildReport]);
+export const activationBuildReports = Object.freeze([handoverReport, sharedRuntimeBuildReport, nativeSuggestionBuildReport]);
 const inputRoots = [...runtimeDirectories, ...nativeExecutables, ...activationBuildReports];
 const maxInputBytes = 256 * 1024 * 1024;
 const format = "breditor/activation-qualification-inputs";
@@ -70,8 +71,9 @@ function activationInputs(root) {
  return files;
 }
 
-function validateBuild(root, files, source) {
+function validateBuild(root, files, source, options) {
  verifySharedRuntimeBuild(root, source);
+ verifyNativeSuggestionBuild(root, source, options);
  const build = JSON.parse(readFileSync(join(root, handoverReport)));
  assert.equal(build.format, "breditor/handover-native-activation-native-build");
  assert.equal(build.complete && build.sourceUnchanged, true);
@@ -158,7 +160,7 @@ export function checkActivationBundle(root, directory, expectedSha256) {
  assertSource(root, manifest.source);
  const files = activationInputs(directory);
  assert.deepEqual(files, manifest.files, "Activation bundle differs from its manifest");
- validateBuild(directory, files, manifest.source);
+ validateBuild(directory, files, manifest.source, {transferred:true});
  return {sha256, source:manifest.source, files};
 }
 
