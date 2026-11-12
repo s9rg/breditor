@@ -3,7 +3,6 @@
 import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
 import {prepareArchiveIntegrity} from '../archive_integrity/context.js';
 import {archiveBlob} from '../archive_integrity/policy.js';
-import {recordCutBytes} from '../physical_room_record_cut/framing.js';
 import {fields,hash,integer,rows} from '../physical_room_record_cut/policy.js';
 import {MAX_METADATA_PACKET_CHUNK_BYTES,MAX_METADATA_PACKET_MANIFEST_BYTES,MAX_METADATA_PACKET_BODIES,type MetadataPacketArchiveFiles,type MetadataPacketArchiveHeader,type MetadataPacketBodyRead,type MetadataPacketFile} from './contract.js';
 import {metadataPacketHeader} from './header.js';
@@ -11,6 +10,7 @@ import {admitRecordedMetadataCatalog} from './catalog_data.js';
 import {generationControlSelection} from '../generation_recovery_control/identity.js';
 import {checkMetadataPacketCoverage} from './coverage.js';
 import {fail,same,textBytes} from './policy.js';
+import {readVerifiedPacketText} from './read_verified_text.js';
 const token=Object.freeze({}),slice=Blob.prototype.slice;
 function file(input:unknown,maximum:number):MetadataPacketFile{const r=fields(input,['file','bytes','sha256']),bytes=integer(r['bytes'],maximum,1),sha256=hash(r['sha256']),file=archiveBlob(r['file'] as Blob,maximum);if(file.size!==bytes)throw fail();return Object.freeze({file,bytes,sha256});}
 export function packetArchiveFiles(input:unknown):MetadataPacketArchiveFiles{const r=fields(input,['manifest','chunks']);return Object.freeze({manifest:file(r['manifest'],MAX_METADATA_PACKET_MANIFEST_BYTES),chunks:Object.freeze(rows(r['chunks'],MAX_METADATA_PACKET_BODIES).map(value=>file(value,MAX_METADATA_PACKET_CHUNK_BYTES)))});}
@@ -22,15 +22,15 @@ export class MetadataPacketArchive {
  #open(){if(!this.#state)throw fail('metadata_packet_retention_closed');return this.#state;}
  async body(key:string):Promise<MetadataPacketBodyRead>{
   const state=this.#open(),files=state.files,row=state.bodies.get(key);if(!row)throw fail();const integrity=prepareArchiveIntegrity(state.options);integrity.guard();
-  const part=slice.call(files.chunks[row.chunk]!.file,row.offset,row.offset+row.encodedBytes);if(await integrity.digest(part)!==row.encodedSha256)throw fail();
-  const data=await recordCutBytes(part,0,part.size,integrity);let encoded:string;try{encoded=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(data);}catch{throw fail();}
+  const part=slice.call(files.chunks[row.chunk]!.file,row.offset,row.offset+row.encodedBytes);
+  const encoded=await readVerifiedPacketText(part,row.encodedSha256,MAX_METADATA_PACKET_CHUNK_BYTES,integrity);
   let text:unknown;try{text=JSON.parse(encoded);}catch{throw fail();}if(typeof text!=='string'||JSON.stringify(text)!==encoded||textBytes(text)!==row.fingerprint.bytes||'sha256:'+await integrity.digest(new Blob([text]))!==row.fingerprint.sha256)throw fail();
   if(this.#open()!==state)throw fail('metadata_packet_retention_closed');integrity.guard();return Object.freeze({kind:row.kind,fingerprint:row.fingerprint,text,storageKey:row.key,native:row.native});
  }
  dispose():void{this.#state=undefined;}
  static async read(provided:MetadataPacketArchiveFiles,expectedParent:Readonly<{bytes:number;sha256:string}>,options:SharedArchiveIntegrityOptions):Promise<MetadataPacketArchive>{
   const files=packetArchiveFiles(provided),parent=fields(expectedParent,['bytes','sha256']),integrity=prepareArchiveIntegrity(options);integrity.guard();
-  if(await integrity.digest(files.manifest.file)!==files.manifest.sha256)throw fail();const bytes=await recordCutBytes(files.manifest.file,0,files.manifest.bytes,integrity);let text:string;try{text=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(bytes);}catch{throw fail();}
+  const text=await readVerifiedPacketText(files.manifest.file,files.manifest.sha256,MAX_METADATA_PACKET_MANIFEST_BYTES,integrity);
   const header=metadataPacketHeader(JSON.parse(text));if(JSON.stringify(header)!==text||!same(header.parent,{bytes:integer(parent['bytes'],1024*1024*1024,1),sha256:hash(parent['sha256'])})||!same(header.chunks,files.chunks.map(({bytes,sha256})=>({bytes,sha256}))))throw fail();
   const selection=generationControlSelection(header.catalog.selection),index=await admitRecordedMetadataCatalog(header.catalog,selection,selection.source.server.native.source.document,integrity.guard);checkMetadataPacketCoverage(header,index);
   for(const chunk of files.chunks){integrity.guard();if(await integrity.digest(chunk.file)!==chunk.sha256)throw fail();}

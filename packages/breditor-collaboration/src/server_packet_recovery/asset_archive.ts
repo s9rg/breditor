@@ -6,11 +6,11 @@ import {prepareArchiveIntegrity} from '../archive_integrity/context.js';
 import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
 import {archiveBlob} from '../archive_integrity/policy.js';
 import {fields,integer,hash,rows} from '../physical_room_record_cut/policy.js';
-import {recordCutBytes} from '../physical_room_record_cut/framing.js';
 import type {LocalMetadataRasterInfo} from '../selected_local_metadata_assets/materialization_contract.js';
 import {serverPacketAssetHeader} from './asset_header.js';
 import {MAX_METADATA_PACKET_CHUNK_BYTES,type MetadataPacketAssetFiles,type MetadataPacketFile} from '../metadata_packet_retention/contract.js';
 import {fail,same} from '../metadata_packet_retention/policy.js';
+import {readVerifiedPacketText} from '../metadata_packet_retention/read_verified_text.js';
 const token=Object.freeze({}),slice=Blob.prototype.slice,maximum=1024*1024*1024,headerMaximum=16*1024*1024;
 function selected(input:unknown,max:number):MetadataPacketFile{const r=fields(input,['file','bytes','sha256']),bytes=integer(r['bytes'],max,1),sha256=hash(r['sha256']),file=archiveBlob(r['file'] as Blob,max);if(file.size!==bytes)throw fail();return Object.freeze({file,bytes,sha256});}
 export function packetAssetFiles(input:unknown):MetadataPacketAssetFiles{const r=fields(input,['manifest','chunks']);return Object.freeze({manifest:selected(r['manifest'],headerMaximum),chunks:Object.freeze(rows(r['chunks'],1024).map(row=>selected(row,MAX_METADATA_PACKET_CHUNK_BYTES)))});}
@@ -27,7 +27,8 @@ export class ServerPacketAssetArchive {
  files(){return this.#open().files;}
  dispose():void{this.#state=undefined;}
  static async read(provided:MetadataPacketAssetFiles,expectedParent:ServerPacketAssetHeader['parent'],options:SharedArchiveIntegrityOptions,providedLimits:Partial<AssetLimits>={}):Promise<ServerPacketAssetArchive>{
-  const files=packetAssetFiles(provided),integrity=prepareArchiveIntegrity(options),limits=checkRichAssetLimits(providedLimits);integrity.guard();if(await integrity.digest(files.manifest.file)!==files.manifest.sha256)throw fail();const encoded=await recordCutBytes(files.manifest.file,0,files.manifest.bytes,integrity);let text:string;try{text=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(encoded);}catch{throw fail();}
+  const files=packetAssetFiles(provided),integrity=prepareArchiveIntegrity(options),limits=checkRichAssetLimits(providedLimits);integrity.guard();
+  const text=await readVerifiedPacketText(files.manifest.file,files.manifest.sha256,headerMaximum,integrity);
   const header=await serverPacketAssetHeader(JSON.parse(text),limits,integrity.guard);if(JSON.stringify(header)!==text||!same(header.parent,expectedParent)||!same(header.chunks,files.chunks.map(({bytes,sha256})=>({bytes,sha256}))))throw fail();
   for(const row of files.chunks){integrity.guard();if(await integrity.digest(row.file)!==row.sha256)throw fail();}
   const payloads=new Map<string,Blob>();for(const row of header.payloads){integrity.guard();const raster=await inspectRichRaster(range(files.chunks,row.offset,row.bytes,row.mime),{limits,...(options.signal?{signal:options.signal}:{})});integrity.guard();if(raster.asset!==row.asset||raster.mime!==row.mime||raster.bytes!==row.bytes||raster.width!==row.width||raster.height!==row.height)throw fail();payloads.set(row.asset,raster.blob);}
