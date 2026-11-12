@@ -73,6 +73,8 @@ pub use physical::{
 };
 mod inspect_sealed_restart;
 pub use inspect_sealed_restart::inspect_sealed_native_restart;
+mod inspect_sealed_rotation;
+pub use inspect_sealed_rotation::{SealedNativeRotationInspection, inspect_sealed_native_rotation};
 mod inspect_sealed_tail;
 pub use inspect_sealed_tail::{SealedNativeTailInspection, inspect_sealed_native_tail};
 mod open_sealed_restart;

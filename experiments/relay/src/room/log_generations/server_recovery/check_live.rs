@@ -38,12 +38,28 @@ impl RecoveredLogGenerationServerRoom {
 impl super::custody::JoinedRecoveryCustody {
     pub(super) fn check_source(
         &self,
-        (room, assets): (&mut Room, &mut AssetStore),
+        components: (&mut Room, &mut AssetStore),
         backup: &ServerLogGenerationRoomBackup,
         principal: &str,
         exact: bool,
         extra: &BTreeSet<String>,
     ) -> Result<()> {
+        self.check_source_with(components, backup, extra, |room, assets| {
+            if exact {
+                backup.check_live(room, assets, principal)
+            } else {
+                backup.check_retained(room, assets, principal)
+            }
+        })
+    }
+
+    pub(super) fn check_source_with<T>(
+        &self,
+        (room, assets): (&mut Room, &mut AssetStore),
+        backup: &ServerLogGenerationRoomBackup,
+        extra: &BTreeSet<String>,
+        verify: impl FnOnce(&mut Room, &mut AssetStore) -> Result<T>,
+    ) -> Result<T> {
         self.directory.guard()?;
         self.controls.check_with_extras(&self.directory, extra)?;
         self.native_controls.check(&self.native_directory)?;
@@ -82,11 +98,7 @@ impl super::custody::JoinedRecoveryCustody {
         )?;
         self.raster.guard_selected(&raster.witness, assets)?;
         self.check_original_raster_custody(backup, &raster)?;
-        if exact {
-            backup.check_live(room, assets, principal)?;
-        } else {
-            backup.check_retained(room, assets, principal)?;
-        }
+        let result = verify(room, assets)?;
         self.directory.guard()?;
         self.controls.check_with_extras(&self.directory, extra)?;
         self.native_controls.check(&self.native_directory)?;
@@ -96,7 +108,8 @@ impl super::custody::JoinedRecoveryCustody {
             room,
         )?;
         self.check_original_raster_custody(backup, &raster)?;
-        self.raster.guard_selected(&raster.witness, assets)
+        self.raster.guard_selected(&raster.witness, assets)?;
+        Ok(result)
     }
     fn check_original_raster_custody(
         &self,

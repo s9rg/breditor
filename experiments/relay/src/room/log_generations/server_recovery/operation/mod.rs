@@ -6,6 +6,8 @@ mod host_custody;
 #[cfg(feature = "server")]
 pub(crate) use host_custody::GenerationOperationCustody;
 mod coordinator;
+#[cfg(feature = "server")]
+mod inspect_pending_rotation;
 mod inspect_torn_tail;
 mod interruption;
 mod marker;

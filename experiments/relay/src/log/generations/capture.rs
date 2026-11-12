@@ -8,7 +8,7 @@ use super::{
 use crate::{Error, Result, log::Log};
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     fs::{self, File},
     io::{Read, Seek, SeekFrom},
 };
@@ -73,12 +73,19 @@ impl Generations {
                 })
         }
     }
-    fn capture_files(&self, active: &File, active_prefix: Option<u64>) -> Result<GenerationFiles> {
+    fn capture_files(
+        &self,
+        active: &File,
+        active_prefix: Option<u64>,
+        pending: Option<&BTreeSet<String>>,
+    ) -> Result<GenerationFiles> {
         if self.ready_name != ".ready.json" {
             return Err(Error::Contract("generation source is not published"));
         }
         self.verify_inventory()?;
-        self.directory.absent(".rotation.json")?;
+        if pending.is_none() {
+            self.directory.absent(".rotation.json")?;
+        }
         self.verify_retained()?;
         let active_name = format::wal_name(&self.current().value.active.generation);
         let mut entries = BTreeMap::new();
@@ -89,7 +96,7 @@ impl Generations {
                 .file_name()
                 .into_string()
                 .map_err(|_| Error::Contract("generation capture filename"))?;
-            if name == ".owner" {
+            if name == ".owner" || pending.is_some_and(|names| names.contains(&name)) {
                 continue;
             }
             if entries.len() >= MAX_GENERATION_FILES {
@@ -159,6 +166,14 @@ impl Generations {
                 return Err(Error::Contract("generation capture source length changed"));
             }
         }
+        self.check_capture_names(entries.keys().cloned(), pending)?;
+        Ok(GenerationFiles { body, sections, cut })
+    }
+    fn check_capture_names(
+        &self,
+        captured: impl Iterator<Item = String>,
+        pending: Option<&BTreeSet<String>>,
+    ) -> Result<()> {
         let current = fs::read_dir(&self.directory.path)?
             .map(|entry| {
                 entry?
@@ -166,14 +181,19 @@ impl Generations {
                     .into_string()
                     .map_err(|_| Error::Contract("generation capture filename"))
             })
-            .collect::<Result<std::collections::BTreeSet<_>>>()?;
-        let expected = entries.keys().cloned().chain(std::iter::once(".owner".into())).collect();
+            .collect::<Result<BTreeSet<_>>>()?;
+        let expected = captured
+            .chain(std::iter::once(".owner".into()))
+            .chain(pending.into_iter().flatten().cloned())
+            .collect();
         if current != expected {
             return Err(Error::Contract("generation capture directory changed"));
         }
         self.verify_inventory()?;
-        self.directory.absent(".rotation.json")?;
-        Ok(GenerationFiles { body, sections, cut })
+        if pending.is_none() {
+            self.directory.absent(".rotation.json")?;
+        }
+        Ok(())
     }
 }
 impl Log {
@@ -185,12 +205,58 @@ impl Log {
         &mut self,
         active_prefix: Option<u64>,
     ) -> Result<GenerationFiles> {
+        self.capture_selected_generation_files(active_prefix, None)
+    }
+
+    #[cfg(feature = "server")]
+    pub(crate) fn recheck_pending_generation_rotation(&self, expected: [u8; 32]) -> Result<()> {
+        self.ready()?;
+        let observed = self
+            .generations
+            .as_ref()
+            .ok_or(Error::Contract("original log has no pending generation rotation"))?
+            .inspect_pending_rotation(self)?;
+        if observed.observation.evidence_sha256 != expected {
+            return Err(Error::Contract("pending rotation changed during inspection"));
+        }
+        Ok(())
+    }
+
+    #[cfg(feature = "server")]
+    pub(crate) fn capture_pending_generation_rotation(
+        &mut self,
+    ) -> Result<(GenerationFiles, super::PendingNativeLogRotation)> {
+        self.ready()?;
+        if self.has_incomplete_generation_tail()? {
+            return Err(Error::Contract(
+                "pending rotation inspection requires a complete active log",
+            ));
+        }
+        let inspect = |log: &Self| {
+            log.generations
+                .as_ref()
+                .ok_or(Error::Contract("original log has no pending generation rotation"))?
+                .inspect_pending_rotation(log)
+        };
+        let before = inspect(self)?;
+        let files = self.capture_selected_generation_files(None, Some(&before.excluded))?;
+        if inspect(self)? != before {
+            return Err(Error::Contract("pending rotation changed during inspection"));
+        }
+        Ok((files, before.observation))
+    }
+
+    fn capture_selected_generation_files(
+        &mut self,
+        active_prefix: Option<u64>,
+        pending: Option<&BTreeSet<String>>,
+    ) -> Result<GenerationFiles> {
         self.ready()?;
         let state = self
             .generations
             .as_ref()
             .ok_or(Error::Contract("original log has no generation archive"))?;
-        let result = state.capture_files(&self.file, active_prefix).and_then(|files| {
+        let result = state.capture_files(&self.file, active_prefix, pending).and_then(|files| {
             self.ready()?;
             if files.cut.records != self.next
                 || files.cut.previous != self.previous
