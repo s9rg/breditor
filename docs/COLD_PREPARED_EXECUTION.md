@@ -28,6 +28,12 @@ caller must explicitly select existing-only `resume`; the fresh action never
 silently changes its meaning to reopen old data. Successful preview can be retried
 on the same actual owner without creating another journal.
 
+Promotion closes the journal before the final actor transfer. If transfer
+fails at that point, the same attempt can reopen only the existing journal
+with the head it verified before closing. A missing or changed journal
+requires a new recovery decision. Retrying promotion still requires a fresh
+approval and the complete source, target, asset and actor checks.
+
 `JointRoomReassociationAttempt.beginPrepared` composes this explicit action with
 the original joint intent. It does not infer a mode from stored phases. The
 ordinary `begin`/`resume` paths retain their existing-only execution semantics.
@@ -61,11 +67,9 @@ document/comment Undo/Redo comparisons. Full SDK and strict private API types
 pass. The same case passes independently installed packages. Main source and its
 standalone installed-consumer command also pass, including strict private
 declarations and exact generated output (2,879 matching installed dist files).
-The full pending/repeated Native workflow remains separate qualification.
-
-No original serialized format or default is changed. The implementation remains
-isolated until source, independent installation and composed workflow checks
-prove its scope. No V1 or historical archive/WebKit repair is claimed.
+The promotion retry case interrupts the genuine transfer just after journal
+close. It checks that the journal and original stores remain byte-identical
+and that a fresh promotion approval still precedes transfer.
 
 Run `npm run test:collaboration:prepared-cold-start` for the source case and
 `npm run test:collaboration:prepared-cold-start:installed` for the separate
@@ -74,10 +78,12 @@ assertions and only reverses their installed module/resource locations.
 
 ## Main integration boundary
 
-Only the generic prepared cold executor is integrated here. The described
-`JointRoomReassociationAttempt.beginPrepared` composition remains in its isolated
-candidate while the complete Native workflow and archive short-read refusal are
-being qualified. It is not an available main handoff or a full restart claim.
+The local executor and `JointRoomReassociationAttempt.beginPrepared`
+composition are integrated. The repeated Native workflow passes from source
+and installed packages. Its first relay crash precedes the initial Native
+commit. Its second follows metadata continuation. It verifies four preserved
+metadata stores, delivery of fourteen offline streams and future document and
+comment Undo/Redo for all seven participants.
 
 ## Retained integration evidence
 

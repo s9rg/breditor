@@ -46,7 +46,7 @@ export class ColdRoomExecutionAttempt{
  readonly #options;readonly #preparedStart:boolean;readonly #targets=new RoomRunTargets();readonly #stop=new AbortController();readonly #targetStop=new AbortController();readonly #unwatch:(()=>void)[]=[];
  #factory:IDBFactory|undefined;#locks:LockManager|undefined;#scope:RoomExecutionReadScope|undefined;#plan:Awaited<ReturnType<typeof coldRoomExecutionPlan>>|undefined;#acquisition:RoomActorAcquisition|undefined;#actors:StoppedActorCohort|undefined;#source:ColdRoomExecutionSource|undefined;
  #approvedMetadataTarget:PhysicalRoomRecordCutSelection|undefined;
- #journal:RoomRunJournalResources|undefined;#journalOpened=false;#snapshot:RoomRunSnapshot|undefined;#running:Promise<unknown>|undefined;#cleanup:Promise<void>|undefined;#taking=false;#closing=false;#closed=false;#originalCleanupDone=false;
+ #journal:RoomRunJournalResources|undefined;#journalOpened=false;#snapshot:RoomRunSnapshot|undefined;#promotionJournalHead:RoomRunSnapshot['head']|undefined;#running:Promise<unknown>|undefined;#cleanup:Promise<void>|undefined;#taking=false;#closing=false;#closed=false;#originalCleanupDone=false;
  private constructor(token:object,input:ColdRoomExecutionOptions,preparedStart=false){if(token!==key)throw fail('room_execution_policy');this.#preparedStart=preparedStart;const row=fields(input,['original','run','reads','sourceIntentDatabase']),run=fields(row['run'],['expected','participants']),reads=fields(row['reads'],['wasm','reads','checkAuthority'],['signal','assets']),fresh=snapshotPhysicalHistoryReadOptions({reads:reads['reads'] as ColdRoomExecutionOptions['reads']['reads'],checkAuthority:reads['checkAuthority'] as ()=>void,...(reads['signal']!==undefined?{signal:reads['signal'] as AbortSignal}:{})}),assets=reads['assets']===undefined?undefined:fields(reads['assets'],[],['limits','signal']),limits=checkRichAssetLimits(assets?.['limits'] as Parameters<typeof checkRichAssetLimits>[0]);
   this.#options=Object.freeze({original:snapshotColdRootResumeOptions(row['original'] as ColdRoomExecutionOptions['original']),run:Object.freeze({expected:roomRunIdentity(run['expected']),participants:snapshotPhysicalOperationV3Policy(run['participants'] as ColdRoomExecutionOptions['run']['participants'])}),reads:{...fresh,wasm:reads['wasm'] as ColdRoomExecutionOptions['reads']['wasm'],...(assets?{assets:{limits,...(assets['signal']!==undefined?{signal:assets['signal'] as AbortSignal}:{})}}:{})},sourceIntentDatabase:database(row['sourceIntentDatabase'])});Object.freeze(this);
  }
@@ -65,7 +65,20 @@ export class ColdRoomExecutionAttempt{
  async #load():Promise<RoomExecutionArchive>{this.#check();this.#start();this.#check();const scope=this.#scope!,choice=this.#options.run.expected.execution,input={wasm:scope.integrity.wasm,reads:scope.reads,checkAuthority:scope.check,signal:scope.signal,...(scope.assets?{assets:scope.assets}:{})},saved=await readRoomExecution(choice,input);scope.check();return RoomExecutionArchive.read(saved.file,choice,input);}
  async #open(archive:RoomExecutionArchive){this.#check();const scope=this.#scope!;
   if(!this.#plan){this.#plan=await coldRoomExecutionPlan(archive,this.#options,scope);this.#check();}
-  if(!this.#journalOpened){if(this.#journal){await journals.close.call(this.#journal);this.#journal=undefined;}this.#journal=new RoomRunJournalResources();this.#snapshot=await journals.open.call(this.#journal,this.#options.run.expected,{wasm:scope.integrity.wasm,checkAuthority:scope.check,signal:scope.signal},this.#preparedStart);this.#journalOpened=true;}else this.#snapshot=await journals.read.call(this.#journal!);this.#check();
+  if(this.#journalOpened){
+   this.#snapshot=await journals.read.call(this.#journal!);
+  }else{
+   if(this.#journal){await journals.close.call(this.#journal);this.#journal=undefined;}
+   this.#journal=new RoomRunJournalResources();
+   const promotionHead=this.#promotionJournalHead;
+   const snapshot=await journals.open.call(this.#journal,this.#options.run.expected,
+    {wasm:scope.integrity.wasm,checkAuthority:scope.check,signal:scope.signal},this.#preparedStart&&promotionHead===undefined);
+   if(promotionHead&&(snapshot.head.sequence!==promotionHead.sequence||snapshot.head.sha256!==promotionHead.sha256))throw fail();
+   this.#snapshot=snapshot;
+   this.#journalOpened=true;
+   this.#promotionJournalHead=undefined;
+  }
+  this.#check();
   if(!this.#acquisition)this.#acquisition=actor.begin.call(RoomActorAcquisition,{room:this.#plan.room,members:this.#plan.members,checkAuthority:scope.check,signal:scope.signal});
   if(!this.#actors){await actor.acquire.call(this.#acquisition);this.#check();this.#actors=takeAcquiredActorCohort(this.#acquisition);}actor.bindings.call(this.#actors);this.#check();
   if(!this.#source)this.#source=new ColdRoomExecutionSource(this.#plan,this.#options.original,this.#actors,scope,this.#options.sourceIntentDatabase);
@@ -91,7 +104,18 @@ export class ColdRoomExecutionAttempt{
  }
  previewPromotion():Promise<RoomRunPromotionChoice>{try{this.#admit();if(!this.#actors||!this.#scope)throw fail('room_execution_closed');}catch(error){return Promise.reject(error);}const task=Promise.resolve().then(async()=>{const archive=await this.#load();try{await this.#open(archive);return await targets.preview.call(this.#targets,this.#options.run.expected,this.#snapshot!.head,this.#scope!);}finally{archive.dispose();}});this.#running=task;return task.finally(()=>{this.#running=undefined;});}
  promote(provided:RoomRunPromotionOptions):Promise<RoomRunPromotionResult>{let input:RoomRunPromotionOptions,reservation:Promise<void>|undefined;try{this.#admit();if(!this.#actors||!this.#scope)throw fail('room_execution_closed');reservation=Promise.resolve();this.#running=reservation;const row=fields(provided,['expected','approve','checkAssetAuthority']),expected=roomRunPromotionChoice(row['expected']);if(typeof row['approve']!=='function'||typeof row['checkAssetAuthority']!=='function'||JSON.stringify(expected.identity)!==JSON.stringify(this.#options.run.expected))throw fail('room_execution_policy');input={expected,approve:row['approve'] as RoomRunPromotionOptions['approve'],checkAssetAuthority:row['checkAssetAuthority'] as ()=>void};}catch(error){if(this.#running===reservation)this.#running=undefined;return Promise.reject(error);}
-  const task=Promise.resolve().then(async()=>{const archive=await this.#load();try{await this.#inspect(archive);if(JSON.stringify(this.#snapshot!.head)!==JSON.stringify(input.expected.head))throw fail();const actual=await targets.preview.call(this.#targets,this.#options.run.expected,this.#snapshot!.head,this.#scope!);this.#check();if(JSON.stringify(actual)!==JSON.stringify(input.expected))throw fail();const result=await targets.promote.call(this.#targets,this.#actors!,this.#scope!,input,async()=>{await this.#source!.capture();const saved=await journals.read.call(this.#journal!);this.#check();if(JSON.stringify(saved.head)!==JSON.stringify(input.expected.head))throw fail();this.#journalOpened=false;await journals.close.call(this.#journal!);this.#journal=undefined;this.#check();});
+  const task=Promise.resolve().then(async()=>{const archive=await this.#load();try{await this.#inspect(archive);if(JSON.stringify(this.#snapshot!.head)!==JSON.stringify(input.expected.head))throw fail();const actual=await targets.preview.call(this.#targets,this.#options.run.expected,this.#snapshot!.head,this.#scope!);this.#check();if(JSON.stringify(actual)!==JSON.stringify(input.expected))throw fail();const result=await targets.promote.call(this.#targets,this.#actors!,this.#scope!,input,async()=>{
+    await this.#source!.capture();
+    const saved=await journals.read.call(this.#journal!);this.#check();
+    if(JSON.stringify(saved.head)!==JSON.stringify(input.expected.head))throw fail();
+    // The actor transfer can still fail after the journal closes. This owner
+    // can re-admit only the exact durable journal it released here.
+    this.#promotionJournalHead=saved.head;
+    this.#journalOpened=false;
+    await journals.close.call(this.#journal!);
+    this.#journal=undefined;
+    this.#check();
+   });
    // The genuine successor is already reachable in its recipient. Cleanup
    // failure must never strand it behind a second promotion attempt.
    this.#approvedMetadataTarget=result.choice.approval.cut;await this.#completeOriginal();return result;

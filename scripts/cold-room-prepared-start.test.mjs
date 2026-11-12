@@ -3,6 +3,7 @@
  * missing journals. Actual seven-family Native state, controlled IDB/locks. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {IDBDatabase} from 'fake-indexeddb';
 import {completeControlFixtures} from './fixtures/physical-recovery-control/complete-fixtures.mjs';
 import {acceptedControlTransport} from './fixtures/physical-recovery-control/accepted-transport.mjs';
 import {preparedRoomRun} from './fixtures/native-room-run/session.mjs';
@@ -13,13 +14,18 @@ import {ColdRoomExecutionAttempt as Cold} from '../packages/breditor-collaborati
 import {observeRoomRunJournal} from '../packages/breditor-collaboration/dist/native_room_execution_run/journal_observation.js';
 import {internalFailureChain} from '../packages/breditor-collaboration/dist/internal_failure_cause.js';
 
-test('explicit prepared cold start creates only a fresh run and preserves seven Native histories',{timeout:900000},async()=>{
+// The installed launcher bounds this complete two-promotion workflow.
+test('explicit prepared cold start creates only a fresh run and preserves seven Native histories',async()=>{
  const fixtures=await completeControlFixtures(new URL('../',import.meta.url).pathname),transport=acceptedControlTransport(fixtures.manifest),tag='prepared-cold-start';
  let fixture,legacy,cold,collision,owner;
  try{
   fixture=await preparedRoomRun(fixtures,tag);
   const{signal,checkAuthority,...chosen}=fixture.f.s.f.options;
-  const options={original:{...chosen,catalogDatabase:tag+'-catalog',checkAuthority(){}},run:fixture.options,reads:fixture.reads,sourceIntentDatabase:tag+'-cold-source-custody'};
+  let failAfterJournalClose=false,closedForPromotion=false,refusals=0;
+  const refusal=new Error('Test-owned interruption after closing the promotion journal');
+  const options={original:{...chosen,catalogDatabase:tag+'-catalog',checkAuthority(){
+   if(failAfterJournalClose&&closedForPromotion){failAfterJournalClose=false;refusals++;throw refusal;}
+  }},run:fixture.options,reads:fixture.reads,sourceIntentDatabase:tag+'-cold-source-custody'};
   const before=await sourceByteSnapshots(),names=await databaseNames();
   const expectedRun=fixture.options.expected,integrity={wasm:fixtures.native,checkAuthority(){}};
   const request=navigator.locks.request;
@@ -72,12 +78,41 @@ test('explicit prepared cold start creates only a fresh run and preserves seven 
   await assert.rejects(observeRoomRunJournal(foreign,integrity),error=>error.code==='room_execution_integrity');
   assert.deepEqual(await databaseByteSnapshot(expectedRun.database),journal);
   console.log('PREPARED_COLD_JOURNAL_OBSERVED '+JSON.stringify({missing:missing.kind,sequence:existing.snapshot.head.sequence,actorRequests,writes:0,exactStoredStart:true}));
-  cold=Cold.resume(options);
+  legacy=Cold.resume(options);
+  assert.deepEqual((await legacy.preview()).choice.head,existing.snapshot.head);
+  await legacy.close();legacy=undefined;
+  // A different attempt must start its own journal absent-only.
+  const retryRun={...expectedRun,database:tag+'-retry-run'};
+  cold=Cold.beginPrepared({...options,run:{...fixture.options,expected:retryRun}});
   const preview=await cold.preview();
-  assert.deepEqual(preview.choice.head,existing.snapshot.head);
-  await assert.rejects(cold.run({expected:preview.choice,approve:()=>false}));await assertSourceBytesUnchanged(old);
+  assert.equal(preview.choice.head.sequence,0);
+  await assert.rejects(cold.run({expected:preview.choice,approve:()=>false}));
+  await assertSourceBytesUnchanged(old);
   const ready=await cold.run({expected:preview.choice,approve:()=>true});assert.equal(ready.state,'targets-and-assets-ready');
-  const promotion=await cold.previewPromotion();await cold.promote({expected:promotion,approve:()=>true,checkAssetAuthority(){}});
+  const promotion=await cold.previewPromotion();
+  const retryBytes=await databaseByteSnapshot(retryRun.database);
+  const close=IDBDatabase.prototype.close;
+  failAfterJournalClose=true;
+  try{
+   IDBDatabase.prototype.close=function(){
+    const result=close.call(this);
+    if(this.name===retryRun.database)closedForPromotion=true;
+    return result;
+   };
+   await assert.rejects(cold.promote({expected:promotion,approve:()=>true,checkAssetAuthority(){}}),
+    error=>internalFailureChain(error).includes(refusal));
+  }finally{IDBDatabase.prototype.close=close;failAfterJournalClose=false;}
+  assert.equal(refusals,1);
+  assert.throws(()=>cold.takeOwner());
+  await assertSourceBytesUnchanged(old);
+  assert.deepEqual(await databaseByteSnapshot(retryRun.database),retryBytes);
+  console.log('PREPARED_COLD_PROMOTION_JOURNAL_CLOSED');
+  const freshPromotion=await cold.previewPromotion();
+  assert.deepEqual(freshPromotion,promotion);
+  let approvals=0;
+  await cold.promote({expected:freshPromotion,approve:()=>{approvals++;return true;},checkAssetAuthority(){}});
+  assert.equal(approvals,1);
+  assert.deepEqual(await databaseByteSnapshot(retryRun.database),retryBytes);
   owner=cold.takeOwner();assert.equal(owner.clients.length,7);
   for(const row of owner.clients){const original=expected.get(row.id);assert.ok(original);assert.deepEqual(nativePair(row.core),original.pair);assert.equal(row.core.documentJson(),original.document);assert.deepEqual(row.core.reviewSnapshot().view,original.review);}
   await assertSourceBytesUnchanged(old);checkFutureNativeHistories(owner.clients);await assertSourceBytesUnchanged(old);
