@@ -65,15 +65,10 @@ pub(super) fn same_causal_prefix(
     through: i32,
 ) -> Result<(), Error> {
     if current.doc.oplog_vv().get(&peer).copied().unwrap_or(0) < through
-        || serde_json::to_vec(
-            &current
-                .doc
-                .export_json_in_id_span(IdSpan::new(peer, 0, through)),
-        )? != serde_json::to_vec(
-            &source
-                .doc
-                .export_json_in_id_span(IdSpan::new(peer, 0, through)),
-        )?
+        || serde_json::to_vec(&current.doc.export_json_in_id_span(IdSpan::new(peer, 0, through)))?
+            != serde_json::to_vec(
+                &source.doc.export_json_in_id_span(IdSpan::new(peer, 0, through)),
+            )?
     {
         return Err(Error::Contract("retained branch causal prefix differs"));
     }
@@ -118,10 +113,7 @@ impl RichReplica {
         }
         for bytes in source.journal.retained_updates() {
             if pending_in_source(source, bytes)?
-                && !self
-                    .journal
-                    .retained_updates()
-                    .any(|current| current == bytes)
+                && !self.journal.retained_updates().any(|current| current == bytes)
             {
                 return Err(Error::Contract("retained branch pending input is absent"));
             }

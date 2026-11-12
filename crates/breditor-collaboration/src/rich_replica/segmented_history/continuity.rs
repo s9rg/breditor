@@ -11,9 +11,10 @@ impl RichReplica {
         let Some(before) = &source.segmented else {
             return Ok(());
         };
-        let current = self.segmented.as_ref().ok_or(Error::Contract(
-            "retained segmented source cannot be downgraded",
-        ))?;
+        let current = self
+            .segmented
+            .as_ref()
+            .ok_or(Error::Contract("retained segmented source cannot be downgraded"))?;
         if current.root.generation != before.root.generation
             || current.root.json != before.root.json
             || current.sealed.len() < before.sealed.len()
@@ -23,16 +24,12 @@ impl RichReplica {
                 .zip(&current.sealed)
                 .any(|(left, right)| left.json != right.json)
         {
-            return Err(Error::Contract(
-                "retained branch immutable generation differs",
-            ));
+            return Err(Error::Contract("retained branch immutable generation differs"));
         }
         let continuation = current
             .sealed
             .get(before.sealed.len())
-            .map_or(current.active_generation.as_str(), |file| {
-                file.record.generation.as_str()
-            });
+            .map_or(current.active_generation.as_str(), |file| file.record.generation.as_str());
         if continuation != before.active_generation {
             return Err(Error::Contract("retained branch active generation differs"));
         }

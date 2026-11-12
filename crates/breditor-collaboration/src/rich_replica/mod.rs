@@ -86,10 +86,8 @@ mod projection_cache;
 mod protocol;
 mod range_plan;
 mod receive_semantic_remote_v1;
-mod recovery_origin;
 mod reconcile_retained_branch;
-mod retained_branch_input_bytes;
-mod verify_retained_branch;
+mod recovery_origin;
 mod replace_atom_plain_text;
 mod replace_atom_typing_text;
 mod replace_document_plain_text;
@@ -103,6 +101,7 @@ mod replace_plain_text_range;
 mod replay_projections;
 mod retained_asset_references;
 mod retained_asset_references_json;
+mod retained_branch_input_bytes;
 mod retained_history;
 mod review_anchor;
 mod review_comments;
@@ -127,6 +126,7 @@ mod typing_checkpoint;
 mod typing_history;
 mod ui_state;
 mod update_frame;
+mod verify_retained_branch;
 mod view;
 mod writer_transport;
 mod writing_tools;
@@ -161,9 +161,9 @@ pub use review_anchor::{
     ReviewQuoteLoss,
 };
 pub use review_comments::{
-    RetainedNativeBranchSource,RetainedNativeBranchBytes,RetainedNativeBranchOutcome,
     DocumentReviewBatchPreparation, PreparedDocumentReviewBatch, ResolvedReviewAnchor,
-    ResolvedReviewThread, ResolvedReviewView,
+    ResolvedReviewThread, ResolvedReviewView, RetainedNativeBranchBytes,
+    RetainedNativeBranchOutcome, RetainedNativeBranchSource,
 };
 pub use reviewed_history::{OwnedSuggestionAcceptance, ReviewedHistoryIdentity};
 pub use search::SharedSearchResults;

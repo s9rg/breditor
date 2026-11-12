@@ -43,22 +43,16 @@ pub(super) fn prepare(
     let root = parent.join(spec.name());
     storage::directory(&root)?;
     storage::directory(&root.join("snapshots"))?;
-    let source::Source {
-        profile,
-        mut room,
-        configuration,
-    } = source::create(&root, spec, Some(&asset_id(&rasters[0])))?;
+    let source::Source { profile, mut room, configuration } =
+        source::create(&root, spec, Some(&asset_id(&rasters[0])))?;
     if suggestions {
         if !spec.atomic {
             return Err("suggestion review fixture requires the atomic writer protocol".into());
         }
         room.grant_document_suggestions("owner", "alice", Some(SuggestionRole::Review))?;
     }
-    let clients::CapturedClients {
-        records,
-        protected,
-        secrets,
-    } = clients::capture(&mut room, &profile, spec)?;
+    let clients::CapturedClients { records, protected, secrets } =
+        clients::capture(&mut room, &profile, spec)?;
     if protected.documents.len() != 7 || protected.reviews.len() != 7 {
         return Err("seven actual registered authors required".into());
     }
@@ -70,14 +64,5 @@ pub(super) fn prepare(
     let older = ServerLogGenerationRoomBackup::capture(&mut room, &mut assets, "owner")?;
     room.grant("owner", "control-local-reader", Some(Role::Reader))?;
     room.rotate_log_generation("owner", "control-local-origin")?;
-    Ok(Seeded {
-        root,
-        configuration,
-        records,
-        protected,
-        secrets,
-        room,
-        assets,
-        older,
-    })
+    Ok(Seeded { root, configuration, records, protected, secrets, room, assets, older })
 }

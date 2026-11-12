@@ -4,13 +4,8 @@ use breditor_collab_relay::ServerLogGenerationRoomBackup;
 use std::{collections::BTreeMap, sync::Arc};
 pub(super) type Previous = (u64, Arc<ServerLogGenerationRoomBackup>);
 pub(super) enum Action {
-    Snapshot {
-        request: u64,
-        previous: Option<Previous>,
-    },
-    Restart {
-        request: u64,
-    },
+    Snapshot { request: u64, previous: Option<Previous> },
+    Restart { request: u64 },
 }
 pub(super) async fn read(
     ready: &Ready,

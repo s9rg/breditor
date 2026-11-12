@@ -7,26 +7,11 @@ use std::io::{Read, Write};
 #[derive(Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub(super) enum Request {
-    Snapshot {
-        request: u64,
-    },
-    Restart {
-        request: u64,
-    },
-    SnapshotAfter {
-        request: u64,
-        previous: u64,
-    },
-    Inspect {
-        request: u64,
-        source: u64,
-    },
-    Credentials {
-        request: u64,
-        writer: String,
-        actor: String,
-        retired: bool,
-    },
+    Snapshot { request: u64 },
+    Restart { request: u64 },
+    SnapshotAfter { request: u64, previous: u64 },
+    Inspect { request: u64, source: u64 },
+    Credentials { request: u64, writer: String, actor: String, retired: bool },
 }
 pub(super) fn read() -> tokio::sync::mpsc::Receiver<Result<Request>> {
     let (sender, receiver) = tokio::sync::mpsc::channel(2);
@@ -75,10 +60,7 @@ pub(super) fn credentials(
     actor: &str,
     retired: bool,
 ) -> Result<Value> {
-    let rows = ready
-        .records
-        .as_array()
-        .ok_or("actual native client rows")?;
+    let rows = ready.records.as_array().ok_or("actual native client rows")?;
     if !rows
         .iter()
         .any(|row| row["writer"] == writer && row["actor"] == actor && row["principal"] == "alice")
