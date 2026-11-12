@@ -7,8 +7,7 @@ import {parsePhysicalCatalogV3Manifest} from '../physical_room_catalog_v3/manife
 import {recordLiveBasis} from '../complete_operation_cohort/record_live_basis.js';
 import {cacheKey} from '../versions/database.js';import {queueKey} from '../suggestions/database.js';import {revisionKey} from '../suggestion_revisions/database.js';
 import type {SharedDocumentVersionsIdentity} from '../versions/types.js';import type {SharedSuggestionQueueIdentity} from '../suggestions/types.js';
-import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';import type {SelectedRoomCurrentFile} from '../selected_room_current/contract.js';import type {LocalReviewRoomBundle} from '../selected_local_review_delivery/contract.js';
-import {fail,MAX_STORAGE_DATABASES} from './policy.js';
+import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';import type {SelectedRoomCurrentFile} from '../selected_room_current/contract.js';import {fail,MAX_STORAGE_DATABASES} from './policy.js';
 import type {StorageDatabasePlan,StorageRowSelection} from './contract.js';
 const familyTables:Readonly<Record<string,Readonly<Record<string,readonly string[]>>>>={
  original:{operation:['operation','origin'],recovery:['attempts'],document:['journals'],versions:['catalogs'],suggestions:['suggestions'],revisions:['revisions']},
@@ -20,7 +19,7 @@ const familyTables:Readonly<Record<string,Readonly<Record<string,readonly string
  'local-operation-flat':{operation:['flat_local_participant_input','flat_local_participant_state'],journal:['flat_local_input_cuts','flat_local_input_incoming','flat_local_input_intent'],source:['local_operation_history_files','local_operation_history_heads']},
 };
 const outer={read:SelectedRoomCurrentArchive.read,current:SelectedRoomCurrentArchive.prototype.current,approval:SelectedRoomCurrentArchive.prototype.approval,dispose:SelectedRoomCurrentArchive.prototype.dispose},inner={read:PhysicalRoomRecordCutArchive.read,root:PhysicalRoomRecordCutArchive.prototype.root,records:PhysicalRoomRecordCutArchive.prototype.records,dispose:PhysicalRoomRecordCutArchive.prototype.dispose};
-export async function selectedStoragePlans(current:SelectedRoomCurrentFile,localReview:LocalReviewRoomBundle|null,options:SharedArchiveIntegrityOptions):Promise<readonly StorageDatabasePlan[]>{let archive:SelectedRoomCurrentArchive|undefined,cut:PhysicalRoomRecordCutArchive|undefined;
+export async function selectedStoragePlans(current:SelectedRoomCurrentFile,localReview:Readonly<{intent:string;state:string}>|null,options:SharedArchiveIntegrityOptions):Promise<readonly StorageDatabasePlan[]>{let archive:SelectedRoomCurrentArchive|undefined,cut:PhysicalRoomRecordCutArchive|undefined;
  try{archive=await outer.read.call(SelectedRoomCurrentArchive,current.file,current.selection,options);const file=outer.current.call(archive);cut=await inner.read.call(PhysicalRoomRecordCutArchive,file.file,file.selection,options);const root=inner.root.call(cut),catalog=parsePhysicalCatalogV3Manifest(root.source.manifest),plans:StorageDatabasePlan[]=[];
   const add=(database:string,stores:readonly string[],selection:StorageRowSelection={kind:'whole'})=>{if(plans.some(row=>row.database===database)||plans.length>=MAX_STORAGE_DATABASES)throw fail('room_storage_policy');plans.push({database,stores:[...stores].sort(),selection});};
   add(root.database,['physical_room_catalog_operation_v3']);add(root.source.catalogDatabase,['physical_room_v3_files','physical_room_v3_state']);
@@ -33,7 +32,7 @@ export async function selectedStoragePlans(current:SelectedRoomCurrentFile,local
    }
   }
   const adoption=outer.approval.call(archive).choice.adoption;add(adoption.database,['bases','selection']);for(const target of adoption.participants)add(target.targetDatabase,['assets','metadata']);
-  if(localReview){add(localReview.prepared.choice.database,['intent']);const text=await localReview.delivery.file.text(),snapshot=JSON.parse(text) as {before:{choice:{database:string}}};add(snapshot.before.choice.database,['state']);}
+  if(localReview){add(localReview.intent,['intent']);add(localReview.state,['state']);}
   options.checkAuthority();return plans.sort((a,b)=>a.database<b.database?-1:1);
  }finally{if(cut)inner.dispose.call(cut);if(archive)outer.dispose.call(archive);}
 }

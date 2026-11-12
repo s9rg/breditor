@@ -4,16 +4,26 @@
 import {prepareArchiveIntegrity} from '../archive_integrity/context.js';import {archiveBlob} from '../archive_integrity/policy.js';import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
 import {recordCutJson,parseRecordCutJson} from '../physical_room_record_cut/json.js';
 import {selectedRoomCurrentSelection,MAX_SELECTED_ROOM_CURRENT_BYTES} from '../selected_room_current/manifest.js';
-import {detachLocalReviewBundle} from '../selected_local_review_delivery/bundle.js';import {localChoice,localSnapshot,localJson} from '../selected_local_review_delivery/policy.js';
+import {detachLocalReviewBundle} from '../selected_local_review_delivery/bundle.js';import {readVerifiedArchiveHeader} from '../archive_integrity/verified_header.js';
+import {readStorageReview,readVerifiedStorageText} from './verified_json.js';
 import {selectedStoragePlans} from './plans.js';import {storageDatabase} from './database_shape.js';import {encodeStorageValue,decodeStorageValue} from './value_graph.js';
-import {fields,rows,integer,hash,fail,equal,MAX_STORAGE_ARCHIVE_BYTES,MAX_STORAGE_GRAPH_BYTES,MAX_STORAGE_HEADER_BYTES,MAX_STORAGE_PIECES,MAX_STORAGE_DATABASES} from './policy.js';
+import {fields,rows,integer,hash,fail,MAX_STORAGE_ARCHIVE_BYTES,MAX_STORAGE_GRAPH_BYTES,MAX_STORAGE_HEADER_BYTES,MAX_STORAGE_PIECES,MAX_STORAGE_DATABASES} from './policy.js';
 import type {StorageContent,StorageFile,StorageSelection,StorageDatabasePlan} from './contract.js';
-const magic='BREDITOR-SELECTED-STORAGE1\n',prefixBytes=magic.length+4,slice=Blob.prototype.slice,text=Blob.prototype.text,key=Object.freeze({});
+const magic='BREDITOR-SELECTED-STORAGE1\n',prefixBytes=magic.length+4,slice=Blob.prototype.slice,key=Object.freeze({});
 export function storageSelection(input:unknown):StorageSelection{const r=fields(input,['format','formatVersion','bytes','sha256']);if(r['format']!=='breditor/selected-room-storage-selection'||r['formatVersion']!==1)throw fail();return Object.freeze({format:r['format'],formatVersion:1,bytes:integer(r['bytes'],MAX_STORAGE_ARCHIVE_BYTES,1),sha256:hash(r['sha256'])});}
-async function readBytes(file:Blob,context:ReturnType<typeof prepareArchiveIntegrity>,maximum:number):Promise<string>{if(file.size>maximum)throw fail('room_storage_budget');const chunks:Uint8Array<ArrayBuffer>[]=[];for(let n=0;n<file.size;n+=1024*1024)chunks.push(await context.read(file,n,Math.min(1024*1024,file.size-n)));const buffer=new Uint8Array(file.size);let n=0;for(const chunk of chunks){buffer.set(chunk,n);n+=chunk.byteLength;}try{return new TextDecoder('utf-8',{fatal:true}).decode(buffer);}catch{throw fail();}}
-async function content(input:unknown,options:SharedArchiveIntegrityOptions){const r=fields(input,['format','formatVersion','current','localReview','databases']);if(r['format']!=='breditor/selected-room-storage-content'||r['formatVersion']!==1)throw fail();const c=fields(r['current'],['selection','file']),current=Object.freeze({selection:selectedRoomCurrentSelection(c['selection']),file:archiveBlob(c['file'] as Blob,MAX_SELECTED_ROOM_CURRENT_BYTES)}),localReview=r['localReview']===null?null:detachLocalReviewBundle(r['localReview']);
- if(localReview){const integrity=prepareArchiveIntegrity(options);if(localReview.delivery.file.size!==localReview.delivery.bytes||await integrity.digest(localReview.delivery.file)!==localReview.delivery.sha256)throw fail();const raw=await text.call(localReview.delivery.file),value=JSON.parse(raw) as {before:{choice:unknown}},choice=localChoice(value.before.choice),snapshot=await localSnapshot(value,choice);if(localJson(snapshot)!==raw||!equal(choice.before,localReview.prepared.choice.before))throw fail();}
- const plans=await selectedStoragePlans(current,localReview,options),raw=rows(r['databases'],MAX_STORAGE_DATABASES);if(raw.length!==plans.length)throw fail();const databases=raw.map((value,i)=>storageDatabase(value,plans[i]!));options.checkAuthority();return{data:{format:'breditor/selected-room-storage-content' as const,formatVersion:1 as const,current,localReview,databases},plans};
+async function content(input:unknown,options:SharedArchiveIntegrityOptions){
+ const r=fields(input,['format','formatVersion','current','localReview','databases']);
+ if(r['format']!=='breditor/selected-room-storage-content'||r['formatVersion']!==1)throw fail();
+ const c=fields(r['current'],['selection','file']);
+ const current=Object.freeze({selection:selectedRoomCurrentSelection(c['selection']),file:archiveBlob(c['file'] as Blob,MAX_SELECTED_ROOM_CURRENT_BYTES)});
+ const localReview=r['localReview']===null?null:detachLocalReviewBundle(r['localReview']);
+ const review=localReview?await readStorageReview(localReview,prepareArchiveIntegrity(options)):null;
+ const reviewNames=localReview&&review?{intent:localReview.prepared.choice.database,state:review.choice.database}:null;
+ const plans=await selectedStoragePlans(current,reviewNames,options),raw=rows(r['databases'],MAX_STORAGE_DATABASES);
+ if(raw.length!==plans.length)throw fail();
+ const databases=raw.map((value,i)=>storageDatabase(value,plans[i]!));
+ options.checkAuthority();
+ return {data:{format:'breditor/selected-room-storage-content' as const,formatVersion:1 as const,current,localReview,databases},plans};
 }
 const owners=new WeakMap<SelectedRoomStorageArchive,{check():void;read():Promise<{data:StorageContent;plans:readonly StorageDatabasePlan[]}>}>();
 /** Genuine data archive only. Each read decodes a NEW graph; caller mutation
@@ -25,8 +35,33 @@ export class SelectedRoomStorageArchive{
  private constructor(token:object,file:Blob,selection:StorageSelection,graph:string,pieces:readonly Blob[],options:SharedArchiveIntegrityOptions){if(token!==key)throw fail('room_storage_policy');this.#selection=selection;this.#file=file;this.#graph=graph;this.#pieces=pieces;this.#options={...options};owners.set(this,{check:()=>this.#check(),read:async()=>{this.#check();const value=await decodeStorageValue(parseRecordCutJson(this.#graph!,MAX_STORAGE_GRAPH_BYTES),{get:id=>{this.#check();const file=this.#pieces![id];if(!file)throw fail();return file;}});this.#check();const result=await content(value,{...this.#options!,checkAuthority:()=>this.#check()});this.#check();return result;}});Object.freeze(this);}
  #check(){if(this.#closed)throw fail('room_storage_closed');if(this.#options!.signal?.aborted)throw fail('room_storage_aborted');this.#options!.checkAuthority();if(this.#closed)throw fail('room_storage_closed');if(this.#options!.signal?.aborted)throw fail('room_storage_aborted');}
  selection():StorageSelection{return this.#selection;}file():Blob{this.#check();return this.#file!;}dispose():void{this.#closed=true;owners.delete(this);this.#file=undefined;this.#options=undefined;this.#graph=undefined;this.#pieces=undefined;}
- static async read(input:Blob,expected:StorageSelection,options:SharedArchiveIntegrityOptions):Promise<SelectedRoomStorageArchive>{const selection=storageSelection(expected),file=archiveBlob(input,MAX_STORAGE_ARCHIVE_BYTES),context=prepareArchiveIntegrity(options);if(file.size!==selection.bytes||file.size<prefixBytes||await context.digest(file)!==selection.sha256)throw fail();const prefix=await context.read(file,0,prefixBytes);for(const[i,b]of new TextEncoder().encode(magic).entries())if(prefix[i]!==b)throw fail();const size=integer(new DataView(prefix.buffer,prefix.byteOffset,prefix.byteLength).getUint32(magic.length,true),MAX_STORAGE_HEADER_BYTES,2);if(prefixBytes+size>file.size)throw fail();const header=fields(parseRecordCutJson(await readBytes(slice.call(file,prefixBytes,prefixBytes+size),context,MAX_STORAGE_HEADER_BYTES),MAX_STORAGE_HEADER_BYTES),['format','formatVersion','graph','pieces']);if(header['format']!=='breditor/selected-room-storage'||header['formatVersion']!==1)throw fail();const declarations=rows(header['pieces'],MAX_STORAGE_PIECES),pieces:Blob[]=[];let offset=prefixBytes+size;
-  for(const raw of declarations){const r=fields(raw,['bytes','sha256']),bytes=integer(r['bytes'],MAX_STORAGE_ARCHIVE_BYTES),sha256=hash(r['sha256']);if(offset+bytes>file.size)throw fail();const part=slice.call(file,offset,offset+bytes);if(await context.digest(part)!==sha256)throw fail();pieces.push(part);offset+=bytes;}if(offset!==file.size||!pieces.length)throw fail();const graphId=integer(header['graph'],pieces.length-1),graphText=await readBytes(pieces[graphId]!,context,MAX_STORAGE_GRAPH_BYTES),used=new Set([graphId]),graph=parseRecordCutJson(graphText,MAX_STORAGE_GRAPH_BYTES),data=await decodeStorageValue(graph,{get:id=>{const piece=pieces[id];if(!piece)throw fail();used.add(id);return piece;}});if(used.size!==pieces.length)throw fail();await content(data,options);context.guard();return new SelectedRoomStorageArchive(key,file,selection,graphText,pieces,options);
+ static async read(input:Blob,expected:StorageSelection,options:SharedArchiveIntegrityOptions):Promise<SelectedRoomStorageArchive>{
+  const selection=storageSelection(expected),file=archiveBlob(input,MAX_STORAGE_ARCHIVE_BYTES),context=prepareArchiveIntegrity(options);
+  if(file.size!==selection.bytes)throw fail();
+  const {text,offset:bodyOffset}=await readVerifiedArchiveHeader(file,selection.sha256,context,{
+   magic,maximumHeaderBytes:MAX_STORAGE_HEADER_BYTES,invalid:fail,diverged:fail,budget:()=>fail('room_storage_budget'),
+  });
+  const header=fields(parseRecordCutJson(text,MAX_STORAGE_HEADER_BYTES),['format','formatVersion','graph','pieces']);
+  if(header['format']!=='breditor/selected-room-storage'||header['formatVersion']!==1)throw fail();
+  const declarations=rows(header['pieces'],MAX_STORAGE_PIECES),pieces:Blob[]=[];
+  const graphId=integer(header['graph'],declarations.length-1);
+  let offset=bodyOffset,graphText:string|undefined;
+  for(const [index,raw] of declarations.entries()){
+   const r=fields(raw,['bytes','sha256']),bytes=integer(r['bytes'],MAX_STORAGE_ARCHIVE_BYTES),sha256=hash(r['sha256']);
+   if(offset+bytes>file.size)throw fail();
+   const part=slice.call(file,offset,offset+bytes);
+   if(index===graphId)graphText=await readVerifiedStorageText(part,sha256,MAX_STORAGE_GRAPH_BYTES,context);
+   else if(await context.digest(part)!==sha256)throw fail();
+   pieces.push(part);
+   offset+=bytes;
+  }
+  if(offset!==file.size||graphText===undefined)throw fail();
+  const used=new Set([graphId]),graph=parseRecordCutJson(graphText,MAX_STORAGE_GRAPH_BYTES);
+  const data=await decodeStorageValue(graph,{get:id=>{const piece=pieces[id];if(!piece)throw fail();used.add(id);return piece;}});
+  if(used.size!==pieces.length)throw fail();
+  await content(data,options);
+  context.guard();
+  return new SelectedRoomStorageArchive(key,file,selection,graphText,pieces,options);
  }
 }
 /** Trusted capture composition supplies real selected records; this helper
