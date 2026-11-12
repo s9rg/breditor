@@ -9,6 +9,8 @@ mod host_custody;
 pub(crate) use host_custody::GenerationOperationCustody;
 mod coordinator;
 #[cfg(feature = "server")]
+mod inspect_pending_raster;
+#[cfg(feature = "server")]
 mod inspect_pending_rotation;
 mod inspect_torn_tail;
 mod interruption;
@@ -18,6 +20,8 @@ mod publish;
 #[cfg(feature = "server")]
 mod repair_native_prefix;
 mod resume;
+#[cfg(feature = "server")]
+mod retire_pending_raster;
 #[cfg(test)]
 mod tests;
 pub use coordinator::OperationalLogGenerationServerRoom;

@@ -9,11 +9,11 @@ use std::{
     fs::{self, File},
     io::Read,
 };
-fn names(store: &AssetStore) -> Result<BTreeSet<String>> {
+fn names(store: &AssetStore, count: usize) -> Result<BTreeSet<String>> {
     let mut names = BTreeSet::new();
     for entry in fs::read_dir(&store.root)? {
         let entry = entry?;
-        if !entry.file_type()?.is_file() || names.len() >= crate::assets::MAX_ASSETS + 2 {
+        if !entry.file_type()?.is_file() || names.len() >= count {
             return Err(Error::Contract("joined asset source type or count"));
         }
         names.insert(
@@ -27,6 +27,14 @@ fn names(store: &AssetStore) -> Result<BTreeSet<String>> {
 }
 impl AssetStore {
     pub(crate) fn check_exported_backup(&self, backup: &AssetStoreBackup) -> Result<()> {
+        self.check_exported_backup_with_pending(backup, None)
+    }
+
+    pub(in crate::assets::store) fn check_exported_backup_with_pending(
+        &self,
+        backup: &AssetStoreBackup,
+        pending: Option<&str>,
+    ) -> Result<()> {
         self.ready()?;
         restore_files::guard_lock(&self.root, &self.lock)?;
         if self.binding != backup.identity.binding
@@ -40,8 +48,9 @@ impl AssetStore {
             .keys()
             .cloned()
             .chain(std::iter::once(".lock".into()))
+            .chain(pending.map(str::to_owned))
             .collect::<BTreeSet<_>>();
-        if names(self)? != expected {
+        if names(self, expected.len())? != expected {
             return Err(Error::Contract("joined asset source inventory differs"));
         }
         let mut witnesses = Vec::new();
@@ -73,7 +82,7 @@ impl AssetStore {
                 return Err(Error::Contract("joined asset source changed during read"));
             }
         }
-        if names(self)? != expected {
+        if names(self, expected.len())? != expected {
             return Err(Error::Contract("joined asset source inventory changed"));
         }
         restore_files::guard_lock(&self.root, &self.lock)

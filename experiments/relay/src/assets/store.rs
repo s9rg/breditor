@@ -10,10 +10,14 @@ use std::{
     path::{Path, PathBuf},
 };
 mod backup;
+#[cfg(feature = "server")]
+mod pending_upload;
 pub use backup::{
     AssetBackupIdentity, AssetBackupInfo, AssetRecoveryPolicy, AssetRestore, AssetRestoreProgress,
     AssetStoreBackup, MAX_SERVER_ASSET_BACKUP_BYTES,
 };
+#[cfg(feature = "server")]
+pub use pending_upload::PendingRasterUpload;
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -21,6 +25,14 @@ struct Manifest {
     format: String,
     format_version: u32,
     binding: String,
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum LoadMode {
+    Ordinary,
+    Retained,
+    #[cfg(feature = "server")]
+    InspectPending,
 }
 
 /// Private directory bound to one immutable room seed/authority, not an account credential.
@@ -122,11 +134,15 @@ impl AssetStore {
             TryLockError::WouldBlock => Error::Locked,
             TryLockError::Error(e) => Error::Io(e),
         })?;
-        Self::read_locked_root(root, lock, binding, ordinary)
+        let mode = if ordinary { LoadMode::Ordinary } else { LoadMode::Retained };
+        Self::read_locked_root(root, lock, binding, mode)
     }
-    fn read_locked_root(root: PathBuf, lock: File, binding: &str, ordinary: bool) -> Result<Self> {
-        let manifest_path =
-            if ordinary { initialize_manifest(&root, binding)? } else { root.join("store.json") };
+    fn read_locked_root(root: PathBuf, lock: File, binding: &str, mode: LoadMode) -> Result<Self> {
+        let manifest_path = if mode == LoadMode::Ordinary {
+            initialize_manifest(&root, binding)?
+        } else {
+            root.join("store.json")
+        };
         if !fs::symlink_metadata(&manifest_path)?.is_file() {
             return Err(Error::Contract("asset manifest file"));
         }
@@ -161,10 +177,14 @@ impl AssetStore {
                 return Err(Error::Contract("asset directory entry type"));
             }
             if pending(&name) {
-                if !ordinary {
-                    return Err(Error::Contract("operational asset has pending work"));
+                match mode {
+                    LoadMode::Ordinary => garbage.push(entry.path()),
+                    LoadMode::Retained => {
+                        return Err(Error::Contract("operational asset has pending work"));
+                    }
+                    #[cfg(feature = "server")]
+                    LoadMode::InspectPending => {}
                 }
-                garbage.push(entry.path());
                 continue;
             }
             let hex =
@@ -194,7 +214,18 @@ impl AssetStore {
     ) -> Result<Self> {
         key(binding)?;
         backup::guard_recovered_lock(&root, &lock)?;
-        Self::read_locked_root(root, lock, binding, false)
+        Self::read_locked_root(root, lock, binding, LoadMode::Retained)
+    }
+
+    #[cfg(feature = "server")]
+    pub(crate) fn open_recovered_for_upload_inspection(
+        root: PathBuf,
+        lock: File,
+        binding: &str,
+    ) -> Result<Self> {
+        key(binding)?;
+        backup::guard_recovered_lock(&root, &lock)?;
+        Self::read_locked_root(root, lock, binding, LoadMode::InspectPending)
     }
     pub(crate) fn guard_recovered_lock(
         &self,

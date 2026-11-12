@@ -262,6 +262,22 @@ If the intent is already gone, use ordinary sealed restart inspection to
 recover the completed cut. Prepared checkpoints still require their original
 exact archive.
 
+If one interrupted raster upload blocks a sealed restart, use
+`inspect_sealed_native_raster_upload`. Retain the selected room archive,
+the exact staged bytes, and the upload selection SHA-256. The evidence can
+be empty or contain a partial record. The selection binds those bytes to
+the staging inode and records whether its final asset name was published.
+
+With a committed checkpoint, pass the exact inspected cut and both
+retained files to `retire_sealed_native_raster_upload`. The files must be
+outside the operating directory. The relay synchronizes them before
+retiring the staging name under the held epoch. An already published
+asset keeps its final name and inode. Unpublished bytes stay in the
+evidence file, and the client can retry the upload through the ordinary
+asset API. The returned cut can reopen with the protected registrations.
+Multiple pending files, unrelated hard links, and incomplete native
+history require separate recovery.
+
 When the active log ends inside a frame, use `inspect_sealed_native_tail`.
 It applies the same host authentication, deployment epoch, retained archive
 floor and original operational ownership checks. It returns the complete
