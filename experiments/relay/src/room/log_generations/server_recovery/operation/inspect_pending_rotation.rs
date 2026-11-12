@@ -21,7 +21,7 @@ impl OperationalLogGenerationServerRoom {
         expected: &ServerLogGenerationRoomBackupIdentity,
         minimum: &ServerLogGenerationRoomBackup,
         principal: &str,
-        verify: impl FnOnce(CommittedPendingRotationCapture) -> Result<T>,
+        verify: impl FnOnce(&mut Self, CommittedPendingRotationCapture) -> Result<T>,
     ) -> Result<T> {
         let mut operational = Self::open_operational(
             operating_directory,
@@ -59,12 +59,14 @@ impl OperationalLogGenerationServerRoom {
         if !context.guard(&recovered.custody.directory)? {
             return Err(Error::Contract("generation operational marker changed during inspection"));
         }
-        let rotation_digest = capture.rotation.evidence_sha256;
-        let result = verify(capture)?;
-        recovered.room.log.recheck_pending_generation_rotation(rotation_digest)?;
-        if !context.guard(&recovered.custody.directory)? {
+        let result = verify(&mut operational, capture)?;
+        if !operational.context.guard(&operational.recovered.custody.directory)? {
             return Err(Error::Contract("generation operational marker changed during inspection"));
         }
         Ok(result)
+    }
+
+    pub(crate) fn recheck_pending_rotation(&self, evidence: [u8; 32]) -> Result<()> {
+        self.room().log.recheck_pending_generation_rotation(evidence)
     }
 }

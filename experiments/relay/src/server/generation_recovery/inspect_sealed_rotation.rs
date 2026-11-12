@@ -46,7 +46,7 @@ pub async fn inspect_sealed_native_rotation(
             &origin,
             minimum,
             &principal,
-            |capture| {
+            |operational, capture| {
                 let state = ServerLogGenerationRecoveryState {
                     origin: origin.clone(),
                     server: capture.backup,
@@ -54,14 +54,16 @@ pub async fn inspect_sealed_native_rotation(
                 };
                 selection.check_inspected_current(&state)?;
                 selection.check_operational_archive(capture.operation, &state.server)?;
-                selection.authority.with_checkpoint_epoch(
+                let inspected = selection.authority.with_checkpoint_epoch(
                     selection.floor()?,
                     source.identity().planned_selection(),
                     || {
                         selection.checkpoint.guard()?;
                         Ok(SealedNativeRotationInspection { state, rotation: capture.rotation })
                     },
-                )
+                )?;
+                operational.recheck_pending_rotation(inspected.rotation.evidence_sha256)?;
+                Ok(inspected)
             },
         )
     })

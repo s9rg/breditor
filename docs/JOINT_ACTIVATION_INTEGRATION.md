@@ -251,6 +251,17 @@ bytes cover the selected manifest, exact pending intent and transient files.
 Ordinary retained stages stay in the archive. Inspection leaves the original
 rotation in place, and the selected archive can restore into a separate location.
 
+For a committed checkpoint, `complete_sealed_native_rotation` can finish the
+rotation in the original operating directory. Supply the exact inspected state
+as the bootstrap selection and both retained files from outside that directory.
+The relay synchronizes the evidence before publishing the intended manifest
+and head under the held epoch. The returned archive and registration inventory
+select the completed cut for a subsequent authenticated restart. If a write
+stops midway, inspect the new phase and retain its evidence before retrying.
+If the intent is already gone, use ordinary sealed restart inspection to
+recover the completed cut. Prepared checkpoints still require their original
+exact archive.
+
 When the active log ends inside a frame, use `inspect_sealed_native_tail`.
 It applies the same host authentication, deployment epoch, retained archive
 floor and original operational ownership checks. It returns the complete

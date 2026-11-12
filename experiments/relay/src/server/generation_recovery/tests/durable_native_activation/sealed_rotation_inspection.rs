@@ -14,6 +14,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+mod completion;
+
 struct Fixture {
     source: super::Source,
     authority: crate::server::RoomDeploymentAuthority,

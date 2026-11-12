@@ -285,7 +285,11 @@ impl Generations {
         }
         Ok((next, alias_present))
     }
-    fn resume(&mut self, log: &mut Log) -> Result<Option<ServerLogGenerationReceipt>> {
+    fn resume(
+        &mut self,
+        log: &mut Log,
+        use_reserved_stages: bool,
+    ) -> Result<Option<ServerLogGenerationReceipt>> {
         let path = self.directory.path.join(".rotation.json");
         match fs::symlink_metadata(&path) {
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
@@ -319,10 +323,11 @@ impl Generations {
         let (next, alias_present) = self.link_pending_continuation(&intent, staged_control)?;
         #[cfg(test)]
         self.interrupt(super::RotationPoint::ContinuationPublished)?;
-        if staging_full && alias_present {
+        if (staging_full || use_reserved_stages) && alias_present {
             self.retire_linked_continuation_for_recovery(&intent, &marker, &marker_bytes, &next)?;
         }
-        let use_recovery_stages = staged_control.is_some() || (staging_full && !alias_present);
+        let use_recovery_stages =
+            use_reserved_stages || staged_control.is_some() || (staging_full && !alias_present);
         if use_recovery_stages {
             self.guard_intent(&marker, &marker_bytes)?;
         }
@@ -430,7 +435,7 @@ impl Log {
         let mut state = self.generations.take().ok_or(Error::NeedsRecovery)?;
         let result = state
             .prepare(self, next)
-            .and_then(|()| state.resume(self))
+            .and_then(|()| state.resume(self, false))
             .and_then(|value| value.ok_or(Error::Contract("rotation receipt absent")));
         self.generations = Some(state);
         if result.is_ok() {
@@ -443,10 +448,23 @@ impl Log {
         result
     }
     pub(in crate::log) fn recover_generation_rotation(&mut self) -> Result<()> {
+        self.resume_generation_rotation(false)
+    }
+
+    #[cfg(feature = "server")]
+    pub(crate) fn complete_inspected_pending_rotation(&mut self, evidence: [u8; 32]) -> Result<()> {
+        self.recheck_pending_generation_rotation(evidence)?;
+        // Every write uses the intent-owned stage, so a cold retry can inspect each
+        // interrupted prefix without accumulating new unrelated stages.
+        self.resume_generation_rotation(true)?;
+        self.finish_complete_recovery(crate::Recovery::default())
+    }
+
+    fn resume_generation_rotation(&mut self, use_reserved_stages: bool) -> Result<()> {
         let Some(mut state) = self.generations.take() else {
             return Ok(());
         };
-        let result = state.resume(self);
+        let result = state.resume(self, use_reserved_stages);
         self.generations = Some(state);
         if result.is_err() {
             self.poisoned = true;
