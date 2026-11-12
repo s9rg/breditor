@@ -180,3 +180,16 @@ export function verifyActivationInputs(root, bundle) {
   assert.ok(statSync(join(root, path)).mode & 0o100, "Activation host is not executable");
  }
 }
+
+/** A separately rebuilt candidate may have different build-report timestamps. */
+export function verifyCandidateActivationBuild(root, bundle) {
+ root = realpathSync(root);
+ assertSource(root, bundle.source);
+ const files = activationInputs(root);
+ validateBuild(root, files, bundle.source);
+ const runtime = rows => rows.filter(file => file.path !== handoverReport);
+ assert.deepEqual(runtime(files), runtime(bundle.files), "Candidate build differs from the activation workers' inputs");
+ for (const path of nativeExecutables) {
+  assert.ok(statSync(join(root, path)).mode & 0o100, "Activation host is not executable");
+ }
+}

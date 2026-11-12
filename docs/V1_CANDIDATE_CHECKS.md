@@ -29,6 +29,14 @@ outputs must be absent so importing the build cannot overwrite them. Put the
 six `activation-check-*` report directories under one directory and run
 `node scripts/qualify-activation-shard.mjs verify <inputs-directory> <reports-directory>`.
 
+Pass the same inputs and six report directories to `node scripts/verify-candidate.mjs`
+with `--activation-evidence <inputs-directory> <reports-directory>` and the
+chosen profile. The verifier checks the reports before starting, then compares
+its local activation build with the worker inputs when it reaches the six
+activation stages. It retains each worker log in the candidate run. The other
+candidate stages still run in their original order. Running without this option
+executes the six activation commands locally.
+
 ## November 4 completed integration
 
 The [completed restart composition](qualification/2026-11-04-native-joint-reassociation-composition.json)
