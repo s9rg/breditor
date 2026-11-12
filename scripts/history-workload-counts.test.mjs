@@ -14,8 +14,8 @@ const descendants=[
  ['room-record-cut-workload.mjs','roomRecordCutWorkload',1487],
  ['room-asset-approval-workload.mjs','roomAssetApprovalWorkload',1559],
  ['retained-native-continuation-workload.mjs','retainedNativeContinuationWorkload',1577],
- ['selected-owner-workload.mjs','selectedOwnerWorkload',1963],
- ['selected-reconciliation-workload.mjs','selectedReconciliationWorkload',1990],
+ ['selected-owner-workload.mjs','selectedOwnerWorkload',1964],
+ ['selected-reconciliation-workload.mjs','selectedReconciliationWorkload',1991],
 ];
 for(const [file,key,total] of descendants)test('complete inherited history count '+file,async()=>{
  const workload=(await import('./'+file))[key];
