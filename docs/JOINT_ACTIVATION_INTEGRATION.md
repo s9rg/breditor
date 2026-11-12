@@ -293,6 +293,19 @@ The complete selection is detached from the relay. Supply the
 independently held protected-stream credentials when reopening through
 the exact restart API. Activation remains an explicit host action.
 
+Both candidate profiles run the operator fixtures with a source-built
+relay and a separate offline Cargo install from the same candidate
+inputs. To repeat just those checks from the repository root, run:
+
+```sh
+node scripts/check-sealed-room-cli.mjs --source
+node scripts/check-sealed-room-cli.mjs --installed
+```
+
+The installed check requires the matching source report and runs the
+same six cases with the installed executable. Logs, the installed binary,
+and fresh report pins are retained for candidate review.
+
 When the room still has a pending physical rotation, use
 `inspect_sealed_native_rotation`. It checks fresh authentication, the sealed
 checkpoint, the original operational owner, the retained archive floor and the
