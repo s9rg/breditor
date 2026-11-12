@@ -7,6 +7,7 @@ import {
 import {createHash} from "node:crypto";
 import {dirname, join} from "node:path";
 import {fileEvidence, saveEvidence, sourceEvidence} from "./evidence.mjs";
+import {sharedRuntimeBuildReport, verifySharedRuntimeBuild} from "./shared-runtime-evidence.mjs";
 
 const runtimeDirectories = [
  "packages/breditor-browser/dist",
@@ -21,7 +22,8 @@ const nativeExecutables = [
  "target/owned-history-relay-native/release/examples/selected_suggestion_delivery_functional",
 ];
 const handoverReport = "target/handover-native-activation-native-build.json";
-const inputRoots = [...runtimeDirectories, ...nativeExecutables, handoverReport];
+export const activationBuildReports = Object.freeze([handoverReport, sharedRuntimeBuildReport]);
+const inputRoots = [...runtimeDirectories, ...nativeExecutables, ...activationBuildReports];
 const maxInputBytes = 256 * 1024 * 1024;
 const format = "breditor/activation-qualification-inputs";
 
@@ -58,7 +60,7 @@ function activationInputs(root) {
   listFiles(root, path, paths);
   assert.ok(paths.length > size, "Empty runtime directory " + path);
  }
- for (const path of [...nativeExecutables, handoverReport]) {
+ for (const path of [...nativeExecutables, ...activationBuildReports]) {
   assert.ok(lstatSync(join(root, path)).isFile(), "Missing activation input " + path);
   listFiles(root, path, paths);
  }
@@ -69,6 +71,7 @@ function activationInputs(root) {
 }
 
 function validateBuild(root, files, source) {
+ verifySharedRuntimeBuild(root, source);
  const build = JSON.parse(readFileSync(join(root, handoverReport)));
  assert.equal(build.format, "breditor/handover-native-activation-native-build");
  assert.equal(build.complete && build.sourceUnchanged, true);

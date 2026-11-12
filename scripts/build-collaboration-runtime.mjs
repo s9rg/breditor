@@ -6,6 +6,8 @@ import {homedir} from "node:os";
 import {fileURLToPath} from "node:url";
 import {runtimeNoticeFiles} from "./build-runtime-notices.mjs";
 import {candidateRuntimePaths} from "./candidate-runtime-paths.mjs";
+import {sourceEvidence} from "./candidate-release/evidence.mjs";
+import {retainSharedRuntimeBuild} from "./candidate-release/shared-runtime-evidence.mjs";
 export const repository=resolve(dirname(fileURLToPath(import.meta.url)),"..");
 export const runtimeFiles=Object.freeze(["breditor_shared.js","breditor_shared.d.ts","breditor_shared_bg.wasm","breditor_shared_bg.wasm.d.ts"]);
 export function collaborationRuntimeBuildPlan(environment=process.env){
@@ -32,5 +34,10 @@ export function buildCollaborationRuntime(environment=process.env,operations={ru
 }
 if(process.argv[1]&&realpathSync(process.argv[1])===fileURLToPath(import.meta.url)){
  const args=process.argv.slice(2);if(args.length===1&&args[0]==="--dry-run")console.log(JSON.stringify({executed:false,...collaborationRuntimeBuildPlan()},null,2));
- else if(args.length){console.error("Usage: node scripts/build-collaboration-runtime.mjs [--dry-run]; never publishes.");process.exitCode=2;}else buildCollaborationRuntime();
+ else if(args.length===1&&args[0]==="--candidate-receipt"){
+  const source=sourceEvidence(repository);
+  buildCollaborationRuntime();
+  retainSharedRuntimeBuild(repository,source);
+ }
+ else if(args.length){console.error("Usage: node scripts/build-collaboration-runtime.mjs [--dry-run | --candidate-receipt]; never publishes.");process.exitCode=2;}else buildCollaborationRuntime();
 }
