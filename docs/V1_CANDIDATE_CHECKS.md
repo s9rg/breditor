@@ -8,6 +8,27 @@ for package archives, consumer installs, and fixture logs. The checks resolve
 the directory before creating the fixture so the installation, custody checks,
 and reported paths agree when the directory is reached through a symlink.
 
+## Whole-room activation jobs
+
+The manual [activation workflow](../.github/workflows/activation-qualification.yml)
+builds the three package distributions, the normal shared runtime and the
+three Native relay fixtures once. Six jobs run the existing source and
+independent-install checks for warm handover, cold handover and relay restart.
+Each job downloads the same build and checks the source commit, content digest,
+Node and host identity, and artifact bytes before running. The final job checks
+all six reports, their retained logs and the matching installed package hashes.
+This produces whole-room activation evidence. The full V1 qualification and
+reviewed release gates are separate and still required.
+
+Run the same commands locally in fresh checkouts of one commit. Build with
+`node scripts/qualify-activation-shard.mjs prepare`. Pass the resulting
+`target/activation-qualification-inputs` directory to
+`node scripts/qualify-activation-shard.mjs run <stage> <inputs-directory>`
+in a worker checkout with locked dependencies installed. Worker checkout
+outputs must be absent so importing the build cannot overwrite them. Put the
+six `activation-check-*` report directories under one directory and run
+`node scripts/qualify-activation-shard.mjs verify <inputs-directory> <reports-directory>`.
+
 ## November 4 completed integration
 
 The [completed restart composition](qualification/2026-11-04-native-joint-reassociation-composition.json)
