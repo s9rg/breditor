@@ -29,6 +29,8 @@ pub(super) enum OpenMode {
     #[cfg(feature = "server")]
     InspectPendingRotation,
     #[cfg(feature = "server")]
+    InspectPendingRotationAndRaster,
+    #[cfg(feature = "server")]
     InspectPendingRaster,
     #[cfg(feature = "server")]
     InspectNativePrefixAndRaster,
@@ -37,7 +39,7 @@ pub(super) enum OpenMode {
 fn read_operating_log(directory: GenerationDirectory, mode: OpenMode) -> Result<Room> {
     match mode {
         #[cfg(feature = "server")]
-        OpenMode::InspectPendingRotation => {
+        OpenMode::InspectPendingRotation | OpenMode::InspectPendingRotationAndRaster => {
             let (log, records, recovery) = Log::open_owned_generations(directory)?;
             if recovery.truncated_bytes != 0 {
                 return Err(Error::Contract(
@@ -76,7 +78,12 @@ impl OpenMode {
         binding: &str,
     ) -> Result<(AssetStore, RasterCustody)> {
         #[cfg(feature = "server")]
-        if matches!(self, Self::InspectPendingRaster | Self::InspectNativePrefixAndRaster) {
+        if matches!(
+            self,
+            Self::InspectPendingRaster
+                | Self::InspectNativePrefixAndRaster
+                | Self::InspectPendingRotationAndRaster
+        ) {
             return directory.into_store_for_upload_inspection(binding);
         }
         directory.into_store(binding)
@@ -178,6 +185,7 @@ impl OperationalLogGenerationServerRoom {
             // physical ancestry under the same retained component custody.
             #[cfg(feature = "server")]
             OpenMode::InspectPendingRotation
+            | OpenMode::InspectPendingRotationAndRaster
             | OpenMode::InspectPendingRaster
             | OpenMode::InspectNativePrefixAndRaster => {}
             _ => recovered.check_source(backup, principal, !context.committed, &context.extra)?,
