@@ -10,9 +10,14 @@ use crate::{
     server::{
         NativeGenerationActivationPrepareOptions, PreparedNativeGenerationActivationIdentity,
         SealedNativeRestartBootstrap, SealedNativeRestartBootstrapCoverage,
-        ServerLogGenerationRecoveryStateIdentity,
-        generation_recovery::repair_sealed_tail::repair_sealed_native_tail_with_interruption,
-        reopen_sealed_native_restart_host,
+        SealedNativeTailAndRasterRepairFiles, ServerLogGenerationRecoveryStateIdentity,
+        generation_recovery::repair_sealed_tail::{
+            repair_sealed_native_tail_and_raster_with_interruption,
+            repair_sealed_native_tail_with_interruption,
+        },
+        inspect_sealed_native_raster_upload, inspect_sealed_native_tail,
+        inspect_sealed_native_tail_and_raster, reopen_sealed_native_restart_host,
+        repair_sealed_native_tail_and_raster,
     },
 };
 use serde::{Deserialize, Serialize};
@@ -35,6 +40,19 @@ const NOTIFICATION: &str = "BREDITOR_NATIVE_TAIL_REPAIR_HELD ";
 struct SelectedRepair {
     checkpoint: PreparedNativeGenerationActivationIdentity,
     current: ServerLogGenerationRecoveryStateIdentity,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    raster_selection_sha256: Option<[u8; 32]>,
+}
+
+fn combined_files(
+    root: &Path,
+    raster_selection_sha256: [u8; 32],
+) -> SealedNativeTailAndRasterRepairFiles {
+    SealedNativeTailAndRasterRepairFiles {
+        tail: saved_files(root).selection(&SUFFIX),
+        raster_stage: root.join("retained-crash-evidence/raster.stage"),
+        raster_selection_sha256,
+    }
 }
 
 fn saved_files(root: &Path) -> SavedFiles {
@@ -63,16 +81,28 @@ fn sealed_tail_repair_crash_worker() -> TestResult {
         expected_checkpoint: selection.checkpoint,
         expected_current: selection.current,
     };
-    tokio::runtime::Builder::new_multi_thread().worker_threads(2).enable_all().build()?.block_on(
-        Box::pin(repair_sealed_native_tail_with_interruption(
+    let runtime =
+        tokio::runtime::Builder::new_multi_thread().worker_threads(2).enable_all().build()?;
+    let interruption = NativeTailRepairInterruption { pause: Some(point) };
+    if let Some(raster_selection_sha256) = selection.raster_selection_sha256 {
+        runtime.block_on(Box::pin(repair_sealed_native_tail_and_raster_with_interruption(
+            bootstrap,
+            combined_files(&root, raster_selection_sha256),
+            auth,
+            "owner",
+            &owner,
+            interruption,
+        )))?;
+    } else {
+        runtime.block_on(Box::pin(repair_sealed_native_tail_with_interruption(
             bootstrap,
             saved_files(&root).selection(&SUFFIX),
             auth,
             "owner",
             &owner,
-            NativeTailRepairInterruption { pause: Some(point) },
-        )),
-    )?;
+            interruption,
+        )))?;
+    }
     Err("repair worker returned before its expected interruption".into())
 }
 
@@ -146,6 +176,7 @@ async fn crash_then_retry(point: Point) -> TestResult {
     let selected = serde_json::to_vec(&SelectedRepair {
         checkpoint: fixture.selected.expected_checkpoint.clone(),
         current: current.clone(),
+        raster_selection_sha256: None,
     })?;
     persist(&evidence_root, "selection.json", &selected)?;
     fs::File::open(root)?.sync_all()?;
@@ -180,6 +211,122 @@ async fn crash_then_retry(point: Point) -> TestResult {
     assert_eq!(fs::read(evidence_root.join("selection.json"))?, selected);
 
     Box::pin(restart(&fixture, current)).await
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn killed_combined_repair_resumes_after_wal_sync_and_preserves_published_raster() -> TestResult
+{
+    let (fixture, accepted) = Box::pin(close_with_torn_frame()).await?;
+    let current = accepted.identity()?;
+    let operating = &fixture.selected.operational_root;
+    let root = &fixture.source.directory.0;
+    let before_stage = sorted_files(operating)?;
+    let expected = repaired_files(before_stage.clone(), &fixture.active_wal)?;
+    let (asset, record) = before_stage
+        .iter()
+        .find(|(path, _)| path.extension().is_some_and(|suffix| suffix == "asset"))
+        .ok_or("admitted fixture raster")?;
+    let stage = asset.with_file_name(format!(".pending-{}", crate::credentials::issue()?));
+    fs::hard_link(asset, &stage)?;
+    let interrupted = sorted_files(operating)?;
+    Box::pin(assert_single_fault_paths_refuse(&fixture)).await?;
+    let (auth, owner, _) = authentication()?;
+    let observed = Box::pin(inspect_sealed_native_tail_and_raster(
+        fixture.bootstrap(fixture.selected.expected_current.clone()),
+        None,
+        auth,
+        "owner",
+        &owner,
+    ))
+    .await?;
+    assert_eq!(observed.tail.state.identity()?, current);
+    assert_eq!(observed.tail.incomplete_suffix(), SUFFIX);
+    assert_eq!(observed.upload.evidence_bytes(), record);
+    assert!(observed.upload.published_asset.is_some());
+    let pin = observed.upload.selection_sha256;
+    let (archive, _) = observed.tail.state.into_parts();
+    let archive_bytes = archive.to_bytes()?;
+    assert_eq!(archive_bytes, accepted.into_parts().0.to_bytes()?);
+    assert_eq!(sorted_files(operating)?, interrupted);
+
+    let evidence = root.join("retained-crash-evidence");
+    fs::create_dir(&evidence)?;
+    persist(&evidence, "room.backup", &archive_bytes)?;
+    persist(&evidence, "incomplete.wal", &SUFFIX)?;
+    persist(&evidence, "raster.stage", record)?;
+    persist(
+        &evidence,
+        "selection.json",
+        &serde_json::to_vec(&SelectedRepair {
+            checkpoint: fixture.selected.expected_checkpoint.clone(),
+            current: current.clone(),
+            raster_selection_sha256: Some(pin),
+        })?,
+    )?;
+    fs::File::open(root)?.sync_all()?;
+    let mut wrong = combined_files(root, pin);
+    wrong.raster_selection_sha256[0] ^= 1;
+    let (auth, owner, _) = authentication()?;
+    assert!(matches!(
+        Box::pin(repair_sealed_native_tail_and_raster(
+            fixture.bootstrap(current.clone()),
+            wrong,
+            auth,
+            "owner",
+            &owner
+        ))
+        .await,
+        Err(Error::Contract("combined repair retained evidence differs"))
+    ));
+    assert_eq!(sorted_files(operating)?, interrupted);
+    let ledger = sorted_files(&fixture.selected.authority_root)?;
+    let checkpoint = sorted_files(&fixture.selected.checkpoint_root)?;
+    let epoch = fixture.authority.current_selection()?;
+    let wal_inode = fs::metadata(&fixture.active_wal)?.ino();
+    let raster_inode = fs::metadata(asset)?.ino();
+    let mut worker = start_paused(root, Point::Synced)?;
+    assert!(matches!(fixture.authority.claim(&epoch), Err(Error::Locked)));
+    worker.0.kill()?;
+    assert_eq!(worker.0.wait()?.signal(), Some(9));
+    assert_eq!(sorted_files(operating)?, repaired_files(interrupted, &fixture.active_wal)?);
+
+    let saved = combined_files(root, pin);
+    let (auth, owner, _) = authentication()?;
+    let repaired = Box::pin(repair_sealed_native_tail_and_raster(
+        fixture.bootstrap(current.clone()),
+        saved,
+        auth,
+        "owner",
+        &owner,
+    ))
+    .await?;
+    assert_eq!(repaired.identity()?, current);
+    assert_eq!(sorted_files(operating)?, expected);
+    assert_eq!(fs::metadata(&fixture.active_wal)?.ino(), wal_inode);
+    assert_eq!(fs::metadata(asset)?.ino(), raster_inode);
+    assert_eq!(sorted_files(&fixture.selected.authority_root)?, ledger);
+    assert_eq!(sorted_files(&fixture.selected.checkpoint_root)?, checkpoint);
+    assert_eq!(fs::read(evidence.join("room.backup"))?, archive_bytes);
+    assert_eq!(fs::read(evidence.join("incomplete.wal"))?, SUFFIX);
+    assert_eq!(&fs::read(evidence.join("raster.stage"))?, record);
+    Box::pin(restart(&fixture, current)).await
+}
+
+async fn assert_single_fault_paths_refuse(fixture: &ClosedTailFixture) -> TestResult {
+    let selected = || fixture.bootstrap(fixture.selected.expected_current.clone());
+    let (auth, owner, _) = authentication()?;
+    assert!(
+        Box::pin(inspect_sealed_native_tail(selected(), None, auth, "owner", &owner))
+            .await
+            .is_err()
+    );
+    let (auth, owner, _) = authentication()?;
+    assert!(
+        Box::pin(inspect_sealed_native_raster_upload(selected(), None, auth, "owner", &owner))
+            .await
+            .is_err()
+    );
+    Ok(())
 }
 
 fn repaired_files(

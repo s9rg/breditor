@@ -86,6 +86,10 @@ pub use complete_sealed_rotation::{
 mod inspect_sealed_tail;
 mod repair_evidence_file;
 pub use inspect_sealed_tail::{SealedNativeTailInspection, inspect_sealed_native_tail};
+mod inspect_sealed_tail_and_raster;
+pub use inspect_sealed_tail_and_raster::{
+    SealedNativeTailAndRasterInspection, inspect_sealed_native_tail_and_raster,
+};
 mod open_sealed_restart;
 pub use open_sealed_restart::{SealedNativeRestartHostCoverage, open_sealed_native_restart_host};
 mod prepare;
@@ -97,7 +101,8 @@ pub use reopen_sealed_restart::{
 };
 mod repair_sealed_tail;
 pub use repair_sealed_tail::{
-    SealedNativeTailRepairFiles, SealedNativeTailRepairOutcome, repair_sealed_native_tail,
+    SealedNativeTailAndRasterRepairFiles, SealedNativeTailRepairFiles,
+    SealedNativeTailRepairOutcome, repair_sealed_native_tail, repair_sealed_native_tail_and_raster,
 };
 mod retire_sealed_raster_upload;
 pub use retire_sealed_raster_upload::{

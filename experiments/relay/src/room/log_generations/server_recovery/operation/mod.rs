@@ -19,6 +19,8 @@ mod open_committed;
 mod publish;
 #[cfg(feature = "server")]
 mod repair_native_prefix;
+#[cfg(feature = "server")]
+mod repair_native_prefix_and_raster;
 mod resume;
 #[cfg(feature = "server")]
 mod retire_pending_raster;

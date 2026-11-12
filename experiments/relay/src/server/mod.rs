@@ -58,6 +58,7 @@ pub use generation_recovery::{
     SealedNativeRestartBootstrap, SealedNativeRestartBootstrapCoverage,
     SealedNativeRestartHostCoverage, SealedNativeRestartSelection,
     SealedNativeRotationCompletionFiles, SealedNativeRotationInspection,
+    SealedNativeTailAndRasterInspection, SealedNativeTailAndRasterRepairFiles,
     SealedNativeTailInspection, SealedNativeTailRepairFiles, SealedNativeTailRepairOutcome,
     ServerLogGenerationAssetAvailabilityRead, ServerLogGenerationAssetRecoveryState,
     ServerLogGenerationDeliveryContinuationIdentity, ServerLogGenerationDeliveryPathIdentity,
@@ -75,7 +76,8 @@ pub use generation_recovery::{
     VerifiedServerLogGenerationHandoverDeliveryPath, VerifiedServerLogGenerationRecoveryAssets,
     VerifiedServerLogGenerationRecoveryState, complete_sealed_native_rotation,
     inspect_sealed_native_raster_upload, inspect_sealed_native_restart,
-    inspect_sealed_native_rotation, inspect_sealed_native_tail, open_sealed_native_restart_host,
+    inspect_sealed_native_rotation, inspect_sealed_native_tail,
+    inspect_sealed_native_tail_and_raster, open_sealed_native_restart_host,
     prepare_durable_native_activation_control,
     prepare_log_generation_delivery_path_recovery_control,
     prepare_log_generation_delivery_recovery_control,
@@ -84,7 +86,7 @@ pub use generation_recovery::{
     prepare_native_room_publication, prepare_physical_room_recovery_control,
     prepare_physical_room_recovery_host, reconstruct_log_generation_recovery_host,
     reopen_sealed_native_restart_host, repair_sealed_native_tail,
-    retire_sealed_native_raster_upload,
+    repair_sealed_native_tail_and_raster, retire_sealed_native_raster_upload,
 };
 use std::sync::{Arc, Mutex};
 use tokio::sync::{Semaphore, watch};

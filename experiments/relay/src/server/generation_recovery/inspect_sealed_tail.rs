@@ -16,7 +16,7 @@ pub struct SealedNativeTailInspection {
     pub incomplete_bytes: u64,
     /// SHA-256 of the exact incomplete suffix.
     pub incomplete_sha256: [u8; 32],
-    suffix: Vec<u8>,
+    pub(super) suffix: Vec<u8>,
 }
 
 impl SealedNativeTailInspection {

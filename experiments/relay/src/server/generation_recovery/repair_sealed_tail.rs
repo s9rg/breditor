@@ -1,5 +1,9 @@
 //! Explicit, evidence-preserving repair of the original sealed Native operational WAL.
 mod evidence;
+mod with_raster;
+#[cfg(test)]
+pub(in crate::server) use with_raster::repair_sealed_native_tail_and_raster_with_interruption;
+pub use with_raster::{SealedNativeTailAndRasterRepairFiles, repair_sealed_native_tail_and_raster};
 
 use super::{
     SealedNativeRestartBootstrap, ServerLogGenerationRecoveryStateIdentity,
