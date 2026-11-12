@@ -78,8 +78,10 @@ adoption of advanced client, packet, asset and server state.
 
 Both candidate profiles require the example build, the source matrix, and fresh
 installed/bundled execution. The installed check rejects workspace links and
-registry artifact drift, checks strict public type boundaries, and records the
-exact package, production bundle, native host and normal Wasm identities. The
+registry artifact drift and checks strict public type boundaries. Its relay binary
+and both workflows run from the consumer directory. The check verifies the
+installed Wasm and bindings against the current build receipt and records the
+package, production bundle and native host identities. The
 test harness alone provides synthetic Node IndexedDB, locks and image decoding;
 none of those claim physical browser durability.
 

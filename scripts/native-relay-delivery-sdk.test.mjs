@@ -4,7 +4,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,writeFileSync,mkdtempSync} from 'node:fs';
-import {join} from 'node:path';
+import {join,resolve} from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {tmpdir} from 'node:os';
 import {createHash,randomBytes} from 'node:crypto';
 import {WebSocket as Socket} from 'undici';
@@ -14,13 +15,19 @@ import * as native from '../packages/breditor-collaboration/dist/runtime/bredito
 import {reserveNativeRecovery} from '../packages/breditor-collaboration/dist/core.js';
 import {createNativeRelayDelivery,withNativeRelayDelivery} from '../packages/breditor-collaboration/dist/relay/native_delivery.js';
 import {startReviewHost} from './fixtures/relay-host.mjs';
+import {sourceEvidence} from './candidate-release/evidence.mjs';
+import {selectSharedRuntimeBuild} from './candidate-release/shared-runtime-evidence.mjs';
+import {historicalSharedWasmSha256} from './fixtures/native-runtime/shared-runtime-receipt.mjs';
 const origin='http://127.0.0.1:49785',sha=value=>createHash('sha256').update(value).digest('hex');
 const canonical=value=>Array.isArray(value)?value.map(canonical):value&&typeof value==='object'?Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])])):value;
 const executable=new URL('../target/owned-history-relay-native/release/examples/review_functional',import.meta.url).pathname;
 const busy=error=>error?.code==='native_recovery_busy';
 function deferred(){let resolve;const promise=new Promise(done=>{resolve=done;});return{promise,resolve};}
-await native.default({module_or_path:readFileSync(new URL('../packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm',import.meta.url))});
-assert.equal(sha(readFileSync(new URL('../packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm',import.meta.url))),'165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0');
+const repository=resolve(fileURLToPath(new URL('../',import.meta.url)));
+const runtime=selectSharedRuntimeBuild(repository,sourceEvidence(repository));
+const wasmBytes=readFileSync(new URL('../packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm',import.meta.url));
+assert.equal(sha(wasmBytes),runtime?.wasmSha256??historicalSharedWasmSha256);
+await native.default({module_or_path:wasmBytes});
 const configuration=JSON.stringify({format:'breditor/shared-rich-profile',formatVersion:3,schema:{name:'example/native-held-delivery',version:1},extensions:[]});
 async function fixture(run,{wire=2,generation=false}={}){
  const profile=native.SharedRichProfile.from_standard_configuration_json_v3(configuration),descriptor=JSON.parse(profile.descriptor_json()),root=JSON.parse(readFileSync(new URL('../crates/breditor-core/tests/fixtures/rich-local-root.json',import.meta.url),'utf8'));

@@ -8,6 +8,8 @@ import fs from 'node:fs';
 import {dirname,join,relative,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {sourceEvidence,saveEvidence} from './candidate-release/evidence.mjs';
+import {copySharedRuntimeForActivation} from './candidate-release/shared-runtime-evidence.mjs';
+import {historicalSharedWasmSha256} from './fixtures/native-runtime/shared-runtime-receipt.mjs';
 import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
@@ -29,11 +31,12 @@ const tests=intentStorage?intentStorageTests:inputRetention?['scripts/joint-prep
  'scripts/joint-reassociation-complete-native.test.mjs',
 ];
 const types=['scripts/fixtures/metadata-continuation/types.mts','scripts/fixtures/native-joint-reassociation/types.mts'];
-const expectedCases=intentStorage?41:pendingRepeated||preparedStart||inputRetention?1:19,sha=data=>createHash('sha256').update(data).digest('hex');
+const expectedCases=intentStorage?42:pendingRepeated||preparedStart||inputRetention?1:19,sha=data=>createHash('sha256').update(data).digest('hex');
 const workset=intentStorage?'activation-intent-storage-installed':inputRetention?'joint-preparation-input-retention-installed':preparedStart?'prepared-cold-start-installed':pendingRepeated?'joint-reassociation-pending-repeated-installed':'joint-reassociation-installed';
 const source=sourceEvidence(root),directory=fs.mkdtempSync(join(fs.realpathSync(tmpdir()),'breditor-'+workset+'-'));
 const archives=join(directory,'archives'),consumer=join(directory,'consumer');
 fs.mkdirSync(archives);fs.mkdirSync(consumer);
+const sharedRuntime=copySharedRuntimeForActivation(root,consumer,source);
 const generatedOutput=JSON.parse(execFileSync(process.execPath,['scripts/check-generated-package-output.mjs'],{cwd:root,encoding:'utf8',maxBuffer:4*1024*1024}));
 assert.equal(generatedOutput.passed,true);
 const folders=['breditor-browser','breditor-experimental-rich-content','breditor-collaboration'];
@@ -91,11 +94,12 @@ for(const path of [
 if(!intentStorage){
  const build=JSON.parse(fs.readFileSync(join(consumer,processReport)));
  assert.equal(build.complete,true);assert.equal(build.exitCode,0);assert.equal(build.sourceUnchanged,true);
+ if(sharedRuntime)assert.deepEqual(build.source,source);
  const nativePin=build.binaries.find(row=>row.path.endsWith('/native_joint_process_recovery_functional'));
  assert.ok(nativePin);assert.equal(sha(fs.readFileSync(join(consumer,processFixture))),nativePin.sha256);
 }
 const normalWasmSha256=sha(fs.readFileSync(join(consumer,'node_modules/@breditor/collaboration/dist/runtime/breditor_shared_bg.wasm')));
-assert.equal(normalWasmSha256,'165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0');
+assert.equal(normalWasmSha256,sharedRuntime?.wasmSha256??historicalSharedWasmSha256);
 let matchingPackageDistFiles=0;
 for(const[folder,name]of mapping){
  const from=join(root,'packages',folder),to=join(consumer,'node_modules',name);
@@ -107,7 +111,7 @@ for(const[folder,name]of mapping){
  }
  compare('dist');
 }
-const state={format:'breditor/'+workset,formatVersion:1,source,directory,consumer,generatedOutput,registryArtifacts,workspaceLinks:false,copied,runtime,normalWasmSha256,matchingPackageDistFiles,archives:packs.map(pack=>({name:pack.name,path:join(archives,pack.filename),sha256:sha(fs.readFileSync(join(archives,pack.filename)))})),complete:false,releaseReady:false};
+const state={format:'breditor/'+workset,formatVersion:1,source,directory,consumer,generatedOutput,registryArtifacts,workspaceLinks:false,copied,runtime,normalWasmSha256,sharedRuntimeReceiptSha256:sharedRuntime?.sha256??null,matchingPackageDistFiles,archives:packs.map(pack=>({name:pack.name,path:join(archives,pack.filename),sha256:sha(fs.readFileSync(join(archives,pack.filename)))})),complete:false,releaseReady:false};
 saveEvidence(join(directory,'running.json'),state);
 saveEvidence(join(root,'target/'+workset+'-running.json'),{directory,consumer});
 console.log(JSON.stringify({directory,phase:intentStorage?'strict-types-and-intent-storage':'strict-types-and-complete-restart-association'}));
@@ -118,7 +122,7 @@ try{
  const output=execFileSync(process.execPath,[join(root,'node_modules/typescript/bin/tsc'),'--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','es2022','--module','nodenext','--moduleResolution','nodenext','--lib','es2022,dom,dom.iterable','--skipLibCheck','false',...types],{cwd:consumer,encoding:'utf8',timeout:120000,maxBuffer:4*1024*1024});
  fs.writeFileSync(join(directory,'types.log'),output);
  const logPath=join(directory,'contracts.log'),fd=fs.openSync(logPath,'wx');
- child=spawn(process.execPath,['--test','--test-concurrency=1',...tests],{cwd:consumer,stdio:['ignore',fd,fd],detached:true});fs.closeSync(fd);
+ child=spawn(process.execPath,['--test','--test-concurrency=1',...tests],{cwd:consumer,env:{...process.env,...sharedRuntime?.environment},stdio:['ignore',fd,fd],detached:true});fs.closeSync(fd);
  // Own only this detached test child's process group, never our caller's group.
  stop=signal=>{if(child.exitCode===null&&child.signalCode===null)try{process.kill(-child.pid,signal);}catch(error){if(error.code!=='ESRCH')throw error;}};
  let timedOut=false;
@@ -134,7 +138,11 @@ try{
  else if(inputRetention){assert.match(log,/JOINT_PREPARATION_INPUT_RETAINED /);}
  else if(preparedStart){assert.match(log,/PREPARED_COLD_BASELINE_MISSING_RUN /);assert.match(log,/PREPARED_COLD_START_COMPLETE /);}
  else assert.match(log,/REASSOCIATION_COMPLETE_NATIVE /);
- if(pendingRepeated){assert.match(log,/REASSOCIATION_PENDING_STEP original-native-intent-prepared-without-commit/);assert.match(log,/REASSOCIATION_REPEATED_STEP second-actual-process-death-and-complete-prior-metadata-retained/);}
+ if(pendingRepeated){
+  assert.match(log,/REASSOCIATION_PENDING_STEP original-native-intent-prepared-without-commit/);
+  assert.match(log,/REASSOCIATION_RUN_JOURNAL {"kind":"absent","created":false}/);
+  assert.match(log,/REASSOCIATION_REPEATED_STEP second-actual-process-death-and-complete-prior-metadata-retained/);
+ }
  else if(preparedStart||inputRetention||intentStorage){/* Separate component worksets do not claim metadata-reader qualification. */}
  else assert.match(log,/CONTINUATION_EVIDENCE_PHASE metadata/);
  assert.deepEqual(sourceEvidence(root),source);

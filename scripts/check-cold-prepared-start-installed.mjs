@@ -9,6 +9,8 @@ import {dirname,join,relative,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {sourceEvidence,saveEvidence} from './candidate-release/evidence.mjs';
 import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
+import {copySharedRuntimeForActivation} from './candidate-release/shared-runtime-evidence.mjs';
+import {historicalSharedWasmSha256} from './fixtures/native-runtime/shared-runtime-receipt.mjs';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 if(process.argv.length!==2)throw Error('Run the complete prepared-start case without filters');
@@ -19,6 +21,7 @@ const workset='prepared-cold-start-installed';
 const source=sourceEvidence(root),directory=fs.mkdtempSync(join(fs.realpathSync(tmpdir()),'breditor-'+workset+'-'));
 const archives=join(directory,'archives'),consumer=join(directory,'consumer');
 fs.mkdirSync(archives);fs.mkdirSync(consumer);
+const sharedRuntime=copySharedRuntimeForActivation(root,consumer,source);
 const generatedOutput=JSON.parse(execFileSync(process.execPath,['scripts/check-generated-package-output.mjs'],{cwd:root,encoding:'utf8',maxBuffer:4*1024*1024}));
 assert.equal(generatedOutput.passed,true);
 const folders=['breditor-browser','breditor-experimental-rich-content','breditor-collaboration'];
@@ -70,7 +73,7 @@ for(const path of [
  assert.equal(sha(fs.readFileSync(to)),sha(bytes));runtime.push({path,bytes:bytes.length,sha256:sha(bytes)});
 }
 const normalWasmSha256=sha(fs.readFileSync(join(consumer,'node_modules/@breditor/collaboration/dist/runtime/breditor_shared_bg.wasm')));
-assert.equal(normalWasmSha256,'165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0');
+assert.equal(normalWasmSha256,sharedRuntime?.wasmSha256??historicalSharedWasmSha256);
 let matchingPackageDistFiles=0;
 for(const[folder,name]of mapping){
  const from=join(root,'packages',folder),to=join(consumer,'node_modules',name);
@@ -82,7 +85,7 @@ for(const[folder,name]of mapping){
  }
  compare('dist');
 }
-const state={format:'breditor/'+workset,formatVersion:1,source,directory,consumer,generatedOutput,registryArtifacts,workspaceLinks:false,copied,runtime,normalWasmSha256,matchingPackageDistFiles,archives:packs.map(pack=>({name:pack.name,path:join(archives,pack.filename),sha256:sha(fs.readFileSync(join(archives,pack.filename)))})),complete:false,releaseReady:false};
+const state={format:'breditor/'+workset,formatVersion:1,source,directory,consumer,generatedOutput,registryArtifacts,workspaceLinks:false,copied,runtime,normalWasmSha256,sharedRuntimeReceiptSha256:sharedRuntime?.sha256??null,matchingPackageDistFiles,archives:packs.map(pack=>({name:pack.name,path:join(archives,pack.filename),sha256:sha(fs.readFileSync(join(archives,pack.filename)))})),complete:false,releaseReady:false};
 saveEvidence(join(directory,'running.json'),state);
 saveEvidence(join(root,'target/'+workset+'-running.json'),{directory,consumer});
 console.log(JSON.stringify({directory,phase:'strict-types-and-complete-restart-association'}));
@@ -93,7 +96,7 @@ try{
  const output=execFileSync(process.execPath,[join(root,'node_modules/typescript/bin/tsc'),'--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','es2022','--module','nodenext','--moduleResolution','nodenext','--lib','es2022,dom,dom.iterable','--skipLibCheck','false',...types],{cwd:consumer,encoding:'utf8',timeout:120000,maxBuffer:4*1024*1024});
  fs.writeFileSync(join(directory,'types.log'),output);
  const logPath=join(directory,'contracts.log'),fd=fs.openSync(logPath,'wx');
- child=spawn(process.execPath,['--test','--test-concurrency=1',...tests],{cwd:consumer,stdio:['ignore',fd,fd],detached:true});fs.closeSync(fd);
+ child=spawn(process.execPath,['--test','--test-concurrency=1',...tests],{cwd:consumer,env:{...process.env,...sharedRuntime?.environment},stdio:['ignore',fd,fd],detached:true});fs.closeSync(fd);
  // Own only this detached test child's process group, never our caller's group.
  stop=signal=>{if(child.exitCode===null&&child.signalCode===null)try{process.kill(-child.pid,signal);}catch(error){if(error.code!=='ESRCH')throw error;}};
  let timedOut=false;
@@ -104,7 +107,7 @@ try{
  assert.ok(fs.statSync(logPath).size<=8*1024*1024);
  const log=fs.readFileSync(logPath,'utf8');
  for(const[key,n]of[['tests',expectedCases],['pass',expectedCases],['fail',0],['skipped',0],['cancelled',0],['todo',0]])assert.match(log,new RegExp('^# '+key+' '+n+'$','m'));
- assert.match(log,/PREPARED_COLD_BASELINE_MISSING_RUN /);assert.match(log,/PREPARED_COLD_START_COMPLETE /);
+ assert.match(log,/PREPARED_COLD_BASELINE_MISSING_RUN /);assert.match(log,/PREPARED_COLD_JOURNAL_OBSERVED /);assert.match(log,/PREPARED_COLD_START_COMPLETE /);
  assert.deepEqual(sourceEvidence(root),source);
  for(const row of runtime)assert.equal(sha(fs.readFileSync(join(root,row.path))),row.sha256);
  const scope='Explicit absent-only cold start from a real seven-family prepared execution. Existing-only resume refusal, untouched occupied journals, declined execution, exact reconstructed checkpoints and future document/comment histories. No full Native process association, physical storage durability or V1 claim.';

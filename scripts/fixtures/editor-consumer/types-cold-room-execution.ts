@@ -1,5 +1,5 @@
 import type * as Root from '../../../packages/breditor-collaboration/dist/index.js';
-type Assert<T extends true>=T;type Private=Assert<Extract<'ColdRoomExecutionAttempt'|'ColdRoomExecutionSource'|'verifyColdRoomExecutionSource'|'verifyColdCapturedPackets'|'ColdSelectedStorageContext',keyof typeof Root> extends never?true:false>;
+type Assert<T extends true>=T;type Private=Assert<Extract<'ColdRoomExecutionAttempt'|'ColdRoomExecutionSource'|'verifyColdRoomExecutionSource'|'verifyColdCapturedPackets'|'ColdSelectedStorageContext'|'observeRoomRunJournal',keyof typeof Root> extends never?true:false>;
 /** SDK-private cold execution keeps DATA choices separate from actual owners. */
 import {ColdRoomExecutionAttempt} from '../../../packages/breditor-collaboration/dist/cold_room_execution/attempt.js';
 import type {ColdRoomExecutionOptions,ColdRoomExecutionChoice,ColdRoomOriginalRepairChoice} from '../../../packages/breditor-collaboration/dist/cold_room_execution/contract.js';
@@ -37,3 +37,13 @@ export type {Private};
 
 // @ts-expect-error Prepared startup accepts selected DATA, never a surviving owner.
 ColdRoomExecutionAttempt.beginPrepared({...options,owner:selected});
+
+import {observeRoomRunJournal} from '../../../packages/breditor-collaboration/dist/native_room_execution_run/journal_observation.js';
+async function observeJournal(){
+ const observation=await observeRoomRunJournal(options.run.expected,{wasm:options.reads.wasm,checkAuthority:options.reads.checkAuthority});
+ if(observation.kind==='existing')observation.snapshot.head.sha256;
+ else observation.identity.database;
+ // @ts-expect-error Journal DATA supplies no owner or run approval.
+ await attempt.run({expected:observation,approve:()=>true});
+}
+void observeJournal;

@@ -16,6 +16,6 @@ for(const profile of ['functional','full'])test(profile+' requires sealed-source
  assert.equal(host.artifacts.length,1);assert.ok(host.artifacts[0].path.endsWith('release/examples/selected_delivery_functional'));
  assert.deepEqual(find('selected-delivery-sdk').args,['--test','scripts/selected-delivery-native-host.test.mjs']);
  const installed=find('installed-selected-delivery');assert.deepEqual(installed.args,['scripts/check-selected-delivery-installed.mjs']);assert.deepEqual(installed.artifacts,[{path:'target/selected-delivery-installed-consumer.json',fresh:true}]);
- for(const target of ['selected-delivery-sdk','installed-selected-delivery'])for(const prerequisite of ['rich-browser-build','collaboration-build','selected-delivery-plan-contracts','selected-delivery-native-host'])assert.ok(position(prerequisite)<position(target));
+ for(const target of ['selected-delivery-sdk','installed-selected-delivery'])for(const prerequisite of ['rich-browser-build','paired-shared-runtime','collaboration-build','selected-delivery-plan-contracts','selected-delivery-native-host'])assert.ok(position(prerequisite)<position(target));
  assert.ok(position('selected-delivery-sdk')<position('installed-selected-delivery'));assert.equal(plan.v1Ready,false);
 });
