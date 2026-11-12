@@ -5,8 +5,12 @@
 import {recordCutJson} from '../physical_room_record_cut/json.js';
 import {fields,integer,rows,fail,MAX_STORAGE_GRAPH_BYTES,MAX_STORAGE_NODES} from './policy.js';
 export interface StorageValueGraph{readonly format:'breditor/storage-value-graph';readonly formatVersion:1;readonly root:number;readonly nodes:readonly (readonly unknown[])[]}
-export interface StorageBytePool{add(file:Blob):Promise<number>;get(id:number):Blob}
-const arraySlice=ArrayBuffer.prototype.slice,blobSlice=Blob.prototype.slice,blobArrayBuffer=Blob.prototype.arrayBuffer,dateTime=Date.prototype.getTime;
+export interface StorageBytePool{
+ add(file:Blob):Promise<number>;
+ get(id:number):Blob;
+ readBuffer(id:number):Promise<ArrayBuffer>;
+}
+const arraySlice=ArrayBuffer.prototype.slice,blobSlice=Blob.prototype.slice,dateTime=Date.prototype.getTime;
 const blobSize=Object.getOwnPropertyDescriptor(Blob.prototype,'size')!.get!,blobType=Object.getOwnPropertyDescriptor(Blob.prototype,'type')!.get!;
 const typedBase=Object.getPrototypeOf(Uint8Array.prototype) as object,viewBuffer=Object.getOwnPropertyDescriptor(typedBase,'buffer')!.get!,viewOffset=Object.getOwnPropertyDescriptor(typedBase,'byteOffset')!.get!,viewLength=Object.getOwnPropertyDescriptor(typedBase,'byteLength')!.get!;
 const dataBuffer=Object.getOwnPropertyDescriptor(DataView.prototype,'buffer')!.get!,dataOffset=Object.getOwnPropertyDescriptor(DataView.prototype,'byteOffset')!.get!,dataLength=Object.getOwnPropertyDescriptor(DataView.prototype,'byteLength')!.get!;
@@ -42,7 +46,7 @@ export async function encodeStorageValue(value:unknown,pool:Pick<StorageBytePool
  };
  const root=put(value,0);for(const leaf of leaves)nodes[leaf.node]![leaf.position]=await pool.add(leaf.file);const result:StorageValueGraph={format:'breditor/storage-value-graph',formatVersion:1,root,nodes};recordCutJson(result,MAX_STORAGE_GRAPH_BYTES);return result;
 }
-export async function decodeStorageValue(input:unknown,pool:Pick<StorageBytePool,'get'>):Promise<unknown>{
+export async function decodeStorageValue(input:unknown,pool:Pick<StorageBytePool,'get'|'readBuffer'>):Promise<unknown>{
  const r=fields(input,['format','formatVersion','root','nodes']);if(r['format']!=='breditor/storage-value-graph'||r['formatVersion']!==1)throw fail();const nodes=rows(r['nodes'],MAX_STORAGE_NODES).map(tuple);if(!nodes.length)throw fail();const ref=(v:unknown)=>integer(v,nodes.length-1),root=ref(r['root']),values:unknown[]=new Array(nodes.length),edges:number[][]=nodes.map(()=>[]);
  const text=(v:unknown)=>{if(typeof v!=='string')throw fail();return v;},piece=(v:unknown)=>pool.get(integer(v,65535));
  const shape=(node:unknown[],length:number)=>{if(node.length!==length)throw fail();};
@@ -51,7 +55,7 @@ export async function decodeStorageValue(input:unknown,pool:Pick<StorageBytePool
   case'string':shape(n,2);values[id]=text(n[1]);break;case'boolean':shape(n,2);if(typeof n[1]!=='boolean')throw fail();values[id]=n[1];break;
   case'number':shape(n,2);values[id]=readNumber(n[1]);break;case'bigint':shape(n,2);try{values[id]=BigInt(text(n[1]));if(String(values[id])!==n[1])throw fail();}catch{throw fail();}break;
   case'date':shape(n,2);values[id]=new Date(readNumber(n[1]));if(numeric(dateTime.call(values[id]))!==n[1])throw fail();break;
-  case'buffer':shape(n,2);values[id]=await blobArrayBuffer.call(piece(n[1]));break;
+  case'buffer':shape(n,2);values[id]=await pool.readBuffer(integer(n[1],65535));break;
   case'blob':shape(n,3);values[id]=new Blob([piece(n[1])],{type:text(n[2])});if(blobType.call(values[id])!==n[2])throw fail();break;
   case'file':shape(n,5);if(typeof File!=='function')throw fail('room_storage_file_unavailable');values[id]=new File([piece(n[1])],text(n[3]),{type:text(n[2]),lastModified:readNumber(n[4])});if((values[id] as File).name!==n[3]||(values[id] as File).lastModified!==readNumber(n[4])||blobType.call(values[id])!==n[2])throw fail();break;
   case'array':shape(n,3);values[id]=new Array(integer(n[1],MAX_STORAGE_NODES));break;

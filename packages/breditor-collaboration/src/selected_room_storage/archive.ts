@@ -1,12 +1,12 @@
 /** Portable contiguous typed storage archive with complete nested room data.
  * Whole-file and every binary leaf are independently hashed. Data admission
  * never supplies native custody or permission to edit/connect/activate. */
-import {prepareArchiveIntegrity} from '../archive_integrity/context.js';import {archiveBlob} from '../archive_integrity/policy.js';import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
+import {prepareArchiveIntegrity,type ArchiveIntegrityContext} from '../archive_integrity/context.js';import {archiveBlob} from '../archive_integrity/policy.js';import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
 import {recordCutJson,parseRecordCutJson} from '../physical_room_record_cut/json.js';
 import {selectedRoomCurrentSelection,MAX_SELECTED_ROOM_CURRENT_BYTES} from '../selected_room_current/manifest.js';
 import {detachLocalReviewBundle} from '../selected_local_review_delivery/bundle.js';import {readVerifiedArchiveHeader} from '../archive_integrity/verified_header.js';
 import {readStorageReview,readVerifiedStorageText} from './verified_json.js';
-import {selectedStoragePlans} from './plans.js';import {storageDatabase} from './database_shape.js';import {encodeStorageValue,decodeStorageValue} from './value_graph.js';
+import {selectedStoragePlans} from './plans.js';import {storageDatabase} from './database_shape.js';import {encodeStorageValue,decodeStorageValue,type StorageBytePool} from './value_graph.js';
 import {fields,rows,integer,hash,fail,MAX_STORAGE_ARCHIVE_BYTES,MAX_STORAGE_GRAPH_BYTES,MAX_STORAGE_HEADER_BYTES,MAX_STORAGE_PIECES,MAX_STORAGE_DATABASES} from './policy.js';
 import type {StorageContent,StorageFile,StorageSelection,StorageDatabasePlan} from './contract.js';
 const magic='BREDITOR-SELECTED-STORAGE1\n',prefixBytes=magic.length+4,slice=Blob.prototype.slice,key=Object.freeze({});
@@ -25,14 +25,59 @@ async function content(input:unknown,options:SharedArchiveIntegrityOptions){
  options.checkAuthority();
  return {data:{format:'breditor/selected-room-storage-content' as const,formatVersion:1 as const,current,localReview,databases},plans};
 }
+interface StoragePiece {
+ readonly file:Blob;
+ readonly sha256:string;
+}
+
+/** A typed buffer is mutable once returned. Materialize a fresh copy directly
+ * from the verified bytes, including on later reads of an already-open archive. */
+function storagePool(
+ pieces:readonly StoragePiece[],
+ integrity:ArchiveIntegrityContext,
+ used?:Set<number>,
+ verified?:Set<number>,
+):Pick<StorageBytePool,'get'|'readBuffer'>{
+ const select=(id:number)=>{
+  integrity.guard();
+  const piece=pieces[id];
+  if(!piece)throw fail();
+  used?.add(id);
+  return piece;
+ };
+ return {
+  get:id=>select(id).file,
+  async readBuffer(id){
+   const piece=select(id);
+   const {bytes,sha256}=await integrity.readAndDigest(piece.file,MAX_STORAGE_ARCHIVE_BYTES);
+   if(sha256!==piece.sha256)throw fail();
+   verified?.add(id);
+   return bytes.buffer;
+  },
+ };
+}
 const owners=new WeakMap<SelectedRoomStorageArchive,{check():void;read():Promise<{data:StorageContent;plans:readonly StorageDatabasePlan[]}>}>();
 /** Genuine data archive only. Each read decodes a NEW graph; caller mutation
  * can never change the private bytes used by a later restore. */
 export function assertSelectedRoomStorageArchive(archive:SelectedRoomStorageArchive):void{if(!owners.has(archive))throw fail('room_storage_policy');}
 export function selectedRoomStorageData(archive:SelectedRoomStorageArchive){const owner=owners.get(archive);if(!owner)throw fail('room_storage_policy');owner.check();return owner.read();}
 export class SelectedRoomStorageArchive{
- readonly #selection;#file:Blob|undefined;#options:SharedArchiveIntegrityOptions|undefined;#graph:string|undefined;#pieces:readonly Blob[]|undefined;#closed=false;
- private constructor(token:object,file:Blob,selection:StorageSelection,graph:string,pieces:readonly Blob[],options:SharedArchiveIntegrityOptions){if(token!==key)throw fail('room_storage_policy');this.#selection=selection;this.#file=file;this.#graph=graph;this.#pieces=pieces;this.#options={...options};owners.set(this,{check:()=>this.#check(),read:async()=>{this.#check();const value=await decodeStorageValue(parseRecordCutJson(this.#graph!,MAX_STORAGE_GRAPH_BYTES),{get:id=>{this.#check();const file=this.#pieces![id];if(!file)throw fail();return file;}});this.#check();const result=await content(value,{...this.#options!,checkAuthority:()=>this.#check()});this.#check();return result;}});Object.freeze(this);}
+ readonly #selection;#file:Blob|undefined;#options:SharedArchiveIntegrityOptions|undefined;#graph:string|undefined;#pieces:readonly StoragePiece[]|undefined;#closed=false;
+ private constructor(token:object,file:Blob,selection:StorageSelection,graph:string,pieces:readonly StoragePiece[],options:SharedArchiveIntegrityOptions){
+  if(token!==key)throw fail('room_storage_policy');
+  this.#selection=selection;this.#file=file;this.#graph=graph;this.#pieces=pieces;this.#options={...options};
+  owners.set(this,{check:()=>this.#check(),read:async()=>{
+   this.#check();
+   const scoped={...this.#options!,checkAuthority:()=>this.#check()},integrity=prepareArchiveIntegrity(scoped);
+   const graph=parseRecordCutJson(this.#graph!,MAX_STORAGE_GRAPH_BYTES);
+   const value=await decodeStorageValue(graph,storagePool(this.#pieces!,integrity));
+   this.#check();
+   const result=await content(value,scoped);
+   this.#check();
+   return result;
+  }});
+  Object.freeze(this);
+ }
  #check(){if(this.#closed)throw fail('room_storage_closed');if(this.#options!.signal?.aborted)throw fail('room_storage_aborted');this.#options!.checkAuthority();if(this.#closed)throw fail('room_storage_closed');if(this.#options!.signal?.aborted)throw fail('room_storage_aborted');}
  selection():StorageSelection{return this.#selection;}file():Blob{this.#check();return this.#file!;}dispose():void{this.#closed=true;owners.delete(this);this.#file=undefined;this.#options=undefined;this.#graph=undefined;this.#pieces=undefined;}
  static async read(input:Blob,expected:StorageSelection,options:SharedArchiveIntegrityOptions):Promise<SelectedRoomStorageArchive>{
@@ -43,7 +88,7 @@ export class SelectedRoomStorageArchive{
   });
   const header=fields(parseRecordCutJson(text,MAX_STORAGE_HEADER_BYTES),['format','formatVersion','graph','pieces']);
   if(header['format']!=='breditor/selected-room-storage'||header['formatVersion']!==1)throw fail();
-  const declarations=rows(header['pieces'],MAX_STORAGE_PIECES),pieces:Blob[]=[];
+  const declarations=rows(header['pieces'],MAX_STORAGE_PIECES),pieces:StoragePiece[]=[];
   const graphId=integer(header['graph'],declarations.length-1);
   let offset=bodyOffset,graphText:string|undefined;
   for(const [index,raw] of declarations.entries()){
@@ -51,14 +96,16 @@ export class SelectedRoomStorageArchive{
    if(offset+bytes>file.size)throw fail();
    const part=slice.call(file,offset,offset+bytes);
    if(index===graphId)graphText=await readVerifiedStorageText(part,sha256,MAX_STORAGE_GRAPH_BYTES,context);
-   else if(await context.digest(part)!==sha256)throw fail();
-   pieces.push(part);
+   pieces.push({file:part,sha256});
    offset+=bytes;
   }
   if(offset!==file.size||graphText===undefined)throw fail();
-  const used=new Set([graphId]),graph=parseRecordCutJson(graphText,MAX_STORAGE_GRAPH_BYTES);
-  const data=await decodeStorageValue(graph,{get:id=>{const piece=pieces[id];if(!piece)throw fail();used.add(id);return piece;}});
+  const used=new Set([graphId]),verified=new Set([graphId]),graph=parseRecordCutJson(graphText,MAX_STORAGE_GRAPH_BYTES);
+  const data=await decodeStorageValue(graph,storagePool(pieces,context,used,verified));
   if(used.size!==pieces.length)throw fail();
+  for(const [id,piece] of pieces.entries()){
+   if(!verified.has(id)&&await context.digest(piece.file)!==piece.sha256)throw fail();
+  }
   await content(data,options);
   context.guard();
   return new SelectedRoomStorageArchive(key,file,selection,graphText,pieces,options);
