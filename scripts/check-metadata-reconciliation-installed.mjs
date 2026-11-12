@@ -2,6 +2,7 @@
  * and its focused component boundaries. Earlier full recovery qualifications
  * remain separate evidence. Private module tests do not widen public exports.
  * Node IDB is controlled; Native histories and authenticated receipts are real. */
+import {tmpdir} from 'node:os';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {execFileSync} from 'node:child_process';
@@ -14,7 +15,7 @@ import {executeCandidateStage} from './candidate-release/process.mjs';
 import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 if(process.argv.length!==2)throw Error('No reduced Native reconciliation qualification mode');
-const source=sourceEvidence(root),directory=fs.mkdtempSync('/private/tmp/breditor-metadata-reconciliation-installed-'),archives=join(directory,'archives'),consumer=join(directory,'consumer');
+const source=sourceEvidence(root),directory=fs.mkdtempSync(join(fs.realpathSync(tmpdir()),'breditor-metadata-reconciliation-installed-')),archives=join(directory,'archives'),consumer=join(directory,'consumer');
 fs.mkdirSync(archives);fs.mkdirSync(consumer);
 const sha=b=>createHash('sha256').update(b).digest('hex'),packages=['breditor-browser','breditor-experimental-rich-content','breditor-collaboration'];
 const mapping=new Map(packages.map(folder=>[folder,JSON.parse(fs.readFileSync(join(root,'packages',folder,'package.json'))).name]));

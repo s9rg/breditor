@@ -1,5 +1,6 @@
 /** Fresh production archives, original authenticated decisions and normal Wasm.
  * No workspace links or reduced workflow; Node storage/locks are controlled. */
+import {tmpdir} from 'node:os';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {execFileSync} from 'node:child_process';
@@ -11,7 +12,7 @@ import {executeCandidateStage} from './candidate-release/process.mjs';
 import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 if(process.argv.length!==2)throw Error('No reduced native owned-history qualification mode');
-const source=sourceEvidence(root),directory=fs.mkdtempSync('/private/tmp/breditor-native-suggestion-installed-'),archives=join(directory,'archives'),consumer=join(directory,'consumer');
+const source=sourceEvidence(root),directory=fs.mkdtempSync(join(fs.realpathSync(tmpdir()),'breditor-native-suggestion-installed-')),archives=join(directory,'archives'),consumer=join(directory,'consumer');
 fs.mkdirSync(archives);fs.mkdirSync(consumer);
 const sha=b=>createHash('sha256').update(b).digest('hex'),packages=['breditor-browser','breditor-experimental-rich-content','breditor-collaboration'];
 const mapping=new Map(packages.map(folder=>[folder,JSON.parse(fs.readFileSync(join(root,'packages',folder,'package.json'))).name]));

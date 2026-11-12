@@ -1,3 +1,4 @@
+import {tmpdir} from 'node:os';
 import {NORMAL_SHARED_WASM_SHA256} from "./fixtures/native-runtime/normal-shared-identity.mjs";
 /** Unchanged functional laws against fresh offline archives and a real bundle.
  * Only reversible import/fixture locations change. No implementation substitution. */
@@ -12,7 +13,7 @@ import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer
 import {originalRecordReferenceWorkload as workload} from './original-record-references-workload.mjs';
 const {tests,types,assertions,scope}=workload;
 if(process.argv.length!==2)throw Error('No substituted source, runtime or reduced assertions accepted');
-const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),source=sourceEvidence(root),directory=mkdtempSync('/private/tmp/breditor-original-record-references-installed-'),consumer=join(directory,'consumer'),archives=join(directory,'archives'),npm=process.env.BREDITOR_NPM??process.env.NPM_BIN??'npm',sha=b=>createHash('sha256').update(b).digest('hex');mkdirSync(consumer);mkdirSync(archives);
+const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),source=sourceEvidence(root),directory=mkdtempSync(join(realpathSync(tmpdir()),'breditor-original-record-references-installed-')),consumer=join(directory,'consumer'),archives=join(directory,'archives'),npm=process.env.BREDITOR_NPM??process.env.NPM_BIN??'npm',sha=b=>createHash('sha256').update(b).digest('hex');mkdirSync(consumer);mkdirSync(archives);
 const modules=new Set(),fixtures=new Set(),copied=[],fixtureRoot=join(root,'scripts/fixtures');
 const phase=id=>{saveEvidence(join(directory,'status.json'),{phase:id,source,at:new Date().toISOString()});console.log('PHASE',id,directory);};
 function run(id,command,args){phase(id);try{const log=execFileSync(command,args,{cwd:consumer,encoding:'utf8',timeout:600000,maxBuffer:8*1024*1024});writeFileSync(join(directory,id+'.log'),log);return log;}catch(error){writeFileSync(join(directory,id+'.log'),String(error.stdout??'')+'\n'+String(error.stderr??''));throw error;}}

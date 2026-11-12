@@ -1,3 +1,4 @@
+import {tmpdir} from 'node:os';
 import {NORMAL_SHARED_WASM_SHA256} from "./fixtures/native-runtime/normal-shared-identity.mjs";
 /** Fresh offline package and actual production-bundle functional proof.
  * Private functional qualification; selected native producer inputs must match this source.
@@ -8,7 +9,7 @@ import {join,resolve,dirname,relative} from 'node:path';import {pathToFileURL,fi
 import {sourceEvidence,saveEvidence} from './candidate-release/evidence.mjs';
 import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
 if(process.argv.length!==2)throw Error('No substituted source, runtime, assertions or reduced workload accepted');
-const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),npm=process.env.BREDITOR_NPM??process.env.NPM_BIN??'npm',source=sourceEvidence(root),directory=mkdtempSync('/private/tmp/breditor-native-read-installed-'),archives=join(directory,'archives'),consumer=join(directory,'consumer'),sha=b=>createHash('sha256').update(b).digest('hex');mkdirSync(archives);mkdirSync(consumer);
+const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),npm=process.env.BREDITOR_NPM??process.env.NPM_BIN??'npm',source=sourceEvidence(root),directory=mkdtempSync(join(realpathSync(tmpdir()),'breditor-native-read-installed-')),archives=join(directory,'archives'),consumer=join(directory,'consumer'),sha=b=>createHash('sha256').update(b).digest('hex');mkdirSync(archives);mkdirSync(consumer);
 const tests=['probe-operational-native-read.mjs','operational-native-read-runtime.test.mjs'],types=['types-physical-operation-v3-development.ts','types-complete-operation-cohort-development.ts','types-operational-read-development.ts'],copied=[],privateModules=new Set(),fixtures=new Set(),fixtureRoot=join(root,'scripts/fixtures'),reportPath=join(root,'target/complete-cohort-native.json'),native=JSON.parse(readFileSync(reportPath)),normalWasmSha256=sha(readFileSync(join(root,'target/promoted-shared-web/breditor_shared_bg.wasm')));
 assert.equal(native.format,'breditor/native-complete-cohort-check');assert.equal(native.passed,true);assert.equal(native.registeredWritersPerRoom,7);assert.equal(native.reviewActorsPerRoom,7);assert.equal(native.protectedStreamsPerRoom,14);assert.equal(native.files.length,50);assert.deepEqual(native.source,source,'Generate native fixture evidence for this exact source first');
 assert.equal(normalWasmSha256,NORMAL_SHARED_WASM_SHA256);for(const row of native.files){const bytes=readFileSync(join(root,row.path));assert.equal(bytes.length,row.bytes);assert.equal(sha(bytes),row.sha256);}assert.equal(sha(readFileSync(native.manifest)),native.manifestEvidence.sha256);

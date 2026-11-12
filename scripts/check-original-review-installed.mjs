@@ -1,3 +1,4 @@
+import {tmpdir} from 'node:os';
 import {NORMAL_SHARED_WASM_SHA256} from "./fixtures/native-runtime/normal-shared-identity.mjs";
 /** Identical history/provider and cold-recovery laws from actual offline archives
  * Only reversible fixture/module locations change; implementation is never copied in. */
@@ -11,7 +12,7 @@ import {sourceEvidence,saveEvidence,fileEvidence} from './candidate-release/evid
 import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
 import {originalReviewWorkload as workload} from './original-review-workload.mjs';
 if(process.argv.length!==2)throw Error('No substituted source, native data or reduced laws');
-const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),source=sourceEvidence(root),directory=mkdtempSync('/private/tmp/breditor-original-review-installed-'),consumer=join(directory,'consumer'),archives=join(directory,'archives'),npm=process.env.BREDITOR_NPM??process.env.NPM_BIN??'npm',sha=bytes=>createHash('sha256').update(bytes).digest('hex');mkdirSync(consumer);mkdirSync(archives);
+const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),source=sourceEvidence(root),directory=mkdtempSync(join(realpathSync(tmpdir()),'breditor-original-review-installed-')),consumer=join(directory,'consumer'),archives=join(directory,'archives'),npm=process.env.BREDITOR_NPM??process.env.NPM_BIN??'npm',sha=bytes=>createHash('sha256').update(bytes).digest('hex');mkdirSync(consumer);mkdirSync(archives);
 const nativePath=join(root,'target/original-review-native.json'),native=JSON.parse(readFileSync(nativePath)),nativeHashes=[{path:nativePath,sha256:sha(readFileSync(nativePath))}];assert.equal(native.format,'breditor/original-review-native');assert.equal(native.passed,true);assert.deepEqual(native.source,source);assert.equal(native.producers.length,3);for(const row of native.producers)assert.equal(sha(readFileSync(join(root,row.path))),row.sha256);
 const modules=new Set(['index.js','runtime/breditor_shared.js']),richModules=new Set(),fixtures=new Set(),copied=[],fixtureRoot=join(root,'scripts/fixtures');
 const phase=name=>{saveEvidence(join(directory,'status.json'),{phase:name,source,at:new Date().toISOString()});console.log('PHASE',name,directory);};

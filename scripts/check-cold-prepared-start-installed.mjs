@@ -1,5 +1,6 @@
 /** Independently pack/install the explicit prepared cold-start workset. Module
  * and resource locations alone change; all functional assertions stay literal. */
+import {tmpdir} from 'node:os';
 import assert from 'node:assert/strict';
 import {execFileSync,spawn} from 'node:child_process';
 import {createHash} from 'node:crypto';
@@ -15,7 +16,7 @@ const tests=['scripts/cold-room-prepared-start.test.mjs'];
 const types=['scripts/fixtures/editor-consumer/types-cold-room-execution.ts'];
 const expectedCases=1,sha=data=>createHash('sha256').update(data).digest('hex');
 const workset='prepared-cold-start-installed';
-const source=sourceEvidence(root),directory=fs.mkdtempSync('/private/tmp/breditor-'+workset+'-');
+const source=sourceEvidence(root),directory=fs.mkdtempSync(join(fs.realpathSync(tmpdir()),'breditor-'+workset+'-'));
 const archives=join(directory,'archives'),consumer=join(directory,'consumer');
 fs.mkdirSync(archives);fs.mkdirSync(consumer);
 const generatedOutput=JSON.parse(execFileSync(process.execPath,['scripts/check-generated-package-output.mjs'],{cwd:root,encoding:'utf8',maxBuffer:4*1024*1024}));

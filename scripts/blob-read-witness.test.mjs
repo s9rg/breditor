@@ -1,4 +1,5 @@
 /** Injected transport faults test the observer, not the historical short read. */
+import {tmpdir} from 'node:os';
 import test from 'node:test';import assert from 'node:assert/strict';
 import {watchBlobReadLengths} from './fixtures/blob-read-witness.mjs';
 import {probeRetainedBlobRead} from './probe-retained-blob-read.mjs';
@@ -32,7 +33,7 @@ test('the explicit worker experiment is separate from the original refusal and r
  await assert.rejects(probeRetainedBlobRead({format:'breditor/test-blob-read-witness',formatVersion:1,file:new Blob([new Uint8Array(1024*1024+1)]),expectedBytes:1024*1024+1,actualBytes:0}),/bounded/);
 });
 test('the explicit preload records a real child failure while preserving its exit status and one original read',()=>{
- const directory=fs.mkdtempSync('/private/tmp/breditor-blob-witness-law-');
+ const directory=fs.mkdtempSync(join(fs.realpathSync(tmpdir()),'breditor-blob-witness-law-'));
  try{
   const patch=join(directory,'inject.mjs');fs.writeFileSync(patch,"globalThis.calls=0;Blob.prototype.arrayBuffer=async function(){calls++;return new ArrayBuffer(0);};");
   const child=spawnSync(process.execPath,['--import',pathToFileURL(patch).href,'--import',new URL('./fixtures/preload-blob-read-witness.mjs',import.meta.url).href,'--input-type=module','--eval',"const b=await new Blob(['x']).arrayBuffer();console.log(JSON.stringify({calls,actual:b.byteLength}));process.exitCode=23;"],{cwd:directory,encoding:'utf8',timeout:15000});
@@ -42,7 +43,7 @@ test('the explicit preload records a real child failure while preserving its exi
  }finally{fs.rmSync(directory,{recursive:true,force:true});}
 });
 test('the actual Node test runner preserves its failing assertion and writes the separate witness',()=>{
- const directory=fs.mkdtempSync('/private/tmp/breditor-blob-witness-runner-law-');
+ const directory=fs.mkdtempSync(join(fs.realpathSync(tmpdir()),'breditor-blob-witness-runner-law-'));
  try{
   const patch=join(directory,'inject.mjs'),fixture=join(directory,'failing.test.mjs');fs.writeFileSync(patch,"Blob.prototype.arrayBuffer=async function(){return new ArrayBuffer(0);};");
   fs.writeFileSync(fixture,"import test from 'node:test';import assert from 'node:assert/strict';test('original fault',async()=>assert.equal((await new Blob(['x']).arrayBuffer()).byteLength,1));");

@@ -1,6 +1,7 @@
 /** Execute the unchanged real cold-owner workflow from actual independent npm
  * archives. Private SDK paths remain internal; this does not publish or widen
  * public package exports. Synthetic IDB/locks are not physical durability proof. */
+import {tmpdir} from 'node:os';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {readFileSync,writeFileSync,readdirSync,lstatSync,mkdtempSync,mkdirSync,cpSync,realpathSync} from 'node:fs';
@@ -12,7 +13,7 @@ if(process.argv.length!==2&&(process.argv.length!==4||process.argv[2]!=='--depen
 const producer=process.argv.length===4?realpathSync(process.argv[3]):root;
 const {searchConsumerLock,verifySearchConsumerRegistry}=await import(new URL('./scripts/search-consumer-lock.mjs','file://'+producer+'/'));
 const {executeCandidateStage}=await import(new URL('./scripts/candidate-release/process.mjs','file://'+producer+'/'));
-const sha=value=>createHash('sha256').update(value).digest('hex'),directory=mkdtempSync('/private/tmp/breditor-cold-delivery-installed-'),archives=join(directory,'archives'),consumer=join(directory,'consumer');mkdirSync(archives);mkdirSync(consumer);
+const sha=value=>createHash('sha256').update(value).digest('hex'),directory=mkdtempSync(join(realpathSync(tmpdir()),'breditor-cold-delivery-installed-')),archives=join(directory,'archives'),consumer=join(directory,'consumer');mkdirSync(archives);mkdirSync(consumer);
 const inputs=()=>{const result=[];function walk(path){const s=lstatSync(path);if(s.isSymbolicLink())return;if(s.isDirectory())for(const name of readdirSync(path).sort())walk(join(path,name));else if(s.isFile())result.push({path:relative(root,path),bytes:s.size,sha256:sha(readFileSync(path))});}for(const path of ['packages/breditor-collaboration/src','packages/breditor-collaboration/dist','scripts'])walk(join(root,path));return result;};
 const before=inputs(),sourcePackage=JSON.parse(readFileSync(join(root,'packages/breditor-collaboration/package.json'))),producerLock=JSON.parse(readFileSync(join(producer,'package-lock.json'))),packages=[join(producer,'packages/breditor-browser'),join(producer,'packages/breditor-experimental-rich-content'),join(root,'packages/breditor-collaboration')];
 for(const path of packages)assert.equal(JSON.parse(readFileSync(join(path,'package.json'))).version,sourcePackage.version);

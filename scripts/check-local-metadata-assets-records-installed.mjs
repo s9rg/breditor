@@ -1,6 +1,7 @@
 /** Independently packed SDKs execute every native metadata dependency test.
  * Controlled IDB/locks do not establish physical durability; no server or
  * provider capability is inferred from dependency DATA. */
+import {tmpdir} from 'node:os';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {execFileSync} from 'node:child_process';
@@ -12,7 +13,7 @@ import {executeCandidateStage} from './candidate-release/process.mjs';
 import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 if(process.argv.length!==2)throw Error('No reduced local metadata qualification mode');
-const source=sourceEvidence(root),directory=fs.mkdtempSync('/private/tmp/breditor-local-metadata-assets-records-installed-'),archives=join(directory,'archives'),consumer=join(directory,'consumer');
+const source=sourceEvidence(root),directory=fs.mkdtempSync(join(fs.realpathSync(tmpdir()),'breditor-local-metadata-assets-records-installed-')),archives=join(directory,'archives'),consumer=join(directory,'consumer');
 fs.mkdirSync(archives);fs.mkdirSync(consumer);
 const sha=b=>createHash('sha256').update(b).digest('hex'),packages=['breditor-browser','breditor-experimental-rich-content','breditor-collaboration'];
 const mapping=new Map(packages.map(folder=>[folder,JSON.parse(fs.readFileSync(join(root,'packages',folder,'package.json'))).name]));

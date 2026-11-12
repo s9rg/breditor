@@ -1,5 +1,6 @@
 /** Complete compact metadata DATA, exact retained bodies and actual live-journal
  * workset, in source or independently installed SDKs. No browser durability claim. */
+import {tmpdir} from 'node:os';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {execFileSync,spawn} from 'node:child_process';
@@ -35,7 +36,7 @@ for(const row of inputs.filter(row=>row.path.includes('/examples/')))assert.equa
 assert.equal(sha(inputs.find(row=>row.path==='target/promoted-shared-web/breditor_shared_bg.wasm').bytes),'165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0');
 const mapping=new Map(folders.map(folder=>[folder,JSON.parse(fs.readFileSync(join(root,'packages',folder,'package.json'))).name]));
 const generatedOutput=JSON.parse(execFileSync(process.execPath,['scripts/check-generated-package-output.mjs'],{cwd:root,encoding:'utf8',maxBuffer:4*1024*1024}));assert.equal(generatedOutput.passed,true);
-const directory=fs.mkdtempSync('/private/tmp/breditor-metadata-pins-'+mode.slice(2)+'-');
+const directory=fs.mkdtempSync(join(fs.realpathSync(tmpdir()),'breditor-metadata-pins-'+mode.slice(2)+'-'));
 const consumer=mode==='--source'?root:join(directory,'consumer'),copied=[],archives=[];let registryArtifacts=0;
 
 if(mode==='--installed'){

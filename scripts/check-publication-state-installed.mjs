@@ -1,3 +1,4 @@
+import {tmpdir} from 'node:os';
 import {publicationStateCompiled} from './publication-state-artifacts.mjs';
 /** Fresh offline package archives exercise the complete publication/lifetime matrix. */
 import assert from 'node:assert/strict';
@@ -12,7 +13,7 @@ const data=['crates/breditor-core/tests/fixtures/rich-local-root.json'];
 import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 if(process.argv.length!==2)throw Error('The complete normal Native publication/lifetime matrix is mandatory');
-const source=sourceEvidence(root),compiled=publicationStateCompiled(root),directory=fs.mkdtempSync('/private/tmp/breditor-publication-state-installed-'),archives=join(directory,'archives'),consumer=join(directory,'consumer'),sha=value=>createHash('sha256').update(value).digest('hex');
+const source=sourceEvidence(root),compiled=publicationStateCompiled(root),directory=fs.mkdtempSync(join(fs.realpathSync(tmpdir()),'breditor-publication-state-installed-')),archives=join(directory,'archives'),consumer=join(directory,'consumer'),sha=value=>createHash('sha256').update(value).digest('hex');
 fs.mkdirSync(archives);fs.mkdirSync(consumer);
 const packages=['breditor-browser','breditor-experimental-rich-content','breditor-collaboration'],mapping=new Map(packages.map(name=>[name,JSON.parse(fs.readFileSync(join(root,'packages',name,'package.json'))).name]));
 const packed=JSON.parse(execFileSync('npm',['pack','--offline','--ignore-scripts','--json','--pack-destination',archives,...packages.map(name=>join(root,'packages',name))],{cwd:root,encoding:'utf8',maxBuffer:8*1024*1024}));
