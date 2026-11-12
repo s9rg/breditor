@@ -4,7 +4,10 @@ use super::{
     ServerLogGenerationRecoveryState, ServerLogGenerationRecoveryStateIdentity,
     reopen_sealed_restart::reopen_retained_seal, repair_evidence_file::RetainedRepairFile,
 };
-use crate::{Error, OperationalLogGenerationServerRoom, Result, server::Authentication};
+use crate::{
+    Error, OperationalLogGenerationServerRoom, Result, assets::PendingRasterUpload,
+    server::Authentication,
+};
 use std::path::PathBuf;
 
 const OUTSIDE: &str = "sealed rotation evidence must be outside the operating directory";
@@ -23,6 +26,24 @@ pub struct SealedNativeRotationCompletionFiles {
 pub(in crate::server) struct RotationCompletionInterruption {
     #[cfg(test)]
     pub(in crate::server) stop_at: Option<crate::log::generations::RotationPoint>,
+}
+
+pub(super) struct RetainedRasterStage {
+    pub(super) path: PathBuf,
+    pub(super) selection_sha256: [u8; 32],
+}
+
+fn verify_and_sync_stage(
+    file: &RetainedRepairFile,
+    selected: [u8; 32],
+    observed: Option<&PendingRasterUpload>,
+) -> Result<()> {
+    let upload =
+        observed.ok_or(Error::Contract("combined rotation completion lacks raster evidence"))?;
+    if upload.selection_sha256 != selected || file.digest(upload.bytes)? != upload.evidence_sha256 {
+        return Err(Error::Contract("combined rotation retained raster evidence differs"));
+    }
+    file.sync()
 }
 
 /// Complete a pending rotation in the original operating directory of a committed sealed room.
@@ -66,6 +87,19 @@ pub(in crate::server) async fn complete_sealed_native_rotation_with_interruption
     token: &str,
     interruption: RotationCompletionInterruption,
 ) -> Result<ServerLogGenerationRecoveryState> {
+    complete_rotation(bootstrap, retained, None, authentication, principal, token, interruption)
+        .await
+}
+
+pub(super) async fn complete_rotation(
+    bootstrap: SealedNativeRestartBootstrap,
+    retained: SealedNativeRotationCompletionFiles,
+    raster: Option<RetainedRasterStage>,
+    authentication: Authentication,
+    principal: &str,
+    token: &str,
+    interruption: RotationCompletionInterruption,
+) -> Result<ServerLogGenerationRecoveryState> {
     authentication.authenticate(principal, token)?;
     #[cfg(not(test))]
     let _ = interruption;
@@ -81,6 +115,12 @@ pub(in crate::server) async fn complete_sealed_native_rotation_with_interruption
         let canonical = root.canonicalize()?;
         let archive = RetainedRepairFile::open(&retained.archive, &canonical, OUTSIDE)?;
         let evidence = RetainedRepairFile::open(&retained.evidence, &canonical, OUTSIDE)?;
+        let stage = raster
+            .map(|retained| {
+                let file = RetainedRepairFile::open(&retained.path, &canonical, OUTSIDE)?;
+                Ok::<_, Error>((file, retained.selection_sha256))
+            })
+            .transpose()?;
         let origin = source.source_backup().info()?.identity;
         OperationalLogGenerationServerRoom::with_committed_pending_rotation(
             &root,
@@ -88,6 +128,7 @@ pub(in crate::server) async fn complete_sealed_native_rotation_with_interruption
             &origin,
             selection.checkpoint.checkpoint(),
             &principal,
+            stage.is_some(),
             |operational, captured| {
                 let complete = captured.backup.info()?;
                 let current = ServerLogGenerationRecoveryStateIdentity {
@@ -108,6 +149,9 @@ pub(in crate::server) async fn complete_sealed_native_rotation_with_interruption
                 }
                 archive.sync()?;
                 evidence.sync()?;
+                if let Some((file, selected)) = &stage {
+                    verify_and_sync_stage(file, *selected, captured.upload.as_ref())?;
+                }
                 selection.authority.with_checkpoint_epoch(
                     selection.floor()?,
                     source.identity().planned_selection(),
@@ -115,17 +159,23 @@ pub(in crate::server) async fn complete_sealed_native_rotation_with_interruption
                         selection.checkpoint.guard()?;
                         archive.guard()?;
                         evidence.guard()?;
+                        if let Some((file, _)) = &stage {
+                            file.guard()?;
+                        }
                         #[cfg(test)]
                         if let Some(point) = interruption.stop_at {
                             operational.room_mut().interrupt_log_rotation_for_test(point)?;
                         }
                         let (server, participants) = operational.complete_pending_rotation(
                             source.source_backup(),
-                            &captured,
+                            captured,
                             &principal,
                         )?;
                         archive.guard()?;
                         evidence.guard()?;
+                        if let Some((file, _)) = &stage {
+                            file.guard()?;
+                        }
                         selection.checkpoint.guard()?;
                         Ok(ServerLogGenerationRecoveryState {
                             origin: origin.clone(),

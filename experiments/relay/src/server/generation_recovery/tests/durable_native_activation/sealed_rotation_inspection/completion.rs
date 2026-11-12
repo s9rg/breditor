@@ -14,6 +14,8 @@ use crate::{
 };
 use std::{fs, io::Write, os::unix::fs::OpenOptionsExt, path::Path};
 
+mod raster;
+
 fn retain_file(path: &Path, bytes: &[u8]) -> TestResult {
     let mut file = fs::OpenOptions::new().write(true).create_new(true).mode(0o600).open(path)?;
     file.write_all(bytes)?;

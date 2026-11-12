@@ -79,9 +79,17 @@ mod inspect_sealed_restart;
 pub use inspect_sealed_restart::inspect_sealed_native_restart;
 mod inspect_sealed_rotation;
 pub use inspect_sealed_rotation::{SealedNativeRotationInspection, inspect_sealed_native_rotation};
+mod inspect_sealed_rotation_and_raster;
+pub use inspect_sealed_rotation_and_raster::{
+    SealedNativeRotationAndRasterInspection, inspect_sealed_native_rotation_and_raster,
+};
 mod complete_sealed_rotation;
 pub use complete_sealed_rotation::{
     SealedNativeRotationCompletionFiles, complete_sealed_native_rotation,
+};
+mod complete_sealed_rotation_and_raster;
+pub use complete_sealed_rotation_and_raster::{
+    SealedNativeRotationAndRasterCompletionFiles, complete_sealed_native_rotation_and_raster,
 };
 mod inspect_sealed_tail;
 mod repair_evidence_file;

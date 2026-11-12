@@ -277,6 +277,18 @@ evidence file, and the client can retry the upload through the ordinary
 asset API. The returned cut can reopen with the protected registrations.
 Multiple pending files and unrelated hard links require separate recovery.
 
+If a physical rotation and a raster upload are both pending, use
+`inspect_sealed_native_rotation_and_raster`. Retain the selected room
+archive, the rotation evidence, the raster bytes, and their pins.
+`complete_sealed_native_rotation_and_raster` synchronizes all three files
+before completing the rotation. It checks the intended manifest and exact
+Native history before retiring the raster stage under the same epoch.
+If both operations remain pending after interruption, inspect the new
+rotation phase. If the intent is gone and the stage remains, inspect the
+raster against the retained floor, verify the planned manifest, and use
+raster-only retirement. With both operations complete, select the new
+cut through ordinary sealed restart inspection.
+
 If both an incomplete WAL frame and an interrupted raster upload remain,
 use `inspect_sealed_native_tail_and_raster` to capture one surviving room
 cut and both sets of evidence. Retain the room archive, exact WAL suffix,

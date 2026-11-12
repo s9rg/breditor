@@ -18,4 +18,8 @@ impl ServerLogGenerationRoomBackup {
     pub(in crate::room::log_generations) fn rasters(&self) -> &AssetStoreBackup {
         &self.assets
     }
+    #[cfg(feature = "server")]
+    pub(in crate::room::log_generations) fn into_rasters(self) -> AssetStoreBackup {
+        self.assets
+    }
 }

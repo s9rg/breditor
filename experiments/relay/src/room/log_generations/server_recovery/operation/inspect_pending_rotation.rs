@@ -3,7 +3,7 @@ use super::{OperationalLogGenerationServerRoom, resume::OpenMode};
 use crate::{
     Error, Result, RoomRecoveryPolicy, ServerLogGenerationParticipantInventory,
     ServerLogGenerationRoomBackup, ServerLogGenerationRoomBackupIdentity,
-    log::generations::PendingNativeLogRotation,
+    assets::PendingRasterUpload, log::generations::PendingNativeLogRotation,
 };
 use std::path::Path;
 
@@ -12,6 +12,7 @@ pub(crate) struct CommittedPendingRotationCapture {
     pub(crate) participants: ServerLogGenerationParticipantInventory,
     pub(crate) rotation: PendingNativeLogRotation,
     pub(crate) operation: [u8; 32],
+    pub(crate) upload: Option<PendingRasterUpload>,
 }
 
 impl OperationalLogGenerationServerRoom {
@@ -21,6 +22,7 @@ impl OperationalLogGenerationServerRoom {
         expected: &ServerLogGenerationRoomBackupIdentity,
         minimum: &ServerLogGenerationRoomBackup,
         principal: &str,
+        include_raster: bool,
         verify: impl FnOnce(&mut Self, CommittedPendingRotationCapture) -> Result<T>,
     ) -> Result<T> {
         let mut operational = Self::open_operational(
@@ -29,7 +31,11 @@ impl OperationalLogGenerationServerRoom {
             expected,
             RoomRecoveryPolicy::HostReacquired,
             principal,
-            OpenMode::InspectPendingRotation,
+            if include_raster {
+                OpenMode::InspectPendingRotationAndRaster
+            } else {
+                OpenMode::InspectPendingRotation
+            },
         )?;
         let recovered = &mut operational.recovered;
         let context = &operational.context;
@@ -40,8 +46,14 @@ impl OperationalLogGenerationServerRoom {
             |room, assets| {
                 let (native, rotation) =
                     room.export_inspected_pending_generation_rotation(principal)?;
-                let rasters = assets.export_backup()?;
-                assets.check_exported_backup(&rasters)?;
+                let (rasters, upload) = if include_raster {
+                    let (rasters, upload) = assets.capture_pending_upload()?;
+                    (rasters, Some(upload))
+                } else {
+                    let rasters = assets.export_backup()?;
+                    assets.check_exported_backup(&rasters)?;
+                    (rasters, None)
+                };
                 let backup = ServerLogGenerationRoomBackup::from_components(native, rasters)?;
                 backup.check_archive_ancestor(original)?;
                 backup.check_archive_ancestor(minimum)?;
@@ -53,6 +65,7 @@ impl OperationalLogGenerationServerRoom {
                     participants,
                     rotation,
                     operation: context.activation_owner_digest()?,
+                    upload,
                 })
             },
         )?;

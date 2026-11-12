@@ -5,7 +5,8 @@ use super::{
 };
 use crate::{
     Error, OperationalLogGenerationServerRoom, Result, ServerLogGenerationRoomBackup,
-    log::generations::PendingNativeLogRotation, server::Authentication,
+    assets::PendingRasterUpload, log::generations::PendingNativeLogRotation,
+    server::Authentication,
 };
 
 /// The selected sealed room archive, protected registrations, and pending rotation evidence.
@@ -33,6 +34,17 @@ pub async fn inspect_sealed_native_rotation(
     principal: &str,
     token: &str,
 ) -> Result<SealedNativeRotationInspection> {
+    Ok(inspect_rotation(bootstrap, minimum, authentication, principal, token, false).await?.0)
+}
+
+pub(super) async fn inspect_rotation(
+    bootstrap: SealedNativeRestartBootstrap,
+    minimum: Option<ServerLogGenerationRoomBackup>,
+    authentication: Authentication,
+    principal: &str,
+    token: &str,
+    include_raster: bool,
+) -> Result<(SealedNativeRotationInspection, Option<PendingRasterUpload>)> {
     authentication.authenticate(principal, token)?;
     let principal = principal.to_owned();
     tokio::task::spawn_blocking(move || {
@@ -46,6 +58,7 @@ pub async fn inspect_sealed_native_rotation(
             &origin,
             minimum,
             &principal,
+            include_raster,
             |operational, capture| {
                 let state = ServerLogGenerationRecoveryState {
                     origin: origin.clone(),
@@ -54,16 +67,21 @@ pub async fn inspect_sealed_native_rotation(
                 };
                 selection.check_inspected_current(&state)?;
                 selection.check_operational_archive(capture.operation, &state.server)?;
-                let inspected = selection.authority.with_checkpoint_epoch(
+                selection.authority.with_checkpoint_epoch(
                     selection.floor()?,
                     source.identity().planned_selection(),
                     || {
                         selection.checkpoint.guard()?;
-                        Ok(SealedNativeRotationInspection { state, rotation: capture.rotation })
+                        operational.recheck_pending_rotation(capture.rotation.evidence_sha256)?;
+                        if let Some(upload) = &capture.upload {
+                            operational.assets().recheck_pending_upload(upload.selection_sha256)?;
+                        }
+                        Ok((
+                            SealedNativeRotationInspection { state, rotation: capture.rotation },
+                            capture.upload,
+                        ))
                     },
-                )?;
-                operational.recheck_pending_rotation(inspected.rotation.evidence_sha256)?;
-                Ok(inspected)
+                )
             },
         )
     })
