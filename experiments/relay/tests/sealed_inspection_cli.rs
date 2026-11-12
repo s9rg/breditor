@@ -18,6 +18,7 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeMap,
+    ffi::OsStr,
     fs,
     io::{Cursor, Write},
     os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt},
@@ -25,6 +26,9 @@ use std::{
     process::{Command, Output, Stdio},
     sync::Arc,
 };
+
+#[path = "sealed_inspection_cli/repair.rs"]
+mod repair;
 
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -66,20 +70,28 @@ impl Fixture {
     }
 
     fn run(&self, request: &Value, token: &str, destination: &Path) -> Result<Output> {
+        self.command("inspect-sealed-room", request, token, &[destination.as_os_str()])
+    }
+
+    fn command(&self, verb: &str, request: &Value, token: &str, args: &[&OsStr]) -> Result<Output> {
         let config = self.directory.0.join("request.json");
         fs::write(&config, serde_json::to_vec(request)?)?;
         let binary = std::env::var_os("BREDITOR_INSTALLED_INSPECTION_RELAY")
             .unwrap_or_else(|| env!("CARGO_BIN_EXE_breditor-collab-relay").into());
         let mut child = Command::new(binary)
-            .arg("inspect-sealed-room")
+            .arg(verb)
             .arg(config)
             .arg(self.directory.0.join("auth.json"))
-            .arg(destination)
+            .args(args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()?;
-        writeln!(child.stdin.take().ok_or("owner token pipe")?, "{token}")?;
+        if let Err(error) = writeln!(child.stdin.take().ok_or("owner token pipe")?, "{token}")
+            && error.kind() != std::io::ErrorKind::BrokenPipe
+        {
+            return Err(error.into());
+        }
         let output = child.wait_with_output()?;
         for bytes in [&output.stdout, &output.stderr] {
             assert!(!String::from_utf8_lossy(bytes).contains(token));
@@ -412,15 +424,17 @@ struct PendingRotation {
     identity: Inode,
 }
 
-fn keep_pending_rotation(fixture: &Fixture) -> Result<[u8; 32]> {
+fn keep_pending_rotation(fixture: &Fixture, head_published: bool) -> Result<[u8; 32]> {
     let native = fixture.active_wal.parent().ok_or("active WAL directory")?;
+    let head = native.join(".head.json");
+    let prior_head = fs::read(&head)?;
     let (mut room, _) = Room::open_log_generations(native)?;
     room.grant("owner", "accepted-before-rotation", Some(Role::Reader))?;
     let before = room.log_generation_descriptor("owner")?.manifest;
     let after = room.rotate_log_generation("owner", "cli-rotation")?.after_manifest;
     drop(room);
-    let manifest: Value =
-        serde_json::from_slice(&fs::read(native.join(format!("m-{}.json", hex(&after))))?)?;
+    let child_manifest = native.join(format!("m-{}.json", hex(&after)));
+    let manifest: Value = serde_json::from_slice(&fs::read(&child_manifest)?)?;
     let sealed =
         manifest["sealed"].as_array().and_then(|items| items.last()).ok_or("sealed generation")?;
     let next_digest = Sha256::digest(b"breditor/relay-log-file/1\0cli-rotation");
@@ -428,7 +442,7 @@ fn keep_pending_rotation(fixture: &Fixture) -> Result<[u8; 32]> {
     let (nonce, _) = Authentication::issue_token()?;
     let stage = format!(".stage-{nonce}");
     fs::hard_link(&active, native.join(&stage))?;
-    let inode = fs::metadata(active)?;
+    let inode = fs::metadata(&active)?;
     let intent = PendingRotation {
         format: "breditor/relay-log-rotation",
         format_version: 1,
@@ -446,6 +460,16 @@ fn keep_pending_rotation(fixture: &Fixture) -> Result<[u8; 32]> {
         .open(native.join(".rotation.json"))?;
     file.write_all(&serde_json::to_vec(&intent)?)?;
     file.sync_all()?;
+    if !head_published {
+        fs::remove_file(active)?;
+        fs::remove_file(child_manifest)?;
+        let saved_head = fixture.directory.0.join("prior-head");
+        let mut file =
+            fs::OpenOptions::new().write(true).create_new(true).mode(0o600).open(&saved_head)?;
+        file.write_all(&prior_head)?;
+        file.sync_all()?;
+        fs::rename(saved_head, head)?;
+    }
     fs::File::open(native)?.sync_all()?;
     Ok(after)
 }
@@ -453,7 +477,7 @@ fn keep_pending_rotation(fixture: &Fixture) -> Result<[u8; 32]> {
 #[tokio::test]
 async fn cli_retains_rotation_and_exact_pending_raster_evidence() -> Result {
     let fixture = Box::pin(sealed_room()).await?;
-    let planned = keep_pending_rotation(&fixture)?;
+    let planned = keep_pending_rotation(&fixture, true)?;
     let (output, manifest) =
         inspect(&fixture, &fixture.request("rotation", fixture.expected.current()), "rotation")?;
     let rotation = &manifest["pending"]["rotation"];

@@ -1,7 +1,10 @@
 //! Cold relay inspection command. Credentials arrive over stdin and never enter the evidence.
 mod destination;
 mod evidence;
+mod repair;
 mod request;
+mod selection;
+pub(super) use repair::repair;
 
 use breditor_collab_relay::{
     ServerLogGenerationRoomBackup, ServerLogGenerationRoomBackupIdentity,
@@ -19,10 +22,7 @@ type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 pub(super) async fn run(request: &Path, auth: &Path, output: &Path) -> Result {
     let request = Request::read(request)?;
-    let auth = read_regular(auth, 256 * 1024)?;
-    let auth = Authentication::from_json(std::str::from_utf8(&auth)?)
-        .map_err(|_| "invalid relay authentication configuration")?;
-    let token = request::read_token(io::stdin().lock())?;
+    let (auth, token) = read_authentication(auth)?;
     let bootstrap = request.bootstrap()?;
     let protected = [
         &bootstrap.source_root,
@@ -44,6 +44,13 @@ pub(super) async fn run(request: &Path, auth: &Path, output: &Path) -> Result {
     observation.retain(destination)?;
     println!("retained sealed room inspection");
     Ok(())
+}
+
+fn read_authentication(path: &Path) -> Result<(Authentication, String)> {
+    let auth = read_regular(path, 256 * 1024)?;
+    let auth = Authentication::from_json(std::str::from_utf8(&auth)?)
+        .map_err(|_| "invalid relay authentication configuration")?;
+    Ok((auth, request::read_token(io::stdin().lock())?))
 }
 
 fn load_floor(
