@@ -10,8 +10,9 @@ import {fileURLToPath} from "node:url";
 import {candidateReleasePlan} from "./candidate-release/plan.mjs";
 import {activationPlan, activationStageIds} from "./candidate-release/activation-shards.mjs";
 import {
- checkActivationBundle, restoreActivationInputs, sealActivationInputs, verifyActivationInputs,
+ activationBuildReports, checkActivationBundle, restoreActivationInputs, sealActivationInputs, verifyActivationInputs,
 } from "./candidate-release/activation-inputs.mjs";
+import {retainSharedRuntimeBuild, sharedRuntimeBuildReport, verifySharedRuntimeBuild} from "./candidate-release/shared-runtime-evidence.mjs";
 import {activationReportName, retainActivationShard, verifyActivationShards} from "./candidate-release/activation-results.mjs";
 import {fileEvidence, saveEvidence, sourceEvidence} from "./candidate-release/evidence.mjs";
 import {runCandidateChecks} from "./verify-candidate.mjs";
@@ -46,7 +47,13 @@ function fixture(t) {
  git(root, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "--quiet", "--no-gpg-sign", "-m", "Fixture");
  git(directory, "clone", "--quiet", root, worker);
  for (const name of packageNames) write(root, "packages/breditor-" + name.split("/")[1] + "/dist/index.js", name);
- write(root, wasm, "Wasm bytes");
+ for (const [name, bytes] of [
+  ["breditor_shared_bg.wasm", "Wasm bytes"], ["breditor_shared.js", "Wasm glue"],
+  ["breditor_shared.d.ts", "shared declarations"], ["breditor_shared_bg.wasm.d.ts", "Wasm declarations"],
+ ]) {
+  write(root, "target/promoted-shared-web/" + name, bytes);
+  write(root, "packages/breditor-collaboration/dist/runtime/" + name, bytes);
+ }
  write(root, "target/promoted-shared-web/breditor_dependency_inventory.json", "{}");
  for (const path of hostInputs) write(root, path, path);
  saveEvidence(join(root, handoverReport), {
@@ -54,6 +61,7 @@ function fixture(t) {
   source:sourceEvidence(root), complete:true, sourceUnchanged:true, exitCode:0,
   binaries:[fileEvidence(root, handoverHost)],
  });
+ retainSharedRuntimeBuild(root, sourceEvidence(root));
  return {root, worker, directory, bundleDirectory};
 }
 
@@ -115,13 +123,27 @@ test("a different candidate or altered bundle cannot seed a worker", t => {
  assert.throws(() => checkActivationBundle(root, bundleDirectory), /symlinks/);
 });
 
+test("shared runtime build evidence binds the generated and packaged bytes to the source", t => {
+ const {root, worker, bundleDirectory} = fixture(t);
+ const source = sourceEvidence(root);
+ assert.equal(verifySharedRuntimeBuild(root, source).files.length, 4);
+ const original = JSON.parse(readFileSync(join(root, sharedRuntimeBuildReport)));
+ saveEvidence(join(root, sharedRuntimeBuildReport), {...original, source:{...source, commit:"0".repeat(40)}});
+ assert.throws(() => sealActivationInputs(root, bundleDirectory), /another candidate/);
+ saveEvidence(join(root, sharedRuntimeBuildReport), original);
+ write(root, "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm", "different paired bytes");
+ assert.throws(() => sealActivationInputs(root, bundleDirectory), /Packaged shared runtime differs/);
+ assert.equal(existsSync(bundleDirectory), false);
+ assert.equal(existsSync(join(worker, "target")), false);
+});
+
 test("aggregation requires six matching results and checks retained logs and package identity", async t => {
  const {root, worker, directory, bundleDirectory} = fixture(t);
  const bundle = sealActivationInputs(root, bundleDirectory);
  const reports = join(directory, "reports");
  mkdirSync(reports);
  const sourceLog = "# tests 22\n# pass 22\n# fail 0\n# cancelled 0\n# skipped 0\n";
- const installedRuntime = bundle.files.filter(file => file.path.startsWith("target/") && file.path !== handoverReport);
+ const installedRuntime = bundle.files.filter(file => file.path.startsWith("target/") && !activationBuildReports.includes(file.path));
  const archives = packageNames.map(name => ({name, sha256:"a".repeat(64)}));
  const reportDirectory = stage => join(reports, activationReportName(stage));
  async function retain(stage, selectedArchives = archives) {
@@ -179,6 +201,8 @@ test("aggregation requires six matching results and checks retained logs and pac
  assert.equal(candidate.result.stages.find(stage => stage.id === last).artifacts.length, 1);
 
  write(worker, wasm, "changed by local build");
+ write(worker, "packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm", "changed by local build");
+ retainSharedRuntimeBuild(worker, sourceEvidence(worker));
  executed.length = 0;
  const mismatch = await runCandidateChecks(plan, options);
  assert.equal(mismatch.exitCode, 1);

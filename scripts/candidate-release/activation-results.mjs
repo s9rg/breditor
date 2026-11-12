@@ -4,6 +4,7 @@ import {copyFileSync, mkdirSync, readFileSync} from "node:fs";
 import {dirname, join} from "node:path";
 import {fileEvidence, saveEvidence} from "./evidence.mjs";
 import {activationPlan, activationStageIds} from "./activation-shards.mjs";
+import {activationBuildReports} from "./activation-inputs.mjs";
 
 const format = "breditor/activation-qualification-shard";
 const sha256Pattern = /^[a-f0-9]{64}$/;
@@ -52,7 +53,7 @@ function verifyFiles(directory, stage, bundle) {
  const expected = new Map(bundle.files.map(file => [file.path, file]));
  const runtime = new Map(installed.runtime.map(file => [file.path, file]));
  for (const [path, file] of expected) {
-  if (path.startsWith("target/") && path !== "target/handover-native-activation-native-build.json") {
+  if (path.startsWith("target/") && !activationBuildReports.includes(path)) {
    assert.equal(runtime.get(path)?.sha256, file.sha256, "Installed activation used different input " + path);
    assert.equal(runtime.get(path)?.bytes, file.bytes);
   }
