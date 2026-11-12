@@ -4,8 +4,8 @@
 import {checkRichAssetLimits,inspectRichRaster,type AssetLimits} from '@breditor/experimental-rich-content';
 import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
 import {archiveBlob} from '../archive_integrity/policy.js';
-import {prepareArchiveIntegrity} from '../archive_integrity/context.js';
-import {recordCutBytes} from '../physical_room_record_cut/framing.js';
+import {prepareArchiveIntegrity,type ArchiveIntegrityContext} from '../archive_integrity/context.js';
+import {readVerifiedArchiveHeader} from '../archive_integrity/verified_header.js';
 import {fields,hash,integer,rows} from '../physical_room_record_cut/policy.js';
 import {metadataData,metadataJson,equal} from '../selected_local_metadata_delivery/data.js';
 import {frozen} from '../room_participant_inventory/policy.js';
@@ -15,8 +15,8 @@ import type {LocalMetadataRecoverableRasterHeader} from './recoverable_contract.
 import {fail} from './error.js';
 type FrameHeader=LocalMetadataRasterHeader|LocalMetadataRecoverableRasterHeader;
 const scopes={1:'client-metadata-cut-and-recorded-provider-rasters',2:'complete-client-cut-and-local-provider-raster-union'} as const;
-const prefixBytes=new TextEncoder().encode('BREDITOR_METADATA_RASTERS_V1\n').length+4,maximum=1024*1024*1024,headerMaximum=16*1024*1024;
-function frameMagic(version:1|2){if(version!==1&&version!==2)throw fail('local_metadata_assets_state');return new TextEncoder().encode(version===1?'BREDITOR_METADATA_RASTERS_V1\n':'BREDITOR_METADATA_RASTERS_V2\n');}
+const maximum=1024*1024*1024,headerMaximum=16*1024*1024;
+function frameMagic(version:1|2){if(version!==1&&version!==2)throw fail('local_metadata_assets_state');return version===1?'BREDITOR_METADATA_RASTERS_V1\n':'BREDITOR_METADATA_RASTERS_V2\n';}
 const slice=Blob.prototype.slice;
 function header(input:unknown,limits:Readonly<AssetLimits>,bodyBytes:number,version:1|2):FrameHeader{
  const r=fields(input,['format','formatVersion','scope','references','availability','payloads']);
@@ -28,23 +28,61 @@ function header(input:unknown,limits:Readonly<AssetLimits>,bodyBytes:number,vers
  return frozen({format:'breditor/local-metadata-materialized-rasters',formatVersion:version,scope:scopes[version],references:{bytes:integer(ref['bytes'],maximum,1),sha256:hash(ref['sha256'])},availability:metadataData(r['availability']),payloads}) as FrameHeader;
 }
 export async function readLocalMetadataRasterFrame(input:Blob,expected:Readonly<{bytes:number;sha256:string}>,options:SharedArchiveIntegrityOptions,providedLimits:Partial<AssetLimits>,version:1|2):Promise<{header:FrameHeader;file:Blob;payloads:Map<string,Blob>}>{
-  const magic=frameMagic(version);
-  const chosen=fields(expected,['bytes','sha256']),bytes=integer(chosen['bytes'],maximum,1),digest=hash(chosen['sha256']),file=archiveBlob(input,maximum),limits=checkRichAssetLimits(providedLimits),integrity=prepareArchiveIntegrity(options);integrity.guard();
-  if(file.size!==bytes||file.size<prefixBytes||await integrity.digest(file)!==digest)throw fail('local_metadata_assets_state');integrity.guard();
-  const prefix=await integrity.read(file,0,prefixBytes);if(magic.some((value,index)=>value!==prefix[index]))throw fail('local_metadata_assets_state');
-  const length=new DataView(prefix.buffer,prefix.byteOffset,prefix.byteLength).getUint32(magic.length,true),start=prefixBytes+length;
-  if(length<2||length>headerMaximum||start>file.size)throw fail('local_metadata_assets_raster_budget');
-  const encoded=await recordCutBytes(file,prefixBytes,length,integrity);integrity.guard();let text:string;try{text=new TextDecoder('utf-8',{fatal:true}).decode(encoded);}catch{throw fail('local_metadata_assets_state');}
-  const selected=header(JSON.parse(text),limits,file.size-start,version);if(metadataJson(selected)!==text)throw fail('local_metadata_assets_state');
-  const payloads=new Map<string,Blob>();for(const entry of selected.payloads){integrity.guard();const raster=await inspectRichRaster(slice.call(file,start+entry.offset,start+entry.offset+entry.bytes,entry.mime),{limits,...(options.signal?{signal:options.signal}:{})});integrity.guard();if(raster.asset!==entry.asset||raster.mime!==entry.mime||raster.bytes!==entry.bytes||raster.width!==entry.width||raster.height!==entry.height)throw fail('local_metadata_assets_state');payloads.set(entry.asset,raster.blob);}
-  integrity.guard();return{header:selected,file,payloads};
+ const magic=frameMagic(version),chosen=fields(expected,['bytes','sha256']);
+ const bytes=integer(chosen['bytes'],maximum,1),digest=hash(chosen['sha256']),file=archiveBlob(input,maximum);
+ const limits=checkRichAssetLimits(providedLimits),{wasm,checkAuthority,signal}=options;
+ const integrity=prepareArchiveIntegrity({wasm,checkAuthority,...(signal?{signal}:{})});
+ if(file.size!==bytes)throw fail('local_metadata_assets_state');
+ return readFrame(file,digest,magic,version,limits,integrity,signal);
+}
+async function readFrame(file:Blob,digest:string,magic:string,version:1|2,limits:Readonly<AssetLimits>,integrity:ArchiveIntegrityContext,signal:AbortSignal|undefined){
+ const invalid=()=>fail('local_metadata_assets_state');
+ const {text,offset}=await readVerifiedArchiveHeader(file,digest,integrity,{
+  magic,maximumHeaderBytes:headerMaximum,invalid,diverged:invalid,budget:()=>fail('local_metadata_assets_raster_budget'),
+ });
+ const selected=header(JSON.parse(text),limits,file.size-offset,version);
+ if(metadataJson(selected)!==text)throw invalid();
+ const payloads=new Map<string,Blob>();
+ for(const entry of selected.payloads){
+  integrity.guard();
+  const start=offset+entry.offset;
+  const raster=await inspectRichRaster(slice.call(file,start,start+entry.bytes,entry.mime),{limits,...(signal?{signal}:{})});
+  integrity.guard();
+  if(raster.asset!==entry.asset||raster.mime!==entry.mime||raster.bytes!==entry.bytes||raster.width!==entry.width||raster.height!==entry.height)throw invalid();
+  payloads.set(entry.asset,raster.blob);
  }
+ integrity.guard();
+ return {header:selected,file,payloads};
+}
 /** Encode bytes, then run the same full reader before returning a selection.
  * This helper cannot fabricate a Native source or any provider capability. */
 export async function encodeLocalMetadataRasterFrame(version:1|2,references:Readonly<{bytes:number;sha256:string}>,availability:unknown,payloads:readonly Readonly<{info:LocalMetadataRasterInfo;blob:Blob}>[],options:SharedArchiveIntegrityOptions,providedLimits:Partial<AssetLimits>={}){
- const magic=frameMagic(version),limits=checkRichAssetLimits(providedLimits),integrity=prepareArchiveIntegrity(options);integrity.guard();let offset=0;
- const selected=header({format:'breditor/local-metadata-materialized-rasters',formatVersion:version,scope:scopes[version],references,availability,payloads:payloads.map(({info})=>{const row={...info,offset};offset+=info.bytes;return row;})},limits,payloads.reduce((n,row)=>n+row.info.bytes,0),version);
- const text=metadataJson(selected),encoded=new TextEncoder().encode(text);if(encoded.length>headerMaximum)throw fail('local_metadata_assets_raster_budget');const prefix=new Uint8Array(prefixBytes);prefix.set(magic);new DataView(prefix.buffer).setUint32(magic.length,encoded.length,true);
- const file=new Blob([prefix,encoded,...payloads.map(row=>archiveBlob(row.blob,limits.maxFileBytes))],{type:'application/vnd.breditor.metadata-rasters'});if(file.size>maximum)throw fail('local_metadata_assets_raster_budget');
- const selection=Object.freeze({file,bytes:file.size,sha256:await integrity.digest(file)});integrity.guard();const admitted=await readLocalMetadataRasterFrame(file,{bytes:selection.bytes,sha256:selection.sha256},options,limits,version);try{if(!equal(admitted.header,selected))throw fail('local_metadata_assets_state');}finally{admitted.payloads.clear();}return selection;
+ const magic=frameMagic(version),limits=checkRichAssetLimits(providedLimits),files:Blob[]=[];
+ // Capture the declared metadata and immutable payloads before a host check can reenter the caller.
+ if(payloads.length>100000)throw fail('local_metadata_assets_raster_budget');
+ let offset=0;
+ const entries=payloads.map(({info,blob:input})=>{
+  const entry={...info,offset};
+  const blob=archiveBlob(input,limits.maxFileBytes);
+  if(blob.size!==entry.bytes)throw fail('local_metadata_assets_state');
+  offset+=blob.size;
+  if(offset>limits.maxStoredBytes)throw fail('local_metadata_assets_raster_budget');
+  files.push(blob);
+  return entry;
+ });
+ const selected=header({format:'breditor/local-metadata-materialized-rasters',formatVersion:version,scope:scopes[version],references,availability,payloads:entries},limits,offset,version);
+ const encoder=new TextEncoder(),encoded=encoder.encode(metadataJson(selected));
+ if(encoded.length>headerMaximum)throw fail('local_metadata_assets_raster_budget');
+ const prefix=new Uint8Array(magic.length+4);
+ prefix.set(encoder.encode(magic));
+ new DataView(prefix.buffer).setUint32(magic.length,encoded.length,true);
+ const file=new Blob([prefix,encoded,...files],{type:'application/vnd.breditor.metadata-rasters'});
+ if(file.size>maximum)throw fail('local_metadata_assets_raster_budget');
+ const {wasm,checkAuthority,signal}=options;
+ const integrity=prepareArchiveIntegrity({wasm,checkAuthority,...(signal?{signal}:{})});
+ const selection=Object.freeze({file,bytes:file.size,sha256:await integrity.digest(file)});
+ const admitted=await readFrame(file,selection.sha256,magic,version,limits,integrity,signal);
+ try{if(!equal(admitted.header,selected))throw fail('local_metadata_assets_state');}
+ finally{admitted.payloads.clear();}
+ return selection;
 }
