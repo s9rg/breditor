@@ -31,7 +31,7 @@ const tests=intentStorage?intentStorageTests:inputRetention?['scripts/joint-prep
  'scripts/joint-reassociation-complete-native.test.mjs',
 ];
 const types=['scripts/fixtures/metadata-continuation/types.mts','scripts/fixtures/native-joint-reassociation/types.mts'];
-const expectedCases=intentStorage?41:pendingRepeated||preparedStart||inputRetention?1:19,sha=data=>createHash('sha256').update(data).digest('hex');
+const expectedCases=intentStorage?42:pendingRepeated||preparedStart||inputRetention?1:19,sha=data=>createHash('sha256').update(data).digest('hex');
 const workset=intentStorage?'activation-intent-storage-installed':inputRetention?'joint-preparation-input-retention-installed':preparedStart?'prepared-cold-start-installed':pendingRepeated?'joint-reassociation-pending-repeated-installed':'joint-reassociation-installed';
 const source=sourceEvidence(root),directory=fs.mkdtempSync(join(fs.realpathSync(tmpdir()),'breditor-'+workset+'-'));
 const archives=join(directory,'archives'),consumer=join(directory,'consumer');
