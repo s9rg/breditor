@@ -5,6 +5,7 @@ import {readPendingSourceReplayFixture} from './fixtures/local-metadata/pending-
 import {readSavedPacketReplayFixture} from './fixtures/local-metadata/saved-packet-replay.mjs';
 import {readonlyPacketSources} from './fixtures/local-metadata/readonly-packet-sources.mjs';
 import {PacketRasterFixtureImage} from './fixtures/local-metadata/packet-raster.mjs';
+import {countPacketReads} from './fixtures/local-metadata/count-packet-reads.mjs';
 import {LoadedNativeReconstructionCurrent as Loaded} from '../packages/breditor-collaboration/dist/selected_native_reconstruction/loaded_current.js';
 import {MetadataPacketArchive} from '../packages/breditor-collaboration/dist/metadata_packet_retention/archive.js';
 import {readNativeSourceVersions} from '../packages/breditor-collaboration/dist/server_packet_source_resolution/native_versions.js';
@@ -24,7 +25,27 @@ for(const[mode,read]of [['pending',readPendingSourceReplayFixture],['ready',read
   const versions=await readNativeSourceVersions(source,reads,{},options.checkAuthority),packets=await replayRetainedMetadataPacketReferences(source,archive,reads,{},options.checkAuthority);assert.deepEqual(packets,bundle.packets.requirements);const resolution=resolveServerPacketSources(base,archive.header(),packets,server,versions,parent);assert.equal(resolution.outcome.kind,'ready');assert.equal(base.outcome.kind,mode);assert.equal(await bundle.packets.references.references.file.text(),before);
   if(mode==='pending'){assert.ok(resolution.covered.length>0);assert.equal(originalSourceRequirements(base).length,resolution.covered.length);assert.ok(resolution.covered.every(row=>row.requirement.kind==='original-pending'&&row.requirement.pending.kind==='uncached_version'));assert.ok(resolution.covered.every(row=>row.witness.kind==='retained-packet'||row.witness.kind==='server-packet'||row.witness.kind==='native-source-version'));assert.equal(bundle.closure.outcome.kind,'pending');}
   else assert.deepEqual(resolution.outcome.references,bundle.closure.outcome.references);
-  const encoded=await encodeSourceResolution(resolution,options);await inspectSourceResolution(encoded,resolution,options);const wrong={...resolution,covered:[...resolution.covered,{omitted:true}]},text=JSON.stringify(wrong),file=new Blob([text]);await assert.rejects(inspectSourceResolution({file,bytes:file.size,sha256:sha(text)},resolution,options));
+  const encoded=await encodeSourceResolution(resolution,options);
+  if(mode==='pending'){
+   const provided=structuredClone(resolution);
+   const captured=await encodeSourceResolution(provided,{...options,checkAuthority(){
+    provided.parent.dependencies.sha256='0'.repeat(64);
+   }});
+   assert.equal(captured.sha256,encoded.sha256,'Keep the original source-resolution bytes through authority reentry');
+   assert.deepEqual(await captured.file.arrayBuffer(),await encoded.file.arrayBuffer());
+   const expected=structuredClone(resolution);
+   await inspectSourceResolution(encoded,expected,{...options,checkAuthority(){
+    expected.parent.dependencies.sha256='0'.repeat(64);
+   }});
+   await assert.rejects(inspectSourceResolution(encoded,expected,{...options,checkAuthority(){
+    expected.parent.dependencies.sha256=resolution.parent.dependencies.sha256;
+   }}));
+   const mutable={...options,checkAuthority(){mutable.wasm=undefined;}};
+   await inspectSourceResolution(encoded,resolution,mutable);
+  }
+  const verified=await countPacketReads(encoded.file,()=>inspectSourceResolution(encoded,resolution,options));
+  assert.equal(verified.reads,1,'Compare the exact resolution bytes verified by the digest');
+  const wrong={...resolution,covered:[...resolution.covered,{omitted:true}]},text=JSON.stringify(wrong),file=new Blob([text]);await assert.rejects(inspectSourceResolution({file,bytes:file.size,sha256:sha(text)},resolution,options));
   const unavailable=resolveServerPacketSources(base,archive.header(),packets,{...server,outcome:{kind:'pending',missing:[]}},versions,parent);assert.equal(unavailable.outcome.kind,'pending');assert.ok(unavailable.outcome.missing.some(row=>row.kind==='server-native'));
   const unreconciled=structuredClone(base);unreconciled.base.unreconciledParticipants.push('original');if(unreconciled.outcome.kind==='ready')unreconciled.outcome={kind:'pending',pending:[{kind:'base-room'}]};else if(!unreconciled.outcome.pending.some(row=>row.kind==='base-room'))unreconciled.outcome.pending.push({kind:'base-room'});assert.ok(resolveServerPacketSources(unreconciled,archive.header(),packets,server,versions,parent).outcome.missing.some(row=>row.kind==='unreconciled-client'&&row.participant==='original'));
   if(mode==='pending'){
