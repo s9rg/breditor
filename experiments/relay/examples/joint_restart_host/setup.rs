@@ -86,10 +86,8 @@ async fn prepare_selected(
         )
         .await?;
     let selection = intent.identity().clone();
-    let intent = Arc::new(
-        live.seal_prepared_handover("owner", &old.owner, intent, &selection)
-            .await?,
-    );
+    let intent =
+        Arc::new(live.seal_prepared_handover("owner", &old.owner, intent, &selection).await?);
     // The old router retains the REAL sealed owner, never a reopened substitute.
     drop(live);
     let mut operation = ServerLogGenerationRoomRecovery::begin(
@@ -105,12 +103,8 @@ async fn prepare_selected(
         RoomRecoveryPolicy::HostReacquired,
         "owner",
     )?;
-    operation
-        .room_mut()
-        .grant("owner", "post-origin-reader", Some(Role::Reader))?;
-    operation
-        .room_mut()
-        .rotate_log_generation("owner", "post-origin-physical-cut")?;
+    operation.room_mut().grant("owner", "post-origin-reader", Some(Role::Reader))?;
+    operation.room_mut().rotate_log_generation("owner", "post-origin-physical-cut")?;
     let target = authentication::accounts()?;
     let host = prepare_log_generation_recovery_host(
         operation,

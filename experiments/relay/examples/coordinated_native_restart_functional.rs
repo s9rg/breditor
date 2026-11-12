@@ -94,10 +94,7 @@ pub async fn main() -> Result {
             break;
         };
         match action {
-            next::Action::Snapshot {
-                request,
-                previous: selected,
-            } => {
+            next::Action::Snapshot { request, previous: selected } => {
                 previous = selected;
                 sequence = request;
             }
@@ -121,10 +118,7 @@ pub async fn main() -> Result {
                 ];
                 previous = Some((
                     sequence,
-                    observed
-                        .get(&sequence)
-                        .ok_or("actual previous serving cut missing")?
-                        .clone(),
+                    observed.get(&sequence).ok_or("actual previous serving cut missing")?.clone(),
                 ));
                 sequence = request;
             }

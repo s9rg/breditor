@@ -29,25 +29,17 @@ pub(super) async fn prepare(ready: &Ready, request: u64) -> Result<Pending> {
             ready.checkpoint.clone(),
             &proof,
             NativeGenerationActivationPrepareOptions {
-                root: ready
-                    .root
-                    .join(format!("native-checkpoint-restart-{request}")),
+                root: ready.root.join(format!("native-checkpoint-restart-{request}")),
                 authority: authority.clone(),
             },
         )
         .await?,
     );
     storage::write_new(
-        &ready
-            .root
-            .join(format!("native-checkpoint-restart-{request}-choice.json")),
+        &ready.root.join(format!("native-checkpoint-restart-{request}-choice.json")),
         &serde_json::to_vec(checkpoint.identity())?,
     )?;
-    Ok(Pending {
-        checkpoint,
-        authority,
-        request,
-    })
+    Ok(Pending { checkpoint, authority, request })
 }
 
 pub(super) async fn finish(ready: Ready, pending: Pending) -> Result<Ready> {
@@ -106,10 +98,7 @@ pub(super) async fn finish(ready: Ready, pending: Pending) -> Result<Ready> {
         return Err("restart must commit the exact fresh epoch".into());
     }
     storage::write_new(
-        &root.join(format!(
-            "native-restart-{}-observation.json",
-            pending.request
-        )),
+        &root.join(format!("native-restart-{}-observation.json", pending.request)),
         &serde_json::to_vec(&serde_json::json!({
             "format":"breditor/native-joint-restart-observation","formatVersion":1,
             "request":pending.request,"prior":prior,"current":active.selection(),

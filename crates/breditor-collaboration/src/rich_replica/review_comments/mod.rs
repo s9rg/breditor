@@ -21,7 +21,9 @@ use super::{ReviewAnchorResolution, RichReplica};
 use crate::Error;
 use breditor_core::rich_content::review::{ReviewBinding, ReviewError, ReviewSession};
 pub use prepare_review_batch::{DocumentReviewBatchPreparation, PreparedDocumentReviewBatch};
-pub use reconcile_retained_native_branch::{RetainedNativeBranchSource,RetainedNativeBranchBytes,RetainedNativeBranchOutcome};
+pub use reconcile_retained_native_branch::{
+    RetainedNativeBranchBytes, RetainedNativeBranchOutcome, RetainedNativeBranchSource,
+};
 pub use review_view::{ResolvedReviewAnchor, ResolvedReviewThread, ResolvedReviewView};
 
 impl RichReplica {

@@ -15,10 +15,7 @@ pub(super) async fn activate(
     source: Arc<PreparedLogGenerationHandover>,
     authority: RoomDeploymentAuthority,
     proof: VerifiedServerLogGenerationRecoveryState,
-) -> Result<(
-    ActivatedNativeLogGenerationHost,
-    Arc<PreparedNativeGenerationActivation>,
-)> {
+) -> Result<(ActivatedNativeLogGenerationHost, Arc<PreparedNativeGenerationActivation>)> {
     let prepared = Arc::new(
         host.prepare_durable_native_activation(
             "owner",
@@ -33,10 +30,7 @@ pub(super) async fn activate(
         .await?,
     );
     let choice = prepared.identity().clone();
-    storage::write_new(
-        &directory.join("activation-choice.json"),
-        &serde_json::to_vec(&choice)?,
-    )?;
+    storage::write_new(&directory.join("activation-choice.json"), &serde_json::to_vec(&choice)?)?;
     let active = host
         .activate_durable_native_service("owner", token, authority, prepared.clone(), proof, choice)
         .await?;
