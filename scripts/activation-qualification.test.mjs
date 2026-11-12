@@ -6,6 +6,7 @@ import {
 import {tmpdir} from "node:os";
 import {dirname, join} from "node:path";
 import test from "node:test";
+import {fileURLToPath} from "node:url";
 import {candidateReleasePlan} from "./candidate-release/plan.mjs";
 import {activationPlan, activationStageIds} from "./candidate-release/activation-shards.mjs";
 import {
@@ -115,7 +116,7 @@ test("a different candidate or altered bundle cannot seed a worker", t => {
 });
 
 test("aggregation requires six matching results and checks retained logs and package identity", async t => {
- const {root, directory, bundleDirectory} = fixture(t);
+ const {root, worker, directory, bundleDirectory} = fixture(t);
  const bundle = sealActivationInputs(root, bundleDirectory);
  const reports = join(directory, "reports");
  mkdirSync(reports);
@@ -149,6 +150,61 @@ test("aggregation requires six matching results and checks retained logs and pac
  assert.equal(result.v1Ready, false);
  assert.deepEqual(result.stages.map(row => row.stage), activationStageIds);
  assert.throws(() => verifyActivationShards(reports, {...bundle, sha256:"0".repeat(64)}), /different shard or input bundle/);
+
+ restoreActivationInputs(worker, bundleDirectory, bundle.sha256);
+ const localReport = join(worker, handoverReport);
+ const rebuilt = JSON.parse(readFileSync(localReport));
+ saveEvidence(localReport, {...rebuilt, finishedAt:"a different producer build time"});
+ const ordinary = id => ({id, command:process.execPath, args:[], env:{}, artifacts:[], timeoutMs:2000});
+ const plan = {
+  profile:"full", deferred:[], checks:[ordinary("before-activation"),
+   ...activationStageIds.map(id => activationPlan(id).checks[0]), ordinary("after-activation")],
+ };
+ const executed = [];
+ const options = {
+  root:worker, report:() => {}, activationEvidence:{inputs:bundleDirectory, reports, inputSha256:bundle.sha256},
+  execute:async (check, {logPath}) => {
+   executed.push(check.id);
+   writeFileSync(logPath, "ordinary check\n");
+   return {status:"passed", exitCode:0, signal:null};
+  },
+ };
+ const candidate = await runCandidateChecks(plan, options);
+ assert.equal(candidate.exitCode, 0);
+ assert.deepEqual(executed, ["before-activation", "after-activation"]);
+ assert.deepEqual(candidate.result.stages.map(stage => stage.id), plan.checks.map(stage => stage.id));
+ assert.deepEqual(candidate.result.stages.filter(stage => stage.execution === "activation-shard").map(stage => stage.id), activationStageIds);
+ assert.equal(candidate.result.v1Ready, false);
+ assert.ok(candidate.result.activationQualification.sha256);
+ assert.equal(candidate.result.stages.find(stage => stage.id === last).artifacts.length, 1);
+
+ write(worker, wasm, "changed by local build");
+ executed.length = 0;
+ const mismatch = await runCandidateChecks(plan, options);
+ assert.equal(mismatch.exitCode, 1);
+ assert.match(mismatch.result.error, /Candidate build differs/);
+ assert.deepEqual(executed, ["before-activation"]);
+ assert.equal(mismatch.result.stages.at(-1).id, activationStageIds[0]);
+
  write(reportDirectory(last), "01-" + last + ".log", "changed log");
  assert.throws(() => verifyActivationShards(reports, bundle), /shard log changed/);
+ executed.length = 0;
+ const invalid = await runCandidateChecks(plan, options);
+ assert.equal(invalid.exitCode, 1);
+ assert.match(invalid.result.error, /shard log changed/);
+ assert.deepEqual(executed, []);
+});
+
+test("candidate CLI requires both evidence paths and keeps the full stage list", () => {
+ const script = fileURLToPath(new URL("./verify-candidate.mjs", import.meta.url));
+ const args = [script, "--functional", "--dry-run", "--activation-evidence"];
+ const invalid = spawnSync(process.execPath, [...args, "inputs"], {encoding:"utf8"});
+ assert.equal(invalid.status, 2);
+ const planned = spawnSync(process.execPath, [...args, "inputs", "reports"], {encoding:"utf8", maxBuffer:8 * 1024 * 1024});
+ assert.equal(planned.status, 0, planned.stderr);
+ const plan = JSON.parse(planned.stdout);
+ assert.equal(plan.executed, false);
+ assert.equal(plan.activationEvidence.inputs, "inputs");
+ assert.equal(plan.activationEvidence.reports, "reports");
+ assert.deepEqual(plan.checks.map(stage => stage.id), candidateReleasePlan({profile:"functional"}).checks.map(stage => stage.id));
 });
