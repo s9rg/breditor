@@ -10,6 +10,7 @@ import {selectedStoragePlans} from './plans.js';import {storageDatabase} from '.
 import {fields,rows,integer,hash,fail,MAX_STORAGE_ARCHIVE_BYTES,MAX_STORAGE_GRAPH_BYTES,MAX_STORAGE_HEADER_BYTES,MAX_STORAGE_PIECES,MAX_STORAGE_DATABASES} from './policy.js';
 import type {StorageContent,StorageFile,StorageSelection,StorageDatabasePlan} from './contract.js';
 const magic='BREDITOR-SELECTED-STORAGE1\n',prefixBytes=magic.length+4,slice=Blob.prototype.slice,key=Object.freeze({});
+const add=EventTarget.prototype.addEventListener,remove=EventTarget.prototype.removeEventListener,abort=AbortController.prototype.abort;
 export function storageSelection(input:unknown):StorageSelection{const r=fields(input,['format','formatVersion','bytes','sha256']);if(r['format']!=='breditor/selected-room-storage-selection'||r['formatVersion']!==1)throw fail();return Object.freeze({format:r['format'],formatVersion:1,bytes:integer(r['bytes'],MAX_STORAGE_ARCHIVE_BYTES,1),sha256:hash(r['sha256'])});}
 async function content(input:unknown,options:SharedArchiveIntegrityOptions){
  const r=fields(input,['format','formatVersion','current','localReview','databases']);
@@ -56,17 +57,38 @@ function storagePool(
   },
  };
 }
-const owners=new WeakMap<SelectedRoomStorageArchive,{check():void;read():Promise<{data:StorageContent;plans:readonly StorageDatabasePlan[]}>}>();
-/** Genuine data archive only. Each read decodes a NEW graph; caller mutation
- * can never change the private bytes used by a later restore. */
-export function assertSelectedRoomStorageArchive(archive:SelectedRoomStorageArchive):void{if(!owners.has(archive))throw fail('room_storage_policy');}
-export function selectedRoomStorageData(archive:SelectedRoomStorageArchive){const owner=owners.get(archive);if(!owner)throw fail('room_storage_policy');owner.check();return owner.read();}
+interface StorageArchiveLifetime {
+ check():void;
+ watchClosing(cancel:()=>void):()=>void;
+}
+interface StorageArchiveOwner extends StorageArchiveLifetime {
+ read():Promise<{data:StorageContent;plans:readonly StorageDatabasePlan[]}>;
+}
+const owners=new WeakMap<SelectedRoomStorageArchive,StorageArchiveOwner>();
+function storageArchiveOwner(archive:SelectedRoomStorageArchive):StorageArchiveOwner{
+ const owner=owners.get(archive);
+ if(!owner)throw fail('room_storage_policy');
+ return owner;
+}
+/** Keep a genuine archive's runtime checks through destination approval and writes. */
+export function selectedRoomStorageLifetime(archive:SelectedRoomStorageArchive):StorageArchiveLifetime{
+ return storageArchiveOwner(archive);
+}
+/** Each read decodes a fresh graph from the private archive bytes. */
+export function selectedRoomStorageData(archive:SelectedRoomStorageArchive){
+ const owner=storageArchiveOwner(archive);
+ owner.check();
+ return owner.read();
+}
 export class SelectedRoomStorageArchive{
- readonly #selection;#file:Blob|undefined;#options:SharedArchiveIntegrityOptions|undefined;#graph:string|undefined;#pieces:readonly StoragePiece[]|undefined;#closed=false;
+ readonly #selection;readonly #lifetime=new AbortController();#file:Blob|undefined;#options:SharedArchiveIntegrityOptions|undefined;#graph:string|undefined;#pieces:readonly StoragePiece[]|undefined;#closed=false;
  private constructor(token:object,file:Blob,selection:StorageSelection,graph:string,pieces:readonly StoragePiece[],options:SharedArchiveIntegrityOptions){
   if(token!==key)throw fail('room_storage_policy');
   this.#selection=selection;this.#file=file;this.#graph=graph;this.#pieces=pieces;this.#options={...options};
-  owners.set(this,{check:()=>this.#check(),read:async()=>{
+  owners.set(this,Object.freeze({
+   check:()=>this.#check(),
+   watchClosing:(cancel:()=>void)=>this.#watchClosing(cancel),
+   read:async()=>{
    this.#check();
    const scoped={...this.#options!,checkAuthority:()=>this.#check()},integrity=prepareArchiveIntegrity(scoped);
    const graph=parseRecordCutJson(this.#graph!,MAX_STORAGE_GRAPH_BYTES);
@@ -75,11 +97,31 @@ export class SelectedRoomStorageArchive{
    const result=await content(value,scoped);
    this.#check();
    return result;
-  }});
+  }}));
   Object.freeze(this);
  }
  #check(){if(this.#closed)throw fail('room_storage_closed');if(this.#options!.signal?.aborted)throw fail('room_storage_aborted');this.#options!.checkAuthority();if(this.#closed)throw fail('room_storage_closed');if(this.#options!.signal?.aborted)throw fail('room_storage_aborted');}
- selection():StorageSelection{return this.#selection;}file():Blob{this.#check();return this.#file!;}dispose():void{this.#closed=true;owners.delete(this);this.#file=undefined;this.#options=undefined;this.#graph=undefined;this.#pieces=undefined;}
+ #watchClosing(cancel:()=>void):()=>void{
+  this.#check();
+  const closed=this.#lifetime.signal,external=this.#options!.signal;
+  add.call(closed,'abort',cancel,{once:true});
+  try{if(external)add.call(external,'abort',cancel,{once:true});}
+  catch(error){remove.call(closed,'abort',cancel);throw error;}
+  if(closed.aborted||external?.aborted)cancel();
+  return ()=>{
+   remove.call(closed,'abort',cancel);
+   if(external)remove.call(external,'abort',cancel);
+  };
+ }
+ selection():StorageSelection{return this.#selection;}
+ file():Blob{this.#check();return this.#file!;}
+ dispose():void{
+  if(this.#closed)return;
+  this.#closed=true;
+  owners.delete(this);
+  this.#file=undefined;this.#options=undefined;this.#graph=undefined;this.#pieces=undefined;
+  abort.call(this.#lifetime);
+ }
  static async read(input:Blob,expected:StorageSelection,options:SharedArchiveIntegrityOptions):Promise<SelectedRoomStorageArchive>{
   const selection=storageSelection(expected),file=archiveBlob(input,MAX_STORAGE_ARCHIVE_BYTES),context=prepareArchiveIntegrity(options);
   if(file.size!==selection.bytes)throw fail();

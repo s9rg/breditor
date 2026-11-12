@@ -11,6 +11,43 @@ import {captureSelectedRoomStorage} from '../packages/breditor-collaboration/dis
 import {SelectedLocalReviewDelivery as Owner} from '../packages/breditor-collaboration/dist/selected_local_review_delivery/coordinator.js';import {previewSelectedLocalReviewResume} from '../packages/breditor-collaboration/dist/selected_local_review_delivery/resume_admission.js';import {prepareArchiveIntegrity} from '../packages/breditor-collaboration/dist/archive_integrity/context.js';
 await native.default({module_or_path:readFileSync(new URL('../packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm',import.meta.url))});
 async function foreignRow(database){const db=await new Promise((resolve,reject)=>{const q=indexedDB.open(database,1);q.onupgradeneeded=()=>{q.transaction.abort();reject(Error('Actual existing source required'));};q.onerror=()=>reject(q.error);q.onsuccess=()=>resolve(q.result);});try{await new Promise((resolve,reject)=>{const tx=db.transaction('journals','readwrite');tx.objectStore('journals').add('UNRELATED-DOCUMENT-MUST-NOT-BE-IN-THE-ROOM-BACKUP',['unrelated-room','unrelated-writer']);tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error);});}finally{db.close();}}
+async function checkCancelledRestoreApproval(file,selection,options,healthyArchive){
+ const closed=await Archive.read(file,selection,options);
+ let expected;
+ try{
+  expected=await preview(closed,options);
+  await assert.rejects(restore(closed,{...options,expected,approve(){closed.dispose();return true;}}),{code:'asset_adoption_aborted'});
+  assert.deepEqual(await indexedDB.databases(),[]);
+ }finally{closed.dispose();}
+
+ for(const cancellation of ['dispose','signal']){
+  const controller=new AbortController();
+  const pendingArchive=await Archive.read(file,selection,{...options,signal:controller.signal});
+  const entered=Promise.withResolvers(),approval=Promise.withResolvers();
+  const pending=restore(pendingArchive,{...options,expected,approve(){entered.resolve();return approval.promise;}});
+  const observed=pending.then(()=>({restored:true}),error=>({code:error.code}));
+  let timer;
+  try{
+   assert.equal(await Promise.race([entered.promise.then(()=>true),observed.then(()=>false)]),true);
+   if(cancellation==='dispose')pendingArchive.dispose();
+   else controller.abort();
+   const outcome=await Promise.race([
+    observed,
+    new Promise(resolve=>{timer=setTimeout(()=>resolve({timedOut:true}),5000);}),
+   ]);
+   assert.deepEqual(outcome,{code:'asset_adoption_aborted'});
+  }finally{
+   clearTimeout(timer);
+   approval.resolve(true);
+   await observed;
+   pendingArchive.dispose();
+  }
+  assert.deepEqual(await indexedDB.databases(),[]);
+ }
+ assert.deepEqual(await preview(healthyArchive,options),expected);
+ console.log('STORAGE_STEP cancelled archive approvals released all destinations without writes');
+}
+
 test('portable complete storage survives empty-origin restore, actual partial retry and fresh seven-family native/delivery admission',{timeout:3600000},async t=>{
  const root=resolve(new URL('../',import.meta.url).pathname),f=await actualLocalReviewSession(root,'native-local-review-restore-portable-room'),options={wasm:native,checkAuthority(){}},evidence=mkdtempSync(join(root,'target/selected-storage-proof-')),oldCores=f.session.owner.clients.map(row=>row.core),oldCalls=f.session.f.oldCalls,add=IDBObjectStore.prototype.add;let stage='warm',file,archive,owner;
  try{console.log('STORAGE_STEP real warm receipts');for(const row of f.session.owner.clients){row.core.dispatch({commands:[{kind:'insert_text',data:{block:'p',offset:0,text:'Portable offline '+row.id+' '}}]});row.core.dispatchReview({kind:'create_thread',data:{anchorJson:row.core.captureReviewAnchor({kind:'document'}),body:'Portable offline review '+row.id}});}
@@ -36,6 +73,7 @@ test('portable complete storage survives empty-origin restore, actual partial re
    archive=await readVerifiedFrame(t,retainedFile,magic,()=>Archive.read(retainedFile,retainedSelection,options));
   }finally{reviewReads.mock.restore();headerReads.mock.restore();}
 const initial=await selectedRoomStorageData(archive);assert.equal(initial.data.databases.length,46);const document=initial.data.databases.flatMap(db=>db.stores).find(row=>row.name==='journals');assert.equal(document.keys.length,1);const oldRequests=f.requests.length;await f.session.owner.close();await f.session.stage.close();Object.defineProperty(globalThis,'indexedDB',{value:new IDBFactory(),configurable:true});assert.deepEqual(await indexedDB.databases(),[]);stage='empty';console.log('STORAGE_STEP archive read from saved bytes; empty destination');
+  await checkCancelledRestoreApproval(retainedFile,retainedSelection,options,archive);
   let approvals=0,expected=await preview(archive,options);assert.equal(expected.destinations.length,46);assert.ok(expected.destinations.every(row=>row.kind==='absent'));assert.deepEqual(await indexedDB.databases(),[]);await assert.rejects(restore(archive,{...options,expected,approve(){approvals++;return false;}}));assert.equal(approvals,1);assert.deepEqual(await indexedDB.databases(),[]);
   let armed=true;const failDatabase=initial.plans[3].database;IDBObjectStore.prototype.add=function(...args){if(armed&&this.transaction.db.name===failDatabase){armed=false;throw Error('Controlled full-room partial-copy failure');}return add.apply(this,args);};await assert.rejects(restore(archive,{...options,expected,approve(){approvals++;return true;}}));assert.equal(armed,false);IDBObjectStore.prototype.add=add;assert.equal(approvals,2);const partial=await preview(archive,options);assert.ok(partial.destinations.some(row=>row.kind==='identical'));assert.ok(partial.destinations.some(row=>row.kind==='absent'));await assert.rejects(restore(archive,{...options,expected,approve(){approvals++;return true;}}));assert.equal(approvals,2);expected=partial;stage='partial';console.log('STORAGE_STEP real partial copy retained and stale choice refused');
   const restored=await restore(archive,{...options,expected,approve(choice){approvals++;assert.deepEqual(choice,expected);assert.ok(Object.isFrozen(choice.destinations));return true;}});assert.equal(approvals,3);assert.equal(restored.format,'breditor/selected-room-storage-restored');assert.equal(restored.createDelivery,undefined);assert.equal((await indexedDB.databases()).length,46);assert.equal(f.requests.length,oldRequests,'Storage DATA must not connect or authenticate an actor');stage='restored';console.log('STORAGE_STEP all selected records restored at literal original names');
