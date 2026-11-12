@@ -1,5 +1,6 @@
 import {IDBObjectStore} from 'fake-indexeddb';
 import {RecoveryLease} from '../packages/breditor-collaboration/dist/participant_recovery/lease.js';
+import {observeRoomRunJournal} from '../packages/breditor-collaboration/dist/native_room_execution_run/journal_observation.js';
 import {JointRoomReassociationAttempt as Reassociation,withPublishedReassociatedRoomSources} from '../packages/breditor-collaboration/dist/native_room_joint_reassociation/attempt.js';
 import {LoadedNativeReconstructionCurrent as Loaded} from '../packages/breditor-collaboration/dist/selected_native_reconstruction/loaded_current.js';
 import {originalJointSourceBytes,assertOriginalSourceRetirement} from './fixtures/native-joint-source/source_checkpoint_bytes.mjs';
@@ -124,7 +125,16 @@ export async function runJointReassociation({repeatAfterMetadata=false,initialNa
   crashes.push(crash);
   let loaded;let catalogDatabase;try{loaded=await Loaded.read(run.f.retained,{wasm:native,checkAuthority(){}});catalogDatabase=loaded.nativeCut().root().source.catalogDatabase;}finally{loaded?.dispose();}
   const {signal,checkAuthority,...original}=input.session.f.options;
-  joint=(initialNativeStage==='pending'?Reassociation.beginPrepared:Reassociation.begin)({original:plan,execution:{original:{...original,catalogDatabase,checkAuthority(){}},run:run.options,reads:run.reads,sourceIntentDatabase:'actual-joint-cold-source-custody'}});noTake();
+  const runIdentity=run.options.expected;
+  const databaseNames=async()=>(await indexedDB.databases()).map(row=>row.name).sort();
+  const beforeObservation=await databaseNames();
+  const runJournal=await observeRoomRunJournal(runIdentity,{wasm:native,checkAuthority(){}});
+  assert.equal(runJournal.kind,initialNativeStage==='pending'?'absent':'existing');
+  assert.deepEqual(await databaseNames(),beforeObservation);
+  if(runJournal.kind==='existing')assert.deepEqual(runJournal.snapshot.identity,runIdentity);
+  console.log('REASSOCIATION_RUN_JOURNAL '+JSON.stringify({kind:runJournal.kind,created:false}));
+  const begin=runJournal.kind==='absent'?Reassociation.beginPrepared:Reassociation.begin;
+  joint=begin({original:plan,execution:{original:{...original,catalogDatabase,checkAuthority(){}},run:run.options,reads:run.reads,sourceIntentDatabase:'actual-joint-cold-source-custody'}});noTake();
   await joint.recoverReplacement({approveExecution:()=>true,approvePromotion:()=>true,checkAssetAuthority(){}});noTake();await held();await assertSourceBytesUnchanged(oldBytes);
   console.log('COLD_JOINT_COMPLETE_STEP fresh-fourteen-actors-and-seven-private-targets-from-existing-intent');
   activation=Activation.configure({endpoint:offer.endpoint,expected:offer.selection,principal:'operator',getToken:()=>input.host.activationToken(offer),checkAuthority(){}});

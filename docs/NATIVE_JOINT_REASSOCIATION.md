@@ -126,13 +126,24 @@ remain open. No historical WebKit or archive short-read repair is claimed here.
 
 Use the pinned Node/dependency lock and the separately built
 `native_joint_process_recovery_functional` fixture with its recorded build
-report. The ordinary Wasm remains the independently qualified input; these
-commands never rebuild or substitute it.
+report. Run these builds from the source checkout before qualifying it.
+
+```sh
+npm run build
+node node_modules/typescript/bin/tsc -p packages/breditor-experimental-rich-content/tsconfig.json
+node scripts/build-collaboration-runtime.mjs --candidate-receipt
+npm run build:candidate --workspace @breditor/collaboration
+node scripts/build-native-joint-process.mjs
+export BREDITOR_SHARED_RUNTIME_RECEIPT_SHA256="$(shasum -a 256 target/normal-shared-runtime-build.json | cut -d ' ' -f 1)"
+```
+
+The installed launcher verifies the runtime receipt against the source commit
+and passes the same digest to the independently installed tests.
 
 - `npm run check:generated-sdk` re-emits TypeScript to disposable directories.
   It requires exact emitted file names/bytes and leaves runtime inputs intact.
   Stale output files cause refusal before a new installed qualification.
-- `npm run test:collaboration:joint-reassociation` runs all 17 reader,
+- `npm run test:collaboration:joint-reassociation` runs all 19 reader,
   descriptor-storage, admission and complete committed-restart cases.
 - `npm run test:collaboration:joint-reassociation:installed` packs the three
   packages, installs them offline without workspace links, checks declarations
@@ -159,14 +170,17 @@ untouched.
 The explicit pending-then-committed variant uses
 `npm run test:collaboration:joint-reassociation:pending-repeated` and its separate
 `:installed` command. Its first crash occurs with the genuine original Native
-intent still prepared and no activation request sent. Explicit terminal cleanup
+intent still prepared and no activation request sent. After the actual restart,
+the workload reads the run journal under its retained identity and checks that
+the absent probe leaves the database inventory intact. It selects the explicit
+prepared start on that evidence. Explicit terminal cleanup
 checkpoints/closes the actual source owner; a pending reopen must retain the
 exact planned epoch and checkpoint bytes with fresh controls. The later crash
 occurs after complete metadata continuation and requires the committed direct
 child rule. Final assertions require two actual deaths, four unchanged earlier
 metadata destinations, all fourteen deliveries and exact future histories. This
 case remains unqualified until both worksets finish. The default installed
-workset still always runs its original seventeen cases.
+workset still always runs nineteen cases.
 
 A focused reproduction identified the absent local run journal before the first
 Native commit. The new explicit `beginPrepared` route is documented in
