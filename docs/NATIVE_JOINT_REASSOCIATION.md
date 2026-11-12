@@ -254,7 +254,10 @@ need qualification before the client owner can be integrated.
 using only the bounded native digest capability. It exposes no actor factory,
 storage writer or external requester. Selection JSON and runtime directory are
 separate inputs; `--fixture-raster` explicitly selects the controlled test raster
-decoder. The retained 8,261,282-byte input passes with all seven participant
+decoder. The selected-current reader decodes the outer header from the same
+bounded byte stream used to verify the whole-file digest. The nested approval,
+current cut and upload checks retain their own pins. The retained 8,261,282-byte
+input passes with all seven participant
 payloads and nine original input files readable. This checks the saved bytes,
 not the physical Blob construction or a live room.
 

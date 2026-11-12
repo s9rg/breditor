@@ -6,12 +6,14 @@ import {prepareArchiveIntegrity} from '../archive_integrity/context.js';
 import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
 import {archiveBlob} from '../archive_integrity/policy.js';
 import {fields,integer,hash,rows} from '../physical_room_record_cut/policy.js';
-import {recordCutBytes} from '../physical_room_record_cut/framing.js';
 import type {LocalMetadataRasterInfo} from '../selected_local_metadata_assets/materialization_contract.js';
+import {metadataData} from '../selected_local_metadata_delivery/data.js';
 import {serverPacketAssetHeader} from './asset_header.js';
-import {MAX_METADATA_PACKET_CHUNK_BYTES,type MetadataPacketAssetFiles,type MetadataPacketFile} from '../metadata_packet_retention/contract.js';
-import {fail,same} from '../metadata_packet_retention/policy.js';
-const token=Object.freeze({}),slice=Blob.prototype.slice,maximum=1024*1024*1024,headerMaximum=16*1024*1024;
+import {MAX_METADATA_PACKET_CHUNK_BYTES,MAX_METADATA_PACKET_ASSET_MANIFEST_BYTES as headerMaximum,type MetadataPacketAssetFiles,type MetadataPacketFile} from '../metadata_packet_retention/contract.js';
+import {fail,packetIntegrityOptions,same} from '../metadata_packet_retention/policy.js';
+import {readVerifiedPacketText} from '../metadata_packet_retention/read_verified_text.js';
+import {encodePacketAssetArchive} from '../metadata_packet_retention/asset_write.js';
+const token=Object.freeze({}),slice=Blob.prototype.slice;
 function selected(input:unknown,max:number):MetadataPacketFile{const r=fields(input,['file','bytes','sha256']),bytes=integer(r['bytes'],max,1),sha256=hash(r['sha256']),file=archiveBlob(r['file'] as Blob,max);if(file.size!==bytes)throw fail();return Object.freeze({file,bytes,sha256});}
 export function packetAssetFiles(input:unknown):MetadataPacketAssetFiles{const r=fields(input,['manifest','chunks']);return Object.freeze({manifest:selected(r['manifest'],headerMaximum),chunks:Object.freeze(rows(r['chunks'],1024).map(row=>selected(row,MAX_METADATA_PACKET_CHUNK_BYTES)))});}
 function range(chunks:readonly MetadataPacketFile[],offset:number,bytes:number,mime:string):Blob{const parts:Blob[]=[];let position=0,remaining=bytes;
@@ -27,16 +29,19 @@ export class ServerPacketAssetArchive {
  files(){return this.#open().files;}
  dispose():void{this.#state=undefined;}
  static async read(provided:MetadataPacketAssetFiles,expectedParent:ServerPacketAssetHeader['parent'],options:SharedArchiveIntegrityOptions,providedLimits:Partial<AssetLimits>={}):Promise<ServerPacketAssetArchive>{
-  const files=packetAssetFiles(provided),integrity=prepareArchiveIntegrity(options),limits=checkRichAssetLimits(providedLimits);integrity.guard();if(await integrity.digest(files.manifest.file)!==files.manifest.sha256)throw fail();const encoded=await recordCutBytes(files.manifest.file,0,files.manifest.bytes,integrity);let text:string;try{text=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(encoded);}catch{throw fail();}
-  const header=await serverPacketAssetHeader(JSON.parse(text),limits,integrity.guard);if(JSON.stringify(header)!==text||!same(header.parent,expectedParent)||!same(header.chunks,files.chunks.map(({bytes,sha256})=>({bytes,sha256}))))throw fail();
+  const files=packetAssetFiles(provided),parent=metadataData(expectedParent),limits=checkRichAssetLimits(providedLimits);
+  const selectedOptions=packetIntegrityOptions(options),integrity=prepareArchiveIntegrity(selectedOptions),signal=selectedOptions.signal;
+  const text=await readVerifiedPacketText(files.manifest.file,files.manifest.sha256,headerMaximum,integrity);
+  const header=await serverPacketAssetHeader(JSON.parse(text),limits,integrity.guard);if(JSON.stringify(header)!==text||!same(header.parent,parent)||!same(header.chunks,files.chunks.map(({bytes,sha256})=>({bytes,sha256}))))throw fail();
   for(const row of files.chunks){integrity.guard();if(await integrity.digest(row.file)!==row.sha256)throw fail();}
-  const payloads=new Map<string,Blob>();for(const row of header.payloads){integrity.guard();const raster=await inspectRichRaster(range(files.chunks,row.offset,row.bytes,row.mime),{limits,...(options.signal?{signal:options.signal}:{})});integrity.guard();if(raster.asset!==row.asset||raster.mime!==row.mime||raster.bytes!==row.bytes||raster.width!==row.width||raster.height!==row.height)throw fail();payloads.set(row.asset,raster.blob);}
+  const payloads=new Map<string,Blob>();for(const row of header.payloads){integrity.guard();const raster=await inspectRichRaster(range(files.chunks,row.offset,row.bytes,row.mime),{limits,...(signal?{signal}:{})});integrity.guard();if(raster.asset!==row.asset||raster.mime!==row.mime||raster.bytes!==row.bytes||raster.width!==row.width||raster.height!==row.height)throw fail();payloads.set(row.asset,raster.blob);}
   integrity.guard();return new ServerPacketAssetArchive(token,header,files,payloads);
  }
 }
 export async function encodeServerPacketAssets(input:Omit<ServerPacketAssetHeader,'payloads'|'chunks'>,payloads:readonly Readonly<{info:LocalMetadataRasterInfo;blob:Blob}>[],options:SharedArchiveIntegrityOptions,providedLimits:Partial<AssetLimits>={}):Promise<MetadataPacketAssetFiles>{
- const integrity=prepareArchiveIntegrity(options),limits=checkRichAssetLimits(providedLimits);integrity.guard();const body=new Blob(payloads.map(row=>archiveBlob(row.blob,limits.maxFileBytes)));if(body.size>limits.maxStoredBytes||body.size>maximum)throw fail('metadata_packet_retention_budget');
- const chunks:MetadataPacketFile[]=[];for(let offset=0;offset<body.size;offset+=MAX_METADATA_PACKET_CHUNK_BYTES){const file=slice.call(body,offset,offset+MAX_METADATA_PACKET_CHUNK_BYTES),sha256=await integrity.digest(file);integrity.guard();chunks.push(Object.freeze({file,bytes:file.size,sha256}));}
- let offset=0;const header=await serverPacketAssetHeader({...input,payloads:payloads.map(({info})=>{const row={...info,offset};offset+=info.bytes;return row;}),chunks:chunks.map(({bytes,sha256})=>({bytes,sha256}))},limits,integrity.guard),file=new Blob([JSON.stringify(header)],{type:'application/vnd.breditor.server-native-packet-assets+json'});if(file.size>headerMaximum)throw fail('metadata_packet_retention_budget');
- const files=Object.freeze({manifest:Object.freeze({file,bytes:file.size,sha256:await integrity.digest(file)}),chunks:Object.freeze(chunks)});integrity.guard();const read=await ServerPacketAssetArchive.read(files,header.parent,options,limits);read.dispose();integrity.guard();return files;
+ return encodePacketAssetArchive(input,payloads,options,providedLimits,{
+  mime:'application/vnd.breditor.server-native-packet-assets+json',
+  header:serverPacketAssetHeader,
+  read:ServerPacketAssetArchive.read,
+ });
 }

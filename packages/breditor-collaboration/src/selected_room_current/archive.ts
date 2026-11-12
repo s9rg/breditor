@@ -15,7 +15,7 @@ import type {RoomAssetApprovalFile} from '../physical_room_asset_approval/contra
 import {PhysicalRoomRecordCutArchive} from '../physical_room_record_cut/archive.js';
 import type {PhysicalRoomRecordCutFile} from '../physical_room_record_cut/contract.js';
 import {recordCutJson,parseRecordCutJson} from '../physical_room_record_cut/json.js';
-import {recordCutBytes} from '../physical_room_record_cut/framing.js';
+import {readVerifiedArchiveHeader} from '../archive_integrity/verified_header.js';
 import {fields,rows as dataRows} from '../physical_room_record_cut/policy.js';
 import {approvalChoice} from '../physical_room_asset_approval/choice.js';
 import type {SelectedAssetCurrentCut} from '../physical_room_asset_successor/owner.js';
@@ -47,7 +47,16 @@ export class SelectedRoomCurrentArchive{
  dispose():void{if(this.#state){approval.dispose.call(this.#state.approval);cut.dispose.call(this.#state.current);this.#state=undefined;}}
  static async read(input:Blob,provided:SelectedRoomCurrentSelection,options:SharedArchiveIntegrityOptions):Promise<SelectedRoomCurrentArchive>{
   const selected=selectedRoomCurrentSelection(provided),p=policy(options);let approved:RoomAssetApprovalArchive|undefined,current:PhysicalRoomRecordCutArchive|undefined;
-  try{const file=archiveBlob(input,MAX_SELECTED_ROOM_CURRENT_BYTES);if(file.size!==selected.bytes||file.size<prefixBytes||await p.context.digest(file)!==selected.sha256)throw fail();const prefix=await p.context.read(file,0,prefixBytes);for(const[i,byte]of new TextEncoder().encode(magic).entries())if(prefix[i]!==byte)throw fail();const size=new DataView(prefix.buffer,prefix.byteOffset,prefix.byteLength).getUint32(magic.length,true);if(size<2||size>MAX_SELECTED_ROOM_CURRENT_HEADER_BYTES||prefixBytes+size>file.size)throw fail('selected_current_budget');let text:string;try{text=new TextDecoder('utf-8',{fatal:true}).decode(await recordCutBytes(file,prefixBytes,size,p.context));}catch{throw fail();}const manifest=selectedRoomCurrentManifest(parseRecordCutJson(text,MAX_SELECTED_ROOM_CURRENT_HEADER_BYTES));if(recordCutJson(manifest,MAX_SELECTED_ROOM_CURRENT_HEADER_BYTES)!==text)throw fail();let offset=prefixBytes+size;
+  try{
+   const file=archiveBlob(input,MAX_SELECTED_ROOM_CURRENT_BYTES);
+   if(file.size!==selected.bytes)throw fail();
+   const {text,offset:headerOffset}=await readVerifiedArchiveHeader(file,selected.sha256,p.context,{
+    magic,maximumHeaderBytes:MAX_SELECTED_ROOM_CURRENT_HEADER_BYTES,
+    invalid:()=>fail(),diverged:()=>fail(),budget:()=>fail('selected_current_budget'),
+   });
+   const manifest=selectedRoomCurrentManifest(parseRecordCutJson(text,MAX_SELECTED_ROOM_CURRENT_HEADER_BYTES));
+   if(recordCutJson(manifest,MAX_SELECTED_ROOM_CURRENT_HEADER_BYTES)!==text)throw fail();
+   let offset=headerOffset;
    const take=(bytes:number)=>{if(offset+bytes>file.size)throw fail();const part=slice.call(file,offset,offset+bytes);offset+=bytes;return part;},read={wasm:p.context.wasm,checkAuthority:p.check,...(p.signal?{signal:p.signal}:{})};approved=await approval.read.call(RoomAssetApprovalArchive,take(manifest.approval.bytes),manifest.approval,read);current=await cut.read.call(PhysicalRoomRecordCutArchive,take(manifest.current.bytes),manifest.current,read);const choice=approval.choice.call(approved),root=cut.root.call(current);
    if(root.database!==choice.adoption.source.operationDatabase||root.source.catalogDatabase!==choice.adoption.source.catalogDatabase||JSON.stringify(root.source.selection)!==JSON.stringify(choice.adoption.source.catalog)||await p.context.digest(new Blob([JSON.stringify(root)]))!==choice.adoption.source.intentSha256||manifest.uploads.length!==choice.adoption.participants.length||root.participants.length!==manifest.uploads.length)throw fail();const uploads=new Map<string,Blob>();
    for(const[i,row]of manifest.uploads.entries()){p.check();const selected=choice.adoption.participants[i]!,native=root.participants[i]!,file=take(row.bytes);if(row.id!==selected.id||row.database!==selected.targetDatabase||native.id!==row.id||native.family!==selected.family||await p.context.digest(file)!==row.sha256||await p.context.digest(cut.uploads.call(current,row.id))!==selected.sourceUploadsSha256)throw fail();const reader=await base.read.call(RichAssetReconciledBase,approval.base.call(approved,row.id),{limits:selected.limits,...(p.signal?{signal:p.signal}:{})});try{await base.verify.call(reader,file,{limits:selected.limits,...(p.signal?{signal:p.signal}:{})});p.check();}finally{base.dispose.call(reader);}uploads.set(row.id,file);}

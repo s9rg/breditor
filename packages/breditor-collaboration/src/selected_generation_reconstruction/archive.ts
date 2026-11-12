@@ -2,7 +2,7 @@
  * plus the actual native whole-room replacement. No bytes grant live custody. */
 import {archiveBlob} from '../archive_integrity/policy.js';
 import {recordCutJson,parseRecordCutJson} from '../physical_room_record_cut/json.js';
-import {recordCutBytes} from '../physical_room_record_cut/framing.js';
+import {readVerifiedArchiveHeader} from '../archive_integrity/verified_header.js';
 import {RoomExecutionArchive as Execution} from '../native_room_execution/archive.js';
 import {executionChoice} from '../native_room_execution/plan.js';
 import {RoomExecutionReadScope} from '../native_room_execution/read_scope.js';
@@ -33,7 +33,16 @@ export class GenerationRoomReconstructionArchive{
   }finally{admitted?.dispose();scope.close();}
  }
  static async read(input:Blob,provided:GenerationReconstructionChoice,options:GenerationReconstructionReadOptions):Promise<GenerationRoomReconstructionArchive>{const choice=generationReconstructionChoice(provided),scope=new RoomExecutionReadScope(options);let execution:Execution|undefined,complete=false;
-  try{const file=archiveBlob(input,max);if(file.size!==choice.selection.bytes||file.size<prefixBytes||await scope.integrity.digest(file)!==choice.selection.sha256)throw fail();const prefix=await scope.integrity.read(file,0,prefixBytes);for(const[i,b]of new TextEncoder().encode(magic).entries())if(prefix[i]!==b)throw fail();const n=new DataView(prefix.buffer,prefix.byteOffset,prefix.byteLength).getUint32(magic.length,true);if(n<2||n>headerMax||prefixBytes+n>file.size)throw fail('generation_reconstruction_budget');let text:string;try{text=new TextDecoder('utf-8',{fatal:true}).decode(await recordCutBytes(file,prefixBytes,n,scope.integrity));}catch{throw fail();}const header=manifest(parseRecordCutJson(text,headerMax));if(recordCutJson(header,headerMax)!==text||JSON.stringify(header.plan)!==JSON.stringify(choice.plan))throw fail();let offset=prefixBytes+n;const parts:Blob[]=[];for(const row of header.parts){if(offset+row.bytes>file.size)throw fail();const part=slice.call(file,offset,offset+row.bytes,row.mime);offset+=row.bytes;if(await scope.integrity.digest(part)!==row.sha256)throw fail();parts.push(part);}if(offset!==file.size)throw fail();
+  try{
+   const file=archiveBlob(input,max);
+   if(file.size!==choice.selection.bytes)throw fail();
+   const {text,offset:bodyOffset}=await readVerifiedArchiveHeader(file,choice.selection.sha256,scope.integrity,{
+    magic,maximumHeaderBytes:headerMax,invalid:fail,diverged:fail,budget:()=>fail('generation_reconstruction_budget'),
+   });
+   const header=manifest(parseRecordCutJson(text,headerMax));
+   if(recordCutJson(header,headerMax)!==text||JSON.stringify(header.plan)!==JSON.stringify(choice.plan))throw fail();
+   let offset=bodyOffset;
+   const parts:Blob[]=[];for(const row of header.parts){if(offset+row.bytes>file.size)throw fail();const part=slice.call(file,offset,offset+row.bytes,row.mime);offset+=row.bytes;if(await scope.integrity.digest(part)!==row.sha256)throw fail();parts.push(part);}if(offset!==file.size)throw fail();
    const snapshot=await readGenerationJournal(header.journal,parts.slice(0,-1),{wasm:scope.integrity.wasm,checkAuthority:scope.check,signal:scope.signal}),executionFile=parts.at(-1)!;execution=await Execution.read(executionFile,choice.plan.execution,{wasm:scope.integrity.wasm,reads:scope.reads,checkAuthority:scope.check,signal:scope.signal,...(scope.assets?{assets:scope.assets}:{})});const sources=await verifyGenerationReconstructionHistory(snapshot,execution,scope);scope.check();const result=new GenerationRoomReconstructionArchive(key,choice,{file,snapshot,execution:executionFile,sources,scope});complete=true;return result;
   }finally{execution?.dispose();if(!complete)scope.close();}
  }

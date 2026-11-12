@@ -5,9 +5,11 @@ import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';imp
 import {SharedRelayAssets} from '../../../packages/breditor-collaboration/dist/relay/assets.js';
 import {SharedServerLogGenerationParticipantInventory as Inventory} from '../../../packages/breditor-collaboration/dist/server_generation_inventory/read.js';
 import {prepareLocalMetadataReconciliationInput} from '../../../packages/breditor-collaboration/dist/selected_local_metadata_assets/reconciliation_input.js';
-import {MetadataPacketAssetArchive} from '../../../packages/breditor-collaboration/dist/metadata_packet_retention/asset_archive.js';
+import {MetadataPacketAssetArchive,encodeMetadataPacketAssets} from '../../../packages/breditor-collaboration/dist/metadata_packet_retention/asset_archive.js';
 import {captureMetadataPacketAssets} from '../../../packages/breditor-collaboration/dist/metadata_packet_retention/capture_assets.js';
 import {PacketRasterFixtureImage,packetPixel} from './packet-raster.mjs';
+import {countPacketReads} from './count-packet-reads.mjs';
+import {checkPacketAssetSelection,checkPacketAssetWriter} from './packet-asset-selection.mjs';
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 export async function testPacketAssetComponents({host,selected,wrapper,core,files,parent,requirements,wasm,signal,integrity}){
  let inventory,transport,archive;const descriptor=Object.getOwnPropertyDescriptor(globalThis,'Image'),oldFetch=globalThis.fetch,cases=[];let cacheCalls=0,downloads=0,missing=false;
@@ -22,7 +24,12 @@ export async function testPacketAssetComponents({host,selected,wrapper,core,file
   const packet={references:{references:parent},packets:files,requirements},nativeBase=core.retainedAssetReferences(),base={outcome:{kind:'ready',references:nativeBase.references}},options={wasm,signal,checkAuthority(){}};
   assert.equal(base.outcome.kind,'ready');assert.ok(requirements.references.some(row=>row.asset===asset&&row.generation==='remote-packet-only-intermediate-g'));
   let result=await captureMetadataPacketAssets(packet,base,uploads,input,transport,options,{},()=>input.check());assert.equal(result.kind,'retained');assert.ok(downloads>0);assert.equal(cacheCalls,0);
-  const parentPins={references:parent,packets:{bytes:files.manifest.bytes,sha256:files.manifest.sha256}};archive=await MetadataPacketAssetArchive.read(result.files,parentPins,options);const header=archive.header();assert.ok(header.payloads.some(row=>row.asset===asset));assert.deepEqual(Buffer.from(await archive.payload(asset).arrayBuffer()),packetPixel);assert.ok(header.local.every(row=>row.asset!==asset));cases.push('actual-provider-and-Native-intermediate-only-image-is-retained-without-cache-or-ACK');
+  const parentPins={references:parent,packets:{bytes:files.manifest.bytes,sha256:files.manifest.sha256}};
+  const opened=await countPacketReads(result.files.manifest.file,()=>MetadataPacketAssetArchive.read(result.files,parentPins,options));
+  archive=opened.value;assert.equal(opened.reads,1,"Decode the local raster manifest from its verified bytes");
+  await checkPacketAssetSelection(MetadataPacketAssetArchive,result.files,parentPins,options);
+  await checkPacketAssetWriter(encodeMetadataPacketAssets,archive,result.files,options);
+  const header=archive.header();assert.ok(header.payloads.some(row=>row.asset===asset));assert.deepEqual(Buffer.from(await archive.payload(asset).arrayBuffer()),packetPixel);assert.ok(header.local.every(row=>row.asset!==asset));cases.push('actual-provider-and-Native-intermediate-only-image-is-retained-without-cache-or-ACK');
   archive.dispose();assert.throws(()=>archive.payload(asset),error=>error.code==='metadata_packet_retention_closed');cases.push('disposed-asset-reader-releases-retained-state');
   const corrupt=Buffer.from(await result.files.chunks[0].file.arrayBuffer());corrupt[0]^=1;await assert.rejects(MetadataPacketAssetArchive.read({...result.files,chunks:[{...result.files.chunks[0],file:new Blob([corrupt])},...result.files.chunks.slice(1)]},parentPins,options));cases.push('corrupt-raster-chunk-refuses');
   const omitted=JSON.parse(await result.files.manifest.file.text());omitted.payloads=omitted.payloads.filter(row=>row.asset!==asset);const replacement=new Blob([JSON.stringify(omitted)]);await assert.rejects(MetadataPacketAssetArchive.read({...result.files,manifest:{file:replacement,bytes:replacement.size,sha256:await integrity.digest(replacement)}},parentPins,options));cases.push('rehashed-missing-packet-only-raster-refuses');

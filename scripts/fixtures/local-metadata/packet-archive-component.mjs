@@ -9,6 +9,7 @@ import {MetadataPacketArchive,encodeMetadataPacketArchive} from '../../../packag
 import {readRetainedMetadataPacketReferences} from '../../../packages/breditor-collaboration/dist/metadata_packet_retention/native_references.js';
 import {testPacketAssetComponents} from './packet-assets-component.mjs';
 import {prepareArchiveIntegrity} from '../../../packages/breditor-collaboration/dist/archive_integrity/context.js';
+import {countPacketReads} from './count-packet-reads.mjs';
 export async function testPacketArchiveComponents({host,selected,reader,core,records,catalog,wasm,http,signal}){
  let allowed=true,tokens=0,wrapper;const cases=[],options={wasm,checkAuthority(){if(!allowed)throw Error('Archive authority ended');}},integrity=prepareArchiveIntegrity(options),store=new MetadataPacketBodyStore(integrity,()=>integrity.guard()),local=[],server=[],parents=new Map(),serverTexts=new Map();
  try{
@@ -28,8 +29,28 @@ export async function testPacketArchiveComponents({host,selected,reader,core,rec
   for(const[i,row]of records.revisions.retained.entries()){const previous=await store.retain('suggestion',row.previousPacket,core),body=await store.retain('revision',row.packet,core,row.previousPacket);parents.set(body.key,previous.key);local.push({participant:'actual-comparison-client',point:'actual-original-receipt-data',store:'revisions',index:i,body:body.key,previousBody:previous.key});}
   const requirements=await readRetainedMetadataPacketReferences([{participant:'actual-comparison-client',core,check(){}}],store,parents,()=>{});assert.deepEqual(requirements.pending,[]);assert.ok(requirements.references.length>0);cases.push('genuine-Native-reference-reads-cover-all-original-and-local-bodies');
   const parentFile=new Blob([JSON.stringify({records,localStrings:[variant,original,odd]})]),parent={bytes:parentFile.size,sha256:await integrity.digest(parentFile)},chunks=await store.finish(),header={format:'breditor/original-metadata-packet-retention',formatVersion:1,scope:'exact-first-server-and-original-local-metadata-packet-strings',parent,catalog,bodies:store.bodies(),server,local,chunks:chunks.map(({bytes,sha256})=>({bytes,sha256}))},files=await encodeMetadataPacketArchive(header,chunks,options);
-  let archive=await MetadataPacketArchive.read(files,parent,options);
+  const selectedHeader={...header,parent:{...parent}},selectedChunks=chunks.map(row=>({...row}));
+  const captured=await encodeMetadataPacketArchive(selectedHeader,selectedChunks,{...options,checkAuthority(){
+   options.checkAuthority();
+   selectedHeader.parent.sha256='0'.repeat(64);
+   selectedChunks.length=0;
+  }});
+  assert.equal(captured.manifest.sha256,files.manifest.sha256,'Keep the selected packet parent and chunks through reentry');
+  assert.deepEqual(captured.chunks.map(({bytes,sha256})=>({bytes,sha256})),header.chunks);
+  const mutableOptions={...options,checkAuthority(){
+   options.checkAuthority();
+   mutableOptions.wasm=undefined;
+   mutableOptions.checkAuthority=()=>{throw Error('Replaced archive authority');};
+  }};
+  const readmitted=await encodeMetadataPacketArchive(header,chunks,mutableOptions);
+  assert.equal(readmitted.manifest.sha256,files.manifest.sha256);
+  const opened=await countPacketReads(files.manifest.file,()=>MetadataPacketArchive.read(files,parent,options)),archive=opened.value;
   try{
+   const body=header.bodies.find(row=>row.key===server[0].body);
+   const part=files.chunks[body.chunk].file.slice(body.offset,body.offset+body.encodedBytes);
+   const read=await countPacketReads(part,()=>archive.body(body.key));
+   assert.deepEqual([opened.reads,read.reads],[1,1],'Decode the manifest and packet string from their verified bytes');
+   assert.equal(read.value.text,serverTexts.get(server[0].kind+':'+server[0].id));
    for(const row of server)assert.equal((await archive.body(row.body)).text,serverTexts.get(row.kind+':'+row.id));assert.equal((await archive.body(localVersion.key)).text,variant);assert.equal((await archive.body(oddBody.key)).text,odd);assert.equal((await archive.body(originalBody.key)).text,original);cases.push('exact-first-and-local-string-round-trip-after-bounded-Native-hashing');
    await assert.rejects(withCheckedServerMetadataCatalog(archive.header().catalog,async()=>true),error=>error.code==='metadata_read_policy');cases.push('recorded-catalog-data-does-not-register-live-host-provenance');
    const reading=archive.body(server[0].body);archive.dispose();await assert.rejects(reading,error=>error.code==='metadata_packet_retention_closed');assert.throws(()=>archive.header());cases.push('disposed-reader-releases-state-and-refuses-late-body-success');

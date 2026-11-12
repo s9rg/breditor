@@ -3,10 +3,10 @@
 import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
 import {prepareArchiveIntegrity} from '../archive_integrity/context.js';
 import {archiveBlob} from '../archive_integrity/policy.js';
+import {readVerifiedArchiveHeader} from '../archive_integrity/verified_header.js';
 import {OperationalReadCancellation} from '../operation_read/cancellation.js';
 import {participantAuthority} from '../participant_backup/policy.js';
 import {recordCutJson,parseRecordCutJson} from '../physical_room_record_cut/json.js';
-import {recordCutBytes} from '../physical_room_record_cut/framing.js';
 import {LoadedNativeReconstructionCurrent as Loaded} from '../selected_native_reconstruction/loaded_current.js';
 import type {SelectedRoomCurrentFile} from '../selected_room_current/contract.js';
 import {roomPreparationPlan,roomPreparationChoice,checkRoomPreparationSources} from './plan.js';
@@ -29,5 +29,39 @@ export class RoomPreparationArchive{
  retained():SelectedRoomCurrentFile{return Object.freeze({selection:this.#choice.plan.retained,file:this.#open().parts[1]!});}
  participant(id:string):Blob{const state=this.#open(),at=this.#choice.plan.participants.findIndex(row=>row.id===id);if(at<0)throw fail('room_preparation_policy');return state.parts[at+2]!;}
  dispose():void{const state=this.#state;this.#state=undefined;state?.close();}
- static async read(input:Blob,expected:RoomPreparationChoice,options:SharedArchiveIntegrityOptions):Promise<RoomPreparationArchive>{const choice=roomPreparationChoice(expected),p=policy(options);let before:Loaded|undefined,retained:Loaded|undefined,complete=false;try{const file=archiveBlob(input,max);if(file.size!==choice.selection.bytes||file.size<prefixBytes||await p.context.digest(file)!==choice.selection.sha256)throw fail();const prefix=await p.context.read(file,0,prefixBytes);for(const[i,byte]of new TextEncoder().encode(magic).entries())if(prefix[i]!==byte)throw fail();const length=new DataView(prefix.buffer,prefix.byteOffset,prefix.byteLength).getUint32(magic.length,true);if(length<2||length>headerMax||prefixBytes+length>file.size)throw fail('room_preparation_budget');let text:string;try{text=new TextDecoder('utf-8',{fatal:true}).decode(await recordCutBytes(file,prefixBytes,length,p.context));}catch{throw fail();}const header=manifest(parseRecordCutJson(text,headerMax));if(recordCutJson(header,headerMax)!==text||JSON.stringify(header.plan)!==JSON.stringify(choice.plan))throw fail();let at=prefixBytes+length;const parts:Blob[]=[];for(const row of header.parts){if(at+row.bytes>file.size)throw fail();const part=slice.call(file,at,at+row.bytes,row.mime);at+=row.bytes;if(await p.context.digest(part)!==row.sha256)throw fail();parts.push(part);}if(at!==file.size)throw fail();const read={wasm:p.context.wasm,checkAuthority:p.check,...(p.signal?{signal:p.signal}:{})};before=await Loaded.read({selection:choice.plan.before,file:parts[0]!},read);retained=await Loaded.read({selection:choice.plan.retained,file:parts[1]!},read);checkRoomPreparationSources(before,retained,choice.plan.database,choice.plan.participants);p.check();const result=new RoomPreparationArchive(key,choice,{file,parts,check:p.check,close:p.close});complete=true;return result;}finally{retained?.dispose();before?.dispose();if(!complete)p.close();}}
+ static async read(input:Blob,expected:RoomPreparationChoice,options:SharedArchiveIntegrityOptions):Promise<RoomPreparationArchive>{
+  const choice=roomPreparationChoice(expected),p=policy(options);
+  let before:Loaded|undefined,retained:Loaded|undefined,complete=false;
+  try{
+   const file=archiveBlob(input,max);
+   if(file.size!==choice.selection.bytes)throw fail();
+   const {text,offset}=await readVerifiedArchiveHeader(file,choice.selection.sha256,p.context,{
+    magic,maximumHeaderBytes:headerMax,invalid:fail,diverged:fail,budget:()=>fail('room_preparation_budget'),
+   });
+   const header=manifest(parseRecordCutJson(text,headerMax));
+   if(recordCutJson(header,headerMax)!==text||JSON.stringify(header.plan)!==JSON.stringify(choice.plan))throw fail();
+   let at=offset;
+   const parts:Blob[]=[];
+   for(const row of header.parts){
+    if(at+row.bytes>file.size)throw fail();
+    const part=slice.call(file,at,at+row.bytes,row.mime);
+    at+=row.bytes;
+    if(await p.context.digest(part)!==row.sha256)throw fail();
+    parts.push(part);
+   }
+   if(at!==file.size)throw fail();
+   const read={wasm:p.context.wasm,checkAuthority:p.check,...(p.signal?{signal:p.signal}:{})};
+   before=await Loaded.read({selection:choice.plan.before,file:parts[0]!},read);
+   retained=await Loaded.read({selection:choice.plan.retained,file:parts[1]!},read);
+   checkRoomPreparationSources(before,retained,choice.plan.database,choice.plan.participants);
+   p.check();
+   const result=new RoomPreparationArchive(key,choice,{file,parts,check:p.check,close:p.close});
+   complete=true;
+   return result;
+  }finally{
+   retained?.dispose();
+   before?.dispose();
+   if(!complete)p.close();
+  }
+ }
 }

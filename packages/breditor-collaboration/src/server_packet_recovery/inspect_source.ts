@@ -4,25 +4,26 @@
 import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
 import {prepareArchiveIntegrity} from '../archive_integrity/context.js';
 import {archiveHex} from '../archive_integrity/policy.js';
-import {recordCutBytes} from '../physical_room_record_cut/framing.js';
 import {SharedServerLogGenerationRoomArchive as Server} from '../server_generation_archive/read.js';
 import {SharedServerLogGenerationParticipantInventory as Inventory} from '../server_generation_inventory/read.js';
 import {SharedServerLogGenerationRecoveryHost,generationRecoveryHostPort} from '../generation_recovery_control/host.js';
 import {generationControlSelection} from '../generation_recovery_control/identity.js';
 import type {SharedServerLogGenerationRecoveryControlSelection as Selection} from '../generation_recovery_control/contract.js';
 import {captureSelectedServerNativeDependencies,withCheckedServerNativeDependencies} from '../server_native_dependencies/collect.js';
+import {MAX_SERVER_NATIVE_DEPENDENCY_RESPONSE_BYTES} from '../server_native_dependencies/contract.js';
 import {prepareNativeDependencyRequest} from '../server_native_dependencies/request.js';
 import {readNativeDependencyResponse} from '../server_native_dependencies/response.js';
 import {frozen} from '../room_participant_inventory/policy.js';
 import {detachServerPacketSourceFiles,type ServerPacketSourceFiles} from './source_files.js';
 import {fail,same} from '../metadata_packet_retention/policy.js';
+import {readVerifiedPacketText} from '../metadata_packet_retention/read_verified_text.js';
 const server={read:Server.read,metadata:Server.prototype.metadata,dispose:Server.prototype.dispose},inventory={read:Inventory.read,dispose:Inventory.prototype.dispose};
 export async function withInspectedServerPacketSource<T>(provided:ServerPacketSourceFiles,recordedSelection:Selection,host:SharedServerLogGenerationRecoveryHost,options:SharedArchiveIntegrityOptions,visit:(facts:ServerPacketSourceInspection)=>Promise<T>):Promise<T>{
  const signal=options.signal,files=detachServerPacketSourceFiles(provided),recorded=generationControlSelection(recordedSelection),port=generationRecoveryHostPort(host),selected=port.selection,integrity=prepareArchiveIntegrity(options);
  if(typeof visit!=='function'||!same(selected.source.origin,files.server.identity)||!same(selected.source.server,files.server.identity)||!same(selected.source.participants,files.inventory.identity)||!same(recorded.source.server,files.server.identity)||!same(recorded.source.participants,files.inventory.identity)||!same(files.inventory.identity.source,files.server.identity.native)||files.server.sha256!==archiveHex(files.server.identity.archiveSha256)||files.inventory.sha256!==archiveHex(files.inventory.identity.sha256))throw fail();
  integrity.guard();await port.check(signal);integrity.guard();
- for(const row of [files.server,files.inventory,files.dependencies]){if(await integrity.digest(row.file)!==row.sha256)throw fail();integrity.guard();}
- const bytes=await recordCutBytes(files.dependencies.file,0,files.dependencies.bytes,integrity);let text:string;try{text=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(bytes);}catch{throw fail();}
+ for(const row of [files.server,files.inventory]){if(await integrity.digest(row.file)!==row.sha256)throw fail();integrity.guard();}
+ const text=await readVerifiedPacketText(files.dependencies.file,files.dependencies.sha256,MAX_SERVER_NATIVE_DEPENDENCY_RESPONSE_BYTES,integrity);
  const request=await prepareNativeDependencyRequest('server-log-generation-recovery',recorded);integrity.guard();
  const stored=readNativeDependencyResponse(text,'server-log-generation-recovery',recorded,files.server.identity.native,request.sha256,generationControlSelection);
  let admittedServer:Server|undefined,admittedInventory:Inventory|undefined;
