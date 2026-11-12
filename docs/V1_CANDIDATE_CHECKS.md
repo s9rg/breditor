@@ -19,7 +19,10 @@ Node and host identity, and artifact bytes before running. The final job checks
 all six reports, their retained logs and the matching installed package hashes.
 The shared Wasm build receipt binds the compiler output and matching packaged
 Wasm, glue and declarations to the source commit. Workers receive that receipt
-with the binaries and check the paired bytes before starting.
+with the binaries and check the paired bytes before starting. The activation
+launcher pins the receipt digest for its source fixtures and transfers a copy
+into an independent consumer before running its tests. Direct historical runs
+with their retained runtime can still use the historical Wasm pin.
 This produces whole-room activation evidence. The full V1 qualification and
 reviewed release gates are separate and still required.
 

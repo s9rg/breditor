@@ -6,13 +6,14 @@ import {
 import {tmpdir} from "node:os";
 import {dirname, join} from "node:path";
 import test from "node:test";
-import {fileURLToPath} from "node:url";
+import {fileURLToPath, pathToFileURL} from "node:url";
 import {candidateReleasePlan} from "./candidate-release/plan.mjs";
 import {activationPlan, activationStageIds} from "./candidate-release/activation-shards.mjs";
 import {
  activationBuildReports, checkActivationBundle, restoreActivationInputs, sealActivationInputs, verifyActivationInputs,
 } from "./candidate-release/activation-inputs.mjs";
-import {retainSharedRuntimeBuild, sharedRuntimeBuildReport, verifySharedRuntimeBuild} from "./candidate-release/shared-runtime-evidence.mjs";
+import {copySharedRuntimeForActivation, retainSharedRuntimeBuild, sharedRuntimeBuildReport, verifySharedRuntimeBuild} from "./candidate-release/shared-runtime-evidence.mjs";
+import {sharedRuntimeReceiptVariable} from "./fixtures/native-runtime/shared-runtime-receipt.mjs";
 import {activationReportName, retainActivationShard, verifyActivationShards} from "./candidate-release/activation-results.mjs";
 import {fileEvidence, saveEvidence, sourceEvidence} from "./candidate-release/evidence.mjs";
 import {runCandidateChecks} from "./verify-candidate.mjs";
@@ -137,6 +138,32 @@ test("shared runtime build evidence binds the generated and packaged bytes to th
  assert.equal(existsSync(join(worker, "target")), false);
 });
 
+test("an independent fixture uses only the copied receipt pinned by its launcher", t => {
+ const {root, directory} = fixture(t);
+ const consumer = join(directory, "consumer");
+ mkdirSync(consumer);
+ const runtime = copySharedRuntimeForActivation(root, consumer, sourceEvidence(root));
+ for (const file of ["normal-shared-identity.mjs", "shared-runtime-receipt.mjs"]) {
+  const relative = "scripts/fixtures/native-runtime/" + file;
+  write(consumer, relative, readFileSync(new URL("../" + relative, import.meta.url)));
+ }
+ const module = pathToFileURL(join(consumer, "scripts/fixtures/native-runtime/normal-shared-identity.mjs")).href;
+ const run = environment => spawnSync(process.execPath, ["--input-type=module", "-e",
+  `import {NORMAL_SHARED_WASM_SHA256} from ${JSON.stringify(module)}; console.log(NORMAL_SHARED_WASM_SHA256);`],
+ {cwd:consumer, env:{...process.env,...environment}, encoding:"utf8"});
+ const pinned = run(runtime.environment);
+ assert.equal(pinned.status, 0, pinned.stderr);
+ assert.equal(pinned.stdout.trim(), runtime.wasmSha256);
+ const foreign = run({[sharedRuntimeReceiptVariable]:"0".repeat(64)});
+ assert.equal(foreign.status, 1);
+ assert.match(foreign.stderr, /receipt differs from the verified build/);
+ const receipt = join(consumer, sharedRuntimeBuildReport);
+ writeFileSync(receipt, readFileSync(receipt, "utf8") + "\n");
+ const changed = run(runtime.environment);
+ assert.equal(changed.status, 1);
+ assert.match(changed.stderr, /receipt differs from the verified build/);
+});
+
 test("aggregation requires six matching results and checks retained logs and package identity", async t => {
  const {root, worker, directory, bundleDirectory} = fixture(t);
  const bundle = sealActivationInputs(root, bundleDirectory);
@@ -150,9 +177,10 @@ test("aggregation requires six matching results and checks retained logs and pac
   const outcome = await runCandidateChecks(activationPlan(stage), {
    root, report:() => {}, execute:async (check, {logPath}) => {
     writeFileSync(logPath, sourceLog);
-    for (const {path} of check.artifacts) saveEvidence(join(root, path), {
+   for (const {path} of check.artifacts) saveEvidence(join(root, path), {
      source:bundle.source, complete:true, passed:true, sourceUnchanged:true, wholeRoomActivated:true,
      workspaceLinks:false, cases:22, logSha256:"c".repeat(64), runtime:installedRuntime,
+     sharedRuntimeReceiptSha256:check.env[sharedRuntimeReceiptVariable],
      archives:selectedArchives,
     });
     return {status:"passed", exitCode:0, signal:null};
