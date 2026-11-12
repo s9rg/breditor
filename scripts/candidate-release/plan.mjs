@@ -27,6 +27,7 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
  const shared=resolve(repository,"target/historical-source-native"),relay=resolve(repository,"target/owned-history-relay-native"),wasm=resolve(repository,"target/promoted-shared-wasm");
  const executablePath=name=>`target/owned-history-relay-native/release/examples/${name}${process.platform==="win32"?".exe":""}`,executable=name=>resolve(repository,executablePath(name)),stage=(id,command,args,env={},artifacts=[],timeoutMs=1800000)=>Object.freeze({id,command,args:Object.freeze(args),env:Object.freeze({...tools,...env}),artifacts:Object.freeze(artifacts.map(value=>Object.freeze(typeof value==="string"?{path:value}:value))),timeoutMs});
  const script=(id,file,args=[],artifacts=[],timeout)=>stage(id,node,[`scripts/${file}`,...args],{},artifacts,timeout);
+ const withSharedRuntime=check=>Object.freeze({...check,requiresSharedRuntime:true});
  const sharedCargo=(id,[command,...args])=>stage(id,cargo,[command,"--manifest-path","crates/breditor-collaboration/Cargo.toml",...args],{CARGO_TARGET_DIR:shared});
  const relayCargo=(id,[command,...args],artifacts=[])=>stage(id,cargo,[command,"--manifest-path","experiments/relay/Cargo.toml",...args],{CARGO_TARGET_DIR:relay},artifacts);
  const checks=[
@@ -560,8 +561,8 @@ export function candidateReleasePlan({profile="full",environment=process.env}={}
   script('installed-metadata-reconciliation','check-metadata-reconciliation-installed.mjs',[],[{path:metadataRecoveryArtifacts.reconciliation,fresh:true}],7800000),
   stage('native-version-delivery-plan-contracts',node,['--test','scripts/native-version-delivery-candidate-plan.test.mjs']),
   stage('native-version-delivery-private-types',node,['node_modules/typescript/bin/tsc','--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM','scripts/fixtures/editor-consumer/types-native-version-delivery.ts']),
-  stage('native-version-delivery-functional',node,['--test','scripts/native-version-delivery.test.mjs','scripts/native-version-delivery-failures.test.mjs','scripts/native-version-selected-room.test.mjs'],{},[],1800000),
-  script('installed-native-version-delivery','check-native-version-delivery-installed.mjs',[],[{path:'target/native-version-delivery-installed-consumer.json',fresh:true}],2400000),
+  withSharedRuntime(stage('native-version-delivery-functional',node,['--test','scripts/native-version-delivery.test.mjs','scripts/native-version-delivery-failures.test.mjs','scripts/native-version-selected-room.test.mjs'],{},[],1800000)),
+  withSharedRuntime(script('installed-native-version-delivery','check-native-version-delivery-installed.mjs',[],[{path:'target/native-version-delivery-installed-consumer.json',fresh:true}],2400000)),
   stage('held-metadata-plan-contracts',node,['--test','scripts/held-metadata-candidate-plan.test.mjs']),
   stage('held-metadata-private-types',node,['node_modules/typescript/bin/tsc','--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM','scripts/fixtures/editor-consumer/types-held-metadata.ts']),
   stage('held-metadata-functional',node,['--test','scripts/held-metadata-preparation.test.mjs','scripts/held-metadata-lifetime.test.mjs','scripts/held-metadata-selected-room.test.mjs'],{},[],1800000),

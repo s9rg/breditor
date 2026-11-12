@@ -204,6 +204,37 @@ test("an independent fixture uses only the copied receipt pinned by its launcher
  assert.match(changed.stderr, /receipt differs from the verified build/);
 });
 
+test("shared-runtime-only stages pin the build and refuse a replacement without a Native receipt", async t => {
+ const {root} = fixture(t);
+ const source = sourceEvidence(root);
+ rmSync(join(root, nativeSuggestionBuildReport));
+ const receipt = fileEvidence(root, sharedRuntimeBuildReport).sha256;
+ const plan = {profile:"functional", deferred:[], checks:[{
+  id:"version-delivery-fixture", command:process.execPath, args:[], env:{}, artifacts:[], timeoutMs:1000,
+  requiresSharedRuntime:true,
+ }]};
+ const run = replace => runCandidateChecks(plan, {
+  root, report(){},
+  async execute(check,{logPath}){
+   assert.equal(check.env[sharedRuntimeReceiptVariable],receipt);
+   writeFileSync(logPath,"completed fixture");
+   if(replace){
+    write(root,wasm,"replacement Wasm");
+    write(root,"packages/breditor-collaboration/dist/runtime/breditor_shared_bg.wasm","replacement Wasm");
+    retainSharedRuntimeBuild(root,source);
+   }
+   return {status:"passed",exitCode:0,signal:null};
+  },
+ });
+ const valid = await run(false);
+ assert.equal(valid.exitCode,0);
+ assert.equal(valid.result.stages[0].sharedRuntimeReceiptSha256,receipt);
+ assert.equal(valid.result.stages[0].nativeHostBuildReceiptSha256,undefined);
+ const replaced = await run(true);
+ assert.equal(replaced.exitCode,1);
+ assert.match(replaced.result.error,/Shared runtime build receipt changed during qualification/);
+});
+
 test("aggregation requires six matching results and checks retained logs and package identity", async t => {
  const {root, worker, directory, bundleDirectory} = fixture(t);
  const bundle = sealActivationInputs(root, bundleDirectory);

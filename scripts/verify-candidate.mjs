@@ -29,18 +29,20 @@ export async function runCandidateChecks(plan,{root=repository,signal,report=con
    if(retained)Object.assign(entry,retained);
    else{
     let execution=check;
-    if(activationRuntimeStageIds.includes(check.id)||metadataFixtureStageIds.includes(check.id)){
-     const runtime=sharedRuntimeForActivation(root,source);
-     entry.nativeHostBuildReceiptSha256=verifyNativeSuggestionBuild(root,source).sha256;
+    const nativeFixture=activationRuntimeStageIds.includes(check.id)||metadataFixtureStageIds.includes(check.id);
+    const runtime=nativeFixture||check.requiresSharedRuntime===true?sharedRuntimeForActivation(root,source):undefined;
+    if(runtime){
+     if(nativeFixture)entry.nativeHostBuildReceiptSha256=verifyNativeSuggestionBuild(root,source).sha256;
+     entry.sharedRuntimeReceiptSha256=runtime.sha256;
      entry.env={...check.env,...runtime.environment};
      execution={...check,env:entry.env};
      saveEvidence(manifest,result);
     }
     const outcome=await execute(execution,{root,logPath,signal});Object.assign(entry,outcome);
     entry.log=fileEvidence(root,relative(root,logPath));
-    if(entry.status==="passed"&&entry.nativeHostBuildReceiptSha256){
-     const native=verifyNativeSuggestionBuild(root,source),runtime=sharedRuntimeForActivation(root,source);
-     if(native.sha256!==entry.nativeHostBuildReceiptSha256||Object.entries(runtime.environment).some(([key,value])=>entry.env[key]!==value))throw Error("Metadata or activation runtime build receipt changed during qualification");
+    if(entry.status==="passed"&&runtime){
+     if(sharedRuntimeForActivation(root,source).sha256!==runtime.sha256)throw Error("Shared runtime build receipt changed during qualification");
+     if(nativeFixture&&verifyNativeSuggestionBuild(root,source).sha256!==entry.nativeHostBuildReceiptSha256)throw Error("Native host build receipt changed during qualification");
     }
     if(entry.status==="passed")entry.artifacts=check.artifacts.map(artifact=>{const evidence=fileEvidence(root,artifact.path);if(artifact.fresh&&evidence.modifiedAtMs<Date.parse(entry.startedAt))throw Error(`Stale stage report: ${artifact.path}`);return evidence;});
    }

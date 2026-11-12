@@ -23,7 +23,9 @@ context reads the original server result without duplicating publication.
 Closing waits for actual writes and outstanding transport work, including local
 retry. Closing neither retries failed writes nor releases native recovery.
 
-Functional tests use real Rust servers and the unchanged normal Wasm runtime.
+Functional tests use real Rust servers and the normal Wasm runtime. The
+candidate runner pins the runtime build receipt for both the source and installed
+checks. The installed consumer verifies its Wasm and bindings against that receipt.
 They cover original, retained segmented, and all four independent document /
 comment history combinations; original and atomic writer transports; explicit
 and natural typing histories; original, general and document selection where
