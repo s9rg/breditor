@@ -1,0 +1,248 @@
+{
+  "name": "Whole-room activation qualification (manual; not a release)",
+  "on": {
+    "workflow_dispatch": {}
+  },
+  "permissions": {
+    "contents": "read"
+  },
+  "jobs": {
+    "prepare": {
+      "runs-on": "ubuntu-24.04",
+      "defaults": {
+        "run": {
+          "shell": "bash"
+        }
+      },
+      "timeout-minutes": 120,
+      "env": {
+        "CARGO_TERM_COLOR": "never"
+      },
+      "outputs": {
+        "input_sha256": "${{ steps.prepare.outputs.input_sha256 }}"
+      },
+      "steps": [
+        {
+          "name": "Check out the selected source",
+          "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "with": {
+            "persist-credentials": false,
+            "fetch-depth": 1
+          }
+        },
+        {
+          "name": "Install the baseline Node toolchain",
+          "uses": "actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1",
+          "with": {
+            "node-version": "22.14.0",
+            "package-manager-cache": false
+          }
+        },
+        {
+          "name": "Install the paired Rust/Wasm toolchain",
+          "run": "rustup toolchain install 1.98.0 --profile minimal --component clippy --component rustfmt --target wasm32-unknown-unknown\ncargo install wasm-bindgen-cli --version 0.2.127 --locked"
+        },
+        {
+          "name": "Install locked workspace dependencies",
+          "run": "npm ci --ignore-scripts --no-audit --no-fund"
+        },
+        {
+          "name": "Fetch locked Cargo graphs before offline qualification",
+          "run": "cargo fetch --locked --manifest-path Cargo.toml\ncargo fetch --locked --manifest-path crates/breditor-collaboration/Cargo.toml\ncargo fetch --locked --manifest-path experiments/relay/Cargo.toml"
+        },
+        {
+          "name": "Check activation qualification contracts",
+          "run": "node --test scripts/activation-qualification.test.mjs"
+        },
+        {
+          "name": "Build the shared activation inputs",
+          "id": "prepare",
+          "env": {
+            "CARGO_NET_OFFLINE": "true"
+          },
+          "run": "node scripts/qualify-activation-shard.mjs prepare\ndigest=$(sha256sum target/activation-qualification-inputs/inputs.json)\nprintf 'input_sha256=%s\\n' \"${digest%% *}\" >> \"$GITHUB_OUTPUT\""
+        },
+        {
+          "name": "Retain the prepared inputs",
+          "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "with": {
+            "if-no-files-found": "error",
+            "retention-days": 14,
+            "include-hidden-files": false,
+            "archive": true,
+            "name": "activation-inputs",
+            "path": "target/activation-qualification-inputs",
+            "overwrite": true
+          }
+        },
+        {
+          "name": "Retain build logs",
+          "if": "${{ always() }}",
+          "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "with": {
+            "if-no-files-found": "ignore",
+            "retention-days": 14,
+            "include-hidden-files": false,
+            "archive": true,
+            "name": "activation-build-logs-${{ github.run_attempt }}",
+            "path": "target/v1-candidate-runs"
+          }
+        }
+      ]
+    },
+    "check": {
+      "runs-on": "ubuntu-24.04",
+      "defaults": {
+        "run": {
+          "shell": "bash"
+        }
+      },
+      "needs": "prepare",
+      "timeout-minutes": 300,
+      "strategy": {
+        "fail-fast": false,
+        "matrix": {
+          "stage": [
+            "joint-handover-native",
+            "installed-joint-handover",
+            "cold-joint-handover-native",
+            "installed-cold-joint-handover",
+            "sealed-joint-process-recovery-native",
+            "installed-sealed-joint-process-recovery"
+          ]
+        }
+      },
+      "steps": [
+        {
+          "name": "Check out the selected source",
+          "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "with": {
+            "persist-credentials": false,
+            "fetch-depth": 1
+          }
+        },
+        {
+          "name": "Install the baseline Node toolchain",
+          "uses": "actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1",
+          "with": {
+            "node-version": "22.14.0",
+            "package-manager-cache": false
+          }
+        },
+        {
+          "name": "Install locked workspace dependencies",
+          "run": "npm ci --ignore-scripts --no-audit --no-fund"
+        },
+        {
+          "name": "Download the prepared inputs",
+          "uses": "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+          "with": {
+            "name": "activation-inputs",
+            "path": "target/activation-qualification-inputs"
+          }
+        },
+        {
+          "name": "Qualify the selected activation stage",
+          "env": {
+            "BREDITOR_ACTIVATION_INPUT_SHA256": "${{ needs.prepare.outputs.input_sha256 }}",
+            "ACTIVATION_STAGE": "${{ matrix.stage }}"
+          },
+          "run": "node scripts/qualify-activation-shard.mjs run \"$ACTIVATION_STAGE\" target/activation-qualification-inputs"
+        },
+        {
+          "name": "Retain the verified stage report",
+          "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "with": {
+            "if-no-files-found": "error",
+            "retention-days": 14,
+            "include-hidden-files": false,
+            "archive": true,
+            "name": "activation-check-${{ matrix.stage }}",
+            "path": "target/v1-candidate-runs/activation-shards/activation-check-${{ matrix.stage }}",
+            "overwrite": true
+          }
+        },
+        {
+          "name": "Retain stage logs",
+          "if": "${{ always() }}",
+          "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "with": {
+            "if-no-files-found": "ignore",
+            "retention-days": 14,
+            "include-hidden-files": false,
+            "archive": true,
+            "name": "activation-logs-${{ matrix.stage }}-${{ github.run_attempt }}",
+            "path": "target/v1-candidate-runs"
+          }
+        }
+      ]
+    },
+    "verify": {
+      "runs-on": "ubuntu-24.04",
+      "defaults": {
+        "run": {
+          "shell": "bash"
+        }
+      },
+      "needs": [
+        "prepare",
+        "check"
+      ],
+      "timeout-minutes": 15,
+      "steps": [
+        {
+          "name": "Check out the selected source",
+          "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "with": {
+            "persist-credentials": false,
+            "fetch-depth": 1
+          }
+        },
+        {
+          "name": "Install the baseline Node toolchain",
+          "uses": "actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1",
+          "with": {
+            "node-version": "22.14.0",
+            "package-manager-cache": false
+          }
+        },
+        {
+          "name": "Download the prepared inputs",
+          "uses": "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+          "with": {
+            "name": "activation-inputs",
+            "path": "target/activation-qualification-inputs"
+          }
+        },
+        {
+          "name": "Download the six activation reports",
+          "uses": "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+          "with": {
+            "pattern": "activation-check-*",
+            "path": "target/activation-qualification-reports",
+            "merge-multiple": false
+          }
+        },
+        {
+          "name": "Verify complete activation qualification",
+          "env": {
+            "BREDITOR_ACTIVATION_INPUT_SHA256": "${{ needs.prepare.outputs.input_sha256 }}"
+          },
+          "run": "node scripts/qualify-activation-shard.mjs verify target/activation-qualification-inputs target/activation-qualification-reports"
+        },
+        {
+          "name": "Retain combined activation evidence",
+          "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "with": {
+            "if-no-files-found": "error",
+            "retention-days": 14,
+            "include-hidden-files": false,
+            "archive": true,
+            "name": "activation-qualification-${{ github.run_attempt }}",
+            "path": "target/v1-candidate-runs/activation-qualification.json"
+          }
+        }
+      ]
+    }
+  }
+}
