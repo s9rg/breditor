@@ -126,7 +126,7 @@ export async function verifyActivationCommit(api,{input,offer,publicationOffer,r
   assert.deepEqual(await commit(input,{expected,activation:reopened,approve:()=>true}),confirmed);
   assert.deepEqual(await activationState(database),saved);
   assert.equal(requests.filter(row=>row.activation).length-before,3);
-  const publications=await verifyPublication(api,{input,expected,activation:reopened,offer:publicationOffer,requests,getToken});
-  return {commits:1,publications};
+  const published=await verifyPublication(api,{input,expected,activation:reopened,offer:publicationOffer,requests,getToken});
+  return {commits:1,...published};
  }finally{globalThis.fetch=fetch;reopened?.close();activation.close();}
 }

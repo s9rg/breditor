@@ -83,3 +83,8 @@ const serving=await prepareContinuedRoomPublication(recoveredInput,{
 const published:import('@breditor/collaboration').ContinuedRoomPublicationResult=
  await publishContinuedRoom(recoveredInput,{expected:serving,activation,publication,approve:plan=>plan.database===serving.database});
 void published;
+const handoff=new (await import('@breditor/collaboration')).ContinuedRoomSessionHandoff();
+await handoff.publish(recoveredInput,{expected:serving,activation,publication,approve:()=>true});
+const participants:ReadonlyMap<string,import('@breditor/collaboration').SharedContinuedPairSession>=handoff.sessions();
+void participants;
+await handoff.close();

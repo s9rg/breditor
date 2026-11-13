@@ -1,7 +1,7 @@
 import {physicalCatalogV2Options} from '../physical_room_catalog_v2/input_snapshot.js';
 import {participantAuthority} from '../participant_backup/policy.js';
 import {independentRecoverySignal} from '../independent_recovery/signal.js';
-import {visitCompletedContinuedRoomRecovery,type CompletedContinuedRoomRead} from '../continued_room_recovery/recovery.js';
+import {visitCompletedContinuedRoomRecovery,type CompletedContinuedRoomRead,type ContinuedRoomDeliveryHandoff} from '../continued_room_recovery/recovery.js';
 import {generationRecoveryHostPort} from '../generation_recovery_control/host.js';
 import {NativeReconstructionWaits} from '../selected_native_reconstruction/read_waits.js';
 import type {RecoveredContinuedRoomReconciliationOptions,RecoveredContinuedRoomReconciliationRead} from './contract.js';
@@ -22,6 +22,7 @@ export async function withRecoveredContinuedRoomReconciliation<T>(
  visit:(read:RecoveredContinuedRoomReconciliationRead,held:CompletedContinuedRoomRead,
   host:ReturnType<typeof generationRecoveryHostPort>,check:()=>void,signal:AbortSignal,
   reread:()=>Promise<RecoveredContinuedRoomReconciliationRead['reconciliation']>)=>Promise<T>,
+ handoff?:ContinuedRoomDeliveryHandoff,
 ):Promise<T>{
  physicalCatalogV2Options(input,['recovery','reconciliation'],[]);
  const {recovery,reconciliation}=input;
@@ -48,6 +49,6 @@ export async function withRecoveredContinuedRoomReconciliation<T>(
    const value=await visit(read,held,host,check,waits.signal,reread);
    check();
    return value;
-  });
+  },handoff);
  }finally{waits.close();}
 }

@@ -12,6 +12,8 @@ import {checkContinuedRoomDeliveryCoverage} from './commit.js';
 import {continuedRoomActivationChoice} from './intent.js';
 import {ContinuedRoomPublicationIntentStore,continuedRoomPublicationBinding,continuedRoomPublicationChoice,encodeContinuedRoomPublication} from './publication_intent.js';
 import type {ContinuedRoomPublicationChoice,ContinuedRoomPublicationOptions,ContinuedRoomPublicationPlan,ContinuedRoomPublicationPrepareOptions,ContinuedRoomPublicationResult} from './contract.js';
+import type {ContinuedRoomDeliveryHandoff} from '../continued_room_recovery/recovery.js';
+import type {SharedContinuedPairSession} from '../continued_pair/session.js';
 
 type PublicationWork={
  readonly plan:ContinuedRoomPublicationPlan;
@@ -27,6 +29,7 @@ const same=(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b);
 function withPublication<T>(
  input:RecoveredContinuedRoomReconciliationOptions,database:string,expected:ContinuedRoomPublicationChoice['activationIntent'],
  {activation,publication}:Pick<ContinuedRoomPublicationOptions,'activation'|'publication'>,visit:(work:PublicationWork)=>Promise<T>,
+ handoff?:ContinuedRoomDeliveryHandoff,
 ):Promise<T>{
  const port=nativePublicationHostPort(publication);
  if(database===expected.database||!same(expected.activation,port.selection.activation))throw fail('activation_intent_stale');
@@ -52,7 +55,7 @@ function withPublication<T>(
     }});
    }finally{await store.close();}
   }finally{lifetime.close();}
- });
+ },handoff);
 }
 
 /** Save a complete association for the real committed checkpoint and bound listener. */
@@ -74,10 +77,28 @@ export async function prepareContinuedRoomPublication(
 export async function publishContinuedRoom(
  input:RecoveredContinuedRoomReconciliationOptions,options:ContinuedRoomPublicationOptions,
 ):Promise<ContinuedRoomPublicationResult>{
+ return publish(input,options);
+}
+
+/** Internally retain writable recipients until the caller can receive all of them. */
+export function publishWithContinuedRoomSessions(
+ input:RecoveredContinuedRoomReconciliationOptions,options:ContinuedRoomPublicationOptions,sessions:Map<string,SharedContinuedPairSession>,
+):Promise<ContinuedRoomPublicationResult>{
+ return publish(input,options,sessions);
+}
+
+async function publish(
+ input:RecoveredContinuedRoomReconciliationOptions,options:ContinuedRoomPublicationOptions,sessions?:Map<string,SharedContinuedPairSession>,
+):Promise<ContinuedRoomPublicationResult>{
  const r=fields(options,['expected','activation','publication','approve']) as unknown as ContinuedRoomPublicationOptions;
  const expected=continuedRoomPublicationChoice(r.expected);
  if(typeof r.approve!=='function')throw fail('activation_intent_policy');
  let started=false;
+ let authorize:(()=>void)|undefined;
+ const handoff=sessions&&{sessions,authorize(){
+  if(!authorize)throw fail('activation_intent_incomplete');
+  authorize();
+ }};
  try{
   return await withPublication(input,expected.database,expected.activationIntent,r,async work=>{
    if(!same(expected,work.encoding.choice))throw fail('activation_intent_stale');
@@ -93,9 +114,10 @@ export async function publishContinuedRoom(
     const receipt=await work.port.publish(continuedRoomPublicationBinding(expected),lifetime.check,lifetime.signal);
     await work.store.markReceiptObserved(receipt,lifetime);
     lifetime.check();
+    if(handoff)authorize=()=>{work.port.check();};
     return Object.freeze({choice:expected,receipt});
    }finally{lifetime.close();}
-  });
+  },handoff);
  }catch(error){
   if(started)throw publicationFailure('publication_outcome_unknown',error);
   throw error;

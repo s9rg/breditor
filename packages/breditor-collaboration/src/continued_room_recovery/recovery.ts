@@ -2,7 +2,10 @@ import type {AssetLimits} from '@breditor/experimental-rich-content';
 import {prepareArchiveIntegrity} from '../archive_integrity/context.js';
 import {archiveFields} from '../archive_integrity/policy.js';
 import {continuedRoomRecoveryCatalog} from '../continued_room_catalog/storage.js';
-import {continuedCatalogOriginalBackup,continuedCatalogDeliveryBackup,continuedCatalogGenerationBackup,continuedCatalogIndependentBackup,SharedContinuedRoomCatalog} from '../continued_room_catalog/archive.js';
+import {continuedCatalogInventory,continuedCatalogOriginalBackup,continuedCatalogDeliveryBackup,continuedCatalogGenerationBackup,continuedCatalogIndependentBackup,SharedContinuedRoomCatalog} from '../continued_room_catalog/archive.js';
+import {SharedServerLogGenerationParticipantInventory} from '../server_generation_inventory/read.js';
+import type {SharedContinuedPairSession} from '../continued_pair/session.js';
+import type {SharedReviewAccess} from '../review_types.js';
 import {deliveryRecoveryArchive} from '../independent_delivery_recovery/archive.js';
 import {independentRecoveryArchive} from '../independent_recovery/archive.js';
 import {independentRecoverySignal} from '../independent_recovery/signal.js';
@@ -21,7 +24,7 @@ import {frozen} from '../room_participant_inventory/policy.js';
 import {recoverContinuedRoomSource,recoverContinuedRoomUploads,recoveryFailure as fail,type ContinuedDestinationHold} from './destination.js';
 import {recoverIndependentRoomSource} from './independent_destination.js';
 import {generationRoomUploads,recoverGenerationRoomSource} from './generation_destination.js';
-import {recoverContinuedDeliveryRoomSource} from './continued_delivery_destination.js';
+import {recoverContinuedDeliveryRoomSource,type HeldContinuedDeliveryDestination} from './continued_delivery_destination.js';
 import {recoverDeliveryRoomSource} from './delivery_destination.js';
 import {SharedParticipantBackup} from '../participant_backup/archive.js';
 import {readPairedBackupRecord} from '../backups/paired.js';
@@ -38,6 +41,7 @@ const beginAcquisition=RoomActorAcquisition.begin;
 const {route:actorRoute,commit:commitActors,close:closeCohort}=StoppedActorCohort.prototype;
 const closeRoute=DeferredActorLeaseInput.prototype.close;
 const originalRecords=SharedParticipantBackup.prototype.records;
+const inventoryMetadata=SharedServerLogGenerationParticipantInventory.prototype.metadata;
 const destinationNames=(row:ContinuedRoomRecoveryDestination)=>[...operationDestinationNames(row),...Object.values(row.original??{})];
 
 type RecoveryMode='begin'|'resume'|'inspect';
@@ -52,8 +56,15 @@ export interface CompletedContinuedRoomRead {
  verifyExact():Promise<void>;
 }
 
+/** Internal receiver is owned by the caller before any leases can move. */
+export interface ContinuedRoomDeliveryHandoff {
+ readonly sessions:Map<string,SharedContinuedPairSession>;
+ authorize():void;
+}
+
 async function restore<T>(
  input:ContinuedRoomRecoveryOptions,mode:RecoveryMode,visit:(read:CompletedContinuedRoomRead)=>T|Promise<T>,
+ handoff?:ContinuedRoomDeliveryHandoff,
 ):Promise<T>{
  const begin=mode==='begin',inspect=mode==='inspect';
  physicalCatalogV2Options(input,['database','catalog','expected','destinations','checkAuthority','writerRecovery'],['signal','independentPolicies','deliveryPolicies','generationPolicies','originalPolicies']);
@@ -94,7 +105,8 @@ async function restore<T>(
  if(namespaces.includes(held.database)||new Set(namespaces).size!==namespaces.length||
     new Set(destinations.map(row=>row.id)).size!==destinations.length||!destinations.length)throw fail('policy');
  const factory=recoveryOpeningContext(),locks=navigator.locks;
- const leases:RecoveryLease[]=[],destinationsHeld:ContinuedDestinationHold[]=[];
+ const leases:RecoveryLease[]=[],destinationsHeld=new Set<ContinuedDestinationHold>();
+ const deliveryHeld=new Map<string,HeldContinuedDeliveryDestination>();
  const failedParticipants=new RecoveryCleanupScope(()=>fail('storage'));
  const deliveryRoutes=new Map<string,DeferredActorLeaseInput>();
  let acquisition:RoomActorAcquisition|undefined,deliveryActors:StoppedActorCohort|undefined;
@@ -105,7 +117,7 @@ async function restore<T>(
   checkRecoveryLeasesHeld(leases);
  };
  const cleanup=async()=>{
-  const closed=await Promise.allSettled([failedParticipants.drain(),...destinationsHeld.map(destination=>Promise.resolve().then(()=>destination.close()))]);
+  const closed=await Promise.allSettled([failedParticipants.drain(),...[...destinationsHeld].map(destination=>Promise.resolve().then(()=>destination.close()))]);
   if(closed.some(row=>row.status==='rejected'))throw fail('storage');
   // The borrower must finish closing before an unpromoted route can return
   // its loans. Keep namespace exclusion until all actual custody settles.
@@ -138,6 +150,20 @@ async function restore<T>(
   const selected=metadata.call(archive);
   const entries=selected.participants;
   if(entries.length!==destinations.length||entries.some((row,index)=>row.id!==destinations[index]!.id))throw fail('policy');
+  if(handoff&&entries.some(row=>row.family!=='continued-delivery'))throw fail('policy');
+  const access=new Map<string,{readOnly:boolean;review:SharedReviewAccess}>();
+  if(handoff){
+   const native=inventoryMetadata.call(continuedCatalogInventory(archive)).native;
+   for(const entry of entries){
+    const {identity:{native:source,review}}=participantDeliveryRecords.call(archive,entry.id).live.source;
+    const account=native.accounts.find(row=>row.principal===review.principal);
+    const writer=native.writers.find(row=>row.clock.writer===source.writer);
+    const reviewer=native.review?.writers.find(row=>row.clock.actor===review.actor);
+    if(!account||!writer||!reviewer)throw fail('policy');
+    access.set(entry.id,{readOnly:writer.observer||!account.owner&&account.documentRole!=='editor',
+     review:reviewer.observer?'read_only':account.owner||account.reviewRole==='moderator'?'moderate':account.reviewRole??'read_only'});
+   }
+  }
   const writers=new Set<string>(),actors=new Set<string>();
   const deliveryMembers=new Map<string,RoomActorAcquisitionMember>();
   if(!matchContinuedRoomPolicies(entries,'original',originals,policyFailure)||
@@ -217,7 +243,7 @@ async function restore<T>(
     cursor=await accessRecoveryJournal(journal,plan,guard,signal,{before:cursor,next:{completed:step,started:true}});
    }
    const destination=await work(completed);
-   if(destination)destinationsHeld.push(destination);
+   if(destination)destinationsHeld.add(destination);
    step++;
    if(!completed)cursor=await accessRecoveryJournal(journal,plan,guard,signal,{before:cursor,next:{completed:step,started:false}});
   };
@@ -234,7 +260,7 @@ async function restore<T>(
     const cleanupTicket=failedParticipants.retain(original.close);
     // Keep all retained owners through final verification of the entire room.
     for(const step of original.steps)await recover([original.name(step)],completed=>original.restore(step,completed));
-    destinationsHeld.push(await original.hold());
+    destinationsHeld.add(await original.hold());
     cleanupTicket.complete();
     await recover([destination.uploads],completed=>
      recoverContinuedRoomUploads(destination.uploads,original.uploads,completed,context,{limits:original.limits},signal));
@@ -259,8 +285,12 @@ async function restore<T>(
     limits=policy.limits;
    }else if(entry.family==='continued-delivery'){
     const policy=policies.get(destination.id)!,recovery=participantDeliveryRecords.call(archive,destination.id).live;
-    source=completed=>recoverContinuedDeliveryRoomSource(destination.source,policy.restoreDocument,recovery,completed,
-     deliveryRoutes.get(destination.id)!,guard,signal,close=>failedParticipants.retain(close).complete);
+    source=async completed=>{
+     const owner=await recoverContinuedDeliveryRoomSource(destination.source,policy.restoreDocument,recovery,completed,
+      deliveryRoutes.get(destination.id)!,guard,signal,close=>failedParticipants.retain(close).complete,access.get(destination.id));
+     if(handoff)deliveryHeld.set(destination.id,owner);
+     return owner;
+    };
     file=participantUploads.call(archive,destination.id);
     limits=policy.limits;
    }else{
@@ -300,6 +330,18 @@ async function restore<T>(
    // Provider authorization can wait on application code. Re-admit the
    // durable catalog and each exact destination after the provider read.
    await verifyExact();
+   if(handoff){
+    handoff.authorize();
+    if(deliveryHeld.size!==destinations.length||!deliveryActors)throw fail('diverged');
+    // Capture cleanup ownership before promotion. No callback or await can
+    // expose a partial set after the cohort transfers its actual leases.
+    for(const [id,owner] of deliveryHeld)handoff.sessions.set(id,owner.session);
+    commitActors.call(deliveryActors);
+    for(const owner of deliveryHeld.values()){
+     owner.releaseRead();
+     destinationsHeld.delete(owner);
+    }
+   }
    return result;
   }
   current();
@@ -315,7 +357,7 @@ export const resumeContinuedRoomRecovery=(input:ContinuedRoomRecoveryOptions)=>r
 /** SDK-only visit of a completed journal. Every destination stays held and is
  * rechecked after the awaited consumer. No missing or partial step is repaired. */
 export function visitCompletedContinuedRoomRecovery<T>(
- input:ContinuedRoomRecoveryOptions,visit:(read:CompletedContinuedRoomRead)=>Promise<T>,
+ input:ContinuedRoomRecoveryOptions,visit:(read:CompletedContinuedRoomRead)=>Promise<T>,handoff?:ContinuedRoomDeliveryHandoff,
 ):Promise<T>{
- return restore(input,'inspect',visit);
+ return restore(input,'inspect',visit,handoff);
 }

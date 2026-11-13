@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 
 export async function verifyPublication(api,{input,expected,activation,offer,requests,getToken}){
  const {prepareContinuedRoomPublication:prepare,publishContinuedRoom:publish,SharedNativeRoomPublicationHost:Host}=api;
+ const handoff=new api.ContinuedRoomSessionHandoff();
  const database='continued-covered-publication';
  const configure=()=>Host.configure({endpoint:offer.endpoint,expected:offer.selection,principal:'operator',getToken,checkAuthority(){}});
  const publication=configure(),before=requests.filter(row=>row.publication).length;
@@ -32,13 +33,18 @@ export async function verifyPublication(api,{input,expected,activation,offer,req
    error=>error.code==='activation_intent_policy');
   assert.equal(requests.filter(row=>row.publication).length,before);
   await waiting();
-  await assert.rejects(publish(input,{expected:retained,activation,publication,approve:()=>true}),
+  assert.throws(()=>handoff.sessions(),{code:'activation_intent_incomplete'});
+  await assert.rejects(handoff.publish(input,{expected:retained,activation,publication,approve(){
+   assert.throws(()=>handoff.sessions(),{code:'activation_intent_incomplete'});
+   return true;
+  }}),
    error=>error.code==='publication_outcome_unknown');
   assert.ok(lostReceipt);
+  assert.throws(()=>handoff.sessions(),{code:'activation_intent_incomplete'});
   await serving();
   publication.close();
   reopened=configure();
-  const result=await publish(input,{expected:retained,activation,publication:reopened,approve(plan){
+  const result=await handoff.publish(input,{expected:retained,activation,publication:reopened,approve(plan){
    assert.deepEqual(plan.publication,offer.selection);
    return true;
   }});
@@ -47,6 +53,19 @@ export async function verifyPublication(api,{input,expected,activation,offer,req
   assert.equal(Buffer.from(result.receipt.joint.sha256).toString('hex'),retained.graph.sha256);
   assert.equal(requests.filter(row=>row.publication).length-before,2);
   await serving();
-  return 1;
- }finally{globalThis.fetch=fetch;reopened?.close();publication.close();}
+  const sessions=handoff.sessions();
+  assert.deepEqual([...sessions.keys()].sort(),input.recovery.destinations.map(row=>row.id).sort());
+  for(const [id,session] of sessions){
+   assert.deepEqual(session.exportDeliveryRecovery(),input.recovery.catalog.participantDeliveryRecords(id).live);
+   assert.equal(session.core.view().readOnly,false);
+   assert.equal(session.core.redo(),true);
+   assert.equal(session.core.redoReview().kind,'committed');
+   assert.match(session.core.documentJson(),/Local offline document/);
+   assert.match(JSON.stringify(session.core.reviewSnapshot().view),/Local offline comment/);
+   await session.flush();
+  }
+  await handoff.close();
+  assert.throws(()=>handoff.sessions(),{code:'activation_intent_incomplete'});
+  return {publications:1,writableSessions:sessions.size};
+ }finally{globalThis.fetch=fetch;await handoff.close();reopened?.close();publication.close();}
 }

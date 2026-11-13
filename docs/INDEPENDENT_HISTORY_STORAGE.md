@@ -544,5 +544,15 @@ checks. It records the request before asking the relay to start serving on its
 already-bound listener. If the reply is lost, repeat with the same choice and
 actual publication control while the selected room cut is still current.
 A successful retry confirms the same listener and receipt. This step starts
-normal relay serving. Handing the recovered clients their writable sessions
-and delivering queued work are separate steps.
+normal relay serving.
+
+For a room consisting entirely of continued-delivery participants, use
+`new ContinuedRoomSessionHandoff().publish(input, options)` in place of
+`publishContinuedRoom`. This opens the exact existing destinations using
+the document and review roles from the selected inventory, holds the whole
+group through authenticated publication and releases the sessions together.
+`sessions()` returns them only after the relay reply and local checks succeed.
+Call `close()` on the handoff to flush and close its sessions. An uncertain
+publication keeps the sessions private and can be retried against the same
+actual relay control. Use the usual authenticated adapters to deliver
+offline work once the handoff succeeds.

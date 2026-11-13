@@ -11,6 +11,7 @@ import type {RecoveredContinuedRoomReconciliationOptions} from '../continued_roo
 import type {ContinuedRoomReconciliationRead} from '../continued_room_reconciliation/contract.js';
 import {ContinuedRoomActivationIntentStore,continuedRoomActivationChoice,encodeContinuedRoomActivation} from './intent.js';
 import type {ContinuedRoomActivationChoice,ContinuedRoomActivationPlan} from './contract.js';
+import type {ContinuedRoomDeliveryHandoff} from '../continued_room_recovery/recovery.js';
 
 const same=(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b);
 type ChoiceInput=Readonly<{
@@ -28,6 +29,7 @@ export async function withContinuedRoomActivationPlan<T>(
   namespaces:readonly string[];integrity:ReturnType<typeof prepareArchiveIntegrity>;
   store:ContinuedRoomActivationIntentStore;check:()=>void;verifyExact:()=>Promise<void>;signal:AbortSignal;
  })=>Promise<T>,
+ handoff?:ContinuedRoomDeliveryHandoff,
 ):Promise<T>{
  const port=nativeActivationHostPort(activation);
  return withRecoveredContinuedRoomReconciliation(input,async (read,held,host,guard,signal,reread)=>{
@@ -54,7 +56,7 @@ export async function withContinuedRoomActivationPlan<T>(
     }});
    }finally{await store.close();}
   }finally{lifetime.close();}
- });
+ },handoff);
 }
 
 /** Persist an independently retained intent. The Native checkpoint remains prepared. */

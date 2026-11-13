@@ -279,6 +279,7 @@ export {SharedDurableNativeActivationHost} from './native_activation_control/hos
 export {prepareContinuedRoomActivation,verifyContinuedRoomActivation} from './continued_room_activation/prepare.js';
 export {commitContinuedRoomActivation} from './continued_room_activation/commit.js';
 export {prepareContinuedRoomPublication,publishContinuedRoom} from './continued_room_activation/publish.js';
+export {ContinuedRoomSessionHandoff} from './continued_room_activation/session_handoff.js';
 export {SharedNativeRoomPublicationHost} from './native_publication_control/host.js';
 export type {SharedNativeRoomPublicationHostOptions,SharedNativeRoomPublicationSelection,SharedNativeRoomPublicationReceipt} from './native_publication_control/contract.js';
 export type {ContinuedRoomActivationChoice,ContinuedRoomActivationPlan,ContinuedRoomActivationCommitOptions,ContinuedRoomActivationCommitResult,ContinuedRoomPublicationChoice,ContinuedRoomPublicationPlan,ContinuedRoomPublicationOptions,ContinuedRoomPublicationPrepareOptions,ContinuedRoomPublicationResult} from './continued_room_activation/contract.js';
