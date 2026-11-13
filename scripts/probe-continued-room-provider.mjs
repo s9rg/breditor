@@ -587,11 +587,12 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
   counts.rejected++;
   const activation=caseInfo.activation?await verifyCoveredActivation(continuedApi,{
    initial,entries:entries.slice(0,7),fixture,inventory,wasm:native,caseInfo,host,getToken,requests,delivery:deliveryCredentials,restart,
-  }):{commits:0,publications:0,writableSessions:0,deliveredSessions:0,deliveredUploads:0,restartedSessions:0,outageWriters:0};
+  }):{commits:0,publications:0,writableSessions:0,deliveredSessions:0,deliveredUploads:0,recoveredLostEditAcknowledgements:0,restartedSessions:0,outageWriters:0};
   return {recoveredRoomReads,recoveredRoomRefusals,serverOnlyPacketAssets,recoveredClientCatchUps,recoveredReplacementClients,
    recoveredActivationCommits:activation.commits,recoveredPublications:activation.publications,recoveredWritableSessions:activation.writableSessions,
    recoveredDeliveredSessions:activation.deliveredSessions,recoveredDeliveredUploads:activation.deliveredUploads,
    restartedSessions:activation.restartedSessions,outageWriters:activation.outageWriters,
+   recoveredLostEditAcknowledgements:activation.recoveredLostEditAcknowledgements,
    recoveredReplacementLocalClients,recoveredReplacementRasters,recoveredActivationIntents,passed:true,language:fixture.language,atomic:fixture.atomic,...counts,...operations};
  }finally{
   host?.close();

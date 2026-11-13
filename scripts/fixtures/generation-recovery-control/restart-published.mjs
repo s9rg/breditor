@@ -45,13 +45,15 @@ async function start(binary,root,mode,input){
  }catch(error){child.kill('SIGKILL');await closed;throw error;}
 }
 
-export async function restartPublishedFixture(binary,controls,row,oldCredentials,whileOffline){
+export async function restartPublishedFixture(binary,controls,row,oldCredentials,interrupt,whileOffline){
  const listener=row.publication.selection.listener,root=dirname(row.path);
  const checkpoint=join(root,'activation','activation.json'),previous=readFileSync(checkpoint);
  const previousBackup=join(root,'activation','target.backup'),backupDigest=digest(readFileSync(previousBackup));
  const checkpointSha256=row.restartCheckpointSha256;
  assert.equal(digest(previous),bytesHex(checkpointSha256));
- const previousPid=await controls.crash();
+ let previousPid;
+ await interrupt(async()=>{previousPid=await controls.crash();});
+ assert.ok(previousPid,'The test-owned relay must exit before recovery');
  await whileOffline();
  const observed=await start(binary,root,'--inspect-published',{
   checkpointSha256,listener,current:null,documents:[],reviews:[],

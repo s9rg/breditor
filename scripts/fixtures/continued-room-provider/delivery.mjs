@@ -5,6 +5,7 @@ import {RichAssetStore} from '@breditor/experimental-rich-content';
 import {unavailableAsset,unavailableUpload} from '../physical-recovery-control/unavailable-upload.mjs';
 import {secondAsset} from '../review-assets/pixels.mjs';
 import {checkOutageAcknowledgements,checkOutageConvergence,queueOutageWork} from './outage.mjs';
+import {checkLostEdit,interceptEditAcknowledgement,interruptAcknowledgedEdit} from './lost-edit-ack.mjs';
 
 function resumeIdentity(binding,rows,key){
  const row=rows.find(row=>row[key]===binding[key]&&row.principal===binding.principal);
@@ -19,14 +20,15 @@ function receiptCut(record){
   revisions:record.retained.revisions.retained};
 }
 
-function installSocket(endpoint){
+function installSocket(endpoint,wrap=Base=>Base){
  const previous=Object.getOwnPropertyDescriptor(globalThis,'WebSocket');
- Object.defineProperty(globalThis,'WebSocket',{configurable:true,writable:true,value:class extends NativeWebSocket{
+ const socket=class extends NativeWebSocket{
   constructor(url){
    assert.equal(String(url),endpoint,'Client delivery must use the owned serving endpoint');
    super(url,{headers:{Origin:'http://127.0.0.1:4187'}});
   }
- }});
+ };
+ Object.defineProperty(globalThis,'WebSocket',{configurable:true,writable:true,value:wrap(socket)});
  return ()=>{
   if(previous)Object.defineProperty(globalThis,'WebSocket',previous);
   else delete globalThis.WebSocket;
@@ -141,9 +143,22 @@ export async function deliverPublishedCohort(api,sessions,listener,delivery,dest
 export async function verifyRestartedDelivery(api,{restart,cohort,destinations,delivered,delivery,listener}){
  const endpoint='ws://'+listener+'/ws',health='http://'+listener+'/health';
  const names=new Map(destinations.map(row=>[row.id,row.source]));
- let queued;
- const fresh=await restart(delivery,async()=>{queued=await queueOutageWork(api,cohort,names,health);});
- const restoreSocket=installSocket(endpoint);
+ let queued,lost;
+ const {id:interruptedId,options:interrupted}=cohort.at(-1);
+ const fresh=await restart(delivery,async crash=>{
+  const gate=interceptEditAcknowledgement(),restoreSocket=installSocket(endpoint,gate.socket);
+  try{
+   const session=await api.SharedContinuedPairSession.openDelivery({...interrupted,database:names.get(interruptedId)});
+   const adapters=[];
+   try{
+    const {document}=clients(api,session,delivery,endpoint,adapters);
+    lost=await interruptAcknowledgedEdit(session,document,gate,crash);
+   }finally{
+    try{await stopAdapters(adapters);}finally{await session.close();}
+   }
+  }finally{restoreSocket();}
+ },async()=>{queued=await queueOutageWork(api,cohort,names,health);});
+ const outgoing=interceptEditAcknowledgement({holdReply:false}),restoreSocket=installSocket(endpoint,outgoing.socket);
  const options=offer=>({endpoint:offer.endpoint,expected:offer.selection,principal:'operator',
   getToken:fresh.getToken,checkAuthority(){}});
  let activation,publication;
@@ -177,13 +192,17 @@ export async function verifyRestartedDelivery(api,{restart,cohort,destinations,d
     const previous=delivered.acknowledged.get(id),work=queued.get(id);
     if(work)assert.deepEqual({...before,versions:before.versions.filter(row=>row.packet!==work.packet)},previous);
     else assert.deepEqual(before,previous);
+    if(id===interruptedId)outgoing.arm();
     await document.connect();await document.flush();
     await review.connect();await review.flush();
     await syncRetained(session,document,common);
     assert.equal(document.state().pending,false);
     assert.equal(review.state().pending,false);
     const accepted=receiptCut(session.exportDeliveryRecovery());
-    if(work)checkOutageAcknowledgements(session,previous,accepted,work);
+    if(id===interruptedId){
+     assert.equal(outgoing.submitted.length,0,'A frame confirmed by the restarted relay must not be sent again');
+     assert.deepEqual(accepted,{...previous,document:{accepted:lost.clock,receipt:lost.before.receipt}});
+    }else if(work)checkOutageAcknowledgements(session,previous,accepted,work);
     else assert.deepEqual(accepted,previous);
     acknowledged.set(id,accepted);
     if(confirmed>=1){
@@ -193,6 +212,8 @@ export async function verifyRestartedDelivery(api,{restart,cohort,destinations,d
     }
     assert.match(session.core.documentJson(),/Local offline document/);
     assert.match(JSON.stringify(session.core.reviewSnapshot().view),/Local offline comment/);
+    checkLostEdit(session.core);
+    assert.deepEqual(session.core.writerClockAt(lost.clock.writer,lost.clock.through,2),lost.clock);
     confirmed++;
    }finally{
     try{await stopAdapters(adapters);}finally{await session.close();}
@@ -200,7 +221,7 @@ export async function verifyRestartedDelivery(api,{restart,cohort,destinations,d
   }
   // The first writer was connected before its peer's upload. A second cold
   // connection verifies catch-up and exact receipts for both original writers.
-  for(const {id,options} of cohort.filter(row=>queued.has(row.id))){
+  for(const {id,options} of cohort.filter(row=>queued.has(row.id)||row.id===interruptedId)){
    const session=await api.SharedContinuedPairSession.openDelivery({...options,database:names.get(id)});
    const adapters=[];
    try{
@@ -224,7 +245,8 @@ export async function verifyRestartedDelivery(api,{restart,cohort,destinations,d
    assert.deepEqual(Buffer.from(await remote.blob.arrayBuffer()),unavailableUpload);
    assert.deepEqual(await store.get(unavailableAsset),delivered.upload);
   }finally{assets.dispose();store.close();}
-  return {restartedSessions:confirmed,outageWriters:queued.size};
+  assert.equal(outgoing.submitted.length,0);
+  return {restartedSessions:confirmed,outageWriters:queued.size,recoveredLostEditAcknowledgements:1};
  }finally{
   restoreSocket();
   publication?.close();
