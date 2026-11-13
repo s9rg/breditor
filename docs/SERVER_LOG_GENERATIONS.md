@@ -322,3 +322,45 @@ an actual relay restart. They verify offline delivery and the recovered
 records for edits, comments, saved versions, suggestion decisions and
 revisions, and uploads when durable replies are lost. Client storage in these
 workflows uses controlled Node fixtures.
+
+## Restore from a materialized checkpoint
+
+After a physical rotation, while the new active WAL is empty, the relay owner
+can call `Room::materialize_relay_checkpoint`. Store its bytes in private room
+storage and retain `RelayCheckpointIdentity` independently in trusted host
+recovery configuration. The identity names the exact original global cut,
+physical manifest, and SHA-256 of the checkpoint. The bytes include document
+and comment histories, the private suggestion writer, registered writer and
+actor ownership, original receipts, and the version, proposal, and revision
+catalogs with their literal packets. The snapshot contains credential hashes.
+Connection leases and presence start empty on cold open.
+
+`RelayCheckpoint::from_bytes` checks the preselected identity before admitting
+the artifact. `Room::open_log_generations_with_checkpoint` checks that the
+manifest is an ancestor with exactly that boundary, then restores the native
+checkpoint families and applies later relay records in their original order.
+The skipped sealed WALs are still verified against their original byte digests.
+An incomplete active tail, pending physical rotation, or missing ancestor
+refuses the checkpoint open. Ordinary generation recovery remains available
+with the original WALs.
+
+This skips semantic relay replay for the selected prefix. The relay still
+retains the original files, including packets from orphaned revision prepares
+needed by retained asset reads. Native journals can still replay internally
+when restored. WAL capacity, backup format and client transport are unchanged.
+Removing a prefix from the live directory will require new archive custody and
+verification across handover and retained asset reads.
+
+Retain the checkpoint identity only from a successful owner-side capture. Its
+hash binds the snapshot to the operator's choice and the retained WAL cut.
+Treat the snapshot as trusted recovery input. The relay does not rederive the
+snapshot state by running the skipped events during checkpoint open.
+
+Checkpoint `946b4248` passes three focused tests and 54 generation tests.
+The original end-to-end failure and the regression verify the reserved
+suggestion writer's original acceptance receipt. Source and independently
+installed client workflows cold-open the source through the checkpoint API
+before handover and continue through authenticated publication and a real relay
+restart with seven returning clients. The client runs use controlled Node
+storage. Unit coverage compares the checkpoint open with ordinary cold replay
+and checks document and comment Undo/Redo after offline submissions.
