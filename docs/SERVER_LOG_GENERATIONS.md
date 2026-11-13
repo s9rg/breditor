@@ -385,3 +385,13 @@ may be packed before it is archived, and its archived representation retains
 that packing. Archive movement itself keeps the file on the same volume,
 uses the same disk space and leaves the generation count and logical storage
 budget unchanged.
+
+Checkpoint `162e18d9` passes 57 generation tests, three materialized checkpoint
+tests and 20 serving backup and handover tests. The Rust tests exercise both
+interruption points and verify that a corrupt archive or a second inode at the
+live name prevents recovery before it repairs an incomplete active tail. The
+source and independent package workflows run the same authenticated handover
+and seven-client relay restart with a raw archived root and a packed archived
+WAL. Both workflows recover lost edit, comment, version, suggestion decision,
+revision and upload replies and deliver edits from two clients made during the
+outage. These runs use controlled Node storage and a real local Rust relay.
