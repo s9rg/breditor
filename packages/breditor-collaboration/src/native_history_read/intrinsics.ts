@@ -7,6 +7,6 @@ export const nativeHistoryIntrinsics=Object.freeze({
  writerClock:p.writerClock,writerClockV2:p.writerClockV2,
  supportsWriterPrefixRead:p.supportsWriterPrefixRead,writerClockAt:p.writerClockAt,
  writerGroups:p.writerGroups,writerGroupsV2:p.writerGroupsV2,
- reviewCheckpoint:p.reviewCheckpoint,reviewSegmentedCheckpoint:p.reviewSegmentedCheckpoint,
+ reviewCheckpoint:p.reviewCheckpoint,reviewSegmentedCheckpoint:p.reviewSegmentedCheckpoint,reviewContinuedCheckpoint:p.reviewContinuedCheckpoint,
  reviewWriterClock:p.reviewWriterClock,localReviewClock:p.localReviewClock,
 });

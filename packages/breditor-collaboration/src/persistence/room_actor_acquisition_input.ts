@@ -10,8 +10,8 @@ export function roomActorAcquisitionInput(provided:RoomActorAcquisitionOptions):
   if(typeof room!=='string'||!room||new TextEncoder().encode(room).length>200||typeof authority!=='function')throw roomActorAcquisitionFailure();
   const ids=new Set<string>(),writers=new Set<string>(),actors=new Set<string>(),selected=rows(r['members'],MAX_NATIVE_ACTOR_COHORT_MEMBERS);if(!selected.length)throw roomActorAcquisitionFailure();
   const members=selected.map(value=>{const m=fields(value,['id','factory','writer','actor']),id=m['id'],factory=m['factory'],writer=m['writer'],actor=m['actor'];
-   if(typeof id!=='string'||!id||id.length>200||typeof writer!=='string'||!/^\d+$/.test(writer)||writer.length>20||BigInt(writer)<1n||BigInt(writer)>=18446744073709551615n||BigInt(writer).toString()!==writer||typeof factory!=='string'||!['shared','review','segmented','independent'].includes(factory))throw roomActorAcquisitionFailure();
-   if(actor!==null&&(typeof actor!=='string'||!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(actor))||factory==='shared'&&actor!==null||(factory==='review'||factory==='independent')&&actor===null)throw roomActorAcquisitionFailure();
+   if(typeof id!=='string'||!id||id.length>200||typeof writer!=='string'||!/^\d+$/.test(writer)||writer.length>20||BigInt(writer)<1n||BigInt(writer)>=18446744073709551615n||BigInt(writer).toString()!==writer||typeof factory!=='string'||!['shared','review','segmented','independent','continued-delivery'].includes(factory))throw roomActorAcquisitionFailure();
+   if(actor!==null&&(typeof actor!=='string'||!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(actor))||factory==='shared'&&actor!==null||(factory==='review'||factory==='independent'||factory==='continued-delivery')&&actor===null)throw roomActorAcquisitionFailure();
    if(ids.has(id)||writers.has(writer)||actor!==null&&actors.has(actor as string))throw roomActorAcquisitionFailure('duplicate');ids.add(id);writers.add(writer);if(actor!==null)actors.add(actor as string);
    return Object.freeze({id,factory,writer,actor}) as RoomActorAcquisitionMember;
   });

@@ -31,10 +31,11 @@ function read<T>(source:object,operation:(core:SharedRichEditor<SharedSelectionP
 export function registerCapturedNativeHistory<P extends SharedSelectionPolicy>(source:object,core:SharedRichEditor<P>,selection:CapturedNativeHistorySelection,guard:()=>void):void{
  if(sources.has(source))throw unavailable();guard();
  const documentKind=native.documentKind.call(core)??'original',reviewKind=native.reviewKind.call(core),stamp=coreReadStamp(core);
- if(reviewKind==='continued-v2')throw unavailable();
+ const reviewCheckpoint=reviewKind==='continued-v2'?native.reviewContinuedCheckpoint:
+  reviewKind==='segmented-v1'?native.reviewSegmentedCheckpoint:native.reviewCheckpoint;
  if(documentKind!==selection.document.kind||native.checkpointJson.call(core)!==selection.document.checkpoint)throw unavailable();
  if(selection.review&&(reviewKind!==selection.review.kind||
-  (reviewKind==='segmented-v1'?native.reviewSegmentedCheckpoint:native.reviewCheckpoint).call(core)!==selection.review.checkpoint))throw unavailable();
+  reviewCheckpoint.call(core)!==selection.review.checkpoint))throw unavailable();
  guard();
  const document=Object.freeze({kind:documentKind,
   descriptor:()=>read(source,core=>native.descriptor.call(core)),
@@ -47,7 +48,7 @@ export function registerCapturedNativeHistory<P extends SharedSelectionPolicy>(s
   writerGroupsV2:(after:string,revision?:string)=>read(source,core=>native.writerGroupsV2.call(core,after,revision)),
  });
  const review=selection.review?Object.freeze({kind:selection.review.kind,
-  checkpointJson:()=>read(source,core=>(reviewKind==='segmented-v1'?native.reviewSegmentedCheckpoint:native.reviewCheckpoint).call(core)),
+  checkpointJson:()=>read(source,core=>reviewCheckpoint.call(core)),
   reviewWriterClock:(actor:string,principal:string,through?:string)=>read(source,core=>native.reviewWriterClock.call(core,actor,principal,through)),
   localReviewClock:()=>read(source,core=>native.localReviewClock.call(core)),
  }):reviewKind===null?Object.freeze({kind:'absent' as const}):Object.freeze({kind:'unselected' as const,nativeKind:reviewKind});

@@ -10,7 +10,7 @@ export interface PhysicalAssetSourcePin {
 }
 export interface PhysicalAssetNativePin {
  readonly document:Readonly<{kind:'original'|'segmented-v1'|'continued-v2';sha256:string}>;
- readonly review:Readonly<{kind:'original'|'segmented-v1';sha256:string}>|Readonly<{kind:'absent'}>|Readonly<{kind:'unselected';nativeKind:'original'|'segmented-v1'}>;
+ readonly review:Readonly<{kind:'original'|'segmented-v1'|'continued-v2';sha256:string}>|Readonly<{kind:'absent'}>|Readonly<{kind:'unselected';nativeKind:'original'|'segmented-v1'|'continued-v2'}>;
 }
 export interface PhysicalAssetReadParticipant {
  readonly id:string;readonly family:PhysicalOperationV3Family;readonly sourceDatabase:string;

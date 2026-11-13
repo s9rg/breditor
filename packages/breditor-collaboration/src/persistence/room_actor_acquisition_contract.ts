@@ -2,7 +2,7 @@
  * not prior retirement, native admission, a saved acknowledgement or activation. */
 export type RoomActorAcquisitionMember=Readonly<{id:string;writer:string}>&(
  Readonly<{factory:'shared';actor:null}>|
- Readonly<{factory:'review'|'independent';actor:string}>|
+ Readonly<{factory:'review'|'independent'|'continued-delivery';actor:string}>|
  Readonly<{factory:'segmented';actor:string|null}>);
 export interface RoomActorAcquisitionOptions{
  readonly room:string;readonly members:readonly RoomActorAcquisitionMember[];

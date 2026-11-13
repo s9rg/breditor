@@ -20,7 +20,12 @@ import {readContinuedPairAssetReferences,replayContinuedDeliveryAssetReferences,
 import {admitContinuedPair,captureContinuedPair as capture,withContinuedPairReplay} from './replay.js';
 import {continuedPairReadFailure as readFailure,createContinuedPairRecordRead,ContinuedPairRecordRead,type ContinuedPairRecords} from './read_records.js';
 import {SharedEditorError,type SharedRichEditor} from '../core.js';
-import {checkManagedCore} from '../managed_custody.js';
+import {inheritActorLeaseInput,takeActorDocumentLease,takeActorReviewLease} from '../persistence/actor_lease_input.js';
+import {registerNativeActorSource} from '../persistence/native_actor_source.js';
+import {requireLiveActorCore,requireStoppedActorCore,type StoppedActorBinding,type StoppedActorCustody} from '../persistence/stopped_actor_source.js';
+import {ActorLeaseEscrow} from '../persistence/actor_lease_escrow.js';
+import {checkManagedCore,registerManagedSource} from '../managed_custody.js';
+import {registerCapturedNativeHistory} from '../native_history_read/registry.js';
 import {registerNativePendingWork} from '../native_pending_work.js';
 import {disposeOwnedCore,retireOwnedCore} from '../owned_core_lifetime.js';
 import {freeUnclaimedSharedRustOwner} from '../raw_owner_lifetime.js';
@@ -28,8 +33,8 @@ import {sourceCoreMethods as native} from '../source_native_read.js';
 import {requireBackupRecovery} from '../backups/identity.js';
 import {object} from '../persistence/segmented_checkpoint.js';
 import {fenceOpeningDatabase} from '../persistence/opening_database.js';
-import {SharedWriterLease} from '../persistence/writer_lease.js';
-import {ReviewWriterLease} from '../persistence/review_writer_lease.js';
+import {SharedWriterLease,checkSharedWriterLeaseForEscrow} from '../persistence/writer_lease.js';
+import {ReviewWriterLease,checkReviewWriterLeaseForEscrow} from '../persistence/review_writer_lease.js';
 import {readExactHistoryDestination} from '../independent_history/exact_destination.js';
 import {openPairedHistoryDatabase,readPairedHistoryCut,writePairedHistoryCut} from '../independent_history/database.js';
 import {markIndependentHistoryStorage} from '../independent_history/native_port.js';
@@ -75,6 +80,13 @@ interface HeldPairSlots {
  readonly pending:Capture|undefined;
  readonly live:Capture;
 }
+
+let inspectActors:(owner:object,stopped:boolean)=>StoppedActorBinding;
+let moveActors:(owner:object)=>StoppedActorCustody;
+const createActorEscrow=ActorLeaseEscrow.create;
+export const checkReadyContinuedDeliveryActors=(owner:object)=>inspectActors(owner,false);
+export const checkStoppedContinuedDeliveryActors=(owner:object)=>inspectActors(owner,true);
+export const takeStoppedContinuedDeliveryActors=(owner:object)=>moveActors(owner);
 
 /** Own one exact two-lane native replay and one atomic version-two paired head. */
 export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
@@ -149,6 +161,8 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
     progress:()=>structuredClone(delivery.durable().relay.review!),
     persist:persistReview,
    }});
+   registerManagedSource(this,core,check);
+   registerNativeActorSource(this,'continued-delivery',{document:documentLease,review:reviewLease});
    registerContinuedDelivery(this,{
     core:core as SharedRichEditor<SharedSelectionPolicy>,binding:structuredClone(delivery.binding),
     check,save,flush,durable:()=>structuredClone(delivery.durable().relay),
@@ -173,7 +187,7 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
 
  /** Open a separately bound delivery database. A local pair requires explicit import. */
  static async openDelivery<P extends SharedSelectionPolicy>(options:SharedContinuedDeliveryOptions<P>):Promise<SharedContinuedPairSession<P>>{
-  return this.#open(withContinuedDelivery(forwardIndependentBootstrapPolicy(options,{...options}),new ContinuedDeliveryCompanion(options)));
+  return this.#open(withContinuedDelivery(forwardIndependentBootstrapPolicy(options,inheritActorLeaseInput(options,{...options})),new ContinuedDeliveryCompanion(options)));
  }
 
  /** Recover the complete pair, accepted receipts and original pending packets. */
@@ -181,7 +195,7 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
   recovery:SharedContinuedDeliveryRecovery,writerRecovery:'host-reacquired'):Promise<SharedContinuedPairSession<P>>{
   requireBackupRecovery(writerRecovery);
   const selected=structuredClone(recovery),companion=new ContinuedDeliveryCompanion(options,selected);
-  return this.restoreRecovery(withContinuedDelivery(forwardIndependentBootstrapPolicy(options,{...options}),companion),selected.source,writerRecovery);
+  return this.restoreRecovery(withContinuedDelivery(forwardIndependentBootstrapPolicy(options,inheritActorLeaseInput(options,{...options})),companion),selected.source,writerRecovery);
  }
 
  /** Replay both exact lanes into an empty destination after the host reacquires the writers. */
@@ -214,12 +228,14 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
    throw fail('continued_pair_identity','Recovery must match the selected room, actors and history families');
   const {room,writer}=identity.native;
   const key=[room,writer] as const;
-  const documentLease=await SharedWriterLease.acquire(room,writer);
+  const documentLease=await(takeActorDocumentLease(input,delivery?'continued-delivery':'continued-local',database,room,writer,review.actor)??
+   SharedWriterLease.acquire(room,writer));
   let reviewLease:ReviewWriterLease|undefined,db:IDBDatabase|undefined,raw:SharedRustOwner|undefined,core:SharedRichEditor<P>|undefined;
   let session:SharedContinuedPairSession<P>|undefined;
   try{
    bootstrap?.();
-   reviewLease=await ReviewWriterLease.acquire(room,review.actor);
+   reviewLease=await(takeActorReviewLease(input,delivery?'continued-delivery':'continued-local',database,room,writer,review.actor)??
+    ReviewWriterLease.acquire(room,review.actor));
    bootstrap?.();
    db=await openPairedHistoryDatabase(database,store.names,bootstrap,recovery?undefined:destination?.fail??(delivery?missing:undefined));
    const opening=fenceOpeningDatabase(db,'session_open_versionchange');
@@ -385,13 +401,21 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
    if(!state)throw readFailure('changed');
    return delivery.recovery(source,state);
   };
-  return this.#readRecords<ContinuedDeliveryRecords>(checkAuthority,signal,({committed,attempt,pending,live})=>({
+  const read=await this.#readRecords<ContinuedDeliveryRecords>(checkAuthority,signal,({committed,attempt,pending,live})=>({
    format:'breditor/persistent-continued-delivery-record-read',formatVersion:1,
    scope:'atomic-continued-delivery-committed-attempt-pending-live',
    committed:{head:committed.head,recovery:delivery.readRecovery(committed.recovery,committed.head)},
    attempt:attempt?{capture:wrap(attempt.capture),preparedHead:attempt.cut?.head??null}:null,
    pending:pending?wrap(pending):null,live:wrap(live),
   }));
+  try{
+   const {identity,documentCheckpoint,reviewCheckpoint}=(readPairMetadata.call(read) as ContinuedDeliveryRecords).live.source;
+   registerCapturedNativeHistory(read,this.#core,{
+    document:{kind:identity.documentHistory,checkpoint:documentCheckpoint},
+    review:{kind:identity.reviewHistory,checkpoint:reviewCheckpoint},
+   },()=>checkPairRecords.call(read));
+   return read;
+  }catch(error){disposePairRecords.call(read);throw error;}
  }
 
  async #readRecords<T>(checkAuthority:()=>void,signal:AbortSignal|undefined,
@@ -460,6 +484,23 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
  }
 
  static{
+  inspectActors=(owner,stopped)=>{
+   if(!owner||typeof owner!=='object'||!(#core in owner)||!owner.#delivery||Object.hasOwn(owner,'core'))
+    throw fail('actor_source_unavailable','Use the actual continued delivery persistence owner');
+   if(owner.#closed||owner.#running||owner.#closing||owner.#discarding||owner.#recordReader||
+      owner.#attempt||owner.#pending||owner.#failed||owner.#storageChanged||owner.#openings.size)
+    throw fail('actor_source_in_use','Settle the complete continued save and close any held reads before moving actors');
+   if(stopped)requireStoppedActorCore(owner.#core);
+   else{owner.#checkDelivery();requireLiveActorCore(owner.#core);}
+   const {room,writer}=owner.#identity.native,actor=owner.#identity.review.actor;
+   checkSharedWriterLeaseForEscrow(owner.#documentLease,room,writer);
+   checkReviewWriterLeaseForEscrow(owner.#reviewLease,room,actor);
+   return Object.freeze({room,writer,actor});
+  };
+  moveActors=owner=>{
+   const {room,writer,actor}=inspectActors(owner,true),source=owner as SharedContinuedPairSession;
+   return createActorEscrow.call(ActorLeaseEscrow,source.#documentLease,source.#reviewLease,room,writer,actor!);
+  };
   readPairAssets=(session,read,signal)=>session.#readAssets(read,signal);
   readDeliveryAssets=(session,read,signal)=>withContinuedPairReplay(session.#identity,session.#restoreDocument,
    ()=>checkPairRecords.call(read),signal,replay=>replayContinuedDeliveryAssetReferences(readPairMetadata.call(read) as ContinuedDeliveryRecords,replay,()=>checkPairRecords.call(read)));

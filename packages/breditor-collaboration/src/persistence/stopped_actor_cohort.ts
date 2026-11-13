@@ -15,13 +15,14 @@ import {checkStoppedIndependentDeliveryActors,takeStoppedIndependentDeliveryActo
 import {ActorLeaseEscrow} from './actor_lease_escrow.js';
 import {createSharedWriterLeaseEscrow,checkSharedWriterLeaseEscrow,commitSharedWriterLeaseEscrow,checkSharedWriterLeaseEscrowClose,closeSharedWriterLeaseEscrow,type SharedWriterLeaseEscrow} from './writer_lease.js';
 import {DeferredActorLeaseInput,type ActorLeaseRouteTargets} from './deferred_actor_input.js';
-import {bindActorLeaseInput,type ActorLeaseFactoryInput} from './actor_lease_input.js';
+import {checkStoppedContinuedDeliveryActors,takeStoppedContinuedDeliveryActors} from '../continued_pair/session.js';
+import {bindActorLeaseInput,type ActorLeaseFactoryInput,type ActorLeaseFactoryFamily} from './actor_lease_input.js';
 import type {StoppedActorBinding,StoppedActorCustody} from './stopped_actor_source.js';
 import {MAX_NATIVE_ACTOR_COHORT_MEMBERS} from './stopped_actor_source.js';
 
-export type StoppedActorFamily='shared'|'review'|'segmented'|'independent'|'segmented-relay'|'independent-delivery';
+export type StoppedActorFamily='shared'|'review'|'segmented'|'independent'|'segmented-relay'|'independent-delivery'|'continued-delivery';
 export interface StoppedActorMember{readonly id:string;readonly family:StoppedActorFamily;readonly source:object}
-type FactoryFamily='shared'|'review'|'segmented'|'independent';
+type FactoryFamily=ActorLeaseFactoryFamily;
 interface Adapter{check:(source:never)=>StoppedActorBinding;take:(source:never)=>StoppedActorCustody;factory:FactoryFamily}
 const adapters:Readonly<Record<StoppedActorFamily,Adapter>>={
  shared:{check:checkStoppedSharedSourceActors,take:takeStoppedSharedSourceActors,factory:'shared'},
@@ -29,6 +30,7 @@ const adapters:Readonly<Record<StoppedActorFamily,Adapter>>={
  segmented:{check:checkStoppedSegmentedSourceActors,take:takeStoppedSegmentedSourceActors,factory:'segmented'},
  independent:{check:checkStoppedIndependentSourceActors,take:takeStoppedIndependentSourceActors,factory:'independent'},
  'segmented-relay':{check:checkStoppedSegmentedRelayActors,take:takeStoppedSegmentedRelayActors,factory:'segmented'},
+ 'continued-delivery':{check:source=>checkStoppedContinuedDeliveryActors(source),take:source=>takeStoppedContinuedDeliveryActors(source),factory:'continued-delivery'},
  'independent-delivery':{check:checkStoppedIndependentDeliveryActors,take:takeStoppedIndependentDeliveryActors,factory:'independent'},
 };
 interface HeldMember{readonly id:string;readonly factory:FactoryFamily;readonly binding:StoppedActorBinding;readonly custody:StoppedActorCustody}

@@ -34,7 +34,7 @@ if(mode==='installed'){
  execFileSync(npm,['install','--offline','--ignore-scripts','--no-audit','--no-fund'],{cwd:consumer,stdio:'inherit'});
  const registryArtifacts=verifySearchConsumerRegistry(producer,JSON.parse(readFileSync(join(consumer,'package-lock.json'),'utf8')));
  for(const name of packages)assert.ok(realpathSync(join(consumer,'node_modules',name)).startsWith(realpathSync(consumer)+'/node_modules/'));
- copyConsumerFixtures(root,consumer,['relay-host.mjs','relay-wire.mjs','room-participant-inventory/environment.mjs','independent-delivery/session.mjs','review-assets/pixels.mjs']);
+ copyConsumerFixtures(root,consumer,['relay-host.mjs','relay-wire.mjs','room-participant-inventory/environment.mjs','independent-delivery/session.mjs','review-assets/pixels.mjs','continued-room-recovery/actor-handoff.mjs']);
  cpSync(join(root,'crates/breditor-core/tests/fixtures/rich-local-root.json'),join(consumer,'rich-local-root.json'));
  const types='types-continued-pair.ts';
  cpSync(join(root,'scripts/fixtures/editor-consumer',types),join(consumer,types));
@@ -42,6 +42,7 @@ if(mode==='installed'){
   '--target','ES2022','--module','NodeNext','--lib','ES2022,DOM,ESNext.Disposable',types],{cwd:consumer,stdio:'inherit'});
  const original=readFileSync(sourceProbe,'utf8'),rewrites=[
   ["'../packages/breditor-collaboration/dist/index.js'","'@breditor/collaboration'"],
+  ["'../packages/breditor-collaboration/dist/runtime'","'./node_modules/@breditor/collaboration/dist/runtime'"],
   ["'../crates/breditor-core/tests/fixtures/rich-local-root.json'","'./rich-local-root.json'"],
  ];
  const installed=rewrites.reduce((text,[from,to])=>text.replace(from,to),original);
@@ -55,7 +56,7 @@ if(mode==='installed'){
 }
 const result=JSON.parse(execFileSync(process.execPath,[probe,runtime,...hosts],{cwd,encoding:'utf8',timeout:120000}));
 assert.deepEqual(result,{passed:true,nativeRooms:3,coldReads:3,packetsRetained:6,lostAcknowledgements:2,
- reviewReceipts:3,documentReceipts:3,undoRedo:3,ceilingChecks:3,duplicateRefusals:3,recoveryImports:3,deliveredPackets:5,verifiedRecordReads:3,unacknowledgedRecordReads:2,archiveRoundTrips:3,archiveMissingAssets:3,packetAssets:1,archivedUnacknowledgedSaves:2,uploadRestores:3,sharedWasmSha256});
+ reviewReceipts:3,documentReceipts:3,undoRedo:3,ceilingChecks:3,duplicateRefusals:3,recoveryImports:3,deliveredPackets:5,verifiedRecordReads:3,unacknowledgedRecordReads:2,archiveRoundTrips:3,archiveMissingAssets:3,packetAssets:1,archivedUnacknowledgedSaves:2,uploadRestores:3,actorHandoffs:3,postHandoffDeliveries:3,sharedWasmSha256});
 assert.deepEqual(sourceEvidence(root),source);
 assert.deepEqual(hosts.map(fileDigest),nativeHosts.map(row=>row.sha256));
 const report={format:'breditor/continued-delivery-qualification',formatVersion:1,passed:true,source,mode,nativeHosts,result,consumerProof};

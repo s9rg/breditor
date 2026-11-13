@@ -1,8 +1,8 @@
 /** Internal borrowed native history, never writable custody or a serialized grant. */
 import type {SharedRichEditor} from '../core.js';
 
-export type CapturedNativeHistoryKind='original'|'segmented-v1';
-export type CapturedDocumentHistoryKind=CapturedNativeHistoryKind|'continued-v2';
+export type CapturedNativeHistoryKind='original'|'segmented-v1'|'continued-v2';
+export type CapturedDocumentHistoryKind=CapturedNativeHistoryKind;
 /** Native-only reads; enclosing check() validates the complete selected stores. */
 export type CapturedDocumentHistoryRead=Readonly<
  Pick<SharedRichEditor,'descriptor'|'checkpointJson'|'writerClock'|'writerClockV2'|'writerGroups'|'writerGroupsV2'|'supportsWriterPrefixRead'|'writerClockAt'>

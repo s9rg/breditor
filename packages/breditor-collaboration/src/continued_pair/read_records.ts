@@ -1,3 +1,4 @@
+import {releaseCapturedNativeHistory} from '../native_history_read/registry.js';
 import {SharedEditorError} from '../core.js';
 import {frozen} from '../room_participant_inventory/policy.js';
 import type {IndependentHistoryCut} from '../independent_history/contract.js';
@@ -55,6 +56,7 @@ export class ContinuedPairRecordRead<T=ContinuedPairRecords> {
  dispose():void{
   const state=this.#state;
   this.#state=undefined;
+  releaseCapturedNativeHistory(this);
   state?.release();
  }
  static{create=(metadata,state)=>new ContinuedPairRecordRead(construction,metadata,state);}

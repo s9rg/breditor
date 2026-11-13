@@ -11,6 +11,7 @@ import {pixel,secondPixel,secondAsset,ReviewFixtureImage} from './fixtures/revie
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
 import {ReviewWireFixture} from './fixtures/relay-wire.mjs';
 import {deliveryDraft} from './fixtures/independent-delivery/session.mjs';
+import {verifyContinuedDeliveryActorHandoff} from './fixtures/continued-room-recovery/actor-handoff.mjs';
 import {startReviewHost} from './fixtures/relay-host.mjs';
 import * as api from '../packages/breditor-collaboration/dist/index.js';
 
@@ -28,7 +29,7 @@ export async function probeContinuedDelivery(runtime,binary,revisionBinary){
  await wasm.default({module_or_path:bytes});
  const configuration=JSON.stringify({format:'breditor/shared-rich-profile',formatVersion:3,schema:{name:'example/continued-delivery',version:1},extensions:[]});
  const profile=wasm.SharedRichProfile.from_standard_configuration_json_v3(configuration),descriptor=JSON.parse(profile.descriptor_json());
- const counts={nativeRooms:0,coldReads:0,packetsRetained:0,lostAcknowledgements:0,reviewReceipts:0,documentReceipts:0,undoRedo:0,ceilingChecks:0,duplicateRefusals:0,recoveryImports:0,deliveredPackets:0,verifiedRecordReads:0,unacknowledgedRecordReads:0,archiveRoundTrips:0,archiveMissingAssets:0,packetAssets:0,archivedUnacknowledgedSaves:0,uploadRestores:0};
+ const counts={nativeRooms:0,coldReads:0,packetsRetained:0,lostAcknowledgements:0,reviewReceipts:0,documentReceipts:0,undoRedo:0,ceilingChecks:0,duplicateRefusals:0,recoveryImports:0,deliveredPackets:0,verifiedRecordReads:0,unacknowledgedRecordReads:0,archiveRoundTrips:0,archiveMissingAssets:0,packetAssets:0,archivedUnacknowledgedSaves:0,uploadRestores:0,actorHandoffs:0,postHandoffDeliveries:0};
  try{
   for(const [wire,documentHistory,reviewHistory] of [[1,'original','continued-v2'],[2,'continued-v2','original'],[2,'continued-v2','continued-v2']]){
    const directory=mkdtempSync(join(tmpdir(),'breditor-continued-delivery-test-')),paths=['room.log','profile.json','document.json','auth.json'].map(name=>join(directory,name));
@@ -263,6 +264,24 @@ export async function probeContinuedDelivery(runtime,binary,revisionBinary){
     assert.throws(()=>session.core.redoReview(),error=>String(error).includes('not permitted'));
     counts.ceilingChecks++;
     await session.close();session=undefined;
+    session=await api.SharedContinuedPairSession.openDelivery(options);
+    const sdkRuntime=fileURLToPath(new URL('../packages/breditor-collaboration/dist/runtime',import.meta.url));
+    await verifyContinuedDeliveryActorHandoff(sdkRuntime,api.SharedContinuedPairSession,session,options,async reopened=>{
+     const transport=api.createSharedContinuedRelaySync(reopened,{identity:writer.identity,getToken:auth.getToken,
+      autoConnect:false,...suggestionOptions});
+     const reviewTransport=api.createSharedContinuedReviewRelaySync(reopened,{identity:comment.identity,getToken:auth.getToken,
+      autoConnect:false,flushDocument:()=>transport.flush()});
+     try{
+      await transport.connect();await transport.flush();
+      await reviewTransport.connect();await reviewTransport.flush();
+      const exact=reopened.exportDeliveryRecovery().relay;
+      assert.equal(exact.document.accepted.through,reopened.core.writerClock(native.writer).through);
+      assert.equal(exact.review.accepted.through,reopened.core.localReviewClock().through);
+      assert.ok(exact.document.receipt);assert.ok(exact.reviewReceipt);
+      counts.postHandoffDeliveries++;
+     }finally{reviewTransport.dispose();transport.dispose();}
+    });
+    session=undefined;counts.actorHandoffs++;
     session=await api.SharedContinuedPairSession.restoreDelivery({...options,database:'continued-delivery-import'},committed,'host-reacquired');
     assert.deepEqual(session.exportDeliveryRecovery(),committed);
     counts.recoveryImports++;

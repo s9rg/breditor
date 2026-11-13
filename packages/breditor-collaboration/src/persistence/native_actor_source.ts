@@ -10,7 +10,7 @@ import {managedSourceCore} from '../managed_custody.js';
 import {captureManagedSourceBindings} from '../managed_source_bindings.js';
 import {generationActorCore} from '../generation_source/admission.js';
 import {independentHistoryNative} from '../independent_history/native_port.js';
-export type NativeActorSourceFamily='shared'|'review'|'segmented'|'independent';
+export type NativeActorSourceFamily='shared'|'review'|'segmented'|'independent'|'continued-delivery';
 export interface NativeActorSource{readonly family:NativeActorSourceFamily;readonly source:object}
 interface Registration extends NativeActorSource{readonly checkBinding:()=>void;readonly document:SharedWriterLease;readonly review:ReviewWriterLease|undefined}
 const owners=new WeakMap<object,Registration>(),checkDocument=SharedWriterLease.prototype.assertLive,checkReview=ReviewWriterLease.prototype.assertLive;
@@ -18,8 +18,8 @@ const fail=()=>new SharedEditorError('native_actor_source','Use the genuine nati
 /** Constructor-only registration, after the actual existing source/native port
  * has admitted this owner. A copied core field cannot create that admission. */
 export function registerNativeActorSource(source:object,family:NativeActorSourceFamily,leases:Readonly<{document:SharedWriterLease;review?:ReviewWriterLease}>):void{
- if(!['shared','review','segmented','independent'].includes(family))throw fail();
- const core=family==='shared'||family==='review'?managedSourceCore(source):family==='segmented'?generationActorCore(source):independentHistoryNative(source).core;
+ if(!['shared','review','segmented','independent','continued-delivery'].includes(family))throw fail();
+ const core=family==='shared'||family==='review'||family==='continued-delivery'?managedSourceCore(source):family==='segmented'?generationActorCore(source):independentHistoryNative(source).core;
  if(owners.has(core))throw fail();
  if(!leases||typeof leases!=='object')throw fail();checkDocument.call(leases.document);if(leases.review)checkReview.call(leases.review);
  const checkBinding=captureManagedSourceBindings(source,fail);checkBinding();

@@ -6,6 +6,7 @@ import {MAX_NATIVE_ACTOR_COHORT_MEMBERS,type StoppedActorBinding} from './stoppe
 import {checkReadySharedSourceActors} from './shared_session.js';
 import {checkReadyReviewSourceActors} from './review_session.js';
 import {checkReadySegmentedSourceActors} from './segmented_session.js';
+import {checkReadyContinuedDeliveryActors} from '../continued_pair/session.js';
 import {checkReadyIndependentSourceActors} from '../independent_history/session.js';
 export interface NativeActorClient{readonly id:string;readonly core:object}
 export interface NativeActorReadyClient extends NativeActorClient{readonly family:NativeActorSourceFamily;readonly binding:StoppedActorBinding}
@@ -23,7 +24,9 @@ export function snapshotNativeActorClients(input:readonly NativeActorClient[]):r
  }
  return Object.freeze(selected.map(row=>Object.freeze(row)));
 }
-const readiness:Readonly<Record<NativeActorSourceFamily,(source:never)=>StoppedActorBinding>>={shared:checkReadySharedSourceActors,review:checkReadyReviewSourceActors,segmented:checkReadySegmentedSourceActors,independent:checkReadyIndependentSourceActors};
+const readiness:Readonly<Record<NativeActorSourceFamily,(source:never)=>StoppedActorBinding>>={shared:checkReadySharedSourceActors,review:checkReadyReviewSourceActors,segmented:checkReadySegmentedSourceActors,independent:checkReadyIndependentSourceActors,
+ 'continued-delivery':source=>checkReadyContinuedDeliveryActors(source),
+};
 export function prepareNativeActorReadiness(input:readonly NativeActorClient[]):readonly NativeActorReadyClient[]{
  const selected=snapshotNativeActorClients(input),ids=new Set<string>(),cores=new Set<object>(),sources=new Set<object>(),writers=new Set<string>(),actors=new Set<string>();let room:string|undefined;
  return Object.freeze(selected.map(row=>{
