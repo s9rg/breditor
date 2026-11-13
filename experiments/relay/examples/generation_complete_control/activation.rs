@@ -4,7 +4,8 @@ use super::{
     capture::{authentication, authentication_for_digest},
 };
 use breditor_collab_relay::{
-    Room, ServerLogGenerationRoomBackup,
+    Room, ServerLogGenerationRoomBackup, ServerNativeHistoryBoundary as Boundary,
+    ServerNativeHistoryLane as Lane,
     assets::AssetStore,
     server::{
         DurableNativeActivationControl, NativeGenerationActivationPrepareOptions,
@@ -46,6 +47,20 @@ pub async fn seal(
         lease.clone(),
         "owner",
         &token,
+    )
+    .await?;
+    live.apply_native_history_boundary(
+        "owner",
+        &token,
+        Lane::Document,
+        Boundary::ContinueDocument { next: "document-continued".into() },
+    )
+    .await?;
+    live.apply_native_history_boundary(
+        "owner",
+        &token,
+        Lane::Review,
+        Boundary::ContinueReview { next: "review-continued".into() },
     )
     .await?;
     let backup = live.capture("owner", &token).await?;

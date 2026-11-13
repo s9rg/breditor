@@ -28,6 +28,7 @@ mod control_work;
 mod metadata_packet;
 mod metadata_page;
 mod native_dependencies;
+mod native_history;
 mod next_handover;
 pub use control::{
     ServerLogGenerationRecoveryControl, ServerLogGenerationRecoveryControlIdentity,

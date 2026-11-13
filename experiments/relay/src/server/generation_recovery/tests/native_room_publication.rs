@@ -17,6 +17,8 @@ use crate::server::{
 use serde_json::json;
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
+mod native_history;
+
 struct ActiveSocket {
     socket: Socket,
     document: crate::Lease,

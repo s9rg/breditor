@@ -6,7 +6,7 @@ use super::PreparedLogGenerationRecoveryHost;
 use crate::{Error, Result, Room, ServerLogGenerationRoomBackup, assets::AssetStore};
 use std::sync::Arc;
 
-fn check_source(
+pub(super) fn check_source(
     owner: &PreparedLogGenerationRecoveryHost,
     room: &mut Room,
     assets: &mut AssetStore,

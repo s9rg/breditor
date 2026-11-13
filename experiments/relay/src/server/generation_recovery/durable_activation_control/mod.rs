@@ -1,5 +1,6 @@
 //! Explicit operator transport for an already durable native activation choice.
 mod commit;
+mod native_history;
 mod prepare;
 mod prepare_next_handover;
 mod publication;

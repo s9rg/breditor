@@ -2,7 +2,7 @@
 use super::{Result, activation, clients, migrated_origin, server_packet_asset, source, storage};
 use breditor_collab_relay::{
     RecoveryRegistrationCredentials, Role, RoomRecoveryPolicy, ServerLogGenerationRoomBackup,
-    ServerLogGenerationRoomRecovery, SuggestionRole,
+    ServerLogGenerationRoomRecovery, ServerNativeHistoryFamily, SuggestionRole,
     assets::{AssetStore, asset_id, prepare_asset},
     server::{
         Authentication, ContentAddressedServerAssets, PreparedLogGenerationRecoveryHost,
@@ -116,16 +116,10 @@ async fn capture_source_cuts(
     activation: bool,
 ) -> Result<(migrated_origin::Cuts, Option<activation::Predecessor>)> {
     room.seal_document_history_generation("owner", "document-two".into())?;
-    if activation {
-        room.continue_document_native_history("owner", "document-continued".into())?;
-    }
     if !migrated {
         room.rotate_log_generation("owner", "two")?;
     }
     room.seal_review_history_generation("owner", "review-two".into())?;
-    if activation {
-        room.continue_review_native_history("owner", "review-continued".into())?;
-    }
     if !migrated {
         room.rotate_log_generation("owner", "three")?;
     }
@@ -202,6 +196,16 @@ async fn generate_selected(
         RoomRecoveryPolicy::HostReacquired,
         "owner",
     )?;
+    let restored_history = operation.room().native_history_descriptor("owner")?;
+    let continued_document_receiver =
+        restored_history.document == ServerNativeHistoryFamily::ContinuedV2;
+    let continued_review_receiver =
+        restored_history.review == Some(ServerNativeHistoryFamily::ContinuedV2);
+    if continued_document_receiver != activation_case
+        || continued_review_receiver != activation_case
+    {
+        return Err("restored receiver histories differ from the fixture policy".into());
+    }
     operation.room_mut().grant("owner", "post-origin-reader", Some(Role::Reader))?;
     operation.room_mut().rotate_log_generation("owner", "post-origin-physical-cut")?;
     let (native_token, native_digest) = Authentication::issue_token()?;
@@ -264,8 +268,8 @@ async fn generate_selected(
     if let Some(legacy) = &legacy {
         fixture["legacyMigration"] = serde_json::to_value(&legacy.selection)?;
     }
-    if activation.is_some() {
-        fixture["continuedDocumentReceiver"] = true.into();
+    if continued_document_receiver {
+        fixture["continuedDocumentReceiver"] = continued_document_receiver.into();
     }
     let credentials: Vec<_> = secrets
         .iter()

@@ -3,7 +3,7 @@ use super::{NativeHistoryBoundary, ServerNativeHistoryLane, ServerNativeHistoryR
 use crate::{Error, Result, Room, log::Event};
 
 impl Room {
-    pub(super) fn commit_native_history(
+    pub(crate) fn commit_native_history(
         &mut self,
         principal: &str,
         lane: ServerNativeHistoryLane,

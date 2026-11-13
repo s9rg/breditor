@@ -2,6 +2,7 @@
 #[path = "durable/tests.rs"]
 mod durable_source_handover;
 mod fixture;
+mod native_history;
 mod network;
 mod network_cases;
 use super::*;
