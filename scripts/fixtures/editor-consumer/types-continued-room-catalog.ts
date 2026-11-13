@@ -27,6 +27,7 @@ void result;
 declare const reconciliation:ContinuedRoomReconciliationOptions;
 declare const original:ContinuedRoomOriginalReadPolicy;
 const report:ContinuedRoomReconciliationRead=await readContinuedRoomReconciliation({...reconciliation,
- independentPolicies:[legacy],deliveryPolicies:[delivery],generationPolicies:[generation],originalPolicies:[original]});
+ independentPolicies:[legacy],deliveryPolicies:[delivery],generationPolicies:[generation],originalPolicies:[original],
+ includeOperationArchives:true});
 const review:null|undefined=report.documentOnlyParticipants?.[0]?.prefix.review;
 void review;

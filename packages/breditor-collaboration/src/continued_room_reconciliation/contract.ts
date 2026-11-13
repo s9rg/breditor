@@ -33,6 +33,8 @@ export interface ContinuedRoomReconciliationOptions {
  readonly generationPolicies?:readonly ContinuedRoomGenerationRecoveryPolicy[];
  /** Select exact original participant archives and their native read factories. */
  readonly originalPolicies?:readonly ContinuedRoomOriginalReadPolicy[];
+ /** Include operation archives using their exact read policies pinned by the catalog. */
+ readonly includeOperationArchives?:true;
  readonly signal?:AbortSignal;
 }
 export interface ContinuedRoomReconciliationRead {

@@ -337,6 +337,13 @@ document coverage through `documentOnlyParticipants` and leave registered
 review coverage pending. Supply `originalPolicies` for original native
 checkpoints with their original review and retained packet codecs. Each
 policy selects a matching native restore factory for an exact archive.
+Set `includeOperationArchives: true` to use the catalog's pinned
+`graphPolicies` and `localPolicies` for restored graphs, local snapshots,
+and flat local operations. The read compares each LIVE native cut and
+requests the image bindings from every admitted ancestor, including images
+referenced only by an older pending proposal. The upload pin is the latest
+whole upload backup of each archive. Only the restored graph has a bound
+review lane.
 The provider read creates no local destinations and changes no delivery
 receipts or grants.
 If any participant still lacks supported prefix admission, the operator

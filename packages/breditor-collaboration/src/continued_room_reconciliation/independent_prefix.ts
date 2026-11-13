@@ -4,6 +4,10 @@ import {localPortableReferences} from '../independent_local_operation/portable_r
 import {replayLocalOperationRecovery} from '../independent_local_operation/portable_replay.js';
 import {independentRecoveryArchive as source} from '../independent_recovery/archive.js';
 import type {ContinuedRoomIndependentRecoveryPolicy} from '../continued_room_recovery/contract.js';
+import type {SharedIndependentHistoryRecovery} from '../independent_history/contract.js';
+import type {SharedIndependentParticipantSelection} from '../independent_participant/contract.js';
+import type {SharedIndependentRecoveryFactory} from '../independent_recovery/contract.js';
+import type {SharedServerLogGenerationParticipantInventory} from '../server_generation_inventory/read.js';
 import type {NativeReconstructionWaits} from '../selected_native_reconstruction/read_waits.js';
 import {sourceCoreMethods as native} from '../source_native_read.js';
 import {continuedReconciliationFailure} from './asset_pins.js';
@@ -13,18 +17,28 @@ export async function inspectIndependentRoomPrefix(
  archive:SharedContinuedRoomCatalog,policy:ContinuedRoomIndependentRecoveryPolicy,waits:NativeReconstructionWaits,
 ){
  const backup=continuedCatalogIndependentBackup(archive,policy.id),inventory=continuedCatalogInventory(archive);
- const metadata=source.metadata.call(backup),recovery=source.recovery.call(backup);
- const history=policy.session.documentHistory;
+ return inspectLocalArchivePrefix(inventory,policy.expected,policy.session,source.recovery.call(backup),waits,source.metadata.call(backup));
+}
+
+/** Snapshot and flat readers have already validated the asset union over their native cuts. */
+export async function inspectLocalArchivePrefix(
+ inventory:SharedServerLogGenerationParticipantInventory,expected:SharedIndependentParticipantSelection,
+ session:SharedIndependentRecoveryFactory,recovery:SharedIndependentHistoryRecovery,waits:NativeReconstructionWaits,
+ metadata?:ReturnType<typeof source.metadata>,
+){
+ const history=session.documentHistory;
  const documentHistory=history.kind==='original'?
   {...history,restoreOriginal:waits.restore(history.restoreOriginal,history)}:
   {...history,restoreSegmented:waits.restore(history.restoreSegmented,history)};
- const replica=await replayLocalOperationRecovery(policy.expected,{...policy.session,documentHistory},recovery,waits.check);
+ const replica=await replayLocalOperationRecovery(expected,{...session,documentHistory},recovery,waits.check);
  try{
-  const {references,pending}=localPortableReferences(replica.core,replica.recovery,replica.check);
-  if(pending.length||native.view.call(replica.core).revision!==metadata.revision||
-     JSON.stringify(references)!==JSON.stringify(metadata.bindings.map(({asset,generation})=>({asset,generation}))))
-   throw continuedReconciliationFailure('diverged');
-  const {participant,principal,source:selected}=policy.expected.identity;
+  if(metadata){
+   const {references,pending}=localPortableReferences(replica.core,replica.recovery,replica.check);
+   if(pending.length||native.view.call(replica.core).revision!==metadata.revision||
+      JSON.stringify(references)!==JSON.stringify(metadata.bindings.map(({asset,generation})=>({asset,generation}))))
+    throw continuedReconciliationFailure('diverged');
+  }
+  const {participant,principal,source:selected}=expected.identity;
   return inspectLocalNativePrefix(replica.core,inventory,participant,principal,selected,()=>{
    replica.checkCurrent();waits.check();replica.checkCurrent();
   });

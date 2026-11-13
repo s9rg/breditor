@@ -57,5 +57,10 @@ export class RestoredOperationGraphArchive{
  dispose(){const s=states.get(this);if(!s)return;states.delete(this);try{dispose(s.latest);}finally{s.envelope.payloads.clear();s.envelope.views.clear();}}
 }
 const p=RestoredOperationGraphArchive.prototype;
+/** The admitted ancestry can contain bindings absent from the latest state. */
+export function* restoredGraphAssetMetadata(owner:RestoredOperationGraphArchive){
+ const s=state(owner);
+ for(const {header:{assets,bindings}} of s.envelope.views.values())yield {assets,bindings};
+}
 /** Canonical methods and actual brand admission; no serialized data selects an owner. */
 export const restoredGraphArchive=Object.freeze({owns:(value:unknown):value is RestoredOperationGraphArchive=>!!value&&typeof value==='object'&&states.has(value as RestoredOperationGraphArchive),read:RestoredOperationGraphArchive.read,file:p.file,selection:p.selection,metadata:p.metadata,latestMetadata:p.latestMetadata,original:p.originalFile,originalRecovery:p.originalRecovery,current:p.currentCut,pending:p.pendingCut,live:p.liveSource,uploads:p.uploadBackup,entries:p.uploadEntries,references:p.retainedReferenceStates,input:p.inputFile,blob:p.blob,dispose:p.dispose});

@@ -23,7 +23,7 @@ import type {
  ContinuedRoomCatalogReadOptions,ContinuedRoomCatalogSelection,
 } from './contract.js';
 
-type RecoveryClient=Extract<PhysicalCatalogV3Client,{family:'original'|'independent-local'|'independent-delivery'|'generation'}>;
+let borrowClient:(catalog:SharedContinuedRoomCatalog,id:string)=>PhysicalCatalogV3Client;
 let borrowOriginal:(catalog:SharedContinuedRoomCatalog,id:string)=>SharedParticipantBackup;
 let borrowIndependent:(catalog:SharedContinuedRoomCatalog,id:string)=>SharedIndependentParticipantBackup;
 let borrowDelivery:(catalog:SharedContinuedRoomCatalog,id:string)=>SharedIndependentDeliveryParticipantBackup;
@@ -62,7 +62,7 @@ interface CatalogContents {
  readonly metadata:ContinuedRoomCatalogMetadata;
  readonly files:ReadonlyMap<string,Blob>;
  readonly backups:ReadonlyMap<string,SharedContinuedParticipantBackup>;
- readonly recoveryClients:ReadonlyMap<string,RecoveryClient>;
+ readonly recoveryClients:ReadonlyMap<string,PhysicalCatalogV3Client>;
  readonly observations:readonly Readonly<{id:string;prefix:ContinuedParticipantPrefix}>[];
  readonly inventory:SharedServerLogGenerationParticipantInventory;
 }
@@ -77,6 +77,11 @@ export class SharedContinuedRoomCatalog {
  }
  static{
   borrowInventory=catalog=>catalog.#live().inventory;
+  borrowClient=(catalog,id)=>{
+   const client=catalog.#live().recoveryClients.get(id);
+   if(!client)throw physicalCatalogFailure('catalog_missing');
+   return client;
+  };
   borrowOriginal=(catalog,id)=>{
    const client=catalog.#live().recoveryClients.get(id);
    if(client?.family!=='original')throw physicalCatalogFailure('catalog_missing');
@@ -174,7 +179,7 @@ export class SharedContinuedRoomCatalog {
  ):Promise<SharedContinuedRoomCatalog>{
   const options={wasm:context.wasm,checkAuthority:context.guard,...(signal?{signal}:{})};
   const backups=new Map<string,SharedContinuedParticipantBackup>();
-  const recoveryClients=new Map<string,RecoveryClient>();
+  const recoveryClients=new Map<string,PhysicalCatalogV3Client>();
   const observations:{id:string;prefix:ContinuedParticipantPrefix}[]=[];
   let inventory:SharedServerLogGenerationParticipantInventory|undefined,complete=false;
   try{
@@ -192,8 +197,7 @@ export class SharedContinuedRoomCatalog {
       ...(signal?{signal}:{}),
      }:undefined;
      const client=await readPhysicalCatalogV3Participant(row,file,wrap(policies.graph.get(row.id)),wrap(policies.local.get(row.id)),signal);
-     if(client.family==='original'||client.family==='independent-local'||client.family==='independent-delivery'||client.family==='generation')recoveryClients.set(row.id,client);
-     else disposePhysicalCatalogV3Participant(client);
+     recoveryClients.set(row.id,client);
      context.guard();
      continue;
     }
@@ -222,6 +226,7 @@ export class SharedContinuedRoomCatalog {
 }
 
 /** Recovery borrows only the genuine backup retained by this archive. */
+export const continuedCatalogClient=(catalog:SharedContinuedRoomCatalog,id:string)=>borrowClient(catalog,id);
 export const continuedCatalogOriginalBackup=(catalog:SharedContinuedRoomCatalog,id:string)=>borrowOriginal(catalog,id);
 export const continuedCatalogIndependentBackup=(catalog:SharedContinuedRoomCatalog,id:string)=>borrowIndependent(catalog,id);
 export const continuedCatalogInventory=(catalog:SharedContinuedRoomCatalog)=>borrowInventory(catalog);

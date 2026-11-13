@@ -1,14 +1,17 @@
-import {RichAssetArchive} from '@breditor/experimental-rich-content';
+import {RichAssetArchive,type AssetLimits} from '@breditor/experimental-rich-content';
 import type {ArchiveIntegrityContext} from '../archive_integrity/context.js';
 import {assetReferenceKey,generationAssetRequirements} from '../generation_recovery_control/asset_requirements.js';
 import type {SharedServerLogGenerationRecoveryAssetInfo,SharedServerLogGenerationRecoveryAssetRead} from '../generation_recovery_control/asset_contract.js';
-import {continuedCatalogDeliveryBackup,continuedCatalogGenerationBackup,continuedCatalogIndependentBackup,continuedCatalogOriginalBackup,SharedContinuedRoomCatalog} from '../continued_room_catalog/archive.js';
+import {continuedCatalogClient,SharedContinuedRoomCatalog} from '../continued_room_catalog/archive.js';
 import {generationParticipantAssetMetadata,SharedGenerationParticipantBackup} from '../generation_participant/backup.js';
 import {originalParticipantAssetMetadata,SharedParticipantBackup} from '../participant_backup/archive.js';
 import {independentRecoveryArchive as independent} from '../independent_recovery/archive.js';
 import {deliveryRecoveryArchive as delivery} from '../independent_delivery_recovery/archive.js';
-import type {ContinuedRoomDeliveryRecoveryPolicy,ContinuedRoomGenerationRecoveryPolicy,ContinuedRoomIndependentRecoveryPolicy} from '../continued_room_recovery/contract.js';
-import type {ContinuedRoomOriginalReadPolicy,ContinuedRoomReconciliationRead} from './contract.js';
+import {portableLocalOperationArchive as snapshot} from '../independent_local_operation/portable_backup.js';
+import {flatLocalArchive as flat} from '../flat_local_operation/archive.js';
+import {restoredGraphArchive as graph,restoredGraphAssetMetadata} from '../restored_graph/archive.js';
+import type {SharedAssetByteBinding,SharedAssetBytePayload} from '../asset_bytes/types.js';
+import type {ContinuedRoomReconciliationRead} from './contract.js';
 import {SharedEditorError} from '../core.js';
 
 export const continuedReconciliationFailure=(suffix:string)=>new SharedEditorError(
@@ -19,18 +22,28 @@ const {read:readUploads,prototype:{entries,dispose}}=RichAssetArchive;
 const generationUploads=SharedGenerationParticipantBackup.prototype.uploadBackup;
 const originalUploads=SharedParticipantBackup.prototype.uploadBackup;
 const shape=(row:Omit<SharedServerLogGenerationRecoveryAssetInfo,'asset'>)=>JSON.stringify([row.mime,row.bytes,row.width,row.height]);
+type Pins=Readonly<{bindings:readonly SharedAssetByteBinding[];assets:readonly SharedAssetBytePayload[]}>;
+function participantAssets(archive:SharedContinuedRoomCatalog,id:string,isContinued:boolean):{metadata:Iterable<Pins>;file:Blob}{
+ if(isContinued)return {metadata:[participantMetadata.call(archive,id)],file:participantUploads.call(archive,id)};
+ const client=continuedCatalogClient(archive,id);
+ switch(client.family){
+  case 'independent-local':return {metadata:[independent.metadata.call(client.backup)],file:independent.uploadBackup.call(client.backup)};
+  case 'independent-delivery':return {metadata:[delivery.metadata.call(client.backup)],file:delivery.uploadBackup.call(client.backup)};
+  case 'generation':return {metadata:[generationParticipantAssetMetadata(client.backup)],file:generationUploads.call(client.backup)};
+  case 'original':return {metadata:[originalParticipantAssetMetadata(client.backup)],file:originalUploads.call(client.backup)};
+  case 'restored-graph':return {metadata:restoredGraphAssetMetadata(client.backup),file:graph.uploads.call(client.backup)};
+  case 'local-operation-snapshot':return {metadata:[snapshot.metadata.call(client.backup)],file:snapshot.uploads.call(client.backup)};
+  case 'local-operation-flat':return {metadata:[flat.metadata.call(client.backup)],file:flat.uploads.call(client.backup)};
+ }
+}
 
 export async function continuedProviderPins(
  archive:SharedContinuedRoomCatalog,context:ArchiveIntegrityContext,signal:AbortSignal,
- policies:ReadonlyMap<string,ContinuedRoomIndependentRecoveryPolicy>,
- deliveryPolicies:ReadonlyMap<string,ContinuedRoomDeliveryRecoveryPolicy>,
- generationPolicies:ReadonlyMap<string,ContinuedRoomGenerationRecoveryPolicy>,
- originalPolicies:ReadonlyMap<string,ContinuedRoomOriginalReadPolicy>,
+ admitted:ReadonlyMap<string,Partial<AssetLimits>|undefined>,
 ){
  const content=new Map<string,string>(),bindings=new Map<string,{asset:string;generation:string;contentAsset:string}>(),identities=new Map<string,string>();
  const uploads:ContinuedRoomReconciliationRead['uploads'][number][]=[];
- const selected=metadata.call(archive).participants.filter(row=>row.family==='continued-local'||
-  policies.has(row.id)||deliveryPolicies.has(row.id)||generationPolicies.has(row.id)||originalPolicies.has(row.id));
+ const selected=metadata.call(archive).participants.filter(row=>admitted.has(row.id));
  let uploadBytes=0;
  function addContent(asset:string,row:Omit<SharedServerLogGenerationRecoveryAssetInfo,'asset'>){
   const previous=content.get(asset),current=shape(row);
@@ -40,26 +53,19 @@ export async function continuedProviderPins(
  const uploadIds=new Set<string>();
  for(const {id,family} of selected){
   context.guard();
-  const policy=policies.get(id)??deliveryPolicies.get(id)??generationPolicies.get(id)??originalPolicies.get(id);
-  const backup=family==='independent-local'?continuedCatalogIndependentBackup(archive,id):undefined;
-  const deliveryBackup=family==='independent-delivery'?continuedCatalogDeliveryBackup(archive,id):undefined;
-  const generationBackup=family==='generation'?continuedCatalogGenerationBackup(archive,id):undefined;
-  const originalBackup=family==='original'?continuedCatalogOriginalBackup(archive,id):undefined;
-  const info=backup?independent.metadata.call(backup):deliveryBackup?delivery.metadata.call(deliveryBackup):
-   generationBackup?generationParticipantAssetMetadata(generationBackup):
-   originalBackup?originalParticipantAssetMetadata(originalBackup):participantMetadata.call(archive,id);
-  for(const raster of info.assets)addContent(raster.contentAsset,raster);
-  for(const binding of info.bindings){
-   const {asset,generation,contentAsset}=binding,key=assetReferenceKey(binding);
-   if(identities.has(asset)&&identities.get(asset)!==contentAsset)throw continuedReconciliationFailure('diverged');
-   identities.set(asset,contentAsset);
-   bindings.set(key,{asset,generation,contentAsset});
+  const limits=admitted.get(id),{metadata,file}=participantAssets(archive,id,family==='continued-local');
+  for(const info of metadata){
+   context.guard();
+   for(const raster of info.assets)addContent(raster.contentAsset,raster);
+   for(const binding of info.bindings){
+    const {asset,generation,contentAsset}=binding,key=assetReferenceKey(binding);
+    if(identities.has(asset)&&identities.get(asset)!==contentAsset)throw continuedReconciliationFailure('diverged');
+    identities.set(asset,contentAsset);
+    bindings.set(key,{asset,generation,contentAsset});
+   }
   }
-  const file=backup?independent.uploadBackup.call(backup):deliveryBackup?delivery.uploadBackup.call(deliveryBackup):
-   generationBackup?generationUploads.call(generationBackup):
-   originalBackup?originalUploads.call(originalBackup):participantUploads.call(archive,id);
   if((uploadBytes+=file.size)>512*1024*1024)throw continuedReconciliationFailure('budget');
-  const parsed=await readUploads.call(RichAssetArchive,file,{signal,...(policy?.limits?{limits:policy.limits}:{})});
+  const parsed=await readUploads.call(RichAssetArchive,file,{signal,...(limits?{limits}:{})});
   try{
    context.guard();
    const rows=entries.call(parsed);

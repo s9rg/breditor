@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {pixel,secondPixel} from '../review-assets/pixels.mjs';
 import {IndependentDeliveryCompanion} from '../../../packages/breditor-collaboration/dist/independent_delivery/companion.js';
 import {independentOptionsIdentity} from '../../../packages/breditor-collaboration/dist/independent_history/identity.js';
-export async function independentParticipant({api,rich,profile,fixture,metadata,client,documentSegmented,reviewSegmented,tag,documentCheckpoint=client.documentCheckpoint,reviewCheckpoint=client.reviewCheckpoint,principal=client.principal,edit=true,changeBinding,changeRetained,prepareDelivery,endpoint='ws://127.0.0.1:1/ws'}){
+export async function independentParticipant({api,rich,profile,fixture,metadata,client,documentSegmented,reviewSegmented,tag,documentCheckpoint=client.documentCheckpoint,reviewCheckpoint=client.reviewCheckpoint,principal=client.principal,edit=true,changeBinding,changeRetained,prepareDelivery,prepareUploads,endpoint='ws://127.0.0.1:1/ws'}){
  const writer=client.writer,room=metadata.room.document,account=metadata.accounts.find(r=>r.principal===principal),readOnly=client.observer||account.documentRole===null,access=client.observer||account.reviewRole===null?'read_only':account.reviewRole==='moderator'?'moderate':'comment',transport=fixture.atomic?{writerTransport:'atomic-v2'}:{};
  const binding={document:{endpoint,principal,room,writer,...transport},review:{endpoint,principal,room,actor:client.actor,documentWriter:writer,binding:metadata.review.binding,...transport,...(client.observer?{reviewEditing:'read_only'}:{})}},retained={suggestions:fixture.atomic?{identity:{endpoint,principal,room,documentWriter:writer,effectWriter:metadata.serverAuthors.find(r=>r.kind==='suggestionEffect').clock.writer,binding:metadata.suggestionsBinding,writerTransport:'atomic-v2'},ownedHistory:null}:null,revisions:fixture.atomic?{binding:metadata.revisionsBinding}:null,versions:{endpoint,principal,room,documentWriter:writer,binding:metadata.versionsBinding,...transport}};
  changeBinding?.(binding);changeRetained?.(retained);
@@ -21,6 +21,7 @@ export async function independentParticipant({api,rich,profile,fixture,metadata,
   // Default fixtures and their native/protocol meanings are unchanged.
   await prepareDelivery?.(session,options);
   await session.flush();uploads=await rich.RichAssetStore.open(tag+'-uploads');await uploads.ingest(new Blob([pixel],{type:'image/png'}));await uploads.ingest(new Blob([secondPixel],{type:'image/png'}));
+  await prepareUploads?.(uploads);
   const captured=await api.captureSharedIndependentDeliveryParticipant({participant:tag,principal,source:{session},assets:uploads,checkAuthority(){}});assert.equal(captured.kind,'ready');backup=captured.backup;source=api.captureSharedIndependentDeliverySource({session});
   const h={options,client,session,uploads,backup,source,async close(){h.source?.dispose();h.backup.dispose();await h.session.discardAndClose();h.uploads.close();}};return h;
  }catch(error){staging?.dispose();source?.dispose();backup?.dispose();await session?.discardAndClose();uploads?.close();throw error;}

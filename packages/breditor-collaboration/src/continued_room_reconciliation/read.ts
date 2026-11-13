@@ -1,4 +1,5 @@
 import {prepareArchiveIntegrity} from '../archive_integrity/context.js';
+import type {AssetLimits} from '@breditor/experimental-rich-content';
 import {generationRecoveryHostPort} from '../generation_recovery_control/host.js';
 import {continuedRoomRecoveryCatalog} from '../continued_room_catalog/storage.js';
 import {continuedCatalogInventory,SharedContinuedRoomCatalog} from '../continued_room_catalog/archive.js';
@@ -14,15 +15,17 @@ import {inspectDeliveryRoomPrefix} from './delivery_prefix.js';
 import {inspectGenerationRoomPrefix} from './generation_prefix.js';
 import {inspectOriginalRoomPrefix,snapshotOriginalReadPolicies} from './original_prefix.js';
 import {inspectIndependentRoomPrefix} from './independent_prefix.js';
+import {inspectOperationRoomPrefix} from './operation_prefix.js';
 import type {ContinuedRoomReconciliationOptions,ContinuedRoomReconciliationRead} from './contract.js';
 
 const {inspectPrefixes,dispose}=SharedContinuedRoomCatalog.prototype;
 
 /** Compare immutable archived client data against the actual selected operator/provider host. */
 export async function readContinuedRoomReconciliation(input:ContinuedRoomReconciliationOptions):Promise<ContinuedRoomReconciliationRead>{
- physicalCatalogV2Options(input,['catalog','expected','host','checkAuthority'],['signal','independentPolicies','deliveryPolicies','generationPolicies','originalPolicies']);
- const {catalog,expected,host,checkAuthority,signal}=input;
+ physicalCatalogV2Options(input,['catalog','expected','host','checkAuthority'],['signal','independentPolicies','deliveryPolicies','generationPolicies','originalPolicies','includeOperationArchives']);
+ const {catalog,expected,host,checkAuthority,signal,includeOperationArchives}=input;
  const policyFailure=()=>fail('policy');
+ if(includeOperationArchives!==undefined&&includeOperationArchives!==true)throw policyFailure();
  const independent=snapshotContinuedRoomIndependentPolicies(input.independentPolicies,policyFailure);
  const delivery=snapshotContinuedRoomDeliveryPolicies(input.deliveryPolicies,policyFailure);
  const generation=snapshotContinuedRoomGenerationPolicies(input.generationPolicies,policyFailure);
@@ -34,8 +37,15 @@ export async function readContinuedRoomReconciliation(input:ContinuedRoomReconci
  matchContinuedRoomPolicies(held.metadata.participants,'original',originalPolicies,policyFailure);
  const selected=physicalCatalogSelection(expected),authority=participantAuthority(checkAuthority);
  if(JSON.stringify(held.selection)!==JSON.stringify(selected))throw fail('policy');
- const check=()=>{held.check();authority();port.guard(signal);held.check();};
- const waits=new NativeReconstructionWaits(check,[signal,...port.signals]);
+ const operations=includeOperationArchives?[
+  ...(held.options.graphPolicies??[]),...(held.options.localPolicies??[]),
+ ]:[];
+ const check=()=>{
+  held.check();authority();port.guard(signal);
+  for(const {options} of operations)options.checkAuthority();
+  held.check();
+ };
+ const waits=new NativeReconstructionWaits(check,[signal,...port.signals,...operations.map(row=>row.options.signal)]);
  let archive:SharedContinuedRoomCatalog|undefined;
  try{
   const room=held.metadata,source=port.selection.source;
@@ -46,6 +56,9 @@ export async function readContinuedRoomReconciliation(input:ContinuedRoomReconci
   const context=prepareArchiveIntegrity({wasm:held.options.wasm,checkAuthority:waits.check,signal:waits.signal});
   const original=inspectPrefixes.call(active);
   const observed=new Map<string,ContinuedParticipantPrefix|ContinuedDocumentOnlyPrefix>(original.participants.map(row=>[row.id,row.prefix]));
+  const admitted=new Map<string,Partial<AssetLimits>|undefined>(original.participants.map(row=>[row.id,undefined]));
+  for(const policies of [independent,delivery,generation,originalPolicies])
+   for(const [id,policy] of policies)admitted.set(id,policy.limits);
   for(const [id,policy] of independent)observed.set(id,await inspectIndependentRoomPrefix(active,policy,waits));
   const boundActors=new Set<string>();
   for(const [id,policy] of delivery){
@@ -62,6 +75,11 @@ export async function readContinuedRoomReconciliation(input:ContinuedRoomReconci
    observed.set(id,prefix);
    if(boundActor)boundActors.add(boundActor);
   }
+  for(const policy of operations){
+   const {prefix,boundActor}=await inspectOperationRoomPrefix(active,policy,waits);
+   observed.set(policy.id,prefix);admitted.set(policy.id,policy.options.limits);
+   if(boundActor)boundActors.add(boundActor);
+  }
   const participants:{id:string;prefix:ContinuedParticipantPrefix}[]=[];
   const documentOnlyParticipants:{id:string;prefix:ContinuedDocumentOnlyPrefix}[]=[];
   const observations=room.participants.flatMap(({id})=>{
@@ -71,12 +89,21 @@ export async function readContinuedRoomReconciliation(input:ContinuedRoomReconci
    else documentOnlyParticipants.push({id,prefix});
    return [prefix];
   });
-  const coverage=independent.size||delivery.size||generation.size||originalPolicies.size?
+  const coverage=admitted.size!==original.participants.length?
    continuedParticipantCoverage(continuedCatalogInventory(active),observations,boundActors):original.coverage;
   const unreconciledParticipants=original.unreconciledParticipants.filter(id=>!observed.has(id));
-  const pins=await continuedProviderPins(active,context,waits.signal,independent,delivery,generation,originalPolicies);
+  const pins=await continuedProviderPins(active,context,waits.signal,admitted);
   waits.check();
-  const provider=unreconciledParticipants.length?null:await port.checkAssets(pins.requirements,waits.signal);
+  // Preserve the catalog/read failure if current custody ends during token acquisition.
+  let requestGuardFailed=false,requestGuardError:unknown;
+  const beforeRequest=()=>{
+   try{waits.check();}
+   catch(error){requestGuardFailed=true;requestGuardError=error;throw error;}
+  };
+  const provider=unreconciledParticipants.length?null:
+   await port.checkAssets(pins.requirements,waits.signal,beforeRequest).catch(error=>{
+    throw requestGuardFailed?requestGuardError:error;
+   });
   if(provider)pins.verify(provider);
   else await port.check(waits.signal);
   waits.check();

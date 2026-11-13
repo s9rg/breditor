@@ -8,6 +8,7 @@ import {RichAssetStore} from '@breditor/experimental-rich-content';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
 import {continuedParticipantFixture} from './probe-continued-room-catalog.mjs';
 import {unavailableUpload,UnavailableUploadImage,unavailableAsset} from './fixtures/physical-recovery-control/unavailable-upload.mjs';
+import {probeOperationArchives} from './fixtures/continued-room-provider/operation-archives.mjs';
 
 export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,requests){
  const native=await import(pathToFileURL(resolve(runtime,'breditor_shared.js')).href);
@@ -423,10 +424,12 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
     await originalStore?.close();originalCatalog?.dispose();backup?.dispose();uploads?.close();await session.discardAndClose();
    }
   }
+  const operations=await probeOperationArchives({profile,fixture,inventory,initial,openOptions,entries,input,requests,
+   setTokenAction(action){onToken=action;}});
   onToken=()=>store.close();
   await assert.rejects(readContinuedRoomReconciliation(input),error=>['catalog_closed','archive_authority','control_authority'].includes(error.code));
   counts.rejected++;
-  return {passed:true,language:fixture.language,atomic:fixture.atomic,...counts};
+  return {passed:true,language:fixture.language,atomic:fixture.atomic,...counts,...operations};
  }finally{
   host?.close();
   await store?.close();

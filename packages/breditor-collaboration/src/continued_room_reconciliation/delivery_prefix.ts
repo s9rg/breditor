@@ -10,6 +10,9 @@ import {SharedServerLogGenerationParticipantInventory} from '../server_generatio
 import {sourceCoreMethods as native} from '../source_native_read.js';
 import type {NativeReconstructionWaits} from '../selected_native_reconstruction/read_waits.js';
 import type {ContinuedRoomDeliveryRecoveryPolicy} from '../continued_room_recovery/contract.js';
+import type {SharedIndependentDeliveryRecoveryFactory} from '../independent_delivery_recovery/contract.js';
+import type {SharedIndependentDeliveryParticipantSelection} from '../independent_delivery_participant/contract.js';
+import type {SharedIndependentDeliveryRecovery} from '../independent_delivery/contract.js';
 import {continuedReconciliationFailure as fail} from './asset_pins.js';
 
 const inventoryMetadata=SharedServerLogGenerationParticipantInventory.prototype.metadata;
@@ -19,8 +22,17 @@ export async function inspectDeliveryRoomPrefix(
  archive:SharedContinuedRoomCatalog,policy:ContinuedRoomDeliveryRecoveryPolicy,waits:NativeReconstructionWaits,
 ){
  const backup=continuedCatalogDeliveryBackup(archive,policy.id),inventory=continuedCatalogInventory(archive);
- const metadata=source.metadata.call(backup),recovery=source.recovery.call(backup),room=inventoryMetadata.call(inventory).native;
- const {participant,principal,source:selected}=policy.expected.identity;
+ return inspectDeliveryArchivePrefix(inventory,policy.expected,policy.session,source.recovery.call(backup),waits,source.metadata.call(backup));
+}
+
+/** A graph reader has already validated the asset union over every ancestor. */
+export async function inspectDeliveryArchivePrefix(
+ inventory:SharedServerLogGenerationParticipantInventory,expected:SharedIndependentDeliveryParticipantSelection,
+ session:SharedIndependentDeliveryRecoveryFactory,recovery:SharedIndependentDeliveryRecovery,waits:NativeReconstructionWaits,
+ metadata?:ReturnType<typeof source.metadata>,
+){
+ const room=inventoryMetadata.call(inventory).native;
+ const {participant,principal,source:selected}=expected.identity;
  const writer=selected.history.native.writer,actor=selected.history.review.actor;
  const document=selected.binding.document,review=selected.binding.review;
  const registered=room.review?.writers.find(row=>row.clock.actor===actor);
@@ -38,18 +50,20 @@ export async function inspectDeliveryRoomPrefix(
  if(recovery.retained.revisions)rows.push({kind:'suggestion-revisions',json:JSON.stringify(recovery.retained.revisions)});
  if(recovery.retained.versions)rows.push({kind:'version-catalog',json:JSON.stringify(recovery.retained.versions)});
  checkInventoryStores(room,rows,principal,writer);
- const history=policy.session.documentHistory;
+ const history=session.documentHistory;
  const documentHistory=history.kind==='original'?
   {...history,restoreOriginal:waits.restore(history.restoreOriginal,history)}:
   {...history,restoreSegmented:waits.restore(history.restoreSegmented,history)};
- const replica=await replayPortableRecovery({...policy.session,documentHistory,database:'continued-provider-read',
+ const replica=await replayPortableRecovery({...session,documentHistory,database:'continued-provider-read',
   create(){throw fail('policy');},
  },recovery,waits.check);
  try{
-  const {references,pending}=portableRecoveryReferences(replica.core,recovery,replica.check);
-  if(pending.length||native.view.call(replica.core).revision!==metadata.revision||
-     JSON.stringify(references)!==JSON.stringify(metadata.bindings.map(({asset,generation})=>({asset,generation}))))
-   throw fail('diverged');
+  if(metadata){
+   const {references,pending}=portableRecoveryReferences(replica.core,recovery,replica.check);
+   if(pending.length||native.view.call(replica.core).revision!==metadata.revision||
+      JSON.stringify(references)!==JSON.stringify(metadata.bindings.map(({asset,generation})=>({asset,generation}))))
+    throw fail('diverged');
+  }
   return inspectLocalNativePrefix(replica.core,inventory,participant,principal,selected.history,()=>{
    replica.checkCurrent();waits.check();replica.checkCurrent();
   });

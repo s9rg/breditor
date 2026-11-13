@@ -3,7 +3,7 @@ import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {cpSync,mkdirSync,mkdtempSync,readFileSync,realpathSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {dirname,join,resolve} from 'node:path';
+import {dirname,join,relative,resolve} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {sourceEvidence,saveEvidence} from './candidate-release/evidence.mjs';
 import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
@@ -29,11 +29,27 @@ async function installedProbe(){
  execFileSync(npm,['install','--offline','--ignore-scripts','--no-audit','--no-fund'],{cwd:consumer,stdio:'inherit'});
  const registryArtifacts=verifySearchConsumerRegistry(producer,JSON.parse(readFileSync(join(consumer,'package-lock.json'),'utf8')));
  for(const name of names)assert.ok(realpathSync(join(consumer,'node_modules',name)).startsWith(realpathSync(consumer)+'/node_modules/'));
- for(const path of ['room-participant-inventory/environment.mjs','review-assets/pixels.mjs','interchange-consumer/pixel.mjs',
-  'physical-recovery-control/unavailable-upload.mjs','independent-delivery/session.mjs','owned-core-cleanup/session.mjs']){
-  const output=join(consumer,'fixtures',path);mkdirSync(dirname(output),{recursive:true});
-  cpSync(join(root,'scripts/fixtures',path),output);
+ const fixtureRoot=join(root,'scripts/fixtures'),copied=new Set();
+ function copyFixture(path){
+  const absolute=resolve(fixtureRoot,path),name=relative(fixtureRoot,absolute);
+  assert.ok(absolute.startsWith(fixtureRoot+'/'));
+  if(copied.has(name))return;
+  copied.add(name);
+  const original=readFileSync(absolute,'utf8'),workspace="'../../../packages/breditor-collaboration/dist/";
+  for(const match of original.matchAll(/(?:from\s*|import\s*\()(['"])([^'"]+)\1/g)){
+   if(match[2].startsWith('.')){
+    const dependency=resolve(dirname(absolute),match[2]);
+    if(dependency.startsWith(fixtureRoot+'/'))copyFixture(relative(fixtureRoot,dependency));
+   }
+  }
+  const installed="'../../node_modules/@breditor/collaboration/dist/",changed=original.replaceAll(workspace,installed);
+  assert.equal(changed.replaceAll(installed,workspace),original);
+  const output=join(consumer,'fixtures',name);mkdirSync(dirname(output),{recursive:true});
+  writeFileSync(output,changed);
  }
+ for(const path of ['continued-room-provider/operation-archives.mjs','room-participant-inventory/environment.mjs',
+  'review-assets/pixels.mjs','interchange-consumer/pixel.mjs','physical-recovery-control/unavailable-upload.mjs',
+  'independent-delivery/session.mjs','owned-core-cleanup/session.mjs'])copyFixture(path);
  const from="'../packages/breditor-collaboration/dist/index.js'",to="'@breditor/collaboration'";
  for(const name of ['probe-continued-room-catalog.mjs','probe-continued-room-provider.mjs']){
   const original=readFileSync(join(root,'scripts',name),'utf8'),changed=original.replace(from,to);
@@ -51,7 +67,7 @@ async function installedProbe(){
   build:{target:'es2022',write:false,minify:false,lib:{entry,formats:['es'],fileName:'continued-provider'}}});
  const modules=(Array.isArray(output)?output:[output]).flatMap(result=>result.output)
   .filter(item=>item.type==='chunk').flatMap(item=>Object.keys(item.modules));
- for(const path of ['continued_room_reconciliation/read.js','continued_room_reconciliation/asset_pins.js','continued_room_reconciliation/independent_prefix.js','continued_room_reconciliation/delivery_prefix.js','continued_room_reconciliation/generation_prefix.js','continued_room_reconciliation/original_prefix.js','generation_recovery_control/host.js'])
+ for(const path of ['continued_room_reconciliation/read.js','continued_room_reconciliation/asset_pins.js','continued_room_reconciliation/independent_prefix.js','continued_room_reconciliation/delivery_prefix.js','continued_room_reconciliation/generation_prefix.js','continued_room_reconciliation/original_prefix.js','continued_room_reconciliation/operation_prefix.js','generation_recovery_control/host.js'])
   assert.ok(modules.some(module=>module.includes('/node_modules/@breditor/collaboration/dist/'+path)),path);
  assert.ok(!modules.some(module=>module.includes(join(root,'packages'))||module.includes('fake-indexeddb')));
  const runtime=join(consumer,'node_modules/@breditor/collaboration/dist/runtime');
@@ -94,6 +110,11 @@ export async function runContinuedProviderQualification(controls,transport,direc
    assert.equal(result.generationForkRefusals,1);
    assert.equal(result.originalProviderReads,1);
    assert.equal(result.originalPolicyRefusals,1);
+   assert.equal(result.operationProviderReads,3);
+   assert.equal(result.operationMissingPolicyReads,1);
+   assert.equal(result.operationRevocations,1);
+   assert.equal(result.operationDuplicateRefusals,1);
+   assert.equal(result.operationGraphAncestorReads,result.atomic?1:0);
    cases.push(result);
   }
   reports[name]={cases,proof:setup.proof};
