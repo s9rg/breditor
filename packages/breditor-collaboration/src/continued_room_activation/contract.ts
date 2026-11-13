@@ -1,4 +1,5 @@
-import type {SharedDurableNativeActivationSelection} from '../native_activation_control/contract.js';
+import type {SharedDurableNativeActivationReceipt,SharedDurableNativeActivationSelection} from '../native_activation_control/contract.js';
+import type {SharedDurableNativeActivationHost} from '../native_activation_control/host.js';
 import type {SharedServerLogGenerationRecoveryControlSelection} from '../generation_recovery_control/contract.js';
 import type {ContinuedRoomRecoveryResult} from '../continued_room_recovery/contract.js';
 import type {RoomActivationBlobPin} from '../room_native_activation_intent/contract.js';
@@ -21,4 +22,15 @@ export interface ContinuedRoomActivationPlan {
  readonly activation:SharedDurableNativeActivationSelection;
  /** Covers all observations, including remaining provider and review obligations. */
  readonly reconciliation:RoomActivationBlobPin;
+}
+
+export interface ContinuedRoomActivationCommitOptions {
+ readonly expected:ContinuedRoomActivationChoice;
+ readonly activation:SharedDurableNativeActivationHost;
+ readonly approve:(plan:ContinuedRoomActivationPlan)=>boolean|Promise<boolean>;
+}
+
+export interface ContinuedRoomActivationCommitResult {
+ readonly choice:ContinuedRoomActivationChoice;
+ readonly receipt:SharedDurableNativeActivationReceipt;
 }

@@ -25,13 +25,20 @@ pub struct Running {
 }
 pub(super) fn authentication(principal: &str) -> Result<(Authentication, String)> {
     let (token, hash) = Authentication::issue_token()?;
-    Ok((Authentication::from_json(&json!({"format":"breditor/relay-auth","formatVersion":1,"origins":["http://127.0.0.1:4187"],"accounts":[{"principal":principal,"tokenHash":hash}]}).to_string())?,token))
+    Ok((authentication_for_digest(principal, &hash)?, token))
+}
+pub(super) fn authentication_for_digest(
+    principal: &str,
+    digest: &[u8; 32],
+) -> Result<Authentication> {
+    Ok(Authentication::from_json(&json!({"format":"breditor/relay-auth","formatVersion":1,"origins":["http://127.0.0.1:4187"],"accounts":[{"principal":principal,"tokenHash":digest}]}).to_string())?)
 }
 async fn prepare_control(
     host: PreparedLogGenerationRecoveryHost,
     native: Arc<VerifiedServerLogGenerationRecoveryState>,
     native_token: &str,
-) -> Result<(axum::Router, ServerLogGenerationRecoveryControl, String)> {
+    operator_digest: &[u8; 32],
+) -> Result<(axum::Router, ServerLogGenerationRecoveryControl)> {
     let provider: Arc<dyn breditor_collab_relay::server::ServerRecoveryAssetProvider> =
         Arc::new(ContentAddressedServerAssets);
     let ServerLogGenerationRecoveryAssetCoverage::Verified(proof) = host
@@ -40,7 +47,7 @@ async fn prepare_control(
     else {
         return Err("native server provider".into());
     };
-    let (operators, token) = authentication("operator")?;
+    let operators = authentication_for_digest("operator", operator_digest)?;
     let (router, control) = prepare_log_generation_recovery_control(
         host,
         Arc::new(proof),
@@ -50,7 +57,7 @@ async fn prepare_control(
         operators,
     )
     .await?;
-    Ok((router, control, token))
+    Ok((router, control))
 }
 pub async fn generate(
     parent: &Path,
@@ -201,15 +208,23 @@ async fn generate_selected(
     )
     .await?;
     let native = Arc::new(native);
+    let (operator_token, operator_digest) = Authentication::issue_token()?;
     let activation = if let Some(predecessor) = predecessor {
         Some(
-            activation::prepare(&root, predecessor, host.clone(), native.clone(), &native_token)
-                .await?,
+            activation::prepare(
+                &root,
+                predecessor,
+                host.clone(),
+                native.clone(),
+                &native_token,
+                &operator_digest,
+            )
+            .await?,
         )
     } else {
         None
     };
-    let (router, control, operator_token) = prepare_control(host, native, &native_token).await?;
+    let (router, control) = prepare_control(host, native, &native_token, &operator_digest).await?;
     let mut fixture = json!({"format":"breditor/native-generation-complete-control-fixture","formatVersion":1,"language":spec.language,"standard":spec.standard,"atomic":spec.atomic,"configuration":configuration,"inventoryJson":serde_json::to_string(&inventory.metadata().native)?,"generationRecoveryState":selected,"clients":records,"registeredWriters":7,"registeredReviewActors":7,"protectedStreams":14});
     if let Some(legacy) = &legacy {
         fixture["legacyMigration"] = serde_json::to_value(&legacy.selection)?;

@@ -20,7 +20,8 @@ export function readRecoveredContinuedRoomReconciliation(
 export async function withRecoveredContinuedRoomReconciliation<T>(
  input:RecoveredContinuedRoomReconciliationOptions,
  visit:(read:RecoveredContinuedRoomReconciliationRead,held:CompletedContinuedRoomRead,
-  host:ReturnType<typeof generationRecoveryHostPort>,check:()=>void,signal:AbortSignal)=>Promise<T>,
+  host:ReturnType<typeof generationRecoveryHostPort>,check:()=>void,signal:AbortSignal,
+  reread:()=>Promise<RecoveredContinuedRoomReconciliationRead['reconciliation']>)=>Promise<T>,
 ):Promise<T>{
  physicalCatalogV2Options(input,['recovery','reconciliation'],[]);
  const {recovery,reconciliation}=input;
@@ -34,8 +35,9 @@ export async function withRecoveredContinuedRoomReconciliation<T>(
  try{
   return await visitCompletedContinuedRoomRecovery({...selected,signal:waits.signal},async held=>{
    const check=()=>{held.check();waits.check();held.check();};
-   const result=await readContinuedRoomReconciliation({...policy,catalog:selected.catalog,expected:held.recovery.catalog,
+   const reread=()=>readContinuedRoomReconciliation({...policy,catalog:selected.catalog,expected:held.recovery.catalog,
     checkAuthority:check,signal:waits.signal});
+   const result=await reread();
    check();
    // The recovered-destination observation requires the authenticated provider
    // to check every participant. Missing provider assets remain explicit.
@@ -43,7 +45,7 @@ export async function withRecoveredContinuedRoomReconciliation<T>(
     throw fail('incomplete');
    const read=Object.freeze({format:'breditor/recovered-continued-room-reconciliation-read' as const,formatVersion:1 as const,
     recovery:held.recovery,reconciliation:result});
-   const value=await visit(read,held,host,check,waits.signal);
+   const value=await visit(read,held,host,check,waits.signal,reread);
    check();
    return value;
   });

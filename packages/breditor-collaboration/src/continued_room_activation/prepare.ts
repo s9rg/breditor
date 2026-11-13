@@ -8,6 +8,7 @@ import {NativeReconstructionWaits} from '../selected_native_reconstruction/read_
 import {frozen} from '../room_participant_inventory/policy.js';
 import {withRecoveredContinuedRoomReconciliation} from '../continued_room_reconciliation/recovered.js';
 import type {RecoveredContinuedRoomReconciliationOptions} from '../continued_room_reconciliation/contract.js';
+import type {ContinuedRoomReconciliationRead} from '../continued_room_reconciliation/contract.js';
 import {ContinuedRoomActivationIntentStore,continuedRoomActivationChoice,encodeContinuedRoomActivation} from './intent.js';
 import type {ContinuedRoomActivationChoice,ContinuedRoomActivationPlan} from './contract.js';
 
@@ -19,15 +20,16 @@ type ChoiceInput=Readonly<{
 type VerifyInput=Readonly<{expected:ContinuedRoomActivationChoice;activation:SharedDurableNativeActivationHost}>;
 
 /** Reopen actual recovered destinations and pin all observations to one Native checkpoint. */
-async function withPlan<T>(
+export async function withContinuedRoomActivationPlan<T>(
  input:RecoveredContinuedRoomReconciliationOptions,database:string,activation:SharedDurableNativeActivationHost,
  visit:(work:{
   plan:ContinuedRoomActivationPlan;encoding:Awaited<ReturnType<typeof encodeContinuedRoomActivation>>;
+  reconciliation:ContinuedRoomReconciliationRead;port:ReturnType<typeof nativeActivationHostPort>;
   store:ContinuedRoomActivationIntentStore;check:()=>void;verifyExact:()=>Promise<void>;signal:AbortSignal;
  })=>Promise<T>,
 ):Promise<T>{
  const port=nativeActivationHostPort(activation);
- return withRecoveredContinuedRoomReconciliation(input,async (read,held,host,guard,signal)=>{
+ return withRecoveredContinuedRoomReconciliation(input,async (read,held,host,guard,signal,reread)=>{
   if(held.namespaces.includes(database)||!same(port.selection.current,host.selection.source))throw fail('activation_intent_stale');
   const {participants,documentOnlyParticipants=[]}=read.reconciliation;
   for(const {prefix} of [...participants,...documentOnlyParticipants]){
@@ -44,8 +46,8 @@ async function withPlan<T>(
    const encoding=await encodeContinuedRoomActivation(database,plan,options);
    const store=new ContinuedRoomActivationIntentStore(encoding.choice,options);
    try{
-    return await visit({plan,encoding,store,check,signal:lifetime.signal,verifyExact:async()=>{
-     await host.check(lifetime.signal);
+    return await visit({plan,encoding,store,reconciliation:read.reconciliation,port,check,signal:lifetime.signal,verifyExact:async()=>{
+     if(!same(await reread(),read.reconciliation))throw fail('activation_intent_stale');
      await held.verifyExact();
      check();
     }});
@@ -62,7 +64,7 @@ export function prepareContinuedRoomActivation(
   const r=fields(options,['database','activation','retainChoice']),database=roomActivationDatabase(r['database']);
   const retain=r['retainChoice'] as ChoiceInput['retainChoice'];
   if(typeof retain!=='function')throw fail('activation_intent_policy');
-  return withPlan(input,database,r['activation'] as SharedDurableNativeActivationHost,async work=>{
+  return withContinuedRoomActivationPlan(input,database,r['activation'] as SharedDurableNativeActivationHost,async work=>{
    await retainActivationChoice(work.encoding.choice,retain,work.check,[work.signal]);
    await work.verifyExact();
    await work.store.open(work.encoding);
@@ -77,11 +79,17 @@ export async function verifyContinuedRoomActivation(
  input:RecoveredContinuedRoomReconciliationOptions,options:VerifyInput,
 ):Promise<ContinuedRoomActivationPlan>{
  const r=fields(options,['expected','activation']),expected=continuedRoomActivationChoice(r['expected']);
- return withPlan(input,expected.database,r['activation'] as SharedDurableNativeActivationHost,async work=>{
-  if(!same(expected,work.encoding.choice))throw fail('activation_intent_stale');
-  const stored=await work.store.open();
-  if(stored.capture!==work.encoding.graph)throw fail('activation_intent_stale');
+ return withContinuedRoomActivationPlan(input,expected.database,r['activation'] as SharedDurableNativeActivationHost,async work=>{
+  await openExactContinuedRoomActivation(work.store,work.encoding,expected);
   await work.verifyExact();
   return work.plan;
  });
+}
+
+export async function openExactContinuedRoomActivation(
+ store:ContinuedRoomActivationIntentStore,encoding:Awaited<ReturnType<typeof encodeContinuedRoomActivation>>,expected:ContinuedRoomActivationChoice,
+){
+ if(!same(expected,encoding.choice))throw fail('activation_intent_stale');
+ const stored=await store.open();
+ if(stored.capture!==encoding.graph)throw fail('activation_intent_stale');
 }

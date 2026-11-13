@@ -13,6 +13,7 @@ import {unavailableUpload,UnavailableUploadImage,unavailableAsset} from './fixtu
 import {continuedDeliveryParticipant} from './fixtures/continued-room-recovery/continued-delivery.mjs';
 import {probeOperationArchives} from './fixtures/continued-room-provider/operation-archives.mjs';
 import {verifyContinuedRoomReplacement} from './fixtures/continued-room-provider/replacement.mjs';
+import {verifyCoveredActivation} from './fixtures/continued-room-provider/covered.mjs';
 import {secondAsset,secondPixel} from './fixtures/review-assets/pixels.mjs';
 
 export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,requests){
@@ -584,7 +585,10 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
   onToken=()=>store.close();
   await assert.rejects(readContinuedRoomReconciliation(input),error=>['catalog_closed','archive_authority','control_authority'].includes(error.code));
   counts.rejected++;
-  return {recoveredRoomReads,recoveredRoomRefusals,serverOnlyPacketAssets,recoveredClientCatchUps,recoveredReplacementClients,
+  const recoveredActivationCommits=caseInfo.activation?await verifyCoveredActivation(continuedApi,{
+   initial,entries:entries.slice(0,7),fixture,inventory,wasm:native,caseInfo,host,getToken,requests,
+  }):0;
+  return {recoveredRoomReads,recoveredRoomRefusals,serverOnlyPacketAssets,recoveredClientCatchUps,recoveredReplacementClients,recoveredActivationCommits,
    recoveredReplacementLocalClients,recoveredReplacementRasters,recoveredActivationIntents,passed:true,language:fixture.language,atomic:fixture.atomic,...counts,...operations};
  }finally{
   host?.close();

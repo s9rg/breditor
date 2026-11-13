@@ -1,5 +1,8 @@
 //! Prepare a real successor under a sealed predecessor, with no serving routes.
-use super::{Result, capture::authentication};
+use super::{
+    Result,
+    capture::{authentication, authentication_for_digest},
+};
 use breditor_collab_relay::{
     Room, ServerLogGenerationRoomBackup,
     assets::AssetStore,
@@ -45,6 +48,7 @@ pub async fn prepare(
     host: PreparedLogGenerationRecoveryHost,
     proof: Arc<VerifiedServerLogGenerationRecoveryState>,
     native_token: &str,
+    operator_digest: &[u8; 32],
 ) -> Result<(DurableNativeActivationControl, axum::Router)> {
     let checkpoint = Arc::new(
         host.prepare_durable_native_activation(
@@ -59,7 +63,7 @@ pub async fn prepare(
         )
         .await?,
     );
-    let (operators, _) = authentication("operator")?;
+    let operators = authentication_for_digest("operator", operator_digest)?;
     let (router, control) = prepare_durable_native_activation_control(
         host,
         proof,

@@ -25,7 +25,7 @@ export function withContinuedRoomCatchUp<T>(
  input:RecoveredContinuedRoomReconciliationOptions,
  visit:(preview:RecoveredContinuedRoomCatchUpPreview,...scope:Parameters<RecoveredVisitor>)=>Promise<T>,
 ):Promise<T>{
- return withRecoveredContinuedRoomReconciliation(input,async (read,held,host,check,signal)=>{
+ return withRecoveredContinuedRoomReconciliation(input,async (read,held,host,check,signal,reread)=>{
   const entries=metadata.call(held.archive).participants.filter(isContinuedRoomPairEntry);
   if(!entries.length)throw fail('policy');
   for(const entry of entries){
@@ -60,6 +60,6 @@ export function withContinuedRoomCatchUp<T>(
   check();
   const preview:RecoveredContinuedRoomCatchUpPreview=frozen({format:'breditor/recovered-continued-room-catch-up-preview',formatVersion:1,
    catalog:read.recovery.catalog,server:host.selection,participants,localParticipants});
-  return visit(preview,read,held,host,check,signal);
+  return visit(preview,read,held,host,check,signal,reread);
  });
 }

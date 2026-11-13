@@ -520,5 +520,15 @@ unbound review and missing provider obligations in the pinned reconciliation.
 `verifyContinuedRoomActivation` requires an existing intent and repeats those
 checks against the actual local storage and current operator. Use a freshly
 configured activation host for the same selection when reopening. Both
-operations leave the Native checkpoint prepared. Native commit and serving
-still require admission of the remaining obligations and custody transfer.
+operations leave the Native checkpoint prepared.
+
+`commitContinuedRoomActivation` reopens the exact intent and verifies the
+recovered destinations and provider again after explicit approval. Every
+registered writer and review actor must have coverage, and all referenced
+images must resolve to provider bytes. A provider-missing upload can remain
+queued when its exact bytes are in a held local upload archive. The SDK
+records the request before sending it and records a receipt only after the
+relay confirms the selected epoch. If the response is lost, repeat with the
+same retained intent and actual relay control. Each repeat requires fresh
+approval and confirmation from the relay. Opening normal serving and
+transferring the recovered clients are separate steps.
