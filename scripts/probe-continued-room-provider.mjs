@@ -19,7 +19,7 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
  const profile=native.SharedRichProfile[method](fixture.configuration);
  const entries=[];
  let archive,store,host,tokenAllowed=true,onToken;
- const counts={authorPrefixes:0,reviewPrefixes:0,localSuffixes:0,missingUploads:0,providerReads:0,rejected:0,foreignForks:0,mixedPending:0,mixedProviderReads:0,mixedForeignForks:0,mixedDeliveryProviderReads:0};
+ const counts={authorPrefixes:0,reviewPrefixes:0,localSuffixes:0,missingUploads:0,providerReads:0,rejected:0,foreignForks:0,mixedPending:0,mixedProviderReads:0,mixedForeignForks:0,mixedDeliveryProviderReads:0,mixedDeliveryAheadRefusals:0};
  const room=inventory.room.document;
  const initial={
   catalog:'continued-native-provider',wasm:native,checkAuthority(){},
@@ -202,7 +202,7 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
    retained:{suggestions:null,revisions:null,versions:{...relay,documentWriter:deliveryWriter,binding:inventory.versionsBinding}},
   };
   const create=()=>retained.restoreDocument(exact.documentCheckpoint);
-  let delivery,deliveryBackup,deliveryUploads,deliveryCatalog,deliveryStore;
+  let delivery,deliveryBackup,deliveryUploads,deliveryCatalog,deliveryStore,aheadBackup,aheadCatalog,aheadStore;
   try{
    delivery=await SharedIndependentDeliverySession.open({...factory,database:'provider-delivery-seed',create});
    const original=delivery.exportRecovery();
@@ -232,7 +232,27 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
    assert.equal(report.provider.missing.some(row=>row.kind==='uploadBytes'&&row.contentAsset===unavailableAsset),true);
    assert.equal(requests.slice(beforeDelivery).filter(row=>row.assets).length,1);
    counts.mixedDeliveryProviderReads++;
+   const snapshot=delivery.exportRecovery();
+   const ahead=fixture.atomic?delivery.core.writerClockV2(deliveryWriter):delivery.core.writerClock(deliveryWriter);
+   assert.ok(BigInt(ahead.through)>BigInt(inventory.writers.find(row=>row.clock.writer===deliveryWriter).clock.through));
+   await delivery.close();delivery=undefined;
+   delivery=await SharedIndependentDeliverySession.restoreRecovery({...factory,database:'provider-delivery-ahead-source',create,
+    recovery:{...snapshot,relay:{...snapshot.relay,document:{accepted:ahead,receipt:null}}},writerRecovery:'host-reacquired',
+   });
+   const aheadCapture=await captureSharedIndependentDeliveryParticipant({participant:retained.id,principal:deliveryPrincipal,
+    source:{session:delivery},assets:deliveryUploads,checkAuthority(){}});
+   assert.equal(aheadCapture.kind,'ready');aheadBackup=aheadCapture.backup;
+   const aheadRows=[{id:retained.id,family:'independent-delivery',file:aheadBackup.file(),expected:aheadBackup.selection()},...rows.slice(1)];
+   aheadCatalog=await SharedContinuedRoomCatalog.capture({...initial,...options,participants:aheadRows});
+   aheadStore=await SharedContinuedRoomCatalogStore.begin({...options,database:'provider-delivery-ahead-catalog',archive:aheadCatalog,expected:aheadCatalog.selection()});
+   const beforeAhead=requests.length;
+   await assert.rejects(readContinuedRoomReconciliation({...selected,catalog:aheadStore,expected:aheadCatalog.selection(),
+    deliveryPolicies:[{id:retained.id,expected:aheadBackup.selection(),session:factory}],
+   }),error=>error.code==='continued_reconciliation_diverged');
+   assert.equal(requests.length,beforeAhead);
+   counts.mixedDeliveryAheadRefusals++;
   }finally{
+   await aheadStore?.close();aheadCatalog?.dispose();aheadBackup?.dispose();
    await deliveryStore?.close();deliveryCatalog?.dispose();deliveryBackup?.dispose();deliveryUploads?.close();await delivery?.discardAndClose();
   }
   onToken=()=>store.close();

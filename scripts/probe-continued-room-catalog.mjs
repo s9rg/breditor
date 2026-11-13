@@ -498,8 +498,20 @@ export async function probeContinuedRoomCatalog(runtime,fixturePath){
     await parts.versions.flush();
     await session.retainVersion(session.core.captureVersion('Retained delivery version',principal,'8'));
     if(segmented){await session.sealDocumentGeneration('delivery-next');await session.sealReviewGeneration('delivery-next');}
+    const snapshot=session.exportRecovery(),core=session.core;
+    assert.ok(snapshot.retained.versions.packets.some(row=>row.packet===parts.versions.versionPacket(pending.version.id)));
+    // Use native digests and review proof with a fixture receipt sequence.
+    const reviewClock=core.localReviewClock(),frame=core.exportReviewThrough('0',reviewClock.through);
+    const reviewReceipt=core.retainedReviewReceipt(frame,{...options.review,access:'read_only'});
+    const clock=fixture.atomic?core.writerClockV2(writer):core.writerClock(writer);
+    const relayProgress={...snapshot.relay,document:{accepted:clock,receipt:null},
+     review:{accepted:reviewClock,cursor:null,sequence:'1'},reviewReceipt:{sequence:'1',receipt:reviewReceipt}};
+    await session.close();session=undefined;
+    session=await SharedIndependentDeliverySession.restoreRecovery({...options,database:tag+'-receipt-source',create,
+     recovery:{...snapshot,relay:relayProgress},writerRecovery:'host-reacquired',
+    });
     const exact=session.exportRecovery();
-    assert.ok(exact.retained.versions.packets.some(row=>row.packet===parts.versions.versionPacket(pending.version.id)));
+    assert.deepEqual(exact.relay,relayProgress);
     uploads=await RichAssetStore.open(tag+'-original-uploads');
     await uploads.ingest(new Blob([pixel],{type:'image/png'}));
     await uploads.ingest(new Blob([secondPixel],{type:'image/png'}));

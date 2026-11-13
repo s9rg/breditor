@@ -24,9 +24,15 @@ export async function inspectDeliveryRoomPrefix(
  const writer=selected.history.native.writer,actor=selected.history.review.actor;
  const document=selected.binding.document,review=selected.binding.review;
  const registered=room.review?.writers.find(row=>row.clock.actor===actor);
- if(!registered||registered.principal!==principal||registered.observer!==(review.reviewEditing==='read_only')||
+ const registeredDocument=room.writers.find(row=>row.clock.writer===writer);
+ if(!registeredDocument||!registered||registered.principal!==principal||registered.observer!==(review.reviewEditing==='read_only')||
     review.binding!==room.review?.binding||transportVersion(document.writerTransport)!==room.room.writerTransportVersion)
   throw fail('policy');
+ // An archived acknowledgement may lag this cut, but it cannot be ahead of it.
+ // Native replay checks the local digest at the saved acknowledgement.
+ const documentAck=recovery.relay.document.accepted,reviewAck=recovery.relay.review?.accepted;
+ if(documentAck&&BigInt(documentAck.through)>BigInt(registeredDocument.clock.through)||
+    reviewAck&&BigInt(reviewAck.through)>BigInt(registered.clock.through))throw fail('diverged');
  const rows:SharedAssetCaptureRecord[]=[];
  if(recovery.retained.suggestions)rows.push({kind:'suggestions',json:JSON.stringify(recovery.retained.suggestions)});
  if(recovery.retained.revisions)rows.push({kind:'suggestion-revisions',json:JSON.stringify(recovery.retained.revisions)});
