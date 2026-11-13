@@ -476,19 +476,20 @@ result. This read leaves the journal and destination data unchanged.
 `previewRecoveredContinuedRoomCatchUp` uses the same completed recovery
 and operator policies. It reads the selected relay's accepted document frame
 and paginated comment batches, applies them to isolated native replays of
-the continued-delivery participants, and verifies each batch receipt and
-accepted author prefix. The preview refuses a participant whose own authored
-stream is behind the relay. It returns reconstructed checkpoints with the
-original local Undo/Redo, version packets, relay receipts, and outboxes.
+the continued participants, and verifies each batch receipt and accepted author
+prefix. The preview refuses a participant whose own authored stream is behind
+the relay. The `participants` array retains delivery receipts and outboxes.
+The `localParticipants` array retains local review history without binding a
+transport. Both retain local Undo/Redo and version packets.
 The original destinations stay unchanged. The preview is detached data for
 an explicit replacement plan.
 
 `retainRecoveredContinuedRoomCatchUp(input, {database, catalog, retainChoice})`
 repeats that reconstruction under the live operator and completed recovery.
 Use a fresh database and catalog name. The replacement pins the same physical
-origin, server and participant inventory. It advances only the live records
-of continued-delivery participants and preserves all earlier save slots,
-upload backups and other participant archives. Newly reachable image
+origin, server and participant inventory. It advances the live records
+of continued local and delivery participants and preserves all earlier save
+slots, upload backups and other participant archives. Newly reachable image
 references require verified bytes from the selected provider.
 
 Save the detached choice in `retainChoice`. The SDK rechecks the operator and

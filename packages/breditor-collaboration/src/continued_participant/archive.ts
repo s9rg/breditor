@@ -288,6 +288,22 @@ async function encodeParticipant<R,S>(
 }
 
 /** SDK-only encoding of a reconstructed cut after exact native replay. */
+export async function encodeContinuedLocalReplacement(
+ identity:ContinuedParticipantMetadata['identity'],records:ContinuedPairRecords,uploads:Blob,
+ options:ContinuedParticipantReadOptions&Readonly<{signal:AbortSignal;resolveAsset:SharedAssetBytesResolver}>,
+){
+ const context=prepareArchiveIntegrity(options);
+ const references=await withContinuedPairReplay(identity.source,options.restoreDocument,context.guard,options.signal,
+  replay=>replayContinuedPairAssetReferences(records,replay,context.guard));
+ const resolved=await resolveSelectedAssetBytes(references.references,options.resolveAsset,
+  checkRichAssetLimits(options.limits),context.guard,options.signal);
+ if(resolved.missing.length)throw fail('coverage');
+ const encoded=await encodeParticipant(identity,references,records,records=>records,undefined,continuedParticipantSelection,uploads,resolved,context);
+ resolved.check();
+ return encoded;
+}
+
+/** SDK-only encoding including the original delivery companions. */
 export async function encodeContinuedDeliveryReplacement(
  identity:ContinuedParticipantMetadata['identity'],records:ContinuedDeliveryRecords,uploads:Blob,
  options:ContinuedParticipantReadOptions&Readonly<{signal:AbortSignal;resolveAsset:SharedAssetBytesResolver}>,

@@ -1,6 +1,6 @@
 import {SharedRichEditor,reserveNativeRecovery} from '../core.js';
 import {continuedCatalogInventory,SharedContinuedRoomCatalog} from '../continued_room_catalog/archive.js';
-import type {ContinuedRoomCatalogDeliveryEntry,ContinuedRoomCatalogPolicy} from '../continued_room_catalog/contract.js';
+import type {ContinuedRoomCatalogDeliveryEntry,ContinuedRoomCatalogLocalEntry,ContinuedRoomCatalogPolicy} from '../continued_room_catalog/contract.js';
 import {inspectLocalNativePrefix} from '../continued_participant/inventory.js';
 import {withContinuedPairReplay} from '../continued_pair/replay.js';
 import {ContinuedDeliveryCompanion} from '../continued_delivery/companion.js';
@@ -9,9 +9,12 @@ import {sourceCoreMethods} from '../source_native_read.js';
 import type {SharedSelectionPolicy} from '../types.js';
 import {reviewSource,sameReceipt} from '../relay/review_validation.js';
 import type {SharedServerLogGenerationRecoveryAcceptedRead} from '../generation_recovery_control/accepted_contract.js';
+import {SharedServerLogGenerationParticipantInventory} from '../server_generation_inventory/read.js';
+import type {SharedContinuedPairRecovery} from '../continued_pair/contract.js';
 import {continuedReconciliationFailure as fail} from './asset_pins.js';
 
-const {participantDeliveryRecords}=SharedContinuedRoomCatalog.prototype;
+const {participantRecords,participantDeliveryRecords}=SharedContinuedRoomCatalog.prototype;
+const inventoryMetadata=SharedServerLogGenerationParticipantInventory.prototype.metadata;
 const {retainedReviewReceipt,verifyRecoveryOrigin,verifySegmentedRecoveryOrigin}=SharedRichEditor.prototype;
 
 /** Apply original accepted inputs to an isolated native replay of the exact
@@ -20,29 +23,54 @@ export async function catchUpContinuedDeliveryClient(
  archive:SharedContinuedRoomCatalog,entry:ContinuedRoomCatalogDeliveryEntry,policy:ContinuedRoomCatalogPolicy,
  pages:readonly SharedServerLogGenerationRecoveryAcceptedRead[],check:()=>void,signal:AbortSignal,
 ){
- const {participant,principal,source:identity}=entry.selection.identity;
  const before=participantDeliveryRecords.call(archive,entry.id).live;
  const {document,review}=before.relay.binding;
  if(!review)throw fail('diverged');
+ return catchUpClient(archive,entry,before.source,policy,pages,review.binding,check,signal,(candidate,source)=>{
+  const companion=new ContinuedDeliveryCompanion({database:'continued-room-catch-up-preview',...source.identity,readOnly:true,
+   review:{...source.identity.review,access:'read_only'},restoreDocument:policy.restoreDocument,
+   binding:{document,review},retained:before.retainedBinding},before);
+  companion.admit(candidate);
+  return companion.recovery(source);
+ });
+}
+
+/** Import the same accepted prefixes without binding a local review actor or creating receipts. */
+export async function catchUpContinuedLocalClient(
+ archive:SharedContinuedRoomCatalog,entry:ContinuedRoomCatalogLocalEntry,policy:ContinuedRoomCatalogPolicy,
+ pages:readonly SharedServerLogGenerationRecoveryAcceptedRead[],check:()=>void,signal:AbortSignal,
+){
+ const before=participantRecords.call(archive,entry.id).live;
+ const binding=inventoryMetadata.call(continuedCatalogInventory(archive)).native.review?.binding??null;
+ return catchUpClient(archive,entry,before,policy,pages,binding,check,signal,(_candidate,source)=>source);
+}
+
+async function catchUpClient<T>(
+ archive:SharedContinuedRoomCatalog,entry:ContinuedRoomCatalogDeliveryEntry|ContinuedRoomCatalogLocalEntry,
+ before:SharedContinuedPairRecovery,policy:ContinuedRoomCatalogPolicy,pages:readonly SharedServerLogGenerationRecoveryAcceptedRead[],
+ binding:string|null,check:()=>void,signal:AbortSignal,finish:(candidate:SharedRichEditor<SharedSelectionPolicy>,source:SharedContinuedPairRecovery)=>T,
+){
+ const {participant,principal,source:identity}=entry.selection.identity;
  const inventory=continuedCatalogInventory(archive);
  const prefix=(core:SharedRichEditor<SharedSelectionPolicy>)=>
   inspectLocalNativePrefix(core,inventory,participant,principal,identity,check);
  return withContinuedPairReplay(identity,policy.restoreDocument,check,signal,async replay=>{
-  const original=await replay(before.source,check);
+  const original=await replay(before,check);
   try{
    const previous=prefix(original);
    // The host cannot resolve a missing own authored suffix into a safe writer
    // handoff. That case requires independent reconciliation of the old writer.
-   if(previous.documentStatus!=='matches'||previous.review.status!=='matches')throw fail('own_history');
-   const candidate=await replay(before.source,check);
+   if(previous.documentStatus!=='matches'||previous.review.status==='server_ahead'||
+      entry.family==='continued-delivery'&&previous.review.status!=='matches')throw fail('own_history');
+   const candidate=await replay(before,check);
    try{
     const native=reserveNativeRecovery([candidate]);
     try{
      for(const page of pages){
       check();
       if(page.documentFrame!==null)native.receiveDocument(candidate,page.documentFrame);
-      if(!page.review||page.review.descriptor.binding!==review.binding)throw fail('diverged');
-      for(const batch of page.review.batches){
+      if((page.review?.descriptor.binding??null)!==binding)throw fail('diverged');
+      for(const batch of page.review?.batches??[]){
        check();
        const source=reviewSource(batch.source),imported=native.receiveReview(candidate,batch.frame,source);
        if((imported.kind!=='applied'&&imported.kind!=='unchanged')||
@@ -55,16 +83,12 @@ export async function catchUpContinuedDeliveryClient(
     const after=prefix(candidate);
     if(after.document.localThrough!==previous.document.localThrough||after.review.localThrough!==previous.review.localThrough||
        [...after.acceptedDocuments,...after.acceptedReviews].some(row=>row.relation==='server_ahead'))throw fail('diverged');
-    const companion=new ContinuedDeliveryCompanion({database:'continued-room-catch-up-preview',...identity,readOnly:true,
-     review:{...identity.review,access:'read_only'},restoreDocument:policy.restoreDocument,
-     binding:{document,review},retained:before.retainedBinding},before);
-    companion.admit(candidate);
     const readReview=identity.reviewHistory==='continued-v2'?sourceCoreMethods.reviewContinuedCheckpoint:
      identity.reviewHistory==='segmented-v1'?sourceCoreMethods.reviewSegmentedCheckpoint:sourceCoreMethods.reviewCheckpoint;
-    const source={...before.source,documentCheckpoint:sourceCoreMethods.checkpointJson.call(candidate),
+    const source={...before,documentCheckpoint:sourceCoreMethods.checkpointJson.call(candidate),
      reviewCheckpoint:readReview.call(candidate)};
     check();
-    return {id:entry.id,prefix:after,recovery:companion.recovery(source)};
+    return {id:entry.id,prefix:after,recovery:finish(candidate,source)};
    }finally{disposeOwnedCore(candidate);}
   }finally{disposeOwnedCore(original);}
  });

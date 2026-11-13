@@ -88,7 +88,8 @@ export async function runContinuedProviderQualification(controls,transport,direc
    assert.equal(result.recoveredRoomReads,1);
    assert.equal(result.recoveredClientCatchUps,2);
    assert.equal(result.recoveredReplacementClients,2);
-   assert.equal(result.recoveredReplacementRasters,result.atomic?2:0);
+   assert.equal(result.recoveredReplacementLocalClients,5);
+   assert.equal(result.recoveredReplacementRasters,result.atomic?7:0);
    assert.equal(result.serverOnlyPacketAssets,result.atomic?1:0);
    assert.equal(result.recoveredRoomRefusals,3);
    assert.equal(result.mixedDeliveryAheadRefusals,1);

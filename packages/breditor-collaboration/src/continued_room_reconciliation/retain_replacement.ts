@@ -1,7 +1,9 @@
 import {SharedContinuedRoomCatalog} from '../continued_room_catalog/archive.js';
 import {SharedContinuedRoomCatalogStore as Store} from '../continued_room_catalog/storage.js';
 import type {ContinuedRoomCatalogInput,ContinuedRoomCatalogPolicy} from '../continued_room_catalog/contract.js';
-import {encodeContinuedDeliveryReplacement} from '../continued_participant/archive.js';
+import {isContinuedRoomPairEntry} from '../continued_room_catalog/manifest.js';
+import {encodeContinuedDeliveryReplacement,encodeContinuedLocalReplacement} from '../continued_participant/archive.js';
+import type {SharedAssetBytesResolver} from '../asset_bytes/types.js';
 import {existingDatabase} from '../participant_recovery/journal.js';
 import {physicalCatalogDatabase,physicalCatalogName} from '../physical_room_catalog/policy.js';
 import {physicalCatalogV2Options} from '../physical_room_catalog_v2/input_snapshot.js';
@@ -12,7 +14,7 @@ import {withContinuedRoomCatchUp} from './catch_up.js';
 import {continuedReconciliationFailure as fail} from './asset_pins.js';
 import type {RecoveredContinuedRoomReconciliationOptions,RecoveredContinuedRoomReplacementChoice,RecoveredContinuedRoomReplacementOptions} from './contract.js';
 
-const {capture,prototype:{metadata,selection,files,participantFile,participantDeliveryRecords,participantUploads,participantAsset,dispose}}=SharedContinuedRoomCatalog;
+const {capture,prototype:{metadata,selection,files,participantFile,participantRecords,participantDeliveryRecords,participantUploads,participantAsset,dispose}}=SharedContinuedRoomCatalog;
 const {begin,prototype:{close}}=Store;
 
 /** Preserve the exact reconstructed states in a fresh ordinary catalog. The
@@ -39,42 +41,57 @@ export async function retainRecoveredContinuedRoomCatchUp(
   const advanced:RecoveredContinuedRoomReplacementChoice['advanced'][number][]=[];
   const participants:ContinuedRoomCatalogInput[]=[];
   const reconstructed=new Map(preview.participants.map(row=>[row.id,row.recovery]));
+  const local=new Map(preview.localParticipants.map(row=>[row.id,row.recovery]));
+  const resolveFor=(id:string):SharedAssetBytesResolver=>async reference=>{
+   check();
+   let blob=participantAsset.call(held.archive,id,reference.asset,reference.generation);
+   if(!blob){
+    const content=bindings.get(assetReferenceKey(reference)),expected=content&&assets.get(content);
+    if(!content||!expected)return undefined;
+    blob=rasters.get(content);
+    if(!blob){
+     const {raster}=await host.readRaster(content,signal);
+     check();
+     if(!raster)return undefined;
+     const {info}=raster;
+     if(info.asset!==expected.asset||info.mime!==expected.mime||info.bytes!==expected.bytes||
+        info.width!==expected.width||info.height!==expected.height)throw fail('diverged');
+     blob=raster.blob;
+     rasters.set(content,blob);
+    }
+   }
+   return {...reference,blob,identity:/^sha256:[a-f0-9]{64}$/.test(reference.asset)?'content-addressed':'host-verified',check};
+  };
   for(const entry of previous.participants){
    check();
-   if(entry.family!=='continued-delivery'){
+   if(!isContinuedRoomPairEntry(entry)){
     participants.push({id:entry.id,family:entry.family,expected:entry.selection,file:participantFile.call(held.archive,entry.id)} as ContinuedRoomCatalogInput);
     continue;
    }
-   const {id}=entry,policy=policies.get(id),live=reconstructed.get(id);
-   if(!policy||!live)throw fail('diverged');
-   const records={...participantDeliveryRecords.call(held.archive,id),live};
-   const encoded=await encodeContinuedDeliveryReplacement(entry.selection.identity,records,participantUploads.call(held.archive,id),{
+   const {id,family}=entry,policy=policies.get(id);
+   if(!policy)throw fail('diverged');
+   const encoding={
     wasm,signal,checkAuthority:check,restoreDocument:policy.restoreDocument,...(policy.limits?{limits:policy.limits}:{}),
-    async resolveAsset(reference){
-     check();
-     const archived=participantAsset.call(held.archive,id,reference.asset,reference.generation);
-     let blob=archived;
-     if(!blob){
-      const content=bindings.get(assetReferenceKey(reference)),expected=content&&assets.get(content);
-      if(!content||!expected)return undefined;
-      blob=rasters.get(content);
-      if(!blob){
-       const {raster}=await host.readRaster(content,signal);
-       check();
-       if(!raster)return undefined;
-       const {info}=raster;
-       if(info.asset!==expected.asset||info.mime!==expected.mime||info.bytes!==expected.bytes||
-          info.width!==expected.width||info.height!==expected.height)throw fail('diverged');
-       blob=raster.blob;
-       rasters.set(content,blob);
-      }
-     }
-     return {...reference,blob,identity:/^sha256:[a-f0-9]{64}$/.test(reference.asset)?'content-addressed':'host-verified',check};
-    },
-   });
-   advanced.push({id,expected:encoded.selection});
-   policies.set(id,{...policy,expected:encoded.selection} satisfies ContinuedRoomCatalogPolicy);
-   participants.push({id,family:entry.family,expected:encoded.selection,file:encoded.file});
+    resolveAsset:resolveFor(id),
+   };
+   const uploads=participantUploads.call(held.archive,id);
+   let row:ContinuedRoomCatalogInput;
+   if(family==='continued-delivery'){
+    const live=reconstructed.get(id);
+    if(!live)throw fail('diverged');
+    const records={...participantDeliveryRecords.call(held.archive,id),live};
+    const {selection:expected,file}=await encodeContinuedDeliveryReplacement(entry.selection.identity,records,uploads,encoding);
+    row={id,family,expected,file};
+   }else{
+    const live=local.get(id);
+    if(!live)throw fail('diverged');
+    const records={...participantRecords.call(held.archive,id),live};
+    const {selection:expected,file}=await encodeContinuedLocalReplacement(entry.selection.identity,records,uploads,encoding);
+    row={id,family,expected,file};
+   }
+   advanced.push({id,expected:row.expected});
+   policies.set(id,{...policy,expected:row.expected} satisfies ContinuedRoomCatalogPolicy);
+   participants.push(row);
   }
   const chosen={wasm,policies:[...policies.values()],signal,checkAuthority:check,
    ...(graphPolicies?{graphPolicies}:{}),...(localPolicies?{localPolicies}:{})};

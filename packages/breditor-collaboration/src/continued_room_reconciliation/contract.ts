@@ -64,7 +64,7 @@ export interface RecoveredContinuedRoomReconciliationRead {
  readonly reconciliation:ContinuedRoomReconciliationRead;
 }
 
-/** Reconstructed continued-delivery cuts for an explicit replacement plan. */
+/** Reconstructed continued cuts for an explicit replacement plan. */
 export interface RecoveredContinuedRoomCatchUpPreview {
  readonly format:'breditor/recovered-continued-room-catch-up-preview';
  readonly formatVersion:1;
@@ -72,6 +72,9 @@ export interface RecoveredContinuedRoomCatchUpPreview {
  readonly server:import('../generation_recovery_control/contract.js').SharedServerLogGenerationRecoveryControlSelection;
  readonly participants:readonly Readonly<{id:string;prefix:ContinuedParticipantPrefix;
   recovery:import('../continued_delivery/contract.js').SharedContinuedDeliveryRecovery}>[];
+ /** Local review history remains unbound to a delivery transport. */
+ readonly localParticipants:readonly Readonly<{id:string;prefix:ContinuedParticipantPrefix;
+  recovery:import('../continued_pair/contract.js').SharedContinuedPairRecovery}>[];
 }
 
 /** Independent selection of an exact, cold-reopenable replacement catalog. */
@@ -82,7 +85,7 @@ export interface RecoveredContinuedRoomReplacementChoice {
  readonly source:ContinuedRoomCatalogSelection;
  readonly server:RecoveredContinuedRoomCatchUpPreview['server'];
  readonly replacement:ContinuedRoomCatalogSelection;
- readonly advanced:readonly Readonly<{id:string;expected:import('../continued_participant/contract.js').ContinuedDeliveryParticipantSelection}>[];
+ readonly advanced:readonly Readonly<{id:string;expected:import('../continued_room_catalog/contract.js').ContinuedRoomCatalogPolicy['expected']}>[];
 }
 export interface RecoveredContinuedRoomReplacementOptions {
  readonly database:string;

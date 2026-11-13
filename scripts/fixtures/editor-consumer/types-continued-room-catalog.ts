@@ -53,7 +53,8 @@ void recoveredParticipants;
 
 const catchUp:import('@breditor/collaboration').RecoveredContinuedRoomCatchUpPreview=await previewRecoveredContinuedRoomCatchUp(recoveredInput);
 const caughtUp:import('@breditor/collaboration').SharedContinuedDeliveryRecovery|undefined=catchUp.participants[0]?.recovery;
-void caughtUp;
+const caughtUpLocal:import('@breditor/collaboration').SharedContinuedPairRecovery|undefined=catchUp.localParticipants[0]?.recovery;
+void [caughtUp,caughtUpLocal];
 
 type Replacement=import('@breditor/collaboration').RecoveredContinuedRoomReplacementChoice;
 declare function persist(choice:Replacement):Promise<void>;

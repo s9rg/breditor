@@ -5,7 +5,7 @@ import {RichAssetStore} from '@breditor/experimental-rich-content';
 const bytes=blob=>blob.arrayBuffer();
 const exists=async database=>(await indexedDB.databases()).some(row=>row.name===database);
 
-export async function verifyContinuedRoomReplacement(api,{probe,preview,continuedArchive,options,cohort,replacementRaster,requests}){
+export async function verifyContinuedRoomReplacement(api,{probe,preview,continuedArchive,options,cohort,local,replacementRaster,requests}){
  const {retainRecoveredContinuedRoomCatchUp:retain,SharedContinuedRoomCatalogStore:Store}=api;
  const database='provider-catch-up-catalog',catalog='provider-catch-up-room';
  const refused=new Error('Local choice could not be saved');
@@ -23,7 +23,7 @@ export async function verifyContinuedRoomReplacement(api,{probe,preview,continue
  assert.deepEqual(choice,retained);
  assert.deepEqual(choice.source,preview.catalog);
  assert.deepEqual(choice.server,preview.server);
- assert.deepEqual(choice.advanced.map(row=>row.id),preview.participants.map(row=>row.id));
+ assert.deepEqual(choice.advanced.map(row=>row.id),[...preview.participants,...preview.localParticipants].map(row=>row.id).sort());
  assert.equal(choice.replacement.catalog,catalog);
  assert.notEqual(choice.replacement.sha256,preview.catalog.sha256);
  await assert.rejects(retain(probe,{database,catalog:'occupied-catalog',retainChoice(){
@@ -37,21 +37,21 @@ export async function verifyContinuedRoomReplacement(api,{probe,preview,continue
  const plan={...probe.recovery,expected:retained.replacement,database:'provider-catch-up-journal',destinations};
  let replacement=await Store.resume(open);
  let rasters=0;
+ const candidates=new Map([...preview.participants,...preview.localParticipants].map(row=>[row.id,row.recovery]));
  try{
   const before=continuedArchive.metadata(),after=replacement.metadata();
   assert.deepEqual(after.origin,before.origin);
   assert.deepEqual(after.current,before.current);
   assert.deepEqual(after.participants.map(row=>[row.id,row.family]),before.participants.map(row=>[row.id,row.family]));
   for(const row of after.participants){
-   const candidate=preview.participants.find(entry=>entry.id===row.id);
+   const candidate=candidates.get(row.id);
    if(!candidate){
     assert.deepEqual(await bytes(replacement.participantFile(row.id)),await bytes(continuedArchive.participantFile(row.id)));
     continue;
    }
    assert.deepEqual(row.selection,advanced.get(row.id));
-   assert.deepEqual(replacement.participantDeliveryRecords(row.id),{
-    ...continuedArchive.participantDeliveryRecords(row.id),live:candidate.recovery,
-   });
+   const record=row.family==='continued-delivery'?'participantDeliveryRecords':'participantRecords';
+   assert.deepEqual(replacement[record](row.id),{...continuedArchive[record](row.id),live:candidate});
    assert.deepEqual(await bytes(replacement.participantUploads(row.id)),await bytes(continuedArchive.participantUploads(row.id)));
    if(replacementRaster){
     const {asset,generation,payload}=replacementRaster;
@@ -84,11 +84,17 @@ export async function verifyContinuedRoomReplacement(api,{probe,preview,continue
   const recovered=await api.resumeContinuedRoomRecovery(resumed);
   assert.deepEqual(recovered.participants,destinations.toSorted((a,b)=>a.id<b.id?-1:a.id>b.id?1:0));
   assert.deepEqual(await api.resumeContinuedRoomRecovery(resumed),recovered);
-  for(const participant of cohort){
+  const report=await api.readRecoveredContinuedRoomReconciliation({recovery:resumed,reconciliation:probe.reconciliation});
+  assert.ok(report.reconciliation.participants.every(({prefix})=>
+   [...prefix.acceptedDocuments,...prefix.acceptedReviews].every(row=>row.relation!=='server_ahead')));
+  for(const participant of local)assert.ok(report.reconciliation.coverage.missing.some(
+   row=>row.kind==='unbound_review'&&row.actor===participant.options.review.actor));
+  for(const participant of [...cohort,...local]){
    const target=destinations.find(row=>row.id===participant.id);
-   const session=await api.SharedContinuedPairSession.openDelivery({...participant.options,database:target.source});
+   const delivery=cohort.includes(participant),open=delivery?'openDelivery':'open',read=delivery?'exportDeliveryRecovery':'exportRecovery';
+   const session=await api.SharedContinuedPairSession[open]({...participant.options,database:target.source});
    try{
-    assert.deepEqual(session.exportDeliveryRecovery(),preview.participants.find(row=>row.id===participant.id).recovery);
+    assert.deepEqual(session[read](),candidates.get(participant.id));
     if(replacementRaster)assert.ok(session.core.documentJson().includes(replacementRaster.generation));
     assert.equal(session.core.redo(),true);
     assert.equal(session.core.redoReview().kind,'committed');
@@ -102,5 +108,5 @@ export async function verifyContinuedRoomReplacement(api,{probe,preview,continue
    finally{uploads.close();}
   }
  }finally{await replacement.close();}
- return {clients:cohort.length,rasters};
+ return {clients:cohort.length,local:local.length,rasters};
 }
