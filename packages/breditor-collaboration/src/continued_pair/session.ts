@@ -1,9 +1,11 @@
 import {coreReadStamp} from '../core_read_stamp.js';
 import {participantAuthority} from '../participant_backup/policy.js';
 import {OperationalReadCancellation} from '../operation_read/cancellation.js';
+import {NativeReconstructionError} from '../selected_native_reconstruction/policy.js';
+import {NativeReconstructionWaits} from '../selected_native_reconstruction/read_waits.js';
 import {readContinuedPairAssetReferences} from './asset_references.js';
 import type {SharedContinuedPairAssetReferences} from './asset_references.js';
-import {continuedPairReadFailure as readFailure,createContinuedPairRecordRead,type ContinuedPairRecordRead} from './read_records.js';
+import {continuedPairReadFailure as readFailure,createContinuedPairRecordRead,ContinuedPairRecordRead} from './read_records.js';
 import {SharedEditorError,SharedRichEditor,createSharedDocumentEditor} from '../core.js';
 import {initializeSharedReadOnly} from '../initialize_read_only.js';
 import {checkManagedCore} from '../managed_custody.js';
@@ -236,16 +238,25 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
  /** Replay every selected slot to retain the union of native and version asset references. */
  async readAssetReferences(checkAuthority:()=>void,signal?:AbortSignal):Promise<SharedContinuedPairAssetReferences>{
   const read=await readPairRecords.call(this,checkAuthority,signal);
+  let waits:NativeReconstructionWaits|undefined;
   try{
+   const activeWaits=new NativeReconstructionWaits(()=>checkPairRecords.call(read),[signal]);
+   waits=activeWaits;
    return await readContinuedPairAssetReferences(read,async(recovery,check)=>{
-    const raw=await this.#restoreDocument(recovery.documentCheckpoint);
+    const raw=await activeWaits.call(()=>this.#restoreDocument(recovery.documentCheckpoint),freeUnclaimedSharedRustOwner);
     try{
      check();
      const review={...this.#identity.review,access:'read_only'} as const;
      return admitContinuedPair<P>(raw,this.#identity,review,true,{},recovery,recovery.versions).core;
     }catch(error){freeUnclaimedSharedRustOwner(raw);throw error;}
    });
-  }finally{read.dispose();}
+  }catch(error){
+   // Surface the selected pair's cancellation or source-change error.
+   if(error instanceof NativeReconstructionError&&error.code==='native_reconstruction_aborted')checkPairRecords.call(read);
+   throw error;
+  }finally{
+   try{waits?.close();}finally{read.dispose();}
+  }
  }
 
  save():void{
@@ -382,6 +393,7 @@ function capture<P extends SharedSelectionPolicy>(core:SharedRichEditor<P>,ident
 }
 
 const readPairRecords=SharedContinuedPairSession.prototype.readRecords;
+const checkPairRecords=ContinuedPairRecordRead.prototype.check;
 
 /** Exact, fresh-policy native replay shared by actual cold open and read-only inspection. */
 function admitContinuedPair<P extends SharedSelectionPolicy>(

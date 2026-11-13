@@ -192,13 +192,16 @@ An unacknowledged commit can appear in both the committed and attempted slots.
 A pending capture made after that attempt remains separate. A read requires
 an idle save queue and holds new writes until the caller disposes it. A
 native change invalidates the read, and disposal lets its queued save proceed.
-Retry, version retention, and close wait for the caller to dispose the read.
+Retry, version retention, and close reject with `continued_pair_read_busy`
+until the caller disposes the read.
 Call `verify()` to reread and verify the committed head and referenced files.
 
 `readAssetReferences(checkAuthority, signal)` replays each selected slot with
 fresh read-only policy. Rust verifies continuity of both native lanes, and the
 version catalog must retain its earlier packet prefix. The result includes
 the exact committed head and the union of native and version packet asset
-references, with each slot's references available separately. The returned
-data describes one observed cut. Whole-room adoption must separately bind
+references, with each slot's references available separately. Cancellation
+releases the save queue even if a native restore factory is still pending.
+A native owner returned after cancellation is freed if it was unclaimed.
+The returned data describes one observed cut. Whole-room adoption must separately bind
 that cut to the selected participants, upload stores, and provider.

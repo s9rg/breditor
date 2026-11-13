@@ -4,6 +4,7 @@ import {createHash} from 'node:crypto';
 import {readFileSync,realpathSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
+import {setTimeout as delay} from 'node:timers/promises';
 import {IDBFactory,IDBDatabase} from 'fake-indexeddb';
 import {SharedContinuedPairSession,SharedIndependentHistoryPersistentSession,SharedRichEditor,createSharedDocumentEditor} from '../packages/breditor-collaboration/dist/index.js';
 
@@ -56,7 +57,7 @@ export async function probeContinuedPair(directory){
   }
   return tx;
  };
- const counts={cases:0,coldPairs:0,historyComparisons:0,abortedSaves:0,lostAcknowledgements:0,exactFileSets:0,insertOnlyRefusals:0,missingFileRefusals:0,recordReads:0,failedSaveReads:0,changedReadRefusals:0,failedSaveAssetReads:0,cancelledRecordReads:0};
+ const counts={cases:0,coldPairs:0,historyComparisons:0,abortedSaves:0,lostAcknowledgements:0,exactFileSets:0,insertOnlyRefusals:0,missingFileRefusals:0,recordReads:0,failedSaveReads:0,changedReadRefusals:0,failedSaveAssetReads:0,cancelledRecordReads:0,cancelledAssetReplays:0};
  try{
   const bytes=readFileSync(resolve(directory,'breditor_shared_bg.wasm'));
   const native=await import(pathToFileURL(resolve(directory,'breditor_shared.js')).href);
@@ -77,7 +78,9 @@ export async function probeContinuedPair(directory){
       documentHistory==='segmented-v1'?profile.restore_segmented('room',checkpoint):
       documentSelection?profile.restore_document('room',checkpoint):
       language===2?profile.restore_general_typing('room',checkpoint):profile.restore('room',checkpoint);
-     const options={database,native:nativeIdentity,documentHistory,reviewHistory,readOnly:false,review:author,restoreDocument};
+     let stallRestore;
+     const options={database,native:nativeIdentity,documentHistory,reviewHistory,readOnly:false,review:author,
+      restoreDocument:checkpoint=>stallRestore?stallRestore(checkpoint):restoreDocument(checkpoint)};
      let session,core,peer,oracle;
      try{
       let raw=profile.create(input,'101');
@@ -152,6 +155,37 @@ export async function probeContinuedPair(directory){
         counts.cancelledRecordReads++;
        }finally{reading.dispose();}
        assert.deepEqual(await stored(database),[head,initialFiles]);
+
+       const controller=new AbortController();
+       let begin,settle,freed=0,returned=false;
+       const started=new Promise(resolve=>{begin=resolve;});
+       const deferred=new Promise(resolve=>{settle=resolve;});
+       stallRestore=checkpoint=>{begin(checkpoint);return deferred;};
+       const inspecting=session.readAssetReferences(()=>{},controller.signal);
+       const cancelled=assert.rejects(inspecting,error=>error.code==='continued_pair_read_aborted');
+       const timeout=new AbortController();
+       const deadline=delay(5_000,undefined,{signal:timeout.signal}).then(()=>assert.fail('Asset read did not release its save queue'));
+       try{
+        const checkpoint=await Promise.race([started,deadline]);
+        assert.equal(checkpoint,documentCheckpoint);
+        await assert.rejects(session.retry(),error=>error.code==='continued_pair_read_busy');
+        controller.abort();
+        await Promise.race([cancelled,deadline]);
+        await session.retry();
+        assert.deepEqual(await stored(database),[head,initialFiles]);
+        const raw=restoreDocument(checkpoint),free=raw.free.bind(raw);
+        Object.defineProperty(raw,'free',{value:()=>{freed++;free();}});
+        settle(raw);
+        returned=true;
+        await delay(0);
+        assert.equal(freed,1);
+        counts.cancelledAssetReplays++;
+       }finally{
+        timeout.abort();
+        controller.abort();
+        stallRestore=undefined;
+        if(!returned){settle(restoreDocument(documentCheckpoint));await cancelled.catch(()=>{});}
+       }
       }
       await session.close();session=undefined;
       await assert.rejects(SharedContinuedPairSession.restoreRecovery(missing,recovery,'host-reacquired'),error=>error.code==='continued_pair_destination_exists');
@@ -281,7 +315,7 @@ export async function probeContinuedPair(directory){
    }finally{profile.free();}
   }
   assert.equal(host.held.size,0);
-  assert.deepEqual(counts,{cases:15,coldPairs:45,historyComparisons:45,abortedSaves:3,lostAcknowledgements:3,exactFileSets:15,insertOnlyRefusals:15,missingFileRefusals:3,recordReads:15,failedSaveReads:6,changedReadRefusals:3,failedSaveAssetReads:6,cancelledRecordReads:3});
+  assert.deepEqual(counts,{cases:15,coldPairs:45,historyComparisons:45,abortedSaves:3,lostAcknowledgements:3,exactFileSets:15,insertOnlyRefusals:15,missingFileRefusals:3,recordReads:15,failedSaveReads:6,changedReadRefusals:3,failedSaveAssetReads:6,cancelledRecordReads:3,cancelledAssetReplays:3});
   return {passed:true,...counts,sharedWasmSha256:createHash('sha256').update(bytes).digest('hex')};
  }finally{
   IDBDatabase.prototype.transaction=transaction;
