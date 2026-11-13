@@ -33,7 +33,7 @@ export async function recoverIndependentRoomSource(
   const options=inheritActorLeaseInput(factory,{...factory,database,documentHistory,
    create(){throw recoveryFailure('diverged');},
   });
-  const selected=withIndependentBootstrapPolicy(options,waits.check,waits.signal);
+  const selected=withIndependentBootstrapPolicy(options,waits.check,waits.signal,{cut,fail:()=>recoveryFailure('diverged')});
   session=before==='exact'?await open.call(Session,selected):
    await restoreRecovery.call(Session,selected,recovery,'host-reacquired');
  }finally{waits.close();}

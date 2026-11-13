@@ -21,10 +21,11 @@ export async function recoverDeliveryRoomSource(
 ):Promise<ContinuedDestinationHold>{
  const recovery=archive.recovery.call(backup);
  const options=inheritActorLeaseInput(factory,{...factory,database,create(){throw recoveryFailure('diverged');}});
- const {cut,companion}=await makeDeliveryRecoveryCut(options,recovery,guard);
- const inspect=()=>inspectDeliveryHistoryDestination(database,recovery.source.identity.native,cut,companion,guard);
+ const {cut}=await makeDeliveryRecoveryCut(options,recovery,guard);
+ const inspect=()=>inspectDeliveryHistoryDestination(database,recovery.source.identity.native,cut,guard);
  const before=await inspect();
  if(completed&&before!=='exact')throw recoveryFailure('diverged');
+ const destination={cut,fail:()=>recoveryFailure('diverged')};
  const waits=new NativeReconstructionWaits(guard,[signal]);
  let session:Session;
  try{
@@ -34,10 +35,10 @@ export async function recoverDeliveryRoomSource(
    {...history,restoreSegmented:waits.restore(history.restoreSegmented,history)};
   const nativeOptions=inheritActorLeaseInput(options,{...options,documentHistory});
   session=before==='exact'?
-   await open.call(Session,withIndependentBootstrapPolicy(nativeOptions,waits.check,waits.signal)):
+   await open.call(Session,withIndependentBootstrapPolicy(nativeOptions,waits.check,waits.signal,destination)):
    await restoreRecovery.call(Session,withIndependentBootstrapPolicy(inheritActorLeaseInput(nativeOptions,{
     ...nativeOptions,recovery,writerRecovery:'host-reacquired' as const,
-   }),waits.check,waits.signal));
+   }),waits.check,waits.signal,destination));
  }finally{waits.close();}
  let complete=false;
  try{

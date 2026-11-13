@@ -12,6 +12,22 @@ import {attachDelivery,pendingDelivery} from './fixtures/independent-delivery/se
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
 import {pixel,secondPixel,secondAsset} from './fixtures/review-assets/pixels.mjs';
 
+async function updateDestinationFile(database,store,key,value){
+ const db=await new Promise((resolve,reject)=>{
+  const request=indexedDB.open(database);
+  request.onsuccess=()=>resolve(request.result);
+  request.onerror=()=>reject(request.error);
+ });
+ try{
+  await new Promise((resolve,reject)=>{
+   const tx=db.transaction(store,'readwrite');
+   if(value===undefined)tx.objectStore(store).delete(key);
+   else tx.objectStore(store).add(value,key);
+   tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);
+  });
+ }finally{db.close();}
+}
+
 async function removeRetainedCatalogFile(database,key){
  const db=await new Promise((resolve,reject)=>{
   const request=indexedDB.open(database);
@@ -123,7 +139,7 @@ export async function probeContinuedRoomCatalog(runtime,fixturePath){
  const profile=wasm.SharedRichProfile[make](fixture.configuration),reset=environment();
  const client=fixture.clients.find(row=>!row.observer);
  const owners=[],catalogs=[];
- const counts={coldCatalogReads:0,nativePairs:0,serverAhead:0,forksRefused:0,selectionRefusals:0,storedCatalogReads:0,storedCatalogRefusals:0,interruptedCatalogReads:0,damagedCatalogRefusals:0,restoredLocalUndoRedo:0,cohortRecoveries:0,interruptedRecoveryResumes:0,uploadRecoveryResumes:0,recoveryRefusals:0,mixedCatalogReads:0,mixedRefusals:0,mixedRecoveryResumes:0,deliveryRecoveryResumes:0,deliveryPacketRecoveries:0};
+ const counts={coldCatalogReads:0,nativePairs:0,serverAhead:0,forksRefused:0,selectionRefusals:0,storedCatalogReads:0,storedCatalogRefusals:0,interruptedCatalogReads:0,damagedCatalogRefusals:0,restoredLocalUndoRedo:0,cohortRecoveries:0,interruptedRecoveryResumes:0,uploadRecoveryResumes:0,recoveryRefusals:0,mixedCatalogReads:0,mixedRefusals:0,mixedRecoveryResumes:0,deliveryRecoveryResumes:0,deliveryPacketRecoveries:0,occupiedBootstrapRefusals:0};
  try{
   const initial={
    catalog:'continued-room',wasm,checkAuthority(){},
@@ -529,11 +545,40 @@ export async function probeContinuedRoomCatalog(runtime,fixturePath){
     const destinations=['delivery',observer.id].map(id=>({id,source:tag+'-'+id+'-source',uploads:tag+'-'+id+'-uploads'}));
     const [delivery,continued]=destinations;
     const plan={database:tag+'-journal',catalog:store,expected:archive.selection(),destinations,writerRecovery:'host-reacquired',checkAuthority(){}};
+    const filesStore='delivery_history_files',unrelated=['unrelated-room','1','document','root'];
+    let inserted=false;
+    const insertUnrelated=async checkpoint=>{
+     if(!inserted){
+      inserted=true;
+      await updateDestinationFile(delivery.source,filesStore,unrelated,'unrelated retained bytes');
+     }
+     return segmented?factory.documentHistory.restoreSegmented(checkpoint):factory.documentHistory.restoreOriginal(checkpoint);
+    };
+    const conflicting={...factory,documentHistory:segmented?{...factory.documentHistory,restoreSegmented:insertUnrelated}:
+     {...factory.documentHistory,restoreOriginal:insertUnrelated}};
     const deliveryPolicies=[{id:'delivery',expected:backup.selection(),session:factory}];
     await assert.rejects(beginContinuedRoomRecovery(plan),error=>error.code==='continued_room_recovery_policy');
     await assert.rejects(beginContinuedRoomRecovery({...plan,deliveryPolicies:[{...deliveryPolicies[0],session:options}]}),
      error=>error.code==='independent_delivery_recovery_policy');
     assert.equal((await indexedDB.databases()).some(row=>row.name===plan.database),false);
+    await assert.rejects(beginContinuedRoomRecovery({...plan,deliveryPolicies:[{...deliveryPolicies[0],session:conflicting}]}),
+     error=>error.code==='continued_room_recovery_diverged');
+    assert.equal(inserted,true);
+    await assert.rejects(resumeContinuedRoomRecovery({...plan,deliveryPolicies}),
+     error=>error.code==='independent_delivery_recovery_diverged');
+    const db=await new Promise((resolve,reject)=>{
+     const request=indexedDB.open(delivery.source);
+     request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);
+    });
+    try{
+     const tx=db.transaction([filesStore,'delivery_history_heads'],'readonly');
+     const stored=tx.objectStore(filesStore).getAll(),heads=tx.objectStore('delivery_history_heads').count();
+     await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);});
+     assert.deepEqual(stored.result,['unrelated retained bytes']);
+     assert.equal(heads.result,0);
+    }finally{db.close();}
+    await updateDestinationFile(delivery.source,filesStore,unrelated);
+    counts.occupiedBootstrapRefusals++;
     const transaction=IDBDatabase.prototype.transaction;
     let interrupted=false;
     IDBDatabase.prototype.transaction=function(...args){
@@ -545,7 +590,7 @@ export async function probeContinuedRoomCatalog(runtime,fixturePath){
      return tx;
     };
     try{
-     await assert.rejects(beginContinuedRoomRecovery({...plan,deliveryPolicies}));
+     await assert.rejects(resumeContinuedRoomRecovery({...plan,deliveryPolicies}));
      assert.equal(interrupted,true);
      assert.equal((await indexedDB.databases()).some(row=>row.name===continued.source),false);
     }finally{IDBDatabase.prototype.transaction=transaction;}
@@ -596,7 +641,7 @@ export async function probeContinuedRoomCatalog(runtime,fixturePath){
    await assert.rejects(capture([forked]),error=>error.code==='inventory_fork');
    counts.forksRefused++;
   }
-  assert.deepEqual(counts,{coldCatalogReads:3,nativePairs:3,serverAhead:1,forksRefused:2,selectionRefusals:15,storedCatalogReads:3,storedCatalogRefusals:9,interruptedCatalogReads:1,damagedCatalogRefusals:1,restoredLocalUndoRedo:3,cohortRecoveries:1,interruptedRecoveryResumes:1,uploadRecoveryResumes:1,recoveryRefusals:3,mixedCatalogReads:4,mixedRefusals:16,mixedRecoveryResumes:4,deliveryRecoveryResumes:2,deliveryPacketRecoveries:fixture.atomic?6:2});
+  assert.deepEqual(counts,{coldCatalogReads:3,nativePairs:3,serverAhead:1,forksRefused:2,selectionRefusals:15,storedCatalogReads:3,storedCatalogRefusals:9,interruptedCatalogReads:1,damagedCatalogRefusals:1,restoredLocalUndoRedo:3,cohortRecoveries:1,interruptedRecoveryResumes:1,uploadRecoveryResumes:1,recoveryRefusals:3,mixedCatalogReads:4,mixedRefusals:16,mixedRecoveryResumes:4,deliveryRecoveryResumes:2,deliveryPacketRecoveries:fixture.atomic?6:2,occupiedBootstrapRefusals:2});
   return {passed:true,fixtureSha256:sha(readFileSync(fixturePath)),sharedWasmSha256:sha(wasmBytes),...counts};
  }finally{
   for(const catalog of catalogs)catalog.dispose();

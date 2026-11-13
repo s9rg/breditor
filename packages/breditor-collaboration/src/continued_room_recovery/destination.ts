@@ -4,13 +4,11 @@ import type {SharedContinuedPairRecovery,SharedContinuedPairOptions} from '../co
 import {SharedContinuedPairSession} from '../continued_pair/session.js';
 import {coreReadStamp} from '../core_read_stamp.js';
 import {continuedPairStore,makeContinuedPairCut} from '../continued_pair/cut.js';
-import {readPairedHistoryCut} from '../independent_history/database.js';
+import {inspectExactHistoryDestination} from '../independent_history/exact_destination.js';
 import type {IndependentHistoryCut} from '../independent_history/contract.js';
 import {withIndependentBootstrapPolicy} from '../independent_history/bootstrap_policy.js';
-import {existingDatabase} from '../participant_recovery/journal.js';
 import {inspectUploads} from '../participant_recovery/inspect.js';
 import {sourceCoreMethods} from '../source_native_read.js';
-import {settleOwnedTransaction} from '../persistence/settle_owned_transaction.js';
 import {SharedEditorError} from '../core.js';
 
 export const recoveryFailure=(suffix:string)=>new SharedEditorError(
@@ -20,40 +18,9 @@ const {open,restoreRecovery,prototype:{exportRecovery,discardAndClose}}=SharedCo
 const {openRetained,restoreBackupHeld,prototype:{acquireRecoveryCustody,exportBackup,close}}=RichAssetStore;
 const {check:checkCustody,close:closeCustody}=RichAssetStoreCustody.prototype;
 
-async function inspectSource(name:string,recovery:SharedContinuedPairRecovery,cut:IndependentHistoryCut,guard:()=>void){
- guard();
- const db=await existingDatabase(name);
- if(!db){guard();return 'absent';}
- let changed=false;
- try{
-  db.onversionchange=()=>{changed=true;db.close();};
-  const names=continuedPairStore.names;
-  guard();
-  if(db.version!==1||db.objectStoreNames.length!==2||!names.every(value=>db.objectStoreNames.contains(value)))
-   throw recoveryFailure('diverged');
-  const counts=await new Promise<number[]>((resolve,reject)=>{
-   const tx=db.transaction([...names],'readonly'),result:number[]=[];
-   let failure:unknown;
-   const abort=(error:unknown)=>{failure=error;try{tx.abort();}catch{}};
-   settleOwnedTransaction(tx,()=>result,()=>failure??recoveryFailure('diverged'),resolve,reject);
-   names.forEach((name,index)=>{
-    const store=tx.objectStore(name);
-    if(store.keyPath!==null||store.autoIncrement||store.indexNames.length){abort(recoveryFailure('diverged'));return;}
-    const request=store.count();
-    request.onsuccess=()=>{result[index]=request.result;};
-   });
-  });
-  guard();
-  if(changed)throw recoveryFailure('diverged');
-  if(counts[0]===0&&counts[1]===0)return 'empty';
-  if(counts[0]!==cut.files.length||counts[1]!==1)throw recoveryFailure('diverged');
-  const id=recovery.identity.native;
-  const actual=await readPairedHistoryCut(db,[id.room,id.writer],continuedPairStore);
-  guard();
-  if(changed||actual?.head!==cut.head||JSON.stringify(actual.files)!==JSON.stringify(cut.files))
-   throw recoveryFailure('diverged');
-  return 'exact';
- }finally{db.close();}
+function inspectSource(name:string,recovery:SharedContinuedPairRecovery,cut:IndependentHistoryCut,guard:()=>void){
+ const {room,writer}=recovery.identity.native;
+ return inspectExactHistoryDestination(name,continuedPairStore.names,[room,writer],{cut,fail:()=>recoveryFailure('diverged')},guard);
 }
 
 export interface ContinuedDestinationHold {
@@ -68,7 +35,7 @@ export async function recoverContinuedRoomSource(
  const cut=await makeContinuedPairCut(recovery.documentCheckpoint,recovery.reviewCheckpoint,recovery.identity,recovery.versions);
  const before=await inspectSource(options.database,recovery,cut,guard);
  if(completed&&before!=='exact')throw recoveryFailure('diverged');
- const policy=withIndependentBootstrapPolicy(options,guard,signal);
+ const policy=withIndependentBootstrapPolicy(options,guard,signal,{cut,fail:()=>recoveryFailure('diverged')});
  const session=before==='exact'?await open.call(SharedContinuedPairSession,policy):
   await restoreRecovery.call(SharedContinuedPairSession,policy,recovery,'host-reacquired');
  let complete=false,closed=false;

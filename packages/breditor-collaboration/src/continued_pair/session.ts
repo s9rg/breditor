@@ -1,6 +1,6 @@
 import {coreReadStamp} from '../core_read_stamp.js';
 import {participantAuthority} from '../participant_backup/policy.js';
-import {independentBootstrapPolicy,independentBootstrapSignal} from '../independent_history/bootstrap_policy.js';
+import {independentBootstrapDestination,independentBootstrapPolicy,independentBootstrapSignal} from '../independent_history/bootstrap_policy.js';
 import {NativeReconstructionWaits} from '../selected_native_reconstruction/read_waits.js';
 import {OperationalReadCancellation} from '../operation_read/cancellation.js';
 import {readContinuedPairAssetReferences,type SharedContinuedPairAssetReferences} from './asset_references.js';
@@ -17,6 +17,7 @@ import {object} from '../persistence/segmented_checkpoint.js';
 import {fenceOpeningDatabase} from '../persistence/opening_database.js';
 import {SharedWriterLease} from '../persistence/writer_lease.js';
 import {ReviewWriterLease} from '../persistence/review_writer_lease.js';
+import {readExactHistoryDestination} from '../independent_history/exact_destination.js';
 import {openPairedHistoryDatabase,readPairedHistoryCut,writePairedHistoryCut} from '../independent_history/database.js';
 import {markIndependentHistoryStorage} from '../independent_history/native_port.js';
 import type {IndependentHistoryCut} from '../independent_history/contract.js';
@@ -118,7 +119,7 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
 
  static async #open<P extends SharedSelectionPolicy>(input:SharedContinuedPairOptions<P>,recovery?:SharedContinuedPairRecovery):Promise<SharedContinuedPairSession<P>>{
   const {database,restoreDocument,readOnly,onError}=input,review={...input.review},editor={...input.editor};
-  const bootstrap=independentBootstrapPolicy(input),signal=independentBootstrapSignal(input);
+  const bootstrap=independentBootstrapPolicy(input),signal=independentBootstrapSignal(input),destination=independentBootstrapDestination(input);
   bootstrap?.();
   const identity=canonicalContinuedPairIdentity({
    native:input.native,documentHistory:input.documentHistory,reviewHistory:input.reviewHistory,
@@ -143,6 +144,11 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
    const check=()=>{bootstrap?.();opening.assertCurrent();};
    const stored=await readPairedHistoryCut(db,key,continuedPairStore);
    check();
+   if(destination){
+    const status=await readExactHistoryDestination(db,continuedPairStore.names,key,destination,check);
+    if(recovery?status!=='empty'||stored!==null:status!=='exact'||stored?.head!==destination.cut.head)
+     throw destination.fail();
+   }
    if(stored&&recovery)throw fail('continued_pair_destination_exists','Recovery never overwrites a committed paired destination');
    if(stored&&JSON.stringify(stored.record.identity)!==JSON.stringify(identity))
     throw fail('continued_pair_identity','Stored room, actors or history families differ');
@@ -161,7 +167,7 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
    const admittedVersions=replay.versions,captured=replay.capture;
    check();
    if(cut&&bootstrap){
-    await writePairedHistoryCut(db,key,null,cut,continuedPairStore.names,continuedPairStore.readHead,check,signal);
+    await writePairedHistoryCut(db,key,null,cut,continuedPairStore.names,continuedPairStore.readHead,check,signal,undefined,destination);
     check();
    }
    session=new SharedContinuedPairSession(construction,core,db,documentLease,reviewLease,identity,stored?.head??(bootstrap?cut!.head:null),admittedVersions,onError,restoreDocument);

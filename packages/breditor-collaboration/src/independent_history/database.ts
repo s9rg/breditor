@@ -5,6 +5,7 @@ import {readIndependentHistoryHead,joinIndependentHistoryLane,makeIndependentHis
 import type {IndependentHistoryCut,IndependentHistoryStoredCut,IndependentHistoryFile,IndependentHistoryHead,IndependentHistoryReference} from './contract.js';
 import type {IndependentHistoryCompanion} from './driver.js';
 import type {IndependentLocalOperationDriver} from './local_driver.js';
+import {inspectPairedDestination,type ExactHistoryDestination} from './exact_destination.js';
 import {onIndependentBootstrapAbort} from './bootstrap_policy.js';
 const fail=(message:string)=>new SharedEditorError('independent_history_storage',message);
 type FileLane={kind:'original'}|{kind:'segmented-v1'|'continued-v2';root:IndependentHistoryReference;sealed:readonly IndependentHistoryReference[]};
@@ -24,9 +25,9 @@ export interface PairedHistoryStore<Head extends PairedHead> {
 }
 const references=(head:PairedHead)=>(['document','review'] as const).flatMap(lane=>{const selected=head[lane];return selected.kind==='original'?[]:[selected.root,...selected.sealed].map((reference,index)=>({lane,...reference,kind:index===0?'root' as const:'sealed' as const}));});
 type StorageProfile=IndependentHistoryCompanion|IndependentLocalOperationDriver;
-const stores=(profile?:StorageProfile)=>profile?.storage==='local-operation-v1'?['local_operation_history_files','local_operation_history_heads'] as const:profile?.storage==='restored-operation-v1'?['restored_operation_history_files','restored_operation_history_heads'] as const:profile?.storage==='operation-v1'?['operation_history_files','operation_history_heads'] as const:profile?['delivery_history_files','delivery_history_heads'] as const:['history_files','history_heads'] as const;
+export const independentHistoryStores=(profile?:StorageProfile)=>profile?.storage==='local-operation-v1'?['local_operation_history_files','local_operation_history_heads'] as const:profile?.storage==='restored-operation-v1'?['restored_operation_history_files','restored_operation_history_heads'] as const:profile?.storage==='operation-v1'?['operation_history_files','operation_history_heads'] as const:profile?['delivery_history_files','delivery_history_heads'] as const:['history_files','history_heads'] as const;
 export function openIndependentHistoryDatabase(name:string,profile?:StorageProfile,checkCurrent?:()=>void):Promise<IDBDatabase>{
- return openPairedHistoryDatabase(name,stores(profile),checkCurrent);
+ return openPairedHistoryDatabase(name,independentHistoryStores(profile),checkCurrent);
 }
 export function openPairedHistoryDatabase(name:string,names:PairedStoreNames,checkCurrent?:()=>void):Promise<IDBDatabase>{
  if(typeof name!=='string'||!name||name.length>200)return Promise.reject(fail('Use a dedicated paired-history database'));
@@ -48,7 +49,7 @@ export function openPairedHistoryDatabase(name:string,names:PairedStoreNames,che
 }
 export function readIndependentHistoryCut(db:IDBDatabase,key:readonly[string,string],profile?:StorageProfile):Promise<IndependentHistoryStoredCut|null>{
  return readPairedHistoryCut(db,key,{
-  names:stores(profile),readHead:profile?.readHead??readIndependentHistoryHead,join:joinIndependentHistoryLane,
+  names:independentHistoryStores(profile),readHead:profile?.readHead??readIndependentHistoryHead,join:joinIndependentHistoryLane,
   makeCut:(document,review,head)=>makeIndependentHistoryCut(document,review,head.identity,head.versions),
   wrapped:profile!==undefined,
  });
@@ -68,12 +69,13 @@ export async function readPairedHistoryCut<Head extends PairedHead>(
  return{...checked,head:stored.head,documentCheckpoint,reviewCheckpoint,record};
 }
 /** Lost acknowledgements retry exactly, before newer cuts. An acknowledged missing file is never repaired. */
-export function writeIndependentHistoryCut(db:IDBDatabase,key:readonly[string,string],expected:string|null,cut:IndependentHistoryCut,profile?:StorageProfile,checkCurrent?:()=>void,signal?:AbortSignal,lifetimeSignal?:AbortSignal):Promise<void>{
- return writePairedHistoryCut(db,key,expected,cut,stores(profile),profile?.readHead??readIndependentHistoryHead,checkCurrent,signal,lifetimeSignal);
+export function writeIndependentHistoryCut(db:IDBDatabase,key:readonly[string,string],expected:string|null,cut:IndependentHistoryCut,profile?:StorageProfile,checkCurrent?:()=>void,signal?:AbortSignal,lifetimeSignal?:AbortSignal,destination?:ExactHistoryDestination):Promise<void>{
+ return writePairedHistoryCut(db,key,expected,cut,independentHistoryStores(profile),profile?.readHead??readIndependentHistoryHead,checkCurrent,signal,lifetimeSignal,destination);
 }
 export function writePairedHistoryCut(
  db:IDBDatabase,key:readonly[string,string],expected:string|null,cut:IndependentHistoryCut,
  names:PairedStoreNames,readHead:(input:string)=>PairedHead,checkCurrent?:()=>void,signal?:AbortSignal,lifetimeSignal?:AbortSignal,
+ destination?:ExactHistoryDestination,
 ):Promise<void>{
  try{checkCurrent?.();const head=readHead(cut.head),refs=references(head);if(head.identity.native.room!==key[0]||head.identity.native.writer!==key[1]||cut.files.length!==refs.length||cut.files.some((file,index)=>{const ref=refs[index]!;return file.lane!==ref.lane||file.generation!==ref.generation||file.sha256!==ref.sha256||file.kind!==ref.kind||typeof file.json!=='string';}))throw fail('Wrong paired head or native file set');checkCurrent?.();}catch(error){return Promise.reject(error);}
  return new Promise((resolve,reject)=>{
@@ -82,8 +84,52 @@ export function writePairedHistoryCut(
    bootstrapSettled=onIndependentBootstrapAbort(signal,()=>abort(aborted()));if(lifetimeSignal!==signal)lifetimeSettled=onIndependentBootstrapAbort(lifetimeSignal,()=>abort(aborted()));checkCurrent?.();if(signal?.aborted||lifetimeSignal?.aborted||failure)throw failure??aborted();
    const [filesName,headsName]=names,active=db.transaction([filesName,headsName],'readwrite');tx=active;
    active.oncomplete=()=>{settled();resolve();};active.onabort=()=>{settled();reject(failure??active.error??fail('Paired-history commit aborted'));};
-   checkCurrent?.();if(signal?.aborted||lifetimeSignal?.aborted||failure)throw failure??aborted();const heads=active.objectStore(headsName),files=active.objectStore(filesName),request=heads.get([...key]);
-   request.onsuccess=()=>{try{checkCurrent?.();const actual=request.result===undefined?null:request.result,already=actual===cut.head;if(!already&&actual!==expected)throw fail('Paired head changed since its last acknowledgement');let left=cut.files.length;const publish=()=>{checkCurrent?.();if(!already){if(expected===null)heads.add(cut.head,[...key]);else heads.put(cut.head,[...key]);}checkCurrent?.();};if(left===0){publish();return;}for(const file of cut.files){const fileKey=[...key,file.lane,file.generation],json=JSON.stringify(file),read=files.get(fileKey);read.onsuccess=()=>{try{checkCurrent?.();if(read.result!==undefined&&read.result!==json)throw fail('Immutable native file already has different bytes in this lane');if(read.result===undefined){if(already)throw fail('An acknowledged cut lost a native file; refusing silent repair');files.add(json,fileKey);}if(--left===0)publish();}catch(error){abort(error);}};}}catch(error){abort(error);}};
+   checkCurrent?.();if(signal?.aborted||lifetimeSignal?.aborted||failure)throw failure??aborted();
+   const write=()=>{
+    const heads=active.objectStore(headsName),files=active.objectStore(filesName),request=heads.get([...key]);
+    request.onsuccess=()=>{
+     try{
+      checkCurrent?.();
+      const actual=request.result===undefined?null:request.result,already=actual===cut.head;
+      if(!already&&actual!==expected)throw fail('Paired head changed since its last acknowledgement');
+      let left=cut.files.length;
+      const publish=()=>{
+       checkCurrent?.();
+       if(!already){
+        if(expected===null)heads.add(cut.head,[...key]);
+        else heads.put(cut.head,[...key]);
+       }
+       checkCurrent?.();
+      };
+      if(left===0){publish();return;}
+      for(const file of cut.files){
+       const fileKey=[...key,file.lane,file.generation],json=JSON.stringify(file),read=files.get(fileKey);
+       read.onsuccess=()=>{
+        try{
+         checkCurrent?.();
+         if(read.result!==undefined&&read.result!==json)throw fail('Immutable native file already has different bytes in this lane');
+         if(read.result===undefined){
+          if(already)throw fail('An acknowledged cut lost a native file; refusing silent repair');
+          files.add(json,fileKey);
+         }
+         if(--left===0)publish();
+        }catch(error){abort(error);}
+       };
+      }
+     }catch(error){abort(error);}
+    };
+   };
+   if(destination){
+    if(cut.head!==destination.cut.head||JSON.stringify(cut.files)!==JSON.stringify(destination.cut.files)||
+       expected!==null&&expected!==destination.cut.head)throw destination.fail();
+    inspectPairedDestination(active,names,key,destination,status=>{
+     checkCurrent?.();
+     if(expected===null){
+      if(status!=='empty')throw destination.fail();
+      write();
+     }else if(status!=='exact')throw destination.fail();
+    },abort);
+   }else write();
   }catch(error){if(tx)abort(error);else{settled();reject(error);}}
  });
 }

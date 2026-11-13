@@ -276,7 +276,10 @@ The journal records each step before it writes. After an interruption,
 `resumeContinuedRoomRecovery` reopens the same plan and checks the exact
 durable contents before it advances. It accepts a matching committed step
 whose acknowledgement was lost. A completed destination that has changed
-or disappeared stops recovery. The coordinator keeps each admitted local
+or disappeared stops recovery. Each paired history destination is checked
+in one read transaction. The first write checks that both stores are still
+empty in the same transaction that saves the head and history files. The
+coordinator keeps each admitted local
 history and upload store held through final verification and releases them
 before returning the local destination names.
 
