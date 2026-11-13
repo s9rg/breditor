@@ -5,7 +5,7 @@ import {deliveryDraft} from '../independent-delivery/session.mjs';
 import {pixel,secondPixel,secondAsset} from '../review-assets/pixels.mjs';
 
 /** Seed a delivery archive with accepted native prefixes and still-queued local records. */
-export async function continuedDeliveryParticipant(api,{entry,fixture,metadata,wasm,endpoint='ws://127.0.0.1:1/ws',tag}){
+export async function continuedDeliveryParticipant(api,{entry,fixture,metadata,wasm,endpoint='ws://127.0.0.1:1/ws',tag,prepareUploads}){
  const {SharedContinuedPairSession:Session,SharedContinuedParticipantBackup:Backup,createSharedContinuedRelaySync}=api;
  const source=entry.record.live,{native,review}=source.identity;
  const transport=fixture.atomic?{writerTransport:'atomic-v2'}:{};
@@ -56,6 +56,7 @@ export async function continuedDeliveryParticipant(api,{entry,fixture,metadata,w
   await uploads.ingest(new Blob([pixel],{type:'image/png'}));
   await uploads.ingest(new Blob([secondPixel],{type:'image/png'}));
   await uploads.cancel(secondAsset);
+  await prepareUploads?.(uploads);
   const captured=await Backup.captureDelivery({participant:tag,principal:review.principal,session,uploads,wasm,checkAuthority(){},
    resolveAsset:async reference=>({...reference,identity:'host-verified',blob:new Blob([pixel],{type:'image/png'}),check(){}})});
   assert.equal(captured.kind,'ready');

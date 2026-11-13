@@ -1,6 +1,8 @@
 /** Check normal client transport against the published, test-owned relay. */
 import assert from 'node:assert/strict';
 import {WebSocket as NativeWebSocket} from 'undici';
+import {RichAssetStore} from '@breditor/experimental-rich-content';
+import {unavailableAsset,unavailableUpload} from '../physical-recovery-control/unavailable-upload.mjs';
 
 function resumeIdentity(binding,rows,key){
  const row=rows.find(row=>row[key]===binding[key]&&row.principal===binding.principal);
@@ -10,11 +12,29 @@ function resumeIdentity(binding,rows,key){
 
 function receiptCut(record){
  return {document:record.relay.document,review:record.relay.reviewReceipt,
-  versions:record.retained.versions.packets.filter(row=>row.origin==='local')};
+  versions:record.retained.versions.packets.filter(row=>row.origin==='local'),
+  suggestions:record.retained.suggestions.retained.filter(row=>row.origin==='local'),
+  revisions:record.retained.revisions.retained};
 }
 
-export async function deliverPublishedCohort(api,sessions,listener,delivery){
- assert.ok(delivery);
+async function deliverUpload(api,uploads,options){
+ const store=await RichAssetStore.openRetained(uploads);
+ const assets=new api.SharedRelayAssets({...options,store});
+ try{
+  assert.equal((await store.get(unavailableAsset)).status,'queued');
+  assert.equal(await assets.readBytes(unavailableAsset),undefined);
+  await assets.flush();
+  const accepted=await store.get(unavailableAsset);
+  assert.equal(accepted.status,'uploaded');
+  assert.equal(accepted.storageRef,'breditor:relay-asset:1:'+unavailableAsset);
+  const remote=await assets.readBytes(unavailableAsset);
+  assert.deepEqual(Buffer.from(await remote.blob.arrayBuffer()),unavailableUpload);
+  return accepted;
+ }finally{assets.dispose();store.close();}
+}
+
+export async function deliverPublishedCohort(api,sessions,listener,delivery,destinations,uploadId){
+ assert.ok(Array.isArray(delivery?.documents)&&Array.isArray(delivery.reviews),'Private client registrations are required');
  const endpoint='ws://'+listener+'/ws';
  const originalSocket=Object.getOwnPropertyDescriptor(globalThis,'WebSocket');
  Object.defineProperty(globalThis,'WebSocket',{configurable:true,writable:true,value:class extends NativeWebSocket{
@@ -28,10 +48,12 @@ export async function deliverPublishedCohort(api,sessions,listener,delivery){
  try{
   for(const [id,session] of sessions){
    const original=session.exportDeliveryRecovery(),{binding}=original.relay;
+   const {binding:suggestionsBinding,effectWriter}=original.retainedBinding.suggestions.identity;
    assert.equal(binding.document.endpoint,endpoint);
    assert.equal(binding.review.endpoint,endpoint);
    const document=api.createSharedContinuedRelaySync(session,{...common,
-    identity:resumeIdentity(binding.document,delivery.documents,'writer')});
+    identity:resumeIdentity(binding.document,delivery.documents,'writer'),
+    suggestions:{binding:suggestionsBinding,effectWriter},suggestionRevisions:original.retainedBinding.revisions});
    adapters.push(document);
    const review=api.createSharedContinuedReviewRelaySync(session,{...common,
     identity:resumeIdentity(binding.review,delivery.reviews,'actor'),flushDocument:()=>document.flush()});
@@ -43,9 +65,15 @@ export async function deliverPublishedCohort(api,sessions,listener,delivery){
    await review.flush();
    assert.equal(review.state().pending,false);
 
+   await session.openSuggestionQueue();
+   const revisions=await session.openSuggestionRevisions({transport:document});
+   await revisions.connect();
+   await revisions.synchronize();
+   await revisions.close();
    const versions=await session.openVersionCatalog(common);
    await versions.connect();
    await versions.flushShared();
+   await versions.close();
    await session.flush();
    const accepted=receiptCut(session.exportDeliveryRecovery());
    assert.ok(accepted.document.receipt);
@@ -58,9 +86,24 @@ export async function deliverPublishedCohort(api,sessions,listener,delivery){
    assert.equal(accepted.versions.length,1);
    assert.equal(accepted.versions[0].packet,queued[0].packet);
    assert.ok(accepted.versions[0].accepted);
+   const before=receiptCut(original);
+   assert.equal(before.suggestions.length,1);
+   assert.equal(before.suggestions[0].publish,true);
+   assert.equal(accepted.suggestions.length,1);
+   assert.equal(accepted.suggestions[0].packet,before.suggestions[0].packet);
+   assert.ok(accepted.suggestions[0].publication);
+   assert.equal(accepted.suggestions[0].decision?.decision,'reject');
+   assert.equal(before.revisions.length,1);
+   assert.equal(before.revisions[0].retry,true);
+   assert.equal(accepted.revisions.length,1);
+   assert.equal(accepted.revisions[0].packet,before.revisions[0].packet);
+   assert.equal(accepted.revisions[0].retry,false);
+   assert.ok(accepted.revisions[0].receipt);
    acknowledged.set(id,accepted);
   }
-  return acknowledged;
+  const uploads=destinations.find(row=>row.id===uploadId).uploads;
+  const upload=await deliverUpload(api,uploads,{endpoint,getToken:common.getToken,principal:'alice'});
+  return {acknowledged,upload,uploads};
  }finally{
   try{
    for(const adapter of adapters)adapter.dispose();
@@ -72,7 +115,7 @@ export async function deliverPublishedCohort(api,sessions,listener,delivery){
  }
 }
 
-export async function verifyColdDelivery(api,cohort,destinations,acknowledged){
+export async function verifyColdDelivery(api,cohort,destinations,{acknowledged,upload,uploads}){
  const names=new Map(destinations.map(row=>[row.id,row.source]));
  for(const {id,options} of cohort){
   const session=await api.SharedContinuedPairSession.openDelivery({...options,database:names.get(id)});
@@ -82,4 +125,9 @@ export async function verifyColdDelivery(api,cohort,destinations,acknowledged){
    assert.match(JSON.stringify(session.core.reviewSnapshot().view),/Local offline comment/);
   }finally{await session.close();}
  }
+ const store=await RichAssetStore.openRetained(uploads);
+ try{
+  assert.deepEqual(await store.get(unavailableAsset),upload);
+  assert.deepEqual(Buffer.from(await(await store.blob(unavailableAsset)).arrayBuffer()),unavailableUpload);
+ }finally{store.close();}
 }

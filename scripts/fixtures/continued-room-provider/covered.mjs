@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {verifyActivationCommit} from './activation.mjs';
 import {continuedDeliveryParticipant} from '../continued-room-recovery/continued-delivery.mjs';
+import {unavailableUpload} from '../physical-recovery-control/unavailable-upload.mjs';
 
 /** Build the fully delivery-bound cohort for the authenticated commit case. */
 export async function verifyCoveredActivation(api,{initial,entries,fixture,inventory,wasm,caseInfo,host,getToken,requests,delivery}){
@@ -8,9 +9,10 @@ export async function verifyCoveredActivation(api,{initial,entries,fixture,inven
  const cohort=[];
  let archive,store,replacement;
  try{
-  for(const entry of entries){
+  for(const [index,entry] of entries.entries()){
    cohort.push(await continuedDeliveryParticipant(api,{entry,fixture,metadata:inventory,wasm,
-    endpoint:'ws://'+caseInfo.publication.selection.listener+'/ws',tag:'activation-'+entry.id}));
+    endpoint:'ws://'+caseInfo.publication.selection.listener+'/ws',tag:'activation-'+entry.id,
+    prepareUploads:index===0?uploads=>uploads.ingest(new Blob([unavailableUpload],{type:'image/png'})):undefined}));
   }
   const options={wasm,policies:cohort.map(row=>row.policy),checkAuthority(){}};
   archive=await Catalog.capture({...initial,...options,catalog:'activation-source-room',participants:cohort.map(row=>row.row)});

@@ -2,7 +2,7 @@
 use super::{Result, activation, clients, migrated_origin, server_packet_asset, source, storage};
 use breditor_collab_relay::{
     RecoveryRegistrationCredentials, Role, RoomRecoveryPolicy, ServerLogGenerationRoomBackup,
-    ServerLogGenerationRoomRecovery,
+    ServerLogGenerationRoomRecovery, SuggestionRole,
     assets::{AssetStore, asset_id, prepare_asset},
     server::{
         Authentication, ContentAddressedServerAssets, PreparedLogGenerationRecoveryHost,
@@ -164,6 +164,11 @@ async fn generate_selected(
         return Err("seven actual image-bearing registrations are required".into());
     }
     let assets = seed_assets(&root, &mut room, rasters)?;
+    let activation_case =
+        server_packet_assets && spec.atomic && spec.language == 3 && !spec.standard;
+    if activation_case {
+        room.grant_document_suggestions("owner", "alice", Some(SuggestionRole::Propose))?;
+    }
     if server_packet_assets && spec.atomic {
         let raster =
             asset_id(rasters.get(1).ok_or("server packet fixture requires a second raster")?);
@@ -177,14 +182,7 @@ async fn generate_selected(
         server_packet_asset::accept(&mut room, accepted)?;
     }
     let (migrated_origin::Cuts { older: ancestor, local, legacy }, predecessor) =
-        capture_source_cuts(
-            &root,
-            room,
-            assets,
-            migrated,
-            server_packet_assets && spec.atomic && spec.language == 3 && !spec.standard,
-        )
-        .await?;
+        capture_source_cuts(&root, room, assets, migrated, activation_case).await?;
     let mut operation = ServerLogGenerationRoomRecovery::begin(
         &root.join("restored"),
         &local,

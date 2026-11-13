@@ -32,7 +32,6 @@ async function installedProbe(){
  for(const name of names)assert.ok(realpathSync(join(consumer,'node_modules',name)).startsWith(realpathSync(consumer)+'/node_modules/'));
  copyConsumerFixtures(root,consumer,['continued-room-provider/operation-archives.mjs','continued-room-provider/replacement.mjs','continued-room-provider/activation.mjs','continued-room-provider/covered.mjs','continued-room-provider/publication.mjs','continued-room-recovery/operation-archives.mjs','continued-room-recovery/original.mjs','continued-room-recovery/continued-delivery.mjs',
   'room-participant-inventory/environment.mjs','review-assets/pixels.mjs','independent-delivery/session.mjs','owned-core-cleanup/session.mjs']);
- copyConsumerFixtures(root,consumer,['continued-room-provider/delivery.mjs']);
  const from="'../packages/breditor-collaboration/dist/index.js'",to="'@breditor/collaboration'";
  for(const name of ['probe-continued-room-catalog.mjs','probe-continued-room-provider.mjs']){
   const original=readFileSync(join(root,'scripts',name),'utf8'),changed=original.replace(from,to);
@@ -100,6 +99,7 @@ export async function runContinuedProviderQualification(start,directory,mode='bo
     assert.equal(result.recoveredPublications,result.atomic?1:0);
     assert.equal(result.recoveredWritableSessions,result.atomic?7:0);
     assert.equal(result.recoveredDeliveredSessions,result.atomic?7:0);
+    assert.equal(result.recoveredDeliveredUploads,result.atomic?1:0);
     assert.equal(result.serverOnlyPacketAssets,result.atomic?1:0);
     assert.equal(result.recoveredRoomRefusals,3);
     assert.equal(result.mixedDeliveryAheadRefusals,1);
@@ -124,7 +124,7 @@ export async function runContinuedProviderQualification(start,directory,mode='bo
  assert.deepEqual(sourceEvidence(root),source);
  const report={format:'breditor/continued-provider-qualification',formatVersion:1,passed:true,source,
   sharedWasmSha256:checksum,nativeFixtures,reports,
-  scope:'Authenticated Native activation and publication, seven recovered clients with cold document, review and version acknowledgements'};
+  scope:'Authenticated Native activation and publication, seven clients with cold document, comment, version, proposal and revision acknowledgements, and one queued raster upload'};
  saveEvidence(join(directory,'continued-provider-qualification.json'),report);
  return report;
 }

@@ -16,7 +16,8 @@ export function completeControlTransport(manifest,{readAccepted=false,readRaster
   if(serving.has(target.origin)&&!target.search){
    if(target.pathname==='/health'){assert.equal(headers.has('authorization'),false);return original(input,options);}
    const method=options.method??'GET',path=target.pathname;
-   if((method==='GET'&&/^\/document-versions\/v1\/(descriptor|packets\/[^/]+)$/.test(path))||
+   if((['GET','PUT'].includes(method)&&/^\/assets\/sha256(%3A|:)[a-f0-9]{64}$/.test(path))||
+      (method==='GET'&&/^\/document-versions\/v1\/(descriptor|packets\/[^/]+)$/.test(path))||
       (method==='POST'&&/^\/document-versions\/v1\/(catalog|publish)$/.test(path))){
     headers.set('Origin','http://127.0.0.1:4187');
     return original(input,{...options,headers});
