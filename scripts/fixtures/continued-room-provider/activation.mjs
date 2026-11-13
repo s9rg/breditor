@@ -6,7 +6,7 @@ const exists=async database=>(await indexedDB.databases()).some(row=>row.name===
 
 export async function verifyActivationIntent(api,{original,replacement,offer,requests}){
  const {prepareContinuedRoomActivation:prepare,verifyContinuedRoomActivation:verify,SharedDurableNativeActivationHost:Host}=api;
- const configure=selected=>Host.configure({...offer,expected:selected,principal:'operator',
+ const configure=selected=>Host.configure({endpoint:offer.endpoint,expected:selected,principal:'operator',
   getToken(){assert.fail('Preparation cannot commit Native activation');},checkAuthority(){}});
  const activation=configure(offer.selection);
  const database='continued-room-activation',options={database,activation};
