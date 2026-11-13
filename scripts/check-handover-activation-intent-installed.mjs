@@ -6,6 +6,10 @@ import {readFileSync,writeFileSync,readdirSync,lstatSync,mkdtempSync,mkdirSync,c
 import {createHash} from 'node:crypto';
 import {join,dirname,resolve,relative} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {sourceEvidence} from './candidate-release/evidence.mjs';
+import {nativeSuggestionExecutable,verifyNativeSuggestionBuild} from './candidate-release/native-suggestion-build-evidence.mjs';
+import {copySharedRuntimeForActivation} from './candidate-release/shared-runtime-evidence.mjs';
+import {historicalSharedWasmSha256} from './fixtures/native-runtime/shared-runtime-receipt.mjs';
 import {prepareActivationRetentionFixture} from './fixtures/activation-retention/prepare.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const reassociationOnly=process.argv.length===3&&process.argv[2]==='--reassociation-contracts';
@@ -16,10 +20,11 @@ const producer=root;
 const {searchConsumerLock,verifySearchConsumerRegistry}=await import(new URL('./scripts/search-consumer-lock.mjs','file://'+producer+'/'));
 const {executeCandidateStage}=await import(new URL('./scripts/candidate-release/process.mjs','file://'+producer+'/'));
 const sha=value=>createHash('sha256').update(value).digest('hex'),directory=mkdtempSync(join(realpathSync(tmpdir()),'breditor-handover-activation-intent-installed-')),archives=join(directory,'archives'),consumer=join(directory,'consumer');mkdirSync(archives);mkdirSync(consumer);
+const source=sourceEvidence(root),sharedRuntime=copySharedRuntimeForActivation(root,consumer,source);
 const inputs=()=>{const result=[];function walk(path){const s=lstatSync(path);if(s.isSymbolicLink())return;if(s.isDirectory())for(const name of readdirSync(path).sort())walk(join(path,name));else if(s.isFile())result.push({path:relative(root,path),bytes:s.size,sha256:sha(readFileSync(path))});}for(const path of ['packages/breditor-collaboration/src','packages/breditor-collaboration/dist','scripts'])walk(join(root,path));return result;};
 const before=inputs(),sourcePackage=JSON.parse(readFileSync(join(root,'packages/breditor-collaboration/package.json'))),producerLock=JSON.parse(readFileSync(join(producer,'package-lock.json'))),packages=[join(producer,'packages/breditor-browser'),join(producer,'packages/breditor-experimental-rich-content'),join(root,'packages/breditor-collaboration')];
 for(const path of packages)assert.equal(JSON.parse(readFileSync(join(path,'package.json'))).version,sourcePackage.version);
-const packs=JSON.parse(execFileSync('npm',['pack','--ignore-scripts','--json','--pack-destination',archives,...packages],{cwd:root,encoding:'utf8',maxBuffer:8*1024*1024})),locked=searchConsumerLock(producerLock,packs.map(row=>({name:row.name,path:join(archives,row.filename)})));
+const packs=JSON.parse(execFileSync('npm',['pack','--offline','--ignore-scripts','--json','--pack-destination',archives,...packages],{cwd:root,encoding:'utf8',maxBuffer:8*1024*1024})),locked=searchConsumerLock(producerLock,packs.map(row=>({name:row.name,path:join(archives,row.filename)})));
 locked.manifest.dependencies.undici=producerLock.packages['node_modules/undici'].version;
 writeFileSync(join(consumer,'package.json'),JSON.stringify(locked.manifest));writeFileSync(join(consumer,'package-lock.json'),JSON.stringify(locked.lock));execFileSync('npm',['install','--offline','--ignore-scripts','--no-audit','--no-fund'],{cwd:consumer,stdio:'inherit'});
 const registryArtifacts=verifySearchConsumerRegistry(producerLock,JSON.parse(readFileSync(join(consumer,'package-lock.json'))));
@@ -95,15 +100,19 @@ const staticPath='scripts/fixtures/local-metadata/pending-source-packet-recovery
 mkdirSync(dirname(join(consumer,staticPath)),{recursive:true});writeFileSync(join(consumer,staticPath),staticBytes);runtimeInputs.push({path:staticPath,bytes:staticBytes.length,sha256:sha(staticBytes)});
 execFileSync(join(root,'node_modules/.bin/tsc'),['--noEmit','--strict','--exactOptionalPropertyTypes','--noUncheckedIndexedAccess','--target','ES2022','--module','NodeNext','--lib','ES2022,DOM','scripts/fixtures/editor-consumer/types-handover-activation-intent.ts'],{cwd:consumer,stdio:'inherit',timeout:120000});
 
-const nativeRelative='target/owned-history-relay-native/release/examples/selected_suggestion_delivery_functional',nativeSource=join(root,nativeRelative),nativeTarget=join(consumer,nativeRelative);
+const nativeSource=join(root,nativeSuggestionExecutable),nativeTarget=join(consumer,nativeSuggestionExecutable);
 const nativeSha256=reassociationOnly||jointChoice?null:sha(readFileSync(nativeSource));
+const nativeBuild=nativeSha256&&sharedRuntime?verifyNativeSuggestionBuild(root,source):undefined;
+if(nativeBuild)assert.equal(nativeSha256,nativeBuild.binary.sha256);
 if(nativeSha256){mkdirSync(dirname(nativeTarget),{recursive:true});cpSync(nativeSource,nativeTarget);assert.equal(sha(readFileSync(nativeTarget)),nativeSha256);}
-const wasm=join(consumer,'node_modules/@breditor/collaboration/dist/runtime/breditor_shared_bg.wasm'),normalWasmSha256=sha(readFileSync(wasm));assert.equal(normalWasmSha256,'165e23dbaef2ab77a6f920a20012e19624422ab2ccb74ec4e01f2146ac8086e0');
-const state={format:'breditor/installed-handover-activation-intent-development',version:1,complete:false,sourceRoot:root,producer,consumer,directory,sourceInputs:before,copied,runtimeInputs,workspaceLinks:false,registryArtifacts,matchingPackageDistFiles,nativeSha256,normalWasmSha256,archives:packs.map(row=>({name:row.name,path:join(archives,row.filename),sha256:sha(readFileSync(join(archives,row.filename)))})),startedAt:new Date().toISOString()};
+const wasm=join(consumer,'node_modules/@breditor/collaboration/dist/runtime/breditor_shared_bg.wasm'),normalWasmSha256=sha(readFileSync(wasm));assert.equal(normalWasmSha256,sharedRuntime?.wasmSha256??historicalSharedWasmSha256);
+const state={format:'breditor/installed-handover-activation-intent-development',version:1,complete:false,source,sourceRoot:root,producer,consumer,directory,sourceInputs:before,copied,runtimeInputs,workspaceLinks:false,registryArtifacts,matchingPackageDistFiles,nativeSha256,normalWasmSha256,sharedRuntimeReceiptSha256:sharedRuntime?.sha256??null,nativeHostBuildReceiptSha256:nativeBuild?.sha256??null,archives:packs.map(row=>({name:row.name,path:join(archives,row.filename),sha256:sha(readFileSync(join(archives,row.filename)))})),startedAt:new Date().toISOString()};
 writeFileSync(join(directory,'running.json'),JSON.stringify(state,null,2));console.log(JSON.stringify({directory,consumer,phase:jointChoice?'execute-sealed-joint-reassociation-choice':reassociationOnly?'execute-handover-activation-reassociation-contracts':'execute-actual-handover-activation-intent-data'}));
-const logPath=join(directory,'installed-handover-activation-intent.log'),result=await executeCandidateStage({id:'installed-handover-activation-intent',command:process.execPath,args:['--test',...tests.map(name=>'scripts/'+name)],env,timeoutMs:7800000},{root:consumer,logPath});
+const logPath=join(directory,'installed-handover-activation-intent.log'),result=await executeCandidateStage({id:'installed-handover-activation-intent',command:process.execPath,args:['--test',...tests.map(name=>'scripts/'+name)],env:{...env,...sharedRuntime?.environment},timeoutMs:7800000},{root:consumer,logPath});
 const log=readFileSync(logPath,'utf8');state.result={...result,logPath,logSha256:sha(Buffer.from(log))};writeFileSync(join(directory,'running.json'),JSON.stringify(state,null,2));assert.equal(result.status,'passed');for(const [name,value] of [['tests',expectedCases],['pass',expectedCases],['fail',0],['cancelled',0],['skipped',0]])assert.match(log,new RegExp('^# '+name+' '+value+'$','m'));
 assert.deepEqual(inputs(),before);
+assert.deepEqual(sourceEvidence(root),source);
+if(nativeBuild)assert.equal(verifyNativeSuggestionBuild(root,source).sha256,nativeBuild.sha256);
 if(nativeSha256)assert.equal(sha(readFileSync(nativeSource)),nativeSha256);
 for(const input of originalInputs)assert.equal(sha(readFileSync(input.path)),input.sha256);
 state.complete=true;state.sourceUnchanged=true;state.releaseReady=false;state.v1GatesOpen=13;state.finishedAt=new Date().toISOString();

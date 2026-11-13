@@ -26,6 +26,8 @@ export const metadataFixtureStageIds = Object.freeze([
  "installed-recoverable-metadata",
  "metadata-server-bytes-native",
  "installed-metadata-server-bytes",
+ "handover-activation-intent-native",
+ "installed-handover-activation-intent",
  "metadata-reconciliation-native",
  "installed-metadata-reconciliation",
 ]);
