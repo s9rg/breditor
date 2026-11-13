@@ -1,4 +1,5 @@
 //! Opt-in immutable version catalog, sharing the document authority's ordered durable log.
+mod checkpoint;
 mod enable;
 mod prepare;
 mod publish;
@@ -9,6 +10,7 @@ mod tests;
 mod types;
 use super::Room;
 use crate::{Error, Result};
+pub(in crate::room) use checkpoint::VersionCheckpoint;
 use std::collections::BTreeMap;
 pub use types::*;
 
@@ -17,6 +19,8 @@ const MAX_PACKET_BYTES: usize = 4 * 1024 * 1024;
 const MAX_CATALOG_BYTES: usize = 64 * 1024 * 1024;
 const MAX_PAGE_ENTRIES: usize = 64;
 
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 struct StoredVersion {
     entry: DocumentVersionCatalogEntry,
     packet: String,

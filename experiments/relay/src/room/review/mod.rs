@@ -1,6 +1,7 @@
 //! Explicit opt-in authenticated metadata lane, ordered in the document room's durable log.
 mod admit;
 mod catchup;
+mod checkpoint;
 mod enable;
 mod grant;
 mod original_authorizations;
@@ -18,6 +19,7 @@ use crate::{Error, Result, access};
 use breditor_collab_feasibility::review::{
     ReviewActorId, ReviewActorPolicy, ReviewPrincipalId, ReviewSession,
 };
+pub(in crate::room) use checkpoint::ReviewCheckpoint;
 pub use original_authorizations::*;
 use std::collections::BTreeMap;
 pub use types::*;
@@ -26,6 +28,8 @@ const SERVER_ACTOR: &str = "breditor.relay.review.v1";
 const MAX_ACTORS: usize = 1023; // Native budget also includes the reserved receiver.
 const MAX_PAGE_BYTES: usize = 4 * 1024 * 1024;
 
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct ReviewWriter {
     principal: String,
     resume_hash: [u8; 32],

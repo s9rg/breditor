@@ -30,7 +30,7 @@ impl From<WriterReceipt> for Receipt {
 }
 
 /// Acknowledgement issued only after the exact acceptance record has been synced to the log.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DurableReceipt {
     /// Immutable original durable record sequence, including when a client retries a lost reply.

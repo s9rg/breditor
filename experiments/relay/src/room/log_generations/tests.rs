@@ -89,7 +89,7 @@ pub(in crate::room) fn setup_profile(
     };
     Ok((files, room, profile))
 }
-pub(super) fn send(
+pub(in crate::room) fn send(
     room: &mut Room,
     author: &RichReplica,
     lease: &crate::Lease,

@@ -102,7 +102,7 @@ pub struct ReviewCursor {
     pub after: String,
 }
 /// One original ordered server acceptance, including its original independently verified grant.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StoredReviewBatch {
     /// Original durable record sequence.

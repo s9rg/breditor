@@ -43,7 +43,7 @@ pub struct DocumentSuggestionsDescriptor {
     pub effect_writer: String,
 }
 /// Original durable proposal publication, separate from its later decision.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DocumentSuggestionPublication {
     /// First authenticated publication's canonical room-log sequence.
@@ -81,7 +81,7 @@ pub struct SuggestionEffect {
     pub semantic_from: String,
 }
 /// Immutable original finalization in server order; replay proves its original live authorization.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StoredSuggestionDecision {
     /// Single finalization's canonical room-log sequence.
@@ -161,7 +161,7 @@ pub enum DocumentSuggestionDecisionAdmission {
     },
 }
 /// One immutable event in the lane's filtered room-log order.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "data", rename_all = "camelCase")]
 pub enum SuggestionUpdate {
     /// A new immutable proposal was published; no accepted document change occurred.

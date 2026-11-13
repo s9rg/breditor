@@ -17,7 +17,7 @@ pub struct DocumentVersionsDescriptor {
 }
 
 /// Immutable original acceptance and native-validated author/name/source-packet identity.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DocumentVersionCatalogEntry {
     /// Canonical decimal room-log sequence, not an untrusted client timestamp ordering.

@@ -52,12 +52,69 @@ impl Log {
             .verify_inventory()?;
         self.ready()
     }
+
+    pub(crate) fn materialized_checkpoint_cut(&self) -> Result<([u8; 32], u64, [u8; 32])> {
+        self.ready()?;
+        let state = self
+            .generations
+            .as_ref()
+            .ok_or(Error::Contract("relay checkpoint requires generation storage"))?;
+        state.directory.absent(".rotation.json")?;
+        if state.opening_length.is_some() || state.ready_name != ".ready.json" || self.bytes != 0 {
+            return Err(Error::Contract("relay checkpoint requires an empty active WAL"));
+        }
+        state.verify_inventory()?;
+        state.verify_retained()?;
+        self.ready()?;
+        Ok((state.current().hash, self.next, self.previous))
+    }
+
+    pub(crate) fn check_materialized_checkpoint_cut(
+        &self,
+        manifest: [u8; 32],
+        records: u64,
+        previous: [u8; 32],
+    ) -> Result<()> {
+        self.ready()?;
+        let state = self
+            .generations
+            .as_ref()
+            .ok_or(Error::Contract("relay checkpoint requires generation storage"))?;
+        state.directory.absent(".rotation.json")?;
+        let found = state.history.iter().any(|entry| {
+            entry.hash == manifest
+                && entry.value.active.first == records
+                && entry.value.active.previous == previous
+        });
+        if !found || records == 0 || records > self.next {
+            return Err(Error::Contract("relay checkpoint is outside the selected WAL lineage"));
+        }
+        Ok(())
+    }
 }
 
 impl OpenGenerationReplay {
     /// All state built by the visitor stays private until this returns successfully.
-    pub(crate) fn visit(self, mut visit: impl FnMut(Record) -> Result<()>) -> Result<()> {
+    pub(crate) fn visit(self, visit: impl FnMut(Record) -> Result<()>) -> Result<()> {
+        self.visit_suffix(0, visit)
+    }
+
+    pub(crate) fn visit_suffix(
+        self,
+        from: u64,
+        mut visit: impl FnMut(Record) -> Result<()>,
+    ) -> Result<()> {
         for (wal, (item, family)) in self.closed.iter().zip(self.manifest.closed_files()) {
+            if item.next()? <= from {
+                wal.read(item.sha256, |reader| {
+                    std::io::copy(reader, &mut std::io::sink())?;
+                    Ok(())
+                })?;
+                continue;
+            }
+            if item.first < from {
+                return Err(Error::Contract("relay checkpoint crosses a sealed WAL"));
+            }
             let cut = wal.read(item.sha256, |mut reader| {
                 scan::visit_records_from(
                     &mut reader,
@@ -74,6 +131,10 @@ impl OpenGenerationReplay {
             {
                 return Err(Error::Contract("closed log cut differs"));
             }
+        }
+
+        if self.manifest.active.first < from {
+            return Err(Error::Contract("relay checkpoint crosses the active WAL"));
         }
 
         let mut active = BufReader::new(self.active);

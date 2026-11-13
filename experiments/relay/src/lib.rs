@@ -85,6 +85,7 @@ pub use room::{
 pub use room::{
     RecoveredLogGenerationRoom, ServerLogGenerationRecovery, ServerLogGenerationRecoveryProgress,
 };
+pub use room::{RelayCheckpoint, RelayCheckpointIdentity};
 pub use room::{
     ServerNativeHistoryBoundary, ServerNativeHistoryDescriptor, ServerNativeHistoryFamily,
     ServerNativeHistoryLane, ServerNativeHistoryReceipt,

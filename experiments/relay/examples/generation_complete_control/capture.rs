@@ -132,6 +132,17 @@ async fn capture_source_cuts(
         room.grant("owner", "control-local-reader", Some(Role::Reader))?;
         room.rotate_log_generation("owner", "control-local-origin")?;
         let (local, predecessor) = if activation {
+            let checkpoint = room.materialize_relay_checkpoint("owner")?;
+            let checkpoint = breditor_collab_relay::RelayCheckpoint::from_bytes(
+                checkpoint.bytes().to_vec(),
+                checkpoint.identity(),
+            )?;
+            room.grant("owner", "control-local-reader", Some(Role::Reader))?;
+            drop(room);
+            let room = breditor_collab_relay::Room::open_log_generations_with_checkpoint(
+                &directory.join("source-native"),
+                &checkpoint,
+            )?;
             let (backup, predecessor) = activation::seal(directory, room, assets).await?;
             (backup, Some(predecessor))
         } else {

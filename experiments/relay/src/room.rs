@@ -17,6 +17,7 @@ mod deployment_binding;
 mod document_presence;
 mod layout_v3;
 mod log_generations;
+mod materialized_checkpoint;
 #[cfg(feature = "server")]
 pub(crate) use log_generations::GenerationOperationCustody;
 pub use log_generations::InspectedNativeGenerationTail;
@@ -38,6 +39,7 @@ pub use log_generations::{
 pub use log_generations::{
     RecoveredLogGenerationRoom, ServerLogGenerationRecovery, ServerLogGenerationRecoveryProgress,
 };
+pub use materialized_checkpoint::{RelayCheckpoint, RelayCheckpointIdentity};
 #[cfg(feature = "server")]
 pub(crate) mod metadata_receipts;
 mod native_history;
@@ -125,6 +127,7 @@ struct Writer {
 pub struct Room {
     atomic_transport_v2: bool,
     profile_seed: ProfileSeed,
+    configuration: String,
     log: Log,
     profile: SharedRichProfile,
     replica: RichReplica,
@@ -283,6 +286,7 @@ impl Room {
         Ok(Self {
             atomic_transport_v2,
             profile_seed,
+            configuration: configuration.into(),
             log,
             profile,
             replica,
@@ -406,6 +410,7 @@ impl Room {
         Ok(Self {
             atomic_transport_v2,
             profile_seed,
+            configuration,
             log,
             profile,
             replica,

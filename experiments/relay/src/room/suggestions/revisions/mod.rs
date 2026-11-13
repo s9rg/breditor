@@ -1,4 +1,5 @@
 //! Pending-only author revisions. Prepare/commit records keep ordinary V1 event order intact.
+mod checkpoint;
 mod enable;
 mod page;
 mod prepare;
@@ -7,9 +8,12 @@ mod read;
 mod replay;
 mod types;
 use super::super::Room;
+pub(in crate::room::suggestions) use checkpoint::RevisionCheckpoint;
 use std::collections::BTreeMap;
 pub use types::*;
 
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 struct RetainedRevision {
     receipt: StoredSuggestionRevision,
     packet: String,

@@ -1,4 +1,5 @@
 //! Opt-in proposal publication and one ordered durable decision paired with its native effect.
+mod checkpoint;
 mod decide;
 mod decide_owned;
 mod enable;
@@ -17,6 +18,7 @@ mod types;
 use super::Room;
 use crate::{Error, Result};
 use breditor_collab_feasibility::rich_replica::RichReplica;
+pub(in crate::room) use checkpoint::SuggestionCheckpoint;
 pub use revisions::{
     DurableSuggestionRevision, StoredSuggestionRevision, SuggestionRevisionAdmission,
     SuggestionRevisionRequest, SuggestionRevisionsCursor, SuggestionRevisionsDescriptor,
@@ -34,6 +36,8 @@ const MAX_PACKETS_BYTES: usize = 32 * 1024 * 1024;
 const MAX_PAGE_UPDATES: usize = 64;
 // Native source anchors admit 1024 authored clocks, including genesis and this host author.
 const MAX_DOCUMENT_AUTHORS: usize = 1022;
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 struct StoredProposal {
     publication: DocumentSuggestionPublication,
     packet: String,

@@ -33,7 +33,7 @@ pub struct SuggestionRevisionRequest {
     pub revision_packet: String,
 }
 /// Original two-record committed supersession, never a second finalization of the predecessor.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StoredSuggestionRevision {
     /// Original proposal at the start of this chain; content is never overwritten in place.

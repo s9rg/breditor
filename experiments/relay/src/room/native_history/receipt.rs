@@ -51,7 +51,7 @@ impl Room {
         }))
     }
 
-    pub(super) fn remember_native_history(
+    pub(in crate::room) fn remember_native_history(
         &mut self,
         sequence: u64,
         lane: ServerNativeHistoryLane,
