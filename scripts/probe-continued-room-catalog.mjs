@@ -4,7 +4,7 @@ import {createHash} from 'node:crypto';
 import {readFileSync,realpathSync} from 'node:fs';
 import {dirname,resolve} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
-import {SharedRichEditor,SharedContinuedPairSession,SharedContinuedParticipantBackup,SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore,beginContinuedRoomRecovery,resumeContinuedRoomRecovery} from '../packages/breditor-collaboration/dist/index.js';
+import {SharedRichEditor,SharedContinuedPairSession,SharedIndependentHistoryPersistentSession,captureSharedIndependentParticipant,SharedContinuedParticipantBackup,SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore,beginContinuedRoomRecovery,resumeContinuedRoomRecovery} from '../packages/breditor-collaboration/dist/index.js';
 import {IDBDatabase} from 'fake-indexeddb';
 import {RichAssetStore} from '@breditor/experimental-rich-content';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
@@ -121,7 +121,7 @@ export async function probeContinuedRoomCatalog(runtime,fixturePath){
  const profile=wasm.SharedRichProfile[make](fixture.configuration),reset=environment();
  const client=fixture.clients.find(row=>!row.observer);
  const owners=[],catalogs=[];
- const counts={coldCatalogReads:0,nativePairs:0,serverAhead:0,forksRefused:0,selectionRefusals:0,storedCatalogReads:0,storedCatalogRefusals:0,interruptedCatalogReads:0,damagedCatalogRefusals:0,restoredLocalUndoRedo:0,cohortRecoveries:0,interruptedRecoveryResumes:0,uploadRecoveryResumes:0,recoveryRefusals:0};
+ const counts={coldCatalogReads:0,nativePairs:0,serverAhead:0,forksRefused:0,selectionRefusals:0,storedCatalogReads:0,storedCatalogRefusals:0,interruptedCatalogReads:0,damagedCatalogRefusals:0,restoredLocalUndoRedo:0,cohortRecoveries:0,interruptedRecoveryResumes:0,uploadRecoveryResumes:0,recoveryRefusals:0,mixedCatalogReads:0,mixedRefusals:0};
  try{
   const initial={
    catalog:'continued-room',wasm,checkAuthority(){},
@@ -303,6 +303,53 @@ export async function probeContinuedRoomCatalog(runtime,fixturePath){
    await assert.rejects(resumeContinuedRoomRecovery(resumed),error=>error.code==='continued_room_recovery_diverged');
    counts.recoveryRefusals+=3;
   }finally{await cohortStore?.close();}
+  const observerRoot=observer.record.live,observerClient=observer.client;
+  const nativeOptions={
+   ...observerRoot.identity.native,database:'mixed-independent-source',readOnly:true,
+   review:{...observerRoot.identity.review,access:'read_only'},
+   documentHistory:{kind:'original',restoreOriginal:observer.restoreDocument},
+   reviewHistory:{kind:'original'},create(){throw Error('An exact recovery factory is required');},
+  };
+  const independent=await SharedIndependentHistoryPersistentSession.restoreRecovery(nativeOptions,{
+   format:'breditor/shared-independent-history-recovery',formatVersion:1,
+   identity:{native:observerRoot.identity.native,documentHistory:'original',reviewHistory:'original',review:observerRoot.identity.review},
+   documentCheckpoint:observerRoot.documentCheckpoint,reviewCheckpoint:observerClient.reviewCheckpoint,versions:[],
+  },'host-reacquired');
+  let mixedUploads,original,mixed,storedMixed;
+  try{
+   mixedUploads=await RichAssetStore.open('mixed-independent-uploads');
+   await mixedUploads.ingest(new Blob([pixel],{type:'image/png'}));
+   const captured=await captureSharedIndependentParticipant({participant:'independent-observer',principal:observerClient.principal,
+    source:{session:independent},assets:mixedUploads,checkAuthority(){}});
+   assert.equal(captured.kind,'ready');
+   original=captured.backup;
+   const rows=[{id:'independent-observer',family:'independent-local',file:original.file(),expected:original.selection()},
+    {id:interrupted.id,family:'continued-local',file:interrupted.file,expected:interrupted.expected}];
+   const policy={id:interrupted.id,expected:interrupted.expected,restoreDocument:interrupted.restoreDocument};
+   mixed=await SharedContinuedRoomCatalog.capture({...initial,participants:rows,policies:[policy]});
+   assert.deepEqual(mixed.metadata().participants.map(row=>row.family),['independent-local','continued-local']);
+   assert.deepEqual(mixed.inspectPrefixes().unreconciledParticipants,['independent-observer']);
+   const open={wasm,checkAuthority(){},policies:[policy],database:'mixed-catalog',expected:mixed.selection()};
+   storedMixed=await SharedContinuedRoomCatalogStore.begin({...open,archive:mixed});
+   await storedMixed.close();
+   storedMixed=await SharedContinuedRoomCatalogStore.resume(open);
+   assert.deepEqual(storedMixed.inspectPrefixes(),mixed.inspectPrefixes());
+   await sameBytes(storedMixed.participantFile('independent-observer'),original.file());
+   assert.deepEqual(storedMixed.participantRecords(interrupted.id),interrupted.record);
+   const plan={database:'mixed-recovery',catalog:storedMixed,expected:mixed.selection(),writerRecovery:'host-reacquired',checkAuthority(){},
+    destinations:rows.map(({id})=>({id,source:id+'-mixed-source',uploads:id+'-mixed-uploads'}))};
+   await assert.rejects(beginContinuedRoomRecovery(plan),error=>error.code==='continued_room_recovery_mixed_pending');
+   assert.equal((await indexedDB.databases()).some(row=>row.name==='mixed-recovery'),false);
+   const changed=new Uint8Array(await original.file().arrayBuffer());
+   changed[changed.length-1]^=1;
+   const files=new Map(mixed.files());files.set('participant:independent-observer',new Blob([changed]));
+   await assert.rejects(SharedContinuedRoomCatalog.read(mixed.manifestJson(),files,mixed.selection(),{
+    wasm,checkAuthority(){},policies:[policy],
+   }));
+   counts.mixedCatalogReads++;counts.mixedRefusals+=2;
+  }finally{
+   await storedMixed?.close();mixed?.dispose();original?.dispose();mixedUploads?.close();await independent.close();
+  }
   const behind=await capture([await pack('behind','continued-v2','continued-v2','behind')]);
   const observed=behind.inspectPrefixes();
   assert.equal(observed.participants[0].prefix.documentStatus,'server_ahead');
@@ -314,7 +361,7 @@ export async function probeContinuedRoomCatalog(runtime,fixturePath){
    await assert.rejects(capture([forked]),error=>error.code==='inventory_fork');
    counts.forksRefused++;
   }
-  assert.deepEqual(counts,{coldCatalogReads:3,nativePairs:3,serverAhead:1,forksRefused:2,selectionRefusals:15,storedCatalogReads:3,storedCatalogRefusals:9,interruptedCatalogReads:1,damagedCatalogRefusals:1,restoredLocalUndoRedo:3,cohortRecoveries:1,interruptedRecoveryResumes:1,uploadRecoveryResumes:1,recoveryRefusals:3});
+  assert.deepEqual(counts,{coldCatalogReads:3,nativePairs:3,serverAhead:1,forksRefused:2,selectionRefusals:15,storedCatalogReads:3,storedCatalogRefusals:9,interruptedCatalogReads:1,damagedCatalogRefusals:1,restoredLocalUndoRedo:3,cohortRecoveries:1,interruptedRecoveryResumes:1,uploadRecoveryResumes:1,recoveryRefusals:3,mixedCatalogReads:1,mixedRefusals:2});
   return {passed:true,fixtureSha256:sha(readFileSync(fixturePath)),sharedWasmSha256:sha(wasmBytes),...counts};
  }finally{
   for(const catalog of catalogs)catalog.dispose();

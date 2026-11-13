@@ -1,7 +1,6 @@
 import {prepareArchiveIntegrity,type ArchiveIntegrityContext} from '../archive_integrity/context.js';
 import {archiveBlob,archiveFields} from '../archive_integrity/policy.js';
-import {SharedContinuedParticipantBackup,MAX_CONTINUED_PARTICIPANT_BYTES} from '../continued_participant/archive.js';
-import {continuedParticipantSelection} from '../continued_participant/policy.js';
+import {SharedContinuedParticipantBackup} from '../continued_participant/archive.js';
 import {continuedInventorySelection,continuedParticipantCoverage,inspectContinuedParticipantPrefix,type ContinuedParticipantPrefix} from '../continued_participant/inventory.js';
 import {serverGenerationRoomIdentity} from '../server_generation_archive/identity.js';
 import {SharedServerLogGenerationRoomArchive} from '../server_generation_archive/read.js';
@@ -10,9 +9,10 @@ import {serverGenerationParticipantIdentity} from '../server_generation_inventor
 import {SharedServerLogGenerationParticipantInventory} from '../server_generation_inventory/read.js';
 import {MAX_SHARED_SERVER_LOG_GENERATION_PARTICIPANT_INVENTORY_BYTES} from '../server_generation_inventory/policy.js';
 import {physicalCatalogV2Options,physicalCatalogV2Rows} from '../physical_room_catalog_v2/input_snapshot.js';
-import {physicalCatalogFailure,physicalCatalogName,physicalCatalogSelection,physicalParticipantKey} from '../physical_room_catalog/policy.js';
+import {physicalCatalogFailure,physicalCatalogSelection,physicalParticipantKey} from '../physical_room_catalog/policy.js';
 import {frozen} from '../room_participant_inventory/policy.js';
-import {continuedRoomMetadata,parseContinuedRoomManifest} from './manifest.js';
+import {readPhysicalCatalogV3Participant,disposePhysicalCatalogV3Participant} from '../physical_room_catalog_v3/participant.js';
+import {continuedRoomMetadata,parseContinuedRoomManifest,continuedRoomParticipantHeader,continuedRoomParticipantMaximum} from './manifest.js';
 import {selectContinuedRoomPolicies} from './policy.js';
 import type {
  ContinuedRoomCatalogCaptureOptions,ContinuedRoomCatalogMetadata,
@@ -86,7 +86,8 @@ export class SharedContinuedRoomCatalog {
  inspectPrefixes(){
   const state=this.#live(),source=continuedInventorySelection(state.inventory);
   const coverage=continuedParticipantCoverage(state.inventory,state.observations.map(row=>row.prefix));
-  const result=frozen({source,coverage,participants:state.observations});
+  const unreconciledParticipants=state.metadata.participants.filter(row=>!state.backups.has(row.id)).map(row=>row.id);
+  const result=frozen({source,coverage,participants:state.observations,unreconciledParticipants});
   if(this.#live()!==state)throw physicalCatalogFailure('catalog_closed');
   return result;
  }
@@ -99,23 +100,24 @@ export class SharedContinuedRoomCatalog {
  }
  static async capture(input:ContinuedRoomCatalogCaptureOptions):Promise<SharedContinuedRoomCatalog>{
   const options={...input};
-  physicalCatalogV2Options(options,['wasm','checkAuthority','policies','catalog','origin','current','participants'],['signal']);
+  physicalCatalogV2Options(options,['wasm','checkAuthority','policies','catalog','origin','current','participants'],['signal','graphPolicies','localPolicies']);
   const origin=component(options.origin,MAX_SHARED_SERVER_GENERATION_ARCHIVE_BYTES,serverGenerationRoomIdentity);
   const current=archiveFields(options.current,'server,participants');
   const server=component(current['server'],MAX_SHARED_SERVER_GENERATION_ARCHIVE_BYTES,serverGenerationRoomIdentity);
   const inventory=component(current['participants'],MAX_SHARED_SERVER_LOG_GENERATION_PARTICIPANT_INVENTORY_BYTES,serverGenerationParticipantIdentity);
   const files=new Map<string,Blob>([['origin-server',origin.file],['current-server',server.file],['inventory',inventory.file]]);
   const participants=physicalCatalogV2Rows(options.participants,value=>{
-   const row=archiveFields(value,'id,file,expected'),id=physicalCatalogName(row['id']);
-   const file=archiveBlob(row['file'] as Blob,MAX_CONTINUED_PARTICIPANT_BYTES);
-   files.set(physicalParticipantKey(id),file);
-   return {id,family:'continued-local' as const,selection:continuedParticipantSelection(row['expected']),bytes:file.size};
+   const row=Object.hasOwn(value,'family')?archiveFields(value,'id,family,file,expected'):archiveFields(value,'id,file,expected');
+   const header=continuedRoomParticipantHeader(row['id'],Object.hasOwn(row,'family')?row['family']:'continued-local',row['expected']);
+   const file=archiveBlob(row['file'] as Blob,continuedRoomParticipantMaximum(header.family));
+   files.set(physicalParticipantKey(header.id),file);
+   return {...header,bytes:file.size};
   }).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0);
   const metadata=continuedRoomMetadata({format:'breditor/shared-physical-room-recovery-catalog',formatVersion:4,catalog:options.catalog,
    origin:{identity:origin.identity,bytes:origin.bytes},current:{
     server:{identity:server.identity,bytes:server.bytes},participants:{identity:inventory.identity,bytes:inventory.bytes},
    },participants});
-  const policies=selectContinuedRoomPolicies(metadata.participants,options.policies);
+  const policies=selectContinuedRoomPolicies(metadata.participants,options);
   const context=prepareArchiveIntegrity(options),manifest=JSON.stringify(metadata);
   const selected=physicalCatalogSelection({catalog:metadata.catalog,sha256:await context.digest(new Blob([manifest]))});
   return SharedContinuedRoomCatalog.#admit(manifest,metadata,files,selected,policies,context,options.signal);
@@ -123,10 +125,10 @@ export class SharedContinuedRoomCatalog {
  static async read(manifest:string,input:ReadonlyMap<string,Blob>,expected:ContinuedRoomCatalogSelection,
   supplied:ContinuedRoomCatalogReadOptions):Promise<SharedContinuedRoomCatalog>{
   const options={...supplied};
-  physicalCatalogV2Options(options,['wasm','checkAuthority','policies'],['signal']);
+  physicalCatalogV2Options(options,['wasm','checkAuthority','policies'],['signal','graphPolicies','localPolicies']);
   const selected=physicalCatalogSelection(expected),metadata=parseContinuedRoomManifest(manifest);
   if(metadata.catalog!==selected.catalog)throw physicalCatalogFailure('catalog_integrity');
-  const files=checkedFiles(metadata,input),policies=selectContinuedRoomPolicies(metadata.participants,options.policies);
+  const files=checkedFiles(metadata,input),policies=selectContinuedRoomPolicies(metadata.participants,options);
   const context=prepareArchiveIntegrity(options);
   if(await context.digest(new Blob([manifest]))!==selected.sha256)throw physicalCatalogFailure('catalog_integrity');
   return SharedContinuedRoomCatalog.#admit(manifest,metadata,files,selected,policies,context,options.signal);
@@ -147,9 +149,20 @@ export class SharedContinuedRoomCatalog {
    inventory=await readInventory.call(SharedServerLogGenerationParticipantInventory,
     files.get('inventory')!,metadata.current.participants.identity,options);
    for(const row of metadata.participants){
-    const {restoreDocument,limits}=policies.get(row.id)!;
+    const file=files.get(physicalParticipantKey(row.id))!;
+    if(row.family!=='continued-local'){
+     const wrap=<T extends {checkAuthority:()=>void;signal?:AbortSignal}>(policy:T|undefined)=>policy?{
+      ...policy,checkAuthority:()=>{context.guard();policy.checkAuthority();context.guard();},
+      ...(signal?{signal}:{}),
+     }:undefined;
+     const client=await readPhysicalCatalogV3Participant(row,file,wrap(policies.graph.get(row.id)),wrap(policies.local.get(row.id)),signal);
+     disposePhysicalCatalogV3Participant(client);
+     context.guard();
+     continue;
+    }
+    const {restoreDocument,limits}=policies.policies.get(row.id)!;
     const policy={...options,restoreDocument,...(limits?{limits}:{})};
-    const backup=await readParticipant.call(SharedContinuedParticipantBackup,files.get(physicalParticipantKey(row.id))!,row.selection,policy);
+    const backup=await readParticipant.call(SharedContinuedParticipantBackup,file,row.selection,policy);
     backups.set(row.id,backup);
     observations.push({id:row.id,prefix:await inspectContinuedParticipantPrefix(backup,inventory,policy)});
    }

@@ -16,7 +16,7 @@ const shape=(row:Omit<SharedServerLogGenerationRecoveryAssetInfo,'asset'>)=>JSON
 export async function continuedProviderPins(archive:SharedContinuedRoomCatalog,context:ArchiveIntegrityContext,signal?:AbortSignal){
  const content=new Map<string,string>(),bindings=new Map<string,{asset:string;generation:string;contentAsset:string}>(),identities=new Map<string,string>();
  const uploads:ContinuedRoomReconciliationRead['uploads'][number][]=[];
- const sizes=metadata.call(archive).participants;
+ const sizes=metadata.call(archive).participants.filter(row=>row.family==='continued-local');
  let uploadBytes=0;
  function addContent(asset:string,row:Omit<SharedServerLogGenerationRecoveryAssetInfo,'asset'>){
   const previous=content.get(asset),current=shape(row);

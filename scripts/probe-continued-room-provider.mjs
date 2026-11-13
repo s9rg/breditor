@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {dirname,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {SharedRichEditor,SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore,SharedServerLogGenerationRecoveryHost,readContinuedRoomReconciliation} from '../packages/breditor-collaboration/dist/index.js';
+import {SharedRichEditor,SharedIndependentHistoryPersistentSession,captureSharedIndependentParticipant,SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore,SharedServerLogGenerationRecoveryHost,readContinuedRoomReconciliation} from '../packages/breditor-collaboration/dist/index.js';
+import {RichAssetStore} from '@breditor/experimental-rich-content';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
 import {continuedParticipantFixture} from './probe-continued-room-catalog.mjs';
 import {unavailableUpload,UnavailableUploadImage,unavailableAsset} from './fixtures/physical-recovery-control/unavailable-upload.mjs';
@@ -18,7 +19,7 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
  const profile=native.SharedRichProfile[method](fixture.configuration);
  const entries=[];
  let archive,store,host,tokenAllowed=true,onToken;
- const counts={authorPrefixes:0,reviewPrefixes:0,localSuffixes:0,missingUploads:0,providerReads:0,rejected:0,foreignForks:0};
+ const counts={authorPrefixes:0,reviewPrefixes:0,localSuffixes:0,missingUploads:0,providerReads:0,rejected:0,foreignForks:0,mixedPending:0};
  const room=inventory.room.document;
  const initial={
   catalog:'continued-native-provider',wasm:native,checkAuthority(){},
@@ -112,6 +113,36 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
    assert.equal(requests.length,beforeFork);
    counts.foreignForks++;
   }
+  const retained=entries[0],exact=retained.record.live;
+  const independent=await SharedIndependentHistoryPersistentSession.restoreRecovery({
+   ...exact.identity.native,database:'provider-independent-source',readOnly:true,review:{...exact.identity.review,access:'read_only'},
+   documentHistory:{kind:'original',restoreOriginal:retained.restoreDocument},reviewHistory:{kind:'original'},
+   create(){throw Error('An exact recovery factory is required');},
+  },{
+   format:'breditor/shared-independent-history-recovery',formatVersion:1,
+   identity:{...exact.identity,reviewHistory:'original'},documentCheckpoint:exact.documentCheckpoint,
+   reviewCheckpoint:fixture.clients[0].reviewCheckpoint,versions:[],
+  },'host-reacquired');
+  let uploads,mixed,independentBackup,mixedStore;
+  try{
+   uploads=await RichAssetStore.restoreBackup('provider-independent-uploads',retained.backup.uploadBackup(),{uploadState:'preserve'});
+   const saved=await captureSharedIndependentParticipant({participant:retained.id,principal:exact.identity.review.principal,
+    source:{session:independent},assets:uploads,checkAuthority(){}});
+   assert.equal(saved.kind,'ready');
+   independentBackup=saved.backup;
+   const rows=[{id:retained.id,family:'independent-local',file:independentBackup.file(),expected:independentBackup.selection()},
+    ...entries.slice(1,7).map(({id,file,expected})=>({id,family:'continued-local',file,expected}))];
+   const options={...openOptions,policies:openOptions.policies.slice(1)};
+   mixed=await SharedContinuedRoomCatalog.capture({...initial,...options,participants:rows});
+   mixedStore=await SharedContinuedRoomCatalogStore.begin({...options,database:'provider-mixed-catalog',archive:mixed,expected:mixed.selection()});
+   const calls=requests.length;
+   const pending=await readContinuedRoomReconciliation({...input,catalog:mixedStore,expected:mixed.selection()});
+   assert.equal(pending.kind,'pending');
+   assert.deepEqual(pending.unreconciledParticipants,[retained.id]);
+   assert.equal(pending.provider,null);
+   assert.deepEqual(requests.slice(calls).map(row=>row.assets),[false]);
+   counts.mixedPending++;
+  }finally{await mixedStore?.close();mixed?.dispose();independentBackup?.dispose();uploads?.close();await independent.close();}
   onToken=()=>store.close();
   await assert.rejects(readContinuedRoomReconciliation(input),error=>['catalog_closed','archive_authority','control_authority'].includes(error.code));
   counts.rejected++;

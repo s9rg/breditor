@@ -21,5 +21,6 @@ export interface ContinuedRoomReconciliationRead {
  readonly coverage:SharedRoomParticipantCoverage;
  readonly participants:readonly Readonly<{id:string;prefix:ContinuedParticipantPrefix}>[];
  readonly uploads:readonly Omit<SelectedRoomUploadPin,'role'>[];
- readonly provider:SharedServerLogGenerationRecoveryAssetRead;
+ readonly provider:SharedServerLogGenerationRecoveryAssetRead|null;
+ readonly unreconciledParticipants:readonly string[];
 }

@@ -78,17 +78,17 @@ export class SharedContinuedRoomCatalogStore {
   return this.#closing;
  }
  static begin(input:OpenOptions&Readonly<{archive:SharedContinuedRoomCatalog}>):Promise<SharedContinuedRoomCatalogStore>{
-  physicalCatalogV2Options(input,['database','expected','wasm','checkAuthority','policies','archive'],['signal']);
+  physicalCatalogV2Options(input,['database','expected','wasm','checkAuthority','policies','archive'],['signal','graphPolicies','localPolicies']);
   const {archive,...options}=input;
   selection.call(archive);
   return SharedContinuedRoomCatalogStore.#open(options,archive);
  }
  static resume(input:OpenOptions):Promise<SharedContinuedRoomCatalogStore>{
-  physicalCatalogV2Options(input,['database','expected','wasm','checkAuthority','policies'],['signal']);
+  physicalCatalogV2Options(input,['database','expected','wasm','checkAuthority','policies'],['signal','graphPolicies','localPolicies']);
   return SharedContinuedRoomCatalogStore.#open(input);
  }
  static async #open(input:OpenOptions,incoming?:SharedContinuedRoomCatalog):Promise<SharedContinuedRoomCatalogStore>{
-  const {wasm,policies,signal}=input,database=physicalCatalogDatabase(input.database);
+  const {wasm,policies,graphPolicies,localPolicies,signal}=input,database=physicalCatalogDatabase(input.database);
   const expected=physicalCatalogSelection(input.expected),authority=participantAuthority(input.checkAuthority);
   const factory=recoveryOpeningContext(),locks=navigator.locks;
   let db:IDBDatabase|undefined,lease:RecoveryLease|undefined,archive:SharedContinuedRoomCatalog|undefined,changed=false;
@@ -99,7 +99,8 @@ export class SharedContinuedRoomCatalogStore {
    if(lease)checkRecoveryLeasesHeld([lease]);
   };
   const check=()=>{stable();authority();stable();};
-  const options={wasm,policies,checkAuthority:check,...(signal?{signal}:{})};
+  const options={wasm,policies,checkAuthority:check,...(signal?{signal}:{}),
+   ...(graphPolicies?{graphPolicies}:{}),...(localPolicies?{localPolicies}:{})};
   const opening=await RecoveryOpeningCustody.reserve(factory,[database],async()=>{
    try{if(archive)dispose.call(archive);}
    finally{try{db?.close();}finally{if(lease)await closeLease.call(lease);}}
@@ -125,8 +126,10 @@ export class SharedContinuedRoomCatalogStore {
    if(archive){dispose.call(archive);archive=undefined;}
    archive=await readArchive.call(SharedContinuedRoomCatalog,stored.record.manifest,stored.files,expected,options);
    check();
-   const pinnedPolicies=Object.freeze([...selectContinuedRoomPolicies(metadata.call(archive).participants,policies).values()]);
-   const owner=new SharedContinuedRoomCatalogStore(token,{archive,db,lease,check,database,options:{...options,policies:pinnedPolicies}});
+   const pinned=selectContinuedRoomPolicies(metadata.call(archive).participants,options);
+   const owner=new SharedContinuedRoomCatalogStore(token,{archive,db,lease,check,database,options:{
+    ...options,policies:Object.freeze([...pinned.policies.values()]),graphPolicies:pinned.graphPolicies,localPolicies:pinned.localPolicies,
+   }});
    check();
    opening.complete();
    return owner;

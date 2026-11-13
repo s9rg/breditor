@@ -2,12 +2,17 @@ import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.
 import type {ContinuedParticipantReadOptions,ContinuedParticipantSelection} from '../continued_participant/contract.js';
 import type {SharedPhysicalRoomRecoveryCatalogMetadata,SharedPhysicalRoomRecoveryCatalogSelection} from '../physical_room_catalog/contract.js';
 
-export interface ContinuedRoomCatalogEntry {
+import type {PhysicalRoomCatalogV3Entry,PhysicalRoomCatalogV3Input,PhysicalRoomCatalogV3ReadOptions} from '../physical_room_catalog_v3/contract.js';
+
+export interface ContinuedRoomCatalogLocalEntry {
  readonly id:string;
  readonly family:'continued-local';
  readonly selection:ContinuedParticipantSelection;
  readonly bytes:number;
 }
+export type ContinuedRoomCatalogEntry=ContinuedRoomCatalogLocalEntry|PhysicalRoomCatalogV3Entry;
+export type ContinuedRoomCatalogInput=PhysicalRoomCatalogV3Input|
+ Readonly<{id:string;family?:'continued-local';file:Blob;expected:ContinuedParticipantSelection}>;
 export interface ContinuedRoomCatalogMetadata extends Omit<SharedPhysicalRoomRecoveryCatalogMetadata,'formatVersion'|'participants'> {
  readonly formatVersion:4;
  readonly participants:readonly ContinuedRoomCatalogEntry[];
@@ -18,7 +23,7 @@ export interface ContinuedRoomCatalogPolicy {
  readonly restoreDocument:ContinuedParticipantReadOptions['restoreDocument'];
  readonly limits?:ContinuedParticipantReadOptions['limits'];
 }
-export interface ContinuedRoomCatalogReadOptions extends SharedArchiveIntegrityOptions {
+export interface ContinuedRoomCatalogReadOptions extends SharedArchiveIntegrityOptions, Pick<PhysicalRoomCatalogV3ReadOptions,'graphPolicies'|'localPolicies'> {
  readonly policies:readonly ContinuedRoomCatalogPolicy[];
 }
 export interface ContinuedRoomCatalogCaptureOptions extends ContinuedRoomCatalogReadOptions {
@@ -28,6 +33,6 @@ export interface ContinuedRoomCatalogCaptureOptions extends ContinuedRoomCatalog
   server:Readonly<{file:Blob;expected:ContinuedRoomCatalogMetadata['current']['server']['identity']}>;
   participants:Readonly<{file:Blob;expected:ContinuedRoomCatalogMetadata['current']['participants']['identity']}>;
  }>;
- readonly participants:readonly Readonly<{id:string;file:Blob;expected:ContinuedParticipantSelection}>[];
+ readonly participants:readonly ContinuedRoomCatalogInput[];
 }
 export type ContinuedRoomCatalogSelection=SharedPhysicalRoomRecoveryCatalogSelection;

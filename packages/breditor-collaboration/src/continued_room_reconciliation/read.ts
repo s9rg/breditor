@@ -29,13 +29,15 @@ export async function readContinuedRoomReconciliation(input:ContinuedRoomReconci
      JSON.stringify(room.current.participants.identity)!==JSON.stringify(source.participants))throw fail('diverged');
   const active=archive=await held.read(waits.check,waits.signal);
   const context=prepareArchiveIntegrity({wasm:held.options.wasm,checkAuthority:waits.check,signal:waits.signal});
-  const {coverage,participants}=inspectPrefixes.call(active),pins=await continuedProviderPins(active,context,waits.signal);
+  const {coverage,participants,unreconciledParticipants}=inspectPrefixes.call(active);
+  const pins=await continuedProviderPins(active,context,waits.signal);
   waits.check();
-  const provider=await port.checkAssets(pins.requirements,waits.signal);
+  const provider=unreconciledParticipants.length?null:await port.checkAssets(pins.requirements,waits.signal);
+  if(provider)pins.verify(provider);
+  else await port.check(waits.signal);
   waits.check();
-  pins.verify(provider);
   const result:ContinuedRoomReconciliationRead=frozen({format:'breditor/continued-room-reconciliation-read',formatVersion:1,
-   catalog:selected,kind:'pending',coverage,participants,uploads:pins.uploads,provider});
+   catalog:selected,kind:'pending',coverage,participants,unreconciledParticipants,uploads:pins.uploads,provider});
   waits.check();
   return result;
  }finally{

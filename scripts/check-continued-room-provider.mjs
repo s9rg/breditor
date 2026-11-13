@@ -82,6 +82,7 @@ export async function runContinuedProviderQualification(controls,transport,direc
    assert.equal(result.localSuffixes,14);
    assert.equal(result.reviewPrefixes,49);
    assert.equal(result.foreignForks,2);
+   assert.equal(result.mixedPending,1);
    cases.push(result);
   }
   reports[name]={cases,proof:setup.proof};

@@ -240,9 +240,11 @@ that exceeds these limits remains available in its original store.
 
 `SharedContinuedRoomCatalog` binds complete origin and current physical
 server files, the current native participant inventory, and an explicit set
-of continued local participant archives. Supply the expected identity and
+of participant archives, including at least one continued local participant. Supply the expected identity and
 native restore factory for each participant outside the manifest. Version
-four uses its own manifest and storage family.
+four uses its own manifest and storage family. Older participant families
+keep their existing file formats and readers. Graph and local-operation
+files still require their matching read policies.
 
 Admission replays each participant's retained save slots and compares its
 live native document and comment prefixes with the selected server
@@ -255,9 +257,10 @@ the continued local archive carries no relay binding or outbox.
 `SharedContinuedRoomCatalogStore.begin` admits the selected archive and
 retains it in a new IndexedDB namespace. `resume` revalidates the files and
 native prefixes after a cold open. The catalog exposes each participant's
-exact save cuts, whole upload backup, and asset bytes. Whole-room recovery
-still needs a coordinator for mixed participant families, provider and
-delivery reconciliation, and authenticated activation.
+exact save cuts, whole upload backup, and asset bytes for each continued
+participant. Other families remain available as exact participant files.
+Prefix inspection names those files under `unreconciledParticipants` until
+the mixed recovery coordinator can check them together.
 
 ### Restore local destinations from a continued room catalog
 
@@ -277,9 +280,9 @@ or disappeared stops recovery. The coordinator keeps each admitted local
 history and upload store held through final verification and releases them
 before returning the local destination names.
 
-This path covers continued local participants. A combined operation still
-needs mixed participant families, provider and outbox reconciliation, and
-authenticated room activation.
+This recovery path requires a catalog of continued local participants.
+A mixed catalog stops before it creates a recovery journal. Mixed recovery,
+outbox reconciliation, and authenticated activation remain separate work.
 
 ### Compare a continued catalog with its provider
 
@@ -294,4 +297,6 @@ The provider read includes image bindings reachable from all save slots and
 every content ID in the participant upload archives. It verifies matching
 content and dimensions and reports missing mappings or bytes. The read
 preserves the original upload state and leaves local comment delivery
-pending. Provider availability alone does not settle offline work.
+pending. In a mixed catalog, the operator host rechecks the selected room,
+and the provider report stays empty until all participant families are
+reconciled.

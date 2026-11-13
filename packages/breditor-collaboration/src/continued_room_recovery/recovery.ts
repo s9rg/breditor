@@ -67,6 +67,7 @@ async function restore(input:ContinuedRoomRecoveryOptions,begin:boolean):Promise
   archive=await held.read(checkAuthorityCurrent,signal);
   guard();
   const entries=metadata.call(archive).participants;
+  if(entries.some(row=>row.family!=='continued-local'))throw fail('mixed_pending');
   if(entries.length!==destinations.length||entries.some((row,index)=>row.id!==destinations[index]!.id))throw fail('policy');
   const policies=new Map(held.options.policies.map(row=>[row.id,row]));
   const plan={text:JSON.stringify({catalog:expected,destinations}),steps:entries.length*2};
