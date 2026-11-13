@@ -1,5 +1,6 @@
 //! Explicit physical storage family. Original file readers never infer this layout.
 mod archive_sealed_wal;
+mod archive_wal_copy;
 #[cfg(test)]
 pub(crate) use archive_sealed_wal::WalArchiveInterruption;
 #[cfg(test)]

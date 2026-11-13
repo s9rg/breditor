@@ -395,3 +395,33 @@ and seven-client relay restart with a raw archived root and a packed archived
 WAL. Both workflows recover lost edit, comment, version, suggestion decision,
 revision and upload replies and deliver edits from two clients made during the
 outage. These runs use controlled Node storage and a real local Rust relay.
+
+## Offload sealed WALs to a separate volume
+
+For a room that has yet to create `.sealed-wals`, stop the owner and mount a
+dedicated Unix filesystem at the room's `.sealed-wal-volume` child. Create the
+private directory `archive` (mode `0700`) at the root of that volume. Keep the
+mountpoint directory in place so a cold open detects an unmounted volume. The
+relay refuses a simultaneous local archive and mountpoint. The relay owner
+must have exclusive access to the archive's private directory.
+
+After reopening the room, use the same checkpoint and owner API. The relay
+copies the physical representation to a fresh exclusive stage on the target
+volume. It verifies the original WAL digest, syncs the destination, publishes
+the final name on that volume, and checks the copy before removing the original
+under the live room's lock. This releases the original WAL's allocation on the
+live filesystem. A cold reopen following publication checks both representations
+against the immutable manifest before retry can retire the original. A refusal
+leaves the original available if retirement has yet to begin.
+
+An interruption before publication can leave a private `.offload-*` stage.
+No stage alone is selected or used to recover committed records. Retrying starts
+a new stage while keeping earlier unlinked stages. The archive allows up to
+eight outstanding stages. Clear orphaned stages only during exclusive offline
+maintenance with their directory and contents inspected. An alias of a
+published WAL is retired by a normal retry.
+
+Keep the separately mounted archive online for continued service and retain
+it in host backup and recovery procedures. Portable room backups still contain
+the same raw WAL sections and restore without the mounted volume. Physical
+offload leaves the existing logical record, generation and backup limits intact.

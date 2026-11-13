@@ -7,6 +7,8 @@ mod capture;
 mod clients;
 #[path = "generation_complete_control/migrated_origin.rs"]
 mod migrated_origin;
+#[path = "generation_complete_control/offload_volume.rs"]
+mod offload_volume;
 #[path = "generation_complete_control/protected_streams.rs"]
 mod protected_streams;
 #[path = "generation_complete_control/public_inputs.rs"]

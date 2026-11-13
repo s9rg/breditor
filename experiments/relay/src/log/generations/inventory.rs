@@ -1,8 +1,5 @@
 //! A bounded exact selected closure, with separately retained unpublished stages. No scavenging.
-use super::{
-    archive_sealed_wal::ARCHIVE_DIRECTORY, format, held_file::FileIdentity, packed_wal, rotate,
-    state::Generations,
-};
+use super::{format, held_file::FileIdentity, packed_wal, rotate, state::Generations};
 use crate::{Error, Result, credentials};
 use std::{collections::BTreeSet, fs};
 
@@ -45,7 +42,7 @@ impl Generations {
                 .file_name()
                 .into_string()
                 .map_err(|_| Error::Contract("physical log directory filename"))?;
-            if name == ARCHIVE_DIRECTORY && self.archive.is_some() {
+            if self.is_archive_live_name(&name) {
                 continue;
             }
             let metadata = fs::symlink_metadata(entry.path())?;

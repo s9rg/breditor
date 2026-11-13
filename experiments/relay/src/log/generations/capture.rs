@@ -1,6 +1,5 @@
 //! Exact held-file capture into one backing buffer, retaining unpublished bytes without admission.
 use super::{
-    archive_sealed_wal::ARCHIVE_DIRECTORY,
     closure::{self, GenerationCut, MAX_GENERATION_BODY_BYTES, MAX_GENERATION_FILES},
     format,
     held_file::{FileIdentity, FileStamp},
@@ -148,7 +147,7 @@ impl Generations {
         let mut names = live_names.clone();
         names.retain(|name| {
             name != ".owner"
-                && name != ARCHIVE_DIRECTORY
+                && !self.is_archive_live_name(name)
                 && !packed_wal::is_stage(name)
                 && !pending.is_some_and(|names| names.contains(name))
         });

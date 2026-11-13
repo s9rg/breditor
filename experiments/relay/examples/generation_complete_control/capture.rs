@@ -1,5 +1,8 @@
 //! Seven actual image-bearing native authors under genuine standalone origin/current custody.
-use super::{Result, activation, clients, migrated_origin, server_packet_asset, source, storage};
+use super::{
+    Result, activation, clients, migrated_origin, offload_volume, server_packet_asset, source,
+    storage,
+};
 use breditor_collab_relay::{
     RecoveryRegistrationCredentials, Role, RoomRecoveryPolicy, ServerLogGenerationRoomBackup,
     ServerLogGenerationRoomRecovery, ServerNativeHistoryFamily, SuggestionRole,
@@ -137,6 +140,14 @@ async fn capture_source_cuts(
                 checkpoint.bytes().to_vec(),
                 checkpoint.identity(),
             )?;
+            let source = directory.join("source-native");
+            if offload_volume::mount(&source, "source")? {
+                drop(room);
+                room = breditor_collab_relay::Room::open_log_generations_with_checkpoint(
+                    &source,
+                    &checkpoint,
+                )?;
+            }
             if room.archive_sealed_wal("owner", &checkpoint, "root")?.duplicate {
                 return Err("source relay archive unexpectedly existed".into());
             }
@@ -210,6 +221,19 @@ async fn generate_selected(
         RoomRecoveryPolicy::HostReacquired,
         "owner",
     )?;
+    if activation_case && std::env::var_os("BREDITOR_TEST_ARCHIVE_MOUNT").is_some() {
+        let root = operation.root().to_path_buf();
+        let native = offload_volume::restored_native_root(&root)?;
+        drop(operation);
+        offload_volume::mount(&native, "restored")?;
+        operation = breditor_collab_relay::OperationalLogGenerationServerRoom::resume(
+            &root,
+            &local,
+            &local.info()?.identity,
+            RoomRecoveryPolicy::HostReacquired,
+            "owner",
+        )?;
+    }
     let restored_history = operation.room().native_history_descriptor("owner")?;
     let continued_document_receiver =
         restored_history.document == ServerNativeHistoryFamily::ContinuedV2;

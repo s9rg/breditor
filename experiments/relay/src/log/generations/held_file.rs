@@ -45,6 +45,10 @@ pub(crate) struct FileIdentity {
     inode: u64,
 }
 impl FileIdentity {
+    pub(super) fn same_device(self, other: Self) -> bool {
+        self.device == other.device
+    }
+
     pub(crate) fn of(file: &File) -> Result<Self> {
         Self::metadata(&file.metadata()?)
     }

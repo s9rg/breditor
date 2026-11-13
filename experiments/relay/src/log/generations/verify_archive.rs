@@ -1,6 +1,5 @@
 //! Stream a selected archive against actual held files, without another full source allocation.
 use super::{
-    archive_sealed_wal::ARCHIVE_DIRECTORY,
     format,
     held_file::{FileIdentity, FileStamp},
     packed_wal,
@@ -68,7 +67,8 @@ impl Generations {
             .chain(std::iter::once(".owner".into()))
             .collect::<BTreeSet<_>>();
         let mut logical_names = inventory.clone();
-        logical_names.retain(|name| name != ARCHIVE_DIRECTORY && !packed_wal::is_stage(name));
+        logical_names
+            .retain(|name| !self.is_archive_live_name(name) && !packed_wal::is_stage(name));
         logical_names.extend(self.closed.iter().map(packed_wal::selected_name));
         let mut matches = retained || logical_names == exact_names;
         let mut witnesses = Vec::new();

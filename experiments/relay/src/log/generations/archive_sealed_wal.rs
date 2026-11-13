@@ -1,5 +1,6 @@
 //! Hold sealed files in a separate namespace while preserving portable WAL identity.
 use super::{
+    archive_wal_copy,
     directory::Directory,
     format,
     held_file::{self, FileStamp},
@@ -17,35 +18,78 @@ use std::{
 };
 
 pub(super) const ARCHIVE_DIRECTORY: &str = ".sealed-wals";
+const MOUNT_DIRECTORY: &str = ".sealed-wal-volume";
 
 #[cfg(test)]
 #[derive(Clone, Copy, PartialEq)]
 pub(crate) enum WalArchiveInterruption {
+    CopySynced,
     Linked,
     Retired,
 }
 
 /// The live directory's exclusive lock covers this fixed child namespace.
 pub(super) struct ArchiveDirectory {
-    path: PathBuf,
+    pub(super) path: PathBuf,
     root: File,
+    mount: Option<(PathBuf, File)>,
 }
 
 impl ArchiveDirectory {
     pub(super) fn open(parent: &Directory) -> Result<Option<Self>> {
         parent.guard()?;
-        let path = parent.path.join(ARCHIVE_DIRECTORY);
-        match fs::symlink_metadata(&path) {
+        let mount_path = parent.path.join(MOUNT_DIRECTORY);
+        let (path, mount) = if let Some(mount) = Self::open_directory(&mount_path)? {
+            if parent.device_matches(&mount)? {
+                return Err(Error::Contract("sealed WAL archive volume is not mounted"));
+            }
+            parent.absent(ARCHIVE_DIRECTORY)?;
+            (mount_path.join("archive"), Some((mount_path, mount)))
+        } else {
+            (parent.path.join(ARCHIVE_DIRECTORY), None)
+        };
+        let Some(root) = Self::open_directory(&path)? else {
+            if mount.is_some() {
+                return Err(Error::Contract("private sealed WAL archive on the volume is absent"));
+            }
+            return Ok(None);
+        };
+        let archive = Self { path, root, mount };
+        archive.guard()?;
+        archive.check_device(parent)?;
+        parent.guard()?;
+        Ok(Some(archive))
+    }
+
+    fn check_device(&self, parent: &Directory) -> Result<()> {
+        if let Some((_, mount)) = &self.mount {
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::MetadataExt;
+                if self.root.metadata()?.dev() != mount.metadata()?.dev() {
+                    return Err(Error::Contract(
+                        "private WAL archive is outside its mounted volume",
+                    ));
+                }
+            }
+            #[cfg(not(unix))]
+            let _ = mount;
+        } else if !self.shares_device(parent)? {
+            return Err(Error::Contract(
+                "use the configured mount for a separate WAL archive volume",
+            ));
+        }
+        Ok(())
+    }
+
+    fn open_directory(path: &Path) -> Result<Option<File>> {
+        match fs::symlink_metadata(path) {
             Ok(metadata) if metadata.is_dir() => {}
             Ok(_) => return Err(Error::Contract("sealed WAL archive directory type")),
             Err(error) if error.kind() == ErrorKind::NotFound => return Ok(None),
             Err(error) => return Err(error.into()),
         }
-        let root = File::open(&path)?;
-        let archive = Self { path, root };
-        archive.guard()?;
-        parent.guard()?;
-        Ok(Some(archive))
+        Ok(Some(File::open(path)?))
     }
 
     fn create(parent: &Directory) -> Result<Self> {
@@ -62,22 +106,45 @@ impl ArchiveDirectory {
     }
 
     pub(super) fn guard(&self) -> Result<()> {
-        let named = fs::symlink_metadata(&self.path)?;
-        let held = self.root.metadata()?;
+        if let Some((path, file)) = &self.mount {
+            Self::guard_directory(path, file, false)?;
+        }
+        Self::guard_directory(&self.path, &self.root, true)
+    }
+
+    fn guard_directory(path: &Path, file: &File, private: bool) -> Result<()> {
+        let named = fs::symlink_metadata(path)?;
+        let held = file.metadata()?;
         #[cfg(unix)]
         {
             use std::os::unix::fs::MetadataExt;
             if named.is_dir()
                 && held.is_dir()
                 && (named.dev(), named.ino()) == (held.dev(), held.ino())
-                && named.mode().trailing_zeros() >= 6
+                && (!private || named.mode().trailing_zeros() >= 6)
             {
                 return Ok(());
             }
         }
         #[cfg(not(unix))]
-        let _ = (named, held);
+        let _ = (named, held, private);
         Err(Error::Contract("sealed WAL archive directory custody differs"))
+    }
+
+    pub(super) fn sync(&self) -> Result<()> {
+        self.root.sync_all()?;
+        if let Some((_, mount)) = &self.mount {
+            mount.sync_all()?;
+        }
+        Ok(())
+    }
+
+    fn shares_device(&self, directory: &Directory) -> Result<bool> {
+        directory.device_matches(&self.root)
+    }
+
+    pub(super) fn live_name(&self) -> &'static str {
+        if self.mount.is_some() { MOUNT_DIRECTORY } else { ARCHIVE_DIRECTORY }
     }
 }
 
@@ -108,17 +175,23 @@ pub(super) fn open_wal(
 ) -> Result<HeldWal> {
     let name = format::wal_name(&item.generation);
     let live = directory.path.join(&name);
-    if let Some(path) = archive.map(|directory| directory.path.join(&name))
-        && exists(&path)?
-    {
-        let mut wal = HeldWal::open(held_file::open(&path)?, item)?;
-        if exists(&live)? {
-            wal.identity.guard(&wal.file, &live)?;
-        }
-        wal.archived = true;
-        return Ok(wal);
+    let Some(archive) = archive else {
+        return HeldWal::open(held_file::open(&live)?, item);
+    };
+    let path = archive.path.join(&name);
+    if !exists(&path)? {
+        return HeldWal::open(held_file::open(&live)?, item);
     }
-    HeldWal::open(held_file::open(&live)?, item)
+    let mut wal = HeldWal::open(held_file::open(&path)?, item)?;
+    if exists(&live)? {
+        if archive.shares_device(directory)? {
+            wal.identity.guard(&wal.file, &live)?;
+        } else {
+            wal.archive_source = Some(archive_wal_copy::hold_original(&wal, &live, item)?);
+        }
+    }
+    wal.archived = true;
+    Ok(wal)
 }
 
 impl Generations {
@@ -136,7 +209,9 @@ impl Generations {
         let name = selected_name(wal);
         if wal.archived {
             let live = self.directory.path.join(name);
-            if exists(&live)? {
+            if let Some(original) = &wal.archive_source {
+                original.guard(&live)?;
+            } else if exists(&live)? {
                 wal.identity.guard(&wal.file, &live)?;
             }
         } else if let Some(archive) = &self.archive
@@ -149,9 +224,14 @@ impl Generations {
 
     pub(super) fn verify_sealed_archive_inventory(&self) -> Result<()> {
         let Some(archive) = &self.archive else {
-            return self.directory.absent(ARCHIVE_DIRECTORY);
+            self.directory.absent(ARCHIVE_DIRECTORY)?;
+            return self.directory.absent(MOUNT_DIRECTORY);
         };
         archive.guard()?;
+        let (stages, _) = archive_wal_copy::stages(archive)?;
+        if stages != 0 && archive.shares_device(&self.directory)? {
+            return Err(Error::Contract("cross-volume WAL stages require a separate volume"));
+        }
         let expected: std::collections::BTreeSet<_> =
             self.closed.iter().filter(|wal| wal.archived).map(selected_name).collect();
         let mut count = 0;
@@ -161,6 +241,9 @@ impl Generations {
                 .file_name()
                 .into_string()
                 .map_err(|_| Error::Contract("sealed WAL archive file name"))?;
+            if name.starts_with(archive_wal_copy::STAGE_PREFIX) {
+                continue;
+            }
             if !expected.contains(&name) {
                 return Err(Error::Contract("sealed WAL archive contains unknown work"));
             }
@@ -193,17 +276,36 @@ impl Generations {
         if metadata.next()? > through {
             return Err(Error::Contract("WAL archival exceeds its checkpoint"));
         }
-        let digest = metadata.sha256;
+        let metadata = metadata.clone();
         self.verify_retained()?;
         if self.archive.is_none() {
             self.archive = Some(ArchiveDirectory::create(&self.directory)?);
         }
         let archive = self.archive.as_ref().ok_or(Error::NeedsRecovery)?;
         let wal = &mut self.closed[position];
+        let duplicate = wal.archived;
+        self.directory.sync()?;
+        if !archive.shares_device(&self.directory)? {
+            if let Err(error) = move_across_volumes(
+                &self.directory,
+                archive,
+                wal,
+                &metadata,
+                #[cfg(test)]
+                stop,
+            ) {
+                self.fenced.store(true, std::sync::atomic::Ordering::Release);
+                return Err(error);
+            }
+            return Ok(ServerSealedWalArchive {
+                generation: generation.into(),
+                stored_bytes: wal.physical_bytes,
+                duplicate,
+            });
+        }
         let name = selected_name(wal);
         let live = self.directory.path.join(&name);
         let path = archive.path.join(&name);
-        let duplicate = wal.archived;
         if let Err(error) = publish_archive_name(
             &self.directory,
             archive,
@@ -218,7 +320,7 @@ impl Generations {
         }
         wal.archived = true;
         wal.stamp = FileStamp::of(&wal.file)?;
-        if let Err(error) = wal.read(digest, |reader| {
+        if let Err(error) = wal.read(metadata.sha256, |reader| {
             std::io::copy(reader, &mut std::io::sink())?;
             Ok(())
         }) {
@@ -231,6 +333,54 @@ impl Generations {
             duplicate,
         })
     }
+}
+
+impl Generations {
+    pub(super) fn is_archive_live_name(&self, name: &str) -> bool {
+        self.archive.as_ref().is_some_and(|archive| name == archive.live_name())
+    }
+}
+
+fn move_across_volumes(
+    directory: &Directory,
+    archive: &ArchiveDirectory,
+    wal: &mut HeldWal,
+    item: &ClosedFile,
+    #[cfg(test)] stop: Option<WalArchiveInterruption>,
+) -> Result<()> {
+    let name = selected_name(wal);
+    let live = directory.path.join(&name);
+    let target = archive.path.join(&name);
+    if wal.archived {
+        archive_wal_copy::retire_stage(archive, wal)?;
+    } else {
+        let copied = archive_wal_copy::copy_and_publish(
+            directory,
+            archive,
+            wal,
+            &name,
+            item,
+            #[cfg(test)]
+            stop,
+        )?;
+        let original = std::mem::replace(wal, copied);
+        wal.archive_source = Some(archive_wal_copy::ArchiveSource::new(original));
+    }
+    directory.guard()?;
+    archive.guard()?;
+    wal.guard(&target)?;
+    archive.sync()?;
+    if let Some(original) = &wal.archive_source {
+        original.guard_unaliased(&live)?;
+        fs::remove_file(&live)?;
+    }
+    directory.sync()?;
+    #[cfg(test)]
+    if stop == Some(WalArchiveInterruption::Retired) {
+        return Err(Error::NeedsRecovery);
+    }
+    wal.archive_source = None;
+    Ok(())
 }
 
 fn publish_archive_name(
@@ -247,7 +397,7 @@ fn publish_archive_name(
         wal.guard(live)?;
         fs::hard_link(live, path)?;
     }
-    archive.root.sync_all()?;
+    archive.sync()?;
     #[cfg(test)]
     if stop == Some(WalArchiveInterruption::Linked) {
         return Err(Error::NeedsRecovery);

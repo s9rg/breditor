@@ -41,6 +41,19 @@ fn anchored(path: &Path) -> Result<PathBuf> {
     Ok(parent.canonicalize()?.join(path.file_name().ok_or(Error::Contract("directory name"))?))
 }
 impl Directory {
+    pub(super) fn device_matches(&self, file: &File) -> Result<bool> {
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::MetadataExt;
+            Ok(self.root_id.0 == file.metadata()?.dev())
+        }
+        #[cfg(not(unix))]
+        {
+            let _ = file;
+            Err(Error::Contract("log generations require Unix inode custody"))
+        }
+    }
+
     pub(crate) fn witness(&self) -> Result<DirectoryWitness> {
         self.guard()?;
         #[cfg(unix)]

@@ -1,5 +1,6 @@
 //! Lossless physical encoding for sealed WAL files. Manifests and portable archives use raw bytes.
 use super::{
+    archive_wal_copy::ArchiveSource,
     format,
     held_file::{FileIdentity, FileStamp},
     manifest::ClosedFile,
@@ -54,6 +55,7 @@ pub(super) struct HeldWal {
     pub identity: FileIdentity,
     pub stamp: FileStamp,
     pub archived: bool,
+    pub archive_source: Option<ArchiveSource>,
     encoding: Encoding,
 }
 
@@ -67,6 +69,11 @@ impl HeldWal {
             identity: self.identity,
             stamp: self.stamp,
             archived: self.archived,
+            archive_source: self
+                .archive_source
+                .as_ref()
+                .map(ArchiveSource::clone_handle)
+                .transpose()?,
             encoding: self.encoding,
         })
     }
@@ -91,6 +98,7 @@ impl HeldWal {
             identity,
             stamp,
             archived: false,
+            archive_source: None,
             encoding,
         })
     }
