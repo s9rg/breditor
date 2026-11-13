@@ -556,3 +556,17 @@ Call `close()` on the handoff to flush and close its sessions. An uncertain
 publication keeps the sessions private and can be retried against the same
 actual relay control. Use the usual authenticated adapters to deliver
 offline work once the handoff succeeds.
+
+Configure the document and comment adapters with the original protected resume
+credentials and the serving endpoint stored in the recovered bindings. The host
+supplies the ordinary account token independently of the operator token. Bind
+the suggestion, revision and version adapters to the selected retained lanes.
+Submit document edits before their dependent comments and version packets.
+The SDK retains their exact receipts with the paired history in the recovered
+database. The asset store keeps its own upload receipts and cancelled entries.
+
+The continued provider check exercises these steps against its actual local
+Rust relay. Seven clients send their queued edits, comments, proposals,
+revisions and versions. One client also uploads a raster previously absent
+from the relay and reads its exact bytes back. The check closes and reopens
+the client stores to compare the acknowledgements with the originals.

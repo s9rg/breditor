@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {WebSocket as NativeWebSocket} from 'undici';
 import {RichAssetStore} from '@breditor/experimental-rich-content';
 import {unavailableAsset,unavailableUpload} from '../physical-recovery-control/unavailable-upload.mjs';
+import {secondAsset} from '../review-assets/pixels.mjs';
 
 function resumeIdentity(binding,rows,key){
  const row=rows.find(row=>row[key]===binding[key]&&row.principal===binding.principal);
@@ -21,13 +22,17 @@ async function deliverUpload(api,uploads,options){
  const store=await RichAssetStore.openRetained(uploads);
  const assets=new api.SharedRelayAssets({...options,store});
  try{
-  assert.equal((await store.get(unavailableAsset)).status,'queued');
+  assert.equal((await store.get(unavailableAsset)).status,'pending');
+  const cancelled=await store.get(secondAsset);
+  assert.equal(cancelled.status,'cancelled');
   assert.equal(await assets.readBytes(unavailableAsset),undefined);
   await assets.flush();
   const accepted=await store.get(unavailableAsset);
-  assert.equal(accepted.status,'uploaded');
+  assert.equal(accepted.status,'uploaded',accepted.failure??'Expected an upload acknowledgement');
+  assert.deepEqual(await store.get(secondAsset),cancelled);
   assert.equal(accepted.storageRef,'breditor:relay-asset:1:'+unavailableAsset);
   const remote=await assets.readBytes(unavailableAsset);
+  assert.ok(remote);
   assert.deepEqual(Buffer.from(await remote.blob.arrayBuffer()),unavailableUpload);
   return accepted;
  }finally{assets.dispose();store.close();}
@@ -75,6 +80,7 @@ export async function deliverPublishedCohort(api,sessions,listener,delivery,dest
    await versions.flushShared();
    await versions.close();
    await session.flush();
+   assert.equal(session.core.documentJson().includes('Offline revision '),false);
    const accepted=receiptCut(session.exportDeliveryRecovery());
    assert.ok(accepted.document.receipt);
    assert.ok(accepted.review);
@@ -128,6 +134,7 @@ export async function verifyColdDelivery(api,cohort,destinations,{acknowledged,u
  const store=await RichAssetStore.openRetained(uploads);
  try{
   assert.deepEqual(await store.get(unavailableAsset),upload);
+  assert.equal((await store.get(secondAsset)).status,'cancelled');
   assert.deepEqual(Buffer.from(await(await store.blob(unavailableAsset)).arrayBuffer()),unavailableUpload);
  }finally{store.close();}
 }
