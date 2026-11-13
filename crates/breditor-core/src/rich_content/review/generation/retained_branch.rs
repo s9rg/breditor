@@ -11,6 +11,7 @@ pub(in crate::rich_content::review) fn check_retained_branch_generations(
         (Some(now), Some(old)) => {
             if now.root_generation != old.root_generation
                 || now.root_json != old.root_json
+                || old.continued_after.is_some() && now.continued_after != old.continued_after
                 || now.sealed.len() < old.sealed.len()
                 || now.sealed.iter().zip(&old.sealed).any(|(a, b)| a.json != b.json)
             {

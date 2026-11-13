@@ -5,6 +5,9 @@ use serde::{Deserialize, Serialize};
 pub(in crate::rich_content::review) const MAX_RETAINED_EVENTS: usize = 65_536;
 pub(super) const MAX_GENERATIONS: usize = 64;
 pub(super) const MAX_ARCHIVE_BYTES: usize = 64 * 1024 * 1024;
+pub(super) const CONTINUED_MAX_EVENTS: usize = 262_144;
+pub(super) const CONTINUED_MAX_GENERATIONS: usize = 256;
+pub(super) const CONTINUED_MAX_ARCHIVE_BYTES: usize = 256 * 1024 * 1024;
 pub(super) const ARCHIVE_FORMAT: &str = "breditor/review-segmented-history-session";
 pub(super) const SEGMENT_FORMAT: &str = "breditor/review-history-segment";
 
@@ -17,6 +20,7 @@ pub(super) struct Archive {
     pub root: String,
     pub sealed: Vec<String>,
     pub active: String,
+    pub continued_after: Option<usize>,
 }
 
 #[derive(Serialize)]
@@ -28,6 +32,8 @@ pub(super) struct ArchiveRef<'a> {
     pub root: &'a str,
     pub sealed: Vec<&'a str>,
     pub active: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub continued_after: Option<usize>,
 }
 
 #[derive(Deserialize)]
@@ -69,11 +75,17 @@ pub(super) fn generation_id(value: &str) -> Result<(), ReviewError> {
     Ok(())
 }
 
-pub(super) fn generation_budget(files: usize, events: usize) -> Result<(), ReviewError> {
-    if files > MAX_GENERATIONS {
+pub(super) fn check_budget(
+    files: usize,
+    events: usize,
+    continued: bool,
+) -> Result<(), ReviewError> {
+    let file_limit = if continued { CONTINUED_MAX_GENERATIONS } else { MAX_GENERATIONS };
+    let event_limit = if continued { CONTINUED_MAX_EVENTS } else { MAX_RETAINED_EVENTS };
+    if files > file_limit {
         return Err(ReviewError::Limit("review history generations"));
     }
-    if events > MAX_RETAINED_EVENTS {
+    if events > event_limit {
         return Err(ReviewError::Limit("retained review events"));
     }
     Ok(())

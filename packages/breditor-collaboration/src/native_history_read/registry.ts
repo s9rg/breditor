@@ -31,6 +31,7 @@ function read<T>(source:object,operation:(core:SharedRichEditor<SharedSelectionP
 export function registerCapturedNativeHistory<P extends SharedSelectionPolicy>(source:object,core:SharedRichEditor<P>,selection:CapturedNativeHistorySelection,guard:()=>void):void{
  if(sources.has(source))throw unavailable();guard();
  const documentKind=native.documentKind.call(core)??'original',reviewKind=native.reviewKind.call(core),stamp=coreReadStamp(core);
+ if(reviewKind==='continued-v2')throw unavailable();
  if(documentKind!==selection.document.kind||native.checkpointJson.call(core)!==selection.document.checkpoint)throw unavailable();
  if(selection.review&&(reviewKind!==selection.review.kind||
   (reviewKind==='segmented-v1'?native.reviewSegmentedCheckpoint:native.reviewCheckpoint).call(core)!==selection.review.checkpoint))throw unavailable();

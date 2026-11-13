@@ -96,6 +96,7 @@ fn rewrite(archive: &Archive, mutation: u8) -> Result<String> {
         root: &archive.root,
         sealed: strings.iter().map(String::as_str).collect(),
         active: &active,
+        continued_after: archive.continued_after,
     })?)
 }
 

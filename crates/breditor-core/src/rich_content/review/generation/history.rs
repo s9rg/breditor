@@ -1,5 +1,8 @@
 //! Immutable file custody shared across staged owners, never mutable event/history buffers.
-use super::super::{ReviewError, event};
+use super::{
+    super::{ReviewError, event},
+    record::{CONTINUED_MAX_EVENTS, MAX_RETAINED_EVENTS},
+};
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -20,6 +23,7 @@ pub(in crate::rich_content::review) struct ReviewGenerations {
     pub(super) sealed: Vec<SealedReviewGeneration>,
     pub(super) active_generation: String,
     pub(super) active_start: usize,
+    pub(super) continued_after: Option<usize>,
 }
 
 impl ReviewGenerations {
@@ -38,7 +42,12 @@ impl ReviewGenerations {
             sealed: vec![],
             active_generation: active,
             active_start: events,
+            continued_after: None,
         })
+    }
+
+    pub(in crate::rich_content::review) const fn event_limit(&self) -> usize {
+        if self.continued_after.is_some() { CONTINUED_MAX_EVENTS } else { MAX_RETAINED_EVENTS }
     }
 
     pub(super) fn parent(&self) -> (&str, &str) {

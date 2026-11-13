@@ -21,6 +21,7 @@ pub(in crate::rich_content::review) fn check_generation_origin(
         (Some(state), Some(old)) => {
             if state.root_generation != old.root_generation
                 || state.root_json != old.root_json
+                || old.continued_after.is_some() && state.continued_after != old.continued_after
                 || state.sealed.len() < old.sealed.len()
                 || state.sealed.iter().zip(&old.sealed).any(|(a, b)| a.json != b.json)
             {

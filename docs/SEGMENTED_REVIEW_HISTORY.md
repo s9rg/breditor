@@ -144,3 +144,37 @@ Authenticated relay delivery for this new family, complete provider/client
 reconciliation, historic-copy decisions and authenticated
 whole-room activation remain required. This native contract does not complete
 feature parity or close a V1 release gate.
+
+## Continue a V1 comment archive
+
+The native continued family is selected explicitly as `continued-v2`. Its
+`breditor/review-segmented-history-session` version 2 archive retains the exact
+V1 root and sealed file strings, followed by the exact V1 active file as a
+seal. `continuedAfter` counts sealed files through that boundary. The new active
+file links to that last V1 file by generation ID and digest. Every file before
+the boundary is admitted under the V1 budgets. Cold replay uses the continued
+budgets from the first file after the boundary.
+
+The continued archive admits up to 262,144 retained events, 256 generations
+including root and active, and 256 MiB of encoded archive bytes. File and frame
+limits still apply independently, so bytes can reach their ceiling before the
+event count. An empty active V1 file may be sealed only at the continuation
+boundary. Later seals require a nonempty active suffix. Generation IDs remain
+unique across the full retained archive.
+
+Use `continueReviewHistory` or `continueReadOnlyReviewHistory` on an unpinned
+`SharedRichEditor` with V1 comment history. Both require the current native
+document and comment observations. Continuation refreshes the comment guard,
+preserves the event clock and both Undo/Redo branches, and keeps the current
+host access. Retained anchors are checked against the actual document owner.
+Old peers continue to supply events under the existing frame and receipt
+contract. A failed transition keeps the V1 archive and observation valid.
+
+Use `reviewContinuedCheckpoint` to export the exact V2 string and
+`enableContinuedReview` to attach it to the matching cold document owner with
+fresh host policy. Each archive reader admits its explicitly selected version.
+The SDK supports these operations with original, segmented, and continued
+document owners. Existing persistent storage pins refuse a continued comment
+archive. Atomic durable adoption needs a paired storage contract that can
+retain and compare both continued lanes. Relay snapshot and restart adoption
+also require an explicit server storage profile.

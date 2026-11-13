@@ -1,7 +1,10 @@
 //! Explicit optional comment lane. Original document views, journals and constructor exports stay closed.
 mod batch_receipt;
 mod capture_anchor;
+mod continue_read_only_review_history;
+mod continue_review_history;
 mod dispatch_review;
+mod enable_continued_review;
 mod enable_observer_review_segmented_history;
 mod enable_read_only_review_segmented_history;
 mod enable_review;
@@ -12,6 +15,7 @@ mod read_quote;
 mod receive_review;
 mod redo_review;
 mod review_checkpoint;
+mod review_continued_checkpoint;
 mod review_segmented_checkpoint;
 mod review_view;
 mod seal_observer_review_history_generation;

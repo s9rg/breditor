@@ -228,14 +228,14 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
   this.#sealGenerationPolicies(history,ranges);
  }
  #sealGenerationPolicies(history:"explicit"|"typing-v1",ranges:"original"|"general-v1"):void{
-  if(this.#reviewHistory==="segmented-v1")throw new SharedEditorError("review_generation_storage_required","Original paired comments cannot store independent review generations");
+  if(this.#reviewHistory!==undefined&&this.#reviewHistory!=="original")throw new SharedEditorError("review_generation_storage_required","Original paired comments cannot store independent review generations");
   this.#live();if(!this.#segmented||(history!=="explicit"&&history!=="typing-v1")||(this.view().historyGrouping==="typing-v1"?"typing-v1":"explicit")!==history||(this.#fixedHistory!==undefined&&this.#fixedHistory!==history))throw new SharedEditorError("segmented_history_policy","Generation storage must match the native history policy");
   this.sealRangePolicy(ranges);this.#fixedHistory=history;
  }
  /** Explicit new paired family only. This is a policy pin, never a lease or stored-role proof. */
- sealIndependentHistoryPolicies(document:"original"|"segmented-v1",review:SharedReviewHistoryPolicy,history:"explicit"|"typing-v1",ranges:"original"|"general-v1"):void{
+ sealIndependentHistoryPolicies(document:"original"|"segmented-v1",review:"original"|"segmented-v1",history:"explicit"|"typing-v1",ranges:"original"|"general-v1"):void{
   this.#nativeRecoveryAccess();
-  this.#requireReview();if((document!=="original"&&document!=="segmented-v1")||this.segmentedHistoryPolicy()!==(document==="segmented-v1"?document:null)||this.reviewHistoryPolicy()!==review||(history!=="explicit"&&history!=="typing-v1")||(this.view().historyGrouping==="typing-v1"?"typing-v1":"explicit")!==history||(this.#fixedHistory!==undefined&&this.#fixedHistory!==history))throw new SharedEditorError("independent_history_policy","Both explicit native history families and base policies must match before durable adoption");
+  this.#requireReview();if((review!=="original"&&review!=="segmented-v1")||(document!=="original"&&document!=="segmented-v1")||this.segmentedHistoryPolicy()!==(document==="segmented-v1"?document:null)||this.reviewHistoryPolicy()!==review||(history!=="explicit"&&history!=="typing-v1")||(this.view().historyGrouping==="typing-v1"?"typing-v1":"explicit")!==history||(this.#fixedHistory!==undefined&&this.#fixedHistory!==history))throw new SharedEditorError("independent_history_policy","Both explicit native history families and base policies must match before durable adoption");
   this.sealRangePolicy(ranges);this.#fixedHistory=history;
  }
  /** Pure native document and paired-review continuity. Final AST equality is never a fallback. */
@@ -333,7 +333,7 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  supportsReadOnlyReviewHistoryLifecycle():boolean{const r=this.#live();return this.supportsReviewHistoryGenerations()&&r.read_only_review_history_lifecycle_version?.()==="1"&&[r.enable_read_only_review_history_generations,r.seal_read_only_review_history_generation].every(f=>typeof f==="function");}
  enableReadOnlyReviewHistoryGenerations(root:string,active:string,guard?:SharedReviewGuard):void{if(!this.supportsReadOnlyReviewHistoryLifecycle())throw new SharedEditorError("read_only_review_history_unavailable","Use complete native read-only comment archival");this.#reviewGenerationBoundary("enable_read_only_review_history_generations",root,active,guard);}
  #sealReviewGeneration(method:"seal_review_history_generation"|"seal_observer_review_history_generation"|"seal_read_only_review_history_generation",next:string,guard?:SharedReviewGuard):void{
-  this.#checkReview(guard);this.#requireReviewGenerations();if(this.#reviewHistory!=="segmented-v1")throw new SharedEditorError("review_history_policy","Select independent comment generations first");
+  this.#checkReview(guard);this.#requireReviewGenerations();if(this.#reviewHistory!=="segmented-v1"&&this.#reviewHistory!=="continued-v2")throw new SharedEditorError("review_history_policy","Select independent comment generations first");
   this.#run("local",(raw,o)=>{raw[method]!(o,next);this.#reviewRevision++;},guard?.documentRevision,false);
  }
  sealReviewHistoryGeneration(next:string,guard?:SharedReviewGuard):void{this.#sealReviewGeneration("seal_review_history_generation",next,guard);}
@@ -341,6 +341,56 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  sealReadOnlyReviewHistoryGeneration(next:string,guard?:SharedReviewGuard):void{if(!this.supportsReadOnlyReviewHistoryLifecycle())throw new SharedEditorError("read_only_review_history_unavailable","Use complete native read-only comment archival");this.#sealReviewGeneration("seal_read_only_review_history_generation",next,guard);}
  /** New-family getter only. The original reviewCheckpoint continues to refuse this native owner. */
  reviewSegmentedCheckpoint(guard?:SharedReviewGuard):string{this.#checkReview(guard);const raw=this.#requireReviewGenerations();if(this.#reviewHistory!=="segmented-v1")throw new SharedEditorError("review_history_policy","Select the independent comment family");return raw.review_segmented_checkpoint!(this.#observation);}
+
+ /** Discover only the explicit native continued comment family. */
+ supportsContinuedReviewHistory():boolean{
+  const raw=this.#live();
+  return this.supportsReviewHistoryGenerations()&&raw.continued_review_history_version?.()==="1"&&
+   [raw.continue_review_history,raw.continue_read_only_review_history,raw.enable_continued_review,raw.review_continued_checkpoint].every(method=>typeof method==="function");
+ }
+ #requireContinuedReviewCapability():SharedRustOwner{
+  if(!this.supportsContinuedReviewHistory())throw new SharedEditorError("continued_review_history_unavailable","Use the complete native continued comment capability");
+  return this.#live();
+ }
+ #continueReviewHistory(method:"continue_review_history"|"continue_read_only_review_history",next:string,guard?:SharedReviewGuard):void{
+  this.#checkReview(guard);
+  this.#requireContinuedReviewCapability();
+  this.#reviewGenerationStorageAvailable();
+  if(this.#reviewHistory!=="segmented-v1")throw new SharedEditorError("review_history_policy","Continue an existing V1 comment archive");
+  this.#run("local",(raw,observed)=>{
+   raw[method]!(observed,next);
+   this.#reviewHistory="continued-v2";
+   this.#reviewRevision++;
+  },guard?.documentRevision,false);
+ }
+ /** Continue an authored comment archive without publishing a new event. */
+ continueReviewHistory(next:string,guard?:SharedReviewGuard):void{
+  this.#continueReviewHistory("continue_review_history",next,guard);
+ }
+ /** Continue a retained comment archive under its current read-only policy. */
+ continueReadOnlyReviewHistory(next:string,guard?:SharedReviewGuard):void{
+  this.#continueReviewHistory("continue_read_only_review_history",next,guard);
+ }
+ /** Restore an exact continued archive using freshly supplied host policy. */
+ enableContinuedReview(policy:SharedReviewPolicy,checkpoint:string,documentRevision?:string):void{
+  this.#check(documentRevision);
+  this.#requireContinuedReviewCapability();
+  if(this.#reviewEnabled)throw new SharedEditorError("review_enabled","This owner already has a review lane");
+  this.#reviewGenerationStorageAvailable();
+  this.#run("local",(raw,observed)=>{
+   raw.enable_continued_review!(observed,JSON.stringify(policy),checkpoint);
+   this.#reviewEnabled=true;
+   this.#reviewHistory="continued-v2";
+   this.#reviewRevision++;
+  },documentRevision,false);
+ }
+ /** Read the explicit continued comment archive under the current publication guard. */
+ reviewContinuedCheckpoint(guard?:SharedReviewGuard):string{
+  this.#checkReview(guard);
+  const raw=this.#requireContinuedReviewCapability();
+  if(this.#reviewHistory!=="continued-v2")throw new SharedEditorError("review_history_policy","Select continued comment history");
+  return raw.review_continued_checkpoint!(this.#observation);
+ }
  reviewSnapshot():SharedReviewSnapshot{const r=this.#requireReview();return {owner:this.#reviewOwner,documentRevision:this.view().revision,reviewRevision:this.#reviewRevision.toString(),view:JSON.parse(r.review_view_json!(this.#observation)) as SharedReviewView};}
  subscribeReview(listener:(snapshot:SharedReviewSnapshot)=>void):()=>void{this.#requireReview();this.#reviewListeners.add(listener);return()=>this.#reviewListeners.delete(listener);}
  captureReviewAnchor(target:SharedReviewTarget,documentRevision?:string):string{this.#check(documentRevision);const r=this.#live();if(!this.supportsReview())throw new SharedEditorError("review_unavailable","Use matching native review anchors");return r.capture_review_anchor!(this.#observation,JSON.stringify(target));}
@@ -506,7 +556,7 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  /** An owning durable session seals its selected policy after native admission, not its content. */
  sealHistoryPolicy(policy:"explicit"|"typing-v1"):void{this.#nativeRecoveryAccess();this.#live();if(this.#segmented)throw new SharedEditorError("segmented_storage_required","Use generation-aware storage");if(this.#reviewEnabled)throw new SharedEditorError("review_persistence_unavailable","Review requires separately declared paired durable storage");if((policy!=="explicit"&&policy!=="typing-v1")||(this.#fixedHistory!==undefined&&this.#fixedHistory!==policy)||(this.view().historyGrouping==="typing-v1"?"typing-v1":"explicit")!==policy)throw new SharedEditorError("history_policy","History policy does not match the native owner");this.#fixedHistory=policy;}
  /** Explicit paired-record lifecycle only. The old document-only sealing path continues to refuse review. */
- sealReviewPolicies(history:"explicit"|"typing-v1",ranges:"original"|"general-v1"):void{this.#nativeRecoveryAccess();this.#requireReview();if(this.#reviewHistory==="segmented-v1")throw new SharedEditorError("review_generation_storage_required","Use explicitly independent paired storage");if(this.#segmented)throw new SharedEditorError("segmented_storage_required","Use generation-aware paired storage");if((history!=="explicit"&&history!=="typing-v1")||(this.#fixedHistory!==undefined&&this.#fixedHistory!==history)||(this.view().historyGrouping==="typing-v1"?"typing-v1":"explicit")!==history)throw new SharedEditorError("history_policy","Review history policy does not match the native owner");this.sealRangePolicy(ranges);this.#fixedHistory=history;}
+ sealReviewPolicies(history:"explicit"|"typing-v1",ranges:"original"|"general-v1"):void{this.#nativeRecoveryAccess();this.#requireReview();if(this.#reviewHistory!==undefined&&this.#reviewHistory!=="original")throw new SharedEditorError("review_generation_storage_required","Use explicitly independent paired storage");if(this.#segmented)throw new SharedEditorError("segmented_storage_required","Use generation-aware paired storage");if((history!=="explicit"&&history!=="typing-v1")||(this.#fixedHistory!==undefined&&this.#fixedHistory!==history)||(this.view().historyGrouping==="typing-v1"?"typing-v1":"explicit")!==history)throw new SharedEditorError("history_policy","Review history policy does not match the native owner");this.sealRangePolicy(ranges);this.#fixedHistory=history;}
  closeTypingGroup(revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#typingOwner().close_typing_group!(o),revision,false);}
  /** Named user input only; programmatic type/paste/composition remain explicit. */
  typeUser(text:string,clockMs:string,revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#typingOwner().insert_typing_text!(o,JSON.stringify({text,clockMs})),revision);}

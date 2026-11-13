@@ -31,6 +31,7 @@ export const reviewMethods=Object.freeze(["review_version","review_enabled","ena
 export const reviewTransportMethods=Object.freeze(["review_transport_version","local_review_clock","review_writer_clock","retained_review_receipt","export_review_through"]);
 export const writerPrefixReadMethods=Object.freeze(["writer_prefix_read_version","writer_clock_at","writer_clock_at_v2"]);
 export const segmentedReviewMethods=Object.freeze(["review_history_generation_version","review_history_family","enable_review_history_generations","enable_observer_review_history_generations","seal_review_history_generation","seal_observer_review_history_generation","enable_segmented_review","review_segmented_checkpoint"]);
+export const continuedReviewMethods=Object.freeze(["continued_review_history_version","continue_review_history","continue_read_only_review_history","enable_continued_review","review_continued_checkpoint"]);
 export const historicalReviewMethods=Object.freeze(["review_quote_version","read_review_quote","document_version_source_version","verify_document_version_source"]);
 export const versionMethods=Object.freeze(["document_versions_version","capture_document_version","read_document_version","compare_document_version","prepare_document_version_restore","apply_document_version_restore"]);
 export const suggestionMethods=Object.freeze(["document_suggestions_version","capture_document_suggestion","read_document_suggestion","verify_document_suggestion_source","prepare_document_suggestion","check_document_suggestion_preview","retained_writer_receipt_v2"]);
@@ -87,6 +88,7 @@ export function admitApplicationSurface(module,binary,declarations){
  for(const name of reviewTransportMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native review lineage capability ${name}`);
  for(const name of writerPrefixReadMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native arbitrary-author prefix capability ${name}`);
  for(const name of segmentedReviewMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native segmented review capability ${name}`);
+ for(const name of continuedReviewMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native continued review capability ${name}`);
  for(const name of historicalReviewMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native historical review capability ${name}`);
  for(const name of versionMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing guarded native version capability ${name}`);
  for(const name of suggestionMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing pure native suggestion capability ${name}`);

@@ -1,4 +1,5 @@
 //! Explicit native comment retention; no document, transport or permission upgrade.
+mod continue_history;
 mod enable_observer_segmented_history;
 mod enable_read_only_segmented_history;
 mod enable_segmented_history;
@@ -16,7 +17,6 @@ mod seal_read_only_history_generation;
 mod segmented_checkpoint;
 
 pub(super) use history::ReviewGenerations;
-pub(super) use record::MAX_RETAINED_EVENTS;
 pub(super) use recovery_origin::check_generation_origin;
 pub(super) use retained_branch::check_retained_branch_generations;
 
@@ -25,3 +25,6 @@ mod tests;
 
 #[cfg(test)]
 mod integrity_tests;
+
+#[cfg(test)]
+mod continued_tests;

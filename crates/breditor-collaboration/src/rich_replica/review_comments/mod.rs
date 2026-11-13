@@ -1,5 +1,7 @@
 //! Document-bound comment admission; metadata never acquires a second document or selection owner.
 mod commit_review_batch;
+mod continue_read_only_review_history;
+mod continue_review_history;
 mod create_review_session;
 mod dispatch_review;
 mod enable_observer_review_segmented_history;
@@ -9,6 +11,7 @@ mod prepare_review_batch;
 mod receive_review;
 mod reconcile_retained_native_branch;
 mod redo_review;
+mod restore_continued_review;
 mod restore_review;
 mod restore_segmented_review;
 mod review_view;

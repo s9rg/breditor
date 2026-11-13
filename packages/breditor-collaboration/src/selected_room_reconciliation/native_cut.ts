@@ -22,7 +22,9 @@ export async function captureSelectedNativeCut(state:PhysicalOperationV3Custody,
  rootCurrent();scope.assets.check();const inventory=selectedInventoryCut(state.held.state),metadata=inventory.metadata,wire=metadata.room.writerTransportVersion;
  if(scope.assets.source.operationDatabase!==state.database||scope.assets.source.catalogDatabase!==state.held.database||JSON.stringify(scope.assets.source.catalog)!==JSON.stringify(state.held.state.selection)||clients.length!==scope.assets.participants.length||clients.length!==state.children.length)throw fail();
  const chosen=new Set<string>(),snapshots=clients.map(row=>{const pin=scope.assets.participants.find(value=>value.id===row.id);if(!pin||pin.family!==row.family||chosen.has(row.id))throw fail();chosen.add(row.id);
-  const documentKind=native.documentKind.call(row.core)??'original',reviewKind=native.reviewKind.call(row.core),document=native.checkpointJson.call(row.core),review=reviewKind===null?null:(reviewKind==='segmented-v1'?native.reviewSegmentedCheckpoint:native.reviewCheckpoint).call(row.core),stamp=coreReadStamp(row.core),readOnly=sourceCoreMethods.view.call(row.core).readOnly;
+  const documentKind=native.documentKind.call(row.core)??'original',reviewKind=native.reviewKind.call(row.core);
+  if(reviewKind==='continued-v2')throw fail();
+  const document=native.checkpointJson.call(row.core),review=reviewKind===null?null:(reviewKind==='segmented-v1'?native.reviewSegmentedCheckpoint:native.reviewCheckpoint).call(row.core),stamp=coreReadStamp(row.core),readOnly=sourceCoreMethods.view.call(row.core).readOnly;
   if(pin.native.document.kind!==documentKind||(pin.native.review.kind==='absent'?reviewKind!==null:pin.native.review.kind==='unselected'||pin.native.review.kind!==reviewKind))throw fail();
   if(!native.supportsWriterPrefixRead.call(row.core))throw new SharedEditorError('writer_prefix_unavailable','Complete selected-room reconciliation requires the matching native author-prefix capability');
   return{row,pin,documentKind:pin.native.document.kind,reviewKind,document,review,stamp,readOnly};

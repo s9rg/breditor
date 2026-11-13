@@ -5,8 +5,8 @@ use super::{
     encode_segment::encode_active,
     history::{ReviewGenerations, SealedReviewGeneration, file_digest},
     record::{
-        ARCHIVE_FORMAT, Archive, MAX_ARCHIVE_BYTES, SEGMENT_FORMAT, Segment, generation_budget,
-        generation_id,
+        ARCHIVE_FORMAT, Archive, CONTINUED_MAX_ARCHIVE_BYTES, MAX_ARCHIVE_BYTES, MAX_GENERATIONS,
+        SEGMENT_FORMAT, Segment, check_budget, generation_id,
     },
 };
 use std::collections::BTreeSet;
@@ -22,14 +22,44 @@ impl ReviewSession {
         policy: ReviewActorPolicy,
         input: &str,
     ) -> Result<Self, ReviewError> {
-        if input.len() > MAX_ARCHIVE_BYTES {
+        Self::restore_generation_json(binding, policy, input, false)
+    }
+
+    /// Restore the continued comment archive with fresh actor policy and exact V1 history.
+    /// # Errors
+    /// Invalid family, continuation boundary, identity, events, history or limits reject.
+    pub fn restore_continued_json(
+        binding: &ReviewBinding,
+        policy: ReviewActorPolicy,
+        input: &str,
+    ) -> Result<Self, ReviewError> {
+        Self::restore_generation_json(binding, policy, input, true)
+    }
+
+    fn restore_generation_json(
+        binding: &ReviewBinding,
+        policy: ReviewActorPolicy,
+        input: &str,
+        continued: bool,
+    ) -> Result<Self, ReviewError> {
+        let limit = if continued { CONTINUED_MAX_ARCHIVE_BYTES } else { MAX_ARCHIVE_BYTES };
+        if input.len() > limit {
             return Err(ReviewError::Limit("review history archive bytes"));
         }
         let saved: Archive = serde_json::from_str(input)?;
-        if saved.format != ARCHIVE_FORMAT || saved.format_version != 1 {
+        let version = if continued { 2 } else { 1 };
+        if saved.format != ARCHIVE_FORMAT
+            || saved.format_version != version
+            || saved.continued_after.is_some() != continued
+        {
             return Err(ReviewError::Contract("review history family"));
         }
-        generation_budget(saved.sealed.len() + 2, 0)?;
+        if saved.continued_after.is_some_and(|boundary| {
+            boundary == 0 || boundary >= MAX_GENERATIONS || boundary > saved.sealed.len()
+        }) {
+            return Err(ReviewError::Contract("review continuation boundary"));
+        }
+        check_budget(saved.sealed.len() + 2, 0, continued)?;
         generation_id(&saved.root_generation)?;
         let mut ids = BTreeSet::from([saved.root_generation.clone()]);
         let mut owner = Self::restore_json(binding, policy, &saved.root)?;
@@ -63,8 +93,12 @@ impl ReviewSession {
                 return Err(ReviewError::Limit("review generation events"));
             }
             let sealed = index < saved.sealed.len();
-            if sealed && segment.events.is_empty() {
+            let boundary = saved.continued_after;
+            if sealed && segment.events.is_empty() && boundary != Some(index + 1) {
                 return Err(ReviewError::Contract("empty review generation seal"));
+            }
+            if boundary == Some(index) {
+                state.continued_after = boundary;
             }
             state.active_generation = segment.generation;
             state.active_start = owner.events.len();
@@ -108,7 +142,12 @@ impl ReviewSession {
                 });
             }
         }
-        if owner.segmented_checkpoint_json()? != input {
+        let encoded = if continued {
+            owner.continued_checkpoint_json()?
+        } else {
+            owner.segmented_checkpoint_json()?
+        };
+        if encoded != input {
             return Err(ReviewError::Contract("canonical segmented review recovery"));
         }
         Ok(owner)

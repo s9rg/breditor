@@ -175,7 +175,11 @@ impl ReviewSession {
             return Err(ReviewError::Limit("events"));
         }
         if self.generations.is_some() {
-            self.segmented_checkpoint_json()?;
+            if self.has_continued_history() {
+                self.continued_checkpoint_json()?;
+            } else {
+                self.segmented_checkpoint_json()?;
+            }
         } else {
             self.checkpoint_json()?;
         }
@@ -183,10 +187,9 @@ impl ReviewSession {
         Ok(())
     }
     pub(super) const fn event_limit(&self) -> usize {
-        if self.generations.is_some() {
-            super::generation::MAX_RETAINED_EVENTS
-        } else {
-            event::MAX_EVENTS
+        match &self.generations {
+            Some(generations) => generations.event_limit(),
+            None => event::MAX_EVENTS,
         }
     }
     pub(super) fn projection(&self, events: &[Event]) -> Result<Projection, ReviewError> {

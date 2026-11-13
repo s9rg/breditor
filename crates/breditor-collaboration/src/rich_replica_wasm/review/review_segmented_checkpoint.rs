@@ -14,7 +14,13 @@ impl RichReplicaProbe {
         self.review
             .as_ref()
             .map_or("none", |review| {
-                if review.has_segmented_history() { "segmented-v1" } else { "original" }
+                if review.has_continued_history() {
+                    "continued-v2"
+                } else if review.has_segmented_history() {
+                    "segmented-v1"
+                } else {
+                    "original"
+                }
             })
             .into()
     }

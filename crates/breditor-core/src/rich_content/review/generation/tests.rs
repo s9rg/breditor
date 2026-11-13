@@ -7,19 +7,19 @@ use super::{
         event::{self, Event, Payload},
         identity::Counter,
     },
-    record::{MAX_ARCHIVE_BYTES, MAX_GENERATIONS, MAX_RETAINED_EVENTS, generation_budget},
+    record::{MAX_ARCHIVE_BYTES, MAX_GENERATIONS, MAX_RETAINED_EVENTS, check_budget},
 };
 use crate::{rich_content::DocumentId, schema::SchemaFingerprint};
 use std::collections::BTreeMap;
-type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
+pub(super) type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
-fn binding() -> Result<ReviewBinding> {
+pub(super) fn binding() -> Result<ReviewBinding> {
     Ok(ReviewBinding::new(
         &DocumentId::try_new("room")?,
         format!("sha256:{}", "0".repeat(64)).parse::<SchemaFingerprint>()?,
     ))
 }
-fn policy() -> Result<ReviewActorPolicy> {
+pub(super) fn policy() -> Result<ReviewActorPolicy> {
     Ok(ReviewActorPolicy {
         actor: ReviewActorId::try_new("101")?,
         principal: ReviewPrincipalId::try_new("alice")?,
@@ -34,9 +34,9 @@ fn separate_retained_limits_are_inclusive_and_do_not_widen_original_constants() 
     assert_eq!(MAX_GENERATIONS, 64);
     assert_eq!(MAX_RETAINED_EVENTS, 65_536);
     assert_eq!(MAX_ARCHIVE_BYTES, 64 * 1024 * 1024);
-    assert!(generation_budget(64, 65_536).is_ok());
-    assert!(generation_budget(65, 1).is_err());
-    assert!(generation_budget(2, 65_537).is_err());
+    assert!(check_budget(64, 65_536, false).is_ok());
+    assert!(check_budget(65, 1, false).is_err());
+    assert!(check_budget(2, 65_537, false).is_err());
 }
 
 #[test]
@@ -86,7 +86,7 @@ fn real_native_redo_crosses_the_old_event_ceiling_but_original_admission_still_r
     Ok(())
 }
 
-fn birth_owner() -> Result<ReviewSession> {
+pub(super) fn birth_owner() -> Result<ReviewSession> {
     let mut owner = ReviewSession::new(binding()?, policy()?)?;
     let anchor = serde_json::json!({"format":"breditor/shared-review-anchor","formatVersion":1,"document":"room","schemaFingerprint":format!("sha256:{}", "0".repeat(64)),"anchors":{"kind":"document"}}).to_string();
     owner.dispatch(
@@ -149,6 +149,14 @@ fn full_native_retained_capacity_cold_restores_and_refuses_one_more_without_evic
     assert_eq!(cold.segmented_checkpoint_json()?, exact);
     assert_eq!(cold.local_writer_clock()?, owner.local_writer_clock()?);
     assert_eq!(cold.view()?, owner.view()?);
+    owner.continue_history_guarded(&guard, "after-event-ceiling".into())?;
+    owner.redo(&owner.observe())?;
+    assert_eq!(owner.events.len(), MAX_RETAINED_EVENTS + 1);
+    owner.verify_recovery_origin_guarded(&owner.observe(), &cold, &cold.observe())?;
+    let continued = owner.continued_checkpoint_json()?;
+    let restored = ReviewSession::restore_continued_json(&binding()?, policy()?, &continued)?;
+    assert_eq!(restored.local_writer_clock()?, owner.local_writer_clock()?);
+    assert_eq!(restored.continued_checkpoint_json()?, continued);
     Ok(())
 }
 
