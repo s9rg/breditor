@@ -19,7 +19,7 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
  const profile=native.SharedRichProfile[method](fixture.configuration);
  const entries=[];
  let archive,store,host,tokenAllowed=true,onToken;
- const counts={authorPrefixes:0,reviewPrefixes:0,localSuffixes:0,missingUploads:0,providerReads:0,rejected:0,foreignForks:0,mixedPending:0};
+ const counts={authorPrefixes:0,reviewPrefixes:0,localSuffixes:0,missingUploads:0,providerReads:0,rejected:0,foreignForks:0,mixedPending:0,mixedProviderReads:0,mixedForeignForks:0};
  const room=inventory.room.document;
  const initial={
   catalog:'continued-native-provider',wasm:native,checkAuthority(){},
@@ -114,10 +114,12 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
    counts.foreignForks++;
   }
   const retained=entries[0],exact=retained.record.live;
-  const independent=await SharedIndependentHistoryPersistentSession.restoreRecovery({
-   ...exact.identity.native,database:'provider-independent-source',readOnly:true,review:{...exact.identity.review,access:'read_only'},
+  const independentFactory={
+   ...exact.identity.native,readOnly:true,review:{...exact.identity.review,access:'read_only'},
    documentHistory:{kind:'original',restoreOriginal:retained.restoreDocument},reviewHistory:{kind:'original'},
-   create(){throw Error('An exact recovery factory is required');},
+  };
+  const independent=await SharedIndependentHistoryPersistentSession.restoreRecovery({
+   ...independentFactory,database:'provider-independent-source',create(){throw Error('An exact recovery factory is required');},
   },{
    format:'breditor/shared-independent-history-recovery',formatVersion:1,
    identity:{...exact.identity,reviewHistory:'original'},documentCheckpoint:exact.documentCheckpoint,
@@ -142,6 +144,53 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
    assert.equal(pending.provider,null);
    assert.deepEqual(requests.slice(calls).map(row=>row.assets),[false]);
    counts.mixedPending++;
+   const independentPolicy={id:retained.id,expected:independentBackup.selection(),session:independentFactory};
+   const selected={...input,catalog:mixedStore,expected:mixed.selection(),independentPolicies:[independentPolicy]};
+   const beforeMixed=requests.length;
+   await assert.rejects(readContinuedRoomReconciliation({...selected,independentPolicies:[
+    {...independentPolicy,expected:{...independentPolicy.expected,sha256:'0'.repeat(64)}},
+   ]}),error=>error.code==='continued_reconciliation_policy');
+   assert.equal(requests.length,beforeMixed);
+   const complete=await readContinuedRoomReconciliation(selected);
+   assert.equal(complete.kind,'pending');
+   assert.deepEqual(complete.unreconciledParticipants,[]);
+   assert.equal(complete.participants.length,7);
+   const legacy=complete.participants.find(row=>row.id===retained.id).prefix;
+   assert.equal(legacy.acceptedDocuments.length,inventory.writers.length+inventory.serverAuthors.length);
+   assert.equal(legacy.acceptedReviews.length,inventory.review.writers.length);
+   assert.equal(legacy.acceptedDocuments.find(row=>row.author===legacy.document.writer).relation,'local_ahead');
+   assert.ok(complete.coverage.missing.some(row=>row.kind==='unbound_review'&&row.actor===legacy.review.actor));
+   assert.equal(complete.provider.missing.some(row=>row.kind==='uploadBytes'&&row.contentAsset===unavailableAsset),true);
+   assert.equal(complete.uploads.find(row=>row.id===retained.id).entries.some(row=>row.asset===unavailableAsset),true);
+   assert.equal(requests.slice(beforeMixed).filter(row=>row.assets).length,1);
+   assert.equal(requests.at(-1).uploads,3);
+   assert.deepEqual(mixedStore.inspectPrefixes().unreconciledParticipants,[retained.id]);
+   counts.mixedProviderReads++;
+   // Build a second, genuine native archive with a foreign comment branch.
+   const branch=new SharedRichEditor(profile.join_frame(room,peer.writer,independent.core.updateFrame()));
+   let forked,mixedFork,mixedForkStore;
+   try{
+    const review={actor:peer.actor,principal:peer.principal,access:'comment'};
+    branch.enableReview(review);
+    assert.equal(branch.dispatchReview({kind:'create_thread',data:{
+     anchorJson:branch.captureReviewAnchor({kind:'document'}),body:'Conflicting independent comment history',
+    }}).kind,'committed');
+    independent.core.receiveReview(branch.exportReview(),review);
+    await independent.flush();
+    const captured=await captureSharedIndependentParticipant({participant:retained.id,principal:exact.identity.review.principal,
+     source:{session:independent},assets:uploads,checkAuthority(){}});
+    assert.equal(captured.kind,'ready');forked=captured.backup;
+    const forkedRows=[{id:retained.id,family:'independent-local',file:forked.file(),expected:forked.selection()},...rows.slice(1)];
+    mixedFork=await SharedContinuedRoomCatalog.capture({...initial,...options,participants:forkedRows});
+    mixedForkStore=await SharedContinuedRoomCatalogStore.begin({...options,database:'provider-mixed-fork',
+     archive:mixedFork,expected:mixedFork.selection()});
+    const beforeForeign=requests.length;
+    await assert.rejects(readContinuedRoomReconciliation({...selected,catalog:mixedForkStore,expected:mixedFork.selection(),
+     independentPolicies:[{...independentPolicy,expected:forked.selection()}],
+    }),error=>error.code==='inventory_fork');
+    assert.equal(requests.length,beforeForeign);
+    counts.mixedForeignForks++;
+   }finally{await mixedForkStore?.close();mixedFork?.dispose();forked?.dispose();branch.dispose();}
   }finally{await mixedStore?.close();mixed?.dispose();independentBackup?.dispose();uploads?.close();await independent.close();}
   onToken=()=>store.close();
   await assert.rejects(readContinuedRoomReconciliation(input),error=>['catalog_closed','archive_authority','control_authority'].includes(error.code));

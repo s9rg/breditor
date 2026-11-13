@@ -22,5 +22,5 @@ await resumeContinuedRoomRecovery({...recovery,independentPolicies:[legacy]});
 void result;
 
 declare const reconciliation:ContinuedRoomReconciliationOptions;
-const report:ContinuedRoomReconciliationRead=await readContinuedRoomReconciliation(reconciliation);
+const report:ContinuedRoomReconciliationRead=await readContinuedRoomReconciliation({...reconciliation,independentPolicies:[legacy]});
 void report;

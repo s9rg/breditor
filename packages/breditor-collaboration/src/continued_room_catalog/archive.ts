@@ -22,6 +22,7 @@ import type {
 
 type IndependentClient=Extract<PhysicalCatalogV3Client,{family:'independent-local'}>;
 let borrowIndependent:(catalog:SharedContinuedRoomCatalog,id:string)=>SharedIndependentParticipantBackup;
+let borrowInventory:(catalog:SharedContinuedRoomCatalog)=>SharedServerLogGenerationParticipantInventory;
 const constructorToken=Symbol();
 const {read:readServer,prototype:{dispose:disposeServer}}=SharedServerLogGenerationRoomArchive;
 const {read:readInventory,prototype:{dispose:disposeInventory}}=SharedServerLogGenerationParticipantInventory;
@@ -69,6 +70,7 @@ export class SharedContinuedRoomCatalog {
   this.#contents=contents;
  }
  static{
+  borrowInventory=catalog=>catalog.#live().inventory;
   borrowIndependent=(catalog,id)=>{
    const client=catalog.#live().independent.get(id);
    if(!client)throw physicalCatalogFailure('catalog_missing');
@@ -200,3 +202,4 @@ export class SharedContinuedRoomCatalog {
 
 /** Recovery borrows only the genuine backup retained by this archive. */
 export const continuedCatalogIndependentBackup=(catalog:SharedContinuedRoomCatalog,id:string)=>borrowIndependent(catalog,id);
+export const continuedCatalogInventory=(catalog:SharedContinuedRoomCatalog)=>borrowInventory(catalog);

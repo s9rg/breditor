@@ -1,11 +1,9 @@
-import {checkRichAssetLimits,type AssetLimits} from '@breditor/experimental-rich-content';
+import type {AssetLimits} from '@breditor/experimental-rich-content';
 import {prepareArchiveIntegrity} from '../archive_integrity/context.js';
 import {archiveFields} from '../archive_integrity/policy.js';
 import {continuedRoomRecoveryCatalog} from '../continued_room_catalog/storage.js';
 import {continuedCatalogIndependentBackup,SharedContinuedRoomCatalog} from '../continued_room_catalog/archive.js';
-import {independentParticipantSelection} from '../independent_participant/policy.js';
 import {independentRecoveryArchive} from '../independent_recovery/archive.js';
-import {snapshotIndependentRecoveryFactory} from '../independent_recovery/factory_policy.js';
 import {independentRecoverySignal} from '../independent_recovery/signal.js';
 import {physicalCatalogDatabase,physicalCatalogName,physicalCatalogSelection} from '../physical_room_catalog/policy.js';
 import {physicalCatalogV2Options,physicalCatalogV2Rows} from '../physical_room_catalog_v2/input_snapshot.js';
@@ -16,6 +14,7 @@ import {RecoveryOpeningCustody,recoveryOpeningContext} from '../participant_reco
 import {frozen} from '../room_participant_inventory/policy.js';
 import {recoverContinuedRoomSource,recoverContinuedRoomUploads,recoveryFailure as fail,type ContinuedDestinationHold} from './destination.js';
 import {recoverIndependentRoomSource} from './independent_destination.js';
+import {matchContinuedRoomIndependentPolicies,snapshotContinuedRoomIndependentPolicies} from './policy.js';
 import {accessRecoveryJournal,openRecoveryJournal} from './journal.js';
 import type {ContinuedRoomRecoveryOptions,ContinuedRoomRecoveryResult} from './contract.js';
 
@@ -25,14 +24,8 @@ const {close:release}=RecoveryLease.prototype;
 async function restore(input:ContinuedRoomRecoveryOptions,begin:boolean):Promise<ContinuedRoomRecoveryResult>{
  physicalCatalogV2Options(input,['database','catalog','expected','destinations','checkAuthority','writerRecovery'],['signal','independentPolicies']);
  const {database:provided,catalog,checkAuthority,writerRecovery}=input;
- const independentPolicies=physicalCatalogV2Rows(input.independentPolicies===undefined?[]:input.independentPolicies,value=>{
-  physicalCatalogV2Options(value,['id','expected','session'],['limits']);
-  const expected=independentParticipantSelection(value.expected);
-  return {id:physicalCatalogName(value.id),expected,session:snapshotIndependentRecoveryFactory(expected,value.session),
-   limits:checkRichAssetLimits(value.limits)};
- });
- const independent=new Map(independentPolicies.map(policy=>[policy.id,policy]));
- if(independent.size!==independentPolicies.length)throw fail('policy');
+ const policyFailure=()=>fail('policy');
+ const independent=snapshotContinuedRoomIndependentPolicies(input.independentPolicies,policyFailure);
  if(writerRecovery!=='host-reacquired')throw fail('policy');
  const database=physicalCatalogDatabase(provided),expected=physicalCatalogSelection(input.expected);
  const destinations=physicalCatalogV2Rows(input.destinations,value=>{
@@ -84,18 +77,13 @@ async function restore(input:ContinuedRoomRecoveryOptions,begin:boolean):Promise
   if(entries.length!==selected.participants.length)throw fail('mixed_pending');
   if(entries.length!==destinations.length||entries.some((row,index)=>row.id!==destinations[index]!.id))throw fail('policy');
   const writers=new Set<string>(),actors=new Set<string>();
-  let independentCount=0;
+  if(!matchContinuedRoomIndependentPolicies(entries,independent,policyFailure))throw policyFailure();
   for(const entry of entries){
    const {native,review}=entry.selection.identity.source;
    if(native.room!==selected.current.server.identity.native.source.document||
       writers.has(native.writer)||actors.has(review.actor))throw fail('policy');
    writers.add(native.writer);actors.add(review.actor);
-   if(entry.family==='independent-local'){
-    independentCount++;
-    if(JSON.stringify(independent.get(entry.id)?.expected)!==JSON.stringify(entry.selection))throw fail('policy');
-   }
   }
-  if(independentCount!==independent.size)throw fail('policy');
   const policies=new Map(held.options.policies.map(row=>[row.id,row]));
   const plan={text:JSON.stringify({catalog:expected,destinations}),steps:entries.length*2};
   if(begin){

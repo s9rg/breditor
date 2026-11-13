@@ -2,6 +2,7 @@
 import {SharedServerLogGenerationParticipantInventory} from '../server_generation_inventory/read.js';
 import type {SharedRoomParticipantCoverage,SharedRoomParticipantMissing} from '../room_participant_inventory/types.js';
 import {SharedRoomParticipantInventoryError,frozen} from '../room_participant_inventory/policy.js';
+import type {SharedRichEditor} from '../core.js';
 import {nativeHistoryIntrinsics as native} from '../native_history_read/intrinsics.js';
 import {sharedProtocolLanguage} from '../protocol.js';
 import {prefixAt} from '../relay/validation.js';
@@ -48,63 +49,71 @@ export async function inspectContinuedParticipantPrefix<P extends SharedSelectio
  };
  check();
  const {participant,principal,source}=participantSelection.call(backup).identity;
+ const live=participantRecords.call(backup).live;
+ return withContinuedPairReplay(source,restoreDocument,check,signal,async replay=>{
+  const core=await replay(live,check);
+  try{return inspectLocalNativePrefix(core,inventory,participant,principal,source,check);}
+  finally{disposeOwnedCore(core);}
+ });
+}
+
+/** The exact native checkpoint has already been admitted by the family reader. */
+export function inspectLocalNativePrefix<P extends SharedSelectionPolicy>(
+ core:SharedRichEditor<P>,inventory:SharedServerLogGenerationParticipantInventory,participant:string,principal:string,
+ source:Readonly<{native:{room:string;writer:string;richLanguage:number};review:{actor:string}}>,check:()=>void,
+):ContinuedParticipantPrefix{
+ check();
  const metadata=inventoryMetadata.call(inventory).native;
  const writer=source.native.writer,actor=source.review.actor,wire=metadata.room.writerTransportVersion;
  const registered=metadata.writers.find(row=>row.clock.writer===writer);
  const registeredReview=metadata.review?.writers.find(row=>row.clock.actor===actor);
  if(!registered||registered.principal!==principal||source.native.room!==metadata.room.document||
     source.native.richLanguage!==metadata.richLanguage||registeredReview&&registeredReview.principal!==principal)throw refuse();
- const live=participantRecords.call(backup).live;
- return withContinuedPairReplay(source,restoreDocument,check,signal,async replay=>{
-  const core=await replay(live,check);
-  try{
-   const descriptor=native.descriptor.call(core);
-   if(sharedProtocolLanguage(descriptor)!==metadata.richLanguage||descriptor.schemaFingerprint!==metadata.schemaFingerprint)throw refuse();
-   const transport={
-    descriptor:()=>descriptor,
-    writerClock:(id:string)=>native.writerClock.call(core,id),
-    writerClockV2:(id:string)=>native.writerClockV2.call(core,id),
-    supportsWriterPrefixRead:()=>native.supportsWriterPrefixRead.call(core),
-    writerClockAt:(id:string,through:string,version:1|2=1)=>native.writerClockAt.call(core,id,through,version),
-    writerGroups:(after:string)=>native.writerGroups.call(core,after),
-    writerGroupsV2:(after:string)=>native.writerGroupsV2.call(core,after),
-   };
-   const relation=(local:string,accepted:string)=>local===accepted?'equal' as const:
-    BigInt(local)<BigInt(accepted)?'server_ahead' as const:'local_ahead' as const;
-   const acceptedDocuments=[
-    ...metadata.writers.map(row=>({principal:row.principal,clock:row.clock})),
-    ...metadata.serverAuthors.map(row=>({principal:null,clock:row.clock})),
-   ];
-   const documents=acceptedDocuments.map(({principal,clock})=>{
-    const local=wire===2?transport.writerClockV2(clock.writer):transport.writerClock(clock.writer);
-    const status=relation(local.through,clock.through);
-    if(status!=='server_ahead'&&prefixAt(transport,clock.writer,clock.through,wire)!==clock.prefixDigest)throw fork();
-    return {author:clock.writer,principal,localThrough:local.through,acceptedThrough:clock.through,relation:status};
-   });
-   const reviews=(metadata.review?.writers??[]).map(({principal,clock})=>{
-    const local=native.reviewWriterClock.call(core,clock.actor,principal),status=relation(local.through,clock.through);
-    if(status!=='server_ahead'){
-     const at=native.reviewWriterClock.call(core,clock.actor,principal,clock.through);
-     if(at.through!==clock.through||at.prefixDigest!==clock.prefixDigest)throw fork();
-    }
-    return {author:clock.actor,principal,localThrough:local.through,acceptedThrough:clock.through,relation:status};
-   });
-   const document=documents.find(row=>row.author===writer)!;
-   const reviewThrough=reviews.find(row=>row.author===actor)?.localThrough??native.reviewWriterClock.call(core,actor,principal).through;
-   if(registered.observer&&document.localThrough!=='0'||registeredReview?.observer&&reviewThrough!=='0')throw refuse();
-   const documentBehind=document.relation==='server_ahead';
-   const reviewBehind=registeredReview&&BigInt(reviewThrough)<BigInt(registeredReview.clock.through);
-   const result=frozen({
-    document:{participant,principal,writer,observer:registered.observer,localThrough:document.localThrough,acceptedThrough:registered.clock.through},
-    documentStatus:documentBehind?'server_ahead' as const:'matches' as const,
-    acceptedDocuments:documents,acceptedReviews:reviews,
-    review:{actor,localThrough:reviewThrough,acceptedThrough:registeredReview?.clock.through??null,
-     status:registeredReview?reviewBehind?'server_ahead' as const:'matches' as const:'unregistered' as const},
-   });
-   check();
-   return result;
-  }finally{disposeOwnedCore(core);}
+ const descriptor=native.descriptor.call(core);
+ if(sharedProtocolLanguage(descriptor)!==metadata.richLanguage||descriptor.schemaFingerprint!==metadata.schemaFingerprint)throw refuse();
+ const transport={
+  descriptor:()=>descriptor,
+  writerClock:(id:string)=>native.writerClock.call(core,id),
+  writerClockV2:(id:string)=>native.writerClockV2.call(core,id),
+  supportsWriterPrefixRead:()=>native.supportsWriterPrefixRead.call(core),
+  writerClockAt:(id:string,through:string,version:1|2=1)=>native.writerClockAt.call(core,id,through,version),
+  writerGroups:(after:string)=>native.writerGroups.call(core,after),
+  writerGroupsV2:(after:string)=>native.writerGroupsV2.call(core,after),
+ };
+ const relation=(local:string,accepted:string)=>local===accepted?'equal' as const:
+  BigInt(local)<BigInt(accepted)?'server_ahead' as const:'local_ahead' as const;
+ const acceptedDocuments=[
+  ...metadata.writers.map(row=>({principal:row.principal,clock:row.clock})),
+  ...metadata.serverAuthors.map(row=>({principal:null,clock:row.clock})),
+ ];
+ const documents=acceptedDocuments.map(({principal,clock})=>{
+  const local=wire===2?transport.writerClockV2(clock.writer):transport.writerClock(clock.writer);
+  const status=relation(local.through,clock.through);
+  if(status!=='server_ahead'&&prefixAt(transport,clock.writer,clock.through,wire)!==clock.prefixDigest)throw fork();
+  return {author:clock.writer,principal,localThrough:local.through,acceptedThrough:clock.through,relation:status};
  });
+ const reviews=(metadata.review?.writers??[]).map(({principal,clock})=>{
+  const local=native.reviewWriterClock.call(core,clock.actor,principal),status=relation(local.through,clock.through);
+  if(status!=='server_ahead'){
+   const at=native.reviewWriterClock.call(core,clock.actor,principal,clock.through);
+   if(at.through!==clock.through||at.prefixDigest!==clock.prefixDigest)throw fork();
+  }
+  return {author:clock.actor,principal,localThrough:local.through,acceptedThrough:clock.through,relation:status};
+ });
+ const document=documents.find(row=>row.author===writer)!;
+ const reviewThrough=reviews.find(row=>row.author===actor)?.localThrough??native.reviewWriterClock.call(core,actor,principal).through;
+ if(registered.observer&&document.localThrough!=='0'||registeredReview?.observer&&reviewThrough!=='0')throw refuse();
+ const documentBehind=document.relation==='server_ahead';
+ const reviewBehind=registeredReview&&BigInt(reviewThrough)<BigInt(registeredReview.clock.through);
+ const result=frozen({
+  document:{participant,principal,writer,observer:registered.observer,localThrough:document.localThrough,acceptedThrough:registered.clock.through},
+  documentStatus:documentBehind?'server_ahead' as const:'matches' as const,
+  acceptedDocuments:documents,acceptedReviews:reviews,
+  review:{actor,localThrough:reviewThrough,acceptedThrough:registeredReview?.clock.through??null,
+   status:registeredReview?reviewBehind?'server_ahead' as const:'matches' as const:'unregistered' as const},
+ });
+ check();
+ return result;
 }
 
 /** Overlay document prefix observations. The local review stream remains pending delivery. */

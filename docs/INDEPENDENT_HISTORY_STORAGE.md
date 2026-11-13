@@ -305,6 +305,11 @@ The provider read includes image bindings reachable from all save slots and
 every content ID in the participant upload archives. It verifies matching
 content and dimensions and reports missing mappings or bytes. The read
 preserves the original upload state and leaves local comment delivery
-pending. In a mixed catalog, the operator host rechecks the selected room,
+pending. For a mixed catalog, supply `independentPolicies` to compare the
+accepted prefixes of independent local participants and include their asset
+bindings and complete upload backups. Each policy selects a temporary
+read-only native replay. The provider read creates no local destinations.
+If any participant still lacks supported prefix admission, the operator
+host rechecks the selected room,
 and the provider report stays empty until all participant families are
 reconciled.

@@ -51,7 +51,7 @@ async function installedProbe(){
   build:{target:'es2022',write:false,minify:false,lib:{entry,formats:['es'],fileName:'continued-provider'}}});
  const modules=(Array.isArray(output)?output:[output]).flatMap(result=>result.output)
   .filter(item=>item.type==='chunk').flatMap(item=>Object.keys(item.modules));
- for(const path of ['continued_room_reconciliation/read.js','continued_room_reconciliation/asset_pins.js','generation_recovery_control/host.js'])
+ for(const path of ['continued_room_reconciliation/read.js','continued_room_reconciliation/asset_pins.js','continued_room_reconciliation/independent_prefix.js','generation_recovery_control/host.js'])
   assert.ok(modules.some(module=>module.includes('/node_modules/@breditor/collaboration/dist/'+path)),path);
  assert.ok(!modules.some(module=>module.includes(join(root,'packages'))||module.includes('fake-indexeddb')));
  const runtime=join(consumer,'node_modules/@breditor/collaboration/dist/runtime');
@@ -83,6 +83,8 @@ export async function runContinuedProviderQualification(controls,transport,direc
    assert.equal(result.reviewPrefixes,49);
    assert.equal(result.foreignForks,2);
    assert.equal(result.mixedPending,1);
+   assert.equal(result.mixedProviderReads,1);
+   assert.equal(result.mixedForeignForks,1);
    cases.push(result);
   }
   reports[name]={cases,proof:setup.proof};
@@ -91,7 +93,7 @@ export async function runContinuedProviderQualification(controls,transport,direc
  assert.deepEqual(sourceEvidence(root),source);
  const report={format:'breditor/continued-provider-qualification',formatVersion:1,passed:true,source,
   sharedWasmSha256:checksum,nativeFixtures:chosen.map(row=>({path:row.path,sha256:sha(readFileSync(row.path))})),reports,
-  scope:'Actual separately authenticated native operator and provider, seven continued archived participants, local-only outstanding delivery'};
+  scope:'Actual separately authenticated native operator and provider, seven archived participants, mixed local history families, local-only outstanding delivery'};
  saveEvidence(join(directory,'continued-provider-qualification.json'),report);
  console.log(JSON.stringify(report,null,2));
 }

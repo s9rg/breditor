@@ -6,11 +6,15 @@ import type {SharedServerLogGenerationRecoveryHost} from '../generation_recovery
 import type {SharedServerLogGenerationRecoveryAssetRead} from '../generation_recovery_control/asset_contract.js';
 import type {SelectedRoomUploadPin} from '../selected_room_provider/contract.js';
 
+import type {ContinuedRoomIndependentRecoveryPolicy} from '../continued_room_recovery/contract.js';
+
 export interface ContinuedRoomReconciliationOptions {
  readonly catalog:SharedContinuedRoomCatalogStore;
  readonly expected:ContinuedRoomCatalogSelection;
  readonly host:SharedServerLogGenerationRecoveryHost;
  readonly checkAuthority:()=>void;
+ /** Select exact independent local factories to include in the provider read. */
+ readonly independentPolicies?:readonly ContinuedRoomIndependentRecoveryPolicy[];
  readonly signal?:AbortSignal;
 }
 export interface ContinuedRoomReconciliationRead {
