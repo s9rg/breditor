@@ -29,15 +29,14 @@ native members remain under common exclusion. Decline, cancellation, missing
 intent, stale sources and admission failure do not retire the sources. A final
 current cut, authority and cancellation check precedes retirement.
 
-Native exclusion alone does not freeze dependent intent. A suggestion retry flag
-can change without a document or comment edit. The final complete capture therefore
-retains genuine native and packet witnesses from those same source readers. After
-the temporary readers close, each independent source must equal its captured LIVE
-value. This synchronous check runs after the last authority callback and before
-the first old core is retired. A late queue change refuses retirement, preserves
-the changed intent and leaves every old writer live. No detached callback can
-install or replace this witness. Inherited origin-upload custody stays with the
-root; the witness neither donates nor releases it.
+The common reservation holds the dependent metadata queues through the final
+authority callback. A suggestion retry flag has its own state outside the
+document and comment observations. The final capture retains genuine native and
+packet witnesses from the same source readers. After the temporary readers close,
+each independent source must equal its captured live value. This synchronous check
+runs after the last authority callback and before the first core retires. A
+mismatch leaves the changed intent and every old writer live. Inherited
+origin-upload custody stays with the root.
 
 ## Retirement and cleanup are different states
 
@@ -80,10 +79,11 @@ retirement, source-row preservation and concrete replacement participant recover
 with exact native histories and future Undo/Redo. They also cover first-capture
 abort, an unsettled decision, decline, missing intent, stale current work, a
 native-admitted older output, and failed real lease release followed by same-owner
-retry and reacquisition of every source namespace. A real pending suggestion whose
-publication retry flag changes at the final callback must remain on the live old
-source, with both native histories and accepted content unchanged; the older
-immutable preparation stays readable. Additional actual-Wasm laws cover metadata
+retry and reacquisition of every source namespace. The final authority callback refuses a real attempt to change a suggestion retry
+flag and leaves all seven writers live. A separate check changes that same queue
+after the reservation is released and verifies that both a new and an already
+admitted cut witness detect it. Both native histories and accepted content stay
+unchanged, and the earlier preparation remains readable. Additional actual-Wasm laws cover metadata
 retirement before and during admission, asynchronous adapter opening, active
 read-only behavior and all independent native history pairs. A real revision
 shutdown observer must receive a retired-source refusal without changing durable
