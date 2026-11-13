@@ -142,8 +142,8 @@ families and limits remain unchanged and reject the new framing.
 Capture uses one backing buffer and borrows selected file handles. The streaming
 integrity traversal discards each decoded record after checking its cut.
 `from_owned_bytes` avoids copying the complete input; `write_to` avoids another
-complete output copy. Native cold room replay still collects records and has a
-separate memory/performance envelope to qualify.
+complete output copy. Native cold generation recovery streams records through
+the native handlers. Peak recovery memory and elapsed time still require measurement.
 
 ## Native restoration and readiness
 
@@ -295,3 +295,30 @@ restored room. Source capture produces byte-identical backups before and
 after packing. The restored room publishes, survives a real relay restart,
 and reconnects seven clients with outstanding offline work and durable
 replies. Client storage uses controlled Node fixtures for this check.
+
+## Stream native recovery from held WAL files
+
+Cold generation open, joined backup restore, and operational reopen use the
+same streaming replay. The relay acquires the directory and WAL locks, selects
+the manifest, and scans the active WAL to establish its complete cut. It then
+streams each sealed and active WAL through the existing native replay handlers.
+Only one decoded source record is passed to the room at a time. The room holds
+its rebuilt document, comment, review, and receipt state in memory as before.
+
+Sealed WAL reads check the original byte count, digest, absolute sequence, and
+terminal digest, including when a file is packed. An invalid record or changed
+held file discards the private room. Rotation completion, torn-tail truncation,
+and restore readiness follow successful replay and custody checks. Operational
+inspection leaves the files intact.
+
+This removes the recovery-time vector of decoded events. Recovery still replays
+the retained history, and live state and portable archives have separate memory
+requirements. The history bounds and durable receipts have the same meanings.
+
+Checkpoint `3a51298e` passes 90 distinct Rust generation, sealed recovery,
+and legacy backup tests. The source and independently installed provider
+workflows each publish the recovered room and reconnect seven clients after
+an actual relay restart. They verify offline delivery and the recovered
+records for edits, comments, saved versions, suggestion decisions and
+revisions, and uploads when durable replies are lost. Client storage in these
+workflows uses controlled Node fixtures.
