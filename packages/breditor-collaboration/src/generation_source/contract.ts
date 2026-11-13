@@ -28,6 +28,9 @@ export interface GenerationSourcePort {readonly identity:SharedGenerationSourceI
 export interface ContinuedGenerationRecordSource extends GenerationSourcePort {
  readonly continuedRecordRead:{
   check():void;
+  /** Live witness for a protected record read, including a quiescent failed save. */
+  stamp():readonly object[];
+  readLive():readonly SharedGenerationSourceRecord[];
   restore(checkpoint:string):SharedRustOwner;
  };
 }

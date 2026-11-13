@@ -10,6 +10,7 @@ import {requireBackupRecovery} from "../backups/identity.js";
 import {existingDatabase} from "../participant_recovery/journal.js";
 import {SharedWriterLease} from "./writer_lease.js";
 import {ReviewWriterLease} from "./review_writer_lease.js";
+import {takeActorDocumentLease,takeActorReviewLease} from "./actor_lease_input.js";
 import {fenceOpeningDatabase} from "./opening_database.js";
 import {readGenerationPair,writeSegmentedCut} from "./segmented_database.js";
 import {canonicalSegmentedIdentity,makeGenerationCut,readContinuedHead,readSegmentedHead} from "./segmented_head.js";
@@ -124,6 +125,22 @@ function restoreCore<P extends SharedSelectionPolicy>(
   throw error;
  }
 }
+function checkPredecessorVersions(predecessor:readonly string[],current:readonly string[]):void{
+ if(predecessor.some((packet,index)=>packet!==current[index])){
+  throw fail("The continued version catalog does not contain the exact V1 packets");
+ }
+}
+/** Check both native lanes against the same predecessor before exposing a writer. */
+function verifyNativePredecessor<P extends SharedSelectionPolicy>(
+ core:SharedRichEditor<P>,options:SharedContinuedHistoryOptions<P>,identity:SegmentedSessionIdentity,
+ predecessor:{checkpoint:string;review:SegmentedReview|null;versions:readonly string[]},check:()=>void,
+):void{
+ check();
+ const origin=restoreCore(options.profile.restore_segmented!(identity.room,predecessor.checkpoint),options,
+  identity,predecessor.checkpoint,predecessor.review,predecessor.versions,false,true);
+ try{check();core.verifySegmentedRecoveryOrigin(origin);check();}
+ finally{disposeOwnedCore(origin);}
+}
 /** Borrow only a read-only replay for a recovery or record origin. */
 export function restoreReadOnlyContinuedCore<P extends SharedSelectionPolicy>(
  restore:(checkpoint:string)=>SharedRustOwner,identity:SegmentedSessionIdentity,
@@ -165,13 +182,13 @@ export async function openContinuedHistory<P extends SharedSelectionPolicy,T>(
   rangeEditing:options.rangeEditing,selectionEditing:options.selectionEditing,searchHistory:options.searchHistory,reviewedHistory:options.reviewedHistory,
  });
  if(typeof database!=="string"||!database||database.length>200||typeof options.readOnly!=="boolean"||
-    typeof profile?.restore_continued_history!=="function"||
+    typeof profile?.restore_continued_history!=="function"||typeof profile.restore_segmented!=="function"||
     identity.reviewedHistory&&identity.reviewedHistory.principal!==options.review?.principal){
   throw fail("Select the current policy and matching continued history factory");
  }
  let expected:SharedSegmentedRecovery|undefined;
  if(migration){
-  if(typeof next!=="string"||!next||options.readOnly||typeof profile.restore_segmented!=="function"){
+  if(typeof next!=="string"||!next||options.readOnly){
    throw fail("Choose the complete V1 recovery cut and next generation");
   }
   expected=snapshotRecovery(migration.expected,1);
@@ -182,18 +199,18 @@ export async function openContinuedHistory<P extends SharedSelectionPolicy,T>(
   requireBackupRecovery(recovery.writerRecovery);
   const selected=recovery.backup;
   object(selected,"current,format,formatVersion,predecessor");
-  if(selected.format!=="breditor/shared-continued-history-backup"||selected.formatVersion!==1||
-     typeof profile.restore_segmented!=="function")throw fail("Choose both exact native recovery cuts");
+  if(selected.format!=="breditor/shared-continued-history-backup"||selected.formatVersion!==1)throw fail("Choose both exact native recovery cuts");
   backup=makeBackup(snapshotRecovery(selected.current,2),snapshotRecovery(selected.predecessor,1));
   checkSegmentedCheckpoint(backup.current.checkpoint,identity,2);
   checkSegmentedCheckpoint(backup.predecessor.checkpoint,identity);
  }
  const factory=globalThis.indexedDB,locks=globalThis.navigator?.locks,guard=recoveryGuards.get(input);
  guard?.();
- const lease=await SharedWriterLease.acquire(identity.room,identity.writer);
+ const actor=options.review?.actor??null;
+ const lease=await(takeActorDocumentLease(input,'segmented',database,identity.room,identity.writer,actor)??SharedWriterLease.acquire(identity.room,identity.writer));
  let reviewLease:ReviewWriterLease|undefined,db:IDBDatabase|undefined,core:SharedRichEditor<P>|undefined;
  try{
-  if(options.review)reviewLease=await ReviewWriterLease.acquire(identity.room,options.review.actor);
+  if(actor!==null)reviewLease=await(takeActorReviewLease(input,'segmented',database,identity.room,identity.writer,actor)??ReviewWriterLease.acquire(identity.room,actor));
   const context=()=>{if(globalThis.indexedDB!==factory||globalThis.navigator?.locks!==locks)throw fail("The storage context changed");};
   context();
   const key=[identity.room,identity.writer] as const;
@@ -207,9 +224,7 @@ export async function openContinuedHistory<P extends SharedSelectionPolicy,T>(
    const {current,predecessor}=backup;
    const review=reviewRecord(current.reviewCheckpoint,options.review);
    const previousReview=reviewRecord(predecessor.reviewCheckpoint,options.review);
-   if(predecessor.versions.some((packet,index)=>packet!==current.versions[index])){
-    throw fail("The continued version catalog does not contain the exact V1 packets");
-   }
+   checkPredecessorVersions(predecessor.versions,current.versions);
    const previous=await makeGenerationCut(predecessor.checkpoint,identity,previousReview,predecessor.versions,1);
    check();
    const cut=await makeGenerationCut(current.checkpoint,identity,review,current.versions,2);
@@ -218,14 +233,9 @@ export async function openContinuedHistory<P extends SharedSelectionPolicy,T>(
     {...cut,checkpoint:current.checkpoint,record:readContinuedHead(cut.head)},
     {...previous,checkpoint:predecessor.checkpoint,record:readSegmentedHead(previous.head)},
    );
-   const origin=restoreCore(profile.restore_segmented!(identity.room,predecessor.checkpoint),options,
-    identity,predecessor.checkpoint,previousReview,predecessor.versions,false,true);
-   try{
-    check();
-    core=restoreCore(profile.restore_continued_history(identity.room,current.checkpoint),options,
-     identity,current.checkpoint,review,current.versions,true,options.readOnly);
-    core.verifySegmentedRecoveryOrigin(origin);
-   }finally{disposeOwnedCore(origin);}
+   core=restoreCore(profile.restore_continued_history(identity.room,current.checkpoint),options,
+    identity,current.checkpoint,review,current.versions,true,options.readOnly);
+   verifyNativePredecessor(core,options,identity,{checkpoint:predecessor.checkpoint,review:previousReview,versions:predecessor.versions},check);
    check();
    db=await createContinuedDatabase(factory,database,key,cut,previous.head,check);
    check();
@@ -248,6 +258,7 @@ export async function openContinuedHistory<P extends SharedSelectionPolicy,T>(
   if(saved.record.formatVersion===2){
    if(!prior)throw fail("The retained V1 predecessor is missing");
    checkContinuedPredecessor(saved,prior);
+   checkPredecessorVersions(prior.record.versions,saved.record.versions);
   }else if(prior)throw fail("The V1 head already has a continuation record");
 
   let checkpoint=saved.checkpoint,head=saved.head;
@@ -270,6 +281,7 @@ export async function openContinuedHistory<P extends SharedSelectionPolicy,T>(
   const raw=opening.admit(profile.restore_continued_history(identity.room,checkpoint));
   core=restoreCore(raw,options,identity,checkpoint,saved.record.review,saved.record.versions,true,options.readOnly);
   check();
+  if(prior)verifyNativePredecessor(core,options,identity,{checkpoint:prior.checkpoint,review:prior.record.review,versions:prior.record.versions},check);
   if(operation){
    operation.verifyCore(core as unknown as SharedRichEditor<SharedSelectionPolicy>,saved.record.versions,undefined);
    check();

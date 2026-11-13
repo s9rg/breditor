@@ -40,6 +40,8 @@ assert.equal(durableContinuation.atomicPredecessorRead,true);
 assert.equal(durableContinuation.continuedFourSlotRead,true);
 assert.equal(durableContinuation.documentOnlyRestore,true);
 assert.equal(durableContinuation.foreignReviewRefused,true);
+assert.equal(durableContinuation.coldForeignReviewRefused,true);
+assert.equal(durableContinuation.coldMissingVersionPrefixRefused,true);
 assert.equal(durableContinuation.existingDestinationRefused,true);
 writeFileSync(join(consumer,'entry.mjs'),'export {SharedSegmentedPersistentSession,restoreSharedSegmentedEditor} from "@breditor/collaboration";');
 const output=await build({configFile:false,root:consumer,logLevel:'error',build:{target:'es2022',write:false,minify:false,lib:{entry:join(consumer,'entry.mjs'),formats:['es'],fileName:'generation-proof'}}}),modules=(Array.isArray(output)?output:[output]).flatMap(r=>r.output).filter(o=>o.type==='chunk').flatMap(o=>Object.keys(o.modules));

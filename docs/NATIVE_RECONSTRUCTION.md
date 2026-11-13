@@ -48,8 +48,8 @@ literal origins, original uploads and selected uploads.
 
 ## Generation native backup construction
 
-The generation path preserves each explicitly selected local, relay or retained
-source kind. It admits both protected origin files and the exact recovery and
+The generation path preserves each explicitly selected local, relay, retained,
+or continued-local source kind. It admits both protected origin files and the exact recovery and
 operation plans. Committed heads must match their complete immutable file list
 and decoded native head. An attempted cut, when present, must exactly encode its
 captured document, comments, versions and companion. Pending and LIVE captures
@@ -62,6 +62,13 @@ ancestry counters or writer grants. Shared asset framing preserves the existing
 generation format and opaque native strings; a pinned pre-refactor file protects
 its byte compatibility. The inspector applies the same retained-packet
 conservation rules as delivery recovery without changing either source protocol.
+
+Continued local reconstruction replays the V2 document and original comment
+lane through a fresh, explicit factory. It verifies the exact V1 predecessor
+against both archived origins and retains raster generations referenced by
+failed and newer pending edits. The seven-participant replacement path keeps
+all document and comment writer locks held through staging, target close, and
+reopen. The caller's fresh writer policy still applies after transfer.
 
 ## Independent local native backup construction
 

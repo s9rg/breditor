@@ -16,9 +16,9 @@ function kind(value:unknown):'original'|'segmented-v1'{if(value!=='original'&&va
  * Family layouts stay explicit; the new approval contract rejects a review
  * lane that was not selected rather than pretending it was captured. */
 async function native(row:PhysicalRoomRecordCutParticipant,digest:(file:Blob)=>Promise<string>):Promise<PhysicalAssetNativePin>{
- checkRecordCutSource(row.payload.state,row.family);const source=object(object(row.payload.state)['source']);let document:string,review:string|null,documentKind:'original'|'segmented-v1',reviewKind:'original'|'segmented-v1';
+ checkRecordCutSource(row.payload.state,row.family);const source=object(object(row.payload.state)['source']);let document:string,review:string|null,documentKind:PhysicalAssetNativePin['document']['kind'],reviewKind:'original'|'segmented-v1';
  if(row.family==='original'){const value=object(source['native']),live=object(value['live']);document=checkpoint(live['documentCheckpointJson']??live['checkpoint']);documentKind='original';reviewKind='original';review=live['reviewCheckpointJson']===undefined?null:checkpoint(live['reviewCheckpointJson']);}
- else if(row.family==='generation'){const live=object(object(source['records'])['live']);document=checkpoint(live['checkpoint']);const selected=live['review'];review=selected===null?null:checkpoint(object(selected)['checkpoint']);documentKind='segmented-v1';reviewKind='original';}
+ else if(row.family==='generation'){const live=object(object(source['records'])['live']);document=checkpoint(live['checkpoint']);const selected=live['review'];review=selected===null?null:checkpoint(object(selected)['checkpoint']);documentKind=source['formatVersion']===2?'continued-v2':'segmented-v1';reviewKind='original';}
  else{const value=object(source['live']),live=row.family==='independent-delivery'||row.family==='restored-graph'?object(value['source']):value,identity=object(live['identity']);document=checkpoint(live['documentCheckpoint']);review=checkpoint(live['reviewCheckpoint']);documentKind=kind(identity['documentHistory']);reviewKind=kind(identity['reviewHistory']);}
  return frozen({document:{kind:documentKind,sha256:await digest(new Blob([document]))},review:review===null?{kind:'absent'}:{kind:reviewKind,sha256:await digest(new Blob([review]))}});
 }

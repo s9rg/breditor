@@ -4,9 +4,10 @@ import type {PhysicalRoomCatalogV3Selection} from '../physical_room_catalog_v3/c
 import type {SharedRoomParticipantMissing} from '../room_participant_inventory/types.js';
 import type {PhysicalOperationV3Family} from './contract.js';
 type History='original'|'segmented-v1';
+type DocumentHistory=History|'continued-v2';
 export interface PhysicalOperationV3NativeParticipant{
  readonly id:string;readonly family:PhysicalOperationV3Family;readonly participant:string;readonly principal:string;readonly writer:string;
- readonly document:Readonly<{history:History;localThrough:string;acceptedThrough:string}>;
+ readonly document:Readonly<{history:DocumentHistory;localThrough:string;acceptedThrough:string}>;
  readonly review:Readonly<{actor:string;history:History;localThrough:string;acceptedThrough:string|null;binding:string|null}>|null;
 }
 export interface PhysicalOperationV3NativeRead{

@@ -3,6 +3,9 @@
  * LIVE native/packet work, not committed/pending save acknowledgement phases.
  * It bridges an independently approved full cut to genuine retained clients. */
 import {checkRecordCutSource} from '../physical_room_record_cut/manifest.js';
+import {generationReferenceRecordStates} from '../generation_source/record_reference_capture.js';
+import {generationIdentity} from '../generation_source/identity.js';
+import type {ContinuedGenerationRecordMetadata} from '../persistence/generation_record_read.js';
 import {generationRecords} from '../generation_source/records.js';
 import type {SharedSegmentedRelayProgress} from '../segmented_relay/contract.js';
 import type {SegmentedRetainedRecords} from '../segmented_relay/retained_contract.js';
@@ -20,6 +23,12 @@ export function recordLiveBasis(family:RecordPayloadFamily,payload:unknown):unkn
   if(queue)rows.push({kind:'suggestions',json:JSON.stringify(queue['live'])});if(revisions)rows.push({kind:'suggestion-revisions',json:JSON.stringify(revisions['live'])});return rows;
  }
  if(family==='generation'){
+  if(source['formatVersion']===2){
+   const identity=generationIdentity(source['identity']);
+   const selected=generationReferenceRecordStates(identity,source['records'] as ContinuedGenerationRecordMetadata).at(-1);
+   if(selected?.slot!=='live')throw fail();
+   return selected.records;
+  }
   const live=object(object(source['records'])['live']),review=live['review']===null?null:object(live['review']),versions=live['versions'];if(!Array.isArray(versions)||versions.some(value=>typeof value!=='string'))throw fail();const native={format:'breditor/shared-generation-recovery' as const,formatVersion:1 as const,checkpoint:text(live['checkpoint']),reviewCheckpoint:review===null?null:text(review['checkpoint']),versions:versions as string[]},kind=object(source['identity'])['kind'];
   if(kind==='local')return generationRecords(native);const companion=object(JSON.parse(text(live['companion'])));if(kind==='relay')return generationRecords(native,companion as unknown as SharedSegmentedRelayProgress);if(kind!=='retained')throw fail();return generationRecords(native,object(companion['relay']) as unknown as SharedSegmentedRelayProgress,object(companion['retained']) as unknown as SegmentedRetainedRecords);
  }

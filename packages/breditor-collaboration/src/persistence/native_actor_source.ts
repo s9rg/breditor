@@ -8,7 +8,7 @@ import {checkManagedCore} from '../managed_custody.js';
 import {SharedEditorError} from '../core.js';
 import {managedSourceCore} from '../managed_custody.js';
 import {captureManagedSourceBindings} from '../managed_source_bindings.js';
-import {generationNative} from '../generation_source/admission.js';
+import {generationActorCore} from '../generation_source/admission.js';
 import {independentHistoryNative} from '../independent_history/native_port.js';
 export type NativeActorSourceFamily='shared'|'review'|'segmented'|'independent';
 export interface NativeActorSource{readonly family:NativeActorSourceFamily;readonly source:object}
@@ -19,7 +19,7 @@ const fail=()=>new SharedEditorError('native_actor_source','Use the genuine nati
  * has admitted this owner. A copied core field cannot create that admission. */
 export function registerNativeActorSource(source:object,family:NativeActorSourceFamily,leases:Readonly<{document:SharedWriterLease;review?:ReviewWriterLease}>):void{
  if(!['shared','review','segmented','independent'].includes(family))throw fail();
- const core=family==='shared'||family==='review'?managedSourceCore(source):family==='segmented'?generationNative(source).core:independentHistoryNative(source).core;
+ const core=family==='shared'||family==='review'?managedSourceCore(source):family==='segmented'?generationActorCore(source):independentHistoryNative(source).core;
  if(owners.has(core))throw fail();
  if(!leases||typeof leases!=='object')throw fail();checkDocument.call(leases.document);if(leases.review)checkReview.call(leases.review);
  const checkBinding=captureManagedSourceBindings(source,fail);checkBinding();

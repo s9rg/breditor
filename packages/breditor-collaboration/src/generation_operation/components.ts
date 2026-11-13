@@ -41,7 +41,7 @@ export async function openOperationalGenerationOwners<P extends SharedSelectionP
  p.guard();const name=p.options.destinations.uploads;if(await inspectUploads(name)==="missing")throw fail("generation_operation_missing");p.guard();owners.uploads=await RichAssetStore.openRetained(name,p.options.limits?{limits:p.options.limits}:{});await verifyUploads(p,owners,p.guard);p.guard();
  const database=p.options.destinations.source,s=p.session;
  if(s.kind==="continued-local"){
-  const options=withGenerationOperationOrigin({...s.options,database},origin);
+  const options=withGenerationOperationOrigin(inheritActorLeaseInput(s.options,{...s.options,database}),origin);
   owners.session=await SharedSegmentedPersistentSession.openContinued(guardContinuedRecovery(options,p.guard));
   p.guard();await verifyOperationalGenerationOwners(p,owners,origin);
   return;

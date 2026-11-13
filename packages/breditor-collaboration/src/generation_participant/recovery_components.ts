@@ -43,9 +43,9 @@ export async function restoreGenerationSource<P extends SharedSelectionPolicy>(p
  p.guard();const status=await inspectGenerationDestination(p);p.guard();if(complete&&status!=="exact")throw fail("generation_participant_missing");const data=SharedGenerationParticipantBackup.prototype.sourceRecovery.call(p.backup),database=p.options.destinations.source,authority={writerRecovery:"host-reacquired" as const};
  switch(p.session.kind){
   case"continued-local":{
-   const options={...p.session.options,database};
+   const options=inheritActorLeaseInput(p.session.options,{...p.session.options,database});
    owners.session=status==="exact"?await SharedSegmentedPersistentSession.openContinued(guardContinuedRecovery(options,p.guard)):
-    await SharedSegmentedPersistentSession.restoreContinuedRecovery(guardContinuedRecovery({...options,...authority,backup:data as SharedContinuedHistoryBackup},p.guard));
+    await SharedSegmentedPersistentSession.restoreContinuedRecovery(guardContinuedRecovery(inheritActorLeaseInput(options,{...options,...authority,backup:data as SharedContinuedHistoryBackup}),p.guard));
    break;
   }
   case"local":owners.session=status==="exact"?await SharedSegmentedPersistentSession.open(inheritActorLeaseInput(p.session.options,{...p.session.options,database,initialGenerations:{root:"unused",active:"unused-2"},create:()=>{throw fail("generation_participant_missing");}})):await SharedSegmentedPersistentSession.restoreRecovery(inheritActorLeaseInput(p.session.options,{...p.session.options,database,...authority,recovery:data as SharedSegmentedRecovery}));break;

@@ -55,13 +55,13 @@ async function rows(database=options.database){
 let session;
 const add=IDBObjectStore.prototype.add,transaction=IDBDatabase.prototype.transaction;
 const lockCheck=()=>assert.equal(held.size,0);
-async function changePredecessor(head){
+async function changeHead(recordKey,head){
  const db=await new Promise((resolve,reject)=>{
   const open=indexedDB.open(options.database);open.onsuccess=()=>resolve(open.result);open.onerror=()=>reject(open.error);
  });
  try{await new Promise((resolve,reject)=>{
   const tx=db.transaction('generation_heads','readwrite');
-  tx.objectStore('generation_heads').put(head,[...key,'continued-from']);
+  tx.objectStore('generation_heads').put(head,recordKey);
   tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);
  });}finally{db.close();}
 }
@@ -176,10 +176,10 @@ try{
   await observed.verify();
   const changed=JSON.parse(retainedBeforeFault.prior);
   changed.versions=[];
-  await changePredecessor(JSON.stringify(changed));
+  await changeHead([...key,'continued-from'],JSON.stringify(changed));
   await assert.rejects(observed.verify(),error=>error.code==='generation_record_read_record');
   assert.equal((await rows()).prior,JSON.stringify(changed));
-  await changePredecessor(retainedBeforeFault.prior);
+  await changeHead([...key,'continued-from'],retainedBeforeFault.prior);
   await observed.verify();
  }finally{observed.dispose();}
  assert.deepEqual(await rows(),retainedBeforeFault);
@@ -223,6 +223,25 @@ try{
   forkReview=fork.exportRecovery().reviewCheckpoint;
  }finally{await fork.close();}
  await assert.rejects(Session.restoreContinuedRecovery({...restore,backup:{...backup,current:{...backup.current,reviewCheckpoint:forkReview}}}));
+ const badHead=JSON.parse(retainedBeforeFault.active);
+ badHead.review.checkpoint=forkReview;
+ const foreignReviewHead=JSON.stringify(badHead);
+ await changeHead(key,foreignReviewHead);
+ try{
+  await assert.rejects(Session.openContinued(options),/review recovery origin event differs/);
+  lockCheck();
+  assert.deepEqual(await rows(),{...retainedBeforeFault,active:foreignReviewHead});
+ }finally{await changeHead(key,retainedBeforeFault.active);}
+ const missingVersionsHead=JSON.stringify({...JSON.parse(retainedBeforeFault.active),versions:[]});
+ await changeHead(key,missingVersionsHead);
+ try{
+  await assert.rejects(Session.openContinued(options),/exact V1 packets/);
+  lockCheck();
+  assert.deepEqual(await rows(),{...retainedBeforeFault,active:missingVersionsHead});
+ }finally{await changeHead(key,retainedBeforeFault.active);}
+ session=await Session.openContinued(options);
+ assert.deepEqual(await session.exportContinuedBackup(),backup);
+ await session.close();session=undefined;lockCheck();
  const exists=async name=>(await indexedDB.databases()).some(db=>db.name===name);
  assert.equal(await exists(restore.database),false);
  let abortedRestore=0;
@@ -290,7 +309,7 @@ try{
  await session.close();session=undefined;lockCheck();
  console.log(JSON.stringify({passed:true,abortedMigration:aborted,lostAcknowledgement:lost,
   exactV1Predecessor:true,documentAndCommentRedo:true,versionsPreserved:true,offlineGroups:offline.groups.length,
-  abortedRestore,unacknowledgedRestore,backupRestored:true,documentOnlyRestore:true,atomicPredecessorRead:true,continuedFourSlotRead:true,foreignReviewRefused:true,existingDestinationRefused:true}));
+  abortedRestore,unacknowledgedRestore,backupRestored:true,documentOnlyRestore:true,atomicPredecessorRead:true,continuedFourSlotRead:true,foreignReviewRefused:true,coldForeignReviewRefused:true,coldMissingVersionPrefixRefused:true,existingDestinationRefused:true}));
 }finally{
  IDBObjectStore.prototype.add=add;
  IDBDatabase.prototype.transaction=transaction;

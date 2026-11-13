@@ -11,7 +11,7 @@ import type {SharedIndependentHistoryPersistentSession} from '../independent_his
 import {SharedAssetReferenceCapture,type SharedAssetReferenceCaptureOptions} from '../asset_references_capture.js';
 import {SharedGenerationSourceCapture} from '../generation_source/capture.js';
 import type {SharedGenerationSourceSelection} from '../generation_source/contract.js';
-import {generationSource} from '../generation_source/admission.js';
+import {generationRecordSource} from '../generation_source/admission.js';
 import {independentDeliverySource} from '../independent_delivery_source/admission.js';
 import {independentHistoryNative} from '../independent_history/native_port.js';
 import {sourceCoreMethods} from '../source_native_read.js';
@@ -40,8 +40,21 @@ export function originalNativeRetention<P extends SharedSelectionPolicy>(input:S
  retainNativeDeliverySource(native,{kind:'original',session,packets} as unknown as import('./delivery_retention.js').RetainedDeliveryParent,check);return native;
 }
 export function generationNativeRetention<P extends SharedSelectionPolicy>(input:SharedGenerationSourceSelection<P>,managed:()=>void=()=>{}):NativeRetentionSource{
- const port=generationSource(input.session),native=source(port.core,()=>{const capture=captureGeneration(input);return{value:recordsGeneration.call(capture),check:()=>checkGeneration.call(capture),dispose:()=>disposeGeneration.call(capture)};},managed),selected=Object.freeze({...input});
- retainNativeDeliverySource(native,{kind:'generation',source:selected} as unknown as import('./delivery_retention.js').RetainedDeliveryParent,()=>{managed();const current=generationSource(selected.session);current.checkManaged();if(current.core!==native.core)throw fail();});return native;
+ const port=generationRecordSource(input.session);
+ if(port.identity.kind!==input.kind)throw fail();
+ const continued='continuedRecordRead'in port?port.continuedRecordRead:undefined;
+ const check=()=>{managed();if(continued)continued.check();else port.checkManaged();};
+ const native=source(port.core,()=>{
+  if(continued){
+   const stamp=continued.stamp(),value=continued.readLive();
+   return{value,check(){const now=continued.stamp();if(now.length!==stamp.length||now.some((entry,i)=>entry!==stamp[i]))throw fail();},dispose(){}};
+  }
+  const capture=captureGeneration(input);
+  return{value:recordsGeneration.call(capture),check:()=>checkGeneration.call(capture),dispose:()=>disposeGeneration.call(capture)};
+ },check);
+ const selected=Object.freeze({...input});
+ retainNativeDeliverySource(native,{kind:'generation',source:selected} as unknown as import('./delivery_retention.js').RetainedDeliveryParent,check);
+ return native;
 }
 export function independentNativeRetention(session:object,delivery:boolean,owner:()=>void=()=>{}):NativeRetentionSource{
  if(delivery){const port=independentDeliverySource(session),core=port.core,native=source(core,()=>{const stamp=port.stamp(),value=port.read(),managed=port.check,readStamp=port.stamp;return{value,check(){managed();const now=readStamp();if(port.core!==core||now.length!==stamp.length||now.some((entry,i)=>entry!==stamp[i]))throw fail();},dispose(){}};},owner);

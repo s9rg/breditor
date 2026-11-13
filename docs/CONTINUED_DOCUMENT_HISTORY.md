@@ -54,7 +54,11 @@ the two native owners, and checks comment continuity and retained version
 packets. It creates a dedicated, previously absent database and commits the
 schema, files and both heads in one upgrade transaction. If restore is
 interrupted after commit, reopen that destination with `openContinued` and
-compare its exported backup to the selected pair.
+compare its exported backup to the selected pair. Cold open replays the V1
+predecessor through the profile's segmented restore method and verifies native
+comment ancestry and the exact local-version prefix before returning an owner.
+A valid but unrelated comment checkpoint or a missing version refuses without
+writing the saved cut.
 
 ## Participant and room recovery
 
@@ -90,6 +94,7 @@ A failed save and a newer pending edit stay visible as distinct states,
 including their retained raster references. The reader holds the current
 owner for the duration of the read and does not retry a failed save.
 
-Whole-room record reconstruction, relay bindings for continued history,
-independent comment and server-log continuation, and physical browser
-durability still require qualification.
+[Whole-room record reconstruction](NATIVE_RECONSTRUCTION.md) preserves the
+continued participant through failed-save recovery and replacement. Relay
+bindings for continued history, independent comment and server-log
+continuation, and physical browser durability still require qualification.

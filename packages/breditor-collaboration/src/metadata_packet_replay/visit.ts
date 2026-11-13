@@ -22,7 +22,7 @@ export async function visitRetainedPacketNative<T>(source:Loaded,provided:Readon
  const common={id,...(raw['assets']===undefined?{}:{assets:raw['assets'] as SharedAssetBytesOptions})},descriptor=raw['descriptor'];
  switch(entry.family){
   case'original':return visitOriginalPacketNative(source,{...common,read:raw['read'] as Pick<OriginalRecordReferenceOptions,'restore'|'editor'>,descriptor},visit);
-  case'generation':return visitGenerationPacketNative(source,{...common,read:raw['read'] as Pick<GenerationRecordReferenceOptions,'restoreSegmented'|'editor'>,descriptor},visit);
+  case'generation':return visitGenerationPacketNative(source,{...common,read:raw['read'] as Pick<GenerationRecordReferenceOptions,'restoreSegmented'|'restoreContinued'|'editor'>,descriptor},visit);
   case'independent-local':return visitLocalPacketNative(source,{...common,session:fields(raw['read'],['session'])['session'] as SharedIndependentRecoveryFactory},visit);
   case'independent-delivery':return visitDeliveryPacketNative(source,{...common,session:fields(raw['read'],['session'])['session'] as DeliveryReconstructionReadFactory},visit);
   case'restored-graph':return visitGraphPacketNative(source,{...common,session:fields(raw['read'],['session'])['session'] as DeliveryReconstructionReadFactory,descriptor},visit);

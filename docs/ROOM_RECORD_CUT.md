@@ -31,6 +31,15 @@ full capture compares every admitted typed row across its double read and later
 verification, and native-validates those rows without promoting a pending packet
 to LIVE or resurrecting forgotten work.
 
+A continued local generation uses version two of the nested generation payload
+inside the same version-one room envelope. Its committed cut and V1 predecessor
+are read together in one storage transaction. Each failed attempt, pending save
+and live checkpoint is replayed against that same predecessor. Reconstruction
+checks the predecessor against both literal origins, including the native review
+checkpoint and the exact prefix of the version catalog. A detached replay takes
+an explicit `restoreContinued` factory. V1 generation payloads still use
+`restoreSegmented` and keep their original layout.
+
 Literal inputs remain separate entries with their original roles. Original
 participants keep the operation origin; generation participants keep both
 recovery and operation origins. Local/delivery participants keep their source

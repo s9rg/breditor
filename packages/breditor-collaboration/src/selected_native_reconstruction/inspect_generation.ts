@@ -12,6 +12,6 @@ import {inspectNativeReconstructionData,type NativeReconstructionInspectionOptio
 export function inspectGenerationNativeReconstruction<P extends SharedSelectionPolicy>(owner:RetainedSelectedAssetOwner,reads:PhysicalOperationV3HistoryReadOptions<P>,options:NativeReconstructionInspectionOptions){
  return inspectNativeReconstructionData(owner,reads,options,'generation','breditor/generation-native-reconstruction-inspection',async context=>{
   await compareReconstructionPackets(context);
-  return buildGenerationReconstructionRecipe(context.retained,{id:context.id,read:context.read as Pick<GenerationRecordReferenceOptions,'restoreSegmented'|'editor'>,descriptor:context.descriptor,...(context.assets===undefined?{}:{assets:context.assets}),...(context.resolveAsset===undefined?{}:{resolveAsset:context.resolveAsset})});
+  return buildGenerationReconstructionRecipe(context.retained,{id:context.id,read:context.read as Pick<GenerationRecordReferenceOptions,'restoreSegmented'|'restoreContinued'|'editor'>,descriptor:context.descriptor,...(context.assets===undefined?{}:{assets:context.assets}),...(context.resolveAsset===undefined?{}:{resolveAsset:context.resolveAsset})});
  });
 }

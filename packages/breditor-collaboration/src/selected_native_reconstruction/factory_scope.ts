@@ -16,7 +16,7 @@ export class NativeReconstructionFactoryScope<P extends SharedSelectionPolicy>{
  constructor(reads:PhysicalOperationV3HistoryReadOptions<P>['reads']){
   this.reads=Object.freeze(reads.map(row=>{
    const next={...row.read} as Record<string,unknown>;
-   for(const name of['restore','restoreSegmented'])if(typeof next[name]==='function')next[name]=this.#wrap(next[name] as Restore,row.read);
+   for(const name of['restore','restoreSegmented','restoreContinued'])if(typeof next[name]==='function')next[name]=this.#wrap(next[name] as Restore,row.read);
    const selected=next['session'];if(selected&&typeof selected==='object'&&!Array.isArray(selected)){
     const session={...selected} as Record<string,unknown>,chosen=session['documentHistory'];
     if(chosen&&typeof chosen==='object'&&!Array.isArray(chosen)){const history={...chosen} as Record<string,unknown>;for(const name of['restoreOriginal','restoreSegmented'])if(typeof history[name]==='function')history[name]=this.#wrap(history[name] as Restore,chosen);session['documentHistory']=Object.freeze(history);}

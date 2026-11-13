@@ -103,7 +103,6 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
   const checkManaged=()=>{check();checkManagedCore(this.#ownedCore);if(this.#retiring||this.#storageChanged)throw new SharedEditorError("segmented_source_unavailable","The readable native source no longer has live storage custody");};
   if(this.#formatVersion===1){
    registerGenerationNative(this,{core:core as unknown as SharedRichEditor<SharedSelectionPolicy>,identity:structuredClone(identity),review,companion:!!companion,check,checkManaged,stamp,read});
-   registerNativeActorSource(this,'segmented',{document:lease,...(reviewLease?{review:reviewLease}:{})});
    if(!companion)registerGenerationSource(this,{core:core as unknown as SharedRichEditor<SharedSelectionPolicy>,identity:{kind:"local",native:structuredClone(identity),review,relay:null,retained:null},check,checkManaged,stamp:()=>[stamp()],read:()=>generationRecords(read())});
   }else{
    if(segmentedPolicy.call(core)!=="continued-v2")throw new SharedEditorError("continued_history_storage_required","Use the exact continued document owner");
@@ -116,15 +115,19 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
     }
    };
    const profile=continued!.profile,restore=profile.restore_continued_history!;
+   const records=()=>continuedRecords({format:"breditor/shared-continued-history-backup",formatVersion:1,
+    current:this.#continuedRecovery(),predecessor:savedPredecessor});
+   const recordStamp=()=>{checkManaged();if(this.#running)throw new SharedEditorError('generation_record_read_changed','Wait for the current generation write to settle');return [this.#sourceStamp,this.#recordReadEpoch];};
    registerContinuedRecordSource(this,{core:core as unknown as SharedRichEditor<SharedSelectionPolicy>,
-    continuedRecordRead:{check:checkManaged,restore:checkpoint=>restore.call(profile,identity.room,checkpoint)},
+    continuedRecordRead:{check:checkManaged,stamp:recordStamp,readLive:()=>{recordStamp();return records();},
+     restore:checkpoint=>restore.call(profile,identity.room,checkpoint)},
     identity:{kind:"continued-local",native:structuredClone(identity),review,relay:null,retained:null},
     check:settled,checkManaged:settled,stamp:()=>{settled();return [this.#sourceStamp,this.#recordReadEpoch];},
-    read:()=>{settled();return continuedRecords({format:"breditor/shared-continued-history-backup",formatVersion:1,
-     current:this.#continuedRecovery(),predecessor:savedPredecessor});},
+    read:()=>{settled();return records();},
    });
   }
-  if(this.#formatVersion===1)registerSessionDeliveryIO(this,{core,check:checkManaged,save:()=>deliverySaveIntrinsic.call(this),flush:()=>deliveryFlushIntrinsic.call(this)});
+  registerNativeActorSource(this,'segmented',{document:lease,...(reviewLease?{review:reviewLease}:{})});
+  registerSessionDeliveryIO(this,{core,check:checkManaged,save:()=>deliverySaveIntrinsic.call(this),flush:()=>deliveryFlushIntrinsic.call(this)});
   const save=()=>{try{this.save();}catch(error){this.#failed(error);}};
   let documentRevision=core.view().revision,reviewRevision=options.review?core.reviewSnapshot().reviewRevision:null;
   const changed=(document:string,review?:string)=>{if(document!==documentRevision||review!==undefined&&review!==reviewRevision){this.#sourceStamp=Object.freeze({});documentRevision=document;if(review!==undefined)reviewRevision=review;}save();};

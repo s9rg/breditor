@@ -6,6 +6,11 @@ type Assert<T extends true>=T;
 type Private=Assert<Extract<'buildGenerationReconstructionRecipe'|'inspectGenerationNativeReconstruction'|'admitGenerationReconstructionRecords'|'verifyRetainedReconstructionPackets'|'encodeGenerationAssetData',keyof typeof Root> extends never?true:false>;
 declare const source:LoadedNativeReconstructionCurrent,options:Parameters<typeof buildGenerationReconstructionRecipe>[1],owner:Parameters<typeof inspectGenerationNativeReconstruction>[0],reads:Parameters<typeof inspectGenerationNativeReconstruction>[1],inspection:Awaited<ReturnType<typeof inspectGenerationNativeReconstruction>>;
 void buildGenerationReconstructionRecipe(source,options);
+void buildGenerationReconstructionRecipe(source,{...options,read:{...options.read,restoreContinued(checkpoint){
+ return options.read.restoreSegmented(checkpoint);
+}}});
+// @ts-expect-error Continued histories need a native replay factory, not a profile or DTO.
+void buildGenerationReconstructionRecipe(source,{...options,read:{...options.read,restoreContinued:{}}});
 // @ts-expect-error Original-journal factories cannot silently select segmented native replay.
 void buildGenerationReconstructionRecipe(source,{...options,read:{restore(){throw Error('not segmented');}}});
 // @ts-expect-error The expected native descriptor is an independent explicit read choice.
@@ -19,7 +24,7 @@ inspection.activate();
 if(inspection.recipe.kind==='ready'){
  const file:Blob=inspection.recipe.participant.file;void file;
  const family:'generation'=inspection.recipe.sourceFamily;void family;
- const kind:'local'|'relay'|'retained'=inspection.recipe.participant.selection.identity.source.kind;void kind;
+ const kind:'local'|'relay'|'retained'|'continued-local'=inspection.recipe.participant.selection.identity.source.kind;void kind;
  // @ts-expect-error A generation participant DATA file is not a live editable source.
  inspection.recipe.session.core.type('not a source');
  // @ts-expect-error File construction cannot acknowledge the original failed save.

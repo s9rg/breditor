@@ -5,7 +5,6 @@
  * This proves native order and immutable local-version/relay progress; it does
  * not manufacture source custody, availability of every retained packet,
  * permission, a mutable native owner or authenticated room activation. */
-import {SharedRichEditor} from '../core.js';
 import type {SharedSelectionPolicy} from '../types.js';
 import type {RetainedNativeClient} from '../complete_operation_cohort/retained_native_read.js';
 import {recordLiveBasis} from '../complete_operation_cohort/record_live_basis.js';
@@ -31,10 +30,9 @@ import type {SharedIndependentHistoryRecovery} from '../independent_history/cont
 import type {SharedIndependentRecoveryFactory} from '../independent_recovery/contract.js';
 import {replayPortableRecovery,verifyPortableContinuation} from '../independent_operation/portable_replay.js';
 import type {SharedIndependentDeliveryOptions,SharedIndependentDeliveryRecovery} from '../independent_delivery/contract.js';
-import {forwardProgress} from '../segmented_relay/validation.js';
-import type {SharedSegmentedRelayRecovery} from '../segmented_relay/contract.js';
+import {verifyGenerationReferenceContinuation} from '../generation_source/reference_continuation.js';
 import {fail} from './manifest.js';
-const readRoot=PhysicalRoomRecordCutArchive.prototype.root,records=PhysicalRoomRecordCutArchive.prototype.records,verifyGeneration=SharedRichEditor.prototype.verifySegmentedRecoveryOrigin,verifyBranch=SharedRichEditor.prototype.verifyRetainedNativeBranch;
+const readRoot=PhysicalRoomRecordCutArchive.prototype.root,records=PhysicalRoomRecordCutArchive.prototype.records;
 const object=(value:unknown):Record<string,unknown>=>{if(!value||typeof value!=='object'||Array.isArray(value))throw fail('selected_current_policy');return value as Record<string,unknown>;};
 /** Existing live-source route still obtains its descriptor from the genuine
  * managed native core. No DATA descriptor becomes writer custody. */
@@ -73,8 +71,20 @@ async function verifyContinuation<P extends SharedSelectionPolicy>(before:Physic
    const options=selected.read as Omit<OriginalRecordReferenceOptions<P>,'source'|'checkAuthority'>,binding=nativeRestoreBinding(options.restore,options),a=originalReferenceNativeStates(left['native'] as OriginalNativeRecords|PersistentPairedMetadata).find(state=>state.slot==='live'),b=originalReferenceNativeStates(right['native'] as OriginalNativeRecords|PersistentPairedMetadata).find(state=>state.slot==='live');if(!a||!b)throw fail();
    const previous=await replayOriginalReferenceState(a,binding,options.editor,descriptor,check);try{const next=await replayOriginalReferenceState(b,binding,options.editor,descriptor,check);try{(mode==='exact'?verifyOriginalReferenceContinuation:verifyOriginalReferenceBranchCoverage)(next,previous);check();}finally{next.dispose();}}finally{previous.dispose();}
   }else if(row.family==='generation'){
-   const options=selected.read as Omit<GenerationRecordReferenceOptions<P>,'source'|'checkAuthority'>,identity=generationIdentity(left['identity'] as SharedGenerationSourceIdentity);if(JSON.stringify(identity)!==JSON.stringify(generationIdentity(right['identity'] as SharedGenerationSourceIdentity)))throw fail();const binding=nativeRestoreBinding(options.restoreSegmented,options),previous=await replayGenerationReferenceRecords(identity,recordLiveBasis(row.family,older) as readonly SharedGenerationSourceRecord[],binding,options.editor,descriptor,check);
-   try{const next=await replayGenerationReferenceRecords(identity,recordLiveBasis(row.family,newer) as readonly SharedGenerationSourceRecord[],binding,options.editor,descriptor,check);try{previous.check();next.check();(mode==='exact'?verifyGeneration:verifyBranch).call(next.core,previous.core);if(previous.source.versions.some((packet,i)=>next.source.versions[i]!==packet))throw fail();if(identity.kind!=='local')forwardProgress((previous.recovery as SharedSegmentedRelayRecovery).relay,(next.recovery as SharedSegmentedRelayRecovery).relay);previous.check();next.check();check();}finally{next.dispose();}}finally{previous.dispose();}
+   const options=selected.read as Omit<GenerationRecordReferenceOptions<P>,'source'|'checkAuthority'>;
+   const identity=generationIdentity(left['identity'] as SharedGenerationSourceIdentity);
+   if(JSON.stringify(identity)!==JSON.stringify(generationIdentity(right['identity'] as SharedGenerationSourceIdentity)))throw fail();
+   const binding=nativeRestoreBinding(options.restoreSegmented,options);
+   const restore=options.restoreContinued&&nativeRestoreBinding(options.restoreContinued,options);
+   const restoreContinued=restore&&((checkpoint:string)=>restore.factory.call(restore.receiver,checkpoint));
+   const previous=await replayGenerationReferenceRecords(identity,recordLiveBasis(row.family,older) as readonly SharedGenerationSourceRecord[],
+    binding,options.editor,descriptor,check,restoreContinued);
+   try{
+    const next=await replayGenerationReferenceRecords(identity,recordLiveBasis(row.family,newer) as readonly SharedGenerationSourceRecord[],
+     binding,options.editor,descriptor,check,restoreContinued);
+    try{verifyGenerationReferenceContinuation(identity,previous,next,()=>fail(),mode);check();}
+    finally{next.dispose();}
+   }finally{previous.dispose();}
   }else if(row.family==='independent-local'||row.family==='local-operation-snapshot'||row.family==='local-operation-flat'){
    if(entry.family!=='independent-local'&&entry.family!=='local-operation-snapshot'&&entry.family!=='local-operation-flat')throw fail();const expected=entry.family==='independent-local'?entry.selection:entry.selection.original,options=selected.read as Readonly<{session:SharedIndependentRecoveryFactory<P>}>,a=recordLiveBasis(row.family,older) as SharedIndependentHistoryRecovery,b=recordLiveBasis(row.family,newer) as SharedIndependentHistoryRecovery,previous=await replayLocalOperationRecovery(expected,options.session,a,check);
    try{const next=await replayLocalOperationRecovery(expected,options.session,b,check);try{(mode==='exact'?verifyLocalOperationContinuation:verifyLocalOperationBranchCoverage)(next,previous);check();}finally{next.dispose();}}finally{previous.dispose();}

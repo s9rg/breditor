@@ -9,7 +9,7 @@ export interface PhysicalAssetSourcePin {
  readonly catalog:PhysicalRoomCatalogV3Selection;readonly intentSha256:string;
 }
 export interface PhysicalAssetNativePin {
- readonly document:Readonly<{kind:'original'|'segmented-v1';sha256:string}>;
+ readonly document:Readonly<{kind:'original'|'segmented-v1'|'continued-v2';sha256:string}>;
  readonly review:Readonly<{kind:'original'|'segmented-v1';sha256:string}>|Readonly<{kind:'absent'}>|Readonly<{kind:'unselected';nativeKind:'original'|'segmented-v1'}>;
 }
 export interface PhysicalAssetReadParticipant {

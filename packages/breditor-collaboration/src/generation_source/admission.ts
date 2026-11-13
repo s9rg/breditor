@@ -29,3 +29,12 @@ export function generationRecordSource(session:object):ContinuedGenerationRecord
  continued.continuedRecordRead.check();
  return continued;
 }
+
+/** Actual local generation core for actor custody, including a continued owner.
+ * V1 native replay adapters still use generationNative and keep their scope. */
+export function generationActorCore(session:object):SharedRichEditor<SharedSelectionPolicy>{
+ const continued=continuedReaders.get(session);
+ if(!continued)return generationNative(session).core;
+ continued.continuedRecordRead.check();
+ return continued.core;
+}

@@ -1,6 +1,6 @@
 /** Real generation writes fail after an exact attempt has been prepared. Newer
  * pending and LIVE native work remains in memory; cold reopen reads older disk.
- * All three explicit source kinds use their genuine seven-family room owner.
+ * Each explicit source kind uses its genuine seven-family room owner.
  */
 import assert from 'node:assert/strict';
 import {IDBObjectStore} from 'fake-indexeddb';
@@ -9,6 +9,7 @@ import {LoadedNativeReconstructionCurrent as Loaded} from '../../../packages/bre
 import {generationReferenceRecordStates} from '../../../packages/breditor-collaboration/dist/generation_source/record_reference_capture.js';
 import {checkGenerationRecords} from '../../../packages/breditor-collaboration/dist/generation_source/validate_records.js';
 import {sourceNativeRecoveryRead} from '../../../packages/breditor-collaboration/dist/source_native_read.js';
+import {secondAsset} from '../review-assets/pixels.mjs';
 import {waitNativePendingWork} from '../../../packages/breditor-collaboration/dist/native_pending_work.js';
 const settled=core=>waitNativePendingWork(core,{check(){},watch(){return()=>{};}});
 export async function generationOlderDisk(fixtures,tag,kind){
@@ -22,7 +23,11 @@ export async function generationOlderDisk(fixtures,tag,kind){
   basisRead.dispose();basisRead=undefined;let failures=0;
   const fault=function(original,args){if(this.transaction.db.name===database){failures++;throw Error('Test-owned generation source write failed after exact attempt');}return original.apply(this,args);};
   IDBObjectStore.prototype.put=function(...args){return fault.call(this,put,args);};IDBObjectStore.prototype.add=function(...args){return fault.call(this,add,args);};
-  client.core.type('Prepared generation attempt 🙂 ');await settled(client.core);assert.ok(failures>0);const attempted=pair(client.core);
+  if(kind==='continued-local'){
+   assert.equal(client.core.dispatch({commands:[{kind:'replace_image',data:{block:'continued-raster',asset:secondAsset,generation:'attempt-raster'}}]}),true);
+  }else client.core.type('Prepared generation attempt 🙂 ');
+  await settled(client.core);assert.ok(failures>0);const attempted=pair(client.core);
+  if(kind==='continued-local')assert.equal(client.core.dispatch({commands:[{kind:'replace_image',data:{block:'continued-raster',asset:secondAsset,generation:'pending-raster'}}]}),true);
   client.core.type('Newer generation pending 🙂 ');client.core.dispatchReview({kind:'create_thread',data:{anchorJson:client.core.captureReviewAnchor({kind:'document'}),body:'Newer generation comment'}});client.core.undoReview();await settled(client.core);
   const live=pair(client.core),retained=await s.retain();loaded=await Loaded.read(retained,integrity);const source=(await loaded.records('generation')).source,m=source.records;
   assert.equal(source.identity.kind,kind);assert.equal(m.committed.checkpoint,before.checkpoint);assert.ok(m.attempt);assert.ok(m.attempt.cut);assert.ok(m.pending);
@@ -31,13 +36,19 @@ export async function generationOlderDisk(fixtures,tag,kind){
   assert.equal(m.pending.checkpoint,live.checkpoint);assert.equal(m.live.checkpoint,live.checkpoint);assert.equal(m.live.review.checkpoint,live.review);assert.notEqual(m.committed.checkpoint,m.attempt.capture.checkpoint);assert.notEqual(m.attempt.capture.checkpoint,m.live.checkpoint);
   const original=JSON.parse(before.checkpoint),newer=JSON.parse(live.checkpoint);assert.deepEqual(newer.sealed,original.sealed);assert.equal(newer.rootCheckpoint,original.rootCheckpoint);assert.ok(original.sealed.length>0);
   const records=generationReferenceRecordStates(source.identity,m).at(-1).records,recovery=checkGenerationRecords(source.identity,records).recovery;
+  if(kind==='continued-local'){
+   assert.equal(source.formatVersion,2);assert.equal(m.formatVersion,2);
+   assert.equal(m.predecessor.checkpoint,recovery.predecessor.checkpoint);
+   assert.equal(m.predecessor.record.review.checkpoint,recovery.predecessor.reviewCheckpoint);
+   assert.deepEqual(m.predecessor.record.versions,recovery.predecessor.versions);
+  }
   if(kind==='retained'){assert.ok(recovery.retained.suggestions.retained.length>0);assert.ok(recovery.retained.revisions.retained.length>0);assert.ok(recovery.retained.versions.packets.length>0);}
   IDBObjectStore.prototype.put=put;IDBObjectStore.prototype.add=add;
   await s.owner.discardAndClose();await s.cold(basis);const after=pair(s.owner.clients.find(row=>row.id==='generation').core);
   assert.equal(after.document,before.document);assert.notEqual(after.checkpoint,live.checkpoint);assert.notEqual(after.review,live.review);
   const originalOptions=s.f.f.rows.find(row=>row.id==='generation').owner.options;
   const {database:_database,create:_create,initialGenerations:_generations,initialReviewCheckpoint:_initialReview,binding,retained:retainedBinding,...native}=originalOptions;
-  const factory={kind,options:{...native,readOnly:true,review:{...native.review,access:'read_only'},...(kind!=='local'?{binding}:{}),...(kind==='retained'?{retained:retainedBinding}:{})}};
+  const factory={kind,options:{...native,readOnly:true,review:{...native.review,access:'read_only'},...(kind==='relay'||kind==='retained'?{binding}:{}),...(kind==='retained'?{retained:retainedBinding}:{})}};
   return{s,basis,retained,loaded,source,recovery,descriptor,before,attempted,live,after,database,failures,factory,read:s.f.reads.find(row=>row.id==='generation').read,async close(){loaded.dispose();await s.close();}};
  }catch(error){IDBObjectStore.prototype.put=put;IDBObjectStore.prototype.add=add;loaded?.dispose();await s.close();throw error;}
  finally{IDBObjectStore.prototype.put=put;IDBObjectStore.prototype.add=add;basisRead?.dispose();}

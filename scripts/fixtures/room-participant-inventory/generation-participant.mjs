@@ -1,7 +1,7 @@
 /** Genuine generation sessions seeded from the native server's original client cuts.
  * Account roles are reapplied explicitly. No network or old-journal export is used. */
 import assert from 'node:assert/strict';
-import {pixel,secondPixel,secondAsset} from '../review-assets/pixels.mjs';
+import {pixel,pixelAsset,secondPixel,secondAsset} from '../review-assets/pixels.mjs';
 
 const offlineEndpoint='ws://127.0.0.1:1/ws';
 export async function generationParticipant({api,rich,profile,fixture,client,kind,tag,counts,edit=true,paired=true,principal=client.principal,documentCheckpoint=client.documentCheckpoint,reviewCheckpoint=client.reviewCheckpoint,readOnly,changeBinding,changeRetained,prepareGeneration,extraVersions=false,endpoint=offlineEndpoint}) {
@@ -12,7 +12,7 @@ export async function generationParticipant({api,rich,profile,fixture,client,kin
  const retained={suggestions:fixture.atomic?{identity:{endpoint,principal,room,documentWriter:writer,effectWriter:metadata.serverAuthors.find(row=>row.kind==='suggestionEffect').clock.writer,binding:metadata.suggestionsBinding,writerTransport:'atomic-v2'},ownedHistory:null}:null,revisions:fixture.atomic?{binding:metadata.revisionsBinding}:null,versions:{endpoint,principal,room,documentWriter:writer,binding:metadata.versionsBinding,...(fixture.atomic?{writerTransport:'atomic-v2'}:{})}};
  changeBinding?.(binding);changeRetained?.(retained);
  const options={database:tag+'-source',room,writer,richLanguage:fixture.language,history:'explicit',rangeEditing:'original',selectionEditing:'original',searchHistory:null,reviewedHistory:null,readOnly,initialGenerations:{root:tag+'-root',active:tag+'-one'},...(review?{review,initialReviewCheckpoint:reviewCheckpoint}:{}),binding,retained,create:()=>profile.restore(room,documentCheckpoint),restoreSegmented:checkpoint=>profile.restore_segmented(room,checkpoint),onError(){}};
- const open=value=>kind==='local'?api.SharedSegmentedPersistentSession.open(value):kind==='relay'?api.SharedSegmentedRelaySession.open(value):api.SharedSegmentedRelaySession.openRetained(value);
+ const open=value=>kind==='local'||kind==='continued-local'?api.SharedSegmentedPersistentSession.open(value):kind==='relay'?api.SharedSegmentedRelaySession.open(value):api.SharedSegmentedRelaySession.openRetained(value);
  const h={options,client,kind,readOnly,session:undefined,uploads:undefined,backup:undefined,source:undefined};
  try {
   h.session=await open(options);const core=h.session.core;
@@ -30,9 +30,25 @@ export async function generationParticipant({api,rich,profile,fixture,client,kin
   }else if(prepareGeneration)throw Error('Retained metadata preparation requires a retained source');
   await h.session.flush();
   if(edit){if(!readOnly)await h.session.sealGeneration(tag+'-two');else if(client.observer)await h.session.sealObserverGeneration(tag+'-two');}
-  h.uploads=await rich.RichAssetStore.open(tag+'-uploads');await h.uploads.ingest(new Blob([pixel],{type:'image/png'}));await h.uploads.ingest(new Blob([secondPixel],{type:'image/png'}));await h.uploads.cancel(secondAsset);
+  if(kind==='continued-local'){
+   assert.equal(readOnly,false);
+   const image=api.imageNode('continued-raster','retained-image',pixelAsset,'original-raster','Retained raster','continued-caption',{width:1,height:1});
+   image.children=[api.paragraph('continued-caption','Caption before continuation')];
+   assert.equal(core.dispatch({commands:[{kind:'insert_blocks',data:{parent:null,before:null,nodes:[image]}}]}),true);
+   await h.session.flush();
+   const expected=h.session.exportRecovery();
+   await h.session.close();h.session=undefined;
+   const {create,initialGenerations,initialReviewCheckpoint,restoreSegmented,binding,retained,...native}=options;
+   h.options={...native,profile};
+   h.session=await api.SharedSegmentedPersistentSession.continueHistory({...h.options,expected,nextGeneration:tag+'-continued'});
+   h.session.core.type('Continued offline suffix ');
+   await h.session.flush();
+  }
+  h.uploads=await rich.RichAssetStore.open(tag+'-uploads');
+  if(kind==='continued-local')await h.uploads.cacheRemote(pixelAsset,new Blob([pixel],{type:'image/png'}),'fixture/continued-raster');
+  else await h.uploads.ingest(new Blob([pixel],{type:'image/png'}));await h.uploads.ingest(new Blob([secondPixel],{type:'image/png'}));await h.uploads.cancel(secondAsset);
   const result=await api.captureSharedGenerationParticipant({participant:tag,principal,source:{kind,session:h.session},assets:h.uploads,checkAuthority(){}});assert.equal(result.kind,'ready');h.backup=result.backup;h.source=api.captureSharedGenerationSource({kind,session:h.session});await h.backup.verifyRecovered(h.source,h.uploads);
-  h.exportRecovery=()=>kind==='retained'?h.session.exportRetainedRecovery():h.session.exportRecovery();
+  h.exportRecovery=()=>kind==='retained'?h.session.exportRetainedRecovery():kind==='continued-local'?h.session.exportContinuedBackup():h.session.exportRecovery();
   h.close=async()=>{h.source?.dispose();await h.operation?.discardAndClose();h.backup?.dispose();await h.session?.close();h.uploads?.close();};
   h.takeParts=parts=>{h.source?.dispose();h.session=parts.source.session;h.uploads=parts.uploads;h.source=api.captureSharedGenerationSource(parts.source);};
   h.trackOperation=async work=>{
@@ -46,7 +62,7 @@ export async function generationParticipant({api,rich,profile,fixture,client,kin
   };
   h.holdOperation=async(checkAuthority=()=>{})=>{
    h.source.dispose();await h.session.close();h.uploads.close();
-   const {database:_database,create:_create,initialGenerations:_generations,initialReviewCheckpoint:_review,binding,retained,...native}=options,request={database:tag+'-recovery',destinations:{source:tag+'-recovered-source',uploads:tag+'-recovered-uploads'},expected:h.backup.selection(),session:{kind,options:{...native,...(kind!=='local'?{binding}:{}),...(kind==='retained'?{retained}:{})}},checkAuthority};h.recoveryRequest=request;h.operationResume={...request,database:tag+'-operation',recoveryDatabase:request.database};
+   const {database:_database,create:_create,initialGenerations:_generations,initialReviewCheckpoint:_review,binding,retained,...native}=h.options,request={database:tag+'-recovery',destinations:{source:tag+'-recovered-source',uploads:tag+'-recovered-uploads'},expected:h.backup.selection(),session:{kind,options:{...native,...(kind==='relay'||kind==='retained'?{binding}:{}),...(kind==='retained'?{retained}:{})}},checkAuthority};h.recoveryRequest=request;h.operationResume={...request,database:tag+'-operation',recoveryDatabase:request.database};
    return h.trackOperation(async()=>{const attempt=await api.SharedGenerationParticipantRecovery.begin({...request,backup:h.backup});let ready,operation;try{ready=await attempt.finish();operation=await api.OperationalSharedGenerationParticipant.begin({database:tag+'-operation',recovered:ready,expected:h.backup.selection(),checkAuthority});await operation.check();return operation;}catch(error){await operation?.discardAndClose();throw error;}finally{await ready?.discardAndClose();await attempt.close();}});
   };
   h.coldOperation=async()=>{h.source?.dispose();await h.operation?.discardAndClose();await h.session.close();h.uploads.close();return h.trackOperation(()=>api.OperationalSharedGenerationParticipant.resume(h.operationResume));};
