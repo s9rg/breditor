@@ -49,6 +49,18 @@ pub async fn seal(
         &token,
     )
     .await?;
+    let raw_backup = live.capture("owner", &token).await?;
+    let packing = live.pack_sealed_wal("owner", &token, "two").await?;
+    if !packing.packed || packing.stored_bytes >= packing.original_bytes {
+        return Err("fixture did not reclaim sealed WAL bytes".into());
+    }
+    let packed_backup = live.capture("owner", &token).await?;
+    if packed_backup.info()?.identity != raw_backup.info()?.identity
+        || packed_backup.to_bytes()? != raw_backup.to_bytes()?
+    {
+        return Err("packed source changed its portable recovery bytes".into());
+    }
+    drop((raw_backup, packed_backup));
     live.apply_native_history_boundary(
         "owner",
         &token,

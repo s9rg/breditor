@@ -30,6 +30,7 @@ mod create;
 mod create_atomic_v2;
 mod descriptor;
 mod open;
+mod pack_sealed_wal;
 mod rotate;
 pub use backup::{
     MAX_SERVER_LOG_GENERATION_BACKUP_BYTES, ServerLogGenerationBackup,

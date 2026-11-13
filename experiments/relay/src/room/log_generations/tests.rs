@@ -10,6 +10,7 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{fs, path::PathBuf};
 type TestResult<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
+mod packed_wal;
 pub(in crate::room) mod staging_capacity;
 
 pub(in crate::room) struct Files(PathBuf);

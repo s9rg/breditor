@@ -5,7 +5,8 @@ use super::{
     format,
     held_file::{self, FileIdentity, FileStamp},
     manifest::{ActiveFile, ClosedFile, Manifest, Ready, SEEDED_ROOT_VERSION},
-    state::{Generations, HeldManifest, HeldWal},
+    packed_wal::HeldWal,
+    state::{Generations, HeldManifest},
 };
 use crate::{
     Error, Result,
@@ -106,21 +107,13 @@ impl Creation {
         let ready = self.directory.create_file(".ready.json", &ready_bytes)?;
         let ready_identity = FileIdentity::of(&ready)?;
         let root_file = std::mem::replace(&mut log.file, active);
-        let root_identity = FileIdentity::of(&root_file)?;
-        let root_stamp = FileStamp::of(&root_file)?;
         let active_identity = FileIdentity::of(&log.file)?;
         let active_stamp = FileStamp::of(&log.file)?;
         let head_identity = FileIdentity::of(&head)?;
         log.generations = Some(Generations {
             directory: self.directory,
             history: vec![manifest],
-            closed: vec![HeldWal {
-                file: root_file,
-                generation: self.options.root,
-                bytes: log.bytes,
-                identity: root_identity,
-                stamp: root_stamp,
-            }],
+            closed: vec![HeldWal::raw(root_file, self.options.root, log.bytes)?],
             head,
             head_bytes,
             head_identity,

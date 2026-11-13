@@ -1,5 +1,5 @@
 //! A bounded exact selected closure, with separately retained unpublished stages. No scavenging.
-use super::{format, held_file::FileIdentity, rotate, state::Generations};
+use super::{format, held_file::FileIdentity, packed_wal, rotate, state::Generations};
 use crate::{Error, Result, credentials};
 use std::{collections::BTreeSet, fs};
 
@@ -29,10 +29,11 @@ impl Generations {
         known.extend(rotate::pending_names(&self.directory)?);
         let mut entries = 0;
         let mut stages = 0;
+        let mut packing_stages = 0;
         let mut stage_bytes = 0_u64;
         for entry in fs::read_dir(&self.directory.path)? {
             entries += 1;
-            if entries > format::MAX_GENERATIONS * 3 + 8 {
+            if entries > format::MAX_GENERATIONS * 3 + 8 + packed_wal::MAX_STAGES {
                 return Err(Error::Contract("physical log directory entry budget"));
             }
             let entry = entry?;
@@ -51,6 +52,16 @@ impl Generations {
                     && metadata.len() > format::MAX_CONTROL
                 {
                     return Err(Error::Contract("rotation recovery stage byte budget"));
+                }
+                continue;
+            }
+            if let Some(nonce) = name.strip_prefix(packed_wal::STAGE_PREFIX) {
+                credentials::hash(nonce)?;
+                packing_stages += 1;
+                if packing_stages > packed_wal::MAX_STAGES
+                    || metadata.len() > packed_wal::MAX_STAGE_BYTES
+                {
+                    return Err(Error::Contract("sealed WAL packing stage budget"));
                 }
                 continue;
             }

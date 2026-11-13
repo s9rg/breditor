@@ -4,7 +4,8 @@ use super::{
     format,
     held_file::{self, FileIdentity, FileStamp},
     manifest::{Head, Manifest, Ready},
-    state::{Generations, HeldManifest, HeldWal},
+    packed_wal::HeldWal,
+    state::{Generations, HeldManifest},
 };
 use crate::{
     Error, Recovery, Result,
@@ -71,36 +72,20 @@ fn closed(
     let mut closed = Vec::new();
     for (item, family) in current.closed_files() {
         let file = held_file::open(&directory.path.join(format::wal_name(&item.generation)))?;
-        let stamp = FileStamp::of(&file)?;
-        let bytes = held_file::read(&file, super::super::MAX_LOG)?;
-        if bytes.len() as u64 != item.bytes || format::sha(&bytes) != item.sha256 {
-            return Err(Error::Contract("closed physical log bytes differ"));
-        }
-        let parsed = decoder::read_records_from(
-            &mut bytes.as_slice(),
-            item.bytes,
-            family,
-            item.first,
-            item.previous,
-        )?;
+        let wal = HeldWal::open(file, item)?;
+        let parsed = wal.read(item.sha256, |mut reader| {
+            decoder::read_records_from(&mut reader, item.bytes, family, item.first, item.previous)
+        })?;
         if parsed.recovery.truncated_bytes != 0
             || parsed.records.len() as u64 != item.records
             || parsed.previous != item.terminal
         {
             return Err(Error::Contract("closed log cut differs"));
         }
-        let identity = FileIdentity::of(&file)?;
-        if !identities.insert(identity) {
+        if !identities.insert(wal.identity) {
             return Err(Error::Contract("physical log inode alias"));
         }
-        stamp.guard(&file)?;
-        closed.push(HeldWal {
-            file,
-            generation: item.generation.clone(),
-            bytes: item.bytes,
-            identity,
-            stamp,
-        });
+        closed.push(wal);
         records.extend(parsed.records);
     }
     Ok(closed)

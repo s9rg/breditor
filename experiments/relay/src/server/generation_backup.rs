@@ -4,6 +4,7 @@ mod capture;
 pub(in crate::server) mod durable;
 mod handover;
 mod native_history;
+mod pack_sealed_wal;
 mod prepare;
 mod storage_capacity;
 pub use durable::{

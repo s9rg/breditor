@@ -2,6 +2,7 @@
 use super::{
     format,
     held_file::{FileIdentity, FileStamp},
+    packed_wal,
     state::Generations,
 };
 use crate::{Error, Result, log::Log};
@@ -17,9 +18,13 @@ fn compare(mut file: &File, expected: &[u8], prefix: bool) -> Result<bool> {
         return Ok(false);
     }
     file.seek(SeekFrom::Start(0))?;
+    compare_prefix(&mut file, expected)
+}
+
+fn compare_prefix(reader: &mut dyn Read, expected: &[u8]) -> Result<bool> {
     let mut buffer = [0_u8; 8192];
     for block in expected.chunks(buffer.len()) {
-        file.read_exact(&mut buffer[..block.len()])?;
+        reader.read_exact(&mut buffer[..block.len()])?;
         if &buffer[..block.len()] != block {
             return Ok(false);
         }
@@ -32,7 +37,7 @@ fn names(state: &Generations) -> Result<BTreeSet<String>> {
             entry?.file_name().into_string().map_err(|_| Error::Contract("archive source filename"))
         })
         .collect::<Result<BTreeSet<_>>>()?;
-    if values.len() > super::closure::MAX_GENERATION_FILES + 1 {
+    if values.len() > super::closure::MAX_GENERATION_FILES + 1 + packed_wal::MAX_STAGES {
         return Err(Error::Contract("archive source file count"));
     }
     Ok(values)
@@ -61,7 +66,8 @@ impl Generations {
             .map(|name| (*name).to_owned())
             .chain(std::iter::once(".owner".into()))
             .collect::<BTreeSet<_>>();
-        let mut matches = retained || inventory == exact_names;
+        let mut matches = retained
+            || inventory.iter().filter(|name| !packed_wal::is_stage(name)).eq(exact_names.iter());
         let mut witnesses = Vec::new();
         for (name, bytes) in expected {
             if retained && *name == ".head.json" {
@@ -69,6 +75,22 @@ impl Generations {
             }
             if !inventory.contains(*name) {
                 matches = false;
+                continue;
+            }
+            if let Some((wal, metadata)) = self.closed_wal(name) {
+                let prefix = retained && *name == original_active;
+                if bytes.len() as u64 > wal.bytes || !prefix && bytes.len() as u64 != wal.bytes {
+                    matches = false;
+                    continue;
+                }
+                let path = self.directory.path.join(name);
+                wal.guard(&path)?;
+                matches &= wal.read(metadata.sha256, |reader| {
+                    let result = compare_prefix(reader, bytes)?;
+                    std::io::copy(reader, &mut std::io::sink())?;
+                    Ok(result)
+                })?;
+                wal.guard(&path)?;
                 continue;
             }
             let owned;

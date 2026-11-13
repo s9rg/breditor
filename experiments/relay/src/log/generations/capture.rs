@@ -3,6 +3,7 @@ use super::{
     closure::{self, GenerationCut, MAX_GENERATION_BODY_BYTES, MAX_GENERATION_FILES},
     format,
     held_file::{FileIdentity, FileStamp},
+    packed_wal,
     state::Generations,
 };
 use crate::{Error, Result, log::Log};
@@ -65,12 +66,6 @@ impl Generations {
                 .iter()
                 .find(|held| name == format::manifest_name(&held.hash))
                 .map(|held| &held.file)
-                .or_else(|| {
-                    self.closed
-                        .iter()
-                        .find(|held| name == format::wal_name(&held.generation))
-                        .map(|held| &held.file)
-                })
         }
     }
     fn capture_files(
@@ -89,6 +84,7 @@ impl Generations {
         self.verify_retained()?;
         let active_name = format::wal_name(&self.current().value.active.generation);
         let mut entries = BTreeMap::new();
+        let mut packing_stages = BTreeSet::new();
         let mut total = 0_u64;
         for entry in fs::read_dir(&self.directory.path)? {
             let entry = entry?;
@@ -99,10 +95,17 @@ impl Generations {
             if name == ".owner" || pending.is_some_and(|names| names.contains(&name)) {
                 continue;
             }
+            if packed_wal::is_stage(&name) {
+                packing_stages.insert(name);
+                continue;
+            }
             if entries.len() >= MAX_GENERATION_FILES {
                 return Err(Error::Contract("generation capture count"));
             }
-            let handle = if let Some(held) = self.selected_file(&name, active) {
+            let closed = self.closed_wal(&name);
+            let handle = if let Some((held, _)) = closed {
+                CaptureFile::Held(&held.file)
+            } else if let Some(held) = self.selected_file(&name, active) {
                 CaptureFile::Held(held)
             } else if name.starts_with(".stage-") {
                 CaptureFile::Unpublished(File::open(entry.path())?)
@@ -113,8 +116,14 @@ impl Generations {
             let identity = FileIdentity::of(file)?;
             identity.guard(file, &entry.path())?;
             let length = file.metadata()?.len();
-            let bytes = if name == active_name { active_prefix.unwrap_or(length) } else { length };
-            if bytes > length {
+            let bytes = if let Some((_, metadata)) = closed {
+                metadata.bytes
+            } else if name == active_name {
+                active_prefix.unwrap_or(length)
+            } else {
+                length
+            };
+            if closed.is_none() && bytes > length {
                 return Err(Error::Contract("generation capture prefix exceeds source file"));
             }
             total = total.checked_add(bytes).ok_or(Error::Contract("generation capture bytes"))?;
@@ -130,8 +139,12 @@ impl Generations {
         for (name, (handle, identity, stamp, _, bytes)) in &mut entries {
             let mut file = handle.file();
             let offset = body.len() as u64;
-            file.seek(SeekFrom::Start(0))?;
-            let copied = file.by_ref().take(*bytes).read_to_end(&mut body)?;
+            let copied = if let Some((wal, metadata)) = self.closed_wal(name) {
+                wal.read(metadata.sha256, |reader| Ok(reader.read_to_end(&mut body)?))?
+            } else {
+                file.seek(SeekFrom::Start(0))?;
+                file.by_ref().take(*bytes).read_to_end(&mut body)?
+            };
             if copied as u64 != *bytes {
                 return Err(Error::Contract("generation capture incomplete file"));
             }
@@ -166,7 +179,7 @@ impl Generations {
                 return Err(Error::Contract("generation capture source length changed"));
             }
         }
-        self.check_capture_names(entries.keys().cloned(), pending)?;
+        self.check_capture_names(entries.keys().cloned().chain(packing_stages), pending)?;
         Ok(GenerationFiles { body, sections, cut })
     }
     fn check_capture_names(

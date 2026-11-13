@@ -14,6 +14,7 @@ resolver = "3"
 loro-internal = { path = "../../crates/breditor-collaboration/vendor/loro-internal-1.16.2" }
 
 [dependencies]
+flate2 = { version = "=1.1.10", default-features = false, features = ["zlib-rs"] }
 base64 = { version = "=0.22.1", optional = true }
 breditor-collab-feasibility = { path = "../collaboration" }
 serde = { version = "=1.0.229", features = ["derive"] }

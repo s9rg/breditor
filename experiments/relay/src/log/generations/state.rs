@@ -4,6 +4,7 @@ use super::{
     format,
     held_file::{self, FileIdentity, FileStamp},
     manifest::{Head, Manifest},
+    packed_wal::{self, HeldWal},
     receipt::{ServerLogGenerationDescriptor, ServerLogGenerationReceipt},
 };
 use crate::{Error, Result};
@@ -17,13 +18,6 @@ pub(super) struct HeldManifest {
     pub value: Manifest,
     pub file: File,
     pub bytes: Vec<u8>,
-    pub identity: FileIdentity,
-    pub stamp: FileStamp,
-}
-pub(super) struct HeldWal {
-    pub file: File,
-    pub generation: String,
-    pub bytes: u64,
     pub identity: FileIdentity,
     pub stamp: FileStamp,
 }
@@ -95,12 +89,7 @@ impl Generations {
             }
         }
         for wal in &self.closed {
-            wal.stamp.guard(&wal.file)?;
-            wal.identity
-                .guard(&wal.file, &self.directory.path.join(format::wal_name(&wal.generation)))?;
-            if wal.file.metadata()?.len() != wal.bytes {
-                return Err(Error::Contract("immutable log file length changed"));
-            }
+            wal.guard(&self.directory.path.join(packed_wal::selected_name(wal)))?;
         }
         let active_path =
             self.directory.path.join(format::wal_name(&self.current().value.active.generation));

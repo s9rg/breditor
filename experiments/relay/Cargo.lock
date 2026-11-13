@@ -187,6 +187,7 @@ dependencies = [
  "axum",
  "base64",
  "breditor-collab-feasibility",
+ "flate2",
  "getrandom 0.4.3",
  "image",
  "serde",

@@ -14,6 +14,10 @@ mod inventory;
 mod manifest;
 mod open;
 mod options;
+mod pack_sealed_wal;
+#[cfg(test)]
+pub(crate) use pack_sealed_wal::WalPackingInterruption;
+mod packed_wal;
 mod prepare_original_root;
 mod publication;
 mod publish_ready;
@@ -49,6 +53,7 @@ pub(crate) use held_file::FileStamp as GenerationFileStamp;
 #[cfg(test)]
 pub(crate) use interruption::RotationPoint;
 pub use options::ServerLogGenerationOptions;
+pub use packed_wal::ServerSealedWalPacking;
 pub(crate) use prepare_original_root::prepare_original_root;
 pub use receipt::{ServerLogGenerationDescriptor, ServerLogGenerationReceipt};
 pub(super) use state::Generations;

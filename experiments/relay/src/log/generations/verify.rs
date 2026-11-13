@@ -1,8 +1,16 @@
 //! Rehash the whole retained closure before changing the selected physical head or exporting it.
-use super::{format, held_file, state::Generations};
+use super::{format, held_file, manifest::ClosedFile, packed_wal::HeldWal, state::Generations};
 use crate::{Error, Result};
 
 impl Generations {
+    pub(super) fn closed_wal(&self, name: &str) -> Option<(&HeldWal, &ClosedFile)> {
+        let selected = &self.current().value;
+        self.closed
+            .iter()
+            .zip(std::iter::once(&selected.root).chain(&selected.sealed))
+            .find(|(wal, _)| name == format::wal_name(&wal.generation))
+    }
+
     pub(super) fn verify_retained(&self) -> Result<()> {
         for manifest in &self.history {
             if held_file::read(&manifest.file, format::MAX_CONTROL)? != manifest.bytes
@@ -18,13 +26,13 @@ impl Generations {
             return Err(Error::Contract("retained physical owner count differs"));
         }
         for (held, metadata) in self.closed.iter().zip(metadata) {
-            if held.generation != metadata.generation
-                || held.bytes != metadata.bytes
-                || held_file::digest(&held.file, held.bytes)? != metadata.sha256
-            {
+            if held.generation != metadata.generation || held.bytes != metadata.bytes {
                 return Err(Error::Contract("retained physical log digest differs"));
             }
-            held.stamp.guard(&held.file)?;
+            held.read(metadata.sha256, |reader| {
+                std::io::copy(reader, &mut std::io::sink())?;
+                Ok(())
+            })?;
         }
         Ok(())
     }

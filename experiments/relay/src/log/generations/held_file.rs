@@ -97,29 +97,3 @@ pub(super) fn read(file: &File, budget: u64) -> Result<Vec<u8>> {
     }
     Ok(bytes)
 }
-
-/// Bounded streaming verification of retained bytes; does not allocate an entire sealed WAL.
-pub(super) fn digest(file: &File, expected: u64) -> Result<[u8; 32]> {
-    use sha2::{Digest, Sha256};
-    if file.metadata()?.len() != expected || expected > super::super::MAX_LOG {
-        return Err(Error::Contract("retained log digest byte budget"));
-    }
-    let stamp = FileStamp::of(file)?;
-    let mut reader = file.try_clone()?;
-    reader.seek(SeekFrom::Start(0))?;
-    let mut remaining = expected;
-    let mut hash = Sha256::new();
-    let mut buffer = [0_u8; 8192];
-    while remaining > 0 {
-        let length = usize::try_from(remaining.min(buffer.len() as u64))
-            .map_err(|_| Error::Contract("retained digest block size"))?;
-        reader.read_exact(&mut buffer[..length])?;
-        hash.update(&buffer[..length]);
-        remaining -= length as u64;
-    }
-    if reader.read(&mut buffer[..1])? != 0 {
-        return Err(Error::Contract("retained log grew during digest"));
-    }
-    stamp.guard(file)?;
-    Ok(hash.finalize().into())
-}

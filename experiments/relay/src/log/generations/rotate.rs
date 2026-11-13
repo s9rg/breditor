@@ -7,10 +7,11 @@ use super::{
     held_file::{self, FileIdentity, FileStamp},
     manifest::{ActiveFile, ClosedFile, Manifest},
     options::generation,
+    packed_wal::HeldWal,
     publication,
     receipt::ServerLogGenerationReceipt,
     rotation_recovery_stages::{Control, RecoveryStages},
-    state::{Generations, HeldManifest, HeldWal},
+    state::{Generations, HeldManifest},
 };
 use crate::{
     Error, Result, credentials,
@@ -340,14 +341,7 @@ impl Generations {
         )?;
         self.clean_intent(&intent, &marker, &marker_bytes, &next)?;
         let old = std::mem::replace(&mut log.file, next);
-        let old_stamp = FileStamp::of(&old)?;
-        self.closed.push(HeldWal {
-            identity: self.active_identity,
-            file: old,
-            generation: intent.sealed.generation.clone(),
-            bytes: intent.sealed.bytes,
-            stamp: old_stamp,
-        });
+        self.closed.push(HeldWal::raw(old, intent.sealed.generation.clone(), intent.sealed.bytes)?);
         self.active_identity = intent.identity;
         self.refresh_active(&log.file)?;
         self.head_identity = FileIdentity::of(&head)?;

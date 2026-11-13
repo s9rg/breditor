@@ -208,6 +208,12 @@ async fn generate_selected(
     }
     operation.room_mut().grant("owner", "post-origin-reader", Some(Role::Reader))?;
     operation.room_mut().rotate_log_generation("owner", "post-origin-physical-cut")?;
+    if activation_case {
+        let packed = operation.room_mut().pack_sealed_wal("owner", "two")?;
+        if !packed.packed || packed.stored_bytes >= packed.original_bytes {
+            return Err("restored relay did not reclaim sealed WAL bytes".into());
+        }
+    }
     let (native_token, native_digest) = Authentication::issue_token()?;
     let delivery_account = predecessor.is_some().then(Authentication::issue_token).transpose()?;
     let native_auth = match &delivery_account {
