@@ -472,3 +472,13 @@ with `resumeContinuedRoomRecovery`. Changed destinations cause the read to
 fail. Every participant must have a provider read policy. Missing provider
 bytes and any remaining delivery work are reported in the reconciliation
 result. This read leaves the journal and destination data unchanged.
+
+`previewRecoveredContinuedRoomCatchUp` uses the same completed recovery
+and operator policies. It reads the selected relay's accepted document frame
+and paginated comment batches, applies them to isolated native replays of
+the continued-delivery participants, and verifies each batch receipt and
+accepted author prefix. The preview refuses a participant whose own authored
+stream is behind the relay. It returns reconstructed checkpoints with the
+original local Undo/Redo, version packets, relay receipts, and outboxes.
+The original destinations stay unchanged. The preview is detached data for
+an explicit replacement plan.

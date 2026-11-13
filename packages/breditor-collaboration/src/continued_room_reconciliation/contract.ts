@@ -63,3 +63,13 @@ export interface RecoveredContinuedRoomReconciliationRead {
  readonly recovery:ContinuedRoomRecoveryResult;
  readonly reconciliation:ContinuedRoomReconciliationRead;
 }
+
+/** Reconstructed continued-delivery cuts for an explicit replacement plan. */
+export interface RecoveredContinuedRoomCatchUpPreview {
+ readonly format:'breditor/recovered-continued-room-catch-up-preview';
+ readonly formatVersion:1;
+ readonly catalog:ContinuedRoomCatalogSelection;
+ readonly server:import('../generation_recovery_control/contract.js').SharedServerLogGenerationRecoveryControlSelection;
+ readonly participants:readonly Readonly<{id:string;prefix:ContinuedParticipantPrefix;
+  recovery:import('../continued_delivery/contract.js').SharedContinuedDeliveryRecovery}>[];
+}

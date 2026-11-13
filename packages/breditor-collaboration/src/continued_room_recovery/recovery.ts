@@ -41,8 +41,10 @@ const originalRecords=SharedParticipantBackup.prototype.records;
 const destinationNames=(row:ContinuedRoomRecoveryDestination)=>[...operationDestinationNames(row),...Object.values(row.original??{})];
 
 type RecoveryMode='begin'|'resume'|'inspect';
-interface CompletedContinuedRoomRead {
+export interface CompletedContinuedRoomRead {
  readonly recovery:ContinuedRoomRecoveryResult;
+ readonly archive:SharedContinuedRoomCatalog;
+ readonly policies:ReturnType<typeof continuedRoomRecoveryCatalog>['options']['policies'];
  check():void;
 }
 
@@ -281,7 +283,7 @@ async function restore<T>(
   checkComplete();
   const recovery=frozen({format:'breditor/continued-room-local-recovery' as const,formatVersion:1 as const,catalog:expected,participants:destinations});
   if(inspect){
-   const result=await visit(Object.freeze({recovery,check:current}));
+   const result=await visit(Object.freeze({recovery,archive,policies:held.options.policies,check:current}));
    cursor=await accessRecoveryJournal(journal,plan,guard,signal);
    checkComplete();
    // Provider authorization can wait on application code. Re-admit the
@@ -293,7 +295,7 @@ async function restore<T>(
   }
   current();
   if(deliveryActors)commitActors.call(deliveryActors);
-  return visit({recovery,check:current});
+  return visit({recovery,archive,policies:held.options.policies,check:current});
  }finally{await opening.rollback();}
 }
 

@@ -1,4 +1,4 @@
-import {SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore,beginContinuedRoomRecovery,resumeContinuedRoomRecovery,readContinuedRoomReconciliation,readRecoveredContinuedRoomReconciliation} from '@breditor/collaboration';
+import {SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore,beginContinuedRoomRecovery,resumeContinuedRoomRecovery,readContinuedRoomReconciliation,readRecoveredContinuedRoomReconciliation,previewRecoveredContinuedRoomCatchUp} from '@breditor/collaboration';
 import type {ContinuedRoomOriginalRecoveryPolicy,ContinuedRoomGenerationRecoveryPolicy,ContinuedRoomDeliveryRecoveryPolicy,ContinuedRoomIndependentRecoveryPolicy,ContinuedPairRecords,ContinuedRoomReconciliationOptions,ContinuedRoomReconciliationRead,ContinuedRoomRecoveryDestination,ContinuedRoomRecoveryOptions,ContinuedRoomRecoveryResult,ContinuedRoomCatalogCaptureOptions,ContinuedRoomCatalogMetadata,ContinuedRoomCatalogSelection} from '@breditor/collaboration';
 import type {ContinuedRoomOriginalReadPolicy} from '@breditor/collaboration';
 
@@ -50,3 +50,7 @@ declare const recoveredInput:import('@breditor/collaboration').RecoveredContinue
 const recovered:import('@breditor/collaboration').RecoveredContinuedRoomReconciliationRead=await readRecoveredContinuedRoomReconciliation(recoveredInput);
 const recoveredParticipants:readonly ContinuedRoomRecoveryDestination[]=recovered.recovery.participants;
 void recoveredParticipants;
+
+const catchUp:import('@breditor/collaboration').RecoveredContinuedRoomCatchUpPreview=await previewRecoveredContinuedRoomCatchUp(recoveredInput);
+const caughtUp:import('@breditor/collaboration').SharedContinuedDeliveryRecovery|undefined=catchUp.participants[0]?.recovery;
+void caughtUp;

@@ -24,7 +24,7 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
  const entries=[];
  let archive,store,host,tokenAllowed=true,onToken;
  const counts={authorPrefixes:0,reviewPrefixes:0,localSuffixes:0,missingUploads:0,providerReads:0,rejected:0,foreignForks:0,mixedPending:0,mixedProviderReads:0,mixedForeignForks:0,mixedDeliveryProviderReads:0,mixedDeliveryAheadRefusals:0,continuedDeliveryProviderReads:0,generationProviderReads:0,generationDocumentOnlyReads:0,generationAheadRefusals:0,generationForkRefusals:0,generationPredecessorChecks:0,originalProviderReads:0,originalPolicyRefusals:0};
- let recoveredRoomReads=0,recoveredRoomRefusals=0,serverOnlyPacketAssets=0;
+ let recoveredRoomReads=0,recoveredRoomRefusals=0,serverOnlyPacketAssets=0,recoveredClientCatchUps=0;
  const room=inventory.room.document;
  const initial={
   catalog:'continued-native-provider',wasm:native,checkAuthority(){},
@@ -132,10 +132,14 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
   const continued=await continuedDeliveryParticipant(continuedApi,{
    entry:retained,fixture,metadata:inventory,wasm:native,endpoint:caseInfo.endpoint.replace(/^http/,'ws'),tag:'provider-continued-delivery',
   });
-  let continuedArchive,continuedStore;
+  let continuedArchive,continuedStore,secondDelivery;
   try{
-   const rows=[continued.row,...entries.slice(1,7).map(({id,file,expected})=>({id,family:'continued-local',file,expected}))];
-   const options={...openOptions,policies:[continued.policy,...openOptions.policies.slice(1)]};
+   secondDelivery=await continuedDeliveryParticipant(continuedApi,{
+    entry:entries[2],fixture,metadata:inventory,wasm:native,endpoint:caseInfo.endpoint.replace(/^http/,'ws'),tag:'provider-continued-delivery-second',
+   });
+   const local=entries.slice(1,7).filter(row=>row!==entries[2]);
+   const rows=[continued.row,secondDelivery.row,...local.map(({id,file,expected})=>({id,family:'continued-local',file,expected}))];
+   const options={...openOptions,policies:[continued.policy,secondDelivery.policy,...openOptions.policies.filter(row=>local.some(entry=>entry.id===row.id))]};
    continuedArchive=await SharedContinuedRoomCatalog.capture({...initial,...options,participants:rows});
    continuedStore=await SharedContinuedRoomCatalogStore.begin({
     ...options,database:'provider-continued-delivery-catalog',archive:continuedArchive,expected:continuedArchive.selection(),
@@ -195,6 +199,41 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
    assert.equal(requests.slice(beforeRead).filter(row=>row.dependencies).length,1);
    recoveredRoomReads++;
 
+   const beforeCatchUp=requests.length;
+   const preview=await withNoWrites(()=>continuedApi.previewRecoveredContinuedRoomCatchUp(probe));
+   assert.deepEqual(preview.catalog,recovery.expected);
+   assert.deepEqual(preview.server,caseInfo.selection);
+   assert.deepEqual(preview.participants.map(row=>row.id),[continued.id,secondDelivery.id]);
+   assert.ok(requests.slice(beforeCatchUp).some(row=>row.accepted));
+   for(const target of preview.participants){
+    const origin=target.id===continued.id?continued:secondDelivery,before=origin.backup.records().live;
+    const prior=read.participants.find(row=>row.id===target.id).prefix;
+    assert.ok(prior.acceptedDocuments.some(row=>row.relation==='server_ahead'));
+    assert.ok(prior.acceptedReviews.some(row=>row.relation==='server_ahead'));
+    assert.ok([...target.prefix.acceptedDocuments,...target.prefix.acceptedReviews].every(row=>row.relation!=='server_ahead'));
+    assert.equal(target.prefix.document.localThrough,prior.document.localThrough);
+    assert.equal(target.prefix.review.localThrough,prior.review.localThrough);
+    assert.deepEqual(target.recovery.relay,before.relay);
+    assert.deepEqual(target.recovery.retainedBinding,before.retainedBinding);
+    assert.deepEqual(target.recovery.retained,before.retained);
+    assert.deepEqual(target.recovery.source.versions,before.source.versions);
+    const candidateOptions={...origin.options,database:target.id+'-candidate'};
+    let candidate=await continuedApi.SharedContinuedPairSession.restoreDelivery(candidateOptions,target.recovery,'host-reacquired');
+    try{
+     await candidate.discardAndClose();
+     candidate=await continuedApi.SharedContinuedPairSession.openDelivery(candidateOptions);
+     assert.deepEqual(candidate.exportDeliveryRecovery(),target.recovery);
+     assert.equal(candidate.core.redo(),true);
+     assert.equal(candidate.core.redoReview().kind,'committed');
+     assert.match(candidate.core.documentJson(),/Local offline document/);
+     assert.match(JSON.stringify(candidate.core.reviewSnapshot().view),/Local offline comment/);
+     assert.equal(candidate.core.undo(),true);
+     assert.equal(candidate.core.undoReview().kind,'committed');
+     recoveredClientCatchUps++;
+    }finally{await candidate.discardAndClose();}
+   }
+   assert.deepEqual(await withNoWrites(()=>readRecoveredContinuedRoomReconciliation(probe)),recovered);
+
    // Even a write which ignores the SDK's cooperative locks must be detected
    // before returning the observation. Simulate it during account lookup.
    const changed=await new Promise((resolve,reject)=>{
@@ -207,13 +246,13 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
      tx.objectStore(heads).delete(key);tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);
     });
     onToken=()=>{onToken=change;};
-   const beforeChanged=requests.length;
+    const beforeChanged=requests.length;
     await assert.rejects(readRecoveredContinuedRoomReconciliation(probe),error=>
      ['continued_pair_read_changed','continued_room_recovery_diverged'].includes(error.code));
     assert.equal(requests.slice(beforeChanged).filter(row=>row.assets).length,1);
     recoveredRoomRefusals++;
    }finally{changed.close();}
-  }finally{await continuedStore?.close();continuedArchive?.dispose();continued.backup.dispose();}
+  }finally{await continuedStore?.close();continuedArchive?.dispose();continued.backup.dispose();secondDelivery?.backup.dispose();}
 
   const independentFactory={
    ...exact.identity.native,readOnly:true,review:{...exact.identity.review,access:'read_only'},
@@ -529,7 +568,7 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
   onToken=()=>store.close();
   await assert.rejects(readContinuedRoomReconciliation(input),error=>['catalog_closed','archive_authority','control_authority'].includes(error.code));
   counts.rejected++;
-  return {recoveredRoomReads,recoveredRoomRefusals,serverOnlyPacketAssets,passed:true,language:fixture.language,atomic:fixture.atomic,...counts,...operations};
+  return {recoveredRoomReads,recoveredRoomRefusals,serverOnlyPacketAssets,recoveredClientCatchUps,passed:true,language:fixture.language,atomic:fixture.atomic,...counts,...operations};
  }finally{
   host?.close();
   await store?.close();

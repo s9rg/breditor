@@ -44,12 +44,12 @@ async function installedProbe(){
  execFileSync(process.execPath,[join(root,'node_modules/typescript/bin/tsc'),'--noEmit','--strict','--exactOptionalPropertyTypes',
   '--target','ES2022','--module','NodeNext','--lib','ES2022,DOM,ESNext.Disposable',typeFile],{cwd:consumer,stdio:'inherit'});
  const entry=join(consumer,'entry.mjs');
- writeFileSync(entry,'export {readContinuedRoomReconciliation,readRecoveredContinuedRoomReconciliation} from "@breditor/collaboration";');
+ writeFileSync(entry,'export {readContinuedRoomReconciliation,readRecoveredContinuedRoomReconciliation,previewRecoveredContinuedRoomCatchUp} from "@breditor/collaboration";');
  const output=await build({configFile:false,root:consumer,logLevel:'error',
   build:{target:'es2022',write:false,minify:false,lib:{entry,formats:['es'],fileName:'continued-provider'}}});
  const modules=(Array.isArray(output)?output:[output]).flatMap(result=>result.output)
   .filter(item=>item.type==='chunk').flatMap(item=>Object.keys(item.modules));
- for(const path of ['continued_room_reconciliation/read.js','continued_room_reconciliation/recovered.js','continued_room_recovery/recovery.js','continued_room_reconciliation/asset_pins.js','continued_room_reconciliation/independent_prefix.js','continued_room_reconciliation/delivery_prefix.js','continued_room_reconciliation/generation_prefix.js','continued_room_reconciliation/original_prefix.js','continued_room_reconciliation/operation_prefix.js','generation_recovery_control/host.js'])
+ for(const path of ['continued_room_reconciliation/read.js','continued_room_reconciliation/recovered.js','continued_room_reconciliation/catch_up.js','continued_room_reconciliation/catch_up_client.js','continued_room_recovery/recovery.js','continued_room_reconciliation/asset_pins.js','continued_room_reconciliation/independent_prefix.js','continued_room_reconciliation/delivery_prefix.js','continued_room_reconciliation/generation_prefix.js','continued_room_reconciliation/original_prefix.js','continued_room_reconciliation/operation_prefix.js','generation_recovery_control/host.js'])
   assert.ok(modules.some(module=>module.includes('/node_modules/@breditor/collaboration/dist/'+path)),path);
  assert.ok(!modules.some(module=>module.includes(join(root,'packages'))||module.includes('fake-indexeddb')));
  const runtime=join(consumer,'node_modules/@breditor/collaboration/dist/runtime');
@@ -86,6 +86,7 @@ export async function runContinuedProviderQualification(controls,transport,direc
    assert.equal(result.mixedDeliveryProviderReads,1);
    assert.equal(result.continuedDeliveryProviderReads,1);
    assert.equal(result.recoveredRoomReads,1);
+   assert.equal(result.recoveredClientCatchUps,2);
    assert.equal(result.serverOnlyPacketAssets,result.atomic?1:0);
    assert.equal(result.recoveredRoomRefusals,3);
    assert.equal(result.mixedDeliveryAheadRefusals,1);
@@ -120,7 +121,7 @@ if(process.argv[1]&&realpathSync(process.argv[1])===fileURLToPath(import.meta.ur
  const directory=mkdtempSync(join(root,'target/continued-provider-native-'));
  for(const [name,data] of [['seed-a.png',pixel],['seed-b.png',secondPixel]])writeFileSync(join(directory,name),data,{mode:0o600,flag:'wx'});
  const controls=await startNativeGenerationCompleteControls(root,resolve(binary),directory,{serverPacketAssets:true});
- const transport=completeControlTransport(controls.manifest);
+ const transport=completeControlTransport(controls.manifest,{readAccepted:true});
  let report;
  try{report=await runContinuedProviderQualification(controls,transport,directory,mode);}
  finally{transport.restore();await controls.stop();}
