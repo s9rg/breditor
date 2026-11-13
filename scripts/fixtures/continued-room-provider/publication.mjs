@@ -70,7 +70,8 @@ export async function verifyPublication(api,{input,expected,activation,offer,req
   await handoff.close();
   assert.throws(()=>handoff.sessions(),{code:'activation_intent_incomplete'});
   await verifyColdDelivery(api,cohort,destinations,delivered);
-  const restartedSessions=restart?await verifyRestartedDelivery(api,{restart,cohort,destinations,delivered,delivery,listener:offer.selection.listener}):0;
-  return {publications:1,writableSessions:sessions.size,deliveredSessions:delivered.acknowledged.size,deliveredUploads:1,restartedSessions};
+  const restarted=restart?await verifyRestartedDelivery(api,{restart,cohort,destinations,delivered,delivery,listener:offer.selection.listener})
+   :{restartedSessions:0,outageWriters:0};
+  return {publications:1,writableSessions:sessions.size,deliveredSessions:delivered.acknowledged.size,deliveredUploads:1,...restarted};
  }finally{globalThis.fetch=fetch;await handoff.close();reopened?.close();publication.close();}
 }

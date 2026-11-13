@@ -4,6 +4,7 @@ import {WebSocket as NativeWebSocket} from 'undici';
 import {RichAssetStore} from '@breditor/experimental-rich-content';
 import {unavailableAsset,unavailableUpload} from '../physical-recovery-control/unavailable-upload.mjs';
 import {secondAsset} from '../review-assets/pixels.mjs';
+import {checkOutageAcknowledgements,checkOutageConvergence,queueOutageWork} from './outage.mjs';
 
 function resumeIdentity(binding,rows,key){
  const row=rows.find(row=>row[key]===binding[key]&&row.principal===binding.principal);
@@ -138,8 +139,10 @@ export async function deliverPublishedCohort(api,sessions,listener,delivery,dest
 }
 
 export async function verifyRestartedDelivery(api,{restart,cohort,destinations,delivered,delivery,listener}){
- const fresh=await restart(delivery);
  const endpoint='ws://'+listener+'/ws',health='http://'+listener+'/health';
+ const names=new Map(destinations.map(row=>[row.id,row.source]));
+ let queued;
+ const fresh=await restart(delivery,async()=>{queued=await queueOutageWork(api,cohort,names,health);});
  const restoreSocket=installSocket(endpoint);
  const options=offer=>({endpoint:offer.endpoint,expected:offer.selection,principal:'operator',
   getToken:fresh.getToken,checkAuthority(){}});
@@ -162,25 +165,53 @@ export async function verifyRestartedDelivery(api,{restart,cohort,destinations,d
   const online=await fetch(health,{signal:AbortSignal.timeout(4000)});
   assert.equal(await online.text(),'breditor-relay-v1');
 
-  const names=new Map(destinations.map(row=>[row.id,row.source]));
   const credentials={...delivery,accountToken:fresh.accountToken};
-  let confirmed=0;
-  for(const {id,options} of cohort){
+  const acknowledged=new Map();
+  let confirmed=0,expectedDocument;
+  for(const {id,options} of [...cohort.filter(row=>queued.has(row.id)),...cohort.filter(row=>!queued.has(row.id))]){
    const session=await api.SharedContinuedPairSession.openDelivery({...options,database:names.get(id)});
    const adapters=[];
    try{
     const {document,review,common}=clients(api,session,credentials,endpoint,adapters);
     const before=receiptCut(session.exportDeliveryRecovery());
-    assert.deepEqual(before,delivered.acknowledged.get(id));
+    const previous=delivered.acknowledged.get(id),work=queued.get(id);
+    if(work)assert.deepEqual({...before,versions:before.versions.filter(row=>row.packet!==work.packet)},previous);
+    else assert.deepEqual(before,previous);
     await document.connect();await document.flush();
     await review.connect();await review.flush();
     await syncRetained(session,document,common);
     assert.equal(document.state().pending,false);
     assert.equal(review.state().pending,false);
-    assert.deepEqual(receiptCut(session.exportDeliveryRecovery()),before);
+    const accepted=receiptCut(session.exportDeliveryRecovery());
+    if(work)checkOutageAcknowledgements(session,previous,accepted,work);
+    else assert.deepEqual(accepted,previous);
+    acknowledged.set(id,accepted);
+    if(confirmed>=1){
+     checkOutageConvergence(session.core,queued);
+     expectedDocument??=session.core.documentJson();
+     assert.equal(session.core.documentJson(),expectedDocument);
+    }
     assert.match(session.core.documentJson(),/Local offline document/);
     assert.match(JSON.stringify(session.core.reviewSnapshot().view),/Local offline comment/);
     confirmed++;
+   }finally{
+    try{await stopAdapters(adapters);}finally{await session.close();}
+   }
+  }
+  // The first writer was connected before its peer's upload. A second cold
+  // connection verifies catch-up and exact receipts for both original writers.
+  for(const {id,options} of cohort.filter(row=>queued.has(row.id))){
+   const session=await api.SharedContinuedPairSession.openDelivery({...options,database:names.get(id)});
+   const adapters=[];
+   try{
+    const {document,review,common}=clients(api,session,credentials,endpoint,adapters);
+    assert.deepEqual(receiptCut(session.exportDeliveryRecovery()),acknowledged.get(id));
+    await document.connect();await document.flush();
+    await review.connect();await review.flush();
+    await syncRetained(session,document,common);
+    checkOutageConvergence(session.core,queued);
+    assert.equal(session.core.documentJson(),expectedDocument);
+    assert.deepEqual(receiptCut(session.exportDeliveryRecovery()),acknowledged.get(id));
    }finally{
     try{await stopAdapters(adapters);}finally{await session.close();}
    }
@@ -193,7 +224,7 @@ export async function verifyRestartedDelivery(api,{restart,cohort,destinations,d
    assert.deepEqual(Buffer.from(await remote.blob.arrayBuffer()),unavailableUpload);
    assert.deepEqual(await store.get(unavailableAsset),delivered.upload);
   }finally{assets.dispose();store.close();}
-  return confirmed;
+  return {restartedSessions:confirmed,outageWriters:queued.size};
  }finally{
   restoreSocket();
   publication?.close();
