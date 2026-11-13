@@ -2,6 +2,7 @@
 import type {SharedHistoryPolicy,SharedRangePolicy,SharedSelectionPolicy} from "../types.js";
 import type {SharedReviewedHistoryIdentity} from "../reviewed_history_types.js";
 export const MAX_SEGMENTED_ARCHIVE_BYTES=64*1024*1024;
+export const MAX_CONTINUED_ARCHIVE_BYTES=256*1024*1024;
 export const MAX_SEGMENTED_HEAD_BYTES=128*1024*1024;
 export interface SegmentedSessionIdentity {
  room:string;writer:string;richLanguage:1|2|3;history:SharedHistoryPolicy;
@@ -18,4 +19,6 @@ export interface SegmentedHead {
  review:SegmentedReview|null;versions:string[];
 }
 export interface SegmentedCut {head:string;files:readonly SegmentedFile[]}
-export interface SegmentedStoredCut extends SegmentedCut {checkpoint:string;record:SegmentedHead}
+export type ContinuedHead=Omit<SegmentedHead,"formatVersion">&{formatVersion:2;continuedAfter:number};
+export type GenerationHead=SegmentedHead|ContinuedHead;
+export interface SegmentedStoredCut<H extends GenerationHead=SegmentedHead> extends SegmentedCut {checkpoint:string;record:H}

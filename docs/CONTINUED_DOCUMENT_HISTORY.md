@@ -21,8 +21,22 @@ and 256 MiB of archive JSON. Each native file still admits 1,000 inputs and
 receipt positions keep their original meanings. The archive still grows with
 retained work and recovery still replays its history.
 
-The Rust and application Wasm methods require host writer custody. The host
-must arrange exclusive access and durably retain the selected checkpoint
-before exposing the replacement. The existing V1 SDK session and room catalog
-do not open version 2. Durable SDK admission, comment and server-log
-continuation, and room-wide qualification are separate work.
+## SDK storage
+
+Flush the local segmented session, export its V1 recovery cut, and close it.
+Call `SharedSegmentedPersistentSession.continueHistory` with that exact export,
+the existing database and identity, the native profile, and a fresh generation
+ID. The SDK reacquires the document and paired review leases. It replays the
+selected document and review, verifies the retained version packets, and writes
+the V2 head, the sealed V1 active file, and the exact old head in one strict
+IndexedDB transaction. A failed transaction leaves the old cut available.
+
+An exact retry after a lost acknowledgement can reopen the committed V2 cut
+while it still matches the requested conversion. Use `openContinued` after
+later edits and `exportContinuedRecovery` to capture V2 data. Both open paths
+use fresh host policy. An ordinary V1 open refuses a V2 head. The archived V1
+head and referenced files remain readable to the migration verifier.
+
+This action serves local segmented sessions. Relay and room catalog admission,
+independent comment and server-log continuation, and physical browser
+durability still require qualification.

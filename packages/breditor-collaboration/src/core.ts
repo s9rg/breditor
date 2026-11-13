@@ -77,6 +77,7 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  #searches=new Set<SharedSearchResults>();
  readonly #searchHistory:boolean;
  #segmented=false;
+ #continuedHistory=false;
  static{reserveNativeRecoveryImpl=input=>{
   let members=nativeRecoveryMembers(input).map(value=>{if(!value||typeof value!=='object'||!(#raw in value))throw nativeRecoveryFailure();return value as SharedRichEditor<SharedSelectionPolicy>;});
   // Inspect EVERY member before the first flag. No public methods, native calls,
@@ -149,9 +150,12 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
     if(!raw.search_history_enabled!()){const initial=this.#observe(raw);try{raw.enable_search_history!(initial);}finally{initial.free();}}
     if(!raw.search_history_enabled!())throw new SharedEditorError("search_history_policy","Native search history was not enabled");
    }else if(raw.search_history_enabled?.()===true)throw new SharedEditorError("search_history_policy","Search recovery requires explicitly selected search-v1 history");
-   if(options.segmentedHistory!==undefined&&options.segmentedHistory!=="segmented-v1")throw new SharedEditorError("segmented_history_policy","Expected explicit segmented-v1 recovery");
+   if(options.segmentedHistory!==undefined&&options.segmentedHistory!=="segmented-v1"&&options.segmentedHistory!=="continued-v2")throw new SharedEditorError("segmented_history_policy","Select an explicit native history format");
    this.#segmented=raw.segmented_history_enabled?.()===true;
-   if(this.#segmented!==(options.segmentedHistory==="segmented-v1"))throw new SharedEditorError("segmented_history_policy","Select matching native segmented recovery explicitly; enable a new owner through the guarded method");
+   this.#continuedHistory=raw.continued_history_enabled?.()===true;
+   const history=this.#continuedHistory?"continued-v2":this.#segmented?"segmented-v1":undefined;
+   if(history!==options.segmentedHistory)throw new SharedEditorError("segmented_history_policy","Select matching native history recovery explicitly");
+   if(this.#continuedHistory&&(!this.#segmented||typeof raw.continued_history_checkpoint!=="function"))throw new SharedEditorError("continued_history_unavailable","Use the complete continued history contract");
    if(this.#segmented&&!this.supportsSegmentedHistory())throw new SharedEditorError("segmented_history_unavailable","Use the complete matching native generation contract");
    this.#observation=this.#observe(raw);this.#view=this.#observation.view_json();const view=this.view();
    if(options.reviewedHistory!==undefined?view.historyPolicy!=="reviewed-v1":view.historyPolicy!==undefined)throw new SharedEditorError("reviewed_history_policy","Native view must match explicitly selected reviewed history");
@@ -179,8 +183,8 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  supportsRecoveryOrigin():boolean{const raw=this.#live();return !this.#segmented&&raw.recovery_origin_version?.()==="1"&&typeof raw.verify_recovery_origin==="function";}
  /** All calls are required. Old runtimes must never approximate a generation through AST import. */
  supportsSegmentedHistory():boolean{const r=this.#live();return r.segmented_history_version?.()==="1"&&[r.segmented_history_enabled,r.segmented_history_info_json,r.enable_segmented_history,r.seal_history_segment,r.segmented_checkpoint,r.verify_segmented_recovery_origin].every(f=>typeof f==="function");}
- segmentedHistoryPolicy():"segmented-v1"|null{this.#live();return this.#segmented?"segmented-v1":null;}
- segmentedHistoryInfo():Readonly<SharedSegmentedHistoryInfo>|null{if(!this.supportsSegmentedHistory())throw new SharedEditorError("segmented_history_unavailable","Use matching native generation reads");const info=parseSegmentedHistoryInfo(this.#live().segmented_history_info_json!());if((info!==null)!==this.#segmented)throw new SharedEditorError("segmented_history_policy","Native generation mode differs from the selected facade");return info;}
+ segmentedHistoryPolicy():"segmented-v1"|"continued-v2"|null{this.#live();return this.#continuedHistory?"continued-v2":this.#segmented?"segmented-v1":null;}
+ segmentedHistoryInfo():Readonly<SharedSegmentedHistoryInfo>|null{if(!this.supportsSegmentedHistory())throw new SharedEditorError("segmented_history_unavailable","Use matching native generation reads");const info=parseSegmentedHistoryInfo(this.#live().segmented_history_info_json!(),this.#continuedHistory);if((info!==null)!==this.#segmented)throw new SharedEditorError("segmented_history_policy","Native generation mode differs from the selected facade");return info;}
  /** Select after configuring original capabilities, and before attaching any old durable store. */
  enableSegmentedHistory(root:string,active:string,revision?:string):void{
   this.#check(revision);if(!this.supportsSegmentedHistory())throw new SharedEditorError("segmented_history_unavailable","Use complete native generation capabilities");
@@ -214,6 +218,16 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  /** New storage family only; freeze base policies without admitting an old autosave adapter. */
  sealSegmentedPolicies(history:"explicit"|"typing-v1",ranges:"original"|"general-v1"):void{
   this.#nativeRecoveryAccess();
+  if(this.#continuedHistory)throw new SharedEditorError("continued_history_storage_required","Use continued document storage");
+  this.#sealGenerationPolicies(history,ranges);
+ }
+ /** Pin the base policies of an explicitly restored continued document. */
+ sealContinuedHistoryPolicies(history:"explicit"|"typing-v1",ranges:"original"|"general-v1"):void{
+  this.#nativeRecoveryAccess();
+  if(!this.#continuedHistory)throw new SharedEditorError("continued_history_storage_required","Select continued document history");
+  this.#sealGenerationPolicies(history,ranges);
+ }
+ #sealGenerationPolicies(history:"explicit"|"typing-v1",ranges:"original"|"general-v1"):void{
   if(this.#reviewHistory==="segmented-v1")throw new SharedEditorError("review_generation_storage_required","Original paired comments cannot store independent review generations");
   this.#live();if(!this.#segmented||(history!=="explicit"&&history!=="typing-v1")||(this.view().historyGrouping==="typing-v1"?"typing-v1":"explicit")!==history||(this.#fixedHistory!==undefined&&this.#fixedHistory!==history))throw new SharedEditorError("segmented_history_policy","Generation storage must match the native history policy");
   this.sealRangePolicy(ranges);this.#fixedHistory=history;
@@ -497,7 +511,7 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
  /** Named user input only; programmatic type/paste/composition remain explicit. */
  typeUser(text:string,clockMs:string,revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#typingOwner().insert_typing_text!(o,JSON.stringify({text,clockMs})),revision);}
  deleteUserRange(selection:Extract<RichSelection,{kind:"text"}>,direction:"backward"|"forward",clockMs:string,revision?:string):boolean{return this.#run("local",(_raw,o)=>this.#typingOwner().delete_typing_range!(o,JSON.stringify({selection,direction,clockMs})),revision);}
- checkpointJson():string{const view=this.view();if(this.#segmented)return this.#live().segmented_checkpoint!();if(this.#searchHistory)return this.#live().search_checkpoint!();if(view.historyPolicy==="reviewed-v1")return this.#reviewedOwner().reviewed_checkpoint!();if(this.#selectionPolicy==="document-v1")return view.historyGrouping==="typing-v1"?this.#documentOwner().document_typing_checkpoint!():this.#documentOwner().document_checkpoint!();if(view.rangeEditing==="general-v1")return view.historyGrouping==="typing-v1"?this.#generalOwner().general_typing_checkpoint!():this.#generalOwner().general_checkpoint!();return view.historyGrouping==="typing-v1"?this.#typingOwner().typing_checkpoint!():this.#live().checkpoint();}
+ checkpointJson():string{const view=this.view();if(this.#continuedHistory)return this.#live().continued_history_checkpoint!();if(this.#segmented)return this.#live().segmented_checkpoint!();if(this.#searchHistory)return this.#live().search_checkpoint!();if(view.historyPolicy==="reviewed-v1")return this.#reviewedOwner().reviewed_checkpoint!();if(this.#selectionPolicy==="document-v1")return view.historyGrouping==="typing-v1"?this.#documentOwner().document_typing_checkpoint!():this.#documentOwner().document_checkpoint!();if(view.rangeEditing==="general-v1")return view.historyGrouping==="typing-v1"?this.#generalOwner().general_typing_checkpoint!():this.#generalOwner().general_checkpoint!();return view.historyGrouping==="typing-v1"?this.#typingOwner().typing_checkpoint!():this.#live().checkpoint();}
  updateFrame():string{return this.#live().update_frame();}
  /** Separate read capability; neither method publishes, imports content or changes local UI. */
  supportsDocumentPresence():boolean{const raw=this.#live();return this.supportsDocumentSelection()&&raw.document_presence_version?.()==="1"&&typeof raw.document_presence_frame==="function"&&typeof raw.resolve_document_presence==="function";}

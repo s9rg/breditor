@@ -1,0 +1,146 @@
+/** Actual native SDK storage migration under controlled IndexedDB and Web Locks. */
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {resolve} from 'node:path';
+import {pathToFileURL} from 'node:url';
+import {IDBDatabase,IDBFactory,IDBObjectStore} from 'fake-indexeddb';
+
+const [sdkPath,wasmPath,binaryPath,fixturePath]=process.argv.slice(2);
+assert.equal(process.argv.length,6);
+const load=path=>import(pathToFileURL(resolve(path)).href);
+const {SharedSegmentedPersistentSession:Session}=await load(sdkPath),runtime=await load(wasmPath);
+await runtime.default({module_or_path:readFileSync(binaryPath)});
+const canonical=value=>Array.isArray(value)?value.map(canonical):value&&typeof value==='object'
+ ?Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])])):value;
+const root=canonical(JSON.parse(readFileSync(fixturePath,'utf8')));
+const held=new Set();
+Object.defineProperty(globalThis,'indexedDB',{value:new IDBFactory(),configurable:true});
+Object.defineProperty(globalThis,'navigator',{value:{locks:{
+ request(name,options,callback){
+  assert.deepEqual(options,{mode:'exclusive',ifAvailable:true});
+  return Promise.resolve().then(async()=>{
+   if(held.has(name))return callback(null);
+   held.add(name);
+   try{return await callback({name});}finally{held.delete(name);}
+  });
+ },
+}},configurable:true});
+const profile=runtime.SharedRichProfile.from_configuration_json(JSON.stringify({
+ format:'breditor/shared-rich-profile',formatVersion:1,
+ schema:{name:'example/durable-continued-history',version:1},extensions:[],
+}));
+const {schema,schemaFingerprint}=JSON.parse(profile.descriptor_json());
+const document=JSON.stringify({format:'breditor/document',formatVersion:2,schema,schemaFingerprint,root});
+const options={database:'continued-history',room:'room',writer:'101',richLanguage:1,history:'explicit',
+ rangeEditing:'original',selectionEditing:'original',searchHistory:null,reviewedHistory:null,readOnly:false,
+ review:{actor:'review-101',principal:'alice',access:'comment'},profile};
+const legacy={...options,initialGenerations:{root:'root',active:'v1-active'},
+ create:()=>profile.create(document,'101'),restoreSegmented:checkpoint=>profile.restore_segmented('room',checkpoint)};
+const key=['room','101'];
+const insert=(session,text)=>session.core.dispatch({commands:[{kind:'insert_text',data:{block:'p',offset:0,text}}]});
+async function rows(){
+ const db=await new Promise((resolve,reject)=>{
+  const open=indexedDB.open(options.database);open.onsuccess=()=>resolve(open.result);open.onerror=()=>reject(open.error);
+ });
+ try{return await new Promise((resolve,reject)=>{
+  const tx=db.transaction(['generation_files','generation_heads'],'readonly');
+  const files=tx.objectStore('generation_files').getAll(),heads=tx.objectStore('generation_heads');
+  const active=heads.get(key),prior=heads.get([...key,'continued-from']);
+  tx.oncomplete=()=>resolve({files:files.result,active:active.result,prior:prior.result});
+  tx.onabort=()=>reject(tx.error);
+ });}finally{db.close();}
+}
+
+let session;
+const add=IDBObjectStore.prototype.add,transaction=IDBDatabase.prototype.transaction;
+const lockCheck=()=>assert.equal(held.size,0);
+try{
+ await assert.rejects(Session.openContinued({...options,database:'missing'}),/existing generation store/);
+ assert.equal((await indexedDB.databases()).length,0);
+ session=await Session.open(legacy);
+ assert.equal(insert(session,'pre-migration offline work '),true);
+ const anchor=session.core.captureReviewAnchor({kind:'document'});
+ assert.equal(session.core.dispatchReview({kind:'create_thread',data:{anchorJson:anchor,body:'Retained comment'}}).kind,'committed');
+ const version=session.saveVersion('Retained version','1792450000000');
+ await session.sealGeneration('v1-tail');
+ assert.equal(insert(session,'retained redo '),true);
+ assert.equal(session.core.undo(),true);
+ assert.equal(session.core.undoReview().kind,'committed');
+ const expected=session.exportRecovery(),acknowledged=session.core.writerClockV2('101');
+ const commentClock=session.core.localReviewClock();
+ const request={...options,expected,nextGeneration:'v2-active'};
+ await assert.rejects(Session.continueHistory(request),error=>error.code==='writer_in_use');
+ await session.close();session=undefined;lockCheck();
+ const before=await rows();
+ assert.equal(before.prior,undefined);
+ await assert.rejects(Session.openContinued(options));
+ await assert.rejects(Session.continueHistory({...request,expected:{...expected,versions:[]}}),/stale/);
+ assert.deepEqual(await rows(),before);
+ let aborted=0;
+ IDBObjectStore.prototype.add=function(value,recordKey){
+  const result=add.call(this,value,recordKey);
+  if(this.transaction.db.name===options.database&&this.name==='generation_heads'&&recordKey?.at(-1)==='continued-from'){
+   aborted++;this.transaction.abort();
+  }
+  return result;
+ };
+ try{await assert.rejects(Session.continueHistory(request));}
+ finally{IDBObjectStore.prototype.add=add;}
+ assert.equal(aborted,1);lockCheck();
+ assert.deepEqual(await rows(),before);
+
+ let lost=0;
+ IDBDatabase.prototype.transaction=function(...args){
+  const tx=transaction.apply(this,args);
+  if(this.name===options.database&&args[1]==='readwrite'&&args[2]?.durability==='strict'){
+   tx.addEventListener('complete',()=>{lost++;this.onversionchange?.(new Event('versionchange'));},{once:true});
+  }
+  return tx;
+ };
+ try{await assert.rejects(Session.continueHistory(request),error=>error.code==='session_open_versionchange');}
+ finally{IDBDatabase.prototype.transaction=transaction;}
+ assert.equal(lost,1);lockCheck();
+ const committed=await rows();
+ assert.equal(committed.prior,before.active);
+ for(const file of before.files)assert.ok(committed.files.includes(file));
+ assert.equal(JSON.parse(committed.active).formatVersion,2);
+ await assert.rejects(Session.open(legacy));
+ await assert.rejects(Session.continueHistory({...request,nextGeneration:'foreign'}),/already advanced or differs/);
+ assert.deepEqual(await rows(),committed);
+ session=await Session.continueHistory(request);
+ assert.equal(session.core.segmentedHistoryPolicy(),'continued-v2');
+ assert.deepEqual(session.core.writerClockV2('101'),acknowledged);
+ assert.deepEqual(session.core.localReviewClock(),commentClock);
+ assert.equal(session.versionPacket(version.id),expected.versions[0]);
+ assert.equal(session.exportContinuedRecovery().reviewCheckpoint,expected.reviewCheckpoint);
+ assert.throws(()=>session.exportRecovery());
+ assert.deepEqual(await rows(),committed);
+ const converted=session.exportContinuedRecovery();
+ const documentV1=JSON.parse(expected.checkpoint),documentV2=JSON.parse(converted.checkpoint);
+ assert.equal(documentV2.rootCheckpoint,documentV1.rootCheckpoint);
+ assert.deepEqual(documentV2.sealed,[...documentV1.sealed,documentV1.active]);
+ await session.close();session=undefined;
+ session=await Session.openContinued(options);
+ assert.deepEqual(session.exportContinuedRecovery(),converted);
+ assert.equal(session.core.redo(),true);
+ assert.equal(session.core.redoReview().kind,'committed');
+ assert.equal(insert(session,'new offline group '),true);
+ await session.sealGeneration('v2-next');
+ const current=session.exportContinuedRecovery(),offline=session.core.writerGroupsV2(acknowledged.through);
+ assert.ok(offline.groups.length>=2);
+ await session.close();session=undefined;
+ await assert.rejects(Session.continueHistory(request),/already advanced or differs/);
+ session=await Session.openContinued({...options,readOnly:true,review:{...options.review,access:'read_only'}});
+ assert.deepEqual(session.exportContinuedRecovery(),current);
+ assert.deepEqual(session.core.writerGroupsV2(acknowledged.through),offline);
+ assert.throws(()=>insert(session,'forbidden'));
+ assert.equal((await rows()).prior,before.active);
+ await session.close();session=undefined;lockCheck();
+ console.log(JSON.stringify({passed:true,abortedMigration:aborted,lostAcknowledgement:lost,
+  exactV1Predecessor:true,documentAndCommentRedo:true,versionsPreserved:true,offlineGroups:offline.groups.length}));
+}finally{
+ IDBObjectStore.prototype.add=add;
+ IDBDatabase.prototype.transaction=transaction;
+ await session?.discardAndClose();
+ profile.free();
+}

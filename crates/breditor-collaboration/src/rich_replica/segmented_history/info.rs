@@ -28,6 +28,12 @@ impl RichReplica {
         self.segmented.is_some()
     }
 
+    /// Whether this owner uses the explicitly continued document archive.
+    #[must_use]
+    pub fn continued_history_enabled(&self) -> bool {
+        self.segmented.as_ref().is_some_and(|state| state.continuation.is_some())
+    }
+
     /// Read detached native segment diagnostics. A result grants no lease or persistence proof.
     #[must_use]
     pub fn segmented_history_info(&self) -> Option<SegmentedHistoryInfo> {

@@ -20,3 +20,11 @@ new SharedRichEditor(raw,{segmentedHistory:"automatic"});
 // @ts-expect-error Document sessions retain the original discriminated document selection API.
 const original:Promise<Session<"original">>=SharedSegmentedPersistentSession.open(options);
 void [session,restored,supported,owner,committed,original];
+
+import type {SharedContinueHistoryOptions,SharedContinuedHistoryRecovery} from "@breditor/collaboration";
+declare const continuation:SharedContinueHistoryOptions<"document-v1">, continued:SharedContinuedHistoryRecovery;
+const migration:Promise<Session<"document-v1">>=SharedSegmentedPersistentSession.continueHistory(continuation);
+const reopened:Promise<Session<"document-v1">>=SharedSegmentedPersistentSession.openContinued(continuation);
+// @ts-expect-error A migration requires the exact V1 predecessor.
+SharedSegmentedPersistentSession.continueHistory({...continuation,expected:continued});
+void [migration,reopened];

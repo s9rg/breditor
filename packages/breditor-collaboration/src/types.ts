@@ -214,7 +214,7 @@ export interface SharedRustOwner extends SharedReviewRustCapability,SharedReview
 export interface SharedPublication<P extends SharedSelectionPolicy="original"> {source:"local"|"remote";view:SharedEditorView<P>}
 export interface SharedEditorOptions<P extends SharedSelectionPolicy="original"> {selectionEditing?:P;maxPendingFrames?:number;maxPendingBytes?:number;onError?:(error:unknown)=>void;
  /** Explicit adoption of an already segmented native owner; never enables or infers a migration. */
- segmentedHistory?:"segmented-v1";
+ segmentedHistory?:"segmented-v1"|"continued-v2";
  /** Explicit new recovery family. Old durable factories refuse it; use search-aware storage. */
  searchHistory?:"search-v1";
  /** Explicit new recovery family. Durable callers must use reviewed-aware paired storage. */
