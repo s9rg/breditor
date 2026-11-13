@@ -2,10 +2,11 @@
 import type {SharedRichEditor} from '../core.js';
 
 export type CapturedNativeHistoryKind='original'|'segmented-v1';
+export type CapturedDocumentHistoryKind=CapturedNativeHistoryKind|'continued-v2';
 /** Native-only reads; enclosing check() validates the complete selected stores. */
 export type CapturedDocumentHistoryRead=Readonly<
  Pick<SharedRichEditor,'descriptor'|'checkpointJson'|'writerClock'|'writerClockV2'|'writerGroups'|'writerGroupsV2'|'supportsWriterPrefixRead'|'writerClockAt'>
- &{kind:CapturedNativeHistoryKind}>;
+ &{kind:CapturedDocumentHistoryKind}>;
 export type CapturedReviewHistoryRead=Readonly<
  Pick<SharedRichEditor,'reviewWriterClock'|'localReviewClock'>
  &{kind:CapturedNativeHistoryKind;checkpointJson():string}>;
@@ -24,6 +25,6 @@ export interface CapturedNativeHistoryRead {
 }
 /** Exact captured native strings; null means review was not selected, not absent. */
 export interface CapturedNativeHistorySelection {
- readonly document:Readonly<{kind:CapturedNativeHistoryKind;checkpoint:string}>;
+ readonly document:Readonly<{kind:CapturedDocumentHistoryKind;checkpoint:string}>;
  readonly review:Readonly<{kind:CapturedNativeHistoryKind;checkpoint:string}>|null;
 }

@@ -55,6 +55,22 @@ schema, files and both heads in one upgrade transaction. If restore is
 interrupted after commit, reopen that destination with `openContinued` and
 compare its exported backup to the selected pair.
 
-Relay and room catalog admission,
-independent comment and server-log continuation, and physical browser
-durability still require qualification.
+## Participant and room recovery
+
+Capture a flushed continued session as `{kind: "continued-local", session}`
+with `captureSharedGenerationParticipant`. The participant file retains both
+native checkpoints, the current version packets and the predecessor's exact
+packet prefix, the referenced rasters, and the complete upload store with its
+receipts. Existing generation source kinds keep their original record budgets
+and layouts.
+
+Use the existing generation participant slot in
+`SharedRoomRecoveryCatalogArchiveV2` and supply a `continued-local` recovery
+factory with the native profile when staging. The catalog checks the document
+prefix against the selected native inventory. A local comment lane without a
+relay binding remains explicitly unresolved. Cold staging verifies both
+stored heads before reusing the destination.
+
+Live operational handoff, relay bindings for continued history, independent
+comment and server-log continuation, and physical browser durability still
+require qualification.

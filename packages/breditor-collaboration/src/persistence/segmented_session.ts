@@ -29,6 +29,7 @@ import {requireBackupRecovery} from "../backups/identity.js";
 import {admitPairedVersions} from "./review_record_admission.js";
 import type {SegmentedSessionIdentity,SegmentedReview,SegmentedCut} from "./segmented_contract.js";
 import {registerGenerationNative,registerGenerationSource,generationNative} from "../generation_source/admission.js";
+import {continuedRecords} from "../generation_source/continued_records.js";
 import {generationRecords} from "../generation_source/records.js";
 import {generationOperationOrigin} from "../generation_operation/admission.js";
 import {existingGenerationOperationSource} from "../generation_operation/existing_source.js";
@@ -84,7 +85,7 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
  #savedHead:string|null;#saved:Capture|undefined;#closedSaved:{documentRevision:string|null;reviewRevision:string|null}|undefined;#failure:unknown;#closed=false;#retiring=false;#storageChanged=false;#closing:Promise<void>|undefined;#released:Promise<void>|undefined;
  #recordReadEpoch:object=Object.freeze({});readonly #recordReaders=new Set<object>();
  readonly #releasePendingWork:()=>void;
- private constructor(key:object,db:IDBDatabase,lease:SharedWriterLease,reviewLease:ReviewWriterLease|undefined,core:SharedRichEditor<P>,options:Pick<SharedSegmentedSessionOptions<P>,"review"|"onError"|"onState">,identity:SegmentedSessionIdentity,head:string|null,versions:readonly string[],recovered=head!==null,companion?:SegmentedSessionCompanion,continued?:{checkpoint:string;predecessor:string}){
+ private constructor(key:object,db:IDBDatabase,lease:SharedWriterLease,reviewLease:ReviewWriterLease|undefined,core:SharedRichEditor<P>,options:Pick<SharedSegmentedSessionOptions<P>,"review"|"onError"|"onState">,identity:SegmentedSessionIdentity,head:string|null,versions:readonly string[],recovered=head!==null,companion?:SegmentedSessionCompanion,continued?:{checkpoint:string;predecessor:string;priorRecovery:SharedSegmentedRecovery}){
   if(key!==constructionKey)throw new SharedEditorError('managed_source_construction','Use the actual generation session open or recovery factory');
   this.#formatVersion=continued?2:1;
   this.#continuedPredecessor=continued?.predecessor;
@@ -102,7 +103,20 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
    if(!companion)registerGenerationSource(this,{core:core as unknown as SharedRichEditor<SharedSelectionPolicy>,identity:{kind:"local",native:structuredClone(identity),review,relay:null,retained:null},check,checkManaged,stamp:()=>[stamp()],read:()=>generationRecords(read())});
   }else{
    if(segmentedPolicy.call(core)!=="continued-v2")throw new SharedEditorError("continued_history_storage_required","Use the exact continued document owner");
+   const savedPredecessor=continued!.priorRecovery;
    this.#saved={checkpoint:continued!.checkpoint,review:review?{...review,checkpoint:core.reviewCheckpoint()}:null,versions:[...versions],documentRevision:core.view().revision,reviewRevision:review?core.reviewSnapshot().reviewRevision:null,companion:null};
+   const settled=()=>{
+    this.#live();this.#boundCore();checkManagedCore(this.#ownedCore);
+    if(this.#retiring||this.#storageChanged||this.#running||this.#pending||this.#attempt||this.#failure){
+     throw new SharedEditorError("continued_history_backup","Select a settled continued source");
+    }
+   };
+   registerGenerationSource(this,{core:core as unknown as SharedRichEditor<SharedSelectionPolicy>,
+    identity:{kind:"continued-local",native:structuredClone(identity),review,relay:null,retained:null},
+    check:settled,checkManaged:settled,stamp:()=>{settled();return [this.#sourceStamp,this.#recordReadEpoch];},
+    read:()=>{settled();return continuedRecords({format:"breditor/shared-continued-history-backup",formatVersion:1,
+     current:this.#continuedRecovery(),predecessor:savedPredecessor});},
+   });
   }
   if(this.#formatVersion===1)registerSessionDeliveryIO(this,{core,check:checkManaged,save:()=>deliverySaveIntrinsic.call(this),flush:()=>deliveryFlushIntrinsic.call(this)});
   const save=()=>{try{this.save();}catch(error){this.#failed(error);}};
@@ -136,7 +150,7 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
   return this.#continued(input,undefined,input);
  }
  static #continued<Q extends SharedSelectionPolicy>(input:SharedContinuedHistoryOptions<Q>,migration?:SharedContinueHistoryOptions<Q>,recovery?:SharedRestoreContinuedHistoryOptions<Q>){
-  return openContinuedHistory(input,migration,work=>new SharedSegmentedPersistentSession(constructionKey,work.db,work.lease,work.reviewLease,work.core,work.options,work.identity,work.head,work.versions,true,undefined,{checkpoint:work.checkpoint,predecessor:work.predecessor}),recovery);
+  return openContinuedHistory(input,migration,work=>new SharedSegmentedPersistentSession(constructionKey,work.db,work.lease,work.reviewLease,work.core,work.options,work.identity,work.head,work.versions,true,undefined,{checkpoint:work.checkpoint,predecessor:work.predecessor,priorRecovery:work.priorRecovery}),recovery);
  }
  /** Native admission into an absent dedicated destination, after host reacquisition/fencing. Never merge or overwrite. */
  static async restoreRecovery<Q extends SharedSelectionPolicy>(input:SharedSegmentedRecoveryOptions<Q>):Promise<SharedSegmentedPersistentSession<Q>>{
@@ -201,6 +215,9 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
  exportRecovery():SharedSegmentedRecovery{if(this.#formatVersion!==1)throw new SharedEditorError("continued_history_storage_required","Export the continued recovery format");return this.#recovery();}
  exportContinuedRecovery():SharedContinuedHistoryRecovery{
   if(this.#formatVersion!==2)throw new SharedEditorError("continued_history_storage_required","Select continued document history");
+  return this.#continuedRecovery();
+ }
+ #continuedRecovery():SharedContinuedHistoryRecovery{
   const capture=this.#capture();
   this.#checkCapture(capture);
   return Object.freeze({format:"breditor/shared-generation-recovery",formatVersion:2,checkpoint:capture.checkpoint,reviewCheckpoint:capture.review?.checkpoint??null,versions:Object.freeze(capture.versions)});

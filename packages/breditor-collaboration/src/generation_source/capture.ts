@@ -48,7 +48,7 @@ export class SharedGenerationSourceCapture {
   const sorted=[...references.values()].sort((a,b)=>a.asset<b.asset?-1:a.asset>b.asset?1:a.generation<b.generation?-1:a.generation>b.generation?1:0);
   const metadata=freezeGeneration({format:"breditor/shared-generation-asset-reference-capture" as const,formatVersion:1 as const,identity,document:base.document,revision,packets,outcome:pending.length?{kind:"pending" as const,pending}:{kind:"ready" as const,references:sorted}});
   const source=new SharedGenerationSourceCapture(key,metadata,{port,records,check,native}),review=records.find(record=>record.kind==='review');
-  registerCapturedNativeHistory(source,core,{document:{kind:'segmented-v1',checkpoint:records[0]!.json},review:review?{kind:'original',checkpoint:review.json}:null},()=>checkGenerationSource(source));return source;
+  registerCapturedNativeHistory(source,core,{document:{kind:identity.kind==='continued-local'?'continued-v2':'segmented-v1',checkpoint:records[0]!.json},review:review?{kind:'original',checkpoint:review.json}:null},()=>checkGenerationSource(source));return source;
  }
 }
 export const captureSharedGenerationSource=<P extends SharedSelectionPolicy>(input:SharedGenerationSourceSelection<P>):SharedGenerationSourceCapture=>SharedGenerationSourceCapture.capture(input);

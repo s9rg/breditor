@@ -1,6 +1,6 @@
 /** Independent framing retains generation assets AND the exact complete upload-state file. */
 import {MAX_ASSET_BACKUP_BYTES} from "@breditor/experimental-rich-content";
-import {MAX_GENERATION_ASSET_BACKUP_BYTES} from "../generation_assets/codec.js";
+import {generationAssetBackupLimit,MAX_GENERATION_ASSET_BACKUP_BYTES} from "../generation_assets/codec.js";
 import {checkAssetBytesSignal} from "../asset_bytes/guards.js";
 import {assetBytesDigest} from "../asset_bytes/format.js";
 import {generationParticipantIdentity,generationParticipantFailure} from "./policy.js";
@@ -10,7 +10,9 @@ export const GENERATION_PARTICIPANT_MIME="application/vnd.breditor.generation-pa
 export const GENERATION_PARTICIPANT_MAGIC=new TextEncoder().encode("BREDITOR-GENERATION-PARTICIPANT1\n");
 export const GENERATION_PARTICIPANT_PREFIX_BYTES=GENERATION_PARTICIPANT_MAGIC.length+4;
 export const MAX_GENERATION_PARTICIPANT_HEADER_BYTES=256*1024;
-export const MAX_GENERATION_PARTICIPANT_BYTES=GENERATION_PARTICIPANT_PREFIX_BYTES+MAX_GENERATION_PARTICIPANT_HEADER_BYTES+MAX_GENERATION_ASSET_BACKUP_BYTES+MAX_ASSET_BACKUP_BYTES;
+const framingBytes=GENERATION_PARTICIPANT_PREFIX_BYTES+MAX_GENERATION_PARTICIPANT_HEADER_BYTES+MAX_ASSET_BACKUP_BYTES;
+export const MAX_GENERATION_PARTICIPANT_BYTES=framingBytes+MAX_GENERATION_ASSET_BACKUP_BYTES;
+export const generationParticipantLimit=(identity:SharedGenerationParticipantIdentity):number=>framingBytes+generationAssetBackupLimit(identity.source.kind);
 export interface GenerationParticipantSection{bytes:number;offset:number;sha256:string}
 export interface GenerationParticipantHeader{format:"breditor/shared-generation-participant-backup";formatVersion:1;identity:SharedGenerationParticipantIdentity;selected:GenerationParticipantSection;uploads:GenerationParticipantSection;sha256:string}
 export const generationParticipantBody=(identity:SharedGenerationParticipantIdentity,selected:GenerationParticipantSection,uploads:GenerationParticipantSection)=>({format:"breditor/shared-generation-participant-backup" as const,formatVersion:1 as const,identity,selected,uploads});
@@ -21,5 +23,5 @@ export async function encodeGenerationParticipant(identity:SharedGenerationParti
 }
 export function readGenerationParticipantHeader(raw:unknown,expected:SharedGenerationParticipantSelection,bodyBytes:number):GenerationParticipantHeader{
  if(!generationFields(raw,"format,formatVersion,identity,selected,sha256,uploads"))throw generationParticipantFailure("generation_participant_format");const h=raw as unknown as GenerationParticipantHeader,identity=generationParticipantIdentity(h.identity);if(h.format!=="breditor/shared-generation-participant-backup"||h.formatVersion!==1||JSON.stringify(identity)!==JSON.stringify(expected.identity)||typeof h.sha256!=="string"||!/^[a-f0-9]{64}$/.test(h.sha256))throw generationParticipantFailure("generation_participant_policy");
- const section=(v:GenerationParticipantSection,offset:number,max:number):GenerationParticipantSection=>{if(!generationFields(v,"bytes,offset,sha256")||!Number.isSafeInteger(v.bytes)||v.bytes<1||v.bytes>max||v.offset!==offset||typeof v.sha256!=="string"||!/^[a-f0-9]{64}$/.test(v.sha256))throw generationParticipantFailure("generation_participant_format");return{bytes:v.bytes,offset,sha256:v.sha256};};const a=section(h.selected,0,MAX_GENERATION_ASSET_BACKUP_BYTES),b=section(h.uploads,a.bytes,MAX_ASSET_BACKUP_BYTES);if(a.bytes+b.bytes!==bodyBytes)throw generationParticipantFailure("generation_participant_integrity");return {...generationParticipantBody(identity,a,b),sha256:h.sha256};
+ const section=(v:GenerationParticipantSection,offset:number,max:number):GenerationParticipantSection=>{if(!generationFields(v,"bytes,offset,sha256")||!Number.isSafeInteger(v.bytes)||v.bytes<1||v.bytes>max||v.offset!==offset||typeof v.sha256!=="string"||!/^[a-f0-9]{64}$/.test(v.sha256))throw generationParticipantFailure("generation_participant_format");return{bytes:v.bytes,offset,sha256:v.sha256};};const a=section(h.selected,0,generationAssetBackupLimit(identity.source.kind)),b=section(h.uploads,a.bytes,MAX_ASSET_BACKUP_BYTES);if(a.bytes+b.bytes!==bodyBytes)throw generationParticipantFailure("generation_participant_integrity");return {...generationParticipantBody(identity,a,b),sha256:h.sha256};
 }

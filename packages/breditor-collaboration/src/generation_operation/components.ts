@@ -24,7 +24,9 @@ export async function verifyOperationalGenerationOwners<P extends SharedSelectio
 }
 export async function openOperationalGenerationOwners<P extends SharedSelectionPolicy>(p:PreparedGenerationRecovery<P>,owners:GenerationRecoveryOwners<P>,origin:NativeGenerationOperationOrigin):Promise<void>{
  p.guard();const name=p.options.destinations.uploads;if(await inspectUploads(name)==="missing")throw fail("generation_operation_missing");p.guard();owners.uploads=await RichAssetStore.openRetained(name,p.options.limits?{limits:p.options.limits}:{});await verifyUploads(p,owners,p.guard);p.guard();
- const database=p.options.destinations.source,s=p.session,binding=nativeRestoreBinding(s.options.restoreSegmented,s.options),common={database,initialGenerations:{root:"unused",active:"unused-2"},create:()=>{throw fail("generation_operation_missing");},restoreSegmented:(checkpoint:string)=>binding.factory.call(binding.receiver,checkpoint)};
+ const database=p.options.destinations.source,s=p.session;
+ if(s.kind==="continued-local")throw fail("generation_operation_policy");
+ const binding=nativeRestoreBinding(s.options.restoreSegmented,s.options),common={database,initialGenerations:{root:"unused",active:"unused-2"},create:()=>{throw fail("generation_operation_missing");},restoreSegmented:(checkpoint:string)=>binding.factory.call(binding.receiver,checkpoint)};
  switch(s.kind){case"local":owners.session=await SharedSegmentedPersistentSession.open(withGenerationOperationOrigin(inheritActorLeaseInput(s.options,{...s.options,...common}),origin));break;case"relay":owners.session=await SharedSegmentedRelaySession.open(withGenerationOperationOrigin(inheritActorLeaseInput(s.options,{...s.options,...common}),origin));break;case"retained":owners.session=await SharedSegmentedRelaySession.openRetained(withGenerationOperationOrigin(inheritActorLeaseInput(s.options,{...s.options,...common}),origin));break;}
  p.guard();await verifyOperationalGenerationOwners(p,owners,origin);
 }

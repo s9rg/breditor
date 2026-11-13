@@ -22,7 +22,7 @@ export function checkInventoryGenerationSources(metadata:SharedRoomParticipantIn
  const writers=new Map(metadata.writers.map(row=>[row.clock.writer,row])),actors=new Map(metadata.review?.writers.map(row=>[row.clock.actor,row])??[]);
  for(const {backup,source}of sources){
   verifySource.call(backup,source);const identity=selection.call(backup).identity,id=identity.source,lanes=capturedNativeHistoryRead(source),native=lanes.document,reviewNative=lanes.review,captured=records.call(backup),writer=id.native.writer,row=writers.get(writer),descriptor=native.descriptor();
-  if(!row||native.kind!=='segmented-v1'||row.principal!==identity.principal||id.native.room!==metadata.room.document||id.native.richLanguage!==metadata.richLanguage||sharedProtocolLanguage(descriptor)!==metadata.richLanguage||descriptor.schemaFingerprint!==metadata.schemaFingerprint||native.checkpointJson()!==captured[0]?.json)throw sourceError();
+  if(!row||native.kind!==(id.kind==='continued-local'?'continued-v2':'segmented-v1')||row.principal!==identity.principal||id.native.room!==metadata.room.document||id.native.richLanguage!==metadata.richLanguage||sharedProtocolLanguage(descriptor)!==metadata.richLanguage||descriptor.schemaFingerprint!==metadata.schemaFingerprint||native.checkpointJson()!==captured[0]?.json)throw sourceError();
   const version=metadata.room.writerTransportVersion,document=id.relay?.document;
   if(document&&(document.writer!==writer||document.principal!==identity.principal||document.room!==metadata.room.document||transportVersion(document.writerTransport)!==version))throw sourceError();
   // Only unchanged original retained-store records use their original closed readers.

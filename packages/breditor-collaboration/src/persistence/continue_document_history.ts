@@ -35,6 +35,13 @@ export interface SharedContinuedHistoryBackup {
 export type SharedRestoreContinuedHistoryOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy>=
  SharedContinuedHistoryOptions<P>&{backup:SharedContinuedHistoryBackup;writerRecovery:"host-reacquired"};
 
+const recoveryGuards=new WeakMap<object,()=>void>();
+/** Private catalog boundary. No serialized value or public extra option selects it. */
+export function guardContinuedRecovery<T extends object>(input:T,check:()=>void):T{
+ recoveryGuards.set(input,check);
+ return input;
+}
+
 const fail=(message:string)=>new SharedEditorError("continued_history_storage",message);
 function readMigrationHead(input:string):GenerationHead{
  if(input.length>MAX_SEGMENTED_HEAD_BYTES)throw fail("The generation head exceeds its byte budget");
@@ -132,7 +139,7 @@ function convert(profile:SharedRustProfile,room:string,checkpoint:string,next:st
 }
 interface Opened<P extends SharedSelectionPolicy> {
  db:IDBDatabase;lease:SharedWriterLease;reviewLease:ReviewWriterLease|undefined;core:SharedRichEditor<P>;
- options:SharedContinuedHistoryOptions<P>;identity:SegmentedSessionIdentity;head:string;checkpoint:string;versions:readonly string[];predecessor:string;
+ options:SharedContinuedHistoryOptions<P>;identity:SegmentedSessionIdentity;head:string;checkpoint:string;versions:readonly string[];predecessor:string;priorRecovery:SharedSegmentedRecovery;
 }
 
 export async function openContinuedHistory<P extends SharedSelectionPolicy,T>(
@@ -169,7 +176,8 @@ export async function openContinuedHistory<P extends SharedSelectionPolicy,T>(
   checkSegmentedCheckpoint(backup.current.checkpoint,identity,2);
   checkSegmentedCheckpoint(backup.predecessor.checkpoint,identity);
  }
- const factory=globalThis.indexedDB,locks=globalThis.navigator?.locks;
+ const factory=globalThis.indexedDB,locks=globalThis.navigator?.locks,guard=recoveryGuards.get(input);
+ guard?.();
  const lease=await SharedWriterLease.acquire(identity.room,identity.writer);
  let reviewLease:ReviewWriterLease|undefined,db:IDBDatabase|undefined,core:SharedRichEditor<P>|undefined;
  try{
@@ -177,8 +185,13 @@ export async function openContinuedHistory<P extends SharedSelectionPolicy,T>(
   const context=()=>{if(globalThis.indexedDB!==factory||globalThis.navigator?.locks!==locks)throw fail("The storage context changed");};
   context();
   const key=[identity.room,identity.writer] as const;
+  const checkCustody=()=>{
+   context();lease.assertLive();reviewLease?.assertLive();
+   guard?.();
+   context();lease.assertLive();reviewLease?.assertLive();
+  };
   if(backup){
-   const check=()=>{context();lease.assertLive();reviewLease?.assertLive();};
+   const check=checkCustody;
    const {current,predecessor}=backup;
    const review=reviewRecord(current.reviewCheckpoint,options.review);
    const previousReview=reviewRecord(predecessor.reviewCheckpoint,options.review);
@@ -205,14 +218,15 @@ export async function openContinuedHistory<P extends SharedSelectionPolicy,T>(
    db=await createContinuedDatabase(factory,database,key,cut,previous.head,check);
    check();
    return take({db,lease,reviewLease,core,options,identity,head:cut.head,checkpoint:current.checkpoint,
-    versions:current.versions,predecessor:previous.head});
+    versions:current.versions,predecessor:previous.head,priorRecovery:predecessor});
   }
+  checkCustody();
   db=await existingDatabase(database);
   if(!db||db.version!==1||[...db.objectStoreNames].sort().join(",")!=="generation_files,generation_heads"){
    throw fail("Open an existing generation store");
   }
   const opening=fenceOpeningDatabase(db,"session_open_versionchange");
-  const check=()=>{context();opening.assertCurrent();lease.assertLive();reviewLease?.assertLive();};
+  const check=()=>{opening.assertCurrent();checkCustody();opening.assertCurrent();};
   check();
   const saved=await readGenerationCut(db,key,expected?readMigrationHead:readContinuedHead);
   check();
@@ -253,7 +267,7 @@ export async function openContinuedHistory<P extends SharedSelectionPolicy,T>(
    if(current?.head!==head||retained?.head!==predecessor)throw fail("The selected history changed during native admission");
   }
   check();
-  return take({db,lease,reviewLease,core,options,identity,head,checkpoint,versions:saved.record.versions,predecessor});
+  return take({db,lease,reviewLease,core,options,identity,head,checkpoint,versions:saved.record.versions,predecessor,priorRecovery:recoveryRecord(prior??saved,1)});
  }catch(error){
   try{if(core)disposeOwnedCore(core);}finally{
    db?.close();

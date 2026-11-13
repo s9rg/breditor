@@ -1,3 +1,4 @@
+import type {SharedRestoreContinuedHistoryOptions} from "../persistence/continue_document_history.js";
 import type {SharedSelectionPolicy} from "../types.js";
 import type {SharedSegmentedRecoveryOptions,SharedSegmentedPersistentSession} from "../persistence/segmented_session.js";
 import type {SharedSegmentedRelayRecoveryOptions} from "../segmented_relay/contract.js";
@@ -8,6 +9,7 @@ import type {SharedGenerationParticipantBackup} from "./backup.js";
 type Factory<T>=Omit<T,"database"|"recovery"|"writerRecovery">;
 export type SharedGenerationRecoveryFactory<P extends SharedSelectionPolicy=SharedSelectionPolicy>=
  |Readonly<{kind:"local";options:Factory<SharedSegmentedRecoveryOptions<P>>}>
+ |Readonly<{kind:"continued-local";options:Omit<SharedRestoreContinuedHistoryOptions<P>,"database"|"backup"|"writerRecovery">}>
  |Readonly<{kind:"relay";options:Factory<SharedSegmentedRelayRecoveryOptions<P>>}>
  |Readonly<{kind:"retained";options:Factory<SharedSegmentedRetainedRecoveryOptions<P>>}>;
 export type SharedGenerationRecoverySession<P extends SharedSelectionPolicy=SharedSelectionPolicy>=SharedSegmentedPersistentSession<P>|SharedSegmentedRelaySession<P>;

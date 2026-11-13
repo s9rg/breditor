@@ -16,11 +16,11 @@ export function generationFields(value:unknown,fields:string):value is Record<st
 export function generationIdentity(input:unknown):Readonly<SharedGenerationSourceIdentity>{
  try{
   if(!generationFields(input,"kind,native,relay,retained,review"))throw sourceFailure();const v=input as unknown as SharedGenerationSourceIdentity;
-  if(!["local","relay","retained"].includes(v.kind)||new TextEncoder().encode(JSON.stringify(v)).length>MAX_GENERATION_SOURCE_IDENTITY_BYTES)throw sourceFailure();
+  if(!["local","relay","retained","continued-local"].includes(v.kind)||new TextEncoder().encode(JSON.stringify(v)).length>MAX_GENERATION_SOURCE_IDENTITY_BYTES)throw sourceFailure();
   const native=canonicalSegmentedIdentity(v.native);let review=null;
   if(v.review!==null){if(!generationFields(v.review,"actor,principal"))throw sourceFailure();const {actor,principal}=v.review;if(typeof actor!=="string"||!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(actor)||typeof principal!=="string"||!principal.trim()||new TextEncoder().encode(principal).length>256||/[\u0000-\u001f\u007f-\u009f]/u.test(principal)||new TextDecoder("utf-8",{fatal:true}).decode(new TextEncoder().encode(principal))!==principal)throw sourceFailure();review={actor,principal};}
   if(native.reviewedHistory&&native.reviewedHistory.principal!==review?.principal)throw sourceFailure();
-  if(v.kind==="local"){if(v.relay!==null||v.retained!==null)throw sourceFailure();return freezeGeneration({kind:v.kind,native,review,relay:null,retained:null});}
+  if(v.kind==="local"||v.kind==="continued-local"){if(v.relay!==null||v.retained!==null)throw sourceFailure();return freezeGeneration({kind:v.kind,native,review,relay:null,retained:null});}
   if(v.relay===null||v.kind==="retained"&&v.retained===null||v.kind==="relay"&&v.retained!==null)throw sourceFailure();const relay=relayBinding(v.relay),options={...native,review:review?{...review,access:"read_only"}:undefined,binding:relay,retained:v.retained} as unknown as SharedSegmentedRetainedSessionOptions;
   const companion=v.kind==="retained"?new SegmentedRetainedCompanion(options):new SegmentedRelayCompanion(options);
   return freezeGeneration({kind:v.kind,native,review,relay,retained:companion instanceof SegmentedRetainedCompanion?companion.retainedBinding:null});

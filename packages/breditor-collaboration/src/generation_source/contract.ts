@@ -6,16 +6,17 @@ import type {SharedSegmentedPersistentSession} from "../persistence/segmented_se
 import type {SharedSegmentedRelaySession} from "../segmented_relay/session.js";
 import type {SharedSegmentedRelayBinding} from "../segmented_relay/contract.js";
 import type {SharedSegmentedRetainedBinding} from "../segmented_relay/retained_contract.js";
-export type SharedGenerationSourceKind="local"|"relay"|"retained";
+export type SharedGenerationSourceKind="local"|"relay"|"retained"|"continued-local";
 export type SharedGenerationSourceSelection<P extends SharedSelectionPolicy=SharedSelectionPolicy>=
  |Readonly<{kind:"local";session:SharedSegmentedPersistentSession<P>}>
+ |Readonly<{kind:"continued-local";session:SharedSegmentedPersistentSession<P>}>
  |Readonly<{kind:"relay"|"retained";session:SharedSegmentedRelaySession<P>}>;
 export interface SharedGenerationSourceIdentity {
  readonly kind:SharedGenerationSourceKind;readonly native:Readonly<SegmentedSessionIdentity>;
  readonly review:Readonly<{actor:string;principal:string}>|null;
  readonly relay:SharedSegmentedRelayBinding|null;readonly retained:SharedSegmentedRetainedBinding|null;
 }
-export type SharedGenerationSourceRecordKind="document"|"review"|"local-version"|"relay"|"suggestions"|"revisions"|"versions";
+export type SharedGenerationSourceRecordKind="document"|"review"|"local-version"|"relay"|"suggestions"|"revisions"|"versions"|"predecessor-document"|"predecessor-review"|"predecessor-versions";
 export interface SharedGenerationSourceRecord {readonly kind:SharedGenerationSourceRecordKind;readonly index:number;readonly json:string}
 // Each payload is stored separately, not JSON-escaped into a larger journal or old 16 MiB record.
 export const MAX_GENERATION_SOURCE_BYTES=304*1024*1024+128*1024;

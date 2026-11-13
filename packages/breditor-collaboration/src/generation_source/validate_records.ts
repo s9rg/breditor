@@ -1,4 +1,6 @@
 /** Admission of outer record shapes/bounds only. Actual native replay still precedes recovery. */
+import type {SharedContinuedHistoryBackup} from "../persistence/continue_document_history.js";
+import {continuedRecordLimits,MAX_CONTINUED_SOURCE_BYTES,MAX_CONTINUED_SOURCE_RECORDS,readContinuedRecords} from "./continued_records.js";
 import {checkSegmentedCapture} from "../persistence/segmented_head.js";
 import {MAX_SEGMENTED_ARCHIVE_BYTES} from "../persistence/segmented_contract.js";
 import {SegmentedRelayCompanion} from "../segmented_relay/companion.js";
@@ -9,11 +11,21 @@ import type {SharedSegmentedRelayRecovery} from "../segmented_relay/contract.js"
 import type {SharedSegmentedRecovery} from "../persistence/segmented_session.js";
 import {MAX_GENERATION_SOURCE_BYTES,MAX_GENERATION_SOURCE_RECORDS,type SharedGenerationSourceIdentity,type SharedGenerationSourceRecord,type SharedGenerationSourceRecordKind} from "./contract.js";
 import {sourceFailure,generationFields,SharedGenerationSourceError} from "./identity.js";
-export type SharedGenerationRecovery=SharedSegmentedRecovery|SharedSegmentedRelayRecovery|SharedSegmentedRetainedRecovery;
-export const generationRecordLimit=(kind:SharedGenerationSourceRecordKind):number=>kind==="document"?MAX_SEGMENTED_ARCHIVE_BYTES:kind==="review"?16*1024*1024:kind==="local-version"?4*1024*1024:kind==="relay"?16*1024:32*1024*1024;
-export function checkGenerationRecords(identity:SharedGenerationSourceIdentity,input:readonly SharedGenerationSourceRecord[]):{source:SharedSegmentedRecovery;companion:SegmentedRelayCompanion|undefined;recovery:SharedGenerationRecovery}{
- if(!Array.isArray(input)||input.length<1||input.length>MAX_GENERATION_SOURCE_RECORDS)throw sourceFailure();let at=0,total=0;
- const take=(kind:SharedGenerationSourceRecordKind,index=0):string=>{const r=input[at++];if(!generationFields(r,"index,json,kind")||r["kind"]!==kind||r["index"]!==index||typeof r["json"]!=="string"||!r["json"])throw sourceFailure();const json=r["json"],bytes=new TextEncoder().encode(json);if(bytes.length>generationRecordLimit(kind)||new TextDecoder("utf-8",{fatal:true}).decode(bytes)!==json)throw new SharedGenerationSourceError("generation_source_budget","Generation source record exceeds its unchanged nested budget");total+=bytes.length;if(total>MAX_GENERATION_SOURCE_BYTES)throw sourceFailure();return json;};
+export type SharedGenerationRecovery=SharedSegmentedRecovery|SharedSegmentedRelayRecovery|SharedSegmentedRetainedRecovery|SharedContinuedHistoryBackup;
+export const generationSourceBudget=(kind:SharedGenerationSourceIdentity["kind"])=>kind==="continued-local"
+ ?{bytes:MAX_CONTINUED_SOURCE_BYTES,records:MAX_CONTINUED_SOURCE_RECORDS}
+ :{bytes:MAX_GENERATION_SOURCE_BYTES,records:MAX_GENERATION_SOURCE_RECORDS};
+export const generationRecordLimit=(kind:SharedGenerationSourceRecordKind,source:SharedGenerationSourceIdentity["kind"]):number=>
+ source==="continued-local"?(Object.hasOwn(continuedRecordLimits,kind)?continuedRecordLimits[kind as keyof typeof continuedRecordLimits]:0):
+ kind==="document"?MAX_SEGMENTED_ARCHIVE_BYTES:kind==="review"?16*1024*1024:kind==="local-version"?4*1024*1024:kind==="relay"?16*1024:["suggestions","revisions","versions"].includes(kind)?32*1024*1024:0;
+export function checkGenerationRecords(identity:SharedGenerationSourceIdentity,input:readonly SharedGenerationSourceRecord[]):{source:SharedSegmentedRecovery|SharedContinuedHistoryBackup["current"];companion:SegmentedRelayCompanion|undefined;recovery:SharedGenerationRecovery}{
+ const budget=generationSourceBudget(identity.kind);
+ if(!Array.isArray(input)||input.length<1||input.length>budget.records)throw sourceFailure();let at=0,total=0;
+ const take=(kind:SharedGenerationSourceRecordKind,index=0):string=>{const r=input[at++];if(!generationFields(r,"index,json,kind")||r["kind"]!==kind||r["index"]!==index||typeof r["json"]!=="string"||!r["json"])throw sourceFailure();const json=r["json"],bytes=new TextEncoder().encode(json);if(bytes.length>generationRecordLimit(kind,identity.kind)||new TextDecoder("utf-8",{fatal:true}).decode(bytes)!==json)throw new SharedGenerationSourceError("generation_source_budget","Generation source record exceeds its unchanged nested budget");total+=bytes.length;if(total>budget.bytes)throw sourceFailure();return json;};
+ if(identity.kind==="continued-local"){
+  const recovery=readContinuedRecords(identity,input,take,()=>at);
+  return {source:recovery.current,companion:undefined,recovery};
+ }
  const checkpoint=take("document"),reviewCheckpoint=identity.review?take("review"):null,versions:string[]=[];
  while(input[at]?.kind==="local-version"){if(versions.length>=32)throw sourceFailure();versions.push(take("local-version",versions.length));}
  checkSegmentedCapture(checkpoint,identity.native,identity.review?{...identity.review,checkpoint:reviewCheckpoint!}:null,versions);

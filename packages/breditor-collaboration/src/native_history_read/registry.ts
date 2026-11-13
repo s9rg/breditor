@@ -4,11 +4,11 @@ import {SharedEditorError,type SharedRichEditor} from '../core.js';
 import type {SharedSelectionPolicy} from '../types.js';
 import {coreReadStamp} from '../core_read_stamp.js';
 import {nativeHistoryIntrinsics as native} from './intrinsics.js';
-import type {CapturedNativeHistoryKind,CapturedNativeHistoryRead,CapturedNativeHistorySelection} from './contract.js';
+import type {CapturedDocumentHistoryKind,CapturedNativeHistoryKind,CapturedNativeHistoryRead,CapturedNativeHistorySelection} from './contract.js';
 
 interface Source {
  core:SharedRichEditor<SharedSelectionPolicy>;guard:()=>void;
- documentKind:CapturedNativeHistoryKind;reviewKind:CapturedNativeHistoryKind|null;
+ documentKind:CapturedDocumentHistoryKind;reviewKind:CapturedNativeHistoryKind|null;
  documentStamp:object;reviewStamp:object|null;
  read:CapturedNativeHistoryRead;
 }

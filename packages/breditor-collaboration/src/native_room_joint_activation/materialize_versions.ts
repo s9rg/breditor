@@ -43,9 +43,9 @@ export async function materializeSelectedSourceVersions(scope:SelectedNativeReco
   for(const row of sources){
    // Independent-local metadata is preserved separately by continuation. Its
    // caches are not part of the concrete source recipe's retained catalog.
-   const parent=row.source.parent;if(parent.kind==='independent-local'||parent.kind==='generation'&&parent.source.kind==='local')continue;
+   const parent=row.source.parent;if(parent.kind==='independent-local'||parent.kind==='generation'&&(parent.source.kind==='local'||parent.source.kind==='continued-local'))continue;
    check();const context=delivery.call(metadata,row.source,'comment');
-   try{let children;if(parent.kind==='original')children=parent.packets;else if(parent.kind==='generation'){if(parent.source.kind==='local')continue;children=await prepareCompoundMetadata(parent.source.session,context);}else children=await prepareCompoundMetadata(parent.session,context);check();if(!children.versions)continue;
+   try{let children;if(parent.kind==='original')children=parent.packets;else if(parent.kind==='generation'){if((parent.source.kind==='local'||parent.source.kind==='continued-local'))continue;children=await prepareCompoundMetadata(parent.source.session,context);}else children=await prepareCompoundMetadata(parent.session,context);check();if(!children.versions)continue;
     const catalog=children.versions,missing=catalogVersions.call(catalog).filter(info=>!catalogStatus.call(catalog,info.id).cached).map(info=>info.id).sort();
     owned.push({id:row.id,catalog,source:row.source,missing});
    }finally{
