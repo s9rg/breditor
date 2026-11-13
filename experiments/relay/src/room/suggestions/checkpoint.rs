@@ -4,11 +4,23 @@ use super::{
     revisions::RevisionCheckpoint,
 };
 use crate::{
-    Error, Result, Room,
+    DurableReceipt, Error, Result, Room,
     room::materialized_checkpoint::{ReplicaCheckpoint, sequence},
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+
+impl Room {
+    pub(in crate::room) fn has_checkpoint_effect_receipt(&self, ack: &DurableReceipt) -> bool {
+        ack.receipt.writer == super::EFFECT_WRITER
+            && ack.sequence.parse::<u64>().ok().is_some_and(|at| {
+                self.suggestions.as_ref().is_some_and(|state| {
+                    matches!(state.updates.get(&at), Some(SuggestionUpdate::Decided(decision))
+                        if decision.effect.as_ref().is_some_and(|effect| effect.writer_group == ack.receipt))
+                })
+            })
+    }
+}
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]

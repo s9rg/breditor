@@ -158,6 +158,43 @@ fn materialized_relay_checkpoint_keeps_old_receipts_and_resumes_both_offline_his
 }
 
 #[test]
+fn materialized_relay_checkpoint_retains_the_reserved_suggestion_effect_receipt() -> TestResult {
+    use crate::{
+        DocumentSuggestionDecisionAdmission, SuggestionDecision, SuggestionDecisionRequest,
+    };
+    let (files, mut room, _) = setup_profile(3, true, true)?;
+    let request = test_fixture::seed_with_request(&mut room, 0, true)?.ok_or("revision request")?;
+    let successor = room
+        .document_suggestion_successor("owner", &request.previous_suggestion_id)?
+        .ok_or("published replacement")?;
+    let accept = SuggestionDecisionRequest {
+        binding: room.document_suggestions_descriptor("owner")?.binding,
+        suggestion_id: successor.publication.suggestion.id,
+        decision: SuggestionDecision::Accept,
+    };
+    let DocumentSuggestionDecisionAdmission::Durable(first) =
+        room.decide_document_suggestion("owner", &accept)?
+    else {
+        return Err("expected accepted suggestion".into());
+    };
+    assert!(first.decision.effect.is_some());
+    room.rotate_log_generation("owner", "two")?;
+    let checkpoint = room.materialize_relay_checkpoint("owner")?;
+    let original = room.catchup("owner")?;
+    drop(room);
+    let mut restored = Room::open_log_generations_with_checkpoint(&files.room(), &checkpoint)?;
+    assert_eq!(restored.catchup("owner")?, original);
+    let DocumentSuggestionDecisionAdmission::Durable(retry) =
+        restored.decide_document_suggestion("owner", &accept)?
+    else {
+        return Err("expected original suggestion receipt".into());
+    };
+    assert!(retry.duplicate);
+    assert_eq!(retry.decision, first.decision);
+    Ok(())
+}
+
+#[test]
 fn materialized_relay_checkpoint_refuses_a_foreign_lineage_or_pending_rotation() -> TestResult {
     let (files, mut room, _) = setup_profile(3, true, true)?;
     room.grant("owner", "checkpoint-reader", Some(Role::Reader))?;

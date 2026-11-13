@@ -128,21 +128,22 @@ impl Checkpoint {
                 },
             );
         }
-        for ack in self.receipts {
-            sequence(&ack.sequence, records)?;
-            if ack.duplicate
-                || !room.writers.get(&ack.receipt.writer).is_some_and(|writer| !writer.observer)
-                || room.receipts.insert(Room::key(&ack.receipt), ack).is_some()
-            {
-                return Err(Error::Contract("relay checkpoint document receipt differs"));
-            }
-        }
         if let Some(checkpoint) = self.review {
             checkpoint.restore(&mut room, records)?;
         }
         room.versions = self.versions.map(|value| value.restore(records)).transpose()?;
         room.suggestions =
             self.suggestions.map(|value| value.restore(&room, records)).transpose()?;
+        for ack in self.receipts {
+            sequence(&ack.sequence, records)?;
+            if ack.duplicate
+                || !room.writers.get(&ack.receipt.writer).is_some_and(|writer| !writer.observer)
+                    && !room.has_checkpoint_effect_receipt(&ack)
+                || room.receipts.insert(Room::key(&ack.receipt), ack).is_some()
+            {
+                return Err(Error::Contract("relay checkpoint document receipt differs"));
+            }
+        }
         for boundary in self.boundaries {
             room.remember_native_history(
                 sequence(&boundary.sequence, records)?,
