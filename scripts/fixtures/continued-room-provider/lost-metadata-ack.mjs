@@ -2,6 +2,11 @@ import assert from 'node:assert/strict';
 
 const comment='Relay saved this comment before its reply';
 const versionName='Relay saved this version before its reply';
+function versionPublishUrl(endpoint){
+ const url=new URL('/document-versions/v1/publish',endpoint);
+ url.protocol=url.protocol==='wss:'?'https:':'http:';
+ return url.href;
+}
 
 async function beforeTimeout(reply,label){
  let timer;
@@ -14,14 +19,17 @@ async function beforeTimeout(reply,label){
 
 /** Test-owned HTTP boundary for exactly the immutable packet this client published. */
 export function interceptVersionAcknowledgement(endpoint,packet){
- const url=new URL('/document-versions/v1/publish',endpoint).href;
+ const url=versionPublishUrl(endpoint);
  const fetch=globalThis.fetch,reply=Promise.withResolvers();
  let requests=0;
  globalThis.fetch=async(input,options)=>{
   if(String(input)!==url||options?.method!=='POST'||options.body!==packet)return fetch(input,options);
   requests++;
   const response=await fetch(input,options);
-  if(response.status!==200)return response;
+  if(response.status!==200){
+   reply.reject(Error('Expected successful version publication, received HTTP '+response.status));
+   return response;
+  }
   reply.resolve((await response.json()).admission);
   throw Error('Controlled loss of the real version acknowledgement');
  };
@@ -94,7 +102,7 @@ export function checkLostComment(core){
 }
 
 export function countVersionSubmissions(endpoint,packet){
- const url=new URL('/document-versions/v1/publish',endpoint).href;
+ const url=versionPublishUrl(endpoint);
  const fetch=globalThis.fetch;
  let sent=0;
  globalThis.fetch=(input,options)=>{
