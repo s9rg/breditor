@@ -1,5 +1,5 @@
 import {canonicalContinuedPairIdentity,continuedPairStore} from '../continued_pair/cut.js';
-import type {ContinuedPairHead} from '../continued_pair/contract.js';
+import type {ContinuedPairHead,SharedContinuedPairRecovery} from '../continued_pair/contract.js';
 import type {IndependentHistoryCut} from '../independent_history/contract.js';
 import {admitNativeDeliveryProgress} from '../delivery_state/native_progress.js';
 import {admitDeliveryRetainedRecords,deliveryRetainedBinding,deliveryRetainedRecords,emptyDeliveryRetainedRecords} from '../delivery_state/retained.js';
@@ -67,6 +67,13 @@ export class ContinuedDeliveryCompanion {
   return {source,state};
  }
  load(head:string):void{this.#saved=this.#current=this.#decode(head).state;}
+ recovery(source:SharedContinuedPairRecovery,state=this.#current):SharedContinuedDeliveryRecovery{
+  return {format:'breditor/shared-continued-delivery-recovery',formatVersion:1,source,
+   relay:structuredClone(state.relay),retainedBinding:structuredClone(this.retainedBinding),retained:structuredClone(state.retained)};
+ }
+ readRecovery(source:SharedContinuedPairRecovery,head:string):SharedContinuedDeliveryRecovery{
+  return this.recovery(source,this.#decode(head).state);
+ }
  capture():State{return this.#current;}
  durable():State{return this.#saved;}
  wrap(cut:IndependentHistoryCut,state:State):IndependentHistoryCut{

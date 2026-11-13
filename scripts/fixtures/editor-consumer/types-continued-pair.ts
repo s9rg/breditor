@@ -2,7 +2,7 @@ import {
  SharedContinuedPairSession,SharedContinuedParticipantBackup,createSharedContinuedRelaySync,createSharedContinuedReviewRelaySync,
  type SharedContinuedDeliveryOptions,type SharedContinuedDeliveryRecovery,type SharedIndependentRelaySyncOptions,type SharedIndependentReviewSyncOptions,
  type SharedContinuedPairOptions,type SharedContinuedPairRecovery,
- type ContinuedPairRecords,type SharedContinuedPairAssetReferences,
+ type ContinuedDeliveryRecords,type ContinuedPairRecords,type SharedContinuedPairAssetReferences,
  type ContinuedParticipantCaptureOptions,type ContinuedParticipantReadOptions,type ContinuedParticipantSelection,
 } from '@breditor/collaboration';
 declare const options:SharedContinuedPairOptions<'document-v1'>;
@@ -41,7 +41,12 @@ const source=await SharedContinuedPairSession.restoreDelivery(delivery,archived,
 const documentSync=createSharedContinuedRelaySync(source,documentOptions);
 const reviewSync=createSharedContinuedReviewRelaySync(source,reviewOptions);
 const exact:SharedContinuedDeliveryRecovery=source.exportDeliveryRecovery();
-void exact;
+const deliveryRead=await source.readDeliveryRecords(()=>{});
+const deliveryRecords:ContinuedDeliveryRecords=deliveryRead.metadata();
+const committed:SharedContinuedDeliveryRecovery=deliveryRecords.committed.recovery;
+await deliveryRead.verify();
+deliveryRead.dispose();
+void [exact,committed];
 documentSync.dispose();reviewSync.dispose();await source.close();
 await (await SharedContinuedPairSession.openDelivery(delivery)).close();
 // @ts-expect-error Delivery restore requires a current host writer reacquisition decision.

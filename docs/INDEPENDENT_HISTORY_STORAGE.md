@@ -233,6 +233,13 @@ suggestion queue before the revision store and pass the document transport to
 the revision store. An application-created `SharedSuggestionSync` remains the
 application's responsibility to dispose.
 
+`readDeliveryRecords(checkAuthority, signal)` holds the paired save queue and
+returns the committed, attempted, pending, and live records. Each slot
+includes both native lanes and its own relay and outbox state. The same
+committed cut can also appear in the attempted slot after a lost
+acknowledgement. Call `verify()` to recheck the exact persisted head and
+immutable files. Dispose the read to release the save queue.
+
 The complete recovery can be exported and restored independently. The
 continued-participant archive described below currently captures local
 continued pairs. Its whole-room recovery and activation path still needs

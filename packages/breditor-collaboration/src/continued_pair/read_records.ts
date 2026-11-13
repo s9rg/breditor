@@ -20,22 +20,22 @@ const construction=Symbol();
 export const continuedPairReadFailure=(suffix:string)=>new SharedEditorError(
  'continued_pair_read_'+suffix,'Read the actual continued pair under one unchanged storage and native observation',
 );
-let create:(metadata:ContinuedPairRecords,state:ReadState)=>ContinuedPairRecordRead;
+let create:<T>(metadata:T,state:ReadState)=>ContinuedPairRecordRead<T>;
 
 /** Detached exact recovery data with a separate observation of its real source. */
-export class ContinuedPairRecordRead {
- readonly #metadata:ContinuedPairRecords;
+export class ContinuedPairRecordRead<T=ContinuedPairRecords> {
+ readonly #metadata:T;
  #state:ReadState|undefined;
  #checking=false;
  #verifying=false;
 
- private constructor(token:symbol,metadata:ContinuedPairRecords,state:ReadState){
+ private constructor(token:symbol,metadata:T,state:ReadState){
   if(token!==construction)throw continuedPairReadFailure('source');
   this.#metadata=frozen(structuredClone(metadata));
   this.#state=state;
   Object.freeze(this);
  }
- metadata():ContinuedPairRecords{return this.#metadata;}
+ metadata():T{return this.#metadata;}
  check():void{
   const state=this.#state;
   if(!state)throw continuedPairReadFailure('closed');
@@ -61,4 +61,4 @@ export class ContinuedPairRecordRead {
 }
 
 /** Only the owning continued pair supplies the observation callbacks. */
-export const createContinuedPairRecordRead=(metadata:ContinuedPairRecords,state:ReadState)=>create(metadata,state);
+export const createContinuedPairRecordRead=<T>(metadata:T,state:ReadState)=>create(metadata,state);

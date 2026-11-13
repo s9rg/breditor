@@ -70,7 +70,7 @@ export type {ContinuedParticipantPrefix,ContinuedDocumentOnlyPrefix,ContinuedAcc
 export {SharedContinuedParticipantBackup} from "./continued_participant/archive.js";
 export type {ContinuedParticipantIdentity,ContinuedParticipantSelection,ContinuedParticipantMetadata,ContinuedParticipantCaptureOptions,ContinuedParticipantReadOptions} from "./continued_participant/contract.js";
 export {createSharedContinuedRelaySync,createSharedContinuedReviewRelaySync} from "./continued_delivery/factories.js";
-export type {SharedContinuedDeliveryOptions,SharedContinuedDeliveryRecovery} from "./continued_delivery/contract.js";
+export type {ContinuedDeliveryRecordRead,ContinuedDeliveryRecords,SharedContinuedDeliveryOptions,SharedContinuedDeliveryRecovery} from "./continued_delivery/contract.js";
 export {SharedContinuedPairSession} from "./continued_pair/session.js";
 export type {SharedContinuedPairOptions,SharedContinuedPairRecovery,ContinuedPairIdentity,ContinuedPairHistoryKind} from "./continued_pair/contract.js";
 export {SharedIndependentHistoryPersistentSession} from "./independent_history/session.js";

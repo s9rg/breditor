@@ -55,7 +55,7 @@ if(mode==='installed'){
 }
 const result=JSON.parse(execFileSync(process.execPath,[probe,runtime,...hosts],{cwd,encoding:'utf8',timeout:120000}));
 assert.deepEqual(result,{passed:true,nativeRooms:3,coldReads:3,packetsRetained:6,lostAcknowledgements:2,
- reviewReceipts:3,documentReceipts:3,undoRedo:3,ceilingChecks:3,duplicateRefusals:3,recoveryImports:3,deliveredPackets:5,sharedWasmSha256});
+ reviewReceipts:3,documentReceipts:3,undoRedo:3,ceilingChecks:3,duplicateRefusals:3,recoveryImports:3,deliveredPackets:5,verifiedRecordReads:3,unacknowledgedRecordReads:2,sharedWasmSha256});
 assert.deepEqual(sourceEvidence(root),source);
 assert.deepEqual(hosts.map(fileDigest),nativeHosts.map(row=>row.sha256));
 const report={format:'breditor/continued-delivery-qualification',formatVersion:1,passed:true,source,mode,nativeHosts,result,consumerProof};

@@ -1,6 +1,6 @@
 import {ContinuedDeliveryCompanion} from '../continued_delivery/companion.js';
 import {continuedDeliveryCompanion,registerContinuedDelivery,withContinuedDelivery} from '../continued_delivery/binding.js';
-import type {SharedContinuedDeliveryOptions,SharedContinuedDeliveryRecovery} from '../continued_delivery/contract.js';
+import type {ContinuedDeliveryRecordRead,ContinuedDeliveryRecords,SharedContinuedDeliveryOptions,SharedContinuedDeliveryRecovery} from '../continued_delivery/contract.js';
 import type {DurableRelaySourcePort} from '../relay/durable_source_port.js';
 import {registerSessionDeliveryIO} from '../delivery_source/io.js';
 import {registerRetainedStoreOwner,withIndependentRetainedPort,type RetainedStorePort} from '../delivery_ports/retained.js';
@@ -18,7 +18,7 @@ import {NativeReconstructionWaits} from '../selected_native_reconstruction/read_
 import {OperationalReadCancellation} from '../operation_read/cancellation.js';
 import {readContinuedPairAssetReferences,type SharedContinuedPairAssetReferences} from './asset_references.js';
 import {admitContinuedPair,captureContinuedPair as capture,withContinuedPairReplay} from './replay.js';
-import {continuedPairReadFailure as readFailure,createContinuedPairRecordRead,ContinuedPairRecordRead} from './read_records.js';
+import {continuedPairReadFailure as readFailure,createContinuedPairRecordRead,ContinuedPairRecordRead,type ContinuedPairRecords} from './read_records.js';
 import {SharedEditorError,type SharedRichEditor} from '../core.js';
 import {checkManagedCore} from '../managed_custody.js';
 import {registerNativePendingWork} from '../native_pending_work.js';
@@ -57,6 +57,12 @@ const same=(a:Capture|undefined,b:Capture)=>
  a?.documentCheckpoint===b.documentCheckpoint&&a.reviewCheckpoint===b.reviewCheckpoint&&
  a.delivery===b.delivery&&a.versions.length===b.versions.length&&a.versions.every((packet,index)=>packet===b.versions[index]);
 interface SaveAttempt {capture:Capture;cut?:IndependentHistoryCut}
+interface HeldPairSlots {
+ readonly committed:Readonly<{head:string;recovery:SharedContinuedPairRecovery}>;
+ readonly attempt:SaveAttempt|undefined;
+ readonly pending:Capture|undefined;
+ readonly live:Capture;
+}
 
 /** Own one exact two-lane native replay and one atomic version-two paired head. */
 export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
@@ -285,8 +291,7 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
  exportDeliveryRecovery():SharedContinuedDeliveryRecovery{
   this.#live();
   const companion=this.#requireDelivery(),{delivery,...source}=this.#capture();
-  return {format:'breditor/shared-continued-delivery-recovery',formatVersion:1,source,
-   relay:structuredClone(delivery!.relay),retainedBinding:structuredClone(companion.retainedBinding),retained:structuredClone(delivery!.retained)};
+  return companion.recovery(source,delivery);
  }
  #requireDelivery():ContinuedDeliveryCompanion{
   if(!this.#delivery)throw fail('continued_delivery_required','Open the explicit continued delivery family');
@@ -353,8 +358,33 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
 
  /** Hold the paired save queue while reading its exact durable and in-memory cuts. */
  async readRecords(checkAuthority:()=>void,signal?:AbortSignal):Promise<ContinuedPairRecordRead>{
-  this.#checkWrite();
   if(this.#delivery)throw fail('continued_delivery_export_required','Use the complete delivery recovery record');
+  return this.#readRecords<ContinuedPairRecords>(checkAuthority,signal,({committed,attempt,pending,live})=>({
+   format:'breditor/persistent-continued-pair-record-read',formatVersion:1,
+   scope:'atomic-continued-pair-committed-attempt-pending-live',committed,
+   attempt:attempt?{capture:attempt.capture,cut:attempt.cut??null}:null,pending:pending??null,live,
+  }));
+ }
+
+ /** Hold both native lanes and all relay progress and outboxes in one exact read. */
+ async readDeliveryRecords(checkAuthority:()=>void,signal?:AbortSignal):Promise<ContinuedDeliveryRecordRead>{
+  const delivery=this.#requireDelivery();
+  const wrap=({delivery:state,...source}:Capture)=>{
+   if(!state)throw readFailure('changed');
+   return delivery.recovery(source,state);
+  };
+  return this.#readRecords<ContinuedDeliveryRecords>(checkAuthority,signal,({committed,attempt,pending,live})=>({
+   format:'breditor/persistent-continued-delivery-record-read',formatVersion:1,
+   scope:'atomic-continued-delivery-committed-attempt-pending-live',
+   committed:{head:committed.head,recovery:delivery.readRecovery(committed.recovery,committed.head)},
+   attempt:attempt?{capture:wrap(attempt.capture),preparedHead:attempt.cut?.head??null}:null,
+   pending:pending?wrap(pending):null,live:wrap(live),
+  }));
+ }
+
+ async #readRecords<T>(checkAuthority:()=>void,signal:AbortSignal|undefined,
+  metadata:(slots:HeldPairSlots)=>T):Promise<ContinuedPairRecordRead<T>>{
+  this.#checkWrite();
   checkManagedCore(this.#core);
   if(this.#recordReader||this.#running)throw readFailure('busy');
   const token=Object.freeze({});
@@ -381,7 +411,7 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
    };
    const check=()=>{current();authority();current();};
    const readStored=async()=>{
-    const stored=await readPairedHistoryCut(this.#db,this.#key,continuedPairStore);
+    const stored=await readPairedHistoryCut(this.#db,this.#key,this.#delivery?.store??continuedPairStore);
     current();
     if(!stored||stored.head!==head&&stored.head!==attempt?.cut?.head||
        JSON.stringify(stored.record.identity)!==JSON.stringify(this.#identity))throw readFailure('changed');
@@ -392,11 +422,9 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
    check();
    const committed={format:live.format,formatVersion:live.formatVersion,identity:stored.record.identity,
     documentCheckpoint:stored.documentCheckpoint,reviewCheckpoint:stored.reviewCheckpoint,versions:stored.record.versions};
-   const result=createContinuedPairRecordRead({
-    format:'breditor/persistent-continued-pair-record-read',formatVersion:1,
-    scope:'atomic-continued-pair-committed-attempt-pending-live',committed:{head:stored.head,recovery:committed},
-    attempt:attempt?{capture:attempt.capture,cut:attempt.cut??null}:null,pending:pending??null,live,
-   },{check,release,verify:async()=>{
+   const result=createContinuedPairRecordRead(metadata({
+    committed:{head:stored.head,recovery:committed},attempt,pending,live,
+   }),{check,release,verify:async()=>{
     check();
     const actual=await readStored();
     check();

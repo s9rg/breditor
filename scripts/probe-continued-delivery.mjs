@@ -26,7 +26,7 @@ export async function probeContinuedDelivery(runtime,binary,revisionBinary){
  await wasm.default({module_or_path:bytes});
  const configuration=JSON.stringify({format:'breditor/shared-rich-profile',formatVersion:3,schema:{name:'example/continued-delivery',version:1},extensions:[]});
  const profile=wasm.SharedRichProfile.from_standard_configuration_json_v3(configuration),descriptor=JSON.parse(profile.descriptor_json());
- const counts={nativeRooms:0,coldReads:0,packetsRetained:0,lostAcknowledgements:0,reviewReceipts:0,documentReceipts:0,undoRedo:0,ceilingChecks:0,duplicateRefusals:0,recoveryImports:0,deliveredPackets:0};
+ const counts={nativeRooms:0,coldReads:0,packetsRetained:0,lostAcknowledgements:0,reviewReceipts:0,documentReceipts:0,undoRedo:0,ceilingChecks:0,duplicateRefusals:0,recoveryImports:0,deliveredPackets:0,verifiedRecordReads:0,unacknowledgedRecordReads:0};
  try{
   for(const [wire,documentHistory,reviewHistory] of [[1,'original','continued-v2'],[2,'continued-v2','original'],[2,'continued-v2','continued-v2']]){
    const directory=mkdtempSync(join(tmpdir(),'breditor-continued-delivery-test-')),paths=['room.log','profile.json','document.json','auth.json'].map(name=>join(directory,name));
@@ -141,6 +141,15 @@ export async function probeContinuedDelivery(runtime,binary,revisionBinary){
      pending={predecessor,proposal,revision,version};
     }else{pending={version:versions.saveVersion('Queued across continued replay','1')};await versions.flush();}
     const offline=session.exportDeliveryRecovery();
+    const held=await session.readDeliveryRecords(()=>{});
+    assert.deepEqual(held.metadata().committed.recovery,offline);
+    assert.deepEqual(held.metadata().live,offline);
+    assert.equal(held.metadata().attempt,null);
+    assert.equal(held.metadata().pending,null);
+    await assert.rejects(session.close(),error=>error.code==='continued_pair_read_busy');
+    await held.verify();held.dispose();
+    assert.throws(()=>held.check(),error=>error.code==='continued_pair_read_closed');
+    counts.verifiedRecordReads++;
     await session.close();session=undefined;
     await assert.rejects(api.SharedContinuedPairSession.open(options));
     session=await api.SharedContinuedPairSession.openDelivery(options);
@@ -156,6 +165,13 @@ export async function probeContinuedDelivery(runtime,binary,revisionBinary){
     if(inject){
      await assert.rejects(comments.connect(),error=>error.code==='local_save_failed');
      assert.equal(interrupted,true);
+     const held=await session.readDeliveryRecords(()=>{});
+     const records=held.metadata();
+     assert.ok(records.committed.recovery.relay.reviewReceipt);
+     assert.equal(records.attempt?.preparedHead,records.committed.head);
+     assert.deepEqual(records.attempt.capture,records.committed.recovery);
+     await held.verify();held.dispose();
+     counts.unacknowledgedRecordReads++;
      await session.discardAndClose();session=undefined;
      session=await api.SharedContinuedPairSession.openDelivery(options);connect();
      await doc.connect();await doc.flush();
