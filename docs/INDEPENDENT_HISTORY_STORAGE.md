@@ -351,8 +351,14 @@ Use `family: "continued-delivery"` and the independently retained version-two
 participant selection for a continued delivery entry. Supply its exact
 native restore factory in `policies`. The journal reopens the complete
 paired delivery state and the whole upload store at the two dedicated
-destinations. If the source commit loses its acknowledgement, recovery
-resumes only after checking every stored row against the selected cut.
+destinations. Recovery acquires every selected continued-delivery document
+and comment writer lock before it creates the journal or writes a destination.
+Each native replay borrows its assigned pair of locks. The coordinator holds
+those replays through exact history and upload verification and releases the
+locks before returning. If the source commit loses its acknowledgement,
+recovery reacquires the same writer pairs and checks every stored row against
+the selected cut before it advances. This is local staging for room recovery.
+Server activation still requires a separate authenticated decision.
 
 The same journal supports continued local participants and both independent
 local and independent delivery participants.

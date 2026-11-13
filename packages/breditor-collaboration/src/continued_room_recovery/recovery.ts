@@ -9,6 +9,10 @@ import {independentRecoverySignal} from '../independent_recovery/signal.js';
 import {physicalCatalogDatabase,physicalCatalogName,physicalCatalogSelection} from '../physical_room_catalog/policy.js';
 import {physicalCatalogV2Options,physicalCatalogV2Rows} from '../physical_room_catalog_v2/input_snapshot.js';
 import {participantAuthority} from '../participant_backup/policy.js';
+import {DeferredActorLeaseInput} from '../persistence/deferred_actor_input.js';
+import {RoomActorAcquisition} from '../persistence/room_actor_acquisition.js';
+import type {RoomActorAcquisitionMember} from '../persistence/room_actor_acquisition_contract.js';
+import {StoppedActorCohort,takeAcquiredActorCohort} from '../persistence/stopped_actor_cohort.js';
 import {RecoveryLease,checkRecoveryLeasesHeld} from '../participant_recovery/lease.js';
 import {existingDatabase} from '../participant_recovery/journal.js';
 import {RecoveryOpeningCustody,recoveryOpeningContext} from '../participant_recovery/opening_custody.js';
@@ -29,6 +33,10 @@ import type {ContinuedRoomRecoveryDestination,ContinuedRoomRecoveryOptions,Conti
 
 const {metadata,participantRecords,participantDeliveryRecords,participantUploads,dispose}=SharedContinuedRoomCatalog.prototype;
 const {close:release}=RecoveryLease.prototype;
+const {acquire:acquireActors,close:closeAcquisition}=RoomActorAcquisition.prototype;
+const beginAcquisition=RoomActorAcquisition.begin;
+const {route:actorRoute,commit:commitActors,close:closeCohort}=StoppedActorCohort.prototype;
+const closeRoute=DeferredActorLeaseInput.prototype.close;
 const originalRecords=SharedParticipantBackup.prototype.records;
 const destinationNames=(row:ContinuedRoomRecoveryDestination)=>[...operationDestinationNames(row),...Object.values(row.original??{})];
 
@@ -73,6 +81,8 @@ async function restore(input:ContinuedRoomRecoveryOptions,begin:boolean):Promise
  const factory=recoveryOpeningContext(),locks=navigator.locks;
  const leases:RecoveryLease[]=[],destinationsHeld:ContinuedDestinationHold[]=[];
  const failedParticipants=new RecoveryCleanupScope(()=>fail('storage'));
+ const deliveryRoutes=new Map<string,DeferredActorLeaseInput>();
+ let acquisition:RoomActorAcquisition|undefined,deliveryActors:StoppedActorCohort|undefined;
  let db:IDBDatabase|undefined,archive:SharedContinuedRoomCatalog|undefined,changed=false;
  const stable=()=>{
   if(changed||globalThis.indexedDB!==factory||globalThis.navigator?.locks!==locks)throw fail('diverged');
@@ -81,14 +91,17 @@ async function restore(input:ContinuedRoomRecoveryOptions,begin:boolean):Promise
  };
  const cleanup=async()=>{
   const closed=await Promise.allSettled([failedParticipants.drain(),...destinationsHeld.map(destination=>Promise.resolve().then(()=>destination.close()))]);
-  try{if(archive)dispose.call(archive);}
-  finally{
-   try{db?.close();}
-   finally{
-    const released=await Promise.allSettled(leases.map(lease=>release.call(lease)));
-    if([...closed,...released].some(row=>row.status==='rejected'))throw fail('storage');
-   }
-  }
+  if(closed.some(row=>row.status==='rejected'))throw fail('storage');
+  // The borrower must finish closing before an unpromoted route can return
+  // its loans. Keep namespace exclusion until all actual custody settles.
+  const returned=await Promise.allSettled([...deliveryRoutes.values()].map(route=>closeRoute.call(route)));
+  if(returned.some(row=>row.status==='rejected'))throw fail('storage');
+  if(deliveryActors)await closeCohort.call(deliveryActors);
+  if(acquisition)await closeAcquisition.call(acquisition);
+  if(archive)dispose.call(archive);
+  db?.close();
+  const released=await Promise.allSettled(leases.map(lease=>release.call(lease)));
+  if(released.some(row=>row.status==='rejected'))throw fail('storage');
  };
  // Retain actual cleanup for the next opener if any lease release fails.
  const opening=await RecoveryOpeningCustody.reserve(factory,[database],cleanup,{
@@ -111,6 +124,7 @@ async function restore(input:ContinuedRoomRecoveryOptions,begin:boolean):Promise
   const entries=selected.participants;
   if(entries.length!==destinations.length||entries.some((row,index)=>row.id!==destinations[index]!.id))throw fail('policy');
   const writers=new Set<string>(),actors=new Set<string>();
+  const deliveryMembers=new Map<string,RoomActorAcquisitionMember>();
   if(!matchContinuedRoomPolicies(entries,'original',originals,policyFailure)||
      !matchContinuedRoomPolicies(entries,'independent-local',independent,policyFailure)||
      !matchContinuedRoomPolicies(entries,'independent-delivery',delivery,policyFailure)||
@@ -132,6 +146,12 @@ async function restore(input:ContinuedRoomRecoveryOptions,begin:boolean):Promise
     originalDestinations.set(entry.id,await prepareOriginalRoomDestination(archive,destination,originals.get(entry.id)!,database,guard,signal));
     continue;
    }
+   if(entry.family==='continued-delivery'){
+    const {native,review}=entry.selection.identity.source;
+    admitWriter(native,review.actor);
+    deliveryMembers.set(entry.id,{id:entry.id,factory:'continued-delivery',writer:native.writer,actor:review.actor});
+    continue;
+   }
    const selection=entry.selection;
    const identity='original'in selection?selection.original.identity:selection.identity;
    const {native,review}='history'in identity.source?identity.source.history:identity.source;
@@ -145,6 +165,17 @@ async function restore(input:ContinuedRoomRecoveryOptions,begin:boolean):Promise
     guard();
     const existing=await existingDatabase(name);
     if(existing){existing.close();throw fail('exists');}
+   }
+  }
+  if(deliveryMembers.size){
+   acquisition=beginAcquisition.call(RoomActorAcquisition,{room,members:[...deliveryMembers.values()],
+    checkAuthority:guard,...(signal?{signal}:{})});
+   await acquireActors.call(acquisition);
+   deliveryActors=takeAcquiredActorCohort(acquisition);
+   for(const {id,source} of destinations){
+    if(deliveryMembers.has(id)){
+     deliveryRoutes.set(id,actorRoute.call(deliveryActors,id,{databases:[source],finalDatabase:source}));
+    }
    }
   }
   guard();
@@ -209,7 +240,8 @@ async function restore(input:ContinuedRoomRecoveryOptions,begin:boolean):Promise
     limits=policy.limits;
    }else if(entry.family==='continued-delivery'){
     const policy=policies.get(destination.id)!,recovery=participantDeliveryRecords.call(archive,destination.id).live;
-    source=completed=>recoverContinuedDeliveryRoomSource(destination.source,policy.restoreDocument,recovery,completed,guard,signal);
+    source=completed=>recoverContinuedDeliveryRoomSource(destination.source,policy.restoreDocument,recovery,completed,
+     deliveryRoutes.get(destination.id)!,guard,signal,close=>failedParticipants.retain(close).complete);
     file=participantUploads.call(archive,destination.id);
     limits=policy.limits;
    }else{
@@ -230,6 +262,7 @@ async function restore(input:ContinuedRoomRecoveryOptions,begin:boolean):Promise
   const result=frozen({format:'breditor/continued-room-local-recovery' as const,formatVersion:1 as const,catalog:expected,participants:destinations});
   guard();
   for(const destination of destinationsHeld)destination.check();
+  if(deliveryActors)commitActors.call(deliveryActors);
   return result;
  }finally{await opening.rollback();}
 }
