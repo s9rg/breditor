@@ -2,6 +2,7 @@
 import {MAX_CONTINUED_ARCHIVE_BYTES,MAX_SEGMENTED_ARCHIVE_BYTES} from "../persistence/segmented_contract.js";
 import {checkSegmentedCapture} from "../persistence/segmented_head.js";
 import {checkSegmentedCheckpoint} from "../persistence/segmented_checkpoint.js";
+import type {SharedSegmentedRecovery} from "../persistence/segmented_session.js";
 import type {SharedContinuedHistoryBackup} from "../persistence/continue_document_history.js";
 import type {SharedGenerationSourceIdentity,SharedGenerationSourceRecord,SharedGenerationSourceRecordKind} from "./contract.js";
 import {sourceFailure} from "./identity.js";
@@ -53,4 +54,10 @@ export function readContinuedRecords(
   current:{format:"breditor/shared-generation-recovery",formatVersion:2,checkpoint,reviewCheckpoint,versions},
   predecessor:{format:"breditor/shared-generation-recovery",formatVersion:1,
    checkpoint:previousDocument,reviewCheckpoint:previousReview,versions:previousVersions}};
+}
+
+/** Compare exact native strings, including the historical comment and version cuts. */
+export function samePredecessor(a:SharedSegmentedRecovery,b:SharedSegmentedRecovery):boolean{
+ return a.checkpoint===b.checkpoint&&a.reviewCheckpoint===b.reviewCheckpoint&&
+  a.versions.length===b.versions.length&&a.versions.every((packet,index)=>packet===b.versions[index]);
 }

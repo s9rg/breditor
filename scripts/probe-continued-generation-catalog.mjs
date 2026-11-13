@@ -25,7 +25,7 @@ const metadata=JSON.parse(fixture.inventoryJson);
 const client=fixture.clients.find(row=>!row.observer);
 assert.ok(client);
 const {imageNode,paragraph,SharedSegmentedPersistentSession:Session,SharedRoomRecoveryCatalogArchiveV2:Archive,SharedRoomRecoveryCatalogV2:Catalog,
- SharedGenerationParticipantRecovery:Recovery}=api;
+ SharedGenerationParticipantRecovery:Recovery,OperationalSharedGenerationParticipant:Operational}=api;
 const profile=runtime.SharedRichProfile.from_standard_configuration_json_v3(fixture.configuration);
 const stopEnvironment=environment();
 const room=metadata.room.document,writer=client.writer,principal=client.principal;
@@ -36,7 +36,24 @@ const sourceOptions={...policy,database:'continued-participant-origin'};
 const command=(core,text)=>core.dispatch({commands:[{kind:'insert_text',data:{block:'p',offset:0,text}}]});
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 const partsOptions={database:'continued-participant-restore',destinations:{source:'restored-source',uploads:'restored-uploads'},session:{kind:'continued-local',options:policy}};
-let session,uploads,backup,archive,catalog,attempt,ready,parts;
+const headKey=[room,writer];
+const predecessorKey=[...headKey,'continued-from'];
+async function withHeads(mode,visit,database=partsOptions.destinations.source){
+ const db=await new Promise((resolve,reject)=>{
+  const request=indexedDB.open(database);
+  request.onsuccess=()=>resolve(request.result);
+  request.onerror=()=>reject(request.error);
+ });
+ try{return await new Promise((resolve,reject)=>{
+  const tx=db.transaction('generation_heads',mode);
+  const result=visit(tx.objectStore('generation_heads'));
+  tx.oncomplete=()=>resolve(result.map(request=>request.result));
+  tx.onabort=()=>reject(tx.error);
+ });}finally{db.close();}
+}
+const heads=database=>withHeads('readonly',store=>[store.get(headKey),store.get(predecessorKey)],database);
+const setHead=(key,head)=>withHeads('readwrite',store=>[store.put(head,key)]);
+let session,uploads,backup,archive,catalog,attempt,ready,operation,parts;
 try{
  session=await Session.open({...sourceOptions,create:()=>profile.restore(room,client.documentCheckpoint),
   restoreSegmented:checkpoint=>profile.restore_segmented(room,checkpoint),initialGenerations:{root:'original-root',active:'original-active'},
@@ -116,7 +133,13 @@ try{
 
  attempt=await Recovery.resume({...partsOptions,expected,checkAuthority(){}});
  ready=await attempt.finish();
- parts=await ready.intoParts();
+ const operationalOptions={...partsOptions,database:'continued-operation',recoveryDatabase:partsOptions.database,expected,checkAuthority(){}};
+ operation=await Operational.begin({database:operationalOptions.database,recovered:ready,expected,checkAuthority(){}});
+ assert.deepEqual(await operation.progress(),{phase:'operational'});
+ await operation.check();
+ assert.equal(sha(new Uint8Array(await operation.file().arrayBuffer())),expected.sha256);
+ parts=await operation.intoParts();
+ operation=undefined;
  const restored=parts.source.session;
  assert.equal(parts.source.kind,'continued-local');
  assert.deepEqual(await restored.exportContinuedBackup(),before);
@@ -128,14 +151,92 @@ try{
  assert.equal((await parts.uploads.get(secondAsset)).status,'cancelled');
  assert.equal(restored.core.redo(),true);
  assert.equal(restored.core.redoReview().kind,'committed');
- await restored.flush();
- assert.deepEqual((await restored.exportContinuedBackup()).predecessor,predecessor);
+ assert.equal(command(restored.core,'Offline work after operational handoff '),true);
+ const latestVersion=restored.saveVersion('After operational handoff','3');
+ await restored.sealGeneration('continued-again');
+ assert.equal(await parts.uploads.retry(secondAsset).then(row=>row.status),'pending');
+ let uploadsSent=0;
+ await parts.uploads.flush(async (info,blob)=>{
+  assert.equal(info.asset,secondAsset);
+  assert.deepEqual(new Uint8Array(await blob.arrayBuffer()),new Uint8Array(secondPixel));
+  uploadsSent++;
+  return 'fixture/later-provider-receipt';
+ });
+ assert.equal(uploadsSent,1);
+ const advanced=await restored.exportContinuedBackup();
+ const advancedOffline=restored.core.writerGroupsV2(accepted.through);
+ assert.deepEqual(advanced.predecessor,predecessor);
+ assert.ok(advancedOffline.groups.length>offline.groups.length);
+ assert.deepEqual(advanced.current.versions.slice(0,2),before.current.versions);
+ const advancedUploads=await (await parts.uploads.exportBackup()).arrayBuffer();
+ await restored.close();parts.uploads.close();parts=undefined;
+
+ const [currentHead,retainedHead]=await heads();
+ const replaced=JSON.parse(retainedHead);
+ assert.equal(replaced.versions.length,1);
+ replaced.versions=[];
+ await setHead(predecessorKey,JSON.stringify(replaced));
+ await assert.rejects(Operational.resume(operationalOptions),error=>error.code==='generation_operation_diverged');
+ assert.deepEqual(await heads(),[currentHead,JSON.stringify(replaced)]);
+ await setHead(predecessorKey,retainedHead);
+
+ const forkOptions={...policy,database:'continued-operation-fork'};
+ session=await Session.restoreRecovery({...forkOptions,recovery:predecessor,writerRecovery:'host-reacquired',
+  restoreSegmented:checkpoint=>profile.restore_segmented(room,checkpoint)});
+ await session.close();session=undefined;
+ session=await Session.continueHistory({...forkOptions,expected:predecessor,nextGeneration:'continued'});
+ assert.equal(command(session.core,'Different first edit after the same V1 cut '),true);
+ await session.close();session=undefined;
+ const [forkHead,forkPredecessor]=await heads(forkOptions.database);
+ assert.equal(forkPredecessor,retainedHead);
+ await setHead(headKey,forkHead);
+ session=await Session.openContinued({...policy,database:partsOptions.destinations.source,readOnly:true});
+ assert.match(session.core.documentJson(),/Different first edit after the same V1 cut/);
+ await session.close();session=undefined;
+ await assert.rejects(Operational.resume(operationalOptions),error=>
+  /shared recovery origin (lineage|entry) differs/.test(String(error)));
+ assert.deepEqual(await heads(),[forkHead,retainedHead]);
+ await setHead(headKey,currentHead);
+
+ const observerOptions={...operationalOptions,session:{kind:'continued-local',options:{...policy,readOnly:true,
+  review:{...policy.review,access:'read_only'}}}};
+ operation=await Operational.resume(observerOptions);
+ await operation.check();
+ parts=await operation.intoParts();operation=undefined;
+ assert.equal(parts.source.session.core.view().readOnly,true);
+ assert.deepEqual(await parts.source.session.exportContinuedBackup(),advanced);
+ assert.deepEqual(await (await parts.uploads.exportBackup()).arrayBuffer(),advancedUploads);
+ await parts.source.session.close();parts.uploads.close();parts=undefined;
+
+ operation=await Operational.resume(operationalOptions);
+ await operation.check();
+ assert.deepEqual(await operation.progress(),{phase:'operational'});
+ assert.equal(sha(new Uint8Array(await operation.file().arrayBuffer())),expected.sha256);
+ parts=await operation.intoParts();operation=undefined;
+ const resumed=parts.source.session;
+ assert.deepEqual(await resumed.exportContinuedBackup(),advanced);
+ assert.deepEqual(resumed.core.writerGroupsV2(accepted.through),advancedOffline);
+ assert.equal(resumed.versionPacket(latestVersion.id),advanced.current.versions[2]);
+ assert.deepEqual(await (await parts.uploads.exportBackup()).arrayBuffer(),advancedUploads);
+ assert.equal((await parts.uploads.get(pixelAsset)).storageRef,'fixture/provider-receipt');
+ assert.equal((await parts.uploads.get(secondAsset)).storageRef,'fixture/later-provider-receipt');
+ const documentAfter=resumed.core.documentJson(),reviewAfter=resumed.core.reviewSnapshot().view;
+ assert.equal(resumed.core.undo(),true);
+ assert.equal(resumed.core.redo(),true);
+ assert.equal(resumed.core.documentJson(),documentAfter);
+ assert.equal(resumed.core.undoReview().kind,'committed');
+ assert.equal(resumed.core.redoReview().kind,'committed');
+ assert.deepEqual(resumed.core.reviewSnapshot().view,reviewAfter);
+ await resumed.flush();
+ assert.deepEqual((await resumed.exportContinuedBackup()).predecessor,predecessor);
  console.log(JSON.stringify({passed:true,interrupted,exactPredecessor:true,documentAndCommentRedo:true,
-  exactUploadStore:true,retainedRasters:2,uploadReceipt:true,versionPackets:2,offlineGroups:offline.groups.length,nativeInventoryPrefix:true,unboundReview:true}));
+  exactUploadStore:true,retainedRasters:2,uploadReceipt:true,versionPackets:2,offlineGroups:offline.groups.length,nativeInventoryPrefix:true,unboundReview:true,
+  operationalReopen:true,replacedPredecessorRefused:true,forkRefused:true,readOnlyReopen:true,
+  advancedOfflineGroups:advancedOffline.groups.length}));
 }finally{
  try{
   await parts?.source.session.discardAndClose();parts?.uploads.close();
-  await ready?.discardAndClose();await attempt?.close();await catalog?.discardAndClose();
+  await operation?.discardAndClose();await ready?.discardAndClose();await attempt?.close();await catalog?.discardAndClose();
   await session?.discardAndClose();uploads?.close();backup?.dispose();archive?.dispose();
  }finally{profile.free();stopEnvironment();}
 }

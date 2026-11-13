@@ -71,6 +71,17 @@ prefix against the selected native inventory. A local comment lane without a
 relay binding remains explicitly unresolved. Cold staging verifies both
 stored heads before reusing the destination.
 
-Live operational handoff, relay bindings for continued history, independent
-comment and server-log continuation, and physical browser durability still
-require qualification.
+After participant recovery finishes, call
+`OperationalSharedGenerationParticipant.begin` with the recovered owner and
+the selected archive. The returned operation retains the original file.
+`intoParts()` transfers the local session and upload store for use.
+On a cold `resume`, supply the same recovery and operation databases and fresh
+host policy. The SDK verifies the exact V1 predecessor, replays the current
+document and comment histories against the archived V2 origin, and checks
+that the original version packets and upload receipts are still present.
+Later edits, seals, version packets and upload acknowledgements survive
+reopen. A fork or a replaced predecessor is refused before the session opens.
+
+Whole-room operational history reads, relay bindings for continued history,
+independent comment and server-log continuation, and physical browser
+durability still require qualification.

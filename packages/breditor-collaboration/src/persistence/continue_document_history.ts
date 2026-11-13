@@ -16,6 +16,7 @@ import {canonicalSegmentedIdentity,makeGenerationCut,readContinuedHead,readSegme
 import {checkSegmentedCheckpoint,object} from "./segmented_checkpoint.js";
 import {MAX_SEGMENTED_HEAD_BYTES,type GenerationHead,type SegmentedReview,type SegmentedSessionIdentity,type SegmentedStoredCut} from "./segmented_contract.js";
 import type {SharedContinuedHistoryRecovery,SharedSegmentedRecovery,SharedSegmentedSessionOptions} from "./segmented_session.js";
+import {generationOperationOrigin} from "../generation_operation/admission.js";
 import {admitPairedVersions} from "./review_record_admission.js";
 
 export type SharedContinuedHistoryOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy>=
@@ -125,6 +126,15 @@ function restoreCore<P extends SharedSelectionPolicy>(
   throw error;
  }
 }
+/** Borrow only a read-only replay for the operational origin. No storage or lease opens. */
+export function restoreReadOnlyContinuedCore<P extends SharedSelectionPolicy>(
+ options:SharedContinuedHistoryOptions<P>,identity:SegmentedSessionIdentity,current:SharedContinuedHistoryRecovery,
+):SharedRichEditor<P>{
+ const review=reviewRecord(current.reviewCheckpoint,options.review);
+ const readOnly={...options,...(options.review?{review:{...options.review,access:"read_only" as const}}:{})};
+ return restoreCore(options.profile.restore_continued_history!(identity.room,current.checkpoint),readOnly,
+  identity,current.checkpoint,review,current.versions,true,true);
+}
 function convert(profile:SharedRustProfile,room:string,checkpoint:string,next:string):string{
  const raw=profile.restore_segmented!(room,checkpoint);
  try{
@@ -147,7 +157,9 @@ export async function openContinuedHistory<P extends SharedSelectionPolicy,T>(
  recovery?:SharedRestoreContinuedHistoryOptions<P>,
 ):Promise<T>{
  const options={...input,...(input.review?{review:{...input.review}}:{}),...(input.editor?{editor:{...input.editor}}:{})};
- const {database,profile}=options,next=migration?.nextGeneration;
+ const {database,profile}=options,next=migration?.nextGeneration,operation=generationOperationOrigin(input);
+ if(operation&&(migration||recovery))throw fail("Operational reopen requires an exact retained predecessor");
+ operation?.check();
  const identity=canonicalSegmentedIdentity({
   room:options.room,writer:options.writer,richLanguage:options.richLanguage,history:options.history,
   rangeEditing:options.rangeEditing,selectionEditing:options.selectionEditing,searchHistory:options.searchHistory,reviewedHistory:options.reviewedHistory,
@@ -187,7 +199,7 @@ export async function openContinuedHistory<P extends SharedSelectionPolicy,T>(
   const key=[identity.room,identity.writer] as const;
   const checkCustody=()=>{
    context();lease.assertLive();reviewLease?.assertLive();
-   guard?.();
+   guard?.();operation?.check();
    context();lease.assertLive();reviewLease?.assertLive();
   };
   if(backup){
@@ -255,10 +267,15 @@ export async function openContinuedHistory<P extends SharedSelectionPolicy,T>(
    head=newCut.head;
    if(prior&&head!==saved.head)throw fail("The continued head has already advanced or differs from this request");
   }
+  const predecessor=prior?.head??saved.head;
+  operation?.verifyPredecessor(predecessor);
   const raw=opening.admit(profile.restore_continued_history(identity.room,checkpoint));
   core=restoreCore(raw,options,identity,checkpoint,saved.record.review,saved.record.versions,true,options.readOnly);
   check();
-  const predecessor=prior?.head??saved.head;
+  if(operation){
+   operation.verifyCore(core as unknown as SharedRichEditor<SharedSelectionPolicy>,saved.record.versions,undefined);
+   check();
+  }
   if(newCut&&!prior){
    await writeSegmentedCut(db,key,saved.head,newCut,readContinuedHead,{predecessor,migrating:saved.files});
   }else{
