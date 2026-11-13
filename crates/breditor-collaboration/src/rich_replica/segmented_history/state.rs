@@ -7,7 +7,7 @@ use super::super::{
 };
 use super::{
     binding::Family,
-    encoding::{MAX_GENERATIONS, digest},
+    encoding::{MAX_GENERATIONS, digest, quoted_bytes},
     segment::{FORMAT, Sealed, Segment},
 };
 use crate::Error;
@@ -17,6 +17,7 @@ pub(super) struct Root {
     pub generation: String,
     pub json: Arc<str>,
     pub sha256: String,
+    pub quoted_bytes: usize,
     pub family: Family,
     pub journal: Journal,
     pub joins: Option<Vec<u32>>,
@@ -27,10 +28,12 @@ impl Root {
         let family = Family::of(owner);
         let json: Arc<str> = family.checkpoint(owner)?.into();
         let sha256 = digest(&json);
+        let quoted_bytes = quoted_bytes(&json)?;
         Ok(Self {
             generation,
             json,
             sha256,
+            quoted_bytes,
             family,
             journal: owner.journal.clone(),
             joins: owner.typing.as_ref().map(|h| h.joins.clone()),

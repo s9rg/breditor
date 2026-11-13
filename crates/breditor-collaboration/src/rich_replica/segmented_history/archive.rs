@@ -1,7 +1,7 @@
 //! Canonical, bounded NEW segmented archive. The root and every sealed file remain exact strings.
 use super::{
     binding::Family,
-    encoding::{MAX_ARCHIVE_BYTES, MAX_GENERATIONS, encode},
+    encoding::{MAX_ARCHIVE_BYTES, MAX_GENERATIONS, encode, quoted_bytes},
     state::SegmentedHistory,
 };
 use crate::Error;
@@ -104,4 +104,37 @@ pub(super) fn checkpoint(state: &SegmentedHistory, active: &str) -> Result<Strin
         },
         MAX_ARCHIVE_BYTES,
     )
+}
+
+/// Only the active file changes during an edit. Root and sealed file charges
+/// were derived from the exact immutable bytes when each file was admitted.
+pub(super) fn check_size(
+    state: &SegmentedHistory,
+    active: &str,
+    limit: usize,
+) -> Result<(), Error> {
+    let envelope = Encoding {
+        format: FORMAT,
+        format_version: 1,
+        family: state.root.family,
+        root_generation: &state.root.generation,
+        root_checkpoint: "",
+        sealed: Vec::new(),
+        active: "",
+    };
+    // The empty envelope already charges the root and active quotes and
+    // the sealed array's brackets. Add only what replaces the empty files.
+    let empty_file_bytes = b"\"\"".len();
+    let overhead = serde_json::to_vec(&envelope)?.len();
+    let sealed_bytes = state.sealed.iter().map(|file| file.quoted_bytes).sum::<usize>();
+    let separators = state.sealed.len().saturating_sub(1);
+    let bytes = overhead
+        + (state.root.quoted_bytes - empty_file_bytes)
+        + sealed_bytes
+        + separators
+        + (quoted_bytes(active)? - empty_file_bytes);
+    if bytes > limit {
+        return Err(Error::Limit("segmented history bytes"));
+    }
+    Ok(())
 }

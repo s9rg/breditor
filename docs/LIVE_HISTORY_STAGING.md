@@ -35,6 +35,16 @@ journal. Replay-cache tests explicitly exercise that implementation and retain
 their positive cache-hit assertions. They do not use a live fork as a substitute
 for an independent recovery oracle.
 
+## Segmented document archive budget
+
+Staging and adoption check the exact byte size of the segmented checkpoint
+without rebuilding the outer archive. The original root and each sealed file
+retain their JSON-quoted byte counts alongside their immutable contents.
+Admission encodes the current active segment, then adds its quoted size to
+those counts and the archive envelope. An explicit checkpoint still writes
+the full canonical archive. Cold restore derives the counts again from the
+admitted files. The counts are private and never appear in the checkpoint.
+
 ## Reproducible functional checks
 
 The native `live_staging_tests` count entries at the semantic replay loop. The

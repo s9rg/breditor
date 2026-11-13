@@ -46,6 +46,39 @@ fn exact_utf8_json_boundary_keeps_standard_bytes_and_refusals() -> Result<(), Er
 }
 
 #[test]
+fn immutable_file_charges_match_exact_archive_bytes_after_seal_and_cold_restore()
+-> super::tests::Result {
+    use super::{
+        archive,
+        encoding::quoted_bytes,
+        tests::{cold, enable, insert, seal, setup},
+    };
+    for text in ["", "🙂 日本語 \" slash\\ newline\n control\u{0000}"] {
+        assert_eq!(quoted_bytes(text)?, serde_json::to_string(text)?.len());
+    }
+    let (profile, mut owner) = setup(3, true, 2, 7)?;
+    insert(&mut owner, "Root \" 🙂 \\ ")?;
+    enable(&mut owner)?;
+    for generation in 0..3 {
+        insert(&mut owner, "Active \" 日本語 \\ ")?;
+        assert!(owner.undo()?);
+        for owner in [&owner, &cold(&profile, &owner)?] {
+            let archive = owner.segmented_checkpoint()?;
+            let parsed = archive::Archive::read(&archive)?;
+            let state = owner.segmented.as_ref().ok_or("missing segmented state")?;
+            archive::check_size(state, &parsed.active, archive.len())?;
+            assert!(matches!(
+                archive::check_size(state, &parsed.active, archive.len() - 1),
+                Err(Error::Limit("segmented history bytes"))
+            ));
+        }
+        assert!(owner.redo()?);
+        seal(&mut owner, &format!("quoted-generation-{generation}"))?;
+    }
+    Ok(())
+}
+
+#[test]
 fn borrowed_active_bytes_equal_owned_records_across_native_history_changes() -> super::tests::Result
 {
     use super::tests::{cold, enable, insert, seal, setup};

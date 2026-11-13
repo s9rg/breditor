@@ -1093,7 +1093,7 @@ impl RichReplica {
             }
         }
         if self.segmented.is_some() {
-            self.segmented_checkpoint()?;
+            self.check_segmented_checkpoint_budget()?;
         } else if self.search_contract {
             self.search_checkpoint()?;
         } else if self.reviewed_contract {

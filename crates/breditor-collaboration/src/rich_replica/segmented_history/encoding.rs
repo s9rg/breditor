@@ -33,6 +33,28 @@ pub(super) fn encode(value: &impl Serialize, limit: usize) -> Result<String, Err
     String::from_utf8(output.bytes)
         .map_err(|_| Error::Contract("segmented JSON encoding is not UTF-8"))
 }
+
+/// Count exactly what serde emits when a file is embedded as a JSON string.
+pub(super) fn quoted_bytes(file: &str) -> Result<usize, Error> {
+    struct Counter(usize);
+    impl Write for Counter {
+        fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+            self.0 = self
+                .0
+                .checked_add(bytes.len())
+                .ok_or_else(|| io::Error::other("segmented history quoted byte count"))?;
+            Ok(bytes.len())
+        }
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+    let mut counter = Counter(0);
+    serde_json::to_writer(&mut counter, file)
+        .map_err(|_| Error::Limit("segmented history bytes"))?;
+    Ok(counter.0)
+}
+
 pub(super) fn digest(bytes: &str) -> String {
     let hash = Sha256::digest(bytes.as_bytes());
     let mut value = String::with_capacity(64);

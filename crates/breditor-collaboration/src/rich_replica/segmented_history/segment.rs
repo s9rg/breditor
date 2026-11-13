@@ -4,7 +4,7 @@ use super::super::{
     typing_checkpoint::{BoundedEntries, join_records},
     ui_state::UiState,
 };
-use super::encoding::{digest, encode};
+use super::encoding::{digest, encode, quoted_bytes};
 use crate::Error;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -29,12 +29,14 @@ pub(super) struct Sealed {
     pub record: Segment,
     pub json: Arc<str>,
     pub sha256: String,
+    pub quoted_bytes: usize,
 }
 impl Sealed {
     pub fn from_record(record: Segment) -> Result<Self, Error> {
         let json: Arc<str> = encode(&record, MAX_JOURNAL_BYTES)?.into();
         let sha256 = digest(&json);
-        Ok(Self { record, json, sha256 })
+        let quoted_bytes = quoted_bytes(&json)?;
+        Ok(Self { record, json, sha256, quoted_bytes })
     }
     pub fn read(input: &str) -> Result<Self, Error> {
         if input.len() > MAX_JOURNAL_BYTES {
