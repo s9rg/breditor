@@ -5,7 +5,8 @@ import {RichAssetStore} from '@breditor/experimental-rich-content';
 import {unavailableAsset,unavailableUpload} from '../physical-recovery-control/unavailable-upload.mjs';
 import {secondAsset} from '../review-assets/pixels.mjs';
 import {checkOutageAcknowledgements,checkOutageConvergence,queueOutageWork} from './outage.mjs';
-import {checkLostEdit,interceptEditAcknowledgement,interruptAcknowledgedEdit} from './lost-edit-ack.mjs';
+import {checkLostEdit,interceptSocketAcknowledgements,observeUnacknowledgedEdit} from './lost-edit-ack.mjs';
+import {checkLostComment,countVersionSubmissions,observeUnacknowledgedComment,observeUnacknowledgedVersion} from './lost-metadata-ack.mjs';
 
 function resumeIdentity(binding,rows,key){
  const row=rows.find(row=>row[key]===binding[key]&&row.principal===binding.principal);
@@ -144,21 +145,37 @@ export async function verifyRestartedDelivery(api,{restart,cohort,destinations,d
  const endpoint='ws://'+listener+'/ws',health='http://'+listener+'/health';
  const names=new Map(destinations.map(row=>[row.id,row.source]));
  let queued,lost;
- const {id:interruptedId,options:interrupted}=cohort.at(-1);
+ const [affected,versionAuthor]=cohort.slice(-2);
+ const interruptedId=affected.id,versionId=versionAuthor.id;
  const fresh=await restart(delivery,async crash=>{
-  const gate=interceptEditAcknowledgement(),restoreSocket=installSocket(endpoint,gate.socket);
+  const gate=interceptSocketAcknowledgements(),restoreSocket=installSocket(endpoint,gate.socket);
+  const sessions=[];
   try{
-   const session=await api.SharedContinuedPairSession.openDelivery({...interrupted,database:names.get(interruptedId)});
+   for(const {id,options} of [affected,versionAuthor])
+    sessions.push(await api.SharedContinuedPairSession.openDelivery({...options,database:names.get(id)}));
+   const [session,versionSession]=sessions;
    const adapters=[];
    try{
-    const {document}=clients(api,session,delivery,endpoint,adapters);
-    lost=await interruptAcknowledgedEdit(session,document,gate,crash);
+    const {document,review,common}=clients(api,session,delivery,endpoint,adapters);
+    await document.connect();
+    await review.connect();
+    const version=await observeUnacknowledgedVersion(versionSession,common,endpoint);
+    const comment=await observeUnacknowledgedComment(session,review,gate);
+    const edit=await observeUnacknowledgedEdit(session,document,gate);
+    await crash();
+    await comment.afterCrash();
+    await edit.afterCrash();
+    lost={comment,edit,version};
    }finally{
-    try{await stopAdapters(adapters);}finally{await session.close();}
+    await stopAdapters(adapters);
    }
-  }finally{restoreSocket();}
+  }finally{
+   try{await Promise.all(sessions.map(session=>session.close()));}finally{restoreSocket();}
+  }
  },async()=>{queued=await queueOutageWork(api,cohort,names,health);});
- const outgoing=interceptEditAcknowledgement({holdReply:false}),restoreSocket=installSocket(endpoint,outgoing.socket);
+ const outgoing=interceptSocketAcknowledgements({holdReply:false}),restoreSocket=installSocket(endpoint,outgoing.socket);
+ const versionSubmissions=countVersionSubmissions(endpoint,lost.version.packet);
+ let editSubmissions,commentSubmissions;
  const options=offer=>({endpoint:offer.endpoint,expected:offer.selection,principal:'operator',
   getToken:fresh.getToken,checkAuthority(){}});
  let activation,publication;
@@ -190,9 +207,18 @@ export async function verifyRestartedDelivery(api,{restart,cohort,destinations,d
     const {document,review,common}=clients(api,session,credentials,endpoint,adapters);
     const before=receiptCut(session.exportDeliveryRecovery());
     const previous=delivered.acknowledged.get(id),work=queued.get(id);
-    if(work)assert.deepEqual({...before,versions:before.versions.filter(row=>row.packet!==work.packet)},previous);
+    if(id===versionId||work){
+     const pendingPacket=work?.packet??lost.version.packet;
+     const pending=before.versions.find(row=>row.packet===pendingPacket);
+     assert.ok(pending?.publish);
+     assert.equal(pending.accepted,null);
+     assert.deepEqual({...before,versions:before.versions.filter(row=>row.packet!==pendingPacket)},previous);
+    }
     else assert.deepEqual(before,previous);
-    if(id===interruptedId)outgoing.arm();
+    if(id===interruptedId){
+     editSubmissions=outgoing.arm('submit');
+     commentSubmissions=outgoing.arm('reviewSubmit');
+    }
     await document.connect();await document.flush();
     await review.connect();await review.flush();
     await syncRetained(session,document,common);
@@ -200,8 +226,15 @@ export async function verifyRestartedDelivery(api,{restart,cohort,destinations,d
     assert.equal(review.state().pending,false);
     const accepted=receiptCut(session.exportDeliveryRecovery());
     if(id===interruptedId){
-     assert.equal(outgoing.submitted.length,0,'A frame confirmed by the restarted relay must not be sent again');
-     assert.deepEqual(accepted,{...previous,document:{accepted:lost.clock,receipt:lost.before.receipt}});
+     assert.deepEqual(accepted,{...previous,document:{accepted:lost.edit.clock,receipt:lost.edit.before.receipt}});
+     const progress=session.exportDeliveryRecovery().relay.review;
+     assert.deepEqual(progress.accepted,lost.comment.clock);
+     assert.equal(progress.sequence,null,'Recover the author prefix without fabricating a receipt');
+    }else if(id===versionId){
+     assert.deepEqual({...accepted,versions:accepted.versions.filter(row=>row.packet!==lost.version.packet)},previous);
+     assert.deepEqual(accepted.versions.filter(row=>row.packet===lost.version.packet),[{
+      packet:lost.version.packet,origin:'local',publish:false,accepted:lost.version.entry,
+     }]);
     }else if(work)checkOutageAcknowledgements(session,previous,accepted,work);
     else assert.deepEqual(accepted,previous);
     acknowledged.set(id,accepted);
@@ -213,7 +246,8 @@ export async function verifyRestartedDelivery(api,{restart,cohort,destinations,d
     assert.match(session.core.documentJson(),/Local offline document/);
     assert.match(JSON.stringify(session.core.reviewSnapshot().view),/Local offline comment/);
     checkLostEdit(session.core);
-    assert.deepEqual(session.core.writerClockAt(lost.clock.writer,lost.clock.through,2),lost.clock);
+    checkLostComment(session.core);
+    assert.deepEqual(session.core.writerClockAt(lost.edit.clock.writer,lost.edit.clock.through,2),lost.edit.clock);
     confirmed++;
    }finally{
     try{await stopAdapters(adapters);}finally{await session.close();}
@@ -221,7 +255,7 @@ export async function verifyRestartedDelivery(api,{restart,cohort,destinations,d
   }
   // The first writer was connected before its peer's upload. A second cold
   // connection verifies catch-up and exact receipts for both original writers.
-  for(const {id,options} of cohort.filter(row=>queued.has(row.id)||row.id===interruptedId)){
+  for(const {id,options} of cohort.filter(row=>queued.has(row.id)||row.id===interruptedId||row.id===versionId)){
    const session=await api.SharedContinuedPairSession.openDelivery({...options,database:names.get(id)});
    const adapters=[];
    try{
@@ -233,6 +267,7 @@ export async function verifyRestartedDelivery(api,{restart,cohort,destinations,d
     checkOutageConvergence(session.core,queued);
     assert.equal(session.core.documentJson(),expectedDocument);
     assert.deepEqual(receiptCut(session.exportDeliveryRecovery()),acknowledged.get(id));
+    if(id===interruptedId)assert.deepEqual(session.exportDeliveryRecovery().relay.review.accepted,lost.comment.clock);
    }finally{
     try{await stopAdapters(adapters);}finally{await session.close();}
    }
@@ -245,9 +280,13 @@ export async function verifyRestartedDelivery(api,{restart,cohort,destinations,d
    assert.deepEqual(Buffer.from(await remote.blob.arrayBuffer()),unavailableUpload);
    assert.deepEqual(await store.get(unavailableAsset),delivered.upload);
   }finally{assets.dispose();store.close();}
-  assert.equal(outgoing.submitted.length,0);
-  return {restartedSessions:confirmed,outageWriters:queued.size,recoveredLostEditAcknowledgements:1};
+  assert.equal(editSubmissions.submitted.length,0);
+  assert.equal(commentSubmissions.submitted.length,0);
+  versionSubmissions.check();
+  return {restartedSessions:confirmed,outageWriters:queued.size,recoveredLostEditAcknowledgements:1,
+   recoveredLostCommentAcknowledgements:1,recoveredLostVersionAcknowledgements:1};
  }finally{
+  versionSubmissions.restore();
   restoreSocket();
   publication?.close();
   activation?.close();

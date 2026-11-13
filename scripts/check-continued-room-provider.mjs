@@ -105,6 +105,8 @@ export async function runContinuedProviderQualification(start,directory,mode='bo
     assert.equal(result.restartedSessions,result.atomic&&restart?7:0);
     assert.equal(result.outageWriters,result.atomic&&restart?2:0);
     assert.equal(result.recoveredLostEditAcknowledgements,result.atomic&&restart?1:0);
+    assert.equal(result.recoveredLostCommentAcknowledgements,result.atomic&&restart?1:0);
+    assert.equal(result.recoveredLostVersionAcknowledgements,result.atomic&&restart?1:0);
     assert.equal(result.serverOnlyPacketAssets,result.atomic?1:0);
     assert.equal(result.recoveredRoomRefusals,3);
     assert.equal(result.mixedDeliveryAheadRefusals,1);
@@ -129,7 +131,7 @@ export async function runContinuedProviderQualification(start,directory,mode='bo
  assert.deepEqual(sourceEvidence(root),source);
  const report={format:'breditor/continued-provider-qualification',formatVersion:1,passed:true,source,
   sharedWasmSha256:checksum,nativeFixtures,reports,
-  scope:'Authenticated Native restart recovers an edit whose reply was lost and delivers concurrent outage edits, comments and versions under the original client bindings.'};
+  scope:'Authenticated Native restart recovers saved edits, comments and versions whose replies were lost, and delivers concurrent outage work under the original client bindings.'};
  saveEvidence(join(directory,'continued-provider-qualification.json'),report);
  return report;
 }

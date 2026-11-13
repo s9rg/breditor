@@ -2,24 +2,25 @@ import assert from 'node:assert/strict';
 
 const edit='Relay saved this edit before its reply ';
 
-/** Intercept exactly one real durable reply before the SDK can observe it. */
-export function interceptEditAcknowledgement({holdReply=true}={}){
- let armed=false,observed;
- const reply=Promise.withResolvers();
- const submitted=[];
+/** Intercept real replies per socket and request ID, before the SDK sees them. */
+export function interceptSocketAcknowledgements({holdReply=true}={}){
+ const selected=new Map();
  return {
-  submitted,
-  arm(){armed=true;},
-  reply:reply.promise,
+  arm(kind){
+   assert.equal(selected.has(kind),false);
+   const gate={observed:Promise.withResolvers(),submitted:[]};
+   selected.set(kind,gate);
+   return {reply:gate.observed.promise,submitted:gate.submitted};
+  },
   socket(Base){
    return class extends Base {
     #requests=new Map();
     send(raw){
      const {id,request}=JSON.parse(raw);
-     if(armed&&request.kind==='submit'){
-      const group=JSON.parse(request.group);
-      if(holdReply)this.#requests.set(id,group);
-      submitted.push(group);
+     const gate=selected.get(request.kind);
+     if(gate){
+      if(holdReply)this.#requests.set(id,{gate,request});
+      gate.submitted.push(request);
      }
      super.send(raw);
     }
@@ -27,11 +28,10 @@ export function interceptEditAcknowledgement({holdReply=true}={}){
      if(type!=='message')return super.addEventListener(type,listener,options);
      return super.addEventListener(type,event=>{
       const {id,result}=JSON.parse(event.data);
-      const group=this.#requests.get(id);
+      const pending=this.#requests.get(id);
       this.#requests.delete(id);
-      if(group&&result.kind==='durable'&&!observed){
-       observed={group,receipt:result.receipt,sequence:result.sequence,duplicate:result.duplicate};
-       reply.resolve(observed);
+      if(pending){
+       pending.gate.observed.resolve({request:pending.request,result});
        return;
       }
       listener.call(this,event);
@@ -42,34 +42,36 @@ export function interceptEditAcknowledgement({holdReply=true}={}){
  };
 }
 
-export async function interruptAcknowledgedEdit(session,document,gate,crash){
+export async function observeUnacknowledgedEdit(session,document,gate){
  const {core}=session,before=session.exportDeliveryRecovery().relay.document;
  await document.connect();
  assert.equal(document.state().pending,false);
- gate.arm();
+ const editReply=gate.arm('submit');
  assert.equal(core.dispatch({commands:[{kind:'insert_text',data:{block:'p',offset:0,text:edit}}]}),true);
  await session.flush();
  const pending=document.flush().then(()=>null,error=>error);
  let timer;
  try{
-  const observed=await Promise.race([gate.reply,new Promise((_,reject)=>{
+  const {request,result:observed}=await Promise.race([editReply.reply,new Promise((_,reject)=>{
    timer=setTimeout(()=>reject(Error('Expected a real durable relay reply')),5000);
   })]);
-  assert.equal(gate.submitted.length,1);
+  const group=JSON.parse(request.group);
+  assert.equal(editReply.submitted.length,1);
+  assert.equal(observed.kind,'durable');
   assert.equal(observed.duplicate,false);
   assert.ok(BigInt(observed.sequence)>BigInt(before.receipt.sequence));
   const clock=core.writerClockV2(before.accepted.writer);
   assert.equal(observed.receipt.through,clock.through);
   assert.equal(observed.receipt.prefixDigest,clock.prefixDigest);
-  assert.equal(observed.receipt.groupDigest,observed.group.groupDigest);
-  assert.equal(observed.group.from,before.accepted.through);
+  assert.equal(observed.receipt.groupDigest,group.groupDigest);
+  assert.equal(group.from,before.accepted.through);
   assert.deepEqual(session.exportDeliveryRecovery().relay.document,before);
-  await crash();
-  const error=await pending;
-  assert.ok(error?.code==='connection_lost'||error?.code==='request_timeout');
-  assert.deepEqual(session.exportDeliveryRecovery().relay.document,before);
-  checkLostEdit(core);
-  return {before,clock};
+  return {before,clock,async afterCrash(){
+   const error=await pending;
+   assert.ok(error?.code==='connection_lost'||error?.code==='request_timeout');
+   assert.deepEqual(session.exportDeliveryRecovery().relay.document,before);
+   checkLostEdit(core);
+  }};
  }finally{clearTimeout(timer);}
 }
 
