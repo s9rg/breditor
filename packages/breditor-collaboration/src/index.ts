@@ -57,7 +57,7 @@ export type * from "./review_generations.js";
 export type {SharedContinuedPairAssetReferences} from "./continued_pair/asset_references.js";
 export type {ContinuedPairRecordRead,ContinuedPairRecords} from "./continued_pair/read_records.js";
 export {readContinuedRoomReconciliation} from "./continued_room_reconciliation/read.js";
-export type {ContinuedRoomReconciliationOptions,ContinuedRoomReconciliationRead} from "./continued_room_reconciliation/contract.js";
+export type {ContinuedRoomOriginalReadPolicy,ContinuedRoomReconciliationOptions,ContinuedRoomReconciliationRead} from "./continued_room_reconciliation/contract.js";
 export {beginContinuedRoomRecovery,resumeContinuedRoomRecovery} from "./continued_room_recovery/recovery.js";
 export type {ContinuedRoomGenerationRecoveryPolicy,ContinuedRoomDeliveryRecoveryPolicy,ContinuedRoomIndependentRecoveryPolicy,ContinuedRoomRecoveryOptions,ContinuedRoomRecoveryDestination,ContinuedRoomRecoveryResult} from "./continued_room_recovery/contract.js";
 export {SharedContinuedRoomCatalogStore} from "./continued_room_catalog/storage.js";

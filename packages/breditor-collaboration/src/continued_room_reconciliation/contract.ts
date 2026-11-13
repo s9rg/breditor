@@ -5,8 +5,20 @@ import type {SharedRoomParticipantCoverage} from '../room_participant_inventory/
 import type {SharedServerLogGenerationRecoveryHost} from '../generation_recovery_control/host.js';
 import type {SharedServerLogGenerationRecoveryAssetRead} from '../generation_recovery_control/asset_contract.js';
 import type {SelectedRoomUploadPin} from '../selected_room_provider/contract.js';
+import type {SharedParticipantBackupSelection} from '../participant_backup/types.js';
+import type {OriginalReferenceRestore,OriginalReferenceEditor} from '../persistence/original_reference_replay.js';
+import type {AssetLimits} from '@breditor/experimental-rich-content';
 
 import type {ContinuedRoomDeliveryRecoveryPolicy,ContinuedRoomGenerationRecoveryPolicy,ContinuedRoomIndependentRecoveryPolicy} from '../continued_room_recovery/contract.js';
+
+export interface ContinuedRoomOriginalReadPolicy {
+ readonly id:string;
+ readonly expected:SharedParticipantBackupSelection;
+ /** Factory for the exact original native policy. The replay is always read-only. */
+ readonly restore:OriginalReferenceRestore;
+ readonly editor?:OriginalReferenceEditor;
+ readonly limits?:Partial<AssetLimits>;
+}
 
 export interface ContinuedRoomReconciliationOptions {
  readonly catalog:SharedContinuedRoomCatalogStore;
@@ -19,6 +31,8 @@ export interface ContinuedRoomReconciliationOptions {
  readonly deliveryPolicies?:readonly ContinuedRoomDeliveryRecoveryPolicy[];
  /** Select exact generation archives and read-only factories for native and provider admission. */
  readonly generationPolicies?:readonly ContinuedRoomGenerationRecoveryPolicy[];
+ /** Select exact original participant archives and their native read factories. */
+ readonly originalPolicies?:readonly ContinuedRoomOriginalReadPolicy[];
  readonly signal?:AbortSignal;
 }
 export interface ContinuedRoomReconciliationRead {
@@ -28,7 +42,7 @@ export interface ContinuedRoomReconciliationRead {
  readonly kind:'pending';
  readonly coverage:SharedRoomParticipantCoverage;
  readonly participants:readonly Readonly<{id:string;prefix:ContinuedParticipantPrefix}>[];
- /** Present when a selected generation archive has no review journal. */
+ /** Present when a selected archive has no review journal. */
  readonly documentOnlyParticipants?:readonly Readonly<{id:string;prefix:ContinuedDocumentOnlyPrefix}>[];
  readonly uploads:readonly Omit<SelectedRoomUploadPin,'role'>[];
  readonly provider:SharedServerLogGenerationRecoveryAssetRead|null;

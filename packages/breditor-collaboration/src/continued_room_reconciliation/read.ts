@@ -12,6 +12,7 @@ import {frozen} from '../room_participant_inventory/policy.js';
 import {continuedProviderPins,continuedReconciliationFailure as fail} from './asset_pins.js';
 import {inspectDeliveryRoomPrefix} from './delivery_prefix.js';
 import {inspectGenerationRoomPrefix} from './generation_prefix.js';
+import {inspectOriginalRoomPrefix,snapshotOriginalReadPolicies} from './original_prefix.js';
 import {inspectIndependentRoomPrefix} from './independent_prefix.js';
 import type {ContinuedRoomReconciliationOptions,ContinuedRoomReconciliationRead} from './contract.js';
 
@@ -19,16 +20,18 @@ const {inspectPrefixes,dispose}=SharedContinuedRoomCatalog.prototype;
 
 /** Compare immutable archived client data against the actual selected operator/provider host. */
 export async function readContinuedRoomReconciliation(input:ContinuedRoomReconciliationOptions):Promise<ContinuedRoomReconciliationRead>{
- physicalCatalogV2Options(input,['catalog','expected','host','checkAuthority'],['signal','independentPolicies','deliveryPolicies','generationPolicies']);
+ physicalCatalogV2Options(input,['catalog','expected','host','checkAuthority'],['signal','independentPolicies','deliveryPolicies','generationPolicies','originalPolicies']);
  const {catalog,expected,host,checkAuthority,signal}=input;
  const policyFailure=()=>fail('policy');
  const independent=snapshotContinuedRoomIndependentPolicies(input.independentPolicies,policyFailure);
  const delivery=snapshotContinuedRoomDeliveryPolicies(input.deliveryPolicies,policyFailure);
  const generation=snapshotContinuedRoomGenerationPolicies(input.generationPolicies,policyFailure);
+ const originalPolicies=snapshotOriginalReadPolicies(input.originalPolicies);
  const held=continuedRoomRecoveryCatalog(catalog),port=generationRecoveryHostPort(host);
  matchContinuedRoomPolicies(held.metadata.participants,'independent-local',independent,policyFailure);
  matchContinuedRoomPolicies(held.metadata.participants,'independent-delivery',delivery,policyFailure);
  matchContinuedRoomPolicies(held.metadata.participants,'generation',generation,policyFailure);
+ matchContinuedRoomPolicies(held.metadata.participants,'original',originalPolicies,policyFailure);
  const selected=physicalCatalogSelection(expected),authority=participantAuthority(checkAuthority);
  if(JSON.stringify(held.selection)!==JSON.stringify(selected))throw fail('policy');
  const check=()=>{held.check();authority();port.guard(signal);held.check();};
@@ -54,6 +57,11 @@ export async function readContinuedRoomReconciliation(input:ContinuedRoomReconci
    observed.set(id,prefix);
    if(boundActor)boundActors.add(boundActor);
   }
+  for(const [id,policy] of originalPolicies){
+   const {prefix,boundActor}=await inspectOriginalRoomPrefix(active,policy,waits);
+   observed.set(id,prefix);
+   if(boundActor)boundActors.add(boundActor);
+  }
   const participants:{id:string;prefix:ContinuedParticipantPrefix}[]=[];
   const documentOnlyParticipants:{id:string;prefix:ContinuedDocumentOnlyPrefix}[]=[];
   const observations=room.participants.flatMap(({id})=>{
@@ -63,10 +71,10 @@ export async function readContinuedRoomReconciliation(input:ContinuedRoomReconci
    else documentOnlyParticipants.push({id,prefix});
    return [prefix];
   });
-  const coverage=independent.size||delivery.size||generation.size?
+  const coverage=independent.size||delivery.size||generation.size||originalPolicies.size?
    continuedParticipantCoverage(continuedCatalogInventory(active),observations,boundActors):original.coverage;
   const unreconciledParticipants=original.unreconciledParticipants.filter(id=>!observed.has(id));
-  const pins=await continuedProviderPins(active,context,waits.signal,independent,delivery,generation);
+  const pins=await continuedProviderPins(active,context,waits.signal,independent,delivery,generation,originalPolicies);
   waits.check();
   const provider=unreconciledParticipants.length?null:await port.checkAssets(pins.requirements,waits.signal);
   if(provider)pins.verify(provider);

@@ -1,5 +1,6 @@
 import {SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore,beginContinuedRoomRecovery,resumeContinuedRoomRecovery,readContinuedRoomReconciliation} from '@breditor/collaboration';
 import type {ContinuedRoomGenerationRecoveryPolicy,ContinuedRoomDeliveryRecoveryPolicy,ContinuedRoomIndependentRecoveryPolicy,ContinuedPairRecords,ContinuedRoomReconciliationOptions,ContinuedRoomReconciliationRead,ContinuedRoomRecoveryOptions,ContinuedRoomRecoveryResult,ContinuedRoomCatalogCaptureOptions,ContinuedRoomCatalogMetadata,ContinuedRoomCatalogSelection} from '@breditor/collaboration';
+import type {ContinuedRoomOriginalReadPolicy} from '@breditor/collaboration';
 
 declare const input:ContinuedRoomCatalogCaptureOptions;
 const archive=await SharedContinuedRoomCatalog.capture(input);
@@ -24,7 +25,8 @@ await resumeContinuedRoomRecovery({...recovery,independentPolicies:[legacy],deli
 void result;
 
 declare const reconciliation:ContinuedRoomReconciliationOptions;
+declare const original:ContinuedRoomOriginalReadPolicy;
 const report:ContinuedRoomReconciliationRead=await readContinuedRoomReconciliation({...reconciliation,
- independentPolicies:[legacy],deliveryPolicies:[delivery],generationPolicies:[generation]});
+ independentPolicies:[legacy],deliveryPolicies:[delivery],generationPolicies:[generation],originalPolicies:[original]});
 const review:null|undefined=report.documentOnlyParticipants?.[0]?.prefix.review;
 void review;

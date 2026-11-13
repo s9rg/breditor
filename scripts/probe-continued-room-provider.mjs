@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {dirname,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {SharedRichEditor,SharedIndependentHistoryPersistentSession,SharedIndependentDeliverySession,captureSharedIndependentParticipant,captureSharedIndependentDeliveryParticipant,SharedSegmentedPersistentSession,SharedSegmentedRelaySession,captureSharedGenerationParticipant,SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore,SharedServerLogGenerationRecoveryHost,readContinuedRoomReconciliation} from '../packages/breditor-collaboration/dist/index.js';
+import {SharedRichEditor,SharedIndependentHistoryPersistentSession,SharedIndependentDeliverySession,captureSharedIndependentParticipant,captureSharedIndependentDeliveryParticipant,SharedSegmentedPersistentSession,SharedSegmentedRelaySession,captureSharedGenerationParticipant,SharedReviewPersistentSession,captureSharedParticipantBackup,encodeSharedPairedSessionBackup,SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore,SharedServerLogGenerationRecoveryHost,readContinuedRoomReconciliation} from '../packages/breditor-collaboration/dist/index.js';
 import {RichAssetStore} from '@breditor/experimental-rich-content';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
 import {continuedParticipantFixture} from './probe-continued-room-catalog.mjs';
@@ -19,7 +19,7 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
  const profile=native.SharedRichProfile[method](fixture.configuration);
  const entries=[];
  let archive,store,host,tokenAllowed=true,onToken;
- const counts={authorPrefixes:0,reviewPrefixes:0,localSuffixes:0,missingUploads:0,providerReads:0,rejected:0,foreignForks:0,mixedPending:0,mixedProviderReads:0,mixedForeignForks:0,mixedDeliveryProviderReads:0,mixedDeliveryAheadRefusals:0,generationProviderReads:0,generationDocumentOnlyReads:0,generationAheadRefusals:0,generationForkRefusals:0,generationPredecessorChecks:0};
+ const counts={authorPrefixes:0,reviewPrefixes:0,localSuffixes:0,missingUploads:0,providerReads:0,rejected:0,foreignForks:0,mixedPending:0,mixedProviderReads:0,mixedForeignForks:0,mixedDeliveryProviderReads:0,mixedDeliveryAheadRefusals:0,generationProviderReads:0,generationDocumentOnlyReads:0,generationAheadRefusals:0,generationForkRefusals:0,generationPredecessorChecks:0,originalProviderReads:0,originalPolicyRefusals:0};
  const room=inventory.room.document;
  const initial={
   catalog:'continued-native-provider',wasm:native,checkAuthority(){},
@@ -360,6 +360,67 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
     counts.generationProviderReads++;
    }finally{
     await generationStore?.close();generationCatalog?.dispose();backup?.dispose();uploads?.close();await session?.discardAndClose();
+   }
+  }
+  {
+   const options={...openOptions,policies:openOptions.policies.slice(1)};
+   const source=exact.identity.native;
+   const backupIdentity={room,writer:source.writer,richLanguage:source.richLanguage,
+    history:source.history,rangeEditing:source.rangeEditing,selectionEditing:source.selectionEditing,searchHistory:source.searchHistory};
+   const restore=checkpoint=>profile.restore(room,checkpoint),review={actor:editor.actor,principal:editor.principal,access:'comment'};
+   const {searchHistory,...originalIdentity}=backupIdentity;
+   const reviewBinding={endpoint:deliveryEndpoint,principal:editor.principal,room,actor:editor.actor,
+    binding:inventory.review.binding,documentWriter:editor.writer,...deliveryTransport};
+   const originalOptions={...originalIdentity,database:'provider-original-source',restore,review,relay:reviewBinding};
+   const backupJson=await encodeSharedPairedSessionBackup(backupIdentity,{
+    format:'breditor/shared-review-relay-checkpoint-record',formatVersion:1,history:source.history,
+    rangeEditing:source.rangeEditing,selectionEditing:source.selectionEditing,richLanguage:source.richLanguage,
+    reviewActor:editor.actor,principal:editor.principal,documentCheckpointJson:editor.documentCheckpoint,
+    reviewCheckpointJson:editor.reviewCheckpoint,versions:[],relay:reviewBinding,
+    progress:{cursor:null,accepted:null,sequence:null},
+   });
+   const session=await SharedReviewPersistentSession.restoreBackup({...originalOptions,backupJson,writerRecovery:'host-reacquired'});
+   let uploads,backup,originalCatalog,originalStore;
+   try{
+    assert.equal(session.core.dispatch({commands:[{kind:'insert_text',data:{block:'p',offset:0,text:'Original provider offline edit'}}]}),true);
+    assert.equal(session.core.undo(),true);
+    assert.equal(session.core.dispatchReview({kind:'create_thread',data:{
+     anchorJson:session.core.captureReviewAnchor({kind:'document'}),body:'Original provider offline comment',
+    }}).kind,'committed');
+    assert.equal(session.core.undoReview().kind,'committed');
+    session.saveVersion('Original provider retained version','21');
+    await session.flush();
+    uploads=await RichAssetStore.restoreBackup('provider-original-uploads',retained.backup.uploadBackup(),{uploadState:'preserve'});
+    const captured=await captureSharedParticipantBackup({identity:{
+     participant:retained.id,principal:editor.principal,source:backupIdentity,stores:['document','paired-session'],assets:'whole-store',
+    },source:{core:session.core,session},assets:uploads,checkAuthority(){}});
+    assert.equal(captured.kind,'ready');backup=captured.backup;
+    const expected=backup.selection();
+    originalCatalog=await SharedContinuedRoomCatalog.capture({...initial,...options,participants:[
+     {id:retained.id,family:'original',file:backup.file(),expected},
+     ...entries.slice(1,7).map(({id,file,expected})=>({id,file,expected})),
+    ]});
+    originalStore=await SharedContinuedRoomCatalogStore.begin({...options,database:'provider-original-catalog',archive:originalCatalog,expected:originalCatalog.selection()});
+    const selected={...input,catalog:originalStore,expected:originalCatalog.selection(),originalPolicies:[{id:retained.id,expected,restore}]};
+    const beforeOriginal=requests.length;
+    await assert.rejects(readContinuedRoomReconciliation({...selected,originalPolicies:[{id:retained.id,
+     expected:{...expected,sha256:'0'.repeat(64)},restore(){assert.fail('Unselected original factory invoked');},
+    }]}),error=>error.code==='continued_reconciliation_policy');
+    assert.equal(requests.length,beforeOriginal);counts.originalPolicyRefusals++;
+    const beforeDatabases=await indexedDB.databases(),compared=await readContinuedRoomReconciliation(selected);
+    assert.deepEqual(await indexedDB.databases(),beforeDatabases);
+    assert.deepEqual(compared.unreconciledParticipants,[]);
+    const prefix=compared.participants.find(row=>row.id===retained.id).prefix;
+    assert.equal(prefix.acceptedDocuments.length,inventory.writers.length+inventory.serverAuthors.length);
+    assert.equal(prefix.acceptedReviews.length,inventory.review.writers.length);
+    assert.equal(prefix.acceptedDocuments.find(row=>row.author===editor.writer).relation,'local_ahead');
+    assert.equal(prefix.acceptedReviews.find(row=>row.author===editor.actor).relation,'local_ahead');
+    assert.ok(!compared.coverage.missing.some(row=>(row.kind==='unbound_review'||row.kind==='review')&&row.actor===editor.actor));
+    assert.ok(compared.provider.missing.some(row=>row.kind==='uploadBytes'&&row.contentAsset===unavailableAsset));
+    assert.equal(requests.slice(beforeOriginal).filter(row=>row.assets).length,1);
+    counts.originalProviderReads++;
+   }finally{
+    await originalStore?.close();originalCatalog?.dispose();backup?.dispose();uploads?.close();await session.discardAndClose();
    }
   }
   onToken=()=>store.close();

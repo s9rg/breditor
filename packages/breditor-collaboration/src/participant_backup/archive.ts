@@ -1,4 +1,5 @@
 import {RichAssetStore} from "@breditor/experimental-rich-content";
+import {SharedAssetBytesArchive} from "../asset_bytes/read_backup.js";
 import type {RichAssetArchiveEntry} from "@breditor/experimental-rich-content";
 import type {SharedAssetReferenceCapture,SharedAssetCaptureRecord} from "../asset_references_capture.js";
 import {encodeSharedSessionBackup} from "../backups/session.js";
@@ -49,3 +50,10 @@ export class SharedParticipantBackup {
 }
 export const captureSharedParticipantBackup=<P extends SharedSelectionPolicy>(options:SharedParticipantBackupCaptureOptions<P>):Promise<SharedParticipantBackupOutcome>=>SharedParticipantBackup.capture(options);
 export const readSharedParticipantBackup=(file:Blob,expected:SharedParticipantBackupSelection,options:SharedParticipantBackupOptions={}):Promise<SharedParticipantBackup>=>SharedParticipantBackup.read(file,expected,options);
+const selectedMetadata=SharedAssetBytesArchive.prototype.metadata;
+/** Borrow the exact raster and generation bindings from the admitted file. */
+export function originalParticipantAssetMetadata(backup:SharedParticipantBackup){
+ const state=states.get(backup);
+ if(!state)throw closed();
+ return selectedMetadata.call(state.selected);
+}

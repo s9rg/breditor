@@ -334,7 +334,10 @@ archives. The read replays the native journals and retained packets, verifies
 the V1 predecessor of continued histories, and includes the exact generation
 image bindings and complete upload backup. Document-only archives contribute
 document coverage through `documentOnlyParticipants` and leave registered
-review coverage pending. The provider read creates no local destinations and
-changes no delivery receipts or grants.
+review coverage pending. Supply `originalPolicies` for original native
+checkpoints with their original review and retained packet codecs. Each
+policy selects a matching native restore factory for an exact archive.
+The provider read creates no local destinations and changes no delivery
+receipts or grants.
 If any participant still lacks supported prefix admission, the operator
 host rechecks the selected room and the provider report stays empty.

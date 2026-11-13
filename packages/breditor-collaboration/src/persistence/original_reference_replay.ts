@@ -21,13 +21,14 @@ export type OriginalReferenceRestore=(checkpoint:string)=>SharedRustOwner|Promis
 export type OriginalReferenceEditor=Omit<SharedEditorOptions<'document-v1'>,'selectionEditing'|'reviewedHistory'|'searchHistory'|'segmentedHistory'>;
 const fail=(suffix:string)=>new SharedEditorError('original_record_reference_'+suffix,'Use exact source-owned original journal replay');
 const dispose=SharedRichEditor.prototype.dispose,verifyOrigin=SharedRichEditor.prototype.verifyRecoveryOrigin;
-export async function replayOriginalReferenceState(state:OriginalReferenceNativeState,binding:ReturnType<typeof nativeRestoreBinding<OriginalReferenceRestore>>,editor:OriginalReferenceEditor|undefined,descriptor:string,guard:()=>void){
+export async function replayOriginalReferenceState(state:OriginalReferenceNativeState,binding:ReturnType<typeof nativeRestoreBinding<OriginalReferenceRestore>>,editor:OriginalReferenceEditor|undefined,descriptor:string|undefined,guard:()=>void){
  guard();let raw:SharedRustOwner|undefined,core:SharedRichEditor<SharedSelectionPolicy>|undefined;
  try{
   raw=await binding.factory.call(binding.receiver,state.checkpoint);guard();initializeSharedReadOnly(raw,true);
   const options={...editor,...(state.searchHistory?{searchHistory:state.searchHistory}:{}),...(state.reviewedHistory?{reviewedHistory:state.reviewedHistory}:{})};
   core=(state.selectionEditing==='document-v1'?createSharedDocumentEditor(raw,options):new SharedRichEditor(raw,options)) as SharedRichEditor<SharedSelectionPolicy>;
-  if(JSON.stringify(sourceNativeRecoveryRead(core).descriptor())!==descriptor||core.richLanguageVersion()!==state.richLanguage)throw fail('factory');
+  if(descriptor!==undefined&&JSON.stringify(sourceNativeRecoveryRead(core).descriptor())!==descriptor||
+     core.richLanguageVersion()!==state.richLanguage)throw fail('factory');
   if(state.history==='typing-v1'&&native.view.call(core).historyGrouping!=='typing-v1')core.enableTypingHistory();
   if(state.rangeEditing==='general-v1'&&native.view.call(core).rangeEditing!=='general-v1')core.enableGeneralRanges();
   if(state.paired){const p=state.paired;core.enableReview({actor:p.reviewActor,principal:p.principal,access:'read_only'},p.reviewCheckpointJson);core.sealReviewPolicies(state.history,state.rangeEditing);admitPairedVersions(core,p.versions);if('relay'in p&&p.relay&&p.progress)checkPairedNativeProgress(core,p.relay,p.principal,p.progress);}

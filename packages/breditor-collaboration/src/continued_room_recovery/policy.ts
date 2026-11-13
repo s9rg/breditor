@@ -44,7 +44,7 @@ export function snapshotContinuedRoomGenerationPolicies(
  });
 }
 
-function snapshotPolicies<T,R extends {id:string}>(
+export function snapshotPolicies<T,R extends {id:string}>(
  input:readonly T[]|undefined,fail:()=>Error,snapshot:(row:T)=>R,
 ){
  const policies=new Map<string,R>();
@@ -57,7 +57,7 @@ function snapshotPolicies<T,R extends {id:string}>(
 
 /** A caller-supplied policy must name the exact archive of its selected family. */
 export function matchContinuedRoomPolicies(
- entries:readonly ContinuedRoomCatalogEntry[],family:'independent-local'|'independent-delivery'|'generation',
+ entries:readonly ContinuedRoomCatalogEntry[],family:'original'|'independent-local'|'independent-delivery'|'generation',
  policies:ReadonlyMap<string,{readonly expected:unknown}>,fail:()=>Error,
 ){
  const expected=new Map(entries.filter(row=>row.family===family).map(row=>[row.id,row.selection]));
