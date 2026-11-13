@@ -298,7 +298,8 @@ export async function verifyRestartedDelivery(api,{restart,cohort,destinations,d
   }
   // The first writer was connected before its peer's upload. A second cold
   // connection verifies catch-up and exact receipts for both original writers.
-  for(const {id,options} of cohort.filter(row=>acknowledged.has(row.id))){
+  for(const {id,options} of cohort.filter(row=>queued.has(row.id)||
+   [interruptedId,versionId,decisionAuthor.id,revisionAuthor.id].includes(row.id))){
    const session=await api.SharedContinuedPairSession.openDelivery({...options,database:names.get(id)});
    const adapters=[];
    try{

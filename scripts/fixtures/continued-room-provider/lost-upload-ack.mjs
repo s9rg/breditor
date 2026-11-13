@@ -1,9 +1,8 @@
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {RichAssetStore} from '@breditor/experimental-rich-content';
-import {distinctFixturePng} from '../physical-recovery-control/unavailable-upload.mjs';
+import {lostReplyUpload as bytes} from '../physical-recovery-control/unavailable-upload.mjs';
 
-const bytes=distinctFixturePng('durable-upload-lost-reply');
 const asset='sha256:'+createHash('sha256').update(bytes).digest('hex');
 
 async function withUpload(api,database,options,observe,work){
@@ -35,18 +34,7 @@ export async function observeUnacknowledgedUpload(api,database,options){
   throw Error('Controlled loss of the real image upload acknowledgement');
  },async(store,provider)=>{
   assert.equal(await provider.readBytes(asset),undefined);
-  const image=Object.getOwnPropertyDescriptor(globalThis,'Image');
-  const Base=globalThis.Image;
-  Object.defineProperty(globalThis,'Image',{configurable:true,value:class extends Base{
-   async decode(){
-    const data=Buffer.from(await(await fetch(this.src)).arrayBuffer());
-    if(!data.equals(bytes))return super.decode();
-    this.naturalWidth=1;
-    this.naturalHeight=1;
-   }
-  }});
-  try{assert.equal((await store.ingest(new Blob([bytes],{type:'image/png'}))).asset,asset);}
-  finally{Object.defineProperty(globalThis,'Image',image);}
+  assert.equal((await store.ingest(new Blob([bytes],{type:'image/png'}))).asset,asset);
   await provider.flush();
   assert.equal((await store.get(asset)).status,'failed');
   assert.equal((await store.get(asset)).attempts,1);

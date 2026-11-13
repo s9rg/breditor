@@ -10,6 +10,7 @@ export function distinctFixturePng(label){
 }
 export const unavailableUpload=distinctFixturePng('local-unreferenced-upload');
 export const unavailableAsset='sha256:'+createHash('sha256').update(unavailableUpload).digest('hex');
+export const lostReplyUpload=distinctFixturePng('durable-upload-lost-reply');
 export class UnavailableUploadImage extends ReviewFixtureImage{
- async decode(){const bytes=Buffer.from(await(await fetch(this.src)).arrayBuffer());if(!bytes.equals(unavailableUpload))return super.decode();this.naturalWidth=1;this.naturalHeight=1;}
+ async decode(){const bytes=Buffer.from(await(await fetch(this.src)).arrayBuffer());if(!bytes.equals(unavailableUpload)&&!bytes.equals(lostReplyUpload))return super.decode();this.naturalWidth=1;this.naturalHeight=1;}
 }
