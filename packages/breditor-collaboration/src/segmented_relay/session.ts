@@ -137,8 +137,52 @@ export class SharedSegmentedRelaySession<P extends SharedSelectionPolicy=SharedS
  },async()=>{});}
  #stop():void{this.#retiring=true;this.#revisions?.disconnect();this.#versions?.disconnect();for(const ref of this.#adapters)try{ref.deref()?.dispose();}catch{/* Source retirement still fences transport and releases no writer early. */}this.#adapters.clear();}
  #releaseRetained():void{this.#queue=undefined;this.#revisions=undefined;this.#versions=undefined;this.#retained().releaseRecords();}
- close():Promise<void>{try{if(!(this.#companion instanceof SegmentedRetainedCompanion)){this.#stop();return waitRetiredRelayWork(this.#core).then(()=>this.#session.close());}if(this.#session.state().status==="closed")return this.#released??Promise.resolve();if(this.#discarding)return this.#discarding;if(this.#closing)return this.#closing;this.#stop();retireOwnedCore(this.#core);this.#closing=Promise.resolve().then(async()=>{await Promise.allSettled([...this.#openings]);await waitRetiredRelayWork(this.#core,[this.#queue,this.#revisions,this.#versions].filter((value):value is NonNullable<typeof value>=>value!==undefined));await this.#revisions?.close();await this.#queue?.close();await this.#versions?.close();await waitRetiredRelayWork(this.#core);await this.#session.close();this.#releaseRetained();}).finally(()=>{this.#closing=undefined;});this.#released=this.#closing;return this.#closing;}catch(error){return Promise.reject(error);}}
- discardAndClose():Promise<void>{try{if(!(this.#companion instanceof SegmentedRetainedCompanion)){this.#stop();return waitRetiredRelayWork(this.#core).then(()=>this.#session.discardAndClose());}if(this.#session.state().status==="closed")return this.#released??Promise.resolve();if(this.#discarding)return this.#discarding;this.#stop();retireOwnedCore(this.#core);const closing=this.#closing;this.#discarding=Promise.resolve().then(async()=>{await Promise.allSettled([...this.#openings,...(closing?[closing]:[])]);await waitRetiredRelayWork(this.#core,[this.#queue,this.#revisions,this.#versions].filter((value):value is NonNullable<typeof value>=>value!==undefined));if(this.#session.state().status==="closed")return;await this.#revisions?.discardAndClose();await this.#queue?.discardAndClose();await this.#versions?.discardAndClose();await waitRetiredRelayWork(this.#core);await this.#session.discardAndClose();this.#releaseRetained();}).finally(()=>{this.#discarding=undefined;});this.#released=this.#discarding;return this.#discarding;}catch(error){return Promise.reject(error);}}
+ close():Promise<void>{
+  try{
+   if(this.#session.state().status==="closed")return this.#released??Promise.resolve();
+   if(this.#discarding)return this.#discarding;
+   if(this.#closing)return this.#closing;
+   const retained=this.#companion instanceof SegmentedRetainedCompanion;
+   this.#stop();
+   if(retained)retireOwnedCore(this.#core);
+   this.#closing=Promise.resolve().then(async()=>{
+    if(retained){
+     await Promise.allSettled([...this.#openings]);
+     await waitRetiredRelayWork(this.#core,[this.#queue,this.#revisions,this.#versions].filter(value=>value!==undefined));
+     await this.#revisions?.close();await this.#queue?.close();await this.#versions?.close();
+    }
+    await waitRetiredRelayWork(this.#core);
+    await this.#session.close();
+    if(retained)this.#releaseRetained();
+   }).finally(()=>{this.#closing=undefined;});
+   this.#released=this.#closing;
+   return this.#closing;
+  }catch(error){return Promise.reject(error);}
+ }
+ discardAndClose():Promise<void>{
+  try{
+   if(this.#session.state().status==="closed")return this.#released??Promise.resolve();
+   if(this.#discarding)return this.#discarding;
+   const retained=this.#companion instanceof SegmentedRetainedCompanion,closing=this.#closing;
+   this.#stop();
+   if(retained)retireOwnedCore(this.#core);
+   this.#discarding=Promise.resolve().then(async()=>{
+    await Promise.allSettled([...this.#openings,...(closing?[closing]:[])]);
+    if(retained){
+     await waitRetiredRelayWork(this.#core,[this.#queue,this.#revisions,this.#versions].filter(value=>value!==undefined));
+    }
+    if(this.#session.state().status==="closed")return;
+    if(retained){
+     await this.#revisions?.discardAndClose();await this.#queue?.discardAndClose();await this.#versions?.discardAndClose();
+    }
+    await waitRetiredRelayWork(this.#core);
+    await this.#session.discardAndClose();
+    if(retained)this.#releaseRetained();
+   }).finally(()=>{this.#discarding=undefined;});
+   this.#released=this.#discarding;
+   return this.#discarding;
+  }catch(error){return Promise.reject(error);}
+ }
 }
 /** Genuine relay/retained parent only; no caller-selected head reader or LIVE
  * child export may stand in for this atomic durable source. */
