@@ -596,3 +596,11 @@ acknowledgements. After restart, the writers receive new acknowledgements
 for their edits, comments and versions. All seven clients converge on the
 same document with each new edit and comment present once. The two authors
 reopen and reconnect again to verify the exact saved acknowledgements.
+
+The relay also durably saves one edit whose submission reply the test
+intercepts before the SDK can process it. The test kills the relay at that
+point. The client's journal has the edit and its previous receipt. After
+restart, the SDK verifies the relay's accepted author prefix, updates its
+saved progress, and retains the last receipt it actually received. No second
+submission is sent. All seven clients see the edit once, and a second cold
+reopen preserves the recovered progress.
