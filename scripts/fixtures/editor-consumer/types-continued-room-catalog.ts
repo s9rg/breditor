@@ -1,5 +1,5 @@
-import {SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore,beginContinuedRoomRecovery,resumeContinuedRoomRecovery} from '@breditor/collaboration';
-import type {ContinuedPairRecords,ContinuedRoomRecoveryOptions,ContinuedRoomRecoveryResult,ContinuedRoomCatalogCaptureOptions,ContinuedRoomCatalogMetadata,ContinuedRoomCatalogSelection} from '@breditor/collaboration';
+import {SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore,beginContinuedRoomRecovery,resumeContinuedRoomRecovery,readContinuedRoomReconciliation} from '@breditor/collaboration';
+import type {ContinuedPairRecords,ContinuedRoomReconciliationOptions,ContinuedRoomReconciliationRead,ContinuedRoomRecoveryOptions,ContinuedRoomRecoveryResult,ContinuedRoomCatalogCaptureOptions,ContinuedRoomCatalogMetadata,ContinuedRoomCatalogSelection} from '@breditor/collaboration';
 
 declare const input:ContinuedRoomCatalogCaptureOptions;
 const archive=await SharedContinuedRoomCatalog.capture(input);
@@ -19,3 +19,7 @@ declare const recovery:ContinuedRoomRecoveryOptions;
 const result:ContinuedRoomRecoveryResult=await beginContinuedRoomRecovery(recovery);
 await resumeContinuedRoomRecovery(recovery);
 void result;
+
+declare const reconciliation:ContinuedRoomReconciliationOptions;
+const report:ContinuedRoomReconciliationRead=await readContinuedRoomReconciliation(reconciliation);
+void report;

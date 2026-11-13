@@ -56,6 +56,8 @@ export type * from "./review_types.js";
 export type * from "./review_generations.js";
 export type {SharedContinuedPairAssetReferences} from "./continued_pair/asset_references.js";
 export type {ContinuedPairRecordRead,ContinuedPairRecords} from "./continued_pair/read_records.js";
+export {readContinuedRoomReconciliation} from "./continued_room_reconciliation/read.js";
+export type {ContinuedRoomReconciliationOptions,ContinuedRoomReconciliationRead} from "./continued_room_reconciliation/contract.js";
 export {beginContinuedRoomRecovery,resumeContinuedRoomRecovery} from "./continued_room_recovery/recovery.js";
 export type {ContinuedRoomRecoveryOptions,ContinuedRoomRecoveryDestination,ContinuedRoomRecoveryResult} from "./continued_room_recovery/contract.js";
 export {SharedContinuedRoomCatalogStore} from "./continued_room_catalog/storage.js";
@@ -64,7 +66,7 @@ export type {
  ContinuedRoomCatalogCaptureOptions,ContinuedRoomCatalogReadOptions,ContinuedRoomCatalogMetadata,
  ContinuedRoomCatalogPolicy,ContinuedRoomCatalogEntry,ContinuedRoomCatalogSelection,
 } from "./continued_room_catalog/contract.js";
-export type {ContinuedParticipantPrefix} from "./continued_participant/inventory.js";
+export type {ContinuedParticipantPrefix,ContinuedAcceptedPrefix} from "./continued_participant/inventory.js";
 export {SharedContinuedParticipantBackup} from "./continued_participant/archive.js";
 export type {ContinuedParticipantIdentity,ContinuedParticipantSelection,ContinuedParticipantMetadata,ContinuedParticipantCaptureOptions,ContinuedParticipantReadOptions} from "./continued_participant/contract.js";
 export {SharedContinuedPairSession} from "./continued_pair/session.js";

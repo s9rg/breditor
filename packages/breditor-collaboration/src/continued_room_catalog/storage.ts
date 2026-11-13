@@ -7,6 +7,7 @@ import {physicalCatalogDatabase,physicalCatalogFailure,physicalCatalogKnown,phys
 import {physicalCatalogV2Options} from '../physical_room_catalog_v2/input_snapshot.js';
 import {SharedContinuedRoomCatalog} from './archive.js';
 import type {ContinuedRoomCatalogReadOptions,ContinuedRoomCatalogSelection} from './contract.js';
+import {selectContinuedRoomPolicies} from './policy.js';
 import {parseContinuedRoomManifest} from './manifest.js';
 
 interface OpenOptions extends ContinuedRoomCatalogReadOptions {
@@ -124,7 +125,8 @@ export class SharedContinuedRoomCatalogStore {
    if(archive){dispose.call(archive);archive=undefined;}
    archive=await readArchive.call(SharedContinuedRoomCatalog,stored.record.manifest,stored.files,expected,options);
    check();
-   const owner=new SharedContinuedRoomCatalogStore(token,{archive,db,lease,check,database,options});
+   const pinnedPolicies=Object.freeze([...selectContinuedRoomPolicies(metadata.call(archive).participants,policies).values()]);
+   const owner=new SharedContinuedRoomCatalogStore(token,{archive,db,lease,check,database,options:{...options,policies:pinnedPolicies}});
    check();
    opening.complete();
    return owner;
@@ -140,7 +142,7 @@ export function continuedRoomRecoveryCatalog(store:SharedContinuedRoomCatalogSto
  const held=borrowStore(store),chosen=selection.call(held.archive),expectedManifest=manifestJson.call(held.archive);
  const check=()=>{if(borrowStore(store)!==held)throw physicalCatalogFailure('catalog_closed');};
  return {
-  database:held.database,selection:chosen,options:held.options,check,
+  database:held.database,selection:chosen,metadata:metadata.call(held.archive),options:held.options,check,
   async read(extraCheck:()=>void,signal?:AbortSignal){
    const guard=()=>{check();extraCheck();};
    const stored=await readPhysicalCatalogDatabase(held.db,guard,expectedManifest,storage);

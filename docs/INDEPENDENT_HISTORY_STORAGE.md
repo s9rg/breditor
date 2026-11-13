@@ -280,3 +280,18 @@ before returning the local destination names.
 This path covers continued local participants. A combined operation still
 needs mixed participant families, provider and outbox reconciliation, and
 authenticated room activation.
+
+### Compare a continued catalog with its provider
+
+`readContinuedRoomReconciliation` reopens the durable catalog and requires
+an operator host selected for the same origin, current physical server, and
+participant inventory. It compares each participant's live document and
+comment history with every accepted author, including server document
+authors. The report distinguishes local suffixes from histories behind the
+server. A divergent accepted prefix fails admission.
+
+The provider read includes image bindings reachable from all save slots and
+every content ID in the participant upload archives. It verifies matching
+content and dimensions and reports missing mappings or bytes. The read
+preserves the original upload state and leaves local comment delivery
+pending. Provider availability alone does not settle offline work.

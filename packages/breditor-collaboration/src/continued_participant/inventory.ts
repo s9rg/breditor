@@ -17,9 +17,18 @@ const {file:participantFile,selection:participantSelection,records:participantRe
 const refuse=()=>new SharedRoomParticipantInventoryError('inventory_source','The selected continued participant differs from the physical room inventory');
 const fork=()=>new SharedRoomParticipantInventoryError('inventory_fork','The accepted prefix differs from this native continued history');
 
+export interface ContinuedAcceptedPrefix {
+ readonly author:string;
+ readonly principal:string|null;
+ readonly localThrough:string;
+ readonly acceptedThrough:string;
+ readonly relation:'equal'|'local_ahead'|'server_ahead';
+}
 export interface ContinuedParticipantPrefix {
  readonly document:SharedRoomParticipantCoverage['checkedParticipants'][number];
  readonly documentStatus:'matches'|'server_ahead';
+ readonly acceptedDocuments:readonly ContinuedAcceptedPrefix[];
+ readonly acceptedReviews:readonly ContinuedAcceptedPrefix[];
  readonly review:Readonly<{
   actor:string;localThrough:string;acceptedThrough:string|null;
   status:'matches'|'server_ahead'|'unregistered';
@@ -60,17 +69,36 @@ export async function inspectContinuedParticipantPrefix<P extends SharedSelectio
     writerGroups:(after:string)=>native.writerGroups.call(core,after),
     writerGroupsV2:(after:string)=>native.writerGroupsV2.call(core,after),
    };
-   const document=wire===2?transport.writerClockV2(writer):transport.writerClock(writer);
-   const review=native.reviewWriterClock.call(core,actor,principal);
-   if(registered.observer&&document.through!=='0'||registeredReview?.observer&&review.through!=='0')throw refuse();
-   const documentBehind=BigInt(document.through)<BigInt(registered.clock.through);
-   if(!documentBehind&&prefixAt(transport,writer,registered.clock.through,wire)!==registered.clock.prefixDigest)throw fork();
-   const reviewBehind=registeredReview&&BigInt(review.through)<BigInt(registeredReview.clock.through);
-   if(registeredReview&&!reviewBehind&&native.reviewWriterClock.call(core,actor,principal,registeredReview.clock.through).prefixDigest!==registeredReview.clock.prefixDigest)throw fork();
+   const relation=(local:string,accepted:string)=>local===accepted?'equal' as const:
+    BigInt(local)<BigInt(accepted)?'server_ahead' as const:'local_ahead' as const;
+   const acceptedDocuments=[
+    ...metadata.writers.map(row=>({principal:row.principal,clock:row.clock})),
+    ...metadata.serverAuthors.map(row=>({principal:null,clock:row.clock})),
+   ];
+   const documents=acceptedDocuments.map(({principal,clock})=>{
+    const local=wire===2?transport.writerClockV2(clock.writer):transport.writerClock(clock.writer);
+    const status=relation(local.through,clock.through);
+    if(status!=='server_ahead'&&prefixAt(transport,clock.writer,clock.through,wire)!==clock.prefixDigest)throw fork();
+    return {author:clock.writer,principal,localThrough:local.through,acceptedThrough:clock.through,relation:status};
+   });
+   const reviews=(metadata.review?.writers??[]).map(({principal,clock})=>{
+    const local=native.reviewWriterClock.call(core,clock.actor,principal),status=relation(local.through,clock.through);
+    if(status!=='server_ahead'){
+     const at=native.reviewWriterClock.call(core,clock.actor,principal,clock.through);
+     if(at.through!==clock.through||at.prefixDigest!==clock.prefixDigest)throw fork();
+    }
+    return {author:clock.actor,principal,localThrough:local.through,acceptedThrough:clock.through,relation:status};
+   });
+   const document=documents.find(row=>row.author===writer)!;
+   const reviewThrough=reviews.find(row=>row.author===actor)?.localThrough??native.reviewWriterClock.call(core,actor,principal).through;
+   if(registered.observer&&document.localThrough!=='0'||registeredReview?.observer&&reviewThrough!=='0')throw refuse();
+   const documentBehind=document.relation==='server_ahead';
+   const reviewBehind=registeredReview&&BigInt(reviewThrough)<BigInt(registeredReview.clock.through);
    const result=frozen({
-    document:{participant,principal,writer,observer:registered.observer,localThrough:document.through,acceptedThrough:registered.clock.through},
+    document:{participant,principal,writer,observer:registered.observer,localThrough:document.localThrough,acceptedThrough:registered.clock.through},
     documentStatus:documentBehind?'server_ahead' as const:'matches' as const,
-    review:{actor,localThrough:review.through,acceptedThrough:registeredReview?.clock.through??null,
+    acceptedDocuments:documents,acceptedReviews:reviews,
+    review:{actor,localThrough:reviewThrough,acceptedThrough:registeredReview?.clock.through??null,
      status:registeredReview?reviewBehind?'server_ahead' as const:'matches' as const:'unregistered' as const},
    });
    check();

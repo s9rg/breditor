@@ -22,7 +22,7 @@ import type {
 const constructorToken=Symbol();
 const {read:readServer,prototype:{dispose:disposeServer}}=SharedServerLogGenerationRoomArchive;
 const {read:readInventory,prototype:{dispose:disposeInventory}}=SharedServerLogGenerationParticipantInventory;
-const {read:readParticipant,prototype:{dispose:disposeParticipant,records:participantRecords,uploadBackup:participantUploads,blob:participantBlob}}=SharedContinuedParticipantBackup;
+const {read:readParticipant,prototype:{dispose:disposeParticipant,records:participantRecords,uploadBackup:participantUploads,blob:participantBlob,metadata:participantMetadata}}=SharedContinuedParticipantBackup;
 const mapSize=Object.getOwnPropertyDescriptor(Map.prototype,'size')!.get!;
 
 function component<T>(input:unknown,maximum:number,select:(value:unknown)=>T):{file:Blob;identity:T;bytes:number}{
@@ -80,6 +80,7 @@ export class SharedContinuedRoomCatalog {
   return backup;
  }
  participantRecords(id:string){return participantRecords.call(this.#participant(id));}
+ participantMetadata(id:string){return participantMetadata.call(this.#participant(id));}
  participantUploads(id:string){return participantUploads.call(this.#participant(id));}
  participantAsset(id:string,asset:string,generation:string){return participantBlob.call(this.#participant(id),asset,generation);}
  inspectPrefixes(){

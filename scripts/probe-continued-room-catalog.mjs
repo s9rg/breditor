@@ -29,7 +29,7 @@ const sameBytes=async(a,b)=>assert.deepEqual(await bytes(a),await bytes(b));
 const sha=value=>createHash('sha256').update(value).digest('hex');
 const local=(core,text)=>core.dispatch({commands:[{kind:'insert_text',data:{block:'p',offset:0,text}}]});
 
-async function participant(profile,fixture,metadata,client,wasm,tag,documentHistory,reviewHistory,branch='current'){
+export async function continuedParticipantFixture(profile,fixture,metadata,client,wasm,tag,documentHistory,reviewHistory,branch='current',modify){
  const room=metadata.room.document,writer=client.writer;
  const readOnly=client.observer;
  const review={actor:client.actor,principal:client.principal,access:readOnly?'read_only':'comment'};
@@ -76,6 +76,7 @@ async function participant(profile,fixture,metadata,client,wasm,tag,documentHist
    session.core.undoReview();
    await session.retainVersion(session.core.captureVersion('Local retained version',client.principal,'11'));
   }
+  await modify?.(session);
   await session.flush();
   if(branch==='interrupted'){
    const original=IDBDatabase.prototype.transaction;
@@ -98,6 +99,7 @@ async function participant(profile,fixture,metadata,client,wasm,tag,documentHist
   await uploads.ingest(new Blob([pixel],{type:'image/png'}));
   await uploads.ingest(new Blob([secondPixel],{type:'image/png'}));
   await uploads.cancel(secondAsset);
+  await modify?.(session,uploads);
   const result=await SharedContinuedParticipantBackup.capture({participant:tag,principal:client.principal,session,uploads,wasm,checkAuthority(){},
    resolveAsset:async reference=>({...reference,identity:reference.asset.startsWith('sha256:')?'content-addressed':'host-verified',
     blob:new Blob([pixel],{type:'image/png'}),check(){}})});
@@ -130,7 +132,7 @@ export async function probeContinuedRoomCatalog(runtime,fixturePath){
    },
   };
   const pack=async(tag,doc,review,branch,selected=client)=>{
-   const result=await participant(profile,fixture,metadata,selected,wasm,tag,doc,review,branch);
+   const result=await continuedParticipantFixture(profile,fixture,metadata,selected,wasm,tag,doc,review,branch);
    owners.push(result);
    return result;
   };
