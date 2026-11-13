@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {dirname,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {SharedRichEditor,SharedIndependentHistoryPersistentSession,SharedIndependentDeliverySession,captureSharedIndependentParticipant,captureSharedIndependentDeliveryParticipant,SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore,SharedServerLogGenerationRecoveryHost,readContinuedRoomReconciliation} from '../packages/breditor-collaboration/dist/index.js';
+import {SharedRichEditor,SharedIndependentHistoryPersistentSession,SharedIndependentDeliverySession,captureSharedIndependentParticipant,captureSharedIndependentDeliveryParticipant,SharedSegmentedPersistentSession,SharedSegmentedRelaySession,captureSharedGenerationParticipant,SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore,SharedServerLogGenerationRecoveryHost,readContinuedRoomReconciliation} from '../packages/breditor-collaboration/dist/index.js';
 import {RichAssetStore} from '@breditor/experimental-rich-content';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
 import {continuedParticipantFixture} from './probe-continued-room-catalog.mjs';
@@ -19,7 +19,7 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
  const profile=native.SharedRichProfile[method](fixture.configuration);
  const entries=[];
  let archive,store,host,tokenAllowed=true,onToken;
- const counts={authorPrefixes:0,reviewPrefixes:0,localSuffixes:0,missingUploads:0,providerReads:0,rejected:0,foreignForks:0,mixedPending:0,mixedProviderReads:0,mixedForeignForks:0,mixedDeliveryProviderReads:0,mixedDeliveryAheadRefusals:0};
+ const counts={authorPrefixes:0,reviewPrefixes:0,localSuffixes:0,missingUploads:0,providerReads:0,rejected:0,foreignForks:0,mixedPending:0,mixedProviderReads:0,mixedForeignForks:0,mixedDeliveryProviderReads:0,mixedDeliveryAheadRefusals:0,generationProviderReads:0,generationDocumentOnlyReads:0,generationAheadRefusals:0,generationForkRefusals:0,generationPredecessorChecks:0};
  const room=inventory.room.document;
  const initial={
   catalog:'continued-native-provider',wasm:native,checkAuthority(){},
@@ -254,6 +254,113 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
   }finally{
    await aheadStore?.close();aheadCatalog?.dispose();aheadBackup?.dispose();
    await deliveryStore?.close();deliveryCatalog?.dispose();deliveryBackup?.dispose();deliveryUploads?.close();await delivery?.discardAndClose();
+  }
+  for(const variant of ['local','continued-local','relay','retained','document-only','relay-ahead','local-fork']){
+   const kind=variant==='document-only'||variant==='relay-ahead'?'relay':variant==='local-fork'?'local':variant;
+   const tag='provider-generation-'+variant;
+   const {native:identity}=exact.identity;
+   const restoreSegmented=checkpoint=>profile.restore_segmented(room,checkpoint);
+   const review=variant==='document-only'?undefined:{actor:editor.actor,principal:editor.principal,access:'comment'};
+   const writing={...identity,readOnly:false,...(review?{review}:{})};
+   const binding={...factory.binding,review:review?factory.binding.review:null};
+   const seed={...writing,database:tag+'-source',restoreSegmented,initialGenerations:{root:'provider-root',active:'provider-first'},
+    create:()=>profile.restore(room,editor.documentCheckpoint),...(review?{initialReviewCheckpoint:editor.reviewCheckpoint}:{})};
+   const options={...openOptions,policies:openOptions.policies.slice(1)};
+   let session,uploads,backup,generationCatalog,generationStore;
+   try{
+    session=kind==='retained'?await SharedSegmentedRelaySession.openRetained({...seed,binding,retained:factory.retained}):
+     kind==='relay'?await SharedSegmentedRelaySession.open({...seed,binding}):await SharedSegmentedPersistentSession.open(seed);
+    assert.equal(session.core.dispatch({commands:[{kind:'insert_text',data:{block:'p',offset:0,text:'Offline generation provider edit'}}]}),true);
+    assert.equal(session.core.undo(),true);
+    if(review){
+     assert.equal(session.core.dispatchReview({kind:'create_thread',data:{
+      anchorJson:session.core.captureReviewAnchor({kind:'document'}),body:'Offline generation provider comment',
+     }}).kind,'committed');
+     assert.equal(session.core.undoReview().kind,'committed');
+    }
+    if(variant==='local-fork'){
+     const branch=new SharedRichEditor(profile.join_frame(room,peer.writer,session.core.updateFrame()));
+     try{
+      const review={actor:peer.actor,principal:peer.principal,access:'comment'};
+      branch.enableReview(review);
+      assert.equal(branch.dispatchReview({kind:'create_thread',data:{
+       anchorJson:branch.captureReviewAnchor({kind:'document'}),body:'Forked foreign comment in generation history',
+      }}).kind,'committed');
+      session.core.receiveReview(branch.exportReview(),review);
+     }finally{branch.dispose();}
+    }
+    await session.retainVersion(session.core.captureVersion('Generation provider retained version',editor.principal,'20'));
+    await session.sealGeneration('provider-next');
+    if(kind==='continued-local'){
+     const predecessor=session.exportRecovery();
+     await session.close();session=undefined;
+     session=await SharedSegmentedPersistentSession.continueHistory({...writing,database:seed.database,profile,
+      expected:predecessor,nextGeneration:'provider-continued'});
+    }
+    if(variant==='relay-ahead'){
+     const recovery=session.exportRecovery(),ahead=fixture.atomic?session.core.writerClockV2(editor.writer):session.core.writerClock(editor.writer);
+     assert.ok(BigInt(ahead.through)>BigInt(inventory.writers.find(row=>row.clock.writer===editor.writer).clock.through));
+     await session.close();session=undefined;
+     session=await SharedSegmentedRelaySession.restoreRecovery({...writing,binding,restoreSegmented,database:tag+'-ahead',
+      recovery:{...recovery,relay:{...recovery.relay,document:{accepted:ahead,receipt:null}}},writerRecovery:'host-reacquired'});
+    }
+    uploads=await RichAssetStore.restoreBackup(tag+'-uploads',retained.backup.uploadBackup(),{uploadState:'preserve'});
+    const captured=await captureSharedGenerationParticipant({participant:retained.id,principal:editor.principal,
+     source:{kind,session},assets:uploads,checkAuthority(){}});
+    assert.equal(captured.kind,'ready');backup=captured.backup;
+    const generationExpected=backup.selection();
+    generationCatalog=await SharedContinuedRoomCatalog.capture({...initial,...options,participants:[
+     {id:retained.id,family:'generation',file:backup.file(),expected:generationExpected},
+     ...entries.slice(1,7).map(({id,file,expected})=>({id,file,expected})),
+    ]});
+    generationStore=await SharedContinuedRoomCatalogStore.begin({...options,database:tag+'-catalog',archive:generationCatalog,expected:generationCatalog.selection()});
+    const readOnly={...identity,readOnly:true,...(review?{review:{...review,access:'read_only'}}:{})};
+    const factories={segmented:0,continued:0};
+    const selectedFactory=kind==='continued-local'?{...readOnly,profile:{
+     restore_segmented(room,checkpoint){factories.segmented++;return profile.restore_segmented(room,checkpoint);},
+     restore_continued_history(room,checkpoint){factories.continued++;return profile.restore_continued_history(room,checkpoint);},
+    }}:{...readOnly,restoreSegmented,...(kind==='relay'||kind==='retained'?{binding}:{}),...(kind==='retained'?{retained:factory.retained}:{})};
+    const selected={...input,catalog:generationStore,expected:generationCatalog.selection(),
+     generationPolicies:[{id:retained.id,expected:generationExpected,session:{kind,options:selectedFactory}}]};
+    const beforeGeneration=requests.length;
+    if(variant==='relay-ahead'||variant==='local-fork'){
+     await assert.rejects(readContinuedRoomReconciliation(selected),error=>
+      error.code===(variant==='relay-ahead'?'continued_reconciliation_diverged':'inventory_fork'));
+     assert.equal(requests.length,beforeGeneration);
+     if(variant==='relay-ahead')counts.generationAheadRefusals++;
+     else counts.generationForkRefusals++;
+     continue;
+    }
+    const beforeDatabases=await indexedDB.databases();
+    const compared=await readContinuedRoomReconciliation(selected);
+    assert.deepEqual(await indexedDB.databases(),beforeDatabases);
+    assert.deepEqual(compared.unreconciledParticipants,[]);
+    const rows=review?compared.participants:compared.documentOnlyParticipants;
+    const prefix=rows.find(row=>row.id===retained.id).prefix;
+    assert.equal(prefix.acceptedDocuments.length,inventory.writers.length+inventory.serverAuthors.length);
+    assert.equal(prefix.acceptedDocuments.find(row=>row.author===editor.writer).relation,'local_ahead');
+    assert.ok(compared.coverage.checkedParticipants.some(row=>row.participant===retained.id));
+    if(review){
+     assert.equal(prefix.acceptedReviews.length,inventory.review.writers.length);
+     assert.equal(prefix.acceptedReviews.find(row=>row.author===editor.actor).relation,'local_ahead');
+     assert.equal(compared.coverage.missing.some(row=>row.kind==='unbound_review'&&row.actor===editor.actor),kind==='local'||kind==='continued-local');
+    }else{
+     assert.equal(prefix.review,null);assert.deepEqual(prefix.acceptedReviews,[]);
+     assert.ok(compared.coverage.missing.some(row=>row.kind==='review'&&row.actor===editor.actor));
+     assert.ok(!compared.coverage.missing.some(row=>row.kind==='unbound_review'&&row.participant===retained.id));
+     counts.generationDocumentOnlyReads++;
+    }
+    if(kind==='continued-local'){
+     assert.deepEqual(factories,{segmented:1,continued:1});
+     counts.generationPredecessorChecks++;
+    }
+    assert.ok(compared.provider.missing.some(row=>row.kind==='uploadBytes'&&row.contentAsset===unavailableAsset));
+    assert.ok(compared.uploads.find(row=>row.id===retained.id).entries.some(row=>row.asset===unavailableAsset));
+    assert.equal(requests.slice(beforeGeneration).filter(row=>row.assets).length,1);
+    counts.generationProviderReads++;
+   }finally{
+    await generationStore?.close();generationCatalog?.dispose();backup?.dispose();uploads?.close();await session?.discardAndClose();
+   }
   }
   onToken=()=>store.close();
   await assert.rejects(readContinuedRoomReconciliation(input),error=>['catalog_closed','archive_authority','control_authority'].includes(error.code));

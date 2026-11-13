@@ -2,7 +2,7 @@
 import {RichAssetStore,readRichAssetBackup,type RichAssetArchive} from "@breditor/experimental-rich-content";
 import {captureSharedGenerationSource,type SharedGenerationSourceCapture} from "../generation_source/capture.js";
 import {captureSharedGenerationAssets,exportSharedGenerationAssetBackup,type SharedGenerationAssetCapture} from "../generation_assets/capture.js";
-import {readSharedGenerationAssetBackup,type SharedGenerationAssetArchive} from "../generation_assets/read.js";
+import {readSharedGenerationAssetBackup,SharedGenerationAssetArchive} from "../generation_assets/read.js";
 import {checkAssetBytesSignal} from "../asset_bytes/guards.js";
 import {participantAuthority} from "../participant_backup/policy.js";
 import type {SharedAssetBytesPending} from "../asset_bytes/types.js";
@@ -47,3 +47,10 @@ export class SharedGenerationParticipantBackup {
 }
 export const captureSharedGenerationParticipant=<P extends SharedSelectionPolicy>(options:SharedGenerationParticipantCaptureOptions<P>)=>SharedGenerationParticipantBackup.capture(options);
 export const readSharedGenerationParticipant=(file:Blob,expected:SharedGenerationParticipantSelection,options:SharedGenerationParticipantOptions={})=>SharedGenerationParticipantBackup.read(file,expected,options);
+const selectedMetadata=SharedGenerationAssetArchive.prototype.metadata;
+/** Use the admitted archive's exact content-address and generation bindings. */
+export function generationParticipantAssetMetadata(backup:SharedGenerationParticipantBackup){
+ const state=states.get(backup);
+ if(!state)throw closed();
+ return selectedMetadata.call(state.selected);
+}

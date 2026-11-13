@@ -24,5 +24,7 @@ await resumeContinuedRoomRecovery({...recovery,independentPolicies:[legacy],deli
 void result;
 
 declare const reconciliation:ContinuedRoomReconciliationOptions;
-const report:ContinuedRoomReconciliationRead=await readContinuedRoomReconciliation({...reconciliation,independentPolicies:[legacy],deliveryPolicies:[delivery]});
-void report;
+const report:ContinuedRoomReconciliationRead=await readContinuedRoomReconciliation({...reconciliation,
+ independentPolicies:[legacy],deliveryPolicies:[delivery],generationPolicies:[generation]});
+const review:null|undefined=report.documentOnlyParticipants?.[0]?.prefix.review;
+void review;

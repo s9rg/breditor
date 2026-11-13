@@ -35,6 +35,11 @@ export interface ContinuedParticipantPrefix {
   status:'matches'|'server_ahead'|'unregistered';
  }>;
 }
+export interface ContinuedDocumentOnlyPrefix extends Omit<ContinuedParticipantPrefix,'review'> {
+ readonly review:null;
+}
+type NativePrefix=ContinuedParticipantPrefix|ContinuedDocumentOnlyPrefix;
+type PrefixSource=Readonly<{native:{room:string;writer:string;richLanguage:number};review:{actor:string}|null}>;
 /** A persisted local review prefix is evidence about history, with delivery still unbound. */
 export async function inspectContinuedParticipantPrefix<P extends SharedSelectionPolicy>(
  backup:SharedContinuedParticipantBackup,inventory:SharedServerLogGenerationParticipantInventory,
@@ -60,11 +65,19 @@ export async function inspectContinuedParticipantPrefix<P extends SharedSelectio
 /** The exact native checkpoint has already been admitted by the family reader. */
 export function inspectLocalNativePrefix<P extends SharedSelectionPolicy>(
  core:SharedRichEditor<P>,inventory:SharedServerLogGenerationParticipantInventory,participant:string,principal:string,
- source:Readonly<{native:{room:string;writer:string;richLanguage:number};review:{actor:string}}>,check:()=>void,
-):ContinuedParticipantPrefix{
+ source:PrefixSource&{review:{actor:string}},check:()=>void,
+):ContinuedParticipantPrefix;
+export function inspectLocalNativePrefix<P extends SharedSelectionPolicy>(
+ core:SharedRichEditor<P>,inventory:SharedServerLogGenerationParticipantInventory,participant:string,principal:string,
+ source:PrefixSource,check:()=>void,
+):NativePrefix;
+export function inspectLocalNativePrefix<P extends SharedSelectionPolicy>(
+ core:SharedRichEditor<P>,inventory:SharedServerLogGenerationParticipantInventory,participant:string,principal:string,
+ source:PrefixSource,check:()=>void,
+):NativePrefix{
  check();
  const metadata=inventoryMetadata.call(inventory).native;
- const writer=source.native.writer,actor=source.review.actor,wire=metadata.room.writerTransportVersion;
+ const writer=source.native.writer,actor=source.review?.actor,wire=metadata.room.writerTransportVersion;
  const registered=metadata.writers.find(row=>row.clock.writer===writer);
  const registeredReview=metadata.review?.writers.find(row=>row.clock.actor===actor);
  if(!registered||registered.principal!==principal||source.native.room!==metadata.room.document||
@@ -92,7 +105,7 @@ export function inspectLocalNativePrefix<P extends SharedSelectionPolicy>(
   if(status!=='server_ahead'&&prefixAt(transport,clock.writer,clock.through,wire)!==clock.prefixDigest)throw fork();
   return {author:clock.writer,principal,localThrough:local.through,acceptedThrough:clock.through,relation:status};
  });
- const reviews=(metadata.review?.writers??[]).map(({principal,clock})=>{
+ const reviews=(actor?metadata.review?.writers??[]:[]).map(({principal,clock})=>{
   const local=native.reviewWriterClock.call(core,clock.actor,principal),status=relation(local.through,clock.through);
   if(status!=='server_ahead'){
    const at=native.reviewWriterClock.call(core,clock.actor,principal,clock.through);
@@ -101,31 +114,35 @@ export function inspectLocalNativePrefix<P extends SharedSelectionPolicy>(
   return {author:clock.actor,principal,localThrough:local.through,acceptedThrough:clock.through,relation:status};
  });
  const document=documents.find(row=>row.author===writer)!;
- const reviewThrough=reviews.find(row=>row.author===actor)?.localThrough??native.reviewWriterClock.call(core,actor,principal).through;
- if(registered.observer&&document.localThrough!=='0'||registeredReview?.observer&&reviewThrough!=='0')throw refuse();
- const documentBehind=document.relation==='server_ahead';
- const reviewBehind=registeredReview&&BigInt(reviewThrough)<BigInt(registeredReview.clock.through);
- const result=frozen({
+ if(registered.observer&&document.localThrough!=='0')throw refuse();
+ const result={
   document:{participant,principal,writer,observer:registered.observer,localThrough:document.localThrough,acceptedThrough:registered.clock.through},
-  documentStatus:documentBehind?'server_ahead' as const:'matches' as const,
+  documentStatus:document.relation==='server_ahead'?'server_ahead' as const:'matches' as const,
   acceptedDocuments:documents,acceptedReviews:reviews,
-  review:{actor,localThrough:reviewThrough,acceptedThrough:registeredReview?.clock.through??null,
-   status:registeredReview?reviewBehind?'server_ahead' as const:'matches' as const:'unregistered' as const},
- });
+ };
+ let review:ContinuedParticipantPrefix['review']|null=null;
+ if(actor){
+  const localThrough=reviews.find(row=>row.author===actor)?.localThrough??native.reviewWriterClock.call(core,actor,principal).through;
+  if(registeredReview?.observer&&localThrough!=='0')throw refuse();
+  const acceptedThrough=registeredReview?.clock.through??null;
+  review={actor,localThrough,acceptedThrough,status:acceptedThrough===null?'unregistered':
+   BigInt(localThrough)<BigInt(acceptedThrough)?'server_ahead':'matches'};
+ }
  check();
- return result;
+ return review?frozen({...result,review}):frozen({...result,review:null});
 }
 
 /** Overlay document prefix observations. The local review stream remains pending delivery. */
 export function continuedParticipantCoverage(
- inventory:SharedServerLogGenerationParticipantInventory,observations:readonly ContinuedParticipantPrefix[],boundActors:ReadonlySet<string>=new Set(),
+ inventory:SharedServerLogGenerationParticipantInventory,observations:readonly NativePrefix[],boundActors:ReadonlySet<string>=new Set(),
 ):SharedRoomParticipantCoverage{
  const metadata=inventoryMetadata.call(inventory).native;
  inventoryFile.call(inventory);
- const writers=new Map<string,ContinuedParticipantPrefix>(),actors=new Map<string,ContinuedParticipantPrefix>();
+ const writers=new Map<string,NativePrefix>(),actors=new Map<string,ContinuedParticipantPrefix['review']>();
  for(const row of observations){
-  if(writers.has(row.document.writer)||actors.has(row.review.actor))throw new SharedRoomParticipantInventoryError('inventory_duplicate','Reconcile duplicate continued writer and review actor copies explicitly');
-  writers.set(row.document.writer,row);actors.set(row.review.actor,row);
+  if(writers.has(row.document.writer)||row.review&&actors.has(row.review.actor))throw new SharedRoomParticipantInventoryError('inventory_duplicate','Reconcile duplicate continued writer and review actor copies explicitly');
+  writers.set(row.document.writer,row);
+  if(row.review)actors.set(row.review.actor,row.review);
  }
  const missing:SharedRoomParticipantMissing[]=[];
  for(const row of metadata.writers){
@@ -135,11 +152,11 @@ export function continuedParticipantCoverage(
  }
  for(const row of metadata.review?.writers??[]){
   const observed=actors.get(row.clock.actor);
-  if(boundActors.has(row.clock.actor)&&observed?.review.status==='matches')continue;
-  missing.push({kind:'review',principal:row.principal,actor:row.clock.actor,reason:observed?.review.status==='server_ahead'?'server_ahead':'missing'});
+  if(boundActors.has(row.clock.actor)&&observed?.status==='matches')continue;
+  missing.push({kind:'review',principal:row.principal,actor:row.clock.actor,reason:observed?.status==='server_ahead'?'server_ahead':'missing'});
  }
  const registeredStreamsCovered=missing.length===0;
- for(const row of observations)if(!boundActors.has(row.review.actor))missing.push({kind:'unbound_review',participant:row.document.participant,principal:row.document.principal,actor:row.review.actor});
+ for(const row of observations)if(row.review&&!boundActors.has(row.review.actor))missing.push({kind:'unbound_review',participant:row.document.participant,principal:row.document.principal,actor:row.review.actor});
  return frozen({kind:missing.length?'pending':'covered',registeredStreamsCovered,checkedParticipants:observations.map(row=>row.document),missing});
 }
 

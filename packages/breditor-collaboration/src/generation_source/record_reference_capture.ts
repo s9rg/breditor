@@ -155,7 +155,7 @@ function recordStates(identity:SharedGenerationSourceIdentity,m:ReadMetadata){
 async function replay(
  identity:SharedGenerationSourceIdentity,records:readonly SharedGenerationSourceRecord[],
  binding:ReturnType<typeof nativeRestoreBinding<GenerationRecordReferenceOptions['restoreSegmented']>>,
- editor:GenerationRecordReferenceOptions['editor'],descriptor:string,check:()=>void,
+ editor:GenerationRecordReferenceOptions['editor'],descriptor:string|undefined,check:()=>void,
  restoreContinued?:GenerationRecordReferenceOptions['restoreContinued'],
 ){
  check();
@@ -183,7 +183,8 @@ async function replay(
    admitted.companion?.admit(core);
    admitPairedVersions(core,source.versions);
   }
-  if(JSON.stringify(sourceNativeRecoveryRead(core).descriptor())!==descriptor||core.richLanguageVersion()!==identity.native.richLanguage)throw fail('factory');
+  if(descriptor!==undefined&&JSON.stringify(sourceNativeRecoveryRead(core).descriptor())!==descriptor||
+     core.richLanguageVersion()!==identity.native.richLanguage)throw fail('factory');
   const selected=core;
   let closed=false;
   const live=()=>{

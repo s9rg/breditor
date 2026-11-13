@@ -66,7 +66,7 @@ export type {
  ContinuedRoomCatalogCaptureOptions,ContinuedRoomCatalogReadOptions,ContinuedRoomCatalogMetadata,
  ContinuedRoomCatalogPolicy,ContinuedRoomCatalogEntry,ContinuedRoomCatalogLocalEntry,ContinuedRoomCatalogInput,ContinuedRoomCatalogSelection,
 } from "./continued_room_catalog/contract.js";
-export type {ContinuedParticipantPrefix,ContinuedAcceptedPrefix} from "./continued_participant/inventory.js";
+export type {ContinuedParticipantPrefix,ContinuedDocumentOnlyPrefix,ContinuedAcceptedPrefix} from "./continued_participant/inventory.js";
 export {SharedContinuedParticipantBackup} from "./continued_participant/archive.js";
 export type {ContinuedParticipantIdentity,ContinuedParticipantSelection,ContinuedParticipantMetadata,ContinuedParticipantCaptureOptions,ContinuedParticipantReadOptions} from "./continued_participant/contract.js";
 export {SharedContinuedPairSession} from "./continued_pair/session.js";

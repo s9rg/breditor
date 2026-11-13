@@ -328,7 +328,13 @@ delivery archives. The read validates each archive's document and review
 transport, registered review actor and binding, and retained store
 namespaces against the selected room. A matching bound review prefix
 contributes to coverage. An archived acknowledgement ahead of the
-selected relay inventory stops the provider read. The provider read creates no local destinations
-and changes no delivery receipts or grants.
+selected relay inventory stops the provider read. Supply `generationPolicies`
+for segmented local, continued local, segmented relay, and segmented retained
+archives. The read replays the native journals and retained packets, verifies
+the V1 predecessor of continued histories, and includes the exact generation
+image bindings and complete upload backup. Document-only archives contribute
+document coverage through `documentOnlyParticipants` and leave registered
+review coverage pending. The provider read creates no local destinations and
+changes no delivery receipts or grants.
 If any participant still lacks supported prefix admission, the operator
 host rechecks the selected room and the provider report stays empty.

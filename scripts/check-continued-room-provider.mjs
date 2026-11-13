@@ -51,7 +51,7 @@ async function installedProbe(){
   build:{target:'es2022',write:false,minify:false,lib:{entry,formats:['es'],fileName:'continued-provider'}}});
  const modules=(Array.isArray(output)?output:[output]).flatMap(result=>result.output)
   .filter(item=>item.type==='chunk').flatMap(item=>Object.keys(item.modules));
- for(const path of ['continued_room_reconciliation/read.js','continued_room_reconciliation/asset_pins.js','continued_room_reconciliation/independent_prefix.js','continued_room_reconciliation/delivery_prefix.js','generation_recovery_control/host.js'])
+ for(const path of ['continued_room_reconciliation/read.js','continued_room_reconciliation/asset_pins.js','continued_room_reconciliation/independent_prefix.js','continued_room_reconciliation/delivery_prefix.js','continued_room_reconciliation/generation_prefix.js','generation_recovery_control/host.js'])
   assert.ok(modules.some(module=>module.includes('/node_modules/@breditor/collaboration/dist/'+path)),path);
  assert.ok(!modules.some(module=>module.includes(join(root,'packages'))||module.includes('fake-indexeddb')));
  const runtime=join(consumer,'node_modules/@breditor/collaboration/dist/runtime');
@@ -87,6 +87,11 @@ export async function runContinuedProviderQualification(controls,transport,direc
    assert.equal(result.mixedForeignForks,1);
    assert.equal(result.mixedDeliveryProviderReads,1);
    assert.equal(result.mixedDeliveryAheadRefusals,1);
+   assert.equal(result.generationProviderReads,5);
+   assert.equal(result.generationDocumentOnlyReads,1);
+   assert.equal(result.generationPredecessorChecks,1);
+   assert.equal(result.generationAheadRefusals,1);
+   assert.equal(result.generationForkRefusals,1);
    cases.push(result);
   }
   reports[name]={cases,proof:setup.proof};
