@@ -56,7 +56,7 @@ export async function probeContinuedPair(directory){
   }
   return tx;
  };
- const counts={cases:0,coldPairs:0,historyComparisons:0,abortedSaves:0,lostAcknowledgements:0,exactFileSets:0,insertOnlyRefusals:0,missingFileRefusals:0};
+ const counts={cases:0,coldPairs:0,historyComparisons:0,abortedSaves:0,lostAcknowledgements:0,exactFileSets:0,insertOnlyRefusals:0,missingFileRefusals:0,recordReads:0,failedSaveReads:0,changedReadRefusals:0,failedSaveAssetReads:0,cancelledRecordReads:0};
  try{
   const bytes=readFileSync(resolve(directory,'breditor_shared_bg.wasm'));
   const native=await import(pathToFileURL(resolve(directory,'breditor_shared.js')).href);
@@ -130,6 +130,29 @@ export async function probeContinuedPair(directory){
        }
       }
       assert.deepEqual(session.versions().map(info=>session.versionPacket(info.id)),[packet]);
+      let reading=await session.readRecords(()=>{});
+      try{
+       const records=reading.metadata();
+       assert.equal(records.committed.head,head);
+       assert.deepEqual(records.committed.recovery,records.live);
+       assert.deepEqual(records.live,session.exportRecovery());
+       assert.equal(records.attempt,null);
+       assert.equal(records.pending,null);
+       assert.ok(Object.isFrozen(records.live.versions));
+       await reading.verify();
+       counts.recordReads++;
+      }finally{reading.dispose();}
+      if(both){
+       const abort=new AbortController();
+       reading=await session.readRecords(()=>{},abort.signal);
+       try{
+        abort.abort();
+        assert.throws(()=>reading.check(),error=>error.code==='continued_pair_read_aborted');
+        await assert.rejects(reading.verify(),error=>error.code==='continued_pair_read_aborted');
+        counts.cancelledRecordReads++;
+       }finally{reading.dispose();}
+       assert.deepEqual(await stored(database),[head,initialFiles]);
+      }
       await session.close();session=undefined;
       await assert.rejects(SharedContinuedPairSession.restoreRecovery(missing,recovery,'host-reacquired'),error=>error.code==='continued_pair_destination_exists');
       counts.insertOnlyRefusals++;
@@ -179,10 +202,40 @@ export async function probeContinuedPair(directory){
        for(const kind of ['abort','lost-ack']){
         const beforeWrite=await stored(database);
         fault={database,kind};
-        insert(session.core,`Save ${kind}`);
+        assert.equal(session.core.dispatch({commands:[{kind:'replace_image',data:{block:'image-block',
+         asset:`attempt-${kind}`,generation:`attempt-${kind}`}}]}),true);
+        assert.equal(session.core.dispatch({commands:[{kind:'replace_image',data:{block:'image-block',
+         asset:`pending-${kind}`,generation:`pending-${kind}`}}]}),true);
         session.core.dispatchReview({kind:'reply',data:{thread:birth.event,body:`Comment ${kind}`}});
         await assert.rejects(session.flush());
         const failed=await stored(database);
+        reading=await session.readRecords(()=>{});
+        try{
+         const records=reading.metadata();
+         assert.equal(records.committed.head,failed[0]);
+         assert.ok(records.attempt?.cut);
+         assert.equal(records.attempt.cut.head===failed[0],kind==='lost-ack');
+         assert.ok(records.pending);
+         assert.deepEqual(records.pending,records.live);
+         assert.deepEqual(records.live,session.exportRecovery());
+         assert.notEqual(records.attempt.capture.reviewCheckpoint,records.live.reviewCheckpoint);
+         await reading.verify();
+         await assert.rejects(session.retry(),error=>error.code==='continued_pair_read_busy');
+         await assert.rejects(session.close(),error=>error.code==='continued_pair_read_busy');
+         counts.failedSaveReads++;
+        }finally{reading.dispose();}
+        const references=await session.readAssetReferences(()=>{});
+        assert.equal(references.committedHead,failed[0]);
+        assert.deepEqual(references.states.map(row=>row.slot),['committed','attempt','pending','live']);
+        const has=(slot,asset)=>references.states.find(row=>row.slot===slot).references.some(row=>row.asset===asset);
+        assert.equal(has('committed',`attempt-${kind}`),kind==='lost-ack');
+        assert.equal(has('committed',`pending-${kind}`),false);
+        assert.equal(has('attempt',`attempt-${kind}`),true);
+        assert.equal(has('attempt',`pending-${kind}`),false);
+        assert.equal(has('pending',`pending-${kind}`),true);
+        assert.equal(has('live',`pending-${kind}`),true);
+        for(const asset of [`attempt-${kind}`,`pending-${kind}`])assert.ok(references.references.some(row=>row.asset===asset));
+        counts.failedSaveAssetReads++;
         if(kind==='abort'){
          assert.deepEqual(failed,beforeWrite);
          counts.abortedSaves++;
@@ -193,6 +246,19 @@ export async function probeContinuedPair(directory){
         await session.retry();
         assert.notEqual((await stored(database))[0],beforeWrite[0]);
        }
+      }
+      if(both){
+       const beforeChange=await stored(database);
+       reading=await session.readRecords(()=>{});
+       try{
+        insert(session.core,'Live edit while reading');
+        assert.throws(()=>reading.check(),error=>error.code==='continued_pair_read_changed');
+        await assert.rejects(reading.verify(),error=>error.code==='continued_pair_read_changed');
+        await assert.rejects(session.flush(),error=>error.code==='continued_pair_read_busy');
+        assert.deepEqual(await stored(database),beforeChange);
+        counts.changedReadRefusals++;
+       }finally{reading.dispose();}
+       await session.flush();
       }
       const final=readPair(session.core,reviewHistory);
       await session.close();session=await SharedContinuedPairSession.open(options);
@@ -215,7 +281,7 @@ export async function probeContinuedPair(directory){
    }finally{profile.free();}
   }
   assert.equal(host.held.size,0);
-  assert.deepEqual(counts,{cases:15,coldPairs:45,historyComparisons:45,abortedSaves:3,lostAcknowledgements:3,exactFileSets:15,insertOnlyRefusals:15,missingFileRefusals:3});
+  assert.deepEqual(counts,{cases:15,coldPairs:45,historyComparisons:45,abortedSaves:3,lostAcknowledgements:3,exactFileSets:15,insertOnlyRefusals:15,missingFileRefusals:3,recordReads:15,failedSaveReads:6,changedReadRefusals:3,failedSaveAssetReads:6,cancelledRecordReads:3});
   return {passed:true,...counts,sharedWasmSha256:createHash('sha256').update(bytes).digest('hex')};
  }finally{
   IDBDatabase.prototype.transaction=transaction;

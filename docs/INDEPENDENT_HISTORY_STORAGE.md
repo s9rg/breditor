@@ -182,3 +182,23 @@ have their ordinary publication boundaries. Hosts can await `flush()` for
 the captured cut and `retry()` after a failed save. The version-two store is
 a local recovery boundary. Room catalog, asset/delivery custody, and relay
 snapshot/restart integration require their corresponding versioned adapters.
+
+### Read a continued pair after an interrupted save
+
+`readRecords(checkAuthority, signal)` reads the actual committed head and
+immutable files in one read transaction. It returns that cut alongside the
+exact attempted, pending, and live native archives and version packets.
+An unacknowledged commit can appear in both the committed and attempted slots.
+A pending capture made after that attempt remains separate. A read requires
+an idle save queue and holds new writes until the caller disposes it. A
+native change invalidates the read, and disposal lets its queued save proceed.
+Retry, version retention, and close wait for the caller to dispose the read.
+Call `verify()` to reread and verify the committed head and referenced files.
+
+`readAssetReferences(checkAuthority, signal)` replays each selected slot with
+fresh read-only policy. Rust verifies continuity of both native lanes, and the
+version catalog must retain its earlier packet prefix. The result includes
+the exact committed head and the union of native and version packet asset
+references, with each slot's references available separately. The returned
+data describes one observed cut. Whole-room adoption must separately bind
+that cut to the selected participants, upload stores, and provider.

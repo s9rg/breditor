@@ -1,3 +1,9 @@
+import {coreReadStamp} from '../core_read_stamp.js';
+import {participantAuthority} from '../participant_backup/policy.js';
+import {OperationalReadCancellation} from '../operation_read/cancellation.js';
+import {readContinuedPairAssetReferences} from './asset_references.js';
+import type {SharedContinuedPairAssetReferences} from './asset_references.js';
+import {continuedPairReadFailure as readFailure,createContinuedPairRecordRead,type ContinuedPairRecordRead} from './read_records.js';
 import {SharedEditorError,SharedRichEditor,createSharedDocumentEditor} from '../core.js';
 import {initializeSharedReadOnly} from '../initialize_read_only.js';
 import {checkManagedCore} from '../managed_custody.js';
@@ -38,11 +44,14 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
  readonly #onError:SharedContinuedPairOptions<P>['onError'];
  readonly #unsubscribe:(()=>void)[];
  readonly #releasePendingWork:()=>void;
+ readonly #restoreDocument:SharedContinuedPairOptions<P>['restoreDocument'];
  #head:string|null;
  #saved:SharedContinuedPairRecovery|undefined;
  #pending:SharedContinuedPairRecovery|undefined;
  #attempt:SaveAttempt|undefined;
  #running:Promise<void>|undefined;
+ #recordReader:object|undefined;
+ #recordEpoch=Object.freeze({});
  #failed=false;
  #failure:unknown;
  #storageChanged=false;
@@ -52,7 +61,7 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
  #released:Promise<void>|undefined;
 
  private constructor(token:symbol,core:SharedRichEditor<P>,db:IDBDatabase,documentLease:SharedWriterLease,reviewLease:ReviewWriterLease,
-   identity:ContinuedPairIdentity,head:string|null,versions:Map<string,string>,onError:SharedContinuedPairOptions<P>['onError']){
+   identity:ContinuedPairIdentity,head:string|null,versions:Map<string,string>,onError:SharedContinuedPairOptions<P>['onError'],restoreDocument:SharedContinuedPairOptions<P>['restoreDocument']){
   if(token!==construction)throw fail('continued_pair_construction','Use the paired open or recovery factory');
   this.#core=core;
   this.#db=db;
@@ -63,6 +72,7 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
   this.#head=head;
   this.#versions=versions;
   this.#onError=onError;
+  this.#restoreDocument=restoreDocument;
   this.#releasePendingWork=registerNativePendingWork(core,()=>this.#running);
   markIndependentHistoryStorage(core);
   const schedule=()=>{try{this.save();}catch(error){this.#recordFailure(error);}};
@@ -106,7 +116,7 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
    throw fail('continued_pair_policy','Supply current host policy and a matching native document restore factory');
   if(recovery&&JSON.stringify(recovery.identity)!==JSON.stringify(identity))
    throw fail('continued_pair_identity','Recovery must match the selected room, actors and history families');
-  const {room,writer,selectionEditing,richLanguage,history,rangeEditing,reviewedHistory,searchHistory}=identity.native;
+  const {room,writer}=identity.native;
   const key=[room,writer] as const;
   const documentLease=await SharedWriterLease.acquire(room,writer);
   let reviewLease:ReviewWriterLease|undefined,db:IDBDatabase|undefined,raw:SharedRustOwner|undefined,core:SharedRichEditor<P>|undefined;
@@ -125,23 +135,11 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
    if(recovery)await makeContinuedPairCut(selected.documentCheckpoint,selected.reviewCheckpoint,identity,versions);
    opening.assertCurrent();
    raw=opening.admit(await restoreDocument(selected.documentCheckpoint));
-   initializeSharedReadOnly(raw,readOnly);
-   const options={
-    ...editor,...(searchHistory?{searchHistory}:{}),...(reviewedHistory?{reviewedHistory}:{}),
-    ...(identity.documentHistory==='original'?{}:{segmentedHistory:identity.documentHistory}),
-   } as Omit<SharedEditorOptions<'document-v1'>,'selectionEditing'>;
-   core=(selectionEditing==='document-v1'?createSharedDocumentEditor(raw,options):new SharedRichEditor(raw,options)) as unknown as SharedRichEditor<P>;
-   if(core.richLanguageVersion()!==richLanguage)throw fail('continued_pair_identity','Restored native grammar differs');
-   if(identity.reviewHistory==='continued-v2')core.enableContinuedReview(review,selected.reviewCheckpoint);
-   else if(identity.reviewHistory==='segmented-v1')core.enableSegmentedReview(review,selected.reviewCheckpoint);
-   else core.enableReview(review,selected.reviewCheckpoint);
-   core.sealContinuedPairPolicies(identity.documentHistory,identity.reviewHistory,history,rangeEditing);
-   const admittedVersions=admitPairedVersions(core,versions);
-   const captured=capture(core,identity,admittedVersions);
-   if(captured.documentCheckpoint!==selected.documentCheckpoint||captured.reviewCheckpoint!==selected.reviewCheckpoint)
-    throw fail('continued_pair_replay','Cold native replay must preserve both exact histories');
+   const replay=admitContinuedPair<P>(raw,identity,review,readOnly,editor,selected,versions);
+   core=replay.core;
+   const admittedVersions=replay.versions,captured=replay.capture;
    opening.assertCurrent();
-   session=new SharedContinuedPairSession(construction,core,db,documentLease,reviewLease,identity,stored?.head??null,admittedVersions,onError);
+   session=new SharedContinuedPairSession(construction,core,db,documentLease,reviewLease,identity,stored?.head??null,admittedVersions,onError,restoreDocument);
    if(stored)session.#saved=captured;
    else{session.save();await session.flush();}
    return session;
@@ -172,20 +170,94 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
   return makeContinuedPairCut(cut.documentCheckpoint,cut.reviewCheckpoint,this.#identity,cut.versions);
  }
  #recordFailure(error:unknown):void{
+  this.#recordEpoch=Object.freeze({});
   this.#failed=true;
   this.#failure=error;
   try{this.#onError?.(error);}catch{/* Reporting cannot change the save outcome. */}
  }
  exportRecovery():SharedContinuedPairRecovery{return this.#capture();}
+
+ /** Hold the paired save queue while reading its exact durable and in-memory cuts. */
+ async readRecords(checkAuthority:()=>void,signal?:AbortSignal):Promise<ContinuedPairRecordRead>{
+  this.#checkWrite();
+  checkManagedCore(this.#core);
+  if(this.#recordReader||this.#running)throw readFailure('busy');
+  const token=Object.freeze({});
+  this.#recordReader=token;
+  let observation:OperationalReadCancellation|undefined,complete=false;
+  const release=()=>{
+   if(this.#recordReader!==token)return;
+   this.#recordReader=undefined;
+   observation?.close();
+   this.#start();
+  };
+  try{
+   observation=new OperationalReadCancellation(signal);
+   const authority=participantAuthority(checkAuthority),stamp=coreReadStamp(this.#core);
+   const epoch=this.#recordEpoch,head=this.#head,attempt=this.#attempt,pending=this.#pending;
+   const current=()=>{
+    if(this.#recordReader!==token)throw readFailure('closed');
+    observation!.check(()=>readFailure('aborted'));
+    this.#checkWrite();
+    checkManagedCore(this.#core);
+    const now=coreReadStamp(this.#core);
+    if(this.#recordEpoch!==epoch||now.document!==stamp.document||now.review!==stamp.review||this.#running)
+     throw readFailure('changed');
+   };
+   const check=()=>{current();authority();current();};
+   const readStored=async()=>{
+    const stored=await readPairedHistoryCut(this.#db,this.#key,continuedPairStore);
+    current();
+    if(!stored||stored.head!==head&&stored.head!==attempt?.cut?.head||
+       JSON.stringify(stored.record.identity)!==JSON.stringify(this.#identity))throw readFailure('changed');
+    return stored;
+   };
+   check();
+   const live=this.#capture(),stored=await readStored();
+   check();
+   const committed={format:live.format,formatVersion:live.formatVersion,identity:stored.record.identity,
+    documentCheckpoint:stored.documentCheckpoint,reviewCheckpoint:stored.reviewCheckpoint,versions:stored.record.versions};
+   const result=createContinuedPairRecordRead({
+    format:'breditor/persistent-continued-pair-record-read',formatVersion:1,
+    scope:'atomic-continued-pair-committed-attempt-pending-live',committed:{head:stored.head,recovery:committed},
+    attempt:attempt?{capture:attempt.capture,cut:attempt.cut??null}:null,pending:pending??null,live,
+   },{check,release,verify:async()=>{
+    check();
+    const actual=await readStored();
+    check();
+    // The paired store revalidates all referenced immutable file digests.
+    if(actual.head!==stored.head)throw readFailure('changed');
+   }});
+   complete=true;
+   return result;
+  }finally{if(!complete)release();}
+ }
+
+ /** Replay every selected slot to retain the union of native and version asset references. */
+ async readAssetReferences(checkAuthority:()=>void,signal?:AbortSignal):Promise<SharedContinuedPairAssetReferences>{
+  const read=await readPairRecords.call(this,checkAuthority,signal);
+  try{
+   return await readContinuedPairAssetReferences(read,async(recovery,check)=>{
+    const raw=await this.#restoreDocument(recovery.documentCheckpoint);
+    try{
+     check();
+     const review={...this.#identity.review,access:'read_only'} as const;
+     return admitContinuedPair<P>(raw,this.#identity,review,true,{},recovery,recovery.versions).core;
+    }catch(error){freeUnclaimedSharedRustOwner(raw);throw error;}
+   });
+  }finally{read.dispose();}
+ }
+
  save():void{
   this.#checkWrite();
   const next=this.#capture();
+  this.#recordEpoch=Object.freeze({});
   if(!this.#attempt&&!this.#running&&same(this.#saved,next)){this.#pending=undefined;return;}
   this.#pending=next;
   this.#start();
  }
  #start():void{
-  if(this.#closed||this.#failed||this.#running||!this.#pending&&!this.#attempt)return;
+  if(this.#closed||this.#failed||this.#running||this.#recordReader||!this.#pending&&!this.#attempt)return;
   this.#running=this.#drain().catch(error=>this.#recordFailure(error)).finally(()=>{
    this.#running=undefined;
    this.#start();
@@ -213,11 +285,13 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
  }
  async flush():Promise<void>{
   this.#live();
+  if(this.#recordReader&&(this.#pending||this.#attempt))throw readFailure('busy');
   while(this.#running)await this.#running;
   if(this.#failed)throw this.#failure;
  }
  async retry():Promise<void>{
   this.#checkWrite();
+  if(this.#recordReader)throw readFailure('busy');
   if(this.#running)await this.#running;
   this.#failed=false;
   this.#failure=undefined;
@@ -236,6 +310,7 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
  }
  async retainVersion(packet:string):Promise<SharedDocumentVersionInfo>{
   this.#checkWrite();
+  if(this.#recordReader)throw readFailure('busy');
   checkManagedCore(this.#core);
   const info=native.readVersion.call(this.#core,packet),known=this.#versions.get(info.id);
   if(known!==undefined){
@@ -246,6 +321,7 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
   const before=this.#capture();
   await this.#makeCut({...before,versions:[...before.versions,packet]});
   this.#checkWrite();
+  if(this.#recordReader)throw readFailure('busy');
   checkManagedCore(this.#core);
   if(!same(before,this.#capture()))throw fail('continued_pair_stale','The paired source changed during version admission');
   this.#versions.set(info.id,packet);
@@ -256,6 +332,7 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
  close():Promise<void>{
   if(this.#closed)return this.discardAndClose();
   if(this.#closing)return this.#closing;
+  if(this.#recordReader)return Promise.reject(readFailure('busy'));
   this.#retire();
   this.#closing=Promise.resolve().then(async()=>{
    if(!this.#closed){this.save();await this.flush();}
@@ -271,6 +348,7 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
  /** Release the exact owners. Any transaction already committed remains readable on reopen. */
  discardAndClose():Promise<void>{
   if(!this.#closed){
+   if(this.#recordReader)return Promise.reject(readFailure('busy'));
    this.#retire();
    this.#closed=true;
    this.#releasePendingWork();
@@ -301,4 +379,33 @@ function capture<P extends SharedSelectionPolicy>(core:SharedRichEditor<P>,ident
   documentCheckpoint:native.checkpointJson.call(core),reviewCheckpoint:readReview.call(core),
   versions:Object.freeze([...versions.values()]),
  };
+}
+
+const readPairRecords=SharedContinuedPairSession.prototype.readRecords;
+
+/** Exact, fresh-policy native replay shared by actual cold open and read-only inspection. */
+function admitContinuedPair<P extends SharedSelectionPolicy>(
+ raw:SharedRustOwner,identity:ContinuedPairIdentity,review:SharedContinuedPairOptions<P>['review'],
+ readOnly:boolean,editor:SharedContinuedPairOptions<P>['editor'],
+ selected:Pick<SharedContinuedPairRecovery,'documentCheckpoint'|'reviewCheckpoint'>,versions:readonly string[],
+){
+ initializeSharedReadOnly(raw,readOnly);
+ const {selectionEditing,richLanguage,history,rangeEditing,reviewedHistory,searchHistory}=identity.native;
+ const options={
+  ...editor,...(searchHistory?{searchHistory}:{}),...(reviewedHistory?{reviewedHistory}:{}),
+  ...(identity.documentHistory==='original'?{}:{segmentedHistory:identity.documentHistory}),
+ } as Omit<SharedEditorOptions<'document-v1'>,'selectionEditing'>;
+ const core=(selectionEditing==='document-v1'?createSharedDocumentEditor(raw,options):new SharedRichEditor(raw,options)) as unknown as SharedRichEditor<P>;
+ try{
+  if(core.richLanguageVersion()!==richLanguage)throw fail('continued_pair_identity','Restored native grammar differs');
+  if(identity.reviewHistory==='continued-v2')core.enableContinuedReview(review,selected.reviewCheckpoint);
+  else if(identity.reviewHistory==='segmented-v1')core.enableSegmentedReview(review,selected.reviewCheckpoint);
+  else core.enableReview(review,selected.reviewCheckpoint);
+  core.sealContinuedPairPolicies(identity.documentHistory,identity.reviewHistory,history,rangeEditing);
+  const admittedVersions=admitPairedVersions(core,versions);
+  const captured=capture(core,identity,admittedVersions);
+  if(captured.documentCheckpoint!==selected.documentCheckpoint||captured.reviewCheckpoint!==selected.reviewCheckpoint)
+   throw fail('continued_pair_replay','Cold native replay must preserve both exact histories');
+  return {core,versions:admittedVersions,capture:captured};
+ }catch(error){disposeOwnedCore(core);throw error;}
 }
