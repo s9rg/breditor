@@ -302,8 +302,21 @@ generation factory. Recovery keeps the original generation database
 layout. The continued-local destination retains both the active head and
 the original V1 predecessor in the same database, with its immutable
 generation files and upload state.
+For a restored graph, local-operation snapshot, or flat local-operation
+archive, each destination also supplies `operation: {parent, journal}`.
+These names select the participant coordinator and operation journal. The
+existing `source` and `uploads` names select its native and upload stores.
+All names must be distinct across the room. Use the catalog's pinned
+`graphPolicies` and `localPolicies` to reopen these exact archive families.
+The nested journal replays its selected cuts and keeps the literal input,
+including archived provenance and asset bytes. The room journal records the
+whole participant as one step and resumes an interrupted nested replay from
+its own durable cursor. After a participant finishes, a cold room resume
+reads its durable native cut and upload backup without issuing a new save.
+It refuses a different input, a missing component, or a changed live cut.
+
 Duplicate document writers and review actors, mismatched policies, and
-other archive families stop recovery before journal creation. These
+original paired archives stop recovery before journal creation. These
 destinations provide local recovery. Provider reconciliation and authenticated
 activation have separate contracts.
 

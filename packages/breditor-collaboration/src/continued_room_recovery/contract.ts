@@ -34,6 +34,8 @@ export interface ContinuedRoomRecoveryDestination {
  readonly id:string;
  readonly source:string;
  readonly uploads:string;
+ /** Required for restored graphs and local operation snapshots or flat archives. */
+ readonly operation?:Readonly<{parent:string;journal:string}>;
 }
 export interface ContinuedRoomRecoveryOptions {
  readonly database:string;

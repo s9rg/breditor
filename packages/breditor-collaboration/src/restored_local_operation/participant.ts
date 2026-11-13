@@ -1,3 +1,5 @@
+import {operationCutDigest} from '../independent_operation/cut_codec.js';
+import {exactOperationRecoveryInput} from '../operation_read/exact_recovery_input.js';
 /** Complete restored-local operational ownership. One actual parent coordinates
  * literal input, native journal/source and whole uploads through four reserved
  * namespaces and a final callback-free native/upload handoff. No activation or
@@ -79,12 +81,17 @@ export class OperationalRestoredLocalParticipant<P extends SharedSelectionPolicy
    const resume=file===undefined;let stored:Awaited<ReturnType<typeof readRestoredLocalParentDatabase>>|undefined;
    if(resume){db=await existingRestoredLocalParentDatabase(cohort.parentDatabase,guard);fenceRestoredLocalParentDatabase(life,db);stored=await readRestoredLocalParentDatabase(db,guard);file=stored.file;guard();}
    else{for(const name of [choice.database,choice.sourceDatabase,cohort.uploadsDatabase]){await requireAbsent(name);guard();}}
+   const exactInput=exactOperationRecoveryInput(provided);if(exactInput)await exactInput(file!);
    const inputOptions={...restoredLocalInputOptions(choice),checkAuthority:guard};input=await incoming.read.call(Input,file!,inputOptions);guard();const id=incoming.identity.call(input),fileSha256=JSON.parse(id.plan).input.fileSha256,initial=incoming.live.call(input),initialRecord=await restoredLocalParentRecord(input);guard();
-   db??=await createRestoredLocalParentDatabase(context,cohort.parentDatabase,initialRecord,incoming.file.call(input),guard,choice.read.options.signal);fenceRestoredLocalParentDatabase(life,db);stored??=await readRestoredLocalParentDatabase(db,guard);guard();let record=readRestoredLocalParentRecord(stored.record,initialRecord);if(completeOnly&&record.phase!=='operational')throw fail('restored_local_participant_not_ready');
+   db??=await createRestoredLocalParentDatabase(context,cohort.parentDatabase,initialRecord,incoming.file.call(input),guard,choice.read.options.signal);fenceRestoredLocalParentDatabase(life,db);stored??=await readRestoredLocalParentDatabase(db,guard);guard();let record=readRestoredLocalParentRecord(stored.record,initialRecord);if(completeOnly&&record.phase!=='operational')throw fail('restored_local_participant_not_ready');const verifyOnly=completeOnly||(exactInput!==undefined&&record.phase==='operational');
    const existing=await existingDatabase(choice.database),hasJournal=!!existing;existing?.close();guard();if(record.phase!=='preparing'&&!hasJournal)throw fail('restored_local_participant_missing');
    journal=await openRestoredLocalJournalForParticipant(opening,inputOptions,hasJournal?undefined:incoming.file.call(input));guard();
    const cut=await progressJournal.call(journal);guard();
-   if(completeOnly&&cut.pending!==null)throw fail('restored_local_participant_not_ready');if(record.phase==='operational'&&cut.current===null)throw fail('restored_local_participant_missing');
+   if(exactInput){
+    const live=await operationCutDigest(incoming.targets.call(input).at(-1)!);guard();
+    if(cut.current!==null&&cut.current!==live||cut.pending!==null&&cut.pending!==live)throw fail('restored_local_participant_initial_diverged');
+   }
+   if(verifyOnly&&cut.pending!==null)throw fail('restored_local_participant_not_ready');if(record.phase==='operational'&&cut.current===null)throw fail('restored_local_participant_missing');
    const actualSource=await existingDatabase(choice.sourceDatabase),hasSource=!!actualSource;actualSource?.close();guard();
    if(cut.current!==null&&!hasSource)throw fail('restored_local_participant_missing');
    if(record.phase==='preparing'&&(cut.sequence!=='0'||cut.current!==null||cut.pending!==null||hasSource))throw fail('restored_local_participant_initial_diverged');
@@ -93,7 +100,7 @@ export class OperationalRestoredLocalParticipant<P extends SharedSelectionPolicy
    if(record.phase==='preparing'){
     const next={...record,phase:'prepared' as const};await writeRestoredLocalParentRecord(db,record,next,incoming.file.call(input),guard,choice.read.options.signal);guard();const actualRecord=await readRestoredLocalParentDatabase(db,guard);record=readRestoredLocalParentRecord(actualRecord.record,next);if(record.phase!=='prepared')throw fail('restored_local_participant_record');
    }
-   source=await openRestoredLocalHistory(choice.source,journal);guard();state={choice,context,locks,guard,leases,file:incoming.file.call(input),fileSha256,initial,life,input,journal,uploads,source,inputDisposed:false,db,record};
+   source=await openRestoredLocalHistory(choice.source,journal,verifyOnly);guard();state={choice,context,locks,guard,leases,file:incoming.file.call(input),fileSha256,initial,life,input,journal,uploads,source,inputDisposed:false,db,record};
    const witness=await verifyRestoredLocalParticipant(state,record.phase!=='operational');try{witness.check();if(state.record.phase!=='operational')await updateRestoredLocalParentRecord(state,'operational');witness.check();const result=new OperationalRestoredLocalParticipant<Q>(key,state);witness.check();opening.complete();result.#exposed=true;return result;}finally{witness.release();}
   }catch(error){await opening.rollback();throw error;}
  }

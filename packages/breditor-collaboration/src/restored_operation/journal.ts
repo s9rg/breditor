@@ -1,6 +1,7 @@
 /** Writable source replay from an independently owned archive. Every bootstrap cut uses
  * real writer leases and prepare/source-commit/ack. A private hold survives temporary
  * source closure; the final genuine source consumes it synchronously after readback. */
+import {exactOperationRecoveryInput} from '../operation_read/exact_recovery_input.js';
 import {retainedOperationCuts,sameRetainedOperationCuts} from '../operation_read/retained_cuts.js';
 import {recordReadMode,type OperationalRecordReadMode} from '../operation_read/record_payload.js';
 import type {SharedSelectionPolicy} from '../types.js';
@@ -53,11 +54,15 @@ export class RestoredOperationJournal {
   try{
    lease=await RecoveryLease.acquire(JSON.stringify(database));check();
    if(file===undefined){db=await existingRestoredOperationDatabase(database);check();file=await readRestoredOperationInputFile(db);check();}
+   const exactInput=exactOperationRecoveryInput(options);if(exactInput)await exactInput(file);check();
    input=await readRestoredOperationInput(file,policy.options) as unknown as RestoredOperationInput;check();
    original=await replayPortableRecovery(input.factory,input.originalData,readOrigin);check();live=await replayPortableRecovery(input.factory,input.live,readOrigin);check();
    const targets=[];for(const cut of input.targets){targets.push(await operationCutDigest(cut));check();}
    db??=await createRestoredOperationDatabase(database,initialRestoredOperationStage(input.identity),input.original,input.file,check);check();
-   const result=new RestoredOperationJournal(key,input,db,lease,original,live,targets,context!,locks!,check);await result.#read();check();admitted=true;return result;
+   const result=new RestoredOperationJournal(key,input,db,lease,original,live,targets,context!,locks!,check);const saved=await result.#read();check();
+   if(exactInput&&saved.record.completed===targets.length&&
+      (saved.record.intent.current!==targets.at(-1)||saved.record.intent.pending!==null))throw fail('restored_operation_source_diverged');
+   admitted=true;return result;
   }catch(e){db?.close();try{await lease?.close();}finally{original?.dispose();live?.dispose();input?.dispose();}throw e;}
  }
  #storage():void{if(this.#closed||this.#closing||this.#retiring)throw fail('restored_operation_closed');if(this.#changed||globalThis.indexedDB!==this.#context||globalThis.navigator?.locks!==this.#locks)throw fail('restored_operation_storage_changed');}

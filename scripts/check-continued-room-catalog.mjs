@@ -8,6 +8,7 @@ import {dirname,join,relative,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {build} from 'vite';
 import {fileEvidence,sourceEvidence,saveEvidence} from './candidate-release/evidence.mjs';
+import {copyConsumerFixtures} from './candidate-release/copy-consumer-fixtures.mjs';
 import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),source=sourceEvidence(root);
@@ -55,10 +56,8 @@ if(mode==='installed'){
  execFileSync(npm,['install','--offline','--ignore-scripts','--no-audit','--no-fund'],{cwd:consumer,stdio:'inherit'});
  const registryArtifacts=verifySearchConsumerRegistry(producer,JSON.parse(readFileSync(join(consumer,'package-lock.json'),'utf8')));
  for(const name of names)assert.ok(realpathSync(join(consumer,'node_modules',name)).startsWith(realpathSync(consumer)+'/node_modules/'));
- for(const path of ['room-participant-inventory/environment.mjs','review-assets/pixels.mjs','interchange-consumer/pixel.mjs','independent-delivery/session.mjs','owned-core-cleanup/session.mjs']){
-  const output=join(consumer,'fixtures',path);mkdirSync(dirname(output),{recursive:true});
-  cpSync(join(root,'scripts','fixtures',path),output);
- }
+ copyConsumerFixtures(root,consumer,['continued-room-recovery/operation-archives.mjs',
+  'room-participant-inventory/environment.mjs','review-assets/pixels.mjs','independent-delivery/session.mjs','owned-core-cleanup/session.mjs']);
  const from="'../packages/breditor-collaboration/dist/index.js'",to="'@breditor/collaboration'";
  const original=readFileSync(sourceProbe,'utf8'),installed=original.replace(from,to);
  assert.notEqual(original,installed);
@@ -74,7 +73,7 @@ if(mode==='installed'){
   build:{target:'es2022',write:false,minify:false,lib:{entry,formats:['es'],fileName:'continued-room-catalog'}}});
  const modules=(Array.isArray(output)?output:[output]).flatMap(result=>result.output)
   .filter(item=>item.type==='chunk').flatMap(item=>Object.keys(item.modules));
- for(const path of ['continued_room_catalog/archive.js','continued_room_catalog/storage.js','continued_participant/inventory.js','continued_room_recovery/recovery.js','continued_room_recovery/independent_destination.js','continued_room_recovery/delivery_destination.js','continued_room_recovery/generation_destination.js'])
+ for(const path of ['continued_room_catalog/archive.js','continued_room_catalog/storage.js','continued_participant/inventory.js','continued_room_recovery/recovery.js','continued_room_recovery/independent_destination.js','continued_room_recovery/delivery_destination.js','continued_room_recovery/generation_destination.js','continued_room_recovery/operation_destination.js'])
   assert.ok(modules.some(module=>module.includes('/node_modules/@breditor/collaboration/dist/'+path)),path);
  assert.ok(!modules.some(module=>module.includes(join(root,'packages'))||module.includes('fake-indexeddb')));
  cwd=consumer;runtime=join(consumer,'node_modules/@breditor/collaboration/dist/runtime');
@@ -95,6 +94,11 @@ for(const result of reports){
  assert.equal(result.disappearedBootstrapRefusals,1);
  assert.equal(result.generationResumes,4);
  assert.equal(result.generationPredecessors,1);
+ assert.equal(result.exactOperationRestores,3);
+ assert.equal(result.operationInterruptedResumes,3);
+ assert.equal(result.operationNestedResumes,1);
+ assert.equal(result.operationChangedRefusals,3);
+ assert.equal(result.operationMissingRefusals,3);
 }
 assert.deepEqual(sourceEvidence(root),source);
 assert.deepEqual(readFileSync(manifestPath),manifestBytes);

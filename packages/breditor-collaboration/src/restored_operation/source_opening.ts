@@ -7,6 +7,8 @@ import {RestoredOperationJournal,restoredOperationJournalBinding} from './journa
 import {SharedIndependentDeliverySession} from '../independent_delivery/session.js';
 import type {SharedIndependentDeliveryOptions} from '../independent_delivery/contract.js';
 import {withRestoredOperationJournal} from './source_binding.js';
+import {withExactOperationRecoveryInput,type ExactOperationRecoveryInput} from '../operation_read/exact_recovery_input.js';
+import {completedSourceOpen} from '../persistence/completed_source_open.js';
 import {inheritActorLeaseInput} from '../persistence/actor_lease_input.js';
 import {operationJournalFailure as fail} from '../independent_operation/journal_failure.js';
 const openJournal=RestoredOperationJournal.resume,beginJournal=RestoredOperationJournal.begin,closeJournal=RestoredOperationJournal.prototype.close,openSource=SharedIndependentDeliverySession.open,closeSource=SharedIndependentDeliverySession.prototype.close,discardSource=SharedIndependentDeliverySession.prototype.discardAndClose;
@@ -14,14 +16,15 @@ export class RestoredSourceOpening<P extends SharedSelectionPolicy=SharedSelecti
  #journal:RestoredOperationJournal|undefined;#source:SharedIndependentDeliverySession<P>|undefined;#ready=false;#taken=false;#closing=false;#closed=false;#running:Promise<void>|undefined;#cleanup:Promise<void>|undefined;
  constructor(){Object.freeze(this);}
  #live=()=>{if(this.#closing||this.#closed||this.#taken)throw fail('restored_operation_closed');};
- open(options:RestoredOperationInputOptions<P>,file:Blob|undefined,completeOnly:boolean):Promise<void>{
+ open(options:RestoredOperationInputOptions<P>,file:Blob|undefined,completeOnly:boolean,exactInput?:ExactOperationRecoveryInput):Promise<void>{
   try{this.#live();if(this.#running||this.#journal||this.#source||this.#ready)throw fail('restored_operation_busy');if(completeOnly&&file!==undefined)throw fail('restored_operation_not_ready');}catch(error){return Promise.reject(error);}
-  const task=Promise.resolve().then(async()=>{this.#live();const selected=restoredOperationPolicy(options).options;this.#live();this.#journal=await(file===undefined?openJournal.call(RestoredOperationJournal,selected):beginJournal.call(RestoredOperationJournal,file,selected));this.#live();const binding=restoredOperationJournalBinding(this.#journal);
+  const task=Promise.resolve().then(async()=>{this.#live();const selected=restoredOperationPolicy(options).options;this.#live();const journalOptions=exactInput?withExactOperationRecoveryInput(selected,exactInput):selected;this.#journal=await(file===undefined?openJournal.call(RestoredOperationJournal,journalOptions):beginJournal.call(RestoredOperationJournal,file,journalOptions));this.#live();const binding=restoredOperationJournalBinding(this.#journal);
    const factory=inheritActorLeaseInput(selected.session,{...selected.session,database:binding.sourceDatabase,create:()=>{throw fail('restored_operation_not_ready');}}) as SharedIndependentDeliveryOptions<P>;
-   if(completeOnly){const current=await binding.progress();this.#live();if(!current.ready||current.pending)throw fail('restored_operation_not_ready');}
-   for(;;){this.#live();const reservation=binding.reserve();try{this.#source=await openSource.call(SharedIndependentDeliverySession,withRestoredOperationJournal(factory,this.#journal)) as SharedIndependentDeliverySession<P>;this.#live();reservation.claim(this.#source);}finally{reservation.abandon();}
+   const existing=completeOnly||!!exactInput&&(await binding.progress()).ready;
+   if(existing){const current=await binding.progress();this.#live();if(!current.ready||current.pending)throw fail('restored_operation_not_ready');}
+   for(;;){this.#live();const reservation=binding.reserve();try{const input=withRestoredOperationJournal(factory,this.#journal);this.#source=await openSource.call(SharedIndependentDeliverySession,existing?completedSourceOpen(input):input) as SharedIndependentDeliverySession<P>;this.#live();reservation.claim(this.#source);}finally{reservation.abandon();}
     const current=await binding.progress();this.#live();if(current.ready){binding.consume(this.#source);this.#ready=true;return;}
-    if(completeOnly)throw fail('restored_operation_not_ready');await closeSource.call(this.#source);this.#source=undefined;this.#live();
+    if(existing)throw fail('restored_operation_not_ready');await closeSource.call(this.#source);this.#source=undefined;this.#live();
    }
   });this.#running=task;return task.finally(()=>{this.#running=undefined;});
  }

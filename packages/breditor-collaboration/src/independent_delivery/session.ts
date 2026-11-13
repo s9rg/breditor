@@ -14,6 +14,7 @@ import {inheritActorLeaseInput}from'../persistence/actor_lease_input.js';
 import {SharedIndependentHistoryPersistentSession} from '../independent_history/session.js';
 import {independentHistoryNative,type IndependentHistoryNativePort} from '../independent_history/native_port.js';
 import {withIndependentDeliveryCompanion} from '../independent_history/driver.js';
+import {completedSourceOpen,isCompletedSourceOpen} from '../persistence/completed_source_open.js';
 import {forwardIndependentBootstrapPolicy} from '../independent_history/bootstrap_policy.js';
 import {makeIndependentHistoryCut,canonicalIndependentHistoryIdentity} from '../independent_history/cut.js';
 import {requireBackupRecovery} from '../backups/identity.js';
@@ -71,7 +72,9 @@ export class SharedIndependentDeliverySession<P extends SharedSelectionPolicy=Sh
  static async open<Q extends SharedSelectionPolicy>(input:SharedIndependentDeliveryOptions<Q>):Promise<SharedIndependentDeliverySession<Q>>{
   if(this!==SharedIndependentDeliverySession)throw new SharedRelayError('independent_delivery_factory_receiver');
   if(operationJournalSelected(input)&&selectedRestoredOperationJournal(input))throw new SharedRelayError('independent_operation_factory');
-  const {binding,retained,...options}=input,companion=new IndependentDeliveryCompanion(input),journal=journaledIndependentCompanion(input,companion)??restoredIndependentCompanion(input,companion),session=await SharedIndependentHistoryPersistentSession.open(inheritActorLeaseInput(input,forwardIndependentBootstrapPolicy(input,withIndependentDeliveryCompanion(options,journal??guardedIndependentCompanion(input,companion)))));
+  const {binding,retained,...options}=input,companion=new IndependentDeliveryCompanion(input),journal=journaledIndependentCompanion(input,companion)??restoredIndependentCompanion(input,companion);
+  const selected=inheritActorLeaseInput(input,forwardIndependentBootstrapPolicy(input,withIndependentDeliveryCompanion(options,journal??guardedIndependentCompanion(input,companion))));
+  const session=await SharedIndependentHistoryPersistentSession.open(isCompletedSourceOpen(input)?completedSourceOpen(selected):selected);
   try{return new SharedIndependentDeliverySession(constructionKey,session,companion,selectedOperationJournal(input)??selectedRestoredOperationJournal(input));}catch(error){await session.discardAndClose();throw error;}
  }
  static async restoreRecovery<Q extends SharedSelectionPolicy>(input:SharedIndependentDeliveryRecoveryOptions<Q>):Promise<SharedIndependentDeliverySession<Q>>{

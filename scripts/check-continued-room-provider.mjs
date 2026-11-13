@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {cpSync,mkdirSync,mkdtempSync,readFileSync,realpathSync,writeFileSync} from 'node:fs';
+import {mkdirSync,mkdtempSync,readFileSync,realpathSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {dirname,join,relative,resolve} from 'node:path';
+import {dirname,join,resolve} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {sourceEvidence,saveEvidence} from './candidate-release/evidence.mjs';
+import {copyConsumerFixtures} from './candidate-release/copy-consumer-fixtures.mjs';
 import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
 import {pixel,secondPixel} from './fixtures/review-assets/pixels.mjs';
 import {startNativeGenerationCompleteControls} from './fixtures/generation-recovery-control/complete-native-host.mjs';
@@ -29,27 +30,8 @@ async function installedProbe(){
  execFileSync(npm,['install','--offline','--ignore-scripts','--no-audit','--no-fund'],{cwd:consumer,stdio:'inherit'});
  const registryArtifacts=verifySearchConsumerRegistry(producer,JSON.parse(readFileSync(join(consumer,'package-lock.json'),'utf8')));
  for(const name of names)assert.ok(realpathSync(join(consumer,'node_modules',name)).startsWith(realpathSync(consumer)+'/node_modules/'));
- const fixtureRoot=join(root,'scripts/fixtures'),copied=new Set();
- function copyFixture(path){
-  const absolute=resolve(fixtureRoot,path),name=relative(fixtureRoot,absolute);
-  assert.ok(absolute.startsWith(fixtureRoot+'/'));
-  if(copied.has(name))return;
-  copied.add(name);
-  const original=readFileSync(absolute,'utf8'),workspace="'../../../packages/breditor-collaboration/dist/";
-  for(const match of original.matchAll(/(?:from\s*|import\s*\()(['"])([^'"]+)\1/g)){
-   if(match[2].startsWith('.')){
-    const dependency=resolve(dirname(absolute),match[2]);
-    if(dependency.startsWith(fixtureRoot+'/'))copyFixture(relative(fixtureRoot,dependency));
-   }
-  }
-  const installed="'../../node_modules/@breditor/collaboration/dist/",changed=original.replaceAll(workspace,installed);
-  assert.equal(changed.replaceAll(installed,workspace),original);
-  const output=join(consumer,'fixtures',name);mkdirSync(dirname(output),{recursive:true});
-  writeFileSync(output,changed);
- }
- for(const path of ['continued-room-provider/operation-archives.mjs','room-participant-inventory/environment.mjs',
-  'review-assets/pixels.mjs','interchange-consumer/pixel.mjs','physical-recovery-control/unavailable-upload.mjs',
-  'independent-delivery/session.mjs','owned-core-cleanup/session.mjs'])copyFixture(path);
+ copyConsumerFixtures(root,consumer,['continued-room-provider/operation-archives.mjs','continued-room-recovery/operation-archives.mjs',
+  'room-participant-inventory/environment.mjs','review-assets/pixels.mjs','independent-delivery/session.mjs','owned-core-cleanup/session.mjs']);
  const from="'../packages/breditor-collaboration/dist/index.js'",to="'@breditor/collaboration'";
  for(const name of ['probe-continued-room-catalog.mjs','probe-continued-room-provider.mjs']){
   const original=readFileSync(join(root,'scripts',name),'utf8'),changed=original.replace(from,to);
@@ -58,7 +40,7 @@ async function installedProbe(){
   writeFileSync(join(consumer,name),changed);
  }
  const typeFile='types-continued-room-catalog.ts';
- cpSync(join(root,'scripts/fixtures/editor-consumer',typeFile),join(consumer,typeFile));
+ writeFileSync(join(consumer,typeFile),readFileSync(join(root,'scripts/fixtures/editor-consumer',typeFile)));
  execFileSync(process.execPath,[join(root,'node_modules/typescript/bin/tsc'),'--noEmit','--strict','--exactOptionalPropertyTypes',
   '--target','ES2022','--module','NodeNext','--lib','ES2022,DOM,ESNext.Disposable',typeFile],{cwd:consumer,stdio:'inherit'});
  const entry=join(consumer,'entry.mjs');

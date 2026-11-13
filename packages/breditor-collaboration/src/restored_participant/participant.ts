@@ -1,3 +1,4 @@
+import {exactOperationRecoveryInput,type ExactOperationRecoveryInput} from '../operation_read/exact_recovery_input.js';
 /** Private resumable whole-input/source/upload coordinator. Native history is restored
  * by the actual source component while genuine asset custody stays held. A ready row
  * never grants permission or substitutes for either owner. No network starts here. */
@@ -27,7 +28,7 @@ import {operationalReadReservation,type OperationalReadReservation} from '../ope
 import {checkRecoveryLeasesHeld} from '../participant_recovery/lease.js';
 import {makeFreshRestoredDeliveryHistoryRead,type FreshRestoredDeliveryHistoryOptions,type FreshRestoredDeliveryHistoryRead} from './fresh_parent_history.js';
 type Pair<P extends SharedSelectionPolicy>=Awaited<ReturnType<typeof openRestoredOperationSource<P>>>;
-interface State<P extends SharedSelectionPolicy>{readonly choice:ReturnType<typeof restoredParticipantPolicy<P>>;readonly input:RestoredOperationInput;readonly plan:string;db:IDBDatabase;dbClosed:boolean;leases:RecoveryLease[];leasesReleased:boolean;inputRetired:boolean;readonly uploads:RestoredUploadOwners;pair?:Pair<P>;sourceOpening?:RestoredSourceOpening<P>}
+interface State<P extends SharedSelectionPolicy>{readonly choice:ReturnType<typeof restoredParticipantPolicy<P>>;readonly input:RestoredOperationInput;readonly plan:string;db:IDBDatabase;dbClosed:boolean;leases:RecoveryLease[];leasesReleased:boolean;inputRetired:boolean;readonly uploads:RestoredUploadOwners;readonly exactInput:ExactOperationRecoveryInput|undefined;pair?:Pair<P>;sourceOpening?:RestoredSourceOpening<P>}
 export type RestoredDeliveryParentCustody<P extends SharedSelectionPolicy=SharedSelectionPolicy>=State<P>;
 const openOpening=RestoredSourceOpening.prototype.open,takeOpening=RestoredSourceOpening.prototype.take,closeOpening=RestoredSourceOpening.prototype.close;
 const key=Object.freeze({}),closeSource=SharedIndependentDeliverySession.prototype.close,discardSource=SharedIndependentDeliverySession.prototype.discardAndClose;
@@ -105,10 +106,18 @@ export class RestoredOperationParticipant<P extends SharedSelectionPolicy=Shared
    opening=await RecoveryOpeningCustody.reserve(choice.context,choice.names,async()=>{if(state){await closeState(state,true);return;}input?.dispose();db?.close();const done=await Promise.allSettled([...leases].reverse().map(lease=>lease.close()));if(done.some(r=>r.status==='rejected'))throw fail('restored_participant_cleanup');},errors);choice.guard();
    for(const name of[choice.database,choice.sourceDatabase,choice.uploadsDatabase].sort()){leases.push(await RecoveryLease.acquire(JSON.stringify(name)));choice.guard();}
    if(file===undefined){db=await existingRestoredParticipantDatabase(choice.database);choice.guard();file=(await readRestoredParticipantDatabase(db)).file;choice.guard();}
+   const exactInput=exactOperationRecoveryInput(options);
+   if(exactInput){
+    if(!db)for(const name of [choice.journalDatabase,choice.sourceDatabase,choice.uploadsDatabase]){
+     if(await present(name))throw fail('restored_participant_exists');
+     choice.guard();
+    }
+    await exactInput(file!);
+   }
    input=await readRestoredOperationInput(file,choice.sourceOptions) as unknown as RestoredOperationInput;choice.guard();
    const plan=JSON.stringify({format:'breditor/shared-restored-participant-plan',formatVersion:1,input:{kind:input.kind,selection:input.selection,fileSha256:input.fileSha256},databases:{coordinator:choice.database,journal:choice.journalDatabase,source:choice.sourceDatabase,uploads:choice.uploadsDatabase}});
    db??=await createRestoredParticipantDatabase(choice.database,initialRestoredParticipant(plan),input.file,choice.guard);choice.guard();
-   state={choice,input,plan,db,dbClosed:false,leases,leasesReleased:false,inputRetired:false,uploads:{}};fence(state);const result=new RestoredOperationParticipant(key,state);const record=await result.#read();choice.guard();if(completeOnly&&(record.source!=='complete'||record.uploads!=='complete'))throw fail('restored_participant_not_ready');opening.complete();result.#exposed=true;return result;
+   state={choice,input,plan,db,dbClosed:false,leases,leasesReleased:false,inputRetired:false,uploads:{},exactInput};fence(state);const result=new RestoredOperationParticipant(key,state);const record=await result.#read();choice.guard();if(completeOnly&&(record.source!=='complete'||record.uploads!=='complete'))throw fail('restored_participant_not_ready');opening.complete();result.#exposed=true;return result;
   }catch(e){if(opening)await opening.rollback();throw e;}
  }
  #readable(){if(!this.#exposed||this.#closed)throw fail('restored_participant_closed');}
@@ -119,7 +128,7 @@ export class RestoredOperationParticipant<P extends SharedSelectionPolicy=Shared
  async #read():Promise<RestoredParticipantRecord>{const s=this.#state,db=await this.#database();s.choice.guard();const raw=await readRestoredParticipantDatabase(db);s.choice.guard();if(await digest(raw.file,s.input.options.signal)!==s.input.fileSha256)throw fail('restored_participant_input_changed');s.choice.guard();return readRestoredParticipantRecord(raw.record,s.plan);}
  /** The actual opening exists in parent state before its first async request.
   * A failed previous opening must really close before retry can create another. */
- async #openSource(file:Blob|undefined,completeOnly:boolean){const s=this.#state;if(s.sourceOpening){await closeOpening.call(s.sourceOpening);delete s.sourceOpening;}s.choice.guard();s.sourceOpening=new RestoredSourceOpening<P>();await openOpening.call(s.sourceOpening,s.choice.sourceOptions,file,completeOnly);s.choice.guard();s.pair=takeOpening.call(s.sourceOpening) as Pair<P>;delete s.sourceOpening;s.choice.guard();}
+ async #openSource(file:Blob|undefined,completeOnly:boolean){const s=this.#state;if(s.sourceOpening){await closeOpening.call(s.sourceOpening);delete s.sourceOpening;}s.choice.guard();s.sourceOpening=new RestoredSourceOpening<P>();await openOpening.call(s.sourceOpening,s.choice.sourceOptions,file,completeOnly,s.exactInput);s.choice.guard();s.pair=takeOpening.call(s.sourceOpening) as Pair<P>;delete s.sourceOpening;s.choice.guard();}
  async #move(before:RestoredParticipantRecord,next:RestoredParticipantRecord){const s=this.#state;await writeRestoredParticipantDatabase(s.db,before,next,s.choice.guard);s.choice.guard();}
  #sourceCheck(stamp?:readonly object[]){const s=this.#state;s.choice.guard();if(!s.pair)throw fail('restored_participant_source');const b=restoredOperationJournalBinding(s.pair.journal),port=independentDeliverySource(s.pair.source);if(JSON.stringify(b.operationIdentity)!==JSON.stringify(s.input.identity)||port.operation!==s.pair.journal)throw fail('restored_participant_source');const data=b.readSource(s.pair.source);b.nativeCaptureGuard.capture(port.core,data.source.versions);checkRestoredUploads(s.uploads);if(stamp){const now=port.stamp();if(stamp.length!==now.length||stamp.some((v,i)=>v!==now[i]))throw fail('restored_participant_source_changed');}s.choice.guard();}
  async #verify(){const s=this.#state,r=await this.#read();if(r.source!=='complete'||r.uploads!=='complete'||!s.pair)throw fail('restored_participant_not_ready');this.#sourceCheck();const port=independentDeliverySource(s.pair.source),stamp=port.stamp();await verifyRestoredUploads(s.input,s.uploads,false,s.choice.guard);const b=restoredOperationJournalBinding(s.pair.journal),progress=await b.progress();if(!progress.ready)throw fail('restored_participant_not_ready');if(await digest(b.inputFile(),s.input.options.signal)!==s.input.fileSha256)throw fail('restored_participant_input_changed');await this.#read();this.#sourceCheck(stamp);}

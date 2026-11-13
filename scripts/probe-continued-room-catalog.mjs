@@ -11,6 +11,7 @@ import {RichAssetStore} from '@breditor/experimental-rich-content';
 import {attachDelivery,pendingDelivery} from './fixtures/independent-delivery/session.mjs';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
 import {pixel,secondPixel,secondAsset} from './fixtures/review-assets/pixels.mjs';
+import {probeOperationRecovery} from './fixtures/continued-room-recovery/operation-archives.mjs';
 
 async function updateDestinationFile(database,store,key,value){
  const db=await new Promise((resolve,reject)=>{
@@ -769,7 +770,9 @@ export async function probeContinuedRoomCatalog(runtime,fixturePath){
    counts.forksRefused++;
   }
   assert.deepEqual(counts,{coldCatalogReads:3,nativePairs:3,serverAhead:1,forksRefused:2,selectionRefusals:15,storedCatalogReads:3,storedCatalogRefusals:9,interruptedCatalogReads:1,damagedCatalogRefusals:1,restoredLocalUndoRedo:3,cohortRecoveries:1,interruptedRecoveryResumes:1,uploadRecoveryResumes:1,recoveryRefusals:3,mixedCatalogReads:4,mixedRefusals:16,mixedRecoveryResumes:4,deliveryRecoveryResumes:2,deliveryPacketRecoveries:fixture.atomic?6:2,occupiedBootstrapRefusals:2,disappearedBootstrapRefusals:1,generationResumes:4,generationPredecessors:1});
-  return {passed:true,fixtureSha256:sha(readFileSync(fixturePath)),sharedWasmSha256:sha(wasmBytes),...counts};
+  const operations=await probeOperationRecovery({profile,fixture,metadata,initialCatalog,client,
+   continued:await pack('z-operation-continued','original','continued-v2','observer',fixture.clients.find(row=>row.observer))});
+  return {passed:true,fixtureSha256:sha(readFileSync(fixturePath)),sharedWasmSha256:sha(wasmBytes),...counts,...operations};
  }finally{
   for(const catalog of catalogs)catalog.dispose();
   for(const entry of owners)entry.backup.dispose();
