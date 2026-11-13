@@ -36,6 +36,7 @@ assert.equal(durableContinuation.passed,true);assert.equal(durableContinuation.a
 assert.equal(durableContinuation.abortedRestore,1);
 assert.equal(durableContinuation.unacknowledgedRestore,1);
 assert.equal(durableContinuation.backupRestored,true);
+assert.equal(durableContinuation.atomicPredecessorRead,true);
 assert.equal(durableContinuation.documentOnlyRestore,true);
 assert.equal(durableContinuation.foreignReviewRefused,true);
 assert.equal(durableContinuation.existingDestinationRefused,true);

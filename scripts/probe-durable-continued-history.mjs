@@ -139,7 +139,19 @@ try{
  assert.deepEqual(session.core.writerGroupsV2(acknowledged.through),offline);
  assert.throws(()=>insert(session,'forbidden'));
  assert.equal((await rows()).prior,before.active);
- const backup=await session.exportContinuedBackup();
+ const read=IDBObjectStore.prototype.get,observedHeads=[];
+ IDBObjectStore.prototype.get=function(recordKey){
+  if(this.transaction.db.name===options.database&&this.name==='generation_heads'){
+   observedHeads.push({key:recordKey,transaction:this.transaction});
+  }
+  return read.call(this,recordKey);
+ };
+ let backup;
+ try{backup=await session.exportContinuedBackup();}
+ finally{IDBObjectStore.prototype.get=read;}
+ assert.deepEqual(observedHeads.map(row=>row.key),[key,[...key,'continued-from']]);
+ assert.equal(observedHeads[0].transaction,observedHeads[1].transaction);
+ assert.equal(observedHeads[0].transaction.mode,'readonly');
  assert.deepEqual(backup.current,current);
  assert.deepEqual(backup.predecessor,expected);
  assert.equal(Object.isFrozen(backup),true);
@@ -227,7 +239,7 @@ try{
  await session.close();session=undefined;lockCheck();
  console.log(JSON.stringify({passed:true,abortedMigration:aborted,lostAcknowledgement:lost,
   exactV1Predecessor:true,documentAndCommentRedo:true,versionsPreserved:true,offlineGroups:offline.groups.length,
-  abortedRestore,unacknowledgedRestore,backupRestored:true,documentOnlyRestore:true,foreignReviewRefused:true,existingDestinationRefused:true}));
+  abortedRestore,unacknowledgedRestore,backupRestored:true,documentOnlyRestore:true,atomicPredecessorRead:true,foreignReviewRefused:true,existingDestinationRefused:true}));
 }finally{
  IDBObjectStore.prototype.add=add;
  IDBDatabase.prototype.transaction=transaction;

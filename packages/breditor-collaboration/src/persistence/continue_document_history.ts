@@ -11,7 +11,7 @@ import {existingDatabase} from "../participant_recovery/journal.js";
 import {SharedWriterLease} from "./writer_lease.js";
 import {ReviewWriterLease} from "./review_writer_lease.js";
 import {fenceOpeningDatabase} from "./opening_database.js";
-import {readGenerationCut,writeSegmentedCut} from "./segmented_database.js";
+import {readGenerationPair,writeSegmentedCut} from "./segmented_database.js";
 import {canonicalSegmentedIdentity,makeGenerationCut,readContinuedHead,readSegmentedHead} from "./segmented_head.js";
 import {checkSegmentedCheckpoint,object} from "./segmented_checkpoint.js";
 import {MAX_SEGMENTED_HEAD_BYTES,type GenerationHead,type SegmentedReview,type SegmentedSessionIdentity,type SegmentedStoredCut} from "./segmented_contract.js";
@@ -92,9 +92,7 @@ export async function readContinuedBackup(
  db:IDBDatabase,key:readonly [string,string],head:string,predecessor:string,check:()=>void,
 ):Promise<SharedContinuedHistoryBackup>{
  check();
- const current=await readGenerationCut(db,key,readContinuedHead);
- check();
- const prior=await readGenerationCut(db,key,readSegmentedHead,true);
+ const {current,predecessor:prior}=await readGenerationPair(db,key,readContinuedHead);
  check();
  if(!current||current.head!==head||!prior||prior.head!==predecessor)throw fail("The saved history changed while capturing the backup");
  checkPredecessor(current,prior);
@@ -240,12 +238,10 @@ export async function openContinuedHistory<P extends SharedSelectionPolicy,T>(
   const opening=fenceOpeningDatabase(db,"session_open_versionchange");
   const check=()=>{opening.assertCurrent();checkCustody();opening.assertCurrent();};
   check();
-  const saved=await readGenerationCut(db,key,expected?readMigrationHead:readContinuedHead);
+  const {current:saved,predecessor:prior}=await readGenerationPair(db,key,expected?readMigrationHead:readContinuedHead);
   check();
   if(!saved)throw fail("The selected generation head is missing");
   checkIdentity(saved,identity,options);
-  const prior=await readGenerationCut(db,key,readSegmentedHead,true);
-  check();
   if(prior)checkIdentity(prior,identity,options);
   if(saved.record.formatVersion===2){
    if(!prior)throw fail("The retained V1 predecessor is missing");
@@ -279,8 +275,7 @@ export async function openContinuedHistory<P extends SharedSelectionPolicy,T>(
   if(newCut&&!prior){
    await writeSegmentedCut(db,key,saved.head,newCut,readContinuedHead,{predecessor,migrating:saved.files});
   }else{
-   const current=await readGenerationCut(db,key,readContinuedHead);
-   const retained=await readGenerationCut(db,key,readSegmentedHead,true);
+   const {current,predecessor:retained}=await readGenerationPair(db,key,readContinuedHead);
    if(current?.head!==head||retained?.head!==predecessor)throw fail("The selected history changed during native admission");
   }
   check();

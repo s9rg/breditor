@@ -43,8 +43,9 @@ Call `flush()` then `exportContinuedBackup()` on a live continued session.
 The backup contains the complete committed V2 cut and the retained V1
 predecessor, including the original review checkpoint and named versions for
 each cut. Asset blobs and provider receipts belong to the enclosing room backup.
-The export refuses while a write is pending or the session changes
-during the read.
+The export reads both heads and their referenced files in one IndexedDB
+transaction. It refuses while a write is pending or the session changes during
+the read.
 
 Use `restoreContinuedRecovery` with both cuts, fresh host editing policy, and
 `writerRecovery: "host-reacquired"` after fencing the old writer. The SDK
