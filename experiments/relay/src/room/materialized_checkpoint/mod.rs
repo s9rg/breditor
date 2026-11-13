@@ -34,6 +34,15 @@ pub struct RelayCheckpoint {
 const MAX_CHECKPOINT_BYTES: usize = 512 * 1024 * 1024;
 const FORMAT: &str = "breditor/relay-materialized-checkpoint";
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct Header {
+    format: String,
+    format_version: u32,
+    source: RoomBackupIdentity,
+    manifest: [u8; 32],
+}
+
 pub(in crate::room) fn sequence(value: &str, end: u64) -> Result<u64> {
     let index = value.parse::<u64>().map_err(|_| Error::Contract("relay checkpoint sequence"))?;
     if index == 0 || index >= end || index.to_string() != value {
@@ -64,14 +73,6 @@ impl RelayCheckpoint {
         }
         if <[u8; 32]>::from(Sha256::digest(&bytes)) != expected.sha256 {
             return Err(Error::Contract("relay checkpoint digest differs"));
-        }
-        #[derive(Deserialize)]
-        #[serde(rename_all = "camelCase")]
-        struct Header {
-            format: String,
-            format_version: u32,
-            source: RoomBackupIdentity,
-            manifest: [u8; 32],
         }
         let value: Header = serde_json::from_slice(&bytes)?;
         if value.format != FORMAT

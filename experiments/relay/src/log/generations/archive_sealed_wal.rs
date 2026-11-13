@@ -70,7 +70,7 @@ impl ArchiveDirectory {
             if named.is_dir()
                 && held.is_dir()
                 && (named.dev(), named.ino()) == (held.dev(), held.ino())
-                && named.mode() & 0o077 == 0
+                && named.mode().trailing_zeros() >= 6
             {
                 return Ok(());
             }
@@ -139,10 +139,10 @@ impl Generations {
             if exists(&live)? {
                 wal.identity.guard(&wal.file, &live)?;
             }
-        } else if let Some(archive) = &self.archive {
-            if exists(&archive.path.join(name))? {
-                return Err(Error::Contract("unselected WAL archive entry"));
-            }
+        } else if let Some(archive) = &self.archive
+            && exists(&archive.path.join(name))?
+        {
+            return Err(Error::Contract("unselected WAL archive entry"));
         }
         Ok(())
     }

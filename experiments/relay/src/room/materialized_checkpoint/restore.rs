@@ -137,7 +137,7 @@ impl Checkpoint {
         for ack in self.receipts {
             sequence(&ack.sequence, records)?;
             if ack.duplicate
-                || !room.writers.get(&ack.receipt.writer).is_some_and(|writer| !writer.observer)
+                || room.writers.get(&ack.receipt.writer).is_none_or(|writer| writer.observer)
                     && !room.has_checkpoint_effect_receipt(&ack)
                 || room.receipts.insert(Room::key(&ack.receipt), ack).is_some()
             {

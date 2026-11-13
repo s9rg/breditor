@@ -146,7 +146,7 @@ async fn capture_source_cuts(
                 &directory.join("source-native"),
                 &checkpoint,
             )?;
-            let (backup, predecessor) = activation::seal(directory, room, assets).await?;
+            let (backup, predecessor) = Box::pin(activation::seal(directory, room, assets)).await?;
             (backup, Some(predecessor))
         } else {
             (ServerLogGenerationRoomBackup::capture(&mut room, &mut assets, "owner")?, None)
@@ -196,7 +196,7 @@ async fn generate_selected(
         server_packet_asset::accept(&mut room, accepted)?;
     }
     let (migrated_origin::Cuts { older: ancestor, local, legacy }, predecessor) =
-        capture_source_cuts(&root, room, assets, migrated, activation_case).await?;
+        Box::pin(capture_source_cuts(&root, room, assets, migrated, activation_case)).await?;
     let mut operation = ServerLogGenerationRoomRecovery::begin(
         &root.join("restored"),
         &local,
