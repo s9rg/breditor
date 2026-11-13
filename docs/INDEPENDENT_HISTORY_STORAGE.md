@@ -296,6 +296,12 @@ factory also selects the exact relay binding and retained stores. Recovery
 reopens the native pair and delivery records together, including relay
 progress and queued suggestions, revisions, and versions. The staged
 session requests no relay token and sends no queued work.
+Supply `generationPolicies` for the earlier generation archive family.
+Each policy names its exact local, relay, retained, or continued-local
+generation factory. Recovery keeps the original generation database
+layout. The continued-local destination retains both the active head and
+the original V1 predecessor in the same database, with its immutable
+generation files and upload state.
 Duplicate document writers and review actors, mismatched policies, and
 other archive families stop recovery before journal creation. These
 destinations provide local recovery. Provider reconciliation and authenticated

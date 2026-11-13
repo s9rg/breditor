@@ -12,7 +12,9 @@ import {SharedWriterLease} from "./writer_lease.js";
 import {ReviewWriterLease} from "./review_writer_lease.js";
 import {takeActorDocumentLease,takeActorReviewLease} from "./actor_lease_input.js";
 import {fenceOpeningDatabase} from "./opening_database.js";
-import {readGenerationPair,writeSegmentedCut} from "./segmented_database.js";
+import {readExactHistoryRows} from '../independent_history/exact_destination.js';
+import {generationRecoveryBootstrap} from './generation_recovery_bootstrap.js';
+import {generationStoreNames,readGenerationPair,writeSegmentedCut} from "./segmented_database.js";
 import {canonicalSegmentedIdentity,makeGenerationCut,readContinuedHead,readSegmentedHead} from "./segmented_head.js";
 import {checkSegmentedCheckpoint,object} from "./segmented_checkpoint.js";
 import {MAX_SEGMENTED_HEAD_BYTES,type GenerationHead,type SegmentedReview,type SegmentedSessionIdentity,type SegmentedStoredCut} from "./segmented_contract.js";
@@ -204,7 +206,7 @@ export async function openContinuedHistory<P extends SharedSelectionPolicy,T>(
   checkSegmentedCheckpoint(backup.current.checkpoint,identity,2);
   checkSegmentedCheckpoint(backup.predecessor.checkpoint,identity);
  }
- const factory=globalThis.indexedDB,locks=globalThis.navigator?.locks,guard=recoveryGuards.get(input);
+ const factory=globalThis.indexedDB,locks=globalThis.navigator?.locks,guard=recoveryGuards.get(input),bootstrap=generationRecoveryBootstrap(input);
  guard?.();
  const actor=options.review?.actor??null;
  const lease=await(takeActorDocumentLease(input,'segmented',database,identity.room,identity.writer,actor)??SharedWriterLease.acquire(identity.room,identity.writer));
@@ -237,7 +239,7 @@ export async function openContinuedHistory<P extends SharedSelectionPolicy,T>(
     identity,current.checkpoint,review,current.versions,true,options.readOnly);
    verifyNativePredecessor(core,options,identity,{checkpoint:predecessor.checkpoint,review:previousReview,versions:predecessor.versions},check);
    check();
-   db=await createContinuedDatabase(factory,database,key,cut,previous.head,check);
+   db=await createContinuedDatabase(factory,database,key,cut,previous.head,check,bootstrap?.signal);
    check();
    return take({db,lease,reviewLease,core,options,identity,head:cut.head,checkpoint:current.checkpoint,
     versions:current.versions,predecessor:previous.head,priorRecovery:predecessor});
@@ -250,9 +252,11 @@ export async function openContinuedHistory<P extends SharedSelectionPolicy,T>(
   const opening=fenceOpeningDatabase(db,"session_open_versionchange");
   const check=()=>{opening.assertCurrent();checkCustody();opening.assertCurrent();};
   check();
+  if(bootstrap&&await readExactHistoryRows(db,generationStoreNames,bootstrap.rows,check)!=='exact')throw bootstrap.rows.fail();
   const {current:saved,predecessor:prior}=await readGenerationPair(db,key,expected?readMigrationHead:readContinuedHead);
   check();
   if(!saved)throw fail("The selected generation head is missing");
+  if(bootstrap&&(saved.head!==bootstrap.rows.heads[0]?.value||prior?.head!==bootstrap.rows.heads[1]?.value))throw bootstrap.rows.fail();
   checkIdentity(saved,identity,options);
   if(prior)checkIdentity(prior,identity,options);
   if(saved.record.formatVersion===2){

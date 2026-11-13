@@ -1,3 +1,6 @@
+import {inspectHistoryRows} from '../independent_history/exact_destination.js';
+import {onIndependentBootstrapAbort} from '../independent_history/bootstrap_policy.js';
+import type {GenerationRecoveryBootstrap} from './generation_recovery_bootstrap.js';
 import {settleOwnedTransaction} from "./settle_owned_transaction.js";
 /** Separate schema. Immutable root/sealed files and the latest complete native pair commit together. */
 import {SharedEditorError} from "../core.js";
@@ -9,12 +12,16 @@ function schema(db:IDBDatabase):void{
  if(db.version!==1||[...db.objectStoreNames].sort().join(",")!=="generation_files,generation_heads")throw fail("Unknown generation schema; nothing was migrated or removed");
  const tx=db.transaction(["generation_files","generation_heads"],"readonly");for(const name of ["generation_files","generation_heads"]){const s=tx.objectStore(name);if(s.keyPath!==null||s.autoIncrement||s.indexNames.length)throw fail("Changed generation store schema");}
 }
-export function openSegmentedDatabase(name:string):Promise<IDBDatabase>{
+export const generationStoreNames=["generation_files","generation_heads"] as const;
+export function openSegmentedDatabase(name:string,existingOnly?:()=>Error,check?:()=>void):Promise<IDBDatabase>{
  if(typeof name!=="string"||!name||name.length>200)return Promise.reject(fail("Use a dedicated generation database name"));
- return new Promise((resolve,reject)=>{const r=indexedDB.open(name,1);let failed=false;
-  r.onupgradeneeded=()=>{r.result.createObjectStore("generation_files");r.result.createObjectStore("generation_heads");};
-  r.onerror=()=>reject(r.error??fail("Cannot open generation storage"));r.onblocked=()=>{failed=true;reject(fail("Generation storage open is blocked"));};
-  r.onsuccess=()=>{if(failed){r.result.close();return;}try{schema(r.result);resolve(r.result);}catch(error){r.result.close();reject(error);}};
+ return new Promise((resolve,reject)=>{const r=indexedDB.open(name,1);let failed=false,refused:unknown;
+  r.onupgradeneeded=()=>{
+   try{check?.();if(existingOnly)throw existingOnly();r.result.createObjectStore("generation_files");r.result.createObjectStore("generation_heads");}
+   catch(error){refused=error;r.transaction!.abort();}
+  };
+  r.onerror=()=>reject(refused??r.error??fail("Cannot open generation storage"));r.onblocked=()=>{failed=true;reject(fail("Generation storage open is blocked"));};
+  r.onsuccess=()=>{if(failed){r.result.close();return;}try{check?.();schema(r.result);resolve(r.result);}catch(error){r.result.close();reject(error);}};
  });
 }
 /** Read exact referenced files in the same transaction as their head; no missing-file repair. */
@@ -99,21 +106,74 @@ export interface ContinuedWrite {
  readonly predecessor:string;
  readonly migrating?:readonly SegmentedFile[];
 }
-export function writeSegmentedCut(db:IDBDatabase,key:readonly[string,string],expected:string|null,cut:SegmentedCut,readHead:(input:string)=>GenerationHead=readSegmentedHead,continued?:ContinuedWrite):Promise<void>{
- try{const h=readHead(cut.head),refs=[h.root,...h.sealed];if(h.identity.room!==key[0]||h.identity.writer!==key[1]||cut.files.length!==refs.length||cut.files.some((f,index)=>f.generation!==refs[index]!.generation||f.sha256!==refs[index]!.sha256||f.kind!==(index===0?"root":"sealed")||typeof f.json!=="string"))throw fail("Wrong generation writer or files");}catch(error){return Promise.reject(error);}
+export function writeSegmentedCut(
+ db:IDBDatabase,key:readonly[string,string],expected:string|null,cut:SegmentedCut,
+ readHead:(input:string)=>GenerationHead=readSegmentedHead,continued?:ContinuedWrite,bootstrap?:GenerationRecoveryBootstrap,
+):Promise<void>{
+ try{
+  const h=readHead(cut.head),refs=[h.root,...h.sealed];
+  if(h.identity.room!==key[0]||h.identity.writer!==key[1]||cut.files.length!==refs.length||
+     cut.files.some((f,index)=>f.generation!==refs[index]!.generation||f.sha256!==refs[index]!.sha256||f.kind!==(index===0?"root":"sealed")||typeof f.json!=="string"))
+   throw fail("Wrong generation writer or files");
+  bootstrap?.check();
+  if(bootstrap&&(continued||bootstrap.rows.heads.length!==1||bootstrap.rows.heads[0]!.value!==cut.head||
+    bootstrap.rows.files.length!==cut.files.length||cut.files.some((file,index)=>JSON.stringify(file)!==bootstrap.rows.files[index]!.value)||
+    expected!==null&&expected!==cut.head))throw bootstrap.rows.fail();
+ }catch(error){return Promise.reject(error);}
  return new Promise((resolve,reject)=>{
-  const tx=continued?db.transaction(["generation_files","generation_heads"],"readwrite",{durability:"strict"}):db.transaction(["generation_files","generation_heads"],"readwrite");
-  const heads=tx.objectStore("generation_heads"),files=tx.objectStore("generation_files"),r=heads.get([...key]);let failure:unknown;
-  const abort=(error:unknown)=>{failure=error;tx.abort();};
-  if(continued){
-   const prior=heads.get([...key,"continued-from"]);
-   prior.onsuccess=()=>{try{
-    if(prior.result===undefined&&continued.migrating)heads.add(continued.predecessor,[...key,"continued-from"]);
-    else if(prior.result!==continued.predecessor)throw fail("Continued history predecessor differs");
-   }catch(error){abort(error);}};
-  }
-  const originalFiles=continued?.migrating?new Set(continued.migrating.map(file=>file.generation)):undefined;
-  r.onsuccess=()=>{try{const actual=r.result===undefined?null:r.result,already=actual===cut.head;if(!already&&actual!==expected)throw fail("Generation head changed since the last acknowledged cut");let left=cut.files.length;for(const file of cut.files){const fileKey=[...key,file.generation],json=JSON.stringify(file),q=files.get(fileKey);q.onsuccess=()=>{try{if(q.result!==undefined&&q.result!==json)throw fail("Immutable generation identity already contains different bytes");if(q.result===undefined){if(already||originalFiles?.has(file.generation))throw fail("An acknowledged cut lost its immutable file; refusing repair");files.add(json,fileKey);}if(--left===0&&!already){if(expected===null)heads.add(cut.head,[...key]);else heads.put(cut.head,[...key]);}}catch(error){abort(error);}};}}catch(error){abort(error);}};
-  settleOwnedTransaction(tx,()=>undefined,()=>failure??tx.error??fail("Generation write aborted"),resolve,reject);
+  const tx=continued||bootstrap?db.transaction([...generationStoreNames],"readwrite",{durability:"strict"}):
+   db.transaction([...generationStoreNames],"readwrite");
+  let failure:unknown,off=()=>{};
+  const abort=(error:unknown)=>{failure??=error;try{tx.abort();}catch{}};
+  settleOwnedTransaction(tx,()=>{off();},()=>{off();return failure??tx.error??fail("Generation write aborted");},resolve,reject);
+  try{
+   off=onIndependentBootstrapAbort(bootstrap?.signal,()=>abort(bootstrap!.rows.fail()));
+   bootstrap?.check();
+   const [filesName,headsName]=generationStoreNames;
+   const heads=tx.objectStore(headsName),files=tx.objectStore(filesName);
+   const write=()=>{
+    const read=heads.get([...key]);
+    if(continued){
+     const prior=heads.get([...key,"continued-from"]);
+     prior.onsuccess=()=>{try{
+      if(prior.result===undefined&&continued.migrating)heads.add(continued.predecessor,[...key,"continued-from"]);
+      else if(prior.result!==continued.predecessor)throw fail("Continued history predecessor differs");
+     }catch(error){abort(error);}};
+    }
+    const originalFiles=continued?.migrating?new Set(continued.migrating.map(file=>file.generation)):undefined;
+    read.onsuccess=()=>{
+     try{
+      bootstrap?.check();
+      const actual=read.result===undefined?null:read.result,already=actual===cut.head;
+      if(!already&&actual!==expected)throw fail("Generation head changed since the last acknowledged cut");
+      let left=cut.files.length;
+      for(const file of cut.files){
+       const fileKey=[...key,file.generation],json=JSON.stringify(file),request=files.get(fileKey);
+       request.onsuccess=()=>{
+        try{
+         bootstrap?.check();
+         if(request.result!==undefined&&request.result!==json)throw fail("Immutable generation identity already contains different bytes");
+         if(request.result===undefined){
+          if(already||originalFiles?.has(file.generation))throw fail("An acknowledged cut lost its immutable file; refusing repair");
+          files.add(json,fileKey);
+         }
+         if(--left===0&&!already){
+          if(expected===null)heads.add(cut.head,[...key]);
+          else heads.put(cut.head,[...key]);
+         }
+         bootstrap?.check();
+        }catch(error){abort(error);}
+       };
+      }
+     }catch(error){abort(error);}
+    };
+   };
+   if(bootstrap)inspectHistoryRows(tx,generationStoreNames,bootstrap.rows,status=>{
+    bootstrap.check();
+    if(expected===null){if(status!=='empty')throw bootstrap.rows.fail();write();}
+    else if(status!=='exact')throw bootstrap.rows.fail();
+   },abort);
+   else write();
+  }catch(error){abort(error);}
  });
 }

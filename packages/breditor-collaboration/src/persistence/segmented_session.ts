@@ -20,7 +20,9 @@ import type {SharedDocumentVersionInfo} from "../version_types.js";
 import {SharedWriterLease} from "./writer_lease.js";
 import {ReviewWriterLease} from "./review_writer_lease.js";
 import {fenceOpeningDatabase} from "./opening_database.js";
-import {openSegmentedDatabase,readGenerationPair,readSegmentedCut,writeSegmentedCut} from "./segmented_database.js";
+import {generationRecoveryBootstrap,inheritGenerationRecoveryBootstrap,type GenerationRecoveryBootstrap} from './generation_recovery_bootstrap.js';
+import {readExactHistoryRows} from '../independent_history/exact_destination.js';
+import {generationStoreNames,openSegmentedDatabase,readGenerationPair,readSegmentedCut,writeSegmentedCut} from "./segmented_database.js";
 import {canonicalSegmentedIdentity,checkSegmentedCapture,makeGenerationCut,previewSegmentedHead,readContinuedHead,readSegmentedHead} from "./segmented_head.js";
 import {openContinuedHistory,readContinuedBackup,checkContinuedPredecessor,type SharedContinuedHistoryOptions,type SharedContinueHistoryOptions,type SharedRestoreContinuedHistoryOptions} from "./continue_document_history.js";
 import {segmentedCompanion,withSegmentedCompanion,type SegmentedSessionCompanion} from "./segmented_driver.js";
@@ -84,13 +86,15 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
  readonly #companion:SegmentedSessionCompanion|undefined;
  readonly #formatVersion:1|2;
  readonly #continuedPredecessor:string|undefined;
+ #recoveryBootstrap:GenerationRecoveryBootstrap|undefined;
  #versions=new Map<string,string>();#sourceStamp:object=Object.freeze({});#off:(()=>void)[]=[];#pending:Capture|undefined;#attempt:Attempt|undefined;#running:Promise<void>|undefined;
  #savedHead:string|null;#saved:Capture|undefined;#closedSaved:{documentRevision:string|null;reviewRevision:string|null}|undefined;#failure:unknown;#closed=false;#retiring=false;#storageChanged=false;#closing:Promise<void>|undefined;#released:Promise<void>|undefined;
  #recordReadEpoch:object=Object.freeze({});readonly #recordReaders=new Set<object>();
  readonly #releasePendingWork:()=>void;
- private constructor(key:object,db:IDBDatabase,lease:SharedWriterLease,reviewLease:ReviewWriterLease|undefined,core:SharedRichEditor<P>,options:Pick<SharedSegmentedSessionOptions<P>,"review"|"onError"|"onState">,identity:SegmentedSessionIdentity,head:string|null,versions:readonly string[],recovered=head!==null,companion?:SegmentedSessionCompanion,continued?:{checkpoint:string;predecessor:string;priorRecovery:SharedSegmentedRecovery;profile:SharedContinuedHistoryOptions<P>["profile"]}){
+ private constructor(key:object,db:IDBDatabase,lease:SharedWriterLease,reviewLease:ReviewWriterLease|undefined,core:SharedRichEditor<P>,options:Pick<SharedSegmentedSessionOptions<P>,"review"|"onError"|"onState">,identity:SegmentedSessionIdentity,head:string|null,versions:readonly string[],recovered=head!==null,companion?:SegmentedSessionCompanion,continued?:{checkpoint:string;predecessor:string;priorRecovery:SharedSegmentedRecovery;profile:SharedContinuedHistoryOptions<P>["profile"]},bootstrap?:GenerationRecoveryBootstrap){
   if(key!==constructionKey)throw new SharedEditorError('managed_source_construction','Use the actual generation session open or recovery factory');
   this.#formatVersion=continued?2:1;
+  this.#recoveryBootstrap=bootstrap;
   this.#continuedPredecessor=continued?.predecessor;
   this.#companion=companion;companion?.admit(core as unknown as SharedRichEditor<SharedSelectionPolicy>);
   this.#actorBinding=Object.freeze({room:identity.room,writer:identity.writer,actor:options.review?.actor??null});
@@ -251,10 +255,10 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
   const identity=canonicalSegmentedIdentity({room:options.room,writer:options.writer,richLanguage:options.richLanguage,history:options.history,rangeEditing:options.rangeEditing,selectionEditing:options.selectionEditing,searchHistory:options.searchHistory,reviewedHistory:options.reviewedHistory}),a=checkSegmentedCheckpoint(r.checkpoint,identity);
   const selected={...r,versions:[...r.versions]};
   const opening={...options,initialGenerations:{root:a.rootGeneration,active:(JSON.parse(a.active) as {generation:string}).generation},create:()=>{throw new SharedEditorError("segmented_recovery","Recovery cannot fall back to a fresh document");}},companion=segmentedCompanion(input);
-  return this.#open(inheritActorLeaseInput(input,companion?withSegmentedCompanion(opening,companion):opening),selected);
+  return this.#open(inheritActorLeaseInput(input,inheritGenerationRecoveryBootstrap(input,companion?withSegmentedCompanion(opening,companion):opening)),selected);
  }
  static async #open<Q extends SharedSelectionPolicy>(input:SharedSegmentedSessionOptions<Q>,recovery?:SharedSegmentedRecovery):Promise<SharedSegmentedPersistentSession<Q>>{
-  const actorInput=input,companion=segmentedCompanion(input),operation=generationOperationOrigin(input);if(operation&&recovery)throw new SharedEditorError("segmented_session_policy","Operational adoption never restores over a selected destination");operation?.check();
+  const actorInput=input,companion=segmentedCompanion(input),operation=generationOperationOrigin(input),bootstrap=generationRecoveryBootstrap(input);bootstrap?.check();if(operation&&recovery)throw new SharedEditorError("segmented_session_policy","Operational adoption never restores over a selected destination");operation?.check();
   const identity=canonicalSegmentedIdentity({room:input.room,writer:input.writer,richLanguage:input.richLanguage,history:input.history,rangeEditing:input.rangeEditing,selectionEditing:input.selectionEditing,searchHistory:input.searchHistory,reviewedHistory:input.reviewedHistory});
   if(typeof input.readOnly!=="boolean"||typeof input.create!=="function"||typeof input.restoreSegmented!=="function"||!input.initialGenerations||typeof input.initialGenerations.root!=="string"||typeof input.initialGenerations.active!=="string")throw new SharedEditorError("segmented_session_policy","Explicit generation recovery, IDs and current editing policy are required");
   if(input.reviewedHistory&&(!input.review||input.review.principal!==input.reviewedHistory.principal)||!input.review&&input.initialReviewCheckpoint!==undefined)throw new SharedEditorError("segmented_review_policy","Reviewed ownership and initial comments require the matching explicitly paired account");
@@ -263,13 +267,21 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
   const lease=await(takeActorDocumentLease(actorInput,'segmented',options.database,identity.room,identity.writer,options.review?.actor??null)??SharedWriterLease.acquire(identity.room,identity.writer));let reviewLease:ReviewWriterLease|undefined,db:IDBDatabase|undefined,core:SharedRichEditor<Q>|undefined,raw:SharedRustOwner|undefined;
   try{
    if(options.review)reviewLease=await(takeActorReviewLease(actorInput,'segmented',options.database,identity.room,identity.writer,options.review.actor)??ReviewWriterLease.acquire(identity.room,options.review.actor));
-   const existing=operation?await existingGenerationOperationSource(options.database,[identity.room,identity.writer],companion?.readHead??readSegmentedHead):undefined;db=existing?.db;operation?.check();db??=await openSegmentedDatabase(options.database);const opening=existing?.opening??fenceOpeningDatabase(db,"session_open_versionchange"),saved=await readSegmentedCut(db,[identity.room,identity.writer],companion?.readHead);operation?.check();if(operation&&(!saved||saved.head!==existing!.head))throw new SharedEditorError("segmented_native_replay","Operational source changed or disappeared while opening");
+   const existing=operation?await existingGenerationOperationSource(options.database,[identity.room,identity.writer],companion?.readHead??readSegmentedHead):undefined;db=existing?.db;operation?.check();db??=await openSegmentedDatabase(options.database,recovery?undefined:bootstrap?.rows.fail,bootstrap?.check);
+   const opening=existing?.opening??fenceOpeningDatabase(db,"session_open_versionchange"),key=[identity.room,identity.writer] as const;
+   const saved=await readSegmentedCut(db,key,companion?.readHead);
+   if(bootstrap){
+    const status=await readExactHistoryRows(db,generationStoreNames,bootstrap.rows,()=>{bootstrap.check();opening.assertCurrent();});
+    if(recovery?status!=='empty'||saved!==null:status!=='exact'||saved?.head!==bootstrap.rows.heads[0]?.value)throw bootstrap.rows.fail();
+   }
+   operation?.check();if(operation&&(!saved||saved.head!==existing!.head))throw new SharedEditorError("segmented_native_replay","Operational source changed or disappeared while opening");
    if(recovery&&saved)throw new SharedEditorError("segmented_destination_exists","Recovery cannot overwrite an existing generation head");
    if(saved)companion?.load(saved.head);
    if(saved&&(JSON.stringify(saved.record.identity)!==JSON.stringify(identity)||!!saved.record.review!==!!options.review||saved.record.review&&(saved.record.review.actor!==options.review?.actor||saved.record.review.principal!==options.review.principal)))throw new SharedEditorError("segmented_session_identity","Stored generation/account policy differs from the selected session");
    const source=saved?.checkpoint??recovery?.checkpoint,sourceReview=saved?.record.review?.checkpoint??recovery?.reviewCheckpoint??null;
    if(recovery){if((sourceReview!==null)!==!!options.review)throw new SharedEditorError("segmented_recovery","Recovery comment lane differs from the selected account");checkSegmentedCapture(recovery.checkpoint,identity,options.review?{actor:options.review.actor,principal:options.review.principal,checkpoint:sourceReview!}:null,recovery.versions);}
    raw=opening.admit(await(source!==undefined?options.restoreSegmented(source):options.create()));
+   bootstrap?.check();
    if(source!==undefined){
     // Factory cleanup may release a fresh result, never an object owned by another editor.
     try{initializeSharedReadOnly(raw,options.readOnly);}catch(error){freeUnclaimedSharedRustOwner(raw);throw error;}
@@ -284,8 +296,8 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
    core.sealSegmentedPolicies(identity.history,identity.rangeEditing);
    if(source!==undefined&&(core.checkpointJson()!==source||options.review&&core.reviewCheckpoint()!==sourceReview))throw new SharedEditorError("segmented_native_replay","Native replay must preserve the exact document and comment files");
    operation?.verifyCore(core as unknown as SharedRichEditor<SharedSelectionPolicy>,saved!.record.versions,companion);
-   opening.assertCurrent();const session=new SharedSegmentedPersistentSession(constructionKey,db,lease,reviewLease,core,options,identity,saved?.head??null,saved?.record.versions??recovery?.versions??[],source!==undefined,companion);
-   session.save();try{await session.flush();}catch(error){await session.discardAndClose();throw error;}return session;
+   opening.assertCurrent();const session=new SharedSegmentedPersistentSession(constructionKey,db,lease,reviewLease,core,options,identity,saved?.head??null,saved?.record.versions??recovery?.versions??[],source!==undefined,companion,undefined,bootstrap);
+   session.save();try{await session.flush();bootstrap?.check();session.#recoveryBootstrap=undefined;}catch(error){await session.discardAndClose();throw error;}return session;
   }catch(error){try{if(core)disposeOwnedCore(core);}finally{try{if(raw)freeUnclaimedSharedRustOwner(raw);}finally{db?.close();try{await reviewLease?.close();}finally{await lease.close();}}}throw error;}
  }
  #live():void{if(this.#closed)throw new SharedEditorError("segmented_session_closed","The generation session is closed");this.#documentLease.assertLive();this.#reviewLease?.assertLive();}
@@ -334,7 +346,7 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
   this.#documentLease.assertLive();this.#reviewLease?.assertLive();
   if(!this.#attempt){const capture=this.#pending!;this.#pending=undefined;if(same(this.#saved,capture))continue;this.#attempt={capture,cut:undefined};}
   const attempt=this.#attempt;if(!attempt.cut){const cut=await makeGenerationCut(attempt.capture.checkpoint,this.#identity,attempt.capture.review,attempt.capture.versions,this.#formatVersion);attempt.cut=this.#companion?{head:this.#companion.wrap(JSON.parse(cut.head),attempt.capture.companion!),files:cut.files}:cut;}
-  await writeSegmentedCut(this.#db,[this.#identity.room,this.#identity.writer],this.#savedHead,attempt.cut,this.#formatVersion===2?readContinuedHead:this.#companion?.readHead,this.#continuedPredecessor===undefined?undefined:{predecessor:this.#continuedPredecessor});
+  await writeSegmentedCut(this.#db,[this.#identity.room,this.#identity.writer],this.#savedHead,attempt.cut,this.#formatVersion===2?readContinuedHead:this.#companion?.readHead,this.#continuedPredecessor===undefined?undefined:{predecessor:this.#continuedPredecessor},this.#recoveryBootstrap);
   if(this.#closed){this.#attempt=undefined;return;}
   this.#savedHead=attempt.cut.head;this.#saved=attempt.capture;this.#attempt=undefined;if(attempt.capture.companion!==null)this.#companion?.acknowledged?.(attempt.capture.companion);this.#notify();
  }}

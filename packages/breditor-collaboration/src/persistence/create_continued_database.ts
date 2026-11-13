@@ -1,14 +1,20 @@
 /** Create the entire selected backup in one upgrade transaction, only at an absent name. */
+import {onIndependentBootstrapAbort} from '../independent_history/bootstrap_policy.js';
 import {SharedEditorError} from "../core.js";
 import type {SegmentedCut} from "./segmented_contract.js";
 
 export function createContinuedDatabase(
- factory:IDBFactory,name:string,key:readonly [string,string],cut:SegmentedCut,predecessor:string,check:()=>void,
+ factory:IDBFactory,name:string,key:readonly [string,string],cut:SegmentedCut,predecessor:string,check:()=>void,signal?:AbortSignal,
 ):Promise<IDBDatabase>{
  return new Promise((resolve,reject)=>{
   const request=factory.open(name,1);
   let created=false,blocked=false,failure:unknown;
-  request.onblocked=()=>{blocked=true;reject(new SharedEditorError("continued_history_destination_exists","The restore destination is in use"));};
+  const abort=()=>{
+   failure=new SharedEditorError("continued_history_storage","The selected generation restore was cancelled");
+   try{request.transaction?.abort();}catch{}
+  };
+  const off=onIndependentBootstrapAbort(signal,abort);
+  request.onblocked=()=>{blocked=true;off();reject(new SharedEditorError("continued_history_destination_exists","The restore destination is in use"));};
   request.onupgradeneeded=event=>{
    try{
     check();
@@ -19,11 +25,13 @@ export function createContinuedDatabase(
     for(const file of cut.files)files.add(JSON.stringify(file),[...key,file.generation]);
     heads.add(predecessor,[...key,"continued-from"]);
     heads.add(cut.head,[...key]);
+    check();
     created=true;
    }catch(error){failure=error;request.transaction!.abort();}
   };
-  request.onerror=()=>reject(failure??request.error??new SharedEditorError("continued_history_storage","The restore transaction did not complete"));
+  request.onerror=()=>{off();reject(failure??request.error??new SharedEditorError("continued_history_storage","The restore transaction did not complete"));};
   request.onsuccess=()=>{
+   off();
    const db=request.result;
    if(blocked||!created){
     db.close();

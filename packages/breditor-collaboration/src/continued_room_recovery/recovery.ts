@@ -2,7 +2,7 @@ import type {AssetLimits} from '@breditor/experimental-rich-content';
 import {prepareArchiveIntegrity} from '../archive_integrity/context.js';
 import {archiveFields} from '../archive_integrity/policy.js';
 import {continuedRoomRecoveryCatalog} from '../continued_room_catalog/storage.js';
-import {continuedCatalogDeliveryBackup,continuedCatalogIndependentBackup,SharedContinuedRoomCatalog} from '../continued_room_catalog/archive.js';
+import {continuedCatalogDeliveryBackup,continuedCatalogGenerationBackup,continuedCatalogIndependentBackup,SharedContinuedRoomCatalog} from '../continued_room_catalog/archive.js';
 import {deliveryRecoveryArchive} from '../independent_delivery_recovery/archive.js';
 import {independentRecoveryArchive} from '../independent_recovery/archive.js';
 import {independentRecoverySignal} from '../independent_recovery/signal.js';
@@ -15,8 +15,9 @@ import {RecoveryOpeningCustody,recoveryOpeningContext} from '../participant_reco
 import {frozen} from '../room_participant_inventory/policy.js';
 import {recoverContinuedRoomSource,recoverContinuedRoomUploads,recoveryFailure as fail,type ContinuedDestinationHold} from './destination.js';
 import {recoverIndependentRoomSource} from './independent_destination.js';
+import {generationRoomUploads,recoverGenerationRoomSource} from './generation_destination.js';
 import {recoverDeliveryRoomSource} from './delivery_destination.js';
-import {matchContinuedRoomPolicies,snapshotContinuedRoomDeliveryPolicies,snapshotContinuedRoomIndependentPolicies} from './policy.js';
+import {matchContinuedRoomPolicies,snapshotContinuedRoomDeliveryPolicies,snapshotContinuedRoomGenerationPolicies,snapshotContinuedRoomIndependentPolicies} from './policy.js';
 import {accessRecoveryJournal,openRecoveryJournal} from './journal.js';
 import type {ContinuedRoomRecoveryOptions,ContinuedRoomRecoveryResult} from './contract.js';
 
@@ -24,10 +25,11 @@ const {metadata,participantRecords,participantUploads,dispose}=SharedContinuedRo
 const {close:release}=RecoveryLease.prototype;
 
 async function restore(input:ContinuedRoomRecoveryOptions,begin:boolean):Promise<ContinuedRoomRecoveryResult>{
- physicalCatalogV2Options(input,['database','catalog','expected','destinations','checkAuthority','writerRecovery'],['signal','independentPolicies','deliveryPolicies']);
+ physicalCatalogV2Options(input,['database','catalog','expected','destinations','checkAuthority','writerRecovery'],['signal','independentPolicies','deliveryPolicies','generationPolicies']);
  const {database:provided,catalog,checkAuthority,writerRecovery}=input;
  const policyFailure=()=>fail('policy');
  const independent=snapshotContinuedRoomIndependentPolicies(input.independentPolicies,policyFailure);
+ const generation=snapshotContinuedRoomGenerationPolicies(input.generationPolicies,policyFailure);
  const delivery=snapshotContinuedRoomDeliveryPolicies(input.deliveryPolicies,policyFailure);
  if(writerRecovery!=='host-reacquired')throw fail('policy');
  const database=physicalCatalogDatabase(provided),expected=physicalCatalogSelection(input.expected);
@@ -76,17 +78,18 @@ async function restore(input:ContinuedRoomRecoveryOptions,begin:boolean):Promise
   archive=await held.read(checkAuthorityCurrent,signal);
   guard();
   const selected=metadata.call(archive);
-  const entries=selected.participants.filter(row=>row.family==='continued-local'||row.family==='independent-local'||row.family==='independent-delivery');
+  const entries=selected.participants.filter(row=>row.family==='continued-local'||row.family==='independent-local'||row.family==='independent-delivery'||row.family==='generation');
   if(entries.length!==selected.participants.length)throw fail('mixed_pending');
   if(entries.length!==destinations.length||entries.some((row,index)=>row.id!==destinations[index]!.id))throw fail('policy');
   const writers=new Set<string>(),actors=new Set<string>();
   if(!matchContinuedRoomPolicies(entries,'independent-local',independent,policyFailure)||
-     !matchContinuedRoomPolicies(entries,'independent-delivery',delivery,policyFailure))throw policyFailure();
+     !matchContinuedRoomPolicies(entries,'independent-delivery',delivery,policyFailure)||
+     !matchContinuedRoomPolicies(entries,'generation',generation,policyFailure))throw policyFailure();
   for(const entry of entries){
    const {native,review}=entry.family==='independent-delivery'?entry.selection.identity.source.history:entry.selection.identity.source;
    if(native.room!==selected.current.server.identity.native.source.document||
-      writers.has(native.writer)||actors.has(review.actor))throw fail('policy');
-   writers.add(native.writer);actors.add(review.actor);
+      writers.has(native.writer)||review&&actors.has(review.actor))throw fail('policy');
+   writers.add(native.writer);if(review)actors.add(review.actor);
   }
   const policies=new Map(held.options.policies.map(row=>[row.id,row]));
   const plan={text:JSON.stringify({catalog:expected,destinations}),steps:entries.length*2};
@@ -116,6 +119,11 @@ async function restore(input:ContinuedRoomRecoveryOptions,begin:boolean):Promise
     const backup=continuedCatalogDeliveryBackup(archive,destination.id),policy=delivery.get(destination.id)!;
     source=completed=>recoverDeliveryRoomSource(destination.source,policy.session,backup,completed,guard,signal);
     file=deliveryRecoveryArchive.uploadBackup.call(backup);
+    limits=policy.limits;
+   }else if(entry.family==='generation'){
+    const backup=continuedCatalogGenerationBackup(archive,destination.id),policy=generation.get(destination.id)!;
+    source=completed=>recoverGenerationRoomSource(destination.source,policy.expected,policy.session,backup,completed,guard,signal);
+    file=generationRoomUploads(backup);
     limits=policy.limits;
    }else{
     const recovery=participantRecords.call(archive,destination.id).live;

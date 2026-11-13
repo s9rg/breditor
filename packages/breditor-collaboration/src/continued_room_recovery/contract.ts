@@ -1,6 +1,8 @@
 import type {SharedContinuedRoomCatalogStore} from '../continued_room_catalog/storage.js';
 import type {ContinuedRoomCatalogSelection} from '../continued_room_catalog/contract.js';
 
+import type {SharedGenerationParticipantSelection} from '../generation_participant/contract.js';
+import type {SharedGenerationRecoveryFactory} from '../generation_participant/recovery_contract.js';
 import type {AssetLimits} from '@breditor/experimental-rich-content';
 import type {SharedIndependentParticipantSelection} from '../independent_participant/contract.js';
 import type {SharedIndependentDeliveryParticipantSelection} from '../independent_delivery_participant/contract.js';
@@ -21,6 +23,13 @@ export interface ContinuedRoomDeliveryRecoveryPolicy {
  readonly session:SharedIndependentDeliveryRecoveryFactory;
  readonly limits?:Partial<AssetLimits>;
 }
+export interface ContinuedRoomGenerationRecoveryPolicy {
+ readonly id:string;
+ readonly expected:SharedGenerationParticipantSelection;
+ /** Exact retained generation family and current read-only native policy. */
+ readonly session:SharedGenerationRecoveryFactory;
+ readonly limits?:Partial<AssetLimits>;
+}
 export interface ContinuedRoomRecoveryDestination {
  readonly id:string;
  readonly source:string;
@@ -38,6 +47,8 @@ export interface ContinuedRoomRecoveryOptions {
  readonly independentPolicies?:readonly ContinuedRoomIndependentRecoveryPolicy[];
  /** One independently supplied policy per independent-delivery participant. */
  readonly deliveryPolicies?:readonly ContinuedRoomDeliveryRecoveryPolicy[];
+ /** One independently supplied policy per generation participant. */
+ readonly generationPolicies?:readonly ContinuedRoomGenerationRecoveryPolicy[];
  readonly signal?:AbortSignal;
 }
 export interface ContinuedRoomRecoveryResult {
