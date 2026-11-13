@@ -139,7 +139,7 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
    bootstrap?.();
    reviewLease=await ReviewWriterLease.acquire(room,review.actor);
    bootstrap?.();
-   db=await openPairedHistoryDatabase(database,continuedPairStore.names,bootstrap);
+   db=await openPairedHistoryDatabase(database,continuedPairStore.names,bootstrap,recovery?undefined:destination?.fail);
    const opening=fenceOpeningDatabase(db,'session_open_versionchange');
    const check=()=>{bootstrap?.();opening.assertCurrent();};
    const stored=await readPairedHistoryCut(db,key,continuedPairStore);

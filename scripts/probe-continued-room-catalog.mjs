@@ -139,7 +139,7 @@ export async function probeContinuedRoomCatalog(runtime,fixturePath){
  const profile=wasm.SharedRichProfile[make](fixture.configuration),reset=environment();
  const client=fixture.clients.find(row=>!row.observer);
  const owners=[],catalogs=[];
- const counts={coldCatalogReads:0,nativePairs:0,serverAhead:0,forksRefused:0,selectionRefusals:0,storedCatalogReads:0,storedCatalogRefusals:0,interruptedCatalogReads:0,damagedCatalogRefusals:0,restoredLocalUndoRedo:0,cohortRecoveries:0,interruptedRecoveryResumes:0,uploadRecoveryResumes:0,recoveryRefusals:0,mixedCatalogReads:0,mixedRefusals:0,mixedRecoveryResumes:0,deliveryRecoveryResumes:0,deliveryPacketRecoveries:0,occupiedBootstrapRefusals:0};
+ const counts={coldCatalogReads:0,nativePairs:0,serverAhead:0,forksRefused:0,selectionRefusals:0,storedCatalogReads:0,storedCatalogRefusals:0,interruptedCatalogReads:0,damagedCatalogRefusals:0,restoredLocalUndoRedo:0,cohortRecoveries:0,interruptedRecoveryResumes:0,uploadRecoveryResumes:0,recoveryRefusals:0,mixedCatalogReads:0,mixedRefusals:0,mixedRecoveryResumes:0,deliveryRecoveryResumes:0,deliveryPacketRecoveries:0,occupiedBootstrapRefusals:0,disappearedBootstrapRefusals:0};
  try{
   const initial={
    catalog:'continued-room',wasm,checkAuthority(){},
@@ -625,6 +625,35 @@ export async function probeContinuedRoomCatalog(runtime,fixturePath){
     session=await SharedIndependentDeliverySession.open({...options,database:delivery.source,create});
     assert.deepEqual(session.exportRecovery(),changed);
     assert.equal(tokenCalls,0);
+    if(segmented){
+     // Delete an exact completed destination as its inspection transaction settles.
+     await session.close();session=undefined;
+     const freshPlan={...resumed,database:tag+'-second-journal',destinations:destinations.map(row=>({
+      ...row,source:row.source+'-second',uploads:row.uploads+'-second',
+     }))};
+     const stableResult=await beginContinuedRoomRecovery(freshPlan);
+     const sourceName=stableResult.participants[0].source;
+     let deleted;
+     IDBDatabase.prototype.transaction=function(...args){
+      const tx=transaction.apply(this,args);
+      if(this.name===sourceName&&args[1]==='readonly'&&!deleted){
+       tx.addEventListener('complete',()=>{
+        deleted=new Promise((resolve,reject)=>{
+         const request=indexedDB.deleteDatabase(sourceName);
+         request.onsuccess=resolve;request.onerror=()=>reject(request.error);
+        });
+       },{once:true});
+      }
+      return tx;
+     };
+     try{
+      await assert.rejects(resumeContinuedRoomRecovery(freshPlan),error=>error.code==='continued_room_recovery_diverged');
+      assert.ok(deleted);
+      await deleted;
+      assert.equal((await indexedDB.databases()).some(row=>row.name===sourceName),false);
+     }finally{IDBDatabase.prototype.transaction=transaction;}
+     counts.disappearedBootstrapRefusals++;
+    }
     counts.deliveryRecoveryResumes++;counts.deliveryPacketRecoveries+=fixture.atomic?3:1;
    }finally{
     await store?.close();archive?.dispose();backup?.dispose();uploads?.close();await session?.discardAndClose();
@@ -641,7 +670,7 @@ export async function probeContinuedRoomCatalog(runtime,fixturePath){
    await assert.rejects(capture([forked]),error=>error.code==='inventory_fork');
    counts.forksRefused++;
   }
-  assert.deepEqual(counts,{coldCatalogReads:3,nativePairs:3,serverAhead:1,forksRefused:2,selectionRefusals:15,storedCatalogReads:3,storedCatalogRefusals:9,interruptedCatalogReads:1,damagedCatalogRefusals:1,restoredLocalUndoRedo:3,cohortRecoveries:1,interruptedRecoveryResumes:1,uploadRecoveryResumes:1,recoveryRefusals:3,mixedCatalogReads:4,mixedRefusals:16,mixedRecoveryResumes:4,deliveryRecoveryResumes:2,deliveryPacketRecoveries:fixture.atomic?6:2,occupiedBootstrapRefusals:2});
+  assert.deepEqual(counts,{coldCatalogReads:3,nativePairs:3,serverAhead:1,forksRefused:2,selectionRefusals:15,storedCatalogReads:3,storedCatalogRefusals:9,interruptedCatalogReads:1,damagedCatalogRefusals:1,restoredLocalUndoRedo:3,cohortRecoveries:1,interruptedRecoveryResumes:1,uploadRecoveryResumes:1,recoveryRefusals:3,mixedCatalogReads:4,mixedRefusals:16,mixedRecoveryResumes:4,deliveryRecoveryResumes:2,deliveryPacketRecoveries:fixture.atomic?6:2,occupiedBootstrapRefusals:2,disappearedBootstrapRefusals:1});
   return {passed:true,fixtureSha256:sha(readFileSync(fixturePath)),sharedWasmSha256:sha(wasmBytes),...counts};
  }finally{
   for(const catalog of catalogs)catalog.dispose();

@@ -92,6 +92,7 @@ for(const result of reports){
  assert.equal(result.mixedRecoveryResumes,4);
  assert.equal(result.deliveryRecoveryResumes,2);
  assert.equal(result.occupiedBootstrapRefusals,2);
+ assert.equal(result.disappearedBootstrapRefusals,1);
 }
 assert.deepEqual(sourceEvidence(root),source);
 assert.deepEqual(readFileSync(manifestPath),manifestBytes);

@@ -26,15 +26,17 @@ export interface PairedHistoryStore<Head extends PairedHead> {
 const references=(head:PairedHead)=>(['document','review'] as const).flatMap(lane=>{const selected=head[lane];return selected.kind==='original'?[]:[selected.root,...selected.sealed].map((reference,index)=>({lane,...reference,kind:index===0?'root' as const:'sealed' as const}));});
 type StorageProfile=IndependentHistoryCompanion|IndependentLocalOperationDriver;
 export const independentHistoryStores=(profile?:StorageProfile)=>profile?.storage==='local-operation-v1'?['local_operation_history_files','local_operation_history_heads'] as const:profile?.storage==='restored-operation-v1'?['restored_operation_history_files','restored_operation_history_heads'] as const:profile?.storage==='operation-v1'?['operation_history_files','operation_history_heads'] as const:profile?['delivery_history_files','delivery_history_heads'] as const:['history_files','history_heads'] as const;
-export function openIndependentHistoryDatabase(name:string,profile?:StorageProfile,checkCurrent?:()=>void):Promise<IDBDatabase>{
- return openPairedHistoryDatabase(name,independentHistoryStores(profile),checkCurrent);
+export function openIndependentHistoryDatabase(name:string,profile?:StorageProfile,checkCurrent?:()=>void,missing?:()=>Error):Promise<IDBDatabase>{
+ return openPairedHistoryDatabase(name,independentHistoryStores(profile),checkCurrent,missing);
 }
-export function openPairedHistoryDatabase(name:string,names:PairedStoreNames,checkCurrent?:()=>void):Promise<IDBDatabase>{
+export function openPairedHistoryDatabase(
+ name:string,names:PairedStoreNames,checkCurrent?:()=>void,missing?:()=>Error,
+):Promise<IDBDatabase>{
  if(typeof name!=='string'||!name||name.length>200)return Promise.reject(fail('Use a dedicated paired-history database'));
  checkCurrent?.();
  return new Promise((resolve,reject)=>{
   const request=indexedDB.open(name,1);let abandoned=false,failure:unknown;
-  request.onupgradeneeded=()=>{try{checkCurrent?.();for(const name of names){checkCurrent?.();request.result.createObjectStore(name);}checkCurrent?.();}catch(error){failure=error;request.transaction!.abort();}};
+  request.onupgradeneeded=()=>{try{checkCurrent?.();if(missing)throw missing();for(const name of names){checkCurrent?.();request.result.createObjectStore(name);}checkCurrent?.();}catch(error){failure=error;request.transaction!.abort();}};
   request.onerror=()=>reject(failure??request.error??fail('Cannot open paired histories'));
   request.onblocked=()=>{abandoned=true;reject(fail('Paired-history storage is blocked'));};
   request.onsuccess=()=>{
