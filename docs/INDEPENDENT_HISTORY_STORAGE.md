@@ -612,3 +612,13 @@ discovers the exact saved version and its original server sequence from the
 restarted catalog. The test checks for zero resubmissions of the edit,
 comment and version and verifies the recovered records after another cold
 reopen. Each client sees one copy of the comment.
+
+The test also withholds the durable replies for an Accept decision, a
+suggestion revision and an image upload. After restart, the recovered
+decision points to the exact retained native effect, which appears once in
+each client. The revision retains its original receipt and the rejection of
+its predecessor. The proposed replacement remains pending. Neither review
+command is resubmitted. The upload queue records the lost reply as a failed
+attempt. An explicit retry receives the relay's duplicate receipt for the
+same content hash, and a cold cache reopen preserves the uploaded bytes and
+the successful local acknowledgement.
