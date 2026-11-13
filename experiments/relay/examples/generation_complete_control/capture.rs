@@ -36,7 +36,7 @@ pub(super) fn authentication_for_digest(
     authentication_for_accounts(json!([{"principal":principal,"tokenHash":digest}]))
 }
 
-fn authentication_for_accounts(accounts: serde_json::Value) -> Result<Authentication> {
+pub(super) fn authentication_for_accounts(accounts: serde_json::Value) -> Result<Authentication> {
     Ok(Authentication::from_json(&json!({"format":"breditor/relay-auth","formatVersion":1,"origins":["http://127.0.0.1:4187"],"accounts":accounts}).to_string())?)
 }
 

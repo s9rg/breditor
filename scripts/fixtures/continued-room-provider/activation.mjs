@@ -76,7 +76,7 @@ async function activationState(database){
  }finally{connection.close();}
 }
 
-export async function verifyActivationCommit(api,{input,offer,publicationOffer,requests,getToken,cohort,delivery}){
+export async function verifyActivationCommit(api,{input,offer,publicationOffer,requests,getToken,cohort,delivery,restart}){
  const {prepareContinuedRoomActivation:prepare,verifyContinuedRoomActivation:verify,commitContinuedRoomActivation:commit,
   SharedDurableNativeActivationHost:Host}=api;
  const database='continued-covered-activation';
@@ -126,7 +126,7 @@ export async function verifyActivationCommit(api,{input,offer,publicationOffer,r
   assert.deepEqual(await commit(input,{expected,activation:reopened,approve:()=>true}),confirmed);
   assert.deepEqual(await activationState(database),saved);
   assert.equal(requests.filter(row=>row.activation).length-before,3);
-  const published=await verifyPublication(api,{input,expected,activation:reopened,offer:publicationOffer,requests,getToken,cohort,delivery});
+  const published=await verifyPublication(api,{input,expected,activation:reopened,offer:publicationOffer,requests,getToken,cohort,delivery,restart});
   return {commits:1,...published};
  }finally{globalThis.fetch=fetch;reopened?.close();activation.close();}
 }

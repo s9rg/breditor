@@ -18,6 +18,53 @@ function receiptCut(record){
   revisions:record.retained.revisions.retained};
 }
 
+function installSocket(endpoint){
+ const previous=Object.getOwnPropertyDescriptor(globalThis,'WebSocket');
+ Object.defineProperty(globalThis,'WebSocket',{configurable:true,writable:true,value:class extends NativeWebSocket{
+  constructor(url){
+   assert.equal(String(url),endpoint,'Client delivery must use the owned serving endpoint');
+   super(url,{headers:{Origin:'http://127.0.0.1:4187'}});
+  }
+ }});
+ return ()=>{
+  if(previous)Object.defineProperty(globalThis,'WebSocket',previous);
+  else delete globalThis.WebSocket;
+ };
+}
+
+function clients(api,session,delivery,endpoint,adapters){
+ const original=session.exportDeliveryRecovery(),{binding}=original.relay;
+ const {binding:suggestionsBinding,effectWriter}=original.retainedBinding.suggestions.identity;
+ assert.equal(binding.document.endpoint,endpoint);
+ assert.equal(binding.review.endpoint,endpoint);
+ const common={autoConnect:false,getToken:()=>delivery.accountToken,requestTimeoutMs:6000};
+ const document=api.createSharedContinuedRelaySync(session,{...common,
+  identity:resumeIdentity(binding.document,delivery.documents,'writer'),
+  suggestions:{binding:suggestionsBinding,effectWriter},suggestionRevisions:original.retainedBinding.revisions});
+ adapters.push(document);
+ const review=api.createSharedContinuedReviewRelaySync(session,{...common,
+  identity:resumeIdentity(binding.review,delivery.reviews,'actor'),flushDocument:()=>document.flush()});
+ adapters.push(review);
+ return {original,common,document,review};
+}
+
+async function stopAdapters(adapters){
+ for(const adapter of adapters)adapter.dispose();
+ await Promise.all(adapters.map(adapter=>adapter.waitForDisconnected()));
+}
+
+async function syncRetained(session,document,common){
+ await session.openSuggestionQueue();
+ const revisions=await session.openSuggestionRevisions({transport:document});
+ await revisions.connect();
+ await revisions.synchronize();
+ await revisions.close();
+ const versions=await session.openVersionCatalog(common);
+ await versions.connect();
+ await versions.flushShared();
+ await versions.close();
+}
+
 async function deliverUpload(api,uploads,options){
  const store=await RichAssetStore.openRetained(uploads);
  const assets=new api.SharedRelayAssets({...options,store});
@@ -41,28 +88,11 @@ async function deliverUpload(api,uploads,options){
 export async function deliverPublishedCohort(api,sessions,listener,delivery,destinations,uploadId){
  assert.ok(Array.isArray(delivery?.documents)&&Array.isArray(delivery.reviews),'Private client registrations are required');
  const endpoint='ws://'+listener+'/ws';
- const originalSocket=Object.getOwnPropertyDescriptor(globalThis,'WebSocket');
- Object.defineProperty(globalThis,'WebSocket',{configurable:true,writable:true,value:class extends NativeWebSocket{
-  constructor(url){
-   assert.equal(String(url),endpoint,'Client delivery must use the owned serving endpoint');
-   super(url,{headers:{Origin:'http://127.0.0.1:4187'}});
-  }
- }});
+ const restoreSocket=installSocket(endpoint);
  const acknowledged=new Map(),adapters=[];
- const common={autoConnect:false,getToken:()=>delivery.accountToken,requestTimeoutMs:6000};
  try{
   for(const [id,session] of sessions){
-   const original=session.exportDeliveryRecovery(),{binding}=original.relay;
-   const {binding:suggestionsBinding,effectWriter}=original.retainedBinding.suggestions.identity;
-   assert.equal(binding.document.endpoint,endpoint);
-   assert.equal(binding.review.endpoint,endpoint);
-   const document=api.createSharedContinuedRelaySync(session,{...common,
-    identity:resumeIdentity(binding.document,delivery.documents,'writer'),
-    suggestions:{binding:suggestionsBinding,effectWriter},suggestionRevisions:original.retainedBinding.revisions});
-   adapters.push(document);
-   const review=api.createSharedContinuedReviewRelaySync(session,{...common,
-    identity:resumeIdentity(binding.review,delivery.reviews,'actor'),flushDocument:()=>document.flush()});
-   adapters.push(review);
+   const {original,common,document,review}=clients(api,session,delivery,endpoint,adapters);
    await document.connect();
    await document.flush();
    assert.equal(document.state().pending,false);
@@ -70,15 +100,7 @@ export async function deliverPublishedCohort(api,sessions,listener,delivery,dest
    await review.flush();
    assert.equal(review.state().pending,false);
 
-   await session.openSuggestionQueue();
-   const revisions=await session.openSuggestionRevisions({transport:document});
-   await revisions.connect();
-   await revisions.synchronize();
-   await revisions.close();
-   const versions=await session.openVersionCatalog(common);
-   await versions.connect();
-   await versions.flushShared();
-   await versions.close();
+   await syncRetained(session,document,common);
    await session.flush();
    assert.equal(session.core.documentJson().includes('Offline revision '),false);
    const accepted=receiptCut(session.exportDeliveryRecovery());
@@ -108,16 +130,75 @@ export async function deliverPublishedCohort(api,sessions,listener,delivery,dest
    acknowledged.set(id,accepted);
   }
   const uploads=destinations.find(row=>row.id===uploadId).uploads;
-  const upload=await deliverUpload(api,uploads,{endpoint,getToken:common.getToken,principal:'alice'});
+  const upload=await deliverUpload(api,uploads,{endpoint,getToken:()=>delivery.accountToken,principal:'alice'});
   return {acknowledged,upload,uploads};
  }finally{
-  try{
-   for(const adapter of adapters)adapter.dispose();
-   await Promise.all(adapters.map(adapter=>adapter.waitForDisconnected()));
-  }finally{
-   if(originalSocket)Object.defineProperty(globalThis,'WebSocket',originalSocket);
-   else delete globalThis.WebSocket;
+  try{await stopAdapters(adapters);}finally{restoreSocket();}
+ }
+}
+
+export async function verifyRestartedDelivery(api,{restart,cohort,destinations,delivered,delivery,listener}){
+ const fresh=await restart(delivery);
+ const endpoint='ws://'+listener+'/ws',health='http://'+listener+'/health';
+ const restoreSocket=installSocket(endpoint);
+ const options=offer=>({endpoint:offer.endpoint,expected:offer.selection,principal:'operator',
+  getToken:fresh.getToken,checkAuthority(){}});
+ let activation,publication;
+ try{
+  activation=api.SharedDurableNativeActivationHost.configure(options(fresh.activation));
+  publication=api.SharedNativeRoomPublicationHost.configure(options(fresh.publication));
+  const unavailable=()=>assert.rejects(fetch(health,{signal:AbortSignal.timeout(400)}),{name:'TimeoutError'});
+  await unavailable();
+  const commit=await activation.commit();
+  assert.deepEqual(commit.selection,fresh.activation.selection);
+  await unavailable();
+  // Independently pin the fresh Native association. The previous publication
+  // intent belongs to its old epoch and must never authorize the new listener.
+  const binding=JSON.stringify({activation:commit.selection,publication:fresh.publication.selection});
+  const joint={bytes:Buffer.byteLength(binding),sha256:[...new Uint8Array(await crypto.subtle.digest('SHA-256',Buffer.from(binding)))]};
+  const published=await publication.publish(joint);
+  assert.deepEqual(published.selection,fresh.publication.selection);
+  assert.deepEqual(published.joint,joint);
+  const online=await fetch(health,{signal:AbortSignal.timeout(4000)});
+  assert.equal(await online.text(),'breditor-relay-v1');
+
+  const names=new Map(destinations.map(row=>[row.id,row.source]));
+  const credentials={...delivery,accountToken:fresh.accountToken};
+  let confirmed=0;
+  for(const {id,options} of cohort){
+   const session=await api.SharedContinuedPairSession.openDelivery({...options,database:names.get(id)});
+   const adapters=[];
+   try{
+    const {document,review,common}=clients(api,session,credentials,endpoint,adapters);
+    const before=receiptCut(session.exportDeliveryRecovery());
+    assert.deepEqual(before,delivered.acknowledged.get(id));
+    await document.connect();await document.flush();
+    await review.connect();await review.flush();
+    await syncRetained(session,document,common);
+    assert.equal(document.state().pending,false);
+    assert.equal(review.state().pending,false);
+    assert.deepEqual(receiptCut(session.exportDeliveryRecovery()),before);
+    assert.match(session.core.documentJson(),/Local offline document/);
+    assert.match(JSON.stringify(session.core.reviewSnapshot().view),/Local offline comment/);
+    confirmed++;
+   }finally{
+    try{await stopAdapters(adapters);}finally{await session.close();}
+   }
   }
+  const store=await RichAssetStore.openRetained(delivered.uploads);
+  const assets=new api.SharedRelayAssets({endpoint,principal:'alice',getToken:()=>fresh.accountToken,store});
+  try{
+   const remote=await assets.readBytes(unavailableAsset);
+   assert.ok(remote);
+   assert.deepEqual(Buffer.from(await remote.blob.arrayBuffer()),unavailableUpload);
+   assert.deepEqual(await store.get(unavailableAsset),delivered.upload);
+  }finally{assets.dispose();store.close();}
+  return confirmed;
+ }finally{
+  restoreSocket();
+  publication?.close();
+  activation?.close();
+  await fresh.stop();
  }
 }
 

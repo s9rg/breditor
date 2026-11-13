@@ -16,7 +16,7 @@ import {verifyContinuedRoomReplacement} from './fixtures/continued-room-provider
 import {verifyCoveredActivation} from './fixtures/continued-room-provider/covered.mjs';
 import {secondAsset,secondPixel} from './fixtures/review-assets/pixels.mjs';
 
-export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,requests,deliveryCredentials){
+export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,requests,deliveryCredentials,restart){
  const native=await import(pathToFileURL(resolve(runtime,'breditor_shared.js')).href);
  await native.default({module_or_path:readFileSync(resolve(runtime,'breditor_shared_bg.wasm'))});
  const fixture=JSON.parse(readFileSync(caseInfo.path,'utf8')),server=fixture.generationRecoveryState;
@@ -586,11 +586,12 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
   await assert.rejects(readContinuedRoomReconciliation(input),error=>['catalog_closed','archive_authority','control_authority'].includes(error.code));
   counts.rejected++;
   const activation=caseInfo.activation?await verifyCoveredActivation(continuedApi,{
-   initial,entries:entries.slice(0,7),fixture,inventory,wasm:native,caseInfo,host,getToken,requests,delivery:deliveryCredentials,
-  }):{commits:0,publications:0,writableSessions:0,deliveredSessions:0,deliveredUploads:0};
+   initial,entries:entries.slice(0,7),fixture,inventory,wasm:native,caseInfo,host,getToken,requests,delivery:deliveryCredentials,restart,
+  }):{commits:0,publications:0,writableSessions:0,deliveredSessions:0,deliveredUploads:0,restartedSessions:0};
   return {recoveredRoomReads,recoveredRoomRefusals,serverOnlyPacketAssets,recoveredClientCatchUps,recoveredReplacementClients,
    recoveredActivationCommits:activation.commits,recoveredPublications:activation.publications,recoveredWritableSessions:activation.writableSessions,
    recoveredDeliveredSessions:activation.deliveredSessions,recoveredDeliveredUploads:activation.deliveredUploads,
+   restartedSessions:activation.restartedSessions,
    recoveredReplacementLocalClients,recoveredReplacementRasters,recoveredActivationIntents,passed:true,language:fixture.language,atomic:fixture.atomic,...counts,...operations};
  }finally{
   host?.close();

@@ -4,7 +4,7 @@ import {continuedDeliveryParticipant} from '../continued-room-recovery/continued
 import {unavailableUpload} from '../physical-recovery-control/unavailable-upload.mjs';
 
 /** Build the fully delivery-bound cohort for the authenticated commit case. */
-export async function verifyCoveredActivation(api,{initial,entries,fixture,inventory,wasm,caseInfo,host,getToken,requests,delivery}){
+export async function verifyCoveredActivation(api,{initial,entries,fixture,inventory,wasm,caseInfo,host,getToken,requests,delivery,restart}){
  const {SharedContinuedRoomCatalog:Catalog,SharedContinuedRoomCatalogStore:Store}=api;
  const cohort=[];
  let archive,store,replacement;
@@ -41,7 +41,7 @@ export async function verifyCoveredActivation(api,{initial,entries,fixture,inven
    assert.deepEqual(advanced.retained,original.retained);
    assert.deepEqual(await replacement.participantUploads(id).arrayBuffer(),await backup.uploadBackup().arrayBuffer());
   }
-  return await verifyActivationCommit(api,{input,offer:caseInfo.activation,publicationOffer:caseInfo.publication,requests,getToken,cohort,delivery});
+  return await verifyActivationCommit(api,{input,offer:caseInfo.activation,publicationOffer:caseInfo.publication,requests,getToken,cohort,delivery,restart});
  }finally{
   await replacement?.close();
   await store?.close();

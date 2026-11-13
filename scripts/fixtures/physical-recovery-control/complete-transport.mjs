@@ -31,5 +31,11 @@ export function completeControlTransport(manifest,{readAccepted=false,readRaster
   headers.set('Origin','http://127.0.0.1:4187');
   return original(input,{...options,headers});
  };
- return{requests,restore(){globalThis.fetch=original;}};
+ return{requests,
+  attachRestart(restarted){
+   assert.ok(serving.has('http://'+restarted.publication.selection.listener));
+   activation.add(restarted.activation.endpoint);
+   publication.add(restarted.publication.endpoint);
+  },
+  restore(){globalThis.fetch=original;}};
 }

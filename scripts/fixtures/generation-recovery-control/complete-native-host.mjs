@@ -71,9 +71,17 @@ export async function startNativeGenerationCompleteControls(root,binary,director
    return row;
   });
   const manifest={format:data.format,formatVersion:1,registeredWriters:7,registeredReviewActors:7,protectedStreams:14,cases},path=resolve(directory,'public-fixtures.json');saveEvidence(path,manifest);output='';data=undefined;
+  let killed=false;
   return{manifest,path,files,token:casePath=>{const value=tokens.get(casePath);assert.ok(value);return value;},
    delivery:casePath=>deliveries.get(casePath),
-   async stop(){tokens.clear();deliveries.clear();if(child.exitCode===null&&child.signalCode===null)child.kill('SIGINT');const result=await Promise.race([closed,new Promise(resolve=>{const timeout=setTimeout(()=>resolve(null),10000);timeout.unref();})]);if(!result){child.kill('SIGKILL');await closed;throw Error('Native generation-complete-control process did not stop');}assert.equal(result.code,0,'Native operator shutdown');}};
+   async crash(){
+    assert.ok(!killed&&child.exitCode===null&&child.signalCode===null);
+    assert.equal(child.kill('SIGKILL'),true);
+    assert.deepEqual(await closed,{code:null,signal:'SIGKILL'});
+    killed=true;
+    return child.pid;
+   },
+   async stop(){tokens.clear();deliveries.clear();if(killed)return;if(child.exitCode===null&&child.signalCode===null)child.kill('SIGINT');const result=await Promise.race([closed,new Promise(resolve=>{const timeout=setTimeout(()=>resolve(null),10000);timeout.unref();})]);if(!result){child.kill('SIGKILL');await closed;throw Error('Native generation-complete-control process did not stop');}assert.equal(result.code,0,'Native operator shutdown');}};
  }catch(error){tokens.clear();deliveries.clear();output='';data=undefined;if(child.exitCode===null&&child.signalCode===null)child.kill('SIGKILL');await closed;throw error;}
  finally{clearTimeout(timer);}
 }

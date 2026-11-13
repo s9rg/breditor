@@ -10,6 +10,7 @@ import {copyConsumerFixtures} from './candidate-release/copy-consumer-fixtures.m
 import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
 import {pixel,secondPixel} from './fixtures/review-assets/pixels.mjs';
 import {startNativeGenerationCompleteControls} from './fixtures/generation-recovery-control/complete-native-host.mjs';
+import {restartPublishedFixture} from './fixtures/generation-recovery-control/restart-published.mjs';
 import {completeControlTransport} from './fixtures/physical-recovery-control/complete-transport.mjs';
 import {build} from 'vite';
 
@@ -70,7 +71,7 @@ export async function runContinuedProviderQualification(start,directory,mode='bo
   const setup=name==='installed'?await installedProbe():{runtime,probe:join(root,'scripts/probe-continued-room-provider.mjs'),proof:null};
   assert.equal(sha(readFileSync(join(setup.runtime,'breditor_shared_bg.wasm'))),checksum);
   const {probeContinuedRoomProvider}=await import(pathToFileURL(setup.probe).href);
-  const cases=[],{controls,transport}=await start(name);
+  const cases=[],{controls,transport,restart}=await start(name);
   try{
    const chosen=[[1,false],[3,true]].map(([language,atomic])=>controls.manifest.cases.find(row=>{
     const fixture=JSON.parse(readFileSync(row.path));
@@ -79,7 +80,8 @@ export async function runContinuedProviderQualification(start,directory,mode='bo
    assert.ok(chosen.every(Boolean));
    nativeFixtures.push(...chosen.map(row=>({path:row.path,sha256:sha(readFileSync(row.path))})));
    for(const row of chosen){
-    const result=await probeContinuedRoomProvider(setup.runtime,row,()=>controls.token(row.path),transport.requests,controls.delivery(row.path));
+    const result=await probeContinuedRoomProvider(setup.runtime,row,()=>controls.token(row.path),transport.requests,
+     controls.delivery(row.path),restart?credentials=>restart(row,credentials):undefined);
     assert.equal(result.passed,true);
     assert.equal(result.localSuffixes,14);
     assert.equal(result.reviewPrefixes,49);
@@ -100,6 +102,7 @@ export async function runContinuedProviderQualification(start,directory,mode='bo
     assert.equal(result.recoveredWritableSessions,result.atomic?7:0);
     assert.equal(result.recoveredDeliveredSessions,result.atomic?7:0);
     assert.equal(result.recoveredDeliveredUploads,result.atomic?1:0);
+    assert.equal(result.restartedSessions,result.atomic&&restart?7:0);
     assert.equal(result.serverOnlyPacketAssets,result.atomic?1:0);
     assert.equal(result.recoveredRoomRefusals,3);
     assert.equal(result.mixedDeliveryAheadRefusals,1);
@@ -124,7 +127,7 @@ export async function runContinuedProviderQualification(start,directory,mode='bo
  assert.deepEqual(sourceEvidence(root),source);
  const report={format:'breditor/continued-provider-qualification',formatVersion:1,passed:true,source,
   sharedWasmSha256:checksum,nativeFixtures,reports,
-  scope:'Authenticated Native activation and publication, seven clients with cold document, comment, version, proposal and revision acknowledgements, and one queued raster upload'};
+  scope:'Authenticated Native activation and publication, seven clients with cold document, comment, version, proposal and revision acknowledgements, and one queued raster upload. The published-process restart uses fresh authenticated controls and the original client bindings.'};
  saveEvidence(join(directory,'continued-provider-qualification.json'),report);
  return report;
 }
@@ -138,7 +141,12 @@ if(process.argv[1]&&realpathSync(process.argv[1])===fileURLToPath(import.meta.ur
   mkdirSync(fixtureDirectory);
   for(const [name,data] of [['seed-a.png',pixel],['seed-b.png',secondPixel]])writeFileSync(join(fixtureDirectory,name),data,{mode:0o600,flag:'wx'});
   const controls=await startNativeGenerationCompleteControls(root,resolve(binary),fixtureDirectory,{serverPacketAssets:true});
-  return {controls,transport:completeControlTransport(controls.manifest,{readAccepted:true,readRaster:true,commitActivation:true})};
+  const transport=completeControlTransport(controls.manifest,{readAccepted:true,readRaster:true,commitActivation:true});
+  return {controls,transport,async restart(row,credentials){
+   const reopened=await restartPublishedFixture(resolve(binary),controls,row,credentials);
+   try{transport.attachRestart(reopened);return reopened;}
+   catch(error){await reopened.stop();throw error;}
+  }};
  };
  const report=await runContinuedProviderQualification(start,directory,mode);
  saveEvidence(join(root,'target',`qualified-continued-room-provider-${mode}.json`),report);

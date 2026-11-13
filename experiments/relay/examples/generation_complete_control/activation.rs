@@ -27,6 +27,7 @@ pub struct Prepared {
     pub publication: NativeRoomPublication,
     pub router: axum::Router,
     pub predecessor: RoomDeploymentLease,
+    pub checkpoint_digest: [u8; 32],
 }
 
 pub async fn seal(
@@ -80,6 +81,7 @@ pub async fn prepare(
         )
         .await?,
     );
+    let checkpoint_digest = super::restart::checkpoint_digest(checkpoint.identity())?;
     let operators = authentication_for_digest("operator", operator_digest)?;
     let (router, control) = prepare_durable_native_activation_control(
         host,
@@ -106,5 +108,6 @@ pub async fn prepare(
         publication,
         router: router.merge(publication_router),
         predecessor: predecessor.lease,
+        checkpoint_digest,
     })
 }

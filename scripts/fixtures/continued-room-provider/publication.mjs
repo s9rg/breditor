@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import {deliverPublishedCohort,verifyColdDelivery} from './delivery.mjs';
+import {deliverPublishedCohort,verifyColdDelivery,verifyRestartedDelivery} from './delivery.mjs';
 
-export async function verifyPublication(api,{input,expected,activation,offer,requests,getToken,cohort,delivery}){
+export async function verifyPublication(api,{input,expected,activation,offer,requests,getToken,cohort,delivery,restart}){
  const {prepareContinuedRoomPublication:prepare,publishContinuedRoom:publish,SharedNativeRoomPublicationHost:Host}=api;
  const handoff=new api.ContinuedRoomSessionHandoff();
  const database='continued-covered-publication';
@@ -70,6 +70,7 @@ export async function verifyPublication(api,{input,expected,activation,offer,req
   await handoff.close();
   assert.throws(()=>handoff.sessions(),{code:'activation_intent_incomplete'});
   await verifyColdDelivery(api,cohort,destinations,delivered);
-  return {publications:1,writableSessions:sessions.size,deliveredSessions:delivered.acknowledged.size,deliveredUploads:1};
+  const restartedSessions=restart?await verifyRestartedDelivery(api,{restart,cohort,destinations,delivered,delivery,listener:offer.selection.listener}):0;
+  return {publications:1,writableSessions:sessions.size,deliveredSessions:delivered.acknowledged.size,deliveredUploads:1,restartedSessions};
  }finally{globalThis.fetch=fetch;await handoff.close();reopened?.close();publication.close();}
 }
