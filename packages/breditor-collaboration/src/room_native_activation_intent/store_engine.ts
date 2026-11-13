@@ -8,12 +8,10 @@ import {settleOwnedTransaction} from '../persistence/settle_owned_transaction.js
 import {watchIntentObservation,type IntentObservationGuard} from '../persistence/intent_observation_guard.js';
 import {prepareArchiveIntegrity} from '../archive_integrity/context.js';
 import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
-import {nativeActivationReceipt} from '../native_activation_control/identity.js';
-import type {SharedDurableNativeActivationReceipt} from '../native_activation_control/contract.js';
 import type {ActivationStoredChoice,ActivationStoredState,ActivationStoredEncoding,ActivationStoredIntent,ActivationIntentStoreCodec} from './store_contract.js';
 import {fail,MAX_ROOM_ACTIVATION_GRAPH_BYTES,MAX_ROOM_ACTIVATION_REVISIONS} from './policy.js';
 const tables=['activation'];
-export class ActivationIntentStore<Choice extends ActivationStoredChoice,Capture,State extends ActivationStoredState> {
+export class ActivationIntentStore<Choice extends ActivationStoredChoice,Capture,State extends ActivationStoredState<unknown>> {
  readonly #factory=recoveryOpeningContext();readonly #locks=navigator.locks;readonly #choice:Choice;readonly #codec:ActivationIntentStoreCodec<Choice,Capture,State>;readonly #options;readonly #integrity;readonly #cancel;
  readonly #revoked=new AbortController();
  #opening:RecoveryOpeningCustody|undefined;#lease:RecoveryLease|undefined;#db:IDBDatabase|undefined;
@@ -81,10 +79,10 @@ export class ActivationIntentStore<Choice extends ActivationStoredChoice,Capture
  }
  async #load():Promise<ActivationStoredIntent<Choice,Capture,State>>{return (await this.#loadWithEncoding()).intent;}
  read():Promise<ActivationStoredIntent<Choice,Capture,State>>{return this.#run(()=>this.#load());}
- #advance(receipt:SharedDurableNativeActivationReceipt|undefined,guard?:IntentObservationGuard):Promise<ActivationStoredIntent<Choice,Capture,State>>{return this.#run(async()=>{
+ #advance(receipt:NonNullable<State['receipt']>|undefined,guard?:IntentObservationGuard):Promise<ActivationStoredIntent<Choice,Capture,State>>{return this.#run(async()=>{
   guard?.check();
   const before=await this.#load();this.check();guard?.check();
-  const chosen=receipt===undefined?null:nativeActivationReceipt(JSON.stringify(receipt),this.#choice.activation);
+  const chosen=receipt===undefined?null:this.#codec.receipt(receipt,this.#choice);
   if(before.state.phase==='receipt-observed'){if(chosen&&JSON.stringify(chosen)!==JSON.stringify(before.state.receipt))throw fail();return before;}
   if(before.state.revision>=MAX_ROOM_ACTIVATION_REVISIONS)throw fail('activation_intent_policy');
   const next=this.#codec.state({format:this.#codec.initial.format,formatVersion:1,revision:before.state.revision+1,phase:chosen?'receipt-observed':'request-started',receipt:chosen},this.#choice),old=JSON.stringify(before.state),text=JSON.stringify(next);
@@ -92,7 +90,7 @@ export class ActivationIntentStore<Choice extends ActivationStoredChoice,Capture
   const after=await this.#load();guard?.check();if(JSON.stringify(after.state)!==text)throw fail('activation_intent_stale');return after;
  });}
  markRequestStarted(guard?:IntentObservationGuard):Promise<ActivationStoredIntent<Choice,Capture,State>>{return this.#advance(undefined,guard);}
- markReceiptObserved(receipt:SharedDurableNativeActivationReceipt,guard?:IntentObservationGuard):Promise<ActivationStoredIntent<Choice,Capture,State>>{return this.#advance(receipt,guard);}
+ markReceiptObserved(receipt:NonNullable<State['receipt']>,guard?:IntentObservationGuard):Promise<ActivationStoredIntent<Choice,Capture,State>>{return this.#advance(receipt,guard);}
  /** Last COMMITTED observation survives authority loss; it grants no service or writer. */
  committed():State|undefined{return this.#committed;}
  close():Promise<void>{

@@ -55,10 +55,11 @@ async fn main() -> Result {
             let address = listener.local_addr()?;
             let mut case = serde_json::json!({"path":running.path,"endpoint":format!("http://{address}/recovery/generations/v1/check"),"selection":running.control.identity(),"operatorToken":running.operator_token,"nativeProtectedStreamsVerified":true,"nativeProviderVerified":true});
             let mut router = running.router;
-            if let Some((control, activation_router)) = running.activation {
-                case["activation"] = serde_json::json!({"endpoint":format!("http://{address}/recovery/native-activation/v1/commit"),"selection":control.identity()});
-                router = router.merge(activation_router);
-                activations.push(control);
+            if let Some(prepared) = running.activation {
+                case["activation"] = serde_json::json!({"endpoint":format!("http://{address}/recovery/native-activation/v1/commit"),"selection":prepared.control.identity()});
+                case["publication"] = serde_json::json!({"endpoint":format!("http://{address}/recovery/native-publication/v1/publish"),"selection":prepared.publication.identity()});
+                router = router.merge(prepared.router.clone());
+                activations.push(prepared);
             }
             cases.push(case);
             controls.push(running.control);
@@ -73,8 +74,12 @@ async fn main() -> Result {
     for control in &controls {
         control.close();
     }
-    for control in &activations {
-        control.close();
+    for prepared in &activations {
+        if prepared.predecessor.check().is_ok() {
+            return Err("the predecessor serving lease revived".into());
+        }
+        prepared.publication.close().await?;
+        prepared.control.close();
     }
     for task in tasks {
         task.abort();

@@ -1,4 +1,4 @@
-import {SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore,beginContinuedRoomRecovery,resumeContinuedRoomRecovery,readContinuedRoomReconciliation,readRecoveredContinuedRoomReconciliation,previewRecoveredContinuedRoomCatchUp,retainRecoveredContinuedRoomCatchUp,prepareContinuedRoomActivation,verifyContinuedRoomActivation,commitContinuedRoomActivation} from '@breditor/collaboration';
+import {SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore,beginContinuedRoomRecovery,resumeContinuedRoomRecovery,readContinuedRoomReconciliation,readRecoveredContinuedRoomReconciliation,previewRecoveredContinuedRoomCatchUp,retainRecoveredContinuedRoomCatchUp,prepareContinuedRoomActivation,verifyContinuedRoomActivation,commitContinuedRoomActivation,prepareContinuedRoomPublication,publishContinuedRoom} from '@breditor/collaboration';
 import type {ContinuedRoomOriginalRecoveryPolicy,ContinuedRoomGenerationRecoveryPolicy,ContinuedRoomDeliveryRecoveryPolicy,ContinuedRoomIndependentRecoveryPolicy,ContinuedPairRecords,ContinuedRoomReconciliationOptions,ContinuedRoomReconciliationRead,ContinuedRoomRecoveryDestination,ContinuedRoomRecoveryOptions,ContinuedRoomRecoveryResult,ContinuedRoomCatalogCaptureOptions,ContinuedRoomCatalogMetadata,ContinuedRoomCatalogSelection} from '@breditor/collaboration';
 import type {ContinuedRoomOriginalReadPolicy} from '@breditor/collaboration';
 
@@ -75,3 +75,11 @@ void activationPlan;
 const committed:import('@breditor/collaboration').ContinuedRoomActivationCommitResult=
  await commitContinuedRoomActivation(recoveredInput,{expected:intent,activation,approve:plan=>plan.recoveryDatabase===recovery.database});
 void committed;
+declare const publication:import('@breditor/collaboration').SharedNativeRoomPublicationHost;
+declare function retainPublication(choice:import('@breditor/collaboration').ContinuedRoomPublicationChoice):Promise<void>;
+const serving=await prepareContinuedRoomPublication(recoveredInput,{
+ database:'publication',expected:intent,activation,publication,retainChoice:retainPublication,
+});
+const published:import('@breditor/collaboration').ContinuedRoomPublicationResult=
+ await publishContinuedRoom(recoveredInput,{expected:serving,activation,publication,approve:plan=>plan.database===serving.database});
+void published;

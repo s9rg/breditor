@@ -25,6 +25,7 @@ export async function withContinuedRoomActivationPlan<T>(
  visit:(work:{
   plan:ContinuedRoomActivationPlan;encoding:Awaited<ReturnType<typeof encodeContinuedRoomActivation>>;
   reconciliation:ContinuedRoomReconciliationRead;port:ReturnType<typeof nativeActivationHostPort>;
+  namespaces:readonly string[];integrity:ReturnType<typeof prepareArchiveIntegrity>;
   store:ContinuedRoomActivationIntentStore;check:()=>void;verifyExact:()=>Promise<void>;signal:AbortSignal;
  })=>Promise<T>,
 ):Promise<T>{
@@ -39,14 +40,14 @@ export async function withContinuedRoomActivationPlan<T>(
   const lifetime=new NativeReconstructionWaits(()=>{guard();port.check();guard();},[signal,...port.signals]);
   try{
    const check=lifetime.check,options={wasm:held.catalogOptions.wasm,checkAuthority:check,signal:lifetime.signal};
-   const context=prepareArchiveIntegrity(options),report=new Blob([JSON.stringify(read.reconciliation)]);
+   const integrity=prepareArchiveIntegrity(options),report=new Blob([JSON.stringify(read.reconciliation)]);
    const plan:ContinuedRoomActivationPlan=frozen({format:'breditor/continued-room-activation-plan',formatVersion:1,
     catalogDatabase:held.catalogDatabase,recoveryDatabase:held.recoveryDatabase,recovery:read.recovery,
-    server:host.selection,activation:port.selection,reconciliation:{bytes:report.size,sha256:await context.digest(report)}});
+    server:host.selection,activation:port.selection,reconciliation:{bytes:report.size,sha256:await integrity.digest(report)}});
    const encoding=await encodeContinuedRoomActivation(database,plan,options);
    const store=new ContinuedRoomActivationIntentStore(encoding.choice,options);
    try{
-    return await visit({plan,encoding,store,reconciliation:read.reconciliation,port,check,signal:lifetime.signal,verifyExact:async()=>{
+    return await visit({plan,encoding,store,reconciliation:read.reconciliation,port,namespaces:held.namespaces,integrity,check,signal:lifetime.signal,verifyExact:async()=>{
      if(!same(await reread(),read.reconciliation))throw fail('activation_intent_stale');
      await held.verifyExact();
      check();
@@ -92,4 +93,5 @@ export async function openExactContinuedRoomActivation(
  if(!same(expected,encoding.choice))throw fail('activation_intent_stale');
  const stored=await store.open();
  if(stored.capture!==encoding.graph)throw fail('activation_intent_stale');
+ return stored;
 }

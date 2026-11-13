@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {IDBDatabase} from 'fake-indexeddb';
+import {verifyPublication} from './publication.mjs';
 
 const exists=async database=>(await indexedDB.databases()).some(row=>row.name===database);
 
@@ -75,7 +76,7 @@ async function activationState(database){
  }finally{connection.close();}
 }
 
-export async function verifyActivationCommit(api,{input,offer,requests,getToken}){
+export async function verifyActivationCommit(api,{input,offer,publicationOffer,requests,getToken}){
  const {prepareContinuedRoomActivation:prepare,verifyContinuedRoomActivation:verify,commitContinuedRoomActivation:commit,
   SharedDurableNativeActivationHost:Host}=api;
  const database='continued-covered-activation';
@@ -96,6 +97,14 @@ export async function verifyActivationCommit(api,{input,offer,requests,getToken}
   const prepared=await prepare(input,{database,activation,retainChoice(value){expected=structuredClone(value);}});
   assert.deepEqual(prepared,expected);
   assert.equal((await activationState(database)).phase,'prepared');
+  const publication=api.SharedNativeRoomPublicationHost.configure({endpoint:publicationOffer.endpoint,
+   expected:publicationOffer.selection,principal:'operator',getToken,checkAuthority(){}});
+  try{
+   await assert.rejects(api.prepareContinuedRoomPublication(input,{database:'continued-uncommitted-publication',expected,
+    activation,publication,retainChoice(){assert.fail('Uncommitted rooms cannot retain a serving choice');}}),
+   error=>error.code==='activation_intent_incomplete');
+   assert.equal(await exists('continued-uncommitted-publication'),false);
+  }finally{publication.close();}
   await assert.rejects(commit(input,{expected,activation,approve:()=>false}),error=>error.code==='activation_intent_policy');
   assert.equal(commitCount,0);
   assert.equal((await activationState(database)).phase,'prepared');
@@ -117,6 +126,7 @@ export async function verifyActivationCommit(api,{input,offer,requests,getToken}
   assert.deepEqual(await commit(input,{expected,activation:reopened,approve:()=>true}),confirmed);
   assert.deepEqual(await activationState(database),saved);
   assert.equal(requests.filter(row=>row.activation).length-before,3);
-  return 1;
+  const publications=await verifyPublication(api,{input,expected,activation:reopened,offer:publicationOffer,requests,getToken});
+  return {commits:1,publications};
  }finally{globalThis.fetch=fetch;reopened?.close();activation.close();}
 }

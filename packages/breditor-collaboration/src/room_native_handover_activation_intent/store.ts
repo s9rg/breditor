@@ -6,10 +6,13 @@ import {decodeRoomHandoverActivationIntent} from './decode.js';
 import {snapshotRoomHandoverActivationEncodedCapture} from './snapshot_encoded.js';
 import type {SharedArchiveIntegrityOptions} from '../archive_integrity/contract.js';
 import type {RoomHandoverActivationIntentChoice,RoomHandoverActivationIntentState,RoomHandoverActivationRetainedIntent} from './contract.js';
-const codec=Object.freeze({
+import {nativeActivationReceipt} from '../native_activation_control/identity.js';
+import type {ActivationIntentStoreCodec} from '../room_native_activation_intent/store_contract.js';
+const codec:ActivationIntentStoreCodec<RoomHandoverActivationIntentChoice,RoomHandoverActivationRetainedIntent['capture'],RoomHandoverActivationIntentState>={
  choice:roomHandoverActivationIntentChoice,snapshot:snapshotRoomHandoverActivationEncodedCapture,decode:decodeRoomHandoverActivationIntent,state:roomHandoverActivationIntentState,
  initial:Object.freeze({format:'breditor/room-native-handover-activation-intent-state',formatVersion:1,revision:0,phase:'prepared',receipt:null} as const),
-});
+ receipt:(receipt,choice)=>nativeActivationReceipt(JSON.stringify(receipt),choice.activation),
+};
 export class RoomHandoverActivationIntentStore extends ActivationIntentStore<RoomHandoverActivationIntentChoice,RoomHandoverActivationRetainedIntent['capture'],RoomHandoverActivationIntentState>{
  constructor(choice:RoomHandoverActivationIntentChoice,options:SharedArchiveIntegrityOptions){super(choice,options,codec);}
  /** Existing-only exact bytes for a separately selected restart association. */

@@ -530,5 +530,19 @@ queued when its exact bytes are in a held local upload archive. The SDK
 records the request before sending it and records a receipt only after the
 relay confirms the selected epoch. If the response is lost, repeat with the
 same retained intent and actual relay control. Each repeat requires fresh
-approval and confirmation from the relay. Opening normal serving and
-transferring the recovered clients are separate steps.
+approval and confirmation from the relay.
+
+Once the SDK has durably observed that receipt, configure a
+`SharedNativeRoomPublicationHost` with the independently selected listener
+control for the same checkpoint. `prepareContinuedRoomPublication` reopens
+the recovered room and the committed intent, rechecks delivery coverage,
+and saves the association in a fresh database. Retain its choice through
+the supplied callback before using `publishContinuedRoom`.
+
+`publishContinuedRoom` requires fresh approval and exact storage and provider
+checks. It records the request before asking the relay to start serving on its
+already-bound listener. If the reply is lost, repeat with the same choice and
+actual publication control while the selected room cut is still current.
+A successful retry confirms the same listener and receipt. This step starts
+normal relay serving. Handing the recovered clients their writable sessions
+and delivering queued work are separate steps.

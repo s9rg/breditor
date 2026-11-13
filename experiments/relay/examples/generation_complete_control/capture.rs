@@ -4,10 +4,10 @@ use breditor_collab_relay::{
     Role, RoomRecoveryPolicy, ServerLogGenerationRoomBackup, ServerLogGenerationRoomRecovery,
     assets::{AssetStore, asset_id, prepare_asset},
     server::{
-        Authentication, ContentAddressedServerAssets, DurableNativeActivationControl,
-        PreparedLogGenerationRecoveryHost, ServerLogGenerationRecoveryAssetCoverage,
-        ServerLogGenerationRecoveryControl, VerifiedServerLogGenerationRecoveryState,
-        prepare_log_generation_recovery_control, prepare_log_generation_recovery_host,
+        Authentication, ContentAddressedServerAssets, PreparedLogGenerationRecoveryHost,
+        ServerLogGenerationRecoveryAssetCoverage, ServerLogGenerationRecoveryControl,
+        VerifiedServerLogGenerationRecoveryState, prepare_log_generation_recovery_control,
+        prepare_log_generation_recovery_host,
     },
 };
 use serde_json::json;
@@ -21,7 +21,7 @@ pub struct Running {
     pub router: axum::Router,
     pub control: ServerLogGenerationRecoveryControl,
     pub operator_token: String,
-    pub activation: Option<(DurableNativeActivationControl, axum::Router)>,
+    pub activation: Option<activation::Prepared>,
 }
 pub(super) fn authentication(principal: &str) -> Result<(Authentication, String)> {
     let (token, hash) = Authentication::issue_token()?;

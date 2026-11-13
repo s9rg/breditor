@@ -41,6 +41,7 @@ const codec:ActivationIntentStoreCodec<ContinuedRoomActivationChoice,string,Acti
   if((phase==='receipt-observed')!==(receipt!==null))throw fail();
   return frozen({format:initial.format,formatVersion:1,revision,phase,receipt});
  },
+ receipt:(receipt,choice)=>nativeActivationReceipt(JSON.stringify(receipt),choice.activation),
  initial,
 };
 

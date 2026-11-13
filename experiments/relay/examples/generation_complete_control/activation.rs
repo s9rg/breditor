@@ -8,8 +8,9 @@ use breditor_collab_relay::{
     assets::AssetStore,
     server::{
         DurableNativeActivationControl, NativeGenerationActivationPrepareOptions,
-        PreparedLogGenerationHandover, PreparedLogGenerationRecoveryHost, RoomDeploymentAuthority,
-        VerifiedServerLogGenerationRecoveryState, prepare_durable_native_activation_control,
+        NativeRoomPublication, PreparedLogGenerationHandover, PreparedLogGenerationRecoveryHost,
+        RoomDeploymentAuthority, RoomDeploymentLease, VerifiedServerLogGenerationRecoveryState,
+        prepare_durable_native_activation_control, prepare_native_room_publication,
         router_with_log_generation_backups_and_deployment_lease,
     },
 };
@@ -18,6 +19,14 @@ use std::{path::Path, sync::Arc};
 pub struct Predecessor {
     intent: Arc<PreparedLogGenerationHandover>,
     authority: RoomDeploymentAuthority,
+    lease: RoomDeploymentLease,
+}
+
+pub struct Prepared {
+    pub control: Arc<DurableNativeActivationControl>,
+    pub publication: NativeRoomPublication,
+    pub router: axum::Router,
+    pub predecessor: RoomDeploymentLease,
 }
 
 pub async fn seal(
@@ -30,7 +39,12 @@ pub async fn seal(
     let lease = authority.claim(&authority.current_selection()?)?;
     let (auth, token) = authentication("owner")?;
     let (_router, live) = router_with_log_generation_backups_and_deployment_lease(
-        room, auth, assets, lease, "owner", &token,
+        room,
+        auth,
+        assets,
+        lease.clone(),
+        "owner",
+        &token,
     )
     .await?;
     let backup = live.capture("owner", &token).await?;
@@ -39,7 +53,10 @@ pub async fn seal(
         .await?;
     let selected = intent.identity().clone();
     let intent = Arc::new(live.seal_prepared_handover("owner", &token, intent, &selected).await?);
-    Ok((backup, Predecessor { intent, authority }))
+    if lease.check().is_ok() {
+        return Err("the sealed predecessor retained its serving lease".into());
+    }
+    Ok((backup, Predecessor { intent, authority, lease }))
 }
 
 pub async fn prepare(
@@ -49,7 +66,7 @@ pub async fn prepare(
     proof: Arc<VerifiedServerLogGenerationRecoveryState>,
     native_token: &str,
     operator_digest: &[u8; 32],
-) -> Result<(DurableNativeActivationControl, axum::Router)> {
+) -> Result<Prepared> {
     let checkpoint = Arc::new(
         host.prepare_durable_native_activation(
             "owner",
@@ -77,5 +94,17 @@ pub async fn prepare(
     if control.service_router().await.is_ok() {
         return Err("activation fixture must stay prepared".into());
     }
-    Ok((control, router))
+    let control = Arc::new(control);
+    let listener = std::net::TcpListener::bind("127.0.0.1:0")?;
+    let (publication_router, publication) =
+        prepare_native_room_publication(control.clone(), listener)?;
+    if publication.observe().await.is_ok() {
+        return Err("prepared listener started serving prematurely".into());
+    }
+    Ok(Prepared {
+        control,
+        publication,
+        router: router.merge(publication_router),
+        predecessor: predecessor.lease,
+    })
 }

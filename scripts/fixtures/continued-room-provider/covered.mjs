@@ -39,7 +39,7 @@ export async function verifyCoveredActivation(api,{initial,entries,fixture,inven
    assert.deepEqual(advanced.retained,original.retained);
    assert.deepEqual(await replacement.participantUploads(id).arrayBuffer(),await backup.uploadBackup().arrayBuffer());
   }
-  return await verifyActivationCommit(api,{input,offer:caseInfo.activation,requests,getToken});
+  return await verifyActivationCommit(api,{input,offer:caseInfo.activation,publicationOffer:caseInfo.publication,requests,getToken});
  }finally{
   await replacement?.close();
   await store?.close();

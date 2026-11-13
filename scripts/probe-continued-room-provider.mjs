@@ -585,10 +585,11 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
   onToken=()=>store.close();
   await assert.rejects(readContinuedRoomReconciliation(input),error=>['catalog_closed','archive_authority','control_authority'].includes(error.code));
   counts.rejected++;
-  const recoveredActivationCommits=caseInfo.activation?await verifyCoveredActivation(continuedApi,{
+  const activation=caseInfo.activation?await verifyCoveredActivation(continuedApi,{
    initial,entries:entries.slice(0,7),fixture,inventory,wasm:native,caseInfo,host,getToken,requests,
-  }):0;
-  return {recoveredRoomReads,recoveredRoomRefusals,serverOnlyPacketAssets,recoveredClientCatchUps,recoveredReplacementClients,recoveredActivationCommits,
+  }):{commits:0,publications:0};
+  return {recoveredRoomReads,recoveredRoomRefusals,serverOnlyPacketAssets,recoveredClientCatchUps,recoveredReplacementClients,
+   recoveredActivationCommits:activation.commits,recoveredPublications:activation.publications,
    recoveredReplacementLocalClients,recoveredReplacementRasters,recoveredActivationIntents,passed:true,language:fixture.language,atomic:fixture.atomic,...counts,...operations};
  }finally{
   host?.close();
