@@ -104,7 +104,7 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
   const family=continued?"continued-v2":"segmented-v1";
   // Final custody checks must not invoke an application-supplied getter or method.
   const check=()=>{this.#live();if(segmentedPolicy.call(this.#boundCore())!==family)throw new SharedEditorError("segmented_source_unavailable","The actual generation source was replaced");},read=()=>{check();return this.#recovery();},review=options.review?{actor:options.review.actor,principal:options.review.principal}:null,stamp=()=>{check();return this.#sourceStamp;};
-  const checkManaged=()=>{check();checkManagedCore(this.#ownedCore);if(this.#retiring||this.#storageChanged)throw new SharedEditorError("segmented_source_unavailable","The readable native source no longer has live storage custody");};
+  const checkManaged=()=>{check();if(this.#retiring||this.#storageChanged)throw new SharedEditorError("segmented_source_unavailable","The readable native source no longer has live storage custody");checkManagedCore(this.#ownedCore);};
   if(this.#formatVersion===1){
    registerGenerationNative(this,{core:core as unknown as SharedRichEditor<SharedSelectionPolicy>,identity:structuredClone(identity),review,companion:!!companion,check,checkManaged,stamp,read});
    if(!companion)registerGenerationSource(this,{core:core as unknown as SharedRichEditor<SharedSelectionPolicy>,identity:{kind:"local",native:structuredClone(identity),review,relay:null,retained:null},check,checkManaged,stamp:()=>[stamp()],read:()=>generationRecords(read())});
