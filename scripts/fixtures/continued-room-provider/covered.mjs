@@ -3,14 +3,14 @@ import {verifyActivationCommit} from './activation.mjs';
 import {continuedDeliveryParticipant} from '../continued-room-recovery/continued-delivery.mjs';
 
 /** Build the fully delivery-bound cohort for the authenticated commit case. */
-export async function verifyCoveredActivation(api,{initial,entries,fixture,inventory,wasm,caseInfo,host,getToken,requests}){
+export async function verifyCoveredActivation(api,{initial,entries,fixture,inventory,wasm,caseInfo,host,getToken,requests,delivery}){
  const {SharedContinuedRoomCatalog:Catalog,SharedContinuedRoomCatalogStore:Store}=api;
  const cohort=[];
  let archive,store,replacement;
  try{
   for(const entry of entries){
    cohort.push(await continuedDeliveryParticipant(api,{entry,fixture,metadata:inventory,wasm,
-    endpoint:caseInfo.endpoint.replace(/^http/,'ws'),tag:'activation-'+entry.id}));
+    endpoint:'ws://'+caseInfo.publication.selection.listener+'/ws',tag:'activation-'+entry.id}));
   }
   const options={wasm,policies:cohort.map(row=>row.policy),checkAuthority(){}};
   archive=await Catalog.capture({...initial,...options,catalog:'activation-source-room',participants:cohort.map(row=>row.row)});
@@ -39,7 +39,7 @@ export async function verifyCoveredActivation(api,{initial,entries,fixture,inven
    assert.deepEqual(advanced.retained,original.retained);
    assert.deepEqual(await replacement.participantUploads(id).arrayBuffer(),await backup.uploadBackup().arrayBuffer());
   }
-  return await verifyActivationCommit(api,{input,offer:caseInfo.activation,publicationOffer:caseInfo.publication,requests,getToken});
+  return await verifyActivationCommit(api,{input,offer:caseInfo.activation,publicationOffer:caseInfo.publication,requests,getToken,cohort,delivery});
  }finally{
   await replacement?.close();
   await store?.close();

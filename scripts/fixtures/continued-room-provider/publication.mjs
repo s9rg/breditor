@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
+import {deliverPublishedCohort,verifyColdDelivery} from './delivery.mjs';
 
-export async function verifyPublication(api,{input,expected,activation,offer,requests,getToken}){
+export async function verifyPublication(api,{input,expected,activation,offer,requests,getToken,cohort,delivery}){
  const {prepareContinuedRoomPublication:prepare,publishContinuedRoom:publish,SharedNativeRoomPublicationHost:Host}=api;
  const handoff=new api.ContinuedRoomSessionHandoff();
  const database='continued-covered-publication';
@@ -64,8 +65,10 @@ export async function verifyPublication(api,{input,expected,activation,offer,req
    assert.match(JSON.stringify(session.core.reviewSnapshot().view),/Local offline comment/);
    await session.flush();
   }
+  const delivered=await deliverPublishedCohort(api,sessions,offer.selection.listener,delivery);
   await handoff.close();
   assert.throws(()=>handoff.sessions(),{code:'activation_intent_incomplete'});
-  return {publications:1,writableSessions:sessions.size};
+  await verifyColdDelivery(api,cohort,input.recovery.destinations,delivered);
+  return {publications:1,writableSessions:sessions.size,deliveredSessions:delivered.size};
  }finally{globalThis.fetch=fetch;await handoff.close();reopened?.close();publication.close();}
 }

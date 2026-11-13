@@ -55,6 +55,9 @@ async fn main() -> Result {
             let address = listener.local_addr()?;
             let mut case = serde_json::json!({"path":running.path,"endpoint":format!("http://{address}/recovery/generations/v1/check"),"selection":running.control.identity(),"operatorToken":running.operator_token,"nativeProtectedStreamsVerified":true,"nativeProviderVerified":true});
             let mut router = running.router;
+            if let Some(delivery) = running.private_delivery {
+                case["privateDelivery"] = delivery;
+            }
             if let Some(prepared) = running.activation {
                 case["activation"] = serde_json::json!({"endpoint":format!("http://{address}/recovery/native-activation/v1/commit"),"selection":prepared.control.identity()});
                 case["publication"] = serde_json::json!({"endpoint":format!("http://{address}/recovery/native-publication/v1/publish"),"selection":prepared.publication.identity()});

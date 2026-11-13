@@ -1,7 +1,8 @@
 //! Seven actual image-bearing native authors under genuine standalone origin/current custody.
 use super::{Result, activation, clients, migrated_origin, server_packet_asset, source, storage};
 use breditor_collab_relay::{
-    Role, RoomRecoveryPolicy, ServerLogGenerationRoomBackup, ServerLogGenerationRoomRecovery,
+    RecoveryRegistrationCredentials, Role, RoomRecoveryPolicy, ServerLogGenerationRoomBackup,
+    ServerLogGenerationRoomRecovery,
     assets::{AssetStore, asset_id, prepare_asset},
     server::{
         Authentication, ContentAddressedServerAssets, PreparedLogGenerationRecoveryHost,
@@ -22,6 +23,7 @@ pub struct Running {
     pub control: ServerLogGenerationRecoveryControl,
     pub operator_token: String,
     pub activation: Option<activation::Prepared>,
+    pub private_delivery: Option<serde_json::Value>,
 }
 pub(super) fn authentication(principal: &str) -> Result<(Authentication, String)> {
     let (token, hash) = Authentication::issue_token()?;
@@ -31,7 +33,26 @@ pub(super) fn authentication_for_digest(
     principal: &str,
     digest: &[u8; 32],
 ) -> Result<Authentication> {
-    Ok(Authentication::from_json(&json!({"format":"breditor/relay-auth","formatVersion":1,"origins":["http://127.0.0.1:4187"],"accounts":[{"principal":principal,"tokenHash":digest}]}).to_string())?)
+    authentication_for_accounts(json!([{"principal":principal,"tokenHash":digest}]))
+}
+
+fn authentication_for_accounts(accounts: serde_json::Value) -> Result<Authentication> {
+    Ok(Authentication::from_json(&json!({"format":"breditor/relay-auth","formatVersion":1,"origins":["http://127.0.0.1:4187"],"accounts":accounts}).to_string())?)
+}
+
+/// This test-only envelope travels on the private process pipe, outside public evidence.
+fn private_delivery(
+    account_token: &str,
+    protected: &RecoveryRegistrationCredentials,
+) -> serde_json::Value {
+    let documents: Vec<_> = protected.documents.iter().map(|row|
+        json!({"writer":row.writer,"principal":row.principal,"credential":row.credential})).collect();
+    let reviews: Vec<_> = protected
+        .reviews
+        .iter()
+        .map(|row| json!({"actor":row.actor,"principal":row.principal,"credential":row.credential}))
+        .collect();
+    json!({"accountToken":account_token,"documents":documents,"reviews":reviews})
 }
 async fn prepare_control(
     host: PreparedLogGenerationRecoveryHost,
@@ -179,7 +200,17 @@ async fn generate_selected(
     )?;
     operation.room_mut().grant("owner", "post-origin-reader", Some(Role::Reader))?;
     operation.room_mut().rotate_log_generation("owner", "post-origin-physical-cut")?;
-    let (native_auth, native_token) = authentication("owner")?;
+    let (native_token, native_digest) = Authentication::issue_token()?;
+    let delivery_account = predecessor.is_some().then(Authentication::issue_token).transpose()?;
+    let native_auth = match &delivery_account {
+        Some((_, digest)) => authentication_for_accounts(json!([
+            {"principal":"owner","tokenHash":native_digest},
+            {"principal":"alice","tokenHash":digest}
+        ]))?,
+        None => authentication_for_digest("owner", &native_digest)?,
+    };
+    let private_delivery =
+        delivery_account.as_ref().map(|(token, _)| private_delivery(token, &protected));
     let base = Box::pin(prepare_log_generation_recovery_host(
         operation,
         native_auth,
@@ -233,6 +264,7 @@ async fn generate_selected(
         .iter()
         .map(String::as_str)
         .chain([native_token.as_str(), operator_token.as_str()])
+        .chain(delivery_account.iter().map(|(token, _)| token.as_str()))
         .collect();
     let path = super::public_inputs::write(&super::public_inputs::PublicInputs {
         directory: &root,
@@ -247,5 +279,5 @@ async fn generate_selected(
         }),
         credentials: &credentials,
     })?;
-    Ok(Running { path, router, control, operator_token, activation })
+    Ok(Running { path, router, control, operator_token, activation, private_delivery })
 }
