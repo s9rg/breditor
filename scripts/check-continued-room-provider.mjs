@@ -30,7 +30,7 @@ async function installedProbe(){
  const registryArtifacts=verifySearchConsumerRegistry(producer,JSON.parse(readFileSync(join(consumer,'package-lock.json'),'utf8')));
  for(const name of names)assert.ok(realpathSync(join(consumer,'node_modules',name)).startsWith(realpathSync(consumer)+'/node_modules/'));
  for(const path of ['room-participant-inventory/environment.mjs','review-assets/pixels.mjs','interchange-consumer/pixel.mjs',
-  'physical-recovery-control/unavailable-upload.mjs']){
+  'physical-recovery-control/unavailable-upload.mjs','independent-delivery/session.mjs','owned-core-cleanup/session.mjs']){
   const output=join(consumer,'fixtures',path);mkdirSync(dirname(output),{recursive:true});
   cpSync(join(root,'scripts/fixtures',path),output);
  }
@@ -51,7 +51,7 @@ async function installedProbe(){
   build:{target:'es2022',write:false,minify:false,lib:{entry,formats:['es'],fileName:'continued-provider'}}});
  const modules=(Array.isArray(output)?output:[output]).flatMap(result=>result.output)
   .filter(item=>item.type==='chunk').flatMap(item=>Object.keys(item.modules));
- for(const path of ['continued_room_reconciliation/read.js','continued_room_reconciliation/asset_pins.js','continued_room_reconciliation/independent_prefix.js','generation_recovery_control/host.js'])
+ for(const path of ['continued_room_reconciliation/read.js','continued_room_reconciliation/asset_pins.js','continued_room_reconciliation/independent_prefix.js','continued_room_reconciliation/delivery_prefix.js','generation_recovery_control/host.js'])
   assert.ok(modules.some(module=>module.includes('/node_modules/@breditor/collaboration/dist/'+path)),path);
  assert.ok(!modules.some(module=>module.includes(join(root,'packages'))||module.includes('fake-indexeddb')));
  const runtime=join(consumer,'node_modules/@breditor/collaboration/dist/runtime');
@@ -85,6 +85,7 @@ export async function runContinuedProviderQualification(controls,transport,direc
    assert.equal(result.mixedPending,1);
    assert.equal(result.mixedProviderReads,1);
    assert.equal(result.mixedForeignForks,1);
+   assert.equal(result.mixedDeliveryProviderReads,1);
    cases.push(result);
   }
   reports[name]={cases,proof:setup.proof};

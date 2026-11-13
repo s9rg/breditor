@@ -6,7 +6,7 @@ import type {SharedServerLogGenerationRecoveryHost} from '../generation_recovery
 import type {SharedServerLogGenerationRecoveryAssetRead} from '../generation_recovery_control/asset_contract.js';
 import type {SelectedRoomUploadPin} from '../selected_room_provider/contract.js';
 
-import type {ContinuedRoomIndependentRecoveryPolicy} from '../continued_room_recovery/contract.js';
+import type {ContinuedRoomDeliveryRecoveryPolicy,ContinuedRoomIndependentRecoveryPolicy} from '../continued_room_recovery/contract.js';
 
 export interface ContinuedRoomReconciliationOptions {
  readonly catalog:SharedContinuedRoomCatalogStore;
@@ -15,6 +15,8 @@ export interface ContinuedRoomReconciliationOptions {
  readonly checkAuthority:()=>void;
  /** Select exact independent local factories to include in the provider read. */
  readonly independentPolicies?:readonly ContinuedRoomIndependentRecoveryPolicy[];
+ /** Select exact independent delivery factories to include their bound review prefixes. */
+ readonly deliveryPolicies?:readonly ContinuedRoomDeliveryRecoveryPolicy[];
  readonly signal?:AbortSignal;
 }
 export interface ContinuedRoomReconciliationRead {

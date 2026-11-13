@@ -46,7 +46,7 @@ if(mode==='installed'){
  execFileSync(npm,['install','--offline','--ignore-scripts','--no-audit','--no-fund'],{cwd:consumer,stdio:'inherit'});
  const registryArtifacts=verifySearchConsumerRegistry(producer,JSON.parse(readFileSync(join(consumer,'package-lock.json'),'utf8')));
  for(const name of names)assert.ok(realpathSync(join(consumer,'node_modules',name)).startsWith(realpathSync(consumer)+'/node_modules/'));
- for(const path of ['room-participant-inventory/environment.mjs','review-assets/pixels.mjs','interchange-consumer/pixel.mjs']){
+ for(const path of ['room-participant-inventory/environment.mjs','review-assets/pixels.mjs','interchange-consumer/pixel.mjs','independent-delivery/session.mjs','owned-core-cleanup/session.mjs']){
   const output=join(consumer,'fixtures',path);mkdirSync(dirname(output),{recursive:true});
   cpSync(join(root,'scripts','fixtures',path),output);
  }
@@ -65,7 +65,7 @@ if(mode==='installed'){
   build:{target:'es2022',write:false,minify:false,lib:{entry,formats:['es'],fileName:'continued-room-catalog'}}});
  const modules=(Array.isArray(output)?output:[output]).flatMap(result=>result.output)
   .filter(item=>item.type==='chunk').flatMap(item=>Object.keys(item.modules));
- for(const path of ['continued_room_catalog/archive.js','continued_room_catalog/storage.js','continued_participant/inventory.js','continued_room_recovery/recovery.js','continued_room_recovery/independent_destination.js'])
+ for(const path of ['continued_room_catalog/archive.js','continued_room_catalog/storage.js','continued_participant/inventory.js','continued_room_recovery/recovery.js','continued_room_recovery/independent_destination.js','continued_room_recovery/delivery_destination.js'])
   assert.ok(modules.some(module=>module.includes('/node_modules/@breditor/collaboration/dist/'+path)),path);
  assert.ok(!modules.some(module=>module.includes(join(root,'packages'))||module.includes('fake-indexeddb')));
  cwd=consumer;runtime=join(consumer,'node_modules/@breditor/collaboration/dist/runtime');

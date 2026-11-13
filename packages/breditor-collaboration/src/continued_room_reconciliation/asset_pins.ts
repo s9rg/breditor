@@ -2,9 +2,10 @@ import {RichAssetArchive} from '@breditor/experimental-rich-content';
 import type {ArchiveIntegrityContext} from '../archive_integrity/context.js';
 import {assetReferenceKey,generationAssetRequirements} from '../generation_recovery_control/asset_requirements.js';
 import type {SharedServerLogGenerationRecoveryAssetInfo,SharedServerLogGenerationRecoveryAssetRead} from '../generation_recovery_control/asset_contract.js';
-import {continuedCatalogIndependentBackup,SharedContinuedRoomCatalog} from '../continued_room_catalog/archive.js';
+import {continuedCatalogDeliveryBackup,continuedCatalogIndependentBackup,SharedContinuedRoomCatalog} from '../continued_room_catalog/archive.js';
 import {independentRecoveryArchive as independent} from '../independent_recovery/archive.js';
-import type {ContinuedRoomIndependentRecoveryPolicy} from '../continued_room_recovery/contract.js';
+import {deliveryRecoveryArchive as delivery} from '../independent_delivery_recovery/archive.js';
+import type {ContinuedRoomDeliveryRecoveryPolicy,ContinuedRoomIndependentRecoveryPolicy} from '../continued_room_recovery/contract.js';
 import type {ContinuedRoomReconciliationRead} from './contract.js';
 import {SharedEditorError} from '../core.js';
 
@@ -18,10 +19,11 @@ const shape=(row:Omit<SharedServerLogGenerationRecoveryAssetInfo,'asset'>)=>JSON
 export async function continuedProviderPins(
  archive:SharedContinuedRoomCatalog,context:ArchiveIntegrityContext,signal:AbortSignal,
  policies:ReadonlyMap<string,ContinuedRoomIndependentRecoveryPolicy>,
+ deliveryPolicies:ReadonlyMap<string,ContinuedRoomDeliveryRecoveryPolicy>,
 ){
  const content=new Map<string,string>(),bindings=new Map<string,{asset:string;generation:string;contentAsset:string}>(),identities=new Map<string,string>();
  const uploads:ContinuedRoomReconciliationRead['uploads'][number][]=[];
- const selected=metadata.call(archive).participants.filter(row=>row.family==='continued-local'||policies.has(row.id));
+ const selected=metadata.call(archive).participants.filter(row=>row.family==='continued-local'||policies.has(row.id)||deliveryPolicies.has(row.id));
  let uploadBytes=0;
  function addContent(asset:string,row:Omit<SharedServerLogGenerationRecoveryAssetInfo,'asset'>){
   const previous=content.get(asset),current=shape(row);
@@ -31,9 +33,10 @@ export async function continuedProviderPins(
  const uploadIds=new Set<string>();
  for(const {id,family} of selected){
   context.guard();
-  const policy=policies.get(id);
+  const policy=policies.get(id)??deliveryPolicies.get(id);
   const backup=family==='independent-local'?continuedCatalogIndependentBackup(archive,id):undefined;
-  const info=backup?independent.metadata.call(backup):participantMetadata.call(archive,id);
+  const deliveryBackup=family==='independent-delivery'?continuedCatalogDeliveryBackup(archive,id):undefined;
+  const info=backup?independent.metadata.call(backup):deliveryBackup?delivery.metadata.call(deliveryBackup):participantMetadata.call(archive,id);
   for(const raster of info.assets)addContent(raster.contentAsset,raster);
   for(const binding of info.bindings){
    const {asset,generation,contentAsset}=binding,key=assetReferenceKey(binding);
@@ -41,7 +44,7 @@ export async function continuedProviderPins(
    identities.set(asset,contentAsset);
    bindings.set(key,{asset,generation,contentAsset});
   }
-  const file=backup?independent.uploadBackup.call(backup):participantUploads.call(archive,id);
+  const file=backup?independent.uploadBackup.call(backup):deliveryBackup?delivery.uploadBackup.call(deliveryBackup):participantUploads.call(archive,id);
   if((uploadBytes+=file.size)>512*1024*1024)throw continuedReconciliationFailure('budget');
   const parsed=await readUploads.call(RichAssetArchive,file,{signal,...(policy?.limits?{limits:policy.limits}:{})});
   try{

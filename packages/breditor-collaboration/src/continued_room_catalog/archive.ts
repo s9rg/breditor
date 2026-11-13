@@ -11,6 +11,7 @@ import {MAX_SHARED_SERVER_LOG_GENERATION_PARTICIPANT_INVENTORY_BYTES} from '../s
 import {physicalCatalogV2Options,physicalCatalogV2Rows} from '../physical_room_catalog_v2/input_snapshot.js';
 import {physicalCatalogFailure,physicalCatalogSelection,physicalParticipantKey} from '../physical_room_catalog/policy.js';
 import {frozen} from '../room_participant_inventory/policy.js';
+import type {SharedIndependentDeliveryParticipantBackup} from '../independent_delivery_participant/backup.js';
 import type {SharedIndependentParticipantBackup} from '../independent_participant/backup.js';
 import {readPhysicalCatalogV3Participant,disposePhysicalCatalogV3Participant,type PhysicalCatalogV3Client} from '../physical_room_catalog_v3/participant.js';
 import {continuedRoomMetadata,parseContinuedRoomManifest,continuedRoomParticipantHeader,continuedRoomParticipantMaximum} from './manifest.js';
@@ -20,8 +21,9 @@ import type {
  ContinuedRoomCatalogReadOptions,ContinuedRoomCatalogSelection,
 } from './contract.js';
 
-type IndependentClient=Extract<PhysicalCatalogV3Client,{family:'independent-local'}>;
+type IndependentClient=Extract<PhysicalCatalogV3Client,{family:'independent-local'|'independent-delivery'}>;
 let borrowIndependent:(catalog:SharedContinuedRoomCatalog,id:string)=>SharedIndependentParticipantBackup;
+let borrowDelivery:(catalog:SharedContinuedRoomCatalog,id:string)=>SharedIndependentDeliveryParticipantBackup;
 let borrowInventory:(catalog:SharedContinuedRoomCatalog)=>SharedServerLogGenerationParticipantInventory;
 const constructorToken=Symbol();
 const {read:readServer,prototype:{dispose:disposeServer}}=SharedServerLogGenerationRoomArchive;
@@ -73,7 +75,12 @@ export class SharedContinuedRoomCatalog {
   borrowInventory=catalog=>catalog.#live().inventory;
   borrowIndependent=(catalog,id)=>{
    const client=catalog.#live().independent.get(id);
-   if(!client)throw physicalCatalogFailure('catalog_missing');
+   if(client?.family!=='independent-local')throw physicalCatalogFailure('catalog_missing');
+   return client.backup;
+  };
+  borrowDelivery=(catalog,id)=>{
+   const client=catalog.#live().independent.get(id);
+   if(client?.family!=='independent-delivery')throw physicalCatalogFailure('catalog_missing');
    return client.backup;
   };
  }
@@ -171,7 +178,7 @@ export class SharedContinuedRoomCatalog {
       ...(signal?{signal}:{}),
      }:undefined;
      const client=await readPhysicalCatalogV3Participant(row,file,wrap(policies.graph.get(row.id)),wrap(policies.local.get(row.id)),signal);
-     if(client.family==='independent-local')independent.set(row.id,client);
+     if(client.family==='independent-local'||client.family==='independent-delivery')independent.set(row.id,client);
      else disposePhysicalCatalogV3Participant(client);
      context.guard();
      continue;
@@ -203,3 +210,4 @@ export class SharedContinuedRoomCatalog {
 /** Recovery borrows only the genuine backup retained by this archive. */
 export const continuedCatalogIndependentBackup=(catalog:SharedContinuedRoomCatalog,id:string)=>borrowIndependent(catalog,id);
 export const continuedCatalogInventory=(catalog:SharedContinuedRoomCatalog)=>borrowInventory(catalog);
+export const continuedCatalogDeliveryBackup=(catalog:SharedContinuedRoomCatalog,id:string)=>borrowDelivery(catalog,id);

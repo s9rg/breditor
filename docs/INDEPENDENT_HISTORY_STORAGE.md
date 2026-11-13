@@ -280,13 +280,19 @@ or disappeared stops recovery. The coordinator keeps each admitted local
 history and upload store held through final verification and releases them
 before returning the local destination names.
 
-The same journal supports continued and independent local participants.
+The same journal supports continued participants and both independent local
+and independent delivery participants.
 Pass one `independentPolicies` entry per independent local participant with
 the catalog ID, the independently retained archive selection, and a native
 session factory with document and review access both read-only. The factory
 must select the original or segmented V1 format separately for each lane.
 Recovery verifies the reopened native histories, retained version packets,
 asset references, and whole upload backup against the selected archive.
+Supply `deliveryPolicies` for independent delivery participants. Each
+factory also selects the exact relay binding and retained stores. Recovery
+reopens the native pair and delivery records together, including relay
+progress and queued suggestions, revisions, and versions. The staged
+session requests no relay token and sends no queued work.
 Duplicate document writers and review actors, mismatched policies, and
 other archive families stop recovery before journal creation. These
 destinations provide local recovery. Provider reconciliation and authenticated
@@ -308,8 +314,11 @@ preserves the original upload state and leaves local comment delivery
 pending. For a mixed catalog, supply `independentPolicies` to compare the
 accepted prefixes of independent local participants and include their asset
 bindings and complete upload backups. Each policy selects a temporary
-read-only native replay. The provider read creates no local destinations.
+read-only native replay. Supply `deliveryPolicies` to include independent
+delivery archives. The read validates each archive's document and review
+transport, registered review actor and binding, and retained store
+namespaces against the selected room. A matching bound review prefix
+contributes to coverage. The provider read creates no local destinations
+and changes no delivery receipts or grants.
 If any participant still lacks supported prefix admission, the operator
-host rechecks the selected room,
-and the provider report stays empty until all participant families are
-reconciled.
+host rechecks the selected room and the provider report stays empty.

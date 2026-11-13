@@ -1,7 +1,7 @@
 import {inheritActorLeaseInput} from '../persistence/actor_lease_input.js';
 /** Snapshot explicit host factories/policy before awaiting; historical identity grants nothing. */
 import type {SharedSelectionPolicy} from '../types.js';
-import type {SharedIndependentDeliveryOptions} from '../independent_delivery/contract.js';
+import type {SharedIndependentDeliveryOptions,SharedIndependentDeliveryRecovery} from '../independent_delivery/contract.js';
 import {makeIndependentHistoryCut} from '../independent_history/cut.js';
 import {IndependentDeliveryCompanion} from '../independent_delivery/companion.js';
 import {generationFields,freezeGeneration} from '../generation_source/identity.js';
@@ -26,7 +26,18 @@ export function snapshotIndependentDeliveryRecovery<P extends SharedSelectionPol
 }
 export async function prepareIndependentDeliveryRecovery<P extends SharedSelectionPolicy>(base:ReturnType<typeof snapshotIndependentDeliveryRecovery<P>>,file:Blob){
  const {options,guard,record}=base;guard();let backup:Awaited<ReturnType<typeof archive.read>>|undefined,complete=false;
- try{backup=await archive.read(file,options.expected,{limits:options.limits,...(options.signal?{signal:options.signal}:{})});guard();const recovery=await checkIndependentDeliveryRecords(options.expected.identity.source,archive.records.call(backup));guard();const factory=inheritActorLeaseInput(options.session,{...options.session,database:options.destinations.source,create:missing}) as SharedIndependentDeliveryOptions<P>,companion=new IndependentDeliveryCompanion(factory,recovery),native=await makeIndependentHistoryCut(recovery.source.documentCheckpoint,recovery.source.reviewCheckpoint,recovery.source.identity,recovery.source.versions);guard();const cut={head:companion.wrap(JSON.parse(native.head),companion.capture()),files:native.files};complete=true;return{options,guard,record,backup,recovery,cut,companion,factory};}
+ try{backup=await archive.read(file,options.expected,{limits:options.limits,...(options.signal?{signal:options.signal}:{})});guard();const recovery=await checkIndependentDeliveryRecords(options.expected.identity.source,archive.records.call(backup));guard();const factory=inheritActorLeaseInput(options.session,{...options.session,database:options.destinations.source,create:missing}) as SharedIndependentDeliveryOptions<P>;const {companion,cut}=await makeDeliveryRecoveryCut(factory,recovery,guard);complete=true;return{options,guard,record,backup,recovery,cut,companion,factory};}
  finally{if(!complete&&backup)archive.dispose.call(backup);}
 }
 export type PreparedIndependentDeliveryRecovery<P extends SharedSelectionPolicy=SharedSelectionPolicy>=Awaited<ReturnType<typeof prepareIndependentDeliveryRecovery<P>>>;
+
+/** Encode the unchanged native pair together with the actual delivery companion. */
+export async function makeDeliveryRecoveryCut<P extends SharedSelectionPolicy>(
+ factory:SharedIndependentDeliveryOptions<P>,recovery:SharedIndependentDeliveryRecovery,guard:()=>void,
+){
+ const companion=new IndependentDeliveryCompanion(factory,recovery);
+ const {documentCheckpoint,reviewCheckpoint,identity,versions}=recovery.source;
+ const native=await makeIndependentHistoryCut(documentCheckpoint,reviewCheckpoint,identity,versions);
+ guard();
+ return {companion,cut:{head:companion.wrap(JSON.parse(native.head),companion.capture()),files:native.files}};
+}

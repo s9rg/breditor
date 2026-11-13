@@ -118,7 +118,7 @@ export function inspectLocalNativePrefix<P extends SharedSelectionPolicy>(
 
 /** Overlay document prefix observations. The local review stream remains pending delivery. */
 export function continuedParticipantCoverage(
- inventory:SharedServerLogGenerationParticipantInventory,observations:readonly ContinuedParticipantPrefix[],
+ inventory:SharedServerLogGenerationParticipantInventory,observations:readonly ContinuedParticipantPrefix[],boundActors:ReadonlySet<string>=new Set(),
 ):SharedRoomParticipantCoverage{
  const metadata=inventoryMetadata.call(inventory).native;
  inventoryFile.call(inventory);
@@ -135,10 +135,11 @@ export function continuedParticipantCoverage(
  }
  for(const row of metadata.review?.writers??[]){
   const observed=actors.get(row.clock.actor);
+  if(boundActors.has(row.clock.actor)&&observed?.review.status==='matches')continue;
   missing.push({kind:'review',principal:row.principal,actor:row.clock.actor,reason:observed?.review.status==='server_ahead'?'server_ahead':'missing'});
  }
  const registeredStreamsCovered=missing.length===0;
- for(const row of observations)missing.push({kind:'unbound_review',participant:row.document.participant,principal:row.document.principal,actor:row.review.actor});
+ for(const row of observations)if(!boundActors.has(row.review.actor))missing.push({kind:'unbound_review',participant:row.document.participant,principal:row.document.principal,actor:row.review.actor});
  return frozen({kind:missing.length?'pending':'covered',registeredStreamsCovered,checkedParticipants:observations.map(row=>row.document),missing});
 }
 

@@ -59,7 +59,7 @@ export type {ContinuedPairRecordRead,ContinuedPairRecords} from "./continued_pai
 export {readContinuedRoomReconciliation} from "./continued_room_reconciliation/read.js";
 export type {ContinuedRoomReconciliationOptions,ContinuedRoomReconciliationRead} from "./continued_room_reconciliation/contract.js";
 export {beginContinuedRoomRecovery,resumeContinuedRoomRecovery} from "./continued_room_recovery/recovery.js";
-export type {ContinuedRoomIndependentRecoveryPolicy,ContinuedRoomRecoveryOptions,ContinuedRoomRecoveryDestination,ContinuedRoomRecoveryResult} from "./continued_room_recovery/contract.js";
+export type {ContinuedRoomDeliveryRecoveryPolicy,ContinuedRoomIndependentRecoveryPolicy,ContinuedRoomRecoveryOptions,ContinuedRoomRecoveryDestination,ContinuedRoomRecoveryResult} from "./continued_room_recovery/contract.js";
 export {SharedContinuedRoomCatalogStore} from "./continued_room_catalog/storage.js";
 export {SharedContinuedRoomCatalog} from "./continued_room_catalog/archive.js";
 export type {

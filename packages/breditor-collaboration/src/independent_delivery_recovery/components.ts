@@ -20,8 +20,17 @@ export function checkIndependentDeliveryUploadCustody(owners:IndependentDelivery
 /** Final synchronous no-await barrier only, after all actual native/source/current-policy checks. */
 export function releaseIndependentDeliveryUploadCustody(owners:IndependentDeliveryRecoveryOwners<SharedSelectionPolicy>):void{checkIndependentDeliveryUploadCustody(owners);custodyRelease.call(owners.uploadCustody!);}
 export function checkIndependentDeliveryOwner<P extends SharedSelectionPolicy>(p:PreparedIndependentDeliveryRecovery<P>,owners:IndependentDeliveryRecoveryOwners<P>):void{
- p.guard();if(!owners.session)throw fail('independent_delivery_recovery_missing');const port=independentDeliverySessionPort(owners.session);if(native.view.call(port.core).readOnly!==true)throw fail('independent_delivery_recovery_policy');
- const source=sourceRead.capture({session:owners.session});try{archive.verifySource.call(p.backup,source);p.guard();sourceRead.check(source);port.check();}finally{sourceRead.dispose(source);}
+ p.guard();if(!owners.session)throw fail('independent_delivery_recovery_missing');
+ checkRecoveredIndependentDeliverySource(owners.session,p.backup,p.guard);
+}
+export function checkRecoveredIndependentDeliverySource<P extends SharedSelectionPolicy>(
+ session:SharedIndependentDeliverySession<P>,backup:PreparedIndependentDeliveryRecovery['backup'],guard:()=>void,
+):void{
+ const port=independentDeliverySessionPort(session);
+ if(native.view.call(port.core).readOnly!==true)throw fail('independent_delivery_recovery_policy');
+ const source=sourceRead.capture({session});
+ try{archive.verifySource.call(backup,source);guard();sourceRead.check(source);port.check();}
+ finally{sourceRead.dispose(source);}
 }
 export async function restoreIndependentDeliverySource<P extends SharedSelectionPolicy>(p:PreparedIndependentDeliveryRecovery<P>,owners:IndependentDeliveryRecoveryOwners<P>,complete:boolean):Promise<void>{
  p.guard();const status=await inspectIndependentDeliveryDestination(p);p.guard();if(complete&&status!=='exact')throw fail('independent_delivery_recovery_missing');

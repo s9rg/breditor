@@ -1,32 +1,52 @@
 import {checkRichAssetLimits} from '@breditor/experimental-rich-content';
 import type {ContinuedRoomCatalogEntry} from '../continued_room_catalog/contract.js';
+import {independentDeliveryParticipantSelection} from '../independent_delivery_participant/policy.js';
+import {snapshotIndependentDeliveryFactory} from '../independent_delivery_recovery/factory_policy.js';
 import {independentParticipantSelection} from '../independent_participant/policy.js';
 import {snapshotIndependentRecoveryFactory} from '../independent_recovery/factory_policy.js';
 import {physicalCatalogName} from '../physical_room_catalog/policy.js';
 import {physicalCatalogV2Options,physicalCatalogV2Rows} from '../physical_room_catalog_v2/input_snapshot.js';
-import type {ContinuedRoomIndependentRecoveryPolicy} from './contract.js';
+import type {ContinuedRoomDeliveryRecoveryPolicy,ContinuedRoomIndependentRecoveryPolicy} from './contract.js';
 
 export function snapshotContinuedRoomIndependentPolicies(
  input:readonly ContinuedRoomIndependentRecoveryPolicy[]|undefined,fail:()=>Error,
 ){
- const policies=new Map<string,ContinuedRoomIndependentRecoveryPolicy>();
- for(const policy of physicalCatalogV2Rows(input===undefined?[]:input,value=>{
+ return snapshotPolicies(input,fail,value=>{
   physicalCatalogV2Options(value,['id','expected','session'],['limits']);
   const expected=independentParticipantSelection(value.expected);
   return {id:physicalCatalogName(value.id),expected,session:snapshotIndependentRecoveryFactory(expected,value.session),
    limits:checkRichAssetLimits(value.limits)};
- })){
+ });
+}
+
+export function snapshotContinuedRoomDeliveryPolicies(
+ input:readonly ContinuedRoomDeliveryRecoveryPolicy[]|undefined,fail:()=>Error,
+){
+ return snapshotPolicies(input,fail,value=>{
+  physicalCatalogV2Options(value,['id','expected','session'],['limits']);
+  const expected=independentDeliveryParticipantSelection(value.expected);
+  return {id:physicalCatalogName(value.id),expected,session:snapshotIndependentDeliveryFactory(expected,value.session,true),
+   limits:checkRichAssetLimits(value.limits)};
+ });
+}
+
+function snapshotPolicies<T,R extends {id:string}>(
+ input:readonly T[]|undefined,fail:()=>Error,snapshot:(row:T)=>R,
+){
+ const policies=new Map<string,R>();
+ for(const policy of physicalCatalogV2Rows(input===undefined?[]:input,snapshot)){
   if(policies.has(policy.id))throw fail();
   policies.set(policy.id,policy);
  }
  return policies;
 }
 
-/** A caller-supplied policy must name the exact independent archive. */
-export function matchContinuedRoomIndependentPolicies(
- entries:readonly ContinuedRoomCatalogEntry[],policies:ReadonlyMap<string,ContinuedRoomIndependentRecoveryPolicy>,fail:()=>Error,
+/** A caller-supplied policy must name the exact archive of its selected family. */
+export function matchContinuedRoomPolicies(
+ entries:readonly ContinuedRoomCatalogEntry[],family:'independent-local'|'independent-delivery',
+ policies:ReadonlyMap<string,{readonly expected:unknown}>,fail:()=>Error,
 ){
- const expected=new Map(entries.filter(row=>row.family==='independent-local').map(row=>[row.id,row.selection]));
+ const expected=new Map(entries.filter(row=>row.family===family).map(row=>[row.id,row.selection]));
  for(const [id,policy] of policies)
   if(JSON.stringify(policy.expected)!==JSON.stringify(expected.get(id)))throw fail();
  return expected.size===policies.size;

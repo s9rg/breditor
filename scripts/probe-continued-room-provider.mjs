@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {dirname,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {SharedRichEditor,SharedIndependentHistoryPersistentSession,captureSharedIndependentParticipant,SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore,SharedServerLogGenerationRecoveryHost,readContinuedRoomReconciliation} from '../packages/breditor-collaboration/dist/index.js';
+import {SharedRichEditor,SharedIndependentHistoryPersistentSession,SharedIndependentDeliverySession,captureSharedIndependentParticipant,captureSharedIndependentDeliveryParticipant,SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore,SharedServerLogGenerationRecoveryHost,readContinuedRoomReconciliation} from '../packages/breditor-collaboration/dist/index.js';
 import {RichAssetStore} from '@breditor/experimental-rich-content';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
 import {continuedParticipantFixture} from './probe-continued-room-catalog.mjs';
@@ -19,7 +19,7 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
  const profile=native.SharedRichProfile[method](fixture.configuration);
  const entries=[];
  let archive,store,host,tokenAllowed=true,onToken;
- const counts={authorPrefixes:0,reviewPrefixes:0,localSuffixes:0,missingUploads:0,providerReads:0,rejected:0,foreignForks:0,mixedPending:0,mixedProviderReads:0,mixedForeignForks:0};
+ const counts={authorPrefixes:0,reviewPrefixes:0,localSuffixes:0,missingUploads:0,providerReads:0,rejected:0,foreignForks:0,mixedPending:0,mixedProviderReads:0,mixedForeignForks:0,mixedDeliveryProviderReads:0};
  const room=inventory.room.document;
  const initial={
   catalog:'continued-native-provider',wasm:native,checkAuthority(){},
@@ -192,6 +192,49 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
     counts.mixedForeignForks++;
    }finally{await mixedForkStore?.close();mixedFork?.dispose();forked?.dispose();branch.dispose();}
   }finally{await mixedStore?.close();mixed?.dispose();independentBackup?.dispose();uploads?.close();await independent.close();}
+  const deliveryTransport=fixture.atomic?{writerTransport:'atomic-v2'}:{};
+  const deliveryEndpoint='ws://127.0.0.1:1/ws';
+  const deliveryWriter=editor.writer,deliveryPrincipal=editor.principal,deliveryActor=editor.actor;
+  const relay={endpoint:deliveryEndpoint,room,principal:deliveryPrincipal,...deliveryTransport};
+  const factory={
+   ...independentFactory,
+   binding:{document:{...relay,writer:deliveryWriter},review:{...relay,actor:deliveryActor,documentWriter:deliveryWriter,binding:inventory.review.binding}},
+   retained:{suggestions:null,revisions:null,versions:{...relay,documentWriter:deliveryWriter,binding:inventory.versionsBinding}},
+  };
+  const create=()=>retained.restoreDocument(exact.documentCheckpoint);
+  let delivery,deliveryBackup,deliveryUploads,deliveryCatalog,deliveryStore;
+  try{
+   delivery=await SharedIndependentDeliverySession.open({...factory,database:'provider-delivery-seed',create});
+   const original=delivery.exportRecovery();
+   await delivery.close();delivery=undefined;
+   delivery=await SharedIndependentDeliverySession.restoreRecovery({...factory,database:'provider-delivery-source',create,
+    recovery:{...original,source:{...original.source,reviewCheckpoint:editor.reviewCheckpoint}},writerRecovery:'host-reacquired',
+   });
+   deliveryUploads=await RichAssetStore.restoreBackup('provider-delivery-uploads',retained.backup.uploadBackup(),{uploadState:'preserve'});
+   const captured=await captureSharedIndependentDeliveryParticipant({participant:retained.id,principal:deliveryPrincipal,
+    source:{session:delivery},assets:deliveryUploads,checkAuthority(){}});
+   assert.equal(captured.kind,'ready');deliveryBackup=captured.backup;
+   const rows=[{id:retained.id,family:'independent-delivery',file:deliveryBackup.file(),expected:deliveryBackup.selection()},
+    ...entries.slice(1,7).map(({id,file,expected})=>({id,family:'continued-local',file,expected}))];
+   const options={...openOptions,policies:openOptions.policies.slice(1)};
+   deliveryCatalog=await SharedContinuedRoomCatalog.capture({...initial,...options,participants:rows});
+   deliveryStore=await SharedContinuedRoomCatalogStore.begin({...options,database:'provider-delivery-catalog',archive:deliveryCatalog,expected:deliveryCatalog.selection()});
+   const beforeDelivery=requests.length;
+   const selected={...input,catalog:deliveryStore,expected:deliveryCatalog.selection(),
+    deliveryPolicies:[{id:retained.id,expected:deliveryBackup.selection(),session:factory}],
+   };
+   const report=await readContinuedRoomReconciliation(selected);
+   assert.equal(report.kind,'pending');
+   assert.deepEqual(report.unreconciledParticipants,[]);
+   assert.equal(report.participants.length,7);
+   assert.equal(report.participants.find(row=>row.id===retained.id).prefix.review.status,'matches');
+   assert.ok(!report.coverage.missing.some(row=>(row.kind==='unbound_review'||row.kind==='review')&&row.actor===deliveryActor));
+   assert.equal(report.provider.missing.some(row=>row.kind==='uploadBytes'&&row.contentAsset===unavailableAsset),true);
+   assert.equal(requests.slice(beforeDelivery).filter(row=>row.assets).length,1);
+   counts.mixedDeliveryProviderReads++;
+  }finally{
+   await deliveryStore?.close();deliveryCatalog?.dispose();deliveryBackup?.dispose();deliveryUploads?.close();await delivery?.discardAndClose();
+  }
   onToken=()=>store.close();
   await assert.rejects(readContinuedRoomReconciliation(input),error=>['catalog_closed','archive_authority','control_authority'].includes(error.code));
   counts.rejected++;

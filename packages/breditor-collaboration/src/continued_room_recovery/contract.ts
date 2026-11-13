@@ -3,6 +3,8 @@ import type {ContinuedRoomCatalogSelection} from '../continued_room_catalog/cont
 
 import type {AssetLimits} from '@breditor/experimental-rich-content';
 import type {SharedIndependentParticipantSelection} from '../independent_participant/contract.js';
+import type {SharedIndependentDeliveryParticipantSelection} from '../independent_delivery_participant/contract.js';
+import type {SharedIndependentDeliveryRecoveryFactory} from '../independent_delivery_recovery/contract.js';
 import type {SharedIndependentRecoveryFactory} from '../independent_recovery/contract.js';
 
 export interface ContinuedRoomIndependentRecoveryPolicy {
@@ -10,6 +12,13 @@ export interface ContinuedRoomIndependentRecoveryPolicy {
  readonly expected:SharedIndependentParticipantSelection;
  /** Exact native factory with document and review access both read-only. */
  readonly session:SharedIndependentRecoveryFactory;
+ readonly limits?:Partial<AssetLimits>;
+}
+export interface ContinuedRoomDeliveryRecoveryPolicy {
+ readonly id:string;
+ readonly expected:SharedIndependentDeliveryParticipantSelection;
+ /** Exact native and delivery policy with both editing lanes read-only for recovery. */
+ readonly session:SharedIndependentDeliveryRecoveryFactory;
  readonly limits?:Partial<AssetLimits>;
 }
 export interface ContinuedRoomRecoveryDestination {
@@ -27,6 +36,8 @@ export interface ContinuedRoomRecoveryOptions {
  readonly writerRecovery:'host-reacquired';
  /** One independently supplied policy per independent-local participant. */
  readonly independentPolicies?:readonly ContinuedRoomIndependentRecoveryPolicy[];
+ /** One independently supplied policy per independent-delivery participant. */
+ readonly deliveryPolicies?:readonly ContinuedRoomDeliveryRecoveryPolicy[];
  readonly signal?:AbortSignal;
 }
 export interface ContinuedRoomRecoveryResult {
