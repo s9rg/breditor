@@ -147,7 +147,7 @@ export function continuedRoomRecoveryCatalog(store:SharedContinuedRoomCatalogSto
  return {
   database:held.database,selection:chosen,metadata:metadata.call(held.archive),options:held.options,check,
   async read(extraCheck:()=>void,signal?:AbortSignal){
-   const guard=()=>{check();extraCheck();};
+   const guard=()=>{check();extraCheck();check();};
    const stored=await readPhysicalCatalogDatabase(held.db,guard,expectedManifest,storage);
    const options={...held.options,checkAuthority:guard,...(signal?{signal}:{})};
    const archive=await readArchive.call(SharedContinuedRoomCatalog,stored.record.manifest,stored.files,chosen,options);

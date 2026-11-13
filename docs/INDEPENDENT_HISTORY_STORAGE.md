@@ -280,9 +280,17 @@ or disappeared stops recovery. The coordinator keeps each admitted local
 history and upload store held through final verification and releases them
 before returning the local destination names.
 
-This recovery path requires a catalog of continued local participants.
-A mixed catalog stops before it creates a recovery journal. Mixed recovery,
-outbox reconciliation, and authenticated activation remain separate work.
+The same journal supports continued and independent local participants.
+Pass one `independentPolicies` entry per independent local participant with
+the catalog ID, the independently retained archive selection, and a native
+session factory with document and review access both read-only. The factory
+must select the original or segmented V1 format separately for each lane.
+Recovery verifies the reopened native histories, retained version packets,
+asset references, and whole upload backup against the selected archive.
+Duplicate document writers and review actors, mismatched policies, and
+other archive families stop recovery before journal creation. These
+destinations provide local recovery. Provider reconciliation and authenticated
+activation have separate contracts.
 
 ### Compare a continued catalog with its provider
 

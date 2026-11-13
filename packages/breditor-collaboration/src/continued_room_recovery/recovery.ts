@@ -1,7 +1,11 @@
+import {checkRichAssetLimits,type AssetLimits} from '@breditor/experimental-rich-content';
 import {prepareArchiveIntegrity} from '../archive_integrity/context.js';
 import {archiveFields} from '../archive_integrity/policy.js';
 import {continuedRoomRecoveryCatalog} from '../continued_room_catalog/storage.js';
-import {SharedContinuedRoomCatalog} from '../continued_room_catalog/archive.js';
+import {continuedCatalogIndependentBackup,SharedContinuedRoomCatalog} from '../continued_room_catalog/archive.js';
+import {independentParticipantSelection} from '../independent_participant/policy.js';
+import {independentRecoveryArchive} from '../independent_recovery/archive.js';
+import {snapshotIndependentRecoveryFactory} from '../independent_recovery/factory_policy.js';
 import {independentRecoverySignal} from '../independent_recovery/signal.js';
 import {physicalCatalogDatabase,physicalCatalogName,physicalCatalogSelection} from '../physical_room_catalog/policy.js';
 import {physicalCatalogV2Options,physicalCatalogV2Rows} from '../physical_room_catalog_v2/input_snapshot.js';
@@ -11,6 +15,7 @@ import {existingDatabase} from '../participant_recovery/journal.js';
 import {RecoveryOpeningCustody,recoveryOpeningContext} from '../participant_recovery/opening_custody.js';
 import {frozen} from '../room_participant_inventory/policy.js';
 import {recoverContinuedRoomSource,recoverContinuedRoomUploads,recoveryFailure as fail,type ContinuedDestinationHold} from './destination.js';
+import {recoverIndependentRoomSource} from './independent_destination.js';
 import {accessRecoveryJournal,openRecoveryJournal} from './journal.js';
 import type {ContinuedRoomRecoveryOptions,ContinuedRoomRecoveryResult} from './contract.js';
 
@@ -18,8 +23,16 @@ const {metadata,participantRecords,participantUploads,dispose}=SharedContinuedRo
 const {close:release}=RecoveryLease.prototype;
 
 async function restore(input:ContinuedRoomRecoveryOptions,begin:boolean):Promise<ContinuedRoomRecoveryResult>{
- physicalCatalogV2Options(input,['database','catalog','expected','destinations','checkAuthority','writerRecovery'],['signal']);
+ physicalCatalogV2Options(input,['database','catalog','expected','destinations','checkAuthority','writerRecovery'],['signal','independentPolicies']);
  const {database:provided,catalog,checkAuthority,writerRecovery}=input;
+ const independentPolicies=physicalCatalogV2Rows(input.independentPolicies===undefined?[]:input.independentPolicies,value=>{
+  physicalCatalogV2Options(value,['id','expected','session'],['limits']);
+  const expected=independentParticipantSelection(value.expected);
+  return {id:physicalCatalogName(value.id),expected,session:snapshotIndependentRecoveryFactory(expected,value.session),
+   limits:checkRichAssetLimits(value.limits)};
+ });
+ const independent=new Map(independentPolicies.map(policy=>[policy.id,policy]));
+ if(independent.size!==independentPolicies.length)throw fail('policy');
  if(writerRecovery!=='host-reacquired')throw fail('policy');
  const database=physicalCatalogDatabase(provided),expected=physicalCatalogSelection(input.expected);
  const destinations=physicalCatalogV2Rows(input.destinations,value=>{
@@ -56,7 +69,7 @@ async function restore(input:ContinuedRoomRecoveryOptions,begin:boolean):Promise
   policy:()=>fail('policy'),busy:()=>fail('busy'),storage:()=>fail('storage'),
  });
  const checkAuthorityCurrent=()=>{stable();authority();stable();};
- const guard=()=>{held.check();checkAuthorityCurrent();};
+ const guard=()=>{checkAuthorityCurrent();held.check();stable();};
  try{
   // All coordinators use a common namespace lock order across journals and destinations.
   for(const name of namespaces.slice().sort()){
@@ -66,9 +79,23 @@ async function restore(input:ContinuedRoomRecoveryOptions,begin:boolean):Promise
   guard();
   archive=await held.read(checkAuthorityCurrent,signal);
   guard();
-  const entries=metadata.call(archive).participants;
-  if(entries.some(row=>row.family!=='continued-local'))throw fail('mixed_pending');
+  const selected=metadata.call(archive);
+  const entries=selected.participants.filter(row=>row.family==='continued-local'||row.family==='independent-local');
+  if(entries.length!==selected.participants.length)throw fail('mixed_pending');
   if(entries.length!==destinations.length||entries.some((row,index)=>row.id!==destinations[index]!.id))throw fail('policy');
+  const writers=new Set<string>(),actors=new Set<string>();
+  let independentCount=0;
+  for(const entry of entries){
+   const {native,review}=entry.selection.identity.source;
+   if(native.room!==selected.current.server.identity.native.source.document||
+      writers.has(native.writer)||actors.has(review.actor))throw fail('policy');
+   writers.add(native.writer);actors.add(review.actor);
+   if(entry.family==='independent-local'){
+    independentCount++;
+    if(JSON.stringify(independent.get(entry.id)?.expected)!==JSON.stringify(entry.selection))throw fail('policy');
+   }
+  }
+  if(independentCount!==independent.size)throw fail('policy');
   const policies=new Map(held.options.policies.map(row=>[row.id,row]));
   const plan={text:JSON.stringify({catalog:expected,destinations}),steps:entries.length*2};
   if(begin){
@@ -85,14 +112,26 @@ async function restore(input:ContinuedRoomRecoveryOptions,begin:boolean):Promise
   let cursor=await accessRecoveryJournal(journal,plan,guard,signal);
   const context=prepareArchiveIntegrity({wasm:held.options.wasm,checkAuthority:guard,...(signal?{signal}:{})});
   for(const [index,destination] of destinations.entries()){
-   const recovery=participantRecords.call(archive,destination.id).live;
-   const file=participantUploads.call(archive,destination.id);
-   const {native,documentHistory,reviewHistory,review}=recovery.identity;
-   const policy=policies.get(destination.id)!;
+   const entry=entries[index]!;
+   let source:(completed:boolean)=>Promise<ContinuedDestinationHold>;
+   let file:Blob,limits:Partial<AssetLimits>|undefined;
+   if(entry.family==='independent-local'){
+    const backup=continuedCatalogIndependentBackup(archive,destination.id),policy=independent.get(destination.id)!;
+    source=completed=>recoverIndependentRoomSource(destination.source,policy.session,backup,completed,guard,signal);
+    file=independentRecoveryArchive.uploadBackup.call(backup);
+    limits=policy.limits;
+   }else{
+    const recovery=participantRecords.call(archive,destination.id).live;
+    const {native,documentHistory,reviewHistory,review}=recovery.identity;
+    const policy=policies.get(destination.id)!;
+    source=completed=>recoverContinuedRoomSource({database:destination.source,native,documentHistory,reviewHistory,
+     review:{...review,access:'read_only'},readOnly:true,restoreDocument:policy.restoreDocument},recovery,completed,guard,signal);
+    file=participantUploads.call(archive,destination.id);
+    limits=policy.limits;
+   }
    for(const [offset,work] of [
-    (completed:boolean)=>recoverContinuedRoomSource({database:destination.source,native,documentHistory,reviewHistory,
-     review:{...review,access:'read_only'},readOnly:true,restoreDocument:policy.restoreDocument},recovery,completed,guard,signal),
-    (completed:boolean)=>recoverContinuedRoomUploads(destination.uploads,file,completed,context,policy.limits?{limits:policy.limits}:{},signal),
+    source,
+    (completed:boolean)=>recoverContinuedRoomUploads(destination.uploads,file,completed,context,limits?{limits}:{},signal),
    ].entries()){
     const step=index*2+offset;
     guard();

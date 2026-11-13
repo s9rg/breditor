@@ -20,8 +20,18 @@ export function checkIndependentUploadCustody(owners:IndependentRecoveryOwners<S
 /** Callback-free final release after all actual native/policy/source checks. */
 export function releaseIndependentUploadCustody(owners:IndependentRecoveryOwners<SharedSelectionPolicy>):void{checkIndependentUploadCustody(owners);custodyRelease.call(owners.uploadCustody!);}
 export function checkIndependentOwner<P extends SharedSelectionPolicy>(p:PreparedIndependentRecovery<P>,owners:IndependentRecoveryOwners<P>):void{
- p.guard();if(!owners.session)throw fail('independent_recovery_missing');const port=independentHistoryNative(owners.session);port.checkManaged();if(port.companion||native.view.call(port.core).readOnly!==true)throw fail('independent_recovery_policy');
- const source=sourceRead.capture({session:owners.session});try{archive.verifySource.call(p.backup,source);p.guard();sourceRead.check(source);port.check();}finally{sourceRead.dispose(source);}
+ p.guard();if(!owners.session)throw fail('independent_recovery_missing');
+ checkRecoveredIndependentSource(owners.session,p.backup,p.guard);
+}
+export function checkRecoveredIndependentSource<P extends SharedSelectionPolicy>(
+ session:Session<P>,backup:PreparedIndependentRecovery['backup'],guard:()=>void,
+):void{
+ const port=independentHistoryNative(session);
+ port.checkManaged();
+ if(port.companion||native.view.call(port.core).readOnly!==true)throw fail('independent_recovery_policy');
+ const source=sourceRead.capture({session});
+ try{archive.verifySource.call(backup,source);guard();sourceRead.check(source);port.checkManaged();}
+ finally{sourceRead.dispose(source);}
 }
 export async function restoreIndependentSource<P extends SharedSelectionPolicy>(p:PreparedIndependentRecovery<P>,owners:IndependentRecoveryOwners<P>,complete:boolean):Promise<void>{
  p.guard();const status=await inspectIndependentDestination(p);p.guard();if(complete&&status!=='exact')throw fail('independent_recovery_missing');const selected=withIndependentBootstrapPolicy(p.factory,p.guard,p.options.signal);

@@ -65,7 +65,7 @@ if(mode==='installed'){
   build:{target:'es2022',write:false,minify:false,lib:{entry,formats:['es'],fileName:'continued-room-catalog'}}});
  const modules=(Array.isArray(output)?output:[output]).flatMap(result=>result.output)
   .filter(item=>item.type==='chunk').flatMap(item=>Object.keys(item.modules));
- for(const path of ['continued_room_catalog/archive.js','continued_room_catalog/storage.js','continued_participant/inventory.js','continued_room_recovery/recovery.js'])
+ for(const path of ['continued_room_catalog/archive.js','continued_room_catalog/storage.js','continued_participant/inventory.js','continued_room_recovery/recovery.js','continued_room_recovery/independent_destination.js'])
   assert.ok(modules.some(module=>module.includes('/node_modules/@breditor/collaboration/dist/'+path)),path);
  assert.ok(!modules.some(module=>module.includes(join(root,'packages'))||module.includes('fake-indexeddb')));
  cwd=consumer;runtime=join(consumer,'node_modules/@breditor/collaboration/dist/runtime');
