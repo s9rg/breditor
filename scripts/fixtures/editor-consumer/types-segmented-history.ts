@@ -21,10 +21,17 @@ new SharedRichEditor(raw,{segmentedHistory:"automatic"});
 const original:Promise<Session<"original">>=SharedSegmentedPersistentSession.open(options);
 void [session,restored,supported,owner,committed,original];
 
-import type {SharedContinueHistoryOptions,SharedContinuedHistoryRecovery} from "@breditor/collaboration";
+import type {SharedContinueHistoryOptions,SharedContinuedHistoryBackup,SharedContinuedHistoryRecovery,SharedRestoreContinuedHistoryOptions} from "@breditor/collaboration";
 declare const continuation:SharedContinueHistoryOptions<"document-v1">, continued:SharedContinuedHistoryRecovery;
 const migration:Promise<Session<"document-v1">>=SharedSegmentedPersistentSession.continueHistory(continuation);
 const reopened:Promise<Session<"document-v1">>=SharedSegmentedPersistentSession.openContinued(continuation);
 // @ts-expect-error A migration requires the exact V1 predecessor.
 SharedSegmentedPersistentSession.continueHistory({...continuation,expected:continued});
-void [migration,reopened];
+declare const continuedRecovery:SharedRestoreContinuedHistoryOptions<"document-v1">;
+const copied:Promise<Session<"document-v1">>=SharedSegmentedPersistentSession.restoreContinuedRecovery(continuedRecovery);
+const backup:Promise<SharedContinuedHistoryBackup>=(await reopened).exportContinuedBackup();
+// @ts-expect-error Recovery needs both native cuts.
+SharedSegmentedPersistentSession.restoreContinuedRecovery({...continuedRecovery,backup:continued});
+// @ts-expect-error The host must explicitly reacquire the writer before restoring.
+SharedSegmentedPersistentSession.restoreContinuedRecovery({...continuedRecovery,writerRecovery:true});
+void [migration,reopened,copied,backup];

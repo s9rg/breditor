@@ -22,7 +22,7 @@ import {ReviewWriterLease} from "./review_writer_lease.js";
 import {fenceOpeningDatabase} from "./opening_database.js";
 import {openSegmentedDatabase,readSegmentedCut,writeSegmentedCut} from "./segmented_database.js";
 import {canonicalSegmentedIdentity,checkSegmentedCapture,makeGenerationCut,previewSegmentedHead,readContinuedHead,readSegmentedHead} from "./segmented_head.js";
-import {openContinuedHistory, type SharedContinuedHistoryOptions, type SharedContinueHistoryOptions} from "./continue_document_history.js";
+import {openContinuedHistory,readContinuedBackup,type SharedContinuedHistoryOptions,type SharedContinueHistoryOptions,type SharedRestoreContinuedHistoryOptions} from "./continue_document_history.js";
 import {segmentedCompanion,withSegmentedCompanion,type SegmentedSessionCompanion} from "./segmented_driver.js";
 import {checkSegmentedCheckpoint,object} from "./segmented_checkpoint.js";
 import {requireBackupRecovery} from "../backups/identity.js";
@@ -131,8 +131,12 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
  static continueHistory<Q extends SharedSelectionPolicy>(input:SharedContinueHistoryOptions<Q>){
   return this.#continued(input,input);
  }
- static #continued<Q extends SharedSelectionPolicy>(input:SharedContinuedHistoryOptions<Q>,migration?:SharedContinueHistoryOptions<Q>){
-  return openContinuedHistory(input,migration,work=>new SharedSegmentedPersistentSession(constructionKey,work.db,work.lease,work.reviewLease,work.core,work.options,work.identity,work.head,work.versions,true,undefined,{checkpoint:work.checkpoint,predecessor:work.predecessor}));
+ /** Admit both native cuts under fresh policy before creating a dedicated store. */
+ static restoreContinuedRecovery<Q extends SharedSelectionPolicy>(input:SharedRestoreContinuedHistoryOptions<Q>){
+  return this.#continued(input,undefined,input);
+ }
+ static #continued<Q extends SharedSelectionPolicy>(input:SharedContinuedHistoryOptions<Q>,migration?:SharedContinueHistoryOptions<Q>,recovery?:SharedRestoreContinuedHistoryOptions<Q>){
+  return openContinuedHistory(input,migration,work=>new SharedSegmentedPersistentSession(constructionKey,work.db,work.lease,work.reviewLease,work.core,work.options,work.identity,work.head,work.versions,true,undefined,{checkpoint:work.checkpoint,predecessor:work.predecessor}),recovery);
  }
  /** Native admission into an absent dedicated destination, after host reacquisition/fencing. Never merge or overwrite. */
  static async restoreRecovery<Q extends SharedSelectionPolicy>(input:SharedSegmentedRecoveryOptions<Q>):Promise<SharedSegmentedPersistentSession<Q>>{
@@ -200,6 +204,21 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
   const capture=this.#capture();
   this.#checkCapture(capture);
   return Object.freeze({format:"breditor/shared-generation-recovery",formatVersion:2,checkpoint:capture.checkpoint,reviewCheckpoint:capture.review?.checkpoint??null,versions:Object.freeze(capture.versions)});
+ }
+ /** Read an exact acknowledged pair. Call flush() first to include recent work. */
+ exportContinuedBackup(){
+  const head=this.#savedHead,predecessor=this.#continuedPredecessor,epoch=this.#recordReadEpoch;
+  const check=()=>{
+   this.#live();this.#boundCore();
+   if(!head||!predecessor||this.#retiring||this.#storageChanged||this.#pending||this.#running||
+      this.#attempt||this.#failure||head!==this.#savedHead||epoch!==this.#recordReadEpoch){
+    throw new SharedEditorError("continued_history_backup","Select a settled, unchanged continued session");
+   }
+  };
+  return Promise.resolve().then(()=>{
+   check();
+   return readContinuedBackup(this.#db,[this.#identity.room,this.#identity.writer],head!,predecessor!,check);
+  });
  }
  save():void{this.#live();this.#recordReadEpoch=Object.freeze({});if(this.#storageChanged)throw new SharedEditorError("segmented_versionchange","The generation database changed");const capture=this.#capture();this.#checkCapture(capture);if(same(this.#saved,capture)&&!this.#attempt&&!this.#pending&&!this.#running&&!this.#failure)return;this.#pending=capture;this.#failure=undefined;this.#notify();this.#start();}
  #start():void{if(this.#running||this.#closed||this.#failure||!this.#attempt&&!this.#pending)return;this.#running=this.#drain().catch(error=>this.#failed(error)).finally(()=>{this.#running=undefined;if(!this.#failure)this.#start();});}

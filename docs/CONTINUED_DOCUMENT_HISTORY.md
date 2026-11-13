@@ -37,6 +37,24 @@ later edits and `exportContinuedRecovery` to capture V2 data. Both open paths
 use fresh host policy. An ordinary V1 open refuses a V2 head. The archived V1
 head and referenced files remain readable to the migration verifier.
 
-This action serves local segmented sessions. Relay and room catalog admission,
+## Backup and restore
+
+Call `flush()` then `exportContinuedBackup()` on a live continued session.
+The backup contains the complete committed V2 cut and the retained V1
+predecessor, including the original review checkpoint and named versions for
+each cut. Asset blobs and provider receipts belong to the enclosing room backup.
+The export refuses while a write is pending or the session changes
+during the read.
+
+Use `restoreContinuedRecovery` with both cuts, fresh host editing policy, and
+`writerRecovery: "host-reacquired"` after fencing the old writer. The SDK
+acquires both local leases, checks the exact sealed V1 document prefix, replays
+the two native owners, and checks comment continuity and retained version
+packets. It creates a dedicated, previously absent database and commits the
+schema, files and both heads in one upgrade transaction. If restore is
+interrupted after commit, reopen that destination with `openContinued` and
+compare its exported backup to the selected pair.
+
+Relay and room catalog admission,
 independent comment and server-log continuation, and physical browser
 durability still require qualification.

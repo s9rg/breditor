@@ -5,6 +5,8 @@ import {disposeOwnedCore} from "../owned_core_lifetime.js";
 import {freeUnclaimedSharedRustOwner,initializeUnclaimedSharedRustOwner} from "../raw_owner_lifetime.js";
 import type {SharedRustProfile} from "../profile.js";
 import type {SharedRustOwner,SharedSelectionPolicy} from "../types.js";
+import {createContinuedDatabase} from "./create_continued_database.js";
+import {requireBackupRecovery} from "../backups/identity.js";
 import {existingDatabase} from "../participant_recovery/journal.js";
 import {SharedWriterLease} from "./writer_lease.js";
 import {ReviewWriterLease} from "./review_writer_lease.js";
@@ -12,8 +14,8 @@ import {fenceOpeningDatabase} from "./opening_database.js";
 import {readGenerationCut,writeSegmentedCut} from "./segmented_database.js";
 import {canonicalSegmentedIdentity,makeGenerationCut,readContinuedHead,readSegmentedHead} from "./segmented_head.js";
 import {checkSegmentedCheckpoint,object} from "./segmented_checkpoint.js";
-import {MAX_SEGMENTED_HEAD_BYTES,type GenerationHead,type SegmentedSessionIdentity,type SegmentedStoredCut} from "./segmented_contract.js";
-import type {SharedSegmentedRecovery,SharedSegmentedSessionOptions} from "./segmented_session.js";
+import {MAX_SEGMENTED_HEAD_BYTES,type GenerationHead,type SegmentedReview,type SegmentedSessionIdentity,type SegmentedStoredCut} from "./segmented_contract.js";
+import type {SharedContinuedHistoryRecovery,SharedSegmentedRecovery,SharedSegmentedSessionOptions} from "./segmented_session.js";
 import {admitPairedVersions} from "./review_record_admission.js";
 
 export type SharedContinuedHistoryOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy>=
@@ -22,6 +24,16 @@ export type SharedContinuedHistoryOptions<P extends SharedSelectionPolicy=Shared
  };
 export type SharedContinueHistoryOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy>=
  SharedContinuedHistoryOptions<P>&{expected:SharedSegmentedRecovery;nextGeneration:string};
+
+/** Both exact native cuts are required to reconstruct the migrated store. */
+export interface SharedContinuedHistoryBackup {
+ readonly format:"breditor/shared-continued-history-backup";
+ readonly formatVersion:1;
+ readonly current:SharedContinuedHistoryRecovery;
+ readonly predecessor:SharedSegmentedRecovery;
+}
+export type SharedRestoreContinuedHistoryOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy>=
+ SharedContinuedHistoryOptions<P>&{backup:SharedContinuedHistoryBackup;writerRecovery:"host-reacquired"};
 
 const fail=(message:string)=>new SharedEditorError("continued_history_storage",message);
 function readMigrationHead(input:string):GenerationHead{
@@ -46,6 +58,66 @@ function checkPredecessor(current:SegmentedStoredCut<GenerationHead>,prior:Segme
   throw fail("The continued files do not contain the exact V1 cut");
  }
 }
+/** A cut's review identity is authenticated by host options at open. */
+function reviewRecord(checkpoint:string|null,policy:SharedContinuedHistoryOptions["review"]):SegmentedReview|null{
+ if((checkpoint!==null)!==!!policy)throw fail("The review checkpoint differs from the selected account");
+ return policy?{actor:policy.actor,principal:policy.principal,checkpoint:checkpoint!}:null;
+}
+function snapshotRecovery<V extends 1|2>(input:SharedSegmentedRecovery|SharedContinuedHistoryRecovery,version:V){
+ object(input,"checkpoint,format,formatVersion,reviewCheckpoint,versions");
+ const {checkpoint,reviewCheckpoint,versions}=input;
+ if(input.format!=="breditor/shared-generation-recovery"||input.formatVersion!==version||
+    typeof checkpoint!=="string"||reviewCheckpoint!==null&&typeof reviewCheckpoint!=="string"||
+    !Array.isArray(versions)||versions.length>32)throw fail("Select the complete native recovery cut");
+ const packets=[...versions];
+ if(packets.some(packet=>typeof packet!=="string"))throw fail("Choose exact retained version packets");
+ return Object.freeze({format:"breditor/shared-generation-recovery" as const,formatVersion:version,checkpoint,reviewCheckpoint,versions:Object.freeze(packets)});
+}
+function makeBackup(current:SharedContinuedHistoryRecovery,predecessor:SharedSegmentedRecovery):SharedContinuedHistoryBackup{
+ return Object.freeze({format:"breditor/shared-continued-history-backup",formatVersion:1,current,predecessor});
+}
+function recoveryRecord<V extends 1|2>(cut:SegmentedStoredCut<GenerationHead>,version:V){
+ return Object.freeze({format:"breditor/shared-generation-recovery" as const,formatVersion:version,
+  checkpoint:cut.checkpoint,reviewCheckpoint:cut.record.review?.checkpoint??null,versions:Object.freeze([...cut.record.versions])});
+}
+export async function readContinuedBackup(
+ db:IDBDatabase,key:readonly [string,string],head:string,predecessor:string,check:()=>void,
+):Promise<SharedContinuedHistoryBackup>{
+ check();
+ const current=await readGenerationCut(db,key,readContinuedHead);
+ check();
+ const prior=await readGenerationCut(db,key,readSegmentedHead,true);
+ check();
+ if(!current||current.head!==head||!prior||prior.head!==predecessor)throw fail("The saved history changed while capturing the backup");
+ checkPredecessor(current,prior);
+ return makeBackup(recoveryRecord(current,2),recoveryRecord(prior,1));
+}
+function restoreCore<P extends SharedSelectionPolicy>(
+ raw:SharedRustOwner,options:SharedContinuedHistoryOptions<P>,identity:SegmentedSessionIdentity,
+ checkpoint:string,review:SegmentedReview|null,versions:readonly string[],continued:boolean,readOnly:boolean,
+):SharedRichEditor<P>{
+ let core:SharedRichEditor<P>|undefined;
+ try{
+  initializeSharedReadOnly(raw,readOnly);
+  const editor={...options.editor,...(identity.searchHistory?{searchHistory:identity.searchHistory}:{}),
+   ...(identity.reviewedHistory?{reviewedHistory:identity.reviewedHistory}:{}),
+   segmentedHistory:continued?"continued-v2" as const:"segmented-v1" as const};
+  core=(identity.selectionEditing==="document-v1"?createSharedDocumentEditor(raw,editor):
+   new SharedRichEditor(raw,editor)) as unknown as SharedRichEditor<P>;
+  if(options.review)core.enableReview({...options.review,...(!continued?{access:"read_only" as const}:{})},review!.checkpoint);
+  if(continued)core.sealContinuedHistoryPolicies(identity.history,identity.rangeEditing);
+  else core.sealSegmentedPolicies(identity.history,identity.rangeEditing);
+  admitPairedVersions(core,versions);
+  if(core.richLanguageVersion()!==identity.richLanguage||core.checkpointJson()!==checkpoint||
+     review&&core.reviewCheckpoint()!==review.checkpoint){
+   throw fail("Native restore differs from the complete selected cut");
+  }
+  return core;
+ }catch(error){
+  try{if(core)disposeOwnedCore(core);}finally{freeUnclaimedSharedRustOwner(raw);}
+  throw error;
+ }
+}
 function convert(profile:SharedRustProfile,room:string,checkpoint:string,next:string):string{
  const raw=profile.restore_segmented!(room,checkpoint);
  try{
@@ -65,6 +137,7 @@ interface Opened<P extends SharedSelectionPolicy> {
 
 export async function openContinuedHistory<P extends SharedSelectionPolicy,T>(
  input:SharedContinuedHistoryOptions<P>,migration:SharedContinueHistoryOptions<P>|undefined,take:(work:Opened<P>)=>T,
+ recovery?:SharedRestoreContinuedHistoryOptions<P>,
 ):Promise<T>{
  const options={...input,...(input.review?{review:{...input.review}}:{}),...(input.editor?{editor:{...input.editor}}:{})};
  const {database,profile}=options,next=migration?.nextGeneration;
@@ -79,30 +152,66 @@ export async function openContinuedHistory<P extends SharedSelectionPolicy,T>(
  }
  let expected:SharedSegmentedRecovery|undefined;
  if(migration){
-  const recovery=migration.expected;
-  object(recovery,"checkpoint,format,formatVersion,reviewCheckpoint,versions");
-  if(recovery.format!=="breditor/shared-generation-recovery"||recovery.formatVersion!==1||
-     typeof next!=="string"||!next||options.readOnly||typeof profile.restore_segmented!=="function"||
-     recovery.reviewCheckpoint!==null&&typeof recovery.reviewCheckpoint!=="string"||
-     !Array.isArray(recovery.versions)||recovery.versions.length>32){
+  if(typeof next!=="string"||!next||options.readOnly||typeof profile.restore_segmented!=="function"){
    throw fail("Choose the complete V1 recovery cut and next generation");
   }
-  expected={...recovery,versions:[...recovery.versions]};
-  if(expected.versions.some(packet=>typeof packet!=="string"))throw fail("Choose exact retained version packets");
+  expected=snapshotRecovery(migration.expected,1);
   checkSegmentedCheckpoint(expected.checkpoint,identity);
+ }
+ let backup:SharedContinuedHistoryBackup|undefined;
+ if(recovery){
+  requireBackupRecovery(recovery.writerRecovery);
+  const selected=recovery.backup;
+  object(selected,"current,format,formatVersion,predecessor");
+  if(selected.format!=="breditor/shared-continued-history-backup"||selected.formatVersion!==1||
+     typeof profile.restore_segmented!=="function")throw fail("Choose both exact native recovery cuts");
+  backup=makeBackup(snapshotRecovery(selected.current,2),snapshotRecovery(selected.predecessor,1));
+  checkSegmentedCheckpoint(backup.current.checkpoint,identity,2);
+  checkSegmentedCheckpoint(backup.predecessor.checkpoint,identity);
  }
  const factory=globalThis.indexedDB,locks=globalThis.navigator?.locks;
  const lease=await SharedWriterLease.acquire(identity.room,identity.writer);
- let reviewLease:ReviewWriterLease|undefined,db:IDBDatabase|undefined,core:SharedRichEditor<P>|undefined,raw:SharedRustOwner|undefined;
+ let reviewLease:ReviewWriterLease|undefined,db:IDBDatabase|undefined,core:SharedRichEditor<P>|undefined;
  try{
   if(options.review)reviewLease=await ReviewWriterLease.acquire(identity.room,options.review.actor);
   const context=()=>{if(globalThis.indexedDB!==factory||globalThis.navigator?.locks!==locks)throw fail("The storage context changed");};
   context();
+  const key=[identity.room,identity.writer] as const;
+  if(backup){
+   const check=()=>{context();lease.assertLive();reviewLease?.assertLive();};
+   const {current,predecessor}=backup;
+   const review=reviewRecord(current.reviewCheckpoint,options.review);
+   const previousReview=reviewRecord(predecessor.reviewCheckpoint,options.review);
+   if(predecessor.versions.some((packet,index)=>packet!==current.versions[index])){
+    throw fail("The continued version catalog does not contain the exact V1 packets");
+   }
+   const previous=await makeGenerationCut(predecessor.checkpoint,identity,previousReview,predecessor.versions,1);
+   check();
+   const cut=await makeGenerationCut(current.checkpoint,identity,review,current.versions,2);
+   check();
+   checkPredecessor(
+    {...cut,checkpoint:current.checkpoint,record:readContinuedHead(cut.head)},
+    {...previous,checkpoint:predecessor.checkpoint,record:readSegmentedHead(previous.head)},
+   );
+   const origin=restoreCore(profile.restore_segmented!(identity.room,predecessor.checkpoint),options,
+    identity,predecessor.checkpoint,previousReview,predecessor.versions,false,true);
+   try{
+    check();
+    core=restoreCore(profile.restore_continued_history(identity.room,current.checkpoint),options,
+     identity,current.checkpoint,review,current.versions,true,options.readOnly);
+    core.verifySegmentedRecoveryOrigin(origin);
+   }finally{disposeOwnedCore(origin);}
+   check();
+   db=await createContinuedDatabase(factory,database,key,cut,previous.head,check);
+   check();
+   return take({db,lease,reviewLease,core,options,identity,head:cut.head,checkpoint:current.checkpoint,
+    versions:current.versions,predecessor:previous.head});
+  }
   db=await existingDatabase(database);
   if(!db||db.version!==1||[...db.objectStoreNames].sort().join(",")!=="generation_files,generation_heads"){
    throw fail("Open an existing generation store");
   }
-  const opening=fenceOpeningDatabase(db,"session_open_versionchange"),key=[identity.room,identity.writer] as const;
+  const opening=fenceOpeningDatabase(db,"session_open_versionchange");
   const check=()=>{context();opening.assertCurrent();lease.assertLive();reviewLease?.assertLive();};
   check();
   const saved=await readGenerationCut(db,key,expected?readMigrationHead:readContinuedHead);
@@ -132,19 +241,8 @@ export async function openContinuedHistory<P extends SharedSelectionPolicy,T>(
    head=newCut.head;
    if(prior&&head!==saved.head)throw fail("The continued head has already advanced or differs from this request");
   }
-  raw=opening.admit(profile.restore_continued_history(identity.room,checkpoint));
-  initializeSharedReadOnly(raw,options.readOnly);
-  const editor={...options.editor,...(identity.searchHistory?{searchHistory:identity.searchHistory}:{}),
-   ...(identity.reviewedHistory?{reviewedHistory:identity.reviewedHistory}:{}),segmentedHistory:"continued-v2" as const};
-  core=(identity.selectionEditing==="document-v1"?createSharedDocumentEditor(raw,editor):
-   new SharedRichEditor(raw,editor)) as unknown as SharedRichEditor<P>;
-  if(options.review)core.enableReview(options.review,saved.record.review!.checkpoint);
-  core.sealContinuedHistoryPolicies(identity.history,identity.rangeEditing);
-  admitPairedVersions(core,saved.record.versions);
-  if(core.richLanguageVersion()!==identity.richLanguage||core.checkpointJson()!==checkpoint||
-     options.review&&core.reviewCheckpoint()!==saved.record.review!.checkpoint){
-   throw fail("Native restore differs from the complete selected cut");
-  }
+  const raw=opening.admit(profile.restore_continued_history(identity.room,checkpoint));
+  core=restoreCore(raw,options,identity,checkpoint,saved.record.review,saved.record.versions,true,options.readOnly);
   check();
   const predecessor=prior?.head??saved.head;
   if(newCut&&!prior){
@@ -158,10 +256,8 @@ export async function openContinuedHistory<P extends SharedSelectionPolicy,T>(
   return take({db,lease,reviewLease,core,options,identity,head,checkpoint,versions:saved.record.versions,predecessor});
  }catch(error){
   try{if(core)disposeOwnedCore(core);}finally{
-   try{if(raw)freeUnclaimedSharedRustOwner(raw);}finally{
-    db?.close();
-    try{await reviewLease?.close();}finally{await lease.close();}
-   }
+   db?.close();
+   try{await reviewLease?.close();}finally{await lease.close();}
   }
   throw error;
  }

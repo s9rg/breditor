@@ -38,9 +38,9 @@ const legacy={...options,initialGenerations:{root:'root',active:'v1-active'},
  create:()=>profile.create(document,'101'),restoreSegmented:checkpoint=>profile.restore_segmented('room',checkpoint)};
 const key=['room','101'];
 const insert=(session,text)=>session.core.dispatch({commands:[{kind:'insert_text',data:{block:'p',offset:0,text}}]});
-async function rows(){
+async function rows(database=options.database){
  const db=await new Promise((resolve,reject)=>{
-  const open=indexedDB.open(options.database);open.onsuccess=()=>resolve(open.result);open.onerror=()=>reject(open.error);
+  const open=indexedDB.open(database);open.onsuccess=()=>resolve(open.result);open.onerror=()=>reject(open.error);
  });
  try{return await new Promise((resolve,reject)=>{
   const tx=db.transaction(['generation_files','generation_heads'],'readonly');
@@ -127,6 +127,10 @@ try{
  assert.equal(insert(session,'new offline group '),true);
  await session.sealGeneration('v2-next');
  const current=session.exportContinuedRecovery(),offline=session.core.writerGroupsV2(acknowledged.through);
+ const unsettled=session.exportContinuedBackup();
+ session.save();
+ await assert.rejects(unsettled,/settled, unchanged/);
+ await session.flush();
  assert.ok(offline.groups.length>=2);
  await session.close();session=undefined;
  await assert.rejects(Session.continueHistory(request),/already advanced or differs/);
@@ -135,9 +139,95 @@ try{
  assert.deepEqual(session.core.writerGroupsV2(acknowledged.through),offline);
  assert.throws(()=>insert(session,'forbidden'));
  assert.equal((await rows()).prior,before.active);
+ const backup=await session.exportContinuedBackup();
+ assert.deepEqual(backup.current,current);
+ assert.deepEqual(backup.predecessor,expected);
+ assert.equal(Object.isFrozen(backup),true);
+ assert.equal(Object.isFrozen(backup.current.versions),true);
+ const restore={...options,database:'restored-history',backup,writerRecovery:'host-reacquired'};
+ await assert.rejects(Session.restoreContinuedRecovery(restore),error=>error.code==='writer_in_use');
+ await session.close();session=undefined;lockCheck();
+ await assert.rejects(Session.restoreContinuedRecovery({...restore,writerRecovery:undefined}),error=>error.code==='backup_writer_recovery');
+ await assert.rejects(Session.restoreContinuedRecovery({...restore,backup:{...backup,current:{...backup.current,versions:[]}}}),/exact V1 packets/);
+ await assert.rejects(Session.restoreContinuedRecovery({...restore,backup:{...backup,predecessor:{...expected,checkpoint:current.checkpoint}}}));
+ // A valid current comment checkpoint from a different same-actor branch is
+ // insufficient even when the entire document and every version byte match.
+ const fork=await Session.open({...legacy,database:'foreign-review'});
+ let forkReview;
+ try{
+  const anchor=fork.core.captureReviewAnchor({kind:'document'});
+  assert.equal(fork.core.dispatchReview({kind:'create_thread',data:{anchorJson:anchor,body:'Unrelated discussion'}}).kind,'committed');
+  forkReview=fork.exportRecovery().reviewCheckpoint;
+ }finally{await fork.close();}
+ await assert.rejects(Session.restoreContinuedRecovery({...restore,backup:{...backup,current:{...backup.current,reviewCheckpoint:forkReview}}}));
+ const exists=async name=>(await indexedDB.databases()).some(db=>db.name===name);
+ assert.equal(await exists(restore.database),false);
+ let abortedRestore=0;
+ IDBObjectStore.prototype.add=function(value,recordKey){
+  const result=add.call(this,value,recordKey);
+  if(this.transaction.db.name===restore.database&&this.name==='generation_heads'&&recordKey?.at(-1)==='continued-from'){
+   abortedRestore++;this.transaction.abort();
+  }
+  return result;
+ };
+ try{await assert.rejects(Session.restoreContinuedRecovery(restore));}
+ finally{IDBObjectStore.prototype.add=add;}
+ assert.equal(abortedRestore,1);
+ assert.equal(await exists(restore.database),false);
+ lockCheck();
+ const factory=indexedDB,open=factory.open;
+ let unacknowledgedRestore=0;
+ factory.open=function(name,...args){
+  const request=open.call(this,name,...args);
+  if(name===restore.database)request.addEventListener('success',()=>{
+   unacknowledgedRestore++;
+   Object.defineProperty(globalThis,'indexedDB',{value:new IDBFactory(),configurable:true});
+  },{once:true});
+  return request;
+ };
+ try{await assert.rejects(Session.restoreContinuedRecovery(restore),/storage context changed/);}
+ finally{factory.open=open;Object.defineProperty(globalThis,'indexedDB',{value:factory,configurable:true});}
+ assert.equal(unacknowledgedRestore,1);
+ lockCheck();
+ assert.equal(await exists(restore.database),true);
+ await assert.rejects(Session.restoreContinuedRecovery(restore),error=>error.code==='continued_history_destination_exists');
+ session=await Session.openContinued({...options,database:restore.database});
+ assert.deepEqual(await session.exportContinuedBackup(),backup);
+ assert.deepEqual(await rows(restore.database),await rows());
+ assert.deepEqual(session.core.writerGroupsV2(acknowledged.through),offline);
+ assert.equal(session.versionPacket(version.id),expected.versions[0]);
+ await session.close();session=undefined;
+ await assert.rejects(Session.restoreContinuedRecovery(restore),error=>error.code==='continued_history_destination_exists');
+ await assert.rejects(Session.restoreContinuedRecovery({...restore,database:options.database}),error=>error.code==='continued_history_destination_exists');
+ session=await Session.openContinued({...options,database:restore.database});
+ assert.deepEqual(await session.exportContinuedBackup(),backup);
+ assert.equal(session.core.undo(),true);
+ assert.equal(session.core.redo(),true);
+ assert.equal(session.core.undoReview().kind,'committed');
+ assert.equal(session.core.redoReview().kind,'committed');
+ await session.flush();
+ const after=await session.exportContinuedBackup();
+ assert.deepEqual(after.predecessor,expected);
+ assert.notEqual(after.current.checkpoint,backup.current.checkpoint);
+ await session.close();session=undefined;lockCheck();
+ const documentOnly={...options,database:'document-only',review:undefined};
+ session=await Session.open({...legacy,...documentOnly});
+ assert.equal(insert(session,'Document-only offline edit '),true);
+ const originalDocumentOnly=session.exportRecovery();
+ await session.close();session=undefined;
+ session=await Session.continueHistory({...documentOnly,expected:originalDocumentOnly,nextGeneration:'continued-document-only'});
+ const documentOnlyBackup=await session.exportContinuedBackup();
+ assert.equal(documentOnlyBackup.current.reviewCheckpoint,null);
+ assert.equal(documentOnlyBackup.predecessor.reviewCheckpoint,null);
+ await session.close();session=undefined;
+ session=await Session.restoreContinuedRecovery({...documentOnly,database:'restored-document-only',
+  backup:documentOnlyBackup,writerRecovery:'host-reacquired',readOnly:true});
+ assert.deepEqual(await session.exportContinuedBackup(),documentOnlyBackup);
+ assert.throws(()=>insert(session,'Read-only restore'));
  await session.close();session=undefined;lockCheck();
  console.log(JSON.stringify({passed:true,abortedMigration:aborted,lostAcknowledgement:lost,
-  exactV1Predecessor:true,documentAndCommentRedo:true,versionsPreserved:true,offlineGroups:offline.groups.length}));
+  exactV1Predecessor:true,documentAndCommentRedo:true,versionsPreserved:true,offlineGroups:offline.groups.length,
+  abortedRestore,unacknowledgedRestore,backupRestored:true,documentOnlyRestore:true,foreignReviewRefused:true,existingDestinationRefused:true}));
 }finally{
  IDBObjectStore.prototype.add=add;
  IDBDatabase.prototype.transaction=transaction;
