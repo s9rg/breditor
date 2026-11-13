@@ -328,18 +328,30 @@ impl Room {
         if !truncate_tail && recovery.truncated_bytes != 0 {
             return Err(Error::Contract("operational log has an incomplete tail"));
         }
-        let mut room = Self::replay_records(log, records)?;
-        if truncate_tail {
-            room.log.finish_recovery(recovery)?;
-        } else {
-            room.log.finish_complete_recovery(recovery)?;
-        }
-        Ok((room, recovery))
-    }
-
-    fn replay_records(log: Log, records: Vec<Record>) -> Result<Self> {
         let mut records = records.into_iter();
         let seed = records.next().ok_or(Error::Contract("log has no complete seed"))?;
+        let mut room = Self::replay_seed(log, seed)?;
+        for record in records {
+            room.replay(record)?;
+        }
+        room.abandon_suggestion_revision_preparation();
+        room.finish_replay(recovery, truncate_tail)
+    }
+
+    fn finish_replay(
+        mut self,
+        recovery: Recovery,
+        truncate_tail: bool,
+    ) -> Result<(Self, Recovery)> {
+        if truncate_tail {
+            self.log.finish_recovery(recovery)?;
+        } else {
+            self.log.finish_complete_recovery(recovery)?;
+        }
+        Ok((self, recovery))
+    }
+
+    fn replay_seed(log: Log, seed: Record) -> Result<Self> {
         let (configuration, room, owner, journal, profile_seed, atomic_transport_v2) = match seed
             .event
         {
@@ -391,7 +403,7 @@ impl Room {
         if replica.writer() != "1" || replica.undo_count() != 0 || replica.redo_count() != 0 {
             return Err(Error::Contract("relay seed writer or history"));
         }
-        let mut result = Self {
+        Ok(Self {
             atomic_transport_v2,
             profile_seed,
             log,
@@ -409,12 +421,7 @@ impl Room {
             suggestions: None,
             seed_writer_through,
             native_history_boundaries: BTreeMap::new(),
-        };
-        for record in records {
-            result.replay(record)?;
-        }
-        result.abandon_suggestion_revision_preparation();
-        Ok(result)
+        })
     }
 
     fn replay(&mut self, record: Record) -> Result<()> {

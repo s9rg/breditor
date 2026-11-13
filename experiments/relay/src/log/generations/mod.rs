@@ -24,6 +24,7 @@ mod publish_ready;
 mod receipt;
 #[cfg(feature = "server")]
 mod repair_tail;
+mod replay;
 #[cfg(feature = "server")]
 pub(crate) use repair_tail::NativeTailRepairInterruption;
 #[cfg(all(feature = "server", test))]

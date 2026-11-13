@@ -358,10 +358,10 @@ fn complete_native_replay_must_refuse_a_real_pending_rotation_without_finishing_
     drop(room);
     drop(assets);
     let directory = crate::log::generations::GenerationDirectory::open(&files.room())?;
-    let (log, records, recovery) = crate::log::Log::open_owned_generations(directory)?;
+    let (log, recovery) = crate::log::Log::open_owned_generations(directory)?;
     assert_eq!(recovery.truncated_bytes, 0);
     let before = snapshot(&files.room())?;
-    assert!(crate::Room::replay_loaded(log, records, recovery, false).is_err());
+    assert!(crate::Room::replay_generation(log)?.finish_replay(recovery, false).is_err());
     assert_eq!(snapshot(&files.room())?, before);
     // Repair is separately explicit, not a side effect of provenance admission.
     let (mut repaired, _) = crate::Room::open_log_generations(&files.room())?;

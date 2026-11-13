@@ -11,6 +11,7 @@ use sha2::{Digest, Sha256};
 use std::{fs, path::PathBuf};
 type TestResult<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 mod packed_wal;
+mod replay;
 pub(in crate::room) mod staging_capacity;
 
 pub(in crate::room) struct Files(PathBuf);
@@ -180,7 +181,7 @@ fn snapshot(files: &Files) -> TestResult<std::collections::BTreeMap<String, Vec<
     Ok(output)
 }
 fn torn_header(files: &Files) -> TestResult {
-    let (raw, _, _) = crate::log::Log::open_generations(&files.room())?;
+    let (raw, _) = crate::log::Log::open_generations(&files.room())?;
     raw.append_incomplete_header_for_test()?;
     Ok(())
 }

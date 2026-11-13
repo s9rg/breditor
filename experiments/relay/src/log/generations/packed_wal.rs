@@ -40,6 +40,7 @@ pub struct ServerSealedWalPacking {
     pub packed: bool,
 }
 
+#[derive(Clone, Copy)]
 enum Encoding {
     Raw,
     Gzip,
@@ -56,6 +57,17 @@ pub(super) struct HeldWal {
 }
 
 impl HeldWal {
+    pub fn clone_handle(&self) -> Result<Self> {
+        Ok(Self {
+            file: self.file.try_clone()?,
+            generation: self.generation.clone(),
+            bytes: self.bytes,
+            physical_bytes: self.physical_bytes,
+            identity: self.identity,
+            stamp: self.stamp,
+            encoding: self.encoding,
+        })
+    }
     pub fn raw(file: File, generation: String, bytes: u64) -> Result<Self> {
         Self::new(file, generation, bytes, bytes, Encoding::Raw)
     }

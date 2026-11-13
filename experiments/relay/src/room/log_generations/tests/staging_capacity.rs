@@ -155,10 +155,10 @@ fn full_pending_rotation_recovers_using_only_its_own_continuation_alias() -> Tes
 }
 
 fn interrupt_pending(files: &super::Files, point: RotationPoint) -> TestResult {
-    let (mut log, records, recovery) = crate::log::Log::open_generations(&files.room())?;
+    let (mut log, recovery) = crate::log::Log::open_generations(&files.room())?;
     log.interrupt_rotation_for_test(point)?;
     assert!(matches!(
-        Room::replay_loaded(log, records, recovery, true),
+        Room::replay_generation(log)?.finish_replay(recovery, true),
         Err(Error::Contract("test interruption after durable physical prefix"))
     ));
     Ok(())

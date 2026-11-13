@@ -9,11 +9,11 @@ use super::{
 };
 use crate::{
     Error, Recovery, Result,
-    log::{Log, Record, decoder, frame},
+    log::{Log, frame, scan},
 };
 use std::{
     collections::BTreeSet,
-    io::{Seek, SeekFrom},
+    io::{BufReader, Seek, SeekFrom},
     path::Path,
 };
 
@@ -66,74 +66,57 @@ fn history(directory: &Directory, selected: [u8; 32]) -> Result<Vec<HeldManifest
 fn closed(
     directory: &Directory,
     current: &Manifest,
-    records: &mut Vec<Record>,
     identities: &mut BTreeSet<FileIdentity>,
 ) -> Result<Vec<HeldWal>> {
     let mut closed = Vec::new();
-    for (item, family) in current.closed_files() {
+    for (item, _) in current.closed_files() {
         let file = held_file::open(&directory.path.join(format::wal_name(&item.generation)))?;
         let wal = HeldWal::open(file, item)?;
-        let parsed = wal.read(item.sha256, |mut reader| {
-            decoder::read_records_from(&mut reader, item.bytes, family, item.first, item.previous)
-        })?;
-        if parsed.recovery.truncated_bytes != 0
-            || parsed.records.len() as u64 != item.records
-            || parsed.previous != item.terminal
-        {
-            return Err(Error::Contract("closed log cut differs"));
-        }
         if !identities.insert(wal.identity) {
             return Err(Error::Contract("physical log inode alias"));
         }
         closed.push(wal);
-        records.extend(parsed.records);
     }
     Ok(closed)
 }
 impl Log {
-    pub(crate) fn open_generations(path: &Path) -> Result<(Self, Vec<Record>, Recovery)> {
+    pub(crate) fn open_generations(path: &Path) -> Result<(Self, Recovery)> {
         let directory = Directory::open(path)?;
         Self::open_owned_generations(directory)
     }
-    pub(crate) fn open_owned_generations(
-        directory: Directory,
-    ) -> Result<(Self, Vec<Record>, Recovery)> {
+    pub(crate) fn open_owned_generations(directory: Directory) -> Result<(Self, Recovery)> {
         Self::open_generation_directory(directory, ".ready.json")
     }
     /// Provenance admission is read-only: pending rotation and torn tails require a separate
     /// explicit recovery decision. Never let Room replay finish/repair them incidentally.
     pub(crate) fn open_complete_owned_generations(
         directory: Directory,
-    ) -> Result<(Self, Vec<Record>, Recovery)> {
-        let (log, records, recovery) = Self::open_generation_prefix(directory)?;
+    ) -> Result<(Self, Recovery)> {
+        let (log, recovery) = Self::open_generation_prefix(directory)?;
         if recovery.truncated_bytes != 0 {
             return Err(Error::Contract("operational generation log has an incomplete tail"));
         }
-        Ok((log, records, recovery))
+        Ok((log, recovery))
     }
 
     /// Inspect a prefix without completing a pending rotation or changing the active WAL.
-    pub(crate) fn open_generation_prefix(
-        directory: Directory,
-    ) -> Result<(Self, Vec<Record>, Recovery)> {
+    pub(crate) fn open_generation_prefix(directory: Directory) -> Result<(Self, Recovery)> {
         directory.absent(".rotation.json")?;
-        let (log, records, recovery) = Self::open_owned_generations(directory)?;
+        let (log, recovery) = Self::open_owned_generations(directory)?;
         log.generations
             .as_ref()
             .ok_or(Error::Contract("operational generation owner absent"))?
             .directory
             .absent(".rotation.json")?;
-        Ok((log, records, recovery))
+        Ok((log, recovery))
     }
-    pub(crate) fn open_prepared_generations(
-        directory: Directory,
-    ) -> Result<(Self, Vec<Record>, Recovery)> {
+    pub(crate) fn open_prepared_generations(directory: Directory) -> Result<(Self, Recovery)> {
         Self::open_generation_directory(directory, ".prepared.json")
     }
     fn open_generation_directory(
         directory: Directory,
         ready_name: &'static str,
-    ) -> Result<(Self, Vec<Record>, Recovery)> {
+    ) -> Result<(Self, Recovery)> {
         let head = held_file::open(&directory.path.join(".head.json"))?;
         let head_bytes = held_file::read(&head, format::MAX_CONTROL)?;
         let selected: Head = format::decode(&head_bytes)?;
@@ -145,9 +128,8 @@ impl Log {
             ready_name,
         )?;
         let current = history.last().ok_or(Error::Contract("missing physical log head"))?;
-        let mut records = Vec::new();
         let mut identities = BTreeSet::new();
-        let closed = closed(&directory, &current.value, &mut records, &mut identities)?;
+        let closed = closed(&directory, &current.value, &mut identities)?;
         let active = &current.value.active;
         let mut file = held_file::open(&directory.path.join(format::wal_name(&active.generation)))?;
         let active_stamp = FileStamp::of(&file)?;
@@ -161,8 +143,8 @@ impl Log {
         {
             return Err(Error::Contract("physical log byte budget"));
         }
-        let parsed = decoder::read_records_from(
-            &mut file,
+        let parsed = scan::verify_records_from(
+            &mut BufReader::new(&file),
             length,
             frame::Family::Continuation,
             active.first,
@@ -170,14 +152,13 @@ impl Log {
         )?;
         let next = active
             .first
-            .checked_add(parsed.records.len() as u64)
+            .checked_add(parsed.records)
             .ok_or(Error::Contract("log global sequence"))?;
         let active_identity = FileIdentity::of(&file)?;
         active_stamp.guard(&file)?;
         if !identities.insert(active_identity) {
             return Err(Error::Contract("physical log inode alias"));
         }
-        records.extend(parsed.records);
         file.seek(SeekFrom::Start(parsed.bytes))?;
         let head_identity = FileIdentity::of(&head)?;
         let log = Self {
@@ -215,6 +196,6 @@ impl Log {
             .ok_or(Error::Contract("physical owner absent"))?
             .verify_inventory()?;
         log.ready()?;
-        Ok((log, records, parsed.recovery))
+        Ok((log, parsed.recovery))
     }
 }

@@ -40,13 +40,13 @@ fn read_operating_log(directory: GenerationDirectory, mode: OpenMode) -> Result<
     match mode {
         #[cfg(feature = "server")]
         OpenMode::InspectPendingRotation | OpenMode::InspectPendingRotationAndRaster => {
-            let (log, records, recovery) = Log::open_owned_generations(directory)?;
+            let (log, recovery) = Log::open_owned_generations(directory)?;
             if recovery.truncated_bytes != 0 {
                 return Err(Error::Contract(
                     "pending rotation inspection requires a complete active log",
                 ));
             }
-            Room::replay_records(log, records)
+            Room::replay_generation(log)
         }
         OpenMode::InspectNativePrefix => read_log_prefix(directory),
         OpenMode::Resume | OpenMode::Committed => read_complete_log(directory),
@@ -58,16 +58,17 @@ fn read_operating_log(directory: GenerationDirectory, mode: OpenMode) -> Result<
 }
 
 fn read_complete_log(directory: GenerationDirectory) -> Result<Room> {
-    let (log, records, recovery) = Log::open_complete_owned_generations(directory)?;
-    Ok(Room::replay_loaded(log, records, recovery, false)?.0)
+    let (log, recovery) = Log::open_complete_owned_generations(directory)?;
+    Ok(Room::replay_generation(log)?.finish_replay(recovery, false)?.0)
 }
 
 fn read_log_prefix(directory: GenerationDirectory) -> Result<Room> {
-    let (log, records, recovery) = Log::open_generation_prefix(directory)?;
+    let (log, recovery) = Log::open_generation_prefix(directory)?;
+    let room = Room::replay_generation(log)?;
     if recovery.truncated_bytes == 0 {
-        Ok(Room::replay_loaded(log, records, recovery, false)?.0)
+        Ok(room.finish_replay(recovery, false)?.0)
     } else {
-        Room::replay_records(log, records)
+        Ok(room)
     }
 }
 

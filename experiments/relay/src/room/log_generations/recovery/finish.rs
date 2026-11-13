@@ -19,7 +19,7 @@ impl ServerLogGenerationRecovery {
         self.interrupt(super::interruption::RestorePoint::FilesRestored)?;
         inner.guard_witness(&component.witness)?;
         let prepared = files::exists(&inner.path.join(".prepared.json"))?;
-        let (log, records, recovery) = if prepared {
+        let (log, recovery) = if prepared {
             Log::open_prepared_generations(inner)?
         } else {
             Log::open_owned_generations(inner)?
@@ -27,7 +27,7 @@ impl ServerLogGenerationRecovery {
         if recovery.truncated_bytes != 0 {
             return Err(Error::Contract("generation archive cannot repair a native tail"));
         }
-        let (mut room, _) = Room::replay_loaded(log, records, recovery, false)?;
+        let (mut room, _) = Room::replay_generation(log)?.finish_replay(recovery, false)?;
         let actual = room.log.generation_descriptor()?;
         let expected = &self.marker.identity;
         let records = actual
