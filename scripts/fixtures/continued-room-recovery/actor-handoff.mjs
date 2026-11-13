@@ -90,3 +90,62 @@ export async function verifyContinuedDeliveryActorHandoff(runtime,Session,sessio
   await cohort?.close();
  }
 }
+
+/** Exercise the same native reservation and metadata loans used by activation. */
+export async function verifyContinuedDeliveryHeldMetadata(runtime,api,session,relayOptions,reviewOptions,pending){
+ const load=name=>import(pathToFileURL(resolve(runtime,'..',name+'.js')).href);
+ const [{reserveNativeRecovery},{createNativeRelayDelivery,withNativeRelayDelivery},{prepareCompoundMetadata},{createNativeVersionDelivery},
+  {continuedDeliveryNativeRetention},{nativeDeliverySource},{createNativeSuggestionDelivery},{createNativeRevisionDelivery}]=await Promise.all([
+  'core','relay/native_delivery','metadata/compound_preparation','versions/native_delivery',
+  'operation_read/native_retention','operation_read/delivery_retention','suggestions/native_delivery','suggestion_revisions/native_delivery',
+ ].map(load));
+ const source=continuedDeliveryNativeRetention(session),delivery=nativeDeliverySource(source),witness=source.capture();
+ const before=session.exportDeliveryRecovery();
+ assert.deepEqual(witness.value,before);
+ assert.equal(delivery.core,session.core);
+ const native=reserveNativeRecovery([delivery.core]);
+ let context,versions,document,review,suggestions,revisions;
+ const token=relayOptions.getToken;
+ try{
+  context=createNativeRelayDelivery({native,session,core:delivery.core,reviewCeiling:'read_only',checkAuthority(){}});
+  assert.throws(()=>session.core.redo(),error=>error.code==='native_recovery_busy');
+  await assert.rejects(Promise.resolve().then(()=>session.openVersionCatalog({getToken:token})),
+   error=>error.code==='version_recovery_in_use');
+  for(const name of ['openSuggestionQueue','openSuggestionRevisions','openVersionCatalog']){
+   Object.defineProperty(session,name,{configurable:true,value(){assert.fail('Public metadata opener must not run under the hold');}});
+  }
+  let selected;
+  try{selected=await prepareCompoundMetadata(session,context);}
+  finally{for(const name of ['openSuggestionQueue','openSuggestionRevisions','openVersionCatalog'])delete session[name];}
+  assert.ok(selected.versions);
+  assert.equal(!!selected.suggestions,!!before.retained.suggestions);
+  assert.equal(!!selected.revisions,!!before.retained.revisions);
+  assert.deepEqual(session.exportDeliveryRecovery(),before);
+  witness.check();
+  await assert.rejects(selected.versions.connect(),error=>error.code==='version_recovery_in_use');
+  versions=createNativeVersionDelivery(selected.versions,context,{getToken:token});
+  await versions.connect();
+  await versions.flushShared();
+  const delivered=session.exportDeliveryRecovery();
+  assert.ok(delivered.retained.versions.catalog.entries.some(row=>row.version.id===pending.version.id));
+  assert.deepEqual(delivered.retained.suggestions,before.retained.suggestions);
+  assert.deepEqual(delivered.retained.revisions,before.retained.revisions);
+  assert.throws(()=>witness.check(),error=>error.code==='native_retention_source');
+  document=api.createSharedContinuedRelaySync(session,withNativeRelayDelivery(relayOptions,context));
+  review=api.createSharedContinuedReviewRelaySync(session,withNativeRelayDelivery({...reviewOptions,flushDocument:()=>document.flush()},context));
+  await document.connect();await document.flush();
+  await review.connect();await review.flush();
+  assert.throws(()=>session.core.redoReview(),error=>error.code==='native_recovery_busy');
+  suggestions=createNativeSuggestionDelivery(selected.suggestions,document,context);
+  revisions=createNativeRevisionDelivery(selected.revisions,suggestions);
+  await revisions.connect();await revisions.synchronize();
+  assert.ok(revisions.status(pending.revision.id).receipt);
+  assert.equal(selected.suggestions.status(pending.predecessor.id).decision.decision,'reject');
+  await suggestions.connect();await suggestions.flushShared();
+  assert.equal(selected.suggestions.status(pending.proposal.id).decision.decision,'reject');
+  await delivery.flush();
+ }finally{
+  try{await context?.close();}finally{native.close();witness.dispose();}
+
+ }
+}

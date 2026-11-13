@@ -8,6 +8,7 @@ import type {RecoverySession} from '../participant_recovery/components.js';
 import type {SharedAssetReferenceCaptureOptions} from '../asset_references_capture.js';
 import type {SharedGenerationSourceSelection} from '../generation_source/contract.js';
 import type {SharedIndependentHistoryPersistentSession} from '../independent_history/session.js';
+import type {SharedContinuedPairSession} from '../continued_pair/session.js';
 import type {SharedIndependentDeliverySession} from '../independent_delivery/session.js';
 import type {NativeRetentionSource} from './native_retention.js';
 type P=SharedSelectionPolicy;
@@ -15,7 +16,8 @@ export type RetainedDeliveryParent=
  |Readonly<{kind:'original';session:RecoverySession<P>;packets:Readonly<Pick<SharedAssetReferenceCaptureOptions<P>,'suggestions'|'revisions'|'versions'>>}>
  |Readonly<{kind:'generation';source:SharedGenerationSourceSelection<P>}>
  |Readonly<{kind:'independent-local';session:SharedIndependentHistoryPersistentSession<P>}>
- |Readonly<{kind:'independent-delivery';session:SharedIndependentDeliverySession<P>}>;
+ |Readonly<{kind:'independent-delivery';session:SharedIndependentDeliverySession<P>}>
+ |Readonly<{kind:'continued-delivery';session:SharedContinuedPairSession<P>}>;
 export interface RetainedDeliverySource {readonly core:SharedRichEditor<P>;readonly parent:RetainedDeliveryParent;check():void;save():void;flush():Promise<void>}
 const sources=new WeakMap<NativeRetentionSource,RetainedDeliverySource>();
 /** Trusted actual-parent constructor composition only. Neither this registry

@@ -1,3 +1,4 @@
+import type {SharedContinuedPairSession} from '../continued_pair/session.js';
 import type {SharedSegmentedRelaySession} from '../segmented_relay/session.js';
 import type {SharedIndependentDeliverySession} from '../independent_delivery/session.js';
 /** Exact source-owned metadata preparation. No record is staged or rewritten,
@@ -13,7 +14,7 @@ export function registerCompoundMetadataSource<P extends SharedSelectionPolicy>(
 /** Context closing waits for the actual preparation promise, including late
  * lock callbacks. Successfully opened children remain owned by the source. A
  * refused later child never discards an earlier child or its original records. */
-export function prepareCompoundMetadata<P extends SharedSelectionPolicy=SharedSelectionPolicy>(owner:SharedSegmentedRelaySession<P>|SharedIndependentDeliverySession<P>,delivery:NativeRelayDelivery):Promise<PreparedCompoundMetadata<P>>{
+export function prepareCompoundMetadata<P extends SharedSelectionPolicy=SharedSelectionPolicy>(owner:SharedSegmentedRelaySession<P>|SharedIndependentDeliverySession<P>|SharedContinuedPairSession<P>,delivery:NativeRelayDelivery):Promise<PreparedCompoundMetadata<P>>{
  const source=sources.get(owner);if(!source)return Promise.reject(fail());let port:NativeRelayDeliveryPort;
  try{port=nativeRelayDeliveryForSource(delivery,owner,source.core);if(busy.has(owner))throw new SharedRelayError('metadata_preparation_busy');}catch(error){return Promise.reject(error);}
  busy.add(owner);let stopped=false,pending:Promise<PreparedCompoundMetadata>|undefined;

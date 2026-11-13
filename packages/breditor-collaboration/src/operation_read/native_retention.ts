@@ -1,3 +1,5 @@
+import {continuedDeliveryPort} from '../continued_delivery/binding.js';
+import {SharedContinuedPairSession} from '../continued_pair/session.js';
 import {retainNativeDeliverySource} from './delivery_retention.js';
 import {checkRetainedVersionCatalog} from '../versions/retained_source.js';
 import {checkManagedSource,managedSourceCore} from '../managed_custody.js';
@@ -62,4 +64,18 @@ export function independentNativeRetention(session:object,delivery:boolean,owner
  }
  const port=independentHistoryNative(session),core=port.core,native=source(core,()=>{const stamp=port.stamp(),value=port.read(),managed=port.checkManaged,readStamp=port.stamp;return{value,check(){managed();if(port.core!==core||readStamp()!==stamp)throw fail();},dispose(){}};},owner);
  retainNativeDeliverySource(native,{kind:'independent-local',session:session as SharedIndependentHistoryPersistentSession<SharedSelectionPolicy>},()=>{owner();const current=independentHistoryNative(session);if(current.core!==core)throw fail();current.checkManaged();});return native;
+}
+
+const readContinuedDelivery=SharedContinuedPairSession.prototype.exportDeliveryRecovery;
+export function continuedDeliveryNativeRetention<P extends SharedSelectionPolicy>(
+ session:SharedContinuedPairSession<P>,owner:()=>void=()=>{},
+):NativeRetentionSource{
+ const port=continuedDeliveryPort(session),core=port.core;
+ const check=()=>{owner();checkManagedSource(session,core);port.check();};
+ const native=source(core,()=>{
+  const value=readContinuedDelivery.call(session);
+  return {value,check(){if(!sameNativeRetentionValue(value,readContinuedDelivery.call(session)))throw fail();},dispose(){}};
+ },check);
+ retainNativeDeliverySource(native,{kind:'continued-delivery',session:session as unknown as SharedContinuedPairSession<SharedSelectionPolicy>},check);
+ return native;
 }

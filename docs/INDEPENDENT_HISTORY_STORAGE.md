@@ -245,8 +245,15 @@ close and lend them to the selected staging and final factories. A failed
 restore returns its loans to the same holder. The final handoff verifies
 the actual replacement owner and its native document and comment
 checkpoints before promoting both writers. The restored source can then
-reconnect under current relay credentials. The room activation coordinator
-still needs to include this archive family in its complete target plan.
+reconnect under current relay credentials.
+
+The recovery reservation can also lend the existing suggestion, revision,
+and version stores to the authenticated relay adapters. Opening those
+stores preserves their committed packet bytes. A successful delivery
+updates the same paired head and invalidates any earlier witness of the
+complete source. Ordinary edits and ordinary adapter starts remain blocked
+while the reservation is held. The room activation coordinator still needs
+to include this archive family in its complete target plan.
 
 ### Archive a continued participant
 

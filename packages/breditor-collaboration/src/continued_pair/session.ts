@@ -8,6 +8,10 @@ import {SharedSuggestionQueue} from '../suggestions/queue.js';
 import {SharedSuggestionRevisions} from '../suggestion_revisions/outbox.js';
 import {SharedDocumentVersions} from '../versions/catalog.js';
 import type {SharedIndependentRevisionsOpenOptions,SharedIndependentVersionsOpenOptions} from '../independent_delivery/session.js';
+import {registerCompoundMetadataSource,type PreparedCompoundMetadata} from '../metadata/compound_preparation.js';
+import {withHeldMetadataOpen} from '../metadata/held_open.js';
+import {dormantMetadataTransport,unconfiguredMetadataToken} from '../metadata/dormant_transport.js';
+import type {NativeRelayDeliveryPort} from '../relay/native_delivery.js';
 import {waitRetiredRelayWork} from '../relay/work_custody.js';
 import {closed} from '../segmented_relay/validation.js';
 import type {SegmentedRetainedKind,SegmentedRetainedRecords} from '../segmented_relay/retained_contract.js';
@@ -161,6 +165,7 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
     progress:()=>structuredClone(delivery.durable().relay.review!),
     persist:persistReview,
    }});
+   registerCompoundMetadataSource(this,core,port=>this.#prepareMetadata(port));
    registerManagedSource(this,core,check);
    registerNativeActorSource(this,'continued-delivery',{document:documentLease,review:reviewLease});
    registerContinuedDelivery(this,{
@@ -357,31 +362,56 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
  #metadataStorage(){
   return Object.freeze({core:this.#core,save:()=>savePair.call(this),flush:()=>this.#flushDelivery()});
  }
- openSuggestionQueue():Promise<SharedSuggestionQueue<P>>{
+ openSuggestionQueue():Promise<SharedSuggestionQueue<P>>{return this.#openQueue();}
+ #openQueue(held?:NativeRelayDeliveryPort):Promise<SharedSuggestionQueue<P>>{
   const binding=this.#requireDelivery().retainedBinding.suggestions;
   if(!binding)throw fail('continued_retained_unselected','Choose the suggestion queue in the delivery binding');
-  return this.#opening(()=>SharedSuggestionQueue.open(withIndependentRetainedPort({
+  return this.#opening(()=>SharedSuggestionQueue.open(this.#heldMetadata(withIndependentRetainedPort({
    database:'atomic-continued-delivery',identity:binding.identity,storage:this.#metadataStorage(),
    ...(binding.ownedHistory?{ownedHistory:binding.ownedHistory}:{}),
-  },this.#retainedPort('suggestions'))),value=>{this.#queue=value;});
+  },this.#retainedPort('suggestions')),held)),value=>{this.#queue=value;});
  }
- openSuggestionRevisions(input:SharedIndependentRevisionsOpenOptions<P>):Promise<SharedSuggestionRevisions<P>>{
+ openSuggestionRevisions(input:SharedIndependentRevisionsOpenOptions<P>):Promise<SharedSuggestionRevisions<P>>{return this.#openRevisions(input);}
+ #openRevisions(input:SharedIndependentRevisionsOpenOptions<P>,held?:NativeRelayDeliveryPort):Promise<SharedSuggestionRevisions<P>>{
   if(['storage','database','binding','queue'].some(key=>key in input)||input.autoStart!==undefined&&input.autoStart!==false)
    throw fail('continued_delivery_policy','Select the transport separately and start it explicitly');
   const binding=this.#requireDelivery().retainedBinding.revisions,queue=this.#queue;
   if(!binding||!queue)throw fail('continued_retained_queue_required','Open the selected suggestion queue first');
-  return this.#opening(()=>SharedSuggestionRevisions.open(withIndependentRetainedPort({
+  return this.#opening(()=>SharedSuggestionRevisions.open(this.#heldMetadata(withIndependentRetainedPort({
    ...input,database:'atomic-continued-delivery',binding:binding.binding,queue,storage:this.#metadataStorage(),autoStart:false,
-  },this.#retainedPort('revisions'))),value=>{this.#revisions=value;});
+  },this.#retainedPort('revisions')),held)),value=>{this.#revisions=value;});
  }
- openVersionCatalog(input:SharedIndependentVersionsOpenOptions<P>):Promise<SharedDocumentVersions<P>>{
+ openVersionCatalog(input:SharedIndependentVersionsOpenOptions<P>):Promise<SharedDocumentVersions<P>>{return this.#openVersions(input);}
+ #openVersions(input:SharedIndependentVersionsOpenOptions<P>,held?:NativeRelayDeliveryPort):Promise<SharedDocumentVersions<P>>{
   if(['storage','database','identity'].some(key=>key in input)||input.autoConnect!==undefined&&input.autoConnect!==false)
    throw fail('continued_delivery_policy','Select the version token separately and connect explicitly');
   const binding=this.#requireDelivery().retainedBinding.versions;
   if(!binding)throw fail('continued_retained_unselected','Choose the version catalog in the delivery binding');
-  return this.#opening(()=>SharedDocumentVersions.open(withIndependentRetainedPort({
+  return this.#opening(()=>SharedDocumentVersions.open(this.#heldMetadata(withIndependentRetainedPort({
    ...input,database:'atomic-continued-delivery',identity:binding,storage:this.#metadataStorage(),autoConnect:false,
-  },this.#retainedPort('versions'))),value=>{this.#catalog=value;});
+  },this.#retainedPort('versions')),held)),value=>{this.#catalog=value;});
+ }
+
+ #heldMetadata<T extends object>(options:T,held?:NativeRelayDeliveryPort):T{
+  return held?withHeldMetadataOpen(options,held):options;
+ }
+ async #prepareMetadata(held:NativeRelayDeliveryPort):Promise<PreparedCompoundMetadata<P>>{
+  held.check();
+  const binding=this.#requireDelivery().retainedBinding;
+  if(binding.suggestions&&!this.#queue)await this.#openQueue(held);
+  held.check();
+  if(binding.revisions&&!this.#revisions){
+   const transport=dormantMetadataTransport(this.#core,binding.suggestions!.identity,binding.revisions.binding,()=>this.#checkDelivery());
+   await this.#openRevisions({transport,autoStart:false},held);
+  }
+  held.check();
+  if(binding.versions&&!this.#catalog)await this.#openVersions({getToken:unconfiguredMetadataToken,autoConnect:false},held);
+  held.check();
+  if(this.#catalog)readCatalogRecovery.call(this.#catalog);
+  if(this.#queue)readQueueRecovery.call(this.#queue);
+  if(this.#revisions)readRevisionsRecovery.call(this.#revisions);
+  held.check();
+  return {versions:this.#catalog??null,suggestions:this.#queue??null,revisions:this.#revisions??null};
  }
 
  /** Hold the paired save queue while reading its exact durable and in-memory cuts. */
@@ -672,3 +702,7 @@ const readPairMetadata=ContinuedPairRecordRead.prototype.metadata;
 const disposePairRecords=ContinuedPairRecordRead.prototype.dispose;
 
 const readDeliveryRecords=SharedContinuedPairSession.prototype.readDeliveryRecords;
+
+const readCatalogRecovery=SharedDocumentVersions.prototype.exportRecovery;
+const readQueueRecovery=SharedSuggestionQueue.prototype.exportRecovery;
+const readRevisionsRecovery=SharedSuggestionRevisions.prototype.exportRecovery;
