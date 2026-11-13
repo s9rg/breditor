@@ -56,7 +56,7 @@ if(mode==='installed'){
  execFileSync(npm,['install','--offline','--ignore-scripts','--no-audit','--no-fund'],{cwd:consumer,stdio:'inherit'});
  const registryArtifacts=verifySearchConsumerRegistry(producer,JSON.parse(readFileSync(join(consumer,'package-lock.json'),'utf8')));
  for(const name of names)assert.ok(realpathSync(join(consumer,'node_modules',name)).startsWith(realpathSync(consumer)+'/node_modules/'));
- copyConsumerFixtures(root,consumer,['continued-room-recovery/operation-archives.mjs','continued-room-recovery/original.mjs',
+ copyConsumerFixtures(root,consumer,['continued-room-recovery/operation-archives.mjs','continued-room-recovery/original.mjs','continued-room-recovery/continued-delivery.mjs',
   'room-participant-inventory/environment.mjs','review-assets/pixels.mjs','independent-delivery/session.mjs','owned-core-cleanup/session.mjs']);
  const from="'../packages/breditor-collaboration/dist/index.js'",to="'@breditor/collaboration'";
  const original=readFileSync(sourceProbe,'utf8'),installed=original.replace(from,to);
@@ -90,6 +90,10 @@ for(const result of reports){
  assert.equal(result.fixtureSha256,sha(readFileSync(result.path)));
  assert.equal(result.mixedRecoveryResumes,4);
  assert.equal(result.deliveryRecoveryResumes,2);
+ assert.equal(result.continuedDeliveryCatalogRestores,1);
+ assert.equal(result.continuedDeliveryInterruptedResumes,1);
+ assert.equal(result.continuedDeliveryDivergedRefusals,1);
+ assert.equal(result.continuedDeliveryPendingPackets,result.atomic?3:1);
  assert.equal(result.occupiedBootstrapRefusals,2);
  assert.equal(result.disappearedBootstrapRefusals,1);
  assert.equal(result.generationResumes,4);

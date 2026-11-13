@@ -53,7 +53,7 @@ export async function continuedProviderPins(
  const uploadIds=new Set<string>();
  for(const {id,family} of selected){
   context.guard();
-  const limits=admitted.get(id),{metadata,file}=participantAssets(archive,id,family==='continued-local');
+  const limits=admitted.get(id),{metadata,file}=participantAssets(archive,id,family==='continued-local'||family==='continued-delivery');
   for(const info of metadata){
    context.guard();
    for(const raster of info.assets)addContent(raster.contentAsset,raster);

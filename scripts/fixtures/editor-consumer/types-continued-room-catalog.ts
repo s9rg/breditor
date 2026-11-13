@@ -37,3 +37,11 @@ const report:ContinuedRoomReconciliationRead=await readContinuedRoomReconciliati
  includeOperationArchives:true});
 const review:null|undefined=report.documentOnlyParticipants?.[0]?.prefix.review;
 void review;
+
+declare const deliveryCatalog:import('@breditor/collaboration').SharedContinuedRoomCatalog;
+declare const deliveryStore:import('@breditor/collaboration').SharedContinuedRoomCatalogStore;
+declare const deliveryEntry:import('@breditor/collaboration').ContinuedRoomCatalogDeliveryEntry;
+const deliveryFormat:2=deliveryEntry.selection.formatVersion;
+const deliveryRecords:import('@breditor/collaboration').ContinuedDeliveryRecords=deliveryCatalog.participantDeliveryRecords(deliveryEntry.id);
+const restoredDelivery:import('@breditor/collaboration').SharedContinuedDeliveryRecovery=deliveryStore.participantDeliveryRecords(deliveryEntry.id).live;
+void [deliveryFormat,deliveryRecords,restoredDelivery];

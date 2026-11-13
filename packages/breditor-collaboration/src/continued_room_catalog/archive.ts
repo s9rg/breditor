@@ -1,7 +1,7 @@
 import {prepareArchiveIntegrity,type ArchiveIntegrityContext} from '../archive_integrity/context.js';
 import {archiveBlob,archiveFields} from '../archive_integrity/policy.js';
-import {SharedContinuedParticipantBackup} from '../continued_participant/archive.js';
-import {continuedInventorySelection,continuedParticipantCoverage,inspectContinuedParticipantPrefix,type ContinuedParticipantPrefix} from '../continued_participant/inventory.js';
+import {SharedContinuedParticipantBackup,type ContinuedDeliveryParticipantBackup} from '../continued_participant/archive.js';
+import {continuedInventorySelection,continuedParticipantCoverage,inspectContinuedParticipantPrefix,inspectContinuedDeliveryParticipantPrefix,type ContinuedParticipantPrefix} from '../continued_participant/inventory.js';
 import {serverGenerationRoomIdentity} from '../server_generation_archive/identity.js';
 import {SharedServerLogGenerationRoomArchive} from '../server_generation_archive/read.js';
 import {MAX_SHARED_SERVER_GENERATION_ARCHIVE_BYTES} from '../server_generation_archive/framing.js';
@@ -16,7 +16,7 @@ import type {SharedIndependentDeliveryParticipantBackup} from '../independent_de
 import type {SharedIndependentParticipantBackup} from '../independent_participant/backup.js';
 import type {SharedParticipantBackup} from '../participant_backup/archive.js';
 import {readPhysicalCatalogV3Participant,disposePhysicalCatalogV3Participant,type PhysicalCatalogV3Client} from '../physical_room_catalog_v3/participant.js';
-import {continuedRoomMetadata,parseContinuedRoomManifest,continuedRoomParticipantHeader,continuedRoomParticipantMaximum} from './manifest.js';
+import {continuedRoomMetadata,parseContinuedRoomManifest,continuedRoomParticipantHeader,continuedRoomParticipantMaximum,isContinuedRoomPairEntry} from './manifest.js';
 import {selectContinuedRoomPolicies} from './policy.js';
 import type {
  ContinuedRoomCatalogCaptureOptions,ContinuedRoomCatalogMetadata,
@@ -32,7 +32,7 @@ let borrowInventory:(catalog:SharedContinuedRoomCatalog)=>SharedServerLogGenerat
 const constructorToken=Symbol();
 const {read:readServer,prototype:{dispose:disposeServer}}=SharedServerLogGenerationRoomArchive;
 const {read:readInventory,prototype:{dispose:disposeInventory}}=SharedServerLogGenerationParticipantInventory;
-const {read:readParticipant,prototype:{dispose:disposeParticipant,records:participantRecords,uploadBackup:participantUploads,blob:participantBlob,metadata:participantMetadata}}=SharedContinuedParticipantBackup;
+const {read:readParticipant,readDelivery:readDeliveryParticipant,prototype:{dispose:disposeParticipant,records:participantRecords,uploadBackup:participantUploads,blob:participantBlob,metadata:participantMetadata}}=SharedContinuedParticipantBackup;
 const mapSize=Object.getOwnPropertyDescriptor(Map.prototype,'size')!.get!;
 
 function component<T>(input:unknown,maximum:number,select:(value:unknown)=>T):{file:Blob;identity:T;bytes:number}{
@@ -62,8 +62,10 @@ interface CatalogContents {
  readonly metadata:ContinuedRoomCatalogMetadata;
  readonly files:ReadonlyMap<string,Blob>;
  readonly backups:ReadonlyMap<string,SharedContinuedParticipantBackup>;
+ readonly deliveryBackups:ReadonlyMap<string,ContinuedDeliveryParticipantBackup>;
  readonly recoveryClients:ReadonlyMap<string,PhysicalCatalogV3Client>;
  readonly observations:readonly Readonly<{id:string;prefix:ContinuedParticipantPrefix}>[];
+ readonly boundActors:ReadonlySet<string>;
  readonly inventory:SharedServerLogGenerationParticipantInventory;
 }
 
@@ -119,13 +121,20 @@ export class SharedContinuedRoomCatalog {
   return backup;
  }
  participantRecords(id:string){return participantRecords.call(this.#participant(id));}
- participantMetadata(id:string){return participantMetadata.call(this.#participant(id));}
- participantUploads(id:string){return participantUploads.call(this.#participant(id));}
- participantAsset(id:string,asset:string,generation:string){return participantBlob.call(this.#participant(id),asset,generation);}
+ #deliveryParticipant(id:string){
+  const backup=this.#live().deliveryBackups.get(id);
+  if(!backup)throw physicalCatalogFailure('catalog_missing');
+  return backup;
+ }
+ participantDeliveryRecords(id:string){return participantRecords.call(this.#deliveryParticipant(id)) as unknown as ReturnType<ContinuedDeliveryParticipantBackup['records']>;}
+ #pairParticipant(id:string){return this.#live().deliveryBackups.get(id)??this.#participant(id);}
+ participantMetadata(id:string){return participantMetadata.call(this.#pairParticipant(id));}
+ participantUploads(id:string){return participantUploads.call(this.#pairParticipant(id));}
+ participantAsset(id:string,asset:string,generation:string){return participantBlob.call(this.#pairParticipant(id),asset,generation);}
  inspectPrefixes(){
   const state=this.#live(),source=continuedInventorySelection(state.inventory);
-  const coverage=continuedParticipantCoverage(state.inventory,state.observations.map(row=>row.prefix));
-  const unreconciledParticipants=state.metadata.participants.filter(row=>!state.backups.has(row.id)).map(row=>row.id);
+  const coverage=continuedParticipantCoverage(state.inventory,state.observations.map(row=>row.prefix),state.boundActors);
+  const unreconciledParticipants=state.metadata.participants.filter(row=>!state.backups.has(row.id)&&!state.deliveryBackups.has(row.id)).map(row=>row.id);
   const result=frozen({source,coverage,participants:state.observations,unreconciledParticipants});
   if(this.#live()!==state)throw physicalCatalogFailure('catalog_closed');
   return result;
@@ -135,7 +144,7 @@ export class SharedContinuedRoomCatalog {
   if(!state)return;
   this.#contents=undefined;
   disposeInventory.call(state.inventory);
-  for(const backup of state.backups.values())disposeParticipant.call(backup);
+  for(const backup of [...state.backups.values(),...state.deliveryBackups.values()])disposeParticipant.call(backup);
   for(const client of state.recoveryClients.values())disposePhysicalCatalogV3Participant(client);
  }
  static async capture(input:ContinuedRoomCatalogCaptureOptions):Promise<SharedContinuedRoomCatalog>{
@@ -179,6 +188,7 @@ export class SharedContinuedRoomCatalog {
  ):Promise<SharedContinuedRoomCatalog>{
   const options={wasm:context.wasm,checkAuthority:context.guard,...(signal?{signal}:{})};
   const backups=new Map<string,SharedContinuedParticipantBackup>();
+  const deliveryBackups=new Map<string,ContinuedDeliveryParticipantBackup>(),boundActors=new Set<string>();
   const recoveryClients=new Map<string,PhysicalCatalogV3Client>();
   const observations:{id:string;prefix:ContinuedParticipantPrefix}[]=[];
   let inventory:SharedServerLogGenerationParticipantInventory|undefined,complete=false;
@@ -191,7 +201,7 @@ export class SharedContinuedRoomCatalog {
     files.get('inventory')!,metadata.current.participants.identity,options);
    for(const row of metadata.participants){
     const file=files.get(physicalParticipantKey(row.id))!;
-    if(row.family!=='continued-local'){
+    if(!isContinuedRoomPairEntry(row)){
      const wrap=<T extends {checkAuthority:()=>void;signal?:AbortSignal}>(policy:T|undefined)=>policy?{
       ...policy,checkAuthority:()=>{context.guard();policy.checkAuthority();context.guard();},
       ...(signal?{signal}:{}),
@@ -203,13 +213,21 @@ export class SharedContinuedRoomCatalog {
     }
     const {restoreDocument,limits}=policies.policies.get(row.id)!;
     const policy={...options,restoreDocument,...(limits?{limits}:{})};
+    if(row.family==='continued-delivery'){
+     const backup=await readDeliveryParticipant.call(SharedContinuedParticipantBackup,file,row.selection,policy);
+     deliveryBackups.set(row.id,backup);
+     const prefix=await inspectContinuedDeliveryParticipantPrefix(backup,inventory,policy);
+     boundActors.add(prefix.review.actor);
+     observations.push({id:row.id,prefix});
+     continue;
+    }
     const backup=await readParticipant.call(SharedContinuedParticipantBackup,file,row.selection,policy);
     backups.set(row.id,backup);
     observations.push({id:row.id,prefix:await inspectContinuedParticipantPrefix(backup,inventory,policy)});
    }
    // Refuse duplicate native copies as one cohort, regardless of their file IDs.
-   continuedParticipantCoverage(inventory,observations.map(row=>row.prefix));
-   const contents={manifest,metadata,files,selection,backups,recoveryClients,observations:frozen(observations),inventory};
+   continuedParticipantCoverage(inventory,observations.map(row=>row.prefix),boundActors);
+   const contents={manifest,metadata,files,selection,backups,deliveryBackups,boundActors,recoveryClients,observations:frozen(observations),inventory};
    context.guard();
    const owner=new SharedContinuedRoomCatalog(constructorToken,contents);
    try{context.guard();owner.#live();}catch(error){owner.#contents=undefined;throw error;}
@@ -218,7 +236,7 @@ export class SharedContinuedRoomCatalog {
   }finally{
    if(!complete){
     if(inventory)disposeInventory.call(inventory);
-    for(const backup of backups.values())disposeParticipant.call(backup);
+    for(const backup of [...backups.values(),...deliveryBackups.values()])disposeParticipant.call(backup);
     for(const client of recoveryClients.values())disposePhysicalCatalogV3Participant(client);
    }
   }

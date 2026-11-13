@@ -253,8 +253,8 @@ asset inventory. A capture reports `pending` when the required raster bytes
 are unavailable. Preserve the independent version-two `selection()` with
 the archive. Restore the selected record with `restoreDelivery` and restore
 the upload backup with `RichAssetStore.restoreBackup` and
-`uploadState: "preserve"`. Whole-room catalog and activation support for this
-archive family remains a separate step.
+`uploadState: "preserve"`. A room catalog can also restore both together
+through its recovery journal.
 
 
 `SharedContinuedParticipantBackup.capture` takes a continued pair session,
@@ -332,8 +332,15 @@ coordinator keeps each admitted local
 history and upload store held through final verification and releases them
 before returning the local destination names.
 
-The same journal supports continued participants and both independent local
-and independent delivery participants.
+Use `family: "continued-delivery"` and the independently retained version-two
+participant selection for a continued delivery entry. Supply its exact
+native restore factory in `policies`. The journal reopens the complete
+paired delivery state and the whole upload store at the two dedicated
+destinations. If the source commit loses its acknowledgement, recovery
+resumes only after checking every stored row against the selected cut.
+
+The same journal supports continued local participants and both independent
+local and independent delivery participants.
 Pass one `independentPolicies` entry per independent local participant with
 the catalog ID, the independently retained archive selection, and a native
 session factory with document and review access both read-only. The factory
@@ -389,7 +396,12 @@ an operator host selected for the same origin, current physical server, and
 participant inventory. It compares each participant's live document and
 comment history with every accepted author, including server document
 authors. The report distinguishes local suffixes from histories behind the
-server. A divergent accepted prefix fails admission.
+server. A divergent accepted prefix fails admission. For a continued
+delivery entry, catalog admission also checks the saved receipt positions,
+the registered review actor, the wire version, and all selected retained
+store bindings against the physical inventory. The bound review actor
+contributes to the provider reconciliation report. Authenticated activation
+of a restored room is a separate step.
 
 The provider read includes image bindings reachable from all save slots and
 every content ID in the participant upload archives. It verifies matching

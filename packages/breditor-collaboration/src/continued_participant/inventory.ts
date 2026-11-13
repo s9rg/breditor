@@ -1,3 +1,5 @@
+import {checkInventoryStores} from '../room_participant_inventory/stores.js';
+import type {SharedAssetCaptureRecord} from '../asset_references_capture.js';
 /** Compare archived native prefixes to the independently selected physical server cut. */
 import {SharedServerLogGenerationParticipantInventory} from '../server_generation_inventory/read.js';
 import type {SharedRoomParticipantCoverage,SharedRoomParticipantMissing} from '../room_participant_inventory/types.js';
@@ -5,12 +7,12 @@ import {SharedRoomParticipantInventoryError,frozen} from '../room_participant_in
 import type {SharedRichEditor} from '../core.js';
 import {nativeHistoryIntrinsics as native} from '../native_history_read/intrinsics.js';
 import {sharedProtocolLanguage} from '../protocol.js';
-import {prefixAt} from '../relay/validation.js';
+import {prefixAt,transportVersion} from '../relay/validation.js';
 import {disposeOwnedCore} from '../owned_core_lifetime.js';
 import {withContinuedPairReplay} from '../continued_pair/replay.js';
 import {participantAuthority} from '../participant_backup/policy.js';
 import type {SharedSelectionPolicy} from '../types.js';
-import {SharedContinuedParticipantBackup} from './archive.js';
+import {SharedContinuedParticipantBackup,type ContinuedDeliveryParticipantBackup} from './archive.js';
 import type {ContinuedParticipantReadOptions} from './contract.js';
 
 const {file:inventoryFile,identity:inventoryIdentity,metadata:inventoryMetadata}=SharedServerLogGenerationParticipantInventory.prototype;
@@ -57,6 +59,42 @@ export async function inspectContinuedParticipantPrefix<P extends SharedSelectio
  const live=participantRecords.call(backup).live;
  return withContinuedPairReplay(source,restoreDocument,check,signal,async replay=>{
   const core=await replay(live,check);
+  try{return inspectLocalNativePrefix(core,inventory,participant,principal,source,check);}
+  finally{disposeOwnedCore(core);}
+ });
+}
+
+/** Bind the saved delivery streams to the physical inventory before counting coverage. */
+export async function inspectContinuedDeliveryParticipantPrefix<P extends SharedSelectionPolicy>(
+ backup:ContinuedDeliveryParticipantBackup,inventory:SharedServerLogGenerationParticipantInventory,
+ options:Pick<ContinuedParticipantReadOptions<P>,'restoreDocument'|'checkAuthority'|'signal'>,
+):Promise<ContinuedParticipantPrefix>{
+ const selectedFile=participantFile.call(backup),heldInventory=inventoryFile.call(inventory);
+ const {restoreDocument,signal}=options,authority=participantAuthority(options.checkAuthority);
+ const check=()=>{
+  if(signal?.aborted)throw new SharedRoomParticipantInventoryError('inventory_aborted','Continued delivery inspection was cancelled');
+  authority();
+  if(participantFile.call(backup)!==selectedFile||inventoryFile.call(inventory)!==heldInventory)throw refuse();
+ };
+ check();
+ const {participant,principal,source}=participantSelection.call(backup).identity;
+ const live=participantRecords.call(backup) as unknown as ReturnType<ContinuedDeliveryParticipantBackup['records']>;
+ const recovery=live.live,room=inventoryMetadata.call(inventory).native,{document,review}=recovery.relay.binding;
+ const writer=room.writers.find(row=>row.clock.writer===source.native.writer);
+ const comment=room.review?.writers.find(row=>row.clock.actor===source.review.actor);
+ if(!writer||writer.principal!==principal||!review||!comment||comment.principal!==principal||
+    review.binding!==room.review?.binding||comment.observer!==(review.reviewEditing==='read_only')||
+    transportVersion(document.writerTransport)!==room.room.writerTransportVersion)throw refuse();
+ const documentAck=recovery.relay.document.accepted,reviewAck=recovery.relay.review?.accepted;
+ if(documentAck&&BigInt(documentAck.through)>BigInt(writer.clock.through)||
+    reviewAck&&BigInt(reviewAck.through)>BigInt(comment.clock.through))throw fork();
+ const rows:SharedAssetCaptureRecord[]=[];
+ if(recovery.retained.suggestions)rows.push({kind:'suggestions',json:JSON.stringify(recovery.retained.suggestions)});
+ if(recovery.retained.revisions)rows.push({kind:'suggestion-revisions',json:JSON.stringify(recovery.retained.revisions)});
+ if(recovery.retained.versions)rows.push({kind:'version-catalog',json:JSON.stringify(recovery.retained.versions)});
+ checkInventoryStores(room,rows,principal,source.native.writer);
+ return withContinuedPairReplay(source,restoreDocument,check,signal,async replay=>{
+  const core=await replay(recovery.source,check);
   try{return inspectLocalNativePrefix(core,inventory,participant,principal,source,check);}
   finally{disposeOwnedCore(core);}
  });

@@ -20,7 +20,7 @@ import type {SharedSelectionPolicy} from '../types.js';
 import type {
  ContinuedDeliveryParticipantSelection,ContinuedParticipantCaptureOptions,ContinuedParticipantMetadata,ContinuedParticipantReadOptions,ContinuedParticipantSelection,
 } from './contract.js';
-import {continuedParticipantIdentity,continuedParticipantSelection,participantDigest,participantFailure as fail} from './policy.js';
+import {continuedDeliveryParticipantSelection,continuedParticipantIdentity,continuedParticipantSelection,participantDigest,participantFailure as fail} from './policy.js';
 import {
  MAX_CONTINUED_RECORDS_BYTES,packContinuedRecords,readContinuedRecordBodies,readContinuedRecordPins,readContinuedStates,
  type RecordPin,type ContinuedStatePins,
@@ -31,6 +31,7 @@ import {deliveryPairRecords,packDeliveryRecords,readDeliveryPins,readDeliveryRec
 const format='breditor/shared-continued-participant-backup';
 const mime='application/vnd.breditor.continued-participant-backup';
 const magic='BREDITOR-CONTINUED-PARTICIPANT1\n',prefix=new TextEncoder().encode(magic);
+export const MAX_CONTINUED_DELIVERY_PARTICIPANT_BYTES=MAX_SHARED_ARCHIVE_DIGEST_BYTES;
 const headerMaximum=48*1024*1024;
 export const MAX_CONTINUED_PARTICIPANT_BYTES=
  prefix.length+4+headerMaximum+MAX_CONTINUED_RECORDS_BYTES+defaultAssetLimits.maxStoredBytes+MAX_ASSET_BACKUP_BYTES;
@@ -118,6 +119,8 @@ async function decode(
 }
 
 /** A portable local participant cut with all interrupted-save states and upload records. */
+export type ContinuedDeliveryParticipantBackup=SharedContinuedParticipantBackup<ContinuedDeliveryRecords,ContinuedDeliveryParticipantSelection>;
+
 export class SharedContinuedParticipantBackup<Records=ContinuedPairRecords,Selection=ContinuedParticipantSelection> {
  #contents:Contents<Records,Selection>|undefined;
  private constructor(token:symbol,contents:Contents<Records,Selection>){
@@ -230,9 +233,7 @@ export class SharedContinuedParticipantBackup<Records=ContinuedPairRecords,Selec
  static async readDelivery<P extends SharedSelectionPolicy>(
   file:Blob,expected:ContinuedDeliveryParticipantSelection,options:ContinuedParticipantReadOptions<P>,
  ):Promise<SharedContinuedParticipantBackup<ContinuedDeliveryRecords,ContinuedDeliveryParticipantSelection>>{
-  const selected=archiveFields(expected,'formatVersion,identity,sha256');
-  if(selected['formatVersion']!==2)throw fail('policy');
-  const selection=deliverySelection(continuedParticipantSelection({identity:selected['identity'],sha256:selected['sha256']}));
+  const selection=continuedDeliveryParticipantSelection(expected);
   const {wasm,checkAuthority,signal,limits:provided,restoreDocument}=options;
   if(typeof restoreDocument!=='function')throw fail('policy');
   const context=prepareArchiveIntegrity({wasm,checkAuthority,...(signal?{signal}:{})});

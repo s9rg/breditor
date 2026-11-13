@@ -13,7 +13,7 @@ import {closed} from '../segmented_relay/validation.js';
 import type {SegmentedRetainedKind,SegmentedRetainedRecords} from '../segmented_relay/retained_contract.js';
 import {coreReadStamp} from '../core_read_stamp.js';
 import {participantAuthority} from '../participant_backup/policy.js';
-import {independentBootstrapDestination,independentBootstrapPolicy,independentBootstrapSignal} from '../independent_history/bootstrap_policy.js';
+import {forwardIndependentBootstrapPolicy,independentBootstrapDestination,independentBootstrapPolicy,independentBootstrapSignal} from '../independent_history/bootstrap_policy.js';
 import {NativeReconstructionWaits} from '../selected_native_reconstruction/read_waits.js';
 import {OperationalReadCancellation} from '../operation_read/cancellation.js';
 import {readContinuedPairAssetReferences,replayContinuedDeliveryAssetReferences,type SharedContinuedPairAssetReferences} from './asset_references.js';
@@ -173,7 +173,7 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
 
  /** Open a separately bound delivery database. A local pair requires explicit import. */
  static async openDelivery<P extends SharedSelectionPolicy>(options:SharedContinuedDeliveryOptions<P>):Promise<SharedContinuedPairSession<P>>{
-  return this.#open(withContinuedDelivery({...options},new ContinuedDeliveryCompanion(options)));
+  return this.#open(withContinuedDelivery(forwardIndependentBootstrapPolicy(options,{...options}),new ContinuedDeliveryCompanion(options)));
  }
 
  /** Recover the complete pair, accepted receipts and original pending packets. */
@@ -181,7 +181,7 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
   recovery:SharedContinuedDeliveryRecovery,writerRecovery:'host-reacquired'):Promise<SharedContinuedPairSession<P>>{
   requireBackupRecovery(writerRecovery);
   const selected=structuredClone(recovery),companion=new ContinuedDeliveryCompanion(options,selected);
-  return this.restoreRecovery(withContinuedDelivery({...options},companion),selected.source,writerRecovery);
+  return this.restoreRecovery(withContinuedDelivery(forwardIndependentBootstrapPolicy(options,{...options}),companion),selected.source,writerRecovery);
  }
 
  /** Replay both exact lanes into an empty destination after the host reacquires the writers. */
@@ -241,8 +241,8 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
    const state=delivery?.capture();
    const cut=recovery?await makeContinuedPairCut(selected.documentCheckpoint,selected.reviewCheckpoint,identity,versions):undefined;
    const wrapped=cut&&state?delivery!.wrap(cut,state):cut;
-   const destinationCut=delivery&&wrapped?{cut:wrapped,fail:()=>fail('continued_delivery_destination_exists',
-    'Restore continued delivery into an empty dedicated database')}:destination;
+   const destinationCut=destination??(delivery&&wrapped?{cut:wrapped,fail:()=>fail('continued_delivery_destination_exists',
+    'Restore continued delivery into an empty dedicated database')}:undefined);
    check();
    if(bootstrap){
     const waits=new NativeReconstructionWaits(check,[signal]);

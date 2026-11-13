@@ -31,7 +31,7 @@ const storage={
  participants:(manifest:string)=>parseContinuedRoomManifest(manifest).participants,
 };
 const {
- read:readArchive,prototype:{selection,manifestJson,files,metadata,inspectPrefixes,participantFile,participantRecords,participantUploads,participantAsset,dispose},
+ read:readArchive,prototype:{selection,manifestJson,files,metadata,inspectPrefixes,participantFile,participantRecords,participantDeliveryRecords,participantUploads,participantAsset,dispose},
 }=SharedContinuedRoomCatalog;
 const {close:closeLease}=RecoveryLease.prototype;
 interface Resources {
@@ -65,6 +65,7 @@ export class SharedContinuedRoomCatalogStore {
  inspectPrefixes(){return inspectPrefixes.call(this.#live());}
  participantFile(id:string){return participantFile.call(this.#live(),id);}
  participantRecords(id:string){return participantRecords.call(this.#live(),id);}
+ participantDeliveryRecords(id:string){return participantDeliveryRecords.call(this.#live(),id);}
  participantUploads(id:string){return participantUploads.call(this.#live(),id);}
  participantAsset(id:string,asset:string,generation:string){return participantAsset.call(this.#live(),id,asset,generation);}
  close():Promise<void>{

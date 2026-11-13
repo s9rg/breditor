@@ -1,3 +1,4 @@
+import {verifyContinuedDeliveryRoomRecovery} from './fixtures/continued-room-recovery/continued-delivery.mjs';
 /** Native client replay against retained physical server files. Storage/locks are simulated. */
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
@@ -775,7 +776,9 @@ export async function probeContinuedRoomCatalog(runtime,fixturePath){
   const mixed={profile,fixture,metadata,initialCatalog,client,continued};
   const original=await probeOriginalRecovery(mixed);
   const operations=await probeOperationRecovery(mixed);
-  return {passed:true,fixtureSha256:sha(readFileSync(fixturePath)),sharedWasmSha256:sha(wasmBytes),...counts,...original,...operations};
+  const continuedDelivery=await verifyContinuedDeliveryRoomRecovery(api,{entry:owners.find(row=>row.options.documentHistory==='continued-v2'&&row.options.reviewHistory==='continued-v2'&&row.client===client),
+   fixture,metadata,wasm,initial:initialCatalog,observer});
+  return {passed:true,...continuedDelivery,fixtureSha256:sha(readFileSync(fixturePath)),sharedWasmSha256:sha(wasmBytes),...counts,...original,...operations};
  }finally{
   for(const catalog of catalogs)catalog.dispose();
   for(const entry of owners)entry.backup.dispose();

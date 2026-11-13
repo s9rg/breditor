@@ -17,6 +17,7 @@ import {frozen} from '../room_participant_inventory/policy.js';
 import {recoverContinuedRoomSource,recoverContinuedRoomUploads,recoveryFailure as fail,type ContinuedDestinationHold} from './destination.js';
 import {recoverIndependentRoomSource} from './independent_destination.js';
 import {generationRoomUploads,recoverGenerationRoomSource} from './generation_destination.js';
+import {recoverContinuedDeliveryRoomSource} from './continued_delivery_destination.js';
 import {recoverDeliveryRoomSource} from './delivery_destination.js';
 import {SharedParticipantBackup} from '../participant_backup/archive.js';
 import {readPairedBackupRecord} from '../backups/paired.js';
@@ -26,7 +27,7 @@ import {matchContinuedRoomPolicies,snapshotContinuedRoomDeliveryPolicies,snapsho
 import {accessRecoveryJournal,openRecoveryJournal} from './journal.js';
 import type {ContinuedRoomRecoveryDestination,ContinuedRoomRecoveryOptions,ContinuedRoomRecoveryResult} from './contract.js';
 
-const {metadata,participantRecords,participantUploads,dispose}=SharedContinuedRoomCatalog.prototype;
+const {metadata,participantRecords,participantDeliveryRecords,participantUploads,dispose}=SharedContinuedRoomCatalog.prototype;
 const {close:release}=RecoveryLease.prototype;
 const originalRecords=SharedParticipantBackup.prototype.records;
 const destinationNames=(row:ContinuedRoomRecoveryDestination)=>[...operationDestinationNames(row),...Object.values(row.original??{})];
@@ -205,6 +206,11 @@ async function restore(input:ContinuedRoomRecoveryOptions,begin:boolean):Promise
     const backup=continuedCatalogGenerationBackup(archive,destination.id),policy=generation.get(destination.id)!;
     source=completed=>recoverGenerationRoomSource(destination.source,policy.expected,policy.session,backup,completed,guard,signal);
     file=generationRoomUploads(backup);
+    limits=policy.limits;
+   }else if(entry.family==='continued-delivery'){
+    const policy=policies.get(destination.id)!,recovery=participantDeliveryRecords.call(archive,destination.id).live;
+    source=completed=>recoverContinuedDeliveryRoomSource(destination.source,policy.restoreDocument,recovery,completed,guard,signal);
+    file=participantUploads.call(archive,destination.id);
     limits=policy.limits;
    }else{
     const recovery=participantRecords.call(archive,destination.id).live;

@@ -56,11 +56,13 @@ export async function readContinuedRoomReconciliation(input:ContinuedRoomReconci
   const context=prepareArchiveIntegrity({wasm:held.options.wasm,checkAuthority:waits.check,signal:waits.signal});
   const original=inspectPrefixes.call(active);
   const observed=new Map<string,ContinuedParticipantPrefix|ContinuedDocumentOnlyPrefix>(original.participants.map(row=>[row.id,row.prefix]));
-  const admitted=new Map<string,Partial<AssetLimits>|undefined>(original.participants.map(row=>[row.id,undefined]));
+  const catalogLimits=new Map(held.options.policies.map(row=>[row.id,row.limits]));
+  const admitted=new Map<string,Partial<AssetLimits>|undefined>(original.participants.map(row=>[row.id,catalogLimits.get(row.id)]));
   for(const policies of [independent,delivery,generation,originalPolicies])
    for(const [id,policy] of policies)admitted.set(id,policy.limits);
   for(const [id,policy] of independent)observed.set(id,await inspectIndependentRoomPrefix(active,policy,waits));
-  const boundActors=new Set<string>();
+  const continuedDeliveryIds=new Set(room.participants.filter(row=>row.family==='continued-delivery').map(row=>row.id));
+  const boundActors=new Set(original.participants.filter(({id})=>continuedDeliveryIds.has(id)).map(({prefix})=>prefix.review.actor));
   for(const [id,policy] of delivery){
    const prefix=await inspectDeliveryRoomPrefix(active,policy,waits);
    observed.set(id,prefix);boundActors.add(prefix.review.actor);

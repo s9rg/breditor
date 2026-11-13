@@ -3,11 +3,13 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {dirname,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {SharedRichEditor,SharedIndependentHistoryPersistentSession,SharedIndependentDeliverySession,captureSharedIndependentParticipant,captureSharedIndependentDeliveryParticipant,SharedSegmentedPersistentSession,SharedSegmentedRelaySession,captureSharedGenerationParticipant,SharedReviewPersistentSession,captureSharedParticipantBackup,encodeSharedPairedSessionBackup,SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore,SharedServerLogGenerationRecoveryHost,readContinuedRoomReconciliation} from '../packages/breditor-collaboration/dist/index.js';
+import * as continuedApi from '../packages/breditor-collaboration/dist/index.js';
+const {SharedRichEditor,SharedIndependentHistoryPersistentSession,SharedIndependentDeliverySession,captureSharedIndependentParticipant,captureSharedIndependentDeliveryParticipant,SharedSegmentedPersistentSession,SharedSegmentedRelaySession,captureSharedGenerationParticipant,SharedReviewPersistentSession,captureSharedParticipantBackup,encodeSharedPairedSessionBackup,SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore,SharedServerLogGenerationRecoveryHost,readContinuedRoomReconciliation}=continuedApi;
 import {RichAssetStore} from '@breditor/experimental-rich-content';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
 import {continuedParticipantFixture} from './probe-continued-room-catalog.mjs';
 import {unavailableUpload,UnavailableUploadImage,unavailableAsset} from './fixtures/physical-recovery-control/unavailable-upload.mjs';
+import {continuedDeliveryParticipant} from './fixtures/continued-room-recovery/continued-delivery.mjs';
 import {probeOperationArchives} from './fixtures/continued-room-provider/operation-archives.mjs';
 
 export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,requests){
@@ -20,7 +22,7 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
  const profile=native.SharedRichProfile[method](fixture.configuration);
  const entries=[];
  let archive,store,host,tokenAllowed=true,onToken;
- const counts={authorPrefixes:0,reviewPrefixes:0,localSuffixes:0,missingUploads:0,providerReads:0,rejected:0,foreignForks:0,mixedPending:0,mixedProviderReads:0,mixedForeignForks:0,mixedDeliveryProviderReads:0,mixedDeliveryAheadRefusals:0,generationProviderReads:0,generationDocumentOnlyReads:0,generationAheadRefusals:0,generationForkRefusals:0,generationPredecessorChecks:0,originalProviderReads:0,originalPolicyRefusals:0};
+ const counts={authorPrefixes:0,reviewPrefixes:0,localSuffixes:0,missingUploads:0,providerReads:0,rejected:0,foreignForks:0,mixedPending:0,mixedProviderReads:0,mixedForeignForks:0,mixedDeliveryProviderReads:0,mixedDeliveryAheadRefusals:0,continuedDeliveryProviderReads:0,generationProviderReads:0,generationDocumentOnlyReads:0,generationAheadRefusals:0,generationForkRefusals:0,generationPredecessorChecks:0,originalProviderReads:0,originalPolicyRefusals:0};
  const room=inventory.room.document;
  const initial={
   catalog:'continued-native-provider',wasm:native,checkAuthority(){},
@@ -115,6 +117,27 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
    counts.foreignForks++;
   }
   const retained=entries[0],exact=retained.record.live;
+  const continued=await continuedDeliveryParticipant(continuedApi,{
+   entry:retained,fixture,metadata:inventory,wasm:native,endpoint:caseInfo.endpoint.replace(/^http/,'ws'),tag:'provider-continued-delivery',
+  });
+  let continuedArchive,continuedStore;
+  try{
+   const rows=[continued.row,...entries.slice(1,7).map(({id,file,expected})=>({id,family:'continued-local',file,expected}))];
+   const options={...openOptions,policies:[continued.policy,...openOptions.policies.slice(1)]};
+   continuedArchive=await SharedContinuedRoomCatalog.capture({...initial,...options,participants:rows});
+   continuedStore=await SharedContinuedRoomCatalogStore.begin({
+    ...options,database:'provider-continued-delivery-catalog',archive:continuedArchive,expected:continuedArchive.selection(),
+   });
+   const before=requests.length;
+   const read=await readContinuedRoomReconciliation({...input,catalog:continuedStore,expected:continuedArchive.selection()});
+   assert.deepEqual(read.unreconciledParticipants,[]);
+   assert.equal(read.participants.length,7);
+   assert.ok(!read.coverage.missing.some(row=>(row.kind==='unbound_review'||row.kind==='review')&&row.actor===retained.client.actor));
+   assert.ok(read.uploads.find(row=>row.id===continued.id).entries.length>=2);
+   assert.equal(requests.slice(before).filter(row=>row.assets).length,1);
+   counts.continuedDeliveryProviderReads++;
+  }finally{await continuedStore?.close();continuedArchive?.dispose();continued.backup.dispose();}
+
   const independentFactory={
    ...exact.identity.native,readOnly:true,review:{...exact.identity.review,access:'read_only'},
    documentHistory:{kind:'original',restoreOriginal:retained.restoreDocument},reviewHistory:{kind:'original'},
