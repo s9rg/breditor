@@ -235,3 +235,26 @@ coordinate their adoption across destinations.
 The continued participant format has a 640 MiB budget for unique native
 records, plus the existing selected-image and whole-upload limits. A cut
 that exceeds these limits remains available in its original store.
+
+### Retain a continued room catalog
+
+`SharedContinuedRoomCatalog` binds complete origin and current physical
+server files, the current native participant inventory, and an explicit set
+of continued local participant archives. Supply the expected identity and
+native restore factory for each participant outside the manifest. Version
+four uses its own manifest and storage family.
+
+Admission replays each participant's retained save slots and compares its
+live native document and comment prefixes with the selected server
+inventory. A divergent accepted prefix refuses the catalog. An inventory
+ahead of the local cut is reported as pending, with the local cut preserved.
+Duplicate copies of a writer or comment actor require explicit
+reconciliation. A matching comment prefix leaves delivery pending because
+the continued local archive carries no relay binding or outbox.
+
+`SharedContinuedRoomCatalogStore.begin` admits the selected archive and
+retains it in a new IndexedDB namespace. `resume` revalidates the files and
+native prefixes after a cold open. The catalog exposes each participant's
+exact save cuts, whole upload backup, and asset bytes. Whole-room recovery
+still needs a coordinator for mixed participant families, provider and
+delivery reconciliation, and authenticated activation.
