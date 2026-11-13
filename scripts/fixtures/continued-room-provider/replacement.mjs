@@ -5,7 +5,7 @@ import {RichAssetStore} from '@breditor/experimental-rich-content';
 const bytes=blob=>blob.arrayBuffer();
 const exists=async database=>(await indexedDB.databases()).some(row=>row.name===database);
 
-export async function verifyContinuedRoomReplacement(api,{probe,preview,continuedArchive,options,cohort}){
+export async function verifyContinuedRoomReplacement(api,{probe,preview,continuedArchive,options,cohort,replacementRaster,requests}){
  const {retainRecoveredContinuedRoomCatchUp:retain,SharedContinuedRoomCatalogStore:Store}=api;
  const database='provider-catch-up-catalog',catalog='provider-catch-up-room';
  const refused=new Error('Local choice could not be saved');
@@ -13,11 +13,13 @@ export async function verifyContinuedRoomReplacement(api,{probe,preview,continue
  assert.equal(await exists(database),false);
 
  let retained;
+ const beforeRetain=requests.length;
  const choice=await retain(probe,{database,catalog,async retainChoice(value){
   assert.equal(await exists(database),false,'Persist the exact choice before creating the catalog');
   assert.ok(Object.isFrozen(value));
   retained=structuredClone(value);
  }});
+ assert.deepEqual(requests.slice(beforeRetain).flatMap(row=>row.raster?[row.raster]:[]),replacementRaster?[replacementRaster.asset]:[]);
  assert.deepEqual(choice,retained);
  assert.deepEqual(choice.source,preview.catalog);
  assert.deepEqual(choice.server,preview.server);
@@ -34,6 +36,7 @@ export async function verifyContinuedRoomReplacement(api,{probe,preview,continue
  const destinations=probe.recovery.destinations.map(row=>({...row,source:row.source+'-catch-up',uploads:row.uploads+'-catch-up'}));
  const plan={...probe.recovery,expected:retained.replacement,database:'provider-catch-up-journal',destinations};
  let replacement=await Store.resume(open);
+ let rasters=0;
  try{
   const before=continuedArchive.metadata(),after=replacement.metadata();
   assert.deepEqual(after.origin,before.origin);
@@ -50,6 +53,14 @@ export async function verifyContinuedRoomReplacement(api,{probe,preview,continue
     ...continuedArchive.participantDeliveryRecords(row.id),live:candidate.recovery,
    });
    assert.deepEqual(await bytes(replacement.participantUploads(row.id)),await bytes(continuedArchive.participantUploads(row.id)));
+   if(replacementRaster){
+    const {asset,generation,payload}=replacementRaster;
+    assert.equal(continuedArchive.participantAsset(row.id,asset,generation),undefined);
+    const raster=replacement.participantAsset(row.id,asset,generation);
+    assert.ok(raster,'The resumed catalog must own bytes for the accepted image');
+    assert.deepEqual(Buffer.from(await bytes(raster)),payload);
+    rasters++;
+   }
   }
 
   const transaction=IDBDatabase.prototype.transaction;
@@ -78,6 +89,7 @@ export async function verifyContinuedRoomReplacement(api,{probe,preview,continue
    const session=await api.SharedContinuedPairSession.openDelivery({...participant.options,database:target.source});
    try{
     assert.deepEqual(session.exportDeliveryRecovery(),preview.participants.find(row=>row.id===participant.id).recovery);
+    if(replacementRaster)assert.ok(session.core.documentJson().includes(replacementRaster.generation));
     assert.equal(session.core.redo(),true);
     assert.equal(session.core.redoReview().kind,'committed');
     assert.match(session.core.documentJson(),/Local offline document/);
@@ -90,5 +102,5 @@ export async function verifyContinuedRoomReplacement(api,{probe,preview,continue
    finally{uploads.close();}
   }
  }finally{await replacement.close();}
- return cohort.length;
+ return {clients:cohort.length,rasters};
 }

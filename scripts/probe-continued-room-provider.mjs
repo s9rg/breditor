@@ -13,6 +13,7 @@ import {unavailableUpload,UnavailableUploadImage,unavailableAsset} from './fixtu
 import {continuedDeliveryParticipant} from './fixtures/continued-room-recovery/continued-delivery.mjs';
 import {probeOperationArchives} from './fixtures/continued-room-provider/operation-archives.mjs';
 import {verifyContinuedRoomReplacement} from './fixtures/continued-room-provider/replacement.mjs';
+import {secondAsset,secondPixel} from './fixtures/review-assets/pixels.mjs';
 
 export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,requests){
  const native=await import(pathToFileURL(resolve(runtime,'breditor_shared.js')).href);
@@ -26,6 +27,7 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
  let archive,store,host,tokenAllowed=true,onToken;
  const counts={authorPrefixes:0,reviewPrefixes:0,localSuffixes:0,missingUploads:0,providerReads:0,rejected:0,foreignForks:0,mixedPending:0,mixedProviderReads:0,mixedForeignForks:0,mixedDeliveryProviderReads:0,mixedDeliveryAheadRefusals:0,continuedDeliveryProviderReads:0,generationProviderReads:0,generationDocumentOnlyReads:0,generationAheadRefusals:0,generationForkRefusals:0,generationPredecessorChecks:0,originalProviderReads:0,originalPolicyRefusals:0};
  let recoveredRoomReads=0,recoveredRoomRefusals=0,serverOnlyPacketAssets=0,recoveredClientCatchUps=0,recoveredReplacementClients=0;
+ let recoveredReplacementRasters=0;
  const room=inventory.room.document;
  const initial={
   catalog:'continued-native-provider',wasm:native,checkAuthority(){},
@@ -233,9 +235,11 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
      recoveredClientCatchUps++;
     }finally{await candidate.discardAndClose();}
    }
-   recoveredReplacementClients=await withNoWrites(()=>verifyContinuedRoomReplacement(continuedApi,{
-    probe,preview,continuedArchive,options,cohort:[continued,secondDelivery],
+   const replacementRaster=fixture.atomic?{asset:secondAsset,generation:'server-accepted-after-clients',payload:secondPixel}:undefined;
+   const replacement=await withNoWrites(()=>verifyContinuedRoomReplacement(continuedApi,{
+    probe,preview,continuedArchive,options,cohort:[continued,secondDelivery],replacementRaster,requests,
    }));
+   ({clients:recoveredReplacementClients,rasters:recoveredReplacementRasters}=replacement);
    assert.deepEqual(await withNoWrites(()=>readRecoveredContinuedRoomReconciliation(probe)),recovered);
 
    // Even a write which ignores the SDK's cooperative locks must be detected
@@ -572,7 +576,8 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
   onToken=()=>store.close();
   await assert.rejects(readContinuedRoomReconciliation(input),error=>['catalog_closed','archive_authority','control_authority'].includes(error.code));
   counts.rejected++;
-  return {recoveredRoomReads,recoveredRoomRefusals,serverOnlyPacketAssets,recoveredClientCatchUps,recoveredReplacementClients,passed:true,language:fixture.language,atomic:fixture.atomic,...counts,...operations};
+  return {recoveredRoomReads,recoveredRoomRefusals,serverOnlyPacketAssets,recoveredClientCatchUps,recoveredReplacementClients,
+   recoveredReplacementRasters,passed:true,language:fixture.language,atomic:fixture.atomic,...counts,...operations};
  }finally{
   host?.close();
   await store?.close();

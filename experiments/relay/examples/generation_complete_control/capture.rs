@@ -137,8 +137,16 @@ async fn generate_selected(
     }
     let assets = seed_assets(&root, &mut room, rasters)?;
     if server_packet_assets && spec.atomic {
-        let raster = rasters.get(1).ok_or("server packet fixture requires a second raster")?;
-        server_packet_asset::publish(&mut room, &profile, &asset_id(raster))?;
+        let raster =
+            asset_id(rasters.get(1).ok_or("server packet fixture requires a second raster")?);
+        server_packet_asset::publish(&mut room, &profile, &raster, "server-packet-only")?;
+        let accepted = server_packet_asset::publish(
+            &mut room,
+            &profile,
+            &raster,
+            "server-accepted-after-clients",
+        )?;
+        server_packet_asset::accept(&mut room, accepted)?;
     }
     let migrated_origin::Cuts { older: ancestor, local, legacy } =
         capture_source_cuts(&root, room, assets, migrated)?;
