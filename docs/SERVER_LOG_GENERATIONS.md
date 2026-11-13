@@ -257,3 +257,41 @@ retain deleted bindings, rejected proposals and abandoned preparations, includin
 committed revision ancestry spanning physical files. Both complete readers pass
 at the 64-WAL ceiling under an isolated 192-descriptor limit. Core/runtime/package
 evidence is explicitly carried, not reported as a fresh whole-plan qualification.
+
+## Reclaim physical bytes from a sealed WAL
+
+Call `Room::pack_sealed_wal` with the authenticated owner and the ID of the
+root or a sealed continuation. A serving original relay exposes the same
+operation through `LogGenerationServerBackupHandle::pack_sealed_wal` under its
+current deployment lease. The active WAL stays writable in raw form. Calling
+pack on an already packed WAL returns its held physical size. A WAL that would
+occupy at least as many bytes after packing keeps its raw representation.
+
+A packed file uses the `BRWALGZ1` marker followed by one gzip member. The
+manifest retains the original length, SHA-256, starting sequence and terminal
+digest. The reader bounds decoded bytes by the original length and verifies
+the digest and entire compressed member, including its trailer. Portable
+backups contain the original raw WAL bytes, so packing preserves existing
+backup identities and older readers can restore a portable backup. Install a
+packing-aware relay before opening a live directory that contains packed WALs.
+
+Under the exclusive room lock, the relay creates a private stage, syncs the
+encoded bytes, decodes and verifies them, then atomically renames the stage
+over the selected raw file and syncs the directory. Both representations
+commit the same history. An interrupted pre-rename stage is outside the
+portable archive and can be cleared by a subsequent packing call. The relay
+checks that each stage it removes is a private unaliased file. A replacement
+whose durability is uncertain requires cold reopen before another write.
+
+This reduces the storage occupied by sealed WALs. The manifest and record
+budgets still count original history bytes, and the relay still replays the
+original operations. Removing obsolete history while retaining old offline
+inputs, Undo/Redo and receipt proofs remains a separate requirement.
+
+Checkpoint `75e34281` passes the 53 generation tests, 20 live source-handle
+tests and 11 native publication tests. The source and independently installed
+provider workflows pack one sealed source WAL and the same WAL in the
+restored room. Source capture produces byte-identical backups before and
+after packing. The restored room publishes, survives a real relay restart,
+and reconnects seven clients with outstanding offline work and durable
+replies. Client storage uses controlled Node fixtures for this check.
