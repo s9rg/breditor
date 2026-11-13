@@ -72,9 +72,9 @@ published or acknowledged from memory.
 An identical intent retry returns that original receipt with `duplicate: true`.
 It appends nothing, even after later native boundaries or a restart. In particular,
 retrying an old Seal does not seal newer input. Permission checks still precede
-the retry lookup. The receipt index retains at most 128 boundaries; the native
-64-generation-per-lane limits remain independently enforced. A receipt is not
-proof that its historical cut is still the latest room cut.
+the retry lookup. Before either continuation, the receipt index retains at most
+128 boundaries and each native lane admits up to 64 generations. A receipt
+identifies its historical cut even after the room accepts later work.
 
 ## Replay complete native cuts before recovery publication
 
@@ -143,9 +143,9 @@ Its receipt uses version two and the same global sequence and cut hash rules.
 An identical owner retry returns the original receipt after direct log reopen,
 physical rotation, or backup replay. Comment frames and their receipts keep
 their existing meanings. Resume still requires the current authenticated
-principal and registered actor. The continued room allows up to 320 native
-boundary receipts across both lanes, alongside the independent native archive
-and physical log ceilings.
+principal and registered actor. A room with only one continued lane allows up
+to 320 native boundary receipts alongside its separate native archive and
+physical log ceilings.
 
 ## Continue the room's document receiver and suggestion writer
 
@@ -179,3 +179,28 @@ Its activated fixture continues both native lanes before capturing the recovery
 cut, then checks retained suggestion effects and seven reconnecting clients
 through an actual relay restart, including concurrent offline edits and lost
 replies. Client storage in this check uses controlled Node fixtures.
+
+## Apply history boundaries on a serving relay
+
+Use `apply_native_history_boundary` with the room owner's current native
+credentials, a `ServerNativeHistoryLane`, and a `ServerNativeHistoryBoundary`.
+A `LogGenerationServerBackupHandle` applies it to the original serving room.
+An `ActivatedNativeLogGenerationHost` applies it to the recovered room. If the
+host activated through HTTP, use the retained `DurableNativeActivationControl`
+from Rust. These host methods operate under the current deployment lease and
+serialize with ordinary edits. Recovered hosts also verify their original
+room and raster custody around the operation.
+
+Use the exact same intent to retry a lost result. If storage is uncertain,
+reacquire the actual room through the normal recovery path before retrying.
+A stale host and a prepared control cannot run maintenance. The relay uses the
+existing native receipts, authentication and client editing protocol. Existing
+sockets keep their document and comment leases across the boundary.
+
+The November 13 checkpoint `00b3e729` exercises the source handle through cold
+reopen and epoch replacement. The published-room test continues both lanes
+with the original client socket still open, then delivers outstanding offline
+work and document and comment Undo/Redo through that socket. The continued-room
+provider runs from source and independent package archives use the source
+handle to perform both boundaries and read both receiver families from the
+cold-restored native room before exercising relay restart and delivery.
