@@ -604,3 +604,11 @@ restart, the SDK verifies the relay's accepted author prefix, updates its
 saved progress, and retains the last receipt it actually received. No second
 submission is sent. All seven clients see the edit once, and a second cold
 reopen preserves the recovered progress.
+
+The same crash test withholds genuine durable replies for a comment and a
+saved version. Recovery verifies the accepted comment prefix and retains
+the last comment receipt the client actually saw. The version adapter
+discovers the exact saved version and its original server sequence from the
+restarted catalog. The test checks for zero resubmissions of the edit,
+comment and version and verifies the recovered records after another cold
+reopen. Each client sees one copy of the comment.
