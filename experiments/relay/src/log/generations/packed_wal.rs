@@ -53,6 +53,7 @@ pub(super) struct HeldWal {
     pub physical_bytes: u64,
     pub identity: FileIdentity,
     pub stamp: FileStamp,
+    pub archived: bool,
     encoding: Encoding,
 }
 
@@ -65,6 +66,7 @@ impl HeldWal {
             physical_bytes: self.physical_bytes,
             identity: self.identity,
             stamp: self.stamp,
+            archived: self.archived,
             encoding: self.encoding,
         })
     }
@@ -81,7 +83,16 @@ impl HeldWal {
     ) -> Result<Self> {
         let identity = FileIdentity::of(&file)?;
         let stamp = FileStamp::of(&file)?;
-        Ok(Self { file, generation, bytes, physical_bytes, identity, stamp, encoding })
+        Ok(Self {
+            file,
+            generation,
+            bytes,
+            physical_bytes,
+            identity,
+            stamp,
+            archived: false,
+            encoding,
+        })
     }
 
     pub fn open(file: File, selected: &ClosedFile) -> Result<Self> {

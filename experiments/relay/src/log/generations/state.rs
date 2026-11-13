@@ -1,10 +1,11 @@
 //! Held physical owners. Immutable metadata, native event position and current authority are separate.
 use super::{
+    archive_sealed_wal::ArchiveDirectory,
     directory::Directory,
     format,
     held_file::{self, FileIdentity, FileStamp},
     manifest::{Head, Manifest},
-    packed_wal::{self, HeldWal},
+    packed_wal::HeldWal,
     receipt::{ServerLogGenerationDescriptor, ServerLogGenerationReceipt},
 };
 use crate::{Error, Result};
@@ -23,6 +24,7 @@ pub(super) struct HeldManifest {
 }
 pub(in crate::log) struct Generations {
     pub(super) directory: Directory,
+    pub(super) archive: Option<ArchiveDirectory>,
     pub(super) history: Vec<HeldManifest>,
     pub(super) closed: Vec<HeldWal>,
     pub(super) head: File,
@@ -88,8 +90,11 @@ impl Generations {
                 return Err(Error::Contract("immutable log manifest length changed"));
             }
         }
+        if let Some(archive) = &self.archive {
+            archive.guard()?;
+        }
         for wal in &self.closed {
-            wal.guard(&self.directory.path.join(packed_wal::selected_name(wal)))?;
+            self.guard_sealed_wal(wal)?;
         }
         let active_path =
             self.directory.path.join(format::wal_name(&self.current().value.active.generation));

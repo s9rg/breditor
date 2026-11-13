@@ -18,7 +18,7 @@ pub mod server;
 pub use access::Role;
 pub use log::generations::{
     ServerLogGenerationDescriptor, ServerLogGenerationOptions, ServerLogGenerationReceipt,
-    ServerSealedWalPacking,
+    ServerSealedWalArchive, ServerSealedWalPacking,
 };
 pub use log::{ServerLogAllowance, ServerLogRotationCapacity, ServerLogStorageCapacity};
 pub use presence::PresencePeer;

@@ -20,7 +20,7 @@ pub(super) fn hex(bytes: &[u8; 32]) -> String {
 pub(super) fn manifest_name(hash: &[u8; 32]) -> String {
     format!("m-{}.json", hex(hash))
 }
-pub(super) fn wal_name(generation: &str) -> String {
+pub(crate) fn wal_name(generation: &str) -> String {
     let mut sha = Sha256::new();
     sha.update(b"breditor/relay-log-file/1\0");
     sha.update(generation.as_bytes());

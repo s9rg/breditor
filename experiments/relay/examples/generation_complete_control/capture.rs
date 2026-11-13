@@ -137,6 +137,9 @@ async fn capture_source_cuts(
                 checkpoint.bytes().to_vec(),
                 checkpoint.identity(),
             )?;
+            if room.archive_sealed_wal("owner", &checkpoint, "root")?.duplicate {
+                return Err("source relay archive unexpectedly existed".into());
+            }
             room.grant("owner", "control-local-reader", Some(Role::Reader))?;
             drop(room);
             let room = breditor_collab_relay::Room::open_log_generations_with_checkpoint(
@@ -223,6 +226,11 @@ async fn generate_selected(
         let packed = operation.room_mut().pack_sealed_wal("owner", "two")?;
         if !packed.packed || packed.stored_bytes >= packed.original_bytes {
             return Err("restored relay did not reclaim sealed WAL bytes".into());
+        }
+        let checkpoint = operation.room().materialize_relay_checkpoint("owner")?;
+        let archived = operation.room_mut().archive_sealed_wal("owner", &checkpoint, "two")?;
+        if archived.duplicate || archived.stored_bytes != packed.stored_bytes {
+            return Err("restored relay did not archive the selected packed WAL".into());
         }
     }
     let (native_token, native_digest) = Authentication::issue_token()?;

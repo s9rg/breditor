@@ -1,11 +1,15 @@
 //! A bounded exact selected closure, with separately retained unpublished stages. No scavenging.
-use super::{format, held_file::FileIdentity, packed_wal, rotate, state::Generations};
+use super::{
+    archive_sealed_wal::ARCHIVE_DIRECTORY, format, held_file::FileIdentity, packed_wal, rotate,
+    state::Generations,
+};
 use crate::{Error, Result, credentials};
 use std::{collections::BTreeSet, fs};
 
 impl Generations {
     pub(super) fn verify_inventory(&self) -> Result<usize> {
         self.directory.guard()?;
+        self.verify_sealed_archive_inventory()?;
         let mut known: BTreeSet<String> =
             [".owner", ".head.json", self.ready_name].into_iter().map(String::from).collect();
         if self.ready_name == ".prepared.json" {
@@ -33,7 +37,7 @@ impl Generations {
         let mut stage_bytes = 0_u64;
         for entry in fs::read_dir(&self.directory.path)? {
             entries += 1;
-            if entries > format::MAX_GENERATIONS * 3 + 8 + packed_wal::MAX_STAGES {
+            if entries > format::MAX_GENERATIONS * 3 + 9 + packed_wal::MAX_STAGES {
                 return Err(Error::Contract("physical log directory entry budget"));
             }
             let entry = entry?;
@@ -41,6 +45,9 @@ impl Generations {
                 .file_name()
                 .into_string()
                 .map_err(|_| Error::Contract("physical log directory filename"))?;
+            if name == ARCHIVE_DIRECTORY && self.archive.is_some() {
+                continue;
+            }
             let metadata = fs::symlink_metadata(entry.path())?;
             if !metadata.is_file() {
                 return Err(Error::Contract("physical log directory contains a non-file"));

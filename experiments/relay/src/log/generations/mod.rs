@@ -1,4 +1,9 @@
 //! Explicit physical storage family. Original file readers never infer this layout.
+mod archive_sealed_wal;
+#[cfg(test)]
+pub(crate) use archive_sealed_wal::WalArchiveInterruption;
+#[cfg(test)]
+pub(crate) use format::wal_name as test_wal_name;
 mod capture;
 mod closure;
 mod complete_recovery;
@@ -37,6 +42,7 @@ mod state;
 mod verify;
 mod verify_archive;
 mod verify_archive_ancestor;
+pub use archive_sealed_wal::ServerSealedWalArchive;
 pub(crate) use capture::{GenerationFileSection, GenerationFiles};
 pub(crate) use closure::{
     MAX_GENERATION_BODY_BYTES, MAX_GENERATION_FILES, verify_generation_files,

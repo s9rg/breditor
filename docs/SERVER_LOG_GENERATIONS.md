@@ -348,8 +348,7 @@ This skips semantic relay replay for the selected prefix. The relay still
 retains the original files, including packets from orphaned revision prepares
 needed by retained asset reads. Native journals can still replay internally
 when restored. WAL capacity, backup format and client transport are unchanged.
-Removing a prefix from the live directory will require new archive custody and
-verification across handover and retained asset reads.
+The owner can relocate a checkpointed prefix as described below.
 
 Retain the checkpoint identity only from a successful owner-side capture. Its
 hash binds the snapshot to the operator's choice and the retained WAL cut.
@@ -364,3 +363,25 @@ before handover and continue through authenticated publication and a real relay
 restart with seven returning clients. The client runs use controlled Node
 storage. Unit coverage compares the checkpoint open with ordinary cold replay
 and checks document and comment Undo/Redo after offline submissions.
+
+## Archive a checkpointed sealed WAL
+
+Call `Room::archive_sealed_wal` with the owner principal, the materialized
+checkpoint and the generation ID. The checkpoint must belong to the room and
+name an ancestor of its selected manifest. The requested generation must be
+sealed at or before that cut.
+
+The room keeps the same inode under the private `.sealed-wals` child of its
+log directory. The owner syncs the archive link before removing and syncing
+the live name. A cold reopen accepts both names only when they identify the
+same file. Retrying under the new owner completes removal of the live name.
+A retry that finds the archive already holding the file reports a duplicate.
+An uncertain move fences the held log until it is reopened.
+
+Ordinary cold replay, materialized checkpoint recovery and historical asset
+reads still verify the archived WAL's original digest. Portable backups still
+carry the original WAL bytes at their canonical section names. A sealed WAL
+may be packed before it is archived, and its archived representation retains
+that packing. Archive movement itself keeps the file on the same volume,
+uses the same disk space and leaves the generation count and logical storage
+budget unchanged.

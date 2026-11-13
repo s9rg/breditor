@@ -85,7 +85,11 @@ fn materialized_relay_checkpoint_keeps_old_receipts_and_resumes_both_offline_his
     changed[0] ^= 1;
     assert!(RelayCheckpoint::from_bytes(changed, &identity).is_err());
     let checkpoint = RelayCheckpoint::from_bytes(checkpoint.bytes().to_vec(), &identity)?;
-    assert!(room.pack_sealed_wal("owner", "one")?.packed);
+    let packing = room.pack_sealed_wal("owner", "one")?;
+    assert!(packing.packed);
+    let archived = room.archive_sealed_wal("owner", &checkpoint, "one")?;
+    assert_eq!(archived.stored_bytes, packing.stored_bytes);
+    assert!(!files.room().join(crate::log::generations::test_wal_name("one")).exists());
     room.grant("owner", "later-reader", Some(Role::Reader))?;
     test_fixture::publish_version(&mut room, "After checkpoint")?;
     room.rotate_log_generation("owner", "later")?;

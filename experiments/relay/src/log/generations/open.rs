@@ -1,5 +1,6 @@
 //! Select and lock the entire physical lineage before any semantic replay or tail repair.
 use super::{
+    archive_sealed_wal::{self, ArchiveDirectory},
     directory::Directory,
     format,
     held_file::{self, FileIdentity, FileStamp},
@@ -65,13 +66,13 @@ fn history(directory: &Directory, selected: [u8; 32]) -> Result<Vec<HeldManifest
 }
 fn closed(
     directory: &Directory,
+    archive: Option<&ArchiveDirectory>,
     current: &Manifest,
     identities: &mut BTreeSet<FileIdentity>,
 ) -> Result<Vec<HeldWal>> {
     let mut closed = Vec::new();
     for (item, _) in current.closed_files() {
-        let file = held_file::open(&directory.path.join(format::wal_name(&item.generation)))?;
-        let wal = HeldWal::open(file, item)?;
+        let wal = archive_sealed_wal::open_wal(directory, archive, item)?;
         if !identities.insert(wal.identity) {
             return Err(Error::Contract("physical log inode alias"));
         }
@@ -129,7 +130,8 @@ impl Log {
         )?;
         let current = history.last().ok_or(Error::Contract("missing physical log head"))?;
         let mut identities = BTreeSet::new();
-        let closed = closed(&directory, &current.value, &mut identities)?;
+        let archive = ArchiveDirectory::open(&directory)?;
+        let closed = closed(&directory, archive.as_ref(), &current.value, &mut identities)?;
         let active = &current.value.active;
         let mut file = held_file::open(&directory.path.join(format::wal_name(&active.generation)))?;
         let active_stamp = FileStamp::of(&file)?;
@@ -170,6 +172,7 @@ impl Log {
             poisoned: false,
             generations: Some(Generations {
                 directory,
+                archive,
                 history,
                 closed,
                 head,

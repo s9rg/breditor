@@ -112,6 +112,7 @@ impl Creation {
         let head_identity = FileIdentity::of(&head)?;
         log.generations = Some(Generations {
             directory: self.directory,
+            archive: None,
             history: vec![manifest],
             closed: vec![HeldWal::raw(root_file, self.options.root, log.bytes)?],
             head,

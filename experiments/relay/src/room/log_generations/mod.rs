@@ -1,4 +1,5 @@
 //! Explicit physical storage actions; no original file API infers this separate family.
+mod archive_sealed_wal;
 mod backup;
 mod control_seal;
 #[cfg(test)]

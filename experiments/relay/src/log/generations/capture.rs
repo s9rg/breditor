@@ -1,5 +1,6 @@
 //! Exact held-file capture into one backing buffer, retaining unpublished bytes without admission.
 use super::{
+    archive_sealed_wal::ARCHIVE_DIRECTORY,
     closure::{self, GenerationCut, MAX_GENERATION_BODY_BYTES, MAX_GENERATION_FILES},
     format,
     held_file::{FileIdentity, FileStamp},
@@ -84,7 +85,7 @@ impl Generations {
         self.verify_retained()?;
         let active_name = format::wal_name(&self.current().value.active.generation);
         let mut entries = BTreeMap::new();
-        let mut packing_stages = BTreeSet::new();
+        let mut live_names = BTreeSet::new();
         let mut total = 0_u64;
         for entry in fs::read_dir(&self.directory.path)? {
             let entry = entry?;
@@ -92,11 +93,14 @@ impl Generations {
                 .file_name()
                 .into_string()
                 .map_err(|_| Error::Contract("generation capture filename"))?;
-            if name == ".owner" || pending.is_some_and(|names| names.contains(&name)) {
+            live_names.insert(name.clone());
+            if name == ".owner"
+                || name == ARCHIVE_DIRECTORY
+                || pending.is_some_and(|names| names.contains(&name))
+            {
                 continue;
             }
             if packed_wal::is_stage(&name) {
-                packing_stages.insert(name);
                 continue;
             }
             if entries.len() >= MAX_GENERATION_FILES {
@@ -133,6 +137,28 @@ impl Generations {
             let stamp = FileStamp::of(file)?;
             entries.insert(name, (handle, identity, stamp, length, bytes));
         }
+        for wal in self.closed.iter().filter(|wal| wal.archived) {
+            let name = packed_wal::selected_name(wal);
+            if entries.contains_key(&name) {
+                continue;
+            }
+            self.guard_sealed_wal(wal)?;
+            total =
+                total.checked_add(wal.bytes).ok_or(Error::Contract("generation capture bytes"))?;
+            entries.insert(
+                name,
+                (
+                    CaptureFile::Held(&wal.file),
+                    wal.identity,
+                    wal.stamp,
+                    wal.physical_bytes,
+                    wal.bytes,
+                ),
+            );
+        }
+        if entries.len() > MAX_GENERATION_FILES {
+            return Err(Error::Contract("generation capture count"));
+        }
         // Reserve one bounded envelope prefix so the room codec can insert its header in place.
         let mut body = backing_buffer(total)?;
         let mut sections = Vec::new();
@@ -148,7 +174,11 @@ impl Generations {
             if copied as u64 != *bytes {
                 return Err(Error::Contract("generation capture incomplete file"));
             }
-            identity.guard(file, &self.directory.path.join(name))?;
+            let path = match self.closed_wal(name) {
+                Some((wal, _)) => self.sealed_wal_path(wal)?,
+                None => self.directory.path.join(name),
+            };
+            identity.guard(file, &path)?;
             stamp.guard(file)?;
             sections.push(GenerationFileSection {
                 name: name.clone(),
@@ -173,20 +203,25 @@ impl Generations {
         let cut = closure::verify_generation_files(&slices)?;
         for (name, (handle, identity, stamp, length, _)) in &entries {
             let file = handle.file();
-            identity.guard(file, &self.directory.path.join(name))?;
+            let path = match self.closed_wal(name) {
+                Some((wal, _)) => self.sealed_wal_path(wal)?,
+                None => self.directory.path.join(name),
+            };
+            identity.guard(file, &path)?;
             stamp.guard(file)?;
             if file.metadata()?.len() != *length {
                 return Err(Error::Contract("generation capture source length changed"));
             }
         }
-        self.check_capture_names(entries.keys().cloned().chain(packing_stages), pending)?;
+        self.check_capture_names(live_names, pending)?;
         Ok(GenerationFiles { body, sections, cut })
     }
     fn check_capture_names(
         &self,
-        captured: impl Iterator<Item = String>,
+        expected: BTreeSet<String>,
         pending: Option<&BTreeSet<String>>,
     ) -> Result<()> {
+        let expected = expected.into_iter().chain(pending.into_iter().flatten().cloned()).collect();
         let current = fs::read_dir(&self.directory.path)?
             .map(|entry| {
                 entry?
@@ -195,10 +230,6 @@ impl Generations {
                     .map_err(|_| Error::Contract("generation capture filename"))
             })
             .collect::<Result<BTreeSet<_>>>()?;
-        let expected = captured
-            .chain(std::iter::once(".owner".into()))
-            .chain(pending.into_iter().flatten().cloned())
-            .collect();
         if current != expected {
             return Err(Error::Contract("generation capture directory changed"));
         }

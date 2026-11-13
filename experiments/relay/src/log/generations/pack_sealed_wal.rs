@@ -44,6 +44,9 @@ impl Generations {
         if result.packed {
             return Ok(result);
         }
+        if held.archived {
+            return Err(Error::Contract("pack WAL before archiving it"));
+        }
         let path = self.directory.path.join(format::wal_name(generation));
         held.guard(&path)?;
         require_unaliased(&held.file)?;

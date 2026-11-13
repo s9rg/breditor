@@ -1,5 +1,6 @@
 //! Stream a selected archive against actual held files, without another full source allocation.
 use super::{
+    archive_sealed_wal::ARCHIVE_DIRECTORY,
     format,
     held_file::{FileIdentity, FileStamp},
     packed_wal,
@@ -37,7 +38,7 @@ fn names(state: &Generations) -> Result<BTreeSet<String>> {
             entry?.file_name().into_string().map_err(|_| Error::Contract("archive source filename"))
         })
         .collect::<Result<BTreeSet<_>>>()?;
-    if values.len() > super::closure::MAX_GENERATION_FILES + 1 + packed_wal::MAX_STAGES {
+    if values.len() > super::closure::MAX_GENERATION_FILES + 2 + packed_wal::MAX_STAGES {
         return Err(Error::Contract("archive source file count"));
     }
     Ok(values)
@@ -66,14 +67,16 @@ impl Generations {
             .map(|name| (*name).to_owned())
             .chain(std::iter::once(".owner".into()))
             .collect::<BTreeSet<_>>();
-        let mut matches = retained
-            || inventory.iter().filter(|name| !packed_wal::is_stage(name)).eq(exact_names.iter());
+        let mut logical_names = inventory.clone();
+        logical_names.retain(|name| name != ARCHIVE_DIRECTORY && !packed_wal::is_stage(name));
+        logical_names.extend(self.closed.iter().map(packed_wal::selected_name));
+        let mut matches = retained || logical_names == exact_names;
         let mut witnesses = Vec::new();
         for (name, bytes) in expected {
             if retained && *name == ".head.json" {
                 continue;
             }
-            if !inventory.contains(*name) {
+            if !logical_names.contains(*name) {
                 matches = false;
                 continue;
             }
@@ -83,14 +86,13 @@ impl Generations {
                     matches = false;
                     continue;
                 }
-                let path = self.directory.path.join(name);
-                wal.guard(&path)?;
+                self.guard_sealed_wal(wal)?;
                 matches &= wal.read(metadata.sha256, |reader| {
                     let result = compare_prefix(reader, bytes)?;
                     std::io::copy(reader, &mut std::io::sink())?;
                     Ok(result)
                 })?;
-                wal.guard(&path)?;
+                self.guard_sealed_wal(wal)?;
                 continue;
             }
             let owned;
