@@ -23,7 +23,10 @@ export interface ContinuedStatePins {
 const checkpointLimit=(kind:ContinuedPairHistoryKind)=>
  kind==='continued-v2'?256*MIB:kind==='segmented-v1'?64*MIB:16*MIB;
 
-export async function packContinuedRecords(records:ContinuedPairRecords,context:ArchiveIntegrityContext){
+type PackableSlots=Pick<ContinuedPairRecords,'committed'|'pending'|'live'>&{
+ readonly attempt:Readonly<{capture:SharedContinuedPairRecovery;cut:object|null}>|null;
+};
+export async function packContinuedRecords(records:PackableSlots,context:ArchiveIntegrityContext){
  const parts:Blob[]=[],pins:RecordPin[]=[],index=new Map<string,number>();
  let bytes=0;
  const add=async(text:string,maximum:number)=>{

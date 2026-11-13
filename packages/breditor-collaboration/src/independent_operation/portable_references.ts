@@ -7,7 +7,8 @@ import type {SharedPacketAssetReferencesRead} from '../packet_asset_references.j
 import type {SharedAssetCapturePending} from '../asset_references_capture.js';
 import {sourceCoreMethods as native} from '../source_native_read.js';
 import {operationJournalFailure as fail} from './journal_failure.js';
-export function portableRecoveryReferences(core:SharedRichEditor<SharedSelectionPolicy>,recovery:SharedIndependentDeliveryRecovery,check:()=>void){
+export function portableRecoveryReferences<P extends SharedSelectionPolicy>(core:SharedRichEditor<P>,
+ recovery:{source:Pick<SharedIndependentDeliveryRecovery['source'],'versions'>;retained:SharedIndependentDeliveryRecovery['retained']},check:()=>void){
  check();const base=native.retainedAssetReferences.call(core),revision=base.revision,references=new Map<string,RichRetainedAssetReference>(),seen=new Set<string>(),pending:SharedAssetCapturePending[]=[];
  const add=(rows:readonly RichRetainedAssetReference[])=>{for(const row of rows){references.set(JSON.stringify([row.asset,row.generation]),{asset:row.asset,generation:row.generation});if(references.size>100000)throw fail('independent_operation_reference_budget');}};add(base.references);
  const consume=(key:string,read:()=>SharedPacketAssetReferencesRead)=>{if(seen.has(key))return;seen.add(key);if(seen.size>1024)throw fail('independent_operation_reference_budget');check();const value=read();native.checkPacketAssetReferences.call(core,value,revision);if(value.outcome.kind==='ready')add(value.outcome.references);else pending.push({kind:'source',packet:value.packet,missing:value.outcome.missing});check();};

@@ -6,6 +6,8 @@ import {join,resolve} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {WebSocket as Socket} from 'undici';
 import {IDBObjectStore} from 'fake-indexeddb';
+import {RichAssetStore} from '@breditor/experimental-rich-content';
+import {pixel,secondPixel,secondAsset,ReviewFixtureImage} from './fixtures/review-assets/pixels.mjs';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
 import {ReviewWireFixture} from './fixtures/relay-wire.mjs';
 import {deliveryDraft} from './fixtures/independent-delivery/session.mjs';
@@ -26,7 +28,7 @@ export async function probeContinuedDelivery(runtime,binary,revisionBinary){
  await wasm.default({module_or_path:bytes});
  const configuration=JSON.stringify({format:'breditor/shared-rich-profile',formatVersion:3,schema:{name:'example/continued-delivery',version:1},extensions:[]});
  const profile=wasm.SharedRichProfile.from_standard_configuration_json_v3(configuration),descriptor=JSON.parse(profile.descriptor_json());
- const counts={nativeRooms:0,coldReads:0,packetsRetained:0,lostAcknowledgements:0,reviewReceipts:0,documentReceipts:0,undoRedo:0,ceilingChecks:0,duplicateRefusals:0,recoveryImports:0,deliveredPackets:0,verifiedRecordReads:0,unacknowledgedRecordReads:0};
+ const counts={nativeRooms:0,coldReads:0,packetsRetained:0,lostAcknowledgements:0,reviewReceipts:0,documentReceipts:0,undoRedo:0,ceilingChecks:0,duplicateRefusals:0,recoveryImports:0,deliveredPackets:0,verifiedRecordReads:0,unacknowledgedRecordReads:0,archiveRoundTrips:0,archiveMissingAssets:0,packetAssets:0,archivedUnacknowledgedSaves:0,uploadRestores:0};
  try{
   for(const [wire,documentHistory,reviewHistory] of [[1,'original','continued-v2'],[2,'continued-v2','original'],[2,'continued-v2','continued-v2']]){
    const directory=mkdtempSync(join(tmpdir(),'breditor-continued-delivery-test-')),paths=['room.log','profile.json','document.json','auth.json'].map(name=>join(directory,name));
@@ -36,10 +38,13 @@ export async function probeContinuedDelivery(runtime,binary,revisionBinary){
    writeFileSync(paths[3],JSON.stringify({format:'breditor/relay-auth',formatVersion:1,origins:[origin],
     accounts:Object.entries(tokens).map(([principal,token])=>({principal,tokenHash:[...createHash('sha256').update(token).digest()]}))}),{mode:0o600});
    const reset=environment(),originalSocket=Object.getOwnPropertyDescriptor(globalThis,'WebSocket');
+   const originalImage=Object.getOwnPropertyDescriptor(globalThis,'Image');
+   Object.defineProperty(globalThis,'Image',{configurable:true,value:ReviewFixtureImage});
    const put=IDBObjectStore.prototype.put,fetch=globalThis.fetch;
-   let host,session,doc,comments,suggestionSync,staging,wireClient,inject=false,interrupted=false;
+   let host,session,doc,comments,suggestionSync,staging,wireClient,uploads,inject=false,interrupted=false;
    Object.defineProperty(globalThis,'WebSocket',{configurable:true,value:class extends Socket{constructor(url){super(url,{headers:{Origin:origin}});}}});
    globalThis.fetch=(url,options={})=>{
+    if(String(url).startsWith('blob:'))return fetch(url,options);
     const headers=new Headers(options.headers);headers.set('Origin',origin);
     return fetch(url,{...options,headers});
    };
@@ -130,7 +135,9 @@ export async function probeContinuedDelivery(runtime,binary,revisionBinary){
      doc=api.createSharedContinuedRelaySync(session,{identity:writer.identity,getToken:auth.getToken,autoConnect:false,...suggestionOptions});
      const queue=await session.openSuggestionQueue(),revisions=await session.openSuggestionRevisions({transport:doc});
      const before=session.core.documentJson();
-     const predecessor=queue.propose('Revision predecessor','1',deliveryDraft('Pending original '));
+     const draft=deliveryDraft('Pending original ');
+     draft.edit.data.push({kind:'replace_image',data:{block:'image-block',asset:'only-in-packet',generation:'packet-generation'}});
+     const predecessor=queue.propose('Revision predecessor','1',draft);
      const revision=revisions.revise({previousSuggestionId:predecessor.id,title:'Queued revision',createdAtMs:'2',
       draft:deliveryDraft('Pending child ')});
      const version=versions.saveVersion('Queued version','3');
@@ -150,7 +157,47 @@ export async function probeContinuedDelivery(runtime,binary,revisionBinary){
     await held.verify();held.dispose();
     assert.throws(()=>held.check(),error=>error.code==='continued_pair_read_closed');
     counts.verifiedRecordReads++;
-    await session.close();session=undefined;
+    uploads=await RichAssetStore.open('continued-delivery-uploads');
+    await uploads.ingest(new Blob([secondPixel],{type:'image/png'}));
+    await uploads.cancel(secondAsset);
+    const participant={session,uploads,wasm,checkAuthority(){},participant:'local-device',principal:'alice'};
+    const backupPolicy={wasm,checkAuthority(){},restoreDocument:options.restoreDocument};
+    const missing=await api.SharedContinuedParticipantBackup.captureDelivery(participant);
+    assert.equal(missing.kind,'pending');
+    assert.ok(missing.pending.length>0);
+    counts.archiveMissingAssets++;
+    const resolveAsset=async reference=>({...reference,identity:'host-verified',blob:new Blob([pixel],{type:'image/png'}),check(){}});
+    const result=await api.SharedContinuedParticipantBackup.captureDelivery({...participant,resolveAsset});
+    assert.equal(result.kind,'ready');
+    const archive=result.backup;
+    const reopened=await api.SharedContinuedParticipantBackup.readDelivery(archive.file(),archive.selection(),backupPolicy);
+    let imported,restoredUploads;
+    try{
+     assert.deepEqual(reopened.records(),archive.records());
+     assert.deepEqual(reopened.records().live,offline);
+     assert.deepEqual(reopened.assetReferences(),archive.assetReferences());
+     const uploadBackup=reopened.uploadBackup();
+     assert.deepEqual(await uploadBackup.arrayBuffer(),await (await uploads.exportBackup()).arrayBuffer());
+     restoredUploads=await RichAssetStore.restoreBackup('continued-delivery-portable-uploads',uploadBackup,{uploadState:'preserve'});
+     assert.deepEqual(await (await restoredUploads.exportBackup()).arrayBuffer(),await uploadBackup.arrayBuffer());
+     counts.uploadRestores++;
+     if(allPackets){
+      assert.ok(reopened.blob('only-in-packet','packet-generation'));
+      assert.ok(!session.core.documentJson().includes('only-in-packet'));
+      counts.packetAssets++;
+     }
+     const {identity,sha256}=archive.selection();
+     await assert.rejects(api.SharedContinuedParticipantBackup.read(archive.file(),{identity,sha256},backupPolicy));
+     const invalid=new Blob([archive.file().slice(0,-1),Uint8Array.of(255)]);
+     await assert.rejects(api.SharedContinuedParticipantBackup.readDelivery(invalid,archive.selection(),backupPolicy));
+     await session.close();session=undefined;
+     imported=await api.SharedContinuedPairSession.restoreDelivery({...options,database:'portable-continued-delivery'},
+      reopened.records().live,'host-reacquired');
+     assert.deepEqual(imported.exportDeliveryRecovery(),offline);
+     assert.equal(imported.core.redo(),true);
+     assert.equal(imported.core.redoReview().kind,'committed');
+     counts.archiveRoundTrips++;
+    }finally{restoredUploads?.close();await imported?.discardAndClose();reopened.dispose();archive.dispose();}
     await assert.rejects(api.SharedContinuedPairSession.open(options));
     session=await api.SharedContinuedPairSession.openDelivery(options);
     assert.deepEqual(session.exportDeliveryRecovery(),offline);
@@ -172,6 +219,11 @@ export async function probeContinuedDelivery(runtime,binary,revisionBinary){
      assert.deepEqual(records.attempt.capture,records.committed.recovery);
      await held.verify();held.dispose();
      counts.unacknowledgedRecordReads++;
+     const saved=await api.SharedContinuedParticipantBackup.captureDelivery({...participant,session,resolveAsset});
+     assert.equal(saved.kind,'ready');
+     const restored=await api.SharedContinuedParticipantBackup.readDelivery(saved.backup.file(),saved.backup.selection(),backupPolicy);
+     try{assert.deepEqual(restored.records(),records);counts.archivedUnacknowledgedSaves++;}
+     finally{restored.dispose();saved.backup.dispose();}
      await session.discardAndClose();session=undefined;
      session=await api.SharedContinuedPairSession.openDelivery(options);connect();
      await doc.connect();await doc.flush();
@@ -222,7 +274,8 @@ export async function probeContinuedDelivery(runtime,binary,revisionBinary){
     assert.equal(session.core.undoReview().kind,'committed');
     counts.undoRedo++;counts.nativeRooms++;
    }finally{
-    globalThis.fetch=fetch;IDBObjectStore.prototype.put=put;
+    globalThis.fetch=fetch;IDBObjectStore.prototype.put=put;uploads?.close();
+    if(originalImage)Object.defineProperty(globalThis,'Image',originalImage);else delete globalThis.Image;
     wireClient?.close();suggestionSync?.dispose();doc?.dispose();comments?.dispose();await session?.discardAndClose();staging?.dispose();await host?.stop();
     if(originalSocket)Object.defineProperty(globalThis,'WebSocket',originalSocket);else delete globalThis.WebSocket;
     reset();rmSync(directory,{recursive:true,force:true});

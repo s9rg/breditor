@@ -68,7 +68,7 @@ export type {
 } from "./continued_room_catalog/contract.js";
 export type {ContinuedParticipantPrefix,ContinuedDocumentOnlyPrefix,ContinuedAcceptedPrefix} from "./continued_participant/inventory.js";
 export {SharedContinuedParticipantBackup} from "./continued_participant/archive.js";
-export type {ContinuedParticipantIdentity,ContinuedParticipantSelection,ContinuedParticipantMetadata,ContinuedParticipantCaptureOptions,ContinuedParticipantReadOptions} from "./continued_participant/contract.js";
+export type {ContinuedDeliveryParticipantSelection,ContinuedParticipantIdentity,ContinuedParticipantSelection,ContinuedParticipantMetadata,ContinuedParticipantCaptureOptions,ContinuedParticipantReadOptions} from "./continued_participant/contract.js";
 export {createSharedContinuedRelaySync,createSharedContinuedReviewRelaySync} from "./continued_delivery/factories.js";
 export type {ContinuedDeliveryRecordRead,ContinuedDeliveryRecords,SharedContinuedDeliveryOptions,SharedContinuedDeliveryRecovery} from "./continued_delivery/contract.js";
 export {SharedContinuedPairSession} from "./continued_pair/session.js";

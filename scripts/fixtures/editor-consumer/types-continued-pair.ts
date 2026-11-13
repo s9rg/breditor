@@ -3,7 +3,7 @@ import {
  type SharedContinuedDeliveryOptions,type SharedContinuedDeliveryRecovery,type SharedIndependentRelaySyncOptions,type SharedIndependentReviewSyncOptions,
  type SharedContinuedPairOptions,type SharedContinuedPairRecovery,
  type ContinuedDeliveryRecords,type ContinuedPairRecords,type SharedContinuedPairAssetReferences,
- type ContinuedParticipantCaptureOptions,type ContinuedParticipantReadOptions,type ContinuedParticipantSelection,
+ type ContinuedDeliveryParticipantSelection,type ContinuedParticipantCaptureOptions,type ContinuedParticipantReadOptions,type ContinuedParticipantSelection,
 } from '@breditor/collaboration';
 declare const options:SharedContinuedPairOptions<'document-v1'>;
 declare const recovery:SharedContinuedPairRecovery;
@@ -51,3 +51,13 @@ documentSync.dispose();reviewSync.dispose();await source.close();
 await (await SharedContinuedPairSession.openDelivery(delivery)).close();
 // @ts-expect-error Delivery restore requires a current host writer reacquisition decision.
 void SharedContinuedPairSession.restoreDelivery(delivery,archived);
+
+const portable=await SharedContinuedParticipantBackup.captureDelivery(input);
+if(portable.kind==='ready'){
+ const expected:ContinuedDeliveryParticipantSelection=portable.backup.selection();
+ const restored=await SharedContinuedParticipantBackup.readDelivery(portable.backup.file(),expected,policy);
+ const records:ContinuedDeliveryRecords=restored.records();
+ void records.live.retained;
+ restored.dispose();
+ portable.backup.dispose();
+}

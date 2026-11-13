@@ -3,8 +3,12 @@ import {SharedRichEditor} from '../core.js';
 import type {SharedSelectionPolicy} from '../types.js';
 import {disposeOwnedCore} from '../owned_core_lifetime.js';
 import {frozen} from '../room_participant_inventory/policy.js';
-import {sourceCoreMethods as native} from '../source_native_read.js';
 import {continuedPairReadFailure,ContinuedPairRecordRead,type ContinuedPairRecords} from './read_records.js';
+import type {SharedAssetCapturePending} from '../asset_references_capture.js';
+import {portableRecoveryReferences} from '../independent_operation/portable_references.js';
+import {ContinuedDeliveryCompanion} from '../continued_delivery/companion.js';
+import {forwardProgress} from '../segmented_relay/validation.js';
+import type {ContinuedDeliveryRecords,SharedContinuedDeliveryRecovery} from '../continued_delivery/contract.js';
 import type {SharedContinuedPairRecovery} from './contract.js';
 
 export type ContinuedPairSlot='committed'|'attempt'|'pending'|'live';
@@ -34,13 +38,17 @@ export async function readContinuedPairAssetReferences<P extends SharedSelection
 
 /** Shared by the live held read and the independently selected portable reader. */
 export async function replayContinuedPairAssetReferences<P extends SharedSelectionPolicy>(
- records:ContinuedPairRecords,replay:(recovery:SharedContinuedPairRecovery,check:()=>void)=>Promise<SharedRichEditor<P>>,check:()=>void,
+ records:Pick<ContinuedPairRecords,'committed'|'attempt'|'pending'|'live'>,replay:(recovery:SharedContinuedPairRecovery,check:()=>void)=>Promise<SharedRichEditor<P>>,check:()=>void,
+ delivery?:Readonly<{records:ContinuedDeliveryRecords;pending:SharedAssetCapturePending[]}>,
 ):Promise<SharedContinuedPairAssetReferences>{
  const selected:readonly [ContinuedPairSlot,SharedContinuedPairRecovery|null][]=[
   ['committed',records.committed.recovery],['attempt',records.attempt?.capture??null],['pending',records.pending],['live',records.live],
  ];
  const states:SharedContinuedPairAssetReferences['states'][number][]=[],union=new Map<string,RichRetainedAssetReference>();
- let previous:{core:SharedRichEditor<P>;recovery:SharedContinuedPairRecovery}|undefined;
+ let previous:{core:SharedRichEditor<P>;recovery:SharedContinuedPairRecovery;delivery?:SharedContinuedDeliveryRecovery}|undefined;
+ const selectedDelivery=delivery?.records;
+ const deliverySlots=selectedDelivery&&{committed:selectedDelivery.committed.recovery,attempt:selectedDelivery.attempt?.capture,
+  pending:selectedDelivery.pending,live:selectedDelivery.live};
  try{
   for(const [slot,recovery] of selected){
    if(!recovery)continue;
@@ -55,21 +63,32 @@ export async function replayContinuedPairAssetReferences<P extends SharedSelecti
      if(recovery.identity.documentHistory==='original')verifyOriginal.call(core,previous.core);
      else verifyGeneration.call(core,previous.core);
     }
-    const base=native.retainedAssetReferences.call(core);
-    if(base.document!==recovery.identity.native.room)throw continuedPairReadFailure('identity');
-    const references=new Map(base.references.map(row=>[key(row),row]));
-    for(const packet of recovery.versions){
-     const version=native.versionAssetReferences.call(core,packet,base.revision);
-     native.checkPacketAssetReferences.call(core,version,base.revision);
-     if(version.outcome.kind!=='ready')throw continuedPairReadFailure('asset_pending');
-     for(const row of version.outcome.references)references.set(key(row),row);
+    const saved=deliverySlots?.[slot];
+    if(saved){
+     const identity=saved.source.identity;
+     const {document,review}=saved.relay.binding;
+     if(!review)throw continuedPairReadFailure('identity');
+     const companion=new ContinuedDeliveryCompanion({
+      database:'portable-continued-delivery',...identity,review:{...identity.review,access:'read_only'},
+      readOnly:true,binding:{document,review},retained:saved.retainedBinding,
+      restoreDocument(){throw continuedPairReadFailure('identity');},
+     },saved);
+     companion.admit(core);
+     if(previous?.delivery)forwardProgress(previous.delivery.relay,saved.relay);
     }
-    native.checkRetainedAssetReferences.call(core,base,base.revision);
+    const selected=portableRecoveryReferences(core,{source:recovery,retained:saved?.retained??{
+     versions:null,suggestions:null,revisions:null,
+    }},check);
+    if(selected.pending.length){
+     if(!delivery)throw continuedPairReadFailure('asset_pending');
+     delivery.pending.push(...selected.pending);
+    }
+    const references=new Map(selected.references.map(row=>[key(row),row]));
     for(const [id,row] of references)union.set(id,row);
     if(union.size>100000)throw continuedPairReadFailure('asset_budget');
     states.push({slot,references:[...references.values()].sort(order)});
     if(previous)disposeOwnedCore(previous.core);
-    previous={core,recovery};
+    previous={core,recovery,...(saved?{delivery:saved}:{})};
     retained=true;
    }finally{if(!retained)disposeOwnedCore(core);}
   }
@@ -77,4 +96,18 @@ export async function replayContinuedPairAssetReferences<P extends SharedSelecti
  check();
  return frozen({format:'breditor/continued-pair-asset-references',formatVersion:1,identity:structuredClone(records.live.identity),
   committedHead:records.committed.head,states,references:[...union.values()].sort(order)});
+}
+
+
+/** The delivery archive uses the same native pair proof plus all retained packets. */
+export async function replayContinuedDeliveryAssetReferences<P extends SharedSelectionPolicy>(
+ records:ContinuedDeliveryRecords,replay:(recovery:SharedContinuedPairRecovery,check:()=>void)=>Promise<SharedRichEditor<P>>,check:()=>void,
+){
+ const {committed,attempt,pending,live}=records,missing:SharedAssetCapturePending[]=[];
+ const references=await replayContinuedPairAssetReferences({
+  committed:{head:committed.head,recovery:committed.recovery.source},
+  attempt:attempt?{capture:attempt.capture.source,cut:null}:null,
+  pending:pending?.source??null,live:live.source,
+ },replay,check,{records,pending:missing});
+ return {references,missing};
 }

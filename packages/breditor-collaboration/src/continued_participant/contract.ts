@@ -15,6 +15,9 @@ export interface ContinuedParticipantSelection {
  readonly identity:ContinuedParticipantIdentity;
  readonly sha256:string;
 }
+export interface ContinuedDeliveryParticipantSelection extends ContinuedParticipantSelection {
+ readonly formatVersion:2;
+}
 export interface ContinuedParticipantMetadata {
  readonly identity:ContinuedParticipantIdentity;
  readonly bindings:readonly SharedAssetByteBinding[];

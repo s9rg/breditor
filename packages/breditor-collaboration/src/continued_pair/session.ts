@@ -16,7 +16,7 @@ import {participantAuthority} from '../participant_backup/policy.js';
 import {independentBootstrapDestination,independentBootstrapPolicy,independentBootstrapSignal} from '../independent_history/bootstrap_policy.js';
 import {NativeReconstructionWaits} from '../selected_native_reconstruction/read_waits.js';
 import {OperationalReadCancellation} from '../operation_read/cancellation.js';
-import {readContinuedPairAssetReferences,type SharedContinuedPairAssetReferences} from './asset_references.js';
+import {readContinuedPairAssetReferences,replayContinuedDeliveryAssetReferences,type SharedContinuedPairAssetReferences} from './asset_references.js';
 import {admitContinuedPair,captureContinuedPair as capture,withContinuedPairReplay} from './replay.js';
 import {continuedPairReadFailure as readFailure,createContinuedPairRecordRead,ContinuedPairRecordRead,type ContinuedPairRecords} from './read_records.js';
 import {SharedEditorError,type SharedRichEditor} from '../core.js';
@@ -51,6 +51,18 @@ export async function withContinuedPairAssetRead<P extends SharedSelectionPolicy
  try{return await use(read,await readPairAssets(session,read,signal));}
  finally{disposePairRecords.call(read);}
 }
+
+/** Borrow the delivery slots and native replay under one held source observation. */
+export async function withContinuedDeliveryAssetRead<P extends SharedSelectionPolicy,T>(
+ session:SharedContinuedPairSession<P>,check:()=>void,signal:AbortSignal|undefined,
+ use:(read:ContinuedDeliveryRecordRead,assets:Awaited<ReturnType<typeof replayContinuedDeliveryAssetReferences<P>>>)=>Promise<T>,
+):Promise<T>{
+ const read=await readDeliveryRecords.call(session,check,signal);
+ try{return await use(read,await readDeliveryAssets(session,read,signal));}
+ finally{disposePairRecords.call(read);}
+}
+let readDeliveryAssets:<P extends SharedSelectionPolicy>(session:SharedContinuedPairSession<P>,read:ContinuedDeliveryRecordRead,signal?:AbortSignal)=>
+ ReturnType<typeof replayContinuedDeliveryAssetReferences<P>>;
 
 type Capture=SharedContinuedPairRecovery&{delivery?:ReturnType<ContinuedDeliveryCompanion['capture']>};
 const same=(a:Capture|undefined,b:Capture)=>
@@ -447,7 +459,11 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
    replay=>readContinuedPairAssetReferences(read,replay));
  }
 
- static{readPairAssets=(session,read,signal)=>session.#readAssets(read,signal);}
+ static{
+  readPairAssets=(session,read,signal)=>session.#readAssets(read,signal);
+  readDeliveryAssets=(session,read,signal)=>withContinuedPairReplay(session.#identity,session.#restoreDocument,
+   ()=>checkPairRecords.call(read),signal,replay=>replayContinuedDeliveryAssetReferences(readPairMetadata.call(read) as ContinuedDeliveryRecords,replay,()=>checkPairRecords.call(read)));
+ }
 
  save():void{
   this.#checkWrite();
@@ -611,4 +627,7 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
 const savePair=SharedContinuedPairSession.prototype.save,flushPair=SharedContinuedPairSession.prototype.flush;
 const readPairRecords=SharedContinuedPairSession.prototype.readRecords;
 const checkPairRecords=ContinuedPairRecordRead.prototype.check;
+const readPairMetadata=ContinuedPairRecordRead.prototype.metadata;
 const disposePairRecords=ContinuedPairRecordRead.prototype.dispose;
+
+const readDeliveryRecords=SharedContinuedPairSession.prototype.readDeliveryRecords;

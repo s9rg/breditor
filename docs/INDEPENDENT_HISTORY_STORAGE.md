@@ -240,12 +240,22 @@ committed cut can also appear in the attempted slot after a lost
 acknowledgement. Call `verify()` to recheck the exact persisted head and
 immutable files. Dispose the read to release the save queue.
 
-The complete recovery can be exported and restored independently. The
-continued-participant archive described below currently captures local
-continued pairs. Its whole-room recovery and activation path still needs
-support for the continued delivery stores and their retained packets.
-
 ### Archive a continued participant
+
+For a delivery pair, use `SharedContinuedParticipantBackup.captureDelivery`
+and `readDelivery`. The version-two participant archive retains each slot's
+exact native histories, relay receipts, and suggestion, revision, and version
+packets. It includes the whole upload store and raster bytes for every
+referenced image generation, including images only present in queued
+suggestions or revisions. A capture reports `source-pending` when a packet's
+native dependencies or an uncached published version prevent a complete
+asset inventory. A capture reports `pending` when the required raster bytes
+are unavailable. Preserve the independent version-two `selection()` with
+the archive. Restore the selected record with `restoreDelivery` and restore
+the upload backup with `RichAssetStore.restoreBackup` and
+`uploadState: "preserve"`. Whole-room catalog and activation support for this
+archive family remains a separate step.
+
 
 `SharedContinuedParticipantBackup.capture` takes a continued pair session,
 the selected participant and principal, a local upload store, a synchronous
