@@ -9,7 +9,7 @@ export const sourceCoreMethods=Object.freeze({
  segmentedHistoryPolicy:p.segmentedHistoryPolicy,supportsRetainedAssetReferences:p.supportsRetainedAssetReferences,supportsPacketAssetReferences:p.supportsPacketAssetReferences,
  retainedAssetReferences:p.retainedAssetReferences,checkRetainedAssetReferences:p.checkRetainedAssetReferences,
  versionAssetReferences:p.versionAssetReferences,suggestionAssetReferences:p.suggestionAssetReferences,suggestionRevisionAssetReferences:p.suggestionRevisionAssetReferences,checkPacketAssetReferences:p.checkPacketAssetReferences,
- checkpointJson:p.checkpointJson,readVersion:p.readVersion,reviewCheckpoint:p.reviewCheckpoint,reviewSegmentedCheckpoint:p.reviewSegmentedCheckpoint,
+ checkpointJson:p.checkpointJson,readVersion:p.readVersion,reviewCheckpoint:p.reviewCheckpoint,reviewSegmentedCheckpoint:p.reviewSegmentedCheckpoint,reviewContinuedCheckpoint:p.reviewContinuedCheckpoint,
  reviewHistoryPolicy:p.reviewHistoryPolicy,view:p.view,reviewSnapshot:p.reviewSnapshot,subscribe:p.subscribe,subscribeReview:p.subscribeReview,
 });
 const {descriptor,checkpointJson,writerClock,writerClockV2,writerGroups,writerGroupsV2,supportsWriterPrefixRead,writerClockAt,reviewWriterClock,reviewCheckpoint,localReviewClock}=p;

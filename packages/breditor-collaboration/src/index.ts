@@ -54,6 +54,8 @@ export {SharedPresenceOverlay,type SharedPresenceOverlayOptions} from "./presenc
 export type * from "./types.js";
 export type * from "./review_types.js";
 export type * from "./review_generations.js";
+export {SharedContinuedPairSession} from "./continued_pair/session.js";
+export type {SharedContinuedPairOptions,SharedContinuedPairRecovery,ContinuedPairIdentity,ContinuedPairHistoryKind} from "./continued_pair/contract.js";
 export {SharedIndependentHistoryPersistentSession} from "./independent_history/session.js";
 export {SharedIndependentSourceCapture,captureSharedIndependentSource,type SharedIndependentSourceMetadata} from './independent_source/capture.js';
 export {SharedIndependentDeliverySession,type SharedIndependentVersionsOpenOptions,type SharedIndependentRevisionsOpenOptions} from './independent_delivery/session.js';

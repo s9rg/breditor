@@ -238,6 +238,19 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
   this.#requireReview();if((review!=="original"&&review!=="segmented-v1")||(document!=="original"&&document!=="segmented-v1")||this.segmentedHistoryPolicy()!==(document==="segmented-v1"?document:null)||this.reviewHistoryPolicy()!==review||(history!=="explicit"&&history!=="typing-v1")||(this.view().historyGrouping==="typing-v1"?"typing-v1":"explicit")!==history||(this.#fixedHistory!==undefined&&this.#fixedHistory!==history))throw new SharedEditorError("independent_history_policy","Both explicit native history families and base policies must match before durable adoption");
   this.sealRangePolicy(ranges);this.#fixedHistory=history;
  }
+ /** Pin the exact native lanes before adopting a version-two paired store. */
+ sealContinuedPairPolicies(document:SharedReviewHistoryPolicy,review:SharedReviewHistoryPolicy,history:"explicit"|"typing-v1",ranges:"original"|"general-v1"):void{
+  this.#nativeRecoveryAccess();
+  this.#requireReview();
+  if(document!=="continued-v2"&&review!=="continued-v2"||
+     (this.segmentedHistoryPolicy()??"original")!==document||this.reviewHistoryPolicy()!==review||
+     history!=="explicit"&&history!=="typing-v1"||
+     (this.view().historyGrouping??"explicit")!==history||
+     this.#fixedHistory!==undefined&&this.#fixedHistory!==history)
+   throw new SharedEditorError("continued_pair_policy","The continued store requires both exact native families and policies");
+  this.sealRangePolicy(ranges);
+  this.#fixedHistory=history;
+ }
  /** Pure native document and paired-review continuity. Final AST equality is never a fallback. */
  verifyRecoveryOrigin<Q extends SharedSelectionPolicy>(origin:SharedRichEditor<Q>):void {
   this.#check();origin.#check();if(!this.supportsRecoveryOrigin()||!origin.supportsRecoveryOrigin())throw new SharedEditorError("recovery_origin_unavailable","Use matching native recovery-origin checks");

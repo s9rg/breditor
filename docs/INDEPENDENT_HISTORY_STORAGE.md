@@ -148,3 +148,37 @@ the same native history strings and current-policy cold replay. Runtime-only
 constructor keys prevent direct JavaScript construction from registering a source
 with supplied fake leases or a borrowed core. This does not select an independent
 relay/retained family or activate a physical room.
+
+## Store a continued pair
+
+`SharedContinuedPairSession` selects the document and review history families
+independently. Each can be `original`, `segmented-v1`, or `continued-v2`, and
+at least one lane must be continued. Supply an exact document restore factory
+for the selected family, the room/writer and grammar/scope/history settings,
+and the current document and review permissions. The factory takes the
+document checkpoint string and returns an unobserved native owner.
+
+Call `restoreRecovery(options, recovery, "host-reacquired")` with the exact
+version-two recovery cut after reacquiring the writers. This inserts into an
+absent destination. `open(options)` cold-replays an existing cut. Both paths
+acquire the document and review locks before calling the native factory.
+The restored checkpoints must match the selected bytes before the editor is
+published. Use `exportRecovery()` to retain an exact readable pair with its
+version packets.
+
+The dedicated stores are `continued_pair_files` and `continued_pair_heads`.
+Each continued lane carries its native `continuedAfter` boundary. Root and
+seal files keep the same lane-specific digests as the native archive. One
+transaction verifies and inserts the referenced immutable files and compares
+and publishes the paired head. Replaying a failed save uses the same pending
+cut. If the commit succeeded and its acknowledgement was lost, retry checks
+that exact head and all its files before it accepts the result. An absent
+referenced file prevents cold opening. Both archives and the version catalog
+are exported with their original native strings.
+
+A paired save reflects one capture of both native owners and the local
+version catalog. Native remote admissions, seals, and history actions still
+have their ordinary publication boundaries. Hosts can await `flush()` for
+the captured cut and `retry()` after a failed save. The version-two store is
+a local recovery boundary. Room catalog, asset/delivery custody, and relay
+snapshot/restart integration require their corresponding versioned adapters.
