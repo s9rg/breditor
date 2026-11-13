@@ -1,0 +1,77 @@
+//! Prepare a real successor under a sealed predecessor, with no serving routes.
+use super::{Result, capture::authentication};
+use breditor_collab_relay::{
+    Room, ServerLogGenerationRoomBackup,
+    assets::AssetStore,
+    server::{
+        DurableNativeActivationControl, NativeGenerationActivationPrepareOptions,
+        PreparedLogGenerationHandover, PreparedLogGenerationRecoveryHost, RoomDeploymentAuthority,
+        VerifiedServerLogGenerationRecoveryState, prepare_durable_native_activation_control,
+        router_with_log_generation_backups_and_deployment_lease,
+    },
+};
+use std::{path::Path, sync::Arc};
+
+pub struct Predecessor {
+    intent: Arc<PreparedLogGenerationHandover>,
+    authority: RoomDeploymentAuthority,
+}
+
+pub async fn seal(
+    root: &Path,
+    room: Room,
+    assets: AssetStore,
+) -> Result<(ServerLogGenerationRoomBackup, Predecessor)> {
+    let authority =
+        RoomDeploymentAuthority::create(&root.join("deployment"), &room.deployment_binding()?)?;
+    let lease = authority.claim(&authority.current_selection()?)?;
+    let (auth, token) = authentication("owner")?;
+    let (_router, live) = router_with_log_generation_backups_and_deployment_lease(
+        room, auth, assets, lease, "owner", &token,
+    )
+    .await?;
+    let backup = live.capture("owner", &token).await?;
+    let intent = live
+        .prepare_handover("owner", &token, &root.join("source-intent"), backup.info()?.identity)
+        .await?;
+    let selected = intent.identity().clone();
+    let intent = Arc::new(live.seal_prepared_handover("owner", &token, intent, &selected).await?);
+    Ok((backup, Predecessor { intent, authority }))
+}
+
+pub async fn prepare(
+    root: &Path,
+    predecessor: Predecessor,
+    host: PreparedLogGenerationRecoveryHost,
+    proof: Arc<VerifiedServerLogGenerationRecoveryState>,
+    native_token: &str,
+) -> Result<(DurableNativeActivationControl, axum::Router)> {
+    let checkpoint = Arc::new(
+        host.prepare_durable_native_activation(
+            "owner",
+            native_token,
+            predecessor.intent,
+            &proof,
+            NativeGenerationActivationPrepareOptions {
+                root: root.join("activation"),
+                authority: predecessor.authority.clone(),
+            },
+        )
+        .await?,
+    );
+    let (operators, _) = authentication("operator")?;
+    let (router, control) = prepare_durable_native_activation_control(
+        host,
+        proof,
+        checkpoint,
+        predecessor.authority,
+        "owner",
+        native_token,
+        operators,
+    )
+    .await?;
+    if control.service_router().await.is_ok() {
+        return Err("activation fixture must stay prepared".into());
+    }
+    Ok((control, router))
+}

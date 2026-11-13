@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import {IDBDatabase} from 'fake-indexeddb';
 import {RichAssetStore} from '@breditor/experimental-rich-content';
+import {verifyActivationIntent} from './activation.mjs';
 
 const bytes=blob=>blob.arrayBuffer();
 const exists=async database=>(await indexedDB.databases()).some(row=>row.name===database);
 
-export async function verifyContinuedRoomReplacement(api,{probe,preview,continuedArchive,options,cohort,local,replacementRaster,requests}){
+export async function verifyContinuedRoomReplacement(api,{probe,preview,continuedArchive,options,cohort,local,replacementRaster,requests,activation}){
  const {retainRecoveredContinuedRoomCatchUp:retain,SharedContinuedRoomCatalogStore:Store}=api;
  const database='provider-catch-up-catalog',catalog='provider-catch-up-room';
  const refused=new Error('Local choice could not be saved');
@@ -36,7 +37,7 @@ export async function verifyContinuedRoomReplacement(api,{probe,preview,continue
  const destinations=probe.recovery.destinations.map(row=>({...row,source:row.source+'-catch-up',uploads:row.uploads+'-catch-up'}));
  const plan={...probe.recovery,expected:retained.replacement,database:'provider-catch-up-journal',destinations};
  let replacement=await Store.resume(open);
- let rasters=0;
+ let rasters=0,activationIntents=0;
  const candidates=new Map([...preview.participants,...preview.localParticipants].map(row=>[row.id,row.recovery]));
  try{
   const before=continuedArchive.metadata(),after=replacement.metadata();
@@ -89,6 +90,8 @@ export async function verifyContinuedRoomReplacement(api,{probe,preview,continue
    [...prefix.acceptedDocuments,...prefix.acceptedReviews].every(row=>row.relation!=='server_ahead')));
   for(const participant of local)assert.ok(report.reconciliation.coverage.missing.some(
    row=>row.kind==='unbound_review'&&row.actor===participant.options.review.actor));
+  if(activation)activationIntents=await verifyActivationIntent(api,{original:probe,
+   replacement:{recovery:resumed,reconciliation:probe.reconciliation},offer:activation,requests});
   for(const participant of [...cohort,...local]){
    const target=destinations.find(row=>row.id===participant.id);
    const delivery=cohort.includes(participant),open=delivery?'openDelivery':'open',read=delivery?'exportDeliveryRecovery':'exportRecovery';
@@ -108,5 +111,5 @@ export async function verifyContinuedRoomReplacement(api,{probe,preview,continue
    finally{uploads.close();}
   }
  }finally{await replacement.close();}
- return {clients:cohort.length,local:local.length,rasters};
+ return {clients:cohort.length,local:local.length,rasters,activationIntents};
 }

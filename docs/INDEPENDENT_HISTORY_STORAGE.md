@@ -505,3 +505,20 @@ and fresh participant destinations. Keep those names and the exact catalog
 selection for `resumeContinuedRoomRecovery` after an interruption. This
 produces local replacement destinations. Authenticated serving and old-writer
 fencing across devices require the whole-room activation workflow.
+
+`prepareContinuedRoomActivation` binds an already completed room recovery to
+the exact checkpoint selected by a separately configured
+`SharedDurableNativeActivationHost`. Supply the completed recovery and its
+operator reconciliation policy, a fresh intent database, and a callback
+that retains the returned choice independently. Preparation requires an
+observation for every participant and refuses any history still behind an
+accepted author prefix. It checks the physical origin, current server and
+participant inventory against the activation checkpoint, then records the
+exact catalog, journal, destinations and reconciliation digest. It keeps
+unbound review and missing provider obligations in the pinned reconciliation.
+
+`verifyContinuedRoomActivation` requires an existing intent and repeats those
+checks against the actual local storage and current operator. Use a freshly
+configured activation host for the same selection when reopening. Both
+operations leave the Native checkpoint prepared. Native commit and serving
+still require admission of the remaining obligations and custody transfer.

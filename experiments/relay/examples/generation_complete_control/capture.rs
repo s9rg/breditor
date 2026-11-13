@@ -1,13 +1,13 @@
 //! Seven actual image-bearing native authors under genuine standalone origin/current custody.
-use super::{Result, clients, migrated_origin, server_packet_asset, source, storage};
+use super::{Result, activation, clients, migrated_origin, server_packet_asset, source, storage};
 use breditor_collab_relay::{
     Role, RoomRecoveryPolicy, ServerLogGenerationRoomBackup, ServerLogGenerationRoomRecovery,
     assets::{AssetStore, asset_id, prepare_asset},
     server::{
-        Authentication, ContentAddressedServerAssets, PreparedLogGenerationRecoveryHost,
-        ServerLogGenerationRecoveryAssetCoverage, ServerLogGenerationRecoveryControl,
-        VerifiedServerLogGenerationRecoveryState, prepare_log_generation_recovery_control,
-        prepare_log_generation_recovery_host,
+        Authentication, ContentAddressedServerAssets, DurableNativeActivationControl,
+        PreparedLogGenerationRecoveryHost, ServerLogGenerationRecoveryAssetCoverage,
+        ServerLogGenerationRecoveryControl, VerifiedServerLogGenerationRecoveryState,
+        prepare_log_generation_recovery_control, prepare_log_generation_recovery_host,
     },
 };
 use serde_json::json;
@@ -21,25 +21,21 @@ pub struct Running {
     pub router: axum::Router,
     pub control: ServerLogGenerationRecoveryControl,
     pub operator_token: String,
+    pub activation: Option<(DurableNativeActivationControl, axum::Router)>,
 }
-fn authentication(principal: &str) -> Result<(Authentication, String)> {
+pub(super) fn authentication(principal: &str) -> Result<(Authentication, String)> {
     let (token, hash) = Authentication::issue_token()?;
     Ok((Authentication::from_json(&json!({"format":"breditor/relay-auth","formatVersion":1,"origins":["http://127.0.0.1:4187"],"accounts":[{"principal":principal,"tokenHash":hash}]}).to_string())?,token))
 }
 async fn prepare_control(
     host: PreparedLogGenerationRecoveryHost,
-    native: VerifiedServerLogGenerationRecoveryState,
+    native: Arc<VerifiedServerLogGenerationRecoveryState>,
     native_token: &str,
 ) -> Result<(axum::Router, ServerLogGenerationRecoveryControl, String)> {
     let provider: Arc<dyn breditor_collab_relay::server::ServerRecoveryAssetProvider> =
         Arc::new(ContentAddressedServerAssets);
     let ServerLogGenerationRecoveryAssetCoverage::Verified(proof) = host
-        .verify_recovery_asset_availability(
-            "owner",
-            native_token,
-            Arc::new(native),
-            provider.clone(),
-        )
+        .verify_recovery_asset_availability("owner", native_token, native, provider.clone())
         .await?
     else {
         return Err("native server provider".into());
@@ -84,12 +80,13 @@ fn seed_assets(
     }
     Ok(assets)
 }
-fn capture_source_cuts(
+async fn capture_source_cuts(
     directory: &Path,
     mut room: breditor_collab_relay::Room,
     mut assets: AssetStore,
     migrated: bool,
-) -> Result<migrated_origin::Cuts> {
+    activation: bool,
+) -> Result<(migrated_origin::Cuts, Option<activation::Predecessor>)> {
     room.seal_document_history_generation("owner", "document-two".into())?;
     if !migrated {
         room.rotate_log_generation("owner", "two")?;
@@ -101,15 +98,18 @@ fn capture_source_cuts(
     room.grant("owner", "boundary-reader", Some(Role::Reader))?;
     // All seven current writers stay enabled; the old long-cut fixture is separate.
     if migrated {
-        migrated_origin::capture(directory, room, assets)
+        Ok((migrated_origin::capture(directory, room, assets)?, None))
     } else {
         let older = ServerLogGenerationRoomBackup::capture(&mut room, &mut assets, "owner")?;
         room.grant("owner", "control-local-reader", Some(Role::Reader))?;
         room.rotate_log_generation("owner", "control-local-origin")?;
-        let local = ServerLogGenerationRoomBackup::capture(&mut room, &mut assets, "owner")?;
-        drop(room);
-        drop(assets);
-        Ok(migrated_origin::Cuts { older, local, legacy: None })
+        let (local, predecessor) = if activation {
+            let (backup, predecessor) = activation::seal(directory, room, assets).await?;
+            (backup, Some(predecessor))
+        } else {
+            (ServerLogGenerationRoomBackup::capture(&mut room, &mut assets, "owner")?, None)
+        };
+        Ok((migrated_origin::Cuts { older, local, legacy: None }, predecessor))
     }
 }
 async fn generate_selected(
@@ -148,8 +148,15 @@ async fn generate_selected(
         )?;
         server_packet_asset::accept(&mut room, accepted)?;
     }
-    let migrated_origin::Cuts { older: ancestor, local, legacy } =
-        capture_source_cuts(&root, room, assets, migrated)?;
+    let (migrated_origin::Cuts { older: ancestor, local, legacy }, predecessor) =
+        capture_source_cuts(
+            &root,
+            room,
+            assets,
+            migrated,
+            server_packet_assets && spec.atomic && spec.language == 3 && !spec.standard,
+        )
+        .await?;
     let mut operation = ServerLogGenerationRoomRecovery::begin(
         &root.join("restored"),
         &local,
@@ -193,6 +200,15 @@ async fn generate_selected(
         protected,
     )
     .await?;
+    let native = Arc::new(native);
+    let activation = if let Some(predecessor) = predecessor {
+        Some(
+            activation::prepare(&root, predecessor, host.clone(), native.clone(), &native_token)
+                .await?,
+        )
+    } else {
+        None
+    };
     let (router, control, operator_token) = prepare_control(host, native, &native_token).await?;
     let mut fixture = json!({"format":"breditor/native-generation-complete-control-fixture","formatVersion":1,"language":spec.language,"standard":spec.standard,"atomic":spec.atomic,"configuration":configuration,"inventoryJson":serde_json::to_string(&inventory.metadata().native)?,"generationRecoveryState":selected,"clients":records,"registeredWriters":7,"registeredReviewActors":7,"protectedStreams":14});
     if let Some(legacy) = &legacy {
@@ -216,5 +232,5 @@ async fn generate_selected(
         }),
         credentials: &credentials,
     })?;
-    Ok(Running { path, router, control, operator_token })
+    Ok(Running { path, router, control, operator_token, activation })
 }

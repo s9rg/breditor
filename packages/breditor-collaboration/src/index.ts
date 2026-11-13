@@ -276,6 +276,8 @@ export type * from './server_packet_source_resolution/contract.js';
 export type * from './server_packet_reconciliation/contract.js';
 
 export {SharedDurableNativeActivationHost} from './native_activation_control/host.js';
+export {prepareContinuedRoomActivation,verifyContinuedRoomActivation} from './continued_room_activation/prepare.js';
+export type {ContinuedRoomActivationChoice,ContinuedRoomActivationPlan} from './continued_room_activation/contract.js';
 export {SharedNativeActivationError,MAX_SHARED_NATIVE_ACTIVATION_CONTROL_BYTES} from './native_activation_control/policy.js';
 export type {SharedDeploymentSelection,SharedDurableNativeActivationSelection,SharedDurableNativeActivationReceipt,SharedDurableNativeActivationHostOptions} from './native_activation_control/contract.js';
 export type {RoomActivationIntentChoice,RoomActivationIntentState,RoomActivationRetainedIntent} from './room_native_activation_intent/contract.js';

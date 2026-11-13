@@ -1,4 +1,4 @@
-import {SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore,beginContinuedRoomRecovery,resumeContinuedRoomRecovery,readContinuedRoomReconciliation,readRecoveredContinuedRoomReconciliation,previewRecoveredContinuedRoomCatchUp,retainRecoveredContinuedRoomCatchUp} from '@breditor/collaboration';
+import {SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore,beginContinuedRoomRecovery,resumeContinuedRoomRecovery,readContinuedRoomReconciliation,readRecoveredContinuedRoomReconciliation,previewRecoveredContinuedRoomCatchUp,retainRecoveredContinuedRoomCatchUp,prepareContinuedRoomActivation,verifyContinuedRoomActivation} from '@breditor/collaboration';
 import type {ContinuedRoomOriginalRecoveryPolicy,ContinuedRoomGenerationRecoveryPolicy,ContinuedRoomDeliveryRecoveryPolicy,ContinuedRoomIndependentRecoveryPolicy,ContinuedPairRecords,ContinuedRoomReconciliationOptions,ContinuedRoomReconciliationRead,ContinuedRoomRecoveryDestination,ContinuedRoomRecoveryOptions,ContinuedRoomRecoveryResult,ContinuedRoomCatalogCaptureOptions,ContinuedRoomCatalogMetadata,ContinuedRoomCatalogSelection} from '@breditor/collaboration';
 import type {ContinuedRoomOriginalReadPolicy} from '@breditor/collaboration';
 
@@ -64,3 +64,11 @@ const retained:Replacement=await retainRecoveredContinuedRoomCatchUp(recoveredIn
 const replacement=await SharedContinuedRoomCatalogStore.resume({...options,database:retained.database,expected:retained.replacement,
  policies:options.policies.map(policy=>({...policy,expected:retained.advanced.find(row=>row.id===policy.id)?.expected??policy.expected}))});
 await replacement.close();
+
+type Activation=import('@breditor/collaboration').ContinuedRoomActivationChoice;
+declare const activation:import('@breditor/collaboration').SharedDurableNativeActivationHost;
+declare function retainActivation(choice:Activation):Promise<void>;
+const intent:Activation=await prepareContinuedRoomActivation(recoveredInput,{database:'intent',activation,retainChoice:retainActivation});
+const activationPlan:import('@breditor/collaboration').ContinuedRoomActivationPlan=
+ await verifyContinuedRoomActivation(recoveredInput,{expected:intent,activation});
+void activationPlan;

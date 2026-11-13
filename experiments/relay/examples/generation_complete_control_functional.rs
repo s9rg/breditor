@@ -1,4 +1,6 @@
 //! Separate seven-writer image/provider fixture. Operator tokens use private IPC only.
+#[path = "generation_complete_control/activation.rs"]
+mod activation;
 #[path = "generation_complete_control/capture.rs"]
 mod capture;
 #[path = "complete_cohort_fixture/clients.rs"]
@@ -34,6 +36,7 @@ async fn main() -> Result {
         [std::fs::read(parent.join("seed-a.png"))?, std::fs::read(parent.join("seed-b.png"))?];
     let mut cases = Vec::new();
     let mut controls = Vec::new();
+    let mut activations = Vec::new();
     let mut tasks = Vec::new();
     for (language, standard) in [(1, false), (2, false), (2, true), (3, false), (3, true)] {
         for atomic in [false, true] {
@@ -50,9 +53,16 @@ async fn main() -> Result {
             .await?;
             let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
             let address = listener.local_addr()?;
-            cases.push(serde_json::json!({"path":running.path,"endpoint":format!("http://{address}/recovery/generations/v1/check"),"selection":running.control.identity(),"operatorToken":running.operator_token,"nativeProtectedStreamsVerified":true,"nativeProviderVerified":true}));
+            let mut case = serde_json::json!({"path":running.path,"endpoint":format!("http://{address}/recovery/generations/v1/check"),"selection":running.control.identity(),"operatorToken":running.operator_token,"nativeProtectedStreamsVerified":true,"nativeProviderVerified":true});
+            let mut router = running.router;
+            if let Some((control, activation_router)) = running.activation {
+                case["activation"] = serde_json::json!({"endpoint":format!("http://{address}/recovery/native-activation/v1/commit"),"selection":control.identity()});
+                router = router.merge(activation_router);
+                activations.push(control);
+            }
+            cases.push(case);
             controls.push(running.control);
-            tasks.push(tokio::spawn(async move { axum::serve(listener, running.router).await }));
+            tasks.push(tokio::spawn(async move { axum::serve(listener, router).await }));
         }
     }
     println!(
@@ -61,6 +71,9 @@ async fn main() -> Result {
     );
     tokio::signal::ctrl_c().await?;
     for control in &controls {
+        control.close();
+    }
+    for control in &activations {
         control.close();
     }
     for task in tasks {

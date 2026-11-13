@@ -45,6 +45,8 @@ export interface CompletedContinuedRoomRead {
  readonly recovery:ContinuedRoomRecoveryResult;
  readonly archive:SharedContinuedRoomCatalog;
  readonly namespaces:readonly string[];
+ readonly catalogDatabase:string;
+ readonly recoveryDatabase:string;
  readonly catalogOptions:ReturnType<typeof continuedRoomRecoveryCatalog>['options'];
  check():void;
  verifyExact():Promise<void>;
@@ -292,7 +294,7 @@ async function restore<T>(
    await verify();
   };
   const scope=Object.freeze({recovery,archive,namespaces:Object.freeze([held.database,...namespaces]),
-   catalogOptions:held.options,check:current,verifyExact});
+   catalogDatabase:held.database,recoveryDatabase:database,catalogOptions:held.options,check:current,verifyExact});
   if(inspect){
    const result=await visit(scope);
    // Provider authorization can wait on application code. Re-admit the
