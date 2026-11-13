@@ -44,8 +44,10 @@ type RecoveryMode='begin'|'resume'|'inspect';
 export interface CompletedContinuedRoomRead {
  readonly recovery:ContinuedRoomRecoveryResult;
  readonly archive:SharedContinuedRoomCatalog;
- readonly policies:ReturnType<typeof continuedRoomRecoveryCatalog>['options']['policies'];
+ readonly namespaces:readonly string[];
+ readonly catalogOptions:ReturnType<typeof continuedRoomRecoveryCatalog>['options'];
  check():void;
+ verifyExact():Promise<void>;
 }
 
 async function restore<T>(
@@ -282,20 +284,25 @@ async function restore<T>(
   await verify();
   checkComplete();
   const recovery=frozen({format:'breditor/continued-room-local-recovery' as const,formatVersion:1 as const,catalog:expected,participants:destinations});
-  if(inspect){
-   const result=await visit(Object.freeze({recovery,archive,policies:held.options.policies,check:current}));
+  const verifyExact=async()=>{
    cursor=await accessRecoveryJournal(journal,plan,guard,signal);
    checkComplete();
-   // Provider authorization can wait on application code. Re-admit the
-   // durable catalog and each exact destination after the provider read.
    const reread=await held.read(checkAuthorityCurrent,signal);
    dispose.call(reread);
    await verify();
+  };
+  const scope=Object.freeze({recovery,archive,namespaces:Object.freeze([held.database,...namespaces]),
+   catalogOptions:held.options,check:current,verifyExact});
+  if(inspect){
+   const result=await visit(scope);
+   // Provider authorization can wait on application code. Re-admit the
+   // durable catalog and each exact destination after the provider read.
+   await verifyExact();
    return result;
   }
   current();
   if(deliveryActors)commitActors.call(deliveryActors);
-  return visit({recovery,archive,policies:held.options.policies,check:current});
+  return visit(scope);
  }finally{await opening.rollback();}
 }
 

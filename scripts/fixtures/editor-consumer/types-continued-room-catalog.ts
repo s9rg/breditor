@@ -1,4 +1,4 @@
-import {SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore,beginContinuedRoomRecovery,resumeContinuedRoomRecovery,readContinuedRoomReconciliation,readRecoveredContinuedRoomReconciliation,previewRecoveredContinuedRoomCatchUp} from '@breditor/collaboration';
+import {SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore,beginContinuedRoomRecovery,resumeContinuedRoomRecovery,readContinuedRoomReconciliation,readRecoveredContinuedRoomReconciliation,previewRecoveredContinuedRoomCatchUp,retainRecoveredContinuedRoomCatchUp} from '@breditor/collaboration';
 import type {ContinuedRoomOriginalRecoveryPolicy,ContinuedRoomGenerationRecoveryPolicy,ContinuedRoomDeliveryRecoveryPolicy,ContinuedRoomIndependentRecoveryPolicy,ContinuedPairRecords,ContinuedRoomReconciliationOptions,ContinuedRoomReconciliationRead,ContinuedRoomRecoveryDestination,ContinuedRoomRecoveryOptions,ContinuedRoomRecoveryResult,ContinuedRoomCatalogCaptureOptions,ContinuedRoomCatalogMetadata,ContinuedRoomCatalogSelection} from '@breditor/collaboration';
 import type {ContinuedRoomOriginalReadPolicy} from '@breditor/collaboration';
 
@@ -54,3 +54,12 @@ void recoveredParticipants;
 const catchUp:import('@breditor/collaboration').RecoveredContinuedRoomCatchUpPreview=await previewRecoveredContinuedRoomCatchUp(recoveredInput);
 const caughtUp:import('@breditor/collaboration').SharedContinuedDeliveryRecovery|undefined=catchUp.participants[0]?.recovery;
 void caughtUp;
+
+type Replacement=import('@breditor/collaboration').RecoveredContinuedRoomReplacementChoice;
+declare function persist(choice:Replacement):Promise<void>;
+const retained:Replacement=await retainRecoveredContinuedRoomCatchUp(recoveredInput,{
+ database:'replacement-db',catalog:'replacement',retainChoice:persist,
+});
+const replacement=await SharedContinuedRoomCatalogStore.resume({...options,database:retained.database,expected:retained.replacement,
+ policies:options.policies.map(policy=>({...policy,expected:retained.advanced.find(row=>row.id===policy.id)?.expected??policy.expected}))});
+await replacement.close();

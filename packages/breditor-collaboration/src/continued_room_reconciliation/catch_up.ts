@@ -14,6 +14,14 @@ const metadata=SharedContinuedRoomCatalog.prototype.metadata;
 export function previewRecoveredContinuedRoomCatchUp(
  input:RecoveredContinuedRoomReconciliationOptions,
 ):Promise<RecoveredContinuedRoomCatchUpPreview>{
+ return withContinuedRoomCatchUp(input,async preview=>preview);
+}
+
+type RecoveredVisitor=Parameters<typeof withRecoveredContinuedRoomReconciliation>[1];
+export function withContinuedRoomCatchUp<T>(
+ input:RecoveredContinuedRoomReconciliationOptions,
+ visit:(preview:RecoveredContinuedRoomCatchUpPreview,...scope:Parameters<RecoveredVisitor>)=>Promise<T>,
+):Promise<T>{
  return withRecoveredContinuedRoomReconciliation(input,async (read,held,host,check,signal)=>{
   const entries=metadata.call(held.archive).participants.filter(row=>row.family==='continued-delivery');
   if(!entries.length)throw fail('policy');
@@ -34,7 +42,7 @@ export function previewRecoveredContinuedRoomCatchUp(
    if(!page.review?.more)break;
    request={document:'omit',review:{kind:'after',cursor:page.review.cursor}};
   }
-  const policies=new Map(held.policies.map(row=>[row.id,row]));
+  const policies=new Map(held.catalogOptions.policies.map(row=>[row.id,row]));
   const participants:RecoveredContinuedRoomCatchUpPreview['participants'][number][]=[];
   for(const entry of entries){
    check();
@@ -43,7 +51,8 @@ export function previewRecoveredContinuedRoomCatchUp(
    participants.push(await catchUpContinuedDeliveryClient(held.archive,entry,policy,pages,check,signal));
   }
   check();
-  return frozen({format:'breditor/recovered-continued-room-catch-up-preview',formatVersion:1,
+  const preview:RecoveredContinuedRoomCatchUpPreview=frozen({format:'breditor/recovered-continued-room-catch-up-preview',formatVersion:1,
    catalog:read.recovery.catalog,server:host.selection,participants});
+  return visit(preview,read,held,host,check,signal);
  });
 }

@@ -482,3 +482,25 @@ stream is behind the relay. It returns reconstructed checkpoints with the
 original local Undo/Redo, version packets, relay receipts, and outboxes.
 The original destinations stay unchanged. The preview is detached data for
 an explicit replacement plan.
+
+`retainRecoveredContinuedRoomCatchUp(input, {database, catalog, retainChoice})`
+repeats that reconstruction under the live operator and completed recovery.
+Use a fresh database and catalog name. The replacement pins the same physical
+origin, server and participant inventory. It advances only the live records
+of continued-delivery participants and preserves all earlier save slots,
+upload backups and other participant archives. Newly reachable image
+references require verified bytes from the selected provider.
+
+Save the detached choice in `retainChoice`. The SDK rechecks the operator and
+the completed source before it inserts the replacement catalog. On a restart,
+open `SharedContinuedRoomCatalogStore.resume` with the saved `database` and
+`replacement` selection. Keep the original read policies and replace the
+expected selections listed in `advanced`. If the insert never committed,
+resume reports the catalog missing. An existing catalog must match the exact
+retained choice.
+
+Use `beginContinuedRoomRecovery` with this reopened catalog, a fresh journal
+and fresh participant destinations. Keep those names and the exact catalog
+selection for `resumeContinuedRoomRecovery` after an interruption. This
+produces local replacement destinations. Authenticated serving and old-writer
+fencing across devices require the whole-room activation workflow.

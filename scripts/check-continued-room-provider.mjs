@@ -30,7 +30,7 @@ async function installedProbe(){
  execFileSync(npm,['install','--offline','--ignore-scripts','--no-audit','--no-fund'],{cwd:consumer,stdio:'inherit'});
  const registryArtifacts=verifySearchConsumerRegistry(producer,JSON.parse(readFileSync(join(consumer,'package-lock.json'),'utf8')));
  for(const name of names)assert.ok(realpathSync(join(consumer,'node_modules',name)).startsWith(realpathSync(consumer)+'/node_modules/'));
- copyConsumerFixtures(root,consumer,['continued-room-provider/operation-archives.mjs','continued-room-recovery/operation-archives.mjs','continued-room-recovery/original.mjs','continued-room-recovery/continued-delivery.mjs',
+ copyConsumerFixtures(root,consumer,['continued-room-provider/operation-archives.mjs','continued-room-provider/replacement.mjs','continued-room-recovery/operation-archives.mjs','continued-room-recovery/original.mjs','continued-room-recovery/continued-delivery.mjs',
   'room-participant-inventory/environment.mjs','review-assets/pixels.mjs','independent-delivery/session.mjs','owned-core-cleanup/session.mjs']);
  const from="'../packages/breditor-collaboration/dist/index.js'",to="'@breditor/collaboration'";
  for(const name of ['probe-continued-room-catalog.mjs','probe-continued-room-provider.mjs']){
@@ -44,12 +44,12 @@ async function installedProbe(){
  execFileSync(process.execPath,[join(root,'node_modules/typescript/bin/tsc'),'--noEmit','--strict','--exactOptionalPropertyTypes',
   '--target','ES2022','--module','NodeNext','--lib','ES2022,DOM,ESNext.Disposable',typeFile],{cwd:consumer,stdio:'inherit'});
  const entry=join(consumer,'entry.mjs');
- writeFileSync(entry,'export {readContinuedRoomReconciliation,readRecoveredContinuedRoomReconciliation,previewRecoveredContinuedRoomCatchUp} from "@breditor/collaboration";');
+ writeFileSync(entry,'export {readContinuedRoomReconciliation,readRecoveredContinuedRoomReconciliation,previewRecoveredContinuedRoomCatchUp,retainRecoveredContinuedRoomCatchUp} from "@breditor/collaboration";');
  const output=await build({configFile:false,root:consumer,logLevel:'error',
   build:{target:'es2022',write:false,minify:false,lib:{entry,formats:['es'],fileName:'continued-provider'}}});
  const modules=(Array.isArray(output)?output:[output]).flatMap(result=>result.output)
   .filter(item=>item.type==='chunk').flatMap(item=>Object.keys(item.modules));
- for(const path of ['continued_room_reconciliation/read.js','continued_room_reconciliation/recovered.js','continued_room_reconciliation/catch_up.js','continued_room_reconciliation/catch_up_client.js','continued_room_recovery/recovery.js','continued_room_reconciliation/asset_pins.js','continued_room_reconciliation/independent_prefix.js','continued_room_reconciliation/delivery_prefix.js','continued_room_reconciliation/generation_prefix.js','continued_room_reconciliation/original_prefix.js','continued_room_reconciliation/operation_prefix.js','generation_recovery_control/host.js'])
+ for(const path of ['continued_room_reconciliation/read.js','continued_room_reconciliation/recovered.js','continued_room_reconciliation/catch_up.js','continued_room_reconciliation/catch_up_client.js','continued_room_reconciliation/retain_replacement.js','continued_room_recovery/recovery.js','continued_room_reconciliation/asset_pins.js','continued_room_reconciliation/independent_prefix.js','continued_room_reconciliation/delivery_prefix.js','continued_room_reconciliation/generation_prefix.js','continued_room_reconciliation/original_prefix.js','continued_room_reconciliation/operation_prefix.js','generation_recovery_control/host.js'])
   assert.ok(modules.some(module=>module.includes('/node_modules/@breditor/collaboration/dist/'+path)),path);
  assert.ok(!modules.some(module=>module.includes(join(root,'packages'))||module.includes('fake-indexeddb')));
  const runtime=join(consumer,'node_modules/@breditor/collaboration/dist/runtime');
@@ -87,6 +87,7 @@ export async function runContinuedProviderQualification(controls,transport,direc
    assert.equal(result.continuedDeliveryProviderReads,1);
    assert.equal(result.recoveredRoomReads,1);
    assert.equal(result.recoveredClientCatchUps,2);
+   assert.equal(result.recoveredReplacementClients,2);
    assert.equal(result.serverOnlyPacketAssets,result.atomic?1:0);
    assert.equal(result.recoveredRoomRefusals,3);
    assert.equal(result.mixedDeliveryAheadRefusals,1);

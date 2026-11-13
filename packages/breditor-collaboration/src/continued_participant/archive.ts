@@ -7,6 +7,7 @@ import {archiveBlob,archiveFields,archiveInteger,MAX_SHARED_ARCHIVE_DIGEST_BYTES
 import {readVerifiedArchiveHeader} from '../archive_integrity/verified_header.js';
 import {assetBytesUtf8} from '../asset_bytes/format.js';
 import {checkRasterManifest} from '../asset_bytes/raster_manifest.js';
+import type {SharedAssetBytesResolver} from '../asset_bytes/types.js';
 import {resolveSelectedAssetBytes} from '../asset_bytes/resolve.js';
 import {replayContinuedPairAssetReferences,replayContinuedDeliveryAssetReferences,type SharedContinuedPairAssetReferences} from '../continued_pair/asset_references.js';
 import {ContinuedPairRecordRead,type ContinuedPairRecords} from '../continued_pair/read_records.js';
@@ -202,21 +203,12 @@ export class SharedContinuedParticipantBackup<Records=ContinuedPairRecords,Selec
       await verifyRecords.call(read);
       return {kind:'pending' as const,pending:resolved.missing};
      }
-     const {bindings,assets,assetBytes}=resolved;
-     const metadata=freezeGeneration({identity,bindings,assets,assetBytes});
-     checkCoverage(metadata,references);
-     const {parts,pins,states}=await packContinuedRecords(pairs(records),integrity);
-     const extra=companions?await companions(records,integrity):undefined;
-     const uploadPin={bytes:cut.backup.size,sha256:await integrity.digest(cut.backup)};
-     const file=new Blob([frame(header(metadata,pins,states,uploadPin,extra?.pins)),...parts,...(extra?.parts??[]),
-      ...assets.map(asset=>resolved.payloads.get(asset.contentAsset)!),cut.backup],{type:mime});
-     if(file.size>(extra?MAX_SHARED_ARCHIVE_DIGEST_BYTES:MAX_CONTINUED_PARTICIPANT_BYTES))throw fail('budget');
-     const selection=select({identity,sha256:await integrity.digest(file)});
+     const encoded=await encodeParticipant(identity,references,records,pairs,companions,select,cut.backup,resolved,integrity);
      await verifyRecords.call(read);
      resolved.check();
      verify();
      const backup=completed=new SharedContinuedParticipantBackup(construction,{
-      file,selection,metadata,records,references,payloads:resolved.payloads,uploads:uploadArchive,
+      ...encoded,records,references,payloads:resolved.payloads,uploads:uploadArchive,
      });
      transfer=true;
      return {kind:'ready' as const,backup};
@@ -274,3 +266,40 @@ const disposeParticipant=SharedContinuedParticipantBackup.prototype.dispose;
 
 const deliverySelection=(selection:ContinuedParticipantSelection):ContinuedDeliveryParticipantSelection=>
  freezeGeneration({...continuedParticipantSelection(selection),formatVersion:2 as const});
+
+async function encodeParticipant<R,S>(
+ identity:ContinuedParticipantMetadata['identity'],references:SharedContinuedPairAssetReferences,records:R,
+ pairs:(records:R)=>Parameters<typeof packContinuedRecords>[0],
+ companions:((records:R,context:ArchiveIntegrityContext)=>ReturnType<typeof packDeliveryRecords>)|undefined,
+ select:(selection:ContinuedParticipantSelection)=>S,uploads:Blob,
+ resolved:Awaited<ReturnType<typeof resolveSelectedAssetBytes>>,integrity:ArchiveIntegrityContext,
+){
+ const {bindings,assets,assetBytes}=resolved;
+ const metadata=freezeGeneration({identity,bindings,assets,assetBytes});
+ checkCoverage(metadata,references);
+ const {parts,pins,states}=await packContinuedRecords(pairs(records),integrity);
+ const extra=companions?await companions(records,integrity):undefined;
+ const uploadPin={bytes:uploads.size,sha256:await integrity.digest(uploads)};
+ const file=new Blob([frame(header(metadata,pins,states,uploadPin,extra?.pins)),...parts,...(extra?.parts??[]),
+  ...assets.map(asset=>resolved.payloads.get(asset.contentAsset)!),uploads],{type:mime});
+ if(file.size>(extra?MAX_SHARED_ARCHIVE_DIGEST_BYTES:MAX_CONTINUED_PARTICIPANT_BYTES))throw fail('budget');
+ const selection=select({identity,sha256:await integrity.digest(file)});
+ return {file,selection,metadata};
+}
+
+/** SDK-only encoding of a reconstructed cut after exact native replay. */
+export async function encodeContinuedDeliveryReplacement(
+ identity:ContinuedParticipantMetadata['identity'],records:ContinuedDeliveryRecords,uploads:Blob,
+ options:ContinuedParticipantReadOptions&Readonly<{signal:AbortSignal;resolveAsset:SharedAssetBytesResolver}>,
+){
+ const context=prepareArchiveIntegrity(options);
+ const {references,missing}=await withContinuedPairReplay(identity.source,options.restoreDocument,context.guard,options.signal,
+  replay=>replayContinuedDeliveryAssetReferences(records,replay,context.guard));
+ if(missing.length)throw fail('coverage');
+ const resolved=await resolveSelectedAssetBytes(references.references,options.resolveAsset,
+  checkRichAssetLimits(options.limits),context.guard,options.signal);
+ if(resolved.missing.length)throw fail('coverage');
+ const encoded=await encodeParticipant(identity,references,records,deliveryPairRecords,packDeliveryRecords,deliverySelection,uploads,resolved,context);
+ resolved.check();
+ return encoded;
+}

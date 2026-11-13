@@ -73,3 +73,20 @@ export interface RecoveredContinuedRoomCatchUpPreview {
  readonly participants:readonly Readonly<{id:string;prefix:ContinuedParticipantPrefix;
   recovery:import('../continued_delivery/contract.js').SharedContinuedDeliveryRecovery}>[];
 }
+
+/** Independent selection of an exact, cold-reopenable replacement catalog. */
+export interface RecoveredContinuedRoomReplacementChoice {
+ readonly format:'breditor/recovered-continued-room-replacement';
+ readonly formatVersion:1;
+ readonly database:string;
+ readonly source:ContinuedRoomCatalogSelection;
+ readonly server:RecoveredContinuedRoomCatchUpPreview['server'];
+ readonly replacement:ContinuedRoomCatalogSelection;
+ readonly advanced:readonly Readonly<{id:string;expected:import('../continued_participant/contract.js').ContinuedDeliveryParticipantSelection}>[];
+}
+export interface RecoveredContinuedRoomReplacementOptions {
+ readonly database:string;
+ readonly catalog:string;
+ /** Persist this choice before the insert-only catalog creation. */
+ readonly retainChoice:(choice:RecoveredContinuedRoomReplacementChoice)=>void|Promise<void>;
+}
