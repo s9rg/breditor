@@ -79,7 +79,10 @@ impl Room {
                 }))
             }
             Preparation::Prepared(prepared) => {
-                if self.review_state()?.session.has_segmented_history() {
+                let session = &self.review_state()?.session;
+                if session.has_continued_history() {
+                    prepared.continued_checkpoint_json()?;
+                } else if session.has_segmented_history() {
                     prepared.segmented_checkpoint_json()?;
                 } else {
                     prepared.checkpoint_json()?;

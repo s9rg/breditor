@@ -127,3 +127,22 @@ as reproducible controls. The same positive assertions pass after their repairs.
 Joined native/raster recovery additionally passes 16 repeated public tests in
 both server-feature configurations. Exact old/new original-family comparisons
 remain required; no original format, default or lifetime ceiling is widened.
+
+## Continue the room's comment receiver
+
+The owner can call `continue_review_native_history` with a lifetime-new active
+generation ID. The receiver must already use the V1 comment archive. The
+operation retains its exact V1 root and all prior seals, closes the old active
+file, and begins the continued archive under the receiver's existing read-only
+policy. The current document and suggestion effect owner are outside this
+transition. The room descriptor reports the review family as `continued-v2` under
+version two.
+
+The relay syncs a distinct `NativeReviewContinuationV2` event before publication.
+Its receipt uses version two and the same global sequence and cut hash rules.
+An identical owner retry returns the original receipt after direct log reopen,
+physical rotation, or backup replay. Comment frames and their receipts keep
+their existing meanings. Resume still requires the current authenticated
+principal and registered actor. The continued room allows up to 320 native
+boundary receipts across both lanes, alongside the independent native archive
+and physical log ceilings.

@@ -17,4 +17,9 @@ pub enum ServerNativeHistoryBoundary {
         /// Lifetime-new active generation. An identical historical intent is an idempotent retry.
         next: String,
     },
+    /// Extend the exact V1 comment archive at an explicit durable boundary.
+    ContinueReview {
+        /// First active generation under the continued review budget.
+        next: String,
+    },
 }

@@ -18,7 +18,9 @@ pub(super) fn document_checkpoint(owner: &RichReplica) -> Result<String> {
 }
 
 pub(super) fn review_checkpoint(owner: &ReviewSession) -> Result<String> {
-    Ok(if owner.has_segmented_history() {
+    Ok(if owner.has_continued_history() {
+        owner.continued_checkpoint_json()?
+    } else if owner.has_segmented_history() {
         owner.segmented_checkpoint_json()?
     } else {
         owner.checkpoint_json()?

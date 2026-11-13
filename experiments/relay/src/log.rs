@@ -88,6 +88,12 @@ pub(crate) enum Event {
         before: [u8; 32],
         after: [u8; 32],
     },
+    NativeReviewContinuationV2 {
+        actor: String,
+        next: String,
+        before: [u8; 32],
+        after: [u8; 32],
+    },
     GrantReviewV1 {
         actor: String,
         principal: String,

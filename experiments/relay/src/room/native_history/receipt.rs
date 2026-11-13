@@ -30,6 +30,17 @@ fn key(lane: ServerNativeHistoryLane, boundary: &NativeHistoryBoundary) -> Resul
 }
 
 impl Room {
+    pub(super) fn native_boundary_limit(&self, boundary: &NativeHistoryBoundary) -> usize {
+        if matches!(boundary, NativeHistoryBoundary::ContinueReview { .. })
+            || self.review.as_ref().is_some_and(|state| state.session.has_continued_history())
+        {
+            // 256 comment and 64 document generations, including both original roots.
+            320
+        } else {
+            128
+        }
+    }
+
     pub(super) fn native_history_retry(
         &self,
         lane: ServerNativeHistoryLane,
@@ -51,13 +62,17 @@ impl Room {
     ) -> Result<ServerNativeHistoryReceipt> {
         let key = key(lane, &boundary)?;
         if self.native_history_boundaries.contains_key(&key)
-            || self.native_history_boundaries.len() >= 128
+            || self.native_history_boundaries.len() >= self.native_boundary_limit(&boundary)
         {
             return Err(Error::Contract("duplicate or over-budget native boundary record"));
         }
         let receipt = ServerNativeHistoryReceipt {
             format: "breditor/relay-native-history-receipt",
-            format_version: 1,
+            format_version: if matches!(boundary, NativeHistoryBoundary::ContinueReview { .. }) {
+                2
+            } else {
+                1
+            },
             sequence: sequence.to_string(),
             lane,
             boundary,

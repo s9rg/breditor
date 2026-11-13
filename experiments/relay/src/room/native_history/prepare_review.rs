@@ -13,7 +13,10 @@ impl Room {
         let lane = ServerNativeHistoryLane::Review;
         let source = &self.review.as_ref().ok_or(Error::Contract("review V1 not enabled"))?.session;
         let before = checkpoint::review_checkpoint(source)?;
-        let mut candidate = if source.has_segmented_history() {
+        let mut candidate = if source.has_continued_history() {
+            self.replica
+                .restore_continued_review_session(self.review_receiver_policy()?, &before)?
+        } else if source.has_segmented_history() {
             self.replica
                 .restore_segmented_review_session(self.review_receiver_policy()?, &before)?
         } else {
@@ -36,6 +39,14 @@ impl Room {
             }
             NativeHistoryBoundary::Seal { next } => {
                 self.replica.seal_observer_review_history_generation_guarded(
+                    &document,
+                    &mut candidate,
+                    &observed,
+                    next.clone(),
+                )?;
+            }
+            NativeHistoryBoundary::ContinueReview { next } => {
+                self.replica.continue_read_only_review_history_guarded(
                     &document,
                     &mut candidate,
                     &observed,

@@ -456,11 +456,26 @@ impl Room {
                 self.replay_observer(principal, writer, resume_hash)?;
             }
             Event::NativeHistoryBoundaryV1 { actor, lane, boundary, before, after } => {
+                if matches!(boundary, NativeHistoryBoundary::ContinueReview { .. }) {
+                    return Err(Error::Contract(
+                        "review continuation requires its own durable record",
+                    ));
+                }
                 self.replay_native_history(
                     record.sequence,
                     &actor,
                     lane,
                     &boundary,
+                    before,
+                    after,
+                )?;
+            }
+            Event::NativeReviewContinuationV2 { actor, next, before, after } => {
+                self.replay_native_history(
+                    record.sequence,
+                    &actor,
+                    ServerNativeHistoryLane::Review,
+                    &NativeHistoryBoundary::ContinueReview { next },
                     before,
                     after,
                 )?;

@@ -106,6 +106,11 @@ impl Room {
                             }
                         }
                     }
+                    NativeHistoryBoundary::ContinueReview { .. } => {
+                        return Err(Error::Contract(
+                            "review continuation requires the comment lane",
+                        ));
+                    }
                 }
                 let after = checkpoint::document_checkpoint(&receiver)?;
                 let effect_after =

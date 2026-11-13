@@ -485,6 +485,7 @@ fn joined_physical_restore(
     atomic: bool,
     document: bool,
     review: bool,
+    continued_review: bool,
 ) -> TestResult {
     use crate::{ServerLogGenerationRoomBackup, ServerLogGenerationRoomRecovery};
     let (files, mut room, mut assets, profile) =
@@ -500,6 +501,11 @@ fn joined_physical_restore(
     if review {
         enable(&mut room, Lane::Review)?;
     }
+    let review_boundary = if continued_review {
+        Some(room.continue_review_native_history("owner", "review-continued".into())?)
+    } else {
+        None
+    };
     let peer = advance_peer(&profile, &mut room, atomic, document, review)?;
     let actual_raster = accept_real_raster_binding(&mut room, &mut assets, &profile, atomic)?;
     room.rotate_log_generation("owner", "physical-three")?;
@@ -528,6 +534,13 @@ fn joined_physical_restore(
     assert_eq!(room.native_history_checkpoint("owner", Lane::Document)?, document_cut);
     assert_eq!(room.native_history_checkpoint("owner", Lane::Review)?, review_cut);
     assert_eq!(room.native_history_descriptor("owner")?, descriptor);
+    if let Some(boundary) = review_boundary {
+        assert_eq!(descriptor.review, Some(Family::ContinuedV2));
+        let retry = room.continue_review_native_history("owner", "review-continued".into())?;
+        assert!(retry.duplicate);
+        assert_eq!(retry.sequence, boundary.sequence);
+        assert_eq!((retry.before, retry.after), (boundary.before, boundary.after));
+    }
     assert_eq!(assets.export_backup()?.to_bytes()?, raster_cut);
     assert_eq!(ServerLogGenerationRoomBackup::capture(room, assets, "owner")?.to_bytes()?, encoded);
     inventory.verify_native(room, "owner")?;
@@ -560,7 +573,7 @@ fn forty_independent_native_families_keep_real_rasters_old_offline_work_and_peer
         for atomic in [false, true] {
             for document in [false, true] {
                 for review in [false, true] {
-                    joined_physical_restore(profile, atomic, document, review)?;
+                    joined_physical_restore(profile, atomic, document, review, false)?;
                     cases += 1;
                 }
             }
@@ -670,5 +683,15 @@ fn forty_independent_native_families_keep_old_offline_documents_comments_receipt
         }
     }
     assert_eq!(cases, 40);
+    Ok(())
+}
+
+#[test]
+fn continued_review_survives_physical_rotation_and_joined_asset_recovery() -> TestResult {
+    for profile in [(1, false), (2, true), (3, true)] {
+        for atomic in [false, true] {
+            joined_physical_restore(profile, atomic, true, true, true)?;
+        }
+    }
     Ok(())
 }

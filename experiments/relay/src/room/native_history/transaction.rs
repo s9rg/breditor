@@ -16,17 +16,26 @@ impl Room {
         if let Some(receipt) = self.native_history_retry(lane, &boundary)? {
             return Ok(receipt);
         }
-        if self.native_history_boundaries.len() >= 128 {
+        if self.native_history_boundaries.len() >= self.native_boundary_limit(&boundary) {
             return Err(Error::Contract("native boundary record budget"));
         }
         let prepared = self.prepare_native_history(lane, &boundary)?;
-        let sequence = self.log.append(Event::NativeHistoryBoundaryV1 {
-            actor: principal.into(),
-            lane,
-            boundary: boundary.clone(),
-            before: prepared.before,
-            after: prepared.after,
-        })?;
+        let event = match &boundary {
+            NativeHistoryBoundary::ContinueReview { next } => Event::NativeReviewContinuationV2 {
+                actor: principal.into(),
+                next: next.clone(),
+                before: prepared.before,
+                after: prepared.after,
+            },
+            _ => Event::NativeHistoryBoundaryV1 {
+                actor: principal.into(),
+                lane,
+                boundary: boundary.clone(),
+                before: prepared.before,
+                after: prepared.after,
+            },
+        };
+        let sequence = self.log.append(event)?;
         if let Err(error) = self.publish_native_history(prepared.candidate) {
             self.log.invalidate();
             return Err(error);

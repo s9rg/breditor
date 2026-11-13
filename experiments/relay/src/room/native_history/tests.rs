@@ -20,6 +20,7 @@ use breditor_collab_feasibility::{
 use serde_json::{Value, json};
 use std::{fs, path::PathBuf};
 mod capacity;
+mod continued;
 mod durability;
 mod effects;
 mod owned_effects;
