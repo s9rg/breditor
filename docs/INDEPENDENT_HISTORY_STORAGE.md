@@ -588,3 +588,11 @@ original checkpoint and its archive were preserved. The source and installed
 runs use actual Rust child processes and simulated browser storage. This
 exercises the existing host-level restart controls. A production host still
 supplies its own persisted restart selection, credentials and approval flow.
+
+During the outage, two original writers edit the same paragraph, create
+comments, exercise Undo and Redo in both native histories, and queue new
+versions. A cold local reopen retains their queued work and prior relay
+acknowledgements. After restart, the writers receive new acknowledgements
+for their edits, comments and versions. All seven clients converge on the
+same document with each new edit and comment present once. The two authors
+reopen and reconnect again to verify the exact saved acknowledgements.
