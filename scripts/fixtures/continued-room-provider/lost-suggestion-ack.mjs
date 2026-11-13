@@ -9,12 +9,14 @@ export async function observeUnacknowledgedDecision(api,session,document,socket)
  const queue=await session.openSuggestionQueue();
  const sync=new api.SharedSuggestionSync(queue,document,{autoStart:false});
  try{
+  await document.connect();
+  await document.refreshDocument();
   const proposal=queue.propose('Recover accepted suggestion','6',deliveryDraft(acceptedText));
   await sync.connect();
   await sync.flushShared();
   const packet=queue.packet(proposal.id);
   const prepared=session.core.prepareSuggestion(packet);
-  assert.equal(prepared.kind,'ready');
+  assert.equal(prepared.kind,'ready',prepared.kind==='conflict'?JSON.stringify(prepared.targets):undefined);
   const gate=socket.arm('suggestionDecide');
   try{assert.equal(queue.queueDecision(proposal.id,'accept','7',prepared.preview),true);}
   finally{prepared.preview.dispose();}
