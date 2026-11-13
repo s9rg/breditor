@@ -8,7 +8,7 @@ function versionPublishUrl(endpoint){
  return url.href;
 }
 
-async function beforeTimeout(reply,label){
+export async function beforeTimeout(reply,label){
  let timer;
  try{
   return await Promise.race([reply,new Promise((_,reject)=>{

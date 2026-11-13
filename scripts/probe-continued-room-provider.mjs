@@ -588,7 +588,8 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
   const activation=caseInfo.activation?await verifyCoveredActivation(continuedApi,{
    initial,entries:entries.slice(0,7),fixture,inventory,wasm:native,caseInfo,host,getToken,requests,delivery:deliveryCredentials,restart,
   }):{commits:0,publications:0,writableSessions:0,deliveredSessions:0,deliveredUploads:0,restartedSessions:0,outageWriters:0,
-   recoveredLostEditAcknowledgements:0,recoveredLostCommentAcknowledgements:0,recoveredLostVersionAcknowledgements:0};
+   recoveredLostEditAcknowledgements:0,recoveredLostCommentAcknowledgements:0,recoveredLostVersionAcknowledgements:0,
+   recoveredLostDecisionAcknowledgements:0,recoveredLostRevisionAcknowledgements:0,recoveredLostUploadAcknowledgements:0};
   return {recoveredRoomReads,recoveredRoomRefusals,serverOnlyPacketAssets,recoveredClientCatchUps,recoveredReplacementClients,
    recoveredActivationCommits:activation.commits,recoveredPublications:activation.publications,recoveredWritableSessions:activation.writableSessions,
    recoveredDeliveredSessions:activation.deliveredSessions,recoveredDeliveredUploads:activation.deliveredUploads,
@@ -596,6 +597,9 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
    recoveredLostEditAcknowledgements:activation.recoveredLostEditAcknowledgements,
    recoveredLostCommentAcknowledgements:activation.recoveredLostCommentAcknowledgements,
    recoveredLostVersionAcknowledgements:activation.recoveredLostVersionAcknowledgements,
+   recoveredLostDecisionAcknowledgements:activation.recoveredLostDecisionAcknowledgements,
+   recoveredLostRevisionAcknowledgements:activation.recoveredLostRevisionAcknowledgements,
+   recoveredLostUploadAcknowledgements:activation.recoveredLostUploadAcknowledgements,
    recoveredReplacementLocalClients,recoveredReplacementRasters,recoveredActivationIntents,passed:true,language:fixture.language,atomic:fixture.atomic,...counts,...operations};
  }finally{
   host?.close();

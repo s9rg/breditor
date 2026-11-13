@@ -167,7 +167,7 @@ async fn generate_selected(
     let activation_case =
         server_packet_assets && spec.atomic && spec.language == 3 && !spec.standard;
     if activation_case {
-        room.grant_document_suggestions("owner", "alice", Some(SuggestionRole::Propose))?;
+        room.grant_document_suggestions("owner", "alice", Some(SuggestionRole::Review))?;
     }
     if server_packet_assets && spec.atomic {
         let raster =
