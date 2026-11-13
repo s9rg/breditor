@@ -83,6 +83,13 @@ that the original version packets and upload receipts are still present.
 Later edits, seals, version packets and upload acknowledgements survive
 reopen. A fork or a replaced predecessor is refused before the session opens.
 
-Whole-room operational history reads, relay bindings for continued history,
+An independently permitted operational history read verifies both archived
+origins and replays the committed, attempted, pending and live document and
+review records. It pins the exact V1 predecessor across the entire read.
+A failed save and a newer pending edit stay visible as distinct states,
+including their retained raster references. The reader holds the current
+owner for the duration of the read and does not retry a failed save.
+
+Whole-room record reconstruction, relay bindings for continued history,
 independent comment and server-log continuation, and physical browser
 durability still require qualification.

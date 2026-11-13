@@ -35,7 +35,9 @@ export class NativeGenerationOperationOrigin implements GenerationOperationOrigi
   p.guard();
   if(session.kind==="continued-local"){
    if(admitted.recovery.format!=="breditor/shared-continued-history-backup"||!p.predecessor)throw fail("generation_operation_origin");
-   const core=restoreReadOnlyContinuedCore({...session.options,database:p.options.destinations.source},id.native,admitted.recovery.current);
+   const profile=session.options.profile;
+   const core=restoreReadOnlyContinuedCore(checkpoint=>profile.restore_continued_history!(id.native.room,checkpoint),
+    id.native,admitted.recovery.current,id.review,session.options.editor);
    try{p.guard();return new NativeGenerationOperationOrigin(key,p,core,admitted);}
    catch(error){core.dispose();throw error;}
   }

@@ -1,6 +1,6 @@
 /** Explicit generation sources; native strings and original retained records keep their codecs. */
 import type {SharedRichEditor} from "../core.js";
-import type {SharedSelectionPolicy} from "../types.js";
+import type {SharedRustOwner,SharedSelectionPolicy} from "../types.js";
 import type {SegmentedSessionIdentity} from "../persistence/segmented_contract.js";
 import type {SharedSegmentedPersistentSession} from "../persistence/segmented_session.js";
 import type {SharedSegmentedRelaySession} from "../segmented_relay/session.js";
@@ -23,3 +23,11 @@ export const MAX_GENERATION_SOURCE_BYTES=304*1024*1024+128*1024;
 export const MAX_GENERATION_SOURCE_IDENTITY_BYTES=64*1024;
 export const MAX_GENERATION_SOURCE_RECORDS=39;
 export interface GenerationSourcePort {readonly identity:SharedGenerationSourceIdentity;readonly core:SharedRichEditor<SharedSelectionPolicy>;check():void;checkManaged():void;stamp():readonly object[];read():readonly SharedGenerationSourceRecord[]}
+
+/** Private matching factory and custody check for persisted continued records. */
+export interface ContinuedGenerationRecordSource extends GenerationSourcePort {
+ readonly continuedRecordRead:{
+  check():void;
+  restore(checkpoint:string):SharedRustOwner;
+ };
+}

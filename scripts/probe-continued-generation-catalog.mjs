@@ -4,7 +4,7 @@ import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {dirname,join,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {IDBObjectStore} from 'fake-indexeddb';
+import {IDBDatabase,IDBObjectStore} from 'fake-indexeddb';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
 import {pixel,pixelAsset,secondPixel,secondAsset} from './fixtures/review-assets/pixels.mjs';
 
@@ -12,6 +12,8 @@ const [runtimeDirectory,manifestPath]=process.argv.slice(2);
 assert.equal(process.argv.length,4);
 const api=await import('../packages/breditor-collaboration/dist/index.js');
 const {RichAssetStore}=await import('../packages/breditor-experimental-rich-content/index.js');
+const {captureGenerationOperationalHistoryReferences}=await import('../packages/breditor-collaboration/dist/generation_operation/operation.js');
+const {captureGenerationRecordReferences}=await import('../packages/breditor-collaboration/dist/generation_source/record_reference_capture.js');
 const runtime=await import(pathToFileURL(resolve(runtimeDirectory,'breditor_shared.js')).href);
 await runtime.default({module_or_path:readFileSync(resolve(runtimeDirectory,'breditor_shared_bg.wasm'))});
 const manifest=JSON.parse(readFileSync(manifestPath,'utf8'));
@@ -34,6 +36,10 @@ const policy={room,writer,richLanguage:3,history:'explicit',rangeEditing:'origin
  searchHistory:null,reviewedHistory:null,readOnly:false,review:{actor:client.actor,principal,access:'comment'},profile};
 const sourceOptions={...policy,database:'continued-participant-origin'};
 const command=(core,text)=>core.dispatch({commands:[{kind:'insert_text',data:{block:'p',offset:0,text}}]});
+const replaceRaster=(core,generation)=>core.dispatch({commands:[{kind:'replace_image',data:{
+ block:'retained-image-block',asset:secondAsset,generation,
+}}]});
+const reads={restoreSegmented(){throw Error('A continued read uses its admitted native profile');},checkAuthority(){}};
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 const partsOptions={database:'continued-participant-restore',destinations:{source:'restored-source',uploads:'restored-uploads'},session:{kind:'continued-local',options:policy}};
 const headKey=[room,writer];
@@ -208,9 +214,23 @@ try{
  assert.deepEqual(await (await parts.uploads.exportBackup()).arrayBuffer(),advancedUploads);
  await parts.source.session.close();parts.uploads.close();parts=undefined;
 
- operation=await Operational.resume(operationalOptions);
+ let oldGrant=true;
+ operation=await Operational.resume({...operationalOptions,checkAuthority(){assert.equal(oldGrant,true);}});
  await operation.check();
  assert.deepEqual(await operation.progress(),{phase:'operational'});
+ oldGrant=false;
+ const history=await captureGenerationOperationalHistoryReferences(operation,reads);
+ try{
+  await history.verify();
+  const metadata=history.metadata();
+  assert.deepEqual(metadata.origins.map(row=>row.role),['recovery-origin','operation-origin']);
+  for(const origin of metadata.origins){
+   assert.ok(origin.references.some(row=>row.generation==='initial-raster'));
+   assert.ok(origin.references.some(row=>row.generation==='future-raster'));
+  }
+  assert.deepEqual(metadata.current.states.map(row=>row.slot),['committed','live']);
+  await assert.rejects(operation.intoParts(),error=>error.code==='generation_operation_busy');
+ }finally{history.dispose();oldGrant=true;}
  assert.equal(sha(new Uint8Array(await operation.file().arrayBuffer())),expected.sha256);
  parts=await operation.intoParts();operation=undefined;
  const resumed=parts.source.session;
@@ -229,10 +249,43 @@ try{
  assert.deepEqual(resumed.core.reviewSnapshot().view,reviewAfter);
  await resumed.flush();
  assert.deepEqual((await resumed.exportContinuedBackup()).predecessor,predecessor);
+
+ const transaction=IDBDatabase.prototype.transaction;
+ let abortedSaves=0;
+ IDBDatabase.prototype.transaction=function(...args){
+  const tx=transaction.apply(this,args);
+  if(this.name===partsOptions.destinations.source&&args[1]==='readwrite'&&args[0].includes('generation_heads')){
+   abortedSaves++;
+   queueMicrotask(()=>tx.abort());
+  }
+  return tx;
+ };
+ try{
+  assert.equal(replaceRaster(resumed.core,'attempt-raster'),true);
+  await assert.rejects(resumed.flush());
+  assert.equal(replaceRaster(resumed.core,'pending-raster'),true);
+  await assert.rejects(resumed.flush());
+ }finally{IDBDatabase.prototype.transaction=transaction;}
+ assert.equal(abortedSaves,2);
+ const beforeRead=await heads();
+ const references=await captureGenerationRecordReferences({source:resumed,...reads});
+ try{
+  await references.verify();
+  const states=references.metadata().states;
+  assert.deepEqual(states.map(row=>row.slot),['committed','attempt','pending','live']);
+  const raster=(slot,generation)=>states.find(row=>row.slot===slot).references
+   .some(row=>row.asset===secondAsset&&row.generation===generation);
+  assert.equal(raster('committed','attempt-raster'),false);
+  assert.equal(raster('attempt','attempt-raster'),true);
+  assert.equal(raster('attempt','pending-raster'),false);
+  assert.equal(raster('pending','pending-raster'),true);
+  assert.equal(raster('live','pending-raster'),true);
+  assert.deepEqual(await heads(),beforeRead);
+ }finally{references.dispose();}
  console.log(JSON.stringify({passed:true,interrupted,exactPredecessor:true,documentAndCommentRedo:true,
   exactUploadStore:true,retainedRasters:2,uploadReceipt:true,versionPackets:2,offlineGroups:offline.groups.length,nativeInventoryPrefix:true,unboundReview:true,
   operationalReopen:true,replacedPredecessorRefused:true,forkRefused:true,readOnlyReopen:true,
-  advancedOfflineGroups:advancedOffline.groups.length}));
+  advancedOfflineGroups:advancedOffline.groups.length,protectedOriginsRead:true,fourSlotReferences:true}));
 }finally{
  try{
   await parts?.source.session.discardAndClose();parts?.uploads.close();

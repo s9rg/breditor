@@ -6,13 +6,15 @@ import {SharedRichEditor,SharedEditorError,createSharedDocumentEditor} from '../
 import {recordReadMode,retainSourceRecordPayload,forgetSourceRecordPayload,type OperationalRecordReadMode} from '../operation_read/record_payload.js';
 import type {SharedRustOwner,SharedSelectionPolicy,SharedEditorOptions} from '../types.js';
 import type {SharedSegmentedPersistentSession,SharedSegmentedRecovery} from '../persistence/segmented_session.js';
-import {captureSegmentedPersistentRecords} from '../persistence/segmented_session.js';
+import {captureContinuedPersistentRecords,captureSegmentedPersistentRecords} from '../persistence/segmented_session.js';
 import {captureRelayGenerationRecords,type SharedSegmentedRelaySession} from '../segmented_relay/session.js';
-import type {GenerationRecordMetadata,GenerationRecordRead,GenerationRecordCapture} from '../persistence/generation_record_read.js';
+import type {ContinuedGenerationRecordMetadata,GenerationRecordMetadata,GenerationRecordRead,GenerationRecordCapture} from '../persistence/generation_record_read.js';
 import type {SharedGenerationSourceIdentity,SharedGenerationSourceRecord} from './contract.js';
 import type {SharedAssetCapturePending} from '../asset_references_capture.js';
 import type {RichRetainedAssetReference} from '@breditor/experimental-rich-content';
-import {generationSource} from './admission.js';
+import {generationRecordSource} from './admission.js';
+import {continuedRecords,samePredecessor} from './continued_records.js';
+import {restoreReadOnlyContinuedCore} from '../persistence/continue_document_history.js';
 import {generationIdentity} from './identity.js';
 import {generationRecords} from './records.js';
 import {checkGenerationRecords} from './validate_records.js';
@@ -41,6 +43,7 @@ export interface GenerationRecordReferenceMetadata{
  readonly identity:ImmutableReferenceValue<SharedGenerationSourceIdentity>;readonly states:readonly GenerationRecordReferenceState[];
  readonly kind:'ready'|'pending';readonly references:readonly RichRetainedAssetReference[];
 }
+type ReadMetadata=GenerationRecordMetadata|ContinuedGenerationRecordMetadata;
 const token=Object.freeze({}),disposeCore=SharedRichEditor.prototype.dispose,verifyOrigin=SharedRichEditor.prototype.verifySegmentedRecoveryOrigin;
 interface Callbacks{check():void;current():void;verify():Promise<void>;release():void}
 /** Only the held operational-parent composition supplies these admitted rows. */
@@ -61,14 +64,69 @@ export class GenerationRecordReferenceCapture{
   recordReadMode(mode);
   if(!provided||typeof provided!=='object'||Array.isArray(provided))throw fail('policy');const fields=Object.keys(provided),values:Record<string,unknown>={};if(fields.some(name=>!['source','restoreSegmented','editor','checkAuthority','signal'].includes(name))||['source','restoreSegmented','checkAuthority'].some(name=>!Object.hasOwn(provided,name)))throw fail('policy');for(const name of fields){const d=Object.getOwnPropertyDescriptor(provided,name);if(!d||!('value'in d))throw fail('policy');values[name]=d.value;}const input=values as unknown as GenerationRecordReferenceOptions<P>;if(typeof input.restoreSegmented!=='function')throw fail('factory');
   let editor:GenerationRecordReferenceOptions<P>['editor'];if(input.editor!==undefined){if(!input.editor||typeof input.editor!=='object'||Array.isArray(input.editor))throw fail('policy');const copied:Record<string,unknown>={};for(const name of Object.keys(input.editor)){const d=Object.getOwnPropertyDescriptor(input.editor,name);if(!d||!('value'in d)||['selectionEditing','reviewedHistory','searchHistory','segmentedHistory'].includes(name))throw fail('policy');copied[name]=d.value;}editor=copied;}
-  const authority=participantAuthority(input.checkAuthority),port=generationSource(input.source),identity=generationIdentity(port.identity),stamp=port.stamp(),descriptor=JSON.stringify(sourceNativeRecoveryRead(port.core).descriptor()),binding=nativeRestoreBinding(input.restoreSegmented,provided);
-  if(identity.kind==="continued-local")throw fail("policy");
-  let data:GenerationRecordRead|undefined,result:GenerationRecordReferenceCapture|undefined,success=false;
-  const current=()=>{if(!data)throw fail('closed');data.checkCurrent();port.checkManaged();const now=port.stamp();if(now.length!==stamp.length||now.some((v,i)=>v!==stamp[i]))throw fail('changed');data.checkCurrent();},check=()=>{current();data!.check();current();};
-  try{data=await(identity.kind==='local'?captureSegmentedPersistentRecords(input.source as SharedSegmentedPersistentSession<P>,authority,input.signal):captureRelayGenerationRecords(input.source as SharedSegmentedRelaySession<P>,authority,input.signal));check();const selections=recordStates(identity,data.metadata()),states:GenerationRecordReferenceState[]=[],union=new Map<string,RichRetainedAssetReference>();let previous:Awaited<ReturnType<typeof replay>>|undefined;
-   try{for(const selected of[...(prelude?.origins??[]),...selections]){const next=await replay(identity,selected.records,binding,editor,descriptor,check);let kept=false;try{if(previous){verifyOrigin.call(next.core,previous.core);if(previous.source.versions.some((packet,i)=>next.source.versions[i]!==packet))throw fail('continuation');if(identity.kind!=='local')forwardProgress((previous.recovery as SharedSegmentedRelayRecovery).relay,(next.recovery as SharedSegmentedRelayRecovery).relay);}const refs=recordedGenerationReferences(next.core,identity,selected.records,next.check);if('role'in selected)prelude!.rows.push({role:selected.role,...refs});else{for(const reference of refs.references){union.set(JSON.stringify([reference.asset,reference.generation]),reference);if(union.size>100000)throw fail('budget');}states.push({slot:selected.slot,...refs});}next.check();previous?.dispose();previous=next;kept=true;}finally{if(!kept)next.dispose();}check();}}finally{previous?.dispose();}
+  const authority=participantAuthority(input.checkAuthority),port=generationRecordSource(input.source);
+  const identity=generationIdentity(port.identity),continued='continuedRecordRead'in port?port.continuedRecordRead:undefined;
+  const stamp=continued?undefined:port.stamp(),descriptor=JSON.stringify(sourceNativeRecoveryRead(port.core).descriptor());
+  const binding=nativeRestoreBinding(input.restoreSegmented,provided);
+  if(mode&&continued)throw fail('policy');
+
+  let data:GenerationRecordRead<ReadMetadata>|undefined,result:GenerationRecordReferenceCapture|undefined,success=false;
+  const current=()=>{
+   if(!data)throw fail('closed');
+   data.checkCurrent();
+   if(continued)continued.check();
+   else{
+    port.checkManaged();
+    const now=port.stamp();
+    if(now.length!==stamp!.length||now.some((value,i)=>value!==stamp![i]))throw fail('changed');
+   }
+   data.checkCurrent();
+  };
+  const check=()=>{current();data!.check();current();};
+  try{
+   const local=input.source as SharedSegmentedPersistentSession<P>;
+   if(continued)data=await captureContinuedPersistentRecords(local,authority,input.signal);
+   else if(identity.kind==='local')data=await captureSegmentedPersistentRecords(local,authority,input.signal);
+   else data=await captureRelayGenerationRecords(input.source as SharedSegmentedRelaySession<P>,authority,input.signal);
+   check();
+   const selections=recordStates(identity,data.metadata()),states:GenerationRecordReferenceState[]=[];
+   const union=new Map<string,RichRetainedAssetReference>();
+   let previous:Awaited<ReturnType<typeof replay>>|undefined;
+   try{
+    for(const selected of [...(prelude?.origins??[]),...selections]){
+     const next=await replay(identity,selected.records,binding,editor,descriptor,check,continued?.restore);
+     let kept=false;
+     try{
+      if(previous){
+       verifyOrigin.call(next.core,previous.core);
+       if(previous.source.versions.some((packet,i)=>next.source.versions[i]!==packet))throw fail('continuation');
+       if(previous.recovery.format==='breditor/shared-continued-history-backup'){
+        if(next.recovery.format!==previous.recovery.format||
+           !samePredecessor(next.recovery.predecessor,previous.recovery.predecessor))throw fail('continuation');
+       }else if(identity.kind!=='local'){
+        forwardProgress((previous.recovery as SharedSegmentedRelayRecovery).relay,(next.recovery as SharedSegmentedRelayRecovery).relay);
+       }
+      }
+      const refs=recordedGenerationReferences(next.core,identity,selected.records,next.check);
+      if('role'in selected)prelude!.rows.push({role:selected.role,...refs});
+      else{
+       for(const reference of refs.references){
+        union.set(JSON.stringify([reference.asset,reference.generation]),reference);
+        if(union.size>100000)throw fail('budget');
+       }
+       states.push({slot:selected.slot,...refs});
+      }
+      next.check();
+      previous?.dispose();
+      previous=next;
+      kept=true;
+     }finally{if(!kept)next.dispose();}
+     check();
+    }
+   }finally{previous?.dispose();}
    const references=[...union.values()].sort((a,b)=>a.asset<b.asset?-1:a.asset>b.asset?1:a.generation<b.generation?-1:a.generation>b.generation?1:0);result=new GenerationRecordReferenceCapture(token,{format:'breditor/generation-record-reference-capture',formatVersion:1,scope:'committed-attempt-pending-live-generation-native-and-packets',identity,states,kind:states.some(s=>s.pending.length)?'pending':'ready',references},{check,current,verify:async()=>{check();await data!.verify();check();},release:()=>data!.dispose()});
    if(mode)retainSourceRecordPayload(result,current,()=>({family:'generation',state:{format:'breditor/generation-source-record-payload',formatVersion:1,identity,records:data!.metadata()},files:[]}));
+   if(continued)await data.verify();
    checkCapture.call(result);success=true;return result;
   }finally{if(!success){result?.dispose();data?.dispose();}}
  }
@@ -77,15 +135,81 @@ const checkCapture=GenerationRecordReferenceCapture.prototype.check;
 export const captureGenerationRecordReferences=<P extends SharedSelectionPolicy>(provided:GenerationRecordReferenceOptions<P>)=>GenerationRecordReferenceCapture.capture(provided);
 /** Explicit protected-parent prelude; standalone capture retains its old scope. */
 export function captureGenerationRecordReferencesAfterOrigins<P extends SharedSelectionPolicy>(provided:GenerationRecordReferenceOptions<P>,origins:readonly GenerationReferenceOrigin[],mode?:OperationalRecordReadMode){return captureAfterOrigins(provided,origins,mode);}
-function recordStates(identity:SharedGenerationSourceIdentity,m:GenerationRecordMetadata){
+function recordStates(identity:SharedGenerationSourceIdentity,m:ReadMetadata){
+ if(m.formatVersion===2){
+  if(identity.kind!=='continued-local')throw fail('record');
+  const previous=m.predecessor;
+  const predecessor:SharedSegmentedRecovery={
+   format:'breditor/shared-generation-recovery',formatVersion:1,checkpoint:previous.checkpoint,
+   reviewCheckpoint:previous.record.review?.checkpoint??null,versions:previous.record.versions,
+  };
+  const read=(slot:GenerationRecordReferenceState['slot'],capture:Pick<GenerationRecordCapture,'checkpoint'|'review'|'versions'|'companion'>)=>{
+   if(capture.companion!==null||predecessor.versions.some((packet,index)=>packet!==capture.versions[index]))throw fail('record');
+   return {slot,records:continuedRecords({format:'breditor/shared-continued-history-backup',formatVersion:1,predecessor,
+    current:{format:'breditor/shared-generation-recovery',formatVersion:2,checkpoint:capture.checkpoint,
+     reviewCheckpoint:capture.review?.checkpoint??null,versions:capture.versions}})};
+  };
+  const values=[read('committed',{checkpoint:m.committed.checkpoint,review:m.committed.record.review,
+   versions:m.committed.record.versions,companion:null})];
+  if(m.attempt)values.push(read('attempt',m.attempt.capture));
+  if(m.pending)values.push(read('pending',m.pending));
+  values.push(read('live',m.live));
+  return values;
+ }
+ if(identity.kind==='continued-local')throw fail('record');
  const values:{slot:GenerationRecordReferenceState['slot'];records:readonly SharedGenerationSourceRecord[]}[]=[],native=(c:GenerationRecordCapture):SharedSegmentedRecovery=>({format:'breditor/shared-generation-recovery',formatVersion:1,checkpoint:c.checkpoint,reviewCheckpoint:c.review?.checkpoint??null,versions:[...c.versions]});
  const records=(source:SharedSegmentedRecovery,c:string|null)=>{if(identity.kind==='local'){if(c!==null)throw fail('record');return generationRecords(source);}if(c===null)throw fail('record');const v=JSON.parse(c);return identity.kind==='relay'?generationRecords(source,v):generationRecords(source,v.relay,v.retained);};
  const committed:SharedSegmentedRecovery={format:'breditor/shared-generation-recovery',formatVersion:1,checkpoint:m.committed.checkpoint,reviewCheckpoint:m.committed.record.review?.checkpoint??null,versions:[...m.committed.record.versions]},head=JSON.parse(m.committed.head),companion=identity.kind==='local'?null:identity.kind==='relay'?JSON.stringify(head.relay):JSON.stringify({relay:head.source.relay,retained:head.retained});values.push({slot:'committed',records:records(committed,companion)});if(m.attempt)values.push({slot:'attempt',records:records(native(m.attempt.capture),m.attempt.capture.companion)});if(m.pending)values.push({slot:'pending',records:records(native(m.pending),m.pending.companion)});values.push({slot:'live',records:records(native(m.live),m.live.companion)});return values;
 }
-async function replay(identity:SharedGenerationSourceIdentity,records:readonly SharedGenerationSourceRecord[],binding:ReturnType<typeof nativeRestoreBinding<GenerationRecordReferenceOptions['restoreSegmented']>>,editor:GenerationRecordReferenceOptions['editor'],descriptor:string,check:()=>void){
- check();const admitted=checkGenerationRecords(identity,records),source=admitted.source;let raw:SharedRustOwner|undefined,core:SharedRichEditor<SharedSelectionPolicy>|undefined;
- try{raw=await binding.factory.call(binding.receiver,source.checkpoint);check();initializeSharedReadOnly(raw,true);const options={...editor,...(identity.native.searchHistory?{searchHistory:identity.native.searchHistory}:{}),...(identity.native.reviewedHistory?{reviewedHistory:identity.native.reviewedHistory}:{}),segmentedHistory:'segmented-v1' as const};core=(identity.native.selectionEditing==='document-v1'?createSharedDocumentEditor(raw,options):new SharedRichEditor(raw,options)) as SharedRichEditor<SharedSelectionPolicy>;if(JSON.stringify(sourceNativeRecoveryRead(core).descriptor())!==descriptor||core.richLanguageVersion()!==identity.native.richLanguage)throw fail('factory');if(identity.native.history==='typing-v1'&&native.view.call(core).historyGrouping!=='typing-v1')core.enableTypingHistory();if(identity.native.rangeEditing==='general-v1'&&native.view.call(core).rangeEditing!=='general-v1')core.enableGeneralRanges();if(identity.review)core.enableReview({...identity.review,access:'read_only'},source.reviewCheckpoint!);core.sealSegmentedPolicies(identity.native.history,identity.native.rangeEditing);admitted.companion?.admit(core);admitPairedVersions(core,source.versions);const selected=core;let closed=false;const live=()=>{if(closed)throw fail('closed');check();if(native.view.call(selected).readOnly!==true||native.checkpointJson.call(selected)!==source.checkpoint||(identity.review?native.reviewCheckpoint.call(selected):null)!==source.reviewCheckpoint)throw fail('replay');check();};live();return{core:selected,source,recovery:admitted.recovery,check:live,dispose(){if(closed)return;closed=true;disposeCore.call(selected);}};}
- catch(error){if(core)disposeCore.call(core);if(raw)freeUnclaimedSharedRustOwner(raw);throw error;}
+async function replay(
+ identity:SharedGenerationSourceIdentity,records:readonly SharedGenerationSourceRecord[],
+ binding:ReturnType<typeof nativeRestoreBinding<GenerationRecordReferenceOptions['restoreSegmented']>>,
+ editor:GenerationRecordReferenceOptions['editor'],descriptor:string,check:()=>void,
+ restoreContinued?:(checkpoint:string)=>SharedRustOwner,
+){
+ check();
+ const admitted=checkGenerationRecords(identity,records),source=admitted.source;
+ let raw:SharedRustOwner|undefined,core:SharedRichEditor<SharedSelectionPolicy>|undefined;
+ try{
+  if(admitted.recovery.format==='breditor/shared-continued-history-backup'){
+   if(!restoreContinued)throw fail('factory');
+   core=restoreReadOnlyContinuedCore(restoreContinued,identity.native,admitted.recovery.current,identity.review,editor);
+  }else{
+   raw=await binding.factory.call(binding.receiver,source.checkpoint);
+   check();
+   initializeSharedReadOnly(raw,true);
+   const options={...editor,...(identity.native.searchHistory?{searchHistory:identity.native.searchHistory}:{}),
+    ...(identity.native.reviewedHistory?{reviewedHistory:identity.native.reviewedHistory}:{}),segmentedHistory:'segmented-v1' as const};
+   core=(identity.native.selectionEditing==='document-v1'?createSharedDocumentEditor(raw,options):
+    new SharedRichEditor(raw,options)) as SharedRichEditor<SharedSelectionPolicy>;
+   if(identity.native.history==='typing-v1'&&native.view.call(core).historyGrouping!=='typing-v1')core.enableTypingHistory();
+   if(identity.native.rangeEditing==='general-v1'&&native.view.call(core).rangeEditing!=='general-v1')core.enableGeneralRanges();
+   if(identity.review)core.enableReview({...identity.review,access:'read_only'},source.reviewCheckpoint!);
+   core.sealSegmentedPolicies(identity.native.history,identity.native.rangeEditing);
+   admitted.companion?.admit(core);
+   admitPairedVersions(core,source.versions);
+  }
+  if(JSON.stringify(sourceNativeRecoveryRead(core).descriptor())!==descriptor||core.richLanguageVersion()!==identity.native.richLanguage)throw fail('factory');
+  const selected=core;
+  let closed=false;
+  const live=()=>{
+   if(closed)throw fail('closed');
+   check();
+   if(native.view.call(selected).readOnly!==true||native.checkpointJson.call(selected)!==source.checkpoint||
+      (identity.review?native.reviewCheckpoint.call(selected):null)!==source.reviewCheckpoint)throw fail('replay');
+   check();
+  };
+  live();
+  return {core:selected,source,recovery:admitted.recovery,check:live,dispose(){
+   if(closed)return;
+   closed=true;
+   disposeCore.call(selected);
+  }};
+ }catch(error){
+  if(core)disposeCore.call(core);
+  if(raw)freeUnclaimedSharedRustOwner(raw);
+  throw error;
+ }
 }
 /** SDK-private continuation composition; unchanged read-only replay and record
  * interpretations are shared rather than reimplemented by a successor. */

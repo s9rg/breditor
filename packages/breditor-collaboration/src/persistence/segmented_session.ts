@@ -20,15 +20,15 @@ import type {SharedDocumentVersionInfo} from "../version_types.js";
 import {SharedWriterLease} from "./writer_lease.js";
 import {ReviewWriterLease} from "./review_writer_lease.js";
 import {fenceOpeningDatabase} from "./opening_database.js";
-import {openSegmentedDatabase,readSegmentedCut,writeSegmentedCut} from "./segmented_database.js";
+import {openSegmentedDatabase,readGenerationPair,readSegmentedCut,writeSegmentedCut} from "./segmented_database.js";
 import {canonicalSegmentedIdentity,checkSegmentedCapture,makeGenerationCut,previewSegmentedHead,readContinuedHead,readSegmentedHead} from "./segmented_head.js";
-import {openContinuedHistory,readContinuedBackup,type SharedContinuedHistoryOptions,type SharedContinueHistoryOptions,type SharedRestoreContinuedHistoryOptions} from "./continue_document_history.js";
+import {openContinuedHistory,readContinuedBackup,checkContinuedPredecessor,type SharedContinuedHistoryOptions,type SharedContinueHistoryOptions,type SharedRestoreContinuedHistoryOptions} from "./continue_document_history.js";
 import {segmentedCompanion,withSegmentedCompanion,type SegmentedSessionCompanion} from "./segmented_driver.js";
 import {checkSegmentedCheckpoint,object} from "./segmented_checkpoint.js";
 import {requireBackupRecovery} from "../backups/identity.js";
 import {admitPairedVersions} from "./review_record_admission.js";
 import type {SegmentedSessionIdentity,SegmentedReview,SegmentedCut} from "./segmented_contract.js";
-import {registerGenerationNative,registerGenerationSource,generationNative} from "../generation_source/admission.js";
+import {registerContinuedRecordSource,registerGenerationNative,registerGenerationSource,generationNative} from "../generation_source/admission.js";
 import {continuedRecords} from "../generation_source/continued_records.js";
 import {generationRecords} from "../generation_source/records.js";
 import {generationOperationOrigin} from "../generation_operation/admission.js";
@@ -38,7 +38,7 @@ import {managedCoreRetainedRevisions,checkManagedCore} from '../managed_custody.
 import {participantAuthority} from '../participant_backup/policy.js';
 import {observeIndependentRecoveryAbort} from '../independent_recovery/signal.js';
 import {retainInternalFailureCause} from '../internal_failure_cause.js';
-import {createGenerationRecordRead,type GenerationRecordRead} from './generation_record_read.js';
+import {createGenerationRecordRead,type GenerationRecordRead,type GenerationRecordMetadata,type ContinuedGenerationRecordMetadata} from './generation_record_read.js';
 
 export interface SharedSegmentedSessionOptions<P extends SharedSelectionPolicy=SharedSelectionPolicy> extends Omit<SegmentedSessionIdentity,"selectionEditing"> {
  database:string;selectionEditing:P;readOnly:boolean;
@@ -63,7 +63,10 @@ const same=(a:Capture|undefined,b:Capture)=>!!a&&a.checkpoint===b.checkpoint&&a.
 
 /** Both leases precede cold native replay. Only complete superseded captures are coalesced. */
 const constructionKey=Object.freeze({});
-let readGenerationRecords:(owner:SharedSegmentedPersistentSession,authority:()=>void,signal?:AbortSignal)=>Promise<GenerationRecordRead>;
+type GenerationRecords=GenerationRecordMetadata|ContinuedGenerationRecordMetadata;
+let readGenerationRecords:(
+ owner:SharedSegmentedPersistentSession,authority:()=>void,formatVersion:1|2,signal?:AbortSignal,
+)=>Promise<GenerationRecordRead<GenerationRecords>>;
 let readyActorCustody:(owner:SharedSegmentedPersistentSession)=>StoppedActorBinding;
 export const checkReadySegmentedSourceActors=<P extends SharedSelectionPolicy>(owner:SharedSegmentedPersistentSession<P>):StoppedActorBinding=>readyActorCustody(owner as unknown as SharedSegmentedPersistentSession);
 let checkActorCustody:(owner:SharedSegmentedPersistentSession)=>StoppedActorBinding;
@@ -85,7 +88,7 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
  #savedHead:string|null;#saved:Capture|undefined;#closedSaved:{documentRevision:string|null;reviewRevision:string|null}|undefined;#failure:unknown;#closed=false;#retiring=false;#storageChanged=false;#closing:Promise<void>|undefined;#released:Promise<void>|undefined;
  #recordReadEpoch:object=Object.freeze({});readonly #recordReaders=new Set<object>();
  readonly #releasePendingWork:()=>void;
- private constructor(key:object,db:IDBDatabase,lease:SharedWriterLease,reviewLease:ReviewWriterLease|undefined,core:SharedRichEditor<P>,options:Pick<SharedSegmentedSessionOptions<P>,"review"|"onError"|"onState">,identity:SegmentedSessionIdentity,head:string|null,versions:readonly string[],recovered=head!==null,companion?:SegmentedSessionCompanion,continued?:{checkpoint:string;predecessor:string;priorRecovery:SharedSegmentedRecovery}){
+ private constructor(key:object,db:IDBDatabase,lease:SharedWriterLease,reviewLease:ReviewWriterLease|undefined,core:SharedRichEditor<P>,options:Pick<SharedSegmentedSessionOptions<P>,"review"|"onError"|"onState">,identity:SegmentedSessionIdentity,head:string|null,versions:readonly string[],recovered=head!==null,companion?:SegmentedSessionCompanion,continued?:{checkpoint:string;predecessor:string;priorRecovery:SharedSegmentedRecovery;profile:SharedContinuedHistoryOptions<P>["profile"]}){
   if(key!==constructionKey)throw new SharedEditorError('managed_source_construction','Use the actual generation session open or recovery factory');
   this.#formatVersion=continued?2:1;
   this.#continuedPredecessor=continued?.predecessor;
@@ -94,8 +97,9 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
   this.#db=db;this.#documentLease=lease;this.#reviewLease=reviewLease;this.#ownedCore=core;this.core=core;this.#options={...(options.review?{review:options.review}:{}),...(options.onError?{onError:options.onError}:{}),...(options.onState?{onState:options.onState}:{})};this.#identity=identity;this.#savedHead=head;this.recovered=recovered;this.#versions=admitPairedVersions(core,versions);
   this.#releasePendingWork=registerNativePendingWork(core,()=>this.#running);
   const segmentedPolicy=SharedRichEditor.prototype.segmentedHistoryPolicy;
+  const family=continued?"continued-v2":"segmented-v1";
   // Final custody checks must not invoke an application-supplied getter or method.
-  const check=()=>{this.#live();if(segmentedPolicy.call(this.#boundCore())!=="segmented-v1")throw new SharedEditorError("segmented_source_unavailable","The actual generation source was replaced");},read=()=>{check();return this.#recovery();},review=options.review?{actor:options.review.actor,principal:options.review.principal}:null,stamp=()=>{check();return this.#sourceStamp;};
+  const check=()=>{this.#live();if(segmentedPolicy.call(this.#boundCore())!==family)throw new SharedEditorError("segmented_source_unavailable","The actual generation source was replaced");},read=()=>{check();return this.#recovery();},review=options.review?{actor:options.review.actor,principal:options.review.principal}:null,stamp=()=>{check();return this.#sourceStamp;};
   const checkManaged=()=>{check();checkManagedCore(this.#ownedCore);if(this.#retiring||this.#storageChanged)throw new SharedEditorError("segmented_source_unavailable","The readable native source no longer has live storage custody");};
   if(this.#formatVersion===1){
    registerGenerationNative(this,{core:core as unknown as SharedRichEditor<SharedSelectionPolicy>,identity:structuredClone(identity),review,companion:!!companion,check,checkManaged,stamp,read});
@@ -106,12 +110,14 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
    const savedPredecessor=continued!.priorRecovery;
    this.#saved={checkpoint:continued!.checkpoint,review:review?{...review,checkpoint:core.reviewCheckpoint()}:null,versions:[...versions],documentRevision:core.view().revision,reviewRevision:review?core.reviewSnapshot().reviewRevision:null,companion:null};
    const settled=()=>{
-    this.#live();this.#boundCore();checkManagedCore(this.#ownedCore);
-    if(this.#retiring||this.#storageChanged||this.#running||this.#pending||this.#attempt||this.#failure){
+    checkManaged();
+    if(this.#running||this.#pending||this.#attempt||this.#failure){
      throw new SharedEditorError("continued_history_backup","Select a settled continued source");
     }
    };
-   registerGenerationSource(this,{core:core as unknown as SharedRichEditor<SharedSelectionPolicy>,
+   const profile=continued!.profile,restore=profile.restore_continued_history!;
+   registerContinuedRecordSource(this,{core:core as unknown as SharedRichEditor<SharedSelectionPolicy>,
+    continuedRecordRead:{check:checkManaged,restore:checkpoint=>restore.call(profile,identity.room,checkpoint)},
     identity:{kind:"continued-local",native:structuredClone(identity),review,relay:null,retained:null},
     check:settled,checkManaged:settled,stamp:()=>{settled();return [this.#sourceStamp,this.#recordReadEpoch];},
     read:()=>{settled();return continuedRecords({format:"breditor/shared-continued-history-backup",formatVersion:1,
@@ -126,15 +132,97 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
   db.onversionchange=()=>{this.#storageChanged=true;try{this.#companion?.retire?.();}finally{retireOwnedCore(core);db.close();this.#failed(new SharedEditorError("segmented_versionchange","Generation storage changed; export the readable native histories before explicitly discarding"));}};
  }
  static{const inspect=(owner:SharedSegmentedPersistentSession,stopped=true):StoppedActorBinding=>{if(!owner||typeof owner!=='object'||!(#ownedCore in owner))throw new SharedEditorError('actor_source_unavailable','Use the actual native persistence owner');if(owner.#closed||owner.#running||owner.#closing)throw new SharedEditorError('actor_source_in_use','Settle actual native persistence and cleanup before moving actor custody');if(Object.getOwnPropertyDescriptor(owner,'core')?.value!==owner.#ownedCore)throw new SharedEditorError('actor_source_unavailable','The original native core binding was replaced');if(stopped)requireStoppedActorCore(owner.#ownedCore);else requireLiveActorCore(owner.#ownedCore);const binding=owner.#actorBinding;checkSharedWriterLeaseForEscrow(owner.#documentLease,binding.room,binding.writer);if(binding.actor!==null)checkReviewWriterLeaseForEscrow(owner.#reviewLease!,binding.room,binding.actor);return binding;};readyActorCustody=owner=>inspect(owner,false);checkActorCustody=owner=>inspect(owner,true);takeActorCustody=owner=>{const binding=inspect(owner);return binding.actor===null?createSharedWriterLeaseEscrow(owner.#documentLease,binding.room,binding.writer):createStoppedActorEscrow(owner.#documentLease,owner.#reviewLease!,binding.room,binding.writer,binding.actor);};}
- static{readGenerationRecords=async(owner,provided,signal)=>{
+ static{readGenerationRecords=async(owner,provided,formatVersion,signal)=>{
   const fail=(suffix:string)=>new SharedEditorError('generation_record_read_'+suffix,'Read the actual complete selected generation cut with independent current read permission');
-  if(!owner||typeof owner!=='object'||!(#ownedCore in owner))throw fail('source');const authority=participantAuthority(provided);if(owner.#recordReaders.size>=8)throw fail('busy');
-  const core=owner.#ownedCore,epoch=owner.#recordReadEpoch,stamp=owner.#sourceStamp,attempt=owner.#attempt,pending=owner.#pending,saved=owner.#saved,savedHead=owner.#savedHead,revision=managedCoreRetainedRevisions(core),companion=owner.#companion?.capture()??null,token=Object.freeze({});owner.#recordReaders.add(token);
-  let released=false,complete=false,finish!:()=>void,observation:ReturnType<typeof observeIndependentRecoveryAbort>|undefined,result:GenerationRecordRead|undefined;const held=new Promise<void>(resolve=>{finish=resolve;}),release=()=>{if(!released){released=true;owner.#recordReaders.delete(token);observation?.release();finish();}};
-  const current=()=>{if(released||!owner.#recordReaders.has(token))throw fail('closed');generationNative(owner).checkManaged();if(owner.#running||owner.#recordReadEpoch!==epoch||owner.#sourceStamp!==stamp||owner.#attempt!==attempt||owner.#pending!==pending||owner.#saved!==saved||owner.#savedHead!==savedHead||(owner.#companion?.capture()??null)!==companion)throw fail('changed');const now=managedCoreRetainedRevisions(core);if(now.documentRevision!==revision.documentRevision||now.reviewRevision!==revision.reviewRevision)throw fail('changed');if(observation?.aborted())throw fail('aborted');};
-  const check=()=>{current();authority();current();},readStored=async()=>{try{return await readSegmentedCut(owner.#db,[owner.#identity.room,owner.#identity.writer],owner.#companion?.readHead);}catch(error){throw retainInternalFailureCause(fail('record'),error);}};
-  try{observation=observeIndependentRecoveryAbort(signal,held);check();const review=owner.#options.review,live:Capture={checkpoint:nativeRead.checkpointJson.call(core),review:review?{actor:review.actor,principal:review.principal,checkpoint:nativeRead.reviewCheckpoint.call(core)}:null,versions:[...owner.#versions.values()],documentRevision:revision.documentRevision,reviewRevision:review?revision.reviewRevision:null,companion};owner.#checkCapture(live);check();const committed=await readStored();check();if(!committed)throw fail('missing');if(JSON.stringify(committed.record.identity)!==JSON.stringify(owner.#identity)||JSON.stringify(committed.record.review&&{actor:committed.record.review.actor,principal:committed.record.review.principal})!==JSON.stringify(review?{actor:review.actor,principal:review.principal}:null))throw fail('identity');const json=JSON.stringify(committed);result=createGenerationRecordRead({format:'breditor/persistent-generation-record-read',formatVersion:1,scope:'atomic-generation-committed-attempt-pending-live',committed,attempt:attempt?{capture:attempt.capture,cut:attempt.cut??null}:null,pending:pending??null,live},{check,current,verify:async()=>{check();const actual=await readStored();check();if(JSON.stringify(actual)!==json)throw fail('changed');},release});result.check();complete=true;return result;}
-  finally{if(!complete){result?.dispose();release();}}
+  if(!owner||typeof owner!=='object'||!(#ownedCore in owner)||owner.#formatVersion!==formatVersion)throw fail('source');
+  const authority=participantAuthority(provided);
+  if(owner.#recordReaders.size>=8)throw fail('busy');
+
+  const core=owner.#ownedCore,epoch=owner.#recordReadEpoch,stamp=owner.#sourceStamp;
+  const attempt=owner.#attempt,pending=owner.#pending,saved=owner.#saved,savedHead=owner.#savedHead;
+  const revision=managedCoreRetainedRevisions(core),companion=owner.#companion?.capture()??null;
+  const token=Object.freeze({}),key=[owner.#identity.room,owner.#identity.writer] as const;
+  owner.#recordReaders.add(token);
+
+  let released=false,complete=false,finish!:()=>void;
+  let observation:ReturnType<typeof observeIndependentRecoveryAbort>|undefined;
+  let result:GenerationRecordRead<GenerationRecords>|undefined;
+  const held=new Promise<void>(resolve=>{finish=resolve;});
+  const release=()=>{
+   if(released)return;
+   released=true;
+   owner.#recordReaders.delete(token);
+   observation?.release();
+   finish();
+  };
+  const current=()=>{
+   if(released||!owner.#recordReaders.has(token))throw fail('closed');
+   if(formatVersion===1)generationNative(owner).checkManaged();
+   else{
+    owner.#live();owner.#boundCore();checkManagedCore(core);
+    if(owner.#retiring||owner.#storageChanged)throw fail('source');
+   }
+   if(owner.#running||owner.#recordReadEpoch!==epoch||owner.#sourceStamp!==stamp||
+      owner.#attempt!==attempt||owner.#pending!==pending||owner.#saved!==saved||
+      owner.#savedHead!==savedHead||(owner.#companion?.capture()??null)!==companion)throw fail('changed');
+   const now=managedCoreRetainedRevisions(core);
+   if(now.documentRevision!==revision.documentRevision||now.reviewRevision!==revision.reviewRevision)throw fail('changed');
+   if(observation?.aborted())throw fail('aborted');
+  };
+  const check=()=>{current();authority();current();};
+  const readStored=async()=>{
+   try{
+    if(formatVersion===1){
+     return {formatVersion,committed:await readSegmentedCut(owner.#db,key,owner.#companion?.readHead)} as const;
+    }
+    const pair=await readGenerationPair(owner.#db,key,readContinuedHead);
+    if(!pair.predecessor||pair.predecessor.head!==owner.#continuedPredecessor)throw fail('predecessor');
+    if(pair.current){
+     if(pair.current.head!==savedHead&&pair.current.head!==attempt?.cut?.head)throw fail('changed');
+     checkContinuedPredecessor(pair.current,pair.predecessor);
+    }
+    return {formatVersion,committed:pair.current,predecessor:pair.predecessor} as const;
+   }catch(error){throw retainInternalFailureCause(fail('record'),error);}
+  };
+  try{
+   observation=observeIndependentRecoveryAbort(signal,held);
+   check();
+   const review=owner.#options.review,live:Capture={
+    checkpoint:nativeRead.checkpointJson.call(core),
+    review:review?{actor:review.actor,principal:review.principal,checkpoint:nativeRead.reviewCheckpoint.call(core)}:null,
+    versions:[...owner.#versions.values()],documentRevision:revision.documentRevision,
+    reviewRevision:review?revision.reviewRevision:null,companion,
+   };
+   owner.#checkCapture(live);
+   check();
+   const stored=await readStored();
+   check();
+   const {committed}=stored;
+   if(!committed)throw fail('missing');
+   if(JSON.stringify(committed.record.identity)!==JSON.stringify(owner.#identity)||
+      JSON.stringify(committed.record.review&&{actor:committed.record.review.actor,principal:committed.record.review.principal})!==
+      JSON.stringify(review?{actor:review.actor,principal:review.principal}:null))throw fail('identity');
+   const data={
+    format:'breditor/persistent-generation-record-read',
+    scope:'atomic-generation-committed-attempt-pending-live',
+    attempt:attempt?{capture:attempt.capture,cut:attempt.cut??null}:null,pending:pending??null,live,
+   } as const;
+   const metadata=stored.formatVersion===2
+    ?{format:data.format,formatVersion:2 as const,scope:data.scope,committed:stored.committed!,
+      predecessor:stored.predecessor,attempt:data.attempt,pending:data.pending,live}
+    :{format:data.format,formatVersion:1 as const,scope:data.scope,committed:stored.committed!,
+      attempt:data.attempt,pending:data.pending,live};
+   const observed=JSON.stringify(stored);
+   result=createGenerationRecordRead(metadata,{check,current,release,verify:async()=>{
+    check();
+    const actual=await readStored();
+    check();
+    if(JSON.stringify(actual)!==observed)throw fail('changed');
+   }});
+   result.check();
+   complete=true;
+   return result;
+  }finally{if(!complete){result?.dispose();release();}}
  };}
  static async open<Q extends SharedSelectionPolicy>(input:SharedSegmentedSessionOptions<Q>):Promise<SharedSegmentedPersistentSession<Q>>{return this.#open(input);}
  /** Open an existing continued head under fresh document and review leases. */
@@ -150,7 +238,7 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
   return this.#continued(input,undefined,input);
  }
  static #continued<Q extends SharedSelectionPolicy>(input:SharedContinuedHistoryOptions<Q>,migration?:SharedContinueHistoryOptions<Q>,recovery?:SharedRestoreContinuedHistoryOptions<Q>){
-  return openContinuedHistory(input,migration,work=>new SharedSegmentedPersistentSession(constructionKey,work.db,work.lease,work.reviewLease,work.core,work.options,work.identity,work.head,work.versions,true,undefined,{checkpoint:work.checkpoint,predecessor:work.predecessor,priorRecovery:work.priorRecovery}),recovery);
+  return openContinuedHistory(input,migration,work=>new SharedSegmentedPersistentSession(constructionKey,work.db,work.lease,work.reviewLease,work.core,work.options,work.identity,work.head,work.versions,true,undefined,{checkpoint:work.checkpoint,predecessor:work.predecessor,priorRecovery:work.priorRecovery,profile:work.options.profile}),recovery);
  }
  /** Native admission into an absent dedicated destination, after host reacquisition/fencing. Never merge or overwrite. */
  static async restoreRecovery<Q extends SharedSelectionPolicy>(input:SharedSegmentedRecoveryOptions<Q>):Promise<SharedSegmentedPersistentSession<Q>>{
@@ -269,7 +357,11 @@ export class SharedSegmentedPersistentSession<P extends SharedSelectionPolicy=Sh
 }
 /** Private actual-source discovery. One transaction reads the complete committed
  * head and referenced files. Reading never flushes, acknowledges or edits. */
-export function captureSegmentedPersistentRecords<P extends SharedSelectionPolicy>(owner:SharedSegmentedPersistentSession<P>,checkAuthority:()=>void,signal?:AbortSignal){return readGenerationRecords(owner as unknown as SharedSegmentedPersistentSession,checkAuthority,signal);}
+export function captureSegmentedPersistentRecords<P extends SharedSelectionPolicy>(owner:SharedSegmentedPersistentSession<P>,checkAuthority:()=>void,signal?:AbortSignal){return readGenerationRecords(owner as unknown as SharedSegmentedPersistentSession,checkAuthority,1,signal) as Promise<GenerationRecordRead>;}
+/** SDK-private exact observation of a continued source, including unsettled saved attempts. */
+export function captureContinuedPersistentRecords<P extends SharedSelectionPolicy>(owner:SharedSegmentedPersistentSession<P>,checkAuthority:()=>void,signal?:AbortSignal){
+ return readGenerationRecords(owner as unknown as SharedSegmentedPersistentSession,checkAuthority,2,signal) as Promise<GenerationRecordRead<ContinuedGenerationRecordMetadata>>;
+}
 
 /** Capture the SDK-owned constructor before any host factory/authority can
  * replace its public static entry. No callback may split actual actor moves. */

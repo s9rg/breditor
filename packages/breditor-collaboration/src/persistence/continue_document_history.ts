@@ -56,7 +56,7 @@ function checkIdentity<P extends SharedSelectionPolicy>(cut:SegmentedStoredCut<G
   throw fail("The document or review identity differs from the selected session");
  }
 }
-function checkPredecessor(current:SegmentedStoredCut<GenerationHead>,prior:SegmentedStoredCut){
+export function checkContinuedPredecessor(current:SegmentedStoredCut<GenerationHead>,prior:SegmentedStoredCut){
  const identity=current.record.identity;
  const a=checkSegmentedCheckpoint(current.checkpoint,identity,2);
  const b=checkSegmentedCheckpoint(prior.checkpoint,identity);
@@ -95,11 +95,11 @@ export async function readContinuedBackup(
  const {current,predecessor:prior}=await readGenerationPair(db,key,readContinuedHead);
  check();
  if(!current||current.head!==head||!prior||prior.head!==predecessor)throw fail("The saved history changed while capturing the backup");
- checkPredecessor(current,prior);
+ checkContinuedPredecessor(current,prior);
  return makeBackup(recoveryRecord(current,2),recoveryRecord(prior,1));
 }
 function restoreCore<P extends SharedSelectionPolicy>(
- raw:SharedRustOwner,options:SharedContinuedHistoryOptions<P>,identity:SegmentedSessionIdentity,
+ raw:SharedRustOwner,options:Pick<SharedContinuedHistoryOptions<P>,"review"|"editor">,identity:SegmentedSessionIdentity,
  checkpoint:string,review:SegmentedReview|null,versions:readonly string[],continued:boolean,readOnly:boolean,
 ):SharedRichEditor<P>{
  let core:SharedRichEditor<P>|undefined;
@@ -124,14 +124,16 @@ function restoreCore<P extends SharedSelectionPolicy>(
   throw error;
  }
 }
-/** Borrow only a read-only replay for the operational origin. No storage or lease opens. */
+/** Borrow only a read-only replay for a recovery or record origin. */
 export function restoreReadOnlyContinuedCore<P extends SharedSelectionPolicy>(
- options:SharedContinuedHistoryOptions<P>,identity:SegmentedSessionIdentity,current:SharedContinuedHistoryRecovery,
+ restore:(checkpoint:string)=>SharedRustOwner,identity:SegmentedSessionIdentity,
+ current:SharedContinuedHistoryRecovery,reviewIdentity:Readonly<{actor:string;principal:string}>|null,
+ editor?:SharedContinuedHistoryOptions<P>["editor"],
 ):SharedRichEditor<P>{
- const review=reviewRecord(current.reviewCheckpoint,options.review);
- const readOnly={...options,...(options.review?{review:{...options.review,access:"read_only" as const}}:{})};
- return restoreCore(options.profile.restore_continued_history!(identity.room,current.checkpoint),readOnly,
-  identity,current.checkpoint,review,current.versions,true,true);
+ const reviewPolicy=reviewIdentity?{...reviewIdentity,access:"read_only" as const}:undefined;
+ const review=reviewRecord(current.reviewCheckpoint,reviewPolicy);
+ const options={...(reviewPolicy?{review:reviewPolicy}:{}),...(editor?{editor}:{})};
+ return restoreCore(restore(current.checkpoint),options,identity,current.checkpoint,review,current.versions,true,true);
 }
 function convert(profile:SharedRustProfile,room:string,checkpoint:string,next:string):string{
  const raw=profile.restore_segmented!(room,checkpoint);
@@ -212,7 +214,7 @@ export async function openContinuedHistory<P extends SharedSelectionPolicy,T>(
    check();
    const cut=await makeGenerationCut(current.checkpoint,identity,review,current.versions,2);
    check();
-   checkPredecessor(
+   checkContinuedPredecessor(
     {...cut,checkpoint:current.checkpoint,record:readContinuedHead(cut.head)},
     {...previous,checkpoint:predecessor.checkpoint,record:readSegmentedHead(previous.head)},
    );
@@ -245,7 +247,7 @@ export async function openContinuedHistory<P extends SharedSelectionPolicy,T>(
   if(prior)checkIdentity(prior,identity,options);
   if(saved.record.formatVersion===2){
    if(!prior)throw fail("The retained V1 predecessor is missing");
-   checkPredecessor(saved,prior);
+   checkContinuedPredecessor(saved,prior);
   }else if(prior)throw fail("The V1 head already has a continuation record");
 
   let checkpoint=saved.checkpoint,head=saved.head;

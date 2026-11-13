@@ -1,7 +1,7 @@
 /** Actual native SDK storage migration under controlled IndexedDB and Web Locks. */
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {resolve} from 'node:path';
+import {dirname,join,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {IDBDatabase,IDBFactory,IDBObjectStore} from 'fake-indexeddb';
 
@@ -9,6 +9,7 @@ const [sdkPath,wasmPath,binaryPath,fixturePath]=process.argv.slice(2);
 assert.equal(process.argv.length,6);
 const load=path=>import(pathToFileURL(resolve(path)).href);
 const {SharedSegmentedPersistentSession:Session}=await load(sdkPath),runtime=await load(wasmPath);
+const {captureContinuedPersistentRecords}=await load(join(dirname(sdkPath),'persistence/segmented_session.js'));
 await runtime.default({module_or_path:readFileSync(binaryPath)});
 const canonical=value=>Array.isArray(value)?value.map(canonical):value&&typeof value==='object'
  ?Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])])):value;
@@ -54,6 +55,16 @@ async function rows(database=options.database){
 let session;
 const add=IDBObjectStore.prototype.add,transaction=IDBDatabase.prototype.transaction;
 const lockCheck=()=>assert.equal(held.size,0);
+async function changePredecessor(head){
+ const db=await new Promise((resolve,reject)=>{
+  const open=indexedDB.open(options.database);open.onsuccess=()=>resolve(open.result);open.onerror=()=>reject(open.error);
+ });
+ try{await new Promise((resolve,reject)=>{
+  const tx=db.transaction('generation_heads','readwrite');
+  tx.objectStore('generation_heads').put(head,[...key,'continued-from']);
+  tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);
+ });}finally{db.close();}
+}
 try{
  await assert.rejects(Session.openContinued({...options,database:'missing'}),/existing generation store/);
  assert.equal((await indexedDB.databases()).length,0);
@@ -132,7 +143,47 @@ try{
  await assert.rejects(unsettled,/settled, unchanged/);
  await session.flush();
  assert.ok(offline.groups.length>=2);
- await session.close();session=undefined;
+ let deniedWrites=0;
+ IDBDatabase.prototype.transaction=function(...args){
+  const tx=transaction.apply(this,args);
+  if(this.name===options.database&&args[1]==='readwrite'&&args[0].includes('generation_heads')){
+   deniedWrites++;
+   queueMicrotask(()=>tx.abort());
+  }
+  return tx;
+ };
+ const retainedBeforeFault=await rows();
+ try{
+  assert.equal(insert(session,'failed generation save'),true);
+  await assert.rejects(session.flush());
+  assert.equal(insert(session,'still pending after failed save'),true);
+  await assert.rejects(session.flush());
+ }finally{IDBDatabase.prototype.transaction=transaction;}
+ assert.equal(deniedWrites,2);
+ const observed=await captureContinuedPersistentRecords(session,()=>{});
+ try{
+  const data=observed.metadata();
+  assert.equal(data.formatVersion,2);
+  assert.equal(data.committed.head,retainedBeforeFault.active);
+  assert.equal(data.predecessor.head,retainedBeforeFault.prior);
+  assert.equal(data.predecessor.checkpoint,expected.checkpoint);
+  assert.deepEqual(data.predecessor.record.versions,expected.versions);
+  assert.match(data.attempt.capture.checkpoint,/failed generation save/);
+  assert.doesNotMatch(data.attempt.capture.checkpoint,/still pending after failed save/);
+  assert.match(data.pending.checkpoint,/still pending after failed save/);
+  assert.deepEqual(data.live,data.pending);
+  assert.ok(Object.isFrozen(data.predecessor.record.versions));
+  await observed.verify();
+  const changed=JSON.parse(retainedBeforeFault.prior);
+  changed.versions=[];
+  await changePredecessor(JSON.stringify(changed));
+  await assert.rejects(observed.verify(),error=>error.code==='generation_record_read_record');
+  assert.equal((await rows()).prior,JSON.stringify(changed));
+  await changePredecessor(retainedBeforeFault.prior);
+  await observed.verify();
+ }finally{observed.dispose();}
+ assert.deepEqual(await rows(),retainedBeforeFault);
+ await session.discardAndClose();session=undefined;
  await assert.rejects(Session.continueHistory(request),/already advanced or differs/);
  session=await Session.openContinued({...options,readOnly:true,review:{...options.review,access:'read_only'}});
  assert.deepEqual(session.exportContinuedRecovery(),current);
@@ -239,7 +290,7 @@ try{
  await session.close();session=undefined;lockCheck();
  console.log(JSON.stringify({passed:true,abortedMigration:aborted,lostAcknowledgement:lost,
   exactV1Predecessor:true,documentAndCommentRedo:true,versionsPreserved:true,offlineGroups:offline.groups.length,
-  abortedRestore,unacknowledgedRestore,backupRestored:true,documentOnlyRestore:true,atomicPredecessorRead:true,foreignReviewRefused:true,existingDestinationRefused:true}));
+  abortedRestore,unacknowledgedRestore,backupRestored:true,documentOnlyRestore:true,atomicPredecessorRead:true,continuedFourSlotRead:true,foreignReviewRefused:true,existingDestinationRefused:true}));
 }finally{
  IDBObjectStore.prototype.add=add;
  IDBDatabase.prototype.transaction=transaction;
