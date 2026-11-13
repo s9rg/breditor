@@ -1,10 +1,6 @@
 //! Explicit native segmented checkpoint: exact original root and every sealed/active input record.
 use super::super::{RichReplica, session::MAX_JOURNAL_BYTES};
-use super::{
-    archive,
-    encoding::{MAX_ARCHIVE_BYTES, encode},
-    state::SegmentedHistory,
-};
+use super::{archive, encoding::encode, state::SegmentedHistory};
 use crate::Error;
 impl RichReplica {
     /// Save the separately selected bounded segmented-history/v1 family, retaining old native IDs.
@@ -15,13 +11,28 @@ impl RichReplica {
     /// Disabled mode, altered retained prefix/family, invalid history or independent new archive
     /// bounds reject. Original-family save APIs never emit or reinterpret this new format.
     pub fn segmented_checkpoint(&self) -> Result<String, Error> {
+        self.selected_segmented_checkpoint(false)
+    }
+
+    /// Save the explicitly selected continuation with its exact migration boundary.
+    ///
+    /// # Errors
+    /// Refuses a legacy owner or a checkpoint outside the continued history contract.
+    pub fn continued_history_checkpoint(&self) -> Result<String, Error> {
+        self.selected_segmented_checkpoint(true)
+    }
+
+    fn selected_segmented_checkpoint(&self, continued: bool) -> Result<String, Error> {
         let (state, active) = self.segmented_checkpoint_parts()?;
+        if state.continuation.is_some() != continued {
+            return Err(Error::Contract("select the matching segmented history checkpoint"));
+        }
         archive::checkpoint(state, &active)
     }
 
     pub(in crate::rich_replica) fn check_segmented_checkpoint_budget(&self) -> Result<(), Error> {
         let (state, active) = self.segmented_checkpoint_parts()?;
-        archive::check_size(state, &active, MAX_ARCHIVE_BYTES)
+        archive::check_size(state, &active, state.max_archive_bytes())
     }
 
     fn segmented_checkpoint_parts(&self) -> Result<(&SegmentedHistory, String), Error> {

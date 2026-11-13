@@ -29,6 +29,7 @@ impl RichReplica {
         let mut candidate = Self {
             doc,
             undo,
+            undo_limit: self.undo_limit,
             codec: self.codec.clone(),
             protocol: self.protocol,
             replay_contract: self.replay_contract,

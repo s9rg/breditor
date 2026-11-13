@@ -189,6 +189,7 @@ pub(super) fn publication(value: &str) -> Result<u64, Error> {
 pub struct RichReplica {
     pub(super) doc: LoroDoc,
     pub(super) undo: UndoManager,
+    pub(super) undo_limit: usize,
     pub(super) codec: DocumentJsonCodecV2,
     pub(super) protocol: super::protocol::Protocol,
     pub(super) replay_contract: super::general_history::ReplayContract,
@@ -366,6 +367,7 @@ impl RichReplica {
         let mut owner = Self {
             doc,
             undo,
+            undo_limit: MAX_ENTRIES,
             codec,
             protocol,
             replay_contract: super::general_history::ReplayContract::Original,
@@ -527,7 +529,14 @@ impl RichReplica {
             }
         }
         candidate.restore_segment_boundary(0)?;
+        let continuation = candidate
+            .segmented
+            .as_ref()
+            .and_then(super::segmented_history::SegmentedHistory::continuation_entry);
         for (index, entry) in journal.entries.iter().enumerate() {
+            if continuation == Some(index) {
+                candidate.enable_continued_undo()?;
+            }
             let joining = |at: usize| {
                 candidate.typing.as_ref().is_some_and(|history| {
                     u32::try_from(at).is_ok_and(|at| history.joins.binary_search(&at).is_ok())
@@ -545,6 +554,9 @@ impl RichReplica {
             candidate.restore_segment_boundary(index + 1)?;
         }
         candidate.journal = journal;
+        if continuation == Some(candidate.journal.entries.len()) {
+            candidate.enable_continued_undo()?;
+        }
         if reviewed && candidate.reviewed_history.is_none() {
             return Err(Error::Contract("reviewed history activation missing"));
         }
@@ -706,7 +718,7 @@ impl RichReplica {
             self.undo.group_end();
         }
         let authored = self.doc.state_frontiers() != frontier;
-        if authored && !join && undo_count >= MAX_ENTRIES && self.segmented.is_some() {
+        if authored && !join && self.segmented.is_some() && undo_count >= self.undo_limit {
             return Err(Error::Limit("segmented retained undo items"));
         }
         if self.undo.undo_count() != undo_count {
@@ -740,6 +752,16 @@ impl RichReplica {
             self.record_reviewed_local(group_key.as_deref().unwrap_or(&history_key), join)?;
         }
         Ok(history_key)
+    }
+
+    pub(super) fn enable_continued_undo(&mut self) -> Result<(), Error> {
+        let state = self.segmented.as_ref().ok_or(Error::ReplayMismatch)?;
+        if let Some(reviewed) = &self.reviewed_history {
+            reviewed.validate(self)?;
+        }
+        self.undo_limit = state.undo_limit();
+        self.undo.set_max_undo_steps(self.undo_limit);
+        Ok(())
     }
 
     fn replay(&mut self, entry: &Entry, join: bool, keep_open: bool) -> Result<(), Error> {

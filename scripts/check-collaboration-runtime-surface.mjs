@@ -14,6 +14,8 @@ export const retainedNativeBranchOwnerMethods=Object.freeze(["retained_native_br
 export const nativeBranchUnionOwnerMethods=Object.freeze(["native_branch_union_version","native_branch_union_input_bytes","verify_native_branch_union","reconcile_native_branch_union"]);
 export const segmentedHistoryOwnerMethods=Object.freeze(["segmented_history_version","segmented_history_enabled","segmented_history_info_json","enable_segmented_history","seal_history_segment","segmented_checkpoint","verify_segmented_recovery_origin"]);
 export const segmentedHistoryProfileMethods=Object.freeze(["segmented_history_version","restore_segmented"]);
+export const continuedHistoryOwnerMethods=Object.freeze(["continue_history","continued_history_checkpoint"]);
+export const continuedHistoryProfileMethods=Object.freeze(["restore_continued_history"]);
 export const observerHistorySealingOwnerMethods=Object.freeze(["observer_history_sealing_version","seal_observer_history_segment"]);
 export const readOnlyHistoryLifecycleMethods=Object.freeze(["read_only_history_lifecycle_version","enable_read_only_segmented_history","seal_read_only_history_segment","read_only_review_history_lifecycle_version","enable_read_only_review_history_generations","seal_read_only_review_history_generation"]);
 export const placeholderOwnerMethods=Object.freeze(["placeholder_version","placeholder_empty"]);
@@ -53,6 +55,8 @@ export function admitApplicationSurface(module,binary,declarations){
  for(const name of nativeBranchUnionOwnerMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native branch union capability ${name}`);
  for(const name of segmentedHistoryOwnerMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native segmented history capability ${name}`);
  for(const name of segmentedHistoryProfileMethods)assert.equal(typeof module.SharedRichProfile.prototype[name],"function",`Missing native segmented recovery ${name}`);
+ for(const name of continuedHistoryOwnerMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native history continuation ${name}`);
+ for(const name of continuedHistoryProfileMethods)assert.equal(typeof module.SharedRichProfile.prototype[name],"function",`Missing explicit continued history recovery ${name}`);
  for(const name of observerHistorySealingOwnerMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native observer history sealing capability ${name}`);
  for(const name of readOnlyHistoryLifecycleMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native read-only history lifecycle capability ${name}`);
  for(const name of placeholderOwnerMethods)assert.equal(typeof module.SharedEditorOwner.prototype[name],"function",`Missing native placeholder capability ${name}`);

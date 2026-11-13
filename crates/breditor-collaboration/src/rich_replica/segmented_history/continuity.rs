@@ -17,6 +17,7 @@ impl RichReplica {
             .ok_or(Error::Contract("retained segmented source cannot be downgraded"))?;
         if current.root.generation != before.root.generation
             || current.root.json != before.root.json
+            || before.continuation.is_some() && current.continuation != before.continuation
             || current.sealed.len() < before.sealed.len()
             || before
                 .sealed
@@ -56,6 +57,7 @@ impl RichReplica {
             if current.root.generation != before.root.generation
                 || current.root.json != before.root.json
                 || current.sealed.len() < before.sealed.len()
+                || before.continuation.is_some() && current.continuation != before.continuation
             {
                 return Err(Error::Contract("segmented recovery original root differs"));
             }

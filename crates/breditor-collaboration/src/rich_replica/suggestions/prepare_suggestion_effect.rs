@@ -168,7 +168,7 @@ impl RichReplica {
         };
         // Fail before the host can persist a decision whose exact native recovery is too large.
         if self.segmented_history_enabled() {
-            prepared.segmented_checkpoint()?;
+            prepared.candidate.check_segmented_checkpoint_budget()?;
         } else {
             prepared.checkpoint()?;
         }

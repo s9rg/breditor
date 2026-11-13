@@ -19,7 +19,24 @@ impl SharedRichProfile {
     /// divergent effects/grouping, ID reuse, missing segments and resource bounds reject before
     /// exposing an owner. This does not repair a truncated chain, merge a fork or reset history.
     pub fn restore_segmented(&self, room: &str, input: &str) -> Result<RichReplica, Error> {
-        let archive = Archive::read(input)?;
+        self.restore_segmented_archive(room, Archive::read(input)?)
+    }
+
+    /// Replay a separately selected document history continuation. The prior
+    /// V1 root and segments retain their exact original native bytes.
+    ///
+    /// # Errors
+    /// Refuses an invalid continuation boundary, a changed history or an invalid
+    /// room binding. A host must hold the actual writer lease before use.
+    pub fn restore_continued_history(&self, room: &str, input: &str) -> Result<RichReplica, Error> {
+        self.restore_segmented_archive(room, Archive::read_continued(input)?)
+    }
+
+    fn restore_segmented_archive<const MAX: usize>(
+        &self,
+        room: &str,
+        archive: Archive<MAX>,
+    ) -> Result<RichReplica, Error> {
         if archive.root_checkpoint.len() > MAX_JOURNAL_BYTES {
             return Err(Error::Limit("segmented original checkpoint bytes"));
         }
@@ -39,7 +56,11 @@ impl SharedRichProfile {
             root: Arc::new(retained_root),
             sealed,
             active_generation: active.record.generation.clone(),
+            continuation: archive.continued_after,
         };
+        if let Some(boundary) = state.continuation {
+            state.check_legacy_checkpoint(boundary)?;
+        }
         let (parent, hash) = state.parent();
         if active.record.parent_generation != parent
             || active.record.parent_sha256 != hash

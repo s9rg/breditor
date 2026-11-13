@@ -7,7 +7,7 @@ mod perform_history;
 mod restore_reviewed_history;
 mod types;
 
-use super::{RichReplica, history_keys, session::MAX_ENTRIES};
+use super::{RichReplica, history_keys};
 use crate::Error;
 use loro::Frontiers;
 use std::collections::{BTreeMap, BTreeSet};
@@ -68,7 +68,9 @@ impl ReviewedHistory {
         self.identity.check(owner.writer())?;
         self.cursors.check_keys(false, self.undo.iter().map(|item| item.key.as_str()))?;
         self.cursors.check_keys(true, self.redo.iter().map(|item| item.key.as_str()))?;
-        if self.undo.len() + self.redo.len() > MAX_ENTRIES || self.adopted.len() > MAX_ENTRIES {
+        if self.undo.len() + self.redo.len() > owner.undo_limit
+            || self.adopted.len() > owner.undo_limit
+        {
             return Err(Error::Limit("reviewed history items"));
         }
         let mut keys = BTreeSet::new();

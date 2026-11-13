@@ -1,7 +1,10 @@
 //! Canonical, bounded NEW segmented archive. The root and every sealed file remain exact strings.
 use super::{
     binding::Family,
-    encoding::{MAX_ARCHIVE_BYTES, MAX_GENERATIONS, encode, quoted_bytes},
+    encoding::{
+        CONTINUED_ARCHIVE_BYTES, CONTINUED_GENERATIONS, MAX_ARCHIVE_BYTES, MAX_GENERATIONS, encode,
+        quoted_bytes,
+    },
     state::SegmentedHistory,
 };
 use crate::Error;
@@ -22,19 +25,21 @@ struct Encoding<'a> {
     root_checkpoint: &'a str,
     sealed: Vec<&'a str>,
     active: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    continued_after: Option<usize>,
 }
-pub(super) struct Files(pub Vec<String>);
-impl<'de> Deserialize<'de> for Files {
+pub(super) struct Files<const MAX: usize = MAX_GENERATIONS>(pub Vec<String>);
+impl<'de, const MAX: usize> Deserialize<'de> for Files<MAX> {
     fn deserialize<D: Deserializer<'de>>(reader: D) -> Result<Self, D::Error> {
-        struct Bounded;
-        impl<'de> Visitor<'de> for Bounded {
-            type Value = Files;
+        struct Bounded<const MAX: usize>;
+        impl<'de, const MAX: usize> Visitor<'de> for Bounded<MAX> {
+            type Value = Files<MAX>;
             fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 f.write_str("bounded sealed native history segments")
             }
-            fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Files, A::Error> {
+            fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Files<MAX>, A::Error> {
                 let mut files = Vec::new();
-                while files.len() < MAX_GENERATIONS - 2 {
+                while files.len() < MAX - 2 {
                     match seq.next_element()? {
                         Some(file) => files.push(file),
                         None => return Ok(Files(files)),
@@ -46,37 +51,56 @@ impl<'de> Deserialize<'de> for Files {
                 Ok(Files(files))
             }
         }
-        reader.deserialize_seq(Bounded)
+        reader.deserialize_seq(Bounded::<MAX>)
     }
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub(super) struct Archive {
+pub(super) struct Archive<const MAX: usize = MAX_GENERATIONS> {
     pub format: String,
     pub format_version: u32,
     pub family: Family,
     pub root_generation: String,
     pub root_checkpoint: String,
-    pub sealed: Files,
+    pub sealed: Files<MAX>,
     pub active: String,
+    pub continued_after: Option<usize>,
 }
-impl Archive {
+impl Archive<MAX_GENERATIONS> {
     pub fn read(input: &str) -> Result<Self, Error> {
-        if input.len() > MAX_ARCHIVE_BYTES {
+        Self::read_selected(input, 1, MAX_ARCHIVE_BYTES)
+    }
+}
+impl Archive<CONTINUED_GENERATIONS> {
+    pub fn read_continued(input: &str) -> Result<Self, Error> {
+        Self::read_selected(input, 2, CONTINUED_ARCHIVE_BYTES)
+    }
+}
+impl<const MAX: usize> Archive<MAX> {
+    fn read_selected(input: &str, version: u32, limit: usize) -> Result<Self, Error> {
+        if input.len() > limit {
             return Err(Error::Limit("segmented history archive bytes"));
         }
         let value: Self = serde_json::from_str(input)?;
-        if value.format != FORMAT || value.format_version != 1 {
+        if value.format != FORMAT
+            || value.format_version != version
+            || value.continued_after.is_some() != (version == 2)
+        {
             return Err(Error::Contract("segmented history archive format"));
         }
-        let encoded = value.encode()?;
+        let encoded = value.encode_with_limit(limit)?;
         if encoded != input {
             return Err(Error::Contract("segmented history canonical archive differs"));
         }
         Ok(value)
     }
 
+    #[cfg(test)]
     pub fn encode(&self) -> Result<String, Error> {
+        self.encode_with_limit(MAX_ARCHIVE_BYTES)
+    }
+
+    fn encode_with_limit(&self, limit: usize) -> Result<String, Error> {
         encode(
             &Encoding {
                 format: &self.format,
@@ -86,8 +110,9 @@ impl Archive {
                 root_checkpoint: &self.root_checkpoint,
                 sealed: self.sealed.0.iter().map(String::as_str).collect(),
                 active: &self.active,
+                continued_after: self.continued_after,
             },
-            MAX_ARCHIVE_BYTES,
+            limit,
         )
     }
 }
@@ -95,14 +120,15 @@ pub(super) fn checkpoint(state: &SegmentedHistory, active: &str) -> Result<Strin
     encode(
         &Encoding {
             format: FORMAT,
-            format_version: 1,
+            format_version: if state.continuation.is_some() { 2 } else { 1 },
             family: state.root.family,
             root_generation: &state.root.generation,
             root_checkpoint: &state.root.json,
             sealed: state.sealed.iter().map(|s| s.json.as_ref()).collect(),
             active,
+            continued_after: state.continuation,
         },
-        MAX_ARCHIVE_BYTES,
+        state.max_archive_bytes(),
     )
 }
 
@@ -115,12 +141,13 @@ pub(super) fn check_size(
 ) -> Result<(), Error> {
     let envelope = Encoding {
         format: FORMAT,
-        format_version: 1,
+        format_version: if state.continuation.is_some() { 2 } else { 1 },
         family: state.root.family,
         root_generation: &state.root.generation,
         root_checkpoint: "",
         sealed: Vec::new(),
         active: "",
+        continued_after: state.continuation,
     };
     // The empty envelope already charges the root and active quotes and
     // the sealed array's brackets. Add only what replaces the empty files.

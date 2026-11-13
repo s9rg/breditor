@@ -1,5 +1,7 @@
 //! Explicit segmented document recovery; paired comment continuity keeps its original contract.
 mod checkpoint_segmented_history;
+mod continue_history;
+mod continued_history_checkpoint;
 mod enable_read_only_segmented_history;
 mod enable_segmented_history;
 mod seal_history_segment;

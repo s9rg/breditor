@@ -6,6 +6,9 @@ use std::io::{self, Write};
 
 pub(super) const MAX_GENERATIONS: usize = 64;
 pub(super) const MAX_ARCHIVE_BYTES: usize = 64 * 1024 * 1024;
+pub(super) const CONTINUED_GENERATIONS: usize = 256;
+pub(super) const CONTINUED_ARCHIVE_BYTES: usize = 256 * 1024 * 1024;
+pub(super) const CONTINUED_UNDO_ITEMS: usize = 16_000;
 struct BoundedOutput {
     bytes: Vec<u8>,
     limit: usize,

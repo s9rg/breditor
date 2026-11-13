@@ -2,7 +2,7 @@ import test from "node:test";
 import {retainedAssetOwnerMethods} from "./check-collaboration-runtime-surface.mjs";
 import {packetAssetOwnerMethods} from "./check-collaboration-runtime-surface.mjs";
 import {recoveryOriginOwnerMethods,retainedDocumentBranchOwnerMethods,retainedNativeBranchOwnerMethods,nativeBranchUnionOwnerMethods} from "./check-collaboration-runtime-surface.mjs";
-import {segmentedHistoryOwnerMethods,segmentedHistoryProfileMethods,observerHistorySealingOwnerMethods} from "./check-collaboration-runtime-surface.mjs";
+import {segmentedHistoryOwnerMethods,segmentedHistoryProfileMethods,continuedHistoryOwnerMethods,continuedHistoryProfileMethods,observerHistorySealingOwnerMethods} from "./check-collaboration-runtime-surface.mjs";
 import {segmentedReviewMethods} from "./check-collaboration-runtime-surface.mjs";
 import {readOnlyHistoryLifecycleMethods} from "./check-collaboration-runtime-surface.mjs";
 import {writerPrefixReadMethods} from "./check-collaboration-runtime-surface.mjs";
@@ -26,8 +26,8 @@ function fixture(){
  for(const name of retainedDocumentBranchOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of retainedNativeBranchOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of nativeBranchUnionOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
- for(const name of segmentedHistoryOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
- for(const name of segmentedHistoryProfileMethods)module.SharedRichProfile.prototype[name]=()=>{};
+ for(const name of [...segmentedHistoryOwnerMethods,...continuedHistoryOwnerMethods])module.SharedEditorOwner.prototype[name]=()=>{};
+ for(const name of [...segmentedHistoryProfileMethods,...continuedHistoryProfileMethods])module.SharedRichProfile.prototype[name]=()=>{};
  for(const name of observerHistorySealingOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of readOnlyHistoryLifecycleMethods)module.SharedEditorOwner.prototype[name]=()=>{};
  for(const name of placeholderOwnerMethods)module.SharedEditorOwner.prototype[name]=()=>{};
@@ -85,6 +85,8 @@ test("recovery continuity requires the complete two-native-owner guarded capabil
 test("segmented history requires explicit complete native reads mutations and recovery",()=>{
  for(const name of segmentedHistoryOwnerMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native segmented history capability/);}
  for(const name of segmentedHistoryProfileMethods){const f=fixture();delete f.module.SharedRichProfile.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native segmented recovery/);}
+ for(const name of continuedHistoryOwnerMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native history continuation/);}
+ for(const name of continuedHistoryProfileMethods){const f=fixture();delete f.module.SharedRichProfile.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing explicit continued history recovery/);}
 });
 test("observer sealing requires its own complete versioned native capability",()=>{
  for(const name of observerHistorySealingOwnerMethods){const f=fixture();delete f.module.SharedEditorOwner.prototype[name];assert.throws(()=>admitApplicationSurface(f.module,emptyWasm,f.declarations),/Missing native observer history sealing capability/);}

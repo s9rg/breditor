@@ -11,4 +11,12 @@ impl PreparedWriterGroup {
     pub fn segmented_checkpoint(&self) -> Result<String, Error> {
         self.candidate.segmented_checkpoint()
     }
+
+    /// Save an unpublished candidate using the explicit continuation format.
+    ///
+    /// # Errors
+    /// Refuses a legacy candidate or an invalid continued archive.
+    pub fn continued_history_checkpoint(&self) -> Result<String, Error> {
+        self.candidate.continued_history_checkpoint()
+    }
 }

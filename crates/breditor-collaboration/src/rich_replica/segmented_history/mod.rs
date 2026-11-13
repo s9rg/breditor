@@ -2,6 +2,9 @@
 mod archive;
 mod binding;
 mod checkpoint_segmented_history;
+mod continue_history;
+#[cfg(test)]
+mod continued_history_tests;
 mod continuity;
 mod enable_read_only_segmented_history;
 mod enable_segmented_history;
