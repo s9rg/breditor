@@ -4,7 +4,7 @@ import {createHash} from 'node:crypto';
 import {readFileSync,realpathSync} from 'node:fs';
 import {dirname,resolve} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
-import {SharedRichEditor,SharedContinuedPairSession,SharedContinuedParticipantBackup,SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore} from '../packages/breditor-collaboration/dist/index.js';
+import {SharedRichEditor,SharedContinuedPairSession,SharedContinuedParticipantBackup,SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore,beginContinuedRoomRecovery,resumeContinuedRoomRecovery} from '../packages/breditor-collaboration/dist/index.js';
 import {IDBDatabase} from 'fake-indexeddb';
 import {RichAssetStore} from '@breditor/experimental-rich-content';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
@@ -51,12 +51,13 @@ async function participant(profile,fixture,metadata,client,wasm,tag,documentHist
   const reviewRoot=branch==='fork-review'?client.forkReviewCheckpoint:branch==='behind'?client.emptyReviewCheckpoint:client.reviewCheckpoint;
   core.enableReview(review,reviewRoot);
   if(reviewHistory==='continued-v2'){
-   core.enableReviewHistoryGenerations('review-root','review-first');
    if(readOnly){
-    // Observer fixtures can start from the original read-only lane.
-    throw new Error('The continued review fixture requires an editing participant');
+    core.enableReadOnlyReviewHistoryGenerations('review-root','review-first');
+    core.continueReadOnlyReviewHistory('review-continued');
+   }else{
+    core.enableReviewHistoryGenerations('review-root','review-first');
+    core.continueReviewHistory('review-continued');
    }
-   core.continueReviewHistory('review-continued');
   }
   const reviewCheckpoint=reviewHistory==='continued-v2'?core.reviewContinuedCheckpoint():core.reviewCheckpoint();
   documentCheckpoint=core.checkpointJson();
@@ -118,7 +119,7 @@ export async function probeContinuedRoomCatalog(runtime,fixturePath){
  const profile=wasm.SharedRichProfile[make](fixture.configuration),reset=environment();
  const client=fixture.clients.find(row=>!row.observer);
  const owners=[],catalogs=[];
- const counts={coldCatalogReads:0,nativePairs:0,serverAhead:0,forksRefused:0,selectionRefusals:0,storedCatalogReads:0,storedCatalogRefusals:0,interruptedCatalogReads:0,damagedCatalogRefusals:0,restoredLocalUndoRedo:0};
+ const counts={coldCatalogReads:0,nativePairs:0,serverAhead:0,forksRefused:0,selectionRefusals:0,storedCatalogReads:0,storedCatalogRefusals:0,interruptedCatalogReads:0,damagedCatalogRefusals:0,restoredLocalUndoRedo:0,cohortRecoveries:0,interruptedRecoveryResumes:0,uploadRecoveryResumes:0,recoveryRefusals:0};
  try{
   const initial={
    catalog:'continued-room',wasm,checkAuthority(){},
@@ -128,8 +129,8 @@ export async function probeContinuedRoomCatalog(runtime,fixturePath){
     participants:{file:new Blob([readFileSync(resolve(folder,'inventory-after.json'))]),expected:fixture.afterRecoveryState.participants},
    },
   };
-  const pack=async(tag,doc,review,branch)=>{
-   const result=await participant(profile,fixture,metadata,client,wasm,tag,doc,review,branch);
+  const pack=async(tag,doc,review,branch,selected=client)=>{
+   const result=await participant(profile,fixture,metadata,selected,wasm,tag,doc,review,branch);
    owners.push(result);
    return result;
   };
@@ -234,6 +235,72 @@ export async function probeContinuedRoomCatalog(runtime,fixturePath){
   await assert.rejects(SharedContinuedRoomCatalogStore.resume(options),error=>error.code==='catalog_diverged');
   await assert.rejects(SharedContinuedRoomCatalogStore.begin({...options,archive:captured}),error=>error.code==='catalog_exists');
   counts.damagedCatalogRefusals++;
+  const observer=await pack('observer','original','continued-v2','observer',fixture.clients.find(row=>row.observer));
+  const cohort=await capture([interrupted,observer]);
+  const cohortOptions={wasm,checkAuthority(){},expected:cohort.selection(),database:'cohort-catalog',
+   policies:[interrupted,observer].map(({id,expected,restoreDocument})=>({id,expected,restoreDocument}))};
+  let cohortStore;
+  try{
+   cohortStore=await SharedContinuedRoomCatalogStore.begin({...cohortOptions,archive:cohort});
+   const destinations=[observer,interrupted].map(({id})=>({id,source:id+'-adopted',uploads:id+'-adopted-uploads'}));
+   const recovery={database:'cohort-recovery',catalog:cohortStore,expected:cohort.selection(),destinations,writerRecovery:'host-reacquired',checkAuthority(){}};
+   const transaction=IDBDatabase.prototype.transaction;
+   let interruptedAck=false;
+   IDBDatabase.prototype.transaction=function(...args){
+    const tx=transaction.apply(this,args);
+    if(this.name===interrupted.id+'-adopted'&&args[1]==='readwrite'&&!interruptedAck){
+     interruptedAck=true;
+     Object.defineProperty(tx,'oncomplete',{configurable:true,set(){tx.addEventListener('complete',event=>tx.onabort?.(event));}});
+    }
+    return tx;
+   };
+   try{
+    await assert.rejects(beginContinuedRoomRecovery(recovery));
+    assert.equal(interruptedAck,true);
+   }finally{IDBDatabase.prototype.transaction=transaction;}
+   await cohortStore.close();
+   cohortStore=await SharedContinuedRoomCatalogStore.resume(cohortOptions);
+   let resumed={...recovery,catalog:cohortStore};
+   let interruptedUpload=false;
+   IDBDatabase.prototype.transaction=function(...args){
+    const tx=transaction.apply(this,args);
+    if(this.name===observer.id+'-adopted-uploads'&&args[1]==='readwrite'&&!interruptedUpload){
+     interruptedUpload=true;
+     Object.defineProperty(tx,'oncomplete',{configurable:true,set(){tx.addEventListener('complete',event=>tx.onabort?.(event));}});
+    }
+    return tx;
+   };
+   try{
+    await assert.rejects(resumeContinuedRoomRecovery(resumed));
+    assert.equal(interruptedUpload,true);
+   }finally{IDBDatabase.prototype.transaction=transaction;}
+   await cohortStore.close();
+   cohortStore=await SharedContinuedRoomCatalogStore.resume(cohortOptions);
+   resumed={...recovery,catalog:cohortStore};
+   const result=await resumeContinuedRoomRecovery(resumed);
+   counts.uploadRecoveryResumes++;
+   assert.equal(result.participants.length,2);
+   assert.deepEqual(await resumeContinuedRoomRecovery(resumed),result);
+   counts.interruptedRecoveryResumes++;
+   for(const entry of [interrupted,observer]){
+    const destination=result.participants.find(row=>row.id===entry.id);
+    const session=await SharedContinuedPairSession.open({...entry.options,database:destination.source});
+    const uploadStore=await RichAssetStore.openRetained(destination.uploads);
+    try{
+     assert.deepEqual(session.exportRecovery(),entry.record.live);
+     assert.equal((await uploadStore.get(secondAsset)).status,'cancelled');
+     await sameBytes(await uploadStore.exportBackup(),entry.backup.uploadBackup());
+    }finally{await session.close();uploadStore.close();}
+   }
+   counts.cohortRecoveries++;
+   await assert.rejects(beginContinuedRoomRecovery(resumed),error=>error.code==='continued_room_recovery_exists');
+   await assert.rejects(resumeContinuedRoomRecovery({...resumed,destinations:destinations.map(row=>({...row,uploads:row.uploads+'-other'}))}));
+   const changed=await SharedContinuedPairSession.open({...interrupted.options,database:interrupted.id+'-adopted'});
+   try{assert.equal(local(changed.core,'New edit after local recovery '),true);await changed.flush();}
+   finally{await changed.close();}
+   await assert.rejects(resumeContinuedRoomRecovery(resumed),error=>error.code==='continued_room_recovery_diverged');
+   counts.recoveryRefusals+=3;
+  }finally{await cohortStore?.close();}
   const behind=await capture([await pack('behind','continued-v2','continued-v2','behind')]);
   const observed=behind.inspectPrefixes();
   assert.equal(observed.participants[0].prefix.documentStatus,'server_ahead');
@@ -245,7 +312,7 @@ export async function probeContinuedRoomCatalog(runtime,fixturePath){
    await assert.rejects(capture([forked]),error=>error.code==='inventory_fork');
    counts.forksRefused++;
   }
-  assert.deepEqual(counts,{coldCatalogReads:3,nativePairs:3,serverAhead:1,forksRefused:2,selectionRefusals:15,storedCatalogReads:3,storedCatalogRefusals:9,interruptedCatalogReads:1,damagedCatalogRefusals:1,restoredLocalUndoRedo:3});
+  assert.deepEqual(counts,{coldCatalogReads:3,nativePairs:3,serverAhead:1,forksRefused:2,selectionRefusals:15,storedCatalogReads:3,storedCatalogRefusals:9,interruptedCatalogReads:1,damagedCatalogRefusals:1,restoredLocalUndoRedo:3,cohortRecoveries:1,interruptedRecoveryResumes:1,uploadRecoveryResumes:1,recoveryRefusals:3});
   return {passed:true,fixtureSha256:sha(readFileSync(fixturePath)),sharedWasmSha256:sha(wasmBytes),...counts};
  }finally{
   for(const catalog of catalogs)catalog.dispose();

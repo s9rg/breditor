@@ -60,12 +60,12 @@ if(mode==='installed'){
  execFileSync(node,[join(root,'node_modules/typescript/bin/tsc'),'--noEmit','--strict','--exactOptionalPropertyTypes',
   '--target','ES2022','--module','NodeNext','--lib','ES2022,DOM,ESNext.Disposable',typeFile],{cwd:consumer,stdio:'inherit'});
  const entry=join(consumer,'entry.mjs');
- writeFileSync(entry,'export {SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore} from "@breditor/collaboration";');
+ writeFileSync(entry,'export {SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore,beginContinuedRoomRecovery,resumeContinuedRoomRecovery} from "@breditor/collaboration";');
  const output=await build({configFile:false,root:consumer,logLevel:'error',
   build:{target:'es2022',write:false,minify:false,lib:{entry,formats:['es'],fileName:'continued-room-catalog'}}});
  const modules=(Array.isArray(output)?output:[output]).flatMap(result=>result.output)
   .filter(item=>item.type==='chunk').flatMap(item=>Object.keys(item.modules));
- for(const path of ['continued_room_catalog/archive.js','continued_room_catalog/storage.js','continued_participant/inventory.js'])
+ for(const path of ['continued_room_catalog/archive.js','continued_room_catalog/storage.js','continued_participant/inventory.js','continued_room_recovery/recovery.js'])
   assert.ok(modules.some(module=>module.includes('/node_modules/@breditor/collaboration/dist/'+path)),path);
  assert.ok(!modules.some(module=>module.includes(join(root,'packages'))||module.includes('fake-indexeddb')));
  cwd=consumer;runtime=join(consumer,'node_modules/@breditor/collaboration/dist/runtime');

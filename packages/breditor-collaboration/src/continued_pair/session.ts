@@ -1,5 +1,7 @@
 import {coreReadStamp} from '../core_read_stamp.js';
 import {participantAuthority} from '../participant_backup/policy.js';
+import {independentBootstrapPolicy,independentBootstrapSignal} from '../independent_history/bootstrap_policy.js';
+import {NativeReconstructionWaits} from '../selected_native_reconstruction/read_waits.js';
 import {OperationalReadCancellation} from '../operation_read/cancellation.js';
 import {readContinuedPairAssetReferences,type SharedContinuedPairAssetReferences} from './asset_references.js';
 import {admitContinuedPair,captureContinuedPair as capture,withContinuedPairReplay} from './replay.js';
@@ -116,6 +118,8 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
 
  static async #open<P extends SharedSelectionPolicy>(input:SharedContinuedPairOptions<P>,recovery?:SharedContinuedPairRecovery):Promise<SharedContinuedPairSession<P>>{
   const {database,restoreDocument,readOnly,onError}=input,review={...input.review},editor={...input.editor};
+  const bootstrap=independentBootstrapPolicy(input),signal=independentBootstrapSignal(input);
+  bootstrap?.();
   const identity=canonicalContinuedPairIdentity({
    native:input.native,documentHistory:input.documentHistory,reviewHistory:input.reviewHistory,
    review:{actor:review.actor,principal:review.principal},
@@ -131,25 +135,37 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
   let reviewLease:ReviewWriterLease|undefined,db:IDBDatabase|undefined,raw:SharedRustOwner|undefined,core:SharedRichEditor<P>|undefined;
   let session:SharedContinuedPairSession<P>|undefined;
   try{
+   bootstrap?.();
    reviewLease=await ReviewWriterLease.acquire(room,review.actor);
-   db=await openPairedHistoryDatabase(database,continuedPairStore.names);
+   bootstrap?.();
+   db=await openPairedHistoryDatabase(database,continuedPairStore.names,bootstrap);
    const opening=fenceOpeningDatabase(db,'session_open_versionchange');
+   const check=()=>{bootstrap?.();opening.assertCurrent();};
    const stored=await readPairedHistoryCut(db,key,continuedPairStore);
+   check();
    if(stored&&recovery)throw fail('continued_pair_destination_exists','Recovery never overwrites a committed paired destination');
    if(stored&&JSON.stringify(stored.record.identity)!==JSON.stringify(identity))
     throw fail('continued_pair_identity','Stored room, actors or history families differ');
    const selected=stored??recovery;
    if(!selected)throw fail('continued_pair_missing','No saved cut exists for the selected pair');
    const versions=stored?.record.versions??recovery!.versions;
-   if(recovery)await makeContinuedPairCut(selected.documentCheckpoint,selected.reviewCheckpoint,identity,versions);
-   opening.assertCurrent();
-   raw=opening.admit(await restoreDocument(selected.documentCheckpoint));
+   const cut=recovery?await makeContinuedPairCut(selected.documentCheckpoint,selected.reviewCheckpoint,identity,versions):undefined;
+   check();
+   if(bootstrap){
+    const waits=new NativeReconstructionWaits(check,[signal]);
+    try{raw=opening.admit(await waits.call(()=>restoreDocument(selected.documentCheckpoint),freeUnclaimedSharedRustOwner));}
+    finally{waits.close();}
+   }else raw=opening.admit(await restoreDocument(selected.documentCheckpoint));
    const replay=admitContinuedPair<P>(raw,identity,review,readOnly,editor,selected,versions);
    core=replay.core;
    const admittedVersions=replay.versions,captured=replay.capture;
-   opening.assertCurrent();
-   session=new SharedContinuedPairSession(construction,core,db,documentLease,reviewLease,identity,stored?.head??null,admittedVersions,onError,restoreDocument);
-   if(stored)session.#saved=captured;
+   check();
+   if(cut&&bootstrap){
+    await writePairedHistoryCut(db,key,null,cut,continuedPairStore.names,continuedPairStore.readHead,check,signal);
+    check();
+   }
+   session=new SharedContinuedPairSession(construction,core,db,documentLease,reviewLease,identity,stored?.head??(bootstrap?cut!.head:null),admittedVersions,onError,restoreDocument);
+   if(stored||bootstrap)session.#saved=captured;
    else{session.save();await session.flush();}
    return session;
   }catch(error){

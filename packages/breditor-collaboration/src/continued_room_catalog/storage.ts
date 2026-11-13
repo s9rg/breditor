@@ -13,6 +13,7 @@ interface OpenOptions extends ContinuedRoomCatalogReadOptions {
  readonly database:string;
  readonly expected:ContinuedRoomCatalogSelection;
 }
+let borrowStore:(store:SharedContinuedRoomCatalogStore)=>Resources;
 const token=Symbol(),format='breditor/shared-physical-room-recovery-state';
 const record=(manifest:string)=>{
  parseContinuedRoomManifest(manifest);
@@ -34,6 +35,8 @@ const {
 const {close:closeLease}=RecoveryLease.prototype;
 interface Resources {
  readonly archive:SharedContinuedRoomCatalog;
+ readonly database:string;
+ readonly options:ContinuedRoomCatalogReadOptions;
  readonly db:IDBDatabase;
  readonly lease:RecoveryLease;
  readonly check:()=>void;
@@ -49,6 +52,7 @@ export class SharedContinuedRoomCatalogStore {
   this.#resources=resources;
   Object.freeze(this);
  }
+ static{borrowStore=store=>{store.#live();return store.#resources;};}
  #live(){
   if(this.#closed)throw physicalCatalogFailure('catalog_closed');
   this.#resources.check();
@@ -120,7 +124,7 @@ export class SharedContinuedRoomCatalogStore {
    if(archive){dispose.call(archive);archive=undefined;}
    archive=await readArchive.call(SharedContinuedRoomCatalog,stored.record.manifest,stored.files,expected,options);
    check();
-   const owner=new SharedContinuedRoomCatalogStore(token,{archive,db,lease,check});
+   const owner=new SharedContinuedRoomCatalogStore(token,{archive,db,lease,check,database,options});
    check();
    opening.complete();
    return owner;
@@ -129,4 +133,20 @@ export class SharedContinuedRoomCatalogStore {
    throw physicalCatalogKnown(error,'catalog_storage');
   }
  }
+}
+
+/** Internal checked archive borrow. A recovery always reads the actual durable catalog again. */
+export function continuedRoomRecoveryCatalog(store:SharedContinuedRoomCatalogStore){
+ const held=borrowStore(store),chosen=selection.call(held.archive),expectedManifest=manifestJson.call(held.archive);
+ const check=()=>{if(borrowStore(store)!==held)throw physicalCatalogFailure('catalog_closed');};
+ return {
+  database:held.database,selection:chosen,options:held.options,check,
+  async read(extraCheck:()=>void,signal?:AbortSignal){
+   const guard=()=>{check();extraCheck();};
+   const stored=await readPhysicalCatalogDatabase(held.db,guard,expectedManifest,storage);
+   const options={...held.options,checkAuthority:guard,...(signal?{signal}:{})};
+   const archive=await readArchive.call(SharedContinuedRoomCatalog,stored.record.manifest,stored.files,chosen,options);
+   try{guard();return archive;}catch(error){dispose.call(archive);throw error;}
+  },
+ };
 }

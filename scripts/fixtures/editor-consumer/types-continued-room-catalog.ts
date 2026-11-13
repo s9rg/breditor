@@ -1,5 +1,5 @@
-import {SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore} from '@breditor/collaboration';
-import type {ContinuedPairRecords,ContinuedRoomCatalogCaptureOptions,ContinuedRoomCatalogMetadata,ContinuedRoomCatalogSelection} from '@breditor/collaboration';
+import {SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore,beginContinuedRoomRecovery,resumeContinuedRoomRecovery} from '@breditor/collaboration';
+import type {ContinuedPairRecords,ContinuedRoomRecoveryOptions,ContinuedRoomRecoveryResult,ContinuedRoomCatalogCaptureOptions,ContinuedRoomCatalogMetadata,ContinuedRoomCatalogSelection} from '@breditor/collaboration';
 
 declare const input:ContinuedRoomCatalogCaptureOptions;
 const archive=await SharedContinuedRoomCatalog.capture(input);
@@ -15,3 +15,7 @@ await store.close();
 const reopened=await SharedContinuedRoomCatalogStore.resume(options);
 await reopened.close();
 archive.dispose();
+declare const recovery:ContinuedRoomRecoveryOptions;
+const result:ContinuedRoomRecoveryResult=await beginContinuedRoomRecovery(recovery);
+await resumeContinuedRoomRecovery(recovery);
+void result;

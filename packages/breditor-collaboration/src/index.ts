@@ -56,6 +56,8 @@ export type * from "./review_types.js";
 export type * from "./review_generations.js";
 export type {SharedContinuedPairAssetReferences} from "./continued_pair/asset_references.js";
 export type {ContinuedPairRecordRead,ContinuedPairRecords} from "./continued_pair/read_records.js";
+export {beginContinuedRoomRecovery,resumeContinuedRoomRecovery} from "./continued_room_recovery/recovery.js";
+export type {ContinuedRoomRecoveryOptions,ContinuedRoomRecoveryDestination,ContinuedRoomRecoveryResult} from "./continued_room_recovery/contract.js";
 export {SharedContinuedRoomCatalogStore} from "./continued_room_catalog/storage.js";
 export {SharedContinuedRoomCatalog} from "./continued_room_catalog/archive.js";
 export type {

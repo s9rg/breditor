@@ -258,3 +258,25 @@ native prefixes after a cold open. The catalog exposes each participant's
 exact save cuts, whole upload backup, and asset bytes. Whole-room recovery
 still needs a coordinator for mixed participant families, provider and
 delivery reconciliation, and authenticated activation.
+
+### Restore local destinations from a continued room catalog
+
+`beginContinuedRoomRecovery` takes an open durable catalog, its independently
+retained selection, a new recovery journal name, and a distinct history and
+upload database name for each participant. Supply current host authority and
+explicit writer reacquisition. The recovery restores each participant's
+validated live cut with read-only native policy and preserves the archived
+upload queue. The catalog retains the earlier save cuts and referenced bytes,
+including images available only in the archive.
+
+The journal records each step before it writes. After an interruption,
+`resumeContinuedRoomRecovery` reopens the same plan and checks the exact
+durable contents before it advances. It accepts a matching committed step
+whose acknowledgement was lost. A completed destination that has changed
+or disappeared stops recovery. The coordinator keeps each admitted local
+history and upload store held through final verification and releases them
+before returning the local destination names.
+
+This path covers continued local participants. A combined operation still
+needs mixed participant families, provider and outbox reconciliation, and
+authenticated room activation.
