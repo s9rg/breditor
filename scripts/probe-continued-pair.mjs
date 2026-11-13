@@ -6,7 +6,9 @@ import {resolve} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {setTimeout as delay} from 'node:timers/promises';
 import {IDBFactory,IDBDatabase} from 'fake-indexeddb';
-import {SharedContinuedPairSession,SharedIndependentHistoryPersistentSession,SharedRichEditor,createSharedDocumentEditor} from '../packages/breditor-collaboration/dist/index.js';
+import {RichAssetStore} from '@breditor/experimental-rich-content';
+import {pixel,secondPixel,secondAsset,ReviewFixtureImage} from './fixtures/review-assets/pixels.mjs';
+import {SharedContinuedParticipantBackup,SharedContinuedPairSession,SharedIndependentHistoryPersistentSession,SharedRichEditor,createSharedDocumentEditor} from '../packages/breditor-collaboration/dist/index.js';
 
 const canonical=value=>Array.isArray(value)?value.map(canonical):value&&typeof value==='object'?Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])])):value;
 const root=canonical(JSON.parse(readFileSync(new URL('../crates/breditor-core/tests/fixtures/rich-local-root.json',import.meta.url),'utf8')));
@@ -22,7 +24,8 @@ function locks(){
  const held=new Set();
  return {held,async request(name,options,callback){
   await Promise.resolve();
-  assert.deepEqual(options,{mode:'exclusive',ifAvailable:true});
+  assert.ok(['exclusive','shared'].includes(options.mode));
+  assert.equal(options.ifAvailable,true);
   if(held.has(name))return callback(null);
   held.add(name);
   try{return await callback({name});}finally{held.delete(name);}
@@ -41,12 +44,50 @@ async function visit(name,mode,read){
 }
 const stored=name=>visit(name,'readonly',(h,f)=>[h.get(key),f.getAll()]);
 
+async function removeParticipantBinding(file,asset){
+ const prefix=Buffer.from('BREDITOR-CONTINUED-PARTICIPANT1\n');
+ const bytes=Buffer.from(await file.arrayBuffer()),offset=prefix.length+4;
+ assert.deepEqual(bytes.subarray(0,prefix.length),prefix);
+ const size=bytes.readUInt32LE(prefix.length);
+ const header=JSON.parse(bytes.subarray(offset,offset+size));
+ const before=header.metadata.bindings.length;
+ // Another generation already references these bytes, so the payload stays complete.
+ header.metadata.bindings=header.metadata.bindings.filter(binding=>binding.asset!==asset);
+ assert.equal(header.metadata.bindings.length,before-1);
+ const updated=Buffer.from(JSON.stringify(header)),length=Buffer.alloc(4);
+ length.writeUInt32LE(updated.length);
+ const output=Buffer.concat([prefix,length,updated,bytes.subarray(offset+size)]);
+ return {file:new Blob([output]),sha256:createHash('sha256').update(output).digest('hex')};
+}
+
+async function checkParticipant(input,readPolicy,verify=async()=>{}){
+ const outcome=await SharedContinuedParticipantBackup.capture(input);
+ assert.equal(outcome.kind,'ready');
+ const backup=outcome.backup;
+ let reopened;
+ try{
+  reopened=await SharedContinuedParticipantBackup.read(backup.file(),backup.selection(),readPolicy);
+  assert.deepEqual(reopened.metadata(),backup.metadata());
+  assert.deepEqual(reopened.records(),backup.records());
+  assert.deepEqual(reopened.records().live,input.session.exportRecovery());
+  assert.deepEqual(reopened.assetReferences(),backup.assetReferences());
+  const uploadBytes=async file=>Buffer.from(await file.arrayBuffer());
+  assert.deepEqual(await uploadBytes(reopened.uploadBackup()),await uploadBytes(await input.uploads.exportBackup()));
+  await verify(reopened);
+ }finally{
+  reopened?.dispose();
+  backup.dispose();
+ }
+ assert.throws(()=>backup.records(),error=>error.code==='continued_participant_closed');
+}
+
 export async function probeContinuedPair(directory){
- const globals=new Map(['indexedDB','navigator'].map(name=>[name,Object.getOwnPropertyDescriptor(globalThis,name)]));
+ const globals=new Map(['indexedDB','navigator','Image'].map(name=>[name,Object.getOwnPropertyDescriptor(globalThis,name)]));
  const host=locks(),transaction=IDBDatabase.prototype.transaction;
  let fault;
  Object.defineProperty(globalThis,'indexedDB',{configurable:true,value:new IDBFactory()});
  Object.defineProperty(globalThis,'navigator',{configurable:true,value:{locks:host}});
+ Object.defineProperty(globalThis,'Image',{configurable:true,value:ReviewFixtureImage});
  IDBDatabase.prototype.transaction=function(...args){
   const tx=transaction.apply(this,args);
   if(fault?.database===this.name&&args[1]==='readwrite'){
@@ -57,7 +98,7 @@ export async function probeContinuedPair(directory){
   }
   return tx;
  };
- const counts={cases:0,coldPairs:0,historyComparisons:0,abortedSaves:0,lostAcknowledgements:0,exactFileSets:0,insertOnlyRefusals:0,missingFileRefusals:0,recordReads:0,failedSaveReads:0,changedReadRefusals:0,failedSaveAssetReads:0,cancelledRecordReads:0,cancelledAssetReplays:0};
+ const counts={cases:0,coldPairs:0,historyComparisons:0,abortedSaves:0,lostAcknowledgements:0,exactFileSets:0,insertOnlyRefusals:0,missingFileRefusals:0,recordReads:0,failedSaveReads:0,changedReadRefusals:0,failedSaveAssetReads:0,cancelledRecordReads:0,cancelledAssetReplays:0,participantReads:0,failedParticipantReads:0,participantRefusals:0,cancelledParticipantCaptures:0,coldParticipantRestores:0};
  try{
   const bytes=readFileSync(resolve(directory,'breditor_shared_bg.wasm'));
   const native=await import(pathToFileURL(resolve(directory,'breditor_shared.js')).href);
@@ -81,7 +122,7 @@ export async function probeContinuedPair(directory){
      let stallRestore;
      const options={database,native:nativeIdentity,documentHistory,reviewHistory,readOnly:false,review:author,
       restoreDocument:checkpoint=>stallRestore?stallRestore(checkpoint):restoreDocument(checkpoint)};
-     let session,core,peer,oracle;
+     let session,core,peer,oracle,uploads,retainedParticipant;
      try{
       let raw=profile.create(input,'101');
       const boundary=action=>{const observed=documentSelection&&raw.document_selection_enabled()?raw.observe_document():raw.observe();try{action(observed);}finally{observed.free();}};
@@ -145,6 +186,15 @@ export async function probeContinuedPair(directory){
        await reading.verify();
        counts.recordReads++;
       }finally{reading.dispose();}
+      uploads=await RichAssetStore.open(database+'-uploads');
+      await uploads.ingest(new Blob([secondPixel],{type:'image/png'}));
+      await uploads.cancel(secondAsset);
+      const participant={participant:'local-device',principal:'alice',session,uploads,wasm:native,checkAuthority(){}};
+      const readPolicy={wasm:native,restoreDocument,checkAuthority(){}};
+      const resolveAsset=async reference=>({...reference,identity:'host-verified',
+       blob:new Blob([reference.asset.startsWith('attempt-')?secondPixel:pixel],{type:'image/png'}),check(){}});
+      await checkParticipant({...participant,resolveAsset},readPolicy);
+      counts.participantReads++;
       if(both){
        const abort=new AbortController();
        reading=await session.readRecords(()=>{},abort.signal);
@@ -155,6 +205,30 @@ export async function probeContinuedPair(directory){
         counts.cancelledRecordReads++;
        }finally{reading.dispose();}
        assert.deepEqual(await stored(database),[head,initialFiles]);
+       const missing=await SharedContinuedParticipantBackup.capture(participant);
+       assert.equal(missing.kind,'pending');
+       assert.ok(missing.pending.length>0);
+       counts.participantRefusals++;
+
+       const captureAbort=new AbortController();
+       let startedAsset;
+       const assetStarted=new Promise(resolve=>{startedAsset=resolve;});
+       const stalledCapture=SharedContinuedParticipantBackup.capture({...participant,signal:captureAbort.signal,
+        resolveAsset:async()=>{startedAsset();return new Promise(()=>{});}});
+       const captureRejected=assert.rejects(stalledCapture);
+       const deadlineAbort=new AbortController();
+       const captureDeadline=delay(5_000,undefined,{signal:deadlineAbort.signal}).then(()=>assert.fail('Cancelled participant capture held its stores'));
+       try{
+        await Promise.race([assetStarted,captureDeadline]);
+        await assert.rejects(uploads.retry(secondAsset),error=>error.code==='asset_custody_busy');
+        await assert.rejects(session.retry(),error=>error.code==='continued_pair_read_busy');
+        captureAbort.abort();
+        await Promise.race([captureRejected,captureDeadline]);
+        await session.retry();
+        const lease=await uploads.acquireRecoveryCustody();
+        await lease.close();
+        counts.cancelledParticipantCaptures++;
+       }finally{deadlineAbort.abort();captureAbort.abort();}
 
        const controller=new AbortController();
        let begin,settle,freed=0,returned=false;
@@ -270,7 +344,33 @@ export async function probeContinuedPair(directory){
         assert.equal(has('live',`pending-${kind}`),true);
         for(const asset of [`attempt-${kind}`,`pending-${kind}`])assert.ok(references.references.some(row=>row.asset===asset));
         counts.failedSaveAssetReads++;
+        await checkParticipant({...participant,session,resolveAsset},readPolicy,async backup=>{
+         assert.equal(backup.records().committed.head,failed[0]);
+         assert.equal(backup.records().attempt.cut.head===failed[0],kind==='lost-ack');
+         assert.deepEqual(backup.assetReferences(),references);
+         for(const [asset,bytes] of [[`attempt-${kind}`,secondPixel],[`pending-${kind}`,pixel]]){
+          assert.deepEqual(Buffer.from(await backup.blob(asset,asset).arrayBuffer()),bytes);
+          assert.equal(backup.blob(asset,'other-generation'),undefined);
+         }
+         const expected=backup.selection(),tampered=new Uint8Array(await backup.file().arrayBuffer());
+         tampered[tampered.length-1]^=1;
+         let restored=0;
+         const policy={...readPolicy,restoreDocument(value){restored++;return restoreDocument(value);}};
+         await assert.rejects(SharedContinuedParticipantBackup.read(new Blob([tampered]),expected,policy));
+         await assert.rejects(SharedContinuedParticipantBackup.read(backup.file(),{...expected,identity:{...expected.identity,participant:'other-device'}},policy));
+         assert.equal(restored,0);
+         // A matching digest alone cannot admit incomplete native image coverage.
+         const incomplete=await removeParticipantBinding(backup.file(),`pending-${kind}`);
+         await assert.rejects(SharedContinuedParticipantBackup.read(incomplete.file,{...expected,sha256:incomplete.sha256},policy),
+          error=>error.code==='continued_participant_coverage');
+         assert.equal(restored,4);
+         counts.participantRefusals+=3;
+        });
+        counts.failedParticipantReads++;
         if(kind==='abort'){
+         const capture=await SharedContinuedParticipantBackup.capture({...participant,session,resolveAsset});
+         assert.equal(capture.kind,'ready');
+         retainedParticipant=capture.backup;
          assert.deepEqual(failed,beforeWrite);
          counts.abortedSaves++;
         }else{
@@ -301,6 +401,34 @@ export async function probeContinuedPair(directory){
       if(both){
        await session.close();session=undefined;
        const [validHead]=await stored(database);
+       const tag=database+'-recovered';
+       const portable=await SharedContinuedParticipantBackup.read(retainedParticipant.file(),retainedParticipant.selection(),readPolicy);
+       let recoveredUploads;
+       try{
+        const live=portable.records().live;
+        session=await SharedContinuedPairSession.restoreRecovery({...options,database:tag},live,'host-reacquired');
+        assert.deepEqual(session.exportRecovery(),live);
+        recoveredUploads=await RichAssetStore.restoreBackup(tag+'-uploads',portable.uploadBackup(),{uploadState:'preserve'});
+        assert.equal((await recoveredUploads.get(secondAsset)).status,'cancelled');
+        assert.equal(await recoveredUploads.get(portable.metadata().bindings.find(row=>row.asset==='pending-abort').contentAsset),undefined);
+        await session.close();
+        session=await SharedContinuedPairSession.open({...options,database:tag});
+        assert.deepEqual(session.exportRecovery(),live);
+        assert.deepEqual(session.core.retainedReviewReceipt(offline,peerPolicy),receipt);
+        assert.deepEqual(session.core.writerClock('202'),writerClock);
+        oracle.dispose();
+        oracle=wrap(restoreDocument(live.documentCheckpoint),documentHistory);
+        oracle.enableContinuedReview(author,live.reviewCheckpoint);
+        for(const [documentAction,reviewAction] of [['undo','undoReview'],['redo','redoReview']]){
+         assert.equal(session.core[documentAction](),oracle[documentAction]());
+         assert.deepEqual(session.core[reviewAction](),oracle[reviewAction]());
+         assert.deepEqual(readPair(session.core,reviewHistory),readPair(oracle,reviewHistory));
+        }
+        await session.close();session=undefined;
+        assert.equal((await stored(database))[0],validHead);
+        counts.coldParticipantRestores++;
+       }finally{recoveredUploads?.close();portable.dispose();}
+
        await visit(database,'readwrite',(_h,f)=>[f.delete([...key,'review','root'])]);
        await assert.rejects(SharedContinuedPairSession.open(missing),error=>error.code==='independent_history_storage');
        const [headAfter,filesAfter]=await stored(database);
@@ -310,12 +438,12 @@ export async function probeContinuedPair(directory){
       }
       counts.cases++;
      }catch(error){throw new Error(`Continued pair ${language}/${documentHistory}/${reviewHistory}`,{cause:error});}
-     finally{fault=undefined;await session?.discardAndClose();oracle?.dispose();peer?.dispose();core?.dispose();}
+     finally{fault=undefined;retainedParticipant?.dispose();uploads?.close();await session?.discardAndClose();oracle?.dispose();peer?.dispose();core?.dispose();}
     }
    }finally{profile.free();}
   }
   assert.equal(host.held.size,0);
-  assert.deepEqual(counts,{cases:15,coldPairs:45,historyComparisons:45,abortedSaves:3,lostAcknowledgements:3,exactFileSets:15,insertOnlyRefusals:15,missingFileRefusals:3,recordReads:15,failedSaveReads:6,changedReadRefusals:3,failedSaveAssetReads:6,cancelledRecordReads:3,cancelledAssetReplays:3});
+  assert.deepEqual(counts,{cases:15,coldPairs:45,historyComparisons:45,abortedSaves:3,lostAcknowledgements:3,exactFileSets:15,insertOnlyRefusals:15,missingFileRefusals:3,recordReads:15,failedSaveReads:6,changedReadRefusals:3,failedSaveAssetReads:6,cancelledRecordReads:3,cancelledAssetReplays:3,participantReads:15,failedParticipantReads:6,participantRefusals:21,cancelledParticipantCaptures:3,coldParticipantRestores:3});
   return {passed:true,...counts,sharedWasmSha256:createHash('sha256').update(bytes).digest('hex')};
  }finally{
   IDBDatabase.prototype.transaction=transaction;

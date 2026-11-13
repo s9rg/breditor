@@ -56,6 +56,8 @@ export type * from "./review_types.js";
 export type * from "./review_generations.js";
 export type {SharedContinuedPairAssetReferences} from "./continued_pair/asset_references.js";
 export type {ContinuedPairRecordRead,ContinuedPairRecords} from "./continued_pair/read_records.js";
+export {SharedContinuedParticipantBackup} from "./continued_participant/archive.js";
+export type {ContinuedParticipantIdentity,ContinuedParticipantSelection,ContinuedParticipantMetadata,ContinuedParticipantCaptureOptions,ContinuedParticipantReadOptions} from "./continued_participant/contract.js";
 export {SharedContinuedPairSession} from "./continued_pair/session.js";
 export type {SharedContinuedPairOptions,SharedContinuedPairRecovery,ContinuedPairIdentity,ContinuedPairHistoryKind} from "./continued_pair/contract.js";
 export {SharedIndependentHistoryPersistentSession} from "./independent_history/session.js";

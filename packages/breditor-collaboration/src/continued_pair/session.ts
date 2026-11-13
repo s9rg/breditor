@@ -1,13 +1,10 @@
 import {coreReadStamp} from '../core_read_stamp.js';
 import {participantAuthority} from '../participant_backup/policy.js';
 import {OperationalReadCancellation} from '../operation_read/cancellation.js';
-import {NativeReconstructionError} from '../selected_native_reconstruction/policy.js';
-import {NativeReconstructionWaits} from '../selected_native_reconstruction/read_waits.js';
-import {readContinuedPairAssetReferences} from './asset_references.js';
-import type {SharedContinuedPairAssetReferences} from './asset_references.js';
+import {readContinuedPairAssetReferences,type SharedContinuedPairAssetReferences} from './asset_references.js';
+import {admitContinuedPair,captureContinuedPair as capture,withContinuedPairReplay} from './replay.js';
 import {continuedPairReadFailure as readFailure,createContinuedPairRecordRead,ContinuedPairRecordRead} from './read_records.js';
-import {SharedEditorError,SharedRichEditor,createSharedDocumentEditor} from '../core.js';
-import {initializeSharedReadOnly} from '../initialize_read_only.js';
+import {SharedEditorError,type SharedRichEditor} from '../core.js';
 import {checkManagedCore} from '../managed_custody.js';
 import {registerNativePendingWork} from '../native_pending_work.js';
 import {disposeOwnedCore,retireOwnedCore} from '../owned_core_lifetime.js';
@@ -16,7 +13,6 @@ import {sourceCoreMethods as native} from '../source_native_read.js';
 import {requireBackupRecovery} from '../backups/identity.js';
 import {object} from '../persistence/segmented_checkpoint.js';
 import {fenceOpeningDatabase} from '../persistence/opening_database.js';
-import {admitPairedVersions} from '../persistence/review_record_admission.js';
 import {SharedWriterLease} from '../persistence/writer_lease.js';
 import {ReviewWriterLease} from '../persistence/review_writer_lease.js';
 import {openPairedHistoryDatabase,readPairedHistoryCut,writePairedHistoryCut} from '../independent_history/database.js';
@@ -29,6 +25,17 @@ import type {ContinuedPairIdentity,SharedContinuedPairOptions,SharedContinuedPai
 
 const construction=Symbol();
 const fail=(code:string,message:string)=>new SharedEditorError(code,message);
+let readPairAssets:<P extends SharedSelectionPolicy>(session:SharedContinuedPairSession<P>,read:ContinuedPairRecordRead,signal?:AbortSignal)=>Promise<SharedContinuedPairAssetReferences>;
+/** Obtain both inputs under the same genuine session read. Only internal callers can borrow this scope. */
+export async function withContinuedPairAssetRead<P extends SharedSelectionPolicy,T>(
+ session:SharedContinuedPairSession<P>,check:()=>void,signal:AbortSignal|undefined,
+ use:(read:ContinuedPairRecordRead,assets:SharedContinuedPairAssetReferences)=>Promise<T>,
+):Promise<T>{
+ const read=await readPairRecords.call(session,check,signal);
+ try{return await use(read,await readPairAssets(session,read,signal));}
+ finally{disposePairRecords.call(read);}
+}
+
 const same=(a:SharedContinuedPairRecovery|undefined,b:SharedContinuedPairRecovery)=>
  a?.documentCheckpoint===b.documentCheckpoint&&a.reviewCheckpoint===b.reviewCheckpoint&&
  a.versions.length===b.versions.length&&a.versions.every((packet,index)=>packet===b.versions[index]);
@@ -237,27 +244,16 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
 
  /** Replay every selected slot to retain the union of native and version asset references. */
  async readAssetReferences(checkAuthority:()=>void,signal?:AbortSignal):Promise<SharedContinuedPairAssetReferences>{
-  const read=await readPairRecords.call(this,checkAuthority,signal);
-  let waits:NativeReconstructionWaits|undefined;
-  try{
-   const activeWaits=new NativeReconstructionWaits(()=>checkPairRecords.call(read),[signal]);
-   waits=activeWaits;
-   return await readContinuedPairAssetReferences(read,async(recovery,check)=>{
-    const raw=await activeWaits.call(()=>this.#restoreDocument(recovery.documentCheckpoint),freeUnclaimedSharedRustOwner);
-    try{
-     check();
-     const review={...this.#identity.review,access:'read_only'} as const;
-     return admitContinuedPair<P>(raw,this.#identity,review,true,{},recovery,recovery.versions).core;
-    }catch(error){freeUnclaimedSharedRustOwner(raw);throw error;}
-   });
-  }catch(error){
-   // Surface the selected pair's cancellation or source-change error.
-   if(error instanceof NativeReconstructionError&&error.code==='native_reconstruction_aborted')checkPairRecords.call(read);
-   throw error;
-  }finally{
-   try{waits?.close();}finally{read.dispose();}
-  }
+  return withContinuedPairAssetRead(this,checkAuthority,signal,async(_read,assets)=>assets);
  }
+
+ /** Internal binding of native replay to the same read held by participant capture. */
+ async #readAssets(read:ContinuedPairRecordRead,signal?:AbortSignal):Promise<SharedContinuedPairAssetReferences>{
+  return withContinuedPairReplay(this.#identity,this.#restoreDocument,()=>checkPairRecords.call(read),signal,
+   replay=>readContinuedPairAssetReferences(read,replay));
+ }
+
+ static{readPairAssets=(session,read,signal)=>session.#readAssets(read,signal);}
 
  save():void{
   this.#checkWrite();
@@ -382,42 +378,6 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
  }
 }
 
-function capture<P extends SharedSelectionPolicy>(core:SharedRichEditor<P>,identity:ContinuedPairIdentity,versions:Map<string,string>):SharedContinuedPairRecovery{
- const readReview=identity.reviewHistory==='continued-v2'?native.reviewContinuedCheckpoint:
-  identity.reviewHistory==='segmented-v1'?native.reviewSegmentedCheckpoint:native.reviewCheckpoint;
- return {
-  format:'breditor/shared-independent-history-recovery',formatVersion:2,identity:structuredClone(identity),
-  documentCheckpoint:native.checkpointJson.call(core),reviewCheckpoint:readReview.call(core),
-  versions:Object.freeze([...versions.values()]),
- };
-}
-
 const readPairRecords=SharedContinuedPairSession.prototype.readRecords;
 const checkPairRecords=ContinuedPairRecordRead.prototype.check;
-
-/** Exact, fresh-policy native replay shared by actual cold open and read-only inspection. */
-function admitContinuedPair<P extends SharedSelectionPolicy>(
- raw:SharedRustOwner,identity:ContinuedPairIdentity,review:SharedContinuedPairOptions<P>['review'],
- readOnly:boolean,editor:SharedContinuedPairOptions<P>['editor'],
- selected:Pick<SharedContinuedPairRecovery,'documentCheckpoint'|'reviewCheckpoint'>,versions:readonly string[],
-){
- initializeSharedReadOnly(raw,readOnly);
- const {selectionEditing,richLanguage,history,rangeEditing,reviewedHistory,searchHistory}=identity.native;
- const options={
-  ...editor,...(searchHistory?{searchHistory}:{}),...(reviewedHistory?{reviewedHistory}:{}),
-  ...(identity.documentHistory==='original'?{}:{segmentedHistory:identity.documentHistory}),
- } as Omit<SharedEditorOptions<'document-v1'>,'selectionEditing'>;
- const core=(selectionEditing==='document-v1'?createSharedDocumentEditor(raw,options):new SharedRichEditor(raw,options)) as unknown as SharedRichEditor<P>;
- try{
-  if(core.richLanguageVersion()!==richLanguage)throw fail('continued_pair_identity','Restored native grammar differs');
-  if(identity.reviewHistory==='continued-v2')core.enableContinuedReview(review,selected.reviewCheckpoint);
-  else if(identity.reviewHistory==='segmented-v1')core.enableSegmentedReview(review,selected.reviewCheckpoint);
-  else core.enableReview(review,selected.reviewCheckpoint);
-  core.sealContinuedPairPolicies(identity.documentHistory,identity.reviewHistory,history,rangeEditing);
-  const admittedVersions=admitPairedVersions(core,versions);
-  const captured=capture(core,identity,admittedVersions);
-  if(captured.documentCheckpoint!==selected.documentCheckpoint||captured.reviewCheckpoint!==selected.reviewCheckpoint)
-   throw fail('continued_pair_replay','Cold native replay must preserve both exact histories');
-  return {core,versions:admittedVersions,capture:captured};
- }catch(error){disposeOwnedCore(core);throw error;}
-}
+const disposePairRecords=ContinuedPairRecordRead.prototype.dispose;

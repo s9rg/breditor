@@ -4,16 +4,16 @@ import type {SharedSelectionPolicy} from '../types.js';
 import {disposeOwnedCore} from '../owned_core_lifetime.js';
 import {frozen} from '../room_participant_inventory/policy.js';
 import {sourceCoreMethods as native} from '../source_native_read.js';
-import {continuedPairReadFailure,ContinuedPairRecordRead} from './read_records.js';
+import {continuedPairReadFailure,ContinuedPairRecordRead,type ContinuedPairRecords} from './read_records.js';
 import type {SharedContinuedPairRecovery} from './contract.js';
 
-type Slot='committed'|'attempt'|'pending'|'live';
+export type ContinuedPairSlot='committed'|'attempt'|'pending'|'live';
 export interface SharedContinuedPairAssetReferences {
  readonly format:'breditor/continued-pair-asset-references';
  readonly formatVersion:1;
  readonly identity:SharedContinuedPairRecovery['identity'];
  readonly committedHead:string;
- readonly states:readonly Readonly<{slot:Slot;references:readonly RichRetainedAssetReference[]}>[];
+ readonly states:readonly Readonly<{slot:ContinuedPairSlot;references:readonly RichRetainedAssetReference[]}>[];
  readonly references:readonly RichRetainedAssetReference[];
 }
 const order=(a:RichRetainedAssetReference,b:RichRetainedAssetReference)=>
@@ -26,8 +26,17 @@ const {check:checkRead,verify:verifyRead,metadata:readMetadata}=ContinuedPairRec
 export async function readContinuedPairAssetReferences<P extends SharedSelectionPolicy>(
  read:ContinuedPairRecordRead,replay:(recovery:SharedContinuedPairRecovery,check:()=>void)=>Promise<SharedRichEditor<P>>,
 ):Promise<SharedContinuedPairAssetReferences>{
- const check=()=>checkRead.call(read),records=readMetadata.call(read);
- const selected:readonly [Slot,SharedContinuedPairRecovery|null][]=[
+ const check=()=>checkRead.call(read);
+ const references=await replayContinuedPairAssetReferences(readMetadata.call(read),replay,check);
+ await verifyRead.call(read);
+ return references;
+}
+
+/** Shared by the live held read and the independently selected portable reader. */
+export async function replayContinuedPairAssetReferences<P extends SharedSelectionPolicy>(
+ records:ContinuedPairRecords,replay:(recovery:SharedContinuedPairRecovery,check:()=>void)=>Promise<SharedRichEditor<P>>,check:()=>void,
+):Promise<SharedContinuedPairAssetReferences>{
+ const selected:readonly [ContinuedPairSlot,SharedContinuedPairRecovery|null][]=[
   ['committed',records.committed.recovery],['attempt',records.attempt?.capture??null],['pending',records.pending],['live',records.live],
  ];
  const states:SharedContinuedPairAssetReferences['states'][number][]=[],union=new Map<string,RichRetainedAssetReference>();
@@ -65,7 +74,7 @@ export async function readContinuedPairAssetReferences<P extends SharedSelection
    }finally{if(!retained)disposeOwnedCore(core);}
   }
  }finally{if(previous)disposeOwnedCore(previous.core);}
- await verifyRead.call(read);
+ check();
  return frozen({format:'breditor/continued-pair-asset-references',formatVersion:1,identity:structuredClone(records.live.identity),
   committedHead:records.committed.head,states,references:[...union.values()].sort(order)});
 }

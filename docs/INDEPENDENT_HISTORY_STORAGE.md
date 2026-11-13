@@ -205,3 +205,33 @@ releases the save queue even if a native restore factory is still pending.
 A native owner returned after cancellation is freed if it was unclaimed.
 The returned data describes one observed cut. Whole-room adoption must separately bind
 that cut to the selected participants, upload stores, and provider.
+
+### Archive a continued participant
+
+`SharedContinuedParticipantBackup.capture` takes a continued pair session,
+the selected participant and principal, a local upload store, a synchronous
+authority check, and the shared Wasm digest module. It keeps the pair read
+and the upload store's exclusive recovery lease through final verification.
+Each slot retains its own exact document checkpoint, comment checkpoint, and
+ordered version packets. Identical records share bytes inside the file. The
+archive also includes the full upload store, including queued and cancelled
+records, and image bytes for every asset generation reachable in any slot.
+
+A capture reports missing images as `pending`. The host can supply an exact
+asset and generation resolver for bytes absent from the upload store.
+Cancellation releases both holds even when an image resolver never settles.
+
+Keep `selection()` independently of the file. To read the archive, supply
+that selection and a fresh native restore factory for the selected document
+family. Admission checks the complete file digest, record boundaries and
+raster bytes. It reconstructs the exact attempted save when one was
+prepared, replays all retained slots in Rust, verifies native ancestry and
+version packet prefixes, and checks that the raster manifest covers those
+slots. `records()`, `assetReferences()`, and `uploadBackup()` expose the
+checked recovery inputs. Each read performs validation in memory. A
+whole-room catalog still needs to bind these inputs to a provider and
+coordinate their adoption across destinations.
+
+The continued participant format has a 640 MiB budget for unique native
+records, plus the existing selected-image and whole-upload limits. A cut
+that exceeds these limits remains available in its original store.
