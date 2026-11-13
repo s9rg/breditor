@@ -30,7 +30,7 @@ async function installedProbe(){
  execFileSync(npm,['install','--offline','--ignore-scripts','--no-audit','--no-fund'],{cwd:consumer,stdio:'inherit'});
  const registryArtifacts=verifySearchConsumerRegistry(producer,JSON.parse(readFileSync(join(consumer,'package-lock.json'),'utf8')));
  for(const name of names)assert.ok(realpathSync(join(consumer,'node_modules',name)).startsWith(realpathSync(consumer)+'/node_modules/'));
- copyConsumerFixtures(root,consumer,['continued-room-provider/operation-archives.mjs','continued-room-recovery/operation-archives.mjs',
+ copyConsumerFixtures(root,consumer,['continued-room-provider/operation-archives.mjs','continued-room-recovery/operation-archives.mjs','continued-room-recovery/original.mjs',
   'room-participant-inventory/environment.mjs','review-assets/pixels.mjs','independent-delivery/session.mjs','owned-core-cleanup/session.mjs']);
  const from="'../packages/breditor-collaboration/dist/index.js'",to="'@breditor/collaboration'";
  for(const name of ['probe-continued-room-catalog.mjs','probe-continued-room-provider.mjs']){

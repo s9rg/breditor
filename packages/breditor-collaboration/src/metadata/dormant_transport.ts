@@ -6,6 +6,10 @@ export const metadataTransportUnavailable=()=>new SharedRelayError('metadata_tra
 /** Module-owned callback: no expired preparation context is retained. */
 export function unconfiguredMetadataToken():never{throw metadataTransportUnavailable();}
 export function dormantMetadataTransport<P extends SharedSelectionPolicy>(core:SharedRichEditor<P>,identity:SharedSuggestionQueueIdentity,binding:string,current:()=>void):SharedSuggestionTransport<P>{
- const expected=JSON.stringify(queueIdentity(identity)),check=(provided:SharedRichEditor<P>,value:SharedSuggestionQueueIdentity)=>{current();if(provided!==core||JSON.stringify(queueIdentity(value))!==expected)throw new SharedRelayError('metadata_preparation_source');},unavailable=async()=>{throw metadataTransportUnavailable();};
+ return dormantMetadataTransportForCore(()=>core,identity,binding,current);
+}
+
+export function dormantMetadataTransportForCore<P extends SharedSelectionPolicy>(core:()=>SharedRichEditor<P>,identity:SharedSuggestionQueueIdentity,binding:string,current:()=>void):SharedSuggestionTransport<P>{
+ const expected=JSON.stringify(queueIdentity(identity)),check=(provided:SharedRichEditor<P>,value:SharedSuggestionQueueIdentity)=>{current();if(provided!==core()||JSON.stringify(queueIdentity(value))!==expected)throw new SharedRelayError('metadata_preparation_source');},unavailable=async()=>{throw metadataTransportUnavailable();};
  return Object.freeze({checkSuggestionQueue:check,checkSuggestionRevisions(provided:SharedRichEditor<P>,value:SharedSuggestionQueueIdentity,selected:string){check(provided,value);if(selected!==binding)throw new SharedRelayError('metadata_preparation_source');},suggestionRevisionsReady:()=>false,suggestionState:()=>({ready:false,revision:0,documentRevision:0,permissions:null}),state(){throw metadataTransportUnavailable();},subscribe(){current();return()=>{};},connect:unavailable,flush:unavailable,refreshDocument:unavailable,requestSuggestion:unavailable,requestSuggestionRevision:unavailable});
 }

@@ -315,10 +315,23 @@ its own durable cursor. After a participant finishes, a cold room resume
 reads its durable native cut and upload backup without issuing a new save.
 It refuses a different input, a missing component, or a changed live cut.
 
+Supply `originalPolicies` for archives captured with
+`captureSharedParticipantBackup`. Each policy selects the retained archive
+and its original document or paired native factory. The factory must return
+an unobserved native owner so recovery can initialize read-only policy
+without changing its checkpoint. Set the destination's `original` field to
+the database names for its declared `suggestions`, `revisions`, and
+`versions` stores. Use an empty object for archives with no separate stores.
+The corresponding policy fields supply the exact suggestion and version
+identities and revision binding. Recovery uses an inactive metadata
+transport and requires no credentials. Each original store has its own
+room-journal step, so a committed packet store can be reopened without
+resaving it after an interrupted restore.
+
 Duplicate document writers and review actors, mismatched policies, and
-original paired archives stop recovery before journal creation. These
-destinations provide local recovery. Provider reconciliation and authenticated
-activation have separate contracts.
+missing required namespace names stop recovery before journal creation.
+These destinations provide local recovery. Provider reconciliation and
+authenticated activation have separate contracts.
 
 ### Compare a continued catalog with its provider
 

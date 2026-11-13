@@ -155,7 +155,7 @@ export class SharedPersistentSession<P extends SharedSelectionPolicy="original">
   // Acquire before reading/restoring: a same-writer clone never becomes live first.
   const lease=await(takeActorDocumentLease(actorInput,'shared',options.database,options.room,options.writer,null)??SharedWriterLease.acquire(options.room,options.writer));let db:IDBDatabase|undefined,core:SharedRichEditor<Q>|undefined,raw:SharedRustOwner|undefined,nativeBackupAdmission=false;
   try{
-   const retained=recoveryOrigin?await existingSessionDatabase(options.database,[options.room,options.writer],"session_open_versionchange"):undefined;
+   const retained=recoveryOrigin||completeOnly?await existingSessionDatabase(options.database,[options.room,options.writer],"session_open_versionchange"):undefined;
    db=retained?.db??await openSessionDatabase(options.database);
    const opening=retained?.opening??fenceOpeningDatabase(db,"session_open_versionchange");
    if(backup&&await backupDestinationExists(db,[options.room,options.writer]))throw new SharedEditorError("backup_destination_exists","Backup destination already contains a record");

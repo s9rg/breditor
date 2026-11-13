@@ -1,5 +1,5 @@
 import {SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore,beginContinuedRoomRecovery,resumeContinuedRoomRecovery,readContinuedRoomReconciliation} from '@breditor/collaboration';
-import type {ContinuedRoomGenerationRecoveryPolicy,ContinuedRoomDeliveryRecoveryPolicy,ContinuedRoomIndependentRecoveryPolicy,ContinuedPairRecords,ContinuedRoomReconciliationOptions,ContinuedRoomReconciliationRead,ContinuedRoomRecoveryDestination,ContinuedRoomRecoveryOptions,ContinuedRoomRecoveryResult,ContinuedRoomCatalogCaptureOptions,ContinuedRoomCatalogMetadata,ContinuedRoomCatalogSelection} from '@breditor/collaboration';
+import type {ContinuedRoomOriginalRecoveryPolicy,ContinuedRoomGenerationRecoveryPolicy,ContinuedRoomDeliveryRecoveryPolicy,ContinuedRoomIndependentRecoveryPolicy,ContinuedPairRecords,ContinuedRoomReconciliationOptions,ContinuedRoomReconciliationRead,ContinuedRoomRecoveryDestination,ContinuedRoomRecoveryOptions,ContinuedRoomRecoveryResult,ContinuedRoomCatalogCaptureOptions,ContinuedRoomCatalogMetadata,ContinuedRoomCatalogSelection} from '@breditor/collaboration';
 import type {ContinuedRoomOriginalReadPolicy} from '@breditor/collaboration';
 
 declare const input:ContinuedRoomCatalogCaptureOptions;
@@ -24,6 +24,10 @@ declare const generation:ContinuedRoomGenerationRecoveryPolicy;
 await resumeContinuedRoomRecovery({...recovery,independentPolicies:[legacy],deliveryPolicies:[delivery],generationPolicies:[generation]});
 const operation:ContinuedRoomRecoveryDestination={id:'device',source:'source',uploads:'uploads',operation:{parent:'parent',journal:'journal'}};
 await resumeContinuedRoomRecovery({...recovery,destinations:[operation]});
+declare const originalRecovery:ContinuedRoomOriginalRecoveryPolicy;
+const originalDestination:ContinuedRoomRecoveryDestination={id:'original',source:'original-source',uploads:'original-uploads',
+ original:{suggestions:'suggestions',revisions:'revisions',versions:'versions'}};
+await resumeContinuedRoomRecovery({...recovery,destinations:[originalDestination],originalPolicies:[originalRecovery]});
 void result;
 
 declare const reconciliation:ContinuedRoomReconciliationOptions;
