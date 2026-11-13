@@ -95,6 +95,9 @@ including their retained raster references. The reader holds the current
 owner for the duration of the read and does not retry a failed save.
 
 [Whole-room record reconstruction](NATIVE_RECONSTRUCTION.md) preserves the
-continued participant through failed-save recovery and replacement. Relay
-bindings for continued history, independent comment and server-log
-continuation, and physical browser durability still require qualification.
+continued participant through failed-save recovery and replacement. The
+[relay document continuation](SERVER_NATIVE_HISTORY_GENERATIONS.md#continue-the-rooms-document-receiver-and-suggestion-writer)
+preserves the receiver and private suggestion writer in one durable step. The
+source and installed workflows cover authenticated activation and relay restart
+with both native lanes continued. Physical browser durability and sustainable
+storage reclamation remain separate requirements.

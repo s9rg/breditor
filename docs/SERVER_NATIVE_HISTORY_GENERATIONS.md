@@ -146,3 +146,36 @@ their existing meanings. Resume still requires the current authenticated
 principal and registered actor. The continued room allows up to 320 native
 boundary receipts across both lanes, alongside the independent native archive
 and physical log ceilings.
+
+## Continue the room's document receiver and suggestion writer
+
+The room owner can call `continue_document_native_history` with a lifetime-new
+active generation ID. The document receiver must already use the segmented V1
+archive. The transition retains the exact V1 root and sealed files, closes the
+old active file (even when empty), and starts a V2 active generation. When
+suggestions are enabled, the same durable boundary advances the private effect
+author using its existing deterministic generation namespace. If suggestions
+are enabled later, their new private author starts using the continued history
+policy. The comment receiver advances separately.
+
+`NativeDocumentContinuationV2` binds the receiver and its private author before
+and after the transition. The room syncs this record before publishing either
+candidate. An exact retry returns the original version-two receipt and global
+sequence with `duplicate: true`. Cold replay validates the cuts before exposing
+the room. The room descriptor reports `continued-v2` for the document lane.
+Existing client writer identities, physical WAL positions, suggestion decisions
+and original receipts remain valid.
+
+The receipt index allows 128 entries with both native lanes on their earlier
+formats, 320 with one continued lane, and 512 with both continued lanes. Each
+lane still enforces its own archive limits. Continued document retention admits
+up to 16,000 Undo groups, 256 native files and 256 MiB of archive JSON. Physical
+WAL rotation, capacity and safe reclamation are separate from this transition.
+
+The November 13 checkpoint `6429bcb3` passes all 15 relay native-history tests
+and 64 focused recovery tests. The continued-room provider check passes from
+source and a clean independent package install using the same Wasm bytes.
+Its activated fixture continues both native lanes before capturing the recovery
+cut, then checks retained suggestion effects and seven reconnecting clients
+through an actual relay restart, including concurrent offline edits and lost
+replies. Client storage in this check uses controlled Node fixtures.
