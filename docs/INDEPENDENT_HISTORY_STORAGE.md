@@ -206,6 +206,38 @@ A native owner returned after cancellation is freed if it was unclaimed.
 The returned data describes one observed cut. Whole-room adoption must separately bind
 that cut to the selected participants, upload stores, and provider.
 
+### Reconnect a continued pair
+
+Use `SharedContinuedPairSession.restoreDelivery(options, recovery, "host-reacquired")`
+to import a complete delivery recovery into an empty dedicated database.
+Use `openDelivery(options)` to reopen that database with current host policy.
+The recovery contains both native checkpoints, the original document and review
+relay progress and receipts, and the selected suggestion, revision, and
+published-version records. It includes the original pending packet bytes.
+Supply the exact document, review, and retained-store bindings again on open.
+Keep account tokens and writer credentials outside the recovery.
+
+`continued_delivery_files` and `continued_delivery_heads` keep these records in
+one transaction with the paired native head. Once the transaction commits,
+reopening recovers the same receipt and packet state even if the caller lost
+the save acknowledgement. Await `flush()` for local persistence before exporting
+with `exportDeliveryRecovery()`. Each connected adapter has its own relay barrier
+for completing pending delivery.
+
+Attach `createSharedContinuedRelaySync` and `createSharedContinuedReviewRelaySync`
+with fresh credentials. Both use the selected original or atomic relay
+transport and the native history family for their own lane. The review adapter
+applies the more restrictive of the current host policy and the authenticated
+review role. Open the selected metadata stores on the session. Open the
+suggestion queue before the revision store and pass the document transport to
+the revision store. An application-created `SharedSuggestionSync` remains the
+application's responsibility to dispose.
+
+The complete recovery can be exported and restored independently. The
+continued-participant archive described below currently captures local
+continued pairs. Its whole-room recovery and activation path still needs
+support for the continued delivery stores and their retained packets.
+
 ### Archive a continued participant
 
 `SharedContinuedParticipantBackup.capture` takes a continued pair session,

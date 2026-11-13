@@ -1,5 +1,6 @@
 import {
- SharedContinuedPairSession,SharedContinuedParticipantBackup,
+ SharedContinuedPairSession,SharedContinuedParticipantBackup,createSharedContinuedRelaySync,createSharedContinuedReviewRelaySync,
+ type SharedContinuedDeliveryOptions,type SharedContinuedDeliveryRecovery,type SharedIndependentRelaySyncOptions,type SharedIndependentReviewSyncOptions,
  type SharedContinuedPairOptions,type SharedContinuedPairRecovery,
  type ContinuedPairRecords,type SharedContinuedPairAssetReferences,
  type ContinuedParticipantCaptureOptions,type ContinuedParticipantReadOptions,type ContinuedParticipantSelection,
@@ -31,3 +32,17 @@ if(participant.kind==='ready'){
  restored.dispose();
  participant.backup.dispose();
 }
+
+declare const delivery:SharedContinuedDeliveryOptions<'document-v1'>;
+declare const archived:SharedContinuedDeliveryRecovery;
+declare const documentOptions:SharedIndependentRelaySyncOptions<'document-v1'>;
+declare const reviewOptions:SharedIndependentReviewSyncOptions<'document-v1'>;
+const source=await SharedContinuedPairSession.restoreDelivery(delivery,archived,'host-reacquired');
+const documentSync=createSharedContinuedRelaySync(source,documentOptions);
+const reviewSync=createSharedContinuedReviewRelaySync(source,reviewOptions);
+const exact:SharedContinuedDeliveryRecovery=source.exportDeliveryRecovery();
+void exact;
+documentSync.dispose();reviewSync.dispose();await source.close();
+await (await SharedContinuedPairSession.openDelivery(delivery)).close();
+// @ts-expect-error Delivery restore requires a current host writer reacquisition decision.
+void SharedContinuedPairSession.restoreDelivery(delivery,archived);

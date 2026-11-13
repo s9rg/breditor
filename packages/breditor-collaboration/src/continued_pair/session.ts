@@ -1,3 +1,16 @@
+import {ContinuedDeliveryCompanion} from '../continued_delivery/companion.js';
+import {continuedDeliveryCompanion,registerContinuedDelivery,withContinuedDelivery} from '../continued_delivery/binding.js';
+import type {SharedContinuedDeliveryOptions,SharedContinuedDeliveryRecovery} from '../continued_delivery/contract.js';
+import type {DurableRelaySourcePort} from '../relay/durable_source_port.js';
+import {registerSessionDeliveryIO} from '../delivery_source/io.js';
+import {registerRetainedStoreOwner,withIndependentRetainedPort,type RetainedStorePort} from '../delivery_ports/retained.js';
+import {SharedSuggestionQueue} from '../suggestions/queue.js';
+import {SharedSuggestionRevisions} from '../suggestion_revisions/outbox.js';
+import {SharedDocumentVersions} from '../versions/catalog.js';
+import type {SharedIndependentRevisionsOpenOptions,SharedIndependentVersionsOpenOptions} from '../independent_delivery/session.js';
+import {waitRetiredRelayWork} from '../relay/work_custody.js';
+import {closed} from '../segmented_relay/validation.js';
+import type {SegmentedRetainedKind,SegmentedRetainedRecords} from '../segmented_relay/retained_contract.js';
 import {coreReadStamp} from '../core_read_stamp.js';
 import {participantAuthority} from '../participant_backup/policy.js';
 import {independentBootstrapDestination,independentBootstrapPolicy,independentBootstrapSignal} from '../independent_history/bootstrap_policy.js';
@@ -39,10 +52,11 @@ export async function withContinuedPairAssetRead<P extends SharedSelectionPolicy
  finally{disposePairRecords.call(read);}
 }
 
-const same=(a:SharedContinuedPairRecovery|undefined,b:SharedContinuedPairRecovery)=>
+type Capture=SharedContinuedPairRecovery&{delivery?:ReturnType<ContinuedDeliveryCompanion['capture']>};
+const same=(a:Capture|undefined,b:Capture)=>
  a?.documentCheckpoint===b.documentCheckpoint&&a.reviewCheckpoint===b.reviewCheckpoint&&
- a.versions.length===b.versions.length&&a.versions.every((packet,index)=>packet===b.versions[index]);
-interface SaveAttempt {capture:SharedContinuedPairRecovery;cut?:IndependentHistoryCut}
+ a.delivery===b.delivery&&a.versions.length===b.versions.length&&a.versions.every((packet,index)=>packet===b.versions[index]);
+interface SaveAttempt {capture:Capture;cut?:IndependentHistoryCut}
 
 /** Own one exact two-lane native replay and one atomic version-two paired head. */
 export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSelectionPolicy>{
@@ -58,8 +72,8 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
  readonly #releasePendingWork:()=>void;
  readonly #restoreDocument:SharedContinuedPairOptions<P>['restoreDocument'];
  #head:string|null;
- #saved:SharedContinuedPairRecovery|undefined;
- #pending:SharedContinuedPairRecovery|undefined;
+ #saved:Capture|undefined;
+ #pending:Capture|undefined;
  #attempt:SaveAttempt|undefined;
  #running:Promise<void>|undefined;
  #recordReader:object|undefined;
@@ -71,9 +85,17 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
  #closed=false;
  #closing:Promise<void>|undefined;
  #released:Promise<void>|undefined;
+ readonly #delivery:ContinuedDeliveryCompanion|undefined;
+ readonly #adapters=new Set<WeakRef<{dispose():void}>>();
+ readonly #openings=new Set<Promise<unknown>>();
+ #queue:SharedSuggestionQueue<P>|undefined;
+ #revisions:SharedSuggestionRevisions<P>|undefined;
+ #catalog:SharedDocumentVersions<P>|undefined;
+ #discarding:Promise<void>|undefined;
 
  private constructor(token:symbol,core:SharedRichEditor<P>,db:IDBDatabase,documentLease:SharedWriterLease,reviewLease:ReviewWriterLease,
-   identity:ContinuedPairIdentity,head:string|null,versions:Map<string,string>,onError:SharedContinuedPairOptions<P>['onError'],restoreDocument:SharedContinuedPairOptions<P>['restoreDocument']){
+   identity:ContinuedPairIdentity,head:string|null,versions:Map<string,string>,onError:SharedContinuedPairOptions<P>['onError'],restoreDocument:SharedContinuedPairOptions<P>['restoreDocument'],
+   delivery:ContinuedDeliveryCompanion|undefined,reviewAccess:SharedContinuedPairOptions<P>['review']['access']){
   if(token!==construction)throw fail('continued_pair_construction','Use the paired open or recovery factory');
   this.#core=core;
   this.#db=db;
@@ -85,23 +107,63 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
   this.#versions=versions;
   this.#onError=onError;
   this.#restoreDocument=restoreDocument;
+  this.#delivery=delivery;
   this.#releasePendingWork=registerNativePendingWork(core,()=>this.#running);
   markIndependentHistoryStorage(core);
   const schedule=()=>{try{this.save();}catch(error){this.#recordFailure(error);}};
   this.#unsubscribe=[native.subscribe.call(core,schedule),native.subscribeReview.call(core,schedule)];
   db.onversionchange=()=>{
    this.#storageChanged=true;
-   this.#retired=true;
-   retireOwnedCore(core);
+   this.#retire();
    db.close();
    this.#recordFailure(fail('continued_pair_versionchange','Paired storage changed while in use'));
   };
+  if(delivery){
+   const check=()=>this.#checkDelivery(),save=()=>savePair.call(this),flush=()=>this.#flushDelivery();
+   const persistReview:DurableRelaySourcePort['persistReview']=async (progress,receipt)=>{
+    check();
+    const before=delivery.capture().relay;
+    delivery.propose(core,{...before,review:progress,reviewReceipt:receipt??before.reviewReceipt});
+    await flush();
+   };
+   registerSessionDeliveryIO(this,{core,check,save,flush,review:{
+    identity:()=>structuredClone(delivery.binding.review),
+    progress:()=>structuredClone(delivery.durable().relay.review!),
+    persist:persistReview,
+   }});
+   registerContinuedDelivery(this,{
+    core:core as SharedRichEditor<SharedSelectionPolicy>,binding:structuredClone(delivery.binding),
+    check,save,flush,durable:()=>structuredClone(delivery.durable().relay),
+    reviewAccess:access=>reviewAccess==='read_only'||access==='read_only'?'read_only':reviewAccess==='comment'?'comment':access,
+    async persistDocument(progress){
+     check();delivery.propose(core,{...delivery.capture().relay,document:progress});await flush();
+    },
+    persistReview,track:adapter=>{
+     check();
+     for(const ref of this.#adapters)if(!ref.deref())this.#adapters.delete(ref);
+     this.#adapters.add(new WeakRef(adapter));
+    },
+   });
+  }
  }
  get core():SharedRichEditor<P>{return this.#core;}
 
  /** Reopen an existing paired cut. An absent store requires explicit recovery. */
  static open<P extends SharedSelectionPolicy>(options:SharedContinuedPairOptions<P>):Promise<SharedContinuedPairSession<P>>{
   return this.#open(options);
+ }
+
+ /** Open a separately bound delivery database. A local pair requires explicit import. */
+ static async openDelivery<P extends SharedSelectionPolicy>(options:SharedContinuedDeliveryOptions<P>):Promise<SharedContinuedPairSession<P>>{
+  return this.#open(withContinuedDelivery({...options},new ContinuedDeliveryCompanion(options)));
+ }
+
+ /** Recover the complete pair, accepted receipts and original pending packets. */
+ static async restoreDelivery<P extends SharedSelectionPolicy>(options:SharedContinuedDeliveryOptions<P>,
+  recovery:SharedContinuedDeliveryRecovery,writerRecovery:'host-reacquired'):Promise<SharedContinuedPairSession<P>>{
+  requireBackupRecovery(writerRecovery);
+  const selected=structuredClone(recovery),companion=new ContinuedDeliveryCompanion(options,selected);
+  return this.restoreRecovery(withContinuedDelivery({...options},companion),selected.source,writerRecovery);
  }
 
  /** Replay both exact lanes into an empty destination after the host reacquires the writers. */
@@ -119,6 +181,8 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
 
  static async #open<P extends SharedSelectionPolicy>(input:SharedContinuedPairOptions<P>,recovery?:SharedContinuedPairRecovery):Promise<SharedContinuedPairSession<P>>{
   const {database,restoreDocument,readOnly,onError}=input,review={...input.review},editor={...input.editor};
+  const delivery=continuedDeliveryCompanion(input),store=delivery?.store??continuedPairStore;
+  const missing=()=>fail('continued_pair_missing','No saved cut exists for the selected pair');
   const bootstrap=independentBootstrapPolicy(input),signal=independentBootstrapSignal(input),destination=independentBootstrapDestination(input);
   bootstrap?.();
   const identity=canonicalContinuedPairIdentity({
@@ -139,13 +203,13 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
    bootstrap?.();
    reviewLease=await ReviewWriterLease.acquire(room,review.actor);
    bootstrap?.();
-   db=await openPairedHistoryDatabase(database,continuedPairStore.names,bootstrap,recovery?undefined:destination?.fail);
+   db=await openPairedHistoryDatabase(database,store.names,bootstrap,recovery?undefined:destination?.fail??(delivery?missing:undefined));
    const opening=fenceOpeningDatabase(db,'session_open_versionchange');
    const check=()=>{bootstrap?.();opening.assertCurrent();};
-   const stored=await readPairedHistoryCut(db,key,continuedPairStore);
+   const stored=await readPairedHistoryCut(db,key,store);
    check();
    if(destination){
-    const status=await readExactHistoryDestination(db,continuedPairStore.names,key,destination,check);
+    const status=await readExactHistoryDestination(db,store.names,key,destination,check);
     if(recovery?status!=='empty'||stored!==null:status!=='exact'||stored?.head!==destination.cut.head)
      throw destination.fail();
    }
@@ -155,7 +219,12 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
    const selected=stored??recovery;
    if(!selected)throw fail('continued_pair_missing','No saved cut exists for the selected pair');
    const versions=stored?.record.versions??recovery!.versions;
+   if(stored)delivery?.load(stored.head);
+   const state=delivery?.capture();
    const cut=recovery?await makeContinuedPairCut(selected.documentCheckpoint,selected.reviewCheckpoint,identity,versions):undefined;
+   const wrapped=cut&&state?delivery!.wrap(cut,state):cut;
+   const destinationCut=delivery&&wrapped?{cut:wrapped,fail:()=>fail('continued_delivery_destination_exists',
+    'Restore continued delivery into an empty dedicated database')}:destination;
    check();
    if(bootstrap){
     const waits=new NativeReconstructionWaits(check,[signal]);
@@ -165,13 +234,14 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
    const replay=admitContinuedPair<P>(raw,identity,review,readOnly,editor,selected,versions);
    core=replay.core;
    const admittedVersions=replay.versions,captured=replay.capture;
+   delivery?.admit(core);
    check();
-   if(cut&&bootstrap){
-    await writePairedHistoryCut(db,key,null,cut,continuedPairStore.names,continuedPairStore.readHead,check,signal,undefined,destination);
+   if(wrapped&&(bootstrap||delivery)){
+    await writePairedHistoryCut(db,key,null,wrapped,store.names,store.readHead,check,signal,undefined,destinationCut);
     check();
    }
-   session=new SharedContinuedPairSession(construction,core,db,documentLease,reviewLease,identity,stored?.head??(bootstrap?cut!.head:null),admittedVersions,onError,restoreDocument);
-   if(stored||bootstrap)session.#saved=captured;
+   session=new SharedContinuedPairSession(construction,core,db,documentLease,reviewLease,identity,stored?.head??(bootstrap||delivery?wrapped!.head:null),admittedVersions,onError,restoreDocument,delivery,review.access);
+   if(stored||bootstrap||delivery)session.#saved=state?{...captured,delivery:state}:captured;
    else{session.save();await session.flush();}
    return session;
   }catch(error){
@@ -193,12 +263,14 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
   this.#live();
   if(this.#storageChanged)throw fail('continued_pair_versionchange','Paired storage changed while in use');
  };
- #capture():SharedContinuedPairRecovery{
+ #capture():Capture{
   this.#live();
-  return capture(this.#core,this.#identity,this.#versions);
+  const pair=capture(this.#core,this.#identity,this.#versions),state=this.#delivery?.capture();
+  return state?{...pair,delivery:state}:pair;
  }
- #makeCut(cut:SharedContinuedPairRecovery):Promise<IndependentHistoryCut>{
-  return makeContinuedPairCut(cut.documentCheckpoint,cut.reviewCheckpoint,this.#identity,cut.versions);
+ async #makeCut(cut:Capture):Promise<IndependentHistoryCut>{
+  const pair=await makeContinuedPairCut(cut.documentCheckpoint,cut.reviewCheckpoint,this.#identity,cut.versions);
+  return cut.delivery?this.#delivery!.wrap(pair,cut.delivery):pair;
  }
  #recordFailure(error:unknown):void{
   this.#recordEpoch=Object.freeze({});
@@ -206,11 +278,83 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
   this.#failure=error;
   try{this.#onError?.(error);}catch{/* Reporting cannot change the save outcome. */}
  }
- exportRecovery():SharedContinuedPairRecovery{return this.#capture();}
+ exportRecovery():SharedContinuedPairRecovery{
+  if(this.#delivery)throw fail('continued_delivery_export_required','Export the complete continued delivery recovery');
+  return this.#capture();
+ }
+ exportDeliveryRecovery():SharedContinuedDeliveryRecovery{
+  this.#live();
+  const companion=this.#requireDelivery(),{delivery,...source}=this.#capture();
+  return {format:'breditor/shared-continued-delivery-recovery',formatVersion:1,source,
+   relay:structuredClone(delivery!.relay),retainedBinding:structuredClone(companion.retainedBinding),retained:structuredClone(delivery!.retained)};
+ }
+ #requireDelivery():ContinuedDeliveryCompanion{
+  if(!this.#delivery)throw fail('continued_delivery_required','Open the explicit continued delivery family');
+  return this.#delivery;
+ }
+ #checkDelivery():void{
+  this.#checkWrite();checkManagedCore(this.#core);
+  if(this.#recordReader)throw readFailure('busy');
+  if(this.#retired||Object.hasOwn(this,'core'))throw fail('continued_delivery_retired','The continued delivery owner is retired');
+ }
+ async #flushDelivery():Promise<void>{this.#checkDelivery();savePair.call(this);await flushPair.call(this);this.#checkDelivery();}
+ #retainedPort<K extends SegmentedRetainedKind>(kind:K):RetainedStorePort<K>{
+  const delivery=this.#requireDelivery();
+  if(!delivery.retainedBinding[kind])throw fail('continued_retained_unselected','Choose this retained store in the delivery binding');
+  const port:RetainedStorePort<K>={
+   kind,check:()=>this.#checkWrite(),writable:()=>this.#checkDelivery(),
+   read:()=>structuredClone(delivery.capture().retained[kind]) as NonNullable<SegmentedRetainedRecords[K]>,
+   stage:record=>{this.#checkDelivery();delivery.proposeRecord(this.#core,kind,record);},
+   write:async()=>{this.#checkWrite();savePair.call(this);await flushPair.call(this);},
+  };
+  registerRetainedStoreOwner(port,this,this.#core,()=>structuredClone(delivery.durable().retained[kind]));
+  return port;
+ }
+ #opening<T extends {discardAndClose():Promise<void>}>(open:()=>Promise<T>,keep:(value:T)=>void):Promise<T>{
+  this.#checkDelivery();
+  const pending=(async()=>{
+   const value=await open();
+   try{this.#checkDelivery();keep(value);return value;}
+   catch(error){await value.discardAndClose();throw error;}
+  })();
+  this.#openings.add(pending);
+  void pending.finally(()=>this.#openings.delete(pending)).catch(()=>{});
+  return pending;
+ }
+ #metadataStorage(){
+  return Object.freeze({core:this.#core,save:()=>savePair.call(this),flush:()=>this.#flushDelivery()});
+ }
+ openSuggestionQueue():Promise<SharedSuggestionQueue<P>>{
+  const binding=this.#requireDelivery().retainedBinding.suggestions;
+  if(!binding)throw fail('continued_retained_unselected','Choose the suggestion queue in the delivery binding');
+  return this.#opening(()=>SharedSuggestionQueue.open(withIndependentRetainedPort({
+   database:'atomic-continued-delivery',identity:binding.identity,storage:this.#metadataStorage(),
+   ...(binding.ownedHistory?{ownedHistory:binding.ownedHistory}:{}),
+  },this.#retainedPort('suggestions'))),value=>{this.#queue=value;});
+ }
+ openSuggestionRevisions(input:SharedIndependentRevisionsOpenOptions<P>):Promise<SharedSuggestionRevisions<P>>{
+  if(['storage','database','binding','queue'].some(key=>key in input)||input.autoStart!==undefined&&input.autoStart!==false)
+   throw fail('continued_delivery_policy','Select the transport separately and start it explicitly');
+  const binding=this.#requireDelivery().retainedBinding.revisions,queue=this.#queue;
+  if(!binding||!queue)throw fail('continued_retained_queue_required','Open the selected suggestion queue first');
+  return this.#opening(()=>SharedSuggestionRevisions.open(withIndependentRetainedPort({
+   ...input,database:'atomic-continued-delivery',binding:binding.binding,queue,storage:this.#metadataStorage(),autoStart:false,
+  },this.#retainedPort('revisions'))),value=>{this.#revisions=value;});
+ }
+ openVersionCatalog(input:SharedIndependentVersionsOpenOptions<P>):Promise<SharedDocumentVersions<P>>{
+  if(['storage','database','identity'].some(key=>key in input)||input.autoConnect!==undefined&&input.autoConnect!==false)
+   throw fail('continued_delivery_policy','Select the version token separately and connect explicitly');
+  const binding=this.#requireDelivery().retainedBinding.versions;
+  if(!binding)throw fail('continued_retained_unselected','Choose the version catalog in the delivery binding');
+  return this.#opening(()=>SharedDocumentVersions.open(withIndependentRetainedPort({
+   ...input,database:'atomic-continued-delivery',identity:binding,storage:this.#metadataStorage(),autoConnect:false,
+  },this.#retainedPort('versions'))),value=>{this.#catalog=value;});
+ }
 
  /** Hold the paired save queue while reading its exact durable and in-memory cuts. */
  async readRecords(checkAuthority:()=>void,signal?:AbortSignal):Promise<ContinuedPairRecordRead>{
   this.#checkWrite();
+  if(this.#delivery)throw fail('continued_delivery_export_required','Use the complete delivery recovery record');
   checkManagedCore(this.#core);
   if(this.#recordReader||this.#running)throw readFailure('busy');
   const token=Object.freeze({});
@@ -304,11 +448,13 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
    const attempt=this.#attempt;
    attempt.cut??=await this.#makeCut(attempt.capture);
    this.#checkWrite();
-   await writePairedHistoryCut(this.#db,this.#key,this.#head,attempt.cut,continuedPairStore.names,continuedPairStore.readHead,this.#checkWrite);
+   const store=this.#delivery?.store??continuedPairStore;
+   await writePairedHistoryCut(this.#db,this.#key,this.#head,attempt.cut,store.names,store.readHead,this.#checkWrite);
    if(this.#closed)return;
    this.#checkWrite();
    this.#head=attempt.cut.head;
    this.#saved=attempt.capture;
+   if(attempt.capture.delivery)this.#delivery!.acknowledge(attempt.capture.delivery);
    this.#attempt=undefined;
   }
  }
@@ -326,6 +472,9 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
   this.#failure=undefined;
   this.save();
   await this.flush();
+  if(this.#queue&&!this.#queue.state().closed)await this.#queue.retry();
+  if(this.#revisions&&this.#revisions.state().status!=='closed')await this.#revisions.retry();
+  if(this.#catalog&&this.#catalog.state().status!=='closed')await this.#catalog.retry();
  }
  versions():readonly SharedDocumentVersionInfo[]{
   this.#live();
@@ -360,22 +509,53 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
  }
  close():Promise<void>{
   if(this.#closed)return this.discardAndClose();
+  if(this.#discarding)return this.#discarding;
   if(this.#closing)return this.#closing;
   if(this.#recordReader)return Promise.reject(readFailure('busy'));
   this.#retire();
   this.#closing=Promise.resolve().then(async()=>{
    if(!this.#closed){this.save();await this.flush();}
-   await this.discardAndClose();
+   if(this.#delivery)await this.#closeAdapters(false);
+   await this.#releasePair();
   }).finally(()=>{this.#closing=undefined;});
   return this.#closing;
  }
  #retire():void{
-  if(this.#retired)return;
   this.#retired=true;
   retireOwnedCore(this.#core);
+  this.#revisions?.disconnect();
+  this.#catalog?.disconnect();
+  for(const ref of this.#adapters){
+   ref.deref()?.dispose();
+   this.#adapters.delete(ref);
+  }
  }
+ async #closeAdapters(discard:boolean):Promise<void>{
+  await Promise.allSettled([...this.#openings]);
+  const metadata=[this.#revisions,this.#queue,this.#catalog].filter(owner=>owner!==undefined);
+  await waitRetiredRelayWork(this.#core,metadata);
+  for(const owner of metadata)await (discard?owner.discardAndClose():owner.close());
+  this.#revisions=undefined;this.#queue=undefined;this.#catalog=undefined;
+  await waitRetiredRelayWork(this.#core);
+ }
+
  /** Release the exact owners. Any transaction already committed remains readable on reopen. */
  discardAndClose():Promise<void>{
+  if(this.#delivery&&!this.#closed){
+   if(this.#discarding)return this.#discarding;
+   this.#retire();
+   const pending=this.#closing;
+   this.#discarding=Promise.resolve().then(async()=>{
+    // A graceful close calls the underlying release directly.
+    await pending?.catch(()=>{});
+    await this.#closeAdapters(true);
+    await this.#releasePair();
+   }).finally(()=>{this.#discarding=undefined;});
+   return this.#discarding;
+  }
+  return this.#releasePair();
+ }
+ #releasePair():Promise<void>{
   if(!this.#closed){
    if(this.#recordReader)return Promise.reject(readFailure('busy'));
    this.#retire();
@@ -400,6 +580,7 @@ export class SharedContinuedPairSession<P extends SharedSelectionPolicy=SharedSe
  }
 }
 
+const savePair=SharedContinuedPairSession.prototype.save,flushPair=SharedContinuedPairSession.prototype.flush;
 const readPairRecords=SharedContinuedPairSession.prototype.readRecords;
 const checkPairRecords=ContinuedPairRecordRead.prototype.check;
 const disposePairRecords=ContinuedPairRecordRead.prototype.dispose;

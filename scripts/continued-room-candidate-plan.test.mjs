@@ -17,6 +17,15 @@ for(const profile of ['functional','full'])test(profile+' qualifies mixed room r
   assert.equal(stage.requiresSharedRuntime,true);
   for(const dependency of ['collaboration-build','native-server-generation-inventory','continued-room-type-fence'])before(dependency,id);
  }
+ for(const [mode,id] of [['source','continued-delivery'],['installed','installed-continued-delivery']]){
+  const stage=find(id);
+  assert.deepEqual(stage.args.slice(0,2),['scripts/check-continued-delivery.mjs',mode]);
+  assert.match(stage.args[2],/segmented_relay_functional(?:\.exe)?$/);
+  assert.match(stage.args[3],/suggestion_revisions_functional(?:\.exe)?$/);
+  assert.deepEqual(stage.artifacts,[{path:`target/qualified-continued-delivery-${mode}.json`,fresh:true}]);
+  assert.equal(stage.requiresSharedRuntime,true);
+  before('collaboration-build',id);
+ }
  const provider=find('continued-room-provider');
  assert.equal(provider.args[0],'scripts/check-continued-room-provider.mjs');
  assert.match(provider.args[1],/generation_complete_control_functional(?:\.exe)?$/);
