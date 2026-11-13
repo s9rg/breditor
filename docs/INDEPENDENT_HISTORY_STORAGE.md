@@ -570,3 +570,21 @@ Rust relay. Seven clients send their queued edits, comments, proposals,
 revisions and versions. One client also uploads a raster previously absent
 from the relay and reads its exact bytes back. The check closes and reopens
 the client stores to compare the acknowledgements with the originals.
+
+The same qualification command then kills the published test relay after
+delivery, before taking another server snapshot. An inspection process reads
+the surviving operational room and records its complete archive. A separate
+process reopens that selected cut with all fourteen original protected
+registrations and a fresh account configuration. It prepares a child checkpoint
+whose parent is the exact committed checkpoint, and binds the same client
+address. Activation and publication use separate authenticated operator
+requests. Only publication starts normal serving.
+
+All seven clients reopen their existing stores with the original bindings and
+resume credentials. The check compares their accepted document, comment,
+version, proposal and revision records before and after reconnecting. It
+downloads the same raster from the restarted relay and verifies that the
+original checkpoint and its archive were preserved. The source and installed
+runs use actual Rust child processes and simulated browser storage. This
+exercises the existing host-level restart controls. A production host still
+supplies its own persisted restart selection, credentials and approval flow.
