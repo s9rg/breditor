@@ -97,7 +97,7 @@ export async function runContinuedProviderQualification(controls,transport,direc
   sharedWasmSha256:checksum,nativeFixtures:chosen.map(row=>({path:row.path,sha256:sha(readFileSync(row.path))})),reports,
   scope:'Actual separately authenticated native operator and provider, seven archived participants, mixed local history families, local-only outstanding delivery'};
  saveEvidence(join(directory,'continued-provider-qualification.json'),report);
- console.log(JSON.stringify(report,null,2));
+ return report;
 }
 
 if(process.argv[1]&&realpathSync(process.argv[1])===fileURLToPath(import.meta.url)){
@@ -107,6 +107,9 @@ if(process.argv[1]&&realpathSync(process.argv[1])===fileURLToPath(import.meta.ur
  for(const [name,data] of [['seed-a.png',pixel],['seed-b.png',secondPixel]])writeFileSync(join(directory,name),data,{mode:0o600,flag:'wx'});
  const controls=await startNativeGenerationCompleteControls(root,resolve(binary),directory);
  const transport=completeControlTransport(controls.manifest);
- try{await runContinuedProviderQualification(controls,transport,directory,mode);}
+ let report;
+ try{report=await runContinuedProviderQualification(controls,transport,directory,mode);}
  finally{transport.restore();await controls.stop();}
+ saveEvidence(join(root,'target',`qualified-continued-room-provider-${mode}.json`),report);
+ console.log(JSON.stringify(report,null,2));
 }

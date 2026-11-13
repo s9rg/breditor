@@ -4,18 +4,27 @@ import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {cpSync,mkdirSync,mkdtempSync,readFileSync,realpathSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {dirname,join,resolve} from 'node:path';
+import {dirname,join,relative,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {build} from 'vite';
-import {sourceEvidence,saveEvidence} from './candidate-release/evidence.mjs';
+import {fileEvidence,sourceEvidence,saveEvidence} from './candidate-release/evidence.mjs';
 import {searchConsumerLock,verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),source=sourceEvidence(root);
 assert.equal(source.dirty,false,'Qualify a clean source checkpoint');
 const [mode,input]=process.argv.slice(2);
-assert.ok((mode==='source'||mode==='installed')&&input&&process.argv.length===4,
- 'Supply source or installed and the native server-generation inventory manifest');
-const manifestPath=resolve(input),manifest=JSON.parse(readFileSync(manifestPath,'utf8'));
+assert.ok((mode==='source'||mode==='installed')&&process.argv.length<=4,
+ 'Supply source or installed, optionally with a retained native server-generation inventory manifest');
+const native=input===undefined?JSON.parse(readFileSync(join(root,'target/server-generation-inventory-native.json'),'utf8')):undefined;
+const manifestPath=resolve(input??native.manifest);
+if(native){
+ assert.equal(native.format,'breditor/native-server-generation-inventory-check');
+ assert.equal(native.passed,true);
+ assert.deepEqual(native.source,source);
+ const retained=fileEvidence(root,relative(root,manifestPath));
+ assert.deepEqual(retained,native.manifestEvidence);
+}
+const manifestBytes=readFileSync(manifestPath),manifest=JSON.parse(manifestBytes);
 assert.equal(manifest.format,'breditor/native-server-generation-inventory-fixtures');
 assert.equal(manifest.cases.length,10);
 const chosen=[];
@@ -80,9 +89,13 @@ for(const result of reports){
  assert.equal(result.passed,true);
  assert.equal(result.sharedWasmSha256,sharedWasmSha256);
  assert.equal(result.fixtureSha256,sha(readFileSync(result.path)));
+ assert.equal(result.mixedRecoveryResumes,4);
+ assert.equal(result.deliveryRecoveryResumes,2);
+ assert.equal(result.occupiedBootstrapRefusals,2);
 }
 assert.deepEqual(sourceEvidence(root),source);
+assert.deepEqual(readFileSync(manifestPath),manifestBytes);
 const report={format:'breditor/continued-room-catalog-qualification',formatVersion:1,passed:true,mode,source,
- nativeFixtureManifest:{path:manifestPath,sha256:sha(readFileSync(manifestPath))},sharedWasmSha256,reports,consumerProof};
+ nativeFixtureManifest:{path:manifestPath,sha256:sha(manifestBytes)},sharedWasmSha256,reports,consumerProof};
 saveEvidence(join(root,'target',`qualified-continued-room-catalog-${mode}.json`),report);
 console.log(JSON.stringify(report,null,2));
