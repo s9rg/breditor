@@ -86,6 +86,7 @@ export async function runContinuedProviderQualification(controls,transport,direc
    assert.equal(result.mixedDeliveryProviderReads,1);
    assert.equal(result.continuedDeliveryProviderReads,1);
    assert.equal(result.recoveredRoomReads,1);
+   assert.equal(result.serverOnlyPacketAssets,result.atomic?1:0);
    assert.equal(result.recoveredRoomRefusals,3);
    assert.equal(result.mixedDeliveryAheadRefusals,1);
    assert.equal(result.generationProviderReads,5);
@@ -118,7 +119,7 @@ if(process.argv[1]&&realpathSync(process.argv[1])===fileURLToPath(import.meta.ur
  assert.ok(binary&&['source','installed','both'].includes(mode),'Supply the native generation complete-control binary and test mode');
  const directory=mkdtempSync(join(root,'target/continued-provider-native-'));
  for(const [name,data] of [['seed-a.png',pixel],['seed-b.png',secondPixel]])writeFileSync(join(directory,name),data,{mode:0o600,flag:'wx'});
- const controls=await startNativeGenerationCompleteControls(root,resolve(binary),directory);
+ const controls=await startNativeGenerationCompleteControls(root,resolve(binary),directory,{serverPacketAssets:true});
  const transport=completeControlTransport(controls.manifest);
  let report;
  try{report=await runContinuedProviderQualification(controls,transport,directory,mode);}

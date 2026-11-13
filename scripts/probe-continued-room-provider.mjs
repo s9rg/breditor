@@ -24,7 +24,7 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
  const entries=[];
  let archive,store,host,tokenAllowed=true,onToken;
  const counts={authorPrefixes:0,reviewPrefixes:0,localSuffixes:0,missingUploads:0,providerReads:0,rejected:0,foreignForks:0,mixedPending:0,mixedProviderReads:0,mixedForeignForks:0,mixedDeliveryProviderReads:0,mixedDeliveryAheadRefusals:0,continuedDeliveryProviderReads:0,generationProviderReads:0,generationDocumentOnlyReads:0,generationAheadRefusals:0,generationForkRefusals:0,generationPredecessorChecks:0,originalProviderReads:0,originalPolicyRefusals:0};
- let recoveredRoomReads=0,recoveredRoomRefusals=0;
+ let recoveredRoomReads=0,recoveredRoomRefusals=0,serverOnlyPacketAssets=0;
  const room=inventory.room.document;
  const initial={
   catalog:'continued-native-provider',wasm:native,checkAuthority(){},
@@ -64,6 +64,16 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
   assert.equal(report.uploads.find(row=>row.id==='provider-0').entries.some(row=>row.asset===unavailableAsset),true);
   assert.equal(requests.slice(start).filter(row=>row.assets).length,1);
   assert.equal(requests.at(-1).uploads,3);
+  assert.equal(requests.slice(start).filter(row=>row.dependencies).length,1);
+  const serverOnly=report.provider.resolutions.filter(row=>row.reference.generation==='server-packet-only');
+  assert.equal(serverOnly.length,fixture.atomic?1:0);
+  for(const row of serverOnly){
+   assert.equal(row.reference.asset,row.contentAsset);
+   assert.ok(!entries.some(entry=>entry.record.live.documentCheckpoint.includes(row.contentAsset)));
+   assert.ok(report.provider.assets.some(asset=>asset.asset===row.contentAsset));
+   assert.ok(entries.every(entry=>!entry.backup.assetReferences().references.some(ref=>ref.generation===row.reference.generation)));
+   serverOnlyPacketAssets++;
+  }
   counts.missingUploads++;
   counts.providerReads++;
   for(const {prefix} of report.participants){
@@ -180,7 +190,9 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
    const recovered=await withNoWrites(()=>readRecoveredContinuedRoomReconciliation(probe));
    assert.deepEqual(recovered.recovery,completed);
    assert.deepEqual(recovered.reconciliation,read);
+   assert.equal(recovered.reconciliation.provider.resolutions.some(row=>row.reference.generation==='server-packet-only'),fixture.atomic);
    assert.equal(requests.slice(beforeRead).filter(row=>row.assets).length,1);
+   assert.equal(requests.slice(beforeRead).filter(row=>row.dependencies).length,1);
    recoveredRoomReads++;
 
    // Even a write which ignores the SDK's cooperative locks must be detected
@@ -190,11 +202,12 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
     request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);
    });
    try{
-    onToken=()=>new Promise((resolve,reject)=>{
+    const change=()=>new Promise((resolve,reject)=>{
      const tx=changed.transaction(heads,'readwrite');
      tx.objectStore(heads).delete(key);tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);
     });
-    const beforeChanged=requests.length;
+    onToken=()=>{onToken=change;};
+   const beforeChanged=requests.length;
     await assert.rejects(readRecoveredContinuedRoomReconciliation(probe),error=>
      ['continued_pair_read_changed','continued_room_recovery_diverged'].includes(error.code));
     assert.equal(requests.slice(beforeChanged).filter(row=>row.assets).length,1);
@@ -516,7 +529,7 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
   onToken=()=>store.close();
   await assert.rejects(readContinuedRoomReconciliation(input),error=>['catalog_closed','archive_authority','control_authority'].includes(error.code));
   counts.rejected++;
-  return {recoveredRoomReads,recoveredRoomRefusals,passed:true,language:fixture.language,atomic:fixture.atomic,...counts,...operations};
+  return {recoveredRoomReads,recoveredRoomRefusals,serverOnlyPacketAssets,passed:true,language:fixture.language,atomic:fixture.atomic,...counts,...operations};
  }finally{
   host?.close();
   await store?.close();

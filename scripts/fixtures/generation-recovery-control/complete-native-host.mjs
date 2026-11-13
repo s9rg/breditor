@@ -4,8 +4,10 @@ import {spawn} from 'node:child_process';
 import {readFileSync} from 'node:fs';
 import {resolve,dirname} from 'node:path';
 import {saveEvidence,fileEvidence} from '../../candidate-release/evidence.mjs';
-export async function startNativeGenerationCompleteControls(root,binary,directory,{migrated=false}={}){
- const child=spawn(binary,migrated?[directory,'--migrated-origin']:[directory],{cwd:root,stdio:['ignore','pipe','pipe']}),tokens=new Map();let output='',errors='',ready=false;
+export async function startNativeGenerationCompleteControls(root,binary,directory,{migrated=false,serverPacketAssets=false}={}){
+ assert.ok(!migrated||!serverPacketAssets);
+ const args=[directory,...(migrated?['--migrated-origin']:serverPacketAssets?['--server-packet-assets']:[])];
+ const child=spawn(binary,args,{cwd:root,stdio:['ignore','pipe','pipe']}),tokens=new Map();let output='',errors='',ready=false;
  // A failed spawn closes the stdio pipes without emitting 'exit'.
  const closed=new Promise(resolve=>child.once('close',(code,signal)=>resolve({code,signal})));
  const timer=setTimeout(()=>{if(!ready)child.kill('SIGTERM');},600000);

@@ -1,7 +1,7 @@
 import {RichAssetArchive,type AssetLimits} from '@breditor/experimental-rich-content';
 import type {ArchiveIntegrityContext} from '../archive_integrity/context.js';
 import {assetReferenceKey,generationAssetRequirements} from '../generation_recovery_control/asset_requirements.js';
-import type {SharedServerLogGenerationRecoveryAssetInfo,SharedServerLogGenerationRecoveryAssetRead} from '../generation_recovery_control/asset_contract.js';
+import type {SharedServerLogGenerationRecoveryAssetInfo,SharedServerLogGenerationRecoveryAssetRead,SharedServerLogGenerationRecoveryAssetReference} from '../generation_recovery_control/asset_contract.js';
 import {continuedCatalogClient,SharedContinuedRoomCatalog} from '../continued_room_catalog/archive.js';
 import {generationParticipantAssetMetadata,SharedGenerationParticipantBackup} from '../generation_participant/backup.js';
 import {originalParticipantAssetMetadata,SharedParticipantBackup} from '../participant_backup/archive.js';
@@ -73,19 +73,22 @@ export async function continuedProviderPins(
    uploads.push({id,bytes:file.size,sha256:await context.digest(file),entries:rows});
   }finally{dispose.call(parsed);}
  }
- const requirements=generationAssetRequirements({
-  references:[...bindings.values()].map(({asset,generation})=>({asset,generation})),
-  uploads:[...uploadIds],
- });
+ const requirements=(server:readonly SharedServerLogGenerationRecoveryAssetReference[])=>{
+  const references=new Map(server.map(row=>[assetReferenceKey(row),row]));
+  for(const [key,{asset,generation}] of bindings)references.set(key,{asset,generation});
+  return generationAssetRequirements({references:[...references.values()],uploads:[...uploadIds]});
+ };
  return {
   requirements,uploads,
   verify(provider:SharedServerLogGenerationRecoveryAssetRead){
    for(const resolution of provider.resolutions){
-    if(bindings.get(assetReferenceKey(resolution.reference))?.contentAsset!==resolution.contentAsset)
+    const known=identities.get(resolution.reference.asset);
+    if(known!==undefined&&known!==resolution.contentAsset)
      throw continuedReconciliationFailure('diverged');
    }
    for(const asset of provider.assets){
-    if(content.get(asset.asset)!==shape(asset))throw continuedReconciliationFailure('diverged');
+    const known=content.get(asset.asset);
+    if(known!==undefined&&known!==shape(asset))throw continuedReconciliationFailure('diverged');
    }
   },
  };

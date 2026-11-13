@@ -97,17 +97,27 @@ export async function readContinuedRoomReconciliation(input:ContinuedRoomReconci
   const pins=await continuedProviderPins(active,context,waits.signal,admitted);
   waits.check();
   // Preserve the catalog/read failure if current custody ends during token acquisition.
-  let requestGuardFailed=false,requestGuardError:unknown;
-  const beforeRequest=()=>{
-   try{waits.check();}
-   catch(error){requestGuardFailed=true;requestGuardError=error;throw error;}
+  const checkedRequest=<T>(send:(beforeRequest:()=>void)=>Promise<T>):Promise<T>=>{
+   let requestGuardFailed=false,requestGuardError:unknown;
+   const beforeRequest=()=>{
+    try{waits.check();}
+    catch(error){requestGuardFailed=true;requestGuardError=error;throw error;}
+   };
+   return send(beforeRequest).catch(error=>{throw requestGuardFailed?requestGuardError:error;});
   };
-  const provider=unreconciledParticipants.length?null:
-   await port.checkAssets(pins.requirements,waits.signal,beforeRequest).catch(error=>{
-    throw requestGuardFailed?requestGuardError:error;
-   });
-  if(provider)pins.verify(provider);
-  else await port.check(waits.signal);
+  let provider:ContinuedRoomReconciliationRead['provider']=null;
+  if(unreconciledParticipants.length)await port.check(waits.signal);
+  else{
+   // The relay's asset response covers both its retained Native dependencies
+   // and the declared client cut. Pin that same union in the request.
+   const dependencies=await checkedRequest(check=>port.readNativeDependencies(waits.signal,check));
+   waits.check();
+   const outcome=dependencies.native.outcome;
+   if(outcome.kind!=='ready')throw fail('incomplete');
+   const requirements=pins.requirements(outcome.references);
+   provider=await checkedRequest(check=>port.checkAssets(requirements,waits.signal,check));
+   pins.verify(provider);
+  }
   waits.check();
   const result:ContinuedRoomReconciliationRead=frozen({format:'breditor/continued-room-reconciliation-read',formatVersion:1,
    catalog:selected,kind:'pending',coverage,participants,unreconciledParticipants,uploads:pins.uploads,provider,

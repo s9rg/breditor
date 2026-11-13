@@ -425,8 +425,12 @@ contributes to the provider reconciliation report. Authenticated activation
 of a restored room is a separate step.
 
 The provider read includes image bindings reachable from all save slots and
-every content ID in the participant upload archives. It verifies matching
-content and dimensions and reports missing mappings or bytes. The read
+every content ID in the participant upload archives. When every participant
+has been admitted, it reads the same selected relay's authenticated native
+dependency inventory and checks the union of client and server bindings.
+This includes images referenced only by retained server packets. It verifies
+provider resolutions against known client content and dimensions and reports
+missing mappings or bytes. The read
 preserves the original upload state and leaves local comment delivery
 pending. For a mixed catalog, supply `independentPolicies` to compare the
 accepted prefixes of independent local participants and include their asset

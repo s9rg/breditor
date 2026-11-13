@@ -1,5 +1,5 @@
 //! Seven actual image-bearing native authors under genuine standalone origin/current custody.
-use super::{Result, clients, migrated_origin, source, storage};
+use super::{Result, clients, migrated_origin, server_packet_asset, source, storage};
 use breditor_collab_relay::{
     Role, RoomRecoveryPolicy, ServerLogGenerationRoomBackup, ServerLogGenerationRoomRecovery,
     assets::{AssetStore, asset_id, prepare_asset},
@@ -61,11 +61,13 @@ pub async fn generate(
     spec: source::Spec,
     bytes: Option<&[Vec<u8>]>,
     migrated: bool,
+    server_packet_assets: bool,
 ) -> Result<Running> {
     if bytes.is_some_and(|rasters| rasters.len() != 2) {
         return Err("exactly two private seed rasters are required".into());
     }
-    Box::pin(generate_selected(parent, spec, bytes.unwrap_or(&[]), migrated)).await
+    Box::pin(generate_selected(parent, spec, bytes.unwrap_or(&[]), migrated, server_packet_assets))
+        .await
 }
 fn seed_assets(
     directory: &Path,
@@ -115,6 +117,7 @@ async fn generate_selected(
     spec: source::Spec,
     rasters: &[Vec<u8>],
     migrated: bool,
+    server_packet_assets: bool,
 ) -> Result<Running> {
     let root = parent.join(spec.name());
     storage::directory(&root)?;
@@ -133,6 +136,10 @@ async fn generate_selected(
         return Err("seven actual image-bearing registrations are required".into());
     }
     let assets = seed_assets(&root, &mut room, rasters)?;
+    if server_packet_assets && spec.atomic {
+        let raster = rasters.get(1).ok_or("server packet fixture requires a second raster")?;
+        server_packet_asset::publish(&mut room, &profile, &asset_id(raster))?;
+    }
     let migrated_origin::Cuts { older: ancestor, local, legacy } =
         capture_source_cuts(&root, room, assets, migrated)?;
     let mut operation = ServerLogGenerationRoomRecovery::begin(

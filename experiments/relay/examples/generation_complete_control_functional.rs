@@ -9,6 +9,8 @@ mod migrated_origin;
 mod protected_streams;
 #[path = "generation_complete_control/public_inputs.rs"]
 mod public_inputs;
+#[path = "generation_complete_control/server_packet_asset.rs"]
+mod server_packet_asset;
 #[path = "server_generation_inventory_fixture/source.rs"]
 mod source;
 #[path = "participant_inventory_fixture/storage.rs"]
@@ -18,10 +20,11 @@ type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 #[tokio::main(worker_threads = 2)]
 async fn main() -> Result {
     let args: Vec<_> = std::env::args_os().skip(1).collect();
-    let (parent, migrated) = match args.as_slice() {
-        [parent] => (parent, false),
-        [parent, mode] if mode == "--migrated-origin" => (parent, true),
-        _ => return Err("expected private fixture parent and optional --migrated-origin".into()),
+    let (parent, migrated, server_packet_assets) = match args.as_slice() {
+        [parent] => (parent, false, false),
+        [parent, mode] if mode == "--migrated-origin" => (parent, true, false),
+        [parent, mode] if mode == "--server-packet-assets" => (parent, false, true),
+        _ => return Err("expected private fixture parent and optional fixture mode".into()),
     };
     let parent = std::fs::canonicalize(parent)?;
     if !parent.is_dir() {
@@ -42,6 +45,7 @@ async fn main() -> Result {
                 source::Spec { language, standard, atomic },
                 Some(&images),
                 migrated,
+                server_packet_assets,
             ))
             .await?;
             let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
