@@ -7,8 +7,10 @@ use breditor_collab_feasibility::{
 };
 use sha2::{Digest, Sha256};
 
-pub(super) fn document_checkpoint(owner: &RichReplica) -> Result<String> {
-    Ok(if owner.segmented_history_enabled() {
+pub(in crate::room) fn document_checkpoint(owner: &RichReplica) -> Result<String> {
+    Ok(if owner.continued_history_enabled() {
+        owner.continued_history_checkpoint()?
+    } else if owner.segmented_history_enabled() {
         owner.segmented_checkpoint()?
     } else if owner.document_selection_enabled() {
         owner.document_checkpoint()?
@@ -53,7 +55,9 @@ impl Room {
         &self,
         prepared: &PreparedWriterGroup,
     ) -> Result<()> {
-        if self.replica.segmented_history_enabled() {
+        if self.replica.continued_history_enabled() {
+            prepared.continued_history_checkpoint()?;
+        } else if self.replica.segmented_history_enabled() {
             prepared.segmented_checkpoint()?;
         } else {
             prepared.checkpoint()?;

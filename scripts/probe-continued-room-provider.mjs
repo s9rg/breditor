@@ -591,6 +591,7 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
    recoveredLostEditAcknowledgements:0,recoveredLostCommentAcknowledgements:0,recoveredLostVersionAcknowledgements:0,
    recoveredLostDecisionAcknowledgements:0,recoveredLostRevisionAcknowledgements:0,recoveredLostUploadAcknowledgements:0};
   return {recoveredRoomReads,recoveredRoomRefusals,serverOnlyPacketAssets,recoveredClientCatchUps,recoveredReplacementClients,
+   continuedDocumentReceiver:fixture.continuedDocumentReceiver===true,
    recoveredActivationCommits:activation.commits,recoveredPublications:activation.publications,recoveredWritableSessions:activation.writableSessions,
    recoveredDeliveredSessions:activation.deliveredSessions,recoveredDeliveredUploads:activation.deliveredUploads,
    restartedSessions:activation.restartedSessions,outageWriters:activation.outageWriters,

@@ -116,10 +116,16 @@ async fn capture_source_cuts(
     activation: bool,
 ) -> Result<(migrated_origin::Cuts, Option<activation::Predecessor>)> {
     room.seal_document_history_generation("owner", "document-two".into())?;
+    if activation {
+        room.continue_document_native_history("owner", "document-continued".into())?;
+    }
     if !migrated {
         room.rotate_log_generation("owner", "two")?;
     }
     room.seal_review_history_generation("owner", "review-two".into())?;
+    if activation {
+        room.continue_review_native_history("owner", "review-continued".into())?;
+    }
     if !migrated {
         room.rotate_log_generation("owner", "three")?;
     }
@@ -257,6 +263,9 @@ async fn generate_selected(
     let mut fixture = json!({"format":"breditor/native-generation-complete-control-fixture","formatVersion":1,"language":spec.language,"standard":spec.standard,"atomic":spec.atomic,"configuration":configuration,"inventoryJson":serde_json::to_string(&inventory.metadata().native)?,"generationRecoveryState":selected,"clients":records,"registeredWriters":7,"registeredReviewActors":7,"protectedStreams":14});
     if let Some(legacy) = &legacy {
         fixture["legacyMigration"] = serde_json::to_value(&legacy.selection)?;
+    }
+    if activation.is_some() {
+        fixture["continuedDocumentReceiver"] = true.into();
     }
     let credentials: Vec<_> = secrets
         .iter()

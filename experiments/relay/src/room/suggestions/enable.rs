@@ -23,11 +23,7 @@ impl Room {
         )?;
         effect_owner.enable_document_selection_guarded(&effect_owner.observe()?)?;
         self.configure_effect_history(&mut effect_owner)?;
-        if effect_owner.segmented_history_enabled() {
-            effect_owner.segmented_checkpoint()?;
-        } else {
-            effect_owner.document_checkpoint()?;
-        }
+        crate::room::native_history::checkpoint::document_checkpoint(&effect_owner)?;
         Ok(SuggestionsState {
             binding: binding.into(),
             enabled_at,

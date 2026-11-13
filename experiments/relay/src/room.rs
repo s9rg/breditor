@@ -461,6 +461,11 @@ impl Room {
                         "review continuation requires its own durable record",
                     ));
                 }
+                if matches!(boundary, NativeHistoryBoundary::ContinueDocument { .. }) {
+                    return Err(Error::Contract(
+                        "document continuation requires its own durable record",
+                    ));
+                }
                 self.replay_native_history(
                     record.sequence,
                     &actor,
@@ -476,6 +481,16 @@ impl Room {
                     &actor,
                     ServerNativeHistoryLane::Review,
                     &NativeHistoryBoundary::ContinueReview { next },
+                    before,
+                    after,
+                )?;
+            }
+            Event::NativeDocumentContinuationV2 { actor, next, before, after } => {
+                self.replay_native_history(
+                    record.sequence,
+                    &actor,
+                    ServerNativeHistoryLane::Document,
+                    &NativeHistoryBoundary::ContinueDocument { next },
                     before,
                     after,
                 )?;

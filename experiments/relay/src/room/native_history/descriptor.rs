@@ -11,7 +11,7 @@ pub enum ServerNativeHistoryFamily {
     /// Explicit native root/sealed/active generation archive.
     #[serde(rename = "segmented-v1")]
     SegmentedV1,
-    /// Exact V1 predecessor with independent continued native comment retention.
+    /// Exact V1 predecessor with independent continued native retention.
     #[serde(rename = "continued-v2")]
     ContinuedV2,
 }
@@ -53,14 +53,21 @@ impl Room {
                 family(state.session.has_segmented_history())
             }
         });
+        let document = if self.replica.continued_history_enabled() {
+            ServerNativeHistoryFamily::ContinuedV2
+        } else {
+            family(self.replica.segmented_history_enabled())
+        };
         Ok(ServerNativeHistoryDescriptor {
             format: "breditor/relay-native-history",
-            format_version: if review == Some(ServerNativeHistoryFamily::ContinuedV2) {
+            format_version: if review == Some(ServerNativeHistoryFamily::ContinuedV2)
+                || document == ServerNativeHistoryFamily::ContinuedV2
+            {
                 2
             } else {
                 1
             },
-            document: family(self.replica.segmented_history_enabled()),
+            document,
             review,
         })
     }

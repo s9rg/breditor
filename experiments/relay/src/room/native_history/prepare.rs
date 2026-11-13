@@ -29,8 +29,14 @@ fn effect_generation(id: &str) -> String {
 }
 
 impl Room {
-    fn restore_history_candidate(&self, owner: &RichReplica, before: &str) -> Result<RichReplica> {
-        let candidate = if owner.segmented_history_enabled() {
+    pub(in crate::room) fn restore_history_candidate(
+        &self,
+        owner: &RichReplica,
+        before: &str,
+    ) -> Result<RichReplica> {
+        let candidate = if owner.continued_history_enabled() {
+            self.profile.restore_continued_history(owner.document_id(), before)?
+        } else if owner.segmented_history_enabled() {
             self.profile.restore_segmented(owner.document_id(), before)?
         } else if owner.document_selection_enabled() {
             self.profile.restore_document(owner.document_id(), before)?
@@ -45,11 +51,18 @@ impl Room {
 
     pub(in crate::room) fn configure_effect_history(&self, owner: &mut RichReplica) -> Result<()> {
         if let Some(info) = self.replica.segmented_history_info() {
-            owner.enable_segmented_history_guarded(
-                &owner.observe()?,
-                effect_generation(&info.root_generation),
-                effect_generation(&info.active_generation),
-            )?;
+            let root = effect_generation(&info.root_generation);
+            let active = effect_generation(&info.active_generation);
+            if self.replica.continued_history_enabled() {
+                owner.enable_segmented_history_guarded(
+                    &owner.observe()?,
+                    root.clone(),
+                    format!("{root}-initial"),
+                )?;
+                owner.continue_history_guarded(&owner.observe()?, active)?;
+            } else {
+                owner.enable_segmented_history_guarded(&owner.observe()?, root, active)?;
+            }
         }
         Ok(())
     }
@@ -110,6 +123,15 @@ impl Room {
                         return Err(Error::Contract(
                             "review continuation requires the comment lane",
                         ));
+                    }
+                    NativeHistoryBoundary::ContinueDocument { next } => {
+                        receiver.continue_history_guarded(&receiver.observe()?, next.clone())?;
+                        if let Some(owner) = &mut effect {
+                            owner.continue_history_guarded(
+                                &owner.observe()?,
+                                effect_generation(next),
+                            )?;
+                        }
                     }
                 }
                 let after = checkpoint::document_checkpoint(&receiver)?;

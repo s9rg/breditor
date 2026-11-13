@@ -31,14 +31,13 @@ fn key(lane: ServerNativeHistoryLane, boundary: &NativeHistoryBoundary) -> Resul
 
 impl Room {
     pub(super) fn native_boundary_limit(&self, boundary: &NativeHistoryBoundary) -> usize {
-        if matches!(boundary, NativeHistoryBoundary::ContinueReview { .. })
-            || self.review.as_ref().is_some_and(|state| state.session.has_continued_history())
-        {
-            // 256 comment and 64 document generations, including both original roots.
-            320
-        } else {
-            128
-        }
+        let document = self.replica.continued_history_enabled()
+            || matches!(boundary, NativeHistoryBoundary::ContinueDocument { .. });
+        let review =
+            self.review.as_ref().is_some_and(|state| state.session.has_continued_history())
+                || matches!(boundary, NativeHistoryBoundary::ContinueReview { .. });
+        // The generation ceilings are independent for the two native lanes.
+        128 + 192 * (usize::from(document) + usize::from(review))
     }
 
     pub(super) fn native_history_retry(
@@ -68,7 +67,11 @@ impl Room {
         }
         let receipt = ServerNativeHistoryReceipt {
             format: "breditor/relay-native-history-receipt",
-            format_version: if matches!(boundary, NativeHistoryBoundary::ContinueReview { .. }) {
+            format_version: if matches!(
+                boundary,
+                NativeHistoryBoundary::ContinueReview { .. }
+                    | NativeHistoryBoundary::ContinueDocument { .. }
+            ) {
                 2
             } else {
                 1

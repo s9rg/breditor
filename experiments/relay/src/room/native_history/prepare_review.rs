@@ -53,6 +53,9 @@ impl Room {
                     next.clone(),
                 )?;
             }
+            NativeHistoryBoundary::ContinueDocument { .. } => {
+                return Err(Error::Contract("document continuation requires the document lane"));
+            }
         }
         let after = checkpoint::review_checkpoint(&candidate)?;
         Ok(PreparedNativeHistory {

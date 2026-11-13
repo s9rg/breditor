@@ -22,4 +22,9 @@ pub enum ServerNativeHistoryBoundary {
         /// First active generation under the continued review budget.
         next: String,
     },
+    /// Extend the exact V1 document archive and any private suggestion effect author.
+    ContinueDocument {
+        /// First active generation under the continued document budget.
+        next: String,
+    },
 }

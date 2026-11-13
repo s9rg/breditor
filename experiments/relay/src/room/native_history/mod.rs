@@ -1,6 +1,7 @@
 //! Explicit native retention boundaries; original room defaults and global receipts remain intact.
 mod boundary;
-mod checkpoint;
+pub(in crate::room) mod checkpoint;
+mod continue_document;
 mod continue_review;
 mod descriptor;
 mod enable_document;

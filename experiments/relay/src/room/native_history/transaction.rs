@@ -27,6 +27,14 @@ impl Room {
                 before: prepared.before,
                 after: prepared.after,
             },
+            NativeHistoryBoundary::ContinueDocument { next } => {
+                Event::NativeDocumentContinuationV2 {
+                    actor: principal.into(),
+                    next: next.clone(),
+                    before: prepared.before,
+                    after: prepared.after,
+                }
+            }
             _ => Event::NativeHistoryBoundaryV1 {
                 actor: principal.into(),
                 lane,

@@ -97,6 +97,7 @@ export async function runContinuedProviderQualification(start,directory,mode='bo
     assert.equal(result.recoveredReplacementLocalClients,5);
     assert.equal(result.recoveredReplacementRasters,result.atomic?7:0);
     assert.equal(result.recoveredActivationIntents,result.atomic?1:0);
+    assert.equal(result.continuedDocumentReceiver,result.atomic);
     assert.equal(result.recoveredActivationCommits,result.atomic?1:0);
     assert.equal(result.recoveredPublications,result.atomic?1:0);
     assert.equal(result.recoveredWritableSessions,result.atomic?7:0);

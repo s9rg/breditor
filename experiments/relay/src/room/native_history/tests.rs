@@ -21,6 +21,7 @@ use serde_json::{Value, json};
 use std::{fs, path::PathBuf};
 mod capacity;
 mod continued;
+mod continued_document;
 mod durability;
 mod effects;
 mod owned_effects;
