@@ -40,7 +40,16 @@ const closeRoute=DeferredActorLeaseInput.prototype.close;
 const originalRecords=SharedParticipantBackup.prototype.records;
 const destinationNames=(row:ContinuedRoomRecoveryDestination)=>[...operationDestinationNames(row),...Object.values(row.original??{})];
 
-async function restore(input:ContinuedRoomRecoveryOptions,begin:boolean):Promise<ContinuedRoomRecoveryResult>{
+type RecoveryMode='begin'|'resume'|'inspect';
+interface CompletedContinuedRoomRead {
+ readonly recovery:ContinuedRoomRecoveryResult;
+ check():void;
+}
+
+async function restore<T>(
+ input:ContinuedRoomRecoveryOptions,mode:RecoveryMode,visit:(read:CompletedContinuedRoomRead)=>T|Promise<T>,
+):Promise<T>{
+ const begin=mode==='begin',inspect=mode==='inspect';
  physicalCatalogV2Options(input,['database','catalog','expected','destinations','checkAuthority','writerRecovery'],['signal','independentPolicies','deliveryPolicies','generationPolicies','originalPolicies']);
  const {database:provided,catalog,checkAuthority,writerRecovery}=input;
  const policyFailure=()=>fail('policy');
@@ -183,6 +192,10 @@ async function restore(input:ContinuedRoomRecoveryOptions,begin:boolean):Promise
   const journal=db;
   journal.onversionchange=()=>{changed=true;journal.close();};
   let cursor=await accessRecoveryJournal(journal,plan,guard,signal);
+  const checkComplete=()=>{
+   if(cursor.completed!==plan.steps||cursor.started)throw fail(inspect?'incomplete':'diverged');
+  };
+  if(inspect)checkComplete();
   const context=prepareArchiveIntegrity({wasm:held.options.wasm,checkAuthority:guard,...(signal?{signal}:{})});
   let step=0;
   const recover=async(names:readonly string[],work:(completed:boolean)=>Promise<ContinuedDestinationHold|void>)=>{
@@ -256,17 +269,42 @@ async function restore(input:ContinuedRoomRecoveryOptions,begin:boolean):Promise
    await recover([destination.source],source);
    await recover([destination.uploads],completed=>recoverContinuedRoomUploads(destination.uploads,file,completed,context,limits?{limits}:{},signal));
   }
-  for(const destination of destinationsHeld)await destination.verify();
-  guard();
-  if(cursor.completed!==plan.steps||cursor.started)throw fail('diverged');
-  const result=frozen({format:'breditor/continued-room-local-recovery' as const,formatVersion:1 as const,catalog:expected,participants:destinations});
-  guard();
-  for(const destination of destinationsHeld)destination.check();
+  const current=()=>{
+   guard();
+   for(const destination of destinationsHeld)destination.check();
+  };
+  const verify=async()=>{
+   for(const destination of destinationsHeld)await destination.verify();
+   current();
+  };
+  await verify();
+  checkComplete();
+  const recovery=frozen({format:'breditor/continued-room-local-recovery' as const,formatVersion:1 as const,catalog:expected,participants:destinations});
+  if(inspect){
+   const result=await visit(Object.freeze({recovery,check:current}));
+   cursor=await accessRecoveryJournal(journal,plan,guard,signal);
+   checkComplete();
+   // Provider authorization can wait on application code. Re-admit the
+   // durable catalog and each exact destination after the provider read.
+   const reread=await held.read(checkAuthorityCurrent,signal);
+   dispose.call(reread);
+   await verify();
+   return result;
+  }
+  current();
   if(deliveryActors)commitActors.call(deliveryActors);
-  return result;
+  return visit({recovery,check:current});
  }finally{await opening.rollback();}
 }
 
 /** Recover a new local namespace plan, or verify and continue the exact saved one. */
-export const beginContinuedRoomRecovery=(input:ContinuedRoomRecoveryOptions)=>restore(input,true);
-export const resumeContinuedRoomRecovery=(input:ContinuedRoomRecoveryOptions)=>restore(input,false);
+export const beginContinuedRoomRecovery=(input:ContinuedRoomRecoveryOptions)=>restore(input,'begin',read=>read.recovery);
+export const resumeContinuedRoomRecovery=(input:ContinuedRoomRecoveryOptions)=>restore(input,'resume',read=>read.recovery);
+
+/** SDK-only visit of a completed journal. Every destination stays held and is
+ * rechecked after the awaited consumer. No missing or partial step is repaired. */
+export function visitCompletedContinuedRoomRecovery<T>(
+ input:ContinuedRoomRecoveryOptions,visit:(read:CompletedContinuedRoomRead)=>Promise<T>,
+):Promise<T>{
+ return restore(input,'inspect',visit);
+}

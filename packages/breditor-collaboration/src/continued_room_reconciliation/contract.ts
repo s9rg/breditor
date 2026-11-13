@@ -9,7 +9,7 @@ import type {SharedParticipantBackupSelection} from '../participant_backup/types
 import type {OriginalReferenceRestore,OriginalReferenceEditor} from '../persistence/original_reference_replay.js';
 import type {AssetLimits} from '@breditor/experimental-rich-content';
 
-import type {ContinuedRoomDeliveryRecoveryPolicy,ContinuedRoomGenerationRecoveryPolicy,ContinuedRoomIndependentRecoveryPolicy} from '../continued_room_recovery/contract.js';
+import type {ContinuedRoomDeliveryRecoveryPolicy,ContinuedRoomGenerationRecoveryPolicy,ContinuedRoomIndependentRecoveryPolicy,ContinuedRoomRecoveryOptions,ContinuedRoomRecoveryResult} from '../continued_room_recovery/contract.js';
 
 export interface ContinuedRoomOriginalReadPolicy {
  readonly id:string;
@@ -49,4 +49,17 @@ export interface ContinuedRoomReconciliationRead {
  readonly uploads:readonly Omit<SelectedRoomUploadPin,'role'>[];
  readonly provider:SharedServerLogGenerationRecoveryAssetRead|null;
  readonly unreconciledParticipants:readonly string[];
+}
+
+/** Compare the catalog's exact restored destinations with its authenticated provider. */
+export interface RecoveredContinuedRoomReconciliationOptions {
+ readonly recovery:ContinuedRoomRecoveryOptions;
+ /** Uses the catalog selection and storage owner from recovery. */
+ readonly reconciliation:Omit<ContinuedRoomReconciliationOptions,'catalog'|'expected'>;
+}
+export interface RecoveredContinuedRoomReconciliationRead {
+ readonly format:'breditor/recovered-continued-room-reconciliation-read';
+ readonly formatVersion:1;
+ readonly recovery:ContinuedRoomRecoveryResult;
+ readonly reconciliation:ContinuedRoomReconciliationRead;
 }

@@ -1,4 +1,4 @@
-import {SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore,beginContinuedRoomRecovery,resumeContinuedRoomRecovery,readContinuedRoomReconciliation} from '@breditor/collaboration';
+import {SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore,beginContinuedRoomRecovery,resumeContinuedRoomRecovery,readContinuedRoomReconciliation,readRecoveredContinuedRoomReconciliation} from '@breditor/collaboration';
 import type {ContinuedRoomOriginalRecoveryPolicy,ContinuedRoomGenerationRecoveryPolicy,ContinuedRoomDeliveryRecoveryPolicy,ContinuedRoomIndependentRecoveryPolicy,ContinuedPairRecords,ContinuedRoomReconciliationOptions,ContinuedRoomReconciliationRead,ContinuedRoomRecoveryDestination,ContinuedRoomRecoveryOptions,ContinuedRoomRecoveryResult,ContinuedRoomCatalogCaptureOptions,ContinuedRoomCatalogMetadata,ContinuedRoomCatalogSelection} from '@breditor/collaboration';
 import type {ContinuedRoomOriginalReadPolicy} from '@breditor/collaboration';
 
@@ -45,3 +45,8 @@ const deliveryFormat:2=deliveryEntry.selection.formatVersion;
 const deliveryRecords:import('@breditor/collaboration').ContinuedDeliveryRecords=deliveryCatalog.participantDeliveryRecords(deliveryEntry.id);
 const restoredDelivery:import('@breditor/collaboration').SharedContinuedDeliveryRecovery=deliveryStore.participantDeliveryRecords(deliveryEntry.id).live;
 void [deliveryFormat,deliveryRecords,restoredDelivery];
+
+declare const recoveredInput:import('@breditor/collaboration').RecoveredContinuedRoomReconciliationOptions;
+const recovered:import('@breditor/collaboration').RecoveredContinuedRoomReconciliationRead=await readRecoveredContinuedRoomReconciliation(recoveredInput);
+const recoveredParticipants:readonly ContinuedRoomRecoveryDestination[]=recovered.recovery.participants;
+void recoveredParticipants;

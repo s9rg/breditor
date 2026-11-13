@@ -1,10 +1,11 @@
 /** The transport owner is a real test-owned native relay. No responses are fabricated. */
 import assert from 'node:assert/strict';
+import {IDBDatabase} from 'fake-indexeddb';
 import {readFileSync} from 'node:fs';
 import {dirname,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import * as continuedApi from '../packages/breditor-collaboration/dist/index.js';
-const {SharedRichEditor,SharedIndependentHistoryPersistentSession,SharedIndependentDeliverySession,captureSharedIndependentParticipant,captureSharedIndependentDeliveryParticipant,SharedSegmentedPersistentSession,SharedSegmentedRelaySession,captureSharedGenerationParticipant,SharedReviewPersistentSession,captureSharedParticipantBackup,encodeSharedPairedSessionBackup,SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore,SharedServerLogGenerationRecoveryHost,readContinuedRoomReconciliation}=continuedApi;
+const {SharedRichEditor,SharedIndependentHistoryPersistentSession,SharedIndependentDeliverySession,captureSharedIndependentParticipant,captureSharedIndependentDeliveryParticipant,SharedSegmentedPersistentSession,SharedSegmentedRelaySession,captureSharedGenerationParticipant,SharedReviewPersistentSession,captureSharedParticipantBackup,encodeSharedPairedSessionBackup,SharedContinuedRoomCatalog,SharedContinuedRoomCatalogStore,SharedServerLogGenerationRecoveryHost,readContinuedRoomReconciliation,readRecoveredContinuedRoomReconciliation,beginContinuedRoomRecovery}=continuedApi;
 import {RichAssetStore} from '@breditor/experimental-rich-content';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
 import {continuedParticipantFixture} from './probe-continued-room-catalog.mjs';
@@ -23,6 +24,7 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
  const entries=[];
  let archive,store,host,tokenAllowed=true,onToken;
  const counts={authorPrefixes:0,reviewPrefixes:0,localSuffixes:0,missingUploads:0,providerReads:0,rejected:0,foreignForks:0,mixedPending:0,mixedProviderReads:0,mixedForeignForks:0,mixedDeliveryProviderReads:0,mixedDeliveryAheadRefusals:0,continuedDeliveryProviderReads:0,generationProviderReads:0,generationDocumentOnlyReads:0,generationAheadRefusals:0,generationForkRefusals:0,generationPredecessorChecks:0,originalProviderReads:0,originalPolicyRefusals:0};
+ let recoveredRoomReads=0,recoveredRoomRefusals=0;
  const room=inventory.room.document;
  const initial={
   catalog:'continued-native-provider',wasm:native,checkAuthority(){},
@@ -136,6 +138,68 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
    assert.ok(read.uploads.find(row=>row.id===continued.id).entries.length>=2);
    assert.equal(requests.slice(before).filter(row=>row.assets).length,1);
    counts.continuedDeliveryProviderReads++;
+
+   const destinations=rows.map(({id})=>({id,source:id+'-provider-restored',uploads:id+'-provider-restored-uploads'}));
+   const recovery={catalog:continuedStore,expected:continuedArchive.selection(),database:'provider-recovery-journal',
+    destinations,writerRecovery:'host-reacquired',checkAuthority(){}};
+   const probe={recovery,reconciliation:{host,checkAuthority(){}}};
+   const destination=destinations.find(row=>row.id===continued.id);
+   const {room,writer}=continued.options.native,key=[room,writer];
+   const heads='continued_delivery_heads';
+   const beforeMissing=requests.length;
+   await assert.rejects(readRecoveredContinuedRoomReconciliation(probe),error=>error.code==='continued_room_recovery_missing');
+   assert.equal(requests.length,beforeMissing);
+   recoveredRoomRefusals++;
+
+   const transaction=IDBDatabase.prototype.transaction;
+   let lost=false;
+   IDBDatabase.prototype.transaction=function(...args){
+    const tx=transaction.apply(this,args);
+    if(this.name===destination.source&&args[1]==='readwrite'&&!lost){
+     lost=true;
+     Object.defineProperty(tx,'oncomplete',{configurable:true,set(){tx.addEventListener('complete',event=>tx.onabort?.(event));}});
+    }
+    return tx;
+   };
+   try{await assert.rejects(beginContinuedRoomRecovery(recovery));assert.equal(lost,true);}
+   finally{IDBDatabase.prototype.transaction=transaction;}
+   await assert.rejects(readRecoveredContinuedRoomReconciliation(probe),error=>error.code==='continued_room_recovery_incomplete');
+   assert.equal(requests.length,beforeMissing);
+   recoveredRoomRefusals++;
+
+   const completed=await continuedApi.resumeContinuedRoomRecovery(recovery);
+   const observed=new Set([recovery.database,...destinations.flatMap(row=>[row.source,row.uploads])]);
+   const withNoWrites=async action=>{
+    IDBDatabase.prototype.transaction=function(...args){
+     if(observed.has(this.name))assert.notEqual(args[1],'readwrite','Inspection never writes recovery data');
+     return transaction.apply(this,args);
+    };
+    try{return await action();}finally{IDBDatabase.prototype.transaction=transaction;}
+   };
+   const beforeRead=requests.length;
+   const recovered=await withNoWrites(()=>readRecoveredContinuedRoomReconciliation(probe));
+   assert.deepEqual(recovered.recovery,completed);
+   assert.deepEqual(recovered.reconciliation,read);
+   assert.equal(requests.slice(beforeRead).filter(row=>row.assets).length,1);
+   recoveredRoomReads++;
+
+   // Even a write which ignores the SDK's cooperative locks must be detected
+   // before returning the observation. Simulate it during account lookup.
+   const changed=await new Promise((resolve,reject)=>{
+    const request=indexedDB.open(destination.source);
+    request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);
+   });
+   try{
+    onToken=()=>new Promise((resolve,reject)=>{
+     const tx=changed.transaction(heads,'readwrite');
+     tx.objectStore(heads).delete(key);tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);
+    });
+    const beforeChanged=requests.length;
+    await assert.rejects(readRecoveredContinuedRoomReconciliation(probe),error=>
+     ['continued_pair_read_changed','continued_room_recovery_diverged'].includes(error.code));
+    assert.equal(requests.slice(beforeChanged).filter(row=>row.assets).length,1);
+    recoveredRoomRefusals++;
+   }finally{changed.close();}
   }finally{await continuedStore?.close();continuedArchive?.dispose();continued.backup.dispose();}
 
   const independentFactory={
@@ -452,7 +516,7 @@ export async function probeContinuedRoomProvider(runtime,caseInfo,getToken,reque
   onToken=()=>store.close();
   await assert.rejects(readContinuedRoomReconciliation(input),error=>['catalog_closed','archive_authority','control_authority'].includes(error.code));
   counts.rejected++;
-  return {passed:true,language:fixture.language,atomic:fixture.atomic,...counts,...operations};
+  return {recoveredRoomReads,recoveredRoomRefusals,passed:true,language:fixture.language,atomic:fixture.atomic,...counts,...operations};
  }finally{
   host?.close();
   await store?.close();

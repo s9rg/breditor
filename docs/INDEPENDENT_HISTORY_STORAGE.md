@@ -456,3 +456,15 @@ The provider read creates no local destinations and changes no delivery
 receipts or grants.
 If any participant still lacks supported prefix admission, the operator
 host rechecks the selected room and the provider report stays empty.
+
+`readRecoveredContinuedRoomReconciliation({recovery, reconciliation})`
+requires a completed local recovery journal and an authenticated operator for
+the same catalog cut. Pass the original recovery options and the provider
+read options with the catalog and expected selection omitted. It opens the
+exact existing history and upload destinations, holds their ownership
+throughout the provider read, then rechecks the journal, catalog, and
+destinations. A missing or interrupted recovery must be completed explicitly
+with `resumeContinuedRoomRecovery`. Changed destinations cause the read to
+fail. Every participant must have a provider read policy. Missing provider
+bytes and any remaining delivery work are reported in the reconciliation
+result. This read leaves the journal and destination data unchanged.
