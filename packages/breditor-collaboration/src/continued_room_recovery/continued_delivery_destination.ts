@@ -62,7 +62,7 @@ export async function recoverContinuedDeliveryRoomSource(
  const records=metadata.call(held) as ReturnType<ContinuedDeliveryRecordRead['metadata']>;
  const native=capturedNativeHistoryRead(held),checkNative=capturedNativeHistoryFinalCheck(native);
  const check=()=>{
-  if(closed||sourceCoreMethods.view.call(core).readOnly!==options.readOnly)throw fail('diverged');
+  if(closed||(sourceCoreMethods.view.call(core).readOnly===true)!==options.readOnly)throw fail('diverged');
   checkNative();
  };
  const verify=async()=>{

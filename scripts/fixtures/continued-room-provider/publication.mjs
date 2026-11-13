@@ -57,7 +57,7 @@ export async function verifyPublication(api,{input,expected,activation,offer,req
   assert.deepEqual([...sessions.keys()].sort(),input.recovery.destinations.map(row=>row.id).sort());
   for(const [id,session] of sessions){
    assert.deepEqual(session.exportDeliveryRecovery(),input.recovery.catalog.participantDeliveryRecords(id).live);
-   assert.equal(session.core.view().readOnly,false);
+   assert.notEqual(session.core.view().readOnly,true);
    assert.equal(session.core.redo(),true);
    assert.equal(session.core.redoReview().kind,'committed');
    assert.match(session.core.documentJson(),/Local offline document/);
