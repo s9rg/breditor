@@ -47,6 +47,17 @@ fn section(
     *next = end;
     Ok(start..stop)
 }
+pub(super) fn validate_header(header: &Header) -> Result<()> {
+    if header.format != "breditor/server-log-generation-room-backup"
+        || header.format_version != 1
+        || header.native.source.asset_binding != header.assets.binding
+        || header.log.sha256 != header.native.archive_sha256
+        || header.rasters.sha256 != header.assets.archive_sha256
+    {
+        return Err(Error::Contract("joined generation declarations"));
+    }
+    Ok(())
+}
 fn selected(input: &[u8]) -> Result<Selection> {
     if input.len() < format::PREFIX
         || input.len() as u64 > format::MAX_SERVER_LOG_GENERATION_ROOM_BACKUP_BYTES
@@ -70,15 +81,10 @@ fn selected(input: &[u8]) -> Result<Selection> {
         return Err(Error::Contract("joined generation header checksum"));
     }
     let header: Header = serde_json::from_slice(encoded)?;
-    if header.format != "breditor/server-log-generation-room-backup"
-        || header.format_version != 1
-        || serde_json::to_vec(&header)? != encoded
-        || header.native.source.asset_binding != header.assets.binding
-        || header.log.sha256 != header.native.archive_sha256
-        || header.rasters.sha256 != header.assets.archive_sha256
-    {
+    if serde_json::to_vec(&header)? != encoded {
         return Err(Error::Contract("joined generation declarations"));
     }
+    validate_header(&header)?;
     let mut next = 0;
     let log = section(input, body, &header.log, &mut next, MAX_SERVER_LOG_GENERATION_BACKUP_BYTES)?;
     let rasters = section(input, body, &header.rasters, &mut next, MAX_SERVER_ASSET_BACKUP_BYTES)?;

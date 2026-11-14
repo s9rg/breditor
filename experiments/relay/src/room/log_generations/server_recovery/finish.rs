@@ -1,7 +1,8 @@
 //! Actual native replay, exact raster ownership and source checks precede the joined barrier.
-use super::super::ServerLogGenerationRoomBackup;
+use super::super::{ServerLogGenerationRoomBackup, ServerLogGenerationRoomBackupFile};
 use super::{
     RecoveredLogGenerationServerRoom, ServerLogGenerationRoomRecovery, files, selection::Marker,
+    source::RestoreSource,
 };
 use crate::{Error, Result};
 use std::collections::BTreeSet;
@@ -16,31 +17,51 @@ impl ServerLogGenerationRoomRecovery {
         self,
         backup: &ServerLogGenerationRoomBackup,
     ) -> Result<RecoveredLogGenerationServerRoom> {
-        self.progress(backup)?;
-        let (native_selection, attempt) = self.prepare_native(backup)?;
-        let mut native = attempt.finish(backup.native())?;
+        self.finish_selected(&RestoreSource::buffered(backup, &backup.info()?.identity)?)
+    }
+
+    /// Finish against the original held file using the same exact durable prefix and readiness
+    /// rules as buffered recovery. Reads and copies sections without buffering the full archive.
+    /// # Errors
+    /// Wrong or changed input, divergence, native replay or I/O refuse. Keep the reservation and
+    /// authenticated source for an explicit retry.
+    pub fn finish_file(
+        self,
+        backup: &ServerLogGenerationRoomBackupFile,
+    ) -> Result<RecoveredLogGenerationServerRoom> {
+        self.finish_selected(&RestoreSource::file(backup)?)
+    }
+
+    fn finish_selected(
+        self,
+        source: &RestoreSource<'_>,
+    ) -> Result<RecoveredLogGenerationServerRoom> {
+        self.progress_selected(source)?;
+        let (native_selection, attempt) = self.prepare_native()?;
+        let mut native =
+            attempt.finish_selected(&source.identity.native, &source.native, source.input)?;
         native.guard_custody(&native_selection.witness)?;
         #[cfg(test)]
         self.interrupt(super::interruption::JoinedPoint::NativeReady)?;
         let (raster_selection, directory) = self.prepare_rasters()?;
-        let selected = backup.rasters().selected_files();
+        let selected = &source.rasters;
         let names = selected.keys().cloned().chain(std::iter::once(".lock".into())).collect();
         Self::raster_inventory(&directory, &names)?;
-        for (name, bytes) in selected {
-            self.restore_raster_part(&raster_selection, &directory, &name, bytes)?;
+        for (name, &bytes) in selected {
+            self.restore_raster_part(&raster_selection, &directory, name, bytes)?;
         }
         Self::raster_inventory(&directory, &names)?;
         #[cfg(test)]
         self.interrupt(super::interruption::JoinedPoint::FilesRestored)?;
         let (assets, raster) = directory.into_store(&self.marker.identity.assets.binding)?;
-        backup.native().check_live(native.room_mut(), &self.marker.identity.native.source.owner)?;
-        assets.check_exported_backup(backup.rasters())?;
+        source.check_actual(native.room_mut(), &assets)?;
         if native.room().asset_binding() != assets.binding() {
             return Err(Error::Contract("joined restored native/raster binding"));
         }
         native.guard_custody(&native_selection.witness)?;
         raster.guard(&assets)?;
-        self.guard_selection(backup)?;
+        source.guard_input()?;
+        self.guard_selection(source.identity)?;
         #[cfg(test)]
         self.interrupt(super::interruption::JoinedPoint::ComponentsVerified)?;
         let target = self.directory.path.join(".complete.json");
@@ -64,11 +85,11 @@ impl ServerLogGenerationRoomRecovery {
             ".rasters.json".into(),
             ".complete.json".into(),
         ]);
-        for (name, bytes) in backup.rasters().selected_files() {
+        for (name, &bytes) in selected {
             let part = self
-                .raster_part(&raster_selection, &name, bytes)?
+                .raster_part(&raster_selection, name, bytes)?
                 .ok_or(Error::Contract("joined completed raster intent absent"))?;
-            known.insert(super::raster_part::ledger(&name));
+            known.insert(super::raster_part::ledger(name));
             known.insert(part.stage);
         }
         let components = BTreeSet::from([native_selection.directory, raster_selection.directory]);

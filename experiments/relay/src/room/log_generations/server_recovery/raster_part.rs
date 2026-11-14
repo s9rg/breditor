@@ -1,14 +1,12 @@
 //! Actual per-file inode intent before body writes, followed by insert-only publication.
+use super::super::recovery_part::RecoveryPart;
 use super::{
     ServerLogGenerationRoomRecovery, files,
     raster_directory::RasterDirectory,
     selection::{RasterComponent, RasterPart},
 };
 use crate::{Error, Result, credentials, log::generations::GenerationFileWitness};
-use std::{
-    fs,
-    io::{Seek, SeekFrom, Write},
-};
+use std::fs;
 pub(super) fn ledger(name: &str) -> String {
     format!(".raster-part-{}.json", files::key(name))
 }
@@ -17,7 +15,7 @@ impl ServerLogGenerationRoomRecovery {
         &self,
         component: &RasterComponent,
         name: &str,
-        expected: &[u8],
+        expected: RecoveryPart<'_>,
     ) -> Result<Option<RasterPart>> {
         selected_part(&self.directory, &self.marker.id, component, name, expected)
     }
@@ -27,7 +25,7 @@ pub(super) fn selected_part(
     recovery: &str,
     component: &RasterComponent,
     name: &str,
-    expected: &[u8],
+    expected: RecoveryPart<'_>,
 ) -> Result<Option<RasterPart>> {
     let path = directory.path.join(ledger(name));
     if !files::exists(&path)? {
@@ -44,8 +42,8 @@ pub(super) fn selected_part(
         || part.recovery != recovery
         || part.directory != component.directory
         || part.name != name
-        || part.bytes != expected.len() as u64
-        || part.sha256 != files::sha(expected)
+        || part.bytes != expected.len()
+        || part.sha256 != expected.sha256
     {
         return Err(Error::Contract("joined raster part selection differs"));
     }
@@ -57,7 +55,7 @@ impl ServerLogGenerationRoomRecovery {
         component: &RasterComponent,
         directory: &RasterDirectory,
         name: &str,
-        expected: &[u8],
+        expected: RecoveryPart<'_>,
     ) -> Result<RasterPart> {
         if files::exists(&directory.path.join(name))? {
             return Err(Error::Contract("joined raster occupied unowned file"));
@@ -72,8 +70,8 @@ impl ServerLogGenerationRoomRecovery {
             recovery: self.marker.id.clone(),
             directory: component.directory.clone(),
             name: name.into(),
-            bytes: expected.len() as u64,
-            sha256: files::sha(expected),
+            bytes: expected.len(),
+            sha256: expected.sha256,
             stage,
             witness: GenerationFileWitness::of(&file)?,
         };
@@ -86,7 +84,7 @@ impl ServerLogGenerationRoomRecovery {
         &self,
         directory: &RasterDirectory,
         part: &RasterPart,
-        expected: &[u8],
+        expected: RecoveryPart<'_>,
     ) -> Result<bool> {
         directory.guard()?;
         let final_path = directory.path.join(&part.name);
@@ -104,7 +102,7 @@ impl ServerLogGenerationRoomRecovery {
         if published {
             part.witness.guard(&file, &final_path)?;
         }
-        files::compare(&mut file, expected, !published)?;
+        expected.compare(&mut file, !published)?;
         Ok(published)
     }
     pub(super) fn restore_raster_part(
@@ -112,7 +110,7 @@ impl ServerLogGenerationRoomRecovery {
         component: &RasterComponent,
         directory: &RasterDirectory,
         name: &str,
-        expected: &[u8],
+        expected: RecoveryPart<'_>,
     ) -> Result<()> {
         self.directory.guard()?;
         directory.guard()?;
@@ -137,22 +135,17 @@ impl ServerLogGenerationRoomRecovery {
         if published {
             part.witness.guard(&file, &final_path)?;
         }
-        files::compare(&mut file, expected, !published)?;
+        let length = expected.compare(&mut file, !published)?;
         if !published {
-            let length = usize::try_from(file.metadata()?.len())
-                .map_err(|_| Error::Contract("joined raster part length"))?;
-            file.seek(SeekFrom::End(0))?;
             #[cfg(test)]
             if self.stop_after == Some(super::interruption::JoinedPoint::RasterDataPrefix) {
-                file.write_all(&expected[length..(length + 1).min(expected.len())])?;
+                expected.append(&mut file, length, (expected.len() - length).min(1))?;
                 file.sync_all()?;
                 self.interrupt(super::interruption::JoinedPoint::RasterDataPrefix)?;
             }
-            file.write_all(
-                expected.get(length..).ok_or(Error::Contract("joined raster part suffix"))?,
-            )?;
+            expected.append(&mut file, length, expected.len() - length)?;
             file.sync_all()?;
-            files::compare(&mut file, expected, false)?;
+            expected.compare(&mut file, false)?;
             #[cfg(test)]
             self.interrupt(super::interruption::JoinedPoint::RasterDataSynced)?;
             self.directory.guard()?;

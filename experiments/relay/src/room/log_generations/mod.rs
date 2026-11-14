@@ -8,7 +8,8 @@ mod server_backup;
 mod server_recovery;
 pub use server_backup::{
     MAX_SERVER_LOG_GENERATION_ROOM_BACKUP_BYTES, ServerLogGenerationRoomBackup,
-    ServerLogGenerationRoomBackupIdentity, ServerLogGenerationRoomBackupInfo,
+    ServerLogGenerationRoomBackupFile, ServerLogGenerationRoomBackupIdentity,
+    ServerLogGenerationRoomBackupInfo,
 };
 #[cfg(feature = "server")]
 pub(crate) use server_recovery::GenerationOperationCustody;
@@ -24,6 +25,7 @@ pub use participants::{
     ServerLogGenerationParticipantMetadata, VerifiedGenerationRecoveryRegistrations,
 };
 mod recovery;
+mod recovery_part;
 pub use recovery::{
     RecoveredLogGenerationRoom, ServerLogGenerationRecovery, ServerLogGenerationRecoveryProgress,
 };

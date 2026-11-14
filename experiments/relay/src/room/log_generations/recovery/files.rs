@@ -117,6 +117,3 @@ pub(in crate::room::log_generations) fn key(name: &str) -> String {
 pub(super) fn target(name: &str) -> &str {
     if name == ".ready.json" { ".prepared.json" } else { name }
 }
-pub(in crate::room::log_generations) fn sha(bytes: &[u8]) -> [u8; 32] {
-    Sha256::digest(bytes).into()
-}

@@ -237,3 +237,138 @@ fn actual_joined_source_recheck_must_reject_unknown_parent_work_without_removing
     assert_eq!(snapshot(recovered.root())?, before);
     Ok(())
 }
+
+#[cfg(unix)]
+mod file_source {
+    use super::*;
+    use crate::ServerLogGenerationRoomBackupFile;
+    use std::os::unix::fs::FileExt;
+
+    #[test]
+    fn both_sources_resume_the_same_part_ledgers_and_publish_exact_bytes() -> TestResult {
+        use interruption::JoinedPoint;
+        for (point, begin_on_disk) in [
+            (JoinedPoint::RasterDataPrefix, false),
+            (JoinedPoint::RasterDataSynced, true),
+            (JoinedPoint::RasterFilePublished, true),
+            (JoinedPoint::CompletionSynced, false),
+        ] {
+            let (files, mut room, mut assets, _) = source(3, true, true)?;
+            let buffered = ServerLogGenerationRoomBackup::capture(&mut room, &mut assets, "owner")?;
+            let archive = files.recovery().with_file_name("joined.backup");
+            let mut destination = fs::File::create_new(&archive)?;
+            let info = ServerLogGenerationRoomBackup::capture_to(
+                &mut room,
+                &assets,
+                "owner",
+                &mut destination,
+            )?;
+            destination.sync_all()?;
+            drop(destination);
+            assert_eq!(info, buffered.info()?);
+            let disk =
+                ServerLogGenerationRoomBackupFile::open(fs::File::open(&archive)?, &info.identity)?;
+            assert_eq!(disk.info(), info);
+            drop((room, assets));
+
+            let mut attempt = if begin_on_disk {
+                ServerLogGenerationRoomRecovery::begin_file(
+                    &files.recovery(),
+                    &disk,
+                    &info.identity,
+                    POLICY,
+                )?
+            } else {
+                begin(&files, &buffered)?
+            };
+            attempt.stop_after = Some(point);
+            let interrupted =
+                if begin_on_disk { attempt.finish_file(&disk) } else { attempt.finish(&buffered) };
+            assert!(
+                matches!(
+                    interrupted,
+                    Err(crate::Error::Contract("controlled joined recovery interruption"))
+                ),
+                "{point:?}"
+            );
+            let status = files.recovery().join(".complete.json");
+            assert_eq!(status.exists(), point == JoinedPoint::CompletionSynced);
+            let mut recovered = if begin_on_disk {
+                resume(&files, &buffered)?.finish(&buffered)?
+            } else {
+                let attempt = ServerLogGenerationRoomRecovery::resume_file(
+                    &files.recovery(),
+                    &disk,
+                    &info.identity,
+                    POLICY,
+                )?;
+                assert_eq!(attempt.progress_file(&disk)?, attempt.progress(&buffered)?);
+                attempt.finish_file(&disk)?
+            };
+            recovered.check_live_source(&buffered, "owner")?;
+            let (room, assets) = recovered.components_mut();
+            let mut exact = Vec::new();
+            assert_eq!(
+                ServerLogGenerationRoomBackup::capture_to(room, assets, "owner", &mut exact)?,
+                info
+            );
+            assert_eq!(exact, fs::read(archive)?);
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn changed_file_refuses_before_reservation_and_preserves_an_existing_prefix() -> TestResult {
+        let (files, mut room, mut assets, _) = source(3, true, true)?;
+        let buffered = ServerLogGenerationRoomBackup::capture(&mut room, &mut assets, "owner")?;
+        let info = buffered.info()?;
+        let archive = files.recovery().with_file_name("joined.backup");
+        fs::write(&archive, buffered.to_bytes()?)?;
+        let mut wrong = info.identity.clone();
+        wrong.archive_sha256[0] ^= 1;
+        assert!(
+            ServerLogGenerationRoomBackupFile::open(fs::File::open(&archive)?, &wrong).is_err()
+        );
+        let disk =
+            ServerLogGenerationRoomBackupFile::open(fs::File::open(&archive)?, &info.identity)?;
+        assert!(
+            ServerLogGenerationRoomRecovery::begin_file(&files.recovery(), &disk, &wrong, POLICY)
+                .is_err()
+        );
+        assert!(!files.recovery().exists());
+
+        let mut attempt = begin(&files, &buffered)?;
+        attempt.stop_after = Some(interruption::JoinedPoint::RasterDataPrefix);
+        assert!(attempt.finish(&buffered).is_err());
+        let before = snapshot(&files.recovery())?;
+        let writer = fs::OpenOptions::new().write(true).open(&archive)?;
+        let mut last = [0];
+        fs::File::open(&archive)?.read_exact_at(&mut last, info.bytes - 1)?;
+        last[0] ^= 1;
+        writer.write_all_at(&last, info.bytes - 1)?;
+        writer.sync_all()?;
+        let fresh = files.recovery().with_file_name("uncreated");
+        assert!(
+            ServerLogGenerationRoomBackupFile::open(fs::File::open(&archive)?, &info.identity)
+                .is_err()
+        );
+        assert!(
+            ServerLogGenerationRoomRecovery::begin_file(&fresh, &disk, &info.identity, POLICY)
+                .is_err()
+        );
+        assert!(!fresh.exists());
+        assert!(
+            ServerLogGenerationRoomRecovery::resume_file(
+                &files.recovery(),
+                &disk,
+                &info.identity,
+                POLICY
+            )
+            .is_err()
+        );
+        assert_eq!(snapshot(&files.recovery())?, before);
+        let recovered = resume(&files, &buffered)?.finish(&buffered)?;
+        assert_eq!(recovered.assets().count(), 3);
+        Ok(())
+    }
+}

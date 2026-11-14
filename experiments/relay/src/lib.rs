@@ -6,6 +6,7 @@
 //! separate adapters; a [`Room`] requires exclusive mutable access across each transaction.
 mod access;
 mod archive_digest;
+mod archive_input;
 pub mod assets;
 mod credentials;
 mod log;
@@ -75,8 +76,9 @@ pub use room::{
 pub use room::{
     MAX_SERVER_LOG_GENERATION_ROOM_BACKUP_BYTES, OperationalLogGenerationServerRoom,
     RecoveredLogGenerationServerRoom, ServerLogGenerationRoomBackup,
-    ServerLogGenerationRoomBackupIdentity, ServerLogGenerationRoomBackupInfo,
-    ServerLogGenerationRoomRecovery, ServerLogGenerationRoomRecoveryProgress,
+    ServerLogGenerationRoomBackupFile, ServerLogGenerationRoomBackupIdentity,
+    ServerLogGenerationRoomBackupInfo, ServerLogGenerationRoomRecovery,
+    ServerLogGenerationRoomRecoveryProgress,
 };
 pub use room::{
     MAX_SERVER_ROOM_BACKUP_BYTES, OperationalServerRoom, RecoveredServerRoom, ServerRoomBackup,

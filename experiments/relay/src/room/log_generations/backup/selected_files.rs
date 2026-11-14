@@ -1,4 +1,5 @@
 //! Borrowed exact sections for the native recovery coordinator; no raw-log public import.
+use super::super::recovery_part::RecoveryPart;
 use super::{ServerLogGenerationBackup, format};
 use crate::{Error, Result};
 use std::collections::BTreeMap;
@@ -19,7 +20,22 @@ impl ServerLogGenerationBackup {
             .ok_or(Error::Contract("generation backup selected body"))
     }
 
+    pub(in crate::room::log_generations) fn recovery_parts(
+        &self,
+    ) -> Result<BTreeMap<&str, RecoveryPart<'_>>> {
+        self.sections(|bytes, sha256| {
+            RecoveryPart::with_digest(crate::archive_input::ArchiveSlice::Bytes(bytes), sha256)
+        })
+    }
+
     pub(in crate::room::log_generations) fn selected_files(&self) -> Result<BTreeMap<&str, &[u8]>> {
+        self.sections(|bytes, _| bytes)
+    }
+
+    fn sections<'a, T>(
+        &'a self,
+        part_value: impl Fn(&'a [u8], [u8; 32]) -> T,
+    ) -> Result<BTreeMap<&'a str, T>> {
         let body = self
             .bytes
             .get(self.body_offset()?..)
@@ -38,8 +54,11 @@ impl ServerLogGenerationBackup {
                 .map_err(|_| Error::Contract("generation backup selected range"))?;
                 Ok((
                     part.name.as_str(),
-                    body.get(start..end)
-                        .ok_or(Error::Contract("generation backup selected range"))?,
+                    part_value(
+                        body.get(start..end)
+                            .ok_or(Error::Contract("generation backup selected range"))?,
+                        part.sha256,
+                    ),
                 ))
             })
             .collect()

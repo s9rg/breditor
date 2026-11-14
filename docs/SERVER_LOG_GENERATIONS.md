@@ -163,8 +163,24 @@ checks each section, and both owners are checked again after the destination
 flush succeeds. Native raster validation decodes one image at a time. The
 archive can be read by the existing joined backup and restore APIs.
 
-The existing buffered APIs and archive readers still materialize their
-components. The stream writers retain the existing formats and lifetime limits.
+For disk-backed restore on Unix, open the complete joined file for reading and
+pass the independently retained identity to `ServerLogGenerationRoomBackupFile::open`.
+It verifies canonical framing, all file checksums, the exact WAL cut, and the
+native raster contents before reserving a destination. Keep the file unchanged
+and retain the identity separately.
+
+Use `ServerLogGenerationRoomRecovery::begin_file` with an absent destination.
+After an interruption, reopen the backup and use `resume_file` for the same
+destination. `progress_file` verifies the owned prefixes. `finish_file` copies
+each missing suffix, syncs and verifies each complete file, replays the native
+room, and checks both final components before publishing the joined completion
+record. The buffered and file-backed APIs share the same reservation and part
+ledgers. A retry can switch between them using the same exact backup.
+
+The archive reader and file copy use bounded buffers. Native replay still
+rebuilds room state in memory, and the subsequent serving handoff takes the
+existing buffered archive. Existing formats, host fencing requirements, and
+lifetime limits apply.
 
 Joined streaming checkpoint `8e4c05c9` passes 110 selected Rust tests, including
 exact byte comparison and restore, destination failures in both sections, and

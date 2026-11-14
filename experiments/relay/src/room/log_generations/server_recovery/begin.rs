@@ -1,5 +1,8 @@
 //! Independently selected inactive reservation. Occupied targets are never adopted or overwritten.
-use super::super::{ServerLogGenerationRoomBackup, ServerLogGenerationRoomBackupIdentity};
+use super::super::{
+    ServerLogGenerationRoomBackup, ServerLogGenerationRoomBackupFile,
+    ServerLogGenerationRoomBackupIdentity,
+};
 use super::{ServerLogGenerationRoomRecovery, files, selection::Marker};
 use crate::{
     Error, Result, RoomRecoveryPolicy, credentials, log::generations::GenerationDirectory,
@@ -29,6 +32,31 @@ impl ServerLogGenerationRoomRecovery {
         policy: RoomRecoveryPolicy,
     ) -> Result<Self> {
         selected(backup, expected, policy)?;
+        Self::begin_selected(path, expected)
+    }
+
+    /// Reserve an absent directory with a fully admitted file source, under the same host fence
+    /// and independently selected identity as the buffered recovery path.
+    /// # Errors
+    /// Refuses wrong or changed input, occupied paths, or failed reservation.
+    pub fn begin_file(
+        path: &Path,
+        backup: &ServerLogGenerationRoomBackupFile,
+        expected: &ServerLogGenerationRoomBackupIdentity,
+        policy: RoomRecoveryPolicy,
+    ) -> Result<Self> {
+        let RoomRecoveryPolicy::HostReacquired = policy;
+        if backup.identity != *expected {
+            return Err(Error::Contract("joined generation selected archive"));
+        }
+        backup.input.check()?;
+        Self::begin_selected(path, expected)
+    }
+
+    fn begin_selected(
+        path: &Path,
+        expected: &ServerLogGenerationRoomBackupIdentity,
+    ) -> Result<Self> {
         let directory = GenerationDirectory::create(path)?;
         let marker = Marker {
             format: "breditor/server-log-generation-room-recovery".into(),
@@ -55,6 +83,35 @@ impl ServerLogGenerationRoomRecovery {
         policy: RoomRecoveryPolicy,
     ) -> Result<Self> {
         selected(backup, expected, policy)?;
+        let attempt = Self::resume_selected(path, expected)?;
+        attempt.progress(backup)?;
+        Ok(attempt)
+    }
+
+    /// Reacquire an existing reservation and verify all durable prefixes against a held file.
+    /// Either recovery path may have created the reservation.
+    /// # Errors
+    /// Wrong or changed input, malformed or occupied destinations, or divergent files refuse.
+    pub fn resume_file(
+        path: &Path,
+        backup: &ServerLogGenerationRoomBackupFile,
+        expected: &ServerLogGenerationRoomBackupIdentity,
+        policy: RoomRecoveryPolicy,
+    ) -> Result<Self> {
+        let RoomRecoveryPolicy::HostReacquired = policy;
+        if backup.identity != *expected {
+            return Err(Error::Contract("joined generation selected archive"));
+        }
+        backup.input.check()?;
+        let attempt = Self::resume_selected(path, expected)?;
+        attempt.progress_file(backup)?;
+        Ok(attempt)
+    }
+
+    fn resume_selected(
+        path: &Path,
+        expected: &ServerLogGenerationRoomBackupIdentity,
+    ) -> Result<Self> {
         let directory = GenerationDirectory::open(path)?;
         let marker: Marker = files::read(&directory.path.join(".recovery.json"))?;
         credentials::hash(&marker.id)?;
@@ -64,14 +121,12 @@ impl ServerLogGenerationRoomRecovery {
         {
             return Err(Error::Contract("joined generation reservation differs"));
         }
-        let attempt = Self {
+        Ok(Self {
             directory,
             marker,
             #[cfg(test)]
             stop_after: None,
-        };
-        attempt.progress(backup)?;
-        Ok(attempt)
+        })
     }
     /// Known retained inactive destination; not permission to start a deployment.
     #[must_use]

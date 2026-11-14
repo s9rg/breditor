@@ -4,9 +4,9 @@ use super::{
     storage,
 };
 use breditor_collab_relay::{
-    RecoveryRegistrationCredentials, Role, RoomRecoveryPolicy, ServerLogGenerationBackup,
-    ServerLogGenerationRoomBackup, ServerLogGenerationRoomRecovery, ServerNativeHistoryFamily,
-    SuggestionRole,
+    RecoveredLogGenerationServerRoom, RecoveryRegistrationCredentials, Role, RoomRecoveryPolicy,
+    ServerLogGenerationBackup, ServerLogGenerationRoomBackup, ServerLogGenerationRoomBackupFile,
+    ServerLogGenerationRoomRecovery, ServerNativeHistoryFamily, SuggestionRole,
     assets::{AssetStore, asset_id, prepare_asset},
     server::{
         Authentication, ContentAddressedServerAssets, PreparedLogGenerationRecoveryHost,
@@ -219,14 +219,7 @@ async fn generate_selected(
     }
     let (migrated_origin::Cuts { older: ancestor, local, legacy }, predecessor) =
         Box::pin(capture_source_cuts(&root, room, assets, migrated, activation_case)).await?;
-    let mut operation = ServerLogGenerationRoomRecovery::begin(
-        &root.join("restored"),
-        &local,
-        &local.info()?.identity,
-        RoomRecoveryPolicy::HostReacquired,
-    )?
-    .finish(&local)?
-    .begin_operation(
+    let mut operation = restore_local(&root, &local, activation_case)?.begin_operation(
         &local,
         &local.info()?.identity,
         RoomRecoveryPolicy::HostReacquired,
@@ -352,6 +345,33 @@ async fn generate_selected(
         credentials: &credentials,
     })?;
     Ok(Running { path, router, control, operator_token, activation, private_delivery })
+}
+
+fn restore_local(
+    root: &Path,
+    local: &ServerLogGenerationRoomBackup,
+    use_disk: bool,
+) -> Result<RecoveredLogGenerationServerRoom> {
+    use std::{
+        fs::{File, OpenOptions},
+        os::unix::fs::OpenOptionsExt,
+    };
+    let expected = local.info()?.identity;
+    let path = root.join("restored");
+    let policy = RoomRecoveryPolicy::HostReacquired;
+    if !use_disk {
+        return Ok(ServerLogGenerationRoomRecovery::begin(&path, local, &expected, policy)?
+            .finish(local)?);
+    }
+    let archive = root.join("local-recovery-input.backup");
+    let mut output = OpenOptions::new().write(true).create_new(true).mode(0o600).open(&archive)?;
+    local.write_to(&mut output)?;
+    output.sync_all()?;
+    drop(output);
+    let file = ServerLogGenerationRoomBackupFile::open(File::open(&archive)?, &expected)?;
+    drop(ServerLogGenerationRoomRecovery::begin_file(&path, &file, &expected, policy)?);
+    Ok(ServerLogGenerationRoomRecovery::resume_file(&path, &file, &expected, policy)?
+        .finish_file(&file)?)
 }
 
 fn check_streamed_backup(

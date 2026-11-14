@@ -1,5 +1,7 @@
 //! Exact inactive-prefix inventory. Unknown work is preserved and refused, never scavenged.
-use super::super::ServerLogGenerationBackup;
+use super::super::{
+    ServerLogGenerationBackup, ServerLogGenerationBackupIdentity, recovery_part::RecoveryPart,
+};
 use super::{
     ServerLogGenerationRecovery, ServerLogGenerationRecoveryProgress, files, part,
     types::{Component, Marker},
@@ -8,7 +10,10 @@ use crate::{
     Error, Result, credentials,
     log::generations::{GenerationDirectory, GenerationFileWitness, MAX_GENERATION_FILES},
 };
-use std::{collections::BTreeSet, fs};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fs,
+};
 impl ServerLogGenerationRecovery {
     pub(super) fn completion(&self) -> Marker {
         Marker {
@@ -18,9 +23,9 @@ impl ServerLogGenerationRecovery {
             identity: self.marker.identity.clone(),
         }
     }
-    fn marker_guard(&self, backup: &ServerLogGenerationBackup) -> Result<()> {
+    fn marker_guard(&self, identity: &ServerLogGenerationBackupIdentity) -> Result<()> {
         self.directory.guard()?;
-        if backup.info().identity != self.marker.identity {
+        if *identity != self.marker.identity {
             return Err(Error::Contract("generation recovery selected source changed"));
         }
         let actual: Marker = files::read(&self.directory.path.join(".recovery.json"))?;
@@ -129,8 +134,15 @@ impl ServerLogGenerationRecovery {
         &self,
         backup: &ServerLogGenerationBackup,
     ) -> Result<ServerLogGenerationRecoveryProgress> {
-        self.marker_guard(backup)?;
-        let selected = backup.selected_files()?;
+        self.progress_selected(&backup.info().identity, &backup.recovery_parts()?)
+    }
+
+    pub(in crate::room::log_generations) fn progress_selected(
+        &self,
+        identity: &ServerLogGenerationBackupIdentity,
+        selected: &BTreeMap<&str, RecoveryPart<'_>>,
+    ) -> Result<ServerLogGenerationRecoveryProgress> {
+        self.marker_guard(identity)?;
         let component = self.component()?;
         let mut known = BTreeSet::from([
             ".owner".into(),
@@ -143,7 +155,7 @@ impl ServerLogGenerationRecovery {
         if let Some(value) = &component {
             let inner = self.open_component(value)?;
             let mut inner_names = BTreeSet::from([".owner".into(), ".ready.json".into()]);
-            for (name, bytes) in &selected {
+            for (&name, &bytes) in selected {
                 known.insert(part::ledger(name));
                 inner_names.insert(files::target(name).into());
                 if let Some(part) = self.part(value, name, bytes)? {
@@ -152,7 +164,7 @@ impl ServerLogGenerationRecovery {
                         published += 1;
                     }
                 } else if files::exists(&inner.path.join(files::target(name)))?
-                    || *name == ".ready.json" && files::exists(&inner.path.join(".ready.json"))?
+                    || name == ".ready.json" && files::exists(&inner.path.join(".ready.json"))?
                 {
                     return Err(Error::Contract("generation recovery unowned occupied file"));
                 }

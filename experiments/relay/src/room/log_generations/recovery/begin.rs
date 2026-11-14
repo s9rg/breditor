@@ -21,6 +21,13 @@ impl ServerLogGenerationRecovery {
         if &backup.info().identity != expected {
             return Err(Error::Contract("generation recovery selected archive"));
         }
+        Self::begin_selected(path, expected)
+    }
+
+    pub(in crate::room::log_generations) fn begin_selected(
+        path: &Path,
+        expected: &ServerLogGenerationBackupIdentity,
+    ) -> Result<Self> {
         let directory = GenerationDirectory::create(path)?;
         let marker = Marker {
             format: "breditor/relay-log-generation-recovery".into(),
@@ -49,6 +56,15 @@ impl ServerLogGenerationRecovery {
         if &backup.info().identity != expected {
             return Err(Error::Contract("generation recovery selected archive"));
         }
+        let attempt = Self::resume_selected(path, expected)?;
+        attempt.progress(backup)?;
+        Ok(attempt)
+    }
+
+    pub(in crate::room::log_generations) fn resume_selected(
+        path: &Path,
+        expected: &ServerLogGenerationBackupIdentity,
+    ) -> Result<Self> {
         let directory = GenerationDirectory::open(path)?;
         let marker: Marker = files::read(&directory.path.join(".recovery.json"))?;
         credentials::hash(&marker.id)?;
@@ -58,14 +74,12 @@ impl ServerLogGenerationRecovery {
         {
             return Err(Error::Contract("generation recovery reservation differs"));
         }
-        let attempt = Self {
+        Ok(Self {
             directory,
             marker,
             #[cfg(test)]
             stop_after: None,
-        };
-        attempt.progress(backup)?;
-        Ok(attempt)
+        })
     }
     /// Known inactive destination; it is not authority to start a service.
     #[must_use]

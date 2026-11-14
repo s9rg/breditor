@@ -1,4 +1,5 @@
 //! Per-file durable inode intents precede data writes and insert-only final hard links.
+use super::super::recovery_part::RecoveryPart;
 use super::{
     ServerLogGenerationRecovery, files,
     types::{Component, Part},
@@ -7,11 +8,7 @@ use crate::{
     Error, Result, credentials,
     log::generations::{GenerationDirectory, GenerationFileWitness},
 };
-use std::{
-    fs,
-    io::{Seek, SeekFrom, Write},
-    path::PathBuf,
-};
+use std::{fs, path::PathBuf};
 pub(super) fn ledger(name: &str) -> String {
     format!(".part-{}.json", files::key(name))
 }
@@ -20,7 +17,7 @@ impl ServerLogGenerationRecovery {
         &self,
         component: &Component,
         name: &str,
-        bytes: &[u8],
+        bytes: RecoveryPart<'_>,
     ) -> Result<Option<Part>> {
         let path = self.directory.path.join(ledger(name));
         if !files::exists(&path)? {
@@ -38,8 +35,8 @@ impl ServerLogGenerationRecovery {
             || value.directory != component.directory
             || value.name != name
             || value.target != files::target(name)
-            || value.bytes != bytes.len() as u64
-            || value.sha256 != files::sha(bytes)
+            || value.bytes != bytes.len()
+            || value.sha256 != bytes.sha256
         {
             return Err(Error::Contract("generation recovery part selection"));
         }
@@ -59,7 +56,7 @@ impl ServerLogGenerationRecovery {
         &self,
         inner: &GenerationDirectory,
         part: &Part,
-        expected: &[u8],
+        expected: RecoveryPart<'_>,
     ) -> Result<bool> {
         let target = Self::part_target(inner, part)?;
         let stage = self.directory.path.join(&part.stage);
@@ -79,7 +76,7 @@ impl ServerLogGenerationRecovery {
         if part.name == ".ready.json" && files::exists(&inner.path.join(".ready.json"))? {
             part.witness.guard(&file, &inner.path.join(".ready.json"))?;
         }
-        files::compare(&mut file, expected, !published)?;
+        expected.compare(&mut file, !published)?;
         Ok(published)
     }
     fn new_part(
@@ -87,7 +84,7 @@ impl ServerLogGenerationRecovery {
         component: &Component,
         inner: &GenerationDirectory,
         name: &str,
-        expected: &[u8],
+        expected: RecoveryPart<'_>,
     ) -> Result<Part> {
         inner.absent(files::target(name))?;
         if name == ".ready.json" {
@@ -104,8 +101,8 @@ impl ServerLogGenerationRecovery {
             directory: component.directory.clone(),
             name: name.into(),
             target: files::target(name).into(),
-            bytes: expected.len() as u64,
-            sha256: files::sha(expected),
+            bytes: expected.len(),
+            sha256: expected.sha256,
             stage,
             witness: GenerationFileWitness::of(&file)?,
         };
@@ -119,7 +116,7 @@ impl ServerLogGenerationRecovery {
         component: &Component,
         inner: &GenerationDirectory,
         name: &str,
-        expected: &[u8],
+        expected: RecoveryPart<'_>,
     ) -> Result<()> {
         self.directory.guard()?;
         inner.guard_witness(&component.witness)?;
@@ -144,22 +141,17 @@ impl ServerLogGenerationRecovery {
         if published {
             part.witness.guard(&file, &target)?;
         }
-        files::compare(&mut file, expected, !published)?;
+        let length = expected.compare(&mut file, !published)?;
         if !published {
-            let length = usize::try_from(file.metadata()?.len())
-                .map_err(|_| Error::Contract("generation recovery part length"))?;
-            file.seek(SeekFrom::End(0))?;
             #[cfg(test)]
             if self.stop_after == Some(super::interruption::RestorePoint::DataPrefix) {
-                file.write_all(&expected[length..(length + 1).min(expected.len())])?;
+                expected.append(&mut file, length, (expected.len() - length).min(1))?;
                 file.sync_all()?;
                 self.interrupt(super::interruption::RestorePoint::DataPrefix)?;
             }
-            file.write_all(
-                expected.get(length..).ok_or(Error::Contract("generation recovery part length"))?,
-            )?;
+            expected.append(&mut file, length, expected.len() - length)?;
             file.sync_all()?;
-            files::compare(&mut file, expected, false)?;
+            expected.compare(&mut file, false)?;
             #[cfg(test)]
             self.interrupt(super::interruption::RestorePoint::DataSynced)?;
             self.directory.guard()?;

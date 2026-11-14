@@ -122,7 +122,7 @@ impl super::custody::JoinedRecoveryCustody {
                 &self.marker.id,
                 component,
                 &name,
-                bytes,
+                super::super::recovery_part::RecoveryPart::from_bytes(bytes),
             )?
             .ok_or(Error::Contract("joined original raster intent absent"))?;
             self.raster.guard_file(&name, &part.witness)?;

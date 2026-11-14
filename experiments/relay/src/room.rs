@@ -33,8 +33,9 @@ pub use log_generations::{
 pub use log_generations::{
     MAX_SERVER_LOG_GENERATION_ROOM_BACKUP_BYTES, OperationalLogGenerationServerRoom,
     RecoveredLogGenerationServerRoom, ServerLogGenerationRoomBackup,
-    ServerLogGenerationRoomBackupIdentity, ServerLogGenerationRoomBackupInfo,
-    ServerLogGenerationRoomRecovery, ServerLogGenerationRoomRecoveryProgress,
+    ServerLogGenerationRoomBackupFile, ServerLogGenerationRoomBackupIdentity,
+    ServerLogGenerationRoomBackupInfo, ServerLogGenerationRoomRecovery,
+    ServerLogGenerationRoomRecoveryProgress,
 };
 pub use log_generations::{
     RecoveredLogGenerationRoom, ServerLogGenerationRecovery, ServerLogGenerationRecoveryProgress,

@@ -1,5 +1,7 @@
 //! Separate complete physical archive. Admission alone does not replay or activate a native room.
 mod admission;
+mod disk;
+pub(super) use disk::admit_native_file;
 mod ancestry;
 mod capture;
 mod format;

@@ -1,8 +1,11 @@
 //! Read-only exact inactive-prefix inspection. Physical progress is not native or activation proof.
-use super::super::{ServerLogGenerationRecoveryProgress, ServerLogGenerationRoomBackup};
+use super::super::{
+    ServerLogGenerationRecoveryProgress, ServerLogGenerationRoomBackup,
+    ServerLogGenerationRoomBackupFile, ServerLogGenerationRoomBackupIdentity,
+};
 use super::{
     ServerLogGenerationRoomRecovery, files, raster_directory::RasterDirectory, raster_part,
-    selection::Marker,
+    selection::Marker, source::RestoreSource,
 };
 use crate::{Error, Result};
 use std::collections::BTreeSet;
@@ -29,9 +32,12 @@ impl ServerLogGenerationRoomRecovery {
             identity: self.marker.identity.clone(),
         }
     }
-    pub(super) fn guard_selection(&self, backup: &ServerLogGenerationRoomBackup) -> Result<()> {
+    pub(super) fn guard_selection(
+        &self,
+        identity: &ServerLogGenerationRoomBackupIdentity,
+    ) -> Result<()> {
         self.directory.guard()?;
-        if backup.info()?.identity != self.marker.identity {
+        if *identity != self.marker.identity {
             return Err(Error::Contract("joined recovery source changed"));
         }
         let actual: Marker = files::read(&self.directory.path.join(".recovery.json"))?;
@@ -47,7 +53,25 @@ impl ServerLogGenerationRoomRecovery {
         &self,
         backup: &ServerLogGenerationRoomBackup,
     ) -> Result<ServerLogGenerationRoomRecoveryProgress> {
-        self.guard_selection(backup)?;
+        self.progress_selected(&RestoreSource::buffered(backup, &backup.info()?.identity)?)
+    }
+
+    /// Inspect the owned files and ledgers against an admitted file without copying the archive.
+    /// # Errors
+    /// Refuses changed inputs and the same custody, occupancy or completion failures as `progress`.
+    pub fn progress_file(
+        &self,
+        backup: &ServerLogGenerationRoomBackupFile,
+    ) -> Result<ServerLogGenerationRoomRecoveryProgress> {
+        self.progress_selected(&RestoreSource::file(backup)?)
+    }
+
+    pub(super) fn progress_selected(
+        &self,
+        source: &RestoreSource<'_>,
+    ) -> Result<ServerLogGenerationRoomRecoveryProgress> {
+        source.guard_input()?;
+        self.guard_selection(source.identity)?;
         let mut known = BTreeSet::from([
             ".owner".into(),
             ".recovery.json".into(),
@@ -58,11 +82,14 @@ impl ServerLogGenerationRoomRecovery {
         let mut components = BTreeSet::new();
         let native = if let Some(value) = self.native_selection()? {
             components.insert(value.directory.clone());
-            Some(self.native_attempt(backup, &value)?.progress(backup.native())?)
+            Some(
+                self.native_attempt(&value)?
+                    .progress_selected(&source.identity.native, &source.native)?,
+            )
         } else {
             None
         };
-        let selected = backup.rasters().selected_files();
+        let selected = &source.rasters;
         let raster = self.raster_selection()?;
         let mut published = 0;
         if let Some(value) = &raster {
@@ -71,7 +98,7 @@ impl ServerLogGenerationRoomRecovery {
                 RasterDirectory::open(&self.directory.path.join(&value.directory), &value.witness)?;
             let names = selected.keys().cloned().chain(std::iter::once(".lock".into())).collect();
             Self::raster_inventory(&directory, &names)?;
-            for (name, bytes) in &selected {
+            for (name, &bytes) in selected {
                 if let Some(part) = self.raster_part(value, name, bytes)? {
                     known.insert(raster_part::ledger(name));
                     known.insert(part.stage.clone());
@@ -94,6 +121,7 @@ impl ServerLogGenerationRoomRecovery {
                 return Err(Error::Contract("joined recovery premature completion"));
             }
         }
+        source.guard_input()?;
         Ok(ServerLogGenerationRoomRecoveryProgress {
             native,
             rasters_selected: raster.is_some(),

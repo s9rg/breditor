@@ -13,6 +13,7 @@ mod progress;
 mod raster_directory;
 mod raster_part;
 mod selection;
+mod source;
 #[cfg(test)]
 pub(super) mod tests;
 pub(super) use super::recovery::files;

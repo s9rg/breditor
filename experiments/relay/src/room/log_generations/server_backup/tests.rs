@@ -54,9 +54,10 @@ fn all_ten_joined_capture_choices_keep_exact_unchanged_native_and_raster_archive
 #[test]
 fn checksum_valid_wrong_families_ranges_bindings_or_component_identities_never_admit_a_partial_joined_archive()
 -> TestResult {
-    let (_files, mut room, mut assets, _) = source(3, true, true)?;
+    let (files, mut room, mut assets, _) = source(3, true, true)?;
     let backup = ServerLogGenerationRoomBackup::capture(&mut room, &mut assets, "owner")?;
     let file = backup.to_bytes()?;
+    let disk_path = files.recovery().with_file_name("joined-backup-admission");
     for case in 0..11 {
         let mut header: format::Header =
             serde_json::from_slice(&serde_json::to_vec(&backup.header)?)?;
@@ -75,6 +76,20 @@ fn checksum_valid_wrong_families_ranges_bindings_or_component_identities_never_a
         }
         let bytes = framed(&backup, &header)?;
         assert!(ServerLogGenerationRoomBackup::from_bytes(&bytes).is_err(), "variant {case}");
+        std::fs::write(&disk_path, &bytes)?;
+        let selected = super::ServerLogGenerationRoomBackupIdentity {
+            native: header.native,
+            assets: header.assets,
+            archive_sha256: format::sha(&bytes),
+        };
+        assert!(
+            super::ServerLogGenerationRoomBackupFile::open(
+                std::fs::File::open(&disk_path)?,
+                &selected
+            )
+            .is_err(),
+            "file variant {case}"
+        );
         assert!(ServerLogGenerationRoomBackup::from_owned_bytes(bytes).is_err(), "variant {case}");
     }
     for length in [0, format::PREFIX - 1, format::PREFIX, file.len() / 2, file.len() - 1] {

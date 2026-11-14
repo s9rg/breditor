@@ -1,11 +1,11 @@
 //! Select only actual newly created component directories. Partial unselected work is preserved.
-use super::super::{ServerLogGenerationRecovery, ServerLogGenerationRoomBackup};
+use super::super::ServerLogGenerationRecovery;
 use super::{
     ServerLogGenerationRoomRecovery, files,
     raster_directory::RasterDirectory,
     selection::{NativeComponent, RasterComponent},
 };
-use crate::{Error, Result, RoomRecoveryPolicy, credentials};
+use crate::{Error, Result, credentials};
 impl ServerLogGenerationRoomRecovery {
     pub(super) fn native_selection(&self) -> Result<Option<NativeComponent>> {
         let path = self.directory.path.join(".native.json");
@@ -29,34 +29,26 @@ impl ServerLogGenerationRoomRecovery {
     }
     pub(super) fn native_attempt(
         &self,
-        backup: &ServerLogGenerationRoomBackup,
         value: &NativeComponent,
     ) -> Result<ServerLogGenerationRecovery> {
-        let attempt = ServerLogGenerationRecovery::resume(
+        let attempt = ServerLogGenerationRecovery::resume_selected(
             &self.directory.path.join(&value.directory),
-            backup.native(),
             &self.marker.identity.native,
-            RoomRecoveryPolicy::HostReacquired,
         )?;
         if attempt.custody()? != value.witness {
             return Err(Error::Contract("joined native component custody differs"));
         }
         Ok(attempt)
     }
-    pub(super) fn prepare_native(
-        &self,
-        backup: &ServerLogGenerationRoomBackup,
-    ) -> Result<(NativeComponent, ServerLogGenerationRecovery)> {
+    pub(super) fn prepare_native(&self) -> Result<(NativeComponent, ServerLogGenerationRecovery)> {
         if let Some(value) = self.native_selection()? {
-            let attempt = self.native_attempt(backup, &value)?;
+            let attempt = self.native_attempt(&value)?;
             return Ok((value, attempt));
         }
         let name = format!(".native-{}", credentials::issue()?);
-        let attempt = ServerLogGenerationRecovery::begin(
+        let attempt = ServerLogGenerationRecovery::begin_selected(
             &self.directory.path.join(&name),
-            backup.native(),
             &self.marker.identity.native,
-            RoomRecoveryPolicy::HostReacquired,
         )?;
         #[cfg(test)]
         self.interrupt(super::interruption::JoinedPoint::NativeCreated)?;

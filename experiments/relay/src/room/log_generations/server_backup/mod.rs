@@ -5,6 +5,8 @@ mod ancestry;
 mod ancestry_tests;
 mod archive;
 mod capture;
+mod disk;
+pub use disk::ServerLogGenerationRoomBackupFile;
 mod compose;
 mod format;
 mod identity;

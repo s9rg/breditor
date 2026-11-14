@@ -5,40 +5,26 @@ use super::{
 };
 use crate::{
     Error, Result,
-    log::generations::{MAX_GENERATION_FILES, verify_generation_files},
+    archive_input::ArchiveSlice,
+    log::generations::{MAX_GENERATION_FILES, verify_generation_sections},
 };
 use std::collections::BTreeMap;
 
 pub(super) fn admit(input: &[u8]) -> Result<Header> {
-    if input.len() < format::PREFIX
-        || input.len() as u64 > format::MAX_SERVER_LOG_GENERATION_BACKUP_BYTES
-        || !input.starts_with(format::MAGIC)
-    {
+    Ok(admit_sections(ArchiveSlice::Bytes(input))?.0)
+}
+
+pub(super) fn admit_sections(input: ArchiveSlice<'_>) -> Result<(Header, ArchiveSlice<'_>)> {
+    if input.len() > format::MAX_SERVER_LOG_GENERATION_BACKUP_BYTES {
         return Err(Error::Contract("generation backup framing"));
     }
-    let at = format::MAGIC.len();
-    let size = usize::try_from(u32::from_be_bytes(
-        input[at..at + 4].try_into().map_err(|_| Error::Contract("generation backup header"))?,
-    ))
-    .map_err(|_| Error::Contract("generation backup header"))?;
-    if size == 0 || size > format::MAX_HEADER {
-        return Err(Error::Contract("generation backup header budget"));
-    }
-    let encoded = input
-        .get(format::PREFIX..format::PREFIX + size)
-        .ok_or(Error::Contract("generation backup missing header"))?;
-    if input[at + 4..format::PREFIX] != format::sha(encoded) {
-        return Err(Error::Contract("generation backup header checksum"));
-    }
-    let header: Header = serde_json::from_slice(encoded)?;
+    let (header, body): (Header, _) = input.header(format::MAGIC, format::MAX_HEADER)?;
     if header.format != "breditor/relay-log-generation-backup"
         || header.format_version != 1
-        || serde_json::to_vec(&header)? != encoded
         || header.files.len() > MAX_GENERATION_FILES
     {
         return Err(Error::Contract("generation backup declarations"));
     }
-    let body = &input[format::PREFIX + size..];
     let mut files = BTreeMap::new();
     let mut next = 0_u64;
     let mut name: Option<&str> = None;
@@ -46,35 +32,25 @@ pub(super) fn admit(input: &[u8]) -> Result<Header> {
         if part.offset != next || name.is_some_and(|last| last >= part.name.as_str()) {
             return Err(Error::Contract("generation backup section order"));
         }
-        let end = next
-            .checked_add(part.bytes)
-            .ok_or(Error::Contract("generation backup section range"))?;
-        let bytes = body
-            .get(
-                usize::try_from(next)
-                    .map_err(|_| Error::Contract("generation backup section range"))?
-                    ..usize::try_from(end)
-                        .map_err(|_| Error::Contract("generation backup section range"))?,
-            )
-            .ok_or(Error::Contract("generation backup missing section"))?;
-        if format::sha(bytes) != part.sha256 {
+        let bytes = body.section(next, part.bytes)?;
+        if bytes.digest()? != part.sha256 {
             return Err(Error::Contract("generation backup section checksum"));
         }
         files.insert(part.name.as_str(), bytes);
-        next = end;
+        next += part.bytes;
         name = Some(&part.name);
     }
-    if next != body.len() as u64 {
+    if next != body.len() {
         return Err(Error::Contract("generation backup trailing bytes"));
     }
-    let cut = verify_generation_files(&files)?;
+    let cut = verify_generation_sections(&files)?;
     if cut.manifest != header.manifest
         || cut.records != header.source.records
         || cut.previous != header.source.terminal_log_digest
     {
         return Err(Error::Contract("generation backup selected cut differs"));
     }
-    Ok(header)
+    Ok((header, body))
 }
 impl ServerLogGenerationBackup {
     pub(in crate::room::log_generations) fn inspect_bytes(
