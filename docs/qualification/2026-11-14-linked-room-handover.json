@@ -1,0 +1,88 @@
+{
+  "format": "breditor/linked-room-handover-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-14",
+  "source": {
+    "commit": "7525b03c1e7a1ae2987af013619c54d3d68f03a2",
+    "dirty": false,
+    "sha256": "39b81c7c4b2a57a41f31ef00d1e299d61b7a075835ab50edb38cedadbe3aea2c",
+    "files": 8811,
+    "bytes": 74912216
+  },
+  "tree": "cfbd2d7a3a0ceaae21d3378fdce32407c274fca5",
+  "relaySha256": "92ac262953d0dc8dc599e461dca2c231bc6bfb380ca2290c04bfbf372e6fb54c",
+  "rustExecutableSha256": "709e60fba01c42dccdbfdaa5b5b57a93e7da24a439b3cdc3a6637b1177c8a1ce",
+  "rust": {
+    "passed": 517,
+    "failed": 0,
+    "ignored": 1,
+    "logSha256": "c0058d7067f1c99d76d21dbe4de02c3bf6270b74baaad8e079fe22c9374f0833"
+  },
+  "crossVolume": {
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0,
+    "logSha256": "d40512540cd9a58d346120a215a6dad3ca1a206538560b4701c625b8f4444355"
+  },
+  "noServer": {
+    "logSha256": "837ec98be60d4f418f009d9f8f92c03b41f26c9d2d223f87a7acce073afc3855"
+  },
+  "clippy": {
+    "logSha256": "0442169683d10f1580d6fac6a483798f34f189ec439c6009ad93cd09672dee42"
+  },
+  "sdkReportSha256": "ae36ad631201773416b0af5c88cb61731bb3214ca970e9264b5d93a34a555d51",
+  "modes": {
+    "source": {
+      "mode": "source",
+      "handoffs": 2,
+      "portableRestores": 1,
+      "restoredOfflineLanes": 6,
+      "undoRedoLanes": 2,
+      "rasterReads": 2,
+      "processExits": 4,
+      "authenticatedTakeovers": 1,
+      "oldServingRefusals": 1,
+      "coldResumes": 2,
+      "retainedAbsolutePositions": true,
+      "runtimeSha256": "73076a902c1926700031fbadaa2e5e6a2d6d661d39e3424cc90a0a32986c5c7c",
+      "proof": null
+    },
+    "installed": {
+      "mode": "installed",
+      "handoffs": 2,
+      "portableRestores": 1,
+      "restoredOfflineLanes": 6,
+      "undoRedoLanes": 2,
+      "rasterReads": 2,
+      "processExits": 4,
+      "authenticatedTakeovers": 1,
+      "oldServingRefusals": 1,
+      "coldResumes": 2,
+      "retainedAbsolutePositions": true,
+      "runtimeSha256": "73076a902c1926700031fbadaa2e5e6a2d6d661d39e3424cc90a0a32986c5c7c",
+      "proof": {
+        "registryArtifacts": 45,
+        "archives": [
+          {
+            "name": "@breditor/browser",
+            "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+          },
+          {
+            "name": "@breditor/experimental-rich-content",
+            "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+          },
+          {
+            "name": "@breditor/collaboration",
+            "sha256": "d2b9dfb1a73ab8af01506c8e5e222462c313697f9897349890e5f075eb5e4222"
+          }
+        ]
+      }
+    }
+  },
+  "scope": [
+    "Authoritative epoch append binds one exact accepted native/raster cut and completed local restore. Authentication checks the current owner on both host configurations.",
+    "Native tests exercise stale previews, later native work and unreferenced rasters, competing claims under exclusive custody, interruption after durable append, and exact cold resumption with later accepted work.",
+    "Both SDK distributions perform an authenticated handover against a living old listener after two saturated WAL handoffs. Old raster serving refuses after commit. Existing document and comment credentials deliver offline work after the original directories are moved away, and Undo/Redo and exact raster bytes remain available after another process exit.",
+    "The SDK uses controlled Node storage. The host selects traffic cutover and independently reconciles durable provider/client work. The approval assumes a reachable live source and the same independent authority journal."
+  ]
+}

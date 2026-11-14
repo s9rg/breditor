@@ -733,3 +733,11 @@ under both configurations at takeover. The approving host remains
 responsible for independent client/provider reconciliation and for selecting
 its traffic cutover. This path handles a reachable live source and the
 process exits after its epoch transition.
+
+[Authenticated linked-room handover qualification](qualification/2026-11-14-linked-room-handover.json)
+records 517 passing relay tests and the separate APFS interruption test.
+Source and freshly installed SDK runs confirmed a live old listener refusing
+requests after the commit, then delivered offline text and comments to the
+resumed target with the old directories moved away. Both runs checked
+document and comment Undo/Redo across an additional process exit and read the
+same raster bytes before and after takeover.
