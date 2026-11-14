@@ -28,11 +28,11 @@ pub(super) struct Header {
 pub(super) fn sha(bytes: &[u8]) -> [u8; 32] {
     Sha256::digest(bytes).into()
 }
-pub(super) fn finish(mut body: Vec<u8>, header: Header) -> Result<ServerLogGenerationBackup> {
-    let encoded = serde_json::to_vec(&header)?;
+pub(super) fn prefix(header: &Header, body_bytes: u64) -> Result<Vec<u8>> {
+    let encoded = serde_json::to_vec(header)?;
     if encoded.is_empty()
         || encoded.len() > MAX_HEADER
-        || body.len() as u64 + encoded.len() as u64 + PREFIX as u64
+        || body_bytes + encoded.len() as u64 + PREFIX as u64
             > MAX_SERVER_LOG_GENERATION_BACKUP_BYTES
     {
         return Err(Error::Contract("generation backup encoded budget"));
@@ -46,6 +46,11 @@ pub(super) fn finish(mut body: Vec<u8>, header: Header) -> Result<ServerLogGener
     );
     prefix.extend_from_slice(&sha(&encoded));
     prefix.extend_from_slice(&encoded);
+    Ok(prefix)
+}
+
+pub(super) fn finish(mut body: Vec<u8>, header: Header) -> Result<ServerLogGenerationBackup> {
+    let prefix = prefix(&header, body.len() as u64)?;
     body.try_reserve_exact(prefix.len())
         .map_err(|_| Error::Contract("generation backup memory"))?;
     body.splice(0..0, prefix);

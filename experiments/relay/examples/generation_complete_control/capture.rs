@@ -4,8 +4,9 @@ use super::{
     storage,
 };
 use breditor_collab_relay::{
-    RecoveryRegistrationCredentials, Role, RoomRecoveryPolicy, ServerLogGenerationRoomBackup,
-    ServerLogGenerationRoomRecovery, ServerNativeHistoryFamily, SuggestionRole,
+    RecoveryRegistrationCredentials, Role, RoomRecoveryPolicy, ServerLogGenerationBackup,
+    ServerLogGenerationRoomBackup, ServerLogGenerationRoomRecovery, ServerNativeHistoryFamily,
+    SuggestionRole,
     assets::{AssetStore, asset_id, prepare_asset},
     server::{
         Authentication, ContentAddressedServerAssets, PreparedLogGenerationRecoveryHost,
@@ -256,6 +257,7 @@ async fn generate_selected(
         if archived.duplicate || archived.stored_bytes != packed.stored_bytes {
             return Err("restored relay did not archive the selected packed WAL".into());
         }
+        check_streamed_backup(&mut operation)?;
     }
     let (native_token, native_digest) = Authentication::issue_token()?;
     let delivery_account = predecessor.is_some().then(Authentication::issue_token).transpose()?;
@@ -340,4 +342,18 @@ async fn generate_selected(
         credentials: &credentials,
     })?;
     Ok(Running { path, router, control, operator_token, activation, private_delivery })
+}
+
+fn check_streamed_backup(
+    operation: &mut breditor_collab_relay::OperationalLogGenerationServerRoom,
+) -> Result {
+    let mut bytes = Vec::new();
+    let streamed = operation.room_mut().write_log_generation_backup("owner", &mut bytes)?;
+    let decoded = ServerLogGenerationBackup::from_owned_bytes(bytes)?;
+    let buffered = operation.room_mut().export_log_generation_backup("owner")?;
+    if streamed != decoded.info() || streamed != buffered.info() {
+        return Err("streamed backup differs at the restored cut".into());
+    }
+    decoded.check_live(operation.room_mut(), "owner")?;
+    Ok(())
 }

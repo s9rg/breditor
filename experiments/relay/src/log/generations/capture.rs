@@ -41,17 +41,21 @@ impl CaptureFile<'_> {
     }
 }
 
-struct CaptureEntry<'a> {
+pub(super) struct CaptureEntry<'a> {
     handle: CaptureFile<'a>,
     path: PathBuf,
     identity: FileIdentity,
     stamp: FileStamp,
     length: u64,
-    bytes: u64,
+    pub(super) bytes: u64,
 }
 
 impl CaptureEntry<'_> {
-    fn guard(&self) -> Result<()> {
+    pub(super) fn file(&self) -> &File {
+        self.handle.file()
+    }
+
+    pub(super) fn guard(&self) -> Result<()> {
         let file = self.handle.file();
         self.identity.guard(file, &self.path)?;
         self.stamp.guard(file)?;
@@ -91,7 +95,7 @@ impl Generations {
                 .map(|held| &held.file)
         }
     }
-    fn capture_entry<'a>(
+    pub(super) fn capture_entry<'a>(
         &'a self,
         name: &str,
         active: &'a File,
@@ -144,17 +148,7 @@ impl Generations {
         }
         self.verify_retained()?;
         let live_names = self.capture_live_names()?;
-        let mut names = live_names.clone();
-        names.retain(|name| {
-            name != ".owner"
-                && !self.is_archive_live_name(name)
-                && !packed_wal::is_stage(name)
-                && !pending.is_some_and(|names| names.contains(name))
-        });
-        names.extend(self.closed.iter().filter(|wal| wal.archived).map(packed_wal::selected_name));
-        if names.len() > MAX_GENERATION_FILES {
-            return Err(Error::Contract("generation capture count"));
-        }
+        let names = self.portable_names(&live_names, pending)?;
         let active_name = format::wal_name(&self.current().value.active.generation);
         let entries = names
             .into_iter()
@@ -209,7 +203,26 @@ impl Generations {
         self.check_capture_names(live_names, pending)?;
         Ok(GenerationFiles { body, sections, cut })
     }
-    fn capture_live_names(&self) -> Result<BTreeSet<String>> {
+    pub(super) fn portable_names(
+        &self,
+        live_names: &BTreeSet<String>,
+        pending: Option<&BTreeSet<String>>,
+    ) -> Result<BTreeSet<String>> {
+        let mut names = live_names.clone();
+        names.retain(|name| {
+            name != ".owner"
+                && !self.is_archive_live_name(name)
+                && !packed_wal::is_stage(name)
+                && !pending.is_some_and(|names| names.contains(name))
+        });
+        names.extend(self.closed.iter().filter(|wal| wal.archived).map(packed_wal::selected_name));
+        if names.len() > MAX_GENERATION_FILES {
+            return Err(Error::Contract("generation capture count"));
+        }
+        Ok(names)
+    }
+
+    pub(super) fn capture_live_names(&self) -> Result<BTreeSet<String>> {
         fs::read_dir(&self.directory.path)?
             .map(|entry| {
                 entry?
@@ -220,7 +233,7 @@ impl Generations {
             .collect()
     }
 
-    fn check_capture_names(
+    pub(super) fn check_capture_names(
         &self,
         expected: BTreeSet<String>,
         pending: Option<&BTreeSet<String>>,

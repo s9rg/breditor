@@ -16,6 +16,7 @@ mod offloaded_wal;
 mod packed_wal;
 mod replay;
 pub(in crate::room) mod staging_capacity;
+mod streamed_backup;
 
 pub(in crate::room) struct Files(PathBuf);
 impl Files {

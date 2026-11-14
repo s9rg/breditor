@@ -1,6 +1,7 @@
 //! Exact cuts without retaining decoded records. Existing literal and full-file laws stay intact.
 use super::{Event, MAX_LOG, frame, scan};
 use crate::Error;
+use sha2::{Digest, Sha256};
 use std::io::Read;
 type TestResult = std::result::Result<(), Box<dyn std::error::Error>>;
 
@@ -47,6 +48,15 @@ fn streaming_integrity_keeps_every_complete_cut_and_precise_incomplete_prefix() 
             assert_eq!(parsed.previous, cuts[complete].1);
             assert_eq!(parsed.recovery.truncated_bytes, (length - cuts[complete].0) as u64);
         }
+        let (full, digest) = scan::verify_and_hash_records(
+            &mut bytes.as_slice(),
+            bytes.len() as u64,
+            family,
+            first,
+            parent,
+        )?;
+        assert_eq!(full.bytes, bytes.len() as u64);
+        assert_eq!(digest, <[u8; 32]>::from(Sha256::digest(&bytes)));
     }
     Ok(())
 }

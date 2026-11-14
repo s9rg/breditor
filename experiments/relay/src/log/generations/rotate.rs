@@ -21,7 +21,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeSet,
     fs,
-    io::{Seek, SeekFrom},
+    io::{BufReader, Seek, SeekFrom},
 };
 
 pub(super) fn pending_names(directory: &Directory) -> Result<BTreeSet<String>> {
@@ -87,17 +87,19 @@ impl Generations {
     }
     fn active_cut(&self, log: &Log) -> Result<ClosedFile> {
         self.guard(&log.file, log.bytes)?;
-        let bytes = held_file::read(&log.file, super::super::MAX_LOG)?;
-        (&log.file).seek(SeekFrom::Start(log.bytes))?;
-        self.guard(&log.file, log.bytes)?;
         let active = &self.current().value.active;
-        let parsed = scan::verify_records_from(
-            &mut bytes.as_slice(),
-            bytes.len() as u64,
+        let mut reader = BufReader::new(&log.file);
+        reader.seek(SeekFrom::Start(0))?;
+        let parsed = scan::verify_and_hash_records(
+            &mut reader,
+            log.bytes,
             frame::Family::Continuation,
             active.first,
             active.previous,
-        )?;
+        );
+        reader.into_inner().seek(SeekFrom::Start(log.bytes))?;
+        self.guard(&log.file, log.bytes)?;
+        let (parsed, sha256) = parsed?;
         if parsed.recovery.truncated_bytes != 0
             || parsed.bytes != log.bytes
             || parsed.previous != log.previous
@@ -112,7 +114,7 @@ impl Generations {
             previous: active.previous,
             terminal: log.previous,
             bytes: log.bytes,
-            sha256: format::sha(&bytes),
+            sha256,
         })
     }
     fn prepare(&self, log: &mut Log, next: &str) -> Result<()> {

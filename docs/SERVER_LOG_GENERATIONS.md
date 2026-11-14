@@ -145,6 +145,21 @@ integrity traversal discards each decoded record after checking its cut.
 complete output copy. Native cold generation recovery streams records through
 the native handlers. Peak recovery memory and elapsed time still require measurement.
 
+For an owner writing a native archive to a file, use
+`Room::write_log_generation_backup`. It writes the same canonical bytes and
+returns their exact selection and digest on success. It verifies the held
+files, builds the section table, and streams each original section in order.
+Packed and offloaded WALs still emit their original bytes. Copying uses fixed
+scratch buffers and one decoded record at a time during validation. The
+caller syncs or publishes the destination after success and discards any
+partial output on error. Destination errors leave an otherwise valid room
+available for retry. Rotation also hashes and validates the active WAL one
+record at a time.
+
+The existing joined log/raster capture and archive reader still materialize
+their components. The native stream writer retains the existing archive
+format and lifetime limits.
+
 ## Native restoration and readiness
 
 `ServerLogGenerationRecovery::begin` reserves an absent inactive directory with
