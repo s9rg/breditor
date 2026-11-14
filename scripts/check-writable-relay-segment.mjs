@@ -8,7 +8,7 @@ import {join, resolve} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import {WebSocket as Socket} from 'undici';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
-import {pixel, secondAsset} from './fixtures/review-assets/pixels.mjs';
+import {pixel, secondAsset, secondPixel} from './fixtures/review-assets/pixels.mjs';
 import {startSegmentHandoverHost} from './fixtures/relay-segment-handover-host.mjs';
 import {captureClientRaster, resumeClientRaster} from './fixtures/relay-segment-client-raster.mjs';
 import {searchConsumerLock, verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
@@ -222,6 +222,12 @@ async function run(mode, {distribution, rich}, executable, parent) {
     assert.deepEqual(Buffer.from(await rasterBefore.arrayBuffer()), pixel);
     edit('Offline before portable restore ');
     post('Offline comment before portable restore');
+    session.core.dispatch({commands: [{kind: 'replace_image', data: {
+      block: 'image-block', asset: secondAsset, generation: 'offline-image-replacement',
+    }}]});
+    assert.equal(session.core.documentJson().includes(secondAsset), true);
+    assert.equal(session.core.undo(), true);
+    assert.equal(session.core.documentJson().includes(secondAsset), false);
     await session.flush();
     const queuedAcrossTakeover = session.exportRecovery();
     const peerDocument = profile.join_frame('room', peer.identity.writer, peer.frame);
@@ -239,7 +245,8 @@ async function run(mode, {distribution, rich}, executable, parent) {
     const captured = await host.handover(token, registered.identity, comment.identity, peer.identity,
       uploads.map(upload => upload.pin), journalPins);
     assert.equal(captured.registrationRefusals, 3);
-    assert.equal(captured.providerRasters, 1);
+    assert.equal(captured.providerRasters, 2);
+    assert.equal(captured.clientJournalRasterBindings, 2);
     assert.equal(captured.retainedPackets, 1);
     assert.equal(captured.clientRasters, 2);
     assert.equal(captured.clientArchives, 2);
@@ -299,6 +306,13 @@ async function run(mode, {distribution, rich}, executable, parent) {
     await review.flush();
     assert.equal(session.core.documentJson(), accepted);
     assert.equal(visibleThreads().length, 4);
+    assert.equal(session.core.redo(), true);
+    assert.equal(session.core.documentJson().includes(secondAsset), true);
+    await document.flush();
+    assert.equal(document.state().pending, false);
+    const redoRaster = await fetch(localUrl, {headers});
+    assert.equal(redoRaster.status, 200);
+    assert.deepEqual(Buffer.from(await redoRaster.arrayBuffer()), secondPixel);
     const raster = await fetch(rasterUrl, {headers});
     assert.equal(raster.status, 200);
     assert.deepEqual(Buffer.from(await raster.arrayBuffer()), pixel);
@@ -312,6 +326,7 @@ async function run(mode, {distribution, rich}, executable, parent) {
       clientUploadArchives: captured.clientArchives, missingArchiveRefusals: captured.missingArchiveRefusals,
       preservedCancelledUploads: 1, nativeJournals: captured.nativeJournals,
       missingJournalRefusals: captured.missingJournalRefusals, coldJournalPairs: 1,
+      clientJournalRasterBindings: captured.clientJournalRasterBindings, offlineImageRedo: 1,
       retainedAbsolutePositions: true, runtimeSha256: sha(wasmBytes)};
   } finally {
     await stopClients();

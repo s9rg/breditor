@@ -183,6 +183,7 @@ fn prepare_and_commit(
         "clientArchives": uploads.len(),
         "missingArchiveRefusals": incomplete.missing_upload_writers.len(),
         "nativeJournals": verified_journals.journals.len(),
+        "clientJournalRasterBindings": verified_journals.asset_references.len(),
         "missingJournalRefusals": incomplete_journals.missing_document_writers.len()
             + incomplete_journals.missing_review_actors.len(),
     }))

@@ -4,15 +4,15 @@ use super::{
     RelaySegmentReviewJournalFamily, RetainedJournals,
 };
 use crate::{
-    Error, RecoveredRelaySegmentRoom, RecoveryDocumentClock, RecoveryReviewRegistration, Result,
-    Room, RoomParticipantInventoryMetadata,
+    Error, MAX_SERVER_ASSET_REFERENCE_PAIRS, RecoveredRelaySegmentRoom, RecoveryDocumentClock,
+    RecoveryReviewRegistration, Result, Room, RoomParticipantInventoryMetadata,
 };
 use breditor_collab_feasibility::{
     review::{ReviewAccess, ReviewActorPolicy, ReviewPrincipalId},
-    rich_replica::RichReplica,
+    rich_replica::{RichReplica, VersionAssetReference},
 };
 use serde::Serialize;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// Exact retained journal and its native stream coordinates at the approved cut.
 #[derive(Serialize)]
@@ -36,6 +36,8 @@ pub struct RelaySegmentClientJournalCoverage {
     pub missing_document_writers: Vec<String>,
     /// Registered review streams without selected originals or their matching document.
     pub missing_review_actors: Vec<String>,
+    /// Unique retained document bindings, including offline work, undone images and Redo.
+    pub asset_references: Vec<VersionAssetReference>,
 }
 
 impl RecoveredRelaySegmentRoom {
@@ -107,6 +109,7 @@ fn verify(
         }
     }
     let mut verified = Vec::new();
+    let mut assets = BTreeSet::new();
     for (writer, (index, family, row)) in selected_documents {
         let local = restore_document(room, family, &originals.read(index)?)?;
         if local.writer() != writer || local.document_id() != room.replica.document_id() {
@@ -114,6 +117,7 @@ fn verify(
         }
         let local_through =
             verify_document(room, &local, &document_clocks, &row.clock, row.observer)?;
+        retain_assets(&local, &mut assets)?;
         verified.push((index, local_through, row.clock.through.clone()));
         for (actor, index, family, row) in selected_reviews.remove(writer).into_iter().flatten() {
             let local_through =
@@ -135,7 +139,21 @@ fn verify(
             .collect(),
         missing_document_writers: missing_documents.into_keys().map(str::to_owned).collect(),
         missing_review_actors: missing_reviews.into_keys().map(str::to_owned).collect(),
+        asset_references: assets.into_iter().collect(),
     })
+}
+
+fn retain_assets(local: &RichReplica, assets: &mut BTreeSet<VersionAssetReference>) -> Result<()> {
+    for reference in local.retained_asset_references_guarded(&local.observe()?)? {
+        assets.insert(VersionAssetReference {
+            asset: reference.asset().as_str().into(),
+            generation: reference.generation().as_str().into(),
+        });
+        if assets.len() > MAX_SERVER_ASSET_REFERENCE_PAIRS {
+            return Err(Error::Contract("client journal raster binding budget"));
+        }
+    }
+    Ok(())
 }
 
 fn restore_document(

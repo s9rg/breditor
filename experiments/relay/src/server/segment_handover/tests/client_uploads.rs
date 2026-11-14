@@ -149,3 +149,114 @@ async fn incomplete_roster_and_changed_archive_custody_never_authorize_takeover(
     assert_eq!(source.authority.current_selection()?, source.lease.selection());
     Ok(())
 }
+
+#[tokio::test]
+async fn verifies_raster_needed_only_by_offline_document_redo() -> TestResult {
+    use crate::{
+        RecoveryDocumentCredential, RelaySegmentClientJournal, RelaySegmentClientJournalPin,
+        RelaySegmentDocumentJournalFamily, RelaySegmentJournalOwner, assets::prepare_asset,
+        server::ServerAssetAvailabilityMissing,
+    };
+    use breditor_collab_feasibility::rich_replica::{
+        Command, VersionAssetReference, actions::ReplaceImage,
+    };
+    use sha2::{Digest, Sha256};
+    use std::io::Cursor;
+
+    struct MapSeedRaster(String);
+    impl ServerRecoveryAssetProvider for MapSeedRaster {
+        fn check(&self) -> crate::Result<()> {
+            Ok(())
+        }
+        fn resolve(&self, pair: &VersionAssetReference) -> crate::Result<Option<String>> {
+            Ok((pair.asset == "asset" && pair.generation == "generation").then(|| self.0.clone()))
+        }
+    }
+
+    let source = Source::open()?;
+    let png = |width| -> TestResult<Vec<u8>> {
+        let mut out = Cursor::new(Vec::new());
+        image::DynamicImage::new_rgba8(width, 1).write_to(&mut out, image::ImageFormat::Png)?;
+        Ok(out.into_inner())
+    };
+    let original = png(1)?;
+    let seed = asset_id(&original);
+    let prepared = prepare_asset(&seed, "image/png", original)?;
+    let store = source.handle.host.assets.clone().ok_or("source raster owner")?;
+    let (registration, frame) = source
+        .handle
+        .host
+        .transaction(move |room| {
+            let mut assets = store.lock().map_err(|_| Error::NeedsRecovery)?;
+            room.put_asset("owner", &mut assets, prepared)?;
+            Ok((room.register("owner")?, room.catchup("owner")?))
+        })
+        .await?;
+    let writer = registration.lease.writer;
+    let mut client = source.profile.join_frame("room".into(), writer.clone(), &frame)?;
+    let only_redo = asset_id(&png(2)?);
+    let generation = "offline-redo";
+    assert!(client.apply(vec![Command::ReplaceImage(ReplaceImage {
+        block: "image-block".into(),
+        asset: only_redo.clone(),
+        generation: generation.into(),
+    })])?);
+    assert!(client.undo()?);
+    assert!(!client.document_json().contains(&only_redo));
+    let backup = source.capture("raster-required-by-redo")?;
+    let input = source.parent.join("empty-client-raster-queue");
+    let bytes = archive()?;
+    fs::write(&input, &bytes)?;
+    let uploads = RelaySegmentClientUploadArchive::open(
+        File::open(input)?,
+        RelaySegmentClientUploadPin {
+            writer: writer.clone(),
+            bytes: bytes.len() as u64,
+            sha256: asset_id(&bytes)[7..].into(),
+        },
+    )?;
+    let journal_path = source.parent.join("client-native-journal");
+    let journal = client.checkpoint()?;
+    fs::write(&journal_path, &journal)?;
+    let original = RelaySegmentClientJournal::open(
+        File::open(journal_path)?,
+        RelaySegmentClientJournalPin {
+            owner: RelaySegmentJournalOwner::Document {
+                writer: writer.clone(),
+                family: RelaySegmentDocumentJournalFamily::Original,
+            },
+            bytes: journal.len() as u64,
+            sha256: Sha256::digest(journal.as_bytes()).into(),
+        },
+    )?;
+    let path = source.parent.join("replacement-missing-offline-raster");
+    let mut replacement =
+        backup.restore_with_client_journals(&path, "new", POLICY, &[uploads], &[original])?;
+    let provider: Arc<dyn ServerRecoveryAssetProvider> = Arc::new(MapSeedRaster(seed));
+    let credentials = RecoveryRegistrationCredentials {
+        documents: vec![RecoveryDocumentCredential {
+            principal: "owner".into(),
+            writer,
+            credential: registration.credential,
+        }],
+        ..RecoveryRegistrationCredentials::default()
+    };
+    let pending = replacement.verify_handover_inputs(
+        &auth(&source.token)?,
+        "owner",
+        &source.token,
+        &credentials,
+        &provider,
+    )?;
+    let RelaySegmentHandoverInputCoverage::Pending(pending) = pending else {
+        return Err("offline Redo referenced a missing raster and the handover was approved".into());
+    };
+    assert!(pending.missing_registrations.is_empty());
+    assert!(pending.missing_upload_writers.is_empty());
+    assert!(matches!(&pending.missing_assets[..],
+        [ServerAssetAvailabilityMissing::Bytes {reference, content_asset}]
+            if reference.asset == only_redo && reference.generation == generation && content_asset == &only_redo));
+    assert_eq!(source.authority.current_selection()?, source.lease.selection());
+    source.lease.check()?;
+    Ok(())
+}

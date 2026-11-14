@@ -34,11 +34,12 @@ struct Source {
     lease: RoomDeploymentLease,
     handle: ServerBackupHandle,
     token: String,
+    profile: breditor_collab_feasibility::rich_replica::SharedRichProfile,
 }
 
 impl Source {
     fn open() -> TestResult<Self> {
-        let (files, room, _) = segment_handover_test_source(3, true, true)?;
+        let (files, room, profile) = segment_handover_test_source(3, true, true)?;
         let parent = files.room().parent().ok_or("fixture parent")?.to_owned();
         let assets = AssetStore::open(&parent.join("rasters"), room.asset_binding())?;
         let authority = RoomDeploymentAuthority::create(
@@ -53,7 +54,7 @@ impl Source {
             assets,
             lease.clone(),
         )?;
-        Ok(Self { _files: files, parent, authority, lease, handle, token })
+        Ok(Self { _files: files, parent, authority, lease, handle, token, profile })
     }
 
     fn capture(&self, name: &str) -> TestResult<RelaySegmentRoomBackupFiles> {

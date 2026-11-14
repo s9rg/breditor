@@ -1,8 +1,9 @@
 //! Check protected streams and provider-backed server assets at the completed restore cut.
 use crate::{
-    Error, MissingRecoveryRegistration, RecoveredRelaySegmentRoom, RecoveryRegistrationCredentials,
-    RelaySegmentClientJournalCoverage, RelaySegmentClientUploadPin, RelaySegmentRoomBackupIdentity,
-    Result, RoomParticipantInventoryMetadata, ServerAssetReferenceOutcome,
+    Error, MAX_SERVER_ASSET_REFERENCE_PAIRS, MissingRecoveryRegistration,
+    RecoveredRelaySegmentRoom, RecoveryRegistrationCredentials, RelaySegmentClientJournalCoverage,
+    RelaySegmentClientUploadPin, RelaySegmentRoomBackupIdentity, Result,
+    RoomParticipantInventoryMetadata, ServerAssetReferenceOutcome,
     ServerRelaySegmentAssetReferences,
     archive_digest::ArchiveDigest,
     assets::AssetInfo,
@@ -12,10 +13,15 @@ use crate::{
         backup::{check_server_asset_provider, resolve_server_assets},
     },
 };
+use breditor_collab_feasibility::rich_replica::VersionAssetReference;
 use serde::Serialize;
-use std::sync::{Arc, Weak};
+use std::{
+    borrow::Cow,
+    collections::BTreeSet,
+    sync::{Arc, Weak},
+};
 
-/// Exact restored native inventory, retained server dependencies and available provider mappings.
+/// Exact restored native inventory, retained dependencies and available provider mappings.
 /// This report contains no resume credentials and cannot authorize a handover by itself.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -32,7 +38,7 @@ pub struct RelaySegmentHandoverInputReport {
     pub references: ServerRelaySegmentAssetReferences,
     /// Missing original resume records, including revoked or read-only registrations.
     pub missing_registrations: Vec<MissingRecoveryRegistration>,
-    /// Missing current provider mappings or actual stored bytes.
+    /// Missing current provider mappings or actual stored bytes for accepted and offline bindings.
     pub missing_assets: Vec<ServerAssetAvailabilityMissing>,
     /// Current checked mapping for each resolved native asset and binding generation.
     pub resolutions: Vec<ServerAssetResolution>,
@@ -50,6 +56,22 @@ pub struct RelaySegmentHandoverInputReport {
     /// Native journal enrollment and common-prefix evidence, for a selected journal cohort.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub client_journal_coverage: Option<RelaySegmentClientJournalCoverage>,
+}
+
+impl RelaySegmentHandoverInputReport {
+    fn required_assets(&self) -> Result<Option<Cow<'_, [VersionAssetReference]>>> {
+        let ServerAssetReferenceOutcome::Ready { references } = &self.references.outcome else {
+            return Ok(None);
+        };
+        let Some(journals) = &self.client_journal_coverage else {
+            return Ok(Some(Cow::Borrowed(references)));
+        };
+        let merged: BTreeSet<_> = references.iter().chain(&journals.asset_references).collect();
+        if merged.len() > MAX_SERVER_ASSET_REFERENCE_PAIRS {
+            return Err(Error::Contract("relay segment handover raster binding budget"));
+        }
+        Ok(Some(Cow::Owned(merged.into_iter().cloned().collect())))
+    }
 }
 
 /// Coverage of protected registrations and accepted server asset inputs.
@@ -103,11 +125,8 @@ impl VerifiedRelaySegmentHandoverInputs {
             .provider
             .upgrade()
             .ok_or(Error::Contract("relay segment handover provider released"))?;
-        let ServerAssetReferenceOutcome::Ready { references } = &self.report.references.outcome
-        else {
-            return Err(Error::NeedsRecovery);
-        };
-        let current = resolve_server_assets(target.components().1, references, provider.as_ref())?;
+        let references = self.report.required_assets()?.ok_or(Error::NeedsRecovery)?;
+        let current = resolve_server_assets(target.components().1, &references, provider.as_ref())?;
         if !current.missing.is_empty()
             || current.resolutions != self.report.resolutions
             || current.assets != self.report.assets
@@ -162,7 +181,7 @@ impl RecoveredRelaySegmentRoom {
         }
         let mut report = Box::new(RelaySegmentHandoverInputReport {
             format: "breditor/relay-segment-handover-inputs",
-            format_version: if client_journal_coverage.is_some() { 2 } else { 1 },
+            format_version: if client_journal_coverage.is_some() { 3 } else { 1 },
             backup,
             participants,
             references,
@@ -175,15 +194,14 @@ impl RecoveredRelaySegmentRoom {
             missing_upload_writers,
             client_journal_coverage,
         });
-        let packet_pending = match &report.references.outcome {
-            ServerAssetReferenceOutcome::Ready { references } => {
-                let resolved = resolve_server_assets(assets, references, provider.as_ref())?;
-                report.missing_assets = resolved.missing;
-                report.resolutions = resolved.resolutions;
-                report.assets = resolved.assets;
-                false
-            }
-            ServerAssetReferenceOutcome::Pending { .. } => true,
+        let packet_pending = if let Some(references) = report.required_assets()? {
+            let resolved = resolve_server_assets(assets, &references, provider.as_ref())?;
+            report.missing_assets = resolved.missing;
+            report.resolutions = resolved.resolutions;
+            report.assets = resolved.assets;
+            false
+        } else {
+            true
         };
         check_server_asset_provider(provider.as_ref())?;
         if self.handover_binding()? != target {

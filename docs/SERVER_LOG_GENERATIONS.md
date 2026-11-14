@@ -869,6 +869,16 @@ actual journal directory and the manifest digest. The host can read exact
 originals with `read_client_journal`. Cold reopen checks each journal hash
 and the exact byte ranges before the target can resume serving.
 
+Handover scans each admitted document journal for raster bindings retained
+by any native contribution, including offline work and an image still
+reachable through Redo. The host must resolve the union of those bindings and
+the server's accepted and retained packet bindings against the actual
+restored rasters. One immutable asset may be supplied by a different
+writer's selected upload archive. The resolver checks complete bytes and
+generation-exact host mappings, and repeats the same check immediately
+before switching the serving epoch. If a binding is unavailable, approval
+stays pending even when the image is absent from the visible document.
+
 Verified handover requires the complete document and review roster, including
 empty observers and revoked registrations. It replays each selected original
 using the room's existing profile and the indicated native decoder. Document

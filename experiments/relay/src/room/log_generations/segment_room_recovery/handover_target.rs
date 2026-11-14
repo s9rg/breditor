@@ -20,7 +20,7 @@ impl RecoveredRelaySegmentRoom {
             let uploads =
                 self.uploads.as_ref().ok_or(Error::Contract("missing journal cohort uploads"))?;
             Sha256::digest(serde_json::to_vec(&(
-                "breditor/relay-segment-handover-target/4",
+                "breditor/relay-segment-handover-target/5",
                 common,
                 &self.client_rasters,
                 &self.restored_assets,

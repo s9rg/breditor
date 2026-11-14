@@ -273,7 +273,7 @@ fn missing_actor_document_stays_pending_and_duplicate_offers_are_refused() -> Te
         )?
         .metadata();
     let report = target.handover_client_journals(&participants)?.ok_or("coverage")?;
-    assert_eq!(report.missing_document_writers, [f.writer.clone()]);
+    assert_eq!(report.missing_document_writers, std::slice::from_ref(&f.writer));
     assert_eq!(report.missing_review_actors, [f.actor.as_str()]);
     assert_eq!(report.journals[0].pin.owner.key(), (0, f.peer.as_str()));
     let duplicate = write_journal(
