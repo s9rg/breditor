@@ -166,6 +166,14 @@ archive can be read by the existing joined backup and restore APIs.
 The existing buffered APIs and archive readers still materialize their
 components. The stream writers retain the existing formats and lifetime limits.
 
+Joined streaming checkpoint `8e4c05c9` passes 110 selected Rust tests, including
+exact byte comparison and restore, destination failures in both sections, and
+a raster removed during the final flush. Source and independent installed
+workflows consume the streamed predecessor archive and compare both joined
+producers at the recovered cut. Both pass authenticated handover and a relay
+restart with seven returning clients and two outage writers on temporary
+APFS volumes with controlled Node storage.
+
 Checkpoint `63ef1f17` passes 85 selected Rust tests. The streamed backup
 regression checks exact bytes, short writes, write failure and a writer unwind,
 then appends and cold-opens the room. The source and independent installed
