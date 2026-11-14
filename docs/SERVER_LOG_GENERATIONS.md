@@ -684,3 +684,11 @@ The reference adapter can serve both recovered components behind a fresh
 lease from the existing deployment epoch authority, with the ordinary
 account and Origin policies. Deployment approval for the exact cut and
 reconciliation of client and provider work remain host operations.
+
+[Portable linked-room restore qualification](qualification/2026-11-14-linked-room-portable-restore.json)
+records 514 passing relay tests and the separately run APFS interruption
+test. Source and independently installed clients each cross two full-WAL
+handoffs, then deliver offline text and comments to the portable restore
+under a fresh epoch after all original live directories are moved away.
+Both runs verify document and comment Undo/Redo across a cold restart and
+read the original raster bytes. Client storage in this test is controlled.

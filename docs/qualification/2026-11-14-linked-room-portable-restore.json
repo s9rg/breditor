@@ -1,0 +1,76 @@
+{
+  "format": "breditor/linked-room-portable-restore-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-14",
+  "source": {
+    "commit": "6c3c1181b50bd18953a53fd714d559f252991ae8",
+    "dirty": false,
+    "sha256": "6d3c5f4724f30adec06fbd5d0aa2b48b49cd56c2354670098fa7f06a4134ba00",
+    "files": 8800,
+    "bytes": 74871983
+  },
+  "tree": "93a1713b3033b1a74d85bfa9435a9a93434aa17f",
+  "relaySha256": "8f7a49a3b9f0d7b2bcc5346831456c796c1ff50f0e55dec45bfd45ddc556dda2",
+  "rustExecutableSha256": "51c17666f2023f1664fd8f6b32e68462f476b83d1d913be75aa7b50c3e0ee04b",
+  "rust": {
+    "passed": 514,
+    "failed": 0,
+    "ignored": 1,
+    "logSha256": "7cb3dd3f45218eb51670a84c9ab7cedb1a8f35147e519c411e4d87c6d0ff9cd0"
+  },
+  "crossVolume": {
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0,
+    "logSha256": "139709c8a551aafaf236c1507e77baa7f430beac3ff48b2c575e74589984c4f0"
+  },
+  "providerReportSha256": "6a699c0d311c97a50cda888e04d88b47466eb4fb3bfd6d479d76f093c54353e5",
+  "modes": {
+    "source": {
+      "mode": "source",
+      "handoffs": 2,
+      "portableRestores": 1,
+      "restoredOfflineLanes": 6,
+      "undoRedoLanes": 2,
+      "rasterReads": 1,
+      "processExits": 4,
+      "retainedAbsolutePositions": true,
+      "runtimeSha256": "73076a902c1926700031fbadaa2e5e6a2d6d661d39e3424cc90a0a32986c5c7c",
+      "proof": null
+    },
+    "installed": {
+      "mode": "installed",
+      "handoffs": 2,
+      "portableRestores": 1,
+      "restoredOfflineLanes": 6,
+      "undoRedoLanes": 2,
+      "rasterReads": 1,
+      "processExits": 4,
+      "retainedAbsolutePositions": true,
+      "runtimeSha256": "73076a902c1926700031fbadaa2e5e6a2d6d661d39e3424cc90a0a32986c5c7c",
+      "proof": {
+        "registryArtifacts": 45,
+        "archives": [
+          {
+            "name": "@breditor/browser",
+            "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+          },
+          {
+            "name": "@breditor/experimental-rich-content",
+            "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+          },
+          {
+            "name": "@breditor/collaboration",
+            "sha256": "d2b9dfb1a73ab8af01506c8e5e222462c313697f9897349890e5f075eb5e4222"
+          }
+        ]
+      }
+    }
+  },
+  "scope": [
+    "Streaming native and raster backup capture, cold restore without old room directories, exact linked archives, and completed local custody guard.",
+    "Native tests reject bad archive identity and raster bytes, reused IDs, occupied destinations, wrong live ownership, missing raster records, and torn tails without repair. A restored room can continue to another writable local segment.",
+    "Source and independently installed SDKs cross two actual full-WAL handoffs, then reconnect to a portable restored room under a fresh serving epoch, deliver text and comments, check absolute positions, verify Undo and Redo after another restart, and read the original raster.",
+    "Fixture client storage is controlled Node storage. Restore attempts without a completed marker require a fresh path. Provider and client proof enrollment and coordinated authenticated handoff remain separate host workflows."
+  ]
+}
