@@ -18,7 +18,7 @@ mod replay;
 pub(in crate::room) mod staging_capacity;
 mod streamed_backup;
 
-pub(in crate::room) struct Files(PathBuf);
+pub(crate) struct Files(PathBuf);
 impl Files {
     fn new() -> TestResult<Self> {
         static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
@@ -29,7 +29,7 @@ impl Files {
         fs::create_dir(&path)?;
         Ok(Self(path))
     }
-    pub(in crate::room) fn room(&self) -> PathBuf {
+    pub(crate) fn room(&self) -> PathBuf {
         self.0.join("room")
     }
     pub(in crate::room) fn recovery(&self) -> PathBuf {
@@ -45,7 +45,7 @@ impl Drop for Files {
 pub(super) fn setup() -> TestResult<(Files, Room, SharedRichProfile)> {
     setup_profile(3, true, true)
 }
-pub(in crate::room) fn setup_profile(
+pub(crate) fn setup_profile(
     version: u32,
     standard: bool,
     atomic: bool,

@@ -9,7 +9,7 @@ import {fileURLToPath, pathToFileURL} from 'node:url';
 import {WebSocket as Socket} from 'undici';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
 import {pixel} from './fixtures/review-assets/pixels.mjs';
-import {startReviewHost} from './fixtures/relay-host.mjs';
+import {startSegmentHandoverHost} from './fixtures/relay-segment-handover-host.mjs';
 import {searchConsumerLock, verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
 import {sourceEvidence, saveEvidence} from './candidate-release/evidence.mjs';
 
@@ -78,7 +78,7 @@ async function run(mode, distribution, executable, parent) {
     review = undefined;
   };
   try {
-    host = await startReviewHost(executable, [parent, 'start', '127.0.0.1:0']);
+    host = await startSegmentHandoverHost(executable, [parent, 'start', '127.0.0.1:0']);
     const address = host.address;
     const options = {...connect, endpoint: 'ws://' + address + '/ws', principal: 'owner',
       room: 'room', writerTransport: 'atomic-v2', saveIdentity() {}};
@@ -144,7 +144,7 @@ async function run(mode, distribution, executable, parent) {
       return BigInt(result.records);
     };
     const switched = handoff('handoff');
-    host = await startReviewHost(executable, [parent, 'successor', address]);
+    host = await startSegmentHandoverHost(executable, [parent, 'successor', address]);
     await attach();
     assert.equal(document.state().pending, false);
     assert.equal(review.state().pending, false);
@@ -160,26 +160,31 @@ async function run(mode, distribution, executable, parent) {
     await session.flush();
     const advanced = handoff('handoff-again');
     assert.ok(advanced > switched);
-    host = await startReviewHost(executable, [parent, 'final', address]);
+    host = await startSegmentHandoverHost(executable, [parent, 'final', address]);
     await attach();
     assert.equal(document.state().pending, false);
     assert.equal(review.state().pending, false);
     assert.ok(BigInt(document.state().serverReceiptSequence) >= advanced);
     assert.equal(visibleThreads().length, 3);
     await stopClients();
+    const rasterUrl = 'http://' + address + '/assets/sha256:' + sha(pixel);
+    const headers = {Origin: origin, Authorization: 'Bearer ' + token, 'X-Breditor-Principal': 'owner'};
+    const rasterBefore = await fetch(rasterUrl, {headers});
+    assert.equal(rasterBefore.status, 200);
+    assert.deepEqual(Buffer.from(await rasterBefore.arrayBuffer()), pixel);
+    const captured = await host.handover(token);
+    const old = await fetch(rasterUrl, {headers});
+    assert.equal(old.status, 403);
+    await old.arrayBuffer();
     await host.crash();
     host = undefined;
-    const captured = JSON.parse(execFileSync(executable, [parent, 'capture-restore', address], {
-      encoding: 'utf8', timeout: 90_000,
-    }).trim());
-    assert.equal(captured.kind, 'captured');
     for (const directory of ['source-native', 'successor', 'final', 'rasters']) {
       renameSync(join(parent, directory), join(parent, 'offline-' + directory));
     }
     edit('Offline before portable restore ');
     post('Offline comment before portable restore');
     await session.flush();
-    host = await startReviewHost(executable, [parent, 'restore', address]);
+    host = await startSegmentHandoverHost(executable, [parent, 'restore', address], token);
     await attach();
     assert.equal(document.state().pending, false);
     assert.equal(review.state().pending, false);
@@ -192,7 +197,7 @@ async function run(mode, distribution, executable, parent) {
     await review.flush();
     await stopClients();
     await host.crash();
-    host = await startReviewHost(executable, [parent, 'restored', address]);
+    host = await startSegmentHandoverHost(executable, [parent, 'restored', address], token);
     await attach();
     assert.doesNotMatch(session.core.documentJson(), /Offline before portable restore/);
     assert.match(session.core.documentJson(), /Offline over second handoff/);
@@ -204,13 +209,12 @@ async function run(mode, distribution, executable, parent) {
     await review.flush();
     assert.equal(session.core.documentJson(), accepted);
     assert.equal(visibleThreads().length, 4);
-    const raster = await fetch('http://' + address + '/assets/sha256:' + sha(pixel), {
-      headers: {Origin: origin, Authorization: 'Bearer ' + token, 'X-Breditor-Principal': 'owner'},
-    });
+    const raster = await fetch(rasterUrl, {headers});
     assert.equal(raster.status, 200);
     assert.deepEqual(Buffer.from(await raster.arrayBuffer()), pixel);
-    return {mode, handoffs: 2, portableRestores: 1, restoredOfflineLanes: 6, undoRedoLanes: 2, rasterReads: 1,
-      processExits: 4, retainedAbsolutePositions: true, runtimeSha256: sha(wasmBytes)};
+    return {mode, handoffs: 2, portableRestores: 1, restoredOfflineLanes: 6, undoRedoLanes: 2, rasterReads: 2,
+      processExits: 4, authenticatedTakeovers: 1, oldServingRefusals: 1, coldResumes: 2,
+      retainedAbsolutePositions: true, runtimeSha256: sha(wasmBytes)};
   } finally {
     await stopClients();
     await session?.discardAndClose();

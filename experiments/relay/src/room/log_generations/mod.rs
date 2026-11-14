@@ -42,8 +42,14 @@ pub use backup::{
     MAX_SERVER_LOG_GENERATION_BACKUP_BYTES, RelaySegmentBaseFile, RelaySegmentBaseIdentity,
     ServerLogGenerationBackup, ServerLogGenerationBackupIdentity, ServerLogGenerationBackupInfo,
 };
+#[cfg(feature = "server")]
+pub(crate) use segment_room_recovery::RelaySegmentServingCustody;
 pub use segment_room_recovery::{
     RecoveredRelaySegmentRoom, RelaySegmentRoomBackupFiles, RelaySegmentRoomBackupIdentity,
 };
 #[cfg(test)]
 pub(in crate::room) mod tests;
+#[cfg(all(feature = "server", test, unix))]
+pub(crate) use tests::{
+    Files as SegmentHandoverTestFiles, setup_profile as segment_handover_test_source,
+};

@@ -1,0 +1,118 @@
+//! Exact source comparison and the replacement append share real epoch custody.
+use super::{
+    RoomDeploymentAuthority, RoomDeploymentLease, RoomDeploymentSelection, journal, permit::Permit,
+};
+use crate::{
+    Error, RecoveredRelaySegmentRoom, Result,
+    server::{
+        Host, RelaySegmentHandoverApproval,
+        generation_backup::durable::{Interruption, Point},
+    },
+};
+use std::io::sink;
+
+pub(in crate::server) fn commit_segment_handover(
+    host: &Host,
+    principal: &str,
+    target: &RecoveredRelaySegmentRoom,
+    approval: &RelaySegmentHandoverApproval,
+    stop: &Interruption,
+) -> Result<RoomDeploymentLease> {
+    host.deployment.fenced(|old| {
+        if old.selection() != *approval.previous_selection() {
+            return Err(Error::Lease);
+        }
+        let authority = old.authority();
+        let mut epoch = Permit::try_acquire(&authority.state, true)?;
+        old.check_held(&mut epoch)?;
+        approval.check_target(target)?;
+        target.check_fresh_handover_target()?;
+        if let Some(custody) = &host.relay_segment_custody {
+            custody.check()?;
+        }
+        let mut room = host.room.lock().map_err(|_| Error::NeedsRecovery)?;
+        let assets = host.assets.as_ref().ok_or(Error::NeedsRecovery)?;
+        let assets = assets.lock().map_err(|_| Error::NeedsRecovery)?;
+        let current = room.write_relay_segment_room_backup(
+            principal,
+            &assets,
+            &mut sink(),
+            &mut sink(),
+            &mut sink(),
+        )?;
+        if current != *approval.backup() {
+            return Err(Error::Contract("relay segment handover source cut changed"));
+        }
+        if let Some(custody) = &host.relay_segment_custody {
+            custody.check()?;
+        }
+        old.check_held(&mut epoch)?;
+        stop.after(Point::SourceChecked)?;
+        let lease = authority.claim_activation_held(
+            &mut epoch,
+            approval.previous_selection(),
+            approval.nonce()?,
+            stop,
+        )?;
+        old.close();
+        let result = (|| {
+            if lease.selection() != approval.planned_selection()? {
+                return Err(Error::NeedsRecovery);
+            }
+            stop.after(Point::EpochSynced)?;
+            approval.check_target(target)?;
+            target.check_fresh_handover_target()?;
+            epoch.finish()?;
+            authority.state.healthy()
+        })();
+        if result.is_err() {
+            lease.close();
+        }
+        result?;
+        Ok(lease)
+    })
+}
+
+pub(in crate::server) fn resume_segment_handover(
+    authority: &RoomDeploymentAuthority,
+    approval: &RelaySegmentHandoverApproval,
+    expected: &RoomDeploymentSelection,
+) -> Result<RoomDeploymentLease> {
+    let first = approval.planned_selection()?;
+    let generation = expected.validate_pin()?;
+    let first_generation = first.validate_pin()?;
+    if expected.identity != first.identity
+        || authority.identity() != first.identity
+        || generation < first_generation
+    {
+        return Err(Error::Lease);
+    }
+    let owner = if generation == first_generation {
+        first.owner.clone()
+    } else {
+        Some(journal::nonce(&approval.restart_nonce(generation)?))
+    };
+    if expected.owner != owner {
+        return Err(Error::Lease);
+    }
+    let mut epoch = Permit::try_acquire(&authority.state, true)?;
+    let current = authority.state.selected(epoch.file()?)?;
+    if current.selection != *expected {
+        return Err(Error::Lease);
+    }
+    journal::retains_selection(
+        epoch.file()?,
+        &authority.state.header_digest,
+        authority.state.offset,
+        &current,
+        &first,
+    )?;
+    let lease = authority.claim_handover_held(
+        &mut epoch,
+        expected,
+        approval.restart_nonce(generation + 1)?,
+    )?;
+    epoch.finish()?;
+    authority.state.healthy()?;
+    Ok(lease)
+}

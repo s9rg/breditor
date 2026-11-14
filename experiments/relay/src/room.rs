@@ -19,7 +19,9 @@ mod layout_v3;
 mod log_generations;
 mod materialized_checkpoint;
 #[cfg(feature = "server")]
-pub(crate) use log_generations::{GenerationOperationCustody, HostOrigin};
+pub(crate) use log_generations::{
+    GenerationOperationCustody, HostOrigin, RelaySegmentServingCustody,
+};
 pub use log_generations::{
     GenerationRecoveryRegistrationCoverage, MAX_GENERATION_PARTICIPANT_INVENTORY_BYTES,
     ServerLogGenerationParticipantIdentity, ServerLogGenerationParticipantInventory,
@@ -43,6 +45,8 @@ pub use log_generations::{
 pub use log_generations::{
     RecoveredLogGenerationRoom, ServerLogGenerationRecovery, ServerLogGenerationRecoveryProgress,
 };
+#[cfg(all(feature = "server", test, unix))]
+pub(crate) use log_generations::{SegmentHandoverTestFiles, segment_handover_test_source};
 pub use materialized_checkpoint::{RelayCheckpoint, RelayCheckpointIdentity};
 #[cfg(feature = "server")]
 pub(crate) mod metadata_receipts;

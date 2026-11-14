@@ -132,6 +132,17 @@ impl RasterDirectory {
     }
 }
 impl RasterCustody {
+    #[cfg(feature = "server")]
+    pub fn witness(&self) -> &RasterWitness {
+        &self.witness
+    }
+
+    #[cfg(feature = "server")]
+    pub fn guard_root(&self) -> Result<()> {
+        guard_root(&self.path, &self.root, &self.witness)?;
+        self.guard_file(".lock", &self.witness.lock)
+    }
+
     pub fn guard_file(&self, name: &str, expected: &GenerationFileWitness) -> Result<()> {
         let path = self.path.join(name);
         let file = File::open(&path)?;

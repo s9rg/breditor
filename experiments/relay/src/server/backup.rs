@@ -31,7 +31,7 @@ pub use recovery_inventory::{ServerRecoveryState, ServerRecoveryStateIdentity};
 /// Clones retain native owners; drop the router, connections and every handle when stopping a host.
 #[derive(Clone)]
 pub struct ServerBackupHandle {
-    host: Host,
+    pub(super) host: Host,
 }
 
 /// Build the ordinary authenticated raster router with an explicit private host capture handle.

@@ -692,3 +692,44 @@ handoffs, then deliver offline text and comments to the portable restore
 under a fresh epoch after all original live directories are moved away.
 Both runs verify document and comment Undo/Redo across a cold restart and
 read the original raster bytes. Client storage in this test is controlled.
+
+## Transfer a serving linked room
+
+Use `router_with_server_backups_and_deployment_lease` for the live source.
+`ServerBackupHandle::capture_relay_segment` authenticates the room owner,
+streams and syncs the three files under the source's serving permit, and
+returns their whole-room identity and current serving epoch. Keep the
+earlier segments and retain the selected identity in trusted configuration.
+The source can accept additional work while the target is prepared.
+
+Restore the selected files into an absent target and call
+`RelaySegmentHandoverApproval::select` with its actual owner, backup identity
+and captured source epoch. Sync this approval separately before calling
+`commit_relay_segment_handover`. Commit authenticates the owner against
+both account configurations. It holds an exclusive permit from the same
+independent serving authority, holds the old native and raster owners, and
+compares the complete source cut and untouched target before the epoch
+append. A new accepted native record, raster, physical log cut, or epoch
+invalidates the selection. Capture a fresh cut if the source advanced.
+
+The epoch append commits directly to the approved target's local directory
+owners and the exact accepted source. It makes the old lease unavailable to
+further native work. A successful commit returns the target router and its
+host-local capture handle. Retire the superseded listener and keep both
+directories and the approved archives through qualification.
+
+If commit returns an uncertain result or the target process exits, use the
+independent authority's current selection and reopen the exact target from
+the retained backups. `resume_handover` authenticates the owner and requires
+proof of the same approved epoch in the real ledger. It claims a fresh
+target-bound epoch and preserves later complete target work. A newer
+unrelated selection, a copied target directory, or an incomplete on-disk
+tail requires separate operator recovery. No control endpoint is exposed.
+
+These are blocking host operations. They require participating hosts to
+share one actual authority journal, the private completed target directory
+to stay at its selected location, and the original owner to authenticate
+under both configurations at takeover. The approving host remains
+responsible for independent client/provider reconciliation and for selecting
+its traffic cutover. This path handles a reachable live source and the
+process exits after its epoch transition.

@@ -8,7 +8,7 @@ use crate::{Error, Result, Role, Room, RoomBackupIdentity};
 use std::collections::BTreeSet;
 
 impl Room {
-    pub(in crate::room) fn recovery_inventory_owner(&self, principal: &str) -> Result<()> {
+    pub(crate) fn recovery_inventory_owner(&self, principal: &str) -> Result<()> {
         self.log.ready()?;
         if principal != self.owner {
             return Err(Error::Permission);

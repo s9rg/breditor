@@ -1,9 +1,22 @@
 //! Explicit authenticated reference serving under a genuine host-selected deployment epoch.
-use super::RecoveredRelaySegmentRoom;
+use super::{GenerationDirectory, RasterCustody, RecoveredRelaySegmentRoom};
 use crate::{
-    Result,
-    server::{Authentication, RoomDeploymentLease, router_with_assets_and_deployment_lease},
+    Result, Room,
+    assets::AssetStore,
+    server::{Authentication, RoomDeploymentLease, router_with_recovered_segment},
 };
+
+pub(crate) struct RelaySegmentServingCustody {
+    directory: GenerationDirectory,
+    raster: RasterCustody,
+}
+
+impl RelaySegmentServingCustody {
+    pub(crate) fn check(&self) -> Result<()> {
+        self.directory.guard()?;
+        self.raster.guard_root()
+    }
+}
 
 impl RecoveredRelaySegmentRoom {
     /// Serve the restored room and rasters behind the existing deployment epoch and
@@ -18,10 +31,15 @@ impl RecoveredRelaySegmentRoom {
         authentication: Authentication,
         lease: RoomDeploymentLease,
     ) -> Result<axum::Router> {
+        let (router, _) = router_with_recovered_segment(self, authentication, lease)?;
+        Ok(router)
+    }
+
+    pub(crate) fn into_deployment_parts(
+        self,
+    ) -> Result<(Room, AssetStore, RelaySegmentServingCustody)> {
         self.check_custody()?;
-        // Keep the outer completed restore exclusively owned for the Router's lifetime.
-        let Self { room, assets, directory, raster } = self;
-        let router = router_with_assets_and_deployment_lease(room, authentication, assets, lease)?;
-        Ok(router.layer(axum::Extension(std::sync::Arc::new((directory, raster)))))
+        let Self { room, assets, directory, raster, .. } = self;
+        Ok((room, assets, RelaySegmentServingCustody { directory, raster }))
     }
 }

@@ -1,4 +1,6 @@
 //! Loopback fixture with separate old, handoff, and successor process lifetimes.
+#[path = "relay_segment_functional/handover.rs"]
+mod handover;
 #[path = "server_generation_inventory_fixture/source.rs"]
 mod source;
 #[path = "participant_inventory_fixture/storage.rs"]
@@ -6,10 +8,11 @@ mod storage;
 
 use breditor_collab_relay::{
     RelaySegmentBaseFile, RelaySegmentBaseIdentity, RelaySegmentRoomBackupFiles,
-    RelaySegmentRoomBackupIdentity, Room, RoomRecoveryPolicy,
+    RelaySegmentRoomBackupIdentity, Room,
     assets::{AssetStore, asset_id, prepare_asset},
     server::{
         self, Authentication, RoomDeploymentAuthority, RoomDeploymentIdentity, RoomDeploymentLease,
+        ServerBackupHandle,
     },
 };
 use serde_json::json;
@@ -21,7 +24,7 @@ use std::{
     sync::Arc,
 };
 
-type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
+type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 fn read(path: &Path, limit: u64) -> Result<String> {
     let mut value = String::new();
@@ -85,70 +88,30 @@ fn continue_room(
 fn restored_backup(parent: &Path) -> Result<RelaySegmentRoomBackupFiles> {
     let first = saved_base(parent, "base", None)?;
     let second = saved_base(parent, "linked", Some(first))?;
-    let current = saved_base(parent, "restored-base", Some(second))?;
+    let capture = parent.join("capture");
     let identity: RelaySegmentRoomBackupIdentity =
         serde_json::from_str(&read(&parent.join("restore.json"), 32 * 1024)?)?;
+    let current = Arc::new(RelaySegmentBaseFile::open_linked(
+        File::open(capture.join("native.archive"))?,
+        File::open(capture.join("native.checkpoint"))?,
+        &identity.native,
+        second,
+    )?);
     Ok(RelaySegmentRoomBackupFiles::open(
         current,
-        File::open(parent.join("restored-base.rasters"))?,
+        File::open(capture.join("rasters.archive"))?,
         &identity,
     )?)
 }
 
-fn capture_restore(parent: &Path) -> Result {
-    let old = parent.join("source-native");
-    let successor = parent.join("successor");
-    let current = parent.join("final");
-    let first = saved_base(parent, "base", None)?;
-    let second = saved_base(parent, "linked", Some(first))?;
-    let (mut room, _) = Room::open_relay_segment_chain(&[&old, &successor, &current], second)?;
-    let assets = AssetStore::open(&parent.join("rasters"), room.asset_binding())?;
-    let mut archive = create_base_file(&parent.join("restored-base.archive"))?;
-    let mut checkpoint = create_base_file(&parent.join("restored-base.checkpoint"))?;
-    let mut raster_archive = create_base_file(&parent.join("restored-base.rasters"))?;
-    let identity = room.write_relay_segment_room_backup(
-        "owner",
-        &assets,
-        &mut archive,
-        &mut checkpoint,
-        &mut raster_archive,
-    )?;
-    for file in [&archive, &checkpoint, &raster_archive] {
-        file.sync_all()?;
-    }
-    storage::write_new(&parent.join("restored-base.json"), &serde_json::to_vec(&identity.native)?)?;
-    storage::write_new(&parent.join("restore.json"), &serde_json::to_vec(&identity)?)?;
-    File::open(parent)?.sync_all()?;
-    println!("{}", json!({"kind":"captured","records":identity.native.predecessor.source.records}));
-    Ok(())
+fn deployment(parent: &Path) -> Result<RoomDeploymentAuthority> {
+    let identity: RoomDeploymentIdentity =
+        serde_json::from_str(&read(&parent.join("deployment-identity.json"), 4096)?)?;
+    Ok(RoomDeploymentAuthority::open(&parent.join("deployment"), &identity)?)
 }
 
-fn serving_epoch(parent: &Path, room: &Room, create: bool) -> Result<RoomDeploymentLease> {
-    let path = parent.join("deployment");
-    let identity_path = parent.join("deployment-identity.json");
-    let authority = if create {
-        let authority = RoomDeploymentAuthority::create(&path, &room.deployment_binding()?)?;
-        storage::write_new(&identity_path, &serde_json::to_vec(&authority.identity())?)?;
-        authority
-    } else {
-        let identity: RoomDeploymentIdentity = serde_json::from_str(&read(&identity_path, 4096)?)?;
-        RoomDeploymentAuthority::open(&path, &identity)?
-    };
-    let expected = authority.current_selection()?;
-    Ok(authority.claim(&expected)?)
-}
-
-fn restored_router(parent: &Path, create: bool, auth: Authentication) -> Result<axum::Router> {
-    let backup = restored_backup(parent)?;
-    let destination = parent.join("restored");
-    let policy = RoomRecoveryPolicy::HostReacquired;
-    let restored = if create {
-        backup.restore(&destination, "restored-one", policy)?
-    } else {
-        backup.reopen(&destination, policy)?
-    };
-    let lease = serving_epoch(parent, restored.components().0, false)?;
-    Ok(restored.into_serving_router(auth, lease)?)
+fn configured_auth(parent: &Path) -> Result<Authentication> {
+    Ok(Authentication::from_json(&read(&parent.join("auth.json"), 256 * 1024)?)?)
 }
 
 fn source_router(
@@ -157,9 +120,22 @@ fn source_router(
     parent: &Path,
     create: bool,
     auth: Authentication,
-) -> Result<axum::Router> {
-    let epoch = serving_epoch(parent, &room, create)?;
-    Ok(server::router_with_assets_and_deployment_lease(room, auth, assets, epoch)?)
+) -> Result<(axum::Router, ServerBackupHandle)> {
+    let authority = if create {
+        let authority = RoomDeploymentAuthority::create(
+            &parent.join("deployment"),
+            &room.deployment_binding()?,
+        )?;
+        storage::write_new(
+            &parent.join("deployment-identity.json"),
+            &serde_json::to_vec(&authority.identity())?,
+        )?;
+        authority
+    } else {
+        deployment(parent)?
+    };
+    let epoch: RoomDeploymentLease = authority.claim(&authority.current_selection()?)?;
+    Ok(server::router_with_server_backups_and_deployment_lease(room, auth, assets, epoch)?)
 }
 
 #[tokio::main(worker_threads = 2)]
@@ -176,8 +152,8 @@ async fn main() -> Result {
     let old = parent.join("source-native");
     let png = fs::read(parent.join("asset.png"))?;
     let id = asset_id(&png);
-    let auth = Authentication::from_json(&read(&parent.join("auth.json"), 256 * 1024)?)?;
-    let router = match mode.as_str() {
+    let auth = configured_auth(parent)?;
+    let (router, control) = match mode.as_str() {
         "start" => {
             let source::Source { mut room, configuration, profile: _ } = source::create(
                 parent,
@@ -191,10 +167,9 @@ async fn main() -> Result {
             }
             let mut assets = AssetStore::open(&parent.join("rasters"), room.asset_binding())?;
             room.put_asset("owner", &mut assets, prepare_asset(&id, "image/png", png)?)?;
-            source_router(room, assets, parent, true, auth)?
+            (source_router(room, assets, parent, true, auth)?.0, None)
         }
-        "capture-restore" => return capture_restore(parent),
-        "restore" | "restored" => restored_router(parent, mode == "restore", auth)?,
+        "restore" | "restored" => (handover::resumed_router(parent, auth)?, None),
         "handoff" => {
             let (room, _) = Room::open_log_generations(&old)?;
             return continue_room(parent, room, "base", "successor", "successor-one", None);
@@ -221,17 +196,26 @@ async fn main() -> Result {
             };
             let _ = room.relay_segment_retained_asset_references("owner")?;
             let assets = AssetStore::open(&parent.join("rasters"), room.asset_binding())?;
-            source_router(room, assets, parent, false, auth)?
+            let (router, handle) = source_router(room, assets, parent, false, auth)?;
+            let control =
+                if mode == "final" { Some(handover::serve_control(parent, handle)) } else { None };
+            (router, control)
         }
         _ => return Err("unknown fixture mode".into()),
     };
     let listener = tokio::net::TcpListener::bind(address).await?;
     println!("{}", json!({"kind":"listening","address":listener.local_addr()?.to_string()}));
     std::io::stdout().flush()?;
-    axum::serve(listener, router)
-        .with_graceful_shutdown(async {
-            let _ = tokio::signal::ctrl_c().await;
-        })
-        .await?;
+    let server = axum::serve(listener, router).with_graceful_shutdown(async {
+        let _ = tokio::signal::ctrl_c().await;
+    });
+    if let Some(control) = control {
+        tokio::select! {
+            result = server => result?,
+            result = control => result??,
+        }
+    } else {
+        server.await?;
+    }
     Ok(())
 }

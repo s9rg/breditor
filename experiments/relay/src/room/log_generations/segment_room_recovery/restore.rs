@@ -99,7 +99,16 @@ impl RelaySegmentRoomBackupFiles {
         };
         files::insert(&directory, COMPLETE, &files::encode(&completed)?)?;
         directory.guard()?;
-        Ok(RecoveredRelaySegmentRoom { room, assets, raster, directory })
+        Ok(RecoveredRelaySegmentRoom {
+            room,
+            assets,
+            raster,
+            directory,
+            #[cfg(feature = "server")]
+            backup: completed.backup,
+            #[cfg(feature = "server")]
+            active: completed.active,
+        })
     }
 
     /// Reopen the exact completed restore and admit its later complete native and raster work.
@@ -139,7 +148,16 @@ impl RelaySegmentRoomBackupFiles {
         self.check()?;
         raster.guard(&assets)?;
         directory.guard()?;
-        Ok(RecoveredRelaySegmentRoom { room, assets, raster, directory })
+        Ok(RecoveredRelaySegmentRoom {
+            room,
+            assets,
+            raster,
+            directory,
+            #[cfg(feature = "server")]
+            backup: completed.backup,
+            #[cfg(feature = "server")]
+            active: completed.active,
+        })
     }
 }
 

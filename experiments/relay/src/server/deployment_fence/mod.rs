@@ -22,6 +22,8 @@ mod read;
 mod seal;
 mod seal_generation;
 mod seal_prepared_generation;
+mod segment_handover;
+pub(super) use segment_handover::{commit_segment_handover, resume_segment_handover};
 mod serving;
 mod slot;
 mod state;

@@ -10,6 +10,7 @@ mod generation_backup;
 mod generation_recovery;
 mod http;
 mod publication_connections;
+mod segment_handover;
 mod versions;
 mod wire;
 pub use crate::log::generations::PendingNativeLogRotation;
@@ -91,6 +92,8 @@ pub use generation_recovery::{
     repair_sealed_native_tail, repair_sealed_native_tail_and_raster,
     retire_sealed_native_raster_upload,
 };
+pub use segment_handover::RelaySegmentHandoverApproval;
+pub(crate) use segment_handover::router_with_recovered_segment;
 use std::sync::{Arc, Mutex};
 use tokio::sync::{Semaphore, watch};
 
@@ -113,6 +116,7 @@ pub(super) struct Host {
         Arc<std::sync::OnceLock<generation_recovery::NativeGenerationServingCustody>>,
     publication_connections: Option<Arc<publication_connections::Connections>>,
     deployment: deployment_fence::HostDeployment,
+    relay_segment_custody: Option<Arc<crate::room::RelaySegmentServingCustody>>,
 }
 impl Host {
     pub async fn transaction<T: Send + 'static>(
@@ -124,17 +128,24 @@ impl Host {
         let assets = self.assets.clone();
         let deployment = self.deployment.clone();
         let serving = self.generation_serving.clone();
+        let segment = self.relay_segment_custody.clone();
         tokio::task::spawn_blocking(move || {
             deployment.transaction(|| {
                 let _custody = custody;
                 if let Some(held) = serving.get() {
                     held.check_retained()?;
                 }
+                if let Some(held) = &segment {
+                    held.check()?;
+                }
                 let _assets = assets;
                 let mut room = room.lock().map_err(|_| Error::NeedsRecovery)?;
                 let result = f(&mut room);
                 if let Some(held) = serving.get() {
                     held.check_retained()?;
+                }
+                if let Some(held) = &segment {
+                    held.check()?;
                 }
                 result
             })
@@ -216,6 +227,7 @@ fn create_host(
         generation_serving: Arc::new(std::sync::OnceLock::new()),
         publication_connections: None,
         deployment: deployment_fence::HostDeployment::unfenced(),
+        relay_segment_custody: None,
     }
 }
 fn routes(host: Host) -> Router {

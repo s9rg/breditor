@@ -65,6 +65,21 @@ impl Log {
         initial_segment(base, generation).map(|_| ())
     }
 
+    #[cfg(feature = "server")]
+    pub(crate) fn check_fresh_segment_restoration(&self, generation: &str) -> Result<()> {
+        let base = self.segment_base().ok_or(Error::NeedsRecovery)?;
+        let (manifest, _) = initial_segment(base, generation)?;
+        let head = self.generation_descriptor()?;
+        let source = &base.identity().predecessor.source;
+        if head.manifest != manifest
+            || head.next_sequence != source.records.to_string()
+            || head.terminal_digest != source.terminal_log_digest
+        {
+            return Err(Error::Contract("relay segment handover target advanced"));
+        }
+        Ok(())
+    }
+
     pub(crate) fn create_restored_segment(
         path: &Path,
         base: Arc<RelaySegmentBaseFile>,
