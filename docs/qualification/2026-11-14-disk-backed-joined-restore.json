@@ -1,0 +1,79 @@
+{
+  "format": "breditor/disk-backed-joined-restore-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-14",
+  "testedSource": {
+    "commit": "f9e24fa12dfd9f28392197c07e4e218ec3c0525b",
+    "dirty": false,
+    "sha256": "ebbf4093e8619f844d818c648ae0d5824934817ae6f56752e5a28690bb2b536f",
+    "files": 8775,
+    "bytes": 74689206
+  },
+  "testedTree": "40e6806d42ae101a1d2f51d19d9c072218d6e17d",
+  "relayFixture": {
+    "sha256": "6e0b69620e88fa292ef746cf0e1f3da355e5bf8dc7dfc766a82a3ec4f6714821",
+    "bytes": 25239344
+  },
+  "rustUnitExecutable": {
+    "sha256": "d18edd003549fc585879688ce9a1c2f0172a1b904425fe0c2000c5bcbd9bc335",
+    "bytes": 37182736
+  },
+  "selectedRust": {
+    "passed": 109,
+    "ignored": 1,
+    "failed": 0,
+    "logSha256": "790adf1e6d0cde5d24c5ed4931d22166b2f16f8784fbcd09241bad3fd831457d"
+  },
+  "mountedWAL": {
+    "passed": 1,
+    "failed": 0,
+    "interruptions": 3,
+    "logSha256": "d72c1192fc24c56442b75742566cf4d5efd75351c056ceca6f7e7a0945041cb6"
+  },
+  "providerReportSha256": "54768d79833f2fe4ff1c70b94c764d38c6f9aabacd06dc80cc3f63eab588b0e2",
+  "sharedWasmSha256": "73076a902c1926700031fbadaa2e5e6a2d6d661d39e3424cc90a0a32986c5c7c",
+  "workflows": {
+    "source": {
+      "passedCases": 2,
+      "restoredArchiveSha256": "9ebd5676d3eaadc062c2c2bdf8afaa764a99bd3fb8c7c76f4e8e49dc4edddd51",
+      "returnedClients": 7,
+      "outageWriters": 2,
+      "resumedUploadReceipts": 1,
+      "recoveredLostReplies": 6
+    },
+    "installed": {
+      "passedCases": 2,
+      "restoredArchiveSha256": "8d9bf31efdf3c816758d6eb11a13e64c7399b5aa2dfecdc40b742b490689f25c",
+      "returnedClients": 7,
+      "outageWriters": 2,
+      "resumedUploadReceipts": 1,
+      "recoveredLostReplies": 6,
+      "installedArchives": [
+        {
+          "name": "@breditor/browser",
+          "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+        },
+        {
+          "name": "@breditor/experimental-rich-content",
+          "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+        },
+        {
+          "name": "@breditor/collaboration",
+          "sha256": "d2b9dfb1a73ab8af01506c8e5e222462c313697f9897349890e5f075eb5e4222"
+        }
+      ]
+    }
+  },
+  "scope": [
+    "Disk-backed archive admission and inactive joined restore with the original recovery ledgers.",
+    "Focused Rust interruptions cover switching input paths at a synced prefix or after publication.",
+    "Source and clean installed packages reserve and cold-resume disk input, then run authenticated handoff and relay restart with controlled Node storage.",
+    "Operational handoff still uses buffered input. Room replay reconstructs native state in memory."
+  ],
+  "fullRust": {
+    "passed": 503,
+    "failed": 0,
+    "ignored": 1,
+    "logSha256": "7f8f47d285ed5e6067f69b940fd7bfa514127561a8d7b20f464a1d27bdc9b1e4"
+  }
+}

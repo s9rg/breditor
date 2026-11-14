@@ -182,6 +182,14 @@ rebuilds room state in memory, and the subsequent serving handoff takes the
 existing buffered archive. Existing formats, host fencing requirements, and
 lifetime limits apply.
 
+Disk-backed restore checkpoint `f9e24fa1` passes 503 Rust relay tests plus the
+separate mounted-WAL test. The interruption tests swap input modes and compare
+the complete restored archive byte for byte. Source and independent installed
+workflows reopen a disk-backed reservation before authenticated handoff. Both
+restart a real Rust relay, reconnect seven clients, deliver work from two
+outage writers and recover six lost durable replies.
+[Qualification evidence](qualification/2026-11-14-disk-backed-joined-restore.json)
+
 Joined streaming checkpoint `8e4c05c9` passes 110 selected Rust tests, including
 exact byte comparison and restore, destination failures in both sections, and
 a raster removed during the final flush. Source and independent installed
