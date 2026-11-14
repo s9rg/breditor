@@ -624,3 +624,11 @@ must remain available. Linked portable backup, restorable multi-segment
 chains, reclaiming the old directory, and integrated whole-room activation
 are follow-on work. Legacy archive APIs refuse a successor so callers
 cannot accidentally export only its suffix as a complete backup.
+
+[November 14 qualification](qualification/2026-11-14-writable-relay-segment.json)
+records 512 passing relay tests and the separately run APFS interruption
+test. From both the source SDK and independently installed archives,
+a real 64-WAL relay exits, the handoff is committed in a fresh process,
+and a cold successor accepts offline text and comments using the original
+credentials. A second relay exit preserves Undo, subsequent Redo, and the
+original raster bytes. These are controlled Node client stores.

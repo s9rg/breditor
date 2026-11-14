@@ -1,0 +1,72 @@
+{
+  "format": "breditor/writable-relay-segment-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-14",
+  "source": {
+    "commit": "4e6e3b0219f0c94b52eb5cc4246ee0e53fb4ba27",
+    "dirty": false,
+    "sha256": "da508620ecb3d8856b2eb4c1fee82039d401f20021600d797774da4df2811656",
+    "files": 8792,
+    "bytes": 74817831
+  },
+  "tree": "35d494f79a04f5608bde92bff1b4b40db417e21c",
+  "relaySha256": "7ab82fddbe2562f39241d9837b5abc19a7c5ee53704b55cde103c54415c7a5db",
+  "rustExecutableSha256": "0003c95f8c8efd7301f63661715d34a4f149a5527242bedf3cd52bf318d6b220",
+  "rust": {
+    "passed": 512,
+    "failed": 0,
+    "ignored": 1,
+    "logSha256": "6065ab9aca564ff585b4fb092d678bcc91335284d38e9d5c0d17af1ab6863581"
+  },
+  "crossVolume": {
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0,
+    "logSha256": "30fd36b943d6932dbcb1e8ec8f1bdddcf086ad4f1c74af6a8438ce7a43cd5029"
+  },
+  "providerReportSha256": "0aac80ddec8e256dd21fb3140b1ca62661584afae956ecc914b7755530f4e49d",
+  "modes": {
+    "source": {
+      "mode": "source",
+      "restoredOfflineLanes": 2,
+      "undoRedoLanes": 2,
+      "rasterReads": 1,
+      "processExits": 2,
+      "retainedAbsolutePositions": true,
+      "runtimeSha256": "73076a902c1926700031fbadaa2e5e6a2d6d661d39e3424cc90a0a32986c5c7c",
+      "proof": null
+    },
+    "installed": {
+      "mode": "installed",
+      "restoredOfflineLanes": 2,
+      "undoRedoLanes": 2,
+      "rasterReads": 1,
+      "processExits": 2,
+      "retainedAbsolutePositions": true,
+      "runtimeSha256": "73076a902c1926700031fbadaa2e5e6a2d6d661d39e3424cc90a0a32986c5c7c",
+      "proof": {
+        "registryArtifacts": 45,
+        "archives": [
+          {
+            "name": "@breditor/browser",
+            "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+          },
+          {
+            "name": "@breditor/experimental-rich-content",
+            "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+          },
+          {
+            "name": "@breditor/collaboration",
+            "sha256": "d2b9dfb1a73ab8af01506c8e5e222462c313697f9897349890e5f075eb5e4222"
+          }
+        ]
+      }
+    }
+  },
+  "scope": [
+    "Real 64-WAL physical predecessor, exact verified checkpoint, durable local append-owner handoff and absolute suffix positions.",
+    "Native coverage checks copied or stale authority, unchanged occupied destinations, held checkpoint mutation, incomplete successor tail repair, original receipt retries and orphan-only image packet references.",
+    "Source and independently installed SDKs deliver offline document and comment operations using existing credentials, preserve Undo and Redo over real relay exits, and read the original bound raster bytes.",
+    "One local handoff. Portable successor backup/restore, repeatable chain lifecycle and whole-room activation for this layout remain open."
+  ]
+}
