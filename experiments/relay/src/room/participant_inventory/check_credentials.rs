@@ -8,7 +8,7 @@ use std::collections::BTreeSet;
 impl Room {
     // This returns no capability. Each public family verifies its actual native selection first
     // and constructs only its own non-deserializable, cut-bound proof after complete matching.
-    pub(in crate::room) fn missing_recovery_registrations(
+    pub(crate) fn missing_recovery_registrations(
         &self,
         metadata: &RoomParticipantInventoryMetadata,
         supplied: &RecoveryRegistrationCredentials,

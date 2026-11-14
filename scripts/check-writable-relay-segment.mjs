@@ -123,6 +123,21 @@ async function run(mode, distribution, executable, parent) {
     post('Accepted comment before segment');
     await document.flush();
     await review.flush();
+    const rasterUrl = 'http://' + address + '/assets/sha256:' + sha(pixel);
+    const headers = {Origin: origin, Authorization: 'Bearer ' + token, 'X-Breditor-Principal': 'owner'};
+    const catalog = 'http://' + address + '/document-versions/v1/';
+    const described = await fetch(catalog + 'descriptor', {headers});
+    assert.equal(described.status, 200);
+    const {descriptor} = await described.json();
+    const catalogHeaders = {...headers, 'X-Breditor-Catalog': descriptor.binding};
+    const packet = session.core.captureVersion('Before linked handoffs', 'owner', '1794680000000');
+    const published = await fetch(catalog + 'publish', {
+      method: 'POST', headers: {...catalogHeaders, 'Content-Type': 'application/json'}, body: packet,
+    });
+    assert.equal(published.status, 200);
+    const {admission} = await published.json();
+    assert.equal(admission.kind, 'durable');
+    const packetUrl = catalog + 'packets/' + encodeURIComponent(admission.entry.version.id);
     const first = document.state().serverReceiptSequence;
     assert.ok(BigInt(first) > 64n);
     await stopClients();
@@ -167,12 +182,18 @@ async function run(mode, distribution, executable, parent) {
     assert.ok(BigInt(document.state().serverReceiptSequence) >= advanced);
     assert.equal(visibleThreads().length, 3);
     await stopClients();
-    const rasterUrl = 'http://' + address + '/assets/sha256:' + sha(pixel);
-    const headers = {Origin: origin, Authorization: 'Bearer ' + token, 'X-Breditor-Principal': 'owner'};
     const rasterBefore = await fetch(rasterUrl, {headers});
     assert.equal(rasterBefore.status, 200);
     assert.deepEqual(Buffer.from(await rasterBefore.arrayBuffer()), pixel);
-    const captured = await host.handover(token);
+    edit('Offline before portable restore ');
+    post('Offline comment before portable restore');
+    await session.flush();
+    const queuedAcrossTakeover = session.exportRecovery();
+    const captured = await host.handover(token, registered.identity, comment.identity);
+    assert.equal(captured.registrationRefusals, 2);
+    assert.equal(captured.providerRasters, 1);
+    assert.equal(captured.retainedPackets, 1);
+    assert.deepEqual(session.exportRecovery(), queuedAcrossTakeover);
     const old = await fetch(rasterUrl, {headers});
     assert.equal(old.status, 403);
     await old.arrayBuffer();
@@ -181,9 +202,9 @@ async function run(mode, distribution, executable, parent) {
     for (const directory of ['source-native', 'successor', 'final', 'rasters']) {
       renameSync(join(parent, directory), join(parent, 'offline-' + directory));
     }
-    edit('Offline before portable restore ');
-    post('Offline comment before portable restore');
-    await session.flush();
+    await session.close();
+    session = await api.SharedReviewPersistentSession.open(persisted);
+    assert.deepEqual(session.exportRecovery(), queuedAcrossTakeover);
     host = await startSegmentHandoverHost(executable, [parent, 'restore', address], token);
     await attach();
     assert.equal(document.state().pending, false);
@@ -212,8 +233,13 @@ async function run(mode, distribution, executable, parent) {
     const raster = await fetch(rasterUrl, {headers});
     assert.equal(raster.status, 200);
     assert.deepEqual(Buffer.from(await raster.arrayBuffer()), pixel);
+    const retainedPacket = await fetch(packetUrl, {headers: catalogHeaders});
+    assert.equal(retainedPacket.status, 200);
+    assert.equal(await retainedPacket.text(), packet);
     return {mode, handoffs: 2, portableRestores: 1, restoredOfflineLanes: 6, undoRedoLanes: 2, rasterReads: 2,
       processExits: 4, authenticatedTakeovers: 1, oldServingRefusals: 1, coldResumes: 2,
+      registrationRefusals: captured.registrationRefusals, providerRasters: captured.providerRasters,
+      retainedPackets: captured.retainedPackets,
       retainedAbsolutePositions: true, runtimeSha256: sha(wasmBytes)};
   } finally {
     await stopClients();

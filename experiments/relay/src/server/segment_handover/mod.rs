@@ -2,11 +2,16 @@
 mod approval;
 mod capture;
 mod commit;
+mod inputs;
 mod resume;
 #[cfg(all(test, unix))]
 mod tests;
 
 pub use approval::RelaySegmentHandoverApproval;
+pub use inputs::{
+    RelaySegmentHandoverInputCoverage, RelaySegmentHandoverInputReport,
+    VerifiedRelaySegmentHandoverInputs,
+};
 
 use super::{Authentication, RoomDeploymentLease, ServerBackupHandle, routes};
 use crate::{RecoveredRelaySegmentRoom, Result};

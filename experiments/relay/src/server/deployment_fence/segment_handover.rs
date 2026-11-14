@@ -5,7 +5,7 @@ use super::{
 use crate::{
     Error, RecoveredRelaySegmentRoom, Result,
     server::{
-        Host, RelaySegmentHandoverApproval,
+        Host, RelaySegmentHandoverApproval, VerifiedRelaySegmentHandoverInputs,
         generation_backup::durable::{Interruption, Point},
     },
 };
@@ -16,8 +16,10 @@ pub(in crate::server) fn commit_segment_handover(
     principal: &str,
     target: &RecoveredRelaySegmentRoom,
     approval: &RelaySegmentHandoverApproval,
+    inputs: Option<&VerifiedRelaySegmentHandoverInputs>,
     stop: &Interruption,
 ) -> Result<RoomDeploymentLease> {
+    approval.check_inputs(inputs)?;
     host.deployment.fenced(|old| {
         if old.selection() != *approval.previous_selection() {
             return Err(Error::Lease);
@@ -26,7 +28,12 @@ pub(in crate::server) fn commit_segment_handover(
         let mut epoch = Permit::try_acquire(&authority.state, true)?;
         old.check_held(&mut epoch)?;
         approval.check_target(target)?;
-        target.check_fresh_handover_target()?;
+        let _provider = if let Some(inputs) = inputs {
+            Some(inputs.recheck(principal, target)?)
+        } else {
+            target.check_fresh_handover_target()?;
+            None
+        };
         if let Some(custody) = &host.relay_segment_custody {
             custody.check()?;
         }

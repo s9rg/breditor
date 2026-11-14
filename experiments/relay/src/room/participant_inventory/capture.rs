@@ -34,7 +34,7 @@ impl Room {
 
     // Only the original checked capture above and the distinct generation capture call this.
     // The caller pins and rechecks actual retained source bytes; this does not prove storage.
-    pub(in crate::room) fn capture_participant_inventory_at(
+    pub(crate) fn capture_participant_inventory_at(
         &self,
         principal: &str,
         room: RoomBackupIdentity,

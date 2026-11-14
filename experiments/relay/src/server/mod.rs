@@ -92,8 +92,11 @@ pub use generation_recovery::{
     repair_sealed_native_tail, repair_sealed_native_tail_and_raster,
     retire_sealed_native_raster_upload,
 };
-pub use segment_handover::RelaySegmentHandoverApproval;
 pub(crate) use segment_handover::router_with_recovered_segment;
+pub use segment_handover::{
+    RelaySegmentHandoverApproval, RelaySegmentHandoverInputCoverage,
+    RelaySegmentHandoverInputReport, VerifiedRelaySegmentHandoverInputs,
+};
 use std::sync::{Arc, Mutex};
 use tokio::sync::{Semaphore, watch};
 

@@ -23,6 +23,8 @@ use std::{
 type TestResult<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 const POLICY: RoomRecoveryPolicy = RoomRecoveryPolicy::HostReacquired;
 
+mod verified_inputs;
+
 struct Source {
     _files: SegmentHandoverTestFiles,
     parent: PathBuf,
@@ -228,7 +230,7 @@ async fn replacement_epoch_excludes_other_claims_and_cold_resumes_after_interrup
     let old = source.handle.host.clone();
     let approved = approve.clone();
     let worker = tokio::task::spawn_blocking(move || {
-        commit_segment_handover(&old, "owner", &target, &approved, &stop).map(|_| ())
+        commit_segment_handover(&old, "owner", &target, &approved, None, &stop).map(|_| ())
     });
     let held = reached.recv_timeout(Duration::from_secs(10));
     let concurrent = contender.claim(&source.lease.selection());

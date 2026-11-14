@@ -1,4 +1,5 @@
 //! A separately selected commitment to the source epoch, backup and actual local restore.
+use super::VerifiedRelaySegmentHandoverInputs;
 use crate::{
     Error, RecoveredRelaySegmentRoom, RelaySegmentRoomBackupIdentity, Result, credentials,
     server::{RoomDeploymentSelection, deployment_fence::handover_selection},
@@ -17,6 +18,8 @@ pub struct RelaySegmentHandoverApproval {
     backup: RelaySegmentRoomBackupIdentity,
     target: [u8; 32],
     previous: RoomDeploymentSelection,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    verified_inputs_sha256: Option<[u8; 32]>,
 }
 
 impl RelaySegmentHandoverApproval {
@@ -37,10 +40,40 @@ impl RelaySegmentHandoverApproval {
             backup,
             target: target.handover_binding()?,
             previous,
+            verified_inputs_sha256: None,
         };
         approval.check_target(target)?;
         target.check_fresh_handover_target()?;
         Ok(approval)
+    }
+
+    /// Select a restored target with complete protected streams and retained server asset inputs.
+    /// Persist this approval separately before committing with the same held verification.
+    ///
+    /// # Errors
+    /// Refuses mismatched backup or target custody, invalid epoch or advanced target.
+    pub fn select_verified(
+        target: &RecoveredRelaySegmentRoom,
+        inputs: &VerifiedRelaySegmentHandoverInputs,
+        previous: RoomDeploymentSelection,
+    ) -> Result<Self> {
+        inputs.check_target(target)?;
+        let mut approval = Self::select(target, inputs.report().backup.clone(), previous)?;
+        approval.verified_inputs_sha256 = Some(inputs.digest());
+        approval.planned_selection()?;
+        Ok(approval)
+    }
+
+    pub(in crate::server) fn check_inputs(
+        &self,
+        inputs: Option<&VerifiedRelaySegmentHandoverInputs>,
+    ) -> Result<()> {
+        if self.verified_inputs_sha256 != inputs.map(VerifiedRelaySegmentHandoverInputs::digest) {
+            return Err(Error::Contract(
+                "relay segment handover requires the selected input proof",
+            ));
+        }
+        Ok(())
     }
 
     pub(in crate::server) fn check_target(&self, target: &RecoveredRelaySegmentRoom) -> Result<()> {
@@ -64,6 +97,12 @@ impl RelaySegmentHandoverApproval {
     #[must_use]
     pub fn previous_selection(&self) -> &RoomDeploymentSelection {
         &self.previous
+    }
+
+    /// Exact verified input report committed by the new epoch, if selected.
+    #[must_use]
+    pub fn verified_inputs_sha256(&self) -> Option<[u8; 32]> {
+        self.verified_inputs_sha256
     }
 
     /// Exact planned first serving epoch of this target.

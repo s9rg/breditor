@@ -741,3 +741,28 @@ requests after the commit, then delivered offline text and comments to the
 resumed target with the old directories moved away. Both runs checked
 document and comment Undo/Redo across an additional process exit and read the
 same raster bytes before and after takeover.
+
+### Verify protected streams and server asset dependencies
+
+On the untouched restore, call `verify_handover_inputs` under current owner
+authentication with protected registration records and a held asset provider.
+The native inventory covers every registered document writer and review actor,
+including observers and revoked accounts. The dependency scan visits the
+complete linked history in absolute order, including retained version,
+proposal and revision packets. The provider resolves opaque asset/generation
+pairs against the restored raster store. Native content IDs keep their
+original meanings. Pending reports identify missing registrations, packet
+dependencies, mappings or rasters. Supplied invalid credentials refuse.
+
+Use `select_verified` and `commit_verified_relay_segment_handover` to bind
+the verified report digest into the replacement epoch. Commit holds the
+provider guard and compares its current mappings and raster metadata before
+the native cut comparison and epoch append. A different target, changed
+provider mappings or a dropped guard prevents commitment. Keep the report
+and approval separately from the room files. After a committed restart,
+`resume_handover` uses the exact approval and actual authority journal.
+It does not replay or acknowledge old delivery from the report.
+
+The report covers accepted server state and original resume identities.
+The host still needs the client journals and provider outboxes to reconcile
+unaccepted offline work and client-only uploads.

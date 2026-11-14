@@ -30,13 +30,13 @@ export async function startSegmentHandoverHost(executable, args, token) {
       clearTimeout(timer);
     }
   }
-  const send = token => {
-    child.stdin.write(JSON.stringify({kind: 'handover', token}) + '\n');
+  const send = request => {
+    child.stdin.write(JSON.stringify(request) + '\n');
   };
   try {
     await spawned;
     if (token) {
-      send(token);
+      send({kind: 'resume', token});
       child.stdin.end();
     } else if (mode !== 'final') {
       child.stdin.end();
@@ -44,8 +44,9 @@ export async function startSegmentHandoverHost(executable, args, token) {
     const {address} = await next('listening');
     return {
       address,
-      async handover(token) {
-        send(token);
+      async handover(token, document, review) {
+        send({kind: 'handover', token, writer: document.writer, documentCredential: document.credential,
+          actor: review.actor, reviewCredential: review.credential});
         return next('committed');
       },
       async crash() {
