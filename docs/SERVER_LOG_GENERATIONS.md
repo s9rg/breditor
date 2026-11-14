@@ -575,3 +575,12 @@ opens the existing generation directory and needs its retained files.
 Canonical checkpoints remain subject to their 512 MiB encoded budget and
 materialize native state in memory. The log storage lifetime and active
 budgets, raster custody and existing on-disk formats are unchanged.
+
+[November 14 qualification](qualification/2026-11-14-relay-segment-base.json)
+records 510 passing relay cases, a separate passing cross-volume restoration,
+and source and installed provider workflows with seven clients returning
+after real process replacement in each run. The full relay rerun used six
+test threads after an operator route returned HTTP 503 once under the earlier
+broad run. The same test passed by itself and in the final suite. The capture
+and replay tests include an actual 64-WAL room and compare the recovered
+state, receipts, and exported archive against ordinary cold replay.

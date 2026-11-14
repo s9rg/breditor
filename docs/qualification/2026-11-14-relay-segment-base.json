@@ -1,0 +1,93 @@
+{
+  "format": "breditor/relay-segment-base-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-14",
+  "source": {
+    "commit": "728df5fc8693f392af4d0f90deac5c1ec847064c",
+    "dirty": false,
+    "sha256": "6780ee8e7557a3e9fb1671e3fb346e9fee6f4e1ddda4ec51b1f136fcb1fd7c0a",
+    "files": 8785,
+    "bytes": 74765942
+  },
+  "tree": "8573eccdb930f0a9bdaf1effe12db370758ef969",
+  "relayFixtureSha256": "695bdffeb3841685940b00c5988c845577fd07baf757e87b4c84508b1cdc8356",
+  "rustExecutableSha256": "b3de080531dc89eb6ce213a9509c66209e4846b4ccb56fd884382f1a0a630ebe",
+  "rust": {
+    "passed": 510,
+    "failed": 0,
+    "ignored": 1,
+    "logSha256": "411ecc6ec4b27d138e50ec22053e8ff46e7be9fed1daab53eae68cef87e8917c"
+  },
+  "focused": {
+    "passed": 88,
+    "failed": 0,
+    "ignored": 1,
+    "logSha256": "c44c4bc6dd4855ff9065bb8652dd67c6ceb443c269952ab0721e63867373527b"
+  },
+  "crossVolume": {
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0,
+    "logSha256": "4f80176a54aa10b9992dca4ac4b8418b280bf0e9ef42d08709a3b9eb44357b27"
+  },
+  "initialBroadRun": {
+    "passed": 508,
+    "failed": 1,
+    "ignored": 1,
+    "httpStatus": 503,
+    "expectedStatus": 200,
+    "failedTest": "forty_modes_keep_complete_ordered_path_and_literal_inner_controls_without_mutation",
+    "logSha256": "4370f2014e030e675718da6f45b08b378b76208871972706b9697eae3648f12a",
+    "isolatedRerun": {
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "logSha256": "5fc3f0907119a8623941324b3e44d68304b4f592e5a3546b8184e577ea22c3fc"
+    }
+  },
+  "exampleClippyHasExistingFindings": true,
+  "providerReportSha256": "d1a36eff052768da7696a021402f6d6ae6feaf0b53467c16a7345b42e961d202",
+  "runtimeSha256": "73076a902c1926700031fbadaa2e5e6a2d6d661d39e3424cc90a0a32986c5c7c",
+  "modes": {
+    "source": {
+      "passedCases": 2,
+      "returnedClients": 7,
+      "outageWriters": 2,
+      "lostReplies": 6,
+      "mountedVolumes": 2,
+      "predecessorArchiveSha256": "b23d58fd0b230f3b54c91b609038a700e1a02263df2a02083c0301b0967349e3",
+      "materializedCheckpointSha256": "9fc70e644a38ae47bd161d94a4050ce89adb292dbb8bd89f0d56de55bc54490a",
+      "crashObservationSha256": "cef8ef0eb3401953b89e308643d4941ce681ed8584abc64cb3dd232541500483"
+    },
+    "installed": {
+      "passedCases": 2,
+      "returnedClients": 7,
+      "outageWriters": 2,
+      "lostReplies": 6,
+      "mountedVolumes": 2,
+      "predecessorArchiveSha256": "bae70a2058ab42e7222b61bb5f8bab1d6d27f3024226fbf69d793849a89fd303",
+      "materializedCheckpointSha256": "16238403e6afddfc56e2facb3bdf12dfb57a253df2edfc86fbfd8569b8ecd1cf",
+      "crashObservationSha256": "3a0f1aa378d601d674eb1787ed59967030b06b0822d65259d3d2b72d9531b9db",
+      "archives": [
+        {
+          "name": "@breditor/browser",
+          "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+        },
+        {
+          "name": "@breditor/experimental-rich-content",
+          "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+        },
+        {
+          "name": "@breditor/collaboration",
+          "sha256": "d2b9dfb1a73ab8af01506c8e5e222462c313697f9897349890e5f075eb5e4222"
+        }
+      ]
+    }
+  },
+  "scope": [
+    "Exact predecessor cut capture at an actual 64-WAL limit and replay from a nonempty active or subsequently packed WAL.",
+    "Focused coverage checks original receipts, stale credentials, offline delivery, Undo and Redo, changed and forked sources, incomplete tails and output errors.",
+    "Source and independently installed Node workflows retain raw and packed predecessors on mounted disposable APFS volumes, reopen the source from exact held files, and proceed through authenticated publication and an actual relay exit and replacement.",
+    "The new recovery path still needs the original generation lineage. No write capacity extension or host append-owner transfer is implemented."
+  ]
+}
