@@ -12,6 +12,22 @@ use crate::{
 use sha2::{Digest, Sha256};
 use std::{fs::File, io::BufReader, path::Path, sync::Arc};
 
+pub(in crate::room::log_generations) fn segment_history_digest(
+    parent: Option<&RelaySegmentBaseFile>,
+    identity: &crate::RelaySegmentBaseIdentity,
+) -> Result<[u8; 32]> {
+    let mut hash = Sha256::new();
+    hash.update(b"breditor/relay-segment-base/");
+    if let Some(parent) = parent {
+        hash.update(b"2\0");
+        hash.update(parent.binding());
+    } else {
+        hash.update(b"1\0");
+    }
+    hash.update(serde_json::to_vec(identity)?);
+    Ok(hash.finalize().into())
+}
+
 impl RelaySegmentBaseFile {
     /// Verify the complete predecessor archive and checkpoint bytes against an independently
     /// selected identity. Keep both held inodes immutable for as long as the base is in use.
@@ -56,7 +72,7 @@ impl RelaySegmentBaseFile {
         }
         let archive = ArchiveInput::new(archive, crate::MAX_SERVER_LOG_GENERATION_BACKUP_BYTES)?;
         let origin = parent.as_deref().map(|base| SegmentArchiveOrigin { base });
-        let sections = super::super::disk::admit_generation_file(
+        let (sections, root_generation) = super::super::disk::admit_generation_file(
             archive.all(),
             &expected.predecessor,
             origin.as_ref(),
@@ -76,18 +92,10 @@ impl RelaySegmentBaseFile {
             }
         }
         let checkpoint = ArchiveInput::new(checkpoint, MAX_CHECKPOINT_BYTES as u64)?;
-        let mut hash = Sha256::new();
-        // The first handoff keeps its original binding bytes.
-        if let Some(prior) = &parent {
-            hash.update(b"breditor/relay-segment-base/2\0");
-            hash.update(prior.binding());
-        } else {
-            hash.update(b"breditor/relay-segment-base/1\0");
-        }
-        hash.update(serde_json::to_vec(expected)?);
         let result = Self {
             identity: expected.clone(),
-            binding: hash.finalize().into(),
+            binding: segment_history_digest(parent.as_deref(), expected)?,
+            root_generation,
             parent,
             archive,
             checkpoint,
@@ -127,6 +135,10 @@ impl RelaySegmentBaseFile {
 
     pub(crate) fn contains_section(&self, name: &str) -> bool {
         self.lineage().any(|base| base.sections.contains_key(name))
+    }
+
+    pub(crate) fn root_generation(&self) -> &str {
+        &self.root_generation
     }
 
     pub(crate) fn binding(&self) -> [u8; 32] {
@@ -172,7 +184,7 @@ impl RelaySegmentBaseFile {
         self.check()
     }
 
-    pub(super) fn checkpoint_state(&self) -> Result<Checkpoint> {
+    pub(in crate::room::log_generations) fn checkpoint_state(&self) -> Result<Checkpoint> {
         self.check()?;
         let input = self.checkpoint.all();
         let state: Checkpoint = serde_json::from_reader(BufReader::new(input.reader()))?;

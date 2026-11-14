@@ -236,6 +236,7 @@ impl Log {
         Ok(StreamGenerationCapture {
             sections,
             cut: GenerationCut {
+                root: state.root_id().to_owned(),
                 manifest: manifest.hash,
                 records: self.next,
                 previous: self.previous,

@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {createHash, randomBytes} from 'node:crypto';
-import {mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync} from 'node:fs';
+import {mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
@@ -166,6 +166,25 @@ async function run(mode, distribution, executable, parent) {
     assert.equal(review.state().pending, false);
     assert.ok(BigInt(document.state().serverReceiptSequence) >= advanced);
     assert.equal(visibleThreads().length, 3);
+    await stopClients();
+    await host.crash();
+    host = undefined;
+    const captured = JSON.parse(execFileSync(executable, [parent, 'capture-restore', address], {
+      encoding: 'utf8', timeout: 90_000,
+    }).trim());
+    assert.equal(captured.kind, 'captured');
+    for (const directory of ['source-native', 'successor', 'final', 'rasters']) {
+      renameSync(join(parent, directory), join(parent, 'offline-' + directory));
+    }
+    edit('Offline before portable restore ');
+    post('Offline comment before portable restore');
+    await session.flush();
+    host = await startReviewHost(executable, [parent, 'restore', address]);
+    await attach();
+    assert.equal(document.state().pending, false);
+    assert.equal(review.state().pending, false);
+    assert.ok(BigInt(document.state().serverReceiptSequence) >= BigInt(captured.records));
+    assert.equal(visibleThreads().length, 4);
     const accepted = session.core.documentJson();
     assert.equal(session.core.undo(), true);
     assert.equal(session.core.undoReview().kind, 'committed');
@@ -173,24 +192,25 @@ async function run(mode, distribution, executable, parent) {
     await review.flush();
     await stopClients();
     await host.crash();
-    host = await startReviewHost(executable, [parent, 'final', address]);
+    host = await startReviewHost(executable, [parent, 'restored', address]);
     await attach();
-    assert.doesNotMatch(session.core.documentJson(), /Offline over second handoff/);
+    assert.doesNotMatch(session.core.documentJson(), /Offline before portable restore/);
+    assert.match(session.core.documentJson(), /Offline over second handoff/);
     assert.match(session.core.documentJson(), /Offline over handoff/);
-    assert.equal(visibleThreads().length, 2);
+    assert.equal(visibleThreads().length, 3);
     assert.equal(session.core.redo(), true);
     assert.equal(session.core.redoReview().kind, 'committed');
     await document.flush();
     await review.flush();
     assert.equal(session.core.documentJson(), accepted);
-    assert.equal(visibleThreads().length, 3);
+    assert.equal(visibleThreads().length, 4);
     const raster = await fetch('http://' + address + '/assets/sha256:' + sha(pixel), {
       headers: {Origin: origin, Authorization: 'Bearer ' + token, 'X-Breditor-Principal': 'owner'},
     });
     assert.equal(raster.status, 200);
     assert.deepEqual(Buffer.from(await raster.arrayBuffer()), pixel);
-    return {mode, handoffs: 2, restoredOfflineLanes: 4, undoRedoLanes: 2, rasterReads: 1,
-      processExits: 3, retainedAbsolutePositions: true, runtimeSha256: sha(wasmBytes)};
+    return {mode, handoffs: 2, portableRestores: 1, restoredOfflineLanes: 6, undoRedoLanes: 2, rasterReads: 1,
+      processExits: 4, retainedAbsolutePositions: true, runtimeSha256: sha(wasmBytes)};
   } finally {
     await stopClients();
     await session?.discardAndClose();

@@ -25,7 +25,6 @@ pub use log::{ServerLogAllowance, ServerLogRotationCapacity, ServerLogStorageCap
 pub use presence::PresencePeer;
 pub use protocol::{Admission, DurableReceipt, Lease, Receipt, Recovery, Registration};
 pub use room::AtomicTransportProfile;
-pub use room::InspectedNativeGenerationTail;
 pub use room::Room;
 pub use room::{
     DocumentSuggestionAdmission, DocumentSuggestionDecisionAdmission, DocumentSuggestionEntry,
@@ -52,6 +51,10 @@ pub use room::{
     GenerationRecoveryRegistrationCoverage, MAX_GENERATION_PARTICIPANT_INVENTORY_BYTES,
     ServerLogGenerationParticipantIdentity, ServerLogGenerationParticipantInventory,
     ServerLogGenerationParticipantMetadata, VerifiedGenerationRecoveryRegistrations,
+};
+pub use room::{
+    InspectedNativeGenerationTail, RecoveredRelaySegmentRoom, RelaySegmentRoomBackupFiles,
+    RelaySegmentRoomBackupIdentity,
 };
 pub use room::{
     MAX_ROOM_BACKUP_BYTES, RoomBackup, RoomBackupIdentity, RoomBackupInfo, RoomRecoveryPolicy,

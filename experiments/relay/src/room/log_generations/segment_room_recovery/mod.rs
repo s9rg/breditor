@@ -1,0 +1,46 @@
+//! Bind a complete native segment chain to its exact raster archive and a new local owner.
+mod capture;
+mod restore;
+#[cfg(feature = "server")]
+mod serving;
+#[cfg(test)]
+mod tests;
+
+use super::server_recovery::raster_directory::RasterCustody;
+use crate::{
+    RelaySegmentBaseFile, RelaySegmentBaseIdentity, Room,
+    archive_input::{ArchiveEntry, ArchiveInput},
+    assets::{AssetBackupIdentity, AssetStore},
+    log::generations::GenerationDirectory,
+};
+use serde::{Deserialize, Serialize};
+use std::{collections::BTreeMap, sync::Arc};
+
+/// The exact whole room backup. Store this identity independently of the supplied archive files.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RelaySegmentRoomBackupIdentity {
+    /// Newest native checkpoint and physical archive.
+    pub native: RelaySegmentBaseIdentity,
+    /// Commits to every native component in order, including the newest checkpoint.
+    pub history_sha256: [u8; 32],
+    /// Whole raster store, including unreferenced assets.
+    pub assets: AssetBackupIdentity,
+}
+
+/// Held native history, native checkpoint and whole original raster archive.
+pub struct RelaySegmentRoomBackupFiles {
+    identity: RelaySegmentRoomBackupIdentity,
+    native: Arc<RelaySegmentBaseFile>,
+    rasters: ArchiveInput,
+    entries: BTreeMap<String, ArchiveEntry>,
+}
+
+/// Restored native and raster owners. A deployment needs its own authority and client/provider
+/// reconciliation. Local recovery never fences a source on another host.
+pub struct RecoveredRelaySegmentRoom {
+    room: Room,
+    assets: AssetStore,
+    raster: RasterCustody,
+    directory: GenerationDirectory,
+}

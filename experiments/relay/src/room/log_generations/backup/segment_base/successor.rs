@@ -86,7 +86,7 @@ impl Room {
         Self::replay_relay_segment(log, recovery, state, true)
     }
 
-    fn replay_relay_segment(
+    pub(in crate::room::log_generations) fn replay_relay_segment(
         log: Log,
         recovery: Recovery,
         state: crate::room::materialized_checkpoint::Checkpoint,

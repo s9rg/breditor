@@ -23,6 +23,7 @@ pub(crate) struct GenerationCut {
     pub manifest: [u8; 32],
     pub records: u64,
     pub previous: [u8; 32],
+    pub root: String,
 }
 fn file<'a>(files: &BTreeMap<&str, ArchiveSlice<'a>>, name: &str) -> Result<ArchiveSlice<'a>> {
     files.get(name).copied().ok_or(Error::Contract("generation archive missing selected file"))
@@ -184,7 +185,14 @@ pub(crate) fn visit_sections(
     }
     names.insert(name);
     unpublished(files, &names)?;
+    let root = selected
+        .root
+        .as_ref()
+        .map(|file| &file.generation)
+        .or_else(|| selected.origin.as_ref().map(|origin| &origin.root))
+        .ok_or(Error::Contract("generation archive root identity"))?;
     Ok(GenerationCut {
+        root: root.clone(),
         manifest: head.manifest,
         records: selected
             .active

@@ -633,11 +633,9 @@ replaying the last segment. While serving, all earlier markers and artifacts
 remain under custody checks. Asset reference reads walk every archived
 record and the writable suffix in order.
 
-The linked archives are portable pieces. Creating a new writable copy on
-another host, restoring the full chain with assets from those pieces,
-and retiring old directory data still need explicit recovery and deployment
-workflows. Legacy archive readers refuse a linked suffix as a complete
-backup.
+A fresh-host restore can use those portable pieces with the exact raster
+archive and an independently retained whole-room identity. Legacy archive
+readers refuse a linked suffix as a complete backup.
 
 [November 14 qualification](qualification/2026-11-14-writable-relay-segment.json)
 records 512 passing relay tests and the separately run APFS interruption
@@ -654,3 +652,35 @@ handoffs, submit document and comment edits queued during both outages,
 then verify Undo/Redo across an additional restart and read the original
 raster. Native tests verify orphaned and middle-segment packet references,
 and reject missing, reordered or changed ownership evidence.
+
+## Restore a linked room with its raster store
+
+`Room::write_relay_segment_room_backup` streams the current WAL archive,
+native checkpoint, and whole raster store under the two live owners. Keep
+the earlier linked archives and checkpoints. Sync the three outputs and
+retain the returned whole-room identity in trusted host configuration.
+The identity binds the complete native archive chain and its terminal cut
+to the exact raster archive, including unreferenced uploads. Every file
+remains separately bounded. The entire archive is never buffered at once.
+
+Admit the native chain and open `RelaySegmentRoomBackupFiles` against that
+trusted identity. Restore into an absent private directory. The restore
+copies and verifies each raster and opens a fresh native WAL at the exact
+absolute checkpoint position. A synced completion marker binds the two
+actual component directories to that cut. The original deployment
+directories are unnecessary. Registrations, causal history and receipt
+positions remain unchanged. `reopen` requires the original retained archive
+files and admits later native edits and raster additions. It refuses an
+incomplete native tail, a pending rotation, missing raster data or a
+different component. Incomplete restores remain unselected and can be
+retried at a fresh absent path.
+
+A restored generation can hand off again. Its first local successor records
+which archived cut supplied the recovery floor, so later cold opens verify
+every handoff after that floor without relying on the old deployment's
+directory markers. All retained packet events remain available in order.
+
+The reference adapter can serve both recovered components behind a fresh
+lease from the existing deployment epoch authority, with the ordinary
+account and Origin policies. Deployment approval for the exact cut and
+reconciliation of client and provider work remain host operations.

@@ -13,9 +13,9 @@ mod origin;
 #[cfg(feature = "server")]
 pub(crate) use origin::HostOrigin;
 mod progress;
-mod raster_directory;
+pub(super) mod raster_directory;
 mod raster_part;
-mod selection;
+pub(super) mod selection;
 mod source;
 #[cfg(test)]
 pub(super) mod tests;

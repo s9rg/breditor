@@ -37,9 +37,13 @@ mod descriptor;
 mod open;
 mod pack_sealed_wal;
 mod rotate;
+mod segment_room_recovery;
 pub use backup::{
     MAX_SERVER_LOG_GENERATION_BACKUP_BYTES, RelaySegmentBaseFile, RelaySegmentBaseIdentity,
     ServerLogGenerationBackup, ServerLogGenerationBackupIdentity, ServerLogGenerationBackupInfo,
+};
+pub use segment_room_recovery::{
+    RecoveredRelaySegmentRoom, RelaySegmentRoomBackupFiles, RelaySegmentRoomBackupIdentity,
 };
 #[cfg(test)]
 pub(in crate::room) mod tests;

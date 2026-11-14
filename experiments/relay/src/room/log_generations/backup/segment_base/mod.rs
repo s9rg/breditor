@@ -1,6 +1,7 @@
 //! Exact predecessors for a continuation that keeps original event positions.
 mod capture;
 mod open;
+pub(in crate::room::log_generations) use open::segment_history_digest;
 mod successor;
 #[cfg(test)]
 mod successor_tests;
@@ -29,6 +30,7 @@ pub struct RelaySegmentBaseIdentity {
 pub struct RelaySegmentBaseFile {
     identity: RelaySegmentBaseIdentity,
     binding: [u8; 32],
+    root_generation: String,
     parent: Option<Arc<Self>>,
     archive: ArchiveInput,
     checkpoint: ArchiveInput,

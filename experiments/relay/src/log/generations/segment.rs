@@ -1,14 +1,15 @@
 //! A separately selected, checkpoint-backed writable WAL segment.
+mod restore;
 use super::{
     directory::{Directory, DirectoryWitness},
     format,
     held_file::{self, FileIdentity, FileStamp},
-    manifest::{ActiveFile, Manifest, Ready, SEGMENT_ROOT_VERSION, SegmentOrigin},
-    options::generation,
+    manifest::{Manifest, SegmentOrigin},
     publication,
     state::Generations,
 };
 use crate::{Error, RelaySegmentBaseFile, Result, log::Log};
+use restore::{initial_segment, write_segment_root};
 use serde::{Deserialize, Serialize};
 use std::{
     fs::File,
@@ -22,6 +23,8 @@ pub(super) const SUCCESSOR: &str = ".segment-successor.json";
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Selection {
     format_version: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    restore_floor: Option<[u8; 32]>,
     source: DirectoryWitness,
     target: DirectoryWitness,
     manifest: [u8; 32],
@@ -42,7 +45,9 @@ impl Handoff {
         let identity = FileIdentity::of(&file)?;
         let stamp = FileStamp::of(&file)?;
         let selection: Selection = format::decode(&held_file::read(&file, format::MAX_CONTROL)?)?;
-        if selection.format_version != 1 || selection.base != base.binding() {
+        if !matches!((selection.format_version, selection.restore_floor), (1, None) | (2, Some(_)))
+            || selection.base != base.binding()
+        {
             return Err(Error::Contract("relay segment predecessor selection differs"));
         }
         let marker =
@@ -69,18 +74,24 @@ impl Handoff {
     }
 }
 
+enum SegmentSelection {
+    Handoff { ancestry: Vec<Handoff>, marker: Handoff },
+    Restored { directory: DirectoryWitness, manifest: [u8; 32] },
+}
+
 pub(crate) struct SegmentCustody {
-    ancestry: Vec<Handoff>,
-    marker: Handoff,
+    selection: SegmentSelection,
     pub(super) base: Arc<RelaySegmentBaseFile>,
 }
 
 impl SegmentCustody {
     pub(super) fn check(&self) -> Result<()> {
-        for marker in &self.ancestry {
+        if let SegmentSelection::Handoff { ancestry, marker } = &self.selection {
+            for ancestor in ancestry {
+                ancestor.check()?;
+            }
             marker.check()?;
         }
-        self.marker.check()?;
         self.base.check()
     }
 
@@ -91,19 +102,19 @@ impl SegmentCustody {
         hash: [u8; 32],
     ) -> Result<()> {
         self.check()?;
-        let selection = &self.marker.selection;
-        directory.guard_witness(&selection.target)?;
-        let origin =
-            initial.origin.as_ref().ok_or(Error::Contract("relay segment origin missing"))?;
-        let source = &self.base.identity().predecessor.source;
-        if selection.manifest != hash
-            || origin.base != selection.base
-            || origin.first != source.records
-            || origin.previous != source.terminal_log_digest
-        {
+        let (target, manifest) = match &self.selection {
+            SegmentSelection::Handoff { marker, .. } => {
+                (&marker.selection.target, marker.selection.manifest)
+            }
+            SegmentSelection::Restored { directory, manifest } => (directory, *manifest),
+        };
+        directory.guard_witness(target)?;
+        if manifest != hash {
             return Err(Error::Contract("relay segment manifest differs from durable selection"));
         }
-        Ok(())
+        let origin =
+            initial.origin.as_ref().ok_or(Error::Contract("relay segment origin missing"))?;
+        SegmentArchiveOrigin { base: &self.base }.verify(origin)
     }
 }
 
@@ -115,7 +126,8 @@ pub(crate) struct SegmentArchiveOrigin<'a> {
 impl SegmentArchiveOrigin<'_> {
     pub(super) fn verify(&self, origin: &SegmentOrigin) -> Result<()> {
         let head = &self.base.identity().predecessor.source;
-        if origin.base != self.base.binding()
+        if origin.root != self.base.root_generation()
+            || origin.base != self.base.binding()
             || origin.first != head.records
             || origin.previous != head.terminal_log_digest
         {
@@ -175,41 +187,14 @@ impl Log {
         generation_id: &str,
     ) -> Result<(Directory, [u8; 32])> {
         self.ready()?;
-        generation(generation_id)?;
-        base.check()?;
         let state = self.generations.as_ref().ok_or(Error::NeedsRecovery)?;
         if state.contains_generation(generation_id) {
             return Err(Error::Contract("relay segment generation identity already used"));
         }
-        let base = base.binding();
-        let manifest = Manifest {
-            format: "breditor/relay-log-generations".into(),
-            format_version: SEGMENT_ROOT_VERSION,
-            parent: None,
-            root: None,
-            origin: Some(SegmentOrigin {
-                root: state.root_id().to_owned(),
-                first: self.next,
-                previous: self.previous,
-                base,
-            }),
-            sealed: Vec::new(),
-            active: ActiveFile {
-                generation: generation_id.to_owned(),
-                first: self.next,
-                previous: self.previous,
-            },
-        };
-        manifest.validate()?;
-        let bytes = format::encode(&manifest)?;
-        let hash = format::sha(&bytes);
+        let (manifest, bytes) = initial_segment(base, generation_id)?;
         let directory = Directory::create(path)?;
-        directory.create_file(&format::wal_name(generation_id), &[])?;
-        directory.immutable(&format::manifest_name(&hash), &bytes)?;
-        directory.create_file(".head.json", &Generations::head_bytes(hash)?)?;
-        directory.create_file(".ready.json", &format::encode(&Ready::new(hash))?)?;
-        directory.guard()?;
-        Ok((directory, hash))
+        write_segment_root(&directory, generation_id, manifest, &bytes)?;
+        Ok((directory, manifest))
     }
 
     pub(crate) fn commit_segment(
@@ -223,23 +208,31 @@ impl Log {
         state.directory.absent(SUCCESSOR)?;
         state.directory.absent(".rotation.json")?;
         base.check()?;
+        let mut ancestry = Vec::new();
+        let mut restore_floor = None;
+        if let Some(previous) = &state.segment {
+            match &previous.selection {
+                SegmentSelection::Handoff { ancestry: earlier, marker } => {
+                    ancestry.extend(earlier.iter().cloned());
+                    ancestry.push(marker.clone());
+                }
+                SegmentSelection::Restored { .. } => restore_floor = Some(previous.base.binding()),
+            }
+        }
         let selection = Selection {
-            format_version: 1,
+            format_version: if restore_floor.is_some() { 2 } else { 1 },
+            restore_floor,
             source: state.directory.witness()?,
             target: target.witness()?,
             manifest,
             base: base.binding(),
         };
-        let mut ancestry = Vec::new();
-        if let Some(previous) = &state.segment {
-            ancestry.extend(previous.ancestry.iter().cloned());
-            ancestry.push(previous.marker.clone());
-        }
         let bytes = format::encode(&selection)?;
         self.poisoned = true;
         let marker = publication::insert(&state.directory, SUCCESSOR, &bytes)?;
         let marker = Handoff::hold(state.directory.path.join(SUCCESSOR), marker, &base)?;
-        let custody = SegmentCustody { ancestry, marker, base };
+        let custody =
+            SegmentCustody { selection: SegmentSelection::Handoff { ancestry, marker }, base };
         custody.check()?;
         Ok(custody)
     }
@@ -250,21 +243,36 @@ impl Log {
     ) -> Result<(Self, crate::Recovery)> {
         let mut bases: Vec<&RelaySegmentBaseFile> =
             std::iter::successors(Some(base.as_ref()), |part| part.parent()).collect();
-        if paths.len() != bases.len() + 1 {
-            return Err(Error::Contract("relay segment directory chain length differs"));
-        }
-        bases.reverse();
         let (last, ancestors) = paths.split_last().ok_or(Error::NeedsRecovery)?;
-        let mut markers: Vec<Handoff> = Vec::with_capacity(bases.len());
-        for (path, base) in ancestors.iter().zip(bases) {
+        let skip = bases
+            .len()
+            .checked_sub(ancestors.len())
+            .filter(|_| !ancestors.is_empty())
+            .ok_or(Error::Contract("relay segment directory chain length differs"))?;
+        bases.reverse();
+        let floor = skip.checked_sub(1).map(|index| bases[index].binding());
+        let mut markers: Vec<Handoff> = Vec::with_capacity(ancestors.len());
+        for (index, (path, base)) in ancestors.iter().zip(bases.into_iter().skip(skip)).enumerate()
+        {
             let directory = Directory::open(path)?;
             if let Some(parent) = markers.last() {
                 directory.guard_witness(&parent.selection.target)?;
             }
-            markers.push(Handoff::open(&directory, base)?);
+            let marker = Handoff::open(&directory, base)?;
+            let expected_floor = if index == 0 { floor } else { None };
+            if marker.selection.restore_floor != expected_floor {
+                return Err(Error::Contract("relay segment recovery floor differs"));
+            }
+            markers.push(marker);
         }
         let marker = markers.pop().ok_or(Error::NeedsRecovery)?;
         let directory = Directory::open(last)?;
-        Self::open_segment_directory(directory, SegmentCustody { ancestry: markers, marker, base })
+        Self::open_segment_directory(
+            directory,
+            SegmentCustody {
+                selection: SegmentSelection::Handoff { ancestry: markers, marker },
+                base,
+            },
+        )
     }
 }

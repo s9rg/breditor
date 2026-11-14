@@ -17,7 +17,7 @@ pub(super) fn admit(input: &[u8]) -> Result<Header> {
 pub(super) fn admit_sections<'a>(
     input: ArchiveSlice<'a>,
     origin: Option<&SegmentArchiveOrigin<'_>>,
-) -> Result<(Header, ArchiveSlice<'a>)> {
+) -> Result<(Header, ArchiveSlice<'a>, String)> {
     if input.len() > format::MAX_SERVER_LOG_GENERATION_BACKUP_BYTES {
         return Err(Error::Contract("generation backup framing"));
     }
@@ -54,7 +54,7 @@ pub(super) fn admit_sections<'a>(
     {
         return Err(Error::Contract("generation backup selected cut differs"));
     }
-    Ok((header, body))
+    Ok((header, body, cut.root))
 }
 impl ServerLogGenerationBackup {
     pub(in crate::room::log_generations) fn inspect_bytes(

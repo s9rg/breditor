@@ -10,6 +10,7 @@ mod format;
 mod identity;
 mod migrate_original;
 mod segment_base;
+pub(super) use segment_base::segment_history_digest;
 mod selected_files;
 pub use segment_base::{RelaySegmentBaseFile, RelaySegmentBaseIdentity};
 mod stage_reclamation;

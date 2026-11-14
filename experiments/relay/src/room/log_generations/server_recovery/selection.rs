@@ -22,7 +22,7 @@ pub(super) struct NativeComponent {
 }
 #[derive(Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub(super) struct RasterWitness {
+pub(in crate::room::log_generations) struct RasterWitness {
     pub device: u64,
     pub inode: u64,
     pub lock: GenerationFileWitness,

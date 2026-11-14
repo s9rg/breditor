@@ -6,13 +6,13 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub(super) struct RasterDirectory {
+pub(in crate::room::log_generations) struct RasterDirectory {
     pub path: PathBuf,
     root: File,
     lock: File,
     witness: RasterWitness,
 }
-pub(super) struct RasterCustody {
+pub(in crate::room::log_generations) struct RasterCustody {
     path: PathBuf,
     root: File,
     witness: RasterWitness,
