@@ -1,0 +1,67 @@
+{
+  "format": "breditor/disk-backed-operational-recovery-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-14",
+  "providerSource": {
+    "commit": "506a62edf6c71ab5650c07e3500f29af13dd2e41",
+    "dirty": false,
+    "sha256": "8e3add53109cb91bba8713a21966de15fc53eab787e07e63bee01cc74258631e",
+    "files": 8779,
+    "bytes": 74713623
+  },
+  "providerTree": "2556c8fa46bba421e8b0756a7ec14bdfc7a89abb",
+  "rustSource": "b157104dbfaafb998e6306456bce939be6f0037e",
+  "rustTree": "23f9541e2743cd9993a9dc1d1fc03a847cd37e64",
+  "sourceDifference": "One feature-gate annotation on a helper used only with server enabled, and two calls in the existing custody regression now pass the actual host archive handle.",
+  "providerReportSha256": "2f5a8f170afc2a06aa2fde687b3d7c9b152d75769d1fe35b1f06f5c2611d7a97",
+  "fixtureSha256": "1be14778539877702bf9826251e2b029c58f9e9f056113663e253deffe32f417",
+  "rustExecutableSha256": "30b83c6ff9fa6965e8b44d8ed494942f5daf7548e3f109b78352d89ad9be0569",
+  "focusedOperationalRegressionSha256": "e96c111953d0159c447e41c4d30642f7329780d3d6be9c0b8bcd40b9e03d36be",
+  "sharedWasmSha256": "73076a902c1926700031fbadaa2e5e6a2d6d661d39e3424cc90a0a32986c5c7c",
+  "workflows": {
+    "source": {
+      "cases": 2,
+      "returnedClients": 7,
+      "outageWriters": 2,
+      "originalArchiveSha256": "d88a1eafbe6235c6d5464e13e1d817d797bc6e06f52bf981b164c2b157efdf80",
+      "observedArchiveSha256": "d0013aa8055bd22285ffa6fbef38ca8fe6191045cba3afb7472333edc710eea2",
+      "recoveredLostReplies": 6,
+      "mountedVolumes": 2
+    },
+    "installed": {
+      "cases": 2,
+      "returnedClients": 7,
+      "outageWriters": 2,
+      "originalArchiveSha256": "6fcbe6b33f4215aa56c39c97fe7025f010a8a7824b26101a162bef7b3e932867",
+      "observedArchiveSha256": "0c23fc9867d9e8de904e6e364a7b975225b6b1678366ba5bbfa6211b022ca66b",
+      "recoveredLostReplies": 6,
+      "mountedVolumes": 2,
+      "installedArchives": [
+        {
+          "name": "@breditor/browser",
+          "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+        },
+        {
+          "name": "@breditor/experimental-rich-content",
+          "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+        },
+        {
+          "name": "@breditor/collaboration",
+          "sha256": "d2b9dfb1a73ab8af01506c8e5e222462c313697f9897349890e5f075eb5e4222"
+        }
+      ]
+    }
+  },
+  "scope": [
+    "Original joined archive held on disk through cold operational reopen, authenticated activation and the restarted host.",
+    "Unit regression interrupts the operational marker write, then checks WAL-prefix and raster retention after rotation and an upload.",
+    "Source and independent installed provider workflows recover actual relay process state with controlled Node client storage.",
+    "Sealed checkpoint admission and capture of current state still use buffered archives. Existing lifetime limits apply."
+  ],
+  "fullRust": {
+    "passed": 504,
+    "failed": 0,
+    "ignored": 1,
+    "logSha256": "033f30273b9e3b640168c131818db76732d53515896919a65f72bbaaa02c2938"
+  }
+}

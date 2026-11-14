@@ -193,6 +193,14 @@ original archive file. The existing sealed checkpoint and current-state capture
 still use buffered data, and native replay rebuilds room state in memory.
 Existing formats, host fencing requirements, and lifetime limits apply.
 
+Operational file recovery passed 504 Rust relay tests. The focused regression
+interrupts a durable marker write, then verifies the reopened room after the
+original active WAL is sealed and a new raster is added. The source and clean
+installed workflows each activate and restart a real relay, including packed
+and offloaded WALs on separate APFS volumes. Each reconnects seven clients,
+delivers work from two outage writers, and recovers six lost replies.
+[Operational qualification](qualification/2026-11-14-disk-backed-operational-recovery.json)
+
 Disk-backed restore checkpoint `f9e24fa1` passes 503 Rust relay tests plus the
 separate mounted-WAL test. The interruption tests swap input modes and compare
 the complete restored archive byte for byte. Source and independent installed
