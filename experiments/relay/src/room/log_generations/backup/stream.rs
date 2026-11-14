@@ -22,6 +22,9 @@ pub(in crate::room) struct BackupOutput<'a, W> {
 
 impl<W: Write> Write for BackupOutput<'_, W> {
     fn write(&mut self, data: &[u8]) -> io::Result<usize> {
+        if data.len() as u64 > self.digest.remaining() {
+            return Err(io::Error::other("archive complete output budget"));
+        }
         let count = self.destination.write(data).inspect_err(|_| self.failed.set(true))?;
         self.digest.write_all(&data[..count])?;
         if count == 0 && !data.is_empty() {
@@ -58,6 +61,27 @@ impl NativeBackupStream<'_> {
         self.capture.write_body(output)
     }
 
+    pub(super) fn write_and_pin(
+        &mut self,
+        writer: &mut impl Write,
+        failed: &Cell<bool>,
+    ) -> Result<()> {
+        let mut output = BackupOutput {
+            destination: writer,
+            digest: ArchiveDigest::new(MAX_SERVER_LOG_GENERATION_BACKUP_BYTES),
+            failed,
+        };
+        self.write_to(&mut output)?;
+        output.flush()?;
+        self.check()?;
+        let (sha256, bytes) = output.digest.finish();
+        if bytes != self.info.bytes {
+            return Err(Error::Contract("streamed generation backup length differs"));
+        }
+        self.info.identity.archive_sha256 = sha256;
+        Ok(())
+    }
+
     pub(in crate::room) fn check(&self) -> Result<()> {
         self.capture.check()
     }
@@ -81,19 +105,7 @@ impl Room {
     ) -> Result<ServerLogGenerationBackupInfo> {
         let failed = Cell::new(false);
         self.with_native_backup_stream(principal, &failed, |mut stream| {
-            let mut output = BackupOutput {
-                destination: writer,
-                digest: ArchiveDigest::new(MAX_SERVER_LOG_GENERATION_BACKUP_BYTES),
-                failed: &failed,
-            };
-            stream.write_to(&mut output)?;
-            output.flush()?;
-            stream.check()?;
-            let (sha, bytes) = output.digest.finish();
-            if bytes != stream.info.bytes {
-                return Err(Error::Contract("streamed generation backup length differs"));
-            }
-            stream.info.identity.archive_sha256 = sha;
+            stream.write_and_pin(writer, &failed)?;
             Ok(stream.info)
         })
     }

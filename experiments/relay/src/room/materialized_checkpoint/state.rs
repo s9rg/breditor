@@ -1,7 +1,7 @@
 //! Exact durable room state. Connection leases and presence never appear here.
-use super::FORMAT;
+use super::{FORMAT, RelayCheckpointIdentity};
 use crate::{
-    DurableReceipt, Result, Role, Room, RoomBackupIdentity, ServerNativeHistoryBoundary,
+    DurableReceipt, Error, Result, Role, Room, RoomBackupIdentity, ServerNativeHistoryBoundary,
     ServerNativeHistoryLane,
     room::{
         native_history::checkpoint::document_checkpoint, review::ReviewCheckpoint,
@@ -13,21 +13,21 @@ use std::collections::BTreeMap;
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub(super) struct Checkpoint {
-    pub format: String,
-    pub format_version: u32,
-    pub source: RoomBackupIdentity,
-    pub manifest: [u8; 32],
-    pub configuration: String,
-    pub document: ReplicaCheckpoint,
-    pub seed_writer_through: String,
-    pub roles: BTreeMap<String, Role>,
-    pub writers: Vec<WriterCheckpoint>,
-    pub receipts: Vec<DurableReceipt>,
-    pub boundaries: Vec<BoundaryCheckpoint>,
-    pub review: Option<ReviewCheckpoint>,
-    pub versions: Option<VersionCheckpoint>,
-    pub suggestions: Option<SuggestionCheckpoint>,
+pub(in crate::room) struct Checkpoint {
+    pub(super) format: String,
+    pub(super) format_version: u32,
+    pub(super) source: RoomBackupIdentity,
+    pub(super) manifest: [u8; 32],
+    pub(super) configuration: String,
+    pub(super) document: ReplicaCheckpoint,
+    pub(super) seed_writer_through: String,
+    pub(super) roles: BTreeMap<String, Role>,
+    pub(super) writers: Vec<WriterCheckpoint>,
+    pub(super) receipts: Vec<DurableReceipt>,
+    pub(super) boundaries: Vec<BoundaryCheckpoint>,
+    pub(super) review: Option<ReviewCheckpoint>,
+    pub(super) versions: Option<VersionCheckpoint>,
+    pub(super) suggestions: Option<SuggestionCheckpoint>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -83,6 +83,20 @@ pub(super) struct BoundaryCheckpoint {
 }
 
 impl Checkpoint {
+    pub(in crate::room) fn check_selection(
+        &self,
+        expected: &RelayCheckpointIdentity,
+    ) -> Result<()> {
+        if self.format != FORMAT
+            || self.format_version != 1
+            || self.source != expected.source
+            || self.manifest != expected.manifest
+        {
+            return Err(Error::Contract("relay checkpoint selected cut differs"));
+        }
+        Ok(())
+    }
+
     pub fn capture(room: &Room, source: RoomBackupIdentity, manifest: [u8; 32]) -> Result<Self> {
         Ok(Self {
             format: FORMAT.into(),

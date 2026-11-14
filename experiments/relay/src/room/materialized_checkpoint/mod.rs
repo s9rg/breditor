@@ -7,7 +7,7 @@ mod tests;
 use crate::{Error, Result, Room, RoomBackupIdentity};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use state::Checkpoint;
+pub(super) use state::Checkpoint;
 pub(in crate::room) use state::ReplicaCheckpoint;
 use std::io::Write;
 
@@ -31,16 +31,29 @@ pub struct RelayCheckpoint {
 
 // The document, review and effect lanes have separate history bounds.
 // This combined limit also caps the original catalog and receipt indexes.
-const MAX_CHECKPOINT_BYTES: usize = 512 * 1024 * 1024;
+pub(super) const MAX_CHECKPOINT_BYTES: usize = 512 * 1024 * 1024;
 const FORMAT: &str = "breditor/relay-materialized-checkpoint";
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct Header {
+pub(super) struct Header {
     format: String,
     format_version: u32,
     source: RoomBackupIdentity,
     manifest: [u8; 32],
+}
+
+impl Header {
+    pub(super) fn check_selection(&self, expected: &RelayCheckpointIdentity) -> Result<()> {
+        if self.format != FORMAT
+            || self.format_version != 1
+            || self.source != expected.source
+            || self.manifest != expected.manifest
+        {
+            return Err(Error::Contract("relay checkpoint selected cut differs"));
+        }
+        Ok(())
+    }
 }
 
 pub(in crate::room) fn sequence(value: &str, end: u64) -> Result<u64> {
@@ -75,13 +88,7 @@ impl RelayCheckpoint {
             return Err(Error::Contract("relay checkpoint digest differs"));
         }
         let value: Header = serde_json::from_slice(&bytes)?;
-        if value.format != FORMAT
-            || value.format_version != 1
-            || value.source != expected.source
-            || value.manifest != expected.manifest
-        {
-            return Err(Error::Contract("relay checkpoint selected cut differs"));
-        }
+        value.check_selection(expected)?;
         Ok(Self { identity: expected.clone(), bytes })
     }
 }

@@ -38,8 +38,8 @@ mod open;
 mod pack_sealed_wal;
 mod rotate;
 pub use backup::{
-    MAX_SERVER_LOG_GENERATION_BACKUP_BYTES, ServerLogGenerationBackup,
-    ServerLogGenerationBackupIdentity, ServerLogGenerationBackupInfo,
+    MAX_SERVER_LOG_GENERATION_BACKUP_BYTES, RelaySegmentBaseFile, RelaySegmentBaseIdentity,
+    ServerLogGenerationBackup, ServerLogGenerationBackupIdentity, ServerLogGenerationBackupInfo,
 };
 #[cfg(test)]
 pub(in crate::room) mod tests;

@@ -542,3 +542,36 @@ volumes separate from their live rooms. Both pass authenticated handover and a
 real relay restart, including seven returning clients, two offline writers and
 retry of six lost replies. The tests use temporary disk images and controlled
 Node storage.
+
+## Capture a base at an exhausted writable cut
+
+The separate `Room::write_relay_segment_base` action captures an exact
+native generation backup and materialized relay state under the same held
+source. The active WAL may be nonempty. This permits a predecessor capture
+at the 64-file limit, when requiring a further rotation would fail. The
+archive includes the full raw record chain, unpublished stages and inert
+revision preparations. The checkpoint retains native document/comment
+journals, writer credentials and receipt positions, roles, and review metadata.
+Runtime connections and presence are rebuilt through normal authentication.
+
+Write to two distinct private files, sync both files and their containing
+directory, and retain the returned `RelaySegmentBaseIdentity` independently
+in trusted host configuration. Discard incomplete output after an error.
+`RelaySegmentBaseFile::open` admits the complete predecessor and its matching
+checkpoint header from held files. `Room::open_log_generations_with_segment_base`
+verifies that predecessor against the local generation directory before
+restoring private native state or replaying any suffix. The base can end
+inside the current WAL or a subsequently sealed and packed WAL. Original
+absolute sequence, digest, receipt, canonical backup and append semantics
+continue across the base. Pending rotation and incomplete tails require their
+existing explicit recovery actions.
+
+A future writable segment needs a durable selection of this base before
+opening its suffix at the exact absolute sequence and frame digest. Its
+retained proof must continue to serve exact old receipt and packet reads,
+including image references from inert preparation records. The independent
+host must select one append owner across that handoff. This checkpoint still
+opens the existing generation directory and needs its retained files.
+Canonical checkpoints remain subject to their 512 MiB encoded budget and
+materialize native state in memory. The log storage lifetime and active
+budgets, raster custody and existing on-disk formats are unchanged.

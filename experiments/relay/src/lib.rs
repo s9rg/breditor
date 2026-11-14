@@ -70,8 +70,8 @@ pub use room::{
     ServerLogGenerationRetainedAssetReferences, ServerRetainedAssetReferences,
 };
 pub use room::{
-    MAX_SERVER_LOG_GENERATION_BACKUP_BYTES, ServerLogGenerationBackup,
-    ServerLogGenerationBackupIdentity, ServerLogGenerationBackupInfo,
+    MAX_SERVER_LOG_GENERATION_BACKUP_BYTES, RelaySegmentBaseFile, RelaySegmentBaseIdentity,
+    ServerLogGenerationBackup, ServerLogGenerationBackupIdentity, ServerLogGenerationBackupInfo,
 };
 pub use room::{
     MAX_SERVER_LOG_GENERATION_ROOM_BACKUP_BYTES, OperationalLogGenerationServerRoom,

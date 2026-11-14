@@ -4,9 +4,10 @@ use super::{
     storage,
 };
 use breditor_collab_relay::{
-    OperationalLogGenerationServerRoom, RecoveryRegistrationCredentials, Role, RoomRecoveryPolicy,
-    ServerLogGenerationBackup, ServerLogGenerationRoomBackup, ServerLogGenerationRoomBackupFile,
-    ServerLogGenerationRoomRecovery, ServerNativeHistoryFamily, SuggestionRole,
+    OperationalLogGenerationServerRoom, RecoveryRegistrationCredentials, RelaySegmentBaseFile,
+    Role, RoomRecoveryPolicy, ServerLogGenerationBackup, ServerLogGenerationRoomBackup,
+    ServerLogGenerationRoomBackupFile, ServerLogGenerationRoomRecovery, ServerNativeHistoryFamily,
+    SuggestionRole,
     assets::{AssetStore, asset_id, prepare_asset},
     server::{
         Authentication, ContentAddressedServerAssets, PreparedLogGenerationRecoveryHost,
@@ -17,6 +18,7 @@ use breditor_collab_relay::{
 };
 use serde_json::json;
 use std::{
+    fs::File,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -162,12 +164,30 @@ async fn capture_source_cuts(
             if room.archive_sealed_wal("owner", &checkpoint, "root")?.duplicate {
                 return Err("source relay archive unexpectedly existed".into());
             }
+            // A retained predecessor can end inside a nonempty active WAL.
+            room.grant("owner", "base-cut-reader", Some(Role::Reader))?;
+            let archive_path = directory.join("relay-segment-base.archive");
+            let checkpoint_path = directory.join("relay-segment-base.checkpoint");
+            let identity = {
+                let mut archive = File::create_new(&archive_path)?;
+                let mut state = File::create_new(&checkpoint_path)?;
+                let identity = room.write_relay_segment_base("owner", &mut archive, &mut state)?;
+                archive.sync_all()?;
+                state.sync_all()?;
+                identity
+            };
             room.grant("owner", "control-local-reader", Some(Role::Reader))?;
             drop(room);
-            let room = breditor_collab_relay::Room::open_log_generations_with_checkpoint(
-                &directory.join("source-native"),
-                &checkpoint,
+            let base = RelaySegmentBaseFile::open(
+                File::open(archive_path)?,
+                File::open(checkpoint_path)?,
+                &identity,
             )?;
+            let room = breditor_collab_relay::Room::open_log_generations_with_segment_base(
+                &source, &base,
+            )?;
+            room.catchup("base-cut-reader")?;
+            room.catchup("control-local-reader")?;
             let (backup, predecessor) = Box::pin(activation::seal(directory, room, assets)).await?;
             (backup, Some(predecessor))
         } else {

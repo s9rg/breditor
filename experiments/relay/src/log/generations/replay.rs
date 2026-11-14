@@ -102,8 +102,35 @@ impl OpenGenerationReplay {
     pub(crate) fn visit_suffix(
         self,
         from: u64,
+        visit: impl FnMut(Record) -> Result<()>,
+    ) -> Result<()> {
+        self.visit_inner(from, false, visit)
+    }
+
+    /// The caller already compared every byte of the separately admitted prefix.
+    pub(crate) fn visit_after_verified_prefix(
+        self,
+        from: u64,
+        visit: impl FnMut(Record) -> Result<()>,
+    ) -> Result<()> {
+        self.visit_inner(from, true, visit)
+    }
+
+    fn visit_inner(
+        self,
+        from: u64,
+        split_wal: bool,
         mut visit: impl FnMut(Record) -> Result<()>,
     ) -> Result<()> {
+        if from > self.next {
+            return Err(Error::Contract("relay checkpoint is ahead of the active log"));
+        }
+        let mut visit = |record: Record| {
+            if record.sequence >= from {
+                visit(record)?;
+            }
+            Ok(())
+        };
         for (wal, (item, family)) in self.closed.iter().zip(self.manifest.closed_files()) {
             if item.next()? <= from {
                 wal.read(item.sha256, |reader| {
@@ -112,13 +139,13 @@ impl OpenGenerationReplay {
                 })?;
                 continue;
             }
-            if item.first < from {
+            if !split_wal && item.first < from {
                 return Err(Error::Contract("relay checkpoint crosses a sealed WAL"));
             }
             wal.visit_records(item, family, &mut visit)?;
         }
 
-        if self.manifest.active.first < from {
+        if !split_wal && self.manifest.active.first < from {
             return Err(Error::Contract("relay checkpoint crosses the active WAL"));
         }
 

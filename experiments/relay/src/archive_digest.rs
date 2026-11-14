@@ -14,6 +14,10 @@ impl ArchiveDigest {
     pub(crate) fn finish(self) -> ([u8; 32], u64) {
         (self.hash.finalize().into(), self.bytes)
     }
+
+    pub(crate) fn remaining(&self) -> u64 {
+        self.limit - self.bytes
+    }
 }
 impl Write for ArchiveDigest {
     fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {

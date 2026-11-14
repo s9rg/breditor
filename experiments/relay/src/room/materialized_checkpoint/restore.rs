@@ -63,7 +63,11 @@ impl Room {
 }
 
 impl Checkpoint {
-    fn restore(self, log: Log, identity: &RelayCheckpointIdentity) -> Result<Room> {
+    pub(in crate::room) fn restore(
+        self,
+        log: Log,
+        identity: &RelayCheckpointIdentity,
+    ) -> Result<Room> {
         let RoomBackupIdentity {
             document,
             owner,
