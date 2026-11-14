@@ -1,5 +1,9 @@
 //! Retain original client-native document and review journals without adopting their edits.
 mod custody;
+#[cfg(feature = "server")]
+mod paired;
+#[cfg(feature = "server")]
+mod selected;
 #[cfg(all(test, feature = "server", unix))]
 mod tests;
 #[cfg(feature = "server")]
@@ -7,7 +11,9 @@ mod verify;
 
 pub(super) use custody::{JournalSelection, RetainedJournals};
 #[cfg(feature = "server")]
-pub use verify::{RelaySegmentClientJournalCoverage, RelaySegmentClientJournalHead};
+pub use verify::{
+    RelaySegmentClientJournalCoverage, RelaySegmentClientJournalHead, RelaySegmentPairedReviewHead,
+};
 
 use crate::{Error, Result, archive_input::ArchiveInput};
 use breditor_collab_feasibility::review::ReviewActorId;
@@ -72,6 +78,13 @@ pub enum RelaySegmentJournalOwner {
         /// Explicit native checkpoint family.
         family: RelaySegmentDocumentJournalFamily,
     },
+    /// Original standalone SDK backup of a document writer and same-account review actor.
+    PairedSession {
+        /// Original registered document writer.
+        writer: String,
+        /// Original registered review actor.
+        actor: String,
+    },
     /// One independent review actor bound to an accompanying document checkpoint.
     Review {
         /// Original review actor ID.
@@ -98,7 +111,7 @@ pub struct RelaySegmentClientJournalPin {
 impl RelaySegmentJournalOwner {
     pub(super) fn key(&self) -> (u8, &str) {
         match self {
-            Self::Document { writer, .. } => (0, writer),
+            Self::Document { writer, .. } | Self::PairedSession { writer, .. } => (0, writer),
             Self::Review { actor, .. } => (1, actor),
         }
     }
@@ -113,6 +126,9 @@ impl RelaySegmentClientJournalPin {
         };
         let registered_shape = match &self.owner {
             RelaySegmentJournalOwner::Document { writer, .. } => valid_writer(writer),
+            RelaySegmentJournalOwner::PairedSession { writer, actor } => {
+                valid_writer(writer) && ReviewActorId::try_new(actor).is_ok()
+            }
             RelaySegmentJournalOwner::Review { actor, document_writer, .. } => {
                 ReviewActorId::try_new(actor).is_ok() && valid_writer(document_writer)
             }

@@ -896,3 +896,19 @@ progress and packet metadata, as well as the original credentials held
 outside the journal archive. Restore in a fresh SDK store and reconnect
 using the original delivery protocol. Two possible offline originals for
 one writer still need explicit host selection or branch reconciliation.
+
+A `PairedSession` pin can enroll an original `SharedReviewPersistentSession.exportBackup()`
+archive in place of two bare native journals. The archive's document writer and
+review actor must be actual same-account registrations. Enroll each native stream
+once, whether separately or inside this paired file. The relay uses the archive's
+declared history and selection policies, replays both embedded native journals and
+checks their accepted prefixes. It also checks saved review receipt sequences
+and the native prefixes covered by any saved review cursor, and admits each
+local named version and its raster requirements. Both writable and explicit
+read-only review records keep their original storage meanings.
+
+Cold recovery can read the intact SDK archive with `read_client_journal` and
+pass it directly to `SharedReviewPersistentSession.restoreBackup` in a fresh
+store. Original credentials, current live policies, and the writer's separate
+upload archive remain host inputs. Independent-delivery proposal and revision
+outboxes continue to use their own archives.

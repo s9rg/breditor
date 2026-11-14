@@ -6,7 +6,9 @@ pub use client_journals::{
     RelaySegmentJournalOwner, RelaySegmentReviewJournalFamily,
 };
 #[cfg(feature = "server")]
-pub use client_journals::{RelaySegmentClientJournalCoverage, RelaySegmentClientJournalHead};
+pub use client_journals::{
+    RelaySegmentClientJournalCoverage, RelaySegmentClientJournalHead, RelaySegmentPairedReviewHead,
+};
 mod client_rasters;
 pub use client_rasters::RelaySegmentClientRaster;
 mod client_uploads;

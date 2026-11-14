@@ -294,3 +294,88 @@ fn missing_actor_document_stays_pending_and_duplicate_offers_are_refused() -> Te
     ));
     Ok(())
 }
+
+#[test]
+fn paired_backup_cursor_cannot_skip_work_absent_from_its_native_journals() -> TestResult {
+    use serde_json::json;
+    let f = Fixture::new()?;
+    let untouched = f.backup.restore(&f.parent.join("read-accepted-cut"), "seen", POLICY)?;
+    let (room, _) = untouched.components();
+    let participants = room
+        .capture_participant_inventory_at(
+            "owner",
+            f.backup.identity().native.predecessor.source.clone(),
+        )?
+        .metadata();
+    let review = participants.review.as_ref().ok_or("review registration")?;
+    let sequence = room.recovery_review_acceptance_sequence(&f.actor, 1)?.to_string();
+    let cursor = json!({"binding": review.binding, "after": sequence});
+    let plain = f.author.create_review_session(ReviewActorPolicy {
+        actor: f.actor.clone(),
+        principal: ReviewPrincipalId::try_new("alice")?,
+        access: ReviewAccess::ReadOnly,
+    })?;
+    let owner = Owner::PairedSession { writer: f.writer.clone(), actor: f.actor.as_str().into() };
+    for (variant, checkpoint) in
+        [("complete", f.ahead.checkpoint_json()?), ("skips", plain.checkpoint_json()?)]
+    {
+        let record = json!({
+            "format": "breditor/shared-review-relay-checkpoint-record",
+            "formatVersion": 1, "history": "explicit", "rangeEditing": "original",
+            "selectionEditing": "original", "richLanguage": 3,
+            "reviewActor": f.actor, "principal": "alice",
+            "documentCheckpointJson": f.author.checkpoint()?,
+            "reviewCheckpointJson": checkpoint, "versions": [],
+            "relay": {"endpoint": "wss://relay.example.test/ws", "principal": "alice",
+                "room": "room", "actor": f.actor, "binding": review.binding,
+                "documentWriter": f.writer, "writerTransport": "atomic-v2"},
+            "progress": {"cursor": cursor, "accepted": null, "sequence": null},
+        });
+        let archive = paired_backup_json(&f.writer, &record)?;
+        let selected =
+            write_journal(&f.parent.join(format!("{variant}.paired")), owner.clone(), &archive)?;
+        let pin = selected.pin.clone();
+        let peer = write_journal(
+            &f.parent.join(format!("{variant}.peer")),
+            Owner::Document { writer: f.peer.clone(), family: DocumentFamily::Original },
+            &f.lagged.checkpoint()?,
+        )?;
+        let path = f.parent.join(variant);
+        let target =
+            f.backup.restore_with_client_journals(&path, "new", POLICY, &[], &[selected, peer])?;
+        let state = target.handover_client_journals(&participants);
+        if variant == "complete" {
+            let coverage = state?.ok_or("paired journal coverage")?;
+            assert!(coverage.missing_review_actors.is_empty());
+            let review_head =
+                coverage.journals[0].paired_review.as_ref().ok_or("paired review head")?;
+            assert_eq!((&*review_head.local_through, &*review_head.accepted_through), ("2", "1"));
+            drop(target);
+            fs::remove_file(f.parent.join(format!("{variant}.paired")))?;
+            let reopened = f.backup.reopen(&path, POLICY)?;
+            assert_eq!(reopened.read_client_journal(&pin)?.as_deref(), Some(archive.as_str()));
+        } else {
+            assert!(
+                state.is_err(),
+                "saved cursor must prove the exact prefixes in its own journal"
+            );
+        }
+    }
+    Ok(())
+}
+
+fn paired_backup_json(writer: &str, record: &serde_json::Value) -> TestResult<String> {
+    let record_json = serde_json::to_string(&record.to_string())?;
+    let body = format!(
+        concat!(
+            r#"{{"format":"breditor/shared-paired-session-backup","formatVersion":1,"#,
+            r#""identity":{{"room":"room","writer":"{writer}","richLanguage":3,"history":"explicit","#,
+            r#""rangeEditing":"original","selectionEditing":"original","searchHistory":null}},"#,
+            r#""recordJson":{record_json}}}"#,
+        ),
+        writer = writer,
+        record_json = record_json
+    );
+    let hash = crate::assets::asset_id(body.as_bytes());
+    Ok(format!(r#"{}, "sha256":"{}"}}"#, &body[..body.len() - 1], &hash[7..]))
+}

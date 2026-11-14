@@ -53,7 +53,9 @@ pub use segment_room_recovery::{
     RelaySegmentJournalOwner, RelaySegmentReviewJournalFamily,
 };
 #[cfg(feature = "server")]
-pub use segment_room_recovery::{RelaySegmentClientJournalCoverage, RelaySegmentClientJournalHead};
+pub use segment_room_recovery::{
+    RelaySegmentClientJournalCoverage, RelaySegmentClientJournalHead, RelaySegmentPairedReviewHead,
+};
 #[cfg(test)]
 pub(in crate::room) mod tests;
 #[cfg(all(feature = "server", test, unix))]

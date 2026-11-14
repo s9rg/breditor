@@ -98,7 +98,9 @@ pub use room::{
     RelaySegmentJournalOwner, RelaySegmentReviewJournalFamily,
 };
 #[cfg(feature = "server")]
-pub use room::{RelaySegmentClientJournalCoverage, RelaySegmentClientJournalHead};
+pub use room::{
+    RelaySegmentClientJournalCoverage, RelaySegmentClientJournalHead, RelaySegmentPairedReviewHead,
+};
 pub use room::{
     ServerNativeHistoryBoundary, ServerNativeHistoryDescriptor, ServerNativeHistoryFamily,
     ServerNativeHistoryLane, ServerNativeHistoryReceipt,

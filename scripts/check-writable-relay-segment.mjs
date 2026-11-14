@@ -50,18 +50,19 @@ function installed(directory) {
   };
 }
 
-function selectClientJournals(parent, record, peerWriter, peerCheckpoint) {
-  const originals = [
-    [{kind: 'document', writer: record.relay.documentWriter}, record.documentCheckpointJson],
-    [{kind: 'document', writer: peerWriter}, peerCheckpoint],
-    [{kind: 'review', actor: record.relay.actor, documentWriter: record.relay.documentWriter},
-      record.reviewCheckpointJson],
+function writeJournal(parent, name, owner, journal) {
+  const bytes = Buffer.from(journal);
+  writeFileSync(join(parent, name), bytes, {flag: 'wx', mode: 0o600});
+  return {owner, bytes: bytes.length, sha256: [...Buffer.from(sha(bytes), 'hex')]};
+}
+
+function selectClientJournals(parent, identity, pairedBackup, peerWriter, peerCheckpoint) {
+  const paired = {kind: 'pairedSession', writer: identity.documentWriter, actor: identity.actor};
+  const peer = {kind: 'document', writer: peerWriter, family: 'original'};
+  return [
+    writeJournal(parent, 'journal-0.json', paired, pairedBackup),
+    writeJournal(parent, 'journal-1.json', peer, peerCheckpoint),
   ];
-  return originals.map(([owner, journal], index) => {
-    const bytes = Buffer.from(journal);
-    writeFileSync(join(parent, `journal-${index}.json`), bytes, {flag: 'wx', mode: 0o600});
-    return {owner: {...owner, family: 'original'}, bytes: bytes.length, sha256: [...Buffer.from(sha(bytes), 'hex')]};
-  });
 }
 
 function readRetainedClientJournals(parent, expected) {
@@ -226,13 +227,23 @@ async function run(mode, {distribution, rich}, executable, parent) {
       block: 'image-block', asset: secondAsset, generation: 'offline-image-replacement',
     }}]});
     assert.equal(session.core.documentJson().includes(secondAsset), true);
+    session.saveVersion('Offline image version', '1794681000000');
     assert.equal(session.core.undo(), true);
     assert.equal(session.core.documentJson().includes(secondAsset), false);
     await session.flush();
     const queuedAcrossTakeover = session.exportRecovery();
+    assert.equal(queuedAcrossTakeover.versions.length, 1);
     const peerDocument = profile.join_frame('room', peer.identity.writer, peer.frame);
-    const journalPins = selectClientJournals(parent, queuedAcrossTakeover,
+    const pairedBackup = await session.exportBackup();
+    const journalPins = selectClientJournals(parent, binding, pairedBackup,
       peer.identity.writer, peerDocument.checkpoint());
+    assert.ok(queuedAcrossTakeover.progress.sequence);
+    assert.ok(queuedAcrossTakeover.progress.accepted);
+    const wrongProgress = {...queuedAcrossTakeover.progress,
+      sequence: (BigInt(queuedAcrossTakeover.progress.sequence) + 1n).toString()};
+    const wrongBackup = await api.encodeSharedPairedSessionBackup(JSON.parse(pairedBackup).identity,
+      {...queuedAcrossTakeover, progress: wrongProgress});
+    const wrongReceipt = writeJournal(parent, 'wrong-receipt.json', journalPins[0].owner, wrongBackup);
     peerDocument.free();
     const uploads = [
       await captureClientRaster(richApi, parent, registered.identity.writer, 'pending'),
@@ -243,7 +254,7 @@ async function run(mode, {distribution, rich}, executable, parent) {
     assert.equal(absent.status, 404);
     await absent.arrayBuffer();
     const captured = await host.handover(token, registered.identity, comment.identity, peer.identity,
-      uploads.map(upload => upload.pin), journalPins);
+      uploads.map(upload => upload.pin), journalPins, wrongReceipt);
     assert.equal(captured.registrationRefusals, 3);
     assert.equal(captured.providerRasters, 2);
     assert.equal(captured.clientJournalRasterBindings, 2);
@@ -252,6 +263,8 @@ async function run(mode, {distribution, rich}, executable, parent) {
     assert.equal(captured.clientArchives, 2);
     assert.equal(captured.missingArchiveRefusals, 1);
     assert.equal(captured.nativeJournals, 3);
+    assert.equal(captured.pairedBackups, 1);
+    assert.equal(captured.wrongReceiptRefusals, 1);
     assert.equal(captured.missingJournalRefusals, 2);
     assert.deepEqual(session.exportRecovery(), queuedAcrossTakeover);
     const old = await fetch(rasterUrl, {headers});
@@ -261,19 +274,14 @@ async function run(mode, {distribution, rich}, executable, parent) {
     host = undefined;
     for (const directory of ['source-native', 'successor', 'final', 'rasters',
       ...uploads.map(upload => 'client-' + upload.pin.writer + '.backup'),
-      ...journalPins.map((_, index) => `journal-${index}.json`)]) {
+      ...journalPins.map((_, index) => `journal-${index}.json`), 'wrong-receipt.json']) {
       renameSync(join(parent, directory), join(parent, 'offline-' + directory));
     }
     await session.close();
     session = undefined;
     host = await startSegmentHandoverHost(executable, [parent, 'restore', address], token);
-    const [documentCheckpointJson, , reviewCheckpointJson] = readRetainedClientJournals(parent, journalPins);
-    const record = {...queuedAcrossTakeover, documentCheckpointJson, reviewCheckpointJson};
-    const backupJson = await api.encodeSharedPairedSessionBackup({
-      room: persisted.room, writer: persisted.writer, history: persisted.history,
-      richLanguage: persisted.richLanguage, rangeEditing: persisted.rangeEditing,
-      selectionEditing: persisted.selectionEditing, searchHistory: null,
-    }, record);
+    const [backupJson] = readRetainedClientJournals(parent, journalPins);
+    assert.equal(backupJson, pairedBackup);
     session = await api.SharedReviewPersistentSession.restoreBackup({
       ...persisted, database: persisted.database + '-retained-journals',
       backupJson, writerRecovery: 'host-reacquired',
@@ -327,6 +335,8 @@ async function run(mode, {distribution, rich}, executable, parent) {
       preservedCancelledUploads: 1, nativeJournals: captured.nativeJournals,
       missingJournalRefusals: captured.missingJournalRefusals, coldJournalPairs: 1,
       clientJournalRasterBindings: captured.clientJournalRasterBindings, offlineImageRedo: 1,
+      pairedBackups: captured.pairedBackups, wrongReceiptRefusals: captured.wrongReceiptRefusals,
+      retainedLocalVersions: queuedAcrossTakeover.versions.length,
       retainedAbsolutePositions: true, runtimeSha256: sha(wasmBytes)};
   } finally {
     await stopClients();

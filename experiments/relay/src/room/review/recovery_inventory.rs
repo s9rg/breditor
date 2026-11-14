@@ -34,6 +34,19 @@ impl Room {
         })
     }
 
+    #[cfg(feature = "server")]
+    pub(in crate::room) fn recovery_review_acceptance_sequence(
+        &self,
+        actor: &ReviewActorId,
+        through: u64,
+    ) -> Result<u64> {
+        self.review_state()?
+            .accepted
+            .get(&(actor.clone(), through))
+            .copied()
+            .ok_or(Error::Contract("paired client review receipt has no durable acceptance"))
+    }
+
     pub(in crate::room) fn check_recovery_review_credential(
         &self,
         principal: &str,
