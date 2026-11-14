@@ -207,6 +207,13 @@ checkpoint. For existing code that needs the buffered checkpoint, call
 read and admission errors, and the owner caches a successful read. The
 special-case repair workflows still use buffered archives.
 
+Streamed checkpoint recovery passed 505 Rust relay tests. The two regression
+cases for a missing raster and a rolled-back WAL refuse before creating a
+checkpoint directory. The source and independent installed workflows stream the
+surviving cut, verify the new target file against its identity, then activate and
+publish the replacement relay with seven returning clients.
+[Checkpoint qualification](qualification/2026-11-14-streamed-native-activation-checkpoint.json)
+
 Operational file recovery passed 504 Rust relay tests. The focused regression
 interrupts a durable marker write, then verifies the reopened room after the
 original active WAL is sealed and a new raster is added. The source and clean

@@ -1,0 +1,65 @@
+{
+  "format": "breditor/streamed-native-activation-checkpoint-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-14",
+  "source": {
+    "commit": "662fb1c9710a6d225c972282184fcec7a3575770",
+    "dirty": false,
+    "sha256": "cb0705a45b2087e985e7e2340e4ae2ba716d76933a4e31da379e5fe09c395c52",
+    "files": 8780,
+    "bytes": 74732190
+  },
+  "tree": "9e56bc0d1c72136ff67d884add350ef33eca7377",
+  "relayFixtureSha256": "e72e3019220170132f434173df186cd0b7104567024ccd1e2033dee865e04a6e",
+  "rustTestExecutableSha256": "fd960fffdc1a83bf7bfcbf2e99d6add422a84ca0a64f5385fc07c198f4267d33",
+  "rust": {
+    "pass": 505,
+    "fail": 0,
+    "ignored": 1,
+    "logSha256": "a872a34ad9b16f660f7c5917b33088a070d6548d79e65117fcfd481df554f49a"
+  },
+  "focused": {
+    "pass": 4,
+    "logSha256": "d746a6e8ae4447401bbbec46cd7def8eb51b30c50f7a645e4db8cc23bb665e06"
+  },
+  "providerReportSha256": "3abdfec12e12c7c7e5541fe06bf1527fddee5f5ca1101b4adbccfae9c0cd3b7c",
+  "runtimeSha256": "73076a902c1926700031fbadaa2e5e6a2d6d661d39e3424cc90a0a32986c5c7c",
+  "modes": {
+    "source": {
+      "cases": 2,
+      "returnedClients": 7,
+      "outageWriters": 2,
+      "lostReplies": 6,
+      "observedSha256": "82a462dc0dd1dfe0ef8d99a248f1e3e3baed0721b7a9f172aa460e9dc232c30f",
+      "targetSha256": "82a462dc0dd1dfe0ef8d99a248f1e3e3baed0721b7a9f172aa460e9dc232c30f"
+    },
+    "installed": {
+      "cases": 2,
+      "returnedClients": 7,
+      "outageWriters": 2,
+      "lostReplies": 6,
+      "observedSha256": "ae8dbb8777d2709a6b1a069ee424746b84e329d9b0566de30c7a211b28b46619",
+      "targetSha256": "ae8dbb8777d2709a6b1a069ee424746b84e329d9b0566de30c7a211b28b46619",
+      "archives": [
+        {
+          "name": "@breditor/browser",
+          "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+        },
+        {
+          "name": "@breditor/experimental-rich-content",
+          "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+        },
+        {
+          "name": "@breditor/collaboration",
+          "sha256": "d2b9dfb1a73ab8af01506c8e5e222462c313697f9897349890e5f075eb5e4222"
+        }
+      ]
+    }
+  },
+  "scope": [
+    "Writes and reads canonical file-backed checkpoints and streamed restart observations with actual epoch and operational owner checks.",
+    "Preserves absent-only refusal for a rolled-back WAL or raster missing from the parent cut.",
+    "Controlled Node client storage and actual local relay process exit, replacement and authenticated publication.",
+    "Compatibility checkpoint accesses and special repair paths can still load buffered archives. No storage reclamation or browser qualification."
+  ]
+}
