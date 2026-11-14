@@ -355,5 +355,14 @@ fn check_streamed_backup(
         return Err("streamed backup differs at the restored cut".into());
     }
     decoded.check_live(operation.room_mut(), "owner")?;
+    let (room, rasters) = operation.components_mut();
+    let mut joined = Vec::new();
+    let written = ServerLogGenerationRoomBackup::capture_to(room, rasters, "owner", &mut joined)?;
+    let archive = ServerLogGenerationRoomBackup::from_owned_bytes(joined)?;
+    let buffered = ServerLogGenerationRoomBackup::capture(room, rasters, "owner")?;
+    if written != archive.info()? || written != buffered.info()? {
+        return Err("streamed joined backup differs at the restored cut".into());
+    }
+    archive.check_live(room, rasters, "owner")?;
     Ok(())
 }

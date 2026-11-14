@@ -5,6 +5,7 @@ mod record;
 mod store;
 mod types;
 pub use prepare::{PreparedAsset, asset_id, prepare_asset};
+pub(crate) use store::AssetBackupStream;
 pub use store::AssetStore;
 #[cfg(feature = "server")]
 pub use store::PendingRasterUpload;

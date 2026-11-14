@@ -11,6 +11,8 @@ mod restore_files;
 mod restore_scan;
 mod retained;
 mod selected_files;
+mod stream;
+pub(crate) use stream::AssetBackupStream;
 #[cfg(test)]
 mod tests;
 mod types;

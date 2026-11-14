@@ -83,6 +83,10 @@ impl StreamGenerationCapture<'_> {
             }
             entry.guard()?;
         }
+        self.check()
+    }
+
+    pub(crate) fn check(&self) -> Result<()> {
         for entry in &self.entries {
             entry.guard()?;
         }

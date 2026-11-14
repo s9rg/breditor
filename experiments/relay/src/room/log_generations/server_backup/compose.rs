@@ -4,9 +4,35 @@ use super::{
     format::{self, Header, Section},
 };
 use crate::{
-    Error, Result, ServerLogGenerationBackup, archive_digest::ArchiveDigest,
-    assets::AssetStoreBackup,
+    Error, Result, ServerLogGenerationBackup, ServerLogGenerationBackupInfo,
+    archive_digest::ArchiveDigest,
+    assets::{AssetBackupIdentity, AssetStoreBackup},
 };
+
+impl Header {
+    pub(super) fn new(
+        native: &ServerLogGenerationBackupInfo,
+        assets: &AssetBackupIdentity,
+        raster_bytes: u64,
+    ) -> Result<Self> {
+        if native.identity.source.asset_binding != assets.binding {
+            return Err(Error::Contract("joined generation asset binding"));
+        }
+        let log_bytes = native.bytes;
+        Ok(Self {
+            format: "breditor/server-log-generation-room-backup".into(),
+            format_version: 1,
+            native: native.identity.clone(),
+            assets: assets.clone(),
+            log: Section { offset: 0, bytes: log_bytes, sha256: native.identity.archive_sha256 },
+            rasters: Section {
+                offset: log_bytes,
+                bytes: raster_bytes,
+                sha256: assets.archive_sha256,
+            },
+        })
+    }
+}
 
 impl ServerLogGenerationRoomBackup {
     pub(in crate::room) fn from_components(
@@ -14,30 +40,14 @@ impl ServerLogGenerationRoomBackup {
         rasters: AssetStoreBackup,
     ) -> Result<Self> {
         let native_info = native.info();
-        let native_identity = native_info.identity;
         let asset_identity = rasters.info().identity;
-        if native_identity.source.asset_binding != asset_identity.binding {
-            return Err(Error::Contract("joined generation asset binding"));
-        }
-        let log_bytes = native_info.bytes;
-        let header = Header {
-            format: "breditor/server-log-generation-room-backup".into(),
-            format_version: 1,
-            native: native_identity.clone(),
-            assets: asset_identity.clone(),
-            log: Section { offset: 0, bytes: log_bytes, sha256: native_identity.archive_sha256 },
-            rasters: Section {
-                offset: log_bytes,
-                bytes: rasters.encoded_len()?,
-                sha256: asset_identity.archive_sha256,
-            },
-        };
+        let header = Header::new(&native_info, &asset_identity, rasters.encoded_len()?)?;
         let mut value = Self {
             header,
             native,
             assets: rasters,
             identity: ServerLogGenerationRoomBackupIdentity {
-                native: native_identity,
+                native: native_info.identity,
                 assets: asset_identity,
                 archive_sha256: [0; 32],
             },

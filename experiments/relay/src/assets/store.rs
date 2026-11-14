@@ -10,6 +10,7 @@ use std::{
     path::{Path, PathBuf},
 };
 mod backup;
+pub(crate) use backup::AssetBackupStream;
 #[cfg(feature = "server")]
 mod pending_upload;
 pub use backup::{

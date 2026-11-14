@@ -11,6 +11,9 @@ mod identity;
 mod stage_reclamation;
 #[cfg(test)]
 mod stage_reclamation_tests;
+mod stream;
+#[cfg(test)]
+mod stream_tests;
 #[cfg(test)]
 mod tests;
 mod verify_components;

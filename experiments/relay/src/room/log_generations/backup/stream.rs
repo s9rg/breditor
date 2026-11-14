@@ -11,13 +11,13 @@ use std::{
     io::{self, Write},
 };
 
-struct Output<'a, W> {
-    destination: &'a mut W,
-    digest: ArchiveDigest,
-    failed: &'a Cell<bool>,
+pub(in crate::room) struct BackupOutput<'a, W> {
+    pub(in crate::room) destination: &'a mut W,
+    pub(in crate::room) digest: ArchiveDigest,
+    pub(in crate::room) failed: &'a Cell<bool>,
 }
 
-impl<W: Write> Write for Output<'_, W> {
+impl<W: Write> Write for BackupOutput<'_, W> {
     fn write(&mut self, data: &[u8]) -> io::Result<usize> {
         let count = self.destination.write(data).inspect_err(|_| self.failed.set(true))?;
         self.digest.write_all(&data[..count])?;
@@ -29,6 +29,34 @@ impl<W: Write> Write for Output<'_, W> {
 
     fn flush(&mut self) -> io::Result<()> {
         self.destination.flush().inspect_err(|_| self.failed.set(true))
+    }
+}
+
+pub(in crate::room) struct NativeBackupStream<'a> {
+    prefix: Vec<u8>,
+    capture: StreamGenerationCapture<'a>,
+    pub(in crate::room) info: ServerLogGenerationBackupInfo,
+}
+
+impl NativeBackupStream<'_> {
+    pub(in crate::room) fn measure(&mut self) -> Result<()> {
+        let mut hash = ArchiveDigest::new(MAX_SERVER_LOG_GENERATION_BACKUP_BYTES);
+        self.write_to(&mut hash)?;
+        let (sha256, bytes) = hash.finish();
+        if bytes != self.info.bytes {
+            return Err(Error::Contract("streamed generation backup length differs"));
+        }
+        self.info.identity.archive_sha256 = sha256;
+        Ok(())
+    }
+
+    pub(in crate::room) fn write_to(&self, output: &mut impl Write) -> Result<()> {
+        output.write_all(&self.prefix)?;
+        self.capture.write_body(output)
+    }
+
+    pub(in crate::room) fn check(&self) -> Result<()> {
+        self.capture.check()
     }
 }
 
@@ -48,6 +76,31 @@ impl Room {
         principal: &str,
         writer: &mut impl Write,
     ) -> Result<ServerLogGenerationBackupInfo> {
+        let failed = Cell::new(false);
+        self.with_native_backup_stream(principal, &failed, |mut stream| {
+            let mut output = BackupOutput {
+                destination: writer,
+                digest: ArchiveDigest::new(MAX_SERVER_LOG_GENERATION_BACKUP_BYTES),
+                failed: &failed,
+            };
+            stream.write_to(&mut output)?;
+            output.flush()?;
+            stream.check()?;
+            let (sha, bytes) = output.digest.finish();
+            if bytes != stream.info.bytes {
+                return Err(Error::Contract("streamed generation backup length differs"));
+            }
+            stream.info.identity.archive_sha256 = sha;
+            Ok(stream.info)
+        })
+    }
+
+    pub(in crate::room) fn with_native_backup_stream<T>(
+        &mut self,
+        principal: &str,
+        other_failure: &Cell<bool>,
+        write: impl FnOnce(NativeBackupStream<'_>) -> Result<T>,
+    ) -> Result<T> {
         self.recovery_inventory_owner(principal)?;
         let physical = self.log.generation_descriptor()?;
         let records = physical
@@ -55,7 +108,6 @@ impl Room {
             .parse()
             .map_err(|_| Error::Contract("streamed generation backup global cut"))?;
         let source = self.native_identity_at(records, physical.terminal_digest);
-        let failed = Cell::new(false);
         self.log.stream_generation_backup(
             |capture: StreamGenerationCapture<'_>| {
                 if source.records != capture.cut.records
@@ -72,28 +124,21 @@ impl Room {
                     files: capture.sections.clone(),
                 };
                 let prefix = format::prefix(&header, body_bytes)?;
-                let mut output = Output {
-                    destination: writer,
-                    digest: ArchiveDigest::new(MAX_SERVER_LOG_GENERATION_BACKUP_BYTES),
-                    failed: &failed,
-                };
-                output.write_all(&prefix)?;
-                capture.write_body(&mut output)?;
-                output.flush()?;
-                let (archive_sha256, bytes) = output.digest.finish();
-                Ok(ServerLogGenerationBackupInfo {
+                let bytes = prefix.len() as u64 + body_bytes;
+                let info = ServerLogGenerationBackupInfo {
                     format: "breditor/relay-log-generation-backup",
                     format_version: 1,
                     identity: ServerLogGenerationBackupIdentity {
                         source,
                         manifest: header.manifest,
-                        archive_sha256,
+                        archive_sha256: [0; 32],
                     },
                     files: header.files.len(),
                     bytes,
-                })
+                };
+                write(NativeBackupStream { prefix, capture, info })
             },
-            &failed,
+            other_failure,
         )
     }
 }

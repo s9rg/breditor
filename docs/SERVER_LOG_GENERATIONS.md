@@ -156,9 +156,15 @@ partial output on error. Destination errors leave an otherwise valid room
 available for retry. Rotation also hashes and validates the active WAL one
 record at a time.
 
-The existing joined log/raster capture and archive reader still materialize
-their components. The native stream writer retains the existing archive
-format and lifetime limits.
+Use `ServerLogGenerationRoomBackup::capture_to` to stream a full native and
+raster backup while holding both source owners. It measures and verifies both
+canonical components before emitting the joined header. The second pass
+checks each section, and both owners are checked again after the destination
+flush succeeds. Native raster validation decodes one image at a time. The
+archive can be read by the existing joined backup and restore APIs.
+
+The existing buffered APIs and archive readers still materialize their
+components. The stream writers retain the existing formats and lifetime limits.
 
 Checkpoint `63ef1f17` passes 85 selected Rust tests. The streamed backup
 regression checks exact bytes, short writes, write failure and a writer unwind,

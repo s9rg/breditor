@@ -8,6 +8,7 @@ mod migrate_original;
 mod selected_files;
 mod stage_reclamation;
 mod stream;
+pub(in crate::room) use stream::BackupOutput;
 mod verify_live;
 mod visit_records;
 pub use format::MAX_SERVER_LOG_GENERATION_BACKUP_BYTES;
