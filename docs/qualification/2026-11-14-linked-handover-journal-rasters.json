@@ -1,0 +1,116 @@
+{
+  "format": "breditor/linked-handover-journal-raster-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-14",
+  "source": {
+    "commit": "fe223e45c3d2a150ef0aaff00f115eea2d4c3368",
+    "dirty": false,
+    "sha256": "21fcf3f36f9d319f1d194c8a2ef80a08cb714160918e2aeafd2a33012c8e72e7",
+    "files": 8829,
+    "bytes": 75062127
+  },
+  "tree": "0dc2eb985ef185a1b01cb3ff57741791a2512f40",
+  "relaySha256": "82f44009648f26a0a0169b579fdfdd4fc3e765685db0ae7ef9b288dc6068dea6",
+  "rustExecutableSha256": "40e2e10ce4775caedd1909e67a4890b0199b83b63a5b528d3e96e4dd9f3b0b55",
+  "reproduction": {
+    "passed": 0,
+    "failed": 1,
+    "ignored": 0,
+    "logSha256": "7b1f751d99a9ff09f5d2b2318fb23f5c0484539cb2a73ca851a8572e1793fb6b"
+  },
+  "focusedHandover": {
+    "passed": 7,
+    "failed": 0,
+    "ignored": 0,
+    "logSha256": "191e3f085ce62ff2d442ba7df528043a8ae52de88bade37b24b3c88c7418c631"
+  },
+  "crossVolume": {
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0,
+    "logSha256": "27ac06630f53374647e9b7246892dce17cfd58ad7d1bd52dd4850ea47c1c0e37"
+  },
+  "noServerLogSha256": "f8bfa77f0b619708abdce28f1ea0d3a98b8a37d8d01f7aeb1e65e505c59df990",
+  "clippyLibraryLogSha256": "5a6648a29b1486bc91e6219f34922a5a500d8f81c9504fde46a60368b2a96a67",
+  "sdkReportSha256": "634f95d1556cdca360ad75dc125877a9a427a1c329179a6a687408a6e1f51616",
+  "modes": {
+    "source": {
+      "mode": "source",
+      "handoffs": 2,
+      "portableRestores": 1,
+      "restoredOfflineLanes": 6,
+      "undoRedoLanes": 2,
+      "rasterReads": 2,
+      "processExits": 4,
+      "authenticatedTakeovers": 1,
+      "oldServingRefusals": 1,
+      "coldResumes": 2,
+      "registrationRefusals": 3,
+      "providerRasters": 2,
+      "retainedPackets": 1,
+      "stagedClientRasters": 2,
+      "clientUploadReceipts": 1,
+      "clientUploadArchives": 2,
+      "missingArchiveRefusals": 1,
+      "preservedCancelledUploads": 1,
+      "nativeJournals": 3,
+      "missingJournalRefusals": 2,
+      "coldJournalPairs": 1,
+      "clientJournalRasterBindings": 2,
+      "offlineImageRedo": 1,
+      "retainedAbsolutePositions": true,
+      "runtimeSha256": "373fa3eaff1317bec901efb053b2bf0e25cbe051102de3069dfcf16119997c56",
+      "proof": null
+    },
+    "installed": {
+      "mode": "installed",
+      "handoffs": 2,
+      "portableRestores": 1,
+      "restoredOfflineLanes": 6,
+      "undoRedoLanes": 2,
+      "rasterReads": 2,
+      "processExits": 4,
+      "authenticatedTakeovers": 1,
+      "oldServingRefusals": 1,
+      "coldResumes": 2,
+      "registrationRefusals": 3,
+      "providerRasters": 2,
+      "retainedPackets": 1,
+      "stagedClientRasters": 2,
+      "clientUploadReceipts": 1,
+      "clientUploadArchives": 2,
+      "missingArchiveRefusals": 1,
+      "preservedCancelledUploads": 1,
+      "nativeJournals": 3,
+      "missingJournalRefusals": 2,
+      "coldJournalPairs": 1,
+      "clientJournalRasterBindings": 2,
+      "offlineImageRedo": 1,
+      "retainedAbsolutePositions": true,
+      "runtimeSha256": "373fa3eaff1317bec901efb053b2bf0e25cbe051102de3069dfcf16119997c56",
+      "proof": {
+        "registryArtifacts": 45,
+        "archives": [
+          {
+            "name": "@breditor/browser",
+            "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+          },
+          {
+            "name": "@breditor/experimental-rich-content",
+            "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+          },
+          {
+            "name": "@breditor/collaboration",
+            "sha256": "da76219169eb0b14e2124ca82a4c26827dfd200047ddc65b53565b91f623c8c6"
+          }
+        ]
+      }
+    }
+  },
+  "scope": [
+    "Before the fix an untouched replacement was reported Verified with all credentials and upload archives present even though an undone offline image referenced a raster absent from the store.",
+    "The revised target requires the union of complete selected journal and retained server/packet raster bindings. Missing actual bytes keep approval pending and leave the source epoch untouched.",
+    "Both SDK workflows removed the original relay folders and selected archives before cold relay reopen, extracted three exact journals and replayed the paired pending edits into a fresh SDK store. Redo retrieved the exact client-only raster. The original upload states and ordinary duplicate receipt behavior stayed intact.",
+    "The fixture supplies SDK binding, progress and packet metadata separately and uses controlled storage. Complete standalone client package recovery and same-writer branch reconciliation still require qualification."
+  ]
+}
