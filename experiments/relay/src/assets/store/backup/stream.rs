@@ -3,11 +3,12 @@ use super::{AssetBackupIdentity, AssetStore, admission, export, format, restore_
 use crate::{
     Error, Result,
     archive_digest::ArchiveDigest,
+    archive_input::ArchiveEntry,
     assets::{MAX_ASSET_BYTES, record},
     log::generations::{GenerationFileStamp, GenerationFileWitness},
 };
 use std::{
-    collections::BTreeSet,
+    collections::{BTreeMap, BTreeSet},
     fs::{self, File},
     io::{Read, Write},
     path::{Path, PathBuf},
@@ -137,6 +138,29 @@ impl AssetStore {
 }
 
 impl AssetBackupStream<'_> {
+    pub(crate) fn check_retains(
+        &self,
+        identity: &AssetBackupIdentity,
+        originals: &BTreeMap<String, ArchiveEntry>,
+    ) -> Result<()> {
+        if self.identity.binding != identity.binding {
+            return Err(Error::Contract("operational asset manifest differs"));
+        }
+        let records = std::iter::once(("store.json".to_owned(), &self.header.manifest))
+            .chain(self.header.records.iter().map(|entry| {
+                (super::selected_files::record_name(&entry.info.asset), &entry.record)
+            }))
+            .collect::<BTreeMap<_, _>>();
+        for (name, original) in originals {
+            let current =
+                records.get(name).ok_or(Error::Contract("operational original asset absent"))?;
+            if original.bytes != current.bytes || original.sha256 != current.sha256 {
+                return Err(Error::Contract("operational original asset differs"));
+            }
+        }
+        self.check()
+    }
+
     pub(crate) fn check(&self) -> Result<()> {
         self.store.ready()?;
         restore_files::guard_lock(&self.store.root, &self.store.lock)?;

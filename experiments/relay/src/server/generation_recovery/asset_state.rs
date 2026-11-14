@@ -3,10 +3,7 @@ use super::{
     PreparedLogGenerationRecoveryHost, ServerLogGenerationRecoveryStateIdentity,
     capture::capture_state as capture_recovery_state,
 };
-use crate::{
-    Error, Result, Room, ServerLogGenerationRetainedAssetReferences, ServerLogGenerationRoomBackup,
-    assets::AssetStore,
-};
+use crate::{Error, Result, Room, ServerLogGenerationRetainedAssetReferences, assets::AssetStore};
 use serde::Serialize;
 /// Owner-authenticated server-only dependency inventory. Ready references do not prove provider
 /// mappings, stored bytes for opaque bindings, all clients/outboxes or whole-room activation.
@@ -26,7 +23,7 @@ pub struct ServerLogGenerationAssetRecoveryState {
 pub(super) fn capture_state(
     room: &mut Room,
     assets: &mut AssetStore,
-    original: &ServerLogGenerationRoomBackup,
+    original: &crate::room::HostOrigin,
     custody: &crate::room::GenerationOperationCustody,
     owner: &str,
 ) -> Result<ServerLogGenerationAssetRecoveryState> {

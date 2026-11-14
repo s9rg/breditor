@@ -13,6 +13,8 @@ pub use server_backup::{
 };
 #[cfg(feature = "server")]
 pub(crate) use server_recovery::GenerationOperationCustody;
+#[cfg(feature = "server")]
+pub(crate) use server_recovery::HostOrigin;
 pub use server_recovery::{
     InspectedNativeGenerationTail, OperationalLogGenerationServerRoom,
     RecoveredLogGenerationServerRoom, ServerLogGenerationRoomRecovery,

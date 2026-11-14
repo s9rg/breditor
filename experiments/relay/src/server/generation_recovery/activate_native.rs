@@ -4,7 +4,7 @@ use super::{
     VerifiedServerLogGenerationRecoveryState,
 };
 use crate::{
-    Error, Result, ServerLogGenerationRoomBackup,
+    Error, Result,
     server::{
         PreparedLogGenerationHandover, RoomDeploymentAuthority, RoomDeploymentSelection,
         deployment_fence, generation_backup::durable::Interruption,
@@ -16,14 +16,14 @@ use std::sync::Arc;
 /// Shared actual custody survives every earlier host clone and detached worker.
 /// These are original owners, never recreated Room/AssetStore parts.
 pub(in crate::server) struct NativeGenerationServingCustody {
-    pub original: Arc<ServerLogGenerationRoomBackup>,
+    pub original: Arc<crate::room::HostOrigin>,
     pub source: Arc<PreparedLogGenerationHandover>,
     pub checkpoint: Option<Arc<super::PreparedNativeGenerationActivation>>,
 }
 
 impl NativeGenerationServingCustody {
     pub(in crate::server) fn check_retained(&self) -> Result<()> {
-        if self.original.info()?.identity != *self.source.identity().source() {
+        if *self.original.identity()? != *self.source.identity().source() {
             return Err(Error::NeedsRecovery);
         }
         if let Some(checkpoint) = &self.checkpoint

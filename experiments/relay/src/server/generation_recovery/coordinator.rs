@@ -1,6 +1,5 @@
 //! Host-only prepared owner. Clones retain real custody; verification proofs retain none.
 use super::super::Host;
-use crate::ServerLogGenerationRoomBackup;
 use std::sync::Arc;
 /// Initially inactive authenticated host over actual operational native/raster components and every
 /// recovery directory lease. No router or public native-parts escape is exposed. Provider/client
@@ -10,5 +9,5 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub struct PreparedLogGenerationRecoveryHost {
     pub(in crate::server) host: Host,
-    pub(in crate::server) original: Arc<ServerLogGenerationRoomBackup>,
+    pub(in crate::server) original: Arc<crate::room::HostOrigin>,
 }

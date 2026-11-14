@@ -18,9 +18,9 @@ mod document_presence;
 mod layout_v3;
 mod log_generations;
 mod materialized_checkpoint;
-#[cfg(feature = "server")]
-pub(crate) use log_generations::GenerationOperationCustody;
 pub use log_generations::InspectedNativeGenerationTail;
+#[cfg(feature = "server")]
+pub(crate) use log_generations::{GenerationOperationCustody, HostOrigin};
 pub use log_generations::{
     GenerationRecoveryRegistrationCoverage, MAX_GENERATION_PARTICIPANT_INVENTORY_BYTES,
     ServerLogGenerationParticipantIdentity, ServerLogGenerationParticipantInventory,

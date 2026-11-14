@@ -3,7 +3,7 @@ use super::super::{Authentication, create_host};
 use super::PreparedLogGenerationRecoveryHost;
 use crate::{
     Error, OperationalLogGenerationServerRoom, Result, ServerLogGenerationRoomBackup,
-    ServerLogGenerationRoomBackupIdentity,
+    ServerLogGenerationRoomBackupFile, ServerLogGenerationRoomBackupIdentity, room::HostOrigin,
 };
 use std::sync::Arc;
 
@@ -25,8 +25,50 @@ pub async fn prepare_log_generation_recovery_host(
     principal: &str,
     token: &str,
 ) -> Result<PreparedLogGenerationRecoveryHost> {
+    prepare_selected_host(
+        operational,
+        authentication,
+        HostOrigin::Buffered(Box::new(original)),
+        expected,
+        principal,
+        token,
+    )
+    .await
+}
+
+/// Prepare the inactive authenticated host while retaining a previously admitted original file.
+/// The host and serving clones retain the open handle and recheck its identity before use.
+/// # Errors
+/// Wrong current credentials, a changed file, missing original bytes, or uncertain custody refuses.
+pub async fn prepare_log_generation_recovery_host_file(
+    operational: OperationalLogGenerationServerRoom,
+    authentication: Authentication,
+    original: ServerLogGenerationRoomBackupFile,
+    expected: &ServerLogGenerationRoomBackupIdentity,
+    principal: &str,
+    token: &str,
+) -> Result<PreparedLogGenerationRecoveryHost> {
+    prepare_selected_host(
+        operational,
+        authentication,
+        HostOrigin::File(Box::new(original)),
+        expected,
+        principal,
+        token,
+    )
+    .await
+}
+
+async fn prepare_selected_host(
+    operational: OperationalLogGenerationServerRoom,
+    authentication: Authentication,
+    original: HostOrigin,
+    expected: &ServerLogGenerationRoomBackupIdentity,
+    principal: &str,
+    token: &str,
+) -> Result<PreparedLogGenerationRecoveryHost> {
     authentication.authenticate(principal, token)?;
-    if original.info()?.identity != *expected || operational.origin() != expected {
+    if original.identity()? != expected || operational.origin() != expected {
         return Err(Error::Contract("generation host selected original differs"));
     }
     let principal = principal.to_owned();

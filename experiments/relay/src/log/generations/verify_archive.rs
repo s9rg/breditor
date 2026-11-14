@@ -5,31 +5,52 @@ use super::{
     packed_wal,
     state::Generations,
 };
-use crate::{Error, Result, log::Log};
+use crate::{Error, Result, archive_digest::ArchiveDigest, log::Log};
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs::{self, File},
     io::{Read, Seek, SeekFrom},
 };
 
-fn compare(mut file: &File, expected: &[u8], prefix: bool) -> Result<bool> {
-    let length = file.metadata()?.len();
-    if length < expected.len() as u64 || !prefix && length != expected.len() as u64 {
-        return Ok(false);
-    }
-    file.seek(SeekFrom::Start(0))?;
-    compare_prefix(&mut file, expected)
+#[derive(Clone, Copy)]
+pub(crate) enum SelectedFile<'a> {
+    Bytes(&'a [u8]),
+    Digest { bytes: u64, sha256: [u8; 32] },
 }
 
-fn compare_prefix(reader: &mut dyn Read, expected: &[u8]) -> Result<bool> {
-    let mut buffer = [0_u8; 8192];
-    for block in expected.chunks(buffer.len()) {
-        reader.read_exact(&mut buffer[..block.len()])?;
-        if &buffer[..block.len()] != block {
-            return Ok(false);
+impl SelectedFile<'_> {
+    fn len(self) -> u64 {
+        match self {
+            Self::Bytes(bytes) => bytes.len() as u64,
+            Self::Digest { bytes, .. } => bytes,
         }
     }
-    Ok(true)
+
+    fn compare(self, mut file: &File, prefix: bool) -> Result<bool> {
+        let length = file.metadata()?.len();
+        if length < self.len() || !prefix && length != self.len() {
+            return Ok(false);
+        }
+        file.seek(SeekFrom::Start(0))?;
+        self.compare_prefix(&mut file)
+    }
+
+    fn compare_prefix(self, reader: &mut dyn Read) -> Result<bool> {
+        if let Self::Digest { bytes, sha256 } = self {
+            let mut hash = ArchiveDigest::new(bytes);
+            let count = std::io::copy(&mut reader.take(bytes), &mut hash)?;
+            return Ok(count == bytes && hash.finish().0 == sha256);
+        }
+        let Self::Bytes(expected) = self else { unreachable!() };
+        let mut buffer = [0_u8; 8192];
+        for block in expected.chunks(buffer.len()) {
+            reader.read_exact(&mut buffer[..block.len()])?;
+            if &buffer[..block.len()] != block {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
 }
 fn names(state: &Generations) -> Result<BTreeSet<String>> {
     let values = fs::read_dir(&state.directory.path)?
@@ -46,7 +67,7 @@ impl Generations {
     fn compare_archive(
         &self,
         active: &File,
-        expected: &BTreeMap<&str, &[u8]>,
+        expected: &BTreeMap<&str, SelectedFile<'_>>,
         manifest: [u8; 32],
         retained: bool,
     ) -> Result<bool> {
@@ -72,7 +93,7 @@ impl Generations {
         logical_names.extend(self.closed.iter().map(packed_wal::selected_name));
         let mut matches = retained || logical_names == exact_names;
         let mut witnesses = Vec::new();
-        for (name, bytes) in expected {
+        for (name, &bytes) in expected {
             if retained && *name == ".head.json" {
                 continue;
             }
@@ -82,13 +103,13 @@ impl Generations {
             }
             if let Some((wal, metadata)) = self.closed_wal(name) {
                 let prefix = retained && *name == original_active;
-                if bytes.len() as u64 > wal.bytes || !prefix && bytes.len() as u64 != wal.bytes {
+                if bytes.len() > wal.bytes || !prefix && bytes.len() != wal.bytes {
                     matches = false;
                     continue;
                 }
                 self.guard_sealed_wal(wal)?;
                 matches &= wal.read(metadata.sha256, |reader| {
-                    let result = compare_prefix(reader, bytes)?;
+                    let result = bytes.compare_prefix(reader)?;
                     std::io::copy(reader, &mut std::io::sink())?;
                     Ok(result)
                 })?;
@@ -108,7 +129,7 @@ impl Generations {
             let identity = FileIdentity::of(file)?;
             let stamp = FileStamp::of(file)?;
             identity.guard(file, &self.directory.path.join(name))?;
-            matches &= compare(file, bytes, retained && *name == original_active)?;
+            matches &= bytes.compare(file, retained && *name == original_active)?;
             stamp.guard(file)?;
             identity.guard(file, &self.directory.path.join(name))?;
             witnesses.push((name, identity, stamp, file.metadata()?.len()));
@@ -138,7 +159,7 @@ impl Generations {
 impl Log {
     pub(crate) fn verify_generation_archive(
         &mut self,
-        expected: &BTreeMap<&str, &[u8]>,
+        expected: &BTreeMap<&str, SelectedFile<'_>>,
         manifest: [u8; 32],
         retained: bool,
     ) -> Result<bool> {

@@ -1,6 +1,9 @@
 //! Establish durable operational storage provenance before exposing a continuing room.
-use super::super::super::{ServerLogGenerationRoomBackup, ServerLogGenerationRoomBackupIdentity};
-use super::super::{RecoveredLogGenerationServerRoom, begin::selected, files};
+use super::super::super::{
+    ServerLogGenerationRoomBackup, ServerLogGenerationRoomBackupFile,
+    ServerLogGenerationRoomBackupIdentity,
+};
+use super::super::{RecoveredLogGenerationServerRoom, files, origin::Origin};
 use super::{
     context::Context,
     coordinator::OperationalLogGenerationServerRoom,
@@ -24,18 +27,55 @@ impl RecoveredLogGenerationServerRoom {
         policy: RoomRecoveryPolicy,
         principal: &str,
     ) -> Result<OperationalLogGenerationServerRoom> {
-        self.handoff(backup, expected, policy, principal, &Interruption::default())
+        self.handoff_selected(
+            Origin::Buffered(backup),
+            expected,
+            policy,
+            principal,
+            &Interruption::default(),
+        )
     }
+    /// Establish storage provenance using a held joined archive file.
+    /// # Errors
+    /// Wrong selection, changed storage, non-owner access or interrupted publication refuses.
+    pub fn begin_operation_file(
+        self,
+        backup: &ServerLogGenerationRoomBackupFile,
+        expected: &ServerLogGenerationRoomBackupIdentity,
+        policy: RoomRecoveryPolicy,
+        principal: &str,
+    ) -> Result<OperationalLogGenerationServerRoom> {
+        self.handoff_selected(
+            Origin::File(backup),
+            expected,
+            policy,
+            principal,
+            &Interruption::default(),
+        )
+    }
+
+    #[cfg(test)]
     pub(super) fn handoff(
-        mut self,
+        self,
         backup: &ServerLogGenerationRoomBackup,
         expected: &ServerLogGenerationRoomBackupIdentity,
         policy: RoomRecoveryPolicy,
         principal: &str,
         stop: &Interruption,
     ) -> Result<OperationalLogGenerationServerRoom> {
-        selected(backup, expected, policy)?;
-        self.check_live_source(backup, principal)?;
+        self.handoff_selected(Origin::Buffered(backup), expected, policy, principal, stop)
+    }
+
+    pub(super) fn handoff_selected(
+        mut self,
+        backup: Origin<'_>,
+        expected: &ServerLogGenerationRoomBackupIdentity,
+        policy: RoomRecoveryPolicy,
+        principal: &str,
+        stop: &Interruption,
+    ) -> Result<OperationalLogGenerationServerRoom> {
+        backup.select(expected, policy)?;
+        self.check_source(backup, principal, true, &std::collections::BTreeSet::new())?;
         self.custody.directory.absent(".operation-intent.json")?;
         self.custody.directory.absent(".operational.json")?;
         let selection = Selection {

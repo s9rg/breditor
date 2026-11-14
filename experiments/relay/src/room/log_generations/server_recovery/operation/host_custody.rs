@@ -1,6 +1,5 @@
 //! Crate-private host transfer keeps all actual custody; no public bare native-parts escape.
-use super::super::super::ServerLogGenerationRoomBackup;
-use super::super::custody::JoinedRecoveryCustody;
+use super::super::{custody::JoinedRecoveryCustody, origin::HostOrigin};
 use super::{OperationalLogGenerationServerRoom, context::Context};
 use crate::{Error, Result, Room, assets::AssetStore};
 
@@ -19,13 +18,19 @@ impl GenerationOperationCustody {
         &self,
         room: &mut Room,
         assets: &mut AssetStore,
-        backup: &ServerLogGenerationRoomBackup,
+        backup: &HostOrigin,
         principal: &str,
     ) -> Result<()> {
         if !self.context.guard(&self.custody.directory)? {
             return Err(Error::Contract("generation host operational marker not committed"));
         }
-        self.custody.check_source((room, assets), backup, principal, false, &self.context.extra)?;
+        self.custody.check_source(
+            (room, assets),
+            backup.borrow(),
+            principal,
+            false,
+            &self.context.extra,
+        )?;
         if !self.context.guard(&self.custody.directory)? {
             return Err(Error::Contract("generation host operational marker changed during check"));
         }
@@ -35,10 +40,10 @@ impl GenerationOperationCustody {
 impl OperationalLogGenerationServerRoom {
     pub(crate) fn into_host_parts(
         mut self,
-        backup: &ServerLogGenerationRoomBackup,
+        backup: &HostOrigin,
         principal: &str,
     ) -> Result<(Room, AssetStore, GenerationOperationCustody)> {
-        self.check_live_source(backup, principal)?;
+        self.check_live_origin(backup.borrow(), principal)?;
         let super::super::RecoveredLogGenerationServerRoom { room, assets, custody } =
             self.recovered;
         Ok((room, assets, GenerationOperationCustody { custody, context: self.context }))

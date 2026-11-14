@@ -6,7 +6,7 @@ use crate::{Error, Result, Room, ServerLogGenerationRoomBackup, assets::AssetSto
 pub(super) fn capture_state(
     room: &mut Room,
     assets: &mut AssetStore,
-    original: &ServerLogGenerationRoomBackup,
+    original: &crate::room::HostOrigin,
     ancestor: &ServerLogGenerationRoomBackup,
     custody: &crate::room::GenerationOperationCustody,
     owner: &str,

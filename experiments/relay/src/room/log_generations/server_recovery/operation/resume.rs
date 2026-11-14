@@ -1,12 +1,11 @@
 //! Cold operational reopen preserves complete current work; exact historical restore stays closed.
 use super::super::super::{
-    RecoveredLogGenerationRoom, ServerLogGenerationRoomBackup,
+    RecoveredLogGenerationRoom, ServerLogGenerationRoomBackup, ServerLogGenerationRoomBackupFile,
     ServerLogGenerationRoomBackupIdentity, control_seal::RecoveryControlSeal,
 };
 use super::super::{
-    RecoveredLogGenerationServerRoom, ServerLogGenerationRoomRecovery,
-    begin::selected,
-    files,
+    RecoveredLogGenerationServerRoom, ServerLogGenerationRoomRecovery, files,
+    origin::Origin,
     raster_directory::{RasterCustody, RasterDirectory},
     selection::Marker,
 };
@@ -109,6 +108,26 @@ impl OperationalLogGenerationServerRoom {
         Self::open_operational(root, backup, expected, policy, principal, OpenMode::Resume)
     }
 
+    /// Reopen the existing operational room using its independently selected original file.
+    /// # Errors
+    /// Missing or changed original, divergent state, pending work or lost custody refuses.
+    pub fn resume_file(
+        root: &Path,
+        backup: &ServerLogGenerationRoomBackupFile,
+        expected: &ServerLogGenerationRoomBackupIdentity,
+        policy: RoomRecoveryPolicy,
+        principal: &str,
+    ) -> Result<Self> {
+        Self::open_selected(
+            root,
+            Origin::File(backup),
+            expected,
+            policy,
+            principal,
+            OpenMode::Resume,
+        )
+    }
+
     pub(super) fn open_operational(
         root: &Path,
         backup: &ServerLogGenerationRoomBackup,
@@ -117,7 +136,18 @@ impl OperationalLogGenerationServerRoom {
         principal: &str,
         mode: OpenMode,
     ) -> Result<Self> {
-        selected(backup, expected, policy)?;
+        Self::open_selected(root, Origin::Buffered(backup), expected, policy, principal, mode)
+    }
+
+    pub(super) fn open_selected(
+        root: &Path,
+        backup: Origin<'_>,
+        expected: &ServerLogGenerationRoomBackupIdentity,
+        policy: RoomRecoveryPolicy,
+        principal: &str,
+        mode: OpenMode,
+    ) -> Result<Self> {
+        backup.select(expected, policy)?;
         let directory = GenerationDirectory::open(root)?;
         let marker: Marker = files::read(&directory.path.join(".recovery.json"))?;
         credentials::hash(&marker.id)?;
@@ -159,7 +189,7 @@ impl OperationalLogGenerationServerRoom {
             GenerationDirectory::open(&attempt.directory.path.join(&native_selection.directory))?;
         let native = RecoveredLogGenerationRoom::open_continuing(
             native_directory,
-            backup.native(),
+            &expected.native,
             &native_selection.witness,
             context.marker.selection.native_controls,
             |directory| read_operating_log(directory, mode),

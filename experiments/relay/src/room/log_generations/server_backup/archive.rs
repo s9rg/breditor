@@ -18,6 +18,13 @@ impl ServerLogGenerationRoomBackup {
     pub(in crate::room::log_generations) fn rasters(&self) -> &AssetStoreBackup {
         &self.assets
     }
+    pub(in crate::room::log_generations) fn selected_identity(
+        &self,
+    ) -> crate::Result<&ServerLogGenerationRoomBackupIdentity> {
+        self.encoded_len()?;
+        Ok(&self.identity)
+    }
+
     #[cfg(feature = "server")]
     pub(in crate::room::log_generations) fn into_rasters(self) -> AssetStoreBackup {
         self.assets

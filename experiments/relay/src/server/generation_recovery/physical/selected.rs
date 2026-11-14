@@ -6,7 +6,7 @@ use crate::{Error, Result, Room, ServerLogGenerationRoomBackup, assets::AssetSto
 pub(super) fn check_retained(
     room: &mut Room,
     assets: &mut AssetStore,
-    local: &ServerLogGenerationRoomBackup,
+    local: &crate::room::HostOrigin,
     ancestor: &ServerLogGenerationRoomBackup,
     custody: &crate::room::GenerationOperationCustody,
     owner: &str,
@@ -18,7 +18,7 @@ pub(super) fn check_retained(
 pub(super) fn check_selected(
     room: &mut Room,
     assets: &mut AssetStore,
-    local: &ServerLogGenerationRoomBackup,
+    local: &crate::room::HostOrigin,
     ancestor: &ServerLogGenerationRoomBackup,
     custody: &crate::room::GenerationOperationCustody,
     owner: &str,
@@ -27,7 +27,7 @@ pub(super) fn check_selected(
     if expected.format != "breditor/physical-server-room-recovery-state"
         || expected.format_version != 1
         || ancestor.info()?.identity != expected.ancestor
-        || local.info()?.identity != expected.local_origin
+        || *local.identity()? != expected.local_origin
         || expected.participants.source != expected.server.native
     {
         return Err(Error::Contract("physical host ancestor/local/current selections differ"));

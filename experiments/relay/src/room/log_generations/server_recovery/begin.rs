@@ -3,7 +3,7 @@ use super::super::{
     ServerLogGenerationRoomBackup, ServerLogGenerationRoomBackupFile,
     ServerLogGenerationRoomBackupIdentity,
 };
-use super::{ServerLogGenerationRoomRecovery, files, selection::Marker};
+use super::{ServerLogGenerationRoomRecovery, files, origin::Origin, selection::Marker};
 use crate::{
     Error, Result, RoomRecoveryPolicy, credentials, log::generations::GenerationDirectory,
 };
@@ -13,11 +13,7 @@ pub(super) fn selected(
     expected: &ServerLogGenerationRoomBackupIdentity,
     policy: RoomRecoveryPolicy,
 ) -> Result<()> {
-    let RoomRecoveryPolicy::HostReacquired = policy;
-    if backup.info()?.identity != *expected {
-        return Err(Error::Contract("joined generation selected archive"));
-    }
-    Ok(())
+    Origin::Buffered(backup).select(expected, policy)
 }
 impl ServerLogGenerationRoomRecovery {
     /// Reserve an absent private directory. Expected identity must be retained independently of
@@ -45,11 +41,7 @@ impl ServerLogGenerationRoomRecovery {
         expected: &ServerLogGenerationRoomBackupIdentity,
         policy: RoomRecoveryPolicy,
     ) -> Result<Self> {
-        let RoomRecoveryPolicy::HostReacquired = policy;
-        if backup.identity != *expected {
-            return Err(Error::Contract("joined generation selected archive"));
-        }
-        backup.input.check()?;
+        Origin::File(backup).select(expected, policy)?;
         Self::begin_selected(path, expected)
     }
 
@@ -98,11 +90,7 @@ impl ServerLogGenerationRoomRecovery {
         expected: &ServerLogGenerationRoomBackupIdentity,
         policy: RoomRecoveryPolicy,
     ) -> Result<Self> {
-        let RoomRecoveryPolicy::HostReacquired = policy;
-        if backup.identity != *expected {
-            return Err(Error::Contract("joined generation selected archive"));
-        }
-        backup.input.check()?;
+        Origin::File(backup).select(expected, policy)?;
         let attempt = Self::resume_selected(path, expected)?;
         attempt.progress_file(backup)?;
         Ok(attempt)

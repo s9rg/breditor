@@ -4,12 +4,12 @@ use crate::{Error, Result, Room, ServerLogGenerationRoomBackup, assets::AssetSto
 pub(in crate::server) fn check_selected(
     room: &mut Room,
     assets: &mut AssetStore,
-    original: &ServerLogGenerationRoomBackup,
+    original: &crate::room::HostOrigin,
     custody: &crate::room::GenerationOperationCustody,
     owner: &str,
     expected: &ServerLogGenerationRecoveryStateIdentity,
 ) -> Result<()> {
-    if original.info()?.identity != expected.origin
+    if *original.identity()? != expected.origin
         || expected.participants.source != expected.server.native
     {
         return Err(Error::Contract("generation host source selections differ"));

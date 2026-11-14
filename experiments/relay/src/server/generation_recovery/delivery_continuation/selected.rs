@@ -5,7 +5,7 @@ use crate::{Error, Result, Room, ServerLogGenerationRoomBackup, assets::AssetSto
 pub(super) fn check_selected(
     room: &mut Room,
     assets: &mut AssetStore,
-    original: &ServerLogGenerationRoomBackup,
+    original: &crate::room::HostOrigin,
     previous: &ServerLogGenerationRoomBackup,
     custody: &crate::room::GenerationOperationCustody,
     owner: &str,
@@ -13,7 +13,7 @@ pub(super) fn check_selected(
 ) -> Result<()> {
     if expected.format != "breditor/server-log-generation-delivery-continuation"
         || expected.format_version != 1
-        || original.info()?.identity != expected.current.origin
+        || *original.identity()? != expected.current.origin
         || previous.info()?.identity != expected.previous
         || expected.current.participants.source != expected.current.server.native
     {
@@ -28,7 +28,7 @@ pub(super) fn check_selected(
         return Err(Error::Contract("delivery continuation current cut differs"));
     }
     // Two archives retained by C do not establish A <= B. Preserve BOTH links.
-    previous.check_archive_ancestor(original)?;
+    original.check_archive_descendant(previous)?;
     current.check_archive_ancestor(previous)?;
     custody.check_source(room, assets, original, owner)
 }

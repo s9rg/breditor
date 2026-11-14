@@ -4,7 +4,7 @@ use super::{
     storage,
 };
 use breditor_collab_relay::{
-    RecoveredLogGenerationServerRoom, RecoveryRegistrationCredentials, Role, RoomRecoveryPolicy,
+    OperationalLogGenerationServerRoom, RecoveryRegistrationCredentials, Role, RoomRecoveryPolicy,
     ServerLogGenerationBackup, ServerLogGenerationRoomBackup, ServerLogGenerationRoomBackupFile,
     ServerLogGenerationRoomRecovery, ServerNativeHistoryFamily, SuggestionRole,
     assets::{AssetStore, asset_id, prepare_asset},
@@ -12,7 +12,7 @@ use breditor_collab_relay::{
         Authentication, ContentAddressedServerAssets, PreparedLogGenerationRecoveryHost,
         ServerLogGenerationRecoveryAssetCoverage, ServerLogGenerationRecoveryControl,
         VerifiedServerLogGenerationRecoveryState, prepare_log_generation_recovery_control,
-        prepare_log_generation_recovery_host,
+        prepare_log_generation_recovery_host, prepare_log_generation_recovery_host_file,
     },
 };
 use serde_json::json;
@@ -219,25 +219,7 @@ async fn generate_selected(
     }
     let (migrated_origin::Cuts { older: ancestor, local, legacy }, predecessor) =
         Box::pin(capture_source_cuts(&root, room, assets, migrated, activation_case)).await?;
-    let mut operation = restore_local(&root, &local, activation_case)?.begin_operation(
-        &local,
-        &local.info()?.identity,
-        RoomRecoveryPolicy::HostReacquired,
-        "owner",
-    )?;
-    if activation_case && std::env::var_os("BREDITOR_TEST_ARCHIVE_MOUNT").is_some() {
-        let root = operation.root().to_path_buf();
-        let native = offload_volume::restored_native_root(&root)?;
-        drop(operation);
-        offload_volume::mount(&native, "restored")?;
-        operation = breditor_collab_relay::OperationalLogGenerationServerRoom::resume(
-            &root,
-            &local,
-            &local.info()?.identity,
-            RoomRecoveryPolicy::HostReacquired,
-            "owner",
-        )?;
-    }
+    let (mut operation, disk_origin) = restore_local(&root, &local, activation_case)?;
     let restored_history = operation.room().native_history_descriptor("owner")?;
     let continued_document_receiver =
         restored_history.document == ServerNativeHistoryFamily::ContinuedV2;
@@ -273,16 +255,28 @@ async fn generate_selected(
     };
     let private_delivery =
         delivery_account.as_ref().map(|(token, _)| private_delivery(token, &protected));
-    let base = Box::pin(prepare_log_generation_recovery_host(
-        operation,
-        native_auth,
-        ServerLogGenerationRoomBackup::from_owned_bytes(local.to_bytes()?)?,
-        &local.info()?.identity,
-        "owner",
-        &native_token,
-    ))
-    .await?;
-    let host = base;
+    let origin = local.info()?.identity;
+    let host = if let Some(file) = disk_origin {
+        Box::pin(prepare_log_generation_recovery_host_file(
+            operation,
+            native_auth,
+            file,
+            &origin,
+            "owner",
+            &native_token,
+        ))
+        .await?
+    } else {
+        Box::pin(prepare_log_generation_recovery_host(
+            operation,
+            native_auth,
+            ServerLogGenerationRoomBackup::from_owned_bytes(local.to_bytes()?)?,
+            &origin,
+            "owner",
+            &native_token,
+        ))
+        .await?
+    };
     let capture = host.capture_recovery_state("owner", &native_token).await?;
     let selected = capture.identity()?;
     if selected.origin == ancestor.info()?.identity
@@ -351,7 +345,7 @@ fn restore_local(
     root: &Path,
     local: &ServerLogGenerationRoomBackup,
     use_disk: bool,
-) -> Result<RecoveredLogGenerationServerRoom> {
+) -> Result<(OperationalLogGenerationServerRoom, Option<ServerLogGenerationRoomBackupFile>)> {
     use std::{
         fs::{File, OpenOptions},
         os::unix::fs::OpenOptionsExt,
@@ -360,8 +354,10 @@ fn restore_local(
     let path = root.join("restored");
     let policy = RoomRecoveryPolicy::HostReacquired;
     if !use_disk {
-        return Ok(ServerLogGenerationRoomRecovery::begin(&path, local, &expected, policy)?
-            .finish(local)?);
+        let operation = ServerLogGenerationRoomRecovery::begin(&path, local, &expected, policy)?
+            .finish(local)?
+            .begin_operation(local, &expected, policy, "owner")?;
+        return Ok((operation, None));
     }
     let archive = root.join("local-recovery-input.backup");
     let mut output = OpenOptions::new().write(true).create_new(true).mode(0o600).open(&archive)?;
@@ -370,8 +366,17 @@ fn restore_local(
     drop(output);
     let file = ServerLogGenerationRoomBackupFile::open(File::open(&archive)?, &expected)?;
     drop(ServerLogGenerationRoomRecovery::begin_file(&path, &file, &expected, policy)?);
-    Ok(ServerLogGenerationRoomRecovery::resume_file(&path, &file, &expected, policy)?
-        .finish_file(&file)?)
+    let operation = ServerLogGenerationRoomRecovery::resume_file(&path, &file, &expected, policy)?
+        .finish_file(&file)?
+        .begin_operation_file(&file, &expected, policy, "owner")?;
+    let native = offload_volume::restored_native_root(operation.root())?;
+    drop(operation);
+    if std::env::var_os("BREDITOR_TEST_ARCHIVE_MOUNT").is_some() {
+        offload_volume::mount(&native, "restored")?;
+    }
+    let operation =
+        OperationalLogGenerationServerRoom::resume_file(&path, &file, &expected, policy, "owner")?;
+    Ok((operation, Some(file)))
 }
 
 fn check_streamed_backup(

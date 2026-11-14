@@ -9,6 +9,9 @@ mod interruption;
 mod inventory;
 mod native_component;
 mod operation;
+mod origin;
+#[cfg(feature = "server")]
+pub(crate) use origin::HostOrigin;
 mod progress;
 mod raster_directory;
 mod raster_part;

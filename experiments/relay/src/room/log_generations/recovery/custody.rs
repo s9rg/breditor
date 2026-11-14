@@ -28,7 +28,7 @@ impl RecoveredLogGenerationRoom {
     /// tail trimming, rotation completion or raster cleanup. The caller retains the joined lease.
     pub(in crate::room::log_generations) fn open_continuing(
         directory: crate::log::generations::GenerationDirectory,
-        backup: &super::super::ServerLogGenerationBackup,
+        identity: &super::super::ServerLogGenerationBackupIdentity,
         expected: &GenerationDirectoryWitness,
         controls: [u8; 32],
         read_log: impl FnOnce(crate::log::generations::GenerationDirectory) -> Result<crate::Room>,
@@ -40,7 +40,7 @@ impl RecoveredLogGenerationRoom {
         credentials::hash(&marker.id)?;
         if marker.format != "breditor/relay-log-generation-recovery"
             || marker.format_version != 1
-            || marker.identity != backup.info().identity
+            || marker.identity != *identity
         {
             return Err(Error::Contract("continuing native source differs"));
         }

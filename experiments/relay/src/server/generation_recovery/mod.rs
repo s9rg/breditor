@@ -125,7 +125,9 @@ mod state;
 mod tests;
 mod verification;
 pub use coordinator::PreparedLogGenerationRecoveryHost;
-pub use prepare::prepare_log_generation_recovery_host;
+pub use prepare::{
+    prepare_log_generation_recovery_host, prepare_log_generation_recovery_host_file,
+};
 pub use sealed_restart::SealedNativeRestartSelection;
 pub use state::{ServerLogGenerationRecoveryState, ServerLogGenerationRecoveryStateIdentity};
 pub use verification::{

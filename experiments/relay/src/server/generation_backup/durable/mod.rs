@@ -7,7 +7,7 @@ mod prepare;
 mod seal;
 mod store;
 use crate::{
-    Result, ServerLogGenerationRoomBackup,
+    Result, ServerLogGenerationRoomBackup, ServerLogGenerationRoomBackupFile,
     server::{RoomDeploymentAuthority, deployment_fence},
 };
 pub use identity::PreparedLogGenerationHandoverIdentity;
@@ -54,6 +54,18 @@ impl PreparedLogGenerationHandover {
     pub fn source_backup(&self) -> &ServerLogGenerationRoomBackup {
         &self.store.backup
     }
+    pub(in crate::server) fn open_source_backup_file(
+        &self,
+    ) -> Result<ServerLogGenerationRoomBackupFile> {
+        self.store.guard()?;
+        let file = ServerLogGenerationRoomBackupFile::open(
+            self.store.archive.try_clone()?,
+            self.identity().source(),
+        )?;
+        self.store.guard()?;
+        Ok(file)
+    }
+
     /// Actual private intent directory. It is never selected from a room archive.
     #[must_use]
     pub fn root(&self) -> &Path {

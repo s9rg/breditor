@@ -85,10 +85,11 @@ pub use generation_recovery::{
     prepare_log_generation_delivery_recovery_control,
     prepare_log_generation_handover_delivery_path_recovery_control,
     prepare_log_generation_recovery_control, prepare_log_generation_recovery_host,
-    prepare_native_room_publication, prepare_physical_room_recovery_control,
-    prepare_physical_room_recovery_host, reconstruct_log_generation_recovery_host,
-    reopen_sealed_native_restart_host, repair_sealed_native_tail,
-    repair_sealed_native_tail_and_raster, retire_sealed_native_raster_upload,
+    prepare_log_generation_recovery_host_file, prepare_native_room_publication,
+    prepare_physical_room_recovery_control, prepare_physical_room_recovery_host,
+    reconstruct_log_generation_recovery_host, reopen_sealed_native_restart_host,
+    repair_sealed_native_tail, repair_sealed_native_tail_and_raster,
+    retire_sealed_native_raster_upload,
 };
 use std::sync::{Arc, Mutex};
 use tokio::sync::{Semaphore, watch};

@@ -4,7 +4,7 @@ use crate::{Error, Result, Room, ServerLogGenerationRoomBackup, assets::AssetSto
 pub(super) fn capture_state(
     room: &mut Room,
     assets: &mut AssetStore,
-    original: &ServerLogGenerationRoomBackup,
+    original: &crate::room::HostOrigin,
     custody: &crate::room::GenerationOperationCustody,
     principal: &str,
 ) -> Result<ServerLogGenerationRecoveryState> {
@@ -15,7 +15,11 @@ pub(super) fn capture_state(
         return Err(Error::Contract("generation host capture cuts differ"));
     }
     custody.check_source(room, assets, original, principal)?;
-    Ok(ServerLogGenerationRecoveryState { origin: original.info()?.identity, server, participants })
+    Ok(ServerLogGenerationRecoveryState {
+        origin: original.identity()?.clone(),
+        server,
+        participants,
+    })
 }
 impl PreparedLogGenerationRecoveryHost {
     /// Authenticate a current owner and capture complete native/raster history plus every current

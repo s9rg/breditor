@@ -54,7 +54,7 @@ impl PreparedLogGenerationRecoveryHost {
     ) -> Result<ServerLogGenerationRecoveryCoverage> {
         self.host.authentication.authenticate(principal, token)?;
         if inventory.identity() != expected.participants
-            || self.original.info()?.identity != expected.origin
+            || *self.original.identity()? != expected.origin
         {
             return Err(Error::Contract("generation host selected inventory differs"));
         }

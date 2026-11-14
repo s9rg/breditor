@@ -1,6 +1,9 @@
 //! Actual operational owners and their durable original source, not an activation credential.
-use super::super::super::{ServerLogGenerationRoomBackup, ServerLogGenerationRoomBackupIdentity};
-use super::{super::RecoveredLogGenerationServerRoom, context::Context};
+use super::super::super::{
+    ServerLogGenerationRoomBackup, ServerLogGenerationRoomBackupFile,
+    ServerLogGenerationRoomBackupIdentity,
+};
+use super::{super::RecoveredLogGenerationServerRoom, super::origin::Origin, context::Context};
 use crate::{Error, Result, Room, assets::AssetStore};
 use std::path::Path;
 
@@ -57,6 +60,21 @@ impl OperationalLogGenerationServerRoom {
         backup: &ServerLogGenerationRoomBackup,
         principal: &str,
     ) -> Result<()> {
+        self.check_live_origin(Origin::Buffered(backup), principal)
+    }
+
+    /// Verify continuing native history, raster retention and durable custody against a held file.
+    /// # Errors
+    /// Different original, missing history/files, non-owner access or uncertain custody refuses.
+    pub fn check_live_source_file(
+        &mut self,
+        backup: &ServerLogGenerationRoomBackupFile,
+        principal: &str,
+    ) -> Result<()> {
+        self.check_live_origin(Origin::File(backup), principal)
+    }
+
+    pub(super) fn check_live_origin(&mut self, backup: Origin<'_>, principal: &str) -> Result<()> {
         if !self.context.guard(&self.recovered.custody.directory)? {
             return Err(Error::Contract("generation operational marker no longer committed"));
         }

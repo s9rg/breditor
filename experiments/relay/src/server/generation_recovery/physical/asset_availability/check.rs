@@ -19,7 +19,7 @@ use serde::Serialize;
 use std::sync::Arc;
 
 pub(super) struct Selected<'a> {
-    pub original: &'a ServerLogGenerationRoomBackup,
+    pub original: &'a crate::room::HostOrigin,
     pub ancestor: &'a ServerLogGenerationRoomBackup,
     pub custody: &'a crate::room::GenerationOperationCustody,
     pub owner: &'a str,

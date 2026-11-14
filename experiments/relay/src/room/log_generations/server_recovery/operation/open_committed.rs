@@ -1,7 +1,7 @@
 //! Reacquire only an already committed operational handoff.
-use super::{OperationalLogGenerationServerRoom, resume::OpenMode};
+use super::{super::origin::Origin, OperationalLogGenerationServerRoom, resume::OpenMode};
 use crate::{
-    Result, RoomRecoveryPolicy, ServerLogGenerationRoomBackup,
+    Result, RoomRecoveryPolicy, ServerLogGenerationRoomBackup, ServerLogGenerationRoomBackupFile,
     ServerLogGenerationRoomBackupIdentity,
 };
 use std::path::Path;
@@ -23,5 +23,25 @@ impl OperationalLogGenerationServerRoom {
         principal: &str,
     ) -> Result<Self> {
         Self::open_operational(root, backup, expected, policy, principal, OpenMode::Committed)
+    }
+
+    /// Reopen a committed operational room with its original archive held on disk.
+    /// # Errors
+    /// Wrong input, missing commit, stale owner or divergent native/raster contents refuse.
+    pub fn open_committed_file(
+        root: &Path,
+        backup: &ServerLogGenerationRoomBackupFile,
+        expected: &ServerLogGenerationRoomBackupIdentity,
+        policy: RoomRecoveryPolicy,
+        principal: &str,
+    ) -> Result<Self> {
+        Self::open_selected(
+            root,
+            Origin::File(backup),
+            expected,
+            policy,
+            principal,
+            OpenMode::Committed,
+        )
     }
 }

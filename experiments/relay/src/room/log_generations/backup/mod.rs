@@ -3,6 +3,8 @@ mod admission;
 mod disk;
 pub(super) use disk::admit_native_file;
 mod ancestry;
+#[cfg(feature = "server")]
+pub(super) use ancestry::check_native_ancestry;
 mod capture;
 mod format;
 mod identity;
@@ -12,6 +14,7 @@ mod stage_reclamation;
 mod stream;
 pub(in crate::room) use stream::BackupOutput;
 mod verify_live;
+pub(super) use verify_live::check_native_selection;
 mod visit_records;
 pub use format::MAX_SERVER_LOG_GENERATION_BACKUP_BYTES;
 pub use identity::{ServerLogGenerationBackupIdentity, ServerLogGenerationBackupInfo};

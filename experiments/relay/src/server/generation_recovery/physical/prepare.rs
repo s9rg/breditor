@@ -20,7 +20,7 @@ pub async fn prepare_physical_room_recovery_host(
 ) -> Result<PreparedPhysicalRoomRecoveryHost> {
     local.host.authentication.authenticate(principal, token)?;
     if ancestor.info()?.identity != *expected_ancestor
-        || local.original.info()?.identity != *expected_local_origin
+        || *local.original.identity()? != *expected_local_origin
     {
         return Err(Error::Contract("physical host selected ancestor/local origin differs"));
     }

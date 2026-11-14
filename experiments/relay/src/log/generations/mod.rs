@@ -69,4 +69,7 @@ pub(crate) use prepare_original_root::prepare_original_root;
 pub use receipt::{ServerLogGenerationDescriptor, ServerLogGenerationReceipt};
 pub(super) use state::Generations;
 pub(crate) use stream_capture::StreamGenerationCapture;
+pub(crate) use verify_archive::SelectedFile;
+#[cfg(test)]
 pub(crate) use verify_archive_ancestor::verify_archive_ancestor;
+pub(crate) use verify_archive_ancestor::verify_archive_sections;

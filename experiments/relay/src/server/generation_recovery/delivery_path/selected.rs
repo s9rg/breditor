@@ -30,7 +30,7 @@ pub(super) fn check_inputs(
 pub(super) fn check_selected(
     room: &mut Room,
     assets: &mut AssetStore,
-    original: &ServerLogGenerationRoomBackup,
+    original: &crate::room::HostOrigin,
     ancestors: &[Arc<ServerLogGenerationRoomBackup>],
     custody: &crate::room::GenerationOperationCustody,
     owner: &str,
@@ -39,7 +39,7 @@ pub(super) fn check_selected(
     check_inputs(ancestors, &expected.ancestors)?;
     if expected.format != "breditor/server-log-generation-delivery-path"
         || expected.format_version != 1
-        || original.info()?.identity != expected.current.origin
+        || *original.identity()? != expected.current.origin
         || expected.current.participants.source != expected.current.server.native
     {
         return Err(Error::Contract("delivery path original/current selection differs"));
@@ -52,11 +52,19 @@ pub(super) fn check_selected(
     {
         return Err(Error::Contract("delivery path exact current cut differs"));
     }
-    let mut previous = original;
+    let mut previous: Option<&ServerLogGenerationRoomBackup> = None;
     for archive in ancestors {
-        archive.check_archive_ancestor(previous)?;
-        previous = archive;
+        if let Some(previous) = previous {
+            archive.check_archive_ancestor(previous)?;
+        } else {
+            original.check_archive_descendant(archive)?;
+        }
+        previous = Some(archive);
     }
-    current.check_archive_ancestor(previous)?;
+    if let Some(previous) = previous {
+        current.check_archive_ancestor(previous)?;
+    } else {
+        original.check_archive_descendant(&current)?;
+    }
     custody.check_source(room, assets, original, owner)
 }

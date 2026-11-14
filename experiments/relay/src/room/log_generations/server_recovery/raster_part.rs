@@ -17,7 +17,14 @@ impl ServerLogGenerationRoomRecovery {
         name: &str,
         expected: RecoveryPart<'_>,
     ) -> Result<Option<RasterPart>> {
-        selected_part(&self.directory, &self.marker.id, component, name, expected)
+        selected_part(
+            &self.directory,
+            &self.marker.id,
+            component,
+            name,
+            expected.len(),
+            expected.sha256,
+        )
     }
 }
 pub(super) fn selected_part(
@@ -25,7 +32,8 @@ pub(super) fn selected_part(
     recovery: &str,
     component: &RasterComponent,
     name: &str,
-    expected: RecoveryPart<'_>,
+    bytes: u64,
+    sha256: [u8; 32],
 ) -> Result<Option<RasterPart>> {
     let path = directory.path.join(ledger(name));
     if !files::exists(&path)? {
@@ -42,8 +50,8 @@ pub(super) fn selected_part(
         || part.recovery != recovery
         || part.directory != component.directory
         || part.name != name
-        || part.bytes != expected.len()
-        || part.sha256 != expected.sha256
+        || part.bytes != bytes
+        || part.sha256 != sha256
     {
         return Err(Error::Contract("joined raster part selection differs"));
     }

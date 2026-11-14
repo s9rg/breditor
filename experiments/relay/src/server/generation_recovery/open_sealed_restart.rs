@@ -2,12 +2,11 @@
 use super::{
     PreparedLogGenerationRecoveryHost, SealedNativeRestartSelection,
     ServerLogGenerationRecoveryCoverage, VerifiedServerLogGenerationRecoveryState,
-    prepare_log_generation_recovery_host,
+    prepare_log_generation_recovery_host_file,
 };
 use crate::{
     Error, MissingRecoveryRegistration, OperationalLogGenerationServerRoom,
-    RecoveryRegistrationCredentials, Result, RoomRecoveryPolicy, ServerLogGenerationRoomBackup,
-    server::Authentication,
+    RecoveryRegistrationCredentials, Result, RoomRecoveryPolicy, server::Authentication,
 };
 use std::path::Path;
 
@@ -75,11 +74,9 @@ pub(super) async fn open_sealed_native_restart_target(
     let owner = principal.to_owned();
     let (operational, original, origin, selection) = tokio::task::spawn_blocking(move || {
         selection.check_checkpoint()?;
-        let original = ServerLogGenerationRoomBackup::from_owned_bytes(
-            selection.checkpoint.source.source_backup().to_bytes()?,
-        )?;
+        let original = selection.checkpoint.source.open_source_backup_file()?;
         let origin = selection.expected.origin.clone();
-        let operational = OperationalLogGenerationServerRoom::open_committed(
+        let operational = OperationalLogGenerationServerRoom::open_committed_file(
             &root,
             &original,
             &origin,
@@ -90,7 +87,7 @@ pub(super) async fn open_sealed_native_restart_target(
     })
     .await
     .map_err(|_| Error::NeedsRecovery)??;
-    let host = Box::pin(prepare_log_generation_recovery_host(
+    let host = Box::pin(prepare_log_generation_recovery_host_file(
         *operational,
         authentication,
         original,

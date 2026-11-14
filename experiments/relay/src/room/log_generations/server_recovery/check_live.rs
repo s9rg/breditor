@@ -2,6 +2,7 @@
 use super::super::ServerLogGenerationRoomBackup;
 use super::{
     RecoveredLogGenerationServerRoom, files,
+    origin::Origin,
     selection::{Marker, NativeComponent, RasterComponent},
 };
 use crate::{Error, Result, Room, assets::AssetStore};
@@ -17,11 +18,11 @@ impl RecoveredLogGenerationServerRoom {
         backup: &ServerLogGenerationRoomBackup,
         principal: &str,
     ) -> Result<()> {
-        self.check_source(backup, principal, true, &BTreeSet::new())
+        self.check_source(Origin::Buffered(backup), principal, true, &BTreeSet::new())
     }
     pub(super) fn check_source(
         &mut self,
-        backup: &ServerLogGenerationRoomBackup,
+        backup: Origin<'_>,
         principal: &str,
         exact: bool,
         extra: &BTreeSet<String>,
@@ -39,31 +40,38 @@ impl super::custody::JoinedRecoveryCustody {
     pub(super) fn check_source(
         &self,
         components: (&mut Room, &mut AssetStore),
-        backup: &ServerLogGenerationRoomBackup,
+        backup: Origin<'_>,
         principal: &str,
         exact: bool,
         extra: &BTreeSet<String>,
     ) -> Result<()> {
-        self.check_source_with(components, backup, extra, |room, assets| {
-            if exact {
-                backup.check_live(room, assets, principal)
-            } else {
-                backup.check_retained(room, assets, principal)
-            }
+        self.check_origin_with(components, backup, extra, |room, assets| {
+            backup.check_live(room, assets, principal, exact)
         })
     }
 
+    #[cfg(feature = "server")]
     pub(super) fn check_source_with<T>(
         &self,
-        (room, assets): (&mut Room, &mut AssetStore),
+        components: (&mut Room, &mut AssetStore),
         backup: &ServerLogGenerationRoomBackup,
+        extra: &BTreeSet<String>,
+        verify: impl FnOnce(&mut Room, &mut AssetStore) -> Result<T>,
+    ) -> Result<T> {
+        self.check_origin_with(components, Origin::Buffered(backup), extra, verify)
+    }
+
+    fn check_origin_with<T>(
+        &self,
+        (room, assets): (&mut Room, &mut AssetStore),
+        backup: Origin<'_>,
         extra: &BTreeSet<String>,
         verify: impl FnOnce(&mut Room, &mut AssetStore) -> Result<T>,
     ) -> Result<T> {
         self.directory.guard()?;
         self.controls.check_with_extras(&self.directory, extra)?;
         self.native_controls.check(&self.native_directory)?;
-        if backup.info()?.identity != self.marker.identity {
+        if *backup.identity()? != self.marker.identity {
             return Err(Error::Contract("joined actual source selection differs"));
         }
         let original: Marker = files::read(&self.directory.path.join(".recovery.json"))?;
@@ -109,24 +117,25 @@ impl super::custody::JoinedRecoveryCustody {
         )?;
         self.check_original_raster_custody(backup, &raster)?;
         self.raster.guard_selected(&raster.witness, assets)?;
+        backup.identity()?;
         Ok(result)
     }
     fn check_original_raster_custody(
         &self,
-        backup: &ServerLogGenerationRoomBackup,
+        backup: Origin<'_>,
         component: &RasterComponent,
     ) -> Result<()> {
-        for (name, bytes) in backup.rasters().selected_files() {
+        backup.check_raster_parts(|name, bytes, sha256| {
             let part = super::raster_part::selected_part(
                 &self.directory,
                 &self.marker.id,
                 component,
-                &name,
-                super::super::recovery_part::RecoveryPart::from_bytes(bytes),
+                name,
+                bytes,
+                sha256,
             )?
             .ok_or(Error::Contract("joined original raster intent absent"))?;
-            self.raster.guard_file(&name, &part.witness)?;
-        }
-        Ok(())
+            self.raster.guard_file(name, &part.witness)
+        })
     }
 }

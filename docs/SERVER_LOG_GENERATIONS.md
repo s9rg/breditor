@@ -177,10 +177,21 @@ room, and checks both final components before publishing the joined completion
 record. The buffered and file-backed APIs share the same reservation and part
 ledgers. A retry can switch between them using the same exact backup.
 
-The archive reader and file copy use bounded buffers. Native replay still
-rebuilds room state in memory, and the subsequent serving handoff takes the
-existing buffered archive. Existing formats, host fencing requirements, and
-lifetime limits apply.
+Continue from a completed restore with `begin_operation_file`. Use
+`OperationalLogGenerationServerRoom::resume_file` to resume an interrupted
+handoff, or `open_committed_file` to reopen an already committed one without
+retiring a marker alias. Both verify the original native cut and raster files
+before returning the same operational owner. A committed handoff can contain
+later durable work, so the original active WAL is checked as a prefix even
+after rotation or packing. A partial handoff requires the exact original cut.
+
+`prepare_log_generation_recovery_host_file` moves the acquired room and raster
+owners into an inactive authenticated host. The host and its serving clones hold
+the original file and verify its selected identity across activation and
+publication. Sealed restart prepares the replacement host from the held
+original archive file. The existing sealed checkpoint and current-state capture
+still use buffered data, and native replay rebuilds room state in memory.
+Existing formats, host fencing requirements, and lifetime limits apply.
 
 Disk-backed restore checkpoint `f9e24fa1` passes 503 Rust relay tests plus the
 separate mounted-WAL test. The interruption tests swap input modes and compare

@@ -5,7 +5,7 @@ use super::super::{
 };
 use super::ServerLogGenerationAssetAvailabilityRead;
 use crate::{
-    Error, Result, Room, ServerAssetReferenceOutcome, ServerLogGenerationRoomBackup,
+    Error, Result, Room, ServerAssetReferenceOutcome,
     assets::AssetStore,
     server::{
         ServerAssetAvailabilityMissing, ServerRecoveryAssetProvider,
@@ -19,7 +19,7 @@ use serde::Serialize;
 use std::sync::Arc;
 
 pub(super) struct Selected<'a> {
-    pub original: &'a ServerLogGenerationRoomBackup,
+    pub original: &'a crate::room::HostOrigin,
     pub custody: &'a crate::room::GenerationOperationCustody,
     pub owner: &'a str,
     pub expected: &'a ServerLogGenerationRecoveryStateIdentity,

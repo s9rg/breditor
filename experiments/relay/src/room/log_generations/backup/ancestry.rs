@@ -1,17 +1,51 @@
 //! Whole immutable native transport prefix; actual native replay/owner checks stay mandatory.
-use super::ServerLogGenerationBackup;
-use crate::{Error, Result, log::generations::verify_archive_ancestor};
+use super::{ServerLogGenerationBackup, ServerLogGenerationBackupIdentity};
+use crate::{
+    Error, Result, archive_input::ArchiveSlice, log::generations::verify_archive_sections,
+};
+use std::collections::BTreeMap;
+
 impl ServerLogGenerationBackup {
     pub(in crate::room::log_generations) fn check_archive_ancestor(
         &self,
         ancestor: &Self,
     ) -> Result<()> {
-        let mut selected = self.identity.source.clone();
-        selected.records = ancestor.identity.source.records;
-        selected.terminal_log_digest = ancestor.identity.source.terminal_log_digest;
-        if selected != ancestor.identity.source {
-            return Err(Error::Contract("archive ancestor immutable native identity differs"));
-        }
-        verify_archive_ancestor(&self.selected_files()?, &ancestor.selected_files()?)
+        check_native_ancestry(
+            &self.identity,
+            &self.archive_sections()?,
+            &ancestor.identity,
+            &ancestor.archive_sections()?,
+        )
     }
+
+    pub(in crate::room::log_generations) fn archive_sections(
+        &self,
+    ) -> Result<BTreeMap<&str, ArchiveSlice<'_>>> {
+        Ok(self
+            .selected_files()?
+            .into_iter()
+            .map(|(name, bytes)| (name, ArchiveSlice::Bytes(bytes)))
+            .collect())
+    }
+
+    pub(in crate::room::log_generations) fn selected_identity(
+        &self,
+    ) -> &ServerLogGenerationBackupIdentity {
+        &self.identity
+    }
+}
+
+pub(in crate::room::log_generations) fn check_native_ancestry(
+    current: &ServerLogGenerationBackupIdentity,
+    sections: &BTreeMap<&str, ArchiveSlice<'_>>,
+    ancestor_identity: &ServerLogGenerationBackupIdentity,
+    ancestor: &BTreeMap<&str, ArchiveSlice<'_>>,
+) -> Result<()> {
+    let mut source = current.source.clone();
+    source.records = ancestor_identity.source.records;
+    source.terminal_log_digest = ancestor_identity.source.terminal_log_digest;
+    if source != ancestor_identity.source {
+        return Err(Error::Contract("archive ancestor immutable native identity differs"));
+    }
+    verify_archive_sections(sections, ancestor)
 }
