@@ -160,6 +160,14 @@ The existing joined log/raster capture and archive reader still materialize
 their components. The native stream writer retains the existing archive
 format and lifetime limits.
 
+Checkpoint `63ef1f17` passes 85 selected Rust tests. The streamed backup
+regression checks exact bytes, short writes, write failure and a writer unwind,
+then appends and cold-opens the room. The source and independent installed
+workflows exercise the native stream over packed and offloaded history before
+authenticated handover and a real relay restart. Each restart recovers seven
+clients, including two who wrote during the outage. These runs use controlled
+Node storage and temporary mounted APFS volumes.
+
 ## Native restoration and readiness
 
 `ServerLogGenerationRecovery::begin` reserves an absent inactive directory with
