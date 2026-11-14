@@ -1,0 +1,104 @@
+{
+  "format": "breditor/linked-handover-client-upload-archives",
+  "formatVersion": 1,
+  "date": "2026-11-14",
+  "source": {
+    "commit": "deadd6cc032dce9053f7e17fb9f49c9b408431c8",
+    "dirty": false,
+    "sha256": "ff08c8da152f6c2d58f955255b2b1ab2879d97345dbad4e61aeabff10a77c3f8",
+    "files": 8824,
+    "bytes": 75002356
+  },
+  "tree": "3f41e064ff1fec103350429c893cd495d87f5c76",
+  "relaySha256": "1c55bf00b4c60ac5d20bd298510e07f5de3394156476f36182ed80141d7bca63",
+  "rustExecutableSha256": "07d4bf63fa73bf6a1c25e496bbcd71cdc75dfb6eca3a973a6b80e3f119932a78",
+  "rust": {
+    "passed": 520,
+    "failed": 0,
+    "ignored": 1,
+    "logSha256": "c5bcb082ce70493f638475185ee40f209b90cc3a00ca3b031ec259306ab77dbf"
+  },
+  "crossVolume": {
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0,
+    "logSha256": "2b33f059de4d1db2debd4f565c907b216930eaee64082d3ff3df1b8a901db0a0"
+  },
+  "noServer": {
+    "logSha256": "f3395a485a290b6ff9f0b4d0437f46c37b82c83516d4c2cc460e963ee1c465ed"
+  },
+  "clippy": {
+    "logSha256": "545e753576402e32d4bf610bd4e69420fd4d78048d1e04897bdbda144ef8cda5"
+  },
+  "sdkReportSha256": "68c3df273c20e3ced9dc7609f5967a6041b15a7013a59bd6e5dbea2ed773e0af",
+  "modes": {
+    "source": {
+      "mode": "source",
+      "handoffs": 2,
+      "portableRestores": 1,
+      "restoredOfflineLanes": 6,
+      "undoRedoLanes": 2,
+      "rasterReads": 2,
+      "processExits": 4,
+      "authenticatedTakeovers": 1,
+      "oldServingRefusals": 1,
+      "coldResumes": 2,
+      "registrationRefusals": 3,
+      "providerRasters": 1,
+      "retainedPackets": 1,
+      "stagedClientRasters": 2,
+      "clientUploadReceipts": 1,
+      "clientUploadArchives": 2,
+      "missingArchiveRefusals": 1,
+      "preservedCancelledUploads": 1,
+      "retainedAbsolutePositions": true,
+      "runtimeSha256": "73076a902c1926700031fbadaa2e5e6a2d6d661d39e3424cc90a0a32986c5c7c",
+      "proof": null
+    },
+    "installed": {
+      "mode": "installed",
+      "handoffs": 2,
+      "portableRestores": 1,
+      "restoredOfflineLanes": 6,
+      "undoRedoLanes": 2,
+      "rasterReads": 2,
+      "processExits": 4,
+      "authenticatedTakeovers": 1,
+      "oldServingRefusals": 1,
+      "coldResumes": 2,
+      "registrationRefusals": 3,
+      "providerRasters": 1,
+      "retainedPackets": 1,
+      "stagedClientRasters": 2,
+      "clientUploadReceipts": 1,
+      "clientUploadArchives": 2,
+      "missingArchiveRefusals": 1,
+      "preservedCancelledUploads": 1,
+      "retainedAbsolutePositions": true,
+      "runtimeSha256": "73076a902c1926700031fbadaa2e5e6a2d6d661d39e3424cc90a0a32986c5c7c",
+      "proof": {
+        "registryArtifacts": 45,
+        "archives": [
+          {
+            "name": "@breditor/browser",
+            "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+          },
+          {
+            "name": "@breditor/experimental-rich-content",
+            "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+          },
+          {
+            "name": "@breditor/collaboration",
+            "sha256": "d2b9dfb1a73ab8af01506c8e5e222462c313697f9897349890e5f075eb5e4222"
+          }
+        ]
+      }
+    }
+  },
+  "scope": [
+    "Verified linked relay takeover retains exact, independently selected original client upload archives and admits their immutable raster union. The replacement authority binds the complete writer roster and actual archive owners.",
+    "Native tests refuse duplicate or foreign writers, missing observer archives, wrong digests and missing retained files. They preserve the existing source epoch on refusal.",
+    "Source and installed SDKs restored a pending and a cancelled queue for the same raster after the original uploads and source folders were moved away. Pending completes only through a normal duplicate relay receipt; cancelled stays cancelled. Both exact V1 archive files include an opaque legacy receipt.",
+    "The host selects the original input archives and uses controlled SDK storage in this fixture. Full document/review journal enrollment and same-writer conflict resolution remain open."
+  ]
+}

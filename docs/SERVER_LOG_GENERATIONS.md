@@ -842,3 +842,10 @@ The host remains responsible for selecting the trusted archive for each
 writer. Divergent queues for one writer require explicit reconciliation
 before selection. This path retains upload archives. Offline document and
 review journals still need separate enrollment in the handover.
+
+[Writer upload archive qualification](qualification/2026-11-14-linked-handover-client-upload-archives.json)
+records 520 passing relay tests and the separately run APFS interruption
+test. Both source and freshly installed SDK runs retained two exact archives
+for the same client-only raster. After cold restart, the pending queue
+completed through the normal relay receipt and the cancelled queue stayed
+cancelled. The fixture uses controlled client storage.
