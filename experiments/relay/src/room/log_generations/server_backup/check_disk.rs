@@ -48,6 +48,15 @@ impl ServerLogGenerationRoomBackupFile {
         self.check_live(room, assets, principal, true)
     }
 
+    pub(crate) fn check_retained_owner(
+        &self,
+        room: &mut Room,
+        assets: &AssetStore,
+        principal: &str,
+    ) -> Result<()> {
+        self.check_live(room, assets, principal, false)
+    }
+
     fn native_sections(
         &self,
     ) -> Result<std::collections::BTreeMap<&str, crate::archive_input::ArchiveSlice<'_>>> {

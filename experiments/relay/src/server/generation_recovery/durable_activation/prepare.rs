@@ -86,12 +86,7 @@ impl PreparedLogGenerationRecoveryHost {
             if source.status(&options.authority)? != LogGenerationHandoverStatus::Sealed {
                 return Err(Error::Lease);
             }
-            let selected = if let Some(parent) = &previous {
-                parent.guard()?;
-                parent.identity().planned_selection()
-            } else {
-                source.identity().planned_selection()
-            };
+            let selected = checkpoint_epoch(&source, previous.as_deref())?;
             if options.authority.current_selection()? != *selected {
                 return Err(Error::Lease);
             }
@@ -140,6 +135,12 @@ impl PreparedLogGenerationRecoveryHost {
                         &owner,
                         &current,
                     )?;
+                    // Refuse a rollback or missing immutable raster before reserving the root.
+                    let parent_file =
+                        previous.as_ref().map(|parent| parent.checkpoint_file()).transpose()?;
+                    if let Some(parent) = parent_file {
+                        parent.check_retained_owner(&mut room, &assets, &owner)?;
+                    }
                     let store = Store::create(&options.root, input, &stop, |file| {
                         let info = ServerLogGenerationRoomBackup::capture_to(
                             &mut room, &assets, &owner, file,
@@ -154,8 +155,8 @@ impl PreparedLogGenerationRecoveryHost {
                             &current.server,
                         )?;
                         backup.check_archive_ancestor(source.source_backup())?;
-                        if let Some(parent) = &previous {
-                            backup.check_file_ancestor(parent.checkpoint_file()?)?;
+                        if let Some(parent) = parent_file {
+                            backup.check_file_ancestor(parent)?;
                         }
                         check_selected(
                             &mut room,
@@ -175,5 +176,19 @@ impl PreparedLogGenerationRecoveryHost {
         })
         .await
         .map_err(|_| Error::NeedsRecovery)?
+    }
+}
+
+/// Resolve the epoch from the exact parent checkpoint while its actual files are held.
+fn checkpoint_epoch<'a>(
+    source: &'a PreparedLogGenerationHandover,
+    parent: Option<&'a Prepared>,
+) -> Result<&'a crate::server::RoomDeploymentSelection> {
+    match parent {
+        Some(parent) => {
+            parent.guard()?;
+            Ok(parent.identity().planned_selection())
+        }
+        None => Ok(source.identity().planned_selection()),
     }
 }
