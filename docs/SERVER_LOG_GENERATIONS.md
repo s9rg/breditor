@@ -305,6 +305,12 @@ building a complete archive in memory. Packet traversal still keeps ancestry
 needed to inspect revisions and holds the native room for the duration.
 These explicit methods refuse original storage without poisoning it.
 
+Retained packet streaming passed 195 selected Rust tests. The source and
+independently installed workflows verify an image referenced only by a server
+packet, then recover seven clients through a real relay restart. Both use
+packed and offloaded WALs on disposable APFS volumes.
+[Retained packet qualification](qualification/2026-11-14-streamed-retained-packet-references.json)
+
 ## Remaining release work
 
 The layout requires a cooperative local Unix filesystem with working locks,

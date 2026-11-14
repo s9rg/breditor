@@ -1,0 +1,64 @@
+{
+  "format": "breditor/streamed-retained-packet-reference-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-14",
+  "source": {
+    "commit": "a0f2a052e114cbd6f591c3cd645393b94340ebc3",
+    "dirty": false,
+    "sha256": "419860e473c60eac92cf6340270e75de143314f7fc95a94f643dc915f14d5400",
+    "files": 8780,
+    "bytes": 74739734
+  },
+  "tree": "72d6d6831dbe55d8c58016c1e9834f8ed72db152",
+  "relayFixtureSha256": "c01bef5249ef7c94c8ef6a3f5e7f645f50af1317a4e2baaa51227484461c0fae",
+  "rustExecutableSha256": "4f69f86972251e1fe16b34230340d62ca649cda96f6d7486170120cd2c8598a5",
+  "rust": {
+    "passed": 195,
+    "failed": 0,
+    "ignored": 1,
+    "logSha256": "c883c179c085ec9b42c5a5dbf260f5343ef23f3a2c332cdc8f1aacb717a19aa7"
+  },
+  "focused": {
+    "passed": 4,
+    "logSha256": "d2f45586962c6f0216c646a31b6f5c8681f1063e6c3dab097256dced1b527c46"
+  },
+  "providerReportSha256": "e8cce05f2d5a8ef579895e7a485603ba4c5145076e6339120d752cdf73904c4b",
+  "runtimeSha256": "73076a902c1926700031fbadaa2e5e6a2d6d661d39e3424cc90a0a32986c5c7c",
+  "modes": {
+    "source": {
+      "passedCases": 2,
+      "packetOnlyImageCases": 1,
+      "returnedClients": 7,
+      "outageWriters": 2,
+      "mountedVolumes": 2,
+      "crashObservationSha256": "6ba24aede32fa3576599bf64f62c32c8d848d95d221339115966c355c08ccbd0"
+    },
+    "installed": {
+      "passedCases": 2,
+      "packetOnlyImageCases": 1,
+      "returnedClients": 7,
+      "outageWriters": 2,
+      "mountedVolumes": 2,
+      "crashObservationSha256": "5feaf99e66bdb4c5bacd7a2f267e0854d68d77e7dfea444b82881491113a944d",
+      "installedArchives": [
+        {
+          "name": "@breditor/browser",
+          "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+        },
+        {
+          "name": "@breditor/experimental-rich-content",
+          "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+        },
+        {
+          "name": "@breditor/collaboration",
+          "sha256": "d2b9dfb1a73ab8af01506c8e5e222462c313697f9897349890e5f075eb5e4222"
+        }
+      ]
+    }
+  },
+  "scope": [
+    "Scan native image dependencies from the held active and sealed WALs while retaining the canonical archive identity.",
+    "The focused regression packs and archives a sealed WAL with a revision Prepare, verifies its cross-file Commit, checks unpublished stage pinning and appends after a visitor error.",
+    "Source and installed workflows verify a server-packet-only image and relay restart, with sealed WALs offloaded to disposable APFS volumes."
+  ]
+}
