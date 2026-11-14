@@ -39,10 +39,11 @@ fn streamed_backup_keeps_the_exact_archive_and_room_after_a_destination_error() 
     ));
     for limit in [1, at.len() - 1] {
         let mut writer = ShortWriter { data: Vec::new(), max_chunk: 17, remaining: limit };
-        assert!(matches!(
-            room.write_log_generation_backup("owner", &mut writer),
-            Err(Error::Io(error)) if error.kind() == io::ErrorKind::WriteZero
-        ));
+        let result = room.write_log_generation_backup("owner", &mut writer);
+        assert!(
+            matches!(&result, Err(Error::Io(error)) if error.kind() == io::ErrorKind::WriteZero),
+            "limit {limit}: {result:?}"
+        );
         assert_eq!(writer.data, at[..limit]);
     }
     let mut writer = ShortWriter { data: Vec::new(), max_chunk: 17, remaining: usize::MAX };

@@ -49,7 +49,12 @@ impl Room {
         writer: &mut impl Write,
     ) -> Result<ServerLogGenerationBackupInfo> {
         self.recovery_inventory_owner(principal)?;
-        let source = self.backup_identity()?;
+        let physical = self.log.generation_descriptor()?;
+        let records = physical
+            .next_sequence
+            .parse()
+            .map_err(|_| Error::Contract("streamed generation backup global cut"))?;
+        let source = self.native_identity_at(records, physical.terminal_digest);
         let failed = Cell::new(false);
         self.log.stream_generation_backup(
             |capture: StreamGenerationCapture<'_>| {
