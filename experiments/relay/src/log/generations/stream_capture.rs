@@ -23,6 +23,36 @@ pub(crate) struct StreamGenerationCapture<'a> {
     state: &'a Generations,
 }
 
+// Active-file reads share the append cursor, even through cloned handles.
+// Failure or unwind must move it back before another operation uses this log.
+struct AppendCursor<'a> {
+    log: &'a mut Log,
+    restored: bool,
+}
+
+impl AppendCursor<'_> {
+    fn restore(&mut self) -> Result<()> {
+        match self.log.file.seek(SeekFrom::Start(self.log.bytes)) {
+            Ok(_) => {
+                self.restored = true;
+                Ok(())
+            }
+            Err(error) => {
+                self.log.invalidate();
+                Err(error.into())
+            }
+        }
+    }
+}
+
+impl Drop for AppendCursor<'_> {
+    fn drop(&mut self) {
+        if !self.restored {
+            let _ = self.restore();
+        }
+    }
+}
+
 impl StreamGenerationCapture<'_> {
     pub(crate) fn write_body(&self, output: &mut impl Write) -> Result<()> {
         let mut buffer = [0_u8; 16 * 1024];
@@ -70,14 +100,14 @@ impl Log {
         if self.generations.is_none() {
             return Err(Error::Contract("original log has no generation archive"));
         }
-        let result = self.prepare_stream_generation_capture().and_then(write);
-        let reset = self.file.seek(SeekFrom::Start(self.bytes));
-        if reset.is_err() || result.is_err() && !destination_failed.get() {
-            self.invalidate();
+        let mut cursor = AppendCursor { log: self, restored: false };
+        let result = cursor.log.prepare_stream_generation_capture().and_then(write);
+        cursor.restore()?;
+        if result.is_err() && !destination_failed.get() {
+            cursor.log.invalidate();
         }
         // Recheck actual custody even when the destination stops accepting writes.
-        reset?;
-        self.ready()?;
+        cursor.log.ready()?;
         result
     }
 

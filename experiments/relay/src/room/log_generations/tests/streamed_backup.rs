@@ -9,6 +9,19 @@ struct ShortWriter {
     max_chunk: usize,
     remaining: usize,
 }
+
+struct PanickingWriter(usize);
+impl Write for PanickingWriter {
+    fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+        assert!(self.0 != 0, "destination panicked");
+        self.0 -= 1;
+        Ok(bytes.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
 impl Write for ShortWriter {
     fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
         let count = bytes.len().min(self.max_chunk).min(self.remaining);
@@ -51,6 +64,10 @@ fn streamed_backup_keeps_the_exact_archive_and_room_after_a_destination_error() 
     assert_eq!(info, expected.info());
     assert_eq!(writer.data, at);
     ServerLogGenerationBackup::from_owned_bytes(writer.data)?.check_live(&mut room, "owner")?;
+    let failed = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        room.write_log_generation_backup("owner", &mut PanickingWriter(1))
+    }));
+    assert!(failed.is_err());
     room.grant("owner", "reader-after-output-failure", Some(Role::Reader))?;
     let mut later = Vec::new();
     let selected = room.write_log_generation_backup("owner", &mut later)?;
