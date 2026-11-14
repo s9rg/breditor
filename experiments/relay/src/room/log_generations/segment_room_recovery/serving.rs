@@ -1,5 +1,7 @@
 //! Explicit authenticated reference serving under a genuine host-selected deployment epoch.
-use super::{GenerationDirectory, RasterCustody, RecoveredRelaySegmentRoom};
+use super::{
+    GenerationDirectory, RasterCustody, RecoveredRelaySegmentRoom, client_uploads::RetainedUploads,
+};
 use crate::{
     Error, Result, Room,
     assets::AssetStore,
@@ -9,6 +11,7 @@ use crate::{
 pub(crate) struct RelaySegmentServingCustody {
     directory: GenerationDirectory,
     raster: RasterCustody,
+    _uploads: Option<RetainedUploads>,
 }
 
 impl RelaySegmentServingCustody {
@@ -31,7 +34,7 @@ impl RecoveredRelaySegmentRoom {
         authentication: Authentication,
         lease: RoomDeploymentLease,
     ) -> Result<axum::Router> {
-        if !self.handover_client_rasters().is_empty() {
+        if self.requires_verified_handover() {
             return Err(Error::Contract("client raster restore requires verified handover"));
         }
         let (router, _) = router_with_recovered_segment(self, authentication, lease)?;
@@ -42,7 +45,7 @@ impl RecoveredRelaySegmentRoom {
         self,
     ) -> Result<(Room, AssetStore, RelaySegmentServingCustody)> {
         self.check_custody()?;
-        let Self { room, assets, directory, raster, .. } = self;
-        Ok((room, assets, RelaySegmentServingCustody { directory, raster }))
+        let Self { room, assets, directory, raster, uploads, .. } = self;
+        Ok((room, assets, RelaySegmentServingCustody { directory, raster, _uploads: uploads }))
     }
 }

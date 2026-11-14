@@ -1,32 +1,37 @@
 /** Retain a real queue, including its upload epoch, across an exact-cut handover. */
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {closeSync, fsyncSync, openSync, readFileSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
-import {secondAsset, secondPixel} from './review-assets/pixels.mjs';
+import {pixel, pixelAsset, secondAsset, secondPixel} from './review-assets/pixels.mjs';
 
-export async function captureClientRaster(api, parent) {
-  const store = await api.RichAssetStore.open('handover-original-uploads');
+const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+
+export async function captureClientRaster(api, parent, writer, status) {
+  const store = await api.RichAssetStore.open('handover-original-uploads-' + writer);
   let custody;
   try {
     const item = await store.ingest(new Blob([secondPixel], {type: 'image/png'}));
     assert.equal(item.asset, secondAsset);
     assert.equal(item.status, 'pending');
+    if (status === 'cancelled') await store.cancel(secondAsset);
+    await store.cacheRemote(pixelAsset, new Blob([pixel], {type: 'image/png'}), 'original-\ud800');
     custody = await store.acquireRecoveryCustody();
     const backup = await store.exportBackup();
     const archive = await api.RichAssetArchive.read(backup);
     try {
-      const [row] = archive.entries();
-      assert.equal(archive.entries().length, 1);
-      assert.equal(row.status, 'pending');
-      assert.equal(row.storageRef, null);
-      const {asset, mime, bytes, width, height} = row;
-      const payload = Buffer.from(await archive.blob(asset).arrayBuffer());
+      const rows = archive.entries();
+      assert.equal(rows.length, 2);
+      const queued = rows.find(row => row.asset === secondAsset);
+      assert.equal(queued.status, status);
+      assert.equal(queued.storageRef, null);
+      const payload = Buffer.from(await archive.blob(secondAsset).arrayBuffer());
       assert.deepEqual(payload, secondPixel);
-      writeFileSync(join(parent, 'client-raster.png'), payload, {flag: 'wx', mode: 0o600});
-      const path = join(parent, 'client-uploads.backup');
+      const path = join(parent, 'client-' + writer + '.backup');
+      const bytes = Buffer.from(await backup.arrayBuffer());
       const file = openSync(path, 'wx', 0o600);
       try {
-        writeFileSync(file, Buffer.from(await backup.arrayBuffer()));
+        writeFileSync(file, bytes);
         fsyncSync(file);
       } finally {
         closeSync(file);
@@ -34,7 +39,7 @@ export async function captureClientRaster(api, parent) {
       const directory = openSync(parent, 'r');
       try { fsyncSync(directory); } finally { closeSync(directory); }
       custody.check();
-      return {path, row, selection: {asset, mime, bytes, width, height}};
+      return {path, rows, queued, pin: {writer, bytes: bytes.length, sha256: digest(bytes)}};
     } finally {
       archive.dispose();
     }
@@ -43,9 +48,11 @@ export async function captureClientRaster(api, parent) {
   }
 }
 
-export async function resumeClientRaster(rich, sdk, address, origin, token, retained) {
-  const backup = new Blob([readFileSync(retained.path)]);
-  const store = await rich.RichAssetStore.restoreBackup('handover-restored-uploads', backup, {
+export async function resumeClientRaster(rich, sdk, parent, address, origin, token, retained) {
+  const bytes = readFileSync(join(parent, 'restored/client-uploads', retained.pin.writer + '.uploads'));
+  assert.equal(digest(bytes), retained.pin.sha256);
+  const backup = new Blob([bytes]);
+  const store = await rich.RichAssetStore.restoreBackup('handover-restored-uploads-' + retained.pin.writer, backup, {
     uploadState: 'preserve',
   });
   const provider = new sdk.SharedRelayAssets({
@@ -65,15 +72,21 @@ export async function resumeClientRaster(rich, sdk, address, origin, token, reta
   try {
     const archive = await rich.RichAssetArchive.read(await store.exportBackup());
     try {
-      assert.deepEqual(archive.entries(), [retained.row]);
+      assert.deepEqual(archive.entries(), retained.rows);
     } finally {
       archive.dispose();
     }
     const bytes = await provider.readBytes(secondAsset);
     assert.deepEqual(Buffer.from(await bytes.blob.arrayBuffer()), secondPixel);
-    assert.equal((await store.get(secondAsset)).status, 'pending');
+    const before = await store.get(secondAsset);
+    assert.equal(before.status, retained.queued.status);
     await provider.flush();
     const receipt = await store.get(secondAsset);
+    if (before.status === 'cancelled') {
+      assert.equal(duplicate, undefined);
+      assert.deepEqual(receipt, before);
+      return 0;
+    }
     assert.equal(duplicate, true);
     assert.equal(receipt.status, 'uploaded');
     assert.equal(receipt.storageRef, 'breditor:relay-asset:1:' + secondAsset);

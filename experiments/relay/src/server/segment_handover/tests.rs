@@ -24,6 +24,7 @@ type TestResult<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 const POLICY: RoomRecoveryPolicy = RoomRecoveryPolicy::HostReacquired;
 
 mod client_rasters;
+mod client_uploads;
 mod verified_inputs;
 
 struct Source {

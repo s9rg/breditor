@@ -16,7 +16,15 @@ impl RecoveredRelaySegmentRoom {
             self.raster.witness(),
         );
         let common = (&self.backup, &self.active, owners);
-        let digest = if self.client_rasters.is_empty() {
+        let digest = if let Some(uploads) = &self.uploads {
+            Sha256::digest(serde_json::to_vec(&(
+                "breditor/relay-segment-handover-target/3",
+                common,
+                &self.client_rasters,
+                &self.restored_assets,
+                uploads.selection(),
+            ))?)
+        } else if self.client_rasters.is_empty() {
             let (backup, active, owners) = common;
             Sha256::digest(serde_json::to_vec(&(
                 "breditor/relay-segment-handover-target/1",
@@ -49,6 +57,10 @@ impl RecoveredRelaySegmentRoom {
 
     pub(crate) fn handover_client_rasters(&self) -> &[String] {
         &self.client_rasters
+    }
+
+    pub(crate) fn requires_verified_handover(&self) -> bool {
+        self.uploads.is_some() || !self.client_rasters.is_empty()
     }
 
     pub(crate) fn check_handover_client_rasters(&self) -> Result<()> {

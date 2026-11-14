@@ -814,3 +814,31 @@ cargo build --locked --release --manifest-path experiments/relay/Cargo.toml \
 node scripts/check-writable-relay-segment.mjs \
   experiments/relay/target/release/examples/relay_segment_functional
 ```
+
+### Retain the complete writer upload archives
+
+`restore_with_client_upload_archives` accepts one independently selected
+original SDK upload archive per registered document writer. Open each file
+with `RelaySegmentClientUploadArchive::open` and its writer, byte length
+and complete SHA-256. Supply selections in lexical writer order, including
+an empty archive when a writer has no local rasters. Rust checks the
+original framing, queue metadata and complete payload ranges. A writer's
+original statuses, attempts, epochs and opaque receipts stay in the exact
+archive. The native raster store admits the union of its original rasters
+and the new payloads. Different writers can retain different queue states
+for the same immutable image.
+
+The restore syncs native data, the raster union and exact client archives
+before recording completion. Verified handover compares archive coverage
+with the live native roster at the approved cut, including observers and
+revoked writers. Missing archives keep verification pending. An unknown or
+duplicate writer refuses. The replacement epoch binds the archive
+selection and its actual restore directory. Cold reopen verifies each
+complete retained archive, so recovery can use its exact bytes after the
+supplied files are gone. The host can read an archive with
+`open_client_upload_archive` and restore it through the existing SDK.
+
+The host remains responsible for selecting the trusted archive for each
+writer. Divergent queues for one writer require explicit reconciliation
+before selection. This path retains upload archives. Offline document and
+review journals still need separate enrollment in the handover.

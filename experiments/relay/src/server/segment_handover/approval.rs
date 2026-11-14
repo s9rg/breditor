@@ -89,7 +89,7 @@ impl RelaySegmentHandoverApproval {
 
     pub(in crate::server) fn check_target(&self, target: &RecoveredRelaySegmentRoom) -> Result<()> {
         self.planned_selection()?;
-        if self.verified_inputs_sha256.is_none() && !target.handover_client_rasters().is_empty() {
+        if self.verified_inputs_sha256.is_none() && target.requires_verified_handover() {
             return Err(Error::Contract("client raster restore requires verified handover"));
         }
         if target.handover_backup() != &self.backup

@@ -8,7 +8,7 @@ import {join, resolve} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import {WebSocket as Socket} from 'undici';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
-import {pixel} from './fixtures/review-assets/pixels.mjs';
+import {pixel, secondAsset} from './fixtures/review-assets/pixels.mjs';
 import {startSegmentHandoverHost} from './fixtures/relay-segment-handover-host.mjs';
 import {captureClientRaster, resumeClientRaster} from './fixtures/relay-segment-client-raster.mjs';
 import {searchConsumerLock, verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
@@ -86,6 +86,7 @@ async function run(mode, {distribution, rich}, executable, parent) {
     const options = {...connect, endpoint: 'ws://' + address + '/ws', principal: 'owner',
       room: 'room', writerTransport: 'atomic-v2', saveIdentity() {}};
     const registered = await api.registerSharedRelayWriter(options);
+    const peer = await api.registerSharedRelayWriter(options);
     const comment = await api.registerSharedReviewWriter({
       ...options, actor: 'segment-author', documentWriter: registered.identity.writer,
     });
@@ -192,23 +193,30 @@ async function run(mode, {distribution, rich}, executable, parent) {
     post('Offline comment before portable restore');
     await session.flush();
     const queuedAcrossTakeover = session.exportRecovery();
-    const localRaster = await captureClientRaster(richApi, parent);
-    const localUrl = 'http://' + address + '/assets/' + encodeURIComponent(localRaster.selection.asset);
+    const uploads = [
+      await captureClientRaster(richApi, parent, registered.identity.writer, 'pending'),
+      await captureClientRaster(richApi, parent, peer.identity.writer, 'cancelled'),
+    ];
+    const localUrl = 'http://' + address + '/assets/' + encodeURIComponent(secondAsset);
     const absent = await fetch(localUrl, {headers});
     assert.equal(absent.status, 404);
     await absent.arrayBuffer();
-    const captured = await host.handover(token, registered.identity, comment.identity, localRaster.selection);
-    assert.equal(captured.registrationRefusals, 2);
+    const captured = await host.handover(token, registered.identity, comment.identity, peer.identity,
+      uploads.map(upload => upload.pin));
+    assert.equal(captured.registrationRefusals, 3);
     assert.equal(captured.providerRasters, 1);
     assert.equal(captured.retainedPackets, 1);
-    assert.equal(captured.clientRasters, 1);
+    assert.equal(captured.clientRasters, 2);
+    assert.equal(captured.clientArchives, 2);
+    assert.equal(captured.missingArchiveRefusals, 1);
     assert.deepEqual(session.exportRecovery(), queuedAcrossTakeover);
     const old = await fetch(rasterUrl, {headers});
     assert.equal(old.status, 403);
     await old.arrayBuffer();
     await host.crash();
     host = undefined;
-    for (const directory of ['source-native', 'successor', 'final', 'rasters', 'client-raster.png']) {
+    for (const directory of ['source-native', 'successor', 'final', 'rasters',
+      ...uploads.map(upload => 'client-' + upload.pin.writer + '.backup')]) {
       renameSync(join(parent, directory), join(parent, 'offline-' + directory));
     }
     await session.close();
@@ -228,7 +236,9 @@ async function run(mode, {distribution, rich}, executable, parent) {
     await stopClients();
     await host.crash();
     host = await startSegmentHandoverHost(executable, [parent, 'restored', address], token);
-    const clientUploadReceipts = await resumeClientRaster(richApi, api, address, origin, token, localRaster);
+    const clientUploadReceipts = await resumeClientRaster(richApi, api, parent, address, origin, token, uploads[0]);
+    const cancelledUploadReceipts = await resumeClientRaster(richApi, api, parent, address, origin, token, uploads[1]);
+    assert.equal(cancelledUploadReceipts, 0);
     await attach();
     assert.doesNotMatch(session.core.documentJson(), /Offline before portable restore/);
     assert.match(session.core.documentJson(), /Offline over second handoff/);
@@ -250,6 +260,8 @@ async function run(mode, {distribution, rich}, executable, parent) {
       processExits: 4, authenticatedTakeovers: 1, oldServingRefusals: 1, coldResumes: 2,
       registrationRefusals: captured.registrationRefusals, providerRasters: captured.providerRasters,
       retainedPackets: captured.retainedPackets, stagedClientRasters: captured.clientRasters, clientUploadReceipts,
+      clientUploadArchives: captured.clientArchives, missingArchiveRefusals: captured.missingArchiveRefusals,
+      preservedCancelledUploads: 1,
       retainedAbsolutePositions: true, runtimeSha256: sha(wasmBytes)};
   } finally {
     await stopClients();

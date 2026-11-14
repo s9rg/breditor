@@ -2,8 +2,7 @@
 use super::{Result, configured_auth, deployment, read, restored_backup, storage};
 use breditor_collab_relay::{
     RecoveryDocumentCredential, RecoveryRegistrationCredentials, RecoveryReviewCredential,
-    RelaySegmentClientRaster, RoomRecoveryPolicy,
-    assets::AssetInfo,
+    RelaySegmentClientUploadArchive, RelaySegmentClientUploadPin, RoomRecoveryPolicy,
     server::{
         Authentication, ContentAddressedServerAssets, RelaySegmentHandoverApproval,
         RelaySegmentHandoverInputCoverage, ServerBackupHandle, ServerRecoveryAssetProvider,
@@ -30,7 +29,9 @@ enum Command {
         document_credential: String,
         actor: String,
         review_credential: String,
-        client_raster: AssetInfo,
+        peer_writer: String,
+        peer_credential: String,
+        uploads: Vec<RelaySegmentClientUploadPin>,
     },
     Resume {
         token: String,
@@ -52,20 +53,28 @@ fn prepare_and_commit(
     handle: &ServerBackupHandle,
     token: &str,
     credentials: &RecoveryRegistrationCredentials,
-    client_raster: AssetInfo,
+    uploads: &[RelaySegmentClientUploadPin],
 ) -> Result<Value> {
     let (backup, previous) =
         handle.capture_relay_segment("owner", token, &parent.join("capture"))?;
     storage::write_new(&parent.join("restore.json"), &serde_json::to_vec(&backup)?)?;
-    let raster = RelaySegmentClientRaster::open(
-        File::open(parent.join("client-raster.png"))?,
-        client_raster,
-    )?;
-    let mut target = restored_backup(parent)?.restore_with_client_rasters(
+    if uploads.len() != 2 {
+        return Err("expected two selected client uploads".into());
+    }
+    let mut archives = Vec::new();
+    for pin in uploads {
+        if pin.writer != "2" && pin.writer != "3" {
+            return Err("unexpected fixture writer".into());
+        }
+        let file = File::open(parent.join(format!("client-{}.backup", pin.writer)))?;
+        archives.push(RelaySegmentClientUploadArchive::open(file, pin.clone())?);
+    }
+    let backup = restored_backup(parent)?;
+    let mut target = backup.restore_with_client_upload_archives(
         &parent.join("restored"),
         "restored-one",
         POLICY,
-        &[raster],
+        &archives,
     )?;
     let authentication = configured_auth(parent)?;
     let provider: Arc<dyn ServerRecoveryAssetProvider> = Arc::new(ContentAddressedServerAssets);
@@ -79,7 +88,24 @@ fn prepare_and_commit(
     let RelaySegmentHandoverInputCoverage::Pending(pending) = pending else {
         return Err("missing protected inputs were accepted".into());
     };
-    assert_eq!(pending.missing_registrations.len(), 2);
+    assert_eq!(pending.missing_registrations.len(), 3);
+    let mut incomplete = backup.restore_with_client_upload_archives(
+        &parent.join("incomplete-uploads"),
+        "unused-one",
+        POLICY,
+        &archives[..1],
+    )?;
+    let incomplete = incomplete.verify_handover_inputs(
+        &authentication,
+        "owner",
+        token,
+        credentials,
+        &provider,
+    )?;
+    let RelaySegmentHandoverInputCoverage::Pending(incomplete) = incomplete else {
+        return Err("missing client upload archive was accepted".into());
+    };
+    assert_eq!(incomplete.missing_upload_writers, [uploads[1].writer.clone()]);
     let coverage =
         target.verify_handover_inputs(&authentication, "owner", token, credentials, &provider)?;
     let RelaySegmentHandoverInputCoverage::Verified(inputs) = coverage else {
@@ -105,6 +131,8 @@ fn prepare_and_commit(
         "providerRasters": inputs.report().assets.len(),
         "retainedPackets": inputs.report().references.sources.len(),
         "clientRasters": inputs.report().client_rasters.len(),
+        "clientArchives": uploads.len(),
+        "missingArchiveRefusals": incomplete.missing_upload_writers.len(),
     }))
 }
 
@@ -120,24 +148,33 @@ pub(super) fn serve_control(
             document_credential,
             actor,
             review_credential,
-            client_raster,
+            peer_writer,
+            peer_credential,
+            uploads,
         } = serde_json::from_slice(&input()?)?
         else {
             return Err("expected private handover command".into());
         };
         let credentials = RecoveryRegistrationCredentials {
-            documents: vec![RecoveryDocumentCredential {
-                principal: "owner".into(),
-                writer,
-                credential: document_credential,
-            }],
+            documents: vec![
+                RecoveryDocumentCredential {
+                    principal: "owner".into(),
+                    writer,
+                    credential: document_credential,
+                },
+                RecoveryDocumentCredential {
+                    principal: "owner".into(),
+                    writer: peer_writer,
+                    credential: peer_credential,
+                },
+            ],
             reviews: vec![RecoveryReviewCredential {
                 principal: "owner".into(),
                 actor,
                 credential: review_credential,
             }],
         };
-        let response = prepare_and_commit(&parent, &handle, &token, &credentials, client_raster)?;
+        let response = prepare_and_commit(&parent, &handle, &token, &credentials, &uploads)?;
         {
             let mut stdout = std::io::stdout().lock();
             writeln!(stdout, "{response}")?;

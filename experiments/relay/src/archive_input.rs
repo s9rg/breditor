@@ -55,9 +55,25 @@ impl ArchiveInput {
         }
         Ok(())
     }
+
+    pub(crate) fn check_named(
+        &self,
+        witness: &crate::log::generations::GenerationFileWitness,
+        path: &std::path::Path,
+    ) -> Result<()> {
+        witness.guard(&self.file, path)?;
+        self.check()
+    }
 }
 
 impl<'a> ArchiveSlice<'a> {
+    pub(crate) fn check(self) -> Result<()> {
+        match self {
+            Self::Bytes(_) => Ok(()),
+            Self::File(range) => range.input.check(),
+        }
+    }
+
     pub(crate) fn len(self) -> u64 {
         match self {
             Self::Bytes(bytes) => bytes.len() as u64,

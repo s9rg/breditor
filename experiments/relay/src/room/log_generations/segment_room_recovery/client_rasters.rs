@@ -1,7 +1,7 @@
 //! Exact selected client payloads added to a private, unpublished restore.
 use crate::{
     Error, Result,
-    archive_input::{ArchiveEntry, ArchiveInput},
+    archive_input::{ArchiveEntry, ArchiveInput, ArchiveSlice},
     assets::{
         AssetBackupIdentity, AssetInfo, AssetStore, MAX_ASSET_BYTES, MAX_ASSETS, MAX_STORED_BYTES,
         prepare_asset,
@@ -32,12 +32,35 @@ impl RelaySegmentClientRaster {
         }
         Ok(Self { info: expected, file })
     }
+
+    pub(super) fn selected(&self) -> Result<SelectedRaster<'_>> {
+        self.file.check()?;
+        Ok(SelectedRaster { info: &self.info, bytes: self.file.all() })
+    }
+}
+
+pub(super) struct SelectedRaster<'a> {
+    pub info: &'a AssetInfo,
+    pub bytes: ArchiveSlice<'a>,
+}
+
+impl SelectedRaster<'_> {
+    pub fn check_digest(&self) -> Result<()> {
+        let digest = self.bytes.digest()?;
+        let hex = b"0123456789abcdef";
+        if digest.iter().zip(self.info.asset.as_bytes()[7..].as_chunks::<2>().0).any(
+            |(&byte, &pair)| pair != [hex[usize::from(byte >> 4)], hex[usize::from(byte & 15)]],
+        ) {
+            return Err(Error::Contract("client upload archive raster digest"));
+        }
+        Ok(())
+    }
 }
 
 /// Validate a complete union before creating the destination. Actual bytes are
 /// read and installed individually so the union never needs a full payload buffer.
 pub(super) fn check_selected(
-    rasters: &[RelaySegmentClientRaster],
+    rasters: &[SelectedRaster<'_>],
     base: &AssetBackupIdentity,
     entries: &BTreeMap<String, ArchiveEntry>,
 ) -> Result<()> {
@@ -48,7 +71,7 @@ pub(super) fn check_selected(
         return Err(Error::Contract("client raster count budget"));
     }
     for raster in rasters {
-        raster.file.check()?;
+        raster.bytes.check()?;
         if !assets.insert(&raster.info.asset) {
             return Err(Error::Contract("duplicate client raster selection"));
         }
@@ -65,21 +88,20 @@ pub(super) fn check_selected(
 
 pub(super) fn install(
     store: &mut AssetStore,
-    rasters: &[RelaySegmentClientRaster],
+    rasters: &[SelectedRaster<'_>],
 ) -> Result<Vec<String>> {
     let mut selected = Vec::with_capacity(rasters.len());
     for raster in rasters {
-        let bytes = raster.file.all().read(MAX_ASSET_BYTES)?.into_owned();
+        let bytes = raster.bytes.read(MAX_ASSET_BYTES)?.into_owned();
         let prepared = prepare_asset(&raster.info.asset, raster.info.mime.as_str(), bytes)?;
-        if prepared.info() != &raster.info {
+        if prepared.info() != raster.info {
             return Err(Error::Contract("client raster selected metadata differs"));
         }
-        raster.file.check()?;
         store.put(prepared)?;
         selected.push(raster.info.asset.clone());
     }
     for raster in rasters {
-        raster.file.check()?;
+        raster.bytes.check()?;
     }
     selected.sort_unstable();
     Ok(selected)

@@ -6,6 +6,7 @@ mod inputs;
 mod resume;
 #[cfg(all(test, unix))]
 mod tests;
+mod upload_coverage;
 
 pub use approval::RelaySegmentHandoverApproval;
 pub use inputs::{

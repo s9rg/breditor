@@ -2,6 +2,8 @@
 mod capture;
 mod client_rasters;
 pub use client_rasters::RelaySegmentClientRaster;
+mod client_uploads;
+pub use client_uploads::{RelaySegmentClientUploadArchive, RelaySegmentClientUploadPin};
 #[cfg(feature = "server")]
 mod handover_target;
 mod restore;
@@ -57,4 +59,5 @@ pub struct RecoveredRelaySegmentRoom {
     client_rasters: Vec<String>,
     #[cfg(feature = "server")]
     restored_assets: crate::assets::AssetBackupIdentity,
+    uploads: Option<client_uploads::RetainedUploads>,
 }

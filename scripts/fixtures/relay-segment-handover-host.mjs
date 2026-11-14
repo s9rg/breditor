@@ -44,9 +44,10 @@ export async function startSegmentHandoverHost(executable, args, token) {
     const {address} = await next('listening');
     return {
       address,
-      async handover(token, document, review, clientRaster) {
+      async handover(token, document, review, peer, uploads) {
         send({kind: 'handover', token, writer: document.writer, documentCredential: document.credential,
-          actor: review.actor, reviewCredential: review.credential, clientRaster});
+          actor: review.actor, reviewCredential: review.credential, peerWriter: peer.writer,
+          peerCredential: peer.credential, uploads});
         return next('committed');
       },
       async crash() {

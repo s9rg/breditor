@@ -54,7 +54,8 @@ pub use room::{
 };
 pub use room::{
     InspectedNativeGenerationTail, RecoveredRelaySegmentRoom, RelaySegmentClientRaster,
-    RelaySegmentRoomBackupFiles, RelaySegmentRoomBackupIdentity,
+    RelaySegmentClientUploadArchive, RelaySegmentClientUploadPin, RelaySegmentRoomBackupFiles,
+    RelaySegmentRoomBackupIdentity,
 };
 pub use room::{
     MAX_ROOM_BACKUP_BYTES, RoomBackup, RoomBackupIdentity, RoomBackupInfo, RoomRecoveryPolicy,

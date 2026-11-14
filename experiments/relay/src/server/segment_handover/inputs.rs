@@ -1,8 +1,9 @@
 //! Check protected streams and provider-backed server assets at the completed restore cut.
 use crate::{
     Error, MissingRecoveryRegistration, RecoveredRelaySegmentRoom, RecoveryRegistrationCredentials,
-    RelaySegmentRoomBackupIdentity, Result, RoomParticipantInventoryMetadata,
-    ServerAssetReferenceOutcome, ServerRelaySegmentAssetReferences,
+    RelaySegmentClientUploadPin, RelaySegmentRoomBackupIdentity, Result,
+    RoomParticipantInventoryMetadata, ServerAssetReferenceOutcome,
+    ServerRelaySegmentAssetReferences,
     archive_digest::ArchiveDigest,
     assets::AssetInfo,
     server::{
@@ -40,6 +41,12 @@ pub struct RelaySegmentHandoverInputReport {
     /// Selected client payloads already synced into the new store. These are not upload receipts.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub client_rasters: Vec<String>,
+    /// Complete original archive pins if a writer upload cohort was selected.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub client_upload_archives: Option<Vec<RelaySegmentClientUploadPin>>,
+    /// Every original registered writer without an enrolled upload archive.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub missing_upload_writers: Vec<String>,
 }
 
 /// Coverage of protected registrations and accepted server asset inputs.
@@ -133,12 +140,17 @@ impl RecoveredRelaySegmentRoom {
         let target = self.handover_binding()?;
         let backup = self.handover_backup().clone();
         let client_rasters = self.handover_client_rasters().to_vec();
+        let client_upload_archives = self.client_upload_pins()?;
         let (room, assets) = self.components_mut();
         let participants = room
             .capture_participant_inventory_at(principal, backup.native.predecessor.source.clone())?
             .metadata();
         let missing_registrations =
             room.missing_recovery_registrations(&participants, credentials)?;
+        let missing_upload_writers = match &client_upload_archives {
+            Some(pins) => super::upload_coverage::missing(pins, &participants)?,
+            None => Vec::new(),
+        };
         let references = room.relay_segment_retained_asset_references(principal)?;
         if references.room != backup.native.predecessor.source || references.base != backup.native {
             return Err(Error::Contract("relay segment handover input cut differs"));
@@ -154,6 +166,8 @@ impl RecoveredRelaySegmentRoom {
             resolutions: Vec::new(),
             assets: Vec::new(),
             client_rasters,
+            client_upload_archives,
+            missing_upload_writers,
         });
         let packet_pending = match &report.references.outcome {
             ServerAssetReferenceOutcome::Ready { references } => {
@@ -175,6 +189,7 @@ impl RecoveredRelaySegmentRoom {
         if packet_pending
             || !report.missing_registrations.is_empty()
             || !report.missing_assets.is_empty()
+            || !report.missing_upload_writers.is_empty()
         {
             return Ok(RelaySegmentHandoverInputCoverage::Pending(report));
         }

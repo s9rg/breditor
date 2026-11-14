@@ -1,7 +1,9 @@
 //! Absent-only whole-room restore, followed by explicit reopen of exact committed owners.
 use super::{
-    RecoveredRelaySegmentRoom, RelaySegmentClientRaster, RelaySegmentRoomBackupFiles,
-    RelaySegmentRoomBackupIdentity, client_rasters,
+    RecoveredRelaySegmentRoom, RelaySegmentClientRaster, RelaySegmentClientUploadArchive,
+    RelaySegmentClientUploadPin, RelaySegmentRoomBackupFiles, RelaySegmentRoomBackupIdentity,
+    client_rasters::{self, SelectedRaster},
+    client_uploads::{self, RetainedUploadSelection, RetainedUploads},
 };
 use crate::{
     Error, Result, Room, RoomRecoveryPolicy,
@@ -32,6 +34,8 @@ struct Completion {
     active: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     added: Option<ClientRasters>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    uploads: Option<RetainedUploadSelection>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -71,6 +75,38 @@ impl RelaySegmentRoomBackupFiles {
         active_generation: &str,
         policy: RoomRecoveryPolicy,
         rasters: &[RelaySegmentClientRaster],
+    ) -> Result<RecoveredRelaySegmentRoom> {
+        let rasters =
+            rasters.iter().map(RelaySegmentClientRaster::selected).collect::<Result<Vec<_>>>()?;
+        self.restore_selected(path, active_generation, policy, &rasters, None)
+    }
+
+    /// Restore and retain the complete original upload archive of each selected writer.
+    /// The host selects exact archived bytes separately. Duplicate payloads across writers have
+    /// one server raster, while each original queue keeps its own status and epoch.
+    /// To authorize a handover, verify upload coverage against the actual native writer roster.
+    ///
+    /// # Errors
+    /// Refuses duplicate writers, unsorted inputs, divergent bytes, occupied targets and
+    /// excessive archives or raster union. An incomplete target is left unpublished.
+    pub fn restore_with_client_upload_archives(
+        &self,
+        path: &Path,
+        active_generation: &str,
+        policy: RoomRecoveryPolicy,
+        archives: &[RelaySegmentClientUploadArchive],
+    ) -> Result<RecoveredRelaySegmentRoom> {
+        let rasters = client_uploads::select(archives)?;
+        self.restore_selected(path, active_generation, policy, &rasters, Some(archives))
+    }
+
+    fn restore_selected(
+        &self,
+        path: &Path,
+        active_generation: &str,
+        policy: RoomRecoveryPolicy,
+        rasters: &[SelectedRaster<'_>],
+        archives: Option<&[RelaySegmentClientUploadArchive]>,
     ) -> Result<RecoveredRelaySegmentRoom> {
         let RoomRecoveryPolicy::HostReacquired = policy;
         self.check()?;
@@ -116,6 +152,8 @@ impl RelaySegmentRoomBackupFiles {
             stream.check_retains(&self.identity.assets, &self.entries)?;
             Some(ClientRasters { selected, restored_assets: stream.identity })
         };
+        let uploads =
+            archives.map(|archives| RetainedUploads::create(&directory, archives)).transpose()?;
         let (log, recovery) = Log::create_restored_segment(
             &directory.path.join("native"),
             self.native.clone(),
@@ -126,17 +164,24 @@ impl RelaySegmentRoomBackupFiles {
         self.check()?;
         raster.guard(&assets)?;
         let completed = Completion {
-            format_version: if added.is_some() { 2 } else { 1 },
+            format_version: if uploads.is_some() {
+                3
+            } else if added.is_some() {
+                2
+            } else {
+                1
+            },
             backup: self.identity.clone(),
             root: directory.witness()?,
             native,
             raster: raster_witness,
             active: active_generation.to_owned(),
             added,
+            uploads: uploads.as_ref().map(|retained| retained.selection().clone()),
         };
         files::insert(&directory, COMPLETE, &files::encode(&completed)?)?;
         directory.guard()?;
-        Ok(recovered(room, assets, raster, directory, completed))
+        Ok(recovered(room, assets, raster, directory, completed, uploads))
     }
 
     /// Reopen the exact completed restore and admit its later complete native and raster work.
@@ -158,7 +203,10 @@ impl RelaySegmentRoomBackupFiles {
         }
         let completed: Completion = files::read(&path)?;
         if completed.backup != self.identity
-            || !matches!((completed.format_version, &completed.added), (1, None) | (2, Some(_)))
+            || !matches!(
+                (completed.format_version, &completed.added, &completed.uploads),
+                (1, None, None) | (2, Some(_), None) | (3, _, Some(_))
+            )
         {
             return Err(Error::Contract("relay segment room completion differs"));
         }
@@ -175,6 +223,11 @@ impl RelaySegmentRoomBackupFiles {
             }
             client_rasters::check_retained(&assets, &added.selected)?;
         }
+        let uploads = completed
+            .uploads
+            .as_ref()
+            .map(|selected| RetainedUploads::reopen(&directory, selected))
+            .transpose()?;
         let state = self.native.checkpoint_state()?;
         let (log, recovery) = Log::open_restored_segment_at(
             &directory.path.join("native"),
@@ -186,7 +239,7 @@ impl RelaySegmentRoomBackupFiles {
         self.check()?;
         raster.guard(&assets)?;
         directory.guard()?;
-        Ok(recovered(room, assets, raster, directory, completed))
+        Ok(recovered(room, assets, raster, directory, completed, uploads))
     }
 }
 
@@ -196,6 +249,7 @@ fn recovered(
     raster: super::RasterCustody,
     directory: GenerationDirectory,
     completed: Completion,
+    uploads: Option<RetainedUploads>,
 ) -> RecoveredRelaySegmentRoom {
     #[cfg(feature = "server")]
     let (client_rasters, restored_assets) = completed.added.map_or_else(
@@ -217,10 +271,33 @@ fn recovered(
         client_rasters,
         #[cfg(feature = "server")]
         restored_assets,
+        uploads,
     }
 }
 
 impl RecoveredRelaySegmentRoom {
+    /// Exact original writer/archive pins retained in this target, if explicitly selected.
+    ///
+    /// # Errors
+    /// Refuses changed or uncertain retained custody.
+    pub fn client_upload_pins(&self) -> Result<Option<Vec<RelaySegmentClientUploadPin>>> {
+        self.uploads
+            .as_ref()
+            .map(|uploads| {
+                self.check_custody()?;
+                Ok(uploads.pins().cloned().collect())
+            })
+            .transpose()
+    }
+
+    /// Open an exact retained original upload archive for a trusted host's recovery or export.
+    /// This read-only file grants no account access, publication, or upload acknowledgement.
+    ///
+    /// # Errors
+    /// Refuses changed custody or bytes.
+    pub fn open_client_upload_archive(&self, writer: &str) -> Result<Option<fs::File>> {
+        self.uploads.as_ref().map_or(Ok(None), |uploads| uploads.read(writer))
+    }
     /// Borrow the exact native and raster components under local recovery ownership.
     #[must_use]
     pub fn components(&self) -> (&Room, &AssetStore) {
@@ -245,6 +322,10 @@ impl RecoveredRelaySegmentRoom {
     pub(super) fn check_custody(&self) -> Result<()> {
         self.directory.guard()?;
         self.room.log.ready()?;
-        self.raster.guard(&self.assets)
+        self.raster.guard(&self.assets)?;
+        if let Some(uploads) = &self.uploads {
+            uploads.check()?;
+        }
+        Ok(())
     }
 }

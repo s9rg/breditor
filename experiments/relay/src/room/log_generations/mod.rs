@@ -45,8 +45,8 @@ pub use backup::{
 #[cfg(feature = "server")]
 pub(crate) use segment_room_recovery::RelaySegmentServingCustody;
 pub use segment_room_recovery::{
-    RecoveredRelaySegmentRoom, RelaySegmentClientRaster, RelaySegmentRoomBackupFiles,
-    RelaySegmentRoomBackupIdentity,
+    RecoveredRelaySegmentRoom, RelaySegmentClientRaster, RelaySegmentClientUploadArchive,
+    RelaySegmentClientUploadPin, RelaySegmentRoomBackupFiles, RelaySegmentRoomBackupIdentity,
 };
 #[cfg(test)]
 pub(in crate::room) mod tests;
