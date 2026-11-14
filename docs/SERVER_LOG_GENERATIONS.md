@@ -646,3 +646,11 @@ a real 64-WAL relay exits, the handoff is committed in a fresh process,
 and a cold successor accepts offline text and comments using the original
 credentials. A second relay exit preserves Undo, subsequent Redo, and the
 original raster bytes. These are controlled Node client stores.
+
+[Linked segment qualification](qualification/2026-11-14-linked-relay-segments.json)
+records 513 passing relay cases and the separately passing APFS test.
+Source and independently installed clients each cross two genuine full-WAL
+handoffs, submit document and comment edits queued during both outages,
+then verify Undo/Redo across an additional restart and read the original
+raster. Native tests verify orphaned and middle-segment packet references,
+and reject missing, reordered or changed ownership evidence.

@@ -1,0 +1,74 @@
+{
+  "format": "breditor/linked-relay-segment-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-14",
+  "source": {
+    "commit": "b46a4b0ecd8148f7f89c882eeb95425118466325",
+    "dirty": false,
+    "sha256": "8c412f3e62653d89ac4024acdfa2b1eb4ed1252df64e2d3197d094af2b865ffb",
+    "files": 8793,
+    "bytes": 74836738
+  },
+  "tree": "2adec7876c45faf47820f75787fde6addc9d1e7c",
+  "relaySha256": "fc03866e81b9cdee66f16dfbfb58f6adcc49ab3d47ff5737250eff86aa67d442",
+  "rustExecutableSha256": "8f52725199fb4362ba23f15be583dfc43bfdb771b334af7f99d5fd84b712325c",
+  "rust": {
+    "passed": 513,
+    "failed": 0,
+    "ignored": 1,
+    "logSha256": "7309e7328c4c031d8f2db37221facc57d331dc0ab3fb30354736fc957bb9326d"
+  },
+  "crossVolume": {
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0,
+    "logSha256": "e8b7afd75a20b72fe4fce8ce27354b6dba07bdd671af88e3cee51ae9bee9bb7e"
+  },
+  "providerReportSha256": "44e26d3c5136e22d1d20b00df3ec1d5c8f2b217a9dae965546b34fdeb61083bd",
+  "modes": {
+    "source": {
+      "mode": "source",
+      "handoffs": 2,
+      "restoredOfflineLanes": 4,
+      "undoRedoLanes": 2,
+      "rasterReads": 1,
+      "processExits": 3,
+      "retainedAbsolutePositions": true,
+      "runtimeSha256": "73076a902c1926700031fbadaa2e5e6a2d6d661d39e3424cc90a0a32986c5c7c",
+      "proof": null
+    },
+    "installed": {
+      "mode": "installed",
+      "handoffs": 2,
+      "restoredOfflineLanes": 4,
+      "undoRedoLanes": 2,
+      "rasterReads": 1,
+      "processExits": 3,
+      "retainedAbsolutePositions": true,
+      "runtimeSha256": "73076a902c1926700031fbadaa2e5e6a2d6d661d39e3424cc90a0a32986c5c7c",
+      "proof": {
+        "registryArtifacts": 45,
+        "archives": [
+          {
+            "name": "@breditor/browser",
+            "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+          },
+          {
+            "name": "@breditor/experimental-rich-content",
+            "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+          },
+          {
+            "name": "@breditor/collaboration",
+            "sha256": "d2b9dfb1a73ab8af01506c8e5e222462c313697f9897349890e5f075eb5e4222"
+          }
+        ]
+      }
+    }
+  },
+  "scope": [
+    "Two native handoffs from actual 64-WAL stores, linked per-segment archives, exact directory witnesses, monotonic receipt positions and original client registrations.",
+    "Native tests reject partial or reordered handoff paths, a substituted parent archive, reused WAL IDs and changes to the oldest held handoff; orphan-only and middle-segment packet images retain their absolute positions.",
+    "Source and independently installed SDKs deliver offline text and comments after both handoffs, undo and redo across an additional process exit, and read the original bound raster.",
+    "Recovery uses the original directories and separately selected files. Portable whole-room restore to absent custody, retirement and authenticated deployment for this layout remain open."
+  ]
+}
