@@ -1,0 +1,94 @@
+{
+  "format": "breditor/verified-linked-room-handover-inputs",
+  "formatVersion": 1,
+  "date": "2026-11-14",
+  "source": {
+    "commit": "84af93d7c03a2571e45299d27675dcf126ba8a72",
+    "dirty": false,
+    "sha256": "9e6a6eb5eba84ed586df4f2c9ee734e1117033073b1ad31b697f319572247cb0",
+    "files": 8814,
+    "bytes": 74940816
+  },
+  "tree": "9886f822847d523af13010bb49a4f300a201534d",
+  "relaySha256": "18fad77a08b1ff57aa3cc117795b7d4442e4202142ed440d7ce2979b040ac4f5",
+  "rustExecutableSha256": "418fea15043cf87f15437d69dc02d573f220b9afb76c8cc93b93cd2b43025a28",
+  "rust": {
+    "passed": 518,
+    "failed": 0,
+    "ignored": 1,
+    "logSha256": "4002a498a9e88712ad8a675e07c306e630d7100e6bfcad04f25dd3892212de30"
+  },
+  "crossVolume": {
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0,
+    "logSha256": "c6adebe79dccdf4370eb13addf7d1e51119044cc17bec1d44b1872f04d60ae10"
+  },
+  "noServer": {
+    "logSha256": "4ecdc4017b5c5cf67610848566085b26402a9cae3c1e5de39d02488d1c093d5c"
+  },
+  "clippy": {
+    "logSha256": "97c04d5f7dc3de3b3afafee0f6d553756cae066b2817fab18006cbc7a2784541"
+  },
+  "sdkReportSha256": "78b34c2c59fa4a22801b1e04f5e650c920838f02302831a5510997666851e943",
+  "modes": {
+    "source": {
+      "mode": "source",
+      "handoffs": 2,
+      "portableRestores": 1,
+      "restoredOfflineLanes": 6,
+      "undoRedoLanes": 2,
+      "rasterReads": 2,
+      "processExits": 4,
+      "authenticatedTakeovers": 1,
+      "oldServingRefusals": 1,
+      "coldResumes": 2,
+      "registrationRefusals": 2,
+      "providerRasters": 1,
+      "retainedPackets": 1,
+      "retainedAbsolutePositions": true,
+      "runtimeSha256": "73076a902c1926700031fbadaa2e5e6a2d6d661d39e3424cc90a0a32986c5c7c",
+      "proof": null
+    },
+    "installed": {
+      "mode": "installed",
+      "handoffs": 2,
+      "portableRestores": 1,
+      "restoredOfflineLanes": 6,
+      "undoRedoLanes": 2,
+      "rasterReads": 2,
+      "processExits": 4,
+      "authenticatedTakeovers": 1,
+      "oldServingRefusals": 1,
+      "coldResumes": 2,
+      "registrationRefusals": 2,
+      "providerRasters": 1,
+      "retainedPackets": 1,
+      "retainedAbsolutePositions": true,
+      "runtimeSha256": "73076a902c1926700031fbadaa2e5e6a2d6d661d39e3424cc90a0a32986c5c7c",
+      "proof": {
+        "registryArtifacts": 45,
+        "archives": [
+          {
+            "name": "@breditor/browser",
+            "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+          },
+          {
+            "name": "@breditor/experimental-rich-content",
+            "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+          },
+          {
+            "name": "@breditor/collaboration",
+            "sha256": "d2b9dfb1a73ab8af01506c8e5e222462c313697f9897349890e5f075eb5e4222"
+          }
+        ]
+      }
+    }
+  },
+  "scope": [
+    "Same-target protected document/review registrations and complete accepted server asset-dependency read, with current provider mappings bound to the approved epoch.",
+    "Rust verifies missing original credentials and mappings, wrong credentials, released and changed providers, distinct targets, preserved old authority before successful commit, and restart from the committed ledger.",
+    "Source and installed SDKs publish a version before two full-WAL handoffs, preserve offline document and review work already queued before verified takeover, and read the original version and raster bytes after cold resumes and Undo/Redo.",
+    "The SDK uses controlled Node storage. Provider upload outboxes and complete outstanding client reconciliation remain host responsibilities."
+  ]
+}

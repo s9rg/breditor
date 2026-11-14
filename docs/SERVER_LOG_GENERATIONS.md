@@ -766,3 +766,11 @@ It does not replay or acknowledge old delivery from the report.
 The report covers accepted server state and original resume identities.
 The host still needs the client journals and provider outboxes to reconcile
 unaccepted offline work and client-only uploads.
+
+[Verified input qualification](qualification/2026-11-14-verified-linked-handover-inputs.json)
+records 518 passing relay tests and the separately run APFS interruption test.
+Both source and independently installed SDK runs kept the same pending document
+and comment work through takeover. They resumed original credentials, synced
+the offline edits, exercised Undo/Redo after a later restart, and read the
+exact original raster and version packet. The fixture uses controlled client
+storage.
