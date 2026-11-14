@@ -115,22 +115,7 @@ impl OpenGenerationReplay {
             if item.first < from {
                 return Err(Error::Contract("relay checkpoint crosses a sealed WAL"));
             }
-            let cut = wal.read(item.sha256, |mut reader| {
-                scan::visit_records_from(
-                    &mut reader,
-                    item.bytes,
-                    family,
-                    item.first,
-                    item.previous,
-                    &mut visit,
-                )
-            })?;
-            if cut.recovery.truncated_bytes != 0
-                || cut.records != item.records
-                || cut.previous != item.terminal
-            {
-                return Err(Error::Contract("closed log cut differs"));
-            }
+            wal.visit_records(item, family, &mut visit)?;
         }
 
         if self.manifest.active.first < from {

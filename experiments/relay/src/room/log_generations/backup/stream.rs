@@ -4,8 +4,11 @@ use super::{
     format::{self, Header, MAX_SERVER_LOG_GENERATION_BACKUP_BYTES},
 };
 use crate::{
-    Error, Result, Room, archive_digest::ArchiveDigest, log::generations::StreamGenerationCapture,
+    Error, Result, Room, RoomBackupIdentity,
+    archive_digest::ArchiveDigest,
+    log::{Log, Record, generations::StreamGenerationCapture},
 };
+use breditor_collab_feasibility::rich_replica::RichReplica;
 use std::{
     cell::Cell,
     io::{self, Write},
@@ -101,44 +104,86 @@ impl Room {
         other_failure: &Cell<bool>,
         write: impl FnOnce(NativeBackupStream<'_>) -> Result<T>,
     ) -> Result<T> {
+        let source = self.stream_source(principal)?;
+        with_native_stream(&mut self.log, source, other_failure, write)
+    }
+
+    fn stream_source(&self, principal: &str) -> Result<RoomBackupIdentity> {
         self.recovery_inventory_owner(principal)?;
         let physical = self.log.generation_descriptor()?;
         let records = physical
             .next_sequence
             .parse()
             .map_err(|_| Error::Contract("streamed generation backup global cut"))?;
-        let source = self.native_identity_at(records, physical.terminal_digest);
-        self.log.stream_generation_backup(
-            |capture: StreamGenerationCapture<'_>| {
-                if source.records != capture.cut.records
-                    || source.terminal_log_digest != capture.cut.previous
-                {
-                    return Err(Error::Contract("streamed generation backup selection changed"));
-                }
-                let body_bytes = capture.sections.last().map_or(0, |part| part.offset + part.bytes);
-                let header = Header {
-                    format: "breditor/relay-log-generation-backup".into(),
-                    format_version: 1,
-                    source: source.clone(),
-                    manifest: capture.cut.manifest,
-                    files: capture.sections.clone(),
-                };
-                let prefix = format::prefix(&header, body_bytes)?;
-                let bytes = prefix.len() as u64 + body_bytes;
-                let info = ServerLogGenerationBackupInfo {
-                    format: "breditor/relay-log-generation-backup",
-                    format_version: 1,
-                    identity: ServerLogGenerationBackupIdentity {
-                        source,
-                        manifest: header.manifest,
-                        archive_sha256: [0; 32],
-                    },
-                    files: header.files.len(),
-                    bytes,
-                };
-                write(NativeBackupStream { prefix, capture, info })
-            },
-            other_failure,
-        )
+        Ok(self.native_identity_at(records, physical.terminal_digest))
     }
+
+    // Separate borrows let the caller consult the replica while the actual WAL is held.
+    pub(in crate::room) fn visit_generation_backup_records(
+        &mut self,
+        principal: &str,
+        mut visit: impl FnMut(&RichReplica, Record) -> Result<()>,
+    ) -> Result<ServerLogGenerationBackupIdentity> {
+        let source = self.stream_source(principal)?;
+        let replica = &self.replica;
+        let failed = Cell::new(false);
+        let (identity, semantic_error) =
+            with_native_stream(&mut self.log, source, &failed, |mut stream| {
+                let mut semantic_error = None;
+                stream.capture.visit_records(|record| {
+                    if semantic_error.is_none() {
+                        semantic_error = visit(replica, record).err();
+                    }
+                    Ok(())
+                })?;
+                // Final canonical digest includes unpublished files and the complete header.
+                stream.measure()?;
+                stream.check()?;
+                Ok((stream.info.identity, semantic_error))
+            })?;
+        match semantic_error {
+            Some(error) => Err(error),
+            None => Ok(identity),
+        }
+    }
+}
+
+fn with_native_stream<T>(
+    log: &mut Log,
+    source: RoomBackupIdentity,
+    other_failure: &Cell<bool>,
+    write: impl FnOnce(NativeBackupStream<'_>) -> Result<T>,
+) -> Result<T> {
+    log.stream_generation_backup(
+        |capture: StreamGenerationCapture<'_>| {
+            if source.records != capture.cut.records
+                || source.terminal_log_digest != capture.cut.previous
+            {
+                return Err(Error::Contract("streamed generation backup selection changed"));
+            }
+            let body_bytes = capture.sections.last().map_or(0, |part| part.offset + part.bytes);
+            let header = Header {
+                format: "breditor/relay-log-generation-backup".into(),
+                format_version: 1,
+                source: source.clone(),
+                manifest: capture.cut.manifest,
+                files: capture.sections.clone(),
+            };
+            let prefix = format::prefix(&header, body_bytes)?;
+            let bytes = prefix.len() as u64 + body_bytes;
+            let info = ServerLogGenerationBackupInfo {
+                format: "breditor/relay-log-generation-backup",
+                format_version: 1,
+                identity: ServerLogGenerationBackupIdentity {
+                    source,
+                    manifest: header.manifest,
+                    archive_sha256: [0; 32],
+                },
+                files: header.files.len(),
+                bytes,
+            };
+            write(NativeBackupStream { prefix, capture, info })
+        },
+        other_failure,
+    )
 }

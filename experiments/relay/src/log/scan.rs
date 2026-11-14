@@ -29,6 +29,17 @@ pub(super) fn verify_and_hash_records(
     first: u64,
     previous: [u8; 32],
 ) -> Result<(ScannedLog, [u8; 32])> {
+    visit_and_hash_records(reader, length, family, first, previous, |_| Ok(()))
+}
+
+pub(super) fn visit_and_hash_records(
+    reader: &mut impl Read,
+    length: u64,
+    family: frame::Family,
+    first: u64,
+    previous: [u8; 32],
+    visit: impl FnMut(Record) -> Result<()>,
+) -> Result<(ScannedLog, [u8; 32])> {
     struct HashingReader<R> {
         input: R,
         digest: Sha256,
@@ -41,7 +52,7 @@ pub(super) fn verify_and_hash_records(
         }
     }
     let mut input = HashingReader { input: reader, digest: Sha256::new() };
-    let cut = verify_records_from(&mut input, length, family, first, previous)?;
+    let cut = visit_records_from(&mut input, length, family, first, previous, visit)?;
     Ok((cut, input.digest.finalize().into()))
 }
 

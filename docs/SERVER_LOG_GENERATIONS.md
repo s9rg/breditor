@@ -291,17 +291,19 @@ counters. Verification revives neither a revoked grant nor a connection lease.
 `log_generation_retained_asset_references` also binds that exact archive. It
 reads conservative native causal/effect history and every complete retained
 version, proposal and revision preparation, including rejected, superseded and
-abandoned packets. One fallible packet traversal spans the physical files, so a
-Prepare/Commit pair retains its ancestry across a boundary. The traversal does
-not collect another decoded-record copy; its output remains private until the
-whole read succeeds. Missing dependencies yield whole Pending, not partial Ready.
-The complete 100,000-pair and 8 MiB result bounds remain enforced.
+abandoned packets. One fallible packet traversal spans the physical files in
+global sequence order, including sealed WALs that are packed or archived.
+A Prepare/Commit pair retains its ancestry across a boundary. The relay reads
+one record at a time from the same held files used to compute the canonical
+archive digest. Unpublished stage bytes affect the digest and stay outside
+packet history. A failed traversal returns no inventory. Missing native packet
+dependencies yield whole Pending. The complete 100,000-pair and 8 MiB result
+bounds remain enforced.
 
-Both reads require current owner access and capture/recheck the full source
-around native reads. Two large archive buffers are not retained together. This
-is bounded maintenance work, not an incremental hot-path or performance claim.
-Original methods still refuse the physical layout, and these explicit methods
-refuse original storage without poisoning an otherwise usable original owner.
+Both reads require current owner access and stream the full source without
+building a complete archive in memory. Packet traversal still keeps ancestry
+needed to inspect revisions and holds the native room for the duration.
+These explicit methods refuse original storage without poisoning it.
 
 ## Remaining release work
 

@@ -7,7 +7,7 @@ use crate::{
     log::{Event, Record},
 };
 use breditor_collab_feasibility::rich_replica::{
-    PacketAssetIdentity, PacketAssetOutcome, PacketAssetReferences, SharedObservation,
+    PacketAssetIdentity, PacketAssetOutcome, PacketAssetReferences, RichReplica, SharedObservation,
     VersionAssetReference,
 };
 use std::collections::{BTreeMap, BTreeSet};
@@ -58,7 +58,7 @@ pub(super) fn collect(room: &Room, records: Vec<Record>, output: &mut References
     let observed = room.replica.observe()?;
     let mut scanner = PacketScanner::default();
     for record in records {
-        scanner.accept(room, &observed, record, output)?;
+        scanner.accept(&room.replica, &observed, record, output)?;
     }
     room.replica.check(&observed)?;
     Ok(())
@@ -74,7 +74,7 @@ pub(super) struct PacketScanner {
 impl PacketScanner {
     pub fn accept(
         &mut self,
-        room: &Room,
+        replica: &RichReplica,
         observed: &SharedObservation,
         record: Record,
         output: &mut References,
@@ -84,13 +84,13 @@ impl PacketScanner {
             Event::PublishDocumentVersionV1 { packet, .. } => {
                 output.packet(
                     record.sequence,
-                    room.replica.document_version_asset_references_guarded(observed, &packet)?,
+                    replica.document_version_asset_references_guarded(observed, &packet)?,
                 )?;
             }
             Event::PublishDocumentSuggestionV1 { packet, .. } => {
                 let PacketAssetIdentity::Suggestion { id } = output.packet(
                     record.sequence,
-                    room.replica.document_suggestion_asset_references_guarded(observed, &packet)?,
+                    replica.document_suggestion_asset_references_guarded(observed, &packet)?,
                 )?
                 else {
                     return Err(Error::Contract("server asset proposal identity differs"));
@@ -107,7 +107,7 @@ impl PacketScanner {
                 let PacketAssetIdentity::SuggestionRevision { id, suggestion_id, .. } = output
                     .packet(
                         record.sequence,
-                        room.replica.document_suggestion_revision_asset_references_guarded(
+                        replica.document_suggestion_revision_asset_references_guarded(
                             observed,
                             parent,
                             &request.revision_packet,
@@ -116,8 +116,7 @@ impl PacketScanner {
                 else {
                     return Err(Error::Contract("server asset revision identity differs"));
                 };
-                let child = room
-                    .replica
+                let child = replica
                     .document_suggestion_revision_packet(parent, &request.revision_packet)?;
                 self.prepared = Some((record.sequence, id, suggestion_id, child));
             }

@@ -5,7 +5,10 @@ use super::{
     held_file::{FileIdentity, FileStamp},
     manifest::ClosedFile,
 };
-use crate::{Error, Result};
+use crate::{
+    Error, Result,
+    log::{Record, frame, scan},
+};
 use flate2::{Compression, bufread::GzDecoder, write::GzEncoder};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
@@ -165,6 +168,32 @@ impl HeldWal {
             return Err(Error::Contract("sealed WAL changed during read"));
         }
         Ok(result)
+    }
+
+    /// Scan the logical record and digest chain, independent of the physical representation.
+    pub(super) fn visit_records(
+        &self,
+        selected: &ClosedFile,
+        family: frame::Family,
+        visit: impl FnMut(Record) -> Result<()>,
+    ) -> Result<()> {
+        let cut = self.read(selected.sha256, |mut reader| {
+            scan::visit_records_from(
+                &mut reader,
+                selected.bytes,
+                family,
+                selected.first,
+                selected.previous,
+                visit,
+            )
+        })?;
+        if cut.recovery.truncated_bytes != 0
+            || cut.records != selected.records
+            || cut.previous != selected.terminal
+        {
+            return Err(Error::Contract("closed log cut differs"));
+        }
+        Ok(())
     }
 
     pub fn packing(&self) -> ServerSealedWalPacking {

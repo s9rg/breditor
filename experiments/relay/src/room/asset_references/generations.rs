@@ -3,7 +3,7 @@ use super::{
     ServerAssetReferenceOutcome, ServerLogGenerationRetainedAssetReferences,
     packets::PacketScanner, read_budget,
 };
-use crate::{Error, Result, Room};
+use crate::{Result, Room};
 impl Room {
     /// Read conservative causal/effect history and every complete retained packet across all
     /// physical files, including inert revision preparations. Neither the visible AST nor active
@@ -18,17 +18,13 @@ impl Room {
         principal: &str,
     ) -> Result<ServerLogGenerationRetainedAssetReferences> {
         self.recovery_inventory_owner(principal)?;
-        let archive = self.export_log_generation_backup(principal)?;
-        let source = archive.info().identity;
         let observed = self.replica.observe()?;
         let mut output = self.native_retained_reference_seed(&observed)?;
         let mut packets = PacketScanner::default();
-        archive.visit_records(|record| packets.accept(self, &observed, record, &mut output))?;
+        let source = self.visit_generation_backup_records(principal, |replica, record| {
+            packets.accept(replica, &observed, record, &mut output)
+        })?;
         self.replica.check(&observed)?;
-        drop(archive); // Large source buffers are never held together across the two captures.
-        if self.export_log_generation_backup(principal)?.info().identity != source {
-            return Err(Error::Contract("generation asset reference source changed"));
-        }
         let outcome = if output.pending.is_empty() {
             ServerAssetReferenceOutcome::Ready { references: output.pairs.into_iter().collect() }
         } else {

@@ -14,10 +14,9 @@ mod stage_reclamation;
 mod stream;
 pub(in crate::room) use stream::BackupOutput;
 mod verify_live;
-pub(super) use verify_live::check_native_selection;
-mod visit_records;
 pub use format::MAX_SERVER_LOG_GENERATION_BACKUP_BYTES;
 pub use identity::{ServerLogGenerationBackupIdentity, ServerLogGenerationBackupInfo};
+pub(super) use verify_live::check_native_selection;
 
 /// Immutable complete multi-file transport archive, not native replay or deployment authority.
 /// Keeps original event bytes and every selected manifest, plus bounded unpublished stages.

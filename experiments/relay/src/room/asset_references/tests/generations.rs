@@ -189,6 +189,26 @@ fn a_committed_revision_spanning_physical_files_keeps_its_full_packet_ancestry_a
     let (mut room, _) = Room::open_log_generations(&files.room())?;
     assert!(room.document_suggestion_packet("owner", &child_id)?.is_some());
     assert_eq!(room.document_suggestion_revisions_page("owner", None)?.revisions.len(), 1);
+    let original = room.log_generation_retained_asset_references("owner")?;
+    let checkpoint = room.materialize_relay_checkpoint("owner")?;
+    assert!(room.pack_sealed_wal("owner", "two")?.packed);
+    room.archive_sealed_wal("owner", &checkpoint, "two")?;
+    assert_eq!(room.log_generation_retained_asset_references("owner")?, original);
+    // An unrelated unpublished stage is included in the archive pin, never in packet history.
+    let stage = files.room().join(format!(".stage-{}", crate::credentials::issue()?));
+    let mut options = fs::OpenOptions::new();
+    use std::{io::Write, os::unix::fs::OpenOptionsExt};
+    let mut file = options.write(true).create_new(true).mode(0o600).open(&stage)?;
+    file.write_all(b"unpublished")?;
+    file.sync_all()?;
+    assert!(matches!(
+        room.visit_generation_backup_records("owner", |_, _| Err(Error::Contract(
+            "test visitor refusal"
+        ))),
+        Err(Error::Contract("test visitor refusal"))
+    ));
+    // The visitor error must leave the live append cursor at the actual cut.
+    room.grant("owner", "after-file-visitor", Some(Role::Reader))?;
     let references = room.log_generation_retained_asset_references("owner")?;
     assert_eq!(references.sources.len(), 2);
     assert_eq!(references.sources[1].sequence, prepared_at.to_string());
@@ -198,6 +218,15 @@ fn a_committed_revision_spanning_physical_files_keeps_its_full_packet_ancestry_a
     assert!(
         generation_pairs(&references)?.contains(&("first-only".into(), "first-generation".into()))
     );
+    assert_eq!(references.sources, original.sources);
+    assert_eq!(references.outcome, original.outcome);
+    assert_ne!(references.source, original.source);
+    assert_eq!(references.source, room.export_log_generation_backup("owner")?.info().identity);
+    assert_eq!(fs::read(&stage)?, b"unpublished");
+    drop(room);
+    let (mut reopened, retry) = Room::open_log_generations(&files.room())?;
+    assert_eq!(retry.truncated_bytes, 0);
+    assert_eq!(reopened.log_generation_retained_asset_references("owner")?, references);
     Ok(())
 }
 

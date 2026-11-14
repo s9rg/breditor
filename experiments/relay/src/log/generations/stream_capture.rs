@@ -8,7 +8,7 @@ use super::{
 use crate::{
     Error, Result,
     archive_digest::ArchiveDigest,
-    log::{Log, frame, scan},
+    log::{Log, Record, frame, scan},
 };
 use std::{
     collections::BTreeSet,
@@ -82,6 +82,44 @@ impl StreamGenerationCapture<'_> {
                 return Err(Error::Contract("streamed generation backup source changed"));
             }
             entry.guard()?;
+        }
+        self.check()
+    }
+
+    /// Read records in global order while keeping the exact same held cut as the archive writer.
+    pub(crate) fn visit_records(&self, mut visit: impl FnMut(Record) -> Result<()>) -> Result<()> {
+        self.check()?;
+        let manifest = &self.state.current().value;
+        for (wal, (selected, family)) in self.state.closed.iter().zip(manifest.closed_files()) {
+            self.state.guard_sealed_wal(wal)?;
+            wal.visit_records(selected, family, &mut visit)?;
+            self.state.guard_sealed_wal(wal)?;
+        }
+        let active = &manifest.active;
+        let name = format::wal_name(&active.generation);
+        let (part, entry) = self
+            .sections
+            .iter()
+            .zip(&self.entries)
+            .find(|(part, _)| part.name == name)
+            .ok_or(Error::Contract("streamed generation active file absent"))?;
+        let mut reader = BufReader::new(entry.file());
+        reader.seek(SeekFrom::Start(0))?;
+        let (cut, digest) = scan::visit_and_hash_records(
+            &mut reader,
+            part.bytes,
+            frame::Family::Continuation,
+            active.first,
+            active.previous,
+            visit,
+        )?;
+        if cut.recovery.truncated_bytes != 0
+            || cut.bytes != part.bytes
+            || cut.previous != self.cut.previous
+            || active.first.checked_add(cut.records) != Some(self.cut.records)
+            || digest != part.sha256
+        {
+            return Err(Error::Contract("streamed generation retained packet source differs"));
         }
         self.check()
     }
