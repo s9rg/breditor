@@ -28,6 +28,7 @@ impl ServerLogGenerationBackup {
             .collect())
     }
 
+    #[cfg(feature = "server")]
     pub(in crate::room::log_generations) fn selected_identity(
         &self,
     ) -> &ServerLogGenerationBackupIdentity {

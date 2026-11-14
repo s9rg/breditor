@@ -96,13 +96,13 @@ async fn native_and_raster_owners_cannot_be_swapped_for_byte_identical_other_rec
     {
         let mut assets = assets.lock().map_err(|_| "raster owner")?;
         assert!(
-            custody.check_source(other.room_mut(), &mut assets, &source.original, "owner").is_err()
+            custody.check_source(other.room_mut(), &mut assets, &handle.original, "owner").is_err()
         );
     }
     {
         let mut room = handle.host.room.lock().map_err(|_| "room owner")?;
         assert!(
-            custody.check_source(&mut room, other.assets_mut(), &source.original, "owner").is_err()
+            custody.check_source(&mut room, other.assets_mut(), &handle.original, "owner").is_err()
         );
     }
     other.check_live_source(&source.original, "owner")?;
