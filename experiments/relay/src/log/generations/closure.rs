@@ -109,7 +109,7 @@ pub(crate) fn verify_generation_sections(
     visit_sections(files, |_| Ok(()))
 }
 
-fn visit_sections(
+pub(crate) fn visit_sections(
     files: &BTreeMap<&str, ArchiveSlice<'_>>,
     mut visit: impl FnMut(Record) -> Result<()>,
 ) -> Result<GenerationCut> {
@@ -130,6 +130,9 @@ fn visit_sections(
     let ready: Ready = format::decode(&file(files, ".ready.json")?.read(format::MAX_CONTROL)?)?;
     ready.validate(root.0)?;
     let selected = &history.last().ok_or(Error::Contract("generation archive head absent"))?.1;
+    if selected.origin.is_some() {
+        return Err(Error::Contract("legacy generation backup requires the original root"));
+    }
     let mut names = BTreeSet::from([".head.json".to_owned(), ".ready.json".into()]);
     names.extend(history.iter().map(|(hash, _)| format::manifest_name(hash)));
     for (item, family) in selected.closed_files() {

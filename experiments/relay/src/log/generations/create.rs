@@ -79,7 +79,8 @@ impl Creation {
             format: "breditor/relay-log-generations".into(),
             format_version: SEEDED_ROOT_VERSION,
             parent: None,
-            root,
+            root: Some(root),
+            origin: None,
             sealed: Vec::new(),
             active: ActiveFile {
                 generation: self.options.active,
@@ -113,6 +114,7 @@ impl Creation {
         log.generations = Some(Generations {
             directory: self.directory,
             archive: None,
+            segment: None,
             history: vec![manifest],
             closed: vec![HeldWal::raw(root_file, self.options.root, log.bytes)?],
             head,

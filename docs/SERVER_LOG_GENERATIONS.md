@@ -584,3 +584,43 @@ test threads after an operator route returned HTTP 503 once under the earlier
 broad run. The same test passed by itself and in the final suite. The capture
 and replay tests include an actual 64-WAL room and compare the recovered
 state, receipts, and exported archive against ordinary cold replay.
+
+## Continue into a fresh writable segment
+
+`Room::continue_into_relay_segment` takes the verified base for the **exact
+current cut** and an absent destination. The host durably retains the base
+files and pins before invoking it. The action prepares an empty WAL and
+syncs the new directory, then publishes a successor marker in the original
+directory while holding its exclusive room lock. The marker binds the two
+actual directory instances, the first successor manifest, and both base
+artifacts. Once selected, ordinary opens of the original directory refuse.
+The successor holds that marker and the two immutable artifacts while
+serving. A cold successor open additionally checks the marker against the
+source and destination directories before replay or tail repair.
+
+A separately versioned manifest selects the new physical segment. Its first
+record uses the predecessor's original next sequence and terminal digest.
+There is no extra semantic event. The successor has 64 local WAL slots
+and 512 MiB of local retained WAL capacity under the existing per-file
+limits. Old registration credentials resume into fresh leases. The original
+document and comment journals, receipt numbers, version and suggestion
+packets, and the room's raster binding survive the handoff. A host can reopen
+the existing bound raster store under its ordinary storage ownership.
+`Room::relay_segment_retained_asset_references` reads packets in order across
+both sources, including inert preparations, and returns a whole inventory
+or Pending. The original archive reader remains byte-compatible.
+
+A prepared destination without the source marker cannot become writable.
+The original can continue serving before that marker is selected, using a
+different absent destination for another attempt. After the synced marker,
+`Room::open_relay_segment_successor` uses the same two directories and trusted
+base. Suspect sources, occupied destinations and divergent artifacts refuse.
+The native directory fence applies to this local owner. The serving host
+still needs its deployment epoch to guard other copies or machines.
+
+This path supports one handoff from an original generation room. The
+predecessor directory, its selection marker and the held archive/checkpoint
+must remain available. Linked portable backup, restorable multi-segment
+chains, reclaiming the old directory, and integrated whole-room activation
+are follow-on work. Legacy archive APIs refuse a successor so callers
+cannot accidentally export only its suffix as a complete backup.

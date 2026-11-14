@@ -56,7 +56,8 @@ mod versions;
 pub use asset_references::{
     MAX_SERVER_ASSET_REFERENCE_BYTES, MAX_SERVER_ASSET_REFERENCE_PAIRS,
     ServerAssetReferenceOutcome, ServerAssetReferencePending, ServerAssetReferenceSource,
-    ServerLogGenerationRetainedAssetReferences, ServerRetainedAssetReferences,
+    ServerLogGenerationRetainedAssetReferences, ServerRelaySegmentAssetReferences,
+    ServerRetainedAssetReferences,
 };
 pub use atomic_transport_v2::AtomicTransportProfile;
 pub use backup::{

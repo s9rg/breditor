@@ -13,7 +13,7 @@ use std::{
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
-fn save(
+pub(super) fn save(
     room: &mut Room,
     parent: &Path,
 ) -> TestResult<(RelaySegmentBaseIdentity, RelaySegmentBaseFile)> {

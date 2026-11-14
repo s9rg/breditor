@@ -124,6 +124,10 @@ impl StreamGenerationCapture<'_> {
         self.check()
     }
 
+    pub(crate) fn segment_base(&self) -> Option<&crate::RelaySegmentBaseFile> {
+        self.state.segment.as_ref().map(|segment| segment.base.as_ref())
+    }
+
     pub(crate) fn check(&self) -> Result<()> {
         for entry in &self.entries {
             entry.guard()?;
@@ -139,9 +143,16 @@ impl Log {
         destination_failed: &std::cell::Cell<bool>,
     ) -> Result<T> {
         self.ready()?;
-        if self.generations.is_none() {
-            return Err(Error::Contract("original log has no generation archive"));
-        }
+        self.check_legacy_generation_archive()?;
+        self.stream_held_generation(write, destination_failed)
+    }
+
+    pub(crate) fn stream_held_generation<T>(
+        &mut self,
+        write: impl FnOnce(StreamGenerationCapture<'_>) -> Result<T>,
+        destination_failed: &std::cell::Cell<bool>,
+    ) -> Result<T> {
+        self.ready()?;
         let mut cursor = AppendCursor { log: self, restored: false };
         let result = cursor.log.prepare_stream_generation_capture().and_then(write);
         cursor.restore()?;

@@ -1,6 +1,9 @@
 //! Exact predecessors for a continuation that keeps original event positions.
 mod capture;
 mod open;
+mod successor;
+#[cfg(test)]
+mod successor_tests;
 #[cfg(test)]
 mod tests;
 

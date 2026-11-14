@@ -35,8 +35,9 @@ impl Generations {
             .position(|wal| wal.generation == generation)
             .ok_or(Error::Contract("packing requires a selected sealed WAL"))?;
         let current = &self.current().value;
-        let selected = std::iter::once(&current.root)
-            .chain(&current.sealed)
+        let selected = current
+            .closed_files()
+            .map(|(file, _)| file)
             .nth(position)
             .ok_or(Error::Contract("sealed WAL manifest entry absent"))?;
         let held = &self.closed[position];

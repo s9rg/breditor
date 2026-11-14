@@ -25,6 +25,7 @@ pub(super) struct HeldManifest {
 pub(in crate::log) struct Generations {
     pub(super) directory: Directory,
     pub(super) archive: Option<ArchiveDirectory>,
+    pub(super) segment: Option<super::segment::SegmentCustody>,
     pub(super) history: Vec<HeldManifest>,
     pub(super) closed: Vec<HeldWal>,
     pub(super) head: File,
@@ -58,7 +59,7 @@ impl Generations {
         self.remaining_rotation_slots() != 0
     }
     pub(in crate::log) fn remaining_rotation_slots(&self) -> usize {
-        super::format::MAX_GENERATIONS - (self.current().value.sealed.len() + 2)
+        super::format::MAX_GENERATIONS - (self.current().value.closed_count() + 1)
     }
     pub(in crate::log) fn guard(&self, active: &File, bytes: u64) -> Result<()> {
         if self.fenced.load(Ordering::Acquire) {
@@ -72,6 +73,10 @@ impl Generations {
     }
     fn guard_inner(&self, active: &File, bytes: u64) -> Result<()> {
         self.directory.guard()?;
+        self.directory.absent(super::segment::SUCCESSOR)?;
+        if let Some(segment) = &self.segment {
+            segment.check()?;
+        }
         self.head_identity.guard(&self.head, &self.directory.path.join(".head.json"))?;
         if held_file::read(&self.head, format::MAX_CONTROL)? != self.head_bytes {
             return Err(Error::Contract("log physical head changed"));
@@ -118,7 +123,7 @@ impl Generations {
         ServerLogGenerationDescriptor {
             format: "breditor/relay-log-generation-descriptor",
             format_version: 1,
-            root: current.value.root.generation.clone(),
+            root: self.root_id().to_owned(),
             active: current.value.active.generation.clone(),
             sealed: current.value.sealed.len(),
             manifest: current.hash,

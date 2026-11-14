@@ -140,6 +140,34 @@ fn rejected_and_abandoned_packets_in_retained_files_keep_images_that_never_becam
     )?
     .finish(&backup)?;
     assert_eq!(restored.room_mut().log_generation_retained_asset_references("owner")?, result);
+
+    let source = files.room();
+    let parent = source.parent().ok_or("fixture parent")?;
+    let destination = parent.join("writable-successor");
+    let archive = parent.join("successor-base.archive");
+    let checkpoint = parent.join("successor-base.checkpoint");
+    drop(restored);
+    let (mut old, _) = Room::open_log_generations(&source)?;
+    let identity = old.write_relay_segment_base(
+        "owner",
+        &mut fs::File::create_new(&archive)?,
+        &mut fs::File::create_new(&checkpoint)?,
+    )?;
+    let base = std::sync::Arc::new(crate::RelaySegmentBaseFile::open(
+        fs::File::open(archive)?,
+        fs::File::open(checkpoint)?,
+        &identity,
+    )?);
+    let mut successor =
+        old.continue_into_relay_segment("owner", &destination, base.clone(), "fresh")?;
+    successor.grant("owner", "suffix-reader", Some(Role::Reader))?;
+    let references = successor.relay_segment_retained_asset_references("owner")?;
+    assert_eq!(references.sources, result.sources);
+    assert_eq!(references.outcome, result.outcome);
+    drop(successor);
+    drop(old);
+    let (mut reopened, _) = Room::open_relay_segment_successor(&source, &destination, base)?;
+    assert_eq!(reopened.relay_segment_retained_asset_references("owner")?, references);
     Ok(())
 }
 

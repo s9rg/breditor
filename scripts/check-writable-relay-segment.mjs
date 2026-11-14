@@ -1,0 +1,212 @@
+/** Original SDK transport against a real saturated predecessor and its selected successor. */
+import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
+import {createHash, randomBytes} from 'node:crypto';
+import {mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join, resolve} from 'node:path';
+import {fileURLToPath, pathToFileURL} from 'node:url';
+import {WebSocket as Socket} from 'undici';
+import {environment} from './fixtures/room-participant-inventory/environment.mjs';
+import {pixel} from './fixtures/review-assets/pixels.mjs';
+import {startReviewHost} from './fixtures/relay-host.mjs';
+import {searchConsumerLock, verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
+import {sourceEvidence, saveEvidence} from './candidate-release/evidence.mjs';
+
+const root = fileURLToPath(new URL('..', import.meta.url));
+const origin = 'http://127.0.0.1:49785';
+const sha = bytes => createHash('sha256').update(bytes).digest('hex');
+const collaboration = '@breditor/collaboration';
+
+function installed(directory) {
+  const consumer = join(directory, 'consumer');
+  const output = join(directory, 'archives');
+  mkdirSync(consumer);
+  mkdirSync(output);
+  const npm = process.env.BREDITOR_NPM ?? 'npm';
+  const names = ['@breditor/browser', '@breditor/experimental-rich-content', collaboration];
+  const packs = JSON.parse(execFileSync(npm, [
+    'pack', '--offline', '--ignore-scripts', '--json', '--pack-destination', output,
+    ...names.flatMap(name => ['--workspace', name]),
+  ], {cwd: root, encoding: 'utf8'}));
+  const archives = packs.map(pack => ({name: pack.name, path: join(output, pack.filename)}));
+  const producer = JSON.parse(readFileSync(join(root, 'package-lock.json'), 'utf8'));
+  const locked = searchConsumerLock(producer, archives);
+  writeFileSync(join(consumer, 'package.json'), JSON.stringify(locked.manifest));
+  writeFileSync(join(consumer, 'package-lock.json'), JSON.stringify(locked.lock));
+  execFileSync(npm, ['install', '--offline', '--ignore-scripts', '--no-audit', '--no-fund'], {
+    cwd: consumer, stdio: 'inherit',
+  });
+  const installedRoot = realpathSync(join(consumer, 'node_modules', collaboration));
+  assert.ok(installedRoot.startsWith(realpathSync(consumer) + '/'));
+  const registryArtifacts = verifySearchConsumerRegistry(
+    producer, JSON.parse(readFileSync(join(consumer, 'package-lock.json'), 'utf8')),
+  );
+  return {
+    distribution: join(installedRoot, 'dist'),
+    proof: {registryArtifacts, archives: archives.map(({name, path}) => ({name, sha256: sha(readFileSync(path))}))},
+  };
+}
+
+async function run(mode, distribution, executable, parent) {
+  const runtime = join(distribution, 'runtime');
+  const api = await import(pathToFileURL(join(distribution, 'index.js')).href);
+  const wasm = await import(pathToFileURL(join(runtime, 'breditor_shared.js')).href);
+  const wasmBytes = readFileSync(join(runtime, 'breditor_shared_bg.wasm'));
+  await wasm.default({module_or_path: wasmBytes});
+  const reset = environment();
+  const previousSocket = Object.getOwnPropertyDescriptor(globalThis, 'WebSocket');
+  Object.defineProperty(globalThis, 'WebSocket', {
+    configurable: true,
+    value: class extends Socket {
+      constructor(url) { super(url, {headers: {Origin: origin}}); }
+    },
+  });
+  const token = randomBytes(32).toString('hex');
+  writeFileSync(join(parent, 'auth.json'), JSON.stringify({
+    format: 'breditor/relay-auth', formatVersion: 1, origins: [origin],
+    accounts: [{principal: 'owner', tokenHash: [...createHash('sha256').update(token).digest()]}],
+  }), {mode: 0o600});
+  writeFileSync(join(parent, 'asset.png'), pixel, {mode: 0o600});
+  let host, profile, session, document, review;
+  const connect = {getToken: () => token, autoConnect: false, requestTimeoutMs: 15_000};
+  const stopClients = async () => {
+    document?.dispose();
+    review?.dispose();
+    await Promise.all([document?.waitForDisconnected(), review?.waitForDisconnected()]);
+    document = undefined;
+    review = undefined;
+  };
+  try {
+    host = await startReviewHost(executable, [parent, 'start', '127.0.0.1:0']);
+    const address = host.address;
+    const options = {...connect, endpoint: 'ws://' + address + '/ws', principal: 'owner',
+      room: 'room', writerTransport: 'atomic-v2', saveIdentity() {}};
+    const registered = await api.registerSharedRelayWriter(options);
+    const comment = await api.registerSharedReviewWriter({
+      ...options, actor: 'segment-author', documentWriter: registered.identity.writer,
+    });
+    const {credential: _credential, observerCredential: _observer, ...binding} = comment.identity;
+    const configuration = readFileSync(join(parent, 'profile.json'), 'utf8');
+    profile = wasm.SharedRichProfile.from_standard_configuration_json_v3(configuration);
+    const persisted = {
+      database: 'writable-segment-' + mode, room: 'room', writer: binding.documentWriter,
+      review: {actor: binding.actor, principal: 'owner', access: 'moderate'},
+      relay: binding, richLanguage: 3, history: 'explicit',
+      rangeEditing: 'original', selectionEditing: 'original',
+      create: () => profile.join_frame('room', binding.documentWriter, comment.frame),
+      restore: input => profile.restore('room', input),
+    };
+    const attach = async () => {
+      document = new api.SharedRelaySync(session.core, {
+        ...connect, identity: registered.identity, persistLocal: () => session.flush(),
+      });
+      review = new api.SharedReviewRelaySync({
+        ...connect, identity: comment.identity, storage: session, flushDocument: () => document.flush(),
+      });
+      await document.connect();
+      await document.flush();
+      await review.connect();
+      await review.flush();
+    };
+    const edit = text => session.core.dispatch({commands: [
+      {kind: 'insert_text', data: {block: 'p', offset: 0, text}},
+    ]});
+    const post = body => assert.equal(session.core.dispatchReview({
+      kind: 'create_thread', data: {
+        anchorJson: session.core.captureReviewAnchor({kind: 'document'}), body,
+      },
+    }).kind, 'committed');
+    session = await api.SharedReviewPersistentSession.open(persisted);
+    await attach();
+    edit('Accepted before segment ');
+    post('Accepted comment before segment');
+    await document.flush();
+    await review.flush();
+    const first = document.state().serverReceiptSequence;
+    assert.ok(BigInt(first) > 64n);
+    await stopClients();
+    await host.crash();
+    host = undefined;
+    edit('Offline over handoff ');
+    post('Offline comment over handoff');
+    await session.flush();
+    const offline = session.exportRecovery();
+    await session.close();
+    session = await api.SharedReviewPersistentSession.open(persisted);
+    assert.deepEqual(session.exportRecovery(), offline);
+
+    const switched = JSON.parse(execFileSync(executable, [parent, 'handoff', address], {
+      encoding: 'utf8', timeout: 90_000,
+    }).trim());
+    assert.equal(switched.kind, 'handedOff');
+    host = await startReviewHost(executable, [parent, 'successor', address]);
+    await attach();
+    assert.equal(document.state().pending, false);
+    assert.equal(review.state().pending, false);
+    assert.ok(BigInt(document.state().serverReceiptSequence) >= BigInt(switched.records));
+    assert.match(session.core.documentJson(), /Offline over handoff/);
+    assert.equal(session.core.reviewSnapshot().view.threads.length, 2);
+    const visibleThreads = () => session.core.reviewSnapshot().view.threads.filter(({thread}) => !thread.hidden);
+    const accepted = session.core.documentJson();
+    assert.equal(session.core.undo(), true);
+    assert.equal(session.core.undoReview().kind, 'committed');
+    await document.flush();
+    await review.flush();
+    await stopClients();
+    await host.crash();
+    host = await startReviewHost(executable, [parent, 'successor', address]);
+    await attach();
+    assert.doesNotMatch(session.core.documentJson(), /Offline over handoff/);
+    assert.equal(visibleThreads().length, 1);
+    assert.equal(session.core.redo(), true);
+    assert.equal(session.core.redoReview().kind, 'committed');
+    await document.flush();
+    await review.flush();
+    assert.equal(session.core.documentJson(), accepted);
+    assert.equal(session.core.reviewSnapshot().view.threads.length, 2);
+    const raster = await fetch('http://' + address + '/assets/sha256:' + sha(pixel), {
+      headers: {Origin: origin, Authorization: 'Bearer ' + token, 'X-Breditor-Principal': 'owner'},
+    });
+    assert.equal(raster.status, 200);
+    assert.deepEqual(Buffer.from(await raster.arrayBuffer()), pixel);
+    return {mode, restoredOfflineLanes: 2, undoRedoLanes: 2, rasterReads: 1,
+      processExits: 2, retainedAbsolutePositions: true, runtimeSha256: sha(wasmBytes)};
+  } finally {
+    await stopClients();
+    await session?.discardAndClose();
+    profile?.free();
+    await host?.stop();
+    if (previousSocket) Object.defineProperty(globalThis, 'WebSocket', previousSocket);
+    else delete globalThis.WebSocket;
+    reset();
+  }
+}
+
+const executable = resolve(process.argv[2]);
+const source = sourceEvidence(root);
+assert.equal(source.dirty, false);
+const sandbox = mkdtempSync(join(tmpdir(), 'breditor-writable-segment-'));
+try {
+  const reports = {};
+  for (const mode of ['source', 'installed']) {
+    const distribution = mode === 'source'
+      ? {distribution: join(root, 'packages/breditor-collaboration/dist'), proof: null}
+      : installed(sandbox);
+    const path = join(sandbox, mode);
+    mkdirSync(path, {mode: 0o700});
+    reports[mode] = {
+      ...await run(mode, distribution.distribution, executable, path), proof: distribution.proof,
+    };
+  }
+  assert.equal(reports.source.runtimeSha256, reports.installed.runtimeSha256);
+  assert.deepEqual(sourceEvidence(root), source);
+  const report = {
+    format: 'breditor/writable-relay-segment-qualification', formatVersion: 1,
+    source, relaySha256: sha(readFileSync(executable)), reports,
+  };
+  saveEvidence(join(root, 'target/qualified-writable-relay-segment.json'), report);
+  console.log(JSON.stringify(report, null, 2));
+} finally {
+  rmSync(sandbox, {recursive: true, force: true});
+}

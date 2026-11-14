@@ -420,7 +420,7 @@ impl Log {
         if let Some(receipt) = state.retry(next)? {
             return Ok(receipt);
         }
-        if state.current().value.contains(next)
+        if state.contains_generation(next)
             || !state.has_rotation_slot()
             || self.next == state.active_first()
         {
@@ -474,7 +474,7 @@ impl Log {
             .ok_or(Error::Contract("original log has no auto rotation"))?;
         for salt in 0..=format::MAX_GENERATIONS {
             let id = format!("auto-{}-{salt}", format::hex(&state.current().hash));
-            if !state.current().value.contains(&id) {
+            if !state.contains_generation(&id) {
                 self.rotate_generations(&id)?;
                 return Ok(());
             }

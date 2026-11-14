@@ -6,6 +6,17 @@ use std::collections::BTreeSet;
 
 pub(super) const SEEDED_ROOT_VERSION: u32 = 1;
 pub(super) const ORIGINAL_ROOT_VERSION: u32 = 2;
+pub(super) const SEGMENT_ROOT_VERSION: u32 = 3;
+
+/// A new physical WAL budget anchored to one independently admitted predecessor.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(super) struct SegmentOrigin {
+    pub(super) root: String,
+    pub(super) first: u64,
+    pub(super) previous: [u8; 32],
+    pub(super) base: [u8; 32],
+}
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -48,26 +59,36 @@ pub(super) struct Manifest {
     pub format: String,
     pub format_version: u32,
     pub parent: Option<[u8; 32]>,
-    pub root: ClosedFile,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub root: Option<ClosedFile>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub origin: Option<SegmentOrigin>,
     pub sealed: Vec<ClosedFile>,
     pub active: ActiveFile,
 }
 impl Manifest {
     pub fn validate(&self) -> Result<()> {
         if self.format != "breditor/relay-log-generations"
-            || !matches!(self.format_version, SEEDED_ROOT_VERSION | ORIGINAL_ROOT_VERSION)
-            || self.sealed.len() + 2 > format::MAX_GENERATIONS
+            || self.closed_count() + 1 > format::MAX_GENERATIONS
             || self.parent.is_some() == self.sealed.is_empty()
-            || self.root.first != 0
-            || self.root.previous != [0; 32]
         {
             return Err(Error::Contract("log generation manifest family"));
         }
+        let (mut next, mut previous) = match (&self.root, &self.origin, self.format_version) {
+            (Some(root), None, SEEDED_ROOT_VERSION | ORIGINAL_ROOT_VERSION)
+                if root.first == 0 && root.previous == [0; 32] =>
+            {
+                (0, [0; 32])
+            }
+            (None, Some(origin), SEGMENT_ROOT_VERSION) if origin.first != 0 => {
+                generation(&origin.root)?;
+                (origin.first, origin.previous)
+            }
+            _ => return Err(Error::Contract("log generation manifest origin")),
+        };
         let mut ids = BTreeSet::new();
-        let mut next = 0;
-        let mut previous = [0; 32];
         let mut bytes = 0_u64;
-        for file in std::iter::once(&self.root).chain(&self.sealed) {
+        for (file, _) in self.closed_files() {
             file.validate()?;
             if !ids.insert(&file.generation) || file.first != next || file.previous != previous {
                 return Err(Error::Contract("log generation manifest lineage"));
@@ -91,6 +112,7 @@ impl Manifest {
         if self.parent != Some(hash)
             || self.format_version != parent.format_version
             || self.root != parent.root
+            || self.origin != parent.origin
             || self.sealed.len() != parent.sealed.len() + 1
             || !self.sealed.starts_with(&parent.sealed)
         {
@@ -112,16 +134,19 @@ impl Manifest {
         } else {
             frame::Family::Continuation
         };
-        std::iter::once((&self.root, root))
+        self.root
+            .iter()
+            .map(move |file| (file, root))
             .chain(self.sealed.iter().map(|file| (file, frame::Family::Continuation)))
     }
+    pub(super) fn closed_count(&self) -> usize {
+        usize::from(self.root.is_some()) + self.sealed.len()
+    }
     pub fn closed_bytes(&self) -> u64 {
-        self.root.bytes + self.sealed.iter().map(|file| file.bytes).sum::<u64>()
+        self.closed_files().map(|(file, _)| file.bytes).sum()
     }
     pub fn contains(&self, id: &str) -> bool {
-        self.root.generation == id
-            || self.active.generation == id
-            || self.sealed.iter().any(|file| file.generation == id)
+        self.active.generation == id || self.closed_files().any(|(file, _)| file.generation == id)
     }
 }
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

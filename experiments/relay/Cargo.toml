@@ -156,3 +156,8 @@ required-features = ["server"]
 name = "native_publication_sdk_functional"
 path = "examples/native_publication_sdk_functional.rs"
 required-features = ["server"]
+
+[[example]]
+name = "relay_segment_functional"
+path = "examples/relay_segment_functional.rs"
+required-features = ["server"]

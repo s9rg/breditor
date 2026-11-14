@@ -305,6 +305,7 @@ impl Log {
         pending: Option<&BTreeSet<String>>,
     ) -> Result<GenerationFiles> {
         self.ready()?;
+        self.check_legacy_generation_archive()?;
         let state = self
             .generations
             .as_ref()

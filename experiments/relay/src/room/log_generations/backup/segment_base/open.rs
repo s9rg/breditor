@@ -44,12 +44,55 @@ impl RelaySegmentBaseFile {
         &self.identity
     }
 
-    fn check(&self) -> Result<()> {
+    pub(crate) fn check(&self) -> Result<()> {
         self.archive.check()?;
         self.checkpoint.check()
     }
 
-    fn checkpoint_state(&self) -> Result<Checkpoint> {
+    pub(crate) fn contains_section(&self, name: &str) -> bool {
+        self.sections.contains_key(name)
+    }
+
+    pub(crate) fn binding(&self) -> Result<[u8; 32]> {
+        use sha2::{Digest, Sha256};
+        let mut hash = Sha256::new();
+        hash.update(b"breditor/relay-segment-base/1\0");
+        hash.update(serde_json::to_vec(&self.identity)?);
+        Ok(hash.finalize().into())
+    }
+
+    pub(super) fn selections(&self) -> std::collections::BTreeMap<&str, SelectedFile<'_>> {
+        self.sections
+            .iter()
+            .map(|(name, entry)| {
+                (name.as_str(), SelectedFile::Digest { bytes: entry.bytes, sha256: entry.sha256 })
+            })
+            .collect()
+    }
+
+    pub(crate) fn visit_records(
+        &self,
+        visit: impl FnMut(crate::log::Record) -> Result<()>,
+    ) -> Result<()> {
+        self.check()?;
+        let input = self.archive.all();
+        let files = self
+            .sections
+            .iter()
+            .map(|(name, entry)| Ok((name.as_str(), input.section(entry.offset, entry.bytes)?)))
+            .collect::<Result<_>>()?;
+        let cut = crate::log::generations::visit_generation_sections(&files, visit)?;
+        let predecessor = &self.identity.predecessor;
+        if cut.manifest != predecessor.manifest
+            || cut.records != predecessor.source.records
+            || cut.previous != predecessor.source.terminal_log_digest
+        {
+            return Err(Error::Contract("relay segment predecessor record cut differs"));
+        }
+        self.check()
+    }
+
+    pub(super) fn checkpoint_state(&self) -> Result<Checkpoint> {
         self.check()?;
         let input = self.checkpoint.all();
         let state: Checkpoint = serde_json::from_reader(BufReader::new(input.reader()))?;
@@ -77,14 +120,7 @@ impl Room {
             return Err(Error::Contract("relay segment base requires a complete suffix"));
         }
         let selected = &base.identity.checkpoint;
-        let sections = base
-            .sections
-            .iter()
-            .map(|(name, entry)| {
-                (name.as_str(), SelectedFile::Digest { bytes: entry.bytes, sha256: entry.sha256 })
-            })
-            .collect();
-        if !log.verify_generation_archive(&sections, selected.manifest, true)? {
+        if !log.verify_generation_archive(&base.selections(), selected.manifest, true)? {
             return Err(Error::Contract("relay segment base is outside the selected WAL lineage"));
         }
         let replay = log.open_generation_replay()?;

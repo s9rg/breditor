@@ -4,6 +4,8 @@ mod generations;
 mod inventory;
 mod packets;
 mod read_budget;
+mod segment;
+pub use segment::ServerRelaySegmentAssetReferences;
 #[cfg(test)]
 mod tests;
 pub use inventory::{

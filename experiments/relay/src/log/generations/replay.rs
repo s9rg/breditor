@@ -29,7 +29,7 @@ impl Log {
         let active_length =
             state.opening_length.ok_or(Error::Contract("generation replay requires a cold log"))?;
         let manifest = &state.current().value;
-        if state.closed.len() != manifest.sealed.len() + 1 {
+        if state.closed.len() != manifest.closed_count() {
             return Err(Error::Contract("generation replay owner count differs"));
         }
         let closed = state.closed.iter().map(HeldWal::clone_handle).collect::<Result<_>>()?;

@@ -6,6 +6,7 @@ use super::{
     held_file::{self, FileIdentity, FileStamp},
     manifest::{Head, Manifest, Ready},
     packed_wal::HeldWal,
+    segment::{self, SegmentCustody},
     state::{Generations, HeldManifest},
 };
 use crate::{
@@ -86,7 +87,7 @@ impl Log {
         Self::open_owned_generations(directory)
     }
     pub(crate) fn open_owned_generations(directory: Directory) -> Result<(Self, Recovery)> {
-        Self::open_generation_directory(directory, ".ready.json")
+        Self::open_generation_directory(directory, ".ready.json", None)
     }
     /// Provenance admission is read-only: pending rotation and torn tails require a separate
     /// explicit recovery decision. Never let Room replay finish/repair them incidentally.
@@ -112,22 +113,45 @@ impl Log {
         Ok((log, recovery))
     }
     pub(crate) fn open_prepared_generations(directory: Directory) -> Result<(Self, Recovery)> {
-        Self::open_generation_directory(directory, ".prepared.json")
+        Self::open_generation_directory(directory, ".prepared.json", None)
     }
+    pub(crate) fn open_segment_directory(
+        directory: Directory,
+        custody: SegmentCustody,
+    ) -> Result<(Self, Recovery)> {
+        Self::open_generation_directory(directory, ".ready.json", Some(custody))
+    }
+
     fn open_generation_directory(
         directory: Directory,
         ready_name: &'static str,
+        segment: Option<SegmentCustody>,
     ) -> Result<(Self, Recovery)> {
+        directory.absent(segment::SUCCESSOR)?;
         let head = held_file::open(&directory.path.join(".head.json"))?;
         let head_bytes = held_file::read(&head, format::MAX_CONTROL)?;
         let selected: Head = format::decode(&head_bytes)?;
         selected.validate()?;
         let history = history(&directory, selected.manifest)?;
-        let (ready, ready_bytes, ready_identity) = ready(
-            &directory,
-            history.first().ok_or(Error::Contract("physical root absent"))?.hash,
-            ready_name,
-        )?;
+        let initial = history.first().ok_or(Error::Contract("physical root absent"))?;
+        match (&segment, &initial.value.origin) {
+            (Some(custody), Some(_)) => custody.verify(&directory, &initial.value, initial.hash)?,
+            (None, None) => {}
+            _ => return Err(Error::Contract("relay segment requires the selected predecessor")),
+        }
+        if let Some(custody) = &segment {
+            let current =
+                &history.last().ok_or(Error::Contract("missing relay segment head"))?.value;
+            if current
+                .closed_files()
+                .map(|(file, _)| file.generation.as_str())
+                .chain(std::iter::once(current.active.generation.as_str()))
+                .any(|id| custody.base.contains_section(&format::wal_name(id)))
+            {
+                return Err(Error::Contract("relay segment reuses a predecessor generation"));
+            }
+        }
+        let (ready, ready_bytes, ready_identity) = ready(&directory, initial.hash, ready_name)?;
         let current = history.last().ok_or(Error::Contract("missing physical log head"))?;
         let mut identities = BTreeSet::new();
         let archive = ArchiveDirectory::open(&directory)?;
@@ -173,6 +197,7 @@ impl Log {
             generations: Some(Generations {
                 directory,
                 archive,
+                segment,
                 history,
                 closed,
                 head,

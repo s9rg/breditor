@@ -7,7 +7,7 @@ impl Generations {
         let selected = &self.current().value;
         self.closed
             .iter()
-            .zip(std::iter::once(&selected.root).chain(&selected.sealed))
+            .zip(selected.closed_files().map(|(file, _)| file))
             .find(|(wal, _)| name == format::wal_name(&wal.generation))
     }
 
@@ -21,8 +21,8 @@ impl Generations {
             manifest.stamp.guard(&manifest.file)?;
         }
         let selected = &self.current().value;
-        let metadata = std::iter::once(&selected.root).chain(&selected.sealed);
-        if self.closed.len() != selected.sealed.len() + 1 {
+        let metadata = selected.closed_files().map(|(file, _)| file);
+        if self.closed.len() != selected.closed_count() {
             return Err(Error::Contract("retained physical owner count differs"));
         }
         for (held, metadata) in self.closed.iter().zip(metadata) {

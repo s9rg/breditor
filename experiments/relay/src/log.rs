@@ -302,7 +302,8 @@ impl Log {
     fn check_append_capacity(&self, records: u64, bytes: u64) -> Result<bool> {
         if let Some(state) = &self.generations {
             if self.next.checked_add(records).is_none_or(|next| {
-                next > MAX_RECORDS * generations::MAX_PHYSICAL_GENERATIONS as u64
+                next - state.segment_first()
+                    > MAX_RECORDS * generations::MAX_PHYSICAL_GENERATIONS as u64
             }) || state
                 .closed_bytes()
                 .checked_add(self.bytes)

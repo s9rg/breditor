@@ -19,7 +19,7 @@ pub(crate) fn prepare_original_root(
         format: "breditor/relay-log-generations".into(),
         format_version: ORIGINAL_ROOT_VERSION,
         parent: None,
-        root: ClosedFile {
+        root: Some(ClosedFile {
             generation: options.root.clone(),
             first: 0,
             records,
@@ -27,7 +27,8 @@ pub(crate) fn prepare_original_root(
             terminal,
             bytes: log.len() as u64,
             sha256: format::sha(log),
-        },
+        }),
+        origin: None,
         sealed: Vec::new(),
         active: ActiveFile {
             generation: options.active.clone(),

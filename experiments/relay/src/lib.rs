@@ -67,7 +67,8 @@ pub use room::{
 pub use room::{
     MAX_SERVER_ASSET_REFERENCE_BYTES, MAX_SERVER_ASSET_REFERENCE_PAIRS,
     ServerAssetReferenceOutcome, ServerAssetReferencePending, ServerAssetReferenceSource,
-    ServerLogGenerationRetainedAssetReferences, ServerRetainedAssetReferences,
+    ServerLogGenerationRetainedAssetReferences, ServerRelaySegmentAssetReferences,
+    ServerRetainedAssetReferences,
 };
 pub use room::{
     MAX_SERVER_LOG_GENERATION_BACKUP_BYTES, RelaySegmentBaseFile, RelaySegmentBaseIdentity,
