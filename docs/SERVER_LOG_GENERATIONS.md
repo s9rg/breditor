@@ -796,3 +796,21 @@ duplicate receipts, including for a payload absent from the old source.
 
 This operation accepts explicit retained payloads from the host. It does
 not discover every client archive or resolve conflicts among client queues.
+
+[Client raster handover qualification](qualification/2026-11-14-linked-handover-client-rasters.json)
+records 519 passing relay tests and a separately run APFS interruption test.
+Both source and freshly installed SDK runs restored the whole client upload
+archive and checked that its original pending state and epoch survived. The
+new relay already had the exact bytes after a cold restart. The original
+upload became complete only after the client received the normal duplicate
+receipt. The fixture uses controlled client storage.
+
+With the matching SDK distributions built and package dependencies cached,
+run the source and installed workflows from a clean checkout.
+
+```sh
+cargo build --locked --release --manifest-path experiments/relay/Cargo.toml \
+  --features server --example relay_segment_functional
+node scripts/check-writable-relay-segment.mjs \
+  experiments/relay/target/release/examples/relay_segment_functional
+```

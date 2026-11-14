@@ -1,0 +1,98 @@
+{
+  "format": "breditor/linked-handover-client-rasters",
+  "formatVersion": 1,
+  "date": "2026-11-14",
+  "source": {
+    "commit": "434f632e4e6c82f9a884b0b676a8dd15ca1aa535",
+    "dirty": false,
+    "sha256": "d5d0e1d589023eeaf841693574c73339aa636f1d0e8b199ebe8855c0bc9aee6a",
+    "files": 8818,
+    "bytes": 74964121
+  },
+  "tree": "2b4664438ce7ac69c80697cec13d6f4122b1745c",
+  "relaySha256": "d2863c961e6fc68df2cea1d7e43e451d724747b4854d0dca5397fdbc5249a982",
+  "rustExecutableSha256": "6f943f8d7134612ad0170a29f518793c343a0c5be328cfd9750d668999fd2a13",
+  "rust": {
+    "passed": 519,
+    "failed": 0,
+    "ignored": 1,
+    "logSha256": "218526a945d4aa87718232f07be4dd55e7b8768fd50cc06ece4b8344e2b8718d"
+  },
+  "crossVolume": {
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0,
+    "logSha256": "15006cd34c07a5cdb9f2fde829cb26f12ad83f414802a104e11ba3ca3c961be2"
+  },
+  "noServer": {
+    "logSha256": "18085fe9a01c32d8a67d00dca41cadf499270a3c666d84518abdeda5e1ad18a7"
+  },
+  "clippy": {
+    "logSha256": "612220dc7b4696a59dab3246cf56cdd78ef1b68a3d7b5b71b5a32ce425cda077"
+  },
+  "sdkReportSha256": "9acb4542bb3e12f470818d56babdb79fd5b6ef40b81c63640f4afaedc40f1e75",
+  "modes": {
+    "source": {
+      "mode": "source",
+      "handoffs": 2,
+      "portableRestores": 1,
+      "restoredOfflineLanes": 6,
+      "undoRedoLanes": 2,
+      "rasterReads": 2,
+      "processExits": 4,
+      "authenticatedTakeovers": 1,
+      "oldServingRefusals": 1,
+      "coldResumes": 2,
+      "registrationRefusals": 2,
+      "providerRasters": 1,
+      "retainedPackets": 1,
+      "stagedClientRasters": 1,
+      "clientUploadReceipts": 1,
+      "retainedAbsolutePositions": true,
+      "runtimeSha256": "73076a902c1926700031fbadaa2e5e6a2d6d661d39e3424cc90a0a32986c5c7c",
+      "proof": null
+    },
+    "installed": {
+      "mode": "installed",
+      "handoffs": 2,
+      "portableRestores": 1,
+      "restoredOfflineLanes": 6,
+      "undoRedoLanes": 2,
+      "rasterReads": 2,
+      "processExits": 4,
+      "authenticatedTakeovers": 1,
+      "oldServingRefusals": 1,
+      "coldResumes": 2,
+      "registrationRefusals": 2,
+      "providerRasters": 1,
+      "retainedPackets": 1,
+      "stagedClientRasters": 1,
+      "clientUploadReceipts": 1,
+      "retainedAbsolutePositions": true,
+      "runtimeSha256": "73076a902c1926700031fbadaa2e5e6a2d6d661d39e3424cc90a0a32986c5c7c",
+      "proof": {
+        "registryArtifacts": 45,
+        "archives": [
+          {
+            "name": "@breditor/browser",
+            "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+          },
+          {
+            "name": "@breditor/experimental-rich-content",
+            "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+          },
+          {
+            "name": "@breditor/collaboration",
+            "sha256": "d2b9dfb1a73ab8af01506c8e5e222462c313697f9897349890e5f075eb5e4222"
+          }
+        ]
+      }
+    }
+  },
+  "scope": [
+    "An original source cut and staged SHA-256 client raster remain separate through verified takeover. The replacement epoch binds the target restore and staged selection.",
+    "Rust refuses duplicate selections, wrong bytes, an incomplete target, unverified approval and missing staged rasters before cold epoch advancement.",
+    "Both SDK runs restore an original on-disk client upload archive. The raster was absent from the live source and available after the exact takeover and later restart. The client remains pending until a normal authenticated idempotent upload returns a duplicate receipt.",
+    "The SDK uses controlled client storage. The selected inputs are host-provided. Full client archive enrollment and queue conflict resolution are separate requirements."
+  ]
+}
