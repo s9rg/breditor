@@ -28,8 +28,8 @@ pub use log_generations::{
     ServerLogGenerationParticipantMetadata, VerifiedGenerationRecoveryRegistrations,
 };
 pub use log_generations::{
-    InspectedNativeGenerationTail, RecoveredRelaySegmentRoom, RelaySegmentRoomBackupFiles,
-    RelaySegmentRoomBackupIdentity,
+    InspectedNativeGenerationTail, RecoveredRelaySegmentRoom, RelaySegmentClientRaster,
+    RelaySegmentRoomBackupFiles, RelaySegmentRoomBackupIdentity,
 };
 pub use log_generations::{
     MAX_SERVER_LOG_GENERATION_BACKUP_BYTES, RelaySegmentBaseFile, RelaySegmentBaseIdentity,

@@ -10,6 +10,7 @@ import {WebSocket as Socket} from 'undici';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
 import {pixel} from './fixtures/review-assets/pixels.mjs';
 import {startSegmentHandoverHost} from './fixtures/relay-segment-handover-host.mjs';
+import {captureClientRaster, resumeClientRaster} from './fixtures/relay-segment-client-raster.mjs';
 import {searchConsumerLock, verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
 import {sourceEvidence, saveEvidence} from './candidate-release/evidence.mjs';
 
@@ -44,13 +45,15 @@ function installed(directory) {
   );
   return {
     distribution: join(installedRoot, 'dist'),
+    rich: join(consumer, 'node_modules/@breditor/experimental-rich-content/index.js'),
     proof: {registryArtifacts, archives: archives.map(({name, path}) => ({name, sha256: sha(readFileSync(path))}))},
   };
 }
 
-async function run(mode, distribution, executable, parent) {
+async function run(mode, {distribution, rich}, executable, parent) {
   const runtime = join(distribution, 'runtime');
   const api = await import(pathToFileURL(join(distribution, 'index.js')).href);
+  const richApi = await import(pathToFileURL(rich).href);
   const wasm = await import(pathToFileURL(join(runtime, 'breditor_shared.js')).href);
   const wasmBytes = readFileSync(join(runtime, 'breditor_shared_bg.wasm'));
   await wasm.default({module_or_path: wasmBytes});
@@ -189,17 +192,23 @@ async function run(mode, distribution, executable, parent) {
     post('Offline comment before portable restore');
     await session.flush();
     const queuedAcrossTakeover = session.exportRecovery();
-    const captured = await host.handover(token, registered.identity, comment.identity);
+    const localRaster = await captureClientRaster(richApi, parent);
+    const localUrl = 'http://' + address + '/assets/' + encodeURIComponent(localRaster.selection.asset);
+    const absent = await fetch(localUrl, {headers});
+    assert.equal(absent.status, 404);
+    await absent.arrayBuffer();
+    const captured = await host.handover(token, registered.identity, comment.identity, localRaster.selection);
     assert.equal(captured.registrationRefusals, 2);
     assert.equal(captured.providerRasters, 1);
     assert.equal(captured.retainedPackets, 1);
+    assert.equal(captured.clientRasters, 1);
     assert.deepEqual(session.exportRecovery(), queuedAcrossTakeover);
     const old = await fetch(rasterUrl, {headers});
     assert.equal(old.status, 403);
     await old.arrayBuffer();
     await host.crash();
     host = undefined;
-    for (const directory of ['source-native', 'successor', 'final', 'rasters']) {
+    for (const directory of ['source-native', 'successor', 'final', 'rasters', 'client-raster.png']) {
       renameSync(join(parent, directory), join(parent, 'offline-' + directory));
     }
     await session.close();
@@ -219,6 +228,7 @@ async function run(mode, distribution, executable, parent) {
     await stopClients();
     await host.crash();
     host = await startSegmentHandoverHost(executable, [parent, 'restored', address], token);
+    const clientUploadReceipts = await resumeClientRaster(richApi, api, address, origin, token, localRaster);
     await attach();
     assert.doesNotMatch(session.core.documentJson(), /Offline before portable restore/);
     assert.match(session.core.documentJson(), /Offline over second handoff/);
@@ -239,7 +249,7 @@ async function run(mode, distribution, executable, parent) {
     return {mode, handoffs: 2, portableRestores: 1, restoredOfflineLanes: 6, undoRedoLanes: 2, rasterReads: 2,
       processExits: 4, authenticatedTakeovers: 1, oldServingRefusals: 1, coldResumes: 2,
       registrationRefusals: captured.registrationRefusals, providerRasters: captured.providerRasters,
-      retainedPackets: captured.retainedPackets,
+      retainedPackets: captured.retainedPackets, stagedClientRasters: captured.clientRasters, clientUploadReceipts,
       retainedAbsolutePositions: true, runtimeSha256: sha(wasmBytes)};
   } finally {
     await stopClients();
@@ -260,12 +270,13 @@ try {
   const reports = {};
   for (const mode of ['source', 'installed']) {
     const distribution = mode === 'source'
-      ? {distribution: join(root, 'packages/breditor-collaboration/dist'), proof: null}
+      ? {distribution: join(root, 'packages/breditor-collaboration/dist'),
+        rich: join(root, 'packages/breditor-experimental-rich-content/index.js'), proof: null}
       : installed(sandbox);
     const path = join(sandbox, mode);
     mkdirSync(path, {mode: 0o700});
     reports[mode] = {
-      ...await run(mode, distribution.distribution, executable, path), proof: distribution.proof,
+      ...await run(mode, distribution, executable, path), proof: distribution.proof,
     };
   }
   assert.equal(reports.source.runtimeSha256, reports.installed.runtimeSha256);

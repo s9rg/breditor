@@ -23,6 +23,7 @@ use std::{
 type TestResult<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 const POLICY: RoomRecoveryPolicy = RoomRecoveryPolicy::HostReacquired;
 
+mod client_rasters;
 mod verified_inputs;
 
 struct Source {

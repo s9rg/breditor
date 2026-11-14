@@ -1,5 +1,7 @@
 //! Bind a complete native segment chain to its exact raster archive and a new local owner.
 mod capture;
+mod client_rasters;
+pub use client_rasters::RelaySegmentClientRaster;
 #[cfg(feature = "server")]
 mod handover_target;
 mod restore;
@@ -51,4 +53,8 @@ pub struct RecoveredRelaySegmentRoom {
     backup: RelaySegmentRoomBackupIdentity,
     #[cfg(feature = "server")]
     active: String,
+    #[cfg(feature = "server")]
+    client_rasters: Vec<String>,
+    #[cfg(feature = "server")]
+    restored_assets: crate::assets::AssetBackupIdentity,
 }

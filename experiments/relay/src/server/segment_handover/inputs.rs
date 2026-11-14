@@ -37,6 +37,9 @@ pub struct RelaySegmentHandoverInputReport {
     pub resolutions: Vec<ServerAssetResolution>,
     /// Metadata of the actual native raster bytes read during verification.
     pub assets: Vec<AssetInfo>,
+    /// Selected client payloads already synced into the new store. These are not upload receipts.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub client_rasters: Vec<String>,
 }
 
 /// Coverage of protected registrations and accepted server asset inputs.
@@ -129,6 +132,7 @@ impl RecoveredRelaySegmentRoom {
         self.check_fresh_handover_target()?;
         let target = self.handover_binding()?;
         let backup = self.handover_backup().clone();
+        let client_rasters = self.handover_client_rasters().to_vec();
         let (room, assets) = self.components_mut();
         let participants = room
             .capture_participant_inventory_at(principal, backup.native.predecessor.source.clone())?
@@ -149,6 +153,7 @@ impl RecoveredRelaySegmentRoom {
             missing_assets: Vec::new(),
             resolutions: Vec::new(),
             assets: Vec::new(),
+            client_rasters,
         });
         let packet_pending = match &report.references.outcome {
             ServerAssetReferenceOutcome::Ready { references } => {

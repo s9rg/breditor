@@ -82,6 +82,7 @@ pub(in crate::server) fn commit_segment_handover(
 
 pub(in crate::server) fn resume_segment_handover(
     authority: &RoomDeploymentAuthority,
+    target: &RecoveredRelaySegmentRoom,
     approval: &RelaySegmentHandoverApproval,
     expected: &RoomDeploymentSelection,
 ) -> Result<RoomDeploymentLease> {
@@ -114,6 +115,8 @@ pub(in crate::server) fn resume_segment_handover(
         &current,
         &first,
     )?;
+    approval.check_target(target)?;
+    target.check_handover_client_rasters()?;
     let lease = authority.claim_handover_held(
         &mut epoch,
         expected,

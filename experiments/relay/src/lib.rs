@@ -53,8 +53,8 @@ pub use room::{
     ServerLogGenerationParticipantMetadata, VerifiedGenerationRecoveryRegistrations,
 };
 pub use room::{
-    InspectedNativeGenerationTail, RecoveredRelaySegmentRoom, RelaySegmentRoomBackupFiles,
-    RelaySegmentRoomBackupIdentity,
+    InspectedNativeGenerationTail, RecoveredRelaySegmentRoom, RelaySegmentClientRaster,
+    RelaySegmentRoomBackupFiles, RelaySegmentRoomBackupIdentity,
 };
 pub use room::{
     MAX_ROOM_BACKUP_BYTES, RoomBackup, RoomBackupIdentity, RoomBackupInfo, RoomRecoveryPolicy,

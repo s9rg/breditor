@@ -1,7 +1,7 @@
 //! Explicit authenticated reference serving under a genuine host-selected deployment epoch.
 use super::{GenerationDirectory, RasterCustody, RecoveredRelaySegmentRoom};
 use crate::{
-    Result, Room,
+    Error, Result, Room,
     assets::AssetStore,
     server::{Authentication, RoomDeploymentLease, router_with_recovered_segment},
 };
@@ -31,6 +31,9 @@ impl RecoveredRelaySegmentRoom {
         authentication: Authentication,
         lease: RoomDeploymentLease,
     ) -> Result<axum::Router> {
+        if !self.handover_client_rasters().is_empty() {
+            return Err(Error::Contract("client raster restore requires verified handover"));
+        }
         let (router, _) = router_with_recovered_segment(self, authentication, lease)?;
         Ok(router)
     }

@@ -33,6 +33,15 @@ impl RelaySegmentHandoverApproval {
         backup: RelaySegmentRoomBackupIdentity,
         previous: RoomDeploymentSelection,
     ) -> Result<Self> {
+        Self::select_with_inputs(target, backup, previous, None)
+    }
+
+    fn select_with_inputs(
+        target: &RecoveredRelaySegmentRoom,
+        backup: RelaySegmentRoomBackupIdentity,
+        previous: RoomDeploymentSelection,
+        verified_inputs_sha256: Option<[u8; 32]>,
+    ) -> Result<Self> {
         let approval = Self {
             format: "breditor/relay-segment-handover".into(),
             format_version: 1,
@@ -40,7 +49,7 @@ impl RelaySegmentHandoverApproval {
             backup,
             target: target.handover_binding()?,
             previous,
-            verified_inputs_sha256: None,
+            verified_inputs_sha256,
         };
         approval.check_target(target)?;
         target.check_fresh_handover_target()?;
@@ -58,10 +67,12 @@ impl RelaySegmentHandoverApproval {
         previous: RoomDeploymentSelection,
     ) -> Result<Self> {
         inputs.check_target(target)?;
-        let mut approval = Self::select(target, inputs.report().backup.clone(), previous)?;
-        approval.verified_inputs_sha256 = Some(inputs.digest());
-        approval.planned_selection()?;
-        Ok(approval)
+        Self::select_with_inputs(
+            target,
+            inputs.report().backup.clone(),
+            previous,
+            Some(inputs.digest()),
+        )
     }
 
     pub(in crate::server) fn check_inputs(
@@ -78,6 +89,9 @@ impl RelaySegmentHandoverApproval {
 
     pub(in crate::server) fn check_target(&self, target: &RecoveredRelaySegmentRoom) -> Result<()> {
         self.planned_selection()?;
+        if self.verified_inputs_sha256.is_none() && !target.handover_client_rasters().is_empty() {
+            return Err(Error::Contract("client raster restore requires verified handover"));
+        }
         if target.handover_backup() != &self.backup
             || target.handover_binding()? != self.target
             || target.components().0.deployment_binding()? != self.previous.identity.binding

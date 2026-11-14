@@ -774,3 +774,25 @@ and comment work through takeover. They resumed original credentials, synced
 the offline edits, exercised Undo/Redo after a later restart, and read the
 exact original raster and version packet. The fixture uses controlled client
 storage.
+
+### Preserve client-only rasters through takeover
+
+The host can select exact immutable raster payloads from retained client
+archives and pass their held files and independently selected metadata to
+`restore_with_client_rasters`. Native admission rehashes and decodes one
+payload at a time. The private target starts with the whole original server
+raster archive and the selected additions. Duplicate selections, changed
+inputs, occupied paths and unions exceeding the existing raster limits
+refuse. Successful staging records a completion marker that binds the
+selected IDs and exact initial raster store to this target.
+
+Use verified handover for a target with client rasters. The approval commits
+to the target and staged selection while the source still has to match its
+original accepted cut. Cold reopen requires the original raster archive
+and all committed additions, and keeps later complete work. The client's
+original upload status and epoch stay in its archived queue. Restoring
+that queue and retrying against the replacement relay uses normal durable
+duplicate receipts, including for a payload absent from the old source.
+
+This operation accepts explicit retained payloads from the host. It does
+not discover every client archive or resolve conflicts among client queues.

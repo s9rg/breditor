@@ -51,7 +51,7 @@ pub struct AssetInfo {
     pub height: u32,
 }
 impl AssetInfo {
-    pub(super) fn validate(&self) -> Result<()> {
+    pub(crate) fn validate(&self) -> Result<()> {
         key(&self.asset)?;
         if self.bytes == 0
             || self.bytes > super::MAX_ASSET_BYTES

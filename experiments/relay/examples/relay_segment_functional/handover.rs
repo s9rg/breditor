@@ -2,7 +2,8 @@
 use super::{Result, configured_auth, deployment, read, restored_backup, storage};
 use breditor_collab_relay::{
     RecoveryDocumentCredential, RecoveryRegistrationCredentials, RecoveryReviewCredential,
-    RoomRecoveryPolicy,
+    RelaySegmentClientRaster, RoomRecoveryPolicy,
+    assets::AssetInfo,
     server::{
         Authentication, ContentAddressedServerAssets, RelaySegmentHandoverApproval,
         RelaySegmentHandoverInputCoverage, ServerBackupHandle, ServerRecoveryAssetProvider,
@@ -29,6 +30,7 @@ enum Command {
         document_credential: String,
         actor: String,
         review_credential: String,
+        client_raster: AssetInfo,
     },
     Resume {
         token: String,
@@ -50,12 +52,21 @@ fn prepare_and_commit(
     handle: &ServerBackupHandle,
     token: &str,
     credentials: &RecoveryRegistrationCredentials,
+    client_raster: AssetInfo,
 ) -> Result<Value> {
     let (backup, previous) =
         handle.capture_relay_segment("owner", token, &parent.join("capture"))?;
     storage::write_new(&parent.join("restore.json"), &serde_json::to_vec(&backup)?)?;
-    let mut target =
-        restored_backup(parent)?.restore(&parent.join("restored"), "restored-one", POLICY)?;
+    let raster = RelaySegmentClientRaster::open(
+        File::open(parent.join("client-raster.png"))?,
+        client_raster,
+    )?;
+    let mut target = restored_backup(parent)?.restore_with_client_rasters(
+        &parent.join("restored"),
+        "restored-one",
+        POLICY,
+        &[raster],
+    )?;
     let authentication = configured_auth(parent)?;
     let provider: Arc<dyn ServerRecoveryAssetProvider> = Arc::new(ContentAddressedServerAssets);
     let pending = target.verify_handover_inputs(
@@ -93,6 +104,7 @@ fn prepare_and_commit(
         "registrationRefusals": pending.missing_registrations.len(),
         "providerRasters": inputs.report().assets.len(),
         "retainedPackets": inputs.report().references.sources.len(),
+        "clientRasters": inputs.report().client_rasters.len(),
     }))
 }
 
@@ -102,8 +114,14 @@ pub(super) fn serve_control(
 ) -> tokio::task::JoinHandle<Result> {
     let parent = parent.to_owned();
     tokio::task::spawn_blocking(move || {
-        let Command::Handover { token, writer, document_credential, actor, review_credential } =
-            serde_json::from_slice(&input()?)?
+        let Command::Handover {
+            token,
+            writer,
+            document_credential,
+            actor,
+            review_credential,
+            client_raster,
+        } = serde_json::from_slice(&input()?)?
         else {
             return Err("expected private handover command".into());
         };
@@ -119,7 +137,7 @@ pub(super) fn serve_control(
                 credential: review_credential,
             }],
         };
-        let response = prepare_and_commit(&parent, &handle, &token, &credentials)?;
+        let response = prepare_and_commit(&parent, &handle, &token, &credentials, client_raster)?;
         {
             let mut stdout = std::io::stdout().lock();
             writeln!(stdout, "{response}")?;

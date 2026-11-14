@@ -1,10 +1,11 @@
 //! Absent-only whole-room restore, followed by explicit reopen of exact committed owners.
 use super::{
-    RecoveredRelaySegmentRoom, RelaySegmentRoomBackupFiles, RelaySegmentRoomBackupIdentity,
+    RecoveredRelaySegmentRoom, RelaySegmentClientRaster, RelaySegmentRoomBackupFiles,
+    RelaySegmentRoomBackupIdentity, client_rasters,
 };
 use crate::{
     Error, Result, Room, RoomRecoveryPolicy,
-    assets::AssetStore,
+    assets::{AssetBackupIdentity, AssetStore},
     log::{
         Log,
         generations::{GenerationDirectory, GenerationDirectoryWitness},
@@ -29,6 +30,15 @@ struct Completion {
     native: GenerationDirectoryWitness,
     raster: RasterWitness,
     active: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    added: Option<ClientRasters>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct ClientRasters {
+    selected: Vec<String>,
+    restored_assets: AssetBackupIdentity,
 }
 
 impl RelaySegmentRoomBackupFiles {
@@ -45,9 +55,27 @@ impl RelaySegmentRoomBackupFiles {
         active_generation: &str,
         policy: RoomRecoveryPolicy,
     ) -> Result<RecoveredRelaySegmentRoom> {
+        self.restore_with_client_rasters(path, active_generation, policy, &[])
+    }
+
+    /// Restore the original native and raster history plus selected retained client payloads.
+    /// Bytes are admitted and synced in the unpublished target. A client queue's status and
+    /// epoch remain unchanged until ordinary authenticated delivery returns a receipt.
+    ///
+    /// # Errors
+    /// Refuses changed contents, duplicate IDs, excessive inputs and occupied destinations.
+    /// Preserve an incomplete attempt and retry at a new absent path.
+    pub fn restore_with_client_rasters(
+        &self,
+        path: &Path,
+        active_generation: &str,
+        policy: RoomRecoveryPolicy,
+        rasters: &[RelaySegmentClientRaster],
+    ) -> Result<RecoveredRelaySegmentRoom> {
         let RoomRecoveryPolicy::HostReacquired = policy;
         self.check()?;
         Log::validate_segment_restoration(&self.native, active_generation)?;
+        client_rasters::check_selected(rasters, &self.identity.assets, &self.entries)?;
         let state = self.native.checkpoint_state()?;
         let directory = GenerationDirectory::create(path)?;
         let raster_directory = RasterDirectory::create(&directory.path.join("rasters"))?;
@@ -76,10 +104,18 @@ impl RelaySegmentRoomBackupFiles {
         }
         raster_directory.sync()?;
         directory.sync()?;
-        let (assets, raster) = raster_directory.into_store(&self.identity.assets.binding)?;
+        let (mut assets, raster) = raster_directory.into_store(&self.identity.assets.binding)?;
         if assets.prepare_backup_stream()?.identity != self.identity.assets {
             return Err(Error::Contract("restored raster archive differs"));
         }
+        let added = if rasters.is_empty() {
+            None
+        } else {
+            let selected = client_rasters::install(&mut assets, rasters)?;
+            let stream = assets.prepare_backup_stream()?;
+            stream.check_retains(&self.identity.assets, &self.entries)?;
+            Some(ClientRasters { selected, restored_assets: stream.identity })
+        };
         let (log, recovery) = Log::create_restored_segment(
             &directory.path.join("native"),
             self.native.clone(),
@@ -90,25 +126,17 @@ impl RelaySegmentRoomBackupFiles {
         self.check()?;
         raster.guard(&assets)?;
         let completed = Completion {
-            format_version: 1,
+            format_version: if added.is_some() { 2 } else { 1 },
             backup: self.identity.clone(),
             root: directory.witness()?,
             native,
             raster: raster_witness,
             active: active_generation.to_owned(),
+            added,
         };
         files::insert(&directory, COMPLETE, &files::encode(&completed)?)?;
         directory.guard()?;
-        Ok(RecoveredRelaySegmentRoom {
-            room,
-            assets,
-            raster,
-            directory,
-            #[cfg(feature = "server")]
-            backup: completed.backup,
-            #[cfg(feature = "server")]
-            active: completed.active,
-        })
+        Ok(recovered(room, assets, raster, directory, completed))
     }
 
     /// Reopen the exact completed restore and admit its later complete native and raster work.
@@ -129,7 +157,9 @@ impl RelaySegmentRoomBackupFiles {
             return Err(Error::Contract("relay segment room completion type"));
         }
         let completed: Completion = files::read(&path)?;
-        if completed.format_version != 1 || completed.backup != self.identity {
+        if completed.backup != self.identity
+            || !matches!((completed.format_version, &completed.added), (1, None) | (2, Some(_)))
+        {
             return Err(Error::Contract("relay segment room completion differs"));
         }
         directory.guard_witness(&completed.root)?;
@@ -137,6 +167,14 @@ impl RelaySegmentRoomBackupFiles {
             RasterDirectory::open(&directory.path.join("rasters"), &completed.raster)?;
         let (assets, raster) = raster_directory.into_store(&self.identity.assets.binding)?;
         assets.prepare_backup_stream()?.check_retains(&self.identity.assets, &self.entries)?;
+        if let Some(added) = &completed.added {
+            if added.selected.is_empty()
+                || added.restored_assets.binding != self.identity.assets.binding
+            {
+                return Err(Error::Contract("restored client raster selection differs"));
+            }
+            client_rasters::check_retained(&assets, &added.selected)?;
+        }
         let state = self.native.checkpoint_state()?;
         let (log, recovery) = Log::open_restored_segment_at(
             &directory.path.join("native"),
@@ -148,16 +186,37 @@ impl RelaySegmentRoomBackupFiles {
         self.check()?;
         raster.guard(&assets)?;
         directory.guard()?;
-        Ok(RecoveredRelaySegmentRoom {
-            room,
-            assets,
-            raster,
-            directory,
-            #[cfg(feature = "server")]
-            backup: completed.backup,
-            #[cfg(feature = "server")]
-            active: completed.active,
-        })
+        Ok(recovered(room, assets, raster, directory, completed))
+    }
+}
+
+fn recovered(
+    room: Room,
+    assets: AssetStore,
+    raster: super::RasterCustody,
+    directory: GenerationDirectory,
+    completed: Completion,
+) -> RecoveredRelaySegmentRoom {
+    #[cfg(feature = "server")]
+    let (client_rasters, restored_assets) = completed.added.map_or_else(
+        || (Vec::new(), completed.backup.assets.clone()),
+        |added| (added.selected, added.restored_assets),
+    );
+    #[cfg(not(feature = "server"))]
+    let _ = completed;
+    RecoveredRelaySegmentRoom {
+        room,
+        assets,
+        raster,
+        directory,
+        #[cfg(feature = "server")]
+        backup: completed.backup,
+        #[cfg(feature = "server")]
+        active: completed.active,
+        #[cfg(feature = "server")]
+        client_rasters,
+        #[cfg(feature = "server")]
+        restored_assets,
     }
 }
 
