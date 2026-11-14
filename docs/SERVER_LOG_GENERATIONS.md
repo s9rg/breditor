@@ -425,3 +425,11 @@ Keep the separately mounted archive online for continued service and retain
 it in host backup and recovery procedures. Portable room backups still contain
 the same raw WAL sections and restore without the mounted volume. Physical
 offload leaves the existing logical record, generation and backup limits intact.
+
+Checkpoint `7a48d145` passes 80 existing Rust recovery and handover tests and
+an explicit APFS test that interrupts the move at three points. The source and
+independent package workflows each archive a raw WAL and a packed WAL on
+volumes separate from their live rooms. Both pass authenticated handover and a
+real relay restart, including seven returning clients, two offline writers and
+retry of six lost replies. The tests use temporary disk images and controlled
+Node storage.
