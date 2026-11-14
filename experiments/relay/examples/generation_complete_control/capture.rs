@@ -132,7 +132,17 @@ async fn capture_source_cuts(
     if migrated {
         Ok((migrated_origin::capture(directory, room, assets)?, None))
     } else {
-        let older = ServerLogGenerationRoomBackup::capture(&mut room, &mut assets, "owner")?;
+        let mut older_bytes = Vec::new();
+        let older_info = ServerLogGenerationRoomBackup::capture_to(
+            &mut room,
+            &assets,
+            "owner",
+            &mut older_bytes,
+        )?;
+        let older = ServerLogGenerationRoomBackup::from_owned_bytes(older_bytes)?;
+        if older.info()? != older_info {
+            return Err("streamed predecessor backup identity differs".into());
+        }
         room.grant("owner", "control-local-reader", Some(Role::Reader))?;
         room.rotate_log_generation("owner", "control-local-origin")?;
         let (local, predecessor) = if activation {
