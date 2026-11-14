@@ -1,8 +1,8 @@
 //! Check protected streams and provider-backed server assets at the completed restore cut.
 use crate::{
     Error, MissingRecoveryRegistration, RecoveredRelaySegmentRoom, RecoveryRegistrationCredentials,
-    RelaySegmentClientUploadPin, RelaySegmentRoomBackupIdentity, Result,
-    RoomParticipantInventoryMetadata, ServerAssetReferenceOutcome,
+    RelaySegmentClientJournalCoverage, RelaySegmentClientUploadPin, RelaySegmentRoomBackupIdentity,
+    Result, RoomParticipantInventoryMetadata, ServerAssetReferenceOutcome,
     ServerRelaySegmentAssetReferences,
     archive_digest::ArchiveDigest,
     assets::AssetInfo,
@@ -47,6 +47,9 @@ pub struct RelaySegmentHandoverInputReport {
     /// Every original registered writer without an enrolled upload archive.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub missing_upload_writers: Vec<String>,
+    /// Native journal enrollment and common-prefix evidence, for a selected journal cohort.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub client_journal_coverage: Option<RelaySegmentClientJournalCoverage>,
 }
 
 /// Coverage of protected registrations and accepted server asset inputs.
@@ -58,7 +61,7 @@ pub enum RelaySegmentHandoverInputCoverage {
 }
 
 /// Same-target verification of the original protected streams and current server asset provider.
-/// Keep the original provider guard alive through commit. Client journals remain separately owned.
+/// Keep the original provider guard alive through commit. This does not deliver offline work.
 pub struct VerifiedRelaySegmentHandoverInputs {
     target: [u8; 32],
     principal: String,
@@ -141,7 +144,7 @@ impl RecoveredRelaySegmentRoom {
         let backup = self.handover_backup().clone();
         let client_rasters = self.handover_client_rasters().to_vec();
         let client_upload_archives = self.client_upload_pins()?;
-        let (room, assets) = self.components_mut();
+        let (room, _) = self.components();
         let participants = room
             .capture_participant_inventory_at(principal, backup.native.predecessor.source.clone())?
             .metadata();
@@ -151,13 +154,15 @@ impl RecoveredRelaySegmentRoom {
             Some(pins) => super::upload_coverage::missing(pins, &participants)?,
             None => Vec::new(),
         };
+        let client_journal_coverage = self.handover_client_journals(&participants)?;
+        let (room, assets) = self.components_mut();
         let references = room.relay_segment_retained_asset_references(principal)?;
         if references.room != backup.native.predecessor.source || references.base != backup.native {
             return Err(Error::Contract("relay segment handover input cut differs"));
         }
         let mut report = Box::new(RelaySegmentHandoverInputReport {
             format: "breditor/relay-segment-handover-inputs",
-            format_version: 1,
+            format_version: if client_journal_coverage.is_some() { 2 } else { 1 },
             backup,
             participants,
             references,
@@ -168,6 +173,7 @@ impl RecoveredRelaySegmentRoom {
             client_rasters,
             client_upload_archives,
             missing_upload_writers,
+            client_journal_coverage,
         });
         let packet_pending = match &report.references.outcome {
             ServerAssetReferenceOutcome::Ready { references } => {
@@ -190,6 +196,10 @@ impl RecoveredRelaySegmentRoom {
             || !report.missing_registrations.is_empty()
             || !report.missing_assets.is_empty()
             || !report.missing_upload_writers.is_empty()
+            || report.client_journal_coverage.as_ref().is_some_and(|coverage| {
+                !coverage.missing_document_writers.is_empty()
+                    || !coverage.missing_review_actors.is_empty()
+            })
         {
             return Ok(RelaySegmentHandoverInputCoverage::Pending(report));
         }

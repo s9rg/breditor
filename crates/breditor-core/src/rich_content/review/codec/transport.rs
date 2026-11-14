@@ -75,6 +75,12 @@ pub enum ReviewBatchPreparation {
     Prepared(Box<PreparedReviewBatch>),
 }
 impl ReviewSession {
+    /// Enumerate actors with retained events, in actor order. This grants no live rights.
+    #[must_use]
+    pub fn retained_actor_ids(&self) -> Vec<ReviewActorId> {
+        event::clock(&self.events).into_keys().collect()
+    }
+
     /// Read the local writer's exact prefix without parsing recovery data in an adapter.
     /// # Errors
     /// An impossible retained stream rejects without changing metadata or policy.

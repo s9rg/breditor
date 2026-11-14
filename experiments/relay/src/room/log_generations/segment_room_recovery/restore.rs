@@ -1,7 +1,9 @@
 //! Absent-only whole-room restore, followed by explicit reopen of exact committed owners.
 use super::{
-    RecoveredRelaySegmentRoom, RelaySegmentClientRaster, RelaySegmentClientUploadArchive,
-    RelaySegmentClientUploadPin, RelaySegmentRoomBackupFiles, RelaySegmentRoomBackupIdentity,
+    RecoveredRelaySegmentRoom, RelaySegmentClientJournal, RelaySegmentClientJournalPin,
+    RelaySegmentClientRaster, RelaySegmentClientUploadArchive, RelaySegmentClientUploadPin,
+    RelaySegmentRoomBackupFiles, RelaySegmentRoomBackupIdentity,
+    client_journals::{JournalSelection, RetainedJournals},
     client_rasters::{self, SelectedRaster},
     client_uploads::{self, RetainedUploadSelection, RetainedUploads},
 };
@@ -36,6 +38,8 @@ struct Completion {
     added: Option<ClientRasters>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     uploads: Option<RetainedUploadSelection>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    journals: Option<JournalSelection>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -78,7 +82,7 @@ impl RelaySegmentRoomBackupFiles {
     ) -> Result<RecoveredRelaySegmentRoom> {
         let rasters =
             rasters.iter().map(RelaySegmentClientRaster::selected).collect::<Result<Vec<_>>>()?;
-        self.restore_selected(path, active_generation, policy, &rasters, None)
+        self.restore_selected(path, active_generation, policy, &rasters, None, None)
     }
 
     /// Restore and retain the complete original upload archive of each selected writer.
@@ -97,7 +101,31 @@ impl RelaySegmentRoomBackupFiles {
         archives: &[RelaySegmentClientUploadArchive],
     ) -> Result<RecoveredRelaySegmentRoom> {
         let rasters = client_uploads::select(archives)?;
-        self.restore_selected(path, active_generation, policy, &rasters, Some(archives))
+        self.restore_selected(path, active_generation, policy, &rasters, Some(archives), None)
+    }
+
+    /// Restore uploaded assets and every selected original client-native journal to a new
+    /// unpublished room. Authenticate and verify the entire journal cohort before takeover.
+    ///
+    /// # Errors
+    /// Refuses occupied destinations, journal pins or bytes that differ, and invalid archives.
+    pub fn restore_with_client_journals(
+        &self,
+        path: &Path,
+        active_generation: &str,
+        policy: RoomRecoveryPolicy,
+        archives: &[RelaySegmentClientUploadArchive],
+        journals: &[RelaySegmentClientJournal],
+    ) -> Result<RecoveredRelaySegmentRoom> {
+        let rasters = client_uploads::select(archives)?;
+        self.restore_selected(
+            path,
+            active_generation,
+            policy,
+            &rasters,
+            Some(archives),
+            Some(journals),
+        )
     }
 
     fn restore_selected(
@@ -107,6 +135,7 @@ impl RelaySegmentRoomBackupFiles {
         policy: RoomRecoveryPolicy,
         rasters: &[SelectedRaster<'_>],
         archives: Option<&[RelaySegmentClientUploadArchive]>,
+        originals: Option<&[RelaySegmentClientJournal]>,
     ) -> Result<RecoveredRelaySegmentRoom> {
         let RoomRecoveryPolicy::HostReacquired = policy;
         self.check()?;
@@ -154,6 +183,8 @@ impl RelaySegmentRoomBackupFiles {
         };
         let uploads =
             archives.map(|archives| RetainedUploads::create(&directory, archives)).transpose()?;
+        let journals =
+            originals.map(|sources| RetainedJournals::create(&directory, sources)).transpose()?;
         let (log, recovery) = Log::create_restored_segment(
             &directory.path.join("native"),
             self.native.clone(),
@@ -164,7 +195,9 @@ impl RelaySegmentRoomBackupFiles {
         self.check()?;
         raster.guard(&assets)?;
         let completed = Completion {
-            format_version: if uploads.is_some() {
+            format_version: if journals.is_some() {
+                4
+            } else if uploads.is_some() {
                 3
             } else if added.is_some() {
                 2
@@ -178,10 +211,11 @@ impl RelaySegmentRoomBackupFiles {
             active: active_generation.to_owned(),
             added,
             uploads: uploads.as_ref().map(|retained| retained.selection().clone()),
+            journals: journals.as_ref().map(|retained| retained.selection().clone()),
         };
         files::insert(&directory, COMPLETE, &files::encode(&completed)?)?;
         directory.guard()?;
-        Ok(recovered(room, assets, raster, directory, completed, uploads))
+        Ok(recovered(room, assets, raster, directory, completed, uploads, journals))
     }
 
     /// Reopen the exact completed restore and admit its later complete native and raster work.
@@ -204,8 +238,16 @@ impl RelaySegmentRoomBackupFiles {
         let completed: Completion = files::read(&path)?;
         if completed.backup != self.identity
             || !matches!(
-                (completed.format_version, &completed.added, &completed.uploads),
-                (1, None, None) | (2, Some(_), None) | (3, _, Some(_))
+                (
+                    completed.format_version,
+                    &completed.added,
+                    &completed.uploads,
+                    &completed.journals
+                ),
+                (1, None, None, None)
+                    | (2, Some(_), None, None)
+                    | (3, _, Some(_), None)
+                    | (4, _, Some(_), Some(_))
             )
         {
             return Err(Error::Contract("relay segment room completion differs"));
@@ -228,6 +270,11 @@ impl RelaySegmentRoomBackupFiles {
             .as_ref()
             .map(|selected| RetainedUploads::reopen(&directory, selected))
             .transpose()?;
+        let journals = completed
+            .journals
+            .as_ref()
+            .map(|selected| RetainedJournals::reopen(&directory, selected))
+            .transpose()?;
         let state = self.native.checkpoint_state()?;
         let (log, recovery) = Log::open_restored_segment_at(
             &directory.path.join("native"),
@@ -239,7 +286,7 @@ impl RelaySegmentRoomBackupFiles {
         self.check()?;
         raster.guard(&assets)?;
         directory.guard()?;
-        Ok(recovered(room, assets, raster, directory, completed, uploads))
+        Ok(recovered(room, assets, raster, directory, completed, uploads, journals))
     }
 }
 
@@ -250,6 +297,7 @@ fn recovered(
     directory: GenerationDirectory,
     completed: Completion,
     uploads: Option<RetainedUploads>,
+    journals: Option<RetainedJournals>,
 ) -> RecoveredRelaySegmentRoom {
     #[cfg(feature = "server")]
     let (client_rasters, restored_assets) = completed.added.map_or_else(
@@ -272,6 +320,7 @@ fn recovered(
         #[cfg(feature = "server")]
         restored_assets,
         uploads,
+        journals,
     }
 }
 
@@ -298,6 +347,27 @@ impl RecoveredRelaySegmentRoom {
     pub fn open_client_upload_archive(&self, writer: &str) -> Result<Option<fs::File>> {
         self.uploads.as_ref().map_or(Ok(None), |uploads| uploads.read(writer))
     }
+    /// Read one exact retained native journal selected by the trusted recovery host.
+    /// This file exports history but grants no registration or authoring rights.
+    ///
+    /// # Errors
+    /// Refuses changed custody or bytes. A lane outside the cohort is absent.
+    pub fn read_client_journal(
+        &self,
+        pin: &RelaySegmentClientJournalPin,
+    ) -> Result<Option<String>> {
+        self.check_custody()?;
+        let Some(journals) = &self.journals else {
+            return Ok(None);
+        };
+        journals
+            .pins()
+            .iter()
+            .position(|retained| retained == pin)
+            .map(|index| journals.read(index))
+            .transpose()
+    }
+
     /// Borrow the exact native and raster components under local recovery ownership.
     #[must_use]
     pub fn components(&self) -> (&Room, &AssetStore) {
@@ -323,6 +393,9 @@ impl RecoveredRelaySegmentRoom {
         self.directory.guard()?;
         self.room.log.ready()?;
         self.raster.guard(&self.assets)?;
+        if let Some(journals) = &self.journals {
+            journals.check()?;
+        }
         if let Some(uploads) = &self.uploads {
             uploads.check()?;
         }

@@ -94,6 +94,12 @@ pub use room::{
 };
 pub use room::{RelayCheckpoint, RelayCheckpointIdentity};
 pub use room::{
+    RelaySegmentClientJournal, RelaySegmentClientJournalPin, RelaySegmentDocumentJournalFamily,
+    RelaySegmentJournalOwner, RelaySegmentReviewJournalFamily,
+};
+#[cfg(feature = "server")]
+pub use room::{RelaySegmentClientJournalCoverage, RelaySegmentClientJournalHead};
+pub use room::{
     ServerNativeHistoryBoundary, ServerNativeHistoryDescriptor, ServerNativeHistoryFamily,
     ServerNativeHistoryLane, ServerNativeHistoryReceipt,
 };

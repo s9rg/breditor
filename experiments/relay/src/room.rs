@@ -46,6 +46,12 @@ pub use log_generations::{
 pub use log_generations::{
     RecoveredLogGenerationRoom, ServerLogGenerationRecovery, ServerLogGenerationRecoveryProgress,
 };
+pub use log_generations::{
+    RelaySegmentClientJournal, RelaySegmentClientJournalPin, RelaySegmentDocumentJournalFamily,
+    RelaySegmentJournalOwner, RelaySegmentReviewJournalFamily,
+};
+#[cfg(feature = "server")]
+pub use log_generations::{RelaySegmentClientJournalCoverage, RelaySegmentClientJournalHead};
 #[cfg(all(feature = "server", test, unix))]
 pub(crate) use log_generations::{SegmentHandoverTestFiles, segment_handover_test_source};
 pub use materialized_checkpoint::{RelayCheckpoint, RelayCheckpointIdentity};

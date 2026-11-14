@@ -6,6 +6,20 @@ use crate::{
 };
 
 impl RichReplica {
+    /// Enumerate applied authors with nonempty native prefixes, in numeric writer order.
+    /// This includes service authors. It is neither a registration set nor a lease.
+    #[must_use]
+    pub fn applied_writer_ids(&self) -> Vec<String> {
+        let version = self.doc.state_vv();
+        let mut writers = version
+            .iter()
+            .filter(|(_, through)| **through > 0)
+            .map(|(writer, _)| *writer)
+            .collect::<Vec<_>>();
+        writers.sort_unstable();
+        writers.into_iter().map(|writer| writer.to_string()).collect()
+    }
+
     /// Read any applied author's exact original-transport prefix at a canonical
     /// exclusive counter. Unlike local group export, this also reads peers and
     /// server authors after their later operations have arrived.

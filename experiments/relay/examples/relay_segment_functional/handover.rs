@@ -2,7 +2,8 @@
 use super::{Result, configured_auth, deployment, read, restored_backup, storage};
 use breditor_collab_relay::{
     RecoveryDocumentCredential, RecoveryRegistrationCredentials, RecoveryReviewCredential,
-    RelaySegmentClientUploadArchive, RelaySegmentClientUploadPin, RoomRecoveryPolicy,
+    RelaySegmentClientJournal, RelaySegmentClientJournalPin, RelaySegmentClientUploadArchive,
+    RelaySegmentClientUploadPin, RoomRecoveryPolicy,
     server::{
         Authentication, ContentAddressedServerAssets, RelaySegmentHandoverApproval,
         RelaySegmentHandoverInputCoverage, ServerBackupHandle, ServerRecoveryAssetProvider,
@@ -32,6 +33,7 @@ enum Command {
         peer_writer: String,
         peer_credential: String,
         uploads: Vec<RelaySegmentClientUploadPin>,
+        journals: Vec<RelaySegmentClientJournalPin>,
     },
     Resume {
         token: String,
@@ -54,6 +56,7 @@ fn prepare_and_commit(
     token: &str,
     credentials: &RecoveryRegistrationCredentials,
     uploads: &[RelaySegmentClientUploadPin],
+    journals: &[RelaySegmentClientJournalPin],
 ) -> Result<Value> {
     let (backup, previous) =
         handle.capture_relay_segment("owner", token, &parent.join("capture"))?;
@@ -69,12 +72,24 @@ fn prepare_and_commit(
         let file = File::open(parent.join(format!("client-{}.backup", pin.writer)))?;
         archives.push(RelaySegmentClientUploadArchive::open(file, pin.clone())?);
     }
+    if journals.len() != 3 {
+        return Err("expected three selected native journals".into());
+    }
+    let originals = journals
+        .iter()
+        .enumerate()
+        .map(|(index, pin)| {
+            let file = File::open(parent.join(format!("journal-{index}.json")))?;
+            RelaySegmentClientJournal::open(file, pin.clone())
+        })
+        .collect::<std::result::Result<Vec<_>, _>>()?;
     let backup = restored_backup(parent)?;
-    let mut target = backup.restore_with_client_upload_archives(
+    let mut target = backup.restore_with_client_journals(
         &parent.join("restored"),
         "restored-one",
         POLICY,
         &archives,
+        &originals,
     )?;
     let authentication = configured_auth(parent)?;
     let provider: Arc<dyn ServerRecoveryAssetProvider> = Arc::new(ContentAddressedServerAssets);
@@ -89,11 +104,12 @@ fn prepare_and_commit(
         return Err("missing protected inputs were accepted".into());
     };
     assert_eq!(pending.missing_registrations.len(), 3);
-    let mut incomplete = backup.restore_with_client_upload_archives(
+    let mut incomplete = backup.restore_with_client_journals(
         &parent.join("incomplete-uploads"),
         "unused-one",
         POLICY,
         &archives[..1],
+        &originals,
     )?;
     let incomplete = incomplete.verify_handover_inputs(
         &authentication,
@@ -106,11 +122,44 @@ fn prepare_and_commit(
         return Err("missing client upload archive was accepted".into());
     };
     assert_eq!(incomplete.missing_upload_writers, [uploads[1].writer.clone()]);
+    assert!(
+        incomplete
+            .client_journal_coverage
+            .as_ref()
+            .is_some_and(|coverage| coverage.missing_document_writers.is_empty()
+                && coverage.missing_review_actors.is_empty())
+    );
+    let mut missing_journals = backup.restore_with_client_journals(
+        &parent.join("incomplete-journals"),
+        "unused-two",
+        POLICY,
+        &archives,
+        &originals[..1],
+    )?;
+    let RelaySegmentHandoverInputCoverage::Pending(missing_journals) = missing_journals
+        .verify_handover_inputs(&authentication, "owner", token, credentials, &provider)?
+    else {
+        return Err("missing native journals were accepted".into());
+    };
+    assert!(missing_journals.missing_upload_writers.is_empty());
+    assert!(missing_journals.missing_registrations.is_empty());
+    assert!(missing_journals.missing_assets.is_empty());
+    let incomplete_journals =
+        missing_journals.client_journal_coverage.as_ref().ok_or("incomplete journal report")?;
+    assert_eq!(incomplete_journals.missing_document_writers, [uploads[1].writer.clone()]);
+    assert_eq!(incomplete_journals.missing_review_actors, [credentials.reviews[0].actor.clone()]);
     let coverage =
         target.verify_handover_inputs(&authentication, "owner", token, credentials, &provider)?;
     let RelaySegmentHandoverInputCoverage::Verified(inputs) = coverage else {
         return Err("original protected or provider inputs are incomplete".into());
     };
+    let verified_journals =
+        inputs.report().client_journal_coverage.as_ref().ok_or("verified journal report")?;
+    assert_eq!(verified_journals.journals.len(), 3);
+    for index in [0, 2] {
+        let head = &verified_journals.journals[index];
+        assert!(head.local_through.parse::<u64>()? > head.accepted_through.parse::<u64>()?);
+    }
     let approval = RelaySegmentHandoverApproval::select_verified(&target, &inputs, previous)?;
     storage::write_new(&parent.join("approval.json"), &serde_json::to_vec(&approval)?)?;
     File::open(parent)?.sync_all()?;
@@ -133,6 +182,9 @@ fn prepare_and_commit(
         "clientRasters": inputs.report().client_rasters.len(),
         "clientArchives": uploads.len(),
         "missingArchiveRefusals": incomplete.missing_upload_writers.len(),
+        "nativeJournals": verified_journals.journals.len(),
+        "missingJournalRefusals": incomplete_journals.missing_document_writers.len()
+            + incomplete_journals.missing_review_actors.len(),
     }))
 }
 
@@ -151,6 +203,7 @@ pub(super) fn serve_control(
             peer_writer,
             peer_credential,
             uploads,
+            journals,
         } = serde_json::from_slice(&input()?)?
         else {
             return Err("expected private handover command".into());
@@ -174,7 +227,8 @@ pub(super) fn serve_control(
                 credential: review_credential,
             }],
         };
-        let response = prepare_and_commit(&parent, &handle, &token, &credentials, &uploads)?;
+        let response =
+            prepare_and_commit(&parent, &handle, &token, &credentials, &uploads, &journals)?;
         {
             let mut stdout = std::io::stdout().lock();
             writeln!(stdout, "{response}")?;

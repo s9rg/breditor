@@ -1,5 +1,12 @@
 //! Bind a complete native segment chain to its exact raster archive and a new local owner.
 mod capture;
+mod client_journals;
+pub use client_journals::{
+    RelaySegmentClientJournal, RelaySegmentClientJournalPin, RelaySegmentDocumentJournalFamily,
+    RelaySegmentJournalOwner, RelaySegmentReviewJournalFamily,
+};
+#[cfg(feature = "server")]
+pub use client_journals::{RelaySegmentClientJournalCoverage, RelaySegmentClientJournalHead};
 mod client_rasters;
 pub use client_rasters::RelaySegmentClientRaster;
 mod client_uploads;
@@ -59,5 +66,6 @@ pub struct RecoveredRelaySegmentRoom {
     client_rasters: Vec<String>,
     #[cfg(feature = "server")]
     restored_assets: crate::assets::AssetBackupIdentity,
+    journals: Option<client_journals::RetainedJournals>,
     uploads: Option<client_uploads::RetainedUploads>,
 }

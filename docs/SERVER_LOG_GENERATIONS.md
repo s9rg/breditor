@@ -840,8 +840,8 @@ supplied files are gone. The host can read an archive with
 
 The host remains responsible for selecting the trusted archive for each
 writer. Divergent queues for one writer require explicit reconciliation
-before selection. This path retains upload archives. Offline document and
-review journals still need separate enrollment in the handover.
+before selection. This API retains the upload archives. Select the
+separate journal-aware API below to enroll offline document and review work.
 
 [Writer upload archive qualification](qualification/2026-11-14-linked-handover-client-upload-archives.json)
 records 520 passing relay tests and the separately run APFS interruption
@@ -849,3 +849,40 @@ test. Both source and freshly installed SDK runs retained two exact archives
 for the same client-only raster. After cold restart, the pending queue
 completed through the normal relay receipt and the cancelled queue stayed
 cancelled. The fixture uses controlled client storage.
+
+### Enroll native document and review journals
+
+`restore_with_client_journals` adds exact independently selected native
+checkpoints to the upload archive restore. The host opens each checkpoint
+with `RelaySegmentClientJournal::open` and selects the original registered
+writer or actor, exact native family, length, and complete SHA-256. Sort
+document writers lexically first, followed by review actors lexically.
+Each review pin identifies an enrolled document writer belonging to the
+same account. The original native checkpoint admits the review anchors,
+including anchors to that writer's offline document work. The archive
+admits up to 2,047 journals, 256 MiB per file and 1 GiB combined. The
+individual native decoders enforce their own smaller family limits.
+
+The private restore streams the original bytes into a synced file with a
+canonical manifest. The restore completion and deployment target bind the
+actual journal directory and the manifest digest. The host can read exact
+originals with `read_client_journal`. Cold reopen checks each journal hash
+and the exact byte ranges before the target can resume serving.
+
+Verified handover requires the complete document and review roster, including
+empty observers and revoked registrations. It replays each selected original
+using the room's existing profile and the indicated native decoder. Document
+genesis must match the immutable server genesis. Every author's applied
+prefix and every retained review actor are checked against the accepted
+history. A client may be behind the relay, and an authoring client may be
+ahead on its own stream. A divergent overlapping prefix, unregistered
+author or foreign offline suffix refuses. An omitted stream keeps the
+approval pending. Approval and activation remain separate from ordinary
+authenticated delivery. They neither apply offline edits nor advance an
+acknowledgement or queue.
+
+For a paired SDK recovery the host also needs the matching saved binding,
+progress and packet metadata, as well as the original credentials held
+outside the journal archive. Restore in a fresh SDK store and reconnect
+using the original delivery protocol. Two possible offline originals for
+one writer still need explicit host selection or branch reconciliation.
