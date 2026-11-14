@@ -22,6 +22,7 @@ impl Room {
         active_generation: &str,
     ) -> Result<Self> {
         self.recovery_inventory_owner(principal)?;
+        self.log.check_segment_parent(&base)?;
         let selected = &base.identity.predecessor;
         let head = self.log.generation_descriptor()?;
         let records = head
@@ -67,8 +68,21 @@ impl Room {
         path: &Path,
         base: Arc<RelaySegmentBaseFile>,
     ) -> Result<(Self, Recovery)> {
+        Self::open_relay_segment_chain(&[predecessor, path], base)
+    }
+
+    /// Cold-open a complete local chain. Supply every selected directory from the original
+    /// through the writable successor, in handoff order. Each source marker remains guarded.
+    ///
+    /// # Errors
+    /// Refuses missing, reordered or copied ownership markers, noncurrent endpoints and
+    /// corrupt archives or replay. No tail is repaired before the entire chain is verified.
+    pub fn open_relay_segment_chain(
+        paths: &[&Path],
+        base: Arc<RelaySegmentBaseFile>,
+    ) -> Result<(Self, Recovery)> {
         let state = base.checkpoint_state()?;
-        let (log, recovery) = Log::open_selected_segment(predecessor, path, base)?;
+        let (log, recovery) = Log::open_selected_segment(paths, base)?;
         Self::replay_relay_segment(log, recovery, state, true)
     }
 

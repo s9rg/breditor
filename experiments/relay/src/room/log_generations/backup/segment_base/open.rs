@@ -3,10 +3,14 @@ use super::{RelaySegmentBaseFile, RelaySegmentBaseIdentity};
 use crate::{
     Error, Result, Room,
     archive_input::ArchiveInput,
-    log::{Log, generations::SelectedFile},
+    log::{
+        Log,
+        generations::{SegmentArchiveOrigin, SelectedFile},
+    },
     room::materialized_checkpoint::{Checkpoint, Header, MAX_CHECKPOINT_BYTES},
 };
-use std::{fs::File, io::BufReader, path::Path};
+use sha2::{Digest, Sha256};
+use std::{fs::File, io::BufReader, path::Path, sync::Arc};
 
 impl RelaySegmentBaseFile {
     /// Verify the complete predecessor archive and checkpoint bytes against an independently
@@ -19,15 +23,76 @@ impl RelaySegmentBaseFile {
         checkpoint: File,
         expected: &RelaySegmentBaseIdentity,
     ) -> Result<Self> {
+        Self::open_archive(archive, checkpoint, expected, None)
+    }
+
+    /// Admit a bounded suffix archive and its checkpoint over an independently held parent.
+    /// Keep every part of the chain and its trusted identity available for cold recovery.
+    ///
+    /// # Errors
+    /// Refuses substituted bytes, skipped parents, duplicate WAL IDs and incompatible room cuts.
+    pub fn open_linked(
+        archive: File,
+        checkpoint: File,
+        expected: &RelaySegmentBaseIdentity,
+        parent: Arc<Self>,
+    ) -> Result<Self> {
+        Self::open_archive(archive, checkpoint, expected, Some(parent))
+    }
+
+    fn open_archive(
+        archive: File,
+        checkpoint: File,
+        expected: &RelaySegmentBaseIdentity,
+        parent: Option<Arc<Self>>,
+    ) -> Result<Self> {
         if expected.predecessor.source != expected.checkpoint.source
             || expected.predecessor.manifest != expected.checkpoint.manifest
         {
             return Err(Error::Contract("relay segment base selections differ"));
         }
+        if let Some(prior) = &parent {
+            prior.check()?;
+        }
         let archive = ArchiveInput::new(archive, crate::MAX_SERVER_LOG_GENERATION_BACKUP_BYTES)?;
-        let sections = super::super::disk::admit_native_file(archive.all(), &expected.predecessor)?;
+        let origin = parent.as_deref().map(|base| SegmentArchiveOrigin { base });
+        let sections = super::super::disk::admit_generation_file(
+            archive.all(),
+            &expected.predecessor,
+            origin.as_ref(),
+        )?;
+        if let Some(prior) = &parent {
+            let old = &prior.identity.predecessor.source;
+            let mut ancestor = expected.predecessor.source.clone();
+            ancestor.records = old.records;
+            ancestor.terminal_log_digest = old.terminal_log_digest;
+            if &ancestor != old || expected.predecessor.source.records < old.records {
+                return Err(Error::Contract("relay segment archive parent room differs"));
+            }
+            for name in sections.keys().filter(|name| name.starts_with("g-")) {
+                if prior.contains_section(name) {
+                    return Err(Error::Contract("relay segment reuses a predecessor generation"));
+                }
+            }
+        }
         let checkpoint = ArchiveInput::new(checkpoint, MAX_CHECKPOINT_BYTES as u64)?;
-        let result = Self { identity: expected.clone(), archive, checkpoint, sections };
+        let mut hash = Sha256::new();
+        // The first handoff keeps its original binding bytes.
+        if let Some(prior) = &parent {
+            hash.update(b"breditor/relay-segment-base/2\0");
+            hash.update(prior.binding());
+        } else {
+            hash.update(b"breditor/relay-segment-base/1\0");
+        }
+        hash.update(serde_json::to_vec(expected)?);
+        let result = Self {
+            identity: expected.clone(),
+            binding: hash.finalize().into(),
+            parent,
+            archive,
+            checkpoint,
+            sections,
+        };
         let input = result.checkpoint.all();
         if input.len() == 0 || input.digest()? != expected.checkpoint.sha256 {
             return Err(Error::Contract("relay segment base checkpoint digest differs"));
@@ -45,20 +110,27 @@ impl RelaySegmentBaseFile {
     }
 
     pub(crate) fn check(&self) -> Result<()> {
-        self.archive.check()?;
-        self.checkpoint.check()
+        for base in self.lineage() {
+            base.archive.check()?;
+            base.checkpoint.check()?;
+        }
+        Ok(())
+    }
+
+    fn lineage(&self) -> impl Iterator<Item = &Self> {
+        std::iter::successors(Some(self), |base| base.parent())
+    }
+
+    pub(crate) fn parent(&self) -> Option<&Self> {
+        self.parent.as_deref()
     }
 
     pub(crate) fn contains_section(&self, name: &str) -> bool {
-        self.sections.contains_key(name)
+        self.lineage().any(|base| base.sections.contains_key(name))
     }
 
-    pub(crate) fn binding(&self) -> Result<[u8; 32]> {
-        use sha2::{Digest, Sha256};
-        let mut hash = Sha256::new();
-        hash.update(b"breditor/relay-segment-base/1\0");
-        hash.update(serde_json::to_vec(&self.identity)?);
-        Ok(hash.finalize().into())
+    pub(crate) fn binding(&self) -> [u8; 32] {
+        self.binding
     }
 
     pub(super) fn selections(&self) -> std::collections::BTreeMap<&str, SelectedFile<'_>> {
@@ -72,22 +144,30 @@ impl RelaySegmentBaseFile {
 
     pub(crate) fn visit_records(
         &self,
-        visit: impl FnMut(crate::log::Record) -> Result<()>,
+        mut visit: impl FnMut(crate::log::Record) -> Result<()>,
     ) -> Result<()> {
         self.check()?;
-        let input = self.archive.all();
-        let files = self
-            .sections
-            .iter()
-            .map(|(name, entry)| Ok((name.as_str(), input.section(entry.offset, entry.bytes)?)))
-            .collect::<Result<_>>()?;
-        let cut = crate::log::generations::visit_generation_sections(&files, visit)?;
-        let predecessor = &self.identity.predecessor;
-        if cut.manifest != predecessor.manifest
-            || cut.records != predecessor.source.records
-            || cut.previous != predecessor.source.terminal_log_digest
-        {
-            return Err(Error::Contract("relay segment predecessor record cut differs"));
+        let lineage = self.lineage().collect::<Vec<_>>();
+        for base in lineage.into_iter().rev() {
+            let input = base.archive.all();
+            let files = base
+                .sections
+                .iter()
+                .map(|(name, entry)| Ok((name.as_str(), input.section(entry.offset, entry.bytes)?)))
+                .collect::<Result<_>>()?;
+            let origin = base.parent().map(|base| SegmentArchiveOrigin { base });
+            let cut = crate::log::generations::visit_generation_sections(
+                &files,
+                origin.as_ref(),
+                &mut visit,
+            )?;
+            let predecessor = &base.identity.predecessor;
+            if cut.manifest != predecessor.manifest
+                || cut.records != predecessor.source.records
+                || cut.previous != predecessor.source.terminal_log_digest
+            {
+                return Err(Error::Contract("relay segment predecessor record cut differs"));
+            }
         }
         self.check()
     }

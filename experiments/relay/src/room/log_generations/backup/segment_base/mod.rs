@@ -12,7 +12,7 @@ use crate::{
     archive_input::{ArchiveEntry, ArchiveInput},
 };
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 
 /// The exact closed input to a relay continuation. Store independently of the artifact bytes.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -28,6 +28,8 @@ pub struct RelaySegmentBaseIdentity {
 /// This object provides recovery evidence. A host separately authenticates service activation.
 pub struct RelaySegmentBaseFile {
     identity: RelaySegmentBaseIdentity,
+    binding: [u8; 32],
+    parent: Option<Arc<Self>>,
     archive: ArchiveInput,
     checkpoint: ArchiveInput,
     sections: BTreeMap<String, ArchiveEntry>,

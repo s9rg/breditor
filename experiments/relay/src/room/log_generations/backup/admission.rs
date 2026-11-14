@@ -6,20 +6,24 @@ use super::{
 use crate::{
     Error, Result,
     archive_input::ArchiveSlice,
-    log::generations::{MAX_GENERATION_FILES, verify_generation_sections},
+    log::generations::{MAX_GENERATION_FILES, SegmentArchiveOrigin, visit_generation_sections},
 };
 use std::collections::BTreeMap;
 
 pub(super) fn admit(input: &[u8]) -> Result<Header> {
-    Ok(admit_sections(ArchiveSlice::Bytes(input))?.0)
+    Ok(admit_sections(ArchiveSlice::Bytes(input), None)?.0)
 }
 
-pub(super) fn admit_sections(input: ArchiveSlice<'_>) -> Result<(Header, ArchiveSlice<'_>)> {
+pub(super) fn admit_sections<'a>(
+    input: ArchiveSlice<'a>,
+    origin: Option<&SegmentArchiveOrigin<'_>>,
+) -> Result<(Header, ArchiveSlice<'a>)> {
     if input.len() > format::MAX_SERVER_LOG_GENERATION_BACKUP_BYTES {
         return Err(Error::Contract("generation backup framing"));
     }
-    let (header, body): (Header, _) = input.header(format::MAGIC, format::MAX_HEADER)?;
-    if header.format != "breditor/relay-log-generation-backup"
+    let (magic, family) = format::archive_family(origin.is_some());
+    let (header, body): (Header, _) = input.header(magic, format::MAX_HEADER)?;
+    if header.format != family
         || header.format_version != 1
         || header.files.len() > MAX_GENERATION_FILES
     {
@@ -43,7 +47,7 @@ pub(super) fn admit_sections(input: ArchiveSlice<'_>) -> Result<(Header, Archive
     if next != body.len() {
         return Err(Error::Contract("generation backup trailing bytes"));
     }
-    let cut = verify_generation_sections(&files)?;
+    let cut = visit_generation_sections(&files, origin, |_| Ok(()))?;
     if cut.manifest != header.manifest
         || cut.records != header.source.records
         || cut.previous != header.source.terminal_log_digest

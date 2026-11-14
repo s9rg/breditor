@@ -3,6 +3,7 @@ use super::{ServerLogGenerationBackupIdentity, admission::admit_sections};
 use crate::{
     Error, Result,
     archive_input::{ArchiveEntry, ArchiveSlice},
+    log::generations::SegmentArchiveOrigin,
 };
 use std::collections::BTreeMap;
 
@@ -10,7 +11,15 @@ pub(in crate::room::log_generations) fn admit_native_file(
     archive: ArchiveSlice<'_>,
     expected: &ServerLogGenerationBackupIdentity,
 ) -> Result<BTreeMap<String, ArchiveEntry>> {
-    let (header, body) = admit_sections(archive)?;
+    admit_generation_file(archive, expected, None)
+}
+
+pub(super) fn admit_generation_file(
+    archive: ArchiveSlice<'_>,
+    expected: &ServerLogGenerationBackupIdentity,
+    origin: Option<&SegmentArchiveOrigin<'_>>,
+) -> Result<BTreeMap<String, ArchiveEntry>> {
+    let (header, body) = admit_sections(archive, origin)?;
     if header.source != expected.source
         || header.manifest != expected.manifest
         || archive.digest()? != expected.archive_sha256

@@ -2,6 +2,7 @@
 use super::{
     format,
     manifest::{Head, Manifest, Ready},
+    segment::SegmentArchiveOrigin,
 };
 use crate::{
     Error, Result,
@@ -99,6 +100,7 @@ pub(crate) fn visit_generation_records(
 ) -> Result<GenerationCut> {
     visit_sections(
         &files.iter().map(|(&name, &bytes)| (name, ArchiveSlice::Bytes(bytes))).collect(),
+        None,
         visit,
     )
 }
@@ -106,11 +108,12 @@ pub(crate) fn visit_generation_records(
 pub(crate) fn verify_generation_sections(
     files: &BTreeMap<&str, ArchiveSlice<'_>>,
 ) -> Result<GenerationCut> {
-    visit_sections(files, |_| Ok(()))
+    visit_sections(files, None, |_| Ok(()))
 }
 
 pub(crate) fn visit_sections(
     files: &BTreeMap<&str, ArchiveSlice<'_>>,
+    origin: Option<&SegmentArchiveOrigin<'_>>,
     mut visit: impl FnMut(Record) -> Result<()>,
 ) -> Result<GenerationCut> {
     if files.len() > MAX_GENERATION_FILES {
@@ -130,8 +133,10 @@ pub(crate) fn visit_sections(
     let ready: Ready = format::decode(&file(files, ".ready.json")?.read(format::MAX_CONTROL)?)?;
     ready.validate(root.0)?;
     let selected = &history.last().ok_or(Error::Contract("generation archive head absent"))?.1;
-    if selected.origin.is_some() {
-        return Err(Error::Contract("legacy generation backup requires the original root"));
+    match (&root.1.origin, origin) {
+        (Some(found), Some(expected)) => expected.verify(found)?,
+        (None, None) => {}
+        _ => return Err(Error::Contract("generation archive origin family differs")),
     }
     let mut names = BTreeSet::from([".head.json".to_owned(), ".ready.json".into()]);
     names.extend(history.iter().map(|(hash, _)| format::manifest_name(hash)));

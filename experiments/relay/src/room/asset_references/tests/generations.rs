@@ -166,8 +166,47 @@ fn rejected_and_abandoned_packets_in_retained_files_keep_images_that_never_becam
     assert_eq!(references.outcome, result.outcome);
     drop(successor);
     drop(old);
-    let (mut reopened, _) = Room::open_relay_segment_successor(&source, &destination, base)?;
+    let (mut reopened, _) =
+        Room::open_relay_segment_successor(&source, &destination, base.clone())?;
     assert_eq!(reopened.relay_segment_retained_asset_references("owner")?, references);
+    let extra = client.capture_document_suggestion_guarded(
+        &client.observe()?,
+        "In successor",
+        ReviewPrincipalId::try_new("owner")?,
+        "3",
+        draft(vec![image("middle-only", "middle-generation")]),
+    )?;
+    let extra_id = publish(&mut reopened, &extra)?;
+    let references = reopened.relay_segment_retained_asset_references("owner")?;
+    assert_eq!(references.sources.len(), 3);
+    assert_eq!(&references.sources[..2], &result.sources);
+    let archive = parent.join("linked.archive");
+    let checkpoint = parent.join("linked.checkpoint");
+    let identity = reopened.write_relay_segment_base(
+        "owner",
+        &mut fs::File::create_new(&archive)?,
+        &mut fs::File::create_new(&checkpoint)?,
+    )?;
+    let linked = std::sync::Arc::new(crate::RelaySegmentBaseFile::open_linked(
+        fs::File::open(archive)?,
+        fs::File::open(checkpoint)?,
+        &identity,
+        base,
+    )?);
+    let last = parent.join("final");
+    let successor =
+        reopened.continue_into_relay_segment("owner", &last, linked.clone(), "final-first")?;
+    drop(successor);
+    drop(reopened);
+    let (mut room, _) = Room::open_relay_segment_chain(&[&source, &destination, &last], linked)?;
+    let recovered = room.relay_segment_retained_asset_references("owner")?;
+    assert_eq!(recovered.sources, references.sources);
+    assert_eq!(recovered.outcome, references.outcome);
+    assert_eq!(
+        room.document_suggestion_packet("owner", &extra_id)?.as_deref(),
+        Some(extra.as_str())
+    );
+    assert!(room.document_suggestion_packet("owner", &child_id)?.is_none());
     Ok(())
 }
 

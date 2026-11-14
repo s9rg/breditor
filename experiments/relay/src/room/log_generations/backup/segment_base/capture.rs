@@ -14,6 +14,8 @@ impl Room {
     /// Write the exact predecessor archive and its materialized state at the same held cut.
     /// The two destinations must be distinct. The caller owns file sync and the durable
     /// selection of the returned identity. Use complete outputs together or discard both.
+    /// A successor exports its physical WAL section and checkpoint. Retain the earlier chain
+    /// and admit the result with `RelaySegmentBaseFile::open_linked`.
     ///
     /// # Errors
     /// Refuses non-owner access, incomplete or changing WAL custody, pending rotation,
@@ -35,7 +37,7 @@ impl Room {
         let state =
             materialized_checkpoint::Checkpoint::capture(self, source.clone(), head.manifest)?;
         let failed = Cell::new(false);
-        self.with_native_backup_stream(principal, &failed, |mut stream| {
+        self.with_relay_segment_base_stream(principal, &failed, |mut stream| {
             if stream.info.identity.source != source
                 || stream.info.identity.manifest != head.manifest
             {

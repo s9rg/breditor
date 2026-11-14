@@ -155,3 +155,79 @@ fn writable_segment_refuses_stale_and_copied_sources_and_repairs_only_its_admitt
     );
     Ok(())
 }
+
+#[test]
+fn repeatable_segment_handoff_rejects_skipped_links_and_retains_old_marker_and_archive_custody()
+-> TestResult {
+    let (files, mut root, _) = setup_profile(3, true, true)?;
+    let first = files.room();
+    let second = files.recovery();
+    let parent = first.parent().ok_or("fixture directory")?;
+    let third = parent.join("third");
+    root.grant("owner", "root-reader", Some(Role::Reader))?;
+    let (_, root_base) = save(&mut root, parent)?;
+    let root_base = Arc::new(root_base);
+    let mut middle =
+        root.continue_into_relay_segment("owner", &second, root_base.clone(), "middle")?;
+    drop(root);
+    middle.grant("owner", "middle-reader", Some(Role::Reader))?;
+    middle.rotate_log_generation("owner", "middle-two")?;
+    middle.grant("owner", "after-rotation-reader", Some(Role::Reader))?;
+
+    let archive = parent.join("middle.archive");
+    let checkpoint = parent.join("middle.checkpoint");
+    let identity = {
+        let mut archive = fs::File::create_new(&archive)?;
+        let mut checkpoint = fs::File::create_new(&checkpoint)?;
+        let identity = middle.write_relay_segment_base("owner", &mut archive, &mut checkpoint)?;
+        archive.sync_all()?;
+        checkpoint.sync_all()?;
+        identity
+    };
+    let open_inputs = || (fs::File::open(&archive), fs::File::open(&checkpoint));
+    let (log, state) = open_inputs();
+    assert!(RelaySegmentBaseFile::open(log?, state?, &identity).is_err());
+    assert!(crate::ServerLogGenerationBackup::from_bytes(&fs::read(&archive)?).is_err());
+    let (foreign_files, mut foreign, _) = setup_profile(3, true, true)?;
+    let foreign_path = foreign_files.room();
+    foreign.grant("owner", "other-reader", Some(Role::Reader))?;
+    let (_, wrong_parent) = save(&mut foreign, foreign_path.parent().ok_or("fixture directory")?)?;
+    let (log, state) = open_inputs();
+    assert!(
+        RelaySegmentBaseFile::open_linked(log?, state?, &identity, Arc::new(wrong_parent)).is_err()
+    );
+    let (log, state) = open_inputs();
+    let base =
+        Arc::new(RelaySegmentBaseFile::open_linked(log?, state?, &identity, root_base.clone())?);
+    assert!(middle.continue_into_relay_segment("owner", &third, base.clone(), "root").is_err());
+    assert!(
+        middle.continue_into_relay_segment("owner", &third, base.clone(), "middle-two").is_err()
+    );
+    assert!(!third.exists());
+    let mut final_room =
+        middle.continue_into_relay_segment("owner", &third, base.clone(), "third")?;
+    final_room.grant("owner", "third-reader", Some(Role::Reader))?;
+    drop(middle);
+    drop(final_room);
+
+    assert!(Room::open_log_generations(&first).is_err());
+    assert!(Room::open_relay_segment_successor(&first, &second, root_base).is_err());
+    assert!(Room::open_relay_segment_successor(&second, &third, base.clone()).is_err());
+    assert!(Room::open_relay_segment_chain(&[&second, &first, &third], base.clone()).is_err());
+    let (mut room, recovery) =
+        Room::open_relay_segment_chain(&[&first, &second, &third], base.clone())?;
+    assert_eq!(recovery.truncated_bytes, 0);
+    for reader in ["root-reader", "middle-reader", "after-rotation-reader", "third-reader"] {
+        room.catchup(reader)?;
+    }
+    assert_eq!(room.relay_segment_retained_asset_references("owner")?.base, identity);
+    room.grant("owner", "verified", Some(Role::Reader))?;
+    let marker = first.join(".segment-successor.json");
+    let mut contents = fs::read(&marker)?;
+    contents[0] ^= 1;
+    fs::write(&marker, contents)?;
+    assert!(room.grant("owner", "no-longer-writable", Some(Role::Reader)).is_err());
+    drop(room);
+    assert!(Room::open_relay_segment_chain(&[&first, &second, &third], base).is_err());
+    Ok(())
+}

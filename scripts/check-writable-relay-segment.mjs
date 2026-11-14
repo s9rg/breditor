@@ -136,18 +136,36 @@ async function run(mode, distribution, executable, parent) {
     session = await api.SharedReviewPersistentSession.open(persisted);
     assert.deepEqual(session.exportRecovery(), offline);
 
-    const switched = JSON.parse(execFileSync(executable, [parent, 'handoff', address], {
-      encoding: 'utf8', timeout: 90_000,
-    }).trim());
-    assert.equal(switched.kind, 'handedOff');
+    const handoff = command => {
+      const result = JSON.parse(execFileSync(executable, [parent, command, address], {
+        encoding: 'utf8', timeout: 90_000,
+      }).trim());
+      assert.equal(result.kind, 'handedOff');
+      return BigInt(result.records);
+    };
+    const switched = handoff('handoff');
     host = await startReviewHost(executable, [parent, 'successor', address]);
     await attach();
     assert.equal(document.state().pending, false);
     assert.equal(review.state().pending, false);
-    assert.ok(BigInt(document.state().serverReceiptSequence) >= BigInt(switched.records));
+    assert.ok(BigInt(document.state().serverReceiptSequence) >= switched);
     assert.match(session.core.documentJson(), /Offline over handoff/);
     assert.equal(session.core.reviewSnapshot().view.threads.length, 2);
     const visibleThreads = () => session.core.reviewSnapshot().view.threads.filter(({thread}) => !thread.hidden);
+    await stopClients();
+    await host.crash();
+    host = undefined;
+    edit('Offline over second handoff ');
+    post('Offline comment over second handoff');
+    await session.flush();
+    const advanced = handoff('handoff-again');
+    assert.ok(advanced > switched);
+    host = await startReviewHost(executable, [parent, 'final', address]);
+    await attach();
+    assert.equal(document.state().pending, false);
+    assert.equal(review.state().pending, false);
+    assert.ok(BigInt(document.state().serverReceiptSequence) >= advanced);
+    assert.equal(visibleThreads().length, 3);
     const accepted = session.core.documentJson();
     assert.equal(session.core.undo(), true);
     assert.equal(session.core.undoReview().kind, 'committed');
@@ -155,23 +173,24 @@ async function run(mode, distribution, executable, parent) {
     await review.flush();
     await stopClients();
     await host.crash();
-    host = await startReviewHost(executable, [parent, 'successor', address]);
+    host = await startReviewHost(executable, [parent, 'final', address]);
     await attach();
-    assert.doesNotMatch(session.core.documentJson(), /Offline over handoff/);
-    assert.equal(visibleThreads().length, 1);
+    assert.doesNotMatch(session.core.documentJson(), /Offline over second handoff/);
+    assert.match(session.core.documentJson(), /Offline over handoff/);
+    assert.equal(visibleThreads().length, 2);
     assert.equal(session.core.redo(), true);
     assert.equal(session.core.redoReview().kind, 'committed');
     await document.flush();
     await review.flush();
     assert.equal(session.core.documentJson(), accepted);
-    assert.equal(session.core.reviewSnapshot().view.threads.length, 2);
+    assert.equal(visibleThreads().length, 3);
     const raster = await fetch('http://' + address + '/assets/sha256:' + sha(pixel), {
       headers: {Origin: origin, Authorization: 'Bearer ' + token, 'X-Breditor-Principal': 'owner'},
     });
     assert.equal(raster.status, 200);
     assert.deepEqual(Buffer.from(await raster.arrayBuffer()), pixel);
-    return {mode, restoredOfflineLanes: 2, undoRedoLanes: 2, rasterReads: 1,
-      processExits: 2, retainedAbsolutePositions: true, runtimeSha256: sha(wasmBytes)};
+    return {mode, handoffs: 2, restoredOfflineLanes: 4, undoRedoLanes: 2, rasterReads: 1,
+      processExits: 3, retainedAbsolutePositions: true, runtimeSha256: sha(wasmBytes)};
   } finally {
     await stopClients();
     await session?.discardAndClose();

@@ -120,6 +120,17 @@ impl Room {
         with_native_stream(&mut self.log, source, other_failure, write)
     }
 
+    pub(in crate::room) fn with_relay_segment_base_stream<T>(
+        &mut self,
+        principal: &str,
+        other_failure: &Cell<bool>,
+        write: impl FnOnce(NativeBackupStream<'_>) -> Result<T>,
+    ) -> Result<T> {
+        let source = self.stream_source(principal)?;
+        self.log
+            .stream_held_generation(|capture| native_stream(capture, source, write), other_failure)
+    }
+
     fn stream_source(&self, principal: &str) -> Result<RoomBackupIdentity> {
         self.recovery_inventory_owner(principal)?;
         let physical = self.log.generation_descriptor()?;
@@ -166,36 +177,38 @@ fn with_native_stream<T>(
     other_failure: &Cell<bool>,
     write: impl FnOnce(NativeBackupStream<'_>) -> Result<T>,
 ) -> Result<T> {
-    log.stream_generation_backup(
-        |capture: StreamGenerationCapture<'_>| {
-            if source.records != capture.cut.records
-                || source.terminal_log_digest != capture.cut.previous
-            {
-                return Err(Error::Contract("streamed generation backup selection changed"));
-            }
-            let body_bytes = capture.sections.last().map_or(0, |part| part.offset + part.bytes);
-            let header = Header {
-                format: "breditor/relay-log-generation-backup".into(),
-                format_version: 1,
-                source: source.clone(),
-                manifest: capture.cut.manifest,
-                files: capture.sections.clone(),
-            };
-            let prefix = format::prefix(&header, body_bytes)?;
-            let bytes = prefix.len() as u64 + body_bytes;
-            let info = ServerLogGenerationBackupInfo {
-                format: "breditor/relay-log-generation-backup",
-                format_version: 1,
-                identity: ServerLogGenerationBackupIdentity {
-                    source,
-                    manifest: header.manifest,
-                    archive_sha256: [0; 32],
-                },
-                files: header.files.len(),
-                bytes,
-            };
-            write(NativeBackupStream { prefix, capture, info })
+    log.stream_generation_backup(|capture| native_stream(capture, source, write), other_failure)
+}
+
+fn native_stream<T>(
+    capture: StreamGenerationCapture<'_>,
+    source: RoomBackupIdentity,
+    write: impl FnOnce(NativeBackupStream<'_>) -> Result<T>,
+) -> Result<T> {
+    if source.records != capture.cut.records || source.terminal_log_digest != capture.cut.previous {
+        return Err(Error::Contract("streamed generation backup selection changed"));
+    }
+    let (_, family) = format::archive_family(capture.segment_base().is_some());
+    let body_bytes = capture.sections.last().map_or(0, |part| part.offset + part.bytes);
+    let header = Header {
+        format: family.into(),
+        format_version: 1,
+        source: source.clone(),
+        manifest: capture.cut.manifest,
+        files: capture.sections.clone(),
+    };
+    let prefix = format::prefix(&header, body_bytes)?;
+    let bytes = prefix.len() as u64 + body_bytes;
+    let info = ServerLogGenerationBackupInfo {
+        format: family,
+        format_version: 1,
+        identity: ServerLogGenerationBackupIdentity {
+            source,
+            manifest: header.manifest,
+            archive_sha256: [0; 32],
         },
-        other_failure,
-    )
+        files: header.files.len(),
+        bytes,
+    };
+    write(NativeBackupStream { prefix, capture, info })
 }

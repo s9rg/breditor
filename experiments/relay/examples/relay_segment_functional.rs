@@ -29,12 +29,21 @@ fn read(path: &Path, limit: u64) -> Result<String> {
     Ok(value)
 }
 
-fn base(parent: &Path, identity: &RelaySegmentBaseIdentity) -> Result<Arc<RelaySegmentBaseFile>> {
-    Ok(Arc::new(RelaySegmentBaseFile::open(
-        File::open(parent.join("base.archive"))?,
-        File::open(parent.join("base.checkpoint"))?,
-        identity,
-    )?))
+fn saved_base(
+    parent: &Path,
+    lane: &str,
+    prior: Option<Arc<RelaySegmentBaseFile>>,
+) -> Result<Arc<RelaySegmentBaseFile>> {
+    let identity: RelaySegmentBaseIdentity =
+        serde_json::from_str(&read(&parent.join(format!("{lane}.json")), 32 * 1024)?)?;
+    let archive = File::open(parent.join(format!("{lane}.archive")))?;
+    let checkpoint = File::open(parent.join(format!("{lane}.checkpoint")))?;
+    let base = if let Some(prior) = prior {
+        RelaySegmentBaseFile::open_linked(archive, checkpoint, &identity, prior)?
+    } else {
+        RelaySegmentBaseFile::open(archive, checkpoint, &identity)?
+    };
+    Ok(Arc::new(base))
 }
 
 fn create_base_file(path: &Path) -> Result<File> {
@@ -42,25 +51,30 @@ fn create_base_file(path: &Path) -> Result<File> {
     Ok(fs::OpenOptions::new().write(true).create_new(true).mode(0o600).open(path)?)
 }
 
-fn handoff(parent: &Path) -> Result {
-    let old_path = parent.join("source-native");
-    let (mut old, _) = Room::open_log_generations(&old_path)?;
-    let mut archive = create_base_file(&parent.join("base.archive"))?;
-    let mut checkpoint = create_base_file(&parent.join("base.checkpoint"))?;
-    let identity = old.write_relay_segment_base("owner", &mut archive, &mut checkpoint)?;
+fn continue_room(
+    parent: &Path,
+    mut room: Room,
+    lane: &str,
+    target: &str,
+    generation: &str,
+    prior: Option<Arc<RelaySegmentBaseFile>>,
+) -> Result {
+    let mut archive = create_base_file(&parent.join(format!("{lane}.archive")))?;
+    let mut checkpoint = create_base_file(&parent.join(format!("{lane}.checkpoint")))?;
+    let identity = room.write_relay_segment_base("owner", &mut archive, &mut checkpoint)?;
     archive.sync_all()?;
     checkpoint.sync_all()?;
-    storage::write_new(&parent.join("base.json"), &serde_json::to_vec(&identity)?)?;
+    storage::write_new(&parent.join(format!("{lane}.json")), &serde_json::to_vec(&identity)?)?;
     File::open(parent)?.sync_all()?;
-    let current = old.log_generation_descriptor("owner")?;
-    let successor = old.continue_into_relay_segment(
+    let current = room.log_generation_descriptor("owner")?;
+    let successor = room.continue_into_relay_segment(
         "owner",
-        &parent.join("successor"),
-        base(parent, &identity)?,
-        "successor-one",
+        &parent.join(target),
+        saved_base(parent, lane, prior)?,
+        generation,
     )?;
     assert_eq!(successor.log_generation_descriptor("owner")?.next_sequence, current.next_sequence);
-    assert!(old.catchup("owner").is_err());
+    assert!(room.catchup("owner").is_err());
     println!("{}", json!({"kind":"handedOff","records":current.next_sequence}));
     Ok(())
 }
@@ -95,14 +109,30 @@ async fn main() -> Result {
             room.put_asset("owner", &mut assets, prepare_asset(&id, "image/png", png)?)?;
             (room, assets)
         }
-        "handoff" => return handoff(parent),
-        "successor" => {
-            let identity = serde_json::from_str(&read(&parent.join("base.json"), 32 * 1024)?)?;
-            let (mut room, _) = Room::open_relay_segment_successor(
-                &old,
-                &parent.join("successor"),
-                base(parent, &identity)?,
-            )?;
+        "handoff" => {
+            let (room, _) = Room::open_log_generations(&old)?;
+            return continue_room(parent, room, "base", "successor", "successor-one", None);
+        }
+        "handoff-again" => {
+            let prior = saved_base(parent, "base", None)?;
+            let (mut room, _) =
+                Room::open_relay_segment_successor(&old, &parent.join("successor"), prior.clone())?;
+            // Fill all 64 real WAL slots in the first successor before moving again.
+            for i in 2..=64 {
+                room.grant("owner", "reader", Some(breditor_collab_relay::Role::Reader))?;
+                room.rotate_log_generation("owner", &format!("successor-{i}"))?;
+            }
+            return continue_room(parent, room, "linked", "final", "final-one", Some(prior));
+        }
+        "successor" | "final" => {
+            let prior = saved_base(parent, "base", None)?;
+            let successor = parent.join("successor");
+            let (mut room, _) = if mode == "successor" {
+                Room::open_relay_segment_successor(&old, &successor, prior)?
+            } else {
+                let base = saved_base(parent, "linked", Some(prior))?;
+                Room::open_relay_segment_chain(&[&old, &successor, &parent.join("final")], base)?
+            };
             let _ = room.relay_segment_retained_asset_references("owner")?;
             let assets = AssetStore::open(&parent.join("rasters"), room.asset_binding())?;
             (room, assets)

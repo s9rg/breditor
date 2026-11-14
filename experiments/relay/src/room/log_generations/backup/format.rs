@@ -10,6 +10,8 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::io::Write;
 pub(super) const MAGIC: &[u8] = b"BREDITOR-RELAY-GENERATIONS1\n";
+const LINKED_MAGIC: &[u8] = b"BREDITOR-RELAY-LINKED-WALS1\n";
+const _: () = assert!(MAGIC.len() == LINKED_MAGIC.len());
 pub(super) const PREFIX: usize = MAGIC.len() + 4 + 32;
 pub(super) const MAX_HEADER: usize = 128 * 1024;
 /// Independent bounded envelope around the new retained file closure; not a legacy limit change.
@@ -28,6 +30,14 @@ pub(super) struct Header {
 pub(super) fn sha(bytes: &[u8]) -> [u8; 32] {
     Sha256::digest(bytes).into()
 }
+pub(super) fn archive_family(linked: bool) -> (&'static [u8], &'static str) {
+    if linked {
+        (LINKED_MAGIC, "breditor/relay-log-segment-backup")
+    } else {
+        (MAGIC, "breditor/relay-log-generation-backup")
+    }
+}
+
 pub(super) fn prefix(header: &Header, body_bytes: u64) -> Result<Vec<u8>> {
     let encoded = serde_json::to_vec(header)?;
     if encoded.is_empty()
@@ -38,7 +48,8 @@ pub(super) fn prefix(header: &Header, body_bytes: u64) -> Result<Vec<u8>> {
         return Err(Error::Contract("generation backup encoded budget"));
     }
     let mut prefix = Vec::with_capacity(PREFIX + encoded.len());
-    prefix.extend_from_slice(MAGIC);
+    let (magic, _) = archive_family(header.format == "breditor/relay-log-segment-backup");
+    prefix.extend_from_slice(magic);
     prefix.extend_from_slice(
         &u32::try_from(encoded.len())
             .map_err(|_| Error::Contract("generation backup header"))?

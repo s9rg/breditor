@@ -618,12 +618,26 @@ base. Suspect sources, occupied destinations and divergent artifacts refuse.
 The native directory fence applies to this local owner. The serving host
 still needs its deployment epoch to guard other copies or machines.
 
-This path supports one handoff from an original generation room. The
-predecessor directory, its selection marker and the held archive/checkpoint
-must remain available. Linked portable backup, restorable multi-segment
-chains, reclaiming the old directory, and integrated whole-room activation
-are follow-on work. Legacy archive APIs refuse a successor so callers
-cannot accidentally export only its suffix as a complete backup.
+For subsequent handoffs, `Room::write_relay_segment_base` writes the current
+physical segment in a distinct linked WAL archive plus a checkpoint at its
+absolute terminal cut. The recipient supplies the previously selected base
+to `RelaySegmentBaseFile::open_linked`. The linked archive must start at the
+prior checkpoint's sequence and digest, and each generation ID must be new
+across the entire chain. The base identity used for handoff binds the new
+archive and checkpoint to all earlier parts. No prior archive is rewritten.
+
+For cold recovery after multiple handoffs, keep each original private
+directory and present their paths to `Room::open_relay_segment_chain` in
+handoff order. It checks each marker and adjacent directory instance before
+replaying the last segment. While serving, all earlier markers and artifacts
+remain under custody checks. Asset reference reads walk every archived
+record and the writable suffix in order.
+
+The linked archives are portable pieces. Creating a new writable copy on
+another host, restoring the full chain with assets from those pieces,
+and retiring old directory data still need explicit recovery and deployment
+workflows. Legacy archive readers refuse a linked suffix as a complete
+backup.
 
 [November 14 qualification](qualification/2026-11-14-writable-relay-segment.json)
 records 512 passing relay tests and the separately run APFS interruption

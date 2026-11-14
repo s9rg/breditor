@@ -39,7 +39,8 @@ mod rotate;
 #[cfg(feature = "server")]
 pub use rotate::inspection::PendingNativeLogRotation;
 mod rotation_recovery_stages;
-pub(crate) mod segment;
+mod segment;
+pub(crate) use segment::SegmentArchiveOrigin;
 mod state;
 mod stream_capture;
 mod verify;
@@ -50,8 +51,7 @@ pub(crate) use capture::{GenerationFileSection, GenerationFiles};
 #[cfg(test)]
 pub(crate) use closure::verify_generation_files;
 pub(crate) use closure::{
-    MAX_GENERATION_BODY_BYTES, MAX_GENERATION_FILES, verify_generation_sections,
-    visit_sections as visit_generation_sections,
+    MAX_GENERATION_BODY_BYTES, MAX_GENERATION_FILES, visit_sections as visit_generation_sections,
 };
 pub(crate) use create::Creation;
 pub(crate) use directory::{
