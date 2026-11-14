@@ -48,7 +48,7 @@ pub async fn inspect_sealed_native_tail(
     tokio::task::spawn_blocking(move || {
         let (source, selection, operating_directory) = reopen_retained_seal(bootstrap)?;
         selection.check_checkpoint()?;
-        let minimum = selection.inspection_minimum(minimum.as_ref())?;
+        let minimum = selection.inspection_minimum_archive(minimum.as_ref())?;
         let origin = source.source_backup().info()?.identity;
         OperationalLogGenerationServerRoom::with_committed_native_prefix(
             &operating_directory,
@@ -63,7 +63,7 @@ pub async fn inspect_sealed_native_tail(
                     server: captured.inspected.backup,
                     participants: captured.participants,
                 };
-                selection.check_inspected_current(&state)?;
+                selection.check_inspected_current(&state.identity()?)?;
                 selection.check_operational_archive(captured.operation, &state.server)?;
                 Ok(SealedNativeTailInspection {
                     state,

@@ -81,7 +81,7 @@ pub(in crate::server) async fn repair_sealed_native_tail_and_raster_with_interru
             &root,
             source.source_backup(),
             &origin,
-            selection.checkpoint.checkpoint(),
+            selection.checkpoint.checkpoint()?,
             &principal,
             |operational, captured| {
                 let complete = captured.backup.info()?;

@@ -9,7 +9,7 @@ use super::{
     store::{Inputs, Store},
 };
 use crate::{
-    Error, Result, ServerLogGenerationRoomBackup,
+    Error, Result, ServerLogGenerationRoomBackup, ServerLogGenerationRoomBackupFile,
     server::{
         LogGenerationHandoverStatus, PreparedLogGenerationHandover,
         generation_backup::durable::{Interruption, Point},
@@ -97,7 +97,7 @@ impl PreparedLogGenerationRecoveryHost {
             }
             let custody = handle.host.generation_custody.as_ref().ok_or(Error::NeedsRecovery)?;
             let assets = handle.host.assets.as_ref().ok_or(Error::NeedsRecovery)?;
-            let (backup, operation) = handle.host.deployment.transaction(|| {
+            let operation = handle.host.deployment.transaction(|| {
                 let mut room = handle.host.room.lock().map_err(|_| Error::NeedsRecovery)?;
                 let mut assets = assets.lock().map_err(|_| Error::NeedsRecovery)?;
                 check_selected(
@@ -108,30 +108,17 @@ impl PreparedLogGenerationRecoveryHost {
                     &owner,
                     &current,
                 )?;
-                let backup =
-                    ServerLogGenerationRoomBackup::capture(&mut room, &mut assets, &owner)?;
                 let operation = custody.activation_owner_digest()?;
-                if let Some(parent) = &previous {
-                    if parent.identity().operation() != operation {
-                        return Err(Error::Contract("native checkpoint operational owner differs"));
-                    }
-                    backup.check_archive_ancestor(parent.checkpoint())?;
-                    parent.guard()?;
+                if let Some(parent) = &previous
+                    && parent.identity().operation() != operation
+                {
+                    return Err(Error::Contract("native checkpoint operational owner differs"));
                 }
-                backup.check_archive_ancestor(source.source_backup())?;
-                check_selected(
-                    &mut room,
-                    &mut assets,
-                    &handle.original,
-                    custody,
-                    &owner,
-                    &current,
-                )?;
-                Ok((backup, operation))
+                Ok(operation)
             })?;
             let input = Inputs {
                 source: source.identity().clone(),
-                current,
+                current: current.clone(),
                 operation,
                 previous: selected.clone(),
                 parent: previous.as_ref().map(|p| p.identity().digest()).transpose()?,
@@ -141,7 +128,45 @@ impl PreparedLogGenerationRecoveryHost {
                 selected,
                 source.identity().planned_selection(),
                 || {
-                    let store = Store::create(&options.root, backup, input, &stop)?;
+                    // Use the held epoch to serialize both owners while writing the exact cut.
+                    // A target edit since preflight refuses before creating the checkpoint root.
+                    let mut room = handle.host.room.lock().map_err(|_| Error::NeedsRecovery)?;
+                    let mut assets = assets.lock().map_err(|_| Error::NeedsRecovery)?;
+                    check_selected(
+                        &mut room,
+                        &mut assets,
+                        &handle.original,
+                        custody,
+                        &owner,
+                        &current,
+                    )?;
+                    let store = Store::create(&options.root, input, &stop, |file| {
+                        let info = ServerLogGenerationRoomBackup::capture_to(
+                            &mut room, &assets, &owner, file,
+                        )?;
+                        if info.identity != current.server {
+                            return Err(Error::Contract(
+                                "native checkpoint current archive differs",
+                            ));
+                        }
+                        let backup = ServerLogGenerationRoomBackupFile::open(
+                            file.try_clone()?,
+                            &current.server,
+                        )?;
+                        backup.check_archive_ancestor(source.source_backup())?;
+                        if let Some(parent) = &previous {
+                            backup.check_file_ancestor(parent.checkpoint_file()?)?;
+                        }
+                        check_selected(
+                            &mut room,
+                            &mut assets,
+                            &handle.original,
+                            custody,
+                            &owner,
+                            &current,
+                        )?;
+                        Ok(backup)
+                    })?;
                     let prepared = Prepared { store, source: source.clone() };
                     prepared.guard()?;
                     Ok(prepared)

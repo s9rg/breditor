@@ -54,6 +54,11 @@ impl ServerLogGenerationRoomBackupFile {
         Ok(Self { input, native, rasters, identity: expected.clone() })
     }
 
+    #[cfg(feature = "server")]
+    pub(crate) fn guard_file(&self) -> Result<()> {
+        self.input.check()
+    }
+
     /// Detached selection and byte count established by admission.
     #[must_use]
     pub fn info(&self) -> ServerLogGenerationRoomBackupInfo {

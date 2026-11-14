@@ -1,13 +1,13 @@
 //! Test-only process entry point. The host selects an observed surviving cut
 //! over private IPC, then uses the normal authenticated HTTP barriers.
-use super::{Result, capture, storage};
+use super::{Result, capture};
 use breditor_collab_relay::{
     RecoveryDocumentCredential, RecoveryRegistrationCredentials, RecoveryReviewCredential,
     server::{
         Authentication, NativeGenerationActivationCheckpointStatus,
         NativeGenerationActivationPrepareOptions, PreparedNativeGenerationActivationIdentity,
         SealedNativeRestartBootstrap, SealedNativeRestartBootstrapCoverage,
-        ServerLogGenerationRecoveryStateIdentity, inspect_sealed_native_restart,
+        ServerLogGenerationRecoveryStateIdentity, inspect_sealed_native_restart_to,
         prepare_durable_native_activation_control, prepare_native_room_publication,
         reopen_sealed_native_restart_host,
     },
@@ -85,21 +85,29 @@ pub async fn run(root: &OsStr, inspect: bool) -> Result {
         if !input.documents.is_empty() || !input.reviews.is_empty() {
             return Err("inspection does not require registration credentials".into());
         }
-        let observed =
-            Box::pin(inspect_sealed_native_restart(bootstrap, None, auth, "owner", &owner_token))
-                .await?;
-        let identity = observed.identity()?;
+        use std::os::unix::fs::OpenOptionsExt;
+        let file = root.join("restart-observed.backup");
+        let output = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(&file)?;
+        let (identity, _) = Box::pin(inspect_sealed_native_restart_to(
+            bootstrap,
+            None,
+            auth,
+            "owner",
+            &owner_token,
+            output.try_clone()?,
+        ))
+        .await?;
         if identity == *checkpoint.current() {
             return Err("expected previously acknowledged work beyond the checkpoint".into());
         }
-        let (archive, _) = observed.into_parts();
-        let file = root.join("restart-observed.backup");
-        let bytes = archive.to_bytes()?;
-        storage::write_new(&file, &bytes)?;
-        println!(
-            "{}",
-            json!({"current":identity,"path":file,"sha256":<[u8;32]>::from(Sha256::digest(&bytes))})
-        );
+        output.sync_all()?;
+        let sha256 = identity.server.archive_sha256;
+        println!("{}", json!({"current":identity,"path":file,"sha256":sha256}));
         return Ok(());
     }
     if input.documents.len() != 7 || input.reviews.len() != 7 {

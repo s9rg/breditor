@@ -5,7 +5,7 @@ mod open;
 mod prepare;
 mod store;
 use crate::{
-    Result, ServerLogGenerationRoomBackup,
+    Result, ServerLogGenerationRoomBackup, ServerLogGenerationRoomBackupFile,
     server::{
         LogGenerationHandoverStatus, PreparedLogGenerationHandover, RoomDeploymentAuthority,
         deployment_fence,
@@ -49,11 +49,42 @@ impl PreparedNativeGenerationActivation {
     pub fn identity(&self) -> &PreparedNativeGenerationActivationIdentity {
         &self.store.identity
     }
-    /// Complete immutable checkpoint DATA; no currentness or serving permission.
-    #[must_use]
-    pub fn checkpoint(&self) -> &ServerLogGenerationRoomBackup {
-        &self.store.backup
+    /// Read the complete immutable checkpoint as an in-memory archive. Use
+    /// `checkpoint_file` for file-backed verification and recovery.
+    /// # Errors
+    /// A changed checkpoint or an archive read/admission error refuses.
+    pub fn checkpoint(&self) -> Result<&ServerLogGenerationRoomBackup> {
+        self.guard()?;
+        if self.store.buffered.get().is_none() {
+            // Serialize the shared descriptor read and cache only a successful exact admission.
+            let _read = self.store.read_gate.lock().map_err(|_| crate::Error::NeedsRecovery)?;
+            if self.store.buffered.get().is_none() {
+                let bytes = crate::server::generation_backup::durable::files::read(
+                    &self.store.archive,
+                    &self.root().join("target.backup"),
+                    self.identity().bytes,
+                )?;
+                let archive = ServerLogGenerationRoomBackup::from_owned_bytes(bytes)?;
+                if archive.info()?.identity != self.identity().current().server {
+                    return Err(crate::Error::Contract(
+                        "native checkpoint buffered selection differs",
+                    ));
+                }
+                self.store.buffered.set(archive).map_err(|_| crate::Error::NeedsRecovery)?;
+            }
+        }
+        self.guard()?;
+        self.store.buffered.get().ok_or(crate::Error::NeedsRecovery)
     }
+
+    /// Borrow the admitted file-backed checkpoint through its actual owner.
+    /// # Errors
+    /// Refuses changed checkpoint, source or custody.
+    pub fn checkpoint_file(&self) -> Result<&ServerLogGenerationRoomBackupFile> {
+        self.guard()?;
+        Ok(&self.store.backup)
+    }
+
     /// Actual exclusively owned private checkpoint root.
     #[must_use]
     pub fn root(&self) -> &Path {

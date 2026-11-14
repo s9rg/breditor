@@ -2,7 +2,7 @@
 use super::{
     NativeGenerationActivationCheckpointStatus as Status, PreparedLogGenerationRecoveryHost,
     PreparedNativeGenerationActivation, ServerLogGenerationRecoveryCoverage,
-    ServerLogGenerationRecoveryState, ServerLogGenerationRecoveryStateIdentity,
+    ServerLogGenerationRecoveryStateIdentity,
 };
 use crate::{
     Error, RecoveryRegistrationCredentials, Result, ServerLogGenerationRoomBackup,
@@ -64,32 +64,41 @@ impl SealedNativeRestartSelection {
         if operation != self.checkpoint.identity().operation() {
             return Err(Error::Contract("sealed restart operational owner differs"));
         }
-        archive.check_archive_ancestor(self.checkpoint.checkpoint())?;
+        self.checkpoint.checkpoint_file()?.check_archive_descendant(archive)?;
         self.check_checkpoint()
     }
 
-    pub(super) fn inspection_minimum<'a>(
-        &'a self,
-        minimum: Option<&'a ServerLogGenerationRoomBackup>,
-    ) -> Result<&'a ServerLogGenerationRoomBackup> {
+    pub(super) fn inspection_minimum(
+        &self,
+        minimum: Option<&ServerLogGenerationRoomBackup>,
+    ) -> Result<()> {
         if self.expected.participants.source != self.expected.server.native {
             return Err(Error::Contract("sealed inspection minimum inventory differs"));
         }
         match minimum {
-            Some(archive) if archive.info()?.identity == self.expected.server => Ok(archive),
-            None if &self.expected == self.checkpoint.identity().current() => {
-                Ok(self.checkpoint.checkpoint())
-            }
+            Some(archive) if archive.info()?.identity == self.expected.server => Ok(()),
+            None if &self.expected == self.checkpoint.identity().current() => Ok(()),
             _ => Err(Error::Contract("sealed inspection minimum archive differs")),
+        }
+    }
+
+    pub(super) fn inspection_minimum_archive<'a>(
+        &'a self,
+        minimum: Option<&'a ServerLogGenerationRoomBackup>,
+    ) -> Result<&'a ServerLogGenerationRoomBackup> {
+        self.inspection_minimum(minimum)?;
+        match minimum {
+            Some(archive) => Ok(archive),
+            None => self.checkpoint.checkpoint(),
         }
     }
 
     pub(super) fn check_inspected_current(
         &self,
-        captured: &ServerLogGenerationRecoveryState,
+        captured: &ServerLogGenerationRecoveryStateIdentity,
     ) -> Result<()> {
         if captured.origin != self.expected.origin
-            || self.status == Status::Prepared && captured.identity()? != self.expected
+            || self.status == Status::Prepared && *captured != self.expected
         {
             return Err(Error::Contract("sealed inspection current cut differs"));
         }

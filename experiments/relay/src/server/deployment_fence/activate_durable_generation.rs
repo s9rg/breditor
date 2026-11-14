@@ -66,7 +66,7 @@ pub(in crate::server) fn activate_durable_native_generation(
             principal,
             &current,
         )?;
-        prepared.checkpoint().check_live(&mut room, &assets, principal)?;
+        prepared.checkpoint_file()?.check_exact_owner(&mut room, &assets, principal)?;
         stop.after(Point::SourceChecked)?;
         prepared.guard()?;
         check_generation_selected(

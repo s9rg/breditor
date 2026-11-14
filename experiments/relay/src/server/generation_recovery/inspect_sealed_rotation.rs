@@ -50,7 +50,7 @@ pub(super) async fn inspect_rotation(
     tokio::task::spawn_blocking(move || {
         let (source, selection, root) = reopen_retained_seal(bootstrap)?;
         selection.check_checkpoint()?;
-        let minimum = selection.inspection_minimum(minimum.as_ref())?;
+        let minimum = selection.inspection_minimum_archive(minimum.as_ref())?;
         let origin = source.source_backup().info()?.identity;
         OperationalLogGenerationServerRoom::with_committed_pending_rotation(
             &root,
@@ -65,7 +65,7 @@ pub(super) async fn inspect_rotation(
                     server: capture.backup,
                     participants: capture.participants,
                 };
-                selection.check_inspected_current(&state)?;
+                selection.check_inspected_current(&state.identity()?)?;
                 selection.check_operational_archive(capture.operation, &state.server)?;
                 selection.authority.with_checkpoint_epoch(
                     selection.floor()?,

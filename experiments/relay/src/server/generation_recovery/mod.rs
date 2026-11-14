@@ -77,7 +77,7 @@ pub use inspect_sealed_raster_upload::{
     SealedNativeRasterUploadInspection, inspect_sealed_native_raster_upload,
 };
 mod inspect_sealed_restart;
-pub use inspect_sealed_restart::inspect_sealed_native_restart;
+pub use inspect_sealed_restart::{inspect_sealed_native_restart, inspect_sealed_native_restart_to};
 mod inspect_sealed_rotation;
 pub use inspect_sealed_rotation::{SealedNativeRotationInspection, inspect_sealed_native_rotation};
 mod inspect_sealed_rotation_and_raster;

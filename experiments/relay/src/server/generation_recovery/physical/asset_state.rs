@@ -1,7 +1,7 @@
 //! All retained native references share the same authenticated A/B/C source transaction.
 use super::{
     PhysicalServerRoomRecoveryStateIdentity, PreparedPhysicalRoomRecoveryHost,
-    capture::capture_state as capture_recovery_state, selected::check_retained,
+    selected::check_retained,
 };
 use crate::{
     Error, Result, Room, ServerLogGenerationRetainedAssetReferences, ServerLogGenerationRoomBackup,
@@ -32,8 +32,23 @@ pub(super) fn capture_state(
     custody: &crate::room::GenerationOperationCustody,
     owner: &str,
 ) -> Result<PhysicalServerAssetRecoveryState> {
-    let current =
-        capture_recovery_state(room, assets, original, ancestor, custody, owner)?.identity()?;
+    ancestor.check_retained(room, assets, owner)?;
+    let (local, _) = super::super::capture::capture_identity(
+        room,
+        assets,
+        original,
+        custody,
+        owner,
+        &mut std::io::sink(),
+    )?;
+    let current = PhysicalServerRoomRecoveryStateIdentity {
+        format: "breditor/physical-server-room-recovery-state".into(),
+        format_version: 1,
+        ancestor: ancestor.info()?.identity,
+        local_origin: local.origin,
+        server: local.server,
+        participants: local.participants,
+    };
     let references = room.log_generation_retained_asset_references(owner)?;
     if references.source != current.server.native
         || references.source != current.participants.source

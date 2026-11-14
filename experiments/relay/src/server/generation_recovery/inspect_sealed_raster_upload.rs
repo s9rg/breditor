@@ -38,7 +38,7 @@ pub async fn inspect_sealed_native_raster_upload(
     tokio::task::spawn_blocking(move || {
         let (source, selection, root) = reopen_retained_seal(bootstrap)?;
         selection.check_checkpoint()?;
-        let minimum = selection.inspection_minimum(minimum.as_ref())?;
+        let minimum = selection.inspection_minimum_archive(minimum.as_ref())?;
         let origin = source.source_backup().info()?.identity;
         OperationalLogGenerationServerRoom::with_committed_pending_raster(
             &root,
@@ -52,7 +52,7 @@ pub async fn inspect_sealed_native_raster_upload(
                     server: capture.backup,
                     participants: capture.participants,
                 };
-                selection.check_inspected_current(&state)?;
+                selection.check_inspected_current(&state.identity()?)?;
                 selection.check_operational_archive(capture.operation, &state.server)?;
                 selection.authority.with_checkpoint_epoch(
                     selection.floor()?,

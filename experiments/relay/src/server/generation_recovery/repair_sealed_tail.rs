@@ -88,7 +88,7 @@ pub(in crate::server) async fn repair_sealed_native_tail_with_interruption(
             &operating_directory,
             source.source_backup(),
             &origin,
-            selection.checkpoint.checkpoint(),
+            selection.checkpoint.checkpoint()?,
             &principal,
             true,
             |operational, captured| {

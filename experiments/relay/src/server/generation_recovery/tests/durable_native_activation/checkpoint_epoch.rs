@@ -54,7 +54,15 @@ async fn durable_checkpoint_prepare_holds_the_selected_epoch_through_disk_commit
                     "the deployment epoch changed during the checkpoint write"
                 );
                 let prepared = prepared?;
+                assert!(prepared.store.buffered.get().is_none());
+                assert_eq!(
+                    prepared.checkpoint_file()?.info().identity,
+                    prepared.identity().current().server
+                );
                 assert_eq!(prepared.status(&setup.authority)?, Status::Prepared);
+                assert!(prepared.store.buffered.get().is_none());
+                let bytes = std::fs::read(root.join("target.backup"))?;
+                assert_eq!(prepared.checkpoint()?.to_bytes()?, bytes);
                 assert_eq!(setup.ledger()?, before);
                 assert!(
                     contender.claim(&expected).is_ok(),

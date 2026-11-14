@@ -133,3 +133,56 @@ async fn a_later_registration_requires_its_own_protected_secret_in_addition_to_a
     proof.check_live(&handle, "owner", &owner).await?;
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn streamed_current_archive_and_inventory_match_and_refuse_output_failures() -> TestResult {
+    use crate::ServerLogGenerationRoomBackupFile;
+    use std::{fs, io::Seek, os::unix::fs::OpenOptionsExt};
+
+    let source = Source::new((3, true), true, true, true)?;
+    let (auth, owner, _) = authentication()?;
+    let handle = prepare_log_generation_recovery_host(
+        source.operation("streamed")?,
+        auth,
+        source.original_copy()?,
+        &source.original.info()?.identity,
+        "owner",
+        &owner,
+    )
+    .await?;
+    let buffered = handle.capture_recovery_state("owner", &owner).await?;
+    let expected = buffered.identity()?;
+    let (buffered, expected_inventory) = buffered.into_parts();
+    let path = source.directory.0.join("streamed.backup");
+    let mut output =
+        fs::OpenOptions::new().create_new(true).read(true).write(true).mode(0o600).open(&path)?;
+    output.seek(std::io::SeekFrom::Start(19))?;
+
+    assert!(
+        handle
+            .capture_recovery_state_to("owner", "wrong-token", output.try_clone()?)
+            .await
+            .is_err()
+    );
+    assert_eq!(output.metadata()?.len(), 0);
+    let (identity, inventory) =
+        handle.capture_recovery_state_to("owner", &owner, output.try_clone()?).await?;
+    output.sync_all()?;
+    assert_eq!(identity, expected);
+    assert_eq!(inventory.to_json(), expected_inventory.to_json());
+    let disk = ServerLogGenerationRoomBackupFile::open(fs::File::open(&path)?, &identity.server)?;
+    assert_eq!(disk.info(), buffered.info()?);
+    assert_eq!(fs::read(&path)?, buffered.to_bytes()?);
+    assert!(handle.capture_recovery_state_to("owner", &owner, output).await.is_err());
+
+    let path = source.directory.0.join("read-only-output");
+    drop(fs::File::create_new(&path)?);
+    assert!(
+        handle.capture_recovery_state_to("owner", &owner, fs::File::open(&path)?).await.is_err()
+    );
+    assert_eq!(fs::metadata(&path)?.len(), 0);
+    let (current, inventory) = handle.capture_recovery_identity("owner", &owner).await?;
+    assert_eq!(current, expected);
+    assert_eq!(inventory.to_json(), expected_inventory.to_json());
+    Ok(())
+}

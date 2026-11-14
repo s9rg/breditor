@@ -1,7 +1,7 @@
 //! Exact complete server references compose with the full physical origin/current selection.
 use super::{
     PreparedLogGenerationRecoveryHost, ServerLogGenerationRecoveryStateIdentity,
-    capture::capture_state as capture_recovery_state,
+    capture::capture_identity,
 };
 use crate::{Error, Result, Room, ServerLogGenerationRetainedAssetReferences, assets::AssetStore};
 use serde::Serialize;
@@ -27,7 +27,8 @@ pub(super) fn capture_state(
     custody: &crate::room::GenerationOperationCustody,
     owner: &str,
 ) -> Result<ServerLogGenerationAssetRecoveryState> {
-    let current = capture_recovery_state(room, assets, original, custody, owner)?.identity()?;
+    let (current, _) =
+        capture_identity(room, assets, original, custody, owner, &mut std::io::sink())?;
     let references = room.log_generation_retained_asset_references(owner)?;
     if references.source != current.server.native
         || current.participants.source != references.source

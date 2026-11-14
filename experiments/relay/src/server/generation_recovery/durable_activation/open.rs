@@ -4,7 +4,7 @@ use super::{
     PreparedNativeGenerationActivationIdentity as Identity, store::Store,
 };
 use crate::{
-    Error, Result, ServerLogGenerationRoomBackup,
+    Error, Result, ServerLogGenerationRoomBackupFile,
     log::generations::{GenerationDirectory, GenerationFileStamp},
     server::{PreparedLogGenerationHandover, generation_backup::durable::files},
 };
@@ -40,17 +40,17 @@ impl Prepared {
         }
         let archive = files::open(&directory.path.join("target.backup"))?;
         identity.archive.guard(&archive, &directory.path.join("target.backup"))?;
-        let backup = ServerLogGenerationRoomBackup::from_owned_bytes(files::read(
-            &archive,
-            &directory.path.join("target.backup"),
-            crate::MAX_SERVER_LOG_GENERATION_ROOM_BACKUP_BYTES,
-        )?)?;
+        let backup = ServerLogGenerationRoomBackupFile::open(
+            archive.try_clone()?,
+            &identity.current.server,
+        )?;
         backup.check_archive_ancestor(source.source_backup())?;
         let store = Store {
             archive_stamp: GenerationFileStamp::of(&archive)?,
             intent_stamp: GenerationFileStamp::of(&intent)?,
             directory,
             identity,
+            buffered: std::sync::OnceLock::new(),
             backup,
             archive,
             intent,

@@ -126,7 +126,7 @@ pub(super) async fn complete_rotation(
             &root,
             source.source_backup(),
             &origin,
-            selection.checkpoint.checkpoint(),
+            selection.checkpoint.checkpoint()?,
             &principal,
             stage.is_some(),
             |operational, captured| {

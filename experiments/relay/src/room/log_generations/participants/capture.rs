@@ -1,12 +1,13 @@
 //! Complete actual held source capture surrounds native metadata; no old-reader fallback.
 use super::{ServerLogGenerationParticipantInventory, ServerLogGenerationParticipantMetadata};
 use crate::{Error, Result, Room, ServerLogGenerationBackupIdentity};
+use std::io;
 impl Room {
     /// Capture every native account, author and registered document/review stream at an exact
     /// complete physical archive cut, including observers and revoked accounts. No history,
     /// permissions, active lease, receipt, source file or provider is changed.
-    /// The host authenticates the owner first. Two serialized captures check the same whole
-    /// archive before and after metadata; their large buffers are never retained together.
+    /// The host authenticates the owner first. Two serialized streaming checks bind the
+    /// same whole archive before and after reading the metadata.
     /// # Errors
     /// Non-owner calls, original storage, changed/uncertain sources and complete bounds refuse.
     pub fn log_generation_participant_inventory(
@@ -14,9 +15,9 @@ impl Room {
         principal: &str,
     ) -> Result<ServerLogGenerationParticipantInventory> {
         self.recovery_inventory_owner(principal)?;
-        let source = self.export_log_generation_backup(principal)?.info().identity;
+        let source = self.write_log_generation_backup(principal, &mut io::sink())?.identity;
         let inventory = self.capture_generation_inventory_at(principal, source.clone())?;
-        if self.export_log_generation_backup(principal)?.info().identity != source {
+        if self.write_log_generation_backup(principal, &mut io::sink())?.identity != source {
             return Err(Error::Contract("generation participant source changed"));
         }
         Ok(inventory)
@@ -24,7 +25,7 @@ impl Room {
 
     /// Encode the inventory against a cut captured from this held room. The caller must
     /// keep the same Native owner and verify the cut before returning detached data.
-    pub(in crate::room::log_generations) fn capture_generation_inventory_at(
+    pub(crate) fn capture_generation_inventory_at(
         &self,
         principal: &str,
         source: ServerLogGenerationBackupIdentity,

@@ -4,7 +4,7 @@ use super::{
     PreparedNativeGenerationActivationIdentity as Identity,
 };
 use crate::{
-    Error, Result, ServerLogGenerationRoomBackup, credentials,
+    Error, Result, ServerLogGenerationRoomBackup, ServerLogGenerationRoomBackupFile, credentials,
     log::generations::{GenerationDirectory, GenerationFileStamp, GenerationFileWitness},
     server::{
         PreparedLogGenerationHandoverIdentity, RoomDeploymentSelection, deployment_fence,
@@ -24,7 +24,8 @@ use std::{
 pub(in crate::server) struct Store {
     pub directory: GenerationDirectory,
     pub identity: Identity,
-    pub backup: ServerLogGenerationRoomBackup,
+    pub buffered: std::sync::OnceLock<ServerLogGenerationRoomBackup>,
+    pub(super) backup: ServerLogGenerationRoomBackupFile,
     pub(super) archive: File,
     pub(super) intent: File,
     pub(super) archive_stamp: GenerationFileStamp,
@@ -42,25 +43,20 @@ pub(super) struct Inputs {
 impl Store {
     pub(super) fn create(
         root: &Path,
-        backup: ServerLogGenerationRoomBackup,
         input: Inputs,
         stop: &Interruption,
+        write: impl FnOnce(&mut File) -> Result<ServerLogGenerationRoomBackupFile>,
     ) -> Result<Self> {
         deployment_fence::handover_selection(&input.previous, &[0; 32])?;
-        let info = backup.info()?;
+        let directory = GenerationDirectory::create(root)?;
+        let mut archive = directory.create_file("target.backup", &[])?;
+        let backup = write(&mut archive)?;
+        let info = backup.info();
         if info.identity != input.current.server {
             return Err(Error::Contract("native checkpoint current archive differs"));
         }
-        let directory = GenerationDirectory::create(root)?;
-        let mut archive = directory.create_file("target.backup", &[])?;
-        backup.write_to(&mut archive)?;
         archive.sync_all()?;
         directory.sync()?;
-        if files::digest(&archive, &directory.path.join("target.backup"), info.bytes)?
-            != info.identity.archive_sha256
-        {
-            return Err(Error::Contract("native checkpoint archive readback differs"));
-        }
         stop.after(Point::ArchiveSynced)?;
         let mut intent = directory.create_file("activation.json", &[])?;
         let mut identity = Identity {
@@ -93,6 +89,7 @@ impl Store {
             intent_stamp: GenerationFileStamp::of(&intent)?,
             directory,
             identity,
+            buffered: std::sync::OnceLock::new(),
             backup,
             archive,
             intent,
@@ -141,11 +138,12 @@ impl Store {
                 &self.directory.path.join("target.backup"),
                 self.identity.bytes,
             )? != self.identity.current.server.archive_sha256
-            || self.backup.info()?.identity != self.identity.current.server
-            || self.backup.encoded_len()? != self.identity.bytes
+            || self.backup.info().identity != self.identity.current.server
+            || self.backup.info().bytes != self.identity.bytes
         {
             return Err(Error::Contract("native checkpoint immutable files changed"));
         }
+        self.backup.guard_file()?;
         self.archive_stamp.guard(&self.archive)?;
         self.intent_stamp.guard(&self.intent)?;
         self.directory.guard_witness(&self.identity.root)

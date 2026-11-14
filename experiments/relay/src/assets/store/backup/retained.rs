@@ -1,6 +1,6 @@
-//! Verify a live complete store retains every original immutable archive record exactly.
+//! Verify a complete live store retains each original immutable file.
 use super::{AssetBackupIdentity, AssetStore, AssetStoreBackup};
-use crate::{Error, Result};
+use crate::{Result, archive_input::ArchiveEntry};
 use std::collections::BTreeMap;
 
 impl AssetStore {
@@ -8,23 +8,19 @@ impl AssetStore {
         &mut self,
         original: &AssetStoreBackup,
     ) -> Result<AssetBackupIdentity> {
-        // Re-admits all current native files, including additional unreferenced complete records.
-        let current = self.export_backup()?;
-        if current.identity.binding != original.identity.binding
-            || current.manifest != original.manifest
-        {
-            return Err(Error::Contract("operational asset manifest differs"));
-        }
-        let records =
-            current.records.iter().map(|r| (r.info.asset.as_str(), r)).collect::<BTreeMap<_, _>>();
-        for before in &original.records {
-            let after = records
-                .get(before.info.asset.as_str())
-                .ok_or(Error::Contract("operational original asset absent"))?;
-            if before.info != after.info || before.encoded != after.encoded {
-                return Err(Error::Contract("operational original asset differs"));
-            }
-        }
+        let entry = |section: &super::format::Section| ArchiveEntry {
+            offset: section.offset,
+            bytes: section.bytes,
+            sha256: section.sha256,
+        };
+        let originals = std::iter::once(("store.json".into(), entry(&original.header.manifest)))
+            .chain(original.header.records.iter().map(|record| {
+                (super::selected_files::record_name(&record.info.asset), entry(&record.record))
+            }))
+            .collect::<BTreeMap<_, _>>();
+        // Admit every live record, including unreferenced later uploads, one raster at a time.
+        let current = self.prepare_backup_stream()?;
+        current.check_retains(&original.identity, &originals)?;
         Ok(current.identity)
     }
 }

@@ -39,6 +39,15 @@ impl ServerLogGenerationRoomBackupFile {
 
 #[cfg(feature = "server")]
 impl ServerLogGenerationRoomBackupFile {
+    pub(crate) fn check_exact_owner(
+        &self,
+        room: &mut Room,
+        assets: &AssetStore,
+        principal: &str,
+    ) -> Result<()> {
+        self.check_live(room, assets, principal, true)
+    }
+
     fn native_sections(
         &self,
     ) -> Result<std::collections::BTreeMap<&str, crate::archive_input::ArchiveSlice<'_>>> {
@@ -49,7 +58,7 @@ impl ServerLogGenerationRoomBackupFile {
             .collect()
     }
 
-    pub(in crate::room::log_generations) fn check_archive_ancestor(
+    pub(crate) fn check_archive_ancestor(
         &self,
         ancestor: &super::ServerLogGenerationRoomBackup,
     ) -> Result<()> {
@@ -73,7 +82,27 @@ impl ServerLogGenerationRoomBackupFile {
         self.input.check()
     }
 
-    pub(in crate::room::log_generations) fn check_archive_descendant(
+    pub(crate) fn check_file_ancestor(&self, ancestor: &Self) -> Result<()> {
+        self.input.check()?;
+        ancestor.input.check()?;
+        super::super::backup::check_native_ancestry(
+            &self.identity.native,
+            &self.native_sections()?,
+            &ancestor.identity.native,
+            &ancestor.native_sections()?,
+        )?;
+        for (name, original) in &ancestor.rasters {
+            if self.rasters.get(name).is_none_or(|current| {
+                original.bytes != current.bytes || original.sha256 != current.sha256
+            }) {
+                return Err(Error::Contract("local archive lost or changed ancestor raster"));
+            }
+        }
+        ancestor.input.check()?;
+        self.input.check()
+    }
+
+    pub(crate) fn check_archive_descendant(
         &self,
         current: &super::ServerLogGenerationRoomBackup,
     ) -> Result<()> {

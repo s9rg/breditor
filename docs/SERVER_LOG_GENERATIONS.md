@@ -189,9 +189,23 @@ after rotation or packing. A partial handoff requires the exact original cut.
 owners into an inactive authenticated host. The host and its serving clones hold
 the original file and verify its selected identity across activation and
 publication. Sealed restart prepares the replacement host from the held
-original archive file. The existing sealed checkpoint and current-state capture
-still use buffered data, and native replay rebuilds room state in memory.
-Existing formats, host fencing requirements, and lifetime limits apply.
+original archive file. The durable target checkpoint streams directly to
+`target.backup`. Cold open validates and holds that file, and activation
+checks it against the live room. Existing formats, host fencing requirements
+and lifetime limits apply. Native replay still rebuilds room state in memory.
+
+`capture_recovery_state_to` streams the current native/raster archive to an
+empty file and returns the exact participant inventory and recovery selection.
+`capture_recovery_identity` returns the same identities and inventory without
+a destination. `inspect_sealed_native_restart_to` streams a surviving sealed
+cut and verifies the checkpoint, any separately selected minimum, and the
+actual operational owner before returning its identity.
+
+`PreparedNativeGenerationActivation::checkpoint_file` returns the admitted
+checkpoint. For existing code that needs the buffered checkpoint, call
+`checkpoint()?` to request it explicitly. The buffered accessor now reports
+read and admission errors, and the owner caches a successful read. The
+special-case repair workflows still use buffered archives.
 
 Operational file recovery passed 504 Rust relay tests. The focused regression
 interrupts a durable marker write, then verifies the reopened room after the
