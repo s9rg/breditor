@@ -680,6 +680,15 @@ which archived cut supplied the recovery floor, so later cold opens verify
 every handoff after that floor without relying on the old deployment's
 directory markers. All retained packet events remain available in order.
 
+For a long predecessor chain, use
+`ServerBackupHandle::capture_packed_portable_relay_segment`. It writes the
+original predecessor archive and checkpoint pairs into
+`native-lineage/packed.bin` in oldest-first order. The terminal backup and
+retained client files use the usual paths. The logical backup identity is
+the same as a split capture at the same cut. Opening the packed predecessors
+holds one file descriptor and verifies each original digest and lineage
+before restore or sealing. Use the split capture for older relay readers.
+
 The reference adapter can serve both recovered components behind a fresh
 lease from the existing deployment epoch authority, with the ordinary
 account and Origin policies. Deployment approval for the exact cut and

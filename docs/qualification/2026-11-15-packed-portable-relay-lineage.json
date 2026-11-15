@@ -1,0 +1,119 @@
+{
+  "format": "breditor/packed-portable-relay-lineage-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-15",
+  "source": {
+    "commit": "ae1f0080a2bb581bb47cc712970b3db0d61e7696",
+    "dirty": false,
+    "sha256": "7ed71db6ae01c4d369ca41fe69c5c6284b64185981077b3190dc41bd7c0a309d",
+    "files": 8957,
+    "bytes": 76081375
+  },
+  "relaySha256": "0affca23f6da761dfac83cd4596e0347100184d2e05b71b4bcb9f08c33e05cc1",
+  "runtimeSha256": "38b17b58126858fd4ef014e877e85806c323c675e88cd191222badbe9a36a6d5",
+  "descriptorRegression": {
+    "predecessorCount": 26,
+    "descriptorLimit": 48,
+    "splitFailsWithTooManyOpenFiles": true,
+    "packedColdRestoreAndReopen": true,
+    "identicalLogicalSelection": true,
+    "tests": {
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": "775ab4f722286feb3750b2c3cf746bd588f307e41a5625b7fea248919a765b02",
+      "logSha256": "cc691cb760557454c3ed1a6f891c05146f3f6d5f0c8ccc3bd20638cc7fc18a14"
+    }
+  },
+  "live": {
+    "reportSha256": "971e28e83c38e6765e35a95f5ff9b40a3a51ee85770130b4758baeb7859d9a5a",
+    "runs": {
+      "source": {
+        "packedLineages": 1,
+        "predecessors": 4,
+        "parkedOriginalPaths": 7,
+        "coldResumes": 5,
+        "offlineLanes": 6,
+        "undoRedoLanes": 2,
+        "archivedDiscussionEvents": 40,
+        "proof": null
+      },
+      "installed": {
+        "packedLineages": 1,
+        "predecessors": 4,
+        "parkedOriginalPaths": 7,
+        "coldResumes": 5,
+        "offlineLanes": 6,
+        "undoRedoLanes": 2,
+        "archivedDiscussionEvents": 40,
+        "proof": {
+          "registryArtifacts": 45,
+          "archives": [
+            {
+              "name": "@breditor/browser",
+              "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+            },
+            {
+              "name": "@breditor/experimental-rich-content",
+              "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+            },
+            {
+              "name": "@breditor/collaboration",
+              "sha256": "c5d79a56da7f48c4e4e10a298bfc2bca5cb9cee46642c0c0586df828396ed7b8"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "legacy": {
+    "reportSha256": "2acae46dc4be384ba386ef11860c9175bd648db1cf3f9374bdd14a4faa700f99",
+    "matchesEarlierSourceAndInstalledResults": true,
+    "isolatedRerunAfterChildExitTimeout": true,
+    "contendedAttemptLogSha256": "a77ee4ae50eac20669d063be228314eb8a2a8bc3d278d7f410ee3606643e0330"
+  },
+  "native": {
+    "server": {
+      "passed": 544,
+      "failed": 0,
+      "ignored": 1,
+      "executableSha256": "775ab4f722286feb3750b2c3cf746bd588f307e41a5625b7fea248919a765b02",
+      "logSha256": "442e20fb3584686fac89eb48eeb4a655fe7a26fa71e379d8a0a5b58cfa4d7f44"
+    },
+    "noDefaultFeatures": {
+      "passed": 216,
+      "failed": 0,
+      "ignored": 1,
+      "executableSha256": "a860db62fb84926d857297023a9a6ed851dcecd4dfce9d239097e54b9956dfb0",
+      "logSha256": "fbbbddb9c953f11ca207b491f00148e40e83b39b2794c630717cb112b7bf2fe3"
+    },
+    "crossVolume": {
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "executableSha256": "775ab4f722286feb3750b2c3cf746bd588f307e41a5625b7fea248919a765b02",
+      "logSha256": "d73b81114637afb370851f94c37ac72c21d5407da6fcb7d594ffc74acb13ad37"
+    }
+  },
+  "strictLibraryLint": {
+    "server": {
+      "passed": true,
+      "logSha256": "8aa2e0f2a7d2a3af971abae6e43a35c3dcba3dfb48b8ecb47a7a7e797ba277e6"
+    },
+    "noDefaultFeatures": {
+      "passed": true,
+      "logSha256": "eb0ea3e4eac50c3273129fc98968756cb2b9464fa885985f76d4a7a8f0fdbe8d"
+    }
+  },
+  "candidatePlan": {
+    "passed": 69,
+    "failed": 0,
+    "logSha256": "b3740f7d4919c7968068f2b054688bfbfe8595442540d7f59bf72760278953eb"
+  },
+  "scope": [
+    "The opt-in capture retains the ordered predecessor bytes in one immutable file. The logical backup identity matches the split capture at the same source cut.",
+    "Two cold workers use the same 48-descriptor limit while opening the same selected 26 predecessors. The split copy reaches the open-file limit, and the moved packed copy restores and reopens.",
+    "The native fixture refuses a changed count, altered checkpoint, trailing bytes and a mixed split/packed directory.",
+    "The source and clean-installed workflows seal, move and reopen the packed backup, including authority rollback refusal, preserved offline edits and history, and exact review and upload state."
+  ]
+}

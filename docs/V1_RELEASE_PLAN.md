@@ -2,6 +2,15 @@
 
 ## November 15 collaboration recovery
 
+[Packed portable predecessor lineage](qualification/2026-11-15-packed-portable-relay-lineage.json)
+keeps the original archive and checkpoint bytes in one file. The native
+fixture captures the same 26 predecessors in both layouts. A 48-descriptor
+cold worker hits the open-file limit with the split layout and restores and
+reopens the moved packed layout. Packed relocation passes from source and a
+clean offline package install, and the isolated rerun of the existing handover
+passes. The full native runs pass 544 server and 216 non-server tests. The
+separate APFS cross-volume test passes.
+
 [Coordinated relay cold restart](qualification/2026-11-15-coordinated-relay-cold-restart.json)
 requires an independently retained epoch at or after the target's activation.
 The previous relay started listening with an older complete ledger. The
