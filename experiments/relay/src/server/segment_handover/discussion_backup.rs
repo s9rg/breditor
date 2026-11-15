@@ -119,11 +119,22 @@ impl ServerBackupHandle {
         token: &str,
         destination: &Path,
     ) -> Result<RelaySegmentDiscussionBackupIdentity> {
+        self.capture_discussion_backup(principal, token, destination, || Ok(()))
+    }
+
+    pub(super) fn capture_discussion_backup(
+        &self,
+        principal: &str,
+        token: &str,
+        destination: &Path,
+        after_cut: impl FnOnce() -> Result<()>,
+    ) -> Result<RelaySegmentDiscussionBackupIdentity> {
         let host = &self.host;
         host.authentication.authenticate(principal, token)?;
         host.deployment.fenced(|lease| {
             deployment_fence::transaction(Some(lease), || {
                 let captured = capture(host, principal, destination)?;
+                after_cut()?;
                 let discussion_sources = if captured.discussion_sources.is_empty() {
                     Vec::new()
                 } else {
