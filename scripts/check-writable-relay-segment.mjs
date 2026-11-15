@@ -17,7 +17,7 @@ import {assertRecoveredRich, authorRecoveredRich, reviewRecoveredRich} from './f
 import {checkColdReviewReader} from './fixtures/relay-segment-cold-review-reader.mjs';
 import {recoverArchivedComment} from './fixtures/relay-segment-recovered-comment.mjs';
 import {recoveryReviewReplySocket} from './fixtures/recovery-review-reply-loss.mjs';
-import {attachArchivedDiscussion, authorAlternateDiscussionReply, authorPeerReply, publishAttachedDiscussion} from './fixtures/relay-segment-discussion.mjs';
+import {attachArchivedDiscussion, authorAlternateDiscussionReply, authorPeerReply, checkDiscussionReadPaths, longDiscussionEdits, publishAttachedDiscussion} from './fixtures/relay-segment-discussion.mjs';
 import {recoveryFactory} from './fixtures/independent-delivery-recovery/session.mjs';
 import {installCollaborationConsumer} from './fixtures/installed-collaboration-consumer.mjs';
 import {sourceEvidence, saveEvidence} from './candidate-release/evidence.mjs';
@@ -227,16 +227,20 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     const originalDiscussion = post('Accepted comment before segment');
     await document.flush();
     await review.flush();
-    let peerDiscussion, protectedPeerReview;
+    let peerDiscussion, protectedPeerReview, discussionUsesNativeTranscript;
+    const extraDiscussionEdits = relayDiscussion ? longDiscussionEdits : 0;
     if (peerDiscussionToken) {
       peerDiscussion = await authorPeerReply({
         api, options, persisted, profile, thread: originalDiscussion, token: peerDiscussionToken, writer: peer.identity.writer,
+        extraEdits: extraDiscussionEdits,
       });
       protectedPeerReview = {actor: peerDiscussion.actor, credential: peerDiscussion.credential};
       await stopClients();
       await attach();
-      const history = session.core.readReviewThreadHistory(originalDiscussion);
-      assert.equal(history.events.filter(event => event.principal === 'discussion-peer').length, 4);
+      const {paged, native} = checkDiscussionReadPaths(session.core, originalDiscussion, 5 + extraDiscussionEdits,
+        process.env.BREDITOR_EXPECT_DISCUSSION_TRANSCRIPT);
+      assert.equal(paged.filter(event => event.principal === 'discussion-peer').length, 4 + extraDiscussionEdits);
+      discussionUsesNativeTranscript = native;
     }
     const rasterUrl = 'http://' + address + '/assets/sha256:' + sha(pixel);
     const headers = {Origin: origin, Authorization: 'Bearer ' + token, 'X-Breditor-Principal': 'owner'};
@@ -581,6 +585,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
         api, session, review, policy: retainedBranches.readPolicy, source, original: originalDiscussion,
         directory: parent, origin, headers, binding: binding.binding, endpoint: 'http://' + address,
         archiveSha256: Buffer.from(incomingBranch.sha256).toString('hex'), readerToken,
+        eventCount: 6 + extraDiscussionEdits,
       });
       assert.equal(visibleThreads().length, 5);
       // Replay the attachment from this active WAL before carrying it into a materialized cut.
@@ -830,7 +835,9 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       ...(recoveredComment ? {committedRecoveredComments: 1} : {}),
       ...(attachedDiscussion ? {committedDiscussionLinks: 1} : {}),
       ...(relayDiscussion ? {relayDiscussionAttachments: 1, attachmentHandover: 1,
-        attachmentPublicationRefusals: 6, idempotentAttachmentPublication: 1, attachmentWalReplays: 1} : {}),
+        attachmentPublicationRefusals: 8, idempotentAttachmentPublication: 1, attachmentWalReplays: 1,
+        archivedDiscussionEvents: attachedDiscussion.eventCount, discussionUsesNativeTranscript,
+        exactBytesMatchPagedFallback: attachedDiscussion.comparedLegacy} : {}),
       ...(loss ? {discardedDurableReviewReplies: 1, coldAcknowledgedReviewIntents: 1, recoveredReviewSubmissions: loss.submissions} : {}),
       registrationRefusals: captured.registrationRefusals, providerRasters: captured.providerRasters,
       retainedPackets: captured.retainedPackets, stagedClientRasters: captured.clientRasters, clientUploadReceipts,

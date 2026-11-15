@@ -12,7 +12,7 @@ import type {RichRetainedAssetReferencesRead} from "@breditor/experimental-rich-
 import {RichRetainedAssetReferenceRegistry} from "@breditor/experimental-rich-content/rendering";
 import {SharedPacketAssetReferenceRegistry,type SharedPacketAssetReferencesRead} from "./packet_asset_references.js";
 import {parseRichWritingTools} from "@breditor/experimental-rich-content/rendering";
-import type {SharedReviewAccess,SharedReviewAction,SharedReviewGuard,SharedReviewImportOutcome,SharedReviewOutcome,SharedReviewPolicy,SharedReviewResolution,SharedReviewSnapshot,SharedReviewTarget,SharedReviewView,SharedReviewWriterClock,SharedReviewBatchReceipt,SharedReviewQuote,SharedReviewClipboard,SharedReviewId,SharedReviewThreadHistoryPage} from "./review_types.js";
+import type {SharedReviewAccess,SharedReviewAction,SharedReviewGuard,SharedReviewImportOutcome,SharedReviewOutcome,SharedReviewPolicy,SharedReviewResolution,SharedReviewSnapshot,SharedReviewTarget,SharedReviewView,SharedReviewWriterClock,SharedReviewBatchReceipt,SharedReviewQuote,SharedReviewClipboard,SharedReviewId,SharedReviewThreadHistoryEntry,SharedReviewThreadHistoryPage,SharedReviewThreadTranscript} from "./review_types.js";
 import type {SharedDocumentVersionInfo,SharedVersionComparison,SharedDocumentVersionSource} from "./version_types.js";
 import {SharedDocumentVersionRestorePlan,nativeVersionPlan} from "./version_plan.js";
 import type {SharedDocumentSuggestionDraft,SharedDocumentSuggestionInfo,SharedDocumentSuggestionPreparation,SharedDocumentSuggestionSource,SharedSuggestionPreparationSummary,SharedWriterReceiptV2,SharedWriterReceiptRetention,SharedSuggestionRevisionInfo,SharedSuggestionRevisionSource,SharedSuggestionFormatRebase,SharedSuggestionTextRebase,SharedSuggestionTextRebasePolicy,SharedSuggestionClipboardPlan} from "./suggestion_types.js";
@@ -423,6 +423,24 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
   const raw=this.#requireReview();
   if(raw.review_thread_history_version?.()!=="1"||typeof raw.read_review_thread_history!=="function")throw new SharedEditorError("review_thread_history_unavailable","Use a matching native review history runtime");
   return JSON.parse(raw.read_review_thread_history(this.#observation,JSON.stringify({thread,offset}))) as SharedReviewThreadHistoryPage;
+ }
+ /** Read the exact original birth, falling back to the first page on older native owners. */
+ readReviewThreadBirth(thread: SharedReviewId, guard?: SharedReviewGuard): SharedReviewThreadHistoryEntry {
+  this.#checkReview(guard);
+  const raw = this.#requireReview();
+  if (raw.review_thread_transcript_version?.() === "1" && typeof raw.read_review_thread_birth === "function") {
+   return JSON.parse(raw.read_review_thread_birth(this.#observation, JSON.stringify(thread))) as SharedReviewThreadHistoryEntry;
+  }
+  const [birth] = this.readReviewThreadHistory(thread, 0, guard).events;
+  if (!birth) throw new SharedEditorError("review_thread_history_unavailable", "The original review thread birth is unavailable");
+  return birth;
+ }
+ /** Return the bounded native transcript when this owner exposes the one-pass reader. */
+ readReviewThreadTranscript(thread: SharedReviewId, guard?: SharedReviewGuard): SharedReviewThreadTranscript | null {
+  this.#checkReview(guard);
+  const raw = this.#requireReview();
+  if (raw.review_thread_transcript_version?.() !== "1" || typeof raw.read_review_thread_transcript !== "function") return null;
+  return JSON.parse(raw.read_review_thread_transcript(this.#observation, JSON.stringify(thread))) as SharedReviewThreadTranscript;
  }
  #requireReviewActionClock():SharedRustOwner{
   const raw=this.#requireReview();

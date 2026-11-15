@@ -103,35 +103,22 @@ impl<'a> DiscussionRecord<'a> {
             id: ReviewThreadId,
         }
         let SelectedThread { id } = serde_json::from_str(self.thread.get())?;
-        let thread = comments
-            .view()?
-            .threads
-            .into_iter()
-            .find(|thread| thread.id == id)
-            .ok_or(Error::Contract("original recovered discussion birth is absent"))?;
+        let mut originals = self.events.iter();
+        let thread = comments.visit_thread_history(&comments.observe(), &id, |entry| {
+            use breditor_collab_feasibility::review::ReviewError;
+            let exact = serde_json::to_string(&entry)?;
+            if (entry.index == 0 && entry.digest != self.original.birth_digest)
+                || originals.next().map(|event| event.get()) != Some(exact.as_str())
+            {
+                return Err(ReviewError::Contract("original recovered discussion event differs"));
+            }
+            Ok(())
+        })?;
+        if originals.next().is_some() {
+            return Err(Error::Contract("original recovered discussion event count differs"));
+        }
         if serde_json::to_string(&thread)? != self.thread.get() {
             return Err(Error::Contract("original recovered discussion projection differs"));
-        }
-        let observed = comments.observe();
-        let mut offset = 0;
-        loop {
-            let page = comments.read_thread_history(&observed, &id, offset)?;
-            for entry in page.events {
-                let exact = serde_json::to_string(&entry)?;
-                if (entry.index == 0 && entry.digest != self.original.birth_digest)
-                    || self.events.get(entry.index as usize).map(|event| event.get())
-                        != Some(exact.as_str())
-                {
-                    return Err(Error::Contract("original recovered discussion event differs"));
-                }
-                offset += 1;
-            }
-            if page.next_offset.is_none() {
-                break;
-            }
-        }
-        if offset as usize != self.events.len() {
-            return Err(Error::Contract("original recovered discussion event count differs"));
         }
         Ok(())
     }

@@ -6,7 +6,7 @@ use super::{
     actions::ReviewAction,
     event::{self, Clock, Event, Payload},
 };
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Default)]
 struct Register<T>(BTreeMap<ReviewEventId, (ReviewPrincipalId, T)>);
@@ -32,19 +32,28 @@ pub(super) struct Projection {
 }
 impl Projection {
     pub(super) fn build(events: &[Event], limit: usize) -> Result<Self, ReviewError> {
-        let events = event::ordered(events, limit)?;
+        Self::from_ordered(&event::ordered(events, limit)?)
+    }
+
+    // The caller supplies the native causal order, which has already been
+    // validated. An isolated thread includes every action that can affect it.
+    pub(super) fn from_ordered(events: &[&Event]) -> Result<Self, ReviewError> {
         let mut visibility = BTreeMap::new();
-        for event in &events {
-            if let Payload::Visibility { target, visible } = &event.payload {
-                if target.actor != event.id.actor
-                    || !event::observes(&event.dependencies, target)
-                    || !events
-                        .iter()
-                        .any(|e| e.id == *target && matches!(e.payload, Payload::Action(_)))
-                {
-                    return Err(ReviewError::Contract("review visibility target"));
+        let mut actions = BTreeSet::new();
+        for event in events {
+            match &event.payload {
+                Payload::Action(_) => {
+                    actions.insert(&event.id);
                 }
-                visibility.insert(target.clone(), *visible);
+                Payload::Visibility { target, visible } => {
+                    if target.actor != event.id.actor
+                        || !event::observes(&event.dependencies, target)
+                        || !actions.contains(target)
+                    {
+                        return Err(ReviewError::Contract("review visibility target"));
+                    }
+                    visibility.insert(target, *visible);
+                }
             }
         }
         let mut result = Self { threads: BTreeMap::new(), messages: BTreeMap::new() };

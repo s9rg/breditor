@@ -1,11 +1,12 @@
 /** Attach the selected original discussion to a new ordinary live discussion by this account. */
 import {prepareArchiveIntegrity} from '../archive_integrity/context.js';
 import {SharedRichEditor} from '../core.js';
+import type {SharedSelectionPolicy} from '../types.js';
 import type {SharedIndependentDeliverySession} from '../independent_delivery/session.js';
 import {recordCutJson} from '../physical_room_record_cut/json.js';
 import {fields} from '../physical_room_record_cut/policy.js';
 import {participantAuthority} from '../participant_backup/policy.js';
-import type {SharedReviewAction, SharedReviewTarget, SharedReviewThreadHistoryEntry, SharedReviewThreadHistoryPage} from '../review_types.js';
+import type {SharedReviewAction, SharedReviewTarget, SharedReviewId, SharedReviewThreadHistoryEntry, SharedReviewThreadHistoryPage, SharedReviewThreadTranscript} from '../review_types.js';
 import type {SharedRecoveredBranchReviewOptions, SharedRecoveredBranchReviewIntent} from './review_contract.js';
 import {sameBranchDocumentOrigin} from './document_origin.js';
 import {branchFile} from './framing.js';
@@ -17,7 +18,7 @@ import {currentReviewTarget} from './review_target.js';
 import {DISCUSSION_BYTES, DISCUSSION_MIME, discussionRecord, reviewIdKey} from './discussion_record.js';
 import type {SharedPreparedRecoveredDiscussion, SharedRecoveredDiscussionOptions} from './discussion_types.js';
 
-const {captureReviewAnchor, readReviewThreadHistory, reviewSnapshot} = SharedRichEditor.prototype;
+const {captureReviewAnchor, readReviewThreadHistory, readReviewThreadTranscript, reviewSnapshot} = SharedRichEditor.prototype;
 
 export async function prepareSharedRecoveredDiscussion(
   options: SharedRecoveredDiscussionOptions,
@@ -41,17 +42,7 @@ export async function prepareSharedRecoveredDiscussion(
 
   const {prepared, file} = await withArchivedBranch(source, policy, core => {
     if (!sameBranchDocumentOrigin(core, target.core)) throw new Error('Recovered discussion belongs to a different native document');
-    const projection = reviewSnapshot.call(core).view.threads.find(item => reviewIdKey(item.thread.id) === reviewIdKey(thread));
-    if (!projection) throw new Error('Select an original archived discussion');
-
-    const events: SharedReviewThreadHistoryEntry[] = [];
-    let offset: number | null = 0;
-    while (offset !== null) {
-      const page: SharedReviewThreadHistoryPage = readReviewThreadHistory.call(core, thread, offset);
-      events.push(...page.events);
-      if (page.nextOffset !== null && page.nextOffset <= offset) throw new Error('Archived discussion history did not advance');
-      offset = page.nextOffset;
-    }
+    const {thread: projection, events} = readReviewThreadTranscript.call(core, thread) ?? readLegacyTranscript(core, thread);
     const birth = events[0];
     if (!birth) throw new Error('The archived discussion birth is unavailable');
     const request: SharedReviewAction = {
@@ -67,7 +58,7 @@ export async function prepareSharedRecoveredDiscussion(
       format: 'breditor/recovered-discussion', formatVersion: 1, room: {endpoint, room, binding}, seed: intent.seed,
       original: {archiveSha256: source.selection.sha256, birthDigest: birth.digest},
       link: {id: {actor, counter: intent.after.through}, principal, digest: intent.after.prefixDigest},
-      thread: projection.thread, events,
+      thread: projection, events,
     });
     const file = new Blob([recordCutJson(record, DISCUSSION_BYTES)], {type: DISCUSSION_MIME});
     return {prepared, file};
@@ -76,4 +67,20 @@ export async function prepareSharedRecoveredDiscussion(
   const selection = Object.freeze({bytes: file.size, sha256: await integrity.digest(file)});
   integrity.guard();
   return Object.freeze({...prepared, file, selection});
+}
+
+// A compatible older runtime uses its original guarded page contract.
+function readLegacyTranscript(core: SharedRichEditor<SharedSelectionPolicy>, thread: SharedReviewId): SharedReviewThreadTranscript {
+  const projection = reviewSnapshot.call(core).view.threads.find(item => reviewIdKey(item.thread.id) === reviewIdKey(thread));
+  if (!projection) throw new Error('Select an original archived discussion');
+
+  const events: SharedReviewThreadHistoryEntry[] = [];
+  let offset: number | null = 0;
+  while (offset !== null) {
+    const page: SharedReviewThreadHistoryPage = readReviewThreadHistory.call(core, thread, offset);
+    events.push(...page.events);
+    if (page.nextOffset !== null && page.nextOffset <= offset) throw new Error('Archived discussion history did not advance');
+    offset = page.nextOffset;
+  }
+  return {thread: projection.thread, events};
 }

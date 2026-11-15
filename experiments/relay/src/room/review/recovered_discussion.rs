@@ -15,8 +15,7 @@ impl Room {
             .copied()
             .ok_or(Error::Contract("recovered discussion birth is not accepted"))?;
         let observed = state.session.observe();
-        let page = state.session.read_thread_history(&observed, &expected.id, 0)?;
-        let birth = page.events.first().ok_or(Error::NeedsRecovery)?;
+        let birth = state.session.read_thread_birth(&observed, &expected.id)?;
         if birth.id != event
             || birth.principal != &expected.principal
             || birth.digest != expected.digest

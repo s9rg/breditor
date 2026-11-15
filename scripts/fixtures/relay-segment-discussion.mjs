@@ -10,8 +10,30 @@ const peerEdited = 'Peer discussion edit';
 const archivedReply = 'Alternate branch discussion reply';
 const unrelated = 'Competing branch comment';
 const liveBody = 'Continue this archived discussion';
+export const longDiscussionEdits = 34;
 
-export async function authorPeerReply({api, options, persisted, profile, thread, token, writer}) {
+export function checkDiscussionReadPaths(core, id, expectedEvents, transcriptExpected) {
+  let offset = 0;
+  const paged = [];
+  do {
+    const {events, nextOffset} = core.readReviewThreadHistory(id, offset);
+    paged.push(...events);
+    offset = nextOffset;
+  } while (offset !== null);
+  assert.equal(paged.length, expectedEvents);
+  const snapshot = core.reviewSnapshot();
+  assert.deepEqual(core.readReviewThreadBirth(id, snapshot), paged[0]);
+  const transcript = core.readReviewThreadTranscript(id, snapshot);
+  if (transcriptExpected) assert.equal(transcript !== null, transcriptExpected === 'native');
+  if (transcript) {
+    assert.deepEqual(transcript.events, paged);
+    assert.deepEqual(transcript.thread,
+      snapshot.view.threads.find(row => JSON.stringify(row.thread.id) === JSON.stringify(id)).thread);
+  }
+  return {paged, native: transcript !== null};
+}
+
+export async function authorPeerReply({api, options, persisted, profile, thread, token, writer, extraEdits = 0}) {
   const identity = await api.registerSharedReviewWriter({
     ...options, principal: peer, actor: peer, documentWriter: writer, getToken: () => token,
   });
@@ -29,6 +51,11 @@ export async function authorPeerReply({api, options, persisted, profile, thread,
     await sync.connect();
     const reply = session.core.dispatchReview({kind: 'reply', data: {thread, body: peerReply}});
     assert.equal(reply.kind, 'committed');
+    for (let index = 0; index < extraEdits; index++) {
+      assert.equal(session.core.dispatchReview({
+        kind: 'edit_message', data: {message: reply.event, body: 'Retained historical edit ' + index},
+      }).kind, 'committed');
+    }
     const edit = session.core.dispatchReview({kind: 'edit_message', data: {message: reply.event, body: peerEdited}});
     assert.equal(edit.kind, 'committed');
     assert.equal(session.core.undoReview().kind, 'committed');
@@ -46,20 +73,23 @@ export function authorAlternateDiscussionReply(session, thread) {
   assert.equal(session.core.dispatchReview({kind: 'reply', data: {thread, body: archivedReply}}).kind, 'committed');
 }
 
-export async function openAttachedDiscussion({api, target, wasm, directory, link, original}) {
+export async function openAttachedDiscussion({api, target, wasm, directory, link, original, eventCount = 6}) {
   const file = readFileSync(join(directory, 'recovered-discussion.json'));
   const selection = JSON.parse(readFileSync(join(directory, 'recovered-discussion.selection')));
   const record = await api.readSharedRecoveredDiscussion(new Blob([file]), selection, {wasm, target, checkAuthority() {}});
   assert.doesNotMatch(file.toString(), new RegExp(unrelated));
-  return assertAttachedDiscussion(record, target, link, original);
+  return assertAttachedDiscussion(record, target, link, original, eventCount);
 }
 
-function assertAttachedDiscussion(record, target, link, original) {
+function assertAttachedDiscussion(record, target, link, original, eventCount) {
   assert.deepEqual(record.thread.id, original);
   assert.deepEqual(record.link.id, link);
   assert.equal(record.link.principal, 'owner');
   assert.deepEqual([...new Set(record.events.map(event => event.principal))].sort(), [peer, 'owner']);
-  assert.equal(record.events.length, 6);
+  assert.equal(record.events.length, eventCount);
+  assert.deepEqual(record.events.map(event => event.index), Array.from({length: eventCount}, (_, index) => index));
+  assert.equal(record.events.filter(event => event.payload.data?.kind === 'edit_message' &&
+    event.payload.data.data.body.startsWith('Retained historical edit ')).length, eventCount - 6);
   assert.deepEqual(record.events.filter(event => event.principal === peer && event.payload.kind === 'visibility')
     .map(event => event.payload.data.visible), [false, true]);
   assert.ok(record.events.some(event => event.principal === peer && event.payload.kind === 'action' &&
@@ -75,12 +105,27 @@ function assertAttachedDiscussion(record, target, link, original) {
   return record;
 }
 
-export async function attachArchivedDiscussion({api, session, review, policy, source, original, directory}) {
+export async function attachArchivedDiscussion({api, session, review, policy, source, original, directory, eventCount = 6}) {
   const before = session.exportRecovery();
-  const prepared = await api.prepareSharedRecoveredDiscussion({
+  const options = {
     ...policy, source, thread: original, target: session, guard: session.core.reviewSnapshot(),
     anchor: {kind: 'document'}, body: liveBody,
-  });
+  };
+  const prepared = await api.prepareSharedRecoveredDiscussion(options);
+  const runtime = policy.wasm.SharedEditorOwner.prototype;
+  const method = Object.getOwnPropertyDescriptor(runtime, 'read_review_thread_transcript');
+  const comparedLegacy = eventCount > 6 && typeof method?.value === 'function';
+  if (comparedLegacy) {
+    Object.defineProperty(runtime, 'read_review_thread_transcript', {...method, value: undefined});
+    try {
+      const legacy = await api.prepareSharedRecoveredDiscussion(options);
+      assert.deepEqual(legacy.selection, prepared.selection);
+      assert.deepEqual(legacy.intent, prepared.intent);
+      assert.deepEqual(Buffer.from(await legacy.file.arrayBuffer()), Buffer.from(await prepared.file.arrayBuffer()));
+    } finally {
+      Object.defineProperty(runtime, 'read_review_thread_transcript', method);
+    }
+  }
   writeFileSync(join(directory, 'recovered-discussion.json'), Buffer.from(await prepared.file.arrayBuffer()),
     {flag: 'wx', mode: 0o600, flush: true});
   writeFileSync(join(directory, 'recovered-discussion.selection'), JSON.stringify(prepared.selection),
@@ -96,15 +141,15 @@ export async function attachArchivedDiscussion({api, session, review, policy, so
   await review.flush();
   assert.deepEqual(api.inspectSharedRecoveredBranchReviewIntent(session, prepared.intent), {kind: 'acknowledged', event: link});
   assert.deepEqual(session.exportRecovery().source.documentCheckpoint, before.source.documentCheckpoint);
-  await openAttachedDiscussion({api, target: session, wasm: policy.wasm, directory, link, original});
-  return {directory, link, original};
+  await openAttachedDiscussion({api, target: session, wasm: policy.wasm, directory, link, original, eventCount});
+  return {directory, link, original, eventCount, comparedLegacy};
 }
 
 
 export async function publishAttachedDiscussion({
-  api, session, review, policy, source, original, directory, origin, headers, binding, endpoint, archiveSha256, readerToken,
+  api, session, review, policy, source, original, directory, origin, headers, binding, endpoint, archiveSha256, readerToken, eventCount,
 }) {
-  const attached = await attachArchivedDiscussion({api, session, review, policy, source, original, directory});
+  const attached = await attachArchivedDiscussion({api, session, review, policy, source, original, directory, eventCount});
   const {link} = attached;
   const url = new URL(`/recovered-discussions/v1/threads/${link.actor}/${link.counter}`, endpoint);
   const mime = 'application/vnd.breditor.recovered-discussion+json';
@@ -123,6 +168,12 @@ export async function publishAttachedDiscussion({
   const forged = JSON.parse(body);
   forged.events[1].principal = 'owner';
   await refused(400, postHeaders, JSON.stringify(forged));
+  const changedLateEvent = JSON.parse(body);
+  changedLateEvent.events[17].payload.data.data.body = 'Forged late edition';
+  await refused(400, postHeaders, JSON.stringify(changedLateEvent));
+  const addedEvent = JSON.parse(body);
+  addedEvent.events.push(addedEvent.events.at(-1));
+  await refused(400, postHeaders, JSON.stringify(addedEvent));
   const foreignEndpoint = JSON.parse(body);
   foreignEndpoint.room.endpoint = 'wss://another.example/ws';
   await refused(400, postHeaders, JSON.stringify(foreignEndpoint));
@@ -160,15 +211,15 @@ export async function publishAttachedDiscussion({
   assert.equal((await fetch(url, {headers: {...readerHeaders, 'X-Breditor-Review': '0'.repeat(64)}})).status, 400);
   unlinkSync(join(directory, 'recovered-discussion.json'));
   unlinkSync(join(directory, 'recovered-discussion.selection'));
-  return {link, original, entry};
+  return {link, original, entry, eventCount, comparedLegacy: attached.comparedLegacy};
 }
 
-export async function openRelayDiscussion({api, target, wasm, getToken, link, original, entry}) {
+export async function openRelayDiscussion({api, target, wasm, getToken, link, original, entry, eventCount}) {
   const options = {target, wasm, getToken, checkAuthority() {}};
   const selected = await api.discoverSharedRecoveredDiscussion(link, options);
   assert.deepEqual(selected, entry);
   await assert.rejects(api.loadSharedRecoveredDiscussion({...selected, sha256: '0'.repeat(64)}, options));
   const record = await api.loadSharedRecoveredDiscussion(selected, options);
   assert.doesNotMatch(JSON.stringify(record), new RegExp(unrelated));
-  return assertAttachedDiscussion(record, target, link, original);
+  return assertAttachedDiscussion(record, target, link, original, eventCount);
 }

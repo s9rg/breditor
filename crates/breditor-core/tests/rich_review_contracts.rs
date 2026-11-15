@@ -347,3 +347,55 @@ fn input_binding_and_message_budgets_never_publish_a_partial_review_action() -> 
     assert_eq!(a.checkpoint_json()?, exact);
     Ok(())
 }
+
+#[test]
+fn single_thread_transcript_matches_all_native_pages_and_the_isolated_projection() -> Result {
+    let mut a = owner("101", "alice")?;
+    let mut b = owner("202", "bob")?;
+    let thread = create(&mut a)?;
+    let unrelated = create(&mut a)?;
+    receive(&mut b, &a, "101", "alice")?;
+    reply(&mut b, &unrelated, "Unrelated discussion")?;
+    for index in 0..22 {
+        reply(&mut b, &thread, &format!("Original attributed reply {index}"))?;
+    }
+    b.undo(&b.observe())?;
+    b.redo(&b.observe())?;
+    receive(&mut a, &b, "202", "bob")?;
+    let current = a.observe();
+    let checkpoint = a.checkpoint_json()?;
+
+    let mut actual = Vec::new();
+    let view = a.visit_thread_history(&current, &thread, |entry| {
+        actual.push(serde_json::to_value(entry)?);
+        Ok(())
+    })?;
+    let expected = a
+        .view()?
+        .threads
+        .into_iter()
+        .find(|item| item.id == thread)
+        .ok_or("missing projected thread")?;
+    assert_eq!(view, expected);
+
+    let first = a.read_thread_history(&current, &thread, 0)?;
+    assert_eq!(first.next_offset, Some(16));
+    let second = a.read_thread_history(&current, &thread, 16)?;
+    assert_eq!(second.next_offset, None);
+    let paged: std::result::Result<Vec<_>, _> =
+        first.events.into_iter().chain(second.events).map(serde_json::to_value).collect();
+    assert_eq!(actual, paged?);
+    assert_eq!(actual.len(), 25);
+    assert_eq!(serde_json::to_value(a.read_thread_birth(&current, &thread)?)?, actual[0]);
+    assert_eq!(actual[23]["payload"]["data"]["visible"], false);
+    assert_eq!(actual[24]["payload"]["data"]["visible"], true);
+
+    let refusal = a.visit_thread_history(&current, &thread, |_| {
+        Err(ReviewError::Contract("visitor refused staged bytes"))
+    });
+    assert!(matches!(refusal, Err(ReviewError::Contract("visitor refused staged bytes"))));
+    assert_eq!(a.checkpoint_json()?, checkpoint);
+    assert!(a.visit_thread_history(&b.observe(), &thread, |_| Ok(())).is_err());
+    assert!(a.read_thread_birth(&b.observe(), &thread).is_err());
+    Ok(())
+}

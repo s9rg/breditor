@@ -29,6 +29,11 @@ export interface SharedReviewThreadHistoryEntry {
   |{readonly kind:"action";readonly data:SharedReviewAction}
   |{readonly kind:"visibility";readonly data:{readonly target:SharedReviewId;readonly visible:boolean}};
 }
+/** Exact native projection and complete causal timeline of one selected discussion. */
+export interface SharedReviewThreadTranscript {
+ readonly thread:SharedReviewThread;
+ readonly events:readonly SharedReviewThreadHistoryEntry[];
+}
 export interface SharedReviewThreadHistoryPage {
  readonly thread:SharedReviewId;readonly events:readonly SharedReviewThreadHistoryEntry[];
  readonly nextOffset:number|null;
@@ -70,6 +75,9 @@ export interface SharedReviewRustCapability {
  read_review_clipboard?(packet:string):string;
  review_thread_history_version?():string;
  read_review_thread_history?(observation:unknown,input:string):string;
+ review_thread_transcript_version?():string;
+ read_review_thread_birth?(observation:unknown,input:string):string;
+ read_review_thread_transcript?(observation:unknown,input:string):string;
  review_action_clock_version?():string;
  preview_review_action_clock?(observation:unknown,input:string):string;
  dispatch_review_with_clock?(observation:unknown,input:string):string;

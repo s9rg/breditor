@@ -15,6 +15,7 @@ mod export_review;
 mod read_clipboard;
 mod read_quote;
 mod read_thread_history;
+mod read_thread_transcript;
 mod receive_review;
 mod redo_review;
 mod review_checkpoint;

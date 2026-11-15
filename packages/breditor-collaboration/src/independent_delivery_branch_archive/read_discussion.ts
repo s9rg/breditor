@@ -11,7 +11,7 @@ import {clock} from '../relay/validation.js';
 import {DISCUSSION_BYTES, discussionRecord, reviewIdKey} from './discussion_record.js';
 import type {SharedRecoveredDiscussionAttachment, SharedRecoveredDiscussionReadOptions} from './discussion_types.js';
 
-const {readReviewThreadHistory, writerClockV2} = SharedRichEditor.prototype;
+const {readReviewThreadBirth, writerClockV2} = SharedRichEditor.prototype;
 
 export async function readSharedRecoveredDiscussion(
   input: Blob,
@@ -44,8 +44,8 @@ export async function readSharedRecoveredDiscussion(
       seed.through !== record.seed.through || seed.prefixDigest !== record.seed.prefixDigest) {
     throw new Error('Use a reader in the original recovered discussion room');
   }
-  const [birth] = readReviewThreadHistory.call(port.core, record.link.id).events;
-  if (!birth || reviewIdKey(birth.id) !== reviewIdKey(record.link.id) || birth.principal !== record.link.principal ||
+  const birth = readReviewThreadBirth.call(port.core, record.link.id);
+  if (reviewIdKey(birth.id) !== reviewIdKey(record.link.id) || birth.principal !== record.link.principal ||
       birth.digest !== record.link.digest) {
     throw new Error('The original live discussion link is unavailable');
   }

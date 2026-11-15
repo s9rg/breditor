@@ -340,3 +340,12 @@ prepare/read APIs.
 Run `node scripts/check-writable-relay-segment.mjs <relay-executable>
 --participant-relay-discussion` for source and clean installed test coverage
 through an authenticated handover, a relay restart and a new read-only client.
+
+Current native owners can read the selected discussion's projection and
+complete attributed timeline together. They order the retained events once and
+project only the selected thread. Publication verifies the prepared file with
+the same native traversal. A direct birth read checks live links without
+ordering the whole history during publication, checkpoint restoration, or
+attachment opening. Compatible older Wasm owners use the existing guarded page
+API. Both paths produce the same attachment format, bytes and intent for the
+same observed source and destination.
