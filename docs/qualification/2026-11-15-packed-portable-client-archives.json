@@ -1,0 +1,99 @@
+{
+  "format": "breditor/packed-portable-client-archives-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-15",
+  "source": {
+    "commit": "ab081fd594f172bebe56adcb3ff48ad132f9351c",
+    "dirty": false,
+    "sha256": "c44907e6fdfeee0f22c0969f7e078188d6f03f5023e6c54f630741b8bddde4d2",
+    "files": 8962,
+    "bytes": 76122491
+  },
+  "relaySha256": "8eabd36dfb36718f6c781b43252170a6748d5887b74b998bdcfcb588f056e4dc",
+  "runtimeSha256": "38b17b58126858fd4ef014e877e85806c323c675e88cd191222badbe9a36a6d5",
+  "descriptorRegression": {
+    "selectedNativeJournals": 52,
+    "descriptorLimit": 48,
+    "splitFailsWithTooManyOpenFiles": true,
+    "packedCopyRestoresAndColdReopensAllOriginals": true,
+    "changedHeaderOrPayloadAndMixedLayoutsRefuse": true,
+    "displacedClientPackCannotSealSource": true
+  },
+  "nativeHandover": {
+    "passed": 23,
+    "failed": 0,
+    "ignored": 0,
+    "executableSha256": "05bd87d061f447a2154e86c26c9e109116c91c1463b747682c5f60a8957c7d60",
+    "logSha256": "99e4f9f5864d899776d222cff9d0d0c31629dbc2498c5a27c1cc57309e5408b3"
+  },
+  "nativeFencingAndProcessRecovery": {
+    "passed": 53,
+    "failed": 0,
+    "ignored": 0,
+    "logSha256": "b45eda08081465407736579fab6bcefe5723ae5ce62c524f523ea0b7dcc9cc3c"
+  },
+  "strictRelayLibraryLint": {
+    "passed": true,
+    "logSha256": "a769b46ff639aa09c8e5545ffb235e1c967c6cfb2d7ec3cdb30a5d992255cd61"
+  },
+  "live": {
+    "reportSha256": "7f5d3c06950eae4c800afef1cc0dbe3789002c475d423acfae0974704206d2c7",
+    "runs": {
+      "source": {
+        "packedCopiesOfExistingSplit": 1,
+        "packedClientCohorts": 1,
+        "predecessors": 4,
+        "coldResumes": 5,
+        "offlineLanes": 6,
+        "undoRedoLanes": 2,
+        "archivedDiscussionEvents": 40,
+        "retainedBackup": {
+          "alternateJournals": 1,
+          "selectedJournals": 2,
+          "standaloneUploads": 1
+        },
+        "proof": null
+      },
+      "installed": {
+        "packedCopiesOfExistingSplit": 1,
+        "packedClientCohorts": 1,
+        "predecessors": 4,
+        "coldResumes": 5,
+        "offlineLanes": 6,
+        "undoRedoLanes": 2,
+        "archivedDiscussionEvents": 40,
+        "retainedBackup": {
+          "alternateJournals": 1,
+          "selectedJournals": 2,
+          "standaloneUploads": 1
+        },
+        "proof": {
+          "registryArtifacts": 45,
+          "archives": [
+            {
+              "name": "@breditor/browser",
+              "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+            },
+            {
+              "name": "@breditor/experimental-rich-content",
+              "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+            },
+            {
+              "name": "@breditor/collaboration",
+              "sha256": "c5d79a56da7f48c4e4e10a298bfc2bca5cb9cee46642c0c0586df828396ed7b8"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "legacy": {
+    "reportSha256": "5e248260305233989945b41e9838fa22ddb6e1b0923a43dba1a7f8de4c6b3429",
+    "matchesEarlierSourceAndInstalledResults": true
+  },
+  "candidatePlan": {
+    "passed": 69,
+    "failed": 0,
+    "logSha256": "2b8175c8397f7e97a02f26470943f1140a197fde912ec092e4eb4663aa9914c9"
+  }
+}

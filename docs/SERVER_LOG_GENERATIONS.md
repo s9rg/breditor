@@ -700,6 +700,24 @@ backup directory first. Retain the original until the new path verifies.
 A failed copy can leave a partial target. Retry at a fresh path. Verification
 uses the usual file handles for retained client journals and upload queues.
 
+For backups with many retained client originals, opt in through
+`ServerBackupHandle::capture_fully_packed_portable_relay_segment` or
+`RelaySegmentRetainedBackup::copy_portable_fully_packed`. Both keep the native
+predecessor pack and store exact selected journals, alternate participant
+originals and standalone upload queues in one `client-inputs.bin` file.
+The file starts with the eight-byte `BRCLNT1\n` marker, followed by the three
+groups in selection order. Exact lengths, digests and owners come from the
+independent backup identity. The portable reader opens one held descriptor,
+checks each bounded range through the normal archive admission code, and
+refuses altered bytes, mixed layouts and incomplete or trailing data.
+The same named file must hold through the source seal. Split readers and the
+existing capture methods keep their original layouts.
+
+Restored journals already use packed local storage. Restored upload queues
+continue to use their existing per-writer files for the host's file export API.
+The descriptor requirement for those queues still applies during restore and
+subsequent startup.
+
 The reference adapter can serve both recovered components behind a fresh
 lease from the existing deployment epoch authority, with the ordinary
 account and Origin policies. Deployment approval for the exact cut and

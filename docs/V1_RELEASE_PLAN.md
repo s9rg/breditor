@@ -2,6 +2,15 @@
 
 ## November 15 collaboration recovery
 
+[Packed retained client archives](qualification/2026-11-15-packed-portable-client-archives.json)
+restore all 52 original native journals under a 48-file limit. The same
+worker cannot open the corresponding split backup. A displaced client pack
+prevents the source seal. Source and clean-installed SDKs compare direct
+capture with the converted pack, then relocate, activate and restart with
+document and review Undo/Redo, offline work, archived discussion and
+retained uploads. The legacy handover and 76 native handover, fencing and
+process-recovery tests pass.
+
 [Offline conversion of split portable backups](qualification/2026-11-15-packed-portable-copy.json)
 restores and reopens a 26-predecessor backup under the same 48-descriptor
 limit that prevents opening the split source. It refuses changed source bytes
