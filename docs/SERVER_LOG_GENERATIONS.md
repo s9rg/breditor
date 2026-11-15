@@ -713,10 +713,14 @@ refuses altered bytes, mixed layouts and incomplete or trailing data.
 The same named file must hold through the source seal. Split readers and the
 existing capture methods keep their original layouts.
 
-Restored journals already use packed local storage. Restored upload queues
-continue to use their existing per-writer files for the host's file export API.
-The descriptor requirement for those queues still applies during restore and
-subsequent startup.
+Restored journals use packed local storage. Restored upload queues keep the
+existing per-writer files and manifest for the host's file export API.
+The restored upload directory stays exclusively locked. Restore and cold
+startup verify each queue's exact length and digest in turn. Warm checks
+verify each private file's identity, change times and length. Export reopens
+and rehashes one queue at a time. This bounds the relay's upload file handles
+independently of the number of queues. The original completion format and
+read-only file API still apply.
 
 The reference adapter can serve both recovered components behind a fresh
 lease from the existing deployment epoch authority, with the ordinary

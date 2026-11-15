@@ -2,6 +2,15 @@
 
 ## November 15 collaboration recovery
 
+[The upload queue recovery fix](qualification/2026-11-15-retained-upload-descriptors.json)
+resolves a reproduced `Too many open files` error in both restore and cold startup.
+With the same 48-file limit, the relay restores, reopens and exports all 52
+original queues with their distinct receipts intact. The original per-writer
+files and completion format remain readable. A same-byte file replacement
+fails during warm custody, and same-length corruption fails both warm reads
+and cold startup. Source and clean-installed relocation and legacy handover
+pass, along with 78 native handover, fencing and process-recovery tests.
+
 [Packed retained client archives](qualification/2026-11-15-packed-portable-client-archives.json)
 restore all 52 original native journals under a 48-file limit. The same
 worker cannot open the corresponding split backup. A displaced client pack
