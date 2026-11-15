@@ -1,0 +1,219 @@
+{
+  "format": "breditor/linked-handover-independent-delivery-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-14",
+  "source": {
+    "commit": "9d92a76296cc0080db2b772134f4b40be9687e5e",
+    "dirty": false,
+    "sha256": "be9d5d17bb120ae0e5a838ae1e498f35ee92a1c7463075c5a9a1a0dc4908abce",
+    "files": 8836,
+    "bytes": 75141788
+  },
+  "tree": "b491cc2d7a3961e97bfa58b427547313272b3801",
+  "predecessor": "4dd42667148098a08236a4caae901e52c6384589",
+  "relaySha256": "ed20aefc9033f6b3465d736a9b6281cf0f805701360453c59fe40d79e3faa7a9",
+  "rustExecutableSha256": "62d1c24ec50b0bde84b32eca575ce3725eeab2de77fbf4bd4acc075802240beb",
+  "journalTests": {
+    "passed": 4,
+    "failed": 0,
+    "logSha256": "d6c6697a04bd5537f31dcfc46dfd890d34153beed6034e45207cb0d7a6e8dd9c"
+  },
+  "handoverTests": {
+    "passed": 7,
+    "failed": 0,
+    "logSha256": "5c6b01204963437340cd209249502cea68b47bb116ce7331018ec93ce28fb4b7"
+  },
+  "crossVolume": {
+    "passed": 1,
+    "failed": 0,
+    "logSha256": "b9cbdbb59a4b0b05ce0b8ff136f4e6ed1616cdd372f902f84561c75364d3c82d"
+  },
+  "clippyLibraryLogSha256": "dc6235fd454421ecff40c972059d99b89f782c55b61ad64f5f6380ff35be1147",
+  "noServerLogSha256": "81c47f3fff9a2d5cf382951de0dbc413373ff0efc93ea7d3f470bff0944b7fa3",
+  "sdkReports": {
+    "independentDelivery": {
+      "sha256": "2751320845eeea43ce80817d3d27b7855492ee3b5c307c054008e36e614158f3",
+      "runs": {
+        "source": {
+          "mode": "source",
+          "handoffs": 2,
+          "portableRestores": 1,
+          "restoredOfflineLanes": 6,
+          "undoRedoLanes": 2,
+          "rasterReads": 2,
+          "processExits": 4,
+          "authenticatedTakeovers": 1,
+          "oldServingRefusals": 1,
+          "coldResumes": 2,
+          "registrationRefusals": 3,
+          "providerRasters": 2,
+          "retainedPackets": 1,
+          "stagedClientRasters": 2,
+          "clientUploadReceipts": 1,
+          "clientUploadArchives": 2,
+          "missingArchiveRefusals": 1,
+          "preservedCancelledUploads": 1,
+          "nativeJournals": 3,
+          "missingJournalRefusals": 2,
+          "coldJournalPairs": 1,
+          "clientJournalRasterBindings": 3,
+          "offlineImageRedo": 1,
+          "pairedBackups": 0,
+          "wrongReceiptRefusals": 1,
+          "retainedLocalVersions": 1,
+          "independentDeliveries": 1,
+          "retainedOutboxPendings": 4,
+          "deliveredOutboxEntries": 4,
+          "retainedAbsolutePositions": true,
+          "runtimeSha256": "373fa3eaff1317bec901efb053b2bf0e25cbe051102de3069dfcf16119997c56",
+          "proof": null
+        },
+        "installed": {
+          "mode": "installed",
+          "handoffs": 2,
+          "portableRestores": 1,
+          "restoredOfflineLanes": 6,
+          "undoRedoLanes": 2,
+          "rasterReads": 2,
+          "processExits": 4,
+          "authenticatedTakeovers": 1,
+          "oldServingRefusals": 1,
+          "coldResumes": 2,
+          "registrationRefusals": 3,
+          "providerRasters": 2,
+          "retainedPackets": 1,
+          "stagedClientRasters": 2,
+          "clientUploadReceipts": 1,
+          "clientUploadArchives": 2,
+          "missingArchiveRefusals": 1,
+          "preservedCancelledUploads": 1,
+          "nativeJournals": 3,
+          "missingJournalRefusals": 2,
+          "coldJournalPairs": 1,
+          "clientJournalRasterBindings": 3,
+          "offlineImageRedo": 1,
+          "pairedBackups": 0,
+          "wrongReceiptRefusals": 1,
+          "retainedLocalVersions": 1,
+          "independentDeliveries": 1,
+          "retainedOutboxPendings": 4,
+          "deliveredOutboxEntries": 4,
+          "retainedAbsolutePositions": true,
+          "runtimeSha256": "373fa3eaff1317bec901efb053b2bf0e25cbe051102de3069dfcf16119997c56",
+          "proof": {
+            "registryArtifacts": 45,
+            "archives": [
+              {
+                "name": "@breditor/browser",
+                "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+              },
+              {
+                "name": "@breditor/experimental-rich-content",
+                "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+              },
+              {
+                "name": "@breditor/collaboration",
+                "sha256": "da76219169eb0b14e2124ca82a4c26827dfd200047ddc65b53565b91f623c8c6"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "pairedBaseline": {
+      "sha256": "597e965cb353a17cbe8efd2ddd887c18545e14bfb32b082782d2f4485f0b7a42",
+      "runs": {
+        "source": {
+          "mode": "source",
+          "handoffs": 2,
+          "portableRestores": 1,
+          "restoredOfflineLanes": 6,
+          "undoRedoLanes": 2,
+          "rasterReads": 2,
+          "processExits": 4,
+          "authenticatedTakeovers": 1,
+          "oldServingRefusals": 1,
+          "coldResumes": 2,
+          "registrationRefusals": 3,
+          "providerRasters": 2,
+          "retainedPackets": 1,
+          "stagedClientRasters": 2,
+          "clientUploadReceipts": 1,
+          "clientUploadArchives": 2,
+          "missingArchiveRefusals": 1,
+          "preservedCancelledUploads": 1,
+          "nativeJournals": 3,
+          "missingJournalRefusals": 2,
+          "coldJournalPairs": 1,
+          "clientJournalRasterBindings": 2,
+          "offlineImageRedo": 1,
+          "pairedBackups": 1,
+          "wrongReceiptRefusals": 1,
+          "retainedLocalVersions": 1,
+          "independentDeliveries": 0,
+          "retainedOutboxPendings": 0,
+          "deliveredOutboxEntries": 0,
+          "retainedAbsolutePositions": true,
+          "runtimeSha256": "373fa3eaff1317bec901efb053b2bf0e25cbe051102de3069dfcf16119997c56",
+          "proof": null
+        },
+        "installed": {
+          "mode": "installed",
+          "handoffs": 2,
+          "portableRestores": 1,
+          "restoredOfflineLanes": 6,
+          "undoRedoLanes": 2,
+          "rasterReads": 2,
+          "processExits": 4,
+          "authenticatedTakeovers": 1,
+          "oldServingRefusals": 1,
+          "coldResumes": 2,
+          "registrationRefusals": 3,
+          "providerRasters": 2,
+          "retainedPackets": 1,
+          "stagedClientRasters": 2,
+          "clientUploadReceipts": 1,
+          "clientUploadArchives": 2,
+          "missingArchiveRefusals": 1,
+          "preservedCancelledUploads": 1,
+          "nativeJournals": 3,
+          "missingJournalRefusals": 2,
+          "coldJournalPairs": 1,
+          "clientJournalRasterBindings": 2,
+          "offlineImageRedo": 1,
+          "pairedBackups": 1,
+          "wrongReceiptRefusals": 1,
+          "retainedLocalVersions": 1,
+          "independentDeliveries": 0,
+          "retainedOutboxPendings": 0,
+          "deliveredOutboxEntries": 0,
+          "retainedAbsolutePositions": true,
+          "runtimeSha256": "373fa3eaff1317bec901efb053b2bf0e25cbe051102de3069dfcf16119997c56",
+          "proof": {
+            "registryArtifacts": 45,
+            "archives": [
+              {
+                "name": "@breditor/browser",
+                "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+              },
+              {
+                "name": "@breditor/experimental-rich-content",
+                "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+              },
+              {
+                "name": "@breditor/collaboration",
+                "sha256": "da76219169eb0b14e2124ca82a4c26827dfd200047ddc65b53565b91f623c8c6"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "scope": [
+    "In both source and offline-installed SDK runs an exact independent-delivery recovery JSON file was retained through relay handover and restored from a new store. All four pending actions survived, including a proposal publication, an explicit rejection of another draft, an immutable revision and a queued catalog version.",
+    "The relay verified an image binding reachable solely through the pending proposal. It refused a wrong accepted review sequence before switching the serving epoch. After takeover each queued action delivered through the original authenticated protocol and received a server receipt, preserving accepted document content.",
+    "Document and review histories were sealed independently before capture. Their offline work and future Undo/Redo survived with the earlier server packet and exact raster payloads. The fixture uses controlled client storage and the separately selected upload archives.",
+    "Full participant binary archive enrollment, broader retained terminal-receipt matrix and divergent same-writer branch reconciliation remain open. The historical WebKit fault is deferred."
+  ]
+}

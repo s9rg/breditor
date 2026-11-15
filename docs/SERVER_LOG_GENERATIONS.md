@@ -930,3 +930,8 @@ the separately supplied factory, original writer credentials and fresh
 application policy. The same handover still selects the writer's whole
 upload archive separately. It verifies the union of server, native
 client-history and retained client-packet raster bindings before approval.
+
+Run the source and clean installed recovery workflows against the built
+`relay_segment_functional` fixture with
+`node scripts/check-writable-relay-segment.mjs <relay-executable> --independent-delivery`.
+The paired baseline uses the same command without the flag.
