@@ -83,7 +83,7 @@ function readRetainedClientJournals(parent, expected) {
   return originals;
 }
 
-async function run(mode, {distribution, rich}, executable, parent, journalKind) {
+async function run(mode, {distribution, rich}, executable, parent, journalKind, terminalReceipts) {
   const participant = journalKind === 'independentParticipant';
   const independentDelivery = journalKind !== 'pairedSession';
   const runtime = join(distribution, 'runtime');
@@ -169,23 +169,33 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind) 
       const versions = await owner.openVersionCatalog({getToken});
       return {queue, revisions, versions, transport};
     };
-    const queueWork = async () => {
+    const closeOutboxes = async ({queue, revisions, versions, transport}) => {
+      try {
+        await revisions.close();
+        await versions.close();
+        await queue.close();
+      } finally {
+        transport.dispose();
+        await transport.waitForDisconnected();
+      }
+    };
+    const queueWork = async (label, image, generation) => {
       const {queue, revisions, versions, transport} = await attachOutboxes(session);
       try {
         const draft = text => ({scope: 'commands', edit: {kind: 'commands', data: [
           {kind: 'insert_text', data: {block: 'p', offset: 0, text}},
         ]}});
         const before = session.core.documentJson();
-        const proposal = queue.propose('Pending original', '1', {scope: 'commands',
+        const proposal = queue.propose(label + ' original', '1', {scope: 'commands',
           edit: {kind: 'commands', data: [{kind: 'replace_image', data: {
-            block: 'image-block', asset: participant ? proposalAsset : secondAsset, generation: 'queued-proposal-image',
+            block: 'image-block', asset: image, generation,
           }}]}});
 
         const revision = revisions.revise({previousSuggestionId: proposal.id,
-          title: 'Pending revision', createdAtMs: '2', draft: draft('Revised ')});
-        const decision = queue.propose('Pending decision', '3', draft('Must stay unaccepted '));
+          title: label + ' revision', createdAtMs: '2', draft: draft(label + ' revised ')});
+        const decision = queue.propose(label + ' decision', '3', draft(label + ' must stay unaccepted '));
         queue.queueDecision(decision.id, 'reject', '4');
-        const version = versions.saveVersion('Queued catalog version', '5');
+        const version = versions.saveVersion(label + ' catalog version', '5');
         await revisions.flush();
         await versions.flush();
         await queue.flush();
@@ -193,8 +203,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind) 
         return {proposal: proposal.id, decision: decision.id, revision: revision.id, version: version.id,
           packets: [queue.packet(proposal.id), queue.packet(decision.id), revisions.packet(revision.id), versions.versionPacket(version.id)]};
       } finally {
-        transport.dispose();
-        await transport.waitForDisconnected();
+        await closeOutboxes({queue, revisions, versions, transport});
       }
     };
     const attach = async () => {
@@ -245,6 +254,59 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind) 
     const {admission} = await published.json();
     assert.equal(admission.kind, 'durable');
     const packetUrl = catalog + 'packets/' + encodeURIComponent(admission.entry.version.id);
+    const deliverWork = async (pending, cacheOlderVersion) => {
+      let mayDeliverOutboxes = false;
+      const {queue, revisions, versions, transport} = await attachOutboxes(session, () => {
+        if (!mayDeliverOutboxes) throw new Error('Outbox recovery must stay offline');
+        return token;
+      });
+      assert.deepEqual([queue.packet(pending.proposal), queue.packet(pending.decision),
+        revisions.packet(pending.revision), versions.versionPacket(pending.version)], pending.packets);
+      assert.equal(queue.status(pending.proposal).publish, true);
+      assert.equal(queue.status(pending.decision).intent.retry, true);
+      assert.equal(revisions.status(pending.revision).retry, true);
+      assert.equal(versions.versionStatus(pending.version).queued, true);
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = (input, options) => {
+        if (!String(input).startsWith(catalog)) return originalFetch(input, options);
+        const headers = new Headers(options?.headers);
+        headers.set('Origin', origin);
+        return originalFetch(input, {...options, headers});
+      };
+      const before = session.core.documentJson();
+      const suggestions = new api.SharedSuggestionSync(queue, transport, {autoStart: false});
+      try {
+        mayDeliverOutboxes = true;
+        await suggestions.connect();
+        await suggestions.flushShared();
+        assert.ok(queue.status(pending.proposal).publication);
+        assert.equal(queue.status(pending.decision).decision?.decision, 'reject');
+        await revisions.connect();
+        assert.ok(revisions.status(pending.revision).receipt);
+        await versions.connect();
+        await versions.flushShared();
+        assert.ok(versions.versionStatus(pending.version).accepted);
+        if (cacheOlderVersion) {
+          assert.equal(await versions.loadVersion(cacheOlderVersion), packet);
+        }
+        assert.equal(session.core.documentJson(), before);
+        await session.flush();
+        return {
+          pending,
+          publication: queue.status(pending.proposal).publication,
+          decision: queue.status(pending.decision).decision,
+          revision: revisions.status(pending.revision).receipt,
+          version: versions.versionStatus(pending.version).accepted,
+        };
+      } finally {
+        suggestions.dispose();
+        try {
+          await closeOutboxes({queue, revisions, versions, transport});
+        } finally {
+          globalThis.fetch = originalFetch;
+        }
+      }
+    };
     const first = document.state().serverReceiptSequence;
     assert.ok(BigInt(first) > 64n);
     await stopClients();
@@ -292,6 +354,10 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind) 
     const rasterBefore = await fetch(rasterUrl, {headers});
     assert.equal(rasterBefore.status, 200);
     assert.deepEqual(Buffer.from(await rasterBefore.arrayBuffer()), pixel);
+    const terminal = terminalReceipts
+      ? await deliverWork(await queueWork('Already delivered', 'sha256:' + sha(pixel),
+        'terminal-proposal-image'), admission.entry.version.id)
+      : null;
     edit('Offline before portable restore ');
     post('Offline comment before portable restore');
     session.core.dispatch({commands: [{kind: 'replace_image', data: {
@@ -305,7 +371,9 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind) 
     }
     assert.equal(session.core.undo(), true);
     assert.equal(session.core.documentJson().includes(secondAsset), false);
-    const pending = independentDelivery ? await queueWork() : null;
+    const pending = independentDelivery
+      ? await queueWork('Pending', participant ? proposalAsset : secondAsset, 'queued-proposal-image')
+      : null;
     if (independentDelivery) {
       await session.sealDocumentGeneration('two');
       await session.sealReviewGeneration('two');
@@ -349,8 +417,9 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind) 
       selectedUploads.map(upload => upload.pin), journalPins, wrongReceipt);
     assert.equal(captured.registrationRefusals, 3);
     assert.equal(captured.providerRasters, participant ? 3 : 2);
-    assert.equal(captured.clientJournalRasterBindings, independentDelivery ? 3 : 2);
-    assert.equal(captured.retainedPackets, 1);
+    assert.equal(captured.clientJournalRasterBindings, terminal ? 4 : independentDelivery ? 3 : 2);
+    if (terminal) assert.ok(captured.retainedPackets > 1);
+    else assert.equal(captured.retainedPackets, 1);
     assert.equal(captured.clientRasters, participant ? 3 : 2);
     assert.equal(captured.clientArchives, 2);
     assert.equal(captured.missingArchiveRefusals, 1);
@@ -358,7 +427,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind) 
     assert.equal(captured.pairedBackups, independentDelivery ? 0 : 1);
     assert.equal(captured.independentDeliveries, journalKind === 'independentDelivery' ? 1 : 0);
     assert.equal(captured.participantArchives, participant ? 1 : 0);
-    assert.equal(captured.participantRasterBindings, participant ? 3 : 0);
+    assert.equal(captured.participantRasterBindings, terminal ? 4 : participant ? 3 : 0);
     assert.equal(captured.wrongReceiptRefusals, 1);
     assert.equal(captured.missingJournalRefusals, 2);
     assert.deepEqual(session.exportRecovery(), queuedAcrossTakeover);
@@ -442,50 +511,23 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind) 
     const retainedPacket = await fetch(packetUrl, {headers: catalogHeaders});
     assert.equal(retainedPacket.status, 200);
     assert.equal(await retainedPacket.text(), packet);
-    if (pending) {
-      await stopClients();
-      let mayDeliverOutboxes = false;
-      const {queue, revisions, versions, transport} = await attachOutboxes(session, () => {
-        if (!mayDeliverOutboxes) throw new Error('Outbox recovery must stay offline');
-        return token;
-      });
-      assert.deepEqual([queue.packet(pending.proposal), queue.packet(pending.decision),
-        revisions.packet(pending.revision), versions.versionPacket(pending.version)], pending.packets);
-      assert.equal(queue.status(pending.proposal).publish, true);
-      assert.equal(queue.status(pending.decision).intent.retry, true);
-      assert.equal(revisions.status(pending.revision).retry, true);
-      assert.equal(versions.versionStatus(pending.version).queued, true);
-      const originalFetch = globalThis.fetch;
-      globalThis.fetch = (input, options) => {
-        if (!String(input).startsWith(catalog)) return originalFetch(input, options);
-        const headers = new Headers(options?.headers);
-        headers.set('Origin', origin);
-        return originalFetch(input, {...options, headers});
-      };
-      const before = session.core.documentJson();
-      const suggestions = new api.SharedSuggestionSync(queue, transport, {autoStart: false});
+    if (pending) await stopClients();
+    if (terminal) {
+      const {queue, revisions, versions, transport} = await attachOutboxes(session);
       try {
-        mayDeliverOutboxes = true;
-        await suggestions.connect();
-        await suggestions.flushShared();
-        assert.ok(queue.status(pending.proposal).publication);
-        assert.equal(queue.status(pending.decision).decision?.decision, 'reject');
-        await revisions.connect();
-        assert.ok(revisions.status(pending.revision).receipt);
-        await versions.connect();
-        await versions.flushShared();
-        assert.ok(versions.versionStatus(pending.version).accepted);
-        assert.equal(session.core.documentJson(), before);
-        await session.flush();
+        assert.deepEqual(queue.status(terminal.pending.proposal).publication, terminal.publication);
+        assert.deepEqual(queue.status(terminal.pending.decision).decision, terminal.decision);
+        assert.deepEqual(revisions.status(terminal.pending.revision).receipt, terminal.revision);
+        assert.deepEqual(versions.versionStatus(terminal.pending.version).accepted, terminal.version);
+        assert.equal(queue.status(terminal.pending.proposal).publish, false);
+        assert.equal(queue.status(terminal.pending.decision).intent?.retry ?? false, false);
+        assert.equal(revisions.status(terminal.pending.revision).retry, false);
+        assert.equal(versions.versionStatus(terminal.pending.version).queued, false);
       } finally {
-        suggestions.dispose();
-        revisions.disconnect();
-        versions.disconnect();
-        transport.dispose();
-        await transport.waitForDisconnected();
-        globalThis.fetch = originalFetch;
+        await closeOutboxes({queue, revisions, versions, transport});
       }
     }
+    if (pending) await deliverWork(pending);
     return {mode, handoffs: 2, portableRestores: 1, restoredOfflineLanes: 6, undoRedoLanes: 2, rasterReads: 2,
       processExits: 4, authenticatedTakeovers: 1, oldServingRefusals: 1, coldResumes: 2,
       registrationRefusals: captured.registrationRefusals, providerRasters: captured.providerRasters,
@@ -501,6 +543,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind) 
         participantRasterBindings: captured.participantRasterBindings,
         archiveOnlyRasterReads: 1,
       } : {}),
+      ...(terminal ? {retainedTerminalReceipts: 4} : {}),
       retainedOutboxPendings: pending ? 4 : 0, deliveredOutboxEntries: pending ? 4 : 0,
       retainedAbsolutePositions: true, runtimeSha256: sha(wasmBytes)};
   } catch (error) {
@@ -523,9 +566,10 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind) 
 
 const executable = resolve(process.argv[2]);
 const option = process.argv[3];
+const terminalReceipts = option === '--participant-terminal-receipts';
 assert.ok(process.argv.length === 3 || process.argv.length === 4 &&
-  ['--independent-delivery', '--participant-archive'].includes(option));
-const journalKind = option === '--participant-archive' ? 'independentParticipant'
+  ['--independent-delivery', '--participant-archive', '--participant-terminal-receipts'].includes(option));
+const journalKind = terminalReceipts || option === '--participant-archive' ? 'independentParticipant'
   : option === '--independent-delivery' ? 'independentDelivery' : 'pairedSession';
 const source = sourceEvidence(root);
 assert.equal(source.dirty, false);
@@ -540,7 +584,7 @@ try {
     const path = join(sandbox, mode);
     mkdirSync(path, {mode: 0o700});
     reports[mode] = {
-      ...await run(mode, distribution, executable, path, journalKind), proof: distribution.proof,
+      ...await run(mode, distribution, executable, path, journalKind, terminalReceipts), proof: distribution.proof,
     };
   }
   assert.equal(reports.source.runtimeSha256, reports.installed.runtimeSha256);
@@ -549,7 +593,8 @@ try {
     format: 'breditor/writable-relay-segment-qualification', formatVersion: 1,
     source, relaySha256: sha(readFileSync(executable)), reports,
   };
-  const reportFile = journalKind === 'independentParticipant' ? 'qualified-participant-archive-segment.json'
+  const reportFile = terminalReceipts ? 'qualified-participant-terminal-receipts.json'
+    : journalKind === 'independentParticipant' ? 'qualified-participant-archive-segment.json'
     : journalKind === 'independentDelivery' ? 'qualified-independent-delivery-segment.json'
       : 'qualified-writable-relay-segment.json';
   saveEvidence(join(root, 'target', reportFile), report);
