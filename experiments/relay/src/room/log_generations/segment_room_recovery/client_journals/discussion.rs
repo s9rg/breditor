@@ -25,8 +25,13 @@ impl RelaySegmentServingCustody {
             .ok_or(Error::Contract("recovered discussion source is not retained"))?;
         let part = alternatives.part(index)?;
         let original = ParticipantArchive::open(part, &pin.owner)?;
-        let metadata =
-            room.capture_participant_inventory_at(owner, room.backup_identity()?)?.metadata();
+        let head = room.log.generation_descriptor()?;
+        let records = head
+            .next_sequence
+            .parse()
+            .map_err(|_| Error::Contract("recovered discussion source cut"))?;
+        let cut = room.native_identity_at(records, head.terminal_digest);
+        let metadata = room.capture_participant_inventory_at(owner, cut)?.metadata();
         inspect_original(room, &metadata, pin, &original, part, |comments, endpoint| {
             record.verify_original(&archive, endpoint, comments)
         })?;

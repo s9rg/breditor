@@ -583,6 +583,18 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
         archiveSha256: Buffer.from(incomingBranch.sha256).toString('hex'), readerToken,
       });
       assert.equal(visibleThreads().length, 5);
+      // Replay the attachment from this active WAL before carrying it into a materialized cut.
+      await stopClients();
+      await host.crash();
+      host = undefined;
+      host = await startSegmentHandoverHost(executable, [parent, restoredRoot, address], token, false, true);
+      const {actor, counter} = attachedDiscussion.link;
+      const attachmentUrl = new URL(`/recovered-discussions/v1/threads/${actor}/${counter}`, rasterUrl);
+      const response = await fetch(attachmentUrl, {
+        headers: {...headers, 'X-Breditor-Review': binding.binding},
+      });
+      assert.equal(response.status, 200);
+      assert.deepEqual((await response.json()).entry, attachedDiscussion.entry);
     }
     if (carryForward) {
       await stopClients();
@@ -811,14 +823,14 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     }
     const extra = Number(carryForward);
     return {mode, handoffs: 2, portableRestores: 1 + extra, restoredOfflineLanes: 6, undoRedoLanes: 2, rasterReads: 2,
-      processExits: 4 + extra + Number(reviewRecovered), authenticatedTakeovers: 1 + extra,
-      oldServingRefusals: 1 + extra, coldResumes: 2 + extra + Number(reviewRecovered),
+      processExits: 4 + extra + Number(reviewRecovered) + Number(relayDiscussion), authenticatedTakeovers: 1 + extra,
+      oldServingRefusals: 1 + extra, coldResumes: 2 + extra + Number(reviewRecovered) + Number(relayDiscussion),
       ...carryEvidence,
       ...coldReaderEvidence,
       ...(recoveredComment ? {committedRecoveredComments: 1} : {}),
       ...(attachedDiscussion ? {committedDiscussionLinks: 1} : {}),
       ...(relayDiscussion ? {relayDiscussionAttachments: 1, attachmentHandover: 1,
-        attachmentPublicationRefusals: 6, idempotentAttachmentPublication: 1} : {}),
+        attachmentPublicationRefusals: 6, idempotentAttachmentPublication: 1, attachmentWalReplays: 1} : {}),
       ...(loss ? {discardedDurableReviewReplies: 1, coldAcknowledgedReviewIntents: 1, recoveredReviewSubmissions: loss.submissions} : {}),
       registrationRefusals: captured.registrationRefusals, providerRasters: captured.providerRasters,
       retainedPackets: captured.retainedPackets, stagedClientRasters: captured.clientRasters, clientUploadReceipts,
