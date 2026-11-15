@@ -10,6 +10,10 @@ use crate::{
     Error, RecoveredRelaySegmentRoom, Result, Room, RoomParticipantInventoryMetadata,
     archive_input::ArchiveSlice,
 };
+use breditor_collab_feasibility::{
+    review::ReviewSession,
+    rich_replica::{RichReplica, SharedRichProfile},
+};
 use serde::Serialize;
 
 /// Exact local and accepted positions for one document writer or comment actor.
@@ -95,45 +99,80 @@ fn inspect_part(
     archive: &ParticipantArchive,
     part: ArchiveSlice<'_>,
 ) -> Result<RelaySegmentParticipantBranch> {
-    inspect_original(room, participants, pin, archive, part, |_, _| Ok(()))
+    let selected = SelectedSources::read(participants, std::slice::from_ref(pin))?;
+    let source = restore_original(&room.profile, participants, &selected, archive, part)?;
+    source.compare(room, &selected, pin)
 }
 
-pub(super) fn inspect_original(
-    room: &Room,
-    participants: &RoomParticipantInventoryMetadata,
-    pin: &RelaySegmentClientJournalPin,
-    archive: &ParticipantArchive,
-    part: ArchiveSlice<'_>,
-    verify: impl FnOnce(&breditor_collab_feasibility::review::ReviewSession, &str) -> Result<()>,
-) -> Result<RelaySegmentParticipantBranch> {
-    let selected = SelectedSources::read(participants, std::slice::from_ref(pin))?;
+/// Restored native histories and their original delivery endpoint. They remain
+/// detached from the serving Room until its accepted prefixes are checked.
+pub(super) struct OriginalParticipantBranch {
+    document: RichReplica,
+    pub(super) comments: ReviewSession,
+    pub(super) endpoint: String,
+}
+
+fn selected_participant<'a>(
+    selected: &SelectedSources<'a>,
+) -> Result<(&'a crate::RecoveryDocumentRegistration, &'a crate::RecoveryReviewRegistration)> {
     let document = selected.documents.first().ok_or(Error::NeedsRecovery)?;
     let DocumentInput::Participant(review) = document.input else {
         return Err(Error::Contract("standalone SDK participant archive required"));
     };
+    Ok((document.row, review))
+}
+
+pub(super) fn restore_original(
+    profile: &SharedRichProfile,
+    participants: &RoomParticipantInventoryMetadata,
+    selected: &SelectedSources<'_>,
+    archive: &ParticipantArchive,
+    part: ArchiveSlice<'_>,
+) -> Result<OriginalParticipantBranch> {
+    let (document, review) = selected_participant(selected)?;
     let native = archive.read_records(part)?;
     let sections =
         archive.delivery_sections(native.document, native.review, native.versions, &native.stores);
-    let record = DeliveryRecord::from_sections(sections, participants, document.row, review)?;
-    let local = record.document(room)?;
-    if local.writer() != document.row.clock.writer
-        || local.document_id() != participants.room.document
+    let record = DeliveryRecord::from_sections(sections, participants, document, review)?;
+    let local = record.document_with_profile(profile, &participants.room.document)?;
+    if local.writer() != document.clock.writer || local.document_id() != participants.room.document
     {
         return Err(Error::Contract("client journal document binding differs"));
     }
     let (family, json) = record.review();
     let comments = restore_review(&local, review, family, json)?;
-    verify(&comments, record.endpoint())?;
-    Ok(RelaySegmentParticipantBranch {
-        pin: pin.clone(),
-        document: clocks::compare_document(
-            room,
-            &local,
-            &selected.document_clocks,
-            &document.row.clock,
-            document.row.observer,
-            true,
-        )?,
-        review: clocks::compare_review(room, &comments, &selected.review_rows, review, true)?,
+    Ok(OriginalParticipantBranch {
+        document: local,
+        comments,
+        endpoint: record.endpoint().to_owned(),
     })
+}
+
+impl OriginalParticipantBranch {
+    pub(super) fn compare(
+        &self,
+        room: &Room,
+        selected: &SelectedSources<'_>,
+        pin: &RelaySegmentClientJournalPin,
+    ) -> Result<RelaySegmentParticipantBranch> {
+        let (document, review) = selected_participant(selected)?;
+        Ok(RelaySegmentParticipantBranch {
+            pin: pin.clone(),
+            document: clocks::compare_document(
+                room,
+                &self.document,
+                &selected.document_clocks,
+                &document.clock,
+                document.observer,
+                true,
+            )?,
+            review: clocks::compare_review(
+                room,
+                &self.comments,
+                &selected.review_rows,
+                review,
+                true,
+            )?,
+        })
+    }
 }

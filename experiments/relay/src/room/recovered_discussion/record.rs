@@ -55,7 +55,7 @@ pub(crate) struct DiscussionRecord<'a> {
 }
 
 impl<'a> DiscussionRecord<'a> {
-    pub(super) fn read(packet: &'a str) -> Result<Self> {
+    pub(in crate::room) fn read(packet: &'a str) -> Result<Self> {
         if packet.is_empty() || packet.len() > super::MAX_DISCUSSION_BYTES {
             return Err(Error::Contract("recovered discussion packet budget"));
         }

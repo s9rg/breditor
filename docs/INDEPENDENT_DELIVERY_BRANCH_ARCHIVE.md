@@ -349,3 +349,12 @@ ordering the whole history during publication, checkpoint restoration, or
 attachment opening. Compatible older Wasm owners use the existing guarded page
 API. Both paths produce the same attachment format, bytes and intent for the
 same observed source and destination.
+
+The relay captures the approved participant registrations and immutable profile
+in a serving transaction. A bounded worker then reads, restores and verifies the
+original archive outside the room and deployment locks. Other room operations
+and an authenticated handover can continue during that work. To publish, the
+relay reacquires the serving epoch and file custody, checks the exact live birth
+and current accepted writer prefixes, and appends the same verified packet.
+Exact retries still return the original acceptance. The worker retains its quota
+until it finishes, including when a client disconnects during verification.

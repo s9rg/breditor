@@ -144,22 +144,19 @@ impl Room {
         thread: &ReviewThreadId,
         archive: [u8; 32],
         packet: String,
-        verify: impl FnOnce(&Self, &DiscussionRecord<'_>) -> Result<()>,
+        verify: impl FnOnce(&Self) -> Result<()>,
     ) -> Result<DiscussionEntry> {
-        self.recovery_inventory_owner(principal)?;
-        if let Some(stored) = self.discussions.entries.get(thread) {
-            if stored.archive != archive || stored.packet != packet {
-                return Err(Error::Contract("recovered discussion attachment already exists"));
-            }
-            return Ok(stored.entry.clone());
+        if let Some(entry) =
+            self.check_recovered_discussion_publication(principal, thread, archive, &packet)?
+        {
+            return Ok(entry);
         }
-        self.discussions.check_capacity(packet.len())?;
         let parsed = DiscussionRecord::read(&packet)?;
         if thread != &parsed.link.id {
             return Err(Error::Contract("recovered discussion route differs"));
         }
         self.validate_discussion_link(&parsed)?;
-        verify(self, &parsed)?;
+        verify(self)?;
         let link = parsed.link;
         let sequence = self.log.append(Event::PublishRecoveredDiscussionV1 {
             principal: principal.into(),
@@ -169,6 +166,24 @@ impl Room {
         let entry = DiscussionEntry::new(link, sequence, &packet);
         self.discussions.insert(StoredDiscussion { entry: entry.clone(), archive, packet });
         Ok(entry)
+    }
+
+    pub(crate) fn check_recovered_discussion_publication(
+        &self,
+        principal: &str,
+        thread: &ReviewThreadId,
+        archive: [u8; 32],
+        packet: &str,
+    ) -> Result<Option<DiscussionEntry>> {
+        self.recovery_inventory_owner(principal)?;
+        if let Some(stored) = self.discussions.entries.get(thread) {
+            if stored.archive != archive || stored.packet != packet {
+                return Err(Error::Contract("recovered discussion attachment already exists"));
+            }
+            return Ok(Some(stored.entry.clone()));
+        }
+        self.discussions.check_capacity(packet.len())?;
+        Ok(None)
     }
 
     pub(crate) fn recovered_discussion(

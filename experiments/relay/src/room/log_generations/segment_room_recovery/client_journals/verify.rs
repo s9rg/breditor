@@ -15,7 +15,10 @@ use crate::{
 };
 use breditor_collab_feasibility::{
     review::{ReviewAccess, ReviewActorPolicy, ReviewPrincipalId, ReviewSession},
-    rich_replica::{PacketAssetIdentity, PacketAssetOutcome, RichReplica, VersionAssetReference},
+    rich_replica::{
+        PacketAssetIdentity, PacketAssetOutcome, RichReplica, SharedRichProfile,
+        VersionAssetReference,
+    },
 };
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
@@ -330,9 +333,16 @@ pub(super) fn restore_document(
     family: RelaySegmentDocumentJournalFamily,
     json: &str,
 ) -> Result<RichReplica> {
+    restore_document_with_profile(&room.profile, room.replica.document_id(), family, json)
+}
+
+pub(super) fn restore_document_with_profile(
+    profile: &SharedRichProfile,
+    id: &str,
+    family: RelaySegmentDocumentJournalFamily,
+    json: &str,
+) -> Result<RichReplica> {
     use RelaySegmentDocumentJournalFamily as Family;
-    let id = room.replica.document_id();
-    let profile = &room.profile;
     Ok(match family {
         Family::Original => profile.restore(id, json),
         Family::Typing => profile.restore_typing(id, json),

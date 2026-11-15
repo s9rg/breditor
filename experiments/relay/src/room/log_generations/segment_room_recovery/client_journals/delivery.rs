@@ -6,7 +6,7 @@ use super::{
     MAX_DELIVERY_FILE, RelaySegmentDocumentJournalFamily as DocumentFamily,
     RelaySegmentReviewJournalFamily as ReviewFamily,
     paired::{History, RangePolicy, Selection, document_family, required_nullable},
-    verify::restore_document,
+    verify::restore_document_with_profile,
 };
 use crate::{
     Error, RecoveryDocumentRegistration, RecoveryReviewRegistration, Result, Room,
@@ -14,7 +14,9 @@ use crate::{
 };
 use breditor_collab_feasibility::{
     review::ReviewSession,
-    rich_replica::{ReviewedHistoryIdentity, RichReplica, VersionAssetReference},
+    rich_replica::{
+        ReviewedHistoryIdentity, RichReplica, SharedRichProfile, VersionAssetReference,
+    },
 };
 use serde::Deserialize;
 use serde_json::value::RawValue;
@@ -189,6 +191,14 @@ impl<'a> DeliveryRecord<'a> {
     }
 
     pub fn document(&self, room: &Room) -> Result<RichReplica> {
+        self.document_with_profile(&room.profile, room.replica.document_id())
+    }
+
+    pub fn document_with_profile(
+        &self,
+        profile: &SharedRichProfile,
+        room: &str,
+    ) -> Result<RichReplica> {
         let identity = &self.source.identity;
         let native = &identity.native;
         let family = match identity.document_history {
@@ -199,7 +209,8 @@ impl<'a> DeliveryRecord<'a> {
                 document_family(native.history, native.range_editing, native.selection_editing)?
             }
         };
-        let local = restore_document(room, family, &self.source.document_checkpoint)?;
+        let local =
+            restore_document_with_profile(profile, room, family, &self.source.document_checkpoint)?;
         if local.reviewed_history_identity() != native.reviewed_history.as_ref()
             || local.search_history_enabled() != native.search_history.is_some()
             || local.typing_history_enabled() != (native.history == History::TypingV1)
