@@ -10,6 +10,14 @@ and reported paths agree when the directory is reached through a symlink.
 
 ## Whole-room activation jobs
 
+Both candidate profiles build the real relay fixture and run the
+`portable-relay-relocation` and `portable-relay-legacy-handover` checks.
+Each check uses the same relay executable with the workspace SDK and a fresh
+offline-installed SDK. The candidate runner requires fresh reports bound to
+the candidate's built shared runtime. The relocation scenario stops the source
+process, parks its native files, restores the moved bundle, and verifies client
+and provider inputs before serving from a separate process.
+
 The manual [activation workflow](../.github/workflows/activation-qualification.yml)
 builds the three package distributions, the normal shared runtime and the
 three Native relay fixtures once. Six jobs run the existing source and

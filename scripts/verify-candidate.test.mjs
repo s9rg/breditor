@@ -19,6 +19,36 @@ test('both profiles require bounded native archive integrity and immutable physi
  const installed=readFileSync(join(repository,'scripts/check-physical-room-catalog-installed.mjs'),'utf8');for(const text of ["'--offline'",'assert.deepEqual(native.source,source','fileEvidence(root,file.path)','verifySearchConsumerRegistry','types-physical-room-catalog.ts','probe-physical-room-catalog.mjs','archive-integrity.test.mjs','strictPublicTypes:true','workspaceLinks:false','assertionsUnchanged:true','sharedWasmSha256','assert.deepEqual(sourceEvidence(root),source)'])assert.ok(installed.includes(text),text);
 });
 
+test("both profiles run real portable relay relocation and legacy handover from the same fixture",()=>{
+ const fixture="relay_segment_functional"+(process.platform==="win32"?".exe":"");
+ const artifact="target/owned-history-relay-native/release/examples/"+fixture;
+ for(const profile of ["functional","full"]){
+  const {checks}=candidateReleasePlan({profile,environment:{BREDITOR_NPM:"npm-fixture"}});
+  const locate=id=>{
+   const index=checks.findIndex(check=>check.id===id);
+   assert.notEqual(index,-1,id);
+   return {check:checks[index],index};
+  };
+  const build=locate("functional-native-fixtures");
+  assert.deepEqual(build.check.args.slice(-2),["--example","relay_segment_functional"]);
+  assert.ok(build.check.artifacts.some(entry=>entry.path===artifact));
+  for(const [id,option,report] of [
+   ["portable-relay-relocation","--participant-portable-seal","qualified-portable-relocation.json"],
+   ["portable-relay-legacy-handover","--participant-carried-alternate","qualified-carried-participant-alternate.json"],
+  ]){
+   const {check,index}=locate(id);
+   assert.deepEqual(check.args,["scripts/check-writable-relay-segment.mjs",join(repository,artifact),option]);
+   assert.deepEqual(check.artifacts,[{path:"target/"+report,fresh:true}]);
+   assert.equal(check.requiresSharedRuntime,true);
+   assert.equal(check.env.BREDITOR_NPM,"npm-fixture");
+   for(const prerequisite of ["paired-shared-runtime","collaboration-build","functional-native-fixtures"]){
+    assert.ok(locate(prerequisite).index<index);
+   }
+  }
+  assert.equal(locate("portable-relay-relocation").check.env.BREDITOR_EXPECT_DISCUSSION_TRANSCRIPT,"native");
+ }
+});
+
 test('both profiles require complete physical server inventory pins and identical installed native-prefix probes',()=>{
  for(const profile of ['functional','full']){
   const p=candidateReleasePlan({profile}),find=id=>{const row=p.checks.find(c=>c.id===id);assert.ok(row,id);return row;};
@@ -224,7 +254,7 @@ test("manifest flags precede formatter/linter separators and overrides stay one 
  for(const id of ["shared-format","relay-format","shared-lint","relay-lint"]){const c=p.checks.find(c=>c.id===id);assert.equal(c.command,"/tool path/cargo");assert.ok(c.args.indexOf("--manifest-path")<c.args.indexOf("--"));}
  for(const id of ["workspace-lint","shared-lint","relay-lint"]){const c=p.checks.find(c=>c.id===id);for(const arg of ["--all-targets","--locked","--offline"])assert.ok(c.args.includes(arg));assert.deepEqual(c.args.slice(-3),["--","-D","warnings"]);}
  assert.equal(p.checks.find(c=>c.id==="editor-sdk-tests").command,"/tool path/npm");
- assert.equal(p.checks.find(c=>c.id==="functional-native-fixtures").artifacts.length,4);
+ assert.equal(p.checks.find(c=>c.id==="functional-native-fixtures").artifacts.length,5);
  const wasm=p.checks.find(c=>c.id==="shared-wasm-lint");assert.ok(wasm.env.CARGO_ENCODED_RUSTFLAGS.includes(`--remap-path-prefix=${repository}=breditor`),"Actual-target lint must use the same canonical Rust flags as the shipped candidate");
 });
 test("both profiles compile shared public documentation with warnings denied",()=>{
