@@ -1,0 +1,77 @@
+{
+  "format": "breditor/coordinated-relay-recovery-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-15",
+  "source": {
+    "commit": "cc5d3e0b275b3382ebc3dee10d5ce3fef1f10b03",
+    "dirty": false,
+    "sha256": "5686f2ddf904f1b1f109a1957ebd5fa89f85f2722eea519ac9f0da652772b13b",
+    "files": 8951,
+    "bytes": 76046915
+  },
+  "relaySha256": "d88aee598dea78fe704b75d30823facddec23b3268a37991d72ec7520887ba7e",
+  "runtimeSha256": "38b17b58126858fd4ef014e877e85806c323c675e88cd191222badbe9a36a6d5",
+  "native": {
+    "passed": 61,
+    "failed": 0,
+    "executableSha256": "f24972076a4e562f6dcc2d388b18b0b879096fff4c837ebc7e27d0bc99e52e23",
+    "logSha256": "63b10e2a5ad9cecefda84919f7493af835cab331100a6a6492f8ccaccdb3dd34"
+  },
+  "sdkAndCandidateContracts": {
+    "passed": 105,
+    "failed": 0,
+    "logSha256": "ae594c0ea830a7a491ac45038a8af7f37c9a67a5ae976de90ff5ad8fecdf9ed2"
+  },
+  "strictServerLibraryLint": {
+    "passed": true,
+    "logSha256": "7a2196220901942130fa91f93dfbc9f1b253e0c4fdcce0ece38e03b2c6434fed"
+  },
+  "revisionTwo": {
+    "reportSha256": "c171aee985dc96bbed76af2dc55e3bf6ffe4df677c5019432d28aa49ef4040a8",
+    "runs": {
+      "source": {
+        "unverifiedStartupRefusals": 3,
+        "unservedActivationResumes": 1,
+        "recoveredOfflineLanes": 6,
+        "undoRedoLanes": 2,
+        "archivedDiscussionEvents": 40,
+        "proof": null
+      },
+      "installed": {
+        "unverifiedStartupRefusals": 3,
+        "unservedActivationResumes": 1,
+        "recoveredOfflineLanes": 6,
+        "undoRedoLanes": 2,
+        "archivedDiscussionEvents": 40,
+        "proof": {
+          "registryArtifacts": 45,
+          "archives": [
+            {
+              "name": "@breditor/browser",
+              "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+            },
+            {
+              "name": "@breditor/experimental-rich-content",
+              "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+            },
+            {
+              "name": "@breditor/collaboration",
+              "sha256": "c5d79a56da7f48c4e4e10a298bfc2bca5cb9cee46642c0c0586df828396ed7b8"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "revisionOne": {
+    "reportSha256": "d6a4dfae23735ca744b720f606bc313aa624bf98ff225e62d31f006176a701be",
+    "matchesPreviousWorkflowResults": true
+  },
+  "scope": [
+    "Revision two is opt-in for new authorities. Ordinary claims remain usable until the first coordinated transition.",
+    "Each fresh SDK workflow attempts to start the old native source after the handover and makes ordinary claims after the portable seal and after the replacement exits before listening. All three attempts refuse without changing ledger bytes.",
+    "The approved cold restart still succeeds. Both SDKs verify the retained offline edits, native Undo/Redo, uploads and archived discussion.",
+    "The native matrix includes coordinated cold open, rejection of a checksummed ordinary frame after cutoff, and earlier authority, handover and process recovery regressions.",
+    "Cold rollback detection depends on an independently retained authority selection. A restored ledger prefix without its later independent selection does not establish current history."
+  ]
+}

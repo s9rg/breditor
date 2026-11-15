@@ -2,6 +2,14 @@
 
 ## November 15 collaboration recovery
 
+[Coordinated relay recovery](qualification/2026-11-15-coordinated-relay-recovery.json)
+adds an opt-in deployment authority that refuses ordinary claims after the
+first committed handover or seal. Source and clean-installed runs each refuse
+a restart of the old native room and ordinary claims after the portable seal
+and the replacement's pre-listen exit. No refused claim appends an epoch.
+The approved cold restart still restores the exact room, and the revision-one
+handover passes. All 61 native fencing, handover and restart tests pass.
+
 [Portable backup custody at the source seal](qualification/2026-11-15-portable-relay-seal-named-custody.json)
 keeps the verified backup root, native predecessors and retained client archive
 paths under custody until the source fence commits. The earlier relay fenced
