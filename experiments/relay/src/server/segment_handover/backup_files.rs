@@ -23,7 +23,7 @@ pub(super) fn open_room(
     RelaySegmentRoomBackupFiles::open(Arc::new(base), read_owned(directory, RASTERS)?, expected)
 }
 
-fn read_owned(directory: &GenerationDirectory, name: &str) -> Result<File> {
+pub(super) fn read_owned(directory: &GenerationDirectory, name: &str) -> Result<File> {
     directory.guard()?;
     let path = directory.path.join(name);
     if !std::fs::symlink_metadata(&path)?.is_file() {

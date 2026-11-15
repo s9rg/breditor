@@ -172,6 +172,11 @@ impl Log {
         self.generations.as_ref()?.segment.as_ref().map(|value| value.base.as_ref())
     }
 
+    #[cfg(feature = "server")]
+    pub(crate) fn hold_segment_base(&self) -> Option<Arc<RelaySegmentBaseFile>> {
+        self.generations.as_ref()?.segment.as_ref().map(|segment| segment.base.clone())
+    }
+
     pub(crate) fn check_segment_parent(&self, base: &RelaySegmentBaseFile) -> Result<()> {
         match (self.segment_base(), base.parent()) {
             (None, None) => Ok(()),

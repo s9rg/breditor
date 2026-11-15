@@ -1,14 +1,14 @@
 //! Capture native state and the exact client inputs already held by the relay.
 use super::{
     backup_files::{BackupCopies, open_room},
-    capture::begin_capture,
+    capture::{CapturedSegment, begin_capture},
 };
 use crate::{
     RecoveredRelaySegmentRoom, RelaySegmentBaseFile, RelaySegmentClientJournal,
     RelaySegmentClientJournalPin, RelaySegmentClientUploadArchive, RelaySegmentClientUploadPin,
     RelaySegmentRoomBackupFiles, RelaySegmentRoomBackupIdentity, Result, RoomRecoveryPolicy,
     log::generations::GenerationDirectory,
-    server::{RoomDeploymentSelection, ServerBackupHandle},
+    server::{Host, RoomDeploymentSelection, ServerBackupHandle},
 };
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeSet, path::Path, sync::Arc};
@@ -64,10 +64,18 @@ impl RelaySegmentRetainedBackup {
         expected: &RelaySegmentRetainedBackupIdentity,
     ) -> Result<Self> {
         let directory = GenerationDirectory::open(path)?;
-        let backup = open_room(&directory, parent, &expected.backup)?;
+        Self::open_at(&directory, parent, expected)
+    }
+
+    pub(super) fn open_at(
+        directory: &GenerationDirectory,
+        parent: Option<Arc<RelaySegmentBaseFile>>,
+        expected: &RelaySegmentRetainedBackupIdentity,
+    ) -> Result<Self> {
+        let backup = open_room(directory, parent, &expected.backup)?;
         let required = backup.required_recovered_discussion_sources()?.into_iter().collect();
         expected.verify_pins(&required)?;
-        let retained = RetainedCopies::open(&directory, expected)?;
+        let retained = RetainedCopies::open(directory, expected)?;
         retained.check()?;
         directory.guard()?;
         Ok(Self {
@@ -117,13 +125,39 @@ impl RelaySegmentRetainedBackup {
     }
 }
 
-struct RetainedCopies {
+pub(super) struct RetainedCopies {
     selected: BackupCopies<RelaySegmentClientJournal>,
     alternates: BackupCopies<RelaySegmentClientJournal>,
     uploads: BackupCopies<RelaySegmentClientUploadArchive>,
 }
 
 impl RetainedCopies {
+    pub(super) fn capture(
+        host: &Host,
+        captured: &CapturedSegment,
+        source_epoch: RoomDeploymentSelection,
+    ) -> Result<(RelaySegmentRetainedBackupIdentity, Self)> {
+        let (selected_journals, alternate_journals, standalone_uploads) =
+            match &host.relay_segment_custody {
+                Some(custody) => (
+                    custody.export_selected_journals(&captured.directory.path.join(SELECTED))?,
+                    custody.export_alternates(&captured.directory.path.join(ALTERNATES))?,
+                    custody.export_standalone_uploads(&captured.directory.path.join(UPLOADS))?,
+                ),
+                None => (Vec::new(), Vec::new(), Vec::new()),
+            };
+        let expected = RelaySegmentRetainedBackupIdentity {
+            backup: captured.backup.clone(),
+            source_epoch,
+            selected_journals,
+            alternate_journals,
+            standalone_uploads,
+        };
+        expected.verify_pins(&captured.discussion_sources)?;
+        let copies = Self::open(&captured.directory, &expected)?;
+        Ok((expected, copies))
+    }
+
     fn open(
         directory: &GenerationDirectory,
         expected: &RelaySegmentRetainedBackupIdentity,
@@ -156,7 +190,7 @@ impl RetainedCopies {
         })
     }
 
-    fn check(&self) -> Result<()> {
+    pub(super) fn check(&self) -> Result<()> {
         self.selected.check()?;
         self.alternates.check()?;
         self.uploads.check()
@@ -181,24 +215,7 @@ impl ServerBackupHandle {
         let host = &self.host;
         host.authentication.authenticate(principal, token)?;
         let (captured, source_epoch) = begin_capture(host, principal, destination)?;
-        let (selected_journals, alternate_journals, standalone_uploads) =
-            match &host.relay_segment_custody {
-                Some(custody) => (
-                    custody.export_selected_journals(&captured.directory.path.join(SELECTED))?,
-                    custody.export_alternates(&captured.directory.path.join(ALTERNATES))?,
-                    custody.export_standalone_uploads(&captured.directory.path.join(UPLOADS))?,
-                ),
-                None => (Vec::new(), Vec::new(), Vec::new()),
-            };
-        let expected = RelaySegmentRetainedBackupIdentity {
-            backup: captured.backup.clone(),
-            source_epoch,
-            selected_journals,
-            alternate_journals,
-            standalone_uploads,
-        };
-        expected.verify_pins(&captured.discussion_sources)?;
-        let retained = RetainedCopies::open(&captured.directory, &expected)?;
+        let (expected, retained) = RetainedCopies::capture(host, &captured, source_epoch)?;
         captured.confirm(host, &expected.source_epoch, || retained.check())?;
         Ok(expected)
     }

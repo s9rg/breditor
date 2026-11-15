@@ -1,10 +1,10 @@
 //! Stream to a private, absent-only capture directory under the live serving epoch.
 use crate::{
-    Error, RelaySegmentRoomBackupIdentity, Result,
+    Error, RelaySegmentBaseFile, RelaySegmentRoomBackupIdentity, Result,
     log::generations::{GenerationDirectory, GenerationFileStamp, GenerationFileWitness},
     server::{Host, RoomDeploymentSelection, ServerBackupHandle, deployment_fence},
 };
-use std::{collections::BTreeSet, fs::File, path::Path};
+use std::{collections::BTreeSet, fs::File, path::Path, sync::Arc};
 
 pub(super) const NATIVE: &str = "native.archive";
 pub(super) const CHECKPOINT: &str = "native.checkpoint";
@@ -14,6 +14,7 @@ pub(super) struct CapturedSegment {
     pub backup: RelaySegmentRoomBackupIdentity,
     pub directory: GenerationDirectory,
     pub discussion_sources: BTreeSet<[u8; 32]>,
+    pub parent: Option<Arc<RelaySegmentBaseFile>>,
     files: [CapturedFile; 3],
 }
 
@@ -98,10 +99,12 @@ pub(super) fn capture(host: &Host, principal: &str, destination: &Path) -> Resul
         &mut raster,
     )?;
     let discussion_sources = room.recovered_discussion_source_digests();
+    let parent = room.hold_relay_segment_parent();
     let capture = CapturedSegment {
         backup,
         directory,
         discussion_sources,
+        parent,
         files: [
             CapturedFile::synced(NATIVE, native)?,
             CapturedFile::synced(CHECKPOINT, checkpoint)?,

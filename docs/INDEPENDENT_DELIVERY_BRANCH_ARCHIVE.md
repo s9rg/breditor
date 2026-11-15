@@ -412,3 +412,19 @@ The restored room retains the original client histories and upload states.
 Newer offline work that has never reached this relay remains in the clients'
 own durable stores or exports. To make a restored room serve, use the existing
 authenticated handover with fresh client, asset and provider verification.
+
+### Include the linked native predecessors
+
+Use `ServerBackupHandle::capture_portable_relay_segment` when the backup
+must travel independently of earlier native archive locations. It includes
+the retained client inputs above and the exact native archive and checkpoint
+of each predecessor in oldest-first order. Existing native coordinates and
+generation names are preserved. The retained-client copies and native
+predecessors move outside the initial serving transaction. Confirmation
+checks the same serving epoch and verifies named file custody.
+
+Retain the returned `RelaySegmentPortableBackupIdentity` separately.
+`RelaySegmentRetainedBackup::open_portable` verifies the native chain from
+the bundle itself. Call `restore` for a new, unselected room. Use the ordinary
+authenticated handover and native client verification to select a serving
+room.

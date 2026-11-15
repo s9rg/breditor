@@ -1,6 +1,8 @@
 //! Exact predecessors for a continuation that keeps original event positions.
 mod capture;
 mod open;
+#[cfg(feature = "server")]
+mod portable;
 pub(in crate::room::log_generations) use open::segment_history_digest;
 mod successor;
 #[cfg(test)]

@@ -94,8 +94,8 @@ impl Carry {
             .then(|| super::retained_backup::verify(parent, handle, &self.token, &self.peer_upload))
             .transpose()?;
         if let Some(identity) = &retained_backup {
-            assert_eq!(identity.backup, captured);
-            assert_eq!(identity.source_epoch, old_epoch);
+            assert_eq!(identity.retained.backup, captured);
+            assert_eq!(identity.retained.source_epoch, old_epoch);
         }
         storage::write_new(&parent.join("carry-restore.json"), &serde_json::to_vec(&captured)?)?;
         let mut credentials = RecoveryRegistrationCredentials {
@@ -323,10 +323,11 @@ impl Carry {
             "discussionBackup": bundle.is_some(),
             "incompleteDiscussionBackupRefusals": if bundle.is_some() {2} else {0},
             "retainedBackup": retained_backup.as_ref().map(|identity| json!({
-                "selectedJournals": identity.selected_journals.len(),
-                "alternateJournals": identity.alternate_journals.len(),
-                "standaloneUploads": identity.standalone_uploads.len(),
+                "selectedJournals": identity.retained.selected_journals.len(),
+                "alternateJournals": identity.retained.alternate_journals.len(),
+                "standaloneUploads": identity.retained.standalone_uploads.len(),
             })),
+            "retainedBackupNativePredecessors": retained_backup.as_ref().map(|identity| identity.native_predecessors.len()),
         }))
     }
 }

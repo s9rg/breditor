@@ -635,6 +635,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
           alternateJournals: 1,
           standaloneUploads: 1,
         });
+        assert.equal(result.retainedBackupNativePredecessors, 1);
         assert.deepEqual(readFileSync(join(parent, 'carry-capture', 'discussion-sources', '0.participant')),
           retainedBranches.incoming);
         assert.equal(result.publishedDiscussionSourceRefusals, 2);
@@ -713,6 +714,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
           publishedDiscussionSourceRefusals: result.publishedDiscussionSourceRefusals,
           retainedBackup: result.retainedBackup,
           retainedBackupHistory,
+          retainedBackupNativePredecessors: result.retainedBackupNativePredecessors,
         } : {}),
         carriedAlternateArchives: result.carriedAlternateArchives, carriedAlternateHistoryLanes: alternateHistoryLanes,
         ...(additionalAlternate ? {sameOwnerSubstitutionRefusals: result.alternateOmissionRefusals} : {}),

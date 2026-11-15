@@ -3,7 +3,7 @@ use super::{POLICY, Result, read, storage};
 use crate::original_capture;
 use breditor_collab_relay::{
     Error, RelaySegmentClientJournalPin, RelaySegmentClientUploadPin, RelaySegmentJournalOwner,
-    server::{RelaySegmentRetainedBackup, RelaySegmentRetainedBackupIdentity, ServerBackupHandle},
+    server::{RelaySegmentPortableBackupIdentity, RelaySegmentRetainedBackup, ServerBackupHandle},
 };
 use std::{fs, io::Read, path::Path};
 
@@ -12,14 +12,15 @@ pub(super) fn verify(
     handle: &ServerBackupHandle,
     token: &str,
     standalone: &RelaySegmentClientUploadPin,
-) -> Result<RelaySegmentRetainedBackupIdentity> {
+) -> Result<RelaySegmentPortableBackupIdentity> {
     let capture = parent.join("retained-room-backup");
     let identity_path = parent.join("retained-room-backup.json");
-    let captured = handle.capture_relay_segment_with_retained_clients("owner", token, &capture)?;
+    let captured = handle.capture_portable_relay_segment("owner", token, &capture)?;
     storage::write_new(&identity_path, &serde_json::to_vec(&captured)?)?;
-    let expected: RelaySegmentRetainedBackupIdentity =
+    let portable: RelaySegmentPortableBackupIdentity =
         serde_json::from_str(&read(&identity_path, 128 * 1024)?)?;
-    assert_eq!(expected, captured);
+    assert_eq!(portable, captured);
+    let expected = &portable.retained;
     let live = parent.join("restored");
     let read_journals = |name: &str| -> Result<Vec<RelaySegmentClientJournalPin>> {
         Ok(serde_json::from_str(&read(&live.join(name).join("manifest.json"), 128 * 1024)?)?)
@@ -41,22 +42,32 @@ pub(super) fn verify(
     assert!(uploads.iter().any(|pin| &pin.writer == embedded));
 
     let (prior, _) = original_capture(parent)?;
-    let mut incomplete = expected.clone();
-    incomplete.alternate_journals.clear();
+    assert_eq!(portable.native_predecessors, [prior.identity().clone()]);
+    let mut incomplete = portable.clone();
+    incomplete.retained.alternate_journals.clear();
     assert!(matches!(
-        RelaySegmentRetainedBackup::open(&capture, Some(prior.clone()), &incomplete),
+        RelaySegmentRetainedBackup::open_portable(&capture, &incomplete),
         Err(Error::Contract("relay segment restore omitted a recovered discussion source"))
     ));
     let selected = capture.join("selected-journals/0.journal");
     let missing = capture.join("selected-journals/parked.journal");
     fs::rename(&selected, &missing)?;
-    let refused = RelaySegmentRetainedBackup::open(&capture, Some(prior.clone()), &expected);
+    let refused = RelaySegmentRetainedBackup::open_portable(&capture, &portable);
     fs::rename(&missing, &selected)?;
     assert!(
         matches!(refused, Err(Error::Io(error)) if error.kind() == std::io::ErrorKind::NotFound)
     );
 
-    let bundle = RelaySegmentRetainedBackup::open(&capture, Some(prior), &expected)?;
+    let ancestor = capture.join("native-lineage/0.archive");
+    let missing = capture.join("native-lineage/parked.archive");
+    fs::rename(&ancestor, &missing)?;
+    let refused = RelaySegmentRetainedBackup::open_portable(&capture, &portable);
+    fs::rename(&missing, &ancestor)?;
+    assert!(
+        matches!(refused, Err(Error::Io(error)) if error.kind() == std::io::ErrorKind::NotFound)
+    );
+    drop(prior);
+    let bundle = RelaySegmentRetainedBackup::open_portable(&capture, &portable)?;
     let destination = parent.join("retained-room-restored");
     let restored = bundle.restore(&destination, "retained-room-restored", POLICY)?;
     drop(restored);
@@ -90,5 +101,5 @@ pub(super) fn verify(
             fs::read(live.join("client-uploads").join(format!("{}.uploads", pin.writer)))?
         );
     }
-    Ok(expected)
+    Ok(portable)
 }
