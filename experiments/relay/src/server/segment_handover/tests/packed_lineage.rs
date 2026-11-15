@@ -84,6 +84,7 @@ fn long_lineage_moves_and_reopens_under_a_small_descriptor_limit() -> TestResult
     }
     fs::rename(parent.join("packed"), parent.join("moved"))?;
     check_bad_pack(&parent, &packed)?;
+    check_copy_refusals(&parent, &split)?;
 
     for layout in ["split", "moved"] {
         let worker = Command::new("/bin/sh")
@@ -118,25 +119,93 @@ fn cold_lineage_worker() -> TestResult {
         serde_json::from_slice(&fs::read(root.join("selection.json"))?)?;
     match layout.as_str() {
         "split" => {
-            let result = RelaySegmentRetainedBackup::open_portable(&root.join("split"), &selected);
+            let source = root.join("split");
+            let result = RelaySegmentRetainedBackup::open_portable(&source, &selected);
             assert!(
                 matches!(result, Err(Error::Io(error)) if error.raw_os_error() == Some(EMFILE))
             );
+            let original = source.join("native-lineage/0.checkpoint");
+            let before = fs::read(&original)?;
+            RelaySegmentRetainedBackup::copy_portable_packed(
+                &source,
+                &root.join("converted"),
+                &selected,
+            )?;
+            assert_eq!(fs::read(original)?, before);
+            assert!(!source.join("native-lineage/packed.bin").exists());
+            restore_and_reopen(&root, "converted", &selected)?;
         }
         "moved" => {
-            let backup = RelaySegmentRetainedBackup::open_portable(&root.join("moved"), &selected)?;
-            let path = root.join("cold-room");
-            let target = backup.restore(&path, "cold-one", POLICY)?;
-            assert_eq!(
-                target.components().0.catchup("owner")?,
-                fs::read_to_string(root.join("expected-catchup"))?
-            );
-            target.components().0.catchup(&format!("reader-{}", PREDECESSORS - 1))?;
-            drop(target);
-            backup.backup().reopen(&path, POLICY)?.components().0.catchup("reader-0")?;
+            restore_and_reopen(&root, "moved", &selected)?;
+            RelaySegmentRetainedBackup::copy_portable_packed(
+                &root.join("moved"),
+                &root.join("packed-copy"),
+                &selected,
+            )?;
+            restore_and_reopen(&root, "packed-copy", &selected)?;
         }
         _ => return Err("unknown fixture layout".into()),
     }
+    Ok(())
+}
+
+fn restore_and_reopen(
+    root: &Path,
+    name: &str,
+    selected: &RelaySegmentPortableBackupIdentity,
+) -> TestResult {
+    let backup = RelaySegmentRetainedBackup::open_portable(&root.join(name), selected)?;
+    let path = root.join(format!("cold-room-{name}"));
+    let target = backup.restore(&path, "cold-one", POLICY)?;
+    assert_eq!(
+        target.components().0.catchup("owner")?,
+        fs::read_to_string(root.join("expected-catchup"))?
+    );
+    target.components().0.catchup(&format!("reader-{}", PREDECESSORS - 1))?;
+    drop(target);
+    backup.backup().reopen(&path, POLICY)?.components().0.catchup("reader-0")?;
+    Ok(())
+}
+
+fn check_copy_refusals(root: &Path, selected: &RelaySegmentPortableBackupIdentity) -> TestResult {
+    let source = root.join("split");
+    let occupied = root.join("occupied");
+    fs::create_dir(&occupied)?;
+    fs::write(occupied.join("sentinel"), b"keep")?;
+    assert!(
+        RelaySegmentRetainedBackup::copy_portable_packed(&source, &occupied, selected).is_err()
+    );
+    assert_eq!(fs::read(occupied.join("sentinel"))?, b"keep");
+
+    let child = source.join("nested-copy");
+    assert!(RelaySegmentRetainedBackup::copy_portable_packed(&source, &child, selected).is_err());
+    assert!(!child.exists());
+
+    let differently_cased_source = root.join("SPLIT");
+    if differently_cased_source.is_dir() {
+        let descendant = source.join("native-lineage/nested-copy");
+        assert!(
+            RelaySegmentRetainedBackup::copy_portable_packed(
+                &differently_cased_source,
+                &descendant,
+                selected,
+            )
+            .is_err()
+        );
+        assert!(!descendant.exists());
+    }
+
+    let checkpoint = source.join("native-lineage/0.checkpoint");
+    let original = fs::read(&checkpoint)?;
+    let mut changed = original.clone();
+    let last = changed.last_mut().ok_or("split checkpoint bytes")?;
+    *last ^= 1;
+    fs::write(&checkpoint, &changed)?;
+    let invalid = root.join("invalid-copy");
+    assert!(RelaySegmentRetainedBackup::copy_portable_packed(&source, &invalid, selected).is_err());
+    assert!(RelaySegmentRetainedBackup::open_portable(&invalid, selected).is_err());
+    assert_eq!(fs::read(&checkpoint)?, changed);
+    fs::write(checkpoint, original)?;
     Ok(())
 }
 

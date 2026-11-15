@@ -76,7 +76,30 @@ impl Directory {
         Ok(())
     }
     pub fn create(path: &Path) -> Result<Self> {
+        Self::create_anchored(anchored(path)?)
+    }
+    #[cfg(all(feature = "server", unix))]
+    pub(crate) fn create_outside(&self, path: &Path) -> Result<Self> {
+        use std::os::unix::fs::MetadataExt;
+
+        self.guard()?;
         let path = anchored(path)?;
+        let parent = path.parent().ok_or(Error::Contract("log directory parent"))?;
+        for ancestor in parent.ancestors() {
+            let metadata = fs::metadata(ancestor)?;
+            if (metadata.dev(), metadata.ino()) == self.root_id {
+                return Err(Error::Contract(
+                    "portable backup copy destination is within the source",
+                ));
+            }
+        }
+        Self::create_anchored(path)
+    }
+    #[cfg(all(feature = "server", not(unix)))]
+    pub(crate) fn create_outside(&self, _path: &Path) -> Result<Self> {
+        Err(Error::Contract("portable backup copy requires Unix custody"))
+    }
+    fn create_anchored(path: PathBuf) -> Result<Self> {
         let mut builder = fs::DirBuilder::new();
         #[cfg(unix)]
         {

@@ -12,6 +12,7 @@ mod native_lineage;
 mod packed_native_lineage;
 mod portable_activation;
 mod portable_backup;
+mod portable_copy;
 mod portable_seal;
 mod resume;
 mod retained_backup;

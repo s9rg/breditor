@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {createHash, randomBytes} from 'node:crypto';
-import {mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync} from 'node:fs';
+import {mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, statSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
@@ -693,6 +693,10 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       }
       if (portableSeal) {
         assert.equal(result.portableSeal.nativePredecessors, 4);
+        assert.equal(result.portableSeal.packedCopyOfSplit, true);
+        const split = join(parent, 'portable-relocation-retired-split', 'native-lineage');
+        assert.ok(statSync(join(split, '0.archive')).isFile());
+        assert.throws(() => readFileSync(join(split, 'packed.bin')), {code:'ENOENT'});
         const packed = join(parent, 'portable-relocation-source', 'native-lineage');
         assert.ok(readFileSync(join(packed, 'packed.bin')).subarray(0, 8).equals(Buffer.from('BRLINE1\n')));
         assert.throws(() => readFileSync(join(packed, '0.archive')), {code:'ENOENT'});
@@ -731,6 +735,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
           sealedCaptureRefusals: 1,
           sealedNativePredecessors: result.portableSeal.nativePredecessors,
           packedNativeLineages: 1,
+          packedCopiesOfExistingSplit: 1,
           retiredOriginalPaths: originalPaths.length,
           freshlyVerifiedProtectedRegistrations: documents.length + reviews.length,
         };

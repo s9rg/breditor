@@ -5,7 +5,11 @@ use crate::{
     archive_input::ArchiveInput,
     log::generations::{GenerationDirectory, GenerationFileWitness},
 };
-use std::{fs, io::Write, sync::Arc};
+use std::{
+    fs::{self, File},
+    io::Write,
+    sync::Arc,
+};
 
 pub(super) const FILE: &str = "packed.bin";
 const MAGIC: &[u8; 8] = b"BRLINE1\n";
@@ -22,15 +26,38 @@ pub(super) fn write(
     directory: &GenerationDirectory,
     chain: &[&RelaySegmentBaseFile],
 ) -> Result<()> {
-    let count = u32::try_from(chain.len()).map_err(|_| Error::Contract("packed lineage count"))?;
-    let mut file = directory.create_file(FILE, &[])?;
-    file.write_all(MAGIC)?;
-    file.write_all(&count.to_be_bytes())?;
+    let mut file = create(directory, chain.len())?;
     for base in chain {
         base.write_framed_pair(&mut file)?;
     }
     file.sync_all()?;
     Ok(())
+}
+
+pub(super) fn create(directory: &GenerationDirectory, count: usize) -> Result<File> {
+    let count = u32::try_from(count).map_err(|_| Error::Contract("packed lineage count"))?;
+    let mut file = directory.create_file(FILE, &[])?;
+    file.write_all(MAGIC)?;
+    file.write_all(&count.to_be_bytes())?;
+    Ok(file)
+}
+
+pub(super) fn maximum_bytes(count: u32) -> Result<u64> {
+    u64::from(count)
+        .checked_mul(RelaySegmentBaseFile::PACKED_PAIR_LIMIT + LENGTHS)
+        .and_then(|bytes| bytes.checked_add(HEADER))
+        .ok_or(Error::Contract("packed lineage byte budget"))
+}
+
+pub(super) fn check_layout(directory: &GenerationDirectory) -> Result<()> {
+    directory.guard()?;
+    for entry in fs::read_dir(&directory.path)? {
+        let name = entry?.file_name();
+        if name != ".owner" && name != FILE {
+            return Err(Error::Contract("packed lineage contains unexpected files"));
+        }
+    }
+    directory.guard()
 }
 
 impl PackedNativeLineage {
@@ -40,19 +67,10 @@ impl PackedNativeLineage {
     ) -> Result<Self> {
         let count =
             u32::try_from(expected.len()).map_err(|_| Error::Contract("packed lineage count"))?;
-        let maximum = u64::from(count)
-            .checked_mul(RelaySegmentBaseFile::PACKED_PAIR_LIMIT + LENGTHS)
-            .and_then(|bytes| bytes.checked_add(HEADER))
-            .ok_or(Error::Contract("packed lineage byte budget"))?;
-        for entry in fs::read_dir(&directory.path)? {
-            let name = entry?.file_name();
-            if name != ".owner" && name != FILE {
-                return Err(Error::Contract("packed lineage contains unexpected files"));
-            }
-        }
+        check_layout(directory)?;
         let file = read_owned(directory, FILE)?;
         let witness = GenerationFileWitness::of(&file)?;
-        let input = ArchiveInput::new(file, maximum)?;
+        let input = ArchiveInput::new(file, maximum_bytes(count)?)?;
         let whole = input.all();
         let header = whole.section(0, HEADER)?.read(HEADER)?;
         if !header.starts_with(MAGIC) || header[8..] != count.to_be_bytes() {

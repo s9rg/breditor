@@ -1,6 +1,6 @@
 //! Capture native state and the exact client inputs already held by the relay.
 use super::{
-    backup_files::{BackupCopies, RoomBackupCopies},
+    backup_files::{BackupCopies, RoomBackupCopies, copy_group},
     capture::{CapturedSegment, begin_capture},
 };
 use crate::{
@@ -35,12 +35,43 @@ pub struct RelaySegmentRetainedBackupIdentity {
 }
 
 impl RelaySegmentRetainedBackupIdentity {
-    fn verify_pins(&self, required_discussion_sources: &BTreeSet<[u8; 32]>) -> Result<()> {
+    pub(super) fn verify_pins(
+        &self,
+        required_discussion_sources: &BTreeSet<[u8; 32]>,
+    ) -> Result<()> {
         RelaySegmentRoomBackupFiles::check_retained_client_backup_pins(
             required_discussion_sources,
             &self.selected_journals,
             &self.alternate_journals,
             &self.standalone_uploads,
+        )
+    }
+
+    pub(super) fn copy_clients(
+        &self,
+        source: &GenerationDirectory,
+        destination: &GenerationDirectory,
+    ) -> Result<()> {
+        copy_group(
+            source,
+            destination,
+            SELECTED,
+            "journal",
+            self.selected_journals.iter().map(|pin| pin.bytes),
+        )?;
+        copy_group(
+            source,
+            destination,
+            ALTERNATES,
+            "participant",
+            self.alternate_journals.iter().map(|pin| pin.bytes),
+        )?;
+        copy_group(
+            source,
+            destination,
+            UPLOADS,
+            "uploads",
+            self.standalone_uploads.iter().map(|pin| pin.bytes),
         )
     }
 }

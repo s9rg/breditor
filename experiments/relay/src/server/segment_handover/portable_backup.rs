@@ -49,7 +49,13 @@ pub(in crate::server) struct NamedPortableBackup {
 
 impl NamedPortableBackup {
     pub(super) fn open(path: &Path, expected: &RelaySegmentPortableBackupIdentity) -> Result<Self> {
-        let directory = GenerationDirectory::open(path)?;
+        Self::open_at(GenerationDirectory::open(path)?, expected)
+    }
+
+    pub(super) fn open_at(
+        directory: GenerationDirectory,
+        expected: &RelaySegmentPortableBackupIdentity,
+    ) -> Result<Self> {
         let lineage = NativeLineage::open(&directory, &expected.native_predecessors)?;
         let copies = RetainedBackupCopies::open(&directory, lineage.parent(), &expected.retained)?;
         let backup = Self { directory, lineage, copies };

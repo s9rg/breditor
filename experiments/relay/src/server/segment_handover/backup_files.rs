@@ -3,9 +3,15 @@ use super::capture::{CHECKPOINT, NATIVE, RASTERS};
 use crate::{
     Error, RelaySegmentBaseFile, RelaySegmentRoomBackupFiles, RelaySegmentRoomBackupIdentity,
     Result,
+    archive_input::ArchiveInput,
     log::generations::{GenerationDirectory, GenerationFileWitness},
 };
-use std::{fs::File, path::Path, sync::Arc};
+use std::{
+    fs::File,
+    io::{self, Write},
+    path::Path,
+    sync::Arc,
+};
 
 pub(super) fn open_room(
     directory: &GenerationDirectory,
@@ -72,6 +78,78 @@ pub(super) fn read_owned(directory: &GenerationDirectory, name: &str) -> Result<
     Ok(file)
 }
 
+pub(super) struct BackupCopyInput<'a> {
+    directory: &'a GenerationDirectory,
+    name: &'a str,
+    input: ArchiveInput,
+    witness: GenerationFileWitness,
+}
+
+impl<'a> BackupCopyInput<'a> {
+    pub(super) fn open(
+        directory: &'a GenerationDirectory,
+        name: &'a str,
+        limit: u64,
+    ) -> Result<Self> {
+        let file = read_owned(directory, name)?;
+        let witness = GenerationFileWitness::of(&file)?;
+        let input = ArchiveInput::new(file, limit)?;
+        Ok(Self { directory, name, input, witness })
+    }
+
+    pub(super) fn len(&self) -> u64 {
+        self.input.all().len()
+    }
+
+    pub(super) fn write(&self, output: &mut impl Write) -> Result<()> {
+        self.check()?;
+        if io::copy(&mut self.input.all().reader(), output)? != self.len() {
+            return Err(Error::Contract("portable backup source copy was truncated"));
+        }
+        self.check()
+    }
+
+    fn check(&self) -> Result<()> {
+        self.directory.guard()?;
+        self.input.check_named(&self.witness, &self.directory.path.join(self.name))
+    }
+}
+
+pub(super) fn copy_file(
+    source: &GenerationDirectory,
+    destination: &GenerationDirectory,
+    name: &str,
+    limit: u64,
+) -> Result<()> {
+    let input = BackupCopyInput::open(source, name, limit)?;
+    let mut output = destination.create_file(name, &[])?;
+    input.write(&mut output)?;
+    output.sync_all()?;
+    Ok(())
+}
+
+pub(super) fn copy_group(
+    source: &GenerationDirectory,
+    destination: &GenerationDirectory,
+    folder: &str,
+    extension: &str,
+    lengths: impl ExactSizeIterator<Item = u64>,
+) -> Result<()> {
+    if lengths.len() == 0 {
+        return Ok(());
+    }
+    let source = GenerationDirectory::open(&source.path.join(folder))?;
+    let destination = GenerationDirectory::create(&destination.path.join(folder))?;
+    for (index, limit) in lengths.enumerate() {
+        copy_file(&source, &destination, &entry_name(index, extension), limit)?;
+    }
+    destination.sync()
+}
+
+fn entry_name(index: usize, extension: &str) -> String {
+    format!("{index}.{extension}")
+}
+
 type CheckNamed<T> = fn(&T, &GenerationFileWitness, &Path) -> Result<()>;
 
 struct Entry<T> {
@@ -103,7 +181,7 @@ impl<T> BackupCopies<T> {
             .iter()
             .enumerate()
             .map(|(index, pin)| {
-                let name = format!("{index}.{extension}");
+                let name = entry_name(index, extension);
                 let file = read_owned(&directory, &name)?;
                 let witness = GenerationFileWitness::of(&file)?;
                 Ok(Entry { name, witness, value: open(file, pin.clone())? })

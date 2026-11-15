@@ -16,8 +16,10 @@ impl Room {
 }
 
 impl RelaySegmentBaseFile {
-    pub(crate) const PACKED_PAIR_LIMIT: u64 = crate::MAX_SERVER_LOG_GENERATION_BACKUP_BYTES
-        + crate::room::materialized_checkpoint::MAX_CHECKPOINT_BYTES as u64;
+    pub(crate) const CHECKPOINT_LIMIT: u64 =
+        crate::room::materialized_checkpoint::MAX_CHECKPOINT_BYTES as u64;
+    pub(crate) const PACKED_PAIR_LIMIT: u64 =
+        crate::MAX_SERVER_LOG_GENERATION_BACKUP_BYTES + Self::CHECKPOINT_LIMIT;
 
     pub(crate) fn write_framed_pair(&self, output: &mut impl Write) -> Result<()> {
         output.write_all(&self.archive.all().len().to_be_bytes())?;

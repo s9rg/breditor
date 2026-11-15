@@ -11,7 +11,12 @@ use breditor_collab_relay::{
 };
 use serde::Deserialize;
 use serde_json::json;
-use std::{fs::File, io::Write, path::Path, sync::Arc};
+use std::{
+    fs::{self, File},
+    io::Write,
+    path::Path,
+    sync::Arc,
+};
 
 const ROOM: &str = "relocated";
 const SEAL: &str = "portable-relocation-seal.json";
@@ -23,9 +28,11 @@ pub(super) fn seal(
     token: &str,
 ) -> Result<serde_json::Value> {
     let path = parent.join("portable-relocation-source");
-    let intent = RelaySegmentPortableSeal::select(
-        handle.capture_packed_portable_relay_segment("owner", token, &path)?,
-    )?;
+    let original = parent.join("portable-relocation-split");
+    let captured = handle.capture_portable_relay_segment("owner", token, &original)?;
+    RelaySegmentRetainedBackup::copy_portable_packed(&original, &path, &captured)?;
+    fs::rename(original, parent.join("portable-relocation-retired-split"))?;
+    let intent = RelaySegmentPortableSeal::select(captured)?;
     storage::write_new(&parent.join(SEAL), &serde_json::to_vec(&intent)?)?;
     File::open(parent)?.sync_all()?;
     let selected = handle.seal_portable_relay_segment("owner", token, &path, &intent)?;
@@ -41,6 +48,7 @@ pub(super) fn seal(
     assert!(!stale.exists());
     Ok(json!({
         "nativePredecessors": intent.backup().native_predecessors.len(),
+        "packedCopyOfSplit": true,
         "sealedSelection": selected,
     }))
 }

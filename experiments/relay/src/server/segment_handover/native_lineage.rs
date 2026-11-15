@@ -1,13 +1,18 @@
 //! Copy and verify the exact linked native predecessor chain in oldest-first order.
 use super::{
-    backup_files::read_owned,
+    backup_files::{BackupCopyInput, copy_file, read_owned},
     packed_native_lineage::{self as packed, PackedNativeLineage},
 };
 use crate::{
-    RelaySegmentBaseFile, RelaySegmentBaseIdentity, Result,
+    Error, MAX_SERVER_LOG_GENERATION_BACKUP_BYTES, RelaySegmentBaseFile, RelaySegmentBaseIdentity,
+    Result,
     log::generations::{GenerationDirectory, GenerationFileWitness},
 };
-use std::{fs, io, sync::Arc};
+use std::{
+    fs,
+    io::{self, Write},
+    sync::Arc,
+};
 
 const LINEAGE: &str = "native-lineage";
 
@@ -62,12 +67,10 @@ impl NativeLineage {
             return Ok(Self { held: None });
         }
         let directory = GenerationDirectory::open(&root.path.join(LINEAGE))?;
-        let files = match fs::symlink_metadata(directory.path.join(packed::FILE)) {
-            Ok(_) => LineageFiles::Packed(PackedNativeLineage::open(&directory, expected)?),
-            Err(error) if error.kind() == io::ErrorKind::NotFound => {
-                LineageFiles::Split(open_split(&directory, expected)?)
-            }
-            Err(error) => return Err(error.into()),
+        let files = if has_packed_file(&directory)? {
+            LineageFiles::Packed(PackedNativeLineage::open(&directory, expected)?)
+        } else {
+            LineageFiles::Split(open_split(&directory, expected)?)
         };
         let lineage = Self { held: Some((directory, files)) };
         lineage.check()?;
@@ -98,6 +101,51 @@ impl NativeLineage {
             LineageFiles::Packed(packed) => packed.check(directory)?,
         }
         directory.guard()
+    }
+}
+
+pub(super) fn copy_packed(
+    source: &GenerationDirectory,
+    destination: &GenerationDirectory,
+    count: usize,
+) -> Result<()> {
+    if count == 0 {
+        return Ok(());
+    }
+    let source = GenerationDirectory::open(&source.path.join(LINEAGE))?;
+    let destination = GenerationDirectory::create(&destination.path.join(LINEAGE))?;
+    if has_packed_file(&source)? {
+        packed::check_layout(&source)?;
+        let count = u32::try_from(count).map_err(|_| Error::Contract("packed lineage count"))?;
+        copy_file(&source, &destination, packed::FILE, packed::maximum_bytes(count)?)?;
+    } else {
+        let mut output = packed::create(&destination, count)?;
+        for index in 0..count {
+            let archive = archive_name(index);
+            let checkpoint = checkpoint_name(index);
+            let archive =
+                BackupCopyInput::open(&source, &archive, MAX_SERVER_LOG_GENERATION_BACKUP_BYTES)?;
+            let checkpoint = BackupCopyInput::open(
+                &source,
+                &checkpoint,
+                RelaySegmentBaseFile::CHECKPOINT_LIMIT,
+            )?;
+            output.write_all(&archive.len().to_be_bytes())?;
+            output.write_all(&checkpoint.len().to_be_bytes())?;
+            archive.write(&mut output)?;
+            checkpoint.write(&mut output)?;
+        }
+        output.sync_all()?;
+    }
+    source.guard()?;
+    destination.sync()
+}
+
+fn has_packed_file(directory: &GenerationDirectory) -> Result<bool> {
+    match fs::symlink_metadata(directory.path.join(packed::FILE)) {
+        Ok(_) => Ok(true),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(error.into()),
     }
 }
 
