@@ -56,8 +56,8 @@ pub(in crate::server) fn commit_segment_handover(
         old.check_held(&mut epoch)?;
         stop.after(Point::SourceChecked)?;
         if let Some(provider) = &provider {
-            // Comparing the predecessor can take time. Check current provider authority again
-            // before appending, then recheck both native/raster owners without callbacks.
+            // The predecessor comparison can take time. Recheck provider authority and
+            // mappings, then check both native/raster owners without further callbacks.
             provider.check()?;
             source_rasters.check()?;
             room.recovery_inventory_owner(principal)?;

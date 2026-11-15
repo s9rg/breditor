@@ -10,7 +10,7 @@ use crate::{
     server::{
         Authentication, MAX_SERVER_ASSET_AVAILABILITY_BYTES, ServerAssetAvailabilityMissing,
         ServerAssetResolution, ServerRecoveryAssetProvider,
-        backup::{check_server_asset_provider, resolve_server_assets},
+        backup::{check_server_asset_mappings, check_server_asset_provider, resolve_server_assets},
     },
 };
 use breditor_collab_feasibility::rich_replica::VersionAssetReference;
@@ -111,12 +111,13 @@ pub struct VerifiedRelaySegmentHandoverInputs {
 
 pub(in crate::server) struct HandoverProviderCheck<'a> {
     provider: Arc<dyn ServerRecoveryAssetProvider>,
+    mappings: &'a [ServerAssetResolution],
     rasters: AssetBackupStream<'a>,
 }
 
 impl HandoverProviderCheck<'_> {
     pub fn check(&self) -> Result<()> {
-        check_server_asset_provider(self.provider.as_ref())?;
+        check_server_asset_mappings(self.provider.as_ref(), self.mappings)?;
         self.rasters.check()
     }
 }
@@ -142,7 +143,7 @@ impl VerifiedRelaySegmentHandoverInputs {
     }
 
     pub(in crate::server) fn recheck<'a>(
-        &self,
+        &'a self,
         principal: &str,
         target: &'a RecoveredRelaySegmentRoom,
     ) -> Result<HandoverProviderCheck<'a>> {
@@ -166,7 +167,7 @@ impl VerifiedRelaySegmentHandoverInputs {
         // Hold the verified raster files for the final provider check at epoch commit.
         self.check_target(target)?;
         let rasters = target.fresh_handover_rasters()?;
-        Ok(HandoverProviderCheck { provider, rasters })
+        Ok(HandoverProviderCheck { provider, mappings: &self.report.resolutions, rasters })
     }
 }
 

@@ -21,12 +21,36 @@ use std::{
     time::Duration,
 };
 
-struct RevocableProvider {
+struct Provider {
     raster: String,
+    alternate: String,
     revoked: AtomicBool,
+    remapped: AtomicBool,
 }
 
-impl ServerRecoveryAssetProvider for RevocableProvider {
+#[derive(Clone, Copy)]
+enum Change {
+    Revocation,
+    Remapping,
+}
+
+impl Change {
+    fn apply(self, provider: &Provider) {
+        match self {
+            Self::Revocation => provider.revoked.store(true, Ordering::Release),
+            Self::Remapping => provider.remapped.store(true, Ordering::Release),
+        }
+    }
+
+    fn expected_error(self) -> &'static str {
+        match self {
+            Self::Revocation => "server asset provider guard refused",
+            Self::Remapping => "relay segment handover provider inputs changed",
+        }
+    }
+}
+
+impl ServerRecoveryAssetProvider for Provider {
     fn check(&self) -> Result<()> {
         if self.revoked.load(Ordering::Acquire) { Err(Error::Permission) } else { Ok(()) }
     }
@@ -34,16 +58,28 @@ impl ServerRecoveryAssetProvider for RevocableProvider {
     fn resolve(&self, reference: &VersionAssetReference) -> Result<Option<String>> {
         assert_eq!(reference.asset, "asset");
         assert_eq!(reference.generation, "generation");
-        Ok(Some(self.raster.clone()))
+        let asset =
+            if self.remapped.load(Ordering::Acquire) { &self.alternate } else { &self.raster };
+        Ok(Some(asset.clone()))
     }
 }
 
 #[tokio::test]
 async fn provider_revoked_after_source_cut_comparison_cannot_append_a_serving_epoch() -> TestResult
 {
-    let source = Source::open()?;
+    check_late_provider_change(Change::Revocation).await
+}
+
+#[tokio::test]
+async fn provider_remapped_after_source_cut_comparison_cannot_append_a_serving_epoch() -> TestResult
+{
+    check_late_provider_change(Change::Remapping).await
+}
+
+async fn admit_fixture_raster(source: &Source, red: u8) -> TestResult<String> {
     let mut bytes = Cursor::new(Vec::new());
-    image::DynamicImage::new_rgba8(1, 1).write_to(&mut bytes, image::ImageFormat::Png)?;
+    let image = image::RgbaImage::from_pixel(1, 1, image::Rgba([red, 20, 40, 255]));
+    image::DynamicImage::ImageRgba8(image).write_to(&mut bytes, image::ImageFormat::Png)?;
     let bytes = bytes.into_inner();
     let raster = asset_id(&bytes);
     let admitted = prepare_asset(&raster, "image/png", bytes)?;
@@ -56,8 +92,19 @@ async fn provider_revoked_after_source_cut_comparison_cannot_append_a_serving_ep
             room.put_asset("owner", &mut store, admitted)
         })
         .await?;
+    Ok(raster)
+}
 
-    let control = Arc::new(RevocableProvider { raster, revoked: AtomicBool::new(false) });
+async fn check_late_provider_change(change: Change) -> TestResult {
+    let source = Source::open()?;
+    let raster = admit_fixture_raster(&source, 20).await?;
+    let alternate = admit_fixture_raster(&source, 200).await?;
+    let control = Arc::new(Provider {
+        raster: raster.clone(),
+        alternate: alternate.clone(),
+        revoked: AtomicBool::new(false),
+        remapped: AtomicBool::new(false),
+    });
     let provider: Arc<dyn ServerRecoveryAssetProvider> = control.clone();
     let backup = source.capture("provider-cut")?;
     let path = source.parent.join("provider-target");
@@ -94,14 +141,19 @@ async fn provider_revoked_after_source_cut_comparison_cannot_append_a_serving_ep
             .map(|lease| lease.selection())
     });
     reached.recv_timeout(Duration::from_secs(10))?;
-    control.revoked.store(true, Ordering::Release);
+    change.apply(&control);
     release.send(())?;
     let result = worker.await?;
     assert_eq!(source.authority.current_selection()?, previous);
-    assert!(matches!(result, Err(Error::Contract("server asset provider guard refused"))));
+    assert!(matches!(result, Err(Error::Contract(message)) if message == change.expected_error()));
     source.lease.check()?;
 
-    control.revoked.store(false, Ordering::Release);
+    let provider: Arc<dyn ServerRecoveryAssetProvider> = Arc::new(Provider {
+        raster,
+        alternate,
+        revoked: AtomicBool::new(false),
+        remapped: AtomicBool::new(false),
+    });
     let mut target = backup.reopen(&path, POLICY)?;
     let RelaySegmentHandoverInputCoverage::Verified(inputs) = target.verify_handover_inputs(
         &auth(&source.token)?,

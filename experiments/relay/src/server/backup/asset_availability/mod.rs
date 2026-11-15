@@ -7,8 +7,8 @@ mod recovery;
 mod report;
 mod resolve;
 pub(in crate::server) use resolve::{
-    Resolved as ResolvedServerAssets, guard as check_server_asset_provider,
-    resolve as resolve_server_assets,
+    Resolved as ResolvedServerAssets, check_mappings as check_server_asset_mappings,
+    guard as check_server_asset_provider, resolve as resolve_server_assets,
 };
 mod verification;
 pub use provider::{ContentAddressedServerAssets, ServerRecoveryAssetProvider};

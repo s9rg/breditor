@@ -758,7 +758,8 @@ Use `select_verified` and `commit_verified_relay_segment_handover` to bind
 the verified report digest into the replacement epoch. Commit holds the
 provider guard and compares its current mappings and raster metadata.
 After comparing the predecessor cut, it checks the same provider's current
-authority and rechecks custody of the native and raster files on both sides
+authority and opaque mappings again. It rechecks custody of the native and
+raster files on both sides
 before appending the new serving epoch. A change in the verified files,
 target, mapping, or provider authority prevents commitment. Keep the report
 and approval separately from the room files. After a committed restart,

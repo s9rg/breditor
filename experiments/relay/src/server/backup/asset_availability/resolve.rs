@@ -43,6 +43,24 @@ fn target(
     guard(provider)?;
     Ok(target)
 }
+// Compare current opaque mappings to the already byte-verified cut. Canonical content
+// IDs have no provider mapping. The caller separately rechecks custody of the raster files.
+pub(in crate::server) fn check_mappings(
+    provider: &dyn ServerRecoveryAssetProvider,
+    selected: &[ServerAssetResolution],
+) -> Result<()> {
+    guard(provider)?;
+    for binding in selected {
+        if key(&binding.reference.asset).is_err()
+            && target(provider, &binding.reference)?.as_deref()
+                != Some(binding.content_asset.as_str())
+        {
+            return Err(Error::Contract("relay segment handover provider inputs changed"));
+        }
+    }
+    guard(provider)
+}
+
 pub(in crate::server) fn resolve(
     assets: &AssetStore,
     references: &[VersionAssetReference],
