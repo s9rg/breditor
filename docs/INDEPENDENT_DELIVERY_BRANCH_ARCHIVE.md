@@ -302,8 +302,8 @@ A recovered-segment room owner can publish the exact prepared attachment after
 the new live review thread has been durably acknowledged. Call
 `publishSharedRecoveredDiscussion(file, selection, archiveSha256, options)`
 with the **whole-file** lowercase SHA-256 of the retained alternate participant
-archive. The published packet already includes a separate participant manifest
-digest. Keep the prepared file, intent and original whole-file pin until the
+archive. It must match the original archive digest within the prepared packet.
+Keep the prepared file, intent and original whole-file pin until the
 publication receipt is obtained. Exact retries return the original sequence
 and file pin. A different file or source pin cannot replace an attachment.
 

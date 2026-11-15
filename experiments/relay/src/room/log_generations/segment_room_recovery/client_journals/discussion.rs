@@ -27,8 +27,8 @@ impl RelaySegmentServingCustody {
         let original = ParticipantArchive::open(part, &pin.owner)?;
         let metadata =
             room.capture_participant_inventory_at(owner, room.backup_identity()?)?.metadata();
-        inspect_original(room, &metadata, pin, &original, part, |comments| {
-            record.verify_original(&original.manifest_sha256, comments)
+        inspect_original(room, &metadata, pin, &original, part, |comments, endpoint| {
+            record.verify_original(&archive, endpoint, comments)
         })?;
         alternatives.check()
     }

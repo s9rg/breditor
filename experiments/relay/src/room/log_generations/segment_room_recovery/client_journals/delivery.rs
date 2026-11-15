@@ -212,6 +212,10 @@ impl<'a> DeliveryRecord<'a> {
         Ok(local)
     }
 
+    pub fn endpoint(&self) -> &str {
+        &self.relay.binding.document.endpoint
+    }
+
     pub fn review(&self) -> (ReviewFamily, &str) {
         let family = match self.source.identity.review_history {
             HistoryLane::Original => ReviewFamily::Original,

@@ -123,6 +123,9 @@ export async function publishAttachedDiscussion({
   const forged = JSON.parse(body);
   forged.events[1].principal = 'owner';
   await refused(400, postHeaders, JSON.stringify(forged));
+  const foreignEndpoint = JSON.parse(body);
+  foreignEndpoint.room.endpoint = 'wss://another.example/ws';
+  await refused(400, postHeaders, JSON.stringify(foreignEndpoint));
   const truncated = JSON.parse(body);
   truncated.events.pop();
   await refused(400, postHeaders, JSON.stringify(truncated));
