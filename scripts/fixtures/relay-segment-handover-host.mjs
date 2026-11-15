@@ -4,7 +4,7 @@ import {spawn} from 'node:child_process';
 import {createInterface} from 'node:readline';
 import {once} from 'node:events';
 
-export async function startSegmentHandoverHost(executable, args, token, exportAlternates = false) {
+export async function startSegmentHandoverHost(executable, args, token, exportAlternates = false, carryControl = false) {
   const mode = args[1];
   const child = spawn(executable, args, {stdio: ['pipe', 'pipe', 'pipe']});
   const closed = new Promise(resolve => child.once('close', (code, signal) => resolve({code, signal})));
@@ -36,8 +36,8 @@ export async function startSegmentHandoverHost(executable, args, token, exportAl
   try {
     await spawned;
     if (token) {
-      send({kind: 'resume', token, exportAlternates});
-      child.stdin.end();
+      send({kind: 'resume', token, exportAlternates, ...(carryControl ? {carryControl} : {})});
+      if (!carryControl) child.stdin.end();
     } else if (mode !== 'final') {
       child.stdin.end();
     }
@@ -49,6 +49,12 @@ export async function startSegmentHandoverHost(executable, args, token, exportAl
           actor: review.actor, reviewCredential: review.credential, peerWriter: peer.writer,
           peerCredential: peer.credential, uploads, journals, wrongReceipt, assetMapping, incomingBranch});
         return next('committed');
+      },
+      async carry(token, document, review, peer, peerUpload, journals, alternate) {
+        send({token, writer: document.writer, documentCredential: document.credential,
+          actor: review.actor, reviewCredential: review.credential, peerWriter: peer.writer,
+          peerCredential: peer.credential, peerUpload, journals, alternate});
+        return next('carried');
       },
       async crash() {
         child.kill('SIGTERM');

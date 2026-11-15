@@ -20,6 +20,8 @@ use std::{
 
 #[path = "handover/branches.rs"]
 mod branches;
+#[path = "handover/carry.rs"]
+mod carry;
 #[path = "handover/provider.rs"]
 mod provider;
 
@@ -48,6 +50,8 @@ enum Command {
         token: String,
         #[serde(default)]
         export_alternates: bool,
+        #[serde(default)]
+        carry_control: bool,
     },
 }
 
@@ -392,14 +396,22 @@ pub(super) fn serve_control(
 pub(super) fn resumed_router(
     parent: &Path,
     authentication: Authentication,
-) -> Result<axum::Router> {
-    let Command::Resume { token, export_alternates } = serde_json::from_slice(&input()?)? else {
+    carried: bool,
+) -> Result<(axum::Router, Option<tokio::task::JoinHandle<Result>>)> {
+    let Command::Resume { token, export_alternates, carry_control } =
+        serde_json::from_slice(&input()?)?
+    else {
         return Err("expected private resume command".into());
     };
     let authority = deployment(parent)?;
+    let (backup, approval_file, restore) = if carried {
+        (carry::backup(parent)?, "carry-approval.json", "carried")
+    } else {
+        (restored_backup(parent)?, "approval.json", "restored")
+    };
     let approval: RelaySegmentHandoverApproval =
-        serde_json::from_str(&read(&parent.join("approval.json"), 32 * 1024)?)?;
-    let target = restored_backup(parent)?.reopen(&parent.join("restored"), POLICY)?;
+        serde_json::from_str(&read(&parent.join(approval_file), 32 * 1024)?)?;
+    let target = backup.reopen(&parent.join(restore), POLICY)?;
     let selected = authority.current_selection()?;
     let (router, handle, epoch) = target.resume_handover(
         authentication,
@@ -412,5 +424,6 @@ pub(super) fn resumed_router(
     if export_alternates {
         branches::export(parent, &handle, &token, &selected, &epoch)?;
     }
-    Ok(router)
+    let control = carry_control.then(|| carry::serve(parent, handle));
+    Ok((router, control))
 }

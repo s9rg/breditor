@@ -97,8 +97,20 @@ transport. While the replacement is serving, its owner can call
 `ServerBackupHandle::export_relay_segment_participant_alternates` with
 the exact current epoch and an absent destination. It writes individually
 openable participant files and returns their ordered pins. To move into
-another handover, explicitly pass those original alternate files again. An overlapping fork still needs a conflict-resolution step before
-its edits can join the live history.
+another handover, explicitly pass those original alternate files again.
+The serving predecessor checks that the target holds each retained
+original before advancing the epoch. The exact pin can be carried as an
+alternate or as the selected original, subject to ordinary selected
+journal and provider checks. Omitting a retained original leaves the
+predecessor's epoch current. An overlapping fork still needs a
+conflict-resolution step before its edits can join the live history.
+
+The source and independently installed scenario for a second live
+handover is
+`node scripts/check-writable-relay-segment.mjs <relay-executable> --participant-carried-alternate`.
+It advances the accepted cut after the first replacement, tries a
+target that omits the alternate, then verifies the exact archive from a
+fresh process after retiring the earlier room and export files.
 
 ## Propose selected text from a recovered original
 

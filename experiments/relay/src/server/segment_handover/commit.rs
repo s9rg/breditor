@@ -36,7 +36,8 @@ impl ServerBackupHandle {
     /// The owner must retain the provider guard and the independently selected approval.
     ///
     /// # Errors
-    /// Refuses changed inputs, closed providers, stale native/raster cuts and uncertain custody.
+    /// Refuses changed inputs, omitted retained alternate originals, closed providers,
+    /// stale native/raster cuts and uncertain custody.
     pub fn commit_verified_relay_segment_handover(
         &self,
         principal: &str,

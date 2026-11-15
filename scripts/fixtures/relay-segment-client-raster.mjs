@@ -48,8 +48,8 @@ export async function captureClientRaster(api, parent, writer, status) {
   }
 }
 
-export async function resumeClientRaster(rich, sdk, parent, address, origin, token, retained, recoveredStore) {
-  const bytes = readFileSync(join(parent, 'restored/client-uploads', retained.pin.writer + '.uploads'));
+export async function resumeClientRaster(rich, sdk, parent, address, origin, token, retained, recoveredStore, restoredRoot = 'restored') {
+  const bytes = readFileSync(join(parent, restoredRoot, 'client-uploads', retained.pin.writer + '.uploads'));
   assert.equal(digest(bytes), retained.pin.sha256);
   const backup = new Blob([bytes]);
   const store = recoveredStore ?? await rich.RichAssetStore.restoreBackup('handover-restored-uploads-' + retained.pin.writer, backup, {
