@@ -112,5 +112,32 @@
     "The revised target requires the union of complete selected journal and retained server/packet raster bindings. Missing actual bytes keep approval pending and leave the source epoch untouched.",
     "Both SDK workflows removed the original relay folders and selected archives before cold relay reopen, extracted three exact journals and replayed the paired pending edits into a fresh SDK store. Redo retrieved the exact client-only raster. The original upload states and ordinary duplicate receipt behavior stayed intact.",
     "The fixture supplies SDK binding, progress and packet metadata separately and uses controlled storage. Complete standalone client package recovery and same-writer branch reconciliation still require qualification."
-  ]
+  ],
+  "fullRelayRegression": {
+    "passed": 524,
+    "failed": 0,
+    "ignored": 1,
+    "logSha256": "53a157019d1da1ea05ff58380adab0a72f2bb976a18683e41ae56b137f413fe7"
+  },
+  "journalPredecessor": {
+    "firstFullRun": {
+      "passed": 522,
+      "failed": 1,
+      "ignored": 1,
+      "logSha256": "0c29baf321bb42a67514d2dfa584d35f233ecd199e095beb577e55348631bdab"
+    },
+    "isolatedRerun": {
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "logSha256": "abefead2d04dfe49e207d7611de1b43789f3581d455ba3bb24b8885973bb3cd7"
+    },
+    "fullRerun": {
+      "passed": 523,
+      "failed": 0,
+      "ignored": 1,
+      "logSha256": "c65676352eb99e8be5137c9627e76e4fd72a925002d012b8ac28d6e261bb67c0"
+    },
+    "firstFailure": "An existing 40-mode delivery-path test returned Locked in the first parallel run. The isolated test, the full predecessor rerun and the revised candidate's full suite passed."
+  }
 }
