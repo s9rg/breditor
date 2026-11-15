@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {createHash, randomBytes} from 'node:crypto';
-import {mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync} from 'node:fs';
+import {mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
@@ -12,44 +12,12 @@ import {pixel, proposalAsset, proposalPixel, secondAsset, secondPixel} from './f
 import {startSegmentHandoverHost} from './fixtures/relay-segment-handover-host.mjs';
 import {captureParticipant, proposalAlias, reopenParticipant, withWrongReviewReceipt} from './fixtures/relay-segment-participant.mjs';
 import {captureClientRaster, resumeClientRaster} from './fixtures/relay-segment-client-raster.mjs';
-import {searchConsumerLock, verifySearchConsumerRegistry} from './search-consumer-lock.mjs';
+import {installCollaborationConsumer} from './fixtures/installed-collaboration-consumer.mjs';
 import {sourceEvidence, saveEvidence} from './candidate-release/evidence.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const origin = 'http://127.0.0.1:49785';
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
-const collaboration = '@breditor/collaboration';
-
-function installed(directory) {
-  const consumer = join(directory, 'consumer');
-  const output = join(directory, 'archives');
-  mkdirSync(consumer);
-  mkdirSync(output);
-  const npm = process.env.BREDITOR_NPM ?? 'npm';
-  const names = ['@breditor/browser', '@breditor/experimental-rich-content', collaboration];
-  const packs = JSON.parse(execFileSync(npm, [
-    'pack', '--offline', '--ignore-scripts', '--json', '--pack-destination', output,
-    ...names.flatMap(name => ['--workspace', name]),
-  ], {cwd: root, encoding: 'utf8'}));
-  const archives = packs.map(pack => ({name: pack.name, path: join(output, pack.filename)}));
-  const producer = JSON.parse(readFileSync(join(root, 'package-lock.json'), 'utf8'));
-  const locked = searchConsumerLock(producer, archives);
-  writeFileSync(join(consumer, 'package.json'), JSON.stringify(locked.manifest));
-  writeFileSync(join(consumer, 'package-lock.json'), JSON.stringify(locked.lock));
-  execFileSync(npm, ['install', '--offline', '--ignore-scripts', '--no-audit', '--no-fund'], {
-    cwd: consumer, stdio: 'inherit',
-  });
-  const installedRoot = realpathSync(join(consumer, 'node_modules', collaboration));
-  assert.ok(installedRoot.startsWith(realpathSync(consumer) + '/'));
-  const registryArtifacts = verifySearchConsumerRegistry(
-    producer, JSON.parse(readFileSync(join(consumer, 'package-lock.json'), 'utf8')),
-  );
-  return {
-    distribution: join(installedRoot, 'dist'),
-    rich: join(consumer, 'node_modules/@breditor/experimental-rich-content/index.js'),
-    proof: {registryArtifacts, archives: archives.map(({name, path}) => ({name, sha256: sha(readFileSync(path))}))},
-  };
-}
 
 function writeJournal(parent, name, owner, journal) {
   const bytes = Buffer.from(journal);
@@ -592,7 +560,7 @@ try {
     const distribution = mode === 'source'
       ? {distribution: join(root, 'packages/breditor-collaboration/dist'),
         rich: join(root, 'packages/breditor-experimental-rich-content/index.js'), proof: null}
-      : installed(sandbox);
+      : installCollaborationConsumer(root, sandbox);
     const path = join(sandbox, mode);
     mkdirSync(path, {mode: 0o700});
     reports[mode] = {

@@ -42,3 +42,8 @@ Run the native-backed fixture after building the collaboration package.
 npm --workspace @breditor/collaboration run build:candidate
 node --test scripts/participant-branch-archive.test.mjs
 ```
+
+For a clean offline-installed consumer check, run
+`node scripts/check-participant-branch-archive.mjs` from a clean checkout
+after building the package. The check packs the matching local SDK and
+runs the same fixture against the workspace and the independent install.
