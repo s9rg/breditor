@@ -1,0 +1,49 @@
+{
+  "format": "breditor/participant-branch-archive-qualification",
+  "formatVersion": 1,
+  "source": {
+    "commit": "23bcdc6107d45479d2c08da7337d7c76e5d39fd2",
+    "dirty": false,
+    "sha256": "311c3d3a1335d6d3641310f6f3e4e459a2e61216086799583a0a501e1fb31a4e",
+    "files": 8854,
+    "bytes": 75262035
+  },
+  "runtimeSha256": "373fa3eaff1317bec901efb053b2bf0e25cbe051102de3069dfcf16119997c56",
+  "reports": {
+    "source": {
+      "passed": 6,
+      "failed": 0,
+      "proof": null,
+      "testOutputSha256": "216a9df5ef0f23d42d3f9a3f9c8cc0f3d264f4feea5f40432f379d1614115e43"
+    },
+    "installed": {
+      "passed": 6,
+      "failed": 0,
+      "proof": {
+        "registryArtifacts": 45,
+        "archives": [
+          {
+            "name": "@breditor/browser",
+            "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+          },
+          {
+            "name": "@breditor/experimental-rich-content",
+            "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+          },
+          {
+            "name": "@breditor/collaboration",
+            "sha256": "fb70354f52decdf379616ef595ac21fb5c6e0c146144d06461522835eee410e4"
+          }
+        ]
+      },
+      "testOutputSha256": "a536df23bf95d419a4845f099f3fb4679bd5b6f8145d177411662799f2577beb"
+    }
+  },
+  "date": "2026-11-14",
+  "sdkReportSha256": "d3552420a66ae4126100a3fa440fdf206a887d8981f8e2064745b6506a20faa9",
+  "scope": [
+    "The fixture creates two independently edited copies of one original writer and review actor. It verifies the native common-prefix digest, byte-identical branch files, and live document and review Redo after separate cold restoration for all four original/segmented history combinations.",
+    "Original pending packets, asset payloads and conflicting upload states survive the round trip. The test also checks equal and extending heads, allows distinct device labels, and refuses both changed component bytes and independently rehashed false comparison metadata.",
+    "The installed SDK uses the same Wasm bytes as the workspace. The fixture uses controlled browser storage. This qualification covers preservation and inspection of both original branches; reconciliation of their competing changes into one live room remains separate."
+  ]
+}
