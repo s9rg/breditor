@@ -6,6 +6,7 @@
 pub mod actions;
 mod causal_births;
 mod codec;
+mod dispatch_with_clock;
 mod event;
 mod generation;
 mod identity;

@@ -70,6 +70,9 @@ export interface SharedReviewRustCapability {
  read_review_clipboard?(packet:string):string;
  review_thread_history_version?():string;
  read_review_thread_history?(observation:unknown,input:string):string;
+ review_action_clock_version?():string;
+ preview_review_action_clock?(observation:unknown,input:string):string;
+ dispatch_review_with_clock?(observation:unknown,input:string):string;
  review_view_json?(observation:unknown):string;
  dispatch_review?(observation:unknown,input:string):string;
  undo_review?(observation:unknown):string;

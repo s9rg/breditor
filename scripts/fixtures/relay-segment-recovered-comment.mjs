@@ -1,5 +1,6 @@
 /** Restore one original author's archived comment after the alternate survived both handovers. */
 import assert from 'node:assert/strict';
+import {writeFileSync} from 'node:fs';
 
 const body = 'Competing branch comment';
 
@@ -15,7 +16,7 @@ export function assertRecoveredComment(threads, recovered) {
   assert.equal(targets[0].resolution.target.kind, 'selection');
 }
 
-export async function recoverArchivedComment({api, session, review, policy, source, thread}) {
+export async function recoverArchivedComment({api, session, review, policy, source, thread, loss, intentPath}) {
   const accepted = session.core.documentJson();
   const before = session.exportRecovery();
   const archived = await api.readSharedRecoveredBranchReview({...policy, source});
@@ -31,23 +32,40 @@ export async function recoverArchivedComment({api, session, review, policy, sour
   assert.ok(paragraph, 'The accepted recovered paragraph is available to anchor the comment');
   const block = paragraph.properties['breditor/block-id'];
   const point = offset => ({block, offset, affinity: 'after'});
-  const context = await api.prepareSharedRecoveredBranchReviewMessage({
+  const request = target => ({
     ...policy, source, event: {thread, index: original.index, id: original.id, digest: original.digest},
-    target: session, guard: session.core.reviewSnapshot(),
+    target, guard: target.core.reviewSnapshot(),
     destination: {kind: 'new_thread', target: {
       kind: 'selection', selection: {kind: 'text', anchor: point('0'), focus: point('1')},
     }},
   });
+  const context = loss
+    ? await api.prepareSharedRecoveredBranchReviewIntent(request(session))
+    : await api.prepareSharedRecoveredBranchReviewMessage(request(session));
+  if (loss) {
+    writeFileSync(intentPath, JSON.stringify(context.intent), {flag: 'wx', mode: 0o600, flush: true});
+    assert.deepEqual(api.inspectSharedRecoveredBranchReviewIntent(session, context.intent), {kind: 'unapplied'});
+    loss.armed = true;
+  }
   assert.deepEqual(session.exportRecovery(), before);
   const outcome = context.commit();
   assert.equal(outcome.kind, 'committed');
   assert.notDeepEqual(outcome.event, original.id);
-  assert.throws(() => context.commit(), /already committed/);
-  await review.flush();
-  assert.equal(review.state().pending, false);
-  assert.equal(review.state().lastReceipt.through, outcome.event.counter);
+  if (loss) {
+    assert.throws(() => context.commit(), /changed during recovery/);
+    await assert.rejects(review.flush(), {code: 'connection_lost'});
+    assert.equal(loss.submissions, 1);
+    assert.equal(loss.durable?.receipt.through, context.intent.after.through);
+    assert.equal(loss.durable?.receipt.prefixDigest, context.intent.after.prefixDigest);
+    assert.deepEqual(api.inspectSharedRecoveredBranchReviewIntent(session, context.intent), {kind: 'local', event: outcome.event});
+  } else {
+    assert.throws(() => context.commit(), /already committed/);
+    await review.flush();
+    assert.equal(review.state().pending, false);
+    assert.equal(review.state().lastReceipt.through, outcome.event.counter);
+  }
   assertRecoveredComment(session.core.reviewSnapshot().view.threads, outcome.event);
   assert.equal(session.core.documentJson(), accepted);
   await session.flush();
-  return outcome.event;
+  return {event: outcome.event, request};
 }

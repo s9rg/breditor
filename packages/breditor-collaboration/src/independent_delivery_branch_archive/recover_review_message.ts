@@ -2,29 +2,57 @@
 import {SharedRichEditor} from '../core.js';
 import {coreReadStamp} from '../core_read_stamp.js';
 import {independentDeliverySource} from '../independent_delivery_source/admission.js';
+import type {SharedIndependentDeliverySession} from '../independent_delivery/session.js';
 import {fields} from '../physical_room_record_cut/policy.js';
-import {digest} from '../relay/validation.js';
+import type {SharedSelectionPolicy} from '../types.js';
 import type {SharedReviewAction, SharedReviewGuard, SharedReviewTarget} from '../review_types.js';
 import type {SharedIndependentDeliveryBranchArchiveReadOptions} from './contract.js';
 import {sameBranchDocumentOrigin} from './document_origin.js';
 import {branchFile} from './framing.js';
 import {withArchivedBranch} from './read_native.js';
-import {archivedReviewId, archivedReviewOptionalFields, archivedReviewReadFields, reviewThreadOffset} from './read_review_thread.js';
+import {archivedReviewEvent, archivedReviewId, archivedReviewOptionalFields, archivedReviewReadFields} from './read_review_thread.js';
 import type {SharedRecoveredBranchReviewMessage, SharedRecoveredBranchReviewMessageOptions} from './review_contract.js';
 
 const {captureReviewAnchor, dispatchReview, readReviewThreadHistory, reviewSnapshot} = SharedRichEditor.prototype;
 
-export async function prepareSharedRecoveredBranchReviewMessage(
+export function prepareSharedRecoveredBranchReviewMessage(
   options: SharedRecoveredBranchReviewMessageOptions,
 ): Promise<SharedRecoveredBranchReviewMessage> {
+  return withRecoveredReviewMessage(options, ({source, principal, body, request, core, guard, checkTarget}) => {
+    let committed = false;
+    return Object.freeze({
+      source, principal, body,
+      commit() {
+        if (committed) throw new Error('The recovered message was already committed');
+        checkTarget();
+        const result = dispatchReview.call(core, request, guard);
+        committed = result.kind === 'committed';
+        return result;
+      },
+    });
+  });
+}
+
+interface RecoveredReviewMessageContext {
+  readonly source: SharedRecoveredBranchReviewMessage['source'];
+  readonly principal: string;
+  readonly body: string;
+  readonly request: SharedReviewAction;
+  readonly core: SharedRichEditor<SharedSelectionPolicy>;
+  readonly targetSession: SharedIndependentDeliverySession;
+  readonly guard: SharedReviewGuard;
+  readonly checkTarget: () => void;
+}
+
+export async function withRecoveredReviewMessage<T>(
+  options: SharedRecoveredBranchReviewMessageOptions,
+  prepare: (context: RecoveredReviewMessageContext) => T,
+): Promise<T> {
   const value = fields(options, [...archivedReviewReadFields, 'source', 'event', 'target', 'guard', 'destination'], archivedReviewOptionalFields);
   const source = branchFile(value['source']);
-  const selected = fields(value['event'], ['thread', 'index', 'id', 'digest']);
-  const event = Object.freeze({
-    thread: archivedReviewId(selected['thread']), index: reviewThreadOffset(selected['index']),
-    id: archivedReviewId(selected['id']), digest: digest(selected['digest']),
-  });
-  const target = independentDeliverySource(value['target'] as object);
+  const event = archivedReviewEvent(value['event']);
+  const targetSession = value['target'] as SharedIndependentDeliverySession;
+  const target = independentDeliverySource(targetSession);
   const original = source.selection.identity.source.binding.review;
   const destination = target.identity.binding.review;
   if (original.room !== destination.room || original.endpoint !== destination.endpoint || original.binding !== destination.binding) {
@@ -75,17 +103,9 @@ export async function prepareSharedRecoveredBranchReviewMessage(
       throw new Error('Select an original review message body');
     }
     const body = payload.data.data.body;
-    const request = action(body);
-    let committed = false;
-    return Object.freeze({
+    return prepare({
       source: Object.freeze({selection: source.selection, event}), principal, body,
-      commit() {
-        if (committed) throw new Error('The recovered message was already committed');
-        checkTarget();
-        const result = dispatchReview.call(target.core, request, guard);
-        committed = result.kind === 'committed';
-        return result;
-      },
+      request: action(body), core: target.core, targetSession, guard, checkTarget,
     });
   }, checkTarget);
 }

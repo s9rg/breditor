@@ -424,6 +424,27 @@ export class SharedRichEditor<P extends SharedSelectionPolicy="original"> {
   if(raw.review_thread_history_version?.()!=="1"||typeof raw.read_review_thread_history!=="function")throw new SharedEditorError("review_thread_history_unavailable","Use a matching native review history runtime");
   return JSON.parse(raw.read_review_thread_history(this.#observation,JSON.stringify({thread,offset}))) as SharedReviewThreadHistoryPage;
  }
+ #requireReviewActionClock():SharedRustOwner{
+  const raw=this.#requireReview();
+  if(raw.review_action_clock_version?.()!=="1"||typeof raw.preview_review_action_clock!=="function"||typeof raw.dispatch_review_with_clock!=="function")throw new SharedEditorError("review_action_clock_unavailable","Use a matching native review intent runtime");
+  return raw;
+ }
+ /** Return the exact proposed original event's prefix, without changing either owner. */
+ previewReviewActionClock(action:SharedReviewAction,guard:SharedReviewGuard):SharedReviewWriterClock|null{
+  this.#checkReview(guard);
+  const raw=this.#requireReviewActionClock();
+  return JSON.parse(raw.preview_review_action_clock!(this.#observation,JSON.stringify(action))) as SharedReviewWriterClock|null;
+ }
+ /** The staged native event must match the expected prefix before its publication. */
+ dispatchReviewWithClock(action:SharedReviewAction,expected:SharedReviewWriterClock,guard:SharedReviewGuard):SharedReviewOutcome{
+  this.#checkReview(guard);
+  this.#requireReviewActionClock();
+  return this.#run("local",(raw,o)=>{
+   const result=JSON.parse(raw.dispatch_review_with_clock!(o,JSON.stringify({action,expected}))) as SharedReviewOutcome;
+   if(result.kind==="committed")this.#reviewRevision++;
+   return result;
+  },guard.documentRevision,false);
+ }
  dispatchReview(action:SharedReviewAction,guard?:SharedReviewGuard):SharedReviewOutcome{this.#checkReview(guard);return this.#run("local",(raw,o)=>{const result=JSON.parse(raw.dispatch_review!(o,JSON.stringify(action))) as SharedReviewOutcome;if(result.kind==="committed")this.#reviewRevision++;return result;},guard?.documentRevision,false);}
  undoReview(guard?:SharedReviewGuard):SharedReviewOutcome{return this.#performReviewHistory(false,guard);}
  redoReview(guard?:SharedReviewGuard):SharedReviewOutcome{return this.#performReviewHistory(true,guard);}

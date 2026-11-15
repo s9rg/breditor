@@ -17,13 +17,23 @@ impl RichReplica {
         observed: &ReviewObservation,
         action: ReviewAction,
     ) -> Result<ReviewOutcome, Error> {
+        self.check_review_action(document, review, &action)?;
+        Ok(review.dispatch(observed, action)?)
+    }
+
+    pub(super) fn check_review_action(
+        &self,
+        document: &SharedObservation,
+        review: &ReviewSession,
+        action: &ReviewAction,
+    ) -> Result<(), Error> {
         self.check(document)?;
         self.check_review_session(review)?;
-        match &action {
+        match action {
             ReviewAction::CreateThread(a) => self.validate_new_review_anchor(&a.anchor_json)?,
             ReviewAction::ReanchorThread(a) => self.validate_new_review_anchor(&a.anchor_json)?,
             _ => {}
         }
-        Ok(review.dispatch(observed, action)?)
+        Ok(())
     }
 }

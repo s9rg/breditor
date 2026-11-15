@@ -222,3 +222,41 @@ inspected there.
 Run `node scripts/check-writable-relay-segment.mjs <relay-executable>
 --participant-recovered-comment` for the authenticated workflow through two
 handovers, relay restart and a fresh read-only client.
+
+## Resume a retained comment recovery intent
+
+Use `prepareSharedRecoveredBranchReviewIntent` when the application needs
+to recover a submission whose outcome is uncertain after restart. Retain the
+returned `intent`, the exact source archive and the original destination
+selection in host storage before calling `commit()`. The native preview
+admits the action without changing either owner and computes the exact
+future event digest. Commit uses the ordinary comment action and its usual
+Undo/Redo rules. It stages the action again and checks the predicted digest
+before changing the live review history.
+
+After reopening the original delivery session, pass the saved intent to
+`inspectSharedRecoveredBranchReviewIntent`. Its outcomes are:
+
+- `unapplied` means the original authored prefix is present and the planned
+  counter is still unused. To retry, prepare with the original archive,
+  event, destination, a fresh live guard, and the saved intent as the second
+  argument. It must match the exact native candidate, including its anchor
+  and causal dependencies.
+- `local` means the planned event is already in the native owner. Continue
+  ordinary authenticated review synchronization. A newly reopened owner
+  reads its persisted history. A live owner may still be saving.
+- `acknowledged` means the saved relay progress covers the exact event.
+  Reconnection can recover this outcome from the relay's verified actor
+  prefix even after a durable reply was lost.
+- `conflict` identifies a different predecessor or a different event at the
+  planned counter. Keep the original intent for inspection.
+
+The intent contains no account credentials. It records a chosen operation
+and its native lineage, separate from a freshly authenticated relay receipt.
+The application associates the intent's original event with the resulting
+live identity. The existing same-session comment helper remains available
+for older runtimes.
+
+Run `node scripts/check-writable-relay-segment.mjs <relay-executable>
+--participant-recovered-comment-intent` to exercise a relay restart after a
+durable review reply was dropped at the client.

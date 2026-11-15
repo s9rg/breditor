@@ -4,6 +4,7 @@ mod continue_read_only_review_history;
 mod continue_review_history;
 mod create_review_session;
 mod dispatch_review;
+mod dispatch_review_with_clock;
 mod enable_observer_review_segmented_history;
 mod enable_read_only_review_segmented_history;
 mod enable_review_segmented_history;

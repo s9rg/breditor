@@ -16,6 +16,7 @@ import {recoveredText, reviewRecoveredText} from './fixtures/relay-segment-recov
 import {assertRecoveredRich, authorRecoveredRich, reviewRecoveredRich} from './fixtures/relay-segment-recovered-rich.mjs';
 import {checkColdReviewReader} from './fixtures/relay-segment-cold-review-reader.mjs';
 import {recoverArchivedComment} from './fixtures/relay-segment-recovered-comment.mjs';
+import {recoveryReviewReplySocket} from './fixtures/recovery-review-reply-loss.mjs';
 import {recoveryFactory} from './fixtures/independent-delivery-recovery/session.mjs';
 import {installCollaborationConsumer} from './fixtures/installed-collaboration-consumer.mjs';
 import {sourceEvidence, saveEvidence} from './candidate-release/evidence.mjs';
@@ -56,7 +57,7 @@ function readRetainedClientJournals(parent, expected, directory = 'client-journa
   return originals;
 }
 
-async function run(mode, {distribution, rich}, executable, parent, journalKind, terminalReceipts, opaque, competing, carryForward, multipleAlternates, reviewRecovered, richRecovered, coldReviewReader, recoverComment) {
+async function run(mode, {distribution, rich}, executable, parent, journalKind, terminalReceipts, opaque, competing, carryForward, multipleAlternates, reviewRecovered, richRecovered, coldReviewReader, recoverComment, recoverCommentIntent) {
   const participant = journalKind === 'independentParticipant';
   const archiveImage = opaque ? proposalAlias : proposalAsset;
   const independentDelivery = journalKind !== 'pairedSession';
@@ -68,9 +69,10 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
   await wasm.default({module_or_path: wasmBytes});
   const reset = environment();
   const previousSocket = Object.getOwnPropertyDescriptor(globalThis, 'WebSocket');
+  const loss = recoverCommentIntent ? {armed: false, durable: null, submissions: 0} : null;
   Object.defineProperty(globalThis, 'WebSocket', {
     configurable: true,
-    value: class extends Socket {
+    value: loss ? recoveryReviewReplySocket(Socket, origin, loss) : class extends Socket {
       constructor(url) { super(url, {headers: {Origin: origin}}); }
     },
   });
@@ -704,17 +706,41 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
         await closeOutboxes(parts);
       }
       assert.equal(visibleThreads().length, 4);
+      const intentPath = join(parent, 'recovered-comment-intent.json');
+      let recoveryRequest;
       if (recoverComment) {
         await attach();
-        recoveredComment = await recoverArchivedComment({
+        const result = await recoverArchivedComment({
           api, session, review, policy: retainedBranches.readPolicy, source, thread: retainedBranches.archivedComment,
+          loss, intentPath,
         });
+        recoveredComment = result.event;
+        recoveryRequest = result.request;
         assert.equal(visibleThreads().length, 5);
         await stopClients();
+        if (loss) {
+          await session.close();
+          session = undefined;
+        }
       }
       await host.crash();
       host = undefined;
       host = await startSegmentHandoverHost(executable, [parent, restoredRoot, address], token);
+      if (loss) {
+        session = await open();
+        assert.equal(session.recovered, true);
+        const intent = JSON.parse(readFileSync(intentPath, 'utf8'));
+        assert.deepEqual(api.inspectSharedRecoveredBranchReviewIntent(session, intent), {kind: 'local', event: recoveredComment});
+        await assert.rejects(api.prepareSharedRecoveredBranchReviewIntent(recoveryRequest(session), intent),
+          /original archived comment recovery intent differs/);
+        await attach();
+        assert.deepEqual(api.inspectSharedRecoveredBranchReviewIntent(session, intent), {
+          kind: 'acknowledged', event: recoveredComment,
+        });
+        assert.equal(loss.submissions, 1);
+        assert.equal(visibleThreads().length, 5);
+        await stopClients();
+      }
       const fresh = await api.registerSharedRelayWriter(options);
       const core = new api.SharedRichEditor(profile.join_frame('room', fresh.identity.writer, fresh.frame));
       try {
@@ -748,6 +774,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       ...carryEvidence,
       ...coldReaderEvidence,
       ...(recoveredComment ? {committedRecoveredComments: 1} : {}),
+      ...(loss ? {discardedDurableReviewReplies: 1, coldAcknowledgedReviewIntents: 1, recoveredReviewSubmissions: loss.submissions} : {}),
       registrationRefusals: captured.registrationRefusals, providerRasters: captured.providerRasters,
       retainedPackets: captured.retainedPackets, stagedClientRasters: captured.clientRasters, clientUploadReceipts,
       clientUploadArchives: captured.clientArchives, missingArchiveRefusals: captured.missingArchiveRefusals,
@@ -801,7 +828,8 @@ const executable = resolve(process.argv[2]);
 const option = process.argv[3];
 const terminalReceipts = option === '--participant-terminal-receipts';
 const opaque = option === '--participant-opaque';
-const recoverComment = option === '--participant-recovered-comment';
+const recoverCommentIntent = option === '--participant-recovered-comment-intent';
+const recoverComment = recoverCommentIntent || option === '--participant-recovered-comment';
 const coldReviewReader = recoverComment || option === '--participant-cold-review-reader';
 const richRecovered = coldReviewReader || option === '--participant-multiple-rich-review';
 const multipleReviewed = richRecovered || option === '--participant-multiple-reviewed';
@@ -811,7 +839,7 @@ const reviewRecovered = multipleReviewed || option === '--participant-reviewed-t
 const competing = carryForward || reviewRecovered || option === '--participant-accepted-branch';
 assert.ok(process.argv.length === 3 || process.argv.length === 4 &&
   ['--independent-delivery', '--participant-archive', '--participant-terminal-receipts', '--participant-opaque',
-    '--participant-accepted-branch', '--participant-carried-alternate', '--participant-multiple-alternates', '--participant-reviewed-text', '--participant-multiple-reviewed', '--participant-multiple-rich-review', '--participant-cold-review-reader', '--participant-recovered-comment'].includes(option));
+    '--participant-accepted-branch', '--participant-carried-alternate', '--participant-multiple-alternates', '--participant-reviewed-text', '--participant-multiple-reviewed', '--participant-multiple-rich-review', '--participant-cold-review-reader', '--participant-recovered-comment', '--participant-recovered-comment-intent'].includes(option));
 const journalKind = terminalReceipts || opaque || competing || option === '--participant-archive' ? 'independentParticipant'
   : option === '--independent-delivery' ? 'independentDelivery' : 'pairedSession';
 const source = sourceEvidence(root);
@@ -828,7 +856,7 @@ try {
     mkdirSync(path, {mode: 0o700});
     reports[mode] = {
       ...await run(mode, distribution, executable, path, journalKind, terminalReceipts, opaque, competing,
-        carryForward, multipleAlternates, reviewRecovered, richRecovered, coldReviewReader, recoverComment),
+        carryForward, multipleAlternates, reviewRecovered, richRecovered, coldReviewReader, recoverComment, recoverCommentIntent),
       proof: distribution.proof,
     };
   }
@@ -838,7 +866,8 @@ try {
     format: 'breditor/writable-relay-segment-qualification', formatVersion: 1,
     source, relaySha256: sha(readFileSync(executable)), reports,
   };
-  const reportFile = recoverComment ? 'qualified-recovered-comment.json'
+  const reportFile = recoverCommentIntent ? 'qualified-recovered-comment-intent.json'
+    : recoverComment ? 'qualified-recovered-comment.json'
     : coldReviewReader ? 'qualified-cold-review-reader.json'
     : richRecovered ? 'qualified-rich-review-after-multiple-handover.json'
     : multipleReviewed ? 'qualified-review-after-multiple-handover.json'

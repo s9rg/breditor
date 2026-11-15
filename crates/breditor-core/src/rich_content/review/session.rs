@@ -133,6 +133,17 @@ impl ReviewSession {
         observed: &ReviewObservation,
         action: ReviewAction,
     ) -> Result<ReviewOutcome, ReviewError> {
+        let Some((candidate, id)) = self.stage_action(observed, action)? else {
+            return Ok(ReviewOutcome::Unchanged);
+        };
+        self.adopt(candidate);
+        Ok(ReviewOutcome::Committed(id))
+    }
+    pub(super) fn stage_action(
+        &self,
+        observed: &ReviewObservation,
+        action: ReviewAction,
+    ) -> Result<Option<(Self, ReviewEventId)>, ReviewError> {
         self.check(observed)?;
         let projection = self.projection(&self.events)?;
         projection.validate_action(
@@ -142,17 +153,17 @@ impl ReviewSession {
             &event::clock(&self.events),
         )?;
         if projection.is_noop(&action) {
-            return Ok(ReviewOutcome::Unchanged);
+            return Ok(None);
         }
         let event = self.next(Payload::Action(action))?;
+        let id = event.id.clone();
         let mut candidate = self.staged();
-        candidate.events.push(event.clone());
+        candidate.events.push(event);
         candidate.history.truncate(candidate.cursor);
-        candidate.history.push(event.id.clone());
+        candidate.history.push(id.clone());
         candidate.cursor = candidate.history.len();
         candidate.admit()?;
-        self.adopt(candidate);
-        Ok(ReviewOutcome::Committed(event.id))
+        Ok(Some((candidate, id)))
     }
     pub(super) fn staged(&self) -> Self {
         Self {

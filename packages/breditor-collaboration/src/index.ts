@@ -299,6 +299,7 @@ export {prepareSharedRecoveredBranchTextSuggestion} from './independent_delivery
 export {prepareSharedRecoveredBranchRichSuggestion} from './independent_delivery_branch_archive/recover_rich.js';
 export {readSharedRecoveredBranchReview,readSharedRecoveredBranchReviewThread} from './independent_delivery_branch_archive/read_review_thread.js';
 export {prepareSharedRecoveredBranchReviewMessage} from './independent_delivery_branch_archive/recover_review_message.js';
+export {prepareSharedRecoveredBranchReviewIntent,inspectSharedRecoveredBranchReviewIntent} from './independent_delivery_branch_archive/recover_review_intent.js';
 export type * from './independent_delivery_branch_archive/review_contract.js';
 export type {
  SharedIndependentDeliveryBranchArchive,

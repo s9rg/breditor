@@ -1,6 +1,8 @@
+import type {SharedReviewRelayStorageIdentity} from '../relay/review_types.js';
+import type {SharedWriterClock} from '../types.js';
 import type {SharedIndependentDeliverySession} from '../independent_delivery/session.js';
 import type {
-  SharedReviewGuard, SharedReviewId, SharedReviewOutcome, SharedReviewTarget, SharedReviewThreadHistoryPage, SharedReviewView,
+  SharedReviewGuard, SharedReviewId, SharedReviewOutcome, SharedReviewWriterClock, SharedReviewTarget, SharedReviewThreadHistoryPage, SharedReviewView,
 } from '../review_types.js';
 import type {SharedIndependentDeliveryParticipantSelection} from '../independent_delivery_participant/contract.js';
 import type {SharedIndependentDeliveryBranchArchiveReadOptions, SharedIndependentDeliveryBranchFile} from './contract.js';
@@ -54,4 +56,25 @@ export interface SharedRecoveredBranchReviewMessage {
 export interface SharedRecoveredBranchReviewThread {
   readonly source: SharedIndependentDeliveryParticipantSelection;
   readonly page: SharedReviewThreadHistoryPage;
+}
+
+/** Portable evidence for one explicitly chosen future native comment event. */
+export interface SharedRecoveredBranchReviewIntent {
+  readonly format: 'breditor/recovered-branch-review-intent';
+  readonly formatVersion: 1;
+  readonly source: SharedRecoveredBranchReviewMessage['source'];
+  readonly target: SharedReviewRelayStorageIdentity;
+  readonly seed: SharedWriterClock;
+  readonly before: SharedReviewWriterClock;
+  readonly after: SharedReviewWriterClock;
+}
+
+export type SharedRecoveredBranchReviewIntentState =
+  | {readonly kind: 'unapplied'}
+  | {readonly kind: 'conflict'; readonly reason: 'before' | 'event'}
+  | {readonly kind: 'local' | 'acknowledged'; readonly event: SharedReviewId};
+
+export interface SharedPreparedRecoveredBranchReviewIntent extends SharedRecoveredBranchReviewMessage {
+  /** Retain this exact intent durably before calling commit. */
+  readonly intent: SharedRecoveredBranchReviewIntent;
 }

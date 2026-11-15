@@ -404,3 +404,70 @@ test('recovers a hidden original as a fresh authored message and rejects substit
   assert.deepEqual(await fileBytes(source.file), bytes);
  } finally { await f.close(); }
 });
+
+test('retains the exact predicted review event across cold owners and refuses a different event at its counter', async () => {
+ const f = await participantUnionFixture(api, rich, profile, {
+  wasm: native, branchFork: true, relaySeed: true, documentSegmented: true, reviewSegmented: true,
+ });
+ let cold, applied, alternate;
+ try {
+  const source = f.options.incoming, actor = f.chosen.options.review.actor;
+  const thread = {actor, counter: '2'};
+  const policy = options(f);
+  const {page} = await api.readSharedRecoveredBranchReviewThread({...policy, source, thread});
+  const [birth] = page.events;
+  const event = {thread, index: birth.index, id: birth.id, digest: birth.digest};
+  const destination = {kind: 'new_thread', target: {kind: 'document'}};
+  const request = target => ({
+   ...policy, source, event, destination, target, guard: target.core.reviewSnapshot(),
+  });
+  const restore = (recovery, id) => api.SharedIndependentDeliverySession.restoreRecovery({
+   ...f.chosen.options, database: f.tag + id, recovery, writerRecovery: 'host-reacquired',
+  });
+  const before = f.current.exportRecovery();
+  const pending = await api.prepareSharedRecoveredBranchReviewIntent(request(f.current));
+  const retained = JSON.parse(JSON.stringify(pending.intent));
+  assert.deepEqual(api.inspectSharedRecoveredBranchReviewIntent(f.current, retained), {kind: 'unapplied'});
+  assert.deepEqual(f.current.exportRecovery(), before);
+  await f.current.close();
+
+  cold = await restore(before, '-recovery-unapplied');
+  await assert.rejects(api.prepareSharedRecoveredBranchReviewIntent({
+   ...request(cold), destination: {kind: 'reply', thread: {actor, counter: '1'}},
+  }, retained), /original archived comment recovery intent differs/);
+  const different = {...retained.after, prefixDigest: 'sha256:' + '0'.repeat(64)};
+  assert.throws(() => cold.core.dispatchReviewWithClock({
+   kind: 'create_thread', data: {
+    anchorJson: cold.core.captureReviewAnchor({kind: 'document'}), body: pending.body,
+   },
+  }, different, cold.core.reviewSnapshot()));
+  assert.deepEqual(cold.exportRecovery(), before);
+  const reopened = await api.prepareSharedRecoveredBranchReviewIntent(request(cold), retained);
+  assert.deepEqual(reopened.intent, retained);
+  const done = reopened.commit();
+  assert.deepEqual(done.event, {actor, counter: retained.after.through});
+  await cold.flush();
+  const saved = cold.exportRecovery();
+  assert.deepEqual(saved.source.documentCheckpoint, before.source.documentCheckpoint);
+  await cold.close();
+
+  applied = await restore(saved, '-recovery-applied');
+  assert.deepEqual(api.inspectSharedRecoveredBranchReviewIntent(applied, retained), {kind: 'local', event: done.event});
+  await assert.rejects(api.prepareSharedRecoveredBranchReviewIntent(request(applied), retained),
+   /original archived comment recovery intent differs/);
+  assert.deepEqual(applied.exportRecovery(), saved);
+  await applied.close();
+
+  alternate = await restore(before, '-recovery-conflicting-counter');
+  const occupied = alternate.core.dispatchReview({kind: 'create_thread', data: {
+   anchorJson: alternate.core.captureReviewAnchor({kind: 'document'}), body: 'A different action at the same counter',
+  }});
+  assert.deepEqual(occupied.event, done.event);
+  assert.deepEqual(api.inspectSharedRecoveredBranchReviewIntent(alternate, retained), {kind: 'conflict', reason: 'event'});
+ } finally {
+  await alternate?.discardAndClose();
+  await applied?.discardAndClose();
+  await cold?.discardAndClose();
+  await f.close();
+ }
+});
