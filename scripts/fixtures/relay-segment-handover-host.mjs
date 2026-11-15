@@ -51,11 +51,11 @@ export async function startSegmentHandoverHost(executable, args, token, exportAl
           uploads, journals, wrongReceipt, assetMapping, incomingBranch});
         return next('committed');
       },
-      async carry(token, document, review, peer, peerUpload, journals, alternate, additionalAlternate, peerReview) {
+      async carry(token, document, review, peer, peerUpload, journals, alternate, additionalAlternate, peerReview, discussionBackup) {
         send({token, writer: document.writer, documentCredential: document.credential,
           actor: review.actor, reviewCredential: review.credential, peerWriter: peer.writer,
           peerCredential: peer.credential, peerPrincipal: peer.principal, peerReview,
-          peerUpload, journals, alternate, additionalAlternate});
+          peerUpload, journals, alternate, additionalAlternate, discussionBackup});
         return next('carried');
       },
       async crash() {

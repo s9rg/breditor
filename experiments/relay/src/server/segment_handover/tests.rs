@@ -25,6 +25,7 @@ const POLICY: RoomRecoveryPolicy = RoomRecoveryPolicy::HostReacquired;
 
 mod client_rasters;
 mod client_uploads;
+mod discussion_backup;
 mod provider_commit;
 mod verified_inputs;
 

@@ -1,6 +1,6 @@
 //! A second live handover from the first replacement and an independently exported alternate.
 use super::{
-    POLICY, PeerReviewCredential, Result, configured_auth, deployment, input, peer_principal,
+    POLICY, PeerReviewCredential, Result, configured_auth, deployment, input, peer_principal, read,
     storage,
 };
 use crate::{captured_base, original_capture};
@@ -9,7 +9,8 @@ use breditor_collab_relay::{
     RecoveryReviewCredential, RelaySegmentClientJournal, RelaySegmentClientJournalPin,
     RelaySegmentClientUploadArchive, RelaySegmentClientUploadPin, RelaySegmentRoomBackupFiles,
     server::{
-        ContentAddressedServerAssets, RelaySegmentHandoverApproval,
+        ContentAddressedServerAssets, RelaySegmentDiscussionBackup,
+        RelaySegmentDiscussionBackupIdentity, RelaySegmentHandoverApproval,
         RelaySegmentHandoverInputCoverage, ServerBackupHandle, ServerRecoveryAssetProvider,
         VerifiedRelaySegmentHandoverInputs,
     },
@@ -40,11 +41,18 @@ struct Carry {
     journals: [RelaySegmentClientJournalPin; 2],
     alternate: RelaySegmentClientJournalPin,
     additional_alternate: Option<RelaySegmentClientJournalPin>,
+    #[serde(default)]
+    discussion_backup: bool,
 }
 
 pub(super) fn backup(parent: &Path) -> Result<RelaySegmentRoomBackupFiles> {
     let (prior, _) = original_capture(parent)?;
     let capture = parent.join("carry-capture");
+    let bundle = parent.join("carry-discussion-backup.json");
+    if bundle.exists() {
+        let identity = serde_json::from_slice(&read(&bundle, 32 * 1024)?)?;
+        return Ok(RelaySegmentDiscussionBackup::open(&capture, Some(prior), &identity)?.backup);
+    }
     let (current, identity) = captured_base(&capture, &parent.join("carry-restore.json"), prior)?;
     Ok(RelaySegmentRoomBackupFiles::open(
         current,
@@ -56,8 +64,31 @@ pub(super) fn backup(parent: &Path) -> Result<RelaySegmentRoomBackupFiles> {
 impl Carry {
     fn commit(self, parent: &Path, handle: &ServerBackupHandle) -> Result<Value> {
         let principal = "owner";
-        let (captured, old_epoch) =
-            handle.capture_relay_segment(principal, &self.token, &parent.join("carry-capture"))?;
+        let capture_path = parent.join("carry-capture");
+        let bundle = self
+            .discussion_backup
+            .then(|| {
+                handle.capture_relay_segment_with_discussion_sources(
+                    principal,
+                    &self.token,
+                    &capture_path,
+                )
+            })
+            .transpose()?;
+        let (captured, old_epoch) = if let Some(identity) = &bundle {
+            assert_eq!(identity.discussion_sources, std::slice::from_ref(&self.alternate));
+            storage::write_new(
+                &parent.join("carry-discussion-backup.json"),
+                &serde_json::to_vec(identity)?,
+            )?;
+            assert!(matches!(
+                handle.capture_relay_segment_with_discussion_sources(principal, &self.token, &capture_path),
+                Err(Error::Io(error)) if error.kind() == std::io::ErrorKind::AlreadyExists
+            ));
+            (identity.backup.clone(), identity.source_epoch.clone())
+        } else {
+            handle.capture_relay_segment(principal, &self.token, &capture_path)?
+        };
         storage::write_new(&parent.join("carry-restore.json"), &serde_json::to_vec(&captured)?)?;
         let mut credentials = RecoveryRegistrationCredentials {
             documents: vec![
@@ -110,7 +141,37 @@ impl Carry {
                 )
             })
             .transpose()?;
-        let backup = backup(parent)?;
+        let (backup, bundled_alternate) = if let Some(identity) = &bundle {
+            let (prior, _) = original_capture(parent)?;
+            let complete: RelaySegmentDiscussionBackupIdentity = serde_json::from_slice(&read(
+                &parent.join("carry-discussion-backup.json"),
+                32 * 1024,
+            )?)?;
+            assert_eq!(&complete, identity);
+            let mut incomplete = complete.clone();
+            incomplete.discussion_sources.clear();
+            assert!(matches!(
+                RelaySegmentDiscussionBackup::open(&capture_path, Some(prior.clone()), &incomplete),
+                Err(Error::Contract("relay discussion backup source roster differs"))
+            ));
+            let file = capture_path.join("discussion-sources/0.participant");
+            let held = capture_path.join("discussion-sources/held.participant");
+            std::fs::rename(&file, &held)?;
+            let missing =
+                RelaySegmentDiscussionBackup::open(&capture_path, Some(prior.clone()), &complete);
+            std::fs::rename(&held, &file)?;
+            assert!(
+                matches!(missing, Err(Error::Io(error)) if error.kind() == std::io::ErrorKind::NotFound)
+            );
+            let reopened =
+                RelaySegmentDiscussionBackup::open(&capture_path, Some(prior), &complete)?;
+            let mut files = reopened.discussion_sources.into_iter();
+            let alternate = files.next().ok_or("missing bundled discussion original")?;
+            assert!(files.next().is_none());
+            (reopened.backup, Some(alternate))
+        } else {
+            (backup(parent)?, None)
+        };
         let required_sources = backup.required_recovered_discussion_sources()?;
         let mut published_source_refusals = 0;
         let source_path = if required_sources.is_empty() {
@@ -148,8 +209,12 @@ impl Carry {
             assert_eq!(exported, std::slice::from_ref(&self.alternate));
             destination.join("0.participant")
         };
-        let alternate =
-            RelaySegmentClientJournal::open(File::open(source_path)?, self.alternate.clone())?;
+        let alternate = match bundled_alternate {
+            Some(alternate) => alternate,
+            None => {
+                RelaySegmentClientJournal::open(File::open(source_path)?, self.alternate.clone())?
+            }
+        };
         let provider: Arc<dyn ServerRecoveryAssetProvider> = Arc::new(ContentAddressedServerAssets);
         let verify =
             |target: &mut RecoveredRelaySegmentRoom| -> Result<VerifiedRelaySegmentHandoverInputs> {
@@ -247,6 +312,8 @@ impl Carry {
             "carriedAlternateArchives": pins.len(),
             "publishedDiscussionSources": required_sources.len(),
             "publishedDiscussionSourceRefusals": published_source_refusals,
+            "discussionBackup": bundle.is_some(),
+            "incompleteDiscussionBackupRefusals": if bundle.is_some() {2} else {0},
         }))
     }
 }

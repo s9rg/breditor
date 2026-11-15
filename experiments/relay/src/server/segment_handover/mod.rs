@@ -4,6 +4,7 @@ mod approval;
 mod branches;
 mod capture;
 mod commit;
+mod discussion_backup;
 mod discussion_sources;
 mod inputs;
 mod resume;
@@ -13,6 +14,7 @@ mod upload_coverage;
 
 pub use approval::RelaySegmentHandoverApproval;
 pub use branches::RelaySegmentParticipantBranchInspection;
+pub use discussion_backup::{RelaySegmentDiscussionBackup, RelaySegmentDiscussionBackupIdentity};
 pub use inputs::{
     RelaySegmentHandoverInputCoverage, RelaySegmentHandoverInputReport,
     VerifiedRelaySegmentHandoverInputs,

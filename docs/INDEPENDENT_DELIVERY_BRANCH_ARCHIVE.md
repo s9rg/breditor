@@ -376,3 +376,18 @@ when restoring the backup. Every published source must have its exact digest
 in one of those cohorts. The portable restore checks this before creating the
 destination. Cold reopen also checks attachments accepted in the later WAL.
 The live predecessor stays selected when a restore omits a required source.
+
+For a single capture, call
+`ServerBackupHandle::capture_relay_segment_with_discussion_sources`. The
+handle takes the archive dependency list at the exact native and raster
+cut. It copies and syncs the originals in `discussion-sources` under the
+same serving epoch while releasing the room lock for other operations.
+Retain the returned `RelaySegmentDiscussionBackupIdentity` independently
+of the directory.
+
+`RelaySegmentDiscussionBackup::open` checks the native archive, checkpoint,
+rasters and original participant files against that identity. For a linked
+capture, supply the previously verified native parent. A missing original
+or an incomplete pin roster fails admission. Add the verified originals to
+the normal selected or alternate inputs for restore. Other participant
+journals and upload inputs follow the existing verified handover contract.

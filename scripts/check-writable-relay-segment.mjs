@@ -623,10 +623,14 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       writeFileSync(join(parent, 'carry-peer.uploads'), peerUpload, {flag: 'wx', mode: 0o600});
 
       const result = await host.carry(token, registered.identity, comment.identity, peer.identity,
-        uploads[1].pin, updatedPins, incomingBranch, additionalAlternate?.pin, protectedPeerReview);
+        uploads[1].pin, updatedPins, incomingBranch, additionalAlternate?.pin, protectedPeerReview, relayDiscussion);
       assert.equal(result.alternateOmissionRefusals, 1);
       if (relayDiscussion) {
+        assert.equal(result.discussionBackup, true);
+        assert.equal(result.incompleteDiscussionBackupRefusals, 2);
         assert.equal(result.publishedDiscussionSources, 1);
+        assert.deepEqual(readFileSync(join(parent, 'carry-capture', 'discussion-sources', '0.participant')),
+          retainedBranches.incoming);
         assert.equal(result.publishedDiscussionSourceRefusals, 2);
         assert.deepEqual(readFileSync(join(parent, 'published-discussion-sources', '0.participant')),
           retainedBranches.incoming);
@@ -679,6 +683,8 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       assert.doesNotMatch(session.core.documentJson(), /Competing branch text/);
       carryEvidence = {alternateOmissionRefusals: result.alternateOmissionRefusals,
         ...(relayDiscussion ? {
+          discussionBackup: result.discussionBackup,
+          incompleteDiscussionBackupRefusals: result.incompleteDiscussionBackupRefusals,
           publishedDiscussionSources: result.publishedDiscussionSources,
           publishedDiscussionSourceRefusals: result.publishedDiscussionSourceRefusals,
         } : {}),

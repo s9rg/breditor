@@ -95,6 +95,7 @@ pub use generation_recovery::{
 };
 pub(crate) use segment_handover::router_with_recovered_segment;
 pub use segment_handover::{
+    RelaySegmentDiscussionBackup, RelaySegmentDiscussionBackupIdentity,
     RelaySegmentHandoverApproval, RelaySegmentHandoverInputCoverage,
     RelaySegmentHandoverInputReport, RelaySegmentParticipantBranchInspection,
     VerifiedRelaySegmentHandoverInputs,
