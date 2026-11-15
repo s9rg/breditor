@@ -170,6 +170,7 @@ impl RelaySegmentRoomBackupFiles {
     /// # Errors
     /// Refuses occupied paths, duplicate or unmatched participant identities, changed
     /// archive bytes and uncertain storage. Supply both cohorts in canonical owner order.
+    /// Within the same alternate owner, order distinct files by ascending SHA-256 bytes.
     pub fn restore_with_client_journal_alternatives(
         &self,
         path: &Path,

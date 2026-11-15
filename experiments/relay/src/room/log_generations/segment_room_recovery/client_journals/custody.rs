@@ -12,8 +12,9 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::{fs::File, io};
+use std::{cmp::Ordering, fs::File, io};
 
+#[derive(Clone, Copy)]
 pub(in super::super) enum JournalDirectory {
     Selected,
     Alternatives,
@@ -24,6 +25,18 @@ impl JournalDirectory {
         match self {
             Self::Selected => "client-journals",
             Self::Alternatives => "client-alternatives",
+        }
+    }
+
+    pub(super) fn compare(
+        self,
+        left: &RelaySegmentClientJournalPin,
+        right: &RelaySegmentClientJournalPin,
+    ) -> Ordering {
+        let owners = left.owner.key().cmp(&right.owner.key());
+        match self {
+            Self::Selected => owners,
+            Self::Alternatives => owners.then_with(|| left.sha256.cmp(&right.sha256)),
         }
     }
 }
@@ -41,6 +54,8 @@ pub(in crate::room::log_generations::segment_room_recovery) struct JournalSelect
 pub(in crate::room::log_generations::segment_room_recovery) struct RetainedJournals {
     directory: GenerationDirectory,
     selection: JournalSelection,
+    #[cfg(feature = "server")]
+    location: JournalDirectory,
     pins: Vec<RelaySegmentClientJournalPin>,
     offsets: Vec<u64>,
     data: ArchiveInput,
@@ -56,7 +71,7 @@ impl RetainedJournals {
         location: JournalDirectory,
     ) -> Result<Self> {
         let pins = sources.iter().map(|source| source.pin.clone()).collect::<Vec<_>>();
-        check_pins(&pins)?;
+        check_pins(&pins, location)?;
         let manifest = serde_json::to_vec(&pins)?;
         if manifest.len() as u64 > MAX_MANIFEST {
             return Err(Error::Contract("client journal manifest budget"));
@@ -76,7 +91,7 @@ impl RetainedJournals {
             directory: directory.witness()?,
             manifest_sha256: Sha256::digest(&manifest).into(),
         };
-        Self::admit(directory, selection, data)
+        Self::admit(directory, selection, data, location)
     }
 
     pub fn reopen(
@@ -87,13 +102,14 @@ impl RetainedJournals {
         let directory = GenerationDirectory::open(&root.path.join(location.name()))?;
         directory.guard_witness(&selected.directory)?;
         let data = files::open(&directory.path.join(DATA))?;
-        Self::admit(directory, selected.clone(), data)
+        Self::admit(directory, selected.clone(), data, location)
     }
 
     fn admit(
         directory: GenerationDirectory,
         selection: JournalSelection,
         data: File,
+        location: JournalDirectory,
     ) -> Result<Self> {
         let manifest = File::open(directory.path.join(MANIFEST))?;
         let manifest_witness = GenerationFileWitness::of(&manifest)?;
@@ -103,7 +119,7 @@ impl RetainedJournals {
             return Err(Error::Contract("client journal manifest digest differs"));
         }
         let pins: Vec<RelaySegmentClientJournalPin> = serde_json::from_slice(&bytes)?;
-        let total = check_pins(&pins)?;
+        let total = check_pins(&pins, location)?;
         if serde_json::to_vec(&pins)? != bytes.as_ref() {
             return Err(Error::Contract("noncanonical client journal manifest"));
         }
@@ -124,6 +140,8 @@ impl RetainedJournals {
         let result = Self {
             directory,
             selection,
+            #[cfg(feature = "server")]
+            location,
             pins,
             offsets,
             data,
@@ -146,7 +164,7 @@ impl RetainedJournals {
     #[cfg(feature = "server")]
     pub fn contains(&self, pin: &RelaySegmentClientJournalPin) -> bool {
         self.pins
-            .binary_search_by(|candidate| candidate.owner.key().cmp(&pin.owner.key()))
+            .binary_search_by(|candidate| self.location.compare(candidate, pin))
             .is_ok_and(|index| self.pins[index] == *pin)
     }
 

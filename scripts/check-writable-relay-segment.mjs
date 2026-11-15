@@ -53,7 +53,7 @@ function readRetainedClientJournals(parent, expected, directory = 'client-journa
   return originals;
 }
 
-async function run(mode, {distribution, rich}, executable, parent, journalKind, terminalReceipts, opaque, competing, carryForward, reviewRecovered) {
+async function run(mode, {distribution, rich}, executable, parent, journalKind, terminalReceipts, opaque, competing, carryForward, multipleAlternates, reviewRecovered) {
   const participant = journalKind === 'independentParticipant';
   const archiveImage = opaque ? proposalAlias : proposalAsset;
   const independentDelivery = journalKind !== 'pairedSession';
@@ -373,7 +373,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       ? JSON.stringify(queuedAcrossTakeover) : await session.exportBackup());
     const journalPins = selectClientJournals(parent, binding, archive,
       peer.identity.writer, peerDocument.checkpoint(), journalKind);
-    let incomingBranch, retainedBranches, recoveredAlternateHistoryLanes;
+    let incomingBranch, retainedBranches, recoveredAlternateHistoryLanes, additionalAlternate;
     if (competingSeed) {
       await session.close();
       session = await api.SharedIndependentDeliverySession.restoreRecovery({
@@ -388,6 +388,24 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
         api, richApi, session, uploads[0], undefined, 'handover-competing-assets',
       );
       await session.close();
+      if (multipleAlternates) {
+        session = await api.SharedIndependentDeliverySession.restoreRecovery({
+          ...deliveryOptions, database: deliveryOptions.database + '-additional-alternate',
+          recovery: competingSeed, writerRecovery: 'host-reacquired',
+        });
+        edit('Competing branch text from another offline copy ');
+        post('Another competing comment');
+        await session.flush();
+        const recovery = session.exportRecovery();
+        const file = await captureParticipant(
+          api, richApi, session, uploads[0], undefined, 'handover-additional-assets',
+        );
+        additionalAlternate = {
+          pin: writeJournal(parent, 'additional-alternate.bin', journalPins[0].owner, file.archive),
+          bytes: file.archive, selection: file.selection, recovery,
+        };
+        await session.close();
+      }
       session = await open();
       assert.deepEqual(session.exportRecovery(), queuedAcrossTakeover);
       const readPolicy = {wasm, session: recoveryFactory(deliveryOptions), checkAuthority() {}};
@@ -523,6 +541,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     assert.equal(visibleThreads().length, 4);
     if (competing) assert.doesNotMatch(session.core.documentJson(), /Competing branch text/);
     let restoredRoot = 'restored';
+    let retainedAlternatePins = competing ? [incomingBranch] : [];
     let carryEvidence;
     if (carryForward) {
       await stopClients();
@@ -546,7 +565,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       writeFileSync(join(parent, 'carry-peer.uploads'), peerUpload, {flag: 'wx', mode: 0o600});
 
       const result = await host.carry(token, registered.identity, comment.identity, peer.identity,
-        uploads[1].pin, updatedPins, incomingBranch);
+        uploads[1].pin, updatedPins, incomingBranch, additionalAlternate?.pin);
       assert.equal(result.alternateOmissionRefusals, 1);
       assert.ok(BigInt(result.records) > BigInt(captured.records));
       const superseded = await fetch(rasterUrl, {headers});
@@ -559,17 +578,28 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       portableUploads.close();
       portableUploads = undefined;
       for (const name of [restoredRoot, 'exported-alternates', 'retained-branches.bin',
-        'carry-journal-0.json', 'carry-journal-1.json', 'carry-peer.uploads']) {
+        'carry-journal-0.json', 'carry-journal-1.json', 'carry-peer.uploads',
+        ...(additionalAlternate ? ['additional-alternate.bin'] : [])]) {
         renameSync(join(parent, name), join(parent, 'retired-' + name));
       }
       restoredRoot = 'carried';
       host = await startSegmentHandoverHost(executable, [parent, restoredRoot, address], token);
-      const [alternate] = readRetainedClientJournals(parent, [incomingBranch], 'client-alternatives', restoredRoot);
-      assert.deepEqual(alternate, retainedBranches.incoming);
-      const alternateHistoryLanes = await checkRecoveredAlternate(
-        api, {...deliveryOptions, database: deliveryOptions.database + '-carried-alternate'},
-        alternate, retainedBranches.incomingSelection, retainedBranches.competingRecovery,
-      );
+      const carriedAlternates = [{pin: incomingBranch, bytes: retainedBranches.incoming,
+        selection: retainedBranches.incomingSelection, recovery: retainedBranches.competingRecovery}];
+      if (additionalAlternate) carriedAlternates.push(additionalAlternate);
+      carriedAlternates.sort((a, b) => Buffer.compare(Buffer.from(a.pin.sha256), Buffer.from(b.pin.sha256)));
+      assert.equal(result.carriedAlternateArchives, carriedAlternates.length);
+      retainedAlternatePins = carriedAlternates.map(({pin}) => pin);
+      const alternateBytes = readRetainedClientJournals(parent, retainedAlternatePins,
+        'client-alternatives', restoredRoot);
+      let alternateHistoryLanes = 0;
+      for (const [index, alternate] of carriedAlternates.entries()) {
+        assert.deepEqual(alternateBytes[index], alternate.bytes);
+        alternateHistoryLanes += await checkRecoveredAlternate(
+          api, {...deliveryOptions, database: deliveryOptions.database + '-carried-alternate-' + index},
+          alternateBytes[index], alternate.selection, alternate.recovery,
+        );
+      }
       const [currentBytes] = readRetainedClientJournals(parent, updatedPins, 'client-journals', restoredRoot);
       assert.deepEqual(currentBytes, current.archive);
       const restored = await reopenParticipant(api, {...deliveryOptions, database: database + '-carried'},
@@ -583,7 +613,8 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       assert.equal(visibleThreads().length, 4);
       assert.doesNotMatch(session.core.documentJson(), /Competing branch text/);
       carryEvidence = {alternateOmissionRefusals: result.alternateOmissionRefusals,
-        carriedAlternateArchives: 1, carriedAlternateHistoryLanes: alternateHistoryLanes,
+        carriedAlternateArchives: result.carriedAlternateArchives, carriedAlternateHistoryLanes: alternateHistoryLanes,
+        ...(additionalAlternate ? {sameOwnerSubstitutionRefusals: result.alternateOmissionRefusals} : {}),
         advancedAcceptedCut: true};
     }
     const accepted = session.core.documentJson();
@@ -644,7 +675,10 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     }
     if (pending) await deliverWork(pending);
     if (reviewRecovered) {
-      const [sourceBytes] = readRetainedClientJournals(parent, [incomingBranch], 'client-alternatives', restoredRoot);
+      const retained = readRetainedClientJournals(parent, retainedAlternatePins, 'client-alternatives', restoredRoot);
+      const sourceIndex = retainedAlternatePins.findIndex(pin => Buffer.from(pin.sha256).equals(Buffer.from(incomingBranch.sha256)));
+      assert.ok(sourceIndex >= 0);
+      const sourceBytes = retained[sourceIndex];
       const parts = await attachOutboxes(session, () => token);
       try {
         await reviewRecoveredText({api, session, queue: parts.queue, transport: parts.transport,
@@ -664,7 +698,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       } finally {
         core.dispose();
       }
-      assert.deepEqual(readRetainedClientJournals(parent, [incomingBranch], 'client-alternatives', restoredRoot), [sourceBytes]);
+      assert.deepEqual(readRetainedClientJournals(parent, retainedAlternatePins, 'client-alternatives', restoredRoot), retained);
     }
     const extra = Number(carryForward);
     return {mode, handoffs: 2, portableRestores: 1 + extra, restoredOfflineLanes: 6, undoRedoLanes: 2, rasterReads: 2,
@@ -723,12 +757,14 @@ const executable = resolve(process.argv[2]);
 const option = process.argv[3];
 const terminalReceipts = option === '--participant-terminal-receipts';
 const opaque = option === '--participant-opaque';
-const carryForward = option === '--participant-carried-alternate';
-const reviewRecovered = option === '--participant-reviewed-text';
+const multipleReviewed = option === '--participant-multiple-reviewed';
+const multipleAlternates = multipleReviewed || option === '--participant-multiple-alternates';
+const carryForward = multipleAlternates || option === '--participant-carried-alternate';
+const reviewRecovered = multipleReviewed || option === '--participant-reviewed-text';
 const competing = carryForward || reviewRecovered || option === '--participant-accepted-branch';
 assert.ok(process.argv.length === 3 || process.argv.length === 4 &&
   ['--independent-delivery', '--participant-archive', '--participant-terminal-receipts', '--participant-opaque',
-    '--participant-accepted-branch', '--participant-carried-alternate', '--participant-reviewed-text'].includes(option));
+    '--participant-accepted-branch', '--participant-carried-alternate', '--participant-multiple-alternates', '--participant-reviewed-text', '--participant-multiple-reviewed'].includes(option));
 const journalKind = terminalReceipts || opaque || competing || option === '--participant-archive' ? 'independentParticipant'
   : option === '--independent-delivery' ? 'independentDelivery' : 'pairedSession';
 const source = sourceEvidence(root);
@@ -744,7 +780,8 @@ try {
     const path = join(sandbox, mode);
     mkdirSync(path, {mode: 0o700});
     reports[mode] = {
-      ...await run(mode, distribution, executable, path, journalKind, terminalReceipts, opaque, competing, carryForward, reviewRecovered),
+      ...await run(mode, distribution, executable, path, journalKind, terminalReceipts, opaque, competing,
+        carryForward, multipleAlternates, reviewRecovered),
       proof: distribution.proof,
     };
   }
@@ -754,7 +791,9 @@ try {
     format: 'breditor/writable-relay-segment-qualification', formatVersion: 1,
     source, relaySha256: sha(readFileSync(executable)), reports,
   };
-  const reportFile = reviewRecovered ? 'qualified-reviewed-recovered-text.json'
+  const reportFile = multipleReviewed ? 'qualified-review-after-multiple-handover.json'
+    : reviewRecovered ? 'qualified-reviewed-recovered-text.json'
+    : multipleAlternates ? 'qualified-multiple-participant-alternates.json'
     : carryForward ? 'qualified-carried-participant-alternate.json'
     : competing ? 'qualified-accepted-participant-branch.json'
     : opaque ? 'qualified-participant-opaque.json'

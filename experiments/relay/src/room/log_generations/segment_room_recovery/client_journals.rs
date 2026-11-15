@@ -223,7 +223,7 @@ impl RelaySegmentClientJournal {
 
 pub(super) fn check_sources(sources: &[RelaySegmentClientJournal]) -> Result<()> {
     let pins: Vec<_> = sources.iter().map(|source| source.pin.clone()).collect();
-    check_pins(&pins)?;
+    check_pins(&pins, JournalDirectory::Selected)?;
     Ok(())
 }
 
@@ -233,7 +233,7 @@ pub(super) fn check_alternative_sources(
 ) -> Result<()> {
     let selected = selected.iter().map(|source| source.pin.clone()).collect::<Vec<_>>();
     let alternatives = alternatives.iter().map(|source| source.pin.clone()).collect::<Vec<_>>();
-    check_pins(&alternatives)?;
+    check_pins(&alternatives, JournalDirectory::Alternatives)?;
     check_alternatives(&selected, &alternatives)
 }
 
@@ -257,7 +257,7 @@ pub(super) fn check_alternatives(
     Ok(())
 }
 
-fn check_pins(pins: &[RelaySegmentClientJournalPin]) -> Result<u64> {
+fn check_pins(pins: &[RelaySegmentClientJournalPin], location: JournalDirectory) -> Result<u64> {
     if pins.len() > MAX_JOURNALS {
         return Err(Error::Contract("client journal count budget"));
     }
@@ -265,11 +265,13 @@ fn check_pins(pins: &[RelaySegmentClientJournalPin]) -> Result<u64> {
     let mut total = 0;
     for pin in pins {
         pin.check()?;
-        let key = pin.owner.key();
-        if previous.is_some_and(|previous| previous >= key) {
-            return Err(Error::Contract("duplicate or unsorted client journal owner"));
+        if previous.is_some_and(|previous| location.compare(previous, pin).is_ge()) {
+            return Err(Error::Contract(match location {
+                JournalDirectory::Selected => "duplicate or unsorted client journal owner",
+                JournalDirectory::Alternatives => "duplicate or unsorted alternate journal pins",
+            }));
         }
-        previous = Some(key);
+        previous = Some(pin);
         total += pin.bytes;
         if total > MAX_TOTAL {
             return Err(Error::Contract("client journal aggregate byte budget"));

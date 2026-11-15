@@ -50,10 +50,10 @@ export async function startSegmentHandoverHost(executable, args, token, exportAl
           peerCredential: peer.credential, uploads, journals, wrongReceipt, assetMapping, incomingBranch});
         return next('committed');
       },
-      async carry(token, document, review, peer, peerUpload, journals, alternate) {
+      async carry(token, document, review, peer, peerUpload, journals, alternate, additionalAlternate) {
         send({token, writer: document.writer, documentCredential: document.credential,
           actor: review.actor, reviewCredential: review.credential, peerWriter: peer.writer,
-          peerCredential: peer.credential, peerUpload, journals, alternate});
+          peerCredential: peer.credential, peerUpload, journals, alternate, additionalAlternate});
         return next('carried');
       },
       async crash() {

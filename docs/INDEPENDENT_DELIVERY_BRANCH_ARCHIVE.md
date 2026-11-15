@@ -78,8 +78,10 @@ selected cohort and the corresponding alternate archives to
 `RelaySegmentRoomBackupFiles::restore_with_client_journal_alternatives`.
 Each alternate must be a different exact participant file for the same
 registered document writer and review actor as a selected file. Supply
-both cohorts in canonical owner order. This supports one alternate per
-selected participant.
+both cohorts in canonical owner order. For a participant with several
+alternates, sort those files by ascending SHA-256 bytes. Each exact
+alternate pin is retained independently within the cohort's byte and
+file-count limits.
 
 Only the selected cohort contributes to live provider checks, upload
 enrollment, and the replacement's raster store. The alternate's complete
@@ -111,6 +113,12 @@ handover is
 It advances the accepted cut after the first replacement, tries a
 target that omits the alternate, then verifies the exact archive from a
 fresh process after retiring the earlier room and export files.
+
+Run `--participant-multiple-alternates` against the same fixture to
+exercise two alternates for one writer and actor. Offering a new
+alternate in place of a previously retained one fails the handover.
+A target carrying both exact originals can resume and recover their
+document and review histories independently.
 
 ## Propose selected text from a recovered original
 
