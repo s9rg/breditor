@@ -2,6 +2,15 @@
 
 ## November 15 collaboration recovery
 
+[Offline conversion of split portable backups](qualification/2026-11-15-packed-portable-copy.json)
+restores and reopens a 26-predecessor backup under the same 48-descriptor
+limit that prevents opening the split source. It refuses changed source bytes
+and occupied or nested destinations, including a case alias of the source
+directory on case-insensitive volumes. Source and clean-installed workflows
+convert, seal, relocate, and activate the result with offline edits, Undo/Redo,
+review history, uploads and an archived discussion intact. The legacy handover
+and 73 native handover, deployment fence and process recovery tests pass.
+
 [Packed portable predecessor lineage](qualification/2026-11-15-packed-portable-relay-lineage.json)
 keeps the original archive and checkpoint bytes in one file. The native
 fixture captures the same 26 predecessors in both layouts. A 48-descriptor

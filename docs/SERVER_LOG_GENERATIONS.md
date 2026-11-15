@@ -689,6 +689,17 @@ the same as a split capture at the same cut. Opening the packed predecessors
 holds one file descriptor and verifies each original digest and lineage
 before restore or sealing. Use the split capture for older relay readers.
 
+Use `RelaySegmentRetainedBackup::copy_portable_packed` to convert a completed
+split backup using its independently saved identity and a new, absent target
+outside the source tree. The converter streams one native predecessor pair at
+a time, copies the native and raster cut and retained client data, then
+verifies the whole target through the regular portable reader. This also
+works on backups that already use the packed layout. The live relay can keep
+serving while the completed backup is copied. Close other readers of the
+backup directory first. Retain the original until the new path verifies.
+A failed copy can leave a partial target. Retry at a fresh path. Verification
+uses the usual file handles for retained client journals and upload queues.
+
 The reference adapter can serve both recovered components behind a fresh
 lease from the existing deployment epoch authority, with the ordinary
 account and Origin policies. Deployment approval for the exact cut and
