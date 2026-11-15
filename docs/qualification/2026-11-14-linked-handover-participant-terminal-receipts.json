@@ -109,5 +109,49 @@
         ]
       }
     }
+  },
+  "recheckedBaselines": {
+    "participantArchive": {
+      "sha256": "22a932694d1af225dfc0d56fe5239549d4675945c7d74c906a6971194653458e",
+      "source": {
+        "commit": "86c8e6f9ddbe1467594a1d19773547dee89c4c12",
+        "dirty": false,
+        "sha256": "110f678c4bcc738f6f58076f83d702203ba5583418668a46bf8030460897469a",
+        "files": 8841,
+        "bytes": 75196316
+      },
+      "modes": [
+        "source",
+        "installed"
+      ]
+    },
+    "independentDelivery": {
+      "sha256": "35cd391d4d2afb8cb46211f27b9881a48475793709d02b428e1a67fe422f4d53",
+      "source": {
+        "commit": "86c8e6f9ddbe1467594a1d19773547dee89c4c12",
+        "dirty": false,
+        "sha256": "110f678c4bcc738f6f58076f83d702203ba5583418668a46bf8030460897469a",
+        "files": 8841,
+        "bytes": 75196316
+      },
+      "modes": [
+        "source",
+        "installed"
+      ]
+    },
+    "pairedSession": {
+      "sha256": "88bea78abb31ab48d722fbaac5c87c42033cfc24e28523065788ece3facc219e",
+      "source": {
+        "commit": "86c8e6f9ddbe1467594a1d19773547dee89c4c12",
+        "dirty": false,
+        "sha256": "110f678c4bcc738f6f58076f83d702203ba5583418668a46bf8030460897469a",
+        "files": 8841,
+        "bytes": 75196316
+      },
+      "modes": [
+        "source",
+        "installed"
+      ]
+    }
   }
 }
