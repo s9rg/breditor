@@ -2,10 +2,18 @@
 
 ## November 15 collaboration recovery
 
+[Live archive copying](qualification/2026-11-15-relay-discussion-backup-live-copy.json)
+releases the serving permit after the native and raster cut and reacquires the
+same epoch to confirm the copied discussion originals. A paused-copy
+regression previously blocked an ordinary room write. The write now completes
+and remains outside the captured cut. The replacement epoch can also advance
+during the copy and prevents confirmation by the superseded host. Ownership
+marker reads use independent offsets. The real 40-event backup and earlier
+alternate-only handover pass from source and clean installs.
+
 [Bundled discussion backups](qualification/2026-11-15-relay-discussion-bundle.json)
 capture the native archive, checkpoint, raster data and the exact published
-discussion originals under one current serving epoch. The copy releases the
-room lock and retains the serving permit for the duration. Source and clean
+discussion originals under one current serving epoch. Source and clean
 installs reopen the bundle from its independently saved identity, refuse a
 missing original, incomplete pin roster and occupied destination, and use the
 original in the authenticated handover. A fresh Reader verifies the two
