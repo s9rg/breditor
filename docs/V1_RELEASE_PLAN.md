@@ -2,6 +2,17 @@
 
 ## November 15 collaboration recovery
 
+[Retained client backup](qualification/2026-11-15-relay-retained-client-backup.json)
+includes all client journals and upload archives already held by the relay
+at the native and raster cut. Restore uses one copy of an embedded upload
+queue and the exact standalone queues. A fresh local room reopens both
+selected originals, the alternate and both original upload queues. The
+source and clean-installed SDKs reopen the archived selected and alternate
+histories and exercise document and review Undo/Redo. The backup uses the
+independently saved identity and earlier linked native predecessor. The
+original client closes before the recovered client acquires its writer.
+Current authority and provider checks still govern live activation.
+
 [Live archive copying](qualification/2026-11-15-relay-discussion-backup-live-copy.json)
 releases the serving permit after the native and raster cut and reacquires the
 same epoch to confirm the copied discussion originals. A paused-copy
