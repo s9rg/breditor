@@ -2,6 +2,14 @@
 
 ## November 15 collaboration recovery
 
+[Single-traversal discussion recovery](qualification/2026-11-15-recovered-discussion-transcript.json)
+uses the same native causal order for the selected thread's projection and
+complete timeline during preparation and verification. The 40-event test
+covers three original history pages. The attachment bytes and recovery intent
+match those from the original paged reads. The rebuilt and prior
+Wasm runtimes both pass the source and independent-install workflows.
+The separately mounted APFS case also passes on this relay build.
+
 [Relay-owned recovered discussions](qualification/2026-11-15-relay-recovered-discussion.json)
 let the room owner publish an exact prepared attachment. The relay verifies the
 live thread's accepted birth and the complete discussion against the retained
