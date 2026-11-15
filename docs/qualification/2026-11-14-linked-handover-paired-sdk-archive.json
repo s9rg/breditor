@@ -115,5 +115,11 @@
     "Cold SDK restoration took the byte-exact original ordinary paired backup directly from the replacement relay's private archive after the original files and relay folders were moved away. The destination kept the named local version, nonsecret review progress, both offline journals and future Undo/Redo. Credentials and live policies were supplied separately.",
     "The native test rejects a saved cursor whose underlying accepted events are absent. Both SDK runs rehash a backup with a wrong review receipt sequence under the known actor and prove the authenticated relay verification refuses it.",
     "The archive format retains original relay and observer record meanings. The installed workflow uses an ordinary writing actor with controlled storage. Broader observer qualification, proposal/revision outbox enrollment and same-writer branch reconciliation remain open."
-  ]
+  ],
+  "fullRelayRegression": {
+    "passed": 525,
+    "failed": 0,
+    "ignored": 1,
+    "logSha256": "3135fbb5afa782eeb56d8d34de2cc621ccf266a6dd0a2028010a35484380413c"
+  }
 }
