@@ -67,9 +67,15 @@ export async function checkColdReviewReader({
 
     assertRecoveredRich(session.core.documentJson(), recovered.generation);
     assert.deepEqual(session.core.reviewSnapshot().view.threads, threads);
-    assert.deepEqual(queue.status(recovered.id).decision, recovered.decision);
-    assert.equal(queue.packet(recovered.id), recovered.packet);
-    assert.deepEqual(queue.status(delivered.pending.decision).decision, delivered.decision);
+    for (const [id, packet, decision] of [
+      [recovered.id, recovered.packet, recovered.decision],
+      [delivered.pending.decision, delivered.pending.packets[1], delivered.decision],
+    ]) {
+      assert.deepEqual(sync.entries().find(entry => entry.publication.suggestion.id === id)?.decision, decision);
+      assert.equal(await sync.loadSuggestion(id), packet);
+      assert.deepEqual(queue.status(id).decision, decision);
+      assert.equal(queue.status(id).localSaved, true);
+    }
     assert.deepEqual(revisions.entries().find(entry => entry.revision.id === delivered.pending.revision), delivered.revision);
     assert.equal(await versions.loadVersion(originalVersion.id), originalVersion.packet);
     assert.equal(await versions.loadVersion(delivered.pending.version), delivered.pending.packets[3]);
