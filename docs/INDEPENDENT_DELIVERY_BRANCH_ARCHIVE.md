@@ -359,3 +359,20 @@ and current accepted writer prefixes, and appends the same verified packet.
 Exact retries still return the original acceptance. The worker retains its quota
 until it finishes, including when a client disconnects during verification.
 Attachment reads have their own quota.
+
+### Preserve published discussion sources in portable room backups
+
+Keep the original participant files referenced by published attachments along
+with the portable room backup. Read the exact, deduplicated whole-file digests
+from `RelaySegmentRoomBackupFiles::required_recovered_discussion_sources`.
+While the serving epoch is current, pass that list to
+`ServerBackupHandle::export_relay_segment_recovered_discussion_sources` under
+owner authentication. The export returns original pins and numbered files in
+digest order. It can find a file that moved from the alternate cohort to the
+selected cohort, and it verifies the exported bytes against their original pin.
+
+Supply those originals with the selected and alternate client journal inputs
+when restoring the backup. Every published source must have its exact digest
+in one of those cohorts. The portable restore checks this before creating the
+destination. Cold reopen also checks attachments accepted in the later WAL.
+The live predecessor stays selected when a restore omits a required source.

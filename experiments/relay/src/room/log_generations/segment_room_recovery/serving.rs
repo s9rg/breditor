@@ -2,6 +2,7 @@
 use super::{
     GenerationDirectory, RasterCustody, RecoveredRelaySegmentRoom, RelaySegmentClientJournalPin,
     client_journals::RetainedJournals, client_uploads::RetainedUploads,
+    discussion_sources::is_participant,
 };
 use crate::{
     Error, Result, Room,
@@ -10,7 +11,10 @@ use crate::{
     server::{Authentication, RoomDeploymentLease, router_with_recovered_segment},
 };
 
-use std::path::Path;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    path::Path,
+};
 
 pub(crate) struct RelaySegmentServingCustody {
     directory: GenerationDirectory,
@@ -59,19 +63,56 @@ impl RelaySegmentServingCustody {
         let Some(alternates) = &self.alternatives else {
             return Ok(Vec::new());
         };
+        self.export_journals(
+            destination,
+            (0..alternates.pins().len()).map(|index| (alternates, index)),
+        )
+    }
+
+    pub(crate) fn export_recovered_discussion_sources(
+        &self,
+        requested: &BTreeSet<[u8; 32]>,
+        destination: &Path,
+    ) -> Result<Vec<RelaySegmentClientJournalPin>> {
+        let mut selected = BTreeMap::new();
+        for journals in [&self.journals, &self.alternatives].into_iter().flatten() {
+            for (index, pin) in journals.pins().iter().enumerate() {
+                if is_participant(pin) && requested.contains(&pin.sha256) {
+                    selected.insert(pin.sha256, (journals, index));
+                }
+            }
+        }
+        if selected.len() != requested.len() {
+            return Err(Error::Contract("relay segment is missing a recovered discussion source"));
+        }
+        self.export_journals(destination, selected.into_values())
+    }
+
+    fn export_journals<'a>(
+        &self,
+        destination: &Path,
+        sources: impl Iterator<Item = (&'a RetainedJournals, usize)>,
+    ) -> Result<Vec<RelaySegmentClientJournalPin>> {
+        self.check()?;
+        let mut sources = sources.peekable();
+        if sources.peek().is_none() {
+            return Ok(Vec::new());
+        }
         let directory = GenerationDirectory::create(destination)?;
-        for index in 0..alternates.pins().len() {
-            let name = format!("{index}.participant");
+        let mut pins = Vec::new();
+        for (position, (journals, index)) in sources.enumerate() {
+            let name = format!("{position}.participant");
             let mut file = directory.create_file(&name, &[])?;
             let witness = GenerationFileWitness::of(&file)?;
-            alternates.copy(index, &mut file)?;
+            journals.copy(index, &mut file)?;
             file.sync_all()?;
             witness.guard(&file, &directory.path.join(name))?;
+            pins.push(journals.pins()[index].clone());
         }
         directory.sync()?;
         directory.guard()?;
         self.check()?;
-        Ok(alternates.pins().to_vec())
+        Ok(pins)
     }
 }
 

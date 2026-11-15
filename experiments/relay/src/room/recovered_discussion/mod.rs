@@ -9,7 +9,10 @@ pub(super) use record::DiscussionLink;
 pub(crate) use record::DiscussionRecord;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::{collections::BTreeMap, fmt::Write as _};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fmt::Write as _,
+};
 
 pub(crate) const MAX_DISCUSSION_BYTES: usize = 8 * 1024 * 1024;
 const MAX_CATALOG_BYTES: usize = 64 * 1024 * 1024;
@@ -36,6 +39,12 @@ pub(super) struct StoredDiscussion {
 pub(super) struct Discussions {
     entries: BTreeMap<ReviewThreadId, StoredDiscussion>,
     bytes: usize,
+}
+
+impl StoredDiscussion {
+    pub(in crate::room) fn archive_sha256(&self) -> [u8; 32] {
+        self.archive
+    }
 }
 
 impl Discussions {
@@ -67,6 +76,10 @@ impl DiscussionEntry {
 }
 
 impl Room {
+    pub(crate) fn recovered_discussion_source_digests(&self) -> BTreeSet<[u8; 32]> {
+        self.discussions.entries.values().map(StoredDiscussion::archive_sha256).collect()
+    }
+
     fn validate_discussion_link(&self, packet: &DiscussionRecord<'_>) -> Result<u64> {
         if !self.atomic_transport_v2
             || packet.room.room != self.replica.document_id()
@@ -96,6 +109,7 @@ impl Room {
     ) -> Result<()> {
         self.recovery_inventory_owner(principal)?;
         let parsed = DiscussionRecord::read(&packet)?;
+        parsed.check_source_archive(&archive)?;
         self.discussions.check_capacity(packet.len())?;
         if self.validate_discussion_link(&parsed)? >= sequence
             || self.discussions.entries.contains_key(&parsed.link.id)
@@ -117,6 +131,7 @@ impl Room {
             let sequence =
                 super::materialized_checkpoint::sequence(&stored.entry.sequence, records)?;
             let parsed = DiscussionRecord::read(&stored.packet)?;
+            parsed.check_source_archive(&stored.archive)?;
             let expected = DiscussionEntry::new(parsed.link.clone(), sequence, &stored.packet);
             self.discussions.check_capacity(stored.packet.len())?;
             if expected.link != stored.entry.link

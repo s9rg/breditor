@@ -4,6 +4,7 @@ mod approval;
 mod branches;
 mod capture;
 mod commit;
+mod discussion_sources;
 mod inputs;
 mod resume;
 #[cfg(all(test, unix))]

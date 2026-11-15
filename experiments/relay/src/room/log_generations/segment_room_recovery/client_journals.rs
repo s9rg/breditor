@@ -208,6 +208,10 @@ impl RelaySegmentClientJournal {
         Ok(Self { pin, file, participant })
     }
 
+    pub(super) fn pin(&self) -> &RelaySegmentClientJournalPin {
+        &self.pin
+    }
+
     pub(super) fn participant_upload(&self) -> Result<Option<UploadSource<'_>>> {
         self.participant.as_ref().map(|archive| archive.upload(self.file.all())).transpose()
     }

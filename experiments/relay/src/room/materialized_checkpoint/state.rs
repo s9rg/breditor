@@ -9,7 +9,7 @@ use crate::{
     },
 };
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -85,6 +85,10 @@ pub(super) struct BoundaryCheckpoint {
 }
 
 impl Checkpoint {
+    pub(in crate::room) fn recovered_discussion_source_digests(&self) -> BTreeSet<[u8; 32]> {
+        self.discussions.iter().map(StoredDiscussion::archive_sha256).collect()
+    }
+
     pub(in crate::room) fn check_selection(
         &self,
         expected: &RelayCheckpointIdentity,

@@ -625,6 +625,12 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       const result = await host.carry(token, registered.identity, comment.identity, peer.identity,
         uploads[1].pin, updatedPins, incomingBranch, additionalAlternate?.pin, protectedPeerReview);
       assert.equal(result.alternateOmissionRefusals, 1);
+      if (relayDiscussion) {
+        assert.equal(result.publishedDiscussionSources, 1);
+        assert.equal(result.publishedDiscussionSourceRefusals, 2);
+        assert.deepEqual(readFileSync(join(parent, 'published-discussion-sources', '0.participant')),
+          retainedBranches.incoming);
+      }
       assert.ok(BigInt(result.records) > BigInt(captured.records));
       const superseded = await fetch(rasterUrl, {headers});
       assert.equal(superseded.status, 403);
@@ -672,6 +678,10 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       assert.equal(visibleThreads().length, 4 + Number(relayDiscussion));
       assert.doesNotMatch(session.core.documentJson(), /Competing branch text/);
       carryEvidence = {alternateOmissionRefusals: result.alternateOmissionRefusals,
+        ...(relayDiscussion ? {
+          publishedDiscussionSources: result.publishedDiscussionSources,
+          publishedDiscussionSourceRefusals: result.publishedDiscussionSourceRefusals,
+        } : {}),
         carriedAlternateArchives: result.carriedAlternateArchives, carriedAlternateHistoryLanes: alternateHistoryLanes,
         ...(additionalAlternate ? {sameOwnerSubstitutionRefusals: result.alternateOmissionRefusals} : {}),
         advancedAcceptedCut: true};

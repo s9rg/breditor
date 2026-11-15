@@ -6,6 +6,7 @@ use super::{
     client_journals::{self, JournalDirectory, JournalSelection, RetainedJournals},
     client_rasters::{self, SelectedRaster},
     client_uploads::{self, RetainedUploadSelection, RetainedUploads, UploadSource},
+    discussion_sources::check_sources,
 };
 use crate::{
     Error, Result, Room, RoomRecoveryPolicy,
@@ -228,6 +229,16 @@ impl RelaySegmentRoomBackupFiles {
         Log::validate_segment_restoration(&self.native, active_generation)?;
         client_rasters::check_selected(rasters, &self.identity.assets, &self.entries)?;
         let state = self.native.checkpoint_state()?;
+        check_sources(
+            &state.recovered_discussion_source_digests(),
+            originals.iter().flat_map(|cohort| {
+                cohort
+                    .selected
+                    .iter()
+                    .chain(cohort.alternatives)
+                    .map(RelaySegmentClientJournal::pin)
+            }),
+        )?;
         let directory = GenerationDirectory::create(path)?;
         let raster_directory = RasterDirectory::create(&directory.path.join("rasters"))?;
         let raster_witness = raster_directory.witness()?;
@@ -277,6 +288,10 @@ impl RelaySegmentRoomBackupFiles {
             active_generation,
         )?;
         let (room, _) = Room::replay_relay_segment(log, recovery, state, false)?;
+        check_sources(
+            &room.recovered_discussion_source_digests(),
+            [&journals, &alternatives].into_iter().flatten().flat_map(RetainedJournals::pins),
+        )?;
         let native = room.log.segment_directory_witness()?;
         self.check()?;
         raster.guard(&assets)?;
@@ -397,6 +412,10 @@ impl RelaySegmentRoomBackupFiles {
             &completed.active,
         )?;
         let (room, _) = Room::replay_relay_segment(log, recovery, state, false)?;
+        check_sources(
+            &room.recovered_discussion_source_digests(),
+            [&journals, &alternatives].into_iter().flatten().flat_map(RetainedJournals::pins),
+        )?;
         self.check()?;
         raster.guard(&assets)?;
         directory.guard()?;

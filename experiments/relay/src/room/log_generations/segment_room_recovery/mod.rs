@@ -14,6 +14,7 @@ mod client_rasters;
 pub use client_rasters::RelaySegmentClientRaster;
 mod client_uploads;
 pub use client_uploads::{RelaySegmentClientUploadArchive, RelaySegmentClientUploadPin};
+mod discussion_sources;
 #[cfg(feature = "server")]
 mod handover_target;
 mod restore;

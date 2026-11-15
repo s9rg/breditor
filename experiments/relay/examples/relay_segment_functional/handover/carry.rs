@@ -100,10 +100,6 @@ impl Carry {
             File::open(parent.join("carry-peer.uploads"))?,
             self.peer_upload,
         )?;
-        let alternate = RelaySegmentClientJournal::open(
-            File::open(parent.join("exported-alternates/0.participant"))?,
-            self.alternate.clone(),
-        )?;
         let additional = self
             .additional_alternate
             .as_ref()
@@ -115,6 +111,45 @@ impl Carry {
             })
             .transpose()?;
         let backup = backup(parent)?;
+        let required_sources = backup.required_recovered_discussion_sources()?;
+        let mut published_source_refusals = 0;
+        let source_path = if required_sources.is_empty() {
+            parent.join("exported-alternates/0.participant")
+        } else {
+            assert_eq!(required_sources, [self.alternate.sha256]);
+            let unpacked = parent.join("missing-published-sources");
+            assert!(matches!(
+                backup.restore(&unpacked, "no-published-sources", POLICY),
+                Err(Error::Contract("relay segment restore omitted a recovered discussion source"))
+            ));
+            assert!(!unpacked.exists());
+            published_source_refusals += 1;
+            let wrong = parent.join("unreferenced-discussion-sources");
+            let wrong_digest = [self.alternate.sha256.map(|byte| !byte)];
+            assert!(matches!(
+                handle.export_relay_segment_recovered_discussion_sources(
+                    principal,
+                    &self.token,
+                    &old_epoch,
+                    &wrong_digest,
+                    &wrong,
+                ),
+                Err(Error::Contract("recovered discussion source is not published"))
+            ));
+            assert!(!wrong.exists());
+            let destination = parent.join("published-discussion-sources");
+            let exported = handle.export_relay_segment_recovered_discussion_sources(
+                principal,
+                &self.token,
+                &old_epoch,
+                &required_sources,
+                &destination,
+            )?;
+            assert_eq!(exported, std::slice::from_ref(&self.alternate));
+            destination.join("0.participant")
+        };
+        let alternate =
+            RelaySegmentClientJournal::open(File::open(source_path)?, self.alternate.clone())?;
         let provider: Arc<dyn ServerRecoveryAssetProvider> = Arc::new(ContentAddressedServerAssets);
         let verify =
             |target: &mut RecoveredRelaySegmentRoom| -> Result<VerifiedRelaySegmentHandoverInputs> {
@@ -132,29 +167,43 @@ impl Carry {
                     }
                 }
             };
-        let mut omitted = backup.restore_with_client_journal_alternatives(
-            &parent.join("omitted-alternate"),
+        let omitted_path = parent.join("omitted-alternate");
+        let omitted = backup.restore_with_client_journal_alternatives(
+            &omitted_path,
             "omitted-alternate",
             POLICY,
             std::slice::from_ref(&peer_upload),
             &journals,
             additional.as_slice(),
-        )?;
-        let inputs = verify(&mut omitted)?;
-        let approval =
-            RelaySegmentHandoverApproval::select_verified(&omitted, &inputs, old_epoch.clone())?;
-        let refused = handle.commit_verified_relay_segment_handover(
-            principal,
-            &self.token,
-            omitted,
-            configured_auth(parent)?,
-            &approval,
-            &inputs,
         );
-        assert!(matches!(
-            refused,
-            Err(Error::Contract("relay segment handover omitted a retained alternate"))
-        ));
+        if required_sources.is_empty() {
+            let mut omitted = omitted?;
+            let inputs = verify(&mut omitted)?;
+            let approval = RelaySegmentHandoverApproval::select_verified(
+                &omitted,
+                &inputs,
+                old_epoch.clone(),
+            )?;
+            let refused = handle.commit_verified_relay_segment_handover(
+                principal,
+                &self.token,
+                omitted,
+                configured_auth(parent)?,
+                &approval,
+                &inputs,
+            );
+            assert!(matches!(
+                refused,
+                Err(Error::Contract("relay segment handover omitted a retained alternate"))
+            ));
+        } else {
+            assert!(matches!(
+                omitted,
+                Err(Error::Contract("relay segment restore omitted a recovered discussion source"))
+            ));
+            assert!(!omitted_path.exists());
+            published_source_refusals += 1;
+        }
         assert_eq!(deployment(parent)?.current_selection()?, old_epoch);
 
         let mut alternatives = vec![(self.alternate, alternate)];
@@ -196,6 +245,8 @@ impl Carry {
             "records": captured.native.predecessor.source.records,
             "alternateOmissionRefusals": 1,
             "carriedAlternateArchives": pins.len(),
+            "publishedDiscussionSources": required_sources.len(),
+            "publishedDiscussionSourceRefusals": published_source_refusals,
         }))
     }
 }

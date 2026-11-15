@@ -80,6 +80,18 @@ impl<'a> DiscussionRecord<'a> {
         Ok(value)
     }
 
+    pub(super) fn check_source_archive(&self, archive_sha256: &[u8; 32]) -> Result<()> {
+        if !archive_sha256.iter().zip(self.original.archive_sha256.as_bytes().chunks_exact(2)).all(
+            |(byte, hex)| {
+                const HEX: &[u8; 16] = b"0123456789abcdef";
+                hex == [HEX[(byte >> 4) as usize], HEX[(byte & 15) as usize]]
+            },
+        ) {
+            return Err(Error::Contract("recovered discussion archive identity differs"));
+        }
+        Ok(())
+    }
+
     #[cfg(feature = "server")]
     pub(in crate::room) fn verify_original(
         &self,
@@ -87,13 +99,8 @@ impl<'a> DiscussionRecord<'a> {
         endpoint: &str,
         comments: &breditor_collab_feasibility::review::ReviewSession,
     ) -> Result<()> {
-        if !archive_sha256.iter().zip(self.original.archive_sha256.as_bytes().chunks_exact(2)).all(
-            |(byte, hex)| {
-                const HEX: &[u8; 16] = b"0123456789abcdef";
-                hex == [HEX[(byte >> 4) as usize], HEX[(byte & 15) as usize]]
-            },
-        ) || endpoint != self.room.endpoint
-        {
+        self.check_source_archive(archive_sha256)?;
+        if endpoint != self.room.endpoint {
             return Err(Error::Contract("recovered discussion archive identity differs"));
         }
         // This ID selects a native birth. Its remaining projection fields are verified
