@@ -1,0 +1,75 @@
+{
+  "format": "breditor/portable-relay-unserved-activation-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-15",
+  "source": {
+    "commit": "a4b7e870071faa52c39e926d238a99dfb1040d0d",
+    "dirty": false,
+    "sha256": "348878bbeef00b52cb6e0769a62868dea0828206d529e6fa18bc1035a2495a07",
+    "files": 8946,
+    "bytes": 76021390
+  },
+  "relaySha256": "6bbc7e2f9648915193e7224b2ca2c8873ebc61b483646243096852195bae994c",
+  "runtimeSha256": "38b17b58126858fd4ef014e877e85806c323c675e88cd191222badbe9a36a6d5",
+  "live": {
+    "reportSha256": "13722c3f8c4b030b8840379fa2be176988f2df68e31dfb074a7435e8fa3b154e",
+    "logSha256": "93e77aed698d7eb638e693426fe154c9e671b0919046355bc54a2b493097d933",
+    "runs": {
+      "source": {
+        "exitsBeforeListen": 1,
+        "exactCommittedSelectionResumes": 1,
+        "processExits": 8,
+        "coldResumes": 5,
+        "retiredOriginalPaths": 7,
+        "freshlyVerifiedProtectedRegistrations": 4,
+        "restoredOfflineLanes": 6,
+        "undoRedoLanes": 2,
+        "archivedDiscussionEvents": 40,
+        "proof": null
+      },
+      "installed": {
+        "exitsBeforeListen": 1,
+        "exactCommittedSelectionResumes": 1,
+        "processExits": 8,
+        "coldResumes": 5,
+        "retiredOriginalPaths": 7,
+        "freshlyVerifiedProtectedRegistrations": 4,
+        "restoredOfflineLanes": 6,
+        "undoRedoLanes": 2,
+        "archivedDiscussionEvents": 40,
+        "proof": {
+          "registryArtifacts": 45,
+          "archives": [
+            {
+              "name": "@breditor/browser",
+              "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+            },
+            {
+              "name": "@breditor/experimental-rich-content",
+              "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+            },
+            {
+              "name": "@breditor/collaboration",
+              "sha256": "066beef823a9dc78bb3802c95cfefbebd6d872e349706176a23d1bc123f808d7"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "legacy": {
+    "reportSha256": "f1ed4df2ba176e93023bfc86659301729a3c709c72958e43e0f05e7e287f5246",
+    "matchesPriorSourceAndInstalledResults": true
+  },
+  "candidatePlan": {
+    "passed": 69,
+    "failed": 0,
+    "logSha256": "38fbf567994b1f91d1d0303ed40f1afba061ded4dd559bdfa74b14224a8ee4a1"
+  },
+  "scope": [
+    "The relocation process restores from the moved bundle, independently persists the approval, verifies the original protected registrations and provider assets, commits target activation, and exits without unwinding before binding the listener.",
+    "A distinct cold process requires the current authority selection to match the committed activation and the saved approval, resumes the existing target at a fresh epoch, and serves the original SDK workflow.",
+    "Both the source and independent installed consumers verify preserved client journals, pending and cancelled uploads, accepted content, native history, and the archived discussion.",
+    "The source seal requires a reachable original relay. This test exercises the process boundary after the activation call returns to the fixture."
+  ]
+}

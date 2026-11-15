@@ -2,6 +2,14 @@
 
 ## November 15 collaboration recovery
 
+[Portable activation before listening](qualification/2026-11-15-portable-relay-unserved-activation.json)
+exits the relocated process after durable activation and before it binds a
+listener. A fresh process checks that the current authority matches the exact
+committed activation and the independently saved approval, resumes at a new
+epoch, then serves the restored document. Source and clean-installed consumers
+pass the same checks for offline edits, Undo/Redo, uploads and review history.
+The earlier handover also passes on this fixture build.
+
 [Sealed portable relocation](qualification/2026-11-15-relay-sealed-portable-relocation.json)
 checks the exact live cut before fencing the source. A fresh process restores
 the moved bundle with four native predecessors and verifies the two document
