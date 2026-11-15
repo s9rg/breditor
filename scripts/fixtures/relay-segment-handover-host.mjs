@@ -44,16 +44,18 @@ export async function startSegmentHandoverHost(executable, args, token, exportAl
     const {address} = await next('listening');
     return {
       address,
-      async handover(token, document, review, peer, uploads, journals, wrongReceipt, assetMapping, incomingBranch) {
+      async handover(token, document, review, peer, uploads, journals, wrongReceipt, assetMapping, incomingBranch, peerReview) {
         send({kind: 'handover', token, writer: document.writer, documentCredential: document.credential,
           actor: review.actor, reviewCredential: review.credential, peerWriter: peer.writer,
-          peerCredential: peer.credential, uploads, journals, wrongReceipt, assetMapping, incomingBranch});
+          peerCredential: peer.credential, peerPrincipal: peer.principal, peerReview,
+          uploads, journals, wrongReceipt, assetMapping, incomingBranch});
         return next('committed');
       },
-      async carry(token, document, review, peer, peerUpload, journals, alternate, additionalAlternate) {
+      async carry(token, document, review, peer, peerUpload, journals, alternate, additionalAlternate, peerReview) {
         send({token, writer: document.writer, documentCredential: document.credential,
           actor: review.actor, reviewCredential: review.credential, peerWriter: peer.writer,
-          peerCredential: peer.credential, peerUpload, journals, alternate, additionalAlternate});
+          peerCredential: peer.credential, peerPrincipal: peer.principal, peerReview,
+          peerUpload, journals, alternate, additionalAlternate});
         return next('carried');
       },
       async crash() {

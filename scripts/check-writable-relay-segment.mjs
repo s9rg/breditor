@@ -32,9 +32,10 @@ function writeJournal(parent, name, owner, journal) {
   return {owner, bytes: bytes.length, sha256: [...Buffer.from(sha(bytes), 'hex')]};
 }
 
-function selectClientJournals(parent, identity, pairedBackup, peerWriter, peerCheckpoint, kind) {
+function selectClientJournals(parent, identity, pairedBackup, peerWriter, peerCheckpoint, kind, peerDiscussion) {
   const paired = {kind, writer: identity.documentWriter, actor: identity.actor};
-  const peer = {kind: 'document', writer: peerWriter, family: 'original'};
+  const peer = peerDiscussion ? {kind: 'pairedSession', writer: peerWriter, actor: peerDiscussion.actor}
+    : {kind: 'document', writer: peerWriter, family: 'original'};
   return [
     writeJournal(parent, 'journal-0.json', paired, pairedBackup),
     writeJournal(parent, 'journal-1.json', peer, peerCheckpoint),
@@ -103,7 +104,8 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     const options = {...connect, endpoint: 'ws://' + address + '/ws', principal: 'owner',
       room: 'room', writerTransport: 'atomic-v2', saveIdentity() {}};
     const registered = await api.registerSharedRelayWriter(options);
-    const peer = await api.registerSharedRelayWriter(options);
+    const peer = await api.registerSharedRelayWriter(peerDiscussionToken
+      ? {...options, principal: 'discussion-peer', getToken: () => peerDiscussionToken} : options);
     const comment = await api.registerSharedReviewWriter({
       ...options, actor: 'segment-author', documentWriter: registered.identity.writer,
     });
@@ -225,8 +227,12 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     const originalDiscussion = post('Accepted comment before segment');
     await document.flush();
     await review.flush();
+    let peerDiscussion, protectedPeerReview;
     if (peerDiscussionToken) {
-      await authorPeerReply({api, options, persisted, profile, thread: originalDiscussion, token: peerDiscussionToken});
+      peerDiscussion = await authorPeerReply({
+        api, options, persisted, profile, thread: originalDiscussion, token: peerDiscussionToken, writer: peer.identity.writer,
+      });
+      protectedPeerReview = {actor: peerDiscussion.actor, credential: peerDiscussion.credential};
       await stopClients();
       await attach();
       const history = session.core.readReviewThreadHistory(originalDiscussion);
@@ -394,7 +400,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     const archive = portable?.archive ?? (independentDelivery
       ? JSON.stringify(queuedAcrossTakeover) : await session.exportBackup());
     const journalPins = selectClientJournals(parent, binding, archive,
-      peer.identity.writer, peerDocument.checkpoint(), journalKind);
+      peer.identity.writer, peerDiscussion?.archive ?? peerDocument.checkpoint(), journalKind, peerDiscussion);
     let incomingBranch, retainedBranches, recoveredAlternateHistoryLanes, additionalAlternate;
     if (competingSeed) {
       await session.close();
@@ -479,7 +485,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       selectedContent: proposalAsset, differentContent: 'sha256:' + sha(pixel),
     } : undefined;
     const captured = await host.handover(token, registered.identity, comment.identity, peer.identity,
-      selectedUploads.map(upload => upload.pin), journalPins, wrongReceipt, assetMapping, incomingBranch);
+      selectedUploads.map(upload => upload.pin), journalPins, wrongReceipt, assetMapping, incomingBranch, protectedPeerReview);
     if (competing) {
       assert.equal(captured.branchAdmissions, 2);
       assert.equal(captured.branchCutRefusals, 3);
@@ -489,7 +495,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     }
     assert.equal(captured.participantUnmapped, opaque ? 1 : 0);
     assert.equal(captured.participantMappingRefusals, opaque ? 2 : 0);
-    assert.equal(captured.registrationRefusals, 3);
+    assert.equal(captured.registrationRefusals, peerDiscussion ? 4 : 3);
     assert.equal(captured.providerRasters, participant ? 3 : 2);
     assert.equal(captured.clientJournalRasterBindings, terminal ? 4 : independentDelivery ? 3 : 2);
     if (terminal) assert.ok(captured.retainedPackets > 1);
@@ -591,7 +597,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       writeFileSync(join(parent, 'carry-peer.uploads'), peerUpload, {flag: 'wx', mode: 0o600});
 
       const result = await host.carry(token, registered.identity, comment.identity, peer.identity,
-        uploads[1].pin, updatedPins, incomingBranch, additionalAlternate?.pin);
+        uploads[1].pin, updatedPins, incomingBranch, additionalAlternate?.pin, protectedPeerReview);
       assert.equal(result.alternateOmissionRefusals, 1);
       assert.ok(BigInt(result.records) > BigInt(captured.records));
       const superseded = await fetch(rasterUrl, {headers});

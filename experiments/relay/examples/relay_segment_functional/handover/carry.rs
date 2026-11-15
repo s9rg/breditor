@@ -1,5 +1,8 @@
 //! A second live handover from the first replacement and an independently exported alternate.
-use super::{POLICY, Result, configured_auth, deployment, input, storage};
+use super::{
+    POLICY, PeerReviewCredential, Result, configured_auth, deployment, input, peer_principal,
+    storage,
+};
 use crate::{captured_base, original_capture};
 use breditor_collab_relay::{
     Error, RecoveredRelaySegmentRoom, RecoveryDocumentCredential, RecoveryRegistrationCredentials,
@@ -30,6 +33,9 @@ struct Carry {
     review_credential: String,
     peer_writer: String,
     peer_credential: String,
+    #[serde(default = "peer_principal")]
+    peer_principal: String,
+    peer_review: Option<PeerReviewCredential>,
     peer_upload: RelaySegmentClientUploadPin,
     journals: [RelaySegmentClientJournalPin; 2],
     alternate: RelaySegmentClientJournalPin,
@@ -53,7 +59,7 @@ impl Carry {
         let (captured, old_epoch) =
             handle.capture_relay_segment(principal, &self.token, &parent.join("carry-capture"))?;
         storage::write_new(&parent.join("carry-restore.json"), &serde_json::to_vec(&captured)?)?;
-        let credentials = RecoveryRegistrationCredentials {
+        let mut credentials = RecoveryRegistrationCredentials {
             documents: vec![
                 RecoveryDocumentCredential {
                     principal: principal.into(),
@@ -61,7 +67,7 @@ impl Carry {
                     credential: self.document_credential,
                 },
                 RecoveryDocumentCredential {
-                    principal: principal.into(),
+                    principal: self.peer_principal.clone(),
                     writer: self.peer_writer,
                     credential: self.peer_credential,
                 },
@@ -72,6 +78,13 @@ impl Carry {
                 credential: self.review_credential,
             }],
         };
+        if let Some(peer) = self.peer_review {
+            credentials.reviews.push(RecoveryReviewCredential {
+                principal: self.peer_principal,
+                actor: peer.actor,
+                credential: peer.credential,
+            });
+        }
         let journals = self
             .journals
             .into_iter()

@@ -184,7 +184,7 @@ async fn main() -> Result {
                 }))?,
             )?;
             if parent.join("fixture-discussion-peer").is_file() {
-                room.grant("owner", "discussion-peer", Some(breditor_collab_relay::Role::Reader))?;
+                room.grant("owner", "discussion-peer", Some(breditor_collab_relay::Role::Editor))?;
                 room.grant_review(
                     "owner",
                     "discussion-peer",

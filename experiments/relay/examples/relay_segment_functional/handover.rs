@@ -28,6 +28,17 @@ mod provider;
 const POLICY: RoomRecoveryPolicy = RoomRecoveryPolicy::HostReacquired;
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct PeerReviewCredential {
+    actor: String,
+    credential: String,
+}
+
+fn peer_principal() -> String {
+    "owner".into()
+}
+
+#[derive(Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 enum Command {
     #[serde(rename_all = "camelCase")]
@@ -39,6 +50,9 @@ enum Command {
         review_credential: String,
         peer_writer: String,
         peer_credential: String,
+        #[serde(default = "peer_principal")]
+        peer_principal: String,
+        peer_review: Option<PeerReviewCredential>,
         uploads: Vec<RelaySegmentClientUploadPin>,
         journals: Vec<RelaySegmentClientJournalPin>,
         wrong_receipt: RelaySegmentClientJournalPin,
@@ -191,7 +205,10 @@ fn prepare_and_commit(
     let RelaySegmentHandoverInputCoverage::Pending(pending) = pending else {
         return Err("missing protected inputs were accepted".into());
     };
-    assert_eq!(pending.missing_registrations.len(), 3);
+    assert_eq!(
+        pending.missing_registrations.len(),
+        credentials.documents.len() + credentials.reviews.len()
+    );
     let mut incomplete = backup.restore_with_client_journals(
         &parent.join("incomplete-uploads"),
         "unused-one",
@@ -269,7 +286,13 @@ fn prepare_and_commit(
     assert!(document.local_through.parse::<u64>()? > document.accepted_through.parse::<u64>()?);
     let review = document.paired_review.as_ref().ok_or("paired review head")?;
     assert!(review.local_through.parse::<u64>()? > review.accepted_through.parse::<u64>()?);
-    assert!(verified_journals.journals[1].paired_review.is_none());
+    let peer_review = &verified_journals.journals[1].paired_review;
+    if credentials.reviews.len() == 2 {
+        let peer_review = peer_review.as_ref().ok_or("paired peer review head")?;
+        assert_eq!(peer_review.local_through, peer_review.accepted_through);
+    } else {
+        assert!(peer_review.is_none());
+    }
     let approval =
         RelaySegmentHandoverApproval::select_verified(&target, &inputs, previous.clone())?;
     if let Some(mapping) = &mapped {
@@ -343,6 +366,8 @@ pub(super) fn serve_control(
             review_credential,
             peer_writer,
             peer_credential,
+            peer_principal,
+            peer_review,
             uploads,
             journals,
             wrong_receipt,
@@ -352,7 +377,7 @@ pub(super) fn serve_control(
         else {
             return Err("expected private handover command".into());
         };
-        let credentials = RecoveryRegistrationCredentials {
+        let mut credentials = RecoveryRegistrationCredentials {
             documents: vec![
                 RecoveryDocumentCredential {
                     principal: "owner".into(),
@@ -360,7 +385,7 @@ pub(super) fn serve_control(
                     credential: document_credential,
                 },
                 RecoveryDocumentCredential {
-                    principal: "owner".into(),
+                    principal: peer_principal.clone(),
                     writer: peer_writer,
                     credential: peer_credential,
                 },
@@ -371,6 +396,13 @@ pub(super) fn serve_control(
                 credential: review_credential,
             }],
         };
+        if let Some(peer) = peer_review {
+            credentials.reviews.push(RecoveryReviewCredential {
+                principal: peer_principal,
+                actor: peer.actor,
+                credential: peer.credential,
+            });
+        }
         let response = prepare_and_commit(
             &parent,
             &handle,

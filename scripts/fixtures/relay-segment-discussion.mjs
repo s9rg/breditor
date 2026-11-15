@@ -10,9 +10,9 @@ const archivedReply = 'Alternate branch discussion reply';
 const unrelated = 'Competing branch comment';
 const liveBody = 'Continue this archived discussion';
 
-export async function authorPeerReply({api, options, persisted, profile, thread, token}) {
+export async function authorPeerReply({api, options, persisted, profile, thread, token, writer}) {
   const identity = await api.registerSharedReviewWriter({
-    ...options, principal: peer, actor: peer, getToken: () => token,
+    ...options, principal: peer, actor: peer, documentWriter: writer, getToken: () => token,
   });
   assert.equal(identity.role, 'comment');
   const {credential, observerCredential, ...binding} = identity.identity;
@@ -34,6 +34,7 @@ export async function authorPeerReply({api, options, persisted, profile, thread,
     assert.equal(session.core.redoReview().kind, 'committed');
     await sync.flush();
     assert.equal(sync.state().lastReceipt.through, session.core.localReviewClock().through);
+    return {actor: binding.actor, credential, archive: await session.exportBackup()};
   } finally {
     sync.dispose();
     try { await sync.waitForDisconnected(); } finally { await session.close(); }
