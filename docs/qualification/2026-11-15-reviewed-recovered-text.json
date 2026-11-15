@@ -1,0 +1,167 @@
+{
+  "format": "breditor/reviewed-recovered-text-qualification",
+  "formatVersion": 1,
+  "date": "2026-11-15",
+  "source": {
+    "commit": "32c90bb0a9a009d034cd2f78e690827181c130e2",
+    "dirty": false,
+    "sha256": "5f5f4f84b0ceeffdb8c5840bd9126c94235a5d28783e7684d06caee9e46559f6",
+    "files": 8866,
+    "bytes": 75409129
+  },
+  "testedTree": "08b801afeaf3065429764c2496f5dc0282c11b1d",
+  "predecessor": "e282bda5a0ff929990e91e5efa82dfcba854c66f",
+  "runtimeSha256": "373fa3eaff1317bec901efb053b2bf0e25cbe051102de3069dfcf16119997c56",
+  "relaySha256": "a0a4ff4bbd805438e5f7990c992d73fb74bc99ce722e88c5b62a61e22167d3e1",
+  "branchArchive": {
+    "reportSha256": "2cd683837eadaacd25adafa1b2da7546316615129420207754ca36b3fad25524",
+    "runs": {
+      "source": {
+        "passed": 8,
+        "failed": 0,
+        "proof": null,
+        "testOutputSha256": "2190f5c395f5d5018e717269b803acac5ba58164b0104e01afeda1f757d5f4c4"
+      },
+      "installed": {
+        "passed": 8,
+        "failed": 0,
+        "proof": {
+          "registryArtifacts": 45,
+          "archives": [
+            {
+              "name": "@breditor/browser",
+              "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+            },
+            {
+              "name": "@breditor/experimental-rich-content",
+              "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+            },
+            {
+              "name": "@breditor/collaboration",
+              "sha256": "5fcc19f4ef19e62807ff8ac3d154a0ded8c64745d53e8a413a99c608b9e227a0"
+            }
+          ]
+        },
+        "testOutputSha256": "d12c796cff4ecb2e7296dc09e7a78186e6c1525adf3b469b6af146ae1eb58d43"
+      }
+    }
+  },
+  "authenticatedLive": {
+    "reportSha256": "832dfb4863a5cad8453490cfa6fbe4a430cab680b3e4aba1354070b8749388bd",
+    "runs": {
+      "source": {
+        "mode": "source",
+        "handoffs": 2,
+        "portableRestores": 1,
+        "restoredOfflineLanes": 6,
+        "undoRedoLanes": 2,
+        "rasterReads": 2,
+        "processExits": 5,
+        "authenticatedTakeovers": 1,
+        "oldServingRefusals": 1,
+        "coldResumes": 3,
+        "registrationRefusals": 3,
+        "providerRasters": 3,
+        "retainedPackets": 1,
+        "stagedClientRasters": 3,
+        "clientUploadReceipts": 1,
+        "clientUploadArchives": 2,
+        "missingArchiveRefusals": 1,
+        "preservedCancelledUploads": 1,
+        "nativeJournals": 3,
+        "missingJournalRefusals": 2,
+        "coldJournalPairs": 1,
+        "clientJournalRasterBindings": 3,
+        "offlineImageRedo": 1,
+        "pairedBackups": 0,
+        "wrongReceiptRefusals": 1,
+        "retainedLocalVersions": 1,
+        "independentDeliveries": 0,
+        "participantArchives": 1,
+        "participantRasterBindings": 3,
+        "archiveOnlyRasterReads": 1,
+        "branchAdmissions": 2,
+        "branchCutRefusals": 3,
+        "incomingBranchRefusals": 1,
+        "preservedAlternateArchives": 1,
+        "alteredAlternateRefusals": 1,
+        "recoveredAlternateHistoryLanes": 2,
+        "exportedAlternateArchives": 1,
+        "recoveredTextAccepts": 1,
+        "coldAcceptedTextReads": 1,
+        "retainedOutboxPendings": 4,
+        "deliveredOutboxEntries": 4,
+        "retainedAbsolutePositions": true,
+        "runtimeSha256": "373fa3eaff1317bec901efb053b2bf0e25cbe051102de3069dfcf16119997c56",
+        "proof": null
+      },
+      "installed": {
+        "mode": "installed",
+        "handoffs": 2,
+        "portableRestores": 1,
+        "restoredOfflineLanes": 6,
+        "undoRedoLanes": 2,
+        "rasterReads": 2,
+        "processExits": 5,
+        "authenticatedTakeovers": 1,
+        "oldServingRefusals": 1,
+        "coldResumes": 3,
+        "registrationRefusals": 3,
+        "providerRasters": 3,
+        "retainedPackets": 1,
+        "stagedClientRasters": 3,
+        "clientUploadReceipts": 1,
+        "clientUploadArchives": 2,
+        "missingArchiveRefusals": 1,
+        "preservedCancelledUploads": 1,
+        "nativeJournals": 3,
+        "missingJournalRefusals": 2,
+        "coldJournalPairs": 1,
+        "clientJournalRasterBindings": 3,
+        "offlineImageRedo": 1,
+        "pairedBackups": 0,
+        "wrongReceiptRefusals": 1,
+        "retainedLocalVersions": 1,
+        "independentDeliveries": 0,
+        "participantArchives": 1,
+        "participantRasterBindings": 3,
+        "archiveOnlyRasterReads": 1,
+        "branchAdmissions": 2,
+        "branchCutRefusals": 3,
+        "incomingBranchRefusals": 1,
+        "preservedAlternateArchives": 1,
+        "alteredAlternateRefusals": 1,
+        "recoveredAlternateHistoryLanes": 2,
+        "exportedAlternateArchives": 1,
+        "recoveredTextAccepts": 1,
+        "coldAcceptedTextReads": 1,
+        "retainedOutboxPendings": 4,
+        "deliveredOutboxEntries": 4,
+        "retainedAbsolutePositions": true,
+        "runtimeSha256": "373fa3eaff1317bec901efb053b2bf0e25cbe051102de3069dfcf16119997c56",
+        "proof": {
+          "registryArtifacts": 45,
+          "archives": [
+            {
+              "name": "@breditor/browser",
+              "sha256": "79f5b486d3742d1234e4eb21c18822e0a494551d49a73039f5b856908c124f3f"
+            },
+            {
+              "name": "@breditor/experimental-rich-content",
+              "sha256": "c181984cc8f737861adf4886398d00413af6a42178d8542d789710c5b3faf371"
+            },
+            {
+              "name": "@breditor/collaboration",
+              "sha256": "5fcc19f4ef19e62807ff8ac3d154a0ded8c64745d53e8a413a99c608b9e227a0"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "scope": [
+    "The SDK projects an exact alternate archive text selection using a native UTF-16 range at its original cut. Preparation refuses changed inputs, foreign native seed histories and a target that advanced during policy callbacks.",
+    "Both consumers prepare the same ordinary native packet, explicitly queue and publish it, and confirm the accepted document only changes at authenticated Accept. A newly registered writer reads the effect exactly once after a real relay restart.",
+    "The archive provenance is detached and the complete alternate is still exactly recoverable. The resulting edit is the selected plain text, while source formatting, review, and asset state remain in the original recovery archive."
+  ]
+}
