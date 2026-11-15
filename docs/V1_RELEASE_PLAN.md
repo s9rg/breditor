@@ -2,6 +2,17 @@
 
 ## November 15 collaboration recovery
 
+[Whole discussion recovery](qualification/2026-11-15-recovered-discussion.json)
+attaches a selected archived discussion to an exact new native review thread.
+Original authors, versions, and history remain readable in the immutable
+attachment. A second authenticated author retains their document and review
+records through both handovers. Source and clean installs verify the archive
+from a new Reader after relay restart and local cold reopen. The same run
+preserves the accepted rich document, revision packets and versions. The
+existing lost-reply workflow also passes with the rebuilt relay example.
+Applications currently retain the attachment and provide it to authorized
+readers. Relay-owned attachment storage and discovery remain open.
+
 [Restartable archived comment recovery](qualification/2026-11-15-archived-comment-intent.json)
 adds a portable intent for the exact next native review event. The application's
 saved intent can distinguish an unused event counter, the locally retained
@@ -10,8 +21,7 @@ preserve the original action and causal dependencies. In source and independentl
 installed tests the relay commits once, the client loses the durable reply,
 and both owners reopen. The authenticated relay clock confirms the original
 event without a second submission. Both relay builds pass, and the previous
-ordinary recovery workflow also passes on the rebuilt relay. Recovering an
-entire multi-author discussion remains open.
+ordinary recovery workflow also passes on the rebuilt relay.
 
 [Archived comment recovery](qualification/2026-11-15-archived-comment-recovery.json)
 reads exact native thread events and brings one selected original author's

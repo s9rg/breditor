@@ -288,7 +288,8 @@ author attribution comes from the original archive at capture. The Reader
 uses the attachment alone and its own live review history to open it.
 Historical messages and Undo/Redo remain in the original archive. The relay
 persists the ordinary link event. The host supplies attachment storage and
-discovery across sessions.
+discovery across sessions. A complete attachment must fit the existing JSON
+room-record byte and shape limits. The SDK refuses oversized attachments.
 
 Run `node scripts/check-writable-relay-segment.mjs <relay-executable>
 --participant-recovered-discussion` to exercise two authenticated authors,
