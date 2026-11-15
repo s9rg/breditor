@@ -9,7 +9,7 @@ import {fileURLToPath, pathToFileURL} from 'node:url';
 import {WebSocket as Socket} from 'undici';
 import {environment} from './fixtures/room-participant-inventory/environment.mjs';
 import {pixel, proposalAsset, proposalPixel, secondAsset, secondPixel, recoveredAsset, recoveredPixel} from './fixtures/review-assets/pixels.mjs';
-import {startSegmentHandoverHost} from './fixtures/relay-segment-handover-host.mjs';
+import {assertOlderAuthorityRefused, startSegmentHandoverHost} from './fixtures/relay-segment-handover-host.mjs';
 import {captureParticipant, checkRecoveredAlternate, checkRetainedSelected, proposalAlias, reopenParticipant, withWrongReviewReceipt} from './fixtures/relay-segment-participant.mjs';
 import {captureClientRaster, resumeClientRaster} from './fixtures/relay-segment-client-raster.mjs';
 import {recoveredText, reviewRecoveredText} from './fixtures/relay-segment-recovered-text.mjs';
@@ -593,7 +593,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     if (competing) assert.doesNotMatch(session.core.documentJson(), /Competing branch text/);
     let restoredRoot = 'restored';
     let retainedAlternatePins = competing ? [incomingBranch] : [];
-    let carryEvidence, relocationEvidence, attachedDiscussion;
+    let carryEvidence, relocationEvidence, attachedDiscussion, portableActivationLedger;
     if (relayDiscussion) {
       const source = {file: new Blob([retainedBranches.incoming]), selection: retainedBranches.incomingSelection};
       attachedDiscussion = await publishAttachedDiscussion({
@@ -717,6 +717,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
           false, false, {kind: 'activate', documents, reviews},
         );
         assertOrdinaryStartupRefused(executable, parent, 'claim-unverified', address);
+        portableActivationLedger = readFileSync(join(parent, 'deployment', 'authority.log'));
         host = await startSegmentHandoverHost(executable, [parent, restoredRoot, address], token,
           false, false, {kind: 'resume', expectedUnservedSelection: selection});
         relocationEvidence = {
@@ -783,6 +784,10 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     await review.flush();
     await stopClients();
     await host.crash();
+    if (portableActivationLedger) {
+      assertOlderAuthorityRefused(executable, parent, address, token, portableActivationLedger);
+      relocationEvidence.rolledBackAuthorityRefusals = 1;
+    }
     host = await startSegmentHandoverHost(executable, [parent, restoredRoot, address], token);
     const clientUploadReceipts = await resumeClientRaster(
       richApi, api, parent, address, origin, token, uploads[0], portableUploads, restoredRoot,

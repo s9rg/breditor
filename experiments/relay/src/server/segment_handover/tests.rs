@@ -25,6 +25,7 @@ const POLICY: RoomRecoveryPolicy = RoomRecoveryPolicy::HostReacquired;
 
 mod client_rasters;
 mod client_uploads;
+mod coordinated;
 mod discussion_backup;
 mod portable_activation;
 mod portable_backup;
@@ -45,13 +46,20 @@ struct Source {
 
 impl Source {
     fn open() -> TestResult<Self> {
+        Self::open_with(RoomDeploymentAuthority::create)
+    }
+
+    fn open_coordinated() -> TestResult<Self> {
+        Self::open_with(RoomDeploymentAuthority::create_with_coordinated_recovery)
+    }
+
+    fn open_with(
+        create: impl FnOnce(&Path, &str) -> crate::Result<RoomDeploymentAuthority>,
+    ) -> TestResult<Self> {
         let (files, room, profile) = segment_handover_test_source(3, true, true)?;
         let parent = files.room().parent().ok_or("fixture parent")?.to_owned();
         let assets = AssetStore::open(&parent.join("rasters"), room.asset_binding())?;
-        let authority = RoomDeploymentAuthority::create(
-            &parent.join("authority"),
-            &room.deployment_binding()?,
-        )?;
+        let authority = create(&parent.join("authority"), &room.deployment_binding()?)?;
         let lease = authority.claim(&authority.current_selection()?)?;
         let (token, _) = Authentication::issue_token()?;
         let (_, handle) = router_with_server_backups_and_deployment_lease(

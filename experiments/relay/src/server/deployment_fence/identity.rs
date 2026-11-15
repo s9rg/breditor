@@ -34,7 +34,7 @@ pub(super) fn key(value: &str) -> Result<()> {
     Ok(())
 }
 impl RoomDeploymentIdentity {
-    pub(super) fn requires_coordinated_recovery(&self) -> bool {
+    pub(in crate::server) fn requires_coordinated_recovery(&self) -> bool {
         self.format_version == 2
     }
 

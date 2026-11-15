@@ -108,6 +108,11 @@ pub(in crate::server) fn resume_segment_handover(
     {
         return Err(Error::Lease);
     }
+    if first.identity.requires_coordinated_recovery()
+        && authority.state.cold_floor.is_none_or(|floor| floor < first_generation)
+    {
+        return Err(Error::Contract("coordinated relay restart requires a retained epoch"));
+    }
     let owner = if generation == first_generation {
         first.owner.clone()
     } else {

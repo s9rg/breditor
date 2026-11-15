@@ -306,6 +306,11 @@ impl Carry {
         let approval = RelaySegmentHandoverApproval::select_verified(&target, &inputs, old_epoch)?;
         storage::write_new(&parent.join("carry-approval.json"), &serde_json::to_vec(&approval)?)?;
         File::open(parent)?.sync_all()?;
+        super::restart_floor::remember(
+            parent,
+            "carry-approval.json",
+            &approval.planned_selection()?,
+        )?;
         let (_, carried, epoch) = handle.commit_verified_relay_segment_handover(
             principal,
             &self.token,

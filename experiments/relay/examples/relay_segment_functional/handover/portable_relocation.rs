@@ -1,5 +1,5 @@
 //! Process-level fixture for sealing on one relay and activating a moved bundle on another.
-use super::{POLICY, Result, deployment, input, read, storage};
+use super::{POLICY, Result, deployment, input, read, restart_floor, storage};
 use breditor_collab_relay::{
     Error, RecoveryDocumentCredential, RecoveryRegistrationCredentials, RecoveryReviewCredential,
     server::{
@@ -84,13 +84,13 @@ pub(crate) fn router(
     let command: Command = serde_json::from_slice(&input()?)?;
     let seal: RelaySegmentPortableSeal =
         serde_json::from_str(&read(&parent.join(SEAL), 128 * 1024)?)?;
-    let authority = deployment(parent)?;
     let moved = parent.join("portable-relocation-arrived");
     let bundle = RelaySegmentRetainedBackup::open_portable(&moved, seal.backup())?;
     let room_path = parent.join(ROOM);
     let approval_path = parent.join(APPROVAL);
     match command {
         Command::Activate { token, documents, reviews } => {
+            let authority = deployment(parent)?;
             let selected = seal.planned_selection()?;
             assert_eq!(authority.current_selection()?, selected);
             assert_eq!(seal.status(&authority)?, LogGenerationHandoverStatus::Sealed);
@@ -141,6 +141,7 @@ pub(crate) fn router(
                 RelaySegmentHandoverApproval::select_verified(&target, &inputs, selected)?;
             storage::write_new(&approval_path, &serde_json::to_vec(&approval)?)?;
             File::open(parent)?.sync_all()?;
+            restart_floor::remember(parent, APPROVAL, &approval.planned_selection()?)?;
             let (router, _, active) = target.activate_sealed_portable_relay(
                 authentication,
                 "owner",
@@ -167,6 +168,7 @@ pub(crate) fn router(
             let approval: RelaySegmentHandoverApproval =
                 serde_json::from_str(&read(&approval_path, 128 * 1024)?)?;
             assert_eq!(approval.previous_selection(), &seal.planned_selection()?);
+            let authority = restart_floor::open(parent, APPROVAL, &approval)?;
             let target = bundle.backup().reopen(&room_path, POLICY)?;
             let selected = authority.current_selection()?;
             if let Some(expected) = expected_unserved_selection {
@@ -182,6 +184,7 @@ pub(crate) fn router(
                 &selected,
             )?;
             assert_ne!(selected, resumed);
+            restart_floor::remember(parent, APPROVAL, &resumed)?;
             Ok(router)
         }
     }

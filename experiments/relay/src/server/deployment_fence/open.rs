@@ -47,6 +47,7 @@ impl RoomDeploymentAuthority {
                 identity: expected.clone(),
                 header_digest: header.digest,
                 offset: header.offset,
+                cold_floor: None,
                 observed: Mutex::new(EpochObservation::current(&current)),
                 poisoned: AtomicBool::new(false),
                 closed: AtomicBool::new(false),

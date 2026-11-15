@@ -1,8 +1,35 @@
 /** Private fixture commands over stdin. The live relay exposes only its ordinary routes. */
 import assert from 'node:assert/strict';
-import {spawn} from 'node:child_process';
+import {execFileSync, spawn} from 'node:child_process';
 import {createInterface} from 'node:readline';
 import {once} from 'node:events';
+import {readFileSync, renameSync, rmSync, writeFileSync} from 'node:fs';
+import {join} from 'node:path';
+
+export function assertOlderAuthorityRefused(executable, parent, address, token, older) {
+  const ledger = join(parent, 'deployment', 'authority.log');
+  const parked = join(parent, 'held-current-authority.log');
+  const current = readFileSync(ledger);
+  assert.ok(older.length < current.length);
+  assert.deepEqual(current.subarray(0, older.length), older);
+  renameSync(ledger, parked);
+  try {
+    writeFileSync(ledger, older, {flag: 'wx', mode: 0o600});
+    assert.throws(
+      () => execFileSync(executable, [parent, 'relocated', address], {
+        input: JSON.stringify({kind: 'resume', token}) + '\n',
+        stdio: ['pipe', 'pipe', 'pipe'],
+        timeout: 10_000,
+      }),
+      error => error.status === 1 && error.stderr.toString().trim() === 'Error: NeedsRecovery',
+    );
+    assert.deepEqual(readFileSync(ledger), older);
+  } finally {
+    rmSync(ledger, {force: true});
+    renameSync(parked, ledger);
+  }
+  assert.deepEqual(readFileSync(ledger), current);
+}
 
 export async function startSegmentHandoverHost(executable, args, token, exportAlternates = false, carryControl = false, relocation) {
   const mode = args[1];

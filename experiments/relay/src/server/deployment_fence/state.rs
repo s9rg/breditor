@@ -16,6 +16,7 @@ pub(super) struct State {
     pub identity: RoomDeploymentIdentity,
     pub header_digest: [u8; 32],
     pub offset: u64,
+    pub cold_floor: Option<u64>,
     pub observed: Mutex<EpochObservation>,
     pub poisoned: AtomicBool,
     pub closed: AtomicBool,

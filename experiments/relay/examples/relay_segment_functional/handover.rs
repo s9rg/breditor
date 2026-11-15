@@ -26,6 +26,8 @@ mod carry;
 pub(super) mod portable_relocation;
 #[path = "handover/provider.rs"]
 mod provider;
+#[path = "handover/restart_floor.rs"]
+mod restart_floor;
 #[path = "handover/retained_backup.rs"]
 mod retained_backup;
 
@@ -318,6 +320,7 @@ fn prepare_and_commit(
     }
     storage::write_new(&parent.join("approval.json"), &serde_json::to_vec(&approval)?)?;
     File::open(parent)?.sync_all()?;
+    restart_floor::remember(parent, "approval.json", &approval.planned_selection()?)?;
     let (router, handle, selected) = handle.commit_verified_relay_segment_handover(
         "owner",
         token,
@@ -439,7 +442,6 @@ pub(super) fn resumed_router(
     else {
         return Err("expected private resume command".into());
     };
-    let authority = deployment(parent)?;
     let (backup, approval_file, restore) = if carried {
         (carry::backup(parent)?, "carry-approval.json", "carried")
     } else {
@@ -447,6 +449,7 @@ pub(super) fn resumed_router(
     };
     let approval: RelaySegmentHandoverApproval =
         serde_json::from_str(&read(&parent.join(approval_file), 32 * 1024)?)?;
+    let authority = restart_floor::open(parent, approval_file, &approval)?;
     let target = backup.reopen(&parent.join(restore), POLICY)?;
     let selected = authority.current_selection()?;
     let (router, handle, epoch) = target.resume_handover(
@@ -457,6 +460,7 @@ pub(super) fn resumed_router(
         &approval,
         &selected,
     )?;
+    restart_floor::remember(parent, approval_file, &epoch)?;
     if export_alternates {
         branches::export(parent, &handle, &token, &selected, &epoch)?;
     }

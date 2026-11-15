@@ -25,7 +25,9 @@ impl ServerRecoveryAssetProvider for SeedAsset {
     }
 }
 
-async fn seed_asset_provider(source: &Source) -> TestResult<Arc<dyn ServerRecoveryAssetProvider>> {
+pub(super) async fn seed_asset_provider(
+    source: &Source,
+) -> TestResult<Arc<dyn ServerRecoveryAssetProvider>> {
     let store = source.handle.host.assets.clone().ok_or("source assets")?;
     let raster = source
         .handle

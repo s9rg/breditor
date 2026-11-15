@@ -1,7 +1,7 @@
 //! Cold continuity is selected independently, not inferred from a restored archive.
 use super::{RoomDeploymentAuthority, RoomDeploymentSelection, journal, permit::Permit};
-use crate::Result;
-use std::path::Path;
+use crate::{Error, Result};
+use std::{path::Path, sync::Arc};
 
 impl RoomDeploymentAuthority {
     /// Reopen existing custody only if the complete valid chain retains this exact
@@ -23,8 +23,8 @@ impl RoomDeploymentAuthority {
     /// Wrong/noncanonical pin, missing history, divergent retained nonce, uncertain
     /// storage or real lock contention refuse without changing any existing bytes.
     pub fn open_at_least(root: &Path, expected: &RoomDeploymentSelection) -> Result<Self> {
-        expected.validate_pin()?;
-        let authority = Self::open(root, &expected.identity)?;
+        let floor = expected.validate_pin()?;
+        let mut authority = Self::open(root, &expected.identity)?;
         let mut held = Permit::try_acquire(&authority.state, false)?;
         let current = authority.state.selected(held.file()?)?;
         journal::retains_selection(
@@ -36,6 +36,9 @@ impl RoomDeploymentAuthority {
         )?;
         held.finish()?;
         authority.state.healthy()?;
+        // This is still a newly opened, unshared authority. Admit the independently retained floor
+        // only after confirming its exact nonce against the complete journal under the real lock.
+        Arc::get_mut(&mut authority.state).ok_or(Error::NeedsRecovery)?.cold_floor = Some(floor);
         Ok(authority)
     }
 }

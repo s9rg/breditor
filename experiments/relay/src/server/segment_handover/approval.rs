@@ -25,6 +25,7 @@ pub struct RelaySegmentHandoverApproval {
 impl RelaySegmentHandoverApproval {
     /// Select a completed, untouched local restore and the exact old serving epoch.
     /// Retain the returned approval independently from room and archive files.
+    /// A coordinated authority requires `select_verified`.
     ///
     /// # Errors
     /// Refuses a different source cut, changed custody, invalid epoch or advanced target.
@@ -42,6 +43,7 @@ impl RelaySegmentHandoverApproval {
         previous: RoomDeploymentSelection,
         verified_inputs_sha256: Option<[u8; 32]>,
     ) -> Result<Self> {
+        require_coordinated_inputs(&previous, verified_inputs_sha256.is_some())?;
         let approval = Self {
             format: "breditor/relay-segment-handover".into(),
             format_version: 1,
@@ -79,6 +81,7 @@ impl RelaySegmentHandoverApproval {
         &self,
         inputs: Option<&VerifiedRelaySegmentHandoverInputs>,
     ) -> Result<()> {
+        require_coordinated_inputs(&self.previous, inputs.is_some())?;
         if self.verified_inputs_sha256 != inputs.map(VerifiedRelaySegmentHandoverInputs::digest) {
             return Err(Error::Contract(
                 "relay segment handover requires the selected input proof",
@@ -143,4 +146,11 @@ impl RelaySegmentHandoverApproval {
         ))?)
         .into())
     }
+}
+
+fn require_coordinated_inputs(previous: &RoomDeploymentSelection, verified: bool) -> Result<()> {
+    if previous.identity.requires_coordinated_recovery() && !verified {
+        return Err(Error::Contract("coordinated relay handover requires verified inputs"));
+    }
+    Ok(())
 }

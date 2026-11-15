@@ -12,6 +12,9 @@ impl RecoveredRelaySegmentRoom {
     /// Resume the approved local restore and its later complete work.
     /// A successful restart advances the same independent deployment authority to a fresh epoch.
     /// Supply the independently retained approval and a current authenticated room owner.
+    /// For a coordinated authority, use `RoomDeploymentAuthority::open_at_least` with the latest
+    /// independently retained selection. That selection must be at or beyond the first epoch
+    /// that activated this target. Retain the returned selection for the next cold restart.
     ///
     /// # Errors
     /// Refuses a missing, superseded or unrelated commitment, changed target custody or authority,
