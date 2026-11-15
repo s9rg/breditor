@@ -26,6 +26,19 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 const origin = 'http://127.0.0.1:49785';
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 
+function assertOrdinaryStartupRefused(executable, parent, mode, address) {
+  const ledger = join(parent, 'deployment', 'authority.log');
+  const before = readFileSync(ledger);
+  assert.throws(
+    () => execFileSync(executable, [parent, mode, address], {
+      stdio: ['ignore', 'pipe', 'pipe'], timeout: 10_000,
+    }),
+    error => error.status === 1 &&
+      error.stderr.toString().includes('deployment authority requires coordinated recovery'),
+  );
+  assert.deepEqual(readFileSync(ledger), before);
+}
+
 function writeJournal(parent, name, owner, journal) {
   const bytes = Buffer.from(journal);
   writeFileSync(join(parent, name), bytes, {flag: 'wx', mode: 0o600});
@@ -89,6 +102,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       ...(peerDiscussionToken ? [{principal: 'discussion-peer', tokenHash: [...createHash('sha256').update(peerDiscussionToken).digest()]}] : [])],
   }), {mode: 0o600});
   writeFileSync(join(parent, 'asset.png'), pixel, {mode: 0o600});
+  if (portableSeal) writeFileSync(join(parent, 'fixture-coordinated-recovery'), '', {mode: 0o600});
   let host, profile, session, document, review, portableUploads, failure;
   const connect = {getToken: () => token, autoConnect: false, requestTimeoutMs: 15_000};
   const stopClients = async () => {
@@ -520,6 +534,7 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
     await old.arrayBuffer();
     await host.crash();
     host = undefined;
+    if (portableSeal) assertOrdinaryStartupRefused(executable, parent, 'final', address);
     for (const directory of ['source-native', 'successor', 'final', 'rasters',
       ...uploads.map(upload => 'client-' + upload.pin.writer + '.backup'),
       ...journalPins.map((_, index) => `journal-${index}.json`), 'wrong-receipt.json',
@@ -678,6 +693,8 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
       }
       if (portableSeal) {
         assert.equal(result.portableSeal.nativePredecessors, 4);
+        assert.equal(result.portableSeal.sealedSelection.identity.formatVersion, 2);
+        assertOrdinaryStartupRefused(executable, parent, 'claim-unverified', address);
         const originalPaths = [
           'carried', 'carry-capture', 'capture', 'base.archive', 'base.checkpoint',
           'linked.archive', 'linked.checkpoint',
@@ -699,10 +716,12 @@ async function run(mode, {distribution, rich}, executable, parent, journalKind, 
           executable, [parent, 'relocated-before-listen', address], token,
           false, false, {kind: 'activate', documents, reviews},
         );
+        assertOrdinaryStartupRefused(executable, parent, 'claim-unverified', address);
         host = await startSegmentHandoverHost(executable, [parent, restoredRoot, address], token,
           false, false, {kind: 'resume', expectedUnservedSelection: selection});
         relocationEvidence = {
           sealedPortableActivations: 1,
+          ordinaryStartupRefusals: 3,
           unservedActivationExits: 1,
           unservedActivationResumes: 1,
           sealedCaptureRefusals: 1,

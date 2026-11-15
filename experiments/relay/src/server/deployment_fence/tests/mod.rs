@@ -1,6 +1,7 @@
 mod authority;
 mod backup;
 mod cold_selection;
+mod coordinated;
 mod fixture;
 mod network;
 mod process;

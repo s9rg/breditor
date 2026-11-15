@@ -31,6 +31,7 @@ impl State {
             }
             journal::check_anchor(
                 file,
+                &self.identity,
                 &self.header_digest,
                 self.offset,
                 observed.count,
@@ -52,6 +53,7 @@ impl State {
         }
         journal::check_anchor(
             file,
+            &self.identity,
             &self.header_digest,
             self.offset,
             current.count,

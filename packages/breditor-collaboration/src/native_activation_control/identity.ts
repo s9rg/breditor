@@ -6,10 +6,11 @@ import type {SharedDeploymentSelection,SharedDurableNativeActivationSelection,Sh
 import {activationFailure as fail,MAX_SHARED_NATIVE_ACTIVATION_CONTROL_BYTES} from './policy.js';
 export function deployment(value:unknown):SharedDeploymentSelection {
  const r=fields(value,'identity,generation,owner'),i=fields(r['identity'],'format,formatVersion,authority,binding');
- if(i['format']!=='breditor/room-deployment-authority'||i['formatVersion']!==1)throw fail();
+ const formatVersion = i['formatVersion'];
+ if(i['format']!=='breditor/room-deployment-authority'||(formatVersion!==1&&formatVersion!==2))throw fail();
  const generation=decimal(r['generation'],1048576n),owner=r['owner']===null?null:hex(r['owner']);
  if((generation==='0')!==(owner===null))throw fail();
- return{identity:{format:i['format'],formatVersion:1,authority:hex(i['authority']),binding:hex(i['binding'])},generation,owner};
+ return{identity:{format:i['format'],formatVersion,authority:hex(i['authority']),binding:hex(i['binding'])},generation,owner};
 }
 export function nativeActivationSelection(value:unknown):SharedDurableNativeActivationSelection {
  try{

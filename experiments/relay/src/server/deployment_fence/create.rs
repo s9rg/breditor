@@ -20,6 +20,21 @@ impl RoomDeploymentAuthority {
     /// Existing/aliased paths, unsupported identity backend, wrong binding, I/O
     /// or entropy failure refuses without granting any serving lease.
     pub fn create(root: &Path, binding: &str) -> Result<Self> {
+        Self::create_with_revision(root, binding, 1)
+    }
+
+    /// Create a private authority that requires a verified continuation after a coordinated seal
+    /// or handover. Before that first transition, ordinary CAS claims work as in revision one.
+    /// Retain the returned identity and an independently verified latest selection for cold opens.
+    ///
+    /// # Errors
+    /// Existing or aliased paths, an unsupported backend, wrong binding, I/O or entropy failure
+    /// refuses without granting a lease.
+    pub fn create_with_coordinated_recovery(root: &Path, binding: &str) -> Result<Self> {
+        Self::create_with_revision(root, binding, 2)
+    }
+
+    fn create_with_revision(root: &Path, binding: &str, format_version: u32) -> Result<Self> {
         location::supported()?;
         key(binding)?;
         let mut builder = DirBuilder::new();
@@ -36,7 +51,7 @@ impl RoomDeploymentAuthority {
         File::try_lock(&file).map_err(super::permit::lock_error)?;
         let identity = RoomDeploymentIdentity {
             format: "breditor/room-deployment-authority".into(),
-            format_version: 1,
+            format_version,
             authority: credentials::issue()?,
             binding: binding.into(),
         };

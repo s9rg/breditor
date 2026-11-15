@@ -22,6 +22,9 @@ fn seal_current(
     expected: &ServerLogGenerationRoomBackupIdentity,
 ) -> Result<(ServerLogGenerationRoomBackup, RoomDeploymentSelection, RoomDeploymentSelection)> {
     let authority = lease.authority();
+    if authority.state.identity.requires_coordinated_recovery() {
+        return Err(Error::Contract("deployment authority requires coordinated recovery"));
+    }
     let mut held = Permit::try_acquire(&authority.state, true)?;
     lease.check_held(&mut held)?;
     let previous = lease.selection();

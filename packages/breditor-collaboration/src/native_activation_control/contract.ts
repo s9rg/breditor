@@ -1,7 +1,7 @@
 /** Separately selected native checkpoint DATA. No value here is a serving lease. */
 import type {SharedServerLogGenerationRecoveryIdentity} from '../generation_recovery_control/contract.js';
 export interface SharedDeploymentSelection {
- readonly identity:Readonly<{format:'breditor/room-deployment-authority';formatVersion:1;authority:string;binding:string}>;
+ readonly identity:Readonly<{format:'breditor/room-deployment-authority';formatVersion:1|2;authority:string;binding:string}>;
  readonly generation:string;
  readonly owner:string|null;
 }

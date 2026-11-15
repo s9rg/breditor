@@ -13,6 +13,27 @@ test('configuration performs no IO; commit uses exact detached pins and separate
   const host=Host.configure(input);assert.equal(calls,0);input.expected.checkpointSha256[0]=1;const out=await host.commit();assert.deepEqual(out.selection,gold);assert.ok(Object.isFrozen(out.selection.current.server));await host.commit();assert.equal(calls,2);host.close();assert.deepEqual(host.selection(),gold);await assert.rejects(host.commit(),code('activation_closed'));
  });
 });
+test('activation transport retains the coordinated authority revision', async () => {
+ const expected = selection();
+ expected.previous.identity.formatVersion = 2;
+ expected.planned.identity.formatVersion = 2;
+ const confirmed = select(expected);
+ await using(async (_url, init) => {
+  assert.deepEqual(JSON.parse(init.body), confirmed);
+  return json(receipt(confirmed));
+ }, async () => {
+  const host = Host.configure(options({expected}));
+  try {
+   assert.deepEqual((await host.commit()).selection, confirmed);
+  } finally {
+   host.close();
+  }
+ });
+ expected.planned.identity.formatVersion = 1;
+ assert.throws(() => select(expected), code('activation_policy'));
+ expected.previous.identity.formatVersion = expected.planned.identity.formatVersion = 3;
+ assert.throws(() => select(expected), code('activation_policy'));
+});
 for(const[label,change]of[
  ['unknown field',v=>{v.ready=true;}],['wrong family',v=>{v.format='breditor/server-log-generation-recovery-control';}],['version',v=>{v.formatVersion=2;}],['sparse digest',v=>{v.checkpointSha256=Array(32);} ],['inode witness',v=>{v.checkpoint={inode:2n**63n};}],['wrong epoch',v=>{v.planned.generation='4';}],['numeric epoch',v=>{v.previous.generation=2;}],['leading-zero epoch',v=>{v.planned.generation='03';}],['authority change',v=>{v.planned.identity.authority='e'.repeat(64);}],['zero prior',v=>{v.previous.generation='0';v.previous.owner=null;v.planned.generation='1';}],['counter ceiling',v=>{v.previous.generation='1048576';v.planned.generation='1048577';}],['wrong inventory',v=>{v.current.participants.source.manifest[0]^=1;}]
 ])test('closed checkpoint selection refuses '+label,()=>{const value=selection();change(value);assert.throws(()=>select(value),code('activation_policy'));});

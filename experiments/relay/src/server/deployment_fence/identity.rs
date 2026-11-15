@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 pub struct RoomDeploymentIdentity {
     /// Closed family, currently `breditor/room-deployment-authority`.
     pub format: String,
-    /// Closed revision, currently one.
+    /// Authority policy revision. Revision two requires verified transitions after handover.
     pub format_version: u32,
     /// Random immutable authority identity, not account authentication.
     pub authority: String,
@@ -34,8 +34,14 @@ pub(super) fn key(value: &str) -> Result<()> {
     Ok(())
 }
 impl RoomDeploymentIdentity {
+    pub(super) fn requires_coordinated_recovery(&self) -> bool {
+        self.format_version == 2
+    }
+
     pub(super) fn validate(&self) -> Result<()> {
-        if self.format != "breditor/room-deployment-authority" || self.format_version != 1 {
+        if self.format != "breditor/room-deployment-authority"
+            || !matches!(self.format_version, 1 | 2)
+        {
             return Err(Error::Contract("deployment authority format"));
         }
         key(&self.authority)?;

@@ -16,6 +16,8 @@ impl RoomDeploymentAuthority {
     /// # Errors
     /// Busy workers, stale choice, wrong namespace, exhausted epoch budget,
     /// malformed storage, entropy or uncertain append/sync/unlock refuses.
+    /// An authority created with coordinated recovery also refuses an ordinary claim after its
+    /// first committed handover or seal. Use the verified continuation for the approved room.
     pub fn claim(&self, expected: &RoomDeploymentSelection) -> Result<RoomDeploymentLease> {
         let mut held = Permit::try_acquire(&self.state, true)?;
         let lease = self.claim_held(&mut held, expected)?;
@@ -63,6 +65,9 @@ impl RoomDeploymentAuthority {
         if &current.selection != expected {
             return Err(Error::Lease);
         }
+        if current.coordinated && planned.is_none() {
+            return Err(Error::Contract("deployment authority requires coordinated recovery"));
+        }
         if current.count >= journal::MAX_CLAIMS {
             return Err(Error::Contract("deployment epoch budget"));
         }
@@ -74,7 +79,14 @@ impl RoomDeploymentAuthority {
             getrandom::fill(&mut nonce).map_err(|_| Error::Entropy)?;
             nonce
         };
-        let bytes = journal::frame(&self.state.header_digest, generation, &nonce, &current.digest);
+        let coordinated = self.state.identity.requires_coordinated_recovery() && planned.is_some();
+        let bytes = journal::frame(
+            &self.state.header_digest,
+            generation,
+            coordinated,
+            &nonce,
+            &current.digest,
+        );
         self.state.check_file(held.file()?)?;
         let written = (|| {
             let file = held.file()?;

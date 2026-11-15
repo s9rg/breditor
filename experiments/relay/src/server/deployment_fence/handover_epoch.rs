@@ -59,11 +59,9 @@ pub(in crate::server) fn prepared_decision_status(
             held.file()?
                 .seek(SeekFrom::Start(authority.state.offset + (next - 1) * journal::FRAME))?;
             held.file()?.read_exact(&mut frame)?;
-            if frame[..8] != next.to_be_bytes() {
-                return Err(Error::NeedsRecovery);
-            }
             journal::check_anchor(
                 held.file()?,
+                &authority.state.identity,
                 &authority.state.header_digest,
                 authority.state.offset,
                 next,

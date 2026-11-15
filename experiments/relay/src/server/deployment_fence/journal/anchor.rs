@@ -1,7 +1,7 @@
 //! Constant-size witnessed-prefix check; complete replay remains a separate law.
-use super::super::identity::RoomDeploymentSelection;
+use super::super::identity::{RoomDeploymentIdentity, RoomDeploymentSelection};
 use super::Current;
-use super::{FRAME, MAX_CLAIMS, digest};
+use super::{FRAME, MAX_CLAIMS, digest, record_policy};
 use crate::{Error, Result};
 use std::{
     fs::File,
@@ -10,6 +10,7 @@ use std::{
 
 pub(in crate::server::deployment_fence) fn check_anchor(
     file: &mut File,
+    identity: &RoomDeploymentIdentity,
     header: &[u8; 32],
     offset: u64,
     generation: u64,
@@ -24,7 +25,7 @@ pub(in crate::server::deployment_fence) fn check_anchor(
     let mut bytes = [0; 104];
     file.seek(SeekFrom::Start(offset + (generation - 1) * FRAME))?;
     file.read_exact(&mut bytes)?;
-    if bytes[..8] != generation.to_be_bytes()
+    if record_policy(identity, generation, &bytes).is_err()
         || bytes[72..] != *expected
         || digest(header, &bytes[..72]) != *expected
     {
@@ -54,7 +55,7 @@ pub(in crate::server::deployment_fence) fn retains_selection(
     let mut bytes = [0; 104];
     file.seek(SeekFrom::Start(offset + (generation - 1) * FRAME))?;
     file.read_exact(&mut bytes)?;
-    if bytes[..8] != generation.to_be_bytes()
+    if record_policy(&expected.identity, generation, &bytes).is_err()
         || bytes[72..] != digest(header, &bytes[..72])
         || Some(super::nonce(&bytes[8..40])).as_deref() != expected.owner.as_deref()
     {

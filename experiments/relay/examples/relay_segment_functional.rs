@@ -136,10 +136,13 @@ fn source_router(
     auth: Authentication,
 ) -> Result<(axum::Router, ServerBackupHandle)> {
     let authority = if create {
-        let authority = RoomDeploymentAuthority::create(
-            &parent.join("deployment"),
-            &room.deployment_binding()?,
-        )?;
+        let path = parent.join("deployment");
+        let binding = room.deployment_binding()?;
+        let authority = if parent.join("fixture-coordinated-recovery").is_file() {
+            RoomDeploymentAuthority::create_with_coordinated_recovery(&path, &binding)?
+        } else {
+            RoomDeploymentAuthority::create(&path, &binding)?
+        };
         storage::write_new(
             &parent.join("deployment-identity.json"),
             &serde_json::to_vec(&authority.identity())?,
@@ -168,6 +171,11 @@ async fn main() -> Result {
     let id = asset_id(&png);
     let auth = configured_auth(parent)?;
     let (router, control) = match mode.as_str() {
+        "claim-unverified" => {
+            let authority = deployment(parent)?;
+            authority.claim(&authority.current_selection()?)?;
+            return Err("fixture made an ordinary claim after coordinated recovery".into());
+        }
         "start" => {
             let source::Source { mut room, configuration, profile: _ } = source::create(
                 parent,
